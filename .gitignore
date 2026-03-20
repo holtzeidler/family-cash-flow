@@ -11,4 +11,5 @@ data/
 /.mypy_cache/
 /.vscode/
 .idea/
+.tmp/
 

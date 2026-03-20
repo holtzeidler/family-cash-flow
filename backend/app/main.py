@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from enum import Enum
@@ -38,6 +39,8 @@ class Settings(BaseSettings):
 
 
 settings = Settings(_env_file=Path(__file__).resolve().parents[1] / ".env", _env_file_encoding="utf-8")
+
+logger = logging.getLogger(__name__)
 
 
 class Base(DeclarativeBase):
@@ -260,6 +263,10 @@ class AuthMeOut(BaseModel):
     user: UserOut
 
 
+class RegisterOut(BaseModel):
+    user: UserOut
+
+
 class FamilyCreateIn(BaseModel):
     name: str = Field(min_length=1, max_length=255)
 
@@ -410,7 +417,7 @@ def startup_populate_schema():
     Base.metadata.create_all(bind=engine)
 
 
-@app.post("/api/auth/register", status_code=status.HTTP_201_CREATED)
+@app.post("/api/auth/register", status_code=status.HTTP_201_CREATED, response_model=RegisterOut)
 def register(payload: RegisterIn, response: Response, db=Depends(get_db)):
     existing = db.execute(select(User).where(User.email == payload.email)).scalar_one_or_none()
     if existing:
@@ -1188,8 +1195,19 @@ def create_transaction(
 
 
 def _frontend_dir() -> Path:
-    # backend/app/main.py -> backend -> family-cash-flow -> frontend
-    return Path(__file__).resolve().parents[2] / "frontend"
+    """
+    Resolve the repo's `frontend/` folder.
+
+    Walks upward from this file until `frontend/index.html` exists so local dev works
+    even if the repo is nested or the working directory differs.
+    """
+    here = Path(__file__).resolve()
+    for p in [here.parent, *here.parents]:
+        candidate = p / "frontend"
+        if candidate.is_dir() and (candidate / "index.html").is_file():
+            return candidate
+    # Fallback (same as old behavior): repo root = parent of `backend/`
+    return here.parent.parent.parent / "frontend"
 
 
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)
@@ -1204,4 +1222,10 @@ def root():
 static_dir = _frontend_dir()
 if static_dir.exists():
     app.mount("/", StaticFiles(directory=str(static_dir), html=True), name="static")
+else:
+    logger.warning(
+        "Frontend static directory not found at %s — only the API will work; "
+        "open index.html via a server that serves frontend/ or fix the repo layout.",
+        static_dir,
+    )
 
