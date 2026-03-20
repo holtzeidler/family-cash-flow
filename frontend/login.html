@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Family Cash Flow - Login</title>
+    <script>window.API_BASE = "__API_BASE__";</script>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>Family Cash Flow</h1>
+        <div class="pill">Web app</div>
+      </header>
+
+      <div class="grid">
+        <div class="card">
+          <h2>Login</h2>
+          <div class="row two">
+            <div>
+              <label for="email">Email</label>
+              <input id="email" type="email" autocomplete="email" />
+            </div>
+            <div>
+              <label for="password">Password</label>
+              <input id="password" type="password" autocomplete="current-password" />
+            </div>
+          </div>
+          <div style="height:10px;"></div>
+          <button id="loginBtn">Login</button>
+          <div id="err" class="error"></div>
+        </div>
+
+        <div class="card">
+          <h2>Create account</h2>
+          <div class="row two">
+            <div>
+              <label for="regName">Name (optional)</label>
+              <input id="regName" type="text" autocomplete="name" />
+            </div>
+            <div>
+              <label for="regEmail">Email</label>
+              <input id="regEmail" type="email" autocomplete="email" />
+            </div>
+          </div>
+          <div style="height:10px;"></div>
+          <label for="regPassword">Password (min 8 chars)</label>
+          <input id="regPassword" type="password" autocomplete="new-password" />
+          <div style="height:10px;"></div>
+          <button id="registerBtn">Register</button>
+          <div id="err2" class="error"></div>
+        </div>
+      </div>
+    </div>
+
+    <script src="./login.js"></script>
+  </body>
+</html>
+
