@@ -1,12 +1,26 @@
+function getApiBase() {
+  const b = window.API_BASE && window.API_BASE !== "__API_BASE__" ? window.API_BASE : "";
+  return b.replace(/\/$/, "");
+}
+
 async function api(path, method, body) {
-  const apiBase = window.API_BASE && window.API_BASE !== "__API_BASE__" ? window.API_BASE : "";
+  const apiBase = getApiBase();
   const fullPath = `${apiBase}${path}`;
-  const res = await fetch(fullPath, {
-    method,
-    headers: body ? { "Content-Type": "application/json" } : {},
-    credentials: "include",
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  let res;
+  try {
+    res = await fetch(fullPath, {
+      method,
+      headers: body ? { "Content-Type": "application/json" } : {},
+      credentials: "include",
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch (e) {
+    const hint =
+      location.hostname.endsWith("github.io")
+        ? " Cannot reach API. Set GitHub Actions secret API_BASE to your Render URL (https://….onrender.com, no trailing slash), re-run “Deploy frontend to GitHub Pages”, and set Render env CORS_ORIGINS=https://holtzeidler.github.io"
+        : "";
+    throw new Error(((e && e.message) || "Network error") + hint);
+  }
   if (!res.ok) {
     let msg = `Request failed (${res.status})`;
     try {
@@ -34,6 +48,13 @@ function goApp() {
 
 const errEl = document.getElementById("err");
 const errEl2 = document.getElementById("err2");
+
+if (location.hostname.endsWith("github.io") && !getApiBase()) {
+  const msg =
+    "This site was built without API_BASE. Repo → Settings → Secrets → Actions → set API_BASE to your Render API URL, then re-run “Deploy frontend to GitHub Pages”.";
+  setErr(errEl, msg);
+  setErr(errEl2, msg);
+}
 
 document.getElementById("loginBtn").addEventListener("click", async () => {
   try {
