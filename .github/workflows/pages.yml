@@ -3,6 +3,7 @@ name: Deploy frontend to GitHub Pages
 on:
   push:
     branches: ["main"]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -36,6 +37,10 @@ jobs:
               txt = txt.replace("__API_BASE__", api_base)
               path.write_text(txt, encoding="utf-8")
           PY
+          # Disable Jekyll so GitHub Pages serves static files as-is (README is not used as index).
+          touch public/.nojekyll
+          test -f public/index.html || (echo "::error::public/index.html missing — check frontend/ is committed" && exit 1)
+          ls -la public
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
