@@ -6,6 +6,7 @@ from decimal import Decimal
 from enum import Enum
 from pathlib import Path
 from typing import Annotated, Literal, Optional
+from urllib.parse import urlparse
 
 from fastapi import Cookie, Depends, FastAPI, HTTPException, Response, status
 from fastapi.responses import HTMLResponse
@@ -406,9 +407,24 @@ class ProjectionOut(BaseModel):
     daily: list[ProjectionDailyOut]
 
 
+def _parse_cors_origins(raw: str) -> list[str]:
+    """Split comma-separated origins; normalize full URLs to scheme+host (GitHub Pages Origin has no path)."""
+    out: list[str] = []
+    for part in raw.split(","):
+        part = part.strip()
+        if not part:
+            continue
+        parsed = urlparse(part)
+        if parsed.scheme and parsed.netloc:
+            out.append(f"{parsed.scheme}://{parsed.netloc}")
+        else:
+            out.append(part)
+    return out
+
+
 app = FastAPI(title="Family Cash Flow")
 if settings.CORS_ORIGINS:
-    origins = [o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()]
+    origins = _parse_cors_origins(settings.CORS_ORIGINS)
     if origins:
         app.add_middleware(
             CORSMiddleware,

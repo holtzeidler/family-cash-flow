@@ -945,6 +945,15 @@ function setDefaultExpectedStartDate() {
 }
 
 async function main() {
+  const apiBase = window.API_BASE && window.API_BASE !== "__API_BASE__" ? window.API_BASE : "";
+  if (location.hostname.endsWith("github.io") && !apiBase) {
+    show(
+      familiesErr,
+      "GitHub Pages build is missing API_BASE. In the repo: Settings → Secrets → Actions → set API_BASE to your Render URL (e.g. https://your-app.onrender.com, no trailing slash), then re-run the workflow “Deploy frontend to GitHub Pages”."
+    );
+    if (userPill) userPill.textContent = "API not configured";
+    return;
+  }
   setDefaultMonth();
   setDefaultProjectionStart();
   setDefaultChartStart();

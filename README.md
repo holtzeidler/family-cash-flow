@@ -65,7 +65,9 @@ Set environment variables on your backend host:
 
 If your Pages origin is different from your backend origin, also set:
 
-`CORS_ORIGINS=https://YOUR_GITHUB_USER.github.io/YOUR_REPO`
+`CORS_ORIGINS=https://YOUR_GITHUB_USER.github.io`
+
+(Use the **origin only** — no `/repo-name` path. You can also paste a full Pages URL; the backend normalizes it.)
 
 ### 2) Deploy the frontend (GitHub Pages)
 
