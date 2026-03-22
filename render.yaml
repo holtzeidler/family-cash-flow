@@ -1,0 +1,14 @@
+# Render Blueprint: FastAPI backend (Docker).
+# https://render.com/docs/blueprint-spec
+#
+# Set these in the Render dashboard (or link a secret group):
+#   DATABASE_URL, JWT_SECRET, CORS_ORIGINS, ENV=production
+
+services:
+  - type: web
+    name: family-cash-flow-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    plan: free
+    healthCheckPath: /docs
