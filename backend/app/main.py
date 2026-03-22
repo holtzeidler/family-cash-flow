@@ -13,7 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 import bcrypt
 from jose import jwt
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from pydantic_settings import BaseSettings
 from sqlalchemy import Date as SA_Date
 from sqlalchemy import Enum as SAEnum
@@ -36,6 +36,20 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_MINUTES: int = 1440
     CORS_ORIGINS: str = ""
+
+    @field_validator("DATABASE_URL", mode="after")
+    @classmethod
+    def normalize_postgres_driver(cls, v: str) -> str:
+        # Bare postgresql:// makes SQLAlchemy use psycopg2; we depend on psycopg v3 only.
+        if v.startswith("sqlite"):
+            return v
+        if v.startswith("postgresql+") or v.startswith("postgres+"):
+            return v
+        if v.startswith("postgresql://"):
+            return "postgresql+psycopg://" + v[len("postgresql://") :]
+        if v.startswith("postgres://"):
+            return "postgresql+psycopg://" + v[len("postgres://") :]
+        return v
 
 
 settings = Settings(_env_file=Path(__file__).resolve().parents[1] / ".env", _env_file_encoding="utf-8")
