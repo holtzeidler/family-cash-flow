@@ -5,299 +5,293 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Family Cash Flow</title>
     <script>window.API_BASE = "__API_BASE__";</script>
-    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./styles.css?v=5" />
   </head>
   <body>
     <div class="container">
-      <header>
+      <header class="app-header">
         <h1>Family Cash Flow</h1>
-        <div class="pill" id="userPill">Loading...</div>
+        <div class="header-actions">
+          <!-- Kept for JS (active family); hidden — single-family workflow for now -->
+          <select id="familySelect" class="family-select-hidden" aria-hidden="true" tabindex="-1"></select>
+          <div class="pill" id="userPill">Loading...</div>
+          <button type="button" id="logoutBtn">Logout</button>
+        </div>
       </header>
 
-      <div class="grid">
-        <div class="card">
-          <h2>Families</h2>
-          <div class="row two">
-            <div>
-              <label for="familySelect">Active family</label>
-              <select id="familySelect"></select>
-            </div>
-            <div>
-              <label for="familyName">Create family</label>
-              <input id="familyName" type="text" placeholder="e.g. Holt Family" />
-            </div>
-          </div>
-          <div style="height:10px;"></div>
-          <div class="row two">
-            <button id="createFamilyBtn">Add family</button>
-            <button class="danger" id="logoutBtn">Logout</button>
-          </div>
-          <div id="familiesErr" class="error"></div>
-        </div>
+      <div id="familiesErr" class="error"></div>
 
-        <div class="card">
-          <h2>Month summary</h2>
-          <div class="row two">
-            <div>
-              <label for="monthInput">Month</label>
-              <input id="monthInput" type="month" />
+      <div class="app-layout">
+        <aside class="sidebar">
+          <div class="card">
+            <h2>Categories</h2>
+            <div class="row two">
+              <div>
+                <label for="categorySelect">Choose category</label>
+                <select id="categorySelect"></select>
+              </div>
+              <div>
+                <label for="newCategoryName">New category</label>
+                <input id="newCategoryName" type="text" placeholder="e.g. Groceries" />
+              </div>
             </div>
-            <div style="display:flex; align-items:end;">
-              <button id="refreshBtn" style="width:100%;">Refresh</button>
-            </div>
-          </div>
-          <div style="height:12px;"></div>
-          <div class="totals" id="totals"></div>
-          <div id="txErr" class="error"></div>
-        </div>
-
-        <div class="card">
-          <h2>Categories</h2>
-          <div class="row two">
-            <div>
-              <label for="categorySelect">Choose category</label>
-              <select id="categorySelect"></select>
-            </div>
-            <div>
-              <label for="newCategoryName">New category</label>
-              <input id="newCategoryName" type="text" placeholder="e.g. Groceries" />
-            </div>
-          </div>
-          <div style="height:10px;"></div>
-          <button id="addCategoryBtn">Add category</button>
-          <div id="catErr" class="error"></div>
-        </div>
-
-        <div class="card">
-          <h2>Accounts</h2>
-          <div class="row two">
-            <div>
-              <label for="accountName">Account name</label>
-              <input id="accountName" type="text" placeholder="e.g. Checking" />
-            </div>
-            <div>
-              <label for="accountType">Type</label>
-              <select id="accountType">
-                <option value="checking" selected>Checking</option>
-                <option value="savings">Savings</option>
-                <option value="credit_card">Credit card</option>
-                <option value="cash">Cash</option>
-                <option value="other">Other</option>
-              </select>
-            </div>
-          </div>
-          <div style="height:10px;"></div>
-          <label for="accountStartingBalance">Starting balance</label>
-          <input id="accountStartingBalance" type="number" step="0.01" placeholder="0.00" />
-          <div style="height:10px;"></div>
-          <button id="addAccountBtn">Add account</button>
-          <div id="accErr" class="error"></div>
-          <div class="list" id="accountsList"></div>
-        </div>
-
-        <div class="card">
-          <h2>Add transaction</h2>
-          <div class="row two">
-            <div>
-              <label for="txDate">Date</label>
-              <input id="txDate" type="date" />
-            </div>
-            <div>
-              <label for="txKind">Type</label>
-              <select id="txKind">
-                <option value="expense" selected>Expense</option>
-                <option value="income">Income</option>
-              </select>
-            </div>
-          </div>
-          <div style="height:10px;"></div>
-          <label for="txDesc">Description</label>
-          <input id="txDesc" type="text" placeholder="e.g. Rent / Paycheck" />
-          <div style="height:10px;"></div>
-          <div class="row two">
-            <div>
-              <label for="txAmount">Amount (number)</label>
-              <input id="txAmount" type="number" min="0" step="0.01" placeholder="0.00" />
-            </div>
-            <div>
-              <label for="txCategoryId">Category</label>
-              <select id="txCategoryId"></select>
-            </div>
-          </div>
-          <div style="height:10px;"></div>
-          <button id="addTxBtn">Add transaction</button>
-          <div id="addTxErr" class="error"></div>
-        </div>
-
-        <div class="card">
-          <h2>Expected transactions</h2>
-          <div class="row two">
-            <div>
-              <label for="expectedStartDate">Start date</label>
-              <input id="expectedStartDate" type="date" />
-            </div>
-            <div>
-              <label for="expectedRecurrence">Recurrence</label>
-              <select id="expectedRecurrence">
-                <option value="monthly" selected>Monthly</option>
-                <option value="semiannual">Twice yearly (every 6 months)</option>
-                <option value="yearly">Yearly</option>
-                <option value="once">Once</option>
-              </select>
-            </div>
-          </div>
-          <div style="height:10px;"></div>
-
-          <div class="row two">
-            <div>
-              <label for="expectedKind">Type</label>
-              <select id="expectedKind">
-                <option value="expense" selected>Withdrawal / Expense</option>
-                <option value="income">Income</option>
-              </select>
-            </div>
-            <div>
-              <label for="expectedAmount">Amount</label>
-              <input id="expectedAmount" type="number" min="0" step="0.01" placeholder="0.00" />
-            </div>
+            <div style="height:10px;"></div>
+            <button id="addCategoryBtn">Add category</button>
+            <div id="catErr" class="error"></div>
           </div>
 
-          <div style="height:10px;"></div>
-          <label for="expectedDesc">Description</label>
-          <input id="expectedDesc" type="text" placeholder="e.g. Electric bill" />
+          <div class="card">
+            <h2>Add Recurring Transactions</h2>
+            <div class="row two">
+              <div>
+                <label for="expectedStartDate">Start date</label>
+                <input id="expectedStartDate" type="date" />
+              </div>
+              <div>
+                <label for="expectedRecurrence">Recurrence</label>
+                <select id="expectedRecurrence">
+                  <option value="monthly" selected>Monthly</option>
+                  <option value="semiannual">Twice yearly (every 6 months)</option>
+                  <option value="yearly">Yearly</option>
+                  <option value="once">Once</option>
+                </select>
+              </div>
+            </div>
+            <div style="height:10px;"></div>
 
-          <div style="height:10px;"></div>
-          <div class="row two">
-            <div>
-              <label for="expectedAccountId">Account</label>
-              <select id="expectedAccountId"></select>
+            <div class="row two">
+              <div>
+                <label for="expectedKind">Type</label>
+                <select id="expectedKind">
+                  <option value="expense" selected>Withdrawal / Expense</option>
+                  <option value="income">Income</option>
+                </select>
+              </div>
+              <div>
+                <label for="expectedAmount">Amount</label>
+                <input id="expectedAmount" type="number" min="0" step="0.01" placeholder="0.00" />
+              </div>
             </div>
-            <div>
-              <label for="expectedCategoryId">Category (optional)</label>
-              <select id="expectedCategoryId"></select>
+
+            <div style="height:10px;"></div>
+            <label for="expectedDesc">Description</label>
+            <input id="expectedDesc" type="text" placeholder="e.g. Electric bill" />
+
+            <div style="height:10px;"></div>
+            <div class="row two">
+              <div>
+                <label for="expectedAccountId">Account</label>
+                <select id="expectedAccountId"></select>
+              </div>
+              <div>
+                <label for="expectedCategoryId">Category (optional)</label>
+                <select id="expectedCategoryId"></select>
+              </div>
+            </div>
+
+            <div style="height:10px;"></div>
+            <button id="addExpectedTxBtn">Add recurring transaction</button>
+            <div id="expectedTxErr" class="error"></div>
+            <div class="list" id="expectedTxList"></div>
+          </div>
+
+          <div class="card">
+            <h2>Add One-Time Transactions</h2>
+            <div class="row two">
+              <div>
+                <label for="txDate">Date</label>
+                <input id="txDate" type="date" />
+              </div>
+              <div>
+                <label for="txKind">Type</label>
+                <select id="txKind">
+                  <option value="expense" selected>Expense</option>
+                  <option value="income">Income</option>
+                </select>
+              </div>
+            </div>
+            <div style="height:10px;"></div>
+            <label for="txDesc">Description</label>
+            <input id="txDesc" type="text" placeholder="e.g. Rent / Paycheck" />
+            <div style="height:10px;"></div>
+            <div class="row two">
+              <div>
+                <label for="txAmount">Amount (number)</label>
+                <input id="txAmount" type="number" min="0" step="0.01" placeholder="0.00" />
+              </div>
+              <div>
+                <label for="txCategoryId">Category</label>
+                <select id="txCategoryId"></select>
+              </div>
+            </div>
+            <div style="height:10px;"></div>
+            <button id="addTxBtn">Add transaction</button>
+            <div id="addTxErr" class="error"></div>
+          </div>
+
+          <div class="card">
+            <h2>Accounts</h2>
+            <div class="row two">
+              <div>
+                <label for="accountName">Account name</label>
+                <input id="accountName" type="text" placeholder="e.g. Checking" />
+              </div>
+              <div>
+                <label for="accountType">Type</label>
+                <select id="accountType">
+                  <option value="checking" selected>Checking</option>
+                  <option value="savings">Savings</option>
+                  <option value="credit_card">Credit card</option>
+                  <option value="cash">Cash</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+            </div>
+            <div style="height:10px;"></div>
+            <label for="accountStartingBalance">Starting balance</label>
+            <input id="accountStartingBalance" type="number" step="0.01" placeholder="0.00" />
+            <div style="height:10px;"></div>
+            <button id="addAccountBtn">Add account</button>
+            <div id="accErr" class="error"></div>
+            <div class="list" id="accountsList"></div>
+          </div>
+
+          <div class="card">
+            <h2>Month summary</h2>
+            <div class="row two">
+              <div>
+                <label for="monthInput">Month</label>
+                <input id="monthInput" type="month" />
+              </div>
+              <div style="display:flex; align-items:end;">
+                <button id="refreshBtn" style="width:100%;">Refresh</button>
+              </div>
+            </div>
+            <div style="height:12px;"></div>
+            <div class="totals" id="totals"></div>
+            <div id="txErr" class="error"></div>
+          </div>
+        </aside>
+
+        <div class="main-column">
+          <div class="card calendar-panel">
+            <h2>Calendar (Monthly)</h2>
+            <div class="row two">
+              <div>
+                <label for="calendarMonth">Month</label>
+                <input id="calendarMonth" type="month" />
+              </div>
+              <div>
+                <label for="calendarMode">Show</label>
+                <select id="calendarMode">
+                  <option value="both" selected>Actual + Expected</option>
+                  <option value="actual">Actual only</option>
+                  <option value="expected">Expected only</option>
+                </select>
+              </div>
+            </div>
+            <div style="height:12px;"></div>
+            <div id="calendarErr" class="error"></div>
+            <div class="calendar-scroll">
+              <div id="calendarGrid"></div>
             </div>
           </div>
 
-          <div style="height:10px;"></div>
-          <button id="addExpectedTxBtn">Add expected transaction</button>
-          <div id="expectedTxErr" class="error"></div>
-          <div class="list" id="expectedTxList"></div>
-        </div>
+          <div class="main-column-aux">
+          <div class="card">
+            <h2>Projected balance chart (daily)</h2>
+            <div class="row two">
+              <div>
+                <label for="chartStart">Start date</label>
+                <input id="chartStart" type="date" />
+              </div>
+              <div>
+                <label for="chartDaysRange">Zoom horizon</label>
+                <input id="chartDaysRange" type="range" min="30" max="365" step="1" value="365" />
+                <div class="meta" id="chartDaysLabel">365 days</div>
+              </div>
+            </div>
+            <div style="height:12px;"></div>
+            <button id="runProjectionChartBtn">Update chart</button>
+            <div style="height:10px;"></div>
+            <div id="chartErr" class="error"></div>
+            <canvas id="projectionChartCanvas" height="220" style="width:100%; border:1px solid rgba(255,255,255,0.10); border-radius:12px; background:rgba(255,255,255,0.02);"></canvas>
+          </div>
 
-        <div class="card" style="grid-column:1/-1;">
-          <h2>Calendar (Monthly)</h2>
-          <div class="row two">
-            <div>
-              <label for="calendarMonth">Month</label>
-              <input id="calendarMonth" type="month" />
+          <div class="card">
+            <h2>Edit expected transaction instance</h2>
+            <div class="row two">
+              <div>
+                <label for="instanceDate">Instance date</label>
+                <input id="instanceDate" type="date" readonly />
+              </div>
+              <div>
+                <label for="instanceExpectedTxId">Expected transaction</label>
+                <input id="instanceExpectedTxId" type="text" readonly />
+              </div>
             </div>
-            <div>
-              <label for="calendarMode">Show</label>
-              <select id="calendarMode">
-                <option value="both" selected>Actual + Expected</option>
-                <option value="actual">Actual only</option>
-                <option value="expected">Expected only</option>
-              </select>
+            <div style="height:10px;"></div>
+            <div class="row two">
+              <div>
+                <label for="instanceKind">Type</label>
+                <select id="instanceKind">
+                  <option value="expense" selected>Withdrawal / Expense</option>
+                  <option value="income">Income</option>
+                </select>
+              </div>
+              <div>
+                <label for="instanceAmount">Amount</label>
+                <input id="instanceAmount" type="number" min="0" step="0.01" placeholder="0.00" />
+              </div>
             </div>
+            <div style="height:10px;"></div>
+            <label for="instanceDesc">Description</label>
+            <input id="instanceDesc" type="text" placeholder="e.g. Electric bill" />
+            <div style="height:10px;"></div>
+            <div class="row two">
+              <div>
+                <label for="instanceAccountId">Account</label>
+                <select id="instanceAccountId"></select>
+              </div>
+              <div>
+                <label for="instanceCategoryId">Category (optional)</label>
+                <select id="instanceCategoryId"></select>
+              </div>
+            </div>
+            <div style="height:12px;"></div>
+            <div class="row two">
+              <button id="saveInstanceOverrideBtn">Save override</button>
+              <button class="danger" id="cancelInstanceOverrideBtn">Cancel occurrence</button>
+            </div>
+            <div id="expectedInstanceErr" class="error"></div>
           </div>
-          <div style="height:12px;"></div>
-          <div id="calendarErr" class="error"></div>
-          <div id="calendarGrid" style="margin-top:10px;"></div>
-        </div>
 
-        <div class="card" style="grid-column:1/-1;">
-          <h2>Projected balance chart (daily)</h2>
-          <div class="row two">
-            <div>
-              <label for="chartStart">Start date</label>
-              <input id="chartStart" type="date" />
+          <div class="card">
+            <h2>5-year daily projection</h2>
+            <div class="row two">
+              <div>
+                <label for="projectionStart">Start date</label>
+                <input id="projectionStart" type="date" />
+              </div>
+              <div style="display:flex; align-items:end;">
+                <button id="runProjectionBtn" style="width:100%;">Run projection</button>
+              </div>
             </div>
-            <div>
-              <label for="chartDaysRange">Zoom horizon</label>
-              <input id="chartDaysRange" type="range" min="30" max="365" step="1" value="365" />
-              <div class="meta" id="chartDaysLabel">365 days</div>
-            </div>
+            <div style="height:12px;"></div>
+            <div class="totals" id="projectionSummary"></div>
+            <div id="projectionErr" class="error"></div>
+            <div class="list" id="projectionDailyList"></div>
           </div>
-          <div style="height:12px;"></div>
-          <button id="runProjectionChartBtn">Update chart</button>
-          <div style="height:10px;"></div>
-          <div id="chartErr" class="error"></div>
-          <canvas id="projectionChartCanvas" height="220" style="width:100%; border:1px solid rgba(255,255,255,0.10); border-radius:12px; background:rgba(255,255,255,0.02);"></canvas>
-        </div>
 
-        <div class="card" style="grid-column:1/-1;">
-          <h2>Edit expected transaction instance</h2>
-          <div class="row two">
-            <div>
-              <label for="instanceDate">Instance date</label>
-              <input id="instanceDate" type="date" readonly />
-            </div>
-            <div>
-              <label for="instanceExpectedTxId">Expected transaction</label>
-              <input id="instanceExpectedTxId" type="text" readonly />
-            </div>
+          <div class="card">
+            <h2>Transactions</h2>
+            <div class="list" id="txList"></div>
           </div>
-          <div style="height:10px;"></div>
-          <div class="row two">
-            <div>
-              <label for="instanceKind">Type</label>
-              <select id="instanceKind">
-                <option value="expense" selected>Withdrawal / Expense</option>
-                <option value="income">Income</option>
-              </select>
-            </div>
-            <div>
-              <label for="instanceAmount">Amount</label>
-              <input id="instanceAmount" type="number" min="0" step="0.01" placeholder="0.00" />
-            </div>
           </div>
-          <div style="height:10px;"></div>
-          <label for="instanceDesc">Description</label>
-          <input id="instanceDesc" type="text" placeholder="e.g. Electric bill" />
-          <div style="height:10px;"></div>
-          <div class="row two">
-            <div>
-              <label for="instanceAccountId">Account</label>
-              <select id="instanceAccountId"></select>
-            </div>
-            <div>
-              <label for="instanceCategoryId">Category (optional)</label>
-              <select id="instanceCategoryId"></select>
-            </div>
-          </div>
-          <div style="height:12px;"></div>
-          <div class="row two">
-            <button id="saveInstanceOverrideBtn">Save override</button>
-            <button class="danger" id="cancelInstanceOverrideBtn">Cancel occurrence</button>
-          </div>
-          <div id="expectedInstanceErr" class="error"></div>
-        </div>
-
-        <div class="card" style="grid-column:1/-1;">
-          <h2>5-year daily projection</h2>
-          <div class="row two">
-            <div>
-              <label for="projectionStart">Start date</label>
-              <input id="projectionStart" type="date" />
-            </div>
-            <div style="display:flex; align-items:end;">
-              <button id="runProjectionBtn" style="width:100%;">Run projection</button>
-            </div>
-          </div>
-          <div style="height:12px;"></div>
-          <div class="totals" id="projectionSummary"></div>
-          <div id="projectionErr" class="error"></div>
-          <div class="list" id="projectionDailyList"></div>
-        </div>
-
-        <div class="card" style="grid-column:1/-1;">
-          <h2>Transactions</h2>
-          <div class="list" id="txList"></div>
         </div>
       </div>
     </div>
 
-    <script src="./app.js"></script>
+    <script src="./app.js?v=5"></script>
   </body>
 </html>
-

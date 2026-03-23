@@ -84,23 +84,25 @@ button.danger{
   border-color: rgba(255,107,107,0.35);
 }
 
-/* Main app: ~25% master data (left), ~75% calendar + detail (right) */
+/* Main app: 1/4 master data (left), 3/4 calendar + tools (right) */
 .app-layout{
   display:grid;
-  grid-template-columns: minmax(280px, 24%) 1fr;
+  grid-template-columns: 1fr 3fr;
   gap: 16px;
-  align-items: start;
+  align-items: stretch;
   margin-top: 14px;
-  min-height: calc(100vh - 88px);
+  height: calc(100vh - 88px);
+  min-height: 520px;
 }
 
 .sidebar{
   display:flex;
   flex-direction:column;
   gap: 14px;
-  max-height: calc(100vh - 88px);
+  min-width: 0;
   overflow-y: auto;
-  padding-right: 4px;
+  overflow-x: hidden;
+  padding-right: 6px;
 }
 
 .main-column{
@@ -108,16 +110,17 @@ button.danger{
   flex-direction:column;
   gap: 14px;
   min-width: 0;
-  max-height: calc(100vh - 88px);
-  overflow-y: auto;
+  overflow: hidden;
   padding-right: 4px;
 }
 
 .calendar-panel{
   display:flex;
   flex-direction:column;
-  flex: 1 1 auto;
-  min-height: min(78vh, 920px);
+  flex: 1 1 62%;
+  min-height: 280px;
+  max-height: 72vh;
+  overflow: hidden;
 }
 
 .calendar-scroll{
@@ -126,15 +129,38 @@ button.danger{
   overflow: auto;
 }
 
-@media (max-width: 1100px){
+/* Chart / instance / projection / list — scroll below calendar */
+.main-column-aux{
+  flex: 1 1 38%;
+  min-height: 0;
+  overflow-y: auto;
+  display:flex;
+  flex-direction:column;
+  gap: 14px;
+  padding-right: 2px;
+}
+
+@media (max-width: 720px){
   .app-layout{
     grid-template-columns: 1fr;
+    height: auto;
+    min-height: 0;
   }
-  .sidebar, .main-column{
+  .sidebar{
+    max-height: none;
+  }
+  .main-column{
+    overflow: visible;
     max-height: none;
   }
   .calendar-panel{
+    max-height: none;
     min-height: 420px;
+    flex: 0 1 auto;
+  }
+  .main-column-aux{
+    overflow: visible;
+    flex: 0 1 auto;
   }
 }
 

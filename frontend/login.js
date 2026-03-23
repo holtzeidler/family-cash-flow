@@ -55,8 +55,38 @@ const errEl = document.getElementById("err");
 const errEl2 = document.getElementById("err2");
 const loginStatusEl = document.getElementById("loginStatus");
 const registerStatusEl = document.getElementById("registerStatus");
+const diagEl = document.getElementById("diag");
 const loginBtn = document.getElementById("loginBtn");
 const registerBtn = document.getElementById("registerBtn");
+
+function getClientOrigin() {
+  return window.location.origin;
+}
+
+async function fetchServerPublicConfig() {
+  const r = await request("/api/debug/public-config", "GET");
+  if (!r.ok || !r.data) return null;
+  return r.data;
+}
+
+function formatServerDiag(srv) {
+  if (!srv) return " (Could not load /api/debug/public-config from API.)";
+  const origins = Array.isArray(srv.cors_allow_origins) ? srv.cors_allow_origins.join(", ") : String(srv.cors_allow_origins);
+  return (
+    ` | SERVER: env=${srv.env}, cookie SameSite=${srv.auth_cookie_samesite}, secure=${srv.auth_cookie_secure}, ` +
+    `CORS middleware=${srv.cors_middleware_enabled}, allow_origins=[${origins}]`
+  );
+}
+
+async function renderDiagnostics() {
+  const apiBase = getApiBase() || "(empty)";
+  const origin = getClientOrigin();
+  let msg =
+    `Client: API_BASE=${apiBase} | Origin=${origin} | CORS must allow ${origin}`;
+  const srv = await fetchServerPublicConfig();
+  msg += formatServerDiag(srv);
+  setInfo(diagEl, msg, srv ? "ok" : "pending");
+}
 
 function setBusy(isBusy) {
   loginBtn.disabled = isBusy;
@@ -66,10 +96,13 @@ function setBusy(isBusy) {
 }
 
 function networkHint() {
+  const apiBase = getApiBase() || "(empty)";
+  const origin = getClientOrigin();
   if (!location.hostname.endsWith("github.io")) return "";
   return (
-    " Could not reach API. Check API_BASE secret points to your Render URL (https://...onrender.com, no trailing slash), " +
-    "and Render CORS_ORIGINS includes https://holtzeidler.github.io"
+    ` Could not reach API. Current API_BASE=${apiBase}. Browser Origin=${origin}. ` +
+    `Check API_BASE secret points to your Render URL (https://...onrender.com, no trailing slash), ` +
+    `and Render CORS_ORIGINS includes ${origin}`
   );
 }
 
@@ -109,6 +142,8 @@ if (location.hostname.endsWith("github.io") && !getApiBase()) {
     "This site was built without API_BASE. Repo > Settings > Secrets > Actions > set API_BASE to your Render API URL, then re-run Deploy frontend to GitHub Pages.";
   setErr(errEl, msg);
   setErr(errEl2, msg);
+} else {
+  void renderDiagnostics();
 }
 
 loginBtn.addEventListener("click", async () => {
@@ -128,10 +163,10 @@ loginBtn.addEventListener("click", async () => {
     const check = await verifySessionWithProgress(loginStatusEl);
     if (!check.ok) {
       setInfo(loginStatusEl, "");
-      setErr(
-        errEl,
-        "Login request succeeded, but session validation failed. Usually this is cookie/CORS config. Confirm Render ENV=production and CORS_ORIGINS=https://holtzeidler.github.io"
-      );
+      const srv = await fetchServerPublicConfig();
+      const base =
+        "Login succeeded, but /api/auth/me did not see your session cookie. For GitHub Pages + Render, ENV must be production (SameSite=None; Secure).";
+      setErr(errEl, base + formatServerDiag(srv));
       return;
     }
     setInfo(loginStatusEl, "Session ready. Opening app...", "ok");
@@ -161,10 +196,10 @@ registerBtn.addEventListener("click", async () => {
     const check = await verifySessionWithProgress(registerStatusEl);
     if (!check.ok) {
       setInfo(registerStatusEl, "");
-      setErr(
-        errEl2,
-        "Account was created, but session validation failed. Check Render ENV=production and CORS_ORIGINS."
-      );
+      const srv = await fetchServerPublicConfig();
+      const base =
+        "Account created, but /api/auth/me did not see your session cookie. Set Render ENV=production for cross-site cookies.";
+      setErr(errEl2, base + formatServerDiag(srv));
       return;
     }
     setInfo(registerStatusEl, "Account created and session ready. Opening app...", "ok");

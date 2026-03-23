@@ -435,6 +435,25 @@ if settings.CORS_ORIGINS:
         )
 
 
+@app.get("/api/debug/public-config", include_in_schema=False)
+def public_debug_config():
+    """
+    Safe diagnostics for GitHub Pages + Render cookie/CORS issues.
+    Does not expose secrets.
+    """
+    raw = settings.CORS_ORIGINS or ""
+    parsed = _parse_cors_origins(raw) if raw.strip() else []
+    return {
+        "env": settings.ENV,
+        "cors_middleware_enabled": bool(raw.strip() and parsed),
+        "cors_allow_origins": parsed,
+        "cors_origins_configured": bool(raw.strip()),
+        "auth_cookie_samesite": "none" if settings.ENV == "production" else "lax",
+        "auth_cookie_secure": settings.ENV == "production",
+        "note": "GitHub Pages -> Render needs ENV=production so Set-Cookie uses SameSite=None; Secure.",
+    }
+
+
 @app.on_event("startup")
 def startup_populate_schema():
     # For a starter app we create tables on startup.

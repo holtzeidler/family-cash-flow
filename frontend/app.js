@@ -147,26 +147,6 @@ if (calendarMode) {
   });
 }
 
-document.getElementById("createFamilyBtn").addEventListener("click", async () => {
-  try {
-    show(familiesErr, "");
-    const name = document.getElementById("familyName").value.trim();
-    if (!name) throw new Error("Family name is required");
-    const created = await api("/api/families", "POST", { name });
-    document.getElementById("familyName").value = "";
-    await loadFamilies();
-    if (created?.id) familySelect.value = String(created.id);
-    await loadCategories();
-    await loadAccounts();
-    await loadExpectedTransactions();
-    if (monthInput?.value) {
-      await loadMonthAndCalendar();
-    }
-  } catch (e) {
-    show(familiesErr, e.message || "Failed to add family");
-  }
-});
-
 familySelect.addEventListener("change", async () => {
   state.activeFamilyId = Number(familySelect.value);
   await loadCategories();
@@ -277,7 +257,7 @@ addExpectedTxBtn.addEventListener("click", async () => {
     await loadExpectedCalendar();
     renderCalendar();
   } catch (e) {
-    show(expectedTxErr, e.message || "Failed to add expected transaction");
+    show(expectedTxErr, e.message || "Failed to add recurring transaction");
   }
 });
 
@@ -503,7 +483,7 @@ function renderExpectedTransactions(items) {
   if (!items || items.length === 0) {
     const empty = document.createElement("div");
     empty.className = "pill";
-    empty.textContent = "No expected transactions yet.";
+    empty.textContent = "No recurring transactions yet.";
     expectedTxList.appendChild(empty);
     return;
   }
