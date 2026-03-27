@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Family Cash Flow</title>
     <script>window.API_BASE = "__API_BASE__";</script>
-    <link rel="stylesheet" href="./styles.css?v=9" />
+    <link rel="stylesheet" href="./styles.css?v=10" />
   </head>
   <body>
     <div class="container">
@@ -190,9 +190,35 @@
           <div class="card calendar-panel" id="calendarPanel">
             <h2>Calendar (Monthly)</h2>
             <div class="row two">
-              <div>
-                <label for="calendarMonth">Month</label>
-                <input id="calendarMonth" type="month" />
+              <div class="calendar-nav-block">
+                <div class="calendar-nav">
+                  <button type="button" class="nav-link" id="calendarPrevMonth">Prev</button>
+                  <div class="calendar-pickers">
+                    <div>
+                      <label for="calendarMonthNum">Month</label>
+                      <select id="calendarMonthNum">
+                        <option value="1">January</option>
+                        <option value="2">February</option>
+                        <option value="3">March</option>
+                        <option value="4">April</option>
+                        <option value="5">May</option>
+                        <option value="6">June</option>
+                        <option value="7">July</option>
+                        <option value="8">August</option>
+                        <option value="9">September</option>
+                        <option value="10">October</option>
+                        <option value="11">November</option>
+                        <option value="12">December</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label for="calendarYear">Year</label>
+                      <select id="calendarYear"></select>
+                    </div>
+                  </div>
+                  <button type="button" class="nav-link" id="calendarNextMonth">Next</button>
+                </div>
+                <input type="hidden" id="calendarMonth" />
               </div>
               <div>
                 <label for="calendarMode">Show</label>
@@ -342,6 +368,6 @@
       </div>
     </div>
 
-    <script src="./app.js?v=9"></script>
+    <script src="./app.js?v=10"></script>
   </body>
 </html>

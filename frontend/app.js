@@ -125,6 +125,10 @@ const projectionDailyList = document.getElementById("projectionDailyList");
 
 // Calendar
 const calendarMonth = document.getElementById("calendarMonth");
+const calendarMonthNum = document.getElementById("calendarMonthNum");
+const calendarYear = document.getElementById("calendarYear");
+const calendarPrevMonth = document.getElementById("calendarPrevMonth");
+const calendarNextMonth = document.getElementById("calendarNextMonth");
 const calendarMode = document.getElementById("calendarMode");
 const calendarErr = document.getElementById("calendarErr");
 const calendarGrid = document.getElementById("calendarGrid");
@@ -166,17 +170,87 @@ document.getElementById("logoutBtn").addEventListener("click", async () => {
   window.location.href = "./login.html";
 });
 
+function initCalendarYearOptions() {
+  if (!calendarYear || calendarYear.dataset.populated === "1") return;
+  calendarYear.dataset.populated = "1";
+  const y0 = new Date().getFullYear();
+  for (let y = y0 - 35; y <= y0 + 25; y++) {
+    const opt = document.createElement("option");
+    opt.value = String(y);
+    opt.textContent = String(y);
+    calendarYear.appendChild(opt);
+  }
+}
+
+function ensureCalendarYearOption(y) {
+  if (!calendarYear) return;
+  const ys = String(y);
+  if ([...calendarYear.options].some((o) => o.value === ys)) return;
+  const opt = document.createElement("option");
+  opt.value = ys;
+  opt.textContent = ys;
+  calendarYear.appendChild(opt);
+  const opts = [...calendarYear.options].sort((a, b) => Number(a.value) - Number(b.value));
+  calendarYear.innerHTML = "";
+  for (const o of opts) calendarYear.appendChild(o);
+}
+
+function applyCalendarMonthToPickers(ym) {
+  if (!ym || !calendarMonth) return;
+  const p = String(ym).split("-");
+  const y = Number(p[0]);
+  const m = Number(p[1]);
+  if (!Number.isFinite(y) || !Number.isFinite(m)) return;
+  const ymStr = `${y}-${String(m).padStart(2, "0")}`;
+  calendarMonth.value = ymStr;
+  if (calendarMonthNum) calendarMonthNum.value = String(m);
+  if (calendarYear) {
+    ensureCalendarYearOption(y);
+    calendarYear.value = String(y);
+  }
+}
+
+async function onCalendarPickerChange() {
+  if (!calendarMonth || !calendarMonthNum || !calendarYear) return;
+  const y = calendarYear.value;
+  const m = calendarMonthNum.value;
+  const ym = `${y}-${String(Number(m)).padStart(2, "0")}`;
+  calendarMonth.value = ym;
+  if (monthInput) monthInput.value = ym;
+  await loadMonthAndCalendar();
+}
+
+async function shiftCalendarMonth(delta) {
+  const ym = (calendarMonth && calendarMonth.value) || (monthInput && monthInput.value);
+  if (!ym) return;
+  const p = String(ym).split("-");
+  const y = Number(p[0]);
+  const m = Number(p[1]);
+  const d = new Date(y, m - 1 + delta, 1);
+  const ny = d.getFullYear();
+  const nm = d.getMonth() + 1;
+  const next = `${ny}-${String(nm).padStart(2, "0")}`;
+  applyCalendarMonthToPickers(next);
+  if (monthInput) monthInput.value = next;
+  await loadMonthAndCalendar();
+}
+
 document.getElementById("refreshBtn").addEventListener("click", async () => {
-  // Keep list + calendar aligned.
-  if (calendarMonth) calendarMonth.value = monthInput.value;
+  applyCalendarMonthToPickers(monthInput.value);
   await loadMonthAndCalendar();
 });
 
-if (calendarMonth) {
-  calendarMonth.addEventListener("change", async () => {
-    if (monthInput) monthInput.value = calendarMonth.value;
-    await loadMonthAndCalendar();
-  });
+if (calendarMonthNum) {
+  calendarMonthNum.addEventListener("change", () => onCalendarPickerChange());
+}
+if (calendarYear) {
+  calendarYear.addEventListener("change", () => onCalendarPickerChange());
+}
+if (calendarPrevMonth) {
+  calendarPrevMonth.addEventListener("click", () => shiftCalendarMonth(-1));
+}
+if (calendarNextMonth) {
+  calendarNextMonth.addEventListener("click", () => shiftCalendarMonth(1));
 }
 
 if (calendarMode) {
@@ -1205,10 +1279,12 @@ function drawProjectionChart(daily) {
 }
 
 function setDefaultMonth() {
+  initCalendarYearOptions();
   const d = new Date();
   const m = String(d.getMonth() + 1).padStart(2, "0");
-  monthInput.value = `${d.getFullYear()}-${m}`;
-  if (calendarMonth) calendarMonth.value = monthInput.value;
+  const ym = `${d.getFullYear()}-${m}`;
+  monthInput.value = ym;
+  applyCalendarMonthToPickers(ym);
 }
 
 function toISODate(d) {

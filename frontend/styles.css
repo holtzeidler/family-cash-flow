@@ -114,6 +114,47 @@ button.danger{
   padding-right: 4px;
 }
 
+.calendar-nav-block{
+  min-width: 0;
+}
+
+.calendar-nav{
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.calendar-pickers{
+  display: flex;
+  gap: 10px;
+  flex: 1 1 auto;
+  min-width: 0;
+  justify-content: center;
+}
+
+.calendar-pickers > div{
+  flex: 1 1 120px;
+  min-width: 0;
+}
+
+button.nav-link{
+  background: transparent;
+  border: none;
+  color: var(--accent);
+  padding: 10px 8px;
+  cursor: pointer;
+  text-decoration: underline;
+  font: inherit;
+  align-self: flex-end;
+  margin-bottom: 2px;
+  white-space: nowrap;
+}
+
+button.nav-link:hover{
+  filter: brightness(1.12);
+}
+
 .calendar-panel{
   display:flex;
   flex-direction:column;
