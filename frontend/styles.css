@@ -27,11 +27,23 @@ body{
 }
 
 .app-header{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:16px;
-  flex-wrap:wrap;
+  display: grid;
+  grid-template-columns: 1fr 3fr;
+  gap: 16px;
+  align-items: start;
+}
+
+.header-left-quarter{
+  min-width: 0;
+}
+.header-left-quarter h1{
+  margin-bottom: 10px;
+}
+
+.header-right-quarter{
+  min-width: 0;
+  height: 1px;
+  align-self: stretch;
 }
 
 .header-actions{
@@ -185,6 +197,12 @@ button.nav-link:hover{
 }
 
 @media (max-width: 720px){
+  .app-header{
+    grid-template-columns: 1fr;
+  }
+  .header-right-quarter{
+    display: none;
+  }
   .app-layout{
     grid-template-columns: 1fr;
     height: auto;
