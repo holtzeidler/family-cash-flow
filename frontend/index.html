@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Family Cash Flow</title>
     <script>window.API_BASE = "__API_BASE__";</script>
-    <link rel="stylesheet" href="./styles.css?v=6" />
+    <link rel="stylesheet" href="./styles.css?v=9" />
   </head>
   <body>
     <div class="container">
@@ -187,7 +187,7 @@
         </aside>
 
         <div class="main-column">
-          <div class="card calendar-panel">
+          <div class="card calendar-panel" id="calendarPanel">
             <h2>Calendar (Monthly)</h2>
             <div class="row two">
               <div>
@@ -305,6 +305,43 @@
       </div>
     </div>
 
-    <script src="./app.js?v=7"></script>
+    <div id="txEditModal" class="modal-overlay" aria-hidden="true">
+      <div class="modal" role="dialog" aria-labelledby="txEditTitle">
+        <h3 id="txEditTitle">Edit transaction</h3>
+        <div id="txEditErr" class="error"></div>
+        <input type="hidden" id="txEditId" />
+        <label for="txEditDate">Date</label>
+        <input id="txEditDate" type="date" />
+        <div style="height: 10px"></div>
+        <div class="row two">
+          <div>
+            <label for="txEditKind">Type</label>
+            <select id="txEditKind">
+              <option value="expense">Expense</option>
+              <option value="income">Income</option>
+            </select>
+          </div>
+          <div>
+            <label for="txEditAmount">Amount</label>
+            <input id="txEditAmount" type="number" min="0" step="0.01" placeholder="0.00" />
+          </div>
+        </div>
+        <div style="height: 10px"></div>
+        <label for="txEditDesc">Description</label>
+        <input id="txEditDesc" type="text" placeholder="Description" />
+        <div style="height: 10px"></div>
+        <label for="txEditCategoryId">Category</label>
+        <select id="txEditCategoryId"></select>
+        <div style="height: 14px"></div>
+        <div class="row two">
+          <button type="button" id="txEditSave">Save</button>
+          <button type="button" id="txEditDelete" class="danger">Delete</button>
+        </div>
+        <div style="height: 8px"></div>
+        <button type="button" id="txEditCancel" style="width: 100%">Cancel</button>
+      </div>
+    </div>
+
+    <script src="./app.js?v=9"></script>
   </body>
 </html>

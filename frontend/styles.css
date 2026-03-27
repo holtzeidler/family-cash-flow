@@ -117,8 +117,11 @@ button.danger{
 .calendar-panel{
   display:flex;
   flex-direction:column;
-  flex: 1 1 70%;
-  min-height: 680px;
+  flex: 1 1 72%;
+  /* --cal-week-rows set in JS (4–6); day row height scales with week count */
+  --cal-week-rows: 5;
+  --cal-day-min-h: 112px;
+  min-height: calc(200px + var(--cal-week-rows) * var(--cal-day-min-h));
   max-height: none;
   overflow: hidden;
 }
@@ -315,48 +318,97 @@ input, select{
   border: 1px solid var(--border);
   background: rgba(255,255,255,0.02);
   border-radius: 12px;
-  min-height: 96px;
+  min-height: var(--cal-day-min-h, 108px);
   padding: 8px;
+  display: flex;
+  flex-direction: column;
 }
 
 @media (min-width: 1400px){
   .cal-cell{
-    min-height: 100px;
     padding: 10px;
-  }
-}
-
-@media (min-width: 1800px){
-  .cal-cell{
-    min-height: 112px;
   }
 }
 .cal-daynum{
   font-weight:700;
   font-size: 13px;
 }
+.cal-cell-fill{
+  flex: 1 1 auto;
+  min-height: 4px;
+}
+
+.cal-cell-stack{
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  justify-content: flex-end;
+  align-items: stretch;
+  width: 100%;
+}
+
 .cal-badges{
-  margin-top: 6px;
   display:flex;
   flex-direction:column;
   gap:6px;
   min-width: 0;
 }
 
-.cal-content-row{
-  display:flex;
-  gap:8px;
-  align-items:flex-start;
+.cal-actual-line{
+  width: 100%;
 }
 
-.cal-right-metrics{
-  margin-top: 6px;
-  margin-left: auto;
+.cal-actual-line-inner{
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.cal-formula-box{
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  flex-shrink: 0;
+  margin-top: 2px;
+  background: rgba(255,255,255,0.03);
+}
+
+.cal-formula-parts{
+  flex: 1;
   text-align: right;
-  min-width: 120px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: baseline;
+  gap: 0 4px;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.cal-formula-op{
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.cal-tx-part{
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+}
+
+.cal-tx-part.income{ color: var(--ok); }
+.cal-tx-part.expense{ color: var(--danger); }
+
+.cal-ledger-metrics{
+  text-align: right;
   display:flex;
   flex-direction:column;
   gap:4px;
+  align-items: flex-end;
 }
 
 .cal-stat{
@@ -366,10 +418,43 @@ input, select{
 
 .cal-stat.income{ color: var(--ok); }
 .cal-stat.expense{ color: var(--danger); }
-.cal-stat.cal-end{
-  margin-top: auto;
+.cal-stat.cal-balance{
   font-weight: 700;
   color: var(--text);
+}
+
+/* Transaction edit modal */
+.modal-overlay{
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.55);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.modal-overlay--open{
+  display: flex;
+}
+
+.modal{
+  width: 100%;
+  max-width: 420px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.45);
+}
+
+.modal h3{
+  margin: 0 0 12px;
+  font-size: 16px;
+  color: var(--text);
+  text-transform: none;
+  letter-spacing: 0;
 }
 .badge{
   font-size:12px;

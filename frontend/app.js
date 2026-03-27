@@ -149,6 +149,18 @@ const saveInstanceOverrideBtn = document.getElementById("saveInstanceOverrideBtn
 const cancelInstanceOverrideBtn = document.getElementById("cancelInstanceOverrideBtn");
 const expectedInstanceErr = document.getElementById("expectedInstanceErr");
 
+const txEditModal = document.getElementById("txEditModal");
+const txEditId = document.getElementById("txEditId");
+const txEditDate = document.getElementById("txEditDate");
+const txEditKind = document.getElementById("txEditKind");
+const txEditAmount = document.getElementById("txEditAmount");
+const txEditDesc = document.getElementById("txEditDesc");
+const txEditCategoryId = document.getElementById("txEditCategoryId");
+const txEditErr = document.getElementById("txEditErr");
+const txEditSave = document.getElementById("txEditSave");
+const txEditDelete = document.getElementById("txEditDelete");
+const txEditCancel = document.getElementById("txEditCancel");
+
 document.getElementById("logoutBtn").addEventListener("click", async () => {
   await api("/api/auth/logout", "POST");
   window.location.href = "./login.html";
@@ -276,6 +288,107 @@ saveAccountEditBtn.addEventListener("click", async () => {
 cancelAccountEditBtn.addEventListener("click", () => {
   clearAccountEdit();
 });
+
+function renderTxEditCategoryOptions() {
+  if (!txEditCategoryId) return;
+  txEditCategoryId.innerHTML = "";
+  const emptyOpt = document.createElement("option");
+  emptyOpt.value = "";
+  emptyOpt.textContent = "Uncategorized";
+  txEditCategoryId.appendChild(emptyOpt);
+  for (const c of state.categories || []) {
+    const opt = document.createElement("option");
+    opt.value = String(c.id);
+    opt.textContent = c.name;
+    txEditCategoryId.appendChild(opt);
+  }
+}
+
+function openTxEditModal(tx) {
+  if (!txEditModal || !txEditId || !txEditDate) return;
+  txEditId.value = String(tx.id);
+  txEditDate.value = tx.date;
+  txEditKind.value = tx.kind;
+  txEditAmount.value = tx.amount;
+  txEditDesc.value = tx.description || "";
+  renderTxEditCategoryOptions();
+  txEditCategoryId.value = tx.category_id != null ? String(tx.category_id) : "";
+  show(txEditErr, "");
+  txEditModal.classList.add("modal-overlay--open");
+  txEditModal.setAttribute("aria-hidden", "false");
+}
+
+function closeTxEditModal() {
+  if (!txEditModal) return;
+  txEditModal.classList.remove("modal-overlay--open");
+  txEditModal.setAttribute("aria-hidden", "true");
+}
+
+if (txEditSave) {
+  txEditSave.addEventListener("click", async () => {
+    try {
+      show(txEditErr, "");
+      if (!state.activeFamilyId) throw new Error("Choose a family first");
+      const id = txEditId.value;
+      if (!id) throw new Error("No transaction selected");
+      const amountVal = txEditAmount.value;
+      if (!amountVal || Number(amountVal) <= 0) throw new Error("Amount must be > 0");
+      await api(`/api/families/${state.activeFamilyId}/transactions/${id}`, "PUT", {
+        date: txEditDate.value,
+        kind: txEditKind.value,
+        amount: Number(amountVal),
+        description: txEditDesc.value.trim() || "",
+        category_id: txEditCategoryId.value ? Number(txEditCategoryId.value) : null,
+      });
+      closeTxEditModal();
+      await loadMonthAndCalendar();
+    } catch (e) {
+      show(txEditErr, e.message || "Failed to save");
+    }
+  });
+}
+
+if (txEditDelete) {
+  txEditDelete.addEventListener("click", async () => {
+    try {
+      show(txEditErr, "");
+      if (!state.activeFamilyId) throw new Error("Choose a family first");
+      const id = txEditId.value;
+      if (!id) throw new Error("No transaction selected");
+      if (!confirm("Delete this transaction?")) return;
+      await api(`/api/families/${state.activeFamilyId}/transactions/${id}`, "DELETE");
+      closeTxEditModal();
+      await loadMonthAndCalendar();
+    } catch (e) {
+      show(txEditErr, e.message || "Failed to delete");
+    }
+  });
+}
+
+if (txEditCancel) {
+  txEditCancel.addEventListener("click", () => closeTxEditModal());
+}
+
+if (txEditModal) {
+  txEditModal.addEventListener("click", (e) => {
+    if (e.target === txEditModal) closeTxEditModal();
+  });
+}
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && txEditModal?.classList.contains("modal-overlay--open")) closeTxEditModal();
+});
+
+if (calendarGrid) {
+  calendarGrid.addEventListener("click", (e) => {
+    const part = e.target.closest(".cal-tx-part");
+    if (!part || !calendarGrid.contains(part)) return;
+    const id = Number(part.dataset.txId);
+    if (!id) return;
+    const tx = (state.monthActualItems || []).find((t) => Number(t.id) === id);
+    if (tx) openTxEditModal(tx);
+  });
+}
 
 addExpectedTxBtn.addEventListener("click", async () => {
   try {
@@ -478,6 +591,7 @@ async function loadCategories() {
   renderCategoryOptions(txCategoryId, state.categories);
   renderCategoryOptions(expectedCategoryId, state.categories);
   if (instanceCategoryId) renderCategoryOptions(instanceCategoryId, state.categories);
+  renderTxEditCategoryOptions();
 }
 
 function renderAccountsList(accounts) {
@@ -882,14 +996,13 @@ function renderCalendar() {
   const showActual = mode === "both" || mode === "actual";
   const showExpected = mode === "both" || mode === "expected";
 
-  const actualByDate = new Map(); // iso -> {incomeSum, expenseSum}
+  const actualTxsByDate = new Map();
   for (const tx of state.monthActualItems || []) {
-    const key = tx.date;
-    if (!actualByDate.has(key)) actualByDate.set(key, { incomeSum: 0, expenseSum: 0 });
-    const sums = actualByDate.get(key);
-    const amt = Number(tx.amount || 0);
-    if (tx.kind === "income") sums.incomeSum += amt;
-    else sums.expenseSum += amt;
+    if (!actualTxsByDate.has(tx.date)) actualTxsByDate.set(tx.date, []);
+    actualTxsByDate.get(tx.date).push(tx);
+  }
+  for (const arr of actualTxsByDate.values()) {
+    arr.sort((a, b) => Number(a.id) - Number(b.id));
   }
 
   const expectedByDate = new Map(); // iso -> [items]
@@ -926,33 +1039,22 @@ function renderCalendar() {
     const iso = dateISOFromParts(year, monthIndex, dayNum);
     cell.innerHTML = `
       <div class="cal-daynum">${dayNum}</div>
-      <div class="cal-content-row">
+      <div class="cal-cell-fill"></div>
+      <div class="cal-cell-stack">
         <div class="cal-badges"></div>
-        <div class="cal-right-metrics"></div>
+        <div class="cal-actual-line"></div>
+        <div class="cal-ledger-metrics"></div>
       </div>
     `;
     const badgesEl = cell.querySelector(".cal-badges");
-    const rightMetricsEl = cell.querySelector(".cal-right-metrics");
+    const actualLineEl = cell.querySelector(".cal-actual-line");
+    const metricsEl = cell.querySelector(".cal-ledger-metrics");
 
-    if (showActual) {
-      const sums = actualByDate.get(iso);
-      if (sums?.incomeSum > 0) {
-        const b = document.createElement("div");
-        b.className = "badge actual-income";
-        b.textContent = `Actual +$${fmtMoney(sums.incomeSum)}`;
-        badgesEl.appendChild(b);
-      }
-      if (sums?.expenseSum > 0) {
-        const b = document.createElement("div");
-        b.className = "badge actual-expense";
-        b.textContent = `Actual -$${fmtMoney(sums.expenseSum)}`;
-        badgesEl.appendChild(b);
-      }
-    }
+    const actualTxs = showActual ? actualTxsByDate.get(iso) || [] : [];
+    const expectedItems = expectedByDate.get(iso) || [];
 
     if (showExpected) {
-      const items = expectedByDate.get(iso) || [];
-      const shown = items.slice(0, 3);
+      const shown = expectedItems.slice(0, 3);
       for (const item of shown) {
         const kindClass = item.kind === "income" ? "expected-income" : "expected-expense";
         const b = document.createElement("div");
@@ -966,27 +1068,70 @@ function renderCalendar() {
         });
         badgesEl.appendChild(b);
       }
-      if (items.length > 3) {
+      if (expectedItems.length > 3) {
         const more = document.createElement("div");
         more.className = "badge disabled";
-        more.textContent = `+${items.length - 3} more`;
+        more.textContent = `+${expectedItems.length - 3} more`;
         badgesEl.appendChild(more);
       }
     }
 
+    if (showActual && actualTxs.length > 0 && actualLineEl) {
+      const row = document.createElement("div");
+      row.className = "cal-actual-line-inner";
+      const box = document.createElement("div");
+      box.className = "cal-formula-box";
+      const partsWrap = document.createElement("div");
+      partsWrap.className = "cal-formula-parts";
+      actualTxs.forEach((tx, idx) => {
+        if (idx > 0) {
+          const op = document.createElement("span");
+          op.className = "cal-formula-op";
+          op.textContent = " + ";
+          partsWrap.appendChild(op);
+        }
+        const span = document.createElement("span");
+        span.className = `cal-tx-part ${tx.kind === "income" ? "income" : "expense"}`;
+        span.dataset.txId = String(tx.id);
+        const sign = tx.kind === "income" ? "+" : "−";
+        span.textContent = `${sign}$${fmtMoney(tx.amount)}`;
+        span.title = (tx.description || "").trim() || "Transaction";
+        partsWrap.appendChild(span);
+      });
+      row.appendChild(box);
+      row.appendChild(partsWrap);
+      actualLineEl.appendChild(row);
+    }
+
     const dayBal = state.monthDailyBalances.get(iso);
-    if (dayBal && rightMetricsEl) {
-      rightMetricsEl.innerHTML = `
-        <div class="cal-stat">Start: $${fmtMoney(dayBal.start)}</div>
-        <div class="cal-stat ${dayBal.txNet >= 0 ? "income" : "expense"}">Txns: ${dayBal.txNet >= 0 ? "+" : "-"}$${fmtMoney(Math.abs(dayBal.txNet))}</div>
-        <div class="cal-stat cal-end">End: $${fmtMoney(dayBal.end)}</div>
-      `;
+    const hasTxActivity =
+      (showActual && actualTxs.length > 0) || (showExpected && expectedItems.length > 0);
+    const hideTxnsSummaryRow = showActual && actualTxs.length > 0;
+
+    if (dayBal && metricsEl) {
+      const lines = [];
+      if (hasTxActivity && !hideTxnsSummaryRow) {
+        lines.push(
+          `<div class="cal-stat ${dayBal.txNet >= 0 ? "income" : "expense"}">Txns: ${
+            dayBal.txNet >= 0 ? "+" : "-"
+          }$${fmtMoney(Math.abs(dayBal.txNet))}</div>`
+        );
+      }
+      lines.push(`<div class="cal-stat cal-balance">Balance: $${fmtMoney(dayBal.end)}</div>`);
+      metricsEl.innerHTML = lines.join("");
     }
 
     wrapper.appendChild(cell);
   }
 
   calendarGrid.appendChild(wrapper);
+
+  const calendarPanel = document.getElementById("calendarPanel");
+  if (calendarPanel) {
+    const weekRows = Math.ceil((offset + daysInMonth) / 7);
+    calendarPanel.style.setProperty("--cal-week-rows", String(weekRows));
+    calendarPanel.style.setProperty("--cal-day-min-h", weekRows <= 4 ? "96px" : "118px");
+  }
 }
 
 function drawProjectionChart(daily) {

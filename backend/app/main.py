@@ -317,6 +317,7 @@ class TransactionOut(BaseModel):
     kind: TransactionKind
     amount: Decimal
     category: Optional[str] = None
+    category_id: Optional[int] = None
 
 
 class TransactionsListOut(BaseModel):
@@ -1283,6 +1284,7 @@ def list_transactions(
                 kind=tx.kind,
                 amount=tx.amount,
                 category=category_name,
+                category_id=tx.category_id,
             )
         )
 
@@ -1302,14 +1304,12 @@ def create_transaction(
     user_id = get_current_user_id(access_token)
     require_family_member(db=db, family_id=family_id, user_id=user_id)
 
-    category_name: Optional[str] = None
     if payload.category_id is not None:
         category = db.execute(
             select(Category).where(Category.id == payload.category_id, Category.family_id == family_id)
         ).scalar_one_or_none()
         if category is None:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid category for this family")
-        category_name = category.name
 
     tx = Transaction(
         family_id=family_id,
@@ -1323,6 +1323,14 @@ def create_transaction(
     db.commit()
     db.refresh(tx)
 
+    return _transaction_out(db, tx)
+
+
+def _transaction_out(db, tx: Transaction) -> TransactionOut:
+    category_name: Optional[str] = None
+    if tx.category_id is not None:
+        cat = db.execute(select(Category).where(Category.id == tx.category_id)).scalar_one_or_none()
+        category_name = cat.name if cat is not None else None
     return TransactionOut(
         id=tx.id,
         date=tx.date,
@@ -1330,7 +1338,63 @@ def create_transaction(
         kind=tx.kind,
         amount=tx.amount,
         category=category_name,
+        category_id=tx.category_id,
     )
+
+
+@app.put("/api/families/{family_id}/transactions/{transaction_id}", response_model=TransactionOut)
+def update_transaction(
+    family_id: int,
+    transaction_id: int,
+    payload: TransactionIn,
+    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    require_family_member(db=db, family_id=family_id, user_id=user_id)
+
+    tx = db.execute(
+        select(Transaction).where(Transaction.id == transaction_id, Transaction.family_id == family_id)
+    ).scalar_one_or_none()
+    if tx is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transaction not found")
+
+    if payload.category_id is not None:
+        category = db.execute(
+            select(Category).where(Category.id == payload.category_id, Category.family_id == family_id)
+        ).scalar_one_or_none()
+        if category is None:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid category for this family")
+
+    tx.date = payload.date
+    tx.description = payload.description
+    tx.kind = payload.kind
+    tx.amount = payload.amount
+    tx.category_id = payload.category_id
+    db.commit()
+    db.refresh(tx)
+    return _transaction_out(db, tx)
+
+
+@app.delete("/api/families/{family_id}/transactions/{transaction_id}")
+def delete_transaction(
+    family_id: int,
+    transaction_id: int,
+    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    require_family_member(db=db, family_id=family_id, user_id=user_id)
+
+    tx = db.execute(
+        select(Transaction).where(Transaction.id == transaction_id, Transaction.family_id == family_id)
+    ).scalar_one_or_none()
+    if tx is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transaction not found")
+
+    db.delete(tx)
+    db.commit()
+    return {"ok": True}
 
 
 def _frontend_dir() -> Path:
