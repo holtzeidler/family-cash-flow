@@ -1,12 +1,33 @@
+function apiBaseUrl() {
+  const raw = window.API_BASE && window.API_BASE !== "__API_BASE__" ? String(window.API_BASE).trim() : "";
+  return raw.replace(/\/+$/, "");
+}
+
 async function api(path, method = "GET", body) {
-  const apiBase = window.API_BASE && window.API_BASE !== "__API_BASE__" ? window.API_BASE : "";
+  const apiBase = apiBaseUrl();
   const fullPath = `${apiBase}${path}`;
-  const res = await fetch(fullPath, {
-    method,
-    headers: body ? { "Content-Type": "application/json" } : {},
-    credentials: "include",
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  let res;
+  try {
+    res = await fetch(fullPath, {
+      method,
+      headers: body ? { "Content-Type": "application/json" } : {},
+      credentials: "include",
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch (err) {
+    const msg = err && err.message ? err.message : String(err);
+    const onPages = typeof location !== "undefined" && location.hostname.endsWith("github.io");
+    const origin = typeof location !== "undefined" ? location.origin : "(unknown)";
+    const baseHint = apiBase
+      ? `Trying API_BASE: ${apiBase}`
+      : "API_BASE is empty — requests go to the Pages host (wrong).";
+    const corsHint = onPages
+      ? `Render env CORS_ORIGINS must include exactly: ${origin} (scheme + host, no path). Set ENV=production for login cookies.`
+      : "If this is cross-origin, configure CORS on the API for this origin.";
+    throw new Error(
+      `${msg}\n\n${baseHint}\n${corsHint}\nIf the API is on Render free tier, wait ~1 minute for a cold start and refresh.`
+    );
+  }
 
   if (res.status === 401) {
     window.location.href = "./login.html";
@@ -52,6 +73,7 @@ let state = {
   expectedTransactions: [],
   monthActualItems: [],
   monthExpectedItems: [],
+  monthDailyBalances: new Map(),
 };
 
 let selectedExpectedInstance = null;
@@ -76,7 +98,11 @@ const accountsList = document.getElementById("accountsList");
 const accountName = document.getElementById("accountName");
 const accountType = document.getElementById("accountType");
 const accountStartingBalance = document.getElementById("accountStartingBalance");
+const accountStartingBalanceDate = document.getElementById("accountStartingBalanceDate");
+const accountEditId = document.getElementById("accountEditId");
 const addAccountBtn = document.getElementById("addAccountBtn");
+const saveAccountEditBtn = document.getElementById("saveAccountEditBtn");
+const cancelAccountEditBtn = document.getElementById("cancelAccountEditBtn");
 
 // Expected transactions
 const expectedTxErr = document.getElementById("expectedTxErr");
@@ -143,6 +169,7 @@ if (calendarMonth) {
 
 if (calendarMode) {
   calendarMode.addEventListener("change", () => {
+    computeMonthDailyBalances();
     renderCalendar();
   });
 }
@@ -204,22 +231,50 @@ addAccountBtn.addEventListener("click", async () => {
     const name = accountName.value.trim();
     const type = accountType.value;
     const startingBalanceVal = accountStartingBalance.value;
+    const startingBalanceDateVal = accountStartingBalanceDate.value;
 
     if (!name) throw new Error("Account name is required");
     if (startingBalanceVal === "" || Number.isNaN(Number(startingBalanceVal))) throw new Error("Starting balance is required");
+    if (!startingBalanceDateVal) throw new Error("Starting balance date is required");
 
     await api(`/api/families/${state.activeFamilyId}/accounts`, "POST", {
       name,
       type,
       starting_balance: Number(startingBalanceVal),
+      starting_balance_date: startingBalanceDateVal,
     });
 
-    accountName.value = "";
-    accountStartingBalance.value = "";
+    clearAccountEdit();
     await loadAccounts();
+    await loadMonthAndCalendar();
   } catch (e) {
     show(accErr, e.message || "Failed to add account");
   }
+});
+
+saveAccountEditBtn.addEventListener("click", async () => {
+  try {
+    show(accErr, "");
+    if (!state.activeFamilyId) throw new Error("Choose a family first");
+    if (!accountEditId.value) throw new Error("Select an account to edit first");
+    const startingBalanceVal = accountStartingBalance.value;
+    const startingBalanceDateVal = accountStartingBalanceDate.value;
+    if (startingBalanceVal === "" || Number.isNaN(Number(startingBalanceVal))) throw new Error("Starting balance is required");
+    if (!startingBalanceDateVal) throw new Error("Starting balance date is required");
+    await api(`/api/families/${state.activeFamilyId}/accounts/${accountEditId.value}`, "PUT", {
+      starting_balance: Number(startingBalanceVal),
+      starting_balance_date: startingBalanceDateVal,
+    });
+    clearAccountEdit();
+    await loadAccounts();
+    await loadMonthAndCalendar();
+  } catch (e) {
+    show(accErr, e.message || "Failed to update account");
+  }
+});
+
+cancelAccountEditBtn.addEventListener("click", () => {
+  clearAccountEdit();
 });
 
 addExpectedTxBtn.addEventListener("click", async () => {
@@ -440,14 +495,34 @@ function renderAccountsList(accounts) {
     el.className = "item";
 
     const typeLabel = String(a.type).replaceAll("_", " ");
+    const startDate = a.starting_balance_date || "";
     el.innerHTML = `
       <div class="left">
         <div class="desc">${escapeHtml(a.name)}</div>
-        <div class="meta">${typeLabel} · Starting: $${fmtMoney(a.starting_balance)}</div>
+        <div class="meta">${typeLabel} · Starting: $${fmtMoney(a.starting_balance)} on ${escapeHtml(startDate)}</div>
       </div>
-      <div class="amt">${fmtMoney(a.starting_balance)}</div>
+      <div class="row-actions">
+        <div class="amt">${fmtMoney(a.starting_balance)}</div>
+        <button type="button" class="edit-account-btn" data-account-id="${a.id}">Edit</button>
+      </div>
     `;
     accountsList.appendChild(el);
+  }
+
+  for (const btn of accountsList.querySelectorAll(".edit-account-btn")) {
+    btn.addEventListener("click", () => {
+      const accountId = Number(btn.dataset.accountId);
+      const account = state.accounts.find((a) => Number(a.id) === accountId);
+      if (!account) return;
+      accountEditId.value = String(account.id);
+      accountName.value = account.name || "";
+      accountType.value = account.type || "checking";
+      accountStartingBalance.value = account.starting_balance ?? "";
+      accountStartingBalanceDate.value = account.starting_balance_date || "";
+      accountName.disabled = true;
+      accountType.disabled = true;
+      show(accErr, "Editing selected account's starting balance/date.");
+    });
   }
 }
 
@@ -476,6 +551,17 @@ async function loadAccounts() {
   if (state.accounts.length > 0 && !expectedAccountId.value) {
     expectedAccountId.value = String(state.accounts[0].id);
   }
+}
+
+function clearAccountEdit() {
+  accountEditId.value = "";
+  accountName.value = "";
+  accountType.value = "checking";
+  accountStartingBalance.value = "";
+  accountStartingBalanceDate.value = "";
+  accountName.disabled = false;
+  accountType.disabled = false;
+  show(accErr, "");
 }
 
 function renderExpectedTransactions(items) {
@@ -685,7 +771,66 @@ async function loadMonthAndCalendar() {
   if (!state.activeFamilyId) return;
   await loadTransactions();
   await loadExpectedCalendar();
+  computeMonthDailyBalances();
   renderCalendar();
+}
+
+function computeMonthDailyBalances() {
+  state.monthDailyBalances = new Map();
+  const month = calendarMonth?.value || monthInput.value;
+  if (!month) return;
+  const [yearPart, monthPart] = String(month).split("-");
+  const year = Number(yearPart);
+  const monthIndex = Number(monthPart) - 1;
+  const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+  const monthStartIso = dateISOFromParts(year, monthIndex, 1);
+
+  const mode = calendarMode?.value || "both";
+  const includeActual = mode === "both" || mode === "actual";
+  const includeExpected = mode === "both" || mode === "expected";
+
+  const dailyTxnTotals = new Map();
+  const startAdds = new Map();
+  for (let d = 1; d <= daysInMonth; d++) {
+    const iso = dateISOFromParts(year, monthIndex, d);
+    dailyTxnTotals.set(iso, 0);
+    startAdds.set(iso, 0);
+  }
+
+  if (includeActual) {
+    for (const tx of state.monthActualItems || []) {
+      const amt = Number(tx.amount || 0);
+      const signed = tx.kind === "income" ? amt : -amt;
+      dailyTxnTotals.set(tx.date, (dailyTxnTotals.get(tx.date) || 0) + signed);
+    }
+  }
+  if (includeExpected) {
+    for (const tx of state.monthExpectedItems || []) {
+      const amt = Number(tx.amount || 0);
+      const signed = tx.kind === "income" ? amt : -amt;
+      dailyTxnTotals.set(tx.date, (dailyTxnTotals.get(tx.date) || 0) + signed);
+    }
+  }
+
+  let carry = 0;
+  for (const account of state.accounts || []) {
+    const startBal = Number(account.starting_balance || 0);
+    const startDate = account.starting_balance_date || monthStartIso;
+    if (startDate < monthStartIso) {
+      carry += startBal;
+    } else if (startAdds.has(startDate)) {
+      startAdds.set(startDate, (startAdds.get(startDate) || 0) + startBal);
+    }
+  }
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const iso = dateISOFromParts(year, monthIndex, d);
+    const dayStart = carry + (startAdds.get(iso) || 0);
+    const txNet = dailyTxnTotals.get(iso) || 0;
+    const dayEnd = dayStart + txNet;
+    state.monthDailyBalances.set(iso, { start: dayStart, txNet, end: dayEnd });
+    carry = dayEnd;
+  }
 }
 
 function truncate(s, maxLen) {
@@ -779,8 +924,15 @@ function renderCalendar() {
     }
 
     const iso = dateISOFromParts(year, monthIndex, dayNum);
-    cell.innerHTML = `<div class="cal-daynum">${dayNum}</div><div class="cal-badges"></div>`;
+    cell.innerHTML = `
+      <div class="cal-daynum">${dayNum}</div>
+      <div class="cal-content-row">
+        <div class="cal-badges"></div>
+        <div class="cal-right-metrics"></div>
+      </div>
+    `;
     const badgesEl = cell.querySelector(".cal-badges");
+    const rightMetricsEl = cell.querySelector(".cal-right-metrics");
 
     if (showActual) {
       const sums = actualByDate.get(iso);
@@ -820,6 +972,15 @@ function renderCalendar() {
         more.textContent = `+${items.length - 3} more`;
         badgesEl.appendChild(more);
       }
+    }
+
+    const dayBal = state.monthDailyBalances.get(iso);
+    if (dayBal && rightMetricsEl) {
+      rightMetricsEl.innerHTML = `
+        <div class="cal-stat">Start: $${fmtMoney(dayBal.start)}</div>
+        <div class="cal-stat ${dayBal.txNet >= 0 ? "income" : "expense"}">Txns: ${dayBal.txNet >= 0 ? "+" : "-"}$${fmtMoney(Math.abs(dayBal.txNet))}</div>
+        <div class="cal-stat cal-end">End: $${fmtMoney(dayBal.end)}</div>
+      `;
     }
 
     wrapper.appendChild(cell);
@@ -924,8 +1085,12 @@ function setDefaultExpectedStartDate() {
   expectedStartDate.value = toISODate(new Date());
 }
 
+function setDefaultAccountStartDate() {
+  if (accountStartingBalanceDate) accountStartingBalanceDate.value = toISODate(new Date());
+}
+
 async function main() {
-  const apiBase = window.API_BASE && window.API_BASE !== "__API_BASE__" ? window.API_BASE : "";
+  const apiBase = apiBaseUrl();
   if (location.hostname.endsWith("github.io") && !apiBase) {
     show(
       familiesErr,
@@ -938,6 +1103,7 @@ async function main() {
   setDefaultProjectionStart();
   setDefaultChartStart();
   setDefaultExpectedStartDate();
+  setDefaultAccountStartDate();
   await loadMe();
   await loadFamilies();
   if (state.activeFamilyId) {
@@ -949,6 +1115,9 @@ async function main() {
 }
 
 main().catch((e) => {
-  show(txErr, e.message || "Failed to load app");
+  if (userPill) userPill.textContent = "Not connected";
+  const m = e.message || "Failed to load app";
+  show(familiesErr, m);
+  show(txErr, m);
 });
 

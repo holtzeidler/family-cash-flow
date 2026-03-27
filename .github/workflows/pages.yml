@@ -24,13 +24,17 @@ jobs:
         env:
           API_BASE: ${{ secrets.API_BASE }}
         run: |
+          if [ -z "${API_BASE:-}" ]; then
+            echo "::error::Set repository secret API_BASE to your Render API root, e.g. https://your-app.onrender.com (no trailing slash). Settings → Secrets and variables → Actions."
+            exit 1
+          fi
           rm -rf public
           mkdir -p public
           cp -R frontend/. public/
           python3 - <<'PY'
           import pathlib, os
 
-          api_base = (os.environ.get("API_BASE") or "").rstrip("/")
+          api_base = (os.environ.get("API_BASE") or "").strip().rstrip("/")
           for p in ["public/index.html", "public/login.html"]:
               path = pathlib.Path(p)
               txt = path.read_text(encoding="utf-8")

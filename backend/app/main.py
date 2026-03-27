@@ -21,7 +21,7 @@ from sqlalchemy import Enum as SAEnum
 from sqlalchemy import Boolean, UniqueConstraint
 from sqlalchemy import ForeignKey
 from sqlalchemy import String
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, sessionmaker
 from sqlalchemy.types import Numeric
@@ -152,6 +152,7 @@ class Account(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     type: Mapped[AccountType] = mapped_column(SAEnum(AccountType), nullable=False, default=AccountType.checking)
     starting_balance: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=0)
+    starting_balance_date: Mapped[date] = mapped_column(SA_Date, nullable=False, default=date.today)
 
     created_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
 
@@ -327,6 +328,12 @@ class AccountIn(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     type: AccountType = AccountType.checking
     starting_balance: Decimal
+    starting_balance_date: date
+
+
+class AccountUpdateIn(BaseModel):
+    starting_balance: Decimal
+    starting_balance_date: date
 
 
 class AccountOut(BaseModel):
@@ -334,6 +341,7 @@ class AccountOut(BaseModel):
     name: str
     type: AccountType
     starting_balance: Decimal
+    starting_balance_date: date
 
 
 class ExpectedTransactionIn(BaseModel):
@@ -464,6 +472,29 @@ def startup_populate_schema():
         if db_path:
             Path(db_path).expanduser().resolve().parent.mkdir(parents=True, exist_ok=True)
     Base.metadata.create_all(bind=engine)
+    _ensure_account_starting_balance_date_column()
+
+
+def _ensure_account_starting_balance_date_column():
+    """
+    Lightweight startup migration for existing deployments.
+    """
+    with engine.begin() as conn:
+        if settings.DATABASE_URL.startswith("sqlite"):
+            cols = conn.execute(text("PRAGMA table_info(accounts)")).fetchall()
+            has_col = any(str(row[1]) == "starting_balance_date" for row in cols)
+            if not has_col:
+                conn.execute(text("ALTER TABLE accounts ADD COLUMN starting_balance_date DATE"))
+        else:
+            conn.execute(text("ALTER TABLE accounts ADD COLUMN IF NOT EXISTS starting_balance_date DATE"))
+
+        conn.execute(
+            text(
+                "UPDATE accounts "
+                "SET starting_balance_date = COALESCE(starting_balance_date, DATE(created_at), CURRENT_DATE) "
+                "WHERE starting_balance_date IS NULL"
+            )
+        )
 
 
 @app.post("/api/auth/register", status_code=status.HTTP_201_CREATED, response_model=RegisterOut)
@@ -584,7 +615,16 @@ def list_accounts(
     user_id = get_current_user_id(access_token)
     require_family_member(db=db, family_id=family_id, user_id=user_id)
     rows = db.execute(select(Account).where(Account.family_id == family_id).order_by(Account.name.asc())).scalars().all()
-    return [AccountOut(id=r.id, name=r.name, type=r.type, starting_balance=r.starting_balance) for r in rows]
+    return [
+        AccountOut(
+            id=r.id,
+            name=r.name,
+            type=r.type,
+            starting_balance=r.starting_balance,
+            starting_balance_date=r.starting_balance_date or r.created_at.date(),
+        )
+        for r in rows
+    ]
 
 
 @app.post("/api/families/{family_id}/accounts", response_model=AccountOut)
@@ -603,11 +643,47 @@ def create_account(
         name=payload.name,
         type=payload.type,
         starting_balance=payload.starting_balance,
+        starting_balance_date=payload.starting_balance_date,
     )
     db.add(account)
     db.commit()
     db.refresh(account)
-    return AccountOut(id=account.id, name=account.name, type=account.type, starting_balance=account.starting_balance)
+    return AccountOut(
+        id=account.id,
+        name=account.name,
+        type=account.type,
+        starting_balance=account.starting_balance,
+        starting_balance_date=account.starting_balance_date or account.created_at.date(),
+    )
+
+
+@app.put("/api/families/{family_id}/accounts/{account_id}", response_model=AccountOut)
+def update_account_starting_balance(
+    family_id: int,
+    account_id: int,
+    payload: AccountUpdateIn,
+    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    require_family_member(db=db, family_id=family_id, user_id=user_id)
+    account = db.execute(
+        select(Account).where(Account.id == account_id, Account.family_id == family_id)
+    ).scalar_one_or_none()
+    if account is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Account not found")
+
+    account.starting_balance = payload.starting_balance
+    account.starting_balance_date = payload.starting_balance_date
+    db.commit()
+    db.refresh(account)
+    return AccountOut(
+        id=account.id,
+        name=account.name,
+        type=account.type,
+        starting_balance=account.starting_balance,
+        starting_balance_date=account.starting_balance_date or account.created_at.date(),
+    )
 
 
 @app.get("/api/families/{family_id}/expected-transactions", response_model=list[ExpectedTransactionOut])
@@ -1045,7 +1121,14 @@ def projection(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No accounts configured for this family")
 
     accounts: list[AccountOut] = [
-        AccountOut(id=a.id, name=a.name, type=a.type, starting_balance=a.starting_balance) for a in account_rows
+        AccountOut(
+            id=a.id,
+            name=a.name,
+            type=a.type,
+            starting_balance=a.starting_balance,
+            starting_balance_date=a.starting_balance_date or a.created_at.date(),
+        )
+        for a in account_rows
     ]
 
     # Map: date -> account_id -> net cashflow signed amount.
@@ -1091,7 +1174,12 @@ def projection(
             by_acc = occurrences_by_date.setdefault(d, {})
             by_acc[eff_account_id] = by_acc.get(eff_account_id, Decimal("0")) + signed_amount
 
-    account_balances: dict[int, Decimal] = {a.id: a.starting_balance for a in account_rows}
+    account_balances: dict[int, Decimal] = {}
+    for a in account_rows:
+        if a.starting_balance_date < range_start:
+            account_balances[a.id] = a.starting_balance
+        else:
+            account_balances[a.id] = Decimal("0")
 
     daily: list[ProjectionDailyOut] = []
     for i in range(days):
@@ -1103,6 +1191,8 @@ def projection(
         account_balance_map: Optional[dict[int, Decimal]] = {} if include_accounts else None
 
         for a in account_rows:
+            if a.starting_balance_date == current_date:
+                account_balances[a.id] = account_balances[a.id] + a.starting_balance
             cashflow = day_occ.get(a.id, Decimal("0"))
             net_cashflow += cashflow
             account_balances[a.id] = account_balances[a.id] + cashflow

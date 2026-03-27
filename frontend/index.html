@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Family Cash Flow</title>
     <script>window.API_BASE = "__API_BASE__";</script>
-    <link rel="stylesheet" href="./styles.css?v=5" />
+    <link rel="stylesheet" href="./styles.css?v=6" />
   </head>
   <body>
     <div class="container">
@@ -24,20 +24,37 @@
       <div class="app-layout">
         <aside class="sidebar">
           <div class="card">
-            <h2>Categories</h2>
+            <h2>Add One-Time Transactions</h2>
             <div class="row two">
               <div>
-                <label for="categorySelect">Choose category</label>
-                <select id="categorySelect"></select>
+                <label for="txDate">Date</label>
+                <input id="txDate" type="date" />
               </div>
               <div>
-                <label for="newCategoryName">New category</label>
-                <input id="newCategoryName" type="text" placeholder="e.g. Groceries" />
+                <label for="txKind">Type</label>
+                <select id="txKind">
+                  <option value="expense" selected>Expense</option>
+                  <option value="income">Income</option>
+                </select>
               </div>
             </div>
             <div style="height:10px;"></div>
-            <button id="addCategoryBtn">Add category</button>
-            <div id="catErr" class="error"></div>
+            <label for="txDesc">Description</label>
+            <input id="txDesc" type="text" placeholder="e.g. Rent / Paycheck" />
+            <div style="height:10px;"></div>
+            <div class="row two">
+              <div>
+                <label for="txAmount">Amount (number)</label>
+                <input id="txAmount" type="number" min="0" step="0.01" placeholder="0.00" />
+              </div>
+              <div>
+                <label for="txCategoryId">Category</label>
+                <select id="txCategoryId"></select>
+              </div>
+            </div>
+            <div style="height:10px;"></div>
+            <button id="addTxBtn">Add transaction</button>
+            <div id="addTxErr" class="error"></div>
           </div>
 
           <div class="card">
@@ -96,40 +113,6 @@
           </div>
 
           <div class="card">
-            <h2>Add One-Time Transactions</h2>
-            <div class="row two">
-              <div>
-                <label for="txDate">Date</label>
-                <input id="txDate" type="date" />
-              </div>
-              <div>
-                <label for="txKind">Type</label>
-                <select id="txKind">
-                  <option value="expense" selected>Expense</option>
-                  <option value="income">Income</option>
-                </select>
-              </div>
-            </div>
-            <div style="height:10px;"></div>
-            <label for="txDesc">Description</label>
-            <input id="txDesc" type="text" placeholder="e.g. Rent / Paycheck" />
-            <div style="height:10px;"></div>
-            <div class="row two">
-              <div>
-                <label for="txAmount">Amount (number)</label>
-                <input id="txAmount" type="number" min="0" step="0.01" placeholder="0.00" />
-              </div>
-              <div>
-                <label for="txCategoryId">Category</label>
-                <select id="txCategoryId"></select>
-              </div>
-            </div>
-            <div style="height:10px;"></div>
-            <button id="addTxBtn">Add transaction</button>
-            <div id="addTxErr" class="error"></div>
-          </div>
-
-          <div class="card">
             <h2>Accounts</h2>
             <div class="row two">
               <div>
@@ -148,12 +131,42 @@
               </div>
             </div>
             <div style="height:10px;"></div>
-            <label for="accountStartingBalance">Starting balance</label>
-            <input id="accountStartingBalance" type="number" step="0.01" placeholder="0.00" />
+            <div class="row two">
+              <div>
+                <label for="accountStartingBalance">Starting balance</label>
+                <input id="accountStartingBalance" type="number" step="0.01" placeholder="0.00" />
+              </div>
+              <div>
+                <label for="accountStartingBalanceDate">Starting balance date</label>
+                <input id="accountStartingBalanceDate" type="date" />
+              </div>
+            </div>
+            <input id="accountEditId" type="hidden" />
             <div style="height:10px;"></div>
-            <button id="addAccountBtn">Add account</button>
+            <div class="row two">
+              <button id="addAccountBtn">Add account</button>
+              <button id="saveAccountEditBtn" class="danger">Save balance/date edit</button>
+            </div>
+            <button id="cancelAccountEditBtn">Cancel account edit</button>
             <div id="accErr" class="error"></div>
             <div class="list" id="accountsList"></div>
+          </div>
+
+          <div class="card">
+            <h2>Categories</h2>
+            <div class="row two">
+              <div>
+                <label for="categorySelect">Choose category</label>
+                <select id="categorySelect"></select>
+              </div>
+              <div>
+                <label for="newCategoryName">New category</label>
+                <input id="newCategoryName" type="text" placeholder="e.g. Groceries" />
+              </div>
+            </div>
+            <div style="height:10px;"></div>
+            <button id="addCategoryBtn">Add category</button>
+            <div id="catErr" class="error"></div>
           </div>
 
           <div class="card">
@@ -292,6 +305,6 @@
       </div>
     </div>
 
-    <script src="./app.js?v=5"></script>
+    <script src="./app.js?v=7"></script>
   </body>
 </html>
