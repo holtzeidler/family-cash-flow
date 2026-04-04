@@ -74,8 +74,6 @@ let state = {
   monthActualItems: [],
   monthExpectedItems: [],
   monthDailyBalances: new Map(),
-  /** Pooled opening balance at start of calendar month (from API); null = use legacy estimate */
-  calendarOpeningBalance: null,
 };
 
 let selectedExpectedInstance = null;
@@ -270,8 +268,7 @@ if (calendarGoToday) {
 
 if (calendarMode) {
   calendarMode.addEventListener("change", async () => {
-    await loadCalendarOpeningBalance();
-    computeMonthDailyBalances();
+    await loadCalendarMonthDaily();
     renderCalendar();
   });
 }
@@ -513,6 +510,7 @@ addExpectedTxBtn.addEventListener("click", async () => {
     expectedAmount.value = "";
     await loadExpectedTransactions();
     await loadExpectedCalendar();
+    await loadCalendarMonthDaily();
     renderCalendar();
   } catch (e) {
     show(expectedTxErr, e.message || "Failed to add recurring transaction");
@@ -606,6 +604,7 @@ saveInstanceOverrideBtn.addEventListener("click", async () => {
     );
 
     await loadExpectedCalendar();
+    await loadCalendarMonthDaily();
     renderCalendar();
   } catch (e) {
     show(expectedInstanceErr, e.message || "Failed to save override");
@@ -628,6 +627,7 @@ cancelInstanceOverrideBtn.addEventListener("click", async () => {
     if (instanceDate) instanceDate.value = "";
     if (instanceExpectedTxId) instanceExpectedTxId.value = "";
     await loadExpectedCalendar();
+    await loadCalendarMonthDaily();
     renderCalendar();
   } catch (e) {
     show(expectedInstanceErr, e.message || "Failed to cancel occurrence");
@@ -971,36 +971,58 @@ async function loadExpectedCalendar() {
   }
 }
 
-async function loadCalendarOpeningBalance() {
-  state.calendarOpeningBalance = null;
+/** Normalize API/legacy dates to YYYY-MM-DD for Map keys. */
+function normalizeIsoDate(raw) {
+  if (raw == null || raw === "") return "";
+  const s = String(raw);
+  const m = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(s);
+  if (!m) return "";
+  return `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}`;
+}
+
+async function loadCalendarMonthDaily() {
+  state.monthDailyBalances = new Map();
+  if (!state.activeFamilyId) return;
+  const month = calendarMonth?.value || monthInput.value;
+  if (!month) return;
+  const mode = calendarMode?.value || "both";
   try {
-    if (!state.activeFamilyId) return;
-    const month = calendarMonth?.value || monthInput.value;
-    if (!month) return;
-    const mode = calendarMode?.value || "both";
     const data = await api(
-      `/api/families/${state.activeFamilyId}/calendar-opening-balance?month=${encodeURIComponent(month)}&mode=${encodeURIComponent(mode)}`,
+      `/api/families/${state.activeFamilyId}/calendar-month-daily?month=${encodeURIComponent(month)}&mode=${encodeURIComponent(mode)}`,
       "GET",
     );
-    if (data?.opening != null && data.opening !== "") {
-      const n = Number(data.opening);
-      if (Number.isFinite(n)) state.calendarOpeningBalance = n;
+    const days = data?.days;
+    if (Array.isArray(days) && days.length > 0) {
+      for (const row of days) {
+        const iso = normalizeIsoDate(row.date);
+        if (!iso) continue;
+        const start = Number(row.start);
+        const txNet = Number(row.tx_net);
+        const end = Number(row.end);
+        state.monthDailyBalances.set(iso, {
+          start: Number.isFinite(start) ? start : 0,
+          txNet: Number.isFinite(txNet) ? txNet : 0,
+          end: Number.isFinite(end) ? end : 0,
+        });
+      }
+      return;
     }
-  } catch {
-    state.calendarOpeningBalance = null;
+  } catch (_) {
+    /* offline or old API — fall back */
   }
+  computeMonthDailyBalancesLegacy();
 }
 
 async function loadMonthAndCalendar() {
   if (!state.activeFamilyId) return;
   await loadTransactions();
   await loadExpectedCalendar();
-  await loadCalendarOpeningBalance();
-  computeMonthDailyBalances();
+  await loadCalendarMonthDaily();
   renderCalendar();
 }
 
-function computeMonthDailyBalances() {
+/** Client-only fallback when calendar-month-daily API is unavailable (approximate). */
+function computeMonthDailyBalancesLegacy() {
   state.monthDailyBalances = new Map();
   const month = calendarMonth?.value || monthInput.value;
   if (!month) return;
@@ -1026,32 +1048,29 @@ function computeMonthDailyBalances() {
     for (const tx of state.monthActualItems || []) {
       const amt = Number(tx.amount || 0);
       const signed = tx.kind === "income" ? amt : -amt;
-      dailyTxnTotals.set(tx.date, (dailyTxnTotals.get(tx.date) || 0) + signed);
+      const dk = normalizeIsoDate(tx.date) || tx.date;
+      dailyTxnTotals.set(dk, (dailyTxnTotals.get(dk) || 0) + signed);
     }
   }
   if (includeExpected) {
     for (const tx of state.monthExpectedItems || []) {
       const amt = Number(tx.amount || 0);
       const signed = tx.kind === "income" ? amt : -amt;
-      dailyTxnTotals.set(tx.date, (dailyTxnTotals.get(tx.date) || 0) + signed);
+      const dk = normalizeIsoDate(tx.date) || tx.date;
+      dailyTxnTotals.set(dk, (dailyTxnTotals.get(dk) || 0) + signed);
     }
   }
 
-  const openingFromApi = state.calendarOpeningBalance;
   let carry = 0;
-  const useApiOpening = openingFromApi != null && Number.isFinite(openingFromApi);
-
   for (const account of state.accounts || []) {
     const startBal = Number(account.starting_balance || 0);
-    const startDate = account.starting_balance_date || monthStartIso;
+    const startDate = normalizeIsoDate(account.starting_balance_date) || account.starting_balance_date || monthStartIso;
     if (startDate < monthStartIso) {
-      if (!useApiOpening) carry += startBal;
+      carry += startBal;
     } else if (startAdds.has(startDate)) {
       startAdds.set(startDate, (startAdds.get(startDate) || 0) + startBal);
     }
   }
-
-  if (useApiOpening) carry = openingFromApi;
 
   for (let d = 1; d <= daysInMonth; d++) {
     const iso = dateISOFromParts(year, monthIndex, d);

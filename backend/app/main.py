@@ -417,10 +417,17 @@ class ProjectionOut(BaseModel):
     daily: list[ProjectionDailyOut]
 
 
-class CalendarOpeningBalanceOut(BaseModel):
-    """Pooled calendar total at the start of the first day of `month` (after all prior days)."""
+class CalendarDayBalanceOut(BaseModel):
+    date: date
+    start: str
+    tx_net: str
+    end: str
 
-    opening: str
+
+class CalendarMonthDailyOut(BaseModel):
+    month: str
+    mode: str
+    days: list[CalendarDayBalanceOut]
 
 
 def _parse_cors_origins(raw: str) -> list[str]:
@@ -1104,23 +1111,23 @@ def _expected_occurrences_in_range(
     return occurrences
 
 
-def _calendar_pool_opening_balance(
+def _calendar_month_daily_balances(
     *,
     db,
     family_id: int,
     month: str,
     mode: Literal["both", "actual", "expected"],
-) -> Decimal:
+) -> list[CalendarDayBalanceOut]:
     """
-    Match frontend calendar pooled balance: one running total from account starting balances
-    plus daily net actuals (family-wide) and expected occurrences, through the day before `month`.
+    One pooled running balance: starting balances apply on their day, then each day's end balance
+    feeds the next day. Simulates from the earliest relevant date through the end of `month`.
     """
-    month_start, _ = _month_range(month)
-    day_before = month_start - timedelta(days=1)
+    month_start, month_end_excl = _month_range(month)
+    last_day = month_end_excl - timedelta(days=1)
 
     account_rows = list(db.execute(select(Account).where(Account.family_id == family_id)).scalars().all())
     if not account_rows:
-        return Decimal("0")
+        return []
 
     min_acc = min((a.starting_balance_date or a.created_at.date()) for a in account_rows)
     first_tx = db.execute(select(func.min(Transaction.date)).where(Transaction.family_id == family_id)).scalar_one_or_none()
@@ -1134,7 +1141,7 @@ def _calendar_pool_opening_balance(
             select(Transaction).where(
                 Transaction.family_id == family_id,
                 Transaction.date >= global_start,
-                Transaction.date <= day_before,
+                Transaction.date <= last_day,
             )
         ).scalars().all()
         for tx in tx_rows:
@@ -1152,7 +1159,7 @@ def _calendar_pool_opening_balance(
             ).where(
                 ExpectedTransaction.family_id == family_id,
                 ExpectedTransactionOverride.occurrence_date >= global_start,
-                ExpectedTransactionOverride.occurrence_date < month_start,
+                ExpectedTransactionOverride.occurrence_date < month_end_excl,
             )
         ).scalars().all()
         override_map: dict[tuple[int, date], ExpectedTransactionOverride] = {
@@ -1164,10 +1171,10 @@ def _calendar_pool_opening_balance(
                 end_date=tx.end_date,
                 recurrence=tx.recurrence,
                 range_start=global_start,
-                range_end_exclusive=month_start,
+                range_end_exclusive=month_end_excl,
             )
             for occ in occ_dates:
-                if occ > day_before:
+                if occ > last_day:
                     continue
                 ovr = override_map.get((tx.id, occ))
                 if ovr is not None and ovr.cancelled:
@@ -1187,11 +1194,12 @@ def _calendar_pool_opening_balance(
         bal = a.starting_balance
         if sd < global_start:
             carry += bal
-        elif global_start <= sd <= day_before:
+        elif global_start <= sd <= last_day:
             start_adds[sd] += bal
 
+    out: list[CalendarDayBalanceOut] = []
     d = global_start
-    while d <= day_before:
+    while d <= last_day:
         day_start = carry + start_adds.get(d, Decimal("0"))
         if mode == "both":
             tx_net = actual_by_date.get(d, Decimal("0")) + expected_by_date.get(d, Decimal("0"))
@@ -1199,14 +1207,24 @@ def _calendar_pool_opening_balance(
             tx_net = actual_by_date.get(d, Decimal("0"))
         else:
             tx_net = expected_by_date.get(d, Decimal("0"))
-        carry = day_start + tx_net
+        day_end = day_start + tx_net
+        if d >= month_start:
+            out.append(
+                CalendarDayBalanceOut(
+                    date=d,
+                    start=str(day_start),
+                    tx_net=str(tx_net),
+                    end=str(day_end),
+                )
+            )
+        carry = day_end
         d += timedelta(days=1)
 
-    return carry
+    return out
 
 
-@app.get("/api/families/{family_id}/calendar-opening-balance", response_model=CalendarOpeningBalanceOut)
-def calendar_opening_balance(
+@app.get("/api/families/{family_id}/calendar-month-daily", response_model=CalendarMonthDailyOut)
+def calendar_month_daily(
     family_id: int,
     month: str,
     mode: Literal["both", "actual", "expected"] = "both",
@@ -1214,7 +1232,7 @@ def calendar_opening_balance(
     db=Depends(get_db),
 ):
     """
-    Total pooled balance at the beginning of the first day of `month`, matching the calendar chart.
+    Pooled daily balance for each day in `month`: prior day's end + starting balances on the day + net flows.
     """
     user_id = get_current_user_id(access_token)
     require_family_member(db=db, family_id=family_id, user_id=user_id)
@@ -1224,8 +1242,8 @@ def calendar_opening_balance(
     except ValueError:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid month (use YYYY-MM)")
 
-    opening = _calendar_pool_opening_balance(db=db, family_id=family_id, month=month, mode=mode)
-    return CalendarOpeningBalanceOut(opening=str(opening))
+    days = _calendar_month_daily_balances(db=db, family_id=family_id, month=month, mode=mode)
+    return CalendarMonthDailyOut(month=month, mode=mode, days=days)
 
 
 @app.get("/api/families/{family_id}/projection", response_model=ProjectionOut)

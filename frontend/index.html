@@ -193,34 +193,28 @@
               <div class="calendar-nav-block">
                 <div class="calendar-nav">
                   <button type="button" class="nav-link" id="calendarPrevMonth">Prev</button>
-                  <div class="calendar-pickers">
-                    <div>
-                      <label for="calendarMonthNum">Month</label>
-                      <select id="calendarMonthNum">
-                        <option value="1">January</option>
-                        <option value="2">February</option>
-                        <option value="3">March</option>
-                        <option value="4">April</option>
-                        <option value="5">May</option>
-                        <option value="6">June</option>
-                        <option value="7">July</option>
-                        <option value="8">August</option>
-                        <option value="9">September</option>
-                        <option value="10">October</option>
-                        <option value="11">November</option>
-                        <option value="12">December</option>
-                      </select>
-                    </div>
-                    <div class="calendar-today-wrap">
-                      <span class="calendar-today-spacer" aria-hidden="true"></span>
-                      <button type="button" class="nav-link calendar-today-btn" id="calendarGoToday" title="Go to current month">
-                        Today
-                      </button>
-                    </div>
-                    <div>
-                      <label for="calendarYear">Year</label>
-                      <select id="calendarYear"></select>
-                    </div>
+                  <div class="calendar-pickers calendar-pickers-grid">
+                    <label for="calendarMonthNum" class="cal-picker-label">Month</label>
+                    <span class="cal-picker-label cal-picker-label-spacer" aria-hidden="true">&nbsp;</span>
+                    <label for="calendarYear" class="cal-picker-label">Year</label>
+                    <select id="calendarMonthNum">
+                      <option value="1">January</option>
+                      <option value="2">February</option>
+                      <option value="3">March</option>
+                      <option value="4">April</option>
+                      <option value="5">May</option>
+                      <option value="6">June</option>
+                      <option value="7">July</option>
+                      <option value="8">August</option>
+                      <option value="9">September</option>
+                      <option value="10">October</option>
+                      <option value="11">November</option>
+                      <option value="12">December</option>
+                    </select>
+                    <button type="button" class="nav-link cal-today-link" id="calendarGoToday" title="Go to current month">
+                      Today
+                    </button>
+                    <select id="calendarYear"></select>
                   </div>
                   <button type="button" class="nav-link" id="calendarNextMonth">Next</button>
                 </div>
