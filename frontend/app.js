@@ -266,6 +266,32 @@ if (calendarGoToday) {
   });
 }
 
+const CALENDAR_COLLAPSED_KEY = "familyCashFlow_calendarCollapsed";
+
+function applyCalendarCollapsed(collapsed) {
+  const panel = document.getElementById("calendarPanel");
+  const btn = document.getElementById("calendarCollapseBtn");
+  if (!panel || !btn) return;
+  panel.classList.toggle("calendar-panel--collapsed", collapsed);
+  btn.setAttribute("aria-expanded", collapsed ? "false" : "true");
+  btn.title = collapsed ? "Expand calendar" : "Collapse calendar";
+  try {
+    localStorage.setItem(CALENDAR_COLLAPSED_KEY, collapsed ? "1" : "0");
+  } catch (_) {}
+}
+
+const calendarCollapseBtn = document.getElementById("calendarCollapseBtn");
+if (calendarCollapseBtn) {
+  calendarCollapseBtn.addEventListener("click", () => {
+    const panel = document.getElementById("calendarPanel");
+    if (!panel) return;
+    applyCalendarCollapsed(!panel.classList.contains("calendar-panel--collapsed"));
+  });
+  try {
+    if (localStorage.getItem(CALENDAR_COLLAPSED_KEY) === "1") applyCalendarCollapsed(true);
+  } catch (_) {}
+}
+
 if (calendarMode) {
   calendarMode.addEventListener("change", async () => {
     await loadCalendarMonthDaily();
@@ -1176,84 +1202,49 @@ function renderCalendar() {
       <div class="cal-daynum">${dayNum}</div>
       <div class="cal-cell-fill"></div>
       <div class="cal-cell-stack">
-        <div class="cal-badges"></div>
-        <div class="cal-actual-line"></div>
+        <div class="cal-day-txns"></div>
         <div class="cal-ledger-metrics"></div>
       </div>
     `;
-    const badgesEl = cell.querySelector(".cal-badges");
-    const actualLineEl = cell.querySelector(".cal-actual-line");
+    const txnsEl = cell.querySelector(".cal-day-txns");
     const metricsEl = cell.querySelector(".cal-ledger-metrics");
 
     const actualTxs = showActual ? actualTxsByDate.get(iso) || [] : [];
     const expectedItems = expectedByDate.get(iso) || [];
 
     if (showExpected) {
-      const shown = expectedItems.slice(0, 3);
-      for (const item of shown) {
-        const kindClass = item.kind === "income" ? "expected-income" : "expected-expense";
-        const b = document.createElement("div");
-        b.className = `badge ${kindClass}`;
+      for (const item of expectedItems) {
+        const line = document.createElement("div");
+        line.className = `cal-day-tx-line cal-day-tx-line--expected ${item.kind === "income" ? "income" : "expense"}`;
         const sign = item.kind === "income" ? "+" : "-";
-        b.textContent = `${sign}$${fmtMoney(item.amount)} · ${truncate(item.description, 18)}`;
-        b.title = `Expected: ${item.description}`;
-        b.addEventListener("click", (e) => {
+        const label = truncate(item.description || "(expected)", 44);
+        line.textContent = `${label}: ${sign}$${fmtMoney(item.amount)}`;
+        line.title = `Expected: ${item.description}`;
+        line.addEventListener("click", (e) => {
           e.stopPropagation();
           selectExpectedInstance(item);
         });
-        badgesEl.appendChild(b);
-      }
-      if (expectedItems.length > 3) {
-        const more = document.createElement("div");
-        more.className = "badge disabled";
-        more.textContent = `+${expectedItems.length - 3} more`;
-        badgesEl.appendChild(more);
+        txnsEl.appendChild(line);
       }
     }
 
-    if (showActual && actualTxs.length > 0 && actualLineEl) {
-      const row = document.createElement("div");
-      row.className = "cal-actual-line-inner";
-      const box = document.createElement("div");
-      box.className = "cal-formula-box";
-      const partsWrap = document.createElement("div");
-      partsWrap.className = "cal-formula-parts";
-      actualTxs.forEach((tx, idx) => {
-        if (idx > 0) {
-          const op = document.createElement("span");
-          op.className = "cal-formula-op";
-          op.textContent = " + ";
-          partsWrap.appendChild(op);
-        }
-        const span = document.createElement("span");
-        span.className = `cal-tx-part ${tx.kind === "income" ? "income" : "expense"}`;
-        span.dataset.txId = String(tx.id);
-        const sign = tx.kind === "income" ? "+" : "−";
-        span.textContent = `${sign}$${fmtMoney(tx.amount)}`;
-        span.title = (tx.description || "").trim() || "Transaction";
-        partsWrap.appendChild(span);
-      });
-      row.appendChild(box);
-      row.appendChild(partsWrap);
-      actualLineEl.appendChild(row);
+    if (showActual) {
+      for (const tx of actualTxs) {
+        const line = document.createElement("div");
+        line.className = `cal-day-tx-line cal-tx-part ${tx.kind === "income" ? "income" : "expense"}`;
+        line.dataset.txId = String(tx.id);
+        const sign = tx.kind === "income" ? "+" : "-";
+        const label = truncate((tx.description || "Transaction").trim(), 44);
+        line.textContent = `${label}: ${sign}$${fmtMoney(tx.amount)}`;
+        line.title = (tx.description || "").trim() || "Transaction";
+        txnsEl.appendChild(line);
+      }
     }
 
     const dayBal = state.monthDailyBalances.get(iso);
-    const hasTxActivity =
-      (showActual && actualTxs.length > 0) || (showExpected && expectedItems.length > 0);
-    const hideTxnsSummaryRow = showActual && actualTxs.length > 0;
 
     if (dayBal && metricsEl) {
-      const lines = [];
-      if (hasTxActivity && !hideTxnsSummaryRow) {
-        lines.push(
-          `<div class="cal-stat ${dayBal.txNet >= 0 ? "income" : "expense"}">Txns: ${
-            dayBal.txNet >= 0 ? "+" : "-"
-          }$${fmtMoney(Math.abs(dayBal.txNet))}</div>`
-        );
-      }
-      lines.push(`<div class="cal-stat cal-balance">Balance: $${fmtMoney(dayBal.end)}</div>`);
-      metricsEl.innerHTML = lines.join("");
+      metricsEl.innerHTML = `<div class="cal-stat cal-balance">Balance: $${fmtMoney(dayBal.end)}</div>`;
     }
 
     wrapper.appendChild(cell);

@@ -188,7 +188,22 @@
 
         <div class="main-column">
           <div class="card calendar-panel" id="calendarPanel">
-            <h2>Calendar (Monthly)</h2>
+            <div class="calendar-panel-head">
+              <h2>Calendar (Monthly)</h2>
+              <button
+                type="button"
+                class="calendar-collapse-btn"
+                id="calendarCollapseBtn"
+                aria-expanded="true"
+                aria-controls="calendarPanelBody"
+                title="Collapse calendar"
+              >
+                <svg class="calendar-collapse-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M6 9l6 6 6-6" />
+                </svg>
+              </button>
+            </div>
+            <div id="calendarPanelBody" class="calendar-panel-body">
             <div class="row two">
               <div class="calendar-nav-block">
                 <div class="calendar-nav">
@@ -233,6 +248,7 @@
             <div id="calendarErr" class="error"></div>
             <div class="calendar-scroll">
               <div id="calendarGrid"></div>
+            </div>
             </div>
           </div>
 

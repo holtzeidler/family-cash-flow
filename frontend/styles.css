@@ -206,6 +206,62 @@ button.nav-link:hover{
   filter: brightness(1.12);
 }
 
+.calendar-panel-head{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.calendar-panel--collapsed .calendar-panel-head{
+  margin-bottom: 0;
+}
+.calendar-panel-head h2{
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+}
+.calendar-collapse-btn{
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.04);
+  color: var(--muted);
+  cursor: pointer;
+  line-height: 0;
+}
+.calendar-collapse-btn:hover{
+  color: var(--text);
+  background: rgba(255,255,255,0.08);
+}
+.calendar-collapse-chevron{
+  display: block;
+  transition: transform 0.15s ease;
+  transform: rotate(180deg);
+}
+.calendar-panel--collapsed .calendar-collapse-chevron{
+  transform: rotate(0deg);
+}
+.calendar-panel-body{
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.calendar-panel--collapsed .calendar-panel-body{
+  display: none;
+}
+.calendar-panel--collapsed{
+  min-height: 0 !important;
+  flex: 0 0 auto !important;
+}
+
 .calendar-panel{
   display:flex;
   flex-direction:column;
@@ -248,10 +304,13 @@ button.nav-link:hover{
     overflow: visible;
     max-height: none;
   }
-  .calendar-panel{
+  .calendar-panel:not(.calendar-panel--collapsed){
     max-height: none;
     min-height: 420px;
     flex: 0 1 auto;
+  }
+  .calendar-panel.calendar-panel--collapsed{
+    min-height: 0 !important;
   }
   .main-column-aux{
     overflow: visible;
@@ -515,60 +574,37 @@ input, select{
   width: 100%;
 }
 
-.cal-badges{
-  display:flex;
-  flex-direction:column;
-  gap:6px;
+.cal-day-txns{
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-end;
+  text-align: right;
+  width: 100%;
   min-width: 0;
 }
 
-.cal-actual-line{
-  width: 100%;
-}
-
-.cal-actual-line-inner{
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  justify-content: flex-end;
-}
-
-.cal-formula-box{
-  width: 14px;
-  height: 14px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  flex-shrink: 0;
-  margin-top: 2px;
-  background: rgba(255,255,255,0.03);
-}
-
-.cal-formula-parts{
-  flex: 1;
-  text-align: right;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  align-items: baseline;
-  gap: 0 4px;
+.cal-day-tx-line{
   font-size: 11px;
   line-height: 1.35;
+  word-break: break-word;
+  max-width: 100%;
 }
 
-.cal-formula-op{
-  color: var(--muted);
-  font-size: 11px;
-}
+.cal-day-tx-line.income{ color: var(--ok); }
+.cal-day-tx-line.expense{ color: var(--danger); }
 
-.cal-tx-part{
+.cal-day-tx-line--expected{
   cursor: pointer;
-  text-decoration: underline;
-  text-decoration-style: dotted;
+  text-decoration: underline dotted;
   text-underline-offset: 2px;
 }
 
-.cal-tx-part.income{ color: var(--ok); }
-.cal-tx-part.expense{ color: var(--danger); }
+.cal-tx-part.cal-day-tx-line{
+  cursor: pointer;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+}
 
 .cal-ledger-metrics{
   text-align: right;
@@ -586,7 +622,7 @@ input, select{
 .cal-stat.income{ color: var(--ok); }
 .cal-stat.expense{ color: var(--danger); }
 .cal-stat.cal-balance{
-  font-weight: 700;
+  font-weight: 400;
   color: var(--text);
 }
 
