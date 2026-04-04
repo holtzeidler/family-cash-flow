@@ -508,6 +508,62 @@ input, select{
   color: var(--text);
 }
 
+.row-desc-notes{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+}
+.row-desc-notes .field-desc-short{
+  flex: 0 0 25ch;
+  max-width: 100%;
+  min-width: 0;
+}
+.row-desc-notes .field-notes-flex{
+  flex: 1 1 min(50ch, 100%);
+  min-width: 0;
+}
+.row-desc-notes label{
+  display: block;
+  margin-bottom: 4px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.input-desc-short,
+.input-notes-flex{
+  width: 100%;
+}
+.tx-desc-link{
+  color: var(--accent);
+  text-decoration: none;
+  cursor: pointer;
+}
+.tx-desc-link:hover{
+  text-decoration: underline;
+}
+.instance-scope-row{
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.instance-scope-label{
+  font-size: 13px;
+  color: var(--muted);
+}
+.instance-scope-options{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+.instance-scope-row .inline-label{
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--text);
+}
+
 .row{
   display:grid;
   grid-template-columns: 1fr;

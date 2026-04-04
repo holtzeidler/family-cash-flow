@@ -112,6 +112,7 @@ const expectedRecurrence = document.getElementById("expectedRecurrence");
 const expectedKind = document.getElementById("expectedKind");
 const expectedAmount = document.getElementById("expectedAmount");
 const expectedDesc = document.getElementById("expectedDesc");
+const expectedNotes = document.getElementById("expectedNotes");
 const expectedAccountId = document.getElementById("expectedAccountId");
 const expectedCategoryId = document.getElementById("expectedCategoryId");
 const addExpectedTxBtn = document.getElementById("addExpectedTxBtn");
@@ -162,6 +163,7 @@ const txEditDate = document.getElementById("txEditDate");
 const txEditKind = document.getElementById("txEditKind");
 const txEditAmount = document.getElementById("txEditAmount");
 const txEditDesc = document.getElementById("txEditDesc");
+const txEditNotes = document.getElementById("txEditNotes");
 const txEditCategoryId = document.getElementById("txEditCategoryId");
 const txEditErr = document.getElementById("txEditErr");
 const txEditSave = document.getElementById("txEditSave");
@@ -358,6 +360,7 @@ document.getElementById("addTxBtn").addEventListener("click", async () => {
     show(addTxErr, "");
     const dateVal = document.getElementById("txDate").value;
     const desc = document.getElementById("txDesc").value.trim();
+    const notesRaw = document.getElementById("txNotes")?.value?.trim() || "";
     const kind = document.getElementById("txKind").value;
     const amountVal = document.getElementById("txAmount").value;
     const categoryId = document.getElementById("txCategoryId").value || null;
@@ -368,12 +371,15 @@ document.getElementById("addTxBtn").addEventListener("click", async () => {
     await api(`/api/families/${state.activeFamilyId}/transactions`, "POST", {
       date: dateVal,
       description: desc,
+      notes: notesRaw || null,
       kind,
       amount: Number(amountVal),
       category_id: categoryId ? Number(categoryId) : null,
     });
 
     document.getElementById("txDesc").value = "";
+    const txNotesEl = document.getElementById("txNotes");
+    if (txNotesEl) txNotesEl.value = "";
     document.getElementById("txAmount").value = "";
     await loadMonthAndCalendar();
   } catch (e) {
@@ -457,6 +463,7 @@ function openTxEditModal(tx) {
   txEditKind.value = tx.kind;
   txEditAmount.value = tx.amount;
   txEditDesc.value = tx.description || "";
+  if (txEditNotes) txEditNotes.value = tx.notes || "";
   renderTxEditCategoryOptions();
   txEditCategoryId.value = tx.category_id != null ? String(tx.category_id) : "";
   show(txEditErr, "");
@@ -484,6 +491,7 @@ if (txEditSave) {
         kind: txEditKind.value,
         amount: Number(amountVal),
         description: txEditDesc.value.trim() || "",
+        notes: txEditNotes && txEditNotes.value.trim() ? txEditNotes.value.trim() : null,
         category_id: txEditCategoryId.value ? Number(txEditCategoryId.value) : null,
       });
       closeTxEditModal();
@@ -547,6 +555,7 @@ addExpectedTxBtn.addEventListener("click", async () => {
     const kindVal = expectedKind.value;
     const amountVal = expectedAmount.value;
     const desc = expectedDesc.value.trim();
+    const notesVal = expectedNotes && expectedNotes.value.trim() ? expectedNotes.value.trim() : null;
     const accountIdVal = expectedAccountId.value;
     const categoryIdVal = expectedCategoryId.value || null;
 
@@ -560,12 +569,14 @@ addExpectedTxBtn.addEventListener("click", async () => {
       start_date: startDateVal,
       recurrence: recurrenceVal,
       description: desc,
+      notes: notesVal,
       kind: kindVal,
       amount: Number(amountVal),
       category_id: categoryIdVal ? Number(categoryIdVal) : null,
     });
 
     expectedDesc.value = "";
+    if (expectedNotes) expectedNotes.value = "";
     expectedAmount.value = "";
     await loadExpectedTransactions();
     await loadExpectedCalendar();
@@ -721,24 +732,50 @@ saveInstanceOverrideBtn.addEventListener("click", async () => {
 
     const categoryId = instanceCategoryId.value ? Number(instanceCategoryId.value) : null;
 
-    const payload = {
-      action: "update",
-      account_id: Number(accountId),
-      kind: instanceKind.value,
-      amount,
-      description: instanceDesc.value.trim() || "",
-      category_id: categoryId,
-    };
+    const scopeEl = document.querySelector('input[name="instanceSaveScope"]:checked');
+    const scope = scopeEl && scopeEl.value === "future" ? "future" : "this";
+    const meta = getExpectedSeriesMeta(selectedExpectedInstance.expected_transaction_id);
 
-    await api(
-      `/api/families/${state.activeFamilyId}/expected-transactions/${selectedExpectedInstance.expected_transaction_id}/instances/${selectedExpectedInstance.occurrence_date}`,
-      "POST",
-      payload
-    );
+    const occ = normalizeIsoDate(selectedExpectedInstance.occurrence_date);
+    if (!occ) throw new Error("Invalid occurrence date");
 
+    if (scope === "future") {
+      if (!meta || meta.recurrence === "once") {
+        throw new Error('"All future occurrences" applies only to recurring schedules (not "once").');
+      }
+      const applyPayload = {
+        account_id: Number(accountId),
+        kind: instanceKind.value,
+        amount,
+        description: instanceDesc.value.trim() || "",
+        category_id: categoryId,
+      };
+      await api(
+        `/api/families/${state.activeFamilyId}/expected-transactions/${selectedExpectedInstance.expected_transaction_id}/apply-from-occurrence/${occ}`,
+        "POST",
+        applyPayload
+      );
+    } else {
+      const payload = {
+        action: "update",
+        account_id: Number(accountId),
+        kind: instanceKind.value,
+        amount,
+        description: instanceDesc.value.trim() || "",
+        category_id: categoryId,
+      };
+      await api(
+        `/api/families/${state.activeFamilyId}/expected-transactions/${selectedExpectedInstance.expected_transaction_id}/instances/${occ}`,
+        "POST",
+        payload
+      );
+    }
+
+    await loadExpectedTransactions();
     await loadExpectedCalendar();
     await loadCalendarMonthDaily();
     renderCalendar();
+    updateInstanceScopeUI();
   } catch (e) {
     show(expectedInstanceErr, e.message || "Failed to save override");
   }
@@ -750,8 +787,9 @@ cancelInstanceOverrideBtn.addEventListener("click", async () => {
     if (!state.activeFamilyId) throw new Error("Choose a family first");
     if (!selectedExpectedInstance) throw new Error("Select an expected occurrence from the calendar");
 
+    const cancelOcc = normalizeIsoDate(selectedExpectedInstance.occurrence_date) || selectedExpectedInstance.occurrence_date;
     await api(
-      `/api/families/${state.activeFamilyId}/expected-transactions/${selectedExpectedInstance.expected_transaction_id}/instances/${selectedExpectedInstance.occurrence_date}`,
+      `/api/families/${state.activeFamilyId}/expected-transactions/${selectedExpectedInstance.expected_transaction_id}/instances/${cancelOcc}`,
       "POST",
       { action: "cancel" }
     );
@@ -1048,17 +1086,39 @@ function renderTransactions(items) {
   for (const tx of items) {
     const el = document.createElement("div");
     el.className = "item";
+    el.style.cursor = "pointer";
 
     const amtClass = tx.kind === "income" ? "income" : "expense";
     const category = tx.category ? ` · ${tx.category}` : "";
 
-    el.innerHTML = `
-      <div class="left">
-        <div class="desc">${escapeHtml(tx.description || "(no description)")}</div>
-        <div class="meta">${tx.date}${category}</div>
-      </div>
-      <div class="amt ${amtClass}">${tx.kind === "income" ? "+" : "-"}$${fmtMoney(tx.amount)}</div>
-    `;
+    const left = document.createElement("div");
+    left.className = "left";
+    const link = document.createElement("a");
+    link.href = "#";
+    link.className = "desc tx-desc-link";
+    link.textContent = (tx.description || "(no description)").trim() || "(no description)";
+    const n = tx.notes && String(tx.notes).trim();
+    if (n) link.title = n;
+    link.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      openTxEditModal(tx);
+    });
+
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    meta.textContent = `${tx.date}${category}`;
+
+    left.appendChild(link);
+    left.appendChild(meta);
+
+    const amt = document.createElement("div");
+    amt.className = `amt ${amtClass}`;
+    amt.textContent = `${tx.kind === "income" ? "+" : "-"}$${fmtMoney(tx.amount)}`;
+
+    el.appendChild(left);
+    el.appendChild(amt);
+    el.addEventListener("click", () => openTxEditModal(tx));
     txList.appendChild(el);
   }
 }
@@ -1221,6 +1281,29 @@ function truncate(s, maxLen) {
   return str.slice(0, Math.max(0, maxLen - 1)) + "…";
 }
 
+function getExpectedSeriesMeta(expectedId) {
+  return (state.expectedTransactions || []).find((t) => Number(t.id) === Number(expectedId));
+}
+
+function updateInstanceScopeUI() {
+  const future = document.getElementById("instanceScopeFuture");
+  const futureLabel = document.getElementById("instanceScopeFutureLabel");
+  if (!future) return;
+  if (!selectedExpectedInstance) {
+    future.disabled = true;
+    if (futureLabel) futureLabel.style.opacity = "0.5";
+    return;
+  }
+  const meta = getExpectedSeriesMeta(selectedExpectedInstance.expected_transaction_id);
+  const allowFuture = !!(meta && meta.recurrence !== "once");
+  future.disabled = !allowFuture;
+  if (futureLabel) futureLabel.style.opacity = allowFuture ? "" : "0.5";
+  if (!allowFuture && future.checked) {
+    const thisRadio = document.getElementById("instanceScopeThis");
+    if (thisRadio) thisRadio.checked = true;
+  }
+}
+
 function dateISOFromParts(year, monthIndex0Based, day) {
   const y = year;
   const m = String(monthIndex0Based + 1).padStart(2, "0");
@@ -1243,6 +1326,7 @@ function selectExpectedInstance(item) {
   if (instanceCategoryId) instanceCategoryId.value = item.category_id ? String(item.category_id) : "";
 
   show(expectedInstanceErr, "");
+  updateInstanceScopeUI();
 }
 
 function renderCalendar() {
@@ -1326,7 +1410,11 @@ function renderCalendar() {
         const sign = item.kind === "income" ? "+" : "-";
         const label = truncate(item.description || "(expected)", 44);
         line.textContent = `${label}: ${sign}$${fmtMoney(item.amount)}`;
-        line.title = `Expected: ${item.description}`;
+        {
+          const bits = [`Expected: ${item.description || ""}`];
+          if (item.notes && String(item.notes).trim()) bits.push(String(item.notes).trim());
+          line.title = bits.join("\n");
+        }
         line.addEventListener("click", (e) => {
           e.stopPropagation();
           selectExpectedInstance(item);
@@ -1343,7 +1431,11 @@ function renderCalendar() {
         const sign = tx.kind === "income" ? "+" : "-";
         const label = truncate((tx.description || "Transaction").trim(), 44);
         line.textContent = `${label}: ${sign}$${fmtMoney(tx.amount)}`;
-        line.title = (tx.description || "").trim() || "Transaction";
+        {
+          const bits = [(tx.description || "").trim() || "Transaction"];
+          if (tx.notes && String(tx.notes).trim()) bits.push(String(tx.notes).trim());
+          line.title = bits.join("\n");
+        }
         txnsEl.appendChild(line);
       }
     }

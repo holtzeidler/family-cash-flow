@@ -22,7 +22,7 @@ from sqlalchemy import Enum as SAEnum
 from sqlalchemy import Boolean, UniqueConstraint
 from sqlalchemy import ForeignKey
 from sqlalchemy import String
-from sqlalchemy import func, select, text
+from sqlalchemy import delete, func, select, text
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, sessionmaker
 from sqlalchemy.types import Numeric
@@ -136,6 +136,7 @@ class Transaction(Base):
 
     date: Mapped[date] = mapped_column(SA_Date, nullable=False, index=True)
     description: Mapped[str] = mapped_column(String(500), nullable=False, default="")
+    notes: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     kind: Mapped[TransactionKind] = mapped_column(SAEnum(TransactionKind), nullable=False, default=TransactionKind.expense)
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
 
@@ -174,6 +175,7 @@ class ExpectedTransaction(Base):
     recurrence: Mapped[Recurrence] = mapped_column(SAEnum(Recurrence), nullable=False, default=Recurrence.once)
 
     description: Mapped[str] = mapped_column(String(500), nullable=False, default="")
+    notes: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     kind: Mapped[TransactionKind] = mapped_column(SAEnum(TransactionKind), nullable=False, default=TransactionKind.expense)
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
 
@@ -306,6 +308,7 @@ class CategoryOut(BaseModel):
 class TransactionIn(BaseModel):
     date: date
     description: str = Field(default="", max_length=500)
+    notes: Optional[str] = Field(default=None, max_length=500)
     kind: TransactionKind
     amount: Decimal = Field(gt=0)
     category_id: Optional[int] = None
@@ -315,6 +318,7 @@ class TransactionOut(BaseModel):
     id: int
     date: date
     description: str
+    notes: Optional[str] = None
     kind: TransactionKind
     amount: Decimal
     category: Optional[str] = None
@@ -353,6 +357,7 @@ class ExpectedTransactionIn(BaseModel):
     recurrence: Recurrence = Recurrence.monthly
 
     description: str = Field(default="", max_length=500)
+    notes: Optional[str] = Field(default=None, max_length=500)
     kind: TransactionKind = TransactionKind.expense
     amount: Decimal = Field(gt=0)
 
@@ -366,6 +371,7 @@ class ExpectedTransactionOut(BaseModel):
     end_date: Optional[date]
     recurrence: Recurrence
     description: str
+    notes: Optional[str] = None
     kind: TransactionKind
     amount: Decimal
     category: Optional[str]
@@ -383,6 +389,20 @@ class ExpectedInstanceOverrideIn(BaseModel):
     category_id: Optional[int] = None
 
 
+class ApplyFromOccurrenceIn(BaseModel):
+    account_id: int
+    kind: TransactionKind
+    amount: Decimal = Field(gt=0)
+    description: str = Field(default="", max_length=500)
+    category_id: Optional[int] = None
+
+
+class ApplyFromOccurrenceOut(BaseModel):
+    mode: Literal["updated_in_place", "split"]
+    future_series_id: int
+    ended_series_id: Optional[int] = None
+
+
 class ExpectedCalendarItemOut(BaseModel):
     expected_transaction_id: int
     date: date
@@ -391,6 +411,7 @@ class ExpectedCalendarItemOut(BaseModel):
     kind: TransactionKind
     amount: Decimal
     description: str
+    notes: Optional[str] = None
     category_id: Optional[int] = None
     category: Optional[str] = None
 
@@ -488,6 +509,7 @@ def startup_populate_schema():
             Path(db_path).expanduser().resolve().parent.mkdir(parents=True, exist_ok=True)
     Base.metadata.create_all(bind=engine)
     _ensure_account_starting_balance_date_column()
+    _ensure_notes_columns()
 
 
 def _ensure_account_starting_balance_date_column():
@@ -510,6 +532,19 @@ def _ensure_account_starting_balance_date_column():
                 "WHERE starting_balance_date IS NULL"
             )
         )
+
+
+def _ensure_notes_columns() -> None:
+    """Lightweight startup migration: optional notes on transactions and expected_transactions."""
+    with engine.begin() as conn:
+        for table in ("transactions", "expected_transactions"):
+            if settings.DATABASE_URL.startswith("sqlite"):
+                cols = conn.execute(text(f"PRAGMA table_info({table})")).fetchall()
+                has_notes = any(str(row[1]) == "notes" for row in cols)
+                if not has_notes:
+                    conn.execute(text(f"ALTER TABLE {table} ADD COLUMN notes VARCHAR(500)"))
+            else:
+                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS notes VARCHAR(500)"))
 
 
 @app.post("/api/auth/register", status_code=status.HTTP_201_CREATED, response_model=RegisterOut)
@@ -733,6 +768,7 @@ def list_expected_transactions(
                 end_date=tx.end_date,
                 recurrence=tx.recurrence,
                 description=tx.description,
+                notes=tx.notes,
                 kind=tx.kind,
                 amount=tx.amount,
                 category=category_name,
@@ -774,6 +810,7 @@ def create_expected_transaction(
         end_date=payload.end_date,
         recurrence=payload.recurrence,
         description=payload.description,
+        notes=payload.notes.strip() if payload.notes and payload.notes.strip() else None,
         kind=payload.kind,
         amount=payload.amount,
         category_id=payload.category_id,
@@ -789,6 +826,7 @@ def create_expected_transaction(
         end_date=tx.end_date,
         recurrence=tx.recurrence,
         description=tx.description,
+        notes=tx.notes,
         kind=tx.kind,
         amount=tx.amount,
         category=category_name,
@@ -835,6 +873,7 @@ def update_expected_transaction(
     tx.end_date = payload.end_date
     tx.recurrence = payload.recurrence
     tx.description = payload.description
+    tx.notes = payload.notes.strip() if payload.notes and payload.notes.strip() else None
     tx.kind = payload.kind
     tx.amount = payload.amount
     tx.category_id = payload.category_id
@@ -849,6 +888,7 @@ def update_expected_transaction(
         end_date=tx.end_date,
         recurrence=tx.recurrence,
         description=tx.description,
+        notes=tx.notes,
         kind=tx.kind,
         amount=tx.amount,
         category=category_name,
@@ -976,6 +1016,116 @@ def delete_expected_instance_override(
     return {"ok": True}
 
 
+@app.post(
+    "/api/families/{family_id}/expected-transactions/{expected_id}/apply-from-occurrence/{occurrence_date}",
+    response_model=ApplyFromOccurrenceOut,
+)
+def apply_expected_from_occurrence(
+    family_id: int,
+    expected_id: int,
+    occurrence_date: date,
+    payload: ApplyFromOccurrenceIn,
+    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    db=Depends(get_db),
+):
+    """
+    Apply new amount/account/description to this occurrence and all future occurrences of the series.
+    Splits the recurring row: past occurrences keep the old template; from `occurrence_date` forward uses the payload.
+    For changes that start at the series start_date, updates the row in place.
+    One-time (recurrence=once) schedules should use the per-instance override endpoint instead.
+    """
+    user_id = get_current_user_id(access_token)
+    require_family_member(db=db, family_id=family_id, user_id=user_id)
+
+    tx = db.execute(
+        select(ExpectedTransaction).where(
+            ExpectedTransaction.id == expected_id,
+            ExpectedTransaction.family_id == family_id,
+        )
+    ).scalar_one_or_none()
+    if tx is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Expected transaction not found")
+
+    if tx.recurrence == Recurrence.once:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Use per-instance override for one-time expected transactions",
+        )
+
+    account = db.execute(select(Account).where(Account.id == payload.account_id, Account.family_id == family_id)).scalar_one_or_none()
+    if account is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid account for this family")
+
+    category_id = payload.category_id
+    if category_id is not None:
+        category = db.execute(select(Category).where(Category.id == category_id, Category.family_id == family_id)).scalar_one_or_none()
+        if category is None:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid category for this family")
+
+    if occurrence_date < tx.start_date:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="occurrence_date is before series start")
+    if tx.end_date is not None and occurrence_date > tx.end_date:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="occurrence_date is after series end")
+
+    hits = _expected_occurrences_in_range(
+        start_date=tx.start_date,
+        end_date=tx.end_date,
+        recurrence=tx.recurrence,
+        range_start=occurrence_date,
+        range_end_exclusive=occurrence_date + timedelta(days=1),
+    )
+    if occurrence_date not in hits:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Date is not a scheduled occurrence for this series")
+
+    db.execute(
+        delete(ExpectedTransactionOverride).where(
+            ExpectedTransactionOverride.expected_transaction_id == expected_id,
+            ExpectedTransactionOverride.occurrence_date >= occurrence_date,
+        )
+    )
+
+    if occurrence_date == tx.start_date:
+        tx.account_id = payload.account_id
+        tx.kind = payload.kind
+        tx.amount = payload.amount
+        tx.description = payload.description
+        tx.category_id = category_id
+        db.commit()
+        db.refresh(tx)
+        return ApplyFromOccurrenceOut(mode="updated_in_place", future_series_id=tx.id, ended_series_id=None)
+
+    prev_occ = _occurrence_immediately_before(
+        start_date=tx.start_date,
+        series_end_date=tx.end_date,
+        recurrence=tx.recurrence,
+        occurrence_date=occurrence_date,
+    )
+    if prev_occ is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Could not resolve previous occurrence for split")
+
+    old_end = tx.end_date
+    tx.end_date = prev_occ
+
+    new_tx = ExpectedTransaction(
+        family_id=family_id,
+        account_id=payload.account_id,
+        created_by_user_id=user_id,
+        start_date=occurrence_date,
+        end_date=old_end,
+        recurrence=tx.recurrence,
+        description=payload.description,
+        notes=tx.notes,
+        kind=payload.kind,
+        amount=payload.amount,
+        category_id=category_id,
+    )
+    db.add(new_tx)
+    db.commit()
+    db.refresh(new_tx)
+
+    return ApplyFromOccurrenceOut(mode="split", future_series_id=new_tx.id, ended_series_id=tx.id)
+
+
 @app.get("/api/families/{family_id}/expected-calendar", response_model=ExpectedCalendarOut)
 def expected_calendar(
     family_id: int,
@@ -1046,6 +1196,7 @@ def expected_calendar(
                     kind=eff_kind,
                     amount=eff_amount,
                     description=eff_description,
+                    notes=tx.notes,
                     category_id=eff_category_id,
                     category=cat.name if cat is not None else None,
                 )
@@ -1109,6 +1260,41 @@ def _expected_occurrences_in_range(
         current = _add_months(current, step_months)
 
     return occurrences
+
+
+def _occurrence_immediately_before(
+    *,
+    start_date: date,
+    series_end_date: Optional[date],
+    recurrence: Recurrence,
+    occurrence_date: date,
+) -> Optional[date]:
+    """
+    Last scheduled occurrence strictly before `occurrence_date` in the same series.
+    Used when splitting a recurring series so `end_date` stays aligned with the recurrence pattern
+    (e.g. month-end days), not merely calendar day - 1.
+    """
+    if recurrence == Recurrence.once or occurrence_date <= start_date:
+        return None
+    if recurrence == Recurrence.monthly:
+        step_months = 1
+    elif recurrence == Recurrence.semiannual:
+        step_months = 6
+    elif recurrence == Recurrence.yearly:
+        step_months = 12
+    else:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported recurrence")
+
+    prev: Optional[date] = None
+    current = start_date
+    while current < occurrence_date:
+        if series_end_date is not None and current > series_end_date:
+            return prev
+        prev = current
+        current = _add_months(current, step_months)
+        if series_end_date is not None and current > series_end_date:
+            break
+    return prev
 
 
 def _calendar_month_daily_balances(
@@ -1430,6 +1616,7 @@ def list_transactions(
                 id=tx.id,
                 date=tx.date,
                 description=tx.description,
+                notes=tx.notes,
                 kind=tx.kind,
                 amount=tx.amount,
                 category=category_name,
@@ -1464,6 +1651,7 @@ def create_transaction(
         family_id=family_id,
         date=payload.date,
         description=payload.description,
+        notes=payload.notes.strip() if payload.notes and payload.notes.strip() else None,
         kind=payload.kind,
         amount=payload.amount,
         category_id=payload.category_id,
@@ -1484,6 +1672,7 @@ def _transaction_out(db, tx: Transaction) -> TransactionOut:
         id=tx.id,
         date=tx.date,
         description=tx.description,
+        notes=tx.notes,
         kind=tx.kind,
         amount=tx.amount,
         category=category_name,
@@ -1517,6 +1706,7 @@ def update_transaction(
 
     tx.date = payload.date
     tx.description = payload.description
+    tx.notes = payload.notes.strip() if payload.notes and payload.notes.strip() else None
     tx.kind = payload.kind
     tx.amount = payload.amount
     tx.category_id = payload.category_id
