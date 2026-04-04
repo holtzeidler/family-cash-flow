@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from collections import defaultdict
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from enum import Enum
@@ -414,6 +415,12 @@ class ProjectionOut(BaseModel):
     days: int
     accounts: list[AccountOut]
     daily: list[ProjectionDailyOut]
+
+
+class CalendarOpeningBalanceOut(BaseModel):
+    """Pooled calendar total at the start of the first day of `month` (after all prior days)."""
+
+    opening: str
 
 
 def _parse_cors_origins(raw: str) -> list[str]:
@@ -1095,6 +1102,130 @@ def _expected_occurrences_in_range(
         current = _add_months(current, step_months)
 
     return occurrences
+
+
+def _calendar_pool_opening_balance(
+    *,
+    db,
+    family_id: int,
+    month: str,
+    mode: Literal["both", "actual", "expected"],
+) -> Decimal:
+    """
+    Match frontend calendar pooled balance: one running total from account starting balances
+    plus daily net actuals (family-wide) and expected occurrences, through the day before `month`.
+    """
+    month_start, _ = _month_range(month)
+    day_before = month_start - timedelta(days=1)
+
+    account_rows = list(db.execute(select(Account).where(Account.family_id == family_id)).scalars().all())
+    if not account_rows:
+        return Decimal("0")
+
+    min_acc = min((a.starting_balance_date or a.created_at.date()) for a in account_rows)
+    first_tx = db.execute(select(func.min(Transaction.date)).where(Transaction.family_id == family_id)).scalar_one_or_none()
+    global_start = min_acc
+    if first_tx is not None:
+        global_start = min(global_start, first_tx)
+
+    actual_by_date: dict[date, Decimal] = defaultdict(lambda: Decimal("0"))
+    if mode in ("both", "actual"):
+        tx_rows = db.execute(
+            select(Transaction).where(
+                Transaction.family_id == family_id,
+                Transaction.date >= global_start,
+                Transaction.date <= day_before,
+            )
+        ).scalars().all()
+        for tx in tx_rows:
+            signed = tx.amount if tx.kind == TransactionKind.income else -tx.amount
+            actual_by_date[tx.date] += signed
+
+    expected_by_date: dict[date, Decimal] = defaultdict(lambda: Decimal("0"))
+    if mode in ("both", "expected"):
+        accounts_by_id: dict[int, Account] = {a.id: a for a in account_rows}
+        expected_rows = db.execute(select(ExpectedTransaction).where(ExpectedTransaction.family_id == family_id)).scalars().all()
+        overrides = db.execute(
+            select(ExpectedTransactionOverride).join(
+                ExpectedTransaction,
+                ExpectedTransaction.id == ExpectedTransactionOverride.expected_transaction_id,
+            ).where(
+                ExpectedTransaction.family_id == family_id,
+                ExpectedTransactionOverride.occurrence_date >= global_start,
+                ExpectedTransactionOverride.occurrence_date < month_start,
+            )
+        ).scalars().all()
+        override_map: dict[tuple[int, date], ExpectedTransactionOverride] = {
+            (o.expected_transaction_id, o.occurrence_date): o for o in overrides
+        }
+        for tx in expected_rows:
+            occ_dates = _expected_occurrences_in_range(
+                start_date=tx.start_date,
+                end_date=tx.end_date,
+                recurrence=tx.recurrence,
+                range_start=global_start,
+                range_end_exclusive=month_start,
+            )
+            for occ in occ_dates:
+                if occ > day_before:
+                    continue
+                ovr = override_map.get((tx.id, occ))
+                if ovr is not None and ovr.cancelled:
+                    continue
+                eff_account_id = ovr.account_id if ovr is not None and ovr.account_id is not None else tx.account_id
+                eff_kind = ovr.kind if ovr is not None and ovr.kind is not None else tx.kind
+                eff_amount = ovr.amount if ovr is not None and ovr.amount is not None else tx.amount
+                if accounts_by_id.get(eff_account_id) is None:
+                    continue
+                signed = eff_amount if eff_kind == TransactionKind.income else -eff_amount
+                expected_by_date[occ] += signed
+
+    carry = Decimal("0")
+    start_adds: dict[date, Decimal] = defaultdict(lambda: Decimal("0"))
+    for a in account_rows:
+        sd = a.starting_balance_date or a.created_at.date()
+        bal = a.starting_balance
+        if sd < global_start:
+            carry += bal
+        elif global_start <= sd <= day_before:
+            start_adds[sd] += bal
+
+    d = global_start
+    while d <= day_before:
+        day_start = carry + start_adds.get(d, Decimal("0"))
+        if mode == "both":
+            tx_net = actual_by_date.get(d, Decimal("0")) + expected_by_date.get(d, Decimal("0"))
+        elif mode == "actual":
+            tx_net = actual_by_date.get(d, Decimal("0"))
+        else:
+            tx_net = expected_by_date.get(d, Decimal("0"))
+        carry = day_start + tx_net
+        d += timedelta(days=1)
+
+    return carry
+
+
+@app.get("/api/families/{family_id}/calendar-opening-balance", response_model=CalendarOpeningBalanceOut)
+def calendar_opening_balance(
+    family_id: int,
+    month: str,
+    mode: Literal["both", "actual", "expected"] = "both",
+    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    db=Depends(get_db),
+):
+    """
+    Total pooled balance at the beginning of the first day of `month`, matching the calendar chart.
+    """
+    user_id = get_current_user_id(access_token)
+    require_family_member(db=db, family_id=family_id, user_id=user_id)
+
+    try:
+        _month_range(month)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid month (use YYYY-MM)")
+
+    opening = _calendar_pool_opening_balance(db=db, family_id=family_id, month=month, mode=mode)
+    return CalendarOpeningBalanceOut(opening=str(opening))
 
 
 @app.get("/api/families/{family_id}/projection", response_model=ProjectionOut)

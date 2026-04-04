@@ -150,6 +150,25 @@ button.danger{
   min-width: 0;
 }
 
+.calendar-today-wrap{
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 0;
+}
+.calendar-today-spacer{
+  display: block;
+  min-height: 18px;
+}
+.calendar-today-btn.nav-link{
+  align-self: center;
+  margin-bottom: 0;
+  padding-left: 6px;
+  padding-right: 6px;
+}
+
 button.nav-link{
   background: transparent;
   border: none;

@@ -74,6 +74,8 @@ let state = {
   monthActualItems: [],
   monthExpectedItems: [],
   monthDailyBalances: new Map(),
+  /** Pooled opening balance at start of calendar month (from API); null = use legacy estimate */
+  calendarOpeningBalance: null,
 };
 
 let selectedExpectedInstance = null;
@@ -253,8 +255,22 @@ if (calendarNextMonth) {
   calendarNextMonth.addEventListener("click", () => shiftCalendarMonth(1));
 }
 
+const calendarGoToday = document.getElementById("calendarGoToday");
+if (calendarGoToday) {
+  calendarGoToday.addEventListener("click", async () => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = now.getMonth() + 1;
+    const ym = `${y}-${String(m).padStart(2, "0")}`;
+    applyCalendarMonthToPickers(ym);
+    if (monthInput) monthInput.value = ym;
+    await loadMonthAndCalendar();
+  });
+}
+
 if (calendarMode) {
-  calendarMode.addEventListener("change", () => {
+  calendarMode.addEventListener("change", async () => {
+    await loadCalendarOpeningBalance();
     computeMonthDailyBalances();
     renderCalendar();
   });
@@ -955,10 +971,31 @@ async function loadExpectedCalendar() {
   }
 }
 
+async function loadCalendarOpeningBalance() {
+  state.calendarOpeningBalance = null;
+  try {
+    if (!state.activeFamilyId) return;
+    const month = calendarMonth?.value || monthInput.value;
+    if (!month) return;
+    const mode = calendarMode?.value || "both";
+    const data = await api(
+      `/api/families/${state.activeFamilyId}/calendar-opening-balance?month=${encodeURIComponent(month)}&mode=${encodeURIComponent(mode)}`,
+      "GET",
+    );
+    if (data?.opening != null && data.opening !== "") {
+      const n = Number(data.opening);
+      if (Number.isFinite(n)) state.calendarOpeningBalance = n;
+    }
+  } catch {
+    state.calendarOpeningBalance = null;
+  }
+}
+
 async function loadMonthAndCalendar() {
   if (!state.activeFamilyId) return;
   await loadTransactions();
   await loadExpectedCalendar();
+  await loadCalendarOpeningBalance();
   computeMonthDailyBalances();
   renderCalendar();
 }
@@ -1000,16 +1037,21 @@ function computeMonthDailyBalances() {
     }
   }
 
+  const openingFromApi = state.calendarOpeningBalance;
   let carry = 0;
+  const useApiOpening = openingFromApi != null && Number.isFinite(openingFromApi);
+
   for (const account of state.accounts || []) {
     const startBal = Number(account.starting_balance || 0);
     const startDate = account.starting_balance_date || monthStartIso;
     if (startDate < monthStartIso) {
-      carry += startBal;
+      if (!useApiOpening) carry += startBal;
     } else if (startAdds.has(startDate)) {
       startAdds.set(startDate, (startAdds.get(startDate) || 0) + startBal);
     }
   }
+
+  if (useApiOpening) carry = openingFromApi;
 
   for (let d = 1; d <= daysInMonth; d++) {
     const iso = dateISOFromParts(year, monthIndex, d);
