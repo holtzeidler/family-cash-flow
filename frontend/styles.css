@@ -236,6 +236,81 @@ button.nav-link:hover{
   text-transform: uppercase;
 }
 
+/* Projected balance chart: title + compact controls on one row */
+.chart-panel-head{
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 14px;
+  margin-bottom: 10px;
+}
+.chart-card .chart-panel-head h2{
+  margin: 0;
+  flex: 0 1 auto;
+}
+.chart-panel-controls{
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px 10px;
+  justify-content: flex-end;
+  flex: 1 1 min(100%, 420px);
+  min-width: 0;
+}
+.chart-ctrl{
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.chart-panel-controls label{
+  font-size: 10px;
+  margin-bottom: 0;
+  letter-spacing: 0.02em;
+}
+.chart-panel-controls input[type="date"]{
+  width: auto;
+  min-width: 118px;
+  max-width: 152px;
+  padding: 5px 8px;
+  font-size: 12px;
+  border-radius: 8px;
+}
+.chart-zoom-row{
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.chart-panel-controls input[type="range"]{
+  width: min(110px, 26vw);
+  min-width: 72px;
+  padding: 0;
+  margin: 0;
+  vertical-align: middle;
+}
+.chart-days-meta{
+  font-size: 11px;
+  white-space: nowrap;
+}
+.chart-update-btn{
+  padding: 6px 10px;
+  font-size: 12px;
+  border-radius: 8px;
+  align-self: flex-end;
+  white-space: nowrap;
+}
+@media (max-width: 520px){
+  .chart-panel-controls{
+    justify-content: flex-start;
+    flex-basis: 100%;
+  }
+  .chart-update-btn{
+    align-self: center;
+  }
+}
+
 label{
   display:block;
   font-size: 12px;
