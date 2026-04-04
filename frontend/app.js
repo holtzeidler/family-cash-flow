@@ -1289,45 +1289,67 @@ function drawProjectionChart(daily) {
     maxY += 1;
   }
 
-  const leftPad = 44;
-  const rightPad = 12;
-  const topPad = 16;
-  const bottomPad = 28;
+  const leftPad = 8;
+  const rightPad = 8;
+  const topPad = 6;
+  const bottomPad = 18;
 
   const plotW = w - leftPad - rightPad;
   const plotH = h - topPad - bottomPad;
 
-  // Grid
-  ctx.strokeStyle = "rgba(255,255,255,0.08)";
+  const points = items.map((_, i) => {
+    const x = leftPad + (plotW * i) / (items.length - 1);
+    const v = balances[i];
+    const y = topPad + ((maxY - v) / (maxY - minY)) * plotH;
+    return { x, y };
+  });
+
+  // Light horizontal grid (Google Finance–style: few lines)
+  ctx.strokeStyle = "rgba(255,255,255,0.06)";
   ctx.lineWidth = 1;
-  for (let g = 0; g <= 4; g++) {
-    const y = topPad + (plotH * g) / 4;
+  for (let g = 0; g <= 3; g++) {
+    const y = topPad + (plotH * g) / 3;
     ctx.beginPath();
     ctx.moveTo(leftPad, y);
     ctx.lineTo(leftPad + plotW, y);
     ctx.stroke();
   }
 
-  // Polyline
-  ctx.strokeStyle = "rgba(102,163,255,0.95)";
-  ctx.lineWidth = 2;
+  // Area fill under the line
+  const baseY = topPad + plotH;
   ctx.beginPath();
-  for (let i = 0; i < items.length; i++) {
-    const x = leftPad + (plotW * i) / (items.length - 1);
-    const v = balances[i];
-    const y = topPad + ((maxY - v) / (maxY - minY)) * plotH;
-    if (i === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
-  }
+  ctx.moveTo(points[0].x, baseY);
+  for (const p of points) ctx.lineTo(p.x, p.y);
+  ctx.lineTo(points[points.length - 1].x, baseY);
+  ctx.closePath();
+  const grad = ctx.createLinearGradient(0, topPad, 0, baseY);
+  grad.addColorStop(0, "rgba(102,163,255,0.28)");
+  grad.addColorStop(0.55, "rgba(102,163,255,0.06)");
+  grad.addColorStop(1, "rgba(102,163,255,0)");
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // Line
+  ctx.strokeStyle = "rgba(102,163,255,0.98)";
+  ctx.lineWidth = 1.5;
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(points[0].x, points[0].y);
+  for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
   ctx.stroke();
 
-  // Start/end labels
-  ctx.fillStyle = "rgba(255,255,255,0.85)";
-  ctx.font = "12px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial";
+  // Start / end values along the bottom (compact)
   const startVal = balances[0];
   const endVal = balances[balances.length - 1];
-  ctx.fillText(`Start: $${fmtMoney(startVal)}`, 10, 16);
-  ctx.fillText(`End: $${fmtMoney(endVal)}`, 10, h - 12);
+  ctx.font = "11px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial";
+  ctx.fillStyle = "rgba(159,176,208,0.95)";
+  ctx.textBaseline = "alphabetic";
+  ctx.textAlign = "left";
+  ctx.fillText(`Start $${fmtMoney(startVal)}`, leftPad, h - 4);
+  ctx.textAlign = "right";
+  ctx.fillText(`End $${fmtMoney(endVal)}`, w - rightPad, h - 4);
+  ctx.textAlign = "left";
 }
 
 function setDefaultMonth() {
