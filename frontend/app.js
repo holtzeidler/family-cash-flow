@@ -151,6 +151,7 @@ const instanceExpectedTxId = document.getElementById("instanceExpectedTxId");
 const instanceKind = document.getElementById("instanceKind");
 const instanceAmount = document.getElementById("instanceAmount");
 const instanceDesc = document.getElementById("instanceDesc");
+const instanceNotes = document.getElementById("instanceNotes");
 const instanceAccountId = document.getElementById("instanceAccountId");
 const instanceCategoryId = document.getElementById("instanceCategoryId");
 const saveInstanceOverrideBtn = document.getElementById("saveInstanceOverrideBtn");
@@ -462,7 +463,7 @@ function openTxEditModal(tx) {
   txEditDate.value = tx.date;
   txEditKind.value = tx.kind;
   txEditAmount.value = tx.amount;
-  txEditDesc.value = tx.description || "";
+  txEditDesc.value = String(tx.description || "").slice(0, 12);
   if (txEditNotes) txEditNotes.value = tx.notes || "";
   renderTxEditCategoryOptions();
   txEditCategoryId.value = tx.category_id != null ? String(tx.category_id) : "";
@@ -797,6 +798,7 @@ cancelInstanceOverrideBtn.addEventListener("click", async () => {
     selectedExpectedInstance = null;
     if (instanceDate) instanceDate.value = "";
     if (instanceExpectedTxId) instanceExpectedTxId.value = "";
+    if (instanceNotes) instanceNotes.value = "";
     await loadExpectedCalendar();
     await loadCalendarMonthDaily();
     renderCalendar();
@@ -1321,7 +1323,8 @@ function selectExpectedInstance(item) {
   if (instanceExpectedTxId) instanceExpectedTxId.value = String(item.expected_transaction_id);
   if (instanceKind) instanceKind.value = item.kind;
   if (instanceAmount) instanceAmount.value = Number(item.amount);
-  if (instanceDesc) instanceDesc.value = item.description || "";
+  if (instanceDesc) instanceDesc.value = String(item.description || "").slice(0, 12);
+  if (instanceNotes) instanceNotes.value = item.notes && String(item.notes).trim() ? String(item.notes).trim() : "";
   if (instanceAccountId) instanceAccountId.value = String(item.account_id);
   if (instanceCategoryId) instanceCategoryId.value = item.category_id ? String(item.category_id) : "";
 

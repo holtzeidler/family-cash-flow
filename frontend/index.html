@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Family Cash Flow</title>
     <script>window.API_BASE = "__API_BASE__";</script>
-    <link rel="stylesheet" href="./styles.css?v=15" />
+    <link rel="stylesheet" href="./styles.css?v=16" />
   </head>
   <body>
     <div class="container">
@@ -42,7 +42,7 @@
             <div class="row-desc-notes">
               <div class="field-desc-short">
                 <label for="txDesc">Description</label>
-                <input id="txDesc" type="text" maxlength="500" class="input-desc-short" placeholder="e.g. Rent" />
+                <input id="txDesc" type="text" maxlength="12" class="input-desc-short" placeholder="e.g. Rent" />
               </div>
               <div class="field-notes-flex">
                 <label for="txNotes">Notes</label>
@@ -102,7 +102,7 @@
             <div class="row-desc-notes">
               <div class="field-desc-short">
                 <label for="expectedDesc">Description</label>
-                <input id="expectedDesc" type="text" maxlength="500" class="input-desc-short" placeholder="e.g. Electric" />
+                <input id="expectedDesc" type="text" maxlength="12" class="input-desc-short" placeholder="e.g. Electric" />
               </div>
               <div class="field-notes-flex">
                 <label for="expectedNotes">Notes</label>
@@ -345,8 +345,16 @@
               </div>
             </div>
             <div style="height:10px;"></div>
-            <label for="instanceDesc">Description</label>
-            <input id="instanceDesc" type="text" placeholder="e.g. Electric bill" />
+            <div class="row-desc-notes">
+              <div class="field-desc-short">
+                <label for="instanceDesc">Description</label>
+                <input id="instanceDesc" type="text" maxlength="12" class="input-desc-short" placeholder="e.g. Bill" />
+              </div>
+              <div class="field-notes-flex">
+                <label for="instanceNotes">Notes (series)</label>
+                <input id="instanceNotes" type="text" class="input-notes-flex input-notes-readonly" readonly tabindex="-1" title="Notes from the recurring series template" />
+              </div>
+            </div>
             <div style="height:10px;"></div>
             <div class="instance-scope-row" id="instanceScopeRow">
               <span class="instance-scope-label">Apply changes to</span>
@@ -431,7 +439,7 @@
         <div class="row-desc-notes">
           <div class="field-desc-short">
             <label for="txEditDesc">Description</label>
-            <input id="txEditDesc" type="text" maxlength="500" class="input-desc-short" placeholder="Description" />
+            <input id="txEditDesc" type="text" maxlength="12" class="input-desc-short" placeholder="Description" />
           </div>
           <div class="field-notes-flex">
             <label for="txEditNotes">Notes</label>
@@ -452,6 +460,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="./app.js?v=15"></script>
+    <script src="./app.js?v=16"></script>
   </body>
 </html>

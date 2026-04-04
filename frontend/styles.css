@@ -510,17 +510,19 @@ input, select{
 
 .row-desc-notes{
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 12px;
   align-items: flex-end;
+  min-width: 0;
 }
 .row-desc-notes .field-desc-short{
-  flex: 0 0 25ch;
-  max-width: 100%;
+  flex: 0 0 12ch;
+  width: 12ch;
+  max-width: 12ch;
   min-width: 0;
 }
 .row-desc-notes .field-notes-flex{
-  flex: 1 1 min(50ch, 100%);
+  flex: 1 1 0;
   min-width: 0;
 }
 .row-desc-notes label{
@@ -532,6 +534,10 @@ input, select{
 .input-desc-short,
 .input-notes-flex{
   width: 100%;
+}
+.input-notes-readonly{
+  opacity: 0.88;
+  cursor: default;
 }
 .tx-desc-link{
   color: var(--accent);
