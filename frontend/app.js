@@ -141,6 +141,9 @@ const runProjectionChartBtn = document.getElementById("runProjectionChartBtn");
 const chartErr = document.getElementById("chartErr");
 const projectionChartCanvas = document.getElementById("projectionChartCanvas");
 
+let projectionChartInstance = null;
+let projectionChartDefaultsApplied = false;
+
 // Expected instance editing
 const instanceDate = document.getElementById("instanceDate");
 const instanceExpectedTxId = document.getElementById("instanceExpectedTxId");
@@ -289,6 +292,36 @@ if (calendarCollapseBtn) {
   });
   try {
     if (localStorage.getItem(CALENDAR_COLLAPSED_KEY) === "1") applyCalendarCollapsed(true);
+  } catch (_) {}
+}
+
+const CHART_COLLAPSED_KEY = "familyCashFlow_chartCollapsed";
+
+function applyChartCollapsed(collapsed) {
+  const panel = document.getElementById("chartPanel");
+  const btn = document.getElementById("chartCollapseBtn");
+  if (!panel || !btn) return;
+  panel.classList.toggle("chart-panel--collapsed", collapsed);
+  btn.setAttribute("aria-expanded", collapsed ? "false" : "true");
+  btn.title = collapsed ? "Expand chart" : "Collapse chart";
+  try {
+    localStorage.setItem(CHART_COLLAPSED_KEY, collapsed ? "1" : "0");
+  } catch (_) {}
+}
+
+const chartCollapseBtn = document.getElementById("chartCollapseBtn");
+if (chartCollapseBtn) {
+  chartCollapseBtn.addEventListener("click", () => {
+    const panel = document.getElementById("chartPanel");
+    if (!panel) return;
+    const wasCollapsed = panel.classList.contains("chart-panel--collapsed");
+    applyChartCollapsed(!wasCollapsed);
+    if (wasCollapsed && projectionChartInstance) {
+      requestAnimationFrame(() => projectionChartInstance.resize());
+    }
+  });
+  try {
+    if (localStorage.getItem(CHART_COLLAPSED_KEY) === "1") applyChartCollapsed(true);
   } catch (_) {}
 }
 
@@ -575,27 +608,101 @@ runProjectionBtn.addEventListener("click", async () => {
 if (chartDaysRange && chartDaysLabel) {
   chartDaysRange.addEventListener("input", () => {
     chartDaysLabel.textContent = `${chartDaysRange.value} days`;
+    document.querySelectorAll(".chart-duration-btn").forEach((b) => b.classList.remove("is-active"));
   });
+}
+
+function getYtdDaysFromChartStart() {
+  if (!chartStart?.value) return 365;
+  const s = new Date(`${chartStart.value}T12:00:00`);
+  if (Number.isNaN(s.getTime())) return 365;
+  const y = s.getFullYear();
+  const end = new Date(y, 11, 31);
+  const days = Math.floor((end - s) / 864e5) + 1;
+  return Math.max(1, Math.min(4000, days));
+}
+
+function daysForPreset(preset) {
+  const map = {
+    "1D": 1,
+    "5D": 5,
+    "1M": 30,
+    "6M": 183,
+    "1Y": 365,
+    "5Y": 1825,
+    "MAX": 4000,
+  };
+  if (preset === "YTD") return getYtdDaysFromChartStart();
+  return map[preset] ?? 365;
+}
+
+function formatProjectionAxisDate(iso) {
+  if (!iso) return "";
+  const d = new Date(`${iso}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return String(iso);
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function formatProjectionTooltipDate(iso) {
+  if (!iso) return "";
+  const d = new Date(`${iso}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return String(iso);
+  return d.toLocaleDateString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function ensureProjectionChartDefaults() {
+  if (projectionChartDefaultsApplied || typeof Chart === "undefined") return;
+  projectionChartDefaultsApplied = true;
+  Chart.defaults.color = "#9fb0d0";
+  Chart.defaults.borderColor = "rgba(255,255,255,0.08)";
+  Chart.defaults.font.family =
+    'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+  Chart.defaults.font.size = 11;
+}
+
+async function refreshProjectionChart() {
+  show(chartErr, "");
+  if (projectionChartCanvas) projectionChartCanvas.dataset.status = "";
+  if (!state.activeFamilyId) throw new Error("Choose a family first");
+  if (!chartStart?.value) throw new Error("Chart start date is required");
+  const daysVal = Number(chartDaysRange.value);
+  if (!Number.isFinite(daysVal) || daysVal < 1 || daysVal > 4000) {
+    throw new Error("Horizon must be between 1 and 4000 days");
+  }
+  const summary = await api(
+    `/api/families/${state.activeFamilyId}/projection?start=${encodeURIComponent(chartStart.value)}&days=${daysVal}&include_accounts=false`,
+    "GET"
+  );
+  drawProjectionChart(summary?.daily || []);
 }
 
 runProjectionChartBtn.addEventListener("click", async () => {
   try {
-    show(chartErr, "");
-    projectionChartCanvas.dataset.status = "";
-    if (!state.activeFamilyId) throw new Error("Choose a family first");
-    if (!chartStart?.value) throw new Error("Chart start date is required");
-
-    const startVal = chartStart.value;
-    const daysVal = Number(chartDaysRange.value);
-
-    const summary = await api(
-      `/api/families/${state.activeFamilyId}/projection?start=${encodeURIComponent(startVal)}&days=${daysVal}&include_accounts=false`,
-      "GET"
-    );
-
-    drawProjectionChart(summary?.daily || []);
+    document.querySelectorAll(".chart-duration-btn").forEach((b) => b.classList.remove("is-active"));
+    await refreshProjectionChart();
   } catch (e) {
     show(chartErr, e.message || "Failed to update chart");
+  }
+});
+
+document.querySelector(".chart-duration-bar")?.addEventListener("click", async (e) => {
+  const btn = e.target.closest(".chart-duration-btn");
+  if (!btn) return;
+  try {
+    const preset = btn.dataset.preset;
+    if (!preset) return;
+    const d = daysForPreset(preset);
+    chartDaysRange.value = String(d);
+    if (chartDaysLabel) chartDaysLabel.textContent = `${d} days`;
+    document.querySelectorAll(".chart-duration-btn").forEach((b) => b.classList.toggle("is-active", b === btn));
+    await refreshProjectionChart();
+  } catch (err) {
+    show(chartErr, err.message || "Failed to update chart");
   }
 });
 
@@ -1261,95 +1368,119 @@ function renderCalendar() {
 }
 
 function drawProjectionChart(daily) {
+  const emptyEl = document.getElementById("projectionChartEmpty");
   if (!projectionChartCanvas) return;
+
+  if (projectionChartInstance) {
+    projectionChartInstance.destroy();
+    projectionChartInstance = null;
+  }
+
   const items = daily || [];
-  const ctx = projectionChartCanvas.getContext("2d");
-  if (!ctx) return;
-
-  const w = projectionChartCanvas.clientWidth;
-  const h = projectionChartCanvas.clientHeight;
-  const dpr = window.devicePixelRatio || 1;
-  projectionChartCanvas.width = Math.floor(w * dpr);
-  projectionChartCanvas.height = Math.floor(h * dpr);
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-  ctx.clearRect(0, 0, w, h);
-
   if (items.length < 2) {
-    ctx.fillStyle = "rgba(255,255,255,0.7)";
-    ctx.fillText("No data", 14, 24);
+    if (emptyEl) {
+      emptyEl.style.display = "flex";
+      emptyEl.textContent =
+        items.length === 0 ? "No data for this range." : "Not enough data points to draw the chart.";
+    }
     return;
   }
 
-  const balances = items.map((d) => Number(d.total_balance ?? 0));
-  let minY = Math.min(...balances);
-  let maxY = Math.max(...balances);
-  if (minY === maxY) {
-    minY -= 1;
-    maxY += 1;
+  if (typeof Chart === "undefined") {
+    if (emptyEl) {
+      emptyEl.style.display = "flex";
+      emptyEl.textContent = "Chart library failed to load. Check your network connection.";
+    }
+    return;
   }
 
-  const leftPad = 8;
-  const rightPad = 8;
-  const topPad = 6;
-  const bottomPad = 18;
+  if (emptyEl) emptyEl.style.display = "none";
 
-  const plotW = w - leftPad - rightPad;
-  const plotH = h - topPad - bottomPad;
+  ensureProjectionChartDefaults();
 
-  const points = items.map((_, i) => {
-    const x = leftPad + (plotW * i) / (items.length - 1);
-    const v = balances[i];
-    const y = topPad + ((maxY - v) / (maxY - minY)) * plotH;
-    return { x, y };
+  const dateLabels = items.map((d) => d.date);
+  const values = items.map((d) => Number(d.total_balance ?? 0));
+
+  const ctx = projectionChartCanvas.getContext("2d");
+  if (!ctx) return;
+
+  projectionChartInstance = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: dateLabels,
+      datasets: [
+        {
+          label: "Balance",
+          data: values,
+          borderColor: "rgba(102,163,255,0.95)",
+          backgroundColor: "rgba(102,163,255,0.14)",
+          borderWidth: 1.5,
+          fill: true,
+          tension: 0,
+          pointRadius: 0,
+          pointHoverRadius: 4,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: "index", intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: (ctxItems) => {
+              const i = ctxItems[0]?.dataIndex ?? 0;
+              return formatProjectionTooltipDate(dateLabels[i]);
+            },
+            label: (ctx) => ` Balance $${fmtMoney(ctx.parsed.y)}`,
+          },
+        },
+      },
+      scales: {
+        x: {
+          type: "category",
+          grid: { color: "rgba(255,255,255,0.06)", drawBorder: false },
+          ticks: {
+            autoSkip: true,
+            maxTicksLimit: 10,
+            maxRotation: 0,
+            callback: function (tickValue) {
+              const lbl = typeof tickValue === "number" ? dateLabels[tickValue] : tickValue;
+              if (lbl == null || lbl === "") return "";
+              return formatProjectionAxisDate(String(lbl));
+            },
+          },
+          title: {
+            display: true,
+            text: "Date",
+            color: "#9fb0d0",
+            font: { size: 11, weight: "500" },
+            padding: { top: 6 },
+          },
+        },
+        y: {
+          grid: { color: "rgba(255,255,255,0.06)", drawBorder: false },
+          ticks: {
+            maxTicksLimit: 7,
+            callback: (value) =>
+              "$" +
+              Number(value).toLocaleString(undefined, {
+                maximumFractionDigits: 0,
+                minimumFractionDigits: 0,
+              }),
+          },
+          title: {
+            display: true,
+            text: "Balance",
+            color: "#9fb0d0",
+            font: { size: 11, weight: "500" },
+          },
+        },
+      },
+    },
   });
-
-  // Light horizontal grid (Google Finance–style: few lines)
-  ctx.strokeStyle = "rgba(255,255,255,0.06)";
-  ctx.lineWidth = 1;
-  for (let g = 0; g <= 3; g++) {
-    const y = topPad + (plotH * g) / 3;
-    ctx.beginPath();
-    ctx.moveTo(leftPad, y);
-    ctx.lineTo(leftPad + plotW, y);
-    ctx.stroke();
-  }
-
-  // Area fill under the line
-  const baseY = topPad + plotH;
-  ctx.beginPath();
-  ctx.moveTo(points[0].x, baseY);
-  for (const p of points) ctx.lineTo(p.x, p.y);
-  ctx.lineTo(points[points.length - 1].x, baseY);
-  ctx.closePath();
-  const grad = ctx.createLinearGradient(0, topPad, 0, baseY);
-  grad.addColorStop(0, "rgba(102,163,255,0.28)");
-  grad.addColorStop(0.55, "rgba(102,163,255,0.06)");
-  grad.addColorStop(1, "rgba(102,163,255,0)");
-  ctx.fillStyle = grad;
-  ctx.fill();
-
-  // Line
-  ctx.strokeStyle = "rgba(102,163,255,0.98)";
-  ctx.lineWidth = 1.5;
-  ctx.lineJoin = "round";
-  ctx.lineCap = "round";
-  ctx.beginPath();
-  ctx.moveTo(points[0].x, points[0].y);
-  for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
-  ctx.stroke();
-
-  // Start / end values along the bottom (compact)
-  const startVal = balances[0];
-  const endVal = balances[balances.length - 1];
-  ctx.font = "11px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial";
-  ctx.fillStyle = "rgba(159,176,208,0.95)";
-  ctx.textBaseline = "alphabetic";
-  ctx.textAlign = "left";
-  ctx.fillText(`Start $${fmtMoney(startVal)}`, leftPad, h - 4);
-  ctx.textAlign = "right";
-  ctx.fillText(`End $${fmtMoney(endVal)}`, w - rightPad, h - 4);
-  ctx.textAlign = "left";
 }
 
 function setDefaultMonth() {
