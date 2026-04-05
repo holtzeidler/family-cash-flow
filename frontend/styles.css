@@ -609,6 +609,20 @@ input, select{
   padding: 8px 6px;
 }
 
+.expected-second-day-row{
+  margin-top: 8px;
+}
+.expected-second-day-row label{
+  display: block;
+  margin-bottom: 4px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.expected-second-day-row input[type="number"]{
+  max-width: 8rem;
+  box-sizing: border-box;
+}
+
 .totals{
   display:flex;
   gap:10px;

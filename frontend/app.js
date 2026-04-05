@@ -110,6 +110,8 @@ const expectedTxList = document.getElementById("expectedTxList");
 const expectedStartDate = document.getElementById("expectedStartDate");
 const expectedLastTxnDate = document.getElementById("expectedLastTxnDate");
 const expectedRecurrence = document.getElementById("expectedRecurrence");
+const expectedTwiceMonthlyFields = document.getElementById("expectedTwiceMonthlyFields");
+const expectedSecondDayOfMonth = document.getElementById("expectedSecondDayOfMonth");
 const expectedKind = document.getElementById("expectedKind");
 const expectedAmount = document.getElementById("expectedAmount");
 const expectedDesc = document.getElementById("expectedDesc");
@@ -571,11 +573,26 @@ addExpectedTxBtn.addEventListener("click", async () => {
       throw new Error("Last transaction date cannot be before start date");
     }
 
+    let secondDayOfMonth = null;
+    if (recurrenceVal === "twice_monthly") {
+      const raw = expectedSecondDayOfMonth && expectedSecondDayOfMonth.value;
+      const n = raw !== "" && raw != null ? Number(raw) : NaN;
+      if (!Number.isFinite(n) || n < 1 || n > 31) {
+        throw new Error("2nd day of month (1–31) is required for twice monthly");
+      }
+      const startDay = Number(startDateVal.slice(8, 10));
+      if (n === startDay) {
+        throw new Error("2nd day of month must differ from the start date’s day of month");
+      }
+      secondDayOfMonth = n;
+    }
+
     await api(`/api/families/${state.activeFamilyId}/expected-transactions`, "POST", {
       account_id: Number(accountIdVal),
       start_date: startDateVal,
       end_date: lastTxnVal,
       recurrence: recurrenceVal,
+      second_day_of_month: secondDayOfMonth,
       description: desc,
       notes: notesVal,
       kind: kindVal,
@@ -586,6 +603,7 @@ addExpectedTxBtn.addEventListener("click", async () => {
     expectedDesc.value = "";
     if (expectedNotes) expectedNotes.value = "";
     if (expectedLastTxnDate) expectedLastTxnDate.value = "";
+    if (expectedSecondDayOfMonth) expectedSecondDayOfMonth.value = "";
     expectedAmount.value = "";
     await loadExpectedTransactions();
     await loadExpectedCalendar();
@@ -949,6 +967,16 @@ function clearAccountEdit() {
   show(accErr, "");
 }
 
+function updateExpectedTwiceMonthlyVisibility() {
+  if (!expectedTwiceMonthlyFields || !expectedRecurrence) return;
+  const on = expectedRecurrence.value === "twice_monthly";
+  expectedTwiceMonthlyFields.style.display = on ? "block" : "none";
+}
+
+if (expectedRecurrence) {
+  expectedRecurrence.addEventListener("change", updateExpectedTwiceMonthlyVisibility);
+}
+
 function renderExpectedTransactions(items) {
   expectedTxList.innerHTML = "";
   if (!items || items.length === 0) {
@@ -965,9 +993,18 @@ function renderExpectedTransactions(items) {
 
     const amtClass = tx.kind === "income" ? "income" : "expense";
     const kindSign = tx.kind === "income" ? "+" : "-";
+    const startDom =
+      tx.start_date != null && String(tx.start_date).length >= 10
+        ? Number(String(tx.start_date).slice(8, 10))
+        : null;
+    const twiceMeta =
+      tx.recurrence === "twice_monthly" && tx.second_day_of_month != null && startDom != null && !Number.isNaN(startDom)
+        ? `days ${startDom} & ${tx.second_day_of_month}`
+        : "";
     const metaBits = [
       `${tx.start_date}`,
       tx.end_date ? `ends ${tx.end_date}` : "",
+      twiceMeta,
       tx.recurrence ? `recurs: ${tx.recurrence}` : "",
       tx.account ? `· ${tx.account}` : "",
       tx.category ? `· ${tx.category}` : "",
@@ -1642,6 +1679,7 @@ async function main() {
     await loadExpectedTransactions();
     await loadMonthAndCalendar();
   }
+  updateExpectedTwiceMonthlyVisibility();
 }
 
 main().catch((e) => {

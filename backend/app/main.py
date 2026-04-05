@@ -19,7 +19,7 @@ from pydantic import BaseModel, EmailStr, Field, field_validator
 from pydantic_settings import BaseSettings
 from sqlalchemy import Date as SA_Date
 from sqlalchemy import Enum as SAEnum
-from sqlalchemy import Boolean, UniqueConstraint
+from sqlalchemy import Boolean, Integer, UniqueConstraint
 from sqlalchemy import ForeignKey
 from sqlalchemy import String
 from sqlalchemy import delete, func, select, text
@@ -80,6 +80,7 @@ class Recurrence(str, Enum):
     once = "once"
     weekly = "weekly"
     monthly = "monthly"
+    twice_monthly = "twice_monthly"  # two fixed days per month (start day + second day)
     semiannual = "semiannual"  # twice yearly / every 6 months
     yearly = "yearly"
 
@@ -174,6 +175,8 @@ class ExpectedTransaction(Base):
     start_date: Mapped[date] = mapped_column(SA_Date, nullable=False, index=True)
     end_date: Mapped[Optional[date]] = mapped_column(SA_Date, nullable=True, index=True)
     recurrence: Mapped[Recurrence] = mapped_column(SAEnum(Recurrence), nullable=False, default=Recurrence.once)
+    # For recurrence=twice_monthly: second calendar day-of-month (1–31); first day is start_date.day.
+    second_day_of_month: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
     description: Mapped[str] = mapped_column(String(500), nullable=False, default="")
     notes: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
@@ -356,6 +359,8 @@ class ExpectedTransactionIn(BaseModel):
     start_date: date
     end_date: Optional[date] = None
     recurrence: Recurrence = Recurrence.monthly
+    # Required when recurrence is twice_monthly: second day of month (1–31), must differ from start_date.day.
+    second_day_of_month: Optional[int] = Field(default=None, ge=1, le=31)
 
     description: str = Field(default="", max_length=500)
     notes: Optional[str] = Field(default=None, max_length=500)
@@ -371,12 +376,32 @@ class ExpectedTransactionOut(BaseModel):
     start_date: date
     end_date: Optional[date]
     recurrence: Recurrence
+    second_day_of_month: Optional[int] = None
     description: str
     notes: Optional[str] = None
     kind: TransactionKind
     amount: Decimal
     category: Optional[str]
     created_by: int
+
+
+def _validate_expected_transaction_recurrence(payload: ExpectedTransactionIn) -> None:
+    if payload.recurrence == Recurrence.twice_monthly:
+        if payload.second_day_of_month is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="second_day_of_month is required for twice monthly recurrence",
+            )
+        if payload.second_day_of_month == payload.start_date.day:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Second day of month must differ from the start date's day of month",
+            )
+    elif payload.second_day_of_month is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="second_day_of_month is only valid when recurrence is twice monthly",
+        )
 
 
 class ExpectedInstanceOverrideIn(BaseModel):
@@ -511,7 +536,8 @@ def startup_populate_schema():
     Base.metadata.create_all(bind=engine)
     _ensure_account_starting_balance_date_column()
     _ensure_notes_columns()
-    _ensure_recurrence_weekly_enum_postgres()
+    _ensure_expected_second_day_column()
+    _ensure_recurrence_enum_extensions_postgres()
 
 
 def _ensure_account_starting_balance_date_column():
@@ -549,10 +575,23 @@ def _ensure_notes_columns() -> None:
                 conn.execute(text(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS notes VARCHAR(500)"))
 
 
-def _ensure_recurrence_weekly_enum_postgres() -> None:
-    """Add weekly to PostgreSQL native enum type if the DB predates that value."""
+def _ensure_expected_second_day_column() -> None:
+    """Add second_day_of_month for twice_monthly recurrence."""
+    with engine.begin() as conn:
+        if settings.DATABASE_URL.startswith("sqlite"):
+            cols = conn.execute(text("PRAGMA table_info(expected_transactions)")).fetchall()
+            has_col = any(str(row[1]) == "second_day_of_month" for row in cols)
+            if not has_col:
+                conn.execute(text("ALTER TABLE expected_transactions ADD COLUMN second_day_of_month INTEGER"))
+        else:
+            conn.execute(text("ALTER TABLE expected_transactions ADD COLUMN IF NOT EXISTS second_day_of_month INTEGER"))
+
+
+def _ensure_recurrence_enum_extensions_postgres() -> None:
+    """Add new recurrence enum labels on PostgreSQL if the DB predates them."""
     if not settings.DATABASE_URL.startswith("postgresql"):
         return
+    log = logging.getLogger(__name__)
     with engine.begin() as conn:
         row = conn.execute(
             text(
@@ -564,25 +603,26 @@ def _ensure_recurrence_weekly_enum_postgres() -> None:
         if not row:
             return
         typname = row[0]
-        exists = conn.execute(
-            text(
-                "SELECT 1 FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid "
-                "WHERE t.typname = :tn AND e.enumlabel = 'weekly'"
-            ),
-            {"tn": typname},
-        ).fetchone()
-        if exists:
-            return
-        # Quoted identifier matches SQLAlchemy's default enum type name (e.g. "Recurrence").
-        try:
-            conn.execute(text(f'ALTER TYPE "{typname}" ADD VALUE \'weekly\''))
-        except Exception:
+        for label in ("weekly", "twice_monthly"):
+            exists = conn.execute(
+                text(
+                    "SELECT 1 FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid "
+                    "WHERE t.typname = :tn AND e.enumlabel = :lb"
+                ),
+                {"tn": typname, "lb": label},
+            ).fetchone()
+            if exists:
+                continue
             try:
-                conn.execute(text(f"ALTER TYPE {typname} ADD VALUE 'weekly'"))
+                conn.execute(text(f'ALTER TYPE "{typname}" ADD VALUE \'{label}\''))
             except Exception:
-                logging.getLogger(__name__).warning(
-                    "Could not ALTER TYPE to add weekly recurrence; new series may fail on Postgres until fixed."
-                )
+                try:
+                    conn.execute(text(f"ALTER TYPE {typname} ADD VALUE '{label}'"))
+                except Exception:
+                    log.warning(
+                        "Could not ALTER TYPE to add %s recurrence; Postgres may reject inserts until fixed.",
+                        label,
+                    )
 
 
 @app.post("/api/auth/register", status_code=status.HTTP_201_CREATED, response_model=RegisterOut)
@@ -805,6 +845,7 @@ def list_expected_transactions(
                 start_date=tx.start_date,
                 end_date=tx.end_date,
                 recurrence=tx.recurrence,
+                second_day_of_month=tx.second_day_of_month,
                 description=tx.description,
                 notes=tx.notes,
                 kind=tx.kind,
@@ -840,6 +881,8 @@ def create_expected_transaction(
     if payload.end_date is not None and payload.end_date < payload.start_date:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="end_date cannot be before start_date")
 
+    _validate_expected_transaction_recurrence(payload)
+
     tx = ExpectedTransaction(
         family_id=family_id,
         account_id=payload.account_id,
@@ -847,6 +890,7 @@ def create_expected_transaction(
         start_date=payload.start_date,
         end_date=payload.end_date,
         recurrence=payload.recurrence,
+        second_day_of_month=payload.second_day_of_month if payload.recurrence == Recurrence.twice_monthly else None,
         description=payload.description,
         notes=payload.notes.strip() if payload.notes and payload.notes.strip() else None,
         kind=payload.kind,
@@ -863,6 +907,7 @@ def create_expected_transaction(
         start_date=tx.start_date,
         end_date=tx.end_date,
         recurrence=tx.recurrence,
+        second_day_of_month=tx.second_day_of_month,
         description=tx.description,
         notes=tx.notes,
         kind=tx.kind,
@@ -906,10 +951,13 @@ def update_expected_transaction(
     if payload.end_date is not None and payload.end_date < payload.start_date:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="end_date cannot be before start_date")
 
+    _validate_expected_transaction_recurrence(payload)
+
     tx.account_id = payload.account_id
     tx.start_date = payload.start_date
     tx.end_date = payload.end_date
     tx.recurrence = payload.recurrence
+    tx.second_day_of_month = payload.second_day_of_month if payload.recurrence == Recurrence.twice_monthly else None
     tx.description = payload.description
     tx.notes = payload.notes.strip() if payload.notes and payload.notes.strip() else None
     tx.kind = payload.kind
@@ -925,6 +973,7 @@ def update_expected_transaction(
         start_date=tx.start_date,
         end_date=tx.end_date,
         recurrence=tx.recurrence,
+        second_day_of_month=tx.second_day_of_month,
         description=tx.description,
         notes=tx.notes,
         kind=tx.kind,
@@ -1111,6 +1160,7 @@ def apply_expected_from_occurrence(
         recurrence=tx.recurrence,
         range_start=occurrence_date,
         range_end_exclusive=occurrence_date + timedelta(days=1),
+        second_day_of_month=tx.second_day_of_month,
     )
     if occurrence_date not in hits:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Date is not a scheduled occurrence for this series")
@@ -1137,6 +1187,7 @@ def apply_expected_from_occurrence(
         series_end_date=tx.end_date,
         recurrence=tx.recurrence,
         occurrence_date=occurrence_date,
+        second_day_of_month=tx.second_day_of_month,
     )
     if prev_occ is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Could not resolve previous occurrence for split")
@@ -1151,6 +1202,7 @@ def apply_expected_from_occurrence(
         start_date=occurrence_date,
         end_date=old_end,
         recurrence=tx.recurrence,
+        second_day_of_month=tx.second_day_of_month,
         description=payload.description,
         notes=tx.notes,
         kind=payload.kind,
@@ -1207,6 +1259,7 @@ def expected_calendar(
             recurrence=tx.recurrence,
             range_start=start_date,
             range_end_exclusive=end_date,
+            second_day_of_month=tx.second_day_of_month,
         )
 
         for occ in occ_dates:
@@ -1259,6 +1312,32 @@ def _add_months(d: date, months: int) -> date:
     return date(new_year, new_month, new_day)
 
 
+def _date_on_day_in_month(year: int, month: int, day: int) -> date:
+    last = _last_day_of_month(year, month)
+    return date(year, month, min(day, last))
+
+
+def _iter_twice_monthly_occurrences(
+    start_date: date,
+    series_end_date: Optional[date],
+    day1: int,
+    day2: int,
+):
+    """Chronological occurrences on two fixed calendar days each month (day-of-month 1–31, clamped)."""
+    y, m = start_date.year, start_date.month
+    for _ in range(2400):
+        for d in sorted({_date_on_day_in_month(y, m, day1), _date_on_day_in_month(y, m, day2)}):
+            if d < start_date:
+                continue
+            if series_end_date is not None and d > series_end_date:
+                return
+            yield d
+        if m == 12:
+            y, m = y + 1, 1
+        else:
+            m += 1
+
+
 def _expected_occurrences_in_range(
     *,
     start_date: date,
@@ -1266,6 +1345,7 @@ def _expected_occurrences_in_range(
     recurrence: Recurrence,
     range_start: date,
     range_end_exclusive: date,
+    second_day_of_month: Optional[int] = None,
 ) -> list[date]:
     if recurrence == Recurrence.once:
         if start_date < range_end_exclusive and start_date >= range_start and (end_date is None or start_date <= end_date):
@@ -1287,6 +1367,20 @@ def _expected_occurrences_in_range(
                 occurrences_w.append(current_w)
             current_w += timedelta(days=7)
         return occurrences_w
+
+    if recurrence == Recurrence.twice_monthly:
+        if second_day_of_month is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="second_day_of_month is required for twice monthly recurrence",
+            )
+        out_tm: list[date] = []
+        for d in _iter_twice_monthly_occurrences(start_date, end_date, start_date.day, second_day_of_month):
+            if d >= range_end_exclusive:
+                break
+            if d >= range_start:
+                out_tm.append(d)
+        return out_tm
 
     if recurrence == Recurrence.monthly:
         step_months = 1
@@ -1322,6 +1416,7 @@ def _occurrence_immediately_before(
     series_end_date: Optional[date],
     recurrence: Recurrence,
     occurrence_date: date,
+    second_day_of_month: Optional[int] = None,
 ) -> Optional[date]:
     """
     Last scheduled occurrence strictly before `occurrence_date` in the same series.
@@ -1341,6 +1436,19 @@ def _occurrence_immediately_before(
             if series_end_date is not None and current_w > series_end_date:
                 break
         return prev_w
+
+    if recurrence == Recurrence.twice_monthly:
+        if second_day_of_month is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="second_day_of_month is required for twice monthly recurrence",
+            )
+        prev_tm: Optional[date] = None
+        for d in _iter_twice_monthly_occurrences(start_date, series_end_date, start_date.day, second_day_of_month):
+            if d >= occurrence_date:
+                return prev_tm
+            prev_tm = d
+        return prev_tm
 
     if recurrence == Recurrence.monthly:
         step_months = 1
@@ -1424,6 +1532,7 @@ def _calendar_month_daily_balances(
                 recurrence=tx.recurrence,
                 range_start=global_start,
                 range_end_exclusive=month_end_excl,
+                second_day_of_month=tx.second_day_of_month,
             )
             for occ in occ_dates:
                 if occ > last_day:
@@ -1559,6 +1668,7 @@ def projection(
             recurrence=tx.recurrence,
             range_start=range_start,
             range_end_exclusive=range_end,
+            second_day_of_month=tx.second_day_of_month,
         )
         if not occ_dates:
             continue

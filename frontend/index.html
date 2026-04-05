@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Family Cash Flow</title>
     <script>window.API_BASE = "__API_BASE__";</script>
-    <link rel="stylesheet" href="./styles.css?v=20" />
+    <link rel="stylesheet" href="./styles.css?v=21" />
   </head>
   <body>
     <div class="container">
@@ -76,6 +76,7 @@
                 <label for="expectedRecurrence">Recurrence</label>
                 <select id="expectedRecurrence" title="How often this repeats">
                   <option value="monthly" selected>Monthly</option>
+                  <option value="twice_monthly">Twice monthly</option>
                   <option value="weekly">Weekly</option>
                   <option value="semiannual">Twice yearly (every 6 months)</option>
                   <option value="yearly">Yearly</option>
@@ -90,6 +91,21 @@
                   title="Optional. Last calendar day for an occurrence. Leave blank for no end date."
                 />
               </div>
+            </div>
+            <div id="expectedTwiceMonthlyFields" class="expected-second-day-row" style="display: none">
+              <label for="expectedSecondDayOfMonth">2nd day of month</label>
+              <input
+                id="expectedSecondDayOfMonth"
+                type="number"
+                min="1"
+                max="31"
+                step="1"
+                placeholder="e.g. 15"
+                title="Second scheduled day each month; must differ from the start date’s calendar day."
+              />
+              <p style="margin: 6px 0 0; font-size: 12px; color: var(--muted)">
+                Required for twice monthly: other day of the month (1–31), not the same as the start date’s day.
+              </p>
             </div>
             <div style="height:10px;"></div>
 
@@ -469,6 +485,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="./app.js?v=20"></script>
+    <script src="./app.js?v=21"></script>
   </body>
 </html>
