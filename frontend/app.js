@@ -108,6 +108,7 @@ const cancelAccountEditBtn = document.getElementById("cancelAccountEditBtn");
 const expectedTxErr = document.getElementById("expectedTxErr");
 const expectedTxList = document.getElementById("expectedTxList");
 const expectedStartDate = document.getElementById("expectedStartDate");
+const expectedLastTxnDate = document.getElementById("expectedLastTxnDate");
 const expectedRecurrence = document.getElementById("expectedRecurrence");
 const expectedKind = document.getElementById("expectedKind");
 const expectedAmount = document.getElementById("expectedAmount");
@@ -565,9 +566,15 @@ addExpectedTxBtn.addEventListener("click", async () => {
     if (!amountVal || Number(amountVal) <= 0) throw new Error("Amount must be > 0");
     if (!accountIdVal) throw new Error("Account is required");
 
+    const lastTxnVal = expectedLastTxnDate && expectedLastTxnDate.value ? expectedLastTxnDate.value : null;
+    if (lastTxnVal && lastTxnVal < startDateVal) {
+      throw new Error("Last transaction date cannot be before start date");
+    }
+
     await api(`/api/families/${state.activeFamilyId}/expected-transactions`, "POST", {
       account_id: Number(accountIdVal),
       start_date: startDateVal,
+      end_date: lastTxnVal,
       recurrence: recurrenceVal,
       description: desc,
       notes: notesVal,
@@ -578,6 +585,7 @@ addExpectedTxBtn.addEventListener("click", async () => {
 
     expectedDesc.value = "";
     if (expectedNotes) expectedNotes.value = "";
+    if (expectedLastTxnDate) expectedLastTxnDate.value = "";
     expectedAmount.value = "";
     await loadExpectedTransactions();
     await loadExpectedCalendar();
@@ -959,6 +967,7 @@ function renderExpectedTransactions(items) {
     const kindSign = tx.kind === "income" ? "+" : "-";
     const metaBits = [
       `${tx.start_date}`,
+      tx.end_date ? `ends ${tx.end_date}` : "",
       tx.recurrence ? `recurs: ${tx.recurrence}` : "",
       tx.account ? `· ${tx.account}` : "",
       tx.category ? `· ${tx.category}` : "",
