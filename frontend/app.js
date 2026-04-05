@@ -1455,7 +1455,7 @@ function renderCalendar() {
     const dayBal = state.monthDailyBalances.get(iso);
 
     if (dayBal && metricsEl) {
-      metricsEl.innerHTML = `<div class="cal-stat cal-balance">Balance: $${fmtMoney(dayBal.end)}</div>`;
+      metricsEl.innerHTML = `<div class="cal-stat cal-balance">$${fmtMoney(dayBal.end)}</div>`;
     }
 
     wrapper.appendChild(cell);

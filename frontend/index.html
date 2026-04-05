@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Family Cash Flow</title>
     <script>window.API_BASE = "__API_BASE__";</script>
-    <link rel="stylesheet" href="./styles.css?v=17" />
+    <link rel="stylesheet" href="./styles.css?v=18" />
   </head>
   <body>
     <div class="container">
@@ -67,28 +67,28 @@
 
           <div class="card">
             <h2>Add Recurring Transactions</h2>
-            <div class="row two">
+            <div class="row three row-recurring-head">
               <div>
-                <label for="expectedStartDate">Start date</label>
-                <input id="expectedStartDate" type="date" />
+                <label for="expectedStartDate">Start</label>
+                <input id="expectedStartDate" type="date" title="First occurrence date" />
               </div>
               <div>
                 <label for="expectedRecurrence">Recurrence</label>
-                <select id="expectedRecurrence">
+                <select id="expectedRecurrence" title="How often this repeats">
                   <option value="monthly" selected>Monthly</option>
                   <option value="semiannual">Twice yearly (every 6 months)</option>
                   <option value="yearly">Yearly</option>
                   <option value="once">Once</option>
                 </select>
               </div>
-            </div>
-            <div style="height:10px;"></div>
-            <div>
-              <label for="expectedLastTxnDate">Last transaction date</label>
-              <input id="expectedLastTxnDate" type="date" />
-              <p style="margin: 6px 0 0; font-size: 12px; color: var(--muted)">
-                Optional — last calendar day a scheduled occurrence may fall on. Leave blank for no end date.
-              </p>
+              <div>
+                <label for="expectedLastTxnDate" title="Optional. Last day a scheduled occurrence may fall on. Blank = no end.">Last txn</label>
+                <input
+                  id="expectedLastTxnDate"
+                  type="date"
+                  title="Optional. Last calendar day for an occurrence. Leave blank for no end date."
+                />
+              </div>
             </div>
             <div style="height:10px;"></div>
 
@@ -468,6 +468,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="./app.js?v=17"></script>
+    <script src="./app.js?v=18"></script>
   </body>
 </html>

@@ -580,6 +580,35 @@ input, select{
   .row.three{ grid-template-columns: 1fr 1fr 1fr; }
 }
 
+/* Add recurring: start + recurrence + last txn on one row in narrow sidebar */
+.row.row-recurring-head{
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  align-items: end;
+}
+.row.row-recurring-head > div{
+  min-width: 0;
+}
+.row.row-recurring-head label{
+  font-size: 12px;
+  margin-bottom: 4px;
+  display: block;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.row.row-recurring-head input[type="date"],
+.row.row-recurring-head select{
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  font-size: 13px;
+  padding: 8px 6px;
+}
+
 .totals{
   display:flex;
   gap:10px;
