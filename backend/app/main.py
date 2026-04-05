@@ -78,6 +78,7 @@ class AccountType(str, Enum):
 
 class Recurrence(str, Enum):
     once = "once"
+    weekly = "weekly"
     monthly = "monthly"
     semiannual = "semiannual"  # twice yearly / every 6 months
     yearly = "yearly"
@@ -510,6 +511,7 @@ def startup_populate_schema():
     Base.metadata.create_all(bind=engine)
     _ensure_account_starting_balance_date_column()
     _ensure_notes_columns()
+    _ensure_recurrence_weekly_enum_postgres()
 
 
 def _ensure_account_starting_balance_date_column():
@@ -545,6 +547,42 @@ def _ensure_notes_columns() -> None:
                     conn.execute(text(f"ALTER TABLE {table} ADD COLUMN notes VARCHAR(500)"))
             else:
                 conn.execute(text(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS notes VARCHAR(500)"))
+
+
+def _ensure_recurrence_weekly_enum_postgres() -> None:
+    """Add weekly to PostgreSQL native enum type if the DB predates that value."""
+    if not settings.DATABASE_URL.startswith("postgresql"):
+        return
+    with engine.begin() as conn:
+        row = conn.execute(
+            text(
+                "SELECT t.typname FROM pg_type t "
+                "JOIN pg_enum e ON t.oid = e.enumtypid "
+                "WHERE e.enumlabel = 'monthly' LIMIT 1"
+            )
+        ).fetchone()
+        if not row:
+            return
+        typname = row[0]
+        exists = conn.execute(
+            text(
+                "SELECT 1 FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid "
+                "WHERE t.typname = :tn AND e.enumlabel = 'weekly'"
+            ),
+            {"tn": typname},
+        ).fetchone()
+        if exists:
+            return
+        # Quoted identifier matches SQLAlchemy's default enum type name (e.g. "Recurrence").
+        try:
+            conn.execute(text(f'ALTER TYPE "{typname}" ADD VALUE \'weekly\''))
+        except Exception:
+            try:
+                conn.execute(text(f"ALTER TYPE {typname} ADD VALUE 'weekly'"))
+            except Exception:
+                logging.getLogger(__name__).warning(
+                    "Could not ALTER TYPE to add weekly recurrence; new series may fail on Postgres until fixed."
+                )
 
 
 @app.post("/api/auth/register", status_code=status.HTTP_201_CREATED, response_model=RegisterOut)
@@ -1234,6 +1272,22 @@ def _expected_occurrences_in_range(
             return [start_date]
         return []
 
+    if recurrence == Recurrence.weekly:
+        occurrences_w: list[date] = []
+        current_w = start_date
+        while current_w < range_start:
+            current_w += timedelta(days=7)
+            if end_date is not None and current_w > end_date:
+                return []
+
+        while current_w < range_end_exclusive:
+            if end_date is not None and current_w > end_date:
+                break
+            if current_w >= range_start:
+                occurrences_w.append(current_w)
+            current_w += timedelta(days=7)
+        return occurrences_w
+
     if recurrence == Recurrence.monthly:
         step_months = 1
     elif recurrence == Recurrence.semiannual:
@@ -1276,6 +1330,18 @@ def _occurrence_immediately_before(
     """
     if recurrence == Recurrence.once or occurrence_date <= start_date:
         return None
+    if recurrence == Recurrence.weekly:
+        prev_w: Optional[date] = None
+        current_w = start_date
+        while current_w < occurrence_date:
+            if series_end_date is not None and current_w > series_end_date:
+                return prev_w
+            prev_w = current_w
+            current_w += timedelta(days=7)
+            if series_end_date is not None and current_w > series_end_date:
+                break
+        return prev_w
+
     if recurrence == Recurrence.monthly:
         step_months = 1
     elif recurrence == Recurrence.semiannual:
