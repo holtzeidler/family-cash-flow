@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Family Cash Flow</title>
     <script>window.API_BASE = "__API_BASE__";</script>
-    <link rel="stylesheet" href="./styles.css?v=21" />
+    <link rel="stylesheet" href="./styles.css?v=24" />
   </head>
   <body>
     <div class="container">
@@ -31,11 +31,11 @@
                 <input id="txDate" type="date" />
               </div>
               <div>
-                <label for="txKind">Type</label>
-                <select id="txKind">
-                  <option value="expense" selected>Expense</option>
-                  <option value="income">Income</option>
-                </select>
+                <label>Type</label>
+                <div class="kind-toggle" role="radiogroup" aria-label="Transaction type">
+                  <label class="kind-opt"><input type="radio" name="txKind" value="expense" checked /> Expense</label>
+                  <label class="kind-opt"><input type="radio" name="txKind" value="income" /> Income</label>
+                </div>
               </div>
             </div>
             <div style="height:10px;"></div>
@@ -61,7 +61,9 @@
               </div>
             </div>
             <div style="height:10px;"></div>
-            <button id="addTxBtn">Add transaction</button>
+            <div class="btn-center-row">
+              <button id="addTxBtn">Add transaction</button>
+            </div>
             <div id="addTxErr" class="error"></div>
           </div>
 
@@ -111,11 +113,11 @@
 
             <div class="row two">
               <div>
-                <label for="expectedKind">Type</label>
-                <select id="expectedKind">
-                  <option value="expense" selected>Withdrawal / Expense</option>
-                  <option value="income">Income</option>
-                </select>
+                <label>Type</label>
+                <div class="kind-toggle" role="radiogroup" aria-label="Recurring transaction type">
+                  <label class="kind-opt"><input type="radio" name="expectedKind" value="expense" checked /> Expense</label>
+                  <label class="kind-opt"><input type="radio" name="expectedKind" value="income" /> Income</label>
+                </div>
               </div>
               <div>
                 <label for="expectedAmount">Amount</label>
@@ -148,7 +150,9 @@
             </div>
 
             <div style="height:10px;"></div>
-            <button id="addExpectedTxBtn">Add recurring transaction</button>
+            <div class="btn-center-row">
+              <button id="addExpectedTxBtn">Add recurring transaction</button>
+            </div>
             <div id="expectedTxErr" class="error"></div>
             <div class="list" id="expectedTxList"></div>
           </div>
@@ -195,18 +199,15 @@
 
           <div class="card">
             <h2>Categories</h2>
-            <div class="row two">
-              <div>
-                <label for="categorySelect">Choose category</label>
-                <select id="categorySelect"></select>
-              </div>
-              <div>
+            <div id="categoriesGrid" class="categories-grid" aria-live="polite"></div>
+            <div style="height:10px;"></div>
+            <div class="categories-actions">
+              <div class="categories-new-field">
                 <label for="newCategoryName">New category</label>
                 <input id="newCategoryName" type="text" placeholder="e.g. Groceries" />
               </div>
+              <button id="addCategoryBtn">Add category</button>
             </div>
-            <div style="height:10px;"></div>
-            <button id="addCategoryBtn">Add category</button>
             <div id="catErr" class="error"></div>
           </div>
 
@@ -358,11 +359,11 @@
             <div style="height:10px;"></div>
             <div class="row two">
               <div>
-                <label for="instanceKind">Type</label>
-                <select id="instanceKind">
-                  <option value="expense" selected>Withdrawal / Expense</option>
-                  <option value="income">Income</option>
-                </select>
+                <label>Type</label>
+                <div class="kind-toggle" role="radiogroup" aria-label="Expected instance type">
+                  <label class="kind-opt"><input type="radio" name="instanceKind" value="expense" checked /> Expense</label>
+                  <label class="kind-opt"><input type="radio" name="instanceKind" value="income" /> Income</label>
+                </div>
               </div>
               <div>
                 <label for="instanceAmount">Amount</label>
@@ -449,11 +450,11 @@
         <div style="height: 10px"></div>
         <div class="row two">
           <div>
-            <label for="txEditKind">Type</label>
-            <select id="txEditKind">
-              <option value="expense">Expense</option>
-              <option value="income">Income</option>
-            </select>
+            <label>Type</label>
+            <div class="kind-toggle" role="radiogroup" aria-label="Transaction type">
+              <label class="kind-opt"><input type="radio" name="txEditKind" value="expense" checked /> Expense</label>
+              <label class="kind-opt"><input type="radio" name="txEditKind" value="income" /> Income</label>
+            </div>
           </div>
           <div>
             <label for="txEditAmount">Amount</label>
@@ -485,6 +486,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="./app.js?v=21"></script>
+    <script src="./app.js?v=24"></script>
   </body>
 </html>

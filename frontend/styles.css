@@ -508,6 +508,32 @@ input, select{
   color: var(--text);
 }
 
+.kind-toggle{
+  display:flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.02);
+}
+.kind-opt{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  margin:0;
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+  user-select: none;
+}
+.kind-opt input[type="radio"]{
+  width: auto;
+  padding: 0;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
 .row-desc-notes{
   display: flex;
   flex-wrap: nowrap;
@@ -609,6 +635,43 @@ input, select{
   padding: 8px 6px;
 }
 
+.btn-center-row{
+  display:flex;
+  justify-content:center;
+}
+
+.categories-grid{
+  display:grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.categories-grid .cat-chip{
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.02);
+  padding: 8px 10px;
+  border-radius: 12px;
+  font-size: 13px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.categories-actions{
+  display:flex;
+  gap: 10px;
+  align-items: flex-end;
+}
+.categories-new-field{
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.categories-new-field label{
+  display: block;
+  margin-bottom: 4px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
 .expected-second-day-row{
   margin-top: 8px;
 }
@@ -663,6 +726,48 @@ input, select{
 }
 .item .desc{ font-weight: 600; }
 .item .meta{ font-size: 12px; color: var(--muted); }
+.cat-pill{
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.04);
+  color: var(--text);
+  font-size: 11px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.categories-grid{
+  display:grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  gap: 8px 10px;
+  align-items: center;
+}
+.categories-grid .cat-h{
+  font-size: 12px;
+  color: var(--muted);
+}
+.categories-grid .cat-name{
+  font-size: 13px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.categories-grid input[type="color"]{
+  width: 38px;
+  height: 30px;
+  padding: 0;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+}
+.categories-grid .cat-save{
+  padding: 8px 10px;
+}
 .row-actions{
   display:flex;
   flex-direction:column;

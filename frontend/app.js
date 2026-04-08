@@ -89,8 +89,13 @@ const monthInput = document.getElementById("monthInput");
 const totalsEl = document.getElementById("totals");
 const txList = document.getElementById("txList");
 
-const categorySelect = document.getElementById("categorySelect");
+const categoriesGrid = document.getElementById("categoriesGrid");
 const txCategoryId = document.getElementById("txCategoryId");
+
+function getRadioValue(name, fallback = "") {
+  const el = document.querySelector(`input[type="radio"][name="${name}"]:checked`);
+  return el && el.value ? el.value : fallback;
+}
 
 // Accounts
 const accErr = document.getElementById("accErr");
@@ -112,7 +117,7 @@ const expectedLastTxnDate = document.getElementById("expectedLastTxnDate");
 const expectedRecurrence = document.getElementById("expectedRecurrence");
 const expectedTwiceMonthlyFields = document.getElementById("expectedTwiceMonthlyFields");
 const expectedSecondDayOfMonth = document.getElementById("expectedSecondDayOfMonth");
-const expectedKind = document.getElementById("expectedKind");
+const expectedKind = null;
 const expectedAmount = document.getElementById("expectedAmount");
 const expectedDesc = document.getElementById("expectedDesc");
 const expectedNotes = document.getElementById("expectedNotes");
@@ -151,7 +156,7 @@ let projectionChartDefaultsApplied = false;
 // Expected instance editing
 const instanceDate = document.getElementById("instanceDate");
 const instanceExpectedTxId = document.getElementById("instanceExpectedTxId");
-const instanceKind = document.getElementById("instanceKind");
+const instanceKind = null;
 const instanceAmount = document.getElementById("instanceAmount");
 const instanceDesc = document.getElementById("instanceDesc");
 const instanceNotes = document.getElementById("instanceNotes");
@@ -164,7 +169,7 @@ const expectedInstanceErr = document.getElementById("expectedInstanceErr");
 const txEditModal = document.getElementById("txEditModal");
 const txEditId = document.getElementById("txEditId");
 const txEditDate = document.getElementById("txEditDate");
-const txEditKind = document.getElementById("txEditKind");
+const txEditKind = null;
 const txEditAmount = document.getElementById("txEditAmount");
 const txEditDesc = document.getElementById("txEditDesc");
 const txEditNotes = document.getElementById("txEditNotes");
@@ -365,7 +370,7 @@ document.getElementById("addTxBtn").addEventListener("click", async () => {
     const dateVal = document.getElementById("txDate").value;
     const desc = document.getElementById("txDesc").value.trim();
     const notesRaw = document.getElementById("txNotes")?.value?.trim() || "";
-    const kind = document.getElementById("txKind").value;
+    const kind = getRadioValue("txKind", "expense");
     const amountVal = document.getElementById("txAmount").value;
     const categoryId = document.getElementById("txCategoryId").value || null;
 
@@ -464,7 +469,11 @@ function openTxEditModal(tx) {
   if (!txEditModal || !txEditId || !txEditDate) return;
   txEditId.value = String(tx.id);
   txEditDate.value = tx.date;
-  txEditKind.value = tx.kind;
+  {
+    const k = tx && tx.kind ? String(tx.kind) : "expense";
+    const radio = document.querySelector(`input[type="radio"][name="txEditKind"][value="${k}"]`);
+    if (radio) radio.checked = true;
+  }
   txEditAmount.value = tx.amount;
   txEditDesc.value = String(tx.description || "").slice(0, 12);
   if (txEditNotes) txEditNotes.value = tx.notes || "";
@@ -492,7 +501,7 @@ if (txEditSave) {
       if (!amountVal || Number(amountVal) <= 0) throw new Error("Amount must be > 0");
       await api(`/api/families/${state.activeFamilyId}/transactions/${id}`, "PUT", {
         date: txEditDate.value,
-        kind: txEditKind.value,
+        kind: getRadioValue("txEditKind", "expense"),
         amount: Number(amountVal),
         description: txEditDesc.value.trim() || "",
         notes: txEditNotes && txEditNotes.value.trim() ? txEditNotes.value.trim() : null,
@@ -556,7 +565,7 @@ addExpectedTxBtn.addEventListener("click", async () => {
 
     const startDateVal = expectedStartDate.value;
     const recurrenceVal = expectedRecurrence.value;
-    const kindVal = expectedKind.value;
+    const kindVal = getRadioValue("expectedKind", "expense");
     const amountVal = expectedAmount.value;
     const desc = expectedDesc.value.trim();
     const notesVal = expectedNotes && expectedNotes.value.trim() ? expectedNotes.value.trim() : null;
@@ -772,7 +781,7 @@ saveInstanceOverrideBtn.addEventListener("click", async () => {
       }
       const applyPayload = {
         account_id: Number(accountId),
-        kind: instanceKind.value,
+        kind: getRadioValue("instanceKind", "expense"),
         amount,
         description: instanceDesc.value.trim() || "",
         category_id: categoryId,
@@ -786,7 +795,7 @@ saveInstanceOverrideBtn.addEventListener("click", async () => {
       const payload = {
         action: "update",
         account_id: Number(accountId),
-        kind: instanceKind.value,
+        kind: getRadioValue("instanceKind", "expense"),
         amount,
         description: instanceDesc.value.trim() || "",
         category_id: categoryId,
@@ -858,6 +867,7 @@ async function loadFamilies() {
 }
 
 function renderCategoryOptions(selectEl, categories) {
+  if (!selectEl) return;
   selectEl.innerHTML = "";
   const emptyOpt = document.createElement("option");
   emptyOpt.value = "";
@@ -872,15 +882,96 @@ function renderCategoryOptions(selectEl, categories) {
   }
 }
 
+function renderCategoriesGrid(categories) {
+  if (!categoriesGrid) return;
+  categoriesGrid.innerHTML = "";
+  const items = categories || [];
+  if (items.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "pill";
+    empty.textContent = "No categories yet.";
+    categoriesGrid.appendChild(empty);
+    return;
+  }
+
+  // Header
+  const hName = document.createElement("div");
+  hName.className = "cat-h";
+  hName.textContent = "Category";
+  const hFg = document.createElement("div");
+  hFg.className = "cat-h";
+  hFg.textContent = "Text";
+  const hBg = document.createElement("div");
+  hBg.className = "cat-h";
+  hBg.textContent = "Bg";
+  const hAct = document.createElement("div");
+  hAct.className = "cat-h";
+  hAct.textContent = "";
+  categoriesGrid.appendChild(hName);
+  categoriesGrid.appendChild(hFg);
+  categoriesGrid.appendChild(hBg);
+  categoriesGrid.appendChild(hAct);
+
+  // Stable ordering helps scan.
+  const sorted = [...items].sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
+  for (const c of sorted) {
+    const nameEl = document.createElement("div");
+    nameEl.className = "cat-name";
+    nameEl.textContent = c.name;
+    nameEl.title = c.name;
+
+    const fg = document.createElement("input");
+    fg.type = "color";
+    fg.value = c.fg_color && String(c.fg_color).trim() ? String(c.fg_color).trim() : "#e8eefc";
+
+    const bg = document.createElement("input");
+    bg.type = "color";
+    bg.value = c.bg_color && String(c.bg_color).trim() ? String(c.bg_color).trim() : "#121b31";
+
+    const save = document.createElement("button");
+    save.type = "button";
+    save.className = "cat-save";
+    save.textContent = "Save";
+    save.addEventListener("click", async () => {
+      try {
+        show(catErr, "");
+        if (!state.activeFamilyId) throw new Error("Choose a family first");
+        await api(`/api/families/${state.activeFamilyId}/categories/${c.id}`, "PUT", {
+          fg_color: fg.value,
+          bg_color: bg.value,
+        });
+        await loadCategories();
+        await loadMonthAndCalendar();
+      } catch (e) {
+        show(catErr, e.message || "Failed to update category");
+      }
+    });
+
+    categoriesGrid.appendChild(nameEl);
+    categoriesGrid.appendChild(fg);
+    categoriesGrid.appendChild(bg);
+    categoriesGrid.appendChild(save);
+  }
+}
+
 async function loadCategories() {
   if (!state.activeFamilyId) return;
   const categories = await api(`/api/families/${state.activeFamilyId}/categories`, "GET");
   state.categories = categories || [];
-  renderCategoryOptions(categorySelect, state.categories);
+  renderCategoriesGrid(state.categories);
   renderCategoryOptions(txCategoryId, state.categories);
   renderCategoryOptions(expectedCategoryId, state.categories);
   if (instanceCategoryId) renderCategoryOptions(instanceCategoryId, state.categories);
   renderTxEditCategoryOptions();
+}
+
+function categoryStyleFromId(categoryId) {
+  if (!categoryId) return null;
+  const c = (state.categories || []).find((x) => Number(x.id) === Number(categoryId));
+  if (!c) return null;
+  const fg = c.fg_color && String(c.fg_color).trim() ? String(c.fg_color).trim() : null;
+  const bg = c.bg_color && String(c.bg_color).trim() ? String(c.bg_color).trim() : null;
+  return { name: c.name, fg, bg };
 }
 
 function renderAccountsList(accounts) {
@@ -1001,22 +1092,44 @@ function renderExpectedTransactions(items) {
       tx.recurrence === "twice_monthly" && tx.second_day_of_month != null && startDom != null && !Number.isNaN(startDom)
         ? `days ${startDom} & ${tx.second_day_of_month}`
         : "";
-    const metaBits = [
+    const left = document.createElement("div");
+    left.className = "left";
+    const descEl = document.createElement("div");
+    descEl.className = "desc";
+    descEl.textContent = tx.description || "(no description)";
+
+    const metaEl = document.createElement("div");
+    metaEl.className = "meta";
+    const bits = [
       `${tx.start_date}`,
       tx.end_date ? `ends ${tx.end_date}` : "",
       twiceMeta,
       tx.recurrence ? `recurs: ${tx.recurrence}` : "",
       tx.account ? `· ${tx.account}` : "",
-      tx.category ? `· ${tx.category}` : "",
     ].filter(Boolean);
+    metaEl.appendChild(document.createTextNode(bits.join(" ")));
+    if (tx.category_id && tx.category) {
+      const st = categoryStyleFromId(tx.category_id);
+      const pill = document.createElement("span");
+      pill.className = "cat-pill";
+      pill.textContent = tx.category;
+      if (st?.fg) pill.style.color = st.fg;
+      if (st?.bg) pill.style.background = st.bg;
+      metaEl.appendChild(document.createTextNode(" · "));
+      metaEl.appendChild(pill);
+    } else if (tx.category) {
+      metaEl.appendChild(document.createTextNode(` · ${tx.category}`));
+    }
 
-    el.innerHTML = `
-      <div class="left">
-        <div class="desc">${escapeHtml(tx.description || "(no description)")}</div>
-        <div class="meta">${metaBits.join(" ")}</div>
-      </div>
-      <div class="amt ${amtClass}">${kindSign}$${fmtMoney(tx.amount)}</div>
-    `;
+    left.appendChild(descEl);
+    left.appendChild(metaEl);
+
+    const amt = document.createElement("div");
+    amt.className = `amt ${amtClass}`;
+    amt.textContent = `${kindSign}$${fmtMoney(tx.amount)}`;
+
+    el.appendChild(left);
+    el.appendChild(amt);
     expectedTxList.appendChild(el);
   }
 }
@@ -1137,7 +1250,6 @@ function renderTransactions(items) {
     el.style.cursor = "pointer";
 
     const amtClass = tx.kind === "income" ? "income" : "expense";
-    const category = tx.category ? ` · ${tx.category}` : "";
 
     const left = document.createElement("div");
     left.className = "left";
@@ -1155,7 +1267,19 @@ function renderTransactions(items) {
 
     const meta = document.createElement("div");
     meta.className = "meta";
-    meta.textContent = `${tx.date}${category}`;
+    meta.appendChild(document.createTextNode(String(tx.date || "")));
+    if (tx.category_id && tx.category) {
+      const st = categoryStyleFromId(tx.category_id);
+      const pill = document.createElement("span");
+      pill.className = "cat-pill";
+      pill.textContent = tx.category;
+      if (st?.fg) pill.style.color = st.fg;
+      if (st?.bg) pill.style.background = st.bg;
+      meta.appendChild(document.createTextNode(" · "));
+      meta.appendChild(pill);
+    } else if (tx.category) {
+      meta.appendChild(document.createTextNode(` · ${tx.category}`));
+    }
 
     left.appendChild(link);
     left.appendChild(meta);
@@ -1367,7 +1491,11 @@ function selectExpectedInstance(item) {
 
   if (instanceDate) instanceDate.value = item.date;
   if (instanceExpectedTxId) instanceExpectedTxId.value = String(item.expected_transaction_id);
-  if (instanceKind) instanceKind.value = item.kind;
+  {
+    const k = item && item.kind ? String(item.kind) : "expense";
+    const radio = document.querySelector(`input[type="radio"][name="instanceKind"][value="${k}"]`);
+    if (radio) radio.checked = true;
+  }
   if (instanceAmount) instanceAmount.value = Number(item.amount);
   if (instanceDesc) instanceDesc.value = String(item.description || "").slice(0, 12);
   if (instanceNotes) instanceNotes.value = item.notes && String(item.notes).trim() ? String(item.notes).trim() : "";
@@ -1504,7 +1632,9 @@ function renderCalendar() {
   if (calendarPanel) {
     const weekRows = Math.ceil((offset + daysInMonth) / 7);
     calendarPanel.style.setProperty("--cal-week-rows", String(weekRows));
-    calendarPanel.style.setProperty("--cal-day-min-h", weekRows <= 4 ? "96px" : "118px");
+    // Give 5-week months a bit more room so the bottom balance isn't clipped.
+    const h = weekRows <= 4 ? "96px" : weekRows === 5 ? "130px" : "118px";
+    calendarPanel.style.setProperty("--cal-day-min-h", h);
   }
 }
 

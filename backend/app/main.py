@@ -126,6 +126,8 @@ class Category(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     family_id: Mapped[int] = mapped_column(ForeignKey("families.id"), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
+    fg_color: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    bg_color: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
 
     family: Mapped[Family] = relationship(back_populates="categories")
 
@@ -307,6 +309,14 @@ class CategoryIn(BaseModel):
 class CategoryOut(BaseModel):
     id: int
     name: str
+    fg_color: Optional[str] = None
+    bg_color: Optional[str] = None
+
+
+class CategoryUpdateIn(BaseModel):
+    name: Optional[str] = Field(default=None, min_length=1, max_length=255)
+    fg_color: Optional[str] = Field(default=None, max_length=20)
+    bg_color: Optional[str] = Field(default=None, max_length=20)
 
 
 class TransactionIn(BaseModel):
@@ -382,6 +392,7 @@ class ExpectedTransactionOut(BaseModel):
     kind: TransactionKind
     amount: Decimal
     category: Optional[str]
+    category_id: Optional[int] = None
     created_by: int
 
 
@@ -538,6 +549,7 @@ def startup_populate_schema():
     _ensure_notes_columns()
     _ensure_expected_second_day_column()
     _ensure_recurrence_enum_extensions_postgres()
+    _ensure_category_color_columns()
 
 
 def _ensure_account_starting_balance_date_column():
@@ -623,6 +635,22 @@ def _ensure_recurrence_enum_extensions_postgres() -> None:
                         "Could not ALTER TYPE to add %s recurrence; Postgres may reject inserts until fixed.",
                         label,
                     )
+
+
+def _ensure_category_color_columns() -> None:
+    """Lightweight startup migration for per-category label styling."""
+    with engine.begin() as conn:
+        if settings.DATABASE_URL.startswith("sqlite"):
+            cols = conn.execute(text("PRAGMA table_info(categories)")).fetchall()
+            has_fg = any(str(row[1]) == "fg_color" for row in cols)
+            has_bg = any(str(row[1]) == "bg_color" for row in cols)
+            if not has_fg:
+                conn.execute(text("ALTER TABLE categories ADD COLUMN fg_color VARCHAR(20)"))
+            if not has_bg:
+                conn.execute(text("ALTER TABLE categories ADD COLUMN bg_color VARCHAR(20)"))
+        else:
+            conn.execute(text("ALTER TABLE categories ADD COLUMN IF NOT EXISTS fg_color VARCHAR(20)"))
+            conn.execute(text("ALTER TABLE categories ADD COLUMN IF NOT EXISTS bg_color VARCHAR(20)"))
 
 
 @app.post("/api/auth/register", status_code=status.HTTP_201_CREATED, response_model=RegisterOut)
@@ -715,7 +743,7 @@ def list_categories(
     user_id = get_current_user_id(access_token)
     require_family_member(db=db, family_id=family_id, user_id=user_id)
     rows = db.execute(select(Category).where(Category.family_id == family_id).order_by(Category.name.asc())).scalars().all()
-    return [CategoryOut(id=r.id, name=r.name) for r in rows]
+    return [CategoryOut(id=r.id, name=r.name, fg_color=r.fg_color, bg_color=r.bg_color) for r in rows]
 
 
 @app.post("/api/families/{family_id}/categories", response_model=CategoryOut)
@@ -731,7 +759,37 @@ def create_category(
     db.add(category)
     db.commit()
     db.refresh(category)
-    return CategoryOut(id=category.id, name=category.name)
+    return CategoryOut(id=category.id, name=category.name, fg_color=category.fg_color, bg_color=category.bg_color)
+
+
+@app.put("/api/families/{family_id}/categories/{category_id}", response_model=CategoryOut)
+def update_category(
+    family_id: int,
+    category_id: int,
+    payload: CategoryUpdateIn,
+    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    require_family_member(db=db, family_id=family_id, user_id=user_id)
+
+    cat = db.execute(select(Category).where(Category.id == category_id, Category.family_id == family_id)).scalar_one_or_none()
+    if cat is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Category not found")
+
+    if payload.name is not None:
+        cat.name = payload.name.strip()
+
+    if payload.fg_color is not None:
+        v = payload.fg_color.strip()
+        cat.fg_color = v if v else None
+    if payload.bg_color is not None:
+        v = payload.bg_color.strip()
+        cat.bg_color = v if v else None
+
+    db.commit()
+    db.refresh(cat)
+    return CategoryOut(id=cat.id, name=cat.name, fg_color=cat.fg_color, bg_color=cat.bg_color)
 
 
 @app.get("/api/families/{family_id}/accounts", response_model=list[AccountOut])
@@ -851,6 +909,7 @@ def list_expected_transactions(
                 kind=tx.kind,
                 amount=tx.amount,
                 category=category_name,
+                category_id=tx.category_id,
                 created_by=tx.created_by_user_id,
             )
         )
@@ -913,6 +972,7 @@ def create_expected_transaction(
         kind=tx.kind,
         amount=tx.amount,
         category=category_name,
+        category_id=tx.category_id,
         created_by=tx.created_by_user_id,
     )
 
@@ -979,6 +1039,7 @@ def update_expected_transaction(
         kind=tx.kind,
         amount=tx.amount,
         category=category_name,
+        category_id=tx.category_id,
         created_by=tx.created_by_user_id,
     )
 
