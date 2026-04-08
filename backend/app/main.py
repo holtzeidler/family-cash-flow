@@ -440,6 +440,12 @@ class ApplyFromOccurrenceOut(BaseModel):
     ended_series_id: Optional[int] = None
 
 
+class EndFromOccurrenceOut(BaseModel):
+    mode: Literal["ended", "deleted"]
+    expected_id: Optional[int] = None
+    ended_at: Optional[date] = None
+
+
 class ExpectedCalendarItemOut(BaseModel):
     expected_transaction_id: int
     date: date
@@ -1275,6 +1281,80 @@ def apply_expected_from_occurrence(
     db.refresh(new_tx)
 
     return ApplyFromOccurrenceOut(mode="split", future_series_id=new_tx.id, ended_series_id=tx.id)
+
+
+@app.post(
+    "/api/families/{family_id}/expected-transactions/{expected_id}/end-from-occurrence/{occurrence_date}",
+    response_model=EndFromOccurrenceOut,
+)
+def end_expected_from_occurrence(
+    family_id: int,
+    expected_id: int,
+    occurrence_date: date,
+    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    db=Depends(get_db),
+):
+    """
+    Delete this occurrence and all future occurrences by ending the series before `occurrence_date`.
+    Keeps historical occurrences intact.
+    """
+    user_id = get_current_user_id(access_token)
+    require_family_member(db=db, family_id=family_id, user_id=user_id)
+
+    tx = db.execute(
+        select(ExpectedTransaction).where(
+            ExpectedTransaction.id == expected_id,
+            ExpectedTransaction.family_id == family_id,
+        )
+    ).scalar_one_or_none()
+    if tx is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Expected transaction not found")
+
+    if tx.recurrence == Recurrence.once:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Not a recurring transaction")
+
+    if occurrence_date < tx.start_date:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="occurrence_date is before series start")
+    if tx.end_date is not None and occurrence_date > tx.end_date:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="occurrence_date is after series end")
+
+    hits = _expected_occurrences_in_range(
+        start_date=tx.start_date,
+        end_date=tx.end_date,
+        recurrence=tx.recurrence,
+        range_start=occurrence_date,
+        range_end_exclusive=occurrence_date + timedelta(days=1),
+        second_day_of_month=tx.second_day_of_month,
+    )
+    if occurrence_date not in hits:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Date is not a scheduled occurrence for this series")
+
+    prev_occ = _occurrence_immediately_before(
+        start_date=tx.start_date,
+        series_end_date=tx.end_date,
+        recurrence=tx.recurrence,
+        occurrence_date=occurrence_date,
+        second_day_of_month=tx.second_day_of_month,
+    )
+
+    # Delete overrides at/after occurrence_date: they are irrelevant once we end the series.
+    db.execute(
+        delete(ExpectedTransactionOverride).where(
+            ExpectedTransactionOverride.expected_transaction_id == expected_id,
+            ExpectedTransactionOverride.occurrence_date >= occurrence_date,
+        )
+    )
+
+    if prev_occ is None:
+        # No previous occurrence => nothing historical to keep; delete the series row entirely.
+        db.delete(tx)
+        db.commit()
+        return EndFromOccurrenceOut(mode="deleted", expected_id=None, ended_at=None)
+
+    tx.end_date = prev_occ
+    db.commit()
+    db.refresh(tx)
+    return EndFromOccurrenceOut(mode="ended", expected_id=tx.id, ended_at=tx.end_date)
 
 
 @app.get("/api/families/{family_id}/expected-calendar", response_model=ExpectedCalendarOut)

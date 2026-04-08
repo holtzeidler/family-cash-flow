@@ -164,6 +164,7 @@ const instanceAccountId = document.getElementById("instanceAccountId");
 const instanceCategoryId = document.getElementById("instanceCategoryId");
 const saveInstanceOverrideBtn = document.getElementById("saveInstanceOverrideBtn");
 const cancelInstanceOverrideBtn = document.getElementById("cancelInstanceOverrideBtn");
+const deleteFutureInstancesBtn = document.getElementById("deleteFutureInstancesBtn");
 const expectedInstanceErr = document.getElementById("expectedInstanceErr");
 
 const txEditModal = document.getElementById("txEditModal");
@@ -842,6 +843,44 @@ cancelInstanceOverrideBtn.addEventListener("click", async () => {
   }
 });
 
+if (deleteFutureInstancesBtn) {
+  deleteFutureInstancesBtn.addEventListener("click", async () => {
+    try {
+      show(expectedInstanceErr, "");
+      if (!state.activeFamilyId) throw new Error("Choose a family first");
+      if (!selectedExpectedInstance) throw new Error("Select an expected occurrence from the calendar");
+
+      const meta = getExpectedSeriesMeta(selectedExpectedInstance.expected_transaction_id);
+      if (!meta || meta.recurrence === "once") {
+        throw new Error("This series is not recurring.");
+      }
+
+      const occ = normalizeIsoDate(selectedExpectedInstance.occurrence_date);
+      if (!occ) throw new Error("Invalid occurrence date");
+
+      if (!confirm("Delete this and all future occurrences? This will end the recurring series.")) return;
+
+      await api(
+        `/api/families/${state.activeFamilyId}/expected-transactions/${selectedExpectedInstance.expected_transaction_id}/end-from-occurrence/${occ}`,
+        "POST"
+      );
+
+      selectedExpectedInstance = null;
+      if (instanceDate) instanceDate.value = "";
+      if (instanceExpectedTxId) instanceExpectedTxId.value = "";
+      if (instanceNotes) instanceNotes.value = "";
+
+      await loadExpectedTransactions();
+      await loadExpectedCalendar();
+      await loadCalendarMonthDaily();
+      renderCalendar();
+      updateInstanceScopeUI();
+    } catch (e) {
+      show(expectedInstanceErr, e.message || "Failed to delete future occurrences");
+    }
+  });
+}
+
 async function loadMe() {
   const data = await api("/api/auth/me", "GET");
   if (!data?.user) throw new Error("Not logged in");
@@ -1464,12 +1503,14 @@ function updateInstanceScopeUI() {
   if (!selectedExpectedInstance) {
     future.disabled = true;
     if (futureLabel) futureLabel.style.opacity = "0.5";
+    if (deleteFutureInstancesBtn) deleteFutureInstancesBtn.disabled = true;
     return;
   }
   const meta = getExpectedSeriesMeta(selectedExpectedInstance.expected_transaction_id);
   const allowFuture = !!(meta && meta.recurrence !== "once");
   future.disabled = !allowFuture;
   if (futureLabel) futureLabel.style.opacity = allowFuture ? "" : "0.5";
+  if (deleteFutureInstancesBtn) deleteFutureInstancesBtn.disabled = !allowFuture;
   if (!allowFuture && future.checked) {
     const thisRadio = document.getElementById("instanceScopeThis");
     if (thisRadio) thisRadio.checked = true;
