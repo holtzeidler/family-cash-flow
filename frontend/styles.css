@@ -768,15 +768,34 @@ input, select{
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.categories-grid input[type="color"]{
-  width: 38px;
-  height: 30px;
-  padding: 0;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  background: transparent;
+.palette-picker{
+  width: 132px;
 }
-.categories-grid .cat-save{
+.palette-grid{
+  display:grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 6px;
+}
+.swatch{
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  border: 1px solid rgba(255,255,255,0.18);
+  padding: 0;
+  cursor: pointer;
+}
+.swatch.is-selected{
+  outline: 2px solid rgba(102,163,255,0.75);
+  outline-offset: 1px;
+}
+.cat-actions{
+  display:flex;
+  gap: 8px;
+  justify-content: flex-end;
+  align-items: center;
+}
+.categories-grid .cat-save,
+.categories-grid .cat-reset{
   padding: 8px 10px;
 }
 .row-actions{

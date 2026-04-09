@@ -976,6 +976,50 @@ function renderCategoriesGrid(categories) {
     return;
   }
 
+  const DEFAULT_FG = "#e8eefc";
+  const DEFAULT_BG = "#121b31";
+  const PALETTE = [
+    "#0b1220","#121b31","#1b2a4a","#24365f","#2d4478","#365392","#4063ad","#4a74c9",
+    "#66a3ff","#66d6ff","#5fe8d5","#4cd17b","#3fbf8a","#2da66f","#1f8f58","#167243",
+    "#ffd166","#ffb703","#fb8500","#f77f00","#ef476f","#ff6b6b","#e63946","#c1121f",
+    "#b5179e","#7209b7","#3a0ca3","#4361ee","#4895ef","#4cc9f0","#8ecae6","#219ebc",
+    "#00b4d8","#0077b6","#023e8a","#03045e","#f1faee","#a8dadc","#457b9d","#1d3557",
+    "#f8f9fa","#dee2e6","#adb5bd","#6c757d","#495057","#343a40","#212529","#ffffff",
+    "#e9ecef","#ced4da","#b0c4de","#9fb0d0","#7f8fb3","#5b6b91","#3c4a6b","#2a3550",
+  ];
+
+  function normalizeHex(v, fallback) {
+    const s = (v || "").trim();
+    return /^#[0-9a-fA-F]{6}$/.test(s) ? s.toLowerCase() : fallback;
+  }
+
+  function palettePicker(value, onChange) {
+    const root = document.createElement("div");
+    root.className = "palette-picker";
+    const grid = document.createElement("div");
+    grid.className = "palette-grid";
+    root.appendChild(grid);
+
+    const selected = normalizeHex(value, "");
+    for (const hex of PALETTE) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "swatch";
+      b.style.background = hex;
+      b.setAttribute("aria-label", hex);
+      b.title = hex;
+      b.dataset.hex = hex;
+      if (selected && selected === hex.toLowerCase()) b.classList.add("is-selected");
+      b.addEventListener("click", () => {
+        for (const el of grid.querySelectorAll(".swatch.is-selected")) el.classList.remove("is-selected");
+        b.classList.add("is-selected");
+        onChange(hex);
+      });
+      grid.appendChild(b);
+    }
+    return root;
+  }
+
   // Header
   const hName = document.createElement("div");
   hName.className = "cat-h";
@@ -1002,13 +1046,13 @@ function renderCategoriesGrid(categories) {
     nameEl.textContent = c.name;
     nameEl.title = c.name;
 
-    const fg = document.createElement("input");
-    fg.type = "color";
-    fg.value = c.fg_color && String(c.fg_color).trim() ? String(c.fg_color).trim() : "#e8eefc";
+    let fgVal = normalizeHex(c.fg_color, DEFAULT_FG);
+    let bgVal = normalizeHex(c.bg_color, DEFAULT_BG);
+    const fgPicker = palettePicker(fgVal, (hex) => (fgVal = hex));
+    const bgPicker = palettePicker(bgVal, (hex) => (bgVal = hex));
 
-    const bg = document.createElement("input");
-    bg.type = "color";
-    bg.value = c.bg_color && String(c.bg_color).trim() ? String(c.bg_color).trim() : "#121b31";
+    const actions = document.createElement("div");
+    actions.className = "cat-actions";
 
     const save = document.createElement("button");
     save.type = "button";
@@ -1019,8 +1063,8 @@ function renderCategoriesGrid(categories) {
         show(catErr, "");
         if (!state.activeFamilyId) throw new Error("Choose a family first");
         await api(`/api/families/${state.activeFamilyId}/categories/${c.id}`, "PUT", {
-          fg_color: fg.value,
-          bg_color: bg.value,
+          fg_color: fgVal,
+          bg_color: bgVal,
         });
         await loadCategories();
         await loadMonthAndCalendar();
@@ -1029,10 +1073,33 @@ function renderCategoriesGrid(categories) {
       }
     });
 
+    const reset = document.createElement("button");
+    reset.type = "button";
+    reset.className = "cat-reset";
+    reset.textContent = "Reset";
+    reset.title = "Reset to default colors";
+    reset.addEventListener("click", async () => {
+      try {
+        show(catErr, "");
+        if (!state.activeFamilyId) throw new Error("Choose a family first");
+        await api(`/api/families/${state.activeFamilyId}/categories/${c.id}`, "PUT", {
+          fg_color: "",
+          bg_color: "",
+        });
+        await loadCategories();
+        await loadMonthAndCalendar();
+      } catch (e) {
+        show(catErr, e.message || "Failed to reset category");
+      }
+    });
+
+    actions.appendChild(save);
+    actions.appendChild(reset);
+
     categoriesGrid.appendChild(nameEl);
-    categoriesGrid.appendChild(fg);
-    categoriesGrid.appendChild(bg);
-    categoriesGrid.appendChild(save);
+    categoriesGrid.appendChild(fgPicker);
+    categoriesGrid.appendChild(bgPicker);
+    categoriesGrid.appendChild(actions);
   }
 }
 
