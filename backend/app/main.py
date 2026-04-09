@@ -383,6 +383,7 @@ class ExpectedTransactionIn(BaseModel):
 class ExpectedTransactionOut(BaseModel):
     id: int
     account: str
+    account_id: int
     start_date: date
     end_date: Optional[date]
     recurrence: Recurrence
@@ -906,6 +907,7 @@ def list_expected_transactions(
             ExpectedTransactionOut(
                 id=tx.id,
                 account=account_name,
+                account_id=tx.account_id,
                 start_date=tx.start_date,
                 end_date=tx.end_date,
                 recurrence=tx.recurrence,
@@ -969,6 +971,7 @@ def create_expected_transaction(
     return ExpectedTransactionOut(
         id=tx.id,
         account=account.name,
+        account_id=tx.account_id,
         start_date=tx.start_date,
         end_date=tx.end_date,
         recurrence=tx.recurrence,
@@ -1036,6 +1039,7 @@ def update_expected_transaction(
     return ExpectedTransactionOut(
         id=tx.id,
         account=account.name,
+        account_id=tx.account_id,
         start_date=tx.start_date,
         end_date=tx.end_date,
         recurrence=tx.recurrence,

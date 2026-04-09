@@ -1830,7 +1830,11 @@ function renderCalendar() {
         }
         line.addEventListener("click", (e) => {
           e.stopPropagation();
+          // Keep the instance editor selection (this occurrence),
+          // but also allow quick series editing in a modal like actual transactions.
           selectExpectedInstance(item);
+          const meta = getExpectedSeriesMeta(item.expected_transaction_id);
+          if (meta) openExpectedEditModal(meta);
         });
         txnsEl.appendChild(line);
       }
