@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Family Cash Flow</title>
     <script>window.API_BASE = "__API_BASE__";</script>
-    <link rel="stylesheet" href="./styles.css?v=24" />
+    <link rel="stylesheet" href="./styles.css?v=28" />
   </head>
   <body>
     <div class="container">
@@ -416,8 +416,16 @@
             <div id="expectedInstanceErr" class="error"></div>
           </div>
 
-          <div class="card">
-            <h2>5-year daily projection</h2>
+          <div class="card projection-panel projection-panel--collapsed" id="projectionPanel">
+            <div class="panel-header">
+              <h2 style="margin:0;">5-year daily projection</h2>
+              <button type="button" class="panel-collapse-btn" id="projectionCollapseBtn" aria-expanded="false" title="Expand projection">
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path d="M6 9l6 6 6-6" />
+                </svg>
+              </button>
+            </div>
+            <div class="projection-panel-body" id="projectionPanelBody">
             <div class="row two">
               <div>
                 <label for="projectionStart">Start date</label>
@@ -431,6 +439,7 @@
             <div class="totals" id="projectionSummary"></div>
             <div id="projectionErr" class="error"></div>
             <div class="list" id="projectionDailyList"></div>
+            </div>
           </div>
 
           <div class="card">
@@ -487,7 +496,85 @@
       </div>
     </div>
 
+    <div id="expectedEditModal" class="modal-overlay" aria-hidden="true">
+      <div class="modal" role="dialog" aria-labelledby="expectedEditTitle">
+        <h3 id="expectedEditTitle">Edit recurring transaction</h3>
+        <div id="expectedEditErr" class="error"></div>
+        <input type="hidden" id="expectedEditId" />
+
+        <div class="row three row-recurring-head">
+          <div>
+            <label for="expectedEditStartDate">Start</label>
+            <input id="expectedEditStartDate" type="date" />
+          </div>
+          <div>
+            <label for="expectedEditRecurrence">Recurrence</label>
+            <select id="expectedEditRecurrence">
+              <option value="monthly">Monthly</option>
+              <option value="twice_monthly">Twice monthly</option>
+              <option value="weekly">Weekly</option>
+              <option value="semiannual">Twice yearly (every 6 months)</option>
+              <option value="yearly">Yearly</option>
+              <option value="once">Once</option>
+            </select>
+          </div>
+          <div>
+            <label for="expectedEditLastTxnDate">Last txn</label>
+            <input id="expectedEditLastTxnDate" type="date" />
+          </div>
+        </div>
+
+        <div id="expectedEditTwiceMonthlyFields" class="expected-second-day-row" style="display: none">
+          <label for="expectedEditSecondDayOfMonth">2nd day of month</label>
+          <input id="expectedEditSecondDayOfMonth" type="number" min="1" max="31" step="1" placeholder="e.g. 15" />
+        </div>
+
+        <div style="height:10px;"></div>
+        <label>Type</label>
+        <div class="kind-toggle" role="radiogroup" aria-label="Recurring transaction type">
+          <label class="kind-opt"><input type="radio" name="expectedEditKind" value="expense" checked /> Expense</label>
+          <label class="kind-opt"><input type="radio" name="expectedEditKind" value="income" /> Income</label>
+        </div>
+
+        <div style="height:10px;"></div>
+        <label for="expectedEditAmount">Amount</label>
+        <input id="expectedEditAmount" type="number" min="0" step="0.01" placeholder="0.00" />
+
+        <div style="height:10px;"></div>
+        <div class="row-desc-notes">
+          <div class="field-desc-short">
+            <label for="expectedEditDesc">Description</label>
+            <input id="expectedEditDesc" type="text" maxlength="12" class="input-desc-short" placeholder="e.g. Electric" />
+          </div>
+          <div class="field-notes-flex">
+            <label for="expectedEditNotes">Notes</label>
+            <input id="expectedEditNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
+          </div>
+        </div>
+
+        <div style="height:10px;"></div>
+        <div class="row two">
+          <div>
+            <label for="expectedEditAccountId">Account</label>
+            <select id="expectedEditAccountId"></select>
+          </div>
+          <div>
+            <label for="expectedEditCategoryId">Category (optional)</label>
+            <select id="expectedEditCategoryId"></select>
+          </div>
+        </div>
+
+        <div style="height:14px;"></div>
+        <div class="row two">
+          <button type="button" id="expectedEditSave">Save</button>
+          <button type="button" id="expectedEditDelete" class="danger">Delete</button>
+        </div>
+        <div style="height: 8px"></div>
+        <button type="button" id="expectedEditCancel" style="width: 100%">Cancel</button>
+      </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="./app.js?v=24"></script>
+    <script src="./app.js?v=28"></script>
   </body>
 </html>

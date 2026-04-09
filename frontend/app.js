@@ -125,6 +125,24 @@ const expectedAccountId = document.getElementById("expectedAccountId");
 const expectedCategoryId = document.getElementById("expectedCategoryId");
 const addExpectedTxBtn = document.getElementById("addExpectedTxBtn");
 
+// Expected transaction edit modal
+const expectedEditModal = document.getElementById("expectedEditModal");
+const expectedEditErr = document.getElementById("expectedEditErr");
+const expectedEditId = document.getElementById("expectedEditId");
+const expectedEditStartDate = document.getElementById("expectedEditStartDate");
+const expectedEditRecurrence = document.getElementById("expectedEditRecurrence");
+const expectedEditLastTxnDate = document.getElementById("expectedEditLastTxnDate");
+const expectedEditTwiceMonthlyFields = document.getElementById("expectedEditTwiceMonthlyFields");
+const expectedEditSecondDayOfMonth = document.getElementById("expectedEditSecondDayOfMonth");
+const expectedEditAmount = document.getElementById("expectedEditAmount");
+const expectedEditDesc = document.getElementById("expectedEditDesc");
+const expectedEditNotes = document.getElementById("expectedEditNotes");
+const expectedEditAccountId = document.getElementById("expectedEditAccountId");
+const expectedEditCategoryId = document.getElementById("expectedEditCategoryId");
+const expectedEditSave = document.getElementById("expectedEditSave");
+const expectedEditDelete = document.getElementById("expectedEditDelete");
+const expectedEditCancel = document.getElementById("expectedEditCancel");
+
 // Projection
 const projectionStart = document.getElementById("projectionStart");
 const runProjectionBtn = document.getElementById("runProjectionBtn");
@@ -141,6 +159,31 @@ const calendarNextMonth = document.getElementById("calendarNextMonth");
 const calendarMode = document.getElementById("calendarMode");
 const calendarErr = document.getElementById("calendarErr");
 const calendarGrid = document.getElementById("calendarGrid");
+
+// 5-year projection collapse
+const PROJECTION_COLLAPSED_KEY = "familyCashFlow_projectionCollapsed";
+function applyProjectionCollapsed(collapsed) {
+  const panel = document.getElementById("projectionPanel");
+  const btn = document.getElementById("projectionCollapseBtn");
+  if (!panel || !btn) return;
+  panel.classList.toggle("projection-panel--collapsed", collapsed);
+  btn.setAttribute("aria-expanded", collapsed ? "false" : "true");
+  btn.title = collapsed ? "Expand projection" : "Collapse projection";
+  try {
+    localStorage.setItem(PROJECTION_COLLAPSED_KEY, collapsed ? "1" : "0");
+  } catch (_) {}
+}
+const projectionCollapseBtn = document.getElementById("projectionCollapseBtn");
+if (projectionCollapseBtn) {
+  projectionCollapseBtn.addEventListener("click", () => {
+    const panel = document.getElementById("projectionPanel");
+    if (!panel) return;
+    applyProjectionCollapsed(!panel.classList.contains("projection-panel--collapsed"));
+  });
+  // Collapsed by default on first load
+  const stored = localStorage.getItem(PROJECTION_COLLAPSED_KEY);
+  applyProjectionCollapsed(stored !== "0");
+}
 
 // Chart
 const chartStart = document.getElementById("chartStart");
@@ -1000,6 +1043,7 @@ async function loadCategories() {
   renderCategoriesGrid(state.categories);
   renderCategoryOptions(txCategoryId, state.categories);
   renderCategoryOptions(expectedCategoryId, state.categories);
+  renderCategoryOptions(expectedEditCategoryId, state.categories);
   if (instanceCategoryId) renderCategoryOptions(instanceCategoryId, state.categories);
   renderTxEditCategoryOptions();
 }
@@ -1080,6 +1124,7 @@ async function loadAccounts() {
   state.accounts = accounts || [];
   renderAccountsList(state.accounts);
   renderAccountSelect(expectedAccountId, state.accounts);
+  if (expectedEditAccountId) renderAccountSelect(expectedEditAccountId, state.accounts);
   if (instanceAccountId) renderAccountSelect(instanceAccountId, state.accounts);
   if (state.accounts.length > 0 && !expectedAccountId.value) {
     expectedAccountId.value = String(state.accounts[0].id);
@@ -1107,6 +1152,131 @@ if (expectedRecurrence) {
   expectedRecurrence.addEventListener("change", updateExpectedTwiceMonthlyVisibility);
 }
 
+function updateExpectedEditTwiceMonthlyVisibility() {
+  if (!expectedEditTwiceMonthlyFields || !expectedEditRecurrence) return;
+  const on = expectedEditRecurrence.value === "twice_monthly";
+  expectedEditTwiceMonthlyFields.style.display = on ? "block" : "none";
+}
+if (expectedEditRecurrence) {
+  expectedEditRecurrence.addEventListener("change", updateExpectedEditTwiceMonthlyVisibility);
+}
+
+function openExpectedEditModal(tx) {
+  if (!expectedEditModal || !expectedEditId) return;
+  expectedEditId.value = String(tx.id);
+  if (expectedEditStartDate) expectedEditStartDate.value = tx.start_date || "";
+  if (expectedEditLastTxnDate) expectedEditLastTxnDate.value = tx.end_date || "";
+  if (expectedEditRecurrence) expectedEditRecurrence.value = tx.recurrence || "monthly";
+  if (expectedEditSecondDayOfMonth) expectedEditSecondDayOfMonth.value = tx.second_day_of_month != null ? String(tx.second_day_of_month) : "";
+
+  const k = tx && tx.kind ? String(tx.kind) : "expense";
+  const kRadio = document.querySelector(`input[type="radio"][name="expectedEditKind"][value="${k}"]`);
+  if (kRadio) kRadio.checked = true;
+
+  if (expectedEditAmount) expectedEditAmount.value = String(tx.amount ?? "");
+  if (expectedEditDesc) expectedEditDesc.value = String(tx.description || "").slice(0, 12);
+  if (expectedEditNotes) expectedEditNotes.value = tx.notes || "";
+  if (expectedEditAccountId) expectedEditAccountId.value = tx.account_id != null ? String(tx.account_id) : "";
+  if (expectedEditCategoryId) expectedEditCategoryId.value = tx.category_id != null ? String(tx.category_id) : "";
+
+  updateExpectedEditTwiceMonthlyVisibility();
+  show(expectedEditErr, "");
+  expectedEditModal.classList.add("modal-overlay--open");
+  expectedEditModal.setAttribute("aria-hidden", "false");
+}
+
+function closeExpectedEditModal() {
+  if (!expectedEditModal) return;
+  expectedEditModal.classList.remove("modal-overlay--open");
+  expectedEditModal.setAttribute("aria-hidden", "true");
+}
+
+if (expectedEditCancel) {
+  expectedEditCancel.addEventListener("click", () => closeExpectedEditModal());
+}
+if (expectedEditModal) {
+  expectedEditModal.addEventListener("click", (e) => {
+    if (e.target === expectedEditModal) closeExpectedEditModal();
+  });
+}
+
+if (expectedEditSave) {
+  expectedEditSave.addEventListener("click", async () => {
+    try {
+      show(expectedEditErr, "");
+      if (!state.activeFamilyId) throw new Error("Choose a family first");
+      const id = expectedEditId.value;
+      if (!id) throw new Error("No recurring transaction selected");
+
+      const start = expectedEditStartDate?.value || "";
+      if (!start) throw new Error("Start date is required");
+
+      const recurrence = expectedEditRecurrence?.value || "monthly";
+      const endDate = expectedEditLastTxnDate?.value || null;
+      if (endDate && endDate < start) throw new Error("Last transaction date cannot be before start date");
+
+      let secondDayOfMonth = null;
+      if (recurrence === "twice_monthly") {
+        const raw = expectedEditSecondDayOfMonth?.value;
+        const n = raw !== "" && raw != null ? Number(raw) : NaN;
+        if (!Number.isFinite(n) || n < 1 || n > 31) throw new Error("2nd day of month (1–31) is required for twice monthly");
+        const startDay = Number(start.slice(8, 10));
+        if (n === startDay) throw new Error("2nd day of month must differ from the start date’s day of month");
+        secondDayOfMonth = n;
+      }
+
+      const amountVal = expectedEditAmount?.value;
+      if (!amountVal || Number(amountVal) <= 0) throw new Error("Amount must be > 0");
+
+      const accountIdVal = expectedEditAccountId?.value;
+      if (!accountIdVal) throw new Error("Account is required");
+
+      const categoryIdVal = expectedEditCategoryId?.value || null;
+
+      await api(`/api/families/${state.activeFamilyId}/expected-transactions/${id}`, "PUT", {
+        account_id: Number(accountIdVal),
+        start_date: start,
+        end_date: endDate,
+        recurrence,
+        second_day_of_month: secondDayOfMonth,
+        description: expectedEditDesc?.value?.trim() || "",
+        notes: expectedEditNotes && expectedEditNotes.value.trim() ? expectedEditNotes.value.trim() : null,
+        kind: getRadioValue("expectedEditKind", "expense"),
+        amount: Number(amountVal),
+        category_id: categoryIdVal ? Number(categoryIdVal) : null,
+      });
+
+      closeExpectedEditModal();
+      await loadExpectedTransactions();
+      await loadExpectedCalendar();
+      await loadCalendarMonthDaily();
+      renderCalendar();
+    } catch (e) {
+      show(expectedEditErr, e.message || "Failed to save");
+    }
+  });
+}
+
+if (expectedEditDelete) {
+  expectedEditDelete.addEventListener("click", async () => {
+    try {
+      show(expectedEditErr, "");
+      if (!state.activeFamilyId) throw new Error("Choose a family first");
+      const id = expectedEditId.value;
+      if (!id) throw new Error("No recurring transaction selected");
+      if (!confirm("Delete this recurring transaction series?")) return;
+      await api(`/api/families/${state.activeFamilyId}/expected-transactions/${id}`, "DELETE");
+      closeExpectedEditModal();
+      await loadExpectedTransactions();
+      await loadExpectedCalendar();
+      await loadCalendarMonthDaily();
+      renderCalendar();
+    } catch (e) {
+      show(expectedEditErr, e.message || "Failed to delete");
+    }
+  });
+}
+
 function renderExpectedTransactions(items) {
   expectedTxList.innerHTML = "";
   if (!items || items.length === 0) {
@@ -1119,7 +1289,7 @@ function renderExpectedTransactions(items) {
 
   for (const tx of items) {
     const el = document.createElement("div");
-    el.className = "item";
+    el.className = "item expected-item--dense";
 
     const amtClass = tx.kind === "income" ? "income" : "expense";
     const kindSign = tx.kind === "income" ? "+" : "-";
@@ -1144,7 +1314,6 @@ function renderExpectedTransactions(items) {
       tx.end_date ? `ends ${tx.end_date}` : "",
       twiceMeta,
       tx.recurrence ? `recurs: ${tx.recurrence}` : "",
-      tx.account ? `· ${tx.account}` : "",
     ].filter(Boolean);
     metaEl.appendChild(document.createTextNode(bits.join(" ")));
     if (tx.category_id && tx.category) {
@@ -1163,12 +1332,19 @@ function renderExpectedTransactions(items) {
     left.appendChild(descEl);
     left.appendChild(metaEl);
 
-    const amt = document.createElement("div");
-    amt.className = `amt ${amtClass}`;
-    amt.textContent = `${kindSign}$${fmtMoney(tx.amount)}`;
+    const amtBtn = document.createElement("button");
+    amtBtn.type = "button";
+    amtBtn.className = `amt ${amtClass} expected-amt-link`;
+    amtBtn.textContent = `${kindSign}$${fmtMoney(tx.amount)}`;
+    amtBtn.title = "Edit recurring transaction";
+    amtBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      openExpectedEditModal(tx);
+    });
 
     el.appendChild(left);
-    el.appendChild(amt);
+    el.appendChild(amtBtn);
     expectedTxList.appendChild(el);
   }
 }
@@ -1624,10 +1800,29 @@ function renderCalendar() {
     if (showExpected) {
       for (const item of expectedItems) {
         const line = document.createElement("div");
-        line.className = `cal-day-tx-line cal-day-tx-line--expected ${item.kind === "income" ? "income" : "expense"}`;
+        line.className = "cal-day-tx-line cal-day-tx-line--expected";
         const sign = item.kind === "income" ? "+" : "-";
         const label = truncate(item.description || "(expected)", 44);
-        line.textContent = `${label}: ${sign}$${fmtMoney(item.amount)}`;
+
+        const labelSpan = document.createElement("span");
+        labelSpan.textContent = `${label}: `;
+        if (item.category_id && item.category) {
+          const st = categoryStyleFromId(item.category_id);
+          if (st?.fg) labelSpan.style.color = st.fg;
+          if (st?.bg) labelSpan.style.background = st.bg;
+          if (st?.bg) {
+            labelSpan.style.padding = "1px 6px";
+            labelSpan.style.borderRadius = "999px";
+            labelSpan.style.border = "1px solid var(--border)";
+          }
+        }
+
+        const amtSpan = document.createElement("span");
+        amtSpan.className = `cal-amt ${item.kind === "income" ? "income" : "expense"}`;
+        amtSpan.textContent = `${sign}$${fmtMoney(item.amount)}`;
+
+        line.appendChild(labelSpan);
+        line.appendChild(amtSpan);
         {
           const bits = [`Expected: ${item.description || ""}`];
           if (item.notes && String(item.notes).trim()) bits.push(String(item.notes).trim());
@@ -1644,11 +1839,30 @@ function renderCalendar() {
     if (showActual) {
       for (const tx of actualTxs) {
         const line = document.createElement("div");
-        line.className = `cal-day-tx-line cal-tx-part ${tx.kind === "income" ? "income" : "expense"}`;
+        line.className = "cal-day-tx-line cal-tx-part";
         line.dataset.txId = String(tx.id);
         const sign = tx.kind === "income" ? "+" : "-";
         const label = truncate((tx.description || "Transaction").trim(), 44);
-        line.textContent = `${label}: ${sign}$${fmtMoney(tx.amount)}`;
+
+        const labelSpan = document.createElement("span");
+        labelSpan.textContent = `${label}: `;
+        if (tx.category_id && tx.category) {
+          const st = categoryStyleFromId(tx.category_id);
+          if (st?.fg) labelSpan.style.color = st.fg;
+          if (st?.bg) labelSpan.style.background = st.bg;
+          if (st?.bg) {
+            labelSpan.style.padding = "1px 6px";
+            labelSpan.style.borderRadius = "999px";
+            labelSpan.style.border = "1px solid var(--border)";
+          }
+        }
+
+        const amtSpan = document.createElement("span");
+        amtSpan.className = `cal-amt ${tx.kind === "income" ? "income" : "expense"}`;
+        amtSpan.textContent = `${sign}$${fmtMoney(tx.amount)}`;
+
+        line.appendChild(labelSpan);
+        line.appendChild(amtSpan);
         {
           const bits = [(tx.description || "").trim() || "Transaction"];
           if (tx.notes && String(tx.notes).trim()) bits.push(String(tx.notes).trim());

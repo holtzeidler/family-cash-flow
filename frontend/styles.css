@@ -270,7 +270,17 @@ button.nav-link:hover{
   /* --cal-week-rows set in JS (4–6); day row height scales with week count */
   --cal-week-rows: 5;
   --cal-day-min-h: 112px;
-  min-height: calc(200px + var(--cal-week-rows) * var(--cal-day-min-h));
+  --cal-gap: 8px;
+  /*
+    Ensure the panel is tall enough to show the full last row of day cards,
+    including grid gaps and the day-of-week header.
+  */
+  min-height: calc(
+    230px
+    + var(--cal-week-rows) * var(--cal-day-min-h)
+    + (var(--cal-week-rows) - 1) * var(--cal-gap)
+    + 24px
+  );
   max-height: none;
   overflow: hidden;
 }
@@ -279,6 +289,7 @@ button.nav-link:hover{
   flex: 1 1 auto;
   min-height: 0;
   overflow: hidden;
+  padding-bottom: 6px;
 }
 
 /* Chart / instance / projection / list — scroll below calendar */
@@ -781,6 +792,25 @@ input, select{
 .amt.income{ color: var(--ok); }
 .amt.expense{ color: var(--danger); }
 
+.expected-item--dense{
+  padding: 8px 10px;
+}
+.expected-item--dense .meta{
+  font-size: 11px;
+}
+.expected-item--dense .desc{
+  font-size: 13px;
+}
+.expected-amt-link{
+  background: transparent;
+  border: none;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+}
+
 .error{
   margin-top:10px;
   color: #ffd6d6;
@@ -884,8 +914,8 @@ input, select{
   max-width: 100%;
 }
 
-.cal-day-tx-line.income{ color: var(--ok); }
-.cal-day-tx-line.expense{ color: var(--danger); }
+.cal-day-tx-line .cal-amt.income{ color: var(--ok); }
+.cal-day-tx-line .cal-amt.expense{ color: var(--danger); }
 
 .cal-day-tx-line--expected{
   cursor: pointer;
@@ -943,6 +973,39 @@ input, select{
   border-radius: 14px;
   padding: 16px;
   box-shadow: 0 16px 48px rgba(0,0,0,0.45);
+}
+
+/* Collapsible projection panel */
+.projection-panel .panel-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 10px;
+}
+.projection-panel .panel-collapse-btn{
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+}
+.projection-panel .panel-collapse-btn svg{
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform 160ms ease;
+}
+.projection-panel:not(.projection-panel--collapsed) .panel-collapse-btn svg{
+  transform: rotate(180deg);
+}
+.projection-panel--collapsed .projection-panel-body{
+  display: none;
 }
 
 .modal h3{
