@@ -577,13 +577,20 @@ input, select{
   cursor: default;
 }
 .tx-desc-link{
-  color: var(--accent);
   text-decoration: none;
   cursor: pointer;
 }
+.tx-desc-link.tx-kind-fg--income{ color: var(--ok); }
+.tx-desc-link.tx-kind-fg--expense{ color: var(--danger); }
 .tx-desc-link:hover{
   text-decoration: underline;
 }
+.item .desc.tx-kind-fg--income{ color: var(--ok); }
+.item .desc.tx-kind-fg--expense{ color: var(--danger); }
+.cat-pill.tx-kind-fg--income{ color: var(--ok); }
+.cat-pill.tx-kind-fg--expense{ color: var(--danger); }
+.cal-tx-label.tx-kind-fg--income{ color: var(--ok); }
+.cal-tx-label.tx-kind-fg--expense{ color: var(--danger); }
 .instance-scope-row{
   display: flex;
   flex-direction: column;

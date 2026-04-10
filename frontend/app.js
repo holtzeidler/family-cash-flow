@@ -1210,6 +1210,11 @@ function categoryStyleFromId(categoryId) {
   return { name: c.name, fg, bg };
 }
 
+/** Default label text color: green income / red expense (custom category fg overrides where applied). */
+function kindFgClass(kind) {
+  return String(kind) === "income" ? "tx-kind-fg--income" : "tx-kind-fg--expense";
+}
+
 function renderAccountsList(accounts) {
   accountsList.innerHTML = "";
   if (!accounts || accounts.length === 0) {
@@ -1457,7 +1462,7 @@ function renderExpectedTransactions(items) {
     const left = document.createElement("div");
     left.className = "left";
     const descEl = document.createElement("div");
-    descEl.className = "desc";
+    descEl.className = `desc ${kindFgClass(tx.kind)}`;
     descEl.textContent = tx.description || "(no description)";
 
     const metaEl = document.createElement("div");
@@ -1472,7 +1477,7 @@ function renderExpectedTransactions(items) {
     if (tx.category_id && tx.category) {
       const st = categoryStyleFromId(tx.category_id);
       const pill = document.createElement("span");
-      pill.className = "cat-pill";
+      pill.className = `cat-pill ${kindFgClass(tx.kind)}`;
       pill.textContent = tx.category;
       if (st?.fg) pill.style.color = st.fg;
       if (st?.bg) pill.style.background = st.bg;
@@ -1623,7 +1628,7 @@ function renderTransactions(items) {
     left.className = "left";
     const link = document.createElement("a");
     link.href = "#";
-    link.className = "desc tx-desc-link";
+    link.className = `desc tx-desc-link ${kindFgClass(tx.kind)}`;
     link.textContent = (tx.description || "(no description)").trim() || "(no description)";
     const n = tx.notes && String(tx.notes).trim();
     if (n) link.title = n;
@@ -1639,7 +1644,7 @@ function renderTransactions(items) {
     if (tx.category_id && tx.category) {
       const st = categoryStyleFromId(tx.category_id);
       const pill = document.createElement("span");
-      pill.className = "cat-pill";
+      pill.className = `cat-pill ${kindFgClass(tx.kind)}`;
       pill.textContent = tx.category;
       if (st?.fg) pill.style.color = st.fg;
       if (st?.bg) pill.style.background = st.bg;
@@ -1958,6 +1963,7 @@ function renderCalendar() {
         const label = truncate(item.description || "(expected)", 44);
 
         const labelSpan = document.createElement("span");
+        labelSpan.className = `cal-tx-label ${kindFgClass(item.kind)}`;
         labelSpan.textContent = `${label}: `;
         if (item.category_id && item.category) {
           const st = categoryStyleFromId(item.category_id);
@@ -2002,6 +2008,7 @@ function renderCalendar() {
         const label = truncate((tx.description || "Transaction").trim(), 44);
 
         const labelSpan = document.createElement("span");
+        labelSpan.className = `cal-tx-label ${kindFgClass(tx.kind)}`;
         labelSpan.textContent = `${label}: `;
         if (tx.category_id && tx.category) {
           const st = categoryStyleFromId(tx.category_id);
