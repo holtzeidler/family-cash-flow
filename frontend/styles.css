@@ -117,6 +117,28 @@ button.danger{
   padding-right: 6px;
 }
 
+.sidebar-section-head{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.sidebar-section-head h2{
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+}
+.sidebar-section:not(.sidebar-section--collapsed) .sidebar-section-head{
+  margin-bottom: 10px;
+}
+.sidebar-section--collapsed .sidebar-section-body{
+  display: none;
+}
+.sidebar-collapse-chevron{
+  display: block;
+  transition: transform 0.15s ease;
+}
+
 .main-column{
   display:flex;
   flex-direction:column;
@@ -221,7 +243,8 @@ button.nav-link:hover{
   flex: 1;
   min-width: 0;
 }
-.calendar-collapse-btn{
+.calendar-collapse-btn,
+.sidebar-collapse-btn{
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
@@ -236,7 +259,8 @@ button.nav-link:hover{
   cursor: pointer;
   line-height: 0;
 }
-.calendar-collapse-btn:hover{
+.calendar-collapse-btn:hover,
+.sidebar-collapse-btn:hover{
   color: var(--text);
   background: rgba(255,255,255,0.08);
 }
@@ -246,8 +270,12 @@ button.nav-link:hover{
   transform: rotate(180deg);
 }
 .calendar-panel--collapsed .calendar-collapse-chevron,
-.chart-panel--collapsed .calendar-collapse-chevron{
+.chart-panel--collapsed .calendar-collapse-chevron,
+.sidebar-section--collapsed .sidebar-collapse-chevron{
   transform: rotate(0deg);
+}
+.sidebar-section:not(.sidebar-section--collapsed) .sidebar-collapse-chevron{
+  transform: rotate(180deg);
 }
 .calendar-panel-body{
   display: flex;

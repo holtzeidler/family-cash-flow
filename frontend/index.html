@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Family Cash Flow</title>
     <script>window.API_BASE = "__API_BASE__";</script>
-    <link rel="stylesheet" href="./styles.css?v=32" />
+    <link rel="stylesheet" href="./styles.css?v=33" />
   </head>
   <body>
     <div class="container">
@@ -23,8 +23,22 @@
             </div>
           </div>
 
-          <div class="card">
-            <h2>Add One-Time Transactions</h2>
+          <div class="card sidebar-section sidebar-section--collapsed" data-sidebar-key="addTx">
+            <div class="sidebar-section-head">
+              <h2>Add One-Time Transactions</h2>
+              <button
+                type="button"
+                class="sidebar-collapse-btn"
+                aria-expanded="false"
+                aria-controls="sidebarBodyAddTx"
+                title="Expand Add One-Time Transactions"
+              >
+                <svg class="sidebar-collapse-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M6 9l6 6 6-6" />
+                </svg>
+              </button>
+            </div>
+            <div id="sidebarBodyAddTx" class="sidebar-section-body">
             <div class="row two">
               <div>
                 <label for="txDate">Date</label>
@@ -65,10 +79,25 @@
               <button id="addTxBtn">Add transaction</button>
             </div>
             <div id="addTxErr" class="error"></div>
+            </div>
           </div>
 
-          <div class="card">
-            <h2>Add Recurring Transactions</h2>
+          <div class="card sidebar-section sidebar-section--collapsed" data-sidebar-key="recurring">
+            <div class="sidebar-section-head">
+              <h2>Add Recurring Transactions</h2>
+              <button
+                type="button"
+                class="sidebar-collapse-btn"
+                aria-expanded="false"
+                aria-controls="sidebarBodyRecurring"
+                title="Expand Add Recurring Transactions"
+              >
+                <svg class="sidebar-collapse-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M6 9l6 6 6-6" />
+                </svg>
+              </button>
+            </div>
+            <div id="sidebarBodyRecurring" class="sidebar-section-body">
             <div class="row three row-recurring-head">
               <div>
                 <label for="expectedStartDate">Start</label>
@@ -155,10 +184,25 @@
             </div>
             <div id="expectedTxErr" class="error"></div>
             <div class="list" id="expectedTxList"></div>
+            </div>
           </div>
 
-          <div class="card">
-            <h2>Accounts</h2>
+          <div class="card sidebar-section sidebar-section--collapsed" data-sidebar-key="accounts">
+            <div class="sidebar-section-head">
+              <h2>Accounts</h2>
+              <button
+                type="button"
+                class="sidebar-collapse-btn"
+                aria-expanded="false"
+                aria-controls="sidebarBodyAccounts"
+                title="Expand Accounts"
+              >
+                <svg class="sidebar-collapse-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M6 9l6 6 6-6" />
+                </svg>
+              </button>
+            </div>
+            <div id="sidebarBodyAccounts" class="sidebar-section-body">
             <div class="row two">
               <div>
                 <label for="accountName">Account name</label>
@@ -195,10 +239,25 @@
             <button id="cancelAccountEditBtn">Cancel account edit</button>
             <div id="accErr" class="error"></div>
             <div class="list" id="accountsList"></div>
+            </div>
           </div>
 
-          <div class="card">
-            <h2>Categories</h2>
+          <div class="card sidebar-section sidebar-section--collapsed" data-sidebar-key="categories">
+            <div class="sidebar-section-head">
+              <h2>Categories</h2>
+              <button
+                type="button"
+                class="sidebar-collapse-btn"
+                aria-expanded="false"
+                aria-controls="sidebarBodyCategories"
+                title="Expand Categories"
+              >
+                <svg class="sidebar-collapse-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M6 9l6 6 6-6" />
+                </svg>
+              </button>
+            </div>
+            <div id="sidebarBodyCategories" class="sidebar-section-body">
             <div id="categoriesGrid" class="categories-grid" aria-live="polite"></div>
             <div style="height:10px;"></div>
             <div class="categories-actions">
@@ -209,10 +268,25 @@
               <button id="addCategoryBtn">Add category</button>
             </div>
             <div id="catErr" class="error"></div>
+            </div>
           </div>
 
-          <div class="card">
-            <h2>Month summary</h2>
+          <div class="card sidebar-section sidebar-section--collapsed" data-sidebar-key="month">
+            <div class="sidebar-section-head">
+              <h2>Month summary</h2>
+              <button
+                type="button"
+                class="sidebar-collapse-btn"
+                aria-expanded="false"
+                aria-controls="sidebarBodyMonth"
+                title="Expand Month summary"
+              >
+                <svg class="sidebar-collapse-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M6 9l6 6 6-6" />
+                </svg>
+              </button>
+            </div>
+            <div id="sidebarBodyMonth" class="sidebar-section-body">
             <div class="row two">
               <div>
                 <label for="monthInput">Month</label>
@@ -225,6 +299,7 @@
             <div style="height:12px;"></div>
             <div class="totals" id="totals"></div>
             <div id="txErr" class="error"></div>
+            </div>
           </div>
         </aside>
 
@@ -575,6 +650,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="./app.js?v=32"></script>
+    <script src="./app.js?v=33"></script>
   </body>
 </html>

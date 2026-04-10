@@ -380,6 +380,34 @@ if (chartCollapseBtn) {
   } catch (_) {}
 }
 
+const SIDEBAR_SECTION_PREFIX = "familyCashFlow_sidebar_";
+
+function applySidebarSectionCollapsed(card, collapsed) {
+  const btn = card.querySelector(".sidebar-collapse-btn");
+  const key = card.dataset.sidebarKey;
+  if (!key || !btn) return;
+  card.classList.toggle("sidebar-section--collapsed", collapsed);
+  const label = (card.querySelector(".sidebar-section-head h2")?.textContent || "section").trim();
+  btn.setAttribute("aria-expanded", collapsed ? "false" : "true");
+  btn.title = collapsed ? `Expand ${label}` : `Collapse ${label}`;
+  try {
+    localStorage.setItem(SIDEBAR_SECTION_PREFIX + key, collapsed ? "1" : "0");
+  } catch (_) {}
+}
+
+document.querySelectorAll(".sidebar-section[data-sidebar-key]").forEach((card) => {
+  const btn = card.querySelector(".sidebar-collapse-btn");
+  if (!btn) return;
+  btn.addEventListener("click", () => {
+    applySidebarSectionCollapsed(card, !card.classList.contains("sidebar-section--collapsed"));
+  });
+  let stored = null;
+  try {
+    stored = localStorage.getItem(SIDEBAR_SECTION_PREFIX + card.dataset.sidebarKey);
+  } catch (_) {}
+  applySidebarSectionCollapsed(card, stored !== "0");
+});
+
 if (calendarMode) {
   calendarMode.addEventListener("change", async () => {
     await loadCalendarMonthDaily();
