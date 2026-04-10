@@ -768,8 +768,31 @@ input, select{
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.palette-picker{
-  width: 132px;
+.palette-popover{
+  position: fixed;
+  z-index: 4000;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.45);
+  max-height: min(72vh, 420px);
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+.cat-color-trigger{
+  width: 32px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  padding: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.25);
+}
+.cat-color-trigger:focus-visible{
+  outline: 2px solid rgba(102,163,255,0.75);
+  outline-offset: 2px;
 }
 .palette-grid{
   display:grid;

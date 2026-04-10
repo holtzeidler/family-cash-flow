@@ -964,8 +964,99 @@ function renderCategoryOptions(selectEl, categories) {
   }
 }
 
+let categoryPalettePopoverEl = null;
+let categoryPalettePopoverCleanup = null;
+
+function closeCategoryPalettePopover() {
+  if (categoryPalettePopoverCleanup) {
+    categoryPalettePopoverCleanup();
+    categoryPalettePopoverCleanup = null;
+  }
+  if (categoryPalettePopoverEl) {
+    categoryPalettePopoverEl.remove();
+    categoryPalettePopoverEl = null;
+  }
+}
+
+/**
+ * Opens a single floating palette (closes any other open category palette).
+ * @param {HTMLElement} anchorBtn
+ * @param {string[]} palette
+ * @param {string} currentHex
+ * @param {(hex: string) => void} onPick — called when user picks; popover closes after.
+ */
+function openCategoryPalettePopover(anchorBtn, palette, currentHex, onPick) {
+  closeCategoryPalettePopover();
+
+  const pop = document.createElement("div");
+  pop.className = "palette-popover";
+  pop.setAttribute("role", "dialog");
+  pop.setAttribute("aria-label", "Choose color");
+
+  const grid = document.createElement("div");
+  grid.className = "palette-grid";
+  const cur = (currentHex || "").toLowerCase();
+
+  for (const hex of palette) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "swatch";
+    b.style.background = hex;
+    b.setAttribute("aria-label", hex);
+    b.title = hex;
+    if (cur && cur === hex.toLowerCase()) b.classList.add("is-selected");
+    b.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      onPick(hex);
+      closeCategoryPalettePopover();
+    });
+    grid.appendChild(b);
+  }
+  pop.appendChild(grid);
+  document.body.appendChild(pop);
+  categoryPalettePopoverEl = pop;
+
+  const place = () => {
+    const r = anchorBtn.getBoundingClientRect();
+    const w = pop.offsetWidth || 200;
+    const h = pop.offsetHeight || 200;
+    let left = r.left;
+    let top = r.bottom + 6;
+    if (left + w > window.innerWidth - 8) left = Math.max(8, window.innerWidth - w - 8);
+    if (top + h > window.innerHeight - 8) top = Math.max(8, r.top - h - 6);
+    pop.style.left = `${left}px`;
+    pop.style.top = `${top}px`;
+  };
+  place();
+  requestAnimationFrame(place);
+
+  const onDocMouseDown = (e) => {
+    if (!pop.contains(e.target) && e.target !== anchorBtn && !anchorBtn.contains(e.target)) {
+      closeCategoryPalettePopover();
+    }
+  };
+  const onKeyDown = (e) => {
+    if (e.key === "Escape") closeCategoryPalettePopover();
+  };
+  const onScroll = () => place();
+
+  document.addEventListener("mousedown", onDocMouseDown, true);
+  document.addEventListener("keydown", onKeyDown, true);
+  window.addEventListener("scroll", onScroll, true);
+  window.addEventListener("resize", place);
+
+  categoryPalettePopoverCleanup = () => {
+    document.removeEventListener("mousedown", onDocMouseDown, true);
+    document.removeEventListener("keydown", onKeyDown, true);
+    window.removeEventListener("scroll", onScroll, true);
+    window.removeEventListener("resize", place);
+  };
+}
+
 function renderCategoriesGrid(categories) {
   if (!categoriesGrid) return;
+  closeCategoryPalettePopover();
   categoriesGrid.innerHTML = "";
   const items = categories || [];
   if (items.length === 0) {
@@ -993,31 +1084,26 @@ function renderCategoriesGrid(categories) {
     return /^#[0-9a-fA-F]{6}$/.test(s) ? s.toLowerCase() : fallback;
   }
 
-  function palettePicker(value, onChange) {
-    const root = document.createElement("div");
-    root.className = "palette-picker";
-    const grid = document.createElement("div");
-    grid.className = "palette-grid";
-    root.appendChild(grid);
-
-    const selected = normalizeHex(value, "");
-    for (const hex of PALETTE) {
-      const b = document.createElement("button");
-      b.type = "button";
-      b.className = "swatch";
-      b.style.background = hex;
-      b.setAttribute("aria-label", hex);
-      b.title = hex;
-      b.dataset.hex = hex;
-      if (selected && selected === hex.toLowerCase()) b.classList.add("is-selected");
-      b.addEventListener("click", () => {
-        for (const el of grid.querySelectorAll(".swatch.is-selected")) el.classList.remove("is-selected");
-        b.classList.add("is-selected");
-        onChange(hex);
-      });
-      grid.appendChild(b);
+  function makeColorTrigger(label, getHex, setHex) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "cat-color-trigger";
+    btn.setAttribute("aria-label", label);
+    btn.title = `Choose ${label.toLowerCase()} color`;
+    function paint() {
+      const h = getHex();
+      btn.style.background = h;
     }
-    return root;
+    paint();
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      openCategoryPalettePopover(btn, PALETTE, getHex(), (hex) => {
+        setHex(hex);
+        paint();
+      });
+    });
+    return btn;
   }
 
   // Header
@@ -1048,8 +1134,8 @@ function renderCategoriesGrid(categories) {
 
     let fgVal = normalizeHex(c.fg_color, DEFAULT_FG);
     let bgVal = normalizeHex(c.bg_color, DEFAULT_BG);
-    const fgPicker = palettePicker(fgVal, (hex) => (fgVal = hex));
-    const bgPicker = palettePicker(bgVal, (hex) => (bgVal = hex));
+    const fgTrigger = makeColorTrigger("Text color", () => fgVal, (h) => (fgVal = h));
+    const bgTrigger = makeColorTrigger("Background color", () => bgVal, (h) => (bgVal = h));
 
     const actions = document.createElement("div");
     actions.className = "cat-actions";
@@ -1097,8 +1183,8 @@ function renderCategoriesGrid(categories) {
     actions.appendChild(reset);
 
     categoriesGrid.appendChild(nameEl);
-    categoriesGrid.appendChild(fgPicker);
-    categoriesGrid.appendChild(bgPicker);
+    categoriesGrid.appendChild(fgTrigger);
+    categoriesGrid.appendChild(bgTrigger);
     categoriesGrid.appendChild(actions);
   }
 }
