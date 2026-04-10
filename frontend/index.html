@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Family Cash Flow</title>
     <script>window.API_BASE = "__API_BASE__";</script>
-    <link rel="stylesheet" href="./styles.css?v=33" />
+    <link rel="stylesheet" href="./styles.css?v=34" />
   </head>
   <body>
     <div class="container">
@@ -419,78 +419,6 @@
             </div>
           </div>
 
-          <div class="card">
-            <h2>Edit expected transaction instance</h2>
-            <div class="row two">
-              <div>
-                <label for="instanceDate">Instance date</label>
-                <input id="instanceDate" type="date" readonly />
-              </div>
-              <div>
-                <label for="instanceExpectedTxId">Expected transaction</label>
-                <input id="instanceExpectedTxId" type="text" readonly />
-              </div>
-            </div>
-            <div style="height:10px;"></div>
-            <div class="row two">
-              <div>
-                <label>Type</label>
-                <div class="kind-toggle" role="radiogroup" aria-label="Expected instance type">
-                  <label class="kind-opt"><input type="radio" name="instanceKind" value="expense" checked /> Expense</label>
-                  <label class="kind-opt"><input type="radio" name="instanceKind" value="income" /> Income</label>
-                </div>
-              </div>
-              <div>
-                <label for="instanceAmount">Amount</label>
-                <input id="instanceAmount" type="number" min="0" step="0.01" placeholder="0.00" />
-              </div>
-            </div>
-            <div style="height:10px;"></div>
-            <div class="row-desc-notes">
-              <div class="field-desc-short">
-                <label for="instanceDesc">Description</label>
-                <input id="instanceDesc" type="text" maxlength="12" class="input-desc-short" placeholder="e.g. Bill" />
-              </div>
-              <div class="field-notes-flex">
-                <label for="instanceNotes">Notes (series)</label>
-                <input id="instanceNotes" type="text" class="input-notes-flex input-notes-readonly" readonly tabindex="-1" title="Notes from the recurring series template" />
-              </div>
-            </div>
-            <div style="height:10px;"></div>
-            <div class="instance-scope-row" id="instanceScopeRow">
-              <span class="instance-scope-label">Apply changes to</span>
-              <div class="instance-scope-options">
-                <label class="inline-label"
-                  ><input type="radio" name="instanceSaveScope" id="instanceScopeThis" value="this" checked /> This occurrence
-                  only</label
-                >
-                <label class="inline-label" id="instanceScopeFutureLabel"
-                  ><input type="radio" name="instanceSaveScope" id="instanceScopeFuture" value="future" /> All future
-                  occurrences</label
-                >
-              </div>
-            </div>
-            <div style="height:10px;"></div>
-            <div class="row two">
-              <div>
-                <label for="instanceAccountId">Account</label>
-                <select id="instanceAccountId"></select>
-              </div>
-              <div>
-                <label for="instanceCategoryId">Category (optional)</label>
-                <select id="instanceCategoryId"></select>
-              </div>
-            </div>
-            <div style="height:12px;"></div>
-            <div class="row two">
-              <button id="saveInstanceOverrideBtn">Save override</button>
-              <button class="danger" id="cancelInstanceOverrideBtn">Cancel occurrence</button>
-            </div>
-            <div style="height:10px;"></div>
-            <button class="danger" id="deleteFutureInstancesBtn" style="width: 100%">Delete all future occurrences</button>
-            <div id="expectedInstanceErr" class="error"></div>
-          </div>
-
           <div class="card projection-panel projection-panel--collapsed" id="projectionPanel">
             <div class="panel-header">
               <h2 style="margin:0;">5-year daily projection</h2>
@@ -572,84 +500,178 @@
     </div>
 
     <div id="expectedEditModal" class="modal-overlay" aria-hidden="true">
-      <div class="modal" role="dialog" aria-labelledby="expectedEditTitle">
-        <h3 id="expectedEditTitle">Edit recurring transaction</h3>
+      <div class="modal modal--expected-edit" role="dialog" aria-labelledby="expectedEditTitle">
+        <h3 id="expectedEditTitle">Recurring transaction</h3>
         <div id="expectedEditErr" class="error"></div>
         <input type="hidden" id="expectedEditId" />
 
-        <div class="row three row-recurring-head">
-          <div>
-            <label for="expectedEditStartDate">Start</label>
-            <input id="expectedEditStartDate" type="date" />
-          </div>
-          <div>
-            <label for="expectedEditRecurrence">Recurrence</label>
-            <select id="expectedEditRecurrence">
-              <option value="monthly">Monthly</option>
-              <option value="twice_monthly">Twice monthly</option>
-              <option value="weekly">Weekly</option>
-              <option value="semiannual">Twice yearly (every 6 months)</option>
-              <option value="yearly">Yearly</option>
-              <option value="once">Once</option>
-            </select>
-          </div>
-          <div>
-            <label for="expectedEditLastTxnDate">Last txn</label>
-            <input id="expectedEditLastTxnDate" type="date" />
+        <div id="expectedModalModeRow" class="expected-modal-mode-row" style="display: none" role="radiogroup" aria-label="Edit scope">
+          <span class="expected-modal-mode-label">Edit</span>
+          <div class="expected-modal-mode-options">
+            <label class="expected-modal-mode-opt">
+              <input type="radio" name="expectedModalMode" id="expectedModalModeInstance" value="instance" checked /> This occurrence
+            </label>
+            <label class="expected-modal-mode-opt">
+              <input type="radio" name="expectedModalMode" id="expectedModalModeSeries" value="series" /> Entire series
+            </label>
           </div>
         </div>
 
-        <div id="expectedEditTwiceMonthlyFields" class="expected-second-day-row" style="display: none">
-          <label for="expectedEditSecondDayOfMonth">2nd day of month</label>
-          <input id="expectedEditSecondDayOfMonth" type="number" min="1" max="31" step="1" placeholder="e.g. 15" />
-        </div>
-
-        <div style="height:10px;"></div>
-        <label>Type</label>
-        <div class="kind-toggle" role="radiogroup" aria-label="Recurring transaction type">
-          <label class="kind-opt"><input type="radio" name="expectedEditKind" value="expense" checked /> Expense</label>
-          <label class="kind-opt"><input type="radio" name="expectedEditKind" value="income" /> Income</label>
-        </div>
-
-        <div style="height:10px;"></div>
-        <label for="expectedEditAmount">Amount</label>
-        <input id="expectedEditAmount" type="number" min="0" step="0.01" placeholder="0.00" />
-
-        <div style="height:10px;"></div>
-        <div class="row-desc-notes">
-          <div class="field-desc-short">
-            <label for="expectedEditDesc">Description</label>
-            <input id="expectedEditDesc" type="text" maxlength="12" class="input-desc-short" placeholder="e.g. Electric" />
+        <div id="expectedEditInstancePanel" class="expected-edit-panel" style="display: none">
+          <p class="expected-modal-hint" id="expectedInstanceHint">Changes here can apply to one date or split the series (like editing a calendar event).</p>
+          <div id="expectedInstanceErr" class="error"></div>
+          <div class="row two">
+            <div>
+              <label for="instanceDate">Occurrence date</label>
+              <input id="instanceDate" type="date" readonly />
+            </div>
+            <div>
+              <label for="instanceExpectedTxId">Series id</label>
+              <input id="instanceExpectedTxId" type="text" readonly />
+            </div>
           </div>
-          <div class="field-notes-flex">
-            <label for="expectedEditNotes">Notes</label>
-            <input id="expectedEditNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
+          <div style="height:10px;"></div>
+          <div class="row two">
+            <div>
+              <label>Type</label>
+              <div class="kind-toggle" role="radiogroup" aria-label="Expected instance type">
+                <label class="kind-opt"><input type="radio" name="instanceKind" value="expense" checked /> Expense</label>
+                <label class="kind-opt"><input type="radio" name="instanceKind" value="income" /> Income</label>
+              </div>
+            </div>
+            <div>
+              <label for="instanceAmount">Amount</label>
+              <input id="instanceAmount" type="number" min="0" step="0.01" placeholder="0.00" />
+            </div>
+          </div>
+          <div style="height:10px;"></div>
+          <div class="row-desc-notes">
+            <div class="field-desc-short">
+              <label for="instanceDesc">Description</label>
+              <input id="instanceDesc" type="text" maxlength="12" class="input-desc-short" placeholder="e.g. Bill" />
+            </div>
+            <div class="field-notes-flex">
+              <label for="instanceNotes">Notes (series)</label>
+              <input id="instanceNotes" type="text" class="input-notes-flex input-notes-readonly" readonly tabindex="-1" title="Notes come from the series; edit them under Entire series." />
+            </div>
+          </div>
+          <div style="height:10px;"></div>
+          <div class="instance-scope-row" id="instanceScopeRow">
+            <span class="instance-scope-label">When saving changes</span>
+            <div class="instance-scope-options">
+              <label class="inline-label"
+                ><input type="radio" name="instanceSaveScope" id="instanceScopeThis" value="this" checked /> Only this
+                date</label
+              >
+              <label class="inline-label" id="instanceScopeFutureLabel"
+                ><input type="radio" name="instanceSaveScope" id="instanceScopeFuture" value="future" /> This date and all
+                future occurrences</label
+              >
+            </div>
+          </div>
+          <div style="height:10px;"></div>
+          <div class="row two">
+            <div>
+              <label for="instanceAccountId">Account</label>
+              <select id="instanceAccountId"></select>
+            </div>
+            <div>
+              <label for="instanceCategoryId">Category (optional)</label>
+              <select id="instanceCategoryId"></select>
+            </div>
+          </div>
+          <div style="height:12px;"></div>
+          <button type="button" id="saveInstanceOverrideBtn" style="width: 100%">Save changes</button>
+
+          <div class="expected-instance-delete-group">
+            <div class="expected-instance-delete-label">Remove</div>
+            <div class="expected-instance-delete-actions">
+              <button type="button" id="cancelInstanceOverrideBtn" class="expected-remove-btn">This occurrence only</button>
+              <button type="button" id="deleteFutureInstancesBtn" class="expected-remove-btn expected-remove-btn--strong">
+                This and all future
+              </button>
+              <button type="button" id="expectedInstanceDeleteSeriesBtn" class="danger" style="width: 100%">Entire series</button>
+            </div>
           </div>
         </div>
 
-        <div style="height:10px;"></div>
-        <div class="row two">
-          <div>
-            <label for="expectedEditAccountId">Account</label>
-            <select id="expectedEditAccountId"></select>
+        <div id="expectedEditSeriesPanel" class="expected-edit-panel">
+          <p class="expected-modal-hint">Schedule, notes, and defaults for every occurrence in this series.</p>
+          <div class="row three row-recurring-head">
+            <div>
+              <label for="expectedEditStartDate">Start</label>
+              <input id="expectedEditStartDate" type="date" />
+            </div>
+            <div>
+              <label for="expectedEditRecurrence">Recurrence</label>
+              <select id="expectedEditRecurrence">
+                <option value="monthly">Monthly</option>
+                <option value="twice_monthly">Twice monthly</option>
+                <option value="weekly">Weekly</option>
+                <option value="semiannual">Twice yearly (every 6 months)</option>
+                <option value="yearly">Yearly</option>
+                <option value="once">Once</option>
+              </select>
+            </div>
+            <div>
+              <label for="expectedEditLastTxnDate">Last txn</label>
+              <input id="expectedEditLastTxnDate" type="date" />
+            </div>
           </div>
-          <div>
-            <label for="expectedEditCategoryId">Category (optional)</label>
-            <select id="expectedEditCategoryId"></select>
+
+          <div id="expectedEditTwiceMonthlyFields" class="expected-second-day-row" style="display: none">
+            <label for="expectedEditSecondDayOfMonth">2nd day of month</label>
+            <input id="expectedEditSecondDayOfMonth" type="number" min="1" max="31" step="1" placeholder="e.g. 15" />
+          </div>
+
+          <div style="height:10px;"></div>
+          <label>Type</label>
+          <div class="kind-toggle" role="radiogroup" aria-label="Recurring transaction type">
+            <label class="kind-opt"><input type="radio" name="expectedEditKind" value="expense" checked /> Expense</label>
+            <label class="kind-opt"><input type="radio" name="expectedEditKind" value="income" /> Income</label>
+          </div>
+
+          <div style="height:10px;"></div>
+          <label for="expectedEditAmount">Amount</label>
+          <input id="expectedEditAmount" type="number" min="0" step="0.01" placeholder="0.00" />
+
+          <div style="height:10px;"></div>
+          <div class="row-desc-notes">
+            <div class="field-desc-short">
+              <label for="expectedEditDesc">Description</label>
+              <input id="expectedEditDesc" type="text" maxlength="12" class="input-desc-short" placeholder="e.g. Electric" />
+            </div>
+            <div class="field-notes-flex">
+              <label for="expectedEditNotes">Notes</label>
+              <input id="expectedEditNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
+            </div>
+          </div>
+
+          <div style="height:10px;"></div>
+          <div class="row two">
+            <div>
+              <label for="expectedEditAccountId">Account</label>
+              <select id="expectedEditAccountId"></select>
+            </div>
+            <div>
+              <label for="expectedEditCategoryId">Category (optional)</label>
+              <select id="expectedEditCategoryId"></select>
+            </div>
+          </div>
+
+          <div style="height:14px;"></div>
+          <div class="row two">
+            <button type="button" id="expectedEditSave">Save series</button>
+            <button type="button" id="expectedEditDelete" class="danger">Delete series</button>
           </div>
         </div>
 
-        <div style="height:14px;"></div>
-        <div class="row two">
-          <button type="button" id="expectedEditSave">Save</button>
-          <button type="button" id="expectedEditDelete" class="danger">Delete</button>
-        </div>
-        <div style="height: 8px"></div>
-        <button type="button" id="expectedEditCancel" style="width: 100%">Cancel</button>
+        <div style="height: 10px"></div>
+        <button type="button" id="expectedEditCancel" style="width: 100%">Close</button>
       </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="./app.js?v=33"></script>
+    <script src="./app.js?v=34"></script>
   </body>
 </html>

@@ -825,94 +825,91 @@ document.querySelector(".chart-duration-bar")?.addEventListener("click", async (
   }
 });
 
-saveInstanceOverrideBtn.addEventListener("click", async () => {
-  try {
-    show(expectedInstanceErr, "");
-    if (!state.activeFamilyId) throw new Error("Choose a family first");
-    if (!selectedExpectedInstance) throw new Error("Select an expected occurrence from the calendar");
+if (saveInstanceOverrideBtn) {
+  saveInstanceOverrideBtn.addEventListener("click", async () => {
+    try {
+      show(expectedInstanceErr, "");
+      if (!state.activeFamilyId) throw new Error("Choose a family first");
+      if (!selectedExpectedInstance) throw new Error("Select an expected occurrence from the calendar");
 
-    const amountVal = instanceAmount.value;
-    const amount = amountVal ? Number(amountVal) : null;
-    if (!amount || Number.isNaN(amount) || amount <= 0) throw new Error("Amount must be > 0");
+      const amountVal = instanceAmount.value;
+      const amount = amountVal ? Number(amountVal) : null;
+      if (!amount || Number.isNaN(amount) || amount <= 0) throw new Error("Amount must be > 0");
 
-    const accountId = instanceAccountId.value;
-    if (!accountId) throw new Error("Account is required");
+      const accountId = instanceAccountId.value;
+      if (!accountId) throw new Error("Account is required");
 
-    const categoryId = instanceCategoryId.value ? Number(instanceCategoryId.value) : null;
+      const categoryId = instanceCategoryId.value ? Number(instanceCategoryId.value) : null;
 
-    const scopeEl = document.querySelector('input[name="instanceSaveScope"]:checked');
-    const scope = scopeEl && scopeEl.value === "future" ? "future" : "this";
-    const meta = getExpectedSeriesMeta(selectedExpectedInstance.expected_transaction_id);
+      const scopeEl = document.querySelector('input[name="instanceSaveScope"]:checked');
+      const scope = scopeEl && scopeEl.value === "future" ? "future" : "this";
+      const meta = getExpectedSeriesMeta(selectedExpectedInstance.expected_transaction_id);
 
-    const occ = normalizeIsoDate(selectedExpectedInstance.occurrence_date);
-    if (!occ) throw new Error("Invalid occurrence date");
+      const occ = normalizeIsoDate(selectedExpectedInstance.occurrence_date);
+      if (!occ) throw new Error("Invalid occurrence date");
 
-    if (scope === "future") {
-      if (!meta || meta.recurrence === "once") {
-        throw new Error('"All future occurrences" applies only to recurring schedules (not "once").');
+      if (scope === "future") {
+        if (!meta || meta.recurrence === "once") {
+          throw new Error('"This date and all future" applies only to recurring schedules (not "once").');
+        }
+        const applyPayload = {
+          account_id: Number(accountId),
+          kind: getRadioValue("instanceKind", "expense"),
+          amount,
+          description: instanceDesc.value.trim() || "",
+          category_id: categoryId,
+        };
+        await api(
+          `/api/families/${state.activeFamilyId}/expected-transactions/${selectedExpectedInstance.expected_transaction_id}/apply-from-occurrence/${occ}`,
+          "POST",
+          applyPayload
+        );
+      } else {
+        const payload = {
+          action: "update",
+          account_id: Number(accountId),
+          kind: getRadioValue("instanceKind", "expense"),
+          amount,
+          description: instanceDesc.value.trim() || "",
+          category_id: categoryId,
+        };
+        await api(
+          `/api/families/${state.activeFamilyId}/expected-transactions/${selectedExpectedInstance.expected_transaction_id}/instances/${occ}`,
+          "POST",
+          payload
+        );
       }
-      const applyPayload = {
-        account_id: Number(accountId),
-        kind: getRadioValue("instanceKind", "expense"),
-        amount,
-        description: instanceDesc.value.trim() || "",
-        category_id: categoryId,
-      };
-      await api(
-        `/api/families/${state.activeFamilyId}/expected-transactions/${selectedExpectedInstance.expected_transaction_id}/apply-from-occurrence/${occ}`,
-        "POST",
-        applyPayload
-      );
-    } else {
-      const payload = {
-        action: "update",
-        account_id: Number(accountId),
-        kind: getRadioValue("instanceKind", "expense"),
-        amount,
-        description: instanceDesc.value.trim() || "",
-        category_id: categoryId,
-      };
-      await api(
-        `/api/families/${state.activeFamilyId}/expected-transactions/${selectedExpectedInstance.expected_transaction_id}/instances/${occ}`,
-        "POST",
-        payload
-      );
+
+      closeExpectedEditModal();
+      await refreshExpectedCalendarAndMonth();
+    } catch (e) {
+      show(expectedInstanceErr, e.message || "Failed to save override");
     }
+  });
+}
 
-    await loadExpectedTransactions();
-    await loadExpectedCalendar();
-    await loadCalendarMonthDaily();
-    renderCalendar();
-    updateInstanceScopeUI();
-  } catch (e) {
-    show(expectedInstanceErr, e.message || "Failed to save override");
-  }
-});
+if (cancelInstanceOverrideBtn) {
+  cancelInstanceOverrideBtn.addEventListener("click", async () => {
+    try {
+      show(expectedInstanceErr, "");
+      if (!state.activeFamilyId) throw new Error("Choose a family first");
+      if (!selectedExpectedInstance) throw new Error("Select an expected occurrence from the calendar");
+      if (!confirm("Remove only this occurrence? It will no longer appear on the calendar.")) return;
 
-cancelInstanceOverrideBtn.addEventListener("click", async () => {
-  try {
-    show(expectedInstanceErr, "");
-    if (!state.activeFamilyId) throw new Error("Choose a family first");
-    if (!selectedExpectedInstance) throw new Error("Select an expected occurrence from the calendar");
+      const cancelOcc = normalizeIsoDate(selectedExpectedInstance.occurrence_date) || selectedExpectedInstance.occurrence_date;
+      await api(
+        `/api/families/${state.activeFamilyId}/expected-transactions/${selectedExpectedInstance.expected_transaction_id}/instances/${cancelOcc}`,
+        "POST",
+        { action: "cancel" }
+      );
 
-    const cancelOcc = normalizeIsoDate(selectedExpectedInstance.occurrence_date) || selectedExpectedInstance.occurrence_date;
-    await api(
-      `/api/families/${state.activeFamilyId}/expected-transactions/${selectedExpectedInstance.expected_transaction_id}/instances/${cancelOcc}`,
-      "POST",
-      { action: "cancel" }
-    );
-
-    selectedExpectedInstance = null;
-    if (instanceDate) instanceDate.value = "";
-    if (instanceExpectedTxId) instanceExpectedTxId.value = "";
-    if (instanceNotes) instanceNotes.value = "";
-    await loadExpectedCalendar();
-    await loadCalendarMonthDaily();
-    renderCalendar();
-  } catch (e) {
-    show(expectedInstanceErr, e.message || "Failed to cancel occurrence");
-  }
-});
+      closeExpectedEditModal();
+      await refreshExpectedCalendarAndMonth();
+    } catch (e) {
+      show(expectedInstanceErr, e.message || "Failed to cancel occurrence");
+    }
+  });
+}
 
 if (deleteFutureInstancesBtn) {
   deleteFutureInstancesBtn.addEventListener("click", async () => {
@@ -929,25 +926,36 @@ if (deleteFutureInstancesBtn) {
       const occ = normalizeIsoDate(selectedExpectedInstance.occurrence_date);
       if (!occ) throw new Error("Invalid occurrence date");
 
-      if (!confirm("Delete this and all future occurrences? This will end the recurring series.")) return;
+      if (!confirm("Remove this date and all later occurrences? Past dates stay on the schedule.")) return;
 
       await api(
         `/api/families/${state.activeFamilyId}/expected-transactions/${selectedExpectedInstance.expected_transaction_id}/end-from-occurrence/${occ}`,
         "POST"
       );
 
-      selectedExpectedInstance = null;
-      if (instanceDate) instanceDate.value = "";
-      if (instanceExpectedTxId) instanceExpectedTxId.value = "";
-      if (instanceNotes) instanceNotes.value = "";
-
-      await loadExpectedTransactions();
-      await loadExpectedCalendar();
-      await loadCalendarMonthDaily();
-      renderCalendar();
-      updateInstanceScopeUI();
+      closeExpectedEditModal();
+      await refreshExpectedCalendarAndMonth();
     } catch (e) {
       show(expectedInstanceErr, e.message || "Failed to delete future occurrences");
+    }
+  });
+}
+
+const expectedInstanceDeleteSeriesBtn = document.getElementById("expectedInstanceDeleteSeriesBtn");
+if (expectedInstanceDeleteSeriesBtn) {
+  expectedInstanceDeleteSeriesBtn.addEventListener("click", async () => {
+    try {
+      show(expectedInstanceErr, "");
+      if (!state.activeFamilyId) throw new Error("Choose a family first");
+      if (!selectedExpectedInstance) throw new Error("Select an expected occurrence from the calendar");
+      const id = expectedEditId?.value || String(selectedExpectedInstance.expected_transaction_id);
+      if (!id) throw new Error("No series selected");
+      if (!confirm("Delete the entire recurring series (all dates)? This cannot be undone.")) return;
+      await api(`/api/families/${state.activeFamilyId}/expected-transactions/${id}`, "DELETE");
+      closeExpectedEditModal();
+      await refreshExpectedCalendarAndMonth();
+    } catch (e) {
+      show(expectedInstanceErr, e.message || "Failed to delete series");
     }
   });
 }
@@ -1347,8 +1355,26 @@ if (expectedEditRecurrence) {
   expectedEditRecurrence.addEventListener("change", updateExpectedEditTwiceMonthlyVisibility);
 }
 
-function openExpectedEditModal(tx) {
+function setExpectedModalMode(mode) {
+  const instPanel = document.getElementById("expectedEditInstancePanel");
+  const serPanel = document.getElementById("expectedEditSeriesPanel");
+  const isInstance = mode === "instance";
+  if (instPanel) instPanel.style.display = isInstance ? "block" : "none";
+  if (serPanel) serPanel.style.display = isInstance ? "none" : "block";
+}
+
+async function refreshExpectedCalendarAndMonth() {
+  await loadExpectedTransactions();
+  await loadExpectedCalendar();
+  await loadCalendarMonthDaily();
+  renderCalendar();
+}
+
+function openExpectedEditModal(tx, opts = {}) {
   if (!expectedEditModal || !expectedEditId) return;
+  const calendarItem = opts.calendarItem ?? null;
+  const modeRow = document.getElementById("expectedModalModeRow");
+
   expectedEditId.value = String(tx.id);
   if (expectedEditStartDate) expectedEditStartDate.value = tx.start_date || "";
   if (expectedEditLastTxnDate) expectedEditLastTxnDate.value = tx.end_date || "";
@@ -1366,7 +1392,24 @@ function openExpectedEditModal(tx) {
   if (expectedEditCategoryId) expectedEditCategoryId.value = tx.category_id != null ? String(tx.category_id) : "";
 
   updateExpectedEditTwiceMonthlyVisibility();
+
+  if (calendarItem) {
+    if (modeRow) modeRow.style.display = "flex";
+    const rInst = document.getElementById("expectedModalModeInstance");
+    if (rInst) rInst.checked = true;
+    selectExpectedInstance(calendarItem);
+    setExpectedModalMode("instance");
+  } else {
+    if (modeRow) modeRow.style.display = "none";
+    selectedExpectedInstance = null;
+    const rSer = document.getElementById("expectedModalModeSeries");
+    if (rSer) rSer.checked = true;
+    setExpectedModalMode("series");
+  }
+
+  updateInstanceScopeUI();
   show(expectedEditErr, "");
+  show(expectedInstanceErr, "");
   expectedEditModal.classList.add("modal-overlay--open");
   expectedEditModal.setAttribute("aria-hidden", "false");
 }
@@ -1375,7 +1418,18 @@ function closeExpectedEditModal() {
   if (!expectedEditModal) return;
   expectedEditModal.classList.remove("modal-overlay--open");
   expectedEditModal.setAttribute("aria-hidden", "true");
+  selectedExpectedInstance = null;
+  if (instanceDate) instanceDate.value = "";
+  if (instanceExpectedTxId) instanceExpectedTxId.value = "";
+  if (instanceNotes) instanceNotes.value = "";
 }
+
+document.querySelectorAll('input[name="expectedModalMode"]').forEach((el) => {
+  el.addEventListener("change", () => {
+    const v = document.querySelector('input[name="expectedModalMode"]:checked')?.value;
+    if (v === "instance" || v === "series") setExpectedModalMode(v);
+  });
+});
 
 if (expectedEditCancel) {
   expectedEditCancel.addEventListener("click", () => closeExpectedEditModal());
@@ -1433,10 +1487,7 @@ if (expectedEditSave) {
       });
 
       closeExpectedEditModal();
-      await loadExpectedTransactions();
-      await loadExpectedCalendar();
-      await loadCalendarMonthDaily();
-      renderCalendar();
+      await refreshExpectedCalendarAndMonth();
     } catch (e) {
       show(expectedEditErr, e.message || "Failed to save");
     }
@@ -1450,13 +1501,10 @@ if (expectedEditDelete) {
       if (!state.activeFamilyId) throw new Error("Choose a family first");
       const id = expectedEditId.value;
       if (!id) throw new Error("No recurring transaction selected");
-      if (!confirm("Delete this recurring transaction series?")) return;
+      if (!confirm("Delete the entire recurring series (all dates)? This cannot be undone.")) return;
       await api(`/api/families/${state.activeFamilyId}/expected-transactions/${id}`, "DELETE");
       closeExpectedEditModal();
-      await loadExpectedTransactions();
-      await loadExpectedCalendar();
-      await loadCalendarMonthDaily();
-      renderCalendar();
+      await refreshExpectedCalendarAndMonth();
     } catch (e) {
       show(expectedEditErr, e.message || "Failed to delete");
     }
@@ -1861,13 +1909,19 @@ function getExpectedSeriesMeta(expectedId) {
 function updateInstanceScopeUI() {
   const future = document.getElementById("instanceScopeFuture");
   const futureLabel = document.getElementById("instanceScopeFutureLabel");
+  const cancelOccBtn = document.getElementById("cancelInstanceOverrideBtn");
+  const delSeriesFromInst = document.getElementById("expectedInstanceDeleteSeriesBtn");
   if (!future) return;
   if (!selectedExpectedInstance) {
     future.disabled = true;
     if (futureLabel) futureLabel.style.opacity = "0.5";
     if (deleteFutureInstancesBtn) deleteFutureInstancesBtn.disabled = true;
+    if (cancelOccBtn) cancelOccBtn.disabled = true;
+    if (delSeriesFromInst) delSeriesFromInst.disabled = true;
     return;
   }
+  if (cancelOccBtn) cancelOccBtn.disabled = false;
+  if (delSeriesFromInst) delSeriesFromInst.disabled = false;
   const meta = getExpectedSeriesMeta(selectedExpectedInstance.expected_transaction_id);
   const allowFuture = !!(meta && meta.recurrence !== "once");
   future.disabled = !allowFuture;
@@ -2017,11 +2071,8 @@ function renderCalendar() {
         }
         line.addEventListener("click", (e) => {
           e.stopPropagation();
-          // Keep the instance editor selection (this occurrence),
-          // but also allow quick series editing in a modal like actual transactions.
-          selectExpectedInstance(item);
           const meta = getExpectedSeriesMeta(item.expected_transaction_id);
-          if (meta) openExpectedEditModal(meta);
+          if (meta) openExpectedEditModal(meta, { calendarItem: item });
         });
         txnsEl.appendChild(line);
       }
