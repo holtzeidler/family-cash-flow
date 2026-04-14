@@ -960,16 +960,16 @@ input, select{
   font-size: 13px;
 }
 .cal-cell-fill{
-  flex: 1 1 auto;
-  min-height: 4px;
+  /* Previously used to push content to the bottom of the day cell. */
+  display: none;
 }
 
 .cal-cell-stack{
-  flex: 0 0 auto;
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   gap: 6px;
-  justify-content: flex-end;
+  justify-content: flex-start;
   align-items: stretch;
   width: 100%;
 }
@@ -1012,6 +1012,7 @@ input, select{
   flex-direction:column;
   gap:4px;
   align-items: flex-end;
+  margin-top: auto;
 }
 
 .cal-stat{

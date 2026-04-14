@@ -143,6 +143,7 @@ class Transaction(Base):
     notes: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     kind: Mapped[TransactionKind] = mapped_column(SAEnum(TransactionKind), nullable=False, default=TransactionKind.expense)
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    reimbursable: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     category_id: Mapped[Optional[int]] = mapped_column(ForeignKey("categories.id"), nullable=True, index=True)
 
@@ -184,6 +185,7 @@ class ExpectedTransaction(Base):
     notes: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     kind: Mapped[TransactionKind] = mapped_column(SAEnum(TransactionKind), nullable=False, default=TransactionKind.expense)
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    reimbursable: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     category_id: Mapped[Optional[int]] = mapped_column(ForeignKey("categories.id"), nullable=True, index=True)
 
@@ -207,6 +209,7 @@ class ExpectedTransactionOverride(Base):
     kind: Mapped[Optional[TransactionKind]] = mapped_column(SAEnum(TransactionKind), nullable=True)
     amount: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 2), nullable=True)
     description: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    reimbursable: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
     category_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("categories.id", ondelete="CASCADE"), nullable=True, index=True
     )
@@ -326,6 +329,7 @@ class TransactionIn(BaseModel):
     kind: TransactionKind
     amount: Decimal = Field(gt=0)
     category_id: Optional[int] = None
+    reimbursable: bool = False
 
 
 class TransactionOut(BaseModel):
@@ -337,6 +341,7 @@ class TransactionOut(BaseModel):
     amount: Decimal
     category: Optional[str] = None
     category_id: Optional[int] = None
+    reimbursable: bool = False
 
 
 class TransactionsListOut(BaseModel):
@@ -376,6 +381,7 @@ class ExpectedTransactionIn(BaseModel):
     notes: Optional[str] = Field(default=None, max_length=500)
     kind: TransactionKind = TransactionKind.expense
     amount: Decimal = Field(gt=0)
+    reimbursable: bool = False
 
     category_id: Optional[int] = None
 
@@ -392,6 +398,7 @@ class ExpectedTransactionOut(BaseModel):
     notes: Optional[str] = None
     kind: TransactionKind
     amount: Decimal
+    reimbursable: bool = False
     category: Optional[str]
     category_id: Optional[int] = None
     created_by: int
@@ -424,6 +431,7 @@ class ExpectedInstanceOverrideIn(BaseModel):
     kind: Optional[TransactionKind] = None
     amount: Optional[Decimal] = None
     description: Optional[str] = None
+    reimbursable: Optional[bool] = None
     category_id: Optional[int] = None
 
 
@@ -432,6 +440,7 @@ class ApplyFromOccurrenceIn(BaseModel):
     kind: TransactionKind
     amount: Decimal = Field(gt=0)
     description: str = Field(default="", max_length=500)
+    reimbursable: bool = False
     category_id: Optional[int] = None
 
 
@@ -456,6 +465,7 @@ class ExpectedCalendarItemOut(BaseModel):
     amount: Decimal
     description: str
     notes: Optional[str] = None
+    reimbursable: bool = False
     category_id: Optional[int] = None
     category: Optional[str] = None
 
@@ -557,6 +567,7 @@ def startup_populate_schema():
     _ensure_expected_second_day_column()
     _ensure_recurrence_enum_extensions_postgres()
     _ensure_category_color_columns()
+    _ensure_reimbursable_columns()
 
 
 def _ensure_account_starting_balance_date_column():
@@ -658,6 +669,25 @@ def _ensure_category_color_columns() -> None:
         else:
             conn.execute(text("ALTER TABLE categories ADD COLUMN IF NOT EXISTS fg_color VARCHAR(20)"))
             conn.execute(text("ALTER TABLE categories ADD COLUMN IF NOT EXISTS bg_color VARCHAR(20)"))
+
+
+def _ensure_reimbursable_columns() -> None:
+    """Lightweight startup migration: add reimbursable flags to transactions and schedules."""
+    with engine.begin() as conn:
+        if settings.DATABASE_URL.startswith("sqlite"):
+            for table in ("transactions", "expected_transactions", "expected_transaction_overrides"):
+                cols = conn.execute(text(f"PRAGMA table_info({table})")).fetchall()
+                has_col = any(str(row[1]) == "reimbursable" for row in cols)
+                if not has_col:
+                    conn.execute(text(f"ALTER TABLE {table} ADD COLUMN reimbursable BOOLEAN"))
+                conn.execute(text(f"UPDATE {table} SET reimbursable = COALESCE(reimbursable, 0)"))
+            return
+
+        conn.execute(text("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS reimbursable BOOLEAN NOT NULL DEFAULT FALSE"))
+        conn.execute(text("ALTER TABLE expected_transactions ADD COLUMN IF NOT EXISTS reimbursable BOOLEAN NOT NULL DEFAULT FALSE"))
+        conn.execute(text("ALTER TABLE expected_transaction_overrides ADD COLUMN IF NOT EXISTS reimbursable BOOLEAN"))
+        conn.execute(text("UPDATE transactions SET reimbursable = COALESCE(reimbursable, FALSE)"))
+        conn.execute(text("UPDATE expected_transactions SET reimbursable = COALESCE(reimbursable, FALSE)"))
 
 
 @app.post("/api/auth/register", status_code=status.HTTP_201_CREATED, response_model=RegisterOut)
@@ -916,6 +946,7 @@ def list_expected_transactions(
                 notes=tx.notes,
                 kind=tx.kind,
                 amount=tx.amount,
+                reimbursable=bool(getattr(tx, "reimbursable", False)),
                 category=category_name,
                 category_id=tx.category_id,
                 created_by=tx.created_by_user_id,
@@ -962,6 +993,7 @@ def create_expected_transaction(
         notes=payload.notes.strip() if payload.notes and payload.notes.strip() else None,
         kind=payload.kind,
         amount=payload.amount,
+        reimbursable=payload.reimbursable,
         category_id=payload.category_id,
     )
     db.add(tx)
@@ -980,6 +1012,7 @@ def create_expected_transaction(
         notes=tx.notes,
         kind=tx.kind,
         amount=tx.amount,
+        reimbursable=bool(getattr(tx, "reimbursable", False)),
         category=category_name,
         category_id=tx.category_id,
         created_by=tx.created_by_user_id,
@@ -1031,6 +1064,7 @@ def update_expected_transaction(
     tx.notes = payload.notes.strip() if payload.notes and payload.notes.strip() else None
     tx.kind = payload.kind
     tx.amount = payload.amount
+    tx.reimbursable = payload.reimbursable
     tx.category_id = payload.category_id
 
     db.commit()
@@ -1048,6 +1082,7 @@ def update_expected_transaction(
         notes=tx.notes,
         kind=tx.kind,
         amount=tx.amount,
+        reimbursable=bool(getattr(tx, "reimbursable", False)),
         category=category_name,
         category_id=tx.category_id,
         created_by=tx.created_by_user_id,
@@ -1104,6 +1139,7 @@ def upsert_expected_instance_override(
         kind = None
         amount = None
         description = None
+        reimbursable = None
         category_id = None
     else:
         if payload.account_id is None or payload.kind is None or payload.amount is None:
@@ -1112,6 +1148,7 @@ def upsert_expected_instance_override(
         kind = payload.kind
         amount = payload.amount
         description = payload.description
+        reimbursable = payload.reimbursable
         category_id = payload.category_id
 
         account = db.execute(select(Account).where(Account.id == account_id, Account.family_id == family_id)).scalar_one_or_none()
@@ -1141,6 +1178,7 @@ def upsert_expected_instance_override(
     existing.kind = kind
     existing.amount = amount
     existing.description = description
+    existing.reimbursable = reimbursable
     existing.category_id = category_id
 
     db.commit()
@@ -1248,6 +1286,7 @@ def apply_expected_from_occurrence(
         tx.kind = payload.kind
         tx.amount = payload.amount
         tx.description = payload.description
+        tx.reimbursable = payload.reimbursable
         tx.category_id = category_id
         db.commit()
         db.refresh(tx)
@@ -1278,6 +1317,7 @@ def apply_expected_from_occurrence(
         notes=tx.notes,
         kind=payload.kind,
         amount=payload.amount,
+        reimbursable=payload.reimbursable,
         category_id=category_id,
     )
     db.add(new_tx)
@@ -1416,6 +1456,11 @@ def expected_calendar(
             eff_kind = (ovr.kind if ovr is not None and ovr.kind is not None else tx.kind)
             eff_amount = (ovr.amount if ovr is not None and ovr.amount is not None else tx.amount)
             eff_description = (ovr.description if ovr is not None and ovr.description is not None else tx.description)
+            eff_reimbursable = (
+                ovr.reimbursable
+                if ovr is not None and ovr.reimbursable is not None
+                else bool(getattr(tx, "reimbursable", False))
+            )
             eff_category_id = (ovr.category_id if ovr is not None and ovr.category_id is not None else tx.category_id)
 
             acc = accounts_by_id.get(eff_account_id)
@@ -1433,6 +1478,7 @@ def expected_calendar(
                     amount=eff_amount,
                     description=eff_description,
                     notes=tx.notes,
+                    reimbursable=bool(eff_reimbursable),
                     category_id=eff_category_id,
                     category=cat.name if cat is not None else None,
                 )
@@ -1942,6 +1988,7 @@ def list_transactions(
                 amount=tx.amount,
                 category=category_name,
                 category_id=tx.category_id,
+                reimbursable=bool(getattr(tx, "reimbursable", False)),
             )
         )
 
@@ -1976,6 +2023,7 @@ def create_transaction(
         kind=payload.kind,
         amount=payload.amount,
         category_id=payload.category_id,
+        reimbursable=payload.reimbursable,
     )
     db.add(tx)
     db.commit()
@@ -1998,6 +2046,7 @@ def _transaction_out(db, tx: Transaction) -> TransactionOut:
         amount=tx.amount,
         category=category_name,
         category_id=tx.category_id,
+        reimbursable=bool(getattr(tx, "reimbursable", False)),
     )
 
 
@@ -2031,6 +2080,7 @@ def update_transaction(
     tx.kind = payload.kind
     tx.amount = payload.amount
     tx.category_id = payload.category_id
+    tx.reimbursable = payload.reimbursable
     db.commit()
     db.refresh(tx)
     return _transaction_out(db, tx)

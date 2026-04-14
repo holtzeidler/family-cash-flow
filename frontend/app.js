@@ -620,12 +620,31 @@ document.addEventListener("keydown", (e) => {
 
 if (calendarGrid) {
   calendarGrid.addEventListener("click", (e) => {
+    // Click on an actual transaction line opens the edit modal.
     const part = e.target.closest(".cal-tx-part");
-    if (!part || !calendarGrid.contains(part)) return;
-    const id = Number(part.dataset.txId);
-    if (!id) return;
-    const tx = (state.monthActualItems || []).find((t) => Number(t.id) === id);
-    if (tx) openTxEditModal(tx);
+    if (part && calendarGrid.contains(part)) {
+      const id = Number(part.dataset.txId);
+      if (!id) return;
+      const tx = (state.monthActualItems || []).find((t) => Number(t.id) === id);
+      if (tx) openTxEditModal(tx);
+      return;
+    }
+
+    // Click on an empty part of a day cell opens the one-time transaction form.
+    // (Expected tx lines stopPropagation in their own handler.)
+    const cell = e.target.closest(".cal-cell");
+    if (!cell || !calendarGrid.contains(cell)) return;
+    const iso = cell.dataset.iso;
+    if (!iso) return;
+
+    const addTxCard = document.querySelector('.sidebar-section[data-sidebar-key="addTx"]');
+    if (addTxCard) applySidebarSectionCollapsed(addTxCard, false);
+
+    const txDateEl = document.getElementById("txDate");
+    if (txDateEl) txDateEl.value = iso;
+
+    const txDescEl = document.getElementById("txDesc");
+    if (txDescEl) txDescEl.focus();
   });
 }
 
@@ -2023,6 +2042,7 @@ function renderCalendar() {
     }
 
     const iso = dateISOFromParts(year, monthIndex, dayNum);
+    cell.dataset.iso = iso;
     cell.innerHTML = `
       <div class="cal-daynum">${dayNum}</div>
       <div class="cal-cell-fill"></div>
