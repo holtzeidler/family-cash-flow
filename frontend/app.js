@@ -223,6 +223,17 @@ const txEditSave = document.getElementById("txEditSave");
 const txEditDelete = document.getElementById("txEditDelete");
 const txEditCancel = document.getElementById("txEditCancel");
 
+// One-time transaction add modal
+const txAddModal = document.getElementById("txAddModal");
+const txAddErr = document.getElementById("txAddErr");
+const txAddDate = document.getElementById("txAddDate");
+const txAddAmount = document.getElementById("txAddAmount");
+const txAddDesc = document.getElementById("txAddDesc");
+const txAddNotes = document.getElementById("txAddNotes");
+const txAddCategoryId = document.getElementById("txAddCategoryId");
+const txAddSave = document.getElementById("txAddSave");
+const txAddCancel = document.getElementById("txAddCancel");
+
 document.getElementById("logoutBtn").addEventListener("click", async () => {
   await api("/api/auth/logout", "POST");
   window.location.href = "./login.html";
@@ -468,6 +479,39 @@ document.getElementById("addTxBtn").addEventListener("click", async () => {
   }
 });
 
+if (txAddSave) {
+  txAddSave.addEventListener("click", async () => {
+    try {
+      show(txAddErr, "");
+      if (!state.activeFamilyId) throw new Error("Choose a family first");
+
+      const dateVal = txAddDate?.value || "";
+      const desc = txAddDesc?.value?.trim() || "";
+      const notesRaw = txAddNotes?.value?.trim() || "";
+      const kind = getRadioValue("txAddKind", "expense");
+      const amountVal = txAddAmount?.value || "";
+      const categoryId = txAddCategoryId?.value || null;
+
+      if (!dateVal) throw new Error("Date is required");
+      if (!amountVal || Number(amountVal) <= 0) throw new Error("Amount must be > 0");
+
+      await api(`/api/families/${state.activeFamilyId}/transactions`, "POST", {
+        date: dateVal,
+        description: desc,
+        notes: notesRaw || null,
+        kind,
+        amount: Number(amountVal),
+        category_id: categoryId ? Number(categoryId) : null,
+      });
+
+      closeTxAddModal();
+      await loadMonthAndCalendar();
+    } catch (e) {
+      show(txAddErr, e.message || "Failed to add transaction");
+    }
+  });
+}
+
 addAccountBtn.addEventListener("click", async () => {
   try {
     show(accErr, "");
@@ -562,6 +606,29 @@ function closeTxEditModal() {
   txEditModal.setAttribute("aria-hidden", "true");
 }
 
+function openTxAddModal(opts = {}) {
+  if (!txAddModal || !txAddDate) return;
+  const dateVal = opts.date || "";
+  txAddDate.value = dateVal;
+  if (txAddAmount) txAddAmount.value = "";
+  if (txAddDesc) txAddDesc.value = "";
+  if (txAddNotes) txAddNotes.value = "";
+  if (txAddCategoryId) txAddCategoryId.value = "";
+  const kind = opts.kind || "expense";
+  const radio = document.querySelector(`input[type="radio"][name="txAddKind"][value="${kind}"]`);
+  if (radio) radio.checked = true;
+  show(txAddErr, "");
+  txAddModal.classList.add("modal-overlay--open");
+  txAddModal.setAttribute("aria-hidden", "false");
+  requestAnimationFrame(() => (txAddDesc ? txAddDesc.focus() : txAddDate.focus()));
+}
+
+function closeTxAddModal() {
+  if (!txAddModal) return;
+  txAddModal.classList.remove("modal-overlay--open");
+  txAddModal.setAttribute("aria-hidden", "true");
+}
+
 if (txEditSave) {
   txEditSave.addEventListener("click", async () => {
     try {
@@ -618,6 +685,19 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && txEditModal?.classList.contains("modal-overlay--open")) closeTxEditModal();
 });
 
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && txAddModal?.classList.contains("modal-overlay--open")) closeTxAddModal();
+});
+
+if (txAddCancel) {
+  txAddCancel.addEventListener("click", () => closeTxAddModal());
+}
+if (txAddModal) {
+  txAddModal.addEventListener("click", (e) => {
+    if (e.target === txAddModal) closeTxAddModal();
+  });
+}
+
 if (calendarGrid) {
   calendarGrid.addEventListener("click", (e) => {
     // Click on an actual transaction line opens the edit modal.
@@ -630,21 +710,13 @@ if (calendarGrid) {
       return;
     }
 
-    // Click on an empty part of a day cell opens the one-time transaction form.
+    // Click on an empty part of a day cell opens the one-time transaction popup.
     // (Expected tx lines stopPropagation in their own handler.)
     const cell = e.target.closest(".cal-cell");
     if (!cell || !calendarGrid.contains(cell)) return;
     const iso = cell.dataset.iso;
     if (!iso) return;
-
-    const addTxCard = document.querySelector('.sidebar-section[data-sidebar-key="addTx"]');
-    if (addTxCard) applySidebarSectionCollapsed(addTxCard, false);
-
-    const txDateEl = document.getElementById("txDate");
-    if (txDateEl) txDateEl.value = iso;
-
-    const txDescEl = document.getElementById("txDesc");
-    if (txDescEl) txDescEl.focus();
+    openTxAddModal({ date: iso });
   });
 }
 
@@ -1250,6 +1322,7 @@ async function loadCategories() {
   state.categories = categories || [];
   renderCategoriesGrid(state.categories);
   renderCategoryOptions(txCategoryId, state.categories);
+  renderCategoryOptions(txAddCategoryId, state.categories);
   renderCategoryOptions(expectedCategoryId, state.categories);
   renderCategoryOptions(expectedEditCategoryId, state.categories);
   if (instanceCategoryId) renderCategoryOptions(instanceCategoryId, state.categories);

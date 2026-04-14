@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Family Cash Flow</title>
     <script>window.API_BASE = "__API_BASE__";</script>
-    <link rel="stylesheet" href="./styles.css?v=34" />
+    <link rel="stylesheet" href="./styles.css?v=35" />
   </head>
   <body>
     <div class="container">
@@ -499,6 +499,48 @@
       </div>
     </div>
 
+    <div id="txAddModal" class="modal-overlay" aria-hidden="true">
+      <div class="modal" role="dialog" aria-labelledby="txAddTitle">
+        <h3 id="txAddTitle">Add transaction</h3>
+        <div id="txAddErr" class="error"></div>
+        <label for="txAddDate">Date</label>
+        <input id="txAddDate" type="date" />
+        <div style="height: 10px"></div>
+        <div class="row two">
+          <div>
+            <label>Type</label>
+            <div class="kind-toggle" role="radiogroup" aria-label="Transaction type">
+              <label class="kind-opt"><input type="radio" name="txAddKind" value="expense" checked /> Expense</label>
+              <label class="kind-opt"><input type="radio" name="txAddKind" value="income" /> Income</label>
+            </div>
+          </div>
+          <div>
+            <label for="txAddAmount">Amount</label>
+            <input id="txAddAmount" type="number" min="0" step="0.01" placeholder="0.00" />
+          </div>
+        </div>
+        <div style="height: 10px"></div>
+        <div class="row-desc-notes">
+          <div class="field-desc-short">
+            <label for="txAddDesc">Description</label>
+            <input id="txAddDesc" type="text" maxlength="12" class="input-desc-short" placeholder="e.g. Rent" />
+          </div>
+          <div class="field-notes-flex">
+            <label for="txAddNotes">Notes</label>
+            <input id="txAddNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
+          </div>
+        </div>
+        <div style="height: 10px"></div>
+        <label for="txAddCategoryId">Category</label>
+        <select id="txAddCategoryId"></select>
+        <div style="height: 14px"></div>
+        <div class="row two">
+          <button type="button" id="txAddSave">Add</button>
+          <button type="button" id="txAddCancel" class="danger">Cancel</button>
+        </div>
+      </div>
+    </div>
+
     <div id="expectedEditModal" class="modal-overlay" aria-hidden="true">
       <div class="modal modal--expected-edit" role="dialog" aria-labelledby="expectedEditTitle">
         <h3 id="expectedEditTitle">Recurring transaction</h3>
@@ -672,6 +714,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="./app.js?v=34"></script>
+    <script src="./app.js?v=35"></script>
   </body>
 </html>
