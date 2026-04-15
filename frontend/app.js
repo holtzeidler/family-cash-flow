@@ -143,6 +143,15 @@ const expectedEditSave = document.getElementById("expectedEditSave");
 const expectedEditDelete = document.getElementById("expectedEditDelete");
 const expectedEditCancel = document.getElementById("expectedEditCancel");
 
+// Expected delete choice modal
+const expectedDeleteModal = document.getElementById("expectedDeleteModal");
+const expectedDeleteErr = document.getElementById("expectedDeleteErr");
+const expectedDeleteAllBtn = document.getElementById("expectedDeleteAllBtn");
+const expectedDeleteThisBtn = document.getElementById("expectedDeleteThisBtn");
+const expectedDeleteFutureBtn = document.getElementById("expectedDeleteFutureBtn");
+const expectedDeleteCancelBtn = document.getElementById("expectedDeleteCancelBtn");
+let expectedDeleteContext = { expectedId: null, occurrenceDate: null };
+
 // Projection
 const projectionStart = document.getElementById("projectionStart");
 const runProjectionBtn = document.getElementById("runProjectionBtn");
@@ -242,8 +251,7 @@ document.getElementById("logoutBtn").addEventListener("click", async () => {
 function initCalendarYearOptions() {
   if (!calendarYear || calendarYear.dataset.populated === "1") return;
   calendarYear.dataset.populated = "1";
-  const y0 = new Date().getFullYear();
-  for (let y = y0 - 35; y <= y0 + 25; y++) {
+  for (let y = 2020; y <= 2030; y++) {
     const opt = document.createElement("option");
     opt.value = String(y);
     opt.textContent = String(y);
@@ -253,6 +261,7 @@ function initCalendarYearOptions() {
 
 function ensureCalendarYearOption(y) {
   if (!calendarYear) return;
+  if (Number(y) < 2020 || Number(y) > 2030) return;
   const ys = String(y);
   if ([...calendarYear.options].some((o) => o.value === ys)) return;
   const opt = document.createElement("option");
@@ -624,7 +633,7 @@ function openTxAddModal(opts = {}) {
   show(txAddErr, "");
   txAddModal.classList.add("modal-overlay--open");
   txAddModal.setAttribute("aria-hidden", "false");
-  requestAnimationFrame(() => (txAddDesc ? txAddDesc.focus() : txAddDate.focus()));
+  requestAnimationFrame(() => (txAddAmount ? txAddAmount.focus() : txAddDate.focus()));
 }
 
 function closeTxAddModal() {
@@ -691,6 +700,10 @@ document.addEventListener("keydown", (e) => {
 
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && txAddModal?.classList.contains("modal-overlay--open")) closeTxAddModal();
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && expectedDeleteModal?.classList.contains("modal-overlay--open")) closeExpectedDeleteModal();
 });
 
 if (txAddCancel) {
@@ -1038,20 +1051,10 @@ if (deleteFutureInstancesBtn) {
 
 const expectedInstanceDeleteSeriesBtn = document.getElementById("expectedInstanceDeleteSeriesBtn");
 if (expectedInstanceDeleteSeriesBtn) {
-  expectedInstanceDeleteSeriesBtn.addEventListener("click", async () => {
-    try {
-      show(expectedInstanceErr, "");
-      if (!state.activeFamilyId) throw new Error("Choose a family first");
-      if (!selectedExpectedInstance) throw new Error("Select an expected occurrence from the calendar");
-      const id = expectedEditId?.value || String(selectedExpectedInstance.expected_transaction_id);
-      if (!id) throw new Error("No series selected");
-      if (!confirm("Delete the entire recurring series (all dates)? This cannot be undone.")) return;
-      await api(`/api/families/${state.activeFamilyId}/expected-transactions/${id}`, "DELETE");
-      closeExpectedEditModal();
-      await refreshExpectedCalendarAndMonth();
-    } catch (e) {
-      show(expectedInstanceErr, e.message || "Failed to delete series");
-    }
+  expectedInstanceDeleteSeriesBtn.addEventListener("click", () => {
+    const id = expectedEditId?.value || (selectedExpectedInstance ? String(selectedExpectedInstance.expected_transaction_id) : null);
+    const occ = selectedExpectedInstance ? normalizeIsoDate(selectedExpectedInstance.occurrence_date) : null;
+    openExpectedDeleteModal(id, occ);
   });
 }
 
@@ -1520,6 +1523,28 @@ function closeExpectedEditModal() {
   if (instanceNotes) instanceNotes.value = "";
 }
 
+function openExpectedDeleteModal(expectedId, occurrenceDate) {
+  if (!expectedDeleteModal) return;
+  expectedDeleteContext = { expectedId: expectedId ? String(expectedId) : null, occurrenceDate: occurrenceDate || null };
+  show(expectedDeleteErr, "");
+
+  const hasOcc = !!expectedDeleteContext.occurrenceDate;
+  if (expectedDeleteThisBtn) expectedDeleteThisBtn.disabled = !hasOcc;
+  if (expectedDeleteFutureBtn) expectedDeleteFutureBtn.disabled = !hasOcc;
+  if (expectedDeleteThisBtn) expectedDeleteThisBtn.title = hasOcc ? "" : "Open from a specific calendar date to delete only one occurrence.";
+  if (expectedDeleteFutureBtn) expectedDeleteFutureBtn.title = hasOcc ? "" : "Open from a specific calendar date to delete future occurrences.";
+
+  expectedDeleteModal.classList.add("modal-overlay--open");
+  expectedDeleteModal.setAttribute("aria-hidden", "false");
+}
+
+function closeExpectedDeleteModal() {
+  if (!expectedDeleteModal) return;
+  expectedDeleteModal.classList.remove("modal-overlay--open");
+  expectedDeleteModal.setAttribute("aria-hidden", "true");
+  expectedDeleteContext = { expectedId: null, occurrenceDate: null };
+}
+
 document.querySelectorAll('input[name="expectedModalMode"]').forEach((el) => {
   el.addEventListener("change", () => {
     const v = document.querySelector('input[name="expectedModalMode"]:checked')?.value;
@@ -1534,6 +1559,62 @@ if (expectedEditModal) {
   expectedEditModal.addEventListener("click", (e) => {
     if (e.target === expectedEditModal) closeExpectedEditModal();
   });
+}
+
+if (expectedDeleteCancelBtn) {
+  expectedDeleteCancelBtn.addEventListener("click", () => closeExpectedDeleteModal());
+}
+if (expectedDeleteModal) {
+  expectedDeleteModal.addEventListener("click", (e) => {
+    if (e.target === expectedDeleteModal) closeExpectedDeleteModal();
+  });
+}
+
+async function runExpectedDeleteAction(mode) {
+  try {
+    show(expectedDeleteErr, "");
+    if (!state.activeFamilyId) throw new Error("Choose a family first");
+    const expectedId = expectedDeleteContext.expectedId;
+    if (!expectedId) throw new Error("No series selected");
+
+    if (mode === "all") {
+      if (!confirm("Delete ALL transactions in this series (all dates)? This cannot be undone.")) return;
+      await api(`/api/families/${state.activeFamilyId}/expected-transactions/${expectedId}`, "DELETE");
+    } else if (mode === "this") {
+      const occ = expectedDeleteContext.occurrenceDate;
+      if (!occ) throw new Error('Open from a specific calendar date to use "Delete only this transaction".');
+      if (!confirm("Delete ONLY this occurrence? It will no longer appear on the calendar.")) return;
+      await api(
+        `/api/families/${state.activeFamilyId}/expected-transactions/${expectedId}/instances/${occ}`,
+        "POST",
+        { action: "cancel" }
+      );
+    } else if (mode === "future") {
+      const occ = expectedDeleteContext.occurrenceDate;
+      if (!occ) throw new Error('Open from a specific calendar date to use "Delete all future transactions".');
+      if (!confirm("Delete this date and ALL future occurrences? Past dates stay on the schedule.")) return;
+      await api(
+        `/api/families/${state.activeFamilyId}/expected-transactions/${expectedId}/end-from-occurrence/${occ}`,
+        "POST"
+      );
+    }
+
+    closeExpectedDeleteModal();
+    closeExpectedEditModal();
+    await refreshExpectedCalendarAndMonth();
+  } catch (e) {
+    show(expectedDeleteErr, e.message || "Failed to delete");
+  }
+}
+
+if (expectedDeleteAllBtn) {
+  expectedDeleteAllBtn.addEventListener("click", () => runExpectedDeleteAction("all"));
+}
+if (expectedDeleteThisBtn) {
+  expectedDeleteThisBtn.addEventListener("click", () => runExpectedDeleteAction("this"));
+}
+if (expectedDeleteFutureBtn) {
+  expectedDeleteFutureBtn.addEventListener("click", () => runExpectedDeleteAction("future"));
 }
 
 if (expectedEditSave) {
@@ -1591,19 +1672,10 @@ if (expectedEditSave) {
 }
 
 if (expectedEditDelete) {
-  expectedEditDelete.addEventListener("click", async () => {
-    try {
-      show(expectedEditErr, "");
-      if (!state.activeFamilyId) throw new Error("Choose a family first");
-      const id = expectedEditId.value;
-      if (!id) throw new Error("No recurring transaction selected");
-      if (!confirm("Delete the entire recurring series (all dates)? This cannot be undone.")) return;
-      await api(`/api/families/${state.activeFamilyId}/expected-transactions/${id}`, "DELETE");
-      closeExpectedEditModal();
-      await refreshExpectedCalendarAndMonth();
-    } catch (e) {
-      show(expectedEditErr, e.message || "Failed to delete");
-    }
+  expectedEditDelete.addEventListener("click", () => {
+    const id = expectedEditId?.value || null;
+    const occ = selectedExpectedInstance ? normalizeIsoDate(selectedExpectedInstance.occurrence_date) : null;
+    openExpectedDeleteModal(id, occ);
   });
 }
 

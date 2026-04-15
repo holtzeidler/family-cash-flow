@@ -75,9 +75,9 @@
               </div>
             </div>
             <div style="height:10px;"></div>
-            <label class="inline-label" for="txReimbursable">
+            <label class="reimbursable-field" for="txReimbursable">
+              <span class="reimbursable-field__label">Reimbursable</span>
               <input id="txReimbursable" type="checkbox" />
-              Reimbursable
             </label>
             <div style="height:10px;"></div>
             <div class="btn-center-row">
@@ -637,7 +637,7 @@
               <button type="button" id="deleteFutureInstancesBtn" class="expected-remove-btn expected-remove-btn--strong">
                 This and all future
               </button>
-              <button type="button" id="expectedInstanceDeleteSeriesBtn" class="danger" style="width: 100%">Entire series</button>
+              <button type="button" id="expectedInstanceDeleteSeriesBtn" class="danger" style="width: 100%">Delete</button>
             </div>
           </div>
         </div>
@@ -709,12 +709,29 @@
           <div style="height:14px;"></div>
           <div class="row two">
             <button type="button" id="expectedEditSave">Save series</button>
-            <button type="button" id="expectedEditDelete" class="danger">Delete series</button>
+            <button type="button" id="expectedEditDelete" class="danger">Delete</button>
           </div>
         </div>
 
         <div style="height: 10px"></div>
         <button type="button" id="expectedEditCancel" style="width: 100%">Close</button>
+      </div>
+    </div>
+
+    <div id="expectedDeleteModal" class="modal-overlay" aria-hidden="true">
+      <div class="modal" role="dialog" aria-labelledby="expectedDeleteTitle">
+        <h3 id="expectedDeleteTitle">Delete recurring transaction</h3>
+        <div id="expectedDeleteErr" class="error"></div>
+        <p class="expected-modal-hint" style="margin-bottom: 12px">
+          Choose how much of the series to remove. This cannot be undone.
+        </p>
+        <div class="expected-delete-actions">
+          <button type="button" id="expectedDeleteAllBtn" class="danger">Delete all transactions in the series</button>
+          <button type="button" id="expectedDeleteThisBtn">Delete only this transaction</button>
+          <button type="button" id="expectedDeleteFutureBtn">Delete all future transactions</button>
+        </div>
+        <div style="height: 10px"></div>
+        <button type="button" id="expectedDeleteCancelBtn" style="width: 100%">Cancel</button>
       </div>
     </div>
 
