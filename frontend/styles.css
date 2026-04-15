@@ -958,6 +958,9 @@ input, select{
 .cal-daynum{
   font-weight:700;
   font-size: 13px;
+  padding-bottom: 6px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid rgba(255,255,255,0.10);
 }
 .cal-cell-fill{
   /* Previously used to push content to the bottom of the day cell. */
