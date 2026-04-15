@@ -456,6 +456,7 @@ document.getElementById("addTxBtn").addEventListener("click", async () => {
     const kind = getRadioValue("txKind", "expense");
     const amountVal = document.getElementById("txAmount").value;
     const categoryId = document.getElementById("txCategoryId").value || null;
+    const reimbursable = !!document.getElementById("txReimbursable")?.checked;
 
     if (!dateVal) throw new Error("Date is required");
     if (!amountVal || Number(amountVal) <= 0) throw new Error("Amount must be > 0");
@@ -467,12 +468,15 @@ document.getElementById("addTxBtn").addEventListener("click", async () => {
       kind,
       amount: Number(amountVal),
       category_id: categoryId ? Number(categoryId) : null,
+      reimbursable,
     });
 
     document.getElementById("txDesc").value = "";
     const txNotesEl = document.getElementById("txNotes");
     if (txNotesEl) txNotesEl.value = "";
     document.getElementById("txAmount").value = "";
+    const reimbEl = document.getElementById("txReimbursable");
+    if (reimbEl) reimbEl.checked = false;
     await loadMonthAndCalendar();
   } catch (e) {
     show(addTxErr, e.message || "Failed to add transaction");
@@ -868,8 +872,8 @@ function formatProjectionTooltipDate(iso) {
 function ensureProjectionChartDefaults() {
   if (projectionChartDefaultsApplied || typeof Chart === "undefined") return;
   projectionChartDefaultsApplied = true;
-  Chart.defaults.color = "#9fb0d0";
-  Chart.defaults.borderColor = "rgba(255,255,255,0.08)";
+  Chart.defaults.color = "#4b5563";
+  Chart.defaults.borderColor = "rgba(0,0,0,0.10)";
   Chart.defaults.font.family =
     'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
   Chart.defaults.font.size = 11;
@@ -2285,7 +2289,7 @@ function drawProjectionChart(daily) {
           label: "Balance",
           data: values,
           borderColor: "rgba(102,163,255,0.95)",
-          backgroundColor: "rgba(102,163,255,0.14)",
+          backgroundColor: "rgba(102,163,255,0.18)",
           borderWidth: 1.5,
           fill: true,
           tension: 0,
@@ -2313,7 +2317,7 @@ function drawProjectionChart(daily) {
       scales: {
         x: {
           type: "category",
-          grid: { color: "rgba(255,255,255,0.06)", drawBorder: false },
+          grid: { color: "rgba(0,0,0,0.06)", drawBorder: false },
           ticks: {
             autoSkip: true,
             maxTicksLimit: 10,
@@ -2327,13 +2331,13 @@ function drawProjectionChart(daily) {
           title: {
             display: true,
             text: "Date",
-            color: "#9fb0d0",
+            color: "#4b5563",
             font: { size: 11, weight: "500" },
             padding: { top: 6 },
           },
         },
         y: {
-          grid: { color: "rgba(255,255,255,0.06)", drawBorder: false },
+          grid: { color: "rgba(0,0,0,0.06)", drawBorder: false },
           ticks: {
             maxTicksLimit: 7,
             callback: (value) =>
@@ -2346,7 +2350,7 @@ function drawProjectionChart(daily) {
           title: {
             display: true,
             text: "Balance",
-            color: "#9fb0d0",
+            color: "#4b5563",
             font: { size: 11, weight: "500" },
           },
         },

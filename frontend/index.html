@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Family Cash Flow</title>
     <script>window.API_BASE = "__API_BASE__";</script>
-    <link rel="stylesheet" href="./styles.css?v=37" />
+    <link rel="stylesheet" href="./styles.css?v=38" />
   </head>
   <body>
     <div class="container">
@@ -74,6 +74,11 @@
                 <select id="txCategoryId"></select>
               </div>
             </div>
+            <div style="height:10px;"></div>
+            <label class="inline-label" for="txReimbursable">
+              <input id="txReimbursable" type="checkbox" />
+              Reimbursable
+            </label>
             <div style="height:10px;"></div>
             <div class="btn-center-row">
               <button id="addTxBtn">Add transaction</button>
@@ -714,6 +719,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="./app.js?v=37"></script>
+    <script src="./app.js?v=38"></script>
   </body>
 </html>
