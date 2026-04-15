@@ -2079,15 +2079,42 @@ function renderCalendar() {
     if (!actualTxsByDate.has(tx.date)) actualTxsByDate.set(tx.date, []);
     actualTxsByDate.get(tx.date).push(tx);
   }
-  for (const arr of actualTxsByDate.values()) {
-    arr.sort((a, b) => Number(a.id) - Number(b.id));
-  }
 
   const expectedByDate = new Map(); // iso -> [items]
   for (const item of state.monthExpectedItems || []) {
     const key = item.date;
     if (!expectedByDate.has(key)) expectedByDate.set(key, []);
     expectedByDate.get(key).push(item);
+  }
+
+  function txSortKeyKindFirst(tx) {
+    // income (positive) first, then expense (negative)
+    return String(tx.kind) === "income" ? 0 : 1;
+  }
+
+  function txSortAmountDesc(a, b) {
+    const ak = txSortKeyKindFirst(a);
+    const bk = txSortKeyKindFirst(b);
+    if (ak !== bk) return ak - bk;
+    const aa = Number(a.amount ?? 0);
+    const ba = Number(b.amount ?? 0);
+    if (ba !== aa) return ba - aa;
+    // stable-ish fallback for consistent ordering
+    const ad = String(a.description || "");
+    const bd = String(b.description || "");
+    const dc = ad.localeCompare(bd);
+    if (dc !== 0) return dc;
+    const aid = Number(a.id ?? 0);
+    const bid = Number(b.id ?? 0);
+    return aid - bid;
+  }
+
+  // Sort transactions within each day.
+  for (const arr of actualTxsByDate.values()) {
+    arr.sort(txSortAmountDesc);
+  }
+  for (const arr of expectedByDate.values()) {
+    arr.sort(txSortAmountDesc);
   }
 
   const dow = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
