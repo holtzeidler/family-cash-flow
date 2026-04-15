@@ -2099,6 +2099,10 @@ function renderCalendar() {
     const aa = Number(a.amount ?? 0);
     const ba = Number(b.amount ?? 0);
     if (ba !== aa) return ba - aa;
+    // Prefer actual over expected when otherwise equal.
+    const at = a && a._type === "expected" ? 1 : 0;
+    const bt = b && b._type === "expected" ? 1 : 0;
+    if (at !== bt) return at - bt;
     // stable-ish fallback for consistent ordering
     const ad = String(a.description || "");
     const bd = String(b.description || "");
@@ -2155,84 +2159,63 @@ function renderCalendar() {
     const metricsEl = cell.querySelector(".cal-ledger-metrics");
 
     const actualTxs = showActual ? actualTxsByDate.get(iso) || [] : [];
-    const expectedItems = expectedByDate.get(iso) || [];
+    const expectedItems = showExpected ? expectedByDate.get(iso) || [] : [];
 
-    if (showExpected) {
-      for (const item of expectedItems) {
-        const line = document.createElement("div");
-        line.className = "cal-day-tx-line cal-day-tx-line--expected";
-        const sign = item.kind === "income" ? "+" : "-";
-        const label = truncate(item.description || "(expected)", 44);
+    // Combine and sort expected + actual for consistent ordering per-day.
+    const combined = [];
+    for (const item of expectedItems) combined.push({ ...item, _type: "expected" });
+    for (const tx of actualTxs) combined.push({ ...tx, _type: "actual" });
+    combined.sort(txSortAmountDesc);
 
-        const labelSpan = document.createElement("span");
-        labelSpan.className = `cal-tx-label ${kindFgClass(item.kind)}`;
-        labelSpan.textContent = `${label}: `;
-        if (item.category_id && item.category) {
-          const st = categoryStyleFromId(item.category_id);
-          if (st?.fg) labelSpan.style.color = st.fg;
-          if (st?.bg) labelSpan.style.background = st.bg;
-          if (st?.bg) {
-            labelSpan.style.padding = "1px 6px";
-            labelSpan.style.borderRadius = "999px";
-            labelSpan.style.border = "1px solid var(--border)";
-          }
+    for (const row of combined) {
+      const isExpected = row._type === "expected";
+      const line = document.createElement("div");
+      line.className = isExpected
+        ? "cal-day-tx-line cal-day-tx-line--expected"
+        : "cal-day-tx-line cal-tx-part";
+      if (!isExpected) line.dataset.txId = String(row.id);
+
+      const sign = row.kind === "income" ? "+" : "-";
+      const labelRaw = isExpected ? row.description || "(expected)" : (row.description || "Transaction").trim();
+      const label = truncate(labelRaw, 44);
+
+      const labelSpan = document.createElement("span");
+      labelSpan.className = `cal-tx-label ${kindFgClass(row.kind)}`;
+      labelSpan.textContent = `${label}: `;
+      if (row.category_id && row.category) {
+        const st = categoryStyleFromId(row.category_id);
+        if (st?.fg) labelSpan.style.color = st.fg;
+        if (st?.bg) labelSpan.style.background = st.bg;
+        if (st?.bg) {
+          labelSpan.style.padding = "1px 6px";
+          labelSpan.style.borderRadius = "999px";
+          labelSpan.style.border = "1px solid var(--border)";
         }
+      }
 
-        const amtSpan = document.createElement("span");
-        amtSpan.className = `cal-amt ${item.kind === "income" ? "income" : "expense"}`;
-        amtSpan.textContent = `${sign}$${fmtMoney(item.amount)}`;
+      const amtSpan = document.createElement("span");
+      amtSpan.className = `cal-amt ${row.kind === "income" ? "income" : "expense"}`;
+      amtSpan.textContent = `${sign}$${fmtMoney(row.amount)}`;
 
-        line.appendChild(labelSpan);
-        line.appendChild(amtSpan);
-        {
-          const bits = [`Expected: ${item.description || ""}`];
-          if (item.notes && String(item.notes).trim()) bits.push(String(item.notes).trim());
-          line.title = bits.join("\n");
-        }
+      line.appendChild(labelSpan);
+      line.appendChild(amtSpan);
+
+      {
+        const bits = [String(labelRaw || "").trim() || (isExpected ? "Expected" : "Transaction")];
+        if (row.notes && String(row.notes).trim()) bits.push(String(row.notes).trim());
+        if (isExpected) bits[0] = `Expected: ${bits[0]}`;
+        line.title = bits.join("\n");
+      }
+
+      if (isExpected) {
         line.addEventListener("click", (e) => {
           e.stopPropagation();
-          const meta = getExpectedSeriesMeta(item.expected_transaction_id);
-          if (meta) openExpectedEditModal(meta, { calendarItem: item });
+          const meta = getExpectedSeriesMeta(row.expected_transaction_id);
+          if (meta) openExpectedEditModal(meta, { calendarItem: row });
         });
-        txnsEl.appendChild(line);
       }
-    }
 
-    if (showActual) {
-      for (const tx of actualTxs) {
-        const line = document.createElement("div");
-        line.className = "cal-day-tx-line cal-tx-part";
-        line.dataset.txId = String(tx.id);
-        const sign = tx.kind === "income" ? "+" : "-";
-        const label = truncate((tx.description || "Transaction").trim(), 44);
-
-        const labelSpan = document.createElement("span");
-        labelSpan.className = `cal-tx-label ${kindFgClass(tx.kind)}`;
-        labelSpan.textContent = `${label}: `;
-        if (tx.category_id && tx.category) {
-          const st = categoryStyleFromId(tx.category_id);
-          if (st?.fg) labelSpan.style.color = st.fg;
-          if (st?.bg) labelSpan.style.background = st.bg;
-          if (st?.bg) {
-            labelSpan.style.padding = "1px 6px";
-            labelSpan.style.borderRadius = "999px";
-            labelSpan.style.border = "1px solid var(--border)";
-          }
-        }
-
-        const amtSpan = document.createElement("span");
-        amtSpan.className = `cal-amt ${tx.kind === "income" ? "income" : "expense"}`;
-        amtSpan.textContent = `${sign}$${fmtMoney(tx.amount)}`;
-
-        line.appendChild(labelSpan);
-        line.appendChild(amtSpan);
-        {
-          const bits = [(tx.description || "").trim() || "Transaction"];
-          if (tx.notes && String(tx.notes).trim()) bits.push(String(tx.notes).trim());
-          line.title = bits.join("\n");
-        }
-        txnsEl.appendChild(line);
-      }
+      txnsEl.appendChild(line);
     }
 
     const dayBal = state.monthDailyBalances.get(iso);
