@@ -73,6 +73,8 @@ let state = {
   expectedTransactions: [],
   monthActualItems: [],
   monthExpectedItems: [],
+  calendarExtraActualItems: [],
+  calendarExtraExpectedItems: [],
   monthDailyBalances: new Map(),
 };
 
@@ -1975,6 +1977,45 @@ async function loadExpectedCalendar() {
   }
 }
 
+function shiftMonthStr(ym, deltaMonths) {
+  const p = String(ym || "").split("-");
+  const y = Number(p[0]);
+  const m = Number(p[1]);
+  if (!Number.isFinite(y) || !Number.isFinite(m)) return "";
+  const d = new Date(y, m - 1 + deltaMonths, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+async function loadCalendarExtras() {
+  state.calendarExtraActualItems = [];
+  state.calendarExtraExpectedItems = [];
+  if (!state.activeFamilyId) return;
+  const month = calendarMonth?.value || monthInput.value;
+  if (!month) return;
+  const prev = shiftMonthStr(month, -1);
+  const next = shiftMonthStr(month, 1);
+  if (!prev || !next) return;
+  try {
+    const [prevTx, nextTx] = await Promise.all([
+      api(`/api/families/${state.activeFamilyId}/transactions?month=${encodeURIComponent(prev)}`, "GET"),
+      api(`/api/families/${state.activeFamilyId}/transactions?month=${encodeURIComponent(next)}`, "GET"),
+    ]);
+    state.calendarExtraActualItems = [...(prevTx?.items || []), ...(nextTx?.items || [])];
+  } catch (_) {
+    // Non-fatal; calendar will still render the base month.
+    state.calendarExtraActualItems = [];
+  }
+  try {
+    const [prevExp, nextExp] = await Promise.all([
+      api(`/api/families/${state.activeFamilyId}/expected-calendar?month=${encodeURIComponent(prev)}`, "GET"),
+      api(`/api/families/${state.activeFamilyId}/expected-calendar?month=${encodeURIComponent(next)}`, "GET"),
+    ]);
+    state.calendarExtraExpectedItems = [...(prevExp?.items || []), ...(nextExp?.items || [])];
+  } catch (_) {
+    state.calendarExtraExpectedItems = [];
+  }
+}
+
 /** Normalize API/legacy dates to YYYY-MM-DD for Map keys. */
 function normalizeIsoDate(raw) {
   if (raw == null || raw === "") return "";
@@ -2021,6 +2062,7 @@ async function loadMonthAndCalendar() {
   if (!state.activeFamilyId) return;
   await loadTransactions();
   await loadExpectedCalendar();
+  await loadCalendarExtras();
   await loadCalendarMonthDaily();
   renderCalendar();
 }
@@ -2179,14 +2221,15 @@ function renderCalendar() {
   const showExpected = mode === "both" || mode === "expected";
 
   const actualTxsByDate = new Map();
-  for (const tx of state.monthActualItems || []) {
-    if (!actualTxsByDate.has(tx.date)) actualTxsByDate.set(tx.date, []);
-    actualTxsByDate.get(tx.date).push(tx);
+  for (const tx of [...(state.monthActualItems || []), ...(state.calendarExtraActualItems || [])]) {
+    const dk = normalizeIsoDate(tx.date) || tx.date;
+    if (!actualTxsByDate.has(dk)) actualTxsByDate.set(dk, []);
+    actualTxsByDate.get(dk).push(tx);
   }
 
   const expectedByDate = new Map(); // iso -> [items]
-  for (const item of state.monthExpectedItems || []) {
-    const key = item.date;
+  for (const item of [...(state.monthExpectedItems || []), ...(state.calendarExtraExpectedItems || [])]) {
+    const key = normalizeIsoDate(item.date) || item.date;
     if (!expectedByDate.has(key)) expectedByDate.set(key, []);
     expectedByDate.get(key).push(item);
   }
@@ -2242,23 +2285,19 @@ function renderCalendar() {
     cell.className = "cal-cell";
 
     const dayNum = i - offset + 1;
-    if (dayNum < 1 || dayNum > daysInMonth) {
-      cell.style.opacity = "0.45";
-      cell.innerHTML = `<div class="cal-daynum">&nbsp;</div>`;
-      wrapper.appendChild(cell);
-      continue;
-    }
-
-    const iso = dateISOFromParts(year, monthIndex, dayNum);
+    const isOutOfMonth = dayNum < 1 || dayNum > daysInMonth;
+    const dObj = new Date(year, monthIndex, dayNum);
+    const iso = toISODate(dObj);
     cell.dataset.iso = iso;
     cell.innerHTML = `
-      <div class="cal-daynum">${dayNum}</div>
+      <div class="cal-daynum">${dObj.getDate()}</div>
       <div class="cal-cell-fill"></div>
       <div class="cal-cell-stack">
         <div class="cal-day-txns"></div>
         <div class="cal-ledger-metrics"></div>
       </div>
     `;
+    if (isOutOfMonth) cell.classList.add("cal-cell--out");
     const txnsEl = cell.querySelector(".cal-day-txns");
     const metricsEl = cell.querySelector(".cal-ledger-metrics");
 
@@ -2322,10 +2361,12 @@ function renderCalendar() {
       txnsEl.appendChild(line);
     }
 
-    const dayBal = state.monthDailyBalances.get(iso);
+    const dayBal = isOutOfMonth ? null : state.monthDailyBalances.get(iso);
 
     if (dayBal && metricsEl) {
-      metricsEl.innerHTML = `<div class="cal-stat cal-balance">$${fmtMoney(dayBal.end)}</div>`;
+      const endNum = Number(dayBal.end ?? 0);
+      const negClass = Number.isFinite(endNum) && endNum < 0 ? " is-negative" : "";
+      metricsEl.innerHTML = `<div class="cal-stat cal-balance${negClass}">$${fmtMoney(dayBal.end)}</div>`;
     }
 
     wrapper.appendChild(cell);

@@ -298,7 +298,7 @@ button.nav-link:hover{
   /* --cal-week-rows set in JS (4–6); day row height scales with week count */
   --cal-week-rows: 5;
   --cal-day-min-h: 112px;
-  --cal-gap: 8px;
+  --cal-gap: 6px;
   /*
     Ensure the panel is tall enough to show the full last row of day cards,
     including grid gaps and the day-of-week header.
@@ -951,7 +951,7 @@ input, select{
 .calendar{
   display:grid;
   grid-template-columns: repeat(7, 1fr);
-  gap:8px;
+  gap: var(--cal-gap, 6px);
 }
 .cal-dow{
   font-size:12px;
@@ -967,6 +967,10 @@ input, select{
   display: flex;
   flex-direction: column;
 }
+.cal-cell.cal-cell--out{
+  background: rgba(0,0,0,0.04);
+  border-color: rgba(0,0,0,0.10);
+}
 
 @media (min-width: 1400px){
   .cal-cell{
@@ -978,7 +982,8 @@ input, select{
   font-size: 13px;
   padding-bottom: 4px;
   margin-bottom: 0;
-  border-bottom: 1px solid rgba(255,255,255,0.10);
+  border-bottom: 1px solid rgba(0,0,0,0.10);
+  text-align: right;
 }
 .cal-cell-fill{
   /* Previously used to push content to the bottom of the day cell. */
@@ -1034,6 +1039,8 @@ input, select{
   gap:4px;
   align-items: flex-end;
   margin-top: auto;
+  padding-top: 6px;
+  border-top: 1px solid rgba(0,0,0,0.08);
 }
 
 .cal-stat{
@@ -1046,6 +1053,9 @@ input, select{
 .cal-stat.cal-balance{
   font-weight: 400;
   color: var(--text);
+}
+.cal-stat.cal-balance.is-negative{
+  color: var(--danger);
 }
 
 /* Transaction edit modal */
