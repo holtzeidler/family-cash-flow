@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Family Cash Flow</title>
     <script>window.API_BASE = "__API_BASE__";</script>
-    <link rel="stylesheet" href="./styles.css?v=38" />
+    <link rel="stylesheet" href="./styles.css?v=39" />
   </head>
   <body>
     <div class="container">
@@ -570,7 +570,7 @@
           <div class="row two">
             <div>
               <label for="instanceDate">Occurrence date</label>
-              <input id="instanceDate" type="date" readonly />
+              <input id="instanceDate" type="date" />
             </div>
             <div>
               <label for="instanceExpectedTxId">Series id</label>
@@ -637,7 +637,7 @@
               <button type="button" id="deleteFutureInstancesBtn" class="expected-remove-btn expected-remove-btn--strong">
                 This and all future
               </button>
-              <button type="button" id="expectedInstanceDeleteSeriesBtn" class="danger" style="width: 100%">Delete</button>
+              <button type="button" id="expectedInstanceDeleteSeriesBtn" class="expected-remove-btn danger">Delete</button>
             </div>
           </div>
         </div>
@@ -736,6 +736,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="./app.js?v=38"></script>
+    <script src="./app.js?v=39"></script>
   </body>
 </html>

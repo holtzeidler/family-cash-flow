@@ -219,6 +219,37 @@ const cancelInstanceOverrideBtn = document.getElementById("cancelInstanceOverrid
 const deleteFutureInstancesBtn = document.getElementById("deleteFutureInstancesBtn");
 const expectedInstanceErr = document.getElementById("expectedInstanceErr");
 
+if (instanceDate) {
+  // Prefer the native calendar popout when supported (Chrome/Edge/Safari).
+  instanceDate.addEventListener("click", () => {
+    try {
+      if (typeof instanceDate.showPicker === "function") instanceDate.showPicker();
+    } catch (_) {}
+  });
+
+  // Allow jumping to another occurrence date (within the loaded month view).
+  instanceDate.addEventListener("change", () => {
+    if (!selectedExpectedInstance) return;
+    const iso = normalizeIsoDate(instanceDate.value);
+    if (!iso) return;
+    const expectedId = Number(selectedExpectedInstance.expected_transaction_id);
+    const match = (state.monthExpectedItems || []).find(
+      (it) => Number(it.expected_transaction_id) === expectedId && normalizeIsoDate(it.date) === iso
+    );
+    if (!match) {
+      show(
+        expectedInstanceErr,
+        "That date is not an occurrence for this series in the current calendar view. Navigate to the month that includes it, then try again."
+      );
+      // Revert to the previously selected date.
+      const prev = normalizeIsoDate(selectedExpectedInstance.occurrence_date);
+      if (prev) instanceDate.value = prev;
+      return;
+    }
+    selectExpectedInstance(match);
+  });
+}
+
 const txEditModal = document.getElementById("txEditModal");
 const txEditId = document.getElementById("txEditId");
 const txEditDate = document.getElementById("txEditDate");
@@ -2114,7 +2145,11 @@ function selectExpectedInstance(item) {
     occurrence_date: item.date,
   };
 
-  if (instanceDate) instanceDate.value = item.date;
+  if (instanceDate) {
+    instanceDate.readOnly = false;
+    instanceDate.disabled = false;
+    instanceDate.value = item.date;
+  }
   if (instanceExpectedTxId) instanceExpectedTxId.value = String(item.expected_transaction_id);
   {
     const k = item && item.kind ? String(item.kind) : "expense";
