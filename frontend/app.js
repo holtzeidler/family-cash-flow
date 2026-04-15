@@ -77,6 +77,7 @@ let state = {
 };
 
 let selectedExpectedInstance = null;
+let selectedExpectedMovedToDate = null;
 
 const userPill = document.getElementById("userPill");
 const familiesErr = document.getElementById("familiesErr");
@@ -227,26 +228,13 @@ if (instanceDate) {
     } catch (_) {}
   });
 
-  // Allow jumping to another occurrence date (within the loaded month view).
+  // Allow moving a single occurrence to another date.
   instanceDate.addEventListener("change", () => {
     if (!selectedExpectedInstance) return;
     const iso = normalizeIsoDate(instanceDate.value);
     if (!iso) return;
-    const expectedId = Number(selectedExpectedInstance.expected_transaction_id);
-    const match = (state.monthExpectedItems || []).find(
-      (it) => Number(it.expected_transaction_id) === expectedId && normalizeIsoDate(it.date) === iso
-    );
-    if (!match) {
-      show(
-        expectedInstanceErr,
-        "That date is not an occurrence for this series in the current calendar view. Navigate to the month that includes it, then try again."
-      );
-      // Revert to the previously selected date.
-      const prev = normalizeIsoDate(selectedExpectedInstance.occurrence_date);
-      if (prev) instanceDate.value = prev;
-      return;
-    }
-    selectExpectedInstance(match);
+    selectedExpectedMovedToDate = iso;
+    show(expectedInstanceErr, "");
   });
 }
 
@@ -986,6 +974,7 @@ if (saveInstanceOverrideBtn) {
 
       const occ = normalizeIsoDate(selectedExpectedInstance.occurrence_date);
       if (!occ) throw new Error("Invalid occurrence date");
+      const movedTo = normalizeIsoDate(selectedExpectedMovedToDate || "") || null;
 
       if (scope === "future") {
         if (!meta || meta.recurrence === "once") {
@@ -1011,6 +1000,7 @@ if (saveInstanceOverrideBtn) {
           amount,
           description: instanceDesc.value.trim() || "",
           category_id: categoryId,
+          moved_to_date: movedTo,
         };
         await api(
           `/api/families/${state.activeFamilyId}/expected-transactions/${selectedExpectedInstance.expected_transaction_id}/instances/${occ}`,
@@ -1549,6 +1539,7 @@ function closeExpectedEditModal() {
   expectedEditModal.classList.remove("modal-overlay--open");
   expectedEditModal.setAttribute("aria-hidden", "true");
   selectedExpectedInstance = null;
+  selectedExpectedMovedToDate = null;
   if (instanceDate) instanceDate.value = "";
   if (instanceExpectedTxId) instanceExpectedTxId.value = "";
   if (instanceNotes) instanceNotes.value = "";
@@ -2140,15 +2131,17 @@ function dateISOFromParts(year, monthIndex0Based, day) {
 }
 
 function selectExpectedInstance(item) {
+  const occ = item.occurrence_date ? normalizeIsoDate(item.occurrence_date) : normalizeIsoDate(item.date);
   selectedExpectedInstance = {
     expected_transaction_id: item.expected_transaction_id,
-    occurrence_date: item.date,
+    occurrence_date: occ || item.date,
   };
 
   if (instanceDate) {
     instanceDate.readOnly = false;
     instanceDate.disabled = false;
-    instanceDate.value = item.date;
+    selectedExpectedMovedToDate = normalizeIsoDate(item.date) || item.date;
+    instanceDate.value = selectedExpectedMovedToDate;
   }
   if (instanceExpectedTxId) instanceExpectedTxId.value = String(item.expected_transaction_id);
   {

@@ -210,6 +210,7 @@ class ExpectedTransactionOverride(Base):
     amount: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 2), nullable=True)
     description: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     reimbursable: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
+    moved_to_date: Mapped[Optional[date]] = mapped_column(SA_Date, nullable=True, index=True)
     category_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("categories.id", ondelete="CASCADE"), nullable=True, index=True
     )
@@ -432,6 +433,7 @@ class ExpectedInstanceOverrideIn(BaseModel):
     amount: Optional[Decimal] = None
     description: Optional[str] = None
     reimbursable: Optional[bool] = None
+    moved_to_date: Optional[date] = None
     category_id: Optional[int] = None
 
 
@@ -459,6 +461,9 @@ class EndFromOccurrenceOut(BaseModel):
 class ExpectedCalendarItemOut(BaseModel):
     expected_transaction_id: int
     date: date
+    # For moved occurrences, this is the original scheduled date used to key overrides.
+    # For normal occurrences, occurrence_date == date.
+    occurrence_date: date
     account_id: int
     account: str
     kind: TransactionKind
@@ -568,6 +573,20 @@ def startup_populate_schema():
     _ensure_recurrence_enum_extensions_postgres()
     _ensure_category_color_columns()
     _ensure_reimbursable_columns()
+    _ensure_expected_moved_to_date_column()
+
+
+def _ensure_expected_moved_to_date_column() -> None:
+    """Lightweight startup migration: allow moving a single expected occurrence to a new date."""
+    with engine.begin() as conn:
+        table = "expected_transaction_overrides"
+        if settings.DATABASE_URL.startswith("sqlite"):
+            cols = conn.execute(text(f"PRAGMA table_info({table})")).fetchall()
+            has_col = any(str(row[1]) == "moved_to_date" for row in cols)
+            if not has_col:
+                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN moved_to_date DATE"))
+        else:
+            conn.execute(text(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS moved_to_date DATE"))
 
 
 def _ensure_account_starting_balance_date_column():
@@ -1140,6 +1159,7 @@ def upsert_expected_instance_override(
         amount = None
         description = None
         reimbursable = None
+        moved_to_date = None
         category_id = None
     else:
         if payload.account_id is None or payload.kind is None or payload.amount is None:
@@ -1149,6 +1169,7 @@ def upsert_expected_instance_override(
         amount = payload.amount
         description = payload.description
         reimbursable = payload.reimbursable
+        moved_to_date = payload.moved_to_date
         category_id = payload.category_id
 
         account = db.execute(select(Account).where(Account.id == account_id, Account.family_id == family_id)).scalar_one_or_none()
@@ -1179,6 +1200,7 @@ def upsert_expected_instance_override(
     existing.amount = amount
     existing.description = description
     existing.reimbursable = reimbursable
+    existing.moved_to_date = moved_to_date
     existing.category_id = category_id
 
     db.commit()
@@ -1468,10 +1490,16 @@ def expected_calendar(
                 continue
             cat = categories_by_id.get(eff_category_id) if eff_category_id is not None else None
 
+            eff_date = ovr.moved_to_date if (ovr is not None and ovr.moved_to_date is not None) else occ
+            # If moved outside the current range, skip; it will appear when viewing that month.
+            if eff_date < start_date or eff_date >= end_date:
+                continue
+
             items.append(
                 ExpectedCalendarItemOut(
                     expected_transaction_id=tx.id,
-                    date=occ,
+                    date=eff_date,
+                    occurrence_date=occ,
                     account_id=eff_account_id,
                     account=acc.name,
                     kind=eff_kind,
@@ -1737,7 +1765,10 @@ def _calendar_month_daily_balances(
                 if accounts_by_id.get(eff_account_id) is None:
                     continue
                 signed = eff_amount if eff_kind == TransactionKind.income else -eff_amount
-                expected_by_date[occ] += signed
+                eff_date = ovr.moved_to_date if (ovr is not None and getattr(ovr, "moved_to_date", None) is not None) else occ
+                if eff_date < global_start or eff_date > last_day:
+                    continue
+                expected_by_date[eff_date] += signed
 
     carry = Decimal("0")
     start_adds: dict[date, Decimal] = defaultdict(lambda: Decimal("0"))
@@ -1874,7 +1905,10 @@ def projection(
             eff_amount = ovr.amount if ovr is not None and ovr.amount is not None else tx.amount
 
             signed_amount = eff_amount if eff_kind == TransactionKind.income else -eff_amount
-            by_acc = occurrences_by_date.setdefault(d, {})
+            eff_date = ovr.moved_to_date if (ovr is not None and getattr(ovr, "moved_to_date", None) is not None) else d
+            if eff_date < range_start or eff_date >= range_end:
+                continue
+            by_acc = occurrences_by_date.setdefault(eff_date, {})
             by_acc[eff_account_id] = by_acc.get(eff_account_id, Decimal("0")) + signed_amount
 
     account_balances: dict[int, Decimal] = {}
