@@ -483,8 +483,12 @@ class ApplyFromOccurrenceIn(BaseModel):
     kind: TransactionKind
     amount: Decimal = Field(gt=0)
     description: str = Field(default="", max_length=500)
-    reimbursable: bool = False
+    reimbursable: Optional[bool] = None
     category_id: Optional[int] = None
+    notes: Optional[str] = Field(default=None, max_length=500)
+    recurrence: Optional[Recurrence] = None
+    second_day_of_month: Optional[int] = Field(default=None, ge=1, le=31)
+    variable: Optional[bool] = None
 
 
 class ApplyFromOccurrenceOut(BaseModel):
@@ -1516,6 +1520,42 @@ def apply_expected_from_occurrence(
     if occurrence_date not in hits:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Date is not a scheduled occurrence for this series")
 
+    eff_rec = payload.recurrence if payload.recurrence is not None else tx.recurrence
+    if eff_rec == Recurrence.once:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot apply-from-occurrence when resulting recurrence is once; use per-instance override",
+        )
+
+    if eff_rec == Recurrence.twice_monthly:
+        eff_second = payload.second_day_of_month if payload.second_day_of_month is not None else tx.second_day_of_month
+    else:
+        eff_second = None
+
+    if "notes" in payload.model_fields_set:
+        eff_notes = payload.notes.strip() if payload.notes and payload.notes.strip() else None
+    else:
+        eff_notes = tx.notes
+
+    eff_reimb = bool(payload.reimbursable) if "reimbursable" in payload.model_fields_set else bool(getattr(tx, "reimbursable", False))
+    eff_variable = bool(payload.variable) if "variable" in payload.model_fields_set else bool(getattr(tx, "variable", False))
+
+    validate_payload = ExpectedTransactionIn(
+        account_id=payload.account_id,
+        start_date=occurrence_date,
+        end_date=tx.end_date,
+        recurrence=eff_rec,
+        second_day_of_month=eff_second,
+        description=payload.description,
+        notes=eff_notes,
+        kind=payload.kind,
+        amount=payload.amount,
+        reimbursable=eff_reimb,
+        variable=eff_variable,
+        category_id=category_id,
+    )
+    _validate_expected_transaction_recurrence(validate_payload)
+
     db.execute(
         delete(ExpectedTransactionOverride).where(
             ExpectedTransactionOverride.expected_transaction_id == expected_id,
@@ -1524,12 +1564,16 @@ def apply_expected_from_occurrence(
     )
 
     if occurrence_date == tx.start_date:
-        tx.account_id = payload.account_id
-        tx.kind = payload.kind
-        tx.amount = payload.amount
-        tx.description = payload.description
-        tx.reimbursable = payload.reimbursable
-        tx.category_id = category_id
+        tx.account_id = validate_payload.account_id
+        tx.kind = validate_payload.kind
+        tx.amount = validate_payload.amount
+        tx.description = validate_payload.description
+        tx.reimbursable = validate_payload.reimbursable
+        tx.category_id = validate_payload.category_id
+        tx.recurrence = validate_payload.recurrence
+        tx.second_day_of_month = validate_payload.second_day_of_month
+        tx.notes = validate_payload.notes
+        tx.variable = validate_payload.variable
         db.commit()
         db.refresh(tx)
         return ApplyFromOccurrenceOut(mode="updated_in_place", future_series_id=tx.id, ended_series_id=None)
@@ -1549,19 +1593,19 @@ def apply_expected_from_occurrence(
 
     new_tx = ExpectedTransaction(
         family_id=family_id,
-        account_id=payload.account_id,
+        account_id=validate_payload.account_id,
         created_by_user_id=user_id,
         start_date=occurrence_date,
         end_date=old_end,
-        recurrence=tx.recurrence,
-        second_day_of_month=tx.second_day_of_month,
-        description=payload.description,
-        notes=tx.notes,
-        kind=payload.kind,
-        amount=payload.amount,
-        reimbursable=payload.reimbursable,
-        variable=bool(getattr(tx, "variable", False)),
-        category_id=category_id,
+        recurrence=validate_payload.recurrence,
+        second_day_of_month=validate_payload.second_day_of_month,
+        description=validate_payload.description,
+        notes=validate_payload.notes,
+        kind=validate_payload.kind,
+        amount=validate_payload.amount,
+        reimbursable=validate_payload.reimbursable,
+        variable=validate_payload.variable,
+        category_id=validate_payload.category_id,
     )
     db.add(new_tx)
     db.commit()

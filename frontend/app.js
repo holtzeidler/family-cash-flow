@@ -1282,7 +1282,7 @@ if (saveSeriesFromInstanceBtn) {
       if (!accountId) throw new Error("Account is required");
 
       const categoryId = instanceCategoryId?.value ? Number(instanceCategoryId.value) : null;
-      const notesVal = instanceNotes && instanceNotes.value.trim() ? instanceNotes.value.trim() : null;
+      const notesVal = instanceNotes ? instanceNotes.value.trim() || null : null;
 
       const recurrenceVal = instanceRecurrence?.value || meta.recurrence || "monthly";
       let secondDayVal = meta.second_day_of_month != null ? Number(meta.second_day_of_month) : null;
@@ -1290,26 +1290,58 @@ if (saveSeriesFromInstanceBtn) {
         const raw = instanceSecondDayOfMonth?.value;
         const n = raw ? Number(raw) : NaN;
         if (!Number.isFinite(n) || n < 1 || n > 31) throw new Error("Second day of month must be between 1 and 31");
-        const startDom = meta.start_date ? Number(String(meta.start_date).slice(-2)) : NaN;
-        if (Number.isFinite(startDom) && n === startDom) throw new Error("Second day of month must be different than the start date’s day");
+        const occIso = selectedExpectedInstance
+          ? normalizeIsoDate(selectedExpectedInstance.occurrence_date) || selectedExpectedInstance.occurrence_date
+          : null;
+        const occDom = occIso && String(occIso).length >= 10 ? Number(String(occIso).slice(8, 10)) : NaN;
+        if (Number.isFinite(occDom) && n === occDom) {
+          throw new Error("Second day of month must be different than this occurrence’s day");
+        }
         secondDayVal = n;
       } else {
         secondDayVal = null;
       }
 
-      await api(`/api/families/${state.activeFamilyId}/expected-transactions/${seriesId}`, "PUT", {
-        account_id: Number(accountId),
-        start_date: meta.start_date || "",
-        end_date: meta.end_date || null,
-        recurrence: recurrenceVal,
-        second_day_of_month: secondDayVal,
-        description: instanceDesc?.value?.trim() || "",
-        notes: notesVal,
-        kind: getRadioValue("instanceKind", "expense"),
-        amount: Number(amount),
-        variable: !!(seriesVariable && seriesVariable.checked),
-        category_id: categoryId,
-      });
+      const occRaw = selectedExpectedInstance
+        ? normalizeIsoDate(selectedExpectedInstance.occurrence_date) || selectedExpectedInstance.occurrence_date
+        : null;
+      if (!occRaw) {
+        throw new Error("Pick an occurrence from the calendar or recurring list to update this date and all future ones.");
+      }
+
+      if (String(meta.recurrence || "") === "once") {
+        await api(`/api/families/${state.activeFamilyId}/expected-transactions/${seriesId}`, "PUT", {
+          account_id: Number(accountId),
+          start_date: meta.start_date || "",
+          end_date: meta.end_date || null,
+          recurrence: recurrenceVal,
+          second_day_of_month: recurrenceVal === "twice_monthly" ? secondDayVal : null,
+          description: instanceDesc?.value?.trim() || "",
+          notes: notesVal,
+          kind: getRadioValue("instanceKind", "expense"),
+          amount: Number(amount),
+          variable: !!(seriesVariable && seriesVariable.checked),
+          category_id: categoryId,
+        });
+      } else {
+        const applyBody = {
+          account_id: Number(accountId),
+          kind: getRadioValue("instanceKind", "expense"),
+          amount: Number(amount),
+          description: instanceDesc?.value?.trim() || "",
+          reimbursable: !!meta.reimbursable,
+          category_id: categoryId,
+          notes: notesVal,
+          recurrence: recurrenceVal,
+          variable: !!(seriesVariable && seriesVariable.checked),
+        };
+        if (recurrenceVal === "twice_monthly") applyBody.second_day_of_month = secondDayVal;
+        await api(
+          `/api/families/${state.activeFamilyId}/expected-transactions/${seriesId}/apply-from-occurrence/${encodeURIComponent(occRaw)}`,
+          "POST",
+          applyBody
+        );
+      }
 
       closeExpectedEditModal();
       await refreshExpectedCalendarAndMonth();
