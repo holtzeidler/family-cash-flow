@@ -458,9 +458,9 @@ button.nav-link:hover{
 }
 
 .calendar-scroll{
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   min-height: 0;
-  overflow: auto;
+  overflow: visible;
   padding-bottom: 6px;
 }
 
@@ -792,9 +792,9 @@ input, select{
 .cal-tx-label.tx-kind-fg--expense{ color: var(--text); }
 .reimbursable-field{
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-  align-items: flex-start;
+  flex-direction: row;
+  gap: 8px;
+  align-items: center;
   cursor: pointer;
   user-select: none;
 }

@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=69" />
+    <link rel="stylesheet" href="./styles.css?v=73" />
   </head>
   <body>
     <div class="container">
@@ -741,7 +741,33 @@
               <label for="instanceDate">Occurrence date</label>
               <input id="instanceDate" type="date" />
             </div>
+            <div>
+              <label for="instanceRecurrence">Recurrence</label>
+              <select id="instanceRecurrence" title="How often this repeats">
+                <option value="monthly" selected>Monthly</option>
+                <option value="twice_monthly">Twice monthly</option>
+                <option value="weekly">Weekly</option>
+                <option value="semiannual">Twice yearly (every 6 months)</option>
+                <option value="yearly">Annual</option>
+                <option value="once">Once</option>
+              </select>
+            </div>
             <input id="instanceExpectedTxId" type="hidden" />
+          </div>
+          <div id="instanceTwiceMonthlyFields" class="expected-second-day-row" style="display:none">
+            <label for="instanceSecondDayOfMonth">2nd day of month</label>
+            <input
+              id="instanceSecondDayOfMonth"
+              type="number"
+              min="1"
+              max="31"
+              step="1"
+              placeholder="e.g. 15"
+              title="Second scheduled day each month; must differ from the start date’s calendar day."
+            />
+            <p style="margin: 6px 0 0; font-size: 12px; color: var(--muted)">
+              Required for twice monthly: other day of the month (1–31), not the same as the start date’s day.
+            </p>
           </div>
           <div style="height:10px;"></div>
           <div class="row two">
@@ -778,13 +804,12 @@
           </div>
 
           <div class="expected-instance-delete-group">
-            <div class="expected-instance-delete-label">Remove</div>
+            <div class="expected-instance-delete-label">Delete</div>
             <div class="expected-instance-delete-actions">
               <button type="button" id="cancelInstanceOverrideBtn" class="expected-remove-btn">This occurrence only</button>
               <button type="button" id="deleteFutureInstancesBtn" class="expected-remove-btn expected-remove-btn--strong">
                 This and all future
               </button>
-              <button type="button" id="expectedInstanceDeleteSeriesBtn" class="expected-remove-btn danger">Delete</button>
             </div>
           </div>
         </div>
@@ -837,6 +862,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="./app.js?v=69"></script>
+    <script src="./app.js?v=73"></script>
   </body>
 </html>

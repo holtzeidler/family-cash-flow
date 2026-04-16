@@ -264,6 +264,9 @@ let projectionChartDefaultsApplied = false;
 // Expected instance editing
 const instanceDate = document.getElementById("instanceDate");
 const instanceExpectedTxId = document.getElementById("instanceExpectedTxId");
+const instanceRecurrence = document.getElementById("instanceRecurrence");
+const instanceTwiceMonthlyFields = document.getElementById("instanceTwiceMonthlyFields");
+const instanceSecondDayOfMonth = document.getElementById("instanceSecondDayOfMonth");
 const instanceKind = null;
 const instanceAmount = document.getElementById("instanceAmount");
 const instanceDesc = document.getElementById("instanceDesc");
@@ -275,6 +278,16 @@ const saveSeriesFromInstanceBtn = document.getElementById("saveSeriesFromInstanc
 const cancelInstanceOverrideBtn = document.getElementById("cancelInstanceOverrideBtn");
 const deleteFutureInstancesBtn = document.getElementById("deleteFutureInstancesBtn");
 const expectedInstanceErr = document.getElementById("expectedInstanceErr");
+
+function updateInstanceTwiceMonthlyVisibility() {
+  if (!instanceTwiceMonthlyFields || !instanceRecurrence) return;
+  const on = instanceRecurrence.value === "twice_monthly";
+  instanceTwiceMonthlyFields.style.display = on ? "block" : "none";
+}
+
+if (instanceRecurrence) {
+  instanceRecurrence.addEventListener("change", updateInstanceTwiceMonthlyVisibility);
+}
 
 if (instanceDate) {
   // Prefer the native calendar popout when supported (Chrome/Edge/Safari).
@@ -1267,12 +1280,25 @@ if (saveSeriesFromInstanceBtn) {
       const categoryId = instanceCategoryId?.value ? Number(instanceCategoryId.value) : null;
       const notesVal = instanceNotes && instanceNotes.value.trim() ? instanceNotes.value.trim() : null;
 
+      const recurrenceVal = instanceRecurrence?.value || meta.recurrence || "monthly";
+      let secondDayVal = meta.second_day_of_month != null ? Number(meta.second_day_of_month) : null;
+      if (recurrenceVal === "twice_monthly") {
+        const raw = instanceSecondDayOfMonth?.value;
+        const n = raw ? Number(raw) : NaN;
+        if (!Number.isFinite(n) || n < 1 || n > 31) throw new Error("Second day of month must be between 1 and 31");
+        const startDom = meta.start_date ? Number(String(meta.start_date).slice(-2)) : NaN;
+        if (Number.isFinite(startDom) && n === startDom) throw new Error("Second day of month must be different than the start date’s day");
+        secondDayVal = n;
+      } else {
+        secondDayVal = null;
+      }
+
       await api(`/api/families/${state.activeFamilyId}/expected-transactions/${seriesId}`, "PUT", {
         account_id: Number(accountId),
         start_date: meta.start_date || "",
         end_date: meta.end_date || null,
-        recurrence: meta.recurrence || "monthly",
-        second_day_of_month: meta.second_day_of_month != null ? Number(meta.second_day_of_month) : null,
+        recurrence: recurrenceVal,
+        second_day_of_month: secondDayVal,
         description: instanceDesc?.value?.trim() || "",
         notes: notesVal,
         kind: getRadioValue("instanceKind", "expense"),
@@ -1338,15 +1364,6 @@ if (deleteFutureInstancesBtn) {
     } catch (e) {
       show(expectedInstanceErr, e.message || "Failed to delete future occurrences");
     }
-  });
-}
-
-const expectedInstanceDeleteSeriesBtn = document.getElementById("expectedInstanceDeleteSeriesBtn");
-if (expectedInstanceDeleteSeriesBtn) {
-  expectedInstanceDeleteSeriesBtn.addEventListener("click", () => {
-    const id = expectedEditId?.value || (selectedExpectedInstance ? String(selectedExpectedInstance.expected_transaction_id) : null);
-    const occ = selectedExpectedInstance ? normalizeIsoDate(selectedExpectedInstance.occurrence_date) : null;
-    openExpectedDeleteModal(id, occ);
   });
 }
 
@@ -1853,6 +1870,13 @@ function openExpectedEditModal(tx, opts = {}) {
     if (instanceAccountId) instanceAccountId.value = tx.account_id != null ? String(tx.account_id) : "";
     if (instanceCategoryId) instanceCategoryId.value = tx.category_id != null ? String(tx.category_id) : "";
   }
+
+  if (instanceRecurrence) instanceRecurrence.value = String((selectedExpectedSeriesTx && selectedExpectedSeriesTx.recurrence) || tx.recurrence || "monthly");
+  if (instanceSecondDayOfMonth) {
+    const v = (selectedExpectedSeriesTx && selectedExpectedSeriesTx.second_day_of_month) != null ? selectedExpectedSeriesTx.second_day_of_month : tx.second_day_of_month;
+    instanceSecondDayOfMonth.value = v != null ? String(v) : "";
+  }
+  updateInstanceTwiceMonthlyVisibility();
 
   setExpectedModalMode();
   show(expectedEditErr, "");
@@ -2683,6 +2707,15 @@ function selectExpectedInstance(item) {
   if (instanceNotes) instanceNotes.value = item.notes && String(item.notes).trim() ? String(item.notes).trim() : "";
   if (instanceAccountId) instanceAccountId.value = String(item.account_id);
   if (instanceCategoryId) instanceCategoryId.value = item.category_id ? String(item.category_id) : "";
+
+  {
+    const meta = selectedExpectedSeriesTx || getExpectedSeriesMeta(item.expected_transaction_id);
+    if (meta) {
+      if (instanceRecurrence) instanceRecurrence.value = String(meta.recurrence || "monthly");
+      if (instanceSecondDayOfMonth) instanceSecondDayOfMonth.value = meta.second_day_of_month != null ? String(meta.second_day_of_month) : "";
+      updateInstanceTwiceMonthlyVisibility();
+    }
+  }
 
   show(expectedInstanceErr, "");
 }
