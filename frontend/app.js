@@ -1120,46 +1120,24 @@ if (saveInstanceOverrideBtn) {
 
       const categoryId = instanceCategoryId.value ? Number(instanceCategoryId.value) : null;
 
-      const scopeEl = document.querySelector('input[name="instanceSaveScope"]:checked');
-      const scope = scopeEl && scopeEl.value === "future" ? "future" : "this";
-      const meta = getExpectedSeriesMeta(selectedExpectedInstance.expected_transaction_id);
-
       const occ = normalizeIsoDate(selectedExpectedInstance.occurrence_date);
       if (!occ) throw new Error("Invalid occurrence date");
       const movedTo = normalizeIsoDate(selectedExpectedMovedToDate || "") || null;
 
-      if (scope === "future") {
-        if (!meta || meta.recurrence === "once") {
-          throw new Error('"This date and all future" applies only to recurring schedules (not "once").');
-        }
-        const applyPayload = {
-          account_id: Number(accountId),
-          kind: getRadioValue("instanceKind", "expense"),
-          amount,
-          description: instanceDesc.value.trim() || "",
-          category_id: categoryId,
-        };
-        await api(
-          `/api/families/${state.activeFamilyId}/expected-transactions/${selectedExpectedInstance.expected_transaction_id}/apply-from-occurrence/${occ}`,
-          "POST",
-          applyPayload
-        );
-      } else {
-        const payload = {
-          action: "update",
-          account_id: Number(accountId),
-          kind: getRadioValue("instanceKind", "expense"),
-          amount,
-          description: instanceDesc.value.trim() || "",
-          category_id: categoryId,
-          moved_to_date: movedTo,
-        };
-        await api(
-          `/api/families/${state.activeFamilyId}/expected-transactions/${selectedExpectedInstance.expected_transaction_id}/instances/${occ}`,
-          "POST",
-          payload
-        );
-      }
+      const payload = {
+        action: "update",
+        account_id: Number(accountId),
+        kind: getRadioValue("instanceKind", "expense"),
+        amount,
+        description: instanceDesc.value.trim() || "",
+        category_id: categoryId,
+        moved_to_date: movedTo,
+      };
+      await api(
+        `/api/families/${state.activeFamilyId}/expected-transactions/${selectedExpectedInstance.expected_transaction_id}/instances/${occ}`,
+        "POST",
+        payload
+      );
 
       closeExpectedEditModal();
       await refreshExpectedCalendarAndMonth();
@@ -1755,7 +1733,6 @@ function openExpectedEditModal(tx, opts = {}) {
     setExpectedModalMode("series");
   }
 
-  updateInstanceScopeUI();
   show(expectedEditErr, "");
   show(expectedInstanceErr, "");
   expectedEditModal.classList.add("modal-overlay--open");
@@ -2406,33 +2383,6 @@ function getExpectedSeriesMeta(expectedId) {
   return (state.expectedTransactions || []).find((t) => Number(t.id) === Number(expectedId));
 }
 
-function updateInstanceScopeUI() {
-  const future = document.getElementById("instanceScopeFuture");
-  const futureLabel = document.getElementById("instanceScopeFutureLabel");
-  const cancelOccBtn = document.getElementById("cancelInstanceOverrideBtn");
-  const delSeriesFromInst = document.getElementById("expectedInstanceDeleteSeriesBtn");
-  if (!future) return;
-  if (!selectedExpectedInstance) {
-    future.disabled = true;
-    if (futureLabel) futureLabel.style.opacity = "0.5";
-    if (deleteFutureInstancesBtn) deleteFutureInstancesBtn.disabled = true;
-    if (cancelOccBtn) cancelOccBtn.disabled = true;
-    if (delSeriesFromInst) delSeriesFromInst.disabled = true;
-    return;
-  }
-  if (cancelOccBtn) cancelOccBtn.disabled = false;
-  if (delSeriesFromInst) delSeriesFromInst.disabled = false;
-  const meta = getExpectedSeriesMeta(selectedExpectedInstance.expected_transaction_id);
-  const allowFuture = !!(meta && meta.recurrence !== "once");
-  future.disabled = !allowFuture;
-  if (futureLabel) futureLabel.style.opacity = allowFuture ? "" : "0.5";
-  if (deleteFutureInstancesBtn) deleteFutureInstancesBtn.disabled = !allowFuture;
-  if (!allowFuture && future.checked) {
-    const thisRadio = document.getElementById("instanceScopeThis");
-    if (thisRadio) thisRadio.checked = true;
-  }
-}
-
 function dateISOFromParts(year, monthIndex0Based, day) {
   const y = year;
   const m = String(monthIndex0Based + 1).padStart(2, "0");
@@ -2466,7 +2416,6 @@ function selectExpectedInstance(item) {
   if (instanceCategoryId) instanceCategoryId.value = item.category_id ? String(item.category_id) : "";
 
   show(expectedInstanceErr, "");
-  updateInstanceScopeUI();
 }
 
 function renderCalendar() {

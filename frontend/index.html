@@ -627,10 +627,7 @@
               <label for="instanceDate">Occurrence date</label>
               <input id="instanceDate" type="date" />
             </div>
-            <div>
-              <label for="instanceExpectedTxId">Series id</label>
-              <input id="instanceExpectedTxId" type="text" readonly />
-            </div>
+            <input id="instanceExpectedTxId" type="hidden" />
           </div>
           <div style="height:10px;"></div>
           <div class="row two">
@@ -655,20 +652,6 @@
             <div class="field-notes-flex">
               <label for="instanceNotes">Notes (series)</label>
               <input id="instanceNotes" type="text" class="input-notes-flex input-notes-readonly" readonly tabindex="-1" title="Notes come from the series; edit them under Entire series." />
-            </div>
-          </div>
-          <div style="height:10px;"></div>
-          <div class="instance-scope-row" id="instanceScopeRow">
-            <span class="instance-scope-label">When saving changes</span>
-            <div class="instance-scope-options">
-              <label class="inline-label"
-                ><input type="radio" name="instanceSaveScope" id="instanceScopeThis" value="this" checked /> Only this
-                date</label
-              >
-              <label class="inline-label" id="instanceScopeFutureLabel"
-                ><input type="radio" name="instanceSaveScope" id="instanceScopeFuture" value="future" /> This date and all
-                future occurrences</label
-              >
             </div>
           </div>
           <div style="height:10px;"></div>

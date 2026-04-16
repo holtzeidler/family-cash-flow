@@ -730,31 +730,8 @@ input, select{
 .item .desc.tx-kind-fg--expense{ color: var(--danger); }
 .cat-pill.tx-kind-fg--income{ color: var(--ok); }
 .cat-pill.tx-kind-fg--expense{ color: var(--danger); }
-.cal-tx-label.tx-kind-fg--income{ color: var(--ok); }
-.cal-tx-label.tx-kind-fg--expense{ color: var(--danger); }
-.instance-scope-row{
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.instance-scope-label{
-  font-size: 13px;
-  color: var(--muted);
-}
-.instance-scope-options{
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 16px;
-}
-.instance-scope-row .inline-label{
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  font-size: 14px;
-  color: var(--text);
-}
-
+.cal-tx-label.tx-kind-fg--income{ color: var(--text); }
+.cal-tx-label.tx-kind-fg--expense{ color: var(--text); }
 .reimbursable-field{
   display: flex;
   flex-direction: column;
@@ -1247,8 +1224,8 @@ input, select{
   white-space: nowrap;
 }
 
-.cal-day-tx-line .cal-amt.income{ color: var(--ok); }
-.cal-day-tx-line .cal-amt.expense{ color: var(--danger); }
+.cal-day-tx-line .cal-amt.income{ color: var(--text); }
+.cal-day-tx-line .cal-amt.expense{ color: var(--text); }
 
 .cal-day-tx-line--expected{
   cursor: pointer;
@@ -1278,14 +1255,14 @@ input, select{
   color: var(--muted);
 }
 
-.cal-stat.income{ color: var(--ok); }
-.cal-stat.expense{ color: var(--danger); }
+.cal-stat.income{ color: var(--text); }
+.cal-stat.expense{ color: var(--text); }
 .cal-stat.cal-balance{
   font-weight: 400;
   color: var(--text);
 }
 .cal-stat.cal-balance.is-negative{
-  color: var(--danger);
+  color: var(--text);
 }
 
 /* Transaction edit modal */
@@ -1319,7 +1296,8 @@ input, select{
   overflow-y: auto;
 }
 .expected-modal-mode-row{
-  flex-wrap: wrap;
+  display: flex;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 10px 14px;
   margin-bottom: 12px;
@@ -1335,8 +1313,10 @@ input, select{
 }
 .expected-modal-mode-options{
   display: flex;
-  flex-wrap: wrap;
-  gap: 12px 16px;
+  flex-wrap: nowrap;
+  gap: 12px 22px;
+  margin-left: auto;
+  white-space: nowrap;
 }
 .expected-modal-mode-opt{
   display: inline-flex;
