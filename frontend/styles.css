@@ -1224,8 +1224,8 @@ input, select{
   white-space: nowrap;
 }
 
-.cal-day-tx-line .cal-amt.income{ color: var(--text); }
-.cal-day-tx-line .cal-amt.expense{ color: var(--text); }
+.cal-day-tx-line .cal-amt.income{ color: var(--ok); }
+.cal-day-tx-line .cal-amt.expense{ color: var(--danger); }
 
 .cal-day-tx-line--expected{
   cursor: pointer;
@@ -1259,10 +1259,10 @@ input, select{
 .cal-stat.expense{ color: var(--text); }
 .cal-stat.cal-balance{
   font-weight: 400;
-  color: var(--text);
+  color: var(--ok);
 }
 .cal-stat.cal-balance.is-negative{
-  color: var(--text);
+  color: var(--danger);
 }
 
 /* Transaction edit modal */
