@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Family Cash Flow</title>
     <script>window.API_BASE = "__API_BASE__";</script>
-    <link rel="stylesheet" href="./styles.css?v=46" />
+    <link rel="stylesheet" href="./styles.css?v=47" />
   </head>
   <body>
     <div class="container">
@@ -40,7 +40,10 @@
             </div>
             <div id="sidebarBodyLowBalance" class="sidebar-section-body">
               <label for="lowBalanceThreshold">Balance threshold</label>
-              <input id="lowBalanceThreshold" type="number" step="0.01" placeholder="e.g. 1000" />
+              <div class="money-input">
+                <span class="money-input__prefix" aria-hidden="true">$</span>
+                <input id="lowBalanceThreshold" type="number" step="0.01" placeholder="1000" />
+              </div>
               <div style="height:10px;"></div>
               <div class="low-balance-result" id="lowBalanceResult" aria-live="polite"></div>
               <div id="lowBalanceErr" class="error"></div>
@@ -468,6 +471,19 @@
                       <select id="calendarYear" aria-label="Year"></select>
                       <span class="cal-select-caret" aria-hidden="true">▾</span>
                     </div>
+
+                    <div class="cal-nav-arrows">
+                      <button type="button" class="cal-arrow-btn" id="calendarPrevMonth" aria-label="Previous month" title="Previous month">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                          <path d="M15 18l-6-6 6-6" />
+                        </svg>
+                      </button>
+                      <button type="button" class="cal-arrow-btn" id="calendarNextMonth" aria-label="Next month" title="Next month">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                          <path d="M9 18l6-6-6-6" />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
 
                   <div class="cal-mode-wrap">
@@ -478,19 +494,6 @@
                       <option value="expected">Expected only</option>
                     </select>
                     <span class="cal-select-caret" aria-hidden="true">▾</span>
-                  </div>
-
-                  <div class="cal-nav-arrows">
-                    <button type="button" class="cal-arrow-btn" id="calendarPrevMonth" aria-label="Previous month" title="Previous month">
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <path d="M15 18l-6-6 6-6" />
-                      </svg>
-                    </button>
-                    <button type="button" class="cal-arrow-btn" id="calendarNextMonth" aria-label="Next month" title="Next month">
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <path d="M9 18l6-6-6-6" />
-                      </svg>
-                    </button>
                   </div>
                 </div>
                 <input type="hidden" id="calendarMonth" />
@@ -807,6 +810,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="./app.js?v=46"></script>
+    <script src="./app.js?v=47"></script>
   </body>
 </html>

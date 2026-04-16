@@ -72,6 +72,15 @@ function fmtMoneyParens(n) {
   return num < 0 ? `(${s})` : s;
 }
 
+function fmtMoneyThreshold(rawInput, n) {
+  const raw = String(rawInput ?? "").trim();
+  const num = typeof n === "string" ? Number(n) : n;
+  if (Number.isNaN(num)) return String(n ?? "");
+  const showDecimals = raw.includes(".");
+  if (showDecimals) return fmtMoney(num);
+  return num.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+}
+
 function fmtDateMDY(raw) {
   const iso = normalizeIsoDate(raw) || "";
   if (!iso) return String(raw ?? "");
@@ -351,14 +360,14 @@ async function refreshLowBalanceAlert() {
 
     if (!hit) {
       setLowBalanceResult(
-        `<div class="k">First date ≤ $${fmtMoney(thresholdVal)}</div><div class="v">None in the next ${days} days.</div>`,
+        `<div class="k">First date ≤ $${fmtMoneyThreshold(lowBalanceThreshold.value, thresholdVal)}</div><div class="v">None in the next ${days} days.</div>`,
         true
       );
       return;
     }
 
     setLowBalanceResult(
-      `<div class="k">First date ≤ $${fmtMoney(thresholdVal)}</div><div class="v danger">${fmtDateMDY(hit.date)} — $${fmtMoney(hit.balance)}</div>`,
+      `<div class="k">First date ≤ $${fmtMoneyThreshold(lowBalanceThreshold.value, thresholdVal)}</div><div class="v danger">${fmtDateMDY(hit.date)} — $${fmtMoney(hit.balance)}</div>`,
       false
     );
   } catch (e) {
@@ -2608,7 +2617,6 @@ function renderCalendar() {
         : "cal-day-tx-line cal-tx-part";
       if (!isExpected) line.dataset.txId = String(row.id);
 
-      const sign = row.kind === "income" ? "+" : "-";
       const labelRaw = isExpected ? row.description || "(expected)" : (row.description || "Transaction").trim();
       const label = truncate(labelRaw, 44);
 
@@ -2621,16 +2629,20 @@ function renderCalendar() {
         if (st?.bg) labelSpan.style.background = st.bg;
         if (st?.bg) {
           labelSpan.style.padding = "1px 6px";
-          labelSpan.style.borderRadius = "999px";
+          labelSpan.style.borderRadius = "6px";
           labelSpan.style.border = "1px solid var(--border)";
         }
       }
 
+      const labelWrap = document.createElement("span");
+      labelWrap.className = "cal-tx-label-wrap";
+      labelWrap.appendChild(labelSpan);
+
       const amtSpan = document.createElement("span");
       amtSpan.className = `cal-amt ${row.kind === "income" ? "income" : "expense"}`;
-      amtSpan.textContent = `${sign}$${fmtMoney(row.amount)}`;
+      amtSpan.textContent = `$${fmtMoney(row.amount)}`;
 
-      line.appendChild(labelSpan);
+      line.appendChild(labelWrap);
       line.appendChild(amtSpan);
 
       {
