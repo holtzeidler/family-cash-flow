@@ -352,6 +352,15 @@ class ReconciledDayUpsertIn(BaseModel):
     reconciled: bool = True
 
 
+class LowBalanceFirstHitOut(BaseModel):
+    threshold: Decimal
+    start: date
+    days: int
+    mode: str
+    hit_date: Optional[date] = None
+    hit_balance: Optional[Decimal] = None
+
+
 class TransactionIn(BaseModel):
     date: date
     description: str = Field(default="", max_length=500)
@@ -1897,9 +1906,12 @@ def _calendar_month_daily_balances(
 
     min_acc = min((a.starting_balance_date or a.created_at.date()) for a in account_rows)
     first_tx = db.execute(select(func.min(Transaction.date)).where(Transaction.family_id == family_id)).scalar_one_or_none()
+    first_expected = db.execute(select(func.min(ExpectedTransaction.start_date)).where(ExpectedTransaction.family_id == family_id)).scalar_one_or_none()
     global_start = min_acc
     if first_tx is not None:
         global_start = min(global_start, first_tx)
+    if first_expected is not None:
+        global_start = min(global_start, first_expected)
 
     actual_by_date: dict[date, Decimal] = defaultdict(lambda: Decimal("0"))
     if mode in ("both", "actual"):
@@ -1991,6 +2003,132 @@ def _calendar_month_daily_balances(
         d += timedelta(days=1)
 
     return out
+
+
+def _pooled_daily_balance_first_hit(
+    *,
+    db,
+    family_id: int,
+    start_date: date,
+    days: int,
+    threshold: Decimal,
+    mode: Literal["both", "actual", "expected"],
+) -> LowBalanceFirstHitOut:
+    """
+    Find the first date strictly after start_date where pooled end-of-day balance <= threshold.
+    Uses the same pooled balance model as calendar-month-daily (starting balances + actual + expected).
+    """
+    if days <= 0 or days > 4000:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="days out of allowed range")
+    range_end_excl = start_date + timedelta(days=days + 1)
+    last_day = range_end_excl - timedelta(days=1)
+
+    account_rows = list(db.execute(select(Account).where(Account.family_id == family_id)).scalars().all())
+    if not account_rows:
+        return LowBalanceFirstHitOut(threshold=threshold, start=start_date, days=days, mode=mode, hit_date=None, hit_balance=None)
+
+    min_acc = min((a.starting_balance_date or a.created_at.date()) for a in account_rows)
+    first_tx = db.execute(select(func.min(Transaction.date)).where(Transaction.family_id == family_id)).scalar_one_or_none()
+    first_expected = db.execute(select(func.min(ExpectedTransaction.start_date)).where(ExpectedTransaction.family_id == family_id)).scalar_one_or_none()
+    global_start = min_acc
+    if first_tx is not None:
+        global_start = min(global_start, first_tx)
+    if first_expected is not None:
+        global_start = min(global_start, first_expected)
+
+    actual_by_date: dict[date, Decimal] = defaultdict(lambda: Decimal("0"))
+    if mode in ("both", "actual"):
+        tx_rows = db.execute(
+            select(Transaction).where(
+                Transaction.family_id == family_id,
+                Transaction.date >= global_start,
+                Transaction.date <= last_day,
+            )
+        ).scalars().all()
+        for tx in tx_rows:
+            signed = tx.amount if tx.kind == TransactionKind.income else -tx.amount
+            actual_by_date[tx.date] += signed
+
+    expected_by_date: dict[date, Decimal] = defaultdict(lambda: Decimal("0"))
+    if mode in ("both", "expected"):
+        accounts_by_id: dict[int, Account] = {a.id: a for a in account_rows}
+        expected_rows = db.execute(select(ExpectedTransaction).where(ExpectedTransaction.family_id == family_id)).scalars().all()
+        overrides = db.execute(
+            select(ExpectedTransactionOverride).join(
+                ExpectedTransaction,
+                ExpectedTransaction.id == ExpectedTransactionOverride.expected_transaction_id,
+            ).where(
+                ExpectedTransaction.family_id == family_id,
+                ExpectedTransactionOverride.occurrence_date >= global_start,
+                ExpectedTransactionOverride.occurrence_date < range_end_excl,
+            )
+        ).scalars().all()
+        override_map: dict[tuple[int, date], ExpectedTransactionOverride] = {
+            (o.expected_transaction_id, o.occurrence_date): o for o in overrides
+        }
+        for tx in expected_rows:
+            occ_dates = _expected_occurrences_in_range(
+                start_date=tx.start_date,
+                end_date=tx.end_date,
+                recurrence=tx.recurrence,
+                range_start=global_start,
+                range_end_exclusive=range_end_excl,
+                second_day_of_month=tx.second_day_of_month,
+            )
+            for occ in occ_dates:
+                if occ > last_day:
+                    continue
+                ovr = override_map.get((tx.id, occ))
+                if ovr is not None and ovr.cancelled:
+                    continue
+                eff_account_id = ovr.account_id if ovr is not None and ovr.account_id is not None else tx.account_id
+                eff_kind = ovr.kind if ovr is not None and ovr.kind is not None else tx.kind
+                eff_amount = ovr.amount if ovr is not None and ovr.amount is not None else tx.amount
+                if accounts_by_id.get(eff_account_id) is None:
+                    continue
+                signed = eff_amount if eff_kind == TransactionKind.income else -eff_amount
+                eff_date = ovr.moved_to_date if (ovr is not None and getattr(ovr, "moved_to_date", None) is not None) else occ
+                if eff_date < global_start or eff_date > last_day:
+                    continue
+                expected_by_date[eff_date] += signed
+
+    carry = Decimal("0")
+    start_adds: dict[date, Decimal] = defaultdict(lambda: Decimal("0"))
+    for a in account_rows:
+        sd = a.starting_balance_date or a.created_at.date()
+        bal = a.starting_balance
+        if sd < global_start:
+            carry += bal
+        elif global_start <= sd <= last_day:
+            start_adds[sd] += bal
+
+    d = global_start
+    hit_date: Optional[date] = None
+    hit_balance: Optional[Decimal] = None
+    while d <= last_day:
+        day_start = carry + start_adds.get(d, Decimal("0"))
+        if mode == "both":
+            tx_net = actual_by_date.get(d, Decimal("0")) + expected_by_date.get(d, Decimal("0"))
+        elif mode == "actual":
+            tx_net = actual_by_date.get(d, Decimal("0"))
+        else:
+            tx_net = expected_by_date.get(d, Decimal("0"))
+        day_end = day_start + tx_net
+        carry = day_end
+        if d > start_date and hit_date is None and day_end <= threshold:
+            hit_date = d
+            hit_balance = day_end
+            break
+        d += timedelta(days=1)
+
+    return LowBalanceFirstHitOut(
+        threshold=threshold,
+        start=start_date,
+        days=days,
+        mode=mode,
+        hit_date=hit_date,
+        hit_balance=hit_balance,
+    )
 
 
 @app.get("/api/families/{family_id}/calendar-month-daily", response_model=CalendarMonthDailyOut)
@@ -2137,6 +2275,22 @@ def projection(
         )
 
     return ProjectionOut(start=range_start, days=days, accounts=accounts, daily=daily)
+
+
+@app.get("/api/families/{family_id}/low-balance-first", response_model=LowBalanceFirstHitOut)
+def low_balance_first(
+    family_id: int,
+    threshold: Decimal,
+    start: Optional[date] = None,
+    days: int = 1825,
+    mode: Literal["both", "actual", "expected"] = "both",
+    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    require_family_member(db=db, family_id=family_id, user_id=user_id)
+    s = start or datetime.utcnow().date()
+    return _pooled_daily_balance_first_hit(db=db, family_id=family_id, start_date=s, days=days, threshold=threshold, mode=mode)
 
 
 def _month_range(month: str) -> tuple[date, date]:

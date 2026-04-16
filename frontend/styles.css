@@ -157,7 +157,7 @@ button.danger{
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 10px 12px;
+  padding: 6px 10px;
   border-radius: 999px;
   border: 1px solid var(--border);
   background: rgba(0,0,0,0.03);
@@ -167,7 +167,7 @@ button.danger{
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 10px;
+  padding: 6px 10px;
   border-radius: 999px;
   border: 1px solid rgba(0,0,0,0.10);
   background: rgba(0,0,0,0.02);
@@ -202,7 +202,7 @@ button.danger{
   background: transparent;
   color: #6b21a8; /* purple like screenshot */
   font-weight: 700;
-  font-size: 20px;
+  font-size: 17px;
   letter-spacing: 0.2px;
   appearance: none;
 }
@@ -224,8 +224,8 @@ button.danger{
   gap: 10px;
 }
 .cal-arrow-btn{
-  width: 40px;
-  height: 40px;
+  width: 34px;
+  height: 34px;
   border-radius: 999px;
   border: 1px solid rgba(0,0,0,0.10);
   background: rgba(0,0,0,0.02);
@@ -267,7 +267,7 @@ button.nav-link:hover{
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 .calendar-panel--collapsed .calendar-panel-head{
   margin-bottom: 0;
@@ -1027,6 +1027,13 @@ input, select{
   grid-template-columns: repeat(7, 1fr);
   gap: var(--cal-gap, 6px);
 }
+
+.calendar-dow-row{
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: var(--cal-gap, 6px);
+  margin-bottom: 6px;
+}
 .cal-dow{
   font-size: 14px;
   color: var(--muted);
@@ -1108,7 +1115,7 @@ input, select{
 .cal-day-txns{
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   padding-top: 6px;
   align-items: flex-end;
   text-align: right;

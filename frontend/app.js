@@ -332,24 +332,14 @@ async function refreshLowBalanceAlert() {
 
     const startIso = toISODate(new Date());
     const days = 1825;
+    const mode = calendarMode?.value || "both";
     const data = await api(
-      `/api/families/${state.activeFamilyId}/projection?start=${encodeURIComponent(startIso)}&days=${days}&include_accounts=false`,
+      `/api/families/${state.activeFamilyId}/low-balance-first?threshold=${encodeURIComponent(String(thresholdVal))}&start=${encodeURIComponent(
+        startIso
+      )}&days=${days}&mode=${encodeURIComponent(mode)}`,
       "GET"
     );
-    const daily = data?.daily || [];
-    const today = startIso;
-
-    let hit = null;
-    for (const row of daily) {
-      const iso = normalizeIsoDate(row.date) || row.date;
-      if (!iso || iso <= today) continue;
-      const bal = toNum(row.total_balance);
-      if (!Number.isFinite(bal)) continue;
-      if (bal <= thresholdVal) {
-        hit = { date: iso, balance: bal };
-        break;
-      }
-    }
+    const hit = data?.hit_date ? { date: data.hit_date, balance: toNum(data.hit_balance) } : null;
 
     if (!hit) {
       setLowBalanceResult(
@@ -556,10 +546,33 @@ document.querySelectorAll(".sidebar-section[data-sidebar-key]").forEach((card) =
     stored = localStorage.getItem(SIDEBAR_SECTION_PREFIX + card.dataset.sidebarKey);
   } catch (_) {}
   // Default behavior: collapsed unless explicitly stored as expanded ("0").
-  // Low Balance Alert should be expanded on first load.
+  // Low Balance Alert should be expanded by default unless the user has explicitly chosen otherwise.
   const key = card.dataset.sidebarKey;
-  const defaultCollapsed = key === "lowBalance" ? false : true;
-  const collapsed = stored == null ? defaultCollapsed : stored !== "0";
+  const userSetKey = SIDEBAR_SECTION_PREFIX + key + "_userSet";
+  let userSet = false;
+  try {
+    userSet = localStorage.getItem(userSetKey) === "1";
+  } catch (_) {}
+
+  // If this is lowBalance and the user hasn't explicitly set a preference,
+  // force expanded even if older localStorage had it collapsed.
+  let collapsed;
+  if (key === "lowBalance" && !userSet) {
+    collapsed = false;
+    try {
+      localStorage.setItem(SIDEBAR_SECTION_PREFIX + key, "0");
+    } catch (_) {}
+  } else {
+    const defaultCollapsed = true;
+    collapsed = stored == null ? defaultCollapsed : stored !== "0";
+  }
+
+  // Mark user-set preference once they toggle the section.
+  btn.addEventListener("click", () => {
+    try {
+      localStorage.setItem(userSetKey, "1");
+    } catch (_) {}
+  });
   applySidebarSectionCollapsed(card, collapsed);
 });
 
@@ -2466,6 +2479,8 @@ function selectExpectedInstance(item) {
 function renderCalendar() {
   if (!calendarGrid) return;
   calendarGrid.innerHTML = "";
+  const calendarDow = document.getElementById("calendarDow");
+  if (calendarDow) calendarDow.innerHTML = "";
 
   const month = calendarMonth?.value || monthInput.value;
   if (!month || !state.activeFamilyId) return;
@@ -2534,11 +2549,13 @@ function renderCalendar() {
   const wrapper = document.createElement("div");
   wrapper.className = "calendar";
 
-  for (const label of dow) {
-    const el = document.createElement("div");
-    el.className = "cal-dow";
-    el.textContent = label;
-    wrapper.appendChild(el);
+  if (calendarDow) {
+    for (const label of dow) {
+      const el = document.createElement("div");
+      el.className = "cal-dow";
+      el.textContent = label;
+      calendarDow.appendChild(el);
+    }
   }
 
   // Render only the weeks needed for this month.
