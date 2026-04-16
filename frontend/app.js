@@ -1852,23 +1852,49 @@ function openExpectedEditModal(tx, opts = {}) {
   if (calendarItem) {
     selectExpectedInstance(calendarItem);
   } else {
-    selectedExpectedInstance = null;
-    // Opened from the series list (no specific occurrence selected).
-    if (instanceDate) {
-      instanceDate.value = "";
-      instanceDate.disabled = true;
+    // Opened from a non-calendar surface (ex: Transaction View recurring filter list).
+    // Seed the modal with the next scheduled occurrence so instance editing endpoints have a date.
+    const basisIso = opts.nextOccurrenceIso ? normalizeIsoDate(opts.nextOccurrenceIso) : toISODate(new Date());
+    const nextIso = opts.nextOccurrenceIso ? normalizeIsoDate(opts.nextOccurrenceIso) : nextExpectedOccurrenceIso(tx, basisIso);
+    if (!nextIso) {
+      selectedExpectedInstance = null;
+      if (instanceDate) {
+        instanceDate.value = "";
+        instanceDate.disabled = true;
+      }
+      if (instanceExpectedTxId) instanceExpectedTxId.value = String(tx.id);
+      if (instanceNotes) instanceNotes.value = tx.notes || "";
+      {
+        const k = tx && tx.kind ? String(tx.kind) : "expense";
+        const radio = document.querySelector(`input[type="radio"][name="instanceKind"][value="${k}"]`);
+        if (radio) radio.checked = true;
+      }
+      if (instanceAmount) instanceAmount.value = String(tx.amount ?? "");
+      if (instanceDesc) instanceDesc.value = String(tx.description || "").slice(0, 12);
+      if (instanceAccountId) instanceAccountId.value = tx.account_id != null ? String(tx.account_id) : "";
+      if (instanceCategoryId) instanceCategoryId.value = tx.category_id != null ? String(tx.category_id) : "";
+    } else {
+      const accountId = tx.account_id != null ? Number(tx.account_id) : NaN;
+      const acct = Number.isFinite(accountId) ? state.accounts.find((a) => Number(a.id) === accountId) : null;
+      const catId = tx.category_id != null ? Number(tx.category_id) : null;
+      const cat = catId != null ? (state.categories || []).find((c) => Number(c.id) === catId) : null;
+      const synthetic = {
+        expected_transaction_id: Number(tx.id),
+        date: nextIso,
+        occurrence_date: nextIso,
+        account_id: Number.isFinite(accountId) ? accountId : tx.account_id,
+        account: acct?.name || "",
+        kind: tx.kind,
+        amount: tx.amount,
+        description: tx.description || "",
+        notes: tx.notes || "",
+        reimbursable: !!tx.reimbursable,
+        category_id: catId,
+        category: cat?.name || null,
+      };
+      // `selectExpectedInstance` is defined later in this file; schedule after parse completes.
+      queueMicrotask(() => selectExpectedInstance(synthetic));
     }
-    if (instanceExpectedTxId) instanceExpectedTxId.value = String(tx.id);
-    if (instanceNotes) instanceNotes.value = tx.notes || "";
-    {
-      const k = tx && tx.kind ? String(tx.kind) : "expense";
-      const radio = document.querySelector(`input[type="radio"][name="instanceKind"][value="${k}"]`);
-      if (radio) radio.checked = true;
-    }
-    if (instanceAmount) instanceAmount.value = String(tx.amount ?? "");
-    if (instanceDesc) instanceDesc.value = String(tx.description || "").slice(0, 12);
-    if (instanceAccountId) instanceAccountId.value = tx.account_id != null ? String(tx.account_id) : "";
-    if (instanceCategoryId) instanceCategoryId.value = tx.category_id != null ? String(tx.category_id) : "";
   }
 
   if (instanceRecurrence) instanceRecurrence.value = String((selectedExpectedSeriesTx && selectedExpectedSeriesTx.recurrence) || tx.recurrence || "monthly");
@@ -2209,12 +2235,12 @@ function renderRecurringFilteredList() {
     amtBtn.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
-      openExpectedEditModal(tx);
+      openExpectedEditModal(tx, { nextOccurrenceIso: nextIso });
     });
 
     el.appendChild(left);
     el.appendChild(amtBtn);
-    el.addEventListener("click", () => openExpectedEditModal(tx));
+    el.addEventListener("click", () => openExpectedEditModal(tx, { nextOccurrenceIso: nextIso }));
     recurringFilteredList.appendChild(el);
   }
 }
