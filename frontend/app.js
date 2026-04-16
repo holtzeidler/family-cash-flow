@@ -185,6 +185,7 @@ const expectedDesc = document.getElementById("expectedDesc");
 const expectedNotes = document.getElementById("expectedNotes");
 const expectedAccountId = document.getElementById("expectedAccountId");
 const expectedCategoryId = document.getElementById("expectedCategoryId");
+const expectedVariable = document.getElementById("expectedVariable");
 const addExpectedTxBtn = document.getElementById("addExpectedTxBtn");
 
 // Expected transaction edit modal
@@ -273,6 +274,7 @@ const instanceDesc = document.getElementById("instanceDesc");
 const instanceNotes = document.getElementById("instanceNotes");
 const instanceAccountId = document.getElementById("instanceAccountId");
 const instanceCategoryId = document.getElementById("instanceCategoryId");
+const seriesVariable = document.getElementById("seriesVariable");
 const saveInstanceOverrideBtn = document.getElementById("saveInstanceOverrideBtn");
 const saveSeriesFromInstanceBtn = document.getElementById("saveSeriesFromInstanceBtn");
 const cancelInstanceOverrideBtn = document.getElementById("cancelInstanceOverrideBtn");
@@ -1067,6 +1069,7 @@ addExpectedTxBtn.addEventListener("click", async () => {
       notes: notesVal,
       kind: kindVal,
       amount: Number(amountVal),
+      variable: !!(expectedVariable && expectedVariable.checked),
       category_id: categoryIdVal ? Number(categoryIdVal) : null,
     });
 
@@ -1075,6 +1078,7 @@ addExpectedTxBtn.addEventListener("click", async () => {
     if (expectedLastTxnDate) expectedLastTxnDate.value = "";
     if (expectedSecondDayOfMonth) expectedSecondDayOfMonth.value = "";
     expectedAmount.value = "";
+    if (expectedVariable) expectedVariable.checked = false;
     await loadExpectedTransactions();
     await loadExpectedCalendar();
     await loadCalendarMonthDaily();
@@ -1303,6 +1307,7 @@ if (saveSeriesFromInstanceBtn) {
         notes: notesVal,
         kind: getRadioValue("instanceKind", "expense"),
         amount: Number(amount),
+        variable: !!(seriesVariable && seriesVariable.checked),
         category_id: categoryId,
       });
 
@@ -1889,6 +1894,7 @@ function openExpectedEditModal(tx, opts = {}) {
         description: tx.description || "",
         notes: tx.notes || "",
         reimbursable: !!tx.reimbursable,
+        variable: !!tx.variable,
         category_id: catId,
         category: cat?.name || null,
       };
@@ -1903,6 +1909,8 @@ function openExpectedEditModal(tx, opts = {}) {
     instanceSecondDayOfMonth.value = v != null ? String(v) : "";
   }
   updateInstanceTwiceMonthlyVisibility();
+
+  if (seriesVariable) seriesVariable.checked = !!tx.variable;
 
   setExpectedModalMode();
   show(expectedEditErr, "");
@@ -2200,6 +2208,7 @@ function renderRecurringFilteredList() {
   for (const { tx, nextIso } of filtered) {
     const el = document.createElement("div");
     el.className = "item expected-item--dense";
+    if (tx.variable) el.classList.add("expected-item--variable");
     el.style.cursor = "pointer";
 
     const amtClass = tx.kind === "income" ? "income" : "expense";
@@ -2900,6 +2909,7 @@ function renderCalendar() {
       line.className = isExpected
         ? "cal-day-tx-line cal-day-tx-line--expected"
         : "cal-day-tx-line cal-tx-part";
+      if (isExpected && row.variable) line.classList.add("cal-expected-variable");
       if (!isExpected) line.dataset.txId = String(row.id);
 
       const labelRaw = isExpected ? row.description || "(expected)" : (row.description || "Transaction").trim();

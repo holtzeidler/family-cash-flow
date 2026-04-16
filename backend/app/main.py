@@ -187,6 +187,7 @@ class ExpectedTransaction(Base):
     kind: Mapped[TransactionKind] = mapped_column(SAEnum(TransactionKind), nullable=False, default=TransactionKind.expense)
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     reimbursable: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    variable: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     category_id: Mapped[Optional[int]] = mapped_column(ForeignKey("categories.id"), nullable=True, index=True)
 
@@ -421,6 +422,7 @@ class ExpectedTransactionIn(BaseModel):
     kind: TransactionKind = TransactionKind.expense
     amount: Decimal = Field(gt=0)
     reimbursable: bool = False
+    variable: bool = False
 
     category_id: Optional[int] = None
 
@@ -438,6 +440,7 @@ class ExpectedTransactionOut(BaseModel):
     kind: TransactionKind
     amount: Decimal
     reimbursable: bool = False
+    variable: bool = False
     category: Optional[str]
     category_id: Optional[int] = None
     created_by: int
@@ -511,6 +514,7 @@ class ExpectedCalendarItemOut(BaseModel):
     reimbursable: bool = False
     category_id: Optional[int] = None
     category: Optional[str] = None
+    variable: bool = False
 
 
 class ExpectedCalendarOut(BaseModel):
@@ -611,6 +615,7 @@ def startup_populate_schema():
     _ensure_recurrence_enum_extensions_postgres()
     _ensure_category_color_columns()
     _ensure_reimbursable_columns()
+    _ensure_expected_variable_column()
     _ensure_expected_moved_to_date_column()
     _ensure_category_sort_order_column()
     _ensure_reconciled_days_table()
@@ -796,6 +801,20 @@ def _ensure_reimbursable_columns() -> None:
         conn.execute(text("ALTER TABLE expected_transaction_overrides ADD COLUMN IF NOT EXISTS reimbursable BOOLEAN"))
         conn.execute(text("UPDATE transactions SET reimbursable = COALESCE(reimbursable, FALSE)"))
         conn.execute(text("UPDATE expected_transactions SET reimbursable = COALESCE(reimbursable, FALSE)"))
+
+
+def _ensure_expected_variable_column() -> None:
+    """Lightweight startup migration: variable (estimate) flag on recurring series."""
+    with engine.begin() as conn:
+        if settings.DATABASE_URL.startswith("sqlite"):
+            cols = conn.execute(text("PRAGMA table_info(expected_transactions)")).fetchall()
+            has_col = any(str(row[1]) == "variable" for row in cols)
+            if not has_col:
+                conn.execute(text("ALTER TABLE expected_transactions ADD COLUMN variable BOOLEAN"))
+            conn.execute(text("UPDATE expected_transactions SET variable = COALESCE(variable, 0)"))
+        else:
+            conn.execute(text("ALTER TABLE expected_transactions ADD COLUMN IF NOT EXISTS variable BOOLEAN NOT NULL DEFAULT FALSE"))
+            conn.execute(text("UPDATE expected_transactions SET variable = COALESCE(variable, FALSE)"))
 
 
 @app.post("/api/auth/register", status_code=status.HTTP_201_CREATED, response_model=RegisterOut)
@@ -1162,6 +1181,7 @@ def list_expected_transactions(
                 kind=tx.kind,
                 amount=tx.amount,
                 reimbursable=bool(getattr(tx, "reimbursable", False)),
+                variable=bool(getattr(tx, "variable", False)),
                 category=category_name,
                 category_id=tx.category_id,
                 created_by=tx.created_by_user_id,
@@ -1209,6 +1229,7 @@ def create_expected_transaction(
         kind=payload.kind,
         amount=payload.amount,
         reimbursable=payload.reimbursable,
+        variable=payload.variable,
         category_id=payload.category_id,
     )
     db.add(tx)
@@ -1228,6 +1249,7 @@ def create_expected_transaction(
         kind=tx.kind,
         amount=tx.amount,
         reimbursable=bool(getattr(tx, "reimbursable", False)),
+        variable=bool(getattr(tx, "variable", False)),
         category=category_name,
         category_id=tx.category_id,
         created_by=tx.created_by_user_id,
@@ -1280,6 +1302,7 @@ def update_expected_transaction(
     tx.kind = payload.kind
     tx.amount = payload.amount
     tx.reimbursable = payload.reimbursable
+    tx.variable = payload.variable
     tx.category_id = payload.category_id
 
     db.commit()
@@ -1298,6 +1321,7 @@ def update_expected_transaction(
         kind=tx.kind,
         amount=tx.amount,
         reimbursable=bool(getattr(tx, "reimbursable", False)),
+        variable=bool(getattr(tx, "variable", False)),
         category=category_name,
         category_id=tx.category_id,
         created_by=tx.created_by_user_id,
@@ -1536,6 +1560,7 @@ def apply_expected_from_occurrence(
         kind=payload.kind,
         amount=payload.amount,
         reimbursable=payload.reimbursable,
+        variable=bool(getattr(tx, "variable", False)),
         category_id=category_id,
     )
     db.add(new_tx)
@@ -1705,6 +1730,7 @@ def expected_calendar(
                     reimbursable=bool(eff_reimbursable),
                     category_id=eff_category_id,
                     category=cat.name if cat is not None else None,
+                    variable=bool(getattr(tx, "variable", False)),
                 )
             )
 

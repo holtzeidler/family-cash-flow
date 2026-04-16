@@ -1306,6 +1306,16 @@ input, select{
   text-underline-offset: 2px;
 }
 
+.cal-day-tx-line--expected.cal-expected-variable .cal-tx-label,
+.cal-day-tx-line--expected.cal-expected-variable .cal-amt{
+  font-style: italic;
+}
+
+.expected-item--variable .desc,
+.expected-item--variable .expected-amt-link{
+  font-style: italic;
+}
+
 .cal-tx-part.cal-day-tx-line{
   cursor: pointer;
   text-decoration: underline dotted;

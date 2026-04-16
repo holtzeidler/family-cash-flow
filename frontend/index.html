@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=74" />
+    <link rel="stylesheet" href="./styles.css?v=75" />
   </head>
   <body>
     <div class="container">
@@ -210,6 +210,12 @@
                 <select id="expectedCategoryId"></select>
               </div>
             </div>
+
+            <div style="height:10px;"></div>
+            <label class="reimbursable-field" for="expectedVariable">
+              <span class="reimbursable-field__label">Variable (estimate)</span>
+              <input id="expectedVariable" type="checkbox" title="Amount is a placeholder until you enter actuals" />
+            </label>
 
             <div style="height:10px;"></div>
             <div class="btn-center-row">
@@ -797,6 +803,11 @@
               <select id="instanceCategoryId"></select>
             </div>
           </div>
+          <div style="height:10px;"></div>
+          <label class="reimbursable-field" for="seriesVariable">
+            <span class="reimbursable-field__label">Variable (estimate)</span>
+            <input id="seriesVariable" type="checkbox" title="Shows italic on calendar until unchecked and saved as series" />
+          </label>
           <div style="height:12px;"></div>
           <div class="row two">
             <button type="button" id="saveInstanceOverrideBtn">Update this occurrence only</button>
@@ -862,6 +873,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="./app.js?v=74"></script>
+    <script src="./app.js?v=75"></script>
   </body>
 </html>
