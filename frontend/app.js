@@ -2580,7 +2580,13 @@ function renderCalendar() {
     cell.dataset.iso = iso;
     const isReconciled = state.reconciledDates && state.reconciledDates.has(iso);
     cell.innerHTML = `
-      <div class="cal-daynum"><span>${dObj.getDate()}</span>${isReconciled ? '<span class="cal-reconciled-mark" title="Reconciled">✓</span>' : ""}</div>
+      <div class="cal-daynum"><span>${dObj.getDate()}</span>${isReconciled ? `
+        <span class="cal-reconciled-mark" title="Reconciled" aria-label="Reconciled">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <circle cx="12" cy="12" r="9"></circle>
+            <path d="M8 12.5l2.6 2.6L16.5 9.2"></path>
+          </svg>
+        </span>` : ""}</div>
       <div class="cal-cell-fill"></div>
       <div class="cal-cell-stack">
         <div class="cal-day-txns"></div>

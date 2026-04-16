@@ -145,7 +145,7 @@ button.danger{
   flex-direction:column;
   gap: 14px;
   min-width: 0;
-  overflow: hidden;
+  overflow: visible;
   padding-right: 4px;
 }
 
@@ -378,7 +378,25 @@ button.nav-link:hover{
     + 24px
   );
   max-height: none;
-  overflow: hidden;
+  overflow: visible;
+}
+
+.calendar-sticky-header{
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--card);
+  padding-top: 4px;
+  margin-top: -4px;
+  border-bottom: 1px solid rgba(0,0,0,0.08);
+}
+
+.calendar-sticky-header #calendarErr{
+  margin-bottom: 0;
+}
+
+.calendar-sticky-header .calendar-dow-row{
+  margin-bottom: 10px;
 }
 
 .calendar-scroll{
@@ -626,13 +644,17 @@ input, select{
 .money-input__prefix{
   padding: 10px 10px 10px 12px;
   color: var(--muted);
-  font-weight: 700;
+  font-weight: 400;
+  font-size: 12px;
 }
 .money-input input{
   border: none;
   background: transparent;
   border-radius: 0;
   padding-left: 0;
+  font-size: 13px;
+  padding-top: 9px;
+  padding-bottom: 9px;
 }
 .money-input input:focus{
   outline: none;
@@ -1137,7 +1159,7 @@ input, select{
   }
 }
 .cal-daynum{
-  font-weight:700;
+  font-weight:400;
   font-size: 11px;
   padding-bottom: 3px;
   margin-bottom: 0;
@@ -1150,9 +1172,23 @@ input, select{
 }
 
 .cal-reconciled-mark{
-  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
   color: #166534;
   line-height: 1;
+}
+.cal-reconciled-mark svg{
+  width: 16px;
+  height: 16px;
+  display: block;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 .cal-cell-fill{
   /* Previously used to push content to the bottom of the day cell. */
@@ -1245,7 +1281,7 @@ input, select{
 .cal-stat.income{ color: var(--ok); }
 .cal-stat.expense{ color: var(--danger); }
 .cal-stat.cal-balance{
-  font-weight: 700;
+  font-weight: 400;
   color: var(--text);
 }
 .cal-stat.cal-balance.is-negative{
