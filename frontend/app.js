@@ -64,6 +64,14 @@ function fmtMoney(n) {
   return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function fmtMoneyParens(n) {
+  const num = typeof n === "string" ? Number(n) : n;
+  if (Number.isNaN(num)) return String(n ?? "");
+  const abs = Math.abs(num);
+  const s = fmtMoney(abs);
+  return num < 0 ? `(${s})` : s;
+}
+
 function fmtDateMDY(raw) {
   const iso = normalizeIsoDate(raw) || "";
   if (!iso) return String(raw ?? "");
@@ -464,31 +472,7 @@ if (calendarGoToday) {
   });
 }
 
-const CALENDAR_COLLAPSED_KEY = "familyCashFlow_calendarCollapsed";
-
-function applyCalendarCollapsed(collapsed) {
-  const panel = document.getElementById("calendarPanel");
-  const btn = document.getElementById("calendarCollapseBtn");
-  if (!panel || !btn) return;
-  panel.classList.toggle("calendar-panel--collapsed", collapsed);
-  btn.setAttribute("aria-expanded", collapsed ? "false" : "true");
-  btn.title = collapsed ? "Expand calendar" : "Collapse calendar";
-  try {
-    localStorage.setItem(CALENDAR_COLLAPSED_KEY, collapsed ? "1" : "0");
-  } catch (_) {}
-}
-
-const calendarCollapseBtn = document.getElementById("calendarCollapseBtn");
-if (calendarCollapseBtn) {
-  calendarCollapseBtn.addEventListener("click", () => {
-    const panel = document.getElementById("calendarPanel");
-    if (!panel) return;
-    applyCalendarCollapsed(!panel.classList.contains("calendar-panel--collapsed"));
-  });
-  try {
-    if (localStorage.getItem(CALENDAR_COLLAPSED_KEY) === "1") applyCalendarCollapsed(true);
-  } catch (_) {}
-}
+// Calendar collapse removed: calendar is always visible.
 
 const CHART_COLLAPSED_KEY = "familyCashFlow_chartCollapsed";
 
@@ -2630,7 +2614,7 @@ function renderCalendar() {
 
       const labelSpan = document.createElement("span");
       labelSpan.className = `cal-tx-label ${kindFgClass(row.kind)}`;
-      labelSpan.textContent = `${label}: `;
+      labelSpan.textContent = `${label} `;
       if (row.category_id && row.category) {
         const st = categoryStyleFromId(row.category_id);
         if (st?.fg) labelSpan.style.color = st.fg;
@@ -2672,7 +2656,7 @@ function renderCalendar() {
     if (dayBal && metricsEl) {
       const endNum = Number(dayBal.end ?? 0);
       const negClass = Number.isFinite(endNum) && endNum < 0 ? " is-negative" : "";
-      metricsEl.innerHTML = `<div class="cal-stat cal-balance${negClass}">$${fmtMoney(dayBal.end)}</div>`;
+      metricsEl.innerHTML = `<div class="cal-stat cal-balance${negClass}">$${fmtMoneyParens(endNum)}</div>`;
     }
 
     wrapper.appendChild(cell);
