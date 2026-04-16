@@ -103,8 +103,9 @@ button.danger{
   gap: 16px;
   align-items: stretch;
   margin-top: 0;
-  height: calc(100vh - 24px);
-  min-height: 520px;
+  /* Allow the page to scroll on shorter viewports. */
+  height: auto;
+  min-height: calc(100vh - 24px);
 }
 
 .sidebar{
