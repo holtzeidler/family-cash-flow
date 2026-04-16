@@ -64,6 +64,17 @@ function fmtMoney(n) {
   return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function fmtDateMDY(raw) {
+  const iso = normalizeIsoDate(raw) || "";
+  if (!iso) return String(raw ?? "");
+  // iso = YYYY-MM-DD
+  const y = iso.slice(0, 4);
+  const m = iso.slice(5, 7);
+  const d = iso.slice(8, 10);
+  if (!y || !m || !d) return String(raw ?? "");
+  return `${m}-${d}-${y}`;
+}
+
 function toNum(v) {
   const n = typeof v === "string" ? Number(v) : Number(v);
   return Number.isFinite(n) ? n : NaN;
@@ -349,7 +360,7 @@ async function refreshLowBalanceAlert() {
     }
 
     setLowBalanceResult(
-      `<div class="k">First date ≤ $${fmtMoney(thresholdVal)}</div><div class="v danger">${hit.date} — $${fmtMoney(hit.balance)}</div>`,
+      `<div class="k">First date ≤ $${fmtMoney(thresholdVal)}</div><div class="v danger">${fmtDateMDY(hit.date)} — $${fmtMoney(hit.balance)}</div>`,
       false
     );
   } catch (e) {
@@ -544,7 +555,12 @@ document.querySelectorAll(".sidebar-section[data-sidebar-key]").forEach((card) =
   try {
     stored = localStorage.getItem(SIDEBAR_SECTION_PREFIX + card.dataset.sidebarKey);
   } catch (_) {}
-  applySidebarSectionCollapsed(card, stored !== "0");
+  // Default behavior: collapsed unless explicitly stored as expanded ("0").
+  // Low Balance Alert should be expanded on first load.
+  const key = card.dataset.sidebarKey;
+  const defaultCollapsed = key === "lowBalance" ? false : true;
+  const collapsed = stored == null ? defaultCollapsed : stored !== "0";
+  applySidebarSectionCollapsed(card, collapsed);
 });
 
 if (calendarMode) {
@@ -764,7 +780,7 @@ function closeTxAddModal() {
 function openReconcileModal(iso) {
   if (!reconcileModal) return;
   reconcileActiveDate = normalizeIsoDate(iso) || iso;
-  if (reconcileDateText) reconcileDateText.textContent = reconcileActiveDate || "—";
+  if (reconcileDateText) reconcileDateText.textContent = reconcileActiveDate ? fmtDateMDY(reconcileActiveDate) : "—";
   if (reconcileChecked) reconcileChecked.checked = state.reconciledDates?.has(reconcileActiveDate) || false;
   show(reconcileErr, "");
   reconcileModal.classList.add("modal-overlay--open");
@@ -1596,7 +1612,7 @@ function renderAccountsList(accounts) {
     el.innerHTML = `
       <div class="left">
         <div class="desc">${escapeHtml(a.name)}</div>
-        <div class="meta">${typeLabel} · Starting: $${fmtMoney(a.starting_balance)} on ${escapeHtml(startDate)}</div>
+        <div class="meta">${typeLabel} · Starting: $${fmtMoney(a.starting_balance)} on ${escapeHtml(fmtDateMDY(startDate))}</div>
       </div>
       <div class="row-actions">
         <div class="amt">${fmtMoney(a.starting_balance)}</div>
@@ -1960,9 +1976,9 @@ function renderExpectedTransactions(items) {
 
     const metaEl = document.createElement("div");
     metaEl.className = "meta";
-    const bits = [
-      `${tx.start_date}`,
-      tx.end_date ? `ends ${tx.end_date}` : "",
+      const bits = [
+        `${fmtDateMDY(tx.start_date)}`,
+        tx.end_date ? `ends ${fmtDateMDY(tx.end_date)}` : "",
       twiceMeta,
       tx.recurrence ? `recurs: ${tx.recurrence}` : "",
     ].filter(Boolean);
@@ -2067,7 +2083,7 @@ function renderProjectionDaily(dailyItems) {
 
     el.innerHTML = `
       <div class="left">
-        <div class="desc">${d.date}</div>
+        <div class="desc">${fmtDateMDY(d.date)}</div>
         <div class="meta">Total balance: $${fmtMoney(d.total_balance)}${balancesMeta ? ` · ${escapeHtml(balancesMeta)}` : ""}</div>
       </div>
       <div class="amt ${amtClass}">${kindSign}$${fmtMoney(Math.abs(netNum))}</div>
@@ -2133,7 +2149,7 @@ function renderTransactions(items) {
 
     const meta = document.createElement("div");
     meta.className = "meta";
-    meta.appendChild(document.createTextNode(String(tx.date || "")));
+    meta.appendChild(document.createTextNode(fmtDateMDY(tx.date || "")));
     if (tx.category_id && tx.category) {
       const st = categoryStyleFromId(tx.category_id);
       const pill = document.createElement("span");
@@ -2525,7 +2541,24 @@ function renderCalendar() {
     wrapper.appendChild(el);
   }
 
-  const totalCells = 42; // 6 weeks
+  // Render only the weeks needed for this month.
+  // If the 6th row would be entirely out-of-month, drop it (cap at 5 rows).
+  let weekRows = Math.ceil((offset + daysInMonth) / 7); // 4–6
+  let totalCells = weekRows * 7;
+  if (totalCells === 42) {
+    let lastRowHasInMonth = false;
+    for (let i = 35; i < 42; i++) {
+      const dayNum = i - offset + 1;
+      if (dayNum >= 1 && dayNum <= daysInMonth) {
+        lastRowHasInMonth = true;
+        break;
+      }
+    }
+    if (!lastRowHasInMonth) {
+      weekRows = 5;
+      totalCells = 35;
+    }
+  }
   for (let i = 0; i < totalCells; i++) {
     const cell = document.createElement("div");
     cell.className = "cal-cell";
@@ -2632,12 +2665,9 @@ function renderCalendar() {
 
   const calendarPanel = document.getElementById("calendarPanel");
   if (calendarPanel) {
-    const weekRows = Math.ceil((offset + daysInMonth) / 7);
-    // Display a maximum of 5 rows; 6-row months can be scrolled.
-    const visibleRows = Math.min(5, weekRows);
-    calendarPanel.style.setProperty("--cal-week-rows", String(visibleRows));
+    calendarPanel.style.setProperty("--cal-week-rows", String(weekRows));
     // Give 5-week months a bit more room so the bottom balance isn't clipped.
-    const h = visibleRows <= 4 ? "96px" : visibleRows === 5 ? "130px" : "118px";
+    const h = weekRows <= 4 ? "96px" : weekRows === 5 ? "130px" : "118px";
     calendarPanel.style.setProperty("--cal-day-min-h", h);
   }
 }

@@ -23,15 +23,39 @@
             </div>
           </div>
 
+          <div class="card sidebar-section sidebar-section--collapsed" data-sidebar-key="lowBalance">
+            <div class="sidebar-section-head">
+              <h2>Low Balance Alert</h2>
+              <button
+                type="button"
+                class="sidebar-collapse-btn"
+                aria-expanded="false"
+                aria-controls="sidebarBodyLowBalance"
+                title="Expand Low Balance Alert"
+              >
+                <svg class="sidebar-collapse-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M6 9l6 6 6-6" />
+                </svg>
+              </button>
+            </div>
+            <div id="sidebarBodyLowBalance" class="sidebar-section-body">
+              <label for="lowBalanceThreshold">Balance threshold</label>
+              <input id="lowBalanceThreshold" type="number" step="0.01" placeholder="e.g. 1000" />
+              <div style="height:10px;"></div>
+              <div class="low-balance-result" id="lowBalanceResult" aria-live="polite"></div>
+              <div id="lowBalanceErr" class="error"></div>
+            </div>
+          </div>
+
           <div class="card sidebar-section sidebar-section--collapsed" data-sidebar-key="addTx">
             <div class="sidebar-section-head">
-              <h2>Add One-Time Transactions</h2>
+              <h2>Add One-Time Transaction</h2>
               <button
                 type="button"
                 class="sidebar-collapse-btn"
                 aria-expanded="false"
                 aria-controls="sidebarBodyAddTx"
-                title="Expand Add One-Time Transactions"
+                title="Expand Add One-Time Transaction"
               >
                 <svg class="sidebar-collapse-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                   <path d="M6 9l6 6 6-6" />
@@ -89,13 +113,13 @@
 
           <div class="card sidebar-section sidebar-section--collapsed" data-sidebar-key="recurring">
             <div class="sidebar-section-head">
-              <h2>Add Recurring Transactions</h2>
+              <h2>Add Recurring Transaction</h2>
               <button
                 type="button"
                 class="sidebar-collapse-btn"
                 aria-expanded="false"
                 aria-controls="sidebarBodyRecurring"
-                title="Expand Add Recurring Transactions"
+                title="Expand Add Recurring Transaction"
               >
                 <svg class="sidebar-collapse-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                   <path d="M6 9l6 6 6-6" />
@@ -304,30 +328,6 @@
             <div style="height:12px;"></div>
             <div class="totals" id="totals"></div>
             <div id="txErr" class="error"></div>
-            </div>
-          </div>
-
-          <div class="card sidebar-section sidebar-section--collapsed" data-sidebar-key="lowBalance">
-            <div class="sidebar-section-head">
-              <h2>Low Balance Alert</h2>
-              <button
-                type="button"
-                class="sidebar-collapse-btn"
-                aria-expanded="false"
-                aria-controls="sidebarBodyLowBalance"
-                title="Expand Low Balance Alert"
-              >
-                <svg class="sidebar-collapse-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M6 9l6 6 6-6" />
-                </svg>
-              </button>
-            </div>
-            <div id="sidebarBodyLowBalance" class="sidebar-section-body">
-              <label for="lowBalanceThreshold">Balance threshold</label>
-              <input id="lowBalanceThreshold" type="number" step="0.01" placeholder="e.g. 1000" />
-              <div style="height:10px;"></div>
-              <div class="low-balance-result" id="lowBalanceResult" aria-live="polite"></div>
-              <div id="lowBalanceErr" class="error"></div>
             </div>
           </div>
         </aside>
