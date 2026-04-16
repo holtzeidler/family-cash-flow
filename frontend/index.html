@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=54" />
+    <link rel="stylesheet" href="./styles.css?v=56" />
   </head>
   <body>
     <div class="container">
@@ -518,9 +518,24 @@
           </div>
 
           <div id="transactionViewPanel" class="app-view" hidden>
-            <div class="card">
-              <h2>All Transactions</h2>
-              <div class="list" id="txListMain"></div>
+            <div class="card sidebar-section sidebar-section--collapsed" data-sidebar-key="allTransactions">
+              <div class="sidebar-section-head">
+                <h2>All Transactions</h2>
+                <button
+                  type="button"
+                  class="sidebar-collapse-btn"
+                  aria-expanded="false"
+                  aria-controls="sidebarBodyAllTransactions"
+                  title="Expand All Transactions"
+                >
+                  <svg class="sidebar-collapse-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M6 9l6 6 6-6" />
+                  </svg>
+                </button>
+              </div>
+              <div id="sidebarBodyAllTransactions" class="sidebar-section-body">
+                <div class="list" id="txListMain"></div>
+              </div>
             </div>
 
             <div style="height: 14px"></div>
@@ -552,9 +567,25 @@
 
     <div id="txEditModal" class="modal-overlay" aria-hidden="true">
       <div class="modal" role="dialog" aria-labelledby="txEditTitle">
-        <h3 id="txEditTitle">Edit transaction</h3>
+        <h3 id="txEditTitle" class="sr-only">Edit transaction</h3>
         <div id="txEditErr" class="error"></div>
         <input type="hidden" id="txEditId" />
+
+        <div class="tx-edit-top">
+          <div class="row-desc-notes">
+            <div class="field-desc-short">
+              <label for="txEditDesc">Description</label>
+              <input id="txEditDesc" type="text" maxlength="12" class="input-desc-short" placeholder="Description" />
+            </div>
+            <div class="field-notes-flex">
+              <label for="txEditNotes">Notes</label>
+              <input id="txEditNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
+            </div>
+          </div>
+        </div>
+
+        <div class="tx-edit-divider" aria-hidden="true"></div>
+
         <label for="txEditDate">Date</label>
         <input id="txEditDate" type="date" />
         <div style="height: 10px"></div>
@@ -568,21 +599,10 @@
           </div>
           <div>
             <label for="txEditAmount">Amount</label>
-        <div class="money-input">
-          <span class="money-input__prefix" aria-hidden="true">$</span>
-          <input id="txEditAmount" type="number" min="0" step="0.01" placeholder="0.00" />
-        </div>
-          </div>
-        </div>
-        <div style="height: 10px"></div>
-        <div class="row-desc-notes">
-          <div class="field-desc-short">
-            <label for="txEditDesc">Description</label>
-            <input id="txEditDesc" type="text" maxlength="12" class="input-desc-short" placeholder="Description" />
-          </div>
-          <div class="field-notes-flex">
-            <label for="txEditNotes">Notes</label>
-            <input id="txEditNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
+            <div class="money-input">
+              <span class="money-input__prefix" aria-hidden="true">$</span>
+              <input id="txEditAmount" type="number" min="0" step="0.01" placeholder="0.00" />
+            </div>
           </div>
         </div>
         <div style="height: 10px"></div>
@@ -849,6 +869,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="./app.js?v=54"></script>
+    <script src="./app.js?v=56"></script>
   </body>
 </html>

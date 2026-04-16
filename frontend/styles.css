@@ -1339,6 +1339,18 @@ input, select{
   padding-top: 14px;
   border-top: 1px solid rgba(0,0,0,0.10);
 }
+
+.tx-edit-top{
+  margin: -16px -16px 0;
+  padding: 16px;
+  background: rgba(102,163,255,0.16);
+  border-radius: 14px 14px 0 0;
+}
+
+.tx-edit-divider{
+  margin: 0 -16px 14px;
+  border-bottom: 1px solid rgba(0,0,0,0.10);
+}
 .modal--expected-edit{
   max-width: 520px;
   max-height: min(92vh, 720px);
