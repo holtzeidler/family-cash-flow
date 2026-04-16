@@ -2293,6 +2293,11 @@ async function loadCalendarMonthDaily() {
           end: Number.isFinite(end) ? end : 0,
         });
       }
+      // Also compute balances for visible "wrap" days (prev/next month) if needed.
+      const wrap = computeCalendarVisibleDailyBalancesClient();
+      for (const [iso, row] of wrap.entries()) {
+        if (!state.monthDailyBalances.has(iso)) state.monthDailyBalances.set(iso, row);
+      }
       return;
     }
   } catch (_) {
@@ -2314,14 +2319,40 @@ async function loadMonthAndCalendar() {
 
 /** Client-only fallback when calendar-month-daily API is unavailable (approximate). */
 function computeMonthDailyBalancesLegacy() {
-  state.monthDailyBalances = new Map();
+  state.monthDailyBalances = computeCalendarVisibleDailyBalancesClient();
+}
+
+function computeCalendarVisibleDailyBalancesClient() {
+  const out = new Map();
   const month = calendarMonth?.value || monthInput.value;
-  if (!month) return;
+  if (!month) return out;
   const [yearPart, monthPart] = String(month).split("-");
   const year = Number(yearPart);
   const monthIndex = Number(monthPart) - 1;
   const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
   const monthStartIso = dateISOFromParts(year, monthIndex, 1);
+
+  // Determine the visible calendar grid range (includes wrap days).
+  const first = new Date(year, monthIndex, 1);
+  const offset = first.getDay(); // Sunday=0
+  let weekRows = Math.ceil((offset + daysInMonth) / 7); // 4–6
+  let totalCells = weekRows * 7;
+  if (totalCells === 42) {
+    let lastRowHasInMonth = false;
+    for (let i = 35; i < 42; i++) {
+      const dayNum = i - offset + 1;
+      if (dayNum >= 1 && dayNum <= daysInMonth) {
+        lastRowHasInMonth = true;
+        break;
+      }
+    }
+    if (!lastRowHasInMonth) {
+      weekRows = 5;
+      totalCells = 35;
+    }
+  }
+  const rangeStart = new Date(year, monthIndex, 1 - offset);
+  const rangeEnd = new Date(year, monthIndex, 1 - offset + (totalCells - 1));
 
   const mode = calendarMode?.value || "both";
   const includeActual = mode === "both" || mode === "actual";
@@ -2329,14 +2360,14 @@ function computeMonthDailyBalancesLegacy() {
 
   const dailyTxnTotals = new Map();
   const startAdds = new Map();
-  for (let d = 1; d <= daysInMonth; d++) {
-    const iso = dateISOFromParts(year, monthIndex, d);
+  for (let d = new Date(rangeStart); d <= rangeEnd; d.setDate(d.getDate() + 1)) {
+    const iso = toISODate(d);
     dailyTxnTotals.set(iso, 0);
     startAdds.set(iso, 0);
   }
 
   if (includeActual) {
-    for (const tx of state.monthActualItems || []) {
+    for (const tx of [...(state.monthActualItems || []), ...(state.calendarExtraActualItems || [])]) {
       const amt = Number(tx.amount || 0);
       const signed = tx.kind === "income" ? amt : -amt;
       const dk = normalizeIsoDate(tx.date) || tx.date;
@@ -2344,7 +2375,7 @@ function computeMonthDailyBalancesLegacy() {
     }
   }
   if (includeExpected) {
-    for (const tx of state.monthExpectedItems || []) {
+    for (const tx of [...(state.monthExpectedItems || []), ...(state.calendarExtraExpectedItems || [])]) {
       const amt = Number(tx.amount || 0);
       const signed = tx.kind === "income" ? amt : -amt;
       const dk = normalizeIsoDate(tx.date) || tx.date;
@@ -2353,24 +2384,27 @@ function computeMonthDailyBalancesLegacy() {
   }
 
   let carry = 0;
+  const rangeStartIso = toISODate(rangeStart);
   for (const account of state.accounts || []) {
     const startBal = Number(account.starting_balance || 0);
     const startDate = normalizeIsoDate(account.starting_balance_date) || account.starting_balance_date || monthStartIso;
-    if (startDate < monthStartIso) {
+    if (startDate < rangeStartIso) {
       carry += startBal;
     } else if (startAdds.has(startDate)) {
       startAdds.set(startDate, (startAdds.get(startDate) || 0) + startBal);
     }
   }
 
-  for (let d = 1; d <= daysInMonth; d++) {
-    const iso = dateISOFromParts(year, monthIndex, d);
+  for (let d = new Date(rangeStart); d <= rangeEnd; d.setDate(d.getDate() + 1)) {
+    const iso = toISODate(d);
     const dayStart = carry + (startAdds.get(iso) || 0);
     const txNet = dailyTxnTotals.get(iso) || 0;
     const dayEnd = dayStart + txNet;
-    state.monthDailyBalances.set(iso, { start: dayStart, txNet, end: dayEnd });
+    out.set(iso, { start: dayStart, txNet, end: dayEnd });
     carry = dayEnd;
   }
+
+  return out;
 }
 
 function truncate(s, maxLen) {
@@ -2618,7 +2652,7 @@ function renderCalendar() {
       txnsEl.appendChild(line);
     }
 
-    const dayBal = isOutOfMonth ? null : state.monthDailyBalances.get(iso);
+    const dayBal = state.monthDailyBalances.get(iso);
 
     if (dayBal && metricsEl) {
       const endNum = Number(dayBal.end ?? 0);

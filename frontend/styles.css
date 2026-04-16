@@ -12,7 +12,7 @@
 *{ box-sizing:border-box; }
 body{
   margin:0;
-  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
   background: var(--bg);
   color: var(--text);
 }
@@ -1259,7 +1259,7 @@ input, select{
 .cal-stat.expense{ color: var(--text); }
 .cal-stat.cal-balance{
   font-weight: 400;
-  color: var(--ok);
+  color: var(--text);
 }
 .cal-stat.cal-balance.is-negative{
   color: var(--danger);
@@ -1289,6 +1289,12 @@ input, select{
   border-radius: 14px;
   padding: 16px;
   box-shadow: 0 16px 48px rgba(0,0,0,0.45);
+}
+
+.modal-actions{
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(0,0,0,0.10);
 }
 .modal--expected-edit{
   max-width: 520px;

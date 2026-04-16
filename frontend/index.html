@@ -5,7 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Family Cash Flow</title>
     <script>window.API_BASE = "__API_BASE__";</script>
-    <link rel="stylesheet" href="./styles.css?v=47" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./styles.css?v=49" />
   </head>
   <body>
     <div class="container">
@@ -94,7 +97,10 @@
             <div class="row two">
               <div>
                 <label for="txAmount">Amount (number)</label>
-                <input id="txAmount" type="number" min="0" step="0.01" placeholder="0.00" />
+                <div class="money-input">
+                  <span class="money-input__prefix" aria-hidden="true">$</span>
+                  <input id="txAmount" type="number" min="0" step="0.01" placeholder="0.00" />
+                </div>
               </div>
               <div>
                 <label for="txCategoryId">Category</label>
@@ -182,7 +188,10 @@
               </div>
               <div>
                 <label for="expectedAmount">Amount</label>
-                <input id="expectedAmount" type="number" min="0" step="0.01" placeholder="0.00" />
+                <div class="money-input">
+                  <span class="money-input__prefix" aria-hidden="true">$</span>
+                  <input id="expectedAmount" type="number" min="0" step="0.01" placeholder="0.00" />
+                </div>
               </div>
             </div>
 
@@ -255,7 +264,10 @@
             <div class="row two">
               <div>
                 <label for="accountStartingBalance">Starting balance</label>
-                <input id="accountStartingBalance" type="number" step="0.01" placeholder="0.00" />
+                <div class="money-input">
+                  <span class="money-input__prefix" aria-hidden="true">$</span>
+                  <input id="accountStartingBalance" type="number" step="0.01" placeholder="0.00" />
+                </div>
               </div>
               <div>
                 <label for="accountStartingBalanceDate">Starting balance date</label>
@@ -532,7 +544,10 @@
           </div>
           <div>
             <label for="txEditAmount">Amount</label>
-            <input id="txEditAmount" type="number" min="0" step="0.01" placeholder="0.00" />
+        <div class="money-input">
+          <span class="money-input__prefix" aria-hidden="true">$</span>
+          <input id="txEditAmount" type="number" min="0" step="0.01" placeholder="0.00" />
+        </div>
           </div>
         </div>
         <div style="height: 10px"></div>
@@ -549,13 +564,14 @@
         <div style="height: 10px"></div>
         <label for="txEditCategoryId">Category</label>
         <select id="txEditCategoryId"></select>
-        <div style="height: 14px"></div>
-        <div class="row two">
-          <button type="button" id="txEditSave">Save</button>
-          <button type="button" id="txEditDelete" class="danger">Delete</button>
+        <div class="modal-actions">
+          <div class="row two">
+            <button type="button" id="txEditSave">Save</button>
+            <button type="button" id="txEditDelete" class="danger">Delete</button>
+          </div>
+          <div style="height: 8px"></div>
+          <button type="button" id="txEditCancel" style="width: 100%">Cancel</button>
         </div>
-        <div style="height: 8px"></div>
-        <button type="button" id="txEditCancel" style="width: 100%">Cancel</button>
       </div>
     </div>
 
@@ -576,7 +592,10 @@
           </div>
           <div>
             <label for="txAddAmount">Amount</label>
-            <input id="txAddAmount" type="number" min="0" step="0.01" placeholder="0.00" />
+            <div class="money-input">
+              <span class="money-input__prefix" aria-hidden="true">$</span>
+              <input id="txAddAmount" type="number" min="0" step="0.01" placeholder="0.00" />
+            </div>
           </div>
         </div>
         <div style="height: 10px"></div>
@@ -593,10 +612,11 @@
         <div style="height: 10px"></div>
         <label for="txAddCategoryId">Category</label>
         <select id="txAddCategoryId"></select>
-        <div style="height: 14px"></div>
-        <div class="row two">
-          <button type="button" id="txAddSave">Add</button>
-          <button type="button" id="txAddCancel" class="danger">Cancel</button>
+        <div class="modal-actions">
+          <div class="row two">
+            <button type="button" id="txAddSave">Add</button>
+            <button type="button" id="txAddCancel" class="danger">Cancel</button>
+          </div>
         </div>
       </div>
     </div>
@@ -640,7 +660,10 @@
             </div>
             <div>
               <label for="instanceAmount">Amount</label>
-              <input id="instanceAmount" type="number" min="0" step="0.01" placeholder="0.00" />
+              <div class="money-input">
+                <span class="money-input__prefix" aria-hidden="true">$</span>
+                <input id="instanceAmount" type="number" min="0" step="0.01" placeholder="0.00" />
+              </div>
             </div>
           </div>
           <div style="height:10px;"></div>
@@ -718,7 +741,10 @@
 
           <div style="height:10px;"></div>
           <label for="expectedEditAmount">Amount</label>
-          <input id="expectedEditAmount" type="number" min="0" step="0.01" placeholder="0.00" />
+          <div class="money-input">
+            <span class="money-input__prefix" aria-hidden="true">$</span>
+            <input id="expectedEditAmount" type="number" min="0" step="0.01" placeholder="0.00" />
+          </div>
 
           <div style="height:10px;"></div>
           <div class="row-desc-notes">
@@ -751,8 +777,9 @@
           </div>
         </div>
 
-        <div style="height: 10px"></div>
-        <button type="button" id="expectedEditCancel" style="width: 100%">Close</button>
+        <div class="modal-actions">
+          <button type="button" id="expectedEditCancel" style="width: 100%">Close</button>
+        </div>
       </div>
     </div>
 
@@ -763,13 +790,15 @@
         <p class="expected-modal-hint" style="margin-bottom: 12px">
           Choose how much of the series to remove. This cannot be undone.
         </p>
-        <div class="expected-delete-actions">
-          <button type="button" id="expectedDeleteThisBtn">Delete only this transaction</button>
-          <button type="button" id="expectedDeleteFutureBtn">Delete this and all future transactions</button>
-          <button type="button" id="expectedDeleteAllBtn" class="danger">Delete all transactions in the series</button>
+        <div class="modal-actions">
+          <div class="expected-delete-actions">
+            <button type="button" id="expectedDeleteThisBtn">Delete only this transaction</button>
+            <button type="button" id="expectedDeleteFutureBtn">Delete this and all future transactions</button>
+            <button type="button" id="expectedDeleteAllBtn" class="danger">Delete all transactions in the series</button>
+          </div>
+          <div style="height: 10px"></div>
+          <button type="button" id="expectedDeleteCancelBtn" style="width: 100%">Cancel</button>
         </div>
-        <div style="height: 10px"></div>
-        <button type="button" id="expectedDeleteCancelBtn" style="width: 100%">Cancel</button>
       </div>
     </div>
 
@@ -786,15 +815,16 @@
           <span class="reimbursable-field__label">Reconciled</span>
           <input id="reconcileChecked" type="checkbox" />
         </label>
-        <div style="height: 14px"></div>
-        <div class="row two">
-          <button type="button" id="reconcileSaveBtn">Save</button>
-          <button type="button" id="reconcileCancelBtn" class="danger">Cancel</button>
+        <div class="modal-actions">
+          <div class="row two">
+            <button type="button" id="reconcileSaveBtn">Save</button>
+            <button type="button" id="reconcileCancelBtn" class="danger">Cancel</button>
+          </div>
         </div>
       </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="./app.js?v=47"></script>
+    <script src="./app.js?v=49"></script>
   </body>
 </html>
