@@ -1246,6 +1246,7 @@ if (saveInstanceOverrideBtn) {
         description: instanceDesc.value.trim() || "",
         category_id: categoryId,
         moved_to_date: movedTo,
+        variable: !!(seriesVariable && seriesVariable.checked),
       };
       await api(
         `/api/families/${state.activeFamilyId}/expected-transactions/${selectedExpectedInstance.expected_transaction_id}/instances/${occ}`,

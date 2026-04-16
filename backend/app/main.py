@@ -216,6 +216,8 @@ class ExpectedTransactionOverride(Base):
     category_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("categories.id", ondelete="CASCADE"), nullable=True, index=True
     )
+    # When set, overrides series `variable` (estimate / italic) for this occurrence only.
+    variable: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
 
@@ -476,6 +478,7 @@ class ExpectedInstanceOverrideIn(BaseModel):
     reimbursable: Optional[bool] = None
     moved_to_date: Optional[date] = None
     category_id: Optional[int] = None
+    variable: Optional[bool] = None
 
 
 class ApplyFromOccurrenceIn(BaseModel):
@@ -488,7 +491,7 @@ class ApplyFromOccurrenceIn(BaseModel):
     notes: Optional[str] = Field(default=None, max_length=500)
     recurrence: Optional[Recurrence] = None
     second_day_of_month: Optional[int] = Field(default=None, ge=1, le=31)
-    variable: Optional[bool] = None
+    variable: bool = False
 
 
 class ApplyFromOccurrenceOut(BaseModel):
@@ -621,6 +624,7 @@ def startup_populate_schema():
     _ensure_reimbursable_columns()
     _ensure_expected_variable_column()
     _ensure_expected_moved_to_date_column()
+    _ensure_expected_override_variable_column()
     _ensure_category_sort_order_column()
     _ensure_reconciled_days_table()
 
@@ -636,6 +640,19 @@ def _ensure_expected_moved_to_date_column() -> None:
                 conn.execute(text(f"ALTER TABLE {table} ADD COLUMN moved_to_date DATE"))
         else:
             conn.execute(text(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS moved_to_date DATE"))
+
+
+def _ensure_expected_override_variable_column() -> None:
+    """Lightweight startup migration: per-occurrence variable (estimate) override."""
+    with engine.begin() as conn:
+        table = "expected_transaction_overrides"
+        if settings.DATABASE_URL.startswith("sqlite"):
+            cols = conn.execute(text(f"PRAGMA table_info({table})")).fetchall()
+            has_col = any(str(row[1]) == "variable" for row in cols)
+            if not has_col:
+                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN variable BOOLEAN"))
+        else:
+            conn.execute(text(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS variable BOOLEAN"))
 
 
 def _ensure_reconciled_days_table() -> None:
@@ -1426,6 +1443,10 @@ def upsert_expected_instance_override(
     existing.reimbursable = reimbursable
     existing.moved_to_date = moved_to_date
     existing.category_id = category_id
+    if payload.action == "cancel":
+        existing.variable = None
+    elif "variable" in payload.model_fields_set:
+        existing.variable = payload.variable
 
     db.commit()
     db.refresh(existing)
@@ -1538,7 +1559,7 @@ def apply_expected_from_occurrence(
         eff_notes = tx.notes
 
     eff_reimb = bool(payload.reimbursable) if "reimbursable" in payload.model_fields_set else bool(getattr(tx, "reimbursable", False))
-    eff_variable = bool(payload.variable) if "variable" in payload.model_fields_set else bool(getattr(tx, "variable", False))
+    eff_variable = bool(payload.variable)
 
     validate_payload = ExpectedTransactionIn(
         account_id=payload.account_id,
@@ -1749,6 +1770,9 @@ def expected_calendar(
                 else bool(getattr(tx, "reimbursable", False))
             )
             eff_category_id = (ovr.category_id if ovr is not None and ovr.category_id is not None else tx.category_id)
+            eff_variable = bool(getattr(tx, "variable", False))
+            if ovr is not None and getattr(ovr, "variable", None) is not None:
+                eff_variable = bool(ovr.variable)
 
             acc = accounts_by_id.get(eff_account_id)
             if acc is None:
@@ -1774,7 +1798,7 @@ def expected_calendar(
                     reimbursable=bool(eff_reimbursable),
                     category_id=eff_category_id,
                     category=cat.name if cat is not None else None,
-                    variable=bool(getattr(tx, "variable", False)),
+                    variable=bool(eff_variable),
                 )
             )
 
