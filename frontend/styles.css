@@ -99,7 +99,7 @@ button.danger{
 /* Main app: 1/4 master data (left), 3/4 calendar + tools (right) */
 .app-layout{
   display:grid;
-  grid-template-columns: 1fr 3fr;
+  grid-template-columns: 0.9fr 3.1fr;
   gap: 16px;
   align-items: stretch;
   margin-top: 0;
@@ -152,58 +152,92 @@ button.danger{
   min-width: 0;
 }
 
-.calendar-nav{
+.calendar-nav-bar{
   display: flex;
-  align-items: flex-end;
-  gap: 10px;
-  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(0,0,0,0.03);
 }
 
-.calendar-pickers{
+.cal-today-btn{
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(0,0,0,0.10);
+  background: rgba(0,0,0,0.02);
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+}
+.cal-today-btn:hover{
+  background: rgba(0,0,0,0.04);
+  color: var(--text);
+}
+.cal-today-ic{ opacity: 0.8; }
+
+.cal-month-year{
+  display: inline-flex;
+  align-items: center;
+  gap: 18px;
+  justify-content: center;
   flex: 1 1 auto;
   min-width: 0;
 }
+.cal-select-wrap{
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+.cal-select-wrap select{
+  width: auto;
+  min-width: 96px;
+  padding: 6px 22px 6px 6px;
+  border: none;
+  background: transparent;
+  color: #6b21a8; /* purple like screenshot */
+  font-weight: 700;
+  font-size: 20px;
+  letter-spacing: 0.2px;
+  appearance: none;
+}
+.cal-select-wrap select:focus{
+  outline: none;
+}
+.cal-select-caret{
+  position: absolute;
+  right: 6px;
+  pointer-events: none;
+  color: #6b21a8;
+  font-size: 16px;
+  opacity: 0.9;
+}
 
-/* Month / Today / Year: labels row, then selects + Today on one baseline */
-.calendar-pickers-grid{
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  grid-template-areas:
-    "cal-m-label cal-t-label cal-y-label"
-    "cal-m-select cal-today cal-y-select";
-  column-gap: 10px;
-  row-gap: 6px;
-  align-items: end;
+.cal-nav-arrows{
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.cal-arrow-btn{
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: 1px solid rgba(0,0,0,0.10);
+  background: rgba(0,0,0,0.02);
+  color: #6b21a8;
+  display: inline-flex;
+  align-items: center;
   justify-content: center;
+  padding: 0;
+  cursor: pointer;
 }
-.cal-picker-label{
-  display: block;
-  font-size: 12px;
-  color: var(--muted);
-  margin: 0;
-  line-height: 1.2;
-  min-height: 1.2em;
-}
-.cal-picker-label[for="calendarMonthNum"]{ grid-area: cal-m-label; }
-.cal-picker-label-spacer{
-  grid-area: cal-t-label;
-  visibility: hidden;
-}
-.cal-picker-label[for="calendarYear"]{ grid-area: cal-y-label; }
-.calendar-pickers-grid #calendarMonthNum{
-  grid-area: cal-m-select;
-  width: 100%;
-}
-.calendar-pickers-grid #calendarYear{
-  grid-area: cal-y-select;
-  width: 100%;
-}
-.calendar-pickers-grid .cal-today-link{
-  grid-area: cal-today;
-  align-self: end;
-  margin: 0;
-  padding: 10px 8px;
-  line-height: inherit;
+.cal-arrow-btn:hover{
+  background: rgba(0,0,0,0.04);
 }
 
 button.nav-link{
@@ -887,6 +921,33 @@ input, select{
 .categories-grid .cat-reset{
   padding: 8px 10px;
 }
+
+.low-balance-result{
+  border: 1px solid var(--border);
+  background: rgba(0,0,0,0.02);
+  border-radius: 12px;
+  padding: 10px 12px;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.35;
+}
+.low-balance-result.is-empty{
+  color: var(--muted);
+}
+.low-balance-result .k{
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.low-balance-result .v{
+  margin-top: 6px;
+  font-weight: 700;
+}
+.low-balance-result .v.danger{
+  color: var(--danger);
+}
 .row-actions{
   display:flex;
   flex-direction:column;
@@ -967,16 +1028,18 @@ input, select{
   gap: var(--cal-gap, 6px);
 }
 .cal-dow{
-  font-size:12px;
+  font-size: 14px;
   color: var(--muted);
   padding:4px 6px;
+  text-align: center;
+  font-weight: 700;
 }
 .cal-cell{
   border: 1px solid var(--border);
   background: rgba(0,0,0,0.015);
   border-radius: 12px;
   min-height: var(--cal-day-min-h, 108px);
-  padding: 8px;
+  padding: 6px 8px 8px;
   display: flex;
   flex-direction: column;
 }
@@ -1012,7 +1075,7 @@ input, select{
 .cal-daynum{
   font-weight:700;
   font-size: 11px;
-  padding-bottom: 4px;
+  padding-bottom: 3px;
   margin-bottom: 0;
   border-bottom: 1px solid rgba(0,0,0,0.10);
   text-align: right;
@@ -1024,7 +1087,7 @@ input, select{
 
 .cal-reconciled-mark{
   font-size: 12px;
-  color: rgba(17,24,39,0.65);
+  color: #166534;
   line-height: 1;
 }
 .cal-cell-fill{
@@ -1046,7 +1109,7 @@ input, select{
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding-top: 4px;
+  padding-top: 6px;
   align-items: flex-end;
   text-align: right;
   width: 100%;

@@ -64,6 +64,11 @@ function fmtMoney(n) {
   return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function toNum(v) {
+  const n = typeof v === "string" ? Number(v) : Number(v);
+  return Number.isFinite(n) ? n : NaN;
+}
+
 let state = {
   user: null,
   families: [],
@@ -95,6 +100,14 @@ const txList = document.getElementById("txList");
 
 const categoriesGrid = document.getElementById("categoriesGrid");
 const txCategoryId = document.getElementById("txCategoryId");
+
+// Low balance alert
+const lowBalanceThreshold = document.getElementById("lowBalanceThreshold");
+const lowBalanceResult = document.getElementById("lowBalanceResult");
+const lowBalanceErr = document.getElementById("lowBalanceErr");
+const LOW_BALANCE_THRESHOLD_KEY = "familyCashFlow_lowBalanceThreshold";
+let lowBalanceDebounceTimer = null;
+let lowBalanceLastQuery = { familyId: null, threshold: null };
 
 function getRadioValue(name, fallback = "") {
   const el = document.querySelector(`input[type="radio"][name="${name}"]:checked`);
@@ -278,6 +291,81 @@ document.getElementById("logoutBtn").addEventListener("click", async () => {
   await api("/api/auth/logout", "POST");
   window.location.href = "./login.html";
 });
+
+function setLowBalanceResult(contentHtml, isEmpty = false) {
+  if (!lowBalanceResult) return;
+  lowBalanceResult.innerHTML = contentHtml || "";
+  lowBalanceResult.classList.toggle("is-empty", !!isEmpty);
+  lowBalanceResult.style.display = contentHtml ? "block" : "none";
+}
+
+async function refreshLowBalanceAlert() {
+  try {
+    show(lowBalanceErr, "");
+    if (!lowBalanceThreshold || !lowBalanceResult) return;
+    if (!state.activeFamilyId) {
+      setLowBalanceResult("", true);
+      return;
+    }
+
+    const thresholdVal = toNum(lowBalanceThreshold.value);
+    if (!Number.isFinite(thresholdVal)) {
+      setLowBalanceResult('<div class="k">Low Balance Alert</div><div class="v">Enter a threshold to start.</div>', true);
+      return;
+    }
+
+    if (lowBalanceLastQuery.familyId === state.activeFamilyId && lowBalanceLastQuery.threshold === thresholdVal) return;
+    lowBalanceLastQuery = { familyId: state.activeFamilyId, threshold: thresholdVal };
+
+    setLowBalanceResult('<div class="k">Low Balance Alert</div><div class="v">Checking…</div>', true);
+
+    const startIso = toISODate(new Date());
+    const days = 1825;
+    const data = await api(
+      `/api/families/${state.activeFamilyId}/projection?start=${encodeURIComponent(startIso)}&days=${days}&include_accounts=false`,
+      "GET"
+    );
+    const daily = data?.daily || [];
+    const today = startIso;
+
+    let hit = null;
+    for (const row of daily) {
+      const iso = normalizeIsoDate(row.date) || row.date;
+      if (!iso || iso <= today) continue;
+      const bal = toNum(row.total_balance);
+      if (!Number.isFinite(bal)) continue;
+      if (bal <= thresholdVal) {
+        hit = { date: iso, balance: bal };
+        break;
+      }
+    }
+
+    if (!hit) {
+      setLowBalanceResult(
+        `<div class="k">First date ≤ $${fmtMoney(thresholdVal)}</div><div class="v">None in the next ${days} days.</div>`,
+        true
+      );
+      return;
+    }
+
+    setLowBalanceResult(
+      `<div class="k">First date ≤ $${fmtMoney(thresholdVal)}</div><div class="v danger">${hit.date} — $${fmtMoney(hit.balance)}</div>`,
+      false
+    );
+  } catch (e) {
+    show(lowBalanceErr, e.message || "Failed to compute low balance alert");
+    setLowBalanceResult("", true);
+  }
+}
+
+function scheduleLowBalanceRefresh() {
+  if (!lowBalanceThreshold) return;
+  try {
+    localStorage.setItem(LOW_BALANCE_THRESHOLD_KEY, lowBalanceThreshold.value || "");
+  } catch (_) {}
+  if (lowBalanceDebounceTimer) clearTimeout(lowBalanceDebounceTimer);
+  lowBalanceDebounceTimer = setTimeout(() => refreshLowBalanceAlert(), 350);
+}
 
 function initCalendarYearOptions() {
   if (!calendarYear || calendarYear.dataset.populated === "1") return;
@@ -2222,6 +2310,7 @@ async function loadMonthAndCalendar() {
   await loadReconciledDays(calendarMonth?.value || monthInput.value);
   await loadCalendarMonthDaily();
   renderCalendar();
+  await refreshLowBalanceAlert();
 }
 
 /** Client-only fallback when calendar-month-daily API is unavailable (approximate). */
@@ -2544,9 +2633,11 @@ function renderCalendar() {
   const calendarPanel = document.getElementById("calendarPanel");
   if (calendarPanel) {
     const weekRows = Math.ceil((offset + daysInMonth) / 7);
-    calendarPanel.style.setProperty("--cal-week-rows", String(weekRows));
+    // Display a maximum of 5 rows; 6-row months can be scrolled.
+    const visibleRows = Math.min(5, weekRows);
+    calendarPanel.style.setProperty("--cal-week-rows", String(visibleRows));
     // Give 5-week months a bit more room so the bottom balance isn't clipped.
-    const h = weekRows <= 4 ? "96px" : weekRows === 5 ? "130px" : "118px";
+    const h = visibleRows <= 4 ? "96px" : visibleRows === 5 ? "130px" : "118px";
     calendarPanel.style.setProperty("--cal-day-min-h", h);
   }
 }
@@ -2721,6 +2812,16 @@ async function main() {
     await loadAccounts();
     await loadExpectedTransactions();
     await loadMonthAndCalendar();
+  }
+  if (lowBalanceThreshold) {
+    let stored = "";
+    try {
+      stored = localStorage.getItem(LOW_BALANCE_THRESHOLD_KEY) || "";
+    } catch (_) {}
+    if (stored && !lowBalanceThreshold.value) lowBalanceThreshold.value = stored;
+    lowBalanceThreshold.addEventListener("input", scheduleLowBalanceRefresh);
+    lowBalanceThreshold.addEventListener("change", scheduleLowBalanceRefresh);
+    await refreshLowBalanceAlert();
   }
   updateExpectedTwiceMonthlyVisibility();
 }
