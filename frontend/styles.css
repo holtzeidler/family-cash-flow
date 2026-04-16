@@ -821,6 +821,19 @@ input, select{
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.cat-row{
+  display: contents;
+}
+.cat-drag-handle{
+  cursor: grab;
+}
+.cat-row.is-dragging .cat-drag-handle{
+  cursor: grabbing;
+  opacity: 0.7;
+}
+.cat-row.is-drag-over .cat-drag-handle{
+  text-decoration: underline;
+}
 .palette-popover{
   position: fixed;
   z-index: 4000;
@@ -972,6 +985,25 @@ input, select{
   border-color: rgba(0,0,0,0.10);
 }
 
+.reconcile-date-row{
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.reconcile-date-label{
+  font-size: 12px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  font-weight: 600;
+}
+.reconcile-date-value{
+  font-size: 14px;
+  color: var(--text);
+  font-weight: 700;
+}
+
 @media (min-width: 1400px){
   .cal-cell{
     padding: 10px;
@@ -979,11 +1011,21 @@ input, select{
 }
 .cal-daynum{
   font-weight:700;
-  font-size: 13px;
+  font-size: 11px;
   padding-bottom: 4px;
   margin-bottom: 0;
   border-bottom: 1px solid rgba(0,0,0,0.10);
   text-align: right;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 6px;
+}
+
+.cal-reconciled-mark{
+  font-size: 12px;
+  color: rgba(17,24,39,0.65);
+  line-height: 1;
 }
 .cal-cell-fill{
   /* Previously used to push content to the bottom of the day cell. */
@@ -1004,6 +1046,7 @@ input, select{
   display: flex;
   flex-direction: column;
   gap: 4px;
+  padding-top: 4px;
   align-items: flex-end;
   text-align: right;
   width: 100%;
@@ -1051,7 +1094,7 @@ input, select{
 .cal-stat.income{ color: var(--ok); }
 .cal-stat.expense{ color: var(--danger); }
 .cal-stat.cal-balance{
-  font-weight: 400;
+  font-weight: 700;
   color: var(--text);
 }
 .cal-stat.cal-balance.is-negative{

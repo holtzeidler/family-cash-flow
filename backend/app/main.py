@@ -126,6 +126,7 @@ class Category(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     family_id: Mapped[int] = mapped_column(ForeignKey("families.id"), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     fg_color: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     bg_color: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
 
@@ -218,6 +219,18 @@ class ExpectedTransactionOverride(Base):
     created_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
 
     __table_args__ = (UniqueConstraint("expected_transaction_id", "occurrence_date", name="uq_expected_instance"),)
+
+
+class ReconciledDay(Base):
+    __tablename__ = "reconciled_days"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    family_id: Mapped[int] = mapped_column(ForeignKey("families.id", ondelete="CASCADE"), nullable=False, index=True)
+    date: Mapped[date] = mapped_column(SA_Date, nullable=False, index=True)
+    reconciled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    updated_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now(), onupdate=func.now())
+
+    __table_args__ = (UniqueConstraint("family_id", "date", name="uq_reconciled_day"),)
 
 
 engine = create_engine(settings.DATABASE_URL, connect_args={"check_same_thread": False} if settings.DATABASE_URL.startswith("sqlite") else {})
@@ -313,6 +326,7 @@ class CategoryIn(BaseModel):
 class CategoryOut(BaseModel):
     id: int
     name: str
+    sort_order: int = 0
     fg_color: Optional[str] = None
     bg_color: Optional[str] = None
 
@@ -321,6 +335,21 @@ class CategoryUpdateIn(BaseModel):
     name: Optional[str] = Field(default=None, min_length=1, max_length=255)
     fg_color: Optional[str] = Field(default=None, max_length=20)
     bg_color: Optional[str] = Field(default=None, max_length=20)
+    sort_order: Optional[int] = None
+
+
+class CategoryReorderIn(BaseModel):
+    ordered_ids: list[int] = Field(min_length=1, description="Category IDs in desired display order")
+
+
+class ReconciledDaysOut(BaseModel):
+    month: str
+    dates: list[date]
+
+
+class ReconciledDayUpsertIn(BaseModel):
+    date: date
+    reconciled: bool = True
 
 
 class TransactionIn(BaseModel):
@@ -574,6 +603,8 @@ def startup_populate_schema():
     _ensure_category_color_columns()
     _ensure_reimbursable_columns()
     _ensure_expected_moved_to_date_column()
+    _ensure_category_sort_order_column()
+    _ensure_reconciled_days_table()
 
 
 def _ensure_expected_moved_to_date_column() -> None:
@@ -587,6 +618,41 @@ def _ensure_expected_moved_to_date_column() -> None:
                 conn.execute(text(f"ALTER TABLE {table} ADD COLUMN moved_to_date DATE"))
         else:
             conn.execute(text(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS moved_to_date DATE"))
+
+
+def _ensure_reconciled_days_table() -> None:
+    """Lightweight startup migration: create reconciled_days table if missing."""
+    with engine.begin() as conn:
+        if settings.DATABASE_URL.startswith("sqlite"):
+            conn.execute(
+                text(
+                    "CREATE TABLE IF NOT EXISTS reconciled_days ("
+                    "id INTEGER PRIMARY KEY, "
+                    "family_id INTEGER NOT NULL, "
+                    "date DATE NOT NULL, "
+                    "reconciled BOOLEAN NOT NULL DEFAULT 1, "
+                    "updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, "
+                    "CONSTRAINT uq_reconciled_day UNIQUE (family_id, date)"
+                    ")"
+                )
+            )
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reconciled_days_family_id ON reconciled_days (family_id)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reconciled_days_date ON reconciled_days (date)"))
+        else:
+            conn.execute(
+                text(
+                    "CREATE TABLE IF NOT EXISTS reconciled_days ("
+                    "id SERIAL PRIMARY KEY, "
+                    "family_id INTEGER NOT NULL REFERENCES families(id) ON DELETE CASCADE, "
+                    "date DATE NOT NULL, "
+                    "reconciled BOOLEAN NOT NULL DEFAULT TRUE, "
+                    "updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), "
+                    "CONSTRAINT uq_reconciled_day UNIQUE (family_id, date)"
+                    ")"
+                )
+            )
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reconciled_days_family_id ON reconciled_days (family_id)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reconciled_days_date ON reconciled_days (date)"))
 
 
 def _ensure_account_starting_balance_date_column():
@@ -688,6 +754,20 @@ def _ensure_category_color_columns() -> None:
         else:
             conn.execute(text("ALTER TABLE categories ADD COLUMN IF NOT EXISTS fg_color VARCHAR(20)"))
             conn.execute(text("ALTER TABLE categories ADD COLUMN IF NOT EXISTS bg_color VARCHAR(20)"))
+
+
+def _ensure_category_sort_order_column() -> None:
+    """Lightweight startup migration: add sort_order for draggable category ordering."""
+    with engine.begin() as conn:
+        if settings.DATABASE_URL.startswith("sqlite"):
+            cols = conn.execute(text("PRAGMA table_info(categories)")).fetchall()
+            has_col = any(str(row[1]) == "sort_order" for row in cols)
+            if not has_col:
+                conn.execute(text("ALTER TABLE categories ADD COLUMN sort_order INTEGER"))
+            conn.execute(text("UPDATE categories SET sort_order = COALESCE(sort_order, 0)"))
+        else:
+            conn.execute(text("ALTER TABLE categories ADD COLUMN IF NOT EXISTS sort_order INTEGER NOT NULL DEFAULT 0"))
+            conn.execute(text("UPDATE categories SET sort_order = COALESCE(sort_order, 0)"))
 
 
 def _ensure_reimbursable_columns() -> None:
@@ -798,8 +878,19 @@ def list_categories(
 ):
     user_id = get_current_user_id(access_token)
     require_family_member(db=db, family_id=family_id, user_id=user_id)
-    rows = db.execute(select(Category).where(Category.family_id == family_id).order_by(Category.name.asc())).scalars().all()
-    return [CategoryOut(id=r.id, name=r.name, fg_color=r.fg_color, bg_color=r.bg_color) for r in rows]
+    rows = (
+        db.execute(
+            select(Category)
+            .where(Category.family_id == family_id)
+            .order_by(Category.sort_order.asc(), Category.name.asc(), Category.id.asc())
+        )
+        .scalars()
+        .all()
+    )
+    return [
+        CategoryOut(id=r.id, name=r.name, sort_order=r.sort_order or 0, fg_color=r.fg_color, bg_color=r.bg_color)
+        for r in rows
+    ]
 
 
 @app.post("/api/families/{family_id}/categories", response_model=CategoryOut)
@@ -811,11 +902,18 @@ def create_category(
 ):
     user_id = get_current_user_id(access_token)
     require_family_member(db=db, family_id=family_id, user_id=user_id)
-    category = Category(family_id=family_id, name=payload.name)
+    max_sort = db.execute(select(func.coalesce(func.max(Category.sort_order), 0)).where(Category.family_id == family_id)).scalar_one()
+    category = Category(family_id=family_id, name=payload.name, sort_order=int(max_sort) + 1)
     db.add(category)
     db.commit()
     db.refresh(category)
-    return CategoryOut(id=category.id, name=category.name, fg_color=category.fg_color, bg_color=category.bg_color)
+    return CategoryOut(
+        id=category.id,
+        name=category.name,
+        sort_order=category.sort_order or 0,
+        fg_color=category.fg_color,
+        bg_color=category.bg_color,
+    )
 
 
 @app.put("/api/families/{family_id}/categories/{category_id}", response_model=CategoryOut)
@@ -843,9 +941,98 @@ def update_category(
         v = payload.bg_color.strip()
         cat.bg_color = v if v else None
 
+    if payload.sort_order is not None:
+        cat.sort_order = int(payload.sort_order)
+
     db.commit()
     db.refresh(cat)
-    return CategoryOut(id=cat.id, name=cat.name, fg_color=cat.fg_color, bg_color=cat.bg_color)
+    return CategoryOut(
+        id=cat.id,
+        name=cat.name,
+        sort_order=cat.sort_order or 0,
+        fg_color=cat.fg_color,
+        bg_color=cat.bg_color,
+    )
+
+
+@app.post("/api/families/{family_id}/categories/reorder", response_model=list[CategoryOut])
+def reorder_categories(
+    family_id: int,
+    payload: CategoryReorderIn,
+    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    require_family_member(db=db, family_id=family_id, user_id=user_id)
+
+    # Ensure all provided IDs belong to this family.
+    ids = [int(x) for x in payload.ordered_ids]
+    if len(ids) != len(set(ids)):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Duplicate category ids in payload")
+
+    rows = db.execute(select(Category).where(Category.family_id == family_id, Category.id.in_(ids))).scalars().all()
+    cats_by_id = {c.id: c for c in rows}
+    if len(cats_by_id) != len(ids):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="One or more category ids are invalid for this family")
+
+    for idx, cid in enumerate(ids):
+        cats_by_id[cid].sort_order = idx
+
+    db.commit()
+    return list_categories(family_id=family_id, access_token=access_token, db=db)
+
+
+@app.get("/api/families/{family_id}/reconciled-days", response_model=ReconciledDaysOut)
+def list_reconciled_days(
+    family_id: int,
+    month: str,
+    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    require_family_member(db=db, family_id=family_id, user_id=user_id)
+
+    start, end = _month_range(month)
+    rows = (
+        db.execute(
+            select(ReconciledDay)
+            .where(
+                ReconciledDay.family_id == family_id,
+                ReconciledDay.date >= start,
+                ReconciledDay.date < end,
+                ReconciledDay.reconciled == True,  # noqa: E712
+            )
+            .order_by(ReconciledDay.date.asc())
+        )
+        .scalars()
+        .all()
+    )
+    return ReconciledDaysOut(month=month, dates=[r.date for r in rows])
+
+
+@app.post("/api/families/{family_id}/reconciled-days", response_model=ReconciledDaysOut)
+def upsert_reconciled_day(
+    family_id: int,
+    payload: ReconciledDayUpsertIn,
+    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    require_family_member(db=db, family_id=family_id, user_id=user_id)
+
+    existing = db.execute(
+        select(ReconciledDay).where(ReconciledDay.family_id == family_id, ReconciledDay.date == payload.date)
+    ).scalar_one_or_none()
+    if existing is None:
+        existing = ReconciledDay(family_id=family_id, date=payload.date, reconciled=bool(payload.reconciled))
+        db.add(existing)
+    else:
+        existing.reconciled = bool(payload.reconciled)
+
+    db.commit()
+
+    month = f"{payload.date.year:04d}-{payload.date.month:02d}"
+    return list_reconciled_days(family_id=family_id, month=month, access_token=access_token, db=db)
 
 
 @app.get("/api/families/{family_id}/accounts", response_model=list[AccountOut])

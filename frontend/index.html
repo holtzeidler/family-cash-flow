@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Family Cash Flow</title>
     <script>window.API_BASE = "__API_BASE__";</script>
-    <link rel="stylesheet" href="./styles.css?v=39" />
+    <link rel="stylesheet" href="./styles.css?v=41" />
   </head>
   <body>
     <div class="container">
@@ -735,7 +735,28 @@
       </div>
     </div>
 
+    <div id="reconcileModal" class="modal-overlay" aria-hidden="true">
+      <div class="modal" role="dialog" aria-labelledby="reconcileTitle">
+        <h3 id="reconcileTitle">Day status</h3>
+        <div id="reconcileErr" class="error"></div>
+        <div class="reconcile-date-row">
+          <div class="reconcile-date-label">Date</div>
+          <div class="reconcile-date-value" id="reconcileDateText">—</div>
+        </div>
+        <div style="height: 12px"></div>
+        <label class="reimbursable-field" for="reconcileChecked">
+          <span class="reimbursable-field__label">Reconciled</span>
+          <input id="reconcileChecked" type="checkbox" />
+        </label>
+        <div style="height: 14px"></div>
+        <div class="row two">
+          <button type="button" id="reconcileSaveBtn">Save</button>
+          <button type="button" id="reconcileCancelBtn" class="danger">Cancel</button>
+        </div>
+      </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="./app.js?v=39"></script>
+    <script src="./app.js?v=41"></script>
   </body>
 </html>

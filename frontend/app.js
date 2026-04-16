@@ -75,6 +75,7 @@ let state = {
   monthExpectedItems: [],
   calendarExtraActualItems: [],
   calendarExtraExpectedItems: [],
+  reconciledDates: new Set(),
   monthDailyBalances: new Map(),
 };
 
@@ -252,6 +253,15 @@ const txEditErr = document.getElementById("txEditErr");
 const txEditSave = document.getElementById("txEditSave");
 const txEditDelete = document.getElementById("txEditDelete");
 const txEditCancel = document.getElementById("txEditCancel");
+
+// Reconcile day modal
+const reconcileModal = document.getElementById("reconcileModal");
+const reconcileErr = document.getElementById("reconcileErr");
+const reconcileDateText = document.getElementById("reconcileDateText");
+const reconcileChecked = document.getElementById("reconcileChecked");
+const reconcileSaveBtn = document.getElementById("reconcileSaveBtn");
+const reconcileCancelBtn = document.getElementById("reconcileCancelBtn");
+let reconcileActiveDate = "";
 
 // One-time transaction add modal
 const txAddModal = document.getElementById("txAddModal");
@@ -663,6 +673,23 @@ function closeTxAddModal() {
   txAddModal.setAttribute("aria-hidden", "true");
 }
 
+function openReconcileModal(iso) {
+  if (!reconcileModal) return;
+  reconcileActiveDate = normalizeIsoDate(iso) || iso;
+  if (reconcileDateText) reconcileDateText.textContent = reconcileActiveDate || "—";
+  if (reconcileChecked) reconcileChecked.checked = state.reconciledDates?.has(reconcileActiveDate) || false;
+  show(reconcileErr, "");
+  reconcileModal.classList.add("modal-overlay--open");
+  reconcileModal.setAttribute("aria-hidden", "false");
+}
+
+function closeReconcileModal() {
+  if (!reconcileModal) return;
+  reconcileModal.classList.remove("modal-overlay--open");
+  reconcileModal.setAttribute("aria-hidden", "true");
+  reconcileActiveDate = "";
+}
+
 if (txEditSave) {
   txEditSave.addEventListener("click", async () => {
     try {
@@ -727,12 +754,25 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && expectedDeleteModal?.classList.contains("modal-overlay--open")) closeExpectedDeleteModal();
 });
 
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && reconcileModal?.classList.contains("modal-overlay--open")) closeReconcileModal();
+});
+
 if (txAddCancel) {
   txAddCancel.addEventListener("click", () => closeTxAddModal());
 }
 if (txAddModal) {
   txAddModal.addEventListener("click", (e) => {
     if (e.target === txAddModal) closeTxAddModal();
+  });
+}
+
+if (reconcileCancelBtn) {
+  reconcileCancelBtn.addEventListener("click", () => closeReconcileModal());
+}
+if (reconcileModal) {
+  reconcileModal.addEventListener("click", (e) => {
+    if (e.target === reconcileModal) closeReconcileModal();
   });
 }
 
@@ -1281,13 +1321,37 @@ function renderCategoriesGrid(categories) {
   categoriesGrid.appendChild(hBg);
   categoriesGrid.appendChild(hAct);
 
-  // Stable ordering helps scan.
-  const sorted = [...items].sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
-  for (const c of sorted) {
+  // Render in server-provided order (drag/drop persists sort_order).
+  const ordered = [...items];
+
+  async function persistOrder(ids) {
+    if (!state.activeFamilyId) return;
+    await api(`/api/families/${state.activeFamilyId}/categories/reorder`, "POST", { ordered_ids: ids });
+  }
+
+  function currentIds() {
+    return [...categoriesGrid.querySelectorAll(".cat-row[data-category-id]")].map((el) => Number(el.dataset.categoryId));
+  }
+
+  function moveIdBefore(list, movingId, beforeId) {
+    const next = list.filter((x) => x !== movingId);
+    const idx = next.indexOf(beforeId);
+    if (idx < 0) return next;
+    next.splice(idx, 0, movingId);
+    return next;
+  }
+
+  for (const c of ordered) {
+    const row = document.createElement("div");
+    row.className = "cat-row";
+    row.dataset.categoryId = String(c.id);
+    row.draggable = true;
+
     const nameEl = document.createElement("div");
     nameEl.className = "cat-name";
     nameEl.textContent = c.name;
     nameEl.title = c.name;
+    nameEl.classList.add("cat-drag-handle");
 
     let fgVal = normalizeHex(c.fg_color, DEFAULT_FG);
     let bgVal = normalizeHex(c.bg_color, DEFAULT_BG);
@@ -1339,10 +1403,62 @@ function renderCategoriesGrid(categories) {
     actions.appendChild(save);
     actions.appendChild(reset);
 
-    categoriesGrid.appendChild(nameEl);
-    categoriesGrid.appendChild(fgTrigger);
-    categoriesGrid.appendChild(bgTrigger);
-    categoriesGrid.appendChild(actions);
+    // Use display: contents so the row participates in the grid.
+    row.appendChild(nameEl);
+    row.appendChild(fgTrigger);
+    row.appendChild(bgTrigger);
+    row.appendChild(actions);
+    categoriesGrid.appendChild(row);
+
+    row.addEventListener("dragstart", (e) => {
+      try {
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/plain", row.dataset.categoryId || "");
+      } catch (_) {}
+      row.classList.add("is-dragging");
+    });
+    row.addEventListener("dragend", () => {
+      row.classList.remove("is-dragging");
+      categoriesGrid.querySelectorAll(".cat-row.is-drag-over").forEach((x) => x.classList.remove("is-drag-over"));
+    });
+    row.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      row.classList.add("is-drag-over");
+      if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+    });
+    row.addEventListener("dragleave", () => row.classList.remove("is-drag-over"));
+    row.addEventListener("drop", async (e) => {
+      e.preventDefault();
+      row.classList.remove("is-drag-over");
+      const raw = (() => {
+        try {
+          return e.dataTransfer.getData("text/plain");
+        } catch (_) {
+          return "";
+        }
+      })();
+      const movingId = Number(raw);
+      const beforeId = Number(row.dataset.categoryId);
+      if (!movingId || !beforeId || movingId === beforeId) return;
+      const ids = currentIds();
+      const nextIds = moveIdBefore(ids, movingId, beforeId);
+      try {
+        // Optimistic UI: reorder DOM immediately.
+        const idToRow = new Map(
+          [...categoriesGrid.querySelectorAll(".cat-row[data-category-id]")].map((el) => [Number(el.dataset.categoryId), el])
+        );
+        for (const el of idToRow.values()) el.remove();
+        for (const id of nextIds) {
+          const el = idToRow.get(id);
+          if (el) categoriesGrid.appendChild(el);
+        }
+        await persistOrder(nextIds);
+        await loadCategories();
+      } catch (err) {
+        show(catErr, err.message || "Failed to reorder categories");
+        await loadCategories();
+      }
+    });
   }
 }
 
@@ -1639,6 +1755,27 @@ if (expectedDeleteThisBtn) {
 }
 if (expectedDeleteFutureBtn) {
   expectedDeleteFutureBtn.addEventListener("click", () => runExpectedDeleteAction("future"));
+}
+
+if (reconcileSaveBtn) {
+  reconcileSaveBtn.addEventListener("click", async () => {
+    try {
+      show(reconcileErr, "");
+      if (!state.activeFamilyId) throw new Error("Choose a family first");
+      const iso = normalizeIsoDate(reconcileActiveDate);
+      if (!iso) throw new Error("Invalid date");
+      const month = (calendarMonth?.value || monthInput.value) || iso.slice(0, 7);
+      await api(`/api/families/${state.activeFamilyId}/reconciled-days`, "POST", {
+        date: iso,
+        reconciled: !!reconcileChecked?.checked,
+      });
+      await loadReconciledDays(month);
+      closeReconcileModal();
+      renderCalendar();
+    } catch (e) {
+      show(reconcileErr, e.message || "Failed to save");
+    }
+  });
 }
 
 if (expectedEditSave) {
@@ -2025,6 +2162,25 @@ function normalizeIsoDate(raw) {
   return `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}`;
 }
 
+async function loadReconciledDays(month) {
+  state.reconciledDates = new Set();
+  if (!state.activeFamilyId) return;
+  if (!month) return;
+  try {
+    const data = await api(
+      `/api/families/${state.activeFamilyId}/reconciled-days?month=${encodeURIComponent(month)}`,
+      "GET"
+    );
+    const ds = data?.dates || [];
+    for (const d of ds) {
+      const iso = normalizeIsoDate(d);
+      if (iso) state.reconciledDates.add(iso);
+    }
+  } catch (_) {
+    state.reconciledDates = new Set();
+  }
+}
+
 async function loadCalendarMonthDaily() {
   state.monthDailyBalances = new Map();
   if (!state.activeFamilyId) return;
@@ -2063,6 +2219,7 @@ async function loadMonthAndCalendar() {
   await loadTransactions();
   await loadExpectedCalendar();
   await loadCalendarExtras();
+  await loadReconciledDays(calendarMonth?.value || monthInput.value);
   await loadCalendarMonthDaily();
   renderCalendar();
 }
@@ -2289,8 +2446,9 @@ function renderCalendar() {
     const dObj = new Date(year, monthIndex, dayNum);
     const iso = toISODate(dObj);
     cell.dataset.iso = iso;
+    const isReconciled = state.reconciledDates && state.reconciledDates.has(iso);
     cell.innerHTML = `
-      <div class="cal-daynum">${dObj.getDate()}</div>
+      <div class="cal-daynum"><span>${dObj.getDate()}</span>${isReconciled ? '<span class="cal-reconciled-mark" title="Reconciled">✓</span>' : ""}</div>
       <div class="cal-cell-fill"></div>
       <div class="cal-cell-stack">
         <div class="cal-day-txns"></div>
@@ -2300,6 +2458,15 @@ function renderCalendar() {
     if (isOutOfMonth) cell.classList.add("cal-cell--out");
     const txnsEl = cell.querySelector(".cal-day-txns");
     const metricsEl = cell.querySelector(".cal-ledger-metrics");
+
+    const dayNumEl = cell.querySelector(".cal-daynum");
+    if (dayNumEl) {
+      dayNumEl.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        openReconcileModal(iso);
+      });
+    }
 
     const actualTxs = showActual ? actualTxsByDate.get(iso) || [] : [];
     const expectedItems = showExpected ? expectedByDate.get(iso) || [] : [];
