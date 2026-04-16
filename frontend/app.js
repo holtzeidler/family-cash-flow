@@ -2007,6 +2007,17 @@ function endOfMonthDay(year, monthIndex0) {
   return new Date(year, monthIndex0 + 1, 0).getDate();
 }
 
+function recurrenceLabel(value) {
+  const v = String(value || "");
+  if (v === "yearly") return "Annual";
+  if (v === "semiannual") return "Twice yearly";
+  if (v === "twice_monthly") return "Twice monthly";
+  if (v === "weekly") return "Weekly";
+  if (v === "monthly") return "Monthly";
+  if (v === "once") return "Once";
+  return v || "—";
+}
+
 function dateFromYMDClamped(year, monthIndex0, day) {
   const last = endOfMonthDay(year, monthIndex0);
   const d = Math.min(Math.max(1, Number(day) || 1), last);
@@ -2160,7 +2171,7 @@ function renderRecurringFilteredList() {
 
     const metaEl = document.createElement("div");
     metaEl.className = "meta";
-    const bits = [`Next: ${fmtDateMDY(nextIso)}`, twiceMeta, tx.recurrence ? `recurs: ${tx.recurrence}` : ""].filter(Boolean);
+    const bits = [`Next: ${fmtDateMDY(nextIso)}`, twiceMeta, tx.recurrence ? `recurs: ${recurrenceLabel(tx.recurrence)}` : ""].filter(Boolean);
     metaEl.appendChild(document.createTextNode(bits.join(" ")));
 
     left.appendChild(descEl);
@@ -2785,9 +2796,11 @@ function renderCalendar() {
     const dObj = new Date(year, monthIndex, dayNum);
     const iso = toISODate(dObj);
     cell.dataset.iso = iso;
+    const todayIso = toISODate(new Date());
+    const isToday = iso === todayIso;
     const isReconciled = state.reconciledDates && state.reconciledDates.has(iso);
     cell.innerHTML = `
-      <div class="cal-daynum"><span>${dObj.getDate()}</span>${isReconciled ? `
+      <div class="cal-daynum"><span class="cal-daynum-num${isToday ? " is-today" : ""}">${dObj.getDate()}</span>${isReconciled ? `
         <span class="cal-reconciled-mark" title="Reconciled" aria-label="Reconciled">
           <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <circle cx="12" cy="12" r="9"></circle>

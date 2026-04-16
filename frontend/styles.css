@@ -1206,6 +1206,21 @@ input, select{
   gap: 6px;
 }
 
+.cal-daynum-num{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+}
+.cal-daynum-num.is-today{
+  background: #1a73e8;
+  color: #fff;
+  font-weight: 600;
+}
+
 .cal-reconciled-mark{
   display: inline-flex;
   align-items: center;
