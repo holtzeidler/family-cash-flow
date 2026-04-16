@@ -175,6 +175,10 @@ const addExpectedTxBtn = document.getElementById("addExpectedTxBtn");
 const expectedEditModal = document.getElementById("expectedEditModal");
 const expectedEditErr = document.getElementById("expectedEditErr");
 const expectedEditId = document.getElementById("expectedEditId");
+// These IDs existed in the older "series edit" panel; keep bindings so loaders can
+// safely check them (they'll be null if not present).
+const expectedEditAccountId = document.getElementById("expectedEditAccountId");
+const expectedEditCategoryId = document.getElementById("expectedEditCategoryId");
 const expectedEditDelete = document.getElementById("expectedEditDelete");
 const expectedEditCancel = document.getElementById("expectedEditCancel");
 let selectedExpectedSeriesTx = null;
