@@ -125,6 +125,7 @@ const familySelect = document.getElementById("familySelect");
 const monthInput = document.getElementById("monthInput");
 const totalsEl = document.getElementById("totals");
 const txList = document.getElementById("txList");
+const txListMain = document.getElementById("txListMain");
 
 const categoriesGrid = document.getElementById("categoriesGrid");
 const txCategoryId = document.getElementById("txCategoryId");
@@ -568,6 +569,41 @@ document.querySelectorAll(".sidebar-section[data-sidebar-key]").forEach((card) =
   });
   applySidebarSectionCollapsed(card, collapsed);
 });
+
+// Top navigation: Calendar View vs Transaction View.
+const navCalendarView = document.getElementById("navCalendarView");
+const navTransactionView = document.getElementById("navTransactionView");
+const calendarViewPanel = document.getElementById("calendarViewPanel");
+const transactionViewPanel = document.getElementById("transactionViewPanel");
+const ACTIVE_VIEW_KEY = "familyCashFlow_activeView";
+
+function setActiveTopView(view) {
+  const v = view === "transactions" ? "transactions" : "calendar";
+  if (calendarViewPanel) calendarViewPanel.hidden = v !== "calendar";
+  if (transactionViewPanel) transactionViewPanel.hidden = v !== "transactions";
+  if (navCalendarView) {
+    navCalendarView.classList.toggle("is-active", v === "calendar");
+    navCalendarView.setAttribute("aria-selected", v === "calendar" ? "true" : "false");
+  }
+  if (navTransactionView) {
+    navTransactionView.classList.toggle("is-active", v === "transactions");
+    navTransactionView.setAttribute("aria-selected", v === "transactions" ? "true" : "false");
+  }
+  try {
+    localStorage.setItem(ACTIVE_VIEW_KEY, v);
+  } catch (_) {}
+}
+
+if (navCalendarView) {
+  navCalendarView.addEventListener("click", () => setActiveTopView("calendar"));
+}
+if (navTransactionView) {
+  navTransactionView.addEventListener("click", () => setActiveTopView("transactions"));
+}
+try {
+  const storedView = localStorage.getItem(ACTIVE_VIEW_KEY);
+  if (storedView) setActiveTopView(storedView);
+} catch (_) {}
 
 if (calendarMode) {
   calendarMode.addEventListener("change", async () => {
@@ -1927,6 +1963,115 @@ if (expectedEditDelete) {
   });
 }
 
+function parseIsoDateLocal(iso) {
+  const n = normalizeIsoDate(iso);
+  if (!n) return null;
+  const y = Number(n.slice(0, 4));
+  const m = Number(n.slice(5, 7));
+  const d = Number(n.slice(8, 10));
+  if (!y || !m || !d) return null;
+  // Midday avoids DST edge cases around midnight.
+  return new Date(y, m - 1, d, 12, 0, 0, 0);
+}
+
+function endOfMonthDay(year, monthIndex0) {
+  return new Date(year, monthIndex0 + 1, 0).getDate();
+}
+
+function dateFromYMDClamped(year, monthIndex0, day) {
+  const last = endOfMonthDay(year, monthIndex0);
+  const d = Math.min(Math.max(1, Number(day) || 1), last);
+  return new Date(year, monthIndex0, d, 12, 0, 0, 0);
+}
+
+function addMonthsClamped(d, months, dom) {
+  const y = d.getFullYear();
+  const m0 = d.getMonth() + Number(months);
+  const year = y + Math.floor(m0 / 12);
+  const monthIndex0 = ((m0 % 12) + 12) % 12;
+  return dateFromYMDClamped(year, monthIndex0, dom);
+}
+
+function nextExpectedOccurrenceIso(tx, fromIso) {
+  const start = parseIsoDateLocal(tx.start_date);
+  if (!start) return null;
+  const from = parseIsoDateLocal(fromIso) || start;
+  const end = parseIsoDateLocal(tx.end_date || tx.last_txn_date || "");
+
+  const startDom = start.getDate();
+  const startMonth = start.getMonth(); // 0-11
+  const startDow = start.getDay(); // 0-6
+  const recurrence = String(tx.recurrence || "monthly");
+
+  let cand = null;
+  if (recurrence === "once") {
+    cand = start >= from ? start : null;
+  } else if (recurrence === "weekly") {
+    if (from <= start) {
+      cand = start;
+    } else {
+      const diffDays = Math.floor((from - start) / (24 * 3600 * 1000));
+      const mod = ((diffDays % 7) + 7) % 7;
+      const add = mod === 0 ? 0 : 7 - mod;
+      cand = new Date(from);
+      cand.setDate(from.getDate() + add);
+      cand.setHours(12, 0, 0, 0);
+      // Ensure weekday matches original schedule.
+      if (cand.getDay() !== startDow) {
+        const delta = (startDow - cand.getDay() + 7) % 7;
+        cand.setDate(cand.getDate() + delta);
+      }
+    }
+  } else if (recurrence === "twice_monthly") {
+    const second = Number(tx.second_day_of_month);
+    const days = [startDom, second].filter((n) => Number.isFinite(n) && n >= 1 && n <= 31).sort((a, b) => a - b);
+    if (days.length === 0) return null;
+    const y = from.getFullYear();
+    const m0 = from.getMonth();
+    const todayDom = from.getDate();
+    const pick = days.find((d) => d >= todayDom);
+    if (from <= start) {
+      cand = start;
+    } else if (pick != null) {
+      cand = dateFromYMDClamped(y, m0, pick);
+    } else {
+      cand = dateFromYMDClamped(y, m0 + 1, days[0]);
+    }
+  } else if (recurrence === "yearly") {
+    const y = from.getFullYear();
+    const thisYear = dateFromYMDClamped(y, startMonth, startDom);
+    cand = thisYear >= from ? thisYear : dateFromYMDClamped(y + 1, startMonth, startDom);
+  } else if (recurrence === "semiannual") {
+    // Every 6 months from start.
+    if (from <= start) {
+      cand = start;
+    } else {
+      let cur = start;
+      // Jump close using month difference, then step by 6.
+      const monthsDiff = (from.getFullYear() - start.getFullYear()) * 12 + (from.getMonth() - start.getMonth());
+      const steps = Math.max(0, Math.floor(monthsDiff / 6) * 6);
+      cur = addMonthsClamped(start, steps, startDom);
+      while (cur < from) cur = addMonthsClamped(cur, 6, startDom);
+      cand = cur;
+    }
+  } else {
+    // monthly (default)
+    if (from <= start) {
+      cand = start;
+    } else {
+      const y = from.getFullYear();
+      const m0 = from.getMonth();
+      const thisMonth = dateFromYMDClamped(y, m0, startDom);
+      cand = thisMonth >= from ? thisMonth : dateFromYMDClamped(y, m0 + 1, startDom);
+    }
+  }
+
+  if (!cand) return null;
+  if (cand < start) cand = start;
+  if (end && cand > end) return null;
+  return toISODate(cand);
+}
+
 function renderExpectedTransactions(items) {
   expectedTxList.innerHTML = "";
   if (!items || items.length === 0) {
@@ -1937,7 +2082,10 @@ function renderExpectedTransactions(items) {
     return;
   }
 
+  const todayIso = toISODate(new Date());
   for (const tx of items) {
+    const nextIso = nextExpectedOccurrenceIso(tx, todayIso);
+    if (!nextIso) continue;
     const el = document.createElement("div");
     el.className = "item expected-item--dense";
 
@@ -1960,7 +2108,7 @@ function renderExpectedTransactions(items) {
     const metaEl = document.createElement("div");
     metaEl.className = "meta";
       const bits = [
-        `${fmtDateMDY(tx.start_date)}`,
+        `${fmtDateMDY(nextIso)}`,
         tx.end_date ? `ends ${fmtDateMDY(tx.end_date)}` : "",
       twiceMeta,
       tx.recurrence ? `recurs: ${tx.recurrence}` : "",
@@ -2099,13 +2247,14 @@ function renderTotals(totals) {
   totalsEl.appendChild(netEl);
 }
 
-function renderTransactions(items) {
-  txList.innerHTML = "";
+function renderTransactionsInto(listEl, items) {
+  if (!listEl) return;
+  listEl.innerHTML = "";
   if (!items || items.length === 0) {
     const empty = document.createElement("div");
     empty.className = "pill";
     empty.textContent = "No transactions for this month.";
-    txList.appendChild(empty);
+    listEl.appendChild(empty);
     return;
   }
 
@@ -2156,8 +2305,13 @@ function renderTransactions(items) {
     el.appendChild(left);
     el.appendChild(amt);
     el.addEventListener("click", () => openTxEditModal(tx));
-    txList.appendChild(el);
+    listEl.appendChild(el);
   }
+}
+
+function renderTransactions(items) {
+  renderTransactionsInto(txList, items);
+  renderTransactionsInto(txListMain, items);
 }
 
 function escapeHtml(s) {

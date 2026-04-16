@@ -8,11 +8,24 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=49" />
+    <link rel="stylesheet" href="./styles.css?v=54" />
   </head>
   <body>
     <div class="container">
       <div id="familiesErr" class="error"></div>
+
+      <div class="top-nav" role="navigation" aria-label="Primary">
+        <div class="top-nav__inner">
+          <div class="top-nav__tabs" role="tablist" aria-label="Views">
+            <button type="button" class="top-nav__tab is-active" id="navCalendarView" role="tab" aria-selected="true">
+              Calendar View
+            </button>
+            <button type="button" class="top-nav__tab" id="navTransactionView" role="tab" aria-selected="false">
+              Transaction View
+            </button>
+          </div>
+        </div>
+      </div>
 
       <div class="app-layout">
         <aside class="sidebar">
@@ -224,7 +237,6 @@
               <button id="addExpectedTxBtn">Add recurring transaction</button>
             </div>
             <div id="expectedTxErr" class="error"></div>
-            <div class="list" id="expectedTxList"></div>
             </div>
           </div>
 
@@ -421,104 +433,116 @@
             </div>
           </div>
 
-          <div class="card sidebar-section sidebar-section--collapsed" data-sidebar-key="transactions">
-            <div class="sidebar-section-head">
-              <h2>Transactions</h2>
-              <button
-                type="button"
-                class="sidebar-collapse-btn"
-                aria-expanded="false"
-                aria-controls="sidebarBodyTransactions"
-                title="Expand Transactions"
-              >
-                <svg class="sidebar-collapse-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M6 9l6 6 6-6" />
-                </svg>
-              </button>
-            </div>
-            <div id="sidebarBodyTransactions" class="sidebar-section-body">
-              <div class="list" id="txList"></div>
-            </div>
-          </div>
         </aside>
 
         <div class="main-column">
-          <div class="card calendar-panel" id="calendarPanel">
-            <div class="calendar-panel-head">
-              <h2></h2>
-            </div>
-            <div id="calendarPanelBody" class="calendar-panel-body">
-            <div class="calendar-sticky-header" id="calendarStickyHeader">
-              <div class="row">
-                <div class="calendar-nav-block">
-                  <div class="calendar-nav-bar" role="group" aria-label="Calendar navigation">
-                    <button type="button" class="cal-today-btn" id="calendarGoToday" title="Go to current month">
-                      <svg class="cal-today-ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                        <line x1="16" y1="2" x2="16" y2="6"></line>
-                        <line x1="8" y1="2" x2="8" y2="6"></line>
-                        <line x1="3" y1="10" x2="21" y2="10"></line>
-                      </svg>
-                      Today
-                    </button>
+          <div id="calendarViewPanel" class="app-view">
+            <div class="card calendar-panel" id="calendarPanel">
+              <div class="calendar-panel-head">
+                <h2>Calendar View</h2>
+              </div>
+              <div id="calendarPanelBody" class="calendar-panel-body">
+              <div class="calendar-sticky-header" id="calendarStickyHeader">
+                <div class="row">
+                  <div class="calendar-nav-block">
+                    <div class="calendar-nav-bar" role="group" aria-label="Calendar navigation">
+                      <button type="button" class="cal-today-btn" id="calendarGoToday" title="Go to current month">
+                        <svg class="cal-today-ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                          <line x1="16" y1="2" x2="16" y2="6"></line>
+                          <line x1="8" y1="2" x2="8" y2="6"></line>
+                          <line x1="3" y1="10" x2="21" y2="10"></line>
+                        </svg>
+                        Today
+                      </button>
 
-                    <div class="cal-month-year">
-                      <div class="cal-select-wrap">
-                        <select id="calendarMonthNum" aria-label="Month">
-                          <option value="1">January</option>
-                          <option value="2">February</option>
-                          <option value="3">March</option>
-                          <option value="4">April</option>
-                          <option value="5">May</option>
-                          <option value="6">June</option>
-                          <option value="7">July</option>
-                          <option value="8">August</option>
-                          <option value="9">September</option>
-                          <option value="10">October</option>
-                          <option value="11">November</option>
-                          <option value="12">December</option>
+                      <div class="cal-month-year">
+                        <div class="cal-select-wrap">
+                          <select id="calendarMonthNum" aria-label="Month">
+                            <option value="1">January</option>
+                            <option value="2">February</option>
+                            <option value="3">March</option>
+                            <option value="4">April</option>
+                            <option value="5">May</option>
+                            <option value="6">June</option>
+                            <option value="7">July</option>
+                            <option value="8">August</option>
+                            <option value="9">September</option>
+                            <option value="10">October</option>
+                            <option value="11">November</option>
+                            <option value="12">December</option>
+                          </select>
+                          <span class="cal-select-caret" aria-hidden="true">▾</span>
+                        </div>
+                        <div class="cal-select-wrap">
+                          <select id="calendarYear" aria-label="Year"></select>
+                          <span class="cal-select-caret" aria-hidden="true">▾</span>
+                        </div>
+
+                        <div class="cal-nav-arrows">
+                          <button type="button" class="cal-arrow-btn" id="calendarPrevMonth" aria-label="Previous month" title="Previous month">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                              <path d="M15 18l-6-6 6-6" />
+                            </svg>
+                          </button>
+                          <button type="button" class="cal-arrow-btn" id="calendarNextMonth" aria-label="Next month" title="Next month">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                              <path d="M9 18l6-6-6-6" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+
+                      <div class="cal-mode-wrap">
+                        <label for="calendarMode" class="sr-only">Show</label>
+                        <select id="calendarMode" class="cal-mode-select" aria-label="Show">
+                          <option value="both" selected>Actual + Expected</option>
+                          <option value="actual">Actual only</option>
+                          <option value="expected">Expected only</option>
                         </select>
                         <span class="cal-select-caret" aria-hidden="true">▾</span>
                       </div>
-                      <div class="cal-select-wrap">
-                        <select id="calendarYear" aria-label="Year"></select>
-                        <span class="cal-select-caret" aria-hidden="true">▾</span>
-                      </div>
-
-                      <div class="cal-nav-arrows">
-                        <button type="button" class="cal-arrow-btn" id="calendarPrevMonth" aria-label="Previous month" title="Previous month">
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <path d="M15 18l-6-6 6-6" />
-                          </svg>
-                        </button>
-                        <button type="button" class="cal-arrow-btn" id="calendarNextMonth" aria-label="Next month" title="Next month">
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <path d="M9 18l6-6-6-6" />
-                          </svg>
-                        </button>
-                      </div>
                     </div>
-
-                    <div class="cal-mode-wrap">
-                      <label for="calendarMode" class="sr-only">Show</label>
-                      <select id="calendarMode" class="cal-mode-select" aria-label="Show">
-                        <option value="both" selected>Actual + Expected</option>
-                        <option value="actual">Actual only</option>
-                        <option value="expected">Expected only</option>
-                      </select>
-                      <span class="cal-select-caret" aria-hidden="true">▾</span>
-                    </div>
+                    <input type="hidden" id="calendarMonth" />
                   </div>
-                  <input type="hidden" id="calendarMonth" />
                 </div>
+                <div style="height:6px;"></div>
+                <div id="calendarErr" class="error"></div>
+                <div id="calendarDow" class="calendar-dow-row" aria-hidden="true"></div>
               </div>
-              <div style="height:6px;"></div>
-              <div id="calendarErr" class="error"></div>
-              <div id="calendarDow" class="calendar-dow-row" aria-hidden="true"></div>
+              <div class="calendar-scroll">
+                <div id="calendarGrid"></div>
+              </div>
+              </div>
             </div>
-            <div class="calendar-scroll">
-              <div id="calendarGrid"></div>
+          </div>
+
+          <div id="transactionViewPanel" class="app-view" hidden>
+            <div class="card">
+              <h2>All Transactions</h2>
+              <div class="list" id="txListMain"></div>
             </div>
+
+            <div style="height: 14px"></div>
+
+            <div class="card sidebar-section sidebar-section--collapsed" data-sidebar-key="upcomingRecurring">
+              <div class="sidebar-section-head">
+                <h2>Upcoming Recurring Transactions</h2>
+                <button
+                  type="button"
+                  class="sidebar-collapse-btn"
+                  aria-expanded="false"
+                  aria-controls="sidebarBodyUpcomingRecurring"
+                  title="Expand Upcoming Recurring Transactions"
+                >
+                  <svg class="sidebar-collapse-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M6 9l6 6 6-6" />
+                  </svg>
+                </button>
+              </div>
+              <div id="sidebarBodyUpcomingRecurring" class="sidebar-section-body">
+                <div class="list" id="expectedTxList"></div>
+              </div>
             </div>
           </div>
 
@@ -825,6 +849,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="./app.js?v=49"></script>
+    <script src="./app.js?v=54"></script>
   </body>
 </html>
