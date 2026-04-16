@@ -134,9 +134,23 @@ const txCategoryId = document.getElementById("txCategoryId");
 const lowBalanceThreshold = document.getElementById("lowBalanceThreshold");
 const lowBalanceResult = document.getElementById("lowBalanceResult");
 const lowBalanceErr = document.getElementById("lowBalanceErr");
+const calendarLowBalanceBanner = document.getElementById("calendarLowBalanceBanner");
 const LOW_BALANCE_THRESHOLD_KEY = "familyCashFlow_lowBalanceThreshold";
 let lowBalanceDebounceTimer = null;
 let lowBalanceLastQuery = { familyId: null, threshold: null };
+
+function setCalendarLowBalanceBanner(text, danger = false) {
+  if (!calendarLowBalanceBanner) return;
+  if (!text) {
+    calendarLowBalanceBanner.style.display = "none";
+    calendarLowBalanceBanner.textContent = "";
+    calendarLowBalanceBanner.classList.toggle("is-danger", false);
+    return;
+  }
+  calendarLowBalanceBanner.textContent = text;
+  calendarLowBalanceBanner.style.display = "inline-flex";
+  calendarLowBalanceBanner.classList.toggle("is-danger", !!danger);
+}
 
 function getRadioValue(name, fallback = "") {
   const el = document.querySelector(`input[type="radio"][name="${name}"]:checked`);
@@ -158,6 +172,9 @@ const cancelAccountEditBtn = document.getElementById("cancelAccountEditBtn");
 // Expected transactions
 const expectedTxErr = document.getElementById("expectedTxErr");
 const expectedTxList = document.getElementById("expectedTxList");
+const recurringFrequencyFilter = document.getElementById("recurringFrequencyFilter");
+const recurringFrequencyApplyBtn = document.getElementById("recurringFrequencyApplyBtn");
+const recurringFilteredList = document.getElementById("recurringFilteredList");
 const expectedStartDate = document.getElementById("expectedStartDate");
 const expectedLastTxnDate = document.getElementById("expectedLastTxnDate");
 const expectedRecurrence = document.getElementById("expectedRecurrence");
@@ -308,6 +325,7 @@ const txAddAmount = document.getElementById("txAddAmount");
 const txAddDesc = document.getElementById("txAddDesc");
 const txAddNotes = document.getElementById("txAddNotes");
 const txAddCategoryId = document.getElementById("txAddCategoryId");
+const txAddReimbursable = document.getElementById("txAddReimbursable");
 const txAddSave = document.getElementById("txAddSave");
 const txAddCancel = document.getElementById("txAddCancel");
 
@@ -329,12 +347,14 @@ async function refreshLowBalanceAlert() {
     if (!lowBalanceThreshold || !lowBalanceResult) return;
     if (!state.activeFamilyId) {
       setLowBalanceResult("", true);
+      setCalendarLowBalanceBanner("");
       return;
     }
 
     const thresholdVal = toNum(lowBalanceThreshold.value);
     if (!Number.isFinite(thresholdVal)) {
       setLowBalanceResult('<div class="k">Low Balance Alert</div><div class="v">Enter a threshold to start.</div>', true);
+      setCalendarLowBalanceBanner("");
       return;
     }
 
@@ -342,6 +362,7 @@ async function refreshLowBalanceAlert() {
     lowBalanceLastQuery = { familyId: state.activeFamilyId, threshold: thresholdVal };
 
     setLowBalanceResult('<div class="k">Low Balance Alert</div><div class="v">Checking…</div>', true);
+    setCalendarLowBalanceBanner("");
 
     const startIso = toISODate(new Date());
     const days = 1825;
@@ -359,6 +380,7 @@ async function refreshLowBalanceAlert() {
         `<div class="k">First date ≤ $${fmtMoneyThreshold(lowBalanceThreshold.value, thresholdVal)}</div><div class="v">None in the next ${days} days.</div>`,
         true
       );
+      setCalendarLowBalanceBanner("");
       return;
     }
 
@@ -366,9 +388,11 @@ async function refreshLowBalanceAlert() {
       `<div class="k">First date ≤ $${fmtMoneyThreshold(lowBalanceThreshold.value, thresholdVal)}</div><div class="v danger">${fmtDateMDY(hit.date)} — $${fmtMoney(hit.balance)}</div>`,
       false
     );
+    setCalendarLowBalanceBanner(`Next low balance: ${fmtDateMDY(hit.date)} — $${fmtMoney(hit.balance)}`, true);
   } catch (e) {
     show(lowBalanceErr, e.message || "Failed to compute low balance alert");
     setLowBalanceResult("", true);
+    setCalendarLowBalanceBanner("");
   }
 }
 
@@ -631,6 +655,8 @@ if (calendarMode) {
   calendarMode.addEventListener("change", async () => {
     await loadCalendarMonthDaily();
     renderCalendar();
+    renderMonthSummaryTotalsFromState();
+    await refreshLowBalanceAlert();
   });
 }
 
@@ -703,6 +729,7 @@ if (txAddSave) {
       const kind = getRadioValue("txAddKind", "expense");
       const amountVal = txAddAmount?.value || "";
       const categoryId = txAddCategoryId?.value || null;
+      const reimbursable = !!txAddReimbursable?.checked;
 
       if (!dateVal) throw new Error("Date is required");
       if (!amountVal || Number(amountVal) <= 0) throw new Error("Amount must be > 0");
@@ -714,6 +741,7 @@ if (txAddSave) {
         kind,
         amount: Number(amountVal),
         category_id: categoryId ? Number(categoryId) : null,
+        reimbursable,
       });
 
       closeTxAddModal();
@@ -826,6 +854,7 @@ function openTxAddModal(opts = {}) {
   if (txAddDesc) txAddDesc.value = "";
   if (txAddNotes) txAddNotes.value = "";
   if (txAddCategoryId) txAddCategoryId.value = "";
+  if (txAddReimbursable) txAddReimbursable.checked = false;
   const kind = opts.kind || "expense";
   const radio = document.querySelector(`input[type="radio"][name="txAddKind"][value="${kind}"]`);
   if (radio) radio.checked = true;
@@ -964,6 +993,13 @@ if (calendarGrid) {
     if (!iso) return;
     openTxAddModal({ date: iso });
   });
+}
+
+if (recurringFrequencyApplyBtn) {
+  recurringFrequencyApplyBtn.addEventListener("click", () => renderRecurringFilteredList());
+}
+if (recurringFrequencyFilter) {
+  recurringFrequencyFilter.addEventListener("change", () => renderRecurringFilteredList());
 }
 
 addExpectedTxBtn.addEventListener("click", async () => {
@@ -2137,11 +2173,85 @@ function renderExpectedTransactions(items) {
   }
 }
 
+function renderRecurringFilteredList() {
+  if (!recurringFilteredList) return;
+  const items = state.expectedTransactions || [];
+  recurringFilteredList.innerHTML = "";
+  if (!items || items.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "pill";
+    empty.textContent = "No recurring transactions yet.";
+    recurringFilteredList.appendChild(empty);
+    return;
+  }
+
+  const sel = recurringFrequencyFilter ? String(recurringFrequencyFilter.value || "all") : "all";
+  const todayIso = toISODate(new Date());
+  const filtered = items
+    .filter((tx) => sel === "all" || String(tx.recurrence || "monthly") === sel)
+    .map((tx) => ({ tx, nextIso: nextExpectedOccurrenceIso(tx, todayIso) }))
+    .filter((row) => !!row.nextIso);
+
+  if (filtered.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "pill";
+    empty.textContent = "No matching recurring transactions.";
+    recurringFilteredList.appendChild(empty);
+    return;
+  }
+
+  for (const { tx, nextIso } of filtered) {
+    const el = document.createElement("div");
+    el.className = "item expected-item--dense";
+
+    const amtClass = tx.kind === "income" ? "income" : "expense";
+    const kindSign = tx.kind === "income" ? "+" : "-";
+    const startDom =
+      tx.start_date != null && String(tx.start_date).length >= 10
+        ? Number(String(tx.start_date).slice(8, 10))
+        : null;
+    const twiceMeta =
+      tx.recurrence === "twice_monthly" && tx.second_day_of_month != null && startDom != null && !Number.isNaN(startDom)
+        ? `days ${startDom} & ${tx.second_day_of_month}`
+        : "";
+
+    const left = document.createElement("div");
+    left.className = "left";
+    const descEl = document.createElement("div");
+    descEl.className = `desc ${kindFgClass(tx.kind)}`;
+    descEl.textContent = tx.description || "(no description)";
+
+    const metaEl = document.createElement("div");
+    metaEl.className = "meta";
+    const bits = [`Next: ${fmtDateMDY(nextIso)}`, twiceMeta, tx.recurrence ? `recurs: ${tx.recurrence}` : ""].filter(Boolean);
+    metaEl.appendChild(document.createTextNode(bits.join(" ")));
+
+    left.appendChild(descEl);
+    left.appendChild(metaEl);
+
+    const amtBtn = document.createElement("button");
+    amtBtn.type = "button";
+    amtBtn.className = `amt ${amtClass} expected-amt-link`;
+    amtBtn.textContent = `${kindSign}$${fmtMoney(tx.amount)}`;
+    amtBtn.title = "Edit recurring transaction";
+    amtBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      openExpectedEditModal(tx);
+    });
+
+    el.appendChild(left);
+    el.appendChild(amtBtn);
+    recurringFilteredList.appendChild(el);
+  }
+}
+
 async function loadExpectedTransactions() {
   if (!state.activeFamilyId) return;
   const items = await api(`/api/families/${state.activeFamilyId}/expected-transactions`, "GET");
   state.expectedTransactions = items || [];
   renderExpectedTransactions(state.expectedTransactions);
+  renderRecurringFilteredList();
 }
 
 function renderProjectionSummary(summary) {
@@ -2237,6 +2347,39 @@ function renderTotals(totals) {
   totalsEl.appendChild(netEl);
 }
 
+function computeMonthSummaryTotalsFromState() {
+  const mode = calendarMode?.value || "both";
+  const includeActual = mode === "both" || mode === "actual";
+  const includeExpected = mode === "both" || mode === "expected";
+
+  let income = 0;
+  let expense = 0;
+
+  if (includeActual) {
+    for (const tx of state.monthActualItems || []) {
+      const amt = toNum(tx.amount);
+      if (!Number.isFinite(amt)) continue;
+      if (String(tx.kind) === "income") income += amt;
+      else expense += amt;
+    }
+  }
+
+  if (includeExpected) {
+    for (const tx of state.monthExpectedItems || []) {
+      const amt = toNum(tx.amount);
+      if (!Number.isFinite(amt)) continue;
+      if (String(tx.kind) === "income") income += amt;
+      else expense += amt;
+    }
+  }
+
+  return { income, expense, net: income - expense };
+}
+
+function renderMonthSummaryTotalsFromState() {
+  renderTotals(computeMonthSummaryTotalsFromState());
+}
+
 function renderTransactionsInto(listEl, items) {
   if (!listEl) return;
   listEl.innerHTML = "";
@@ -2320,7 +2463,6 @@ async function loadTransactions() {
     const month = monthInput.value;
     const qs = month ? `?month=${encodeURIComponent(month)}` : "";
     const data = await api(`/api/families/${state.activeFamilyId}/transactions${qs}`, "GET");
-    renderTotals(data?.totals || {});
     const items = data?.items || [];
     state.monthActualItems = items;
     renderTransactions(items);
@@ -2454,6 +2596,7 @@ async function loadMonthAndCalendar() {
   if (!state.activeFamilyId) return;
   await loadTransactions();
   await loadExpectedCalendar();
+  renderMonthSummaryTotalsFromState();
   await loadCalendarExtras();
   await loadReconciledDays(calendarMonth?.value || monthInput.value);
   await loadCalendarMonthDaily();

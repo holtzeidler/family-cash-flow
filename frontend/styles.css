@@ -346,6 +346,21 @@ button.nav-link:hover{
   gap: 10px;
   margin-bottom: 4px;
 }
+.calendar-low-balance{
+  font-size: 12px;
+  color: var(--muted);
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(0,0,0,0.10);
+  background: rgba(0,0,0,0.02);
+  white-space: nowrap;
+}
+.calendar-low-balance.is-danger{
+  color: #b91c1c;
+  border-color: rgba(185,28,28,0.28);
+  background: rgba(239,68,68,0.08);
+}
+
 .calendar-panel--collapsed .calendar-panel-head{
   margin-bottom: 0;
 }

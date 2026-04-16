@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=59" />
+    <link rel="stylesheet" href="./styles.css?v=63" />
   </head>
   <body>
     <div class="container">
@@ -42,33 +42,6 @@
               <select id="familySelect" class="family-select-hidden" aria-hidden="true" tabindex="-1"></select>
               <div class="pill" id="userPill">Loading...</div>
               <button type="button" id="logoutBtn">Logout</button>
-            </div>
-          </div>
-
-          <div class="card sidebar-section sidebar-section--collapsed" data-sidebar-key="lowBalance">
-            <div class="sidebar-section-head">
-              <h2>Low Balance Alert</h2>
-              <button
-                type="button"
-                class="sidebar-collapse-btn"
-                aria-expanded="false"
-                aria-controls="sidebarBodyLowBalance"
-                title="Expand Low Balance Alert"
-              >
-                <svg class="sidebar-collapse-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M6 9l6 6 6-6" />
-                </svg>
-              </button>
-            </div>
-            <div id="sidebarBodyLowBalance" class="sidebar-section-body">
-              <label for="lowBalanceThreshold">Balance threshold</label>
-              <div class="money-input">
-                <span class="money-input__prefix" aria-hidden="true">$</span>
-                <input id="lowBalanceThreshold" type="number" step="0.01" placeholder="1000" />
-              </div>
-              <div style="height:10px;"></div>
-              <div class="low-balance-result" id="lowBalanceResult" aria-live="polite"></div>
-              <div id="lowBalanceErr" class="error"></div>
             </div>
           </div>
 
@@ -253,6 +226,7 @@
             <div class="card calendar-panel" id="calendarPanel">
               <div class="calendar-panel-head">
                 <h2>Calendar View</h2>
+                <div id="calendarLowBalanceBanner" class="calendar-low-balance" style="display:none"></div>
               </div>
               <div id="calendarPanelBody" class="calendar-panel-body">
               <div class="calendar-sticky-header" id="calendarStickyHeader">
@@ -353,6 +327,46 @@
 
             <div style="height: 14px"></div>
 
+            <div class="card sidebar-section sidebar-section--collapsed" data-sidebar-key="recurringFilter">
+              <div class="sidebar-section-head">
+                <h2>Recurring Transactions</h2>
+                <button
+                  type="button"
+                  class="sidebar-collapse-btn"
+                  aria-expanded="false"
+                  aria-controls="sidebarBodyRecurringFilter"
+                  title="Expand Recurring Transactions"
+                >
+                  <svg class="sidebar-collapse-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M6 9l6 6 6-6" />
+                  </svg>
+                </button>
+              </div>
+              <div id="sidebarBodyRecurringFilter" class="sidebar-section-body">
+                <div class="row two">
+                  <div>
+                    <label for="recurringFrequencyFilter">Frequency</label>
+                    <select id="recurringFrequencyFilter">
+                      <option value="all" selected>All</option>
+                      <option value="weekly">Weekly</option>
+                      <option value="monthly">Monthly</option>
+                      <option value="twice_monthly">Twice monthly</option>
+                      <option value="semiannual">Twice yearly</option>
+                      <option value="yearly">Yearly</option>
+                      <option value="once">Once</option>
+                    </select>
+                  </div>
+                  <div style="display:flex; align-items:end;">
+                    <button type="button" id="recurringFrequencyApplyBtn" style="width:100%;">Apply</button>
+                  </div>
+                </div>
+                <div style="height: 10px"></div>
+                <div class="list" id="recurringFilteredList"></div>
+              </div>
+            </div>
+
+            <div style="height: 14px"></div>
+
             <div class="card sidebar-section sidebar-section--collapsed" data-sidebar-key="upcomingRecurring">
               <div class="sidebar-section-head">
                 <h2>Upcoming Recurring Transactions</h2>
@@ -375,6 +389,35 @@
           </div>
 
           <div id="settingsViewPanel" class="app-view" hidden>
+            <div class="card sidebar-section" data-sidebar-key="lowBalance">
+              <div class="sidebar-section-head">
+                <h2>Low Balance Alert</h2>
+                <button
+                  type="button"
+                  class="sidebar-collapse-btn"
+                  aria-expanded="true"
+                  aria-controls="sidebarBodyLowBalance"
+                  title="Collapse Low Balance Alert"
+                >
+                  <svg class="sidebar-collapse-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M6 9l6 6 6-6" />
+                  </svg>
+                </button>
+              </div>
+              <div id="sidebarBodyLowBalance" class="sidebar-section-body">
+                <label for="lowBalanceThreshold">Balance threshold</label>
+                <div class="money-input">
+                  <span class="money-input__prefix" aria-hidden="true">$</span>
+                  <input id="lowBalanceThreshold" type="number" step="0.01" placeholder="1000" />
+                </div>
+                <div style="height:10px;"></div>
+                <div class="low-balance-result" id="lowBalanceResult" aria-live="polite"></div>
+                <div id="lowBalanceErr" class="error"></div>
+              </div>
+            </div>
+
+            <div style="height: 14px"></div>
+
             <div class="card sidebar-section sidebar-section--collapsed" data-sidebar-key="accounts">
               <div class="sidebar-section-head">
                 <h2>Accounts</h2>
@@ -672,6 +715,11 @@
         <div style="height: 10px"></div>
         <label for="txAddCategoryId">Category</label>
         <select id="txAddCategoryId"></select>
+        <div style="height:10px;"></div>
+        <label class="reimbursable-field" for="txAddReimbursable">
+          <span class="reimbursable-field__label">Reimbursable</span>
+          <input id="txAddReimbursable" type="checkbox" />
+        </label>
         <div class="modal-actions">
           <div class="row two">
             <button type="button" id="txAddSave">Add</button>
@@ -805,6 +853,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="./app.js?v=59"></script>
+    <script src="./app.js?v=63"></script>
   </body>
 </html>
