@@ -1118,8 +1118,8 @@ input, select{
   flex-direction: column;
   gap: 6px;
   padding-top: 6px;
-  align-items: flex-end;
-  text-align: right;
+  align-items: stretch;
+  text-align: left;
   width: 100%;
   min-width: 0;
 }
@@ -1129,6 +1129,24 @@ input, select{
   line-height: 1.35;
   word-break: break-word;
   max-width: 100%;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.cal-day-tx-line .cal-tx-label{
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cal-day-tx-line .cal-amt{
+  flex: 0 0 auto;
+  text-align: right;
+  white-space: nowrap;
 }
 
 .cal-day-tx-line .cal-amt.income{ color: var(--ok); }
