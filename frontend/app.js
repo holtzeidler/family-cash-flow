@@ -171,7 +171,6 @@ const cancelAccountEditBtn = document.getElementById("cancelAccountEditBtn");
 
 // Expected transactions
 const expectedTxErr = document.getElementById("expectedTxErr");
-const expectedTxList = document.getElementById("expectedTxList");
 const recurringFrequencyFilter = document.getElementById("recurringFrequencyFilter");
 const recurringFrequencyApplyBtn = document.getElementById("recurringFrequencyApplyBtn");
 const recurringFilteredList = document.getElementById("recurringFilteredList");
@@ -303,6 +302,7 @@ const txEditAmount = document.getElementById("txEditAmount");
 const txEditDesc = document.getElementById("txEditDesc");
 const txEditNotes = document.getElementById("txEditNotes");
 const txEditCategoryId = document.getElementById("txEditCategoryId");
+const txEditReimbursable = document.getElementById("txEditReimbursable");
 const txEditErr = document.getElementById("txEditErr");
 const txEditSave = document.getElementById("txEditSave");
 const txEditDelete = document.getElementById("txEditDelete");
@@ -833,6 +833,7 @@ function openTxEditModal(tx) {
   txEditAmount.value = tx.amount;
   txEditDesc.value = String(tx.description || "").slice(0, 12);
   if (txEditNotes) txEditNotes.value = tx.notes || "";
+  if (txEditReimbursable) txEditReimbursable.checked = !!tx.reimbursable;
   renderTxEditCategoryOptions();
   txEditCategoryId.value = tx.category_id != null ? String(tx.category_id) : "";
   show(txEditErr, "");
@@ -896,6 +897,7 @@ if (txEditSave) {
       if (!id) throw new Error("No transaction selected");
       const amountVal = txEditAmount.value;
       if (!amountVal || Number(amountVal) <= 0) throw new Error("Amount must be > 0");
+      const reimbursable = !!txEditReimbursable?.checked;
       await api(`/api/families/${state.activeFamilyId}/transactions/${id}`, "PUT", {
         date: txEditDate.value,
         kind: getRadioValue("txEditKind", "expense"),
@@ -903,6 +905,7 @@ if (txEditSave) {
         description: txEditDesc.value.trim() || "",
         notes: txEditNotes && txEditNotes.value.trim() ? txEditNotes.value.trim() : null,
         category_id: txEditCategoryId.value ? Number(txEditCategoryId.value) : null,
+        reimbursable,
       });
       closeTxEditModal();
       await loadMonthAndCalendar();
@@ -2098,81 +2101,6 @@ function nextExpectedOccurrenceIso(tx, fromIso) {
   return toISODate(cand);
 }
 
-function renderExpectedTransactions(items) {
-  expectedTxList.innerHTML = "";
-  if (!items || items.length === 0) {
-    const empty = document.createElement("div");
-    empty.className = "pill";
-    empty.textContent = "No recurring transactions yet.";
-    expectedTxList.appendChild(empty);
-    return;
-  }
-
-  const todayIso = toISODate(new Date());
-  for (const tx of items) {
-    const nextIso = nextExpectedOccurrenceIso(tx, todayIso);
-    if (!nextIso) continue;
-    const el = document.createElement("div");
-    el.className = "item expected-item--dense";
-
-    const amtClass = tx.kind === "income" ? "income" : "expense";
-    const kindSign = tx.kind === "income" ? "+" : "-";
-    const startDom =
-      tx.start_date != null && String(tx.start_date).length >= 10
-        ? Number(String(tx.start_date).slice(8, 10))
-        : null;
-    const twiceMeta =
-      tx.recurrence === "twice_monthly" && tx.second_day_of_month != null && startDom != null && !Number.isNaN(startDom)
-        ? `days ${startDom} & ${tx.second_day_of_month}`
-        : "";
-    const left = document.createElement("div");
-    left.className = "left";
-    const descEl = document.createElement("div");
-    descEl.className = `desc ${kindFgClass(tx.kind)}`;
-    descEl.textContent = tx.description || "(no description)";
-
-    const metaEl = document.createElement("div");
-    metaEl.className = "meta";
-      const bits = [
-        `${fmtDateMDY(nextIso)}`,
-        tx.end_date ? `ends ${fmtDateMDY(tx.end_date)}` : "",
-      twiceMeta,
-      tx.recurrence ? `recurs: ${tx.recurrence}` : "",
-    ].filter(Boolean);
-    metaEl.appendChild(document.createTextNode(bits.join(" ")));
-    if (tx.category_id && tx.category) {
-      const st = categoryStyleFromId(tx.category_id);
-      const pill = document.createElement("span");
-      pill.className = `cat-pill ${kindFgClass(tx.kind)}`;
-      pill.textContent = tx.category;
-      if (st?.fg) pill.style.color = st.fg;
-      if (st?.bg) pill.style.background = st.bg;
-      metaEl.appendChild(document.createTextNode(" · "));
-      metaEl.appendChild(pill);
-    } else if (tx.category) {
-      metaEl.appendChild(document.createTextNode(` · ${tx.category}`));
-    }
-
-    left.appendChild(descEl);
-    left.appendChild(metaEl);
-
-    const amtBtn = document.createElement("button");
-    amtBtn.type = "button";
-    amtBtn.className = `amt ${amtClass} expected-amt-link`;
-    amtBtn.textContent = `${kindSign}$${fmtMoney(tx.amount)}`;
-    amtBtn.title = "Edit recurring transaction";
-    amtBtn.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      openExpectedEditModal(tx);
-    });
-
-    el.appendChild(left);
-    el.appendChild(amtBtn);
-    expectedTxList.appendChild(el);
-  }
-}
-
 function renderRecurringFilteredList() {
   if (!recurringFilteredList) return;
   const items = state.expectedTransactions || [];
@@ -2187,7 +2115,15 @@ function renderRecurringFilteredList() {
 
   const sel = recurringFrequencyFilter ? String(recurringFrequencyFilter.value || "all") : "all";
   const todayIso = toISODate(new Date());
-  const filtered = items
+  // Ensure one row per series id, even if items contain duplicates.
+  const byId = new Map();
+  for (const tx of items) {
+    const id = Number(tx && tx.id);
+    if (!id) continue;
+    if (!byId.has(id)) byId.set(id, tx);
+  }
+
+  const filtered = [...byId.values()]
     .filter((tx) => sel === "all" || String(tx.recurrence || "monthly") === sel)
     .map((tx) => ({ tx, nextIso: nextExpectedOccurrenceIso(tx, todayIso) }))
     .filter((row) => !!row.nextIso);
@@ -2203,6 +2139,7 @@ function renderRecurringFilteredList() {
   for (const { tx, nextIso } of filtered) {
     const el = document.createElement("div");
     el.className = "item expected-item--dense";
+    el.style.cursor = "pointer";
 
     const amtClass = tx.kind === "income" ? "income" : "expense";
     const kindSign = tx.kind === "income" ? "+" : "-";
@@ -2242,6 +2179,7 @@ function renderRecurringFilteredList() {
 
     el.appendChild(left);
     el.appendChild(amtBtn);
+    el.addEventListener("click", () => openExpectedEditModal(tx));
     recurringFilteredList.appendChild(el);
   }
 }
@@ -2250,7 +2188,6 @@ async function loadExpectedTransactions() {
   if (!state.activeFamilyId) return;
   const items = await api(`/api/families/${state.activeFamilyId}/expected-transactions`, "GET");
   state.expectedTransactions = items || [];
-  renderExpectedTransactions(state.expectedTransactions);
   renderRecurringFilteredList();
 }
 

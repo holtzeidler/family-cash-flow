@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=63" />
+    <link rel="stylesheet" href="./styles.css?v=67" />
   </head>
   <body>
     <div class="container">
@@ -365,27 +365,6 @@
               </div>
             </div>
 
-            <div style="height: 14px"></div>
-
-            <div class="card sidebar-section sidebar-section--collapsed" data-sidebar-key="upcomingRecurring">
-              <div class="sidebar-section-head">
-                <h2>Upcoming Recurring Transactions</h2>
-                <button
-                  type="button"
-                  class="sidebar-collapse-btn"
-                  aria-expanded="false"
-                  aria-controls="sidebarBodyUpcomingRecurring"
-                  title="Expand Upcoming Recurring Transactions"
-                >
-                  <svg class="sidebar-collapse-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M6 9l6 6 6-6" />
-                  </svg>
-                </button>
-              </div>
-              <div id="sidebarBodyUpcomingRecurring" class="sidebar-section-body">
-                <div class="list" id="expectedTxList"></div>
-              </div>
-            </div>
           </div>
 
           <div id="settingsViewPanel" class="app-view" hidden>
@@ -667,6 +646,11 @@
         <div style="height: 10px"></div>
         <label for="txEditCategoryId">Category</label>
         <select id="txEditCategoryId"></select>
+        <div style="height:10px;"></div>
+        <label class="reimbursable-field" for="txEditReimbursable">
+          <span class="reimbursable-field__label">Reimbursable</span>
+          <input id="txEditReimbursable" type="checkbox" />
+        </label>
         <div class="modal-actions">
           <div class="row two">
             <button type="button" id="txEditSave">Save</button>
@@ -853,6 +837,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="./app.js?v=63"></script>
+    <script src="./app.js?v=67"></script>
   </body>
 </html>
