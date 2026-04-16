@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=56" />
+    <link rel="stylesheet" href="./styles.css?v=59" />
   </head>
   <body>
     <div class="container">
@@ -22,6 +22,12 @@
             </button>
             <button type="button" class="top-nav__tab" id="navTransactionView" role="tab" aria-selected="false">
               Transaction View
+            </button>
+            <button type="button" class="top-nav__tab" id="navReportsView" role="tab" aria-selected="false">
+              Reports
+            </button>
+            <button type="button" class="top-nav__tab" id="navSettingsView" role="tab" aria-selected="false">
+              Settings
             </button>
           </div>
         </div>
@@ -240,199 +246,6 @@
             </div>
           </div>
 
-          <div class="card sidebar-section sidebar-section--collapsed" data-sidebar-key="accounts">
-            <div class="sidebar-section-head">
-              <h2>Accounts</h2>
-              <button
-                type="button"
-                class="sidebar-collapse-btn"
-                aria-expanded="false"
-                aria-controls="sidebarBodyAccounts"
-                title="Expand Accounts"
-              >
-                <svg class="sidebar-collapse-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M6 9l6 6 6-6" />
-                </svg>
-              </button>
-            </div>
-            <div id="sidebarBodyAccounts" class="sidebar-section-body">
-            <div class="row two">
-              <div>
-                <label for="accountName">Account name</label>
-                <input id="accountName" type="text" placeholder="e.g. Checking" />
-              </div>
-              <div>
-                <label for="accountType">Type</label>
-                <select id="accountType">
-                  <option value="checking" selected>Checking</option>
-                  <option value="savings">Savings</option>
-                  <option value="credit_card">Credit card</option>
-                  <option value="cash">Cash</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
-            </div>
-            <div style="height:10px;"></div>
-            <div class="row two">
-              <div>
-                <label for="accountStartingBalance">Starting balance</label>
-                <div class="money-input">
-                  <span class="money-input__prefix" aria-hidden="true">$</span>
-                  <input id="accountStartingBalance" type="number" step="0.01" placeholder="0.00" />
-                </div>
-              </div>
-              <div>
-                <label for="accountStartingBalanceDate">Starting balance date</label>
-                <input id="accountStartingBalanceDate" type="date" />
-              </div>
-            </div>
-            <input id="accountEditId" type="hidden" />
-            <div style="height:10px;"></div>
-            <div class="row two">
-              <button id="addAccountBtn">Add account</button>
-              <button id="saveAccountEditBtn" class="danger">Save balance/date edit</button>
-            </div>
-            <button id="cancelAccountEditBtn">Cancel account edit</button>
-            <div id="accErr" class="error"></div>
-            <div class="list" id="accountsList"></div>
-            </div>
-          </div>
-
-          <div class="card sidebar-section sidebar-section--collapsed" data-sidebar-key="categories">
-            <div class="sidebar-section-head">
-              <h2>Categories</h2>
-              <button
-                type="button"
-                class="sidebar-collapse-btn"
-                aria-expanded="false"
-                aria-controls="sidebarBodyCategories"
-                title="Expand Categories"
-              >
-                <svg class="sidebar-collapse-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M6 9l6 6 6-6" />
-                </svg>
-              </button>
-            </div>
-            <div id="sidebarBodyCategories" class="sidebar-section-body">
-            <div id="categoriesGrid" class="categories-grid" aria-live="polite"></div>
-            <div style="height:10px;"></div>
-            <div class="categories-actions">
-              <div class="categories-new-field">
-                <label for="newCategoryName">New category</label>
-                <input id="newCategoryName" type="text" placeholder="e.g. Groceries" />
-              </div>
-              <button id="addCategoryBtn">Add category</button>
-            </div>
-            <div id="catErr" class="error"></div>
-            </div>
-          </div>
-
-          <div class="card sidebar-section sidebar-section--collapsed" data-sidebar-key="month">
-            <div class="sidebar-section-head">
-              <h2>Month summary</h2>
-              <button
-                type="button"
-                class="sidebar-collapse-btn"
-                aria-expanded="false"
-                aria-controls="sidebarBodyMonth"
-                title="Expand Month summary"
-              >
-                <svg class="sidebar-collapse-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M6 9l6 6 6-6" />
-                </svg>
-              </button>
-            </div>
-            <div id="sidebarBodyMonth" class="sidebar-section-body">
-            <div class="row two">
-              <div>
-                <label for="monthInput">Month</label>
-                <input id="monthInput" type="month" />
-              </div>
-              <div style="display:flex; align-items:end;">
-                <button id="refreshBtn" style="width:100%;">Refresh</button>
-              </div>
-            </div>
-            <div style="height:12px;"></div>
-            <div class="totals" id="totals"></div>
-            <div id="txErr" class="error"></div>
-            </div>
-          </div>
-
-          <div class="card chart-card" id="chartPanel">
-            <div class="chart-panel-head">
-              <h2>Projected balance chart (daily)</h2>
-              <button
-                type="button"
-                class="calendar-collapse-btn"
-                id="chartCollapseBtn"
-                aria-expanded="true"
-                aria-controls="chartPanelBody"
-                title="Collapse chart"
-              >
-                <svg class="calendar-collapse-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M6 9l6 6 6-6" />
-                </svg>
-              </button>
-            </div>
-            <div id="chartPanelBody" class="chart-panel-body">
-            <div class="chart-panel-controls">
-                <div class="chart-ctrl chart-ctrl-start">
-                  <label for="chartStart">Start date</label>
-                  <input id="chartStart" type="date" />
-                </div>
-                <div class="chart-ctrl chart-ctrl-zoom">
-                  <label for="chartDaysRange">Horizon (days)</label>
-                  <div class="chart-zoom-row">
-                    <input id="chartDaysRange" type="range" min="1" max="4000" step="1" value="365" />
-                    <span class="meta chart-days-meta" id="chartDaysLabel">365 days</span>
-                  </div>
-                </div>
-                <button type="button" id="runProjectionChartBtn" class="chart-update-btn">Update</button>
-            </div>
-            <div class="chart-duration-bar" role="tablist" aria-label="Chart range preset">
-              <button type="button" class="chart-duration-btn" data-preset="1D" title="1 day">1D</button>
-              <button type="button" class="chart-duration-btn" data-preset="5D" title="5 days">5D</button>
-              <button type="button" class="chart-duration-btn" data-preset="1M" title="1 month">1M</button>
-              <button type="button" class="chart-duration-btn" data-preset="6M" title="6 months">6M</button>
-              <button type="button" class="chart-duration-btn" data-preset="YTD" title="From start date through Dec 31">YTD</button>
-              <button type="button" class="chart-duration-btn" data-preset="1Y" title="1 year">1Y</button>
-              <button type="button" class="chart-duration-btn" data-preset="5Y" title="5 years">5Y</button>
-              <button type="button" class="chart-duration-btn" data-preset="MAX" title="Maximum (4000 days)">MAX</button>
-            </div>
-            <div id="chartErr" class="error"></div>
-            <div class="projection-chart-wrap">
-              <div id="projectionChartEmpty" class="projection-chart-empty" style="display: none" aria-live="polite"></div>
-              <canvas id="projectionChartCanvas" class="projection-chart-canvas"></canvas>
-            </div>
-            </div>
-          </div>
-
-          <div class="card projection-panel projection-panel--collapsed" id="projectionPanel">
-            <div class="panel-header">
-              <h2 style="margin:0;">5-year daily projection</h2>
-              <button type="button" class="panel-collapse-btn" id="projectionCollapseBtn" aria-expanded="false" title="Expand projection">
-                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                  <path d="M6 9l6 6 6-6" />
-                </svg>
-              </button>
-            </div>
-            <div class="projection-panel-body" id="projectionPanelBody">
-            <div class="row two">
-              <div>
-                <label for="projectionStart">Start date</label>
-                <input id="projectionStart" type="date" />
-              </div>
-              <div style="display:flex; align-items:end;">
-                <button id="runProjectionBtn" style="width:100%;">Run projection</button>
-              </div>
-            </div>
-            <div style="height:12px;"></div>
-            <div class="totals" id="projectionSummary"></div>
-            <div id="projectionErr" class="error"></div>
-            <div class="list" id="projectionDailyList"></div>
-            </div>
-          </div>
-
         </aside>
 
         <div class="main-column">
@@ -561,6 +374,209 @@
             </div>
           </div>
 
+          <div id="settingsViewPanel" class="app-view" hidden>
+            <div class="card sidebar-section sidebar-section--collapsed" data-sidebar-key="accounts">
+              <div class="sidebar-section-head">
+                <h2>Accounts</h2>
+                <button
+                  type="button"
+                  class="sidebar-collapse-btn"
+                  aria-expanded="false"
+                  aria-controls="sidebarBodyAccounts"
+                  title="Expand Accounts"
+                >
+                  <svg class="sidebar-collapse-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M6 9l6 6 6-6" />
+                  </svg>
+                </button>
+              </div>
+              <div id="sidebarBodyAccounts" class="sidebar-section-body">
+              <div class="row two">
+                <div>
+                  <label for="accountName">Account name</label>
+                  <input id="accountName" type="text" placeholder="e.g. Checking" />
+                </div>
+                <div>
+                  <label for="accountType">Type</label>
+                  <select id="accountType">
+                    <option value="checking" selected>Checking</option>
+                    <option value="savings">Savings</option>
+                    <option value="credit_card">Credit card</option>
+                    <option value="cash">Cash</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+              </div>
+              <div style="height:10px;"></div>
+              <div class="row two">
+                <div>
+                  <label for="accountStartingBalance">Starting balance</label>
+                  <div class="money-input">
+                    <span class="money-input__prefix" aria-hidden="true">$</span>
+                    <input id="accountStartingBalance" type="number" step="0.01" placeholder="0.00" />
+                  </div>
+                </div>
+                <div>
+                  <label for="accountStartingBalanceDate">Starting balance date</label>
+                  <input id="accountStartingBalanceDate" type="date" />
+                </div>
+              </div>
+              <input id="accountEditId" type="hidden" />
+              <div style="height:10px;"></div>
+              <div class="row two">
+                <button id="addAccountBtn">Add account</button>
+                <button id="saveAccountEditBtn" class="danger">Save balance/date edit</button>
+              </div>
+              <button id="cancelAccountEditBtn">Cancel account edit</button>
+              <div id="accErr" class="error"></div>
+              <div class="list" id="accountsList"></div>
+              </div>
+            </div>
+
+            <div style="height: 14px"></div>
+
+            <div class="card sidebar-section sidebar-section--collapsed" data-sidebar-key="categories">
+              <div class="sidebar-section-head">
+                <h2>Categories</h2>
+                <button
+                  type="button"
+                  class="sidebar-collapse-btn"
+                  aria-expanded="false"
+                  aria-controls="sidebarBodyCategories"
+                  title="Expand Categories"
+                >
+                  <svg class="sidebar-collapse-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M6 9l6 6 6-6" />
+                  </svg>
+                </button>
+              </div>
+              <div id="sidebarBodyCategories" class="sidebar-section-body">
+              <div id="categoriesGrid" class="categories-grid" aria-live="polite"></div>
+              <div style="height:10px;"></div>
+              <div class="categories-actions">
+                <div class="categories-new-field">
+                  <label for="newCategoryName">New category</label>
+                  <input id="newCategoryName" type="text" placeholder="e.g. Groceries" />
+                </div>
+                <button id="addCategoryBtn">Add category</button>
+              </div>
+              <div id="catErr" class="error"></div>
+              </div>
+            </div>
+          </div>
+
+          <div id="reportsViewPanel" class="app-view" hidden>
+            <div class="card sidebar-section sidebar-section--collapsed" data-sidebar-key="month">
+              <div class="sidebar-section-head">
+                <h2>Month summary</h2>
+                <button
+                  type="button"
+                  class="sidebar-collapse-btn"
+                  aria-expanded="false"
+                  aria-controls="sidebarBodyMonth"
+                  title="Expand Month summary"
+                >
+                  <svg class="sidebar-collapse-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M6 9l6 6 6-6" />
+                  </svg>
+                </button>
+              </div>
+              <div id="sidebarBodyMonth" class="sidebar-section-body">
+              <div class="row two">
+                <div>
+                  <label for="monthInput">Month</label>
+                  <input id="monthInput" type="month" />
+                </div>
+                <div style="display:flex; align-items:end;">
+                  <button id="refreshBtn" style="width:100%;">Refresh</button>
+                </div>
+              </div>
+              <div style="height:12px;"></div>
+              <div class="totals" id="totals"></div>
+              <div id="txErr" class="error"></div>
+              </div>
+            </div>
+
+            <div style="height: 14px"></div>
+
+            <div class="card chart-card" id="chartPanel">
+              <div class="chart-panel-head">
+                <h2>Projected balance chart (daily)</h2>
+                <button
+                  type="button"
+                  class="calendar-collapse-btn"
+                  id="chartCollapseBtn"
+                  aria-expanded="true"
+                  aria-controls="chartPanelBody"
+                  title="Collapse chart"
+                >
+                  <svg class="calendar-collapse-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M6 9l6 6 6-6" />
+                  </svg>
+                </button>
+              </div>
+              <div id="chartPanelBody" class="chart-panel-body">
+              <div class="chart-panel-controls">
+                  <div class="chart-ctrl chart-ctrl-start">
+                    <label for="chartStart">Start date</label>
+                    <input id="chartStart" type="date" />
+                  </div>
+                  <div class="chart-ctrl chart-ctrl-zoom">
+                    <label for="chartDaysRange">Horizon (days)</label>
+                    <div class="chart-zoom-row">
+                      <input id="chartDaysRange" type="range" min="1" max="4000" step="1" value="365" />
+                      <span class="meta chart-days-meta" id="chartDaysLabel">365 days</span>
+                    </div>
+                  </div>
+                  <button type="button" id="runProjectionChartBtn" class="chart-update-btn">Update</button>
+              </div>
+              <div class="chart-duration-bar" role="tablist" aria-label="Chart range preset">
+                <button type="button" class="chart-duration-btn" data-preset="1D" title="1 day">1D</button>
+                <button type="button" class="chart-duration-btn" data-preset="5D" title="5 days">5D</button>
+                <button type="button" class="chart-duration-btn" data-preset="1M" title="1 month">1M</button>
+                <button type="button" class="chart-duration-btn" data-preset="6M" title="6 months">6M</button>
+                <button type="button" class="chart-duration-btn" data-preset="YTD" title="From start date through Dec 31">YTD</button>
+                <button type="button" class="chart-duration-btn" data-preset="1Y" title="1 year">1Y</button>
+                <button type="button" class="chart-duration-btn" data-preset="5Y" title="5 years">5Y</button>
+                <button type="button" class="chart-duration-btn" data-preset="MAX" title="Maximum (4000 days)">MAX</button>
+              </div>
+              <div id="chartErr" class="error"></div>
+              <div class="projection-chart-wrap">
+                <div id="projectionChartEmpty" class="projection-chart-empty" style="display: none" aria-live="polite"></div>
+                <canvas id="projectionChartCanvas" class="projection-chart-canvas"></canvas>
+              </div>
+              </div>
+            </div>
+
+            <div style="height: 14px"></div>
+
+            <div class="card projection-panel projection-panel--collapsed" id="projectionPanel">
+              <div class="panel-header">
+                <h2 style="margin:0;">5-year daily projection</h2>
+                <button type="button" class="panel-collapse-btn" id="projectionCollapseBtn" aria-expanded="false" title="Expand projection">
+                  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path d="M6 9l6 6 6-6" />
+                  </svg>
+                </button>
+              </div>
+              <div class="projection-panel-body" id="projectionPanelBody">
+              <div class="row two">
+                <div>
+                  <label for="projectionStart">Start date</label>
+                  <input id="projectionStart" type="date" />
+                </div>
+                <div style="display:flex; align-items:end;">
+                  <button id="runProjectionBtn" style="width:100%;">Run projection</button>
+                </div>
+              </div>
+              <div style="height:12px;"></div>
+              <div class="totals" id="projectionSummary"></div>
+              <div id="projectionErr" class="error"></div>
+              <div class="list" id="projectionDailyList"></div>
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
     </div>
@@ -671,21 +687,23 @@
         <div id="expectedEditErr" class="error"></div>
         <input type="hidden" id="expectedEditId" />
 
-        <div id="expectedModalModeRow" class="expected-modal-mode-row" style="display: none" role="radiogroup" aria-label="Edit scope">
-          <span class="expected-modal-mode-label">Edit</span>
-          <div class="expected-modal-mode-options">
-            <label class="expected-modal-mode-opt">
-              <input type="radio" name="expectedModalMode" id="expectedModalModeInstance" value="instance" checked /> This occurrence
-            </label>
-            <label class="expected-modal-mode-opt">
-              <input type="radio" name="expectedModalMode" id="expectedModalModeSeries" value="series" /> Entire series
-            </label>
-          </div>
-        </div>
-
-        <div id="expectedEditInstancePanel" class="expected-edit-panel" style="display: none">
-          <p class="expected-modal-hint" id="expectedInstanceHint">Changes here can apply to one date or split the series (like editing a calendar event).</p>
+        <div id="expectedEditInstancePanel" class="expected-edit-panel">
           <div id="expectedInstanceErr" class="error"></div>
+
+          <div class="tx-edit-top">
+            <div class="row-desc-notes">
+              <div class="field-desc-short">
+                <label for="instanceDesc">Description</label>
+                <input id="instanceDesc" type="text" maxlength="12" class="input-desc-short" placeholder="e.g. Bill" />
+              </div>
+              <div class="field-notes-flex">
+                <label for="instanceNotes">Notes (series)</label>
+                <input id="instanceNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
+              </div>
+            </div>
+          </div>
+          <div class="tx-edit-divider" aria-hidden="true"></div>
+
           <div class="row two">
             <div>
               <label for="instanceDate">Occurrence date</label>
@@ -711,17 +729,6 @@
             </div>
           </div>
           <div style="height:10px;"></div>
-          <div class="row-desc-notes">
-            <div class="field-desc-short">
-              <label for="instanceDesc">Description</label>
-              <input id="instanceDesc" type="text" maxlength="12" class="input-desc-short" placeholder="e.g. Bill" />
-            </div>
-            <div class="field-notes-flex">
-              <label for="instanceNotes">Notes (series)</label>
-              <input id="instanceNotes" type="text" class="input-notes-flex input-notes-readonly" readonly tabindex="-1" title="Notes come from the series; edit them under Entire series." />
-            </div>
-          </div>
-          <div style="height:10px;"></div>
           <div class="row two">
             <div>
               <label for="instanceAccountId">Account</label>
@@ -733,7 +740,10 @@
             </div>
           </div>
           <div style="height:12px;"></div>
-          <button type="button" id="saveInstanceOverrideBtn" style="width: 100%">Save changes</button>
+          <div class="row two">
+            <button type="button" id="saveInstanceOverrideBtn">Update this occurrence only</button>
+            <button type="button" id="saveSeriesFromInstanceBtn">Update all series</button>
+          </div>
 
           <div class="expected-instance-delete-group">
             <div class="expected-instance-delete-label">Remove</div>
@@ -744,80 +754,6 @@
               </button>
               <button type="button" id="expectedInstanceDeleteSeriesBtn" class="expected-remove-btn danger">Delete</button>
             </div>
-          </div>
-        </div>
-
-        <div id="expectedEditSeriesPanel" class="expected-edit-panel">
-          <p class="expected-modal-hint">Schedule, notes, and defaults for every occurrence in this series.</p>
-          <div class="row three row-recurring-head">
-            <div>
-              <label for="expectedEditStartDate">Start</label>
-              <input id="expectedEditStartDate" type="date" />
-            </div>
-            <div>
-              <label for="expectedEditRecurrence">Recurrence</label>
-              <select id="expectedEditRecurrence">
-                <option value="monthly">Monthly</option>
-                <option value="twice_monthly">Twice monthly</option>
-                <option value="weekly">Weekly</option>
-                <option value="semiannual">Twice yearly (every 6 months)</option>
-                <option value="yearly">Yearly</option>
-                <option value="once">Once</option>
-              </select>
-            </div>
-            <div>
-              <label for="expectedEditLastTxnDate">Last txn</label>
-              <input id="expectedEditLastTxnDate" type="date" />
-            </div>
-          </div>
-
-          <div id="expectedEditTwiceMonthlyFields" class="expected-second-day-row" style="display: none">
-            <label for="expectedEditSecondDayOfMonth">2nd day of month</label>
-            <input id="expectedEditSecondDayOfMonth" type="number" min="1" max="31" step="1" placeholder="e.g. 15" />
-          </div>
-
-          <div style="height:10px;"></div>
-          <label>Type</label>
-          <div class="kind-toggle" role="radiogroup" aria-label="Recurring transaction type">
-            <label class="kind-opt"><input type="radio" name="expectedEditKind" value="expense" checked /> Expense</label>
-            <label class="kind-opt"><input type="radio" name="expectedEditKind" value="income" /> Income</label>
-          </div>
-
-          <div style="height:10px;"></div>
-          <label for="expectedEditAmount">Amount</label>
-          <div class="money-input">
-            <span class="money-input__prefix" aria-hidden="true">$</span>
-            <input id="expectedEditAmount" type="number" min="0" step="0.01" placeholder="0.00" />
-          </div>
-
-          <div style="height:10px;"></div>
-          <div class="row-desc-notes">
-            <div class="field-desc-short">
-              <label for="expectedEditDesc">Description</label>
-              <input id="expectedEditDesc" type="text" maxlength="12" class="input-desc-short" placeholder="e.g. Electric" />
-            </div>
-            <div class="field-notes-flex">
-              <label for="expectedEditNotes">Notes</label>
-              <input id="expectedEditNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
-            </div>
-          </div>
-
-          <div style="height:10px;"></div>
-          <div class="row two">
-            <div>
-              <label for="expectedEditAccountId">Account</label>
-              <select id="expectedEditAccountId"></select>
-            </div>
-            <div>
-              <label for="expectedEditCategoryId">Category (optional)</label>
-              <select id="expectedEditCategoryId"></select>
-            </div>
-          </div>
-
-          <div style="height:14px;"></div>
-          <div class="row two">
-            <button type="button" id="expectedEditSave">Save series</button>
-            <button type="button" id="expectedEditDelete" class="danger">Delete</button>
           </div>
         </div>
 
@@ -869,6 +805,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="./app.js?v=56"></script>
+    <script src="./app.js?v=59"></script>
   </body>
 </html>
