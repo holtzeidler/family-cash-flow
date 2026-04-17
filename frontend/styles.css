@@ -1165,8 +1165,9 @@ input, select{
   flex-direction: column;
 }
 .cal-cell.cal-cell--out{
-  background: rgba(0,0,0,0.04);
-  border-color: rgba(0,0,0,0.10);
+  /* Darker shading for prior/next month wrap days */
+  background: rgba(0,0,0,0.085);
+  border-color: rgba(0,0,0,0.14);
 }
 
 .reconcile-date-row{
@@ -1323,13 +1324,13 @@ input, select{
 }
 
 .cal-ledger-metrics{
-  text-align: right;
+  text-align: center;
   display:flex;
   flex-direction:column;
   gap:4px;
-  align-items: flex-end;
+  align-items: center;
   margin-top: auto;
-  padding-top: 6px;
+  padding-top: 12px;
   border-top: 1px solid rgba(0,0,0,0.08);
 }
 
