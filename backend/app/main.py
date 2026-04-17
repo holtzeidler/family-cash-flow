@@ -364,6 +364,15 @@ class LowBalanceFirstHitOut(BaseModel):
     hit_balance: Optional[Decimal] = None
 
 
+class HighBalanceFirstHitOut(BaseModel):
+    ceiling: Decimal
+    start: date
+    days: int
+    mode: str
+    hit_date: Optional[date] = None
+    hit_balance: Optional[Decimal] = None
+
+
 class TransactionIn(BaseModel):
     date: date
     description: str = Field(default="", max_length=500)
@@ -2394,18 +2403,19 @@ def _calendar_month_daily_balances(
     return out
 
 
-def _pooled_daily_balance_first_hit(
+def _pooled_daily_balance_first_hit_impl(
     *,
     db,
     family_id: int,
     start_date: date,
     days: int,
-    threshold: Decimal,
+    level: Decimal,
     mode: Literal["both", "actual", "expected"],
-) -> LowBalanceFirstHitOut:
+    crossing: Literal["lte", "gte"],
+) -> tuple[Optional[date], Optional[Decimal]]:
     """
-    Find the first date strictly after start_date where pooled end-of-day balance <= threshold.
-    Uses the same pooled balance model as calendar-month-daily (starting balances + actual + expected).
+    Find the first date strictly after start_date where pooled end-of-day balance crosses `level`
+    (<= for "lte", >= for "gte"). Same pooled balance model as calendar-month-daily.
     """
     if days <= 0 or days > 4000:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="days out of allowed range")
@@ -2414,7 +2424,7 @@ def _pooled_daily_balance_first_hit(
 
     account_rows = list(db.execute(select(Account).where(Account.family_id == family_id)).scalars().all())
     if not account_rows:
-        return LowBalanceFirstHitOut(threshold=threshold, start=start_date, days=days, mode=mode, hit_date=None, hit_balance=None)
+        return None, None
 
     min_acc = min((a.starting_balance_date or a.created_at.date()) for a in account_rows)
     first_tx = db.execute(select(func.min(Transaction.date)).where(Transaction.family_id == family_id)).scalar_one_or_none()
@@ -2504,12 +2514,34 @@ def _pooled_daily_balance_first_hit(
             tx_net = expected_by_date.get(d, Decimal("0"))
         day_end = day_start + tx_net
         carry = day_end
-        if d > start_date and hit_date is None and day_end <= threshold:
+        crossed = day_end <= level if crossing == "lte" else day_end >= level
+        if d > start_date and hit_date is None and crossed:
             hit_date = d
             hit_balance = day_end
             break
         d += timedelta(days=1)
 
+    return hit_date, hit_balance
+
+
+def _pooled_daily_balance_first_hit(
+    *,
+    db,
+    family_id: int,
+    start_date: date,
+    days: int,
+    threshold: Decimal,
+    mode: Literal["both", "actual", "expected"],
+) -> LowBalanceFirstHitOut:
+    hit_date, hit_balance = _pooled_daily_balance_first_hit_impl(
+        db=db,
+        family_id=family_id,
+        start_date=start_date,
+        days=days,
+        level=threshold,
+        mode=mode,
+        crossing="lte",
+    )
     return LowBalanceFirstHitOut(
         threshold=threshold,
         start=start_date,
@@ -2680,6 +2712,32 @@ def low_balance_first(
     require_family_member(db=db, family_id=family_id, user_id=user_id)
     s = start or datetime.utcnow().date()
     return _pooled_daily_balance_first_hit(db=db, family_id=family_id, start_date=s, days=days, threshold=threshold, mode=mode)
+
+
+@app.get("/api/families/{family_id}/high-balance-first", response_model=HighBalanceFirstHitOut)
+def high_balance_first(
+    family_id: int,
+    ceiling: Decimal,
+    start: Optional[date] = None,
+    days: int = 1825,
+    mode: Literal["both", "actual", "expected"] = "both",
+    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    require_family_member(db=db, family_id=family_id, user_id=user_id)
+    s = start or datetime.utcnow().date()
+    hit_date, hit_balance = _pooled_daily_balance_first_hit_impl(
+        db=db, family_id=family_id, start_date=s, days=days, level=ceiling, mode=mode, crossing="gte"
+    )
+    return HighBalanceFirstHitOut(
+        ceiling=ceiling,
+        start=s,
+        days=days,
+        mode=mode,
+        hit_date=hit_date,
+        hit_balance=hit_balance,
+    )
 
 
 def _month_range(month: str) -> tuple[date, date]:

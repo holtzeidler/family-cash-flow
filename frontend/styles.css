@@ -365,6 +365,32 @@ button.nav-link:hover{
   border-color: rgba(185,28,28,0.28);
   background: rgba(239,68,68,0.08);
 }
+.sidebar-balance-threshold-alerts{
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+.calendar-low-balance--sidebar{
+  display: flex;
+  align-items: flex-start;
+  white-space: normal;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  line-height: 1.35;
+}
+.calendar-low-balance--high.is-high{
+  color: #166534;
+  border-color: rgba(22,101,52,0.35);
+  background: rgba(34,197,94,0.10);
+}
+.balance-threshold-hint{
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.4;
+}
 
 .calendar-panel--collapsed .calendar-panel-head{
   margin-bottom: 0;
@@ -1166,6 +1192,11 @@ textarea::placeholder{
 }
 .low-balance-result .v.danger{
   color: var(--danger);
+}
+.balance-threshold-result-block + .balance-threshold-result-block{
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
 }
 .row-actions{
   display:flex;

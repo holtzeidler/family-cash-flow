@@ -127,8 +127,6 @@ const userPill = document.getElementById("userPill");
 const familiesErr = document.getElementById("familiesErr");
 const txErr = document.getElementById("txErr");
 const catErr = document.getElementById("catErr");
-const addTxErr = document.getElementById("addTxErr");
-
 const familySelect = document.getElementById("familySelect");
 const monthInput = document.getElementById("monthInput");
 const totalsEl = document.getElementById("totals");
@@ -137,26 +135,44 @@ const txListMain = document.getElementById("txListMain");
 
 const categoriesGrid = document.getElementById("categoriesGrid");
 
-// Low balance alert
-const lowBalanceThreshold = document.getElementById("lowBalanceThreshold");
+// Balance threshold alerts (settings + calendar sidebar)
+const balanceThresholdMin = document.getElementById("balanceThresholdMin");
+const balanceThresholdMax = document.getElementById("balanceThresholdMax");
 const lowBalanceResult = document.getElementById("lowBalanceResult");
 const lowBalanceErr = document.getElementById("lowBalanceErr");
-const calendarLowBalanceBanner = document.getElementById("calendarLowBalanceBanner");
+const sidebarLowBalanceBanner = document.getElementById("sidebarLowBalanceBanner");
+const sidebarHighBalanceBanner = document.getElementById("sidebarHighBalanceBanner");
+const BALANCE_THRESHOLD_MIN_KEY = "familyCashFlow_balanceThresholdMin";
+const BALANCE_THRESHOLD_MAX_KEY = "familyCashFlow_balanceThresholdMax";
+/** @deprecated migrate to BALANCE_THRESHOLD_MIN_KEY */
 const LOW_BALANCE_THRESHOLD_KEY = "familyCashFlow_lowBalanceThreshold";
 let lowBalanceDebounceTimer = null;
-let lowBalanceLastQuery = { familyId: null, threshold: null };
+let lowBalanceLastQuery = { familyId: null, min: null, max: null, mode: null };
 
-function setCalendarLowBalanceBanner(text, danger = false) {
-  if (!calendarLowBalanceBanner) return;
+function setSidebarLowBalanceBanner(text, danger = false) {
+  if (!sidebarLowBalanceBanner) return;
   if (!text) {
-    calendarLowBalanceBanner.style.display = "none";
-    calendarLowBalanceBanner.textContent = "";
-    calendarLowBalanceBanner.classList.toggle("is-danger", false);
+    sidebarLowBalanceBanner.style.display = "none";
+    sidebarLowBalanceBanner.textContent = "";
+    sidebarLowBalanceBanner.classList.toggle("is-danger", false);
     return;
   }
-  calendarLowBalanceBanner.textContent = text;
-  calendarLowBalanceBanner.style.display = "inline-flex";
-  calendarLowBalanceBanner.classList.toggle("is-danger", !!danger);
+  sidebarLowBalanceBanner.textContent = text;
+  sidebarLowBalanceBanner.style.display = "flex";
+  sidebarLowBalanceBanner.classList.toggle("is-danger", !!danger);
+}
+
+function setSidebarHighBalanceBanner(text) {
+  if (!sidebarHighBalanceBanner) return;
+  if (!text) {
+    sidebarHighBalanceBanner.style.display = "none";
+    sidebarHighBalanceBanner.textContent = "";
+    sidebarHighBalanceBanner.classList.toggle("is-high", false);
+    return;
+  }
+  sidebarHighBalanceBanner.textContent = text;
+  sidebarHighBalanceBanner.style.display = "flex";
+  sidebarHighBalanceBanner.classList.toggle("is-high", true);
 }
 
 function getRadioValue(name, fallback = "") {
@@ -176,24 +192,11 @@ const addAccountBtn = document.getElementById("addAccountBtn");
 const saveAccountEditBtn = document.getElementById("saveAccountEditBtn");
 const cancelAccountEditBtn = document.getElementById("cancelAccountEditBtn");
 
-// Expected transactions
-const expectedTxErr = document.getElementById("expectedTxErr");
+// Expected transactions (sidebar list / filters; add flow uses Add transaction modal)
 const recurringFrequencyFilter = document.getElementById("recurringFrequencyFilter");
 const recurringKindFilter = document.getElementById("recurringKindFilter");
 const recurringFrequencyApplyBtn = document.getElementById("recurringFrequencyApplyBtn");
 const recurringFilteredList = document.getElementById("recurringFilteredList");
-const expectedStartDate = document.getElementById("expectedStartDate");
-const expectedLastTxnDate = document.getElementById("expectedLastTxnDate");
-const expectedRecurrence = document.getElementById("expectedRecurrence");
-const expectedTwiceMonthlyFields = document.getElementById("expectedTwiceMonthlyFields");
-const expectedSecondDayOfMonth = document.getElementById("expectedSecondDayOfMonth");
-const expectedKind = null;
-const expectedAmount = document.getElementById("expectedAmount");
-const expectedDesc = document.getElementById("expectedDesc");
-const expectedNotes = document.getElementById("expectedNotes");
-const expectedAccountId = document.getElementById("expectedAccountId");
-const expectedVariable = document.getElementById("expectedVariable");
-const addExpectedTxBtn = document.getElementById("addExpectedTxBtn");
 const variableTodoList = document.getElementById("variableTodoList");
 
 // Expected transaction edit modal
@@ -402,62 +405,109 @@ function setLowBalanceResult(contentHtml, isEmpty = false) {
 async function refreshLowBalanceAlert() {
   try {
     show(lowBalanceErr, "");
-    if (!lowBalanceThreshold || !lowBalanceResult) return;
+    if (!lowBalanceResult) return;
+    setSidebarLowBalanceBanner("");
+    setSidebarHighBalanceBanner("");
     if (!state.activeFamilyId) {
       setLowBalanceResult("", true);
-      setCalendarLowBalanceBanner("");
       return;
     }
 
-    const thresholdVal = toNum(lowBalanceThreshold.value);
-    if (!Number.isFinite(thresholdVal)) {
-      setLowBalanceResult('<div class="k">Low Balance Alert</div><div class="v">Enter a threshold to start.</div>', true);
-      setCalendarLowBalanceBanner("");
+    const minRaw = balanceThresholdMin?.value?.trim() ?? "";
+    const maxRaw = balanceThresholdMax?.value?.trim() ?? "";
+    const minVal = minRaw === "" ? null : toNum(minRaw);
+    const maxVal = maxRaw === "" ? null : toNum(maxRaw);
+    const minOk = minVal != null && Number.isFinite(minVal);
+    const maxOk = maxVal != null && Number.isFinite(maxVal);
+
+    if (!minOk && !maxOk) {
+      setLowBalanceResult(
+        '<div class="k">Balance thresholds</div><div class="v">Enter a minimum and/or maximum to see projected alert dates.</div>',
+        true
+      );
+      lowBalanceLastQuery = { familyId: null, min: null, max: null, mode: null };
       return;
     }
-
-    if (lowBalanceLastQuery.familyId === state.activeFamilyId && lowBalanceLastQuery.threshold === thresholdVal) return;
-    lowBalanceLastQuery = { familyId: state.activeFamilyId, threshold: thresholdVal };
-
-    setLowBalanceResult('<div class="k">Low Balance Alert</div><div class="v">Checking…</div>', true);
-    setCalendarLowBalanceBanner("");
 
     const startIso = toISODate(new Date());
     const days = 1825;
     const mode = calendarMode?.value || "both";
-    const data = await api(
-      `/api/families/${state.activeFamilyId}/low-balance-first?threshold=${encodeURIComponent(String(thresholdVal))}&start=${encodeURIComponent(
-        startIso
-      )}&days=${days}&mode=${encodeURIComponent(mode)}`,
-      "GET"
-    );
-    const hit = data?.hit_date ? { date: data.hit_date, balance: toNum(data.hit_balance) } : null;
-
-    if (!hit) {
-      setLowBalanceResult(
-        `<div class="k">First date ≤ $${fmtMoneyThreshold(lowBalanceThreshold.value, thresholdVal)}</div><div class="v">None in the next ${days} days.</div>`,
-        true
-      );
-      setCalendarLowBalanceBanner("");
+    if (
+      lowBalanceLastQuery.familyId === state.activeFamilyId &&
+      lowBalanceLastQuery.min === minVal &&
+      lowBalanceLastQuery.max === maxVal &&
+      lowBalanceLastQuery.mode === mode
+    ) {
       return;
     }
+    lowBalanceLastQuery = { familyId: state.activeFamilyId, min: minVal, max: maxVal, mode };
 
-    setLowBalanceResult(
-      `<div class="k">First date ≤ $${fmtMoneyThreshold(lowBalanceThreshold.value, thresholdVal)}</div><div class="v danger">${fmtDateMDY(hit.date)} — $${fmtMoney(hit.balance)}</div>`,
-      false
-    );
-    setCalendarLowBalanceBanner(`Next low balance: ${fmtDateMDY(hit.date)} — $${fmtMoney(hit.balance)}`, true);
+    setLowBalanceResult('<div class="k">Balance thresholds</div><div class="v">Checking…</div>', true);
+
+    let lowHit = null;
+    if (minOk) {
+      const data = await api(
+        `/api/families/${state.activeFamilyId}/low-balance-first?threshold=${encodeURIComponent(String(minVal))}&start=${encodeURIComponent(
+          startIso
+        )}&days=${days}&mode=${encodeURIComponent(mode)}`,
+        "GET"
+      );
+      lowHit = data?.hit_date ? { date: data.hit_date, balance: toNum(data.hit_balance) } : null;
+    }
+
+    let highHit = null;
+    if (maxOk) {
+      const dataHi = await api(
+        `/api/families/${state.activeFamilyId}/high-balance-first?ceiling=${encodeURIComponent(String(maxVal))}&start=${encodeURIComponent(
+          startIso
+        )}&days=${days}&mode=${encodeURIComponent(mode)}`,
+        "GET"
+      );
+      highHit = dataHi?.hit_date ? { date: dataHi.hit_date, balance: toNum(dataHi.hit_balance) } : null;
+    }
+
+    const parts = [];
+    if (minOk) {
+      if (!lowHit) {
+        parts.push(
+          `<div class="balance-threshold-result-block"><div class="k">First date ≤ $${fmtMoneyThreshold(balanceThresholdMin?.value || "", minVal)}</div><div class="v">None in the next ${days} days.</div></div>`
+        );
+      } else {
+        parts.push(
+          `<div class="balance-threshold-result-block"><div class="k">First date ≤ $${fmtMoneyThreshold(balanceThresholdMin?.value || "", minVal)}</div><div class="v danger">${fmtDateMDY(lowHit.date)} — $${fmtMoney(lowHit.balance)}</div></div>`
+        );
+        setSidebarLowBalanceBanner(`Next low balance: ${fmtDateMDY(lowHit.date)} — $${fmtMoney(lowHit.balance)}`, true);
+      }
+    }
+    if (maxOk) {
+      if (!highHit) {
+        parts.push(
+          `<div class="balance-threshold-result-block"><div class="k">First date ≥ $${fmtMoneyThreshold(balanceThresholdMax?.value || "", maxVal)}</div><div class="v">None in the next ${days} days.</div></div>`
+        );
+      } else {
+        parts.push(
+          `<div class="balance-threshold-result-block"><div class="k">First date ≥ $${fmtMoneyThreshold(balanceThresholdMax?.value || "", maxVal)}</div><div class="v">${fmtDateMDY(highHit.date)} — $${fmtMoney(highHit.balance)}</div></div>`
+        );
+        setSidebarHighBalanceBanner(`Next high balance: ${fmtDateMDY(highHit.date)} — $${fmtMoney(highHit.balance)}`);
+      }
+    }
+
+    const hasAlert = (minOk && lowHit) || (maxOk && highHit);
+    setLowBalanceResult(parts.join(""), !hasAlert);
   } catch (e) {
-    show(lowBalanceErr, e.message || "Failed to compute low balance alert");
+    show(lowBalanceErr, e.message || "Failed to compute balance threshold alerts");
     setLowBalanceResult("", true);
-    setCalendarLowBalanceBanner("");
+    setSidebarLowBalanceBanner("");
+    setSidebarHighBalanceBanner("");
+    lowBalanceLastQuery = { familyId: null, min: null, max: null, mode: null };
   }
 }
 
 function scheduleLowBalanceRefresh() {
-  if (!lowBalanceThreshold) return;
+  if (!balanceThresholdMin && !balanceThresholdMax) return;
   try {
-    localStorage.setItem(LOW_BALANCE_THRESHOLD_KEY, lowBalanceThreshold.value || "");
+    if (balanceThresholdMin) localStorage.setItem(BALANCE_THRESHOLD_MIN_KEY, balanceThresholdMin.value || "");
+    if (balanceThresholdMax) localStorage.setItem(BALANCE_THRESHOLD_MAX_KEY, balanceThresholdMax.value || "");
   } catch (_) {}
   if (lowBalanceDebounceTimer) clearTimeout(lowBalanceDebounceTimer);
   lowBalanceDebounceTimer = setTimeout(() => refreshLowBalanceAlert(), 350);
@@ -627,7 +677,7 @@ document.querySelectorAll(".sidebar-section[data-sidebar-key]").forEach((card) =
   // If this is lowBalance and the user hasn't explicitly set a preference,
   // force expanded even if older localStorage had it collapsed.
   let collapsed;
-  if ((key === "lowBalance" || key === "variableTodos") && !userSet) {
+  if ((key === "balanceThresholds" || key === "variableTodos" || key === "addTransaction") && !userSet) {
     collapsed = false;
     try {
       localStorage.setItem(SIDEBAR_SECTION_PREFIX + key, "0");
@@ -916,41 +966,12 @@ document.getElementById("addCategoryBtn").addEventListener("click", async () => 
   }
 });
 
-document.getElementById("addTxBtn").addEventListener("click", async () => {
-  try {
-    show(addTxErr, "");
-    const dateVal = document.getElementById("txDate").value;
-    const desc = document.getElementById("txDesc").value.trim();
-    const notesRaw = document.getElementById("txNotes")?.value?.trim() || "";
-    const kind = getRadioValue("txKind", "expense");
-    const amountVal = document.getElementById("txAmount").value;
-    const categoryId = categoryIdFromSelectValue(document.getElementById("txCategoryId")?.value);
-    const reimbursable = !!document.getElementById("txReimbursable")?.checked;
-
-    if (!dateVal) throw new Error("Date is required");
-    if (!amountVal || Number(amountVal) <= 0) throw new Error("Amount must be > 0");
-
-    await api(`/api/families/${state.activeFamilyId}/transactions`, "POST", {
-      date: dateVal,
-      description: desc,
-      notes: notesRaw || null,
-      kind,
-      amount: Number(amountVal),
-      category_id: categoryId,
-      reimbursable,
-    });
-
-    document.getElementById("txDesc").value = "";
-    const txNotesEl = document.getElementById("txNotes");
-    if (txNotesEl) txNotesEl.value = "";
-    document.getElementById("txAmount").value = "";
-    const reimbEl = document.getElementById("txReimbursable");
-    if (reimbEl) reimbEl.checked = false;
-    await loadMonthAndCalendar();
-  } catch (e) {
-    show(addTxErr, e.message || "Failed to add transaction");
-  }
-});
+const sidebarOpenAddTxModalBtn = document.getElementById("sidebarOpenAddTxModalBtn");
+if (sidebarOpenAddTxModalBtn) {
+  sidebarOpenAddTxModalBtn.addEventListener("click", () => {
+    openTxAddModal({ date: toISODate(new Date()) });
+  });
+}
 
 if (txAddSave) {
   txAddSave.addEventListener("click", async () => {
@@ -1284,74 +1305,6 @@ if (recurringFrequencyFilter) {
 if (recurringKindFilter) {
   recurringKindFilter.addEventListener("change", () => renderRecurringFilteredList());
 }
-
-addExpectedTxBtn.addEventListener("click", async () => {
-  try {
-    show(expectedTxErr, "");
-    if (!state.activeFamilyId) throw new Error("Choose a family first");
-    if (!state.accounts.length) throw new Error("Add an account first");
-
-    const startDateVal = expectedStartDate.value;
-    const recurrenceVal = expectedRecurrence.value;
-    const kindVal = getRadioValue("expectedKind", "expense");
-    const amountVal = expectedAmount.value;
-    const desc = expectedDesc.value.trim();
-    const notesVal = expectedNotes && expectedNotes.value.trim() ? expectedNotes.value.trim() : null;
-    const accountIdVal = expectedAccountId.value;
-    const categoryIdVal = categoryIdFromSelectValue(document.getElementById("expectedCategoryId")?.value);
-
-    if (!startDateVal) throw new Error("Start date is required");
-    if (!desc) throw new Error("Label is required");
-    if (!amountVal || Number(amountVal) <= 0) throw new Error("Amount must be > 0");
-    if (!accountIdVal) throw new Error("Account is required");
-
-    const lastTxnVal = expectedLastTxnDate && expectedLastTxnDate.value ? expectedLastTxnDate.value : null;
-    if (lastTxnVal && lastTxnVal < startDateVal) {
-      throw new Error("Last transaction date cannot be before start date");
-    }
-
-    let secondDayOfMonth = null;
-    if (recurrenceVal === "twice_monthly") {
-      const raw = expectedSecondDayOfMonth && expectedSecondDayOfMonth.value;
-      const n = raw !== "" && raw != null ? Number(raw) : NaN;
-      if (!Number.isFinite(n) || n < 1 || n > 31) {
-        throw new Error("2nd day of month (1–31) is required for twice monthly");
-      }
-      const startDay = Number(startDateVal.slice(8, 10));
-      if (n === startDay) {
-        throw new Error("2nd day of month must differ from the start date’s day of month");
-      }
-      secondDayOfMonth = n;
-    }
-
-    await api(`/api/families/${state.activeFamilyId}/expected-transactions`, "POST", {
-      account_id: Number(accountIdVal),
-      start_date: startDateVal,
-      end_date: lastTxnVal,
-      recurrence: recurrenceVal,
-      second_day_of_month: secondDayOfMonth,
-      description: desc,
-      notes: notesVal,
-      kind: kindVal,
-      amount: Number(amountVal),
-      variable: !!(expectedVariable && expectedVariable.checked),
-      category_id: categoryIdVal,
-    });
-
-    expectedDesc.value = "";
-    if (expectedNotes) expectedNotes.value = "";
-    if (expectedLastTxnDate) expectedLastTxnDate.value = "";
-    if (expectedSecondDayOfMonth) expectedSecondDayOfMonth.value = "";
-    expectedAmount.value = "";
-    if (expectedVariable) expectedVariable.checked = false;
-    await loadExpectedTransactions();
-    await loadExpectedCalendar();
-    await loadCalendarMonthDaily();
-    renderCalendar();
-  } catch (e) {
-    show(expectedTxErr, e.message || "Failed to add recurring transaction");
-  }
-});
 
 runProjectionBtn.addEventListener("click", async () => {
   try {
@@ -1701,13 +1654,7 @@ function categoryIdFromSelectValue(raw) {
   return Number.isFinite(n) ? n : null;
 }
 
-const CATEGORY_COMBOBOX_FIELD_IDS = [
-  "txCategoryId",
-  "txAddCategoryId",
-  "expectedCategoryId",
-  "instanceCategoryId",
-  "txEditCategoryId",
-];
+const CATEGORY_COMBOBOX_FIELD_IDS = ["txAddCategoryId", "instanceCategoryId", "txEditCategoryId"];
 
 /** @type {Map<string, { wrap: HTMLElement, input: HTMLInputElement, hidden: HTMLInputElement, list: HTMLUListElement, categories: { id: number | string; name: string }[], blurTimer: ReturnType<typeof setTimeout> | null }>} */
 const categoryComboboxRegistry = new Map();
@@ -2472,12 +2419,13 @@ async function loadAccounts() {
   const accounts = await api(`/api/families/${state.activeFamilyId}/accounts`, "GET");
   state.accounts = accounts || [];
   renderAccountsList(state.accounts);
-  renderAccountSelect(expectedAccountId, state.accounts);
+  const expectedAccountIdEl = document.getElementById("expectedAccountId");
+  if (expectedAccountIdEl) renderAccountSelect(expectedAccountIdEl, state.accounts);
   if (expectedEditAccountId) renderAccountSelect(expectedEditAccountId, state.accounts);
   if (txAddAccountId) renderAccountSelect(txAddAccountId, state.accounts);
   if (instanceAccountId) renderAccountSelect(instanceAccountId, state.accounts);
-  if (state.accounts.length > 0 && !expectedAccountId.value) {
-    expectedAccountId.value = String(state.accounts[0].id);
+  if (expectedAccountIdEl && state.accounts.length > 0 && !expectedAccountIdEl.value) {
+    expectedAccountIdEl.value = String(state.accounts[0].id);
   }
 }
 
@@ -2490,16 +2438,6 @@ function clearAccountEdit() {
   accountName.disabled = false;
   accountType.disabled = false;
   show(accErr, "");
-}
-
-function updateExpectedTwiceMonthlyVisibility() {
-  if (!expectedTwiceMonthlyFields || !expectedRecurrence) return;
-  const on = expectedRecurrence.value === "twice_monthly";
-  expectedTwiceMonthlyFields.style.display = on ? "block" : "none";
-}
-
-if (expectedRecurrence) {
-  expectedRecurrence.addEventListener("change", updateExpectedTwiceMonthlyVisibility);
 }
 
 function setExpectedModalMode() {
@@ -3935,10 +3873,6 @@ function setDefaultChartStart() {
   if (chartStart) chartStart.value = toISODate(new Date());
 }
 
-function setDefaultExpectedStartDate() {
-  expectedStartDate.value = toISODate(new Date());
-}
-
 function setDefaultAccountStartDate() {
   if (accountStartingBalanceDate) accountStartingBalanceDate.value = toISODate(new Date());
 }
@@ -3956,7 +3890,6 @@ async function main() {
   setDefaultMonth();
   setDefaultProjectionStart();
   setDefaultChartStart();
-  setDefaultExpectedStartDate();
   setDefaultAccountStartDate();
   await loadMe();
   await loadFamilies();
@@ -3966,17 +3899,34 @@ async function main() {
     await loadExpectedTransactions();
     await loadMonthAndCalendar();
   }
-  if (lowBalanceThreshold) {
-    let stored = "";
+  if (balanceThresholdMin || balanceThresholdMax) {
     try {
-      stored = localStorage.getItem(LOW_BALANCE_THRESHOLD_KEY) || "";
+      const legacy = localStorage.getItem(LOW_BALANCE_THRESHOLD_KEY) || "";
+      const minStored = localStorage.getItem(BALANCE_THRESHOLD_MIN_KEY) || "";
+      if (legacy && !minStored && balanceThresholdMin && !balanceThresholdMin.value) {
+        balanceThresholdMin.value = legacy;
+        localStorage.setItem(BALANCE_THRESHOLD_MIN_KEY, legacy);
+      } else {
+        if (balanceThresholdMin) {
+          const s = localStorage.getItem(BALANCE_THRESHOLD_MIN_KEY) || "";
+          if (s && !balanceThresholdMin.value) balanceThresholdMin.value = s;
+        }
+        if (balanceThresholdMax) {
+          const s2 = localStorage.getItem(BALANCE_THRESHOLD_MAX_KEY) || "";
+          if (s2 && !balanceThresholdMax.value) balanceThresholdMax.value = s2;
+        }
+      }
     } catch (_) {}
-    if (stored && !lowBalanceThreshold.value) lowBalanceThreshold.value = stored;
-    lowBalanceThreshold.addEventListener("input", scheduleLowBalanceRefresh);
-    lowBalanceThreshold.addEventListener("change", scheduleLowBalanceRefresh);
+    if (balanceThresholdMin) {
+      balanceThresholdMin.addEventListener("input", scheduleLowBalanceRefresh);
+      balanceThresholdMin.addEventListener("change", scheduleLowBalanceRefresh);
+    }
+    if (balanceThresholdMax) {
+      balanceThresholdMax.addEventListener("input", scheduleLowBalanceRefresh);
+      balanceThresholdMax.addEventListener("change", scheduleLowBalanceRefresh);
+    }
     await refreshLowBalanceAlert();
   }
-  updateExpectedTwiceMonthlyVisibility();
 }
 
 main().catch((e) => {
