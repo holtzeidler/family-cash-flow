@@ -446,6 +446,8 @@ class ExpectedTransactionOut(BaseModel):
     category: Optional[str]
     category_id: Optional[int] = None
     created_by: int
+    # First display/cash-flow date on or after "today", same rules as expected-calendar (cancels + moved_to_date).
+    next_occurrence_date: Optional[date] = None
 
 
 def _validate_expected_transaction_recurrence(payload: ExpectedTransactionIn) -> None:
@@ -1186,8 +1188,13 @@ def list_expected_transactions(
     )
     rows = db.execute(stmt).all()
 
+    tx_ids = [tx.id for tx, _, _ in rows]
+    override_by_key = _override_map_for_expected_ids(db, tx_ids)
+    today = date.today()
+
     result: list[ExpectedTransactionOut] = []
     for tx, account_name, category_name in rows:
+        next_eff = _next_effective_occurrence_on_or_after(tx=tx, on_or_after=today, override_by_key=override_by_key)
         result.append(
             ExpectedTransactionOut(
                 id=tx.id,
@@ -1206,6 +1213,7 @@ def list_expected_transactions(
                 category=category_name,
                 category_id=tx.category_id,
                 created_by=tx.created_by_user_id,
+                next_occurrence_date=next_eff,
             )
         )
     return result
@@ -1257,6 +1265,9 @@ def create_expected_transaction(
     db.commit()
     db.refresh(tx)
 
+    ovr_map = _override_map_for_expected_ids(db, [tx.id])
+    next_eff = _next_effective_occurrence_on_or_after(tx=tx, on_or_after=date.today(), override_by_key=ovr_map)
+
     return ExpectedTransactionOut(
         id=tx.id,
         account=account.name,
@@ -1274,6 +1285,7 @@ def create_expected_transaction(
         category=category_name,
         category_id=tx.category_id,
         created_by=tx.created_by_user_id,
+        next_occurrence_date=next_eff,
     )
 
 
@@ -1329,6 +1341,9 @@ def update_expected_transaction(
     db.commit()
     db.refresh(tx)
 
+    ovr_map = _override_map_for_expected_ids(db, [tx.id])
+    next_eff = _next_effective_occurrence_on_or_after(tx=tx, on_or_after=date.today(), override_by_key=ovr_map)
+
     return ExpectedTransactionOut(
         id=tx.id,
         account=account.name,
@@ -1346,6 +1361,7 @@ def update_expected_transaction(
         category=category_name,
         category_id=tx.category_id,
         created_by=tx.created_by_user_id,
+        next_occurrence_date=next_eff,
     )
 
 
@@ -1917,6 +1933,46 @@ def _expected_occurrences_in_range(
         current = _add_months(current, step_months)
 
     return occurrences
+
+
+def _override_map_for_expected_ids(db, expected_ids: list[int]) -> dict[tuple[int, date], ExpectedTransactionOverride]:
+    if not expected_ids:
+        return {}
+    rows = db.execute(
+        select(ExpectedTransactionOverride).where(ExpectedTransactionOverride.expected_transaction_id.in_(expected_ids))
+    ).scalars().all()
+    return {(o.expected_transaction_id, o.occurrence_date): o for o in rows}
+
+
+def _next_effective_occurrence_on_or_after(
+    *,
+    tx: ExpectedTransaction,
+    on_or_after: date,
+    override_by_key: dict[tuple[int, date], ExpectedTransactionOverride],
+) -> Optional[date]:
+    """
+    Next calendar date this series posts, on or after on_or_after.
+    Matches expected-calendar: cancelled occurrences are skipped; moved_to_date shifts the effective date.
+    """
+    horizon_end = on_or_after + timedelta(days=1100)
+    occ_dates = _expected_occurrences_in_range(
+        start_date=tx.start_date,
+        end_date=tx.end_date,
+        recurrence=tx.recurrence,
+        range_start=tx.start_date,
+        range_end_exclusive=horizon_end,
+        second_day_of_month=tx.second_day_of_month,
+    )
+    for occ in occ_dates:
+        ovr = override_by_key.get((tx.id, occ))
+        if ovr is not None and ovr.cancelled:
+            continue
+        eff = occ
+        if ovr is not None and ovr.moved_to_date is not None:
+            eff = ovr.moved_to_date
+        if eff >= on_or_after:
+            return eff
+    return None
 
 
 def _occurrence_immediately_before(

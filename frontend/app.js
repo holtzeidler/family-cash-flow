@@ -2400,6 +2400,18 @@ function nextExpectedOccurrenceIso(tx, fromIso) {
   return toISODate(cand);
 }
 
+/** Prefer API override-aware date; fall back to client schedule math for older backends. */
+function nextOccurrenceIsoForRecurringList(tx, todayIso) {
+  const raw = tx && tx.next_occurrence_date;
+  if (raw != null && String(raw).trim() !== "") {
+    const n = normalizeIsoDate(raw);
+    if (n) return n;
+    const s = String(raw);
+    if (s.length >= 10) return `${s.slice(0, 4)}-${s.slice(5, 7)}-${s.slice(8, 10)}`;
+  }
+  return nextExpectedOccurrenceIso(tx, todayIso);
+}
+
 function renderRecurringFilteredList() {
   if (!recurringFilteredList) return;
   const items = state.expectedTransactions || [];
@@ -2424,7 +2436,7 @@ function renderRecurringFilteredList() {
 
   const filtered = [...byId.values()]
     .filter((tx) => sel === "all" || String(tx.recurrence || "monthly") === sel)
-    .map((tx) => ({ tx, nextIso: nextExpectedOccurrenceIso(tx, todayIso) }))
+    .map((tx) => ({ tx, nextIso: nextOccurrenceIsoForRecurringList(tx, todayIso) }))
     .filter((row) => !!row.nextIso);
 
   filtered.sort((a, b) => {
