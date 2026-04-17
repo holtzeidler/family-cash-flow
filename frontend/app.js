@@ -1972,6 +1972,74 @@ function categoryStyleFromId(categoryId) {
   return { name: c.name, fg, bg };
 }
 
+function parseCssColorToRgb(input) {
+  const t = String(input || "").trim();
+  if (!t) return null;
+  let m = /^#([0-9a-fA-F]{6})$/i.exec(t);
+  if (m) {
+    const h = m[1];
+    return { r: parseInt(h.slice(0, 2), 16), g: parseInt(h.slice(2, 4), 16), b: parseInt(h.slice(4, 6), 16) };
+  }
+  m = /^#([0-9a-fA-F]{3})$/i.exec(t);
+  if (m) {
+    const x = m[1];
+    return { r: parseInt(x[0] + x[0], 16), g: parseInt(x[1] + x[1], 16), b: parseInt(x[2] + x[2], 16) };
+  }
+  m = /^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i.exec(t);
+  if (m) return { r: Number(m[1]), g: Number(m[2]), b: Number(m[3]) };
+  return null;
+}
+
+function relativeLuminanceFromRgb(rgb) {
+  const lin = (c) => {
+    const v = Math.max(0, Math.min(255, c)) / 255;
+    return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+  };
+  const r = lin(rgb.r);
+  const g = lin(rgb.g);
+  const b = lin(rgb.b);
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+function contrastRatioBetweenRgb(fgRgb, bgRgb) {
+  const L1 = relativeLuminanceFromRgb(fgRgb) + 0.05;
+  const L2 = relativeLuminanceFromRgb(bgRgb) + 0.05;
+  return Math.max(L1, L2) / Math.min(L1, L2);
+}
+
+/** Pick near-black or white, whichever reads better on this background (WCAG-style contrast). */
+function accessibleTextOnBackground(bgCss) {
+  const bgRgb = parseCssColorToRgb(bgCss);
+  if (!bgRgb) return "#111827";
+  const dark = { r: 17, g: 24, b: 39 };
+  const light = { r: 255, g: 255, b: 255 };
+  const cDark = contrastRatioBetweenRgb(dark, bgRgb);
+  const cLight = contrastRatioBetweenRgb(light, bgRgb);
+  return cDark >= cLight ? "rgb(17, 24, 39)" : "#ffffff";
+}
+
+const CATEGORY_PILL_MIN_CONTRAST = 4.5;
+
+/** fg/bg for category chips: keep custom colors but fix low-contrast pairs (e.g. white on yellow). */
+function categoryPillStyleFromId(categoryId) {
+  const st = categoryStyleFromId(categoryId);
+  if (!st) return null;
+  const { fg: fgUser, bg } = st;
+  if (!bg) return st;
+  const bgRgb = parseCssColorToRgb(bg);
+  if (!bgRgb) {
+    return { ...st, fg: fgUser || accessibleTextOnBackground(bg) };
+  }
+  if (!fgUser) {
+    return { ...st, fg: accessibleTextOnBackground(bg) };
+  }
+  const fgRgb = parseCssColorToRgb(fgUser);
+  if (fgRgb && contrastRatioBetweenRgb(fgRgb, bgRgb) >= CATEGORY_PILL_MIN_CONTRAST) {
+    return st;
+  }
+  return { ...st, fg: accessibleTextOnBackground(bg) };
+}
+
 /** Default label text color: green income / red expense (custom category fg overrides where applied). */
 function kindFgClass(kind) {
   return String(kind) === "income" ? "tx-kind-fg--income" : "tx-kind-fg--expense";
@@ -2704,12 +2772,15 @@ function renderTransactionsInto(listEl, items, emptyMessage) {
     meta.className = "meta";
     meta.appendChild(document.createTextNode(fmtDateMDY(tx.date || "")));
     if (tx.category_id && tx.category) {
-      const st = categoryStyleFromId(tx.category_id);
+      const st = categoryPillStyleFromId(tx.category_id);
       const pill = document.createElement("span");
       pill.className = `cat-pill ${kindFgClass(tx.kind)}`;
       pill.textContent = tx.category;
       if (st?.fg) pill.style.color = st.fg;
-      if (st?.bg) pill.style.background = st.bg;
+      if (st?.bg) {
+        pill.style.background = st.bg;
+        pill.style.fontWeight = "600";
+      }
       meta.appendChild(document.createTextNode(" · "));
       meta.appendChild(pill);
     } else if (tx.category) {
@@ -3301,13 +3372,14 @@ function renderCalendar() {
       labelSpan.className = `cal-tx-label ${kindFgClass(row.kind)}`;
       labelSpan.textContent = `${label} `;
       if (row.category_id && row.category) {
-        const st = categoryStyleFromId(row.category_id);
+        const st = categoryPillStyleFromId(row.category_id);
         if (st?.fg) labelSpan.style.color = st.fg;
         if (st?.bg) labelSpan.style.background = st.bg;
         if (st?.bg) {
           labelSpan.style.padding = "1px 6px";
           labelSpan.style.borderRadius = "6px";
-          labelSpan.style.border = "1px solid var(--border)";
+          labelSpan.style.border = "1px solid rgba(0,0,0,0.12)";
+          labelSpan.style.fontWeight = "600";
         }
       }
 
