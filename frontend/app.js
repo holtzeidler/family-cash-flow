@@ -360,8 +360,6 @@ const txAddTwiceMonthlyFields = document.getElementById("txAddTwiceMonthlyFields
 const txAddSecondDayOfMonth = document.getElementById("txAddSecondDayOfMonth");
 const txAddAccountId = document.getElementById("txAddAccountId");
 const txAddVariable = document.getElementById("txAddVariable");
-const txAddReimbursableRow = document.getElementById("txAddReimbursableRow");
-const txAddReimbursable = document.getElementById("txAddReimbursable");
 const txAddSave = document.getElementById("txAddSave");
 const txAddCancel = document.getElementById("txAddCancel");
 
@@ -374,8 +372,18 @@ function updateTxAddTwiceMonthlyVisibility() {
 function updateTxAddRepeatingUi() {
   const repeats = !!txAddRepeats?.checked;
   if (txAddRecurringBlock) txAddRecurringBlock.style.display = repeats ? "block" : "none";
-  if (txAddReimbursableRow) txAddReimbursableRow.style.display = repeats ? "none" : "block";
-  if (txAddDateLabel) txAddDateLabel.textContent = repeats ? "Start (first occurrence)" : "Date";
+  if (txAddDateLabel) txAddDateLabel.textContent = repeats ? "Start date" : "Date";
+  const recWrap = document.getElementById("txAddRecurrenceWrap");
+  if (recWrap) recWrap.hidden = !repeats;
+  if (txAddRecurrence) txAddRecurrence.disabled = !repeats;
+  const lastWrap = document.getElementById("txAddLastTxnFieldWrap");
+  if (lastWrap) lastWrap.hidden = !repeats;
+  if (txAddLastTxnDate) {
+    if (!repeats) txAddLastTxnDate.value = "";
+    txAddLastTxnDate.disabled = !repeats;
+  }
+  const rightCol = document.querySelector(".tx-add-schedule-toolbar__right");
+  if (rightCol) rightCol.classList.toggle("tx-add-schedule-toolbar__right--recurring", repeats);
   updateTxAddTwiceMonthlyVisibility();
 }
 
@@ -385,6 +393,7 @@ if (txAddRepeats) {
 if (txAddRecurrence) {
   txAddRecurrence.addEventListener("change", updateTxAddTwiceMonthlyVisibility);
 }
+updateTxAddRepeatingUi();
 
 document.getElementById("logoutBtn").addEventListener("click", async () => {
   await api("/api/auth/logout", "POST");
@@ -654,6 +663,18 @@ const calendarViewPanel = document.getElementById("calendarViewPanel");
 const transactionViewPanel = document.getElementById("transactionViewPanel");
 const settingsViewPanel = document.getElementById("settingsViewPanel");
 const reportsViewPanel = document.getElementById("reportsViewPanel");
+const catReportStart = document.getElementById("catReportStart");
+const catReportEnd = document.getElementById("catReportEnd");
+const catReportYearSelect = document.getElementById("catReportYearSelect");
+const catReportRunBtn = document.getElementById("catReportRunBtn");
+const catReportErr = document.getElementById("catReportErr");
+const catReportSummary = document.getElementById("catReportSummary");
+const catReportTableWrap = document.getElementById("catReportTableWrap");
+const catReportPreset30 = document.getElementById("catReportPreset30");
+const catReportPresetYtd = document.getElementById("catReportPresetYtd");
+const catReportPresetMonth = document.getElementById("catReportPresetMonth");
+let catReportYearOptionsPopulated = false;
+
 const ACTIVE_VIEW_KEY = "familyCashFlow_activeView";
 
 function setActiveTopView(view) {
@@ -688,6 +709,10 @@ function setActiveTopView(view) {
     navReportsView.classList.toggle("is-active", v === "reports");
     navReportsView.setAttribute("aria-selected", v === "reports" ? "true" : "false");
   }
+  if (v === "reports") {
+    populateCatReportYearSelect();
+    ensureCatReportDateDefaults();
+  }
   try {
     localStorage.setItem(ACTIVE_VIEW_KEY, v);
   } catch (_) {}
@@ -705,6 +730,165 @@ if (navSettingsView) {
 if (navReportsView) {
   navReportsView.addEventListener("click", () => setActiveTopView("reports"));
 }
+
+function populateCatReportYearSelect() {
+  if (!catReportYearSelect || catReportYearOptionsPopulated) return;
+  catReportYearOptionsPopulated = true;
+  const y0 = new Date().getFullYear();
+  for (let yr = y0 - 6; yr <= y0 + 3; yr++) {
+    const o = document.createElement("option");
+    o.value = String(yr);
+    o.textContent = String(yr);
+    catReportYearSelect.appendChild(o);
+  }
+}
+
+function ensureCatReportDateDefaults() {
+  if (!catReportStart || !catReportEnd) return;
+  if (catReportStart.value || catReportEnd.value) return;
+  const t = new Date();
+  const y = t.getFullYear();
+  catReportStart.value = `${y}-01-01`;
+  catReportEnd.value = toISODate(t);
+}
+
+function setCatReportRange(startIso, endIso) {
+  if (catReportStart) catReportStart.value = startIso;
+  if (catReportEnd) catReportEnd.value = endIso;
+}
+
+function applyCatReportPreset(preset) {
+  const t = new Date();
+  const y = t.getFullYear();
+  const m = t.getMonth();
+  if (preset === "30") {
+    const end = toISODate(t);
+    const s = new Date(t);
+    s.setDate(s.getDate() - 29);
+    setCatReportRange(toISODate(s), end);
+  } else if (preset === "ytd") {
+    setCatReportRange(`${y}-01-01`, toISODate(t));
+  } else if (preset === "month") {
+    const start = new Date(y, m, 1);
+    const end = new Date(y, m + 1, 0);
+    setCatReportRange(toISODate(start), toISODate(end));
+  }
+  if (catReportYearSelect) catReportYearSelect.value = "";
+}
+
+function nMoney(v) {
+  const n = typeof v === "string" ? Number(v) : Number(v);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function renderCategoryTotalsReport(data) {
+  if (!catReportTableWrap) return;
+  const mode = data.mode || "actual";
+  const showEst = mode === "actual_plus_estimated";
+  const asOf = data.as_of ? fmtDateMDY(data.as_of) : "—";
+  if (catReportSummary) {
+    const rangeTxt = `${fmtDateMDY(data.start_date)} – ${fmtDateMDY(data.end_date)}`;
+    catReportSummary.style.display = "block";
+    catReportSummary.textContent = `${rangeTxt} · Split at ${asOf} (UTC) for estimates · Mode: ${showEst ? "actual + future estimates" : "actual only"}`;
+  }
+
+  const lines = data.lines || [];
+  if (lines.length === 0) {
+    catReportTableWrap.innerHTML = '<p class="meta">No category activity in this range.</p>';
+    return;
+  }
+
+  const thEst = showEst
+    ? '<th class="num cat-report-est">Income (est.)</th><th class="num cat-report-est">Expense (est.)</th>'
+    : "";
+  const rows = lines
+    .map((ln) => {
+      const estCells = showEst
+        ? `<td class="num cat-report-est">${fmtMoney(nMoney(ln.income_estimated))}</td><td class="num cat-report-est">${fmtMoney(nMoney(ln.expense_estimated))}</td>`
+        : "";
+      const name = String(ln.category_name || "Uncategorized");
+      return `<tr><td>${escapeHtml(name)}</td><td class="num">${fmtMoney(nMoney(ln.income_actual))}</td><td class="num">${fmtMoney(nMoney(ln.expense_actual))}</td>${estCells}</tr>`;
+    })
+    .join("");
+
+  const footEst = showEst
+    ? `<td class="num cat-report-est">${fmtMoney(nMoney(data.sum_income_estimated))}</td><td class="num cat-report-est">${fmtMoney(nMoney(data.sum_expense_estimated))}</td>`
+    : "";
+
+  catReportTableWrap.innerHTML = `
+    <table class="category-report-table">
+      <thead><tr>
+        <th>Category</th>
+        <th class="num">Income (actual)</th>
+        <th class="num">Expense (actual)</th>
+        ${thEst}
+      </tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot><tr>
+        <td>Total</td>
+        <td class="num">${fmtMoney(nMoney(data.sum_income_actual))}</td>
+        <td class="num">${fmtMoney(nMoney(data.sum_expense_actual))}</td>
+        ${footEst}
+      </tr></tfoot>
+    </table>`;
+}
+
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+async function loadCategoryTotalsReport() {
+  show(catReportErr, "");
+  if (!state.activeFamilyId) throw new Error("Choose a family first");
+  if (!catReportStart?.value || !catReportEnd?.value) throw new Error("Start and end dates are required");
+  const mode = getRadioValue("catReportMode", "actual");
+  const q = new URLSearchParams({
+    start_date: catReportStart.value,
+    end_date: catReportEnd.value,
+    mode,
+  });
+  const data = await api(`/api/families/${state.activeFamilyId}/reports/category-totals?${q.toString()}`, "GET");
+  renderCategoryTotalsReport(data);
+}
+
+if (catReportPreset30) {
+  catReportPreset30.addEventListener("click", () => {
+    applyCatReportPreset("30");
+  });
+}
+if (catReportPresetYtd) {
+  catReportPresetYtd.addEventListener("click", () => {
+    applyCatReportPreset("ytd");
+  });
+}
+if (catReportPresetMonth) {
+  catReportPresetMonth.addEventListener("click", () => {
+    applyCatReportPreset("month");
+  });
+}
+if (catReportYearSelect) {
+  catReportYearSelect.addEventListener("change", () => {
+    const yr = catReportYearSelect.value;
+    if (!yr) return;
+    setCatReportRange(`${yr}-01-01`, `${yr}-12-31`);
+  });
+}
+if (catReportRunBtn) {
+  catReportRunBtn.addEventListener("click", async () => {
+    try {
+      await loadCategoryTotalsReport();
+    } catch (e) {
+      show(catReportErr, e.message || "Failed to load report");
+      if (catReportTableWrap) catReportTableWrap.innerHTML = "";
+      if (catReportSummary) catReportSummary.style.display = "none";
+    }
+  });
+}
+
 try {
   const storedView = localStorage.getItem(ACTIVE_VIEW_KEY);
   if (storedView) setActiveTopView(storedView);
@@ -837,7 +1021,6 @@ if (txAddSave) {
         return;
       }
 
-      const reimbursable = !!txAddReimbursable?.checked;
       await api(`/api/families/${state.activeFamilyId}/transactions`, "POST", {
         date: dateVal,
         description: desc,
@@ -845,7 +1028,7 @@ if (txAddSave) {
         kind,
         amount: Number(amountVal),
         category_id: categoryId ? Number(categoryId) : null,
-        reimbursable,
+        reimbursable: false,
       });
 
       closeTxAddModal();
@@ -959,7 +1142,6 @@ function openTxAddModal(opts = {}) {
   if (txAddDesc) txAddDesc.value = "";
   if (txAddNotes) txAddNotes.value = "";
   if (txAddCategoryId) txAddCategoryId.value = "";
-  if (txAddReimbursable) txAddReimbursable.checked = false;
   if (txAddRepeats) txAddRepeats.checked = !!opts.repeats;
   if (txAddRecurrence) txAddRecurrence.value = "monthly";
   if (txAddLastTxnDate) txAddLastTxnDate.value = "";

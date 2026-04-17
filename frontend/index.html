@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=101" />
+    <link rel="stylesheet" href="./styles.css?v=103" />
   </head>
   <body>
     <div class="container">
@@ -524,6 +524,52 @@
           </div>
 
           <div id="reportsViewPanel" class="app-view" hidden>
+            <div class="card category-report-card" id="categoryTotalsReportCard">
+              <h2 class="category-report-card__title">Category totals</h2>
+              <p class="meta category-report-card__hint">
+                Totals by category for any date range. Choose Actual + future estimates to include scheduled recurring amounts from the day after the
+                split date through the end date (split uses today in UTC; same rules as the calendar).
+              </p>
+              <div class="category-report-presets" role="group" aria-label="Quick ranges">
+                <button type="button" class="category-report-preset-btn" id="catReportPreset30">Last 30 days</button>
+                <button type="button" class="category-report-preset-btn" id="catReportPresetYtd">YTD</button>
+                <button type="button" class="category-report-preset-btn" id="catReportPresetMonth">This month</button>
+                <label class="category-report-year-label">
+                  <span class="category-report-year-label__text">Calendar year</span>
+                  <select id="catReportYearSelect" class="category-report-year-select" title="Full Jan 1–Dec 31 for the selected year">
+                    <option value="">—</option>
+                  </select>
+                </label>
+              </div>
+              <div style="height: 12px"></div>
+              <div class="row two category-report-dates">
+                <div>
+                  <label for="catReportStart">Start</label>
+                  <input id="catReportStart" type="date" />
+                </div>
+                <div>
+                  <label for="catReportEnd">End</label>
+                  <input id="catReportEnd" type="date" />
+                </div>
+              </div>
+              <div style="height: 12px"></div>
+              <div class="category-report-mode" role="radiogroup" aria-label="Report basis">
+                <label class="kind-opt category-report-mode__opt"
+                  ><input type="radio" name="catReportMode" value="actual" checked /> Actual only</label
+                >
+                <label class="kind-opt category-report-mode__opt"
+                  ><input type="radio" name="catReportMode" value="actual_plus_estimated" /> Actual + future estimates</label
+                >
+              </div>
+              <div style="height: 12px"></div>
+              <button type="button" id="catReportRunBtn">Load report</button>
+              <div id="catReportErr" class="error"></div>
+              <p class="meta category-report-summary" id="catReportSummary" style="display: none"></p>
+              <div id="catReportTableWrap" class="category-report-table-wrap"></div>
+            </div>
+
+            <div style="height: 14px"></div>
+
             <div class="card sidebar-section sidebar-section--collapsed" data-sidebar-key="month">
               <div class="sidebar-section-head">
                 <h2>Month summary</h2>
@@ -705,9 +751,6 @@
       <div class="modal modal--tx-add" role="dialog" aria-labelledby="txAddTitle">
         <h3 id="txAddTitle">Add transaction</h3>
         <div id="txAddErr" class="error"></div>
-        <label for="txAddDate" id="txAddDateLabel">Date</label>
-        <input id="txAddDate" type="date" />
-        <div style="height: 10px"></div>
         <div class="row">
           <div>
             <label>Type</label>
@@ -727,7 +770,44 @@
             </div>
           </div>
         </div>
-        <div style="height: 10px"></div>
+        <div style="height: 14px"></div>
+        <div class="tx-add-schedule-toolbar" aria-label="Repeat and schedule">
+          <div class="tx-add-schedule-toolbar__left">
+            <div class="tx-add-schedule-question">Does this repeat?</div>
+            <div class="tx-add-repeat-row">
+              <label class="tx-add-repeat-yes">
+                <input id="txAddRepeats" type="checkbox" />
+                <span>Yes</span>
+              </label>
+              <div id="txAddRecurrenceWrap" class="tx-add-recurrence-inline" hidden>
+                <span class="tx-add-recurrence-inline__every">every</span>
+                <select id="txAddRecurrence" class="tx-add-recurrence-select" title="How often this repeats">
+                  <option value="monthly" selected>month</option>
+                  <option value="twice_monthly">2× / month</option>
+                  <option value="weekly">week</option>
+                  <option value="semiannual">6 months</option>
+                  <option value="yearly">year</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div class="tx-add-schedule-toolbar__right">
+            <div class="tx-add-schedule-field tx-add-schedule-field--date">
+              <label for="txAddDate" id="txAddDateLabel">Date</label>
+              <input id="txAddDate" type="date" />
+            </div>
+            <div id="txAddLastTxnFieldWrap" class="tx-add-schedule-field tx-add-schedule-field--last" hidden>
+              <label for="txAddLastTxnDate" title="Optional. Last day a scheduled occurrence may fall on. Blank = no end.">Last txn</label>
+              <input
+                id="txAddLastTxnDate"
+                type="date"
+                title="Optional. Last calendar day for an occurrence. Leave blank for no end date."
+              />
+              <span class="tx-add-field-hint">optional</span>
+            </div>
+          </div>
+        </div>
+        <div style="height: 14px"></div>
         <div class="row-desc-notes">
           <div class="field-desc-short">
             <label for="txAddDesc">Label</label>
@@ -741,29 +821,8 @@
         <div style="height: 10px"></div>
         <label for="txAddCategoryId">Category</label>
         <select id="txAddCategoryId"></select>
-        <div style="height:10px;"></div>
-        <label class="reimbursable-field" for="txAddRepeats">
-          <span class="reimbursable-field__label">Does this repeat?</span>
-          <input id="txAddRepeats" type="checkbox" />
-        </label>
         <div id="txAddRecurringBlock" style="display: none">
           <div style="height: 10px"></div>
-          <div class="row two row-recurring-head">
-            <div>
-              <label for="txAddRecurrence">Recurrence</label>
-              <select id="txAddRecurrence" title="How often this repeats">
-                <option value="monthly" selected>Monthly</option>
-                <option value="twice_monthly">Twice monthly</option>
-                <option value="weekly">Weekly</option>
-                <option value="semiannual">Twice yearly (every 6 months)</option>
-                <option value="yearly">Annual</option>
-              </select>
-            </div>
-            <div>
-              <label for="txAddLastTxnDate" title="Optional. Last day a scheduled occurrence may fall on. Blank = no end.">Last txn</label>
-              <input id="txAddLastTxnDate" type="date" title="Optional. Last calendar day for an occurrence. Leave blank for no end date." />
-            </div>
-          </div>
           <div id="txAddTwiceMonthlyFields" class="expected-second-day-row" style="display: none">
             <label for="txAddSecondDayOfMonth">2nd day of month</label>
             <input
@@ -786,13 +845,6 @@
           <label class="reimbursable-field" for="txAddVariable">
             <span class="reimbursable-field__label">Variable (estimate)</span>
             <input id="txAddVariable" type="checkbox" title="Amount is a placeholder until you enter actuals" />
-          </label>
-        </div>
-        <div id="txAddReimbursableRow">
-          <div style="height: 10px"></div>
-          <label class="reimbursable-field" for="txAddReimbursable">
-            <span class="reimbursable-field__label">Reimbursable</span>
-            <input id="txAddReimbursable" type="checkbox" />
           </label>
         </div>
         <div class="modal-actions">
@@ -964,6 +1016,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="./app.js?v=100"></script>
+    <script src="./app.js?v=103"></script>
   </body>
 </html>

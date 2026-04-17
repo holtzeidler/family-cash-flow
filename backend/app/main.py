@@ -6,7 +6,7 @@ from datetime import date, datetime, timedelta
 from decimal import Decimal
 from enum import Enum
 from pathlib import Path
-from typing import Annotated, Literal, Optional
+from typing import Annotated, Literal, Optional, Sequence
 from urllib.parse import urlparse
 
 from fastapi import Cookie, Depends, FastAPI, HTTPException, Query, Response, status
@@ -534,6 +534,27 @@ class ExpectedCalendarItemOut(BaseModel):
 class ExpectedCalendarOut(BaseModel):
     month: str
     items: list[ExpectedCalendarItemOut]
+
+
+class CategoryTotalsLineOut(BaseModel):
+    category_id: Optional[int] = None
+    category_name: str
+    income_actual: Decimal = Decimal("0")
+    expense_actual: Decimal = Decimal("0")
+    income_estimated: Decimal = Decimal("0")
+    expense_estimated: Decimal = Decimal("0")
+
+
+class CategoryTotalsReportOut(BaseModel):
+    start_date: date
+    end_date: date
+    mode: Literal["actual", "actual_plus_estimated"]
+    as_of: date
+    lines: list[CategoryTotalsLineOut]
+    sum_income_actual: Decimal = Decimal("0")
+    sum_expense_actual: Decimal = Decimal("0")
+    sum_income_estimated: Decimal = Decimal("0")
+    sum_expense_estimated: Decimal = Decimal("0")
 
 
 class ProjectionDailyOut(BaseModel):
@@ -1742,6 +1763,76 @@ def end_expected_from_occurrence(
     return EndFromOccurrenceOut(mode="ended", expected_id=tx.id, ended_at=tx.end_date)
 
 
+def _build_expected_calendar_items(
+    *,
+    expected_rows: Sequence[ExpectedTransaction],
+    accounts_by_id: dict[int, Account],
+    categories_by_id: dict[int, Category],
+    override_map: dict[tuple[int, date], ExpectedTransactionOverride],
+    range_start: date,
+    range_end_exclusive: date,
+) -> list[ExpectedCalendarItemOut]:
+    items: list[ExpectedCalendarItemOut] = []
+    for tx in expected_rows:
+        occ_dates = _expected_occurrences_in_range(
+            start_date=tx.start_date,
+            end_date=tx.end_date,
+            recurrence=tx.recurrence,
+            range_start=range_start,
+            range_end_exclusive=range_end_exclusive,
+            second_day_of_month=tx.second_day_of_month,
+        )
+
+        for occ in occ_dates:
+            ovr = override_map.get((tx.id, occ))
+            if ovr is not None and ovr.cancelled:
+                continue
+
+            eff_account_id = (ovr.account_id if ovr is not None and ovr.account_id is not None else tx.account_id)
+            eff_kind = (ovr.kind if ovr is not None and ovr.kind is not None else tx.kind)
+            eff_amount = (ovr.amount if ovr is not None and ovr.amount is not None else tx.amount)
+            eff_description = (ovr.description if ovr is not None and ovr.description is not None else tx.description)
+            eff_reimbursable = (
+                ovr.reimbursable
+                if ovr is not None and ovr.reimbursable is not None
+                else bool(getattr(tx, "reimbursable", False))
+            )
+            eff_category_id = (ovr.category_id if ovr is not None and ovr.category_id is not None else tx.category_id)
+            eff_variable = bool(getattr(tx, "variable", False))
+            if ovr is not None and getattr(ovr, "variable", None) is not None:
+                eff_variable = bool(ovr.variable)
+
+            acc = accounts_by_id.get(eff_account_id)
+            if acc is None:
+                continue
+            cat = categories_by_id.get(eff_category_id) if eff_category_id is not None else None
+
+            eff_date = ovr.moved_to_date if (ovr is not None and ovr.moved_to_date is not None) else occ
+            # If moved outside the current range, skip; it will appear when viewing that month.
+            if eff_date < range_start or eff_date >= range_end_exclusive:
+                continue
+
+            items.append(
+                ExpectedCalendarItemOut(
+                    expected_transaction_id=tx.id,
+                    date=eff_date,
+                    occurrence_date=occ,
+                    account_id=eff_account_id,
+                    account=acc.name,
+                    kind=eff_kind,
+                    amount=eff_amount,
+                    description=eff_description,
+                    notes=tx.notes,
+                    reimbursable=bool(eff_reimbursable),
+                    category_id=eff_category_id,
+                    category=cat.name if cat is not None else None,
+                    variable=bool(eff_variable),
+                )
+            )
+
+    return items
+
+
 @app.get("/api/families/{family_id}/expected-calendar", response_model=ExpectedCalendarOut)
 def expected_calendar(
     family_id: int,
@@ -1777,65 +1868,168 @@ def expected_calendar(
         (o.expected_transaction_id, o.occurrence_date): o for o in overrides
     }
 
-    items: list[ExpectedCalendarItemOut] = []
-    for tx in expected_rows:
-        occ_dates = _expected_occurrences_in_range(
-            start_date=tx.start_date,
-            end_date=tx.end_date,
-            recurrence=tx.recurrence,
-            range_start=start_date,
-            range_end_exclusive=end_date,
-            second_day_of_month=tx.second_day_of_month,
-        )
-
-        for occ in occ_dates:
-            ovr = override_map.get((tx.id, occ))
-            if ovr is not None and ovr.cancelled:
-                continue
-
-            eff_account_id = (ovr.account_id if ovr is not None and ovr.account_id is not None else tx.account_id)
-            eff_kind = (ovr.kind if ovr is not None and ovr.kind is not None else tx.kind)
-            eff_amount = (ovr.amount if ovr is not None and ovr.amount is not None else tx.amount)
-            eff_description = (ovr.description if ovr is not None and ovr.description is not None else tx.description)
-            eff_reimbursable = (
-                ovr.reimbursable
-                if ovr is not None and ovr.reimbursable is not None
-                else bool(getattr(tx, "reimbursable", False))
-            )
-            eff_category_id = (ovr.category_id if ovr is not None and ovr.category_id is not None else tx.category_id)
-            eff_variable = bool(getattr(tx, "variable", False))
-            if ovr is not None and getattr(ovr, "variable", None) is not None:
-                eff_variable = bool(ovr.variable)
-
-            acc = accounts_by_id.get(eff_account_id)
-            if acc is None:
-                continue
-            cat = categories_by_id.get(eff_category_id) if eff_category_id is not None else None
-
-            eff_date = ovr.moved_to_date if (ovr is not None and ovr.moved_to_date is not None) else occ
-            # If moved outside the current range, skip; it will appear when viewing that month.
-            if eff_date < start_date or eff_date >= end_date:
-                continue
-
-            items.append(
-                ExpectedCalendarItemOut(
-                    expected_transaction_id=tx.id,
-                    date=eff_date,
-                    occurrence_date=occ,
-                    account_id=eff_account_id,
-                    account=acc.name,
-                    kind=eff_kind,
-                    amount=eff_amount,
-                    description=eff_description,
-                    notes=tx.notes,
-                    reimbursable=bool(eff_reimbursable),
-                    category_id=eff_category_id,
-                    category=cat.name if cat is not None else None,
-                    variable=bool(eff_variable),
-                )
-            )
+    items = _build_expected_calendar_items(
+        expected_rows=expected_rows,
+        accounts_by_id=accounts_by_id,
+        categories_by_id=categories_by_id,
+        override_map=override_map,
+        range_start=start_date,
+        range_end_exclusive=end_date,
+    )
 
     return ExpectedCalendarOut(month=month, items=items)
+
+
+@app.get("/api/families/{family_id}/reports/category-totals", response_model=CategoryTotalsReportOut)
+def category_totals_report(
+    family_id: int,
+    start_date: Annotated[date, Query(description="Inclusive range start (YYYY-MM-DD).")],
+    end_date: Annotated[date, Query(description="Inclusive range end (YYYY-MM-DD).")],
+    mode: Annotated[Literal["actual", "actual_plus_estimated"], Query()] = "actual",
+    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    db=Depends(get_db),
+):
+    """
+    Totals by category over a date range. ``actual_plus_estimated`` uses posted transactions
+    through ``as_of`` (UTC calendar date) and scheduled expected occurrences after ``as_of``
+    through ``end_date`` (same rules as expected-calendar).
+    """
+    user_id = get_current_user_id(access_token)
+    require_family_member(db=db, family_id=family_id, user_id=user_id)
+
+    if end_date < start_date:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="end_date cannot be before start_date")
+    span_days = (end_date - start_date).days + 1
+    if span_days > 4000:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Date range cannot exceed 4000 days")
+
+    as_of = datetime.utcnow().date()
+    range_end_exclusive = end_date + timedelta(days=1)
+
+    agg: dict[Optional[int], dict[str, object]] = defaultdict(
+        lambda: {
+            "name": "Uncategorized",
+            "income_actual": Decimal("0"),
+            "expense_actual": Decimal("0"),
+            "income_estimated": Decimal("0"),
+            "expense_estimated": Decimal("0"),
+        }
+    )
+
+    def add_actual_row(category_id: Optional[int], category_name: str, kind: TransactionKind, amount: Decimal) -> None:
+        bucket = agg[category_id]
+        bucket["name"] = category_name
+        if kind == TransactionKind.income:
+            bucket["income_actual"] = bucket["income_actual"] + amount  # type: ignore[operator]
+        else:
+            bucket["expense_actual"] = bucket["expense_actual"] + amount  # type: ignore[operator]
+
+    def add_estimated_row(category_id: Optional[int], category_name: str, kind: TransactionKind, amount: Decimal) -> None:
+        bucket = agg[category_id]
+        bucket["name"] = category_name
+        if kind == TransactionKind.income:
+            bucket["income_estimated"] = bucket["income_estimated"] + amount  # type: ignore[operator]
+        else:
+            bucket["expense_estimated"] = bucket["expense_estimated"] + amount  # type: ignore[operator]
+
+    # --- Actual transactions (always the portion through min(end_date, as_of)) ---
+    actual_end_inclusive = min(end_date, as_of)
+    actual_end_exclusive = actual_end_inclusive + timedelta(days=1)
+    if start_date <= actual_end_inclusive:
+        tx_rows = db.execute(
+            select(Transaction, Category.name.label("category_name"))
+            .join(Category, Category.id == Transaction.category_id, isouter=True)
+            .where(
+                Transaction.family_id == family_id,
+                Transaction.date >= start_date,
+                Transaction.date < actual_end_exclusive,
+            )
+        ).all()
+        for tx, category_name in tx_rows:
+            nm = category_name or "Uncategorized"
+            add_actual_row(tx.category_id, nm, tx.kind, tx.amount)
+
+    # --- Estimated expected occurrences (only in actual_plus_estimated, future slice) ---
+    if mode == "actual_plus_estimated":
+        estimate_start = max(start_date, as_of + timedelta(days=1))
+        if estimate_start <= end_date:
+            account_rows = db.execute(select(Account).where(Account.family_id == family_id)).scalars().all()
+            accounts_by_id: dict[int, Account] = {a.id: a for a in account_rows}
+
+            category_rows = db.execute(select(Category).where(Category.family_id == family_id)).scalars().all()
+            categories_by_id: dict[int, Category] = {c.id: c for c in category_rows}
+
+            expected_rows = db.execute(select(ExpectedTransaction).where(ExpectedTransaction.family_id == family_id)).scalars().all()
+
+            overrides = db.execute(
+                select(ExpectedTransactionOverride).join(
+                    ExpectedTransaction,
+                    ExpectedTransaction.id == ExpectedTransactionOverride.expected_transaction_id,
+                ).where(ExpectedTransaction.family_id == family_id)
+            ).scalars().all()
+            override_map: dict[tuple[int, date], ExpectedTransactionOverride] = {
+                (o.expected_transaction_id, o.occurrence_date): o for o in overrides
+            }
+
+            est_items = _build_expected_calendar_items(
+                expected_rows=expected_rows,
+                accounts_by_id=accounts_by_id,
+                categories_by_id=categories_by_id,
+                override_map=override_map,
+                range_start=estimate_start,
+                range_end_exclusive=range_end_exclusive,
+            )
+            for it in est_items:
+                nm = it.category or "Uncategorized"
+                add_estimated_row(it.category_id, nm, it.kind, it.amount)
+
+    lines: list[CategoryTotalsLineOut] = []
+    sum_income_actual = Decimal("0")
+    sum_expense_actual = Decimal("0")
+    sum_income_estimated = Decimal("0")
+    sum_expense_estimated = Decimal("0")
+
+    for cid in sorted(agg.keys(), key=lambda x: (x is None, x or 0)):
+        b = agg[cid]
+        ia = b["income_actual"]  # type: ignore[assignment]
+        ea = b["expense_actual"]  # type: ignore[assignment]
+        ie = b["income_estimated"]  # type: ignore[assignment]
+        ee = b["expense_estimated"]  # type: ignore[assignment]
+        nm = str(b["name"])
+        lines.append(
+            CategoryTotalsLineOut(
+                category_id=cid,
+                category_name=nm,
+                income_actual=ia,
+                expense_actual=ea,
+                income_estimated=ie,
+                expense_estimated=ee,
+            )
+        )
+        sum_income_actual += ia
+        sum_expense_actual += ea
+        sum_income_estimated += ie
+        sum_expense_estimated += ee
+
+    # Hide categories with all zeros (shouldn't happen often)
+    lines = [ln for ln in lines if any((ln.income_actual, ln.expense_actual, ln.income_estimated, ln.expense_estimated))]
+
+    lines.sort(
+        key=lambda ln: (ln.expense_actual + ln.expense_estimated + ln.income_actual + ln.income_estimated),
+        reverse=True,
+    )
+
+    return CategoryTotalsReportOut(
+        start_date=start_date,
+        end_date=end_date,
+        mode=mode,
+        as_of=as_of,
+        lines=lines,
+        sum_income_actual=sum_income_actual,
+        sum_expense_actual=sum_expense_actual,
+        sum_income_estimated=sum_income_estimated,
+        sum_expense_estimated=sum_expense_estimated,
+    )
 
 
 def _last_day_of_month(year: int, month: int) -> int:
