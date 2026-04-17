@@ -89,6 +89,48 @@ function expandSidebarSection(key) {
   return card;
 }
 
+function updateExpectedAddTwiceMonthlyVisibility() {
+  if (!expectedAddTwiceMonthlyFields || !expectedAddRecurrence) return;
+  const on = expectedAddRecurrence.value === "twice_monthly";
+  expectedAddTwiceMonthlyFields.style.display = on ? "block" : "none";
+}
+
+function openExpectedAddModal(startIso) {
+  if (!expectedAddModal) return;
+  show(expectedAddErr, "");
+  if (expectedAddStartDate) expectedAddStartDate.value = normalizeIsoDate(startIso) || String(startIso || "");
+  if (expectedAddRecurrence) expectedAddRecurrence.value = "monthly";
+  if (expectedAddLastTxnDate) expectedAddLastTxnDate.value = "";
+  if (expectedAddSecondDayOfMonth) expectedAddSecondDayOfMonth.value = "";
+  updateExpectedAddTwiceMonthlyVisibility();
+  {
+    const radio = document.querySelector('input[type="radio"][name="expectedAddKind"][value="expense"]');
+    if (radio) radio.checked = true;
+  }
+  if (expectedAddAmount) expectedAddAmount.value = "";
+  if (expectedAddDesc) expectedAddDesc.value = "";
+  if (expectedAddNotes) expectedAddNotes.value = "";
+  if (expectedAddVariable) expectedAddVariable.checked = false;
+  if (expectedAddAccountId) {
+    renderAccountSelect(expectedAddAccountId, state.accounts || []);
+    if (state.accounts && state.accounts.length > 0) expectedAddAccountId.value = String(state.accounts[0].id);
+  }
+  if (expectedAddCategoryId) {
+    renderCategoryOptions(expectedAddCategoryId, state.categories || []);
+    expectedAddCategoryId.value = "";
+  }
+
+  expectedAddModal.classList.add("modal-overlay--open");
+  expectedAddModal.setAttribute("aria-hidden", "false");
+  requestAnimationFrame(() => (expectedAddAmount ? expectedAddAmount.focus() : expectedAddDesc ? expectedAddDesc.focus() : null));
+}
+
+function closeExpectedAddModal() {
+  if (!expectedAddModal) return;
+  expectedAddModal.classList.remove("modal-overlay--open");
+  expectedAddModal.setAttribute("aria-hidden", "true");
+}
+
 function fmtMoney(n) {
   const num = typeof n === "string" ? Number(n) : n;
   if (Number.isNaN(num)) return String(n ?? "");
@@ -219,6 +261,23 @@ const expectedCategoryId = document.getElementById("expectedCategoryId");
 const expectedVariable = document.getElementById("expectedVariable");
 const addExpectedTxBtn = document.getElementById("addExpectedTxBtn");
 const variableTodoList = document.getElementById("variableTodoList");
+
+// New recurring transaction modal (from calendar day click)
+const expectedAddModal = document.getElementById("expectedAddModal");
+const expectedAddErr = document.getElementById("expectedAddErr");
+const expectedAddStartDate = document.getElementById("expectedAddStartDate");
+const expectedAddRecurrence = document.getElementById("expectedAddRecurrence");
+const expectedAddLastTxnDate = document.getElementById("expectedAddLastTxnDate");
+const expectedAddTwiceMonthlyFields = document.getElementById("expectedAddTwiceMonthlyFields");
+const expectedAddSecondDayOfMonth = document.getElementById("expectedAddSecondDayOfMonth");
+const expectedAddAmount = document.getElementById("expectedAddAmount");
+const expectedAddDesc = document.getElementById("expectedAddDesc");
+const expectedAddNotes = document.getElementById("expectedAddNotes");
+const expectedAddAccountId = document.getElementById("expectedAddAccountId");
+const expectedAddCategoryId = document.getElementById("expectedAddCategoryId");
+const expectedAddVariable = document.getElementById("expectedAddVariable");
+const expectedAddSaveBtn = document.getElementById("expectedAddSaveBtn");
+const expectedAddCancelBtn = document.getElementById("expectedAddCancelBtn");
 
 // Expected transaction edit modal
 const expectedEditModal = document.getElementById("expectedEditModal");
@@ -1009,6 +1068,10 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && addTxChoiceModal?.classList.contains("modal-overlay--open")) closeAddChoiceModal();
 });
 
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && expectedAddModal?.classList.contains("modal-overlay--open")) closeExpectedAddModal();
+});
+
 if (txAddCancel) {
   txAddCancel.addEventListener("click", () => closeTxAddModal());
 }
@@ -1033,26 +1096,84 @@ if (addChoiceRecurringBtn) {
     const iso = pendingAddChoiceIso;
     closeAddChoiceModal();
     if (!iso) return;
-    const card = expandSidebarSection("recurring");
-    if (expectedStartDate) expectedStartDate.value = iso;
-    if (card) {
-      const sidebar = document.querySelector(".sidebar");
-      try {
-        // Ensure the sidebar itself scrolls (it has overflow-y: auto).
-        if (sidebar && sidebar.scrollTop != null) {
-          sidebar.scrollTop = Math.max(0, card.offsetTop - 12);
-        }
-      } catch (_) {}
-      card.scrollIntoView({ block: "start", behavior: "smooth" });
-      card.classList.add("sidebar-section--flash");
-      setTimeout(() => card.classList.remove("sidebar-section--flash"), 900);
-    }
-    requestAnimationFrame(() => (expectedStartDate ? expectedStartDate.focus() : expectedAmount ? expectedAmount.focus() : null));
+    openExpectedAddModal(iso);
   });
 }
 if (addTxChoiceModal) {
   addTxChoiceModal.addEventListener("click", (e) => {
     if (e.target === addTxChoiceModal) closeAddChoiceModal();
+  });
+}
+
+if (expectedAddCancelBtn) {
+  expectedAddCancelBtn.addEventListener("click", () => closeExpectedAddModal());
+}
+if (expectedAddModal) {
+  expectedAddModal.addEventListener("click", (e) => {
+    if (e.target === expectedAddModal) closeExpectedAddModal();
+  });
+}
+if (expectedAddRecurrence) {
+  expectedAddRecurrence.addEventListener("change", updateExpectedAddTwiceMonthlyVisibility);
+}
+if (expectedAddSaveBtn) {
+  expectedAddSaveBtn.addEventListener("click", async () => {
+    try {
+      show(expectedAddErr, "");
+      if (!state.activeFamilyId) throw new Error("Choose a family first");
+
+      const startDateVal = expectedAddStartDate?.value || "";
+      const recurrenceVal = expectedAddRecurrence?.value || "monthly";
+      const kindVal = getRadioValue("expectedAddKind", "expense");
+      const amountVal = expectedAddAmount?.value || "";
+      const desc = expectedAddDesc?.value?.trim() || "";
+      const notesVal = expectedAddNotes && expectedAddNotes.value.trim() ? expectedAddNotes.value.trim() : null;
+      const accountIdVal = expectedAddAccountId?.value || "";
+      const categoryIdVal = expectedAddCategoryId?.value || null;
+
+      if (!startDateVal) throw new Error("Start date is required");
+      if (!desc) throw new Error("Description is required");
+      if (!amountVal || Number(amountVal) <= 0) throw new Error("Amount must be > 0");
+      if (!accountIdVal) throw new Error("Account is required");
+
+      const lastTxnVal = expectedAddLastTxnDate && expectedAddLastTxnDate.value ? expectedAddLastTxnDate.value : null;
+      if (lastTxnVal && lastTxnVal < startDateVal) {
+        throw new Error("Last transaction date cannot be before start date");
+      }
+
+      let secondDayOfMonth = null;
+      if (recurrenceVal === "twice_monthly") {
+        const raw = expectedAddSecondDayOfMonth && expectedAddSecondDayOfMonth.value;
+        const n = raw !== "" && raw != null ? Number(raw) : NaN;
+        if (!Number.isFinite(n) || n < 1 || n > 31) {
+          throw new Error("2nd day of month (1–31) is required for twice monthly");
+        }
+        const startDay = Number(startDateVal.slice(8, 10));
+        if (n === startDay) {
+          throw new Error("2nd day of month must differ from the start date’s day of month");
+        }
+        secondDayOfMonth = n;
+      }
+
+      await api(`/api/families/${state.activeFamilyId}/expected-transactions`, "POST", {
+        account_id: Number(accountIdVal),
+        start_date: startDateVal,
+        end_date: lastTxnVal,
+        recurrence: recurrenceVal,
+        second_day_of_month: secondDayOfMonth,
+        description: desc,
+        notes: notesVal,
+        kind: kindVal,
+        amount: Number(amountVal),
+        variable: !!(expectedAddVariable && expectedAddVariable.checked),
+        category_id: categoryIdVal ? Number(categoryIdVal) : null,
+      });
+
+      closeExpectedAddModal();
+      await refreshExpectedCalendarAndMonth();
+    } catch (e) {
+      show(expectedAddErr, e.message || "Failed to add recurring transaction");
+    }
   });
 }
 
@@ -1829,6 +1950,7 @@ async function loadCategories() {
   renderCategoryOptions(txAddCategoryId, state.categories);
   renderCategoryOptions(expectedCategoryId, state.categories);
   renderCategoryOptions(expectedEditCategoryId, state.categories);
+  if (expectedAddCategoryId) renderCategoryOptions(expectedAddCategoryId, state.categories);
   if (instanceCategoryId) renderCategoryOptions(instanceCategoryId, state.categories);
   renderTxEditCategoryOptions();
 }
@@ -1915,6 +2037,7 @@ async function loadAccounts() {
   renderAccountsList(state.accounts);
   renderAccountSelect(expectedAccountId, state.accounts);
   if (expectedEditAccountId) renderAccountSelect(expectedEditAccountId, state.accounts);
+  if (expectedAddAccountId) renderAccountSelect(expectedAddAccountId, state.accounts);
   if (instanceAccountId) renderAccountSelect(instanceAccountId, state.accounts);
   if (state.accounts.length > 0 && !expectedAccountId.value) {
     expectedAccountId.value = String(state.accounts[0].id);

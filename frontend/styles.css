@@ -1223,9 +1223,9 @@ input, select{
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
   border-radius: 999px;
 }
 .cal-daynum-num.is-today{
@@ -1342,7 +1342,7 @@ input, select{
   gap:4px;
   align-items: center;
   margin-top: auto;
-  padding-top: 12px;
+  padding-top: 26px;
   border-top: 1px solid rgba(0,0,0,0.08);
 }
 
@@ -1408,6 +1408,21 @@ input, select{
 }
 .choice-actions button{
   width: 100%;
+}
+
+.modal--expected-add{
+  max-width: 520px;
+  max-height: min(92vh, 760px);
+  overflow-y: auto;
+}
+.modal--expected-add > h3{
+  margin: -16px -16px 0;
+  padding: 16px 16px 12px;
+  background: rgba(18,155,186,0.16);
+  border-radius: 14px 14px 0 0;
+}
+.modal--expected-add #expectedAddErr{
+  margin-top: 10px;
 }
 
 .tx-edit-top{

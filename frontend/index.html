@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=85" />
+    <link rel="stylesheet" href="./styles.css?v=87" />
   </head>
   <body>
     <div class="container">
@@ -897,6 +897,113 @@
       </div>
     </div>
 
+    <div id="expectedAddModal" class="modal-overlay" aria-hidden="true">
+      <div class="modal modal--expected-add" role="dialog" aria-labelledby="expectedAddTitle">
+        <h3 id="expectedAddTitle">New recurring transaction</h3>
+        <div id="expectedAddErr" class="error"></div>
+
+        <div class="row three row-recurring-head">
+          <div>
+            <label for="expectedAddStartDate">Start</label>
+            <input id="expectedAddStartDate" type="date" title="First occurrence date" />
+          </div>
+          <div>
+            <label for="expectedAddRecurrence">Recurrence</label>
+            <select id="expectedAddRecurrence" title="How often this repeats">
+              <option value="monthly" selected>Monthly</option>
+              <option value="twice_monthly">Twice monthly</option>
+              <option value="weekly">Weekly</option>
+              <option value="semiannual">Twice yearly (every 6 months)</option>
+              <option value="yearly">Annual</option>
+              <option value="once">Once</option>
+            </select>
+          </div>
+          <div>
+            <label for="expectedAddLastTxnDate" title="Optional. Last day a scheduled occurrence may fall on. Blank = no end.">Last txn</label>
+            <input
+              id="expectedAddLastTxnDate"
+              type="date"
+              title="Optional. Last calendar day for an occurrence. Leave blank for no end date."
+            />
+          </div>
+        </div>
+        <div id="expectedAddTwiceMonthlyFields" class="expected-second-day-row" style="display: none">
+          <label for="expectedAddSecondDayOfMonth">2nd day of month</label>
+          <input
+            id="expectedAddSecondDayOfMonth"
+            type="number"
+            min="1"
+            max="31"
+            step="1"
+            placeholder="e.g. 15"
+            title="Second scheduled day each month; must differ from the start date’s calendar day."
+          />
+          <p style="margin: 6px 0 0; font-size: 12px; color: var(--muted)">
+            Required for twice monthly: other day of the month (1–31), not the same as the start date’s day.
+          </p>
+        </div>
+        <div style="height:10px;"></div>
+
+        <div class="row">
+          <div>
+            <label>Type</label>
+            <div class="kind-toggle" role="radiogroup" aria-label="New recurring type">
+              <label class="kind-opt"><input type="radio" name="expectedAddKind" value="expense" checked /> Expense</label>
+              <label class="kind-opt"><input type="radio" name="expectedAddKind" value="income" /> Income</label>
+            </div>
+          </div>
+        </div>
+        <div style="height:10px;"></div>
+
+        <div class="row">
+          <div>
+            <label for="expectedAddAmount">Amount</label>
+            <div class="money-input">
+              <span class="money-input__prefix" aria-hidden="true">$</span>
+              <input id="expectedAddAmount" type="number" min="0" step="0.01" placeholder="0.00" />
+            </div>
+          </div>
+        </div>
+
+        <div style="height:10px;"></div>
+        <div class="row-desc-notes">
+          <div class="field-desc-short">
+            <label for="expectedAddDesc">Description</label>
+            <input id="expectedAddDesc" type="text" maxlength="12" class="input-desc-short" placeholder="e.g. Electric" />
+          </div>
+          <div class="field-notes-flex">
+            <label for="expectedAddNotes">Notes</label>
+            <input id="expectedAddNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
+          </div>
+        </div>
+
+        <div style="height:10px;"></div>
+        <div class="row two">
+          <div>
+            <label for="expectedAddAccountId">Account</label>
+            <select id="expectedAddAccountId"></select>
+          </div>
+          <div>
+            <label for="expectedAddCategoryId">Category (optional)</label>
+            <select id="expectedAddCategoryId"></select>
+          </div>
+        </div>
+
+        <div style="height:10px;"></div>
+        <label class="reimbursable-field" for="expectedAddVariable">
+          <span class="reimbursable-field__label">Variable (estimate)</span>
+          <input id="expectedAddVariable" type="checkbox" title="Amount is a placeholder until you enter actuals" />
+        </label>
+
+        <div class="modal-actions">
+          <div class="row two">
+            <button type="button" id="expectedAddSaveBtn">Add recurring</button>
+            <button type="button" id="expectedAddCancelBtn" class="danger">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div id="reconcileModal" class="modal-overlay" aria-hidden="true">
       <div class="modal" role="dialog" aria-labelledby="reconcileTitle">
         <h3 id="reconcileTitle">Day status</h3>
@@ -920,6 +1027,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="./app.js?v=85"></script>
+    <script src="./app.js?v=87"></script>
   </body>
 </html>
