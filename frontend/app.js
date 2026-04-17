@@ -1036,9 +1036,18 @@ if (addChoiceRecurringBtn) {
     const card = expandSidebarSection("recurring");
     if (expectedStartDate) expectedStartDate.value = iso;
     if (card) {
+      const sidebar = document.querySelector(".sidebar");
+      try {
+        // Ensure the sidebar itself scrolls (it has overflow-y: auto).
+        if (sidebar && sidebar.scrollTop != null) {
+          sidebar.scrollTop = Math.max(0, card.offsetTop - 12);
+        }
+      } catch (_) {}
       card.scrollIntoView({ block: "start", behavior: "smooth" });
+      card.classList.add("sidebar-section--flash");
+      setTimeout(() => card.classList.remove("sidebar-section--flash"), 900);
     }
-    requestAnimationFrame(() => (expectedAmount ? expectedAmount.focus() : expectedDesc ? expectedDesc.focus() : null));
+    requestAnimationFrame(() => (expectedStartDate ? expectedStartDate.focus() : expectedAmount ? expectedAmount.focus() : null));
   });
 }
 if (addTxChoiceModal) {
