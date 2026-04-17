@@ -122,6 +122,8 @@ let state = {
 
 let selectedExpectedInstance = null;
 let selectedExpectedMovedToDate = null;
+let txEditReimbursableValue = false;
+let txEditDescriptionSnapshot = "";
 
 const userPill = document.getElementById("userPill");
 const familiesErr = document.getElementById("familiesErr");
@@ -299,7 +301,6 @@ const instanceTwiceMonthlyFields = document.getElementById("instanceTwiceMonthly
 const instanceSecondDayOfMonth = document.getElementById("instanceSecondDayOfMonth");
 const instanceKind = null;
 const instanceAmount = document.getElementById("instanceAmount");
-const instanceDesc = document.getElementById("instanceDesc");
 const instanceNotes = document.getElementById("instanceNotes");
 const instanceAccountId = document.getElementById("instanceAccountId");
 const seriesVariable = document.getElementById("seriesVariable");
@@ -342,9 +343,7 @@ const txEditId = document.getElementById("txEditId");
 const txEditDate = document.getElementById("txEditDate");
 const txEditKind = null;
 const txEditAmount = document.getElementById("txEditAmount");
-const txEditDesc = document.getElementById("txEditDesc");
 const txEditNotes = document.getElementById("txEditNotes");
-const txEditReimbursable = document.getElementById("txEditReimbursable");
 const txEditErr = document.getElementById("txEditErr");
 const txEditSave = document.getElementById("txEditSave");
 const txEditDelete = document.getElementById("txEditDelete");
@@ -1008,13 +1007,6 @@ document.getElementById("addCategoryBtn").addEventListener("click", async () => 
   }
 });
 
-const sidebarOpenAddTxModalBtn = document.getElementById("sidebarOpenAddTxModalBtn");
-if (sidebarOpenAddTxModalBtn) {
-  sidebarOpenAddTxModalBtn.addEventListener("click", () => {
-    openTxAddModal({ date: toISODate(new Date()) });
-  });
-}
-
 if (txAddSave) {
   txAddSave.addEventListener("click", async () => {
     try {
@@ -1026,7 +1018,7 @@ if (txAddSave) {
       const notesRaw = txAddNotes?.value?.trim() || "";
       const kind = getRadioValue("txAddKind", "expense");
       const amountVal = txAddAmount?.value || "";
-      const categoryId = categoryIdFromSelectValue(document.getElementById("txAddCategoryId")?.value);
+      const categoryId = categoryIdFromCategoryField("txAddCategoryId");
       const repeats = !!txAddRepeats?.checked;
 
       if (!dateVal) throw new Error(repeats ? "Start date is required" : "Date is required");
@@ -1162,9 +1154,9 @@ function openTxEditModal(tx) {
     if (radio) radio.checked = true;
   }
   txEditAmount.value = tx.amount;
-  txEditDesc.value = String(tx.description || "").slice(0, 12);
+  txEditDescriptionSnapshot = String(tx.description || "").trim().slice(0, 500);
   if (txEditNotes) txEditNotes.value = tx.notes || "";
-  if (txEditReimbursable) txEditReimbursable.checked = !!tx.reimbursable;
+  txEditReimbursableValue = !!tx.reimbursable;
   renderTxEditCategoryOptions();
   setCategoryFieldValue("txEditCategoryId", tx.category_id);
   show(txEditErr, "");
@@ -1178,8 +1170,21 @@ function closeTxEditModal() {
   txEditModal.setAttribute("aria-hidden", "true");
 }
 
+function mountTxAddFormInModal() {
+  const root = document.getElementById("txAddFormRoot");
+  const mount = document.getElementById("txAddModalFormMount");
+  if (root && mount && root.parentElement !== mount) mount.appendChild(root);
+}
+
+function mountTxAddFormInSidebar() {
+  const root = document.getElementById("txAddFormRoot");
+  const home = document.getElementById("txAddFormHome");
+  if (root && home && root.parentElement !== home) home.appendChild(root);
+}
+
 function openTxAddModal(opts = {}) {
   if (!txAddModal || !txAddDate) return;
+  mountTxAddFormInModal();
   const dateVal = opts.date || "";
   txAddDate.value = dateVal;
   if (txAddAmount) txAddAmount.value = "";
@@ -1209,6 +1214,7 @@ function closeTxAddModal() {
   if (!txAddModal) return;
   txAddModal.classList.remove("modal-overlay--open");
   txAddModal.setAttribute("aria-hidden", "true");
+  mountTxAddFormInSidebar();
 }
 
 function openReconcileModal(iso) {
@@ -1237,15 +1243,14 @@ if (txEditSave) {
       if (!id) throw new Error("No transaction selected");
       const amountVal = txEditAmount.value;
       if (!amountVal || Number(amountVal) <= 0) throw new Error("Amount must be > 0");
-      const reimbursable = !!txEditReimbursable?.checked;
       await api(`/api/families/${state.activeFamilyId}/transactions/${id}`, "PUT", {
         date: txEditDate.value,
         kind: getRadioValue("txEditKind", "expense"),
         amount: Number(amountVal),
-        description: txEditDesc.value.trim() || "",
+        description: txEditDescriptionSnapshot,
         notes: txEditNotes && txEditNotes.value.trim() ? txEditNotes.value.trim() : null,
-        category_id: categoryIdFromSelectValue(document.getElementById("txEditCategoryId")?.value),
-        reimbursable,
+        category_id: categoryIdFromCategoryField("txEditCategoryId"),
+        reimbursable: txEditReimbursableValue,
       });
       closeTxEditModal();
       await loadMonthAndCalendar();
@@ -1492,7 +1497,7 @@ if (saveInstanceOverrideBtn) {
       const accountId = instanceAccountId.value;
       if (!accountId) throw new Error("Account is required");
 
-      const categoryId = categoryIdFromSelectValue(document.getElementById("instanceCategoryId")?.value);
+      const categoryId = categoryIdFromCategoryField("instanceCategoryId");
 
       const occ = normalizeIsoDate(selectedExpectedInstance.occurrence_date);
       if (!occ) throw new Error("Invalid occurrence date");
@@ -1503,7 +1508,7 @@ if (saveInstanceOverrideBtn) {
         account_id: Number(accountId),
         kind: getRadioValue("instanceKind", "expense"),
         amount,
-        description: instanceDesc.value.trim() || "",
+        description: expectedSaveDescription(),
         category_id: categoryId,
         moved_to_date: movedTo,
         variable: !!(seriesVariable && seriesVariable.checked),
@@ -1542,7 +1547,7 @@ if (saveSeriesFromInstanceBtn) {
       const accountId = instanceAccountId?.value;
       if (!accountId) throw new Error("Account is required");
 
-      const categoryId = categoryIdFromSelectValue(document.getElementById("instanceCategoryId")?.value);
+      const categoryId = categoryIdFromCategoryField("instanceCategoryId");
       const notesVal = instanceNotes ? instanceNotes.value.trim() || null : null;
 
       const recurrenceVal = instanceRecurrence?.value || meta.recurrence || "monthly";
@@ -1577,7 +1582,7 @@ if (saveSeriesFromInstanceBtn) {
           end_date: meta.end_date || null,
           recurrence: recurrenceVal,
           second_day_of_month: recurrenceVal === "twice_monthly" ? secondDayVal : null,
-          description: instanceDesc?.value?.trim() || "",
+          description: expectedSaveDescription(),
           notes: notesVal,
           kind: getRadioValue("instanceKind", "expense"),
           amount: Number(amount),
@@ -1589,7 +1594,7 @@ if (saveSeriesFromInstanceBtn) {
           account_id: Number(accountId),
           kind: getRadioValue("instanceKind", "expense"),
           amount: Number(amount),
-          description: instanceDesc?.value?.trim() || "",
+          description: expectedSaveDescription(),
           reimbursable: !!meta.reimbursable,
           category_id: categoryId,
           notes: notesVal,
@@ -1694,6 +1699,16 @@ function categoryIdFromSelectValue(raw) {
   const s = String(raw);
   const n = Number(s);
   return Number.isFinite(n) ? n : null;
+}
+
+/** Reads category id from a plain select or a mounted category combobox (flushes typed text to hidden value first). */
+function categoryIdFromCategoryField(fieldId) {
+  if (categoryComboboxRegistry.has(fieldId)) {
+    normalizeCategoryComboboxInput(fieldId);
+    const st = categoryComboboxRegistry.get(fieldId);
+    if (st) return categoryIdFromSelectValue(st.hidden.value);
+  }
+  return categoryIdFromSelectValue(document.getElementById(fieldId)?.value);
 }
 
 const CATEGORY_COMBOBOX_FIELD_IDS = ["txAddCategoryId", "instanceCategoryId", "txEditCategoryId"];
@@ -2522,7 +2537,6 @@ function openExpectedEditModal(tx, opts = {}) {
         if (radio) radio.checked = true;
       }
       if (instanceAmount) instanceAmount.value = String(tx.amount ?? "");
-      if (instanceDesc) instanceDesc.value = String(tx.description || "").slice(0, 12);
       if (instanceAccountId) instanceAccountId.value = tx.account_id != null ? String(tx.account_id) : "";
       if (document.getElementById("instanceCategoryId")) setCategoryFieldValue("instanceCategoryId", tx.category_id);
     } else {
@@ -3505,6 +3519,19 @@ function getExpectedSeriesMeta(expectedId) {
   return (state.expectedTransactions || []).find((t) => Number(t.id) === Number(expectedId));
 }
 
+/** Description for recurring save payloads (label field removed from modal). */
+function expectedSaveDescription() {
+  const inst = selectedExpectedInstance;
+  if (inst && inst.description != null && String(inst.description).trim() !== "") {
+    return String(inst.description).trim().slice(0, 500);
+  }
+  const meta =
+    selectedExpectedSeriesTx ||
+    (inst && getExpectedSeriesMeta(inst.expected_transaction_id)) ||
+    getExpectedSeriesMeta(Number(expectedEditId?.value || 0));
+  return String(meta?.description || "").trim().slice(0, 500);
+}
+
 function dateISOFromParts(year, monthIndex0Based, day) {
   const y = year;
   const m = String(monthIndex0Based + 1).padStart(2, "0");
@@ -3517,6 +3544,7 @@ function selectExpectedInstance(item) {
   selectedExpectedInstance = {
     expected_transaction_id: item.expected_transaction_id,
     occurrence_date: occ || item.date,
+    description: item.description != null ? String(item.description) : "",
   };
 
   if (instanceDate) {
@@ -3532,7 +3560,6 @@ function selectExpectedInstance(item) {
     if (radio) radio.checked = true;
   }
   if (instanceAmount) instanceAmount.value = Number(item.amount);
-  if (instanceDesc) instanceDesc.value = String(item.description || "").slice(0, 12);
   if (instanceNotes) instanceNotes.value = item.notes && String(item.notes).trim() ? String(item.notes).trim() : "";
   if (instanceAccountId) instanceAccountId.value = String(item.account_id);
   if (document.getElementById("instanceCategoryId")) setCategoryFieldValue("instanceCategoryId", item.category_id);

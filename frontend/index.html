@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=111" />
+    <link rel="stylesheet" href="./styles.css?v=114" />
   </head>
   <body>
     <div class="container">
@@ -61,8 +61,111 @@
               </button>
             </div>
             <div id="sidebarBodyAddTransaction" class="sidebar-section-body">
-              <div class="btn-center-row">
-                <button type="button" id="sidebarOpenAddTxModalBtn">Add transaction</button>
+              <div id="txAddFormHome" class="sidebar-add-tx-form">
+                <div id="txAddFormRoot" class="tx-add-form">
+                  <div id="txAddErr" class="error"></div>
+                  <div class="row">
+                    <div>
+                      <label>Type</label>
+                      <div class="kind-toggle" role="radiogroup" aria-label="Transaction type">
+                        <label class="kind-opt"><input type="radio" name="txAddKind" value="expense" checked /> Expense</label>
+                        <label class="kind-opt"><input type="radio" name="txAddKind" value="income" /> Income</label>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="tx-add-vspace" aria-hidden="true"></div>
+                  <label for="txAddDate" id="txAddDateLabel">Date</label>
+                  <input id="txAddDate" type="date" />
+                  <div class="tx-add-vspace" aria-hidden="true"></div>
+                  <div class="row">
+                    <div>
+                      <label for="txAddAmount">Amount</label>
+                      <div class="money-input">
+                        <span class="money-input__prefix" aria-hidden="true">$</span>
+                        <input id="txAddAmount" type="number" min="0" step="0.01" placeholder="0.00" />
+                      </div>
+                    </div>
+                  </div>
+                  <div class="tx-add-vspace" aria-hidden="true"></div>
+                  <label for="txAddCategoryId">Category</label>
+                  <select id="txAddCategoryId"></select>
+                  <div class="tx-add-vspace tx-add-vspace--lg" aria-hidden="true"></div>
+                  <div class="tx-add-schedule-toolbar" aria-label="Repeat and schedule">
+                    <div class="tx-add-schedule-toolbar__left">
+                      <div class="tx-add-schedule-question">Does this repeat?</div>
+                      <div class="tx-add-repeat-row">
+                        <label class="tx-add-repeat-yes">
+                          <input id="txAddRepeats" type="checkbox" />
+                          <span>Yes</span>
+                        </label>
+                        <div id="txAddRecurrenceWrap" class="tx-add-recurrence-inline" hidden>
+                          <span class="tx-add-recurrence-inline__every">every</span>
+                          <select id="txAddRecurrence" class="tx-add-recurrence-select" title="How often this repeats">
+                            <option value="monthly" selected>month</option>
+                            <option value="twice_monthly">2× / month</option>
+                            <option value="weekly">week</option>
+                            <option value="semiannual">6 months</option>
+                            <option value="yearly">year</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="tx-add-schedule-toolbar__right">
+                      <div id="txAddLastTxnFieldWrap" class="tx-add-schedule-field tx-add-schedule-field--last" hidden>
+                        <label for="txAddLastTxnDate" title="Optional. Last day a scheduled occurrence may fall on. Blank = no end.">Last txn</label>
+                        <input
+                          id="txAddLastTxnDate"
+                          type="date"
+                          title="Optional. Last calendar day for an occurrence. Leave blank for no end date."
+                        />
+                        <span class="tx-add-field-hint">optional</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="tx-add-vspace tx-add-vspace--lg" aria-hidden="true"></div>
+                  <div class="row-desc-notes">
+                    <div class="field-desc-short">
+                      <label for="txAddDesc">Label</label>
+                      <input id="txAddDesc" type="text" maxlength="12" class="input-desc-short" placeholder="e.g. Rent" />
+                    </div>
+                    <div class="field-notes-flex">
+                      <label for="txAddNotes">Notes</label>
+                      <input id="txAddNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
+                    </div>
+                  </div>
+                  <div id="txAddRecurringBlock" style="display: none">
+                    <div class="tx-add-vspace tx-add-vspace--sm" aria-hidden="true"></div>
+                    <div id="txAddTwiceMonthlyFields" class="expected-second-day-row" style="display: none">
+                      <label for="txAddSecondDayOfMonth">2nd day of month</label>
+                      <input
+                        id="txAddSecondDayOfMonth"
+                        type="number"
+                        min="1"
+                        max="31"
+                        step="1"
+                        placeholder="e.g. 15"
+                        title="Second scheduled day each month; must differ from the start date’s calendar day."
+                      />
+                      <p style="margin: 6px 0 0; font-size: 12px; color: var(--muted)">
+                        Required for twice monthly: other day of the month (1–31), not the same as the start date’s day.
+                      </p>
+                    </div>
+                    <div class="tx-add-vspace tx-add-vspace--sm" aria-hidden="true"></div>
+                    <label for="txAddAccountId">Account</label>
+                    <select id="txAddAccountId"></select>
+                    <div class="tx-add-vspace tx-add-vspace--sm" aria-hidden="true"></div>
+                    <label class="reimbursable-field" for="txAddVariable">
+                      <span class="reimbursable-field__label">Variable (estimate)</span>
+                      <input id="txAddVariable" type="checkbox" title="Amount is a placeholder until you enter actuals" />
+                    </label>
+                  </div>
+                  <div class="modal-actions">
+                    <div class="row two">
+                      <button type="button" id="txAddSave">Add</button>
+                      <button type="button" id="txAddCancel" class="danger">Cancel</button>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -537,17 +640,13 @@
     </div>
 
     <div id="txEditModal" class="modal-overlay" aria-hidden="true">
-      <div class="modal" role="dialog" aria-labelledby="txEditTitle">
+      <div class="modal modal--tx-edit" role="dialog" aria-labelledby="txEditTitle">
         <h3 id="txEditTitle" class="sr-only">Edit transaction</h3>
         <div id="txEditErr" class="error"></div>
         <input type="hidden" id="txEditId" />
 
         <div class="tx-edit-top">
           <div class="row-desc-notes">
-            <div class="field-desc-short">
-              <label for="txEditDesc">Label</label>
-              <input id="txEditDesc" type="text" maxlength="12" class="input-desc-short" placeholder="e.g. Transfer" />
-            </div>
             <div class="field-notes-flex">
               <label for="txEditNotes">Notes</label>
               <input id="txEditNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
@@ -557,36 +656,34 @@
 
         <div class="tx-edit-divider" aria-hidden="true"></div>
 
-        <label for="txEditDate">Date</label>
-        <input id="txEditDate" type="date" />
-        <div style="height: 10px"></div>
-        <div class="row">
-          <div>
-            <label>Type</label>
-            <div class="kind-toggle" role="radiogroup" aria-label="Transaction type">
-              <label class="kind-opt"><input type="radio" name="txEditKind" value="expense" checked /> Expense</label>
-              <label class="kind-opt"><input type="radio" name="txEditKind" value="income" /> Income</label>
+        <div class="tx-edit-data-block">
+          <label for="txEditDate">Date</label>
+          <input id="txEditDate" type="date" />
+          <div style="height: 10px"></div>
+          <div class="row">
+            <div>
+              <label>Type</label>
+              <div class="kind-toggle" role="radiogroup" aria-label="Transaction type">
+                <label class="kind-opt"><input type="radio" name="txEditKind" value="expense" checked /> Expense</label>
+                <label class="kind-opt"><input type="radio" name="txEditKind" value="income" /> Income</label>
+              </div>
             </div>
           </div>
-        </div>
-        <div style="height: 10px"></div>
-        <div class="row">
-          <div>
-            <label for="txEditAmount">Amount</label>
-            <div class="money-input">
-              <span class="money-input__prefix" aria-hidden="true">$</span>
-              <input id="txEditAmount" type="number" min="0" step="0.01" placeholder="0.00" />
+          <div style="height: 10px"></div>
+          <div class="row">
+            <div>
+              <label for="txEditAmount">Amount</label>
+              <div class="money-input">
+                <span class="money-input__prefix" aria-hidden="true">$</span>
+                <input id="txEditAmount" type="number" min="0" step="0.01" placeholder="0.00" />
+              </div>
             </div>
           </div>
+          <div style="height: 10px"></div>
+          <label for="txEditCategoryId">Category</label>
+          <select id="txEditCategoryId"></select>
         </div>
-        <div style="height: 10px"></div>
-        <label for="txEditCategoryId">Category</label>
-        <select id="txEditCategoryId"></select>
-        <div style="height:10px;"></div>
-        <label class="reimbursable-field" for="txEditReimbursable">
-          <span class="reimbursable-field__label">Reimbursable</span>
-          <input id="txEditReimbursable" type="checkbox" />
-        </label>
+
         <div class="modal-actions">
           <div class="row two">
             <button type="button" id="txEditSave">Save</button>
@@ -601,108 +698,7 @@
     <div id="txAddModal" class="modal-overlay" aria-hidden="true">
       <div class="modal modal--tx-add" role="dialog" aria-labelledby="txAddTitle">
         <h3 id="txAddTitle">Add transaction</h3>
-        <div id="txAddErr" class="error"></div>
-        <div class="row">
-          <div>
-            <label>Type</label>
-            <div class="kind-toggle" role="radiogroup" aria-label="Transaction type">
-              <label class="kind-opt"><input type="radio" name="txAddKind" value="expense" checked /> Expense</label>
-              <label class="kind-opt"><input type="radio" name="txAddKind" value="income" /> Income</label>
-            </div>
-          </div>
-        </div>
-        <div class="tx-add-vspace" aria-hidden="true"></div>
-        <label for="txAddDate" id="txAddDateLabel">Date</label>
-        <input id="txAddDate" type="date" />
-        <div class="tx-add-vspace" aria-hidden="true"></div>
-        <div class="row">
-          <div>
-            <label for="txAddAmount">Amount</label>
-            <div class="money-input">
-              <span class="money-input__prefix" aria-hidden="true">$</span>
-              <input id="txAddAmount" type="number" min="0" step="0.01" placeholder="0.00" />
-            </div>
-          </div>
-        </div>
-        <div class="tx-add-vspace" aria-hidden="true"></div>
-        <label for="txAddCategoryId">Category</label>
-        <select id="txAddCategoryId"></select>
-        <div class="tx-add-vspace tx-add-vspace--lg" aria-hidden="true"></div>
-        <div class="tx-add-schedule-toolbar" aria-label="Repeat and schedule">
-          <div class="tx-add-schedule-toolbar__left">
-            <div class="tx-add-schedule-question">Does this repeat?</div>
-            <div class="tx-add-repeat-row">
-              <label class="tx-add-repeat-yes">
-                <input id="txAddRepeats" type="checkbox" />
-                <span>Yes</span>
-              </label>
-              <div id="txAddRecurrenceWrap" class="tx-add-recurrence-inline" hidden>
-                <span class="tx-add-recurrence-inline__every">every</span>
-                <select id="txAddRecurrence" class="tx-add-recurrence-select" title="How often this repeats">
-                  <option value="monthly" selected>month</option>
-                  <option value="twice_monthly">2× / month</option>
-                  <option value="weekly">week</option>
-                  <option value="semiannual">6 months</option>
-                  <option value="yearly">year</option>
-                </select>
-              </div>
-            </div>
-          </div>
-          <div class="tx-add-schedule-toolbar__right">
-            <div id="txAddLastTxnFieldWrap" class="tx-add-schedule-field tx-add-schedule-field--last" hidden>
-              <label for="txAddLastTxnDate" title="Optional. Last day a scheduled occurrence may fall on. Blank = no end.">Last txn</label>
-              <input
-                id="txAddLastTxnDate"
-                type="date"
-                title="Optional. Last calendar day for an occurrence. Leave blank for no end date."
-              />
-              <span class="tx-add-field-hint">optional</span>
-            </div>
-          </div>
-        </div>
-        <div class="tx-add-vspace tx-add-vspace--lg" aria-hidden="true"></div>
-        <div class="row-desc-notes">
-          <div class="field-desc-short">
-            <label for="txAddDesc">Label</label>
-            <input id="txAddDesc" type="text" maxlength="12" class="input-desc-short" placeholder="e.g. Rent" />
-          </div>
-          <div class="field-notes-flex">
-            <label for="txAddNotes">Notes</label>
-            <input id="txAddNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
-          </div>
-        </div>
-        <div id="txAddRecurringBlock" style="display: none">
-          <div class="tx-add-vspace tx-add-vspace--sm" aria-hidden="true"></div>
-          <div id="txAddTwiceMonthlyFields" class="expected-second-day-row" style="display: none">
-            <label for="txAddSecondDayOfMonth">2nd day of month</label>
-            <input
-              id="txAddSecondDayOfMonth"
-              type="number"
-              min="1"
-              max="31"
-              step="1"
-              placeholder="e.g. 15"
-              title="Second scheduled day each month; must differ from the start date’s calendar day."
-            />
-            <p style="margin: 6px 0 0; font-size: 12px; color: var(--muted)">
-              Required for twice monthly: other day of the month (1–31), not the same as the start date’s day.
-            </p>
-          </div>
-          <div class="tx-add-vspace tx-add-vspace--sm" aria-hidden="true"></div>
-          <label for="txAddAccountId">Account</label>
-          <select id="txAddAccountId"></select>
-          <div class="tx-add-vspace tx-add-vspace--sm" aria-hidden="true"></div>
-          <label class="reimbursable-field" for="txAddVariable">
-            <span class="reimbursable-field__label">Variable (estimate)</span>
-            <input id="txAddVariable" type="checkbox" title="Amount is a placeholder until you enter actuals" />
-          </label>
-        </div>
-        <div class="modal-actions">
-          <div class="row two">
-            <button type="button" id="txAddSave">Add</button>
-            <button type="button" id="txAddCancel" class="danger">Cancel</button>
-          </div>
-        </div>
+        <div id="txAddModalFormMount"></div>
       </div>
     </div>
 
@@ -715,10 +711,6 @@
 
           <div class="tx-edit-top">
             <div class="row-desc-notes">
-              <div class="field-desc-short">
-                <label for="instanceDesc">Label</label>
-                <input id="instanceDesc" type="text" maxlength="12" class="input-desc-short" placeholder="e.g. Bill" />
-              </div>
               <div class="field-notes-flex">
                 <label for="instanceNotes">Notes (series)</label>
                 <input id="instanceNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
@@ -792,7 +784,7 @@
               <select id="instanceAccountId"></select>
             </div>
             <div>
-              <label for="instanceCategoryId">Category (optional)</label>
+              <label for="instanceCategoryId">Category</label>
               <select id="instanceCategoryId"></select>
             </div>
           </div>
@@ -866,6 +858,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="./app.js?v=110"></script>
+    <script src="./app.js?v=115"></script>
   </body>
 </html>

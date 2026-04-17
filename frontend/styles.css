@@ -1564,33 +1564,43 @@ textarea::placeholder{
   border: 1px solid var(--border);
   border-radius: 9999px;
 }
-.modal--tx-add #txAddErr{
+.modal--tx-add #txAddModalFormMount{
+  min-height: 1px;
+}
+
+.sidebar-add-tx-form{
+  max-width: 100%;
+}
+.tx-add-form{
+  max-width: 100%;
+}
+.tx-add-form #txAddErr{
   margin-top: 10px;
   margin-bottom: 4px;
 }
-.modal--tx-add .modal-actions{
+.tx-add-form .modal-actions{
   margin-top: 20px;
   padding-top: 16px;
   border-top: 1px solid rgba(0,0,0,0.10);
 }
 
-/* Add-transaction modal: section rhythm + lighter field labels */
-.modal--tx-add .tx-add-vspace{
+/* Add-transaction form (sidebar default; same nodes move into .modal--tx-add from calendar) */
+.tx-add-form .tx-add-vspace{
   height: 16px;
   flex-shrink: 0;
 }
-.modal--tx-add .tx-add-vspace--lg{
+.tx-add-form .tx-add-vspace--lg{
   height: 22px;
 }
-.modal--tx-add .tx-add-vspace--sm{
+.tx-add-form .tx-add-vspace--sm{
   height: 14px;
 }
-.modal--tx-add > .row > div > label:first-child,
-.modal--tx-add > label[for="txAddDate"],
-.modal--tx-add > label[for="txAddCategoryId"],
-.modal--tx-add #txAddRecurringBlock > label:not(.reimbursable-field),
-.modal--tx-add #txAddRecurringBlock .expected-second-day-row > label,
-.modal--tx-add .row-desc-notes label{
+.tx-add-form > .row > div > label:first-child,
+.tx-add-form > label[for="txAddDate"],
+.tx-add-form > label[for="txAddCategoryId"],
+.tx-add-form #txAddRecurringBlock > label:not(.reimbursable-field),
+.tx-add-form #txAddRecurringBlock .expected-second-day-row > label,
+.tx-add-form .row-desc-notes label{
   display: block;
   margin-bottom: 5px;
   font-size: 11px;
@@ -1600,10 +1610,10 @@ textarea::placeholder{
   color: var(--muted);
   opacity: 0.88;
 }
-.modal--tx-add .row-desc-notes label{
+.tx-add-form .row-desc-notes label{
   margin-bottom: 5px;
 }
-.modal--tx-add .reimbursable-field .reimbursable-field__label{
+.tx-add-form .reimbursable-field .reimbursable-field__label{
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -1611,7 +1621,7 @@ textarea::placeholder{
   color: var(--muted);
   opacity: 0.88;
 }
-.modal--tx-add .tx-add-schedule-question{
+.tx-add-form .tx-add-schedule-question{
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -1620,7 +1630,7 @@ textarea::placeholder{
   opacity: 0.88;
   margin-bottom: 10px;
 }
-.modal--tx-add .tx-add-schedule-field label{
+.tx-add-form .tx-add-schedule-field label{
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -1628,7 +1638,7 @@ textarea::placeholder{
   color: var(--muted);
   opacity: 0.88;
 }
-.modal--tx-add .tx-add-repeat-yes{
+.tx-add-form .tx-add-repeat-yes{
   font-size: 14px;
   font-weight: 500;
   letter-spacing: normal;
@@ -1636,16 +1646,16 @@ textarea::placeholder{
   color: var(--text);
   opacity: 1;
 }
-.modal--tx-add input:not([type="radio"]):not([type="checkbox"]),
-.modal--tx-add select{
+.tx-add-form input:not([type="radio"]):not([type="checkbox"]),
+.tx-add-form select{
   color: var(--text);
   font-weight: 500;
   font-size: 14px;
 }
-.modal--tx-add .money-input input{
+.tx-add-form .money-input input{
   font-weight: 500;
 }
-.modal--tx-add #txAddDate{
+.tx-add-form #txAddDate{
   display: block;
   width: 100%;
   max-width: 360px;
@@ -1658,7 +1668,7 @@ textarea::placeholder{
   background: transparent;
   color: var(--text);
 }
-.modal--tx-add #txAddDate:focus{
+.tx-add-form #txAddDate:focus{
   outline: none;
   border-bottom-color: var(--accent);
 }
@@ -1763,16 +1773,20 @@ textarea::placeholder{
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   font-size: 14px;
   color: var(--muted);
+  white-space: nowrap;
 }
 .tx-add-recurrence-inline__every{
   color: var(--muted);
   font-size: 14px;
+  flex-shrink: 0;
 }
 .tx-add-recurrence-select{
-  min-width: 7.5rem;
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto;
   max-width: 11rem;
   font-size: 14px;
   padding: 6px 8px;
@@ -1836,6 +1850,20 @@ textarea::placeholder{
   margin: 0 -16px 14px;
   border-bottom: 1px solid rgba(0,0,0,0.10);
 }
+
+/* Edit transaction: cream panel for date / type / amount / category (edge-to-edge in modal) */
+.modal--tx-edit .tx-edit-divider{
+  margin-bottom: 0;
+}
+.modal--tx-edit .tx-edit-data-block{
+  box-sizing: border-box;
+  margin: 0 -16px 0;
+  padding: 14px 16px 18px;
+  background: #f9f3ea;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+}
+
 .modal--expected-edit{
   max-width: 520px;
   max-height: min(92vh, 720px);
