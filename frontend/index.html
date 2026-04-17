@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=103" />
+    <link rel="stylesheet" href="./styles.css?v=105" />
   </head>
   <body>
     <div class="container">
@@ -75,6 +75,19 @@
               </div>
             </div>
             <div style="height:10px;"></div>
+            <div class="row">
+              <div>
+                <label for="txAmount">Amount (number)</label>
+                <div class="money-input">
+                  <span class="money-input__prefix" aria-hidden="true">$</span>
+                  <input id="txAmount" type="number" min="0" step="0.01" placeholder="0.00" />
+                </div>
+              </div>
+            </div>
+            <div style="height:10px;"></div>
+            <label for="txCategoryId">Category</label>
+            <select id="txCategoryId"></select>
+            <div style="height:10px;"></div>
             <div class="row-desc-notes">
               <div class="field-desc-short">
                 <label for="txDesc">Label</label>
@@ -83,20 +96,6 @@
               <div class="field-notes-flex">
                 <label for="txNotes">Notes</label>
                 <input id="txNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
-              </div>
-            </div>
-            <div style="height:10px;"></div>
-            <div class="row two">
-              <div>
-                <label for="txAmount">Amount (number)</label>
-                <div class="money-input">
-                  <span class="money-input__prefix" aria-hidden="true">$</span>
-                  <input id="txAmount" type="number" min="0" step="0.01" placeholder="0.00" />
-                </div>
-              </div>
-              <div>
-                <label for="txCategoryId">Category</label>
-                <select id="txCategoryId"></select>
               </div>
             </div>
             <div style="height:10px;"></div>
@@ -760,7 +759,7 @@
             </div>
           </div>
         </div>
-        <div style="height: 10px"></div>
+        <div class="tx-add-vspace" aria-hidden="true"></div>
         <div class="row">
           <div>
             <label for="txAddAmount">Amount</label>
@@ -770,7 +769,10 @@
             </div>
           </div>
         </div>
-        <div style="height: 14px"></div>
+        <div class="tx-add-vspace" aria-hidden="true"></div>
+        <label for="txAddCategoryId">Category</label>
+        <select id="txAddCategoryId"></select>
+        <div class="tx-add-vspace tx-add-vspace--lg" aria-hidden="true"></div>
         <div class="tx-add-schedule-toolbar" aria-label="Repeat and schedule">
           <div class="tx-add-schedule-toolbar__left">
             <div class="tx-add-schedule-question">Does this repeat?</div>
@@ -807,7 +809,7 @@
             </div>
           </div>
         </div>
-        <div style="height: 14px"></div>
+        <div class="tx-add-vspace tx-add-vspace--lg" aria-hidden="true"></div>
         <div class="row-desc-notes">
           <div class="field-desc-short">
             <label for="txAddDesc">Label</label>
@@ -818,11 +820,8 @@
             <input id="txAddNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
           </div>
         </div>
-        <div style="height: 10px"></div>
-        <label for="txAddCategoryId">Category</label>
-        <select id="txAddCategoryId"></select>
         <div id="txAddRecurringBlock" style="display: none">
-          <div style="height: 10px"></div>
+          <div class="tx-add-vspace tx-add-vspace--sm" aria-hidden="true"></div>
           <div id="txAddTwiceMonthlyFields" class="expected-second-day-row" style="display: none">
             <label for="txAddSecondDayOfMonth">2nd day of month</label>
             <input
@@ -838,10 +837,10 @@
               Required for twice monthly: other day of the month (1–31), not the same as the start date’s day.
             </p>
           </div>
-          <div style="height: 10px"></div>
+          <div class="tx-add-vspace tx-add-vspace--sm" aria-hidden="true"></div>
           <label for="txAddAccountId">Account</label>
           <select id="txAddAccountId"></select>
-          <div style="height: 10px"></div>
+          <div class="tx-add-vspace tx-add-vspace--sm" aria-hidden="true"></div>
           <label class="reimbursable-field" for="txAddVariable">
             <span class="reimbursable-field__label">Variable (estimate)</span>
             <input id="txAddVariable" type="checkbox" title="Amount is a placeholder until you enter actuals" />
@@ -1016,6 +1015,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="./app.js?v=103"></script>
+    <script src="./app.js?v=104"></script>
   </body>
 </html>

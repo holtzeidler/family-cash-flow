@@ -747,29 +747,98 @@ textarea::placeholder{
   outline: none;
 }
 
+/* Segmented toggle: Expense | Income (inside .kind-toggle only) */
 .kind-toggle{
-  display:flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  padding: 8px 10px;
+  display: flex;
+  flex-wrap: nowrap;
+  width: 100%;
+  max-width: 360px;
+  padding: 0;
+  gap: 0;
   border-radius: 10px;
   border: 1px solid var(--border);
-  background: rgba(0,0,0,0.02);
+  background: rgba(0, 0, 0, 0.035);
+  overflow: hidden;
 }
-.kind-opt{
-  display:inline-flex;
-  align-items:center;
-  gap:8px;
-  margin:0;
-  color: var(--text);
+.kind-toggle .kind-opt{
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  margin: 0;
+  padding: 10px 12px;
+  min-height: 40px;
   font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
   cursor: pointer;
   user-select: none;
+  background: transparent;
+  transition: background 0.15s ease, color 0.15s ease;
 }
-.kind-opt input[type="radio"]{
-  width: auto;
-  padding: 0;
+.kind-toggle .kind-opt + .kind-opt{
+  border-left: 1px solid var(--border);
+}
+.kind-toggle .kind-opt input[type="radio"]{
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.kind-toggle .kind-opt:hover{
+  background: rgba(0, 0, 0, 0.045);
+}
+.kind-toggle .kind-opt:has(input[value="expense"]:checked):hover{
+  background: rgba(167, 55, 68, 0.18);
+}
+.kind-toggle .kind-opt:has(input[value="income"]:checked):hover{
+  background: rgba(0, 90, 74, 0.16);
+}
+.kind-toggle .kind-opt:has(input[value="expense"]:checked){
+  background: rgba(167, 55, 68, 0.14);
+  color: var(--danger);
+  font-weight: 600;
+}
+.kind-toggle .kind-opt:has(input[value="income"]:checked){
+  background: rgba(0, 90, 74, 0.12);
+  color: var(--ok);
+  font-weight: 600;
+}
+.kind-toggle .kind-opt:has(input:focus-visible){
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  z-index: 1;
+}
+
+/* kind-opt used outside .kind-toggle (category report mode radios) */
+.category-report-mode .kind-opt{
+  position: static;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  min-height: unset;
+  font-weight: 400;
+  font-size: 13px;
+  color: var(--text);
+  justify-content: flex-start;
+}
+.category-report-mode .kind-opt + .kind-opt{
+  border-left: none;
+}
+.category-report-mode .kind-opt input[type="radio"]{
+  position: static;
+  inset: auto;
+  width: auto;
+  height: auto;
+  opacity: 1;
+  cursor: pointer;
   accent-color: var(--accent);
 }
 
@@ -1448,11 +1517,83 @@ textarea::placeholder{
 }
 .modal--tx-add #txAddErr{
   margin-top: 10px;
+  margin-bottom: 4px;
 }
 .modal--tx-add .modal-actions{
-  margin-top: 14px;
-  padding-top: 14px;
+  margin-top: 20px;
+  padding-top: 16px;
   border-top: 1px solid rgba(0,0,0,0.10);
+}
+
+/* Add-transaction modal: section rhythm + lighter field labels */
+.modal--tx-add .tx-add-vspace{
+  height: 16px;
+  flex-shrink: 0;
+}
+.modal--tx-add .tx-add-vspace--lg{
+  height: 22px;
+}
+.modal--tx-add .tx-add-vspace--sm{
+  height: 14px;
+}
+.modal--tx-add > .row > div > label:first-child,
+.modal--tx-add > label[for="txAddCategoryId"],
+.modal--tx-add #txAddRecurringBlock > label:not(.reimbursable-field),
+.modal--tx-add #txAddRecurringBlock .expected-second-day-row > label,
+.modal--tx-add .row-desc-notes label{
+  display: block;
+  margin-bottom: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  opacity: 0.88;
+}
+.modal--tx-add .row-desc-notes label{
+  margin-bottom: 5px;
+}
+.modal--tx-add .reimbursable-field .reimbursable-field__label{
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  opacity: 0.88;
+}
+.modal--tx-add .tx-add-schedule-question{
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  opacity: 0.88;
+  margin-bottom: 10px;
+}
+.modal--tx-add .tx-add-schedule-field label{
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  opacity: 0.88;
+}
+.modal--tx-add .tx-add-repeat-yes{
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--text);
+  opacity: 1;
+}
+.modal--tx-add input:not([type="radio"]):not([type="checkbox"]),
+.modal--tx-add select{
+  color: var(--text);
+  font-weight: 500;
+  font-size: 14px;
+}
+.modal--tx-add .money-input input{
+  font-weight: 500;
 }
 
 /* Add-transaction: repeat row + dates (wide toolbar) */
@@ -1461,7 +1602,7 @@ textarea::placeholder{
   grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
   gap: 16px 28px;
   align-items: start;
-  padding: 4px 0 16px;
+  padding: 8px 0 18px;
   border-bottom: 1px solid rgba(0,0,0,0.10);
 }
 @media (max-width: 640px){

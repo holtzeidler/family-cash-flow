@@ -1908,7 +1908,7 @@ def category_totals_report(
 
     agg: dict[Optional[int], dict[str, object]] = defaultdict(
         lambda: {
-            "name": "Uncategorized",
+            "name": "Select Category",
             "income_actual": Decimal("0"),
             "expense_actual": Decimal("0"),
             "income_estimated": Decimal("0"),
@@ -1946,7 +1946,7 @@ def category_totals_report(
             )
         ).all()
         for tx, category_name in tx_rows:
-            nm = category_name or "Uncategorized"
+            nm = category_name or "Select Category"
             add_actual_row(tx.category_id, nm, tx.kind, tx.amount)
 
     # --- Estimated expected occurrences (only in actual_plus_estimated, future slice) ---
@@ -1980,7 +1980,7 @@ def category_totals_report(
                 range_end_exclusive=range_end_exclusive,
             )
             for it in est_items:
-                nm = it.category or "Uncategorized"
+                nm = it.category or "Select Category"
                 add_estimated_row(it.category_id, nm, it.kind, it.amount)
 
     lines: list[CategoryTotalsLineOut] = []

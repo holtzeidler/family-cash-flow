@@ -806,7 +806,7 @@ function renderCategoryTotalsReport(data) {
       const estCells = showEst
         ? `<td class="num cat-report-est">${fmtMoney(nMoney(ln.income_estimated))}</td><td class="num cat-report-est">${fmtMoney(nMoney(ln.expense_estimated))}</td>`
         : "";
-      const name = String(ln.category_name || "Uncategorized");
+      const name = String(ln.category_name || "Select Category");
       return `<tr><td>${escapeHtml(name)}</td><td class="num">${fmtMoney(nMoney(ln.income_actual))}</td><td class="num">${fmtMoney(nMoney(ln.expense_actual))}</td>${estCells}</tr>`;
     })
     .join("");
@@ -1098,7 +1098,7 @@ function renderTxEditCategoryOptions() {
   txEditCategoryId.innerHTML = "";
   const emptyOpt = document.createElement("option");
   emptyOpt.value = "";
-  emptyOpt.textContent = "Uncategorized";
+  emptyOpt.textContent = "Select Category";
   txEditCategoryId.appendChild(emptyOpt);
   for (const c of state.categories || []) {
     const opt = document.createElement("option");
@@ -1718,7 +1718,7 @@ function renderCategoryOptions(selectEl, categories) {
   selectEl.innerHTML = "";
   const emptyOpt = document.createElement("option");
   emptyOpt.value = "";
-  emptyOpt.textContent = "Uncategorized";
+  emptyOpt.textContent = "Select Category";
   selectEl.appendChild(emptyOpt);
 
   for (const c of categories) {
