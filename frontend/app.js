@@ -2324,7 +2324,7 @@ function nextExpectedOccurrenceIso(tx, fromIso) {
   const start = parseIsoDateLocal(tx.start_date);
   if (!start) return null;
   const from = parseIsoDateLocal(fromIso) || start;
-  const end = parseIsoDateLocal(tx.end_date || tx.last_txn_date || "");
+  const end = parseIsoDateLocal(tx.end_date || "");
 
   const startDom = start.getDate();
   const startMonth = start.getMonth(); // 0-11
@@ -2427,6 +2427,12 @@ function renderRecurringFilteredList() {
     .map((tx) => ({ tx, nextIso: nextExpectedOccurrenceIso(tx, todayIso) }))
     .filter((row) => !!row.nextIso);
 
+  filtered.sort((a, b) => {
+    const d = String(a.nextIso).localeCompare(String(b.nextIso));
+    if (d !== 0) return d;
+    return String(a.tx.description || "").localeCompare(String(b.tx.description || ""));
+  });
+
   if (filtered.length === 0) {
     const empty = document.createElement("div");
     empty.className = "pill";
@@ -2440,6 +2446,7 @@ function renderRecurringFilteredList() {
     el.className = "item expected-item--dense";
     if (tx.variable) el.classList.add("expected-item--variable");
     el.style.cursor = "pointer";
+    el.title = `Recurring schedule #${tx.id} · next ${nextIso}`;
 
     const amtClass = tx.kind === "income" ? "income" : "expense";
     const kindSign = tx.kind === "income" ? "+" : "-";
