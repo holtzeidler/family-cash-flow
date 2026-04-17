@@ -142,6 +142,7 @@ const lowBalanceResult = document.getElementById("lowBalanceResult");
 const lowBalanceErr = document.getElementById("lowBalanceErr");
 const sidebarLowBalanceBanner = document.getElementById("sidebarLowBalanceBanner");
 const sidebarHighBalanceBanner = document.getElementById("sidebarHighBalanceBanner");
+const sidebarBalanceThresholdHint = document.getElementById("sidebarBalanceThresholdHint");
 const BALANCE_THRESHOLD_MIN_KEY = "familyCashFlow_balanceThresholdMin";
 const BALANCE_THRESHOLD_MAX_KEY = "familyCashFlow_balanceThresholdMax";
 /** @deprecated migrate to BALANCE_THRESHOLD_MIN_KEY */
@@ -149,30 +150,47 @@ const LOW_BALANCE_THRESHOLD_KEY = "familyCashFlow_lowBalanceThreshold";
 let lowBalanceDebounceTimer = null;
 let lowBalanceLastQuery = { familyId: null, min: null, max: null, mode: null };
 
-function setSidebarLowBalanceBanner(text, danger = false) {
+/** @param {"off"|"danger"|"muted"} style */
+function setSidebarLowBalanceBanner(text, style = "off") {
   if (!sidebarLowBalanceBanner) return;
-  if (!text) {
+  if (!text || style === "off") {
     sidebarLowBalanceBanner.style.display = "none";
     sidebarLowBalanceBanner.textContent = "";
-    sidebarLowBalanceBanner.classList.toggle("is-danger", false);
+    sidebarLowBalanceBanner.classList.remove("is-danger", "is-muted");
     return;
   }
   sidebarLowBalanceBanner.textContent = text;
   sidebarLowBalanceBanner.style.display = "flex";
-  sidebarLowBalanceBanner.classList.toggle("is-danger", !!danger);
+  sidebarLowBalanceBanner.classList.remove("is-danger", "is-muted");
+  sidebarLowBalanceBanner.classList.toggle("is-danger", style === "danger");
+  sidebarLowBalanceBanner.classList.toggle("is-muted", style === "muted");
 }
 
-function setSidebarHighBalanceBanner(text) {
+/** @param {"off"|"high"|"muted"} style */
+function setSidebarHighBalanceBanner(text, style = "off") {
   if (!sidebarHighBalanceBanner) return;
-  if (!text) {
+  if (!text || style === "off") {
     sidebarHighBalanceBanner.style.display = "none";
     sidebarHighBalanceBanner.textContent = "";
-    sidebarHighBalanceBanner.classList.toggle("is-high", false);
+    sidebarHighBalanceBanner.classList.remove("is-high", "is-muted");
     return;
   }
   sidebarHighBalanceBanner.textContent = text;
   sidebarHighBalanceBanner.style.display = "flex";
-  sidebarHighBalanceBanner.classList.toggle("is-high", true);
+  sidebarHighBalanceBanner.classList.remove("is-high", "is-muted");
+  sidebarHighBalanceBanner.classList.toggle("is-high", style === "high");
+  sidebarHighBalanceBanner.classList.toggle("is-muted", style === "muted");
+}
+
+function setSidebarBalanceThresholdHint(text) {
+  if (!sidebarBalanceThresholdHint) return;
+  if (!text) {
+    sidebarBalanceThresholdHint.textContent = "";
+    sidebarBalanceThresholdHint.hidden = true;
+    return;
+  }
+  sidebarBalanceThresholdHint.textContent = text;
+  sidebarBalanceThresholdHint.hidden = false;
 }
 
 function getRadioValue(name, fallback = "") {
@@ -406,8 +424,9 @@ async function refreshLowBalanceAlert() {
   try {
     show(lowBalanceErr, "");
     if (!lowBalanceResult) return;
-    setSidebarLowBalanceBanner("");
-    setSidebarHighBalanceBanner("");
+    setSidebarLowBalanceBanner("", "off");
+    setSidebarHighBalanceBanner("", "off");
+    setSidebarBalanceThresholdHint("");
     if (!state.activeFamilyId) {
       setLowBalanceResult("", true);
       return;
@@ -426,6 +445,9 @@ async function refreshLowBalanceAlert() {
         true
       );
       lowBalanceLastQuery = { familyId: null, min: null, max: null, mode: null };
+      setSidebarBalanceThresholdHint(
+        "Tip: open Settings → Balance thresholds and enter a minimum and/or maximum. Alerts will show here on Calendar view."
+      );
       return;
     }
 
@@ -456,14 +478,19 @@ async function refreshLowBalanceAlert() {
     }
 
     let highHit = null;
+    let highFetchErr = null;
     if (maxOk) {
-      const dataHi = await api(
-        `/api/families/${state.activeFamilyId}/high-balance-first?ceiling=${encodeURIComponent(String(maxVal))}&start=${encodeURIComponent(
-          startIso
-        )}&days=${days}&mode=${encodeURIComponent(mode)}`,
-        "GET"
-      );
-      highHit = dataHi?.hit_date ? { date: dataHi.hit_date, balance: toNum(dataHi.hit_balance) } : null;
+      try {
+        const dataHi = await api(
+          `/api/families/${state.activeFamilyId}/high-balance-first?ceiling=${encodeURIComponent(String(maxVal))}&start=${encodeURIComponent(
+            startIso
+          )}&days=${days}&mode=${encodeURIComponent(mode)}`,
+          "GET"
+        );
+        highHit = dataHi?.hit_date ? { date: dataHi.hit_date, balance: toNum(dataHi.hit_balance) } : null;
+      } catch (err) {
+        highFetchErr = err;
+      }
     }
 
     const parts = [];
@@ -472,33 +499,44 @@ async function refreshLowBalanceAlert() {
         parts.push(
           `<div class="balance-threshold-result-block"><div class="k">First date ≤ $${fmtMoneyThreshold(balanceThresholdMin?.value || "", minVal)}</div><div class="v">None in the next ${days} days.</div></div>`
         );
+        setSidebarLowBalanceBanner(`Low (≤ $${fmtMoney(minVal)}): no crossing in the next ${days} days.`, "muted");
       } else {
         parts.push(
           `<div class="balance-threshold-result-block"><div class="k">First date ≤ $${fmtMoneyThreshold(balanceThresholdMin?.value || "", minVal)}</div><div class="v danger">${fmtDateMDY(lowHit.date)} — $${fmtMoney(lowHit.balance)}</div></div>`
         );
-        setSidebarLowBalanceBanner(`Next low balance: ${fmtDateMDY(lowHit.date)} — $${fmtMoney(lowHit.balance)}`, true);
+        setSidebarLowBalanceBanner(`Next low balance: ${fmtDateMDY(lowHit.date)} — $${fmtMoney(lowHit.balance)}`, "danger");
       }
     }
     if (maxOk) {
-      if (!highHit) {
+      if (highFetchErr) {
+        const msg = String(highFetchErr.message || "Request failed")
+          .slice(0, 160)
+          .replace(/</g, "");
+        parts.push(
+          `<div class="balance-threshold-result-block"><div class="k">Maximum threshold</div><div class="v danger">Could not check: ${msg}</div></div>`
+        );
+        setSidebarHighBalanceBanner("Maximum: server could not check (deploy latest API for high-balance).", "muted");
+      } else if (!highHit) {
         parts.push(
           `<div class="balance-threshold-result-block"><div class="k">First date ≥ $${fmtMoneyThreshold(balanceThresholdMax?.value || "", maxVal)}</div><div class="v">None in the next ${days} days.</div></div>`
         );
+        setSidebarHighBalanceBanner(`High (≥ $${fmtMoney(maxVal)}): no crossing in the next ${days} days.`, "muted");
       } else {
         parts.push(
           `<div class="balance-threshold-result-block"><div class="k">First date ≥ $${fmtMoneyThreshold(balanceThresholdMax?.value || "", maxVal)}</div><div class="v">${fmtDateMDY(highHit.date)} — $${fmtMoney(highHit.balance)}</div></div>`
         );
-        setSidebarHighBalanceBanner(`Next high balance: ${fmtDateMDY(highHit.date)} — $${fmtMoney(highHit.balance)}`);
+        setSidebarHighBalanceBanner(`Next high balance: ${fmtDateMDY(highHit.date)} — $${fmtMoney(highHit.balance)}`, "high");
       }
     }
 
-    const hasAlert = (minOk && lowHit) || (maxOk && highHit);
+    const hasAlert = (minOk && lowHit) || (maxOk && highHit && !highFetchErr);
     setLowBalanceResult(parts.join(""), !hasAlert);
   } catch (e) {
     show(lowBalanceErr, e.message || "Failed to compute balance threshold alerts");
     setLowBalanceResult("", true);
-    setSidebarLowBalanceBanner("");
-    setSidebarHighBalanceBanner("");
+    setSidebarLowBalanceBanner("", "off");
+    setSidebarHighBalanceBanner("", "off");
+    setSidebarBalanceThresholdHint("");
     lowBalanceLastQuery = { familyId: null, min: null, max: null, mode: null };
   }
 }
@@ -754,6 +792,10 @@ function setActiveTopView(view) {
   if (v === "reports") {
     populateCatReportYearSelect();
     ensureCatReportDateDefaults();
+  }
+  if (v === "calendar") {
+    lowBalanceLastQuery = { familyId: null, min: null, max: null, mode: null };
+    void refreshLowBalanceAlert();
   }
   try {
     localStorage.setItem(ACTIVE_VIEW_KEY, v);
