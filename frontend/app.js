@@ -58,77 +58,11 @@ function show(el, msg) {
   el.style.display = msg ? "block" : "none";
 }
 
-// Calendar day click: choose one-time vs recurring
-const addTxChoiceModal = document.getElementById("addTxChoiceModal");
-const addTxChoiceDateText = document.getElementById("addTxChoiceDateText");
-const addChoiceOneTimeBtn = document.getElementById("addChoiceOneTimeBtn");
-const addChoiceRecurringBtn = document.getElementById("addChoiceRecurringBtn");
-const addChoiceCancelBtn = document.getElementById("addChoiceCancelBtn");
-let pendingAddChoiceIso = "";
-
-function openAddChoiceModal(iso) {
-  if (!addTxChoiceModal) return;
-  pendingAddChoiceIso = normalizeIsoDate(iso) || String(iso || "");
-  if (addTxChoiceDateText) addTxChoiceDateText.textContent = pendingAddChoiceIso ? fmtDateMDY(pendingAddChoiceIso) : "—";
-  addTxChoiceModal.classList.add("modal-overlay--open");
-  addTxChoiceModal.setAttribute("aria-hidden", "false");
-  requestAnimationFrame(() => (addChoiceOneTimeBtn ? addChoiceOneTimeBtn.focus() : null));
-}
-
-function closeAddChoiceModal() {
-  if (!addTxChoiceModal) return;
-  addTxChoiceModal.classList.remove("modal-overlay--open");
-  addTxChoiceModal.setAttribute("aria-hidden", "true");
-  pendingAddChoiceIso = "";
-}
-
 function expandSidebarSection(key) {
   const card = document.querySelector(`.sidebar-section[data-sidebar-key="${key}"]`);
   if (!card) return null;
   applySidebarSectionCollapsed(card, false);
   return card;
-}
-
-function updateExpectedAddTwiceMonthlyVisibility() {
-  if (!expectedAddTwiceMonthlyFields || !expectedAddRecurrence) return;
-  const on = expectedAddRecurrence.value === "twice_monthly";
-  expectedAddTwiceMonthlyFields.style.display = on ? "block" : "none";
-}
-
-function openExpectedAddModal(startIso) {
-  if (!expectedAddModal) return;
-  show(expectedAddErr, "");
-  if (expectedAddStartDate) expectedAddStartDate.value = normalizeIsoDate(startIso) || String(startIso || "");
-  if (expectedAddRecurrence) expectedAddRecurrence.value = "monthly";
-  if (expectedAddLastTxnDate) expectedAddLastTxnDate.value = "";
-  if (expectedAddSecondDayOfMonth) expectedAddSecondDayOfMonth.value = "";
-  updateExpectedAddTwiceMonthlyVisibility();
-  {
-    const radio = document.querySelector('input[type="radio"][name="expectedAddKind"][value="expense"]');
-    if (radio) radio.checked = true;
-  }
-  if (expectedAddAmount) expectedAddAmount.value = "";
-  if (expectedAddDesc) expectedAddDesc.value = "";
-  if (expectedAddNotes) expectedAddNotes.value = "";
-  if (expectedAddVariable) expectedAddVariable.checked = false;
-  if (expectedAddAccountId) {
-    renderAccountSelect(expectedAddAccountId, state.accounts || []);
-    if (state.accounts && state.accounts.length > 0) expectedAddAccountId.value = String(state.accounts[0].id);
-  }
-  if (expectedAddCategoryId) {
-    renderCategoryOptions(expectedAddCategoryId, state.categories || []);
-    expectedAddCategoryId.value = "";
-  }
-
-  expectedAddModal.classList.add("modal-overlay--open");
-  expectedAddModal.setAttribute("aria-hidden", "false");
-  requestAnimationFrame(() => (expectedAddAmount ? expectedAddAmount.focus() : expectedAddDesc ? expectedAddDesc.focus() : null));
-}
-
-function closeExpectedAddModal() {
-  if (!expectedAddModal) return;
-  expectedAddModal.classList.remove("modal-overlay--open");
-  expectedAddModal.setAttribute("aria-hidden", "true");
 }
 
 function fmtMoney(n) {
@@ -263,23 +197,6 @@ const expectedCategoryId = document.getElementById("expectedCategoryId");
 const expectedVariable = document.getElementById("expectedVariable");
 const addExpectedTxBtn = document.getElementById("addExpectedTxBtn");
 const variableTodoList = document.getElementById("variableTodoList");
-
-// New recurring transaction modal (from calendar day click)
-const expectedAddModal = document.getElementById("expectedAddModal");
-const expectedAddErr = document.getElementById("expectedAddErr");
-const expectedAddStartDate = document.getElementById("expectedAddStartDate");
-const expectedAddRecurrence = document.getElementById("expectedAddRecurrence");
-const expectedAddLastTxnDate = document.getElementById("expectedAddLastTxnDate");
-const expectedAddTwiceMonthlyFields = document.getElementById("expectedAddTwiceMonthlyFields");
-const expectedAddSecondDayOfMonth = document.getElementById("expectedAddSecondDayOfMonth");
-const expectedAddAmount = document.getElementById("expectedAddAmount");
-const expectedAddDesc = document.getElementById("expectedAddDesc");
-const expectedAddNotes = document.getElementById("expectedAddNotes");
-const expectedAddAccountId = document.getElementById("expectedAddAccountId");
-const expectedAddCategoryId = document.getElementById("expectedAddCategoryId");
-const expectedAddVariable = document.getElementById("expectedAddVariable");
-const expectedAddSaveBtn = document.getElementById("expectedAddSaveBtn");
-const expectedAddCancelBtn = document.getElementById("expectedAddCancelBtn");
 
 // Expected transaction edit modal
 const expectedEditModal = document.getElementById("expectedEditModal");
@@ -426,17 +343,48 @@ const reconcileSaveBtn = document.getElementById("reconcileSaveBtn");
 const reconcileCancelBtn = document.getElementById("reconcileCancelBtn");
 let reconcileActiveDate = "";
 
-// One-time transaction add modal
+// Add transaction modal (one-time or recurring from calendar)
 const txAddModal = document.getElementById("txAddModal");
 const txAddErr = document.getElementById("txAddErr");
 const txAddDate = document.getElementById("txAddDate");
+const txAddDateLabel = document.getElementById("txAddDateLabel");
 const txAddAmount = document.getElementById("txAddAmount");
 const txAddDesc = document.getElementById("txAddDesc");
 const txAddNotes = document.getElementById("txAddNotes");
 const txAddCategoryId = document.getElementById("txAddCategoryId");
+const txAddRepeats = document.getElementById("txAddRepeats");
+const txAddRecurringBlock = document.getElementById("txAddRecurringBlock");
+const txAddRecurrence = document.getElementById("txAddRecurrence");
+const txAddLastTxnDate = document.getElementById("txAddLastTxnDate");
+const txAddTwiceMonthlyFields = document.getElementById("txAddTwiceMonthlyFields");
+const txAddSecondDayOfMonth = document.getElementById("txAddSecondDayOfMonth");
+const txAddAccountId = document.getElementById("txAddAccountId");
+const txAddVariable = document.getElementById("txAddVariable");
+const txAddReimbursableRow = document.getElementById("txAddReimbursableRow");
 const txAddReimbursable = document.getElementById("txAddReimbursable");
 const txAddSave = document.getElementById("txAddSave");
 const txAddCancel = document.getElementById("txAddCancel");
+
+function updateTxAddTwiceMonthlyVisibility() {
+  if (!txAddTwiceMonthlyFields || !txAddRecurrence) return;
+  const on = txAddRecurrence.value === "twice_monthly";
+  txAddTwiceMonthlyFields.style.display = on ? "block" : "none";
+}
+
+function updateTxAddRepeatingUi() {
+  const repeats = !!txAddRepeats?.checked;
+  if (txAddRecurringBlock) txAddRecurringBlock.style.display = repeats ? "block" : "none";
+  if (txAddReimbursableRow) txAddReimbursableRow.style.display = repeats ? "none" : "block";
+  if (txAddDateLabel) txAddDateLabel.textContent = repeats ? "Start (first occurrence)" : "Date";
+  updateTxAddTwiceMonthlyVisibility();
+}
+
+if (txAddRepeats) {
+  txAddRepeats.addEventListener("change", updateTxAddRepeatingUi);
+}
+if (txAddRecurrence) {
+  txAddRecurrence.addEventListener("change", updateTxAddTwiceMonthlyVisibility);
+}
 
 document.getElementById("logoutBtn").addEventListener("click", async () => {
   await api("/api/auth/logout", "POST");
@@ -840,11 +788,56 @@ if (txAddSave) {
       const kind = getRadioValue("txAddKind", "expense");
       const amountVal = txAddAmount?.value || "";
       const categoryId = txAddCategoryId?.value || null;
-      const reimbursable = !!txAddReimbursable?.checked;
+      const repeats = !!txAddRepeats?.checked;
 
-      if (!dateVal) throw new Error("Date is required");
+      if (!dateVal) throw new Error(repeats ? "Start date is required" : "Date is required");
       if (!amountVal || Number(amountVal) <= 0) throw new Error("Amount must be > 0");
 
+      if (repeats) {
+        if (!desc) throw new Error("Label is required");
+        const recurrenceVal = txAddRecurrence?.value || "monthly";
+        const accountIdVal = txAddAccountId?.value || "";
+        if (!accountIdVal) throw new Error("Account is required");
+
+        const lastTxnVal = txAddLastTxnDate && txAddLastTxnDate.value ? txAddLastTxnDate.value : null;
+        if (lastTxnVal && lastTxnVal < dateVal) {
+          throw new Error("Last transaction date cannot be before start date");
+        }
+
+        let secondDayOfMonth = null;
+        if (recurrenceVal === "twice_monthly") {
+          const raw = txAddSecondDayOfMonth && txAddSecondDayOfMonth.value;
+          const n = raw !== "" && raw != null ? Number(raw) : NaN;
+          if (!Number.isFinite(n) || n < 1 || n > 31) {
+            throw new Error("2nd day of month (1–31) is required for twice monthly");
+          }
+          const startDay = Number(dateVal.slice(8, 10));
+          if (n === startDay) {
+            throw new Error("2nd day of month must differ from the start date’s day of month");
+          }
+          secondDayOfMonth = n;
+        }
+
+        await api(`/api/families/${state.activeFamilyId}/expected-transactions`, "POST", {
+          account_id: Number(accountIdVal),
+          start_date: dateVal,
+          end_date: lastTxnVal,
+          recurrence: recurrenceVal,
+          second_day_of_month: secondDayOfMonth,
+          description: desc,
+          notes: notesRaw || null,
+          kind,
+          amount: Number(amountVal),
+          variable: !!(txAddVariable && txAddVariable.checked),
+          category_id: categoryId ? Number(categoryId) : null,
+        });
+
+        closeTxAddModal();
+        await refreshExpectedCalendarAndMonth();
+        return;
+      }
+
+      const reimbursable = !!txAddReimbursable?.checked;
       await api(`/api/families/${state.activeFamilyId}/transactions`, "POST", {
         date: dateVal,
         description: desc,
@@ -858,7 +851,7 @@ if (txAddSave) {
       closeTxAddModal();
       await loadMonthAndCalendar();
     } catch (e) {
-      show(txAddErr, e.message || "Failed to add transaction");
+      show(txAddErr, e.message || "Failed to add");
     }
   });
 }
@@ -967,6 +960,16 @@ function openTxAddModal(opts = {}) {
   if (txAddNotes) txAddNotes.value = "";
   if (txAddCategoryId) txAddCategoryId.value = "";
   if (txAddReimbursable) txAddReimbursable.checked = false;
+  if (txAddRepeats) txAddRepeats.checked = !!opts.repeats;
+  if (txAddRecurrence) txAddRecurrence.value = "monthly";
+  if (txAddLastTxnDate) txAddLastTxnDate.value = "";
+  if (txAddSecondDayOfMonth) txAddSecondDayOfMonth.value = "";
+  if (txAddVariable) txAddVariable.checked = false;
+  if (txAddAccountId) {
+    renderAccountSelect(txAddAccountId, state.accounts || []);
+    if (state.accounts && state.accounts.length > 0) txAddAccountId.value = String(state.accounts[0].id);
+  }
+  updateTxAddRepeatingUi();
   const kind = opts.kind || "expense";
   const radio = document.querySelector(`input[type="radio"][name="txAddKind"][value="${kind}"]`);
   if (radio) radio.checked = true;
@@ -1069,116 +1072,12 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && reconcileModal?.classList.contains("modal-overlay--open")) closeReconcileModal();
 });
 
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && addTxChoiceModal?.classList.contains("modal-overlay--open")) closeAddChoiceModal();
-});
-
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && expectedAddModal?.classList.contains("modal-overlay--open")) closeExpectedAddModal();
-});
-
 if (txAddCancel) {
   txAddCancel.addEventListener("click", () => closeTxAddModal());
 }
 if (txAddModal) {
   txAddModal.addEventListener("click", (e) => {
     if (e.target === txAddModal) closeTxAddModal();
-  });
-}
-
-if (addChoiceCancelBtn) {
-  addChoiceCancelBtn.addEventListener("click", () => closeAddChoiceModal());
-}
-if (addChoiceOneTimeBtn) {
-  addChoiceOneTimeBtn.addEventListener("click", () => {
-    const iso = pendingAddChoiceIso;
-    closeAddChoiceModal();
-    if (iso) openTxAddModal({ date: iso });
-  });
-}
-if (addChoiceRecurringBtn) {
-  addChoiceRecurringBtn.addEventListener("click", () => {
-    const iso = pendingAddChoiceIso;
-    closeAddChoiceModal();
-    if (!iso) return;
-    openExpectedAddModal(iso);
-  });
-}
-if (addTxChoiceModal) {
-  addTxChoiceModal.addEventListener("click", (e) => {
-    if (e.target === addTxChoiceModal) closeAddChoiceModal();
-  });
-}
-
-if (expectedAddCancelBtn) {
-  expectedAddCancelBtn.addEventListener("click", () => closeExpectedAddModal());
-}
-if (expectedAddModal) {
-  expectedAddModal.addEventListener("click", (e) => {
-    if (e.target === expectedAddModal) closeExpectedAddModal();
-  });
-}
-if (expectedAddRecurrence) {
-  expectedAddRecurrence.addEventListener("change", updateExpectedAddTwiceMonthlyVisibility);
-}
-if (expectedAddSaveBtn) {
-  expectedAddSaveBtn.addEventListener("click", async () => {
-    try {
-      show(expectedAddErr, "");
-      if (!state.activeFamilyId) throw new Error("Choose a family first");
-
-      const startDateVal = expectedAddStartDate?.value || "";
-      const recurrenceVal = expectedAddRecurrence?.value || "monthly";
-      const kindVal = getRadioValue("expectedAddKind", "expense");
-      const amountVal = expectedAddAmount?.value || "";
-      const desc = expectedAddDesc?.value?.trim() || "";
-      const notesVal = expectedAddNotes && expectedAddNotes.value.trim() ? expectedAddNotes.value.trim() : null;
-      const accountIdVal = expectedAddAccountId?.value || "";
-      const categoryIdVal = expectedAddCategoryId?.value || null;
-
-      if (!startDateVal) throw new Error("Start date is required");
-      if (!desc) throw new Error("Description is required");
-      if (!amountVal || Number(amountVal) <= 0) throw new Error("Amount must be > 0");
-      if (!accountIdVal) throw new Error("Account is required");
-
-      const lastTxnVal = expectedAddLastTxnDate && expectedAddLastTxnDate.value ? expectedAddLastTxnDate.value : null;
-      if (lastTxnVal && lastTxnVal < startDateVal) {
-        throw new Error("Last transaction date cannot be before start date");
-      }
-
-      let secondDayOfMonth = null;
-      if (recurrenceVal === "twice_monthly") {
-        const raw = expectedAddSecondDayOfMonth && expectedAddSecondDayOfMonth.value;
-        const n = raw !== "" && raw != null ? Number(raw) : NaN;
-        if (!Number.isFinite(n) || n < 1 || n > 31) {
-          throw new Error("2nd day of month (1–31) is required for twice monthly");
-        }
-        const startDay = Number(startDateVal.slice(8, 10));
-        if (n === startDay) {
-          throw new Error("2nd day of month must differ from the start date’s day of month");
-        }
-        secondDayOfMonth = n;
-      }
-
-      await api(`/api/families/${state.activeFamilyId}/expected-transactions`, "POST", {
-        account_id: Number(accountIdVal),
-        start_date: startDateVal,
-        end_date: lastTxnVal,
-        recurrence: recurrenceVal,
-        second_day_of_month: secondDayOfMonth,
-        description: desc,
-        notes: notesVal,
-        kind: kindVal,
-        amount: Number(amountVal),
-        variable: !!(expectedAddVariable && expectedAddVariable.checked),
-        category_id: categoryIdVal ? Number(categoryIdVal) : null,
-      });
-
-      closeExpectedAddModal();
-      await refreshExpectedCalendarAndMonth();
-    } catch (e) {
-      show(expectedAddErr, e.message || "Failed to add recurring transaction");
-    }
   });
 }
 
@@ -1203,13 +1102,13 @@ if (calendarGrid) {
       return;
     }
 
-    // Click on an empty part of a day cell opens the one-time transaction popup.
+    // Click on an empty part of a day cell opens the add transaction modal.
     // (Expected tx lines stopPropagation in their own handler.)
     const cell = e.target.closest(".cal-cell");
     if (!cell || !calendarGrid.contains(cell)) return;
     const iso = cell.dataset.iso;
     if (!iso) return;
-    openAddChoiceModal(iso);
+    openTxAddModal({ date: iso });
   });
 }
 
@@ -1239,7 +1138,7 @@ addExpectedTxBtn.addEventListener("click", async () => {
     const categoryIdVal = expectedCategoryId.value || null;
 
     if (!startDateVal) throw new Error("Start date is required");
-    if (!desc) throw new Error("Description is required");
+    if (!desc) throw new Error("Label is required");
     if (!amountVal || Number(amountVal) <= 0) throw new Error("Amount must be > 0");
     if (!accountIdVal) throw new Error("Account is required");
 
@@ -1958,7 +1857,6 @@ async function loadCategories() {
   renderCategoryOptions(txAddCategoryId, state.categories);
   renderCategoryOptions(expectedCategoryId, state.categories);
   renderCategoryOptions(expectedEditCategoryId, state.categories);
-  if (expectedAddCategoryId) renderCategoryOptions(expectedAddCategoryId, state.categories);
   if (instanceCategoryId) renderCategoryOptions(instanceCategoryId, state.categories);
   renderTxEditCategoryOptions();
 }
@@ -2113,7 +2011,7 @@ async function loadAccounts() {
   renderAccountsList(state.accounts);
   renderAccountSelect(expectedAccountId, state.accounts);
   if (expectedEditAccountId) renderAccountSelect(expectedEditAccountId, state.accounts);
-  if (expectedAddAccountId) renderAccountSelect(expectedAddAccountId, state.accounts);
+  if (txAddAccountId) renderAccountSelect(txAddAccountId, state.accounts);
   if (instanceAccountId) renderAccountSelect(instanceAccountId, state.accounts);
   if (state.accounts.length > 0 && !expectedAccountId.value) {
     expectedAccountId.value = String(state.accounts[0].id);

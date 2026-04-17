@@ -714,6 +714,12 @@ input, select{
   color: var(--text);
 }
 
+input::placeholder,
+textarea::placeholder{
+  color: #b4bcc8;
+  opacity: 1;
+}
+
 .money-input{
   display: flex;
   align-items: center;
@@ -1428,18 +1434,18 @@ input, select{
   width: 100%;
 }
 
-.modal--expected-add{
+.modal--tx-add{
   max-width: 520px;
   max-height: min(92vh, 760px);
   overflow-y: auto;
 }
-.modal--expected-add > h3{
+.modal--tx-add > h3{
   margin: -16px -16px 0;
   padding: 16px 16px 12px;
   background: rgba(18,155,186,0.16);
   border-radius: 14px 14px 0 0;
 }
-.modal--expected-add #expectedAddErr{
+.modal--tx-add #txAddErr{
   margin-top: 10px;
 }
 
