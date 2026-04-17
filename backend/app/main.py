@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Annotated, Literal, Optional
 from urllib.parse import urlparse
 
-from fastapi import Cookie, Depends, FastAPI, HTTPException, Response, status
+from fastapi import Cookie, Depends, FastAPI, HTTPException, Query, Response, status
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -448,6 +448,11 @@ class ExpectedTransactionOut(BaseModel):
     created_by: int
     # First display/cash-flow date on or after "today", same rules as expected-calendar (cancels + moved_to_date).
     next_occurrence_date: Optional[date] = None
+    # Effective values for that next calendar occurrence (override-aware; matches expected-calendar).
+    next_occurrence_amount: Optional[Decimal] = None
+    next_occurrence_variable: Optional[bool] = None
+    next_occurrence_kind: Optional[TransactionKind] = None
+    next_occurrence_description: Optional[str] = None
 
 
 def _validate_expected_transaction_recurrence(payload: ExpectedTransactionIn) -> None:
@@ -1194,7 +1199,7 @@ def list_expected_transactions(
 
     result: list[ExpectedTransactionOut] = []
     for tx, account_name, category_name in rows:
-        next_eff = _next_effective_occurrence_on_or_after(tx=tx, on_or_after=today, override_by_key=override_by_key)
+        next_eff, n_amt, n_var, n_kind, n_desc = _next_occurrence_api_extensions(tx, override_by_key, today)
         result.append(
             ExpectedTransactionOut(
                 id=tx.id,
@@ -1214,6 +1219,10 @@ def list_expected_transactions(
                 category_id=tx.category_id,
                 created_by=tx.created_by_user_id,
                 next_occurrence_date=next_eff,
+                next_occurrence_amount=n_amt,
+                next_occurrence_variable=n_var,
+                next_occurrence_kind=n_kind,
+                next_occurrence_description=n_desc,
             )
         )
     return result
@@ -1266,7 +1275,7 @@ def create_expected_transaction(
     db.refresh(tx)
 
     ovr_map = _override_map_for_expected_ids(db, [tx.id])
-    next_eff = _next_effective_occurrence_on_or_after(tx=tx, on_or_after=date.today(), override_by_key=ovr_map)
+    next_eff, n_amt, n_var, n_kind, n_desc = _next_occurrence_api_extensions(tx, ovr_map, date.today())
 
     return ExpectedTransactionOut(
         id=tx.id,
@@ -1286,6 +1295,10 @@ def create_expected_transaction(
         category_id=tx.category_id,
         created_by=tx.created_by_user_id,
         next_occurrence_date=next_eff,
+        next_occurrence_amount=n_amt,
+        next_occurrence_variable=n_var,
+        next_occurrence_kind=n_kind,
+        next_occurrence_description=n_desc,
     )
 
 
@@ -1342,7 +1355,7 @@ def update_expected_transaction(
     db.refresh(tx)
 
     ovr_map = _override_map_for_expected_ids(db, [tx.id])
-    next_eff = _next_effective_occurrence_on_or_after(tx=tx, on_or_after=date.today(), override_by_key=ovr_map)
+    next_eff, n_amt, n_var, n_kind, n_desc = _next_occurrence_api_extensions(tx, ovr_map, date.today())
 
     return ExpectedTransactionOut(
         id=tx.id,
@@ -1362,6 +1375,10 @@ def update_expected_transaction(
         category_id=tx.category_id,
         created_by=tx.created_by_user_id,
         next_occurrence_date=next_eff,
+        next_occurrence_amount=n_amt,
+        next_occurrence_variable=n_var,
+        next_occurrence_kind=n_kind,
+        next_occurrence_description=n_desc,
     )
 
 
@@ -1944,15 +1961,16 @@ def _override_map_for_expected_ids(db, expected_ids: list[int]) -> dict[tuple[in
     return {(o.expected_transaction_id, o.occurrence_date): o for o in rows}
 
 
-def _next_effective_occurrence_on_or_after(
+def _next_occurrence_snapshot_on_or_after(
     *,
     tx: ExpectedTransaction,
     on_or_after: date,
     override_by_key: dict[tuple[int, date], ExpectedTransactionOverride],
-) -> Optional[date]:
+) -> Optional[tuple[date, date, Decimal, bool, TransactionKind, str]]:
     """
-    Next calendar date this series posts, on or after on_or_after.
-    Matches expected-calendar: cancelled occurrences are skipped; moved_to_date shifts the effective date.
+    First occurrence on or after on_or_after (by display/cash-flow date).
+    Returns (display_date, scheduled_occurrence_date, amount, variable, kind, description) or None.
+    Matches expected-calendar override rules.
     """
     horizon_end = on_or_after + timedelta(days=1100)
     occ_dates = _expected_occurrences_in_range(
@@ -1967,12 +1985,39 @@ def _next_effective_occurrence_on_or_after(
         ovr = override_by_key.get((tx.id, occ))
         if ovr is not None and ovr.cancelled:
             continue
-        eff = occ
-        if ovr is not None and ovr.moved_to_date is not None:
-            eff = ovr.moved_to_date
-        if eff >= on_or_after:
-            return eff
+        eff_date = ovr.moved_to_date if (ovr is not None and ovr.moved_to_date is not None) else occ
+        if eff_date < on_or_after:
+            continue
+        eff_amount = ovr.amount if (ovr is not None and ovr.amount is not None) else tx.amount
+        eff_kind = ovr.kind if (ovr is not None and ovr.kind is not None) else tx.kind
+        eff_description = ovr.description if (ovr is not None and ovr.description is not None) else tx.description
+        eff_variable = bool(getattr(tx, "variable", False))
+        if ovr is not None and getattr(ovr, "variable", None) is not None:
+            eff_variable = bool(ovr.variable)
+        return (eff_date, occ, eff_amount, eff_variable, eff_kind, eff_description)
     return None
+
+
+def _next_effective_occurrence_on_or_after(
+    *,
+    tx: ExpectedTransaction,
+    on_or_after: date,
+    override_by_key: dict[tuple[int, date], ExpectedTransactionOverride],
+) -> Optional[date]:
+    snap = _next_occurrence_snapshot_on_or_after(tx=tx, on_or_after=on_or_after, override_by_key=override_by_key)
+    return snap[0] if snap else None
+
+
+def _next_occurrence_api_extensions(
+    tx: ExpectedTransaction,
+    override_by_key: dict[tuple[int, date], ExpectedTransactionOverride],
+    on_or_after: date,
+) -> tuple[Optional[date], Optional[Decimal], Optional[bool], Optional[TransactionKind], Optional[str]]:
+    snap = _next_occurrence_snapshot_on_or_after(tx=tx, on_or_after=on_or_after, override_by_key=override_by_key)
+    if snap is None:
+        return (None, None, None, None, None)
+    eff_date, _occ, eff_amount, eff_variable, eff_kind, eff_description = snap
+    return (eff_date, eff_amount, eff_variable, eff_kind, eff_description)
 
 
 def _occurrence_immediately_before(
@@ -2458,46 +2503,62 @@ def _month_range(month: str) -> tuple[date, date]:
 def list_transactions(
     family_id: int,
     month: Optional[str] = None,
+    start_date: Annotated[Optional[date], Query(description="Inclusive range start (YYYY-MM-DD); use with end_date for date-range lists.")] = None,
+    end_date: Annotated[Optional[date], Query(description="Inclusive range end (YYYY-MM-DD).")] = None,
     access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
     require_family_member(db=db, family_id=family_id, user_id=user_id)
 
-    if month:
-        start, end = _month_range(month)
+    if start_date is not None:
+        range_start = start_date
+        if end_date is not None:
+            if end_date < start_date:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="end_date cannot be before start_date")
+            range_end_exclusive = end_date + timedelta(days=1)
+        else:
+            range_end_exclusive = start_date + timedelta(days=366)
+        order_asc = True
+    elif month:
+        range_start, range_end_exclusive = _month_range(month)
+        order_asc = False
     else:
         today = datetime.utcnow().date()
-        start, end = _month_range(f"{today.year:04d}-{today.month:02d}")
+        range_start, range_end_exclusive = _month_range(f"{today.year:04d}-{today.month:02d}")
+        order_asc = False
 
     # Totals
     income_sum = db.execute(
         select(func.coalesce(func.sum(Transaction.amount), 0)).where(
             Transaction.family_id == family_id,
-            Transaction.date >= start,
-            Transaction.date < end,
+            Transaction.date >= range_start,
+            Transaction.date < range_end_exclusive,
             Transaction.kind == TransactionKind.income,
         )
     ).scalar_one()
     expense_sum = db.execute(
         select(func.coalesce(func.sum(Transaction.amount), 0)).where(
             Transaction.family_id == family_id,
-            Transaction.date >= start,
-            Transaction.date < end,
+            Transaction.date >= range_start,
+            Transaction.date < range_end_exclusive,
             Transaction.kind == TransactionKind.expense,
         )
     ).scalar_one()
 
     # Items (+ category name)
+    order_cols = (
+        (Transaction.date.asc(), Transaction.id.asc()) if order_asc else (Transaction.date.desc(), Transaction.id.desc())
+    )
     stmt = (
         select(Transaction, Category.name.label("category_name"))
         .join(Category, Category.id == Transaction.category_id, isouter=True)
         .where(
             Transaction.family_id == family_id,
-            Transaction.date >= start,
-            Transaction.date < end,
+            Transaction.date >= range_start,
+            Transaction.date < range_end_exclusive,
         )
-        .order_by(Transaction.date.desc(), Transaction.id.desc())
+        .order_by(*order_cols)
     )
     rows = db.execute(stmt).all()
 

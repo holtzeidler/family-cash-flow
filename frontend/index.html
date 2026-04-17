@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=89" />
+    <link rel="stylesheet" href="./styles.css?v=95" />
   </head>
   <body>
     <div class="container">
@@ -336,13 +336,13 @@
           <div id="transactionViewPanel" class="app-view" hidden>
             <div class="card sidebar-section sidebar-section--collapsed" data-sidebar-key="allTransactions">
               <div class="sidebar-section-head">
-                <h2>All Transactions</h2>
+                <h2>All Upcoming Transactions</h2>
                 <button
                   type="button"
                   class="sidebar-collapse-btn"
                   aria-expanded="false"
                   aria-controls="sidebarBodyAllTransactions"
-                  title="Expand All Transactions"
+                  title="Expand All Upcoming Transactions"
                 >
                   <svg class="sidebar-collapse-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <path d="M6 9l6 6 6-6" />
@@ -372,7 +372,7 @@
                 </button>
               </div>
               <div id="sidebarBodyRecurringFilter" class="sidebar-section-body">
-                <div class="row two">
+                <div class="row three">
                   <div>
                     <label for="recurringFrequencyFilter">Frequency</label>
                     <select id="recurringFrequencyFilter">
@@ -382,7 +382,14 @@
                       <option value="twice_monthly">Twice monthly</option>
                       <option value="semiannual">Twice yearly</option>
                       <option value="yearly">Annual</option>
-                      <option value="once">Once</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label for="recurringKindFilter">Type</label>
+                    <select id="recurringKindFilter">
+                      <option value="all" selected>All</option>
+                      <option value="expense">Expense</option>
+                      <option value="income">Income</option>
                     </select>
                   </div>
                   <div style="display:flex; align-items:end;">
@@ -750,12 +757,10 @@
 
     <div id="expectedEditModal" class="modal-overlay" aria-hidden="true">
       <div class="modal modal--expected-edit" role="dialog" aria-labelledby="expectedEditTitle">
-        <h3 id="expectedEditTitle">Recurring transaction</h3>
-        <div id="expectedEditErr" class="error"></div>
-        <input type="hidden" id="expectedEditId" />
-
-        <div id="expectedEditInstancePanel" class="expected-edit-panel">
-          <div id="expectedInstanceErr" class="error"></div>
+        <div class="expected-edit-hero">
+          <h3 id="expectedEditTitle">Recurring transaction</h3>
+          <div id="expectedEditErr" class="error"></div>
+          <input type="hidden" id="expectedEditId" />
 
           <div class="tx-edit-top">
             <div class="row-desc-notes">
@@ -769,6 +774,11 @@
               </div>
             </div>
           </div>
+        </div>
+
+        <div id="expectedEditInstancePanel" class="expected-edit-panel">
+          <div id="expectedInstanceErr" class="error"></div>
+
           <div class="tx-edit-divider" aria-hidden="true"></div>
 
           <div class="row two">
@@ -1027,6 +1037,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="./app.js?v=89"></script>
+    <script src="./app.js?v=95"></script>
   </body>
 </html>

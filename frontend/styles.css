@@ -422,6 +422,24 @@ button.nav-link:hover{
   flex: 0 0 auto !important;
 }
 
+.calendar-panel--loading .calendar-scroll,
+.calendar-panel--loading .calendar-dow-row{
+  opacity: 0.4;
+  pointer-events: none;
+  transition: opacity 0.14s ease;
+}
+.calendar-panel--loading .calendar-sticky-header .cal-month-year,
+.calendar-panel--loading .calendar-sticky-header .cal-mode-wrap,
+.calendar-panel--loading .calendar-sticky-header .cal-today-btn{
+  opacity: 0.55;
+  pointer-events: none;
+}
+.cal-arrow-btn:disabled,
+.cal-today-btn:disabled{
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .calendar-panel{
   display:flex;
   flex-direction:column;
@@ -1440,15 +1458,38 @@ input, select{
   max-width: 520px;
   max-height: min(92vh, 720px);
   overflow-y: auto;
+  padding: 0;
 }
-.modal--expected-edit > h3{
-  margin: -16px -16px 0;
-  padding: 16px 16px 12px;
+/* One continuous tint: title + series error + description/notes flush to modal edges */
+.expected-edit-hero{
   background: rgba(18,155,186,0.16);
   border-radius: 14px 14px 0 0;
 }
-.modal--expected-edit #expectedEditErr{
-  margin-top: 10px;
+.modal--expected-edit .expected-edit-hero > h3{
+  margin: 0;
+  padding: 16px 16px 8px;
+  background: transparent;
+}
+.modal--expected-edit .expected-edit-hero #expectedEditErr{
+  margin: 0 16px 10px;
+}
+.modal--expected-edit .expected-edit-hero .tx-edit-top{
+  margin: 0;
+  padding: 0 16px 16px;
+  background: transparent;
+}
+.modal--expected-edit #expectedEditInstancePanel{
+  padding: 14px 16px 16px;
+}
+.modal--expected-edit #expectedEditInstancePanel > #expectedInstanceErr{
+  margin-top: 0;
+}
+.modal--expected-edit #expectedEditInstancePanel > .tx-edit-divider{
+  margin: 0 0 14px;
+}
+.modal--expected-edit > .modal-actions{
+  margin: 0 16px 16px;
+  padding-top: 14px;
 }
 .expected-modal-mode-row{
   display: flex;

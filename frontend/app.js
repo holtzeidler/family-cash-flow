@@ -178,6 +178,7 @@ let state = {
   accounts: [],
   expectedTransactions: [],
   monthActualItems: [],
+  upcomingActualItems: [],
   monthExpectedItems: [],
   calendarExtraActualItems: [],
   calendarExtraExpectedItems: [],
@@ -245,6 +246,7 @@ const cancelAccountEditBtn = document.getElementById("cancelAccountEditBtn");
 // Expected transactions
 const expectedTxErr = document.getElementById("expectedTxErr");
 const recurringFrequencyFilter = document.getElementById("recurringFrequencyFilter");
+const recurringKindFilter = document.getElementById("recurringKindFilter");
 const recurringFrequencyApplyBtn = document.getElementById("recurringFrequencyApplyBtn");
 const recurringFilteredList = document.getElementById("recurringFilteredList");
 const expectedStartDate = document.getElementById("expectedStartDate");
@@ -313,6 +315,7 @@ const calendarMonthNum = document.getElementById("calendarMonthNum");
 const calendarYear = document.getElementById("calendarYear");
 const calendarPrevMonth = document.getElementById("calendarPrevMonth");
 const calendarNextMonth = document.getElementById("calendarNextMonth");
+const calendarGoToday = document.getElementById("calendarGoToday");
 const calendarMode = document.getElementById("calendarMode");
 const calendarErr = document.getElementById("calendarErr");
 const calendarGrid = document.getElementById("calendarGrid");
@@ -594,7 +597,6 @@ if (calendarNextMonth) {
   calendarNextMonth.addEventListener("click", () => shiftCalendarMonth(1));
 }
 
-const calendarGoToday = document.getElementById("calendarGoToday");
 if (calendarGoToday) {
   calendarGoToday.addEventListener("click", async () => {
     const now = new Date();
@@ -719,6 +721,9 @@ function setActiveTopView(view) {
   if (transactionViewPanel) transactionViewPanel.hidden = v !== "transactions";
   if (settingsViewPanel) settingsViewPanel.hidden = v !== "settings";
   if (reportsViewPanel) reportsViewPanel.hidden = v !== "reports";
+  if (v === "transactions") {
+    void loadUpcomingTransactionsPanel();
+  }
   if (navCalendarView) {
     navCalendarView.classList.toggle("is-active", v === "calendar");
     navCalendarView.setAttribute("aria-selected", v === "calendar" ? "true" : "false");
@@ -1213,6 +1218,9 @@ if (recurringFrequencyApplyBtn) {
 }
 if (recurringFrequencyFilter) {
   recurringFrequencyFilter.addEventListener("change", () => renderRecurringFilteredList());
+}
+if (recurringKindFilter) {
+  recurringKindFilter.addEventListener("change", () => renderRecurringFilteredList());
 }
 
 addExpectedTxBtn.addEventListener("click", async () => {
@@ -2400,6 +2408,24 @@ function nextExpectedOccurrenceIso(tx, fromIso) {
   return toISODate(cand);
 }
 
+/** Display amount / variable / kind / description for the next occurrence (API override-aware). */
+function effectiveNextOccurrenceListFields(tx) {
+  const rawAmt = tx && tx.next_occurrence_amount;
+  const hasApiAmt = rawAmt != null && rawAmt !== "" && Number.isFinite(Number(rawAmt));
+  const amount = hasApiAmt ? Number(rawAmt) : Number(tx && tx.amount) || 0;
+  const variable =
+    tx && typeof tx.next_occurrence_variable === "boolean" ? !!tx.next_occurrence_variable : !!(tx && tx.variable);
+  const kind =
+    tx && tx.next_occurrence_kind != null && String(tx.next_occurrence_kind).trim() !== ""
+      ? String(tx.next_occurrence_kind)
+      : String((tx && tx.kind) || "expense");
+  const description =
+    tx && tx.next_occurrence_description != null && String(tx.next_occurrence_description).trim() !== ""
+      ? String(tx.next_occurrence_description).trim()
+      : String((tx && tx.description) || "").trim() || "(no description)";
+  return { amount, variable, kind, description };
+}
+
 /** Prefer API override-aware date; fall back to client schedule math for older backends. */
 function nextOccurrenceIsoForRecurringList(tx, todayIso) {
   const raw = tx && tx.next_occurrence_date;
@@ -2425,6 +2451,7 @@ function renderRecurringFilteredList() {
   }
 
   const sel = recurringFrequencyFilter ? String(recurringFrequencyFilter.value || "all") : "all";
+  const kindSel = recurringKindFilter ? String(recurringKindFilter.value || "all") : "all";
   const todayIso = toISODate(new Date());
   // Ensure one row per series id, even if items contain duplicates.
   const byId = new Map();
@@ -2435,7 +2462,11 @@ function renderRecurringFilteredList() {
   }
 
   const filtered = [...byId.values()]
-    .filter((tx) => sel === "all" || String(tx.recurrence || "monthly") === sel)
+    .filter(
+      (tx) =>
+        (sel === "all" || String(tx.recurrence || "monthly") === sel) &&
+        (kindSel === "all" || String(tx.kind || "expense") === kindSel),
+    )
     .map((tx) => ({ tx, nextIso: nextOccurrenceIsoForRecurringList(tx, todayIso) }))
     .filter((row) => !!row.nextIso);
 
@@ -2454,14 +2485,15 @@ function renderRecurringFilteredList() {
   }
 
   for (const { tx, nextIso } of filtered) {
+    const eff = effectiveNextOccurrenceListFields(tx);
     const el = document.createElement("div");
     el.className = "item expected-item--dense";
-    if (tx.variable) el.classList.add("expected-item--variable");
+    if (eff.variable) el.classList.add("expected-item--variable");
     el.style.cursor = "pointer";
     el.title = `Recurring schedule #${tx.id} · next ${nextIso}`;
 
-    const amtClass = tx.kind === "income" ? "income" : "expense";
-    const kindSign = tx.kind === "income" ? "+" : "-";
+    const amtClass = eff.kind === "income" ? "income" : "expense";
+    const kindSign = eff.kind === "income" ? "+" : "-";
     const startDom =
       tx.start_date != null && String(tx.start_date).length >= 10
         ? Number(String(tx.start_date).slice(8, 10))
@@ -2474,8 +2506,8 @@ function renderRecurringFilteredList() {
     const left = document.createElement("div");
     left.className = "left";
     const descEl = document.createElement("div");
-    descEl.className = `desc ${kindFgClass(tx.kind)}`;
-    descEl.textContent = tx.description || "(no description)";
+    descEl.className = `desc ${kindFgClass(eff.kind)}`;
+    descEl.textContent = eff.description;
 
     const metaEl = document.createElement("div");
     metaEl.className = "meta";
@@ -2488,7 +2520,7 @@ function renderRecurringFilteredList() {
     const amtBtn = document.createElement("button");
     amtBtn.type = "button";
     amtBtn.className = `amt ${amtClass} expected-amt-link`;
-    amtBtn.textContent = `${kindSign}$${fmtMoney(tx.amount)}`;
+    amtBtn.textContent = `${kindSign}$${fmtMoney(eff.amount)}`;
     amtBtn.title = "Edit recurring transaction";
     amtBtn.addEventListener("click", (e) => {
       e.preventDefault();
@@ -2636,13 +2668,13 @@ function renderMonthSummaryTotalsFromState() {
   renderTotals(computeMonthSummaryTotalsFromState());
 }
 
-function renderTransactionsInto(listEl, items) {
+function renderTransactionsInto(listEl, items, emptyMessage) {
   if (!listEl) return;
   listEl.innerHTML = "";
   if (!items || items.length === 0) {
     const empty = document.createElement("div");
     empty.className = "pill";
-    empty.textContent = "No transactions for this month.";
+    empty.textContent = emptyMessage || "No transactions for this month.";
     listEl.appendChild(empty);
     return;
   }
@@ -2699,8 +2731,7 @@ function renderTransactionsInto(listEl, items) {
 }
 
 function renderTransactions(items) {
-  renderTransactionsInto(txList, items);
-  renderTransactionsInto(txListMain, items);
+  renderTransactionsInto(txList, items, "No transactions for this month.");
 }
 
 function escapeHtml(s) {
@@ -2724,6 +2755,28 @@ async function loadTransactions() {
     renderTransactions(items);
   } catch (e) {
     show(txErr, e.message || "Failed to load transactions");
+  }
+}
+
+/** Actual transactions on or after today (for Transaction View list), chronological. */
+async function loadUpcomingTransactionsPanel() {
+  try {
+    if (!state.activeFamilyId) {
+      state.upcomingActualItems = [];
+      renderTransactionsInto(txListMain, [], "No upcoming transactions.");
+      return;
+    }
+    const todayIso = toISODate(new Date());
+    const endCap = new Date();
+    endCap.setDate(endCap.getDate() + 548);
+    const endIso = toISODate(endCap);
+    const qs = `?start_date=${encodeURIComponent(todayIso)}&end_date=${encodeURIComponent(endIso)}`;
+    const data = await api(`/api/families/${state.activeFamilyId}/transactions${qs}`, "GET");
+    const items = data?.items || [];
+    state.upcomingActualItems = items;
+    renderTransactionsInto(txListMain, items, "No upcoming transactions.");
+  } catch (e) {
+    show(txErr, e.message || "Failed to load upcoming transactions");
   }
 }
 
@@ -2849,16 +2902,43 @@ async function loadCalendarMonthDaily() {
   computeMonthDailyBalancesLegacy();
 }
 
+function setCalendarLoadingUi(on) {
+  const panel = document.getElementById("calendarPanel");
+  if (panel) {
+    panel.classList.toggle("calendar-panel--loading", !!on);
+    panel.setAttribute("aria-busy", on ? "true" : "false");
+  }
+  for (const el of [calendarPrevMonth, calendarNextMonth, calendarGoToday, calendarMonthNum, calendarYear, calendarMode]) {
+    if (el) el.disabled = !!on;
+  }
+}
+
 async function loadMonthAndCalendar() {
   if (!state.activeFamilyId) return;
-  await loadTransactions();
-  await loadExpectedCalendar();
-  renderMonthSummaryTotalsFromState();
-  await loadCalendarExtras();
-  await loadReconciledDays(calendarMonth?.value || monthInput.value);
-  await loadCalendarMonthDaily();
-  renderCalendar();
-  await refreshLowBalanceAlert();
+  try {
+    setCalendarLoadingUi(true);
+    state.monthActualItems = [];
+    state.monthExpectedItems = [];
+    state.calendarExtraActualItems = [];
+    state.calendarExtraExpectedItems = [];
+    state.monthDailyBalances = new Map();
+    state.reconciledDates = new Set();
+    renderCalendar();
+
+    await loadTransactions();
+    await loadUpcomingTransactionsPanel();
+    await loadExpectedCalendar();
+    renderMonthSummaryTotalsFromState();
+    await loadCalendarExtras();
+    await loadReconciledDays(calendarMonth?.value || monthInput.value);
+    await loadCalendarMonthDaily();
+    renderCalendar();
+    await refreshLowBalanceAlert();
+  } catch (e) {
+    show(calendarErr, e.message || "Failed to load calendar");
+  } finally {
+    setCalendarLoadingUi(false);
+  }
 }
 
 /** Client-only fallback when calendar-month-daily API is unavailable (approximate). */
