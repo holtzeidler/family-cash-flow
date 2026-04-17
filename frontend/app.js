@@ -136,7 +136,6 @@ const txList = document.getElementById("txList");
 const txListMain = document.getElementById("txListMain");
 
 const categoriesGrid = document.getElementById("categoriesGrid");
-const txCategoryId = document.getElementById("txCategoryId");
 
 // Low balance alert
 const lowBalanceThreshold = document.getElementById("lowBalanceThreshold");
@@ -193,7 +192,6 @@ const expectedAmount = document.getElementById("expectedAmount");
 const expectedDesc = document.getElementById("expectedDesc");
 const expectedNotes = document.getElementById("expectedNotes");
 const expectedAccountId = document.getElementById("expectedAccountId");
-const expectedCategoryId = document.getElementById("expectedCategoryId");
 const expectedVariable = document.getElementById("expectedVariable");
 const addExpectedTxBtn = document.getElementById("addExpectedTxBtn");
 const variableTodoList = document.getElementById("variableTodoList");
@@ -205,7 +203,6 @@ const expectedEditId = document.getElementById("expectedEditId");
 // These IDs existed in the older "series edit" panel; keep bindings so loaders can
 // safely check them (they'll be null if not present).
 const expectedEditAccountId = document.getElementById("expectedEditAccountId");
-const expectedEditCategoryId = document.getElementById("expectedEditCategoryId");
 const expectedEditDelete = document.getElementById("expectedEditDelete");
 const expectedEditCancel = document.getElementById("expectedEditCancel");
 let selectedExpectedSeriesTx = null;
@@ -284,7 +281,6 @@ const instanceAmount = document.getElementById("instanceAmount");
 const instanceDesc = document.getElementById("instanceDesc");
 const instanceNotes = document.getElementById("instanceNotes");
 const instanceAccountId = document.getElementById("instanceAccountId");
-const instanceCategoryId = document.getElementById("instanceCategoryId");
 const seriesVariable = document.getElementById("seriesVariable");
 const saveInstanceOverrideBtn = document.getElementById("saveInstanceOverrideBtn");
 const saveSeriesFromInstanceBtn = document.getElementById("saveSeriesFromInstanceBtn");
@@ -327,7 +323,6 @@ const txEditKind = null;
 const txEditAmount = document.getElementById("txEditAmount");
 const txEditDesc = document.getElementById("txEditDesc");
 const txEditNotes = document.getElementById("txEditNotes");
-const txEditCategoryId = document.getElementById("txEditCategoryId");
 const txEditReimbursable = document.getElementById("txEditReimbursable");
 const txEditErr = document.getElementById("txEditErr");
 const txEditSave = document.getElementById("txEditSave");
@@ -351,7 +346,6 @@ const txAddDateLabel = document.getElementById("txAddDateLabel");
 const txAddAmount = document.getElementById("txAddAmount");
 const txAddDesc = document.getElementById("txAddDesc");
 const txAddNotes = document.getElementById("txAddNotes");
-const txAddCategoryId = document.getElementById("txAddCategoryId");
 const txAddRepeats = document.getElementById("txAddRepeats");
 const txAddRecurringBlock = document.getElementById("txAddRecurringBlock");
 const txAddRecurrence = document.getElementById("txAddRecurrence");
@@ -382,8 +376,6 @@ function updateTxAddRepeatingUi() {
     if (!repeats) txAddLastTxnDate.value = "";
     txAddLastTxnDate.disabled = !repeats;
   }
-  const rightCol = document.querySelector(".tx-add-schedule-toolbar__right");
-  if (rightCol) rightCol.classList.toggle("tx-add-schedule-toolbar__right--recurring", repeats);
   updateTxAddTwiceMonthlyVisibility();
 }
 
@@ -932,7 +924,7 @@ document.getElementById("addTxBtn").addEventListener("click", async () => {
     const notesRaw = document.getElementById("txNotes")?.value?.trim() || "";
     const kind = getRadioValue("txKind", "expense");
     const amountVal = document.getElementById("txAmount").value;
-    const categoryId = document.getElementById("txCategoryId").value || null;
+    const categoryId = categoryIdFromSelectValue(document.getElementById("txCategoryId")?.value);
     const reimbursable = !!document.getElementById("txReimbursable")?.checked;
 
     if (!dateVal) throw new Error("Date is required");
@@ -944,7 +936,7 @@ document.getElementById("addTxBtn").addEventListener("click", async () => {
       notes: notesRaw || null,
       kind,
       amount: Number(amountVal),
-      category_id: categoryId ? Number(categoryId) : null,
+      category_id: categoryId,
       reimbursable,
     });
 
@@ -971,7 +963,7 @@ if (txAddSave) {
       const notesRaw = txAddNotes?.value?.trim() || "";
       const kind = getRadioValue("txAddKind", "expense");
       const amountVal = txAddAmount?.value || "";
-      const categoryId = txAddCategoryId?.value || null;
+      const categoryId = categoryIdFromSelectValue(document.getElementById("txAddCategoryId")?.value);
       const repeats = !!txAddRepeats?.checked;
 
       if (!dateVal) throw new Error(repeats ? "Start date is required" : "Date is required");
@@ -1013,7 +1005,7 @@ if (txAddSave) {
           kind,
           amount: Number(amountVal),
           variable: !!(txAddVariable && txAddVariable.checked),
-          category_id: categoryId ? Number(categoryId) : null,
+          category_id: categoryId,
         });
 
         closeTxAddModal();
@@ -1027,7 +1019,7 @@ if (txAddSave) {
         notes: notesRaw || null,
         kind,
         amount: Number(amountVal),
-        category_id: categoryId ? Number(categoryId) : null,
+        category_id: categoryId,
         reimbursable: false,
       });
 
@@ -1094,18 +1086,7 @@ cancelAccountEditBtn.addEventListener("click", () => {
 });
 
 function renderTxEditCategoryOptions() {
-  if (!txEditCategoryId) return;
-  txEditCategoryId.innerHTML = "";
-  const emptyOpt = document.createElement("option");
-  emptyOpt.value = "";
-  emptyOpt.textContent = "Select Category";
-  txEditCategoryId.appendChild(emptyOpt);
-  for (const c of state.categories || []) {
-    const opt = document.createElement("option");
-    opt.value = String(c.id);
-    opt.textContent = c.name;
-    txEditCategoryId.appendChild(opt);
-  }
+  syncCategoryComboboxCategories("txEditCategoryId", state.categories || []);
 }
 
 function openTxEditModal(tx) {
@@ -1122,7 +1103,7 @@ function openTxEditModal(tx) {
   if (txEditNotes) txEditNotes.value = tx.notes || "";
   if (txEditReimbursable) txEditReimbursable.checked = !!tx.reimbursable;
   renderTxEditCategoryOptions();
-  txEditCategoryId.value = tx.category_id != null ? String(tx.category_id) : "";
+  setCategoryFieldValue("txEditCategoryId", tx.category_id);
   show(txEditErr, "");
   txEditModal.classList.add("modal-overlay--open");
   txEditModal.setAttribute("aria-hidden", "false");
@@ -1141,7 +1122,7 @@ function openTxAddModal(opts = {}) {
   if (txAddAmount) txAddAmount.value = "";
   if (txAddDesc) txAddDesc.value = "";
   if (txAddNotes) txAddNotes.value = "";
-  if (txAddCategoryId) txAddCategoryId.value = "";
+  setCategoryFieldValue("txAddCategoryId", null);
   if (txAddRepeats) txAddRepeats.checked = !!opts.repeats;
   if (txAddRecurrence) txAddRecurrence.value = "monthly";
   if (txAddLastTxnDate) txAddLastTxnDate.value = "";
@@ -1200,7 +1181,7 @@ if (txEditSave) {
         amount: Number(amountVal),
         description: txEditDesc.value.trim() || "",
         notes: txEditNotes && txEditNotes.value.trim() ? txEditNotes.value.trim() : null,
-        category_id: txEditCategoryId.value ? Number(txEditCategoryId.value) : null,
+        category_id: categoryIdFromSelectValue(document.getElementById("txEditCategoryId")?.value),
         reimbursable,
       });
       closeTxEditModal();
@@ -1317,7 +1298,7 @@ addExpectedTxBtn.addEventListener("click", async () => {
     const desc = expectedDesc.value.trim();
     const notesVal = expectedNotes && expectedNotes.value.trim() ? expectedNotes.value.trim() : null;
     const accountIdVal = expectedAccountId.value;
-    const categoryIdVal = expectedCategoryId.value || null;
+    const categoryIdVal = categoryIdFromSelectValue(document.getElementById("expectedCategoryId")?.value);
 
     if (!startDateVal) throw new Error("Start date is required");
     if (!desc) throw new Error("Label is required");
@@ -1354,7 +1335,7 @@ addExpectedTxBtn.addEventListener("click", async () => {
       kind: kindVal,
       amount: Number(amountVal),
       variable: !!(expectedVariable && expectedVariable.checked),
-      category_id: categoryIdVal ? Number(categoryIdVal) : null,
+      category_id: categoryIdVal,
     });
 
     expectedDesc.value = "";
@@ -1516,7 +1497,7 @@ if (saveInstanceOverrideBtn) {
       const accountId = instanceAccountId.value;
       if (!accountId) throw new Error("Account is required");
 
-      const categoryId = instanceCategoryId.value ? Number(instanceCategoryId.value) : null;
+      const categoryId = categoryIdFromSelectValue(document.getElementById("instanceCategoryId")?.value);
 
       const occ = normalizeIsoDate(selectedExpectedInstance.occurrence_date);
       if (!occ) throw new Error("Invalid occurrence date");
@@ -1566,7 +1547,7 @@ if (saveSeriesFromInstanceBtn) {
       const accountId = instanceAccountId?.value;
       if (!accountId) throw new Error("Account is required");
 
-      const categoryId = instanceCategoryId?.value ? Number(instanceCategoryId.value) : null;
+      const categoryId = categoryIdFromSelectValue(document.getElementById("instanceCategoryId")?.value);
       const notesVal = instanceNotes ? instanceNotes.value.trim() || null : null;
 
       const recurrenceVal = instanceRecurrence?.value || meta.recurrence || "monthly";
@@ -1713,20 +1694,325 @@ async function loadFamilies() {
   }
 }
 
-function renderCategoryOptions(selectEl, categories) {
-  if (!selectEl) return;
-  selectEl.innerHTML = "";
-  const emptyOpt = document.createElement("option");
-  emptyOpt.value = "";
-  emptyOpt.textContent = "Select Category";
-  selectEl.appendChild(emptyOpt);
+function categoryIdFromSelectValue(raw) {
+  if (raw == null || raw === "") return null;
+  const s = String(raw);
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+}
 
-  for (const c of categories) {
-    const opt = document.createElement("option");
-    opt.value = String(c.id);
-    opt.textContent = c.name;
-    selectEl.appendChild(opt);
+const CATEGORY_COMBOBOX_FIELD_IDS = [
+  "txCategoryId",
+  "txAddCategoryId",
+  "expectedCategoryId",
+  "instanceCategoryId",
+  "txEditCategoryId",
+];
+
+/** @type {Map<string, { wrap: HTMLElement, input: HTMLInputElement, hidden: HTMLInputElement, list: HTMLUListElement, categories: { id: number | string; name: string }[], blurTimer: ReturnType<typeof setTimeout> | null }>} */
+const categoryComboboxRegistry = new Map();
+
+let categoryComboOutsideClickBound = false;
+
+function categoryComboSearchInputId(fieldId) {
+  return `${fieldId}_search`;
+}
+
+function hideCategoryComboboxList(st) {
+  st.list.hidden = true;
+  st.input.setAttribute("aria-expanded", "false");
+  for (const li of st.list.querySelectorAll("li.category-combobox__option.is-active")) {
+    li.classList.remove("is-active");
   }
+}
+
+function showCategoryComboboxList(st) {
+  st.list.hidden = false;
+  st.input.setAttribute("aria-expanded", "true");
+}
+
+function getCategoryComboboxActiveIndex(st) {
+  const els = Array.from(st.list.querySelectorAll("li.category-combobox__option"));
+  return els.findIndex((li) => li.classList.contains("is-active"));
+}
+
+function setCategoryComboboxActiveIndex(st, index) {
+  const els = Array.from(st.list.querySelectorAll("li.category-combobox__option"));
+  for (const li of els) li.classList.remove("is-active");
+  if (index >= 0 && index < els.length) {
+    els[index].classList.add("is-active");
+    els[index].scrollIntoView({ block: "nearest" });
+  }
+}
+
+function selectCategoryComboboxChoice(fieldId, catId, name) {
+  const st = categoryComboboxRegistry.get(fieldId);
+  if (!st) return;
+  st.hidden.value = String(catId);
+  st.input.value = name;
+  hideCategoryComboboxList(st);
+}
+
+function normalizeCategoryComboboxInput(fieldId) {
+  const st = categoryComboboxRegistry.get(fieldId);
+  if (!st) return;
+  const hid = st.hidden.value.trim();
+  if (hid) {
+    const cat = (st.categories || []).find((c) => String(c.id) === String(hid));
+    st.input.value = cat ? cat.name : "";
+    return;
+  }
+  const q = st.input.value.trim().toLowerCase();
+  if (!q) {
+    st.input.value = "";
+    return;
+  }
+  const exact = (st.categories || []).filter((c) => String(c.name).trim().toLowerCase() === q);
+  if (exact.length === 1) {
+    st.hidden.value = String(exact[0].id);
+    st.input.value = exact[0].name;
+    return;
+  }
+  const subs = (st.categories || []).filter((c) => String(c.name).toLowerCase().includes(q));
+  if (subs.length === 1) {
+    st.hidden.value = String(subs[0].id);
+    st.input.value = subs[0].name;
+    return;
+  }
+  st.input.value = "";
+}
+
+function filterCategoryCombobox(fieldId) {
+  const st = categoryComboboxRegistry.get(fieldId);
+  if (!st) return;
+  const q = st.input.value.trim().toLowerCase();
+  const cats = st.categories || [];
+  const filtered = !q ? cats.slice() : cats.filter((c) => String(c.name).toLowerCase().includes(q));
+
+  st.list.innerHTML = "";
+  for (const c of filtered) {
+    const li = document.createElement("li");
+    li.className = "category-combobox__option";
+    li.setAttribute("role", "option");
+    li.dataset.id = String(c.id);
+    li.textContent = c.name;
+    st.list.appendChild(li);
+  }
+  const addLi = document.createElement("li");
+  addLi.className = "category-combobox__option category-combobox__option--add";
+  addLi.setAttribute("role", "option");
+  addLi.textContent = "Add new category…";
+  st.list.appendChild(addLi);
+}
+
+function applyCategoryComboboxPickFromLi(fieldId, li) {
+  if (!li) return;
+  if (li.classList.contains("category-combobox__option--add")) {
+    void handleAddNewCategoryFromCombobox(fieldId);
+    return;
+  }
+  const id = li.dataset.id;
+  if (id) selectCategoryComboboxChoice(fieldId, id, li.textContent || "");
+}
+
+async function handleAddNewCategoryFromCombobox(fieldId) {
+  const st = categoryComboboxRegistry.get(fieldId);
+  if (st) hideCategoryComboboxList(st);
+  const name = window.prompt("Name for the new category:");
+  if (!name || !String(name).trim()) return;
+  try {
+    if (!state.activeFamilyId) throw new Error("Choose a family first");
+    await api(`/api/families/${state.activeFamilyId}/categories`, "POST", { name: String(name).trim() });
+    await loadCategories();
+    const trimmed = String(name).trim();
+    const newCat = (state.categories || []).find((c) => String(c.name).trim() === trimmed);
+    if (newCat) selectCategoryComboboxChoice(fieldId, newCat.id, newCat.name);
+  } catch (err) {
+    window.alert(err.message || "Failed to add category");
+  }
+}
+
+function onCategoryComboboxKeydown(e, fieldId) {
+  const st = categoryComboboxRegistry.get(fieldId);
+  if (!st) return;
+  if (e.key === "Escape") {
+    e.preventDefault();
+    hideCategoryComboboxList(st);
+    normalizeCategoryComboboxInput(fieldId);
+    return;
+  }
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    e.preventDefault();
+    if (st.list.hidden) {
+      showCategoryComboboxList(st);
+      filterCategoryCombobox(fieldId);
+    }
+    const els = Array.from(st.list.querySelectorAll("li.category-combobox__option"));
+    if (!els.length) return;
+    let idx = getCategoryComboboxActiveIndex(st);
+    if (idx < 0) {
+      idx = e.key === "ArrowDown" ? -1 : els.length;
+    }
+    if (e.key === "ArrowDown") idx = Math.min(idx + 1, els.length - 1);
+    else idx = Math.max(idx - 1, 0);
+    setCategoryComboboxActiveIndex(st, idx);
+    return;
+  }
+  if (e.key === "Enter") {
+    if (!st.list.hidden) {
+      const idx = getCategoryComboboxActiveIndex(st);
+      const els = Array.from(st.list.querySelectorAll("li.category-combobox__option"));
+      if (idx >= 0 && els[idx]) {
+        e.preventDefault();
+        applyCategoryComboboxPickFromLi(fieldId, els[idx]);
+        return;
+      }
+    }
+    const q = st.input.value.trim().toLowerCase();
+    const cats = st.categories || [];
+    const filtered = !q ? cats : cats.filter((c) => String(c.name).toLowerCase().includes(q));
+    if (filtered.length === 1) {
+      e.preventDefault();
+      selectCategoryComboboxChoice(fieldId, filtered[0].id, filtered[0].name);
+    }
+  }
+}
+
+function mountCategoryComboboxFromSelect(selectEl) {
+  const fieldId = selectEl.id;
+  if (!fieldId || categoryComboboxRegistry.has(fieldId)) return;
+
+  ensureCategoryComboDocClick();
+
+  const wrap = document.createElement("div");
+  wrap.className = "category-combobox";
+  const input = document.createElement("input");
+  input.type = "text";
+  input.className = "category-combobox__input";
+  input.id = categoryComboSearchInputId(fieldId);
+  input.setAttribute("role", "combobox");
+  input.setAttribute("aria-autocomplete", "list");
+  input.setAttribute("aria-expanded", "false");
+  input.setAttribute("aria-controls", `${fieldId}_list`);
+  input.autocomplete = "off";
+  input.placeholder = "Type to filter…";
+  input.spellcheck = false;
+
+  const hidden = document.createElement("input");
+  hidden.type = "hidden";
+  hidden.id = fieldId;
+
+  const list = document.createElement("ul");
+  list.className = "category-combobox__list";
+  list.id = `${fieldId}_list`;
+  list.setAttribute("role", "listbox");
+  list.hidden = true;
+
+  selectEl.replaceWith(wrap);
+  wrap.appendChild(input);
+  wrap.appendChild(hidden);
+  wrap.appendChild(list);
+
+  const label = document.querySelector(`label[for="${fieldId}"]`);
+  if (label) label.setAttribute("for", input.id);
+
+  const st = {
+    wrap,
+    input,
+    hidden,
+    list,
+    categories: [],
+    blurTimer: null,
+  };
+  categoryComboboxRegistry.set(fieldId, st);
+
+  list.addEventListener("mousedown", (e) => {
+    const li = e.target && /** @type {HTMLElement} */ (e.target).closest("li.category-combobox__option");
+    if (!li || !list.contains(li)) return;
+    e.preventDefault();
+    if (st.blurTimer) {
+      clearTimeout(st.blurTimer);
+      st.blurTimer = null;
+    }
+    applyCategoryComboboxPickFromLi(fieldId, li);
+  });
+
+  input.addEventListener("input", () => filterCategoryCombobox(fieldId));
+  input.addEventListener("focus", () => {
+    showCategoryComboboxList(st);
+    filterCategoryCombobox(fieldId);
+  });
+  input.addEventListener("blur", () => {
+    if (st.blurTimer) clearTimeout(st.blurTimer);
+    st.blurTimer = setTimeout(() => {
+      st.blurTimer = null;
+      normalizeCategoryComboboxInput(fieldId);
+      hideCategoryComboboxList(st);
+    }, 180);
+  });
+  input.addEventListener("keydown", (e) => onCategoryComboboxKeydown(e, fieldId));
+}
+
+function syncCategoryComboboxCategories(fieldId, categories) {
+  ensureCategoryComboDocClick();
+  let st = categoryComboboxRegistry.get(fieldId);
+  if (!st) {
+    const el = document.getElementById(fieldId);
+    if (!el || !(el instanceof HTMLSelectElement)) return;
+    mountCategoryComboboxFromSelect(el);
+    st = categoryComboboxRegistry.get(fieldId);
+  }
+  if (!st) return;
+  st.categories = categories || [];
+  const cur = st.hidden.value;
+  if (cur) {
+    const cat = st.categories.find((c) => String(c.id) === String(cur));
+    st.input.value = cat ? cat.name : "";
+  }
+  if (!st.list.hidden) filterCategoryCombobox(fieldId);
+}
+
+function syncAllCategoryComboboxes(categories) {
+  for (const fid of CATEGORY_COMBOBOX_FIELD_IDS) {
+    syncCategoryComboboxCategories(fid, categories);
+  }
+}
+
+function setCategoryFieldValue(fieldId, categoryIdOrNull) {
+  const el = document.getElementById(fieldId);
+  if (!el) return;
+  if (categoryComboboxRegistry.has(fieldId)) {
+    const st = categoryComboboxRegistry.get(fieldId);
+    if (!st) return;
+    if (categoryIdOrNull == null || categoryIdOrNull === "") {
+      st.hidden.value = "";
+      st.input.value = "";
+    } else {
+      const cat = (st.categories || []).find((c) => Number(c.id) === Number(categoryIdOrNull));
+      const name =
+        cat?.name ||
+        (state.categories || []).find((c) => Number(c.id) === Number(categoryIdOrNull))?.name ||
+        "";
+      st.hidden.value = String(categoryIdOrNull);
+      st.input.value = name;
+    }
+    return;
+  }
+  if (el instanceof HTMLSelectElement) {
+    el.value = categoryIdOrNull != null && categoryIdOrNull !== "" ? String(categoryIdOrNull) : "";
+  }
+}
+
+function ensureCategoryComboDocClick() {
+  if (categoryComboOutsideClickBound) return;
+  categoryComboOutsideClickBound = true;
+  document.addEventListener("click", (e) => {
+    const t = /** @type {Node} */ (e.target);
+    for (const [, st] of categoryComboboxRegistry) {
+      if (st.wrap.contains(t)) continue;
+      hideCategoryComboboxList(st);
+    }
+  });
 }
 
 let categoryPalettePopoverEl = null;
@@ -2035,12 +2321,7 @@ async function loadCategories() {
   const categories = await api(`/api/families/${state.activeFamilyId}/categories`, "GET");
   state.categories = categories || [];
   renderCategoriesGrid(state.categories);
-  renderCategoryOptions(txCategoryId, state.categories);
-  renderCategoryOptions(txAddCategoryId, state.categories);
-  renderCategoryOptions(expectedCategoryId, state.categories);
-  renderCategoryOptions(expectedEditCategoryId, state.categories);
-  if (instanceCategoryId) renderCategoryOptions(instanceCategoryId, state.categories);
-  renderTxEditCategoryOptions();
+  syncAllCategoryComboboxes(state.categories);
 }
 
 function categoryStyleFromId(categoryId) {
@@ -2263,7 +2544,7 @@ function openExpectedEditModal(tx, opts = {}) {
       if (instanceAmount) instanceAmount.value = String(tx.amount ?? "");
       if (instanceDesc) instanceDesc.value = String(tx.description || "").slice(0, 12);
       if (instanceAccountId) instanceAccountId.value = tx.account_id != null ? String(tx.account_id) : "";
-      if (instanceCategoryId) instanceCategoryId.value = tx.category_id != null ? String(tx.category_id) : "";
+      if (document.getElementById("instanceCategoryId")) setCategoryFieldValue("instanceCategoryId", tx.category_id);
     } else {
       const accountId = tx.account_id != null ? Number(tx.account_id) : NaN;
       const acct = Number.isFinite(accountId) ? state.accounts.find((a) => Number(a.id) === accountId) : null;
@@ -3274,7 +3555,7 @@ function selectExpectedInstance(item) {
   if (instanceDesc) instanceDesc.value = String(item.description || "").slice(0, 12);
   if (instanceNotes) instanceNotes.value = item.notes && String(item.notes).trim() ? String(item.notes).trim() : "";
   if (instanceAccountId) instanceAccountId.value = String(item.account_id);
-  if (instanceCategoryId) instanceCategoryId.value = item.category_id ? String(item.category_id) : "";
+  if (document.getElementById("instanceCategoryId")) setCategoryFieldValue("instanceCategoryId", item.category_id);
 
   {
     const meta = selectedExpectedSeriesTx || getExpectedSeriesMeta(item.expected_transaction_id);

@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=105" />
+    <link rel="stylesheet" href="./styles.css?v=109" />
   </head>
   <body>
     <div class="container">
@@ -760,6 +760,9 @@
           </div>
         </div>
         <div class="tx-add-vspace" aria-hidden="true"></div>
+        <label for="txAddDate" id="txAddDateLabel">Date</label>
+        <input id="txAddDate" type="date" />
+        <div class="tx-add-vspace" aria-hidden="true"></div>
         <div class="row">
           <div>
             <label for="txAddAmount">Amount</label>
@@ -794,10 +797,6 @@
             </div>
           </div>
           <div class="tx-add-schedule-toolbar__right">
-            <div class="tx-add-schedule-field tx-add-schedule-field--date">
-              <label for="txAddDate" id="txAddDateLabel">Date</label>
-              <input id="txAddDate" type="date" />
-            </div>
             <div id="txAddLastTxnFieldWrap" class="tx-add-schedule-field tx-add-schedule-field--last" hidden>
               <label for="txAddLastTxnDate" title="Optional. Last day a scheduled occurrence may fall on. Blank = no end.">Last txn</label>
               <input
@@ -1015,6 +1014,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="./app.js?v=104"></script>
+    <script src="./app.js?v=107"></script>
   </body>
 </html>
