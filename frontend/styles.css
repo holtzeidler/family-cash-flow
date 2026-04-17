@@ -3,9 +3,10 @@
   --card:#ffffff;
   --text:#111827;
   --muted:#4b5563;
-  --accent:#66a3ff;
-  --danger:#ff6b6b;
-  --ok:#2f9e5f;
+  /* Palette */
+  --accent:#129bba; /* lighter blue from palette */
+  --danger:#a73744; /* darker maroon-leaning red */
+  --ok:#005a4a;     /* green from palette */
   --border: rgba(0,0,0,0.12);
 }
 
@@ -60,8 +61,8 @@ body{
   color: var(--text);
 }
 .top-nav__tab.is-active{
-  background: rgba(102,163,255,0.18);
-  border-color: rgba(102,163,255,0.40);
+  background: rgba(18,155,186,0.18);
+  border-color: rgba(18,155,186,0.40);
   color: var(--text);
 }
 
@@ -126,8 +127,8 @@ h1{
 }
 
 button{
-  background: rgba(102,163,255,0.15);
-  border: 1px solid rgba(102,163,255,0.35);
+  background: rgba(18,155,186,0.15);
+  border: 1px solid rgba(18,155,186,0.35);
   color: var(--text);
   padding: 10px 12px;
   border-radius: 10px;
@@ -639,8 +640,8 @@ button.nav-link:hover{
 }
 .chart-duration-btn.is-active{
   color: var(--text);
-  background: rgba(102,163,255,0.18);
-  box-shadow: inset 0 0 0 1px rgba(102,163,255,0.35);
+  background: rgba(18,155,186,0.18);
+  box-shadow: inset 0 0 0 1px rgba(18,155,186,0.35);
 }
 
 .projection-chart-wrap{
@@ -921,6 +922,13 @@ input, select{
   flex-direction:column;
   gap:10px;
 }
+
+.variable-todo-list{
+  margin-top: 10px;
+  display:flex;
+  flex-direction:column;
+  gap: 10px;
+}
 .item{
   display:flex;
   justify-content:space-between;
@@ -1005,7 +1013,7 @@ input, select{
   box-shadow: inset 0 0 0 1px rgba(0,0,0,0.25);
 }
 .cat-color-trigger:focus-visible{
-  outline: 2px solid rgba(102,163,255,0.75);
+  outline: 2px solid rgba(18,155,186,0.75);
   outline-offset: 2px;
 }
 .palette-grid{
@@ -1022,7 +1030,7 @@ input, select{
   cursor: pointer;
 }
 .swatch.is-selected{
-  outline: 2px solid rgba(102,163,255,0.75);
+  outline: 2px solid rgba(18,155,186,0.75);
   outline-offset: 1px;
 }
 .cat-actions{
@@ -1117,8 +1125,8 @@ input, select{
 .info{
   margin-top:10px;
   color: #1e3a8a;
-  border: 1px solid rgba(102,163,255,0.35);
-  background: rgba(102,163,255,0.12);
+  border: 1px solid rgba(18,155,186,0.35);
+  background: rgba(18,155,186,0.12);
   padding: 10px 12px;
   border-radius: 10px;
   display:none;
@@ -1158,7 +1166,7 @@ input, select{
 .cal-cell{
   border: 1px solid var(--border);
   background: rgba(0,0,0,0.015);
-  border-radius: 12px;
+  border-radius: 8px;
   min-height: var(--cal-day-min-h, 108px);
   padding: 6px 8px 8px;
   display: flex;
@@ -1217,7 +1225,7 @@ input, select{
   border-radius: 999px;
 }
 .cal-daynum-num.is-today{
-  background: #1a73e8;
+  background: var(--accent);
   color: #fff;
   font-weight: 600;
 }
@@ -1381,11 +1389,28 @@ input, select{
   border-top: 1px solid rgba(0,0,0,0.10);
 }
 
+.modal--choice{
+  max-width: 380px;
+}
+.choice-subtitle{
+  margin-top: -6px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.choice-actions{
+  display: grid;
+  gap: 10px;
+}
+.choice-actions button{
+  width: 100%;
+}
+
 .tx-edit-top{
   margin: -16px -16px 0;
   padding: 16px;
-  background: rgba(102,163,255,0.16);
-  border-radius: 14px 14px 0 0;
+  background: rgba(18,155,186,0.16);
+  border-radius: 0;
 }
 
 .tx-edit-divider{
@@ -1396,6 +1421,15 @@ input, select{
   max-width: 520px;
   max-height: min(92vh, 720px);
   overflow-y: auto;
+}
+.modal--expected-edit > h3{
+  margin: -16px -16px 0;
+  padding: 16px 16px 12px;
+  background: rgba(18,155,186,0.16);
+  border-radius: 14px 14px 0 0;
+}
+.modal--expected-edit #expectedEditErr{
+  margin-top: 10px;
 }
 .expected-modal-mode-row{
   display: flex;

@@ -58,6 +58,37 @@ function show(el, msg) {
   el.style.display = msg ? "block" : "none";
 }
 
+// Calendar day click: choose one-time vs recurring
+const addTxChoiceModal = document.getElementById("addTxChoiceModal");
+const addTxChoiceDateText = document.getElementById("addTxChoiceDateText");
+const addChoiceOneTimeBtn = document.getElementById("addChoiceOneTimeBtn");
+const addChoiceRecurringBtn = document.getElementById("addChoiceRecurringBtn");
+const addChoiceCancelBtn = document.getElementById("addChoiceCancelBtn");
+let pendingAddChoiceIso = "";
+
+function openAddChoiceModal(iso) {
+  if (!addTxChoiceModal) return;
+  pendingAddChoiceIso = normalizeIsoDate(iso) || String(iso || "");
+  if (addTxChoiceDateText) addTxChoiceDateText.textContent = pendingAddChoiceIso ? fmtDateMDY(pendingAddChoiceIso) : "—";
+  addTxChoiceModal.classList.add("modal-overlay--open");
+  addTxChoiceModal.setAttribute("aria-hidden", "false");
+  requestAnimationFrame(() => (addChoiceOneTimeBtn ? addChoiceOneTimeBtn.focus() : null));
+}
+
+function closeAddChoiceModal() {
+  if (!addTxChoiceModal) return;
+  addTxChoiceModal.classList.remove("modal-overlay--open");
+  addTxChoiceModal.setAttribute("aria-hidden", "true");
+  pendingAddChoiceIso = "";
+}
+
+function expandSidebarSection(key) {
+  const card = document.querySelector(`.sidebar-section[data-sidebar-key="${key}"]`);
+  if (!card) return null;
+  applySidebarSectionCollapsed(card, false);
+  return card;
+}
+
 function fmtMoney(n) {
   const num = typeof n === "string" ? Number(n) : n;
   if (Number.isNaN(num)) return String(n ?? "");
@@ -187,6 +218,7 @@ const expectedAccountId = document.getElementById("expectedAccountId");
 const expectedCategoryId = document.getElementById("expectedCategoryId");
 const expectedVariable = document.getElementById("expectedVariable");
 const addExpectedTxBtn = document.getElementById("addExpectedTxBtn");
+const variableTodoList = document.getElementById("variableTodoList");
 
 // Expected transaction edit modal
 const expectedEditModal = document.getElementById("expectedEditModal");
@@ -585,7 +617,7 @@ document.querySelectorAll(".sidebar-section[data-sidebar-key]").forEach((card) =
   // If this is lowBalance and the user hasn't explicitly set a preference,
   // force expanded even if older localStorage had it collapsed.
   let collapsed;
-  if (key === "lowBalance" && !userSet) {
+  if ((key === "lowBalance" || key === "variableTodos") && !userSet) {
     collapsed = false;
     try {
       localStorage.setItem(SIDEBAR_SECTION_PREFIX + key, "0");
@@ -973,12 +1005,45 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && reconcileModal?.classList.contains("modal-overlay--open")) closeReconcileModal();
 });
 
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && addTxChoiceModal?.classList.contains("modal-overlay--open")) closeAddChoiceModal();
+});
+
 if (txAddCancel) {
   txAddCancel.addEventListener("click", () => closeTxAddModal());
 }
 if (txAddModal) {
   txAddModal.addEventListener("click", (e) => {
     if (e.target === txAddModal) closeTxAddModal();
+  });
+}
+
+if (addChoiceCancelBtn) {
+  addChoiceCancelBtn.addEventListener("click", () => closeAddChoiceModal());
+}
+if (addChoiceOneTimeBtn) {
+  addChoiceOneTimeBtn.addEventListener("click", () => {
+    const iso = pendingAddChoiceIso;
+    closeAddChoiceModal();
+    if (iso) openTxAddModal({ date: iso });
+  });
+}
+if (addChoiceRecurringBtn) {
+  addChoiceRecurringBtn.addEventListener("click", () => {
+    const iso = pendingAddChoiceIso;
+    closeAddChoiceModal();
+    if (!iso) return;
+    const card = expandSidebarSection("recurring");
+    if (expectedStartDate) expectedStartDate.value = iso;
+    if (card) {
+      card.scrollIntoView({ block: "start", behavior: "smooth" });
+    }
+    requestAnimationFrame(() => (expectedAmount ? expectedAmount.focus() : expectedDesc ? expectedDesc.focus() : null));
+  });
+}
+if (addTxChoiceModal) {
+  addTxChoiceModal.addEventListener("click", (e) => {
+    if (e.target === addTxChoiceModal) closeAddChoiceModal();
   });
 }
 
@@ -1009,7 +1074,7 @@ if (calendarGrid) {
     if (!cell || !calendarGrid.contains(cell)) return;
     const iso = cell.dataset.iso;
     if (!iso) return;
-    openTxAddModal({ date: iso });
+    openAddChoiceModal(iso);
   });
 }
 
@@ -2525,6 +2590,7 @@ async function loadExpectedCalendar() {
   } catch (e) {
     show(calendarErr, e.message || "Failed to load expected calendar");
   }
+  renderVariableTodosForMonth();
 }
 
 function shiftMonthStr(ym, deltaMonths) {
@@ -2738,6 +2804,58 @@ function truncate(s, maxLen) {
   const str = String(s ?? "");
   if (str.length <= maxLen) return str;
   return str.slice(0, Math.max(0, maxLen - 1)) + "…";
+}
+
+function renderVariableTodosForMonth() {
+  if (!variableTodoList) return;
+  const items = state.monthExpectedItems || [];
+  variableTodoList.innerHTML = "";
+  const variableItems = items.filter((it) => !!it && !!it.variable);
+  if (variableItems.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "pill";
+    empty.textContent = "No variable items this month.";
+    variableTodoList.appendChild(empty);
+    return;
+  }
+
+  variableItems.sort((a, b) => String(a.date || "").localeCompare(String(b.date || "")));
+
+  for (const it of variableItems) {
+    const el = document.createElement("div");
+    el.className = "item expected-item--dense expected-item--variable";
+    el.style.cursor = "pointer";
+
+    const left = document.createElement("div");
+    left.className = "left";
+
+    const descEl = document.createElement("div");
+    descEl.className = `desc ${kindFgClass(it.kind)}`;
+    descEl.textContent = truncate(it.description || "(expected)", 32);
+
+    const metaEl = document.createElement("div");
+    metaEl.className = "meta";
+    metaEl.textContent = it.date ? fmtDateMDY(it.date) : "—";
+
+    left.appendChild(descEl);
+    left.appendChild(metaEl);
+
+    const amtBtn = document.createElement("button");
+    amtBtn.type = "button";
+    amtBtn.className = `amt ${it.kind === "income" ? "income" : "expense"} expected-amt-link`;
+    amtBtn.textContent = `$${fmtMoney(it.amount)}`;
+    amtBtn.title = "Review / edit this recurring occurrence";
+
+    el.appendChild(left);
+    el.appendChild(amtBtn);
+
+    el.addEventListener("click", () => {
+      const meta = getExpectedSeriesMeta(it.expected_transaction_id);
+      if (meta) openExpectedEditModal(meta, { calendarItem: it });
+    });
+
+    variableTodoList.appendChild(el);
+  }
 }
 
 function getExpectedSeriesMeta(expectedId) {
