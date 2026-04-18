@@ -485,6 +485,16 @@ async function refreshLowBalanceAlert() {
       }
     }
 
+    const todayIso = toISODate(new Date());
+    if (lowHit) {
+      const lowIso = normalizeIsoDate(lowHit.date);
+      if (lowIso && lowIso < todayIso) lowHit = null;
+    }
+    if (highHit) {
+      const highIso = normalizeIsoDate(highHit.date);
+      if (highIso && highIso < todayIso) highHit = null;
+    }
+
     const parts = [];
     if (minOk) {
       if (!lowHit) {
@@ -1141,11 +1151,15 @@ function applyTransactionEditMode(mode) {
   transactionEditMode = mode;
   const recurring = mode === "recurring";
   if (txEditInner) txEditInner.classList.toggle("modal--expected-edit", recurring);
-  if (txEditIntro) txEditIntro.classList.toggle("expected-edit-hero", recurring);
   const title = document.getElementById("txEditTitle");
   if (title) {
-    title.classList.toggle("sr-only", !recurring);
+    title.classList.add("sr-only");
     title.textContent = recurring ? "Recurring transaction" : "Edit transaction";
+  }
+  const modeBanner = document.getElementById("txEditModeBanner");
+  if (modeBanner) {
+    modeBanner.style.display = recurring ? "block" : "none";
+    if (recurring) modeBanner.textContent = "Recurring transaction";
   }
   const notesLabel = document.getElementById("txEditNotesLabel");
   if (notesLabel) notesLabel.textContent = recurring ? "Notes (series)" : "Notes";
@@ -1165,7 +1179,23 @@ function applyTransactionEditMode(mode) {
   if (delG) delG.style.display = recurring ? "block" : "none";
   const actualAct = document.getElementById("txEditActualActions");
   if (actualAct) actualAct.style.display = recurring ? "none" : "block";
-  if (txEditCancel) txEditCancel.textContent = recurring ? "Close" : "Cancel";
+  if (txEditCancel) {
+    txEditCancel.textContent = recurring ? "Close" : "Cancel";
+    txEditCancel.classList.toggle("tx-edit-dismiss--close", recurring);
+  }
+
+  const notesRowEl = document.getElementById("txEditNotesRow");
+  const txEditTopStrip = document.querySelector("#txEditModal .tx-edit-top");
+  const varWrapEl = document.getElementById("txEditRecurringVariableWrap");
+  if (notesRowEl && txEditTopStrip && varWrapEl && varWrapEl.parentNode) {
+    if (recurring) {
+      varWrapEl.parentNode.insertBefore(notesRowEl, varWrapEl);
+      notesRowEl.classList.add("tx-edit-notes-row--in-panel");
+    } else {
+      notesRowEl.classList.remove("tx-edit-notes-row--in-panel");
+      txEditTopStrip.appendChild(notesRowEl);
+    }
+  }
 }
 
 function openTxEditModal(tx) {

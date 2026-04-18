@@ -160,6 +160,17 @@ button.danger{
   overflow-y: auto;
   overflow-x: hidden;
   padding-right: 6px;
+  /*
+    Calendar column is much taller than the sidebar; without this, the sidebar
+    stretches to that row height and scrolls off-screen with the page. Sticky +
+    align-self keeps Add transaction / Variable in view while working on months.
+  */
+  align-self: start;
+  position: sticky;
+  top: 72px;
+  max-height: calc(100vh - 72px - 20px);
+  z-index: 10;
+  background: var(--bg);
 }
 
 .sidebar-section-head{
@@ -542,7 +553,11 @@ button.nav-link:hover{
     min-height: 0;
   }
   .sidebar{
+    position: static;
     max-height: none;
+    align-self: stretch;
+    z-index: auto;
+    background: transparent;
   }
   .main-column{
     overflow: visible;
@@ -1477,7 +1492,7 @@ textarea::placeholder{
   gap:4px;
   align-items: center;
   margin-top: auto;
-  padding-top: 26px;
+  padding-top: 6px;
   border-top: 1px solid rgba(0,0,0,0.08);
 }
 
@@ -1845,6 +1860,90 @@ textarea::placeholder{
   border-radius: 0;
 }
 
+.tx-edit-mode-banner{
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin: 0 0 10px;
+  line-height: 1.25;
+  color: var(--text);
+}
+
+/* Series notes moved into the main panel (recurring only); keep spacing from Account/Category. */
+.tx-edit-notes-row--in-panel{
+  margin-top: 10px;
+}
+
+/* Same max width for one-time and recurring so the edit sheet does not “jump”. */
+#txEditInner.modal{
+  max-width: 520px;
+}
+
+/* Edit modal: actions not full-bleed; Cancel = red outline, Close (recurring) = neutral outline */
+#txEditInner > .modal-actions{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+#txEditInner > .modal-actions #txEditActualActions{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+#txEditInner > .modal-actions #txEditActualActions .row.two{
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  width: auto;
+  max-width: 100%;
+}
+#txEditInner > .modal-actions #txEditActualActions .row.two > button{
+  flex: 0 1 auto;
+  width: auto;
+  min-width: 6.5rem;
+  padding-left: 18px;
+  padding-right: 18px;
+}
+#txEditCancel{
+  width: auto;
+  min-width: 6.5rem;
+  padding-left: 22px;
+  padding-right: 22px;
+  background: transparent;
+  color: var(--danger);
+  border: 2px solid var(--danger);
+}
+#txEditCancel:hover{
+  background: rgba(167, 55, 68, 0.08);
+  filter: none;
+}
+#txEditCancel.tx-edit-dismiss--close{
+  color: var(--text);
+  border-color: rgba(75, 85, 99, 0.5);
+}
+#txEditCancel.tx-edit-dismiss--close:hover{
+  background: rgba(0, 0, 0, 0.05);
+}
+#txEditInner #txEditRecurringPrimaryActions.row.two{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+#txEditInner #txEditRecurringPrimaryActions.row.two > button{
+  width: auto;
+  max-width: min(100%, 22rem);
+  padding-left: 14px;
+  padding-right: 14px;
+}
+#txEditInner .expected-instance-delete-actions .expected-remove-btn{
+  width: auto;
+  max-width: min(100%, 18rem);
+}
+
 .tx-edit-divider{
   margin: 0 -16px 14px;
   border-bottom: 1px solid rgba(0,0,0,0.10);
@@ -1871,23 +1970,16 @@ textarea::placeholder{
   overflow-y: auto;
   padding: 0;
 }
-/* One continuous tint: title + series error + description/notes flush to modal edges */
-.expected-edit-hero{
-  background: rgba(18,155,186,0.16);
+/* Recurring uses padding:0 on the modal; pull the tinted notes strip flush without negative margins. */
+.modal--expected-edit .tx-edit-top{
+  margin: 0;
   border-radius: 14px 14px 0 0;
 }
-.modal--expected-edit .expected-edit-hero > h3{
-  margin: 0;
-  padding: 16px 16px 8px;
-  background: transparent;
+.modal--expected-edit #txEditIntro{
+  padding: 16px 16px 0;
 }
-.modal--expected-edit .expected-edit-hero #txEditErr{
-  margin: 0 16px 10px;
-}
-.modal--expected-edit .expected-edit-hero .tx-edit-top{
-  margin: 0;
-  padding: 0 16px 16px;
-  background: transparent;
+.modal--expected-edit #txEditIntro #txEditErr{
+  margin: 0 0 10px;
 }
 .modal--expected-edit #expectedEditInstancePanel{
   padding: 14px 16px 16px;
