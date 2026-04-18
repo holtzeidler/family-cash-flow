@@ -8,6 +8,8 @@
   --danger:#a73744; /* darker maroon-leaning red */
   --ok:#005a4a;     /* green from palette */
   --border: rgba(0,0,0,0.12);
+  /* Sticky strips sit below the primary nav (tabs) */
+  --app-top-nav-offset: 72px;
 }
 
 *{ box-sizing:border-box; }
@@ -167,8 +169,8 @@ button.danger{
   */
   align-self: start;
   position: sticky;
-  top: 72px;
-  max-height: calc(100vh - 72px - 20px);
+  top: var(--app-top-nav-offset);
+  max-height: calc(100vh - var(--app-top-nav-offset) - 20px);
   z-index: 10;
   background: var(--bg);
 }
@@ -510,14 +512,24 @@ button.nav-link:hover{
   overflow: visible;
 }
 
-.calendar-sticky-header{
+/* Title + nav + DOW: one strip that sticks under the global top nav while scrolling the month grid */
+.calendar-panel-sticky-zone{
+  position: -webkit-sticky;
   position: sticky;
-  top: 0;
-  z-index: 20;
+  top: var(--app-top-nav-offset);
+  z-index: 24;
   background: var(--card);
-  padding-top: 4px;
-  margin-top: -4px;
+  padding-bottom: 8px;
+  margin-bottom: 4px;
   border-bottom: 1px solid rgba(0,0,0,0.08);
+}
+.calendar-sticky-header{
+  position: static;
+  z-index: auto;
+  background: transparent;
+  padding-top: 0;
+  margin-top: 0;
+  border-bottom: none;
 }
 
 .calendar-sticky-header #calendarErr{
@@ -1615,9 +1627,9 @@ textarea::placeholder{
 .tx-add-form > .row > div > label:first-child,
 .tx-add-form > label[for="txAddDate"],
 .tx-add-form > label[for="txAddCategoryId"],
+.tx-add-form > label[for="txAddNotes"],
 .tx-add-form #txAddRecurringBlock > label:not(.reimbursable-field),
-.tx-add-form #txAddRecurringBlock .expected-second-day-row > label,
-.tx-add-form .row-desc-notes label{
+.tx-add-form #txAddRecurringBlock .expected-second-day-row > label{
   display: block;
   margin-bottom: 5px;
   font-size: 11px;
@@ -1626,9 +1638,6 @@ textarea::placeholder{
   text-transform: uppercase;
   color: var(--muted);
   opacity: 0.88;
-}
-.tx-add-form .row-desc-notes label{
-  margin-bottom: 5px;
 }
 .tx-add-form .reimbursable-field .reimbursable-field__label{
   font-size: 11px;
@@ -1886,31 +1895,30 @@ textarea::placeholder{
   max-width: 520px;
 }
 
-/* Edit modal: actions not full-bleed; Cancel = red outline, Close (recurring) = neutral outline */
-#txEditInner > .modal-actions{
+/* Edit modal: Save centered; Delete + Cancel on one row */
+#txEditInner > .modal-actions.modal-actions--tx-edit-foot{
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   gap: 12px;
 }
-#txEditInner > .modal-actions #txEditActualActions{
+#txEditInner > .modal-actions #txEditSaveRow{
   display: flex;
-  flex-direction: column;
-  align-items: center;
+  justify-content: center;
   width: 100%;
 }
-#txEditInner > .modal-actions #txEditActualActions .row.two{
+#txEditInner > .modal-actions #txEditFooterSecondary{
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   gap: 10px;
-  width: auto;
-  max-width: 100%;
+  width: 100%;
 }
-#txEditInner > .modal-actions #txEditActualActions .row.two > button{
-  flex: 0 1 auto;
+#txEditInner > .modal-actions #txEditFooterSecondary > button{
+  flex: 1 1 auto;
   width: auto;
   min-width: 6.5rem;
+  max-width: min(100%, 14rem);
   padding-left: 18px;
   padding-right: 18px;
 }
@@ -1946,10 +1954,6 @@ textarea::placeholder{
   max-width: min(100%, 22rem);
   padding-left: 18px;
   padding-right: 18px;
-}
-#txEditInner .expected-instance-delete-actions .expected-remove-btn{
-  width: auto;
-  max-width: min(100%, 18rem);
 }
 
 .tx-edit-divider{
@@ -2035,26 +2039,6 @@ textarea::placeholder{
   font-size: 12px;
   color: var(--muted);
   line-height: 1.4;
-}
-.expected-instance-delete-group{
-  margin-top: 14px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
-}
-.expected-instance-delete-label{
-  font-size: 14px;
-  color: var(--muted);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 10px;
-  text-align: center;
-}
-.expected-instance-delete-actions{
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  align-items: center;
 }
 
 .expected-delete-actions{

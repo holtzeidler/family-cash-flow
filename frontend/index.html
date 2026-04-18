@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=125" />
+    <link rel="stylesheet" href="./styles.css?v=129" />
   </head>
   <body>
     <div class="container">
@@ -129,16 +129,8 @@
                     </div>
                   </div>
                   <div class="tx-add-vspace tx-add-vspace--lg" aria-hidden="true"></div>
-                  <div class="row-desc-notes">
-                    <div class="field-desc-short">
-                      <label for="txAddDesc">Label</label>
-                      <input id="txAddDesc" type="text" maxlength="12" class="input-desc-short" placeholder="e.g. Rent" />
-                    </div>
-                    <div class="field-notes-flex">
-                      <label for="txAddNotes">Notes</label>
-                      <input id="txAddNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
-                    </div>
-                  </div>
+                  <label for="txAddNotes">Notes</label>
+                  <input id="txAddNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
                   <div id="txAddRecurringBlock" style="display: none">
                     <div class="tx-add-vspace tx-add-vspace--sm" aria-hidden="true"></div>
                     <div id="txAddTwiceMonthlyFields" class="expected-second-day-row" style="display: none">
@@ -201,10 +193,10 @@
         <div class="main-column">
           <div id="calendarViewPanel" class="app-view">
             <div class="card calendar-panel" id="calendarPanel">
+              <div class="calendar-panel-sticky-zone">
               <div class="calendar-panel-head">
                 <h2>Calendar View</h2>
               </div>
-              <div id="calendarPanelBody" class="calendar-panel-body">
               <div class="calendar-sticky-header" id="calendarStickyHeader">
                 <div class="row">
                   <div class="calendar-nav-block">
@@ -273,6 +265,8 @@
                 <div id="calendarErr" class="error"></div>
                 <div id="calendarDow" class="calendar-dow-row" aria-hidden="true"></div>
               </div>
+              </div>
+              <div id="calendarPanelBody" class="calendar-panel-body">
               <div class="calendar-scroll">
                 <div id="calendarGrid"></div>
               </div>
@@ -739,26 +733,16 @@
           <div id="txEditRecurringPrimaryActions" class="tx-edit-recurring-update-row" style="display: none">
             <button type="button" id="txEditRecurringUpdateBtn">Update</button>
           </div>
-
-          <div id="txEditRecurringDeleteGroup" class="expected-instance-delete-group" style="display: none">
-            <div class="expected-instance-delete-label">Delete</div>
-            <div class="expected-instance-delete-actions">
-              <button type="button" id="cancelInstanceOverrideBtn" class="expected-remove-btn">This occurrence only</button>
-              <button type="button" id="deleteFutureInstancesBtn" class="expected-remove-btn expected-remove-btn--strong">
-                This and all future
-              </button>
-            </div>
-          </div>
         </div>
 
-        <div class="modal-actions">
-          <div id="txEditActualActions">
-            <div class="row two">
-              <button type="button" id="txEditSave">Save</button>
-              <button type="button" id="txEditDelete" class="danger">Delete</button>
-            </div>
+        <div class="modal-actions modal-actions--tx-edit-foot">
+          <div id="txEditSaveRow" class="tx-edit-foot-save-row">
+            <button type="button" id="txEditSave">Save</button>
           </div>
-          <button type="button" id="txEditCancel">Cancel</button>
+          <div id="txEditFooterSecondary" class="tx-edit-foot-secondary row two">
+            <button type="button" id="txEditDelete" class="danger">Delete</button>
+            <button type="button" id="txEditCancel">Cancel</button>
+          </div>
         </div>
       </div>
     </div>
@@ -777,6 +761,26 @@
           </div>
           <div style="height: 10px"></div>
           <button type="button" id="txEditApplyScopeCancelBtn" style="width: 100%">Back</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="txEditDeleteScopeModal" class="modal-overlay modal-overlay--nested" aria-hidden="true">
+      <div class="modal modal--choice" role="dialog" aria-labelledby="txEditDeleteScopeTitle" aria-modal="true">
+        <h3 id="txEditDeleteScopeTitle">Delete</h3>
+        <p class="choice-subtitle" style="margin-bottom: 12px">
+          Remove only this date from the schedule, or end the series from this date forward (past dates stay). This cannot be undone.
+        </p>
+        <div id="txEditDeleteScopeErr" class="error"></div>
+        <div class="modal-actions">
+          <div class="expected-delete-actions">
+            <button type="button" id="txEditDeleteScopeInstanceBtn" class="expected-remove-btn">This occurrence only</button>
+            <button type="button" id="txEditDeleteScopeFutureBtn" class="expected-remove-btn expected-remove-btn--strong">
+              This and all future
+            </button>
+          </div>
+          <div style="height: 10px"></div>
+          <button type="button" id="txEditDeleteScopeCancelBtn" style="width: 100%">Back</button>
         </div>
       </div>
     </div>
@@ -830,6 +834,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="./app.js?v=124"></script>
+    <script src="./app.js?v=126"></script>
   </body>
 </html>
