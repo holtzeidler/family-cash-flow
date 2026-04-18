@@ -1850,17 +1850,19 @@ textarea::placeholder{
   border-bottom: 1px solid rgba(0,0,0,0.10);
 }
 
-/* Edit transaction: cream panel for date / type / amount / category (edge-to-edge in modal) */
-.modal--tx-edit .tx-edit-divider{
-  margin-bottom: 0;
+.tx-edit-account-category-row{
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  align-items: start;
 }
-.modal--tx-edit .tx-edit-data-block{
-  box-sizing: border-box;
-  margin: 0 -16px 0;
-  padding: 14px 16px 18px;
-  background: #f9f3ea;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+.tx-edit-account-category-row.tx-edit-account-category-row--recurring{
+  grid-template-columns: 1fr 1fr;
+}
+@media (max-width: 519px){
+  .tx-edit-account-category-row.tx-edit-account-category-row--recurring{
+    grid-template-columns: 1fr;
+  }
 }
 
 .modal--expected-edit{
@@ -1879,7 +1881,7 @@ textarea::placeholder{
   padding: 16px 16px 8px;
   background: transparent;
 }
-.modal--expected-edit .expected-edit-hero #expectedEditErr{
+.modal--expected-edit .expected-edit-hero #txEditErr{
   margin: 0 16px 10px;
 }
 .modal--expected-edit .expected-edit-hero .tx-edit-top{
@@ -1889,9 +1891,6 @@ textarea::placeholder{
 }
 .modal--expected-edit #expectedEditInstancePanel{
   padding: 14px 16px 16px;
-}
-.modal--expected-edit #expectedEditInstancePanel > #expectedInstanceErr{
-  margin-top: 0;
 }
 .modal--expected-edit #expectedEditInstancePanel > .tx-edit-divider{
   margin: 0 0 14px;

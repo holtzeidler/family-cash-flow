@@ -124,6 +124,8 @@ let selectedExpectedInstance = null;
 let selectedExpectedMovedToDate = null;
 let txEditReimbursableValue = false;
 let txEditDescriptionSnapshot = "";
+/** "actual" = one-time bank txn; "recurring" = expected series / occurrence */
+let transactionEditMode = "actual";
 
 const userPill = document.getElementById("userPill");
 const familiesErr = document.getElementById("familiesErr");
@@ -219,15 +221,12 @@ const recurringFrequencyApplyBtn = document.getElementById("recurringFrequencyAp
 const recurringFilteredList = document.getElementById("recurringFilteredList");
 const variableTodoList = document.getElementById("variableTodoList");
 
-// Expected transaction edit modal
-const expectedEditModal = document.getElementById("expectedEditModal");
-const expectedEditErr = document.getElementById("expectedEditErr");
+// Expected transaction series id (unified edit modal)
 const expectedEditId = document.getElementById("expectedEditId");
 // These IDs existed in the older "series edit" panel; keep bindings so loaders can
 // safely check them (they'll be null if not present).
 const expectedEditAccountId = document.getElementById("expectedEditAccountId");
 const expectedEditDelete = document.getElementById("expectedEditDelete");
-const expectedEditCancel = document.getElementById("expectedEditCancel");
 let selectedExpectedSeriesTx = null;
 
 // Expected delete choice modal
@@ -293,22 +292,17 @@ const projectionChartCanvas = document.getElementById("projectionChartCanvas");
 let projectionChartInstance = null;
 let projectionChartDefaultsApplied = false;
 
-// Expected instance editing
-const instanceDate = document.getElementById("instanceDate");
+// Expected instance editing (fields live inside unified #txEditModal)
 const instanceExpectedTxId = document.getElementById("instanceExpectedTxId");
 const instanceRecurrence = document.getElementById("instanceRecurrence");
 const instanceTwiceMonthlyFields = document.getElementById("instanceTwiceMonthlyFields");
 const instanceSecondDayOfMonth = document.getElementById("instanceSecondDayOfMonth");
-const instanceKind = null;
-const instanceAmount = document.getElementById("instanceAmount");
-const instanceNotes = document.getElementById("instanceNotes");
 const instanceAccountId = document.getElementById("instanceAccountId");
 const seriesVariable = document.getElementById("seriesVariable");
 const saveInstanceOverrideBtn = document.getElementById("saveInstanceOverrideBtn");
 const saveSeriesFromInstanceBtn = document.getElementById("saveSeriesFromInstanceBtn");
 const cancelInstanceOverrideBtn = document.getElementById("cancelInstanceOverrideBtn");
 const deleteFutureInstancesBtn = document.getElementById("deleteFutureInstancesBtn");
-const expectedInstanceErr = document.getElementById("expectedInstanceErr");
 
 function updateInstanceTwiceMonthlyVisibility() {
   if (!instanceTwiceMonthlyFields || !instanceRecurrence) return;
@@ -320,25 +314,9 @@ if (instanceRecurrence) {
   instanceRecurrence.addEventListener("change", updateInstanceTwiceMonthlyVisibility);
 }
 
-if (instanceDate) {
-  // Prefer the native calendar popout when supported (Chrome/Edge/Safari).
-  instanceDate.addEventListener("click", () => {
-    try {
-      if (typeof instanceDate.showPicker === "function") instanceDate.showPicker();
-    } catch (_) {}
-  });
-
-  // Allow moving a single occurrence to another date.
-  instanceDate.addEventListener("change", () => {
-    if (!selectedExpectedInstance) return;
-    const iso = normalizeIsoDate(instanceDate.value);
-    if (!iso) return;
-    selectedExpectedMovedToDate = iso;
-    show(expectedInstanceErr, "");
-  });
-}
-
 const txEditModal = document.getElementById("txEditModal");
+const txEditInner = document.getElementById("txEditInner");
+const txEditIntro = document.getElementById("txEditIntro");
 const txEditId = document.getElementById("txEditId");
 const txEditDate = document.getElementById("txEditDate");
 const txEditKind = null;
@@ -348,6 +326,21 @@ const txEditErr = document.getElementById("txEditErr");
 const txEditSave = document.getElementById("txEditSave");
 const txEditDelete = document.getElementById("txEditDelete");
 const txEditCancel = document.getElementById("txEditCancel");
+
+if (txEditDate) {
+  txEditDate.addEventListener("click", () => {
+    try {
+      if (typeof txEditDate.showPicker === "function") txEditDate.showPicker();
+    } catch (_) {}
+  });
+  txEditDate.addEventListener("change", () => {
+    if (transactionEditMode !== "recurring" || !selectedExpectedInstance) return;
+    const iso = normalizeIsoDate(txEditDate.value);
+    if (!iso) return;
+    selectedExpectedMovedToDate = iso;
+    show(txEditErr, "");
+  });
+}
 
 // Reconcile day modal
 const reconcileModal = document.getElementById("reconcileModal");
@@ -1144,8 +1137,44 @@ function renderTxEditCategoryOptions() {
   syncCategoryComboboxCategories("txEditCategoryId", state.categories || []);
 }
 
+function applyTransactionEditMode(mode) {
+  transactionEditMode = mode;
+  const recurring = mode === "recurring";
+  if (txEditInner) txEditInner.classList.toggle("modal--expected-edit", recurring);
+  if (txEditIntro) txEditIntro.classList.toggle("expected-edit-hero", recurring);
+  const title = document.getElementById("txEditTitle");
+  if (title) {
+    title.classList.toggle("sr-only", !recurring);
+    title.textContent = recurring ? "Recurring transaction" : "Edit transaction";
+  }
+  const notesLabel = document.getElementById("txEditNotesLabel");
+  if (notesLabel) notesLabel.textContent = recurring ? "Notes (series)" : "Notes";
+  const dateLabel = document.getElementById("txEditDateLabel");
+  if (dateLabel) dateLabel.textContent = recurring ? "Occurrence date" : "Date";
+  const wrapSch = document.getElementById("txEditRecurringScheduleWrap");
+  if (wrapSch) wrapSch.style.display = recurring ? "block" : "none";
+  const acctCol = document.getElementById("txEditAccountCol");
+  if (acctCol) acctCol.style.display = recurring ? "block" : "none";
+  const row = document.getElementById("txEditAccountCategoryRow");
+  if (row) row.classList.toggle("tx-edit-account-category-row--recurring", recurring);
+  const varWrap = document.getElementById("txEditRecurringVariableWrap");
+  if (varWrap) varWrap.style.display = recurring ? "block" : "none";
+  const prim = document.getElementById("txEditRecurringPrimaryActions");
+  if (prim) prim.style.display = recurring ? "grid" : "none";
+  const delG = document.getElementById("txEditRecurringDeleteGroup");
+  if (delG) delG.style.display = recurring ? "block" : "none";
+  const actualAct = document.getElementById("txEditActualActions");
+  if (actualAct) actualAct.style.display = recurring ? "none" : "block";
+  if (txEditCancel) txEditCancel.textContent = recurring ? "Close" : "Cancel";
+}
+
 function openTxEditModal(tx) {
   if (!txEditModal || !txEditId || !txEditDate) return;
+  selectedExpectedInstance = null;
+  selectedExpectedMovedToDate = null;
+  if (expectedEditId) expectedEditId.value = "";
+  if (instanceExpectedTxId) instanceExpectedTxId.value = "";
+  applyTransactionEditMode("actual");
   txEditId.value = String(tx.id);
   txEditDate.value = tx.date;
   {
@@ -1168,6 +1197,16 @@ function closeTxEditModal() {
   if (!txEditModal) return;
   txEditModal.classList.remove("modal-overlay--open");
   txEditModal.setAttribute("aria-hidden", "true");
+  selectedExpectedInstance = null;
+  selectedExpectedMovedToDate = null;
+  if (txEditDate) {
+    txEditDate.value = "";
+    txEditDate.disabled = false;
+    txEditDate.readOnly = false;
+  }
+  if (instanceExpectedTxId) instanceExpectedTxId.value = "";
+  if (expectedEditId) expectedEditId.value = "";
+  applyTransactionEditMode("actual");
 }
 
 function mountTxAddFormInModal() {
@@ -1237,6 +1276,7 @@ function closeReconcileModal() {
 if (txEditSave) {
   txEditSave.addEventListener("click", async () => {
     try {
+      if (transactionEditMode === "recurring") return;
       show(txEditErr, "");
       if (!state.activeFamilyId) throw new Error("Choose a family first");
       const id = txEditId.value;
@@ -1263,6 +1303,7 @@ if (txEditSave) {
 if (txEditDelete) {
   txEditDelete.addEventListener("click", async () => {
     try {
+      if (transactionEditMode === "recurring") return;
       show(txEditErr, "");
       if (!state.activeFamilyId) throw new Error("Choose a family first");
       const id = txEditId.value;
@@ -1486,18 +1527,18 @@ document.querySelector(".chart-duration-bar")?.addEventListener("click", async (
 if (saveInstanceOverrideBtn) {
   saveInstanceOverrideBtn.addEventListener("click", async () => {
     try {
-      show(expectedInstanceErr, "");
+      show(txEditErr, "");
       if (!state.activeFamilyId) throw new Error("Choose a family first");
       if (!selectedExpectedInstance) throw new Error("Select an expected occurrence from the calendar");
 
-      const amountVal = instanceAmount.value;
+      const amountVal = txEditAmount.value;
       const amount = amountVal ? Number(amountVal) : null;
       if (!amount || Number.isNaN(amount) || amount <= 0) throw new Error("Amount must be > 0");
 
       const accountId = instanceAccountId.value;
       if (!accountId) throw new Error("Account is required");
 
-      const categoryId = categoryIdFromCategoryField("instanceCategoryId");
+      const categoryId = categoryIdFromCategoryField("txEditCategoryId");
 
       const occ = normalizeIsoDate(selectedExpectedInstance.occurrence_date);
       if (!occ) throw new Error("Invalid occurrence date");
@@ -1506,7 +1547,7 @@ if (saveInstanceOverrideBtn) {
       const payload = {
         action: "update",
         account_id: Number(accountId),
-        kind: getRadioValue("instanceKind", "expense"),
+        kind: getRadioValue("txEditKind", "expense"),
         amount,
         description: expectedSaveDescription(),
         category_id: categoryId,
@@ -1519,10 +1560,10 @@ if (saveInstanceOverrideBtn) {
         payload
       );
 
-      closeExpectedEditModal();
+      closeTxEditModal();
       await refreshExpectedCalendarAndMonth();
     } catch (e) {
-      show(expectedInstanceErr, e.message || "Failed to save override");
+      show(txEditErr, e.message || "Failed to save override");
     }
   });
 }
@@ -1530,7 +1571,7 @@ if (saveInstanceOverrideBtn) {
 if (saveSeriesFromInstanceBtn) {
   saveSeriesFromInstanceBtn.addEventListener("click", async () => {
     try {
-      show(expectedInstanceErr, "");
+      show(txEditErr, "");
       if (!state.activeFamilyId) throw new Error("Choose a family first");
       const seriesId = selectedExpectedInstance
         ? Number(selectedExpectedInstance.expected_transaction_id)
@@ -1540,15 +1581,15 @@ if (saveSeriesFromInstanceBtn) {
       const meta = selectedExpectedSeriesTx || getExpectedSeriesMeta(seriesId);
       if (!meta) throw new Error("Could not load series details");
 
-      const amountVal = instanceAmount?.value;
+      const amountVal = txEditAmount?.value;
       const amount = amountVal ? Number(amountVal) : null;
       if (!amount || Number.isNaN(amount) || amount <= 0) throw new Error("Amount must be > 0");
 
       const accountId = instanceAccountId?.value;
       if (!accountId) throw new Error("Account is required");
 
-      const categoryId = categoryIdFromCategoryField("instanceCategoryId");
-      const notesVal = instanceNotes ? instanceNotes.value.trim() || null : null;
+      const categoryId = categoryIdFromCategoryField("txEditCategoryId");
+      const notesVal = txEditNotes ? txEditNotes.value.trim() || null : null;
 
       const recurrenceVal = instanceRecurrence?.value || meta.recurrence || "monthly";
       let secondDayVal = meta.second_day_of_month != null ? Number(meta.second_day_of_month) : null;
@@ -1584,7 +1625,7 @@ if (saveSeriesFromInstanceBtn) {
           second_day_of_month: recurrenceVal === "twice_monthly" ? secondDayVal : null,
           description: expectedSaveDescription(),
           notes: notesVal,
-          kind: getRadioValue("instanceKind", "expense"),
+          kind: getRadioValue("txEditKind", "expense"),
           amount: Number(amount),
           variable: !!(seriesVariable && seriesVariable.checked),
           category_id: categoryId,
@@ -1592,7 +1633,7 @@ if (saveSeriesFromInstanceBtn) {
       } else {
         const applyBody = {
           account_id: Number(accountId),
-          kind: getRadioValue("instanceKind", "expense"),
+          kind: getRadioValue("txEditKind", "expense"),
           amount: Number(amount),
           description: expectedSaveDescription(),
           reimbursable: !!meta.reimbursable,
@@ -1609,10 +1650,10 @@ if (saveSeriesFromInstanceBtn) {
         );
       }
 
-      closeExpectedEditModal();
+      closeTxEditModal();
       await refreshExpectedCalendarAndMonth();
     } catch (e) {
-      show(expectedInstanceErr, e.message || "Failed to save");
+      show(txEditErr, e.message || "Failed to save");
     }
   });
 }
@@ -1620,7 +1661,7 @@ if (saveSeriesFromInstanceBtn) {
 if (cancelInstanceOverrideBtn) {
   cancelInstanceOverrideBtn.addEventListener("click", async () => {
     try {
-      show(expectedInstanceErr, "");
+      show(txEditErr, "");
       if (!state.activeFamilyId) throw new Error("Choose a family first");
       if (!selectedExpectedInstance) throw new Error("Select an expected occurrence from the calendar");
       if (!confirm("Remove only this occurrence? It will no longer appear on the calendar.")) return;
@@ -1632,10 +1673,10 @@ if (cancelInstanceOverrideBtn) {
         { action: "cancel" }
       );
 
-      closeExpectedEditModal();
+      closeTxEditModal();
       await refreshExpectedCalendarAndMonth();
     } catch (e) {
-      show(expectedInstanceErr, e.message || "Failed to cancel occurrence");
+      show(txEditErr, e.message || "Failed to cancel occurrence");
     }
   });
 }
@@ -1643,7 +1684,7 @@ if (cancelInstanceOverrideBtn) {
 if (deleteFutureInstancesBtn) {
   deleteFutureInstancesBtn.addEventListener("click", async () => {
     try {
-      show(expectedInstanceErr, "");
+      show(txEditErr, "");
       if (!state.activeFamilyId) throw new Error("Choose a family first");
       if (!selectedExpectedInstance) throw new Error("Select an expected occurrence from the calendar");
 
@@ -1662,10 +1703,10 @@ if (deleteFutureInstancesBtn) {
         "POST"
       );
 
-      closeExpectedEditModal();
+      closeTxEditModal();
       await refreshExpectedCalendarAndMonth();
     } catch (e) {
-      show(expectedInstanceErr, e.message || "Failed to delete future occurrences");
+      show(txEditErr, e.message || "Failed to delete future occurrences");
     }
   });
 }
@@ -1711,7 +1752,7 @@ function categoryIdFromCategoryField(fieldId) {
   return categoryIdFromSelectValue(document.getElementById(fieldId)?.value);
 }
 
-const CATEGORY_COMBOBOX_FIELD_IDS = ["txAddCategoryId", "instanceCategoryId", "txEditCategoryId"];
+const CATEGORY_COMBOBOX_FIELD_IDS = ["txAddCategoryId", "txEditCategoryId"];
 
 /** @type {Map<string, { wrap: HTMLElement, input: HTMLInputElement, hidden: HTMLInputElement, list: HTMLUListElement, categories: { id: number | string; name: string }[], blurTimer: ReturnType<typeof setTimeout> | null }>} */
 const categoryComboboxRegistry = new Map();
@@ -2510,11 +2551,14 @@ async function refreshExpectedCalendarAndMonth() {
 }
 
 function openExpectedEditModal(tx, opts = {}) {
-  if (!expectedEditModal || !expectedEditId) return;
+  if (!txEditModal || !expectedEditId) return;
   const calendarItem = opts.calendarItem ?? null;
 
+  if (txEditId) txEditId.value = "";
   expectedEditId.value = String(tx.id);
   selectedExpectedSeriesTx = tx;
+  applyTransactionEditMode("recurring");
+  renderTxEditCategoryOptions();
 
   if (calendarItem) {
     selectExpectedInstance(calendarItem);
@@ -2525,20 +2569,20 @@ function openExpectedEditModal(tx, opts = {}) {
     const nextIso = opts.nextOccurrenceIso ? normalizeIsoDate(opts.nextOccurrenceIso) : nextExpectedOccurrenceIso(tx, basisIso);
     if (!nextIso) {
       selectedExpectedInstance = null;
-      if (instanceDate) {
-        instanceDate.value = "";
-        instanceDate.disabled = true;
+      if (txEditDate) {
+        txEditDate.value = "";
+        txEditDate.disabled = true;
       }
       if (instanceExpectedTxId) instanceExpectedTxId.value = String(tx.id);
-      if (instanceNotes) instanceNotes.value = tx.notes || "";
+      if (txEditNotes) txEditNotes.value = tx.notes || "";
       {
         const k = tx && tx.kind ? String(tx.kind) : "expense";
-        const radio = document.querySelector(`input[type="radio"][name="instanceKind"][value="${k}"]`);
+        const radio = document.querySelector(`input[type="radio"][name="txEditKind"][value="${k}"]`);
         if (radio) radio.checked = true;
       }
-      if (instanceAmount) instanceAmount.value = String(tx.amount ?? "");
+      if (txEditAmount) txEditAmount.value = String(tx.amount ?? "");
       if (instanceAccountId) instanceAccountId.value = tx.account_id != null ? String(tx.account_id) : "";
-      if (document.getElementById("instanceCategoryId")) setCategoryFieldValue("instanceCategoryId", tx.category_id);
+      setCategoryFieldValue("txEditCategoryId", tx.category_id);
     } else {
       const accountId = tx.account_id != null ? Number(tx.account_id) : NaN;
       const acct = Number.isFinite(accountId) ? state.accounts.find((a) => Number(a.id) === accountId) : null;
@@ -2574,21 +2618,9 @@ function openExpectedEditModal(tx, opts = {}) {
   if (seriesVariable) seriesVariable.checked = !!tx.variable;
 
   setExpectedModalMode();
-  show(expectedEditErr, "");
-  show(expectedInstanceErr, "");
-  expectedEditModal.classList.add("modal-overlay--open");
-  expectedEditModal.setAttribute("aria-hidden", "false");
-}
-
-function closeExpectedEditModal() {
-  if (!expectedEditModal) return;
-  expectedEditModal.classList.remove("modal-overlay--open");
-  expectedEditModal.setAttribute("aria-hidden", "true");
-  selectedExpectedInstance = null;
-  selectedExpectedMovedToDate = null;
-  if (instanceDate) instanceDate.value = "";
-  if (instanceExpectedTxId) instanceExpectedTxId.value = "";
-  if (instanceNotes) instanceNotes.value = "";
+  show(txEditErr, "");
+  txEditModal.classList.add("modal-overlay--open");
+  txEditModal.setAttribute("aria-hidden", "false");
 }
 
 function openExpectedDeleteModal(expectedId, occurrenceDate) {
@@ -2614,15 +2646,6 @@ function closeExpectedDeleteModal() {
 }
 
 // Edit scope radio buttons removed (replaced with save options).
-
-if (expectedEditCancel) {
-  expectedEditCancel.addEventListener("click", () => closeExpectedEditModal());
-}
-if (expectedEditModal) {
-  expectedEditModal.addEventListener("click", (e) => {
-    if (e.target === expectedEditModal) closeExpectedEditModal();
-  });
-}
 
 if (expectedDeleteCancelBtn) {
   expectedDeleteCancelBtn.addEventListener("click", () => closeExpectedDeleteModal());
@@ -2663,7 +2686,7 @@ async function runExpectedDeleteAction(mode) {
     }
 
     closeExpectedDeleteModal();
-    closeExpectedEditModal();
+    closeTxEditModal();
     await refreshExpectedCalendarAndMonth();
   } catch (e) {
     show(expectedDeleteErr, e.message || "Failed to delete");
@@ -3547,22 +3570,22 @@ function selectExpectedInstance(item) {
     description: item.description != null ? String(item.description) : "",
   };
 
-  if (instanceDate) {
-    instanceDate.readOnly = false;
-    instanceDate.disabled = false;
+  if (txEditDate) {
+    txEditDate.readOnly = false;
+    txEditDate.disabled = false;
     selectedExpectedMovedToDate = normalizeIsoDate(item.date) || item.date;
-    instanceDate.value = selectedExpectedMovedToDate;
+    txEditDate.value = selectedExpectedMovedToDate;
   }
   if (instanceExpectedTxId) instanceExpectedTxId.value = String(item.expected_transaction_id);
   {
     const k = item && item.kind ? String(item.kind) : "expense";
-    const radio = document.querySelector(`input[type="radio"][name="instanceKind"][value="${k}"]`);
+    const radio = document.querySelector(`input[type="radio"][name="txEditKind"][value="${k}"]`);
     if (radio) radio.checked = true;
   }
-  if (instanceAmount) instanceAmount.value = Number(item.amount);
-  if (instanceNotes) instanceNotes.value = item.notes && String(item.notes).trim() ? String(item.notes).trim() : "";
+  if (txEditAmount) txEditAmount.value = Number(item.amount);
+  if (txEditNotes) txEditNotes.value = item.notes && String(item.notes).trim() ? String(item.notes).trim() : "";
   if (instanceAccountId) instanceAccountId.value = String(item.account_id);
-  if (document.getElementById("instanceCategoryId")) setCategoryFieldValue("instanceCategoryId", item.category_id);
+  setCategoryFieldValue("txEditCategoryId", item.category_id);
 
   {
     const meta = selectedExpectedSeriesTx || getExpectedSeriesMeta(item.expected_transaction_id);
@@ -3573,7 +3596,7 @@ function selectExpectedInstance(item) {
     }
   }
 
-  show(expectedInstanceErr, "");
+  show(txEditErr, "");
 }
 
 function renderCalendar() {
