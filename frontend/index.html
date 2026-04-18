@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=114" />
+    <link rel="stylesheet" href="./styles.css?v=115" />
   </head>
   <body>
     <div class="container">
@@ -43,6 +43,12 @@
               <div class="pill" id="userPill">Loading...</div>
               <button type="button" id="logoutBtn">Logout</button>
             </div>
+          </div>
+
+          <div class="sidebar-balance-threshold-alerts" id="sidebarBalanceThresholdAlerts" aria-label="Balance threshold alerts">
+            <p id="sidebarBalanceThresholdHint" class="sidebar-balance-threshold-hint-inline" hidden></p>
+            <div id="sidebarLowBalanceBanner" class="calendar-low-balance calendar-low-balance--sidebar" style="display: none" role="status"></div>
+            <div id="sidebarHighBalanceBanner" class="calendar-low-balance calendar-low-balance--sidebar calendar-low-balance--high" style="display: none" role="status"></div>
           </div>
 
           <div class="card sidebar-section sidebar-section--collapsed" data-sidebar-key="addTransaction">
@@ -92,7 +98,7 @@
                   <div class="tx-add-vspace tx-add-vspace--lg" aria-hidden="true"></div>
                   <div class="tx-add-schedule-toolbar" aria-label="Repeat and schedule">
                     <div class="tx-add-schedule-toolbar__left">
-                      <div class="tx-add-schedule-question">Does this repeat?</div>
+                      <div class="tx-add-schedule-question">Recurring?</div>
                       <div class="tx-add-repeat-row">
                         <label class="tx-add-repeat-yes">
                           <input id="txAddRepeats" type="checkbox" />
@@ -188,12 +194,6 @@
             <div id="sidebarBodyVariableTodos" class="sidebar-section-body">
               <div id="variableTodoList" class="variable-todo-list"></div>
             </div>
-          </div>
-
-          <div class="sidebar-balance-threshold-alerts" id="sidebarBalanceThresholdAlerts" aria-label="Balance threshold alerts">
-            <p id="sidebarBalanceThresholdHint" class="sidebar-balance-threshold-hint-inline" hidden></p>
-            <div id="sidebarLowBalanceBanner" class="calendar-low-balance calendar-low-balance--sidebar" style="display: none" role="status"></div>
-            <div id="sidebarHighBalanceBanner" class="calendar-low-balance calendar-low-balance--sidebar calendar-low-balance--high" style="display: none" role="status"></div>
           </div>
 
         </aside>
@@ -724,24 +724,39 @@
 
           <div class="tx-edit-divider" aria-hidden="true"></div>
 
-          <div class="row two">
+          <div class="row">
             <div>
-              <label for="instanceDate">Occurrence date</label>
-              <input id="instanceDate" type="date" />
+              <label>Type</label>
+              <div class="kind-toggle" role="radiogroup" aria-label="Expected instance type">
+                <label class="kind-opt"><input type="radio" name="instanceKind" value="expense" checked /> Expense</label>
+                <label class="kind-opt"><input type="radio" name="instanceKind" value="income" /> Income</label>
+              </div>
             </div>
-            <div>
-              <label for="instanceRecurrence">Recurrence</label>
-              <select id="instanceRecurrence" title="How often this repeats">
-                <option value="monthly" selected>Monthly</option>
-                <option value="twice_monthly">Twice monthly</option>
-                <option value="weekly">Weekly</option>
-                <option value="semiannual">Twice yearly (every 6 months)</option>
-                <option value="yearly">Annual</option>
-                <option value="once">Once</option>
-              </select>
-            </div>
-            <input id="instanceExpectedTxId" type="hidden" />
           </div>
+          <div style="height:10px;"></div>
+          <label for="instanceDate">Occurrence date</label>
+          <input id="instanceDate" type="date" />
+          <input id="instanceExpectedTxId" type="hidden" />
+          <div style="height:10px;"></div>
+          <div class="row">
+            <div>
+              <label for="instanceAmount">Amount</label>
+              <div class="money-input">
+                <span class="money-input__prefix" aria-hidden="true">$</span>
+                <input id="instanceAmount" type="number" min="0" step="0.01" placeholder="0.00" />
+              </div>
+            </div>
+          </div>
+          <div style="height:10px;"></div>
+          <label for="instanceRecurrence">Recurrence</label>
+          <select id="instanceRecurrence" title="How often this repeats">
+            <option value="monthly" selected>Monthly</option>
+            <option value="twice_monthly">Twice monthly</option>
+            <option value="weekly">Weekly</option>
+            <option value="semiannual">Twice yearly (every 6 months)</option>
+            <option value="yearly">Annual</option>
+            <option value="once">Once</option>
+          </select>
           <div id="instanceTwiceMonthlyFields" class="expected-second-day-row" style="display:none">
             <label for="instanceSecondDayOfMonth">2nd day of month</label>
             <input
@@ -756,26 +771,6 @@
             <p style="margin: 6px 0 0; font-size: 12px; color: var(--muted)">
               Required for twice monthly: other day of the month (1–31), not the same as the start date’s day.
             </p>
-          </div>
-          <div style="height:10px;"></div>
-          <div class="row">
-            <div>
-              <label>Type</label>
-              <div class="kind-toggle" role="radiogroup" aria-label="Expected instance type">
-                <label class="kind-opt"><input type="radio" name="instanceKind" value="expense" checked /> Expense</label>
-                <label class="kind-opt"><input type="radio" name="instanceKind" value="income" /> Income</label>
-              </div>
-            </div>
-          </div>
-          <div style="height:10px;"></div>
-          <div class="row">
-            <div>
-              <label for="instanceAmount">Amount</label>
-              <div class="money-input">
-                <span class="money-input__prefix" aria-hidden="true">$</span>
-                <input id="instanceAmount" type="number" min="0" step="0.01" placeholder="0.00" />
-              </div>
-            </div>
           </div>
           <div style="height:10px;"></div>
           <div class="row two">

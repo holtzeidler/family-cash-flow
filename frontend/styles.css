@@ -369,7 +369,6 @@ button.nav-link:hover{
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin-top: 4px;
 }
 .calendar-low-balance--sidebar{
   display: flex;
