@@ -299,8 +299,7 @@ const instanceTwiceMonthlyFields = document.getElementById("instanceTwiceMonthly
 const instanceSecondDayOfMonth = document.getElementById("instanceSecondDayOfMonth");
 const instanceAccountId = document.getElementById("instanceAccountId");
 const seriesVariable = document.getElementById("seriesVariable");
-const saveInstanceOverrideBtn = document.getElementById("saveInstanceOverrideBtn");
-const saveSeriesFromInstanceBtn = document.getElementById("saveSeriesFromInstanceBtn");
+const txEditRecurringUpdateBtn = document.getElementById("txEditRecurringUpdateBtn");
 const cancelInstanceOverrideBtn = document.getElementById("cancelInstanceOverrideBtn");
 const deleteFutureInstancesBtn = document.getElementById("deleteFutureInstancesBtn");
 
@@ -1147,10 +1146,27 @@ function renderTxEditCategoryOptions() {
   syncCategoryComboboxCategories("txEditCategoryId", state.categories || []);
 }
 
-function applyTransactionEditMode(mode) {
+function applyTransactionEditMode(mode, opts = {}) {
+  if (opts.resetting) {
+    transactionEditMode = "actual";
+    if (txEditInner) txEditInner.classList.remove("modal--expected-edit");
+    const modeBanner = document.getElementById("txEditModeBanner");
+    if (modeBanner) {
+      modeBanner.style.display = "none";
+      modeBanner.textContent = "";
+    }
+    const txEditTopStrip = document.querySelector("#txEditModal .tx-edit-top");
+    if (txEditTopStrip) txEditTopStrip.style.display = "";
+    if (instanceRecurrence) instanceRecurrence.disabled = false;
+    if (instanceAccountId) instanceAccountId.disabled = false;
+    if (instanceSecondDayOfMonth) instanceSecondDayOfMonth.disabled = false;
+    return;
+  }
+
   transactionEditMode = mode;
   const recurring = mode === "recurring";
-  if (txEditInner) txEditInner.classList.toggle("modal--expected-edit", recurring);
+  if (txEditInner) txEditInner.classList.add("modal--expected-edit");
+
   const title = document.getElementById("txEditTitle");
   if (title) {
     title.classList.add("sr-only");
@@ -1158,38 +1174,65 @@ function applyTransactionEditMode(mode) {
   }
   const modeBanner = document.getElementById("txEditModeBanner");
   if (modeBanner) {
-    modeBanner.style.display = recurring ? "block" : "none";
-    if (recurring) modeBanner.textContent = "Recurring transaction";
+    modeBanner.style.display = "block";
+    modeBanner.textContent = recurring ? "Recurring transaction" : "Transaction";
   }
+  const txEditTopStrip = document.querySelector("#txEditModal .tx-edit-top");
+  if (txEditTopStrip) txEditTopStrip.style.display = "";
+
   const notesLabel = document.getElementById("txEditNotesLabel");
   if (notesLabel) notesLabel.textContent = recurring ? "Notes (series)" : "Notes";
   const dateLabel = document.getElementById("txEditDateLabel");
   if (dateLabel) dateLabel.textContent = recurring ? "Occurrence date" : "Date";
+
   const wrapSch = document.getElementById("txEditRecurringScheduleWrap");
-  if (wrapSch) wrapSch.style.display = recurring ? "block" : "none";
+  if (wrapSch) {
+    wrapSch.style.display = "block";
+    wrapSch.classList.toggle("tx-edit-schedule--locked", !recurring);
+  }
+  if (instanceRecurrence) {
+    if (!recurring) {
+      instanceRecurrence.value = "once";
+      instanceRecurrence.disabled = true;
+      instanceRecurrence.title = "Bank transactions do not repeat. Stored as a single dated entry.";
+    } else {
+      instanceRecurrence.disabled = false;
+      instanceRecurrence.title = "How often this repeats";
+    }
+  }
+  if (instanceSecondDayOfMonth) instanceSecondDayOfMonth.disabled = !recurring;
+
   const acctCol = document.getElementById("txEditAccountCol");
-  if (acctCol) acctCol.style.display = recurring ? "block" : "none";
-  const row = document.getElementById("txEditAccountCategoryRow");
-  if (row) row.classList.toggle("tx-edit-account-category-row--recurring", recurring);
+  if (acctCol) acctCol.style.display = "block";
+  const acctCatRow = document.getElementById("txEditAccountCategoryRow");
+  if (acctCatRow) acctCatRow.classList.add("tx-edit-account-category-row--recurring");
+  if (instanceAccountId) {
+    instanceAccountId.disabled = !recurring;
+    instanceAccountId.title = recurring
+      ? ""
+      : "Actual transactions are not tied to an account in the ledger; this is display-only.";
+  }
+
+  updateInstanceTwiceMonthlyVisibility();
+
   const varWrap = document.getElementById("txEditRecurringVariableWrap");
   if (varWrap) varWrap.style.display = recurring ? "block" : "none";
+
   const prim = document.getElementById("txEditRecurringPrimaryActions");
   if (prim) prim.style.display = recurring ? "grid" : "none";
   const delG = document.getElementById("txEditRecurringDeleteGroup");
   if (delG) delG.style.display = recurring ? "block" : "none";
+
   const actualAct = document.getElementById("txEditActualActions");
   if (actualAct) actualAct.style.display = recurring ? "none" : "block";
+
   if (txEditCancel) {
     txEditCancel.textContent = recurring ? "Close" : "Cancel";
     txEditCancel.classList.toggle("tx-edit-dismiss--close", recurring);
   }
 
   const notesRowEl = document.getElementById("txEditNotesRow");
-  const txEditTopStrip = document.querySelector("#txEditModal .tx-edit-top");
   const varWrapEl = document.getElementById("txEditRecurringVariableWrap");
-  if (txEditTopStrip) {
-    txEditTopStrip.style.display = recurring ? "" : "none";
-  }
   if (notesRowEl && varWrapEl && varWrapEl.parentNode) {
     varWrapEl.parentNode.insertBefore(notesRowEl, varWrapEl);
     notesRowEl.classList.add("tx-edit-notes-row--in-panel");
@@ -1202,7 +1245,6 @@ function openTxEditModal(tx) {
   selectedExpectedMovedToDate = null;
   if (expectedEditId) expectedEditId.value = "";
   if (instanceExpectedTxId) instanceExpectedTxId.value = "";
-  applyTransactionEditMode("actual");
   txEditId.value = String(tx.id);
   txEditDate.value = tx.date;
   {
@@ -1216,13 +1258,34 @@ function openTxEditModal(tx) {
   txEditReimbursableValue = !!tx.reimbursable;
   renderTxEditCategoryOptions();
   setCategoryFieldValue("txEditCategoryId", tx.category_id);
+  if (instanceAccountId && state.accounts && state.accounts.length > 0) {
+    instanceAccountId.value = String(state.accounts[0].id);
+  }
   show(txEditErr, "");
   txEditModal.classList.add("modal-overlay--open");
   txEditModal.setAttribute("aria-hidden", "false");
+  applyTransactionEditMode("actual");
+}
+
+function closeTxEditApplyScopeModal() {
+  const m = document.getElementById("txEditApplyScopeModal");
+  if (!m) return;
+  m.classList.remove("modal-overlay--open");
+  m.setAttribute("aria-hidden", "true");
+  show(document.getElementById("txEditApplyScopeErr"), "");
+}
+
+function openTxEditApplyScopeModal() {
+  const m = document.getElementById("txEditApplyScopeModal");
+  if (!m) return;
+  show(document.getElementById("txEditApplyScopeErr"), "");
+  m.classList.add("modal-overlay--open");
+  m.setAttribute("aria-hidden", "false");
 }
 
 function closeTxEditModal() {
   if (!txEditModal) return;
+  closeTxEditApplyScopeModal();
   txEditModal.classList.remove("modal-overlay--open");
   txEditModal.setAttribute("aria-hidden", "true");
   selectedExpectedInstance = null;
@@ -1234,7 +1297,7 @@ function closeTxEditModal() {
   }
   if (instanceExpectedTxId) instanceExpectedTxId.value = "";
   if (expectedEditId) expectedEditId.value = "";
-  applyTransactionEditMode("actual");
+  applyTransactionEditMode("actual", { resetting: true });
 }
 
 function mountTxAddFormInModal() {
@@ -1357,7 +1420,13 @@ if (txEditModal) {
 }
 
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && txEditModal?.classList.contains("modal-overlay--open")) closeTxEditModal();
+  if (e.key !== "Escape") return;
+  const scope = document.getElementById("txEditApplyScopeModal");
+  if (scope?.classList.contains("modal-overlay--open")) {
+    closeTxEditApplyScopeModal();
+    return;
+  }
+  if (txEditModal?.classList.contains("modal-overlay--open")) closeTxEditModal();
 });
 
 document.addEventListener("keydown", (e) => {
@@ -1552,137 +1621,181 @@ document.querySelector(".chart-duration-bar")?.addEventListener("click", async (
   }
 });
 
-if (saveInstanceOverrideBtn) {
-  saveInstanceOverrideBtn.addEventListener("click", async () => {
+function validateTxEditBeforeRecurringApply() {
+  if (!state.activeFamilyId) return "Choose a family first";
+  if (!selectedExpectedInstance) return "Select an occurrence from the calendar for this series.";
+  const amountVal = txEditAmount?.value;
+  const amount = amountVal ? Number(amountVal) : null;
+  if (!amount || Number.isNaN(amount) || amount <= 0) return "Amount must be > 0";
+  if (!instanceAccountId?.value) return "Account is required";
+  return null;
+}
+
+async function saveExpectedInstanceOverride() {
+  show(txEditErr, "");
+  if (!state.activeFamilyId) throw new Error("Choose a family first");
+  if (!selectedExpectedInstance) throw new Error("Select an expected occurrence from the calendar");
+
+  const amountVal = txEditAmount.value;
+  const amount = amountVal ? Number(amountVal) : null;
+  if (!amount || Number.isNaN(amount) || amount <= 0) throw new Error("Amount must be > 0");
+
+  const accountId = instanceAccountId.value;
+  if (!accountId) throw new Error("Account is required");
+
+  const categoryId = categoryIdFromCategoryField("txEditCategoryId");
+
+  const occ = normalizeIsoDate(selectedExpectedInstance.occurrence_date);
+  if (!occ) throw new Error("Invalid occurrence date");
+  const movedTo = normalizeIsoDate(selectedExpectedMovedToDate || "") || null;
+
+  const payload = {
+    action: "update",
+    account_id: Number(accountId),
+    kind: getRadioValue("txEditKind", "expense"),
+    amount,
+    description: expectedSaveDescription(),
+    category_id: categoryId,
+    moved_to_date: movedTo,
+    variable: !!(seriesVariable && seriesVariable.checked),
+  };
+  await api(
+    `/api/families/${state.activeFamilyId}/expected-transactions/${selectedExpectedInstance.expected_transaction_id}/instances/${occ}`,
+    "POST",
+    payload
+  );
+
+  closeTxEditModal();
+  await refreshExpectedCalendarAndMonth();
+}
+
+async function saveExpectedSeriesFromInstance() {
+  show(txEditErr, "");
+  if (!state.activeFamilyId) throw new Error("Choose a family first");
+  const seriesId = selectedExpectedInstance
+    ? Number(selectedExpectedInstance.expected_transaction_id)
+    : Number(expectedEditId?.value || 0);
+  if (!seriesId) throw new Error("No recurring transaction selected");
+
+  const meta = selectedExpectedSeriesTx || getExpectedSeriesMeta(seriesId);
+  if (!meta) throw new Error("Could not load series details");
+
+  const amountVal = txEditAmount?.value;
+  const amount = amountVal ? Number(amountVal) : null;
+  if (!amount || Number.isNaN(amount) || amount <= 0) throw new Error("Amount must be > 0");
+
+  const accountId = instanceAccountId?.value;
+  if (!accountId) throw new Error("Account is required");
+
+  const categoryId = categoryIdFromCategoryField("txEditCategoryId");
+  const notesVal = txEditNotes ? txEditNotes.value.trim() || null : null;
+
+  const recurrenceVal = instanceRecurrence?.value || meta.recurrence || "monthly";
+  let secondDayVal = meta.second_day_of_month != null ? Number(meta.second_day_of_month) : null;
+  if (recurrenceVal === "twice_monthly") {
+    const raw = instanceSecondDayOfMonth?.value;
+    const n = raw ? Number(raw) : NaN;
+    if (!Number.isFinite(n) || n < 1 || n > 31) throw new Error("Second day of month must be between 1 and 31");
+    const occIso = selectedExpectedInstance
+      ? normalizeIsoDate(selectedExpectedInstance.occurrence_date) || selectedExpectedInstance.occurrence_date
+      : null;
+    const occDom = occIso && String(occIso).length >= 10 ? Number(String(occIso).slice(8, 10)) : NaN;
+    if (Number.isFinite(occDom) && n === occDom) {
+      throw new Error("Second day of month must be different than this occurrence’s day");
+    }
+    secondDayVal = n;
+  } else {
+    secondDayVal = null;
+  }
+
+  const occRaw = selectedExpectedInstance
+    ? normalizeIsoDate(selectedExpectedInstance.occurrence_date) || selectedExpectedInstance.occurrence_date
+    : null;
+  if (!occRaw) {
+    throw new Error("Pick an occurrence from the calendar or recurring list to update this date and all future ones.");
+  }
+
+  if (String(meta.recurrence || "") === "once") {
+    await api(`/api/families/${state.activeFamilyId}/expected-transactions/${seriesId}`, "PUT", {
+      account_id: Number(accountId),
+      start_date: meta.start_date || "",
+      end_date: meta.end_date || null,
+      recurrence: recurrenceVal,
+      second_day_of_month: recurrenceVal === "twice_monthly" ? secondDayVal : null,
+      description: expectedSaveDescription(),
+      notes: notesVal,
+      kind: getRadioValue("txEditKind", "expense"),
+      amount: Number(amount),
+      variable: !!(seriesVariable && seriesVariable.checked),
+      category_id: categoryId,
+    });
+  } else {
+    const applyBody = {
+      account_id: Number(accountId),
+      kind: getRadioValue("txEditKind", "expense"),
+      amount: Number(amount),
+      description: expectedSaveDescription(),
+      reimbursable: !!meta.reimbursable,
+      category_id: categoryId,
+      notes: notesVal,
+      recurrence: recurrenceVal,
+      variable: !!(seriesVariable && seriesVariable.checked),
+    };
+    if (recurrenceVal === "twice_monthly") applyBody.second_day_of_month = secondDayVal;
+    await api(
+      `/api/families/${state.activeFamilyId}/expected-transactions/${seriesId}/apply-from-occurrence/${encodeURIComponent(occRaw)}`,
+      "POST",
+      applyBody
+    );
+  }
+
+  closeTxEditModal();
+  await refreshExpectedCalendarAndMonth();
+}
+
+if (txEditRecurringUpdateBtn) {
+  txEditRecurringUpdateBtn.addEventListener("click", () => {
+    show(txEditErr, "");
+    const pre = validateTxEditBeforeRecurringApply();
+    if (pre) {
+      show(txEditErr, pre);
+      return;
+    }
+    openTxEditApplyScopeModal();
+  });
+}
+
+const txEditApplyScopeInstanceBtn = document.getElementById("txEditApplyScopeInstanceBtn");
+if (txEditApplyScopeInstanceBtn) {
+  txEditApplyScopeInstanceBtn.addEventListener("click", async () => {
     try {
-      show(txEditErr, "");
-      if (!state.activeFamilyId) throw new Error("Choose a family first");
-      if (!selectedExpectedInstance) throw new Error("Select an expected occurrence from the calendar");
-
-      const amountVal = txEditAmount.value;
-      const amount = amountVal ? Number(amountVal) : null;
-      if (!amount || Number.isNaN(amount) || amount <= 0) throw new Error("Amount must be > 0");
-
-      const accountId = instanceAccountId.value;
-      if (!accountId) throw new Error("Account is required");
-
-      const categoryId = categoryIdFromCategoryField("txEditCategoryId");
-
-      const occ = normalizeIsoDate(selectedExpectedInstance.occurrence_date);
-      if (!occ) throw new Error("Invalid occurrence date");
-      const movedTo = normalizeIsoDate(selectedExpectedMovedToDate || "") || null;
-
-      const payload = {
-        action: "update",
-        account_id: Number(accountId),
-        kind: getRadioValue("txEditKind", "expense"),
-        amount,
-        description: expectedSaveDescription(),
-        category_id: categoryId,
-        moved_to_date: movedTo,
-        variable: !!(seriesVariable && seriesVariable.checked),
-      };
-      await api(
-        `/api/families/${state.activeFamilyId}/expected-transactions/${selectedExpectedInstance.expected_transaction_id}/instances/${occ}`,
-        "POST",
-        payload
-      );
-
-      closeTxEditModal();
-      await refreshExpectedCalendarAndMonth();
+      await saveExpectedInstanceOverride();
     } catch (e) {
-      show(txEditErr, e.message || "Failed to save override");
+      show(document.getElementById("txEditApplyScopeErr"), e.message || "Failed to save override");
     }
   });
 }
 
-if (saveSeriesFromInstanceBtn) {
-  saveSeriesFromInstanceBtn.addEventListener("click", async () => {
+const txEditApplyScopeSeriesBtn = document.getElementById("txEditApplyScopeSeriesBtn");
+if (txEditApplyScopeSeriesBtn) {
+  txEditApplyScopeSeriesBtn.addEventListener("click", async () => {
     try {
-      show(txEditErr, "");
-      if (!state.activeFamilyId) throw new Error("Choose a family first");
-      const seriesId = selectedExpectedInstance
-        ? Number(selectedExpectedInstance.expected_transaction_id)
-        : Number(expectedEditId?.value || 0);
-      if (!seriesId) throw new Error("No recurring transaction selected");
-
-      const meta = selectedExpectedSeriesTx || getExpectedSeriesMeta(seriesId);
-      if (!meta) throw new Error("Could not load series details");
-
-      const amountVal = txEditAmount?.value;
-      const amount = amountVal ? Number(amountVal) : null;
-      if (!amount || Number.isNaN(amount) || amount <= 0) throw new Error("Amount must be > 0");
-
-      const accountId = instanceAccountId?.value;
-      if (!accountId) throw new Error("Account is required");
-
-      const categoryId = categoryIdFromCategoryField("txEditCategoryId");
-      const notesVal = txEditNotes ? txEditNotes.value.trim() || null : null;
-
-      const recurrenceVal = instanceRecurrence?.value || meta.recurrence || "monthly";
-      let secondDayVal = meta.second_day_of_month != null ? Number(meta.second_day_of_month) : null;
-      if (recurrenceVal === "twice_monthly") {
-        const raw = instanceSecondDayOfMonth?.value;
-        const n = raw ? Number(raw) : NaN;
-        if (!Number.isFinite(n) || n < 1 || n > 31) throw new Error("Second day of month must be between 1 and 31");
-        const occIso = selectedExpectedInstance
-          ? normalizeIsoDate(selectedExpectedInstance.occurrence_date) || selectedExpectedInstance.occurrence_date
-          : null;
-        const occDom = occIso && String(occIso).length >= 10 ? Number(String(occIso).slice(8, 10)) : NaN;
-        if (Number.isFinite(occDom) && n === occDom) {
-          throw new Error("Second day of month must be different than this occurrence’s day");
-        }
-        secondDayVal = n;
-      } else {
-        secondDayVal = null;
-      }
-
-      const occRaw = selectedExpectedInstance
-        ? normalizeIsoDate(selectedExpectedInstance.occurrence_date) || selectedExpectedInstance.occurrence_date
-        : null;
-      if (!occRaw) {
-        throw new Error("Pick an occurrence from the calendar or recurring list to update this date and all future ones.");
-      }
-
-      if (String(meta.recurrence || "") === "once") {
-        await api(`/api/families/${state.activeFamilyId}/expected-transactions/${seriesId}`, "PUT", {
-          account_id: Number(accountId),
-          start_date: meta.start_date || "",
-          end_date: meta.end_date || null,
-          recurrence: recurrenceVal,
-          second_day_of_month: recurrenceVal === "twice_monthly" ? secondDayVal : null,
-          description: expectedSaveDescription(),
-          notes: notesVal,
-          kind: getRadioValue("txEditKind", "expense"),
-          amount: Number(amount),
-          variable: !!(seriesVariable && seriesVariable.checked),
-          category_id: categoryId,
-        });
-      } else {
-        const applyBody = {
-          account_id: Number(accountId),
-          kind: getRadioValue("txEditKind", "expense"),
-          amount: Number(amount),
-          description: expectedSaveDescription(),
-          reimbursable: !!meta.reimbursable,
-          category_id: categoryId,
-          notes: notesVal,
-          recurrence: recurrenceVal,
-          variable: !!(seriesVariable && seriesVariable.checked),
-        };
-        if (recurrenceVal === "twice_monthly") applyBody.second_day_of_month = secondDayVal;
-        await api(
-          `/api/families/${state.activeFamilyId}/expected-transactions/${seriesId}/apply-from-occurrence/${encodeURIComponent(occRaw)}`,
-          "POST",
-          applyBody
-        );
-      }
-
-      closeTxEditModal();
-      await refreshExpectedCalendarAndMonth();
+      await saveExpectedSeriesFromInstance();
     } catch (e) {
-      show(txEditErr, e.message || "Failed to save");
+      show(document.getElementById("txEditApplyScopeErr"), e.message || "Failed to save");
     }
+  });
+}
+
+const txEditApplyScopeCancelBtn = document.getElementById("txEditApplyScopeCancelBtn");
+if (txEditApplyScopeCancelBtn) {
+  txEditApplyScopeCancelBtn.addEventListener("click", () => closeTxEditApplyScopeModal());
+}
+
+const txEditApplyScopeModal = document.getElementById("txEditApplyScopeModal");
+if (txEditApplyScopeModal) {
+  txEditApplyScopeModal.addEventListener("click", (e) => {
+    if (e.target === txEditApplyScopeModal) closeTxEditApplyScopeModal();
   });
 }
 
@@ -2585,7 +2698,6 @@ function openExpectedEditModal(tx, opts = {}) {
   if (txEditId) txEditId.value = "";
   expectedEditId.value = String(tx.id);
   selectedExpectedSeriesTx = tx;
-  applyTransactionEditMode("recurring");
   renderTxEditCategoryOptions();
 
   if (calendarItem) {
@@ -2649,6 +2761,7 @@ function openExpectedEditModal(tx, opts = {}) {
   show(txEditErr, "");
   txEditModal.classList.add("modal-overlay--open");
   txEditModal.setAttribute("aria-hidden", "false");
+  applyTransactionEditMode("recurring");
 }
 
 function openExpectedDeleteModal(expectedId, occurrenceDate) {

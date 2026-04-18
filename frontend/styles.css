@@ -1412,7 +1412,7 @@ textarea::placeholder{
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 16px;
   justify-content: flex-start;
   align-items: stretch;
   width: 100%;
@@ -1492,7 +1492,7 @@ textarea::placeholder{
   gap:4px;
   align-items: center;
   margin-top: auto;
-  padding-top: 6px;
+  padding-top: 14px;
   border-top: 1px solid rgba(0,0,0,0.08);
 }
 
@@ -1521,6 +1521,9 @@ textarea::placeholder{
   align-items: center;
   justify-content: center;
   padding: 16px;
+}
+.modal-overlay--nested{
+  z-index: 1100;
 }
 
 .modal-overlay--open{
@@ -1873,6 +1876,11 @@ textarea::placeholder{
   margin-top: 10px;
 }
 
+.tx-edit-schedule--locked select:disabled,
+.tx-edit-schedule--locked label[for="instanceRecurrence"]{
+  opacity: 0.9;
+}
+
 /* Same max width for one-time and recurring so the edit sheet does not “jump”. */
 #txEditInner.modal{
   max-width: 520px;
@@ -1926,18 +1934,18 @@ textarea::placeholder{
 #txEditCancel.tx-edit-dismiss--close:hover{
   background: rgba(0, 0, 0, 0.05);
 }
-#txEditInner #txEditRecurringPrimaryActions.row.two{
+#txEditInner #txEditRecurringPrimaryActions.tx-edit-recurring-update-row{
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 10px;
   width: 100%;
 }
-#txEditInner #txEditRecurringPrimaryActions.row.two > button{
+#txEditInner #txEditRecurringUpdateBtn{
   width: auto;
   max-width: min(100%, 22rem);
-  padding-left: 14px;
-  padding-right: 14px;
+  padding-left: 18px;
+  padding-right: 18px;
 }
 #txEditInner .expected-instance-delete-actions .expected-remove-btn{
   width: auto;

@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=122" />
+    <link rel="stylesheet" href="./styles.css?v=125" />
   </head>
   <body>
     <div class="container">
@@ -696,7 +696,7 @@
               <option value="weekly">Weekly</option>
               <option value="semiannual">Twice yearly (every 6 months)</option>
               <option value="yearly">Annual</option>
-              <option value="once">Once</option>
+              <option value="once">Does not repeat</option>
             </select>
             <div id="instanceTwiceMonthlyFields" class="expected-second-day-row" style="display: none">
               <label for="instanceSecondDayOfMonth">2nd day of month</label>
@@ -736,9 +736,8 @@
           </div>
 
           <div style="height: 12px"></div>
-          <div id="txEditRecurringPrimaryActions" class="row two" style="display: none">
-            <button type="button" id="saveInstanceOverrideBtn">Update this occurrence only</button>
-            <button type="button" id="saveSeriesFromInstanceBtn">Update this and all future</button>
+          <div id="txEditRecurringPrimaryActions" class="tx-edit-recurring-update-row" style="display: none">
+            <button type="button" id="txEditRecurringUpdateBtn">Update</button>
           </div>
 
           <div id="txEditRecurringDeleteGroup" class="expected-instance-delete-group" style="display: none">
@@ -760,6 +759,24 @@
             </div>
           </div>
           <button type="button" id="txEditCancel">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="txEditApplyScopeModal" class="modal-overlay modal-overlay--nested" aria-hidden="true">
+      <div class="modal modal--choice" role="dialog" aria-labelledby="txEditApplyScopeTitle" aria-modal="true">
+        <h3 id="txEditApplyScopeTitle">Apply changes</h3>
+        <p class="choice-subtitle" style="margin-bottom: 12px">
+          Should these edits affect only this date, or this date and every future occurrence in the series?
+        </p>
+        <div id="txEditApplyScopeErr" class="error"></div>
+        <div class="modal-actions">
+          <div class="expected-delete-actions">
+            <button type="button" id="txEditApplyScopeInstanceBtn">This occurrence only</button>
+            <button type="button" id="txEditApplyScopeSeriesBtn">This and all future</button>
+          </div>
+          <div style="height: 10px"></div>
+          <button type="button" id="txEditApplyScopeCancelBtn" style="width: 100%">Back</button>
         </div>
       </div>
     </div>
@@ -813,6 +830,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="./app.js?v=121"></script>
+    <script src="./app.js?v=124"></script>
   </body>
 </html>
