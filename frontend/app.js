@@ -1187,14 +1187,12 @@ function applyTransactionEditMode(mode) {
   const notesRowEl = document.getElementById("txEditNotesRow");
   const txEditTopStrip = document.querySelector("#txEditModal .tx-edit-top");
   const varWrapEl = document.getElementById("txEditRecurringVariableWrap");
-  if (notesRowEl && txEditTopStrip && varWrapEl && varWrapEl.parentNode) {
-    if (recurring) {
-      varWrapEl.parentNode.insertBefore(notesRowEl, varWrapEl);
-      notesRowEl.classList.add("tx-edit-notes-row--in-panel");
-    } else {
-      notesRowEl.classList.remove("tx-edit-notes-row--in-panel");
-      txEditTopStrip.appendChild(notesRowEl);
-    }
+  if (txEditTopStrip) {
+    txEditTopStrip.style.display = recurring ? "" : "none";
+  }
+  if (notesRowEl && varWrapEl && varWrapEl.parentNode) {
+    varWrapEl.parentNode.insertBefore(notesRowEl, varWrapEl);
+    notesRowEl.classList.add("tx-edit-notes-row--in-panel");
   }
 }
 
