@@ -2179,24 +2179,49 @@ if (txImportUndoBtn) {
     txImportLastResult.style.display = "block";
   }
   txImportUndoBtn.addEventListener("click", async () => {
+    const prevText = txImportUndoBtn.textContent || "Undo last import";
     try {
       show(txImportErr, "");
       if (!state.activeFamilyId) throw new Error("Choose a family first");
       const batchId = txImportLoadLastBatchId();
       if (!batchId) throw new Error("No recent import to undo");
       if (!confirm("Undo the last import? This will delete the imported historical transactions.")) return;
+      txImportUndoBtn.disabled = true;
+      txImportUndoBtn.textContent = "Undoing…";
+      if (txImportLastResult) {
+        txImportLastResult.textContent = "Undo in progress…";
+        txImportLastResult.style.display = "block";
+      }
       const out = await api(`/api/families/${state.activeFamilyId}/transactions/import/undo`, "POST", { batch_id: batchId });
+      const deleted = Number(out?.deleted || 0);
       try {
         localStorage.removeItem("familyCashFlow_lastImportBatchId");
       } catch (_) {}
       txImportUndoBtn.style.display = "none";
       if (txImportLastResult) {
-        txImportLastResult.textContent = `Undid import. Deleted ${Number(out?.deleted || 0)} transactions.`;
+        txImportLastResult.textContent =
+          deleted > 0
+            ? `Undid import. Deleted ${deleted} transactions. Refreshing…`
+            : "Undo completed, but 0 transactions were deleted. (This usually means the stored batch id no longer matches the last import.)";
         txImportLastResult.style.display = "block";
       }
       await loadMonthAndCalendar();
+      // Also refresh the Transaction View list if the user switches tabs.
+      await loadTransactions();
+      if (txImportLastResult && deleted > 0) {
+        txImportLastResult.textContent = `Undid import. Deleted ${deleted} transactions.`;
+      }
     } catch (e) {
       show(txImportErr, e.message || "Failed to undo import");
+      if (txImportLastResult) {
+        txImportLastResult.textContent = "Undo failed. See error above.";
+        txImportLastResult.style.display = "block";
+      }
+    } finally {
+      if (txImportUndoBtn) {
+        txImportUndoBtn.disabled = false;
+        txImportUndoBtn.textContent = prevText;
+      }
     }
   });
 }
