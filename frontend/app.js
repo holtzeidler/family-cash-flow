@@ -4434,6 +4434,8 @@ function computeMonthSummaryTotalsFromState() {
 
   if (includeActual) {
     for (const tx of state.monthActualItems || []) {
+      // Imported historical rows are analysis-only and must not affect month totals.
+      if (tx && tx.imported) continue;
       const amt = toNum(tx.amount);
       if (!Number.isFinite(amt)) continue;
       if (String(tx.kind) === "income") income += amt;
@@ -5058,6 +5060,8 @@ function computeCalendarVisibleDailyBalancesClient() {
 
   if (includeActual) {
     for (const tx of [...(state.monthActualItems || []), ...(state.calendarExtraActualItems || [])]) {
+      // Imported historical rows are analysis-only and must not affect balances.
+      if (tx && tx.imported) continue;
       const amt = Number(tx.amount || 0);
       const signed = tx.kind === "income" ? amt : -amt;
       const dk = normalizeIsoDate(tx.date) || tx.date;
