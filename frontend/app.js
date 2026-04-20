@@ -250,7 +250,6 @@ const txImportPreview = document.getElementById("txImportPreview");
 const txImportDetectedPreset = document.getElementById("txImportDetectedPreset");
 const txImportErr = document.getElementById("txImportErr");
 const txImportRunBtn = document.getElementById("txImportRunBtn");
-const txImportUndoBtn = document.getElementById("txImportUndoBtn");
 const txImportLastResult = document.getElementById("txImportLastResult");
 const txImportPurgeBefore = document.getElementById("txImportPurgeBefore");
 const txImportPurgeBtn = document.getElementById("txImportPurgeBtn");
@@ -2117,21 +2116,14 @@ if (txImportRunBtn) {
       }
       if (!res.items || res.items.length === 0) throw new Error("No valid rows to import");
       if (!confirm(`Import ${res.items.length} transactions? This will add to your existing data.`)) return;
-      const out = await api(`/api/families/${state.activeFamilyId}/transactions/import`, "POST", { items: res.items });
-      const batchId = out?.batch_id ? String(out.batch_id) : "";
+      await api(`/api/families/${state.activeFamilyId}/transactions/import`, "POST", { items: res.items });
       const uncategorizedCount = (res.items || []).filter((x) => x && x.category_id == null).length;
-      if (batchId) {
-        try {
-          localStorage.setItem("familyCashFlow_lastImportBatchId", batchId);
-        } catch (_) {}
-        if (txImportUndoBtn) txImportUndoBtn.style.display = "";
-        if (txImportLastResult) {
-          txImportLastResult.textContent =
-            uncategorizedCount > 0
-              ? `Imported ${res.items.length} transactions (${uncategorizedCount} need categories). You can undo this import.`
-              : `Imported ${res.items.length} transactions. You can undo this import.`;
-          txImportLastResult.style.display = "block";
-        }
+      if (txImportLastResult) {
+        txImportLastResult.textContent =
+          uncategorizedCount > 0
+            ? `Imported ${res.items.length} transactions (${uncategorizedCount} need categories). Use Review uncategorized imports, or delete imported rows by date below.`
+            : `Imported ${res.items.length} transactions.`;
+        txImportLastResult.style.display = "block";
       }
       if (txImportPreview) txImportPreview.innerHTML = "";
       if (txImportFile) txImportFile.value = "";
@@ -2146,14 +2138,6 @@ if (txImportRunBtn) {
       show(txImportErr, formatUiError(e) || "Import failed");
     }
   });
-}
-
-function txImportLoadLastBatchId() {
-  try {
-    return localStorage.getItem("familyCashFlow_lastImportBatchId") || "";
-  } catch (_) {
-    return "";
-  }
 }
 
 function txImportLeafCategories() {
@@ -2256,61 +2240,6 @@ if (txImportQueueSaveBtn) {
   });
 }
 
-if (txImportUndoBtn) {
-  const last = txImportLoadLastBatchId();
-  txImportUndoBtn.style.display = last ? "" : "none";
-  if (last && txImportLastResult && txImportLastResult.style.display === "none") {
-    txImportLastResult.textContent = "A previous import can be undone.";
-    txImportLastResult.style.display = "block";
-  }
-  txImportUndoBtn.addEventListener("click", async () => {
-    const prevText = txImportUndoBtn.textContent || "Undo last import";
-    try {
-      show(txImportErr, "");
-      if (!state.activeFamilyId) throw new Error("Choose a family first");
-      const batchId = txImportLoadLastBatchId();
-      if (!batchId) throw new Error("No recent import to undo");
-      if (!confirm("Undo the last import? This will delete the imported historical transactions.")) return;
-      txImportUndoBtn.disabled = true;
-      txImportUndoBtn.textContent = "Undoing…";
-      if (txImportLastResult) {
-        txImportLastResult.textContent = "Undo in progress…";
-        txImportLastResult.style.display = "block";
-      }
-      const out = await apiForm(`/api/families/${state.activeFamilyId}/transactions/import/undo`, { batch_id: batchId });
-      const deleted = Number(out?.deleted || 0);
-      try {
-        localStorage.removeItem("familyCashFlow_lastImportBatchId");
-      } catch (_) {}
-      txImportUndoBtn.style.display = "none";
-      if (txImportLastResult) {
-        txImportLastResult.textContent =
-          deleted > 0
-            ? `Undid import. Deleted ${deleted} transactions. Refreshing…`
-            : "Undo completed, but 0 transactions were deleted. (This usually means the stored batch id no longer matches the last import.)";
-        txImportLastResult.style.display = "block";
-      }
-      await loadMonthAndCalendar();
-      // Also refresh the Transaction View list if the user switches tabs.
-      await loadTransactions();
-      if (txImportLastResult && deleted > 0) {
-        txImportLastResult.textContent = `Undid import. Deleted ${deleted} transactions.`;
-      }
-    } catch (e) {
-      show(txImportErr, formatUiError(e) || "Failed to undo import");
-      if (txImportLastResult) {
-        txImportLastResult.textContent = "Undo failed. See error above.";
-        txImportLastResult.style.display = "block";
-      }
-    } finally {
-      if (txImportUndoBtn) {
-        txImportUndoBtn.disabled = false;
-        txImportUndoBtn.textContent = prevText;
-      }
-    }
-  });
-}
-
 if (txImportPurgeBtn) {
   txImportPurgeBtn.addEventListener("click", async () => {
     const prevText = txImportPurgeBtn.textContent || "Delete";
@@ -2404,23 +2333,6 @@ if (txImportTestApiBtn) {
         results.push(`POST purge-before (form): ${r4.status} ${r4.ok ? "OK" : "FAIL"}\n${t4.slice(0, 600)}`);
       } catch (e) {
         results.push(`POST purge-before (form): FAILED (${e?.message || e})`);
-      }
-
-      // 5) Undo endpoint (form POST avoids JSON preflight)
-      try {
-        if (!state.activeFamilyId) throw new Error("No active family selected");
-        const body = new URLSearchParams();
-        body.set("batch_id", "does-not-exist");
-        const r5 = await fetch(`${apiBase}/api/families/${state.activeFamilyId}/transactions/import/undo`, {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
-          body: body.toString(),
-        });
-        const t5 = await r5.text();
-        results.push(`POST undo (form): ${r5.status} ${r5.ok ? "OK" : "FAIL"}\n${t5.slice(0, 600)}`);
-      } catch (e) {
-        results.push(`POST undo (form): FAILED (${e?.message || e})`);
       }
 
       if (txImportLastResult) {
