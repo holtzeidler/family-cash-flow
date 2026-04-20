@@ -3,17 +3,39 @@ function apiBaseUrl() {
   return raw.replace(/\/+$/, "");
 }
 
+/**
+ * Render free tier often cold-starts; the first cross-origin fetch can throw before TLS completes.
+ * Retry safe idempotent requests only (GET, no body).
+ */
+async function fetchWithColdStartRetry(url, init, opts = {}) {
+  const { maxAttempts = 3, backoffMs = 750 } = opts;
+  let lastErr;
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      return await fetch(url, init);
+    } catch (e) {
+      lastErr = e;
+      if (i < maxAttempts - 1) {
+        await new Promise((r) => setTimeout(r, backoffMs * (i + 1)));
+      }
+    }
+  }
+  throw lastErr;
+}
+
 async function api(path, method = "GET", body) {
   const apiBase = apiBaseUrl();
   const fullPath = `${apiBase}${path}`;
+  const init = {
+    method,
+    headers: body ? { "Content-Type": "application/json" } : {},
+    credentials: "include",
+    body: body ? JSON.stringify(body) : undefined,
+  };
+  const allowRetry = method === "GET" && !body;
   let res;
   try {
-    res = await fetch(fullPath, {
-      method,
-      headers: body ? { "Content-Type": "application/json" } : {},
-      credentials: "include",
-      body: body ? JSON.stringify(body) : undefined,
-    });
+    res = allowRetry ? await fetchWithColdStartRetry(fullPath, init) : await fetch(fullPath, init);
   } catch (err) {
     const msg = err && err.message ? err.message : String(err);
     const onPages = typeof location !== "undefined" && location.hostname.endsWith("github.io");
@@ -26,7 +48,7 @@ async function api(path, method = "GET", body) {
       ? `If this persists, open ${debugUrl || "[API_BASE]/api/debug/public-config"} in a new tab. It should return JSON and include Access-Control-Allow-Origin: ${origin}.`
       : "If this is cross-origin, configure CORS on the API for this origin.";
     throw new Error(
-      `${msg}\n\n${baseHint}\n${corsHint}\nIf the API is on Render free tier, wait ~1 minute for a cold start and refresh.`
+      `${msg}\n\n${baseHint}\n${corsHint}\nGET requests are retried automatically for Render cold starts. If it still fails, wait ~1 minute and refresh, or try the debug URL in another browser.`
     );
   }
 

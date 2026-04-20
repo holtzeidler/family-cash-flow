@@ -7,33 +7,43 @@ async function request(path, method, body) {
   const apiBase = getApiBase();
   const fullPath = `${apiBase}${path}`;
   const startedAt = Date.now();
-  try {
-    const res = await fetch(fullPath, {
-      method,
-      headers: body ? { "Content-Type": "application/json" } : {},
-      credentials: "include",
-      body: body ? JSON.stringify(body) : undefined,
-    });
-    let data = null;
+  const init = {
+    method,
+    headers: body ? { "Content-Type": "application/json" } : {},
+    credentials: "include",
+    body: body ? JSON.stringify(body) : undefined,
+  };
+  const allowRetry = method === "GET" && !body;
+  const maxAttempts = allowRetry ? 3 : 1;
+  let lastErr = null;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
-      data = await res.json();
-    } catch (_) {}
-    return {
-      ok: res.ok,
-      status: res.status,
-      data,
-      elapsedMs: Date.now() - startedAt,
-      networkError: null,
-    };
-  } catch (e) {
-    return {
-      ok: false,
-      status: null,
-      data: null,
-      elapsedMs: Date.now() - startedAt,
-      networkError: (e && e.message) || "Network error",
-    };
+      if (attempt > 0) {
+        await new Promise((r) => setTimeout(r, 750 * attempt));
+      }
+      const res = await fetch(fullPath, init);
+      let data = null;
+      try {
+        data = await res.json();
+      } catch (_) {}
+      return {
+        ok: res.ok,
+        status: res.status,
+        data,
+        elapsedMs: Date.now() - startedAt,
+        networkError: null,
+      };
+    } catch (e) {
+      lastErr = e;
+    }
   }
+  return {
+    ok: false,
+    status: null,
+    data: null,
+    elapsedMs: Date.now() - startedAt,
+    networkError: (lastErr && lastErr.message) || "Network error",
+  };
 }
 
 function setErr(el, msg) {
