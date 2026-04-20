@@ -136,8 +136,10 @@ const monthInput = document.getElementById("monthInput");
 const totalsEl = document.getElementById("totals");
 const txList = document.getElementById("txList");
 const txListMain = document.getElementById("txListMain");
+const txAllRangePreset = document.getElementById("txAllRangePreset");
 const txAllStartDate = document.getElementById("txAllStartDate");
 const txAllEndDate = document.getElementById("txAllEndDate");
+const txAllCustomDatesRow = document.getElementById("txAllCustomDatesRow");
 const txAllAccountFilter = document.getElementById("txAllAccountFilter");
 const txAllCategoryFilter = document.getElementById("txAllCategoryFilter");
 const txAllRunBtn = document.getElementById("txAllRunBtn");
@@ -169,7 +171,7 @@ function setSidebarLowBalanceBanner(text, style = "off") {
     sidebarLowBalanceBanner.classList.remove("is-danger", "is-muted");
     return;
   }
-  sidebarLowBalanceBanner.textContent = text;
+  sidebarLowBalanceBanner.innerHTML = String(text).replace(/\n/g, "<br>");
   sidebarLowBalanceBanner.style.display = "flex";
   sidebarLowBalanceBanner.classList.remove("is-danger", "is-muted");
   sidebarLowBalanceBanner.classList.toggle("is-danger", style === "danger");
@@ -185,7 +187,7 @@ function setSidebarHighBalanceBanner(text, style = "off") {
     sidebarHighBalanceBanner.classList.remove("is-high", "is-muted");
     return;
   }
-  sidebarHighBalanceBanner.textContent = text;
+  sidebarHighBalanceBanner.innerHTML = String(text).replace(/\n/g, "<br>");
   sidebarHighBalanceBanner.style.display = "flex";
   sidebarHighBalanceBanner.classList.remove("is-high", "is-muted");
   sidebarHighBalanceBanner.classList.toggle("is-high", style === "high");
@@ -365,7 +367,10 @@ const txAddNotes = document.getElementById("txAddNotes");
 const txAddRepeats = document.getElementById("txAddRepeats");
 const txAddRecurringBlock = document.getElementById("txAddRecurringBlock");
 const txAddRecurrence = document.getElementById("txAddRecurrence");
-const txAddLastTxnDate = document.getElementById("txAddLastTxnDate");
+const txAddEndOnDateRadio = document.getElementById("txAddEndOnDateRadio");
+const txAddEndAfterCountRadio = document.getElementById("txAddEndAfterCountRadio");
+const txAddEndOnDate = document.getElementById("txAddEndOnDate");
+const txAddEndAfterCount = document.getElementById("txAddEndAfterCount");
 const txAddTwiceMonthlyFields = document.getElementById("txAddTwiceMonthlyFields");
 const txAddSecondDayOfMonth = document.getElementById("txAddSecondDayOfMonth");
 const txAddAccountId = document.getElementById("txAddAccountId");
@@ -386,18 +391,30 @@ function updateTxAddRepeatingUi() {
   const recWrap = document.getElementById("txAddRecurrenceWrap");
   if (recWrap) recWrap.hidden = !repeats;
   if (txAddRecurrence) txAddRecurrence.disabled = !repeats;
-  const lastWrap = document.getElementById("txAddLastTxnFieldWrap");
-  if (lastWrap) lastWrap.hidden = !repeats;
-  if (txAddLastTxnDate) {
-    if (!repeats) txAddLastTxnDate.value = "";
-    txAddLastTxnDate.disabled = !repeats;
+  const endWrap = document.getElementById("txAddEndFieldWrap");
+  if (endWrap) endWrap.hidden = !repeats;
+  if (!repeats) {
+    if (txAddEndOnDate) txAddEndOnDate.value = "";
+    if (txAddEndAfterCount) txAddEndAfterCount.value = "";
+    if (txAddEndOnDateRadio) txAddEndOnDateRadio.checked = false;
+    if (txAddEndAfterCountRadio) txAddEndAfterCountRadio.checked = false;
   }
+  if (txAddEndOnDate) txAddEndOnDate.disabled = !repeats || !txAddEndOnDateRadio?.checked;
+  if (txAddEndAfterCount) txAddEndAfterCount.disabled = !repeats || !txAddEndAfterCountRadio?.checked;
   updateTxAddTwiceMonthlyVisibility();
+}
+
+function updateTxAddEndModeUi() {
+  const repeats = !!txAddRepeats?.checked;
+  if (txAddEndOnDate) txAddEndOnDate.disabled = !repeats || !txAddEndOnDateRadio?.checked;
+  if (txAddEndAfterCount) txAddEndAfterCount.disabled = !repeats || !txAddEndAfterCountRadio?.checked;
 }
 
 if (txAddRepeats) {
   txAddRepeats.addEventListener("change", updateTxAddRepeatingUi);
 }
+if (txAddEndOnDateRadio) txAddEndOnDateRadio.addEventListener("change", updateTxAddEndModeUi);
+if (txAddEndAfterCountRadio) txAddEndAfterCountRadio.addEventListener("change", updateTxAddEndModeUi);
 if (txAddRecurrence) {
   txAddRecurrence.addEventListener("change", updateTxAddTwiceMonthlyVisibility);
 }
@@ -419,10 +436,10 @@ async function refreshLowBalanceAlert() {
   try {
     show(lowBalanceErr, "");
     if (!lowBalanceResult) return;
-    setSidebarLowBalanceBanner("", "off");
-    setSidebarHighBalanceBanner("", "off");
-    setSidebarBalanceThresholdHint("");
     if (!state.activeFamilyId) {
+      setSidebarLowBalanceBanner("", "off");
+      setSidebarHighBalanceBanner("", "off");
+      setSidebarBalanceThresholdHint("");
       setLowBalanceResult("", true);
       return;
     }
@@ -459,6 +476,10 @@ async function refreshLowBalanceAlert() {
     }
     lowBalanceLastQuery = { familyId: state.activeFamilyId, min: minVal, max: maxVal, mode };
 
+    // Clear and recompute only when the query changes.
+    setSidebarLowBalanceBanner("", "off");
+    setSidebarHighBalanceBanner("", "off");
+    setSidebarBalanceThresholdHint("");
     setLowBalanceResult('<div class="k">Balance thresholds</div><div class="v">Checking…</div>', true);
 
     let lowHit = null;
@@ -509,7 +530,7 @@ async function refreshLowBalanceAlert() {
         parts.push(
           `<div class="balance-threshold-result-block"><div class="k">First date ≤ $${fmtMoneyThreshold(balanceThresholdMin?.value || "", minVal)}</div><div class="v danger">${fmtDateMDY(lowHit.date)} — $${fmtMoney(lowHit.balance)}</div></div>`
         );
-        setSidebarLowBalanceBanner(`Next low balance: ${fmtDateMDY(lowHit.date)} — $${fmtMoney(lowHit.balance)}`, "danger");
+        setSidebarLowBalanceBanner(`Next low balance:\n${fmtDateMDY(lowHit.date)} — $${fmtMoney(lowHit.balance)}`, "danger");
       }
     }
     if (maxOk) {
@@ -530,7 +551,7 @@ async function refreshLowBalanceAlert() {
         parts.push(
           `<div class="balance-threshold-result-block"><div class="k">First date ≥ $${fmtMoneyThreshold(balanceThresholdMax?.value || "", maxVal)}</div><div class="v">${fmtDateMDY(highHit.date)} — $${fmtMoney(highHit.balance)}</div></div>`
         );
-        setSidebarHighBalanceBanner(`Next high balance: ${fmtDateMDY(highHit.date)} — $${fmtMoney(highHit.balance)}`, "high");
+        setSidebarHighBalanceBanner(`Next high balance:\n${fmtDateMDY(highHit.date)} — $${fmtMoney(highHit.balance)}`, "high");
       }
     }
 
@@ -1188,11 +1209,6 @@ if (txAddSave) {
         const accountIdVal = txAddAccountId?.value || "";
         if (!accountIdVal) throw new Error("Account is required");
 
-        const lastTxnVal = txAddLastTxnDate && txAddLastTxnDate.value ? txAddLastTxnDate.value : null;
-        if (lastTxnVal && lastTxnVal < dateVal) {
-          throw new Error("Last transaction date cannot be before start date");
-        }
-
         let secondDayOfMonth = null;
         if (recurrenceVal === "twice_monthly") {
           const raw = txAddSecondDayOfMonth && txAddSecondDayOfMonth.value;
@@ -1207,10 +1223,51 @@ if (txAddSave) {
           secondDayOfMonth = n;
         }
 
+        function addDaysIso(iso, days) {
+          const d = parseIsoDateLocal(iso);
+          if (!d) return null;
+          d.setDate(d.getDate() + Number(days || 0));
+          return toISODate(d);
+        }
+
+        function nthExpectedOccurrenceIsoForNewSeries(n) {
+          const tx = {
+            start_date: dateVal,
+            end_date: null,
+            recurrence: recurrenceVal,
+            second_day_of_month: secondDayOfMonth,
+          };
+          let fromIso = dateVal;
+          let cur = null;
+          for (let i = 0; i < n; i++) {
+            cur = nextExpectedOccurrenceIso(tx, fromIso);
+            if (!cur) return null;
+            fromIso = addDaysIso(cur, 1);
+            if (!fromIso) return null;
+          }
+          return cur;
+        }
+
+        let endDate = null;
+        if (txAddEndOnDateRadio?.checked) {
+          const v = txAddEndOnDate?.value || "";
+          if (!v) throw new Error("Choose an end date (or leave Ends blank)");
+          if (v < dateVal) throw new Error("End date cannot be before start date");
+          endDate = v;
+        } else if (txAddEndAfterCountRadio?.checked) {
+          const rawN = txAddEndAfterCount?.value ?? "";
+          const n = rawN !== "" ? Number(rawN) : NaN;
+          if (!Number.isFinite(n) || n < 1) throw new Error("Enter a number of occurrences (>= 1)");
+          if (String(recurrenceVal || "") === "once") throw new Error("“End after occurrences” is only for repeating schedules");
+          const iso = nthExpectedOccurrenceIsoForNewSeries(Math.floor(n));
+          if (!iso) throw new Error("Could not compute an end date for this schedule");
+          endDate = iso;
+        }
+
         await api(`/api/families/${state.activeFamilyId}/expected-transactions`, "POST", {
           account_id: Number(accountIdVal),
           start_date: dateVal,
-          end_date: lastTxnVal,
+          end_date: endDate,
           recurrence: recurrenceVal,
           second_day_of_month: secondDayOfMonth,
           description: desc,
@@ -1510,7 +1567,10 @@ function openTxAddModal(opts = {}) {
   setCategoryFieldValue("txAddCategoryId", null);
   if (txAddRepeats) txAddRepeats.checked = !!opts.repeats;
   if (txAddRecurrence) txAddRecurrence.value = "monthly";
-  if (txAddLastTxnDate) txAddLastTxnDate.value = "";
+  if (txAddEndOnDate) txAddEndOnDate.value = "";
+  if (txAddEndAfterCount) txAddEndAfterCount.value = "";
+  if (txAddEndOnDateRadio) txAddEndOnDateRadio.checked = false;
+  if (txAddEndAfterCountRadio) txAddEndAfterCountRadio.checked = false;
   if (txAddSecondDayOfMonth) txAddSecondDayOfMonth.value = "";
   if (txAddVariable) txAddVariable.checked = false;
   if (txAddAccountId) {
@@ -1518,6 +1578,7 @@ function openTxAddModal(opts = {}) {
     if (state.accounts && state.accounts.length > 0) txAddAccountId.value = String(state.accounts[0].id);
   }
   updateTxAddRepeatingUi();
+  updateTxAddEndModeUi();
   const kind = opts.kind || "expense";
   const radio = document.querySelector(`input[type="radio"][name="txAddKind"][value="${kind}"]`);
   if (radio) radio.checked = true;
@@ -1697,6 +1758,13 @@ if (recurringAccountFilter) {
 
 if (txAllRunBtn) {
   txAllRunBtn.addEventListener("click", () => void runTxAllQuery());
+}
+if (txAllRangePreset) {
+  // Start hidden until "Custom…" is selected.
+  applyTxAllRangePreset(String(txAllRangePreset.value || ""));
+  txAllRangePreset.addEventListener("change", () => {
+    applyTxAllRangePreset(String(txAllRangePreset.value || ""));
+  });
 }
 
 runProjectionBtn.addEventListener("click", async () => {
@@ -2683,13 +2751,16 @@ function renderCategoriesGrid(categories) {
     row.dataset.categoryId = String(c.id);
     row.dataset.catType = opts.type;
     if (opts.type === "child") row.dataset.parentId = String(opts.parentId);
-    row.draggable = true;
 
     const nameEl = document.createElement("div");
     nameEl.className = `cat-name ${opts.type === "child" ? "cat-name--child" : "cat-name--parent"}`;
     nameEl.textContent = c.name;
     nameEl.title = c.name;
     nameEl.classList.add("cat-drag-handle");
+    // NOTE: `.cat-row` uses `display: contents` for the grid layout, which
+    // prevents the row itself from being draggable. Make the name cell act as
+    // the drag handle instead.
+    nameEl.draggable = true;
 
     let fgVal = normalizeHex(c.fg_color, DEFAULT_FG);
     let bgVal = normalizeHex(c.bg_color, DEFAULT_BG);
@@ -2746,7 +2817,7 @@ function renderCategoriesGrid(categories) {
     row.appendChild(bgTrigger);
     row.appendChild(actions);
 
-    row.addEventListener("dragstart", (e) => {
+    nameEl.addEventListener("dragstart", (e) => {
       try {
         e.dataTransfer.effectAllowed = "move";
         const key = `${opts.type}:${row.dataset.categoryId || ""}`;
@@ -2754,7 +2825,7 @@ function renderCategoriesGrid(categories) {
       } catch (_) {}
       row.classList.add("is-dragging");
     });
-    row.addEventListener("dragend", () => {
+    nameEl.addEventListener("dragend", () => {
       row.classList.remove("is-dragging");
       categoriesGrid.querySelectorAll(".cat-row.is-drag-over").forEach((x) => x.classList.remove("is-drag-over"));
     });
@@ -3562,6 +3633,60 @@ async function runTxAllQuery() {
     show(txAllErr, e.message || "Failed to load transactions");
     if (txListMain) renderTransactionsInto(txListMain, [], "Choose filters and click Run.");
   }
+}
+
+function fmtDateYYYYMMDD(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function txAllSetCustomVisibility(isCustom) {
+  if (!txAllCustomDatesRow) return;
+  txAllCustomDatesRow.style.display = isCustom ? "" : "none";
+}
+
+function applyTxAllRangePreset(preset) {
+  if (!txAllStartDate || !txAllEndDate) return;
+
+  const p = String(preset || "");
+  if (!p) {
+    txAllSetCustomVisibility(false);
+    txAllStartDate.value = "";
+    txAllEndDate.value = "";
+    return;
+  }
+
+  if (p === "custom") {
+    txAllSetCustomVisibility(true);
+    return;
+  }
+
+  const now = new Date();
+  let start = null;
+  let end = null;
+
+  if (p === "mtd") {
+    start = new Date(now.getFullYear(), now.getMonth(), 1);
+    end = now;
+  } else if (p === "ytd") {
+    start = new Date(now.getFullYear(), 0, 1);
+    end = now;
+  } else if (p === "last30" || p === "last90") {
+    const days = p === "last30" ? 30 : 90;
+    end = now;
+    start = new Date(now);
+    start.setDate(start.getDate() - (days - 1));
+  } else {
+    // Unknown preset: fall back to custom inputs.
+    txAllSetCustomVisibility(true);
+    return;
+  }
+
+  txAllSetCustomVisibility(false);
+  txAllStartDate.value = fmtDateYYYYMMDD(start);
+  txAllEndDate.value = fmtDateYYYYMMDD(end);
 }
 
 async function loadExpectedTransactions() {

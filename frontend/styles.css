@@ -12,6 +12,7 @@
   --header-accent-bg: rgba(6, 78, 59, 0.16);
   --header-accent-border: rgba(6, 78, 59, 0.40);
   --border: rgba(0,0,0,0.12);
+  --btn-border-width: 3px;
   /* Sticky strips sit below the primary nav (tabs) */
   --app-top-nav-offset: 72px;
 }
@@ -139,7 +140,7 @@ h1{
 
 button{
   background: rgba(18,155,186,0.15);
-  border: 1px solid rgba(18,155,186,0.35);
+  border: var(--btn-border-width) solid rgba(18,155,186,0.35);
   color: var(--text);
   padding: 10px 12px;
   border-radius: 10px;
@@ -166,7 +167,7 @@ button.danger{
 button.btn-neutral{
   background: transparent;
   color: var(--text);
-  border: 2px solid rgba(75, 85, 99, 0.5);
+  border: var(--btn-border-width) solid rgba(75, 85, 99, 0.5);
 }
 button.btn-neutral:hover{
   filter: none;
@@ -423,6 +424,13 @@ button.nav-link:hover{
   max-width: 100%;
   box-sizing: border-box;
   line-height: 1.35;
+}
+.calendar-low-balance--sidebar{
+  flex-direction: column;
+  gap: 2px;
+}
+.calendar-low-balance--sidebar br{
+  display: block;
 }
 .calendar-low-balance--high.is-high{
   color: #166534;
@@ -1178,6 +1186,7 @@ textarea::placeholder{
 }
 .cat-drag-handle{
   cursor: grab;
+  user-select: none;
 }
 .cat-row.is-dragging .cat-drag-handle{
   cursor: grabbing;
@@ -1216,6 +1225,48 @@ textarea::placeholder{
   display:grid;
   grid-template-columns: repeat(8, 1fr);
   gap: 6px;
+}
+
+/* Horizontal form rows: label on left, control on right */
+.form-row-h{
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+}
+.form-row-h__label label{
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.form-row-h__field{
+  min-width: 0;
+}
+.form-row-h__field > input,
+.form-row-h__field > select{
+  width: 100%;
+}
+.form-row-h__field .money-input{
+  width: 100%;
+}
+.form-row-h__field .kind-toggle{
+  width: 100%;
+}
+.form-row-h--tight{
+  grid-template-columns: 86px minmax(0, 1fr);
+  gap: 8px;
+}
+
+@media (max-width: 560px){
+  .form-row-h{
+    grid-template-columns: 1fr;
+    gap: 6px;
+    align-items: stretch;
+  }
+  .form-row-h__label label{
+    white-space: normal;
+  }
 }
 .swatch{
   width: 14px;
@@ -1807,7 +1858,7 @@ textarea::placeholder{
   flex: 0 1 14rem;
   min-width: 10rem;
 }
-.tx-add-schedule-toolbar__right:not(:has(#txAddLastTxnFieldWrap:not([hidden]))){
+.tx-add-schedule-toolbar__right:not(:has(#txAddEndFieldWrap:not([hidden]))){
   display: none;
 }
 .tx-add-repeat-row{
@@ -1883,20 +1934,74 @@ textarea::placeholder{
   background: transparent;
   color: var(--text);
 }
+.tx-add-schedule-field input[type="number"]{
+  width: 100%;
+  max-width: 100%;
+  font-size: 14px;
+  padding: 8px 6px;
+  border: none;
+  border-bottom: 1px solid rgba(0,0,0,0.18);
+  border-radius: 0;
+  background: transparent;
+  color: var(--text);
+}
 .tx-add-schedule-field input[type="date"]:focus{
   outline: none;
   border-bottom-color: var(--accent);
   box-shadow: none;
 }
-.tx-add-schedule-field--last{
+.tx-add-schedule-field input[type="number"]:focus{
+  outline: none;
+  border-bottom-color: var(--accent);
+  box-shadow: none;
+}
+.tx-add-schedule-field--end{
   position: relative;
+}
+.tx-add-end-title{
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  margin-bottom: 2px;
+}
+.tx-add-end-choices{
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.tx-add-end-choice{
+  display: grid;
+  grid-template-columns: 18px auto 1fr;
+  gap: 8px;
+  align-items: center;
+  margin: 0;
+  min-width: 0;
+}
+.tx-add-end-choice input[type="radio"]{
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+}
+.tx-add-end-choice__label{
+  font-size: 14px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.tx-add-end-choice__suffix{
+  font-size: 13px;
+  color: var(--muted);
+  margin-left: 6px;
+  white-space: nowrap;
+}
+.tx-add-end-choice:has(#txAddEndAfterCount){
+  grid-template-columns: 18px auto 72px auto;
 }
 .tx-add-field-hint{
   font-size: 11px;
   color: var(--muted);
   margin-top: 2px;
 }
-.tx-add-schedule-field--last[hidden]{
+.tx-add-schedule-field--end[hidden]{
   display: none !important;
 }
 
