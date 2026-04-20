@@ -21,8 +21,9 @@ async function api(path, method = "GET", body) {
     const baseHint = apiBase
       ? `Trying API_BASE: ${apiBase}`
       : "API_BASE is empty — requests go to the Pages host (wrong).";
+    const debugUrl = apiBase ? `${apiBase}/api/debug/public-config` : "";
     const corsHint = onPages
-      ? `Render env CORS_ORIGINS must include exactly: ${origin} (scheme + host, no path). Set ENV=production for login cookies.`
+      ? `If this persists, open ${debugUrl || "[API_BASE]/api/debug/public-config"} in a new tab. It should return JSON and include Access-Control-Allow-Origin: ${origin}.`
       : "If this is cross-origin, configure CORS on the API for this origin.";
     throw new Error(
       `${msg}\n\n${baseHint}\n${corsHint}\nIf the API is on Render free tier, wait ~1 minute for a cold start and refresh.`
