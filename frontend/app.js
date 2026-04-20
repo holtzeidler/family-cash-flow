@@ -2307,6 +2307,36 @@ if (txImportTestApiBtn) {
         results.push(`GET categories (include creds): FAILED (${e?.message || e})`);
       }
 
+      // 4) POST purge-before (safe test: should delete 0 rows)
+      try {
+        if (!state.activeFamilyId) throw new Error("No active family selected");
+        const r4 = await fetch(`${apiBase}/api/families/${state.activeFamilyId}/transactions/purge-before`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ before_date: "1900-01-01", imported_only: true }),
+        });
+        const t4 = await r4.text();
+        results.push(`POST purge-before (include creds): ${r4.status} ${r4.ok ? "OK" : "FAIL"}\n${t4.slice(0, 600)}`);
+      } catch (e) {
+        results.push(`POST purge-before (include creds): FAILED (${e?.message || e})`);
+      }
+
+      // 5) POST undo (safe test: invalid batch id should still return JSON)
+      try {
+        if (!state.activeFamilyId) throw new Error("No active family selected");
+        const r5 = await fetch(`${apiBase}/api/families/${state.activeFamilyId}/transactions/import/undo`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ batch_id: "does-not-exist" }),
+        });
+        const t5 = await r5.text();
+        results.push(`POST undo (include creds): ${r5.status} ${r5.ok ? "OK" : "FAIL"}\n${t5.slice(0, 600)}`);
+      } catch (e) {
+        results.push(`POST undo (include creds): FAILED (${e?.message || e})`);
+      }
+
       if (txImportLastResult) {
         txImportLastResult.textContent = results.join("\n\n");
         txImportLastResult.style.display = "block";
