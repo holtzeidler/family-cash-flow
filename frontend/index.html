@@ -443,6 +443,13 @@
                   <div></div>
                   <button type="button" id="txImportUndoBtn" class="btn-neutral" style="display:none;">Undo last import</button>
                 </div>
+                <div class="row two" style="margin-top: 8px;">
+                  <div>
+                    <label for="txImportPurgeBefore">Delete imported before</label>
+                    <input id="txImportPurgeBefore" type="date" value="2026-04-03" />
+                  </div>
+                  <button type="button" id="txImportPurgeBtn" class="btn-neutral">Delete</button>
+                </div>
                 <div id="txImportErr" class="error" style="margin-top: 8px;"></div>
                 <div style="height: 12px"></div>
 
@@ -1035,6 +1042,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="./app.js?v=154"></script>
+    <script src="./app.js?v=155"></script>
   </body>
 </html>

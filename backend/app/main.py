@@ -466,6 +466,15 @@ class TransactionsImportUndoOut(BaseModel):
     deleted: int
 
 
+class TransactionsPurgeBeforeIn(BaseModel):
+    before_date: date
+    imported_only: bool = True
+
+
+class TransactionsPurgeBeforeOut(BaseModel):
+    deleted: int
+
+
 class AccountIn(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     type: AccountType = AccountType.checking
@@ -3356,6 +3365,31 @@ def undo_transactions_import(
     ).rowcount or 0
     db.commit()
     return TransactionsImportUndoOut(deleted=int(deleted))
+
+
+@app.post("/api/families/{family_id}/transactions/purge-before", response_model=TransactionsPurgeBeforeOut)
+def purge_transactions_before(
+    family_id: int,
+    payload: TransactionsPurgeBeforeIn,
+    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    db=Depends(get_db),
+):
+    """
+    Safety valve for cleanup during import iteration.
+    Defaults to deleting *imported* transactions only.
+    """
+    user_id = get_current_user_id(access_token)
+    require_family_member(db=db, family_id=family_id, user_id=user_id)
+    cutoff = payload.before_date
+    imported_only = bool(payload.imported_only)
+
+    if imported_only:
+        sql = "DELETE FROM transactions WHERE family_id = :fid AND imported = 1 AND date < :cutoff"
+    else:
+        sql = "DELETE FROM transactions WHERE family_id = :fid AND date < :cutoff"
+    deleted = db.execute(text(sql), {"fid": int(family_id), "cutoff": cutoff.isoformat()}).rowcount or 0
+    db.commit()
+    return TransactionsPurgeBeforeOut(deleted=int(deleted))
 
 
 class ImportedUncategorizedOut(BaseModel):

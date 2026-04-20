@@ -170,6 +170,8 @@ const txImportErr = document.getElementById("txImportErr");
 const txImportRunBtn = document.getElementById("txImportRunBtn");
 const txImportUndoBtn = document.getElementById("txImportUndoBtn");
 const txImportLastResult = document.getElementById("txImportLastResult");
+const txImportPurgeBefore = document.getElementById("txImportPurgeBefore");
+const txImportPurgeBtn = document.getElementById("txImportPurgeBtn");
 
 let txImportState = { headers: [], rows: [], filename: "" };
 
@@ -2222,6 +2224,41 @@ if (txImportUndoBtn) {
         txImportUndoBtn.disabled = false;
         txImportUndoBtn.textContent = prevText;
       }
+    }
+  });
+}
+
+if (txImportPurgeBtn) {
+  txImportPurgeBtn.addEventListener("click", async () => {
+    const prevText = txImportPurgeBtn.textContent || "Delete";
+    try {
+      show(txImportErr, "");
+      if (!state.activeFamilyId) throw new Error("Choose a family first");
+      const cutoff = String(txImportPurgeBefore?.value || "").trim();
+      if (!cutoff) throw new Error("Choose a cutoff date");
+      if (!confirm(`Delete ALL imported transactions before ${cutoff}? This cannot be undone.`)) return;
+      txImportPurgeBtn.disabled = true;
+      txImportPurgeBtn.textContent = "Deleting…";
+      if (txImportLastResult) {
+        txImportLastResult.textContent = "Delete in progress…";
+        txImportLastResult.style.display = "block";
+      }
+      const out = await api(`/api/families/${state.activeFamilyId}/transactions/purge-before`, "POST", {
+        before_date: cutoff,
+        imported_only: true,
+      });
+      const deleted = Number(out?.deleted || 0);
+      if (txImportLastResult) {
+        txImportLastResult.textContent = `Deleted ${deleted} imported transactions before ${cutoff}.`;
+        txImportLastResult.style.display = "block";
+      }
+      await loadMonthAndCalendar();
+      await loadTransactions();
+    } catch (e) {
+      show(txImportErr, e.message || "Failed to delete transactions");
+    } finally {
+      txImportPurgeBtn.disabled = false;
+      txImportPurgeBtn.textContent = prevText;
     }
   });
 }
