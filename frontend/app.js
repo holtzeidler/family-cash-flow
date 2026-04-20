@@ -173,6 +173,7 @@ const txImportUndoBtn = document.getElementById("txImportUndoBtn");
 const txImportLastResult = document.getElementById("txImportLastResult");
 const txImportPurgeBefore = document.getElementById("txImportPurgeBefore");
 const txImportPurgeBtn = document.getElementById("txImportPurgeBtn");
+const txImportTestApiBtn = document.getElementById("txImportTestApiBtn");
 
 let txImportState = { headers: [], rows: [], filename: "" };
 
@@ -2260,6 +2261,48 @@ if (txImportPurgeBtn) {
     } finally {
       txImportPurgeBtn.disabled = false;
       txImportPurgeBtn.textContent = prevText;
+    }
+  });
+}
+
+if (txImportTestApiBtn) {
+  txImportTestApiBtn.addEventListener("click", async () => {
+    const prevText = txImportTestApiBtn.textContent || "Test API connection";
+    try {
+      show(txImportErr, "");
+      const apiBase = apiBaseUrl();
+      if (!apiBase) throw new Error("API_BASE is empty");
+      const url = `${apiBase}/api/debug/public-config`;
+      txImportTestApiBtn.disabled = true;
+      txImportTestApiBtn.textContent = "Testing…";
+
+      const results = [];
+      // 1) Basic cross-origin GET (no cookies)
+      try {
+        const r1 = await fetch(url, { method: "GET", credentials: "omit" });
+        const t1 = await r1.text();
+        results.push(`GET (omit creds): ${r1.status} ${r1.ok ? "OK" : "FAIL"}\n${t1}`);
+      } catch (e) {
+        results.push(`GET (omit creds): FAILED (${e?.message || e})`);
+      }
+      // 2) Same request with credentials include (mirrors app)
+      try {
+        const r2 = await fetch(url, { method: "GET", credentials: "include" });
+        const t2 = await r2.text();
+        results.push(`GET (include creds): ${r2.status} ${r2.ok ? "OK" : "FAIL"}\n${t2}`);
+      } catch (e) {
+        results.push(`GET (include creds): FAILED (${e?.message || e})`);
+      }
+
+      if (txImportLastResult) {
+        txImportLastResult.textContent = results.join("\n\n");
+        txImportLastResult.style.display = "block";
+      }
+    } catch (e) {
+      show(txImportErr, e.message || "API test failed");
+    } finally {
+      txImportTestApiBtn.disabled = false;
+      txImportTestApiBtn.textContent = prevText;
     }
   });
 }
