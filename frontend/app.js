@@ -1347,6 +1347,7 @@ function mountTxAddFormInModal() {
 function mountTxAddFormInSidebar() {
   const root = document.getElementById("txAddFormRoot");
   const home = document.getElementById("txAddFormHome");
+  // Sidebar mount may not exist (if the sidebar "Add transaction" section is removed).
   if (root && home && root.parentElement !== home) home.appendChild(root);
 }
 

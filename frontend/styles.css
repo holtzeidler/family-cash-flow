@@ -43,8 +43,18 @@ body{
 }
 .top-nav__inner{
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 10px;
+}
+.top-nav__brand{
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: -0.4px;
+  line-height: 1.1;
+  color: var(--text);
+  text-align: center;
 }
 .top-nav__tabs{
   display: inline-flex;
@@ -88,13 +98,7 @@ body{
   min-width: 0;
 }
 
-.sidebar-top h1{
-  margin: 0;
-  flex: 1 1 auto;
-  min-width: 0;
-  font-size: 20px;
-  letter-spacing: 0.2px;
-}
+.sidebar-top h1{ display:none; }
 
 .header-actions{
   position: relative;
@@ -376,11 +380,7 @@ button.nav-link:hover{
 }
 
 .calendar-panel-head{
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 4px;
+  display: none;
 }
 .calendar-low-balance{
   font-size: 12px;
@@ -434,14 +434,8 @@ button.nav-link:hover{
   line-height: 1.4;
 }
 
-.calendar-panel--collapsed .calendar-panel-head{
-  margin-bottom: 0;
-}
-.calendar-panel-head h2{
-  margin: 0;
-  flex: 1;
-  min-width: 0;
-}
+.calendar-panel--collapsed .calendar-panel-head{ display:none; }
+.calendar-panel-head h2{ display:none; }
 .calendar-collapse-btn,
 .sidebar-collapse-btn{
   flex-shrink: 0;
@@ -537,7 +531,7 @@ button.nav-link:hover{
   top: var(--app-top-nav-offset);
   z-index: 24;
   background: var(--card);
-  padding-bottom: 8px;
+  padding-bottom: 6px;
   margin-bottom: 4px;
   border-bottom: 1px solid rgba(0,0,0,0.08);
 }
@@ -879,7 +873,7 @@ textarea::placeholder{
   background: rgba(167, 55, 68, 0.18);
 }
 .kind-toggle .kind-opt:has(input[value="income"]:checked):hover{
-  background: rgba(0, 90, 74, 0.16);
+  background: rgba(0, 90, 74, 0.20);
 }
 .kind-toggle .kind-opt:has(input[value="expense"]:checked){
   background: rgba(167, 55, 68, 0.14);
@@ -887,7 +881,7 @@ textarea::placeholder{
   font-weight: 600;
 }
 .kind-toggle .kind-opt:has(input[value="income"]:checked){
-  background: rgba(0, 90, 74, 0.12);
+  background: rgba(0, 90, 74, 0.16);
   color: var(--ok);
   font-weight: 600;
 }
@@ -1926,7 +1920,9 @@ textarea::placeholder{
 }
 #txEditInner > .modal-actions #txEditSaveRow #txEditSave{
   width: 100%;
-  max-width: 100%;
+  max-width: min(100%, 22rem);
+  margin-left: auto;
+  margin-right: auto;
   box-sizing: border-box;
 }
 #txEditInner > .modal-actions #txEditRecurringFooterRow{
@@ -1944,10 +1940,10 @@ textarea::placeholder{
 #txEditInner > .modal-actions #txEditFooterSecondary > button{
   flex: 0 0 auto;
   width: auto;
-  min-width: 0;
-  max-width: 9.5rem;
-  padding-left: 14px;
-  padding-right: 14px;
+  min-width: 9.5rem;
+  max-width: 12.5rem;
+  padding-left: 18px;
+  padding-right: 18px;
 }
 #txEditInner > .modal-actions #txEditFooterSecondary.tx-edit-foot-secondary--recurring > button{
   flex: 1 1 0;
@@ -1962,11 +1958,11 @@ textarea::placeholder{
   padding-left: 22px;
   padding-right: 22px;
   background: transparent;
-  color: var(--danger);
-  border: 2px solid var(--danger);
+  color: var(--text);
+  border: 2px solid rgba(75, 85, 99, 0.5);
 }
 #txEditCancel:hover{
-  background: rgba(167, 55, 68, 0.08);
+  background: rgba(0, 0, 0, 0.05);
   filter: none;
 }
 #txEditCancel.tx-edit-dismiss--close{
