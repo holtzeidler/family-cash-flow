@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=130" />
+    <link rel="stylesheet" href="./styles.css?v=134" />
   </head>
   <body>
     <div class="container">
@@ -159,7 +159,7 @@
                   </div>
                   <div class="modal-actions">
                     <div class="row two">
-                      <button type="button" id="txAddSave">Add</button>
+                      <button type="button" id="txAddSave" class="btn-primary">Add</button>
                       <button type="button" id="txAddCancel" class="danger">Cancel</button>
                     </div>
                   </div>
@@ -580,7 +580,7 @@
                       <span class="meta chart-days-meta" id="chartDaysLabel">365 days</span>
                     </div>
                   </div>
-                  <button type="button" id="runProjectionChartBtn" class="chart-update-btn">Update</button>
+                  <button type="button" id="runProjectionChartBtn" class="chart-update-btn btn-primary">Update</button>
               </div>
               <div class="chart-duration-bar" role="tablist" aria-label="Chart range preset">
                 <button type="button" class="chart-duration-btn" data-preset="1D" title="1 day">1D</button>
@@ -729,15 +729,14 @@
             </label>
           </div>
 
-          <div style="height: 12px"></div>
-          <div id="txEditRecurringPrimaryActions" class="tx-edit-recurring-update-row" style="display: none">
-            <button type="button" id="txEditRecurringUpdateBtn">Update</button>
-          </div>
         </div>
 
         <div class="modal-actions modal-actions--tx-edit-foot">
           <div id="txEditSaveRow" class="tx-edit-foot-save-row">
-            <button type="button" id="txEditSave">Save</button>
+            <button type="button" id="txEditSave" class="btn-primary">Save</button>
+          </div>
+          <div id="txEditRecurringFooterRow" class="tx-edit-foot-update-row" style="display: none">
+            <button type="button" id="txEditRecurringUpdateBtn" class="btn-primary">Update</button>
           </div>
           <div id="txEditFooterSecondary" class="tx-edit-foot-secondary row two">
             <button type="button" id="txEditDelete" class="danger">Delete</button>
@@ -826,7 +825,7 @@
         </label>
         <div class="modal-actions">
           <div class="row two">
-            <button type="button" id="reconcileSaveBtn">Save</button>
+            <button type="button" id="reconcileSaveBtn" class="btn-primary">Save</button>
             <button type="button" id="reconcileCancelBtn" class="danger">Cancel</button>
           </div>
         </div>

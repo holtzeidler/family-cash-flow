@@ -1171,6 +1171,10 @@ function applyTransactionEditMode(mode, opts = {}) {
     if (saveRow) saveRow.style.display = "";
     const txEditDel = document.getElementById("txEditDelete");
     if (txEditDel) txEditDel.style.display = "";
+    const recurringFooterRow = document.getElementById("txEditRecurringFooterRow");
+    if (recurringFooterRow) recurringFooterRow.style.display = "none";
+    const footSecondary = document.getElementById("txEditFooterSecondary");
+    if (footSecondary) footSecondary.classList.remove("tx-edit-foot-secondary--recurring");
     return;
   }
 
@@ -1230,12 +1234,16 @@ function applyTransactionEditMode(mode, opts = {}) {
   if (varWrap) varWrap.style.display = recurring ? "block" : "none";
 
   const prim = document.getElementById("txEditRecurringPrimaryActions");
-  if (prim) prim.style.display = recurring ? "grid" : "none";
+  if (prim) prim.style.display = "none";
+  const recurringFooterRow = document.getElementById("txEditRecurringFooterRow");
+  if (recurringFooterRow) recurringFooterRow.style.display = recurring ? "" : "none";
 
   const saveRow = document.getElementById("txEditSaveRow");
   if (saveRow) saveRow.style.display = recurring ? "none" : "";
   const txEditDel = document.getElementById("txEditDelete");
   if (txEditDel) txEditDel.style.display = "";
+  const footSecondary = document.getElementById("txEditFooterSecondary");
+  if (footSecondary) footSecondary.classList.toggle("tx-edit-foot-secondary--recurring", recurring);
 
   if (txEditCancel) {
     txEditCancel.textContent = recurring ? "Close" : "Cancel";

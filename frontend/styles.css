@@ -7,6 +7,10 @@
   --accent:#129bba; /* lighter blue from palette */
   --danger:#a73744; /* darker maroon-leaning red */
   --ok:#005a4a;     /* green from palette */
+  /* Header accent (forest green) */
+  --header-accent: #14532d;
+  --header-accent-bg: rgba(20, 83, 45, 0.16);
+  --header-accent-border: rgba(20, 83, 45, 0.35);
   --border: rgba(0,0,0,0.12);
   /* Sticky strips sit below the primary nav (tabs) */
   --app-top-nav-offset: 72px;
@@ -63,8 +67,9 @@ body{
   color: var(--text);
 }
 .top-nav__tab.is-active{
-  background: rgba(18,155,186,0.18);
-  border-color: rgba(18,155,186,0.40);
+  background: var(--header-accent-bg);
+  background: color-mix(in srgb, var(--header-accent) 18%, transparent);
+  border-color: var(--header-accent-border);
   color: var(--text);
 }
 
@@ -137,6 +142,19 @@ button{
   cursor:pointer;
 }
 button:hover{ filter: brightness(1.05); }
+button.btn-primary{
+  background: var(--header-accent-bg);
+  border-color: var(--header-accent-border);
+  color: var(--header-accent);
+  font-weight: 700;
+}
+button.btn-primary:hover{
+  filter: none;
+  background: color-mix(in srgb, var(--header-accent) 22%, transparent);
+}
+button.btn-primary:active{
+  transform: translateY(0.5px);
+}
 button.danger{
   background: rgba(255,107,107,0.12);
   border-color: rgba(255,107,107,0.35);
@@ -262,7 +280,7 @@ button.danger{
   padding: 6px 22px 6px 6px;
   border: none;
   background: transparent;
-  color: #6b21a8; /* purple like screenshot */
+  color: #14532d; /* forest green */
   font-weight: 700;
   font-size: 17px;
   letter-spacing: 0.2px;
@@ -275,7 +293,7 @@ button.danger{
   position: absolute;
   right: 6px;
   pointer-events: none;
-  color: #6b21a8;
+  color: #14532d;
   font-size: 16px;
   opacity: 0.9;
 }
@@ -324,7 +342,7 @@ button.danger{
   border-radius: 999px;
   border: 1px solid rgba(0,0,0,0.10);
   background: rgba(0,0,0,0.02);
-  color: #6b21a8;
+  color: #14532d;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1589,7 +1607,7 @@ textarea::placeholder{
   padding: 12px 28px;
   text-align: center;
   font-size: 1.05rem;
-  background: rgba(18, 155, 186, 0.16);
+  background: var(--header-accent-bg);
   border: 1px solid var(--border);
   border-radius: 9999px;
 }
@@ -1868,7 +1886,7 @@ textarea::placeholder{
 .tx-edit-top{
   margin: -16px -16px 0;
   padding: 16px;
-  background: rgba(18,155,186,0.16);
+  background: var(--header-accent-bg);
   border-radius: 0;
 }
 
@@ -1911,6 +1929,11 @@ textarea::placeholder{
   max-width: 100%;
   box-sizing: border-box;
 }
+#txEditInner > .modal-actions #txEditRecurringFooterRow{
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
 #txEditInner > .modal-actions #txEditFooterSecondary{
   display: flex;
   flex-wrap: wrap;
@@ -1925,6 +1948,13 @@ textarea::placeholder{
   max-width: 9.5rem;
   padding-left: 14px;
   padding-right: 14px;
+}
+#txEditInner > .modal-actions #txEditFooterSecondary.tx-edit-foot-secondary--recurring > button{
+  flex: 1 1 0;
+  min-width: 9.75rem;
+  max-width: min(100%, 18rem);
+  padding-left: 18px;
+  padding-right: 18px;
 }
 #txEditCancel{
   width: auto;
@@ -1946,16 +1976,9 @@ textarea::placeholder{
 #txEditCancel.tx-edit-dismiss--close:hover{
   background: rgba(0, 0, 0, 0.05);
 }
-#txEditInner #txEditRecurringPrimaryActions.tx-edit-recurring-update-row{
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-}
 #txEditInner #txEditRecurringUpdateBtn{
   width: auto;
-  max-width: min(100%, 22rem);
+  max-width: min(100%, 18rem);
   padding-left: 18px;
   padding-right: 18px;
 }
