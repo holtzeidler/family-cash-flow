@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from collections import defaultdict
 from datetime import date, datetime, timedelta
 from decimal import Decimal
@@ -727,6 +728,18 @@ def public_debug_config():
         "note": "GitHub Pages -> Render needs ENV=production so Set-Cookie uses SameSite=None; Secure.",
     }
 
+
+@app.get("/api/debug/build-info", include_in_schema=False)
+def public_build_info():
+    """
+    Helps confirm what code Render is actually running.
+    Render commonly provides RENDER_GIT_COMMIT / RENDER_SERVICE_ID / RENDER_GIT_BRANCH.
+    """
+    return {
+        "render_git_commit": os.environ.get("RENDER_GIT_COMMIT"),
+        "render_git_branch": os.environ.get("RENDER_GIT_BRANCH"),
+        "render_service_id": os.environ.get("RENDER_SERVICE_ID"),
+    }
 
 @app.on_event("startup")
 def startup_populate_schema():
