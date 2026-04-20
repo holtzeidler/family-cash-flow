@@ -37,17 +37,22 @@ async function api(path, method = "GET", body) {
 
   if (!res.ok) {
     let msg = `Request failed (${res.status})`;
+    const raw = await res.text().catch(() => "");
     try {
-      const data = await res.json();
-      if (data && data.detail) msg = data.detail;
-    } catch (_) {}
+      const data = raw ? JSON.parse(raw) : null;
+      if (data && data.detail) msg = typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail);
+    } catch (_) {
+      if (raw) msg = `${msg}\n${raw.slice(0, 800)}`;
+    }
     throw new Error(msg);
   }
 
   // Some endpoints may return empty bodies; handle gracefully.
   if (res.status === 204) return null;
   try {
-    return await res.json();
+    const raw = await res.text();
+    if (!raw) return null;
+    return JSON.parse(raw);
   } catch (_) {
     return null;
   }
@@ -97,25 +102,42 @@ async function apiForm(path, fields) {
 
   if (!res.ok) {
     let msg = `Request failed (${res.status})`;
+    const raw = await res.text().catch(() => "");
     try {
-      const data = await res.json();
-      if (data && data.detail) msg = data.detail;
-    } catch (_) {}
+      const data = raw ? JSON.parse(raw) : null;
+      if (data && data.detail) msg = typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail);
+    } catch (_) {
+      if (raw) msg = `${msg}\n${raw.slice(0, 800)}`;
+    }
     throw new Error(msg);
   }
 
   if (res.status === 204) return null;
   try {
-    return await res.json();
+    const raw = await res.text();
+    if (!raw) return null;
+    return JSON.parse(raw);
   } catch (_) {
     return null;
   }
 }
 
+function formatUiError(err) {
+  if (err == null) return "";
+  if (typeof err === "string") return err;
+  if (err instanceof Error) return err.message || String(err);
+  try {
+    return JSON.stringify(err);
+  } catch (_) {
+    return String(err);
+  }
+}
+
 function show(el, msg) {
   if (!el) return;
-  el.textContent = msg || "";
-  el.style.display = msg ? "block" : "none";
+  const s = formatUiError(msg);
+  el.textContent = s || "";
+  el.style.display = s ? "block" : "none";
 }
 
 function expandSidebarSection(key) {
@@ -2040,7 +2062,7 @@ if (txImportSkipHeader) {
       try {
         await txImportReadFile(f);
       } catch (e) {
-        show(txImportErr, e.message || "Failed to parse CSV");
+        show(txImportErr, formatUiError(e) || "Failed to parse CSV");
       }
     }
   });
@@ -2054,7 +2076,7 @@ if (txImportFile) {
       if (!f) return;
       await txImportReadFile(f);
     } catch (e) {
-      show(txImportErr, e.message || "Failed to read CSV");
+      show(txImportErr, formatUiError(e) || "Failed to read CSV");
       if (txImportPreview) txImportPreview.innerHTML = "";
       if (txImportMapping) txImportMapping.hidden = true;
     }
@@ -2121,7 +2143,7 @@ if (txImportRunBtn) {
       if (txImportQueueList) txImportQueueList.innerHTML = "";
       await loadMonthAndCalendar();
     } catch (e) {
-      show(txImportErr, e.message || "Import failed");
+      show(txImportErr, formatUiError(e) || "Import failed");
     }
   });
 }
@@ -2200,7 +2222,7 @@ if (txImportReviewQueueBtn) {
       show(txImportErr, "");
       await txImportLoadQueue();
     } catch (e) {
-      show(txImportErr, e.message || "Failed to load queue");
+      show(txImportErr, formatUiError(e) || "Failed to load queue");
     }
   });
 }
@@ -2229,7 +2251,7 @@ if (txImportQueueSaveBtn) {
       await txImportLoadQueue();
       await loadMonthAndCalendar();
     } catch (e) {
-      show(txImportErr, e.message || "Failed to save categories");
+      show(txImportErr, formatUiError(e) || "Failed to save categories");
     }
   });
 }
@@ -2275,7 +2297,7 @@ if (txImportUndoBtn) {
         txImportLastResult.textContent = `Undid import. Deleted ${deleted} transactions.`;
       }
     } catch (e) {
-      show(txImportErr, e.message || "Failed to undo import");
+      show(txImportErr, formatUiError(e) || "Failed to undo import");
       if (txImportLastResult) {
         txImportLastResult.textContent = "Undo failed. See error above.";
         txImportLastResult.style.display = "block";
@@ -2316,7 +2338,7 @@ if (txImportPurgeBtn) {
       await loadMonthAndCalendar();
       await loadTransactions();
     } catch (e) {
-      show(txImportErr, e.message || "Failed to delete transactions");
+      show(txImportErr, formatUiError(e) || "Failed to delete transactions");
     } finally {
       txImportPurgeBtn.disabled = false;
       txImportPurgeBtn.textContent = prevText;
@@ -2406,7 +2428,7 @@ if (txImportTestApiBtn) {
         txImportLastResult.style.display = "block";
       }
     } catch (e) {
-      show(txImportErr, e.message || "API test failed");
+      show(txImportErr, formatUiError(e) || "API test failed");
     } finally {
       txImportTestApiBtn.disabled = false;
       txImportTestApiBtn.textContent = prevText;
