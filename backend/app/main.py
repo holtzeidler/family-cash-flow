@@ -678,16 +678,26 @@ def _parse_cors_origins(raw: str) -> list[str]:
 
 
 app = FastAPI(title="Family Cash Flow")
-if settings.CORS_ORIGINS:
-    origins = _parse_cors_origins(settings.CORS_ORIGINS)
-    if origins:
-        app.add_middleware(
-            CORSMiddleware,
-            allow_origins=origins,
-            allow_credentials=True,
-            allow_methods=["*"],
-            allow_headers=["*"],
-        )
+origins = _parse_cors_origins(settings.CORS_ORIGINS or "")
+# Always allow the GitHub Pages frontend origin so the app works
+# even if the Render env var is missing/misconfigured.
+default_web_origins = ["https://holtzeidler.github.io"]
+if settings.ENV != "production":
+    default_web_origins += [
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://localhost:8000",
+    ]
+origins = [o for o in [*origins, *default_web_origins] if o]
+origins = list(dict.fromkeys(origins))  # de-dupe, preserve order
+if origins:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 
 @app.get("/api/debug/public-config", include_in_schema=False)
@@ -700,8 +710,8 @@ def public_debug_config():
     parsed = _parse_cors_origins(raw) if raw.strip() else []
     return {
         "env": settings.ENV,
-        "cors_middleware_enabled": bool(raw.strip() and parsed),
-        "cors_allow_origins": parsed,
+        "cors_middleware_enabled": True,
+        "cors_allow_origins": origins,
         "cors_origins_configured": bool(raw.strip()),
         "auth_cookie_samesite": "none" if settings.ENV == "production" else "lax",
         "auth_cookie_secure": settings.ENV == "production",
