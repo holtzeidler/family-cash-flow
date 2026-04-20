@@ -142,12 +142,16 @@ class Transaction(Base):
 
     date: Mapped[date] = mapped_column(SA_Date, nullable=False, index=True)
     description: Mapped[str] = mapped_column(String(500), nullable=False, default="")
+    vendor: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, index=True)
+    raw_description: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     notes: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     kind: Mapped[TransactionKind] = mapped_column(SAEnum(TransactionKind), nullable=False, default=TransactionKind.expense)
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     reimbursable: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     # Imported transactions are analysis-only: visible/editable but excluded from balance math.
     imported: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    import_batch_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
+    imported_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
 
     category_id: Mapped[Optional[int]] = mapped_column(ForeignKey("categories.id"), nullable=True, index=True)
     account_id: Mapped[Optional[int]] = mapped_column(ForeignKey("accounts.id"), nullable=True, index=True)
@@ -416,6 +420,8 @@ class TransactionOut(BaseModel):
     id: int
     date: date
     description: str
+    vendor: Optional[str] = None
+    raw_description: Optional[str] = None
     notes: Optional[str] = None
     kind: TransactionKind
     amount: Decimal
@@ -432,11 +438,32 @@ class TransactionsListOut(BaseModel):
 
 
 class TransactionsImportIn(BaseModel):
-    items: list[TransactionIn]
+    class TransactionImportItemIn(BaseModel):
+        date: date
+        description: str = Field(default="", max_length=500)
+        vendor: Optional[str] = Field(default=None, max_length=255)
+        raw_description: Optional[str] = Field(default=None, max_length=500)
+        notes: Optional[str] = Field(default=None, max_length=500)
+        kind: TransactionKind
+        amount: Decimal = Field(gt=0)
+        category_id: Optional[int] = None
+        account_id: Optional[int] = None
+        reimbursable: bool = False
+
+    items: list[TransactionImportItemIn]
 
 
 class TransactionsImportOut(BaseModel):
     created: int
+    batch_id: str
+
+
+class TransactionsImportUndoIn(BaseModel):
+    batch_id: str
+
+
+class TransactionsImportUndoOut(BaseModel):
+    deleted: int
 
 
 class AccountIn(BaseModel):
@@ -705,6 +732,8 @@ def startup_populate_schema():
     _ensure_category_parent_id_column()
     _ensure_transaction_account_id_column()
     _ensure_transaction_imported_column()
+    _ensure_transaction_import_batch_columns()
+    _ensure_transaction_vendor_columns()
     _ensure_reconciled_days_table()
 
 
@@ -720,6 +749,40 @@ def _ensure_transaction_imported_column() -> None:
         else:
             conn.execute(text(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS imported BOOLEAN"))
             conn.execute(text(f"UPDATE {table} SET imported = FALSE WHERE imported IS NULL"))
+
+
+def _ensure_transaction_import_batch_columns() -> None:
+    """Lightweight startup migration: track import batches for undo."""
+    with engine.begin() as conn:
+        table = "transactions"
+        if settings.DATABASE_URL.startswith("sqlite"):
+            cols = conn.execute(text(f"PRAGMA table_info({table})")).fetchall()
+            has_batch = any(str(row[1]) == "import_batch_id" for row in cols)
+            has_at = any(str(row[1]) == "imported_at" for row in cols)
+            if not has_batch:
+                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN import_batch_id TEXT"))
+            if not has_at:
+                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN imported_at DATETIME"))
+        else:
+            conn.execute(text(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS import_batch_id VARCHAR(64)"))
+            conn.execute(text(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS imported_at TIMESTAMP"))
+
+
+def _ensure_transaction_vendor_columns() -> None:
+    """Lightweight startup migration: vendor + raw_description for reporting."""
+    with engine.begin() as conn:
+        table = "transactions"
+        if settings.DATABASE_URL.startswith("sqlite"):
+            cols = conn.execute(text(f"PRAGMA table_info({table})")).fetchall()
+            has_vendor = any(str(row[1]) == "vendor" for row in cols)
+            has_raw = any(str(row[1]) == "raw_description" for row in cols)
+            if not has_vendor:
+                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN vendor VARCHAR(255)"))
+            if not has_raw:
+                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN raw_description VARCHAR(500)"))
+        else:
+            conn.execute(text(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS vendor VARCHAR(255)"))
+            conn.execute(text(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS raw_description VARCHAR(500)"))
 
 
 def _ensure_expected_moved_to_date_column() -> None:
@@ -3129,6 +3192,8 @@ def list_transactions(
                 id=tx.id,
                 date=tx.date,
                 description=tx.description,
+                vendor=getattr(tx, "vendor", None),
+                raw_description=getattr(tx, "raw_description", None),
                 notes=tx.notes,
                 kind=tx.kind,
                 amount=tx.amount,
@@ -3172,6 +3237,8 @@ def create_transaction(
         family_id=family_id,
         date=payload.date,
         description=payload.description,
+        vendor=None,
+        raw_description=None,
         notes=payload.notes.strip() if payload.notes and payload.notes.strip() else None,
         kind=payload.kind,
         amount=payload.amount,
@@ -3230,6 +3297,10 @@ def import_transactions(
         if bad:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid category for this family: {bad[0]}")
 
+    import uuid
+
+    batch_id = uuid.uuid4().hex
+    now = datetime.utcnow()
     txs: list[Transaction] = []
     for it in items:
         txs.append(
@@ -3237,6 +3308,8 @@ def import_transactions(
                 family_id=family_id,
                 date=it.date,
                 description=it.description,
+                vendor=(it.vendor.strip() if it.vendor and it.vendor.strip() else None),
+                raw_description=(it.raw_description.strip() if it.raw_description and it.raw_description.strip() else None),
                 notes=it.notes.strip() if it.notes and it.notes.strip() else None,
                 kind=it.kind,
                 amount=it.amount,
@@ -3244,11 +3317,133 @@ def import_transactions(
                 account_id=it.account_id,
                 reimbursable=it.reimbursable,
                 imported=True,
+                import_batch_id=batch_id,
+                imported_at=now,
             )
         )
     db.add_all(txs)
     db.commit()
-    return TransactionsImportOut(created=len(txs))
+    return TransactionsImportOut(created=len(txs), batch_id=batch_id)
+
+
+@app.post("/api/families/{family_id}/transactions/import/undo", response_model=TransactionsImportUndoOut)
+def undo_transactions_import(
+    family_id: int,
+    payload: TransactionsImportUndoIn,
+    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    require_family_member(db=db, family_id=family_id, user_id=user_id)
+    batch_id = (payload.batch_id or "").strip()
+    if not batch_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="batch_id is required")
+
+    # Delete only imported rows from this batch.
+    deleted = db.execute(
+        text("DELETE FROM transactions WHERE family_id = :fid AND imported = 1 AND import_batch_id = :bid"),
+        {"fid": int(family_id), "bid": batch_id},
+    ).rowcount or 0
+    db.commit()
+    return TransactionsImportUndoOut(deleted=int(deleted))
+
+
+class ImportedUncategorizedOut(BaseModel):
+    items: list[TransactionOut]
+
+
+class ImportAssignCategoryItemIn(BaseModel):
+    id: int
+    category_id: int
+
+
+class ImportAssignCategoriesIn(BaseModel):
+    items: list[ImportAssignCategoryItemIn]
+
+
+class ImportAssignCategoriesOut(BaseModel):
+    updated: int
+
+
+@app.get("/api/families/{family_id}/transactions/import/uncategorized", response_model=ImportedUncategorizedOut)
+def list_import_uncategorized(
+    family_id: int,
+    limit: int = 200,
+    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    require_family_member(db=db, family_id=family_id, user_id=user_id)
+    limit = max(1, min(int(limit), 500))
+    rows = (
+        db.execute(
+            select(Transaction, Category.name.label("category_name"))
+            .join(Category, Category.id == Transaction.category_id, isouter=True)
+            .where(Transaction.family_id == family_id, Transaction.imported == True, Transaction.category_id == None)  # noqa: E712
+            .order_by(Transaction.date.desc(), Transaction.id.desc())
+            .limit(limit)
+        )
+        .all()
+    )
+    items: list[TransactionOut] = []
+    for tx, category_name in rows:
+        items.append(
+            TransactionOut(
+                id=tx.id,
+                date=tx.date,
+                description=tx.description,
+                vendor=getattr(tx, "vendor", None),
+                raw_description=getattr(tx, "raw_description", None),
+                notes=tx.notes,
+                kind=tx.kind,
+                amount=tx.amount,
+                category=category_name,
+                category_id=tx.category_id,
+                account_id=getattr(tx, "account_id", None),
+                reimbursable=bool(getattr(tx, "reimbursable", False)),
+                imported=bool(getattr(tx, "imported", False)),
+            )
+        )
+    return ImportedUncategorizedOut(items=items)
+
+
+@app.post("/api/families/{family_id}/transactions/import/assign-categories", response_model=ImportAssignCategoriesOut)
+def assign_import_categories(
+    family_id: int,
+    payload: ImportAssignCategoriesIn,
+    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    require_family_member(db=db, family_id=family_id, user_id=user_id)
+    items = payload.items or []
+    if not items:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No items provided")
+
+    updated = 0
+    for it in items:
+        tx_id = int(getattr(it, "id", 0) or 0)
+        cat_id = int(getattr(it, "category_id", 0) or 0)
+        if tx_id <= 0 or cat_id <= 0:
+            continue
+        # Validate category belongs to family.
+        cat = db.execute(select(Category).where(Category.family_id == family_id, Category.id == cat_id)).scalar_one_or_none()
+        if cat is None:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid category for this family")
+        # Update only imported transactions in this family.
+        rc = (
+            db.execute(
+                text(
+                    "UPDATE transactions SET category_id = :cid "
+                    "WHERE id = :tid AND family_id = :fid AND imported = 1"
+                ),
+                {"cid": cat_id, "tid": tx_id, "fid": family_id},
+            ).rowcount
+            or 0
+        )
+        updated += int(rc)
+    db.commit()
+    return ImportAssignCategoriesOut(updated=updated)
 
 
 def _transaction_out(db, tx: Transaction) -> TransactionOut:
@@ -3260,6 +3455,8 @@ def _transaction_out(db, tx: Transaction) -> TransactionOut:
         id=tx.id,
         date=tx.date,
         description=tx.description,
+        vendor=getattr(tx, "vendor", None),
+        raw_description=getattr(tx, "raw_description", None),
         notes=tx.notes,
         kind=tx.kind,
         amount=tx.amount,

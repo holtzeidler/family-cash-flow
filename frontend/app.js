@@ -157,6 +157,10 @@ const txImportAccountMode = document.getElementById("txImportAccountMode");
 const txImportFixedAccountId = document.getElementById("txImportFixedAccountId");
 const txImportCategoryMode = document.getElementById("txImportCategoryMode");
 const txImportFixedCategoryId = document.getElementById("txImportFixedCategoryId");
+const txImportQueueWrap = document.getElementById("txImportQueueWrap");
+const txImportReviewQueueBtn = document.getElementById("txImportReviewQueueBtn");
+const txImportQueueSaveBtn = document.getElementById("txImportQueueSaveBtn");
+const txImportQueueList = document.getElementById("txImportQueueList");
 const txImportColNotes = document.getElementById("txImportColNotes");
 const txImportColDesc = document.getElementById("txImportColDesc");
 const txImportSkipHeader = document.getElementById("txImportSkipHeader");
@@ -164,6 +168,8 @@ const txImportPreview = document.getElementById("txImportPreview");
 const txImportDetectedPreset = document.getElementById("txImportDetectedPreset");
 const txImportErr = document.getElementById("txImportErr");
 const txImportRunBtn = document.getElementById("txImportRunBtn");
+const txImportUndoBtn = document.getElementById("txImportUndoBtn");
+const txImportLastResult = document.getElementById("txImportLastResult");
 
 let txImportState = { headers: [], rows: [], filename: "" };
 
@@ -1856,21 +1862,12 @@ function txImportRefreshUi() {
   setSelectOptionsFromHeaders(txImportColDesc, headers, { allowNone: true });
 
   if (txImportFixedAccountId) renderAccountSelect(txImportFixedAccountId, state.accounts || []);
+  // Hide fixed category (we no longer force a single category for imports).
   if (txImportFixedCategoryId) {
-    // Leaf-only categories (same rule as pickers).
-    const items = state.categories || [];
-    const hasChildren = new Set();
-    for (const c of items) {
-      if (c && c.parent_id != null) hasChildren.add(Number(c.parent_id));
-    }
-    const selectable = items.filter((c) => c && !hasChildren.has(Number(c.id)));
     txImportFixedCategoryId.innerHTML = "";
-    for (const c of selectable) {
-      const opt = document.createElement("option");
-      opt.value = String(c.id);
-      opt.textContent = c.name;
-      txImportFixedCategoryId.appendChild(opt);
-    }
+    txImportFixedCategoryId.disabled = true;
+    const wrap = txImportFixedCategoryId.closest("div");
+    if (wrap) wrap.style.display = "none";
   }
 
   // Auto-guess
@@ -1910,14 +1907,12 @@ function txImportRefreshUi() {
   }
   if (txImportCategoryMode && txImportColCategory) {
     const catGuess = guessImportColumn(headers, ["category", "cat"]);
-    if (catGuess < 0) txImportCategoryMode.value = "fixed";
+    if (catGuess < 0) txImportCategoryMode.value = "suggest";
   }
   if (txImportFixedAccountId && state.accounts && state.accounts.length > 0 && !txImportFixedAccountId.value) {
     txImportFixedAccountId.value = String(state.accounts[0].id);
   }
-  if (txImportFixedCategoryId && txImportFixedCategoryId.options.length > 0 && !txImportFixedCategoryId.value) {
-    txImportFixedCategoryId.value = String(txImportFixedCategoryId.options[0].value);
-  }
+  // If no Category column exists, suggestion/queue modes don't need mapping.
 
   const preset = detectCsvPreset(headers);
   if (txImportDetectedPreset) {
@@ -1939,11 +1934,20 @@ function txImportRefreshUi() {
     if (idxDetails >= 0 && txImportColKind) txImportColKind.value = String(idxDetails);
     if (idxDesc >= 0 && txImportColDesc) txImportColDesc.value = String(idxDesc);
     if (txImportAccountMode) txImportAccountMode.value = "fixed";
-    if (txImportCategoryMode) txImportCategoryMode.value = "fixed";
+    if (txImportCategoryMode) txImportCategoryMode.value = "suggest";
   }
 
+  txImportApplyCategoryModeUi();
   txImportPreviewRender(headers, rows);
   show(txImportErr, "");
+}
+
+function txImportApplyCategoryModeUi() {
+  if (!txImportCategoryMode || !txImportColCategory) return;
+  const mode = String(txImportCategoryMode.value || "suggest");
+  const showColumn = mode === "column";
+  const colWrap = txImportColCategory.closest("div");
+  if (colWrap) colWrap.style.display = showColumn ? "" : "none";
 }
 
 async function txImportReadFile(file) {
@@ -2005,9 +2009,15 @@ for (const el of [
   txImportAccountMode,
   txImportFixedAccountId,
   txImportCategoryMode,
-  txImportFixedCategoryId,
 ]) {
   if (el) el.addEventListener("change", () => show(txImportErr, ""));
+}
+
+if (txImportCategoryMode) {
+  txImportCategoryMode.addEventListener("change", () => {
+    txImportApplyCategoryModeUi();
+    show(txImportErr, "");
+  });
 }
 
 if (txImportRunBtn) {
@@ -2022,14 +2032,167 @@ if (txImportRunBtn) {
       }
       if (!res.items || res.items.length === 0) throw new Error("No valid rows to import");
       if (!confirm(`Import ${res.items.length} transactions? This will add to your existing data.`)) return;
-      await api(`/api/families/${state.activeFamilyId}/transactions/import`, "POST", { items: res.items });
+      const out = await api(`/api/families/${state.activeFamilyId}/transactions/import`, "POST", { items: res.items });
+      const batchId = out?.batch_id ? String(out.batch_id) : "";
+      const uncategorizedCount = (res.items || []).filter((x) => x && x.category_id == null).length;
+      if (batchId) {
+        try {
+          localStorage.setItem("familyCashFlow_lastImportBatchId", batchId);
+        } catch (_) {}
+        if (txImportUndoBtn) txImportUndoBtn.style.display = "";
+        if (txImportLastResult) {
+          txImportLastResult.textContent =
+            uncategorizedCount > 0
+              ? `Imported ${res.items.length} transactions (${uncategorizedCount} need categories). You can undo this import.`
+              : `Imported ${res.items.length} transactions. You can undo this import.`;
+          txImportLastResult.style.display = "block";
+        }
+      }
       if (txImportPreview) txImportPreview.innerHTML = "";
       if (txImportFile) txImportFile.value = "";
-      if (txImportMapping) txImportMapping.hidden = true;
+      // Keep the mapping panel open so the queue review UI can be used right away.
       txImportState = { headers: [], rows: [], filename: "" };
+      if (txImportQueueWrap) txImportQueueWrap.style.display = uncategorizedCount > 0 ? "block" : "none";
+      if (txImportReviewQueueBtn) txImportReviewQueueBtn.style.display = uncategorizedCount > 0 ? "" : "none";
+      if (txImportQueueSaveBtn) txImportQueueSaveBtn.style.display = "none";
+      if (txImportQueueList) txImportQueueList.innerHTML = "";
       await loadMonthAndCalendar();
     } catch (e) {
       show(txImportErr, e.message || "Import failed");
+    }
+  });
+}
+
+function txImportLoadLastBatchId() {
+  try {
+    return localStorage.getItem("familyCashFlow_lastImportBatchId") || "";
+  } catch (_) {
+    return "";
+  }
+}
+
+function txImportLeafCategories() {
+  const items = state.categories || [];
+  const hasChildren = new Set();
+  for (const c of items) if (c && c.parent_id != null) hasChildren.add(Number(c.parent_id));
+  return items.filter((c) => c && !hasChildren.has(Number(c.id)));
+}
+
+function txImportRenderQueue(items) {
+  if (!txImportQueueList) return;
+  const cats = txImportLeafCategories();
+  if (!items || items.length === 0) {
+    txImportQueueList.innerHTML = `<div class="meta">No uncategorized imported transactions found.</div>`;
+    if (txImportQueueSaveBtn) txImportQueueSaveBtn.style.display = "none";
+    return;
+  }
+
+  const rowsHtml = items
+    .map((t) => {
+      const vendor = (t.vendor || "").trim();
+      const desc = (t.description || "").trim();
+      const label = vendor || desc || "";
+      const amt = typeof t.amount === "string" ? t.amount : String(t.amount ?? "");
+      const kind = String(t.kind || "");
+      const date = String(t.date || "");
+      const opts =
+        `<option value="">— choose —</option>` +
+        cats.map((c) => `<option value="${String(c.id)}">${escapeHtml(String(c.name || ""))}</option>`).join("");
+      return `<tr data-tx-id="${String(t.id)}">
+        <td>${escapeHtml(date)}</td>
+        <td>${escapeHtml(label)}</td>
+        <td>${escapeHtml(kind)}</td>
+        <td style="text-align:right;">${escapeHtml(amt)}</td>
+        <td><select class="tx-import-queue-cat">${opts}</select></td>
+      </tr>`;
+    })
+    .join("");
+
+  txImportQueueList.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Vendor / Description</th>
+          <th>Type</th>
+          <th style="text-align:right;">Amount</th>
+          <th>Category</th>
+        </tr>
+      </thead>
+      <tbody>${rowsHtml}</tbody>
+    </table>
+  `;
+  if (txImportQueueSaveBtn) txImportQueueSaveBtn.style.display = "";
+}
+
+async function txImportLoadQueue() {
+  if (!state.activeFamilyId) throw new Error("Choose a family first");
+  const out = await api(`/api/families/${state.activeFamilyId}/transactions/import/uncategorized?limit=200`, "GET");
+  txImportRenderQueue(out?.items || []);
+}
+
+if (txImportReviewQueueBtn) {
+  txImportReviewQueueBtn.addEventListener("click", async () => {
+    try {
+      show(txImportErr, "");
+      await txImportLoadQueue();
+    } catch (e) {
+      show(txImportErr, e.message || "Failed to load queue");
+    }
+  });
+}
+
+if (txImportQueueSaveBtn) {
+  txImportQueueSaveBtn.addEventListener("click", async () => {
+    try {
+      show(txImportErr, "");
+      if (!state.activeFamilyId) throw new Error("Choose a family first");
+      if (!txImportQueueList) return;
+      const rows = Array.from(txImportQueueList.querySelectorAll("tbody tr"));
+      const items = [];
+      for (const r of rows) {
+        const id = Number(r.dataset.txId);
+        const sel = r.querySelector("select.tx-import-queue-cat");
+        const catId = sel ? Number(sel.value) : 0;
+        if (id && catId) items.push({ id, category_id: catId });
+      }
+      if (items.length === 0) throw new Error("Choose at least one category before saving");
+      const out = await api(`/api/families/${state.activeFamilyId}/transactions/import/assign-categories`, "POST", { items });
+      const updated = Number(out?.updated || 0);
+      if (txImportLastResult) {
+        txImportLastResult.textContent = updated > 0 ? `Saved categories for ${updated} transactions.` : "No transactions were updated.";
+        txImportLastResult.style.display = "block";
+      }
+      await txImportLoadQueue();
+      await loadMonthAndCalendar();
+    } catch (e) {
+      show(txImportErr, e.message || "Failed to save categories");
+    }
+  });
+}
+
+if (txImportUndoBtn) {
+  const last = txImportLoadLastBatchId();
+  txImportUndoBtn.style.display = last ? "" : "none";
+  txImportUndoBtn.addEventListener("click", async () => {
+    try {
+      show(txImportErr, "");
+      if (!state.activeFamilyId) throw new Error("Choose a family first");
+      const batchId = txImportLoadLastBatchId();
+      if (!batchId) throw new Error("No recent import to undo");
+      if (!confirm("Undo the last import? This will delete the imported historical transactions.")) return;
+      const out = await api(`/api/families/${state.activeFamilyId}/transactions/import/undo`, "POST", { batch_id: batchId });
+      try {
+        localStorage.removeItem("familyCashFlow_lastImportBatchId");
+      } catch (_) {}
+      txImportUndoBtn.style.display = "none";
+      if (txImportLastResult) {
+        txImportLastResult.textContent = `Undid import. Deleted ${Number(out?.deleted || 0)} transactions.`;
+        txImportLastResult.style.display = "block";
+      }
+      await loadMonthAndCalendar();
+    } catch (e) {
+      show(txImportErr, e.message || "Failed to undo import");
     }
   });
 }
@@ -4304,6 +4467,36 @@ function parseDateFlexible(raw) {
   return null;
 }
 
+function shortenVendorName(rawDesc) {
+  const raw = String(rawDesc || "").trim();
+  if (!raw) return "";
+  const upper = raw.toUpperCase();
+  if (upper.startsWith("CUESTA PARTNERS")) return "Cuesta Partners";
+  if (upper.startsWith("CAPITAL ONE")) return "Capital One";
+  if (upper.startsWith("APPLE CASH")) return "Apple Cash";
+  if (upper.startsWith("APPLECARD")) return "Apple Card";
+  if (upper.startsWith("APPLE CARD")) return "Apple Card";
+  if (upper.startsWith("DISCOVER")) return "Discover";
+  if (upper.startsWith("VENMO")) return "Venmo";
+  // Generic: take text before two+ spaces or common ID markers.
+  let s = raw.replace(/\s+/g, " ");
+  s = s
+    .replace(/\bPPD ID:.*$/i, "")
+    .replace(/\bWEB ID:.*$/i, "")
+    .replace(/\btransaction\s*#:\s*.*$/i, "")
+    .trim();
+  // If the original had big spacing, prefer the first chunk.
+  const bigSplit = raw.split(/\s{2,}/).map((x) => x.trim()).filter(Boolean);
+  const candidate = bigSplit.length ? bigSplit[0] : s;
+  const words = candidate.split(" ").filter(Boolean).slice(0, 3);
+  const out = words.join(" ");
+  return out
+    .toLowerCase()
+    .replace(/\b([a-z])/g, (m) => m.toUpperCase())
+    .replace(/\bAtm\b/g, "ATM")
+    .trim();
+}
+
 function guessImportColumn(headers, candidates) {
   const norm = headers.map((h) => normalizeHeaderName(h));
   for (const c of candidates) {
@@ -4372,17 +4565,54 @@ function txImportComputePayload() {
   if (dateIdx == null) errs.push("Map the Date column");
   if (amtIdx == null) errs.push("Map the Amount column");
   const acctMode = String(txImportAccountMode?.value || "column");
-  const catMode = String(txImportCategoryMode?.value || "column");
+  const catMode = String(txImportCategoryMode?.value || "suggest");
   const fixedAcctRaw = String(txImportFixedAccountId?.value || "");
-  const fixedCatRaw = String(txImportFixedCategoryId?.value || "");
   if (acctMode === "column" && acctIdx == null) errs.push("Map the Account column (or choose Fixed account)");
   if (acctMode === "fixed" && !fixedAcctRaw) errs.push("Choose a fixed account");
-  if (catMode === "column" && catIdx == null) errs.push("Map the Category column (or choose Fixed category)");
-  if (catMode === "fixed" && !fixedCatRaw) errs.push("Choose a fixed category");
+  if (catMode === "column" && catIdx == null) errs.push("Map the Category column");
   if (errs.length) return { ok: false, errors: errs, items: [] };
 
   const accountsByName = new Map((state.accounts || []).map((a) => [String(a.name || "").trim().toLowerCase(), a]));
   const categoriesByName = new Map((state.categories || []).map((c) => [String(c.name || "").trim().toLowerCase(), c]));
+  const leafCategories = (() => {
+    const items = state.categories || [];
+    const hasChildren = new Set();
+    for (const c of items) if (c && c.parent_id != null) hasChildren.add(Number(c.parent_id));
+    return items.filter((c) => c && !hasChildren.has(Number(c.id)));
+  })();
+
+  function categoryByNameLoose(name) {
+    const n = String(name || "").trim().toLowerCase();
+    if (!n) return null;
+    return categoriesByName.get(n) || null;
+  }
+
+  function suggestCategoryId({ vendor, rawDesc }) {
+    const v = String(vendor || "").toLowerCase();
+    const d = String(rawDesc || "").toLowerCase();
+    const want = (nm) => leafCategories.find((c) => String(c.name || "").trim().toLowerCase() === nm.toLowerCase()) || null;
+
+    // Transfers / moves
+    if (/(transfer|zelle|venmo|betterment|capital one)/.test(v) || /(transfer|zelle|venmo|betterment|capital one)/.test(d)) {
+      const c = want("transfer");
+      if (c) return Number(c.id);
+    }
+    // Utilities
+    if (/(comed|com ed)/.test(v) || /(comed|com ed)/.test(d)) {
+      const c = want("gas & electric");
+      if (c) return Number(c.id);
+    }
+    if (/t-mobile/.test(v) || /t-mobile/.test(d)) {
+      const c = want("phone");
+      if (c) return Number(c.id);
+    }
+    // Coffee
+    if (/coffee/.test(v) || /starbucks/.test(d)) {
+      const c = want("coffee shops");
+      if (c) return Number(c.id);
+    }
+    return null;
+  }
 
   const items = [];
   const rowErrors = [];
@@ -4396,12 +4626,19 @@ function txImportComputePayload() {
       acctMode === "fixed"
         ? (state.accounts || []).find((a) => String(a.id) === fixedAcctRaw) || null
         : accountsByName.get(acctName.toLowerCase()) || null;
-    const cat =
-      catMode === "fixed"
-        ? (state.categories || []).find((c) => String(c.id) === fixedCatRaw) || null
-        : categoriesByName.get(catName.toLowerCase()) || null;
+    let cat = null;
+    if (catMode === "column") {
+      cat = categoryByNameLoose(catName);
+    } else if (catMode === "suggest") {
+      const suggestedId = suggestCategoryId({ vendor, rawDesc: descRaw });
+      cat = suggestedId != null ? (state.categories || []).find((c) => Number(c.id) === Number(suggestedId)) || null : null;
+    } else {
+      // queue
+      cat = null;
+    }
     const notes = notesIdx != null ? String(r[notesIdx] ?? "").trim() : "";
-    const desc = descIdx != null ? String(r[descIdx] ?? "").trim() : "";
+    const descRaw = descIdx != null ? String(r[descIdx] ?? "").trim() : "";
+    const vendor = shortenVendorName(descRaw);
 
     let kind = null;
     if (kindIdx != null) {
@@ -4419,7 +4656,7 @@ function txImportComputePayload() {
     if (signedAmt == null || !Number.isFinite(signedAmt) || signedAmt <= 0) problems.push("bad amount");
     if (!kind) problems.push("bad type");
     if (!acct) problems.push(acctMode === "fixed" ? "unknown fixed account" : `unknown account: ${acctName || "blank"}`);
-    if (!cat) problems.push(catMode === "fixed" ? "unknown fixed category" : `unknown category: ${catName || "blank"}`);
+    if (catMode === "column" && !cat) problems.push(`unknown category: ${catName || "blank"}`);
 
     if (problems.length) {
       rowErrors.push(`Row ${i + 1}: ${problems.join(", ")}`);
@@ -4428,11 +4665,13 @@ function txImportComputePayload() {
 
     items.push({
       date: dateIso,
-      description: desc || `${(catMode === "column" ? catName : (cat?.name || "")) || "Transaction"}`,
+      description: vendor || descRaw || `${(catMode === "column" ? catName : (cat?.name || "")) || "Transaction"}`,
+      vendor: vendor || null,
+      raw_description: descRaw || null,
       notes: notes || null,
       kind,
       amount: signedAmt,
-      category_id: Number(cat.id),
+      category_id: cat ? Number(cat.id) : null,
       account_id: Number(acct.id),
       reimbursable: false,
     });

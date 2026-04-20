@@ -153,6 +153,17 @@ h1{
   color: var(--muted);
 }
 
+/* Sidebar: keep "No variable items..." on one line */
+.sidebar-section[data-sidebar-key="variableTodos"] .pill{
+  font-size: 11px;
+  padding: 8px 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+  justify-content: center;
+}
+
 button{
   background: rgba(18,155,186,0.15);
   border: var(--btn-border-width) solid rgba(18,155,186,0.35);
@@ -160,6 +171,7 @@ button{
   padding: 10px 12px;
   border-radius: 10px;
   cursor:pointer;
+  font: inherit;
 }
 button:hover{ filter: brightness(1.05); }
 button.btn-primary{
@@ -438,11 +450,16 @@ button.nav-link:hover{
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
-  line-height: 1.35;
+  line-height: 1.28;
+  /* Slight right shift for text inside the bubble */
+  padding-left: 14px;
+  padding-right: 10px;
+  padding-top: 6px;
+  padding-bottom: 6px;
 }
 .calendar-low-balance--sidebar{
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
 }
 .calendar-low-balance--sidebar br{
   display: block;
@@ -819,13 +836,14 @@ label{
   margin-bottom: 6px;
 }
 
-input, select{
+input, select, textarea{
   width: 100%;
   padding: 10px 12px;
   border-radius: 10px;
   border: 1px solid var(--border);
   background: rgba(0,0,0,0.02);
   color: var(--text);
+  font: inherit;
 }
 
 input::placeholder,

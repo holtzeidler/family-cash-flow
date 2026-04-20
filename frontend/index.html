@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=169" />
+    <link rel="stylesheet" href="./styles.css?v=172" />
   </head>
   <body>
     <div class="container">
@@ -356,10 +356,10 @@
               <input id="accountEditId" type="hidden" />
               <div style="height:10px;"></div>
               <div class="row two">
-                <button id="addAccountBtn">Add account</button>
+                <button id="addAccountBtn" class="btn-primary">Add account</button>
                 <button id="saveAccountEditBtn" class="danger">Save balance/date edit</button>
               </div>
-              <button id="cancelAccountEditBtn">Cancel account edit</button>
+              <button id="cancelAccountEditBtn" class="btn-primary">Cancel account edit</button>
               <div id="accErr" class="error"></div>
               <div class="list" id="accountsList"></div>
               </div>
@@ -394,7 +394,7 @@
                   <label for="newCategoryParent">Group</label>
                   <select id="newCategoryParent" title="Choose a group (header) to add this category under."></select>
                 </div>
-                <button id="addCategoryBtn">Add category</button>
+                <button id="addCategoryBtn" class="btn-primary">Add category</button>
               </div>
               <div style="height: 10px"></div>
               <div class="row three">
@@ -484,7 +484,8 @@
                           <label for="txImportCategoryMode">Category source</label>
                           <select id="txImportCategoryMode">
                             <option value="column" selected>From column</option>
-                            <option value="fixed">Fixed category…</option>
+                            <option value="suggest">Suggest (best effort)</option>
+                            <option value="queue">Queue for later</option>
                           </select>
                         </div>
                         <div>
@@ -516,8 +517,20 @@
                   <div style="height: 12px"></div>
                   <div id="txImportPreview" class="tx-import-preview"></div>
                   <div id="txImportErr" class="error"></div>
+                  <p id="txImportLastResult" class="meta" style="display:none; margin: 8px 0 0;"></p>
+                  <div id="txImportQueueWrap" style="display:none; margin-top: 10px;">
+                    <div class="row two">
+                      <button type="button" id="txImportReviewQueueBtn" class="btn-primary">Review uncategorized imports</button>
+                      <button type="button" id="txImportQueueSaveBtn" class="btn-primary" style="display:none;">Save categories</button>
+                    </div>
+                    <div style="height: 10px"></div>
+                    <div id="txImportQueueList" class="tx-import-preview"></div>
+                  </div>
                   <div style="height: 10px"></div>
-                  <button type="button" id="txImportRunBtn" class="btn-primary">Import</button>
+                  <div class="row two">
+                    <button type="button" id="txImportRunBtn" class="btn-primary">Import</button>
+                    <button type="button" id="txImportUndoBtn" class="btn-neutral" style="display:none;">Undo last import</button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1018,6 +1031,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="./app.js?v=148"></script>
+    <script src="./app.js?v=150"></script>
   </body>
 </html>
