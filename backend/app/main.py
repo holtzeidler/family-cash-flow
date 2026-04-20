@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Annotated, Literal, Optional, Sequence
 from urllib.parse import urlparse
 
-from fastapi import Cookie, Depends, FastAPI, HTTPException, Query, Response, status
+from fastapi import Cookie, Depends, FastAPI, Form, HTTPException, Query, Response, status
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -3348,13 +3348,13 @@ def import_transactions(
 @app.post("/api/families/{family_id}/transactions/import/undo", response_model=TransactionsImportUndoOut)
 def undo_transactions_import(
     family_id: int,
-    payload: TransactionsImportUndoIn,
+    batch_id: Annotated[str, Form()],
     access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
     require_family_member(db=db, family_id=family_id, user_id=user_id)
-    batch_id = (payload.batch_id or "").strip()
+    batch_id = (batch_id or "").strip()
     if not batch_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="batch_id is required")
 
@@ -3392,7 +3392,8 @@ def undo_transactions_import_get(
 @app.post("/api/families/{family_id}/transactions/purge-before", response_model=TransactionsPurgeBeforeOut)
 def purge_transactions_before(
     family_id: int,
-    payload: TransactionsPurgeBeforeIn,
+    before_date: Annotated[date, Form()],
+    imported_only: Annotated[bool, Form()] = True,
     access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
     db=Depends(get_db),
 ):
@@ -3402,8 +3403,8 @@ def purge_transactions_before(
     """
     user_id = get_current_user_id(access_token)
     require_family_member(db=db, family_id=family_id, user_id=user_id)
-    cutoff = payload.before_date
-    imported_only = bool(payload.imported_only)
+    cutoff = before_date
+    imported_only = bool(imported_only)
 
     if imported_only:
         sql = "DELETE FROM transactions WHERE family_id = :fid AND imported = 1 AND date < :cutoff"
