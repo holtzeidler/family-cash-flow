@@ -7,9 +7,9 @@ from decimal import Decimal
 from enum import Enum
 from pathlib import Path
 from typing import Annotated, Literal, Optional, Sequence
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
-from fastapi import Cookie, Depends, FastAPI, Form, HTTPException, Query, Response, status
+from fastapi import Cookie, Depends, FastAPI, HTTPException, Query, Request, Response, status
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -3346,14 +3346,30 @@ def import_transactions(
 
 
 @app.post("/api/families/{family_id}/transactions/import/undo", response_model=TransactionsImportUndoOut)
-def undo_transactions_import(
+async def undo_transactions_import(
     family_id: int,
-    batch_id: Annotated[str, Form()],
+    request: Request,
     access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
     require_family_member(db=db, family_id=family_id, user_id=user_id)
+    ct = (request.headers.get("content-type") or "").lower()
+    body = await request.body()
+    batch_id = ""
+    try:
+        if "application/json" in ct:
+            payload = TransactionsImportUndoIn.model_validate_json(body or b"{}")
+            batch_id = (payload.batch_id or "").strip()
+        else:
+            # application/x-www-form-urlencoded (or missing content-type)
+            qs = (body or b"").decode("utf-8", errors="replace")
+            data = parse_qs(qs, keep_blank_values=True)
+            vals = data.get("batch_id") or []
+            batch_id = (vals[0] if vals else "").strip()
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid undo payload")
+
     batch_id = (batch_id or "").strip()
     if not batch_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="batch_id is required")
@@ -3390,10 +3406,9 @@ def undo_transactions_import_get(
 
 
 @app.post("/api/families/{family_id}/transactions/purge-before", response_model=TransactionsPurgeBeforeOut)
-def purge_transactions_before(
+async def purge_transactions_before(
     family_id: int,
-    before_date: Annotated[date, Form()],
-    imported_only: Annotated[bool, Form()] = True,
+    request: Request,
     access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
     db=Depends(get_db),
 ):
@@ -3403,8 +3418,31 @@ def purge_transactions_before(
     """
     user_id = get_current_user_id(access_token)
     require_family_member(db=db, family_id=family_id, user_id=user_id)
-    cutoff = before_date
-    imported_only = bool(imported_only)
+    ct = (request.headers.get("content-type") or "").lower()
+    body = await request.body()
+    cutoff: Optional[date] = None
+    imported_only = True
+    try:
+        if "application/json" in ct:
+            payload = TransactionsPurgeBeforeIn.model_validate_json(body or b"{}")
+            cutoff = payload.before_date
+            imported_only = bool(payload.imported_only)
+        else:
+            qs = (body or b"").decode("utf-8", errors="replace")
+            data = parse_qs(qs, keep_blank_values=True)
+            bd_vals = data.get("before_date") or []
+            io_vals = data.get("imported_only") or []
+            before_raw = (bd_vals[0] if bd_vals else "").strip()
+            if not before_raw:
+                raise ValueError("missing before_date")
+            cutoff = date.fromisoformat(before_raw)
+            if io_vals:
+                imported_only = str(io_vals[0]).strip().lower() in ("1", "true", "yes", "on")
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid purge payload")
+
+    if cutoff is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="before_date is required")
 
     if imported_only:
         sql = "DELETE FROM transactions WHERE family_id = :fid AND imported = 1 AND date < :cutoff"
