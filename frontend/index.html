@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=164" />
+    <link rel="stylesheet" href="./styles.css?v=167" />
   </head>
   <body>
     <div class="container">
@@ -391,12 +391,24 @@
                   <input id="newCategoryName" type="text" placeholder="e.g. Groceries" />
                 </div>
                 <div class="categories-new-field">
-                  <label for="newCategoryParent">Parent</label>
-                  <select id="newCategoryParent" title="Optional. Choose a header category to create a subcategory under it.">
-                    <option value="">(no parent — header)</option>
-                  </select>
+                  <label for="newCategoryParent">Group</label>
+                  <select id="newCategoryParent" title="Choose a group (header) to add this category under."></select>
                 </div>
                 <button id="addCategoryBtn">Add category</button>
+              </div>
+              <div style="height: 10px"></div>
+              <div class="row three">
+                <div>
+                  <label for="mergeCategoryFrom">Merge from</label>
+                  <select id="mergeCategoryFrom"></select>
+                </div>
+                <div>
+                  <label for="mergeCategoryTo">Merge into</label>
+                  <select id="mergeCategoryTo"></select>
+                </div>
+                <div style="display:flex; align-items:end;">
+                  <button type="button" id="mergeCategoryBtn" class="btn-primary" style="width:100%;">Merge</button>
+                </div>
               </div>
               <div id="catErr" class="error"></div>
               </div>
@@ -1005,6 +1017,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="./app.js?v=144"></script>
+    <script src="./app.js?v=147"></script>
   </body>
 </html>

@@ -359,6 +359,20 @@ class CategoryReorderIn(BaseModel):
     groups: Optional[list[CategoryGroupIn]] = Field(default=None, description="Parent blocks with child ordering")
 
 
+class CategoryMergeIn(BaseModel):
+    from_id: int
+    to_id: int
+    to_name: Optional[str] = None
+
+
+class CategoryMergeOut(BaseModel):
+    from_id: int
+    to_id: int
+    moved_transactions: int
+    moved_expected: int
+    moved_overrides: int
+
+
 class ReconciledDaysOut(BaseModel):
     month: str
     dates: list[date]
@@ -1023,6 +1037,36 @@ def create_family(payload: FamilyCreateIn, access_token: Annotated[Optional[str]
     return FamilyOut(id=family.id, name=family.name, role=member.role)
 
 
+def _seed_default_categories_if_empty(db, family_id: int) -> None:
+    """
+    Seed a starter Group (parent) -> Category (child) list.
+    Groups are top-level categories (parent_id NULL). Children live under a group.
+    Only runs when the family has zero categories.
+    """
+    existing = db.execute(select(func.count(Category.id)).where(Category.family_id == family_id)).scalar_one() or 0
+    if existing > 0:
+        return
+
+    # Starter set (can be edited/reordered later).
+    defaults: dict[str, list[str]] = {
+        "Recommended": ["Coffee Shops", "Fun Money"],
+        "Bills & Utilities": ["Garbage", "Water", "Gas & Electric", "Internet & Cable", "Phone"],
+        "Food & Dining": ["Groceries", "Restaurants & Bars"],
+        "Travel & Lifestyle": ["Travel & Vacation", "Entertainment & Recreation"],
+        "Transfers": ["Transfer"],
+    }
+
+    sort_parent = 0
+    for group_name, child_names in defaults.items():
+        parent = Category(family_id=family_id, name=group_name, parent_id=None, sort_order=sort_parent)
+        db.add(parent)
+        db.flush()
+        for idx, nm in enumerate(child_names):
+            db.add(Category(family_id=family_id, name=nm, parent_id=parent.id, sort_order=idx))
+        sort_parent += 1
+    db.commit()
+
+
 @app.get("/api/families/{family_id}/categories", response_model=list[CategoryOut])
 def list_categories(
     family_id: int,
@@ -1031,6 +1075,7 @@ def list_categories(
 ):
     user_id = get_current_user_id(access_token)
     require_family_member(db=db, family_id=family_id, user_id=user_id)
+    _seed_default_categories_if_empty(db=db, family_id=family_id)
     rows = (
         db.execute(
             select(Category)
@@ -1226,6 +1271,57 @@ def reorder_categories(
 
     db.commit()
     return list_categories(family_id=family_id, access_token=access_token, db=db)
+
+
+@app.post("/api/families/{family_id}/categories/merge", response_model=CategoryMergeOut)
+def merge_categories(
+    family_id: int,
+    payload: CategoryMergeIn,
+    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    require_family_member(db=db, family_id=family_id, user_id=user_id)
+
+    if payload.from_id == payload.to_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="from_id and to_id must differ")
+
+    src = db.execute(select(Category).where(Category.family_id == family_id, Category.id == payload.from_id)).scalar_one_or_none()
+    dst = db.execute(select(Category).where(Category.family_id == family_id, Category.id == payload.to_id)).scalar_one_or_none()
+    if src is None or dst is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Category not found")
+
+    if payload.to_name is not None and payload.to_name.strip():
+        dst.name = payload.to_name.strip()
+
+    moved_tx = db.execute(
+        text("UPDATE transactions SET category_id = :to_id WHERE family_id = :fid AND category_id = :from_id"),
+        {"to_id": int(dst.id), "fid": int(family_id), "from_id": int(src.id)},
+    ).rowcount or 0
+    moved_exp = db.execute(
+        text("UPDATE expected_transactions SET category_id = :to_id WHERE family_id = :fid AND category_id = :from_id"),
+        {"to_id": int(dst.id), "fid": int(family_id), "from_id": int(src.id)},
+    ).rowcount or 0
+    moved_ovr = db.execute(
+        text(
+            "UPDATE expected_transaction_overrides "
+            "SET category_id = :to_id "
+            "WHERE expected_transaction_id IN (SELECT id FROM expected_transactions WHERE family_id = :fid) "
+            "AND category_id = :from_id"
+        ),
+        {"to_id": int(dst.id), "fid": int(family_id), "from_id": int(src.id)},
+    ).rowcount or 0
+
+    db.delete(src)
+    db.commit()
+
+    return CategoryMergeOut(
+        from_id=int(payload.from_id),
+        to_id=int(payload.to_id),
+        moved_transactions=int(moved_tx),
+        moved_expected=int(moved_exp),
+        moved_overrides=int(moved_ovr),
+    )
 
 
 @app.get("/api/families/{family_id}/reconciled-days", response_model=ReconciledDaysOut)

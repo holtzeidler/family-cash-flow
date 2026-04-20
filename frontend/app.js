@@ -167,6 +167,9 @@ const txImportRunBtn = document.getElementById("txImportRunBtn");
 let txImportState = { headers: [], rows: [], filename: "" };
 
 const categoriesGrid = document.getElementById("categoriesGrid");
+const mergeCategoryFrom = document.getElementById("mergeCategoryFrom");
+const mergeCategoryTo = document.getElementById("mergeCategoryTo");
+const mergeCategoryBtn = document.getElementById("mergeCategoryBtn");
 
 // Balance threshold alerts (settings + calendar sidebar)
 const balanceThresholdMin = document.getElementById("balanceThresholdMin");
@@ -192,7 +195,14 @@ function setSidebarLowBalanceBanner(text, style = "off") {
     sidebarLowBalanceBanner.classList.remove("is-danger", "is-muted");
     return;
   }
-  sidebarLowBalanceBanner.innerHTML = String(text).replace(/\n/g, "<br>");
+  const raw = String(text);
+  const parts = raw.split("\n");
+  const head = parts[0] ? `<strong>${escapeHtml(parts[0])}</strong>` : "";
+  const rest = parts
+    .slice(1)
+    .map((s) => escapeHtml(s))
+    .join("<br>");
+  sidebarLowBalanceBanner.innerHTML = [head, rest].filter(Boolean).join(rest ? "<br>" : "");
   sidebarLowBalanceBanner.style.display = "flex";
   sidebarLowBalanceBanner.classList.remove("is-danger", "is-muted");
   sidebarLowBalanceBanner.classList.toggle("is-danger", style === "danger");
@@ -208,7 +218,14 @@ function setSidebarHighBalanceBanner(text, style = "off") {
     sidebarHighBalanceBanner.classList.remove("is-high", "is-muted");
     return;
   }
-  sidebarHighBalanceBanner.innerHTML = String(text).replace(/\n/g, "<br>");
+  const raw = String(text);
+  const parts = raw.split("\n");
+  const head = parts[0] ? `<strong>${escapeHtml(parts[0])}</strong>` : "";
+  const rest = parts
+    .slice(1)
+    .map((s) => escapeHtml(s))
+    .join("<br>");
+  sidebarHighBalanceBanner.innerHTML = [head, rest].filter(Boolean).join(rest ? "<br>" : "");
   sidebarHighBalanceBanner.style.display = "flex";
   sidebarHighBalanceBanner.classList.remove("is-high", "is-muted");
   sidebarHighBalanceBanner.classList.toggle("is-high", style === "high");
@@ -551,7 +568,7 @@ async function refreshLowBalanceAlert() {
         parts.push(
           `<div class="balance-threshold-result-block"><div class="k">First date ≤ $${fmtMoneyThreshold(balanceThresholdMin?.value || "", minVal)}</div><div class="v danger">${fmtDateMDY(lowHit.date)} — $${fmtMoney(lowHit.balance)}</div></div>`
         );
-        setSidebarLowBalanceBanner(`Next low balance:\n${fmtDateMDY(lowHit.date)} — $${fmtMoney(lowHit.balance)}`, "danger");
+        setSidebarLowBalanceBanner(`Next low balance:\n${fmtDateMDY(lowHit.date)} — $ ${fmtMoney(lowHit.balance)}`, "danger");
       }
     }
     if (maxOk) {
@@ -572,7 +589,7 @@ async function refreshLowBalanceAlert() {
         parts.push(
           `<div class="balance-threshold-result-block"><div class="k">First date ≥ $${fmtMoneyThreshold(balanceThresholdMax?.value || "", maxVal)}</div><div class="v">${fmtDateMDY(highHit.date)} — $${fmtMoney(highHit.balance)}</div></div>`
         );
-        setSidebarHighBalanceBanner(`Next high balance:\n${fmtDateMDY(highHit.date)} — $${fmtMoney(highHit.balance)}`, "high");
+        setSidebarHighBalanceBanner(`Next high balance:\n${fmtDateMDY(highHit.date)} — $ ${fmtMoney(highHit.balance)}`, "high");
       }
     }
 
@@ -1199,7 +1216,8 @@ document.getElementById("addCategoryBtn").addEventListener("click", async () => 
     const name = document.getElementById("newCategoryName").value.trim();
     if (!name) throw new Error("Category name is required");
     const parentRaw = document.getElementById("newCategoryParent")?.value || "";
-    const parent_id = parentRaw ? Number(parentRaw) : null;
+    if (!parentRaw) throw new Error("Choose a group");
+    const parent_id = Number(parentRaw);
     await api(`/api/families/${state.activeFamilyId}/categories`, "POST", { name, parent_id });
     document.getElementById("newCategoryName").value = "";
     await loadCategories();
@@ -1207,6 +1225,35 @@ document.getElementById("addCategoryBtn").addEventListener("click", async () => 
     show(catErr, e.message || "Failed to add category");
   }
 });
+
+if (mergeCategoryBtn) {
+  mergeCategoryBtn.addEventListener("click", async () => {
+    try {
+      show(catErr, "");
+      if (!state.activeFamilyId) throw new Error("Choose a family first");
+      const fromId = mergeCategoryFrom ? Number(mergeCategoryFrom.value) : NaN;
+      const toId = mergeCategoryTo ? Number(mergeCategoryTo.value) : NaN;
+      if (!Number.isFinite(fromId) || !Number.isFinite(toId)) throw new Error("Choose both categories to merge");
+      if (fromId === toId) throw new Error("Pick two different categories");
+
+      const fromName = (state.categories || []).find((c) => Number(c.id) === fromId)?.name || "selected category";
+      const toName = (state.categories || []).find((c) => Number(c.id) === toId)?.name || "selected category";
+      if (!confirm(`Merge "${fromName}" into "${toName}"? This will move all transactions and then delete "${fromName}".`)) return;
+
+      const norm = (s) => String(s || "").trim().toLowerCase();
+      const desiredName = (norm(fromName).includes("transfer") || norm(toName).includes("transfer")) ? "Transfer" : null;
+      await api(`/api/families/${state.activeFamilyId}/categories/merge`, "POST", {
+        from_id: fromId,
+        to_id: toId,
+        to_name: desiredName,
+      });
+      await loadCategories();
+      await loadMonthAndCalendar();
+    } catch (e) {
+      show(catErr, e.message || "Failed to merge categories");
+    }
+  });
+}
 
 if (txAddSave) {
   txAddSave.addEventListener("click", async () => {
@@ -2935,6 +2982,20 @@ function renderCategoriesGrid(categories) {
     return true;
   }
 
+  function moveChildToParentBefore(movingRow, targetParentRow, beforeEl) {
+    if (!movingRow || !targetParentRow) return false;
+    const targetPid = Number(targetParentRow.dataset.categoryId || 0);
+    if (!targetPid) return false;
+    // Remove and insert after parent header (and any existing children), or before a specific element.
+    movingRow.remove();
+    movingRow.dataset.parentId = String(targetPid);
+    movingRow.classList.remove("cat-parent");
+    movingRow.classList.add("cat-child");
+    const ref = beforeEl || null;
+    categoriesGrid.insertBefore(movingRow, ref);
+    return true;
+  }
+
   function makeRow(c, opts) {
     const row = document.createElement("div");
     row.className = `cat-row ${opts.type === "parent" ? "cat-parent" : "cat-child"}`;
@@ -3045,10 +3106,35 @@ function renderCategoriesGrid(categories) {
         const block = parentBlockRows(movingRow);
         insertBlockBefore(block, row);
       } else if (movingType === "child") {
-        // Child can reorder only within same parent, dropping onto another child.
-        if (!isChildRow(row)) return;
-        const ok = moveChildWithinParent(movingRow, row);
-        if (!ok) return;
+        // Child can reorder within a group (drop on child) or move to another group (drop on parent or another group's child).
+        if (isChildRow(row)) {
+          const targetPid = childParentId(row);
+          const movingPid = childParentId(movingRow);
+          if (targetPid && movingPid && targetPid === movingPid) {
+            const ok = moveChildWithinParent(movingRow, row);
+            if (!ok) return;
+          } else if (targetPid) {
+            // Move into target child's parent, before that child.
+            const targetParentRow = categoriesGrid.querySelector(`.cat-row[data-category-id="${targetPid}"][data-cat-type="parent"]`);
+            if (!targetParentRow) return;
+            const ok = moveChildToParentBefore(movingRow, targetParentRow, row);
+            if (!ok) return;
+          } else {
+            return;
+          }
+        } else if (isParentRow(row)) {
+          // Move into this parent group, inserting right after its block start (after parent row).
+          const parentRow = row;
+          // Find first element after parent row that is either next parent or null; insert before that.
+          let before = parentRow.nextElementSibling;
+          while (before && before.dataset?.catType === "child") {
+            before = before.nextElementSibling;
+          }
+          const ok = moveChildToParentBefore(movingRow, parentRow, before);
+          if (!ok) return;
+        } else {
+          return;
+        }
       } else {
         return;
       }
@@ -3080,20 +3166,15 @@ function populateNewCategoryParentSelect(categories) {
   if (!sel) return;
   const items = categories || [];
   sel.innerHTML = "";
-  {
+  // Groups only (top-level categories). A category must belong to a group.
+  const groups = items.filter((c) => c && c.parent_id == null);
+  for (const g of groups) {
     const opt = document.createElement("option");
-    opt.value = "";
-    opt.textContent = "(no parent — header)";
+    opt.value = String(g.id);
+    opt.textContent = g.name;
     sel.appendChild(opt);
   }
-  for (const c of items) {
-    if (c && c.parent_id == null) {
-      const opt = document.createElement("option");
-      opt.value = String(c.id);
-      opt.textContent = c.name;
-      sel.appendChild(opt);
-    }
-  }
+  if (sel.options.length > 0 && !sel.value) sel.value = String(sel.options[0].value);
 }
 
 async function loadCategories() {
@@ -3104,6 +3185,36 @@ async function loadCategories() {
   renderCategoriesGrid(state.categories);
   syncAllCategoryComboboxes(state.categories);
   populateTxAllCategoryFilter();
+
+  // Merge UI selectors (settings)
+  if (mergeCategoryFrom && mergeCategoryTo) {
+    const curFrom = String(mergeCategoryFrom.value || "");
+    const curTo = String(mergeCategoryTo.value || "");
+    const opts = (state.categories || []).map((c) => ({ id: String(c.id), name: c.name }));
+    mergeCategoryFrom.innerHTML = "";
+    mergeCategoryTo.innerHTML = "";
+    for (const o of opts) {
+      const opt1 = document.createElement("option");
+      opt1.value = o.id;
+      opt1.textContent = o.name;
+      mergeCategoryFrom.appendChild(opt1);
+      const opt2 = document.createElement("option");
+      opt2.value = o.id;
+      opt2.textContent = o.name;
+      mergeCategoryTo.appendChild(opt2);
+    }
+    if (curFrom && [...mergeCategoryFrom.options].some((o) => o.value === curFrom)) mergeCategoryFrom.value = curFrom;
+    if (curTo && [...mergeCategoryTo.options].some((o) => o.value === curTo)) mergeCategoryTo.value = curTo;
+
+    // Auto-pick Transfers -> Transfer if both exist.
+    const byNorm = (nm) => String(nm || "").trim().toLowerCase();
+    const transfer = (state.categories || []).find((c) => byNorm(c.name) === "transfer");
+    const transfers = (state.categories || []).find((c) => byNorm(c.name) === "transfers");
+    if (transfer && transfers) {
+      mergeCategoryFrom.value = String(transfers.id);
+      mergeCategoryTo.value = String(transfer.id);
+    }
+  }
 }
 
 function categoryStyleFromId(categoryId) {
