@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=139" />
+    <link rel="stylesheet" href="./styles.css?v=148" />
   </head>
   <body>
     <div class="container">
@@ -141,7 +141,7 @@
                     <input type="hidden" id="calendarMonth" />
                   </div>
                 </div>
-                <div style="height:6px;"></div>
+                <div style="height:2px;"></div>
                 <div id="calendarErr" class="error"></div>
                 <div id="calendarDow" class="calendar-dow-row" aria-hidden="true"></div>
               </div>
@@ -157,13 +157,13 @@
           <div id="transactionViewPanel" class="app-view" hidden>
             <div class="card sidebar-section sidebar-section--collapsed" data-sidebar-key="allTransactions">
               <div class="sidebar-section-head">
-                <h2>All Upcoming Transactions</h2>
+                <h2>All Transactions</h2>
                 <button
                   type="button"
                   class="sidebar-collapse-btn"
                   aria-expanded="false"
                   aria-controls="sidebarBodyAllTransactions"
-                  title="Expand All Upcoming Transactions"
+                  title="Expand All Transactions"
                 >
                   <svg class="sidebar-collapse-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <path d="M6 9l6 6 6-6" />
@@ -171,6 +171,32 @@
                 </button>
               </div>
               <div id="sidebarBodyAllTransactions" class="sidebar-section-body">
+                <div class="row four">
+                  <div>
+                    <label for="txAllStartDate">Start</label>
+                    <input id="txAllStartDate" type="date" />
+                  </div>
+                  <div>
+                    <label for="txAllEndDate">End</label>
+                    <input id="txAllEndDate" type="date" />
+                  </div>
+                  <div>
+                    <label for="txAllAccountFilter">Account</label>
+                    <select id="txAllAccountFilter">
+                      <option value="all" selected>All</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label for="txAllCategoryFilter">Category</label>
+                    <select id="txAllCategoryFilter">
+                      <option value="all" selected>All</option>
+                    </select>
+                  </div>
+                </div>
+                <div style="height: 10px"></div>
+                <button type="button" id="txAllRunBtn" class="btn-primary" style="width: 100%">Run</button>
+                <div id="txAllErr" class="error"></div>
+                <div style="height: 10px"></div>
                 <div class="list" id="txListMain"></div>
               </div>
             </div>
@@ -193,7 +219,7 @@
                 </button>
               </div>
               <div id="sidebarBodyRecurringFilter" class="sidebar-section-body">
-                <div class="row three">
+                <div class="row four">
                   <div>
                     <label for="recurringFrequencyFilter">Frequency</label>
                     <select id="recurringFrequencyFilter">
@@ -211,6 +237,12 @@
                       <option value="all" selected>All</option>
                       <option value="expense">Expense</option>
                       <option value="income">Income</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label for="recurringAccountFilter">Account</label>
+                    <select id="recurringAccountFilter">
+                      <option value="all" selected>All</option>
                     </select>
                   </div>
                   <div style="display:flex; align-items:end;">
@@ -344,6 +376,12 @@
                   <label for="newCategoryName">New category</label>
                   <input id="newCategoryName" type="text" placeholder="e.g. Groceries" />
                 </div>
+                <div class="categories-new-field">
+                  <label for="newCategoryParent">Parent</label>
+                  <select id="newCategoryParent" title="Optional. Choose a header category to create a subcategory under it.">
+                    <option value="">(no parent — header)</option>
+                  </select>
+                </div>
                 <button id="addCategoryBtn">Add category</button>
               </div>
               <div id="catErr" class="error"></div>
@@ -393,7 +431,13 @@
               <button type="button" id="catReportRunBtn">Load report</button>
               <div id="catReportErr" class="error"></div>
               <p class="meta category-report-summary" id="catReportSummary" style="display: none"></p>
-              <div id="catReportTableWrap" class="category-report-table-wrap"></div>
+              <div id="catReportChartWrap" class="category-report-chart-wrap" style="display:none">
+                <div class="category-report-chart-canvas-wrap">
+                  <canvas id="catReportPieCanvas" aria-label="Category totals pie chart" role="img"></canvas>
+                </div>
+                <div id="catReportLegend" class="category-report-legend" aria-live="polite"></div>
+              </div>
+              <div id="catReportTableWrap" class="category-report-table-wrap" hidden></div>
             </div>
 
             <div style="height: 14px"></div>
@@ -616,7 +660,7 @@
             <button type="button" id="txEditSave" class="btn-primary">Save</button>
           </div>
           <div id="txEditRecurringFooterRow" class="tx-edit-foot-update-row" style="display: none">
-            <button type="button" id="txEditRecurringUpdateBtn" class="btn-primary">Update</button>
+            <button type="button" id="txEditRecurringUpdateBtn" class="btn-primary">Save</button>
           </div>
           <div id="txEditFooterSecondary" class="tx-edit-foot-secondary row two">
             <button type="button" id="txEditDelete" class="danger">Delete</button>
@@ -635,11 +679,11 @@
         <div id="txEditApplyScopeErr" class="error"></div>
         <div class="modal-actions">
           <div class="expected-delete-actions">
-            <button type="button" id="txEditApplyScopeInstanceBtn">This occurrence only</button>
-            <button type="button" id="txEditApplyScopeSeriesBtn">This and all future</button>
+            <button type="button" id="txEditApplyScopeInstanceBtn" class="btn-primary">This occurrence only</button>
+            <button type="button" id="txEditApplyScopeSeriesBtn" class="btn-primary">This and all future</button>
           </div>
           <div style="height: 10px"></div>
-          <button type="button" id="txEditApplyScopeCancelBtn" style="width: 100%">Back</button>
+          <button type="button" id="txEditApplyScopeCancelBtn" class="btn-neutral" style="width: 100%">Back</button>
         </div>
       </div>
     </div>
@@ -667,7 +711,104 @@
     <div id="txAddModal" class="modal-overlay" aria-hidden="true">
       <div class="modal modal--tx-add" role="dialog" aria-labelledby="txAddTitle">
         <h3 id="txAddTitle">Add transaction</h3>
-        <div id="txAddModalFormMount"></div>
+        <div id="txAddModalFormMount">
+          <div id="txAddFormRoot" class="tx-add-form">
+            <div id="txAddErr" class="error"></div>
+            <div class="row">
+              <div>
+                <label>Type</label>
+                <div class="kind-toggle" role="radiogroup" aria-label="Transaction type">
+                  <label class="kind-opt"><input type="radio" name="txAddKind" value="expense" checked /> Expense</label>
+                  <label class="kind-opt"><input type="radio" name="txAddKind" value="income" /> Income</label>
+                </div>
+              </div>
+            </div>
+            <div class="tx-add-vspace" aria-hidden="true"></div>
+            <label for="txAddDate" id="txAddDateLabel">Date</label>
+            <input id="txAddDate" type="date" />
+            <div class="tx-add-vspace" aria-hidden="true"></div>
+            <div class="row">
+              <div>
+                <label for="txAddAmount">Amount</label>
+                <div class="money-input">
+                  <span class="money-input__prefix" aria-hidden="true">$</span>
+                  <input id="txAddAmount" type="number" min="0" step="0.01" placeholder="0.00" />
+                </div>
+              </div>
+            </div>
+            <div class="tx-add-vspace" aria-hidden="true"></div>
+            <label for="txAddCategoryId">Category</label>
+            <select id="txAddCategoryId"></select>
+            <div class="tx-add-vspace tx-add-vspace--lg" aria-hidden="true"></div>
+            <div class="tx-add-schedule-toolbar" aria-label="Repeat and schedule">
+              <div class="tx-add-schedule-toolbar__left">
+                <div class="tx-add-schedule-question">Recurring?</div>
+                <div class="tx-add-repeat-row">
+                  <label class="tx-add-repeat-yes">
+                    <input id="txAddRepeats" type="checkbox" />
+                    <span>Yes</span>
+                  </label>
+                  <div id="txAddRecurrenceWrap" class="tx-add-recurrence-inline" hidden>
+                    <span class="tx-add-recurrence-inline__every">every</span>
+                    <select id="txAddRecurrence" class="tx-add-recurrence-select" title="How often this repeats">
+                      <option value="monthly" selected>month</option>
+                      <option value="twice_monthly">2× / month</option>
+                      <option value="weekly">week</option>
+                      <option value="semiannual">6 months</option>
+                      <option value="yearly">year</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+              <div class="tx-add-schedule-toolbar__right">
+                <div id="txAddLastTxnFieldWrap" class="tx-add-schedule-field tx-add-schedule-field--last" hidden>
+                  <label for="txAddLastTxnDate" title="Optional. Last day a scheduled occurrence may fall on. Blank = no end.">Last txn</label>
+                  <input
+                    id="txAddLastTxnDate"
+                    type="date"
+                    title="Optional. Last calendar day for an occurrence. Leave blank for no end date."
+                  />
+                  <span class="tx-add-field-hint">optional</span>
+                </div>
+              </div>
+            </div>
+            <div class="tx-add-vspace tx-add-vspace--lg" aria-hidden="true"></div>
+            <label for="txAddNotes">Notes</label>
+            <input id="txAddNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
+            <div id="txAddRecurringBlock" style="display: none">
+              <div class="tx-add-vspace tx-add-vspace--sm" aria-hidden="true"></div>
+              <div id="txAddTwiceMonthlyFields" class="expected-second-day-row" style="display: none">
+                <label for="txAddSecondDayOfMonth">2nd day of month</label>
+                <input
+                  id="txAddSecondDayOfMonth"
+                  type="number"
+                  min="1"
+                  max="31"
+                  step="1"
+                  placeholder="e.g. 15"
+                  title="Second scheduled day each month; must differ from the start date’s calendar day."
+                />
+                <p style="margin: 6px 0 0; font-size: 12px; color: var(--muted)">
+                  Required for twice monthly: other day of the month (1–31), not the same as the start date’s day.
+                </p>
+              </div>
+              <div class="tx-add-vspace tx-add-vspace--sm" aria-hidden="true"></div>
+              <label for="txAddAccountId">Account</label>
+              <select id="txAddAccountId"></select>
+              <div class="tx-add-vspace tx-add-vspace--sm" aria-hidden="true"></div>
+              <label class="reimbursable-field" for="txAddVariable">
+                <span class="reimbursable-field__label">Variable (estimate)</span>
+                <input id="txAddVariable" type="checkbox" title="Amount is a placeholder until you enter actuals" />
+              </label>
+            </div>
+            <div class="modal-actions">
+              <div class="row two">
+                <button type="button" id="txAddSave" class="btn-primary">Add</button>
+                <button type="button" id="txAddCancel" class="danger">Cancel</button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -713,6 +854,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="./app.js?v=126"></script>
+    <script src="./app.js?v=132"></script>
   </body>
 </html>

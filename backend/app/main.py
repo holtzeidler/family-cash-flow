@@ -126,6 +126,7 @@ class Category(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     family_id: Mapped[int] = mapped_column(ForeignKey("families.id"), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
+    parent_id: Mapped[Optional[int]] = mapped_column(ForeignKey("categories.id"), nullable=True, index=True)
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     fg_color: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     bg_color: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
@@ -147,6 +148,7 @@ class Transaction(Base):
     reimbursable: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     category_id: Mapped[Optional[int]] = mapped_column(ForeignKey("categories.id"), nullable=True, index=True)
+    account_id: Mapped[Optional[int]] = mapped_column(ForeignKey("accounts.id"), nullable=True, index=True)
 
     family: Mapped[Family] = relationship(back_populates="transactions")
 
@@ -324,14 +326,17 @@ class FamilyOut(BaseModel):
 
 class CategoryIn(BaseModel):
     name: str = Field(min_length=1, max_length=255)
+    parent_id: Optional[int] = Field(default=None, description="Optional parent category id (header).")
 
 
 class CategoryOut(BaseModel):
     id: int
     name: str
+    parent_id: Optional[int] = None
     sort_order: int = 0
     fg_color: Optional[str] = None
     bg_color: Optional[str] = None
+    has_children: bool = False
 
 
 class CategoryUpdateIn(BaseModel):
@@ -341,8 +346,15 @@ class CategoryUpdateIn(BaseModel):
     sort_order: Optional[int] = None
 
 
+class CategoryGroupIn(BaseModel):
+    id: int = Field(description="Parent category id")
+    children: list[int] = Field(default_factory=list, description="Child category ids in desired order")
+
+
 class CategoryReorderIn(BaseModel):
-    ordered_ids: list[int] = Field(min_length=1, description="Category IDs in desired display order")
+    # Backward compatible: allow the old flat payload, but prefer `groups`.
+    ordered_ids: Optional[list[int]] = Field(default=None, description="(Legacy) Category IDs in desired display order")
+    groups: Optional[list[CategoryGroupIn]] = Field(default=None, description="Parent blocks with child ordering")
 
 
 class ReconciledDaysOut(BaseModel):
@@ -380,6 +392,7 @@ class TransactionIn(BaseModel):
     kind: TransactionKind
     amount: Decimal = Field(gt=0)
     category_id: Optional[int] = None
+    account_id: Optional[int] = None
     reimbursable: bool = False
 
 
@@ -392,6 +405,7 @@ class TransactionOut(BaseModel):
     amount: Decimal
     category: Optional[str] = None
     category_id: Optional[int] = None
+    account_id: Optional[int] = None
     reimbursable: bool = False
 
 
@@ -663,6 +677,8 @@ def startup_populate_schema():
     _ensure_expected_moved_to_date_column()
     _ensure_expected_override_variable_column()
     _ensure_category_sort_order_column()
+    _ensure_category_parent_id_column()
+    _ensure_transaction_account_id_column()
     _ensure_reconciled_days_table()
 
 
@@ -842,6 +858,31 @@ def _ensure_category_sort_order_column() -> None:
             conn.execute(text("UPDATE categories SET sort_order = COALESCE(sort_order, 0)"))
 
 
+def _ensure_category_parent_id_column() -> None:
+    """Lightweight startup migration: add parent_id for header/subcategory grouping."""
+    with engine.begin() as conn:
+        if settings.DATABASE_URL.startswith("sqlite"):
+            cols = conn.execute(text("PRAGMA table_info(categories)")).fetchall()
+            has_col = any(str(row[1]) == "parent_id" for row in cols)
+            if not has_col:
+                conn.execute(text("ALTER TABLE categories ADD COLUMN parent_id INTEGER"))
+        else:
+            conn.execute(text("ALTER TABLE categories ADD COLUMN IF NOT EXISTS parent_id INTEGER"))
+
+
+def _ensure_transaction_account_id_column() -> None:
+    """Lightweight startup migration: store account_id on actual transactions for filtering."""
+    with engine.begin() as conn:
+        table = "transactions"
+        if settings.DATABASE_URL.startswith("sqlite"):
+            cols = conn.execute(text(f"PRAGMA table_info({table})")).fetchall()
+            has_col = any(str(row[1]) == "account_id" for row in cols)
+            if not has_col:
+                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN account_id INTEGER"))
+        else:
+            conn.execute(text(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS account_id INTEGER"))
+
+
 def _ensure_reimbursable_columns() -> None:
     """Lightweight startup migration: add reimbursable flags to transactions and schedules."""
     with engine.begin() as conn:
@@ -973,10 +1014,51 @@ def list_categories(
         .scalars()
         .all()
     )
-    return [
-        CategoryOut(id=r.id, name=r.name, sort_order=r.sort_order or 0, fg_color=r.fg_color, bg_color=r.bg_color)
-        for r in rows
-    ]
+
+    by_id: dict[int, Category] = {r.id: r for r in rows}
+    children_by_parent: dict[int, list[Category]] = {}
+    top_level: list[Category] = []
+    for r in rows:
+        pid = int(r.parent_id) if r.parent_id is not None else None
+        if pid is not None and pid in by_id:
+            children_by_parent.setdefault(pid, []).append(r)
+        else:
+            top_level.append(r)
+
+    def _k(c: Category):
+        return (int(c.sort_order or 0), str(c.name or ""), int(c.id))
+
+    top_level.sort(key=_k)
+    for pid in list(children_by_parent.keys()):
+        children_by_parent[pid].sort(key=_k)
+
+    out: list[CategoryOut] = []
+    for p in top_level:
+        kids = children_by_parent.get(p.id, [])
+        out.append(
+            CategoryOut(
+                id=p.id,
+                name=p.name,
+                parent_id=None,
+                sort_order=p.sort_order or 0,
+                fg_color=p.fg_color,
+                bg_color=p.bg_color,
+                has_children=len(kids) > 0,
+            )
+        )
+        for c in kids:
+            out.append(
+                CategoryOut(
+                    id=c.id,
+                    name=c.name,
+                    parent_id=p.id,
+                    sort_order=c.sort_order or 0,
+                    fg_color=c.fg_color,
+                    bg_color=c.bg_color,
+                    has_children=False,
+                )
+            )
+    return out
 
 
 @app.post("/api/families/{family_id}/categories", response_model=CategoryOut)
@@ -988,17 +1070,27 @@ def create_category(
 ):
     user_id = get_current_user_id(access_token)
     require_family_member(db=db, family_id=family_id, user_id=user_id)
-    max_sort = db.execute(select(func.coalesce(func.max(Category.sort_order), 0)).where(Category.family_id == family_id)).scalar_one()
-    category = Category(family_id=family_id, name=payload.name, sort_order=int(max_sort) + 1)
+    parent_id: Optional[int] = int(payload.parent_id) if payload.parent_id is not None else None
+    if parent_id is not None:
+        parent = db.execute(select(Category).where(Category.id == parent_id, Category.family_id == family_id)).scalar_one_or_none()
+        if parent is None:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid parent category")
+    max_sort = db.execute(
+        select(func.coalesce(func.max(Category.sort_order), 0)).where(Category.family_id == family_id, Category.parent_id == parent_id)
+    ).scalar_one()
+    category = Category(family_id=family_id, name=payload.name, parent_id=parent_id, sort_order=int(max_sort) + 1)
     db.add(category)
     db.commit()
     db.refresh(category)
+    has_children = False
     return CategoryOut(
         id=category.id,
         name=category.name,
+        parent_id=category.parent_id,
         sort_order=category.sort_order or 0,
         fg_color=category.fg_color,
         bg_color=category.bg_color,
+        has_children=has_children,
     )
 
 
@@ -1032,12 +1124,17 @@ def update_category(
 
     db.commit()
     db.refresh(cat)
+    has_children = (
+        db.execute(select(func.count(Category.id)).where(Category.family_id == family_id, Category.parent_id == cat.id)).scalar_one() or 0
+    ) > 0
     return CategoryOut(
         id=cat.id,
         name=cat.name,
+        parent_id=cat.parent_id,
         sort_order=cat.sort_order or 0,
         fg_color=cat.fg_color,
         bg_color=cat.bg_color,
+        has_children=has_children,
     )
 
 
@@ -1051,7 +1148,44 @@ def reorder_categories(
     user_id = get_current_user_id(access_token)
     require_family_member(db=db, family_id=family_id, user_id=user_id)
 
-    # Ensure all provided IDs belong to this family.
+    # Preferred: hierarchical reorder via groups.
+    if payload.groups is not None:
+        groups = payload.groups
+        parent_ids = [int(g.id) for g in groups]
+        all_ids: list[int] = []
+        for g in groups:
+            all_ids.append(int(g.id))
+            for cid in g.children:
+                all_ids.append(int(cid))
+        if len(all_ids) != len(set(all_ids)):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Duplicate category ids in payload")
+
+        rows = db.execute(select(Category).where(Category.family_id == family_id, Category.id.in_(all_ids))).scalars().all()
+        cats_by_id = {c.id: c for c in rows}
+        if len(cats_by_id) != len(all_ids):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="One or more category ids are invalid for this family")
+
+        # Validate parents are top-level (or will become top-level). We do not support nested depth > 2.
+        for pid in parent_ids:
+            if pid not in cats_by_id:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid parent id")
+
+        for p_idx, g in enumerate(groups):
+            pid = int(g.id)
+            parent = cats_by_id[pid]
+            parent.parent_id = None
+            parent.sort_order = p_idx
+            for c_idx, cid in enumerate(g.children):
+                child = cats_by_id[int(cid)]
+                child.parent_id = pid
+                child.sort_order = c_idx
+
+        db.commit()
+        return list_categories(family_id=family_id, access_token=access_token, db=db)
+
+    # Legacy: flat reorder via ordered_ids.
+    if not payload.ordered_ids:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No reorder payload provided")
     ids = [int(x) for x in payload.ordered_ids]
     if len(ids) != len(set(ids)):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Duplicate category ids in payload")
@@ -2826,6 +2960,7 @@ def list_transactions(
                 amount=tx.amount,
                 category=category_name,
                 category_id=tx.category_id,
+                account_id=getattr(tx, "account_id", None),
                 reimbursable=bool(getattr(tx, "reimbursable", False)),
             )
         )
@@ -2853,6 +2988,11 @@ def create_transaction(
         if category is None:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid category for this family")
 
+    if payload.account_id is not None:
+        acct = db.execute(select(Account).where(Account.id == payload.account_id, Account.family_id == family_id)).scalar_one_or_none()
+        if acct is None:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid account for this family")
+
     tx = Transaction(
         family_id=family_id,
         date=payload.date,
@@ -2861,6 +3001,7 @@ def create_transaction(
         kind=payload.kind,
         amount=payload.amount,
         category_id=payload.category_id,
+        account_id=payload.account_id,
         reimbursable=payload.reimbursable,
     )
     db.add(tx)
@@ -2884,6 +3025,7 @@ def _transaction_out(db, tx: Transaction) -> TransactionOut:
         amount=tx.amount,
         category=category_name,
         category_id=tx.category_id,
+        account_id=getattr(tx, "account_id", None),
         reimbursable=bool(getattr(tx, "reimbursable", False)),
     )
 
@@ -2912,12 +3054,18 @@ def update_transaction(
         if category is None:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid category for this family")
 
+    if payload.account_id is not None:
+        acct = db.execute(select(Account).where(Account.id == payload.account_id, Account.family_id == family_id)).scalar_one_or_none()
+        if acct is None:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid account for this family")
+
     tx.date = payload.date
     tx.description = payload.description
     tx.notes = payload.notes.strip() if payload.notes and payload.notes.strip() else None
     tx.kind = payload.kind
     tx.amount = payload.amount
     tx.category_id = payload.category_id
+    tx.account_id = payload.account_id
     tx.reimbursable = payload.reimbursable
     db.commit()
     db.refresh(tx)

@@ -136,6 +136,12 @@ const monthInput = document.getElementById("monthInput");
 const totalsEl = document.getElementById("totals");
 const txList = document.getElementById("txList");
 const txListMain = document.getElementById("txListMain");
+const txAllStartDate = document.getElementById("txAllStartDate");
+const txAllEndDate = document.getElementById("txAllEndDate");
+const txAllAccountFilter = document.getElementById("txAllAccountFilter");
+const txAllCategoryFilter = document.getElementById("txAllCategoryFilter");
+const txAllRunBtn = document.getElementById("txAllRunBtn");
+const txAllErr = document.getElementById("txAllErr");
 
 const categoriesGrid = document.getElementById("categoriesGrid");
 
@@ -217,6 +223,7 @@ const cancelAccountEditBtn = document.getElementById("cancelAccountEditBtn");
 // Expected transactions (sidebar list / filters; add flow uses Add transaction modal)
 const recurringFrequencyFilter = document.getElementById("recurringFrequencyFilter");
 const recurringKindFilter = document.getElementById("recurringKindFilter");
+const recurringAccountFilter = document.getElementById("recurringAccountFilter");
 const recurringFrequencyApplyBtn = document.getElementById("recurringFrequencyApplyBtn");
 const recurringFilteredList = document.getElementById("recurringFilteredList");
 const variableTodoList = document.getElementById("variableTodoList");
@@ -748,6 +755,9 @@ const catReportRunBtn = document.getElementById("catReportRunBtn");
 const catReportErr = document.getElementById("catReportErr");
 const catReportSummary = document.getElementById("catReportSummary");
 const catReportTableWrap = document.getElementById("catReportTableWrap");
+const catReportChartWrap = document.getElementById("catReportChartWrap");
+const catReportPieCanvas = document.getElementById("catReportPieCanvas");
+const catReportLegend = document.getElementById("catReportLegend");
 const catReportPreset30 = document.getElementById("catReportPreset30");
 const catReportPresetYtd = document.getElementById("catReportPresetYtd");
 const catReportPresetMonth = document.getElementById("catReportPresetMonth");
@@ -768,9 +778,7 @@ function setActiveTopView(view) {
   if (transactionViewPanel) transactionViewPanel.hidden = v !== "transactions";
   if (settingsViewPanel) settingsViewPanel.hidden = v !== "settings";
   if (reportsViewPanel) reportsViewPanel.hidden = v !== "reports";
-  if (v === "transactions") {
-    void loadUpcomingTransactionsPanel();
-  }
+  // Transaction View list is run-only (filters + Run button).
   if (navCalendarView) {
     navCalendarView.classList.toggle("is-active", v === "calendar");
     navCalendarView.setAttribute("aria-selected", v === "calendar" ? "true" : "false");
@@ -795,6 +803,9 @@ function setActiveTopView(view) {
     lowBalanceLastQuery = { familyId: null, min: null, max: null, mode: null };
     void refreshLowBalanceAlert();
   }
+  try {
+    document.body.classList.toggle("is-view-calendar", v === "calendar");
+  } catch (_) {}
   try {
     localStorage.setItem(ACTIVE_VIEW_KEY, v);
   } catch (_) {}
@@ -863,6 +874,124 @@ function nMoney(v) {
   return Number.isFinite(n) ? n : 0;
 }
 
+let catReportPieChart = null;
+
+function destroyCatReportPieChart() {
+  if (catReportPieChart) {
+    try {
+      catReportPieChart.destroy();
+    } catch (_) {}
+    catReportPieChart = null;
+  }
+}
+
+function paletteForCount(n) {
+  const base = [
+    "#0f172a",
+    "#064e3b",
+    "#129bba",
+    "#7c3aed",
+    "#b91c1c",
+    "#1e3a8a",
+    "#a16207",
+    "#0f766e",
+    "#6b7280",
+    "#111827",
+    "#16a34a",
+    "#ea580c",
+  ];
+  const out = [];
+  for (let i = 0; i < n; i++) out.push(base[i % base.length]);
+  return out;
+}
+
+function renderCategoryTotalsPie(data) {
+  if (!catReportPieCanvas || !catReportChartWrap) return;
+  destroyCatReportPieChart();
+
+  const mode = data.mode || "actual";
+  const showEst = mode === "actual_plus_estimated";
+  const lines = data.lines || [];
+
+  const labels = [];
+  const values = [];
+  for (const ln of lines) {
+    const name = String(ln.category_name || "Select Category");
+    const v =
+      nMoney(ln.income_actual) +
+      nMoney(ln.expense_actual) +
+      (showEst ? nMoney(ln.income_estimated) + nMoney(ln.expense_estimated) : 0);
+    if (v <= 0) continue;
+    labels.push(name);
+    values.push(v);
+  }
+
+  if (labels.length === 0) {
+    if (catReportChartWrap) catReportChartWrap.style.display = "none";
+    return;
+  }
+
+  const colors = paletteForCount(labels.length);
+  const ctx = catReportPieCanvas.getContext("2d");
+  if (!ctx || typeof Chart === "undefined") return;
+
+  catReportPieChart = new Chart(ctx, {
+    type: "pie",
+    data: {
+      labels,
+      datasets: [
+        {
+          data: values,
+          backgroundColor: colors,
+          borderColor: "rgba(255,255,255,0.9)",
+          borderWidth: 2,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (ctx2) => {
+              const v = Number(ctx2.raw || 0);
+              const total = values.reduce((a, b) => a + b, 0) || 1;
+              const pct = (v / total) * 100;
+              return ` ${fmtMoney(v)} (${pct.toFixed(1)}%)`;
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (catReportLegend) {
+    catReportLegend.innerHTML = "";
+    const total = values.reduce((a, b) => a + b, 0) || 1;
+    for (let i = 0; i < labels.length; i++) {
+      const row = document.createElement("div");
+      row.className = "category-report-legend-item";
+      const sw = document.createElement("div");
+      sw.className = "category-report-legend-swatch";
+      sw.style.background = colors[i];
+      const nm = document.createElement("div");
+      nm.className = "category-report-legend-name";
+      nm.textContent = labels[i];
+      const val = document.createElement("div");
+      val.className = "category-report-legend-val";
+      val.textContent = `${fmtMoney(values[i])} · ${(values[i] / total * 100).toFixed(1)}%`;
+      row.appendChild(sw);
+      row.appendChild(nm);
+      row.appendChild(val);
+      catReportLegend.appendChild(row);
+    }
+  }
+
+  catReportChartWrap.style.display = "";
+}
+
 function renderCategoryTotalsReport(data) {
   if (!catReportTableWrap) return;
   const mode = data.mode || "actual";
@@ -876,9 +1005,18 @@ function renderCategoryTotalsReport(data) {
 
   const lines = data.lines || [];
   if (lines.length === 0) {
+    destroyCatReportPieChart();
+    if (catReportChartWrap) catReportChartWrap.style.display = "none";
+    catReportTableWrap.hidden = false;
     catReportTableWrap.innerHTML = '<p class="meta">No category activity in this range.</p>';
     return;
   }
+
+  // Prefer pie chart UI.
+  renderCategoryTotalsPie(data);
+  catReportTableWrap.hidden = true;
+  catReportTableWrap.innerHTML = "";
+  return;
 
   const thEst = showEst
     ? '<th class="num cat-report-est">Income (est.)</th><th class="num cat-report-est">Expense (est.)</th>'
@@ -965,6 +1103,8 @@ if (catReportRunBtn) {
       await loadCategoryTotalsReport();
     } catch (e) {
       show(catReportErr, e.message || "Failed to load report");
+      destroyCatReportPieChart();
+      if (catReportChartWrap) catReportChartWrap.style.display = "none";
       if (catReportTableWrap) catReportTableWrap.innerHTML = "";
       if (catReportSummary) catReportSummary.style.display = "none";
     }
@@ -974,6 +1114,13 @@ if (catReportRunBtn) {
 try {
   const storedView = localStorage.getItem(ACTIVE_VIEW_KEY);
   if (storedView) setActiveTopView(storedView);
+} catch (_) {}
+
+// Ensure default view class is applied even if setActiveTopView was never called (safety).
+try {
+  if (!document.body.classList.contains("is-view-calendar")) {
+    document.body.classList.add("is-view-calendar");
+  }
 } catch (_) {}
 
 if (calendarMode) {
@@ -1009,7 +1156,9 @@ document.getElementById("addCategoryBtn").addEventListener("click", async () => 
     show(catErr, "");
     const name = document.getElementById("newCategoryName").value.trim();
     if (!name) throw new Error("Category name is required");
-    await api(`/api/families/${state.activeFamilyId}/categories`, "POST", { name });
+    const parentRaw = document.getElementById("newCategoryParent")?.value || "";
+    const parent_id = parentRaw ? Number(parentRaw) : null;
+    await api(`/api/families/${state.activeFamilyId}/categories`, "POST", { name, parent_id });
     document.getElementById("newCategoryName").value = "";
     await loadCategories();
   } catch (e) {
@@ -1518,7 +1667,7 @@ if (calendarGrid) {
     if (part && calendarGrid.contains(part)) {
       const id = Number(part.dataset.txId);
       if (!id) return;
-      const tx = (state.monthActualItems || []).find((t) => Number(t.id) === id);
+      const tx = [...(state.monthActualItems || []), ...(state.calendarExtraActualItems || [])].find((t) => Number(t.id) === id);
       if (tx) openTxEditModal(tx);
       return;
     }
@@ -1541,6 +1690,13 @@ if (recurringFrequencyFilter) {
 }
 if (recurringKindFilter) {
   recurringKindFilter.addEventListener("change", () => renderRecurringFilteredList());
+}
+if (recurringAccountFilter) {
+  recurringAccountFilter.addEventListener("change", () => renderRecurringFilteredList());
+}
+
+if (txAllRunBtn) {
+  txAllRunBtn.addEventListener("click", () => void runTxAllQuery());
 }
 
 runProjectionBtn.addEventListener("click", async () => {
@@ -2230,8 +2386,15 @@ function syncCategoryComboboxCategories(fieldId, categories) {
 }
 
 function syncAllCategoryComboboxes(categories) {
+  // Leaf-only selection: allow selecting headers only if they have no children.
+  const items = categories || [];
+  const hasChildren = new Set();
+  for (const c of items) {
+    if (c && c.parent_id != null) hasChildren.add(Number(c.parent_id));
+  }
+  const selectable = items.filter((c) => c && !hasChildren.has(Number(c.id)));
   for (const fid of CATEGORY_COMBOBOX_FIELD_IDS) {
-    syncCategoryComboboxCategories(fid, categories);
+    syncCategoryComboboxCategories(fid, selectable);
   }
 }
 
@@ -2432,34 +2595,98 @@ function renderCategoriesGrid(categories) {
   categoriesGrid.appendChild(hBg);
   categoriesGrid.appendChild(hAct);
 
-  // Render in server-provided order (drag/drop persists sort_order).
-  const ordered = [...items];
-
-  async function persistOrder(ids) {
-    if (!state.activeFamilyId) return;
-    await api(`/api/families/${state.activeFamilyId}/categories/reorder`, "POST", { ordered_ids: ids });
+  const byId = new Map(items.map((c) => [Number(c.id), c]));
+  const childrenByParent = new Map();
+  const parents = [];
+  for (const c of items) {
+    const pid = c.parent_id == null ? null : Number(c.parent_id);
+    if (pid == null) {
+      parents.push(c);
+    } else {
+      const arr = childrenByParent.get(pid) || [];
+      arr.push(c);
+      childrenByParent.set(pid, arr);
+    }
   }
 
-  function currentIds() {
-    return [...categoriesGrid.querySelectorAll(".cat-row[data-category-id]")].map((el) => Number(el.dataset.categoryId));
+  function persistGroups(groups) {
+    if (!state.activeFamilyId) return Promise.resolve();
+    return api(`/api/families/${state.activeFamilyId}/categories/reorder`, "POST", { groups });
   }
 
-  function moveIdBefore(list, movingId, beforeId) {
-    const next = list.filter((x) => x !== movingId);
-    const idx = next.indexOf(beforeId);
-    if (idx < 0) return next;
-    next.splice(idx, 0, movingId);
-    return next;
+  function currentGroupsFromDom() {
+    const rows = [...categoriesGrid.querySelectorAll(".cat-row[data-category-id]")];
+    const groups = [];
+    let current = null;
+    for (const row of rows) {
+      const type = row.dataset.catType;
+      const id = Number(row.dataset.categoryId);
+      if (!id) continue;
+      if (type === "parent") {
+        current = { id, children: [] };
+        groups.push(current);
+      } else if (type === "child") {
+        if (current) current.children.push(id);
+      }
+    }
+    return groups;
   }
 
-  for (const c of ordered) {
+  function isParentRow(row) {
+    return row && row.dataset && row.dataset.catType === "parent";
+  }
+  function isChildRow(row) {
+    return row && row.dataset && row.dataset.catType === "child";
+  }
+
+  function childParentId(row) {
+    const raw = row?.dataset?.parentId;
+    return raw ? Number(raw) : null;
+  }
+
+  function parentBlockRows(parentRow) {
+    const rows = [];
+    if (!parentRow) return rows;
+    rows.push(parentRow);
+    let el = parentRow.nextElementSibling;
+    while (el) {
+      if (el.classList && el.classList.contains("cat-row") && el.dataset?.categoryId) {
+        if (el.dataset.catType === "parent") break;
+        rows.push(el);
+      }
+      el = el.nextElementSibling;
+    }
+    return rows;
+  }
+
+  function insertBlockBefore(blockEls, beforeEl) {
+    if (!blockEls.length) return;
+    for (const el of blockEls) el.remove();
+    const parent = categoriesGrid;
+    const ref = beforeEl || null;
+    for (const el of blockEls) parent.insertBefore(el, ref);
+  }
+
+  function moveChildWithinParent(movingRow, targetRow) {
+    const movingPid = childParentId(movingRow);
+    const targetPid = childParentId(targetRow);
+    if (!movingPid || !targetPid || movingPid !== targetPid) return false;
+    // Move movingRow before targetRow.
+    movingRow.remove();
+    categoriesGrid.insertBefore(movingRow, targetRow);
+    return true;
+  }
+
+  function makeRow(c, opts) {
     const row = document.createElement("div");
-    row.className = "cat-row";
+    row.className = `cat-row ${opts.type === "parent" ? "cat-parent" : "cat-child"}`;
     row.dataset.categoryId = String(c.id);
+    row.dataset.catType = opts.type;
+    if (opts.type === "child") row.dataset.parentId = String(opts.parentId);
     row.draggable = true;
 
     const nameEl = document.createElement("div");
-    nameEl.className = "cat-name";
+    nameEl.className = `cat-name ${opts.type === "child" ? "cat-name--child" : "cat-name--parent"}`;
     nameEl.textContent = c.name;
     nameEl.title = c.name;
     nameEl.classList.add("cat-drag-handle");
@@ -2514,17 +2741,16 @@ function renderCategoriesGrid(categories) {
     actions.appendChild(save);
     actions.appendChild(reset);
 
-    // Use display: contents so the row participates in the grid.
     row.appendChild(nameEl);
     row.appendChild(fgTrigger);
     row.appendChild(bgTrigger);
     row.appendChild(actions);
-    categoriesGrid.appendChild(row);
 
     row.addEventListener("dragstart", (e) => {
       try {
         e.dataTransfer.effectAllowed = "move";
-        e.dataTransfer.setData("text/plain", row.dataset.categoryId || "");
+        const key = `${opts.type}:${row.dataset.categoryId || ""}`;
+        e.dataTransfer.setData("text/plain", key);
       } catch (_) {}
       row.classList.add("is-dragging");
     });
@@ -2548,28 +2774,69 @@ function renderCategoriesGrid(categories) {
           return "";
         }
       })();
-      const movingId = Number(raw);
-      const beforeId = Number(row.dataset.categoryId);
-      if (!movingId || !beforeId || movingId === beforeId) return;
-      const ids = currentIds();
-      const nextIds = moveIdBefore(ids, movingId, beforeId);
+      if (!raw) return;
+      const [movingType, movingIdRaw] = String(raw).split(":");
+      const movingId = Number(movingIdRaw);
+      if (!movingId) return;
+      if (String(movingId) === String(row.dataset.categoryId)) return;
+
+      const movingRow = categoriesGrid.querySelector(`.cat-row[data-category-id="${movingId}"]`);
+      if (!movingRow) return;
+
+      // Parent drop: reorder parent blocks only.
+      if (movingType === "parent") {
+        if (!isParentRow(row)) return;
+        const block = parentBlockRows(movingRow);
+        insertBlockBefore(block, row);
+      } else if (movingType === "child") {
+        // Child can reorder only within same parent, dropping onto another child.
+        if (!isChildRow(row)) return;
+        const ok = moveChildWithinParent(movingRow, row);
+        if (!ok) return;
+      } else {
+        return;
+      }
+
       try {
-        // Optimistic UI: reorder DOM immediately.
-        const idToRow = new Map(
-          [...categoriesGrid.querySelectorAll(".cat-row[data-category-id]")].map((el) => [Number(el.dataset.categoryId), el])
-        );
-        for (const el of idToRow.values()) el.remove();
-        for (const id of nextIds) {
-          const el = idToRow.get(id);
-          if (el) categoriesGrid.appendChild(el);
-        }
-        await persistOrder(nextIds);
+        await persistGroups(currentGroupsFromDom());
         await loadCategories();
       } catch (err) {
         show(catErr, err.message || "Failed to reorder categories");
         await loadCategories();
       }
     });
+
+    return row;
+  }
+
+  // Render in server-provided hierarchical order (parents then children).
+  for (const p of parents) {
+    categoriesGrid.appendChild(makeRow(p, { type: "parent" }));
+    const kids = childrenByParent.get(Number(p.id)) || [];
+    for (const c of kids) {
+      categoriesGrid.appendChild(makeRow(c, { type: "child", parentId: Number(p.id) }));
+    }
+  }
+}
+
+function populateNewCategoryParentSelect(categories) {
+  const sel = document.getElementById("newCategoryParent");
+  if (!sel) return;
+  const items = categories || [];
+  sel.innerHTML = "";
+  {
+    const opt = document.createElement("option");
+    opt.value = "";
+    opt.textContent = "(no parent — header)";
+    sel.appendChild(opt);
+  }
+  for (const c of items) {
+    if (c && c.parent_id == null) {
+      const opt = document.createElement("option");
+      opt.value = String(c.id);
+      opt.textContent = c.name;
+      sel.appendChild(opt);
+    }
   }
 }
 
@@ -2577,8 +2844,10 @@ async function loadCategories() {
   if (!state.activeFamilyId) return;
   const categories = await api(`/api/families/${state.activeFamilyId}/categories`, "GET");
   state.categories = categories || [];
+  populateNewCategoryParentSelect(state.categories);
   renderCategoriesGrid(state.categories);
   syncAllCategoryComboboxes(state.categories);
+  populateTxAllCategoryFilter();
 }
 
 function categoryStyleFromId(categoryId) {
@@ -2729,6 +2998,23 @@ async function loadAccounts() {
   const accounts = await api(`/api/families/${state.activeFamilyId}/accounts`, "GET");
   state.accounts = accounts || [];
   renderAccountsList(state.accounts);
+  if (recurringAccountFilter) {
+    const cur = String(recurringAccountFilter.value || "all");
+    recurringAccountFilter.innerHTML = "";
+    {
+      const opt = document.createElement("option");
+      opt.value = "all";
+      opt.textContent = "All";
+      recurringAccountFilter.appendChild(opt);
+    }
+    for (const a of state.accounts) {
+      const opt = document.createElement("option");
+      opt.value = String(a.id);
+      opt.textContent = a.name;
+      recurringAccountFilter.appendChild(opt);
+    }
+    recurringAccountFilter.value = cur;
+  }
   const expectedAccountIdEl = document.getElementById("expectedAccountId");
   if (expectedAccountIdEl) renderAccountSelect(expectedAccountIdEl, state.accounts);
   if (expectedEditAccountId) renderAccountSelect(expectedEditAccountId, state.accounts);
@@ -2737,6 +3023,7 @@ async function loadAccounts() {
   if (expectedAccountIdEl && state.accounts.length > 0 && !expectedAccountIdEl.value) {
     expectedAccountIdEl.value = String(state.accounts[0].id);
   }
+  populateTxAllAccountFilter();
 }
 
 function clearAccountEdit() {
@@ -2826,7 +3113,14 @@ function openExpectedEditModal(tx, opts = {}) {
   }
   updateInstanceTwiceMonthlyVisibility();
 
-  if (seriesVariable) seriesVariable.checked = !!tx.variable;
+  // Variable checkbox should reflect the effective value for the selected occurrence when opened from the calendar.
+  if (seriesVariable) {
+    if (calendarItem && typeof calendarItem.variable === "boolean") {
+      seriesVariable.checked = !!calendarItem.variable;
+    } else {
+      seriesVariable.checked = !!tx.variable;
+    }
+  }
 
   setExpectedModalMode();
   show(txEditErr, "");
@@ -3110,6 +3404,8 @@ function renderRecurringFilteredList() {
 
   const sel = recurringFrequencyFilter ? String(recurringFrequencyFilter.value || "all") : "all";
   const kindSel = recurringKindFilter ? String(recurringKindFilter.value || "all") : "all";
+  const acctSelRaw = recurringAccountFilter ? String(recurringAccountFilter.value || "all") : "all";
+  const acctSel = acctSelRaw === "all" ? null : Number(acctSelRaw);
   const todayIso = toISODate(new Date());
   // Ensure one row per series id, even if items contain duplicates.
   const byId = new Map();
@@ -3123,7 +3419,8 @@ function renderRecurringFilteredList() {
     .filter(
       (tx) =>
         (sel === "all" || String(tx.recurrence || "monthly") === sel) &&
-        (kindSel === "all" || String(tx.kind || "expense") === kindSel),
+        (kindSel === "all" || String(tx.kind || "expense") === kindSel) &&
+        (acctSel == null || Number(tx.account_id) === acctSel),
     )
     .map((tx) => ({ tx, nextIso: nextOccurrenceIsoForRecurringList(tx, todayIso) }))
     .filter((row) => !!row.nextIso);
@@ -3190,6 +3487,80 @@ function renderRecurringFilteredList() {
     el.appendChild(amtBtn);
     el.addEventListener("click", () => openExpectedEditModal(tx, { nextOccurrenceIso: nextIso }));
     recurringFilteredList.appendChild(el);
+  }
+}
+
+function populateTxAllAccountFilter() {
+  if (!txAllAccountFilter) return;
+  const cur = String(txAllAccountFilter.value || "all");
+  txAllAccountFilter.innerHTML = "";
+  {
+    const opt = document.createElement("option");
+    opt.value = "all";
+    opt.textContent = "All";
+    txAllAccountFilter.appendChild(opt);
+  }
+  for (const a of state.accounts || []) {
+    const opt = document.createElement("option");
+    opt.value = String(a.id);
+    opt.textContent = a.name;
+    txAllAccountFilter.appendChild(opt);
+  }
+  txAllAccountFilter.value = cur;
+}
+
+function populateTxAllCategoryFilter() {
+  if (!txAllCategoryFilter) return;
+  const cur = String(txAllCategoryFilter.value || "all");
+  txAllCategoryFilter.innerHTML = "";
+  {
+    const opt = document.createElement("option");
+    opt.value = "all";
+    opt.textContent = "All";
+    txAllCategoryFilter.appendChild(opt);
+  }
+  // Leaf-only categories (same rule as pickers).
+  const items = state.categories || [];
+  const hasChildren = new Set();
+  for (const c of items) {
+    if (c && c.parent_id != null) hasChildren.add(Number(c.parent_id));
+  }
+  const selectable = items.filter((c) => c && !hasChildren.has(Number(c.id)));
+  for (const c of selectable) {
+    const opt = document.createElement("option");
+    opt.value = String(c.id);
+    opt.textContent = c.name;
+    txAllCategoryFilter.appendChild(opt);
+  }
+  txAllCategoryFilter.value = cur;
+}
+
+async function runTxAllQuery() {
+  try {
+    if (!txListMain) return;
+    if (!state.activeFamilyId) throw new Error("Choose a family first");
+    show(txAllErr, "");
+    const start = txAllStartDate?.value || "";
+    const end = txAllEndDate?.value || "";
+    if (!start || !end) throw new Error("Choose a start and end date");
+    if (String(end) < String(start)) throw new Error("End date cannot be before start date");
+
+    const qs = `?start_date=${encodeURIComponent(start)}&end_date=${encodeURIComponent(end)}`;
+    const data = await api(`/api/families/${state.activeFamilyId}/transactions${qs}`, "GET");
+    let items = data?.items || [];
+
+    const acctRaw = txAllAccountFilter ? String(txAllAccountFilter.value || "all") : "all";
+    const acctId = acctRaw === "all" ? null : Number(acctRaw);
+    const catRaw = txAllCategoryFilter ? String(txAllCategoryFilter.value || "all") : "all";
+    const catId = catRaw === "all" ? null : Number(catRaw);
+
+    if (acctId != null) items = items.filter((t) => Number(t.account_id) === acctId);
+    if (catId != null) items = items.filter((t) => Number(t.category_id) === catId);
+
+    renderTransactionsInto(txListMain, items, "No matching transactions.");
+  } catch (e) {
+    show(txAllErr, e.message || "Failed to load transactions");
+    if (txListMain) renderTransactionsInto(txListMain, [], "Choose filters and click Run.");
   }
 }
 
@@ -3419,27 +3790,7 @@ async function loadTransactions() {
   }
 }
 
-/** Actual transactions on or after today (for Transaction View list), chronological. */
-async function loadUpcomingTransactionsPanel() {
-  try {
-    if (!state.activeFamilyId) {
-      state.upcomingActualItems = [];
-      renderTransactionsInto(txListMain, [], "No upcoming transactions.");
-      return;
-    }
-    const todayIso = toISODate(new Date());
-    const endCap = new Date();
-    endCap.setDate(endCap.getDate() + 548);
-    const endIso = toISODate(endCap);
-    const qs = `?start_date=${encodeURIComponent(todayIso)}&end_date=${encodeURIComponent(endIso)}`;
-    const data = await api(`/api/families/${state.activeFamilyId}/transactions${qs}`, "GET");
-    const items = data?.items || [];
-    state.upcomingActualItems = items;
-    renderTransactionsInto(txListMain, items, "No upcoming transactions.");
-  } catch (e) {
-    show(txErr, e.message || "Failed to load upcoming transactions");
-  }
-}
+// Upcoming transactions panel removed (Transaction View is now filter + Run).
 
 async function loadExpectedCalendar() {
   try {
@@ -3587,7 +3938,6 @@ async function loadMonthAndCalendar() {
     renderCalendar();
 
     await loadTransactions();
-    await loadUpcomingTransactionsPanel();
     await loadExpectedCalendar();
     renderMonthSummaryTotalsFromState();
     await loadCalendarExtras();
@@ -3805,6 +4155,16 @@ function selectExpectedInstance(item) {
       if (instanceRecurrence) instanceRecurrence.value = String(meta.recurrence || "monthly");
       if (instanceSecondDayOfMonth) instanceSecondDayOfMonth.value = meta.second_day_of_month != null ? String(meta.second_day_of_month) : "";
       updateInstanceTwiceMonthlyVisibility();
+    }
+  }
+
+  // Keep the variable checkbox aligned with the selected occurrence (override-aware).
+  if (seriesVariable) {
+    if (typeof item.variable === "boolean") {
+      seriesVariable.checked = !!item.variable;
+    } else {
+      const meta = selectedExpectedSeriesTx || getExpectedSeriesMeta(item.expected_transaction_id);
+      seriesVariable.checked = !!(meta && meta.variable);
     }
   }
 
@@ -4205,6 +4565,9 @@ async function main() {
     await loadAccounts();
     await loadExpectedTransactions();
     await loadMonthAndCalendar();
+  }
+  if (txListMain) {
+    renderTransactionsInto(txListMain, [], "Choose filters and click Run.");
   }
   if (balanceThresholdMin || balanceThresholdMax) {
     try {
