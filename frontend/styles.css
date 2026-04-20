@@ -14,7 +14,7 @@
   --border: rgba(0,0,0,0.12);
   --btn-border-width: 3px;
   /* Sticky strips sit below the primary nav (tabs) */
-  --app-top-nav-offset: 72px;
+  --app-top-nav-offset: 56px;
 }
 
 *{ box-sizing:border-box; }
@@ -586,8 +586,8 @@ button.nav-link:hover{
   z-index: 24;
   background: var(--card);
   isolation: isolate;
-  padding-bottom: 4px;
-  margin-bottom: 4px;
+  padding-bottom: 2px;
+  margin-bottom: 2px;
   border-bottom: 1px solid rgba(0,0,0,0.08);
 }
 .calendar-sticky-header{

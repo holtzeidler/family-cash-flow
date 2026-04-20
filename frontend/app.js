@@ -4622,6 +4622,9 @@ function txImportComputePayload() {
     const amt = parseMoneyFlexible(r[amtIdx]);
     const acctName = acctMode === "column" ? String(r[acctIdx] ?? "").trim() : "";
     const catName = catMode === "column" ? String(r[catIdx] ?? "").trim() : "";
+    const notes = notesIdx != null ? String(r[notesIdx] ?? "").trim() : "";
+    const descRaw = descIdx != null ? String(r[descIdx] ?? "").trim() : "";
+    const vendor = shortenVendorName(descRaw);
     const acct =
       acctMode === "fixed"
         ? (state.accounts || []).find((a) => String(a.id) === fixedAcctRaw) || null
@@ -4636,9 +4639,6 @@ function txImportComputePayload() {
       // queue
       cat = null;
     }
-    const notes = notesIdx != null ? String(r[notesIdx] ?? "").trim() : "";
-    const descRaw = descIdx != null ? String(r[descIdx] ?? "").trim() : "";
-    const vendor = shortenVendorName(descRaw);
 
     let kind = null;
     if (kindIdx != null) {
