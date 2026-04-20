@@ -1142,6 +1142,12 @@ textarea::placeholder{
 }
 .item .desc{ font-weight: 600; }
 .item .meta{ font-size: 12px; color: var(--muted); }
+.item.is-imported{
+  opacity: 0.68;
+}
+.item.is-imported .desc{
+  color: rgba(17,24,39,0.65);
+}
 .cat-pill{
   display: inline-flex;
   align-items: center;
@@ -1158,7 +1164,7 @@ textarea::placeholder{
 
 .categories-grid{
   display:grid;
-  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 8px 10px;
   align-items: center;
 }
@@ -1561,6 +1567,10 @@ textarea::placeholder{
 .cal-day-tx-line .cal-amt.income{ color: var(--ok); }
 .cal-day-tx-line .cal-amt.expense{ color: var(--danger); }
 
+.cal-day-tx-line.is-imported{
+  opacity: 0.65;
+}
+
 .cal-day-tx-line--expected{
   cursor: pointer;
   text-decoration: underline dotted;
@@ -1697,6 +1707,53 @@ textarea::placeholder{
   margin-top: 20px;
   padding-top: 16px;
   border-top: 1px solid rgba(0,0,0,0.10);
+}
+.sidebar-section-body #txAllRunBtn{
+  width: 25%;
+  min-width: 140px;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.tx-import-preview{
+  border: 1px solid var(--border);
+  background: rgba(0,0,0,0.02);
+  border-radius: 12px;
+  padding: 10px 12px;
+  max-height: 240px;
+  overflow: auto;
+  font-size: 12px;
+  color: var(--text);
+}
+.tx-import-preview table{
+  width: 100%;
+  border-collapse: collapse;
+}
+.tx-import-preview th,
+.tx-import-preview td{
+  padding: 6px 8px;
+  border-bottom: 1px solid rgba(0,0,0,0.08);
+  text-align: left;
+  vertical-align: top;
+}
+.tx-import-preview th{
+  font-size: 11px;
+  color: var(--muted);
+  position: sticky;
+  top: 0;
+  background: rgba(243,244,246,0.9);
+  backdrop-filter: blur(6px);
+}
+.modal--tx-add .tx-add-form .modal-actions .row.two{
+  width: 66%;
+  margin-left: auto;
+  margin-right: auto;
+}
+@media (max-width: 560px){
+  .modal--tx-add .tx-add-form .modal-actions .row.two{
+    width: 100%;
+  }
 }
 
 /* Add-transaction form (sidebar default; same nodes move into .modal--tx-add from calendar) */
@@ -1855,8 +1912,8 @@ textarea::placeholder{
   min-width: 0;
 }
 .tx-add-schedule-toolbar__right{
-  flex: 0 1 14rem;
-  min-width: 10rem;
+  flex: 1 1 260px;
+  min-width: 220px;
 }
 .tx-add-schedule-toolbar__right:not(:has(#txAddEndFieldWrap:not([hidden]))){
   display: none;
@@ -1960,9 +2017,9 @@ textarea::placeholder{
 }
 .tx-add-end-title{
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--muted);
-  margin-bottom: 2px;
+  margin-bottom: 4px;
 }
 .tx-add-end-choices{
   display: flex;
@@ -1971,8 +2028,8 @@ textarea::placeholder{
 }
 .tx-add-end-choice{
   display: grid;
-  grid-template-columns: 18px auto 1fr;
-  gap: 8px;
+  grid-template-columns: 18px 52px minmax(140px, 1fr);
+  gap: 10px;
   align-items: center;
   margin: 0;
   min-width: 0;
@@ -1983,18 +2040,33 @@ textarea::placeholder{
   accent-color: var(--accent);
 }
 .tx-add-end-choice__label{
-  font-size: 14px;
-  color: var(--muted);
+  font-size: 13px;
+  color: var(--text);
+  font-weight: 600;
   white-space: nowrap;
 }
 .tx-add-end-choice__suffix{
-  font-size: 13px;
+  font-size: 12px;
   color: var(--muted);
-  margin-left: 6px;
+  margin-left: 4px;
   white-space: nowrap;
 }
 .tx-add-end-choice:has(#txAddEndAfterCount){
-  grid-template-columns: 18px auto 72px auto;
+  grid-template-columns: 18px 52px 64px auto;
+}
+.tx-add-end-choice input[type="date"]{
+  min-width: 0;
+  font-size: 13px;
+  padding: 6px 6px;
+}
+.tx-add-end-choice input[type="number"]{
+  min-width: 0;
+  font-size: 13px;
+  padding: 6px 6px;
+}
+.tx-add-end-choice__suffix{
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .tx-add-field-hint{
   font-size: 11px;

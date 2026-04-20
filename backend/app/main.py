@@ -146,6 +146,8 @@ class Transaction(Base):
     kind: Mapped[TransactionKind] = mapped_column(SAEnum(TransactionKind), nullable=False, default=TransactionKind.expense)
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     reimbursable: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # Imported transactions are analysis-only: visible/editable but excluded from balance math.
+    imported: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     category_id: Mapped[Optional[int]] = mapped_column(ForeignKey("categories.id"), nullable=True, index=True)
     account_id: Mapped[Optional[int]] = mapped_column(ForeignKey("accounts.id"), nullable=True, index=True)
@@ -407,11 +409,20 @@ class TransactionOut(BaseModel):
     category_id: Optional[int] = None
     account_id: Optional[int] = None
     reimbursable: bool = False
+    imported: bool = False
 
 
 class TransactionsListOut(BaseModel):
     items: list[TransactionOut]
     totals: dict[str, Decimal]
+
+
+class TransactionsImportIn(BaseModel):
+    items: list[TransactionIn]
+
+
+class TransactionsImportOut(BaseModel):
+    created: int
 
 
 class AccountIn(BaseModel):
@@ -679,7 +690,22 @@ def startup_populate_schema():
     _ensure_category_sort_order_column()
     _ensure_category_parent_id_column()
     _ensure_transaction_account_id_column()
+    _ensure_transaction_imported_column()
     _ensure_reconciled_days_table()
+
+
+def _ensure_transaction_imported_column() -> None:
+    """Lightweight startup migration: mark analysis-only imported transactions."""
+    with engine.begin() as conn:
+        table = "transactions"
+        if settings.DATABASE_URL.startswith("sqlite"):
+            cols = conn.execute(text(f"PRAGMA table_info({table})")).fetchall()
+            has_col = any(str(row[1]) == "imported" for row in cols)
+            if not has_col:
+                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN imported BOOLEAN NOT NULL DEFAULT 0"))
+        else:
+            conn.execute(text(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS imported BOOLEAN"))
+            conn.execute(text(f"UPDATE {table} SET imported = FALSE WHERE imported IS NULL"))
 
 
 def _ensure_expected_moved_to_date_column() -> None:
@@ -2437,7 +2463,9 @@ def _calendar_month_daily_balances(
         return []
 
     min_acc = min((a.starting_balance_date or a.created_at.date()) for a in account_rows)
-    first_tx = db.execute(select(func.min(Transaction.date)).where(Transaction.family_id == family_id)).scalar_one_or_none()
+    first_tx = db.execute(
+        select(func.min(Transaction.date)).where(Transaction.family_id == family_id, Transaction.imported == False)  # noqa: E712
+    ).scalar_one_or_none()
     first_expected = db.execute(select(func.min(ExpectedTransaction.start_date)).where(ExpectedTransaction.family_id == family_id)).scalar_one_or_none()
     global_start = min_acc
     if first_tx is not None:
@@ -2450,6 +2478,7 @@ def _calendar_month_daily_balances(
         tx_rows = db.execute(
             select(Transaction).where(
                 Transaction.family_id == family_id,
+                Transaction.imported == False,  # noqa: E712
                 Transaction.date >= global_start,
                 Transaction.date <= last_day,
             )
@@ -2561,7 +2590,9 @@ def _pooled_daily_balance_first_hit_impl(
         return None, None
 
     min_acc = min((a.starting_balance_date or a.created_at.date()) for a in account_rows)
-    first_tx = db.execute(select(func.min(Transaction.date)).where(Transaction.family_id == family_id)).scalar_one_or_none()
+    first_tx = db.execute(
+        select(func.min(Transaction.date)).where(Transaction.family_id == family_id, Transaction.imported == False)  # noqa: E712
+    ).scalar_one_or_none()
     first_expected = db.execute(select(func.min(ExpectedTransaction.start_date)).where(ExpectedTransaction.family_id == family_id)).scalar_one_or_none()
     global_start = min_acc
     if first_tx is not None:
@@ -2574,6 +2605,7 @@ def _pooled_daily_balance_first_hit_impl(
         tx_rows = db.execute(
             select(Transaction).where(
                 Transaction.family_id == family_id,
+                Transaction.imported == False,  # noqa: E712
                 Transaction.date >= global_start,
                 Transaction.date <= last_day,
             )
@@ -2962,6 +2994,7 @@ def list_transactions(
                 category_id=tx.category_id,
                 account_id=getattr(tx, "account_id", None),
                 reimbursable=bool(getattr(tx, "reimbursable", False)),
+                imported=bool(getattr(tx, "imported", False)),
             )
         )
 
@@ -3003,12 +3036,77 @@ def create_transaction(
         category_id=payload.category_id,
         account_id=payload.account_id,
         reimbursable=payload.reimbursable,
+        imported=False,
     )
     db.add(tx)
     db.commit()
     db.refresh(tx)
 
     return _transaction_out(db, tx)
+
+
+@app.post("/api/families/{family_id}/transactions/import", response_model=TransactionsImportOut)
+def import_transactions(
+    family_id: int,
+    payload: TransactionsImportIn,
+    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    require_family_member(db=db, family_id=family_id, user_id=user_id)
+
+    items = payload.items or []
+    if len(items) == 0:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No items provided")
+    if len(items) > 5000:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Too many items (max 5000)")
+
+    # Limit: 5 years back (analysis only, keep DB bounded).
+    min_date_allowed = date.today() - timedelta(days=365 * 5)
+    for it in items:
+        if it.date < min_date_allowed:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Transactions older than 5 years are not allowed (min date {min_date_allowed.isoformat()})",
+            )
+
+    # Validate referenced IDs in bulk
+    account_ids = {it.account_id for it in items if it.account_id is not None}
+    category_ids = {it.category_id for it in items if it.category_id is not None}
+    if account_ids:
+        ok_accounts = set(
+            db.execute(select(Account.id).where(Account.family_id == family_id, Account.id.in_(account_ids))).scalars().all()
+        )
+        bad = sorted(list(account_ids - ok_accounts))
+        if bad:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid account for this family: {bad[0]}")
+    if category_ids:
+        ok_cats = set(
+            db.execute(select(Category.id).where(Category.family_id == family_id, Category.id.in_(category_ids))).scalars().all()
+        )
+        bad = sorted(list(category_ids - ok_cats))
+        if bad:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid category for this family: {bad[0]}")
+
+    txs: list[Transaction] = []
+    for it in items:
+        txs.append(
+            Transaction(
+                family_id=family_id,
+                date=it.date,
+                description=it.description,
+                notes=it.notes.strip() if it.notes and it.notes.strip() else None,
+                kind=it.kind,
+                amount=it.amount,
+                category_id=it.category_id,
+                account_id=it.account_id,
+                reimbursable=it.reimbursable,
+                imported=True,
+            )
+        )
+    db.add_all(txs)
+    db.commit()
+    return TransactionsImportOut(created=len(txs))
 
 
 def _transaction_out(db, tx: Transaction) -> TransactionOut:
@@ -3027,6 +3125,7 @@ def _transaction_out(db, tx: Transaction) -> TransactionOut:
         category_id=tx.category_id,
         account_id=getattr(tx, "account_id", None),
         reimbursable=bool(getattr(tx, "reimbursable", False)),
+        imported=bool(getattr(tx, "imported", False)),
     )
 
 

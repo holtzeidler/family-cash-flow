@@ -145,6 +145,27 @@ const txAllCategoryFilter = document.getElementById("txAllCategoryFilter");
 const txAllRunBtn = document.getElementById("txAllRunBtn");
 const txAllErr = document.getElementById("txAllErr");
 
+// Historical transaction import (Settings)
+const txImportFile = document.getElementById("txImportFile");
+const txImportMapping = document.getElementById("txImportMapping");
+const txImportColDate = document.getElementById("txImportColDate");
+const txImportColAmount = document.getElementById("txImportColAmount");
+const txImportColKind = document.getElementById("txImportColKind");
+const txImportColAccount = document.getElementById("txImportColAccount");
+const txImportColCategory = document.getElementById("txImportColCategory");
+const txImportAccountMode = document.getElementById("txImportAccountMode");
+const txImportFixedAccountId = document.getElementById("txImportFixedAccountId");
+const txImportCategoryMode = document.getElementById("txImportCategoryMode");
+const txImportFixedCategoryId = document.getElementById("txImportFixedCategoryId");
+const txImportColNotes = document.getElementById("txImportColNotes");
+const txImportColDesc = document.getElementById("txImportColDesc");
+const txImportSkipHeader = document.getElementById("txImportSkipHeader");
+const txImportPreview = document.getElementById("txImportPreview");
+const txImportErr = document.getElementById("txImportErr");
+const txImportRunBtn = document.getElementById("txImportRunBtn");
+
+let txImportState = { headers: [], rows: [], filename: "" };
+
 const categoriesGrid = document.getElementById("categoriesGrid");
 
 // Balance threshold alerts (settings + calendar sidebar)
@@ -1767,6 +1788,180 @@ if (txAllRangePreset) {
   });
 }
 
+function txImportRefreshUi() {
+  if (!txImportMapping) return;
+  const headers = txImportState.headers || [];
+  const rows = txImportState.rows || [];
+  if (!headers.length) {
+    txImportMapping.hidden = true;
+    return;
+  }
+  txImportMapping.hidden = false;
+
+  setSelectOptionsFromHeaders(txImportColDate, headers);
+  setSelectOptionsFromHeaders(txImportColAmount, headers);
+  setSelectOptionsFromHeaders(txImportColKind, headers, { allowNone: true });
+  setSelectOptionsFromHeaders(txImportColAccount, headers);
+  setSelectOptionsFromHeaders(txImportColCategory, headers);
+  setSelectOptionsFromHeaders(txImportColNotes, headers, { allowNone: true });
+  setSelectOptionsFromHeaders(txImportColDesc, headers, { allowNone: true });
+
+  if (txImportFixedAccountId) renderAccountSelect(txImportFixedAccountId, state.accounts || []);
+  if (txImportFixedCategoryId) {
+    // Leaf-only categories (same rule as pickers).
+    const items = state.categories || [];
+    const hasChildren = new Set();
+    for (const c of items) {
+      if (c && c.parent_id != null) hasChildren.add(Number(c.parent_id));
+    }
+    const selectable = items.filter((c) => c && !hasChildren.has(Number(c.id)));
+    txImportFixedCategoryId.innerHTML = "";
+    for (const c of selectable) {
+      const opt = document.createElement("option");
+      opt.value = String(c.id);
+      opt.textContent = c.name;
+      txImportFixedCategoryId.appendChild(opt);
+    }
+  }
+
+  // Auto-guess
+  if (txImportColDate && (txImportColDate.value === "" || txImportColDate.value == null)) {
+    const idx = guessImportColumn(headers, ["posting date", "posted date", "transaction date", "date"]);
+    if (idx >= 0) txImportColDate.value = String(idx);
+  }
+  if (txImportColAmount && (txImportColAmount.value === "" || txImportColAmount.value == null)) {
+    const idx = guessImportColumn(headers, ["amount", "amt", "value"]);
+    if (idx >= 0) txImportColAmount.value = String(idx);
+  }
+  if (txImportColKind && (txImportColKind.value === "" || txImportColKind.value == null)) {
+    const idx = guessImportColumn(headers, ["details", "type", "kind", "transaction type", "debitcredit"]);
+    if (idx >= 0) txImportColKind.value = String(idx);
+  }
+  if (txImportColAccount && (txImportColAccount.value === "" || txImportColAccount.value == null)) {
+    const idx = guessImportColumn(headers, ["account", "account name"]);
+    if (idx >= 0) txImportColAccount.value = String(idx);
+  }
+  if (txImportColCategory && (txImportColCategory.value === "" || txImportColCategory.value == null)) {
+    const idx = guessImportColumn(headers, ["category", "cat"]);
+    if (idx >= 0) txImportColCategory.value = String(idx);
+  }
+  if (txImportColNotes && (txImportColNotes.value === "" || txImportColNotes.value == null)) {
+    const idx = guessImportColumn(headers, ["notes", "memo", "note"]);
+    if (idx >= 0) txImportColNotes.value = String(idx);
+  }
+  if (txImportColDesc && (txImportColDesc.value === "" || txImportColDesc.value == null)) {
+    const idx = guessImportColumn(headers, ["description", "desc", "payee", "name"]);
+    if (idx >= 0) txImportColDesc.value = String(idx);
+  }
+
+  // Chase exports don't include category/account columns: default to fixed mode.
+  if (txImportAccountMode && txImportColAccount) {
+    const acctGuess = guessImportColumn(headers, ["account", "account name"]);
+    if (acctGuess < 0) txImportAccountMode.value = "fixed";
+  }
+  if (txImportCategoryMode && txImportColCategory) {
+    const catGuess = guessImportColumn(headers, ["category", "cat"]);
+    if (catGuess < 0) txImportCategoryMode.value = "fixed";
+  }
+  if (txImportFixedAccountId && state.accounts && state.accounts.length > 0 && !txImportFixedAccountId.value) {
+    txImportFixedAccountId.value = String(state.accounts[0].id);
+  }
+  if (txImportFixedCategoryId && txImportFixedCategoryId.options.length > 0 && !txImportFixedCategoryId.value) {
+    txImportFixedCategoryId.value = String(txImportFixedCategoryId.options[0].value);
+  }
+
+  txImportPreviewRender(headers, rows);
+  show(txImportErr, "");
+}
+
+async function txImportReadFile(file) {
+  const text = await file.text();
+  const grid = parseCsv(text);
+  if (!grid || grid.length === 0) throw new Error("CSV appears to be empty");
+
+  const hasHeader = (txImportSkipHeader?.value || "yes") === "yes";
+  let headers = [];
+  let rows = [];
+  if (hasHeader) {
+    headers = (grid[0] || []).map((x, i) => (String(x || "").trim() ? String(x).trim() : `Column ${i + 1}`));
+    rows = grid.slice(1);
+  } else {
+    const maxCols = Math.max(...grid.map((r) => (r ? r.length : 0)));
+    headers = Array.from({ length: maxCols }, (_, i) => `Column ${i + 1}`);
+    rows = grid;
+  }
+  txImportState = { headers, rows, filename: file.name || "" };
+  txImportRefreshUi();
+}
+
+if (txImportSkipHeader) {
+  txImportSkipHeader.addEventListener("change", async () => {
+    const f = txImportFile?.files?.[0];
+    if (f) {
+      try {
+        await txImportReadFile(f);
+      } catch (e) {
+        show(txImportErr, e.message || "Failed to parse CSV");
+      }
+    }
+  });
+}
+
+if (txImportFile) {
+  txImportFile.addEventListener("change", async () => {
+    try {
+      show(txImportErr, "");
+      const f = txImportFile.files && txImportFile.files[0];
+      if (!f) return;
+      await txImportReadFile(f);
+    } catch (e) {
+      show(txImportErr, e.message || "Failed to read CSV");
+      if (txImportPreview) txImportPreview.innerHTML = "";
+      if (txImportMapping) txImportMapping.hidden = true;
+    }
+  });
+}
+
+for (const el of [
+  txImportColDate,
+  txImportColAmount,
+  txImportColKind,
+  txImportColAccount,
+  txImportColCategory,
+  txImportColNotes,
+  txImportColDesc,
+  txImportAccountMode,
+  txImportFixedAccountId,
+  txImportCategoryMode,
+  txImportFixedCategoryId,
+]) {
+  if (el) el.addEventListener("change", () => show(txImportErr, ""));
+}
+
+if (txImportRunBtn) {
+  txImportRunBtn.addEventListener("click", async () => {
+    try {
+      show(txImportErr, "");
+      if (!state.activeFamilyId) throw new Error("Choose a family first");
+      const res = txImportComputePayload();
+      if (!res.ok) {
+        const msg = (res.errors || []).slice(0, 8).join("\n");
+        throw new Error(msg || "Fix CSV mapping errors before importing");
+      }
+      if (!res.items || res.items.length === 0) throw new Error("No valid rows to import");
+      if (!confirm(`Import ${res.items.length} transactions? This will add to your existing data.`)) return;
+      await api(`/api/families/${state.activeFamilyId}/transactions/import`, "POST", { items: res.items });
+      if (txImportPreview) txImportPreview.innerHTML = "";
+      if (txImportFile) txImportFile.value = "";
+      if (txImportMapping) txImportMapping.hidden = true;
+      txImportState = { headers: [], rows: [], filename: "" };
+      await loadMonthAndCalendar();
+    } catch (e) {
+      show(txImportErr, e.message || "Import failed");
+    }
+  });
+}
+
 runProjectionBtn.addEventListener("click", async () => {
   try {
     show(projectionErr, "");
@@ -2606,7 +2801,6 @@ function renderCategoriesGrid(categories) {
     return;
   }
 
-  const DEFAULT_FG = "#e8eefc";
   const DEFAULT_BG = "#121b31";
   const PALETTE = [
     "#0b1220","#121b31","#1b2a4a","#24365f","#2d4478","#365392","#4063ad","#4a74c9",
@@ -2649,9 +2843,6 @@ function renderCategoriesGrid(categories) {
   const hName = document.createElement("div");
   hName.className = "cat-h";
   hName.textContent = "Category";
-  const hFg = document.createElement("div");
-  hFg.className = "cat-h";
-  hFg.textContent = "Text";
   const hBg = document.createElement("div");
   hBg.className = "cat-h";
   hBg.textContent = "Bg";
@@ -2659,7 +2850,6 @@ function renderCategoriesGrid(categories) {
   hAct.className = "cat-h";
   hAct.textContent = "";
   categoriesGrid.appendChild(hName);
-  categoriesGrid.appendChild(hFg);
   categoriesGrid.appendChild(hBg);
   categoriesGrid.appendChild(hAct);
 
@@ -2762,9 +2952,7 @@ function renderCategoriesGrid(categories) {
     // the drag handle instead.
     nameEl.draggable = true;
 
-    let fgVal = normalizeHex(c.fg_color, DEFAULT_FG);
     let bgVal = normalizeHex(c.bg_color, DEFAULT_BG);
-    const fgTrigger = makeColorTrigger("Text color", () => fgVal, (h) => (fgVal = h));
     const bgTrigger = makeColorTrigger("Background color", () => bgVal, (h) => (bgVal = h));
 
     const actions = document.createElement("div");
@@ -2779,7 +2967,6 @@ function renderCategoriesGrid(categories) {
         show(catErr, "");
         if (!state.activeFamilyId) throw new Error("Choose a family first");
         await api(`/api/families/${state.activeFamilyId}/categories/${c.id}`, "PUT", {
-          fg_color: fgVal,
           bg_color: bgVal,
         });
         await loadCategories();
@@ -2799,7 +2986,6 @@ function renderCategoriesGrid(categories) {
         show(catErr, "");
         if (!state.activeFamilyId) throw new Error("Choose a family first");
         await api(`/api/families/${state.activeFamilyId}/categories/${c.id}`, "PUT", {
-          fg_color: "",
           bg_color: "",
         });
         await loadCategories();
@@ -2813,7 +2999,6 @@ function renderCategoriesGrid(categories) {
     actions.appendChild(reset);
 
     row.appendChild(nameEl);
-    row.appendChild(fgTrigger);
     row.appendChild(bgTrigger);
     row.appendChild(actions);
 
@@ -3631,7 +3816,7 @@ async function runTxAllQuery() {
     renderTransactionsInto(txListMain, items, "No matching transactions.");
   } catch (e) {
     show(txAllErr, e.message || "Failed to load transactions");
-    if (txListMain) renderTransactionsInto(txListMain, [], "Choose filters and click Run.");
+    if (txListMain) txListMain.innerHTML = "";
   }
 }
 
@@ -3837,6 +4022,7 @@ function renderTransactionsInto(listEl, items, emptyMessage) {
     const el = document.createElement("div");
     el.className = "item";
     el.style.cursor = "pointer";
+    if (tx && tx.imported) el.classList.add("is-imported");
 
     const amtClass = tx.kind === "income" ? "income" : "expense";
 
@@ -3853,6 +4039,9 @@ function renderTransactionsInto(listEl, items, emptyMessage) {
       e.stopPropagation();
       openTxEditModal(tx);
     });
+    if (tx && tx.imported) {
+      link.title = [link.title, "Imported transaction."].filter(Boolean).join("\n");
+    }
 
     const meta = document.createElement("div");
     meta.className = "meta";
@@ -3898,6 +4087,214 @@ function escapeHtml(s) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+function parseCsv(text) {
+  const out = [];
+  let row = [];
+  let cur = "";
+  let inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    const next = i + 1 < text.length ? text[i + 1] : "";
+    if (inQuotes) {
+      if (ch === '"' && next === '"') {
+        cur += '"';
+        i++;
+      } else if (ch === '"') {
+        inQuotes = false;
+      } else {
+        cur += ch;
+      }
+      continue;
+    }
+    if (ch === '"') {
+      inQuotes = true;
+      continue;
+    }
+    if (ch === ",") {
+      row.push(cur);
+      cur = "";
+      continue;
+    }
+    if (ch === "\n") {
+      row.push(cur);
+      cur = "";
+      out.push(row);
+      row = [];
+      continue;
+    }
+    if (ch === "\r") continue;
+    cur += ch;
+  }
+  row.push(cur);
+  if (row.length > 1 || (row.length === 1 && row[0].trim() !== "")) out.push(row);
+  return out;
+}
+
+function normalizeHeaderName(s) {
+  return String(s || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .replace(/[^a-z0-9 ]/g, "");
+}
+
+function parseMoneyFlexible(raw) {
+  const s = String(raw || "").trim();
+  if (!s) return null;
+  const cleaned = s.replace(/[$,]/g, "").replace(/\s+/g, "");
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : null;
+}
+
+function parseDateFlexible(raw) {
+  const s = String(raw || "").trim();
+  if (!s) return null;
+  const iso = normalizeIsoDate(s);
+  if (iso) return iso;
+  let m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(s);
+  if (m) {
+    const mm = String(m[1]).padStart(2, "0");
+    const dd = String(m[2]).padStart(2, "0");
+    return `${m[3]}-${mm}-${dd}`;
+  }
+  m = /^(\d{4})\/(\d{1,2})\/(\d{1,2})$/.exec(s);
+  if (m) {
+    const mm = String(m[2]).padStart(2, "0");
+    const dd = String(m[3]).padStart(2, "0");
+    return `${m[1]}-${mm}-${dd}`;
+  }
+  return null;
+}
+
+function guessImportColumn(headers, candidates) {
+  const norm = headers.map((h) => normalizeHeaderName(h));
+  for (const c of candidates) {
+    const idx = norm.findIndex((x) => x === c || x.includes(c));
+    if (idx >= 0) return idx;
+  }
+  return -1;
+}
+
+function setSelectOptionsFromHeaders(selectEl, headers, { allowNone = false } = {}) {
+  if (!selectEl) return;
+  const cur = String(selectEl.value || "");
+  selectEl.innerHTML = "";
+  if (allowNone) {
+    const opt0 = document.createElement("option");
+    opt0.value = "";
+    opt0.textContent = "—";
+    selectEl.appendChild(opt0);
+  }
+  headers.forEach((h, idx) => {
+    const opt = document.createElement("option");
+    opt.value = String(idx);
+    opt.textContent = h || `Column ${idx + 1}`;
+    selectEl.appendChild(opt);
+  });
+  if (cur && [...selectEl.options].some((o) => o.value === cur)) selectEl.value = cur;
+}
+
+function txImportGetColIdx(selectEl) {
+  if (!selectEl) return null;
+  const v = String(selectEl.value || "");
+  if (v === "") return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+function txImportPreviewRender(headers, rows, maxRows = 8) {
+  if (!txImportPreview) return;
+  const showRows = (rows || []).slice(0, maxRows);
+  const headHtml = headers.map((h) => `<th>${escapeHtml(h)}</th>`).join("");
+  const bodyHtml = showRows
+    .map((r) => `<tr>${headers.map((_, i) => `<td>${escapeHtml(r[i] ?? "")}</td>`).join("")}</tr>`)
+    .join("");
+  txImportPreview.innerHTML = `<table><thead><tr>${headHtml}</tr></thead><tbody>${bodyHtml}</tbody></table>`;
+}
+
+function txImportComputePayload() {
+  const headers = txImportState.headers || [];
+  const rows = txImportState.rows || [];
+  const dateIdx = txImportGetColIdx(txImportColDate);
+  const amtIdx = txImportGetColIdx(txImportColAmount);
+  const kindIdx = txImportGetColIdx(txImportColKind);
+  const acctIdx = txImportGetColIdx(txImportColAccount);
+  const catIdx = txImportGetColIdx(txImportColCategory);
+  const notesIdx = txImportGetColIdx(txImportColNotes);
+  const descIdx = txImportGetColIdx(txImportColDesc);
+
+  const errs = [];
+  if (dateIdx == null) errs.push("Map the Date column");
+  if (amtIdx == null) errs.push("Map the Amount column");
+  const acctMode = String(txImportAccountMode?.value || "column");
+  const catMode = String(txImportCategoryMode?.value || "column");
+  const fixedAcctRaw = String(txImportFixedAccountId?.value || "");
+  const fixedCatRaw = String(txImportFixedCategoryId?.value || "");
+  if (acctMode === "column" && acctIdx == null) errs.push("Map the Account column (or choose Fixed account)");
+  if (acctMode === "fixed" && !fixedAcctRaw) errs.push("Choose a fixed account");
+  if (catMode === "column" && catIdx == null) errs.push("Map the Category column (or choose Fixed category)");
+  if (catMode === "fixed" && !fixedCatRaw) errs.push("Choose a fixed category");
+  if (errs.length) return { ok: false, errors: errs, items: [] };
+
+  const accountsByName = new Map((state.accounts || []).map((a) => [String(a.name || "").trim().toLowerCase(), a]));
+  const categoriesByName = new Map((state.categories || []).map((c) => [String(c.name || "").trim().toLowerCase(), c]));
+
+  const items = [];
+  const rowErrors = [];
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i] || [];
+    const dateIso = parseDateFlexible(r[dateIdx]);
+    const amt = parseMoneyFlexible(r[amtIdx]);
+    const acctName = acctMode === "column" ? String(r[acctIdx] ?? "").trim() : "";
+    const catName = catMode === "column" ? String(r[catIdx] ?? "").trim() : "";
+    const acct =
+      acctMode === "fixed"
+        ? (state.accounts || []).find((a) => String(a.id) === fixedAcctRaw) || null
+        : accountsByName.get(acctName.toLowerCase()) || null;
+    const cat =
+      catMode === "fixed"
+        ? (state.categories || []).find((c) => String(c.id) === fixedCatRaw) || null
+        : categoriesByName.get(catName.toLowerCase()) || null;
+    const notes = notesIdx != null ? String(r[notesIdx] ?? "").trim() : "";
+    const desc = descIdx != null ? String(r[descIdx] ?? "").trim() : "";
+
+    let kind = null;
+    if (kindIdx != null) {
+      const rawKind = String(r[kindIdx] ?? "").trim().toLowerCase();
+      if (rawKind === "income" || rawKind === "in") kind = "income";
+      else if (rawKind === "expense" || rawKind === "out") kind = "expense";
+      else if (rawKind === "credit") kind = "income";
+      else if (rawKind === "debit") kind = "expense";
+    }
+    if (!kind && amt != null) kind = amt >= 0 ? "income" : "expense";
+
+    const signedAmt = amt == null ? null : Math.abs(amt);
+    const problems = [];
+    if (!dateIso) problems.push("bad date");
+    if (signedAmt == null || !Number.isFinite(signedAmt) || signedAmt <= 0) problems.push("bad amount");
+    if (!kind) problems.push("bad type");
+    if (!acct) problems.push(acctMode === "fixed" ? "unknown fixed account" : `unknown account: ${acctName || "blank"}`);
+    if (!cat) problems.push(catMode === "fixed" ? "unknown fixed category" : `unknown category: ${catName || "blank"}`);
+
+    if (problems.length) {
+      rowErrors.push(`Row ${i + 1}: ${problems.join(", ")}`);
+      continue;
+    }
+
+    items.push({
+      date: dateIso,
+      description: desc || `${(catMode === "column" ? catName : (cat?.name || "")) || "Transaction"}`,
+      notes: notes || null,
+      kind,
+      amount: signedAmt,
+      category_id: Number(cat.id),
+      account_id: Number(acct.id),
+      reimbursable: false,
+    });
+  }
+  return { ok: rowErrors.length === 0, errors: rowErrors, items, headers };
 }
 
 async function loadTransactions() {
@@ -4452,8 +4849,11 @@ function renderCalendar() {
         : "cal-day-tx-line cal-tx-part";
       if (isExpected && row.variable) line.classList.add("cal-expected-variable");
       if (!isExpected) line.dataset.txId = String(row.id);
+      if (!isExpected && row.imported) line.classList.add("is-imported");
 
-      const labelRaw = isExpected ? row.description || "(expected)" : (row.description || "Transaction").trim();
+      const labelRaw = isExpected
+        ? row.description || "(expected)"
+        : String(row.category || row.description || "Transaction").trim();
       const label = truncate(labelRaw, 44);
 
       const labelSpan = document.createElement("span");
@@ -4483,10 +4883,15 @@ function renderCalendar() {
       line.appendChild(amtSpan);
 
       {
-        const headRaw = String(labelRaw || "").trim() || (isExpected ? "Expected" : "Transaction");
+        const descRaw = String(row.description || "").trim();
+        const catRaw = String(row.category || "").trim();
+        const headRaw = isExpected
+          ? String(labelRaw || "").trim() || "Expected"
+          : (descRaw || catRaw || "Transaction");
         const head = isExpected ? `Expected: ${headRaw}` : headRaw;
         const noteStr = row.notes && String(row.notes).trim() ? String(row.notes).trim() : "";
-        const tt = noteStr ? `${head}\nNotes: ${noteStr}` : head;
+        const importedHint = !isExpected && row.imported ? "\nImported transaction." : "";
+        const tt = noteStr ? `${head}${importedHint}\nNotes: ${noteStr}` : `${head}${importedHint}`;
         line.title = tt;
         labelWrap.title = tt;
         amtSpan.title = tt;
