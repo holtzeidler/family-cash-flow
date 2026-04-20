@@ -3367,6 +3367,28 @@ def undo_transactions_import(
     return TransactionsImportUndoOut(deleted=int(deleted))
 
 
+# Some environments/browser setups intermittently fail CORS preflight for JSON POSTs.
+# Provide GET equivalents (query params) as a pragmatic escape hatch.
+@app.get("/api/families/{family_id}/transactions/import/undo", response_model=TransactionsImportUndoOut)
+def undo_transactions_import_get(
+    family_id: int,
+    batch_id: str,
+    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    require_family_member(db=db, family_id=family_id, user_id=user_id)
+    bid = (batch_id or "").strip()
+    if not bid:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="batch_id is required")
+    deleted = db.execute(
+        text("DELETE FROM transactions WHERE family_id = :fid AND imported = 1 AND import_batch_id = :bid"),
+        {"fid": int(family_id), "bid": bid},
+    ).rowcount or 0
+    db.commit()
+    return TransactionsImportUndoOut(deleted=int(deleted))
+
+
 @app.post("/api/families/{family_id}/transactions/purge-before", response_model=TransactionsPurgeBeforeOut)
 def purge_transactions_before(
     family_id: int,
@@ -3383,6 +3405,29 @@ def purge_transactions_before(
     cutoff = payload.before_date
     imported_only = bool(payload.imported_only)
 
+    if imported_only:
+        sql = "DELETE FROM transactions WHERE family_id = :fid AND imported = 1 AND date < :cutoff"
+    else:
+        sql = "DELETE FROM transactions WHERE family_id = :fid AND date < :cutoff"
+    deleted = db.execute(text(sql), {"fid": int(family_id), "cutoff": cutoff.isoformat()}).rowcount or 0
+    db.commit()
+    return TransactionsPurgeBeforeOut(deleted=int(deleted))
+
+
+@app.get("/api/families/{family_id}/transactions/purge-before", response_model=TransactionsPurgeBeforeOut)
+def purge_transactions_before_get(
+    family_id: int,
+    before_date: date,
+    imported_only: bool = True,
+    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    db=Depends(get_db),
+):
+    """
+    GET equivalent for purge-before (avoids CORS preflight in some setups).
+    """
+    user_id = get_current_user_id(access_token)
+    require_family_member(db=db, family_id=family_id, user_id=user_id)
+    cutoff = before_date
     if imported_only:
         sql = "DELETE FROM transactions WHERE family_id = :fid AND imported = 1 AND date < :cutoff"
     else:
