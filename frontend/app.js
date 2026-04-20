@@ -2174,6 +2174,10 @@ if (txImportQueueSaveBtn) {
 if (txImportUndoBtn) {
   const last = txImportLoadLastBatchId();
   txImportUndoBtn.style.display = last ? "" : "none";
+  if (last && txImportLastResult && txImportLastResult.style.display === "none") {
+    txImportLastResult.textContent = "A previous import can be undone.";
+    txImportLastResult.style.display = "block";
+  }
   txImportUndoBtn.addEventListener("click", async () => {
     try {
       show(txImportErr, "");

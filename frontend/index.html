@@ -438,6 +438,11 @@
                   Upload a CSV, map its columns, preview the first rows, then import. Nothing is saved until you click Import.
                 </p>
                 <p id="txImportDetectedPreset" class="meta" style="margin: 6px 0 0; display:none;"></p>
+                <p id="txImportLastResult" class="meta" style="display:none; margin: 8px 0 0;"></p>
+                <div class="row two" style="margin-top: 8px;">
+                  <div></div>
+                  <button type="button" id="txImportUndoBtn" class="btn-neutral" style="display:none;">Undo last import</button>
+                </div>
                 <div style="height: 12px"></div>
 
                 <div id="txImportMapping" hidden>
@@ -517,7 +522,6 @@
                   <div style="height: 12px"></div>
                   <div id="txImportPreview" class="tx-import-preview"></div>
                   <div id="txImportErr" class="error"></div>
-                  <p id="txImportLastResult" class="meta" style="display:none; margin: 8px 0 0;"></p>
                   <div id="txImportQueueWrap" style="display:none; margin-top: 10px;">
                     <div class="row two">
                       <button type="button" id="txImportReviewQueueBtn" class="btn-primary">Review uncategorized imports</button>
@@ -529,7 +533,7 @@
                   <div style="height: 10px"></div>
                   <div class="row two">
                     <button type="button" id="txImportRunBtn" class="btn-primary">Import</button>
-                    <button type="button" id="txImportUndoBtn" class="btn-neutral" style="display:none;">Undo last import</button>
+                    <div></div>
                   </div>
                 </div>
               </div>
@@ -1031,6 +1035,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="./app.js?v=151"></script>
+    <script src="./app.js?v=152"></script>
   </body>
 </html>
