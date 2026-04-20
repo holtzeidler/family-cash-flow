@@ -53,6 +53,65 @@ async function api(path, method = "GET", body) {
   }
 }
 
+/**
+ * Cross-origin-safe POST for simple payloads.
+ * Uses `application/x-www-form-urlencoded`, which avoids CORS preflight in browsers
+ * (unlike `application/json`, which triggers an OPTIONS preflight that can fail in some setups).
+ */
+async function apiForm(path, fields) {
+  const apiBase = apiBaseUrl();
+  const fullPath = `${apiBase}${path}`;
+  const body = new URLSearchParams();
+  for (const [k, v] of Object.entries(fields || {})) {
+    if (v === undefined || v === null) continue;
+    body.set(String(k), String(v));
+  }
+  let res;
+  try {
+    res = await fetch(fullPath, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
+      credentials: "include",
+      body: body.toString(),
+    });
+  } catch (err) {
+    const msg = err && err.message ? err.message : String(err);
+    const onPages = typeof location !== "undefined" && location.hostname.endsWith("github.io");
+    const origin = typeof location !== "undefined" ? location.origin : "(unknown)";
+    const baseHint = apiBase
+      ? `Trying API_BASE: ${apiBase}`
+      : "API_BASE is empty — requests go to the Pages host (wrong).";
+    const debugUrl = apiBase ? `${apiBase}/api/debug/public-config` : "";
+    const corsHint = onPages
+      ? `If this persists, open ${debugUrl || "[API_BASE]/api/debug/public-config"} in a new tab. It should return JSON and include Access-Control-Allow-Origin: ${origin}.`
+      : "If this is cross-origin, configure CORS on the API for this origin.";
+    throw new Error(
+      `${msg}\n\n${baseHint}\n${corsHint}\nIf the API is on Render free tier, wait ~1 minute for a cold start and refresh.`
+    );
+  }
+
+  if (res.status === 401) {
+    window.location.href = "./login.html";
+    return null;
+  }
+
+  if (!res.ok) {
+    let msg = `Request failed (${res.status})`;
+    try {
+      const data = await res.json();
+      if (data && data.detail) msg = data.detail;
+    } catch (_) {}
+    throw new Error(msg);
+  }
+
+  if (res.status === 204) return null;
+  try {
+    return await res.json();
+  } catch (_) {
+    return null;
+  }
+}
+
 function show(el, msg) {
   if (!el) return;
   el.textContent = msg || "";
@@ -2196,10 +2255,7 @@ if (txImportUndoBtn) {
         txImportLastResult.textContent = "Undo in progress…";
         txImportLastResult.style.display = "block";
       }
-      const out = await api(
-        `/api/families/${state.activeFamilyId}/transactions/import/undo?batch_id=${encodeURIComponent(batchId)}`,
-        "GET"
-      );
+      const out = await apiForm(`/api/families/${state.activeFamilyId}/transactions/import/undo`, { batch_id: batchId });
       const deleted = Number(out?.deleted || 0);
       try {
         localStorage.removeItem("familyCashFlow_lastImportBatchId");
@@ -2248,10 +2304,10 @@ if (txImportPurgeBtn) {
         txImportLastResult.textContent = "Delete in progress…";
         txImportLastResult.style.display = "block";
       }
-      const out = await api(
-        `/api/families/${state.activeFamilyId}/transactions/purge-before?before_date=${encodeURIComponent(cutoff)}&imported_only=true`,
-        "GET"
-      );
+      const out = await apiForm(`/api/families/${state.activeFamilyId}/transactions/purge-before`, {
+        before_date: cutoff,
+        imported_only: "true",
+      });
       const deleted = Number(out?.deleted || 0);
       if (txImportLastResult) {
         txImportLastResult.textContent = `Deleted ${deleted} imported transactions before ${cutoff}.`;
@@ -2310,36 +2366,39 @@ if (txImportTestApiBtn) {
         results.push(`GET categories (include creds): FAILED (${e?.message || e})`);
       }
 
-      // 4) Purge endpoint (GET variant avoids CORS preflight)
+      // 4) Purge endpoint (form POST avoids JSON preflight)
       try {
         if (!state.activeFamilyId) throw new Error("No active family selected");
-        const r4 = await fetch(
-          `${apiBase}/api/families/${state.activeFamilyId}/transactions/purge-before?before_date=1900-01-01&imported_only=true`,
-          {
-            method: "GET",
+        const body = new URLSearchParams();
+        body.set("before_date", "1900-01-01");
+        body.set("imported_only", "true");
+        const r4 = await fetch(`${apiBase}/api/families/${state.activeFamilyId}/transactions/purge-before`, {
+          method: "POST",
           credentials: "include",
-          }
-        );
+          headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
+          body: body.toString(),
+        });
         const t4 = await r4.text();
-        results.push(`GET purge-before: ${r4.status} ${r4.ok ? "OK" : "FAIL"}\n${t4.slice(0, 600)}`);
+        results.push(`POST purge-before (form): ${r4.status} ${r4.ok ? "OK" : "FAIL"}\n${t4.slice(0, 600)}`);
       } catch (e) {
-        results.push(`GET purge-before: FAILED (${e?.message || e})`);
+        results.push(`POST purge-before (form): FAILED (${e?.message || e})`);
       }
 
-      // 5) Undo endpoint (GET variant avoids CORS preflight)
+      // 5) Undo endpoint (form POST avoids JSON preflight)
       try {
         if (!state.activeFamilyId) throw new Error("No active family selected");
-        const r5 = await fetch(
-          `${apiBase}/api/families/${state.activeFamilyId}/transactions/import/undo?batch_id=does-not-exist`,
-          {
-            method: "GET",
+        const body = new URLSearchParams();
+        body.set("batch_id", "does-not-exist");
+        const r5 = await fetch(`${apiBase}/api/families/${state.activeFamilyId}/transactions/import/undo`, {
+          method: "POST",
           credentials: "include",
-          }
-        );
+          headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
+          body: body.toString(),
+        });
         const t5 = await r5.text();
-        results.push(`GET undo: ${r5.status} ${r5.ok ? "OK" : "FAIL"}\n${t5.slice(0, 600)}`);
+        results.push(`POST undo (form): ${r5.status} ${r5.ok ? "OK" : "FAIL"}\n${t5.slice(0, 600)}`);
       } catch (e) {
-        results.push(`GET undo: FAILED (${e?.message || e})`);
+        results.push(`POST undo (form): FAILED (${e?.message || e})`);
       }
 
       if (txImportLastResult) {
