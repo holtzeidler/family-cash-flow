@@ -161,6 +161,7 @@ const txImportColNotes = document.getElementById("txImportColNotes");
 const txImportColDesc = document.getElementById("txImportColDesc");
 const txImportSkipHeader = document.getElementById("txImportSkipHeader");
 const txImportPreview = document.getElementById("txImportPreview");
+const txImportDetectedPreset = document.getElementById("txImportDetectedPreset");
 const txImportErr = document.getElementById("txImportErr");
 const txImportRunBtn = document.getElementById("txImportRunBtn");
 
@@ -1841,6 +1842,7 @@ function txImportRefreshUi() {
   const rows = txImportState.rows || [];
   if (!headers.length) {
     txImportMapping.hidden = true;
+    if (txImportDetectedPreset) txImportDetectedPreset.style.display = "none";
     return;
   }
   txImportMapping.hidden = false;
@@ -1915,6 +1917,29 @@ function txImportRefreshUi() {
   }
   if (txImportFixedCategoryId && txImportFixedCategoryId.options.length > 0 && !txImportFixedCategoryId.value) {
     txImportFixedCategoryId.value = String(txImportFixedCategoryId.options[0].value);
+  }
+
+  const preset = detectCsvPreset(headers);
+  if (txImportDetectedPreset) {
+    txImportDetectedPreset.textContent =
+      preset === "chase_activity"
+        ? "Detected Chase Activity CSV — mapping pre-filled."
+        : "Mapping pre-filled (review if needed).";
+    txImportDetectedPreset.style.display = "block";
+  }
+
+  // Force best-known mappings for Chase exports (so non-technical users don't touch mapping).
+  if (preset === "chase_activity") {
+    const idxDate = guessImportColumn(headers, ["posting date"]);
+    const idxAmt = guessImportColumn(headers, ["amount"]);
+    const idxDetails = guessImportColumn(headers, ["details"]);
+    const idxDesc = guessImportColumn(headers, ["description"]);
+    if (idxDate >= 0 && txImportColDate) txImportColDate.value = String(idxDate);
+    if (idxAmt >= 0 && txImportColAmount) txImportColAmount.value = String(idxAmt);
+    if (idxDetails >= 0 && txImportColKind) txImportColKind.value = String(idxDetails);
+    if (idxDesc >= 0 && txImportColDesc) txImportColDesc.value = String(idxDesc);
+    if (txImportAccountMode) txImportAccountMode.value = "fixed";
+    if (txImportCategoryMode) txImportCategoryMode.value = "fixed";
   }
 
   txImportPreviewRender(headers, rows);
@@ -4286,6 +4311,13 @@ function guessImportColumn(headers, candidates) {
     if (idx >= 0) return idx;
   }
   return -1;
+}
+
+function detectCsvPreset(headers) {
+  const norm = (headers || []).map((h) => normalizeHeaderName(h));
+  const has = (x) => norm.includes(normalizeHeaderName(x));
+  if (has("details") && has("posting date") && has("description") && has("amount")) return "chase_activity";
+  return "generic";
 }
 
 function setSelectOptionsFromHeaders(selectEl, headers, { allowNone = false } = {}) {

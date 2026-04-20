@@ -1067,6 +1067,51 @@ def _seed_default_categories_if_empty(db, family_id: int) -> None:
     db.commit()
 
 
+def _auto_merge_transfers_category_if_needed(db, family_id: int) -> None:
+    """
+    Safety cleanup for legacy data where both "Transfers" and "Transfer" exist and
+    some transactions still point at the older/plural category.
+    """
+    cats = (
+        db.execute(select(Category).where(Category.family_id == family_id))
+        .scalars()
+        .all()
+    )
+    if not cats:
+        return
+    by_norm = {}
+    for c in cats:
+        nm = (c.name or "").strip().lower()
+        if nm:
+            by_norm.setdefault(nm, []).append(c)
+
+    # Prefer singular "transfer" as the destination if present.
+    dst = (by_norm.get("transfer") or [None])[0]
+    src = (by_norm.get("transfers") or [None])[0]
+    if not dst or not src or int(dst.id) == int(src.id):
+        return
+
+    # Repoint references.
+    db.execute(
+        text("UPDATE transactions SET category_id = :to_id WHERE family_id = :fid AND category_id = :from_id"),
+        {"to_id": int(dst.id), "fid": int(family_id), "from_id": int(src.id)},
+    )
+    db.execute(
+        text("UPDATE expected_transactions SET category_id = :to_id WHERE family_id = :fid AND category_id = :from_id"),
+        {"to_id": int(dst.id), "fid": int(family_id), "from_id": int(src.id)},
+    )
+    db.execute(
+        text(
+            "UPDATE expected_transaction_overrides "
+            "SET category_id = :to_id "
+            "WHERE expected_transaction_id IN (SELECT id FROM expected_transactions WHERE family_id = :fid) "
+            "AND category_id = :from_id"
+        ),
+        {"to_id": int(dst.id), "fid": int(family_id), "from_id": int(src.id)},
+    )
+    db.commit()
+
+
 @app.get("/api/families/{family_id}/categories", response_model=list[CategoryOut])
 def list_categories(
     family_id: int,
@@ -1076,6 +1121,7 @@ def list_categories(
     user_id = get_current_user_id(access_token)
     require_family_member(db=db, family_id=family_id, user_id=user_id)
     _seed_default_categories_if_empty(db=db, family_id=family_id)
+    _auto_merge_transfers_category_if_needed(db=db, family_id=family_id)
     rows = (
         db.execute(
             select(Category)
