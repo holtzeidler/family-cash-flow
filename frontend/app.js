@@ -2294,6 +2294,19 @@ if (txImportTestApiBtn) {
         results.push(`GET (include creds): FAILED (${e?.message || e})`);
       }
 
+      // 3) Authenticated API call (verifies cookie/session works)
+      try {
+        if (!state.activeFamilyId) throw new Error("No active family selected");
+        const r3 = await fetch(`${apiBase}/api/families/${state.activeFamilyId}/categories`, {
+          method: "GET",
+          credentials: "include",
+        });
+        const t3 = await r3.text();
+        results.push(`GET categories (include creds): ${r3.status} ${r3.ok ? "OK" : "FAIL"}\n${t3.slice(0, 600)}`);
+      } catch (e) {
+        results.push(`GET categories (include creds): FAILED (${e?.message || e})`);
+      }
+
       if (txImportLastResult) {
         txImportLastResult.textContent = results.join("\n\n");
         txImportLastResult.style.display = "block";
