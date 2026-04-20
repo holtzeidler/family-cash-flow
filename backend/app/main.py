@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
-from collections import defaultdict
+from collections import Counter, defaultdict
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from enum import Enum
@@ -23,7 +23,7 @@ from sqlalchemy import Enum as SAEnum
 from sqlalchemy import Boolean, Integer, UniqueConstraint
 from sqlalchemy import ForeignKey
 from sqlalchemy import String
-from sqlalchemy import delete, func, select, text
+from sqlalchemy import and_, delete, func, select, text
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, sessionmaker
 from sqlalchemy.types import Numeric
@@ -104,6 +104,8 @@ class Family(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(255), index=True)
     created_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
+    # Bumped when built-in category taxonomy is applied (see CANONICAL_CATEGORY_TAXONOMY_V1).
+    category_taxonomy_version: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
 
     memberships: Mapped[list[FamilyMember]] = relationship(back_populates="family")
     accounts: Mapped[list[Account]] = relationship(back_populates="family")
@@ -1005,6 +1007,22 @@ def _ensure_category_parent_id_column() -> None:
             conn.execute(text("ALTER TABLE categories ADD COLUMN IF NOT EXISTS parent_id INTEGER"))
 
 
+def _ensure_family_category_taxonomy_version_column() -> None:
+    """Track one-time category taxonomy upgrades per family."""
+    with engine.begin() as conn:
+        table = "families"
+        if settings.DATABASE_URL.startswith("sqlite"):
+            cols = conn.execute(text(f"PRAGMA table_info({table})")).fetchall()
+            has_col = any(str(row[1]) == "category_taxonomy_version" for row in cols)
+            if not has_col:
+                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN category_taxonomy_version INTEGER NOT NULL DEFAULT 0"))
+                conn.execute(text(f"UPDATE {table} SET category_taxonomy_version = 0 WHERE category_taxonomy_version IS NULL"))
+        else:
+            conn.execute(
+                text(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS category_taxonomy_version INTEGER NOT NULL DEFAULT 0")
+            )
+
+
 def _ensure_transaction_account_id_column() -> None:
     """Lightweight startup migration: store account_id on actual transactions for filtering."""
     with engine.begin() as conn:
@@ -1132,33 +1150,335 @@ def create_family(payload: FamilyCreateIn, access_token: Annotated[Optional[str]
     return FamilyOut(id=family.id, name=family.name, role=member.role)
 
 
-def _seed_default_categories_if_empty(db, family_id: int) -> None:
+CURRENT_CATEGORY_TAXONOMY_VERSION = 1
+
+# Canonical Group -> Category tree, embedded from `CashFlow Categories - Sheet1.csv`.
+# Third column: legacy flat category name to merge into this leaf (case-insensitive), or None.
+CANONICAL_CATEGORY_TAXONOMY_V1: list[tuple[str, str, Optional[str]]] = [
+    ("3rd Party", "Scouts", "Scouts"),
+    ("3rd Party", "8th Grade", "8th Grade"),
+    ("Bills & Utilities", "Electric", None),
+    ("Bills & Utilities", "Internet & Cable", None),
+    ("Bills & Utilities", "Gas", None),
+    ("Bills & Utilities", "Water", None),
+    ("Bills & Utilities", "Cell Phone", None),
+    ("Food & Dining", "Coffee Shops", None),
+    ("Food & Dining", "Groceries", None),
+    ("Food & Dining", "Restaurants & Bars", None),
+    ("Auto & Transport", "Car Loan", "Car Loan"),
+    ("Auto & Transport", "Gas", None),
+    ("Auto & Transport", "Maintenance & Repairs", None),
+    ("Auto & Transport", "Rideahare & Taxi", None),
+    ("Auto & Transport", "Parking & Tolls", None),
+    ("Home", "Mortgage", "Home"),
+    ("Home", "Home Maintenance", None),
+    ("Travel & Vacation", "Airlines", None),
+    ("Travel & Vacation", "Hotels", None),
+    ("Shopping", "Shopping", None),
+    ("Shopping", "Entertainment", None),
+    ("Transfers", "Transfers", "Transfers"),
+    ("Transfers", "Credit Card Payment", "Credit Card"),
+    ("Business", "Reimburseable Expense", None),
+    ("Business", "Office Supplies", None),
+    ("Other", "Check", None),
+    ("Other", "Miscellaneous", None),
+    ("Other", "Uncategorized", None),
+    ("Financial", "Taxes", "Taxes"),
+    ("Financial", "Fees", None),
+    ("Financial", "Investment", "Investment"),
+    ("Financial", "Loan Repayment", None),
+    ("Financial", "Insurance", None),
+    ("Financial", "Cash & ATM", "Cash"),
+    ("Health & Lifestyle", "Dental", None),
+    ("Health & Lifestyle", "Medical", None),
+    ("Health & Lifestyle", "Personal Care", None),
+    ("Kids", "Kids Activities", "Kids"),
+    ("Kids", "Education", None),
+    ("Kids", "Sports", None),
+    ("Gifts & Donations", "Charity", None),
+    ("Gifts & Donations", "Gifts", None),
+]
+
+
+def _norm_cat_name(name: Optional[str]) -> str:
+    return (name or "").strip().lower()
+
+
+_cn_leaf = [_norm_cat_name(c) for _g, c, _ in CANONICAL_CATEGORY_TAXONOMY_V1]
+_cn_leaf_ctr = Counter(_cn_leaf)
+# Used to avoid folding ambiguous duplicate names (e.g. two canonical "Gas" leaves) into the wrong group.
+CANONICAL_UNIQUE_LEAF_NAME_NORMS: frozenset[str] = frozenset(n for n, k in _cn_leaf_ctr.items() if k == 1)
+
+
+def _repoint_category_fks(db, family_id: int, from_id: int, to_id: int) -> None:
+    if from_id == to_id:
+        return
+    db.execute(
+        text("UPDATE transactions SET category_id = :to_id WHERE family_id = :fid AND category_id = :from_id"),
+        {"to_id": int(to_id), "fid": int(family_id), "from_id": int(from_id)},
+    )
+    db.execute(
+        text("UPDATE expected_transactions SET category_id = :to_id WHERE family_id = :fid AND category_id = :from_id"),
+        {"to_id": int(to_id), "fid": int(family_id), "from_id": int(from_id)},
+    )
+    db.execute(
+        text(
+            "UPDATE expected_transaction_overrides "
+            "SET category_id = :to_id "
+            "WHERE expected_transaction_id IN (SELECT id FROM expected_transactions WHERE family_id = :fid) "
+            "AND category_id = :from_id"
+        ),
+        {"to_id": int(to_id), "fid": int(family_id), "from_id": int(from_id)},
+    )
+
+
+def _absorb_source_category_into_dest(db, family_id: int, src_id: int, dst_id: int) -> None:
     """
-    Seed a starter Group (parent) -> Category (child) list.
-    Groups are top-level categories (parent_id NULL). Children live under a group.
-    Only runs when the family has zero categories.
+    Move references from src onto dst, reparent src's children into dst's bucket, then delete src.
+    Works when dst is a leaf (children attach under dst's parent) or a group (children attach under dst).
     """
-    existing = db.execute(select(func.count(Category.id)).where(Category.family_id == family_id)).scalar_one() or 0
-    if existing > 0:
+    if src_id == dst_id:
+        return
+    src = db.execute(select(Category).where(Category.id == src_id, Category.family_id == family_id)).scalar_one_or_none()
+    dst = db.execute(select(Category).where(Category.id == dst_id, Category.family_id == family_id)).scalar_one_or_none()
+    if src is None or dst is None:
         return
 
-    # Starter set (can be edited/reordered later).
-    defaults: dict[str, list[str]] = {
-        "Recommended": ["Coffee Shops", "Fun Money"],
-        "Bills & Utilities": ["Garbage", "Water", "Gas & Electric", "Internet & Cable", "Phone"],
-        "Food & Dining": ["Groceries", "Restaurants & Bars"],
-        "Travel & Lifestyle": ["Travel & Vacation", "Entertainment & Recreation"],
-        "Transfers": ["Transfer"],
-    }
+    bucket_parent_id: Optional[int]
+    if dst.parent_id is None:
+        bucket_parent_id = int(dst.id)
+    else:
+        bucket_parent_id = int(dst.parent_id)
 
-    sort_parent = 0
-    for group_name, child_names in defaults.items():
-        parent = Category(family_id=family_id, name=group_name, parent_id=None, sort_order=sort_parent)
-        db.add(parent)
+    children = (
+        db.execute(select(Category).where(Category.family_id == family_id, Category.parent_id == int(src.id))).scalars().all()
+    )
+    for ch in list(children):
+        peers = (
+            db.execute(
+                select(Category).where(
+                    Category.family_id == family_id,
+                    Category.parent_id == bucket_parent_id,
+                    Category.id != int(ch.id),
+                )
+            )
+            .scalars()
+            .all()
+        )
+        match = next((p for p in peers if _norm_cat_name(p.name) == _norm_cat_name(ch.name)), None)
+        if match is not None:
+            _absorb_source_category_into_dest(db, family_id, int(ch.id), int(match.id))
+        else:
+            ch.parent_id = bucket_parent_id
+
+    _repoint_category_fks(db, family_id, int(src.id), int(dst.id))
+    db.delete(src)
+    db.flush()
+
+
+def _dedupe_top_level_groups_by_name(db, family_id: int) -> None:
+    tops = (
+        db.execute(select(Category).where(Category.family_id == family_id, Category.parent_id.is_(None))).scalars().all()
+    )
+    by_norm: dict[str, list[Category]] = defaultdict(list)
+    for t in tops:
+        by_norm[_norm_cat_name(t.name)].append(t)
+    for _nm, lst in by_norm.items():
+        if len(lst) < 2:
+            continue
+        primary = min(lst, key=lambda c: int(c.id))
+        for other in lst:
+            if int(other.id) == int(primary.id):
+                continue
+            _absorb_source_category_into_dest(db, family_id, int(other.id), int(primary.id))
+
+
+def _ensure_canonical_group_and_leaf_ids(db, family_id: int) -> tuple[dict[tuple[str, str], int], dict[str, int]]:
+    """
+    Ensure each canonical group and leaf exists; return maps:
+    (norm_group, norm_leaf) -> leaf_id, norm_group -> group_id
+    """
+    _dedupe_top_level_groups_by_name(db, family_id)
+
+    group_ids: dict[str, int] = {}
+    ordered_groups: list[str] = []
+    for gname, _cname, _leg in CANONICAL_CATEGORY_TAXONOMY_V1:
+        if gname not in ordered_groups:
+            ordered_groups.append(gname)
+
+    for gi, gname in enumerate(ordered_groups):
+        tops_all = (
+            db.execute(select(Category).where(Category.family_id == family_id, Category.parent_id.is_(None))).scalars().all()
+        )
+        tops = [t for t in tops_all if _norm_cat_name(t.name) == _norm_cat_name(gname)]
+        if tops:
+            grp = min(tops, key=lambda c: int(c.id))
+            grp.sort_order = gi
+            group_ids[_norm_cat_name(gname)] = int(grp.id)
+        else:
+            grp = Category(family_id=family_id, name=gname, parent_id=None, sort_order=gi)
+            db.add(grp)
+            db.flush()
+            group_ids[_norm_cat_name(gname)] = int(grp.id)
+
+    leaf_ids: dict[tuple[str, str], int] = {}
+    for gname, cname, _leg in CANONICAL_CATEGORY_TAXONOMY_V1:
+        gid = group_ids[_norm_cat_name(gname)]
+        peers = (
+            db.execute(select(Category).where(Category.family_id == family_id, Category.parent_id == gid)).scalars().all()
+        )
+        existing = [p for p in peers if _norm_cat_name(p.name) == _norm_cat_name(cname)]
+        if existing:
+            leaf = min(existing, key=lambda c: int(c.id))
+            for dup in existing:
+                if int(dup.id) != int(leaf.id):
+                    _absorb_source_category_into_dest(db, family_id, int(dup.id), int(leaf.id))
+        else:
+            max_sort = (
+                db.execute(
+                    select(func.coalesce(func.max(Category.sort_order), 0)).where(
+                        Category.family_id == family_id, Category.parent_id == gid
+                    )
+                ).scalar_one()
+                or 0
+            )
+            leaf = Category(family_id=family_id, name=cname, parent_id=gid, sort_order=int(max_sort) + 1)
+            db.add(leaf)
+            db.flush()
+        leaf_ids[(_norm_cat_name(gname), _norm_cat_name(cname))] = int(leaf.id)
+
+    return leaf_ids, group_ids
+
+
+def _apply_canonical_sort_orders(db, family_id: int, group_ids: dict[str, int]) -> None:
+    seen: list[str] = []
+    for gname, _c, _l in CANONICAL_CATEGORY_TAXONOMY_V1:
+        if gname not in seen:
+            seen.append(gname)
+    for gi, gname in enumerate(seen):
+        gid = group_ids.get(_norm_cat_name(gname))
+        if gid is None:
+            continue
+        grp = db.execute(select(Category).where(Category.id == gid)).scalar_one_or_none()
+        if grp:
+            grp.sort_order = gi
+    for gname, cname, _leg in CANONICAL_CATEGORY_TAXONOMY_V1:
+        gid = group_ids.get(_norm_cat_name(gname))
+        if gid is None:
+            continue
+        peers = (
+            db.execute(select(Category).where(Category.family_id == family_id, Category.parent_id == gid)).scalars().all()
+        )
+        leaf = next((p for p in peers if _norm_cat_name(p.name) == _norm_cat_name(cname)), None)
+        if leaf is None:
+            continue
+        children_in_order = [cc for gg, cc, _ in CANONICAL_CATEGORY_TAXONOMY_V1 if gg == gname]
+        leaf.sort_order = int(children_in_order.index(cname))
+    db.flush()
+
+
+def _apply_category_taxonomy_v1_migration(db, family_id: int) -> None:
+    leaf_ids, group_ids = _ensure_canonical_group_and_leaf_ids(db, family_id)
+    _apply_canonical_sort_orders(db, family_id, group_ids)
+
+    protected_ids = set(int(x) for x in group_ids.values())
+
+    for gname, cname, legacy in CANONICAL_CATEGORY_TAXONOMY_V1:
+        if not legacy or not str(legacy).strip():
+            continue
+        dst_id = leaf_ids.get((_norm_cat_name(gname), _norm_cat_name(cname)))
+        if dst_id is None:
+            continue
+        legacy_norm = _norm_cat_name(legacy)
+        matches = db.execute(select(Category).where(Category.family_id == family_id)).scalars().all()
+        for src in list(matches):
+            if int(src.id) in protected_ids:
+                continue
+            if int(src.id) == int(dst_id):
+                continue
+            if _norm_cat_name(src.name) != legacy_norm:
+                continue
+            _absorb_source_category_into_dest(db, family_id, int(src.id), int(dst_id))
+
+    # Top-level duplicates of leaf names (e.g. old flat "Groceries") fold into canonical leaf.
+    for gname, cname, _leg in CANONICAL_CATEGORY_TAXONOMY_V1:
+        if _norm_cat_name(cname) not in CANONICAL_UNIQUE_LEAF_NAME_NORMS:
+            continue
+        dst_id = leaf_ids.get((_norm_cat_name(gname), _norm_cat_name(cname)))
+        if dst_id is None:
+            continue
+        tops = (
+            db.execute(select(Category).where(Category.family_id == family_id, Category.parent_id.is_(None))).scalars().all()
+        )
+        orphans = [t for t in tops if _norm_cat_name(t.name) == _norm_cat_name(cname)]
+        for src in orphans:
+            if int(src.id) in protected_ids:
+                continue
+            if int(src.id) == int(dst_id):
+                continue
+            _absorb_source_category_into_dest(db, family_id, int(src.id), int(dst_id))
+
+    # Same-name leaf under a non-canonical group (e.g. old starter "Recommended" > Coffee Shops).
+    for gname, cname, _leg in CANONICAL_CATEGORY_TAXONOMY_V1:
+        if _norm_cat_name(cname) not in CANONICAL_UNIQUE_LEAF_NAME_NORMS:
+            continue
+        dst_id = leaf_ids.get((_norm_cat_name(gname), _norm_cat_name(cname)))
+        gid = group_ids.get(_norm_cat_name(gname))
+        if dst_id is None or gid is None:
+            continue
+        all_cats = db.execute(select(Category).where(Category.family_id == family_id)).scalars().all()
+        for src in list(all_cats):
+            if int(src.id) in protected_ids or int(src.id) == int(dst_id):
+                continue
+            if int(src.parent_id or 0) == int(gid):
+                continue
+            if _norm_cat_name(src.name) != _norm_cat_name(cname):
+                continue
+            _absorb_source_category_into_dest(db, family_id, int(src.id), int(dst_id))
+
+    _dedupe_top_level_groups_by_name(db, family_id)
+    db.flush()
+
+
+def _seed_canonical_categories_for_empty_family(db, family_id: int) -> None:
+    """Insert CANONICAL_CATEGORY_TAXONOMY_V1 for a family with no categories yet."""
+    group_ids: dict[str, int] = {}
+    seen: list[str] = []
+    for gname, _c, _l in CANONICAL_CATEGORY_TAXONOMY_V1:
+        if gname not in seen:
+            seen.append(gname)
+    for gi, gname in enumerate(seen):
+        grp = Category(family_id=family_id, name=gname, parent_id=None, sort_order=gi)
+        db.add(grp)
         db.flush()
-        for idx, nm in enumerate(child_names):
-            db.add(Category(family_id=family_id, name=nm, parent_id=parent.id, sort_order=idx))
-        sort_parent += 1
+        group_ids[_norm_cat_name(gname)] = int(grp.id)
+    for gname, cname, _leg in CANONICAL_CATEGORY_TAXONOMY_V1:
+        gid = group_ids[_norm_cat_name(gname)]
+        same_group = [(gg, cc) for gg, cc, _ in CANONICAL_CATEGORY_TAXONOMY_V1 if gg == gname]
+        idx = next(i for i, (gg, cc) in enumerate(same_group) if gg == gname and cc == cname)
+        db.add(Category(family_id=family_id, name=cname, parent_id=gid, sort_order=idx))
+    db.flush()
+
+
+def _ensure_family_category_taxonomy(db, family_id: int) -> None:
+    """
+    Apply built-in Group -> Category taxonomy once per family (v1).
+    New families get the full tree; existing families are migrated using legacy name mappings.
+    """
+    fam = db.execute(select(Family).where(Family.id == family_id)).scalar_one_or_none()
+    if fam is None:
+        return
+    ver = int(fam.category_taxonomy_version or 0)
+    if ver >= CURRENT_CATEGORY_TAXONOMY_VERSION:
+        return
+
+    existing = db.execute(select(func.count(Category.id)).where(Category.family_id == family_id)).scalar_one() or 0
+    if int(existing) == 0:
+        _seed_canonical_categories_for_empty_family(db, family_id)
+    else:
+        _apply_category_taxonomy_v1_migration(db, family_id)
+
+    fam.category_taxonomy_version = CURRENT_CATEGORY_TAXONOMY_VERSION
     db.commit()
 
 
@@ -1167,6 +1487,10 @@ def _auto_merge_transfers_category_if_needed(db, family_id: int) -> None:
     Safety cleanup for legacy data where both "Transfers" and "Transfer" exist and
     some transactions still point at the older/plural category.
     """
+    fam = db.execute(select(Family).where(Family.id == family_id)).scalar_one_or_none()
+    if fam is not None and int(fam.category_taxonomy_version or 0) >= CURRENT_CATEGORY_TAXONOMY_VERSION:
+        return
+
     cats = (
         db.execute(select(Category).where(Category.family_id == family_id))
         .scalars()
@@ -1215,7 +1539,7 @@ def list_categories(
 ):
     user_id = get_current_user_id(access_token)
     require_family_member(db=db, family_id=family_id, user_id=user_id)
-    _seed_default_categories_if_empty(db=db, family_id=family_id)
+    _ensure_family_category_taxonomy(db=db, family_id=family_id)
     _auto_merge_transfers_category_if_needed(db=db, family_id=family_id)
     rows = (
         db.execute(
@@ -3160,11 +3484,25 @@ def list_transactions(
     month: Optional[str] = None,
     start_date: Annotated[Optional[date], Query(description="Inclusive range start (YYYY-MM-DD); use with end_date for date-range lists.")] = None,
     end_date: Annotated[Optional[date], Query(description="Inclusive range end (YYYY-MM-DD).")] = None,
+    category_id: Annotated[Optional[int], Query(description="When set, only transactions assigned to this category.")] = None,
+    uncategorized: Annotated[bool, Query(description="When true, only transactions with no category.")] = False,
     access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
     require_family_member(db=db, family_id=family_id, user_id=user_id)
+
+    if category_id is not None and uncategorized:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Use either category_id or uncategorized, not both",
+        )
+    if category_id is not None:
+        cat_ok = db.execute(
+            select(Category.id).where(Category.id == category_id, Category.family_id == family_id)
+        ).scalar_one_or_none()
+        if cat_ok is None:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid category_id for this family")
 
     if start_date is not None:
         range_start = start_date
@@ -3183,20 +3521,30 @@ def list_transactions(
         range_start, range_end_exclusive = _month_range(f"{today.year:04d}-{today.month:02d}")
         order_asc = False
 
+    cat_filter = None
+    if uncategorized:
+        cat_filter = Transaction.category_id.is_(None)
+    elif category_id is not None:
+        cat_filter = Transaction.category_id == category_id
+
+    range_where = and_(
+        Transaction.family_id == family_id,
+        Transaction.date >= range_start,
+        Transaction.date < range_end_exclusive,
+    )
+    if cat_filter is not None:
+        range_where = and_(range_where, cat_filter)
+
     # Totals
     income_sum = db.execute(
         select(func.coalesce(func.sum(Transaction.amount), 0)).where(
-            Transaction.family_id == family_id,
-            Transaction.date >= range_start,
-            Transaction.date < range_end_exclusive,
+            range_where,
             Transaction.kind == TransactionKind.income,
         )
     ).scalar_one()
     expense_sum = db.execute(
         select(func.coalesce(func.sum(Transaction.amount), 0)).where(
-            Transaction.family_id == family_id,
-            Transaction.date >= range_start,
-            Transaction.date < range_end_exclusive,
+            range_where,
             Transaction.kind == TransactionKind.expense,
         )
     ).scalar_one()
@@ -3208,11 +3556,7 @@ def list_transactions(
     stmt = (
         select(Transaction, Category.name.label("category_name"))
         .join(Category, Category.id == Transaction.category_id, isouter=True)
-        .where(
-            Transaction.family_id == family_id,
-            Transaction.date >= range_start,
-            Transaction.date < range_end_exclusive,
-        )
+        .where(range_where)
         .order_by(*order_cols)
     )
     rows = db.execute(stmt).all()

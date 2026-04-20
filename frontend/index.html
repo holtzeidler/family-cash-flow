@@ -596,6 +596,12 @@
                 </div>
                 <div id="catReportLegend" class="category-report-legend" aria-live="polite"></div>
               </div>
+              <div id="catReportTxSection" class="category-report-tx-section" hidden>
+                <h3 class="category-report-tx-section__title" id="catReportTxTitle"></h3>
+                <p class="meta category-report-tx-hint">Posted transactions in the selected date range.</p>
+                <div id="catReportTxErr" class="error"></div>
+                <div id="catReportTxList" class="list category-report-tx-list"></div>
+              </div>
               <div id="catReportTableWrap" class="category-report-table-wrap" hidden></div>
             </div>
 
@@ -827,15 +833,17 @@
         </div>
 
         <div class="modal-actions modal-actions--tx-edit-foot">
-          <div id="txEditSaveRow" class="tx-edit-foot-save-row">
-            <button type="button" id="txEditSave" class="btn-primary">Save</button>
-          </div>
-          <div id="txEditRecurringFooterRow" class="tx-edit-foot-update-row" style="display: none">
-            <button type="button" id="txEditRecurringUpdateBtn" class="btn-primary">Save</button>
-          </div>
-          <div id="txEditFooterSecondary" class="tx-edit-foot-secondary row two">
+          <div id="txEditFooterSecondary" class="tx-edit-actions-one-line">
             <button type="button" id="txEditDelete" class="danger">Delete</button>
             <button type="button" id="txEditCancel">Cancel</button>
+            <div class="tx-edit-save-slot">
+              <div id="txEditSaveRow" class="tx-edit-save-slot__pane">
+                <button type="button" id="txEditSave" class="btn-primary">Save</button>
+              </div>
+              <div id="txEditRecurringFooterRow" class="tx-edit-save-slot__pane" style="display: none">
+                <button type="button" id="txEditRecurringUpdateBtn" class="btn-primary">Save</button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -909,11 +917,6 @@
                 </div>
               </div>
             </div>
-            <div class="tx-add-vspace" aria-hidden="true"></div>
-            <div class="form-row-h">
-              <div class="form-row-h__label"><label for="txAddCategoryId">Category</label></div>
-              <div class="form-row-h__field"><select id="txAddCategoryId"></select></div>
-            </div>
             <div class="tx-add-vspace tx-add-vspace--lg" aria-hidden="true"></div>
             <div class="tx-add-schedule-toolbar" aria-label="Repeat and schedule">
               <div class="tx-add-schedule-toolbar__left">
@@ -956,6 +959,15 @@
               </div>
             </div>
             <div class="tx-add-vspace tx-add-vspace--lg" aria-hidden="true"></div>
+            <div id="txAddAccountRow" class="form-row-h" style="display: none">
+              <div class="form-row-h__label"><label for="txAddAccountId">Account</label></div>
+              <div class="form-row-h__field"><select id="txAddAccountId"></select></div>
+            </div>
+            <div class="form-row-h">
+              <div class="form-row-h__label"><label for="txAddCategoryId">Category</label></div>
+              <div class="form-row-h__field"><select id="txAddCategoryId"></select></div>
+            </div>
+            <div class="tx-add-vspace tx-add-vspace--lg" aria-hidden="true"></div>
             <div class="form-row-h">
               <div class="form-row-h__label"><label for="txAddNotes">Notes</label></div>
               <div class="form-row-h__field">
@@ -978,11 +990,6 @@
                 <p style="margin: 6px 0 0; font-size: 12px; color: var(--muted)">
                   Required for twice monthly: other day of the month (1–31), not the same as the start date’s day.
                 </p>
-              </div>
-              <div class="tx-add-vspace tx-add-vspace--sm" aria-hidden="true"></div>
-              <div class="form-row-h">
-                <div class="form-row-h__label"><label for="txAddAccountId">Account</label></div>
-                <div class="form-row-h__field"><select id="txAddAccountId"></select></div>
               </div>
               <div class="tx-add-vspace tx-add-vspace--sm" aria-hidden="true"></div>
               <label class="reimbursable-field" for="txAddVariable">

@@ -445,21 +445,22 @@ button.nav-link:hover{
 }
 .calendar-low-balance--sidebar{
   display: flex;
+  flex-direction: column;
   align-items: flex-start;
+  gap: 0;
   white-space: normal;
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
-  line-height: 1.28;
-  /* Slight right shift for text inside the bubble */
-  padding-left: 14px;
-  padding-right: 10px;
-  padding-top: 6px;
-  padding-bottom: 6px;
+  line-height: 1.25;
+  padding: 6px 12px 6px 22px;
 }
-.calendar-low-balance--sidebar{
-  flex-direction: column;
-  gap: 1px;
+.calendar-low-balance--sidebar .calendar-low-balance__head strong{
+  display: block;
+}
+.calendar-low-balance--sidebar .calendar-low-balance__detail{
+  margin-top: 3px;
+  line-height: 1.22;
 }
 .calendar-low-balance--sidebar br{
   display: block;
@@ -1216,6 +1217,18 @@ textarea::placeholder{
 .categories-grid .cat-name--parent{
   font-weight: 700;
   letter-spacing: 0.2px;
+}
+.cat-group-badge{
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(100, 116, 139, 0.22);
+  color: var(--muted);
+  vertical-align: middle;
 }
 .categories-grid .cat-name--child{
   padding-left: 18px;
@@ -2142,56 +2155,54 @@ textarea::placeholder{
   max-width: 520px;
 }
 
-/* Edit modal: Save centered; Delete + Cancel on one row */
+/* Edit modal: Delete, Cancel, Save on one row (equal columns) */
 #txEditInner > .modal-actions.modal-actions--tx-edit-foot{
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 12px;
+  display: block;
 }
-#txEditInner > .modal-actions #txEditSaveRow{
-  display: flex;
-  justify-content: center;
-  width: 100%;
-}
-#txEditInner > .modal-actions #txEditSaveRow #txEditSave{
-  width: auto;
-  min-width: 12rem;
-  max-width: min(100%, 18rem);
-  box-sizing: border-box;
-}
-#txEditInner > .modal-actions #txEditRecurringFooterRow{
-  display: flex;
-  justify-content: center;
-  width: 100%;
-}
-#txEditInner > .modal-actions #txEditFooterSecondary{
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
+#txEditInner > .modal-actions #txEditFooterSecondary.tx-edit-actions-one-line{
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
   gap: 10px;
   width: 100%;
+  align-items: stretch;
 }
-#txEditInner > .modal-actions #txEditFooterSecondary > button{
-  flex: 0 0 auto;
-  width: auto;
-  min-width: 9.5rem;
-  max-width: 12.5rem;
-  padding-left: 18px;
-  padding-right: 18px;
+#txEditInner > .modal-actions #txEditFooterSecondary.tx-edit-actions-one-line > button{
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+  padding-left: 12px;
+  padding-right: 12px;
 }
 #txEditInner > .modal-actions #txEditFooterSecondary.tx-edit-foot-secondary--recurring > button{
-  flex: 1 1 0;
-  min-width: 8.75rem;
-  max-width: min(100%, 14.5rem);
-  padding-left: 18px;
-  padding-right: 18px;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+#txEditInner > .modal-actions .tx-edit-save-slot{
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
+  min-width: 0;
+}
+#txEditInner > .modal-actions .tx-edit-save-slot__pane{
+  grid-row: 1;
+  grid-column: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+}
+#txEditInner > .modal-actions .tx-edit-save-slot__pane .btn-primary{
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding-left: 12px;
+  padding-right: 12px;
 }
 #txEditCancel{
-  width: auto;
+  width: 100%;
   min-width: 0;
-  padding-left: 22px;
-  padding-right: 22px;
+  padding-left: 12px;
+  padding-right: 12px;
   background: transparent;
   color: var(--text);
   border: 2px solid rgba(75, 85, 99, 0.5);
@@ -2208,11 +2219,9 @@ textarea::placeholder{
   background: rgba(0, 0, 0, 0.05);
 }
 #txEditInner #txEditRecurringUpdateBtn{
-  width: auto;
-  min-width: 14rem;
-  max-width: min(100%, 22rem);
-  padding-left: 18px;
-  padding-right: 18px;
+  width: 100%;
+  min-width: 0;
+  max-width: none;
 }
 
 .tx-edit-divider{
@@ -2225,14 +2234,6 @@ textarea::placeholder{
   grid-template-columns: 1fr;
   gap: 10px;
   align-items: start;
-}
-.tx-edit-account-category-row.tx-edit-account-category-row--recurring{
-  grid-template-columns: 1fr 1fr;
-}
-@media (max-width: 519px){
-  .tx-edit-account-category-row.tx-edit-account-category-row--recurring{
-    grid-template-columns: 1fr;
-  }
 }
 
 .modal--expected-edit{
@@ -2530,6 +2531,37 @@ textarea::placeholder{
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   color: var(--muted);
+}
+.category-report-legend-item--interactive{
+  cursor: pointer;
+  border-radius: 8px;
+  outline: none;
+}
+.category-report-legend-item--interactive:hover{
+  background: rgba(0, 0, 0, 0.04);
+}
+.category-report-legend-item--interactive:focus-visible{
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.45);
+}
+.category-report-chart-canvas-wrap canvas{
+  cursor: pointer;
+}
+
+.category-report-tx-section{
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+.category-report-tx-section__title{
+  margin: 0 0 6px;
+  font-size: 1rem;
+}
+.category-report-tx-hint{
+  margin: 0 0 10px;
+}
+.category-report-tx-list{
+  max-height: min(60vh, 420px);
+  overflow-y: auto;
 }
 
 @media (max-width: 860px){
