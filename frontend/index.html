@@ -47,6 +47,9 @@
             </div>
           </div>
 
+          <!-- Settings panel mounts here when Settings view is active -->
+          <div id="settingsSidebarMount"></div>
+
           <div class="sidebar-balance-threshold-alerts" id="sidebarBalanceThresholdAlerts" aria-label="Balance threshold alerts">
             <p id="sidebarBalanceThresholdHint" class="sidebar-balance-threshold-hint-inline" hidden></p>
             <div id="sidebarLowBalanceBanner" class="calendar-low-balance calendar-low-balance--sidebar" style="display: none" role="status"></div>
@@ -310,6 +313,9 @@
             <div style="height: 14px"></div>
 
           </div>
+
+          <!-- Settings panel lives in main column by default, but is moved into #settingsSidebarMount when active -->
+          <div id="settingsViewHome"></div>
 
           <div id="settingsViewPanel" class="app-view" hidden>
             <div class="card sidebar-section" data-sidebar-key="accountDetails">

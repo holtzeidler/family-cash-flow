@@ -832,9 +832,12 @@ function setActiveTopView(view) {
     void refreshLowBalanceAlert();
   }
   if (v === "settings") {
+    mountSettingsPanelInSidebar();
     const accountDetailsCard = document.querySelector('.sidebar-section[data-sidebar-key="accountDetails"]');
     if (accountDetailsCard) applySidebarSectionCollapsed(accountDetailsCard, false);
     renderAccountDetailsPanel();
+  } else {
+    mountSettingsPanelInMain();
   }
   try {
     localStorage.setItem(ACTIVE_VIEW_KEY, v);
@@ -1387,6 +1390,18 @@ function mountTxAddFormInSidebar() {
   const root = document.getElementById("txAddFormRoot");
   const home = document.getElementById("txAddFormHome");
   if (root && home && root.parentElement !== home) home.appendChild(root);
+}
+
+function mountSettingsPanelInSidebar() {
+  const panel = document.getElementById("settingsViewPanel");
+  const mount = document.getElementById("settingsSidebarMount");
+  if (panel && mount && panel.parentElement !== mount) mount.appendChild(panel);
+}
+
+function mountSettingsPanelInMain() {
+  const panel = document.getElementById("settingsViewPanel");
+  const home = document.getElementById("settingsViewHome");
+  if (panel && home && panel.parentElement !== home) home.appendChild(panel);
 }
 
 function openTxAddModal(opts = {}) {
