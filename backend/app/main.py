@@ -1,16 +1,15 @@
 from __future__ import annotations
 
 import logging
-import os
-from collections import Counter, defaultdict
+from collections import defaultdict
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from enum import Enum
 from pathlib import Path
 from typing import Annotated, Literal, Optional, Sequence
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import urlparse
 
-from fastapi import Cookie, Depends, FastAPI, HTTPException, Query, Request, Response, status
+from fastapi import Cookie, Depends, FastAPI, HTTPException, Query, Response, status
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -23,7 +22,7 @@ from sqlalchemy import Enum as SAEnum
 from sqlalchemy import Boolean, Integer, UniqueConstraint
 from sqlalchemy import ForeignKey
 from sqlalchemy import String
-from sqlalchemy import and_, delete, func, select, text
+from sqlalchemy import delete, func, select, text
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, sessionmaker
 from sqlalchemy.types import Numeric
@@ -104,8 +103,6 @@ class Family(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(255), index=True)
     created_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
-    # Bumped when built-in category taxonomy is applied (see CANONICAL_CATEGORY_TAXONOMY_V1).
-    category_taxonomy_version: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
 
     memberships: Mapped[list[FamilyMember]] = relationship(back_populates="family")
     accounts: Mapped[list[Account]] = relationship(back_populates="family")
@@ -129,7 +126,6 @@ class Category(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     family_id: Mapped[int] = mapped_column(ForeignKey("families.id"), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    parent_id: Mapped[Optional[int]] = mapped_column(ForeignKey("categories.id"), nullable=True, index=True)
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     fg_color: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     bg_color: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
@@ -145,19 +141,12 @@ class Transaction(Base):
 
     date: Mapped[date] = mapped_column(SA_Date, nullable=False, index=True)
     description: Mapped[str] = mapped_column(String(500), nullable=False, default="")
-    vendor: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, index=True)
-    raw_description: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     notes: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     kind: Mapped[TransactionKind] = mapped_column(SAEnum(TransactionKind), nullable=False, default=TransactionKind.expense)
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     reimbursable: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    # Imported transactions are analysis-only: visible/editable but excluded from balance math.
-    imported: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    import_batch_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
-    imported_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
 
     category_id: Mapped[Optional[int]] = mapped_column(ForeignKey("categories.id"), nullable=True, index=True)
-    account_id: Mapped[Optional[int]] = mapped_column(ForeignKey("accounts.id"), nullable=True, index=True)
 
     family: Mapped[Family] = relationship(back_populates="transactions")
 
@@ -335,17 +324,14 @@ class FamilyOut(BaseModel):
 
 class CategoryIn(BaseModel):
     name: str = Field(min_length=1, max_length=255)
-    parent_id: Optional[int] = Field(default=None, description="Optional parent category id (header).")
 
 
 class CategoryOut(BaseModel):
     id: int
     name: str
-    parent_id: Optional[int] = None
     sort_order: int = 0
     fg_color: Optional[str] = None
     bg_color: Optional[str] = None
-    has_children: bool = False
 
 
 class CategoryUpdateIn(BaseModel):
@@ -355,29 +341,8 @@ class CategoryUpdateIn(BaseModel):
     sort_order: Optional[int] = None
 
 
-class CategoryGroupIn(BaseModel):
-    id: int = Field(description="Parent category id")
-    children: list[int] = Field(default_factory=list, description="Child category ids in desired order")
-
-
 class CategoryReorderIn(BaseModel):
-    # Backward compatible: allow the old flat payload, but prefer `groups`.
-    ordered_ids: Optional[list[int]] = Field(default=None, description="(Legacy) Category IDs in desired display order")
-    groups: Optional[list[CategoryGroupIn]] = Field(default=None, description="Parent blocks with child ordering")
-
-
-class CategoryMergeIn(BaseModel):
-    from_id: int
-    to_id: int
-    to_name: Optional[str] = None
-
-
-class CategoryMergeOut(BaseModel):
-    from_id: int
-    to_id: int
-    moved_transactions: int
-    moved_expected: int
-    moved_overrides: int
+    ordered_ids: list[int] = Field(min_length=1, description="Category IDs in desired display order")
 
 
 class ReconciledDaysOut(BaseModel):
@@ -415,7 +380,6 @@ class TransactionIn(BaseModel):
     kind: TransactionKind
     amount: Decimal = Field(gt=0)
     category_id: Optional[int] = None
-    account_id: Optional[int] = None
     reimbursable: bool = False
 
 
@@ -423,59 +387,17 @@ class TransactionOut(BaseModel):
     id: int
     date: date
     description: str
-    vendor: Optional[str] = None
-    raw_description: Optional[str] = None
     notes: Optional[str] = None
     kind: TransactionKind
     amount: Decimal
     category: Optional[str] = None
     category_id: Optional[int] = None
-    account_id: Optional[int] = None
     reimbursable: bool = False
-    imported: bool = False
 
 
 class TransactionsListOut(BaseModel):
     items: list[TransactionOut]
     totals: dict[str, Decimal]
-
-
-class TransactionsImportIn(BaseModel):
-    class TransactionImportItemIn(BaseModel):
-        date: date
-        description: str = Field(default="", max_length=500)
-        vendor: Optional[str] = Field(default=None, max_length=255)
-        raw_description: Optional[str] = Field(default=None, max_length=500)
-        notes: Optional[str] = Field(default=None, max_length=500)
-        kind: TransactionKind
-        amount: Decimal = Field(gt=0)
-        category_id: Optional[int] = None
-        account_id: Optional[int] = None
-        reimbursable: bool = False
-
-    items: list[TransactionImportItemIn]
-
-
-class TransactionsImportOut(BaseModel):
-    created: int
-    batch_id: str
-
-
-class TransactionsImportUndoIn(BaseModel):
-    batch_id: str
-
-
-class TransactionsImportUndoOut(BaseModel):
-    deleted: int
-
-
-class TransactionsPurgeBeforeIn(BaseModel):
-    before_date: date
-    imported_only: bool = True
-
-
-class TransactionsPurgeBeforeOut(BaseModel):
-    deleted: int
 
 
 class AccountIn(BaseModel):
@@ -690,26 +612,16 @@ def _parse_cors_origins(raw: str) -> list[str]:
 
 
 app = FastAPI(title="Family Cash Flow")
-origins = _parse_cors_origins(settings.CORS_ORIGINS or "")
-# Always allow the GitHub Pages frontend origin so the app works
-# even if the Render env var is missing/misconfigured.
-default_web_origins = ["https://holtzeidler.github.io"]
-if settings.ENV != "production":
-    default_web_origins += [
-        "http://localhost:3000",
-        "http://localhost:5173",
-        "http://localhost:8000",
-    ]
-origins = [o for o in [*origins, *default_web_origins] if o]
-origins = list(dict.fromkeys(origins))  # de-dupe, preserve order
-if origins:
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=origins,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+if settings.CORS_ORIGINS:
+    origins = _parse_cors_origins(settings.CORS_ORIGINS)
+    if origins:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=origins,
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
 
 
 @app.get("/api/debug/public-config", include_in_schema=False)
@@ -722,26 +634,14 @@ def public_debug_config():
     parsed = _parse_cors_origins(raw) if raw.strip() else []
     return {
         "env": settings.ENV,
-        "cors_middleware_enabled": True,
-        "cors_allow_origins": origins,
+        "cors_middleware_enabled": bool(raw.strip() and parsed),
+        "cors_allow_origins": parsed,
         "cors_origins_configured": bool(raw.strip()),
         "auth_cookie_samesite": "none" if settings.ENV == "production" else "lax",
         "auth_cookie_secure": settings.ENV == "production",
         "note": "GitHub Pages -> Render needs ENV=production so Set-Cookie uses SameSite=None; Secure.",
     }
 
-
-@app.get("/api/debug/build-info", include_in_schema=False)
-def public_build_info():
-    """
-    Helps confirm what code Render is actually running.
-    Render commonly provides RENDER_GIT_COMMIT / RENDER_SERVICE_ID / RENDER_GIT_BRANCH.
-    """
-    return {
-        "render_git_commit": os.environ.get("RENDER_GIT_COMMIT"),
-        "render_git_branch": os.environ.get("RENDER_GIT_BRANCH"),
-        "render_service_id": os.environ.get("RENDER_SERVICE_ID"),
-    }
 
 @app.on_event("startup")
 def startup_populate_schema():
@@ -763,60 +663,7 @@ def startup_populate_schema():
     _ensure_expected_moved_to_date_column()
     _ensure_expected_override_variable_column()
     _ensure_category_sort_order_column()
-    _ensure_category_parent_id_column()
-    _ensure_transaction_account_id_column()
-    _ensure_transaction_imported_column()
-    _ensure_transaction_import_batch_columns()
-    _ensure_transaction_vendor_columns()
     _ensure_reconciled_days_table()
-
-
-def _ensure_transaction_imported_column() -> None:
-    """Lightweight startup migration: mark analysis-only imported transactions."""
-    with engine.begin() as conn:
-        table = "transactions"
-        if settings.DATABASE_URL.startswith("sqlite"):
-            cols = conn.execute(text(f"PRAGMA table_info({table})")).fetchall()
-            has_col = any(str(row[1]) == "imported" for row in cols)
-            if not has_col:
-                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN imported BOOLEAN NOT NULL DEFAULT 0"))
-        else:
-            conn.execute(text(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS imported BOOLEAN"))
-            conn.execute(text(f"UPDATE {table} SET imported = FALSE WHERE imported IS NULL"))
-
-
-def _ensure_transaction_import_batch_columns() -> None:
-    """Lightweight startup migration: track import batches for undo."""
-    with engine.begin() as conn:
-        table = "transactions"
-        if settings.DATABASE_URL.startswith("sqlite"):
-            cols = conn.execute(text(f"PRAGMA table_info({table})")).fetchall()
-            has_batch = any(str(row[1]) == "import_batch_id" for row in cols)
-            has_at = any(str(row[1]) == "imported_at" for row in cols)
-            if not has_batch:
-                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN import_batch_id TEXT"))
-            if not has_at:
-                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN imported_at DATETIME"))
-        else:
-            conn.execute(text(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS import_batch_id VARCHAR(64)"))
-            conn.execute(text(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS imported_at TIMESTAMP"))
-
-
-def _ensure_transaction_vendor_columns() -> None:
-    """Lightweight startup migration: vendor + raw_description for reporting."""
-    with engine.begin() as conn:
-        table = "transactions"
-        if settings.DATABASE_URL.startswith("sqlite"):
-            cols = conn.execute(text(f"PRAGMA table_info({table})")).fetchall()
-            has_vendor = any(str(row[1]) == "vendor" for row in cols)
-            has_raw = any(str(row[1]) == "raw_description" for row in cols)
-            if not has_vendor:
-                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN vendor VARCHAR(255)"))
-            if not has_raw:
-                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN raw_description VARCHAR(500)"))
-        else:
-            conn.execute(text(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS vendor VARCHAR(255)"))
-            conn.execute(text(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS raw_description VARCHAR(500)"))
 
 
 def _ensure_expected_moved_to_date_column() -> None:
@@ -995,47 +842,6 @@ def _ensure_category_sort_order_column() -> None:
             conn.execute(text("UPDATE categories SET sort_order = COALESCE(sort_order, 0)"))
 
 
-def _ensure_category_parent_id_column() -> None:
-    """Lightweight startup migration: add parent_id for header/subcategory grouping."""
-    with engine.begin() as conn:
-        if settings.DATABASE_URL.startswith("sqlite"):
-            cols = conn.execute(text("PRAGMA table_info(categories)")).fetchall()
-            has_col = any(str(row[1]) == "parent_id" for row in cols)
-            if not has_col:
-                conn.execute(text("ALTER TABLE categories ADD COLUMN parent_id INTEGER"))
-        else:
-            conn.execute(text("ALTER TABLE categories ADD COLUMN IF NOT EXISTS parent_id INTEGER"))
-
-
-def _ensure_family_category_taxonomy_version_column() -> None:
-    """Track one-time category taxonomy upgrades per family."""
-    with engine.begin() as conn:
-        table = "families"
-        if settings.DATABASE_URL.startswith("sqlite"):
-            cols = conn.execute(text(f"PRAGMA table_info({table})")).fetchall()
-            has_col = any(str(row[1]) == "category_taxonomy_version" for row in cols)
-            if not has_col:
-                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN category_taxonomy_version INTEGER NOT NULL DEFAULT 0"))
-                conn.execute(text(f"UPDATE {table} SET category_taxonomy_version = 0 WHERE category_taxonomy_version IS NULL"))
-        else:
-            conn.execute(
-                text(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS category_taxonomy_version INTEGER NOT NULL DEFAULT 0")
-            )
-
-
-def _ensure_transaction_account_id_column() -> None:
-    """Lightweight startup migration: store account_id on actual transactions for filtering."""
-    with engine.begin() as conn:
-        table = "transactions"
-        if settings.DATABASE_URL.startswith("sqlite"):
-            cols = conn.execute(text(f"PRAGMA table_info({table})")).fetchall()
-            has_col = any(str(row[1]) == "account_id" for row in cols)
-            if not has_col:
-                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN account_id INTEGER"))
-        else:
-            conn.execute(text(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS account_id INTEGER"))
-
-
 def _ensure_reimbursable_columns() -> None:
     """Lightweight startup migration: add reimbursable flags to transactions and schedules."""
     with engine.begin() as conn:
@@ -1150,387 +956,6 @@ def create_family(payload: FamilyCreateIn, access_token: Annotated[Optional[str]
     return FamilyOut(id=family.id, name=family.name, role=member.role)
 
 
-CURRENT_CATEGORY_TAXONOMY_VERSION = 1
-
-# Canonical Group -> Category tree, embedded from `CashFlow Categories - Sheet1.csv`.
-# Third column: legacy flat category name to merge into this leaf (case-insensitive), or None.
-CANONICAL_CATEGORY_TAXONOMY_V1: list[tuple[str, str, Optional[str]]] = [
-    ("3rd Party", "Scouts", "Scouts"),
-    ("3rd Party", "8th Grade", "8th Grade"),
-    ("Bills & Utilities", "Electric", None),
-    ("Bills & Utilities", "Internet & Cable", None),
-    ("Bills & Utilities", "Gas", None),
-    ("Bills & Utilities", "Water", None),
-    ("Bills & Utilities", "Cell Phone", None),
-    ("Food & Dining", "Coffee Shops", None),
-    ("Food & Dining", "Groceries", None),
-    ("Food & Dining", "Restaurants & Bars", None),
-    ("Auto & Transport", "Car Loan", "Car Loan"),
-    ("Auto & Transport", "Gas", None),
-    ("Auto & Transport", "Maintenance & Repairs", None),
-    ("Auto & Transport", "Rideahare & Taxi", None),
-    ("Auto & Transport", "Parking & Tolls", None),
-    ("Home", "Mortgage", "Home"),
-    ("Home", "Home Maintenance", None),
-    ("Travel & Vacation", "Airlines", None),
-    ("Travel & Vacation", "Hotels", None),
-    ("Shopping", "Shopping", None),
-    ("Shopping", "Entertainment", None),
-    ("Transfers", "Transfers", "Transfers"),
-    ("Transfers", "Credit Card Payment", "Credit Card"),
-    ("Business", "Reimburseable Expense", None),
-    ("Business", "Office Supplies", None),
-    ("Other", "Check", None),
-    ("Other", "Miscellaneous", None),
-    ("Other", "Uncategorized", None),
-    ("Financial", "Taxes", "Taxes"),
-    ("Financial", "Fees", None),
-    ("Financial", "Investment", "Investment"),
-    ("Financial", "Loan Repayment", None),
-    ("Financial", "Insurance", None),
-    ("Financial", "Cash & ATM", "Cash"),
-    ("Health & Lifestyle", "Dental", None),
-    ("Health & Lifestyle", "Medical", None),
-    ("Health & Lifestyle", "Personal Care", None),
-    ("Kids", "Kids Activities", "Kids"),
-    ("Kids", "Education", None),
-    ("Kids", "Sports", None),
-    ("Gifts & Donations", "Charity", None),
-    ("Gifts & Donations", "Gifts", None),
-]
-
-
-def _norm_cat_name(name: Optional[str]) -> str:
-    return (name or "").strip().lower()
-
-
-_cn_leaf = [_norm_cat_name(c) for _g, c, _ in CANONICAL_CATEGORY_TAXONOMY_V1]
-_cn_leaf_ctr = Counter(_cn_leaf)
-# Used to avoid folding ambiguous duplicate names (e.g. two canonical "Gas" leaves) into the wrong group.
-CANONICAL_UNIQUE_LEAF_NAME_NORMS: frozenset[str] = frozenset(n for n, k in _cn_leaf_ctr.items() if k == 1)
-
-
-def _repoint_category_fks(db, family_id: int, from_id: int, to_id: int) -> None:
-    if from_id == to_id:
-        return
-    db.execute(
-        text("UPDATE transactions SET category_id = :to_id WHERE family_id = :fid AND category_id = :from_id"),
-        {"to_id": int(to_id), "fid": int(family_id), "from_id": int(from_id)},
-    )
-    db.execute(
-        text("UPDATE expected_transactions SET category_id = :to_id WHERE family_id = :fid AND category_id = :from_id"),
-        {"to_id": int(to_id), "fid": int(family_id), "from_id": int(from_id)},
-    )
-    db.execute(
-        text(
-            "UPDATE expected_transaction_overrides "
-            "SET category_id = :to_id "
-            "WHERE expected_transaction_id IN (SELECT id FROM expected_transactions WHERE family_id = :fid) "
-            "AND category_id = :from_id"
-        ),
-        {"to_id": int(to_id), "fid": int(family_id), "from_id": int(from_id)},
-    )
-
-
-def _absorb_source_category_into_dest(db, family_id: int, src_id: int, dst_id: int) -> None:
-    """
-    Move references from src onto dst, reparent src's children into dst's bucket, then delete src.
-    Works when dst is a leaf (children attach under dst's parent) or a group (children attach under dst).
-    """
-    if src_id == dst_id:
-        return
-    src = db.execute(select(Category).where(Category.id == src_id, Category.family_id == family_id)).scalar_one_or_none()
-    dst = db.execute(select(Category).where(Category.id == dst_id, Category.family_id == family_id)).scalar_one_or_none()
-    if src is None or dst is None:
-        return
-
-    bucket_parent_id: Optional[int]
-    if dst.parent_id is None:
-        bucket_parent_id = int(dst.id)
-    else:
-        bucket_parent_id = int(dst.parent_id)
-
-    children = (
-        db.execute(select(Category).where(Category.family_id == family_id, Category.parent_id == int(src.id))).scalars().all()
-    )
-    for ch in list(children):
-        peers = (
-            db.execute(
-                select(Category).where(
-                    Category.family_id == family_id,
-                    Category.parent_id == bucket_parent_id,
-                    Category.id != int(ch.id),
-                )
-            )
-            .scalars()
-            .all()
-        )
-        match = next((p for p in peers if _norm_cat_name(p.name) == _norm_cat_name(ch.name)), None)
-        if match is not None:
-            _absorb_source_category_into_dest(db, family_id, int(ch.id), int(match.id))
-        else:
-            ch.parent_id = bucket_parent_id
-
-    _repoint_category_fks(db, family_id, int(src.id), int(dst.id))
-    db.delete(src)
-    db.flush()
-
-
-def _dedupe_top_level_groups_by_name(db, family_id: int) -> None:
-    tops = (
-        db.execute(select(Category).where(Category.family_id == family_id, Category.parent_id.is_(None))).scalars().all()
-    )
-    by_norm: dict[str, list[Category]] = defaultdict(list)
-    for t in tops:
-        by_norm[_norm_cat_name(t.name)].append(t)
-    for _nm, lst in by_norm.items():
-        if len(lst) < 2:
-            continue
-        primary = min(lst, key=lambda c: int(c.id))
-        for other in lst:
-            if int(other.id) == int(primary.id):
-                continue
-            _absorb_source_category_into_dest(db, family_id, int(other.id), int(primary.id))
-
-
-def _ensure_canonical_group_and_leaf_ids(db, family_id: int) -> tuple[dict[tuple[str, str], int], dict[str, int]]:
-    """
-    Ensure each canonical group and leaf exists; return maps:
-    (norm_group, norm_leaf) -> leaf_id, norm_group -> group_id
-    """
-    _dedupe_top_level_groups_by_name(db, family_id)
-
-    group_ids: dict[str, int] = {}
-    ordered_groups: list[str] = []
-    for gname, _cname, _leg in CANONICAL_CATEGORY_TAXONOMY_V1:
-        if gname not in ordered_groups:
-            ordered_groups.append(gname)
-
-    for gi, gname in enumerate(ordered_groups):
-        tops_all = (
-            db.execute(select(Category).where(Category.family_id == family_id, Category.parent_id.is_(None))).scalars().all()
-        )
-        tops = [t for t in tops_all if _norm_cat_name(t.name) == _norm_cat_name(gname)]
-        if tops:
-            grp = min(tops, key=lambda c: int(c.id))
-            grp.sort_order = gi
-            group_ids[_norm_cat_name(gname)] = int(grp.id)
-        else:
-            grp = Category(family_id=family_id, name=gname, parent_id=None, sort_order=gi)
-            db.add(grp)
-            db.flush()
-            group_ids[_norm_cat_name(gname)] = int(grp.id)
-
-    leaf_ids: dict[tuple[str, str], int] = {}
-    for gname, cname, _leg in CANONICAL_CATEGORY_TAXONOMY_V1:
-        gid = group_ids[_norm_cat_name(gname)]
-        peers = (
-            db.execute(select(Category).where(Category.family_id == family_id, Category.parent_id == gid)).scalars().all()
-        )
-        existing = [p for p in peers if _norm_cat_name(p.name) == _norm_cat_name(cname)]
-        if existing:
-            leaf = min(existing, key=lambda c: int(c.id))
-            for dup in existing:
-                if int(dup.id) != int(leaf.id):
-                    _absorb_source_category_into_dest(db, family_id, int(dup.id), int(leaf.id))
-        else:
-            max_sort = (
-                db.execute(
-                    select(func.coalesce(func.max(Category.sort_order), 0)).where(
-                        Category.family_id == family_id, Category.parent_id == gid
-                    )
-                ).scalar_one()
-                or 0
-            )
-            leaf = Category(family_id=family_id, name=cname, parent_id=gid, sort_order=int(max_sort) + 1)
-            db.add(leaf)
-            db.flush()
-        leaf_ids[(_norm_cat_name(gname), _norm_cat_name(cname))] = int(leaf.id)
-
-    return leaf_ids, group_ids
-
-
-def _apply_canonical_sort_orders(db, family_id: int, group_ids: dict[str, int]) -> None:
-    seen: list[str] = []
-    for gname, _c, _l in CANONICAL_CATEGORY_TAXONOMY_V1:
-        if gname not in seen:
-            seen.append(gname)
-    for gi, gname in enumerate(seen):
-        gid = group_ids.get(_norm_cat_name(gname))
-        if gid is None:
-            continue
-        grp = db.execute(select(Category).where(Category.id == gid)).scalar_one_or_none()
-        if grp:
-            grp.sort_order = gi
-    for gname, cname, _leg in CANONICAL_CATEGORY_TAXONOMY_V1:
-        gid = group_ids.get(_norm_cat_name(gname))
-        if gid is None:
-            continue
-        peers = (
-            db.execute(select(Category).where(Category.family_id == family_id, Category.parent_id == gid)).scalars().all()
-        )
-        leaf = next((p for p in peers if _norm_cat_name(p.name) == _norm_cat_name(cname)), None)
-        if leaf is None:
-            continue
-        children_in_order = [cc for gg, cc, _ in CANONICAL_CATEGORY_TAXONOMY_V1 if gg == gname]
-        leaf.sort_order = int(children_in_order.index(cname))
-    db.flush()
-
-
-def _apply_category_taxonomy_v1_migration(db, family_id: int) -> None:
-    leaf_ids, group_ids = _ensure_canonical_group_and_leaf_ids(db, family_id)
-    _apply_canonical_sort_orders(db, family_id, group_ids)
-
-    protected_ids = set(int(x) for x in group_ids.values())
-
-    for gname, cname, legacy in CANONICAL_CATEGORY_TAXONOMY_V1:
-        if not legacy or not str(legacy).strip():
-            continue
-        dst_id = leaf_ids.get((_norm_cat_name(gname), _norm_cat_name(cname)))
-        if dst_id is None:
-            continue
-        legacy_norm = _norm_cat_name(legacy)
-        matches = db.execute(select(Category).where(Category.family_id == family_id)).scalars().all()
-        for src in list(matches):
-            if int(src.id) in protected_ids:
-                continue
-            if int(src.id) == int(dst_id):
-                continue
-            if _norm_cat_name(src.name) != legacy_norm:
-                continue
-            _absorb_source_category_into_dest(db, family_id, int(src.id), int(dst_id))
-
-    # Top-level duplicates of leaf names (e.g. old flat "Groceries") fold into canonical leaf.
-    for gname, cname, _leg in CANONICAL_CATEGORY_TAXONOMY_V1:
-        if _norm_cat_name(cname) not in CANONICAL_UNIQUE_LEAF_NAME_NORMS:
-            continue
-        dst_id = leaf_ids.get((_norm_cat_name(gname), _norm_cat_name(cname)))
-        if dst_id is None:
-            continue
-        tops = (
-            db.execute(select(Category).where(Category.family_id == family_id, Category.parent_id.is_(None))).scalars().all()
-        )
-        orphans = [t for t in tops if _norm_cat_name(t.name) == _norm_cat_name(cname)]
-        for src in orphans:
-            if int(src.id) in protected_ids:
-                continue
-            if int(src.id) == int(dst_id):
-                continue
-            _absorb_source_category_into_dest(db, family_id, int(src.id), int(dst_id))
-
-    # Same-name leaf under a non-canonical group (e.g. old starter "Recommended" > Coffee Shops).
-    for gname, cname, _leg in CANONICAL_CATEGORY_TAXONOMY_V1:
-        if _norm_cat_name(cname) not in CANONICAL_UNIQUE_LEAF_NAME_NORMS:
-            continue
-        dst_id = leaf_ids.get((_norm_cat_name(gname), _norm_cat_name(cname)))
-        gid = group_ids.get(_norm_cat_name(gname))
-        if dst_id is None or gid is None:
-            continue
-        all_cats = db.execute(select(Category).where(Category.family_id == family_id)).scalars().all()
-        for src in list(all_cats):
-            if int(src.id) in protected_ids or int(src.id) == int(dst_id):
-                continue
-            if int(src.parent_id or 0) == int(gid):
-                continue
-            if _norm_cat_name(src.name) != _norm_cat_name(cname):
-                continue
-            _absorb_source_category_into_dest(db, family_id, int(src.id), int(dst_id))
-
-    _dedupe_top_level_groups_by_name(db, family_id)
-    db.flush()
-
-
-def _seed_canonical_categories_for_empty_family(db, family_id: int) -> None:
-    """Insert CANONICAL_CATEGORY_TAXONOMY_V1 for a family with no categories yet."""
-    group_ids: dict[str, int] = {}
-    seen: list[str] = []
-    for gname, _c, _l in CANONICAL_CATEGORY_TAXONOMY_V1:
-        if gname not in seen:
-            seen.append(gname)
-    for gi, gname in enumerate(seen):
-        grp = Category(family_id=family_id, name=gname, parent_id=None, sort_order=gi)
-        db.add(grp)
-        db.flush()
-        group_ids[_norm_cat_name(gname)] = int(grp.id)
-    for gname, cname, _leg in CANONICAL_CATEGORY_TAXONOMY_V1:
-        gid = group_ids[_norm_cat_name(gname)]
-        same_group = [(gg, cc) for gg, cc, _ in CANONICAL_CATEGORY_TAXONOMY_V1 if gg == gname]
-        idx = next(i for i, (gg, cc) in enumerate(same_group) if gg == gname and cc == cname)
-        db.add(Category(family_id=family_id, name=cname, parent_id=gid, sort_order=idx))
-    db.flush()
-
-
-def _ensure_family_category_taxonomy(db, family_id: int) -> None:
-    """
-    Apply built-in Group -> Category taxonomy once per family (v1).
-    New families get the full tree; existing families are migrated using legacy name mappings.
-    """
-    fam = db.execute(select(Family).where(Family.id == family_id)).scalar_one_or_none()
-    if fam is None:
-        return
-    ver = int(fam.category_taxonomy_version or 0)
-    if ver >= CURRENT_CATEGORY_TAXONOMY_VERSION:
-        return
-
-    existing = db.execute(select(func.count(Category.id)).where(Category.family_id == family_id)).scalar_one() or 0
-    if int(existing) == 0:
-        _seed_canonical_categories_for_empty_family(db, family_id)
-    else:
-        _apply_category_taxonomy_v1_migration(db, family_id)
-
-    fam.category_taxonomy_version = CURRENT_CATEGORY_TAXONOMY_VERSION
-    db.commit()
-
-
-def _auto_merge_transfers_category_if_needed(db, family_id: int) -> None:
-    """
-    Safety cleanup for legacy data where both "Transfers" and "Transfer" exist and
-    some transactions still point at the older/plural category.
-    """
-    fam = db.execute(select(Family).where(Family.id == family_id)).scalar_one_or_none()
-    if fam is not None and int(fam.category_taxonomy_version or 0) >= CURRENT_CATEGORY_TAXONOMY_VERSION:
-        return
-
-    cats = (
-        db.execute(select(Category).where(Category.family_id == family_id))
-        .scalars()
-        .all()
-    )
-    if not cats:
-        return
-    by_norm = {}
-    for c in cats:
-        nm = (c.name or "").strip().lower()
-        if nm:
-            by_norm.setdefault(nm, []).append(c)
-
-    # Prefer singular "transfer" as the destination if present.
-    dst = (by_norm.get("transfer") or [None])[0]
-    src = (by_norm.get("transfers") or [None])[0]
-    if not dst or not src or int(dst.id) == int(src.id):
-        return
-
-    # Repoint references.
-    db.execute(
-        text("UPDATE transactions SET category_id = :to_id WHERE family_id = :fid AND category_id = :from_id"),
-        {"to_id": int(dst.id), "fid": int(family_id), "from_id": int(src.id)},
-    )
-    db.execute(
-        text("UPDATE expected_transactions SET category_id = :to_id WHERE family_id = :fid AND category_id = :from_id"),
-        {"to_id": int(dst.id), "fid": int(family_id), "from_id": int(src.id)},
-    )
-    db.execute(
-        text(
-            "UPDATE expected_transaction_overrides "
-            "SET category_id = :to_id "
-            "WHERE expected_transaction_id IN (SELECT id FROM expected_transactions WHERE family_id = :fid) "
-            "AND category_id = :from_id"
-        ),
-        {"to_id": int(dst.id), "fid": int(family_id), "from_id": int(src.id)},
-    )
-    db.commit()
-
-
 @app.get("/api/families/{family_id}/categories", response_model=list[CategoryOut])
 def list_categories(
     family_id: int,
@@ -1539,8 +964,6 @@ def list_categories(
 ):
     user_id = get_current_user_id(access_token)
     require_family_member(db=db, family_id=family_id, user_id=user_id)
-    _ensure_family_category_taxonomy(db=db, family_id=family_id)
-    _auto_merge_transfers_category_if_needed(db=db, family_id=family_id)
     rows = (
         db.execute(
             select(Category)
@@ -1550,51 +973,10 @@ def list_categories(
         .scalars()
         .all()
     )
-
-    by_id: dict[int, Category] = {r.id: r for r in rows}
-    children_by_parent: dict[int, list[Category]] = {}
-    top_level: list[Category] = []
-    for r in rows:
-        pid = int(r.parent_id) if r.parent_id is not None else None
-        if pid is not None and pid in by_id:
-            children_by_parent.setdefault(pid, []).append(r)
-        else:
-            top_level.append(r)
-
-    def _k(c: Category):
-        return (int(c.sort_order or 0), str(c.name or ""), int(c.id))
-
-    top_level.sort(key=_k)
-    for pid in list(children_by_parent.keys()):
-        children_by_parent[pid].sort(key=_k)
-
-    out: list[CategoryOut] = []
-    for p in top_level:
-        kids = children_by_parent.get(p.id, [])
-        out.append(
-            CategoryOut(
-                id=p.id,
-                name=p.name,
-                parent_id=None,
-                sort_order=p.sort_order or 0,
-                fg_color=p.fg_color,
-                bg_color=p.bg_color,
-                has_children=len(kids) > 0,
-            )
-        )
-        for c in kids:
-            out.append(
-                CategoryOut(
-                    id=c.id,
-                    name=c.name,
-                    parent_id=p.id,
-                    sort_order=c.sort_order or 0,
-                    fg_color=c.fg_color,
-                    bg_color=c.bg_color,
-                    has_children=False,
-                )
-            )
-    return out
+    return [
+        CategoryOut(id=r.id, name=r.name, sort_order=r.sort_order or 0, fg_color=r.fg_color, bg_color=r.bg_color)
+        for r in rows
+    ]
 
 
 @app.post("/api/families/{family_id}/categories", response_model=CategoryOut)
@@ -1606,27 +988,17 @@ def create_category(
 ):
     user_id = get_current_user_id(access_token)
     require_family_member(db=db, family_id=family_id, user_id=user_id)
-    parent_id: Optional[int] = int(payload.parent_id) if payload.parent_id is not None else None
-    if parent_id is not None:
-        parent = db.execute(select(Category).where(Category.id == parent_id, Category.family_id == family_id)).scalar_one_or_none()
-        if parent is None:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid parent category")
-    max_sort = db.execute(
-        select(func.coalesce(func.max(Category.sort_order), 0)).where(Category.family_id == family_id, Category.parent_id == parent_id)
-    ).scalar_one()
-    category = Category(family_id=family_id, name=payload.name, parent_id=parent_id, sort_order=int(max_sort) + 1)
+    max_sort = db.execute(select(func.coalesce(func.max(Category.sort_order), 0)).where(Category.family_id == family_id)).scalar_one()
+    category = Category(family_id=family_id, name=payload.name, sort_order=int(max_sort) + 1)
     db.add(category)
     db.commit()
     db.refresh(category)
-    has_children = False
     return CategoryOut(
         id=category.id,
         name=category.name,
-        parent_id=category.parent_id,
         sort_order=category.sort_order or 0,
         fg_color=category.fg_color,
         bg_color=category.bg_color,
-        has_children=has_children,
     )
 
 
@@ -1660,17 +1032,12 @@ def update_category(
 
     db.commit()
     db.refresh(cat)
-    has_children = (
-        db.execute(select(func.count(Category.id)).where(Category.family_id == family_id, Category.parent_id == cat.id)).scalar_one() or 0
-    ) > 0
     return CategoryOut(
         id=cat.id,
         name=cat.name,
-        parent_id=cat.parent_id,
         sort_order=cat.sort_order or 0,
         fg_color=cat.fg_color,
         bg_color=cat.bg_color,
-        has_children=has_children,
     )
 
 
@@ -1684,44 +1051,7 @@ def reorder_categories(
     user_id = get_current_user_id(access_token)
     require_family_member(db=db, family_id=family_id, user_id=user_id)
 
-    # Preferred: hierarchical reorder via groups.
-    if payload.groups is not None:
-        groups = payload.groups
-        parent_ids = [int(g.id) for g in groups]
-        all_ids: list[int] = []
-        for g in groups:
-            all_ids.append(int(g.id))
-            for cid in g.children:
-                all_ids.append(int(cid))
-        if len(all_ids) != len(set(all_ids)):
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Duplicate category ids in payload")
-
-        rows = db.execute(select(Category).where(Category.family_id == family_id, Category.id.in_(all_ids))).scalars().all()
-        cats_by_id = {c.id: c for c in rows}
-        if len(cats_by_id) != len(all_ids):
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="One or more category ids are invalid for this family")
-
-        # Validate parents are top-level (or will become top-level). We do not support nested depth > 2.
-        for pid in parent_ids:
-            if pid not in cats_by_id:
-                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid parent id")
-
-        for p_idx, g in enumerate(groups):
-            pid = int(g.id)
-            parent = cats_by_id[pid]
-            parent.parent_id = None
-            parent.sort_order = p_idx
-            for c_idx, cid in enumerate(g.children):
-                child = cats_by_id[int(cid)]
-                child.parent_id = pid
-                child.sort_order = c_idx
-
-        db.commit()
-        return list_categories(family_id=family_id, access_token=access_token, db=db)
-
-    # Legacy: flat reorder via ordered_ids.
-    if not payload.ordered_ids:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No reorder payload provided")
+    # Ensure all provided IDs belong to this family.
     ids = [int(x) for x in payload.ordered_ids]
     if len(ids) != len(set(ids)):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Duplicate category ids in payload")
@@ -1736,57 +1066,6 @@ def reorder_categories(
 
     db.commit()
     return list_categories(family_id=family_id, access_token=access_token, db=db)
-
-
-@app.post("/api/families/{family_id}/categories/merge", response_model=CategoryMergeOut)
-def merge_categories(
-    family_id: int,
-    payload: CategoryMergeIn,
-    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
-    db=Depends(get_db),
-):
-    user_id = get_current_user_id(access_token)
-    require_family_member(db=db, family_id=family_id, user_id=user_id)
-
-    if payload.from_id == payload.to_id:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="from_id and to_id must differ")
-
-    src = db.execute(select(Category).where(Category.family_id == family_id, Category.id == payload.from_id)).scalar_one_or_none()
-    dst = db.execute(select(Category).where(Category.family_id == family_id, Category.id == payload.to_id)).scalar_one_or_none()
-    if src is None or dst is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Category not found")
-
-    if payload.to_name is not None and payload.to_name.strip():
-        dst.name = payload.to_name.strip()
-
-    moved_tx = db.execute(
-        text("UPDATE transactions SET category_id = :to_id WHERE family_id = :fid AND category_id = :from_id"),
-        {"to_id": int(dst.id), "fid": int(family_id), "from_id": int(src.id)},
-    ).rowcount or 0
-    moved_exp = db.execute(
-        text("UPDATE expected_transactions SET category_id = :to_id WHERE family_id = :fid AND category_id = :from_id"),
-        {"to_id": int(dst.id), "fid": int(family_id), "from_id": int(src.id)},
-    ).rowcount or 0
-    moved_ovr = db.execute(
-        text(
-            "UPDATE expected_transaction_overrides "
-            "SET category_id = :to_id "
-            "WHERE expected_transaction_id IN (SELECT id FROM expected_transactions WHERE family_id = :fid) "
-            "AND category_id = :from_id"
-        ),
-        {"to_id": int(dst.id), "fid": int(family_id), "from_id": int(src.id)},
-    ).rowcount or 0
-
-    db.delete(src)
-    db.commit()
-
-    return CategoryMergeOut(
-        from_id=int(payload.from_id),
-        to_id=int(payload.to_id),
-        moved_transactions=int(moved_tx),
-        moved_expected=int(moved_exp),
-        moved_overrides=int(moved_ovr),
-    )
 
 
 @app.get("/api/families/{family_id}/reconciled-days", response_model=ReconciledDaysOut)
@@ -3024,9 +2303,7 @@ def _calendar_month_daily_balances(
         return []
 
     min_acc = min((a.starting_balance_date or a.created_at.date()) for a in account_rows)
-    first_tx = db.execute(
-        select(func.min(Transaction.date)).where(Transaction.family_id == family_id, Transaction.imported == False)  # noqa: E712
-    ).scalar_one_or_none()
+    first_tx = db.execute(select(func.min(Transaction.date)).where(Transaction.family_id == family_id)).scalar_one_or_none()
     first_expected = db.execute(select(func.min(ExpectedTransaction.start_date)).where(ExpectedTransaction.family_id == family_id)).scalar_one_or_none()
     global_start = min_acc
     if first_tx is not None:
@@ -3039,7 +2316,6 @@ def _calendar_month_daily_balances(
         tx_rows = db.execute(
             select(Transaction).where(
                 Transaction.family_id == family_id,
-                Transaction.imported == False,  # noqa: E712
                 Transaction.date >= global_start,
                 Transaction.date <= last_day,
             )
@@ -3151,9 +2427,7 @@ def _pooled_daily_balance_first_hit_impl(
         return None, None
 
     min_acc = min((a.starting_balance_date or a.created_at.date()) for a in account_rows)
-    first_tx = db.execute(
-        select(func.min(Transaction.date)).where(Transaction.family_id == family_id, Transaction.imported == False)  # noqa: E712
-    ).scalar_one_or_none()
+    first_tx = db.execute(select(func.min(Transaction.date)).where(Transaction.family_id == family_id)).scalar_one_or_none()
     first_expected = db.execute(select(func.min(ExpectedTransaction.start_date)).where(ExpectedTransaction.family_id == family_id)).scalar_one_or_none()
     global_start = min_acc
     if first_tx is not None:
@@ -3166,7 +2440,6 @@ def _pooled_daily_balance_first_hit_impl(
         tx_rows = db.execute(
             select(Transaction).where(
                 Transaction.family_id == family_id,
-                Transaction.imported == False,  # noqa: E712
                 Transaction.date >= global_start,
                 Transaction.date <= last_day,
             )
@@ -3484,25 +2757,11 @@ def list_transactions(
     month: Optional[str] = None,
     start_date: Annotated[Optional[date], Query(description="Inclusive range start (YYYY-MM-DD); use with end_date for date-range lists.")] = None,
     end_date: Annotated[Optional[date], Query(description="Inclusive range end (YYYY-MM-DD).")] = None,
-    category_id: Annotated[Optional[int], Query(description="When set, only transactions assigned to this category.")] = None,
-    uncategorized: Annotated[bool, Query(description="When true, only transactions with no category.")] = False,
     access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
     require_family_member(db=db, family_id=family_id, user_id=user_id)
-
-    if category_id is not None and uncategorized:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Use either category_id or uncategorized, not both",
-        )
-    if category_id is not None:
-        cat_ok = db.execute(
-            select(Category.id).where(Category.id == category_id, Category.family_id == family_id)
-        ).scalar_one_or_none()
-        if cat_ok is None:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid category_id for this family")
 
     if start_date is not None:
         range_start = start_date
@@ -3521,30 +2780,20 @@ def list_transactions(
         range_start, range_end_exclusive = _month_range(f"{today.year:04d}-{today.month:02d}")
         order_asc = False
 
-    cat_filter = None
-    if uncategorized:
-        cat_filter = Transaction.category_id.is_(None)
-    elif category_id is not None:
-        cat_filter = Transaction.category_id == category_id
-
-    range_where = and_(
-        Transaction.family_id == family_id,
-        Transaction.date >= range_start,
-        Transaction.date < range_end_exclusive,
-    )
-    if cat_filter is not None:
-        range_where = and_(range_where, cat_filter)
-
     # Totals
     income_sum = db.execute(
         select(func.coalesce(func.sum(Transaction.amount), 0)).where(
-            range_where,
+            Transaction.family_id == family_id,
+            Transaction.date >= range_start,
+            Transaction.date < range_end_exclusive,
             Transaction.kind == TransactionKind.income,
         )
     ).scalar_one()
     expense_sum = db.execute(
         select(func.coalesce(func.sum(Transaction.amount), 0)).where(
-            range_where,
+            Transaction.family_id == family_id,
+            Transaction.date >= range_start,
+            Transaction.date < range_end_exclusive,
             Transaction.kind == TransactionKind.expense,
         )
     ).scalar_one()
@@ -3556,7 +2805,11 @@ def list_transactions(
     stmt = (
         select(Transaction, Category.name.label("category_name"))
         .join(Category, Category.id == Transaction.category_id, isouter=True)
-        .where(range_where)
+        .where(
+            Transaction.family_id == family_id,
+            Transaction.date >= range_start,
+            Transaction.date < range_end_exclusive,
+        )
         .order_by(*order_cols)
     )
     rows = db.execute(stmt).all()
@@ -3568,16 +2821,12 @@ def list_transactions(
                 id=tx.id,
                 date=tx.date,
                 description=tx.description,
-                vendor=getattr(tx, "vendor", None),
-                raw_description=getattr(tx, "raw_description", None),
                 notes=tx.notes,
                 kind=tx.kind,
                 amount=tx.amount,
                 category=category_name,
                 category_id=tx.category_id,
-                account_id=getattr(tx, "account_id", None),
                 reimbursable=bool(getattr(tx, "reimbursable", False)),
-                imported=bool(getattr(tx, "imported", False)),
             )
         )
 
@@ -3604,331 +2853,21 @@ def create_transaction(
         if category is None:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid category for this family")
 
-    if payload.account_id is not None:
-        acct = db.execute(select(Account).where(Account.id == payload.account_id, Account.family_id == family_id)).scalar_one_or_none()
-        if acct is None:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid account for this family")
-
     tx = Transaction(
         family_id=family_id,
         date=payload.date,
         description=payload.description,
-        vendor=None,
-        raw_description=None,
         notes=payload.notes.strip() if payload.notes and payload.notes.strip() else None,
         kind=payload.kind,
         amount=payload.amount,
         category_id=payload.category_id,
-        account_id=payload.account_id,
         reimbursable=payload.reimbursable,
-        imported=False,
     )
     db.add(tx)
     db.commit()
     db.refresh(tx)
 
     return _transaction_out(db, tx)
-
-
-@app.post("/api/families/{family_id}/transactions/import", response_model=TransactionsImportOut)
-def import_transactions(
-    family_id: int,
-    payload: TransactionsImportIn,
-    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
-    db=Depends(get_db),
-):
-    user_id = get_current_user_id(access_token)
-    require_family_member(db=db, family_id=family_id, user_id=user_id)
-
-    items = payload.items or []
-    if len(items) == 0:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No items provided")
-    if len(items) > 5000:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Too many items (max 5000)")
-
-    # Limit: 5 years back (analysis only, keep DB bounded).
-    min_date_allowed = date.today() - timedelta(days=365 * 5)
-    for it in items:
-        if it.date < min_date_allowed:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Transactions older than 5 years are not allowed (min date {min_date_allowed.isoformat()})",
-            )
-
-    # Validate referenced IDs in bulk
-    account_ids = {it.account_id for it in items if it.account_id is not None}
-    category_ids = {it.category_id for it in items if it.category_id is not None}
-    if account_ids:
-        ok_accounts = set(
-            db.execute(select(Account.id).where(Account.family_id == family_id, Account.id.in_(account_ids))).scalars().all()
-        )
-        bad = sorted(list(account_ids - ok_accounts))
-        if bad:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid account for this family: {bad[0]}")
-    if category_ids:
-        ok_cats = set(
-            db.execute(select(Category.id).where(Category.family_id == family_id, Category.id.in_(category_ids))).scalars().all()
-        )
-        bad = sorted(list(category_ids - ok_cats))
-        if bad:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid category for this family: {bad[0]}")
-
-    import uuid
-
-    batch_id = uuid.uuid4().hex
-    now = datetime.utcnow()
-    txs: list[Transaction] = []
-    for it in items:
-        txs.append(
-            Transaction(
-                family_id=family_id,
-                date=it.date,
-                description=it.description,
-                vendor=(it.vendor.strip() if it.vendor and it.vendor.strip() else None),
-                raw_description=(it.raw_description.strip() if it.raw_description and it.raw_description.strip() else None),
-                notes=it.notes.strip() if it.notes and it.notes.strip() else None,
-                kind=it.kind,
-                amount=it.amount,
-                category_id=it.category_id,
-                account_id=it.account_id,
-                reimbursable=it.reimbursable,
-                imported=True,
-                import_batch_id=batch_id,
-                imported_at=now,
-            )
-        )
-    db.add_all(txs)
-    db.commit()
-    return TransactionsImportOut(created=len(txs), batch_id=batch_id)
-
-
-@app.post("/api/families/{family_id}/transactions/import/undo", response_model=TransactionsImportUndoOut)
-async def undo_transactions_import(
-    family_id: int,
-    request: Request,
-    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
-    db=Depends(get_db),
-):
-    user_id = get_current_user_id(access_token)
-    require_family_member(db=db, family_id=family_id, user_id=user_id)
-    ct = (request.headers.get("content-type") or "").lower()
-    body = await request.body()
-    batch_id = ""
-    try:
-        if "application/json" in ct:
-            payload = TransactionsImportUndoIn.model_validate_json(body or b"{}")
-            batch_id = (payload.batch_id or "").strip()
-        else:
-            # application/x-www-form-urlencoded (or missing content-type)
-            qs = (body or b"").decode("utf-8", errors="replace")
-            data = parse_qs(qs, keep_blank_values=True)
-            vals = data.get("batch_id") or []
-            batch_id = (vals[0] if vals else "").strip()
-    except Exception:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid undo payload")
-
-    batch_id = (batch_id or "").strip()
-    if not batch_id:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="batch_id is required")
-
-    # Delete only imported rows from this batch.
-    deleted = db.execute(
-        text("DELETE FROM transactions WHERE family_id = :fid AND imported = 1 AND import_batch_id = :bid"),
-        {"fid": int(family_id), "bid": batch_id},
-    ).rowcount or 0
-    db.commit()
-    return TransactionsImportUndoOut(deleted=int(deleted))
-
-
-# Some environments/browser setups intermittently fail CORS preflight for JSON POSTs.
-# Provide GET equivalents (query params) as a pragmatic escape hatch.
-@app.get("/api/families/{family_id}/transactions/import/undo", response_model=TransactionsImportUndoOut)
-def undo_transactions_import_get(
-    family_id: int,
-    batch_id: str,
-    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
-    db=Depends(get_db),
-):
-    user_id = get_current_user_id(access_token)
-    require_family_member(db=db, family_id=family_id, user_id=user_id)
-    bid = (batch_id or "").strip()
-    if not bid:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="batch_id is required")
-    deleted = db.execute(
-        text("DELETE FROM transactions WHERE family_id = :fid AND imported = 1 AND import_batch_id = :bid"),
-        {"fid": int(family_id), "bid": bid},
-    ).rowcount or 0
-    db.commit()
-    return TransactionsImportUndoOut(deleted=int(deleted))
-
-
-@app.post("/api/families/{family_id}/transactions/purge-before", response_model=TransactionsPurgeBeforeOut)
-async def purge_transactions_before(
-    family_id: int,
-    request: Request,
-    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
-    db=Depends(get_db),
-):
-    """
-    Safety valve for cleanup during import iteration.
-    Defaults to deleting *imported* transactions only.
-    """
-    user_id = get_current_user_id(access_token)
-    require_family_member(db=db, family_id=family_id, user_id=user_id)
-    ct = (request.headers.get("content-type") or "").lower()
-    body = await request.body()
-    cutoff: Optional[date] = None
-    imported_only = True
-    try:
-        if "application/json" in ct:
-            payload = TransactionsPurgeBeforeIn.model_validate_json(body or b"{}")
-            cutoff = payload.before_date
-            imported_only = bool(payload.imported_only)
-        else:
-            qs = (body or b"").decode("utf-8", errors="replace")
-            data = parse_qs(qs, keep_blank_values=True)
-            bd_vals = data.get("before_date") or []
-            io_vals = data.get("imported_only") or []
-            before_raw = (bd_vals[0] if bd_vals else "").strip()
-            if not before_raw:
-                raise ValueError("missing before_date")
-            cutoff = date.fromisoformat(before_raw)
-            if io_vals:
-                imported_only = str(io_vals[0]).strip().lower() in ("1", "true", "yes", "on")
-    except Exception:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid purge payload")
-
-    if cutoff is None:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="before_date is required")
-
-    if imported_only:
-        sql = "DELETE FROM transactions WHERE family_id = :fid AND imported = 1 AND date < :cutoff"
-    else:
-        sql = "DELETE FROM transactions WHERE family_id = :fid AND date < :cutoff"
-    deleted = db.execute(text(sql), {"fid": int(family_id), "cutoff": cutoff.isoformat()}).rowcount or 0
-    db.commit()
-    return TransactionsPurgeBeforeOut(deleted=int(deleted))
-
-
-@app.get("/api/families/{family_id}/transactions/purge-before", response_model=TransactionsPurgeBeforeOut)
-def purge_transactions_before_get(
-    family_id: int,
-    before_date: date,
-    imported_only: bool = True,
-    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
-    db=Depends(get_db),
-):
-    """
-    GET equivalent for purge-before (avoids CORS preflight in some setups).
-    """
-    user_id = get_current_user_id(access_token)
-    require_family_member(db=db, family_id=family_id, user_id=user_id)
-    cutoff = before_date
-    if imported_only:
-        sql = "DELETE FROM transactions WHERE family_id = :fid AND imported = 1 AND date < :cutoff"
-    else:
-        sql = "DELETE FROM transactions WHERE family_id = :fid AND date < :cutoff"
-    deleted = db.execute(text(sql), {"fid": int(family_id), "cutoff": cutoff.isoformat()}).rowcount or 0
-    db.commit()
-    return TransactionsPurgeBeforeOut(deleted=int(deleted))
-
-
-class ImportedUncategorizedOut(BaseModel):
-    items: list[TransactionOut]
-
-
-class ImportAssignCategoryItemIn(BaseModel):
-    id: int
-    category_id: int
-
-
-class ImportAssignCategoriesIn(BaseModel):
-    items: list[ImportAssignCategoryItemIn]
-
-
-class ImportAssignCategoriesOut(BaseModel):
-    updated: int
-
-
-@app.get("/api/families/{family_id}/transactions/import/uncategorized", response_model=ImportedUncategorizedOut)
-def list_import_uncategorized(
-    family_id: int,
-    limit: int = 200,
-    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
-    db=Depends(get_db),
-):
-    user_id = get_current_user_id(access_token)
-    require_family_member(db=db, family_id=family_id, user_id=user_id)
-    limit = max(1, min(int(limit), 500))
-    rows = (
-        db.execute(
-            select(Transaction, Category.name.label("category_name"))
-            .join(Category, Category.id == Transaction.category_id, isouter=True)
-            .where(Transaction.family_id == family_id, Transaction.imported == True, Transaction.category_id == None)  # noqa: E712
-            .order_by(Transaction.date.desc(), Transaction.id.desc())
-            .limit(limit)
-        )
-        .all()
-    )
-    items: list[TransactionOut] = []
-    for tx, category_name in rows:
-        items.append(
-            TransactionOut(
-                id=tx.id,
-                date=tx.date,
-                description=tx.description,
-                vendor=getattr(tx, "vendor", None),
-                raw_description=getattr(tx, "raw_description", None),
-                notes=tx.notes,
-                kind=tx.kind,
-                amount=tx.amount,
-                category=category_name,
-                category_id=tx.category_id,
-                account_id=getattr(tx, "account_id", None),
-                reimbursable=bool(getattr(tx, "reimbursable", False)),
-                imported=bool(getattr(tx, "imported", False)),
-            )
-        )
-    return ImportedUncategorizedOut(items=items)
-
-
-@app.post("/api/families/{family_id}/transactions/import/assign-categories", response_model=ImportAssignCategoriesOut)
-def assign_import_categories(
-    family_id: int,
-    payload: ImportAssignCategoriesIn,
-    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
-    db=Depends(get_db),
-):
-    user_id = get_current_user_id(access_token)
-    require_family_member(db=db, family_id=family_id, user_id=user_id)
-    items = payload.items or []
-    if not items:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No items provided")
-
-    updated = 0
-    for it in items:
-        tx_id = int(getattr(it, "id", 0) or 0)
-        cat_id = int(getattr(it, "category_id", 0) or 0)
-        if tx_id <= 0 or cat_id <= 0:
-            continue
-        # Validate category belongs to family.
-        cat = db.execute(select(Category).where(Category.family_id == family_id, Category.id == cat_id)).scalar_one_or_none()
-        if cat is None:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid category for this family")
-        # Update only imported transactions in this family.
-        rc = (
-            db.execute(
-                text(
-                    "UPDATE transactions SET category_id = :cid "
-                    "WHERE id = :tid AND family_id = :fid AND imported = 1"
-                ),
-                {"cid": cat_id, "tid": tx_id, "fid": family_id},
-            ).rowcount
-            or 0
-        )
-        updated += int(rc)
-    db.commit()
-    return ImportAssignCategoriesOut(updated=updated)
 
 
 def _transaction_out(db, tx: Transaction) -> TransactionOut:
@@ -3940,16 +2879,12 @@ def _transaction_out(db, tx: Transaction) -> TransactionOut:
         id=tx.id,
         date=tx.date,
         description=tx.description,
-        vendor=getattr(tx, "vendor", None),
-        raw_description=getattr(tx, "raw_description", None),
         notes=tx.notes,
         kind=tx.kind,
         amount=tx.amount,
         category=category_name,
         category_id=tx.category_id,
-        account_id=getattr(tx, "account_id", None),
         reimbursable=bool(getattr(tx, "reimbursable", False)),
-        imported=bool(getattr(tx, "imported", False)),
     )
 
 
@@ -3977,18 +2912,12 @@ def update_transaction(
         if category is None:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid category for this family")
 
-    if payload.account_id is not None:
-        acct = db.execute(select(Account).where(Account.id == payload.account_id, Account.family_id == family_id)).scalar_one_or_none()
-        if acct is None:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid account for this family")
-
     tx.date = payload.date
     tx.description = payload.description
     tx.notes = payload.notes.strip() if payload.notes and payload.notes.strip() else None
     tx.kind = payload.kind
     tx.amount = payload.amount
     tx.category_id = payload.category_id
-    tx.account_id = payload.account_id
     tx.reimbursable = payload.reimbursable
     db.commit()
     db.refresh(tx)

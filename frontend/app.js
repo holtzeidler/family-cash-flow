@@ -3,103 +3,16 @@ function apiBaseUrl() {
   return raw.replace(/\/+$/, "");
 }
 
-/**
- * Render free tier often cold-starts; the first cross-origin fetch can throw before TLS completes.
- * Retry safe idempotent requests only (GET, no body).
- */
-async function fetchWithColdStartRetry(url, init, opts = {}) {
-  const { maxAttempts = 3, backoffMs = 750 } = opts;
-  let lastErr;
-  for (let i = 0; i < maxAttempts; i++) {
-    try {
-      return await fetch(url, init);
-    } catch (e) {
-      lastErr = e;
-      if (i < maxAttempts - 1) {
-        await new Promise((r) => setTimeout(r, backoffMs * (i + 1)));
-      }
-    }
-  }
-  throw lastErr;
-}
-
 async function api(path, method = "GET", body) {
   const apiBase = apiBaseUrl();
   const fullPath = `${apiBase}${path}`;
-  const init = {
-    method,
-    headers: body ? { "Content-Type": "application/json" } : {},
-    credentials: "include",
-    body: body ? JSON.stringify(body) : undefined,
-  };
-  const allowRetry = method === "GET" && !body;
-  let res;
-  try {
-    res = allowRetry ? await fetchWithColdStartRetry(fullPath, init) : await fetch(fullPath, init);
-  } catch (err) {
-    const msg = err && err.message ? err.message : String(err);
-    const onPages = typeof location !== "undefined" && location.hostname.endsWith("github.io");
-    const origin = typeof location !== "undefined" ? location.origin : "(unknown)";
-    const baseHint = apiBase
-      ? `Trying API_BASE: ${apiBase}`
-      : "API_BASE is empty — requests go to the Pages host (wrong).";
-    const debugUrl = apiBase ? `${apiBase}/api/debug/public-config` : "";
-    const corsHint = onPages
-      ? `If this persists, open ${debugUrl || "[API_BASE]/api/debug/public-config"} in a new tab. It should return JSON and include Access-Control-Allow-Origin: ${origin}.`
-      : "If this is cross-origin, configure CORS on the API for this origin.";
-    throw new Error(
-      `${msg}\n\n${baseHint}\n${corsHint}\nGET requests are retried automatically for Render cold starts. If it still fails, wait ~1 minute and refresh, or try the debug URL in another browser.`
-    );
-  }
-
-  if (res.status === 401) {
-    window.location.href = "./login.html";
-    return null;
-  }
-
-  if (!res.ok) {
-    let msg = `Request failed (${res.status})`;
-    const raw = await res.text().catch(() => "");
-    try {
-      const data = raw ? JSON.parse(raw) : null;
-      if (data && data.detail) msg = typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail);
-    } catch (_) {
-      if (raw) msg = `${msg}\n${raw.slice(0, 800)}`;
-    }
-    throw new Error(msg);
-  }
-
-  // Some endpoints may return empty bodies; handle gracefully.
-  if (res.status === 204) return null;
-  try {
-    const raw = await res.text();
-    if (!raw) return null;
-    return JSON.parse(raw);
-  } catch (_) {
-    return null;
-  }
-}
-
-/**
- * Cross-origin-safe POST for simple payloads.
- * Uses `application/x-www-form-urlencoded`, which avoids CORS preflight in browsers
- * (unlike `application/json`, which triggers an OPTIONS preflight that can fail in some setups).
- */
-async function apiForm(path, fields) {
-  const apiBase = apiBaseUrl();
-  const fullPath = `${apiBase}${path}`;
-  const body = new URLSearchParams();
-  for (const [k, v] of Object.entries(fields || {})) {
-    if (v === undefined || v === null) continue;
-    body.set(String(k), String(v));
-  }
   let res;
   try {
     res = await fetch(fullPath, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
+      method,
+      headers: body ? { "Content-Type": "application/json" } : {},
       credentials: "include",
-      body: body.toString(),
+      body: body ? JSON.stringify(body) : undefined,
     });
   } catch (err) {
     const msg = err && err.message ? err.message : String(err);
@@ -108,9 +21,8 @@ async function apiForm(path, fields) {
     const baseHint = apiBase
       ? `Trying API_BASE: ${apiBase}`
       : "API_BASE is empty — requests go to the Pages host (wrong).";
-    const debugUrl = apiBase ? `${apiBase}/api/debug/public-config` : "";
     const corsHint = onPages
-      ? `If this persists, open ${debugUrl || "[API_BASE]/api/debug/public-config"} in a new tab. It should return JSON and include Access-Control-Allow-Origin: ${origin}.`
+      ? `Render env CORS_ORIGINS must include exactly: ${origin} (scheme + host, no path). Set ENV=production for login cookies.`
       : "If this is cross-origin, configure CORS on the API for this origin.";
     throw new Error(
       `${msg}\n\n${baseHint}\n${corsHint}\nIf the API is on Render free tier, wait ~1 minute for a cold start and refresh.`
@@ -124,42 +36,26 @@ async function apiForm(path, fields) {
 
   if (!res.ok) {
     let msg = `Request failed (${res.status})`;
-    const raw = await res.text().catch(() => "");
     try {
-      const data = raw ? JSON.parse(raw) : null;
-      if (data && data.detail) msg = typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail);
-    } catch (_) {
-      if (raw) msg = `${msg}\n${raw.slice(0, 800)}`;
-    }
+      const data = await res.json();
+      if (data && data.detail) msg = data.detail;
+    } catch (_) {}
     throw new Error(msg);
   }
 
+  // Some endpoints may return empty bodies; handle gracefully.
   if (res.status === 204) return null;
   try {
-    const raw = await res.text();
-    if (!raw) return null;
-    return JSON.parse(raw);
+    return await res.json();
   } catch (_) {
     return null;
   }
 }
 
-function formatUiError(err) {
-  if (err == null) return "";
-  if (typeof err === "string") return err;
-  if (err instanceof Error) return err.message || String(err);
-  try {
-    return JSON.stringify(err);
-  } catch (_) {
-    return String(err);
-  }
-}
-
 function show(el, msg) {
   if (!el) return;
-  const s = formatUiError(msg);
-  el.textContent = s || "";
-  el.style.display = s ? "block" : "none";
+  el.textContent = msg || "";
+  el.style.display = msg ? "block" : "none";
 }
 
 function expandSidebarSection(key) {
@@ -240,49 +136,8 @@ const monthInput = document.getElementById("monthInput");
 const totalsEl = document.getElementById("totals");
 const txList = document.getElementById("txList");
 const txListMain = document.getElementById("txListMain");
-const txAllRangePreset = document.getElementById("txAllRangePreset");
-const txAllStartDate = document.getElementById("txAllStartDate");
-const txAllEndDate = document.getElementById("txAllEndDate");
-const txAllCustomDatesRow = document.getElementById("txAllCustomDatesRow");
-const txAllAccountFilter = document.getElementById("txAllAccountFilter");
-const txAllCategoryFilter = document.getElementById("txAllCategoryFilter");
-const txAllRunBtn = document.getElementById("txAllRunBtn");
-const txAllErr = document.getElementById("txAllErr");
-
-// Historical transaction import (Settings)
-const txImportFile = document.getElementById("txImportFile");
-const txImportMapping = document.getElementById("txImportMapping");
-const txImportColDate = document.getElementById("txImportColDate");
-const txImportColAmount = document.getElementById("txImportColAmount");
-const txImportColKind = document.getElementById("txImportColKind");
-const txImportColAccount = document.getElementById("txImportColAccount");
-const txImportColCategory = document.getElementById("txImportColCategory");
-const txImportAccountMode = document.getElementById("txImportAccountMode");
-const txImportFixedAccountId = document.getElementById("txImportFixedAccountId");
-const txImportCategoryMode = document.getElementById("txImportCategoryMode");
-const txImportFixedCategoryId = document.getElementById("txImportFixedCategoryId");
-const txImportQueueWrap = document.getElementById("txImportQueueWrap");
-const txImportReviewQueueBtn = document.getElementById("txImportReviewQueueBtn");
-const txImportQueueSaveBtn = document.getElementById("txImportQueueSaveBtn");
-const txImportQueueList = document.getElementById("txImportQueueList");
-const txImportColNotes = document.getElementById("txImportColNotes");
-const txImportColDesc = document.getElementById("txImportColDesc");
-const txImportSkipHeader = document.getElementById("txImportSkipHeader");
-const txImportPreview = document.getElementById("txImportPreview");
-const txImportDetectedPreset = document.getElementById("txImportDetectedPreset");
-const txImportErr = document.getElementById("txImportErr");
-const txImportRunBtn = document.getElementById("txImportRunBtn");
-const txImportLastResult = document.getElementById("txImportLastResult");
-const txImportPurgeBefore = document.getElementById("txImportPurgeBefore");
-const txImportPurgeBtn = document.getElementById("txImportPurgeBtn");
-const txImportTestApiBtn = document.getElementById("txImportTestApiBtn");
-
-let txImportState = { headers: [], rows: [], filename: "" };
 
 const categoriesGrid = document.getElementById("categoriesGrid");
-const mergeCategoryFrom = document.getElementById("mergeCategoryFrom");
-const mergeCategoryTo = document.getElementById("mergeCategoryTo");
-const mergeCategoryBtn = document.getElementById("mergeCategoryBtn");
 
 // Balance threshold alerts (settings + calendar sidebar)
 const balanceThresholdMin = document.getElementById("balanceThresholdMin");
@@ -308,20 +163,7 @@ function setSidebarLowBalanceBanner(text, style = "off") {
     sidebarLowBalanceBanner.classList.remove("is-danger", "is-muted");
     return;
   }
-  const raw = String(text);
-  const parts = raw.split("\n");
-  const headPlain = parts[0] ? escapeHtml(parts[0]) : "";
-  const restHtml = parts
-    .slice(1)
-    .map((s) => escapeHtml(s))
-    .join("<br>");
-  if (headPlain && restHtml) {
-    sidebarLowBalanceBanner.innerHTML = `<div class="calendar-low-balance__head"><strong>${headPlain}</strong></div><div class="calendar-low-balance__detail">${restHtml}</div>`;
-  } else if (headPlain) {
-    sidebarLowBalanceBanner.innerHTML = `<div class="calendar-low-balance__head"><strong>${headPlain}</strong></div>`;
-  } else {
-    sidebarLowBalanceBanner.innerHTML = restHtml ? `<div class="calendar-low-balance__detail">${restHtml}</div>` : "";
-  }
+  sidebarLowBalanceBanner.textContent = text;
   sidebarLowBalanceBanner.style.display = "flex";
   sidebarLowBalanceBanner.classList.remove("is-danger", "is-muted");
   sidebarLowBalanceBanner.classList.toggle("is-danger", style === "danger");
@@ -337,20 +179,7 @@ function setSidebarHighBalanceBanner(text, style = "off") {
     sidebarHighBalanceBanner.classList.remove("is-high", "is-muted");
     return;
   }
-  const raw = String(text);
-  const parts = raw.split("\n");
-  const headPlain = parts[0] ? escapeHtml(parts[0]) : "";
-  const restHtml = parts
-    .slice(1)
-    .map((s) => escapeHtml(s))
-    .join("<br>");
-  if (headPlain && restHtml) {
-    sidebarHighBalanceBanner.innerHTML = `<div class="calendar-low-balance__head"><strong>${headPlain}</strong></div><div class="calendar-low-balance__detail">${restHtml}</div>`;
-  } else if (headPlain) {
-    sidebarHighBalanceBanner.innerHTML = `<div class="calendar-low-balance__head"><strong>${headPlain}</strong></div>`;
-  } else {
-    sidebarHighBalanceBanner.innerHTML = restHtml ? `<div class="calendar-low-balance__detail">${restHtml}</div>` : "";
-  }
+  sidebarHighBalanceBanner.textContent = text;
   sidebarHighBalanceBanner.style.display = "flex";
   sidebarHighBalanceBanner.classList.remove("is-high", "is-muted");
   sidebarHighBalanceBanner.classList.toggle("is-high", style === "high");
@@ -388,7 +217,6 @@ const cancelAccountEditBtn = document.getElementById("cancelAccountEditBtn");
 // Expected transactions (sidebar list / filters; add flow uses Add transaction modal)
 const recurringFrequencyFilter = document.getElementById("recurringFrequencyFilter");
 const recurringKindFilter = document.getElementById("recurringKindFilter");
-const recurringAccountFilter = document.getElementById("recurringAccountFilter");
 const recurringFrequencyApplyBtn = document.getElementById("recurringFrequencyApplyBtn");
 const recurringFilteredList = document.getElementById("recurringFilteredList");
 const variableTodoList = document.getElementById("variableTodoList");
@@ -530,10 +358,7 @@ const txAddNotes = document.getElementById("txAddNotes");
 const txAddRepeats = document.getElementById("txAddRepeats");
 const txAddRecurringBlock = document.getElementById("txAddRecurringBlock");
 const txAddRecurrence = document.getElementById("txAddRecurrence");
-const txAddEndOnDateRadio = document.getElementById("txAddEndOnDateRadio");
-const txAddEndAfterCountRadio = document.getElementById("txAddEndAfterCountRadio");
-const txAddEndOnDate = document.getElementById("txAddEndOnDate");
-const txAddEndAfterCount = document.getElementById("txAddEndAfterCount");
+const txAddLastTxnDate = document.getElementById("txAddLastTxnDate");
 const txAddTwiceMonthlyFields = document.getElementById("txAddTwiceMonthlyFields");
 const txAddSecondDayOfMonth = document.getElementById("txAddSecondDayOfMonth");
 const txAddAccountId = document.getElementById("txAddAccountId");
@@ -549,37 +374,23 @@ function updateTxAddTwiceMonthlyVisibility() {
 
 function updateTxAddRepeatingUi() {
   const repeats = !!txAddRepeats?.checked;
-  const acctRow = document.getElementById("txAddAccountRow");
-  if (acctRow) acctRow.style.display = repeats ? "" : "none";
   if (txAddRecurringBlock) txAddRecurringBlock.style.display = repeats ? "block" : "none";
   if (txAddDateLabel) txAddDateLabel.textContent = repeats ? "Start date" : "Date";
   const recWrap = document.getElementById("txAddRecurrenceWrap");
   if (recWrap) recWrap.hidden = !repeats;
   if (txAddRecurrence) txAddRecurrence.disabled = !repeats;
-  const endWrap = document.getElementById("txAddEndFieldWrap");
-  if (endWrap) endWrap.hidden = !repeats;
-  if (!repeats) {
-    if (txAddEndOnDate) txAddEndOnDate.value = "";
-    if (txAddEndAfterCount) txAddEndAfterCount.value = "";
-    if (txAddEndOnDateRadio) txAddEndOnDateRadio.checked = false;
-    if (txAddEndAfterCountRadio) txAddEndAfterCountRadio.checked = false;
+  const lastWrap = document.getElementById("txAddLastTxnFieldWrap");
+  if (lastWrap) lastWrap.hidden = !repeats;
+  if (txAddLastTxnDate) {
+    if (!repeats) txAddLastTxnDate.value = "";
+    txAddLastTxnDate.disabled = !repeats;
   }
-  if (txAddEndOnDate) txAddEndOnDate.disabled = !repeats || !txAddEndOnDateRadio?.checked;
-  if (txAddEndAfterCount) txAddEndAfterCount.disabled = !repeats || !txAddEndAfterCountRadio?.checked;
   updateTxAddTwiceMonthlyVisibility();
-}
-
-function updateTxAddEndModeUi() {
-  const repeats = !!txAddRepeats?.checked;
-  if (txAddEndOnDate) txAddEndOnDate.disabled = !repeats || !txAddEndOnDateRadio?.checked;
-  if (txAddEndAfterCount) txAddEndAfterCount.disabled = !repeats || !txAddEndAfterCountRadio?.checked;
 }
 
 if (txAddRepeats) {
   txAddRepeats.addEventListener("change", updateTxAddRepeatingUi);
 }
-if (txAddEndOnDateRadio) txAddEndOnDateRadio.addEventListener("change", updateTxAddEndModeUi);
-if (txAddEndAfterCountRadio) txAddEndAfterCountRadio.addEventListener("change", updateTxAddEndModeUi);
 if (txAddRecurrence) {
   txAddRecurrence.addEventListener("change", updateTxAddTwiceMonthlyVisibility);
 }
@@ -601,10 +412,10 @@ async function refreshLowBalanceAlert() {
   try {
     show(lowBalanceErr, "");
     if (!lowBalanceResult) return;
+    setSidebarLowBalanceBanner("", "off");
+    setSidebarHighBalanceBanner("", "off");
+    setSidebarBalanceThresholdHint("");
     if (!state.activeFamilyId) {
-      setSidebarLowBalanceBanner("", "off");
-      setSidebarHighBalanceBanner("", "off");
-      setSidebarBalanceThresholdHint("");
       setLowBalanceResult("", true);
       return;
     }
@@ -641,10 +452,6 @@ async function refreshLowBalanceAlert() {
     }
     lowBalanceLastQuery = { familyId: state.activeFamilyId, min: minVal, max: maxVal, mode };
 
-    // Clear and recompute only when the query changes.
-    setSidebarLowBalanceBanner("", "off");
-    setSidebarHighBalanceBanner("", "off");
-    setSidebarBalanceThresholdHint("");
     setLowBalanceResult('<div class="k">Balance thresholds</div><div class="v">Checking…</div>', true);
 
     let lowHit = null;
@@ -695,7 +502,7 @@ async function refreshLowBalanceAlert() {
         parts.push(
           `<div class="balance-threshold-result-block"><div class="k">First date ≤ $${fmtMoneyThreshold(balanceThresholdMin?.value || "", minVal)}</div><div class="v danger">${fmtDateMDY(lowHit.date)} — $${fmtMoney(lowHit.balance)}</div></div>`
         );
-        setSidebarLowBalanceBanner(`Next low balance:\n${fmtDateMDY(lowHit.date)} — $ ${fmtMoney(lowHit.balance)}`, "danger");
+        setSidebarLowBalanceBanner(`Next low balance: ${fmtDateMDY(lowHit.date)} — $${fmtMoney(lowHit.balance)}`, "danger");
       }
     }
     if (maxOk) {
@@ -716,7 +523,7 @@ async function refreshLowBalanceAlert() {
         parts.push(
           `<div class="balance-threshold-result-block"><div class="k">First date ≥ $${fmtMoneyThreshold(balanceThresholdMax?.value || "", maxVal)}</div><div class="v">${fmtDateMDY(highHit.date)} — $${fmtMoney(highHit.balance)}</div></div>`
         );
-        setSidebarHighBalanceBanner(`Next high balance:\n${fmtDateMDY(highHit.date)} — $ ${fmtMoney(highHit.balance)}`, "high");
+        setSidebarHighBalanceBanner(`Next high balance: ${fmtDateMDY(highHit.date)} — $${fmtMoney(highHit.balance)}`, "high");
       }
     }
 
@@ -941,13 +748,6 @@ const catReportRunBtn = document.getElementById("catReportRunBtn");
 const catReportErr = document.getElementById("catReportErr");
 const catReportSummary = document.getElementById("catReportSummary");
 const catReportTableWrap = document.getElementById("catReportTableWrap");
-const catReportChartWrap = document.getElementById("catReportChartWrap");
-const catReportPieCanvas = document.getElementById("catReportPieCanvas");
-const catReportLegend = document.getElementById("catReportLegend");
-const catReportTxSection = document.getElementById("catReportTxSection");
-const catReportTxTitle = document.getElementById("catReportTxTitle");
-const catReportTxList = document.getElementById("catReportTxList");
-const catReportTxErr = document.getElementById("catReportTxErr");
 const catReportPreset30 = document.getElementById("catReportPreset30");
 const catReportPresetYtd = document.getElementById("catReportPresetYtd");
 const catReportPresetMonth = document.getElementById("catReportPresetMonth");
@@ -968,7 +768,9 @@ function setActiveTopView(view) {
   if (transactionViewPanel) transactionViewPanel.hidden = v !== "transactions";
   if (settingsViewPanel) settingsViewPanel.hidden = v !== "settings";
   if (reportsViewPanel) reportsViewPanel.hidden = v !== "reports";
-  // Transaction View list is run-only (filters + Run button).
+  if (v === "transactions") {
+    void loadUpcomingTransactionsPanel();
+  }
   if (navCalendarView) {
     navCalendarView.classList.toggle("is-active", v === "calendar");
     navCalendarView.setAttribute("aria-selected", v === "calendar" ? "true" : "false");
@@ -993,9 +795,6 @@ function setActiveTopView(view) {
     lowBalanceLastQuery = { familyId: null, min: null, max: null, mode: null };
     void refreshLowBalanceAlert();
   }
-  try {
-    document.body.classList.toggle("is-view-calendar", v === "calendar");
-  } catch (_) {}
   try {
     localStorage.setItem(ACTIVE_VIEW_KEY, v);
   } catch (_) {}
@@ -1064,195 +863,6 @@ function nMoney(v) {
   return Number.isFinite(n) ? n : 0;
 }
 
-let catReportPieChart = null;
-/** @type {{ categoryId: number|null, uncategorized: boolean, label: string }[]} */
-let catReportSliceMeta = [];
-
-function clearCatReportDrilldown() {
-  catReportSliceMeta = [];
-  if (catReportTxSection) catReportTxSection.hidden = true;
-  if (catReportTxTitle) catReportTxTitle.textContent = "";
-  if (catReportTxList) catReportTxList.innerHTML = "";
-  show(catReportTxErr, "");
-}
-
-function destroyCatReportPieChart() {
-  if (catReportPieChart) {
-    try {
-      catReportPieChart.destroy();
-    } catch (_) {}
-    catReportPieChart = null;
-  }
-  clearCatReportDrilldown();
-}
-
-async function loadCatReportDrilldownForMeta(meta) {
-  try {
-    show(catReportTxErr, "");
-    if (!meta) return;
-    if (!state.activeFamilyId) throw new Error("Choose a family first");
-    if (!catReportStart?.value || !catReportEnd?.value) throw new Error("Report date range is missing");
-    const q = new URLSearchParams({
-      start_date: catReportStart.value,
-      end_date: catReportEnd.value,
-    });
-    if (meta.uncategorized) q.set("uncategorized", "true");
-    else q.set("category_id", String(meta.categoryId));
-    const data = await api(`/api/families/${state.activeFamilyId}/transactions?${q.toString()}`, "GET");
-    const items = data?.items || [];
-    if (catReportTxTitle) {
-      catReportTxTitle.textContent = `Transactions — ${meta.label}${items.length ? ` (${items.length})` : ""}`;
-    }
-    renderTransactionsInto(
-      catReportTxList,
-      items,
-      "No posted transactions in this range for this category."
-    );
-    if (catReportTxSection) catReportTxSection.hidden = false;
-    catReportTxSection?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  } catch (e) {
-    show(catReportTxErr, e.message || "Failed to load transactions");
-  }
-}
-
-function paletteForCount(n) {
-  const base = [
-    "#0f172a",
-    "#064e3b",
-    "#129bba",
-    "#7c3aed",
-    "#b91c1c",
-    "#1e3a8a",
-    "#a16207",
-    "#0f766e",
-    "#6b7280",
-    "#111827",
-    "#16a34a",
-    "#ea580c",
-  ];
-  const out = [];
-  for (let i = 0; i < n; i++) out.push(base[i % base.length]);
-  return out;
-}
-
-function renderCategoryTotalsPie(data) {
-  if (!catReportPieCanvas || !catReportChartWrap) return;
-  destroyCatReportPieChart();
-
-  const mode = data.mode || "actual";
-  const showEst = mode === "actual_plus_estimated";
-  const lines = data.lines || [];
-
-  const labels = [];
-  const values = [];
-  const sliceMeta = [];
-  for (const ln of lines) {
-    const name = String(ln.category_name || "Select Category");
-    const v =
-      nMoney(ln.income_actual) +
-      nMoney(ln.expense_actual) +
-      (showEst ? nMoney(ln.income_estimated) + nMoney(ln.expense_estimated) : 0);
-    if (v <= 0) continue;
-    labels.push(name);
-    values.push(v);
-    const rawCid = ln.category_id;
-    const cid = rawCid == null || rawCid === "" ? null : Number(rawCid);
-    sliceMeta.push({
-      categoryId: Number.isFinite(cid) ? cid : null,
-      uncategorized: rawCid == null || rawCid === "",
-      label: name,
-    });
-  }
-  catReportSliceMeta = sliceMeta;
-
-  if (labels.length === 0) {
-    if (catReportChartWrap) catReportChartWrap.style.display = "none";
-    return;
-  }
-
-  const colors = paletteForCount(labels.length);
-  const ctx = catReportPieCanvas.getContext("2d");
-  if (!ctx || typeof Chart === "undefined") {
-    catReportSliceMeta = [];
-    return;
-  }
-
-  catReportPieChart = new Chart(ctx, {
-    type: "pie",
-    data: {
-      labels,
-      datasets: [
-        {
-          data: values,
-          backgroundColor: colors,
-          borderColor: "rgba(255,255,255,0.9)",
-          borderWidth: 2,
-        },
-      ],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      onClick: (evt, elements) => {
-        if (!elements || !elements.length) return;
-        const idx = elements[0].index;
-        const meta = catReportSliceMeta[idx];
-        if (meta) void loadCatReportDrilldownForMeta(meta);
-      },
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: (ctx2) => {
-              const v = Number(ctx2.raw || 0);
-              const total = values.reduce((a, b) => a + b, 0) || 1;
-              const pct = (v / total) * 100;
-              return ` ${fmtMoney(v)} (${pct.toFixed(1)}%)`;
-            },
-          },
-        },
-      },
-    },
-  });
-
-  if (catReportLegend) {
-    catReportLegend.innerHTML = "";
-    const total = values.reduce((a, b) => a + b, 0) || 1;
-    for (let i = 0; i < labels.length; i++) {
-      const row = document.createElement("div");
-      row.className = "category-report-legend-item category-report-legend-item--interactive";
-      row.tabIndex = 0;
-      row.setAttribute("role", "button");
-      row.setAttribute("aria-label", `Show transactions for ${labels[i]}`);
-      const sw = document.createElement("div");
-      sw.className = "category-report-legend-swatch";
-      sw.style.background = colors[i];
-      const nm = document.createElement("div");
-      nm.className = "category-report-legend-name";
-      nm.textContent = labels[i];
-      const val = document.createElement("div");
-      val.className = "category-report-legend-val";
-      val.textContent = `${fmtMoney(values[i])} · ${(values[i] / total * 100).toFixed(1)}%`;
-      row.appendChild(sw);
-      row.appendChild(nm);
-      row.appendChild(val);
-      const meta = catReportSliceMeta[i];
-      row.addEventListener("click", () => {
-        if (meta) void loadCatReportDrilldownForMeta(meta);
-      });
-      row.addEventListener("keydown", (ev) => {
-        if (ev.key === "Enter" || ev.key === " ") {
-          ev.preventDefault();
-          if (meta) void loadCatReportDrilldownForMeta(meta);
-        }
-      });
-      catReportLegend.appendChild(row);
-    }
-  }
-
-  catReportChartWrap.style.display = "";
-}
-
 function renderCategoryTotalsReport(data) {
   if (!catReportTableWrap) return;
   const mode = data.mode || "actual";
@@ -1266,18 +876,9 @@ function renderCategoryTotalsReport(data) {
 
   const lines = data.lines || [];
   if (lines.length === 0) {
-    destroyCatReportPieChart();
-    if (catReportChartWrap) catReportChartWrap.style.display = "none";
-    catReportTableWrap.hidden = false;
     catReportTableWrap.innerHTML = '<p class="meta">No category activity in this range.</p>';
     return;
   }
-
-  // Prefer pie chart UI.
-  renderCategoryTotalsPie(data);
-  catReportTableWrap.hidden = true;
-  catReportTableWrap.innerHTML = "";
-  return;
 
   const thEst = showEst
     ? '<th class="num cat-report-est">Income (est.)</th><th class="num cat-report-est">Expense (est.)</th>'
@@ -1324,7 +925,6 @@ function escapeHtml(s) {
 
 async function loadCategoryTotalsReport() {
   show(catReportErr, "");
-  clearCatReportDrilldown();
   if (!state.activeFamilyId) throw new Error("Choose a family first");
   if (!catReportStart?.value || !catReportEnd?.value) throw new Error("Start and end dates are required");
   const mode = getRadioValue("catReportMode", "actual");
@@ -1365,8 +965,6 @@ if (catReportRunBtn) {
       await loadCategoryTotalsReport();
     } catch (e) {
       show(catReportErr, e.message || "Failed to load report");
-      destroyCatReportPieChart();
-      if (catReportChartWrap) catReportChartWrap.style.display = "none";
       if (catReportTableWrap) catReportTableWrap.innerHTML = "";
       if (catReportSummary) catReportSummary.style.display = "none";
     }
@@ -1376,13 +974,6 @@ if (catReportRunBtn) {
 try {
   const storedView = localStorage.getItem(ACTIVE_VIEW_KEY);
   if (storedView) setActiveTopView(storedView);
-} catch (_) {}
-
-// Ensure default view class is applied even if setActiveTopView was never called (safety).
-try {
-  if (!document.body.classList.contains("is-view-calendar")) {
-    document.body.classList.add("is-view-calendar");
-  }
 } catch (_) {}
 
 if (calendarMode) {
@@ -1418,45 +1009,13 @@ document.getElementById("addCategoryBtn").addEventListener("click", async () => 
     show(catErr, "");
     const name = document.getElementById("newCategoryName").value.trim();
     if (!name) throw new Error("Category name is required");
-    const parentRaw = document.getElementById("newCategoryParent")?.value || "";
-    if (!parentRaw) throw new Error("Choose a group");
-    const parent_id = Number(parentRaw);
-    await api(`/api/families/${state.activeFamilyId}/categories`, "POST", { name, parent_id });
+    await api(`/api/families/${state.activeFamilyId}/categories`, "POST", { name });
     document.getElementById("newCategoryName").value = "";
     await loadCategories();
   } catch (e) {
     show(catErr, e.message || "Failed to add category");
   }
 });
-
-if (mergeCategoryBtn) {
-  mergeCategoryBtn.addEventListener("click", async () => {
-    try {
-      show(catErr, "");
-      if (!state.activeFamilyId) throw new Error("Choose a family first");
-      const fromId = mergeCategoryFrom ? Number(mergeCategoryFrom.value) : NaN;
-      const toId = mergeCategoryTo ? Number(mergeCategoryTo.value) : NaN;
-      if (!Number.isFinite(fromId) || !Number.isFinite(toId)) throw new Error("Choose both categories to merge");
-      if (fromId === toId) throw new Error("Pick two different categories");
-
-      const fromName = (state.categories || []).find((c) => Number(c.id) === fromId)?.name || "selected category";
-      const toName = (state.categories || []).find((c) => Number(c.id) === toId)?.name || "selected category";
-      if (!confirm(`Merge "${fromName}" into "${toName}"? This will move all transactions and then delete "${fromName}".`)) return;
-
-      const norm = (s) => String(s || "").trim().toLowerCase();
-      const desiredName = (norm(fromName).includes("transfer") || norm(toName).includes("transfer")) ? "Transfer" : null;
-      await api(`/api/families/${state.activeFamilyId}/categories/merge`, "POST", {
-        from_id: fromId,
-        to_id: toId,
-        to_name: desiredName,
-      });
-      await loadCategories();
-      await loadMonthAndCalendar();
-    } catch (e) {
-      show(catErr, e.message || "Failed to merge categories");
-    }
-  });
-}
 
 if (txAddSave) {
   txAddSave.addEventListener("click", async () => {
@@ -1480,6 +1039,11 @@ if (txAddSave) {
         const accountIdVal = txAddAccountId?.value || "";
         if (!accountIdVal) throw new Error("Account is required");
 
+        const lastTxnVal = txAddLastTxnDate && txAddLastTxnDate.value ? txAddLastTxnDate.value : null;
+        if (lastTxnVal && lastTxnVal < dateVal) {
+          throw new Error("Last transaction date cannot be before start date");
+        }
+
         let secondDayOfMonth = null;
         if (recurrenceVal === "twice_monthly") {
           const raw = txAddSecondDayOfMonth && txAddSecondDayOfMonth.value;
@@ -1494,51 +1058,10 @@ if (txAddSave) {
           secondDayOfMonth = n;
         }
 
-        function addDaysIso(iso, days) {
-          const d = parseIsoDateLocal(iso);
-          if (!d) return null;
-          d.setDate(d.getDate() + Number(days || 0));
-          return toISODate(d);
-        }
-
-        function nthExpectedOccurrenceIsoForNewSeries(n) {
-          const tx = {
-            start_date: dateVal,
-            end_date: null,
-            recurrence: recurrenceVal,
-            second_day_of_month: secondDayOfMonth,
-          };
-          let fromIso = dateVal;
-          let cur = null;
-          for (let i = 0; i < n; i++) {
-            cur = nextExpectedOccurrenceIso(tx, fromIso);
-            if (!cur) return null;
-            fromIso = addDaysIso(cur, 1);
-            if (!fromIso) return null;
-          }
-          return cur;
-        }
-
-        let endDate = null;
-        if (txAddEndOnDateRadio?.checked) {
-          const v = txAddEndOnDate?.value || "";
-          if (!v) throw new Error("Choose an end date (or leave Ends blank)");
-          if (v < dateVal) throw new Error("End date cannot be before start date");
-          endDate = v;
-        } else if (txAddEndAfterCountRadio?.checked) {
-          const rawN = txAddEndAfterCount?.value ?? "";
-          const n = rawN !== "" ? Number(rawN) : NaN;
-          if (!Number.isFinite(n) || n < 1) throw new Error("Enter a number of occurrences (>= 1)");
-          if (String(recurrenceVal || "") === "once") throw new Error("“End after occurrences” is only for repeating schedules");
-          const iso = nthExpectedOccurrenceIsoForNewSeries(Math.floor(n));
-          if (!iso) throw new Error("Could not compute an end date for this schedule");
-          endDate = iso;
-        }
-
         await api(`/api/families/${state.activeFamilyId}/expected-transactions`, "POST", {
           account_id: Number(accountIdVal),
           start_date: dateVal,
-          end_date: endDate,
+          end_date: lastTxnVal,
           recurrence: recurrenceVal,
           second_day_of_month: secondDayOfMonth,
           description: desc,
@@ -1648,12 +1171,6 @@ function applyTransactionEditMode(mode, opts = {}) {
     if (saveRow) saveRow.style.display = "";
     const txEditDel = document.getElementById("txEditDelete");
     if (txEditDel) txEditDel.style.display = "";
-    const recurringFooterRow = document.getElementById("txEditRecurringFooterRow");
-    if (recurringFooterRow) recurringFooterRow.style.display = "none";
-    const footSecondary = document.getElementById("txEditFooterSecondary");
-    if (footSecondary) footSecondary.classList.remove("tx-edit-foot-secondary--recurring");
-    const acctCatRowReset = document.getElementById("txEditAccountCategoryRow");
-    if (acctCatRowReset) acctCatRowReset.classList.remove("tx-edit-account-category-row--recurring");
     return;
   }
 
@@ -1698,6 +1215,8 @@ function applyTransactionEditMode(mode, opts = {}) {
 
   const acctCol = document.getElementById("txEditAccountCol");
   if (acctCol) acctCol.style.display = "block";
+  const acctCatRow = document.getElementById("txEditAccountCategoryRow");
+  if (acctCatRow) acctCatRow.classList.add("tx-edit-account-category-row--recurring");
   if (instanceAccountId) {
     instanceAccountId.disabled = !recurring;
     instanceAccountId.title = recurring
@@ -1711,16 +1230,12 @@ function applyTransactionEditMode(mode, opts = {}) {
   if (varWrap) varWrap.style.display = recurring ? "block" : "none";
 
   const prim = document.getElementById("txEditRecurringPrimaryActions");
-  if (prim) prim.style.display = "none";
-  const recurringFooterRow = document.getElementById("txEditRecurringFooterRow");
-  if (recurringFooterRow) recurringFooterRow.style.display = recurring ? "" : "none";
+  if (prim) prim.style.display = recurring ? "grid" : "none";
 
   const saveRow = document.getElementById("txEditSaveRow");
   if (saveRow) saveRow.style.display = recurring ? "none" : "";
   const txEditDel = document.getElementById("txEditDelete");
   if (txEditDel) txEditDel.style.display = "";
-  const footSecondary = document.getElementById("txEditFooterSecondary");
-  if (footSecondary) footSecondary.classList.toggle("tx-edit-foot-secondary--recurring", recurring);
 
   if (txEditCancel) {
     txEditCancel.textContent = recurring ? "Close" : "Cancel";
@@ -1824,7 +1339,6 @@ function mountTxAddFormInModal() {
 function mountTxAddFormInSidebar() {
   const root = document.getElementById("txAddFormRoot");
   const home = document.getElementById("txAddFormHome");
-  // Sidebar mount may not exist (if the sidebar "Add transaction" section is removed).
   if (root && home && root.parentElement !== home) home.appendChild(root);
 }
 
@@ -1838,10 +1352,7 @@ function openTxAddModal(opts = {}) {
   setCategoryFieldValue("txAddCategoryId", null);
   if (txAddRepeats) txAddRepeats.checked = !!opts.repeats;
   if (txAddRecurrence) txAddRecurrence.value = "monthly";
-  if (txAddEndOnDate) txAddEndOnDate.value = "";
-  if (txAddEndAfterCount) txAddEndAfterCount.value = "";
-  if (txAddEndOnDateRadio) txAddEndOnDateRadio.checked = false;
-  if (txAddEndAfterCountRadio) txAddEndAfterCountRadio.checked = false;
+  if (txAddLastTxnDate) txAddLastTxnDate.value = "";
   if (txAddSecondDayOfMonth) txAddSecondDayOfMonth.value = "";
   if (txAddVariable) txAddVariable.checked = false;
   if (txAddAccountId) {
@@ -1849,7 +1360,6 @@ function openTxAddModal(opts = {}) {
     if (state.accounts && state.accounts.length > 0) txAddAccountId.value = String(state.accounts[0].id);
   }
   updateTxAddRepeatingUi();
-  updateTxAddEndModeUi();
   const kind = opts.kind || "expense";
   const radio = document.querySelector(`input[type="radio"][name="txAddKind"][value="${kind}"]`);
   if (radio) radio.checked = true;
@@ -1999,7 +1509,7 @@ if (calendarGrid) {
     if (part && calendarGrid.contains(part)) {
       const id = Number(part.dataset.txId);
       if (!id) return;
-      const tx = [...(state.monthActualItems || []), ...(state.calendarExtraActualItems || [])].find((t) => Number(t.id) === id);
+      const tx = (state.monthActualItems || []).find((t) => Number(t.id) === id);
       if (tx) openTxEditModal(tx);
       return;
     }
@@ -2022,442 +1532,6 @@ if (recurringFrequencyFilter) {
 }
 if (recurringKindFilter) {
   recurringKindFilter.addEventListener("change", () => renderRecurringFilteredList());
-}
-if (recurringAccountFilter) {
-  recurringAccountFilter.addEventListener("change", () => renderRecurringFilteredList());
-}
-
-if (txAllRunBtn) {
-  txAllRunBtn.addEventListener("click", () => void runTxAllQuery());
-}
-if (txAllRangePreset) {
-  // Start hidden until "Custom…" is selected.
-  applyTxAllRangePreset(String(txAllRangePreset.value || ""));
-  txAllRangePreset.addEventListener("change", () => {
-    applyTxAllRangePreset(String(txAllRangePreset.value || ""));
-  });
-}
-
-function txImportRefreshUi() {
-  if (!txImportMapping) return;
-  const headers = txImportState.headers || [];
-  const rows = txImportState.rows || [];
-  if (!headers.length) {
-    txImportMapping.hidden = true;
-    if (txImportDetectedPreset) txImportDetectedPreset.style.display = "none";
-    return;
-  }
-  txImportMapping.hidden = false;
-
-  setSelectOptionsFromHeaders(txImportColDate, headers);
-  setSelectOptionsFromHeaders(txImportColAmount, headers);
-  setSelectOptionsFromHeaders(txImportColKind, headers, { allowNone: true });
-  setSelectOptionsFromHeaders(txImportColAccount, headers);
-  setSelectOptionsFromHeaders(txImportColCategory, headers);
-  setSelectOptionsFromHeaders(txImportColNotes, headers, { allowNone: true });
-  setSelectOptionsFromHeaders(txImportColDesc, headers, { allowNone: true });
-
-  if (txImportFixedAccountId) renderAccountSelect(txImportFixedAccountId, state.accounts || []);
-  // Hide fixed category (we no longer force a single category for imports).
-  if (txImportFixedCategoryId) {
-    txImportFixedCategoryId.innerHTML = "";
-    txImportFixedCategoryId.disabled = true;
-    const wrap = txImportFixedCategoryId.closest("div");
-    if (wrap) wrap.style.display = "none";
-  }
-
-  // Auto-guess
-  if (txImportColDate && (txImportColDate.value === "" || txImportColDate.value == null)) {
-    const idx = guessImportColumn(headers, ["posting date", "posted date", "transaction date", "date"]);
-    if (idx >= 0) txImportColDate.value = String(idx);
-  }
-  if (txImportColAmount && (txImportColAmount.value === "" || txImportColAmount.value == null)) {
-    const idx = guessImportColumn(headers, ["amount", "amt", "value"]);
-    if (idx >= 0) txImportColAmount.value = String(idx);
-  }
-  if (txImportColKind && (txImportColKind.value === "" || txImportColKind.value == null)) {
-    const idx = guessImportColumn(headers, ["details", "type", "kind", "transaction type", "debitcredit"]);
-    if (idx >= 0) txImportColKind.value = String(idx);
-  }
-  if (txImportColAccount && (txImportColAccount.value === "" || txImportColAccount.value == null)) {
-    const idx = guessImportColumn(headers, ["account", "account name"]);
-    if (idx >= 0) txImportColAccount.value = String(idx);
-  }
-  if (txImportColCategory && (txImportColCategory.value === "" || txImportColCategory.value == null)) {
-    const idx = guessImportColumn(headers, ["category", "cat"]);
-    if (idx >= 0) txImportColCategory.value = String(idx);
-  }
-  if (txImportColNotes && (txImportColNotes.value === "" || txImportColNotes.value == null)) {
-    const idx = guessImportColumn(headers, ["notes", "memo", "note"]);
-    if (idx >= 0) txImportColNotes.value = String(idx);
-  }
-  if (txImportColDesc && (txImportColDesc.value === "" || txImportColDesc.value == null)) {
-    const idx = guessImportColumn(headers, ["description", "desc", "payee", "name"]);
-    if (idx >= 0) txImportColDesc.value = String(idx);
-  }
-
-  // Chase exports don't include category/account columns: default to fixed mode.
-  if (txImportAccountMode && txImportColAccount) {
-    const acctGuess = guessImportColumn(headers, ["account", "account name"]);
-    if (acctGuess < 0) txImportAccountMode.value = "fixed";
-  }
-  if (txImportCategoryMode && txImportColCategory) {
-    const catGuess = guessImportColumn(headers, ["category", "cat"]);
-    if (catGuess < 0) txImportCategoryMode.value = "suggest";
-  }
-  if (txImportFixedAccountId && state.accounts && state.accounts.length > 0 && !txImportFixedAccountId.value) {
-    txImportFixedAccountId.value = String(state.accounts[0].id);
-  }
-  // If no Category column exists, suggestion/queue modes don't need mapping.
-
-  const preset = detectCsvPreset(headers);
-  if (txImportDetectedPreset) {
-    txImportDetectedPreset.textContent =
-      preset === "chase_activity"
-        ? "Detected Chase Activity CSV — mapping pre-filled."
-        : "Mapping pre-filled (review if needed).";
-    txImportDetectedPreset.style.display = "block";
-  }
-
-  // Force best-known mappings for Chase exports (so non-technical users don't touch mapping).
-  if (preset === "chase_activity") {
-    const idxDate = guessImportColumn(headers, ["posting date"]);
-    const idxAmt = guessImportColumn(headers, ["amount"]);
-    const idxDetails = guessImportColumn(headers, ["details"]);
-    const idxDesc = guessImportColumn(headers, ["description"]);
-    if (idxDate >= 0 && txImportColDate) txImportColDate.value = String(idxDate);
-    if (idxAmt >= 0 && txImportColAmount) txImportColAmount.value = String(idxAmt);
-    if (idxDetails >= 0 && txImportColKind) txImportColKind.value = String(idxDetails);
-    if (idxDesc >= 0 && txImportColDesc) txImportColDesc.value = String(idxDesc);
-    if (txImportAccountMode) txImportAccountMode.value = "fixed";
-    if (txImportCategoryMode) txImportCategoryMode.value = "suggest";
-  }
-
-  txImportApplyCategoryModeUi();
-  txImportPreviewRender(headers, rows);
-  show(txImportErr, "");
-}
-
-function txImportApplyCategoryModeUi() {
-  if (!txImportCategoryMode || !txImportColCategory) return;
-  const mode = String(txImportCategoryMode.value || "suggest");
-  const showColumn = mode === "column";
-  const colWrap = txImportColCategory.closest("div");
-  if (colWrap) colWrap.style.display = showColumn ? "" : "none";
-}
-
-async function txImportReadFile(file) {
-  const text = await file.text();
-  const grid = parseCsv(text);
-  if (!grid || grid.length === 0) throw new Error("CSV appears to be empty");
-
-  const hasHeader = (txImportSkipHeader?.value || "yes") === "yes";
-  let headers = [];
-  let rows = [];
-  if (hasHeader) {
-    headers = (grid[0] || []).map((x, i) => (String(x || "").trim() ? String(x).trim() : `Column ${i + 1}`));
-    rows = grid.slice(1);
-  } else {
-    const maxCols = Math.max(...grid.map((r) => (r ? r.length : 0)));
-    headers = Array.from({ length: maxCols }, (_, i) => `Column ${i + 1}`);
-    rows = grid;
-  }
-  txImportState = { headers, rows, filename: file.name || "" };
-  txImportRefreshUi();
-}
-
-if (txImportSkipHeader) {
-  txImportSkipHeader.addEventListener("change", async () => {
-    const f = txImportFile?.files?.[0];
-    if (f) {
-      try {
-        await txImportReadFile(f);
-      } catch (e) {
-        show(txImportErr, formatUiError(e) || "Failed to parse CSV");
-      }
-    }
-  });
-}
-
-if (txImportFile) {
-  txImportFile.addEventListener("change", async () => {
-    try {
-      show(txImportErr, "");
-      const f = txImportFile.files && txImportFile.files[0];
-      if (!f) return;
-      await txImportReadFile(f);
-    } catch (e) {
-      show(txImportErr, formatUiError(e) || "Failed to read CSV");
-      if (txImportPreview) txImportPreview.innerHTML = "";
-      if (txImportMapping) txImportMapping.hidden = true;
-    }
-  });
-}
-
-for (const el of [
-  txImportColDate,
-  txImportColAmount,
-  txImportColKind,
-  txImportColAccount,
-  txImportColCategory,
-  txImportColNotes,
-  txImportColDesc,
-  txImportAccountMode,
-  txImportFixedAccountId,
-  txImportCategoryMode,
-]) {
-  if (el) el.addEventListener("change", () => show(txImportErr, ""));
-}
-
-if (txImportCategoryMode) {
-  txImportCategoryMode.addEventListener("change", () => {
-    txImportApplyCategoryModeUi();
-    show(txImportErr, "");
-  });
-}
-
-if (txImportRunBtn) {
-  txImportRunBtn.addEventListener("click", async () => {
-    try {
-      show(txImportErr, "");
-      if (!state.activeFamilyId) throw new Error("Choose a family first");
-      const res = txImportComputePayload();
-      if (!res.ok) {
-        const msg = (res.errors || []).slice(0, 8).join("\n");
-        throw new Error(msg || "Fix CSV mapping errors before importing");
-      }
-      if (!res.items || res.items.length === 0) throw new Error("No valid rows to import");
-      if (!confirm(`Import ${res.items.length} transactions? This will add to your existing data.`)) return;
-      await api(`/api/families/${state.activeFamilyId}/transactions/import`, "POST", { items: res.items });
-      const uncategorizedCount = (res.items || []).filter((x) => x && x.category_id == null).length;
-      if (txImportLastResult) {
-        txImportLastResult.textContent =
-          uncategorizedCount > 0
-            ? `Imported ${res.items.length} transactions (${uncategorizedCount} need categories). Use Review uncategorized imports, or delete imported rows by date below.`
-            : `Imported ${res.items.length} transactions.`;
-        txImportLastResult.style.display = "block";
-      }
-      if (txImportPreview) txImportPreview.innerHTML = "";
-      if (txImportFile) txImportFile.value = "";
-      // Keep the mapping panel open so the queue review UI can be used right away.
-      txImportState = { headers: [], rows: [], filename: "" };
-      if (txImportQueueWrap) txImportQueueWrap.style.display = uncategorizedCount > 0 ? "block" : "none";
-      if (txImportReviewQueueBtn) txImportReviewQueueBtn.style.display = uncategorizedCount > 0 ? "" : "none";
-      if (txImportQueueSaveBtn) txImportQueueSaveBtn.style.display = "none";
-      if (txImportQueueList) txImportQueueList.innerHTML = "";
-      await loadMonthAndCalendar();
-    } catch (e) {
-      show(txImportErr, formatUiError(e) || "Import failed");
-    }
-  });
-}
-
-function txImportLeafCategories() {
-  const items = state.categories || [];
-  const hasChildren = new Set();
-  for (const c of items) if (c && c.parent_id != null) hasChildren.add(Number(c.parent_id));
-  return items.filter((c) => c && !hasChildren.has(Number(c.id)));
-}
-
-function txImportRenderQueue(items) {
-  if (!txImportQueueList) return;
-  const cats = txImportLeafCategories();
-  if (!items || items.length === 0) {
-    txImportQueueList.innerHTML = `<div class="meta">No uncategorized imported transactions found.</div>`;
-    if (txImportQueueSaveBtn) txImportQueueSaveBtn.style.display = "none";
-    return;
-  }
-
-  const rowsHtml = items
-    .map((t) => {
-      const vendor = (t.vendor || "").trim();
-      const desc = (t.description || "").trim();
-      const label = vendor || desc || "";
-      const amt = typeof t.amount === "string" ? t.amount : String(t.amount ?? "");
-      const kind = String(t.kind || "");
-      const date = String(t.date || "");
-      const opts =
-        `<option value="">— choose —</option>` +
-        cats.map((c) => `<option value="${String(c.id)}">${escapeHtml(String(c.name || ""))}</option>`).join("");
-      return `<tr data-tx-id="${String(t.id)}">
-        <td>${escapeHtml(date)}</td>
-        <td>${escapeHtml(label)}</td>
-        <td>${escapeHtml(kind)}</td>
-        <td style="text-align:right;">${escapeHtml(amt)}</td>
-        <td><select class="tx-import-queue-cat">${opts}</select></td>
-      </tr>`;
-    })
-    .join("");
-
-  txImportQueueList.innerHTML = `
-    <table>
-      <thead>
-        <tr>
-          <th>Date</th>
-          <th>Vendor / Description</th>
-          <th>Type</th>
-          <th style="text-align:right;">Amount</th>
-          <th>Category</th>
-        </tr>
-      </thead>
-      <tbody>${rowsHtml}</tbody>
-    </table>
-  `;
-  if (txImportQueueSaveBtn) txImportQueueSaveBtn.style.display = "";
-}
-
-async function txImportLoadQueue() {
-  if (!state.activeFamilyId) throw new Error("Choose a family first");
-  const out = await api(`/api/families/${state.activeFamilyId}/transactions/import/uncategorized?limit=200`, "GET");
-  txImportRenderQueue(out?.items || []);
-}
-
-if (txImportReviewQueueBtn) {
-  txImportReviewQueueBtn.addEventListener("click", async () => {
-    try {
-      show(txImportErr, "");
-      await txImportLoadQueue();
-    } catch (e) {
-      show(txImportErr, formatUiError(e) || "Failed to load queue");
-    }
-  });
-}
-
-if (txImportQueueSaveBtn) {
-  txImportQueueSaveBtn.addEventListener("click", async () => {
-    try {
-      show(txImportErr, "");
-      if (!state.activeFamilyId) throw new Error("Choose a family first");
-      if (!txImportQueueList) return;
-      const rows = Array.from(txImportQueueList.querySelectorAll("tbody tr"));
-      const items = [];
-      for (const r of rows) {
-        const id = Number(r.dataset.txId);
-        const sel = r.querySelector("select.tx-import-queue-cat");
-        const catId = sel ? Number(sel.value) : 0;
-        if (id && catId) items.push({ id, category_id: catId });
-      }
-      if (items.length === 0) throw new Error("Choose at least one category before saving");
-      const out = await api(`/api/families/${state.activeFamilyId}/transactions/import/assign-categories`, "POST", { items });
-      const updated = Number(out?.updated || 0);
-      if (txImportLastResult) {
-        txImportLastResult.textContent = updated > 0 ? `Saved categories for ${updated} transactions.` : "No transactions were updated.";
-        txImportLastResult.style.display = "block";
-      }
-      await txImportLoadQueue();
-      await loadMonthAndCalendar();
-    } catch (e) {
-      show(txImportErr, formatUiError(e) || "Failed to save categories");
-    }
-  });
-}
-
-if (txImportPurgeBtn) {
-  txImportPurgeBtn.addEventListener("click", async () => {
-    const prevText = txImportPurgeBtn.textContent || "Delete";
-    try {
-      show(txImportErr, "");
-      if (!state.activeFamilyId) throw new Error("Choose a family first");
-      const cutoff = String(txImportPurgeBefore?.value || "").trim();
-      if (!cutoff) throw new Error("Choose a cutoff date");
-      if (!confirm(`Delete ALL imported transactions before ${cutoff}? This cannot be undone.`)) return;
-      txImportPurgeBtn.disabled = true;
-      txImportPurgeBtn.textContent = "Deleting…";
-      if (txImportLastResult) {
-        txImportLastResult.textContent = "Delete in progress…";
-        txImportLastResult.style.display = "block";
-      }
-      const out = await apiForm(`/api/families/${state.activeFamilyId}/transactions/purge-before`, {
-        before_date: cutoff,
-        imported_only: "true",
-      });
-      const deleted = Number(out?.deleted || 0);
-      if (txImportLastResult) {
-        txImportLastResult.textContent = `Deleted ${deleted} imported transactions before ${cutoff}.`;
-        txImportLastResult.style.display = "block";
-      }
-      await loadMonthAndCalendar();
-      await loadTransactions();
-    } catch (e) {
-      show(txImportErr, formatUiError(e) || "Failed to delete transactions");
-    } finally {
-      txImportPurgeBtn.disabled = false;
-      txImportPurgeBtn.textContent = prevText;
-    }
-  });
-}
-
-if (txImportTestApiBtn) {
-  txImportTestApiBtn.addEventListener("click", async () => {
-    const prevText = txImportTestApiBtn.textContent || "Test API connection";
-    try {
-      show(txImportErr, "");
-      const apiBase = apiBaseUrl();
-      if (!apiBase) throw new Error("API_BASE is empty");
-      const url = `${apiBase}/api/debug/public-config`;
-      txImportTestApiBtn.disabled = true;
-      txImportTestApiBtn.textContent = "Testing…";
-
-      const results = [];
-      // 1) Basic cross-origin GET (no cookies)
-      try {
-        const r1 = await fetch(url, { method: "GET", credentials: "omit" });
-        const t1 = await r1.text();
-        results.push(`GET (omit creds): ${r1.status} ${r1.ok ? "OK" : "FAIL"}\n${t1}`);
-      } catch (e) {
-        results.push(`GET (omit creds): FAILED (${e?.message || e})`);
-      }
-      // 2) Same request with credentials include (mirrors app)
-      try {
-        const r2 = await fetch(url, { method: "GET", credentials: "include" });
-        const t2 = await r2.text();
-        results.push(`GET (include creds): ${r2.status} ${r2.ok ? "OK" : "FAIL"}\n${t2}`);
-      } catch (e) {
-        results.push(`GET (include creds): FAILED (${e?.message || e})`);
-      }
-
-      // 3) Authenticated API call (verifies cookie/session works)
-      try {
-        if (!state.activeFamilyId) throw new Error("No active family selected");
-        const r3 = await fetch(`${apiBase}/api/families/${state.activeFamilyId}/categories`, {
-          method: "GET",
-          credentials: "include",
-        });
-        const t3 = await r3.text();
-        results.push(`GET categories (include creds): ${r3.status} ${r3.ok ? "OK" : "FAIL"}\n${t3.slice(0, 600)}`);
-      } catch (e) {
-        results.push(`GET categories (include creds): FAILED (${e?.message || e})`);
-      }
-
-      // 4) Purge endpoint (form POST avoids JSON preflight)
-      try {
-        if (!state.activeFamilyId) throw new Error("No active family selected");
-        const body = new URLSearchParams();
-        body.set("before_date", "1900-01-01");
-        body.set("imported_only", "true");
-        const r4 = await fetch(`${apiBase}/api/families/${state.activeFamilyId}/transactions/purge-before`, {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
-          body: body.toString(),
-        });
-        const t4 = await r4.text();
-        results.push(`POST purge-before (form): ${r4.status} ${r4.ok ? "OK" : "FAIL"}\n${t4.slice(0, 600)}`);
-      } catch (e) {
-        results.push(`POST purge-before (form): FAILED (${e?.message || e})`);
-      }
-
-      if (txImportLastResult) {
-        txImportLastResult.textContent = results.join("\n\n");
-        txImportLastResult.style.display = "block";
-      }
-    } catch (e) {
-      show(txImportErr, formatUiError(e) || "API test failed");
-    } finally {
-      txImportTestApiBtn.disabled = false;
-      txImportTestApiBtn.textContent = prevText;
-    }
-  });
 }
 
 runProjectionBtn.addEventListener("click", async () => {
@@ -2969,8 +2043,7 @@ function filterCategoryCombobox(fieldId) {
     li.className = "category-combobox__option";
     li.setAttribute("role", "option");
     li.dataset.id = String(c.id);
-    const groupName = (state.categories || []).find((g) => g && Number(g.id) === Number(c.parent_id))?.name || "";
-    li.textContent = groupName ? `${groupName} — ${c.name}` : c.name;
+    li.textContent = c.name;
     st.list.appendChild(li);
   }
   const addLi = document.createElement("li");
@@ -2997,16 +2070,10 @@ async function handleAddNewCategoryFromCombobox(fieldId) {
   if (!name || !String(name).trim()) return;
   try {
     if (!state.activeFamilyId) throw new Error("Choose a family first");
-    const groups = (state.categories || []).filter((c) => c && c.parent_id == null);
-    const parent_id = groups.length ? Number(groups[0].id) : NaN;
-    if (!Number.isFinite(parent_id)) throw new Error("No category group exists yet");
-    await api(`/api/families/${state.activeFamilyId}/categories`, "POST", {
-      name: String(name).trim(),
-      parent_id,
-    });
+    await api(`/api/families/${state.activeFamilyId}/categories`, "POST", { name: String(name).trim() });
     await loadCategories();
     const trimmed = String(name).trim();
-    const newCat = selectableLeafCategories(state.categories).find((c) => String(c.name).trim() === trimmed);
+    const newCat = (state.categories || []).find((c) => String(c.name).trim() === trimmed);
     if (newCat) selectCategoryComboboxChoice(fieldId, newCat.id, newCat.name);
   } catch (err) {
     window.alert(err.message || "Failed to add category");
@@ -3153,16 +2220,9 @@ function syncCategoryComboboxCategories(fieldId, categories) {
   if (!st.list.hidden) filterCategoryCombobox(fieldId);
 }
 
-/** Only leaf categories (under a group) may be assigned to transactions; groups are never selectable. */
-function selectableLeafCategories(categories) {
-  const items = categories || [];
-  return items.filter((c) => c && c.parent_id != null);
-}
-
 function syncAllCategoryComboboxes(categories) {
-  const selectable = selectableLeafCategories(categories);
   for (const fid of CATEGORY_COMBOBOX_FIELD_IDS) {
-    syncCategoryComboboxCategories(fid, selectable);
+    syncCategoryComboboxCategories(fid, categories);
   }
 }
 
@@ -3306,6 +2366,7 @@ function renderCategoriesGrid(categories) {
     return;
   }
 
+  const DEFAULT_FG = "#e8eefc";
   const DEFAULT_BG = "#121b31";
   const PALETTE = [
     "#0b1220","#121b31","#1b2a4a","#24365f","#2d4478","#365392","#4063ad","#4a74c9",
@@ -3347,7 +2408,10 @@ function renderCategoriesGrid(categories) {
   // Header
   const hName = document.createElement("div");
   hName.className = "cat-h";
-  hName.textContent = "Group / category";
+  hName.textContent = "Category";
+  const hFg = document.createElement("div");
+  hFg.className = "cat-h";
+  hFg.textContent = "Text";
   const hBg = document.createElement("div");
   hBg.className = "cat-h";
   hBg.textContent = "Bg";
@@ -3355,132 +2419,45 @@ function renderCategoriesGrid(categories) {
   hAct.className = "cat-h";
   hAct.textContent = "";
   categoriesGrid.appendChild(hName);
+  categoriesGrid.appendChild(hFg);
   categoriesGrid.appendChild(hBg);
   categoriesGrid.appendChild(hAct);
 
-  const byId = new Map(items.map((c) => [Number(c.id), c]));
-  const childrenByParent = new Map();
-  const parents = [];
-  for (const c of items) {
-    const pid = c.parent_id == null ? null : Number(c.parent_id);
-    if (pid == null) {
-      parents.push(c);
-    } else {
-      const arr = childrenByParent.get(pid) || [];
-      arr.push(c);
-      childrenByParent.set(pid, arr);
-    }
+  // Render in server-provided order (drag/drop persists sort_order).
+  const ordered = [...items];
+
+  async function persistOrder(ids) {
+    if (!state.activeFamilyId) return;
+    await api(`/api/families/${state.activeFamilyId}/categories/reorder`, "POST", { ordered_ids: ids });
   }
 
-  function persistGroups(groups) {
-    if (!state.activeFamilyId) return Promise.resolve();
-    return api(`/api/families/${state.activeFamilyId}/categories/reorder`, "POST", { groups });
+  function currentIds() {
+    return [...categoriesGrid.querySelectorAll(".cat-row[data-category-id]")].map((el) => Number(el.dataset.categoryId));
   }
 
-  function currentGroupsFromDom() {
-    const rows = [...categoriesGrid.querySelectorAll(".cat-row[data-category-id]")];
-    const groups = [];
-    let current = null;
-    for (const row of rows) {
-      const type = row.dataset.catType;
-      const id = Number(row.dataset.categoryId);
-      if (!id) continue;
-      if (type === "parent") {
-        current = { id, children: [] };
-        groups.push(current);
-      } else if (type === "child") {
-        if (current) current.children.push(id);
-      }
-    }
-    return groups;
+  function moveIdBefore(list, movingId, beforeId) {
+    const next = list.filter((x) => x !== movingId);
+    const idx = next.indexOf(beforeId);
+    if (idx < 0) return next;
+    next.splice(idx, 0, movingId);
+    return next;
   }
 
-  function isParentRow(row) {
-    return row && row.dataset && row.dataset.catType === "parent";
-  }
-  function isChildRow(row) {
-    return row && row.dataset && row.dataset.catType === "child";
-  }
-
-  function childParentId(row) {
-    const raw = row?.dataset?.parentId;
-    return raw ? Number(raw) : null;
-  }
-
-  function parentBlockRows(parentRow) {
-    const rows = [];
-    if (!parentRow) return rows;
-    rows.push(parentRow);
-    let el = parentRow.nextElementSibling;
-    while (el) {
-      if (el.classList && el.classList.contains("cat-row") && el.dataset?.categoryId) {
-        if (el.dataset.catType === "parent") break;
-        rows.push(el);
-      }
-      el = el.nextElementSibling;
-    }
-    return rows;
-  }
-
-  function insertBlockBefore(blockEls, beforeEl) {
-    if (!blockEls.length) return;
-    for (const el of blockEls) el.remove();
-    const parent = categoriesGrid;
-    const ref = beforeEl || null;
-    for (const el of blockEls) parent.insertBefore(el, ref);
-  }
-
-  function moveChildWithinParent(movingRow, targetRow) {
-    const movingPid = childParentId(movingRow);
-    const targetPid = childParentId(targetRow);
-    if (!movingPid || !targetPid || movingPid !== targetPid) return false;
-    // Move movingRow before targetRow.
-    movingRow.remove();
-    categoriesGrid.insertBefore(movingRow, targetRow);
-    return true;
-  }
-
-  function moveChildToParentBefore(movingRow, targetParentRow, beforeEl) {
-    if (!movingRow || !targetParentRow) return false;
-    const targetPid = Number(targetParentRow.dataset.categoryId || 0);
-    if (!targetPid) return false;
-    // Remove and insert after parent header (and any existing children), or before a specific element.
-    movingRow.remove();
-    movingRow.dataset.parentId = String(targetPid);
-    movingRow.classList.remove("cat-parent");
-    movingRow.classList.add("cat-child");
-    const ref = beforeEl || null;
-    categoriesGrid.insertBefore(movingRow, ref);
-    return true;
-  }
-
-  function makeRow(c, opts) {
+  for (const c of ordered) {
     const row = document.createElement("div");
-    row.className = `cat-row ${opts.type === "parent" ? "cat-parent" : "cat-child"}`;
+    row.className = "cat-row";
     row.dataset.categoryId = String(c.id);
-    row.dataset.catType = opts.type;
-    if (opts.type === "child") row.dataset.parentId = String(opts.parentId);
+    row.draggable = true;
 
     const nameEl = document.createElement("div");
-    nameEl.className = `cat-name ${opts.type === "child" ? "cat-name--child" : "cat-name--parent"}`;
-    if (opts.type === "parent") {
-      nameEl.appendChild(document.createTextNode(c.name));
-      const badge = document.createElement("span");
-      badge.className = "cat-group-badge";
-      badge.textContent = "Group";
-      nameEl.appendChild(document.createTextNode(" "));
-      nameEl.appendChild(badge);
-    } else {
-      nameEl.textContent = c.name;
-    }
+    nameEl.className = "cat-name";
+    nameEl.textContent = c.name;
     nameEl.title = c.name;
     nameEl.classList.add("cat-drag-handle");
-    // NOTE: `.cat-row` uses `display: contents` for the grid layout, which
-    // prevents the row itself from being draggable. Make the name cell act as
-    // the drag handle instead.
-    nameEl.draggable = true;
 
+    let fgVal = normalizeHex(c.fg_color, DEFAULT_FG);
     let bgVal = normalizeHex(c.bg_color, DEFAULT_BG);
+    const fgTrigger = makeColorTrigger("Text color", () => fgVal, (h) => (fgVal = h));
     const bgTrigger = makeColorTrigger("Background color", () => bgVal, (h) => (bgVal = h));
 
     const actions = document.createElement("div");
@@ -3495,6 +2472,7 @@ function renderCategoriesGrid(categories) {
         show(catErr, "");
         if (!state.activeFamilyId) throw new Error("Choose a family first");
         await api(`/api/families/${state.activeFamilyId}/categories/${c.id}`, "PUT", {
+          fg_color: fgVal,
           bg_color: bgVal,
         });
         await loadCategories();
@@ -3514,6 +2492,7 @@ function renderCategoriesGrid(categories) {
         show(catErr, "");
         if (!state.activeFamilyId) throw new Error("Choose a family first");
         await api(`/api/families/${state.activeFamilyId}/categories/${c.id}`, "PUT", {
+          fg_color: "",
           bg_color: "",
         });
         await loadCategories();
@@ -3526,19 +2505,21 @@ function renderCategoriesGrid(categories) {
     actions.appendChild(save);
     actions.appendChild(reset);
 
+    // Use display: contents so the row participates in the grid.
     row.appendChild(nameEl);
+    row.appendChild(fgTrigger);
     row.appendChild(bgTrigger);
     row.appendChild(actions);
+    categoriesGrid.appendChild(row);
 
-    nameEl.addEventListener("dragstart", (e) => {
+    row.addEventListener("dragstart", (e) => {
       try {
         e.dataTransfer.effectAllowed = "move";
-        const key = `${opts.type}:${row.dataset.categoryId || ""}`;
-        e.dataTransfer.setData("text/plain", key);
+        e.dataTransfer.setData("text/plain", row.dataset.categoryId || "");
       } catch (_) {}
       row.classList.add("is-dragging");
     });
-    nameEl.addEventListener("dragend", () => {
+    row.addEventListener("dragend", () => {
       row.classList.remove("is-dragging");
       categoriesGrid.querySelectorAll(".cat-row.is-drag-over").forEach((x) => x.classList.remove("is-drag-over"));
     });
@@ -3558,135 +2539,37 @@ function renderCategoriesGrid(categories) {
           return "";
         }
       })();
-      if (!raw) return;
-      const [movingType, movingIdRaw] = String(raw).split(":");
-      const movingId = Number(movingIdRaw);
-      if (!movingId) return;
-      if (String(movingId) === String(row.dataset.categoryId)) return;
-
-      const movingRow = categoriesGrid.querySelector(`.cat-row[data-category-id="${movingId}"]`);
-      if (!movingRow) return;
-
-      // Parent drop: reorder parent blocks only.
-      if (movingType === "parent") {
-        if (!isParentRow(row)) return;
-        const block = parentBlockRows(movingRow);
-        insertBlockBefore(block, row);
-      } else if (movingType === "child") {
-        // Child can reorder within a group (drop on child) or move to another group (drop on parent or another group's child).
-        if (isChildRow(row)) {
-          const targetPid = childParentId(row);
-          const movingPid = childParentId(movingRow);
-          if (targetPid && movingPid && targetPid === movingPid) {
-            const ok = moveChildWithinParent(movingRow, row);
-            if (!ok) return;
-          } else if (targetPid) {
-            // Move into target child's parent, before that child.
-            const targetParentRow = categoriesGrid.querySelector(`.cat-row[data-category-id="${targetPid}"][data-cat-type="parent"]`);
-            if (!targetParentRow) return;
-            const ok = moveChildToParentBefore(movingRow, targetParentRow, row);
-            if (!ok) return;
-          } else {
-            return;
-          }
-        } else if (isParentRow(row)) {
-          // Move into this parent group, inserting right after its block start (after parent row).
-          const parentRow = row;
-          // Find first element after parent row that is either next parent or null; insert before that.
-          let before = parentRow.nextElementSibling;
-          while (before && before.dataset?.catType === "child") {
-            before = before.nextElementSibling;
-          }
-          const ok = moveChildToParentBefore(movingRow, parentRow, before);
-          if (!ok) return;
-        } else {
-          return;
-        }
-      } else {
-        return;
-      }
-
+      const movingId = Number(raw);
+      const beforeId = Number(row.dataset.categoryId);
+      if (!movingId || !beforeId || movingId === beforeId) return;
+      const ids = currentIds();
+      const nextIds = moveIdBefore(ids, movingId, beforeId);
       try {
-        await persistGroups(currentGroupsFromDom());
+        // Optimistic UI: reorder DOM immediately.
+        const idToRow = new Map(
+          [...categoriesGrid.querySelectorAll(".cat-row[data-category-id]")].map((el) => [Number(el.dataset.categoryId), el])
+        );
+        for (const el of idToRow.values()) el.remove();
+        for (const id of nextIds) {
+          const el = idToRow.get(id);
+          if (el) categoriesGrid.appendChild(el);
+        }
+        await persistOrder(nextIds);
         await loadCategories();
       } catch (err) {
         show(catErr, err.message || "Failed to reorder categories");
         await loadCategories();
       }
     });
-
-    return row;
   }
-
-  // Render in server-provided hierarchical order (parents then children).
-  for (const p of parents) {
-    categoriesGrid.appendChild(makeRow(p, { type: "parent" }));
-    const kids = childrenByParent.get(Number(p.id)) || [];
-    for (const c of kids) {
-      categoriesGrid.appendChild(makeRow(c, { type: "child", parentId: Number(p.id) }));
-    }
-  }
-}
-
-function populateNewCategoryParentSelect(categories) {
-  const sel = document.getElementById("newCategoryParent");
-  if (!sel) return;
-  const items = categories || [];
-  sel.innerHTML = "";
-  // Groups only (top-level categories). A category must belong to a group.
-  const groups = items.filter((c) => c && c.parent_id == null);
-  for (const g of groups) {
-    const opt = document.createElement("option");
-    opt.value = String(g.id);
-    opt.textContent = g.name;
-    sel.appendChild(opt);
-  }
-  if (sel.options.length > 0 && !sel.value) sel.value = String(sel.options[0].value);
 }
 
 async function loadCategories() {
   if (!state.activeFamilyId) return;
   const categories = await api(`/api/families/${state.activeFamilyId}/categories`, "GET");
   state.categories = categories || [];
-  populateNewCategoryParentSelect(state.categories);
   renderCategoriesGrid(state.categories);
   syncAllCategoryComboboxes(state.categories);
-  populateTxAllCategoryFilter();
-
-  // Merge UI selectors (settings)
-  if (mergeCategoryFrom && mergeCategoryTo) {
-    const curFrom = String(mergeCategoryFrom.value || "");
-    const curTo = String(mergeCategoryTo.value || "");
-    const opts = selectableLeafCategories(state.categories).map((c) => {
-      const g = (state.categories || []).find((x) => x && Number(x.id) === Number(c.parent_id));
-      const label = g?.name ? `${g.name} — ${c.name}` : c.name;
-      return { id: String(c.id), name: label };
-    });
-    mergeCategoryFrom.innerHTML = "";
-    mergeCategoryTo.innerHTML = "";
-    for (const o of opts) {
-      const opt1 = document.createElement("option");
-      opt1.value = o.id;
-      opt1.textContent = o.name;
-      mergeCategoryFrom.appendChild(opt1);
-      const opt2 = document.createElement("option");
-      opt2.value = o.id;
-      opt2.textContent = o.name;
-      mergeCategoryTo.appendChild(opt2);
-    }
-    if (curFrom && [...mergeCategoryFrom.options].some((o) => o.value === curFrom)) mergeCategoryFrom.value = curFrom;
-    if (curTo && [...mergeCategoryTo.options].some((o) => o.value === curTo)) mergeCategoryTo.value = curTo;
-
-    // Auto-pick plural Transfers leaf into singular Transfer leaf when both exist.
-    const byNorm = (nm) => String(nm || "").trim().toLowerCase();
-    const leaves = selectableLeafCategories(state.categories);
-    const transfer = leaves.find((c) => byNorm(c.name) === "transfer");
-    const transfers = leaves.find((c) => byNorm(c.name) === "transfers");
-    if (transfer && transfers && Number(transfer.id) !== Number(transfers.id)) {
-      mergeCategoryFrom.value = String(transfers.id);
-      mergeCategoryTo.value = String(transfer.id);
-    }
-  }
 }
 
 function categoryStyleFromId(categoryId) {
@@ -3837,23 +2720,6 @@ async function loadAccounts() {
   const accounts = await api(`/api/families/${state.activeFamilyId}/accounts`, "GET");
   state.accounts = accounts || [];
   renderAccountsList(state.accounts);
-  if (recurringAccountFilter) {
-    const cur = String(recurringAccountFilter.value || "all");
-    recurringAccountFilter.innerHTML = "";
-    {
-      const opt = document.createElement("option");
-      opt.value = "all";
-      opt.textContent = "All";
-      recurringAccountFilter.appendChild(opt);
-    }
-    for (const a of state.accounts) {
-      const opt = document.createElement("option");
-      opt.value = String(a.id);
-      opt.textContent = a.name;
-      recurringAccountFilter.appendChild(opt);
-    }
-    recurringAccountFilter.value = cur;
-  }
   const expectedAccountIdEl = document.getElementById("expectedAccountId");
   if (expectedAccountIdEl) renderAccountSelect(expectedAccountIdEl, state.accounts);
   if (expectedEditAccountId) renderAccountSelect(expectedEditAccountId, state.accounts);
@@ -3862,7 +2728,6 @@ async function loadAccounts() {
   if (expectedAccountIdEl && state.accounts.length > 0 && !expectedAccountIdEl.value) {
     expectedAccountIdEl.value = String(state.accounts[0].id);
   }
-  populateTxAllAccountFilter();
 }
 
 function clearAccountEdit() {
@@ -3952,14 +2817,7 @@ function openExpectedEditModal(tx, opts = {}) {
   }
   updateInstanceTwiceMonthlyVisibility();
 
-  // Variable checkbox should reflect the effective value for the selected occurrence when opened from the calendar.
-  if (seriesVariable) {
-    if (calendarItem && typeof calendarItem.variable === "boolean") {
-      seriesVariable.checked = !!calendarItem.variable;
-    } else {
-      seriesVariable.checked = !!tx.variable;
-    }
-  }
+  if (seriesVariable) seriesVariable.checked = !!tx.variable;
 
   setExpectedModalMode();
   show(txEditErr, "");
@@ -4243,8 +3101,6 @@ function renderRecurringFilteredList() {
 
   const sel = recurringFrequencyFilter ? String(recurringFrequencyFilter.value || "all") : "all";
   const kindSel = recurringKindFilter ? String(recurringKindFilter.value || "all") : "all";
-  const acctSelRaw = recurringAccountFilter ? String(recurringAccountFilter.value || "all") : "all";
-  const acctSel = acctSelRaw === "all" ? null : Number(acctSelRaw);
   const todayIso = toISODate(new Date());
   // Ensure one row per series id, even if items contain duplicates.
   const byId = new Map();
@@ -4258,8 +3114,7 @@ function renderRecurringFilteredList() {
     .filter(
       (tx) =>
         (sel === "all" || String(tx.recurrence || "monthly") === sel) &&
-        (kindSel === "all" || String(tx.kind || "expense") === kindSel) &&
-        (acctSel == null || Number(tx.account_id) === acctSel),
+        (kindSel === "all" || String(tx.kind || "expense") === kindSel),
     )
     .map((tx) => ({ tx, nextIso: nextOccurrenceIsoForRecurringList(tx, todayIso) }))
     .filter((row) => !!row.nextIso);
@@ -4327,128 +3182,6 @@ function renderRecurringFilteredList() {
     el.addEventListener("click", () => openExpectedEditModal(tx, { nextOccurrenceIso: nextIso }));
     recurringFilteredList.appendChild(el);
   }
-}
-
-function populateTxAllAccountFilter() {
-  if (!txAllAccountFilter) return;
-  const cur = String(txAllAccountFilter.value || "all");
-  txAllAccountFilter.innerHTML = "";
-  {
-    const opt = document.createElement("option");
-    opt.value = "all";
-    opt.textContent = "All";
-    txAllAccountFilter.appendChild(opt);
-  }
-  for (const a of state.accounts || []) {
-    const opt = document.createElement("option");
-    opt.value = String(a.id);
-    opt.textContent = a.name;
-    txAllAccountFilter.appendChild(opt);
-  }
-  txAllAccountFilter.value = cur;
-}
-
-function populateTxAllCategoryFilter() {
-  if (!txAllCategoryFilter) return;
-  const cur = String(txAllCategoryFilter.value || "all");
-  txAllCategoryFilter.innerHTML = "";
-  {
-    const opt = document.createElement("option");
-    opt.value = "all";
-    opt.textContent = "All";
-    txAllCategoryFilter.appendChild(opt);
-  }
-  const selectable = selectableLeafCategories(state.categories);
-  for (const c of selectable) {
-    const opt = document.createElement("option");
-    opt.value = String(c.id);
-    opt.textContent = c.name;
-    txAllCategoryFilter.appendChild(opt);
-  }
-  txAllCategoryFilter.value = cur;
-}
-
-async function runTxAllQuery() {
-  try {
-    if (!txListMain) return;
-    if (!state.activeFamilyId) throw new Error("Choose a family first");
-    show(txAllErr, "");
-    const start = txAllStartDate?.value || "";
-    const end = txAllEndDate?.value || "";
-    if (!start || !end) throw new Error("Choose a start and end date");
-    if (String(end) < String(start)) throw new Error("End date cannot be before start date");
-
-    const qs = `?start_date=${encodeURIComponent(start)}&end_date=${encodeURIComponent(end)}`;
-    const data = await api(`/api/families/${state.activeFamilyId}/transactions${qs}`, "GET");
-    let items = data?.items || [];
-
-    const acctRaw = txAllAccountFilter ? String(txAllAccountFilter.value || "all") : "all";
-    const acctId = acctRaw === "all" ? null : Number(acctRaw);
-    const catRaw = txAllCategoryFilter ? String(txAllCategoryFilter.value || "all") : "all";
-    const catId = catRaw === "all" ? null : Number(catRaw);
-
-    if (acctId != null) items = items.filter((t) => Number(t.account_id) === acctId);
-    if (catId != null) items = items.filter((t) => Number(t.category_id) === catId);
-
-    renderTransactionsInto(txListMain, items, "No matching transactions.");
-  } catch (e) {
-    show(txAllErr, e.message || "Failed to load transactions");
-    if (txListMain) txListMain.innerHTML = "";
-  }
-}
-
-function fmtDateYYYYMMDD(d) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
-function txAllSetCustomVisibility(isCustom) {
-  if (!txAllCustomDatesRow) return;
-  txAllCustomDatesRow.style.display = isCustom ? "" : "none";
-}
-
-function applyTxAllRangePreset(preset) {
-  if (!txAllStartDate || !txAllEndDate) return;
-
-  const p = String(preset || "");
-  if (!p) {
-    txAllSetCustomVisibility(false);
-    txAllStartDate.value = "";
-    txAllEndDate.value = "";
-    return;
-  }
-
-  if (p === "custom") {
-    txAllSetCustomVisibility(true);
-    return;
-  }
-
-  const now = new Date();
-  let start = null;
-  let end = null;
-
-  if (p === "mtd") {
-    start = new Date(now.getFullYear(), now.getMonth(), 1);
-    end = now;
-  } else if (p === "ytd") {
-    start = new Date(now.getFullYear(), 0, 1);
-    end = now;
-  } else if (p === "last30" || p === "last90") {
-    const days = p === "last30" ? 30 : 90;
-    end = now;
-    start = new Date(now);
-    start.setDate(start.getDate() - (days - 1));
-  } else {
-    // Unknown preset: fall back to custom inputs.
-    txAllSetCustomVisibility(true);
-    return;
-  }
-
-  txAllSetCustomVisibility(false);
-  txAllStartDate.value = fmtDateYYYYMMDD(start);
-  txAllEndDate.value = fmtDateYYYYMMDD(end);
 }
 
 async function loadExpectedTransactions() {
@@ -4561,8 +3294,6 @@ function computeMonthSummaryTotalsFromState() {
 
   if (includeActual) {
     for (const tx of state.monthActualItems || []) {
-      // Imported historical rows are analysis-only and must not affect month totals.
-      if (tx && tx.imported) continue;
       const amt = toNum(tx.amount);
       if (!Number.isFinite(amt)) continue;
       if (String(tx.kind) === "income") income += amt;
@@ -4601,7 +3332,6 @@ function renderTransactionsInto(listEl, items, emptyMessage) {
     const el = document.createElement("div");
     el.className = "item";
     el.style.cursor = "pointer";
-    if (tx && tx.imported) el.classList.add("is-imported");
 
     const amtClass = tx.kind === "income" ? "income" : "expense";
 
@@ -4618,9 +3348,6 @@ function renderTransactionsInto(listEl, items, emptyMessage) {
       e.stopPropagation();
       openTxEditModal(tx);
     });
-    if (tx && tx.imported) {
-      link.title = [link.title, "Imported transaction."].filter(Boolean).join("\n");
-    }
 
     const meta = document.createElement("div");
     meta.className = "meta";
@@ -4668,297 +3395,6 @@ function escapeHtml(s) {
     .replaceAll("'", "&#039;");
 }
 
-function parseCsv(text) {
-  const out = [];
-  let row = [];
-  let cur = "";
-  let inQuotes = false;
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i];
-    const next = i + 1 < text.length ? text[i + 1] : "";
-    if (inQuotes) {
-      if (ch === '"' && next === '"') {
-        cur += '"';
-        i++;
-      } else if (ch === '"') {
-        inQuotes = false;
-      } else {
-        cur += ch;
-      }
-      continue;
-    }
-    if (ch === '"') {
-      inQuotes = true;
-      continue;
-    }
-    if (ch === ",") {
-      row.push(cur);
-      cur = "";
-      continue;
-    }
-    if (ch === "\n") {
-      row.push(cur);
-      cur = "";
-      out.push(row);
-      row = [];
-      continue;
-    }
-    if (ch === "\r") continue;
-    cur += ch;
-  }
-  row.push(cur);
-  if (row.length > 1 || (row.length === 1 && row[0].trim() !== "")) out.push(row);
-  return out;
-}
-
-function normalizeHeaderName(s) {
-  return String(s || "")
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, " ")
-    .replace(/[^a-z0-9 ]/g, "");
-}
-
-function parseMoneyFlexible(raw) {
-  const s = String(raw || "").trim();
-  if (!s) return null;
-  const cleaned = s.replace(/[$,]/g, "").replace(/\s+/g, "");
-  const n = Number(cleaned);
-  return Number.isFinite(n) ? n : null;
-}
-
-function parseDateFlexible(raw) {
-  const s = String(raw || "").trim();
-  if (!s) return null;
-  const iso = normalizeIsoDate(s);
-  if (iso) return iso;
-  let m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(s);
-  if (m) {
-    const mm = String(m[1]).padStart(2, "0");
-    const dd = String(m[2]).padStart(2, "0");
-    return `${m[3]}-${mm}-${dd}`;
-  }
-  m = /^(\d{4})\/(\d{1,2})\/(\d{1,2})$/.exec(s);
-  if (m) {
-    const mm = String(m[2]).padStart(2, "0");
-    const dd = String(m[3]).padStart(2, "0");
-    return `${m[1]}-${mm}-${dd}`;
-  }
-  return null;
-}
-
-function shortenVendorName(rawDesc) {
-  const raw = String(rawDesc || "").trim();
-  if (!raw) return "";
-  const upper = raw.toUpperCase();
-  if (upper.startsWith("CUESTA PARTNERS")) return "Cuesta Partners";
-  if (upper.startsWith("CAPITAL ONE")) return "Capital One";
-  if (upper.startsWith("APPLE CASH")) return "Apple Cash";
-  if (upper.startsWith("APPLECARD")) return "Apple Card";
-  if (upper.startsWith("APPLE CARD")) return "Apple Card";
-  if (upper.startsWith("DISCOVER")) return "Discover";
-  if (upper.startsWith("VENMO")) return "Venmo";
-  // Generic: take text before two+ spaces or common ID markers.
-  let s = raw.replace(/\s+/g, " ");
-  s = s
-    .replace(/\bPPD ID:.*$/i, "")
-    .replace(/\bWEB ID:.*$/i, "")
-    .replace(/\btransaction\s*#:\s*.*$/i, "")
-    .trim();
-  // If the original had big spacing, prefer the first chunk.
-  const bigSplit = raw.split(/\s{2,}/).map((x) => x.trim()).filter(Boolean);
-  const candidate = bigSplit.length ? bigSplit[0] : s;
-  const words = candidate.split(" ").filter(Boolean).slice(0, 3);
-  const out = words.join(" ");
-  return out
-    .toLowerCase()
-    .replace(/\b([a-z])/g, (m) => m.toUpperCase())
-    .replace(/\bAtm\b/g, "ATM")
-    .trim();
-}
-
-function guessImportColumn(headers, candidates) {
-  const norm = headers.map((h) => normalizeHeaderName(h));
-  for (const c of candidates) {
-    const idx = norm.findIndex((x) => x === c || x.includes(c));
-    if (idx >= 0) return idx;
-  }
-  return -1;
-}
-
-function detectCsvPreset(headers) {
-  const norm = (headers || []).map((h) => normalizeHeaderName(h));
-  const has = (x) => norm.includes(normalizeHeaderName(x));
-  if (has("details") && has("posting date") && has("description") && has("amount")) return "chase_activity";
-  return "generic";
-}
-
-function setSelectOptionsFromHeaders(selectEl, headers, { allowNone = false } = {}) {
-  if (!selectEl) return;
-  const cur = String(selectEl.value || "");
-  selectEl.innerHTML = "";
-  if (allowNone) {
-    const opt0 = document.createElement("option");
-    opt0.value = "";
-    opt0.textContent = "—";
-    selectEl.appendChild(opt0);
-  }
-  headers.forEach((h, idx) => {
-    const opt = document.createElement("option");
-    opt.value = String(idx);
-    opt.textContent = h || `Column ${idx + 1}`;
-    selectEl.appendChild(opt);
-  });
-  if (cur && [...selectEl.options].some((o) => o.value === cur)) selectEl.value = cur;
-}
-
-function txImportGetColIdx(selectEl) {
-  if (!selectEl) return null;
-  const v = String(selectEl.value || "");
-  if (v === "") return null;
-  const n = Number(v);
-  return Number.isFinite(n) ? n : null;
-}
-
-function txImportPreviewRender(headers, rows, maxRows = 8) {
-  if (!txImportPreview) return;
-  const showRows = (rows || []).slice(0, maxRows);
-  const headHtml = headers.map((h) => `<th>${escapeHtml(h)}</th>`).join("");
-  const bodyHtml = showRows
-    .map((r) => `<tr>${headers.map((_, i) => `<td>${escapeHtml(r[i] ?? "")}</td>`).join("")}</tr>`)
-    .join("");
-  txImportPreview.innerHTML = `<table><thead><tr>${headHtml}</tr></thead><tbody>${bodyHtml}</tbody></table>`;
-}
-
-function txImportComputePayload() {
-  const headers = txImportState.headers || [];
-  const rows = txImportState.rows || [];
-  const dateIdx = txImportGetColIdx(txImportColDate);
-  const amtIdx = txImportGetColIdx(txImportColAmount);
-  const kindIdx = txImportGetColIdx(txImportColKind);
-  const acctIdx = txImportGetColIdx(txImportColAccount);
-  const catIdx = txImportGetColIdx(txImportColCategory);
-  const notesIdx = txImportGetColIdx(txImportColNotes);
-  const descIdx = txImportGetColIdx(txImportColDesc);
-
-  const errs = [];
-  if (dateIdx == null) errs.push("Map the Date column");
-  if (amtIdx == null) errs.push("Map the Amount column");
-  const acctMode = String(txImportAccountMode?.value || "column");
-  const catMode = String(txImportCategoryMode?.value || "suggest");
-  const fixedAcctRaw = String(txImportFixedAccountId?.value || "");
-  if (acctMode === "column" && acctIdx == null) errs.push("Map the Account column (or choose Fixed account)");
-  if (acctMode === "fixed" && !fixedAcctRaw) errs.push("Choose a fixed account");
-  if (catMode === "column" && catIdx == null) errs.push("Map the Category column");
-  if (errs.length) return { ok: false, errors: errs, items: [] };
-
-  const accountsByName = new Map((state.accounts || []).map((a) => [String(a.name || "").trim().toLowerCase(), a]));
-  const categoriesByName = new Map((state.categories || []).map((c) => [String(c.name || "").trim().toLowerCase(), c]));
-  const leafCategories = (() => {
-    const items = state.categories || [];
-    const hasChildren = new Set();
-    for (const c of items) if (c && c.parent_id != null) hasChildren.add(Number(c.parent_id));
-    return items.filter((c) => c && !hasChildren.has(Number(c.id)));
-  })();
-
-  function categoryByNameLoose(name) {
-    const n = String(name || "").trim().toLowerCase();
-    if (!n) return null;
-    return categoriesByName.get(n) || null;
-  }
-
-  function suggestCategoryId({ vendor, rawDesc }) {
-    const v = String(vendor || "").toLowerCase();
-    const d = String(rawDesc || "").toLowerCase();
-    const want = (nm) => leafCategories.find((c) => String(c.name || "").trim().toLowerCase() === nm.toLowerCase()) || null;
-
-    // Transfers / moves
-    if (/(transfer|zelle|venmo|betterment|capital one)/.test(v) || /(transfer|zelle|venmo|betterment|capital one)/.test(d)) {
-      const c = want("transfer");
-      if (c) return Number(c.id);
-    }
-    // Utilities
-    if (/(comed|com ed)/.test(v) || /(comed|com ed)/.test(d)) {
-      const c = want("gas & electric");
-      if (c) return Number(c.id);
-    }
-    if (/t-mobile/.test(v) || /t-mobile/.test(d)) {
-      const c = want("phone");
-      if (c) return Number(c.id);
-    }
-    // Coffee
-    if (/coffee/.test(v) || /starbucks/.test(d)) {
-      const c = want("coffee shops");
-      if (c) return Number(c.id);
-    }
-    return null;
-  }
-
-  const items = [];
-  const rowErrors = [];
-  for (let i = 0; i < rows.length; i++) {
-    const r = rows[i] || [];
-    const dateIso = parseDateFlexible(r[dateIdx]);
-    const amt = parseMoneyFlexible(r[amtIdx]);
-    const acctName = acctMode === "column" ? String(r[acctIdx] ?? "").trim() : "";
-    const catName = catMode === "column" ? String(r[catIdx] ?? "").trim() : "";
-    const notes = notesIdx != null ? String(r[notesIdx] ?? "").trim() : "";
-    const descRaw = descIdx != null ? String(r[descIdx] ?? "").trim() : "";
-    const vendor = shortenVendorName(descRaw);
-    const acct =
-      acctMode === "fixed"
-        ? (state.accounts || []).find((a) => String(a.id) === fixedAcctRaw) || null
-        : accountsByName.get(acctName.toLowerCase()) || null;
-    let cat = null;
-    if (catMode === "column") {
-      cat = categoryByNameLoose(catName);
-    } else if (catMode === "suggest") {
-      const suggestedId = suggestCategoryId({ vendor, rawDesc: descRaw });
-      cat = suggestedId != null ? (state.categories || []).find((c) => Number(c.id) === Number(suggestedId)) || null : null;
-    } else {
-      // queue
-      cat = null;
-    }
-
-    let kind = null;
-    if (kindIdx != null) {
-      const rawKind = String(r[kindIdx] ?? "").trim().toLowerCase();
-      if (rawKind === "income" || rawKind === "in") kind = "income";
-      else if (rawKind === "expense" || rawKind === "out") kind = "expense";
-      else if (rawKind === "credit") kind = "income";
-      else if (rawKind === "debit") kind = "expense";
-    }
-    if (!kind && amt != null) kind = amt >= 0 ? "income" : "expense";
-
-    const signedAmt = amt == null ? null : Math.abs(amt);
-    const problems = [];
-    if (!dateIso) problems.push("bad date");
-    if (signedAmt == null || !Number.isFinite(signedAmt) || signedAmt <= 0) problems.push("bad amount");
-    if (!kind) problems.push("bad type");
-    if (!acct) problems.push(acctMode === "fixed" ? "unknown fixed account" : `unknown account: ${acctName || "blank"}`);
-    if (catMode === "column" && !cat) problems.push(`unknown category: ${catName || "blank"}`);
-
-    if (problems.length) {
-      rowErrors.push(`Row ${i + 1}: ${problems.join(", ")}`);
-      continue;
-    }
-
-    items.push({
-      date: dateIso,
-      description: vendor || descRaw || `${(catMode === "column" ? catName : (cat?.name || "")) || "Transaction"}`,
-      vendor: vendor || null,
-      raw_description: descRaw || null,
-      notes: notes || null,
-      kind,
-      amount: signedAmt,
-      category_id: cat ? Number(cat.id) : null,
-      account_id: Number(acct.id),
-      reimbursable: false,
-    });
-  }
-  return { ok: rowErrors.length === 0, errors: rowErrors, items, headers };
-}
-
 async function loadTransactions() {
   try {
     show(txErr, "");
@@ -4974,7 +3410,27 @@ async function loadTransactions() {
   }
 }
 
-// Upcoming transactions panel removed (Transaction View is now filter + Run).
+/** Actual transactions on or after today (for Transaction View list), chronological. */
+async function loadUpcomingTransactionsPanel() {
+  try {
+    if (!state.activeFamilyId) {
+      state.upcomingActualItems = [];
+      renderTransactionsInto(txListMain, [], "No upcoming transactions.");
+      return;
+    }
+    const todayIso = toISODate(new Date());
+    const endCap = new Date();
+    endCap.setDate(endCap.getDate() + 548);
+    const endIso = toISODate(endCap);
+    const qs = `?start_date=${encodeURIComponent(todayIso)}&end_date=${encodeURIComponent(endIso)}`;
+    const data = await api(`/api/families/${state.activeFamilyId}/transactions${qs}`, "GET");
+    const items = data?.items || [];
+    state.upcomingActualItems = items;
+    renderTransactionsInto(txListMain, items, "No upcoming transactions.");
+  } catch (e) {
+    show(txErr, e.message || "Failed to load upcoming transactions");
+  }
+}
 
 async function loadExpectedCalendar() {
   try {
@@ -5122,6 +3578,7 @@ async function loadMonthAndCalendar() {
     renderCalendar();
 
     await loadTransactions();
+    await loadUpcomingTransactionsPanel();
     await loadExpectedCalendar();
     renderMonthSummaryTotalsFromState();
     await loadCalendarExtras();
@@ -5187,8 +3644,6 @@ function computeCalendarVisibleDailyBalancesClient() {
 
   if (includeActual) {
     for (const tx of [...(state.monthActualItems || []), ...(state.calendarExtraActualItems || [])]) {
-      // Imported historical rows are analysis-only and must not affect balances.
-      if (tx && tx.imported) continue;
       const amt = Number(tx.amount || 0);
       const signed = tx.kind === "income" ? amt : -amt;
       const dk = normalizeIsoDate(tx.date) || tx.date;
@@ -5341,16 +3796,6 @@ function selectExpectedInstance(item) {
       if (instanceRecurrence) instanceRecurrence.value = String(meta.recurrence || "monthly");
       if (instanceSecondDayOfMonth) instanceSecondDayOfMonth.value = meta.second_day_of_month != null ? String(meta.second_day_of_month) : "";
       updateInstanceTwiceMonthlyVisibility();
-    }
-  }
-
-  // Keep the variable checkbox aligned with the selected occurrence (override-aware).
-  if (seriesVariable) {
-    if (typeof item.variable === "boolean") {
-      seriesVariable.checked = !!item.variable;
-    } else {
-      const meta = selectedExpectedSeriesTx || getExpectedSeriesMeta(item.expected_transaction_id);
-      seriesVariable.checked = !!(meta && meta.variable);
     }
   }
 
@@ -5513,11 +3958,8 @@ function renderCalendar() {
         : "cal-day-tx-line cal-tx-part";
       if (isExpected && row.variable) line.classList.add("cal-expected-variable");
       if (!isExpected) line.dataset.txId = String(row.id);
-      if (!isExpected && row.imported) line.classList.add("is-imported");
 
-      const labelRaw = isExpected
-        ? row.description || "(expected)"
-        : String(row.category || row.description || "Transaction").trim();
+      const labelRaw = isExpected ? row.description || "(expected)" : (row.description || "Transaction").trim();
       const label = truncate(labelRaw, 44);
 
       const labelSpan = document.createElement("span");
@@ -5547,15 +3989,10 @@ function renderCalendar() {
       line.appendChild(amtSpan);
 
       {
-        const descRaw = String(row.description || "").trim();
-        const catRaw = String(row.category || "").trim();
-        const headRaw = isExpected
-          ? String(labelRaw || "").trim() || "Expected"
-          : (descRaw || catRaw || "Transaction");
+        const headRaw = String(labelRaw || "").trim() || (isExpected ? "Expected" : "Transaction");
         const head = isExpected ? `Expected: ${headRaw}` : headRaw;
         const noteStr = row.notes && String(row.notes).trim() ? String(row.notes).trim() : "";
-        const importedHint = !isExpected && row.imported ? "\nImported transaction." : "";
-        const tt = noteStr ? `${head}${importedHint}\nNotes: ${noteStr}` : `${head}${importedHint}`;
+        const tt = noteStr ? `${head}\nNotes: ${noteStr}` : head;
         line.title = tt;
         labelWrap.title = tt;
         amtSpan.title = tt;
@@ -5759,9 +4196,6 @@ async function main() {
     await loadAccounts();
     await loadExpectedTransactions();
     await loadMonthAndCalendar();
-  }
-  if (txListMain) {
-    renderTransactionsInto(txListMain, [], "Choose filters and click Run.");
   }
   if (balanceThresholdMin || balanceThresholdMax) {
     try {
