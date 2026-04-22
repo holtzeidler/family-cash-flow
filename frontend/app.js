@@ -288,18 +288,12 @@ function setSidebarLowBalanceBanner(text, style = "off") {
   }
   const raw = String(text);
   const parts = raw.split("\n");
-  const headPlain = parts[0] ? escapeHtml(parts[0]) : "";
-  const restHtml = parts
+  const head = parts[0] ? `<strong>${escapeHtml(parts[0])}</strong>` : "";
+  const rest = parts
     .slice(1)
     .map((s) => escapeHtml(s))
     .join("<br>");
-  if (headPlain && restHtml) {
-    sidebarLowBalanceBanner.innerHTML = `<div class="calendar-low-balance__head"><strong>${headPlain}</strong></div><div class="calendar-low-balance__detail">${restHtml}</div>`;
-  } else if (headPlain) {
-    sidebarLowBalanceBanner.innerHTML = `<div class="calendar-low-balance__head"><strong>${headPlain}</strong></div>`;
-  } else {
-    sidebarLowBalanceBanner.innerHTML = restHtml ? `<div class="calendar-low-balance__detail">${restHtml}</div>` : "";
-  }
+  sidebarLowBalanceBanner.innerHTML = [head, rest].filter(Boolean).join(rest ? "<br>" : "");
   sidebarLowBalanceBanner.style.display = "flex";
   sidebarLowBalanceBanner.classList.remove("is-danger", "is-muted");
   sidebarLowBalanceBanner.classList.toggle("is-danger", style === "danger");
@@ -317,18 +311,12 @@ function setSidebarHighBalanceBanner(text, style = "off") {
   }
   const raw = String(text);
   const parts = raw.split("\n");
-  const headPlain = parts[0] ? escapeHtml(parts[0]) : "";
-  const restHtml = parts
+  const head = parts[0] ? `<strong>${escapeHtml(parts[0])}</strong>` : "";
+  const rest = parts
     .slice(1)
     .map((s) => escapeHtml(s))
     .join("<br>");
-  if (headPlain && restHtml) {
-    sidebarHighBalanceBanner.innerHTML = `<div class="calendar-low-balance__head"><strong>${headPlain}</strong></div><div class="calendar-low-balance__detail">${restHtml}</div>`;
-  } else if (headPlain) {
-    sidebarHighBalanceBanner.innerHTML = `<div class="calendar-low-balance__head"><strong>${headPlain}</strong></div>`;
-  } else {
-    sidebarHighBalanceBanner.innerHTML = restHtml ? `<div class="calendar-low-balance__detail">${restHtml}</div>` : "";
-  }
+  sidebarHighBalanceBanner.innerHTML = [head, rest].filter(Boolean).join(rest ? "<br>" : "");
   sidebarHighBalanceBanner.style.display = "flex";
   sidebarHighBalanceBanner.classList.remove("is-high", "is-muted");
   sidebarHighBalanceBanner.classList.toggle("is-high", style === "high");
@@ -527,8 +515,6 @@ function updateTxAddTwiceMonthlyVisibility() {
 
 function updateTxAddRepeatingUi() {
   const repeats = !!txAddRepeats?.checked;
-  const acctRow = document.getElementById("txAddAccountRow");
-  if (acctRow) acctRow.style.display = repeats ? "" : "none";
   if (txAddRecurringBlock) txAddRecurringBlock.style.display = repeats ? "block" : "none";
   if (txAddDateLabel) txAddDateLabel.textContent = repeats ? "Start date" : "Date";
   const recWrap = document.getElementById("txAddRecurrenceWrap");
@@ -922,10 +908,6 @@ const catReportTableWrap = document.getElementById("catReportTableWrap");
 const catReportChartWrap = document.getElementById("catReportChartWrap");
 const catReportPieCanvas = document.getElementById("catReportPieCanvas");
 const catReportLegend = document.getElementById("catReportLegend");
-const catReportTxSection = document.getElementById("catReportTxSection");
-const catReportTxTitle = document.getElementById("catReportTxTitle");
-const catReportTxList = document.getElementById("catReportTxList");
-const catReportTxErr = document.getElementById("catReportTxErr");
 const catReportPreset30 = document.getElementById("catReportPreset30");
 const catReportPresetYtd = document.getElementById("catReportPresetYtd");
 const catReportPresetMonth = document.getElementById("catReportPresetMonth");
@@ -1043,16 +1025,6 @@ function nMoney(v) {
 }
 
 let catReportPieChart = null;
-/** @type {{ categoryId: number|null, uncategorized: boolean, label: string }[]} */
-let catReportSliceMeta = [];
-
-function clearCatReportDrilldown() {
-  catReportSliceMeta = [];
-  if (catReportTxSection) catReportTxSection.hidden = true;
-  if (catReportTxTitle) catReportTxTitle.textContent = "";
-  if (catReportTxList) catReportTxList.innerHTML = "";
-  show(catReportTxErr, "");
-}
 
 function destroyCatReportPieChart() {
   if (catReportPieChart) {
@@ -1060,36 +1032,6 @@ function destroyCatReportPieChart() {
       catReportPieChart.destroy();
     } catch (_) {}
     catReportPieChart = null;
-  }
-  clearCatReportDrilldown();
-}
-
-async function loadCatReportDrilldownForMeta(meta) {
-  try {
-    show(catReportTxErr, "");
-    if (!meta) return;
-    if (!state.activeFamilyId) throw new Error("Choose a family first");
-    if (!catReportStart?.value || !catReportEnd?.value) throw new Error("Report date range is missing");
-    const q = new URLSearchParams({
-      start_date: catReportStart.value,
-      end_date: catReportEnd.value,
-    });
-    if (meta.uncategorized) q.set("uncategorized", "true");
-    else q.set("category_id", String(meta.categoryId));
-    const data = await api(`/api/families/${state.activeFamilyId}/transactions?${q.toString()}`, "GET");
-    const items = data?.items || [];
-    if (catReportTxTitle) {
-      catReportTxTitle.textContent = `Transactions — ${meta.label}${items.length ? ` (${items.length})` : ""}`;
-    }
-    renderTransactionsInto(
-      catReportTxList,
-      items,
-      "No posted transactions in this range for this category."
-    );
-    if (catReportTxSection) catReportTxSection.hidden = false;
-    catReportTxSection?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  } catch (e) {
-    show(catReportTxErr, e.message || "Failed to load transactions");
   }
 }
 
@@ -1123,7 +1065,6 @@ function renderCategoryTotalsPie(data) {
 
   const labels = [];
   const values = [];
-  const sliceMeta = [];
   for (const ln of lines) {
     const name = String(ln.category_name || "Select Category");
     const v =
@@ -1133,15 +1074,7 @@ function renderCategoryTotalsPie(data) {
     if (v <= 0) continue;
     labels.push(name);
     values.push(v);
-    const rawCid = ln.category_id;
-    const cid = rawCid == null || rawCid === "" ? null : Number(rawCid);
-    sliceMeta.push({
-      categoryId: Number.isFinite(cid) ? cid : null,
-      uncategorized: rawCid == null || rawCid === "",
-      label: name,
-    });
   }
-  catReportSliceMeta = sliceMeta;
 
   if (labels.length === 0) {
     if (catReportChartWrap) catReportChartWrap.style.display = "none";
@@ -1150,10 +1083,7 @@ function renderCategoryTotalsPie(data) {
 
   const colors = paletteForCount(labels.length);
   const ctx = catReportPieCanvas.getContext("2d");
-  if (!ctx || typeof Chart === "undefined") {
-    catReportSliceMeta = [];
-    return;
-  }
+  if (!ctx || typeof Chart === "undefined") return;
 
   catReportPieChart = new Chart(ctx, {
     type: "pie",
@@ -1171,12 +1101,6 @@ function renderCategoryTotalsPie(data) {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      onClick: (evt, elements) => {
-        if (!elements || !elements.length) return;
-        const idx = elements[0].index;
-        const meta = catReportSliceMeta[idx];
-        if (meta) void loadCatReportDrilldownForMeta(meta);
-      },
       plugins: {
         legend: { display: false },
         tooltip: {
@@ -1198,10 +1122,7 @@ function renderCategoryTotalsPie(data) {
     const total = values.reduce((a, b) => a + b, 0) || 1;
     for (let i = 0; i < labels.length; i++) {
       const row = document.createElement("div");
-      row.className = "category-report-legend-item category-report-legend-item--interactive";
-      row.tabIndex = 0;
-      row.setAttribute("role", "button");
-      row.setAttribute("aria-label", `Show transactions for ${labels[i]}`);
+      row.className = "category-report-legend-item";
       const sw = document.createElement("div");
       sw.className = "category-report-legend-swatch";
       sw.style.background = colors[i];
@@ -1214,16 +1135,6 @@ function renderCategoryTotalsPie(data) {
       row.appendChild(sw);
       row.appendChild(nm);
       row.appendChild(val);
-      const meta = catReportSliceMeta[i];
-      row.addEventListener("click", () => {
-        if (meta) void loadCatReportDrilldownForMeta(meta);
-      });
-      row.addEventListener("keydown", (ev) => {
-        if (ev.key === "Enter" || ev.key === " ") {
-          ev.preventDefault();
-          if (meta) void loadCatReportDrilldownForMeta(meta);
-        }
-      });
       catReportLegend.appendChild(row);
     }
   }
@@ -1302,7 +1213,6 @@ function escapeHtml(s) {
 
 async function loadCategoryTotalsReport() {
   show(catReportErr, "");
-  clearCatReportDrilldown();
   if (!state.activeFamilyId) throw new Error("Choose a family first");
   if (!catReportStart?.value || !catReportEnd?.value) throw new Error("Start and end dates are required");
   const mode = getRadioValue("catReportMode", "actual");
@@ -1630,8 +1540,6 @@ function applyTransactionEditMode(mode, opts = {}) {
     if (recurringFooterRow) recurringFooterRow.style.display = "none";
     const footSecondary = document.getElementById("txEditFooterSecondary");
     if (footSecondary) footSecondary.classList.remove("tx-edit-foot-secondary--recurring");
-    const acctCatRowReset = document.getElementById("txEditAccountCategoryRow");
-    if (acctCatRowReset) acctCatRowReset.classList.remove("tx-edit-account-category-row--recurring");
     return;
   }
 
@@ -1676,6 +1584,8 @@ function applyTransactionEditMode(mode, opts = {}) {
 
   const acctCol = document.getElementById("txEditAccountCol");
   if (acctCol) acctCol.style.display = "block";
+  const acctCatRow = document.getElementById("txEditAccountCategoryRow");
+  if (acctCatRow) acctCatRow.classList.add("tx-edit-account-category-row--recurring");
   if (instanceAccountId) {
     instanceAccountId.disabled = !recurring;
     instanceAccountId.title = recurring
@@ -2947,8 +2857,7 @@ function filterCategoryCombobox(fieldId) {
     li.className = "category-combobox__option";
     li.setAttribute("role", "option");
     li.dataset.id = String(c.id);
-    const groupName = (state.categories || []).find((g) => g && Number(g.id) === Number(c.parent_id))?.name || "";
-    li.textContent = groupName ? `${groupName} — ${c.name}` : c.name;
+    li.textContent = c.name;
     st.list.appendChild(li);
   }
   const addLi = document.createElement("li");
@@ -2975,16 +2884,10 @@ async function handleAddNewCategoryFromCombobox(fieldId) {
   if (!name || !String(name).trim()) return;
   try {
     if (!state.activeFamilyId) throw new Error("Choose a family first");
-    const groups = (state.categories || []).filter((c) => c && c.parent_id == null);
-    const parent_id = groups.length ? Number(groups[0].id) : NaN;
-    if (!Number.isFinite(parent_id)) throw new Error("No category group exists yet");
-    await api(`/api/families/${state.activeFamilyId}/categories`, "POST", {
-      name: String(name).trim(),
-      parent_id,
-    });
+    await api(`/api/families/${state.activeFamilyId}/categories`, "POST", { name: String(name).trim() });
     await loadCategories();
     const trimmed = String(name).trim();
-    const newCat = selectableLeafCategories(state.categories).find((c) => String(c.name).trim() === trimmed);
+    const newCat = (state.categories || []).find((c) => String(c.name).trim() === trimmed);
     if (newCat) selectCategoryComboboxChoice(fieldId, newCat.id, newCat.name);
   } catch (err) {
     window.alert(err.message || "Failed to add category");
@@ -3131,14 +3034,14 @@ function syncCategoryComboboxCategories(fieldId, categories) {
   if (!st.list.hidden) filterCategoryCombobox(fieldId);
 }
 
-/** Only leaf categories (under a group) may be assigned to transactions; groups are never selectable. */
-function selectableLeafCategories(categories) {
-  const items = categories || [];
-  return items.filter((c) => c && c.parent_id != null);
-}
-
 function syncAllCategoryComboboxes(categories) {
-  const selectable = selectableLeafCategories(categories);
+  // Leaf-only selection: allow selecting headers only if they have no children.
+  const items = categories || [];
+  const hasChildren = new Set();
+  for (const c of items) {
+    if (c && c.parent_id != null) hasChildren.add(Number(c.parent_id));
+  }
+  const selectable = items.filter((c) => c && !hasChildren.has(Number(c.id)));
   for (const fid of CATEGORY_COMBOBOX_FIELD_IDS) {
     syncCategoryComboboxCategories(fid, selectable);
   }
@@ -3325,7 +3228,7 @@ function renderCategoriesGrid(categories) {
   // Header
   const hName = document.createElement("div");
   hName.className = "cat-h";
-  hName.textContent = "Group / category";
+  hName.textContent = "Category";
   const hBg = document.createElement("div");
   hBg.className = "cat-h";
   hBg.textContent = "Bg";
@@ -3441,16 +3344,7 @@ function renderCategoriesGrid(categories) {
 
     const nameEl = document.createElement("div");
     nameEl.className = `cat-name ${opts.type === "child" ? "cat-name--child" : "cat-name--parent"}`;
-    if (opts.type === "parent") {
-      nameEl.appendChild(document.createTextNode(c.name));
-      const badge = document.createElement("span");
-      badge.className = "cat-group-badge";
-      badge.textContent = "Group";
-      nameEl.appendChild(document.createTextNode(" "));
-      nameEl.appendChild(badge);
-    } else {
-      nameEl.textContent = c.name;
-    }
+    nameEl.textContent = c.name;
     nameEl.title = c.name;
     nameEl.classList.add("cat-drag-handle");
     // NOTE: `.cat-row` uses `display: contents` for the grid layout, which
@@ -3635,11 +3529,7 @@ async function loadCategories() {
   if (mergeCategoryFrom && mergeCategoryTo) {
     const curFrom = String(mergeCategoryFrom.value || "");
     const curTo = String(mergeCategoryTo.value || "");
-    const opts = selectableLeafCategories(state.categories).map((c) => {
-      const g = (state.categories || []).find((x) => x && Number(x.id) === Number(c.parent_id));
-      const label = g?.name ? `${g.name} — ${c.name}` : c.name;
-      return { id: String(c.id), name: label };
-    });
+    const opts = (state.categories || []).map((c) => ({ id: String(c.id), name: c.name }));
     mergeCategoryFrom.innerHTML = "";
     mergeCategoryTo.innerHTML = "";
     for (const o of opts) {
@@ -3655,12 +3545,11 @@ async function loadCategories() {
     if (curFrom && [...mergeCategoryFrom.options].some((o) => o.value === curFrom)) mergeCategoryFrom.value = curFrom;
     if (curTo && [...mergeCategoryTo.options].some((o) => o.value === curTo)) mergeCategoryTo.value = curTo;
 
-    // Auto-pick plural Transfers leaf into singular Transfer leaf when both exist.
+    // Auto-pick Transfers -> Transfer if both exist.
     const byNorm = (nm) => String(nm || "").trim().toLowerCase();
-    const leaves = selectableLeafCategories(state.categories);
-    const transfer = leaves.find((c) => byNorm(c.name) === "transfer");
-    const transfers = leaves.find((c) => byNorm(c.name) === "transfers");
-    if (transfer && transfers && Number(transfer.id) !== Number(transfers.id)) {
+    const transfer = (state.categories || []).find((c) => byNorm(c.name) === "transfer");
+    const transfers = (state.categories || []).find((c) => byNorm(c.name) === "transfers");
+    if (transfer && transfers) {
       mergeCategoryFrom.value = String(transfers.id);
       mergeCategoryTo.value = String(transfer.id);
     }
@@ -4336,7 +4225,13 @@ function populateTxAllCategoryFilter() {
     opt.textContent = "All";
     txAllCategoryFilter.appendChild(opt);
   }
-  const selectable = selectableLeafCategories(state.categories);
+  // Leaf-only categories (same rule as pickers).
+  const items = state.categories || [];
+  const hasChildren = new Set();
+  for (const c of items) {
+    if (c && c.parent_id != null) hasChildren.add(Number(c.parent_id));
+  }
+  const selectable = items.filter((c) => c && !hasChildren.has(Number(c.id)));
   for (const c of selectable) {
     const opt = document.createElement("option");
     opt.value = String(c.id);
