@@ -1237,10 +1237,12 @@ function applyTransactionEditMode(mode, opts = {}) {
   if (varWrap) varWrap.style.display = recurring ? "block" : "none";
 
   const prim = document.getElementById("txEditRecurringPrimaryActions");
-  if (prim) prim.style.display = recurring ? "grid" : "none";
+  if (prim) prim.style.display = "none";
 
   const saveRow = document.getElementById("txEditSaveRow");
-  if (saveRow) saveRow.style.display = recurring ? "none" : "";
+  if (saveRow) saveRow.style.display = "";
+  if (txEditSave) txEditSave.style.display = recurring ? "none" : "";
+  if (txEditRecurringUpdateBtn) txEditRecurringUpdateBtn.style.display = recurring ? "" : "none";
   const txEditDel = document.getElementById("txEditDelete");
   if (txEditDel) txEditDel.style.display = "";
 
