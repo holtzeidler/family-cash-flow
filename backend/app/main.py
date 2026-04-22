@@ -286,6 +286,15 @@ def require_family_member(*, db, family_id: int, user_id: int) -> None:
     if membership is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a family member")
 
+def require_family_admin(*, db, family_id: int, user_id: int) -> None:
+    membership = db.execute(
+        select(FamilyMember).where(FamilyMember.family_id == family_id, FamilyMember.user_id == user_id)
+    ).scalar_one_or_none()
+    if membership is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a family member")
+    if str(getattr(membership, "role", "") or "").lower() != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+
 
 class RegisterIn(BaseModel):
     email: EmailStr
@@ -398,6 +407,9 @@ class TransactionOut(BaseModel):
 class TransactionsListOut(BaseModel):
     items: list[TransactionOut]
     totals: dict[str, Decimal]
+
+class TransactionsPurgeAfterOut(BaseModel):
+    deleted: int
 
 
 class AccountIn(BaseModel):
@@ -2834,6 +2846,29 @@ def list_transactions(
         items=items,
         totals={"income": income_sum, "expense": expense_sum, "net": income_sum - expense_sum},
     )
+
+@app.post("/api/families/{family_id}/transactions/purge-after", response_model=TransactionsPurgeAfterOut)
+def purge_transactions_after(
+    family_id: int,
+    after_date: Annotated[date, Query(description="Delete transactions strictly after this date (YYYY-MM-DD).")],
+    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    db=Depends(get_db),
+):
+    """
+    Admin tool: delete posted transactions after a cutoff date.
+    Use this when you roll back code but need to remove imported rows from the database.
+    """
+    user_id = get_current_user_id(access_token)
+    require_family_admin(db=db, family_id=family_id, user_id=user_id)
+    cutoff_exclusive = after_date + timedelta(days=1)
+    res = db.execute(
+        delete(Transaction).where(
+            Transaction.family_id == family_id,
+            Transaction.date >= cutoff_exclusive,
+        )
+    )
+    db.commit()
+    return TransactionsPurgeAfterOut(deleted=int(res.rowcount or 0))
 
 
 @app.post("/api/families/{family_id}/transactions", response_model=TransactionOut)
