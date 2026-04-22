@@ -163,7 +163,16 @@ function setSidebarLowBalanceBanner(text, style = "off") {
     sidebarLowBalanceBanner.classList.remove("is-danger", "is-muted");
     return;
   }
-  sidebarLowBalanceBanner.textContent = text;
+  {
+    const raw = String(text);
+    const parts = raw.split("\n");
+    const head = parts[0] ? `<strong>${escapeHtml(parts[0])}</strong>` : "";
+    const rest = parts
+      .slice(1)
+      .map((s) => escapeHtml(s))
+      .join("<br>");
+    sidebarLowBalanceBanner.innerHTML = [head, rest].filter(Boolean).join(rest ? "<br>" : "");
+  }
   sidebarLowBalanceBanner.style.display = "flex";
   sidebarLowBalanceBanner.classList.remove("is-danger", "is-muted");
   sidebarLowBalanceBanner.classList.toggle("is-danger", style === "danger");
@@ -179,7 +188,16 @@ function setSidebarHighBalanceBanner(text, style = "off") {
     sidebarHighBalanceBanner.classList.remove("is-high", "is-muted");
     return;
   }
-  sidebarHighBalanceBanner.textContent = text;
+  {
+    const raw = String(text);
+    const parts = raw.split("\n");
+    const head = parts[0] ? `<strong>${escapeHtml(parts[0])}</strong>` : "";
+    const rest = parts
+      .slice(1)
+      .map((s) => escapeHtml(s))
+      .join("<br>");
+    sidebarHighBalanceBanner.innerHTML = [head, rest].filter(Boolean).join(rest ? "<br>" : "");
+  }
   sidebarHighBalanceBanner.style.display = "flex";
   sidebarHighBalanceBanner.classList.remove("is-high", "is-muted");
   sidebarHighBalanceBanner.classList.toggle("is-high", style === "high");
@@ -302,6 +320,7 @@ const instanceExpectedTxId = document.getElementById("instanceExpectedTxId");
 const instanceRecurrence = document.getElementById("instanceRecurrence");
 const instanceTwiceMonthlyFields = document.getElementById("instanceTwiceMonthlyFields");
 const instanceSecondDayOfMonth = document.getElementById("instanceSecondDayOfMonth");
+const instanceEndCount = document.getElementById("instanceEndCount");
 const instanceAccountId = document.getElementById("instanceAccountId");
 const seriesVariable = document.getElementById("seriesVariable");
 const txEditRecurringUpdateBtn = document.getElementById("txEditRecurringUpdateBtn");
@@ -363,7 +382,7 @@ const txAddNotes = document.getElementById("txAddNotes");
 const txAddRepeats = document.getElementById("txAddRepeats");
 const txAddRecurringBlock = document.getElementById("txAddRecurringBlock");
 const txAddRecurrence = document.getElementById("txAddRecurrence");
-const txAddLastTxnDate = document.getElementById("txAddLastTxnDate");
+const txAddEndCount = document.getElementById("txAddEndCount");
 const txAddTwiceMonthlyFields = document.getElementById("txAddTwiceMonthlyFields");
 const txAddSecondDayOfMonth = document.getElementById("txAddSecondDayOfMonth");
 const txAddAccountId = document.getElementById("txAddAccountId");
@@ -384,11 +403,11 @@ function updateTxAddRepeatingUi() {
   const recWrap = document.getElementById("txAddRecurrenceWrap");
   if (recWrap) recWrap.hidden = !repeats;
   if (txAddRecurrence) txAddRecurrence.disabled = !repeats;
-  const lastWrap = document.getElementById("txAddLastTxnFieldWrap");
-  if (lastWrap) lastWrap.hidden = !repeats;
-  if (txAddLastTxnDate) {
-    if (!repeats) txAddLastTxnDate.value = "";
-    txAddLastTxnDate.disabled = !repeats;
+  const endWrap = document.getElementById("txAddEndCountWrap");
+  if (endWrap) endWrap.hidden = !repeats;
+  if (txAddEndCount) {
+    if (!repeats) txAddEndCount.value = "";
+    txAddEndCount.disabled = !repeats;
   }
   updateTxAddTwiceMonthlyVisibility();
 }
@@ -510,7 +529,10 @@ async function refreshLowBalanceAlert() {
         parts.push(
           `<div class="balance-threshold-result-block"><div class="k">First date ≤ $${fmtMoneyThreshold(balanceThresholdMin?.value || "", minVal)}</div><div class="v danger">${fmtDateMDY(lowHit.date)} — $${fmtMoney(lowHit.balance)}</div></div>`
         );
-        setSidebarLowBalanceBanner(`Next low balance: ${fmtDateMDY(lowHit.date)} — $${fmtMoney(lowHit.balance)}`, "danger");
+        setSidebarLowBalanceBanner(
+          `Next low balance\n${fmtDateMDY(lowHit.date)} — $${fmtMoney(lowHit.balance)}`,
+          "danger",
+        );
       }
     }
     if (maxOk) {
@@ -531,7 +553,10 @@ async function refreshLowBalanceAlert() {
         parts.push(
           `<div class="balance-threshold-result-block"><div class="k">First date ≥ $${fmtMoneyThreshold(balanceThresholdMax?.value || "", maxVal)}</div><div class="v">${fmtDateMDY(highHit.date)} — $${fmtMoney(highHit.balance)}</div></div>`
         );
-        setSidebarHighBalanceBanner(`Next high balance: ${fmtDateMDY(highHit.date)} — $${fmtMoney(highHit.balance)}`, "high");
+        setSidebarHighBalanceBanner(
+          `Next high balance\n${fmtDateMDY(highHit.date)} — $${fmtMoney(highHit.balance)}`,
+          "high",
+        );
       }
     }
 
@@ -1047,9 +1072,12 @@ if (txAddSave) {
         const accountIdVal = txAddAccountId?.value || "";
         if (!accountIdVal) throw new Error("Account is required");
 
-        const lastTxnVal = txAddLastTxnDate && txAddLastTxnDate.value ? txAddLastTxnDate.value : null;
-        if (lastTxnVal && lastTxnVal < dateVal) {
-          throw new Error("Last transaction date cannot be before start date");
+        const endCountRaw = txAddEndCount?.value != null ? String(txAddEndCount.value).trim() : "";
+        const endCountVal = endCountRaw === "" ? null : Number(endCountRaw);
+        if (endCountVal != null) {
+          if (!Number.isFinite(endCountVal) || endCountVal < 1 || Math.floor(endCountVal) !== endCountVal) {
+            throw new Error("Ends after must be a whole number ≥ 1");
+          }
         }
 
         let secondDayOfMonth = null;
@@ -1069,7 +1097,8 @@ if (txAddSave) {
         await api(`/api/families/${state.activeFamilyId}/expected-transactions`, "POST", {
           account_id: Number(accountIdVal),
           start_date: dateVal,
-          end_date: lastTxnVal,
+          end_date: null,
+          end_count: endCountVal,
           recurrence: recurrenceVal,
           second_day_of_month: secondDayOfMonth,
           description: desc,
@@ -1175,6 +1204,7 @@ function applyTransactionEditMode(mode, opts = {}) {
     if (instanceRecurrence) instanceRecurrence.disabled = false;
     if (instanceAccountId) instanceAccountId.disabled = false;
     if (instanceSecondDayOfMonth) instanceSecondDayOfMonth.disabled = false;
+    if (instanceEndCount) instanceEndCount.disabled = false;
     const saveRow = document.getElementById("txEditSaveRow");
     if (saveRow) saveRow.style.display = "";
     const txEditDel = document.getElementById("txEditDelete");
@@ -1220,6 +1250,7 @@ function applyTransactionEditMode(mode, opts = {}) {
     }
   }
   if (instanceSecondDayOfMonth) instanceSecondDayOfMonth.disabled = !recurring;
+  if (instanceEndCount) instanceEndCount.disabled = !recurring;
 
   const acctCol = document.getElementById("txEditAccountCol");
   if (acctCol) acctCol.style.display = "block";
@@ -1817,6 +1848,13 @@ async function saveExpectedSeriesFromInstance() {
   const notesVal = txEditNotes ? txEditNotes.value.trim() || null : null;
 
   const recurrenceVal = instanceRecurrence?.value || meta.recurrence || "monthly";
+  const endCountRaw = instanceEndCount?.value != null ? String(instanceEndCount.value).trim() : "";
+  const endCountVal = endCountRaw === "" ? null : Number(endCountRaw);
+  if (endCountVal != null) {
+    if (!Number.isFinite(endCountVal) || endCountVal < 1 || Math.floor(endCountVal) !== endCountVal) {
+      throw new Error("Ends after must be a whole number ≥ 1");
+    }
+  }
   let secondDayVal = meta.second_day_of_month != null ? Number(meta.second_day_of_month) : null;
   if (recurrenceVal === "twice_monthly") {
     const raw = instanceSecondDayOfMonth?.value;
@@ -1846,6 +1884,7 @@ async function saveExpectedSeriesFromInstance() {
       account_id: Number(accountId),
       start_date: meta.start_date || "",
       end_date: meta.end_date || null,
+      end_count: endCountVal,
       recurrence: recurrenceVal,
       second_day_of_month: recurrenceVal === "twice_monthly" ? secondDayVal : null,
       description: expectedSaveDescription(),
@@ -1866,6 +1905,7 @@ async function saveExpectedSeriesFromInstance() {
       notes: notesVal,
       recurrence: recurrenceVal,
       variable: !!(seriesVariable && seriesVariable.checked),
+      end_count: endCountVal,
     };
     if (recurrenceVal === "twice_monthly") applyBody.second_day_of_month = secondDayVal;
     await api(
@@ -2859,6 +2899,10 @@ function openExpectedEditModal(tx, opts = {}) {
   if (instanceSecondDayOfMonth) {
     const v = (selectedExpectedSeriesTx && selectedExpectedSeriesTx.second_day_of_month) != null ? selectedExpectedSeriesTx.second_day_of_month : tx.second_day_of_month;
     instanceSecondDayOfMonth.value = v != null ? String(v) : "";
+  }
+  if (instanceEndCount) {
+    const v = (selectedExpectedSeriesTx && selectedExpectedSeriesTx.end_count) != null ? selectedExpectedSeriesTx.end_count : tx.end_count;
+    instanceEndCount.value = v != null ? String(v) : "";
   }
   updateInstanceTwiceMonthlyVisibility();
 

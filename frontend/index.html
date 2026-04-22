@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Family Cash Flow</title>
+    <title>BalanceWhiz</title>
     <script>window.API_BASE = "__API_BASE__";</script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -17,7 +17,7 @@
       <div class="top-nav" role="navigation" aria-label="Primary">
         <div class="top-nav__inner">
           <div class="top-nav__title" aria-label="App title">
-            <h1 class="app-title">Family Cash Flow</h1>
+            <h1 class="app-title">BalanceWhiz</h1>
           </div>
           <div class="top-nav__tabs" role="tablist" aria-label="Views">
             <button type="button" class="top-nav__tab is-active" id="navCalendarView" role="tab" aria-selected="true">
@@ -108,14 +108,10 @@
                   </div>
                 </div>
                 <div class="tx-add-schedule-toolbar__right">
-                  <div id="txAddLastTxnFieldWrap" class="tx-add-schedule-field tx-add-schedule-field--last" hidden>
-                    <label for="txAddLastTxnDate" title="Optional. Last day a scheduled occurrence may fall on. Blank = no end.">Last txn</label>
-                    <input
-                      id="txAddLastTxnDate"
-                      type="date"
-                      title="Optional. Last calendar day for an occurrence. Leave blank for no end date."
-                    />
-                    <span class="tx-add-field-hint">optional</span>
+                  <div id="txAddEndCountWrap" class="tx-add-schedule-field tx-add-schedule-field--end-count" hidden>
+                    <label for="txAddEndCount" title="Optional. Number of times this recurring transaction happens. Blank = never ends.">Ends after</label>
+                    <input id="txAddEndCount" type="number" min="1" step="1" placeholder="e.g. 12" title="Optional. Total number of occurrences." />
+                    <span class="tx-add-field-hint">occurrences</span>
                   </div>
                 </div>
               </div>
@@ -697,6 +693,12 @@
               <p style="margin: 6px 0 0; font-size: 12px; color: var(--muted)">
                 Required for twice monthly: other day of the month (1–31), not the same as the start date’s day.
               </p>
+            </div>
+            <div style="height: 10px"></div>
+            <label for="instanceEndCount" title="Optional. Number of times this recurring transaction happens. Blank = never ends.">Ends after</label>
+            <div class="tx-edit-ends-after-row">
+              <input id="instanceEndCount" type="number" min="1" step="1" placeholder="e.g. 12" title="Optional. Total number of occurrences." />
+              <span class="tx-add-field-hint">occurrences</span>
             </div>
           </div>
 

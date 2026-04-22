@@ -1,4 +1,4 @@
-# Family Cash Flow
+# BalanceWhiz
 
 A small multi-user cash flow management app (web-first, mobile-friendly) with a Python/FastAPI backend and an SQLite database.
 

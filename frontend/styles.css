@@ -417,6 +417,11 @@ button.nav-link:hover{
   box-sizing: border-box;
   line-height: 1.35;
 }
+.calendar-low-balance--sidebar strong{
+  display: block;
+  line-height: 1.2;
+  margin-bottom: 1px;
+}
 .calendar-low-balance--high.is-high{
   color: #166534;
   border-color: rgba(22,101,52,0.35);
@@ -1873,6 +1878,22 @@ textarea::placeholder{
   background: transparent;
   color: var(--text);
 }
+.tx-add-schedule-field input[type="number"]{
+  width: 100%;
+  max-width: 100%;
+  font-size: 14px;
+  padding: 8px 6px;
+  border: none;
+  border-bottom: 1px solid rgba(0,0,0,0.18);
+  border-radius: 0;
+  background: transparent;
+  color: var(--text);
+}
+.tx-add-schedule-field input[type="number"]:focus{
+  outline: none;
+  border-bottom-color: var(--accent);
+  box-shadow: none;
+}
 .tx-add-schedule-field input[type="date"]:focus{
   outline: none;
   border-bottom-color: var(--accent);
@@ -1888,6 +1909,15 @@ textarea::placeholder{
 }
 .tx-add-schedule-field--last[hidden]{
   display: none !important;
+}
+.tx-add-schedule-field--end-count[hidden]{
+  display: none !important;
+}
+
+.tx-edit-ends-after-row{
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
 }
 
 .tx-edit-top{
