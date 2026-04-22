@@ -447,7 +447,8 @@ async function refreshLowBalanceAlert() {
     }
 
     const startIso = toISODate(new Date());
-    const days = 1825;
+    const lowDays = 1825;
+    const highDays = 180;
     const mode = calendarMode?.value || "both";
     if (
       lowBalanceLastQuery.familyId === state.activeFamilyId &&
@@ -466,7 +467,7 @@ async function refreshLowBalanceAlert() {
       const data = await api(
         `/api/families/${state.activeFamilyId}/low-balance-first?threshold=${encodeURIComponent(String(minVal))}&start=${encodeURIComponent(
           startIso
-        )}&days=${days}&mode=${encodeURIComponent(mode)}`,
+        )}&days=${lowDays}&mode=${encodeURIComponent(mode)}`,
         "GET"
       );
       lowHit = data?.hit_date ? { date: data.hit_date, balance: toNum(data.hit_balance) } : null;
@@ -479,7 +480,7 @@ async function refreshLowBalanceAlert() {
         const dataHi = await api(
           `/api/families/${state.activeFamilyId}/high-balance-first?ceiling=${encodeURIComponent(String(maxVal))}&start=${encodeURIComponent(
             startIso
-          )}&days=${days}&mode=${encodeURIComponent(mode)}`,
+          )}&days=${highDays}&mode=${encodeURIComponent(mode)}`,
           "GET"
         );
         highHit = dataHi?.hit_date ? { date: dataHi.hit_date, balance: toNum(dataHi.hit_balance) } : null;
@@ -502,9 +503,9 @@ async function refreshLowBalanceAlert() {
     if (minOk) {
       if (!lowHit) {
         parts.push(
-          `<div class="balance-threshold-result-block"><div class="k">First date ≤ $${fmtMoneyThreshold(balanceThresholdMin?.value || "", minVal)}</div><div class="v">None in the next ${days} days.</div></div>`
+          `<div class="balance-threshold-result-block"><div class="k">First date ≤ $${fmtMoneyThreshold(balanceThresholdMin?.value || "", minVal)}</div><div class="v">None in the next ${lowDays} days.</div></div>`
         );
-        setSidebarLowBalanceBanner(`Low (≤ $${fmtMoney(minVal)}): no crossing in the next ${days} days.`, "muted");
+        setSidebarLowBalanceBanner(`Low (≤ $${fmtMoney(minVal)}): no crossing in the next ${lowDays} days.`, "muted");
       } else {
         parts.push(
           `<div class="balance-threshold-result-block"><div class="k">First date ≤ $${fmtMoneyThreshold(balanceThresholdMin?.value || "", minVal)}</div><div class="v danger">${fmtDateMDY(lowHit.date)} — $${fmtMoney(lowHit.balance)}</div></div>`
@@ -523,9 +524,9 @@ async function refreshLowBalanceAlert() {
         setSidebarHighBalanceBanner("Maximum: server could not check (deploy latest API for high-balance).", "muted");
       } else if (!highHit) {
         parts.push(
-          `<div class="balance-threshold-result-block"><div class="k">First date ≥ $${fmtMoneyThreshold(balanceThresholdMax?.value || "", maxVal)}</div><div class="v">None in the next ${days} days.</div></div>`
+          `<div class="balance-threshold-result-block"><div class="k">First date ≥ $${fmtMoneyThreshold(balanceThresholdMax?.value || "", maxVal)}</div><div class="v">None in the next ${highDays} days.</div></div>`
         );
-        setSidebarHighBalanceBanner(`High (≥ $${fmtMoney(maxVal)}): no crossing in the next ${days} days.`, "muted");
+        setSidebarHighBalanceBanner(`High (≥ $${fmtMoney(maxVal)}): no crossing in the next ${highDays} days.`, "muted");
       } else {
         parts.push(
           `<div class="balance-threshold-result-block"><div class="k">First date ≥ $${fmtMoneyThreshold(balanceThresholdMax?.value || "", maxVal)}</div><div class="v">${fmtDateMDY(highHit.date)} — $${fmtMoney(highHit.balance)}</div></div>`
