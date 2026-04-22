@@ -57,9 +57,9 @@
           <div id="txAddFormHome" class="sidebar-add-tx-form" style="display:none;">
             <div id="txAddFormRoot" class="tx-add-form">
               <div id="txAddErr" class="error"></div>
-              <div class="row">
-                <div>
-                  <label>Type</label>
+              <div class="form-row-h">
+                <div class="form-row-h__label"><label>Type</label></div>
+                <div class="form-row-h__field">
                   <div class="kind-toggle" role="radiogroup" aria-label="Transaction type">
                     <label class="kind-opt"><input type="radio" name="txAddKind" value="expense" checked /> Expense</label>
                     <label class="kind-opt"><input type="radio" name="txAddKind" value="income" /> Income</label>
@@ -67,12 +67,14 @@
                 </div>
               </div>
               <div class="tx-add-vspace" aria-hidden="true"></div>
-              <label for="txAddDate" id="txAddDateLabel">Date</label>
-              <input id="txAddDate" type="date" />
+              <div class="form-row-h">
+                <div class="form-row-h__label"><label for="txAddDate" id="txAddDateLabel">Date</label></div>
+                <div class="form-row-h__field"><input id="txAddDate" type="date" /></div>
+              </div>
               <div class="tx-add-vspace" aria-hidden="true"></div>
-              <div class="row">
-                <div>
-                  <label for="txAddAmount">Amount</label>
+              <div class="form-row-h">
+                <div class="form-row-h__label"><label for="txAddAmount">Amount</label></div>
+                <div class="form-row-h__field">
                   <div class="money-input">
                     <span class="money-input__prefix" aria-hidden="true">$</span>
                     <input id="txAddAmount" type="number" min="0" step="0.01" placeholder="0.00" />
@@ -80,8 +82,10 @@
                 </div>
               </div>
               <div class="tx-add-vspace" aria-hidden="true"></div>
-              <label for="txAddCategoryId">Category</label>
-              <select id="txAddCategoryId"></select>
+              <div class="form-row-h">
+                <div class="form-row-h__label"><label for="txAddCategoryId">Category</label></div>
+                <div class="form-row-h__field"><select id="txAddCategoryId"></select></div>
+              </div>
               <div class="tx-add-vspace tx-add-vspace--lg" aria-hidden="true"></div>
               <div class="tx-add-schedule-toolbar" aria-label="Repeat and schedule">
                 <div class="tx-add-schedule-toolbar__left">
@@ -116,8 +120,12 @@
                 </div>
               </div>
               <div class="tx-add-vspace tx-add-vspace--lg" aria-hidden="true"></div>
-              <label for="txAddNotes">Notes</label>
-              <input id="txAddNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
+              <div class="form-row-h">
+                <div class="form-row-h__label"><label for="txAddNotes">Notes</label></div>
+                <div class="form-row-h__field">
+                  <input id="txAddNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
+                </div>
+              </div>
               <div id="txAddRecurringBlock" style="display: none">
                 <div class="tx-add-vspace tx-add-vspace--sm" aria-hidden="true"></div>
                 <div id="txAddTwiceMonthlyFields" class="expected-second-day-row" style="display: none">
@@ -136,8 +144,10 @@
                   </p>
                 </div>
                 <div class="tx-add-vspace tx-add-vspace--sm" aria-hidden="true"></div>
-                <label for="txAddAccountId">Account</label>
-                <select id="txAddAccountId"></select>
+                <div class="form-row-h">
+                  <div class="form-row-h__label"><label for="txAddAccountId">Account</label></div>
+                  <div class="form-row-h__field"><select id="txAddAccountId"></select></div>
+                </div>
                 <div class="tx-add-vspace tx-add-vspace--sm" aria-hidden="true"></div>
                 <label class="reimbursable-field" for="txAddVariable">
                   <span class="reimbursable-field__label">Variable (estimate)</span>
