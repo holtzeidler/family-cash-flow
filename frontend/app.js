@@ -2494,9 +2494,6 @@ function renderCategoriesGrid(categories) {
   const hName = document.createElement("div");
   hName.className = "cat-h";
   hName.textContent = "Category";
-  const hFg = document.createElement("div");
-  hFg.className = "cat-h";
-  hFg.textContent = "Text";
   const hBg = document.createElement("div");
   hBg.className = "cat-h";
   hBg.textContent = "Bg";
@@ -2504,7 +2501,6 @@ function renderCategoriesGrid(categories) {
   hAct.className = "cat-h";
   hAct.textContent = "";
   categoriesGrid.appendChild(hName);
-  categoriesGrid.appendChild(hFg);
   categoriesGrid.appendChild(hBg);
   categoriesGrid.appendChild(hAct);
 
@@ -2540,9 +2536,7 @@ function renderCategoriesGrid(categories) {
     nameEl.title = c.name;
     nameEl.classList.add("cat-drag-handle");
 
-    let fgVal = normalizeHex(c.fg_color, DEFAULT_FG);
     let bgVal = normalizeHex(c.bg_color, DEFAULT_BG);
-    const fgTrigger = makeColorTrigger("Text color", () => fgVal, (h) => (fgVal = h));
     const bgTrigger = makeColorTrigger("Background color", () => bgVal, (h) => (bgVal = h));
 
     const actions = document.createElement("div");
@@ -2557,7 +2551,6 @@ function renderCategoriesGrid(categories) {
         show(catErr, "");
         if (!state.activeFamilyId) throw new Error("Choose a family first");
         await api(`/api/families/${state.activeFamilyId}/categories/${c.id}`, "PUT", {
-          fg_color: fgVal,
           bg_color: bgVal,
         });
         await loadCategories();
@@ -2567,32 +2560,10 @@ function renderCategoriesGrid(categories) {
       }
     });
 
-    const reset = document.createElement("button");
-    reset.type = "button";
-    reset.className = "cat-reset";
-    reset.textContent = "Reset";
-    reset.title = "Reset to default colors";
-    reset.addEventListener("click", async () => {
-      try {
-        show(catErr, "");
-        if (!state.activeFamilyId) throw new Error("Choose a family first");
-        await api(`/api/families/${state.activeFamilyId}/categories/${c.id}`, "PUT", {
-          fg_color: "",
-          bg_color: "",
-        });
-        await loadCategories();
-        await loadMonthAndCalendar();
-      } catch (e) {
-        show(catErr, e.message || "Failed to reset category");
-      }
-    });
-
     actions.appendChild(save);
-    actions.appendChild(reset);
 
     // Use display: contents so the row participates in the grid.
     row.appendChild(nameEl);
-    row.appendChild(fgTrigger);
     row.appendChild(bgTrigger);
     row.appendChild(actions);
     categoriesGrid.appendChild(row);
@@ -4100,8 +4071,8 @@ function renderCalendar() {
     const bt = b && b._type === "expected" ? 1 : 0;
     if (at !== bt) return at - bt;
     // stable-ish fallback for consistent ordering
-    const ad = String(a.description || "");
-    const bd = String(b.description || "");
+    const ad = String((a.category || a.description) || "");
+    const bd = String((b.category || b.description) || "");
     const dc = ad.localeCompare(bd);
     if (dc !== 0) return dc;
     const aid = Number(a.id ?? 0);
@@ -4205,7 +4176,8 @@ function renderCalendar() {
       if (isExpected && row.variable) line.classList.add("cal-expected-variable");
       if (!isExpected) line.dataset.txId = String(row.id);
 
-      const labelRaw = isExpected ? row.description || "(expected)" : (row.description || "Transaction").trim();
+      const categoryName = row.category && String(row.category).trim() ? String(row.category).trim() : "";
+      const labelRaw = categoryName || (isExpected ? row.description || "(expected)" : (row.description || "Uncategorized").trim());
       const label = truncate(labelRaw, 44);
 
       const labelSpan = document.createElement("span");
@@ -4235,13 +4207,10 @@ function renderCalendar() {
       line.appendChild(amtSpan);
 
       {
-        const headRaw = String(labelRaw || "").trim() || (isExpected ? "Expected" : "Transaction");
-        const head = isExpected ? `Expected: ${headRaw}` : headRaw;
         const noteStr = row.notes && String(row.notes).trim() ? String(row.notes).trim() : "";
-        const tt = noteStr ? `${head}\nNotes: ${noteStr}` : head;
-        line.title = tt;
-        labelWrap.title = tt;
-        amtSpan.title = tt;
+        line.title = noteStr;
+        labelWrap.title = noteStr;
+        amtSpan.title = noteStr;
       }
 
       if (isExpected) {

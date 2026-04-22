@@ -410,12 +410,14 @@ button.nav-link:hover{
 }
 .calendar-low-balance--sidebar{
   display: flex;
-  align-items: flex-start;
+  align-items: center;
+  justify-content: center;
   white-space: normal;
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
   line-height: 1.35;
+  text-align: center;
 }
 .calendar-low-balance--sidebar strong{
   display: block;
@@ -1153,7 +1155,7 @@ textarea::placeholder{
 
 .categories-grid{
   display:grid;
-  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 8px 10px;
   align-items: center;
 }
@@ -1230,8 +1232,7 @@ textarea::placeholder{
   justify-content: flex-end;
   align-items: center;
 }
-.categories-grid .cat-save,
-.categories-grid .cat-reset{
+.categories-grid .cat-save{
   padding: 8px 10px;
 }
 
