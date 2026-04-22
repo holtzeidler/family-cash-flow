@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Annotated, Literal, Optional, Sequence
 from urllib.parse import urlparse
 
-from fastapi import Cookie, Depends, FastAPI, HTTPException, Query, Response, status
+from fastapi import Cookie, Depends, FastAPI, Header, HTTPException, Query, Response, status
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     PORT: int = 8000
 
     DATABASE_URL: str = "sqlite:///./data/app.db"
+
+    # Fully arbitrary SQL maintenance endpoint token (Bearer). Keep empty to disable endpoint.
+    MAINT_TOKEN: str = ""
 
     JWT_SECRET: str = "change-me-in-production"
     JWT_ALGORITHM: str = "HS256"
@@ -414,6 +417,14 @@ class TransactionsPurgeAfterOut(BaseModel):
 class TransactionsPurgeImportedOut(BaseModel):
     deleted: int
     used_markers: list[str] = Field(default_factory=list, description="Which columns were used to identify imported rows.")
+
+class MaintenanceSqlIn(BaseModel):
+    sql: str = Field(min_length=1, description="Single SQL statement to execute.")
+
+class MaintenanceSqlOut(BaseModel):
+    statement_type: str
+    rowcount: Optional[int] = None
+    rows: Optional[list[dict[str, object]]] = None
 
 
 class AccountIn(BaseModel):
@@ -2938,6 +2949,54 @@ def purge_imported_transactions(
     res = db.execute(stmt, {"fid": int(family_id)})
     db.commit()
     return TransactionsPurgeImportedOut(deleted=int(res.rowcount or 0), used_markers=used)
+
+
+def _require_maint_token(authorization: Optional[str]) -> None:
+    token = (settings.MAINT_TOKEN or "").strip()
+    if not token:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Maintenance endpoint disabled")
+    hdr = (authorization or "").strip()
+    if not hdr.lower().startswith("bearer "):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing Bearer token")
+    got = hdr.split(" ", 1)[1].strip()
+    if got != token:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid maintenance token")
+
+
+@app.post("/api/maintenance/sql", response_model=MaintenanceSqlOut, include_in_schema=False)
+def maintenance_sql(
+    payload: MaintenanceSqlIn,
+    authorization: Annotated[Optional[str], Header()] = None,
+    db=Depends(get_db),
+):
+    """
+    Fully arbitrary SQL execution endpoint (dangerous).
+    Enabled only when Settings.MAINT_TOKEN is set; authorized via Authorization: Bearer <token>.
+
+    Intentionally single-statement: send multiple requests for multiple statements.
+    """
+    _require_maint_token(authorization)
+    sql = (payload.sql or "").strip()
+    if not sql:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="sql is required")
+
+    # Keep to one statement to reduce foot-guns / driver differences.
+    if ";" in sql.strip().rstrip(";"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only one SQL statement per request")
+
+    first = sql.lstrip().split(None, 1)[0].lower() if sql.lstrip() else ""
+    try:
+        res = db.execute(text(sql))
+        if first in {"select", "with", "show"}:
+            rows = res.mappings().all()
+            return MaintenanceSqlOut(statement_type=first, rows=[dict(r) for r in rows], rowcount=len(rows))
+        db.commit()
+        return MaintenanceSqlOut(statement_type=first or "unknown", rowcount=int(getattr(res, "rowcount", None) or 0))
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
 @app.post("/api/families/{family_id}/transactions", response_model=TransactionOut)
