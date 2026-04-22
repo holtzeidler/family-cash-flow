@@ -4,7 +4,8 @@
   --text:#111827;
   --muted:#4b5563;
   /* Palette */
-  --accent:#129bba; /* lighter blue from palette */
+  /* Forest green accent (replaces light blue theme accent) */
+  --accent:#0b6b3a;
   --danger:#a73744; /* darker maroon-leaning red */
   --ok:#005a4a;     /* green from palette */
   --border: rgba(0,0,0,0.12);
@@ -63,8 +64,8 @@ body{
   color: var(--text);
 }
 .top-nav__tab.is-active{
-  background: rgba(18,155,186,0.18);
-  border-color: rgba(18,155,186,0.40);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
   color: var(--text);
 }
 
@@ -129,8 +130,8 @@ h1{
 }
 
 button{
-  background: rgba(18,155,186,0.15);
-  border: 1px solid rgba(18,155,186,0.35);
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
   color: var(--text);
   padding: 10px 12px;
   border-radius: 10px;
@@ -193,7 +194,7 @@ button.danger{
   display: none;
 }
 .sidebar-section--flash{
-  outline: 2px solid rgba(18,155,186,0.55);
+  outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
   outline-offset: 3px;
 }
 .sidebar-collapse-chevron{
@@ -726,8 +727,8 @@ button.nav-link:hover{
 }
 .chart-duration-btn.is-active{
   color: var(--text);
-  background: rgba(18,155,186,0.18);
-  box-shadow: inset 0 0 0 1px rgba(18,155,186,0.35);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
 }
 
 .projection-chart-wrap{
@@ -1174,7 +1175,7 @@ textarea::placeholder{
   box-shadow: inset 0 0 0 1px rgba(0,0,0,0.25);
 }
 .cat-color-trigger:focus-visible{
-  outline: 2px solid rgba(18,155,186,0.75);
+  outline: 2px solid color-mix(in srgb, var(--accent) 75%, transparent);
   outline-offset: 2px;
 }
 .palette-grid{
@@ -1191,7 +1192,7 @@ textarea::placeholder{
   cursor: pointer;
 }
 .swatch.is-selected{
-  outline: 2px solid rgba(18,155,186,0.75);
+  outline: 2px solid color-mix(in srgb, var(--accent) 75%, transparent);
   outline-offset: 1px;
 }
 .cat-actions{
@@ -1291,8 +1292,8 @@ textarea::placeholder{
 .info{
   margin-top:10px;
   color: #1e3a8a;
-  border: 1px solid rgba(18,155,186,0.35);
-  background: rgba(18,155,186,0.12);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
   padding: 10px 12px;
   border-radius: 10px;
   display:none;
@@ -1868,7 +1869,7 @@ textarea::placeholder{
 .tx-edit-top{
   margin: -16px -16px 0;
   padding: 16px;
-  background: rgba(18,155,186,0.16);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
   border-radius: 0;
 }
 
