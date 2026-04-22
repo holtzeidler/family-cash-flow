@@ -283,32 +283,37 @@
                 </button>
               </div>
               <div id="sidebarBodyAllTransactions" class="sidebar-section-body">
-                <div class="list" id="txListMain"></div>
-              </div>
-            </div>
-
-            <div style="height: 14px"></div>
-
-            <div class="card sidebar-section sidebar-section--collapsed" data-sidebar-key="recurringFilter">
-              <div class="sidebar-section-head">
-                <h2>Recurring Transactions</h2>
-                <button
-                  type="button"
-                  class="sidebar-collapse-btn"
-                  aria-expanded="false"
-                  aria-controls="sidebarBodyRecurringFilter"
-                  title="Expand Recurring Transactions"
-                >
-                  <svg class="sidebar-collapse-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M6 9l6 6 6-6" />
-                  </svg>
-                </button>
-              </div>
-              <div id="sidebarBodyRecurringFilter" class="sidebar-section-body">
                 <div class="row three">
                   <div>
-                    <label for="recurringFrequencyFilter">Frequency</label>
-                    <select id="recurringFrequencyFilter">
+                    <label for="upcomingKindFilter">Type</label>
+                    <select id="upcomingKindFilter">
+                      <option value="all" selected>All</option>
+                      <option value="expense">Expense</option>
+                      <option value="income">Income</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label for="upcomingStartDate">Start</label>
+                    <input id="upcomingStartDate" type="date" />
+                  </div>
+                  <div>
+                    <label for="upcomingEndDate">End</label>
+                    <input id="upcomingEndDate" type="date" />
+                  </div>
+                </div>
+                <div style="height: 10px"></div>
+                <div class="row three">
+                  <div>
+                    <label for="upcomingSourceFilter">Show</label>
+                    <select id="upcomingSourceFilter">
+                      <option value="all" selected>Recurring + one-time</option>
+                      <option value="one_time">One-time only</option>
+                      <option value="recurring">Recurring only</option>
+                    </select>
+                  </div>
+                  <div id="upcomingRecurrenceWrap" style="display:none;">
+                    <label for="upcomingRecurrenceFilter">Frequency</label>
+                    <select id="upcomingRecurrenceFilter">
                       <option value="all" selected>All</option>
                       <option value="weekly">Weekly</option>
                       <option value="monthly">Monthly</option>
@@ -317,22 +322,16 @@
                       <option value="yearly">Annual</option>
                     </select>
                   </div>
-                  <div>
-                    <label for="recurringKindFilter">Type</label>
-                    <select id="recurringKindFilter">
-                      <option value="all" selected>All</option>
-                      <option value="expense">Expense</option>
-                      <option value="income">Income</option>
-                    </select>
-                  </div>
                   <div style="display:flex; align-items:end;">
-                    <button type="button" id="recurringFrequencyApplyBtn" style="width:100%;">Apply</button>
+                    <button type="button" id="upcomingApplyBtn" style="width:100%;">Apply</button>
                   </div>
                 </div>
                 <div style="height: 10px"></div>
-                <div class="list" id="recurringFilteredList"></div>
+                <div class="list" id="txListMain"></div>
               </div>
             </div>
+
+            <div style="height: 14px"></div>
 
           </div>
 

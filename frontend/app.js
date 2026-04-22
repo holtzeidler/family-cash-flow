@@ -214,11 +214,16 @@ const addAccountBtn = document.getElementById("addAccountBtn");
 const saveAccountEditBtn = document.getElementById("saveAccountEditBtn");
 const cancelAccountEditBtn = document.getElementById("cancelAccountEditBtn");
 
-// Expected transactions (sidebar list / filters; add flow uses Add transaction modal)
-const recurringFrequencyFilter = document.getElementById("recurringFrequencyFilter");
-const recurringKindFilter = document.getElementById("recurringKindFilter");
-const recurringFrequencyApplyBtn = document.getElementById("recurringFrequencyApplyBtn");
-const recurringFilteredList = document.getElementById("recurringFilteredList");
+// Transaction View: upcoming filters
+const upcomingKindFilter = document.getElementById("upcomingKindFilter");
+const upcomingStartDate = document.getElementById("upcomingStartDate");
+const upcomingEndDate = document.getElementById("upcomingEndDate");
+const upcomingSourceFilter = document.getElementById("upcomingSourceFilter");
+const upcomingRecurrenceWrap = document.getElementById("upcomingRecurrenceWrap");
+const upcomingRecurrenceFilter = document.getElementById("upcomingRecurrenceFilter");
+const upcomingApplyBtn = document.getElementById("upcomingApplyBtn");
+
+let upcomingFetchDebounce = null;
 const variableTodoList = document.getElementById("variableTodoList");
 
 // Expected transaction series id (unified edit modal)
@@ -1526,15 +1531,50 @@ if (calendarGrid) {
   });
 }
 
-if (recurringFrequencyApplyBtn) {
-  recurringFrequencyApplyBtn.addEventListener("click", () => renderRecurringFilteredList());
+// (Transaction View) recurring filter panel removed; upcoming filters replace it.
+function syncUpcomingRecurrenceVisibility() {
+  const srcSel = upcomingSourceFilter ? String(upcomingSourceFilter.value || "all") : "all";
+  const show = srcSel === "recurring";
+  if (upcomingRecurrenceWrap) upcomingRecurrenceWrap.style.display = show ? "" : "none";
+  if (upcomingRecurrenceFilter) upcomingRecurrenceFilter.disabled = !show;
 }
-if (recurringFrequencyFilter) {
-  recurringFrequencyFilter.addEventListener("change", () => renderRecurringFilteredList());
+
+function initUpcomingDateDefaultsIfEmpty() {
+  if (!upcomingStartDate || !upcomingEndDate) return;
+  if (upcomingStartDate.value || upcomingEndDate.value) return;
+  const todayIso = toISODate(new Date());
+  const endCap = new Date();
+  endCap.setDate(endCap.getDate() + 548);
+  upcomingStartDate.value = todayIso;
+  upcomingEndDate.value = toISODate(endCap);
 }
-if (recurringKindFilter) {
-  recurringKindFilter.addEventListener("change", () => renderRecurringFilteredList());
+
+function scheduleUpcomingRefetchAndRender() {
+  if (upcomingFetchDebounce) clearTimeout(upcomingFetchDebounce);
+  upcomingFetchDebounce = setTimeout(() => {
+    upcomingFetchDebounce = null;
+    void loadUpcomingTransactionsPanel();
+    renderUpcomingTransactionsFiltered();
+  }, 250);
 }
+
+function scheduleUpcomingRenderOnly() {
+  if (upcomingFetchDebounce) clearTimeout(upcomingFetchDebounce);
+  upcomingFetchDebounce = setTimeout(() => {
+    upcomingFetchDebounce = null;
+    renderUpcomingTransactionsFiltered();
+  }, 120);
+}
+
+initUpcomingDateDefaultsIfEmpty();
+syncUpcomingRecurrenceVisibility();
+
+if (upcomingApplyBtn) upcomingApplyBtn.addEventListener("click", () => scheduleUpcomingRefetchAndRender());
+if (upcomingKindFilter) upcomingKindFilter.addEventListener("change", () => scheduleUpcomingRenderOnly());
+if (upcomingSourceFilter) upcomingSourceFilter.addEventListener("change", () => { syncUpcomingRecurrenceVisibility(); scheduleUpcomingRenderOnly(); });
+if (upcomingRecurrenceFilter) upcomingRecurrenceFilter.addEventListener("change", () => scheduleUpcomingRenderOnly());
+if (upcomingStartDate) upcomingStartDate.addEventListener("change", () => scheduleUpcomingRefetchAndRender());
+if (upcomingEndDate) upcomingEndDate.addEventListener("change", () => scheduleUpcomingRefetchAndRender());
 
 runProjectionBtn.addEventListener("click", async () => {
   try {
@@ -3089,6 +3129,161 @@ function nextOccurrenceIsoForRecurringList(tx, todayIso) {
   return nextExpectedOccurrenceIso(tx, todayIso);
 }
 
+function renderUpcomingTransactionsFiltered() {
+  if (!txListMain) return;
+  const kindSel = upcomingKindFilter ? String(upcomingKindFilter.value || "all") : "all";
+  const srcSel = upcomingSourceFilter ? String(upcomingSourceFilter.value || "all") : "all";
+  const freqSel = upcomingRecurrenceFilter ? String(upcomingRecurrenceFilter.value || "all") : "all";
+  const startIso = upcomingStartDate?.value || toISODate(new Date());
+  const endIso = upcomingEndDate?.value || "";
+
+  const withinRange = (iso) => {
+    if (!iso) return false;
+    if (startIso && String(iso) < String(startIso)) return false;
+    if (endIso && String(iso) > String(endIso)) return false;
+    return true;
+  };
+
+  /** @type {{sortIso:string, type:"actual"|"expected", tx:any, nextIso?:string}[]} */
+  const rows = [];
+
+  if (srcSel === "all" || srcSel === "one_time") {
+    for (const tx of state.upcomingActualItems || []) {
+      const iso = normalizeIsoDate(tx?.date) || String(tx?.date || "");
+      if (!withinRange(iso)) continue;
+      if (kindSel !== "all" && String(tx?.kind || "expense") !== kindSel) continue;
+      rows.push({ sortIso: iso, type: "actual", tx });
+    }
+  }
+
+  if (srcSel === "all" || srcSel === "recurring") {
+    const todayIso = toISODate(new Date());
+    const items = state.expectedTransactions || [];
+    const byId = new Map();
+    for (const tx of items) {
+      const id = Number(tx && tx.id);
+      if (!id) continue;
+      if (!byId.has(id)) byId.set(id, tx);
+    }
+    for (const tx of byId.values()) {
+      const rec = String(tx?.recurrence || "monthly");
+      if (srcSel === "recurring" && freqSel !== "all" && rec !== freqSel) continue;
+      if (srcSel !== "recurring" && freqSel !== "all" && rec !== freqSel) {
+        // Allow frequency filter even when "all" sources (applies to recurring rows only).
+      }
+      if (freqSel !== "all" && rec !== freqSel) continue;
+      const eff = effectiveNextOccurrenceListFields(tx);
+      if (kindSel !== "all" && String(eff.kind || "expense") !== kindSel) continue;
+      const nextIso = nextOccurrenceIsoForRecurringList(tx, todayIso);
+      if (!withinRange(nextIso)) continue;
+      rows.push({ sortIso: nextIso, type: "expected", tx, nextIso });
+    }
+  }
+
+  rows.sort((a, b) => String(a.sortIso).localeCompare(String(b.sortIso)));
+
+  txListMain.innerHTML = "";
+  if (!rows.length) {
+    const empty = document.createElement("div");
+    empty.className = "pill";
+    empty.textContent = "No upcoming transactions for these filters.";
+    txListMain.appendChild(empty);
+    return;
+  }
+
+  for (const r of rows) {
+    if (r.type === "actual") {
+      const tx = r.tx;
+      const el = document.createElement("div");
+      el.className = "item";
+      el.style.cursor = "pointer";
+
+      const amtClass = tx.kind === "income" ? "income" : "expense";
+      const left = document.createElement("div");
+      left.className = "left";
+      const link = document.createElement("a");
+      link.href = "#";
+      link.className = `desc tx-desc-link ${kindFgClass(tx.kind)}`;
+      link.textContent = (tx.description || "(no description)").trim() || "(no description)";
+      const n = tx.notes && String(tx.notes).trim();
+      if (n) link.title = n;
+      link.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        openTxEditModal(tx);
+      });
+      const meta = document.createElement("div");
+      meta.className = "meta";
+      meta.appendChild(document.createTextNode(fmtDateMDY(tx.date || "")));
+      if (tx.category_id && tx.category) {
+        const st = categoryPillStyleFromId(tx.category_id);
+        const pill = document.createElement("span");
+        pill.className = `cat-pill ${kindFgClass(tx.kind)}`;
+        pill.textContent = tx.category;
+        if (st?.fg) pill.style.color = st.fg;
+        if (st?.bg) {
+          pill.style.background = st.bg;
+          pill.style.fontWeight = "600";
+        }
+        meta.appendChild(document.createTextNode(" · "));
+        meta.appendChild(pill);
+      } else if (tx.category) {
+        meta.appendChild(document.createTextNode(` · ${tx.category}`));
+      }
+      left.appendChild(link);
+      left.appendChild(meta);
+
+      const amt = document.createElement("div");
+      amt.className = `amt ${amtClass}`;
+      amt.textContent = `${tx.kind === "income" ? "+" : "-"}$${fmtMoney(tx.amount)}`;
+
+      el.appendChild(left);
+      el.appendChild(amt);
+      el.addEventListener("click", () => openTxEditModal(tx));
+      txListMain.appendChild(el);
+      continue;
+    }
+
+    const tx = r.tx;
+    const nextIso = r.nextIso;
+    const eff = effectiveNextOccurrenceListFields(tx);
+    const el = document.createElement("div");
+    el.className = "item expected-item--dense";
+    if (eff.variable) el.classList.add("expected-item--variable");
+    el.style.cursor = "pointer";
+    el.title = `Recurring schedule #${tx.id} · next ${nextIso}`;
+
+    const amtClass = eff.kind === "income" ? "income" : "expense";
+    const kindSign = eff.kind === "income" ? "+" : "-";
+    const left = document.createElement("div");
+    left.className = "left";
+    const descEl = document.createElement("div");
+    descEl.className = `desc ${kindFgClass(eff.kind)}`;
+    descEl.textContent = eff.description;
+    const metaEl = document.createElement("div");
+    metaEl.className = "meta";
+    metaEl.appendChild(
+      document.createTextNode(`Next: ${fmtDateMDY(nextIso)} · recurs: ${recurrenceLabel(tx.recurrence || "monthly")}`),
+    );
+    left.appendChild(descEl);
+    left.appendChild(metaEl);
+    const amtBtn = document.createElement("button");
+    amtBtn.type = "button";
+    amtBtn.className = `amt ${amtClass} expected-amt-link`;
+    amtBtn.textContent = `${kindSign}$${fmtMoney(eff.amount)}`;
+    amtBtn.title = "Edit recurring transaction";
+    amtBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      openExpectedEditModal(tx, { nextOccurrenceIso: nextIso });
+    });
+    el.appendChild(left);
+    el.appendChild(amtBtn);
+    el.addEventListener("click", () => openExpectedEditModal(tx, { nextOccurrenceIso: nextIso }));
+    txListMain.appendChild(el);
+  }
+}
+
 function renderRecurringFilteredList() {
   if (!recurringFilteredList) return;
   const items = state.expectedTransactions || [];
@@ -3190,7 +3385,7 @@ async function loadExpectedTransactions() {
   if (!state.activeFamilyId) return;
   const items = await api(`/api/families/${state.activeFamilyId}/expected-transactions`, "GET");
   state.expectedTransactions = items || [];
-  renderRecurringFilteredList();
+  renderUpcomingTransactionsFiltered();
 }
 
 function renderProjectionSummary(summary) {
@@ -3417,18 +3612,20 @@ async function loadUpcomingTransactionsPanel() {
   try {
     if (!state.activeFamilyId) {
       state.upcomingActualItems = [];
-      renderTransactionsInto(txListMain, [], "No upcoming transactions.");
+      renderUpcomingTransactionsFiltered();
       return;
     }
-    const todayIso = toISODate(new Date());
-    const endCap = new Date();
-    endCap.setDate(endCap.getDate() + 548);
-    const endIso = toISODate(endCap);
+    const todayIso = upcomingStartDate?.value || toISODate(new Date());
+    const endIso = upcomingEndDate?.value || (() => {
+      const endCap = new Date();
+      endCap.setDate(endCap.getDate() + 548);
+      return toISODate(endCap);
+    })();
     const qs = `?start_date=${encodeURIComponent(todayIso)}&end_date=${encodeURIComponent(endIso)}`;
     const data = await api(`/api/families/${state.activeFamilyId}/transactions${qs}`, "GET");
     const items = data?.items || [];
     state.upcomingActualItems = items;
-    renderTransactionsInto(txListMain, items, "No upcoming transactions.");
+    renderUpcomingTransactionsFiltered();
   } catch (e) {
     show(txErr, e.message || "Failed to load upcoming transactions");
   }
