@@ -39,9 +39,41 @@ body{
   border-bottom: 1px solid rgba(0,0,0,0.06);
 }
 .top-nav__inner{
+  display: grid;
+  grid-template-columns: 0.9fr auto 0.9fr;
+  align-items: center;
+  gap: 10px;
+}
+.top-nav__title{
   display: flex;
   align-items: center;
-  justify-content: center;
+  min-width: 0;
+}
+.app-title{
+  margin: 0;
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  line-height: 1.05;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 860px){
+  .top-nav__inner{
+    grid-template-columns: 1fr;
+    justify-items: center;
+    row-gap: 10px;
+  }
+  .top-nav__title{
+    justify-content: center;
+    width: 100%;
+  }
+  .app-title{
+    font-size: 28px;
+    text-align: center;
+  }
 }
 .top-nav__tabs{
   display: inline-flex;
@@ -77,19 +109,11 @@ body{
   display: flex;
   flex-direction: row;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 12px;
   flex-wrap: wrap;
   flex-shrink: 0;
   min-width: 0;
-}
-
-.sidebar-top h1{
-  margin: 0;
-  flex: 1 1 auto;
-  min-width: 0;
-  font-size: 20px;
-  letter-spacing: 0.2px;
 }
 
 .header-actions{
@@ -1898,40 +1922,33 @@ textarea::placeholder{
 
 /* Edit modal: Save centered; Delete + Cancel on one row */
 #txEditInner > .modal-actions.modal-actions--tx-edit-foot{
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 12px;
+  display: block;
 }
-#txEditInner > .modal-actions #txEditSaveRow{
+#txEditInner > .modal-actions #txEditFooterSecondary.tx-edit-actions-row{
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  width: 100%;
+  align-items: stretch;
+}
+#txEditInner > .modal-actions #txEditSaveRow.tx-edit-save-cell{
   display: block;
   width: 100%;
 }
-#txEditInner > .modal-actions #txEditSaveRow #txEditSave{
+#txEditInner > .modal-actions #txEditFooterSecondary.tx-edit-actions-row > button,
+#txEditInner > .modal-actions #txEditFooterSecondary.tx-edit-actions-row #txEditSave{
   width: 100%;
-  max-width: 100%;
-  box-sizing: border-box;
-}
-#txEditInner > .modal-actions #txEditFooterSecondary{
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 10px;
-  width: 100%;
-}
-#txEditInner > .modal-actions #txEditFooterSecondary > button{
-  flex: 0 0 auto;
-  width: auto;
   min-width: 0;
-  max-width: 9.5rem;
+  max-width: none;
+  box-sizing: border-box;
   padding-left: 14px;
   padding-right: 14px;
 }
 #txEditCancel{
-  width: auto;
+  width: 100%;
   min-width: 0;
-  padding-left: 22px;
-  padding-right: 22px;
+  padding-left: 14px;
+  padding-right: 14px;
   background: transparent;
   color: var(--danger);
   border: 2px solid var(--danger);
