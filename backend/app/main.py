@@ -411,6 +411,10 @@ class TransactionsListOut(BaseModel):
 class TransactionsPurgeAfterOut(BaseModel):
     deleted: int
 
+class TransactionsPurgeImportedOut(BaseModel):
+    deleted: int
+    used_markers: list[str] = Field(default_factory=list, description="Which columns were used to identify imported rows.")
+
 
 class AccountIn(BaseModel):
     name: str = Field(min_length=1, max_length=255)
@@ -2869,6 +2873,71 @@ def purge_transactions_after(
     )
     db.commit()
     return TransactionsPurgeAfterOut(deleted=int(res.rowcount or 0))
+
+
+def _table_columns(db, table: str) -> set[str]:
+    """
+    Return a set of column names for a table (sqlite + postgres).
+    Used to safely handle older schema versions while operating on newer DBs.
+    """
+    try:
+        if settings.DATABASE_URL.startswith("sqlite"):
+            rows = db.execute(text(f"PRAGMA table_info({table})")).fetchall()
+            return {str(r[1]) for r in rows if len(r) > 1}
+        rows = db.execute(
+            text(
+                "SELECT column_name FROM information_schema.columns "
+                "WHERE table_schema = 'public' AND table_name = :t"
+            ),
+            {"t": table},
+        ).fetchall()
+        return {str(r[0]) for r in rows if r and r[0]}
+    except Exception:
+        return set()
+
+
+@app.post("/api/families/{family_id}/transactions/purge-imported", response_model=TransactionsPurgeImportedOut)
+def purge_imported_transactions(
+    family_id: int,
+    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    db=Depends(get_db),
+):
+    """
+    Admin tool: delete imported transactions only.
+    Works across schema versions by detecting marker columns:
+    - imported (boolean)
+    - import_batch_id (string)
+    - imported_at (timestamp)
+    """
+    user_id = get_current_user_id(access_token)
+    require_family_admin(db=db, family_id=family_id, user_id=user_id)
+
+    cols = _table_columns(db, "transactions")
+    where_parts: list[str] = []
+    used: list[str] = []
+    if "imported" in cols:
+        where_parts.append("imported = 1")
+        used.append("imported")
+    if "import_batch_id" in cols:
+        where_parts.append("import_batch_id IS NOT NULL")
+        used.append("import_batch_id")
+    if "imported_at" in cols:
+        where_parts.append("imported_at IS NOT NULL")
+        used.append("imported_at")
+
+    if not where_parts:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This database schema has no import marker columns to identify imported transactions.",
+        )
+
+    stmt = text(
+        "DELETE FROM transactions "
+        "WHERE family_id = :fid AND (" + " OR ".join(where_parts) + ")"
+    )
+    res = db.execute(stmt, {"fid": int(family_id)})
+    db.commit()
+    return TransactionsPurgeImportedOut(deleted=int(res.rowcount or 0), used_markers=used)
 
 
 @app.post("/api/families/{family_id}/transactions", response_model=TransactionOut)
