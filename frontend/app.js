@@ -243,6 +243,9 @@ const upcomingApplyBtn = document.getElementById("upcomingApplyBtn");
 
 let upcomingFetchDebounce = null;
 const variableTodoList = document.getElementById("variableTodoList");
+const accountDetailsAccountId = document.getElementById("accountDetailsAccountId");
+const accountDetailsType = document.getElementById("accountDetailsType");
+const accountDetailsStarting = document.getElementById("accountDetailsStarting");
 
 // Expected transaction series id (unified edit modal)
 const expectedEditId = document.getElementById("expectedEditId");
@@ -746,7 +749,7 @@ document.querySelectorAll(".sidebar-section[data-sidebar-key]").forEach((card) =
   // If this is lowBalance and the user hasn't explicitly set a preference,
   // force expanded even if older localStorage had it collapsed.
   let collapsed;
-  if ((key === "balanceThresholds" || key === "variableTodos" || key === "addTransaction") && !userSet) {
+  if ((key === "accountDetails" || key === "balanceThresholds" || key === "addTransaction") && !userSet) {
     collapsed = false;
     try {
       localStorage.setItem(SIDEBAR_SECTION_PREFIX + key, "0");
@@ -827,6 +830,11 @@ function setActiveTopView(view) {
   if (v === "calendar") {
     lowBalanceLastQuery = { familyId: null, min: null, max: null, mode: null };
     void refreshLowBalanceAlert();
+  }
+  if (v === "settings") {
+    const accountDetailsCard = document.querySelector('.sidebar-section[data-sidebar-key="accountDetails"]');
+    if (accountDetailsCard) applySidebarSectionCollapsed(accountDetailsCard, false);
+    renderAccountDetailsPanel();
   }
   try {
     localStorage.setItem(ACTIVE_VIEW_KEY, v);
@@ -1254,8 +1262,6 @@ function applyTransactionEditMode(mode, opts = {}) {
 
   const acctCol = document.getElementById("txEditAccountCol");
   if (acctCol) acctCol.style.display = "block";
-  const acctCatRow = document.getElementById("txEditAccountCategoryRow");
-  if (acctCatRow) acctCatRow.classList.add("tx-edit-account-category-row--recurring");
   if (instanceAccountId) {
     instanceAccountId.disabled = !recurring;
     instanceAccountId.title = recurring
@@ -2771,6 +2777,27 @@ function renderAccountSelect(selectEl, accounts) {
   }
 }
 
+function renderAccountDetailsPanel() {
+  if (!accountDetailsAccountId) return;
+  renderAccountSelect(accountDetailsAccountId, state.accounts || []);
+  if (state.accounts && state.accounts.length > 0 && !accountDetailsAccountId.value) {
+    accountDetailsAccountId.value = String(state.accounts[0].id);
+  }
+  const id = accountDetailsAccountId.value ? Number(accountDetailsAccountId.value) : NaN;
+  const acct = Number.isFinite(id) ? (state.accounts || []).find((a) => Number(a.id) === id) : null;
+  if (!acct) {
+    if (accountDetailsType) accountDetailsType.textContent = "—";
+    if (accountDetailsStarting) accountDetailsStarting.textContent = "—";
+    return;
+  }
+  if (accountDetailsType) accountDetailsType.textContent = String(acct.type || "—").replaceAll("_", " ");
+  if (accountDetailsStarting) {
+    const startBal = acct.starting_balance != null ? `$${fmtMoney(acct.starting_balance)}` : "—";
+    const startDt = acct.starting_balance_date ? fmtDateMDY(acct.starting_balance_date) : "—";
+    accountDetailsStarting.textContent = `${startBal} on ${startDt}`;
+  }
+}
+
 async function loadAccounts() {
   if (!state.activeFamilyId) return;
   const accounts = await api(`/api/families/${state.activeFamilyId}/accounts`, "GET");
@@ -2781,9 +2808,18 @@ async function loadAccounts() {
   if (expectedEditAccountId) renderAccountSelect(expectedEditAccountId, state.accounts);
   if (txAddAccountId) renderAccountSelect(txAddAccountId, state.accounts);
   if (instanceAccountId) renderAccountSelect(instanceAccountId, state.accounts);
+  renderAccountDetailsPanel();
   if (expectedAccountIdEl && state.accounts.length > 0 && !expectedAccountIdEl.value) {
     expectedAccountIdEl.value = String(state.accounts[0].id);
   }
+}
+
+if (accountDetailsAccountId) {
+  accountDetailsAccountId.addEventListener("change", () => {
+    try {
+      renderAccountDetailsPanel();
+    } catch (_) {}
+  });
 }
 
 function clearAccountEdit() {

@@ -159,26 +159,6 @@
             </div>
           </div>
 
-          <div class="card sidebar-section sidebar-section--collapsed" data-sidebar-key="variableTodos">
-            <div class="sidebar-section-head">
-              <h2>Variable (This month)</h2>
-              <button
-                type="button"
-                class="sidebar-collapse-btn"
-                aria-expanded="false"
-                aria-controls="sidebarBodyVariableTodos"
-                title="Expand Variable (This month)"
-              >
-                <svg class="sidebar-collapse-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M6 9l6 6 6-6" />
-                </svg>
-              </button>
-            </div>
-            <div id="sidebarBodyVariableTodos" class="sidebar-section-body">
-              <div id="variableTodoList" class="variable-todo-list"></div>
-            </div>
-          </div>
-
         </aside>
 
         <div class="main-column">
@@ -332,6 +312,43 @@
           </div>
 
           <div id="settingsViewPanel" class="app-view" hidden>
+            <div class="card sidebar-section" data-sidebar-key="accountDetails">
+              <div class="sidebar-section-head">
+                <h2>Account Details</h2>
+                <button
+                  type="button"
+                  class="sidebar-collapse-btn"
+                  aria-expanded="true"
+                  aria-controls="sidebarBodyAccountDetails"
+                  title="Collapse Account Details"
+                >
+                  <svg class="sidebar-collapse-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M6 9l6 6 6-6" />
+                  </svg>
+                </button>
+              </div>
+              <div id="sidebarBodyAccountDetails" class="sidebar-section-body">
+                <div class="form-row-h">
+                  <div class="form-row-h__label"><label for="accountDetailsAccountId">Account</label></div>
+                  <div class="form-row-h__field"><select id="accountDetailsAccountId"></select></div>
+                </div>
+                <div class="tx-add-vspace" aria-hidden="true"></div>
+                <div class="form-row-h">
+                  <div class="form-row-h__label"><label>Type</label></div>
+                  <div class="form-row-h__field"><div id="accountDetailsType" class="pill" style="display:inline-flex;">—</div></div>
+                </div>
+                <div class="tx-add-vspace" aria-hidden="true"></div>
+                <div class="form-row-h">
+                  <div class="form-row-h__label"><label>Starting</label></div>
+                  <div class="form-row-h__field">
+                    <div id="accountDetailsStarting" class="meta">—</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div style="height: 14px"></div>
+
             <div class="card sidebar-section" data-sidebar-key="balanceThresholds">
               <div class="sidebar-section-head">
                 <h2>Balance thresholds</h2>
@@ -633,9 +650,9 @@
         <div class="tx-edit-top">
           <div id="txEditModeBanner" class="tx-edit-mode-banner" style="display: none" role="presentation"></div>
           <div id="txEditNotesRow">
-            <div class="row-desc-notes">
-              <div class="field-notes-flex">
-                <label for="txEditNotes" id="txEditNotesLabel">Notes</label>
+            <div class="form-row-h">
+              <div class="form-row-h__label"><label for="txEditNotes" id="txEditNotesLabel">Notes</label></div>
+              <div class="form-row-h__field">
                 <input id="txEditNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
               </div>
             </div>
@@ -645,22 +662,24 @@
         <div id="expectedEditInstancePanel" class="expected-edit-panel">
           <div class="tx-edit-divider" aria-hidden="true"></div>
 
-          <div class="row">
-            <div>
-              <label>Type</label>
+          <div class="form-row-h">
+            <div class="form-row-h__label"><label>Type</label></div>
+            <div class="form-row-h__field">
               <div class="kind-toggle" role="radiogroup" aria-label="Transaction type">
                 <label class="kind-opt"><input type="radio" name="txEditKind" value="expense" checked /> Expense</label>
                 <label class="kind-opt"><input type="radio" name="txEditKind" value="income" /> Income</label>
               </div>
             </div>
           </div>
-          <div style="height: 10px"></div>
-          <label for="txEditDate" id="txEditDateLabel">Date</label>
-          <input id="txEditDate" type="date" />
-          <div style="height: 10px"></div>
-          <div class="row">
-            <div>
-              <label for="txEditAmount">Amount</label>
+          <div class="tx-add-vspace" aria-hidden="true"></div>
+          <div class="form-row-h">
+            <div class="form-row-h__label"><label for="txEditDate" id="txEditDateLabel">Date</label></div>
+            <div class="form-row-h__field"><input id="txEditDate" type="date" /></div>
+          </div>
+          <div class="tx-add-vspace" aria-hidden="true"></div>
+          <div class="form-row-h">
+            <div class="form-row-h__label"><label for="txEditAmount">Amount</label></div>
+            <div class="form-row-h__field">
               <div class="money-input">
                 <span class="money-input__prefix" aria-hidden="true">$</span>
                 <input id="txEditAmount" type="number" min="0" step="0.01" placeholder="0.00" />
@@ -669,16 +688,20 @@
           </div>
 
           <div id="txEditRecurringScheduleWrap" style="display: none">
-            <div style="height: 10px"></div>
-            <label for="instanceRecurrence">Recurrence</label>
-            <select id="instanceRecurrence" title="How often this repeats">
-              <option value="monthly" selected>Monthly</option>
-              <option value="twice_monthly">Twice monthly</option>
-              <option value="weekly">Weekly</option>
-              <option value="semiannual">Twice yearly (every 6 months)</option>
-              <option value="yearly">Annual</option>
-              <option value="once">Does not repeat</option>
-            </select>
+            <div class="tx-add-vspace" aria-hidden="true"></div>
+            <div class="form-row-h">
+              <div class="form-row-h__label"><label for="instanceRecurrence">Recurrence</label></div>
+              <div class="form-row-h__field">
+                <select id="instanceRecurrence" title="How often this repeats">
+                  <option value="monthly" selected>Monthly</option>
+                  <option value="twice_monthly">Twice monthly</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="semiannual">Twice yearly (every 6 months)</option>
+                  <option value="yearly">Annual</option>
+                  <option value="once">Does not repeat</option>
+                </select>
+              </div>
+            </div>
             <div id="instanceTwiceMonthlyFields" class="expected-second-day-row" style="display: none">
               <label for="instanceSecondDayOfMonth">2nd day of month</label>
               <input
@@ -694,32 +717,43 @@
                 Required for twice monthly: other day of the month (1–31), not the same as the start date’s day.
               </p>
             </div>
-            <div style="height: 10px"></div>
-            <label for="instanceEndCount" title="Optional. Number of times this recurring transaction happens. Blank = never ends.">Ends after</label>
-            <div class="tx-edit-ends-after-row">
-              <input id="instanceEndCount" type="number" min="1" step="1" placeholder="e.g. 12" title="Optional. Total number of occurrences." />
-              <span class="tx-add-field-hint">occurrences</span>
+            <div class="tx-add-vspace" aria-hidden="true"></div>
+            <div class="form-row-h">
+              <div class="form-row-h__label">
+                <label for="instanceEndCount" title="Optional. Number of times this recurring transaction happens. Blank = never ends.">Ends after</label>
+              </div>
+              <div class="form-row-h__field">
+                <div class="tx-edit-ends-after-row">
+                  <input id="instanceEndCount" type="number" min="1" step="1" placeholder="e.g. 12" title="Optional. Total number of occurrences." />
+                  <span class="tx-add-field-hint">occurrences</span>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div style="height: 10px"></div>
-          <div id="txEditAccountCategoryRow" class="tx-edit-account-category-row">
-            <div id="txEditAccountCol" class="tx-edit-account-col" style="display: none">
-              <label for="instanceAccountId">Account</label>
-              <select id="instanceAccountId"></select>
+          <div class="tx-add-vspace" aria-hidden="true"></div>
+          <div id="txEditAccountCol" style="display: none">
+            <div class="form-row-h">
+              <div class="form-row-h__label"><label for="instanceAccountId">Account</label></div>
+              <div class="form-row-h__field"><select id="instanceAccountId"></select></div>
             </div>
-            <div class="tx-edit-category-col">
-              <label for="txEditCategoryId">Category</label>
-              <select id="txEditCategoryId"></select>
-            </div>
+            <div class="tx-add-vspace" aria-hidden="true"></div>
+          </div>
+          <div class="form-row-h">
+            <div class="form-row-h__label"><label for="txEditCategoryId">Category</label></div>
+            <div class="form-row-h__field"><select id="txEditCategoryId"></select></div>
           </div>
 
           <div id="txEditRecurringVariableWrap" style="display: none">
-            <div style="height: 10px"></div>
-            <label class="reimbursable-field" for="seriesVariable">
-              <span class="reimbursable-field__label">Variable (estimate)</span>
-              <input id="seriesVariable" type="checkbox" title="Shows italic on calendar until unchecked and saved as series" />
-            </label>
+            <div class="tx-add-vspace" aria-hidden="true"></div>
+            <div class="form-row-h">
+              <div class="form-row-h__label">
+                <label for="seriesVariable">Variable (estimate)</label>
+              </div>
+              <div class="form-row-h__field">
+                <input id="seriesVariable" type="checkbox" title="Shows italic on calendar until unchecked and saved as series" />
+              </div>
+            </div>
           </div>
 
           <div style="height: 12px"></div>
@@ -807,15 +841,15 @@
       <div class="modal" role="dialog" aria-labelledby="reconcileTitle">
         <h3 id="reconcileTitle">Day status</h3>
         <div id="reconcileErr" class="error"></div>
-        <div class="reconcile-date-row">
-          <div class="reconcile-date-label">Date</div>
-          <div class="reconcile-date-value" id="reconcileDateText">—</div>
+        <div class="form-row-h">
+          <div class="form-row-h__label"><label>Date</label></div>
+          <div class="form-row-h__field"><div class="reconcile-date-value" id="reconcileDateText">—</div></div>
         </div>
-        <div style="height: 12px"></div>
-        <label class="reimbursable-field" for="reconcileChecked">
-          <span class="reimbursable-field__label">Reconciled</span>
-          <input id="reconcileChecked" type="checkbox" />
-        </label>
+        <div class="tx-add-vspace" aria-hidden="true"></div>
+        <div class="form-row-h">
+          <div class="form-row-h__label"><label for="reconcileChecked">Reconciled</label></div>
+          <div class="form-row-h__field"><input id="reconcileChecked" type="checkbox" /></div>
+        </div>
         <div class="modal-actions">
           <div class="row two">
             <button type="button" id="reconcileSaveBtn">Save</button>

@@ -35,8 +35,8 @@ body{
   top: 0;
   z-index: 30;
   padding: 12px 0 10px;
-  background: var(--bg);
-  border-bottom: 1px solid rgba(0,0,0,0.06);
+  background: var(--accent);
+  border-bottom: 1px solid rgba(0,0,0,0.18);
 }
 .top-nav__inner{
   display: grid;
@@ -55,6 +55,7 @@ body{
   font-weight: 800;
   letter-spacing: 0.2px;
   line-height: 1.05;
+  color: #fff;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -78,27 +79,41 @@ body{
 .top-nav__tabs{
   display: inline-flex;
   gap: 6px;
-  padding: 6px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: rgba(0,0,0,0.02);
+  padding: 0;
+  border-radius: 0;
+  border: none;
+  background: transparent;
 }
 .top-nav__tab{
   font: inherit;
-  border-radius: 999px;
-  padding: 8px 12px;
+  position: relative;
+  border-radius: 10px;
+  padding: 10px 12px;
   border: 1px solid transparent;
   background: transparent;
-  color: var(--muted);
+  color: rgba(255,255,255,0.86);
+  font-weight: 600;
 }
 .top-nav__tab:hover{
-  background: rgba(0,0,0,0.04);
-  color: var(--text);
+  background: rgba(255,255,255,0.10);
+  color: #fff;
 }
 .top-nav__tab.is-active{
-  background: color-mix(in srgb, var(--accent) 18%, transparent);
-  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
-  color: var(--text);
+  background: rgba(255,255,255,0.14);
+  border-color: rgba(255,255,255,0.22);
+  color: #fff;
+}
+.top-nav__tab.is-active::after{
+  content:"";
+  position:absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: -10px;
+  width: 0;
+  height: 0;
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
+  border-top: 10px solid rgba(255,255,255,0.14);
 }
 
 .app-view[hidden]{
@@ -407,9 +422,11 @@ button.nav-link:hover{
   display: flex;
   flex-direction: column;
   gap: 8px;
+  margin-top: 14px;
 }
 .calendar-low-balance--sidebar{
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   white-space: normal;
@@ -526,6 +543,7 @@ button.nav-link:hover{
   display:flex;
   flex-direction:column;
   flex: 1 1 72%;
+  background: #F9FAFB;
   /* --cal-week-rows set in JS (4–6); day row height scales with week count */
   --cal-week-rows: 5;
   --cal-day-min-h: 112px;
@@ -550,7 +568,7 @@ button.nav-link:hover{
   position: sticky;
   top: var(--app-top-nav-offset);
   z-index: 24;
-  background: var(--card);
+  background: #F9FAFB;
   padding-bottom: 8px;
   margin-bottom: 4px;
   border-bottom: 1px solid rgba(0,0,0,0.08);
@@ -569,7 +587,7 @@ button.nav-link:hover{
 }
 
 .calendar-sticky-header .calendar-dow-row{
-  margin-bottom: 10px;
+  margin-bottom: 4px;
 }
 
 .calendar-scroll{
