@@ -1,11 +1,11 @@
 :root{
-  --bg:#f3f4f6;
-  --card:#ffffff;
+  --bg:#E5E7EB;
+  --card:#E5E7EB;
   --text:#111827;
   --muted:#4b5563;
   /* Palette */
   /* Forest green accent (replaces light blue theme accent) */
-  --accent:#0b6b3a;
+  --accent:#0B3D2E;
   --danger:#a73744; /* darker maroon-leaning red */
   --ok:#005a4a;     /* green from palette */
   --border: rgba(0,0,0,0.12);
@@ -1425,6 +1425,12 @@ textarea::placeholder{
   background: var(--accent);
   color: #fff;
   font-weight: 600;
+  /* Less "pill", more rounded-rect like the app chrome */
+  height: 24px;
+  min-width: 28px;
+  padding: 0 9px;
+  border-radius: 10px;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.18);
 }
 
 .cal-reconciled-mark{
@@ -1967,7 +1973,8 @@ textarea::placeholder{
   width: 100%;
 }
 #txEditInner > .modal-actions #txEditFooterSecondary.tx-edit-actions-row > button,
-#txEditInner > .modal-actions #txEditFooterSecondary.tx-edit-actions-row #txEditSave{
+#txEditInner > .modal-actions #txEditFooterSecondary.tx-edit-actions-row #txEditSave,
+#txEditInner > .modal-actions #txEditFooterSecondary.tx-edit-actions-row #txEditRecurringUpdateBtn{
   width: 100%;
   min-width: 0;
   max-width: none;

@@ -1393,7 +1393,7 @@ function openTxAddModal(opts = {}) {
   setCategoryFieldValue("txAddCategoryId", null);
   if (txAddRepeats) txAddRepeats.checked = !!opts.repeats;
   if (txAddRecurrence) txAddRecurrence.value = "monthly";
-  if (txAddLastTxnDate) txAddLastTxnDate.value = "";
+  if (txAddEndCount) txAddEndCount.value = "";
   if (txAddSecondDayOfMonth) txAddSecondDayOfMonth.value = "";
   if (txAddVariable) txAddVariable.checked = false;
   if (txAddAccountId) {
@@ -2877,7 +2877,13 @@ function openExpectedEditModal(tx, opts = {}) {
   }
   updateInstanceTwiceMonthlyVisibility();
 
-  if (seriesVariable) seriesVariable.checked = !!tx.variable;
+  if (seriesVariable) {
+    const eff =
+      calendarItem && typeof calendarItem.variable === "boolean"
+        ? !!calendarItem.variable
+        : !!tx.variable;
+    seriesVariable.checked = eff;
+  }
 
   setExpectedModalMode();
   show(txEditErr, "");
