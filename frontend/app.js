@@ -412,10 +412,10 @@ async function refreshLowBalanceAlert() {
   try {
     show(lowBalanceErr, "");
     if (!lowBalanceResult) return;
-    setSidebarLowBalanceBanner("", "off");
-    setSidebarHighBalanceBanner("", "off");
-    setSidebarBalanceThresholdHint("");
     if (!state.activeFamilyId) {
+      setSidebarLowBalanceBanner("", "off");
+      setSidebarHighBalanceBanner("", "off");
+      setSidebarBalanceThresholdHint("");
       setLowBalanceResult("", true);
       return;
     }
@@ -428,6 +428,8 @@ async function refreshLowBalanceAlert() {
     const maxOk = maxVal != null && Number.isFinite(maxVal);
 
     if (!minOk && !maxOk) {
+      setSidebarLowBalanceBanner("", "off");
+      setSidebarHighBalanceBanner("", "off");
       setLowBalanceResult(
         '<div class="k">Balance thresholds</div><div class="v">Enter a minimum and/or maximum to see projected alert dates.</div>',
         true
