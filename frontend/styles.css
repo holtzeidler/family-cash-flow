@@ -1,6 +1,8 @@
 :root{
   --bg:#E5E7EB;
   --card:#E5E7EB;
+  /* Calendar day strip + in-month day cells (below global nav) */
+  --cal-surface:#F9FAFB;
   --text:#111827;
   --muted:#4b5563;
   /* Palette */
@@ -119,6 +121,84 @@ body{
 
 .app-view[hidden]{
   display: none !important;
+}
+
+.settings-layout{
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+.settings-nav{
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+}
+.settings-nav-item{
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  text-align: left;
+  border: 1px solid rgba(0,0,0,0.12);
+  background: rgba(255,255,255,0.55);
+  color: var(--text);
+  border-radius: 12px;
+  padding: 12px 12px;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  text-transform: uppercase;
+  font-size: 12px;
+}
+.settings-nav-item:hover{
+  filter: brightness(0.98);
+}
+.settings-nav-item.is-active{
+  border-color: color-mix(in srgb, var(--accent) 45%, rgba(0,0,0,0.12));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+.settings-nav-item__chev{
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: 1px solid rgba(0,0,0,0.10);
+  background: rgba(0,0,0,0.03);
+  color: var(--muted);
+  font-weight: 700;
+}
+.settings-content{
+  padding: 14px;
+  min-height: 520px;
+}
+.settings-pane[hidden]{
+  display: none !important;
+}
+
+@media (max-width: 980px){
+  .settings-layout{
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Logout row + balance alerts: keep pinned to top of sidebar when inner content scrolls */
+.sidebar-sticky-head{
+  position: sticky;
+  top: 0;
+  z-index: 11;
+  flex-shrink: 0;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--bg);
+  padding-bottom: 2px;
 }
 
 .sidebar-top{
@@ -423,7 +503,6 @@ button.nav-link:hover{
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin-top: 14px;
 }
 .calendar-low-balance--sidebar{
   display: flex;
@@ -544,7 +623,7 @@ button.nav-link:hover{
   display:flex;
   flex-direction:column;
   flex: 1 1 72%;
-  background: #F9FAFB;
+  background: var(--cal-surface);
   /* --cal-week-rows set in JS (4–6); day row height scales with week count */
   --cal-week-rows: 5;
   --cal-day-min-h: 112px;
@@ -569,7 +648,7 @@ button.nav-link:hover{
   position: sticky;
   top: var(--app-top-nav-offset);
   z-index: 24;
-  background: #F9FAFB;
+  background: var(--cal-surface);
   padding-bottom: 8px;
   margin-bottom: 4px;
   border-bottom: 1px solid rgba(0,0,0,0.08);
@@ -645,6 +724,11 @@ button.nav-link:hover{
   background: var(--card);
   border-radius: 14px;
   padding: 14px;
+}
+
+/* Calendar uses a lighter surface than generic cards; beats `.card` background. */
+.card.calendar-panel{
+  background: var(--cal-surface);
 }
 
 .card h2{
@@ -1381,7 +1465,7 @@ textarea::placeholder{
 }
 .cal-cell{
   border: 1px solid var(--border);
-  background: rgba(0,0,0,0.015);
+  background: var(--cal-surface);
   border-radius: 8px;
   min-height: var(--cal-day-min-h, 108px);
   padding: 6px 8px 8px;
@@ -1560,7 +1644,7 @@ textarea::placeholder{
   gap:4px;
   align-items: center;
   margin-top: auto;
-  padding-top: 14px;
+  padding-top: 6px;
   border-top: 1px solid rgba(0,0,0,0.08);
 }
 
@@ -1639,15 +1723,17 @@ textarea::placeholder{
 }
 .modal--tx-add > h3{
   box-sizing: border-box;
-  width: fit-content;
-  max-width: min(100%, 420px);
-  margin: 0 auto 14px;
-  padding: 12px 28px;
-  text-align: center;
+  width: calc(100% + 32px);
+  margin: -16px -16px 14px;
+  padding: 14px 16px;
+  text-align: left;
   font-size: 1.05rem;
-  background: rgba(18, 155, 186, 0.16);
-  border: 1px solid var(--border);
-  border-radius: 9999px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  color: #fff;
+  background: var(--accent);
+  border: none;
+  border-radius: 14px 14px 0 0;
 }
 .modal--tx-add #txAddModalFormMount{
   min-height: 1px;
@@ -1948,9 +2034,10 @@ textarea::placeholder{
 
 .tx-edit-top{
   margin: -16px -16px 0;
-  padding: 16px;
-  background: color-mix(in srgb, var(--accent) 16%, transparent);
-  border-radius: 0;
+  padding: 14px 16px 16px;
+  background: var(--accent);
+  border-radius: 14px 14px 0 0;
+  border-bottom: 1px solid rgba(0,0,0,0.18);
 }
 
 .tx-edit-mode-banner{
@@ -1958,7 +2045,7 @@ textarea::placeholder{
   font-weight: 600;
   margin: 0 0 10px;
   line-height: 1.25;
-  color: var(--text);
+  color: rgba(255,255,255,0.92);
 }
 
 /* Series notes moved into the main panel (recurring only); keep spacing from Account/Category. */
@@ -2172,12 +2259,19 @@ textarea::placeholder{
   display: none;
 }
 
-.modal h3{
-  margin: 0 0 12px;
+.modal h3:not(.sr-only){
+  box-sizing: border-box;
+  width: calc(100% + 32px);
+  margin: -16px -16px 12px;
+  padding: 14px 16px;
   font-size: 16px;
-  color: var(--text);
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  color: #fff;
+  background: var(--accent);
+  border-radius: 14px 14px 0 0;
+  border-bottom: 1px solid rgba(0,0,0,0.18);
   text-transform: none;
-  letter-spacing: 0;
 }
 .badge{
   font-size:12px;

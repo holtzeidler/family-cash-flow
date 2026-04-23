@@ -749,7 +749,7 @@ document.querySelectorAll(".sidebar-section[data-sidebar-key]").forEach((card) =
   // If this is lowBalance and the user hasn't explicitly set a preference,
   // force expanded even if older localStorage had it collapsed.
   let collapsed;
-  if ((key === "accountDetails" || key === "balanceThresholds" || key === "addTransaction") && !userSet) {
+  if ((key === "balanceThresholds" || key === "addTransaction") && !userSet) {
     collapsed = false;
     try {
       localStorage.setItem(SIDEBAR_SECTION_PREFIX + key, "0");
@@ -832,12 +832,8 @@ function setActiveTopView(view) {
     void refreshLowBalanceAlert();
   }
   if (v === "settings") {
-    mountSettingsPanelInSidebar();
-    const accountDetailsCard = document.querySelector('.sidebar-section[data-sidebar-key="accountDetails"]');
-    if (accountDetailsCard) applySidebarSectionCollapsed(accountDetailsCard, false);
     renderAccountDetailsPanel();
-  } else {
-    mountSettingsPanelInMain();
+    activateSettingsSection("accountDetails");
   }
   try {
     localStorage.setItem(ACTIVE_VIEW_KEY, v);
@@ -856,6 +852,14 @@ if (navSettingsView) {
 if (navReportsView) {
   navReportsView.addEventListener("click", () => setActiveTopView("reports"));
 }
+
+document.querySelectorAll("#settingsViewPanel .settings-nav-item").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const k = btn.dataset.settingsKey;
+    if (!k) return;
+    activateSettingsSection(k);
+  });
+});
 
 function populateCatReportYearSelect() {
   if (!catReportYearSelect || catReportYearOptionsPopulated) return;
@@ -1392,16 +1396,18 @@ function mountTxAddFormInSidebar() {
   if (root && home && root.parentElement !== home) home.appendChild(root);
 }
 
-function mountSettingsPanelInSidebar() {
-  const panel = document.getElementById("settingsViewPanel");
-  const mount = document.getElementById("settingsSidebarMount");
-  if (panel && mount && panel.parentElement !== mount) mount.appendChild(panel);
-}
-
-function mountSettingsPanelInMain() {
-  const panel = document.getElementById("settingsViewPanel");
-  const home = document.getElementById("settingsViewHome");
-  if (panel && home && panel.parentElement !== home) home.appendChild(panel);
+function activateSettingsSection(key) {
+  const k = String(key || "accountDetails");
+  document.querySelectorAll("#settingsViewPanel .settings-nav-item").forEach((btn) => {
+    const on = btn.dataset.settingsKey === k;
+    btn.classList.toggle("is-active", on);
+    btn.setAttribute("aria-pressed", on ? "true" : "false");
+  });
+  document.querySelectorAll("#settingsViewPanel .settings-pane").forEach((pane) => {
+    const on = pane.dataset.settingsPane === k;
+    pane.classList.toggle("is-active", on);
+    pane.hidden = !on;
+  });
 }
 
 function openTxAddModal(opts = {}) {

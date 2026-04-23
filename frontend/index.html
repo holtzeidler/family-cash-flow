@@ -38,22 +38,21 @@
 
       <div class="app-layout">
         <aside class="sidebar">
-          <div class="sidebar-top">
-            <div class="header-actions">
-              <!-- Kept for JS (active family); hidden — single-family workflow for now -->
-              <select id="familySelect" class="family-select-hidden" aria-hidden="true" tabindex="-1"></select>
-              <div class="pill" id="userPill">Loading...</div>
-              <button type="button" id="logoutBtn">Logout</button>
+          <div class="sidebar-sticky-head">
+            <div class="sidebar-top">
+              <div class="header-actions">
+                <!-- Kept for JS (active family); hidden — single-family workflow for now -->
+                <select id="familySelect" class="family-select-hidden" aria-hidden="true" tabindex="-1"></select>
+                <div class="pill" id="userPill">Loading...</div>
+                <button type="button" id="logoutBtn">Logout</button>
+              </div>
             </div>
-          </div>
 
-          <!-- Settings panel mounts here when Settings view is active -->
-          <div id="settingsSidebarMount"></div>
-
-          <div class="sidebar-balance-threshold-alerts" id="sidebarBalanceThresholdAlerts" aria-label="Balance threshold alerts">
-            <p id="sidebarBalanceThresholdHint" class="sidebar-balance-threshold-hint-inline" hidden></p>
-            <div id="sidebarLowBalanceBanner" class="calendar-low-balance calendar-low-balance--sidebar" style="display: none" role="status"></div>
-            <div id="sidebarHighBalanceBanner" class="calendar-low-balance calendar-low-balance--sidebar calendar-low-balance--high" style="display: none" role="status"></div>
+            <div class="sidebar-balance-threshold-alerts" id="sidebarBalanceThresholdAlerts" aria-label="Balance threshold alerts">
+              <p id="sidebarBalanceThresholdHint" class="sidebar-balance-threshold-hint-inline" hidden></p>
+              <div id="sidebarLowBalanceBanner" class="calendar-low-balance calendar-low-balance--sidebar" style="display: none" role="status"></div>
+              <div id="sidebarHighBalanceBanner" class="calendar-low-balance calendar-low-balance--sidebar calendar-low-balance--high" style="display: none" role="status"></div>
+            </div>
           </div>
 
           <!-- Add-transaction form lives here but is hidden; the calendar date click opens it in a modal. -->
@@ -314,169 +313,121 @@
 
           </div>
 
-          <!-- Settings panel lives in main column by default, but is moved into #settingsSidebarMount when active -->
-          <div id="settingsViewHome"></div>
-
           <div id="settingsViewPanel" class="app-view" hidden>
-            <div class="card sidebar-section" data-sidebar-key="accountDetails">
-              <div class="sidebar-section-head">
-                <h2>Account Details</h2>
-                <button
-                  type="button"
-                  class="sidebar-collapse-btn"
-                  aria-expanded="true"
-                  aria-controls="sidebarBodyAccountDetails"
-                  title="Collapse Account Details"
-                >
-                  <svg class="sidebar-collapse-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M6 9l6 6 6-6" />
-                  </svg>
+            <div class="settings-layout">
+              <div class="settings-nav card">
+                <button type="button" class="settings-nav-item is-active" data-settings-key="accountDetails">
+                  <span class="settings-nav-item__label">Account Details</span>
+                  <span class="settings-nav-item__chev" aria-hidden="true">▾</span>
+                </button>
+                <button type="button" class="settings-nav-item" data-settings-key="balanceThresholds">
+                  <span class="settings-nav-item__label">Balance thresholds</span>
+                  <span class="settings-nav-item__chev" aria-hidden="true">▾</span>
+                </button>
+                <button type="button" class="settings-nav-item" data-settings-key="accounts">
+                  <span class="settings-nav-item__label">Accounts</span>
+                  <span class="settings-nav-item__chev" aria-hidden="true">▾</span>
+                </button>
+                <button type="button" class="settings-nav-item" data-settings-key="categories">
+                  <span class="settings-nav-item__label">Categories</span>
+                  <span class="settings-nav-item__chev" aria-hidden="true">▾</span>
                 </button>
               </div>
-              <div id="sidebarBodyAccountDetails" class="sidebar-section-body">
-                <div class="form-row-h">
-                  <div class="form-row-h__label"><label for="accountDetailsAccountId">Account</label></div>
-                  <div class="form-row-h__field"><select id="accountDetailsAccountId"></select></div>
-                </div>
-                <div class="tx-add-vspace" aria-hidden="true"></div>
-                <div class="form-row-h">
-                  <div class="form-row-h__label"><label>Type</label></div>
-                  <div class="form-row-h__field"><div id="accountDetailsType" class="pill" style="display:inline-flex;">—</div></div>
-                </div>
-                <div class="tx-add-vspace" aria-hidden="true"></div>
-                <div class="form-row-h">
-                  <div class="form-row-h__label"><label>Starting</label></div>
-                  <div class="form-row-h__field">
-                    <div id="accountDetailsStarting" class="meta">—</div>
+
+              <div class="settings-content card">
+                <div class="settings-pane is-active" data-settings-pane="accountDetails">
+                  <div class="form-row-h">
+                    <div class="form-row-h__label"><label for="accountDetailsAccountId">Account</label></div>
+                    <div class="form-row-h__field"><select id="accountDetailsAccountId"></select></div>
+                  </div>
+                  <div class="tx-add-vspace" aria-hidden="true"></div>
+                  <div class="form-row-h">
+                    <div class="form-row-h__label"><label>Type</label></div>
+                    <div class="form-row-h__field"><div id="accountDetailsType" class="pill" style="display:inline-flex;">—</div></div>
+                  </div>
+                  <div class="tx-add-vspace" aria-hidden="true"></div>
+                  <div class="form-row-h">
+                    <div class="form-row-h__label"><label>Starting</label></div>
+                    <div class="form-row-h__field">
+                      <div id="accountDetailsStarting" class="meta">—</div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </div>
 
-            <div style="height: 14px"></div>
-
-            <div class="card sidebar-section" data-sidebar-key="balanceThresholds">
-              <div class="sidebar-section-head">
-                <h2>Balance thresholds</h2>
-                <button
-                  type="button"
-                  class="sidebar-collapse-btn"
-                  aria-expanded="true"
-                  aria-controls="sidebarBodyBalanceThresholds"
-                  title="Collapse Balance thresholds"
-                >
-                  <svg class="sidebar-collapse-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M6 9l6 6 6-6" />
-                  </svg>
-                </button>
-              </div>
-              <div id="sidebarBodyBalanceThresholds" class="sidebar-section-body">
-                <label for="balanceThresholdMin">Minimum balance (alert at or below)</label>
-                <div class="money-input">
-                  <span class="money-input__prefix" aria-hidden="true">$</span>
-                  <input id="balanceThresholdMin" type="number" step="0.01" placeholder="e.g. 1000" />
-                </div>
-                <div style="height: 12px"></div>
-                <label for="balanceThresholdMax">Maximum balance (alert at or above)</label>
-                <div class="money-input">
-                  <span class="money-input__prefix" aria-hidden="true">$</span>
-                  <input id="balanceThresholdMax" type="number" step="0.01" placeholder="e.g. 50000" />
-                </div>
-                <p class="balance-threshold-hint">Leave a field blank to disable that alert. The calendar sidebar shows the next projected crossing for each threshold you set.</p>
-                <div style="height:10px;"></div>
-                <div class="low-balance-result" id="lowBalanceResult" aria-live="polite"></div>
-                <div id="lowBalanceErr" class="error"></div>
-              </div>
-            </div>
-
-            <div style="height: 14px"></div>
-
-            <div class="card sidebar-section sidebar-section--collapsed" data-sidebar-key="accounts">
-              <div class="sidebar-section-head">
-                <h2>Accounts</h2>
-                <button
-                  type="button"
-                  class="sidebar-collapse-btn"
-                  aria-expanded="false"
-                  aria-controls="sidebarBodyAccounts"
-                  title="Expand Accounts"
-                >
-                  <svg class="sidebar-collapse-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M6 9l6 6 6-6" />
-                  </svg>
-                </button>
-              </div>
-              <div id="sidebarBodyAccounts" class="sidebar-section-body">
-              <div class="row two">
-                <div>
-                  <label for="accountName">Account name</label>
-                  <input id="accountName" type="text" placeholder="e.g. Checking" />
-                </div>
-                <div>
-                  <label for="accountType">Type</label>
-                  <select id="accountType">
-                    <option value="checking" selected>Checking</option>
-                    <option value="savings">Savings</option>
-                    <option value="credit_card">Credit card</option>
-                    <option value="cash">Cash</option>
-                    <option value="other">Other</option>
-                  </select>
-                </div>
-              </div>
-              <div style="height:10px;"></div>
-              <div class="row two">
-                <div>
-                  <label for="accountStartingBalance">Starting balance</label>
+                <div class="settings-pane" data-settings-pane="balanceThresholds" hidden>
+                  <label for="balanceThresholdMin">Minimum balance (alert at or below)</label>
                   <div class="money-input">
                     <span class="money-input__prefix" aria-hidden="true">$</span>
-                    <input id="accountStartingBalance" type="number" step="0.01" placeholder="0.00" />
+                    <input id="balanceThresholdMin" type="number" step="0.01" placeholder="e.g. 1000" />
                   </div>
+                  <div style="height: 12px"></div>
+                  <label for="balanceThresholdMax">Maximum balance (alert at or above)</label>
+                  <div class="money-input">
+                    <span class="money-input__prefix" aria-hidden="true">$</span>
+                    <input id="balanceThresholdMax" type="number" step="0.01" placeholder="e.g. 50000" />
+                  </div>
+                  <p class="balance-threshold-hint">
+                    Leave a field blank to disable that alert. The calendar sidebar shows the next projected crossing for each threshold you set.
+                  </p>
+                  <div style="height:10px;"></div>
+                  <div class="low-balance-result" id="lowBalanceResult" aria-live="polite"></div>
+                  <div id="lowBalanceErr" class="error"></div>
                 </div>
-                <div>
-                  <label for="accountStartingBalanceDate">Starting balance date</label>
-                  <input id="accountStartingBalanceDate" type="date" />
-                </div>
-              </div>
-              <input id="accountEditId" type="hidden" />
-              <div style="height:10px;"></div>
-              <div class="row two">
-                <button id="addAccountBtn">Add account</button>
-                <button id="saveAccountEditBtn" class="danger">Save balance/date edit</button>
-              </div>
-              <button id="cancelAccountEditBtn">Cancel account edit</button>
-              <div id="accErr" class="error"></div>
-              <div class="list" id="accountsList"></div>
-              </div>
-            </div>
 
-            <div style="height: 14px"></div>
-
-            <div class="card sidebar-section sidebar-section--collapsed" data-sidebar-key="categories">
-              <div class="sidebar-section-head">
-                <h2>Categories</h2>
-                <button
-                  type="button"
-                  class="sidebar-collapse-btn"
-                  aria-expanded="false"
-                  aria-controls="sidebarBodyCategories"
-                  title="Expand Categories"
-                >
-                  <svg class="sidebar-collapse-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M6 9l6 6 6-6" />
-                  </svg>
-                </button>
-              </div>
-              <div id="sidebarBodyCategories" class="sidebar-section-body">
-              <div id="categoriesGrid" class="categories-grid" aria-live="polite"></div>
-              <div style="height:10px;"></div>
-              <div class="categories-actions">
-                <div class="categories-new-field">
-                  <label for="newCategoryName">New category</label>
-                  <input id="newCategoryName" type="text" placeholder="e.g. Groceries" />
+                <div class="settings-pane" data-settings-pane="accounts" hidden>
+                  <div class="row two">
+                    <div>
+                      <label for="accountName">Account name</label>
+                      <input id="accountName" type="text" placeholder="e.g. Checking" />
+                    </div>
+                    <div>
+                      <label for="accountType">Type</label>
+                      <select id="accountType">
+                        <option value="checking" selected>Checking</option>
+                        <option value="savings">Savings</option>
+                        <option value="credit_card">Credit card</option>
+                        <option value="cash">Cash</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div style="height:10px;"></div>
+                  <div class="row two">
+                    <div>
+                      <label for="accountStartingBalance">Starting balance</label>
+                      <div class="money-input">
+                        <span class="money-input__prefix" aria-hidden="true">$</span>
+                        <input id="accountStartingBalance" type="number" step="0.01" placeholder="0.00" />
+                      </div>
+                    </div>
+                    <div>
+                      <label for="accountStartingBalanceDate">Starting balance date</label>
+                      <input id="accountStartingBalanceDate" type="date" />
+                    </div>
+                  </div>
+                  <input id="accountEditId" type="hidden" />
+                  <div style="height:10px;"></div>
+                  <div class="row two">
+                    <button id="addAccountBtn">Add account</button>
+                    <button id="saveAccountEditBtn" class="danger">Save balance/date edit</button>
+                  </div>
+                  <button id="cancelAccountEditBtn">Cancel account edit</button>
+                  <div id="accErr" class="error"></div>
+                  <div class="list" id="accountsList"></div>
                 </div>
-                <button id="addCategoryBtn">Add category</button>
-              </div>
-              <div id="catErr" class="error"></div>
+
+                <div class="settings-pane" data-settings-pane="categories" hidden>
+                  <div id="categoriesGrid" class="categories-grid" aria-live="polite"></div>
+                  <div style="height:10px;"></div>
+                  <div class="categories-actions">
+                    <div class="categories-new-field">
+                      <label for="newCategoryName">New category</label>
+                      <input id="newCategoryName" type="text" placeholder="e.g. Groceries" />
+                    </div>
+                    <button id="addCategoryBtn">Add category</button>
+                  </div>
+                  <div id="catErr" class="error"></div>
+                </div>
               </div>
             </div>
           </div>
