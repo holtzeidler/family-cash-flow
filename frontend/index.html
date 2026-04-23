@@ -316,12 +316,12 @@
           <div id="settingsViewPanel" class="app-view" hidden>
             <div class="settings-layout">
               <div class="settings-nav card">
-                <button type="button" class="settings-nav-item is-active" data-settings-key="accountDetails">
-                  <span class="settings-nav-item__label">Account Details</span>
-                  <span class="settings-nav-item__chev" aria-hidden="true">▾</span>
-                </button>
                 <button type="button" class="settings-nav-item" data-settings-key="balanceThresholds">
                   <span class="settings-nav-item__label">Balance thresholds</span>
+                  <span class="settings-nav-item__chev" aria-hidden="true">▾</span>
+                </button>
+                <button type="button" class="settings-nav-item is-active" data-settings-key="accountDetails">
+                  <span class="settings-nav-item__label">Account Details</span>
                   <span class="settings-nav-item__chev" aria-hidden="true">▾</span>
                 </button>
                 <button type="button" class="settings-nav-item" data-settings-key="accounts">
@@ -592,6 +592,12 @@
 
         </div>
       </div>
+
+      <footer class="app-footer" role="contentinfo">
+        <div class="app-footer__inner">
+          <span class="app-footer__brand">BalanceWhiz</span>
+        </div>
+      </footer>
     </div>
 
     <div id="txEditModal" class="modal-overlay" aria-hidden="true">
