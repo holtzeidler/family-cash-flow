@@ -551,7 +551,7 @@ async function refreshLowBalanceAlert() {
         parts.push(
           `<div class="balance-threshold-result-block"><div class="k">First date ≥ $${fmtMoneyThreshold(balanceThresholdMax?.value || "", maxVal)}</div><div class="v">None in the next ${highDays} days.</div></div>`
         );
-        setSidebarHighBalanceBanner(`High (≥ $${fmtMoney(maxVal)}): no crossing in the next ${highDays} days.`, "muted");
+        setSidebarHighBalanceBanner(`High (≥ $${fmtMoney(maxVal)})\nno crossing in the next ${highDays} days.`, "muted");
       } else {
         parts.push(
           `<div class="balance-threshold-result-block"><div class="k">First date ≥ $${fmtMoneyThreshold(balanceThresholdMax?.value || "", maxVal)}</div><div class="v">${fmtDateMDY(highHit.date)} — $${fmtMoney(highHit.balance)}</div></div>`
@@ -777,6 +777,7 @@ const calendarViewPanel = document.getElementById("calendarViewPanel");
 const transactionViewPanel = document.getElementById("transactionViewPanel");
 const settingsViewPanel = document.getElementById("settingsViewPanel");
 const reportsViewPanel = document.getElementById("reportsViewPanel");
+const settingsSidebarNav = document.getElementById("settingsSidebarNav");
 const catReportStart = document.getElementById("catReportStart");
 const catReportEnd = document.getElementById("catReportEnd");
 const catReportYearSelect = document.getElementById("catReportYearSelect");
@@ -804,6 +805,7 @@ function setActiveTopView(view) {
   if (transactionViewPanel) transactionViewPanel.hidden = v !== "transactions";
   if (settingsViewPanel) settingsViewPanel.hidden = v !== "settings";
   if (reportsViewPanel) reportsViewPanel.hidden = v !== "reports";
+  if (settingsSidebarNav) settingsSidebarNav.hidden = v !== "settings";
   if (v === "transactions") {
     void loadUpcomingTransactionsPanel();
   }
@@ -853,7 +855,7 @@ if (navReportsView) {
   navReportsView.addEventListener("click", () => setActiveTopView("reports"));
 }
 
-document.querySelectorAll("#settingsViewPanel .settings-nav-item").forEach((btn) => {
+document.querySelectorAll("#settingsViewPanel .settings-nav-item, #settingsSidebarNav .settings-nav-item").forEach((btn) => {
   btn.addEventListener("click", () => {
     const k = btn.dataset.settingsKey;
     if (!k) return;
@@ -1398,7 +1400,7 @@ function mountTxAddFormInSidebar() {
 
 function activateSettingsSection(key) {
   const k = String(key || "accountDetails");
-  document.querySelectorAll("#settingsViewPanel .settings-nav-item").forEach((btn) => {
+  document.querySelectorAll("#settingsViewPanel .settings-nav-item, #settingsSidebarNav .settings-nav-item").forEach((btn) => {
     const on = btn.dataset.settingsKey === k;
     btn.classList.toggle("is-active", on);
     btn.setAttribute("aria-pressed", on ? "true" : "false");
@@ -4195,13 +4197,13 @@ function renderCalendar() {
     const isToday = iso === todayIso;
     const isReconciled = state.reconciledDates && state.reconciledDates.has(iso);
     cell.innerHTML = `
-      <div class="cal-daynum"><span class="cal-daynum-num${isToday ? " is-today" : ""}">${dObj.getDate()}</span>${isReconciled ? `
+      <div class="cal-daynum">${isReconciled ? `
         <span class="cal-reconciled-mark" title="Reconciled" aria-label="Reconciled">
           <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <circle cx="12" cy="12" r="9"></circle>
             <path d="M8 12.5l2.6 2.6L16.5 9.2"></path>
           </svg>
-        </span>` : ""}</div>
+        </span>` : ""}<span class="cal-daynum-num${isToday ? " is-today" : ""}">${dObj.getDate()}</span></div>
       <div class="cal-cell-fill"></div>
       <div class="cal-cell-stack">
         <div class="cal-day-txns"></div>

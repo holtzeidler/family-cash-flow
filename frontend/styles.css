@@ -158,11 +158,18 @@ body{
   gap: 14px;
   align-items: start;
 }
+.settings-layout.settings-layout--sidebar-nav{
+  grid-template-columns: minmax(0, 1fr);
+}
 .settings-nav{
   display: flex;
   flex-direction: column;
   gap: 10px;
   padding: 12px;
+}
+.settings-nav.settings-nav--sidebar{
+  padding: 10px;
+  gap: 8px;
 }
 .settings-nav-item{
   width: 100%;
@@ -175,7 +182,7 @@ body{
   background: rgba(255,255,255,0.55);
   color: var(--text);
   border-radius: 12px;
-  padding: 12px 12px;
+  padding: 10px 12px;
   cursor: pointer;
   font: inherit;
   font-weight: 800;
@@ -234,7 +241,7 @@ body{
   display: flex;
   flex-direction: row;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 12px;
   flex-wrap: wrap;
   flex-shrink: 0;
@@ -373,7 +380,8 @@ button.danger{
   padding: 6px 10px;
   border-radius: 999px;
   border: 1px solid var(--border);
-  background: rgba(0,0,0,0.03);
+  /* Match the left nav (sidebar) surface */
+  background: var(--bg);
 }
 
 .cal-today-btn{
@@ -1589,6 +1597,29 @@ textarea::placeholder{
   font-weight: 700;
 }
 
+/* Reconcile modal: keep Date + Reconciled on one line */
+.reconcile-inline-row{
+  display: grid;
+  grid-template-columns: 1.25fr 0.75fr;
+  gap: 12px 14px;
+  align-items: center;
+}
+.reconcile-inline-row .form-row-h{
+  margin: 0;
+}
+.reconcile-inline-row .form-row-h__label{
+  flex-basis: 5.75rem;
+}
+.reconcile-inline-row #reconcileChecked{
+  transform: translateY(1px);
+}
+
+@media (max-width: 520px){
+  .reconcile-inline-row{
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (min-width: 1400px){
   .cal-cell{
     padding: 10px;
@@ -2155,6 +2186,9 @@ textarea::placeholder{
 /* Same max width for one-time and recurring so the edit sheet does not “jump”. */
 #txEditInner.modal{
   max-width: 520px;
+  /* Give the transaction sheet more vertical breathing room. */
+  max-height: min(92vh, 820px);
+  overflow-y: auto;
 }
 
 /* Edit modal: Save centered; Delete + Cancel on one row */
@@ -2228,7 +2262,7 @@ textarea::placeholder{
 
 .modal--expected-edit{
   max-width: 520px;
-  max-height: min(92vh, 720px);
+  max-height: min(92vh, 820px);
   overflow-y: auto;
   padding: 0;
 }
@@ -2244,10 +2278,21 @@ textarea::placeholder{
   margin: 0 0 10px;
 }
 .modal--expected-edit #expectedEditInstancePanel{
-  padding: 14px 16px 16px;
+  padding: 16px 16px 18px;
 }
 .modal--expected-edit #expectedEditInstancePanel > .tx-edit-divider{
   margin: 0 0 14px;
+}
+
+/* Spread form rows inside the transaction sheet */
+#expectedEditInstancePanel .tx-add-vspace{
+  height: 18px;
+}
+#expectedEditInstancePanel .tx-add-vspace--lg{
+  height: 24px;
+}
+#expectedEditInstancePanel .tx-add-vspace--sm{
+  height: 14px;
 }
 .modal--expected-edit > .modal-actions{
   margin: 0 16px 16px;

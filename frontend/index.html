@@ -53,6 +53,25 @@
               <div id="sidebarLowBalanceBanner" class="calendar-low-balance calendar-low-balance--sidebar" style="display: none" role="status"></div>
               <div id="sidebarHighBalanceBanner" class="calendar-low-balance calendar-low-balance--sidebar calendar-low-balance--high" style="display: none" role="status"></div>
             </div>
+
+            <div id="settingsSidebarNav" class="card settings-nav settings-nav--sidebar" hidden aria-label="Settings sections">
+              <button type="button" class="settings-nav-item" data-settings-key="balanceThresholds">
+                <span class="settings-nav-item__label">Balance thresholds</span>
+                <span class="settings-nav-item__chev" aria-hidden="true">▾</span>
+              </button>
+              <button type="button" class="settings-nav-item" data-settings-key="accountDetails">
+                <span class="settings-nav-item__label">Account Details</span>
+                <span class="settings-nav-item__chev" aria-hidden="true">▾</span>
+              </button>
+              <button type="button" class="settings-nav-item" data-settings-key="accounts">
+                <span class="settings-nav-item__label">Accounts</span>
+                <span class="settings-nav-item__chev" aria-hidden="true">▾</span>
+              </button>
+              <button type="button" class="settings-nav-item" data-settings-key="categories">
+                <span class="settings-nav-item__label">Categories</span>
+                <span class="settings-nav-item__chev" aria-hidden="true">▾</span>
+              </button>
+            </div>
           </div>
 
           <!-- Add-transaction form lives here but is hidden; the calendar date click opens it in a modal. -->
@@ -75,6 +94,11 @@
               </div>
               <div class="tx-add-vspace" aria-hidden="true"></div>
               <div class="form-row-h">
+                <div class="form-row-h__label"><label for="txAddCategoryId">Category</label></div>
+                <div class="form-row-h__field"><select id="txAddCategoryId"></select></div>
+              </div>
+              <div class="tx-add-vspace" aria-hidden="true"></div>
+              <div class="form-row-h">
                 <div class="form-row-h__label"><label for="txAddAmount">Amount</label></div>
                 <div class="form-row-h__field">
                   <div class="money-input">
@@ -82,11 +106,6 @@
                     <input id="txAddAmount" type="number" min="0" step="0.01" placeholder="0.00" />
                   </div>
                 </div>
-              </div>
-              <div class="tx-add-vspace" aria-hidden="true"></div>
-              <div class="form-row-h">
-                <div class="form-row-h__label"><label for="txAddCategoryId">Category</label></div>
-                <div class="form-row-h__field"><select id="txAddCategoryId"></select></div>
               </div>
               <div class="tx-add-vspace tx-add-vspace--lg" aria-hidden="true"></div>
               <div class="tx-add-schedule-toolbar" aria-label="Repeat and schedule">
@@ -314,26 +333,7 @@
           </div>
 
           <div id="settingsViewPanel" class="app-view" hidden>
-            <div class="settings-layout">
-              <div class="settings-nav card">
-                <button type="button" class="settings-nav-item" data-settings-key="balanceThresholds">
-                  <span class="settings-nav-item__label">Balance thresholds</span>
-                  <span class="settings-nav-item__chev" aria-hidden="true">▾</span>
-                </button>
-                <button type="button" class="settings-nav-item is-active" data-settings-key="accountDetails">
-                  <span class="settings-nav-item__label">Account Details</span>
-                  <span class="settings-nav-item__chev" aria-hidden="true">▾</span>
-                </button>
-                <button type="button" class="settings-nav-item" data-settings-key="accounts">
-                  <span class="settings-nav-item__label">Accounts</span>
-                  <span class="settings-nav-item__chev" aria-hidden="true">▾</span>
-                </button>
-                <button type="button" class="settings-nav-item" data-settings-key="categories">
-                  <span class="settings-nav-item__label">Categories</span>
-                  <span class="settings-nav-item__chev" aria-hidden="true">▾</span>
-                </button>
-              </div>
-
+            <div class="settings-layout settings-layout--sidebar-nav">
               <div class="settings-content card">
                 <div class="settings-pane is-active" data-settings-pane="accountDetails">
                   <div class="form-row-h">
@@ -595,7 +595,7 @@
 
       <footer class="app-footer" role="contentinfo">
         <div class="app-footer__inner">
-          <span class="app-footer__brand">Family Cash Flow</span>
+          <span class="app-footer__brand" aria-hidden="true"></span>
         </div>
       </footer>
     </div>
@@ -638,6 +638,11 @@
           <div class="form-row-h">
             <div class="form-row-h__label"><label for="txEditDate" id="txEditDateLabel">Date</label></div>
             <div class="form-row-h__field"><input id="txEditDate" type="date" /></div>
+          </div>
+          <div class="tx-add-vspace" aria-hidden="true"></div>
+          <div class="form-row-h">
+            <div class="form-row-h__label"><label for="txEditCategoryId">Category</label></div>
+            <div class="form-row-h__field"><select id="txEditCategoryId"></select></div>
           </div>
           <div class="tx-add-vspace" aria-hidden="true"></div>
           <div class="form-row-h">
@@ -701,10 +706,6 @@
               <div class="form-row-h__field"><select id="instanceAccountId"></select></div>
             </div>
             <div class="tx-add-vspace" aria-hidden="true"></div>
-          </div>
-          <div class="form-row-h">
-            <div class="form-row-h__label"><label for="txEditCategoryId">Category</label></div>
-            <div class="form-row-h__field"><select id="txEditCategoryId"></select></div>
           </div>
 
           <div id="txEditRecurringVariableWrap" style="display: none">
@@ -804,14 +805,15 @@
       <div class="modal" role="dialog" aria-labelledby="reconcileTitle">
         <h3 id="reconcileTitle">Day status</h3>
         <div id="reconcileErr" class="error"></div>
-        <div class="form-row-h">
-          <div class="form-row-h__label"><label>Date</label></div>
-          <div class="form-row-h__field"><div class="reconcile-date-value" id="reconcileDateText">—</div></div>
-        </div>
-        <div class="tx-add-vspace" aria-hidden="true"></div>
-        <div class="form-row-h">
-          <div class="form-row-h__label"><label for="reconcileChecked">Reconciled</label></div>
-          <div class="form-row-h__field"><input id="reconcileChecked" type="checkbox" /></div>
+        <div class="reconcile-inline-row">
+          <div class="form-row-h">
+            <div class="form-row-h__label"><label>Date</label></div>
+            <div class="form-row-h__field"><div class="reconcile-date-value" id="reconcileDateText">—</div></div>
+          </div>
+          <div class="form-row-h">
+            <div class="form-row-h__label"><label for="reconcileChecked">Reconciled</label></div>
+            <div class="form-row-h__field"><input id="reconcileChecked" type="checkbox" /></div>
+          </div>
         </div>
         <div class="modal-actions">
           <div class="row two">
