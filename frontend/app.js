@@ -549,9 +549,9 @@ async function refreshLowBalanceAlert() {
         setSidebarHighBalanceBanner("Maximum: server could not check (deploy latest API for high-balance).", "muted");
       } else if (!highHit) {
         parts.push(
-          `<div class="balance-threshold-result-block"><div class="k">First date ≥ $${fmtMoneyThreshold(balanceThresholdMax?.value || "", maxVal)}</div><div class="v">None in the next ${highDays} days.</div></div>`
+          `<div class="balance-threshold-result-block"><div class="k">First date ≥ $${fmtMoneyThreshold(balanceThresholdMax?.value || "", maxVal)}</div><div class="v">No dates found in the next ${highDays} days.</div></div>`
         );
-        setSidebarHighBalanceBanner(`High (≥ $${fmtMoney(maxVal)})\nno crossing in the next ${highDays} days.`, "muted");
+        setSidebarHighBalanceBanner(`High (≥ $${fmtMoney(maxVal)})\nno dates found in the next ${highDays} days.`, "muted");
       } else {
         parts.push(
           `<div class="balance-threshold-result-block"><div class="k">First date ≥ $${fmtMoneyThreshold(balanceThresholdMax?.value || "", maxVal)}</div><div class="v">${fmtDateMDY(highHit.date)} — $${fmtMoney(highHit.balance)}</div></div>`
