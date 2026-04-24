@@ -158,18 +158,11 @@ body{
   gap: 14px;
   align-items: start;
 }
-.settings-layout.settings-layout--sidebar-nav{
-  grid-template-columns: minmax(0, 1fr);
-}
 .settings-nav{
   display: flex;
   flex-direction: column;
   gap: 10px;
   padding: 12px;
-}
-.settings-nav.settings-nav--sidebar{
-  padding: 10px;
-  gap: 8px;
 }
 .settings-nav-item{
   width: 100%;
