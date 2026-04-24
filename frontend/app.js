@@ -777,6 +777,7 @@ const calendarViewPanel = document.getElementById("calendarViewPanel");
 const transactionViewPanel = document.getElementById("transactionViewPanel");
 const settingsViewPanel = document.getElementById("settingsViewPanel");
 const reportsViewPanel = document.getElementById("reportsViewPanel");
+const settingsSidebarNav = document.getElementById("settingsSidebarNav");
 const catReportStart = document.getElementById("catReportStart");
 const catReportEnd = document.getElementById("catReportEnd");
 const catReportYearSelect = document.getElementById("catReportYearSelect");
@@ -804,6 +805,7 @@ function setActiveTopView(view) {
   if (transactionViewPanel) transactionViewPanel.hidden = v !== "transactions";
   if (settingsViewPanel) settingsViewPanel.hidden = v !== "settings";
   if (reportsViewPanel) reportsViewPanel.hidden = v !== "reports";
+  if (settingsSidebarNav) settingsSidebarNav.hidden = v !== "settings";
   if (v === "transactions") {
     void loadUpcomingTransactionsPanel();
   }
@@ -853,7 +855,7 @@ if (navReportsView) {
   navReportsView.addEventListener("click", () => setActiveTopView("reports"));
 }
 
-document.querySelectorAll("#settingsViewPanel .settings-nav-item").forEach((btn) => {
+document.querySelectorAll("#settingsViewPanel .settings-nav-item, #settingsSidebarNav .settings-nav-item").forEach((btn) => {
   btn.addEventListener("click", () => {
     const k = btn.dataset.settingsKey;
     if (!k) return;
@@ -1398,7 +1400,7 @@ function mountTxAddFormInSidebar() {
 
 function activateSettingsSection(key) {
   const k = String(key || "accountDetails");
-  document.querySelectorAll("#settingsViewPanel .settings-nav-item").forEach((btn) => {
+  document.querySelectorAll("#settingsViewPanel .settings-nav-item, #settingsSidebarNav .settings-nav-item").forEach((btn) => {
     const on = btn.dataset.settingsKey === k;
     btn.classList.toggle("is-active", on);
     btn.setAttribute("aria-pressed", on ? "true" : "false");
