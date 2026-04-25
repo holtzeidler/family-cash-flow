@@ -2514,99 +2514,8 @@ function ensureCategoryComboDocClick() {
   });
 }
 
-let categoryPalettePopoverEl = null;
-let categoryPalettePopoverCleanup = null;
-
-function closeCategoryPalettePopover() {
-  if (categoryPalettePopoverCleanup) {
-    categoryPalettePopoverCleanup();
-    categoryPalettePopoverCleanup = null;
-  }
-  if (categoryPalettePopoverEl) {
-    categoryPalettePopoverEl.remove();
-    categoryPalettePopoverEl = null;
-  }
-}
-
-/**
- * Opens a single floating palette (closes any other open category palette).
- * @param {HTMLElement} anchorBtn
- * @param {string[]} palette
- * @param {string} currentHex
- * @param {(hex: string) => void} onPick — called when user picks; popover closes after.
- */
-function openCategoryPalettePopover(anchorBtn, palette, currentHex, onPick) {
-  closeCategoryPalettePopover();
-
-  const pop = document.createElement("div");
-  pop.className = "palette-popover";
-  pop.setAttribute("role", "dialog");
-  pop.setAttribute("aria-label", "Choose color");
-
-  const grid = document.createElement("div");
-  grid.className = "palette-grid";
-  const cur = (currentHex || "").toLowerCase();
-
-  for (const hex of palette) {
-    const b = document.createElement("button");
-    b.type = "button";
-    b.className = "swatch";
-    b.style.background = hex;
-    b.setAttribute("aria-label", hex);
-    b.title = hex;
-    if (cur && cur === hex.toLowerCase()) b.classList.add("is-selected");
-    b.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      onPick(hex);
-      closeCategoryPalettePopover();
-    });
-    grid.appendChild(b);
-  }
-  pop.appendChild(grid);
-  document.body.appendChild(pop);
-  categoryPalettePopoverEl = pop;
-
-  const place = () => {
-    const r = anchorBtn.getBoundingClientRect();
-    const w = pop.offsetWidth || 200;
-    const h = pop.offsetHeight || 200;
-    let left = r.left;
-    let top = r.bottom + 6;
-    if (left + w > window.innerWidth - 8) left = Math.max(8, window.innerWidth - w - 8);
-    if (top + h > window.innerHeight - 8) top = Math.max(8, r.top - h - 6);
-    pop.style.left = `${left}px`;
-    pop.style.top = `${top}px`;
-  };
-  place();
-  requestAnimationFrame(place);
-
-  const onDocMouseDown = (e) => {
-    if (!pop.contains(e.target) && e.target !== anchorBtn && !anchorBtn.contains(e.target)) {
-      closeCategoryPalettePopover();
-    }
-  };
-  const onKeyDown = (e) => {
-    if (e.key === "Escape") closeCategoryPalettePopover();
-  };
-  const onScroll = () => place();
-
-  document.addEventListener("mousedown", onDocMouseDown, true);
-  document.addEventListener("keydown", onKeyDown, true);
-  window.addEventListener("scroll", onScroll, true);
-  window.addEventListener("resize", place);
-
-  categoryPalettePopoverCleanup = () => {
-    document.removeEventListener("mousedown", onDocMouseDown, true);
-    document.removeEventListener("keydown", onKeyDown, true);
-    window.removeEventListener("scroll", onScroll, true);
-    window.removeEventListener("resize", place);
-  };
-}
-
 function renderCategoriesGrid(tree) {
   if (!categoriesTree) return;
-  closeCategoryPalettePopover();
   categoriesTree.innerHTML = "";
   const groups = tree?.groups || [];
 
@@ -2628,55 +2537,6 @@ function renderCategoriesGrid(tree) {
     return;
   }
 
-  const colHead = document.createElement("div");
-  colHead.className = "cat-tree-column-head";
-  for (const label of ["Category", "Bg"]) {
-    const d = document.createElement("div");
-    d.className = "cat-tree-column-head__cell";
-    d.textContent = label;
-    colHead.appendChild(d);
-  }
-  categoriesTree.appendChild(colHead);
-
-  const DEFAULT_BG = "#121b31";
-  const PALETTE = [
-    "#0b1220","#121b31","#1b2a4a","#24365f","#2d4478","#365392","#4063ad","#4a74c9",
-    "#66a3ff","#66d6ff","#5fe8d5","#4cd17b","#3fbf8a","#2da66f","#1f8f58","#167243",
-    "#ffd166","#ffb703","#fb8500","#f77f00","#ef476f","#ff6b6b","#e63946","#c1121f",
-    "#b5179e","#7209b7","#3a0ca3","#4361ee","#4895ef","#4cc9f0","#8ecae6","#219ebc",
-    "#00b4d8","#0077b6","#023e8a","#03045e","#f1faee","#a8dadc","#457b9d","#1d3557",
-    "#f8f9fa","#dee2e6","#adb5bd","#6c757d","#495057","#343a40","#212529","#ffffff",
-    "#e9ecef","#ced4da","#b0c4de","#9fb0d0","#7f8fb3","#5b6b91","#3c4a6b","#2a3550",
-  ];
-
-  function normalizeHex(v, fallback) {
-    const s = (v || "").trim();
-    return /^#[0-9a-fA-F]{6}$/.test(s) ? s.toLowerCase() : fallback;
-  }
-
-  function makeColorTrigger(label, getHex, setHex, onPick) {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "cat-color-trigger";
-    btn.setAttribute("aria-label", label);
-    btn.title = `Choose ${label.toLowerCase()} color`;
-    function paint() {
-      const h = getHex();
-      btn.style.background = h;
-    }
-    paint();
-    btn.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      openCategoryPalettePopover(btn, PALETTE, getHex(), (hex) => {
-        setHex(hex);
-        paint();
-        if (typeof onPick === "function") void Promise.resolve(onPick(hex)).catch(() => {});
-      });
-    });
-    return btn;
-  }
-
   function clearDragUi() {
     categoriesTree.querySelectorAll(".cat-row.is-drag-over, .cat-group-head.is-drag-over, .cat-group-body.is-drag-over").forEach((x) => {
       x.classList.remove("is-drag-over");
@@ -2694,30 +2554,7 @@ function renderCategoriesGrid(tree) {
     nameEl.textContent = c.name;
     nameEl.title = categoryDisplayLabel(c);
 
-    let bgVal = normalizeHex(c.bg_color, DEFAULT_BG);
-    const bgTrigger = makeColorTrigger(
-      "Background color",
-      () => bgVal,
-      (h) => {
-        bgVal = normalizeHex(h, DEFAULT_BG);
-      },
-      async (hex) => {
-        try {
-          show(catErr, "");
-          if (!state.activeFamilyId) throw new Error("Choose a family first");
-          const next = normalizeHex(hex, DEFAULT_BG);
-          await api(`/api/families/${state.activeFamilyId}/categories/${c.id}`, "PUT", { bg_color: next });
-          await loadCategories();
-          await loadMonthAndCalendar();
-        } catch (e) {
-          show(catErr, e.message || "Failed to update category");
-          await loadCategories();
-        }
-      }
-    );
-
     row.appendChild(nameEl);
-    row.appendChild(bgTrigger);
 
     row.addEventListener("dragstart", (e) => {
       try {
