@@ -1425,7 +1425,7 @@ textarea::placeholder{
 }
 .cat-tree-column-head{
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px 10px;
   align-items: center;
   padding: 0 4px 2px;
@@ -1476,7 +1476,7 @@ textarea::placeholder{
 }
 .cat-group-body{
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px 10px;
   align-items: center;
   padding: 10px 12px 12px;
@@ -1550,16 +1550,6 @@ textarea::placeholder{
   outline: 2px solid color-mix(in srgb, var(--accent) 75%, transparent);
   outline-offset: 1px;
 }
-.cat-actions{
-  display:flex;
-  gap: 8px;
-  justify-content: flex-end;
-  align-items: center;
-}
-.cat-tree .cat-save{
-  padding: 8px 10px;
-}
-
 .low-balance-result{
   border: 1px solid var(--border);
   background: rgba(0,0,0,0.02);

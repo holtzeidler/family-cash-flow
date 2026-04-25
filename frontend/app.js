@@ -2630,7 +2630,7 @@ function renderCategoriesGrid(tree) {
 
   const colHead = document.createElement("div");
   colHead.className = "cat-tree-column-head";
-  for (const label of ["Category", "Bg", ""]) {
+  for (const label of ["Category", "Bg"]) {
     const d = document.createElement("div");
     d.className = "cat-tree-column-head__cell";
     d.textContent = label;
@@ -2654,7 +2654,7 @@ function renderCategoriesGrid(tree) {
     return /^#[0-9a-fA-F]{6}$/.test(s) ? s.toLowerCase() : fallback;
   }
 
-  function makeColorTrigger(label, getHex, setHex) {
+  function makeColorTrigger(label, getHex, setHex, onPick) {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "cat-color-trigger";
@@ -2671,6 +2671,7 @@ function renderCategoriesGrid(tree) {
       openCategoryPalettePopover(btn, PALETTE, getHex(), (hex) => {
         setHex(hex);
         paint();
+        if (typeof onPick === "function") void Promise.resolve(onPick(hex)).catch(() => {});
       });
     });
     return btn;
@@ -2694,30 +2695,29 @@ function renderCategoriesGrid(tree) {
     nameEl.title = categoryDisplayLabel(c);
 
     let bgVal = normalizeHex(c.bg_color, DEFAULT_BG);
-    const bgTrigger = makeColorTrigger("Background color", () => bgVal, (h) => (bgVal = h));
-
-    const actions = document.createElement("div");
-    actions.className = "cat-actions";
-    const save = document.createElement("button");
-    save.type = "button";
-    save.className = "cat-save";
-    save.textContent = "Save";
-    save.addEventListener("click", async () => {
-      try {
-        show(catErr, "");
-        if (!state.activeFamilyId) throw new Error("Choose a family first");
-        await api(`/api/families/${state.activeFamilyId}/categories/${c.id}`, "PUT", { bg_color: bgVal });
-        await loadCategories();
-        await loadMonthAndCalendar();
-      } catch (e) {
-        show(catErr, e.message || "Failed to update category");
+    const bgTrigger = makeColorTrigger(
+      "Background color",
+      () => bgVal,
+      (h) => {
+        bgVal = normalizeHex(h, DEFAULT_BG);
+      },
+      async (hex) => {
+        try {
+          show(catErr, "");
+          if (!state.activeFamilyId) throw new Error("Choose a family first");
+          const next = normalizeHex(hex, DEFAULT_BG);
+          await api(`/api/families/${state.activeFamilyId}/categories/${c.id}`, "PUT", { bg_color: next });
+          await loadCategories();
+          await loadMonthAndCalendar();
+        } catch (e) {
+          show(catErr, e.message || "Failed to update category");
+          await loadCategories();
+        }
       }
-    });
-    actions.appendChild(save);
+    );
 
     row.appendChild(nameEl);
     row.appendChild(bgTrigger);
-    row.appendChild(actions);
 
     row.addEventListener("dragstart", (e) => {
       try {
