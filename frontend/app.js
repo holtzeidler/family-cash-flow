@@ -778,6 +778,8 @@ const transactionViewPanel = document.getElementById("transactionViewPanel");
 const settingsViewPanel = document.getElementById("settingsViewPanel");
 const reportsViewPanel = document.getElementById("reportsViewPanel");
 const settingsSidebarNav = document.getElementById("settingsSidebarNav");
+const sidebarPendingTxCard = document.getElementById("sidebarPendingTxCard");
+const sidebarPendingTxList = document.getElementById("sidebarPendingTxList");
 const catReportStart = document.getElementById("catReportStart");
 const catReportEnd = document.getElementById("catReportEnd");
 const catReportYearSelect = document.getElementById("catReportYearSelect");
@@ -806,6 +808,7 @@ function setActiveTopView(view) {
   if (settingsViewPanel) settingsViewPanel.hidden = v !== "settings";
   if (reportsViewPanel) reportsViewPanel.hidden = v !== "reports";
   if (settingsSidebarNav) settingsSidebarNav.hidden = v !== "settings";
+  if (sidebarPendingTxCard) sidebarPendingTxCard.hidden = v !== "calendar";
   if (v === "transactions") {
     void loadUpcomingTransactionsPanel();
   }
@@ -3798,6 +3801,138 @@ async function loadReconciledDays(month) {
   }
 }
 
+function monthStartEndIso(ym) {
+  const [yS, mS] = String(ym || "").split("-");
+  const y = Number(yS);
+  const m = Number(mS);
+  if (!Number.isFinite(y) || !Number.isFinite(m) || m < 1 || m > 12) return null;
+  const start = `${y}-${String(m).padStart(2, "0")}-01`;
+  const end = toISODate(new Date(y, m, 0)); // day 0 of next month = last day of month
+  return { start, end };
+}
+
+function renderSidebarPendingTransactionsForMonth() {
+  if (!sidebarPendingTxList) return;
+  const month = calendarMonth?.value || monthInput.value;
+  const range = monthStartEndIso(month);
+  sidebarPendingTxList.innerHTML = "";
+  if (!range) {
+    const empty = document.createElement("div");
+    empty.className = "pill";
+    empty.textContent = "Choose a month to see pending transactions.";
+    sidebarPendingTxList.appendChild(empty);
+    return;
+  }
+
+  const todayIso = toISODate(new Date());
+  const startIso = todayIso > range.start ? todayIso : range.start;
+  const endIso = range.end;
+
+  /** @type {{sortIso:string, type:"actual"|"expected", tx:any}[]} */
+  const rows = [];
+  for (const tx of state.monthActualItems || []) {
+    const iso = normalizeIsoDate(tx?.date) || String(tx?.date || "");
+    if (!iso || iso < startIso || iso > endIso) continue;
+    rows.push({ sortIso: iso, type: "actual", tx });
+  }
+  for (const it of state.monthExpectedItems || []) {
+    const iso = normalizeIsoDate(it?.date) || String(it?.date || "");
+    if (!iso || iso < startIso || iso > endIso) continue;
+    rows.push({ sortIso: iso, type: "expected", tx: it });
+  }
+
+  rows.sort((a, b) => String(a.sortIso).localeCompare(String(b.sortIso)));
+
+  if (!rows.length) {
+    const empty = document.createElement("div");
+    empty.className = "pill";
+    empty.textContent = "No pending transactions this month.";
+    sidebarPendingTxList.appendChild(empty);
+    return;
+  }
+
+  for (const r of rows) {
+    if (r.type === "actual") {
+      const tx = r.tx;
+      const el = document.createElement("div");
+      el.className = "item";
+      el.style.cursor = "pointer";
+
+      const amtClass = tx.kind === "income" ? "income" : "expense";
+      const left = document.createElement("div");
+      left.className = "left";
+      const link = document.createElement("a");
+      link.href = "#";
+      link.className = `desc tx-desc-link ${kindFgClass(tx.kind)}`;
+      link.textContent = (tx.description || "(no description)").trim() || "(no description)";
+      const n = tx.notes && String(tx.notes).trim();
+      if (n) link.title = n;
+      link.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        openTxEditModal(tx);
+      });
+      const meta = document.createElement("div");
+      meta.className = "meta";
+      meta.appendChild(document.createTextNode(fmtDateMDY(tx.date || "")));
+      left.appendChild(link);
+      left.appendChild(meta);
+
+      const amt = document.createElement("div");
+      amt.className = `amt ${amtClass}`;
+      amt.textContent = `${tx.kind === "income" ? "+" : "-"}$${fmtMoney(tx.amount)}`;
+
+      el.appendChild(left);
+      el.appendChild(amt);
+      el.addEventListener("click", () => openTxEditModal(tx));
+      sidebarPendingTxList.appendChild(el);
+      continue;
+    }
+
+    const it = r.tx;
+    const el = document.createElement("div");
+    el.className = "item expected-item--dense";
+    if (it?.variable) el.classList.add("expected-item--variable");
+    el.style.cursor = "pointer";
+
+    const kind = String(it?.kind || "expense");
+    const amtClass = kind === "income" ? "income" : "expense";
+    const kindSign = kind === "income" ? "+" : "-";
+
+    const left = document.createElement("div");
+    left.className = "left";
+    const descEl = document.createElement("div");
+    descEl.className = `desc ${kindFgClass(kind)}`;
+    descEl.textContent = String(it?.description || "(expected)").trim() || "(expected)";
+    const metaEl = document.createElement("div");
+    metaEl.className = "meta";
+    metaEl.textContent = it?.date ? fmtDateMDY(it.date) : "—";
+    left.appendChild(descEl);
+    left.appendChild(metaEl);
+
+    const amtBtn = document.createElement("button");
+    amtBtn.type = "button";
+    amtBtn.className = `amt ${amtClass} expected-amt-link`;
+    amtBtn.textContent = `${kindSign}$${fmtMoney(it?.amount)}`;
+    amtBtn.title = "Review / edit this recurring occurrence";
+
+    const open = () => {
+      const meta = getExpectedSeriesMeta(it?.expected_transaction_id);
+      if (meta) openExpectedEditModal(meta, { calendarItem: it });
+    };
+    amtBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      open();
+    });
+    el.addEventListener("click", () => open());
+
+    el.appendChild(left);
+    el.appendChild(amtBtn);
+    sidebarPendingTxList.appendChild(el);
+  }
+}
+
 async function loadCalendarMonthDaily() {
   state.monthDailyBalances = new Map();
   if (!state.activeFamilyId) return;
@@ -3862,6 +3997,7 @@ async function loadMonthAndCalendar() {
     await loadTransactions();
     await loadUpcomingTransactionsPanel();
     await loadExpectedCalendar();
+    renderSidebarPendingTransactionsForMonth();
     renderMonthSummaryTotalsFromState();
     await loadCalendarExtras();
     await loadReconciledDays(calendarMonth?.value || monthInput.value);
