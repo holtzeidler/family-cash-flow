@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import csv
+import io
 import logging
 from collections import defaultdict
 from datetime import date, datetime, timedelta
@@ -22,7 +24,7 @@ from sqlalchemy import Enum as SAEnum
 from sqlalchemy import Boolean, Integer, UniqueConstraint
 from sqlalchemy import ForeignKey
 from sqlalchemy import String
-from sqlalchemy import delete, func, select, text
+from sqlalchemy import delete, func, select, text, update
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, sessionmaker
 from sqlalchemy.types import Numeric
@@ -109,6 +111,7 @@ class Family(Base):
 
     memberships: Mapped[list[FamilyMember]] = relationship(back_populates="family")
     accounts: Mapped[list[Account]] = relationship(back_populates="family")
+    category_groups: Mapped[list["CategoryGroup"]] = relationship(back_populates="family")
     categories: Mapped[list[Category]] = relationship(back_populates="family")
     transactions: Mapped[list[Transaction]] = relationship(back_populates="family")
 
@@ -123,17 +126,32 @@ class FamilyMember(Base):
     family: Mapped[Family] = relationship(back_populates="memberships")
     user: Mapped[User] = relationship(back_populates="memberships")
 
+
+class CategoryGroup(Base):
+    __tablename__ = "category_groups"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    family_id: Mapped[int] = mapped_column(ForeignKey("families.id"), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    family: Mapped[Family] = relationship(back_populates="category_groups")
+    categories: Mapped[list["Category"]] = relationship(back_populates="group")
+
+
 class Category(Base):
     __tablename__ = "categories"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     family_id: Mapped[int] = mapped_column(ForeignKey("families.id"), nullable=False, index=True)
+    group_id: Mapped[Optional[int]] = mapped_column(ForeignKey("category_groups.id", ondelete="SET NULL"), nullable=True, index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     fg_color: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     bg_color: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
 
     family: Mapped[Family] = relationship(back_populates="categories")
+    group: Mapped[Optional[CategoryGroup]] = relationship(back_populates="categories")
 
 
 class Transaction(Base):
@@ -338,12 +356,15 @@ class FamilyOut(BaseModel):
 
 class CategoryIn(BaseModel):
     name: str = Field(min_length=1, max_length=255)
+    group_id: Optional[int] = None
 
 
 class CategoryOut(BaseModel):
     id: int
     name: str
     sort_order: int = 0
+    group_id: Optional[int] = None
+    group_name: Optional[str] = None
     fg_color: Optional[str] = None
     bg_color: Optional[str] = None
 
@@ -353,10 +374,69 @@ class CategoryUpdateIn(BaseModel):
     fg_color: Optional[str] = Field(default=None, max_length=20)
     bg_color: Optional[str] = Field(default=None, max_length=20)
     sort_order: Optional[int] = None
+    group_id: Optional[int] = None
 
 
 class CategoryReorderIn(BaseModel):
     ordered_ids: list[int] = Field(min_length=1, description="Category IDs in desired display order")
+
+
+class CategoryGroupIn(BaseModel):
+    name: str = Field(min_length=1, max_length=255)
+
+
+class CategoryGroupOut(BaseModel):
+    id: int
+    name: str
+    sort_order: int = 0
+
+
+class CategoryGroupTreeOut(CategoryGroupOut):
+    categories: list[CategoryOut]
+
+
+class CategoriesTreeOut(BaseModel):
+    groups: list[CategoryGroupTreeOut]
+
+
+class CategoryTreeGroupLayoutIn(BaseModel):
+    id: Optional[int] = None
+    name: str = Field(min_length=1, max_length=255)
+    category_ids: list[int] = Field(default_factory=list)
+
+
+class CategoryTreeLayoutIn(BaseModel):
+    groups: list[CategoryTreeGroupLayoutIn] = Field(min_length=1)
+
+
+class CategorySeedDefaultsIn(BaseModel):
+    force: bool = False
+
+
+def _default_category_blueprint_rows() -> list[tuple[str, str, Optional[str]]]:
+    """Return (group_name, new_category_name, map_old_name_or_none) from bundled CSV."""
+    path = Path(__file__).resolve().parent / "default_categories.csv"
+    raw = path.read_text(encoding="utf-8")
+    reader = csv.reader(io.StringIO(raw))
+    next(reader, None)  # header
+    current_group: Optional[str] = None
+    out: list[tuple[str, str, Optional[str]]] = []
+    for parts in reader:
+        if not parts:
+            continue
+        while len(parts) < 4:
+            parts.append("")
+        g = (parts[1] or "").strip()
+        c = (parts[2] or "").strip()
+        m = (parts[3] or "").strip()
+        if g:
+            current_group = g
+        if not c:
+            continue
+        if not current_group:
+            continue
+        out.append((current_group, c, m or None))
+    return out
 
 
 class ReconciledDaysOut(BaseModel):
@@ -699,6 +779,8 @@ def startup_populate_schema():
     _ensure_expected_override_variable_column()
     _ensure_expected_end_count_column()
     _ensure_category_sort_order_column()
+    _ensure_category_group_id_column()
+    _backfill_category_groups_for_existing_families()
     _ensure_reconciled_days_table()
 
 
@@ -891,6 +973,18 @@ def _ensure_category_sort_order_column() -> None:
             conn.execute(text("UPDATE categories SET sort_order = COALESCE(sort_order, 0)"))
 
 
+def _ensure_category_group_id_column() -> None:
+    """Add category_groups + categories.group_id for grouped category navigation."""
+    with engine.begin() as conn:
+        if settings.DATABASE_URL.startswith("sqlite"):
+            cols = conn.execute(text("PRAGMA table_info(categories)")).fetchall()
+            has_col = any(str(row[1]) == "group_id" for row in cols)
+            if not has_col:
+                conn.execute(text("ALTER TABLE categories ADD COLUMN group_id INTEGER"))
+        else:
+            conn.execute(text("ALTER TABLE categories ADD COLUMN IF NOT EXISTS group_id INTEGER"))
+
+
 def _ensure_reimbursable_columns() -> None:
     """Lightweight startup migration: add reimbursable flags to transactions and schedules."""
     with engine.begin() as conn:
@@ -1005,6 +1099,253 @@ def create_family(payload: FamilyCreateIn, access_token: Annotated[Optional[str]
     return FamilyOut(id=family.id, name=family.name, role=member.role)
 
 
+def _category_out_from_model(*, cat: Category, group_name: Optional[str] = None) -> CategoryOut:
+    return CategoryOut(
+        id=cat.id,
+        name=cat.name,
+        sort_order=int(cat.sort_order or 0),
+        group_id=cat.group_id,
+        group_name=group_name,
+        fg_color=cat.fg_color,
+        bg_color=cat.bg_color,
+    )
+
+
+def _default_category_group_id(*, db, family_id: int) -> int:
+    g = (
+        db.execute(
+            select(CategoryGroup)
+            .where(CategoryGroup.family_id == family_id)
+            .order_by(CategoryGroup.sort_order.asc(), CategoryGroup.id.asc())
+            .limit(1)
+        )
+        .scalar_one_or_none()
+    )
+    if g is None:
+        g = CategoryGroup(family_id=family_id, name="Categories", sort_order=0)
+        db.add(g)
+        db.flush()
+    return int(g.id)
+
+
+def get_categories_tree(*, db, family_id: int) -> CategoriesTreeOut:
+    groups = (
+        db.execute(
+            select(CategoryGroup)
+            .where(CategoryGroup.family_id == family_id)
+            .order_by(CategoryGroup.sort_order.asc(), CategoryGroup.id.asc())
+        )
+        .scalars()
+        .all()
+    )
+    cats = (
+        db.execute(
+            select(Category).where(Category.family_id == family_id).order_by(Category.sort_order.asc(), Category.name.asc(), Category.id.asc())
+        )
+        .scalars()
+        .all()
+    )
+    by_gid: dict[int, list[Category]] = defaultdict(list)
+    orphans: list[Category] = []
+    for c in cats:
+        if c.group_id is None:
+            orphans.append(c)
+        else:
+            by_gid[int(c.group_id)].append(c)
+    out_groups: list[CategoryGroupTreeOut] = []
+    for g in groups:
+        bucket = by_gid.get(int(g.id), [])
+        bucket.sort(key=lambda x: (int(x.sort_order or 0), str(x.name or ""), int(x.id)))
+        out_groups.append(
+            CategoryGroupTreeOut(
+                id=int(g.id),
+                name=str(g.name),
+                sort_order=int(g.sort_order or 0),
+                categories=[_category_out_from_model(cat=c, group_name=str(g.name)) for c in bucket],
+            )
+        )
+    if orphans:
+        orphans.sort(key=lambda x: (int(x.sort_order or 0), str(x.name or ""), int(x.id)))
+        if out_groups:
+            g0 = out_groups[0]
+            extra = [_category_out_from_model(cat=c, group_name=g0.name) for c in orphans]
+            out_groups[0] = CategoryGroupTreeOut(
+                id=int(g0.id),
+                name=str(g0.name),
+                sort_order=int(g0.sort_order or 0),
+                categories=[*g0.categories, *extra],
+            )
+    return CategoriesTreeOut(groups=out_groups)
+
+
+def apply_category_tree_layout(*, db, family_id: int, payload: CategoryTreeLayoutIn) -> CategoriesTreeOut:
+    all_cat_ids: list[int] = []
+    for g in payload.groups:
+        all_cat_ids.extend(int(x) for x in g.category_ids)
+    if len(all_cat_ids) != len(set(all_cat_ids)):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Duplicate category ids in layout payload")
+
+    cats_by_id: dict[int, Category] = {}
+    if all_cat_ids:
+        rows = db.execute(select(Category).where(Category.family_id == family_id, Category.id.in_(all_cat_ids))).scalars().all()
+        if len(rows) != len(set(all_cat_ids)):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="One or more category ids are invalid for this family")
+        cats_by_id = {int(c.id): c for c in rows}
+
+    resolved: list[tuple[CategoryGroup, list[int]]] = []
+    for gi, g in enumerate(payload.groups):
+        name = g.name.strip()
+        if g.id is None:
+            grp = CategoryGroup(family_id=family_id, name=name, sort_order=gi)
+            db.add(grp)
+            db.flush()
+        else:
+            grp = db.execute(
+                select(CategoryGroup).where(CategoryGroup.id == int(g.id), CategoryGroup.family_id == family_id)
+            ).scalar_one_or_none()
+            if grp is None:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Unknown group id {g.id}")
+            grp.name = name
+            grp.sort_order = gi
+        resolved.append((grp, [int(x) for x in g.category_ids]))
+
+    for grp, ids in resolved:
+        for j, cid in enumerate(ids):
+            cat = cats_by_id.get(cid)
+            if cat is None:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Missing category id {cid}")
+            cat.group_id = int(grp.id)
+            cat.sort_order = j
+
+    db.commit()
+    return get_categories_tree(db=db, family_id=family_id)
+
+
+def _backfill_category_groups_for_existing_families() -> None:
+    with SessionLocal() as db:
+        for fam in db.execute(select(Family)).scalars().all():
+            fam_id = int(fam.id)
+            ngrp = int(
+                db.execute(select(func.count()).select_from(CategoryGroup).where(CategoryGroup.family_id == fam_id)).scalar_one() or 0
+            )
+            if ngrp == 0:
+                g = CategoryGroup(family_id=fam_id, name="Categories", sort_order=0)
+                db.add(g)
+                db.flush()
+                cats = list(db.execute(select(Category).where(Category.family_id == fam_id)).scalars().all())
+                cats.sort(key=lambda c: (int(c.sort_order or 0), str(c.name or ""), int(c.id)))
+                for idx, c in enumerate(cats):
+                    c.group_id = int(g.id)
+                    c.sort_order = idx
+            else:
+                g0 = (
+                    db.execute(
+                        select(CategoryGroup)
+                        .where(CategoryGroup.family_id == fam_id)
+                        .order_by(CategoryGroup.sort_order.asc(), CategoryGroup.id.asc())
+                        .limit(1)
+                    ).scalar_one()
+                )
+                orphans = list(
+                    db.execute(select(Category).where(Category.family_id == fam_id, Category.group_id.is_(None))).scalars().all()
+                )
+                if orphans:
+                    max_sort = int(
+                        db.execute(
+                            select(func.coalesce(func.max(Category.sort_order), 0)).where(
+                                Category.family_id == fam_id, Category.group_id == int(g0.id)
+                            )
+                        ).scalar_one()
+                        or 0
+                    )
+                    orphans.sort(key=lambda c: (int(c.sort_order or 0), str(c.name or ""), int(c.id)))
+                    for i, c in enumerate(orphans):
+                        c.group_id = int(g0.id)
+                        c.sort_order = max_sort + 1 + i
+        db.commit()
+
+
+def apply_default_category_seed(*, db, family_id: int, force: bool) -> CategoriesTreeOut:
+    existing = int(
+        db.execute(select(func.count()).select_from(CategoryGroup).where(CategoryGroup.family_id == family_id)).scalar_one() or 0
+    )
+    if existing > 0 and not force:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Category groups already exist for this family")
+
+    if force:
+        db.execute(delete(CategoryGroup).where(CategoryGroup.family_id == family_id))
+        db.execute(update(Category).where(Category.family_id == family_id).values(group_id=None))
+        db.flush()
+
+    blueprint = _default_category_blueprint_rows()
+    order_names: list[str] = []
+    for gname, _, _ in blueprint:
+        if gname not in order_names:
+            order_names.append(gname)
+
+    name_to_group: dict[str, CategoryGroup] = {}
+    for i, gname in enumerate(order_names):
+        grp = CategoryGroup(family_id=family_id, name=gname, sort_order=i)
+        db.add(grp)
+        db.flush()
+        name_to_group[gname] = grp
+
+    per_group_ids: dict[int, list[int]] = defaultdict(list)
+
+    def _find_category_by_name(name: str) -> Optional[Category]:
+        nm = name.strip().lower()
+        rows = db.execute(select(Category).where(Category.family_id == family_id)).scalars().all()
+        for c in rows:
+            if str(c.name).strip().lower() == nm:
+                return c
+        return None
+
+    for gname, cname, map_from in blueprint:
+        grp = name_to_group[gname]
+        cname_clean = cname.strip()
+        map_key = (map_from or "").strip()
+
+        cat: Optional[Category] = None
+        if map_key:
+            old = _find_category_by_name(map_key)
+            if old is None:
+                cat = Category(family_id=family_id, name=cname_clean, group_id=int(grp.id), sort_order=10_000)
+                db.add(cat)
+                db.flush()
+            else:
+                old.name = cname_clean
+                old.group_id = int(grp.id)
+                cat = old
+        else:
+            existing_row = db.execute(
+                select(Category).where(
+                    Category.family_id == family_id,
+                    Category.group_id == int(grp.id),
+                    Category.name == cname_clean,
+                )
+            ).scalar_one_or_none()
+            if existing_row is None:
+                cat = Category(family_id=family_id, name=cname_clean, group_id=int(grp.id), sort_order=10_000)
+                db.add(cat)
+                db.flush()
+            else:
+                cat = existing_row
+                cat.group_id = int(grp.id)
+
+        if cat is not None:
+            per_group_ids[int(grp.id)].append(int(cat.id))
+
+    for gid, ids in per_group_ids.items():
+        for j, cid in enumerate(ids):
+            c = db.execute(select(Category).where(Category.id == cid, Category.family_id == family_id)).scalar_one_or_none()
+            if c is None:
+                continue
+            c.sort_order = j
+
+    db.commit()
+    return get_categories_tree(db=db, family_id=family_id)
+
+
 @app.get("/api/families/{family_id}/categories", response_model=list[CategoryOut])
 def list_categories(
     family_id: int,
@@ -1013,19 +1354,12 @@ def list_categories(
 ):
     user_id = get_current_user_id(access_token)
     require_family_member(db=db, family_id=family_id, user_id=user_id)
-    rows = (
-        db.execute(
-            select(Category)
-            .where(Category.family_id == family_id)
-            .order_by(Category.sort_order.asc(), Category.name.asc(), Category.id.asc())
-        )
-        .scalars()
-        .all()
-    )
-    return [
-        CategoryOut(id=r.id, name=r.name, sort_order=r.sort_order or 0, fg_color=r.fg_color, bg_color=r.bg_color)
-        for r in rows
-    ]
+    tree = get_categories_tree(db=db, family_id=family_id)
+    flat: list[CategoryOut] = []
+    for g in tree.groups:
+        for c in g.categories:
+            flat.append(c)
+    return flat
 
 
 @app.post("/api/families/{family_id}/categories", response_model=CategoryOut)
@@ -1037,18 +1371,20 @@ def create_category(
 ):
     user_id = get_current_user_id(access_token)
     require_family_member(db=db, family_id=family_id, user_id=user_id)
-    max_sort = db.execute(select(func.coalesce(func.max(Category.sort_order), 0)).where(Category.family_id == family_id)).scalar_one()
-    category = Category(family_id=family_id, name=payload.name, sort_order=int(max_sort) + 1)
+
+    gid = int(payload.group_id) if payload.group_id is not None else _default_category_group_id(db=db, family_id=family_id)
+    grp = db.execute(select(CategoryGroup).where(CategoryGroup.id == gid, CategoryGroup.family_id == family_id)).scalar_one_or_none()
+    if grp is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid group_id")
+
+    max_sort = db.execute(
+        select(func.coalesce(func.max(Category.sort_order), 0)).where(Category.family_id == family_id, Category.group_id == gid)
+    ).scalar_one()
+    category = Category(family_id=family_id, name=payload.name.strip(), group_id=gid, sort_order=int(max_sort) + 1)
     db.add(category)
     db.commit()
     db.refresh(category)
-    return CategoryOut(
-        id=category.id,
-        name=category.name,
-        sort_order=category.sort_order or 0,
-        fg_color=category.fg_color,
-        bg_color=category.bg_color,
-    )
+    return _category_out_from_model(cat=category, group_name=str(grp.name))
 
 
 @app.put("/api/families/{family_id}/categories/{category_id}", response_model=CategoryOut)
@@ -1079,15 +1415,20 @@ def update_category(
     if payload.sort_order is not None:
         cat.sort_order = int(payload.sort_order)
 
+    if payload.group_id is not None:
+        gid = int(payload.group_id)
+        grp = db.execute(select(CategoryGroup).where(CategoryGroup.id == gid, CategoryGroup.family_id == family_id)).scalar_one_or_none()
+        if grp is None:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid group_id")
+        cat.group_id = gid
+
     db.commit()
     db.refresh(cat)
-    return CategoryOut(
-        id=cat.id,
-        name=cat.name,
-        sort_order=cat.sort_order or 0,
-        fg_color=cat.fg_color,
-        bg_color=cat.bg_color,
-    )
+    gname: Optional[str] = None
+    if cat.group_id is not None:
+        gg = db.execute(select(CategoryGroup).where(CategoryGroup.id == int(cat.group_id))).scalar_one_or_none()
+        gname = str(gg.name) if gg is not None else None
+    return _category_out_from_model(cat=cat, group_name=gname)
 
 
 @app.post("/api/families/{family_id}/categories/reorder", response_model=list[CategoryOut])
@@ -1115,6 +1456,60 @@ def reorder_categories(
 
     db.commit()
     return list_categories(family_id=family_id, access_token=access_token, db=db)
+
+
+@app.get("/api/families/{family_id}/categories/tree", response_model=CategoriesTreeOut)
+def get_categories_tree_endpoint(
+    family_id: int,
+    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    require_family_member(db=db, family_id=family_id, user_id=user_id)
+    return get_categories_tree(db=db, family_id=family_id)
+
+
+@app.put("/api/families/{family_id}/categories/tree", response_model=CategoriesTreeOut)
+def put_categories_tree(
+    family_id: int,
+    payload: CategoryTreeLayoutIn,
+    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    require_family_member(db=db, family_id=family_id, user_id=user_id)
+    return apply_category_tree_layout(db=db, family_id=family_id, payload=payload)
+
+
+@app.post("/api/families/{family_id}/category-groups", response_model=CategoryGroupOut)
+def create_category_group(
+    family_id: int,
+    payload: CategoryGroupIn,
+    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    require_family_member(db=db, family_id=family_id, user_id=user_id)
+    max_sort = db.execute(
+        select(func.coalesce(func.max(CategoryGroup.sort_order), 0)).where(CategoryGroup.family_id == family_id)
+    ).scalar_one()
+    grp = CategoryGroup(family_id=family_id, name=payload.name.strip(), sort_order=int(max_sort) + 1)
+    db.add(grp)
+    db.commit()
+    db.refresh(grp)
+    return CategoryGroupOut(id=int(grp.id), name=str(grp.name), sort_order=int(grp.sort_order or 0))
+
+
+@app.post("/api/families/{family_id}/categories/seed-defaults", response_model=CategoriesTreeOut)
+def seed_default_categories(
+    family_id: int,
+    force: bool = False,
+    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    require_family_member(db=db, family_id=family_id, user_id=user_id)
+    return apply_default_category_seed(db=db, family_id=family_id, force=bool(force))
 
 
 @app.get("/api/families/{family_id}/reconciled-days", response_model=ReconciledDaysOut)

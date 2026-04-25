@@ -109,6 +109,7 @@ let state = {
   families: [],
   activeFamilyId: null,
   categories: [],
+  categoryTree: null,
   accounts: [],
   expectedTransactions: [],
   monthActualItems: [],
@@ -137,7 +138,10 @@ const totalsEl = document.getElementById("totals");
 const txList = document.getElementById("txList");
 const txListMain = document.getElementById("txListMain");
 
-const categoriesGrid = document.getElementById("categoriesGrid");
+const categoriesTree = document.getElementById("categoriesTree");
+const newCategoryGroupId = document.getElementById("newCategoryGroupId");
+const seedDefaultCategoriesBtn = document.getElementById("seedDefaultCategoriesBtn");
+const addCategoryGroupBtn = document.getElementById("addCategoryGroupBtn");
 
 // Balance threshold alerts (settings + calendar sidebar)
 const balanceThresholdMin = document.getElementById("balanceThresholdMin");
@@ -749,7 +753,7 @@ document.querySelectorAll(".sidebar-section[data-sidebar-key]").forEach((card) =
   // If this is lowBalance and the user hasn't explicitly set a preference,
   // force expanded even if older localStorage had it collapsed.
   let collapsed;
-  if ((key === "balanceThresholds" || key === "addTransaction") && !userSet) {
+  if (key === "addTransaction" && !userSet) {
     collapsed = false;
     try {
       localStorage.setItem(SIDEBAR_SECTION_PREFIX + key, "0");
@@ -1059,18 +1063,69 @@ function descriptionForNewTransaction(categoryId, opts = {}) {
   return recurring ? "Scheduled" : "";
 }
 
+function defaultNewCategoryGroupId() {
+  const g = state.categoryTree?.groups?.[0];
+  return g && Number.isFinite(Number(g.id)) ? Number(g.id) : null;
+}
+
 document.getElementById("addCategoryBtn").addEventListener("click", async () => {
   try {
     show(catErr, "");
+    if (!state.activeFamilyId) throw new Error("Choose a family first");
     const name = document.getElementById("newCategoryName").value.trim();
     if (!name) throw new Error("Category name is required");
-    await api(`/api/families/${state.activeFamilyId}/categories`, "POST", { name });
+    let gid = defaultNewCategoryGroupId();
+    if (newCategoryGroupId && newCategoryGroupId.value) {
+      const n = Number(newCategoryGroupId.value);
+      if (Number.isFinite(n)) gid = n;
+    }
+    await api(`/api/families/${state.activeFamilyId}/categories`, "POST", { name, group_id: gid });
     document.getElementById("newCategoryName").value = "";
     await loadCategories();
+    await loadMonthAndCalendar();
   } catch (e) {
     show(catErr, e.message || "Failed to add category");
   }
 });
+
+if (seedDefaultCategoriesBtn) {
+  seedDefaultCategoriesBtn.addEventListener("click", async () => {
+    try {
+      show(catErr, "");
+      if (!state.activeFamilyId) throw new Error("Choose a family first");
+      let force = false;
+      try {
+        await api(`/api/families/${state.activeFamilyId}/categories/seed-defaults`, "POST");
+      } catch (e) {
+        const msg = String(e.message || "").toLowerCase();
+        if (msg.includes("already exist") || msg.includes("409")) {
+          if (!window.confirm("Replace all existing category groups and categories with the default list? This cannot be undone.")) return;
+          force = true;
+          await api(`/api/families/${state.activeFamilyId}/categories/seed-defaults?force=true`, "POST");
+        } else {
+          throw e;
+        }
+      }
+      await loadCategories();
+      await loadMonthAndCalendar();
+    } catch (e) {
+      show(catErr, e.message || "Failed to load default categories");
+    }
+  });
+}
+
+if (addCategoryGroupBtn) {
+  addCategoryGroupBtn.addEventListener("click", async () => {
+    try {
+      show(catErr, "");
+      if (!state.activeFamilyId) throw new Error("Choose a family first");
+      await api(`/api/families/${state.activeFamilyId}/category-groups`, "POST", { name: "New group" });
+      await loadCategories();
+    } catch (e) {
+      show(catErr, e.message || "Failed to add group");
+    }
+  });
+}
 
 if (txAddSave) {
   txAddSave.addEventListener("click", async () => {
@@ -2126,7 +2181,7 @@ function normalizeCategoryComboboxInput(fieldId) {
   const hid = st.hidden.value.trim();
   if (hid) {
     const cat = (st.categories || []).find((c) => String(c.id) === String(hid));
-    st.input.value = cat ? cat.name : "";
+    st.input.value = cat ? categoryDisplayLabel(cat) : "";
     return;
   }
   const q = st.input.value.trim().toLowerCase();
@@ -2134,16 +2189,25 @@ function normalizeCategoryComboboxInput(fieldId) {
     st.input.value = "";
     return;
   }
-  const exact = (st.categories || []).filter((c) => String(c.name).trim().toLowerCase() === q);
+  const exact = (st.categories || []).filter((c) => {
+    const n = String(c.name).trim().toLowerCase();
+    const d = categoryDisplayLabel(c).trim().toLowerCase();
+    return n === q || d === q;
+  });
   if (exact.length === 1) {
     st.hidden.value = String(exact[0].id);
-    st.input.value = exact[0].name;
+    st.input.value = categoryDisplayLabel(exact[0]);
     return;
   }
-  const subs = (st.categories || []).filter((c) => String(c.name).toLowerCase().includes(q));
+  const subs = (st.categories || []).filter((c) => {
+    const n = String(c.name).toLowerCase();
+    const g = String(c.group_name || "").toLowerCase();
+    const d = categoryDisplayLabel(c).toLowerCase();
+    return n.includes(q) || g.includes(q) || d.includes(q);
+  });
   if (subs.length === 1) {
     st.hidden.value = String(subs[0].id);
-    st.input.value = subs[0].name;
+    st.input.value = categoryDisplayLabel(subs[0]);
     return;
   }
   st.input.value = "";
@@ -2154,7 +2218,14 @@ function filterCategoryCombobox(fieldId) {
   if (!st) return;
   const q = st.input.value.trim().toLowerCase();
   const cats = st.categories || [];
-  const filtered = !q ? cats.slice() : cats.filter((c) => String(c.name).toLowerCase().includes(q));
+  const filtered = !q
+    ? cats.slice()
+    : cats.filter((c) => {
+        const n = String(c.name).toLowerCase();
+        const g = String(c.group_name || "").toLowerCase();
+        const d = categoryDisplayLabel(c).toLowerCase();
+        return n.includes(q) || g.includes(q) || d.includes(q);
+      });
 
   st.list.innerHTML = "";
   for (const c of filtered) {
@@ -2162,7 +2233,7 @@ function filterCategoryCombobox(fieldId) {
     li.className = "category-combobox__option";
     li.setAttribute("role", "option");
     li.dataset.id = String(c.id);
-    li.textContent = c.name;
+    li.textContent = categoryDisplayLabel(c);
     st.list.appendChild(li);
   }
   const addLi = document.createElement("li");
@@ -2189,11 +2260,12 @@ async function handleAddNewCategoryFromCombobox(fieldId) {
   if (!name || !String(name).trim()) return;
   try {
     if (!state.activeFamilyId) throw new Error("Choose a family first");
-    await api(`/api/families/${state.activeFamilyId}/categories`, "POST", { name: String(name).trim() });
+    const gid = defaultNewCategoryGroupId();
+    await api(`/api/families/${state.activeFamilyId}/categories`, "POST", { name: String(name).trim(), group_id: gid });
     await loadCategories();
     const trimmed = String(name).trim();
     const newCat = (state.categories || []).find((c) => String(c.name).trim() === trimmed);
-    if (newCat) selectCategoryComboboxChoice(fieldId, newCat.id, newCat.name);
+    if (newCat) selectCategoryComboboxChoice(fieldId, newCat.id, categoryDisplayLabel(newCat));
   } catch (err) {
     window.alert(err.message || "Failed to add category");
   }
@@ -2237,10 +2309,17 @@ function onCategoryComboboxKeydown(e, fieldId) {
     }
     const q = st.input.value.trim().toLowerCase();
     const cats = st.categories || [];
-    const filtered = !q ? cats : cats.filter((c) => String(c.name).toLowerCase().includes(q));
+    const filtered = !q
+      ? cats
+      : cats.filter((c) => {
+          const n = String(c.name).toLowerCase();
+          const g = String(c.group_name || "").toLowerCase();
+          const d = categoryDisplayLabel(c).toLowerCase();
+          return n.includes(q) || g.includes(q) || d.includes(q);
+        });
     if (filtered.length === 1) {
       e.preventDefault();
-      selectCategoryComboboxChoice(fieldId, filtered[0].id, filtered[0].name);
+      selectCategoryComboboxChoice(fieldId, filtered[0].id, categoryDisplayLabel(filtered[0]));
     }
   }
 }
@@ -2334,7 +2413,7 @@ function syncCategoryComboboxCategories(fieldId, categories) {
   const cur = st.hidden.value;
   if (cur) {
     const cat = st.categories.find((c) => String(c.id) === String(cur));
-    st.input.value = cat ? cat.name : "";
+    st.input.value = cat ? categoryDisplayLabel(cat) : "";
   }
   if (!st.list.hidden) filterCategoryCombobox(fieldId);
 }
@@ -2355,13 +2434,11 @@ function setCategoryFieldValue(fieldId, categoryIdOrNull) {
       st.hidden.value = "";
       st.input.value = "";
     } else {
-      const cat = (st.categories || []).find((c) => Number(c.id) === Number(categoryIdOrNull));
-      const name =
-        cat?.name ||
-        (state.categories || []).find((c) => Number(c.id) === Number(categoryIdOrNull))?.name ||
-        "";
+      const cat =
+        (st.categories || []).find((c) => Number(c.id) === Number(categoryIdOrNull)) ||
+        (state.categories || []).find((c) => Number(c.id) === Number(categoryIdOrNull));
       st.hidden.value = String(categoryIdOrNull);
-      st.input.value = name;
+      st.input.value = cat ? categoryDisplayLabel(cat) : "";
     }
     return;
   }
@@ -2472,20 +2549,40 @@ function openCategoryPalettePopover(anchorBtn, palette, currentHex, onPick) {
   };
 }
 
-function renderCategoriesGrid(categories) {
-  if (!categoriesGrid) return;
+function renderCategoriesGrid(tree) {
+  if (!categoriesTree) return;
   closeCategoryPalettePopover();
-  categoriesGrid.innerHTML = "";
-  const items = categories || [];
-  if (items.length === 0) {
+  categoriesTree.innerHTML = "";
+  const groups = tree?.groups || [];
+
+  if (newCategoryGroupId) {
+    newCategoryGroupId.innerHTML = "";
+    for (const g of groups) {
+      const o = document.createElement("option");
+      o.value = String(g.id);
+      o.textContent = g.name;
+      newCategoryGroupId.appendChild(o);
+    }
+  }
+
+  if (!groups.length) {
     const empty = document.createElement("div");
     empty.className = "pill";
-    empty.textContent = "No categories yet.";
-    categoriesGrid.appendChild(empty);
+    empty.textContent = "No category groups yet. Use “Add group” or “Load default categories”.";
+    categoriesTree.appendChild(empty);
     return;
   }
 
-  const DEFAULT_FG = "#e8eefc";
+  const colHead = document.createElement("div");
+  colHead.className = "cat-tree-column-head";
+  for (const label of ["Category", "Bg", ""]) {
+    const d = document.createElement("div");
+    d.className = "cat-tree-column-head__cell";
+    d.textContent = label;
+    colHead.appendChild(d);
+  }
+  categoriesTree.appendChild(colHead);
+
   const DEFAULT_BG = "#121b31";
   const PALETTE = [
     "#0b1220","#121b31","#1b2a4a","#24365f","#2d4478","#365392","#4063ad","#4a74c9",
@@ -2524,58 +2621,28 @@ function renderCategoriesGrid(categories) {
     return btn;
   }
 
-  // Header
-  const hName = document.createElement("div");
-  hName.className = "cat-h";
-  hName.textContent = "Category";
-  const hBg = document.createElement("div");
-  hBg.className = "cat-h";
-  hBg.textContent = "Bg";
-  const hAct = document.createElement("div");
-  hAct.className = "cat-h";
-  hAct.textContent = "";
-  categoriesGrid.appendChild(hName);
-  categoriesGrid.appendChild(hBg);
-  categoriesGrid.appendChild(hAct);
-
-  // Render in server-provided order (drag/drop persists sort_order).
-  const ordered = [...items];
-
-  async function persistOrder(ids) {
-    if (!state.activeFamilyId) return;
-    await api(`/api/families/${state.activeFamilyId}/categories/reorder`, "POST", { ordered_ids: ids });
+  function clearDragUi() {
+    categoriesTree.querySelectorAll(".cat-row.is-drag-over, .cat-group-head.is-drag-over, .cat-group-body.is-drag-over").forEach((x) => {
+      x.classList.remove("is-drag-over");
+    });
   }
 
-  function currentIds() {
-    return [...categoriesGrid.querySelectorAll(".cat-row[data-category-id]")].map((el) => Number(el.dataset.categoryId));
-  }
-
-  function moveIdBefore(list, movingId, beforeId) {
-    const next = list.filter((x) => x !== movingId);
-    const idx = next.indexOf(beforeId);
-    if (idx < 0) return next;
-    next.splice(idx, 0, movingId);
-    return next;
-  }
-
-  for (const c of ordered) {
+  function mountCategoryRow(c) {
     const row = document.createElement("div");
     row.className = "cat-row";
     row.dataset.categoryId = String(c.id);
     row.draggable = true;
 
     const nameEl = document.createElement("div");
-    nameEl.className = "cat-name";
+    nameEl.className = "cat-name cat-drag-handle";
     nameEl.textContent = c.name;
-    nameEl.title = c.name;
-    nameEl.classList.add("cat-drag-handle");
+    nameEl.title = categoryDisplayLabel(c);
 
     let bgVal = normalizeHex(c.bg_color, DEFAULT_BG);
     const bgTrigger = makeColorTrigger("Background color", () => bgVal, (h) => (bgVal = h));
 
     const actions = document.createElement("div");
     actions.className = "cat-actions";
-
     const save = document.createElement("button");
     save.type = "button";
     save.className = "cat-save";
@@ -2584,34 +2651,29 @@ function renderCategoriesGrid(categories) {
       try {
         show(catErr, "");
         if (!state.activeFamilyId) throw new Error("Choose a family first");
-        await api(`/api/families/${state.activeFamilyId}/categories/${c.id}`, "PUT", {
-          bg_color: bgVal,
-        });
+        await api(`/api/families/${state.activeFamilyId}/categories/${c.id}`, "PUT", { bg_color: bgVal });
         await loadCategories();
         await loadMonthAndCalendar();
       } catch (e) {
         show(catErr, e.message || "Failed to update category");
       }
     });
-
     actions.appendChild(save);
 
-    // Use display: contents so the row participates in the grid.
     row.appendChild(nameEl);
     row.appendChild(bgTrigger);
     row.appendChild(actions);
-    categoriesGrid.appendChild(row);
 
     row.addEventListener("dragstart", (e) => {
       try {
         e.dataTransfer.effectAllowed = "move";
-        e.dataTransfer.setData("text/plain", row.dataset.categoryId || "");
+        e.dataTransfer.setData("text/plain", `cat:${row.dataset.categoryId}`);
       } catch (_) {}
       row.classList.add("is-dragging");
     });
     row.addEventListener("dragend", () => {
       row.classList.remove("is-dragging");
-      categoriesGrid.querySelectorAll(".cat-row.is-drag-over").forEach((x) => x.classList.remove("is-drag-over"));
+      clearDragUi();
     });
     row.addEventListener("dragover", (e) => {
       e.preventDefault();
@@ -2619,7 +2681,7 @@ function renderCategoriesGrid(categories) {
       if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
     });
     row.addEventListener("dragleave", () => row.classList.remove("is-drag-over"));
-    row.addEventListener("drop", async (e) => {
+    row.addEventListener("drop", (e) => {
       e.preventDefault();
       row.classList.remove("is-drag-over");
       const raw = (() => {
@@ -2629,36 +2691,194 @@ function renderCategoriesGrid(categories) {
           return "";
         }
       })();
-      const movingId = Number(raw);
+      if (!raw.startsWith("cat:")) return;
+      const movingId = Number(raw.slice("cat:".length));
       const beforeId = Number(row.dataset.categoryId);
       if (!movingId || !beforeId || movingId === beforeId) return;
-      const ids = currentIds();
-      const nextIds = moveIdBefore(ids, movingId, beforeId);
-      try {
-        // Optimistic UI: reorder DOM immediately.
-        const idToRow = new Map(
-          [...categoriesGrid.querySelectorAll(".cat-row[data-category-id]")].map((el) => [Number(el.dataset.categoryId), el])
-        );
-        for (const el of idToRow.values()) el.remove();
-        for (const id of nextIds) {
-          const el = idToRow.get(id);
-          if (el) categoriesGrid.appendChild(el);
-        }
-        await persistOrder(nextIds);
-        await loadCategories();
-      } catch (err) {
-        show(catErr, err.message || "Failed to reorder categories");
-        await loadCategories();
-      }
+      const movingRow = categoriesTree.querySelector(`.cat-row[data-category-id="${movingId}"]`);
+      if (!movingRow) return;
+      row.parentElement.insertBefore(movingRow, row);
+      scheduleCategoryTreePersist();
     });
+    return row;
+  }
+
+  function mountGroup(g) {
+    const wrap = document.createElement("div");
+    wrap.className = "cat-group";
+    wrap.dataset.groupId = String(g.id);
+
+    const head = document.createElement("div");
+    head.className = "cat-group-head";
+
+    const grip = document.createElement("div");
+    grip.className = "meta cat-group-grip";
+    grip.textContent = "⋮⋮";
+    grip.draggable = true;
+    grip.title = "Drag to reorder groups";
+
+    const nameInput = document.createElement("input");
+    nameInput.type = "text";
+    nameInput.className = "cat-group-name-input";
+    nameInput.dataset.groupName = "1";
+    nameInput.value = g.name;
+    nameInput.addEventListener("blur", () => scheduleCategoryTreePersist());
+
+    head.appendChild(grip);
+    head.appendChild(nameInput);
+
+    const body = document.createElement("div");
+    body.className = "cat-group-body";
+    body.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      body.classList.add("is-drag-over");
+      if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+    });
+    body.addEventListener("dragleave", () => body.classList.remove("is-drag-over"));
+    body.addEventListener("drop", (e) => {
+      e.preventDefault();
+      body.classList.remove("is-drag-over");
+      const raw = (() => {
+        try {
+          return e.dataTransfer.getData("text/plain");
+        } catch (_) {
+          return "";
+        }
+      })();
+      if (!raw.startsWith("cat:")) return;
+      const movingId = Number(raw.slice("cat:".length));
+      const movingRow = categoriesTree.querySelector(`.cat-row[data-category-id="${movingId}"]`);
+      if (!movingRow) return;
+      body.appendChild(movingRow);
+      scheduleCategoryTreePersist();
+    });
+
+    for (const c of g.categories || []) {
+      body.appendChild(mountCategoryRow(c));
+    }
+
+    grip.addEventListener("dragstart", (e) => {
+      try {
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/plain", `group:${wrap.dataset.groupId}`);
+      } catch (_) {}
+      wrap.classList.add("is-dragging");
+    });
+    grip.addEventListener("dragend", () => {
+      wrap.classList.remove("is-dragging");
+      clearDragUi();
+    });
+    head.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      head.classList.add("is-drag-over");
+      if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+    });
+    head.addEventListener("dragleave", (e) => {
+      if (e.relatedTarget && head.contains(/** @type {Node} */ (e.relatedTarget))) return;
+      head.classList.remove("is-drag-over");
+    });
+    head.addEventListener("drop", (e) => {
+      e.preventDefault();
+      head.classList.remove("is-drag-over");
+      const raw = (() => {
+        try {
+          return e.dataTransfer.getData("text/plain");
+        } catch (_) {
+          return "";
+        }
+      })();
+      if (raw.startsWith("cat:")) {
+        const movingId = Number(raw.slice("cat:".length));
+        const movingRow = categoriesTree.querySelector(`.cat-row[data-category-id="${movingId}"]`);
+        if (movingRow) {
+          const first = body.querySelector(".cat-row");
+          if (first) body.insertBefore(movingRow, first);
+          else body.appendChild(movingRow);
+          scheduleCategoryTreePersist();
+        }
+        return;
+      }
+      if (!raw.startsWith("group:")) return;
+      const movingGid = String(raw.slice("group:".length));
+      const targetGid = String(wrap.dataset.groupId);
+      if (!movingGid || !targetGid || movingGid === targetGid) return;
+      const movingEl = categoriesTree.querySelector(`.cat-group[data-group-id="${movingGid}"]`);
+      if (!movingEl) return;
+      categoriesTree.insertBefore(movingEl, wrap);
+      scheduleCategoryTreePersist();
+    });
+
+    wrap.appendChild(head);
+    wrap.appendChild(body);
+    categoriesTree.appendChild(wrap);
+  }
+
+  for (const g of groups) {
+    mountGroup(g);
+  }
+}
+
+function categoryDisplayLabel(c) {
+  if (!c) return "";
+  const g = c.group_name && String(c.group_name).trim();
+  const n = String(c.name || "").trim();
+  return g ? `${g} › ${n}` : n;
+}
+
+function flattenCategoryTree(tree) {
+  const out = [];
+  for (const g of tree?.groups || []) {
+    for (const c of g.categories || []) {
+      out.push({
+        ...c,
+        group_id: Number(g.id),
+        group_name: g.name,
+      });
+    }
+  }
+  return out;
+}
+
+let categoryTreeSaveTimer = null;
+function scheduleCategoryTreePersist() {
+  if (!state.activeFamilyId) return;
+  if (categoryTreeSaveTimer) clearTimeout(categoryTreeSaveTimer);
+  categoryTreeSaveTimer = setTimeout(() => {
+    categoryTreeSaveTimer = null;
+    void persistCategoryTreeFromDom();
+  }, 250);
+}
+
+async function persistCategoryTreeFromDom() {
+  if (!categoriesTree || !state.activeFamilyId) return;
+  try {
+    show(catErr, "");
+    const groups = [];
+    for (const gEl of categoriesTree.querySelectorAll(":scope > .cat-group")) {
+      const gidRaw = String(gEl.dataset.groupId || "").trim();
+      const parsed = Number(gidRaw);
+      const gid = gidRaw !== "" && Number.isFinite(parsed) ? parsed : null;
+      const nameInput = gEl.querySelector("[data-group-name]");
+      const nm = (nameInput && nameInput.value ? nameInput.value : "").trim();
+      if (!nm) throw new Error("Each group needs a name");
+      const ids = [...gEl.querySelectorAll(".cat-group-body .cat-row[data-category-id]")].map((r) => Number(r.dataset.categoryId));
+      groups.push({ id: gid, name: nm, category_ids: ids });
+    }
+    await api(`/api/families/${state.activeFamilyId}/categories/tree`, "PUT", { groups });
+    await loadCategories();
+    await loadMonthAndCalendar();
+  } catch (e) {
+    show(catErr, e.message || "Failed to save category layout");
+    await loadCategories();
   }
 }
 
 async function loadCategories() {
   if (!state.activeFamilyId) return;
-  const categories = await api(`/api/families/${state.activeFamilyId}/categories`, "GET");
-  state.categories = categories || [];
-  renderCategoriesGrid(state.categories);
+  const tree = await api(`/api/families/${state.activeFamilyId}/categories/tree`, "GET");
+  state.categoryTree = tree || { groups: [] };
+  state.categories = flattenCategoryTree(state.categoryTree);
+  renderCategoriesGrid(state.categoryTree);
   syncAllCategoryComboboxes(state.categories);
 }
 

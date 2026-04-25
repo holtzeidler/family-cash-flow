@@ -12,7 +12,7 @@
   --ok:#005a4a;     /* green from palette */
   --border: rgba(0,0,0,0.12);
   /* Sticky strips sit below the primary nav (tabs); keep in sync with .top-nav height */
-  --app-top-nav-offset: 72px;
+  --app-top-nav-offset: 64px;
 }
 
 *{ box-sizing:border-box; }
@@ -43,7 +43,7 @@ body{
   position: sticky;
   top: 0;
   z-index: 30;
-  padding: 15px 0 12px;
+  padding: 12px 0 8px;
   background: var(--accent);
   border-bottom: 1px solid rgba(0,0,0,0.18);
 }
@@ -74,7 +74,7 @@ body{
 @media (max-width: 860px){
   :root{
     /* Top nav stacks title + tabs, so it is taller on small screens. */
-    --app-top-nav-offset: 116px;
+    --app-top-nav-offset: 108px;
   }
   .top-nav__inner{
     grid-template-columns: 1fr;
@@ -788,6 +788,11 @@ button.nav-link:hover{
   background: var(--cal-surface);
 }
 
+/* Settings View should match Calendar's white surface. */
+#settingsViewPanel .card{
+  background: var(--cal-surface);
+}
+
 .card h2{
   margin:0 0 10px;
   font-size: 14px;
@@ -1004,6 +1009,31 @@ label{
 .form-row-h__field .pill{
   width: 100%;
   justify-content: flex-start;
+}
+
+/* Settings → Account Details: give the stacked rows a little breathing room */
+.settings-pane[data-settings-pane="accountDetails"] .form-row-h{
+  padding: 6px 0;
+}
+.settings-pane[data-settings-pane="accountDetails"] .form-row-h + .form-row-h{
+  margin-top: 6px;
+}
+
+/* Settings → Accounts: add vertical rhythm between stacked controls */
+.settings-pane[data-settings-pane="accounts"] .row.two{
+  margin-bottom: 14px;
+}
+.settings-pane[data-settings-pane="accounts"] #cancelAccountEditBtn{
+  margin-top: 0;
+  margin-bottom: 14px;
+  width: 100%;
+}
+.settings-pane[data-settings-pane="accounts"] #accErr{
+  margin: 6px 0 10px;
+}
+.settings-pane[data-settings-pane="accounts"] .list{
+  margin-top: 16px;
+  gap: 14px;
 }
 .tx-edit-top .form-row-h__label label{
   color: rgba(255, 255, 255, 0.92);
@@ -1271,13 +1301,17 @@ textarea::placeholder{
   text-overflow: ellipsis;
 }
 .categories-actions{
-  display:flex;
-  gap: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 16px;
   align-items: flex-end;
 }
 .categories-new-field{
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   flex: 1 1 auto;
-  min-width: 0;
+  min-width: 140px;
 }
 .categories-new-field label{
   display: block;
@@ -1375,22 +1409,90 @@ textarea::placeholder{
   white-space: nowrap;
 }
 
-.categories-grid{
-  display:grid;
+.categories-toolbar{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+.categories-toolbar-hint{
+  margin: 0 0 8px;
+}
+.cat-tree{
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.cat-tree-column-head{
+  display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 8px 10px;
   align-items: center;
+  padding: 0 4px 2px;
 }
-.categories-grid .cat-h{
+.cat-tree-column-head__cell{
   font-size: 12px;
   color: var(--muted);
 }
-.categories-grid .cat-name{
+.cat-group{
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(0,0,0,0.02);
+  overflow: hidden;
+}
+.cat-group.is-dragging{
+  opacity: 0.88;
+}
+.cat-group-head{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(0,0,0,0.03);
+}
+.cat-group-head.is-drag-over{
+  outline: 2px dashed color-mix(in srgb, var(--accent) 55%, transparent);
+  outline-offset: -2px;
+}
+.cat-group-grip{
+  cursor: grab;
+  user-select: none;
+  flex-shrink: 0;
+}
+.cat-group-grip:active{
+  cursor: grabbing;
+}
+.cat-group-name-input{
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+}
+.cat-group-body{
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 8px 10px;
+  align-items: center;
+  padding: 10px 12px 12px;
+}
+.cat-group-body.is-drag-over{
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+.cat-group-body .cat-name{
   font-size: 13px;
   color: var(--text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.cat-group-body .cat-row{
+  display: contents;
 }
 .cat-row{
   display: contents;
@@ -1454,7 +1556,7 @@ textarea::placeholder{
   justify-content: flex-end;
   align-items: center;
 }
-.categories-grid .cat-save{
+.cat-tree .cat-save{
   padding: 8px 10px;
 }
 
@@ -2291,7 +2393,8 @@ textarea::placeholder{
   border-radius: 14px 14px 0 0;
 }
 .modal--expected-edit #txEditIntro{
-  padding: 16px 16px 0;
+  /* Remove top whitespace above the green header; keep side padding for errors/hidden fields. */
+  padding: 0 16px;
 }
 .modal--expected-edit #txEditIntro #txEditErr{
   margin: 0 0 10px;

@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=131" />
+    <link rel="stylesheet" href="./styles.css?v=138" />
   </head>
   <body>
     <div class="container">
@@ -55,10 +55,6 @@
             </div>
 
             <div id="settingsSidebarNav" class="card settings-nav settings-nav--sidebar" hidden aria-label="Settings sections">
-              <button type="button" class="settings-nav-item" data-settings-key="balanceThresholds">
-                <span class="settings-nav-item__label">Balance thresholds</span>
-                <span class="settings-nav-item__chev" aria-hidden="true">▾</span>
-              </button>
               <button type="button" class="settings-nav-item is-active" data-settings-key="accountDetails">
                 <span class="settings-nav-item__label">Account Details</span>
                 <span class="settings-nav-item__chev" aria-hidden="true">▾</span>
@@ -146,12 +142,6 @@
                 </div>
               </div>
               <div class="tx-add-vspace tx-add-vspace--lg" aria-hidden="true"></div>
-              <div class="form-row-h">
-                <div class="form-row-h__label"><label for="txAddNotes">Notes</label></div>
-                <div class="form-row-h__field">
-                  <input id="txAddNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
-                </div>
-              </div>
               <div id="txAddRecurringBlock" style="display: none">
                 <div class="tx-add-vspace tx-add-vspace--sm" aria-hidden="true"></div>
                 <div id="txAddTwiceMonthlyFields" class="expected-second-day-row" style="display: none">
@@ -179,6 +169,13 @@
                   <span class="reimbursable-field__label">Variable (estimate)</span>
                   <input id="txAddVariable" type="checkbox" title="Amount is a placeholder until you enter actuals" />
                 </label>
+              </div>
+              <div class="tx-add-vspace" aria-hidden="true"></div>
+              <div class="form-row-h">
+                <div class="form-row-h__label"><label for="txAddNotes">Notes</label></div>
+                <div class="form-row-h__field">
+                  <input id="txAddNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
+                </div>
               </div>
               <div class="modal-actions">
                 <div class="row two">
@@ -361,19 +358,27 @@
                       <div id="accountDetailsStarting" class="meta">—</div>
                     </div>
                   </div>
-                </div>
-
-                <div class="settings-pane" data-settings-pane="balanceThresholds" hidden>
-                  <label for="balanceThresholdMin">Minimum balance (alert at or below)</label>
-                  <div class="money-input">
-                    <span class="money-input__prefix" aria-hidden="true">$</span>
-                    <input id="balanceThresholdMin" type="number" step="0.01" placeholder="e.g. 1000" />
+                  <div class="tx-add-vspace tx-add-vspace--lg" aria-hidden="true"></div>
+                  <div class="form-row-h">
+                    <div class="form-row-h__label"><label for="balanceThresholdMin">Minimum balance</label></div>
+                    <div class="form-row-h__field">
+                      <div class="money-input">
+                        <span class="money-input__prefix" aria-hidden="true">$</span>
+                        <input id="balanceThresholdMin" type="number" step="0.01" placeholder="e.g. 1000" />
+                      </div>
+                      <div class="meta" style="margin-top: 6px">Alert at or below this amount.</div>
+                    </div>
                   </div>
-                  <div style="height: 12px"></div>
-                  <label for="balanceThresholdMax">Maximum balance (alert at or above)</label>
-                  <div class="money-input">
-                    <span class="money-input__prefix" aria-hidden="true">$</span>
-                    <input id="balanceThresholdMax" type="number" step="0.01" placeholder="e.g. 50000" />
+                  <div class="tx-add-vspace" aria-hidden="true"></div>
+                  <div class="form-row-h">
+                    <div class="form-row-h__label"><label for="balanceThresholdMax">Maximum balance</label></div>
+                    <div class="form-row-h__field">
+                      <div class="money-input">
+                        <span class="money-input__prefix" aria-hidden="true">$</span>
+                        <input id="balanceThresholdMax" type="number" step="0.01" placeholder="e.g. 50000" />
+                      </div>
+                      <div class="meta" style="margin-top: 6px">Alert at or above this amount.</div>
+                    </div>
                   </div>
                   <p class="balance-threshold-hint">
                     Leave a field blank to disable that alert. The calendar sidebar shows the next projected crossing for each threshold you set.
@@ -426,9 +431,23 @@
                 </div>
 
                 <div class="settings-pane" data-settings-pane="categories" hidden>
-                  <div id="categoriesGrid" class="categories-grid" aria-live="polite"></div>
+                  <div class="categories-toolbar" role="toolbar" aria-label="Category actions">
+                    <button type="button" id="seedDefaultCategoriesBtn" title="Creates the starter groups/categories if none exist yet">
+                      Load default categories
+                    </button>
+                    <button type="button" id="addCategoryGroupBtn">Add group</button>
+                  </div>
+                  <p class="meta categories-toolbar-hint">
+                    Groups are section headers (not selectable in transaction pickers). Drag a group header or a category row to reorder. New categories are
+                    added to the group you pick below.
+                  </p>
+                  <div id="categoriesTree" class="cat-tree" aria-live="polite"></div>
                   <div style="height:10px;"></div>
                   <div class="categories-actions">
+                    <div class="categories-new-field">
+                      <label for="newCategoryGroupId">Group</label>
+                      <select id="newCategoryGroupId" aria-label="Group for new category"></select>
+                    </div>
                     <div class="categories-new-field">
                       <label for="newCategoryName">New category</label>
                       <input id="newCategoryName" type="text" placeholder="e.g. Groceries" />
@@ -834,6 +853,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="./app.js?v=127"></script>
+    <script src="./app.js?v=129"></script>
   </body>
 </html>
