@@ -3,9 +3,56 @@ function apiBaseUrl() {
   return raw.replace(/\/+$/, "");
 }
 
+/** FastAPI may return `detail` as a string, object, or list of validation errors. */
+function formatApiDetail(detail) {
+  if (detail == null) return "";
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    const parts = [];
+    for (const item of detail) {
+      if (typeof item === "string") {
+        parts.push(item);
+        continue;
+      }
+      if (item && typeof item === "object") {
+        const loc = Array.isArray(item.loc) ? item.loc.filter((x) => x !== "body").join(".") : "";
+        const m = item.msg != null ? String(item.msg) : "";
+        if (loc && m) parts.push(`${loc}: ${m}`);
+        else if (m) parts.push(m);
+        else {
+          try {
+            parts.push(JSON.stringify(item));
+          } catch (_) {
+            parts.push(String(item));
+          }
+        }
+      }
+    }
+    return parts.filter(Boolean).join("\n");
+  }
+  if (typeof detail === "object") {
+    try {
+      return JSON.stringify(detail);
+    } catch (_) {
+      return String(detail);
+    }
+  }
+  return String(detail);
+}
+
 async function api(path, method = "GET", body) {
   const apiBase = apiBaseUrl();
   const fullPath = `${apiBase}${path}`;
+  const onPages = typeof location !== "undefined" && location.hostname.endsWith("github.io");
+  if (!apiBase && onPages) {
+    const origin = typeof location !== "undefined" ? location.origin : "(unknown)";
+    throw new Error(
+      "GitHub Pages build is missing API_BASE, so requests are going to the Pages site (and will fail).\n\n" +
+        "Fix: In the repo → Settings → Secrets and variables → Actions → set secret API_BASE to your Render API URL " +
+        "(e.g. https://your-app.onrender.com, no trailing slash), then re-run the workflow “Deploy frontend to GitHub Pages”.\n\n" +
+        `Current Origin: ${origin}`
+    );
+  }
   let res;
   try {
     res = await fetch(fullPath, {
@@ -16,7 +63,6 @@ async function api(path, method = "GET", body) {
     });
   } catch (err) {
     const msg = err && err.message ? err.message : String(err);
-    const onPages = typeof location !== "undefined" && location.hostname.endsWith("github.io");
     const origin = typeof location !== "undefined" ? location.origin : "(unknown)";
     const baseHint = apiBase
       ? `Trying API_BASE: ${apiBase}`
@@ -38,7 +84,10 @@ async function api(path, method = "GET", body) {
     let msg = `Request failed (${res.status})`;
     try {
       const data = await res.json();
-      if (data && data.detail) msg = data.detail;
+      if (data && data.detail != null) {
+        const d = formatApiDetail(data.detail);
+        if (d) msg = d;
+      }
     } catch (_) {}
     throw new Error(msg);
   }
@@ -54,8 +103,14 @@ async function api(path, method = "GET", body) {
 
 function show(el, msg) {
   if (!el) return;
-  el.textContent = msg || "";
-  el.style.display = msg ? "block" : "none";
+  const s =
+    msg == null || msg === ""
+      ? ""
+      : typeof msg === "string"
+        ? msg
+        : formatApiDetail(msg);
+  el.textContent = s;
+  el.style.display = s ? "block" : "none";
 }
 
 function expandSidebarSection(key) {
