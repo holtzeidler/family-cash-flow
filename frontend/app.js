@@ -1029,6 +1029,8 @@ try {
   if (storedView) setActiveTopView(storedView);
 } catch (_) {}
 
+// Calendar mode selector is intentionally hidden in the UI (defaults to "both"),
+// but keep the handler wired if it is re-enabled later.
 if (calendarMode) {
   calendarMode.addEventListener("change", async () => {
     await loadCalendarMonthDaily();
@@ -3830,12 +3832,9 @@ function renderSidebarPendingTransactionsForMonth() {
 
   /** @type {{sortIso:string, type:"actual"|"expected", tx:any}[]} */
   const rows = [];
-  for (const tx of state.monthActualItems || []) {
-    const iso = normalizeIsoDate(tx?.date) || String(tx?.date || "");
-    if (!iso || iso < startIso || iso > endIso) continue;
-    rows.push({ sortIso: iso, type: "actual", tx });
-  }
   for (const it of state.monthExpectedItems || []) {
+    // Sidebar "pending" is specifically for Variable (estimate) items only.
+    if (!it?.variable) continue;
     const iso = normalizeIsoDate(it?.date) || String(it?.date || "");
     if (!iso || iso < startIso || iso > endIso) continue;
     rows.push({ sortIso: iso, type: "expected", tx: it });
@@ -3852,43 +3851,6 @@ function renderSidebarPendingTransactionsForMonth() {
   }
 
   for (const r of rows) {
-    if (r.type === "actual") {
-      const tx = r.tx;
-      const el = document.createElement("div");
-      el.className = "item";
-      el.style.cursor = "pointer";
-
-      const amtClass = tx.kind === "income" ? "income" : "expense";
-      const left = document.createElement("div");
-      left.className = "left";
-      const link = document.createElement("a");
-      link.href = "#";
-      link.className = `desc tx-desc-link ${kindFgClass(tx.kind)}`;
-      link.textContent = (tx.description || "(no description)").trim() || "(no description)";
-      const n = tx.notes && String(tx.notes).trim();
-      if (n) link.title = n;
-      link.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        openTxEditModal(tx);
-      });
-      const meta = document.createElement("div");
-      meta.className = "meta";
-      meta.appendChild(document.createTextNode(fmtDateMDY(tx.date || "")));
-      left.appendChild(link);
-      left.appendChild(meta);
-
-      const amt = document.createElement("div");
-      amt.className = `amt ${amtClass}`;
-      amt.textContent = `${tx.kind === "income" ? "+" : "-"}$${fmtMoney(tx.amount)}`;
-
-      el.appendChild(left);
-      el.appendChild(amt);
-      el.addEventListener("click", () => openTxEditModal(tx));
-      sidebarPendingTxList.appendChild(el);
-      continue;
-    }
-
     const it = r.tx;
     const el = document.createElement("div");
     el.className = "item expected-item--dense";
