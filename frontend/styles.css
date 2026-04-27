@@ -340,6 +340,11 @@ button.danger{
   background: rgba(255,107,107,0.12);
   border-color: rgba(255,107,107,0.35);
 }
+button.secondary{
+  background: rgba(0,0,0,0.02);
+  border-color: rgba(0,0,0,0.10);
+  color: var(--text);
+}
 
 /* Main app: 1/4 master data (left), 3/4 calendar + tools (right) */
 .app-layout{

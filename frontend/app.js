@@ -679,7 +679,6 @@ function setLowBalanceResult(contentHtml, isEmpty = false) {
 async function refreshLowBalanceAlert() {
   try {
     show(lowBalanceErr, "");
-    if (!lowBalanceResult) return;
     if (!state.activeFamilyId) {
       setSidebarLowBalanceBanner("", "off");
       setSidebarHighBalanceBanner("", "off");
