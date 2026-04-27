@@ -10,7 +10,7 @@
   --accent:#0B3D2E;
   --danger:#a73744; /* darker maroon-leaning red */
   --ok:#005a4a;     /* green from palette */
-  --border: rgba(0,0,0,0.12);
+  --border: rgba(0,0,0,0.10);
   /* Sticky strips sit below the primary nav (tabs); keep in sync with .top-nav height */
   --app-top-nav-offset: 64px;
 }
@@ -357,7 +357,7 @@ button.danger{
 .sidebar{
   display:flex;
   flex-direction:column;
-  gap: 14px;
+  gap: 18px;
   min-width: 0;
   overflow-y: auto;
   overflow-x: hidden;
@@ -431,7 +431,12 @@ button.danger{
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 650;
-  font-style: italic;
+  font-style: normal;
+  color: var(--muted);
+}
+.pending-attn-name.tx-kind-fg--income,
+.pending-attn-name.tx-kind-fg--expense{
+  color: var(--muted);
 }
 .pending-attn-est{
   justify-self: end;

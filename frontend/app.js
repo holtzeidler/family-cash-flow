@@ -648,13 +648,13 @@ async function refreshLowBalanceAlert() {
         parts.push(
           `<div class="balance-threshold-result-block"><div class="k">First date ≤ $${fmtMoneyThreshold(balanceThresholdMin?.value || "", minVal)}</div><div class="v">None in the next ${lowDays} days.</div></div>`
         );
-        setSidebarLowBalanceBanner("⚠ Low Balance Alert\nNone", "muted");
+        setSidebarLowBalanceBanner("⚠ You'll dip below your target\nNone", "muted");
       } else {
         parts.push(
           `<div class="balance-threshold-result-block"><div class="k">First date ≤ $${fmtMoneyThreshold(balanceThresholdMin?.value || "", minVal)}</div><div class="v danger">${fmtDateMDY(lowHit.date)} — $${fmtMoney(lowHit.balance)}</div></div>`
         );
         setSidebarLowBalanceBanner(
-          `⚠ Low Balance Alert\n${fmtMonthDay(lowHit.date)}|${fmtMoney0SignedDollar(lowHit.balance)}`,
+          `⚠ You'll dip below your target on ${fmtMonthDay(lowHit.date)}\n${fmtMonthDay(lowHit.date)}|${fmtMoney0SignedDollar(lowHit.balance)}`,
           "danger"
         );
       }
