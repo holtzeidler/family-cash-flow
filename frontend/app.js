@@ -4067,10 +4067,6 @@ function renderSidebarPendingTransactionsForMonth() {
 
   if (!rows.length) {
     setTitle(0);
-    const empty = document.createElement("div");
-    empty.className = "pill";
-    empty.textContent = "None";
-    sidebarPendingTxList.appendChild(empty);
     if (sidebarPendingTxCard) sidebarPendingTxCard.classList.add("sidebar-pending--empty");
     return;
   }
