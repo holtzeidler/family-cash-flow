@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=151" />
+    <link rel="stylesheet" href="./styles.css?v=155" />
   </head>
   <body>
     <div class="container">
@@ -50,7 +50,7 @@
 
             <div class="sidebar-balance-threshold-alerts" id="sidebarBalanceThresholdAlerts" aria-label="Balance threshold alerts">
               <div class="cash-outlook-title" id="cashOutlookTitle" hidden>Cash Outlook</div>
-              <p id="sidebarBalanceThresholdHint" class="sidebar-balance-threshold-hint-inline" hidden></p>
+              <button type="button" id="sidebarBalanceThresholdHint" class="sidebar-balance-threshold-hint-inline" hidden></button>
               <div id="sidebarLowBalanceBanner" class="calendar-low-balance calendar-low-balance--sidebar" style="display: none" role="status"></div>
               <div id="sidebarHighBalanceBanner" class="calendar-low-balance calendar-low-balance--sidebar calendar-low-balance--high" style="display: none" role="status"></div>
             </div>
@@ -255,8 +255,8 @@
                       </div>
 
                       <div class="cal-detail-toggle" role="group" aria-label="Calendar detail">
-                        <button type="button" class="cal-detail-btn is-active" id="calViewSimplified">Simplified</button>
-                        <button type="button" class="cal-detail-btn" id="calViewDetailed">Detailed</button>
+                        <button type="button" class="cal-detail-btn is-active" id="calViewDetailed">Detailed</button>
+                        <button type="button" class="cal-detail-btn" id="calViewSimplified">Simplified</button>
                       </div>
                     </div>
                     <input type="hidden" id="calendarMonth" />
@@ -859,6 +859,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="./app.js?v=141"></script>
+    <script src="./app.js?v=146"></script>
   </body>
 </html>

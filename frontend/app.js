@@ -194,7 +194,7 @@ let state = {
   reconciledDates: new Set(),
   monthDailyBalances: new Map(),
   calendarExpandedDays: new Set(),
-  calendarDetailMode: "simplified",
+  calendarDetailMode: "detailed",
 };
 
 let selectedExpectedInstance = null;
@@ -247,12 +247,19 @@ function setSidebarLowBalanceBanner(text, style = "off") {
   {
     const raw = String(text);
     const parts = raw.split("\n");
-    const head = parts[0] ? `<strong>${escapeHtml(parts[0])}</strong>` : "";
-    const rest = parts
-      .slice(1)
-      .map((s) => escapeHtml(s))
-      .join("<br>");
-    sidebarLowBalanceBanner.innerHTML = [head, rest].filter(Boolean).join(rest ? "<br>" : "");
+    const headText = parts[0] ? escapeHtml(parts[0]) : "";
+    const bodyRaw = parts.slice(1).join("\n");
+    let bodyHtml = "";
+    if (bodyRaw) {
+      const b = String(bodyRaw).trim();
+      if (b.includes("|")) {
+        const [l, r] = b.split("|", 2);
+        bodyHtml = `<div class="cash-outlook-line"><span class="cash-outlook-date">${escapeHtml(String(l || "").trim())}</span><span class="cash-outlook-amt">${escapeHtml(String(r || "").trim())}</span></div>`;
+      } else {
+        bodyHtml = `<div class="cash-outlook-line cash-outlook-line--single">${escapeHtml(b)}</div>`;
+      }
+    }
+    sidebarLowBalanceBanner.innerHTML = [`<strong>${headText}</strong>`, bodyHtml].filter(Boolean).join("");
   }
   sidebarLowBalanceBanner.style.display = "flex";
   sidebarLowBalanceBanner.classList.remove("is-danger", "is-muted");
@@ -272,12 +279,19 @@ function setSidebarHighBalanceBanner(text, style = "off") {
   {
     const raw = String(text);
     const parts = raw.split("\n");
-    const head = parts[0] ? `<strong>${escapeHtml(parts[0])}</strong>` : "";
-    const rest = parts
-      .slice(1)
-      .map((s) => escapeHtml(s))
-      .join("<br>");
-    sidebarHighBalanceBanner.innerHTML = [head, rest].filter(Boolean).join(rest ? "<br>" : "");
+    const headText = parts[0] ? escapeHtml(parts[0]) : "";
+    const bodyRaw = parts.slice(1).join("\n");
+    let bodyHtml = "";
+    if (bodyRaw) {
+      const b = String(bodyRaw).trim();
+      if (b.includes("|")) {
+        const [l, r] = b.split("|", 2);
+        bodyHtml = `<div class="cash-outlook-line"><span class="cash-outlook-date">${escapeHtml(String(l || "").trim())}</span><span class="cash-outlook-amt">${escapeHtml(String(r || "").trim())}</span></div>`;
+      } else {
+        bodyHtml = `<div class="cash-outlook-line cash-outlook-line--single">${escapeHtml(b)}</div>`;
+      }
+    }
+    sidebarHighBalanceBanner.innerHTML = [`<strong>${headText}</strong>`, bodyHtml].filter(Boolean).join("");
   }
   sidebarHighBalanceBanner.style.display = "flex";
   sidebarHighBalanceBanner.classList.remove("is-high", "is-muted");
@@ -294,6 +308,22 @@ function setSidebarBalanceThresholdHint(text) {
   }
   sidebarBalanceThresholdHint.textContent = text;
   sidebarBalanceThresholdHint.hidden = false;
+
+  if (sidebarBalanceThresholdHint.dataset.boundClick !== "1") {
+    sidebarBalanceThresholdHint.dataset.boundClick = "1";
+    sidebarBalanceThresholdHint.addEventListener("click", () => {
+      setActiveTopView("settings");
+      activateSettingsSection("accountDetails");
+      // Scroll directly to the thresholds section.
+      const target = balanceThresholdMin || balanceThresholdMax;
+      if (target && typeof target.scrollIntoView === "function") {
+        target.scrollIntoView({ behavior: "smooth", block: "center" });
+        try {
+          target.focus({ preventScroll: true });
+        } catch (_) {}
+      }
+    });
+  }
 }
 
 function getRadioValue(name, fallback = "") {
@@ -547,7 +577,7 @@ async function refreshLowBalanceAlert() {
       );
       lowBalanceLastQuery = { familyId: null, min: null, max: null, mode: null };
       setSidebarBalanceThresholdHint(
-        "Tip: open Settings → Balance thresholds and enter a minimum and/or maximum. Alerts will show here on Calendar view."
+        "Edit Thresholds in Settings"
       );
       return;
     }
@@ -612,12 +642,12 @@ async function refreshLowBalanceAlert() {
         parts.push(
           `<div class="balance-threshold-result-block"><div class="k">First date ≤ $${fmtMoneyThreshold(balanceThresholdMin?.value || "", minVal)}</div><div class="v">None in the next ${lowDays} days.</div></div>`
         );
-        setSidebarLowBalanceBanner("Lowest balance\nNone", "muted");
+        setSidebarLowBalanceBanner("⚠ Lowest balance\nNone", "muted");
       } else {
         parts.push(
           `<div class="balance-threshold-result-block"><div class="k">First date ≤ $${fmtMoneyThreshold(balanceThresholdMin?.value || "", minVal)}</div><div class="v danger">${fmtDateMDY(lowHit.date)} — $${fmtMoney(lowHit.balance)}</div></div>`
         );
-        setSidebarLowBalanceBanner(`Lowest balance\n${fmtMonthDay(lowHit.date)}   $${fmtMoney0(lowHit.balance)}`, "danger");
+        setSidebarLowBalanceBanner(`⚠ Lowest balance\n${fmtMonthDay(lowHit.date)}|$${fmtMoney0(lowHit.balance)}`, "danger");
       }
     }
     if (maxOk) {
@@ -628,17 +658,17 @@ async function refreshLowBalanceAlert() {
         parts.push(
           `<div class="balance-threshold-result-block"><div class="k">Maximum threshold</div><div class="v danger">Could not check: ${msg}</div></div>`
         );
-        setSidebarHighBalanceBanner("Highest balance\nCould not check", "muted");
+        setSidebarHighBalanceBanner("✓ Peak balance\nCould not check", "muted");
       } else if (!highHit) {
         parts.push(
           `<div class="balance-threshold-result-block"><div class="k">First date ≥ $${fmtMoneyThreshold(balanceThresholdMax?.value || "", maxVal)}</div><div class="v">No dates found in the next ${highDays} days.</div></div>`
         );
-        setSidebarHighBalanceBanner("Highest balance\nNone", "muted");
+        setSidebarHighBalanceBanner("✓ Peak balance\nNone", "muted");
       } else {
         parts.push(
           `<div class="balance-threshold-result-block"><div class="k">First date ≥ $${fmtMoneyThreshold(balanceThresholdMax?.value || "", maxVal)}</div><div class="v">${fmtDateMDY(highHit.date)} — $${fmtMoney(highHit.balance)}</div></div>`
         );
-        setSidebarHighBalanceBanner(`Highest balance\n${fmtMonthDay(highHit.date)}   $${fmtMoney0(highHit.balance)}`, "high");
+        setSidebarHighBalanceBanner(`✓ Peak balance\n${fmtMonthDay(highHit.date)}|$${fmtMoney0(highHit.balance)}`, "high");
       }
     }
 
@@ -3975,11 +4005,13 @@ function renderSidebarPendingTransactionsForMonth() {
   const month = calendarMonth?.value || monthInput.value;
   const range = monthStartEndIso(month);
   sidebarPendingTxList.innerHTML = "";
+  if (sidebarPendingTxCard) sidebarPendingTxCard.classList.remove("sidebar-pending--empty");
   if (!range) {
     const empty = document.createElement("div");
     empty.className = "pill";
     empty.textContent = "Choose a month to see pending transactions.";
     sidebarPendingTxList.appendChild(empty);
+    if (sidebarPendingTxCard) sidebarPendingTxCard.classList.add("sidebar-pending--empty");
     return;
   }
 
@@ -4004,6 +4036,7 @@ function renderSidebarPendingTransactionsForMonth() {
     empty.className = "pill";
     empty.textContent = "None";
     sidebarPendingTxList.appendChild(empty);
+    if (sidebarPendingTxCard) sidebarPendingTxCard.classList.add("sidebar-pending--empty");
     return;
   }
 

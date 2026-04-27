@@ -386,6 +386,23 @@ button.danger{
   flex: 1;
   min-width: 0;
 }
+
+/* Compact "This month pending" when empty. */
+#sidebarPendingTxCard.sidebar-pending--empty{
+  padding: 10px 12px;
+}
+#sidebarPendingTxCard.sidebar-pending--empty .sidebar-section-head{
+  margin-bottom: 6px;
+}
+#sidebarPendingTxCard.sidebar-pending--empty h2{
+  margin-bottom: 0;
+}
+#sidebarPendingTxCard.sidebar-pending--empty #sidebarPendingTxList .pill{
+  padding: 8px 10px;
+  min-height: 0;
+  width: 100%;
+  justify-content: flex-start;
+}
 .sidebar-section:not(.sidebar-section--collapsed) .sidebar-section-head{
   margin-bottom: 10px;
 }
@@ -598,7 +615,7 @@ button.nav-link:hover{
 .calendar-low-balance{
   font-size: 12px;
   color: var(--muted);
-  padding: 6px 10px;
+  padding: 5px 10px;
   border-radius: 999px;
   border: 1px solid rgba(0,0,0,0.10);
   background: rgba(0,0,0,0.02);
@@ -612,7 +629,7 @@ button.nav-link:hover{
 .sidebar-balance-threshold-alerts{
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 .cash-outlook-title{
   font-size: 12px;
@@ -625,19 +642,41 @@ button.nav-link:hover{
 .calendar-low-balance--sidebar{
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   justify-content: center;
   white-space: normal;
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
   line-height: 1.35;
-  text-align: center;
+  text-align: left;
 }
 .calendar-low-balance--sidebar strong{
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   line-height: 1.2;
-  margin-bottom: 1px;
+  margin-bottom: 4px;
+  font-weight: 800;
+}
+.cash-outlook-line{
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  font-size: 13px;
+  color: currentColor;
+}
+.cash-outlook-line--single{
+  justify-content: flex-start;
+}
+.cash-outlook-date{
+  color: currentColor;
+}
+.cash-outlook-amt{
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
 }
 .calendar-low-balance--high.is-high{
   color: #166534;
@@ -655,6 +694,17 @@ button.nav-link:hover{
   font-size: 12px;
   line-height: 1.4;
   color: var(--muted);
+  text-align: left;
+  width: 100%;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.sidebar-balance-threshold-hint-inline:hover{
+  color: var(--text);
 }
 .balance-threshold-hint{
   margin: 10px 0 0;
