@@ -614,6 +614,14 @@ button.nav-link:hover{
   flex-direction: column;
   gap: 8px;
 }
+.cash-outlook-title{
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(17, 24, 39, 0.70);
+  margin-top: 2px;
+}
 .calendar-low-balance--sidebar{
   display: flex;
   flex-direction: column;

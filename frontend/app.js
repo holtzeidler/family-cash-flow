@@ -127,6 +127,12 @@ function fmtMoney(n) {
   return num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function fmtMoney0(n) {
+  const num = typeof n === "string" ? Number(n) : n;
+  if (Number.isNaN(num)) return String(n ?? "");
+  return num.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+}
+
 function fmtMoneyParens(n) {
   const num = typeof n === "string" ? Number(n) : n;
   if (Number.isNaN(num)) return String(n ?? "");
@@ -153,6 +159,18 @@ function fmtDateMDY(raw) {
   const d = iso.slice(8, 10);
   if (!y || !m || !d) return String(raw ?? "");
   return `${m}-${d}-${y}`;
+}
+
+function fmtMonthDay(raw) {
+  const iso = normalizeIsoDate(raw) || "";
+  if (!iso) return String(raw ?? "");
+  const y = Number(iso.slice(0, 4));
+  const m = Number(iso.slice(5, 7));
+  const d = Number(iso.slice(8, 10));
+  if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return String(raw ?? "");
+  const dt = new Date(y, m - 1, d, 12, 0, 0, 0);
+  const mon = dt.toLocaleDateString("en-US", { month: "short" });
+  return `${mon} ${d}`;
 }
 
 function toNum(v) {
@@ -209,6 +227,7 @@ const lowBalanceErr = document.getElementById("lowBalanceErr");
 const sidebarLowBalanceBanner = document.getElementById("sidebarLowBalanceBanner");
 const sidebarHighBalanceBanner = document.getElementById("sidebarHighBalanceBanner");
 const sidebarBalanceThresholdHint = document.getElementById("sidebarBalanceThresholdHint");
+const cashOutlookTitle = document.getElementById("cashOutlookTitle");
 const BALANCE_THRESHOLD_MIN_KEY = "familyCashFlow_balanceThresholdMin";
 const BALANCE_THRESHOLD_MAX_KEY = "familyCashFlow_balanceThresholdMax";
 /** @deprecated migrate to BALANCE_THRESHOLD_MIN_KEY */
@@ -519,6 +538,7 @@ async function refreshLowBalanceAlert() {
     const maxOk = maxVal != null && Number.isFinite(maxVal);
 
     if (!minOk && !maxOk) {
+      if (cashOutlookTitle) cashOutlookTitle.hidden = true;
       setSidebarLowBalanceBanner("", "off");
       setSidebarHighBalanceBanner("", "off");
       setLowBalanceResult(
@@ -531,6 +551,7 @@ async function refreshLowBalanceAlert() {
       );
       return;
     }
+    if (cashOutlookTitle) cashOutlookTitle.hidden = false;
 
     const startIso = toISODate(new Date());
     const lowDays = 1825;
@@ -591,15 +612,12 @@ async function refreshLowBalanceAlert() {
         parts.push(
           `<div class="balance-threshold-result-block"><div class="k">First date ≤ $${fmtMoneyThreshold(balanceThresholdMin?.value || "", minVal)}</div><div class="v">None in the next ${lowDays} days.</div></div>`
         );
-        setSidebarLowBalanceBanner(`Low (≤ $${fmtMoney(minVal)}): no crossing in the next ${lowDays} days.`, "muted");
+        setSidebarLowBalanceBanner("Lowest balance\nNone", "muted");
       } else {
         parts.push(
           `<div class="balance-threshold-result-block"><div class="k">First date ≤ $${fmtMoneyThreshold(balanceThresholdMin?.value || "", minVal)}</div><div class="v danger">${fmtDateMDY(lowHit.date)} — $${fmtMoney(lowHit.balance)}</div></div>`
         );
-        setSidebarLowBalanceBanner(
-          `Next low balance\n${fmtDateMDY(lowHit.date)} — $${fmtMoney(lowHit.balance)}`,
-          "danger",
-        );
+        setSidebarLowBalanceBanner(`Lowest balance\n${fmtMonthDay(lowHit.date)}   $${fmtMoney0(lowHit.balance)}`, "danger");
       }
     }
     if (maxOk) {
@@ -610,20 +628,17 @@ async function refreshLowBalanceAlert() {
         parts.push(
           `<div class="balance-threshold-result-block"><div class="k">Maximum threshold</div><div class="v danger">Could not check: ${msg}</div></div>`
         );
-        setSidebarHighBalanceBanner("Maximum: server could not check (deploy latest API for high-balance).", "muted");
+        setSidebarHighBalanceBanner("Highest balance\nCould not check", "muted");
       } else if (!highHit) {
         parts.push(
           `<div class="balance-threshold-result-block"><div class="k">First date ≥ $${fmtMoneyThreshold(balanceThresholdMax?.value || "", maxVal)}</div><div class="v">No dates found in the next ${highDays} days.</div></div>`
         );
-        setSidebarHighBalanceBanner(`High (≥ $${fmtMoney(maxVal)})\nno dates found in the next ${highDays} days.`, "muted");
+        setSidebarHighBalanceBanner("Highest balance\nNone", "muted");
       } else {
         parts.push(
           `<div class="balance-threshold-result-block"><div class="k">First date ≥ $${fmtMoneyThreshold(balanceThresholdMax?.value || "", maxVal)}</div><div class="v">${fmtDateMDY(highHit.date)} — $${fmtMoney(highHit.balance)}</div></div>`
         );
-        setSidebarHighBalanceBanner(
-          `Next high balance\n${fmtDateMDY(highHit.date)} — $${fmtMoney(highHit.balance)}`,
-          "high",
-        );
+        setSidebarHighBalanceBanner(`Highest balance\n${fmtMonthDay(highHit.date)}   $${fmtMoney0(highHit.balance)}`, "high");
       }
     }
 
@@ -3987,7 +4002,7 @@ function renderSidebarPendingTransactionsForMonth() {
   if (!rows.length) {
     const empty = document.createElement("div");
     empty.className = "pill";
-    empty.textContent = "No pending transactions this month.";
+    empty.textContent = "None";
     sidebarPendingTxList.appendChild(empty);
     return;
   }
@@ -4594,9 +4609,8 @@ function renderCalendar() {
   const calendarPanel = document.getElementById("calendarPanel");
   if (calendarPanel) {
     calendarPanel.style.setProperty("--cal-week-rows", String(weekRows));
-    // Ensure at least ~3 full transaction lines + bottom balance fit without clipping.
-    // 4-week months can be taller; 6-week months need to stay compact but still readable.
-    const h = weekRows <= 4 ? "150px" : weekRows === 5 ? "160px" : "140px";
+    // Keep day boxes tall enough to show at least 3 transactions clearly.
+    const h = "170px";
     calendarPanel.style.setProperty("--cal-day-min-h", h);
   }
 }
