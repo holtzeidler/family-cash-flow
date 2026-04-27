@@ -133,11 +133,12 @@ function fmtMoney0(n) {
   return num.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 }
 
-function fmtMoney0Parens(n) {
+function fmtMoney0SignedDollar(n) {
   const num = typeof n === "string" ? Number(n) : n;
-  if (Number.isNaN(num)) return String(n ?? "");
+  if (Number.isNaN(num)) return `$${String(n ?? "")}`;
   const abs = Math.abs(num);
-  return `(${fmtMoney0(abs)})`;
+  const sign = num < 0 ? "-" : "";
+  return `${sign}$${fmtMoney0(abs)}`;
 }
 
 function fmtMoneyParens(n) {
@@ -652,7 +653,10 @@ async function refreshLowBalanceAlert() {
         parts.push(
           `<div class="balance-threshold-result-block"><div class="k">First date ≤ $${fmtMoneyThreshold(balanceThresholdMin?.value || "", minVal)}</div><div class="v danger">${fmtDateMDY(lowHit.date)} — $${fmtMoney(lowHit.balance)}</div></div>`
         );
-        setSidebarLowBalanceBanner(`⚠ Low Balance Alert\n${fmtMonthDay(lowHit.date)}|$${fmtMoney0Parens(lowHit.balance)}`, "danger");
+        setSidebarLowBalanceBanner(
+          `⚠ Low Balance Alert\n${fmtMonthDay(lowHit.date)}|${fmtMoney0SignedDollar(lowHit.balance)}`,
+          "danger"
+        );
       }
     }
     if (maxOk) {
@@ -673,7 +677,10 @@ async function refreshLowBalanceAlert() {
         parts.push(
           `<div class="balance-threshold-result-block"><div class="k">First date ≥ $${fmtMoneyThreshold(balanceThresholdMax?.value || "", maxVal)}</div><div class="v">${fmtDateMDY(highHit.date)} — $${fmtMoney(highHit.balance)}</div></div>`
         );
-        setSidebarHighBalanceBanner(`✓ Peak balance\n${fmtMonthDay(highHit.date)}|$${fmtMoney0Parens(highHit.balance)}`, "high");
+        setSidebarHighBalanceBanner(
+          `✓ Peak balance\n${fmtMonthDay(highHit.date)}|${fmtMoney0SignedDollar(highHit.balance)}`,
+          "high"
+        );
       }
     }
 
