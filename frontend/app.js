@@ -2981,6 +2981,7 @@ function setExpectedModalMode() {
 async function refreshExpectedCalendarAndMonth() {
   await loadExpectedTransactions();
   await loadExpectedCalendar();
+  renderSidebarPendingTransactionsForMonth();
   await loadCalendarMonthDaily();
   renderCalendar();
 }
