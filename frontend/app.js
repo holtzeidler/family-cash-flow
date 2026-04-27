@@ -4516,8 +4516,9 @@ function renderCalendar() {
   const calendarPanel = document.getElementById("calendarPanel");
   if (calendarPanel) {
     calendarPanel.style.setProperty("--cal-week-rows", String(weekRows));
-    // Give 5-week months a bit more room so the bottom balance isn't clipped.
-    const h = weekRows <= 4 ? "96px" : weekRows === 5 ? "130px" : "118px";
+    // Ensure at least ~3 full transaction lines + bottom balance fit without clipping.
+    // 4-week months can be taller; 6-week months need to stay compact but still readable.
+    const h = weekRows <= 4 ? "150px" : weekRows === 5 ? "160px" : "140px";
     calendarPanel.style.setProperty("--cal-day-min-h", h);
   }
 }
