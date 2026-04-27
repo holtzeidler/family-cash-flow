@@ -430,9 +430,10 @@ button.danger{
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-weight: 650;
+  font-weight: 700;
   font-style: normal;
   color: var(--muted);
+  font-size: 18px;
 }
 .pending-attn-name.tx-kind-fg--income,
 .pending-attn-name.tx-kind-fg--expense{
@@ -443,13 +444,16 @@ button.danger{
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   color: var(--muted);
-  font-weight: 600;
+  font-weight: 700;
+  font-size: 18px;
 }
 .pending-attn-date{
   justify-self: end;
   white-space: nowrap;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  font-size: 18px;
 }
 
 @media (max-width: 860px){
@@ -701,6 +705,7 @@ button.nav-link:hover{
   display: flex;
   flex-direction: column;
   gap: 6px;
+  margin-bottom: 10px;
 }
 .cash-outlook-head{
   display: flex;
@@ -734,6 +739,7 @@ button.nav-link:hover{
   line-height: 1.2;
   margin-bottom: 4px;
   font-weight: 800;
+  font-size: 15px;
 }
 .cash-outlook-line{
   display: flex;
@@ -741,11 +747,14 @@ button.nav-link:hover{
   justify-content: space-between;
   gap: 10px;
   width: 100%;
-  font-size: 13px;
+  font-size: 15px;
   color: currentColor;
 }
 .cash-outlook-line--single{
   justify-content: flex-start;
+}
+.cash-outlook-line--center{
+  justify-content: center;
 }
 .cash-outlook-date{
   color: currentColor;
@@ -753,6 +762,10 @@ button.nav-link:hover{
 .cash-outlook-amt{
   margin-left: auto;
   font-variant-numeric: tabular-nums;
+}
+.cash-outlook-amt--center{
+  margin-left: 0;
+  text-align: center;
 }
 .calendar-low-balance--high.is-high{
   color: #166534;

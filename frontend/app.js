@@ -260,6 +260,12 @@ function setSidebarLowBalanceBanner(text, style = "off") {
     let bodyHtml = "";
     if (bodyRaw) {
       const b = String(bodyRaw).trim();
+      if (b.startsWith("CENTER:")) {
+        const amt = b.slice("CENTER:".length).trim();
+        bodyHtml = `<div class="cash-outlook-line cash-outlook-line--center"><span class="cash-outlook-amt cash-outlook-amt--center">${escapeHtml(
+          amt
+        )}</span></div>`;
+      } else
       if (b.includes("|")) {
         const [l, r] = b.split("|", 2);
         bodyHtml = `<div class="cash-outlook-line"><span class="cash-outlook-date">${escapeHtml(String(l || "").trim())}</span><span class="cash-outlook-amt">${escapeHtml(String(r || "").trim())}</span></div>`;
@@ -292,6 +298,12 @@ function setSidebarHighBalanceBanner(text, style = "off") {
     let bodyHtml = "";
     if (bodyRaw) {
       const b = String(bodyRaw).trim();
+      if (b.startsWith("CENTER:")) {
+        const amt = b.slice("CENTER:".length).trim();
+        bodyHtml = `<div class="cash-outlook-line cash-outlook-line--center"><span class="cash-outlook-amt cash-outlook-amt--center">${escapeHtml(
+          amt
+        )}</span></div>`;
+      } else
       if (b.includes("|")) {
         const [l, r] = b.split("|", 2);
         bodyHtml = `<div class="cash-outlook-line"><span class="cash-outlook-date">${escapeHtml(String(l || "").trim())}</span><span class="cash-outlook-amt">${escapeHtml(String(r || "").trim())}</span></div>`;
@@ -654,7 +666,7 @@ async function refreshLowBalanceAlert() {
           `<div class="balance-threshold-result-block"><div class="k">First date ≤ $${fmtMoneyThreshold(balanceThresholdMin?.value || "", minVal)}</div><div class="v danger">${fmtDateMDY(lowHit.date)} — $${fmtMoney(lowHit.balance)}</div></div>`
         );
         setSidebarLowBalanceBanner(
-          `⚠ You'll dip below your target on ${fmtMonthDay(lowHit.date)}\n${fmtMonthDay(lowHit.date)}|${fmtMoney0SignedDollar(lowHit.balance)}`,
+          `⚠ You'll dip below your target on ${fmtMonthDay(lowHit.date)}\nCENTER:${fmtMoney0SignedDollar(lowHit.balance)}`,
           "danger"
         );
       }
@@ -678,7 +690,7 @@ async function refreshLowBalanceAlert() {
           `<div class="balance-threshold-result-block"><div class="k">First date ≥ $${fmtMoneyThreshold(balanceThresholdMax?.value || "", maxVal)}</div><div class="v">${fmtDateMDY(highHit.date)} — $${fmtMoney(highHit.balance)}</div></div>`
         );
         setSidebarHighBalanceBanner(
-          `✓ Peak balance\n${fmtMonthDay(highHit.date)}|${fmtMoney0SignedDollar(highHit.balance)}`,
+          `✓ Peak balance on ${fmtMonthDay(highHit.date)}\nCENTER:${fmtMoney0SignedDollar(highHit.balance)}`,
           "high"
         );
       }
