@@ -123,7 +123,8 @@ function expandSidebarSection(key) {
 function fmtMoney(n) {
   const num = typeof n === "string" ? Number(n) : n;
   if (Number.isNaN(num)) return String(n ?? "");
-  return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  // Force comma thousands separators consistently.
+  return num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function fmtMoneyParens(n) {
@@ -140,7 +141,7 @@ function fmtMoneyThreshold(rawInput, n) {
   if (Number.isNaN(num)) return String(n ?? "");
   const showDecimals = raw.includes(".");
   if (showDecimals) return fmtMoney(num);
-  return num.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  return num.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 }
 
 function fmtDateMDY(raw) {
@@ -174,6 +175,8 @@ let state = {
   calendarExtraExpectedItems: [],
   reconciledDates: new Set(),
   monthDailyBalances: new Map(),
+  calendarExpandedDays: new Set(),
+  calendarDetailMode: "simplified",
 };
 
 let selectedExpectedInstance = null;
@@ -340,6 +343,8 @@ const calendarGoToday = document.getElementById("calendarGoToday");
 const calendarMode = document.getElementById("calendarMode");
 const calendarErr = document.getElementById("calendarErr");
 const calendarGrid = document.getElementById("calendarGrid");
+const calViewSimplified = document.getElementById("calViewSimplified");
+const calViewDetailed = document.getElementById("calViewDetailed");
 
 // 5-year projection collapse
 const PROJECTION_COLLAPSED_KEY = "familyCashFlow_projectionCollapsed";
@@ -852,6 +857,7 @@ const catReportPresetMonth = document.getElementById("catReportPresetMonth");
 let catReportYearOptionsPopulated = false;
 
 const ACTIVE_VIEW_KEY = "familyCashFlow_activeView";
+const CALENDAR_DETAIL_MODE_KEY = "familyCashFlow_calendarDetailMode"; // "simplified" | "detailed"
 
 function setActiveTopView(view) {
   const v =
@@ -1087,6 +1093,29 @@ try {
   const storedView = localStorage.getItem(ACTIVE_VIEW_KEY);
   if (storedView) setActiveTopView(storedView);
 } catch (_) {}
+
+function setCalendarDetailMode(mode) {
+  const m = mode === "detailed" ? "detailed" : "simplified";
+  state.calendarDetailMode = m;
+  if (calViewSimplified) calViewSimplified.classList.toggle("is-active", m === "simplified");
+  if (calViewDetailed) calViewDetailed.classList.toggle("is-active", m === "detailed");
+  try {
+    localStorage.setItem(CALENDAR_DETAIL_MODE_KEY, m);
+  } catch (_) {}
+  // Detailed-only state should not leak into simplified view.
+  if (m !== "detailed" && state.calendarExpandedDays) state.calendarExpandedDays.clear();
+  renderCalendar();
+}
+
+try {
+  const storedMode = localStorage.getItem(CALENDAR_DETAIL_MODE_KEY);
+  if (storedMode) state.calendarDetailMode = storedMode === "detailed" ? "detailed" : "simplified";
+} catch (_) {}
+
+if (calViewSimplified) calViewSimplified.addEventListener("click", () => setCalendarDetailMode("simplified"));
+if (calViewDetailed) calViewDetailed.addEventListener("click", () => setCalendarDetailMode("detailed"));
+// Apply initial toggle state
+setCalendarDetailMode(state.calendarDetailMode);
 
 // Calendar mode selector is intentionally hidden in the UI (defaults to "both"),
 // but keep the handler wired if it is re-enabled later.
@@ -4315,6 +4344,7 @@ function renderCalendar() {
   const mode = calendarMode?.value || "both";
   const showActual = mode === "both" || mode === "actual";
   const showExpected = mode === "both" || mode === "expected";
+  const showDetails = state.calendarDetailMode === "detailed";
 
   const actualTxsByDate = new Map();
   for (const tx of [...(state.monthActualItems || []), ...(state.calendarExtraActualItems || [])]) {
@@ -4395,6 +4425,8 @@ function renderCalendar() {
       totalCells = 35;
     }
   }
+  const MAX_CAL_TX_LINES = 3;
+  let prevEndKey = null; // stringified cents for comparison
   for (let i = 0; i < totalCells; i++) {
     const cell = document.createElement("div");
     cell.className = "cal-cell";
@@ -4434,78 +4466,124 @@ function renderCalendar() {
       });
     }
 
-    const actualTxs = showActual ? actualTxsByDate.get(iso) || [] : [];
-    const expectedItems = showExpected ? expectedByDate.get(iso) || [] : [];
+    const actualTxs = showDetails && showActual ? actualTxsByDate.get(iso) || [] : [];
+    const expectedItems = showDetails && showExpected ? expectedByDate.get(iso) || [] : [];
 
     // Combine and sort expected + actual for consistent ordering per-day.
     const combined = [];
-    for (const item of expectedItems) combined.push({ ...item, _type: "expected" });
-    for (const tx of actualTxs) combined.push({ ...tx, _type: "actual" });
-    combined.sort(txSortAmountDesc);
+    if (showDetails) {
+      for (const item of expectedItems) combined.push({ ...item, _type: "expected" });
+      for (const tx of actualTxs) combined.push({ ...tx, _type: "actual" });
+      combined.sort(txSortAmountDesc);
+    }
 
-    for (const row of combined) {
-      const isExpected = row._type === "expected";
-      const line = document.createElement("div");
-      line.className = isExpected
-        ? "cal-day-tx-line cal-day-tx-line--expected"
-        : "cal-day-tx-line cal-tx-part";
-      if (isExpected && row.variable) line.classList.add("cal-expected-variable");
-      if (!isExpected) line.dataset.txId = String(row.id);
+    if (showDetails) {
+      const overflowCount = Math.max(0, combined.length - MAX_CAL_TX_LINES);
+      const expanded = state.calendarExpandedDays && state.calendarExpandedDays.has(iso);
+      if (expanded) cell.classList.add("cal-cell--expanded");
+      const visible = expanded ? combined : combined.slice(0, MAX_CAL_TX_LINES);
 
-      const categoryName = row.category && String(row.category).trim() ? String(row.category).trim() : "";
-      const labelRaw = categoryName || (isExpected ? row.description || "(expected)" : (row.description || "Uncategorized").trim());
-      const label = truncate(labelRaw, 44);
+      for (const row of visible) {
+        const isExpected = row._type === "expected";
+        const line = document.createElement("div");
+        line.className = isExpected
+          ? "cal-day-tx-line cal-day-tx-line--expected"
+          : "cal-day-tx-line cal-tx-part";
+        if (isExpected && row.variable) line.classList.add("cal-expected-variable");
+        if (!isExpected) line.dataset.txId = String(row.id);
 
-      const labelSpan = document.createElement("span");
-      labelSpan.className = `cal-tx-label ${kindFgClass(row.kind)}`;
-      labelSpan.textContent = `${label} `;
-      if (row.category_id && row.category) {
-        const st = categoryPillStyleFromId(row.category_id);
-        if (st?.fg) labelSpan.style.color = st.fg;
-        if (st?.bg) labelSpan.style.background = st.bg;
-        if (st?.bg) {
-          labelSpan.style.padding = "1px 6px";
-          labelSpan.style.borderRadius = "6px";
-          labelSpan.style.border = "1px solid rgba(0,0,0,0.12)";
-          labelSpan.style.fontWeight = "600";
+        const categoryName = row.category && String(row.category).trim() ? String(row.category).trim() : "";
+        const labelRaw = categoryName || (isExpected ? row.description || "(expected)" : (row.description || "Uncategorized").trim());
+        const label = truncate(labelRaw, 44);
+
+        const labelSpan = document.createElement("span");
+        labelSpan.className = `cal-tx-label ${kindFgClass(row.kind)}`;
+        labelSpan.textContent = `${label} `;
+        if (row.category_id && row.category) {
+          const st = categoryPillStyleFromId(row.category_id);
+          if (st?.fg) labelSpan.style.color = st.fg;
+          if (st?.bg) labelSpan.style.background = st.bg;
+          if (st?.bg) {
+            labelSpan.style.padding = "1px 6px";
+            labelSpan.style.borderRadius = "6px";
+            labelSpan.style.border = "1px solid rgba(0,0,0,0.12)";
+            labelSpan.style.fontWeight = "600";
+          }
         }
+
+        const labelWrap = document.createElement("span");
+        labelWrap.className = "cal-tx-label-wrap";
+        labelWrap.appendChild(labelSpan);
+
+        const amtSpan = document.createElement("span");
+        amtSpan.className = `cal-amt ${row.kind === "income" ? "income" : "expense"}`;
+        amtSpan.textContent = `$${fmtMoney(row.amount)}`;
+
+        line.appendChild(labelWrap);
+        line.appendChild(amtSpan);
+
+        {
+          const noteStr = row.notes && String(row.notes).trim() ? String(row.notes).trim() : "";
+          line.title = noteStr;
+          labelWrap.title = noteStr;
+          amtSpan.title = noteStr;
+        }
+
+        if (isExpected) {
+          line.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const meta = getExpectedSeriesMeta(row.expected_transaction_id);
+            if (meta) openExpectedEditModal(meta, { calendarItem: row });
+          });
+        }
+
+        txnsEl.appendChild(line);
       }
 
-      const labelWrap = document.createElement("span");
-      labelWrap.className = "cal-tx-label-wrap";
-      labelWrap.appendChild(labelSpan);
-
-      const amtSpan = document.createElement("span");
-      amtSpan.className = `cal-amt ${row.kind === "income" ? "income" : "expense"}`;
-      amtSpan.textContent = `$${fmtMoney(row.amount)}`;
-
-      line.appendChild(labelWrap);
-      line.appendChild(amtSpan);
-
-      {
-        const noteStr = row.notes && String(row.notes).trim() ? String(row.notes).trim() : "";
-        line.title = noteStr;
-        labelWrap.title = noteStr;
-        amtSpan.title = noteStr;
-      }
-
-      if (isExpected) {
-        line.addEventListener("click", (e) => {
+      if (!expanded && overflowCount > 0 && txnsEl) {
+        const moreBtn = document.createElement("button");
+        moreBtn.type = "button";
+        moreBtn.className = "cal-more-pill";
+        moreBtn.textContent = `+${overflowCount} more`;
+        moreBtn.title = "Show all transactions for this day";
+        moreBtn.addEventListener("click", (e) => {
+          e.preventDefault();
           e.stopPropagation();
-          const meta = getExpectedSeriesMeta(row.expected_transaction_id);
-          if (meta) openExpectedEditModal(meta, { calendarItem: row });
+          state.calendarExpandedDays.add(iso);
+          // Re-render to show the full list; keeps box height fixed (tx list becomes scrollable).
+          renderCalendar();
         });
+        txnsEl.appendChild(moreBtn);
+        cell.classList.add("cal-cell--has-more");
       }
 
-      txnsEl.appendChild(line);
+      if (expanded && overflowCount > 0 && txnsEl) {
+        const lessBtn = document.createElement("button");
+        lessBtn.type = "button";
+        lessBtn.className = "cal-more-pill cal-more-pill--less";
+        lessBtn.textContent = "Show less";
+        lessBtn.title = "Collapse this day";
+        lessBtn.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (state.calendarExpandedDays) state.calendarExpandedDays.delete(iso);
+          renderCalendar();
+        });
+        txnsEl.appendChild(lessBtn);
+        cell.classList.add("cal-cell--has-more");
+      }
     }
 
     const dayBal = state.monthDailyBalances.get(iso);
 
     if (dayBal && metricsEl) {
       const endNum = Number(dayBal.end ?? 0);
+      const endKey = Number.isFinite(endNum) ? (Math.round(endNum * 100) / 100).toFixed(2) : null;
+      const sameAsPrev = !!(endKey && prevEndKey && endKey === prevEndKey);
       const negClass = Number.isFinite(endNum) && endNum < 0 ? " is-negative" : "";
-      metricsEl.innerHTML = `<div class="cal-stat cal-balance${negClass}">$${fmtMoneyParens(endNum)}</div>`;
+      const mutedClass = sameAsPrev ? " is-muted" : "";
+      metricsEl.innerHTML = `<div class="cal-stat cal-balance${negClass}${mutedClass}">$${fmtMoneyParens(endNum)}</div>`;
+      if (endKey) prevEndKey = endKey;
     }
 
     wrapper.appendChild(cell);

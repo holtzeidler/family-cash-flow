@@ -502,6 +502,36 @@ button.danger{
   appearance: none;
 }
 
+.cal-detail-toggle{
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid rgba(0,0,0,0.10);
+  background: rgba(0,0,0,0.02);
+  overflow: hidden;
+  flex: 0 0 auto;
+}
+.cal-detail-btn{
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 7px 10px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.cal-detail-btn:hover{
+  background: rgba(0,0,0,0.04);
+  color: var(--text);
+}
+.cal-detail-btn.is-active{
+  background: rgba(11, 61, 46, 0.14);
+  color: var(--accent);
+}
+
 .sr-only{
   position:absolute;
   width:1px;
@@ -1647,7 +1677,7 @@ textarea::placeholder{
   margin-bottom: 4px;
 }
 .cal-dow{
-  font-size: 14px;
+  font-size: 12px;
   color: var(--muted);
   padding:4px 6px;
   text-align: center;
@@ -1659,7 +1689,7 @@ textarea::placeholder{
   border-radius: 8px;
   /* Keep all day boxes the same size regardless of content. */
   height: var(--cal-day-min-h, 108px);
-  padding: 6px 8px 8px;
+  padding: 10px 10px 10px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -1732,7 +1762,7 @@ textarea::placeholder{
 }
 .cal-daynum{
   font-weight:400;
-  font-size: 11px;
+  font-size: 12px;
   padding-bottom: 3px;
   margin-bottom: 0;
   border-bottom: 1px solid rgba(0,0,0,0.10);
@@ -1792,8 +1822,9 @@ textarea::placeholder{
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  justify-content: flex-start;
+  /* Keep a consistent separation between txns and balance. */
+  gap: 0;
+  justify-content: space-between;
   align-items: stretch;
   width: 100%;
   min-height: 0;
@@ -1812,9 +1843,33 @@ textarea::placeholder{
   min-height: 0;
   overflow: hidden;
 }
+.cal-cell--expanded .cal-day-txns{
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.cal-more-pill{
+  align-self: flex-start;
+  margin-top: 2px;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.1;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(0,0,0,0.14);
+  background: rgba(0,0,0,0.04);
+  color: var(--text);
+  cursor: pointer;
+}
+.cal-more-pill:hover{
+  background: rgba(0,0,0,0.06);
+}
+.cal-more-pill--less{
+  background: rgba(0,0,0,0.02);
+  color: var(--muted);
+}
 
 .cal-day-tx-line{
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.35;
   max-width: 100%;
   display: flex;
@@ -1870,18 +1925,23 @@ textarea::placeholder{
 }
 
 .cal-ledger-metrics{
-  text-align: center;
+  text-align: right;
   display:flex;
   flex-direction:column;
   gap:4px;
-  align-items: center;
-  margin-top: auto;
+  align-items: stretch;
+  margin-top: 10px;
   padding-top: 6px;
   border-top: 1px solid rgba(0,0,0,0.08);
 }
 
+.cal-ledger-metrics .cal-stat{
+  width: 100%;
+  text-align: right;
+}
+
 .cal-stat{
-  font-size: 11px;
+  font-size: 12px;
   color: var(--muted);
 }
 
@@ -1893,6 +1953,9 @@ textarea::placeholder{
 }
 .cal-stat.cal-balance.is-negative{
   color: var(--danger);
+}
+.cal-stat.cal-balance.is-muted{
+  color: rgba(17, 24, 39, 0.35);
 }
 
 /* Transaction edit modal */
