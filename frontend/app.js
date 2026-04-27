@@ -264,6 +264,30 @@ function setSidebarLowBalanceBanner(text, style = "off") {
         .split("\n")
         .map((s) => String(s || "").trim())
         .filter(Boolean);
+      // Special layout: hero amount + optional details.
+      if (lines.length >= 1 && lines[0].startsWith("HERO:")) {
+        const hero = lines[0].slice("HERO:".length).trim();
+        const heroHtml = `<div class="cash-outlook-hero">${escapeHtml(hero)}</div>`;
+        const rest = lines.slice(1);
+        if (!rest.length) {
+          bodyHtml = heroHtml;
+        } else if (rest.length === 1 && !rest[0].includes(":")) {
+          bodyHtml = `${heroHtml}<div class="cash-outlook-line cash-outlook-line--single">${escapeHtml(rest[0])}</div>`;
+        } else {
+          const kv = rest
+            .map((l) => {
+              const idx = l.indexOf(":");
+              if (idx === -1) return `<div class="cash-outlook-kv cash-outlook-kv--single">${escapeHtml(l)}</div>`;
+              const k = l.slice(0, idx).trim();
+              const v = l.slice(idx + 1).trim();
+              return `<div class="cash-outlook-kv"><span class="cash-outlook-k">${escapeHtml(
+                k
+              )}</span><span class="cash-outlook-v">${escapeHtml(v)}</span></div>`;
+            })
+            .join("");
+          bodyHtml = `${heroHtml}${kv}`;
+        }
+      } else
       if (lines.length >= 2 && lines.slice(1).some((l) => l.includes(":"))) {
         const [subhead, ...rest] = lines;
         const sub = `<div class="cash-outlook-subhead">${escapeHtml(subhead)}</div>`;
@@ -322,6 +346,29 @@ function setSidebarHighBalanceBanner(text, style = "off") {
         .split("\n")
         .map((s) => String(s || "").trim())
         .filter(Boolean);
+      if (lines.length >= 1 && lines[0].startsWith("HERO:")) {
+        const hero = lines[0].slice("HERO:".length).trim();
+        const heroHtml = `<div class="cash-outlook-hero">${escapeHtml(hero)}</div>`;
+        const rest = lines.slice(1);
+        if (!rest.length) {
+          bodyHtml = heroHtml;
+        } else if (rest.length === 1 && !rest[0].includes(":")) {
+          bodyHtml = `${heroHtml}<div class="cash-outlook-line cash-outlook-line--single">${escapeHtml(rest[0])}</div>`;
+        } else {
+          const kv = rest
+            .map((l) => {
+              const idx = l.indexOf(":");
+              if (idx === -1) return `<div class="cash-outlook-kv cash-outlook-kv--single">${escapeHtml(l)}</div>`;
+              const k = l.slice(0, idx).trim();
+              const v = l.slice(idx + 1).trim();
+              return `<div class="cash-outlook-kv"><span class="cash-outlook-k">${escapeHtml(
+                k
+              )}</span><span class="cash-outlook-v">${escapeHtml(v)}</span></div>`;
+            })
+            .join("");
+          bodyHtml = `${heroHtml}${kv}`;
+        }
+      } else
       if (lines.length >= 2 && lines.slice(1).some((l) => l.includes(":"))) {
         const [subhead, ...rest] = lines;
         const sub = `<div class="cash-outlook-subhead">${escapeHtml(subhead)}</div>`;
@@ -723,7 +770,7 @@ async function refreshLowBalanceAlert() {
           const shortfall = Math.max(0, target - bal);
           const shortfallDisp = `–$${fmtMoney0(shortfall)}`;
           setSidebarLowBalanceBanner(
-            `⚠ Below your target\n${fmtMonthDay(lowHit.date)}\nBalance: $${fmtMoney0(
+            `⚠ Below target on ${fmtMonthDay(lowHit.date)}\nHERO:$${fmtMoney0(
               Math.abs(bal)
             )}\nTarget: $${fmtMoney0(Math.abs(target))} (${shortfallDisp})`,
             "danger"

@@ -769,6 +769,14 @@ button.nav-link:hover{
   font-size: 13px;
   line-height: 1.25;
 }
+.cash-outlook-hero{
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.1;
+  text-align: center;
+  margin: 6px 0 8px;
+  font-variant-numeric: tabular-nums;
+}
 .cash-outlook-k{
   color: rgba(17, 24, 39, 0.78);
 }
@@ -1626,8 +1634,15 @@ textarea::placeholder{
   flex-direction:column;
   gap:3px;
 }
-.item .desc{ font-weight: 600; }
-.item .meta{ font-size: 12px; color: var(--muted); }
+.item .desc{
+  font-weight: 500;
+  font-size: 14px;
+}
+.item .meta{
+  font-size: 14px;
+  color: var(--muted);
+  font-weight: 500;
+}
 .cat-pill{
   display: inline-flex;
   align-items: center;
@@ -1637,8 +1652,8 @@ textarea::placeholder{
   border: 1px solid var(--border);
   background: rgba(0,0,0,0.02);
   color: var(--text);
-  font-size: 11px;
-  line-height: 1.2;
+  font-size: 14px;
+  line-height: 1.25;
   white-space: nowrap;
 }
 
@@ -1768,7 +1783,8 @@ textarea::placeholder{
 }
 .amt{
   white-space:nowrap;
-  font-weight: 700;
+  font-weight: 500;
+  font-size: 14px;
 }
 .amt.income{ color: var(--ok); }
 .amt.expense{ color: var(--danger); }
