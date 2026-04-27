@@ -260,6 +260,26 @@ function setSidebarLowBalanceBanner(text, style = "off") {
     let bodyHtml = "";
     if (bodyRaw) {
       const b = String(bodyRaw).trim();
+      const lines = b
+        .split("\n")
+        .map((s) => String(s || "").trim())
+        .filter(Boolean);
+      if (lines.length >= 2 && lines.slice(1).some((l) => l.includes(":"))) {
+        const [subhead, ...rest] = lines;
+        const sub = `<div class="cash-outlook-subhead">${escapeHtml(subhead)}</div>`;
+        const kv = rest
+          .map((l) => {
+            const idx = l.indexOf(":");
+            if (idx === -1) return `<div class="cash-outlook-kv cash-outlook-kv--single">${escapeHtml(l)}</div>`;
+            const k = l.slice(0, idx).trim();
+            const v = l.slice(idx + 1).trim();
+            return `<div class="cash-outlook-kv"><span class="cash-outlook-k">${escapeHtml(
+              k
+            )}</span><span class="cash-outlook-v">${escapeHtml(v)}</span></div>`;
+          })
+          .join("");
+        bodyHtml = `${sub}${kv}`;
+      } else
       if (b.startsWith("CENTER:")) {
         const amt = b.slice("CENTER:".length).trim();
         bodyHtml = `<div class="cash-outlook-line cash-outlook-line--center"><span class="cash-outlook-amt cash-outlook-amt--center">${escapeHtml(
@@ -298,6 +318,26 @@ function setSidebarHighBalanceBanner(text, style = "off") {
     let bodyHtml = "";
     if (bodyRaw) {
       const b = String(bodyRaw).trim();
+      const lines = b
+        .split("\n")
+        .map((s) => String(s || "").trim())
+        .filter(Boolean);
+      if (lines.length >= 2 && lines.slice(1).some((l) => l.includes(":"))) {
+        const [subhead, ...rest] = lines;
+        const sub = `<div class="cash-outlook-subhead">${escapeHtml(subhead)}</div>`;
+        const kv = rest
+          .map((l) => {
+            const idx = l.indexOf(":");
+            if (idx === -1) return `<div class="cash-outlook-kv cash-outlook-kv--single">${escapeHtml(l)}</div>`;
+            const k = l.slice(0, idx).trim();
+            const v = l.slice(idx + 1).trim();
+            return `<div class="cash-outlook-kv"><span class="cash-outlook-k">${escapeHtml(
+              k
+            )}</span><span class="cash-outlook-v">${escapeHtml(v)}</span></div>`;
+          })
+          .join("");
+        bodyHtml = `${sub}${kv}`;
+      } else
       if (b.startsWith("CENTER:")) {
         const amt = b.slice("CENTER:".length).trim();
         bodyHtml = `<div class="cash-outlook-line cash-outlook-line--center"><span class="cash-outlook-amt cash-outlook-amt--center">${escapeHtml(
@@ -586,6 +626,7 @@ async function refreshLowBalanceAlert() {
     const maxVal = maxRaw === "" ? null : toNum(maxRaw);
     const minOk = minVal != null && Number.isFinite(minVal);
     const maxOk = maxVal != null && Number.isFinite(maxVal);
+    const SHOW_PEAK_BALANCE = false;
 
     if (!minOk && !maxOk) {
       if (cashOutlookHead) cashOutlookHead.hidden = false;
@@ -628,9 +669,12 @@ async function refreshLowBalanceAlert() {
       lowHit = data?.hit_date ? { date: data.hit_date, balance: toNum(data.hit_balance) } : null;
     }
 
+    // Peak balance is intentionally hidden for now (can re-enable later).
     let highHit = null;
     let highFetchErr = null;
-    if (maxOk) {
+    if (!SHOW_PEAK_BALANCE) {
+      setSidebarHighBalanceBanner("", "off");
+    } else if (maxOk) {
       try {
         const dataHi = await api(
           `/api/families/${state.activeFamilyId}/high-balance-first?ceiling=${encodeURIComponent(String(maxVal))}&start=${encodeURIComponent(
@@ -660,18 +704,34 @@ async function refreshLowBalanceAlert() {
         parts.push(
           `<div class="balance-threshold-result-block"><div class="k">First date ≤ $${fmtMoneyThreshold(balanceThresholdMin?.value || "", minVal)}</div><div class="v">None in the next ${lowDays} days.</div></div>`
         );
-        setSidebarLowBalanceBanner("⚠ You'll dip below your target\nNone", "muted");
+        setSidebarLowBalanceBanner("✓ Within your target range", "muted");
       } else {
         parts.push(
           `<div class="balance-threshold-result-block"><div class="k">First date ≤ $${fmtMoneyThreshold(balanceThresholdMin?.value || "", minVal)}</div><div class="v danger">${fmtDateMDY(lowHit.date)} — $${fmtMoney(lowHit.balance)}</div></div>`
         );
-        setSidebarLowBalanceBanner(
-          `⚠ You'll dip below your target on ${fmtMonthDay(lowHit.date)}\nCENTER:${fmtMoney0SignedDollar(lowHit.balance)}`,
-          "danger"
-        );
+        const bal = Number(lowHit.balance);
+        const target = Number(minVal);
+        if (Number.isFinite(bal) && bal <= 0) {
+          const shortfall = Math.abs(bal);
+          setSidebarLowBalanceBanner(
+            `🚨 You’ll run out of cash\n${fmtMonthDay(lowHit.date)}\nCENTER:${fmtMoney0SignedDollar(bal)}\nShortfall: $${fmtMoney0(
+              shortfall
+            )}`,
+            "danger"
+          );
+        } else {
+          const shortfall = Math.max(0, target - bal);
+          const shortfallDisp = `–$${fmtMoney0(shortfall)}`;
+          setSidebarLowBalanceBanner(
+            `⚠ Below your target\n${fmtMonthDay(lowHit.date)}\nBalance: $${fmtMoney0(
+              Math.abs(bal)
+            )}\nTarget: $${fmtMoney0(Math.abs(target))} (${shortfallDisp})`,
+            "danger"
+          );
+        }
       }
     }
-    if (maxOk) {
+    if (SHOW_PEAK_BALANCE && maxOk) {
       if (highFetchErr) {
         const msg = String(highFetchErr.message || "Request failed")
           .slice(0, 160)
@@ -695,8 +755,10 @@ async function refreshLowBalanceAlert() {
         );
       }
     }
+    // Ensure the sidebar never shows peak balance while hidden.
+    if (!SHOW_PEAK_BALANCE) setSidebarHighBalanceBanner("", "off");
 
-    const hasAlert = (minOk && lowHit) || (maxOk && highHit && !highFetchErr);
+    const hasAlert = (minOk && lowHit) || (SHOW_PEAK_BALANCE && maxOk && highHit && !highFetchErr);
     setLowBalanceResult(parts.join(""), !hasAlert);
   } catch (e) {
     show(lowBalanceErr, e.message || "Failed to compute balance threshold alerts");
