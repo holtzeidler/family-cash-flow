@@ -133,6 +133,13 @@ function fmtMoney0(n) {
   return num.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 }
 
+function fmtMoney0Parens(n) {
+  const num = typeof n === "string" ? Number(n) : n;
+  if (Number.isNaN(num)) return String(n ?? "");
+  const abs = Math.abs(num);
+  return `(${fmtMoney0(abs)})`;
+}
+
 function fmtMoneyParens(n) {
   const num = typeof n === "string" ? Number(n) : n;
   if (Number.isNaN(num)) return String(n ?? "");
@@ -227,7 +234,7 @@ const lowBalanceErr = document.getElementById("lowBalanceErr");
 const sidebarLowBalanceBanner = document.getElementById("sidebarLowBalanceBanner");
 const sidebarHighBalanceBanner = document.getElementById("sidebarHighBalanceBanner");
 const sidebarBalanceThresholdHint = document.getElementById("sidebarBalanceThresholdHint");
-const cashOutlookTitle = document.getElementById("cashOutlookTitle");
+const cashOutlookHead = document.getElementById("cashOutlookHead");
 const BALANCE_THRESHOLD_MIN_KEY = "familyCashFlow_balanceThresholdMin";
 const BALANCE_THRESHOLD_MAX_KEY = "familyCashFlow_balanceThresholdMax";
 /** @deprecated migrate to BALANCE_THRESHOLD_MIN_KEY */
@@ -568,7 +575,7 @@ async function refreshLowBalanceAlert() {
     const maxOk = maxVal != null && Number.isFinite(maxVal);
 
     if (!minOk && !maxOk) {
-      if (cashOutlookTitle) cashOutlookTitle.hidden = true;
+      if (cashOutlookHead) cashOutlookHead.hidden = false;
       setSidebarLowBalanceBanner("", "off");
       setSidebarHighBalanceBanner("", "off");
       setLowBalanceResult(
@@ -576,12 +583,10 @@ async function refreshLowBalanceAlert() {
         true
       );
       lowBalanceLastQuery = { familyId: null, min: null, max: null, mode: null };
-      setSidebarBalanceThresholdHint(
-        "Edit Thresholds in Settings"
-      );
+      setSidebarBalanceThresholdHint("(Edit thresholds)");
       return;
     }
-    if (cashOutlookTitle) cashOutlookTitle.hidden = false;
+    if (cashOutlookHead) cashOutlookHead.hidden = false;
 
     const startIso = toISODate(new Date());
     const lowDays = 1825;
@@ -642,12 +647,12 @@ async function refreshLowBalanceAlert() {
         parts.push(
           `<div class="balance-threshold-result-block"><div class="k">First date ≤ $${fmtMoneyThreshold(balanceThresholdMin?.value || "", minVal)}</div><div class="v">None in the next ${lowDays} days.</div></div>`
         );
-        setSidebarLowBalanceBanner("⚠ Lowest balance\nNone", "muted");
+        setSidebarLowBalanceBanner("⚠ Low Balance Alert\nNone", "muted");
       } else {
         parts.push(
           `<div class="balance-threshold-result-block"><div class="k">First date ≤ $${fmtMoneyThreshold(balanceThresholdMin?.value || "", minVal)}</div><div class="v danger">${fmtDateMDY(lowHit.date)} — $${fmtMoney(lowHit.balance)}</div></div>`
         );
-        setSidebarLowBalanceBanner(`⚠ Lowest balance\n${fmtMonthDay(lowHit.date)}|$${fmtMoney0(lowHit.balance)}`, "danger");
+        setSidebarLowBalanceBanner(`⚠ Low Balance Alert\n${fmtMonthDay(lowHit.date)}|$${fmtMoney0Parens(lowHit.balance)}`, "danger");
       }
     }
     if (maxOk) {
@@ -668,7 +673,7 @@ async function refreshLowBalanceAlert() {
         parts.push(
           `<div class="balance-threshold-result-block"><div class="k">First date ≥ $${fmtMoneyThreshold(balanceThresholdMax?.value || "", maxVal)}</div><div class="v">${fmtDateMDY(highHit.date)} — $${fmtMoney(highHit.balance)}</div></div>`
         );
-        setSidebarHighBalanceBanner(`✓ Peak balance\n${fmtMonthDay(highHit.date)}|$${fmtMoney0(highHit.balance)}`, "high");
+        setSidebarHighBalanceBanner(`✓ Peak balance\n${fmtMonthDay(highHit.date)}|$${fmtMoney0Parens(highHit.balance)}`, "high");
       }
     }
 
@@ -889,6 +894,7 @@ const reportsViewPanel = document.getElementById("reportsViewPanel");
 const settingsSidebarNav = document.getElementById("settingsSidebarNav");
 const sidebarPendingTxCard = document.getElementById("sidebarPendingTxCard");
 const sidebarPendingTxList = document.getElementById("sidebarPendingTxList");
+const sidebarPendingTitle = document.getElementById("sidebarPendingTitle");
 const catReportStart = document.getElementById("catReportStart");
 const catReportEnd = document.getElementById("catReportEnd");
 const catReportYearSelect = document.getElementById("catReportYearSelect");
@@ -903,6 +909,28 @@ let catReportYearOptionsPopulated = false;
 
 const ACTIVE_VIEW_KEY = "familyCashFlow_activeView";
 const CALENDAR_DETAIL_MODE_KEY = "familyCashFlow_calendarDetailMode"; // "simplified" | "detailed"
+const PENDING_ATTENTION_CHECKED_KEY = "familyCashFlow_pendingAttentionChecked"; // JSON array of row keys
+
+function pendingAttentionKey(it) {
+  const id = it?.expected_transaction_id ?? it?.id ?? "";
+  const iso = normalizeIsoDate(it?.date) || String(it?.date || "");
+  return `${String(id)}@${String(iso)}`;
+}
+
+function loadPendingAttentionChecked() {
+  try {
+    const raw = localStorage.getItem(PENDING_ATTENTION_CHECKED_KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    if (Array.isArray(arr)) return new Set(arr.map(String));
+  } catch (_) {}
+  return new Set();
+}
+
+function savePendingAttentionChecked(set) {
+  try {
+    localStorage.setItem(PENDING_ATTENTION_CHECKED_KEY, JSON.stringify([...set]));
+  } catch (_) {}
+}
 
 function setActiveTopView(view) {
   const v =
@@ -4006,7 +4034,13 @@ function renderSidebarPendingTransactionsForMonth() {
   const range = monthStartEndIso(month);
   sidebarPendingTxList.innerHTML = "";
   if (sidebarPendingTxCard) sidebarPendingTxCard.classList.remove("sidebar-pending--empty");
+  const checked = loadPendingAttentionChecked();
+  const setTitle = (n) => {
+    if (!sidebarPendingTitle) return;
+    sidebarPendingTitle.textContent = `Needs Attention (${Number(n) || 0})`;
+  };
   if (!range) {
+    setTitle(0);
     const empty = document.createElement("div");
     empty.className = "pill";
     empty.textContent = "Choose a month to see pending transactions.";
@@ -4032,6 +4066,7 @@ function renderSidebarPendingTransactionsForMonth() {
   rows.sort((a, b) => String(a.sortIso).localeCompare(String(b.sortIso)));
 
   if (!rows.length) {
+    setTitle(0);
     const empty = document.createElement("div");
     empty.className = "pill";
     empty.textContent = "None";
@@ -4040,47 +4075,51 @@ function renderSidebarPendingTransactionsForMonth() {
     return;
   }
 
+  setTitle(rows.length);
   for (const r of rows) {
     const it = r.tx;
-    const el = document.createElement("div");
-    el.className = "item expected-item--dense";
-    if (it?.variable) el.classList.add("expected-item--variable");
-    el.style.cursor = "pointer";
-
-    const kind = String(it?.kind || "expense");
-    const amtClass = kind === "income" ? "income" : "expense";
-    const kindSign = kind === "income" ? "+" : "-";
-
-    const left = document.createElement("div");
-    left.className = "left";
-    const descEl = document.createElement("div");
-    descEl.className = `desc ${kindFgClass(kind)}`;
-    descEl.textContent = String(it?.description || "(expected)").trim() || "(expected)";
-    const metaEl = document.createElement("div");
-    metaEl.className = "meta";
-    metaEl.textContent = it?.date ? fmtDateMDY(it.date) : "—";
-    left.appendChild(descEl);
-    left.appendChild(metaEl);
-
-    const amtBtn = document.createElement("button");
-    amtBtn.type = "button";
-    amtBtn.className = `amt ${amtClass} expected-amt-link`;
-    amtBtn.textContent = `${kindSign}$${fmtMoney(it?.amount)}`;
-    amtBtn.title = "Review / edit this recurring occurrence";
-
     const open = () => {
       const meta = getExpectedSeriesMeta(it?.expected_transaction_id);
       if (meta) openExpectedEditModal(meta, { calendarItem: it });
     };
-    amtBtn.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      open();
-    });
+
+    const key = pendingAttentionKey(it);
+    const kind = String(it?.kind || "expense");
+
+    const el = document.createElement("div");
+    el.className = "pending-attn-item";
+    el.style.cursor = "pointer";
     el.addEventListener("click", () => open());
 
-    el.appendChild(left);
-    el.appendChild(amtBtn);
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.className = "pending-attn-cb";
+    cb.checked = checked.has(key);
+    cb.setAttribute("aria-label", "Mark as reviewed");
+    cb.addEventListener("click", (e) => e.stopPropagation());
+    cb.addEventListener("change", () => {
+      if (cb.checked) checked.add(key);
+      else checked.delete(key);
+      savePendingAttentionChecked(checked);
+    });
+
+    const name = document.createElement("div");
+    name.className = `pending-attn-name ${kindFgClass(kind)}`;
+    name.textContent = String(it?.description || "(expected)").trim() || "(expected)";
+
+    const est = document.createElement("div");
+    est.className = "pending-attn-est";
+    const amt = Math.abs(toNum(it?.amount));
+    est.textContent = `Est. $${fmtMoney0(amt)}`;
+
+    const date = document.createElement("div");
+    date.className = "pending-attn-date";
+    date.textContent = it?.date ? fmtMonthDay(it.date) : "—";
+
+    el.appendChild(cb);
+    el.appendChild(name);
+    el.appendChild(est);
+    el.appendChild(date);
     sidebarPendingTxList.appendChild(el);
   }
 }
