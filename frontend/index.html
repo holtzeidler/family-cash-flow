@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=181" />
+    <link rel="stylesheet" href="./styles.css?v=184" />
   </head>
   <body>
     <div class="container">
@@ -97,16 +97,6 @@
               </div>
               <div class="tx-add-vspace" aria-hidden="true"></div>
               <div class="form-row-h">
-                <div class="form-row-h__label"><label for="txAddDate" id="txAddDateLabel">Date</label></div>
-                <div class="form-row-h__field"><input id="txAddDate" type="date" /></div>
-              </div>
-              <div class="tx-add-vspace" aria-hidden="true"></div>
-              <div class="form-row-h">
-                <div class="form-row-h__label"><label for="txAddCategoryId">Category</label></div>
-                <div class="form-row-h__field"><select id="txAddCategoryId"></select></div>
-              </div>
-              <div class="tx-add-vspace" aria-hidden="true"></div>
-              <div class="form-row-h">
                 <div class="form-row-h__label"><label for="txAddAmount">Amount</label></div>
                 <div class="form-row-h__field">
                   <div class="money-input">
@@ -115,14 +105,24 @@
                   </div>
                 </div>
               </div>
+              <div class="tx-add-vspace" aria-hidden="true"></div>
+              <div class="form-row-h">
+                <div class="form-row-h__label"><label for="txAddCategoryId">Category</label></div>
+                <div class="form-row-h__field"><select id="txAddCategoryId"></select></div>
+              </div>
+              <div class="tx-add-vspace" aria-hidden="true"></div>
+              <div class="form-row-h">
+                <div class="form-row-h__label"><label for="txAddDate" id="txAddDateLabel">Date</label></div>
+                <div class="form-row-h__field"><input id="txAddDate" type="date" /></div>
+              </div>
               <div class="tx-add-vspace tx-add-vspace--lg" aria-hidden="true"></div>
               <div class="tx-add-schedule-toolbar" aria-label="Repeat and schedule">
                 <div class="tx-add-schedule-toolbar__left">
-                  <div class="tx-add-schedule-question">Recurring?</div>
+                  <div class="tx-add-schedule-question">Make this recurring?</div>
                   <div class="tx-add-repeat-row">
                     <label class="tx-add-repeat-yes">
                       <input id="txAddRepeats" type="checkbox" />
-                      <span>Yes</span>
+                      <span class="sr-only">Yes</span>
                     </label>
                     <div id="txAddRecurrenceWrap" class="tx-add-recurrence-inline" hidden>
                       <span class="tx-add-recurrence-inline__every">every</span>
@@ -183,7 +183,7 @@
               <div class="modal-actions">
                 <div class="row two">
                   <button type="button" id="txAddSave">Add</button>
-                  <button type="button" id="txAddCancel" class="danger">Cancel</button>
+                  <button type="button" id="txAddCancel">Cancel</button>
                 </div>
               </div>
             </div>
@@ -372,9 +372,6 @@
                   <p class="balance-threshold-hint">
                     Leave a field blank to disable that alert. The calendar sidebar shows the next projected crossing for each threshold you set.
                   </p>
-                  <div style="height:10px;"></div>
-                  <div class="low-balance-result" id="lowBalanceResult" aria-live="polite"></div>
-                  <div id="lowBalanceErr" class="error"></div>
                 </div>
 
                 <div class="settings-pane" data-settings-pane="accounts" hidden>
@@ -617,8 +614,13 @@
           </div>
           <div class="tx-add-vspace" aria-hidden="true"></div>
           <div class="form-row-h">
-            <div class="form-row-h__label"><label for="txEditDate" id="txEditDateLabel">Date</label></div>
-            <div class="form-row-h__field"><input id="txEditDate" type="date" /></div>
+            <div class="form-row-h__label"><label for="txEditAmount">Amount</label></div>
+            <div class="form-row-h__field">
+              <div class="money-input">
+                <span class="money-input__prefix" aria-hidden="true">$</span>
+                <input id="txEditAmount" type="number" min="0" step="0.01" placeholder="0.00" />
+              </div>
+            </div>
           </div>
           <div class="tx-add-vspace" aria-hidden="true"></div>
           <div class="form-row-h">
@@ -627,13 +629,8 @@
           </div>
           <div class="tx-add-vspace" aria-hidden="true"></div>
           <div class="form-row-h">
-            <div class="form-row-h__label"><label for="txEditAmount">Amount</label></div>
-            <div class="form-row-h__field">
-              <div class="money-input">
-                <span class="money-input__prefix" aria-hidden="true">$</span>
-                <input id="txEditAmount" type="number" min="0" step="0.01" placeholder="0.00" />
-              </div>
-            </div>
+            <div class="form-row-h__label"><label for="txEditDate" id="txEditDateLabel">Date</label></div>
+            <div class="form-row-h__field"><input id="txEditDate" type="date" /></div>
           </div>
 
           <div id="txEditRecurringScheduleWrap" style="display: none">
@@ -693,7 +690,10 @@
             <div class="tx-add-vspace" aria-hidden="true"></div>
             <div class="form-row-h">
               <div class="form-row-h__label">
-                <label for="seriesVariable">Variable (estimate)</label>
+                <label
+                  for="seriesVariable"
+                  title="Used for bills that change each month (e.g. utilities, credit cards)"
+                >Variable amount (estimate)</label>
               </div>
               <div class="form-row-h__field">
                 <input id="seriesVariable" type="checkbox" title="Shows italic on calendar until unchecked and saved as series" />
@@ -707,12 +707,12 @@
 
         <div class="modal-actions modal-actions--tx-edit-foot">
           <div id="txEditFooterSecondary" class="tx-edit-actions-row">
-            <button type="button" id="txEditDelete" class="danger">Delete</button>
-            <button type="button" id="txEditCancel">Cancel</button>
             <div id="txEditSaveRow" class="tx-edit-save-cell">
               <button type="button" id="txEditSave">Save</button>
               <button type="button" id="txEditRecurringUpdateBtn" style="display:none;">Save</button>
             </div>
+            <button type="button" id="txEditCancel">Cancel</button>
+            <button type="button" id="txEditDelete" class="danger">Delete</button>
           </div>
         </div>
       </div>
@@ -853,6 +853,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="./app.js?v=158"></script>
+    <script src="./app.js?v=166"></script>
   </body>
 </html>

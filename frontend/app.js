@@ -1616,9 +1616,9 @@ function applyTransactionEditMode(mode, opts = {}) {
   if (txEditTopStrip) txEditTopStrip.style.display = "";
 
   const notesLabel = document.getElementById("txEditNotesLabel");
-  if (notesLabel) notesLabel.textContent = recurring ? "Notes (series)" : "Notes";
+  if (notesLabel) notesLabel.textContent = "Notes";
   const dateLabel = document.getElementById("txEditDateLabel");
-  if (dateLabel) dateLabel.textContent = recurring ? "Occurrence date" : "Date";
+  if (dateLabel) dateLabel.textContent = "Date";
 
   const wrapSch = document.getElementById("txEditRecurringScheduleWrap");
   if (wrapSch) {

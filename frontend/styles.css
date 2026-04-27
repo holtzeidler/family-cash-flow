@@ -732,11 +732,12 @@ button.nav-link:hover{
   max-width: 100%;
   box-sizing: border-box;
   line-height: 1.35;
-  text-align: left;
+  text-align: center;
 }
 .calendar-low-balance--sidebar strong{
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   line-height: 1.2;
   margin-bottom: 4px;
@@ -774,6 +775,10 @@ button.nav-link:hover{
 .cash-outlook-details--center .cash-outlook-kv{
   justify-content: center;
   text-align: center;
+}
+.cash-outlook-details--center .cash-outlook-k,
+.cash-outlook-details--center .cash-outlook-v{
+  display: inline-block;
 }
 .cash-outlook-details--center .cash-outlook-v{
   margin-left: 10px;
@@ -1305,6 +1310,9 @@ label{
 .settings-pane[data-settings-pane="accounts"] .list{
   margin-top: 16px;
   gap: 14px;
+}
+.settings-pane[data-settings-pane="accounts"] #openAccountModalBtn{
+  margin-top: 12px;
 }
 .tx-edit-top .form-row-h__label label{
   color: rgba(255, 255, 255, 0.92);
