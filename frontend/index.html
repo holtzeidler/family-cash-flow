@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=170" />
+    <link rel="stylesheet" href="./styles.css?v=181" />
   </head>
   <body>
     <div class="container">
@@ -351,41 +351,22 @@
               <div class="settings-content card">
                 <div class="settings-pane is-active" data-settings-pane="accountDetails">
                   <div class="form-row-h">
-                    <div class="form-row-h__label"><label for="accountDetailsAccountId">Account</label></div>
-                    <div class="form-row-h__field"><select id="accountDetailsAccountId"></select></div>
-                  </div>
-                  <div class="tx-add-vspace" aria-hidden="true"></div>
-                  <div class="form-row-h">
-                    <div class="form-row-h__label"><label>Type</label></div>
-                    <div class="form-row-h__field"><div id="accountDetailsType" class="pill" style="display:inline-flex;">—</div></div>
-                  </div>
-                  <div class="tx-add-vspace" aria-hidden="true"></div>
-                  <div class="form-row-h">
-                    <div class="form-row-h__label"><label>Starting</label></div>
-                    <div class="form-row-h__field">
-                      <div id="accountDetailsStarting" class="meta">—</div>
-                    </div>
-                  </div>
-                  <div class="tx-add-vspace tx-add-vspace--lg" aria-hidden="true"></div>
-                  <div class="form-row-h">
                     <div class="form-row-h__label"><label for="balanceThresholdMin">Minimum balance</label></div>
                     <div class="form-row-h__field">
-                      <div class="money-input">
+                      <div class="money-input threshold-input">
                         <span class="money-input__prefix" aria-hidden="true">$</span>
                         <input id="balanceThresholdMin" type="number" step="0.01" placeholder="e.g. 1000" />
                       </div>
-                      <div class="meta" style="margin-top: 6px">Alert at or below this amount.</div>
                     </div>
                   </div>
                   <div class="tx-add-vspace" aria-hidden="true"></div>
                   <div class="form-row-h">
                     <div class="form-row-h__label"><label for="balanceThresholdMax">Maximum balance</label></div>
                     <div class="form-row-h__field">
-                      <div class="money-input">
+                      <div class="money-input threshold-input">
                         <span class="money-input__prefix" aria-hidden="true">$</span>
                         <input id="balanceThresholdMax" type="number" step="0.01" placeholder="e.g. 50000" />
                       </div>
-                      <div class="meta" style="margin-top: 6px">Alert at or above this amount.</div>
                     </div>
                   </div>
                   <p class="balance-threshold-hint">
@@ -397,45 +378,9 @@
                 </div>
 
                 <div class="settings-pane" data-settings-pane="accounts" hidden>
-                  <div class="row two">
-                    <div>
-                      <label for="accountName">Account name</label>
-                      <input id="accountName" type="text" placeholder="e.g. Checking" />
-                    </div>
-                    <div>
-                      <label for="accountType">Type</label>
-                      <select id="accountType">
-                        <option value="checking" selected>Checking</option>
-                        <option value="savings">Savings</option>
-                        <option value="credit_card">Credit card</option>
-                        <option value="cash">Cash</option>
-                        <option value="other">Other</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div style="height:10px;"></div>
-                  <div class="row two">
-                    <div>
-                      <label for="accountStartingBalance">Starting balance</label>
-                      <div class="money-input">
-                        <span class="money-input__prefix" aria-hidden="true">$</span>
-                        <input id="accountStartingBalance" type="number" step="0.01" placeholder="0.00" />
-                      </div>
-                    </div>
-                    <div>
-                      <label for="accountStartingBalanceDate">Starting balance date</label>
-                      <input id="accountStartingBalanceDate" type="date" />
-                    </div>
-                  </div>
-                  <input id="accountEditId" type="hidden" />
-                  <div style="height:10px;"></div>
-                  <div class="row two">
-                    <button id="addAccountBtn">Add account</button>
-                    <button id="saveAccountEditBtn" class="danger">Save balance/date edit</button>
-                  </div>
-                  <button id="cancelAccountEditBtn">Cancel account edit</button>
-                  <div id="accErr" class="error"></div>
                   <div class="list" id="accountsList"></div>
+                  <button type="button" id="openAccountModalBtn">Add New Account</button>
+                  <div style="height:14px;"></div>
                 </div>
 
                 <div class="settings-pane" data-settings-pane="categories" hidden>
@@ -856,6 +801,53 @@
             <button type="button" id="reconcileSaveBtn">Save</button>
             <button type="button" id="reconcileCancelBtn" class="danger">Cancel</button>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="accountModal" class="modal-overlay" aria-hidden="true">
+      <div class="modal" role="dialog" aria-labelledby="accountModalTitle" aria-modal="true">
+        <h3 id="accountModalTitle">Add New Account</h3>
+        <div id="accErr" class="error"></div>
+        <input id="accountEditId" type="hidden" />
+
+        <div class="row two">
+          <div>
+            <label for="accountName">Account name</label>
+            <input id="accountName" type="text" placeholder="e.g. Checking" />
+          </div>
+          <div>
+            <label for="accountType">Type</label>
+            <select id="accountType">
+              <option value="checking" selected>Checking</option>
+              <option value="savings">Savings</option>
+              <option value="credit_card">Credit card</option>
+              <option value="cash">Cash</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="height:10px;"></div>
+
+        <div class="row two">
+          <div>
+            <label for="accountStartingBalance">Starting balance</label>
+            <div class="money-input">
+              <span class="money-input__prefix" aria-hidden="true">$</span>
+              <input id="accountStartingBalance" type="number" step="0.01" placeholder="0.00" />
+            </div>
+          </div>
+          <div>
+            <label for="accountStartingBalanceDate">Starting balance date</label>
+            <input id="accountStartingBalanceDate" type="date" />
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" id="cancelAccountEditBtn">Cancel</button>
+          <button type="button" id="addAccountBtn">Add account</button>
+          <button type="button" id="saveAccountEditBtn" class="danger">Save balance/date edit</button>
         </div>
       </div>
     </div>

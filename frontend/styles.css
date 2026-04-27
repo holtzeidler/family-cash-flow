@@ -520,6 +520,7 @@ button.danger{
   align-items: center;
   gap: 8px;
   padding: 6px 10px;
+  margin-left: 6px;
   border-radius: 999px;
   border: 1px solid rgba(0,0,0,0.10);
   background: rgba(0,0,0,0.02);
@@ -599,6 +600,7 @@ button.danger{
   background: rgba(0,0,0,0.02);
   overflow: hidden;
   flex: 0 0 auto;
+  margin-right: 6px;
 }
 .cal-detail-btn{
   font: inherit;
@@ -769,10 +771,17 @@ button.nav-link:hover{
   font-size: 13px;
   line-height: 1.25;
 }
+.cash-outlook-details--center .cash-outlook-kv{
+  justify-content: center;
+  text-align: center;
+}
+.cash-outlook-details--center .cash-outlook-v{
+  margin-left: 10px;
+}
 .cash-outlook-hero{
-  font-size: 22px;
-  font-weight: 800;
-  line-height: 1.1;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.25;
   text-align: center;
   margin: 6px 0 8px;
   font-variant-numeric: tabular-nums;
@@ -831,6 +840,16 @@ button.nav-link:hover{
   font-size: 12px;
   color: var(--muted);
   line-height: 1.4;
+}
+.threshold-input{
+  flex: 0 0 180px;
+}
+.threshold-input input{
+  width: 100%;
+}
+
+@media (max-width: 860px){
+  .threshold-input{ flex-basis: 150px; }
 }
 
 .calendar-panel--collapsed .calendar-panel-head{
@@ -1259,6 +1278,17 @@ label{
 .settings-pane[data-settings-pane="accountDetails"] .form-row-h + .form-row-h{
   margin-top: 6px;
 }
+.settings-pane[data-settings-pane="accountDetails"] .account-details-top-row{
+  margin-bottom: 8px;
+}
+.settings-pane[data-settings-pane="accountDetails"] .account-details-top-row select{
+  padding: 8px 10px;
+}
+.settings-pane[data-settings-pane="accountDetails"] .account-details-type-pill{
+  width: 100%;
+  padding: 8px 10px;
+  justify-content: flex-start;
+}
 
 /* Settings → Accounts: add vertical rhythm between stacked controls */
 .settings-pane[data-settings-pane="accounts"] .row.two{
@@ -1636,10 +1666,10 @@ textarea::placeholder{
 }
 .item .desc{
   font-weight: 500;
-  font-size: 14px;
+  font-size: 17px;
 }
 .item .meta{
-  font-size: 14px;
+  font-size: 17px;
   color: var(--muted);
   font-weight: 500;
 }
@@ -1652,7 +1682,7 @@ textarea::placeholder{
   border: 1px solid var(--border);
   background: rgba(0,0,0,0.02);
   color: var(--text);
-  font-size: 14px;
+  font-size: 17px;
   line-height: 1.25;
   white-space: nowrap;
 }
@@ -1784,7 +1814,7 @@ textarea::placeholder{
 .amt{
   white-space:nowrap;
   font-weight: 500;
-  font-size: 14px;
+  font-size: 17px;
 }
 .amt.income{ color: var(--ok); }
 .amt.expense{ color: var(--danger); }

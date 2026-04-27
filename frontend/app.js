@@ -285,7 +285,7 @@ function setSidebarLowBalanceBanner(text, style = "off") {
               )}</span><span class="cash-outlook-v">${escapeHtml(v)}</span></div>`;
             })
             .join("");
-          bodyHtml = `${heroHtml}${kv}`;
+          bodyHtml = `${heroHtml}<div class="cash-outlook-details cash-outlook-details--center">${kv}</div>`;
         }
       } else
       if (lines.length >= 2 && lines.slice(1).some((l) => l.includes(":"))) {
@@ -366,7 +366,7 @@ function setSidebarHighBalanceBanner(text, style = "off") {
               )}</span><span class="cash-outlook-v">${escapeHtml(v)}</span></div>`;
             })
             .join("");
-          bodyHtml = `${heroHtml}${kv}`;
+          bodyHtml = `${heroHtml}<div class="cash-outlook-details cash-outlook-details--center">${kv}</div>`;
         }
       } else
       if (lines.length >= 2 && lines.slice(1).some((l) => l.includes(":"))) {
@@ -449,6 +449,27 @@ const accountEditId = document.getElementById("accountEditId");
 const addAccountBtn = document.getElementById("addAccountBtn");
 const saveAccountEditBtn = document.getElementById("saveAccountEditBtn");
 const cancelAccountEditBtn = document.getElementById("cancelAccountEditBtn");
+const openAccountModalBtn = document.getElementById("openAccountModalBtn");
+const accountModal = document.getElementById("accountModal");
+const accountModalTitle = document.getElementById("accountModalTitle");
+
+function openAccountModal(mode = "add") {
+  if (!accountModal) return;
+  if (accountModalTitle) accountModalTitle.textContent = mode === "edit" ? "Edit Account" : "Add New Account";
+  if (addAccountBtn) addAccountBtn.style.display = mode === "edit" ? "none" : "";
+  if (saveAccountEditBtn) saveAccountEditBtn.style.display = mode === "edit" ? "" : "none";
+  accountModal.classList.add("modal-overlay--open");
+  accountModal.setAttribute("aria-hidden", "false");
+  try {
+    (mode === "edit" ? accountStartingBalance : accountName)?.focus?.();
+  } catch (_) {}
+}
+
+function closeAccountModal() {
+  if (!accountModal) return;
+  accountModal.classList.remove("modal-overlay--open");
+  accountModal.setAttribute("aria-hidden", "true");
+}
 
 // Transaction View: upcoming filters
 const upcomingKindFilter = document.getElementById("upcomingKindFilter");
@@ -770,7 +791,7 @@ async function refreshLowBalanceAlert() {
           const shortfall = Math.max(0, target - bal);
           const shortfallDisp = `–$${fmtMoney0(shortfall)}`;
           setSidebarLowBalanceBanner(
-            `⚠ Below target on ${fmtMonthDay(lowHit.date)}\nHERO:$${fmtMoney0(
+            `⚠ Below target on ${fmtMonthDay(lowHit.date)}\nHERO:Balance: $${fmtMoney0(
               Math.abs(bal)
             )}\nTarget: $${fmtMoney0(Math.abs(target))} (${shortfallDisp})`,
             "danger"
@@ -1516,6 +1537,7 @@ addAccountBtn.addEventListener("click", async () => {
     });
 
     clearAccountEdit();
+    closeAccountModal();
     await loadAccounts();
     await loadMonthAndCalendar();
   } catch (e) {
@@ -1537,6 +1559,7 @@ saveAccountEditBtn.addEventListener("click", async () => {
       starting_balance_date: startingBalanceDateVal,
     });
     clearAccountEdit();
+    closeAccountModal();
     await loadAccounts();
     await loadMonthAndCalendar();
   } catch (e) {
@@ -1546,6 +1569,7 @@ saveAccountEditBtn.addEventListener("click", async () => {
 
 cancelAccountEditBtn.addEventListener("click", () => {
   clearAccountEdit();
+  closeAccountModal();
 });
 
 function renderTxEditCategoryOptions() {
@@ -3128,6 +3152,7 @@ function renderAccountsList(accounts) {
       accountName.disabled = true;
       accountType.disabled = true;
       show(accErr, "Editing selected account's starting balance/date.");
+      openAccountModal("edit");
     });
   }
 }
@@ -3192,6 +3217,21 @@ if (accountDetailsAccountId) {
   });
 }
 
+if (openAccountModalBtn) {
+  openAccountModalBtn.addEventListener("click", () => {
+    clearAccountEdit();
+    openAccountModal("add");
+  });
+}
+if (accountModal) {
+  accountModal.addEventListener("click", (e) => {
+    if (e.target === accountModal) {
+      clearAccountEdit();
+      closeAccountModal();
+    }
+  });
+}
+
 function clearAccountEdit() {
   accountEditId.value = "";
   accountName.value = "";
@@ -3201,6 +3241,8 @@ function clearAccountEdit() {
   accountName.disabled = false;
   accountType.disabled = false;
   show(accErr, "");
+  if (addAccountBtn) addAccountBtn.style.display = "";
+  if (saveAccountEditBtn) saveAccountEditBtn.style.display = "none";
 }
 
 function setExpectedModalMode() {
