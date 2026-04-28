@@ -259,7 +259,7 @@
                       </div>
 
                       <div class="cal-detail-toggle" role="group" aria-label="Calendar detail">
-                        <button type="button" class="cal-detail-btn is-active" id="calViewDetailed">All</button>
+                        <button type="button" class="cal-detail-btn is-active" id="calViewDetailed">Transactions</button>
                         <button type="button" class="cal-detail-btn" id="calViewSimplified">Balance Only</button>
                       </div>
                     </div>
@@ -385,6 +385,12 @@
                 <div class="settings-pane" data-settings-pane="categories" hidden>
                   <div class="categories-toolbar" role="toolbar" aria-label="Category actions">
                     <button type="button" id="addCategoryGroupBtn">Add group</button>
+                    <div id="addGroupInline" class="add-group-inline" hidden>
+                      <label for="newGroupName" class="sr-only">New group name</label>
+                      <input id="newGroupName" type="text" placeholder="New group name" />
+                      <button type="button" id="saveGroupBtn">Save</button>
+                      <button type="button" id="cancelGroupBtn" class="secondary">Cancel</button>
+                    </div>
                   </div>
                   <p class="meta categories-toolbar-hint">
                     Groups are section headers (not selectable in transaction pickers). Drag a group header or a category row to reorder. New categories are

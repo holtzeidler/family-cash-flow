@@ -781,7 +781,70 @@ def startup_populate_schema():
     _ensure_category_sort_order_column()
     _ensure_category_group_id_column()
     _backfill_category_groups_for_existing_families()
+    _cleanup_new_group_placeholders()
     _ensure_reconciled_days_table()
+
+
+FORBIDDEN_GROUP_NAMES = {"new group"}
+
+
+def _is_forbidden_group_name(name: str) -> bool:
+    return str(name or "").strip().lower() in FORBIDDEN_GROUP_NAMES
+
+
+def _cleanup_new_group_placeholders() -> None:
+    """Lightweight startup migration: remove placeholder 'New group' groups."""
+    with SessionLocal() as db:
+        fam_ids = [int(x) for x in db.execute(select(Family.id)).scalars().all()]
+        for fam_id in fam_ids:
+            groups = (
+                db.execute(
+                    select(CategoryGroup)
+                    .where(CategoryGroup.family_id == fam_id)
+                    .order_by(CategoryGroup.sort_order.asc(), CategoryGroup.id.asc())
+                )
+                .scalars()
+                .all()
+            )
+            bad = [g for g in groups if _is_forbidden_group_name(str(g.name))]
+            if not bad:
+                continue
+
+            target = next((g for g in groups if not _is_forbidden_group_name(str(g.name))), None)
+            if target is None:
+                # If all groups are placeholders, keep the first one (rename it) and delete the rest.
+                target = groups[0] if groups else None
+                if target is None:
+                    continue
+                target.name = "Categories"
+                bad = [g for g in bad if int(g.id) != int(target.id)]
+
+            max_sort = int(
+                db.execute(
+                    select(func.coalesce(func.max(Category.sort_order), 0)).where(
+                        Category.family_id == fam_id, Category.group_id == int(target.id)
+                    )
+                ).scalar_one()
+                or 0
+            )
+
+            moved = 0
+            for grp in bad:
+                cats = (
+                    db.execute(
+                        select(Category)
+                        .where(Category.family_id == fam_id, Category.group_id == int(grp.id))
+                        .order_by(Category.sort_order.asc(), Category.id.asc())
+                    )
+                    .scalars()
+                    .all()
+                )
+                for i, c in enumerate(cats):
+                    c.group_id = int(target.id)
+                    c.sort_order = max_sort + moved + 1 + i
+                moved += len(cats)
+                db.execute(delete(CategoryGroup).where(CategoryGroup.id == int(grp.id), CategoryGroup.family_id == fam_id))
+            db.commit()
 
 
 def _ensure_expected_end_count_column() -> None:
@@ -1195,6 +1258,10 @@ def apply_category_tree_layout(*, db, family_id: int, payload: CategoryTreeLayou
     resolved: list[tuple[CategoryGroup, list[int]]] = []
     for gi, g in enumerate(payload.groups):
         name = g.name.strip()
+        if not name:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Group name is required")
+        if _is_forbidden_group_name(name):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Group name cannot be "New group"')
         if g.id is None:
             grp = CategoryGroup(family_id=family_id, name=name, sort_order=gi)
             db.add(grp)
@@ -1528,7 +1595,12 @@ def create_category_group(
     max_sort = db.execute(
         select(func.coalesce(func.max(CategoryGroup.sort_order), 0)).where(CategoryGroup.family_id == family_id)
     ).scalar_one()
-    grp = CategoryGroup(family_id=family_id, name=payload.name.strip(), sort_order=int(max_sort) + 1)
+    nm = payload.name.strip()
+    if not nm:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Group name is required")
+    if _is_forbidden_group_name(nm):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Group name cannot be "New group"')
+    grp = CategoryGroup(family_id=family_id, name=nm, sort_order=int(max_sort) + 1)
     db.add(grp)
     db.commit()
     db.refresh(grp)

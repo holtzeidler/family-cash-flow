@@ -461,6 +461,13 @@ button.secondary{
   flex: 1;
   min-width: 0;
 }
+#sidebarPendingTitle{
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(17, 24, 39, 0.70);
+}
 
 /* Compact "This month pending" when empty. */
 #sidebarPendingTxCard.sidebar-pending--empty{
@@ -784,13 +791,16 @@ button.nav-link:hover{
   gap: 6px;
   margin-bottom: 10px;
 }
+#sidebarLowBalanceBanner.calendar-low-balance--sidebar{
+  margin-top: 6px;
+}
 .cash-outlook-head{
   display: flex;
   align-items: baseline;
   gap: 10px;
 }
 .cash-outlook-title{
-  font-size: 12px;
+  font-size: 13px; /* +~10% */
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -1798,6 +1808,15 @@ textarea::placeholder{
   gap: 10px;
   align-items: center;
 }
+.add-group-inline{
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.add-group-inline input{
+  width: min(320px, 70vw);
+}
 .categories-toolbar-hint{
   margin: 0 0 8px;
 }
@@ -2129,6 +2148,7 @@ body.contact-page .app-footer{
   border: 1px solid var(--border);
   background: var(--cal-surface);
   border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
   /* Keep all day boxes the same size regardless of content. */
   height: var(--cal-day-min-h, 108px);
   padding: 10px 10px 10px;
@@ -2140,6 +2160,7 @@ body.contact-page .app-footer{
   /* Darker shading for prior/next month wrap days */
   background: rgba(0,0,0,0.085);
   border-color: rgba(0,0,0,0.14);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
 }
 
 .reconcile-date-row{

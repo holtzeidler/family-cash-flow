@@ -234,6 +234,10 @@ const categoriesTree = document.getElementById("categoriesTree");
 const newCategoryGroupId = document.getElementById("newCategoryGroupId");
 const seedDefaultCategoriesBtn = document.getElementById("seedDefaultCategoriesBtn");
 const addCategoryGroupBtn = document.getElementById("addCategoryGroupBtn");
+const addGroupInline = document.getElementById("addGroupInline");
+const newGroupName = document.getElementById("newGroupName");
+const saveGroupBtn = document.getElementById("saveGroupBtn");
+const cancelGroupBtn = document.getElementById("cancelGroupBtn");
 
 // Categories edit modal
 const catEditModal = document.getElementById("catEditModal");
@@ -307,6 +311,9 @@ if (catEditSave) {
       if (!name) throw new Error("Name is required");
 
       if (kind === "group") {
+        if (name.trim().toLowerCase() === "new group") {
+          throw new Error('Please choose a more specific group name (not "New group").');
+        }
         // Update DOM group name input, then persist via existing tree layout API.
         const gEl = categoriesTree?.querySelector(`.cat-group[data-group-id="${String(id)}"]`);
         const inp = gEl ? gEl.querySelector("[data-group-name]") : null;
@@ -1574,16 +1581,47 @@ if (seedDefaultCategoriesBtn) {
 }
 
 if (addCategoryGroupBtn) {
-  addCategoryGroupBtn.addEventListener("click", async () => {
-    try {
-      show(catErr, "");
-      if (!state.activeFamilyId) throw new Error("Choose a family first");
-      await api(`/api/families/${state.activeFamilyId}/category-groups`, "POST", { name: "New group" });
-      await loadCategories();
-    } catch (e) {
-      show(catErr, e.message || "Failed to add group");
+  function showAddGroupInline(showIt) {
+    if (addGroupInline) addGroupInline.hidden = !showIt;
+    if (addCategoryGroupBtn) addCategoryGroupBtn.style.display = showIt ? "none" : "inline-flex";
+    if (showIt && newGroupName) {
+      newGroupName.value = "";
+      try {
+        newGroupName.focus();
+      } catch (_) {}
     }
+  }
+
+  addCategoryGroupBtn.addEventListener("click", () => {
+    show(catErr, "");
+    showAddGroupInline(true);
   });
+
+  if (cancelGroupBtn) {
+    cancelGroupBtn.addEventListener("click", () => {
+      show(catErr, "");
+      showAddGroupInline(false);
+    });
+  }
+
+  if (saveGroupBtn) {
+    saveGroupBtn.addEventListener("click", async () => {
+      try {
+        show(catErr, "");
+        if (!state.activeFamilyId) throw new Error("Choose a family first");
+        const nm = String(newGroupName?.value || "").trim();
+        if (!nm) throw new Error("Group name is required");
+        if (nm.trim().toLowerCase() === "new group") {
+          throw new Error('Please choose a more specific group name (not "New group").');
+        }
+        await api(`/api/families/${state.activeFamilyId}/category-groups`, "POST", { name: nm });
+        await loadCategories();
+        showAddGroupInline(false);
+      } catch (e) {
+        show(catErr, e.message || "Failed to add group");
+      }
+    });
+  }
 }
 
 if (txAddSave) {
@@ -2411,12 +2449,11 @@ async function saveExpectedSeriesFromInstance() {
     const raw = instanceSecondDayOfMonth?.value;
     const n = raw ? Number(raw) : NaN;
     if (!Number.isFinite(n) || n < 1 || n > 31) throw new Error("Second day of month must be between 1 and 31");
-    const occIso = selectedExpectedInstance
-      ? normalizeIsoDate(selectedExpectedInstance.occurrence_date) || selectedExpectedInstance.occurrence_date
-      : null;
-    const occDom = occIso && String(occIso).length >= 10 ? Number(String(occIso).slice(8, 10)) : NaN;
-    if (Number.isFinite(occDom) && n === occDom) {
-      throw new Error("Second day of month must be different than this occurrence’s day");
+    const startIso = normalizeIsoDate(meta.start_date || "") || meta.start_date || "";
+    const startDom = startIso && String(startIso).length >= 10 ? Number(String(startIso).slice(8, 10)) : NaN;
+    // Validate against the series start day-of-month (not the current occurrence day).
+    if (Number.isFinite(startDom) && n === startDom) {
+      throw new Error("Second day of month must be different than the start date’s day");
     }
     secondDayVal = n;
   } else {
