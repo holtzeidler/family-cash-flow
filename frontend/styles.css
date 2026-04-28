@@ -754,14 +754,22 @@ button.nav-link:hover{
   text-align: center;
 }
 .calendar-low-balance--sidebar strong{
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   line-height: 1.2;
-  margin-bottom: 4px;
+  margin-bottom: 0;
   font-weight: 800;
-  font-size: 15px;
+  font-size: 13px;
+}
+.cash-outlook-subhead--inline{
+  display: inline;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  margin-left: 8px;
+  white-space: nowrap;
 }
 .cash-outlook-line{
   display: flex;

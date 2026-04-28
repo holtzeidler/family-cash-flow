@@ -298,7 +298,7 @@ function setSidebarLowBalanceBanner(text, style = "off") {
       } else
       if (lines.length >= 2 && lines.slice(1).some((l) => l.includes(":"))) {
         const [subhead, ...rest] = lines;
-        const sub = `<div class="cash-outlook-subhead">${escapeHtml(subhead)}</div>`;
+        const sub = `<span class="cash-outlook-subhead cash-outlook-subhead--inline">${escapeHtml(subhead)}</span>`;
         const kv = rest
           .map((l) => {
             const idx = l.indexOf(":");
@@ -310,7 +310,7 @@ function setSidebarLowBalanceBanner(text, style = "off") {
             )}</span><span class="cash-outlook-v">${escapeHtml(v)}</span></div>`;
           })
           .join("");
-        bodyHtml = `${sub}${kv}`;
+        bodyHtml = `${sub}<div class="cash-outlook-details cash-outlook-details--center">${kv}</div>`;
       } else
       if (b.startsWith("CENTER:")) {
         const amt = b.slice("CENTER:".length).trim();
@@ -379,7 +379,7 @@ function setSidebarHighBalanceBanner(text, style = "off") {
       } else
       if (lines.length >= 2 && lines.slice(1).some((l) => l.includes(":"))) {
         const [subhead, ...rest] = lines;
-        const sub = `<div class="cash-outlook-subhead">${escapeHtml(subhead)}</div>`;
+        const sub = `<span class="cash-outlook-subhead cash-outlook-subhead--inline">${escapeHtml(subhead)}</span>`;
         const kv = rest
           .map((l) => {
             const idx = l.indexOf(":");
@@ -391,7 +391,7 @@ function setSidebarHighBalanceBanner(text, style = "off") {
             )}</span><span class="cash-outlook-v">${escapeHtml(v)}</span></div>`;
           })
           .join("");
-        bodyHtml = `${sub}${kv}`;
+        bodyHtml = `${sub}<div class="cash-outlook-details cash-outlook-details--center">${kv}</div>`;
       } else
       if (b.startsWith("CENTER:")) {
         const amt = b.slice("CENTER:".length).trim();
