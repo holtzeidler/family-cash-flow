@@ -240,6 +240,15 @@ body.login-page .top-nav__inner--simple .app-title{
   justify-content: center;
   gap: 12px;
 }
+.app-footer__link{
+  color: rgba(255,255,255,0.92);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.app-footer__link:hover{
+  color: #fff;
+}
 .app-footer__brand{
   font-weight: 700;
   letter-spacing: 0.2px;
@@ -2000,6 +2009,47 @@ textarea::placeholder{
   border-color: rgba(0,0,0,0.08);
   background: rgba(0,0,0,0.02);
   font-size: 13px;
+}
+
+/* Login page accordion */
+.auth-section{
+  padding: 0;
+  overflow: hidden;
+}
+.auth-section__head{
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: none;
+  border-bottom: 1px solid rgba(0,0,0,0.08);
+  background: rgba(0,0,0,0.02);
+  padding: 14px 16px;
+  border-radius: 14px 14px 0 0;
+  cursor: pointer;
+  font: inherit;
+}
+.auth-section__title{
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(17, 24, 39, 0.70);
+}
+.auth-section__chev{
+  font-weight: 900;
+  opacity: 0.7;
+  transition: transform 160ms ease;
+}
+.auth-section--open .auth-section__chev{
+  transform: rotate(180deg);
+}
+.auth-section__body{
+  padding: 16px;
+}
+.auth-section__head + .auth-section__body{
+  border-radius: 0 0 14px 14px;
 }
 
 .calendar{

@@ -53,6 +53,56 @@ const registerCalloutEl = document.getElementById("registerCallout");
 const loginBtn = document.getElementById("loginBtn");
 const registerBtn = document.getElementById("registerBtn");
 
+function initContactUsLink() {
+  const a = document.getElementById("contactUsLink");
+  if (!a) return;
+  const user = "tracyapro";
+  const host = "hotmail.com";
+  const email = `${user}@${host}`;
+  const subject = "BalanceWhiz support";
+  a.addEventListener("click", (e) => {
+    e.preventDefault();
+    window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}`;
+  });
+}
+
+initContactUsLink();
+
+function setSectionOpen(sectionEl, toggleBtnEl, bodyEl, isOpen) {
+  if (!sectionEl || !toggleBtnEl || !bodyEl) return;
+  sectionEl.classList.toggle("auth-section--open", !!isOpen);
+  toggleBtnEl.setAttribute("aria-expanded", isOpen ? "true" : "false");
+  bodyEl.hidden = !isOpen;
+}
+
+function initAccordion() {
+  const loginSection = document.getElementById("loginSection");
+  const loginToggle = document.getElementById("loginSectionToggle");
+  const loginBody = document.getElementById("loginSectionBody");
+  const registerSection = document.getElementById("registerSection");
+  const registerToggle = document.getElementById("registerSectionToggle");
+  const registerBody = document.getElementById("registerSectionBody");
+
+  // Defaults: Login open, Create account closed.
+  setSectionOpen(loginSection, loginToggle, loginBody, true);
+  setSectionOpen(registerSection, registerToggle, registerBody, false);
+
+  if (loginToggle) {
+    loginToggle.addEventListener("click", () => {
+      setSectionOpen(loginSection, loginToggle, loginBody, true);
+      setSectionOpen(registerSection, registerToggle, registerBody, false);
+    });
+  }
+  if (registerToggle) {
+    registerToggle.addEventListener("click", () => {
+      setSectionOpen(loginSection, loginToggle, loginBody, false);
+      setSectionOpen(registerSection, registerToggle, registerBody, true);
+    });
+  }
+}
+
+initAccordion();
+
 function getClientOrigin() {
   return window.location.origin;
 }
