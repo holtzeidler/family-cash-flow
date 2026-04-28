@@ -43,8 +43,7 @@
               <div class="header-actions">
                 <!-- Kept for JS (active family); hidden — single-family workflow for now -->
                 <select id="familySelect" class="family-select-hidden" aria-hidden="true" tabindex="-1"></select>
-                <div class="pill" id="userPill">Loading...</div>
-                <button type="button" id="logoutBtn">Logout</button>
+                <div class="pill" id="userPill">Dashboard</div>
               </div>
             </div>
 
@@ -55,6 +54,8 @@
               </div>
               <div id="sidebarLowBalanceBanner" class="calendar-low-balance calendar-low-balance--sidebar" style="display: none" role="status"></div>
               <div id="sidebarHighBalanceBanner" class="calendar-low-balance calendar-low-balance--sidebar calendar-low-balance--high" style="display: none" role="status"></div>
+              <div id="lowBalanceResult" class="low-balance-result is-empty" style="display: none"></div>
+              <div id="lowBalanceErr" class="error"></div>
             </div>
 
             <div id="settingsSidebarNav" class="card settings-nav settings-nav--sidebar" hidden aria-label="Settings sections">

@@ -61,6 +61,18 @@ body{
   margin: 0 auto;
   padding: 0 24px;
 }
+.top-nav__inner--simple{
+  grid-template-columns: 1fr;
+  justify-items: center;
+}
+.top-nav__inner--simple .top-nav__title{
+  justify-content: center;
+  width: 100%;
+  padding-left: 0;
+}
+.top-nav__inner--simple .app-title{
+  text-align: center;
+}
 .top-nav__title{
   display: flex;
   align-items: center;
@@ -283,7 +295,7 @@ body{
   display: flex;
   flex-direction: row;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: center;
   gap: 12px;
   flex-wrap: wrap;
   flex-shrink: 0;
@@ -297,6 +309,8 @@ body{
   gap:12px;
   flex-wrap:wrap;
   flex-shrink: 0;
+  justify-content: center;
+  width: 100%;
 }
 
 .family-select-hidden{
@@ -1051,6 +1065,9 @@ button.nav-link:hover{
 /* Transaction View should match Calendar's white surface. */
 #transactionViewPanel .card{
   background: var(--cal-surface);
+}
+#transactionViewPanel{
+  padding-top: 14px;
 }
 
 /* Reports View should match Calendar's white surface. */

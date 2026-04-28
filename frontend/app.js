@@ -672,10 +672,15 @@ if (txAddRecurrence) {
 }
 updateTxAddRepeatingUi();
 
-document.getElementById("logoutBtn").addEventListener("click", async () => {
-  await api("/api/auth/logout", "POST");
-  window.location.href = "./login.html";
-});
+{
+  const logoutBtn = document.getElementById("logoutBtn");
+  if (logoutBtn) {
+    logoutBtn.addEventListener("click", async () => {
+      await api("/api/auth/logout", "POST");
+      window.location.href = "./login.html";
+    });
+  }
+}
 
 function setLowBalanceResult(contentHtml, isEmpty = false) {
   if (!lowBalanceResult) return;
@@ -2408,7 +2413,8 @@ async function loadMe() {
   const data = await api("/api/auth/me", "GET");
   if (!data?.user) throw new Error("Not logged in");
   state.user = data.user;
-  userPill.textContent = state.user.name ? state.user.name : state.user.email;
+  // Sidebar label should stay constant (not family/user-specific).
+  if (userPill) userPill.textContent = "Dashboard";
 }
 
 async function loadFamilies() {
