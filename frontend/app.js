@@ -793,7 +793,7 @@ async function refreshLowBalanceAlert() {
         const target = Number(minVal);
         if (Number.isFinite(bal) && bal <= 0) {
           setSidebarLowBalanceBanner(
-            `🚨 You’ll run out of cash on ${fmtMonthDay(lowHit.date)}\nBalance:${fmtMoney0SignedDollar(bal)}`,
+            `🚨 You’ll run out of cash on ${fmtMonthDay(lowHit.date)}\nCENTER:Balance: ${fmtMoney0SignedDollar(bal)}`,
             "danger"
           );
         } else {

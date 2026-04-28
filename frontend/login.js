@@ -36,14 +36,10 @@ async function request(path, method, body) {
   }
 }
 
-function setErr(el, msg) {
-  el.textContent = msg;
-  el.style.display = msg ? "block" : "none";
-}
-
-function setInfo(el, msg, mode = "pending") {
+function setCallout(el, msg, mode = "pending") {
+  if (!el) return;
   el.textContent = msg || "";
-  el.className = mode ? `info ${mode}` : "info";
+  el.className = mode ? `callout callout--${mode}` : "callout";
   el.style.display = msg ? "block" : "none";
 }
 
@@ -51,11 +47,9 @@ function goApp() {
   window.location.href = "./";
 }
 
-const errEl = document.getElementById("err");
-const errEl2 = document.getElementById("err2");
-const loginStatusEl = document.getElementById("loginStatus");
-const registerStatusEl = document.getElementById("registerStatus");
-const diagEl = document.getElementById("diag");
+const loginCalloutEl = document.getElementById("loginCallout");
+const loginDiagCalloutEl = document.getElementById("loginDiagCallout");
+const registerCalloutEl = document.getElementById("registerCallout");
 const loginBtn = document.getElementById("loginBtn");
 const registerBtn = document.getElementById("registerBtn");
 
@@ -85,7 +79,7 @@ async function renderDiagnostics() {
     `Client: API_BASE=${apiBase} | Origin=${origin} | CORS must allow ${origin}`;
   const srv = await fetchServerPublicConfig();
   msg += formatServerDiag(srv);
-  setInfo(diagEl, msg, srv ? "ok" : "pending");
+  setCallout(loginDiagCalloutEl, msg, srv ? "ok" : "pending");
 }
 
 function setBusy(isBusy) {
@@ -112,7 +106,7 @@ async function verifySessionWithProgress(targetInfoEl) {
     if (attempts[i] > 0) {
       await new Promise((resolve) => setTimeout(resolve, attempts[i]));
     }
-    setInfo(targetInfoEl, `Login accepted. Verifying session cookie (${i + 1}/${attempts.length})...`, "pending");
+    setCallout(targetInfoEl, `Login accepted. Verifying session cookie (${i + 1}/${attempts.length})...`, "pending");
     const me = await request("/api/auth/me", "GET");
     if (me.ok && me.data && me.data.user) {
       return { ok: true, elapsedMs: me.elapsedMs };
@@ -140,40 +134,36 @@ function messageFromFailure(resp, fallback) {
 if (location.hostname.endsWith("github.io") && !getApiBase()) {
   const msg =
     "This site was built without API_BASE. Repo > Settings > Secrets > Actions > set API_BASE to your Render API URL, then re-run Deploy frontend to GitHub Pages.";
-  setErr(errEl, msg);
-  setErr(errEl2, msg);
+  setCallout(loginCalloutEl, msg, "error");
+  setCallout(registerCalloutEl, msg, "error");
 } else {
   void renderDiagnostics();
 }
 
 loginBtn.addEventListener("click", async () => {
   setBusy(true);
-  setInfo(loginStatusEl, "Contacting API...", "pending");
-  setErr(errEl, "");
+  setCallout(loginCalloutEl, "Contacting API...", "pending");
   try {
     const email = document.getElementById("email").value.trim();
     const password = document.getElementById("password").value;
     const loginResp = await request("/api/auth/login", "POST", { email, password });
     if (!loginResp.ok) {
-      setInfo(loginStatusEl, "");
-      setErr(errEl, messageFromFailure(loginResp, "Login failed"));
+      setCallout(loginCalloutEl, messageFromFailure(loginResp, "Login failed"), "error");
       return;
     }
 
-    const check = await verifySessionWithProgress(loginStatusEl);
+    const check = await verifySessionWithProgress(loginCalloutEl);
     if (!check.ok) {
-      setInfo(loginStatusEl, "");
       const srv = await fetchServerPublicConfig();
       const base =
         "Login succeeded, but /api/auth/me did not see your session cookie. For GitHub Pages + Render, ENV must be production (SameSite=None; Secure).";
-      setErr(errEl, base + formatServerDiag(srv));
+      setCallout(loginCalloutEl, base + formatServerDiag(srv), "error");
       return;
     }
-    setInfo(loginStatusEl, "Session ready. Opening app...", "ok");
+    setCallout(loginCalloutEl, "Session ready. Opening app...", "ok");
     goApp();
   } catch (e) {
-    setInfo(loginStatusEl, "");
-    setErr(errEl, (e && e.message) || "Login failed");
+    setCallout(loginCalloutEl, (e && e.message) || "Login failed", "error");
   } finally {
     setBusy(false);
   }
@@ -181,32 +171,28 @@ loginBtn.addEventListener("click", async () => {
 
 registerBtn.addEventListener("click", async () => {
   setBusy(true);
-  setInfo(registerStatusEl, "Creating account...", "pending");
-  setErr(errEl2, "");
+  setCallout(registerCalloutEl, "Creating account...", "pending");
   try {
     const name = document.getElementById("regName").value.trim() || null;
     const email = document.getElementById("regEmail").value.trim();
     const password = document.getElementById("regPassword").value;
     const regResp = await request("/api/auth/register", "POST", { name, email, password });
     if (!regResp.ok) {
-      setInfo(registerStatusEl, "");
-      setErr(errEl2, messageFromFailure(regResp, "Registration failed"));
+      setCallout(registerCalloutEl, messageFromFailure(regResp, "Registration failed"), "error");
       return;
     }
-    const check = await verifySessionWithProgress(registerStatusEl);
+    const check = await verifySessionWithProgress(registerCalloutEl);
     if (!check.ok) {
-      setInfo(registerStatusEl, "");
       const srv = await fetchServerPublicConfig();
       const base =
         "Account created, but /api/auth/me did not see your session cookie. Set Render ENV=production for cross-site cookies.";
-      setErr(errEl2, base + formatServerDiag(srv));
+      setCallout(registerCalloutEl, base + formatServerDiag(srv), "error");
       return;
     }
-    setInfo(registerStatusEl, "Account created and session ready. Opening app...", "ok");
+    setCallout(registerCalloutEl, "Account created and session ready. Opening app...", "ok");
     goApp();
   } catch (e) {
-    setInfo(registerStatusEl, "");
-    setErr(errEl2, (e && e.message) || "Registration failed");
+    setCallout(registerCalloutEl, (e && e.message) || "Registration failed", "error");
   } finally {
     setBusy(false);
   }

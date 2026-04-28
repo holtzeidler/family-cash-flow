@@ -24,6 +24,14 @@ body{
   overflow-x: hidden;
 }
 
+/* Login page: forest green backdrop (callouts stay grey) */
+body.login-page{
+  background: var(--accent);
+}
+body.login-page .container{
+  background: transparent;
+}
+
 /* Ensure the HTML `hidden` attribute always wins (UA defaults can be overridden by our layout rules). */
 [hidden]{
   display: none !important;
@@ -809,6 +817,9 @@ button.nav-link:hover{
 }
 .cash-outlook-line--center{
   justify-content: center;
+}
+.calendar-low-balance--sidebar .cash-outlook-line--center{
+  margin-top: 6px;
 }
 .cash-outlook-subhead{
   font-size: 15px;
@@ -1940,6 +1951,37 @@ textarea::placeholder{
   color: #d9ffe8;
   border-color: rgba(76,209,123,0.35);
   background: rgba(76,209,123,0.10);
+}
+
+.callout{
+  margin-top: 12px;
+  border-radius: 14px;
+  padding: 18px 18px;
+  border: 1px solid rgba(0,0,0,0.10);
+  background: rgba(0,0,0,0.035);
+  color: var(--text);
+  font-size: 16px;
+  line-height: 1.45;
+  display: none;
+}
+.callout--pending{
+  border-color: color-mix(in srgb, var(--accent) 26%, rgba(0,0,0,0.10));
+  background: color-mix(in srgb, var(--accent) 10%, rgba(0,0,0,0.03));
+}
+.callout--ok{
+  border-color: rgba(76,209,123,0.35);
+  background: rgba(76,209,123,0.10);
+}
+.callout--error{
+  color: #7f1d1d;
+  border-color: rgba(255,107,107,0.35);
+  background: rgba(255,107,107,0.14);
+}
+.callout--muted{
+  color: var(--muted);
+  border-color: rgba(0,0,0,0.08);
+  background: rgba(0,0,0,0.02);
+  font-size: 13px;
 }
 
 .calendar{
