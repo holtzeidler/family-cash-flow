@@ -1841,6 +1841,9 @@ textarea::placeholder{
   background: var(--card);
   color: var(--text);
 }
+.cat-group-name-input[readonly]{
+  cursor: pointer;
+}
 .cat-group-body{
   display: grid;
   grid-template-columns: minmax(0, 1fr);

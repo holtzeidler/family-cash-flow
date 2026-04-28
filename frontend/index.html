@@ -852,6 +852,35 @@
       </div>
     </div>
 
+    <div id="catEditModal" class="modal-overlay" aria-hidden="true">
+      <div class="modal" role="dialog" aria-labelledby="catEditTitle" aria-modal="true">
+        <h3 id="catEditTitle">Edit</h3>
+        <div id="catEditErr" class="error"></div>
+        <input id="catEditKind" type="hidden" value="" />
+        <input id="catEditId" type="hidden" value="" />
+
+        <div class="row">
+          <div>
+            <label for="catEditName">Name</label>
+            <input id="catEditName" type="text" />
+          </div>
+          <div id="catEditGroupWrap">
+            <label for="catEditGroupId">Group</label>
+            <select id="catEditGroupId"></select>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <div class="row two">
+            <button type="button" id="catEditSave">Save</button>
+            <button type="button" id="catEditCancel" class="secondary">Cancel</button>
+          </div>
+          <div style="height:10px;"></div>
+          <button type="button" id="catEditDelete" class="danger" style="width:100%;">Delete</button>
+        </div>
+      </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
     <script src="./app.js?v=167"></script>
   </body>

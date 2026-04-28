@@ -1431,6 +1431,41 @@ def update_category(
     return _category_out_from_model(cat=cat, group_name=gname)
 
 
+@app.delete("/api/families/{family_id}/categories/{category_id}")
+def delete_category(
+    family_id: int,
+    category_id: int,
+    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    require_family_member(db=db, family_id=family_id, user_id=user_id)
+
+    cat = db.execute(select(Category).where(Category.id == category_id, Category.family_id == family_id)).scalar_one_or_none()
+    if cat is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Category not found")
+
+    # Leave existing transactions uncategorized instead of failing FK constraints.
+    db.execute(
+        update(Transaction)
+        .where(Transaction.family_id == family_id, Transaction.category_id == category_id)
+        .values(category_id=None)
+    )
+    db.execute(
+        update(ExpectedTransaction)
+        .where(ExpectedTransaction.family_id == family_id, ExpectedTransaction.category_id == category_id)
+        .values(category_id=None)
+    )
+    db.execute(
+        update(ExpectedTransactionOverride)
+        .where(ExpectedTransactionOverride.family_id == family_id, ExpectedTransactionOverride.category_id == category_id)
+        .values(category_id=None)
+    )
+    db.execute(delete(Category).where(Category.id == category_id, Category.family_id == family_id))
+    db.commit()
+    return {"ok": True}
+
+
 @app.post("/api/families/{family_id}/categories/reorder", response_model=list[CategoryOut])
 def reorder_categories(
     family_id: int,
@@ -1498,6 +1533,55 @@ def create_category_group(
     db.commit()
     db.refresh(grp)
     return CategoryGroupOut(id=int(grp.id), name=str(grp.name), sort_order=int(grp.sort_order or 0))
+
+
+@app.delete("/api/families/{family_id}/category-groups/{group_id}")
+def delete_category_group(
+    family_id: int,
+    group_id: int,
+    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    require_family_member(db=db, family_id=family_id, user_id=user_id)
+
+    grp = db.execute(select(CategoryGroup).where(CategoryGroup.id == group_id, CategoryGroup.family_id == family_id)).scalar_one_or_none()
+    if grp is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Group not found")
+
+    # Find another group to move categories into.
+    target = (
+        db.execute(
+            select(CategoryGroup)
+            .where(CategoryGroup.family_id == family_id, CategoryGroup.id != group_id)
+            .order_by(CategoryGroup.sort_order.asc(), CategoryGroup.id.asc())
+            .limit(1)
+        ).scalar_one_or_none()
+    )
+    if target is None:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Cannot delete the last remaining group")
+
+    # Move categories to target group (append after existing).
+    max_sort = int(
+        db.execute(
+            select(func.coalesce(func.max(Category.sort_order), 0)).where(
+                Category.family_id == family_id, Category.group_id == int(target.id)
+            )
+        ).scalar_one()
+        or 0
+    )
+    moving = list(
+        db.execute(select(Category).where(Category.family_id == family_id, Category.group_id == group_id).order_by(Category.sort_order.asc(), Category.id.asc()))
+        .scalars()
+        .all()
+    )
+    for i, c in enumerate(moving):
+        c.group_id = int(target.id)
+        c.sort_order = max_sort + 1 + i
+
+    db.execute(delete(CategoryGroup).where(CategoryGroup.id == group_id, CategoryGroup.family_id == family_id))
+    db.commit()
+    return {"ok": True}
 
 
 @app.post("/api/families/{family_id}/categories/seed-defaults", response_model=CategoriesTreeOut)

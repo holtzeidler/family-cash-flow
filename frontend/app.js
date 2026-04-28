@@ -250,6 +250,144 @@ const newCategoryGroupId = document.getElementById("newCategoryGroupId");
 const seedDefaultCategoriesBtn = document.getElementById("seedDefaultCategoriesBtn");
 const addCategoryGroupBtn = document.getElementById("addCategoryGroupBtn");
 
+// Categories edit modal
+const catEditModal = document.getElementById("catEditModal");
+const catEditErr = document.getElementById("catEditErr");
+const catEditTitle = document.getElementById("catEditTitle");
+const catEditKind = document.getElementById("catEditKind");
+const catEditId = document.getElementById("catEditId");
+const catEditName = document.getElementById("catEditName");
+const catEditGroupWrap = document.getElementById("catEditGroupWrap");
+const catEditGroupId = document.getElementById("catEditGroupId");
+const catEditSave = document.getElementById("catEditSave");
+const catEditCancel = document.getElementById("catEditCancel");
+const catEditDelete = document.getElementById("catEditDelete");
+
+function openCatEditModal({ kind, id, name, groupId }) {
+  if (!catEditModal || !catEditKind || !catEditId || !catEditName) return;
+  show(catEditErr, "");
+  catEditKind.value = String(kind || "");
+  catEditId.value = String(id ?? "");
+  catEditName.value = String(name ?? "");
+
+  const isCategory = kind === "category";
+  if (catEditTitle) catEditTitle.textContent = isCategory ? "Edit category" : "Edit group";
+  if (catEditGroupWrap) catEditGroupWrap.style.display = isCategory ? "block" : "none";
+  if (catEditDelete) catEditDelete.style.display = id != null && id !== "" ? "block" : "none";
+
+  if (isCategory && catEditGroupId) {
+    catEditGroupId.innerHTML = "";
+    for (const g of state.categoryTree?.groups || []) {
+      const o = document.createElement("option");
+      o.value = String(g.id);
+      o.textContent = String(g.name);
+      catEditGroupId.appendChild(o);
+    }
+    if (groupId != null && groupId !== "" && catEditGroupId.querySelector(`option[value="${String(groupId)}"]`)) {
+      catEditGroupId.value = String(groupId);
+    }
+  }
+
+  catEditModal.classList.add("modal-overlay--open");
+  catEditModal.setAttribute("aria-hidden", "false");
+  // Focus the name field for quick edit.
+  try {
+    catEditName.focus();
+    catEditName.select();
+  } catch (_) {}
+}
+
+function closeCatEditModal() {
+  if (!catEditModal) return;
+  catEditModal.classList.remove("modal-overlay--open");
+  catEditModal.setAttribute("aria-hidden", "true");
+}
+
+if (catEditCancel) catEditCancel.addEventListener("click", () => closeCatEditModal());
+if (catEditModal) {
+  catEditModal.addEventListener("click", (e) => {
+    if (e.target === catEditModal) closeCatEditModal();
+  });
+}
+
+if (catEditSave) {
+  catEditSave.addEventListener("click", async () => {
+    try {
+      show(catEditErr, "");
+      if (!state.activeFamilyId) throw new Error("Choose a family first");
+      const kind = String(catEditKind?.value || "");
+      const idRaw = String(catEditId?.value || "").trim();
+      const id = idRaw ? Number(idRaw) : null;
+      const name = String(catEditName?.value || "").trim();
+      if (!name) throw new Error("Name is required");
+
+      if (kind === "group") {
+        // Update DOM group name input, then persist via existing tree layout API.
+        const gEl = categoriesTree?.querySelector(`.cat-group[data-group-id="${String(id)}"]`);
+        const inp = gEl ? gEl.querySelector("[data-group-name]") : null;
+        if (inp) inp.value = name;
+        await persistCategoryTreeFromDom();
+        closeCatEditModal();
+        return;
+      }
+
+      if (kind === "category") {
+        const groupId = catEditGroupId ? Number(catEditGroupId.value) : null;
+        if (!id) throw new Error("Invalid category");
+        await api(`/api/families/${state.activeFamilyId}/categories/${id}`, "PUT", { name, group_id: groupId });
+        // Refresh categories + dependent UI.
+        await loadCategories();
+        await loadMonthAndCalendar();
+        closeCatEditModal();
+        return;
+      }
+
+      throw new Error("Unknown edit type");
+    } catch (e) {
+      show(catEditErr, e.message || "Failed to save");
+    }
+  });
+}
+
+if (catEditDelete) {
+  catEditDelete.addEventListener("click", async () => {
+    try {
+      show(catEditErr, "");
+      if (!state.activeFamilyId) throw new Error("Choose a family first");
+      const kind = String(catEditKind?.value || "");
+      const idRaw = String(catEditId?.value || "").trim();
+      const id = idRaw ? Number(idRaw) : null;
+      if (!id) throw new Error("Invalid selection");
+
+      if (kind === "category") {
+        const ok = window.confirm("Delete this category? Any transactions using it will be left uncategorized.");
+        if (!ok) return;
+        await api(`/api/families/${state.activeFamilyId}/categories/${id}`, "DELETE");
+        await loadCategories();
+        await loadMonthAndCalendar();
+        closeCatEditModal();
+        return;
+      }
+
+      if (kind === "group") {
+        const ok = window.confirm(
+          "Delete this group? Its categories will be moved to another group."
+        );
+        if (!ok) return;
+        await api(`/api/families/${state.activeFamilyId}/category-groups/${id}`, "DELETE");
+        await loadCategories();
+        await loadMonthAndCalendar();
+        closeCatEditModal();
+        return;
+      }
+
+      throw new Error("Unknown edit type");
+    } catch (e) {
+      show(catEditErr, e.message || "Failed to delete");
+    }
+  });
+}
+
 // Balance threshold alerts (settings + calendar sidebar)
 const balanceThresholdMin = document.getElementById("balanceThresholdMin");
 const balanceThresholdMax = document.getElementById("balanceThresholdMax");
@@ -2811,7 +2949,7 @@ function renderCategoriesGrid(tree) {
   if (!groups.length) {
     const empty = document.createElement("div");
     empty.className = "pill";
-    empty.textContent = "No category groups yet. Use “Add group” or “Load default categories”.";
+    empty.textContent = "No category groups yet. Use “Add group”.";
     categoriesTree.appendChild(empty);
     return;
   }
@@ -2834,6 +2972,15 @@ function renderCategoriesGrid(tree) {
     nameEl.title = categoryDisplayLabel(c);
 
     row.appendChild(nameEl);
+
+    nameEl.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      // Find the group from DOM ancestry.
+      const groupEl = row.closest(".cat-group");
+      const gid = groupEl && groupEl.dataset && groupEl.dataset.groupId ? Number(groupEl.dataset.groupId) : null;
+      openCatEditModal({ kind: "category", id: Number(c.id), name: String(c.name), groupId: gid });
+    });
 
     row.addEventListener("dragstart", (e) => {
       try {
@@ -2893,6 +3040,13 @@ function renderCategoriesGrid(tree) {
     nameInput.className = "cat-group-name-input";
     nameInput.dataset.groupName = "1";
     nameInput.value = g.name;
+    nameInput.readOnly = true;
+    nameInput.title = "Click to edit group name";
+    nameInput.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      openCatEditModal({ kind: "group", id: Number(g.id), name: String(nameInput.value || "") });
+    });
     nameInput.addEventListener("blur", () => scheduleCategoryTreePersist());
 
     head.appendChild(grip);
