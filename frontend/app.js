@@ -229,6 +229,12 @@ const monthInput = document.getElementById("monthInput");
 const totalsEl = document.getElementById("totals");
 const txList = document.getElementById("txList");
 const txListMain = document.getElementById("txListMain");
+const uncatTxErr = document.getElementById("uncatTxErr");
+const uncatTxList = document.getElementById("uncatTxList");
+const uncatTxSaveBtn = document.getElementById("uncatTxSaveBtn");
+
+/** @type {Map<number, number>} txId -> categoryId */
+const uncatPendingCategoryByTxId = new Map();
 
 const categoriesTree = document.getElementById("categoriesTree");
 const newCategoryGroupId = document.getElementById("newCategoryGroupId");
@@ -2325,6 +2331,62 @@ if (upcomingRecurrenceFilter) upcomingRecurrenceFilter.addEventListener("change"
 if (upcomingStartDate) upcomingStartDate.addEventListener("change", () => scheduleUpcomingRefetchAndRender());
 if (upcomingEndDate) upcomingEndDate.addEventListener("change", () => scheduleUpcomingRefetchAndRender());
 
+async function saveUncategorizedAssignments() {
+  try {
+    if (uncatTxErr) show(uncatTxErr, "");
+    if (!state.activeFamilyId) throw new Error("Choose a family first");
+    if (!uncatPendingCategoryByTxId.size) return;
+
+    if (uncatTxSaveBtn) {
+      uncatTxSaveBtn.disabled = true;
+      uncatTxSaveBtn.textContent = "Saving…";
+    }
+
+    const byId = new Map();
+    for (const t of state.upcomingActualItems || []) {
+      const id = Number(t && t.id);
+      if (Number.isFinite(id)) byId.set(id, t);
+    }
+
+    const ops = [];
+    for (const [txId, catId] of uncatPendingCategoryByTxId.entries()) {
+      const tx = byId.get(txId);
+      if (!tx) continue;
+      ops.push({ txId, catId, tx });
+    }
+
+    for (const op of ops) {
+      const tx = op.tx;
+      await api(`/api/families/${state.activeFamilyId}/transactions/${op.txId}`, "PUT", {
+        date: tx.date,
+        kind: String(tx.kind || "expense"),
+        amount: Number(tx.amount),
+        description: String(tx.description || "").trim(),
+        notes: tx.notes && String(tx.notes).trim() ? String(tx.notes).trim() : null,
+        category_id: Number(op.catId),
+        reimbursable: !!tx.reimbursable,
+      });
+    }
+
+    uncatPendingCategoryByTxId.clear();
+    await loadUpcomingTransactionsPanel();
+    renderUpcomingTransactionsFiltered();
+  } catch (e) {
+    if (uncatTxErr) show(uncatTxErr, e.message || "Failed to save");
+  } finally {
+    if (uncatTxSaveBtn) {
+      uncatTxSaveBtn.textContent = "Save";
+      uncatTxSaveBtn.disabled = uncatPendingCategoryByTxId.size === 0;
+    }
+  }
+}
+
+if (uncatTxSaveBtn) {
+  uncatTxSaveBtn.addEventListener("click", () => {
+    void saveUncategorizedAssignments();
+  });
+}
+
 runProjectionBtn.addEventListener("click", async () => {
   try {
     show(projectionErr, "");
@@ -2577,11 +2639,22 @@ async function saveExpectedSeriesFromInstance() {
     if (!Number.isFinite(n) || n < 1 || n > 31) throw new Error("Second day of month must be between 1 and 31");
     const startIso = normalizeIsoDate(meta.start_date || "") || meta.start_date || "";
     const startDom = startIso && String(startIso).length >= 10 ? Number(String(startIso).slice(8, 10)) : NaN;
-    // Validate against the series start day-of-month (not the current occurrence day).
-    if (Number.isFinite(startDom) && n === startDom) {
+    // When applying from a specific occurrence, the backend treats that occurrence date as the
+    // new series start. For twice-monthly series, the "second day" must differ from the *apply*
+    // occurrence day. If we're applying from the existing second day, automatically swap days
+    // so the schedule stays the same (just flips which day is considered "start" vs "second").
+    const occDom = occRaw ? Number(String(occRaw).slice(8, 10)) : NaN;
+    if (Number.isFinite(occDom) && n === occDom) {
+      if (Number.isFinite(startDom) && startDom !== occDom) {
+        secondDayVal = startDom;
+      } else {
+        throw new Error("Second day of month must be different than the selected occurrence day");
+      }
+    } else if (Number.isFinite(startDom) && n === startDom) {
       throw new Error("Second day of month must be different than the start date’s day");
+    } else {
+      secondDayVal = n;
     }
-    secondDayVal = n;
   } else {
     secondDayVal = null;
   }
@@ -4125,6 +4198,100 @@ function renderUpcomingTransactionsFiltered() {
     el.addEventListener("click", () => openExpectedEditModal(tx, { nextOccurrenceIso: nextIso }));
     txListMain.appendChild(el);
   }
+
+  renderUncategorizedTransactions();
+}
+
+function renderUncategorizedTransactions() {
+  if (!uncatTxList) return;
+
+  const items = (state.upcomingActualItems || []).filter((t) => {
+    const cid = t && t.category_id;
+    return cid == null || cid === "" || Number(cid) === 0;
+  });
+
+  uncatTxList.innerHTML = "";
+  if (!items.length) {
+    const empty = document.createElement("div");
+    empty.className = "pill";
+    empty.textContent = "No uncategorized transactions in this range.";
+    uncatTxList.appendChild(empty);
+    if (uncatTxSaveBtn) uncatTxSaveBtn.disabled = true;
+    if (uncatTxErr) show(uncatTxErr, "");
+    return;
+  }
+
+  // Clear pending selections that no longer exist.
+  const ids = new Set(items.map((t) => Number(t.id)).filter((n) => Number.isFinite(n)));
+  for (const k of [...uncatPendingCategoryByTxId.keys()]) {
+    if (!ids.has(k)) uncatPendingCategoryByTxId.delete(k);
+  }
+
+  if (uncatTxSaveBtn) uncatTxSaveBtn.disabled = uncatPendingCategoryByTxId.size === 0;
+
+  const cats = state.categories || [];
+  const sortedCats = [...cats].sort((a, b) => String(a?.name || "").localeCompare(String(b?.name || "")));
+
+  for (const tx of items) {
+    const id = Number(tx && tx.id);
+    const row = document.createElement("div");
+    row.className = "item uncat-item";
+
+    const left = document.createElement("div");
+    left.className = "left";
+    const desc = document.createElement("div");
+    desc.className = `desc ${kindFgClass(tx.kind)}`;
+    desc.textContent = (tx.description || "(no description)").trim() || "(no description)";
+
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    meta.textContent = fmtDateMDY(tx.date || "");
+    left.appendChild(desc);
+    left.appendChild(meta);
+
+    const right = document.createElement("div");
+    right.className = "uncat-right";
+
+    const sel = document.createElement("select");
+    sel.className = "uncat-cat-select";
+    sel.setAttribute("aria-label", "Assign category");
+
+    {
+      const opt0 = document.createElement("option");
+      opt0.value = "";
+      opt0.textContent = "Select category…";
+      sel.appendChild(opt0);
+    }
+
+    for (const c of sortedCats) {
+      const opt = document.createElement("option");
+      opt.value = String(c.id);
+      opt.textContent = String(c.name || "").trim() || "(unnamed)";
+      sel.appendChild(opt);
+    }
+
+    const pending = Number.isFinite(id) ? uncatPendingCategoryByTxId.get(id) : null;
+    if (pending != null && pending !== "") sel.value = String(pending);
+    sel.addEventListener("change", () => {
+      const v = sel.value ? Number(sel.value) : null;
+      if (Number.isFinite(id)) {
+        if (v != null && Number.isFinite(v) && v > 0) uncatPendingCategoryByTxId.set(id, v);
+        else uncatPendingCategoryByTxId.delete(id);
+      }
+      if (uncatTxSaveBtn) uncatTxSaveBtn.disabled = uncatPendingCategoryByTxId.size === 0;
+    });
+
+    const amt = document.createElement("div");
+    amt.className = `amt ${tx.kind === "income" ? "income" : "expense"}`;
+    amt.textContent = `${tx.kind === "income" ? "+" : "-"}$${fmtMoney(tx.amount)}`;
+
+    right.appendChild(sel);
+    right.appendChild(amt);
+
+    row.appendChild(left);
+    row.appendChild(right);
+    uncatTxList.appendChild(row);
+  }
 }
 
 function renderRecurringFilteredList() {
@@ -5049,7 +5216,6 @@ function renderCalendar() {
     }
   }
   const MAX_CAL_TX_LINES = 3;
-  let prevEndKey = null; // stringified cents for comparison
   for (let i = 0; i < totalCells; i++) {
     const cell = document.createElement("div");
     cell.className = "cal-cell";
@@ -5201,12 +5367,8 @@ function renderCalendar() {
 
     if (dayBal && metricsEl) {
       const endNum = Number(dayBal.end ?? 0);
-      const endKey = Number.isFinite(endNum) ? (Math.round(endNum * 100) / 100).toFixed(2) : null;
-      const sameAsPrev = !!(endKey && prevEndKey && endKey === prevEndKey);
       const negClass = Number.isFinite(endNum) && endNum < 0 ? " is-negative" : "";
-      const mutedClass = sameAsPrev ? " is-muted" : "";
-      metricsEl.innerHTML = `<div class="cal-stat cal-balance${negClass}${mutedClass}">$${fmtMoneyParens(endNum)}</div>`;
-      if (endKey) prevEndKey = endKey;
+      metricsEl.innerHTML = `<div class="cal-stat cal-balance${negClass}">$${fmtMoneyParens(endNum)}</div>`;
     }
 
     wrapper.appendChild(cell);

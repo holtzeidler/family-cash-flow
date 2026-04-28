@@ -944,16 +944,25 @@ button.nav-link:hover{
   color: var(--muted);
   line-height: 1.4;
 }
+.balance-threshold-box{
+  /* Nudge thresholds block right (requested) */
+  padding-left: 12px;
+}
 .threshold-input{
-  /* 30% narrower than original 180px */
-  flex: 0 0 126px;
+  /* The money-input sits inside a non-flex field wrapper, so use width here. */
+  width: 50%;
+  max-width: 320px;
 }
 .threshold-input input{
   width: 100%;
 }
 
 @media (max-width: 860px){
-  .threshold-input{ flex-basis: 150px; }
+  .balance-threshold-box{ padding-left: 8px; }
+  .threshold-input{
+    width: 100%;
+    max-width: none;
+  }
 }
 
 /* Settings → Account Details: increase font size 10% */
@@ -3061,6 +3070,20 @@ body.contact-page .app-footer{
 }
 .expected-remove-btn--strong:hover{
   filter: brightness(1.05);
+}
+
+/* Transaction View: Uncategorized Transactions */
+.uncat-item{
+  align-items: center;
+}
+.uncat-right{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.uncat-cat-select{
+  min-width: 220px;
+  max-width: 340px;
 }
 
 /* Collapsible projection panel */

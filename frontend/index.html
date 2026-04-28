@@ -351,34 +351,48 @@
 
             <div style="height: 14px"></div>
 
+            <div class="card sidebar-section" data-sidebar-key="uncategorizedTransactions">
+              <div class="sidebar-section-head">
+                <h2>Uncategorized Transactions</h2>
+              </div>
+              <div class="sidebar-section-body">
+                <div id="uncatTxErr" class="error"></div>
+                <div class="list" id="uncatTxList" aria-live="polite"></div>
+                <div style="height: 10px"></div>
+                <button type="button" id="uncatTxSaveBtn">Save</button>
+              </div>
+            </div>
+
           </div>
 
           <div id="settingsViewPanel" class="app-view" hidden>
             <div class="settings-layout settings-layout--sidebar-nav">
               <div class="settings-content card">
                 <div class="settings-pane is-active" data-settings-pane="accountDetails">
-                  <div class="form-row-h">
-                    <div class="form-row-h__label"><label for="balanceThresholdMin">Minimum balance</label></div>
-                    <div class="form-row-h__field">
-                      <div class="money-input threshold-input">
-                        <span class="money-input__prefix" aria-hidden="true">$</span>
-                        <input id="balanceThresholdMin" type="number" step="0.01" placeholder="e.g. 1000" />
+                  <div class="balance-threshold-box" aria-label="Balance thresholds">
+                    <div class="form-row-h">
+                      <div class="form-row-h__label"><label for="balanceThresholdMin">Minimum balance</label></div>
+                      <div class="form-row-h__field">
+                        <div class="money-input threshold-input">
+                          <span class="money-input__prefix" aria-hidden="true">$</span>
+                          <input id="balanceThresholdMin" type="number" step="0.01" placeholder="e.g. 1000" />
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div class="tx-add-vspace" aria-hidden="true"></div>
-                  <div class="form-row-h">
-                    <div class="form-row-h__label"><label for="balanceThresholdMax">Maximum balance</label></div>
-                    <div class="form-row-h__field">
-                      <div class="money-input threshold-input">
-                        <span class="money-input__prefix" aria-hidden="true">$</span>
-                        <input id="balanceThresholdMax" type="number" step="0.01" placeholder="e.g. 50000" />
+                    <div class="tx-add-vspace" aria-hidden="true"></div>
+                    <div class="form-row-h">
+                      <div class="form-row-h__label"><label for="balanceThresholdMax">Maximum balance</label></div>
+                      <div class="form-row-h__field">
+                        <div class="money-input threshold-input">
+                          <span class="money-input__prefix" aria-hidden="true">$</span>
+                          <input id="balanceThresholdMax" type="number" step="0.01" placeholder="e.g. 50000" />
+                        </div>
                       </div>
                     </div>
+                    <p class="balance-threshold-hint">
+                      Leave a field blank to disable that alert. The calendar sidebar shows the next projected crossing for each threshold you set.
+                    </p>
                   </div>
-                  <p class="balance-threshold-hint">
-                    Leave a field blank to disable that alert. The calendar sidebar shows the next projected crossing for each threshold you set.
-                  </p>
                 </div>
 
                 <div class="settings-pane" data-settings-pane="accounts" hidden>
