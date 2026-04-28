@@ -239,6 +239,118 @@ const newGroupName = document.getElementById("newGroupName");
 const saveGroupBtn = document.getElementById("saveGroupBtn");
 const cancelGroupBtn = document.getElementById("cancelGroupBtn");
 
+// Category color pickers (tx add/edit)
+const txAddCategoryColorRow = document.getElementById("txAddCategoryColorRow");
+const txAddCategoryColorSwatches = document.getElementById("txAddCategoryColorSwatches");
+const txAddCategoryColorClear = document.getElementById("txAddCategoryColorClear");
+const txEditCategoryColorRow = document.getElementById("txEditCategoryColorRow");
+const txEditCategoryColorSwatches = document.getElementById("txEditCategoryColorSwatches");
+const txEditCategoryColorClear = document.getElementById("txEditCategoryColorClear");
+
+const CATEGORY_COLOR_PALETTE = [
+  "#98A62B", // olive
+  "#40E0FF", // cyan
+  "#F2C14E", // gold
+  "#00A676", // teal
+  "#1E88FF", // blue
+  "#FF9800", // orange
+  "#9C27B0", // purple
+  "#F44336", // red
+  "#FFEB3B", // yellow
+  "#00BCD4", // aqua
+  "#9E9E9E", // gray
+  "#7A2E2E", // maroon
+  "#8FB3C8", // slate
+  "#C39BE3", // lavender
+  "#000000", // black
+  "#4CAF50", // green
+];
+
+async function setCategoryBgColor(categoryId, bgCssOrNull) {
+  if (!state.activeFamilyId) throw new Error("Choose a family first");
+  const cid = Number(categoryId);
+  if (!cid) throw new Error("Choose a category first");
+  const bg = bgCssOrNull && String(bgCssOrNull).trim() ? String(bgCssOrNull).trim() : null;
+  const fg = bg ? accessibleTextOnBackground(bg) : null;
+  await api(`/api/families/${state.activeFamilyId}/categories/${cid}`, "PUT", { bg_color: bg, fg_color: fg });
+  await loadCategories();
+  // Calendar + reports chips depend on category styling.
+  try {
+    await loadMonthAndCalendar();
+  } catch (_) {}
+  renderCalendar();
+}
+
+function renderCategoryColorPicker({ rowEl, swatchesEl, clearBtn, getCategoryId }) {
+  if (!rowEl || !swatchesEl) return;
+
+  function refresh() {
+    const cid = getCategoryId();
+    if (!cid) {
+      rowEl.hidden = true;
+      return;
+    }
+    rowEl.hidden = false;
+    const st = categoryStyleFromId(cid);
+    const activeBg = st && st.bg ? String(st.bg) : null;
+    if (clearBtn) clearBtn.hidden = !activeBg;
+
+    swatchesEl.innerHTML = "";
+    for (const hex of CATEGORY_COLOR_PALETTE) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "cat-swatch";
+      b.style.background = hex;
+      b.title = "Set category color";
+      if (activeBg && String(activeBg).toLowerCase() === String(hex).toLowerCase()) {
+        b.classList.add("is-active");
+      }
+      b.addEventListener("click", async () => {
+        try {
+          await setCategoryBgColor(cid, hex);
+          refresh();
+        } catch (e) {
+          show(catErr, e.message || "Failed to set category color");
+        }
+      });
+      swatchesEl.appendChild(b);
+    }
+
+    // Custom picker (+)
+    const custom = document.createElement("div");
+    custom.className = "cat-swatch cat-swatch--custom";
+    custom.title = "Custom color";
+    const inp = document.createElement("input");
+    inp.type = "color";
+    inp.value = activeBg && String(activeBg).startsWith("#") ? String(activeBg) : "#0B3D2E";
+    inp.addEventListener("input", async () => {
+      try {
+        await setCategoryBgColor(cid, inp.value);
+        refresh();
+      } catch (e) {
+        show(catErr, e.message || "Failed to set category color");
+      }
+    });
+    custom.appendChild(inp);
+    swatchesEl.appendChild(custom);
+  }
+
+  if (clearBtn) {
+    clearBtn.addEventListener("click", async () => {
+      const cid = getCategoryId();
+      if (!cid) return;
+      try {
+        await setCategoryBgColor(cid, null);
+        refresh();
+      } catch (e) {
+        show(catErr, e.message || "Failed to clear category color");
+      }
+    });
+  }
+
+  return { refresh };
+}
+
 // Categories edit modal
 const catEditModal = document.getElementById("catEditModal");
 const catEditErr = document.getElementById("catEditErr");
@@ -401,6 +513,10 @@ const BALANCE_THRESHOLD_MAX_KEY = "familyCashFlow_balanceThresholdMax";
 const LOW_BALANCE_THRESHOLD_KEY = "familyCashFlow_lowBalanceThreshold";
 let lowBalanceDebounceTimer = null;
 let lowBalanceLastQuery = { familyId: null, min: null, max: null, mode: null };
+
+function invalidateLowBalanceAlertCache() {
+  lowBalanceLastQuery = { familyId: null, min: null, max: null, mode: null };
+}
 
 /** @param {"off"|"danger"|"muted"} style */
 function setSidebarLowBalanceBanner(text, style = "off") {
@@ -1473,7 +1589,13 @@ if (catReportRunBtn) {
 
 try {
   const storedView = localStorage.getItem(ACTIVE_VIEW_KEY);
-  if (storedView) setActiveTopView(storedView);
+  const v = storedView ? String(storedView) : "";
+  // Default to Calendar View after login; only restore known valid values.
+  if (v === "calendar" || v === "transactions" || v === "reports" || v === "settings") {
+    setActiveTopView(v);
+  } else {
+    setActiveTopView("calendar");
+  }
 } catch (_) {}
 
 function setCalendarDetailMode(mode) {
@@ -1684,6 +1806,7 @@ if (txAddSave) {
         });
 
         closeTxAddModal();
+      invalidateLowBalanceAlertCache();
         await refreshExpectedCalendarAndMonth();
         return;
       }
@@ -1699,6 +1822,7 @@ if (txAddSave) {
       });
 
       closeTxAddModal();
+    invalidateLowBalanceAlertCache();
       await loadMonthAndCalendar();
     } catch (e) {
       show(txAddErr, e.message || "Failed to add");
@@ -2043,6 +2167,7 @@ if (txEditSave) {
         reimbursable: txEditReimbursableValue,
       });
       closeTxEditModal();
+      invalidateLowBalanceAlertCache();
       await loadMonthAndCalendar();
     } catch (e) {
       show(txEditErr, e.message || "Failed to save");
@@ -2070,6 +2195,7 @@ if (txEditDelete) {
       if (!confirm("Delete this transaction?")) return;
       await api(`/api/families/${state.activeFamilyId}/transactions/${id}`, "DELETE");
       closeTxEditModal();
+      invalidateLowBalanceAlertCache();
       await loadMonthAndCalendar();
     } catch (e) {
       show(txEditErr, e.message || "Failed to delete");
@@ -2916,12 +3042,34 @@ function syncCategoryComboboxCategories(fieldId, categories) {
     st.input.value = cat ? categoryDisplayLabel(cat) : "";
   }
   if (!st.list.hidden) filterCategoryCombobox(fieldId);
+  refreshTxCategoryColorPickers();
 }
 
 function syncAllCategoryComboboxes(categories) {
   for (const fid of CATEGORY_COMBOBOX_FIELD_IDS) {
     syncCategoryComboboxCategories(fid, categories);
   }
+}
+
+// Hook category color pickers into category fields.
+const txAddCategoryColorPicker = renderCategoryColorPicker({
+  rowEl: txAddCategoryColorRow,
+  swatchesEl: txAddCategoryColorSwatches,
+  clearBtn: txAddCategoryColorClear,
+  getCategoryId: () => categoryIdFromCategoryField("txAddCategoryId"),
+});
+const txEditCategoryColorPicker = renderCategoryColorPicker({
+  rowEl: txEditCategoryColorRow,
+  swatchesEl: txEditCategoryColorSwatches,
+  clearBtn: txEditCategoryColorClear,
+  getCategoryId: () => categoryIdFromCategoryField("txEditCategoryId"),
+});
+
+function refreshTxCategoryColorPickers() {
+  try {
+    if (txAddCategoryColorPicker) txAddCategoryColorPicker.refresh();
+    if (txEditCategoryColorPicker) txEditCategoryColorPicker.refresh();
+  } catch (_) {}
 }
 
 function setCategoryFieldValue(fieldId, categoryIdOrNull) {
@@ -2940,11 +3088,13 @@ function setCategoryFieldValue(fieldId, categoryIdOrNull) {
       st.hidden.value = String(categoryIdOrNull);
       st.input.value = cat ? categoryDisplayLabel(cat) : "";
     }
+    refreshTxCategoryColorPickers();
     return;
   }
   if (el instanceof HTMLSelectElement) {
     el.value = categoryIdOrNull != null && categoryIdOrNull !== "" ? String(categoryIdOrNull) : "";
   }
+  refreshTxCategoryColorPickers();
 }
 
 function ensureCategoryComboDocClick() {

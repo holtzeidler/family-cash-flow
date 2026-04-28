@@ -112,6 +112,11 @@
                 <div class="form-row-h__label"><label for="txAddCategoryId">Category</label></div>
                 <div class="form-row-h__field"><select id="txAddCategoryId"></select></div>
               </div>
+              <div id="txAddCategoryColorRow" class="cat-color-row" hidden>
+                <div class="cat-color-row__label">Select color (optional)</div>
+                <div class="cat-color-row__swatches" id="txAddCategoryColorSwatches"></div>
+                <button type="button" class="cat-color-row__clear secondary" id="txAddCategoryColorClear" hidden>Clear</button>
+              </div>
               <div class="tx-add-vspace" aria-hidden="true"></div>
               <div class="form-row-h">
                 <div class="form-row-h__label"><label for="txAddDate" id="txAddDateLabel">Date</label></div>
@@ -632,6 +637,11 @@
           <div class="form-row-h">
             <div class="form-row-h__label"><label for="txEditCategoryId">Category</label></div>
             <div class="form-row-h__field"><select id="txEditCategoryId"></select></div>
+          </div>
+          <div id="txEditCategoryColorRow" class="cat-color-row" hidden>
+            <div class="cat-color-row__label">Select color (optional)</div>
+            <div class="cat-color-row__swatches" id="txEditCategoryColorSwatches"></div>
+            <button type="button" class="cat-color-row__clear secondary" id="txEditCategoryColorClear" hidden>Clear</button>
           </div>
           <div class="tx-add-vspace" aria-hidden="true"></div>
           <div class="form-row-h">

@@ -462,7 +462,7 @@ button.secondary{
   min-width: 0;
 }
 #sidebarPendingTitle{
-  font-size: 13px;
+  font-size: 14.3px; /* +10% */
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -800,7 +800,7 @@ button.nav-link:hover{
   gap: 10px;
 }
 .cash-outlook-title{
-  font-size: 13px; /* +~10% */
+  font-size: 14.3px; /* +10% */
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -1817,6 +1817,62 @@ textarea::placeholder{
 .add-group-inline input{
   width: min(320px, 70vw);
 }
+
+/* Category color picker (tx add/edit modals) */
+.cat-color-row{
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 6px 0 2px;
+}
+.cat-color-row__label{
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.cat-color-row__swatches{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.cat-swatch{
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 1px solid rgba(0,0,0,0.12);
+  cursor: pointer;
+  position: relative;
+  flex: 0 0 auto;
+}
+.cat-swatch:hover{
+  filter: brightness(1.03);
+}
+.cat-swatch.is-active{
+  outline: 3px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  outline-offset: 2px;
+}
+.cat-swatch--custom{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.02);
+}
+.cat-swatch--custom::before{
+  content:"+";
+  font-weight: 900;
+  color: var(--muted);
+  line-height: 1;
+}
+.cat-swatch--custom input[type="color"]{
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
 .categories-toolbar-hint{
   margin: 0 0 8px;
 }
@@ -1838,7 +1894,7 @@ textarea::placeholder{
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 12px;
+  padding: 8px 12px;
   border-bottom: 1px solid var(--border);
   background: rgba(0,0,0,0.03);
 }
@@ -1873,7 +1929,7 @@ textarea::placeholder{
   min-width: 0;
   font-weight: 600;
   font-size: 14px;
-  padding: 8px 10px;
+  padding: 6px 10px;
   border-radius: 0;
   border: none;
   background: transparent;
@@ -2108,6 +2164,11 @@ body.login-page #password{
 
 /* Login page: make accordion text larger */
 body.login-page .auth-section{
+  font-size: 115%;
+}
+
+/* Login page: bump field label size */
+body.login-page .auth-section label{
   font-size: 115%;
 }
 
@@ -2412,7 +2473,8 @@ body.contact-page .app-footer{
 .cal-stat.expense{ color: var(--text); }
 .cal-stat.cal-balance{
   font-weight: 400;
-  color: var(--text);
+  /* Positive balances should be a softer gray */
+  color: rgba(17, 24, 39, 0.45);
 }
 .cal-stat.cal-balance.is-negative{
   color: var(--danger);
@@ -2980,10 +3042,10 @@ body.contact-page .app-footer{
 .expected-remove-btn{
   width: 100%;
   max-width: 320px;
-  padding: 7px 10px;
+  padding: 10px 12px;
   border-radius: 10px;
-  border: 1px solid var(--border);
-  background: rgba(255,255,255,0.03);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
   color: var(--text);
   font: inherit;
   font-size: 13px;
@@ -2991,14 +3053,14 @@ body.contact-page .app-footer{
   text-align: center;
 }
 .expected-remove-btn:hover{
-  background: rgba(255,255,255,0.07);
+  filter: brightness(1.05);
 }
 .expected-remove-btn--strong{
-  border-color: rgba(255,107,107,0.45);
-  color: var(--danger);
+  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+  color: var(--text);
 }
 .expected-remove-btn--strong:hover{
-  background: rgba(255,107,107,0.08);
+  filter: brightness(1.05);
 }
 
 /* Collapsible projection panel */
