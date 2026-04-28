@@ -3,6 +3,10 @@ function apiBaseUrl() {
   return raw.replace(/\/+$/, "");
 }
 
+function isLocalhostHost(hostname) {
+  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+}
+
 /** FastAPI may return `detail` as a string, object, or list of validation errors. */
 function formatApiDetail(detail) {
   if (detail == null) return "";
@@ -43,13 +47,17 @@ function formatApiDetail(detail) {
 async function api(path, method = "GET", body) {
   const apiBase = apiBaseUrl();
   const fullPath = `${apiBase}${path}`;
-  const onPages = typeof location !== "undefined" && location.hostname.endsWith("github.io");
-  if (!apiBase && onPages) {
+  const hostname = typeof location !== "undefined" ? location.hostname : "";
+  const origin = typeof location !== "undefined" ? location.origin : "(unknown)";
+  const isLocalhost = isLocalhostHost(hostname);
+  const isStaticWebHost = !isLocalhost && origin !== "(unknown)";
+
+  if (!apiBase && isStaticWebHost) {
     const origin = typeof location !== "undefined" ? location.origin : "(unknown)";
     throw new Error(
-      "GitHub Pages build is missing API_BASE, so requests are going to the Pages site (and will fail).\n\n" +
+      "Frontend build is missing API_BASE, so requests are going to the website origin (and will fail).\n\n" +
         "Fix: In the repo → Settings → Secrets and variables → Actions → set secret API_BASE to your Render API URL " +
-        "(e.g. https://your-app.onrender.com, no trailing slash), then re-run the workflow “Deploy frontend to GitHub Pages”.\n\n" +
+        "(e.g. https://your-app.onrender.com, no trailing slash), then re-run the workflow that deploys GitHub Pages.\n\n" +
         `Current Origin: ${origin}`
     );
   }
@@ -67,7 +75,7 @@ async function api(path, method = "GET", body) {
     const baseHint = apiBase
       ? `Trying API_BASE: ${apiBase}`
       : "API_BASE is empty — requests go to the Pages host (wrong).";
-    const corsHint = onPages
+    const corsHint = isStaticWebHost
       ? `Render env CORS_ORIGINS must include exactly: ${origin} (scheme + host, no path). Set ENV=production for login cookies.`
       : "If this is cross-origin, configure CORS on the API for this origin.";
     throw new Error(
