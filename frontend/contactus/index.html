@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>BalanceWhiz</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="../styles.css" />
+  </head>
+  <body class="contact-page">
+    <div class="container">
+      <div class="top-nav" role="navigation" aria-label="Primary">
+        <div class="top-nav__inner">
+          <div class="top-nav__title" aria-label="App title">
+            <h1 class="app-title">Balance Whiz</h1>
+          </div>
+          <div class="top-nav__tabs" role="tablist" aria-label="Views">
+            <a class="top-nav__tab" href="../">Dashboard</a>
+            <a class="top-nav__tab" href="../login.html">Login</a>
+          </div>
+          <div></div>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="card">
+          <h2 style="margin-bottom: 8px">Contact Us</h2>
+          <p class="meta" style="margin: 0 0 12px">
+            Send us a message and we’ll get back to you. Clicking <strong>Send</strong> will open your email app with the message filled in.
+          </p>
+
+          <form id="contactForm">
+            <div class="row two">
+              <div>
+                <label for="contactName">Name *</label>
+                <input id="contactName" name="name" type="text" autocomplete="name" required />
+              </div>
+              <div>
+                <label for="contactEmail">Email *</label>
+                <input id="contactEmail" name="email" type="email" autocomplete="email" required />
+              </div>
+            </div>
+
+            <div style="height: 10px"></div>
+
+            <div>
+              <label for="contactSubject">Subject</label>
+              <select id="contactSubject" name="subject">
+                <option value="General question" selected>General question</option>
+                <option value="Login help">Login help</option>
+                <option value="Categories help">Categories help</option>
+                <option value="Bug report">Bug report</option>
+                <option value="Feature request">Feature request</option>
+              </select>
+            </div>
+
+            <div style="height: 10px"></div>
+
+            <div>
+              <label for="contactMessage">Message *</label>
+              <textarea id="contactMessage" name="message" rows="6" required style="width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); background: rgba(0,0,0,0.02); color: var(--text);"></textarea>
+            </div>
+
+            <div id="contactErr" class="error"></div>
+
+            <div class="modal-actions" style="padding-top: 0; border-top: none">
+              <button type="submit" id="contactSendBtn">Send</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <footer class="app-footer" role="contentinfo">
+        <div class="app-footer__inner">
+          <span class="app-footer__brand" aria-hidden="true"></span>
+          <a href="./" class="app-footer__link">Contact Us</a>
+        </div>
+      </footer>
+    </div>
+
+    <script src="./contactus.js"></script>
+  </body>
+</html>
+

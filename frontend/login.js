@@ -53,21 +53,6 @@ const registerCalloutEl = document.getElementById("registerCallout");
 const loginBtn = document.getElementById("loginBtn");
 const registerBtn = document.getElementById("registerBtn");
 
-function initContactUsLink() {
-  const a = document.getElementById("contactUsLink");
-  if (!a) return;
-  const user = "tracyapro";
-  const host = "hotmail.com";
-  const email = `${user}@${host}`;
-  const subject = "BalanceWhiz support";
-  a.addEventListener("click", (e) => {
-    e.preventDefault();
-    window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}`;
-  });
-}
-
-initContactUsLink();
-
 function setSectionOpen(sectionEl, toggleBtnEl, bodyEl, isOpen) {
   if (!sectionEl || !toggleBtnEl || !bodyEl) return;
   sectionEl.classList.toggle("auth-section--open", !!isOpen);

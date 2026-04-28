@@ -24,13 +24,7 @@ body{
   overflow-x: hidden;
 }
 
-/* Login page: forest green backdrop (callouts stay grey) */
-body.login-page{
-  background: var(--accent);
-}
-body.login-page .container{
-  background: transparent;
-}
+/* Login page */
 body.login-page .container{
   /* Narrow the login layout (about half width on desktop) */
   max-width: 960px;
@@ -2019,6 +2013,9 @@ textarea::placeholder{
   padding: 0;
   overflow: hidden;
 }
+.auth-section + .auth-section{
+  margin-top: 14px;
+}
 .auth-section__head{
   width: 100%;
   display: flex;
@@ -2053,6 +2050,15 @@ textarea::placeholder{
 }
 .auth-section__head + .auth-section__body{
   border-radius: 0 0 14px 14px;
+}
+
+/* Login page: stack Email/Password and slightly larger text */
+body.login-page #loginSectionBody .row.two{
+  grid-template-columns: 1fr;
+}
+body.login-page #email,
+body.login-page #password{
+  font-size: 110%;
 }
 
 .calendar{

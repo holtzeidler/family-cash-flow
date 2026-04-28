@@ -135,21 +135,6 @@ function fmtMoney(n) {
   return num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-function initContactUsLink() {
-  const a = document.getElementById("contactUsLink");
-  if (!a) return;
-  const user = "tracyapro";
-  const host = "hotmail.com";
-  const email = `${user}@${host}`;
-  const subject = "BalanceWhiz support";
-  a.addEventListener("click", (e) => {
-    e.preventDefault();
-    window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}`;
-  });
-}
-
-initContactUsLink();
-
 function fmtMoney0(n) {
   const num = typeof n === "string" ? Number(n) : n;
   if (Number.isNaN(num)) return String(n ?? "");
@@ -946,7 +931,7 @@ async function refreshLowBalanceAlert() {
         const target = Number(minVal);
         if (Number.isFinite(bal) && bal <= 0) {
           setSidebarLowBalanceBanner(
-            `🚨 You’ll run out of cash on ${fmtMonthDay(lowHit.date)}\nCENTER:Balance: ${fmtMoney0SignedDollar(bal)}`,
+            `🚨 You need to transfer cash before ${fmtMonthDay(lowHit.date)}\nCENTER:Balance: ${fmtMoney0SignedDollar(bal)}`,
             "danger"
           );
         } else {
