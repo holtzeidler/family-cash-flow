@@ -19,6 +19,30 @@ function getSupportEmail() {
   return `${user}@${host}`;
 }
 
+function getApiBase() {
+  const b = window.API_BASE && window.API_BASE !== "__API_BASE__" ? window.API_BASE : "";
+  return String(b || "").replace(/\/$/, "");
+}
+
+async function api(path, method = "GET") {
+  const apiBase = getApiBase();
+  const fullPath = `${apiBase}${path}`;
+  await fetch(fullPath, { method, credentials: "include" });
+}
+
+function initLogout() {
+  const btn = document.getElementById("logoutBtn");
+  if (!btn) return;
+  btn.addEventListener("click", async () => {
+    try {
+      await api("/api/auth/logout", "POST");
+    } catch (_) {}
+    window.location.href = "../login.html";
+  });
+}
+
+initLogout();
+
 const form = document.getElementById("contactForm");
 const errEl = document.getElementById("contactErr");
 const nameEl = document.getElementById("contactName");

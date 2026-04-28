@@ -935,7 +935,8 @@ button.nav-link:hover{
   line-height: 1.4;
 }
 .threshold-input{
-  flex: 0 0 180px;
+  /* 30% narrower than original 180px */
+  flex: 0 0 126px;
 }
 .threshold-input input{
   width: 100%;
@@ -943,6 +944,11 @@ button.nav-link:hover{
 
 @media (max-width: 860px){
   .threshold-input{ flex-basis: 150px; }
+}
+
+/* Settings → Account Details: increase font size 10% */
+.settings-pane[data-settings-pane="accountDetails"]{
+  font-size: 110%;
 }
 
 .calendar-panel--collapsed .calendar-panel-head{
@@ -2084,6 +2090,20 @@ body.login-page #password{
 /* Login page: make accordion text larger */
 body.login-page .auth-section{
   font-size: 115%;
+}
+
+/* Contact page layout */
+body.contact-page .container > .grid{
+  margin-top: 18px;
+  width: min(70%, 980px);
+  margin-left: auto;
+  margin-right: auto;
+}
+body.contact-page .container{
+  min-height: auto;
+}
+body.contact-page .app-footer{
+  margin-top: 24px;
 }
 
 .calendar{
