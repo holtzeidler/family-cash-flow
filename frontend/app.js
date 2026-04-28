@@ -310,7 +310,13 @@ if (catEditSave) {
         // Update DOM group name input, then persist via existing tree layout API.
         const gEl = categoriesTree?.querySelector(`.cat-group[data-group-id="${String(id)}"]`);
         const inp = gEl ? gEl.querySelector("[data-group-name]") : null;
-        if (inp) inp.value = name;
+        if (inp) {
+          if ("value" in inp) {
+            inp.value = name;
+          } else {
+            inp.textContent = name;
+          }
+        }
         await persistCategoryTreeFromDom();
         closeCatEditModal();
         return;
@@ -3026,15 +3032,24 @@ function renderCategoriesGrid(tree) {
     nameInput.dataset.groupName = "1";
     nameInput.value = g.name;
     nameInput.readOnly = true;
-    nameInput.title = "Click to edit group name";
-    nameInput.addEventListener("click", (e) => {
+    nameInput.disabled = true;
+    nameInput.title = "";
+    nameInput.tabIndex = -1;
+    nameInput.setAttribute("aria-hidden", "true");
+
+    const nameDisplay = document.createElement("div");
+    nameDisplay.className = "cat-group-name-display";
+    nameDisplay.dataset.groupName = "1";
+    nameDisplay.textContent = g.name;
+    nameDisplay.title = "Click to edit group name";
+    nameDisplay.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
-      openCatEditModal({ kind: "group", id: Number(g.id), name: String(nameInput.value || "") });
+      openCatEditModal({ kind: "group", id: Number(g.id), name: String(nameDisplay.textContent || "") });
     });
-    nameInput.addEventListener("blur", () => scheduleCategoryTreePersist());
 
     head.appendChild(grip);
+    head.appendChild(nameDisplay);
     head.appendChild(nameInput);
 
     const body = document.createElement("div");
@@ -3169,7 +3184,11 @@ async function persistCategoryTreeFromDom() {
       const parsed = Number(gidRaw);
       const gid = gidRaw !== "" && Number.isFinite(parsed) ? parsed : null;
       const nameInput = gEl.querySelector("[data-group-name]");
-      const nm = (nameInput && nameInput.value ? nameInput.value : "").trim();
+      const rawName =
+        nameInput && "value" in nameInput
+          ? String(nameInput.value || "")
+          : String(nameInput?.textContent || "");
+      const nm = rawName.trim();
       if (!nm) throw new Error("Each group needs a name");
       const ids = [...gEl.querySelectorAll(".cat-group-body .cat-row[data-category-id]")].map((r) => Number(r.dataset.categoryId));
       groups.push({ id: gid, name: nm, category_ids: ids });

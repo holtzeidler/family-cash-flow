@@ -225,6 +225,9 @@ body.login-page .top-nav__inner--simple .app-title{
   padding: 15px 0 12px;
   background: var(--accent);
   border-top: 1px solid rgba(0, 0, 0, 0.18);
+  /* Full-bleed footer even inside .container padding */
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
   color: rgba(255, 255, 255, 0.88);
   font-size: 13px;
 }
@@ -811,10 +814,12 @@ button.nav-link:hover{
   align-items: center;
   justify-content: center;
   gap: 8px;
-  line-height: 1.2;
+  line-height: 1.15;
   margin-bottom: 0;
   font-weight: 800;
-  font-size: 13px;
+  /* Maximize size while staying single-line across viewports */
+  font-size: clamp(12px, 2.4vw, 18px);
+  white-space: nowrap;
 }
 .cash-outlook-subhead--inline{
   display: inline;
@@ -1835,8 +1840,23 @@ textarea::placeholder{
   background: var(--card);
   color: var(--text);
 }
-.cat-group-name-input[readonly]{
+.cat-group-name-input{
+  display: none;
+}
+.cat-group-name-display{
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 8px 10px;
+  border-radius: 0;
+  border: none;
+  background: transparent;
+  color: var(--text);
   cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .cat-group-body{
   display: grid;
@@ -2059,6 +2079,11 @@ body.login-page #loginSectionBody .row.two{
 body.login-page #email,
 body.login-page #password{
   font-size: 110%;
+}
+
+/* Login page: make accordion text larger */
+body.login-page .auth-section{
+  font-size: 115%;
 }
 
 .calendar{
