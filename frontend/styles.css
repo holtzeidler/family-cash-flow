@@ -31,6 +31,24 @@ body.login-page{
 body.login-page .container{
   background: transparent;
 }
+body.login-page .container{
+  /* Narrow the login layout (about half width on desktop) */
+  max-width: 960px;
+}
+body.login-page .container > .grid{
+  /* Space between header and cards */
+  margin-top: 18px;
+}
+body.login-page .top-nav__inner--simple{
+  justify-items: start;
+}
+body.login-page .top-nav__inner--simple .top-nav__title{
+  justify-content: flex-start;
+  padding-left: 10px;
+}
+body.login-page .top-nav__inner--simple .app-title{
+  text-align: left;
+}
 
 /* Ensure the HTML `hidden` attribute always wins (UA defaults can be overridden by our layout rules). */
 [hidden]{
