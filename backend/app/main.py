@@ -2274,8 +2274,14 @@ def apply_expected_from_occurrence(
     else:
         eff_second = None
 
-    eff_fg = payload.fg_color.strip() if payload.fg_color and payload.fg_color.strip() else getattr(tx, "fg_color", None)
-    eff_bg = payload.bg_color.strip() if payload.bg_color and payload.bg_color.strip() else getattr(tx, "bg_color", None)
+    if "fg_color" in payload.model_fields_set:
+        eff_fg = payload.fg_color.strip() if payload.fg_color and payload.fg_color.strip() else None
+    else:
+        eff_fg = getattr(tx, "fg_color", None)
+    if "bg_color" in payload.model_fields_set:
+        eff_bg = payload.bg_color.strip() if payload.bg_color and payload.bg_color.strip() else None
+    else:
+        eff_bg = getattr(tx, "bg_color", None)
 
     if "notes" in payload.model_fields_set:
         eff_notes = payload.notes.strip() if payload.notes and payload.notes.strip() else None

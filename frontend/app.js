@@ -257,18 +257,14 @@ let txAddSelectedBgColor = null;
 let txEditSelectedBgColor = null;
 
 const CATEGORY_COLOR_PALETTE = [
-  "#98A62B", // olive
   "#40E0FF", // cyan
   "#F2C14E", // gold
-  "#00A676", // teal
-  "#1E88FF", // blue
   "#FF9800", // orange
   "#9C27B0", // purple
   "#F44336", // red
   "#FFEB3B", // yellow
   "#00BCD4", // aqua
   "#9E9E9E", // gray
-  "#7A2E2E", // maroon
   "#8FB3C8", // slate
   "#C39BE3", // lavender
   "#000000", // black
