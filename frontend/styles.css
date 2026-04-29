@@ -346,10 +346,15 @@ body.login-page .top-nav__inner--simple .app-title{
   align-self: stretch;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 18px;
   background: var(--bg);
   padding-top: 12px;
   padding-bottom: 2px;
+}
+
+/* Add a touch more breathing room below the sticky head block */
+#sidebarPendingTxCard{
+  margin-top: 10px;
 }
 
 .sidebar-top{
@@ -2014,6 +2019,18 @@ textarea::placeholder{
   stroke-linejoin: round;
 }
 
+/* Category picker (combobox): group headers + indented categories */
+.category-combobox__group{
+  padding: 8px 10px 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.82);
+  letter-spacing: 0.2px;
+}
+.category-combobox__option--child{
+  padding-left: 22px;
+}
+
 /* (moved lower) */
 .cat-group-name-input{
   flex: 1;
@@ -2654,13 +2671,13 @@ body.contact-page .app-footer{
 }
 .choice-actions button{
   width: 100%;
-  max-width: 320px;
+  max-width: 280px;
 }
 
 /* Choice modals: keep Back aligned with the others */
 .modal--choice .modal-actions > button{
   width: 100%;
-  max-width: 320px;
+  max-width: 280px;
   margin-left: auto;
   margin-right: auto;
   display: block;

@@ -432,7 +432,7 @@ if (catEditSave) {
 
       if (kind === "category") {
         const groupId = catEditGroupId ? Number(catEditGroupId.value) : null;
-        if (!id) throw new Error("Invalid category");
+        if (!Number.isFinite(id) || id < 1) throw new Error("Invalid category");
         await api(`/api/families/${state.activeFamilyId}/categories/${id}`, "PUT", { name, group_id: groupId });
         // Refresh categories + dependent UI.
         await loadCategories();
@@ -456,7 +456,7 @@ if (catEditDelete) {
       const kind = String(catEditKind?.value || "");
       const idRaw = String(catEditId?.value || "").trim();
       const id = idRaw ? Number(idRaw) : null;
-      if (!id) throw new Error("Invalid selection");
+      if (!Number.isFinite(id) || id < 1) throw new Error("Invalid selection");
 
       if (kind === "category") {
         const ok = window.confirm("Delete this category? Any transactions using it will be left uncategorized.");
@@ -1805,7 +1805,7 @@ if (txAddSave) {
           category_id: categoryId,
         ...(txAddColorTouched
           ? {
-              bg_color: txAddSelectedBgColor || "",
+              bg_color: txAddSelectedBgColor ? txAddSelectedBgColor : "none",
               fg_color: txAddSelectedBgColor ? accessibleTextOnBackground(txAddSelectedBgColor) : "",
             }
           : {}),
@@ -1826,7 +1826,7 @@ if (txAddSave) {
         category_id: categoryId,
         ...(txAddColorTouched
           ? {
-              bg_color: txAddSelectedBgColor || "",
+              bg_color: txAddSelectedBgColor ? txAddSelectedBgColor : "none",
               fg_color: txAddSelectedBgColor ? accessibleTextOnBackground(txAddSelectedBgColor) : "",
             }
           : {}),
@@ -2021,7 +2021,10 @@ function openTxEditModal(tx) {
   txEditReimbursableValue = !!tx.reimbursable;
   renderTxEditCategoryOptions();
   setCategoryFieldValue("txEditCategoryId", tx.category_id);
-  txEditSelectedBgColor = tx && tx.bg_color ? String(tx.bg_color) : null;
+  {
+    const bg = tx && tx.bg_color ? String(tx.bg_color).trim() : "";
+    txEditSelectedBgColor = bg && bg.toLowerCase() !== "none" ? bg : null;
+  }
   txEditColorTouched = false;
   refreshTxCategoryColorPickers();
   if (instanceAccountId && state.accounts && state.accounts.length > 0) {
@@ -2188,7 +2191,7 @@ if (txEditSave) {
         category_id: categoryIdFromCategoryField("txEditCategoryId"),
         ...(txEditColorTouched
           ? {
-              bg_color: txEditSelectedBgColor || "",
+              bg_color: txEditSelectedBgColor ? txEditSelectedBgColor : "none",
               fg_color: txEditSelectedBgColor ? accessibleTextOnBackground(txEditSelectedBgColor) : "",
             }
           : {}),
@@ -2614,7 +2617,7 @@ async function saveExpectedInstanceOverride() {
     category_id: categoryId,
     ...(txEditColorTouched
       ? {
-          bg_color: txEditSelectedBgColor || "",
+          bg_color: txEditSelectedBgColor ? txEditSelectedBgColor : "none",
           fg_color: txEditSelectedBgColor ? accessibleTextOnBackground(txEditSelectedBgColor) : "",
         }
       : {}),
@@ -2710,7 +2713,7 @@ async function saveExpectedSeriesFromInstance() {
       category_id: categoryId,
       ...(txEditColorTouched
         ? {
-            bg_color: txEditSelectedBgColor || "",
+            bg_color: txEditSelectedBgColor ? txEditSelectedBgColor : "none",
             fg_color: txEditSelectedBgColor ? accessibleTextOnBackground(txEditSelectedBgColor) : "",
           }
         : {}),
@@ -2729,7 +2732,7 @@ async function saveExpectedSeriesFromInstance() {
       end_count: endCountVal,
       ...(txEditColorTouched
         ? {
-            bg_color: txEditSelectedBgColor || "",
+            bg_color: txEditSelectedBgColor ? txEditSelectedBgColor : "none",
             fg_color: txEditSelectedBgColor ? accessibleTextOnBackground(txEditSelectedBgColor) : "",
           }
         : {}),
@@ -2967,13 +2970,33 @@ function filterCategoryCombobox(fieldId) {
       });
 
   st.list.innerHTML = "";
+  // Grouped render: group header + indented category names.
+  const order = (state.categoryTree?.groups || []).map((g) => String(g.name || "").trim()).filter(Boolean);
+  const byGroup = new Map();
   for (const c of filtered) {
-    const li = document.createElement("li");
-    li.className = "category-combobox__option";
-    li.setAttribute("role", "option");
-    li.dataset.id = String(c.id);
-    li.textContent = categoryDisplayLabel(c);
-    st.list.appendChild(li);
+    const g = String(c.group_name || "").trim() || "Other";
+    if (!byGroup.has(g)) byGroup.set(g, []);
+    byGroup.get(g).push(c);
+  }
+  const groupNames = [...new Set([...order, ...byGroup.keys()])].filter((g) => byGroup.has(g));
+  for (const gName of groupNames) {
+    const header = document.createElement("li");
+    header.className = "category-combobox__group";
+    header.setAttribute("role", "presentation");
+    header.textContent = gName;
+    st.list.appendChild(header);
+
+    const arr = byGroup.get(gName) || [];
+    arr.sort((a, b) => String(a?.name || "").localeCompare(String(b?.name || "")));
+    for (const c of arr) {
+      const li = document.createElement("li");
+      li.className = "category-combobox__option category-combobox__option--child";
+      li.setAttribute("role", "option");
+      li.dataset.id = String(c.id);
+      li.dataset.display = categoryDisplayLabel(c);
+      li.textContent = String(c.name || "").trim() || "(unnamed)";
+      st.list.appendChild(li);
+    }
   }
   const addLi = document.createElement("li");
   addLi.className = "category-combobox__option category-combobox__option--add";
@@ -2989,7 +3012,8 @@ function applyCategoryComboboxPickFromLi(fieldId, li) {
     return;
   }
   const id = li.dataset.id;
-  if (id) selectCategoryComboboxChoice(fieldId, id, li.textContent || "");
+  const display = li.dataset.display || li.textContent || "";
+  if (id) selectCategoryComboboxChoice(fieldId, id, display);
 }
 
 async function handleAddNewCategoryFromCombobox(fieldId) {
@@ -3652,6 +3676,8 @@ function categoryPillStyleFromId(categoryId) {
 function pillStyleForTransaction(txOrItem) {
   const bg = txOrItem && txOrItem.bg_color ? String(txOrItem.bg_color).trim() : "";
   const fg = txOrItem && txOrItem.fg_color ? String(txOrItem.fg_color).trim() : "";
+  // Sentinel meaning: explicitly no color, even if the category has one.
+  if (bg && bg.toLowerCase() === "none") return null;
   if (bg) return { bg, fg: fg || accessibleTextOnBackground(bg) };
   if (txOrItem && txOrItem.category_id) return categoryPillStyleFromId(txOrItem.category_id);
   return null;
@@ -3842,7 +3868,10 @@ function openExpectedEditModal(tx, opts = {}) {
       if (txEditAmount) txEditAmount.value = String(tx.amount ?? "");
       if (instanceAccountId) instanceAccountId.value = tx.account_id != null ? String(tx.account_id) : "";
       setCategoryFieldValue("txEditCategoryId", tx.category_id);
-      txEditSelectedBgColor = tx && tx.bg_color ? String(tx.bg_color) : null;
+      {
+        const bg = tx && tx.bg_color ? String(tx.bg_color).trim() : "";
+        txEditSelectedBgColor = bg && bg.toLowerCase() !== "none" ? bg : null;
+      }
     } else {
       const accountId = tx.account_id != null ? Number(tx.account_id) : NaN;
       const acct = Number.isFinite(accountId) ? state.accounts.find((a) => Number(a.id) === accountId) : null;
@@ -3883,8 +3912,10 @@ function openExpectedEditModal(tx, opts = {}) {
 
   // Seed the color picker from the effective instance/series style.
   txEditSelectedBgColor =
-    (calendarItem && calendarItem.bg_color ? String(calendarItem.bg_color) : null) ||
-    (tx && tx.bg_color ? String(tx.bg_color) : null) ||
+    (calendarItem && calendarItem.bg_color && String(calendarItem.bg_color).trim().toLowerCase() !== "none"
+      ? String(calendarItem.bg_color)
+      : null) ||
+    (tx && tx.bg_color && String(tx.bg_color).trim().toLowerCase() !== "none" ? String(tx.bg_color) : null) ||
     null;
   refreshTxCategoryColorPickers();
 
@@ -4349,7 +4380,13 @@ function renderUncategorizedTransactions() {
   if (uncatTxSaveBtn) uncatTxSaveBtn.disabled = uncatPendingCategoryByTxId.size === 0;
 
   const cats = state.categories || [];
-  const sortedCats = [...cats].sort((a, b) => String(a?.name || "").localeCompare(String(b?.name || "")));
+  const groups = state.categoryTree?.groups || [];
+  const byGroupId = new Map();
+  for (const c of cats) {
+    const gid = c && c.group_id != null ? Number(c.group_id) : 0;
+    if (!byGroupId.has(gid)) byGroupId.set(gid, []);
+    byGroupId.get(gid).push(c);
+  }
 
   for (const tx of items) {
     const id = Number(tx && tx.id);
@@ -4382,11 +4419,36 @@ function renderUncategorizedTransactions() {
       sel.appendChild(opt0);
     }
 
-    for (const c of sortedCats) {
-      const opt = document.createElement("option");
-      opt.value = String(c.id);
-      opt.textContent = String(c.name || "").trim() || "(unnamed)";
-      sel.appendChild(opt);
+    // Render as grouped options.
+    for (const g of groups) {
+      const gid = Number(g && g.id);
+      const arr = (byGroupId.get(gid) || []).slice();
+      if (!arr.length) continue;
+      arr.sort((a, b) => String(a?.name || "").localeCompare(String(b?.name || "")));
+      const og = document.createElement("optgroup");
+      og.label = String(g.name || "").trim() || "Group";
+      for (const c of arr) {
+        const opt = document.createElement("option");
+        opt.value = String(c.id);
+        // The native select will visually nest these under the group.
+        opt.textContent = String(c.name || "").trim() || "(unnamed)";
+        og.appendChild(opt);
+      }
+      sel.appendChild(og);
+    }
+    // Fallback: categories without a known group.
+    const ungrouped = (byGroupId.get(0) || []).slice();
+    if (ungrouped.length) {
+      ungrouped.sort((a, b) => String(a?.name || "").localeCompare(String(b?.name || "")));
+      const og = document.createElement("optgroup");
+      og.label = "Other";
+      for (const c of ungrouped) {
+        const opt = document.createElement("option");
+        opt.value = String(c.id);
+        opt.textContent = String(c.name || "").trim() || "(unnamed)";
+        og.appendChild(opt);
+      }
+      sel.appendChild(og);
     }
 
     const pending = Number.isFinite(id) ? uncatPendingCategoryByTxId.get(id) : null;
@@ -5246,7 +5308,10 @@ function selectExpectedInstance(item) {
   if (txEditNotes) txEditNotes.value = item.notes && String(item.notes).trim() ? String(item.notes).trim() : "";
   if (instanceAccountId) instanceAccountId.value = String(item.account_id);
   setCategoryFieldValue("txEditCategoryId", item.category_id);
-  txEditSelectedBgColor = item && item.bg_color ? String(item.bg_color) : (txEditSelectedBgColor || null);
+  {
+    const bg = item && item.bg_color ? String(item.bg_color).trim() : "";
+    if (bg) txEditSelectedBgColor = bg.toLowerCase() === "none" ? null : bg;
+  }
   refreshTxCategoryColorPickers();
 
   {
