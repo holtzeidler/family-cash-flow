@@ -1831,26 +1831,27 @@ textarea::placeholder{
 .cat-color-row{
   display: flex;
   align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-  padding: 6px 0 2px;
+  gap: 8px;
+  flex-wrap: nowrap;
+  padding: 4px 0 2px;
 }
 .cat-color-row__label{
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--muted);
+  white-space: nowrap;
 }
 .cat-color-row__swatches{
   display: flex;
   align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
+  gap: 6px;
+  flex-wrap: nowrap;
 }
 .cat-swatch{
-  width: 22px;
-  height: 22px;
+  width: 18px;
+  height: 18px;
   border-radius: 999px;
   border: 1px solid rgba(0,0,0,0.12);
   cursor: pointer;

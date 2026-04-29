@@ -253,6 +253,9 @@ const txEditCategoryColorRow = document.getElementById("txEditCategoryColorRow")
 const txEditCategoryColorSwatches = document.getElementById("txEditCategoryColorSwatches");
 const txEditCategoryColorClear = document.getElementById("txEditCategoryColorClear");
 
+let txAddSelectedBgColor = null;
+let txEditSelectedBgColor = null;
+
 const CATEGORY_COLOR_PALETTE = [
   "#98A62B", // olive
   "#40E0FF", // cyan
@@ -272,22 +275,7 @@ const CATEGORY_COLOR_PALETTE = [
   "#4CAF50", // green
 ];
 
-async function setCategoryBgColor(categoryId, bgCssOrNull) {
-  if (!state.activeFamilyId) throw new Error("Choose a family first");
-  const cid = Number(categoryId);
-  if (!cid) throw new Error("Choose a category first");
-  const bg = bgCssOrNull && String(bgCssOrNull).trim() ? String(bgCssOrNull).trim() : null;
-  const fg = bg ? accessibleTextOnBackground(bg) : null;
-  await api(`/api/families/${state.activeFamilyId}/categories/${cid}`, "PUT", { bg_color: bg, fg_color: fg });
-  await loadCategories();
-  // Calendar + reports chips depend on category styling.
-  try {
-    await loadMonthAndCalendar();
-  } catch (_) {}
-  renderCalendar();
-}
-
-function renderCategoryColorPicker({ rowEl, swatchesEl, clearBtn, getCategoryId }) {
+function renderCategoryColorPicker({ rowEl, swatchesEl, clearBtn, getCategoryId, getBg, setBg }) {
   if (!rowEl || !swatchesEl) return;
 
   function refresh() {
@@ -297,8 +285,7 @@ function renderCategoryColorPicker({ rowEl, swatchesEl, clearBtn, getCategoryId 
       return;
     }
     rowEl.hidden = false;
-    const st = categoryStyleFromId(cid);
-    const activeBg = st && st.bg ? String(st.bg) : null;
+    const activeBg = getBg && getBg() ? String(getBg()) : null;
     if (clearBtn) clearBtn.hidden = !activeBg;
 
     swatchesEl.innerHTML = "";
@@ -307,17 +294,13 @@ function renderCategoryColorPicker({ rowEl, swatchesEl, clearBtn, getCategoryId 
       b.type = "button";
       b.className = "cat-swatch";
       b.style.background = hex;
-      b.title = "Set category color";
+      b.title = "Set transaction color";
       if (activeBg && String(activeBg).toLowerCase() === String(hex).toLowerCase()) {
         b.classList.add("is-active");
       }
-      b.addEventListener("click", async () => {
-        try {
-          await setCategoryBgColor(cid, hex);
-          refresh();
-        } catch (e) {
-          show(catErr, e.message || "Failed to set category color");
-        }
+      b.addEventListener("click", () => {
+        if (setBg) setBg(hex);
+        refresh();
       });
       swatchesEl.appendChild(b);
     }
@@ -329,28 +312,20 @@ function renderCategoryColorPicker({ rowEl, swatchesEl, clearBtn, getCategoryId 
     const inp = document.createElement("input");
     inp.type = "color";
     inp.value = activeBg && String(activeBg).startsWith("#") ? String(activeBg) : "#0B3D2E";
-    inp.addEventListener("input", async () => {
-      try {
-        await setCategoryBgColor(cid, inp.value);
-        refresh();
-      } catch (e) {
-        show(catErr, e.message || "Failed to set category color");
-      }
+    inp.addEventListener("input", () => {
+      if (setBg) setBg(inp.value);
+      refresh();
     });
     custom.appendChild(inp);
     swatchesEl.appendChild(custom);
   }
 
   if (clearBtn) {
-    clearBtn.addEventListener("click", async () => {
+    clearBtn.addEventListener("click", () => {
       const cid = getCategoryId();
       if (!cid) return;
-      try {
-        await setCategoryBgColor(cid, null);
-        refresh();
-      } catch (e) {
-        show(catErr, e.message || "Failed to clear category color");
-      }
+      if (setBg) setBg(null);
+      refresh();
     });
   }
 
@@ -1809,6 +1784,8 @@ if (txAddSave) {
           amount: Number(amountVal),
           variable: !!(txAddVariable && txAddVariable.checked),
           category_id: categoryId,
+        bg_color: txAddSelectedBgColor,
+        fg_color: txAddSelectedBgColor ? accessibleTextOnBackground(txAddSelectedBgColor) : null,
         });
 
         closeTxAddModal();
@@ -1824,6 +1801,8 @@ if (txAddSave) {
         kind,
         amount: Number(amountVal),
         category_id: categoryId,
+        bg_color: txAddSelectedBgColor,
+        fg_color: txAddSelectedBgColor ? accessibleTextOnBackground(txAddSelectedBgColor) : null,
         reimbursable: false,
       });
 
@@ -2015,6 +1994,8 @@ function openTxEditModal(tx) {
   txEditReimbursableValue = !!tx.reimbursable;
   renderTxEditCategoryOptions();
   setCategoryFieldValue("txEditCategoryId", tx.category_id);
+  txEditSelectedBgColor = tx && tx.bg_color ? String(tx.bg_color) : null;
+  refreshTxCategoryColorPickers();
   if (instanceAccountId && state.accounts && state.accounts.length > 0) {
     instanceAccountId.value = String(state.accounts[0].id);
   }
@@ -2073,6 +2054,7 @@ function closeTxEditModal() {
   }
   if (instanceExpectedTxId) instanceExpectedTxId.value = "";
   if (expectedEditId) expectedEditId.value = "";
+  txEditSelectedBgColor = null;
   applyTransactionEditMode("actual", { resetting: true });
 }
 
@@ -2110,6 +2092,8 @@ function openTxAddModal(opts = {}) {
   if (txAddAmount) txAddAmount.value = "";
   if (txAddNotes) txAddNotes.value = "";
   setCategoryFieldValue("txAddCategoryId", null);
+  txAddSelectedBgColor = null;
+  refreshTxCategoryColorPickers();
   if (txAddRepeats) txAddRepeats.checked = !!opts.repeats;
   if (txAddRecurrence) txAddRecurrence.value = "monthly";
   if (txAddEndCount) txAddEndCount.value = "";
@@ -2134,6 +2118,7 @@ function closeTxAddModal() {
   txAddModal.classList.remove("modal-overlay--open");
   txAddModal.setAttribute("aria-hidden", "true");
   mountTxAddFormInSidebar();
+  txAddSelectedBgColor = null;
 }
 
 function openReconcileModal(iso) {
@@ -2170,6 +2155,8 @@ if (txEditSave) {
         description: txEditDescriptionSnapshot,
         notes: txEditNotes && txEditNotes.value.trim() ? txEditNotes.value.trim() : null,
         category_id: categoryIdFromCategoryField("txEditCategoryId"),
+        bg_color: txEditSelectedBgColor,
+        fg_color: txEditSelectedBgColor ? accessibleTextOnBackground(txEditSelectedBgColor) : null,
         reimbursable: txEditReimbursableValue,
       });
       closeTxEditModal();
@@ -2271,7 +2258,7 @@ if (calendarGrid) {
     if (part && calendarGrid.contains(part)) {
       const id = Number(part.dataset.txId);
       if (!id) return;
-      const tx = (state.monthActualItems || []).find((t) => Number(t.id) === id);
+      const tx = [...(state.monthActualItems || []), ...(state.calendarExtraActualItems || [])].find((t) => Number(t.id) === id);
       if (tx) openTxEditModal(tx);
       return;
     }
@@ -2590,6 +2577,8 @@ async function saveExpectedInstanceOverride() {
     amount,
     description: expectedSaveDescription(),
     category_id: categoryId,
+    bg_color: txEditSelectedBgColor,
+    fg_color: txEditSelectedBgColor ? accessibleTextOnBackground(txEditSelectedBgColor) : null,
     moved_to_date: movedTo,
     variable: !!(seriesVariable && seriesVariable.checked),
   };
@@ -2680,6 +2669,8 @@ async function saveExpectedSeriesFromInstance() {
       amount: Number(amount),
       variable: !!(seriesVariable && seriesVariable.checked),
       category_id: categoryId,
+      bg_color: txEditSelectedBgColor,
+      fg_color: txEditSelectedBgColor ? accessibleTextOnBackground(txEditSelectedBgColor) : null,
     });
   } else {
     const applyBody = {
@@ -2693,6 +2684,8 @@ async function saveExpectedSeriesFromInstance() {
       recurrence: recurrenceVal,
       variable: !!(seriesVariable && seriesVariable.checked),
       end_count: endCountVal,
+      bg_color: txEditSelectedBgColor,
+      fg_color: txEditSelectedBgColor ? accessibleTextOnBackground(txEditSelectedBgColor) : null,
     };
     if (recurrenceVal === "twice_monthly") applyBody.second_day_of_month = secondDayVal;
     await api(
@@ -3130,12 +3123,20 @@ const txAddCategoryColorPicker = renderCategoryColorPicker({
   swatchesEl: txAddCategoryColorSwatches,
   clearBtn: txAddCategoryColorClear,
   getCategoryId: () => categoryIdFromCategoryField("txAddCategoryId"),
+  getBg: () => txAddSelectedBgColor,
+  setBg: (v) => {
+    txAddSelectedBgColor = v && String(v).trim() ? String(v).trim() : null;
+  },
 });
 const txEditCategoryColorPicker = renderCategoryColorPicker({
   rowEl: txEditCategoryColorRow,
   swatchesEl: txEditCategoryColorSwatches,
   clearBtn: txEditCategoryColorClear,
   getCategoryId: () => categoryIdFromCategoryField("txEditCategoryId"),
+  getBg: () => txEditSelectedBgColor,
+  setBg: (v) => {
+    txEditSelectedBgColor = v && String(v).trim() ? String(v).trim() : null;
+  },
 });
 
 function refreshTxCategoryColorPickers() {
@@ -3548,6 +3549,14 @@ function categoryPillStyleFromId(categoryId) {
   return { ...st, fg: accessibleTextOnBackground(bg) };
 }
 
+function pillStyleForTransaction(txOrItem) {
+  const bg = txOrItem && txOrItem.bg_color ? String(txOrItem.bg_color).trim() : "";
+  const fg = txOrItem && txOrItem.fg_color ? String(txOrItem.fg_color).trim() : "";
+  if (bg) return { bg, fg: fg || accessibleTextOnBackground(bg) };
+  if (txOrItem && txOrItem.category_id) return categoryPillStyleFromId(txOrItem.category_id);
+  return null;
+}
+
 /** Default label text color: green income / red expense (custom category fg overrides where applied). */
 function kindFgClass(kind) {
   return String(kind) === "income" ? "tx-kind-fg--income" : "tx-kind-fg--expense";
@@ -3733,6 +3742,7 @@ function openExpectedEditModal(tx, opts = {}) {
       if (txEditAmount) txEditAmount.value = String(tx.amount ?? "");
       if (instanceAccountId) instanceAccountId.value = tx.account_id != null ? String(tx.account_id) : "";
       setCategoryFieldValue("txEditCategoryId", tx.category_id);
+      txEditSelectedBgColor = tx && tx.bg_color ? String(tx.bg_color) : null;
     } else {
       const accountId = tx.account_id != null ? Number(tx.account_id) : NaN;
       const acct = Number.isFinite(accountId) ? state.accounts.find((a) => Number(a.id) === accountId) : null;
@@ -3752,6 +3762,8 @@ function openExpectedEditModal(tx, opts = {}) {
         variable: !!tx.variable,
         category_id: catId,
         category: cat?.name || null,
+        bg_color: tx && tx.bg_color ? String(tx.bg_color) : null,
+        fg_color: tx && tx.fg_color ? String(tx.fg_color) : null,
       };
       // `selectExpectedInstance` is defined later in this file; schedule after parse completes.
       queueMicrotask(() => selectExpectedInstance(synthetic));
@@ -3768,6 +3780,13 @@ function openExpectedEditModal(tx, opts = {}) {
     instanceEndCount.value = v != null ? String(v) : "";
   }
   updateInstanceTwiceMonthlyVisibility();
+
+  // Seed the color picker from the effective instance/series style.
+  txEditSelectedBgColor =
+    (calendarItem && calendarItem.bg_color ? String(calendarItem.bg_color) : null) ||
+    (tx && tx.bg_color ? String(tx.bg_color) : null) ||
+    null;
+  refreshTxCategoryColorPickers();
 
   if (seriesVariable) {
     const eff =
@@ -4132,7 +4151,7 @@ function renderUpcomingTransactionsFiltered() {
       meta.className = "meta";
       meta.appendChild(document.createTextNode(fmtDateMDY(tx.date || "")));
       if (tx.category_id && tx.category) {
-        const st = categoryPillStyleFromId(tx.category_id);
+        const st = pillStyleForTransaction(tx);
         const pill = document.createElement("span");
         pill.className = `cat-pill ${kindFgClass(tx.kind)}`;
         pill.textContent = tx.category;
@@ -4560,7 +4579,7 @@ function renderTransactionsInto(listEl, items, emptyMessage) {
     meta.className = "meta";
     meta.appendChild(document.createTextNode(fmtDateMDY(tx.date || "")));
     if (tx.category_id && tx.category) {
-      const st = categoryPillStyleFromId(tx.category_id);
+      const st = pillStyleForTransaction(tx);
       const pill = document.createElement("span");
       pill.className = `cat-pill ${kindFgClass(tx.kind)}`;
       pill.textContent = tx.category;
@@ -4852,7 +4871,33 @@ async function loadCalendarMonthDaily() {
           end: Number.isFinite(end) ? end : 0,
         });
       }
-      // Also compute balances for visible "wrap" days (prev/next month) if needed.
+      // Fill visible "wrap" days using the same authoritative API (prev/next month),
+      // so balances for gray cells match when you scroll between months.
+      const prev = shiftMonthStr(month, -1);
+      const next = shiftMonthStr(month, 1);
+      const extras = await Promise.allSettled([
+        api(`/api/families/${state.activeFamilyId}/calendar-month-daily?month=${encodeURIComponent(prev)}&mode=${encodeURIComponent(mode)}`, "GET"),
+        api(`/api/families/${state.activeFamilyId}/calendar-month-daily?month=${encodeURIComponent(next)}&mode=${encodeURIComponent(mode)}`, "GET"),
+      ]);
+      for (const res of extras) {
+        if (res.status !== "fulfilled") continue;
+        const more = res.value?.days;
+        if (!Array.isArray(more) || more.length === 0) continue;
+        for (const row of more) {
+          const iso = normalizeIsoDate(row.date);
+          if (!iso || state.monthDailyBalances.has(iso)) continue;
+          const start = Number(row.start);
+          const txNet = Number(row.tx_net);
+          const end = Number(row.end);
+          state.monthDailyBalances.set(iso, {
+            start: Number.isFinite(start) ? start : 0,
+            txNet: Number.isFinite(txNet) ? txNet : 0,
+            end: Number.isFinite(end) ? end : 0,
+          });
+        }
+      }
+
+      // As a last-resort fallback (offline / partial API), compute any still-missing days client-side.
       const wrap = computeCalendarVisibleDailyBalancesClient();
       for (const [iso, row] of wrap.entries()) {
         if (!state.monthDailyBalances.has(iso)) state.monthDailyBalances.set(iso, row);
@@ -5101,6 +5146,8 @@ function selectExpectedInstance(item) {
   if (txEditNotes) txEditNotes.value = item.notes && String(item.notes).trim() ? String(item.notes).trim() : "";
   if (instanceAccountId) instanceAccountId.value = String(item.account_id);
   setCategoryFieldValue("txEditCategoryId", item.category_id);
+  txEditSelectedBgColor = item && item.bg_color ? String(item.bg_color) : (txEditSelectedBgColor || null);
+  refreshTxCategoryColorPickers();
 
   {
     const meta = selectedExpectedSeriesTx || getExpectedSeriesMeta(item.expected_transaction_id);
@@ -5289,7 +5336,7 @@ function renderCalendar() {
         labelSpan.className = `cal-tx-label ${kindFgClass(row.kind)}`;
         labelSpan.textContent = `${label} `;
         if (row.category_id && row.category) {
-          const st = categoryPillStyleFromId(row.category_id);
+          const st = pillStyleForTransaction(row);
           if (st?.fg) labelSpan.style.color = st.fg;
           if (st?.bg) labelSpan.style.background = st.bg;
           if (st?.bg) {

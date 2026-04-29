@@ -168,6 +168,8 @@ class Transaction(Base):
     reimbursable: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     category_id: Mapped[Optional[int]] = mapped_column(ForeignKey("categories.id"), nullable=True, index=True)
+    fg_color: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    bg_color: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
 
     family: Mapped[Family] = relationship(back_populates="transactions")
 
@@ -213,6 +215,8 @@ class ExpectedTransaction(Base):
     variable: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     category_id: Mapped[Optional[int]] = mapped_column(ForeignKey("categories.id"), nullable=True, index=True)
+    fg_color: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    bg_color: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
 
@@ -241,6 +245,8 @@ class ExpectedTransactionOverride(Base):
     )
     # When set, overrides series `variable` (estimate / italic) for this occurrence only.
     variable: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
+    fg_color: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    bg_color: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
 
@@ -474,6 +480,8 @@ class TransactionIn(BaseModel):
     kind: TransactionKind
     amount: Decimal = Field(gt=0)
     category_id: Optional[int] = None
+    fg_color: Optional[str] = Field(default=None, max_length=20)
+    bg_color: Optional[str] = Field(default=None, max_length=20)
     reimbursable: bool = False
 
 
@@ -486,6 +494,8 @@ class TransactionOut(BaseModel):
     amount: Decimal
     category: Optional[str] = None
     category_id: Optional[int] = None
+    fg_color: Optional[str] = None
+    bg_color: Optional[str] = None
     reimbursable: bool = False
 
 
@@ -546,6 +556,8 @@ class ExpectedTransactionIn(BaseModel):
     variable: bool = False
 
     category_id: Optional[int] = None
+    fg_color: Optional[str] = Field(default=None, max_length=20)
+    bg_color: Optional[str] = Field(default=None, max_length=20)
 
 
 class ExpectedTransactionOut(BaseModel):
@@ -565,6 +577,8 @@ class ExpectedTransactionOut(BaseModel):
     variable: bool = False
     category: Optional[str]
     category_id: Optional[int] = None
+    fg_color: Optional[str] = None
+    bg_color: Optional[str] = None
     created_by: int
     # First display/cash-flow date on or after "today", same rules as expected-calendar (cancels + moved_to_date).
     next_occurrence_date: Optional[date] = None
@@ -610,6 +624,8 @@ class ExpectedInstanceOverrideIn(BaseModel):
     moved_to_date: Optional[date] = None
     category_id: Optional[int] = None
     variable: Optional[bool] = None
+    fg_color: Optional[str] = Field(default=None, max_length=20)
+    bg_color: Optional[str] = Field(default=None, max_length=20)
 
 
 class ApplyFromOccurrenceIn(BaseModel):
@@ -623,6 +639,8 @@ class ApplyFromOccurrenceIn(BaseModel):
     recurrence: Optional[Recurrence] = None
     second_day_of_month: Optional[int] = Field(default=None, ge=1, le=31)
     variable: bool = False
+    fg_color: Optional[str] = Field(default=None, max_length=20)
+    bg_color: Optional[str] = Field(default=None, max_length=20)
 
 
 class ApplyFromOccurrenceOut(BaseModel):
@@ -653,6 +671,8 @@ class ExpectedCalendarItemOut(BaseModel):
     category_id: Optional[int] = None
     category: Optional[str] = None
     variable: bool = False
+    fg_color: Optional[str] = None
+    bg_color: Optional[str] = None
 
 
 class ExpectedCalendarOut(BaseModel):
@@ -773,6 +793,7 @@ def startup_populate_schema():
     _ensure_expected_second_day_column()
     _ensure_recurrence_enum_extensions_postgres()
     _ensure_category_color_columns()
+    _ensure_transaction_color_columns()
     _ensure_reimbursable_columns()
     _ensure_expected_variable_column()
     _ensure_expected_moved_to_date_column()
@@ -783,6 +804,23 @@ def startup_populate_schema():
     _backfill_category_groups_for_existing_families()
     _cleanup_new_group_placeholders()
     _ensure_reconciled_days_table()
+
+
+def _ensure_transaction_color_columns() -> None:
+    """Lightweight startup migration: per-transaction and per-series color styling."""
+    with engine.begin() as conn:
+        for table in ("transactions", "expected_transactions", "expected_transaction_overrides"):
+            if settings.DATABASE_URL.startswith("sqlite"):
+                cols = conn.execute(text(f"PRAGMA table_info({table})")).fetchall()
+                has_fg = any(str(row[1]) == "fg_color" for row in cols)
+                has_bg = any(str(row[1]) == "bg_color" for row in cols)
+                if not has_fg:
+                    conn.execute(text(f"ALTER TABLE {table} ADD COLUMN fg_color VARCHAR(20)"))
+                if not has_bg:
+                    conn.execute(text(f"ALTER TABLE {table} ADD COLUMN bg_color VARCHAR(20)"))
+            else:
+                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS fg_color VARCHAR(20)"))
+                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS bg_color VARCHAR(20)"))
 
 
 FORBIDDEN_GROUP_NAMES = {"new group"}
@@ -1901,6 +1939,8 @@ def create_expected_transaction(
         reimbursable=payload.reimbursable,
         variable=payload.variable,
         category_id=payload.category_id,
+        fg_color=payload.fg_color.strip() if payload.fg_color and payload.fg_color.strip() else None,
+        bg_color=payload.bg_color.strip() if payload.bg_color and payload.bg_color.strip() else None,
     )
     db.add(tx)
     db.commit()
@@ -1926,6 +1966,8 @@ def create_expected_transaction(
         variable=bool(getattr(tx, "variable", False)),
         category=category_name,
         category_id=tx.category_id,
+        fg_color=getattr(tx, "fg_color", None),
+        bg_color=getattr(tx, "bg_color", None),
         created_by=tx.created_by_user_id,
         next_occurrence_date=next_eff,
         next_occurrence_amount=n_amt,
@@ -1984,6 +2026,8 @@ def update_expected_transaction(
     tx.reimbursable = payload.reimbursable
     tx.variable = payload.variable
     tx.category_id = payload.category_id
+    tx.fg_color = payload.fg_color.strip() if payload.fg_color and payload.fg_color.strip() else None
+    tx.bg_color = payload.bg_color.strip() if payload.bg_color and payload.bg_color.strip() else None
 
     db.commit()
     db.refresh(tx)
@@ -2008,6 +2052,8 @@ def update_expected_transaction(
         variable=bool(getattr(tx, "variable", False)),
         category=category_name,
         category_id=tx.category_id,
+        fg_color=getattr(tx, "fg_color", None),
+        bg_color=getattr(tx, "bg_color", None),
         created_by=tx.created_by_user_id,
         next_occurrence_date=next_eff,
         next_occurrence_amount=n_amt,
@@ -2070,6 +2116,8 @@ def upsert_expected_instance_override(
         reimbursable = None
         moved_to_date = None
         category_id = None
+        fg_color = None
+        bg_color = None
     else:
         if payload.account_id is None or payload.kind is None or payload.amount is None:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="account_id, kind, and amount are required for update")
@@ -2080,6 +2128,8 @@ def upsert_expected_instance_override(
         reimbursable = payload.reimbursable
         moved_to_date = payload.moved_to_date
         category_id = payload.category_id
+        fg_color = payload.fg_color.strip() if payload.fg_color and payload.fg_color.strip() else None
+        bg_color = payload.bg_color.strip() if payload.bg_color and payload.bg_color.strip() else None
 
         account = db.execute(select(Account).where(Account.id == account_id, Account.family_id == family_id)).scalar_one_or_none()
         if account is None:
@@ -2111,6 +2161,8 @@ def upsert_expected_instance_override(
     existing.reimbursable = reimbursable
     existing.moved_to_date = moved_to_date
     existing.category_id = category_id
+    existing.fg_color = fg_color
+    existing.bg_color = bg_color
     if payload.action == "cancel":
         existing.variable = None
     elif "variable" in payload.model_fields_set:
@@ -2222,6 +2274,9 @@ def apply_expected_from_occurrence(
     else:
         eff_second = None
 
+    eff_fg = payload.fg_color.strip() if payload.fg_color and payload.fg_color.strip() else getattr(tx, "fg_color", None)
+    eff_bg = payload.bg_color.strip() if payload.bg_color and payload.bg_color.strip() else getattr(tx, "bg_color", None)
+
     if "notes" in payload.model_fields_set:
         eff_notes = payload.notes.strip() if payload.notes and payload.notes.strip() else None
     else:
@@ -2244,6 +2299,8 @@ def apply_expected_from_occurrence(
         reimbursable=eff_reimb,
         variable=eff_variable,
         category_id=category_id,
+        fg_color=eff_fg,
+        bg_color=eff_bg,
     )
     _validate_expected_transaction_recurrence(validate_payload)
 
@@ -2265,6 +2322,8 @@ def apply_expected_from_occurrence(
         tx.second_day_of_month = validate_payload.second_day_of_month
         tx.notes = validate_payload.notes
         tx.variable = validate_payload.variable
+        tx.fg_color = validate_payload.fg_color
+        tx.bg_color = validate_payload.bg_color
         db.commit()
         db.refresh(tx)
         return ApplyFromOccurrenceOut(mode="updated_in_place", future_series_id=tx.id, ended_series_id=None)
@@ -2297,6 +2356,8 @@ def apply_expected_from_occurrence(
         reimbursable=validate_payload.reimbursable,
         variable=validate_payload.variable,
         category_id=validate_payload.category_id,
+        fg_color=validate_payload.fg_color,
+        bg_color=validate_payload.bg_color,
     )
     db.add(new_tx)
     db.commit()
@@ -2418,6 +2479,16 @@ def _build_expected_calendar_items(
             eff_variable = bool(getattr(tx, "variable", False))
             if ovr is not None and getattr(ovr, "variable", None) is not None:
                 eff_variable = bool(ovr.variable)
+            eff_fg = (
+                ovr.fg_color
+                if ovr is not None and getattr(ovr, "fg_color", None) is not None
+                else getattr(tx, "fg_color", None)
+            )
+            eff_bg = (
+                ovr.bg_color
+                if ovr is not None and getattr(ovr, "bg_color", None) is not None
+                else getattr(tx, "bg_color", None)
+            )
 
             acc = accounts_by_id.get(eff_account_id)
             if acc is None:
@@ -2444,6 +2515,8 @@ def _build_expected_calendar_items(
                     category_id=eff_category_id,
                     category=cat.name if cat is not None else None,
                     variable=bool(eff_variable),
+                    fg_color=eff_fg,
+                    bg_color=eff_bg,
                 )
             )
 
@@ -3606,6 +3679,8 @@ def create_transaction(
         kind=payload.kind,
         amount=payload.amount,
         category_id=payload.category_id,
+        fg_color=payload.fg_color.strip() if payload.fg_color and payload.fg_color.strip() else None,
+        bg_color=payload.bg_color.strip() if payload.bg_color and payload.bg_color.strip() else None,
         reimbursable=payload.reimbursable,
     )
     db.add(tx)
@@ -3629,6 +3704,8 @@ def _transaction_out(db, tx: Transaction) -> TransactionOut:
         amount=tx.amount,
         category=category_name,
         category_id=tx.category_id,
+        fg_color=getattr(tx, "fg_color", None),
+        bg_color=getattr(tx, "bg_color", None),
         reimbursable=bool(getattr(tx, "reimbursable", False)),
     )
 
@@ -3663,6 +3740,8 @@ def update_transaction(
     tx.kind = payload.kind
     tx.amount = payload.amount
     tx.category_id = payload.category_id
+    tx.fg_color = payload.fg_color.strip() if payload.fg_color and payload.fg_color.strip() else None
+    tx.bg_color = payload.bg_color.strip() if payload.bg_color and payload.bg_color.strip() else None
     tx.reimbursable = payload.reimbursable
     db.commit()
     db.refresh(tx)
