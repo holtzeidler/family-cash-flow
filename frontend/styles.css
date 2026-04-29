@@ -1835,6 +1835,7 @@ textarea::placeholder{
   gap: 8px;
   flex-wrap: nowrap;
   padding: 4px 0 2px;
+  margin-top: 6px;
 }
 .cat-color-row__label{
   font-size: 10px;
@@ -1849,6 +1850,9 @@ textarea::placeholder{
   align-items: center;
   gap: 6px;
   flex-wrap: nowrap;
+  min-width: 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 .cat-swatch{
   width: 18px;
@@ -2893,7 +2897,7 @@ body.contact-page .app-footer{
 
 /* Same max width for one-time and recurring so the edit sheet does not “jump”. */
 #txEditInner.modal{
-  max-width: 520px;
+  max-width: 760px;
   /* Give the transaction sheet more vertical breathing room. */
   max-height: min(92vh, 820px);
   overflow-y: auto;

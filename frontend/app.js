@@ -275,14 +275,15 @@ function renderCategoryColorPicker({ rowEl, swatchesEl, clearBtn, getCategoryId,
   if (!rowEl || !swatchesEl) return;
 
   function refresh() {
-    const cid = getCategoryId();
-    if (!cid) {
-      rowEl.hidden = true;
-      return;
-    }
+    // Always show the row in add/edit modals (even before a category is chosen),
+    // because the color applies to the transaction/occurrence, not the category.
     rowEl.hidden = false;
     const activeBg = getBg && getBg() ? String(getBg()) : null;
-    if (clearBtn) clearBtn.hidden = !activeBg;
+    if (clearBtn) {
+      clearBtn.hidden = false;
+      clearBtn.disabled = !activeBg;
+      clearBtn.title = activeBg ? "Clear selected color" : "No color selected";
+    }
 
     swatchesEl.innerHTML = "";
     for (const hex of CATEGORY_COLOR_PALETTE) {
@@ -318,8 +319,6 @@ function renderCategoryColorPicker({ rowEl, swatchesEl, clearBtn, getCategoryId,
 
   if (clearBtn) {
     clearBtn.addEventListener("click", () => {
-      const cid = getCategoryId();
-      if (!cid) return;
       if (setBg) setBg(null);
       refresh();
     });
