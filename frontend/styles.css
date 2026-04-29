@@ -240,11 +240,16 @@ body.login-page .top-nav__inner--simple .app-title{
 .app-footer__link{
   color: rgba(255,255,255,0.92);
   font-weight: 700;
-  text-decoration: underline;
-  text-underline-offset: 2px;
+  font-size: 20px;
+  text-decoration: none;
 }
 .app-footer__link:hover{
   color: #fff;
+}
+.app-footer__link:focus-visible{
+  outline: 2px solid rgba(255,255,255,0.85);
+  outline-offset: 3px;
+  border-radius: 6px;
 }
 .app-footer__brand{
   font-weight: 700;
@@ -516,7 +521,7 @@ button.secondary{
   font-weight: 500;
   font-style: normal;
   color: var(--muted);
-  font-size: 17px;
+  font-size: 15px;
 }
 .pending-attn-name.tx-kind-fg--income,
 .pending-attn-name.tx-kind-fg--expense{
@@ -528,7 +533,7 @@ button.secondary{
   white-space: nowrap;
   color: var(--muted);
   font-weight: 500;
-  font-size: 17px;
+  font-size: 15px;
 }
 .pending-attn-date{
   justify-self: end;
@@ -536,7 +541,7 @@ button.secondary{
   color: var(--muted);
   font-variant-numeric: tabular-nums;
   font-weight: 500;
-  font-size: 17px;
+  font-size: 15px;
 }
 
 @media (max-width: 860px){
@@ -753,6 +758,11 @@ button.nav-link{
   white-space: nowrap;
 }
 
+/* Contact page header tabs: no underline */
+body.contact-page button.nav-link{
+  text-decoration: none;
+}
+
 .calendar-nav > .nav-link{
   align-self: flex-end;
   margin-bottom: 0;
@@ -793,7 +803,7 @@ button.nav-link:hover{
   margin-bottom: 10px;
 }
 #sidebarLowBalanceBanner.calendar-low-balance--sidebar{
-  margin-top: 6px;
+  margin-top: 12px;
 }
 .cash-outlook-head{
   display: flex;
@@ -831,6 +841,23 @@ button.nav-link:hover{
   /* Maximize size while staying single-line across viewports */
   font-size: clamp(12px, 2.4vw, 18px);
   white-space: nowrap;
+}
+.cash-outlook-icon{
+  display: inline-flex;
+  width: 18px;
+  height: 18px;
+}
+.cash-outlook-icon svg{
+  width: 18px;
+  height: 18px;
+  stroke: currentColor;
+  stroke-width: 2.3;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.cash-outlook-icon--warn{
+  color: #a16207; /* dark yellow */
 }
 .cash-outlook-subhead--inline{
   display: inline;
@@ -871,6 +898,9 @@ button.nav-link:hover{
   font-size: 13px;
   line-height: 1.25;
 }
+.calendar-low-balance--sidebar .cash-outlook-kv{
+  font-size: 13px;
+}
 .cash-outlook-details--center .cash-outlook-kv{
   justify-content: center;
   text-align: center;
@@ -887,8 +917,11 @@ button.nav-link:hover{
   font-weight: 500;
   line-height: 1.25;
   text-align: center;
-  margin: 6px 0 8px;
+  margin: 10px 0 8px;
   font-variant-numeric: tabular-nums;
+}
+.calendar-low-balance--sidebar .cash-outlook-hero{
+  font-size: 13px;
 }
 .cash-outlook-k{
   color: rgba(17, 24, 39, 0.78);
@@ -951,8 +984,8 @@ button.nav-link:hover{
 }
 .threshold-input{
   /* The money-input sits inside a non-flex field wrapper, so use width here. */
-  width: 50%;
-  max-width: 320px;
+  width: 25%;
+  max-width: 220px;
 }
 .threshold-input input{
   width: 100%;
@@ -1388,6 +1421,23 @@ label{
   margin: 0;
   vertical-align: middle;
 }
+
+/* Recurring edit: keep "Variable amount (estimate)" on one line */
+#txEditRecurringVariableWrap .form-row-h{
+  justify-content: space-between;
+}
+#txEditRecurringVariableWrap .form-row-h__label{
+  flex: 1 1 auto;
+  max-width: none;
+}
+#txEditRecurringVariableWrap .form-row-h__label label{
+  white-space: nowrap;
+}
+#txEditRecurringVariableWrap .form-row-h__field{
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: flex-end;
+}
 .form-row-h__field .pill{
   width: 100%;
   justify-content: flex-start;
@@ -1420,6 +1470,12 @@ label{
   margin-top: 0;
   margin-bottom: 14px;
   width: 100%;
+}
+.settings-pane[data-settings-pane="accounts"] #accountsList .item .meta{
+  margin-top: 6px;
+}
+.settings-pane[data-settings-pane="accounts"] #accountsList .row-actions{
+  padding-right: 10px;
 }
 .settings-pane[data-settings-pane="accounts"] #accErr{
   margin: 6px 0 10px;
@@ -1838,12 +1894,19 @@ textarea::placeholder{
   margin-top: 6px;
 }
 .cat-color-row__label{
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--muted);
   white-space: nowrap;
+  line-height: 1.3;
+  display: block;
+}
+
+/* Match tx edit header label color */
+.tx-edit-top .cat-color-row__label{
+  color: rgba(255, 255, 255, 0.92);
 }
 .cat-color-row__swatches{
   display: flex;
@@ -1909,7 +1972,7 @@ textarea::placeholder{
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 12px;
+  padding: 5px 12px;
   border-bottom: 1px solid var(--border);
   background: rgba(0,0,0,0.03);
 }
@@ -1917,14 +1980,41 @@ textarea::placeholder{
   outline: 2px dashed color-mix(in srgb, var(--accent) 55%, transparent);
   outline-offset: -2px;
 }
-.cat-group-grip{
-  cursor: grab;
-  user-select: none;
+.cat-move-controls{
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
   flex-shrink: 0;
 }
-.cat-group-grip:active{
-  cursor: grabbing;
+.cat-move-btn{
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(0,0,0,0.18);
+  background: rgba(0,0,0,0.02);
+  color: rgba(17, 24, 39, 0.75);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
 }
+.cat-move-btn:hover{
+  background: rgba(0,0,0,0.05);
+  filter: none;
+}
+.cat-move-btn svg{
+  width: 18px;
+  height: 18px;
+  stroke: currentColor;
+  stroke-width: 2.6;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* (moved lower) */
 .cat-group-name-input{
   flex: 1;
   min-width: 0;
@@ -1944,12 +2034,13 @@ textarea::placeholder{
   min-width: 0;
   font-weight: 600;
   font-size: 14px;
-  padding: 6px 10px;
+  padding: 4px 10px;
   border-radius: 0;
   border: none;
   background: transparent;
   color: var(--text);
   cursor: pointer;
+  line-height: 1.15;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1972,10 +2063,14 @@ textarea::placeholder{
   text-overflow: ellipsis;
 }
 .cat-group-body .cat-row{
-  display: contents;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 .cat-row{
-  display: contents;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 .cat-drag-handle{
   cursor: grab;
@@ -2174,7 +2269,7 @@ body.login-page #loginSectionBody .row.two{
 }
 body.login-page #email,
 body.login-page #password{
-  font-size: 110%;
+  font-size: 121%;
 }
 
 /* Login page: make accordion text larger */
@@ -2184,7 +2279,7 @@ body.login-page .auth-section{
 
 /* Login page: bump field label size */
 body.login-page .auth-section label{
-  font-size: 115%;
+  font-size: 126.5%;
 }
 
 /* Contact page layout */
@@ -2194,11 +2289,20 @@ body.contact-page .container > .grid{
   margin-left: auto;
   margin-right: auto;
 }
+/* Contact page: bump form labels/fields by 10% */
+body.contact-page label{
+  font-size: 110%;
+}
+body.contact-page input,
+body.contact-page select,
+body.contact-page textarea{
+  font-size: 110%;
+}
 body.contact-page .container{
   min-height: auto;
 }
 body.contact-page .app-footer{
-  margin-top: 24px;
+  margin-top: 10px;
 }
 
 .calendar{
@@ -2546,9 +2650,20 @@ body.contact-page .app-footer{
 .choice-actions{
   display: grid;
   gap: 10px;
+  justify-items: center;
 }
 .choice-actions button{
   width: 100%;
+  max-width: 320px;
+}
+
+/* Choice modals: keep Back aligned with the others */
+.modal--choice .modal-actions > button{
+  width: 100%;
+  max-width: 320px;
+  margin-left: auto;
+  margin-right: auto;
+  display: block;
 }
 
 .modal--tx-add{

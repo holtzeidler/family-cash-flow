@@ -255,6 +255,8 @@ const txEditCategoryColorClear = document.getElementById("txEditCategoryColorCle
 
 let txAddSelectedBgColor = null;
 let txEditSelectedBgColor = null;
+let txAddColorTouched = false;
+let txEditColorTouched = false;
 
 const CATEGORY_COLOR_PALETTE = [
   "#40E0FF", // cyan
@@ -309,7 +311,18 @@ function renderCategoryColorPicker({ rowEl, swatchesEl, clearBtn, getCategoryId,
     const inp = document.createElement("input");
     inp.type = "color";
     inp.value = activeBg && String(activeBg).startsWith("#") ? String(activeBg) : "#0B3D2E";
+    // Don't re-render on every 'input' while the native picker is open,
+    // or it will close immediately (the <input> gets replaced).
     inp.addEventListener("input", () => {
+      if (setBg) setBg(inp.value);
+      if (clearBtn) {
+        clearBtn.hidden = false;
+        clearBtn.disabled = false;
+        clearBtn.title = "Clear selected color";
+      }
+    });
+    // Re-render once the user commits/closes the picker.
+    inp.addEventListener("change", () => {
       if (setBg) setBg(inp.value);
       refresh();
     });
@@ -506,7 +519,18 @@ function setSidebarLowBalanceBanner(text, style = "off") {
   {
     const raw = String(text);
     const parts = raw.split("\n");
-    const headText = parts[0] ? escapeHtml(parts[0]) : "";
+    const headRaw = parts[0] ? String(parts[0]) : "";
+    let headText = escapeHtml(headRaw);
+    if (headRaw.trim().startsWith("⚠")) {
+      const rest = headRaw.trim().replace(/^⚠\s*/, "");
+      headText = `<span class="cash-outlook-icon cash-outlook-icon--warn" aria-hidden="true">
+        <svg viewBox="0 0 24 24" focusable="false">
+          <path d="M12 3L2 21h20L12 3z"></path>
+          <path d="M12 9v5"></path>
+          <path d="M12 17h.01"></path>
+        </svg>
+      </span>${escapeHtml(rest)}`;
+    }
     const bodyRaw = parts.slice(1).join("\n");
     let bodyHtml = "";
     if (bodyRaw) {
@@ -1779,8 +1803,12 @@ if (txAddSave) {
           amount: Number(amountVal),
           variable: !!(txAddVariable && txAddVariable.checked),
           category_id: categoryId,
-        bg_color: txAddSelectedBgColor,
-        fg_color: txAddSelectedBgColor ? accessibleTextOnBackground(txAddSelectedBgColor) : null,
+        ...(txAddColorTouched
+          ? {
+              bg_color: txAddSelectedBgColor || "",
+              fg_color: txAddSelectedBgColor ? accessibleTextOnBackground(txAddSelectedBgColor) : "",
+            }
+          : {}),
         });
 
         closeTxAddModal();
@@ -1796,8 +1824,12 @@ if (txAddSave) {
         kind,
         amount: Number(amountVal),
         category_id: categoryId,
-        bg_color: txAddSelectedBgColor,
-        fg_color: txAddSelectedBgColor ? accessibleTextOnBackground(txAddSelectedBgColor) : null,
+        ...(txAddColorTouched
+          ? {
+              bg_color: txAddSelectedBgColor || "",
+              fg_color: txAddSelectedBgColor ? accessibleTextOnBackground(txAddSelectedBgColor) : "",
+            }
+          : {}),
         reimbursable: false,
       });
 
@@ -1990,6 +2022,7 @@ function openTxEditModal(tx) {
   renderTxEditCategoryOptions();
   setCategoryFieldValue("txEditCategoryId", tx.category_id);
   txEditSelectedBgColor = tx && tx.bg_color ? String(tx.bg_color) : null;
+  txEditColorTouched = false;
   refreshTxCategoryColorPickers();
   if (instanceAccountId && state.accounts && state.accounts.length > 0) {
     instanceAccountId.value = String(state.accounts[0].id);
@@ -2050,6 +2083,7 @@ function closeTxEditModal() {
   if (instanceExpectedTxId) instanceExpectedTxId.value = "";
   if (expectedEditId) expectedEditId.value = "";
   txEditSelectedBgColor = null;
+  txEditColorTouched = false;
   applyTransactionEditMode("actual", { resetting: true });
 }
 
@@ -2088,6 +2122,7 @@ function openTxAddModal(opts = {}) {
   if (txAddNotes) txAddNotes.value = "";
   setCategoryFieldValue("txAddCategoryId", null);
   txAddSelectedBgColor = null;
+  txAddColorTouched = false;
   refreshTxCategoryColorPickers();
   if (txAddRepeats) txAddRepeats.checked = !!opts.repeats;
   if (txAddRecurrence) txAddRecurrence.value = "monthly";
@@ -2114,6 +2149,7 @@ function closeTxAddModal() {
   txAddModal.setAttribute("aria-hidden", "true");
   mountTxAddFormInSidebar();
   txAddSelectedBgColor = null;
+  txAddColorTouched = false;
 }
 
 function openReconcileModal(iso) {
@@ -2150,8 +2186,12 @@ if (txEditSave) {
         description: txEditDescriptionSnapshot,
         notes: txEditNotes && txEditNotes.value.trim() ? txEditNotes.value.trim() : null,
         category_id: categoryIdFromCategoryField("txEditCategoryId"),
-        bg_color: txEditSelectedBgColor,
-        fg_color: txEditSelectedBgColor ? accessibleTextOnBackground(txEditSelectedBgColor) : null,
+        ...(txEditColorTouched
+          ? {
+              bg_color: txEditSelectedBgColor || "",
+              fg_color: txEditSelectedBgColor ? accessibleTextOnBackground(txEditSelectedBgColor) : "",
+            }
+          : {}),
         reimbursable: txEditReimbursableValue,
       });
       closeTxEditModal();
@@ -2572,8 +2612,12 @@ async function saveExpectedInstanceOverride() {
     amount,
     description: expectedSaveDescription(),
     category_id: categoryId,
-    bg_color: txEditSelectedBgColor,
-    fg_color: txEditSelectedBgColor ? accessibleTextOnBackground(txEditSelectedBgColor) : null,
+    ...(txEditColorTouched
+      ? {
+          bg_color: txEditSelectedBgColor || "",
+          fg_color: txEditSelectedBgColor ? accessibleTextOnBackground(txEditSelectedBgColor) : "",
+        }
+      : {}),
     moved_to_date: movedTo,
     variable: !!(seriesVariable && seriesVariable.checked),
   };
@@ -2664,8 +2708,12 @@ async function saveExpectedSeriesFromInstance() {
       amount: Number(amount),
       variable: !!(seriesVariable && seriesVariable.checked),
       category_id: categoryId,
-      bg_color: txEditSelectedBgColor,
-      fg_color: txEditSelectedBgColor ? accessibleTextOnBackground(txEditSelectedBgColor) : null,
+      ...(txEditColorTouched
+        ? {
+            bg_color: txEditSelectedBgColor || "",
+            fg_color: txEditSelectedBgColor ? accessibleTextOnBackground(txEditSelectedBgColor) : "",
+          }
+        : {}),
     });
   } else {
     const applyBody = {
@@ -2679,8 +2727,12 @@ async function saveExpectedSeriesFromInstance() {
       recurrence: recurrenceVal,
       variable: !!(seriesVariable && seriesVariable.checked),
       end_count: endCountVal,
-      bg_color: txEditSelectedBgColor,
-      fg_color: txEditSelectedBgColor ? accessibleTextOnBackground(txEditSelectedBgColor) : null,
+      ...(txEditColorTouched
+        ? {
+            bg_color: txEditSelectedBgColor || "",
+            fg_color: txEditSelectedBgColor ? accessibleTextOnBackground(txEditSelectedBgColor) : "",
+          }
+        : {}),
     };
     if (recurrenceVal === "twice_monthly") applyBody.second_day_of_month = secondDayVal;
     await api(
@@ -3120,6 +3172,7 @@ const txAddCategoryColorPicker = renderCategoryColorPicker({
   getCategoryId: () => categoryIdFromCategoryField("txAddCategoryId"),
   getBg: () => txAddSelectedBgColor,
   setBg: (v) => {
+    txAddColorTouched = true;
     txAddSelectedBgColor = v && String(v).trim() ? String(v).trim() : null;
   },
 });
@@ -3130,6 +3183,7 @@ const txEditCategoryColorPicker = renderCategoryColorPicker({
   getCategoryId: () => categoryIdFromCategoryField("txEditCategoryId"),
   getBg: () => txEditSelectedBgColor,
   setBg: (v) => {
+    txEditColorTouched = true;
     txEditSelectedBgColor = v && String(v).trim() ? String(v).trim() : null;
   },
 });
@@ -3218,7 +3272,23 @@ function renderCategoriesGrid(tree) {
     nameEl.textContent = c.name;
     nameEl.title = categoryDisplayLabel(c);
 
+    const controls = document.createElement("div");
+    controls.className = "cat-move-controls";
+    const upBtn = document.createElement("button");
+    upBtn.type = "button";
+    upBtn.className = "cat-move-btn";
+    upBtn.title = "Move up";
+    upBtn.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 14l6-6 6 6" /></svg>`;
+    const downBtn = document.createElement("button");
+    downBtn.type = "button";
+    downBtn.className = "cat-move-btn";
+    downBtn.title = "Move down";
+    downBtn.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 10l6 6 6-6" /></svg>`;
+    controls.appendChild(upBtn);
+    controls.appendChild(downBtn);
+
     row.appendChild(nameEl);
+    row.appendChild(controls);
 
     nameEl.addEventListener("click", (e) => {
       e.preventDefault();
@@ -3227,6 +3297,25 @@ function renderCategoriesGrid(tree) {
       const groupEl = row.closest(".cat-group");
       const gid = groupEl && groupEl.dataset && groupEl.dataset.groupId ? Number(groupEl.dataset.groupId) : null;
       openCatEditModal({ kind: "category", id: Number(c.id), name: String(c.name), groupId: gid });
+    });
+
+    upBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const prev = row.previousElementSibling;
+      if (prev && prev.classList.contains("cat-row")) {
+        row.parentElement.insertBefore(row, prev);
+        scheduleCategoryTreePersist();
+      }
+    });
+    downBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const next = row.nextElementSibling;
+      if (next && next.classList.contains("cat-row")) {
+        row.parentElement.insertBefore(next, row);
+        scheduleCategoryTreePersist();
+      }
     });
 
     row.addEventListener("dragstart", (e) => {
@@ -3276,12 +3365,6 @@ function renderCategoriesGrid(tree) {
     const head = document.createElement("div");
     head.className = "cat-group-head";
 
-    const grip = document.createElement("div");
-    grip.className = "meta cat-group-grip";
-    grip.textContent = "⋮⋮";
-    grip.draggable = true;
-    grip.title = "Drag to reorder groups";
-
     const nameInput = document.createElement("input");
     nameInput.type = "text";
     nameInput.className = "cat-group-name-input";
@@ -3304,9 +3387,24 @@ function renderCategoriesGrid(tree) {
       openCatEditModal({ kind: "group", id: Number(g.id), name: String(nameDisplay.textContent || "") });
     });
 
-    head.appendChild(grip);
     head.appendChild(nameDisplay);
     head.appendChild(nameInput);
+
+    const gControls = document.createElement("div");
+    gControls.className = "cat-move-controls";
+    const gUp = document.createElement("button");
+    gUp.type = "button";
+    gUp.className = "cat-move-btn";
+    gUp.title = "Move group up";
+    gUp.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 14l6-6 6 6" /></svg>`;
+    const gDown = document.createElement("button");
+    gDown.type = "button";
+    gDown.className = "cat-move-btn";
+    gDown.title = "Move group down";
+    gDown.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 10l6 6 6-6" /></svg>`;
+    gControls.appendChild(gUp);
+    gControls.appendChild(gDown);
+    head.appendChild(gControls);
 
     const body = document.createElement("div");
     body.className = "cat-group-body";
@@ -3338,16 +3436,23 @@ function renderCategoriesGrid(tree) {
       body.appendChild(mountCategoryRow(c));
     }
 
-    grip.addEventListener("dragstart", (e) => {
-      try {
-        e.dataTransfer.effectAllowed = "move";
-        e.dataTransfer.setData("text/plain", `group:${wrap.dataset.groupId}`);
-      } catch (_) {}
-      wrap.classList.add("is-dragging");
+    gUp.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const prev = wrap.previousElementSibling;
+      if (prev && prev.classList.contains("cat-group")) {
+        categoriesTree.insertBefore(wrap, prev);
+        scheduleCategoryTreePersist();
+      }
     });
-    grip.addEventListener("dragend", () => {
-      wrap.classList.remove("is-dragging");
-      clearDragUi();
+    gDown.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const next = wrap.nextElementSibling;
+      if (next && next.classList.contains("cat-group")) {
+        categoriesTree.insertBefore(next, wrap);
+        scheduleCategoryTreePersist();
+      }
     });
     head.addEventListener("dragover", (e) => {
       e.preventDefault();
