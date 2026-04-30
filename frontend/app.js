@@ -296,6 +296,9 @@ function renderCategoryColorPicker({ rowEl, swatchesEl, clearBtn, getCategoryId,
     }
 
     swatchesEl.innerHTML = "";
+    const paletteLower = new Set(CATEGORY_COLOR_PALETTE.map((h) => String(h).toLowerCase()));
+    const activeLower = activeBg ? String(activeBg).toLowerCase() : "";
+    const activeIsPalette = !!(activeLower && paletteLower.has(activeLower));
     for (const hex of CATEGORY_COLOR_PALETTE) {
       const b = document.createElement("button");
       b.type = "button";
@@ -318,7 +321,11 @@ function renderCategoryColorPicker({ rowEl, swatchesEl, clearBtn, getCategoryId,
     custom.title = "Custom color";
     const inp = document.createElement("input");
     inp.type = "color";
-    inp.value = activeBg && String(activeBg).startsWith("#") ? String(activeBg) : "#0B3D2E";
+    // If the saved/selected color is not one of the preset palette values, treat it as "custom"
+    // and highlight the "+" swatch.
+    const activeLooksHex = !!(activeBg && String(activeBg).trim().startsWith("#"));
+    if (activeBg && !activeIsPalette) custom.classList.add("is-active");
+    inp.value = activeLooksHex ? String(activeBg).trim() : "#0B3D2E";
     // Don't re-render on every 'input' while the native picker is open,
     // or it will close immediately (the <input> gets replaced).
     inp.addEventListener("input", () => {
@@ -2214,6 +2221,17 @@ if (txEditSave) {
       });
       closeTxEditModal();
       invalidateLowBalanceAlertCache();
+      // If the transaction moved to a different month, jump the UI to that month
+      // so it doesn't look like the transaction "disappeared".
+      {
+        const iso = normalizeIsoDate(txEditDate.value);
+        const movedYm = iso ? String(iso).slice(0, 7) : "";
+        const curYm = (calendarMonth?.value || monthInput?.value || "").slice(0, 7);
+        if (movedYm && curYm && movedYm !== curYm) {
+          if (monthInput) monthInput.value = movedYm;
+          applyCalendarMonthToPickers(movedYm);
+        }
+      }
       await loadMonthAndCalendar();
     } catch (e) {
       show(txEditErr, e.message || "Failed to save");

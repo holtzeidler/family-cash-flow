@@ -2683,6 +2683,18 @@ body.contact-page .app-footer{
   display: block;
 }
 
+/* Apply/Delete scope modals: keep all action buttons same width as Back */
+.modal--choice .expected-delete-actions > button{
+  width: 100%;
+  max-width: 280px;
+  margin-left: auto;
+  margin-right: auto;
+  display: block;
+}
+.modal--choice .expected-remove-btn{
+  max-width: 280px;
+}
+
 .modal--tx-add{
   width: min(92vw, 760px);
   max-width: 760px;
