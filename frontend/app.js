@@ -280,11 +280,19 @@ function renderCategoryColorPicker({ rowEl, swatchesEl, clearBtn, getCategoryId,
     // Always show the row in add/edit modals (even before a category is chosen),
     // because the color applies to the transaction/occurrence, not the category.
     rowEl.hidden = false;
-    const activeBg = getBg && getBg() ? String(getBg()) : null;
+    const rawBg = getBg && getBg() ? String(getBg()).trim() : "";
+    const activeBg = rawBg && rawBg.toLowerCase() !== "none" ? rawBg : null;
+    const cid = getCategoryId ? getCategoryId() : null;
+    const catSt = categoryStyleFromId(cid);
+    const catBg = catSt && catSt.bg ? String(catSt.bg).trim() : "";
+    const categoryTint = !!(catBg && catBg.toLowerCase() !== "none");
+    // Enable Clear when there is a pending swatch color OR the category would tint the pill
+    // (so the user can explicitly save with no color despite the category default).
+    const canClear = !!activeBg || categoryTint;
     if (clearBtn) {
       clearBtn.hidden = false;
-      clearBtn.disabled = !activeBg;
-      clearBtn.title = activeBg ? "Clear selected color" : "No color selected";
+      clearBtn.disabled = !canClear;
+      clearBtn.title = canClear ? "Clear color for this transaction (save to apply)" : "No color to clear";
     }
 
     swatchesEl.innerHTML = "";
@@ -331,7 +339,14 @@ function renderCategoryColorPicker({ rowEl, swatchesEl, clearBtn, getCategoryId,
   }
 
   if (clearBtn) {
+    // Use mousedown preventDefault so the click still fires when another control
+    // (category combobox, color input) would otherwise steal focus first.
+    clearBtn.addEventListener("mousedown", (e) => {
+      if (clearBtn.disabled) return;
+      e.preventDefault();
+    });
     clearBtn.addEventListener("click", () => {
+      if (clearBtn.disabled) return;
       if (setBg) setBg(null);
       refresh();
     });
