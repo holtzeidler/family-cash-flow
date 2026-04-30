@@ -286,6 +286,9 @@ function renderCategoryColorPicker({ rowEl, swatchesEl, clearBtn, getCategoryId,
     const catSt = categoryStyleFromId(cid);
     const catBg = catSt && catSt.bg ? String(catSt.bg).trim() : "";
     const categoryTint = !!(catBg && catBg.toLowerCase() !== "none");
+    // For highlighting, use the effective displayed color:
+    // transaction override if present, otherwise the category default.
+    const effectiveBg = activeBg || (categoryTint ? catBg : null);
     // Enable Clear when there is a pending swatch color OR the category would tint the pill
     // (so the user can explicitly save with no color despite the category default).
     const canClear = !!activeBg || categoryTint;
@@ -297,15 +300,15 @@ function renderCategoryColorPicker({ rowEl, swatchesEl, clearBtn, getCategoryId,
 
     swatchesEl.innerHTML = "";
     const paletteLower = new Set(CATEGORY_COLOR_PALETTE.map((h) => String(h).toLowerCase()));
-    const activeLower = activeBg ? String(activeBg).toLowerCase() : "";
-    const activeIsPalette = !!(activeLower && paletteLower.has(activeLower));
+    const effectiveLower = effectiveBg ? String(effectiveBg).toLowerCase() : "";
+    const effectiveIsPalette = !!(effectiveLower && paletteLower.has(effectiveLower));
     for (const hex of CATEGORY_COLOR_PALETTE) {
       const b = document.createElement("button");
       b.type = "button";
       b.className = "cat-swatch";
       b.style.background = hex;
       b.title = "Set transaction color";
-      if (activeBg && String(activeBg).toLowerCase() === String(hex).toLowerCase()) {
+      if (effectiveBg && String(effectiveBg).toLowerCase() === String(hex).toLowerCase()) {
         b.classList.add("is-active");
       }
       b.addEventListener("click", () => {
@@ -323,9 +326,9 @@ function renderCategoryColorPicker({ rowEl, swatchesEl, clearBtn, getCategoryId,
     inp.type = "color";
     // If the saved/selected color is not one of the preset palette values, treat it as "custom"
     // and highlight the "+" swatch.
-    const activeLooksHex = !!(activeBg && String(activeBg).trim().startsWith("#"));
-    if (activeBg && !activeIsPalette) custom.classList.add("is-active");
-    inp.value = activeLooksHex ? String(activeBg).trim() : "#0B3D2E";
+    const effectiveLooksHex = !!(effectiveBg && String(effectiveBg).trim().startsWith("#"));
+    if (effectiveBg && !effectiveIsPalette) custom.classList.add("is-active");
+    inp.value = effectiveLooksHex ? String(effectiveBg).trim() : "#0B3D2E";
     // Don't re-render on every 'input' while the native picker is open,
     // or it will close immediately (the <input> gets replaced).
     inp.addEventListener("input", () => {
