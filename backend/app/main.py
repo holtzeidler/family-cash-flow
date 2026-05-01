@@ -24,7 +24,7 @@ from sqlalchemy import Enum as SAEnum
 from sqlalchemy import Boolean, Integer, UniqueConstraint
 from sqlalchemy import ForeignKey
 from sqlalchemy import String
-from sqlalchemy import delete, func, select, text, update
+from sqlalchemy import delete, func, or_, select, text, update
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, sessionmaker
 from sqlalchemy.types import Numeric
@@ -2555,8 +2555,13 @@ def expected_calendar(
             ExpectedTransaction.id == ExpectedTransactionOverride.expected_transaction_id,
         ).where(
             ExpectedTransaction.family_id == family_id,
-            ExpectedTransactionOverride.occurrence_date >= start_date,
-            ExpectedTransactionOverride.occurrence_date < end_date,
+            or_(
+                (ExpectedTransactionOverride.occurrence_date >= start_date)
+                & (ExpectedTransactionOverride.occurrence_date < end_date),
+                (ExpectedTransactionOverride.moved_to_date.is_not(None))
+                & (ExpectedTransactionOverride.moved_to_date >= start_date)
+                & (ExpectedTransactionOverride.moved_to_date < end_date),
+            ),
         )
     ).scalars().all()
 
@@ -3022,8 +3027,13 @@ def _calendar_month_daily_balances(
                 ExpectedTransaction.id == ExpectedTransactionOverride.expected_transaction_id,
             ).where(
                 ExpectedTransaction.family_id == family_id,
-                ExpectedTransactionOverride.occurrence_date >= global_start,
-                ExpectedTransactionOverride.occurrence_date < month_end_excl,
+                or_(
+                    (ExpectedTransactionOverride.occurrence_date >= global_start)
+                    & (ExpectedTransactionOverride.occurrence_date < month_end_excl),
+                    (ExpectedTransactionOverride.moved_to_date.is_not(None))
+                    & (ExpectedTransactionOverride.moved_to_date >= global_start)
+                    & (ExpectedTransactionOverride.moved_to_date < month_end_excl),
+                ),
             )
         ).scalars().all()
         override_map: dict[tuple[int, date], ExpectedTransactionOverride] = {
