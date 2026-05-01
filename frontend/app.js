@@ -3712,8 +3712,13 @@ function contrastRatioBetweenRgb(fgRgb, bgRgb) {
 function accessibleTextOnBackground(bgCss) {
   const bgRgb = parseCssColorToRgb(bgCss);
   if (!bgRgb) return "#111827";
+  // Heuristic: users strongly prefer white text on "dark-ish" colors even when contrast math
+  // is close (e.g. deep reds). Use luminance as a primary signal, then fall back to contrast.
+  const lum = relativeLuminanceFromRgb(bgRgb);
   const dark = { r: 17, g: 24, b: 39 };
   const light = { r: 255, g: 255, b: 255 };
+  if (lum < 0.45) return "#ffffff";
+  if (lum > 0.72) return "rgb(17, 24, 39)";
   const cDark = contrastRatioBetweenRgb(dark, bgRgb);
   const cLight = contrastRatioBetweenRgb(light, bgRgb);
   return cDark >= cLight ? "rgb(17, 24, 39)" : "#ffffff";
