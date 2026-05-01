@@ -211,7 +211,6 @@ let state = {
   monthDailyBalances: new Map(),
   calendarExpandedDays: new Set(),
   calendarDetailMode: "detailed",
-  diagAmount: null,
 };
 
 let selectedExpectedInstance = null;
@@ -5166,79 +5165,11 @@ async function loadMonthAndCalendar() {
     await loadReconciledDays(calendarMonth?.value || monthInput.value);
     await loadCalendarMonthDaily();
     renderCalendar();
-    void runAmountDiagForRange();
     await refreshLowBalanceAlert();
   } catch (e) {
     show(calendarErr, e.message || "Failed to load calendar");
   } finally {
     setCalendarLoadingUi(false);
-  }
-}
-
-let diagAmountFetchKey = "";
-async function runAmountDiagForRange() {
-  try {
-    if (!state.activeFamilyId) return;
-    const month = (calendarMonth?.value || monthInput.value || "").trim();
-    if (!month) return;
-    const key = `${state.activeFamilyId}@${month}`;
-    if (diagAmountFetchKey === key) return;
-    diagAmountFetchKey = key;
-
-    const DIAG_AMOUNT = 332.22;
-    const rangeStart = `${month}-01`;
-    const prevMonth = shiftMonthStr(month, -1);
-    const nextMonth = shiftMonthStr(month, 1);
-    const start = prevMonth ? `${prevMonth}-01` : rangeStart;
-    const end = nextMonth ? toISODate(new Date(Number(nextMonth.slice(0, 4)), Number(nextMonth.slice(5, 7)), 0)) : rangeStart;
-
-    const data = await api(
-      `/api/families/${state.activeFamilyId}/transactions?start_date=${encodeURIComponent(start)}&end_date=${encodeURIComponent(end)}`,
-      "GET"
-    );
-    const items = data?.items || [];
-    const match = items.filter((t) => {
-      const a = toNum(t?.amount);
-      return Number.isFinite(a) && Math.abs(a - DIAG_AMOUNT) < 0.005;
-    });
-    const may01 = items.filter((t) => normalizeIsoDate(t?.date) === "2026-05-01");
-    const byWords = items.filter((t) => {
-      const s = String(t?.description || "").toLowerCase();
-      return s.includes("credit") || s.includes("card") || s.includes("payment");
-    });
-
-    // Also ask the daily-balance API what it thinks happened on 4/30 -> 5/1.
-    const mode = "both";
-    const [aprDaily, mayDaily] = await Promise.allSettled([
-      api(`/api/families/${state.activeFamilyId}/calendar-month-daily?month=2026-04&mode=${encodeURIComponent(mode)}`, "GET"),
-      api(`/api/families/${state.activeFamilyId}/calendar-month-daily?month=2026-05&mode=${encodeURIComponent(mode)}`, "GET"),
-    ]);
-    const getRow = (resp, iso) => {
-      const days = resp && resp.days;
-      if (!Array.isArray(days)) return null;
-      return days.find((r) => normalizeIsoDate(r?.date) === iso) || null;
-    };
-    const a30 = aprDaily.status === "fulfilled" ? getRow(aprDaily.value, "2026-04-30") : null;
-    const m01 = mayDaily.status === "fulfilled" ? getRow(mayDaily.value, "2026-05-01") : null;
-    state.diagAmount = {
-      month,
-      start,
-      end,
-      amount: DIAG_AMOUNT,
-      matches: match.slice(0, 5).map((t) => ({ id: t.id, date: t.date, description: t.description, amount: t.amount })),
-      total: match.length,
-      may01: may01.slice(0, 10).map((t) => ({ id: t.id, date: t.date, description: t.description, amount: t.amount })),
-      may01Total: may01.length,
-      wordHits: byWords.slice(0, 10).map((t) => ({ id: t.id, date: t.date, description: t.description, amount: t.amount })),
-      wordTotal: byWords.length,
-      daily: {
-        a30: a30 ? { start: a30.start, txNet: a30.tx_net, end: a30.end } : null,
-        m01: m01 ? { start: m01.start, txNet: m01.tx_net, end: m01.end } : null,
-      },
-    };
-    renderCalendar();
-  } catch (_) {
-    // Non-fatal; ignore.
   }
 }
 
@@ -5477,9 +5408,8 @@ function renderCalendar() {
   // Never hide actual transactions; users can still toggle expected overlays.
   const showActual = true;
   const showExpected = mode === "both" || mode === "expected";
-  // Always render transactions; "Balance Only" should not hide database items.
-  // (Week rows will expand as needed to keep all items visible.)
-  const showDetails = true;
+  // "Transactions" vs "Balance Only" toggle (detailed vs simplified).
+  const showDetails = state.calendarDetailMode === "detailed";
 
   const actualTxsByDate = new Map();
   for (const tx of [...(state.monthActualItems || []), ...(state.calendarExtraActualItems || [])]) {
@@ -5487,118 +5417,6 @@ function renderCalendar() {
     if (!actualTxsByDate.has(dk)) actualTxsByDate.set(dk, []);
     actualTxsByDate.get(dk).push(tx);
   }
-
-  // --- Diagnostics: help identify "missing" items by amount ---
-  // This helps debug cases where a balance changes by an amount but the item isn't visible.
-  try {
-    const DIAG_AMOUNT = 332.22;
-    const m = (calendarMonth?.value || monthInput.value || "").trim();
-    const allActual = [...(state.monthActualItems || []), ...(state.calendarExtraActualItems || [])];
-    const allExpected = [...(state.monthExpectedItems || []), ...(state.calendarExtraExpectedItems || [])];
-    const matchAmt = (t) => {
-      const a = Number(t?.amount);
-      return Number.isFinite(a) && Math.abs(a - DIAG_AMOUNT) < 0.005;
-    };
-    const hitsA = allActual.filter(matchAmt);
-    const hitsE = allExpected.filter(matchAmt);
-    if (calendarErr) {
-      const fmtHit = (t, kind) => {
-        const iso = normalizeIsoDate(t?.date) || String(t?.date || "");
-        const id = t?.id != null ? `#${t.id}` : "";
-        const desc = String(t?.description || "").trim();
-        return `${kind}${id ? " " + id : ""} ${iso} "${desc}"`;
-      };
-      const parts = [];
-      parts.push(`Diag ${m}: actual=${hitsA.length}, expected=${hitsE.length} for $${DIAG_AMOUNT.toFixed(2)}`);
-      const sample = [];
-      for (const t of hitsA.slice(0, 2)) sample.push(fmtHit(t, "A"));
-      for (const t of hitsE.slice(0, 2)) sample.push(fmtHit(t, "E"));
-      if (sample.length) parts.push(sample.join(" | "));
-      calendarErr.textContent = parts.join(" — ");
-      calendarErr.style.display = "block";
-      calendarErr.className = "callout callout--muted";
-    }
-  } catch (_) {}
-
-  // If the broader range-diag found matches, append them.
-  try {
-    const d = state.diagAmount;
-    if (calendarErr && d && d.month === month && d.total != null) {
-      const extra =
-        d.total > 0
-          ? ` Range ${d.start}→${d.end}: ${d.total} match(es) — ` +
-            d.matches
-              .map((t) => `#${t.id} ${normalizeIsoDate(t.date) || t.date} "${String(t.description || "").trim()}"`)
-              .join(" | ")
-          : ` Range ${d.start}→${d.end}: 0 match(es)`;
-      calendarErr.textContent = `${calendarErr.textContent} —${extra}`;
-    }
-  } catch (_) {}
-
-  // Show all May 1 transactions (from range query), plus any keyword hits.
-  try {
-    const d = state.diagAmount;
-    if (calendarErr && d && d.month === month && d.may01Total != null) {
-      const may = d.may01Total
-        ? ` May1 list(${d.may01Total}): ` +
-          d.may01
-            .map((t) => `#${t.id} $${fmtMoney(Number(t.amount ?? 0))} "${String(t.description || "").trim()}"`)
-            .join(" | ")
-        : " May1 list(0)";
-      const words = d.wordTotal
-        ? ` Words(${d.wordTotal}): ` +
-          d.wordHits
-            .map((t) => `#${t.id} ${normalizeIsoDate(t.date) || t.date} $${fmtMoney(Number(t.amount ?? 0))} "${String(t.description || "").trim()}"`)
-            .join(" | ")
-        : " Words(0)";
-      calendarErr.textContent = `${calendarErr.textContent} —${may} —${words}`;
-    }
-  } catch (_) {}
-
-  // Show what the daily-balance API thinks happened on 4/30 -> 5/1.
-  try {
-    const d = state.diagAmount;
-    if (calendarErr && d && d.month === month && d.daily) {
-      const a30 = d.daily.a30;
-      const m01 = d.daily.m01;
-      if (a30 && m01) {
-        const delta = Number(m01.end ?? 0) - Number(a30.end ?? 0);
-        calendarErr.textContent =
-          `${calendarErr.textContent} — Daily API: 4/30 end=$${fmtMoney(Number(a30.end ?? 0))}, ` +
-          `5/1 txNet=$${fmtMoney(Number(m01.txNet ?? 0))}, 5/1 end=$${fmtMoney(Number(m01.end ?? 0))}, ` +
-          `Δ=$${fmtMoney(delta)}`;
-      } else {
-        calendarErr.textContent = `${calendarErr.textContent} — Daily API: (no 4/30→5/1 rows found)`;
-      }
-    }
-  } catch (_) {}
-
-  // If the user suspects a specific day-to-day delta (e.g. Apr 30 -> May 1),
-  // show the delta and the items on the target day.
-  try {
-    if (calendarErr) {
-      const a30 = state.monthDailyBalances.get("2026-04-30");
-      const m01 = state.monthDailyBalances.get("2026-05-01");
-      if (a30 && m01) {
-        const delta = Number(m01.end ?? 0) - Number(a30.end ?? 0);
-        const actualOn = actualTxsByDate.get("2026-05-01") || [];
-        const expectedOn = expectedByDate.get("2026-05-01") || [];
-        const sumActual = actualOn.reduce((acc, t) => acc + (String(t.kind) === "income" ? Number(t.amount ?? 0) : -Number(t.amount ?? 0)), 0);
-        const sumExpected = expectedOn.reduce((acc, t) => acc + (String(t.kind) === "income" ? Number(t.amount ?? 0) : -Number(t.amount ?? 0)), 0);
-        const top = [
-          ...actualOn.map((t) => `${String(t.kind) === "income" ? "+" : "-"}$${fmtMoney(Number(t.amount ?? 0))} ${String(t.description || "").trim()}`),
-          ...expectedOn.map((t) => `(exp)${String(t.kind) === "income" ? "+" : "-"}$${fmtMoney(Number(t.amount ?? 0))} ${String(t.description || "").trim()}`),
-        ]
-          .slice(0, 6)
-          .join(" | ");
-        calendarErr.textContent =
-          `${calendarErr.textContent} — Δ(2026-04-30→2026-05-01)=$${fmtMoney(delta)} ` +
-          `(txNet May1=$${fmtMoney(Number(m01.txNet ?? 0))}, end Apr30=$${fmtMoney(Number(a30.end ?? 0))}, end May1=$${fmtMoney(Number(m01.end ?? 0))}; ` +
-          `actual list net=$${fmtMoney(sumActual)}, expected list net=$${fmtMoney(sumExpected)})` +
-          (top ? ` — May 1 items: ${top}` : "");
-      }
-    }
-  } catch (_) {}
 
   const expectedByDate = new Map(); // iso -> [items]
   for (const item of [...(state.monthExpectedItems || []), ...(state.calendarExtraExpectedItems || [])]) {
@@ -5740,7 +5558,8 @@ function renderCalendar() {
         const descRaw = isExpected ? row.description || "(expected)" : (row.description || "Uncategorized").trim();
         // Show both category + description so items are easy to find (e.g. credit card payments).
         const labelRaw = categoryName && !isExpected ? `${categoryName} • ${descRaw}` : descRaw;
-        const label = truncate(labelRaw, 44);
+        // Keep labels short so they don't wrap into the amount column.
+        const label = truncate(labelRaw, 24);
 
         const labelSpan = document.createElement("span");
         labelSpan.className = `cal-tx-label ${kindFgClass(row.kind)}`;
@@ -5803,19 +5622,26 @@ function renderCalendar() {
 
   // Expand each week row to fit all transactions, keeping all 7 days the same height.
   try {
-    for (let w = 0; w < weekRows; w++) {
-      const start = w * 7;
-      const end = Math.min(start + 7, cells.length);
-      let maxH = MIN_CELL_H;
-      for (let j = start; j < end; j++) {
-        const c = cells[j];
-        if (!c) continue;
-        maxH = Math.max(maxH, c.scrollHeight);
+    if (showDetails) {
+      for (let w = 0; w < weekRows; w++) {
+        const start = w * 7;
+        const end = Math.min(start + 7, cells.length);
+        let maxH = MIN_CELL_H;
+        for (let j = start; j < end; j++) {
+          const c = cells[j];
+          if (!c) continue;
+          maxH = Math.max(maxH, c.scrollHeight);
+        }
+        for (let j = start; j < end; j++) {
+          const c = cells[j];
+          if (!c) continue;
+          c.style.height = `${maxH}px`;
+        }
       }
-      for (let j = start; j < end; j++) {
-        const c = cells[j];
+    } else {
+      for (const c of cells) {
         if (!c) continue;
-        c.style.height = `${maxH}px`;
+        c.style.height = `${MIN_CELL_H}px`;
       }
     }
   } catch (_) {}
