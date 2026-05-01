@@ -4816,7 +4816,7 @@ function renderTransactionsInto(listEl, items, emptyMessage) {
       const st = pillStyleForTransaction(tx);
       const pill = document.createElement("span");
       pill.className = `cat-pill ${kindFgClass(tx.kind)}`;
-      pill.textContent = tx.category;
+      pill.textContent = leafCategoryName(tx.category);
       if (st?.fg) pill.style.color = st.fg;
       if (st?.bg) {
         pill.style.background = st.bg;
@@ -4825,7 +4825,7 @@ function renderTransactionsInto(listEl, items, emptyMessage) {
       meta.appendChild(document.createTextNode(" · "));
       meta.appendChild(pill);
     } else if (tx.category) {
-      meta.appendChild(document.createTextNode(` · ${tx.category}`));
+      meta.appendChild(document.createTextNode(` · ${leafCategoryName(tx.category)}`));
     }
 
     left.appendChild(link);
@@ -5283,6 +5283,14 @@ function truncate(s, maxLen) {
   return str.slice(0, Math.max(0, maxLen - 1)) + "…";
 }
 
+function leafCategoryName(raw) {
+  const s = String(raw ?? "").trim();
+  if (!s) return "";
+  // Some category labels come through as "Group • Category".
+  const parts = s.split("•").map((p) => p.trim()).filter(Boolean);
+  return parts.length > 1 ? parts[parts.length - 1] : s;
+}
+
 function renderVariableTodosForMonth() {
   if (!variableTodoList) return;
   const items = state.monthExpectedItems || [];
@@ -5568,7 +5576,7 @@ function renderCalendar() {
         if (isExpected && row.variable) line.classList.add("cal-expected-variable");
         if (!isExpected) line.dataset.txId = String(row.id);
 
-        const categoryName = row.category && String(row.category).trim() ? String(row.category).trim() : "";
+        const categoryName = row.category && String(row.category).trim() ? leafCategoryName(String(row.category).trim()) : "";
         const descRaw = isExpected ? row.description || "(expected)" : (row.description || "Uncategorized").trim();
         // Show both category + description so items are easy to find (e.g. credit card payments).
         const labelRaw = categoryName && !isExpected ? `${categoryName} • ${descRaw}` : descRaw;

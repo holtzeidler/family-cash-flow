@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>BalanceWhiz — Sign up</title>
+    <script>window.API_BASE = "__API_BASE__";</script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="../styles.css" />
+  </head>
+  <body class="login-page">
+    <div class="container">
+      <div class="top-nav" role="banner" aria-label="App header">
+        <div class="top-nav__inner top-nav__inner--simple">
+          <div class="top-nav__title" aria-label="App title">
+            <h1 class="app-title">Balance Whiz</h1>
+          </div>
+          <div class="top-nav__actions" aria-label="Account actions">
+            <button type="button" class="top-nav__logout" onclick="window.location.href='../login.html'">Login</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid">
+        <section class="card auth-section auth-section--open" aria-label="Create account">
+          <div class="auth-section__head" style="cursor: default;">
+            <span class="auth-section__title">Create Account</span>
+          </div>
+          <div class="auth-section__body">
+            <div id="signupCallout" class="callout" style="display:none" role="status"></div>
+            <div id="signupPlanNote" class="callout callout--muted" style="display:none" role="status"></div>
+
+            <div class="row two">
+              <div>
+                <label for="name">Name</label>
+                <input id="name" type="text" autocomplete="name" />
+              </div>
+              <div>
+                <label for="email">Email</label>
+                <input id="email" type="email" autocomplete="email" />
+              </div>
+            </div>
+
+            <div class="row two">
+              <div>
+                <label for="password">Password</label>
+                <input id="password" type="password" autocomplete="new-password" />
+              </div>
+              <div>
+                <label for="password2">Confirm Password</label>
+                <input id="password2" type="password" autocomplete="new-password" />
+              </div>
+            </div>
+
+            <div style="height:10px;"></div>
+            <button type="button" id="signupBtn" onclick="window.__bwSignup && window.__bwSignup()">Create Account</button>
+          </div>
+        </section>
+      </div>
+
+      <footer class="app-footer" role="contentinfo">
+        <div class="app-footer__inner">
+          <span class="app-footer__brand" aria-hidden="true"></span>
+          <a href="../contactus/" class="app-footer__link">Contact Us</a>
+        </div>
+      </footer>
+    </div>
+
+    <script src="./signup.js"></script>
+  </body>
+</html>
+
