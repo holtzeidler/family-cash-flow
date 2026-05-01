@@ -2322,6 +2322,54 @@ body.contact-page .app-footer{
   margin-top: 10px;
 }
 
+/* Plans page */
+body.plans-page .container > .grid{
+  margin-top: 18px;
+}
+.plans-wrap{
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.plans-subtitle{
+  width: min(980px, 100%);
+  margin: 0 auto 14px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.plans-grid{
+  width: min(980px, 100%);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  align-items: stretch;
+}
+.plan-card{
+  background: var(--cal-surface);
+  padding: 22px;
+  min-height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.plan-card__title{
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  color: var(--text);
+  line-height: 1.25;
+}
+@media (max-width: 860px){
+  .plans-grid{
+    grid-template-columns: 1fr;
+    width: min(520px, 100%);
+  }
+}
+
 .calendar{
   display:grid;
   grid-template-columns: repeat(7, 1fr);
@@ -2346,8 +2394,9 @@ body.contact-page .app-footer{
   background: var(--cal-surface);
   border-radius: 8px;
   box-shadow: 0 1px 2px rgba(0,0,0,0.06);
-  /* Keep all day boxes the same size regardless of content. */
-  height: var(--cal-day-min-h, 108px);
+  /* Base height; JS will expand week rows when needed. */
+  min-height: var(--cal-day-min-h, 108px);
+  height: auto;
   padding: 10px 10px 10px;
   display: flex;
   flex-direction: column;
@@ -2501,31 +2550,7 @@ body.contact-page .app-footer{
   min-width: 0;
   flex: 1 1 auto;
   min-height: 0;
-  overflow: hidden;
-}
-.cal-cell--expanded .cal-day-txns{
-  overflow-y: auto;
-  padding-right: 4px;
-}
-.cal-more-pill{
-  align-self: flex-start;
-  margin-top: 2px;
-  font: inherit;
-  font-size: 12px;
-  line-height: 1.1;
-  padding: 4px 10px;
-  border-radius: 999px;
-  border: 1px solid rgba(0,0,0,0.14);
-  background: rgba(0,0,0,0.04);
-  color: var(--text);
-  cursor: pointer;
-}
-.cal-more-pill:hover{
-  background: rgba(0,0,0,0.06);
-}
-.cal-more-pill--less{
-  background: rgba(0,0,0,0.02);
-  color: var(--muted);
+  overflow: visible;
 }
 
 .cal-day-tx-line{

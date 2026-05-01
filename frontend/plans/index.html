@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>BalanceWhiz</title>
+    <script>window.API_BASE = "__API_BASE__";</script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="../styles.css" />
+  </head>
+  <body class="plans-page">
+    <div class="container">
+      <div class="top-nav" role="navigation" aria-label="Primary">
+        <div class="top-nav__inner">
+          <div class="top-nav__title" aria-label="App title">
+            <h1 class="app-title">Balance Whiz</h1>
+          </div>
+          <div class="top-nav__tabs" role="tablist" aria-label="Views">
+            <a class="top-nav__tab" href="../">Calendar View</a>
+            <a class="top-nav__tab" href="../">Transaction View</a>
+            <a class="top-nav__tab" href="../">Reports</a>
+            <a class="top-nav__tab" href="../">Settings</a>
+          </div>
+          <div class="top-nav__actions" aria-label="Account actions">
+            <button type="button" id="logoutBtn" class="top-nav__logout">Logout</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="plans-wrap">
+          <div class="plans-subtitle">Try risk free with a 14-day money back guarantee</div>
+          <div class="plans-grid" aria-label="Plans">
+            <div class="card plan-card">
+              <div class="plan-card__title">Checking Account Balance &amp; Cash ForeCast Only</div>
+            </div>
+            <div class="card plan-card">
+              <div class="plan-card__title">Add Budgeting</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <footer class="app-footer" role="contentinfo">
+        <div class="app-footer__inner">
+          <span class="app-footer__brand" aria-hidden="true"></span>
+          <a href="../contactus/" class="app-footer__link">Contact Us</a>
+        </div>
+      </footer>
+    </div>
+    <script>
+      // Keep consistent logout behavior with the main app.
+      try {
+        const btn = document.getElementById("logoutBtn");
+        if (btn) {
+          btn.addEventListener("click", () => {
+            try { localStorage.removeItem("access_token"); } catch (_) {}
+            document.cookie = "access_token=; Max-Age=0; path=/";
+            window.location.href = "../";
+          });
+        }
+      } catch (_) {}
+    </script>
+  </body>
+</html>
+

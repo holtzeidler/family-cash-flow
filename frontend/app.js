@@ -258,6 +258,19 @@ let txEditSelectedBgColor = null;
 let txAddColorTouched = false;
 let txEditColorTouched = false;
 
+function normalizeBgColorForSave(bg) {
+  const t = bg == null ? "" : String(bg).trim();
+  if (!t) return "none";
+  if (t.toLowerCase() === "none") return "none";
+  return t;
+}
+
+function normalizeFgColorForSave(bg) {
+  const t = bg == null ? "" : String(bg).trim();
+  if (!t || t.toLowerCase() === "none") return "";
+  return accessibleTextOnBackground(t);
+}
+
 const CATEGORY_COLOR_PALETTE = [
   "#40E0FF", // cyan
   "#F2C14E", // gold
@@ -281,6 +294,7 @@ function renderCategoryColorPicker({ rowEl, swatchesEl, clearBtn, getCategoryId,
     // because the color applies to the transaction/occurrence, not the category.
     rowEl.hidden = false;
     const rawBg = getBg && getBg() ? String(getBg()).trim() : "";
+    const overrideNone = !!(rawBg && rawBg.toLowerCase() === "none");
     const activeBg = rawBg && rawBg.toLowerCase() !== "none" ? rawBg : null;
     const cid = getCategoryId ? getCategoryId() : null;
     const catSt = categoryStyleFromId(cid);
@@ -288,10 +302,10 @@ function renderCategoryColorPicker({ rowEl, swatchesEl, clearBtn, getCategoryId,
     const categoryTint = !!(catBg && catBg.toLowerCase() !== "none");
     // For highlighting, use the effective displayed color:
     // transaction override if present, otherwise the category default.
-    const effectiveBg = activeBg || (categoryTint ? catBg : null);
+    const effectiveBg = overrideNone ? null : activeBg || (categoryTint ? catBg : null);
     // Enable Clear when there is a pending swatch color OR the category would tint the pill
     // (so the user can explicitly save with no color despite the category default).
-    const canClear = !!activeBg || categoryTint;
+    const canClear = overrideNone || !!activeBg || categoryTint;
     if (clearBtn) {
       clearBtn.hidden = false;
       clearBtn.disabled = !canClear;
@@ -357,7 +371,8 @@ function renderCategoryColorPicker({ rowEl, swatchesEl, clearBtn, getCategoryId,
     });
     clearBtn.addEventListener("click", () => {
       if (clearBtn.disabled) return;
-      if (setBg) setBg(null);
+      // Use the sentinel to explicitly override category defaults.
+      if (setBg) setBg("none");
       refresh();
     });
   }
@@ -1830,8 +1845,8 @@ if (txAddSave) {
           category_id: categoryId,
         ...(txAddColorTouched
           ? {
-              bg_color: txAddSelectedBgColor ? txAddSelectedBgColor : "none",
-              fg_color: txAddSelectedBgColor ? accessibleTextOnBackground(txAddSelectedBgColor) : "",
+              bg_color: normalizeBgColorForSave(txAddSelectedBgColor),
+              fg_color: normalizeFgColorForSave(txAddSelectedBgColor),
             }
           : {}),
         });
@@ -1851,8 +1866,8 @@ if (txAddSave) {
         category_id: categoryId,
         ...(txAddColorTouched
           ? {
-              bg_color: txAddSelectedBgColor ? txAddSelectedBgColor : "none",
-              fg_color: txAddSelectedBgColor ? accessibleTextOnBackground(txAddSelectedBgColor) : "",
+              bg_color: normalizeBgColorForSave(txAddSelectedBgColor),
+              fg_color: normalizeFgColorForSave(txAddSelectedBgColor),
             }
           : {}),
         reimbursable: false,
@@ -2048,7 +2063,7 @@ function openTxEditModal(tx) {
   setCategoryFieldValue("txEditCategoryId", tx.category_id);
   {
     const bg = tx && tx.bg_color ? String(tx.bg_color).trim() : "";
-    txEditSelectedBgColor = bg && bg.toLowerCase() !== "none" ? bg : null;
+    txEditSelectedBgColor = bg ? bg : null;
   }
   txEditColorTouched = false;
   refreshTxCategoryColorPickers();
@@ -2216,8 +2231,8 @@ if (txEditSave) {
         category_id: categoryIdFromCategoryField("txEditCategoryId"),
         ...(txEditColorTouched
           ? {
-              bg_color: txEditSelectedBgColor ? txEditSelectedBgColor : "none",
-              fg_color: txEditSelectedBgColor ? accessibleTextOnBackground(txEditSelectedBgColor) : "",
+              bg_color: normalizeBgColorForSave(txEditSelectedBgColor),
+              fg_color: normalizeFgColorForSave(txEditSelectedBgColor),
             }
           : {}),
         reimbursable: txEditReimbursableValue,
@@ -2430,8 +2445,11 @@ async function saveUncategorizedAssignments() {
     }
 
     uncatPendingCategoryByTxId.clear();
+    // Refresh both the underlying data and the uncategorized view so rows disappear immediately.
+    await loadCategories();
     await loadUpcomingTransactionsPanel();
     renderUpcomingTransactionsFiltered();
+    renderUncategorizedTransactions();
   } catch (e) {
     if (uncatTxErr) show(uncatTxErr, e.message || "Failed to save");
   } finally {
@@ -2653,8 +2671,8 @@ async function saveExpectedInstanceOverride() {
     category_id: categoryId,
     ...(txEditColorTouched
       ? {
-          bg_color: txEditSelectedBgColor ? txEditSelectedBgColor : "none",
-          fg_color: txEditSelectedBgColor ? accessibleTextOnBackground(txEditSelectedBgColor) : "",
+          bg_color: normalizeBgColorForSave(txEditSelectedBgColor),
+          fg_color: normalizeFgColorForSave(txEditSelectedBgColor),
         }
       : {}),
     moved_to_date: movedTo,
@@ -2749,8 +2767,8 @@ async function saveExpectedSeriesFromInstance() {
       category_id: categoryId,
       ...(txEditColorTouched
         ? {
-            bg_color: txEditSelectedBgColor ? txEditSelectedBgColor : "none",
-            fg_color: txEditSelectedBgColor ? accessibleTextOnBackground(txEditSelectedBgColor) : "",
+            bg_color: normalizeBgColorForSave(txEditSelectedBgColor),
+            fg_color: normalizeFgColorForSave(txEditSelectedBgColor),
           }
         : {}),
     });
@@ -2768,8 +2786,8 @@ async function saveExpectedSeriesFromInstance() {
       end_count: endCountVal,
       ...(txEditColorTouched
         ? {
-            bg_color: txEditSelectedBgColor ? txEditSelectedBgColor : "none",
-            fg_color: txEditSelectedBgColor ? accessibleTextOnBackground(txEditSelectedBgColor) : "",
+            bg_color: normalizeBgColorForSave(txEditSelectedBgColor),
+            fg_color: normalizeFgColorForSave(txEditSelectedBgColor),
           }
         : {}),
     };
@@ -3906,7 +3924,7 @@ function openExpectedEditModal(tx, opts = {}) {
       setCategoryFieldValue("txEditCategoryId", tx.category_id);
       {
         const bg = tx && tx.bg_color ? String(tx.bg_color).trim() : "";
-        txEditSelectedBgColor = bg && bg.toLowerCase() !== "none" ? bg : null;
+        txEditSelectedBgColor = bg ? bg : null;
       }
     } else {
       const accountId = tx.account_id != null ? Number(tx.account_id) : NaN;
@@ -3948,10 +3966,8 @@ function openExpectedEditModal(tx, opts = {}) {
 
   // Seed the color picker from the effective instance/series style.
   txEditSelectedBgColor =
-    (calendarItem && calendarItem.bg_color && String(calendarItem.bg_color).trim().toLowerCase() !== "none"
-      ? String(calendarItem.bg_color)
-      : null) ||
-    (tx && tx.bg_color && String(tx.bg_color).trim().toLowerCase() !== "none" ? String(tx.bg_color) : null) ||
+    (calendarItem && calendarItem.bg_color ? String(calendarItem.bg_color) : null) ||
+    (tx && tx.bg_color ? String(tx.bg_color) : null) ||
     null;
   refreshTxCategoryColorPickers();
 
@@ -5346,7 +5362,7 @@ function selectExpectedInstance(item) {
   setCategoryFieldValue("txEditCategoryId", item.category_id);
   {
     const bg = item && item.bg_color ? String(item.bg_color).trim() : "";
-    if (bg) txEditSelectedBgColor = bg.toLowerCase() === "none" ? null : bg;
+    if (bg) txEditSelectedBgColor = bg;
   }
   refreshTxCategoryColorPickers();
 
@@ -5463,7 +5479,9 @@ function renderCalendar() {
       totalCells = 35;
     }
   }
-  const MAX_CAL_TX_LINES = 3;
+  const MIN_CELL_H = 170;
+  /** @type {HTMLElement[]} */
+  const cells = [];
   for (let i = 0; i < totalCells; i++) {
     const cell = document.createElement("div");
     cell.className = "cal-cell";
@@ -5515,12 +5533,8 @@ function renderCalendar() {
     }
 
     if (showDetails) {
-      const overflowCount = Math.max(0, combined.length - MAX_CAL_TX_LINES);
-      const expanded = state.calendarExpandedDays && state.calendarExpandedDays.has(iso);
-      if (expanded) cell.classList.add("cal-cell--expanded");
-      const visible = expanded ? combined : combined.slice(0, MAX_CAL_TX_LINES);
-
-      for (const row of visible) {
+      // Always show all transactions; the week row will expand to fit the tallest day.
+      for (const row of combined) {
         const isExpected = row._type === "expected";
         const line = document.createElement("div");
         line.className = isExpected
@@ -5576,39 +5590,6 @@ function renderCalendar() {
 
         txnsEl.appendChild(line);
       }
-
-      if (!expanded && overflowCount > 0 && txnsEl) {
-        const moreBtn = document.createElement("button");
-        moreBtn.type = "button";
-        moreBtn.className = "cal-more-pill";
-        moreBtn.textContent = `+${overflowCount} more`;
-        moreBtn.title = "Show all transactions for this day";
-        moreBtn.addEventListener("click", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          state.calendarExpandedDays.add(iso);
-          // Re-render to show the full list; keeps box height fixed (tx list becomes scrollable).
-          renderCalendar();
-        });
-        txnsEl.appendChild(moreBtn);
-        cell.classList.add("cal-cell--has-more");
-      }
-
-      if (expanded && overflowCount > 0 && txnsEl) {
-        const lessBtn = document.createElement("button");
-        lessBtn.type = "button";
-        lessBtn.className = "cal-more-pill cal-more-pill--less";
-        lessBtn.textContent = "Show less";
-        lessBtn.title = "Collapse this day";
-        lessBtn.addEventListener("click", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          if (state.calendarExpandedDays) state.calendarExpandedDays.delete(iso);
-          renderCalendar();
-        });
-        txnsEl.appendChild(lessBtn);
-        cell.classList.add("cal-cell--has-more");
-      }
     }
 
     const dayBal = state.monthDailyBalances.get(iso);
@@ -5620,9 +5601,29 @@ function renderCalendar() {
     }
 
     wrapper.appendChild(cell);
+    cells.push(cell);
   }
 
   calendarGrid.appendChild(wrapper);
+
+  // Expand each week row to fit all transactions, keeping all 7 days the same height.
+  try {
+    for (let w = 0; w < weekRows; w++) {
+      const start = w * 7;
+      const end = Math.min(start + 7, cells.length);
+      let maxH = MIN_CELL_H;
+      for (let j = start; j < end; j++) {
+        const c = cells[j];
+        if (!c) continue;
+        maxH = Math.max(maxH, c.scrollHeight);
+      }
+      for (let j = start; j < end; j++) {
+        const c = cells[j];
+        if (!c) continue;
+        c.style.height = `${maxH}px`;
+      }
+    }
+  } catch (_) {}
 
   const calendarPanel = document.getElementById("calendarPanel");
   if (calendarPanel) {

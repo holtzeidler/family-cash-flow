@@ -80,8 +80,8 @@ function initAccordion() {
   }
   if (registerToggle) {
     registerToggle.addEventListener("click", () => {
-      setSectionOpen(loginSection, loginToggle, loginBody, false);
-      setSectionOpen(registerSection, registerToggle, registerBody, true);
+      // Instead of expanding inline registration fields, send users to the Plans page.
+      window.location.href = "./plans/";
     });
   }
 }
