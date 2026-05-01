@@ -18,7 +18,7 @@
             <h1 class="app-title">Balance Whiz</h1>
           </div>
           <div class="top-nav__actions" aria-label="Account actions">
-            <button type="button" id="logoutBtn" class="top-nav__logout">Logout</button>
+            <button type="button" class="top-nav__logout" onclick="window.location.href='../login/'">Login</button>
           </div>
         </div>
       </div>
@@ -35,7 +35,7 @@
               </div>
               <div class="plan-card__body">
                 <div class="plan-price">
-                  <div class="plan-price__main">$9.99</div>
+                  <div class="plan-price__main">$5.99</div>
                   <div class="plan-price__sub">per month</div>
                 </div>
                 <div class="plan-divider" aria-hidden="true"></div>
@@ -80,19 +80,6 @@
         </div>
       </footer>
     </div>
-    <script>
-      // Keep consistent logout behavior with the main app.
-      try {
-        const btn = document.getElementById("logoutBtn");
-        if (btn) {
-          btn.addEventListener("click", () => {
-            try { localStorage.removeItem("access_token"); } catch (_) {}
-            document.cookie = "access_token=; Max-Age=0; path=/";
-            window.location.href = "../";
-          });
-        }
-      } catch (_) {}
-    </script>
   </body>
 </html>
 

@@ -50,7 +50,6 @@ function goApp() {
 const loginCalloutEl = document.getElementById("loginCallout");
 const loginDiagCalloutEl = document.getElementById("loginDiagCallout");
 const loginBtn = document.getElementById("loginBtn");
-const createNewAccountBtn = document.getElementById("createNewAccountBtn");
 
 async function doLogin() {
   if (!loginBtn) return;
@@ -193,10 +192,3 @@ if (location.hostname.endsWith("github.io") && !getApiBase()) {
 // Expose a global handler so the inline onclick works even if the event binding fails.
 window.__bwLogin = () => void doLogin();
 if (loginBtn) loginBtn.addEventListener("click", () => void doLogin());
-
-if (createNewAccountBtn) {
-  createNewAccountBtn.addEventListener("click", () => {
-    // User requested /plan; redirect exists to /plans.
-    window.location.href = "./plan/";
-  });
-}

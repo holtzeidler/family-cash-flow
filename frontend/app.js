@@ -4976,19 +4976,25 @@ function normalizeIsoDate(raw) {
 }
 
 async function loadReconciledDays(month) {
-  state.reconciledDates = new Set();
   if (!state.activeFamilyId) return;
   if (!month) return;
+  const cur = String(month).trim();
+  const prev = shiftMonthStr(cur, -1);
+  const next = shiftMonthStr(cur, 1);
+  const months = [cur, prev, next].filter(Boolean);
+  const merged = new Set();
   try {
-    const data = await api(
-      `/api/families/${state.activeFamilyId}/reconciled-days?month=${encodeURIComponent(month)}`,
-      "GET"
+    const results = await Promise.all(
+      months.map((m) => api(`/api/families/${state.activeFamilyId}/reconciled-days?month=${encodeURIComponent(m)}`, "GET"))
     );
-    const ds = data?.dates || [];
-    for (const d of ds) {
-      const iso = normalizeIsoDate(d);
-      if (iso) state.reconciledDates.add(iso);
+    for (const data of results) {
+      const ds = data?.dates || [];
+      for (const d of ds) {
+        const iso = normalizeIsoDate(d);
+        if (iso) merged.add(iso);
+      }
     }
+    state.reconciledDates = merged;
   } catch (_) {
     state.reconciledDates = new Set();
   }
@@ -5578,8 +5584,9 @@ function renderCalendar() {
 
         const categoryName = row.category && String(row.category).trim() ? leafCategoryName(String(row.category).trim()) : "";
         const descRaw = isExpected ? row.description || "(expected)" : (row.description || "Uncategorized").trim();
-        // Show both category + description so items are easy to find (e.g. credit card payments).
-        const labelRaw = categoryName && !isExpected ? `${categoryName} • ${descRaw}` : descRaw;
+        // Calendar UI should display only the category name (no group, no extra "• description").
+        // If uncategorized, fall back to the description.
+        const labelRaw = !isExpected ? (categoryName || descRaw) : descRaw;
         // Keep labels short so they don't wrap into the amount column.
         const label = truncate(labelRaw, 24);
 
