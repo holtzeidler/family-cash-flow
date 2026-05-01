@@ -3514,6 +3514,8 @@ def list_transactions(
                 amount=tx.amount,
                 category=category_name,
                 category_id=tx.category_id,
+                fg_color=getattr(tx, "fg_color", None),
+                bg_color=getattr(tx, "bg_color", None),
                 reimbursable=bool(getattr(tx, "reimbursable", False)),
             )
         )

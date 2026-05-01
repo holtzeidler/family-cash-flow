@@ -5033,18 +5033,6 @@ function renderSidebarPendingTransactionsForMonth() {
     el.style.cursor = "pointer";
     el.addEventListener("click", () => open());
 
-    const cb = document.createElement("input");
-    cb.type = "checkbox";
-    cb.className = "pending-attn-cb";
-    cb.checked = checked.has(key);
-    cb.setAttribute("aria-label", "Mark as reviewed");
-    cb.addEventListener("click", (e) => e.stopPropagation());
-    cb.addEventListener("change", () => {
-      if (cb.checked) checked.add(key);
-      else checked.delete(key);
-      savePendingAttentionChecked(checked);
-    });
-
     const name = document.createElement("div");
     name.className = `pending-attn-name ${kindFgClass(kind)}`;
     name.textContent = String(it?.description || "(expected)").trim() || "(expected)";
@@ -5058,7 +5046,6 @@ function renderSidebarPendingTransactionsForMonth() {
     date.className = "pending-attn-date";
     date.textContent = it?.date ? fmtMonthDay(it.date) : "—";
 
-    el.appendChild(cb);
     el.appendChild(name);
     el.appendChild(est);
     el.appendChild(date);

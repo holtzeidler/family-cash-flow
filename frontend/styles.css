@@ -500,7 +500,7 @@ button.secondary{
 /* "Needs Attention" pending checklist */
 .pending-attn-item{
   display: grid;
-  grid-template-columns: 18px 1fr auto auto;
+  grid-template-columns: 1fr auto auto;
   gap: 10px;
   align-items: center;
   padding: 10px 12px;
@@ -512,11 +512,6 @@ button.secondary{
 }
 .pending-attn-item:hover{
   background: rgba(0,0,0,0.035);
-}
-.pending-attn-cb{
-  width: 16px;
-  height: 16px;
-  margin: 0;
 }
 .pending-attn-name{
   min-width: 0;
@@ -551,13 +546,12 @@ button.secondary{
 
 @media (max-width: 860px){
   .pending-attn-item{
-    grid-template-columns: 18px 1fr;
+    grid-template-columns: 1fr;
     grid-template-areas:
-      "cb name"
+      "name"
       ". meta";
     row-gap: 6px;
   }
-  .pending-attn-cb{ grid-area: cb; }
   .pending-attn-name{ grid-area: name; }
   .pending-attn-est{
     grid-area: meta;
