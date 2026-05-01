@@ -5541,7 +5541,9 @@ function renderCalendar() {
         if (!isExpected) line.dataset.txId = String(row.id);
 
         const categoryName = row.category && String(row.category).trim() ? String(row.category).trim() : "";
-        const labelRaw = categoryName || (isExpected ? row.description || "(expected)" : (row.description || "Uncategorized").trim());
+        const descRaw = isExpected ? row.description || "(expected)" : (row.description || "Uncategorized").trim();
+        // Show both category + description so items are easy to find (e.g. credit card payments).
+        const labelRaw = categoryName && !isExpected ? `${categoryName} • ${descRaw}` : descRaw;
         const label = truncate(labelRaw, 44);
 
         const labelSpan = document.createElement("span");
