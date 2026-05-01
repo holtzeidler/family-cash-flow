@@ -5419,6 +5419,31 @@ function renderCalendar() {
     actualTxsByDate.get(dk).push(tx);
   }
 
+  // --- Diagnostics: help identify "missing" transactions by amount ---
+  // This helps debug cases where a transaction exists (balances) but isn't visible on the calendar.
+  try {
+    const DIAG_AMOUNT = 332.22;
+    const allActual = [...(state.monthActualItems || []), ...(state.calendarExtraActualItems || [])];
+    const hits = allActual.filter((t) => {
+      const a = Number(t?.amount);
+      return Number.isFinite(a) && Math.abs(a - DIAG_AMOUNT) < 0.005;
+    });
+    if (calendarErr) {
+      if (hits.length) {
+        const h = hits
+          .slice(0, 3)
+          .map((t) => `#${t.id} ${normalizeIsoDate(t.date) || t.date} "${String(t.description || "").trim()}"`)
+          .join(" | ");
+        calendarErr.textContent = `Diag: found $${DIAG_AMOUNT.toFixed(2)} tx(s): ${h}`;
+        calendarErr.style.display = "block";
+      } else {
+        const m = (calendarMonth?.value || monthInput.value || "").trim();
+        calendarErr.textContent = `Diag: no $${DIAG_AMOUNT.toFixed(2)} transactions loaded for ${m}.`;
+        calendarErr.style.display = "block";
+      }
+    }
+  } catch (_) {}
+
   const expectedByDate = new Map(); // iso -> [items]
   for (const item of [...(state.monthExpectedItems || []), ...(state.calendarExtraExpectedItems || [])]) {
     const key = normalizeIsoDate(item.date) || item.date;
