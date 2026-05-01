@@ -2660,7 +2660,10 @@ async function saveExpectedInstanceOverride() {
 
   const occ = normalizeIsoDate(selectedExpectedInstance.occurrence_date);
   if (!occ) throw new Error("Invalid occurrence date");
-  const movedTo = normalizeIsoDate(selectedExpectedMovedToDate || "") || null;
+  // If the user moves the occurrence back onto its original occurrence_date,
+  // clear moved_to_date so it shows only once on that day.
+  let movedTo = normalizeIsoDate(selectedExpectedMovedToDate || "") || null;
+  if (movedTo && movedTo === occ) movedTo = null;
 
   const payload = {
     action: "update",
