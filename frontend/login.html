@@ -47,34 +47,12 @@
           </div>
         </section>
 
-        <section class="card auth-section" id="registerSection" aria-label="Create account">
-          <button
-            type="button"
-            class="auth-section__head"
-            id="registerSectionToggle"
-            aria-expanded="false"
-            aria-controls="registerSectionBody"
-          >
-            <span class="auth-section__title">Create account</span>
-            <span class="auth-section__chev" aria-hidden="true">▾</span>
-          </button>
-          <div class="auth-section__body" id="registerSectionBody" hidden>
-            <div id="registerCallout" class="callout" style="display:none" role="status"></div>
-            <div class="row two">
-              <div>
-                <label for="regName">Name (optional)</label>
-                <input id="regName" type="text" autocomplete="name" />
-              </div>
-              <div>
-                <label for="regEmail">Email</label>
-                <input id="regEmail" type="email" autocomplete="email" />
-              </div>
-            </div>
-            <div style="height:10px;"></div>
-            <label for="regPassword">Password (min 8 chars)</label>
-            <input id="regPassword" type="password" autocomplete="new-password" />
-            <div style="height:10px;"></div>
-            <button id="registerBtn">Register</button>
+        <section class="card auth-section auth-section--open" id="registerSection" aria-label="Create account">
+          <div class="auth-section__head" style="cursor: default;">
+            <span class="auth-section__title">Create New Account</span>
+          </div>
+          <div class="auth-section__body" id="registerSectionBody">
+            <button type="button" id="createNewAccountBtn">Create New Account</button>
           </div>
         </section>
       </div>

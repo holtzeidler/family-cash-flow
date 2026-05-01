@@ -5402,7 +5402,8 @@ function renderCalendar() {
   const offset = first.getDay(); // Sunday=0
 
   const mode = calendarMode?.value || "both";
-  const showActual = mode === "both" || mode === "actual";
+  // Never hide actual transactions; users can still toggle expected overlays.
+  const showActual = true;
   const showExpected = mode === "both" || mode === "expected";
   // Always render transactions; "Balance Only" should not hide database items.
   // (Week rows will expand as needed to keep all items visible.)

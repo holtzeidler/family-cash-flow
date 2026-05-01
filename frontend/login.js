@@ -49,9 +49,8 @@ function goApp() {
 
 const loginCalloutEl = document.getElementById("loginCallout");
 const loginDiagCalloutEl = document.getElementById("loginDiagCallout");
-const registerCalloutEl = document.getElementById("registerCallout");
 const loginBtn = document.getElementById("loginBtn");
-const registerBtn = document.getElementById("registerBtn");
+const createNewAccountBtn = document.getElementById("createNewAccountBtn");
 
 function setSectionOpen(sectionEl, toggleBtnEl, bodyEl, isOpen) {
   if (!sectionEl || !toggleBtnEl || !bodyEl) return;
@@ -64,24 +63,13 @@ function initAccordion() {
   const loginSection = document.getElementById("loginSection");
   const loginToggle = document.getElementById("loginSectionToggle");
   const loginBody = document.getElementById("loginSectionBody");
-  const registerSection = document.getElementById("registerSection");
-  const registerToggle = document.getElementById("registerSectionToggle");
-  const registerBody = document.getElementById("registerSectionBody");
 
-  // Defaults: Login open, Create account closed.
+  // Defaults: Login open.
   setSectionOpen(loginSection, loginToggle, loginBody, true);
-  setSectionOpen(registerSection, registerToggle, registerBody, false);
 
   if (loginToggle) {
     loginToggle.addEventListener("click", () => {
       setSectionOpen(loginSection, loginToggle, loginBody, true);
-      setSectionOpen(registerSection, registerToggle, registerBody, false);
-    });
-  }
-  if (registerToggle) {
-    registerToggle.addEventListener("click", () => {
-      // Instead of expanding inline registration fields, send users to the Plans page.
-      window.location.href = "./plans/";
     });
   }
 }
@@ -119,9 +107,7 @@ async function renderDiagnostics() {
 
 function setBusy(isBusy) {
   loginBtn.disabled = isBusy;
-  registerBtn.disabled = isBusy;
   loginBtn.textContent = isBusy ? "Logging in..." : "Login";
-  registerBtn.textContent = isBusy ? "Working..." : "Register";
 }
 
 function networkHint() {
@@ -170,7 +156,6 @@ if (location.hostname.endsWith("github.io") && !getApiBase()) {
   const msg =
     "This site was built without API_BASE. Repo > Settings > Secrets > Actions > set API_BASE to your Render API URL, then re-run Deploy frontend to GitHub Pages.";
   setCallout(loginCalloutEl, msg, "error");
-  setCallout(registerCalloutEl, msg, "error");
 } else {
   void renderDiagnostics();
 }
@@ -204,31 +189,9 @@ loginBtn.addEventListener("click", async () => {
   }
 });
 
-registerBtn.addEventListener("click", async () => {
-  setBusy(true);
-  setCallout(registerCalloutEl, "Creating account...", "pending");
-  try {
-    const name = document.getElementById("regName").value.trim() || null;
-    const email = document.getElementById("regEmail").value.trim();
-    const password = document.getElementById("regPassword").value;
-    const regResp = await request("/api/auth/register", "POST", { name, email, password });
-    if (!regResp.ok) {
-      setCallout(registerCalloutEl, messageFromFailure(regResp, "Registration failed"), "error");
-      return;
-    }
-    const check = await verifySessionWithProgress(registerCalloutEl);
-    if (!check.ok) {
-      const srv = await fetchServerPublicConfig();
-      const base =
-        "Account created, but /api/auth/me did not see your session cookie. Set Render ENV=production for cross-site cookies.";
-      setCallout(registerCalloutEl, base + formatServerDiag(srv), "error");
-      return;
-    }
-    setCallout(registerCalloutEl, "Account created and session ready. Opening app...", "ok");
-    goApp();
-  } catch (e) {
-    setCallout(registerCalloutEl, (e && e.message) || "Registration failed", "error");
-  } finally {
-    setBusy(false);
-  }
-});
+if (createNewAccountBtn) {
+  createNewAccountBtn.addEventListener("click", () => {
+    // User requested /plan; redirect exists to /plans.
+    window.location.href = "./plan/";
+  });
+}
