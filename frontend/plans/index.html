@@ -17,12 +17,6 @@
           <div class="top-nav__title" aria-label="App title">
             <h1 class="app-title">Balance Whiz</h1>
           </div>
-          <div class="top-nav__tabs" role="tablist" aria-label="Views">
-            <a class="top-nav__tab" href="../">Calendar View</a>
-            <a class="top-nav__tab" href="../">Transaction View</a>
-            <a class="top-nav__tab" href="../">Reports</a>
-            <a class="top-nav__tab" href="../">Settings</a>
-          </div>
           <div class="top-nav__actions" aria-label="Account actions">
             <button type="button" id="logoutBtn" class="top-nav__logout">Logout</button>
           </div>
@@ -33,11 +27,46 @@
         <div class="plans-wrap">
           <div class="plans-subtitle">Try risk free with a 14-day money back guarantee</div>
           <div class="plans-grid" aria-label="Plans">
-            <div class="card plan-card">
-              <div class="plan-card__title">Checking Account Balance &amp; Cash ForeCast Only</div>
+            <div class="card plan-card plan-card--base">
+              <div class="plan-card__top">
+                <div class="plan-card__name">Checking Account Balance</div>
+                <div class="plan-card__name plan-card__name--sub">&amp; Cash Forecast Only</div>
+              </div>
+              <div class="plan-card__body">
+                <div class="plan-price">
+                  <div class="plan-price__main">$9.99</div>
+                  <div class="plan-price__sub">per month</div>
+                </div>
+                <div class="plan-divider" aria-hidden="true"></div>
+                <div class="plan-kicker">What’s included</div>
+                <ul class="plan-features">
+                  <li>Calendar view of past and future cash flow</li>
+                  <li>Low balance alerts</li>
+                  <li>Recurring transaction forecasting</li>
+                </ul>
+                <button type="button" class="plan-cta">Choose this plan</button>
+              </div>
             </div>
-            <div class="card plan-card">
-              <div class="plan-card__title">Add Budgeting</div>
+
+            <div class="card plan-card plan-card--pro">
+              <div class="plan-card__top">
+                <div class="plan-card__name">Add Budgeting</div>
+                <div class="plan-badge" aria-label="Recommended">Popular</div>
+              </div>
+              <div class="plan-card__body">
+                <div class="plan-price">
+                  <div class="plan-price__main">$14.99</div>
+                  <div class="plan-price__sub">per month</div>
+                </div>
+                <div class="plan-divider" aria-hidden="true"></div>
+                <div class="plan-kicker">Everything in Cash Forecast, plus</div>
+                <ul class="plan-features">
+                  <li>Budget categories &amp; monthly targets</li>
+                  <li>Spending insights &amp; reports</li>
+                  <li>Better planning for large expenses</li>
+                </ul>
+                <button type="button" class="plan-cta plan-cta--strong">Choose this plan</button>
+              </div>
             </div>
           </div>
         </div>

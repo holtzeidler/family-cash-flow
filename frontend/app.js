@@ -4418,7 +4418,10 @@ function renderUncategorizedTransactions() {
     empty.className = "pill";
     empty.textContent = "No uncategorized transactions in this range.";
     uncatTxList.appendChild(empty);
-    if (uncatTxSaveBtn) uncatTxSaveBtn.disabled = true;
+    if (uncatTxSaveBtn) {
+      uncatTxSaveBtn.disabled = true;
+      uncatTxSaveBtn.hidden = true;
+    }
     if (uncatTxErr) show(uncatTxErr, "");
     return;
   }
@@ -4429,7 +4432,10 @@ function renderUncategorizedTransactions() {
     if (!ids.has(k)) uncatPendingCategoryByTxId.delete(k);
   }
 
-  if (uncatTxSaveBtn) uncatTxSaveBtn.disabled = uncatPendingCategoryByTxId.size === 0;
+  if (uncatTxSaveBtn) {
+    uncatTxSaveBtn.hidden = false;
+    uncatTxSaveBtn.disabled = uncatPendingCategoryByTxId.size === 0;
+  }
 
   const cats = state.categories || [];
   const groups = state.categoryTree?.groups || [];
@@ -5398,7 +5404,9 @@ function renderCalendar() {
   const mode = calendarMode?.value || "both";
   const showActual = mode === "both" || mode === "actual";
   const showExpected = mode === "both" || mode === "expected";
-  const showDetails = state.calendarDetailMode === "detailed";
+  // Always render transactions; "Balance Only" should not hide database items.
+  // (Week rows will expand as needed to keep all items visible.)
+  const showDetails = true;
 
   const actualTxsByDate = new Map();
   for (const tx of [...(state.monthActualItems || []), ...(state.calendarExtraActualItems || [])]) {
@@ -5521,8 +5529,8 @@ function renderCalendar() {
       });
     }
 
-    const actualTxs = showDetails && showActual ? actualTxsByDate.get(iso) || [] : [];
-    const expectedItems = showDetails && showExpected ? expectedByDate.get(iso) || [] : [];
+    const actualTxs = showActual ? actualTxsByDate.get(iso) || [] : [];
+    const expectedItems = showExpected ? expectedByDate.get(iso) || [] : [];
 
     // Combine and sort expected + actual for consistent ordering per-day.
     const combined = [];
