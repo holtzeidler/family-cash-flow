@@ -5201,6 +5201,11 @@ async function runAmountDiagForRange() {
       const a = toNum(t?.amount);
       return Number.isFinite(a) && Math.abs(a - DIAG_AMOUNT) < 0.005;
     });
+    const may01 = items.filter((t) => normalizeIsoDate(t?.date) === "2026-05-01");
+    const byWords = items.filter((t) => {
+      const s = String(t?.description || "").toLowerCase();
+      return s.includes("credit") || s.includes("card") || s.includes("payment");
+    });
     state.diagAmount = {
       month,
       start,
@@ -5208,6 +5213,10 @@ async function runAmountDiagForRange() {
       amount: DIAG_AMOUNT,
       matches: match.slice(0, 5).map((t) => ({ id: t.id, date: t.date, description: t.description, amount: t.amount })),
       total: match.length,
+      may01: may01.slice(0, 10).map((t) => ({ id: t.id, date: t.date, description: t.description, amount: t.amount })),
+      may01Total: may01.length,
+      wordHits: byWords.slice(0, 10).map((t) => ({ id: t.id, date: t.date, description: t.description, amount: t.amount })),
+      wordTotal: byWords.length,
     };
     renderCalendar();
   } catch (_) {
@@ -5505,6 +5514,26 @@ function renderCalendar() {
               .join(" | ")
           : ` Range ${d.start}→${d.end}: 0 match(es)`;
       calendarErr.textContent = `${calendarErr.textContent} —${extra}`;
+    }
+  } catch (_) {}
+
+  // Show all May 1 transactions (from range query), plus any keyword hits.
+  try {
+    const d = state.diagAmount;
+    if (calendarErr && d && d.month === month && d.may01Total != null) {
+      const may = d.may01Total
+        ? ` May1 list(${d.may01Total}): ` +
+          d.may01
+            .map((t) => `#${t.id} $${fmtMoney(Number(t.amount ?? 0))} "${String(t.description || "").trim()}"`)
+            .join(" | ")
+        : " May1 list(0)";
+      const words = d.wordTotal
+        ? ` Words(${d.wordTotal}): ` +
+          d.wordHits
+            .map((t) => `#${t.id} ${normalizeIsoDate(t.date) || t.date} $${fmtMoney(Number(t.amount ?? 0))} "${String(t.description || "").trim()}"`)
+            .join(" | ")
+        : " Words(0)";
+      calendarErr.textContent = `${calendarErr.textContent} —${may} —${words}`;
     }
   } catch (_) {}
 
