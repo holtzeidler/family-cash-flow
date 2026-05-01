@@ -4845,11 +4845,26 @@ async function loadTransactions() {
   try {
     show(txErr, "");
     if (!state.activeFamilyId) return;
-    // Keep the month query aligned with what the calendar is displaying.
-    const month = (calendarMonth?.value || monthInput.value || "").trim();
-    const qs = month ? `?month=${encodeURIComponent(month)}` : "";
-    const data = await api(`/api/families/${state.activeFamilyId}/transactions${qs}`, "GET");
-    const items = data?.items || [];
+    // Keep the month query aligned with what the calendar is displaying, but also guard
+    // against the calendar month picker and sidebar month input drifting out of sync.
+    const calMonth = (calendarMonth?.value || "").trim();
+    const sideMonth = (monthInput?.value || "").trim();
+    const months = [calMonth || sideMonth].filter(Boolean);
+    if (calMonth && sideMonth && calMonth !== sideMonth) months.push(sideMonth);
+    const uniqueMonths = [...new Set(months)];
+
+    const results = await Promise.all(
+      uniqueMonths.map((m) => api(`/api/families/${state.activeFamilyId}/transactions?month=${encodeURIComponent(m)}`, "GET"))
+    );
+    const byId = new Map();
+    for (const r of results) {
+      for (const it of r?.items || []) {
+        const id = Number(it && it.id);
+        if (!Number.isFinite(id)) continue;
+        byId.set(id, it);
+      }
+    }
+    const items = [...byId.values()];
     state.monthActualItems = items;
     renderTransactions(items);
   } catch (e) {
