@@ -211,6 +211,7 @@ let state = {
   monthDailyBalances: new Map(),
   calendarExpandedDays: new Set(),
   calendarDetailMode: "detailed",
+  diagAmount: null,
 };
 
 let selectedExpectedInstance = null;
@@ -5165,11 +5166,52 @@ async function loadMonthAndCalendar() {
     await loadReconciledDays(calendarMonth?.value || monthInput.value);
     await loadCalendarMonthDaily();
     renderCalendar();
+    void runAmountDiagForRange();
     await refreshLowBalanceAlert();
   } catch (e) {
     show(calendarErr, e.message || "Failed to load calendar");
   } finally {
     setCalendarLoadingUi(false);
+  }
+}
+
+let diagAmountFetchKey = "";
+async function runAmountDiagForRange() {
+  try {
+    if (!state.activeFamilyId) return;
+    const month = (calendarMonth?.value || monthInput.value || "").trim();
+    if (!month) return;
+    const key = `${state.activeFamilyId}@${month}`;
+    if (diagAmountFetchKey === key) return;
+    diagAmountFetchKey = key;
+
+    const DIAG_AMOUNT = 332.22;
+    const rangeStart = `${month}-01`;
+    const prevMonth = shiftMonthStr(month, -1);
+    const nextMonth = shiftMonthStr(month, 1);
+    const start = prevMonth ? `${prevMonth}-01` : rangeStart;
+    const end = nextMonth ? toISODate(new Date(Number(nextMonth.slice(0, 4)), Number(nextMonth.slice(5, 7)), 0)) : rangeStart;
+
+    const data = await api(
+      `/api/families/${state.activeFamilyId}/transactions?start_date=${encodeURIComponent(start)}&end_date=${encodeURIComponent(end)}`,
+      "GET"
+    );
+    const items = data?.items || [];
+    const match = items.filter((t) => {
+      const a = toNum(t?.amount);
+      return Number.isFinite(a) && Math.abs(a - DIAG_AMOUNT) < 0.005;
+    });
+    state.diagAmount = {
+      month,
+      start,
+      end,
+      amount: DIAG_AMOUNT,
+      matches: match.slice(0, 5).map((t) => ({ id: t.id, date: t.date, description: t.description, amount: t.amount })),
+      total: match.length,
+    };
+    renderCalendar();
+  } catch (_) {
+    // Non-fatal; ignore.
   }
 }
 
@@ -5448,6 +5490,21 @@ function renderCalendar() {
       calendarErr.textContent = parts.join(" — ");
       calendarErr.style.display = "block";
       calendarErr.className = "callout callout--muted";
+    }
+  } catch (_) {}
+
+  // If the broader range-diag found matches, append them.
+  try {
+    const d = state.diagAmount;
+    if (calendarErr && d && d.month === month && d.total != null) {
+      const extra =
+        d.total > 0
+          ? ` Range ${d.start}→${d.end}: ${d.total} match(es) — ` +
+            d.matches
+              .map((t) => `#${t.id} ${normalizeIsoDate(t.date) || t.date} "${String(t.description || "").trim()}"`)
+              .join(" | ")
+          : ` Range ${d.start}→${d.end}: 0 match(es)`;
+      calendarErr.textContent = `${calendarErr.textContent} —${extra}`;
     }
   } catch (_) {}
 
