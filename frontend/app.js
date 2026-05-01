@@ -4351,7 +4351,7 @@ function renderUpcomingTransactionsFiltered() {
         const st = pillStyleForTransaction(tx);
         const pill = document.createElement("span");
         pill.className = `cat-pill ${kindFgClass(tx.kind)}`;
-        pill.textContent = tx.category;
+        pill.textContent = leafCategoryName(tx.category);
         if (st?.fg) pill.style.color = st.fg;
         if (st?.bg) {
           pill.style.background = st.bg;
@@ -4360,7 +4360,7 @@ function renderUpcomingTransactionsFiltered() {
         meta.appendChild(document.createTextNode(" · "));
         meta.appendChild(pill);
       } else if (tx.category) {
-        meta.appendChild(document.createTextNode(` · ${tx.category}`));
+        meta.appendChild(document.createTextNode(` · ${leafCategoryName(tx.category)}`));
       }
       left.appendChild(link);
       left.appendChild(meta);
@@ -4379,26 +4379,52 @@ function renderUpcomingTransactionsFiltered() {
     const tx = r.tx;
     const nextIso = r.nextIso;
     const eff = effectiveNextOccurrenceListFields(tx);
+
     const el = document.createElement("div");
-    el.className = "item expected-item--dense";
+    el.className = "item";
     if (eff.variable) el.classList.add("expected-item--variable");
     el.style.cursor = "pointer";
     el.title = `Recurring schedule #${tx.id} · next ${nextIso}`;
 
     const amtClass = eff.kind === "income" ? "income" : "expense";
     const kindSign = eff.kind === "income" ? "+" : "-";
+
     const left = document.createElement("div");
     left.className = "left";
-    const descEl = document.createElement("div");
-    descEl.className = `desc ${kindFgClass(eff.kind)}`;
-    descEl.textContent = eff.description;
-    const metaEl = document.createElement("div");
-    metaEl.className = "meta";
-    metaEl.appendChild(
-      document.createTextNode(`Next: ${fmtDateMDY(nextIso)} · recurs: ${recurrenceLabel(tx.recurrence || "monthly")}`),
-    );
-    left.appendChild(descEl);
-    left.appendChild(metaEl);
+
+    const link = document.createElement("a");
+    link.href = "#";
+    link.className = `desc tx-desc-link ${kindFgClass(eff.kind)}`;
+    link.textContent = String(eff.description || "(no description)").trim() || "(no description)";
+    link.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      openExpectedEditModal(tx, { nextOccurrenceIso: nextIso });
+    });
+
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    meta.appendChild(document.createTextNode(fmtDateMDY(nextIso)));
+    if (tx?.category_id && tx?.category) {
+      const st = pillStyleForTransaction(tx);
+      const pill = document.createElement("span");
+      pill.className = `cat-pill ${kindFgClass(eff.kind)}`;
+      pill.textContent = leafCategoryName(tx.category);
+      if (st?.fg) pill.style.color = st.fg;
+      if (st?.bg) {
+        pill.style.background = st.bg;
+        pill.style.fontWeight = "600";
+      }
+      meta.appendChild(document.createTextNode(" · "));
+      meta.appendChild(pill);
+    } else if (tx?.category) {
+      meta.appendChild(document.createTextNode(` · ${leafCategoryName(tx.category)}`));
+    }
+    meta.appendChild(document.createTextNode(` · ${recurrenceLabel(tx.recurrence || "monthly")}`));
+
+    left.appendChild(link);
+    left.appendChild(meta);
+
     const amtBtn = document.createElement("button");
     amtBtn.type = "button";
     amtBtn.className = `amt ${amtClass} expected-amt-link`;
@@ -4409,6 +4435,7 @@ function renderUpcomingTransactionsFiltered() {
       e.stopPropagation();
       openExpectedEditModal(tx, { nextOccurrenceIso: nextIso });
     });
+
     el.appendChild(left);
     el.appendChild(amtBtn);
     el.addEventListener("click", () => openExpectedEditModal(tx, { nextOccurrenceIso: nextIso }));

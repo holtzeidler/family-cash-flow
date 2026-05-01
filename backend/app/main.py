@@ -800,6 +800,7 @@ def startup_populate_schema():
     _ensure_expected_override_variable_column()
     _ensure_expected_end_count_column()
     _ensure_category_sort_order_column()
+    _ensure_category_group_sort_order_column()
     _ensure_category_group_id_column()
     _backfill_category_groups_for_existing_families()
     _cleanup_new_group_placeholders()
@@ -1072,6 +1073,20 @@ def _ensure_category_sort_order_column() -> None:
         else:
             conn.execute(text("ALTER TABLE categories ADD COLUMN IF NOT EXISTS sort_order INTEGER NOT NULL DEFAULT 0"))
             conn.execute(text("UPDATE categories SET sort_order = COALESCE(sort_order, 0)"))
+
+
+def _ensure_category_group_sort_order_column() -> None:
+    """Lightweight startup migration: add sort_order for category group ordering."""
+    with engine.begin() as conn:
+        if settings.DATABASE_URL.startswith("sqlite"):
+            cols = conn.execute(text("PRAGMA table_info(category_groups)")).fetchall()
+            has_col = any(str(row[1]) == "sort_order" for row in cols)
+            if not has_col:
+                conn.execute(text("ALTER TABLE category_groups ADD COLUMN sort_order INTEGER"))
+            conn.execute(text("UPDATE category_groups SET sort_order = COALESCE(sort_order, 0)"))
+        else:
+            conn.execute(text("ALTER TABLE category_groups ADD COLUMN IF NOT EXISTS sort_order INTEGER NOT NULL DEFAULT 0"))
+            conn.execute(text("UPDATE category_groups SET sort_order = COALESCE(sort_order, 0)"))
 
 
 def _ensure_category_group_id_column() -> None:
