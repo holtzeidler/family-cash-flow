@@ -2685,6 +2685,17 @@ async function saveExpectedInstanceOverride() {
   );
 
   closeTxEditModal();
+  // If moved to a different month, jump the UI so it doesn't look like the item "disappeared".
+  {
+    const movedYm = movedTo ? String(movedTo).slice(0, 7) : "";
+    const curYm = (calendarMonth?.value || monthInput?.value || "").slice(0, 7);
+    if (movedYm && curYm && movedYm !== curYm) {
+      if (monthInput) monthInput.value = movedYm;
+      applyCalendarMonthToPickers(movedYm);
+      await loadMonthAndCalendar();
+      return;
+    }
+  }
   await refreshExpectedCalendarAndMonth();
 }
 
