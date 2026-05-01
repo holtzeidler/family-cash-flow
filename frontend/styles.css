@@ -1435,7 +1435,9 @@ label{
 #txEditRecurringVariableWrap .form-row-h__field{
   flex: 0 0 auto;
   display: flex;
-  justify-content: flex-end;
+  /* Align checkbox under the field area (not flush right) */
+  justify-content: flex-start;
+  padding-left: 12px;
 }
 .form-row-h__field .pill{
   width: 100%;

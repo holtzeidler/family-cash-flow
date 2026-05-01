@@ -43,7 +43,7 @@
               </div>
             </div>
             <div style="height:10px;"></div>
-            <button id="loginBtn">Login</button>
+            <button type="button" id="loginBtn" onclick="window.__bwLogin && window.__bwLogin()">Login</button>
           </div>
         </section>
 
@@ -52,7 +52,7 @@
             <span class="auth-section__title">Create New Account</span>
           </div>
           <div class="auth-section__body" id="registerSectionBody">
-            <button type="button" id="createNewAccountBtn">Create New Account</button>
+            <button type="button" id="createNewAccountBtn" onclick="window.location.href='./plan/'">Create New Account</button>
           </div>
         </section>
       </div>

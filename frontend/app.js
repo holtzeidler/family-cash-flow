@@ -4845,7 +4845,8 @@ async function loadTransactions() {
   try {
     show(txErr, "");
     if (!state.activeFamilyId) return;
-    const month = monthInput.value;
+    // Keep the month query aligned with what the calendar is displaying.
+    const month = (calendarMonth?.value || monthInput.value || "").trim();
     const qs = month ? `?month=${encodeURIComponent(month)}` : "";
     const data = await api(`/api/families/${state.activeFamilyId}/transactions${qs}`, "GET");
     const items = data?.items || [];

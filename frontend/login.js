@@ -52,6 +52,36 @@ const loginDiagCalloutEl = document.getElementById("loginDiagCallout");
 const loginBtn = document.getElementById("loginBtn");
 const createNewAccountBtn = document.getElementById("createNewAccountBtn");
 
+async function doLogin() {
+  if (!loginBtn) return;
+  setBusy(true);
+  setCallout(loginCalloutEl, "Contacting API...", "pending");
+  try {
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value;
+    const loginResp = await request("/api/auth/login", "POST", { email, password });
+    if (!loginResp.ok) {
+      setCallout(loginCalloutEl, messageFromFailure(loginResp, "Login failed"), "error");
+      return;
+    }
+
+    const check = await verifySessionWithProgress(loginCalloutEl);
+    if (!check.ok) {
+      const srv = await fetchServerPublicConfig();
+      const base =
+        "Login succeeded, but /api/auth/me did not see your session cookie. For GitHub Pages + Render, ENV must be production (SameSite=None; Secure).";
+      setCallout(loginCalloutEl, base + formatServerDiag(srv), "error");
+      return;
+    }
+    setCallout(loginCalloutEl, "Session ready. Opening app...", "ok");
+    goApp();
+  } catch (e) {
+    setCallout(loginCalloutEl, (e && e.message) || "Login failed", "error");
+  } finally {
+    setBusy(false);
+  }
+}
+
 function setSectionOpen(sectionEl, toggleBtnEl, bodyEl, isOpen) {
   if (!sectionEl || !toggleBtnEl || !bodyEl) return;
   sectionEl.classList.toggle("auth-section--open", !!isOpen);
@@ -160,34 +190,9 @@ if (location.hostname.endsWith("github.io") && !getApiBase()) {
   void renderDiagnostics();
 }
 
-loginBtn.addEventListener("click", async () => {
-  setBusy(true);
-  setCallout(loginCalloutEl, "Contacting API...", "pending");
-  try {
-    const email = document.getElementById("email").value.trim();
-    const password = document.getElementById("password").value;
-    const loginResp = await request("/api/auth/login", "POST", { email, password });
-    if (!loginResp.ok) {
-      setCallout(loginCalloutEl, messageFromFailure(loginResp, "Login failed"), "error");
-      return;
-    }
-
-    const check = await verifySessionWithProgress(loginCalloutEl);
-    if (!check.ok) {
-      const srv = await fetchServerPublicConfig();
-      const base =
-        "Login succeeded, but /api/auth/me did not see your session cookie. For GitHub Pages + Render, ENV must be production (SameSite=None; Secure).";
-      setCallout(loginCalloutEl, base + formatServerDiag(srv), "error");
-      return;
-    }
-    setCallout(loginCalloutEl, "Session ready. Opening app...", "ok");
-    goApp();
-  } catch (e) {
-    setCallout(loginCalloutEl, (e && e.message) || "Login failed", "error");
-  } finally {
-    setBusy(false);
-  }
-});
+// Expose a global handler so the inline onclick works even if the event binding fails.
+window.__bwLogin = () => void doLogin();
+if (loginBtn) loginBtn.addEventListener("click", () => void doLogin());
 
 if (createNewAccountBtn) {
   createNewAccountBtn.addEventListener("click", () => {
