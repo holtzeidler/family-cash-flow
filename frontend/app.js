@@ -5206,6 +5206,20 @@ async function runAmountDiagForRange() {
       const s = String(t?.description || "").toLowerCase();
       return s.includes("credit") || s.includes("card") || s.includes("payment");
     });
+
+    // Also ask the daily-balance API what it thinks happened on 4/30 -> 5/1.
+    const mode = "both";
+    const [aprDaily, mayDaily] = await Promise.allSettled([
+      api(`/api/families/${state.activeFamilyId}/calendar-month-daily?month=2026-04&mode=${encodeURIComponent(mode)}`, "GET"),
+      api(`/api/families/${state.activeFamilyId}/calendar-month-daily?month=2026-05&mode=${encodeURIComponent(mode)}`, "GET"),
+    ]);
+    const getRow = (resp, iso) => {
+      const days = resp && resp.days;
+      if (!Array.isArray(days)) return null;
+      return days.find((r) => normalizeIsoDate(r?.date) === iso) || null;
+    };
+    const a30 = aprDaily.status === "fulfilled" ? getRow(aprDaily.value, "2026-04-30") : null;
+    const m01 = mayDaily.status === "fulfilled" ? getRow(mayDaily.value, "2026-05-01") : null;
     state.diagAmount = {
       month,
       start,
@@ -5217,6 +5231,10 @@ async function runAmountDiagForRange() {
       may01Total: may01.length,
       wordHits: byWords.slice(0, 10).map((t) => ({ id: t.id, date: t.date, description: t.description, amount: t.amount })),
       wordTotal: byWords.length,
+      daily: {
+        a30: a30 ? { start: a30.start, txNet: a30.tx_net, end: a30.end } : null,
+        m01: m01 ? { start: m01.start, txNet: m01.tx_net, end: m01.end } : null,
+      },
     };
     renderCalendar();
   } catch (_) {
@@ -5534,6 +5552,24 @@ function renderCalendar() {
             .join(" | ")
         : " Words(0)";
       calendarErr.textContent = `${calendarErr.textContent} —${may} —${words}`;
+    }
+  } catch (_) {}
+
+  // Show what the daily-balance API thinks happened on 4/30 -> 5/1.
+  try {
+    const d = state.diagAmount;
+    if (calendarErr && d && d.month === month && d.daily) {
+      const a30 = d.daily.a30;
+      const m01 = d.daily.m01;
+      if (a30 && m01) {
+        const delta = Number(m01.end ?? 0) - Number(a30.end ?? 0);
+        calendarErr.textContent =
+          `${calendarErr.textContent} — Daily API: 4/30 end=$${fmtMoney(Number(a30.end ?? 0))}, ` +
+          `5/1 txNet=$${fmtMoney(Number(m01.txNet ?? 0))}, 5/1 end=$${fmtMoney(Number(m01.end ?? 0))}, ` +
+          `Δ=$${fmtMoney(delta)}`;
+      } else {
+        calendarErr.textContent = `${calendarErr.textContent} — Daily API: (no 4/30→5/1 rows found)`;
+      }
     }
   } catch (_) {}
 
