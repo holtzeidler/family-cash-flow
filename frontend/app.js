@@ -5419,28 +5419,35 @@ function renderCalendar() {
     actualTxsByDate.get(dk).push(tx);
   }
 
-  // --- Diagnostics: help identify "missing" transactions by amount ---
-  // This helps debug cases where a transaction exists (balances) but isn't visible on the calendar.
+  // --- Diagnostics: help identify "missing" items by amount ---
+  // This helps debug cases where a balance changes by an amount but the item isn't visible.
   try {
     const DIAG_AMOUNT = 332.22;
+    const m = (calendarMonth?.value || monthInput.value || "").trim();
     const allActual = [...(state.monthActualItems || []), ...(state.calendarExtraActualItems || [])];
-    const hits = allActual.filter((t) => {
+    const allExpected = [...(state.monthExpectedItems || []), ...(state.calendarExtraExpectedItems || [])];
+    const matchAmt = (t) => {
       const a = Number(t?.amount);
       return Number.isFinite(a) && Math.abs(a - DIAG_AMOUNT) < 0.005;
-    });
+    };
+    const hitsA = allActual.filter(matchAmt);
+    const hitsE = allExpected.filter(matchAmt);
     if (calendarErr) {
-      if (hits.length) {
-        const h = hits
-          .slice(0, 3)
-          .map((t) => `#${t.id} ${normalizeIsoDate(t.date) || t.date} "${String(t.description || "").trim()}"`)
-          .join(" | ");
-        calendarErr.textContent = `Diag: found $${DIAG_AMOUNT.toFixed(2)} tx(s): ${h}`;
-        calendarErr.style.display = "block";
-      } else {
-        const m = (calendarMonth?.value || monthInput.value || "").trim();
-        calendarErr.textContent = `Diag: no $${DIAG_AMOUNT.toFixed(2)} transactions loaded for ${m}.`;
-        calendarErr.style.display = "block";
-      }
+      const fmtHit = (t, kind) => {
+        const iso = normalizeIsoDate(t?.date) || String(t?.date || "");
+        const id = t?.id != null ? `#${t.id}` : "";
+        const desc = String(t?.description || "").trim();
+        return `${kind}${id ? " " + id : ""} ${iso} "${desc}"`;
+      };
+      const parts = [];
+      parts.push(`Diag ${m}: actual=${hitsA.length}, expected=${hitsE.length} for $${DIAG_AMOUNT.toFixed(2)}`);
+      const sample = [];
+      for (const t of hitsA.slice(0, 2)) sample.push(fmtHit(t, "A"));
+      for (const t of hitsE.slice(0, 2)) sample.push(fmtHit(t, "E"));
+      if (sample.length) parts.push(sample.join(" | "));
+      calendarErr.textContent = parts.join(" — ");
+      calendarErr.style.display = "block";
+      calendarErr.className = "callout callout--muted";
     }
   } catch (_) {}
 
