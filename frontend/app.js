@@ -5508,6 +5508,32 @@ function renderCalendar() {
     }
   } catch (_) {}
 
+  // If the user suspects a specific day-to-day delta (e.g. Apr 30 -> May 1),
+  // show the delta and the items on the target day.
+  try {
+    if (calendarErr) {
+      const a30 = state.monthDailyBalances.get("2026-04-30");
+      const m01 = state.monthDailyBalances.get("2026-05-01");
+      if (a30 && m01) {
+        const delta = Number(m01.end ?? 0) - Number(a30.end ?? 0);
+        const actualOn = actualTxsByDate.get("2026-05-01") || [];
+        const expectedOn = expectedByDate.get("2026-05-01") || [];
+        const sumActual = actualOn.reduce((acc, t) => acc + (String(t.kind) === "income" ? Number(t.amount ?? 0) : -Number(t.amount ?? 0)), 0);
+        const sumExpected = expectedOn.reduce((acc, t) => acc + (String(t.kind) === "income" ? Number(t.amount ?? 0) : -Number(t.amount ?? 0)), 0);
+        const top = [
+          ...actualOn.map((t) => `${String(t.kind) === "income" ? "+" : "-"}$${fmtMoney(Number(t.amount ?? 0))} ${String(t.description || "").trim()}`),
+          ...expectedOn.map((t) => `(exp)${String(t.kind) === "income" ? "+" : "-"}$${fmtMoney(Number(t.amount ?? 0))} ${String(t.description || "").trim()}`),
+        ]
+          .slice(0, 6)
+          .join(" | ");
+        calendarErr.textContent =
+          `${calendarErr.textContent} — Δ(2026-04-30→2026-05-01)=$${fmtMoney(delta)} ` +
+          `(actual net=$${fmtMoney(sumActual)}, expected net=$${fmtMoney(sumExpected)})` +
+          (top ? ` — May 1 items: ${top}` : "");
+      }
+    }
+  } catch (_) {}
+
   const expectedByDate = new Map(); // iso -> [items]
   for (const item of [...(state.monthExpectedItems || []), ...(state.calendarExtraExpectedItems || [])]) {
     const key = normalizeIsoDate(item.date) || item.date;
