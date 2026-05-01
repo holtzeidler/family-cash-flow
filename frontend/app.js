@@ -5528,7 +5528,8 @@ function renderCalendar() {
           .join(" | ");
         calendarErr.textContent =
           `${calendarErr.textContent} — Δ(2026-04-30→2026-05-01)=$${fmtMoney(delta)} ` +
-          `(actual net=$${fmtMoney(sumActual)}, expected net=$${fmtMoney(sumExpected)})` +
+          `(txNet May1=$${fmtMoney(Number(m01.txNet ?? 0))}, end Apr30=$${fmtMoney(Number(a30.end ?? 0))}, end May1=$${fmtMoney(Number(m01.end ?? 0))}; ` +
+          `actual list net=$${fmtMoney(sumActual)}, expected list net=$${fmtMoney(sumExpected)})` +
           (top ? ` — May 1 items: ${top}` : "");
       }
     }
