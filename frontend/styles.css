@@ -29,6 +29,15 @@ body.login-page .container{
   /* Narrow the login layout (about half width on desktop) */
   max-width: 960px;
 }
+body.signup-page .card{
+  background: var(--cal-surface);
+}
+
+/* Login page: match calendar white surface + dark green outline */
+body.login-page .auth-section.card{
+  background: var(--cal-surface);
+  border: 2px solid var(--accent);
+}
 body.login-page .container > .grid{
   /* Space between header and cards */
   margin-top: 18px;
@@ -42,6 +51,14 @@ body.login-page .top-nav__inner--simple .top-nav__title{
 }
 body.login-page .top-nav__inner--simple .app-title{
   text-align: left;
+}
+
+/* Plans page header: title left, action right */
+body.plans-page .top-nav__inner--simple{
+  grid-template-columns: 1fr auto;
+}
+body.plans-page .top-nav__inner--simple .top-nav__actions{
+  justify-self: end;
 }
 
 /* Ensure the HTML `hidden` attribute always wins (UA defaults can be overridden by our layout rules). */
@@ -983,8 +1000,13 @@ button.nav-link:hover{
   /* Move the threshold fields down */
   margin-top: 15%;
 }
-.threshold-input{
-  /* The money-input sits inside a non-flex field wrapper, so use width here. */
+/* Settings → Account Details: balance threshold inputs should not stretch full-width */
+.settings-pane[data-settings-pane="accountDetails"] .form-row-h__field{
+  display: flex;
+  justify-content: flex-start;
+}
+.settings-pane[data-settings-pane="accountDetails"] .money-input.threshold-input{
+  flex: 0 0 auto;
   width: 15%;
   max-width: 132px;
 }
@@ -2328,7 +2350,7 @@ body.contact-page .app-footer{
 
 /* Plans page */
 body.plans-page .container > .grid{
-  margin-top: 18px;
+  margin-top: 54px;
 }
 .plans-wrap{
   width: 100%;
@@ -2341,7 +2363,7 @@ body.plans-page .container > .grid{
   width: min(980px, 100%);
   margin: 0 auto 14px;
   text-align: center;
-  font-size: 26px; /* ~30% larger than previous 20px */
+  font-size: 34px; /* +30% */
   font-weight: 800;
   color: var(--accent);
   letter-spacing: 0.2px;
