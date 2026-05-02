@@ -74,53 +74,81 @@ function openMailtoFallback(name, email, subject, msg) {
 }
 
 if (form) {
-  form.addEventListener("submit", async (e) => {
+  form.addEventListener("submit", async function (e) {
     e.preventDefault();
     setErr(errEl, "");
     setOk(okEl, false);
 
-    const name = String(nameEl?.value || "").trim();
-    const email = String(emailEl?.value || "").trim();
-    const subject = String(subjectEl?.value || "").trim() || "General question";
-    const msg = String(messageEl?.value || "").trim();
+    const name = String((nameEl && nameEl.value) || "").trim();
+    const email = String((emailEl && emailEl.value) || "").trim();
+    const subject = String((subjectEl && subjectEl.value) || "").trim() || "General question";
+    const msg = String((messageEl && messageEl.value) || "").trim();
 
-    if (!name) return setErr(errEl, "Name is required.");
-    if (!email) return setErr(errEl, "Email is required.");
-    if (!msg) return setErr(errEl, "Message is required.");
+    if (!name) {
+      setErr(errEl, "Name is required.");
+      return;
+    }
+    if (!email) {
+      setErr(errEl, "Email is required.");
+      return;
+    }
+    if (!msg) {
+      setErr(errEl, "Message is required.");
+      return;
+    }
 
     const apiBase = getApiBase();
-    if (sendBtn) sendBtn.disabled = true;
+    const sendLabel = (sendBtn && sendBtn.textContent) || "Send";
+    if (sendBtn) {
+      sendBtn.disabled = true;
+      sendBtn.textContent = "Sending…";
+    }
 
-    if (apiBase) {
-      try {
-        const res = await fetch(apiBase + "/api/public/contact", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, email, subject, message: msg }),
-          credentials: "omit",
-        });
+    try {
+      if (apiBase) {
+        var ctrl = new AbortController();
+        var tid = setTimeout(function () {
+          ctrl.abort();
+        }, 28000);
+        var res;
+        try {
+          res = await fetch(apiBase + "/api/public/contact", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: name, email: email, subject: subject, message: msg }),
+            credentials: "omit",
+            signal: ctrl.signal,
+          });
+        } finally {
+          clearTimeout(tid);
+        }
         if (res.ok) {
           form.reset();
           setOk(okEl, true);
-          if (sendBtn) sendBtn.disabled = false;
           return;
         }
         if (res.status === 503) {
           openMailtoFallback(name, email, subject, msg);
-          if (sendBtn) sendBtn.disabled = false;
           return;
         }
         setErr(errEl, await readErrorDetail(res));
-        if (sendBtn) sendBtn.disabled = false;
-        return;
-      } catch (_) {
-        openMailtoFallback(name, email, subject, msg);
-        if (sendBtn) sendBtn.disabled = false;
         return;
       }
-    }
 
-    openMailtoFallback(name, email, subject, msg);
-    if (sendBtn) sendBtn.disabled = false;
+      openMailtoFallback(name, email, subject, msg);
+    } catch (err) {
+      if (err && err.name === "AbortError") {
+        setErr(
+          errEl,
+          "The server did not answer in time. Opening your email app instead — you can send the same message from there."
+        );
+      }
+      openMailtoFallback(name, email, subject, msg);
+    } finally {
+      if (sendBtn) {
+        sendBtn.disabled = false;
+        sendBtn.textContent = sendLabel;
+      }
+    }
   });
 }
