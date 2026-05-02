@@ -1,9 +1,15 @@
 from __future__ import annotations
 
+import asyncio
 import csv
 import io
 import logging
+import smtplib
+import ssl
+import threading
+import time
 from collections import defaultdict
+from email.message import EmailMessage
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from enum import Enum
@@ -11,7 +17,7 @@ from pathlib import Path
 from typing import Annotated, Literal, Optional, Sequence
 from urllib.parse import urlparse
 
-from fastapi import Cookie, Depends, FastAPI, Header, HTTPException, Query, Response, status
+from fastapi import Cookie, Depends, FastAPI, Header, HTTPException, Query, Request, Response, status
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -44,6 +50,16 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_MINUTES: int = 1440
     CORS_ORIGINS: str = ""
 
+    # Server-side contact form (SMTP). Leave any of these empty to disable POST /api/public/contact.
+    # Microsoft 365 / GoDaddy: host smtp.office365.com, port 587, user support@yourdomain, app password.
+    CONTACT_SMTP_HOST: str = ""
+    CONTACT_SMTP_PORT: int = 587
+    CONTACT_SMTP_USER: str = ""
+    CONTACT_SMTP_PASSWORD: str = ""
+    CONTACT_EMAIL_TO: str = ""
+    # If empty, CONTACT_SMTP_USER is used as the From address (required by most providers).
+    CONTACT_EMAIL_FROM: str = ""
+
     @field_validator("DATABASE_URL", mode="after")
     @classmethod
     def normalize_postgres_driver(cls, v: str) -> str:
@@ -62,6 +78,41 @@ class Settings(BaseSettings):
 settings = Settings(_env_file=Path(__file__).resolve().parents[1] / ".env", _env_file_encoding="utf-8")
 
 logger = logging.getLogger(__name__)
+
+
+def _contact_email_configured() -> bool:
+    return bool(
+        (settings.CONTACT_SMTP_HOST or "").strip()
+        and (settings.CONTACT_SMTP_USER or "").strip()
+        and (settings.CONTACT_SMTP_PASSWORD or "").strip()
+        and (settings.CONTACT_EMAIL_TO or "").strip()
+    )
+
+
+_contact_rate_bucket: dict[str, list[float]] = {}
+_contact_rate_lock = threading.Lock()
+CONTACT_RATE_WINDOW_S = 15 * 60
+CONTACT_RATE_MAX = 5
+
+
+def _client_ip_for_rate_limit(request: Request) -> str:
+    xff = (request.headers.get("x-forwarded-for") or "").strip()
+    if xff:
+        return (xff.split(",")[0] or "").strip()[:200] or "unknown"
+    if request.client and request.client.host:
+        return str(request.client.host)[:200]
+    return "unknown"
+
+
+def _allow_contact_submission(ip: str) -> bool:
+    now = time.time()
+    with _contact_rate_lock:
+        lst = _contact_rate_bucket.setdefault(ip, [])
+        lst[:] = [t for t in lst if now - t < CONTACT_RATE_WINDOW_S]
+        if len(lst) >= CONTACT_RATE_MAX:
+            return False
+        lst.append(now)
+        return True
 
 
 class Base(DeclarativeBase):
@@ -334,6 +385,20 @@ class RegisterIn(BaseModel):
 class LoginIn(BaseModel):
     email: EmailStr
     password: str
+
+
+class ContactIn(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    email: EmailStr
+    subject: str = Field(min_length=1, max_length=200)
+    message: str = Field(min_length=1, max_length=10000)
+
+    @field_validator("name", "subject", "message", mode="before")
+    @classmethod
+    def _strip_text(cls, v: object) -> object:
+        if isinstance(v, str):
+            return v.strip()
+        return v
 
 
 class UserOut(BaseModel):
@@ -783,8 +848,75 @@ def public_debug_config():
         "cors_origins_configured": bool(raw.strip()),
         "auth_cookie_samesite": "none" if settings.ENV == "production" else "lax",
         "auth_cookie_secure": settings.ENV == "production",
+        "contact_form_enabled": _contact_email_configured(),
         "note": "GitHub Pages -> Render needs ENV=production so Set-Cookie uses SameSite=None; Secure.",
     }
+
+
+@app.post("/api/public/contact", include_in_schema=False)
+async def public_contact(payload: ContactIn, request: Request):
+    """
+    Send a contact message to CONTACT_EMAIL_TO via SMTP (e.g. Microsoft 365).
+    Disabled until CONTACT_SMTP_* and CONTACT_EMAIL_TO are set on the server.
+    """
+    if not _contact_email_configured():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Contact form is not configured on this server.",
+        )
+    ip = _client_ip_for_rate_limit(request)
+    if not _allow_contact_submission(ip):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many submissions; please try again later.",
+        )
+
+    host = settings.CONTACT_SMTP_HOST.strip()
+    port = int(settings.CONTACT_SMTP_PORT or 587)
+    user = settings.CONTACT_SMTP_USER.strip()
+    password = settings.CONTACT_SMTP_PASSWORD
+    to_addr = settings.CONTACT_EMAIL_TO.strip()
+    from_addr = (settings.CONTACT_EMAIL_FROM or user).strip()
+    subj = f"BalanceWhiz: {payload.subject}"
+    body = f"Name: {payload.name}\nEmail: {payload.email}\n\n{payload.message}\n"
+
+    def _send_sync() -> None:
+        msg = EmailMessage()
+        msg["Subject"] = subj
+        msg["From"] = from_addr
+        msg["To"] = to_addr
+        msg["Reply-To"] = str(payload.email)
+        msg.set_content(body)
+        ctx = ssl.create_default_context()
+        with smtplib.SMTP(host, port, timeout=45) as smtp:
+            smtp.ehlo()
+            smtp.starttls(context=ctx)
+            smtp.ehlo()
+            smtp.login(user, password)
+            smtp.send_message(msg)
+
+    try:
+        await asyncio.to_thread(_send_sync)
+    except smtplib.SMTPAuthenticationError:
+        logger.exception("Contact form SMTP authentication failed")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Could not deliver your message (mail sign-in failed). Please try again later.",
+        ) from None
+    except (OSError, smtplib.SMTPException) as e:
+        logger.warning("Contact form SMTP error: %s", type(e).__name__)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Could not deliver your message; please try again later.",
+        ) from None
+    except Exception:
+        logger.exception("Contact form SMTP send failed")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Could not deliver your message; please try again later.",
+        ) from None
+
+    return {"ok": True}
 
 
 @app.on_event("startup")

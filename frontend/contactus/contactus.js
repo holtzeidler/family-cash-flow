@@ -4,6 +4,11 @@ function setErr(el, msg) {
   el.style.display = msg ? "block" : "none";
 }
 
+function setOk(el, show) {
+  if (!el) return;
+  el.style.display = show ? "block" : "none";
+}
+
 function buildMailtoUrl({ to, subject, body }) {
   const parts = [];
   if (subject) parts.push(`subject=${encodeURIComponent(subject)}`);
@@ -13,10 +18,7 @@ function buildMailtoUrl({ to, subject, body }) {
 }
 
 function getSupportEmail() {
-  // Keep address out of HTML; still visible in the mail client once opened.
-  const user = "tracyapro";
-  const host = "hotmail.com";
-  return `${user}@${host}`;
+  return "support@balancewhiz.com";
 }
 
 function getApiBase() {
@@ -45,33 +47,80 @@ initLogout();
 
 const form = document.getElementById("contactForm");
 const errEl = document.getElementById("contactErr");
+const okEl = document.getElementById("contactOk");
 const nameEl = document.getElementById("contactName");
 const emailEl = document.getElementById("contactEmail");
 const subjectEl = document.getElementById("contactSubject");
 const messageEl = document.getElementById("contactMessage");
+const sendBtn = document.getElementById("contactSendBtn");
+
+async function readErrorDetail(res) {
+  const text = await res.text();
+  try {
+    const j = JSON.parse(text);
+    if (j && typeof j.detail === "string") return j.detail;
+    if (j && j.detail != null) return JSON.stringify(j.detail);
+  } catch (_) {
+    /* ignore */
+  }
+  return text.slice(0, 400) || "Request failed.";
+}
+
+function openMailtoFallback(name, email, subject, msg) {
+  const to = getSupportEmail();
+  const fullSubject = subject ? `BalanceWhiz: ${subject}` : "BalanceWhiz: Contact Us";
+  const body = `Name: ${name}\n` + `Email: ${email}\n\n` + `${msg}\n`;
+  window.location.href = buildMailtoUrl({ to, subject: fullSubject, body });
+}
 
 if (form) {
-  form.addEventListener("submit", (e) => {
+  form.addEventListener("submit", async (e) => {
     e.preventDefault();
     setErr(errEl, "");
+    setOk(okEl, false);
 
     const name = String(nameEl?.value || "").trim();
     const email = String(emailEl?.value || "").trim();
-    const subject = String(subjectEl?.value || "").trim();
+    const subject = String(subjectEl?.value || "").trim() || "General question";
     const msg = String(messageEl?.value || "").trim();
 
     if (!name) return setErr(errEl, "Name is required.");
     if (!email) return setErr(errEl, "Email is required.");
     if (!msg) return setErr(errEl, "Message is required.");
 
-    const to = getSupportEmail();
-    const fullSubject = subject ? `BalanceWhiz: ${subject}` : "BalanceWhiz: Contact Us";
-    const body =
-      `Name: ${name}\n` +
-      `Email: ${email}\n\n` +
-      `${msg}\n`;
+    const apiBase = getApiBase();
+    if (sendBtn) sendBtn.disabled = true;
 
-    window.location.href = buildMailtoUrl({ to, subject: fullSubject, body });
+    if (apiBase) {
+      try {
+        const res = await fetch(apiBase + "/api/public/contact", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, email, subject, message: msg }),
+          credentials: "omit",
+        });
+        if (res.ok) {
+          form.reset();
+          setOk(okEl, true);
+          if (sendBtn) sendBtn.disabled = false;
+          return;
+        }
+        if (res.status === 503) {
+          openMailtoFallback(name, email, subject, msg);
+          if (sendBtn) sendBtn.disabled = false;
+          return;
+        }
+        setErr(errEl, await readErrorDetail(res));
+        if (sendBtn) sendBtn.disabled = false;
+        return;
+      } catch (_) {
+        openMailtoFallback(name, email, subject, msg);
+        if (sendBtn) sendBtn.disabled = false;
+        return;
+      }
+    }
+
+    openMailtoFallback(name, email, subject, msg);
+    if (sendBtn) sendBtn.disabled = false;
   });
 }
-
