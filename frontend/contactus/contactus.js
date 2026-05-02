@@ -109,7 +109,7 @@ if (form) {
         var ctrl = new AbortController();
         var tid = setTimeout(function () {
           ctrl.abort();
-        }, 28000);
+        }, 36000);
         var res;
         try {
           res = await fetch(apiBase + "/api/public/contact", {

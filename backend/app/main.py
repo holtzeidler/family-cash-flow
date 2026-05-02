@@ -59,6 +59,10 @@ class Settings(BaseSettings):
     CONTACT_EMAIL_TO: str = ""
     # If empty, CONTACT_SMTP_USER is used as the From address (required by most providers).
     CONTACT_EMAIL_FROM: str = ""
+    # Per-socket timeout for SMTP (connect + each command). Lower = faster failure if port is blocked.
+    CONTACT_SMTP_SOCKET_TIMEOUT_SEC: int = 18
+    # Hard cap for the whole send (thread); HTTP returns 502 if exceeded so browsers do not hang.
+    CONTACT_SMTP_OVERALL_DEADLINE_SEC: int = 26
 
     @field_validator("DATABASE_URL", mode="after")
     @classmethod
@@ -892,6 +896,9 @@ async def public_contact(payload: ContactIn, request: Request):
     subj = f"BalanceWhiz: {payload.subject}"
     body = f"Name: {payload.name}\nEmail: {payload.email}\n\n{payload.message}\n"
 
+    sock_to = max(5, int(settings.CONTACT_SMTP_SOCKET_TIMEOUT_SEC or 18))
+    deadline = max(float(sock_to) + 2.0, float(settings.CONTACT_SMTP_OVERALL_DEADLINE_SEC or 26))
+
     def _send_sync() -> None:
         msg = EmailMessage()
         msg["Subject"] = subj
@@ -900,7 +907,7 @@ async def public_contact(payload: ContactIn, request: Request):
         msg["Reply-To"] = str(payload.email)
         msg.set_content(body)
         ctx = ssl.create_default_context()
-        with smtplib.SMTP(host, port, timeout=45) as smtp:
+        with smtplib.SMTP(host, port, timeout=sock_to) as smtp:
             smtp.ehlo()
             smtp.starttls(context=ctx)
             smtp.ehlo()
@@ -908,7 +915,16 @@ async def public_contact(payload: ContactIn, request: Request):
             smtp.send_message(msg)
 
     try:
-        await asyncio.to_thread(_send_sync)
+        await asyncio.wait_for(asyncio.to_thread(_send_sync), timeout=deadline)
+    except asyncio.TimeoutError:
+        logger.warning("Contact form SMTP exceeded %.0fs overall deadline (host=%s)", deadline, host)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=(
+                "The email server did not finish in time from this host (common if the host blocks or throttles "
+                "outbound SMTP, or Microsoft 365 is slow). Try again in a minute, or send via your own email app."
+            ),
+        ) from None
     except smtplib.SMTPAuthenticationError:
         logger.exception("Contact form SMTP authentication failed")
         raise HTTPException(
