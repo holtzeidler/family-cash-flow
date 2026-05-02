@@ -35,11 +35,15 @@ jobs:
           import pathlib, os
 
           api_base = (os.environ.get("API_BASE") or "").strip().rstrip("/")
-          for p in ["public/index.html", "public/login.html"]:
-              path = pathlib.Path(p)
-              txt = path.read_text(encoding="utf-8")
-              txt = txt.replace("__API_BASE__", api_base)
-              path.write_text(txt, encoding="utf-8")
+          root = pathlib.Path("public")
+          for path in root.rglob("*.html"):
+              try:
+                  txt = path.read_text(encoding="utf-8")
+              except OSError:
+                  continue
+              if "__API_BASE__" not in txt:
+                  continue
+              path.write_text(txt.replace("__API_BASE__", api_base), encoding="utf-8")
           PY
           # Disable Jekyll so GitHub Pages serves static files as-is (README is not used as index).
           touch public/.nojekyll

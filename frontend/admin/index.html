@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>BalanceWhiz — Admin</title>
+    <script>window.API_BASE = "__API_BASE__";</script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="../styles.css" />
+  </head>
+  <body class="admin-page">
+    <div class="container">
+      <div class="top-nav" role="navigation" aria-label="Primary">
+        <div class="top-nav__inner top-nav__inner--simple">
+          <div class="top-nav__title" aria-label="App title">
+            <h1 class="app-title">Balance Whiz</h1>
+          </div>
+          <div class="top-nav__actions" aria-label="Account actions">
+            <button type="button" class="top-nav__logout" onclick="window.location.href='../'">App</button>
+            <button type="button" class="top-nav__logout" onclick="window.location.href='../login/'">Login</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="card admin-page__hero">
+          <h2 class="admin-page__title">Admin</h2>
+          <p class="meta admin-page__lead">
+            Operator tools and diagnostics for BalanceWhiz. Restrict access to this URL in production (for example via your host’s IP allowlist, VPN, or HTTP basic auth in front of the app).
+          </p>
+
+          <div class="admin-page__grid">
+            <section class="admin-page__panel" aria-labelledby="admin-connect-heading">
+              <h3 id="admin-connect-heading">API connectivity</h3>
+              <p class="meta" style="margin: 0 0 10px">
+                Calls the public debug config endpoint (no secrets). Confirms the browser can reach the API configured for this deployment.
+              </p>
+              <div class="modal-actions" style="padding-top: 0; border-top: none; margin-bottom: 10px">
+                <button type="button" id="adminCheckApiBtn">Check API</button>
+              </div>
+              <pre id="adminApiOut" class="admin-page__pre" hidden></pre>
+              <p id="adminApiErr" class="error" style="display: none"></p>
+            </section>
+
+            <section class="admin-page__panel" aria-labelledby="admin-ops-heading">
+              <h3 id="admin-ops-heading">Server-side operations</h3>
+              <p class="meta" style="margin: 0 0 10px">
+                Database maintenance and arbitrary SQL are only available through the API when <code>MAINT_TOKEN</code> is set in the server environment. Use <code>POST /api/maintenance/sql</code> with <code>Authorization: Bearer &lt;token&gt;</code> from a secure shell or automation—never from an untrusted browser extension.
+              </p>
+              <p class="meta" style="margin: 0">Family-level admin (members, invites, data) is handled inside the app under <strong>Settings</strong> for users with the family <strong>admin</strong> role.</p>
+            </section>
+          </div>
+
+          <div class="card admin-page__users-card" aria-labelledby="admin-users-heading">
+            <h3 id="admin-users-heading" class="admin-page__users-title">User accounts</h3>
+            <p class="meta" style="margin: 0 0 12px">
+              Loads every registered user from the database. Requires the same <code>MAINT_TOKEN</code> as maintenance SQL; paste it below and click <strong>Load users</strong>. The token is only sent to your API and is not stored by this page.
+            </p>
+            <div class="admin-page__token-row">
+              <div class="admin-page__token-field">
+                <label for="adminMaintToken">Maintenance token</label>
+                <input id="adminMaintToken" type="password" autocomplete="off" spellcheck="false" placeholder="Bearer token value" />
+              </div>
+              <div class="modal-actions admin-page__token-actions">
+                <button type="button" id="adminLoadUsersBtn">Load users</button>
+              </div>
+            </div>
+            <p id="adminUsersErr" class="error" style="display: none; margin: 8px 0 0"></p>
+            <div id="adminUsersEmpty" class="meta" style="display: none; margin-top: 12px">No user accounts yet.</div>
+            <div id="adminUsersTableWrap" class="admin-user-table-wrap" hidden>
+              <table class="admin-user-table" aria-label="Registered user accounts">
+                <thead>
+                  <tr>
+                    <th scope="col">ID</th>
+                    <th scope="col">Email</th>
+                    <th scope="col">Name</th>
+                    <th scope="col">Created</th>
+                  </tr>
+                </thead>
+                <tbody id="adminUsersTbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <footer class="app-footer" role="contentinfo">
+        <div class="app-footer__inner">
+          <span class="app-footer__brand" aria-hidden="true"></span>
+          <a href="../plans/" class="app-footer__link">Plans</a>
+          <a href="../contactus/" class="app-footer__link">Contact</a>
+        </div>
+      </footer>
+    </div>
+
+    <script src="./admin.js"></script>
+  </body>
+</html>

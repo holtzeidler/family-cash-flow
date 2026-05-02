@@ -37,6 +37,9 @@ body.signup-page .card{
 body.login-page .auth-section.card{
   background: var(--cal-surface);
   border: 2px solid var(--accent);
+  box-shadow:
+    0 2px 8px rgba(11, 61, 46, 0.08),
+    0 12px 32px rgba(0, 0, 0, 0.1);
 }
 body.login-page .container > .grid{
   /* Space between header and cards */
@@ -53,12 +56,26 @@ body.login-page .top-nav__inner--simple .app-title{
   text-align: left;
 }
 
-/* Plans page header: title left, action right */
-body.plans-page .top-nav .top-nav__inner.top-nav__inner--simple{
+/* Plans / admin page header: title left, action right */
+body.plans-page .top-nav .top-nav__inner.top-nav__inner--simple,
+body.admin-page .top-nav .top-nav__inner.top-nav__inner--simple{
   grid-template-columns: 1fr auto;
+  justify-items: start;
 }
-body.plans-page .top-nav .top-nav__inner.top-nav__inner--simple .top-nav__actions{
+body.plans-page .top-nav .top-nav__inner.top-nav__inner--simple .top-nav__actions,
+body.admin-page .top-nav .top-nav__inner.top-nav__inner--simple .top-nav__actions{
   justify-self: end;
+  gap: 8px;
+}
+body.plans-page .top-nav .top-nav__inner.top-nav__inner--simple .top-nav__title,
+body.admin-page .top-nav .top-nav__inner.top-nav__inner--simple .top-nav__title{
+  justify-content: flex-start;
+  width: auto;
+  padding-left: 10px;
+}
+body.plans-page .top-nav .top-nav__inner.top-nav__inner--simple .app-title,
+body.admin-page .top-nav .top-nav__inner.top-nav__inner--simple .app-title{
+  text-align: left;
 }
 
 /* Ensure the HTML `hidden` attribute always wins (UA defaults can be overridden by our layout rules). */
@@ -70,7 +87,7 @@ body.plans-page .top-nav .top-nav__inner.top-nav__inner--simple .top-nav__action
   max-width: 1920px;
   width: 100%;
   margin: 0 auto;
-  padding: 0 24px 24px;
+  padding: 0 12px 24px;
   min-height: 100vh;
   box-sizing: border-box;
   display: flex;
@@ -96,7 +113,7 @@ body.plans-page .top-nav .top-nav__inner.top-nav__inner--simple .top-nav__action
   /* Restore the container padding inside the full-bleed header */
   max-width: 1920px;
   margin: 0 auto;
-  padding: 0 24px;
+  padding: 0 12px;
 }
 .top-nav__actions{
   display: flex;
@@ -169,16 +186,37 @@ body.plans-page .top-nav .top-nav__inner.top-nav__inner--simple .top-nav__action
     font-size: 28px;
     text-align: center;
   }
+  /* Plans / admin: keep title left + actions right on narrow screens (overrides generic centered nav). */
+  body.plans-page .top-nav .top-nav__inner.top-nav__inner--simple,
+  body.admin-page .top-nav .top-nav__inner.top-nav__inner--simple{
+    grid-template-columns: 1fr auto;
+    justify-items: start;
+    row-gap: 0;
+  }
+  body.plans-page .top-nav .top-nav__inner.top-nav__inner--simple .top-nav__title,
+  body.admin-page .top-nav .top-nav__inner.top-nav__inner--simple .top-nav__title{
+    justify-content: flex-start;
+    width: auto;
+    padding-left: 10px;
+  }
+  body.plans-page .top-nav .top-nav__inner.top-nav__inner--simple .app-title,
+  body.admin-page .top-nav .top-nav__inner.top-nav__inner--simple .app-title{
+    text-align: left;
+  }
+  body.plans-page .top-nav .top-nav__inner.top-nav__inner--simple .top-nav__actions,
+  body.admin-page .top-nav .top-nav__inner.top-nav__inner--simple .top-nav__actions{
+    justify-self: end;
+  }
 }
 
 @media (max-width: 1120px){
   .container{
-    padding-left: 16px;
-    padding-right: 16px;
+    padding-left: 10px;
+    padding-right: 10px;
   }
   .top-nav__inner{
-    padding-left: 16px;
-    padding-right: 16px;
+    padding-left: 10px;
+    padding-right: 10px;
   }
   .app-layout{
     grid-template-columns: 1fr;
@@ -444,11 +482,11 @@ button.secondary{
   color: var(--text);
 }
 
-/* Main app: 1/4 master data (left), 3/4 calendar + tools (right) */
+/* Main app: sidebar (left), calendar + tools (right) — slightly wider calendar column */
 .app-layout{
   display:grid;
-  grid-template-columns: 0.9fr 3.1fr;
-  gap: 16px;
+  grid-template-columns: 0.76fr 3.24fr;
+  gap: 10px;
   align-items: stretch;
   margin-top: 0;
   flex: 1 1 auto;
@@ -600,7 +638,7 @@ button.secondary{
   gap: 14px;
   min-width: 0;
   overflow: visible;
-  padding-right: 4px;
+  padding-right: 0;
 }
 
 .calendar-nav-block{
@@ -1109,7 +1147,8 @@ button.nav-link:hover{
   /* --cal-week-rows set in JS (4–6); day row height scales with week count */
   --cal-week-rows: 5;
   --cal-day-min-h: 112px;
-  --cal-gap: 6px;
+  /* Horizontal + vertical gutter between day cells (was 6px). */
+  --cal-gap: 4px;
   /*
     Ensure the panel is tall enough to show the full last row of day cards,
     including grid gaps and the day-of-week header.
@@ -1211,6 +1250,9 @@ button.nav-link:hover{
 /* Calendar uses a lighter surface than generic cards; beats `.card` background. */
 .card.calendar-panel{
   background: var(--cal-surface);
+  /* Tighter horizontal inset so the day grid uses more width (default .card is 14px). */
+  padding-left: 8px;
+  padding-right: 8px;
 }
 
 /* Transaction View should match Calendar's white surface. */
@@ -1487,29 +1529,33 @@ label{
   justify-content: flex-start;
 }
 
-/* Settings → Accounts: add vertical rhythm between stacked controls */
-.settings-pane[data-settings-pane="accounts"] .row.two{
-  margin-bottom: 14px;
+/* Settings → Account Details: accounts list card (below thresholds) */
+.settings-accounts-card{
+  margin-top: 20px;
 }
-.settings-pane[data-settings-pane="accounts"] #cancelAccountEditBtn{
-  margin-top: 0;
-  margin-bottom: 14px;
-  width: 100%;
+.settings-accounts-card .sidebar-section-head{
+  margin-bottom: 10px;
 }
-.settings-pane[data-settings-pane="accounts"] #accountsList .item .meta{
+#settingsAccountsHeading{
+  font-size: 14.3px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(17, 24, 39, 0.7);
+}
+#settingsAccountsCard #accountsList .item .meta{
   margin-top: 6px;
 }
-.settings-pane[data-settings-pane="accounts"] #accountsList .row-actions{
+#settingsAccountsCard #accountsList .row-actions{
   padding-right: 10px;
 }
-.settings-pane[data-settings-pane="accounts"] #accErr{
-  margin: 6px 0 10px;
-}
-.settings-pane[data-settings-pane="accounts"] .list{
-  margin-top: 16px;
+#settingsAccountsCard .list{
+  margin-top: 0;
+  display: flex;
+  flex-direction: column;
   gap: 14px;
 }
-.settings-pane[data-settings-pane="accounts"] #openAccountModalBtn{
+#settingsAccountsCard #openAccountModalBtn{
   margin-top: 12px;
 }
 .tx-edit-top .form-row-h__label label{
@@ -1891,6 +1937,28 @@ textarea::placeholder{
   font-size: 17px;
   line-height: 1.25;
   white-space: nowrap;
+}
+
+/* All Upcoming Transactions (#txListMain): one size, regular weight, no italics */
+#txListMain .item .desc,
+#txListMain .item .meta,
+#txListMain .item .amt,
+#txListMain .item .amt.expected-amt-link,
+#txListMain .item .cat-pill,
+#txListMain .item a.tx-desc-link{
+  font-size: 14px;
+  font-weight: 400;
+  font-style: normal;
+}
+#txListMain .expected-item--dense .meta,
+#txListMain .expected-item--dense .desc{
+  font-size: 14px;
+  font-weight: 400;
+  font-style: normal;
+}
+#txListMain .expected-item--variable .desc,
+#txListMain .expected-item--variable .expected-amt-link{
+  font-style: normal;
 }
 
 .categories-toolbar{
@@ -2348,6 +2416,139 @@ body.contact-page .app-footer{
   margin-top: 10px;
 }
 
+/* Admin page (balancewhiz.com/admin) */
+body.admin-page .container > .grid{
+  margin-top: 18px;
+  width: min(92%, 1100px);
+  margin-left: auto;
+  margin-right: auto;
+}
+body.admin-page .container{
+  min-height: auto;
+}
+body.admin-page .app-footer{
+  margin-top: 10px;
+}
+.admin-page__hero{
+  padding-bottom: 16px;
+}
+.admin-page__title{
+  margin: 0 0 6px;
+  font-size: 1.35rem;
+}
+.admin-page__lead{
+  margin: 0 0 18px;
+}
+.admin-page__grid{
+  display: grid;
+  gap: 16px;
+}
+@media (min-width: 900px){
+  .admin-page__grid{
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+  }
+}
+.admin-page__panel h3{
+  margin: 0 0 8px;
+  font-size: 1rem;
+  font-weight: 600;
+}
+.admin-page__pre{
+  margin: 0;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.03);
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.45;
+  max-height: 320px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.admin-page__users-card{
+  margin-top: 16px;
+  padding-bottom: 16px;
+}
+.admin-page__users-title{
+  margin: 0 0 8px;
+  font-size: 1rem;
+  font-weight: 600;
+}
+.admin-page__token-row{
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+}
+.admin-page__token-field{
+  flex: 1 1 220px;
+  min-width: 0;
+}
+.admin-page__token-field label{
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 600;
+  font-size: 13px;
+}
+.admin-page__token-field input{
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.02);
+  color: var(--text);
+  font-size: 14px;
+}
+.admin-page__token-actions{
+  padding-top: 0;
+  border-top: none;
+  margin-bottom: 2px;
+}
+.admin-user-table-wrap{
+  margin-top: 14px;
+  overflow: auto;
+  max-height: min(60vh, 520px);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.admin-user-table{
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.admin-user-table th,
+.admin-user-table td{
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+.admin-user-table th{
+  position: sticky;
+  top: 0;
+  background: var(--card);
+  font-weight: 600;
+  z-index: 1;
+  box-shadow: 0 1px 0 var(--border);
+}
+.admin-user-table tbody tr:hover{
+  background: rgba(0, 0, 0, 0.03);
+}
+.admin-user-table tbody tr:last-child td{
+  border-bottom: none;
+}
+.admin-user-table td.num{
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.admin-user-table .admin-user-email{
+  word-break: break-all;
+}
+
 /* Plans page */
 body.plans-page .container > .grid{
   margin-top: 90px;
@@ -2361,7 +2562,8 @@ body.plans-page .container > .grid{
 }
 .plans-headline{
   width: min(980px, 100%);
-  margin: 0 auto 14px;
+  /* Nudge hero copy up without shifting the pricing cards */
+  margin: -20px auto 14px;
   text-align: center;
   font-size: 39px; /* +15% */
   font-weight: 900;
@@ -2380,7 +2582,7 @@ body.plans-page .container > .grid{
 }
 .plans-grid{
   width: min(980px, 100%);
-  margin: 0 auto;
+  margin: 20px auto 0;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 18px;
@@ -2503,13 +2705,13 @@ body.plans-page .container > .grid{
 .calendar{
   display:grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: var(--cal-gap, 6px);
+  gap: var(--cal-gap, 4px);
 }
 
 .calendar-dow-row{
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: var(--cal-gap, 6px);
+  gap: var(--cal-gap, 4px);
   margin-bottom: 4px;
 }
 .cal-dow{
@@ -2555,7 +2757,8 @@ body.plans-page .container > .grid{
 .reconcile-date-value{
   font-size: 14px;
   color: var(--text);
-  font-weight: 700;
+  font-weight: 400;
+  text-align: left;
 }
 
 /* Reconcile modal: keep Date + Reconciled on one line */
@@ -2567,6 +2770,18 @@ body.plans-page .container > .grid{
 }
 .reconcile-inline-row .form-row-h{
   margin: 0;
+}
+/* Date value: keep it beside the label instead of a wide centered-looking field */
+.reconcile-inline-row > .form-row-h:first-child{
+  gap: 8px 10px;
+}
+.reconcile-inline-row > .form-row-h:first-child .form-row-h__label{
+  flex: 0 0 auto;
+  max-width: none;
+}
+.reconcile-inline-row > .form-row-h:first-child .form-row-h__field{
+  flex: 0 1 auto;
+  justify-content: flex-start;
 }
 .reconcile-inline-row .form-row-h__label{
   flex-basis: 5.75rem;
@@ -2775,6 +2990,30 @@ body.plans-page .container > .grid{
 }
 
 /* Transaction edit modal */
+/* Transaction hover: custom tip (short delay; native `title` is ~500ms+). */
+.fast-txn-tip{
+  position: fixed;
+  z-index: 12000;
+  left: 0;
+  top: 0;
+  max-width: min(380px, 94vw);
+  padding: 8px 11px;
+  font-size: 12px;
+  line-height: 1.4;
+  font-weight: 500;
+  color: #f9fafb;
+  background: rgba(17, 24, 39, 0.94);
+  border-radius: 8px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.38);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 70ms ease;
+  word-wrap: break-word;
+}
+.fast-txn-tip.fast-txn-tip--visible{
+  opacity: 1;
+}
+
 .modal-overlay{
   position: fixed;
   inset: 0;

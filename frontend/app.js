@@ -3627,6 +3627,21 @@ function scheduleCategoryTreePersist() {
   }, 250);
 }
 
+/** Run a pending debounced tree save before reloading from the server (avoids wiping in-DOM reorder). */
+async function flushCategoryTreePersistIfPending() {
+  if (!categoryTreeSaveTimer) return;
+  clearTimeout(categoryTreeSaveTimer);
+  categoryTreeSaveTimer = null;
+  await persistCategoryTreeFromDom();
+}
+
+function applyCategoryTreeToState(tree) {
+  state.categoryTree = tree || { groups: [] };
+  state.categories = flattenCategoryTree(state.categoryTree);
+  renderCategoriesGrid(state.categoryTree);
+  syncAllCategoryComboboxes(state.categories);
+}
+
 async function persistCategoryTreeFromDom() {
   if (!categoriesTree || !state.activeFamilyId) return;
   try {
@@ -3646,8 +3661,8 @@ async function persistCategoryTreeFromDom() {
       const ids = [...gEl.querySelectorAll(".cat-group-body .cat-row[data-category-id]")].map((r) => Number(r.dataset.categoryId));
       groups.push({ id: gid, name: nm, category_ids: ids });
     }
-    await api(`/api/families/${state.activeFamilyId}/categories/tree`, "PUT", { groups });
-    await loadCategories();
+    const tree = await api(`/api/families/${state.activeFamilyId}/categories/tree`, "PUT", { groups });
+    applyCategoryTreeToState(tree);
     await loadMonthAndCalendar();
   } catch (e) {
     show(catErr, e.message || "Failed to save category layout");
@@ -3657,11 +3672,9 @@ async function persistCategoryTreeFromDom() {
 
 async function loadCategories() {
   if (!state.activeFamilyId) return;
+  await flushCategoryTreePersistIfPending();
   const tree = await api(`/api/families/${state.activeFamilyId}/categories/tree`, "GET");
-  state.categoryTree = tree || { groups: [] };
-  state.categories = flattenCategoryTree(state.categoryTree);
-  renderCategoriesGrid(state.categoryTree);
-  syncAllCategoryComboboxes(state.categories);
+  applyCategoryTreeToState(tree);
 }
 
 function categoryStyleFromId(categoryId) {
@@ -3725,6 +3738,29 @@ function accessibleTextOnBackground(bgCss) {
 }
 
 const CATEGORY_PILL_MIN_CONTRAST = 4.5;
+/** Below this relative luminance, prefer auto light/dark text even if stored fg passes 4.5:1 (e.g. black on saturated red). */
+const PILL_BG_LUM_FORCED_AUTO_FG = 0.55;
+
+/**
+ * Readable pill text on a colored background. Dark / saturated backgrounds get white or near-black
+ * from accessibleTextOnBackground; mid/light backgrounds may keep a user-provided fg when contrast is OK.
+ */
+function resolvedPillForeground(bgCss, fgUserOpt) {
+  const bg = bgCss != null ? String(bgCss).trim() : "";
+  if (!bg) return "";
+  const auto = accessibleTextOnBackground(bg);
+  const bgRgb = parseCssColorToRgb(bg);
+  if (!bgRgb) {
+    const f = fgUserOpt != null ? String(fgUserOpt).trim() : "";
+    return f || auto;
+  }
+  const lum = relativeLuminanceFromRgb(bgRgb);
+  const fg = fgUserOpt != null ? String(fgUserOpt).trim() : "";
+  const fgRgb = fg ? parseCssColorToRgb(fg) : null;
+  const contrastOk = fgRgb && contrastRatioBetweenRgb(fgRgb, bgRgb) >= CATEGORY_PILL_MIN_CONTRAST;
+  if (!contrastOk || lum < PILL_BG_LUM_FORCED_AUTO_FG) return auto;
+  return fg;
+}
 
 /** fg/bg for category chips: keep custom colors but fix low-contrast pairs (e.g. white on yellow). */
 function categoryPillStyleFromId(categoryId) {
@@ -3732,18 +3768,7 @@ function categoryPillStyleFromId(categoryId) {
   if (!st) return null;
   const { fg: fgUser, bg } = st;
   if (!bg) return st;
-  const bgRgb = parseCssColorToRgb(bg);
-  if (!bgRgb) {
-    return { ...st, fg: fgUser || accessibleTextOnBackground(bg) };
-  }
-  if (!fgUser) {
-    return { ...st, fg: accessibleTextOnBackground(bg) };
-  }
-  const fgRgb = parseCssColorToRgb(fgUser);
-  if (fgRgb && contrastRatioBetweenRgb(fgRgb, bgRgb) >= CATEGORY_PILL_MIN_CONTRAST) {
-    return st;
-  }
-  return { ...st, fg: accessibleTextOnBackground(bg) };
+  return { ...st, fg: resolvedPillForeground(bg, fgUser) };
 }
 
 function pillStyleForTransaction(txOrItem) {
@@ -3751,7 +3776,7 @@ function pillStyleForTransaction(txOrItem) {
   const fg = txOrItem && txOrItem.fg_color ? String(txOrItem.fg_color).trim() : "";
   // Sentinel meaning: explicitly no color, even if the category has one.
   if (bg && bg.toLowerCase() === "none") return null;
-  if (bg) return { bg, fg: fg || accessibleTextOnBackground(bg) };
+  if (bg) return { bg, fg: resolvedPillForeground(bg, fg) };
   if (txOrItem && txOrItem.category_id) return categoryPillStyleFromId(txOrItem.category_id);
   return null;
 }
@@ -4341,9 +4366,11 @@ function renderUpcomingTransactionsFiltered() {
       const link = document.createElement("a");
       link.href = "#";
       link.className = `desc tx-desc-link ${kindFgClass(tx.kind)}`;
-      link.textContent = (tx.description || "(no description)").trim() || "(no description)";
+      const primary = actualTransactionPrimaryLabel(tx);
+      link.textContent = primary;
+      const catName = effectiveTransactionCategoryName(tx);
       const n = tx.notes && String(tx.notes).trim();
-      if (n) link.title = n;
+      if (n) bindFastTxnTipHover(el, n);
       link.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -4352,20 +4379,20 @@ function renderUpcomingTransactionsFiltered() {
       const meta = document.createElement("div");
       meta.className = "meta";
       meta.appendChild(document.createTextNode(fmtDateMDY(tx.date || "")));
-      if (tx.category_id && tx.category) {
+      const showCatPill = !!catName && primary !== catName;
+      if (showCatPill && tx.category_id) {
         const st = pillStyleForTransaction(tx);
         const pill = document.createElement("span");
         pill.className = `cat-pill ${kindFgClass(tx.kind)}`;
-        pill.textContent = leafCategoryName(tx.category);
+        pill.textContent = catName;
         if (st?.fg) pill.style.color = st.fg;
         if (st?.bg) {
           pill.style.background = st.bg;
-          pill.style.fontWeight = "600";
         }
         meta.appendChild(document.createTextNode(" · "));
         meta.appendChild(pill);
-      } else if (tx.category) {
-        meta.appendChild(document.createTextNode(` · ${leafCategoryName(tx.category)}`));
+      } else if (showCatPill && tx.category) {
+        meta.appendChild(document.createTextNode(` · ${catName}`));
       }
       left.appendChild(link);
       left.appendChild(meta);
@@ -4389,7 +4416,6 @@ function renderUpcomingTransactionsFiltered() {
     el.className = "item";
     if (eff.variable) el.classList.add("expected-item--variable");
     el.style.cursor = "pointer";
-    el.title = `Recurring schedule #${tx.id} · next ${nextIso}`;
 
     const amtClass = eff.kind === "income" ? "income" : "expense";
     const kindSign = eff.kind === "income" ? "+" : "-";
@@ -4418,7 +4444,6 @@ function renderUpcomingTransactionsFiltered() {
       if (st?.fg) pill.style.color = st.fg;
       if (st?.bg) {
         pill.style.background = st.bg;
-        pill.style.fontWeight = "600";
       }
       meta.appendChild(document.createTextNode(" · "));
       meta.appendChild(pill);
@@ -4434,7 +4459,6 @@ function renderUpcomingTransactionsFiltered() {
     amtBtn.type = "button";
     amtBtn.className = `amt ${amtClass} expected-amt-link`;
     amtBtn.textContent = `${kindSign}$${fmtMoney(eff.amount)}`;
-    amtBtn.title = "Edit recurring transaction";
     amtBtn.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -4443,6 +4467,8 @@ function renderUpcomingTransactionsFiltered() {
 
     el.appendChild(left);
     el.appendChild(amtBtn);
+    bindFastTxnTipHover(left, `Recurring schedule #${tx.id} · next ${nextIso}`);
+    bindFastTxnTipHover(amtBtn, "Edit recurring transaction");
     el.addEventListener("click", () => openExpectedEditModal(tx, { nextOccurrenceIso: nextIso }));
     txListMain.appendChild(el);
   }
@@ -4501,7 +4527,7 @@ function renderUncategorizedTransactions() {
     left.className = "left";
     const desc = document.createElement("div");
     desc.className = `desc ${kindFgClass(tx.kind)}`;
-    desc.textContent = (tx.description || "(no description)").trim() || "(no description)";
+    desc.textContent = actualTransactionPrimaryLabel(tx);
 
     const meta = document.createElement("div");
     meta.className = "meta";
@@ -4631,7 +4657,6 @@ function renderRecurringFilteredList() {
     el.className = "item expected-item--dense";
     if (eff.variable) el.classList.add("expected-item--variable");
     el.style.cursor = "pointer";
-    el.title = `Recurring schedule #${tx.id} · next ${nextIso}`;
 
     const amtClass = eff.kind === "income" ? "income" : "expense";
     const kindSign = eff.kind === "income" ? "+" : "-";
@@ -4662,7 +4687,6 @@ function renderRecurringFilteredList() {
     amtBtn.type = "button";
     amtBtn.className = `amt ${amtClass} expected-amt-link`;
     amtBtn.textContent = `${kindSign}$${fmtMoney(eff.amount)}`;
-    amtBtn.title = "Edit recurring transaction";
     amtBtn.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -4671,6 +4695,8 @@ function renderRecurringFilteredList() {
 
     el.appendChild(left);
     el.appendChild(amtBtn);
+    bindFastTxnTipHover(left, `Recurring schedule #${tx.id} · next ${nextIso}`);
+    bindFastTxnTipHover(amtBtn, "Edit recurring transaction");
     el.addEventListener("click", () => openExpectedEditModal(tx, { nextOccurrenceIso: nextIso }));
     recurringFilteredList.appendChild(el);
   }
@@ -4832,9 +4858,11 @@ function renderTransactionsInto(listEl, items, emptyMessage) {
     const link = document.createElement("a");
     link.href = "#";
     link.className = `desc tx-desc-link ${kindFgClass(tx.kind)}`;
-    link.textContent = (tx.description || "(no description)").trim() || "(no description)";
+    const primary = actualTransactionPrimaryLabel(tx);
+    link.textContent = primary;
+    const catName = effectiveTransactionCategoryName(tx);
     const n = tx.notes && String(tx.notes).trim();
-    if (n) link.title = n;
+    if (n) bindFastTxnTipHover(el, n);
     link.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -4844,20 +4872,20 @@ function renderTransactionsInto(listEl, items, emptyMessage) {
     const meta = document.createElement("div");
     meta.className = "meta";
     meta.appendChild(document.createTextNode(fmtDateMDY(tx.date || "")));
-    if (tx.category_id && tx.category) {
+    const showCatPill = !!catName && primary !== catName;
+    if (showCatPill && tx.category_id) {
       const st = pillStyleForTransaction(tx);
       const pill = document.createElement("span");
       pill.className = `cat-pill ${kindFgClass(tx.kind)}`;
-      pill.textContent = leafCategoryName(tx.category);
+      pill.textContent = catName;
       if (st?.fg) pill.style.color = st.fg;
       if (st?.bg) {
         pill.style.background = st.bg;
-        pill.style.fontWeight = "600";
       }
       meta.appendChild(document.createTextNode(" · "));
       meta.appendChild(pill);
-    } else if (tx.category) {
-      meta.appendChild(document.createTextNode(` · ${leafCategoryName(tx.category)}`));
+    } else if (showCatPill && tx.category) {
+      meta.appendChild(document.createTextNode(` · ${catName}`));
     }
 
     left.appendChild(link);
@@ -5321,12 +5349,130 @@ function truncate(s, maxLen) {
   return str.slice(0, Math.max(0, maxLen - 1)) + "…";
 }
 
+/** Faster than native `title` tooltips (browser delay is ~500ms+). */
+const FAST_TXN_TIP_SHOW_MS = 100;
+let fastTxnTipEl = null;
+let fastTxnTipShowTimer = null;
+let fastTxnTipHideTimer = null;
+let fastTxnTipScrollBound = false;
+
+function hideFastTxnTipNow() {
+  if (fastTxnTipShowTimer) {
+    clearTimeout(fastTxnTipShowTimer);
+    fastTxnTipShowTimer = null;
+  }
+  if (fastTxnTipHideTimer) {
+    clearTimeout(fastTxnTipHideTimer);
+    fastTxnTipHideTimer = null;
+  }
+  if (fastTxnTipEl) {
+    fastTxnTipEl.classList.remove("fast-txn-tip--visible");
+    fastTxnTipEl.hidden = true;
+    fastTxnTipEl.textContent = "";
+  }
+}
+
+function ensureFastTxnTipEl() {
+  if (fastTxnTipEl && fastTxnTipEl.isConnected) return fastTxnTipEl;
+  fastTxnTipEl = document.createElement("div");
+  fastTxnTipEl.className = "fast-txn-tip";
+  fastTxnTipEl.setAttribute("role", "tooltip");
+  fastTxnTipEl.hidden = true;
+  document.body.appendChild(fastTxnTipEl);
+  if (!fastTxnTipScrollBound) {
+    fastTxnTipScrollBound = true;
+    window.addEventListener("scroll", hideFastTxnTipNow, true);
+    window.addEventListener("resize", hideFastTxnTipNow);
+  }
+  return fastTxnTipEl;
+}
+
+function positionFastTxnTip(anchorEl) {
+  const tip = ensureFastTxnTipEl();
+  const rect = anchorEl.getBoundingClientRect();
+  const gap = 6;
+  const margin = 8;
+  let x = rect.left + rect.width / 2 - tip.offsetWidth / 2;
+  let y = rect.bottom + gap;
+  const maxX = window.innerWidth - tip.offsetWidth - margin;
+  const maxY = window.innerHeight - tip.offsetHeight - margin;
+  x = Math.max(margin, Math.min(x, maxX));
+  if (y > maxY) y = Math.max(margin, rect.top - tip.offsetHeight - gap);
+  y = Math.max(margin, Math.min(y, maxY));
+  tip.style.left = `${Math.round(x)}px`;
+  tip.style.top = `${Math.round(y)}px`;
+}
+
+/**
+ * Show `text` in a floating tip after a short delay when hovering `anchorEl`.
+ * Avoids native `title` delay; do not set `title` for the same text on this node.
+ */
+function bindFastTxnTipHover(anchorEl, text) {
+  const t = String(text ?? "").trim();
+  if (!anchorEl || !t) return;
+  const onEnter = () => {
+    if (fastTxnTipHideTimer) {
+      clearTimeout(fastTxnTipHideTimer);
+      fastTxnTipHideTimer = null;
+    }
+    if (fastTxnTipShowTimer) clearTimeout(fastTxnTipShowTimer);
+    fastTxnTipShowTimer = window.setTimeout(() => {
+      fastTxnTipShowTimer = null;
+      const tip = ensureFastTxnTipEl();
+      tip.textContent = t;
+      tip.hidden = false;
+      tip.classList.remove("fast-txn-tip--visible");
+      positionFastTxnTip(anchorEl);
+      requestAnimationFrame(() => {
+        positionFastTxnTip(anchorEl);
+        tip.classList.add("fast-txn-tip--visible");
+      });
+    }, FAST_TXN_TIP_SHOW_MS);
+  };
+  const onLeave = () => {
+    if (fastTxnTipShowTimer) {
+      clearTimeout(fastTxnTipShowTimer);
+      fastTxnTipShowTimer = null;
+    }
+    fastTxnTipHideTimer = window.setTimeout(() => {
+      fastTxnTipHideTimer = null;
+      hideFastTxnTipNow();
+    }, 50);
+  };
+  anchorEl.addEventListener("mouseenter", onEnter);
+  anchorEl.addEventListener("mouseleave", onLeave);
+}
+
 function leafCategoryName(raw) {
   const s = String(raw ?? "").trim();
   if (!s) return "";
   // Some category labels come through as "Group • Category".
   const parts = s.split("•").map((p) => p.trim()).filter(Boolean);
   return parts.length > 1 ? parts[parts.length - 1] : s;
+}
+
+/** Category label for display when API `category` string may be missing but `category_id` is set. */
+function effectiveTransactionCategoryName(tx) {
+  if (!tx || typeof tx !== "object") return "";
+  const raw = tx.category != null ? String(tx.category).trim() : "";
+  if (raw && raw.toLowerCase() !== "none") return leafCategoryName(raw);
+  const cid = tx.category_id != null ? Number(tx.category_id) : NaN;
+  if (!Number.isFinite(cid)) return "";
+  const c = (state.categories || []).find((x) => Number(x.id) === cid);
+  const name = c?.name != null ? String(c.name).trim() : "";
+  if (!name || name.toLowerCase() === "none") return "";
+  return leafCategoryName(name);
+}
+
+/** Primary line for lists: description, else category, else notes snippet, else placeholder. */
+function actualTransactionPrimaryLabel(tx) {
+  const desc = String(tx?.description ?? "").trim();
+  if (desc) return desc;
+  const cat = effectiveTransactionCategoryName(tx || {});
+  if (cat) return cat;
+  const n = tx?.notes != null ? String(tx.notes).trim() : "";
+  if (n) return truncate(n, 72);
+  return "(no description)";
 }
 
 function renderVariableTodosForMonth() {
@@ -5367,10 +5513,10 @@ function renderVariableTodosForMonth() {
     amtBtn.type = "button";
     amtBtn.className = `amt ${it.kind === "income" ? "income" : "expense"} expected-amt-link`;
     amtBtn.textContent = `$${fmtMoney(it.amount)}`;
-    amtBtn.title = "Review / edit this recurring occurrence";
 
     el.appendChild(left);
     el.appendChild(amtBtn);
+    bindFastTxnTipHover(el, "Review / edit this recurring occurrence");
 
     el.addEventListener("click", () => {
       const meta = getExpectedSeriesMeta(it.expected_transaction_id);
@@ -5614,7 +5760,11 @@ function renderCalendar() {
         if (isExpected && row.variable) line.classList.add("cal-expected-variable");
         if (!isExpected) line.dataset.txId = String(row.id);
 
-        const categoryName = row.category && String(row.category).trim() ? leafCategoryName(String(row.category).trim()) : "";
+        const categoryName = !isExpected
+          ? effectiveTransactionCategoryName(row)
+          : row.category && String(row.category).trim()
+            ? leafCategoryName(String(row.category).trim())
+            : "";
         const descRaw = isExpected ? row.description || "(expected)" : (row.description || "Uncategorized").trim();
         // Calendar UI should display only the category name (no group, no extra "• description").
         // If uncategorized, fall back to the description.
@@ -5625,7 +5775,7 @@ function renderCalendar() {
         const labelSpan = document.createElement("span");
         labelSpan.className = `cal-tx-label ${kindFgClass(row.kind)}`;
         labelSpan.textContent = `${label} `;
-        if (row.category_id && row.category) {
+        if (row.category_id) {
           const st = pillStyleForTransaction(row);
           if (st?.fg) labelSpan.style.color = st.fg;
           if (st?.bg) labelSpan.style.background = st.bg;
@@ -5650,9 +5800,7 @@ function renderCalendar() {
 
         {
           const noteStr = row.notes && String(row.notes).trim() ? String(row.notes).trim() : "";
-          line.title = noteStr;
-          labelWrap.title = noteStr;
-          amtSpan.title = noteStr;
+          if (noteStr) bindFastTxnTipHover(line, noteStr);
         }
 
         if (isExpected) {

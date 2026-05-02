@@ -346,6 +346,15 @@ class AuthMeOut(BaseModel):
     user: UserOut
 
 
+class MaintenanceUserOut(BaseModel):
+    """User row for operator maintenance UI (no password hash)."""
+
+    id: int
+    email: EmailStr
+    name: Optional[str] = None
+    created_at: datetime
+
+
 class RegisterOut(BaseModel):
     user: UserOut
 
@@ -3711,6 +3720,22 @@ def _require_maint_token(authorization: Optional[str]) -> None:
     got = hdr.split(" ", 1)[1].strip()
     if got != token:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid maintenance token")
+
+
+@app.get("/api/maintenance/users", response_model=list[MaintenanceUserOut], include_in_schema=False)
+def maintenance_list_users(
+    authorization: Annotated[Optional[str], Header()] = None,
+    db=Depends(get_db),
+):
+    """
+    List all registered user accounts (id, email, name, created_at).
+    Enabled only when Settings.MAINT_TOKEN is set; authorized via Authorization: Bearer <token>.
+    """
+    _require_maint_token(authorization)
+    users = db.execute(select(User).order_by(User.id.asc())).scalars().all()
+    return [
+        MaintenanceUserOut(id=u.id, email=u.email, name=u.name, created_at=u.created_at) for u in users
+    ]
 
 
 @app.post("/api/maintenance/sql", response_model=MaintenanceSqlOut, include_in_schema=False)

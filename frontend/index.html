@@ -64,10 +64,6 @@
                 <span class="settings-nav-item__label">Account Details</span>
                 <span class="settings-nav-item__chev" aria-hidden="true">▸</span>
               </button>
-              <button type="button" class="settings-nav-item" data-settings-key="accounts">
-                <span class="settings-nav-item__label">Accounts</span>
-                <span class="settings-nav-item__chev" aria-hidden="true">▸</span>
-              </button>
               <button type="button" class="settings-nav-item" data-settings-key="categories">
                 <span class="settings-nav-item__label">Categories</span>
                 <span class="settings-nav-item__chev" aria-hidden="true">▸</span>
@@ -393,12 +389,16 @@
                       Leave a field blank to disable that alert. The calendar sidebar shows the next projected crossing for each threshold you set.
                     </p>
                   </div>
-                </div>
 
-                <div class="settings-pane" data-settings-pane="accounts" hidden>
-                  <div class="list" id="accountsList"></div>
-                  <button type="button" id="openAccountModalBtn">Add New Account</button>
-                  <div style="height:14px;"></div>
+                  <div class="card settings-accounts-card" id="settingsAccountsCard" aria-labelledby="settingsAccountsHeading">
+                    <div class="sidebar-section-head">
+                      <h2 id="settingsAccountsHeading">Accounts</h2>
+                    </div>
+                    <div class="sidebar-section-body">
+                      <div class="list" id="accountsList"></div>
+                      <button type="button" id="openAccountModalBtn">Add New Account</button>
+                    </div>
+                  </div>
                 </div>
 
                 <div class="settings-pane" data-settings-pane="categories" hidden>
