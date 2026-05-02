@@ -88,7 +88,7 @@
               <li>
                 Run <strong>Run API check</strong> above. In the green summary, find <strong>Contact form (server email)</strong>. It must say <strong>Ready</strong>. If it says
                 <strong>Not ready</strong>, open your host (e.g. Render → Environment) and set every <code>CONTACT_*</code> variable from <code>backend/.env.example</code>, then redeploy the
-                API.
+                API. If SMTP to Microsoft keeps timing out on Render, add <strong>Resend</strong> (<code>RESEND_API_KEY</code> + <code>RESEND_FROM</code> — see <code>backend/.env.example</code>); the API uses Resend first when set.
               </li>
               <li>
                 Open <a href="https://balancewhiz.com/contactus/">https://balancewhiz.com/contactus/</a> (or <a href="../contactus/">Contact Us</a> from this host), fill in name, email, and

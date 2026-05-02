@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import csv
 import io
+import json
 import logging
 import smtplib
 import ssl
@@ -16,6 +17,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Annotated, Literal, Optional, Sequence
 from urllib.parse import urlparse
+import urllib.error
+import urllib.request
 
 from fastapi import Cookie, Depends, FastAPI, Header, HTTPException, Query, Request, Response, status
 from fastapi.responses import HTMLResponse
@@ -64,6 +67,11 @@ class Settings(BaseSettings):
     # Hard cap for the whole send (thread); HTTP returns 502 if exceeded so browsers do not hang.
     CONTACT_SMTP_OVERALL_DEADLINE_SEC: int = 26
 
+    # Optional: Resend (https://resend.com) — HTTPS outbound from Render; avoids flaky SMTP to Microsoft 365.
+    # Set RESEND_API_KEY + RESEND_FROM + CONTACT_EMAIL_TO. RESEND_FROM must be allowed in Resend (domain or onboarding@resend.dev for tests).
+    RESEND_API_KEY: str = ""
+    RESEND_FROM: str = ""
+
     @field_validator("DATABASE_URL", mode="after")
     @classmethod
     def normalize_postgres_driver(cls, v: str) -> str:
@@ -84,13 +92,77 @@ settings = Settings(_env_file=Path(__file__).resolve().parents[1] / ".env", _env
 logger = logging.getLogger(__name__)
 
 
-def _contact_email_configured() -> bool:
+def _contact_smtp_configured() -> bool:
     return bool(
         (settings.CONTACT_SMTP_HOST or "").strip()
         and (settings.CONTACT_SMTP_USER or "").strip()
         and (settings.CONTACT_SMTP_PASSWORD or "").strip()
         and (settings.CONTACT_EMAIL_TO or "").strip()
     )
+
+
+def _contact_resend_configured() -> bool:
+    return bool(
+        (settings.RESEND_API_KEY or "").strip()
+        and (settings.RESEND_FROM or "").strip()
+        and (settings.CONTACT_EMAIL_TO or "").strip()
+    )
+
+
+def _contact_email_configured() -> bool:
+    return _contact_resend_configured() or _contact_smtp_configured()
+
+
+class ResendSendError(Exception):
+    """Non-fatal wrapper so the contact handler can map to HTTP 502."""
+
+    def __init__(self, message: str):
+        super().__init__(message)
+        self.message = message
+
+
+def _send_contact_via_resend_sync(*, to_addr: str, subject: str, text_body: str, reply_to: str) -> None:
+    api_key = (settings.RESEND_API_KEY or "").strip()
+    from_line = (settings.RESEND_FROM or "").strip()
+    payload = {
+        "from": from_line,
+        "to": [to_addr],
+        "subject": subject,
+        "reply_to": reply_to,
+        "text": text_body,
+    }
+    data = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(
+        "https://api.resend.com/emails",
+        data=data,
+        method="POST",
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=22) as resp:
+            _ = resp.read()
+            code = resp.getcode()
+            if int(code) not in (200, 201):
+                raise ResendSendError(f"Resend returned HTTP {code}")
+    except urllib.error.HTTPError as e:
+        raw = e.read().decode("utf-8", errors="replace")[:1200]
+        msg = raw
+        try:
+            parsed = json.loads(raw)
+            if isinstance(parsed, dict) and parsed.get("message"):
+                msg = str(parsed.get("message"))
+        except Exception:
+            pass
+        logger.warning("Resend API HTTP %s: %s", getattr(e, "code", "?"), msg[:500])
+        raise ResendSendError(msg[:400]) from None
+    except ResendSendError:
+        raise
+    except OSError as e:
+        logger.warning("Resend request failed: %s", type(e).__name__)
+        raise ResendSendError("Could not reach Resend (network).") from e
 
 
 _contact_rate_bucket: dict[str, list[float]] = {}
@@ -846,7 +918,24 @@ def public_debug_config():
     raw = settings.CORS_ORIGINS or ""
     parsed = _parse_cors_origins(raw) if raw.strip() else []
     contact_ok = _contact_email_configured()
+    resend_on = _contact_resend_configured()
+    smtp_on = _contact_smtp_configured()
     cors_ok = bool(raw.strip() and parsed)
+    if contact_ok:
+        if resend_on:
+            c_hint = "Resend (HTTPS) is configured — reliable from Render. Contact form uses it first if both Resend and SMTP are set."
+        elif smtp_on:
+            c_hint = (
+                "SMTP to Microsoft 365 is configured. If sends time out from Render, add RESEND_API_KEY + "
+                "RESEND_FROM (see backend/.env.example) and redeploy — HTTPS mail avoids blocked SMTP."
+            )
+        else:
+            c_hint = "Contact delivery is configured."
+    else:
+        c_hint = (
+            "Set either Resend (RESEND_API_KEY + RESEND_FROM + CONTACT_EMAIL_TO) or full SMTP "
+            "(CONTACT_SMTP_* + CONTACT_EMAIL_TO) on the server, then redeploy."
+        )
     return {
         "env": settings.ENV,
         "cors_middleware_enabled": cors_ok,
@@ -860,11 +949,8 @@ def public_debug_config():
         "auth_cookie_samesite": "none" if settings.ENV == "production" else "lax",
         "auth_cookie_secure": settings.ENV == "production",
         "contact_form_enabled": contact_ok,
-        "contact_form_hint": (
-            "Server email is configured — Contact Us can send via POST /api/public/contact."
-            if contact_ok
-            else "Set CONTACT_SMTP_HOST, CONTACT_SMTP_PORT, CONTACT_SMTP_USER, CONTACT_SMTP_PASSWORD, and CONTACT_EMAIL_TO on the server, then redeploy."
-        ),
+        "contact_form_delivery": ("resend" if resend_on else ("smtp" if smtp_on else "none")),
+        "contact_form_hint": c_hint,
         "note": "GitHub Pages -> Render needs ENV=production so Set-Cookie uses SameSite=None; Secure.",
     }
 
@@ -872,8 +958,7 @@ def public_debug_config():
 @app.post("/api/public/contact", include_in_schema=False)
 async def public_contact(payload: ContactIn, request: Request):
     """
-    Send a contact message to CONTACT_EMAIL_TO via SMTP (e.g. Microsoft 365).
-    Disabled until CONTACT_SMTP_* and CONTACT_EMAIL_TO are set on the server.
+    Send a contact message to CONTACT_EMAIL_TO via Resend (preferred) or SMTP (e.g. Microsoft 365).
     """
     if not _contact_email_configured():
         raise HTTPException(
@@ -887,14 +972,49 @@ async def public_contact(payload: ContactIn, request: Request):
             detail="Too many submissions; please try again later.",
         )
 
+    to_addr = settings.CONTACT_EMAIL_TO.strip()
+    subj = f"BalanceWhiz: {payload.subject}"
+    body = f"Name: {payload.name}\nEmail: {payload.email}\n\n{payload.message}\n"
+    reply_to = str(payload.email)
+
+    if _contact_resend_configured():
+        def _resend_job() -> None:
+            _send_contact_via_resend_sync(
+                to_addr=to_addr, subject=subj, text_body=body, reply_to=reply_to
+            )
+
+        try:
+            await asyncio.wait_for(asyncio.to_thread(_resend_job), timeout=25.0)
+        except asyncio.TimeoutError:
+            logger.warning("Contact form Resend exceeded deadline")
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Mail provider did not answer in time. Try again shortly.",
+            ) from None
+        except ResendSendError as e:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"Could not send via Resend: {e.message}",
+            ) from None
+        except Exception:
+            logger.exception("Contact form Resend send failed")
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Could not deliver your message; please try again later.",
+            ) from None
+        return {"ok": True}
+
+    if not _contact_smtp_configured():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Contact form is not configured on this server.",
+        )
+
     host = settings.CONTACT_SMTP_HOST.strip()
     port = int(settings.CONTACT_SMTP_PORT or 587)
     user = settings.CONTACT_SMTP_USER.strip()
     password = settings.CONTACT_SMTP_PASSWORD
-    to_addr = settings.CONTACT_EMAIL_TO.strip()
     from_addr = (settings.CONTACT_EMAIL_FROM or user).strip()
-    subj = f"BalanceWhiz: {payload.subject}"
-    body = f"Name: {payload.name}\nEmail: {payload.email}\n\n{payload.message}\n"
 
     sock_to = max(5, int(settings.CONTACT_SMTP_SOCKET_TIMEOUT_SEC or 18))
     deadline = max(float(sock_to) + 2.0, float(settings.CONTACT_SMTP_OVERALL_DEADLINE_SEC or 26))
@@ -904,7 +1024,7 @@ async def public_contact(payload: ContactIn, request: Request):
         msg["Subject"] = subj
         msg["From"] = from_addr
         msg["To"] = to_addr
-        msg["Reply-To"] = str(payload.email)
+        msg["Reply-To"] = reply_to
         msg.set_content(body)
         ctx = ssl.create_default_context()
         with smtplib.SMTP(host, port, timeout=sock_to) as smtp:
@@ -922,7 +1042,8 @@ async def public_contact(payload: ContactIn, request: Request):
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=(
                 "The email server did not finish in time from this host (common if the host blocks or throttles "
-                "outbound SMTP, or Microsoft 365 is slow). Try again in a minute, or send via your own email app."
+                "outbound SMTP, or Microsoft 365 is slow). Add Resend (RESEND_API_KEY + RESEND_FROM on the server) "
+                "to send over HTTPS instead, or send via your own email app."
             ),
         ) from None
     except smtplib.SMTPAuthenticationError:

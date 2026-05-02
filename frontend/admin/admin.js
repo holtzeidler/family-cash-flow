@@ -128,9 +128,19 @@
     const ch = typeof data.contact_form_hint === "string" ? data.contact_form_hint : "";
     addLi(
       "Contact form (server email):",
-      contactOk ? (ch || "The server can send contact mail via SMTP.") : (ch || "SMTP is not fully configured on the server."),
+      contactOk ? (ch || "The server can send contact mail.") : (ch || "Contact mail is not fully configured on the server."),
       contactOk
     );
+    var delivery = typeof data.contact_form_delivery === "string" ? data.contact_form_delivery : "";
+    if (contactOk && delivery) {
+      var dBody =
+        delivery === "resend"
+          ? "Resend over HTTPS (recommended on Render)."
+          : delivery === "smtp"
+            ? "SMTP only — often slow or blocked from cloud hosts; add Resend if you see timeouts."
+            : "Mode: " + delivery + ".";
+      addLi("Contact delivery path:", dBody, delivery === "resend" ? true : null);
+    }
 
     const ck =
       "Cookies for login: SameSite=" +
