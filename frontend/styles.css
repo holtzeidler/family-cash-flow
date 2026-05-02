@@ -2468,6 +2468,120 @@ body.admin-page .app-footer{
   white-space: pre-wrap;
   word-break: break-word;
 }
+.admin-steps{
+  margin: 0 0 14px;
+  padding-left: 1.25rem;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text);
+}
+.admin-steps li{
+  margin-bottom: 10px;
+}
+.admin-steps li:last-child{
+  margin-bottom: 0;
+}
+.admin-url-box{
+  margin-top: 4px;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.02);
+}
+.admin-url-box__label{
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+.admin-url-box__code{
+  display: block;
+  font-size: 12px;
+  word-break: break-all;
+  line-height: 1.45;
+  margin-bottom: 10px;
+}
+.admin-url-box__actions{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.admin-url-box__btn{
+  font-size: 13px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  font-weight: 600;
+}
+.admin-url-box__btn:hover{
+  background: rgba(0, 0, 0, 0.04);
+}
+.admin-page__warn{
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(234, 179, 8, 0.45);
+  background: rgba(234, 179, 8, 0.12);
+  color: var(--text);
+}
+.admin-api-summary{
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(76, 209, 123, 0.35);
+  background: rgba(76, 209, 123, 0.1);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.admin-api-summary__title{
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.admin-api-summary__list{
+  margin: 0;
+  padding-left: 1.15rem;
+}
+.admin-api-summary__list li{
+  margin-bottom: 8px;
+}
+.admin-api-summary__mark{
+  font-weight: 700;
+}
+.admin-api-summary__mark.is-good{
+  color: #14532d;
+}
+.admin-api-summary__mark.is-bad{
+  color: #7f1d1d;
+}
+.admin-api-raw-label{
+  margin: 12px 0 4px;
+  font-weight: 600;
+  font-size: 13px;
+}
+.admin-curl-label{
+  display: block;
+  font-weight: 600;
+  font-size: 13px;
+  margin: 10px 0 6px;
+}
+.admin-curl-box{
+  width: 100%;
+  box-sizing: border-box;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.45;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.03);
+  color: var(--text);
+  resize: vertical;
+  min-height: 120px;
+}
 .admin-page__users-card{
   margin-top: 16px;
   padding-bottom: 16px;

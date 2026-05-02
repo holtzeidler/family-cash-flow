@@ -841,14 +841,26 @@ def public_debug_config():
     """
     raw = settings.CORS_ORIGINS or ""
     parsed = _parse_cors_origins(raw) if raw.strip() else []
+    contact_ok = _contact_email_configured()
+    cors_ok = bool(raw.strip() and parsed)
     return {
         "env": settings.ENV,
-        "cors_middleware_enabled": bool(raw.strip() and parsed),
+        "cors_middleware_enabled": cors_ok,
         "cors_allow_origins": parsed,
         "cors_origins_configured": bool(raw.strip()),
+        "cors_hint": (
+            "Browsers on your GitHub Pages site can call this API."
+            if cors_ok
+            else "Set CORS_ORIGINS on the server to your GitHub Pages origin (e.g. https://YOURNAME.github.io) or the contact form and app will fail from the browser."
+        ),
         "auth_cookie_samesite": "none" if settings.ENV == "production" else "lax",
         "auth_cookie_secure": settings.ENV == "production",
-        "contact_form_enabled": _contact_email_configured(),
+        "contact_form_enabled": contact_ok,
+        "contact_form_hint": (
+            "Server email is configured — Contact Us can send via POST /api/public/contact."
+            if contact_ok
+            else "Set CONTACT_SMTP_HOST, CONTACT_SMTP_PORT, CONTACT_SMTP_USER, CONTACT_SMTP_PASSWORD, and CONTACT_EMAIL_TO on the server, then redeploy."
+        ),
         "note": "GitHub Pages -> Render needs ENV=production so Set-Cookie uses SameSite=None; Secure.",
     }
 

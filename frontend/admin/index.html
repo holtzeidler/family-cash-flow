@@ -34,15 +34,43 @@
 
           <div class="admin-page__grid">
             <section class="admin-page__panel" aria-labelledby="admin-connect-heading">
-              <h3 id="admin-connect-heading">API connectivity</h3>
-              <p class="meta" style="margin: 0 0 10px">
-                Calls the public debug config endpoint (no secrets). Confirms the browser can reach the API configured for this deployment.
-              </p>
-              <div class="modal-actions" style="padding-top: 0; border-top: none; margin-bottom: 10px">
-                <button type="button" id="adminCheckApiBtn">Check API</button>
+              <h3 id="admin-connect-heading">Test your API (step by step)</h3>
+              <ol class="admin-steps">
+                <li>
+                  <strong>Find your API address below.</strong> For BalanceWhiz production, that should be
+                  <code>https://family-cash-flow-api.onrender.com/api/debug/public-config</code> (full line under “Full check URL”). When the site was built, GitHub stored the backend root as
+                  <code>API_BASE</code> — <strong>not</strong> the literal <code>__API_BASE__</code>. If the URL is wrong, fix the secret in GitHub → repo →
+                  <strong>Settings → Secrets and variables → Actions</strong>, then re-run the Pages deploy workflow. Open this admin page at
+                  <a href="https://balancewhiz.com/admin/">https://balancewhiz.com/admin/</a> after deploy.
+                </li>
+                <li>
+                  <strong>Click “Run API check”.</strong> Your browser asks the server for a small public JSON file (<code>/api/debug/public-config</code>). You do <strong>not</strong> need to log
+                  in.
+                </li>
+                <li>
+                  <strong>Read the green “What this means” box.</strong> That explains CORS, cookies, and whether the contact form can send email. If you see a red error instead, the browser
+                  could not reach the API (wrong URL, CORS, or network).
+                </li>
+              </ol>
+              <div class="admin-url-box" aria-live="polite">
+                <div class="admin-url-box__label">Full check URL (this is exactly what we request)</div>
+                <code id="adminApiUrlDisplay" class="admin-url-box__code"></code>
+                <div class="admin-url-box__actions">
+                  <button type="button" id="adminCopyApiUrlBtn" class="admin-url-box__btn">Copy URL</button>
+                  <button type="button" id="adminOpenApiUrlBtn" class="admin-url-box__btn">Open in new tab</button>
+                </div>
               </div>
-              <pre id="adminApiOut" class="admin-page__pre" hidden></pre>
+              <p id="adminApiBaseMissing" class="admin-page__warn meta" hidden>
+                <strong>Problem:</strong> <code>API_BASE</code> is not set in this build. The admin page cannot talk to your backend until the GitHub Actions secret
+                <code>API_BASE</code> is set to <code>https://family-cash-flow-api.onrender.com</code> (no trailing slash) and the site is redeployed.
+              </p>
+              <div class="modal-actions" style="padding-top: 12px; border-top: none; margin-bottom: 10px">
+                <button type="button" id="adminCheckApiBtn">Run API check</button>
+              </div>
               <p id="adminApiErr" class="error" style="display: none"></p>
+              <div id="adminApiSummary" class="admin-api-summary" hidden></div>
+              <p class="meta admin-api-raw-label" id="adminApiRawLabel" hidden>Raw JSON (for support tickets):</p>
+              <pre id="adminApiOut" class="admin-page__pre" hidden></pre>
             </section>
 
             <section class="admin-page__panel" aria-labelledby="admin-ops-heading">
@@ -52,6 +80,28 @@
               </p>
               <p class="meta" style="margin: 0">Family-level admin (members, invites, data) is handled inside the app under <strong>Settings</strong> for users with the family <strong>admin</strong> role.</p>
             </section>
+          </div>
+
+          <div class="card admin-page__users-card" aria-labelledby="admin-contact-test-heading">
+            <h3 id="admin-contact-test-heading" class="admin-page__users-title">Test the Contact form (server email)</h3>
+            <ol class="admin-steps">
+              <li>
+                Run <strong>Run API check</strong> above. In the green summary, find <strong>Contact form (server email)</strong>. It must say <strong>Ready</strong>. If it says
+                <strong>Not ready</strong>, open your host (e.g. Render → Environment) and set every <code>CONTACT_*</code> variable from <code>backend/.env.example</code>, then redeploy the
+                API.
+              </li>
+              <li>
+                Open <a href="https://balancewhiz.com/contactus/">https://balancewhiz.com/contactus/</a> (or <a href="../contactus/">Contact Us</a> from this host), fill in name, email, and
+                message, click <strong>Send</strong>. You should see “Thanks — your message was sent.” Check the <code>support@</code> inbox. If nothing arrives, open Render → service
+                <strong>family-cash-flow-api</strong> → <strong>Logs</strong> and search for <code>Contact form SMTP</code>.
+              </li>
+              <li>
+                <strong>Optional — test from Terminal (Mac):</strong> Copy the block below, paste into Terminal, press Enter. It sends one test message through your API (you should get one email).
+              </li>
+            </ol>
+            <label for="adminCurlBox" class="admin-curl-label">Terminal command (updates when API_BASE is set)</label>
+            <textarea id="adminCurlBox" class="admin-curl-box" readonly rows="6" spellcheck="false" aria-label="curl command to test contact API"></textarea>
+            <button type="button" id="adminCopyCurlBtn" class="admin-url-box__btn" style="margin-top: 8px">Copy curl command</button>
           </div>
 
           <div class="card admin-page__users-card" aria-labelledby="admin-users-heading">
