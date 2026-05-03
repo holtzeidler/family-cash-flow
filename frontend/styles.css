@@ -2416,6 +2416,43 @@ body.contact-page .app-footer{
   margin-top: 10px;
 }
 
+/* Contact form: contextual help when server/browser errors occur */
+.contact-troubleshoot{
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border));
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text);
+}
+.contact-troubleshoot__title{
+  font-weight: 700;
+  margin-bottom: 8px;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.9;
+}
+.contact-troubleshoot__list{
+  margin: 0;
+  padding-left: 1.2rem;
+}
+.contact-troubleshoot__list li{
+  margin-bottom: 8px;
+}
+.contact-troubleshoot__list li:last-child{
+  margin-bottom: 0;
+}
+.contact-troubleshoot a{
+  color: var(--accent);
+  font-weight: 600;
+}
+.contact-troubleshoot a:hover{
+  text-decoration: underline;
+}
+
 /* Admin page (balancewhiz.com/admin) */
 body.admin-page .container > .grid{
   margin-top: 18px;
