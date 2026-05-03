@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=187" />
+    <link rel="stylesheet" href="./styles.css?v=188" />
   </head>
   <body>
     <div class="container">
@@ -34,6 +34,7 @@
             </button>
           </div>
           <div class="top-nav__actions" aria-label="Account actions">
+            <a id="platformAdminLink" class="top-nav__admin" href="platform-admin/" hidden>Admin</a>
             <button type="button" id="logoutBtn" class="top-nav__logout">Logout</button>
           </div>
         </div>
@@ -41,7 +42,7 @@
 
       <div class="app-layout">
         <aside class="sidebar">
-          <div class="sidebar-sticky-head">
+            <div class="sidebar-sticky-head">
             <div class="sidebar-top">
               <div class="header-actions">
                 <!-- Kept for JS (active family); hidden — single-family workflow for now -->
@@ -49,6 +50,8 @@
                 <div class="pill" id="userPill">Dashboard</div>
               </div>
             </div>
+
+            <div id="viewOnlyBanner" class="view-only-banner" hidden role="status"></div>
 
             <div class="sidebar-balance-threshold-alerts" id="sidebarBalanceThresholdAlerts" aria-label="Balance threshold alerts">
               <div class="cash-outlook-head" id="cashOutlookHead" hidden>
@@ -66,6 +69,10 @@
               </button>
               <button type="button" class="settings-nav-item" data-settings-key="categories">
                 <span class="settings-nav-item__label">Categories</span>
+                <span class="settings-nav-item__chev" aria-hidden="true">▸</span>
+              </button>
+              <button type="button" class="settings-nav-item" data-settings-key="familySharing">
+                <span class="settings-nav-item__label">Family sharing</span>
                 <span class="settings-nav-item__chev" aria-hidden="true">▸</span>
               </button>
             </div>
@@ -429,6 +436,48 @@
                     <button id="addCategoryBtn">Add category</button>
                   </div>
                   <div id="catErr" class="error"></div>
+                </div>
+
+                <div class="settings-pane" data-settings-pane="familySharing" hidden>
+                  <p class="meta">
+                    The first person who creates a family is the owner. Owners can invite a partner by email (they can create an account from the link) or
+                    add someone who already uses Balance Whiz.
+                  </p>
+                  <div id="familyInviteWrap" class="family-invite-wrap" hidden>
+                    <h3 class="settings-subhead">Invite by email</h3>
+                    <p class="meta">
+                      Sends an invitation link. Your partner should use the same email when they sign up or log in. Email delivery uses the same Resend or
+                      SMTP settings as the contact form on the server.
+                    </p>
+                    <div class="form-row-h">
+                      <div class="form-row-h__label"><label for="familyInviteEmail">Email</label></div>
+                      <div class="form-row-h__field">
+                        <input id="familyInviteEmail" type="email" autocomplete="off" placeholder="name@example.com" />
+                      </div>
+                    </div>
+                    <div class="form-row-h">
+                      <div class="form-row-h__label"><label for="familyInviteAccess">Access</label></div>
+                      <div class="form-row-h__field">
+                        <select id="familyInviteAccess">
+                          <option value="view">View only</option>
+                          <option value="edit">Can edit</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="tx-add-vspace" aria-hidden="true"></div>
+                    <button type="button" id="familySendInviteBtn">Send email invite</button>
+                    <div class="tx-add-vspace" aria-hidden="true"></div>
+                    <h3 class="settings-subhead">Add existing account</h3>
+                    <p class="meta">If they already have a Balance Whiz login, you can add them immediately without email.</p>
+                    <button type="button" id="familyInviteBtn">Add to this family</button>
+                  </div>
+                  <div class="tx-add-vspace" aria-hidden="true"></div>
+                  <h3 class="settings-subhead">Pending email invites</h3>
+                  <div id="familyPendingInvites" class="family-pending-invites"></div>
+                  <div class="tx-add-vspace" aria-hidden="true"></div>
+                  <h3 class="settings-subhead">Members</h3>
+                  <div id="familyMembersList" class="family-members-list"></div>
+                  <div id="familyMembersErr" class="error"></div>
                 </div>
               </div>
             </div>

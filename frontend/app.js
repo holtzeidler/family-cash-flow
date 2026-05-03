@@ -196,8 +196,11 @@ function toNum(v) {
 
 let state = {
   user: null,
+  isPlatformAdmin: false,
   families: [],
   activeFamilyId: null,
+  activeFamilyAccessMode: "edit",
+  activeFamilyIsOwner: false,
   categories: [],
   categoryTree: null,
   accounts: [],
@@ -1674,11 +1677,72 @@ if (calendarMode) {
 
 familySelect.addEventListener("change", async () => {
   state.activeFamilyId = Number(familySelect.value);
+  syncActiveFamilyFlags();
   await loadCategories();
   await loadAccounts();
   await loadExpectedTransactions();
   await loadMonthAndCalendar();
 });
+
+const familyInviteBtn = document.getElementById("familyInviteBtn");
+if (familyInviteBtn) {
+  familyInviteBtn.addEventListener("click", async () => {
+    const emailEl = document.getElementById("familyInviteEmail");
+    const accessEl = document.getElementById("familyInviteAccess");
+    const errEl = document.getElementById("familyMembersErr");
+    const email = emailEl ? String(emailEl.value || "").trim() : "";
+    const access_mode = accessEl ? String(accessEl.value || "view") : "view";
+    if (!email) {
+      show(errEl, "Email is required");
+      return;
+    }
+    if (!state.activeFamilyId) {
+      show(errEl, "No family selected");
+      return;
+    }
+    try {
+      show(errEl, "");
+      await api(`/api/families/${state.activeFamilyId}/members`, "POST", { email, access_mode });
+      if (emailEl) emailEl.value = "";
+      await loadFamilyMembersPanel();
+    } catch (e) {
+      show(errEl, e.message || String(e));
+    }
+  });
+}
+
+const familySendInviteBtn = document.getElementById("familySendInviteBtn");
+if (familySendInviteBtn) {
+  familySendInviteBtn.addEventListener("click", async () => {
+    const emailEl = document.getElementById("familyInviteEmail");
+    const accessEl = document.getElementById("familyInviteAccess");
+    const errEl = document.getElementById("familyMembersErr");
+    const email = emailEl ? String(emailEl.value || "").trim() : "";
+    const access_mode = accessEl ? String(accessEl.value || "view") : "view";
+    if (!email) {
+      show(errEl, "Email is required");
+      return;
+    }
+    if (!state.activeFamilyId) {
+      show(errEl, "No family selected");
+      return;
+    }
+    try {
+      show(errEl, "");
+      const out = await api(`/api/families/${state.activeFamilyId}/invites`, "POST", { email, access_mode });
+      let msg = out.email_sent
+        ? "Invitation email sent."
+        : "Invite created but email was not sent (configure Resend or SMTP on the server). ";
+      if (!out.email_sent && out.accept_url) {
+        msg += `Share this link manually: ${out.accept_url}`;
+      }
+      show(errEl, msg);
+      await loadFamilyMembersPanel();
+    } catch (e) {
+      show(errEl, e.message || String(e));
+    }
+  });
+}
 
 /** Series / transaction label on the server (add form has no separate Label field). */
 function descriptionForNewTransaction(categoryId, opts = {}) {
@@ -2154,6 +2218,12 @@ function activateSettingsSection(key) {
     pane.classList.toggle("is-active", on);
     pane.hidden = !on;
   });
+  if (k === "familySharing") {
+    loadFamilyMembersPanel().catch((e) => {
+      const el = document.getElementById("familyMembersErr");
+      show(el, e.message || String(e));
+    });
+  }
 }
 
 function openTxAddModal(opts = {}) {
@@ -2901,8 +2971,150 @@ async function loadMe() {
   const data = await api("/api/auth/me", "GET");
   if (!data?.user) throw new Error("Not logged in");
   state.user = data.user;
+  state.isPlatformAdmin = !!data.is_platform_admin;
+  const adminLink = document.getElementById("platformAdminLink");
+  if (adminLink) adminLink.hidden = !state.isPlatformAdmin;
   // Sidebar label should stay constant (not family/user-specific).
   if (userPill) userPill.textContent = "Dashboard";
+}
+
+function syncActiveFamilyFlags() {
+  const f = (state.families || []).find((x) => Number(x.id) === Number(state.activeFamilyId));
+  state.activeFamilyAccessMode = f && String(f.access_mode || "").toLowerCase() === "view" ? "view" : "edit";
+  state.activeFamilyIsOwner = !!(f && f.is_family_owner);
+  const banner = document.getElementById("viewOnlyBanner");
+  if (banner) {
+    const ro = state.activeFamilyAccessMode === "view";
+    banner.hidden = !ro;
+    banner.textContent = ro
+      ? "You have view-only access to this family. Ask the owner to grant edit access if you need to make changes."
+      : "";
+  }
+}
+
+async function loadFamilyMembersPanel() {
+  const errEl = document.getElementById("familyMembersErr");
+  const listEl = document.getElementById("familyMembersList");
+  const inviteWrap = document.getElementById("familyInviteWrap");
+  show(errEl, "");
+  if (!listEl) return;
+  if (!state.activeFamilyId) {
+    listEl.innerHTML = '<p class="meta">Select a family from the app first.</p>';
+    if (inviteWrap) inviteWrap.hidden = true;
+    return;
+  }
+  syncActiveFamilyFlags();
+  if (inviteWrap) inviteWrap.hidden = !state.activeFamilyIsOwner;
+  const pendingEl = document.getElementById("familyPendingInvites");
+  if (pendingEl) {
+    pendingEl.innerHTML = "";
+    if (state.activeFamilyIsOwner) {
+      try {
+        const pend = await api(`/api/families/${state.activeFamilyId}/invites`, "GET");
+        if (!pend || pend.length === 0) {
+          pendingEl.innerHTML = '<p class="meta">No pending invites.</p>';
+        } else {
+          for (const p of pend) {
+            const row = document.createElement("div");
+            row.className = "family-member-row";
+            row.style.display = "flex";
+            row.style.justifyContent = "space-between";
+            row.style.alignItems = "center";
+            row.style.flexWrap = "wrap";
+            row.style.gap = "8px";
+            row.innerHTML = `<div><strong>${escapeHtml(String(p.email))}</strong> <span class="meta">${escapeHtml(
+              String(p.access_mode)
+            )} · expires ${escapeHtml(String(p.expires_at || "").slice(0, 10))}</span></div>`;
+            const revoke = document.createElement("button");
+            revoke.type = "button";
+            revoke.textContent = "Revoke";
+            revoke.addEventListener("click", async () => {
+              try {
+                show(errEl, "");
+                await api(`/api/families/${state.activeFamilyId}/invites/${p.id}`, "DELETE");
+                await loadFamilyMembersPanel();
+              } catch (e) {
+                show(errEl, e.message || String(e));
+              }
+            });
+            row.appendChild(revoke);
+            pendingEl.appendChild(row);
+          }
+        }
+      } catch (e) {
+        pendingEl.innerHTML = `<p class="meta">${escapeHtml(e.message || String(e))}</p>`;
+      }
+    } else {
+      pendingEl.innerHTML = '<p class="meta">Only the family owner can manage invites.</p>';
+    }
+  }
+  const rows = await api(`/api/families/${state.activeFamilyId}/members`, "GET");
+  listEl.innerHTML = "";
+  const frag = document.createDocumentFragment();
+  for (const m of rows || []) {
+    const row = document.createElement("div");
+    row.className = "family-member-row";
+    const ownerPart = m.is_family_owner ? ' <span class="meta">(owner)</span>' : "";
+    row.innerHTML = `<div><strong>${escapeHtml(String(m.email))}</strong>${ownerPart}<div class="meta">${escapeHtml(
+      String(m.name || "").trim()
+    )}</div></div>`;
+    const body = row.firstElementChild;
+    if (state.activeFamilyIsOwner && !m.is_family_owner) {
+      const tools = document.createElement("div");
+      tools.className = "family-member-tools";
+      tools.style.marginTop = "6px";
+      const sel = document.createElement("select");
+      sel.setAttribute("aria-label", `Access for ${m.email}`);
+      sel.dataset.memberUserId = String(m.user_id);
+      for (const opt of [
+        { v: "edit", t: "Can edit" },
+        { v: "view", t: "View only" },
+      ]) {
+        const o = document.createElement("option");
+        o.value = opt.v;
+        o.textContent = opt.t;
+        if (String(m.access_mode || "edit").toLowerCase() === opt.v) o.selected = true;
+        sel.appendChild(o);
+      }
+      const saveBtn = document.createElement("button");
+      saveBtn.type = "button";
+      saveBtn.textContent = "Update access";
+      saveBtn.addEventListener("click", async () => {
+        try {
+          show(errEl, "");
+          await api(`/api/families/${state.activeFamilyId}/members/${m.user_id}`, "PATCH", {
+            access_mode: sel.value,
+          });
+          await loadFamilyMembersPanel();
+        } catch (e) {
+          show(errEl, e.message || String(e));
+        }
+      });
+      const ownBtn = document.createElement("button");
+      ownBtn.type = "button";
+      ownBtn.textContent = "Make owner";
+      ownBtn.style.marginLeft = "8px";
+      ownBtn.addEventListener("click", async () => {
+        if (!window.confirm(`Make ${m.email} the family owner? You will lose owner-only controls until they grant them back.`)) return;
+        try {
+          show(errEl, "");
+          await api(`/api/families/${state.activeFamilyId}/members/${m.user_id}`, "PATCH", {
+            is_family_owner: true,
+          });
+          await loadFamilies();
+          await loadFamilyMembersPanel();
+        } catch (e) {
+          show(errEl, e.message || String(e));
+        }
+      });
+      tools.appendChild(sel);
+      tools.appendChild(saveBtn);
+      tools.appendChild(ownBtn);
+      if (body) body.appendChild(tools);
+    }
+    frag.appendChild(row);
+  }
+  listEl.appendChild(frag);
 }
 
 async function loadFamilies() {
@@ -2920,6 +3132,7 @@ async function loadFamilies() {
   if (state.families.length > 0) {
     state.activeFamilyId = Number(familySelect.value);
   }
+  syncActiveFamilyFlags();
 }
 
 function categoryIdFromSelectValue(raw) {

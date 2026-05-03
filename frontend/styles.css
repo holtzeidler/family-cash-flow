@@ -138,6 +138,48 @@ body.admin-page .top-nav .top-nav__inner.top-nav__inner--simple .app-title{
   outline: 2px solid rgba(255,255,255,0.85);
   outline-offset: 2px;
 }
+.top-nav__admin{
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  background: rgba(255,255,255,0.10);
+  border: 1px solid rgba(255,255,255,0.28);
+  color: #fff;
+  font-weight: 700;
+  padding: 8px 12px;
+  border-radius: 8px;
+  margin-right: 8px;
+}
+.top-nav__admin:hover{
+  background: rgba(255,255,255,0.16);
+  border-color: rgba(255,255,255,0.34);
+}
+.top-nav__admin:focus-visible{
+  outline: 2px solid rgba(255,255,255,0.85);
+  outline-offset: 2px;
+}
+.view-only-banner{
+  margin: 0 12px 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(167, 55, 68, 0.12);
+  border: 1px solid rgba(167, 55, 68, 0.35);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.35;
+}
+.settings-subhead{
+  font-size: 15px;
+  font-weight: 600;
+  margin: 16px 0 8px;
+}
+.family-member-row{
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.family-member-row:last-child{
+  border-bottom: none;
+}
 .top-nav__inner--simple{
   grid-template-columns: 1fr;
   justify-items: center;

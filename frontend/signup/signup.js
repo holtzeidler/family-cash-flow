@@ -44,6 +44,13 @@ function setCallout(el, msg, mode = "pending") {
 }
 
 function goApp() {
+  try {
+    const t = sessionStorage.getItem("bw_invite_token");
+    if (t && String(t).trim()) {
+      window.location.href = "../invite/?token=" + encodeURIComponent(String(t).trim());
+      return;
+    }
+  } catch (_) {}
   window.location.href = "../";
 }
 
@@ -99,7 +106,7 @@ async function doSignup() {
 
     if (!name) throw new Error("Name is required.");
     if (!email) throw new Error("Email is required.");
-    if (!password || password.length < 6) throw new Error("Password must be at least 6 characters.");
+    if (!password || password.length < 8) throw new Error("Password must be at least 8 characters.");
     if (password !== password2) throw new Error("Passwords do not match.");
 
     const reg = await request("/api/auth/register", "POST", { name, email, password });
@@ -131,6 +138,34 @@ try {
     signupPlanNoteEl.textContent = plan === "pro" ? "Selected plan: Add Budgeting" : "Selected plan: Cash Forecast Only";
   }
 } catch (_) {}
+
+try {
+  const t = new URLSearchParams(location.search).get("invite");
+  if (t && String(t).trim()) sessionStorage.setItem("bw_invite_token", String(t).trim());
+} catch (_) {}
+
+async function applyInvitePrefill() {
+  const raw = new URLSearchParams(location.search).get("invite") || sessionStorage.getItem("bw_invite_token") || "";
+  const token = String(raw || "").trim();
+  if (!token) return;
+  try {
+    sessionStorage.setItem("bw_invite_token", token);
+  } catch (_) {}
+  const enc = encodeURIComponent(token);
+  const r = await request(`/api/public/invites/by-token/${enc}`, "GET");
+  if (!r.ok || !r.data || !r.data.ok) return;
+  const emailEl = document.getElementById("email");
+  if (emailEl) {
+    emailEl.value = String(r.data.invitee_email || "");
+    emailEl.readOnly = true;
+  }
+  if (signupPlanNoteEl) {
+    signupPlanNoteEl.style.display = "block";
+    signupPlanNoteEl.textContent = "You are signing up to accept a family invitation. Use the email above.";
+  }
+}
+
+void applyInvitePrefill();
 
 // Expose a global handler so the inline onclick works even if the event binding fails.
 window.__bwSignup = () => void doSignup();

@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Balance Whiz — Platform admin</title>
+    <script>window.API_BASE = "__API_BASE__";</script>
+    <link rel="stylesheet" href="../styles.css?v=188" />
+  </head>
+  <body class="admin-page">
+    <div class="container">
+      <div class="top-nav" role="banner" aria-label="Admin header">
+        <div class="top-nav__inner top-nav__inner--simple">
+          <div class="top-nav__title">
+            <h1 class="app-title">Platform admin</h1>
+          </div>
+          <div class="top-nav__actions">
+            <a href="../" class="top-nav__logout">Back to app</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="platform-admin-layout">
+        <aside class="platform-admin-sidebar card" aria-label="Admin sections">
+          <div class="platform-admin-nav">
+            <button type="button" class="platform-admin-nav__btn is-active" data-admin-section="overview">Overview</button>
+            <button type="button" class="platform-admin-nav__btn" data-admin-section="users">Users</button>
+            <button type="button" class="platform-admin-nav__btn" data-admin-section="families">Families</button>
+            <button type="button" class="platform-admin-nav__btn is-disabled" disabled title="Coming later">Billing &amp; add-ons</button>
+          </div>
+        </aside>
+        <main class="platform-admin-main card">
+          <div id="adminCallout" class="callout" style="display: none" role="status"></div>
+          <section id="adminSectionOverview" class="admin-section is-active">
+            <h2>Overview</h2>
+            <p id="adminOverviewText" class="meta">Loading…</p>
+          </section>
+          <section id="adminSectionUsers" class="admin-section" hidden>
+            <h2>Users</h2>
+            <p class="meta">Reset passwords and adjust family roles. Changes apply immediately.</p>
+            <div id="adminUsersMount"></div>
+          </section>
+          <section id="adminSectionFamilies" class="admin-section" hidden>
+            <h2>Families</h2>
+            <p class="meta">Family names for quick reference. Use Users to change membership.</p>
+            <div id="adminFamiliesMount"></div>
+          </section>
+        </main>
+      </div>
+    </div>
+    <style>
+      .platform-admin-layout {
+        display: grid;
+        grid-template-columns: 220px 1fr;
+        gap: 16px;
+        align-items: start;
+        margin-top: 16px;
+      }
+      @media (max-width: 800px) {
+        .platform-admin-layout {
+          grid-template-columns: 1fr;
+        }
+      }
+      .platform-admin-nav {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .platform-admin-nav__btn {
+        text-align: left;
+        padding: 10px 12px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: var(--cal-surface);
+        cursor: pointer;
+        font: inherit;
+      }
+      .platform-admin-nav__btn.is-active {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 1px var(--accent);
+      }
+      .platform-admin-nav__btn.is-disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+      .platform-admin-main {
+        padding: 16px 18px;
+        min-height: 320px;
+      }
+      .admin-section h2 {
+        margin: 0 0 8px;
+        font-size: 1.15rem;
+      }
+      .admin-user-card {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 12px;
+        margin-bottom: 12px;
+        background: var(--cal-surface);
+      }
+      .admin-user-card h3 {
+        margin: 0 0 6px;
+        font-size: 1rem;
+      }
+      .admin-membership {
+        font-size: 13px;
+        margin: 6px 0;
+        padding: 6px 8px;
+        border-radius: 8px;
+        background: rgba(0, 0, 0, 0.04);
+      }
+      .admin-inline-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        margin-top: 8px;
+      }
+      .admin-inline-actions input[type="password"] {
+        min-width: 160px;
+      }
+    </style>
+    <script src="./admin.js?v=1"></script>
+  </body>
+</html>

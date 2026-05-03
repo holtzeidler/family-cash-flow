@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import csv
+import hashlib
+import secrets
 import io
 import json
 import logging
@@ -16,7 +18,7 @@ from decimal import Decimal
 from enum import Enum
 from pathlib import Path
 from typing import Annotated, Literal, Optional, Sequence
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 import urllib.error
 import urllib.request
 
@@ -52,6 +54,11 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_MINUTES: int = 1440
     CORS_ORIGINS: str = ""
+    # Comma-separated emails with platform-wide admin access (user admin console, cross-family).
+    PLATFORM_ADMIN_EMAILS: str = "tracy.zeidler@gmail.com,holt.zeidler@gmail.com"
+    # Public URL of the web app (no trailing slash), e.g. https://app.example.com or https://user.github.io/repo
+    # Used in family invite emails. If unset, the API uses the Origin header from the browser when the owner sends an invite.
+    APP_PUBLIC_BASE_URL: str = ""
 
     # Server-side contact form (SMTP). Leave any of these empty to disable POST /api/public/contact.
     # Microsoft 365 / GoDaddy: host smtp.office365.com, port 587, user support@yourdomain, app password.
@@ -167,6 +174,93 @@ def _send_contact_via_resend_sync(*, to_addr: str, subject: str, text_body: str,
         raise ResendSendError("Could not reach Resend (network).") from e
 
 
+def _send_invite_via_resend_sync(*, to_addr: str, subject: str, text_body: str, reply_to: Optional[str]) -> None:
+    api_key = (settings.RESEND_API_KEY or "").strip()
+    from_line = (settings.RESEND_FROM or "").strip()
+    payload: dict = {
+        "from": from_line,
+        "to": [to_addr.strip()],
+        "subject": subject,
+        "text": text_body,
+    }
+    if reply_to and reply_to.strip():
+        payload["reply_to"] = reply_to.strip()
+    data = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(
+        "https://api.resend.com/emails",
+        data=data,
+        method="POST",
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+            "User-Agent": "BalanceWhiz/1.0 (+https://balancewhiz.com)",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=22) as resp:
+            _ = resp.read()
+            code = resp.getcode()
+            if int(code) not in (200, 201):
+                raise ResendSendError(f"Resend returned HTTP {code}")
+    except urllib.error.HTTPError as e:
+        raw = e.read().decode("utf-8", errors="replace")[:1200]
+        msg = raw
+        try:
+            parsed = json.loads(raw)
+            if isinstance(parsed, dict) and parsed.get("message"):
+                msg = str(parsed.get("message"))
+        except Exception:
+            pass
+        logger.warning("Resend invite HTTP %s: %s", getattr(e, "code", "?"), msg[:500])
+        raise ResendSendError(msg[:400]) from None
+    except ResendSendError:
+        raise
+    except OSError as e:
+        logger.warning("Resend invite request failed: %s", type(e).__name__)
+        raise ResendSendError("Could not reach Resend (network).") from e
+
+
+def _send_invite_via_smtp_sync(*, to_addr: str, subject: str, text_body: str, reply_to: Optional[str]) -> None:
+    host = settings.CONTACT_SMTP_HOST.strip()
+    port = int(settings.CONTACT_SMTP_PORT or 587)
+    user = settings.CONTACT_SMTP_USER.strip()
+    password = settings.CONTACT_SMTP_PASSWORD
+    from_addr = (settings.CONTACT_EMAIL_FROM or user).strip()
+    sock_to = max(5, int(settings.CONTACT_SMTP_SOCKET_TIMEOUT_SEC or 18))
+
+    def _send_sync() -> None:
+        msg = EmailMessage()
+        msg["Subject"] = subject
+        msg["From"] = from_addr
+        msg["To"] = to_addr.strip()
+        if reply_to and reply_to.strip():
+            msg["Reply-To"] = reply_to.strip()
+        msg.set_content(text_body)
+        ctx = ssl.create_default_context()
+        with smtplib.SMTP(host, port, timeout=sock_to) as smtp:
+            smtp.ehlo()
+            smtp.starttls(context=ctx)
+            smtp.ehlo()
+            smtp.login(user, password)
+            smtp.send_message(msg)
+
+    _send_sync()
+
+
+def _invite_email_delivery_configured() -> bool:
+    return _contact_resend_configured() or _contact_smtp_configured()
+
+
+def _send_family_invite_email_sync(*, to_addr: str, subject: str, text_body: str, reply_to: Optional[str]) -> None:
+    if _contact_resend_configured():
+        _send_invite_via_resend_sync(to_addr=to_addr, subject=subject, text_body=text_body, reply_to=reply_to)
+        return
+    if _contact_smtp_configured():
+        _send_invite_via_smtp_sync(to_addr=to_addr, subject=subject, text_body=text_body, reply_to=reply_to)
+        return
+    raise RuntimeError("Invite email is not configured (need Resend or SMTP like the contact form).")
+
+
 _contact_rate_bucket: dict[str, list[float]] = {}
 _contact_rate_lock = threading.Lock()
 CONTACT_RATE_WINDOW_S = 15 * 60
@@ -251,9 +345,28 @@ class FamilyMember(Base):
     family_id: Mapped[int] = mapped_column(ForeignKey("families.id"), nullable=False, primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, primary_key=True)
     role: Mapped[str] = mapped_column(String(50), nullable=False, default="member")
+    # First account that created this family; has full control and can set collaborator permissions.
+    is_family_owner: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # Collaborators: "edit" (default) or "view" (read-only). Owners ignore this (always full access).
+    access_mode: Mapped[str] = mapped_column(String(10), nullable=False, default="edit")
 
     family: Mapped[Family] = relationship(back_populates="memberships")
     user: Mapped[User] = relationship(back_populates="memberships")
+
+
+class FamilyInvite(Base):
+    __tablename__ = "family_invites"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    family_id: Mapped[int] = mapped_column(ForeignKey("families.id", ondelete="CASCADE"), nullable=False, index=True)
+    email_normalized: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
+    access_mode: Mapped[str] = mapped_column(String(10), nullable=False, default="view")
+    invited_by_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
+    expires_at: Mapped[datetime] = mapped_column(nullable=False)
+    accepted_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
+    revoked_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
 
 
 class CategoryGroup(Base):
@@ -437,12 +550,54 @@ def get_current_user_id(access_token: Annotated[Optional[str], Cookie(alias="acc
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid session")
 
 
-def require_family_member(*, db, family_id: int, user_id: int) -> None:
+def _platform_admin_email_set() -> set[str]:
+    raw = (settings.PLATFORM_ADMIN_EMAILS or "").lower()
+    return {x.strip() for x in raw.split(",") if x.strip()}
+
+
+def is_platform_admin(*, db, user_id: int) -> bool:
+    user = db.execute(select(User).where(User.id == user_id)).scalar_one_or_none()
+    if user is None:
+        return False
+    return str(user.email).lower().strip() in _platform_admin_email_set()
+
+
+def require_platform_admin(*, db, user_id: int) -> None:
+    if not is_platform_admin(db=db, user_id=user_id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Platform admin required")
+
+
+def require_family_member(*, db, family_id: int, user_id: int, write: bool = False) -> None:
     membership = db.execute(
         select(FamilyMember).where(FamilyMember.family_id == family_id, FamilyMember.user_id == user_id)
     ).scalar_one_or_none()
     if membership is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a family member")
+    if not write:
+        return
+    if bool(getattr(membership, "is_family_owner", False)):
+        return
+    mode = (getattr(membership, "access_mode", None) or "edit").strip().lower()
+    if mode == "view":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="View-only access for this family. Ask the family owner to grant edit access.",
+        )
+
+
+def require_family_write(*, db, family_id: int, user_id: int) -> None:
+    require_family_member(db=db, family_id=family_id, user_id=user_id, write=True)
+
+
+def require_family_owner(*, db, family_id: int, user_id: int) -> None:
+    membership = db.execute(
+        select(FamilyMember).where(FamilyMember.family_id == family_id, FamilyMember.user_id == user_id)
+    ).scalar_one_or_none()
+    if membership is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a family member")
+    if not bool(getattr(membership, "is_family_owner", False)):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Family owner access required")
+
 
 def require_family_admin(*, db, family_id: int, user_id: int) -> None:
     membership = db.execute(
@@ -452,6 +607,132 @@ def require_family_admin(*, db, family_id: int, user_id: int) -> None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a family member")
     if str(getattr(membership, "role", "") or "").lower() != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+
+
+def _family_member_row_to_out(*, db, row: FamilyMember) -> FamilyMemberOut:
+    u = db.execute(select(User).where(User.id == row.user_id)).scalar_one()
+    return FamilyMemberOut(
+        user_id=int(row.user_id),
+        email=u.email,
+        name=u.name,
+        role=str(row.role or "member"),
+        is_family_owner=bool(getattr(row, "is_family_owner", False)),
+        access_mode=str(getattr(row, "access_mode", None) or "edit"),
+    )
+
+
+def _add_family_member_for_email(*, db, family_id: int, email: str, access_mode: str) -> FamilyMember:
+    key = email.strip().lower()
+    user = db.execute(select(User).where(func.lower(User.email) == key)).scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No user registered with that email")
+    exists = db.execute(
+        select(FamilyMember).where(FamilyMember.family_id == family_id, FamilyMember.user_id == user.id)
+    ).scalar_one_or_none()
+    if exists is not None:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="That user is already in this family")
+    mode = (access_mode or "view").strip().lower()
+    if mode not in ("edit", "view"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="access_mode must be edit or view")
+    m = FamilyMember(
+        family_id=family_id,
+        user_id=int(user.id),
+        role="member",
+        is_family_owner=False,
+        access_mode=mode,
+    )
+    db.add(m)
+    db.commit()
+    db.refresh(m)
+    return m
+
+
+def _apply_family_membership_update(*, db, family_id: int, member_user_id: int, payload: FamilyMemberUpdateIn) -> FamilyMember:
+    member = db.execute(
+        select(FamilyMember).where(FamilyMember.family_id == family_id, FamilyMember.user_id == member_user_id)
+    ).scalar_one_or_none()
+    if member is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Member not found in this family")
+
+    if payload.role is not None:
+        r = (payload.role or "").strip()[:50]
+        if not r:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="role cannot be empty")
+        member.role = r
+
+    if payload.access_mode is not None:
+        mode = payload.access_mode.strip().lower()
+        if mode not in ("edit", "view"):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="access_mode must be edit or view")
+        if bool(getattr(member, "is_family_owner", False)) and mode == "view":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Family owner must have edit access",
+            )
+        member.access_mode = mode
+
+    if payload.is_family_owner is True:
+        for m in db.execute(select(FamilyMember).where(FamilyMember.family_id == family_id)).scalars().all():
+            m.is_family_owner = int(m.user_id) == int(member_user_id)
+        member = db.execute(
+            select(FamilyMember).where(FamilyMember.family_id == family_id, FamilyMember.user_id == member_user_id)
+        ).scalar_one()
+        member.access_mode = "edit"
+    elif payload.is_family_owner is False:
+        if bool(getattr(member, "is_family_owner", False)):
+            all_m = list(
+                db.execute(select(FamilyMember).where(FamilyMember.family_id == family_id)).scalars().all()
+            )
+            if sum(1 for m in all_m if bool(getattr(m, "is_family_owner", False))) <= 1:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Cannot remove the only family owner. Promote another member to owner first.",
+                )
+            member.is_family_owner = False
+
+    db.commit()
+    db.refresh(member)
+    return member
+
+
+_invite_send_rate: dict[int, list[float]] = {}
+_INVITE_SEND_RATE_WINDOW_S = 3600
+_INVITE_SEND_MAX_PER_FAMILY_PER_HOUR = 20
+_invite_rate_lock = threading.Lock()
+
+
+def _hash_invite_token(raw: str) -> str:
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def _allow_family_invite_send(family_id: int) -> bool:
+    now = time.time()
+    with _invite_rate_lock:
+        lst = _invite_send_rate.setdefault(int(family_id), [])
+        lst[:] = [t for t in lst if now - t < _INVITE_SEND_RATE_WINDOW_S]
+        if len(lst) >= _INVITE_SEND_MAX_PER_FAMILY_PER_HOUR:
+            return False
+        lst.append(now)
+        return True
+
+
+def _public_app_base_url(*, request: Optional[Request]) -> str:
+    configured = (settings.APP_PUBLIC_BASE_URL or "").strip().rstrip("/")
+    if configured:
+        return configured
+    if request is not None:
+        origin = (request.headers.get("origin") or "").strip().rstrip("/")
+        if origin:
+            return origin
+    return ""
+
+
+def _invite_accept_url(*, token: str, request: Optional[Request]) -> str:
+    base = _public_app_base_url(request=request)
+    path_suffix = "invite/?token=" + quote(token, safe="")
+    if base:
+        return f"{base}/{path_suffix}"
+    return f"./{path_suffix}"
 
 
 class RegisterIn(BaseModel):
@@ -487,6 +768,7 @@ class UserOut(BaseModel):
 
 class AuthMeOut(BaseModel):
     user: UserOut
+    is_platform_admin: bool = False
 
 
 class MaintenanceUserOut(BaseModel):
@@ -510,6 +792,97 @@ class FamilyOut(BaseModel):
     id: int
     name: str
     role: str
+    is_family_owner: bool = False
+    access_mode: str = "edit"
+
+
+class FamilyMemberOut(BaseModel):
+    user_id: int
+    email: EmailStr
+    name: Optional[str] = None
+    role: str
+    is_family_owner: bool
+    access_mode: str
+
+
+class FamilyMemberAddIn(BaseModel):
+    email: EmailStr
+    access_mode: Literal["edit", "view"] = "view"
+
+
+class FamilyMemberUpdateIn(BaseModel):
+    access_mode: Optional[Literal["edit", "view"]] = None
+    role: Optional[str] = Field(default=None, max_length=50)
+    is_family_owner: Optional[bool] = None
+
+
+class FamilyInviteCreateIn(BaseModel):
+    email: EmailStr
+    access_mode: Literal["edit", "view"] = "view"
+
+
+class FamilyInviteCreatedOut(BaseModel):
+    id: int
+    email: EmailStr
+    access_mode: str
+    expires_at: datetime
+    email_sent: bool
+    accept_url: str
+
+
+class FamilyInvitePendingOut(BaseModel):
+    id: int
+    email: EmailStr
+    access_mode: str
+    created_at: datetime
+    expires_at: datetime
+
+
+class PublicInviteDetailsOut(BaseModel):
+    ok: bool
+    family_name: str
+    invitee_email: EmailStr
+    access_mode: str
+    expires_at: datetime
+
+
+class InviteAcceptIn(BaseModel):
+    token: str = Field(min_length=10, max_length=200)
+
+
+class InviteAcceptOut(BaseModel):
+    ok: bool
+    family_id: int
+    already_member: bool = False
+
+
+class PlatformAdminFamilyMembershipOut(BaseModel):
+    family_id: int
+    family_name: str
+    role: str
+    is_family_owner: bool
+    access_mode: str
+
+
+class PlatformAdminUserOut(BaseModel):
+    id: int
+    email: EmailStr
+    name: Optional[str] = None
+    created_at: datetime
+    memberships: list[PlatformAdminFamilyMembershipOut]
+
+
+class PlatformFamilySummaryOut(BaseModel):
+    id: int
+    name: str
+
+
+class PlatformPasswordIn(BaseModel):
+    new_password: str = Field(min_length=8, max_length=200)
+
+
+class PlatformOverviewOut(BaseModel):
+    message: str
 
 
 class CategoryIn(BaseModel):
@@ -953,6 +1326,8 @@ def public_debug_config():
         "contact_form_enabled": contact_ok,
         "contact_form_delivery": ("resend" if resend_on else ("smtp" if smtp_on else "none")),
         "contact_form_hint": c_hint,
+        "family_invite_email_configured": _invite_email_delivery_configured(),
+        "app_public_base_url_configured": bool((settings.APP_PUBLIC_BASE_URL or "").strip()),
         "note": "GitHub Pages -> Render needs ENV=production so Set-Cookie uses SameSite=None; Secure.",
     }
 
@@ -1097,6 +1472,9 @@ def startup_populate_schema():
     _backfill_category_groups_for_existing_families()
     _cleanup_new_group_placeholders()
     _ensure_reconciled_days_table()
+    _ensure_family_member_rbac_columns()
+    _backfill_family_member_owners()
+    _ensure_family_invites_table()
 
 
 def _ensure_transaction_color_columns() -> None:
@@ -1250,6 +1628,96 @@ def _ensure_reconciled_days_table() -> None:
             )
             conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reconciled_days_family_id ON reconciled_days (family_id)"))
             conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reconciled_days_date ON reconciled_days (date)"))
+
+
+def _ensure_family_member_rbac_columns() -> None:
+    """Add is_family_owner + access_mode for owner vs collaborator permissions."""
+    with engine.begin() as conn:
+        if settings.DATABASE_URL.startswith("sqlite"):
+            cols = conn.execute(text("PRAGMA table_info(family_members)")).fetchall()
+            names = {str(row[1]) for row in cols}
+            if "is_family_owner" not in names:
+                conn.execute(text("ALTER TABLE family_members ADD COLUMN is_family_owner BOOLEAN"))
+            if "access_mode" not in names:
+                conn.execute(text("ALTER TABLE family_members ADD COLUMN access_mode VARCHAR(10)"))
+            conn.execute(text("UPDATE family_members SET is_family_owner = COALESCE(is_family_owner, 0)"))
+            conn.execute(text("UPDATE family_members SET access_mode = COALESCE(NULLIF(TRIM(access_mode), ''), 'edit')"))
+        else:
+            conn.execute(
+                text("ALTER TABLE family_members ADD COLUMN IF NOT EXISTS is_family_owner BOOLEAN NOT NULL DEFAULT FALSE")
+            )
+            conn.execute(
+                text("ALTER TABLE family_members ADD COLUMN IF NOT EXISTS access_mode VARCHAR(10) NOT NULL DEFAULT 'edit'")
+            )
+            conn.execute(text("UPDATE family_members SET access_mode = COALESCE(NULLIF(TRIM(access_mode), ''), 'edit')"))
+
+
+def _backfill_family_member_owners() -> None:
+    """Exactly one family owner per family (first admin member by user id if none marked)."""
+    with SessionLocal() as db:
+        fam_ids = db.execute(select(Family.id)).scalars().all()
+        for fid in fam_ids:
+            members = list(db.execute(select(FamilyMember).where(FamilyMember.family_id == fid)).scalars().all())
+            if not members:
+                continue
+            if any(bool(getattr(m, "is_family_owner", False)) for m in members):
+                continue
+            members.sort(key=lambda m: (0 if str(getattr(m, "role", "") or "").lower() == "admin" else 1, int(m.user_id)))
+            owner = members[0]
+            owner.is_family_owner = True
+            owner.access_mode = "edit"
+        db.commit()
+
+
+def _ensure_family_invites_table() -> None:
+    """Pending email invites to join a family (token stored as SHA-256 hex)."""
+    with engine.begin() as conn:
+        if settings.DATABASE_URL.startswith("sqlite"):
+            conn.execute(
+                text(
+                    "CREATE TABLE IF NOT EXISTS family_invites ("
+                    "id INTEGER PRIMARY KEY, "
+                    "family_id INTEGER NOT NULL, "
+                    "email_normalized VARCHAR(255) NOT NULL, "
+                    "token_hash VARCHAR(64) NOT NULL, "
+                    "access_mode VARCHAR(10) NOT NULL DEFAULT 'view', "
+                    "invited_by_user_id INTEGER NOT NULL, "
+                    "created_at DATETIME DEFAULT CURRENT_TIMESTAMP, "
+                    "expires_at DATETIME NOT NULL, "
+                    "accepted_at DATETIME, "
+                    "revoked_at DATETIME, "
+                    "CONSTRAINT uq_family_invites_token UNIQUE (token_hash), "
+                    "FOREIGN KEY (family_id) REFERENCES families(id) ON DELETE CASCADE, "
+                    "FOREIGN KEY (invited_by_user_id) REFERENCES users(id)"
+                    ")"
+                )
+            )
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_family_invites_family ON family_invites (family_id)"))
+            conn.execute(
+                text("CREATE INDEX IF NOT EXISTS ix_family_invites_family_email ON family_invites (family_id, email_normalized)")
+            )
+        else:
+            conn.execute(
+                text(
+                    "CREATE TABLE IF NOT EXISTS family_invites ("
+                    "id SERIAL PRIMARY KEY, "
+                    "family_id INTEGER NOT NULL REFERENCES families(id) ON DELETE CASCADE, "
+                    "email_normalized VARCHAR(255) NOT NULL, "
+                    "token_hash VARCHAR(64) NOT NULL, "
+                    "access_mode VARCHAR(10) NOT NULL DEFAULT 'view', "
+                    "invited_by_user_id INTEGER NOT NULL REFERENCES users(id), "
+                    "created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), "
+                    "expires_at TIMESTAMPTZ NOT NULL, "
+                    "accepted_at TIMESTAMPTZ, "
+                    "revoked_at TIMESTAMPTZ, "
+                    "CONSTRAINT uq_family_invites_token UNIQUE (token_hash)"
+                    ")"
+                )
+            )
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_family_invites_family ON family_invites (family_id)"))
+            conn.execute(
+                text("CREATE INDEX IF NOT EXISTS ix_family_invites_family_email ON family_invites (family_id, email_normalized)")
+            )
 
 
 def _ensure_account_starting_balance_date_column():
@@ -1478,20 +1946,32 @@ def me(access_token: Annotated[Optional[str], Cookie(alias="access_token")] = No
     user = db.execute(select(User).where(User.id == user_id)).scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
-    return AuthMeOut(user=UserOut(id=user.id, email=user.email, name=user.name))
+    return AuthMeOut(
+        user=UserOut(id=user.id, email=user.email, name=user.name),
+        is_platform_admin=is_platform_admin(db=db, user_id=user_id),
+    )
 
 
 @app.get("/api/families", response_model=list[FamilyOut])
 def list_families(access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None, db=Depends(get_db)):
     user_id = get_current_user_id(access_token)
     stmt = (
-        select(Family, FamilyMember.role)
+        select(Family, FamilyMember.role, FamilyMember.is_family_owner, FamilyMember.access_mode)
         .join(FamilyMember, FamilyMember.family_id == Family.id)
         .where(FamilyMember.user_id == user_id)
         .order_by(Family.created_at.desc())
     )
     rows = db.execute(stmt).all()
-    return [FamilyOut(id=row[0].id, name=row[0].name, role=row[1]) for row in rows]
+    return [
+        FamilyOut(
+            id=row[0].id,
+            name=row[0].name,
+            role=row[1],
+            is_family_owner=bool(row[2]),
+            access_mode=str(row[3] or "edit"),
+        )
+        for row in rows
+    ]
 
 
 @app.post("/api/families", response_model=FamilyOut)
@@ -1500,11 +1980,399 @@ def create_family(payload: FamilyCreateIn, access_token: Annotated[Optional[str]
     family = Family(name=payload.name)
     db.add(family)
     db.flush()
-    member = FamilyMember(family_id=family.id, user_id=user_id, role="admin")
+    member = FamilyMember(
+        family_id=family.id,
+        user_id=user_id,
+        role="admin",
+        is_family_owner=True,
+        access_mode="edit",
+    )
     db.add(member)
     db.commit()
     db.refresh(family)
-    return FamilyOut(id=family.id, name=family.name, role=member.role)
+    return FamilyOut(
+        id=family.id,
+        name=family.name,
+        role=member.role,
+        is_family_owner=bool(member.is_family_owner),
+        access_mode=str(member.access_mode or "edit"),
+    )
+
+
+@app.get("/api/families/{family_id}/members", response_model=list[FamilyMemberOut])
+def list_family_members(
+    family_id: int,
+    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    require_family_member(db=db, family_id=family_id, user_id=user_id)
+    rows = (
+        db.execute(
+            select(FamilyMember)
+            .where(FamilyMember.family_id == family_id)
+            .order_by(FamilyMember.user_id.asc())
+        )
+        .scalars()
+        .all()
+    )
+    return [_family_member_row_to_out(db=db, row=r) for r in rows]
+
+
+@app.post("/api/families/{family_id}/members", response_model=FamilyMemberOut, status_code=status.HTTP_201_CREATED)
+def add_family_member(
+    family_id: int,
+    payload: FamilyMemberAddIn,
+    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    require_family_owner(db=db, family_id=family_id, user_id=user_id)
+    m = _add_family_member_for_email(db=db, family_id=family_id, email=str(payload.email), access_mode=payload.access_mode)
+    return _family_member_row_to_out(db=db, row=m)
+
+
+@app.patch("/api/families/{family_id}/members/{member_user_id}", response_model=FamilyMemberOut)
+def patch_family_member(
+    family_id: int,
+    member_user_id: int,
+    payload: FamilyMemberUpdateIn,
+    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    require_family_owner(db=db, family_id=family_id, user_id=user_id)
+    m = _apply_family_membership_update(db=db, family_id=family_id, member_user_id=member_user_id, payload=payload)
+    return _family_member_row_to_out(db=db, row=m)
+
+
+@app.get("/api/public/invites/by-token/{token}", response_model=PublicInviteDetailsOut)
+def public_invite_details(token: str, db=Depends(get_db)):
+    raw = (token or "").strip()
+    if len(raw) < 10:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="This invitation is not valid.")
+    th = _hash_invite_token(raw)
+    row = db.execute(select(FamilyInvite).where(FamilyInvite.token_hash == th)).scalar_one_or_none()
+    now = datetime.utcnow()
+    if row is None or row.revoked_at is not None or row.accepted_at is not None or row.expires_at < now:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="This invitation is not valid or has expired.")
+    fam = db.execute(select(Family).where(Family.id == row.family_id)).scalar_one_or_none()
+    if fam is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="This invitation is not valid.")
+    return PublicInviteDetailsOut(
+        ok=True,
+        family_name=str(fam.name),
+        invitee_email=row.email_normalized,
+        access_mode=str(row.access_mode or "view"),
+        expires_at=row.expires_at,
+    )
+
+
+@app.post("/api/families/{family_id}/invites", response_model=FamilyInviteCreatedOut)
+async def create_family_invite(
+    family_id: int,
+    payload: FamilyInviteCreateIn,
+    request: Request,
+    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    require_family_owner(db=db, family_id=family_id, user_id=user_id)
+    if not _allow_family_invite_send(family_id):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many invites were sent for this family recently. Try again in a little while.",
+        )
+    key = str(payload.email).strip().lower()
+    if not key:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email is required")
+    existing_member = db.execute(
+        select(FamilyMember)
+        .join(User, User.id == FamilyMember.user_id)
+        .where(FamilyMember.family_id == family_id, func.lower(User.email) == key)
+    ).scalar_one_or_none()
+    if existing_member is not None:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="That user is already in this family.")
+    inviter = db.execute(select(User).where(User.id == user_id)).scalar_one()
+    if key == str(inviter.email).strip().lower():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="You cannot invite your own email address.")
+    fam = db.execute(select(Family).where(Family.id == family_id)).scalar_one_or_none()
+    if fam is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Family not found")
+
+    token = secrets.token_urlsafe(32)
+    th = _hash_invite_token(token)
+    expires = datetime.utcnow() + timedelta(days=14)
+    db.execute(
+        update(FamilyInvite)
+        .where(
+            FamilyInvite.family_id == family_id,
+            FamilyInvite.email_normalized == key,
+            FamilyInvite.accepted_at.is_(None),
+            FamilyInvite.revoked_at.is_(None),
+        )
+        .values(revoked_at=datetime.utcnow())
+    )
+    mode = str(payload.access_mode or "view").strip().lower()
+    if mode not in ("edit", "view"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="access_mode must be edit or view")
+    inv = FamilyInvite(
+        family_id=family_id,
+        email_normalized=key,
+        token_hash=th,
+        access_mode=mode,
+        invited_by_user_id=user_id,
+        expires_at=expires,
+    )
+    db.add(inv)
+    db.commit()
+    db.refresh(inv)
+    accept_url = _invite_accept_url(token=token, request=request)
+    access_label = "full edit" if mode == "edit" else "view-only"
+    subject = f"Invitation to join {fam.name} on Balance Whiz"
+    body = (
+        f"You have been invited to collaborate on the family account \"{fam.name}\" "
+        f"with {access_label} access.\n\n"
+        f"Open this link to accept (sign in or create an account with this email if you need to):\n{accept_url}\n\n"
+        "If you did not expect this message, you can ignore it."
+    )
+    email_sent = False
+    if _invite_email_delivery_configured():
+        try:
+
+            def _job() -> None:
+                _send_family_invite_email_sync(
+                    to_addr=key,
+                    subject=subject,
+                    text_body=body,
+                    reply_to=str(inviter.email),
+                )
+
+            await asyncio.wait_for(asyncio.to_thread(_job), timeout=25.0)
+            email_sent = True
+        except asyncio.TimeoutError:
+            logger.warning("Invite email exceeded send deadline")
+        except Exception as e:
+            logger.warning("Invite email failed: %s", type(e).__name__)
+    return FamilyInviteCreatedOut(
+        id=int(inv.id),
+        email=key,
+        access_mode=mode,
+        expires_at=inv.expires_at,
+        email_sent=email_sent,
+        accept_url=accept_url,
+    )
+
+
+@app.get("/api/families/{family_id}/invites", response_model=list[FamilyInvitePendingOut])
+def list_family_invites(
+    family_id: int,
+    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    require_family_owner(db=db, family_id=family_id, user_id=user_id)
+    now = datetime.utcnow()
+    rows = (
+        db.execute(
+            select(FamilyInvite)
+            .where(
+                FamilyInvite.family_id == family_id,
+                FamilyInvite.accepted_at.is_(None),
+                FamilyInvite.revoked_at.is_(None),
+                FamilyInvite.expires_at > now,
+            )
+            .order_by(FamilyInvite.created_at.desc())
+        )
+        .scalars()
+        .all()
+    )
+    return [
+        FamilyInvitePendingOut(
+            id=int(r.id),
+            email=r.email_normalized,
+            access_mode=str(r.access_mode or "view"),
+            created_at=r.created_at,
+            expires_at=r.expires_at,
+        )
+        for r in rows
+    ]
+
+
+@app.delete("/api/families/{family_id}/invites/{invite_id}")
+def revoke_family_invite(
+    family_id: int,
+    invite_id: int,
+    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    require_family_owner(db=db, family_id=family_id, user_id=user_id)
+    inv = db.execute(
+        select(FamilyInvite).where(FamilyInvite.id == invite_id, FamilyInvite.family_id == family_id)
+    ).scalar_one_or_none()
+    if inv is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invite not found")
+    if inv.accepted_at is not None:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="This invite was already accepted")
+    inv.revoked_at = datetime.utcnow()
+    db.commit()
+    return {"ok": True}
+
+
+@app.post("/api/invites/accept", response_model=InviteAcceptOut)
+def accept_family_invite(
+    payload: InviteAcceptIn,
+    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    user = db.execute(select(User).where(User.id == user_id)).scalar_one()
+    raw = (payload.token or "").strip()
+    if len(raw) < 10:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token")
+    th = _hash_invite_token(raw)
+    row = db.execute(select(FamilyInvite).where(FamilyInvite.token_hash == th)).scalar_one_or_none()
+    now = datetime.utcnow()
+    if row is None or row.revoked_at is not None or row.accepted_at is not None or row.expires_at < now:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This invitation is not valid or has expired.")
+    if str(user.email).strip().lower() != str(row.email_normalized).strip().lower():
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Sign in with the email address that received this invitation, then try again.",
+        )
+    existing = db.execute(
+        select(FamilyMember).where(FamilyMember.family_id == row.family_id, FamilyMember.user_id == user_id)
+    ).scalar_one_or_none()
+    if existing is not None:
+        row.accepted_at = now
+        db.commit()
+        return InviteAcceptOut(ok=True, family_id=int(row.family_id), already_member=True)
+    _add_family_member_for_email(
+        db=db,
+        family_id=int(row.family_id),
+        email=str(row.email_normalized),
+        access_mode=str(row.access_mode or "view"),
+    )
+    inv2 = db.execute(select(FamilyInvite).where(FamilyInvite.id == row.id)).scalar_one()
+    inv2.accepted_at = datetime.utcnow()
+    db.commit()
+    return InviteAcceptOut(ok=True, family_id=int(row.family_id), already_member=False)
+
+
+@app.get("/api/platform/overview", response_model=PlatformOverviewOut)
+def platform_overview(
+    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    require_platform_admin(db=db, user_id=user_id)
+    return PlatformOverviewOut(
+        message="Operator console. User and family management is available from the sidebar. "
+        "Billing, add-on features, and per-tenant feature flags will plug in here as the product grows."
+    )
+
+
+@app.get("/api/platform/families", response_model=list[PlatformFamilySummaryOut])
+def platform_list_families(
+    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    require_platform_admin(db=db, user_id=user_id)
+    rows = db.execute(select(Family).order_by(Family.id.asc())).scalars().all()
+    return [PlatformFamilySummaryOut(id=int(f.id), name=str(f.name)) for f in rows]
+
+
+@app.get("/api/platform/users", response_model=list[PlatformAdminUserOut])
+def platform_list_users(
+    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    require_platform_admin(db=db, user_id=user_id)
+    users = db.execute(select(User).order_by(User.id.asc())).scalars().all()
+    out: list[PlatformAdminUserOut] = []
+    for u in users:
+        mships = db.execute(
+            select(FamilyMember, Family)
+            .join(Family, Family.id == FamilyMember.family_id)
+            .where(FamilyMember.user_id == u.id)
+        ).all()
+        mems = [
+            PlatformAdminFamilyMembershipOut(
+                family_id=int(fam.id),
+                family_name=str(fam.name),
+                role=str(m.role or "member"),
+                is_family_owner=bool(getattr(m, "is_family_owner", False)),
+                access_mode=str(getattr(m, "access_mode", None) or "edit"),
+            )
+            for m, fam in mships
+        ]
+        out.append(
+            PlatformAdminUserOut(
+                id=int(u.id),
+                email=u.email,
+                name=u.name,
+                created_at=u.created_at,
+                memberships=mems,
+            )
+        )
+    return out
+
+
+@app.post("/api/platform/users/{target_user_id}/password")
+def platform_set_user_password(
+    target_user_id: int,
+    payload: PlatformPasswordIn,
+    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    require_platform_admin(db=db, user_id=user_id)
+    u = db.execute(select(User).where(User.id == target_user_id)).scalar_one_or_none()
+    if u is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    u.password_hash = hash_password(payload.new_password)
+    db.commit()
+    return {"ok": True}
+
+
+@app.post(
+    "/api/platform/families/{family_id}/members",
+    response_model=FamilyMemberOut,
+    status_code=status.HTTP_201_CREATED,
+)
+def platform_add_family_member(
+    family_id: int,
+    payload: FamilyMemberAddIn,
+    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    require_platform_admin(db=db, user_id=user_id)
+    fam = db.execute(select(Family).where(Family.id == family_id)).scalar_one_or_none()
+    if fam is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Family not found")
+    m = _add_family_member_for_email(db=db, family_id=family_id, email=str(payload.email), access_mode=payload.access_mode)
+    return _family_member_row_to_out(db=db, row=m)
+
+
+@app.patch("/api/platform/families/{family_id}/members/{member_user_id}", response_model=FamilyMemberOut)
+def platform_patch_family_member(
+    family_id: int,
+    member_user_id: int,
+    payload: FamilyMemberUpdateIn,
+    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    require_platform_admin(db=db, user_id=user_id)
+    fam = db.execute(select(Family).where(Family.id == family_id)).scalar_one_or_none()
+    if fam is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Family not found")
+    m = _apply_family_membership_update(db=db, family_id=family_id, member_user_id=member_user_id, payload=payload)
+    return _family_member_row_to_out(db=db, row=m)
 
 
 def _category_out_from_model(*, cat: Category, group_name: Optional[str] = None) -> CategoryOut:
@@ -1782,7 +2650,7 @@ def create_category(
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
-    require_family_member(db=db, family_id=family_id, user_id=user_id)
+    require_family_write(db=db, family_id=family_id, user_id=user_id)
 
     gid = int(payload.group_id) if payload.group_id is not None else _default_category_group_id(db=db, family_id=family_id)
     grp = db.execute(select(CategoryGroup).where(CategoryGroup.id == gid, CategoryGroup.family_id == family_id)).scalar_one_or_none()
@@ -1808,7 +2676,7 @@ def update_category(
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
-    require_family_member(db=db, family_id=family_id, user_id=user_id)
+    require_family_write(db=db, family_id=family_id, user_id=user_id)
 
     cat = db.execute(select(Category).where(Category.id == category_id, Category.family_id == family_id)).scalar_one_or_none()
     if cat is None:
@@ -1851,7 +2719,7 @@ def delete_category(
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
-    require_family_member(db=db, family_id=family_id, user_id=user_id)
+    require_family_write(db=db, family_id=family_id, user_id=user_id)
 
     cat = db.execute(select(Category).where(Category.id == category_id, Category.family_id == family_id)).scalar_one_or_none()
     if cat is None:
@@ -1886,7 +2754,7 @@ def reorder_categories(
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
-    require_family_member(db=db, family_id=family_id, user_id=user_id)
+    require_family_write(db=db, family_id=family_id, user_id=user_id)
 
     # Ensure all provided IDs belong to this family.
     ids = [int(x) for x in payload.ordered_ids]
@@ -1924,7 +2792,7 @@ def put_categories_tree(
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
-    require_family_member(db=db, family_id=family_id, user_id=user_id)
+    require_family_write(db=db, family_id=family_id, user_id=user_id)
     return apply_category_tree_layout(db=db, family_id=family_id, payload=payload)
 
 
@@ -1936,7 +2804,7 @@ def create_category_group(
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
-    require_family_member(db=db, family_id=family_id, user_id=user_id)
+    require_family_write(db=db, family_id=family_id, user_id=user_id)
     max_sort = db.execute(
         select(func.coalesce(func.max(CategoryGroup.sort_order), 0)).where(CategoryGroup.family_id == family_id)
     ).scalar_one()
@@ -1960,7 +2828,7 @@ def delete_category_group(
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
-    require_family_member(db=db, family_id=family_id, user_id=user_id)
+    require_family_write(db=db, family_id=family_id, user_id=user_id)
 
     grp = db.execute(select(CategoryGroup).where(CategoryGroup.id == group_id, CategoryGroup.family_id == family_id)).scalar_one_or_none()
     if grp is None:
@@ -2009,7 +2877,7 @@ def seed_default_categories(
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
-    require_family_member(db=db, family_id=family_id, user_id=user_id)
+    require_family_write(db=db, family_id=family_id, user_id=user_id)
     return apply_default_category_seed(db=db, family_id=family_id, force=bool(force))
 
 
@@ -2049,7 +2917,7 @@ def upsert_reconciled_day(
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
-    require_family_member(db=db, family_id=family_id, user_id=user_id)
+    require_family_write(db=db, family_id=family_id, user_id=user_id)
 
     existing = db.execute(
         select(ReconciledDay).where(ReconciledDay.family_id == family_id, ReconciledDay.date == payload.date)
@@ -2095,7 +2963,7 @@ def create_account(
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
-    require_family_member(db=db, family_id=family_id, user_id=user_id)
+    require_family_write(db=db, family_id=family_id, user_id=user_id)
 
     # Quick sanity: category/account belong to same family is guaranteed by FK constraints.
     account = Account(
@@ -2126,7 +2994,7 @@ def update_account_starting_balance(
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
-    require_family_member(db=db, family_id=family_id, user_id=user_id)
+    require_family_write(db=db, family_id=family_id, user_id=user_id)
     account = db.execute(
         select(Account).where(Account.id == account_id, Account.family_id == family_id)
     ).scalar_one_or_none()
@@ -2212,7 +3080,7 @@ def create_expected_transaction(
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
-    require_family_member(db=db, family_id=family_id, user_id=user_id)
+    require_family_write(db=db, family_id=family_id, user_id=user_id)
 
     account = db.execute(select(Account).where(Account.id == payload.account_id, Account.family_id == family_id)).scalar_one_or_none()
     if account is None:
@@ -2293,7 +3161,7 @@ def update_expected_transaction(
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
-    require_family_member(db=db, family_id=family_id, user_id=user_id)
+    require_family_write(db=db, family_id=family_id, user_id=user_id)
 
     tx = db.execute(
         select(ExpectedTransaction).where(
@@ -2378,7 +3246,7 @@ def delete_expected_transaction(
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
-    require_family_member(db=db, family_id=family_id, user_id=user_id)
+    require_family_write(db=db, family_id=family_id, user_id=user_id)
 
     tx = db.execute(
         select(ExpectedTransaction).where(
@@ -2404,7 +3272,7 @@ def upsert_expected_instance_override(
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
-    require_family_member(db=db, family_id=family_id, user_id=user_id)
+    require_family_write(db=db, family_id=family_id, user_id=user_id)
 
     tx = db.execute(
         select(ExpectedTransaction).where(
@@ -2489,7 +3357,7 @@ def delete_expected_instance_override(
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
-    require_family_member(db=db, family_id=family_id, user_id=user_id)
+    require_family_write(db=db, family_id=family_id, user_id=user_id)
 
     existing = db.execute(
         select(ExpectedTransactionOverride).join(ExpectedTransaction, ExpectedTransaction.id == ExpectedTransactionOverride.expected_transaction_id).where(
@@ -2525,7 +3393,7 @@ def apply_expected_from_occurrence(
     One-time (recurrence=once) schedules should use the per-instance override endpoint instead.
     """
     user_id = get_current_user_id(access_token)
-    require_family_member(db=db, family_id=family_id, user_id=user_id)
+    require_family_write(db=db, family_id=family_id, user_id=user_id)
 
     tx = db.execute(
         select(ExpectedTransaction).where(
@@ -2695,7 +3563,7 @@ def end_expected_from_occurrence(
     Keeps historical occurrences intact.
     """
     user_id = get_current_user_id(access_token)
-    require_family_member(db=db, family_id=family_id, user_id=user_id)
+    require_family_write(db=db, family_id=family_id, user_id=user_id)
 
     tx = db.execute(
         select(ExpectedTransaction).where(
@@ -3916,7 +4784,7 @@ def purge_transactions_after(
     Use this when you roll back code but need to remove imported rows from the database.
     """
     user_id = get_current_user_id(access_token)
-    require_family_admin(db=db, family_id=family_id, user_id=user_id)
+    require_family_owner(db=db, family_id=family_id, user_id=user_id)
     cutoff_exclusive = after_date + timedelta(days=1)
     res = db.execute(
         delete(Transaction).where(
@@ -3963,7 +4831,7 @@ def purge_imported_transactions(
     - imported_at (timestamp)
     """
     user_id = get_current_user_id(access_token)
-    require_family_admin(db=db, family_id=family_id, user_id=user_id)
+    require_family_owner(db=db, family_id=family_id, user_id=user_id)
 
     cols = _table_columns(db, "transactions")
     where_parts: list[str] = []
@@ -4065,7 +4933,7 @@ def create_transaction(
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
-    require_family_member(db=db, family_id=family_id, user_id=user_id)
+    require_family_write(db=db, family_id=family_id, user_id=user_id)
 
     if payload.category_id is not None:
         category = db.execute(
@@ -4122,7 +4990,7 @@ def update_transaction(
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
-    require_family_member(db=db, family_id=family_id, user_id=user_id)
+    require_family_write(db=db, family_id=family_id, user_id=user_id)
 
     tx = db.execute(
         select(Transaction).where(Transaction.id == transaction_id, Transaction.family_id == family_id)
@@ -4159,7 +5027,7 @@ def delete_transaction(
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
-    require_family_member(db=db, family_id=family_id, user_id=user_id)
+    require_family_write(db=db, family_id=family_id, user_id=user_id)
 
     tx = db.execute(
         select(Transaction).where(Transaction.id == transaction_id, Transaction.family_id == family_id)

@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Balance Whiz — Family invitation</title>
+    <script>window.API_BASE = "__API_BASE__";</script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="../styles.css?v=188" />
+  </head>
+  <body class="login-page">
+    <div class="container">
+      <div class="top-nav" role="banner" aria-label="App header">
+        <div class="top-nav__inner top-nav__inner--simple">
+          <div class="top-nav__title">
+            <h1 class="app-title">Family invitation</h1>
+          </div>
+          <div class="top-nav__actions">
+            <button type="button" class="top-nav__logout" id="inviteHomeBtn">Home</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid">
+        <section class="card auth-section auth-section--open" aria-label="Invitation">
+          <div class="auth-section__head" style="cursor: default">
+            <span class="auth-section__title">Join a family</span>
+          </div>
+          <div class="auth-section__body">
+            <div id="inviteCallout" class="callout" style="display: none" role="status"></div>
+            <div id="inviteBody" hidden>
+              <p id="inviteSummary" class="meta"></p>
+              <div style="height: 12px"></div>
+              <button type="button" id="inviteAcceptBtn">Accept invitation</button>
+              <div style="height: 16px"></div>
+              <p class="meta">Need an account or wrong account? Use the same email shown above.</p>
+              <div class="row two" style="margin-top: 8px">
+                <a class="top-nav__logout" style="text-align: center; text-decoration: none; display: inline-block" id="inviteLoginLink" href="#"
+                  >Log in</a
+                >
+                <a class="top-nav__logout" style="text-align: center; text-decoration: none; display: inline-block" id="inviteSignupLink" href="#"
+                  >Create account</a
+                >
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <footer class="app-footer" role="contentinfo">
+        <div class="app-footer__inner">
+          <a href="../contactus/" class="app-footer__link">Contact Us</a>
+        </div>
+      </footer>
+    </div>
+    <script src="./invite.js?v=1"></script>
+  </body>
+</html>

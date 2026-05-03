@@ -44,6 +44,13 @@ function setCallout(el, msg, mode = "pending") {
 }
 
 function goApp() {
+  try {
+    const t = sessionStorage.getItem("bw_invite_token");
+    if (t && String(t).trim()) {
+      window.location.href = "./invite/?token=" + encodeURIComponent(String(t).trim());
+      return;
+    }
+  } catch (_) {}
   window.location.href = "./";
 }
 
@@ -192,3 +199,8 @@ if (location.hostname.endsWith("github.io") && !getApiBase()) {
 // Expose a global handler so the inline onclick works even if the event binding fails.
 window.__bwLogin = () => void doLogin();
 if (loginBtn) loginBtn.addEventListener("click", () => void doLogin());
+
+try {
+  const t = new URLSearchParams(location.search).get("invite");
+  if (t && String(t).trim()) sessionStorage.setItem("bw_invite_token", String(t).trim());
+} catch (_) {}
