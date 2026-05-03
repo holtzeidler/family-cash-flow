@@ -139,6 +139,8 @@ def _send_contact_via_resend_sync(*, to_addr: str, subject: str, text_body: str,
         headers={
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
+            # Resend returns 403 / error 1010 if User-Agent is missing (urllib often omits it).
+            "User-Agent": "BalanceWhiz/1.0 (+https://balancewhiz.com)",
         },
     )
     try:

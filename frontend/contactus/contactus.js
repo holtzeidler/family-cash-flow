@@ -55,7 +55,16 @@ function showContactTroubleshootFromApi(status, detail) {
   }
 
   if (status === 502) {
-    if (d.indexOf("could not send via resend") !== -1) {
+    if (d.indexOf("1010") !== -1) {
+      addTroubleshootLi(
+        list,
+        "Resend error 1010 means their edge blocked the request — usually because the HTTP client did not send a User-Agent header (Python’s urllib did not send one by default)."
+      );
+      addTroubleshootLi(
+        list,
+        "Deploy the latest BalanceWhiz API from GitHub (includes a fix). Then redeploy on Render and try Send again. Doc: https://resend.com/docs/knowledge-base/403-error-1010"
+      );
+    } else if (d.indexOf("could not send via resend") !== -1) {
       addTroubleshootLi(
         list,
         "Resend accepted the request from the API but returned an error (check the red line above for Resend’s message)."
