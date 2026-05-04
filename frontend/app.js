@@ -1019,7 +1019,7 @@ updateTxAddRepeatingUi();
   if (logoutBtn) {
     logoutBtn.addEventListener("click", async () => {
       await api("/api/auth/logout", "POST");
-      window.location.href = "./login.html";
+      window.location.href = "/";
     });
   }
 }

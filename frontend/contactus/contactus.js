@@ -199,7 +199,7 @@ function initLogout() {
     try {
       await api("/api/auth/logout", "POST");
     } catch (_) {}
-    window.location.href = "../login.html";
+    window.location.href = "/";
   });
 }
 
