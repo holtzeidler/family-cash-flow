@@ -250,6 +250,24 @@
     }
   }
 
+  const platformAdminBackBtn = document.getElementById("platformAdminBackBtn");
+  if (platformAdminBackBtn) {
+    platformAdminBackBtn.addEventListener("click", () => {
+      if (window.history.length > 1) {
+        window.history.back();
+        return;
+      }
+      try {
+        const ref = document.referrer;
+        if (ref && new URL(ref).origin === window.location.origin) {
+          window.location.assign(ref);
+          return;
+        }
+      } catch (_) {}
+      window.location.assign("/calendar");
+    });
+  }
+
   document.querySelectorAll(".platform-admin-nav__btn[data-admin-section]").forEach((btn) => {
     btn.addEventListener("click", () => {
       if (btn.disabled) return;
