@@ -115,13 +115,15 @@ body.landing-page .top-nav__actions a.top-nav__logout{
 body.landing-page .landing-main{
   flex: 1;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 32px 16px 48px;
+  justify-content: flex-start;
+  padding: 28px 16px 48px;
 }
 body.landing-page .landing-hero{
+  width: 100%;
   max-width: 40rem;
-  margin: 0 auto;
+  margin: 0;
   text-align: center;
 }
 body.landing-page .landing-hero__text{
