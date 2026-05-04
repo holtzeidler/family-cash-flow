@@ -85,6 +85,10 @@
                 <span class="settings-nav-item__label">Family sharing</span>
                 <span class="settings-nav-item__chev" aria-hidden="true">▸</span>
               </button>
+              <button type="button" class="settings-nav-item" data-settings-key="billing">
+                <span class="settings-nav-item__label">Billing</span>
+                <span class="settings-nav-item__chev" aria-hidden="true">▸</span>
+              </button>
             </div>
           </div>
 
@@ -607,6 +611,24 @@
                   <h3 class="settings-subhead">Members</h3>
                   <div id="familyMembersList" class="family-members-list"></div>
                   <div id="familyMembersErr" class="error"></div>
+                </div>
+
+                <div class="settings-pane" data-settings-pane="billing" hidden>
+                  <p class="meta">
+                    Your billing details are shown here.
+                  </p>
+                  <div class="form-row-h">
+                    <div class="form-row-h__label"><label>Plan</label></div>
+                    <div class="form-row-h__field"><div id="billingPlan">—</div></div>
+                  </div>
+                  <div class="form-row-h">
+                    <div class="form-row-h__label"><label>Billing frequency</label></div>
+                    <div class="form-row-h__field"><div id="billingFrequency">—</div></div>
+                  </div>
+                  <div class="form-row-h">
+                    <div class="form-row-h__label"><label>Next billing date</label></div>
+                    <div class="form-row-h__field"><div id="billingNextDate">—</div></div>
+                  </div>
                 </div>
               </div>
             </div>

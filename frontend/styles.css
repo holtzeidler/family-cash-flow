@@ -2368,38 +2368,82 @@ textarea::placeholder{
 .categories-toolbar-hint{
   margin: 0 0 8px;
 }
-.cat-tree{
+.settings-pane[data-settings-pane="categories"] .categories-toolbar{
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+.settings-pane[data-settings-pane="categories"] .categories-toolbar #addCategoryGroupBtn{
+  margin-left: auto;
+  background: transparent;
+  border: none;
+  padding: 6px 0;
+  color: #0f766e;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.settings-pane[data-settings-pane="categories"] .categories-toolbar #addCategoryGroupBtn:hover{
+  color: #115e59;
+}
+.settings-pane[data-settings-pane="categories"] .cat-tree{
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 18px;
 }
-.cat-group{
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: rgba(0,0,0,0.02);
-  overflow: hidden;
+.settings-pane[data-settings-pane="categories"] .cat-group{
+  border: none;
+  border-radius: 14px;
+  background: transparent;
+  overflow: visible;
 }
 .cat-group.is-dragging{
   opacity: 0.88;
 }
-.cat-group-head{
+.settings-pane[data-settings-pane="categories"] .cat-group-head{
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 5px 12px;
-  border-bottom: 1px solid var(--border);
-  background: rgba(0,0,0,0.03);
+  padding: 8px 4px 10px;
+  border: none;
+  background: transparent;
+}
+.settings-pane[data-settings-pane="categories"] .cat-group-head::before{
+  content: "";
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  border-radius: 6px;
+  background:
+    radial-gradient(circle at 35% 25%, rgba(17,24,39,0.25) 1.5px, transparent 2px),
+    radial-gradient(circle at 35% 50%, rgba(17,24,39,0.25) 1.5px, transparent 2px),
+    radial-gradient(circle at 35% 75%, rgba(17,24,39,0.25) 1.5px, transparent 2px),
+    radial-gradient(circle at 65% 25%, rgba(17,24,39,0.25) 1.5px, transparent 2px),
+    radial-gradient(circle at 65% 50%, rgba(17,24,39,0.25) 1.5px, transparent 2px),
+    radial-gradient(circle at 65% 75%, rgba(17,24,39,0.25) 1.5px, transparent 2px);
+  opacity: 0.8;
+  transform: translateY(1px);
+}
+.settings-pane[data-settings-pane="categories"] .cat-group-head::after{
+  content: "Edit";
+  margin-left: 10px;
+  color: #1d4ed8;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.settings-pane[data-settings-pane="categories"] .cat-group-head:hover::after{
+  color: #1e40af;
 }
 .cat-group-head.is-drag-over{
   outline: 2px dashed color-mix(in srgb, var(--accent) 55%, transparent);
   outline-offset: -2px;
 }
-.cat-move-controls{
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-left: auto;
-  flex-shrink: 0;
+.settings-pane[data-settings-pane="categories"] .cat-move-controls{
+  display: none;
 }
 .cat-move-btn{
   width: 30px;
@@ -2458,9 +2502,9 @@ textarea::placeholder{
 .cat-group-name-display{
   flex: 1;
   min-width: 0;
-  font-weight: 600;
-  font-size: 14px;
-  padding: 4px 10px;
+  font-weight: 800;
+  font-size: 18px;
+  padding: 0;
   border-radius: 0;
   border: none;
   background: transparent;
@@ -2471,32 +2515,59 @@ textarea::placeholder{
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.cat-group-body{
+.settings-pane[data-settings-pane="categories"] .cat-group-body{
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 6px 0;
+  gap: 10px;
   align-items: center;
-  padding: 10px 12px 12px;
+  padding: 0;
 }
 .cat-group-body.is-drag-over{
   background: color-mix(in srgb, var(--accent) 8%, transparent);
 }
 .cat-group-body .cat-name{
-  font-size: 13px;
+  font-size: 15px;
   color: var(--text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.cat-group-body .cat-row{
+.settings-pane[data-settings-pane="categories"] .cat-group-body .cat-row,
+.settings-pane[data-settings-pane="categories"] .cat-row{
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+  padding: 14px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(0,0,0,0.08);
+  background: rgba(255,255,255,0.92);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.06);
 }
-.cat-row{
-  display: flex;
-  align-items: center;
-  gap: 10px;
+.settings-pane[data-settings-pane="categories"] .cat-row::before{
+  content: "";
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  border-radius: 6px;
+  background:
+    radial-gradient(circle at 35% 25%, rgba(17,24,39,0.22) 1.5px, transparent 2px),
+    radial-gradient(circle at 35% 50%, rgba(17,24,39,0.22) 1.5px, transparent 2px),
+    radial-gradient(circle at 35% 75%, rgba(17,24,39,0.22) 1.5px, transparent 2px),
+    radial-gradient(circle at 65% 25%, rgba(17,24,39,0.22) 1.5px, transparent 2px),
+    radial-gradient(circle at 65% 50%, rgba(17,24,39,0.22) 1.5px, transparent 2px),
+    radial-gradient(circle at 65% 75%, rgba(17,24,39,0.22) 1.5px, transparent 2px);
+  opacity: 0.9;
+}
+.settings-pane[data-settings-pane="categories"] .cat-row:hover{
+  border-color: rgba(11, 61, 46, 0.28);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+}
+.settings-pane[data-settings-pane="categories"] .cat-row.is-dragging{
+  opacity: 0.72;
+}
+.settings-pane[data-settings-pane="categories"] .cat-row.is-drag-over{
+  outline: 2px dashed color-mix(in srgb, var(--accent) 55%, transparent);
+  outline-offset: 2px;
 }
 .cat-drag-handle{
   cursor: grab;

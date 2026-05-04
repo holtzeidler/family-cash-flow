@@ -111,6 +111,15 @@ function parsePlanFromQuery() {
   }
 }
 
+function persistBillingSelectionFromQuery() {
+  const plan = parsePlanFromQuery();
+  if (!plan) return;
+  try {
+    localStorage.setItem("bw_billing_plan", plan);
+    localStorage.setItem("bw_billing_frequency", "monthly");
+  } catch (_) {}
+}
+
 const signupCalloutEl = document.getElementById("signupCallout");
 const signupPlanNoteEl = document.getElementById("signupPlanNote");
 const signupBannerHead = document.getElementById("signupBannerHead");
@@ -153,6 +162,18 @@ async function doSignup() {
       return;
     }
 
+    // Set an initial billing anchor date so Settings → Billing can show next billing date.
+    try {
+      const existing = localStorage.getItem("bw_billing_start") || "";
+      if (!existing) {
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, "0");
+        const d = String(now.getDate()).padStart(2, "0");
+        localStorage.setItem("bw_billing_start", `${y}-${m}-${d}`);
+      }
+    } catch (_) {}
+
     setCallout(signupCalloutEl, "Account ready. Opening app...", "ok");
     await goApp();
   } catch (e) {
@@ -171,6 +192,9 @@ try {
     signupPlanNoteEl.textContent = plan === "pro" ? "Selected plan: Add Budgeting" : "Selected plan: Cash Forecast Only";
     showSignupPlanBanner();
   }
+} catch (_) {}
+try {
+  persistBillingSelectionFromQuery();
 } catch (_) {}
 
 try {

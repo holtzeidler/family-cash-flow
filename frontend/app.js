@@ -885,6 +885,15 @@ const chartRangeCancelBtn = document.getElementById("chartRangeCancelBtn");
 let projectionChartInstance = null;
 let projectionChartDefaultsApplied = false;
 
+// Billing (Settings)
+const billingPlanEl = document.getElementById("billingPlan");
+const billingFrequencyEl = document.getElementById("billingFrequency");
+const billingNextDateEl = document.getElementById("billingNextDate");
+
+const BILLING_PLAN_KEY = "bw_billing_plan";
+const BILLING_START_KEY = "bw_billing_start";
+const BILLING_FREQUENCY_KEY = "bw_billing_frequency";
+
 // Expected instance editing (fields live inside unified #txEditModal)
 const instanceExpectedTxId = document.getElementById("instanceExpectedTxId");
 const instanceRecurrence = document.getElementById("instanceRecurrence");
@@ -2315,6 +2324,9 @@ function activateSettingsSection(key) {
       show(el, e.message || String(e));
     });
   }
+  if (k === "billing") {
+    renderBillingPanel();
+  }
 }
 
 function openTxAddModal(opts = {}) {
@@ -2955,6 +2967,62 @@ function formatProjectionTooltipDate(iso) {
     day: "numeric",
     year: "numeric",
   });
+}
+
+function formatShortDateLong(iso) {
+  if (!iso) return "—";
+  const d = new Date(`${iso}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return String(iso);
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
+
+function addMonthsIso(startIso, deltaMonths) {
+  const d = new Date(`${startIso}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return "";
+  const day = d.getDate();
+  d.setMonth(d.getMonth() + deltaMonths);
+  // If month roll caused date to shift (e.g. Jan 31 -> Mar 2), clamp back to last day of new month.
+  if (d.getDate() !== day) {
+    d.setDate(0);
+  }
+  return toISODate(d);
+}
+
+function computeNextBillingDate(startIso, frequency) {
+  if (!startIso) return "";
+  const freq = String(frequency || "monthly");
+  const todayIso = toISODate(new Date());
+  if (freq !== "monthly") return "";
+  let next = addMonthsIso(startIso, 1);
+  let guard = 0;
+  while (next && next < todayIso && guard < 60) {
+    guard += 1;
+    next = addMonthsIso(next, 1);
+  }
+  return next;
+}
+
+function getBillingPlanLabel(plan) {
+  const p = String(plan || "").toLowerCase();
+  if (p === "pro") return "Add Budgeting";
+  if (p === "base") return "Cash Forecast Only";
+  return "—";
+}
+
+function renderBillingPanel() {
+  if (!billingPlanEl || !billingFrequencyEl || !billingNextDateEl) return;
+  let plan = "";
+  let freq = "monthly";
+  let start = "";
+  try {
+    plan = localStorage.getItem(BILLING_PLAN_KEY) || "";
+    freq = localStorage.getItem(BILLING_FREQUENCY_KEY) || "monthly";
+    start = localStorage.getItem(BILLING_START_KEY) || "";
+  } catch (_) {}
+  billingPlanEl.textContent = getBillingPlanLabel(plan);
+  billingFrequencyEl.textContent = String(freq || "monthly").toLowerCase() === "monthly" ? "Monthly" : String(freq || "—");
+  const next = computeNextBillingDate(start, freq);
+  billingNextDateEl.textContent = next ? formatShortDateLong(next) : "—";
 }
 
 function ensureProjectionChartDefaults() {
