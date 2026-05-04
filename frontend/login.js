@@ -82,7 +82,6 @@ async function goApp() {
 }
 
 const loginCalloutEl = document.getElementById("loginCallout");
-const loginDiagCalloutEl = document.getElementById("loginDiagCallout");
 const loginBtn = document.getElementById("loginBtn");
 
 async function doLogin() {
@@ -143,31 +142,6 @@ function getClientOrigin() {
   return window.location.origin;
 }
 
-async function fetchServerPublicConfig() {
-  const r = await request("/api/debug/public-config", "GET");
-  if (!r.ok || !r.data) return null;
-  return r.data;
-}
-
-function formatServerDiag(srv) {
-  if (!srv) return " (Could not load /api/debug/public-config from API.)";
-  const origins = Array.isArray(srv.cors_allow_origins) ? srv.cors_allow_origins.join(", ") : String(srv.cors_allow_origins);
-  return (
-    ` | SERVER: env=${srv.env}, cookie SameSite=${srv.auth_cookie_samesite}, secure=${srv.auth_cookie_secure}, ` +
-    `CORS middleware=${srv.cors_middleware_enabled}, allow_origins=[${origins}]`
-  );
-}
-
-async function renderDiagnostics() {
-  const apiBase = getApiBase() || "(empty)";
-  const origin = getClientOrigin();
-  let msg =
-    `Client: API_BASE=${apiBase} | Origin=${origin} | CORS must allow ${origin}`;
-  const srv = await fetchServerPublicConfig();
-  msg += formatServerDiag(srv);
-  setCallout(loginDiagCalloutEl, msg, srv ? "ok" : "pending");
-}
-
 function setBusy(isBusy) {
   loginBtn.disabled = isBusy;
   loginBtn.textContent = isBusy ? "Logging in..." : "Login";
@@ -219,8 +193,6 @@ if (location.hostname.endsWith("github.io") && !getApiBase()) {
   const msg =
     "This site was built without API_BASE. Repo > Settings > Secrets > Actions > set API_BASE to your Render API URL, then re-run Deploy frontend to GitHub Pages.";
   setCallout(loginCalloutEl, msg, "error");
-} else {
-  void renderDiagnostics();
 }
 
 // Expose a global handler so the inline onclick works even if the event binding fails.
