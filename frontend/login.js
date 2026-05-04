@@ -43,15 +43,42 @@ function setCallout(el, msg, mode = "pending") {
   el.style.display = msg ? "block" : "none";
 }
 
-function goApp() {
+async function goApp() {
   try {
     const t = sessionStorage.getItem("bw_invite_token");
-    if (t && String(t).trim()) {
-      window.location.href = "./invite/?token=" + encodeURIComponent(String(t).trim());
+    if (!t || !String(t).trim()) {
+      window.location.href = "./";
       return;
     }
-  } catch (_) {}
-  window.location.href = "./";
+    const enc = encodeURIComponent(String(t).trim());
+    const [me, inv] = await Promise.all([
+      request("/api/auth/me", "GET"),
+      request(`/api/public/invites/by-token/${enc}`, "GET"),
+    ]);
+    if (!inv.ok || !inv.data || !inv.data.ok) {
+      try {
+        sessionStorage.removeItem("bw_invite_token");
+      } catch (_) {}
+      window.location.href = "./";
+      return;
+    }
+    const invited = String(inv.data.invitee_email || "")
+      .trim()
+      .toLowerCase();
+    const logged =
+      me.ok && me.data && me.data.user && me.data.user.email
+        ? String(me.data.user.email)
+            .trim()
+            .toLowerCase()
+        : "";
+    if (logged && invited && logged !== invited) {
+      window.location.href = "./invite/?token=" + enc;
+      return;
+    }
+    window.location.href = "./invite/?token=" + enc;
+  } catch (_) {
+    window.location.href = "./";
+  }
 }
 
 const loginCalloutEl = document.getElementById("loginCallout");
@@ -80,7 +107,7 @@ async function doLogin() {
       return;
     }
     setCallout(loginCalloutEl, "Session ready. Opening app...", "ok");
-    goApp();
+    await goApp();
   } catch (e) {
     setCallout(loginCalloutEl, (e && e.message) || "Login failed", "error");
   } finally {
@@ -203,4 +230,5 @@ if (loginBtn) loginBtn.addEventListener("click", () => void doLogin());
 try {
   const t = new URLSearchParams(location.search).get("invite");
   if (t && String(t).trim()) sessionStorage.setItem("bw_invite_token", String(t).trim());
+  else sessionStorage.removeItem("bw_invite_token");
 } catch (_) {}

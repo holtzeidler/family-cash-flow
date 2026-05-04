@@ -68,11 +68,23 @@
     }
     const d = r.data;
     const accessLabel = String(d.access_mode || "").toLowerCase() === "view" ? "view only" : "full edit";
-    summary.textContent = `You are invited to join "${d.family_name}" as ${accessLabel}. Use account: ${d.invitee_email}.`;
+    summary.textContent = `You are invited to join "${d.family_name}" as ${accessLabel}. This invitation was sent to ${d.invitee_email}. Sign in or create an account with that same email, then click Accept below.`;
     bodyEl.hidden = false;
     if (loginLink) loginLink.href = `../login.html?invite=${enc}`;
     if (signupLink) signupLink.href = `../signup/?invite=${enc}`;
     setCallout(callout, "", "");
+    const me = await request("/api/auth/me", "GET");
+    if (me.ok && me.data && me.data.user && me.data.user.email) {
+      const cur = String(me.data.user.email).trim().toLowerCase();
+      const invE = String(d.invitee_email || "").trim().toLowerCase();
+      if (cur && invE && cur !== invE) {
+        setCallout(
+          callout,
+          `You are signed in as ${me.data.user.email}, but this invitation is for ${d.invitee_email}. Log out and sign in with the invited address, then accept — or ask the family owner to send a new invite to ${me.data.user.email}.`,
+          "error"
+        );
+      }
+    }
   }
 
   if (acceptBtn) {

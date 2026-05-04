@@ -56,6 +56,16 @@ body.login-page .top-nav__inner--simple .app-title{
   text-align: left;
 }
 
+/* Invite page: keep title where it is, push Home to the far right */
+body.invite-page .top-nav .top-nav__inner.top-nav__inner--simple{
+  grid-template-columns: 1fr auto;
+  justify-items: start;
+}
+body.invite-page .top-nav .top-nav__inner.top-nav__inner--simple .top-nav__actions{
+  justify-self: end;
+  gap: 8px;
+}
+
 /* Plans / admin page header: title left, action right */
 body.plans-page .top-nav .top-nav__inner.top-nav__inner--simple,
 body.admin-page .top-nav .top-nav__inner.top-nav__inner--simple{
@@ -122,38 +132,35 @@ body.admin-page .top-nav .top-nav__inner.top-nav__inner--simple .app-title{
   min-width: 0;
   padding-right: 10px;
 }
-.top-nav__logout{
-  background: rgba(255,255,255,0.10);
-  border-color: rgba(255,255,255,0.28);
-  color: #fff;
+/* Match Admin (link) to Logout (button): same font metrics + box + radius as top-nav buttons */
+.top-nav__actions .top-nav__logout,
+.top-nav__actions .top-nav__admin{
+  box-sizing: border-box;
+  font-family: inherit;
+  font-size: 1rem;
   font-weight: 700;
+  line-height: 1.25;
   padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.28);
+  background: rgba(255,255,255,0.10);
+  color: #fff;
+  cursor: pointer;
 }
-.top-nav__logout:hover{
+.top-nav__actions .top-nav__admin{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  margin-right: 8px;
+}
+.top-nav__logout:hover,
+.top-nav__admin:hover{
   filter: none;
   background: rgba(255,255,255,0.16);
   border-color: rgba(255,255,255,0.34);
 }
-.top-nav__logout:focus-visible{
-  outline: 2px solid rgba(255,255,255,0.85);
-  outline-offset: 2px;
-}
-.top-nav__admin{
-  display: inline-flex;
-  align-items: center;
-  text-decoration: none;
-  background: rgba(255,255,255,0.10);
-  border: 1px solid rgba(255,255,255,0.28);
-  color: #fff;
-  font-weight: 700;
-  padding: 8px 12px;
-  border-radius: 8px;
-  margin-right: 8px;
-}
-.top-nav__admin:hover{
-  background: rgba(255,255,255,0.16);
-  border-color: rgba(255,255,255,0.34);
-}
+.top-nav__logout:focus-visible,
 .top-nav__admin:focus-visible{
   outline: 2px solid rgba(255,255,255,0.85);
   outline-offset: 2px;
@@ -3482,7 +3489,7 @@ body.plans-page .container > .grid{
   flex: 0 1 14rem;
   min-width: 10rem;
 }
-.tx-add-schedule-toolbar__right:not(:has(#txAddLastTxnFieldWrap:not([hidden]))){
+.tx-add-schedule-toolbar__right:not(:has(#txAddEndCountWrap:not([hidden])), :has(#txAddEndDateWrap:not([hidden])), :has(#txAddLastTxnFieldWrap:not([hidden]))){
   display: none;
 }
 .tx-add-repeat-row{
@@ -3591,6 +3598,9 @@ body.plans-page .container > .grid{
   display: none !important;
 }
 .tx-add-schedule-field--end-count[hidden]{
+  display: none !important;
+}
+.tx-add-schedule-field--end-date[hidden]{
   display: none !important;
 }
 

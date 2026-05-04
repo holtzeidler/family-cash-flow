@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=188" />
+    <link rel="stylesheet" href="./styles.css?v=189" />
   </head>
   <body>
     <div class="container">
@@ -151,6 +151,10 @@
                     <label for="txAddEndCount" title="Optional. Number of times this recurring transaction happens. Blank = never ends.">Ends after</label>
                     <input id="txAddEndCount" type="number" min="1" step="1" placeholder="e.g. 12" title="Optional. Total number of occurrences." />
                     <span class="tx-add-field-hint">occurrences</span>
+                  </div>
+                  <div id="txAddEndDateWrap" class="tx-add-schedule-field tx-add-schedule-field--end-date" hidden>
+                    <label for="txAddEndDate" title="Optional. End date for this recurring transaction. Blank = never ends.">Ends on</label>
+                    <input id="txAddEndDate" type="date" title="Optional. Last date this schedule can occur." />
                   </div>
                 </div>
               </div>

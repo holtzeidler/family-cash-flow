@@ -945,6 +945,7 @@ const txAddRepeats = document.getElementById("txAddRepeats");
 const txAddRecurringBlock = document.getElementById("txAddRecurringBlock");
 const txAddRecurrence = document.getElementById("txAddRecurrence");
 const txAddEndCount = document.getElementById("txAddEndCount");
+const txAddEndDate = document.getElementById("txAddEndDate");
 const txAddTwiceMonthlyFields = document.getElementById("txAddTwiceMonthlyFields");
 const txAddSecondDayOfMonth = document.getElementById("txAddSecondDayOfMonth");
 const txAddAccountId = document.getElementById("txAddAccountId");
@@ -971,6 +972,12 @@ function updateTxAddRepeatingUi() {
     if (!repeats) txAddEndCount.value = "";
     txAddEndCount.disabled = !repeats;
   }
+  const endDateWrap = document.getElementById("txAddEndDateWrap");
+  if (endDateWrap) endDateWrap.hidden = !repeats;
+  if (txAddEndDate) {
+    if (!repeats) txAddEndDate.value = "";
+    txAddEndDate.disabled = !repeats;
+  }
   updateTxAddTwiceMonthlyVisibility();
 }
 
@@ -979,6 +986,14 @@ if (txAddRepeats) {
 }
 if (txAddRecurrence) {
   txAddRecurrence.addEventListener("change", updateTxAddTwiceMonthlyVisibility);
+}
+if (txAddEndCount && txAddEndDate) {
+  txAddEndCount.addEventListener("input", () => {
+    if (String(txAddEndCount.value || "").trim()) txAddEndDate.value = "";
+  });
+  txAddEndDate.addEventListener("input", () => {
+    if (String(txAddEndDate.value || "").trim()) txAddEndCount.value = "";
+  });
 }
 updateTxAddRepeatingUi();
 
@@ -1879,6 +1894,15 @@ if (txAddSave) {
             throw new Error("Ends after must be a whole number ≥ 1");
           }
         }
+        const endDateRaw = txAddEndDate?.value != null ? String(txAddEndDate.value).trim() : "";
+        const endDateVal = endDateRaw === "" ? null : endDateRaw;
+        if (endDateVal != null) {
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(endDateVal)) throw new Error("Ends on must be a date");
+          if (endDateVal < dateVal) throw new Error("Ends on cannot be before the start date");
+        }
+        if (endCountVal != null && endDateVal != null) {
+          throw new Error("Provide only one of Ends after or Ends on");
+        }
 
         let secondDayOfMonth = null;
         if (recurrenceVal === "twice_monthly") {
@@ -1897,8 +1921,8 @@ if (txAddSave) {
         await api(`/api/families/${state.activeFamilyId}/expected-transactions`, "POST", {
           account_id: Number(accountIdVal),
           start_date: dateVal,
-          end_date: null,
-          end_count: endCountVal,
+          end_date: endDateVal,
+          end_count: endDateVal != null ? null : endCountVal,
           recurrence: recurrenceVal,
           second_day_of_month: secondDayOfMonth,
           description: desc,
@@ -2240,6 +2264,7 @@ function openTxAddModal(opts = {}) {
   if (txAddRepeats) txAddRepeats.checked = !!opts.repeats;
   if (txAddRecurrence) txAddRecurrence.value = "monthly";
   if (txAddEndCount) txAddEndCount.value = "";
+  if (txAddEndDate) txAddEndDate.value = "";
   if (txAddSecondDayOfMonth) txAddSecondDayOfMonth.value = "";
   if (txAddVariable) txAddVariable.checked = false;
   if (txAddAccountId) {
