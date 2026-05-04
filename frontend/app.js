@@ -3364,8 +3364,6 @@ async function loadMe() {
   state.isPlatformAdmin = !!data.is_platform_admin;
   const adminLink = document.getElementById("platformAdminLink");
   if (adminLink) adminLink.hidden = !state.isPlatformAdmin;
-  // Sidebar label should stay constant (not family/user-specific).
-  if (userPill) userPill.textContent = "Dashboard";
 }
 
 function syncActiveFamilyFlags() {
@@ -4994,8 +4992,12 @@ function renderUpcomingTransactionsFiltered() {
         }
         meta.appendChild(document.createTextNode(" · "));
         meta.appendChild(pill);
+        if (n) meta.appendChild(document.createTextNode(` ${n}`));
       } else if (showCatPill && tx.category) {
         meta.appendChild(document.createTextNode(` · ${catName}`));
+        if (n) meta.appendChild(document.createTextNode(` ${n}`));
+      } else if (n) {
+        meta.appendChild(document.createTextNode(` · ${n}`));
       }
       left.appendChild(link);
       left.appendChild(meta);
@@ -5039,6 +5041,8 @@ function renderUpcomingTransactionsFiltered() {
     const meta = document.createElement("div");
     meta.className = "meta";
     meta.appendChild(document.createTextNode(fmtDateMDY(nextIso)));
+    const rn = tx?.notes && String(tx.notes).trim();
+    if (rn) bindFastTxnTipHover(el, rn);
     if (tx?.category_id && tx?.category) {
       const st = pillStyleForTransaction(tx);
       const pill = document.createElement("span");
@@ -5050,8 +5054,12 @@ function renderUpcomingTransactionsFiltered() {
       }
       meta.appendChild(document.createTextNode(" · "));
       meta.appendChild(pill);
+      if (rn) meta.appendChild(document.createTextNode(` ${rn}`));
     } else if (tx?.category) {
       meta.appendChild(document.createTextNode(` · ${leafCategoryName(tx.category)}`));
+      if (rn) meta.appendChild(document.createTextNode(` ${rn}`));
+    } else if (rn) {
+      meta.appendChild(document.createTextNode(` · ${rn}`));
     }
     meta.appendChild(document.createTextNode(` · ${recurrenceLabel(tx.recurrence || "monthly")}`));
 

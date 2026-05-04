@@ -1230,6 +1230,43 @@ button.nav-link:hover{
   opacity: 0.55;
   pointer-events: none;
 }
+.calendar-panel--loading .calendar-loading-indicator{
+  display: flex;
+}
+.calendar-loading-indicator{
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.calendar-loading-indicator__inner{
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(0,0,0,0.10);
+  background: rgba(249,250,251,0.92);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.10);
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--text);
+}
+.calendar-spinner{
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 2px solid rgba(0,0,0,0.14);
+  border-top-color: var(--accent);
+  animation: bwspin 0.85s linear infinite;
+}
+@keyframes bwspin{
+  from{ transform: rotate(0deg); }
+  to{ transform: rotate(360deg); }
+}
 .cal-arrow-btn:disabled,
 .cal-today-btn:disabled{
   opacity: 0.45;
@@ -1237,6 +1274,7 @@ button.nav-link:hover{
 }
 
 .calendar-panel{
+  position: relative;
   display:flex;
   flex-direction:column;
   flex: 1 1 72%;
@@ -2612,13 +2650,14 @@ body.signup-page .auth-section__head--signup-plan{
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  padding: 16px 16px 12px;
+  padding: 0;
   margin: 0;
   background: transparent;
   border: none;
   border-bottom: none;
   border-radius: 14px 14px 0 0;
   cursor: default;
+  overflow: hidden;
 }
 body.signup-page .auth-section:has(#signupBannerHead[hidden]) .auth-section__body{
   border-radius: 14px;
@@ -2634,9 +2673,10 @@ body.signup-page #signupPlanNote.callout--muted{
   letter-spacing: 0.2px;
   line-height: 1.25;
   border: none;
-  border-radius: 14px;
+  border-radius: 14px 14px 0 0;
   background: var(--accent);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+  box-shadow: none;
+  width: 100%;
 }
 body.signup-page #signupPlanNote.callout--muted.signup-plan-note--pro{
   background: #5b67b6;
@@ -2693,6 +2733,15 @@ body.login-page #loginSectionBody .row.two{
 body.login-page #email,
 body.login-page #password{
   font-size: 121%;
+}
+
+/* Signup page: keep Name/Email/Password/Confirm visually identical */
+body.login-page.signup-page #name,
+body.login-page.signup-page #email,
+body.login-page.signup-page #password,
+body.login-page.signup-page #password2{
+  font-size: 121%;
+  line-height: 1.25;
 }
 
 /* Login page: make accordion text larger */
