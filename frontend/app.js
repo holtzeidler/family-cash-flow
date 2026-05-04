@@ -1499,6 +1499,17 @@ function setActiveTopView(view) {
   if (v === "reports") {
     populateCatReportYearSelect();
     ensureCatReportDateDefaults();
+    if (projectionChartInstance) {
+      requestAnimationFrame(() => {
+        try {
+          projectionChartInstance.resize();
+        } catch (_) {}
+      });
+    } else if (projectionChartCanvas && state.activeFamilyId) {
+      requestAnimationFrame(() => {
+        void refreshProjectionChart().catch(() => {});
+      });
+    }
   }
   if (v === "calendar") {
     lowBalanceLastQuery = { familyId: null, min: null, max: null, mode: null };
@@ -3058,10 +3069,11 @@ function ensureProjectionChartDefaults() {
 }
 
 async function refreshProjectionChart() {
+  if (!projectionChartCanvas || !chartDaysRange || !chartStart) return;
   show(chartErr, "");
-  if (projectionChartCanvas) projectionChartCanvas.dataset.status = "";
+  projectionChartCanvas.dataset.status = "";
   if (!state.activeFamilyId) throw new Error("Choose a family first");
-  if (!chartStart?.value) throw new Error("Chart start date is required");
+  if (!chartStart.value) throw new Error("Chart start date is required");
   const daysVal = Number(chartDaysRange.value);
   if (!Number.isFinite(daysVal) || daysVal < 1 || daysVal > 4000) {
     throw new Error("Horizon must be between 1 and 4000 days");
@@ -6727,7 +6739,7 @@ function toISODate(d) {
 }
 
 function setDefaultProjectionStart() {
-  projectionStart.value = toISODate(new Date());
+  if (projectionStart) projectionStart.value = toISODate(new Date());
 }
 
 function setDefaultChartStart() {
