@@ -162,6 +162,7 @@ try {
   const plan = parsePlanFromQuery();
   if (signupPlanNoteEl && plan) {
     signupPlanNoteEl.style.display = "block";
+    signupPlanNoteEl.classList.toggle("signup-plan-note--pro", plan === "pro");
     signupPlanNoteEl.textContent = plan === "pro" ? "Selected plan: Add Budgeting" : "Selected plan: Cash Forecast Only";
   }
 } catch (_) {}
@@ -189,6 +190,7 @@ async function applyInvitePrefill() {
   }
   if (signupPlanNoteEl) {
     signupPlanNoteEl.style.display = "block";
+    signupPlanNoteEl.classList.remove("signup-plan-note--pro");
     signupPlanNoteEl.textContent = "You are signing up to accept a family invitation. Use the email above.";
   }
 }

@@ -1222,6 +1222,36 @@ function applyCalendarMonthToPickers(ym) {
   }
 }
 
+/** Copy visible month/year selects into hidden fields when they drift (e.g. before first full load). */
+function syncCalendarMonthFromPickers() {
+  if (!calendarMonthNum || !calendarYear) return;
+  const y = String(calendarYear.value || "").trim();
+  const m = String(calendarMonthNum.value || "").trim();
+  if (!y || !m) return;
+  const ym = `${y}-${String(Number(m)).padStart(2, "0")}`;
+  if (calendarMonth) calendarMonth.value = ym;
+  if (monthInput) monthInput.value = ym;
+}
+
+/** YYYY-MM for the calendar: hidden field, sidebar month, or visible pickers; falls back to today. */
+function getCalendarViewYm() {
+  syncCalendarMonthFromPickers();
+  let month = String((calendarMonth && calendarMonth.value) || (monthInput && monthInput.value) || "").trim();
+  const partsValid = (s) => {
+    const p = String(s).split("-");
+    const y = Number(p[0]);
+    const mi = Number(p[1]);
+    return Number.isFinite(y) && Number.isFinite(mi) && mi >= 1 && mi <= 12;
+  };
+  if (!month || !partsValid(month)) {
+    const d = new Date();
+    month = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    applyCalendarMonthToPickers(month);
+    if (monthInput) monthInput.value = month;
+  }
+  return month;
+}
+
 async function onCalendarPickerChange() {
   if (!calendarMonth || !calendarMonthNum || !calendarYear) return;
   const y = calendarYear.value;
@@ -1676,6 +1706,8 @@ try {
 
 if (calViewSimplified) calViewSimplified.addEventListener("click", () => setCalendarDetailMode("simplified"));
 if (calViewDetailed) calViewDetailed.addEventListener("click", () => setCalendarDetailMode("detailed"));
+// Default month before first render so the grid is not cleared with an empty YYYY-MM.
+setDefaultMonth();
 // Apply initial toggle state
 setCalendarDetailMode(state.calendarDetailMode);
 
@@ -5463,9 +5495,8 @@ function setCalendarLoadingUi(on) {
 }
 
 async function loadMonthAndCalendar() {
-  if (!state.activeFamilyId) return;
   try {
-    setCalendarLoadingUi(true);
+    setCalendarLoadingUi(!!state.activeFamilyId);
     state.monthActualItems = [];
     state.monthExpectedItems = [];
     state.calendarExtraActualItems = [];
@@ -5474,13 +5505,19 @@ async function loadMonthAndCalendar() {
     state.reconciledDates = new Set();
     renderCalendar();
 
+    if (!state.activeFamilyId) {
+      renderSidebarPendingTransactionsForMonth();
+      renderMonthSummaryTotalsFromState();
+      return;
+    }
+
     await loadTransactions();
     await loadUpcomingTransactionsPanel();
     await loadExpectedCalendar();
     renderSidebarPendingTransactionsForMonth();
     renderMonthSummaryTotalsFromState();
     await loadCalendarExtras();
-    await loadReconciledDays(calendarMonth?.value || monthInput.value);
+    await loadReconciledDays(getCalendarViewYm());
     await loadCalendarMonthDaily();
     renderCalendar();
     await refreshLowBalanceAlert();
@@ -5498,7 +5535,7 @@ function computeMonthDailyBalancesLegacy() {
 
 function computeCalendarVisibleDailyBalancesClient() {
   const out = new Map();
-  const month = calendarMonth?.value || monthInput.value;
+  const month = getCalendarViewYm();
   if (!month) return out;
   const [yearPart, monthPart] = String(month).split("-");
   const year = Number(yearPart);
@@ -5837,12 +5874,11 @@ function renderCalendar() {
   const calendarDow = document.getElementById("calendarDow");
   if (calendarDow) calendarDow.innerHTML = "";
 
-  const month = calendarMonth?.value || monthInput.value;
-  if (!month || !state.activeFamilyId) return;
-
+  const month = getCalendarViewYm();
   const parts = String(month).split("-");
   const year = Number(parts[0]);
   const monthIndex = Number(parts[1]) - 1;
+  if (!Number.isFinite(year) || !Number.isFinite(monthIndex) || monthIndex < 0 || monthIndex > 11) return;
 
   const first = new Date(year, monthIndex, 1);
   const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
@@ -6266,8 +6302,8 @@ async function main() {
     await loadCategories();
     await loadAccounts();
     await loadExpectedTransactions();
-    await loadMonthAndCalendar();
   }
+  await loadMonthAndCalendar();
   if (balanceThresholdMin || balanceThresholdMax) {
     try {
       const legacy = localStorage.getItem(LOW_BALANCE_THRESHOLD_KEY) || "";

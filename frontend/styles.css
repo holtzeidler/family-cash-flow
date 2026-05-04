@@ -45,6 +45,9 @@ body.login-page .container > .grid{
   /* Space between header and cards */
   margin-top: 54px;
 }
+body.login-page.signup-page .container > .grid{
+  margin-top: 36px;
+}
 body.login-page .top-nav__inner--simple{
   justify-items: start;
 }
@@ -216,6 +219,23 @@ body.admin-page .top-nav .top-nav__inner.top-nav__inner--simple .app-title{
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* Wordmark image (replaces "Balance Whiz" text). Source may be a square brand sheet; crop to top band. */
+.app-title.app-title--logo{
+  font-size: 0;
+  line-height: 0;
+  letter-spacing: 0;
+  color: transparent;
+  white-space: normal;
+  overflow: visible;
+}
+.app-title--logo .app-logo{
+  display: block;
+  width: min(220px, 52vw);
+  height: 56px;
+  object-fit: cover;
+  object-position: 50% 0;
+  border-radius: 8px;
+}
 
 @media (max-width: 860px){
   :root{
@@ -234,6 +254,10 @@ body.admin-page .top-nav .top-nav__inner.top-nav__inner--simple .app-title{
   .app-title{
     font-size: 28px;
     text-align: center;
+  }
+  .app-title--logo .app-logo{
+    width: min(200px, 48vw);
+    height: 50px;
   }
   /* Plans / admin: keep title left + actions right on narrow screens (overrides generic centered nav). */
   body.plans-page .top-nav .top-nav__inner.top-nav__inner--simple,
@@ -1638,14 +1662,14 @@ textarea::placeholder{
   padding: 10px 10px 10px 12px;
   color: var(--muted);
   font-weight: 400;
-  font-size: 12px;
+  font-size: 13px;
 }
 .money-input input{
   border: none;
   background: transparent;
   border-radius: 0;
   padding-left: 0;
-  font-size: 13px;
+  font-size: 14px;
   padding-top: 9px;
   padding-bottom: 9px;
 }
@@ -2373,10 +2397,24 @@ textarea::placeholder{
   font-size: 13px;
 }
 
-/* Signup page: make plan note match calendar surface (white). */
-body.login-page #signupPlanNote.callout--muted{
-  background: var(--cal-surface);
-  border-color: color-mix(in srgb, var(--accent) 65%, rgba(0,0,0,0.10));
+/* Signup: plan / invite banner matches plan selection card headers (.plan-card__top). */
+body.signup-page #signupPlanNote.callout--muted{
+  margin-top: 0;
+  margin-bottom: 12px;
+  padding: 16px 20px 14px;
+  text-align: center;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  line-height: 1.25;
+  border: none;
+  border-radius: 14px;
+  background: var(--accent);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+}
+body.signup-page #signupPlanNote.callout--muted.signup-plan-note--pro{
+  background: #5b67b6;
 }
 
 /* Login page accordion */
@@ -2751,7 +2789,7 @@ body.admin-page .app-footer{
 
 /* Plans page */
 body.plans-page .container > .grid{
-  margin-top: 90px;
+  margin-top: 44px;
 }
 .plans-wrap{
   width: 100%;
@@ -2894,6 +2932,24 @@ body.plans-page .container > .grid{
 .plan-cta--strong{
   background: color-mix(in srgb, var(--accent) 18%, transparent);
   border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+}
+.plan-card--pro .plan-price__main--coming-soon{
+  font-size: clamp(22px, 3.6vw, 28px);
+  font-weight: 800;
+  color: var(--muted);
+  letter-spacing: 0.03em;
+}
+.plan-card--pro .plan-cta:disabled{
+  opacity: 0.58;
+  cursor: not-allowed;
+  filter: grayscale(0.25);
+  background: rgba(0, 0, 0, 0.06);
+  border-color: rgba(0, 0, 0, 0.12);
+  color: var(--muted);
+  box-shadow: none;
+}
+.plan-card--pro .plan-cta:disabled:hover{
+  filter: grayscale(0.25);
 }
 @media (max-width: 860px){
   .plans-grid{
@@ -3340,6 +3396,13 @@ body.plans-page .container > .grid{
 .tx-add-form .tx-add-vspace--sm{
   height: 14px;
 }
+/* Less air between the repeat toolbar rule and Notes */
+.tx-add-form .tx-add-schedule-toolbar + .tx-add-vspace.tx-add-vspace--lg{
+  height: 10px;
+}
+.tx-add-form #txAddRecurringBlock + .tx-add-vspace{
+  height: 8px;
+}
 .tx-add-form > .row > div > label:first-child,
 .tx-add-form > label[for="txAddDate"],
 .tx-add-form > label[for="txAddCategoryId"],
@@ -3478,18 +3541,23 @@ body.plans-page .container > .grid{
   flex-wrap: wrap;
   gap: 16px 28px;
   align-items: flex-start;
-  padding: 8px 0 18px;
+  padding: 8px 0 12px;
   border-bottom: 1px solid rgba(0,0,0,0.10);
 }
 .tx-add-schedule-toolbar__left{
   flex: 1 1 280px;
   min-width: 0;
 }
+.tx-add-schedule-toolbar__left .tx-add-schedule-field--end-date{
+  margin-top: 10px;
+  max-width: 16rem;
+}
 .tx-add-schedule-toolbar__right{
   flex: 0 1 14rem;
   min-width: 10rem;
 }
-.tx-add-schedule-toolbar__right:not(:has(#txAddEndCountWrap:not([hidden])), :has(#txAddEndDateWrap:not([hidden])), :has(#txAddLastTxnFieldWrap:not([hidden]))){
+/* Hide right column when only "Ends after" (and optional last-txn field) can live there; "Ends on" is under the recurring row. */
+.tx-add-schedule-toolbar__right:not(:has(#txAddEndCountWrap:not([hidden]))):not(:has(#txAddLastTxnFieldWrap:not([hidden]))){
   display: none;
 }
 .tx-add-repeat-row{
