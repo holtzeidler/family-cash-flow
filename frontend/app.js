@@ -1514,16 +1514,32 @@ function setActiveTopView(view) {
 }
 
 if (navCalendarView) {
-  navCalendarView.addEventListener("click", () => setActiveTopView("calendar"));
+  navCalendarView.addEventListener("click", (e) => {
+    if (e.currentTarget instanceof HTMLAnchorElement && String(e.currentTarget.getAttribute("href") || "").startsWith("/")) return;
+    e.preventDefault();
+    setActiveTopView("calendar");
+  });
 }
 if (navTransactionView) {
-  navTransactionView.addEventListener("click", () => setActiveTopView("transactions"));
+  navTransactionView.addEventListener("click", (e) => {
+    if (e.currentTarget instanceof HTMLAnchorElement && String(e.currentTarget.getAttribute("href") || "").startsWith("/")) return;
+    e.preventDefault();
+    setActiveTopView("transactions");
+  });
 }
 if (navSettingsView) {
-  navSettingsView.addEventListener("click", () => setActiveTopView("settings"));
+  navSettingsView.addEventListener("click", (e) => {
+    if (e.currentTarget instanceof HTMLAnchorElement && String(e.currentTarget.getAttribute("href") || "").startsWith("/")) return;
+    e.preventDefault();
+    setActiveTopView("settings");
+  });
 }
 if (navReportsView) {
-  navReportsView.addEventListener("click", () => setActiveTopView("reports"));
+  navReportsView.addEventListener("click", (e) => {
+    if (e.currentTarget instanceof HTMLAnchorElement && String(e.currentTarget.getAttribute("href") || "").startsWith("/")) return;
+    e.preventDefault();
+    setActiveTopView("reports");
+  });
 }
 
 document.querySelectorAll("#settingsViewPanel .settings-nav-item, #settingsSidebarNav .settings-nav-item").forEach((btn) => {
@@ -1693,6 +1709,12 @@ if (catReportRunBtn) {
 }
 
 function getInitialTopViewFromUrlOrStorage() {
+  try {
+    const forced = window.__BW_FORCE_VIEW ? String(window.__BW_FORCE_VIEW).trim().toLowerCase() : "";
+    if (forced === "calendar" || forced === "transactions" || forced === "reports" || forced === "settings") {
+      return forced;
+    }
+  } catch (_) {}
   try {
     const q = new URLSearchParams(window.location.search);
     const urlView = String(q.get("view") || "").trim().toLowerCase();

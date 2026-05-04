@@ -1,0 +1,1061 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>BalanceWhiz</title>
+    <link rel="icon" href="../favicon.png" type="image/png" />
+    <script>
+      window.API_BASE = "__API_BASE__";
+      window.__BW_FORCE_VIEW = "reports";
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="../styles.css?v=200" />
+  </head>
+  <body>
+    <div class="container">
+      <div id="familiesErr" class="error"></div>
+
+      <div class="top-nav" role="navigation" aria-label="Primary">
+        <div class="top-nav__inner">
+          <div class="top-nav__title" aria-label="App title">
+            <h1 class="app-title app-title--logo">
+              <img
+                class="app-logo"
+                src="../assets/balance-whiz-logo.png?v=20260504"
+                width="220"
+                height="56"
+                alt="Balance Whiz"
+                decoding="async"
+                fetchpriority="high"
+              />
+            </h1>
+          </div>
+          <div class="top-nav__tabs" role="tablist" aria-label="Views">
+            <a class="top-nav__tab" id="navCalendarView" role="tab" aria-selected="true" href="/calendar">Calendar View</a>
+            <a class="top-nav__tab" id="navTransactionView" role="tab" aria-selected="false" href="/transactions">Transaction View</a>
+            <a class="top-nav__tab is-active" id="navReportsView" role="tab" aria-selected="false" href="/reports">Reports</a>
+            <a class="top-nav__tab" id="navSettingsView" role="tab" aria-selected="false" href="/settings">Settings</a>
+          </div>
+          <div class="top-nav__actions" aria-label="Account actions">
+            <a id="platformAdminLink" class="top-nav__admin" href="/platform-admin" hidden>Admin</a>
+            <button type="button" id="logoutBtn" class="top-nav__logout">Logout</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="app-layout">
+        <aside class="sidebar">
+            <div class="sidebar-sticky-head">
+            <div class="sidebar-top">
+              <div class="header-actions">
+                <!-- Kept for JS (active family); hidden — single-family workflow for now -->
+                <select id="familySelect" class="family-select-hidden" aria-hidden="true" tabindex="-1"></select>
+              </div>
+            </div>
+
+            <div id="viewOnlyBanner" class="view-only-banner" hidden role="status"></div>
+
+            <div class="sidebar-balance-threshold-alerts" id="sidebarBalanceThresholdAlerts" aria-label="Balance threshold alerts">
+              <div class="cash-outlook-head" id="cashOutlookHead" hidden>
+                <div class="cash-outlook-title" id="cashOutlookTitle">Cash Outlook</div>
+                <button type="button" id="sidebarBalanceThresholdHint" class="sidebar-balance-threshold-hint-inline" hidden></button>
+              </div>
+              <div id="sidebarLowBalanceBanner" class="calendar-low-balance calendar-low-balance--sidebar" style="display: none" role="status"></div>
+              <div id="sidebarHighBalanceBanner" class="calendar-low-balance calendar-low-balance--sidebar calendar-low-balance--high" style="display: none" role="status"></div>
+            </div>
+
+            <div id="settingsSidebarNav" class="card settings-nav settings-nav--sidebar" hidden aria-label="Settings sections">
+              <button type="button" class="settings-nav-item is-active" data-settings-key="accountDetails">
+                <span class="settings-nav-item__label">Account Details</span>
+                <span class="settings-nav-item__chev" aria-hidden="true">▸</span>
+              </button>
+              <button type="button" class="settings-nav-item" data-settings-key="categories">
+                <span class="settings-nav-item__label">Categories</span>
+                <span class="settings-nav-item__chev" aria-hidden="true">▸</span>
+              </button>
+              <button type="button" class="settings-nav-item" data-settings-key="familySharing">
+                <span class="settings-nav-item__label">Family sharing</span>
+                <span class="settings-nav-item__chev" aria-hidden="true">▸</span>
+              </button>
+              <button type="button" class="settings-nav-item" data-settings-key="billing">
+                <span class="settings-nav-item__label">Billing</span>
+                <span class="settings-nav-item__chev" aria-hidden="true">▸</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="card chart-card" id="chartPanel">
+            <div class="chart-panel-head">
+              <h2>Balance trendline</h2>
+              <button
+                type="button"
+                class="calendar-collapse-btn"
+                id="chartCollapseBtn"
+                aria-expanded="true"
+                aria-controls="chartPanelBody"
+                title="Collapse chart"
+              >
+                <svg class="calendar-collapse-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M6 9l6 6 6-6" />
+                </svg>
+              </button>
+            </div>
+            <div id="chartPanelBody" class="chart-panel-body">
+            <div class="chart-range-anchor">
+              <div class="chart-range-header">
+                <div class="chart-range-header__titles">
+                  <div class="chart-range-header__kicker">Balances</div>
+                  <button
+                    type="button"
+                    id="chartRangeDisplay"
+                    class="chart-range-display"
+                    aria-haspopup="dialog"
+                    aria-expanded="false"
+                    aria-controls="chartRangePopover"
+                  >
+                    <span id="chartRangeDisplayText">—</span>
+                  </button>
+                </div>
+              </div>
+              <div
+                id="chartRangePopover"
+                class="chart-range-popover"
+                hidden
+                role="dialog"
+                aria-label="Chart date range"
+                aria-modal="true"
+              >
+                <div class="chart-range-popover__grid" role="group" aria-label="Preset ranges">
+                  <button type="button" class="chart-range-preset" data-range="this_week">This Week</button>
+                  <button type="button" class="chart-range-preset" data-range="last_week">Last Week</button>
+                  <button type="button" class="chart-range-preset" data-range="rolling_week">Rolling Week</button>
+                  <button type="button" class="chart-range-preset" data-range="this_month">This Month</button>
+                  <button type="button" class="chart-range-preset" data-range="last_month">Last Month</button>
+                  <button type="button" class="chart-range-preset" data-range="rolling_month">Rolling Month</button>
+                  <button type="button" class="chart-range-preset" data-range="this_quarter">This Quarter</button>
+                  <button type="button" class="chart-range-preset" data-range="last_quarter">Last Quarter</button>
+                  <button type="button" class="chart-range-preset" data-range="rolling_quarter">Rolling Quarter</button>
+                  <button type="button" class="chart-range-preset" data-range="this_year">This Year</button>
+                  <button type="button" class="chart-range-preset" data-range="last_year">Last Year</button>
+                  <button type="button" class="chart-range-preset" data-range="rolling_year">Rolling Year</button>
+                </div>
+                <div class="chart-range-popover__custom-block">
+                  <button type="button" id="chartRangeCustomToggle" class="chart-range-custom-toggle">Custom range</button>
+                  <div id="chartRangeCustomFields" class="chart-range-custom-fields" hidden>
+                    <label class="chart-range-custom-field">
+                      <span>Start</span>
+                      <input id="chartRangeCustomStart" type="date" />
+                    </label>
+                    <label class="chart-range-custom-field">
+                      <span>End</span>
+                      <input id="chartRangeCustomEnd" type="date" />
+                    </label>
+                  </div>
+                </div>
+                <p id="chartRangePopoverSummary" class="chart-range-popover__summary" aria-live="polite"></p>
+                <div class="chart-range-popover__actions">
+                  <button type="button" id="chartRangeApplyBtn" class="chart-range-apply-btn">Apply</button>
+                  <button type="button" id="chartRangeCancelBtn" class="chart-range-cancel-btn">Cancel</button>
+                </div>
+              </div>
+            </div>
+            <div class="chart-panel-controls" hidden aria-hidden="true">
+                <div class="chart-ctrl chart-ctrl-start">
+                  <label for="chartStart">Start date</label>
+                  <input id="chartStart" type="date" />
+                </div>
+                <div class="chart-ctrl chart-ctrl-zoom">
+                  <label for="chartDaysRange">Horizon (days)</label>
+                  <div class="chart-zoom-row">
+                    <input id="chartDaysRange" type="range" min="1" max="4000" step="1" value="365" />
+                    <span class="meta chart-days-meta" id="chartDaysLabel">365 days</span>
+                  </div>
+                </div>
+                <button type="button" id="runProjectionChartBtn" class="chart-update-btn">Update</button>
+            </div>
+            <div class="chart-duration-bar" role="tablist" aria-label="Chart range preset">
+              <button type="button" class="chart-duration-btn" data-preset="1D" title="1 day">1D</button>
+              <button type="button" class="chart-duration-btn" data-preset="5D" title="5 days">5D</button>
+              <button type="button" class="chart-duration-btn" data-preset="1M" title="1 month">1M</button>
+              <button type="button" class="chart-duration-btn" data-preset="6M" title="6 months">6M</button>
+              <button type="button" class="chart-duration-btn" data-preset="YTD" title="From start date through Dec 31">YTD</button>
+              <button type="button" class="chart-duration-btn" data-preset="1Y" title="1 year">1Y</button>
+              <button type="button" class="chart-duration-btn" data-preset="5Y" title="5 years">5Y</button>
+              <button type="button" class="chart-duration-btn" data-preset="MAX" title="Maximum (4000 days)">MAX</button>
+            </div>
+            <div id="chartErr" class="error"></div>
+            <div class="projection-chart-wrap">
+              <div id="projectionChartEmpty" class="projection-chart-empty" style="display: none" aria-live="polite"></div>
+              <canvas id="projectionChartCanvas" class="projection-chart-canvas"></canvas>
+            </div>
+            </div>
+          </div>
+
+          <div style="height: 14px"></div>
+
+          <div id="sidebarPendingTxCard" class="card sidebar-section" aria-label="Pending transactions for this month">
+            <div class="sidebar-section-head">
+              <h2 id="sidebarPendingTitle">Needs Attention</h2>
+            </div>
+            <div class="sidebar-section-body">
+              <div class="list" id="sidebarPendingTxList"></div>
+            </div>
+          </div>
+
+          <!-- Add-transaction form lives here but is hidden; the calendar date click opens it in a modal. -->
+          <div id="txAddFormHome" class="sidebar-add-tx-form" style="display:none;">
+            <div id="txAddFormRoot" class="tx-add-form">
+              <div id="txAddErr" class="error"></div>
+              <div class="form-row-h">
+                <div class="form-row-h__label"><label>Type</label></div>
+                <div class="form-row-h__field">
+                  <div class="kind-toggle" role="radiogroup" aria-label="Transaction type">
+                    <label class="kind-opt"><input type="radio" name="txAddKind" value="expense" checked /> Expense</label>
+                    <label class="kind-opt"><input type="radio" name="txAddKind" value="income" /> Income</label>
+                  </div>
+                </div>
+              </div>
+              <div class="tx-add-vspace" aria-hidden="true"></div>
+              <div class="form-row-h">
+                <div class="form-row-h__label"><label for="txAddAmount">Amount</label></div>
+                <div class="form-row-h__field">
+                  <div class="money-input">
+                    <span class="money-input__prefix" aria-hidden="true">$</span>
+                    <input id="txAddAmount" type="number" min="0" step="0.01" placeholder="0.00" />
+                  </div>
+                </div>
+              </div>
+              <div class="tx-add-vspace" aria-hidden="true"></div>
+              <div class="form-row-h">
+                <div class="form-row-h__label"><label for="txAddCategoryId">Category</label></div>
+                <div class="form-row-h__field"><select id="txAddCategoryId"></select></div>
+              </div>
+              <div id="txAddCategoryColorRow" class="cat-color-row" hidden>
+                <div class="cat-color-row__label">Select color (optional)</div>
+                <div class="cat-color-row__swatches" id="txAddCategoryColorSwatches"></div>
+                <button type="button" class="cat-color-row__clear secondary" id="txAddCategoryColorClear" hidden>Clear</button>
+              </div>
+              <div class="tx-add-vspace" aria-hidden="true"></div>
+              <div class="form-row-h">
+                <div class="form-row-h__label"><label for="txAddDate" id="txAddDateLabel">Date</label></div>
+                <div class="form-row-h__field"><input id="txAddDate" type="date" /></div>
+              </div>
+              <div class="tx-add-vspace tx-add-vspace--lg" aria-hidden="true"></div>
+              <div class="tx-add-schedule-toolbar" aria-label="Repeat and schedule">
+                <div class="tx-add-schedule-toolbar__left">
+                  <div class="tx-add-schedule-question">Make this recurring?</div>
+                  <div class="tx-add-repeat-row">
+                    <label class="tx-add-repeat-yes">
+                      <input id="txAddRepeats" type="checkbox" />
+                      <span class="sr-only">Yes</span>
+                    </label>
+                    <div id="txAddRecurrenceWrap" class="tx-add-recurrence-inline" hidden>
+                      <span class="tx-add-recurrence-inline__every">every</span>
+                      <select id="txAddRecurrence" class="tx-add-recurrence-select" title="How often this repeats">
+                        <option value="monthly" selected>month</option>
+                        <option value="twice_monthly">2× / month</option>
+                        <option value="weekly">week</option>
+                        <option value="semiannual">6 months</option>
+                        <option value="yearly">year</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div id="txAddEndDateWrap" class="tx-add-schedule-field tx-add-schedule-field--end-date" hidden>
+                    <label for="txAddEndDate" title="Optional. End date for this recurring transaction. Blank = never ends.">Ends on</label>
+                    <input id="txAddEndDate" type="date" title="Optional. Last date this schedule can occur." />
+                  </div>
+                </div>
+                <div class="tx-add-schedule-toolbar__right">
+                  <div id="txAddEndCountWrap" class="tx-add-schedule-field tx-add-schedule-field--end-count" hidden>
+                    <label for="txAddEndCount" title="Optional. Number of times this recurring transaction happens. Blank = never ends.">Ends after</label>
+                    <input id="txAddEndCount" type="number" min="1" step="1" placeholder="e.g. 12" title="Optional. Total number of occurrences." />
+                    <span class="tx-add-field-hint">occurrences</span>
+                  </div>
+                </div>
+              </div>
+              <div class="tx-add-vspace tx-add-vspace--lg" aria-hidden="true"></div>
+              <div id="txAddRecurringBlock" style="display: none">
+                <div class="tx-add-vspace tx-add-vspace--sm" aria-hidden="true"></div>
+                <div id="txAddTwiceMonthlyFields" class="expected-second-day-row" style="display: none">
+                  <label for="txAddSecondDayOfMonth">2nd day of month</label>
+                  <input
+                    id="txAddSecondDayOfMonth"
+                    type="number"
+                    min="1"
+                    max="31"
+                    step="1"
+                    placeholder="e.g. 15"
+                    title="Second scheduled day each month; must differ from the start date’s calendar day."
+                  />
+                  <p style="margin: 6px 0 0; font-size: 12px; color: var(--muted)">
+                    Required for twice monthly: other day of the month (1–31), not the same as the start date’s day.
+                  </p>
+                </div>
+                <div class="tx-add-vspace tx-add-vspace--sm" aria-hidden="true"></div>
+                <div class="form-row-h">
+                  <div class="form-row-h__label"><label for="txAddAccountId">Account</label></div>
+                  <div class="form-row-h__field"><select id="txAddAccountId"></select></div>
+                </div>
+                <div class="tx-add-vspace tx-add-vspace--sm" aria-hidden="true"></div>
+                <label class="reimbursable-field" for="txAddVariable">
+                  <span class="reimbursable-field__label">Variable (estimate)</span>
+                  <input id="txAddVariable" type="checkbox" title="Amount is a placeholder until you enter actuals" />
+                </label>
+              </div>
+              <div class="tx-add-vspace" aria-hidden="true"></div>
+              <div class="form-row-h">
+                <div class="form-row-h__label"><label for="txAddNotes">Notes</label></div>
+                <div class="form-row-h__field">
+                  <input id="txAddNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
+                </div>
+              </div>
+              <div class="modal-actions">
+                <div class="row two">
+                  <button type="button" id="txAddSave">Add</button>
+                  <button type="button" id="txAddCancel" class="secondary">Cancel</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </aside>
+
+        <div class="main-column">
+          <div id="calendarViewPanel" class="app-view">
+            <div class="card calendar-panel" id="calendarPanel">
+              <div class="calendar-loading-indicator" id="calendarLoadingIndicator" hidden aria-live="polite">
+                <div class="calendar-loading-indicator__inner" role="status" aria-label="Loading calendar">
+                  <span class="calendar-spinner" aria-hidden="true"></span>
+                  <span>Loading…</span>
+                </div>
+              </div>
+              <div class="calendar-panel-sticky-zone">
+              <div class="calendar-sticky-header" id="calendarStickyHeader">
+                <div class="row">
+                  <div class="calendar-nav-block">
+                    <div class="calendar-nav-bar" role="group" aria-label="Calendar navigation">
+                      <button type="button" class="cal-today-btn" id="calendarGoToday" title="Go to current month">
+                        <svg class="cal-today-ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                          <line x1="16" y1="2" x2="16" y2="6"></line>
+                          <line x1="8" y1="2" x2="8" y2="6"></line>
+                          <line x1="3" y1="10" x2="21" y2="10"></line>
+                        </svg>
+                        Today
+                      </button>
+
+                      <div class="cal-month-year">
+                        <div class="cal-select-wrap">
+                          <select id="calendarMonthNum" aria-label="Month">
+                            <option value="1">January</option>
+                            <option value="2">February</option>
+                            <option value="3">March</option>
+                            <option value="4">April</option>
+                            <option value="5">May</option>
+                            <option value="6">June</option>
+                            <option value="7">July</option>
+                            <option value="8">August</option>
+                            <option value="9">September</option>
+                            <option value="10">October</option>
+                            <option value="11">November</option>
+                            <option value="12">December</option>
+                          </select>
+                          <span class="cal-select-caret" aria-hidden="true">▾</span>
+                        </div>
+                        <div class="cal-select-wrap">
+                          <select id="calendarYear" aria-label="Year"></select>
+                          <span class="cal-select-caret" aria-hidden="true">▾</span>
+                        </div>
+
+                        <div class="cal-nav-arrows">
+                          <button type="button" class="cal-arrow-btn" id="calendarPrevMonth" aria-label="Previous month" title="Previous month">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                              <path d="M15 18l-6-6 6-6" />
+                            </svg>
+                          </button>
+                          <button type="button" class="cal-arrow-btn" id="calendarNextMonth" aria-label="Next month" title="Next month">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                              <path d="M9 18l6-6-6-6" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+
+                      <div class="cal-mode-wrap" hidden aria-hidden="true">
+                        <label for="calendarMode" class="sr-only">Show</label>
+                        <select id="calendarMode" class="cal-mode-select" aria-label="Show" tabindex="-1">
+                          <option value="both" selected>Actual + Expected</option>
+                          <option value="actual">Actual only</option>
+                          <option value="expected">Expected only</option>
+                        </select>
+                        <span class="cal-select-caret" aria-hidden="true">▾</span>
+                      </div>
+
+                      <div class="cal-detail-toggle" role="group" aria-label="Calendar detail">
+                        <button type="button" class="cal-detail-btn is-active" id="calViewDetailed">Transactions</button>
+                        <button type="button" class="cal-detail-btn" id="calViewSimplified">Balance Only</button>
+                      </div>
+                    </div>
+                    <input type="hidden" id="calendarMonth" />
+                  </div>
+                </div>
+                <div style="height:6px;"></div>
+                <div id="calendarErr" class="error"></div>
+                <div id="calendarDow" class="calendar-dow-row" aria-hidden="true"></div>
+              </div>
+              </div>
+              <div id="calendarPanelBody" class="calendar-panel-body">
+              <div class="calendar-scroll">
+                <div id="calendarGrid"></div>
+              </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="transactionViewPanel" class="app-view" hidden>
+            <div class="card sidebar-section sidebar-section--collapsed" data-sidebar-key="allTransactions">
+              <div class="sidebar-section-head">
+                <h2>All Upcoming Transactions</h2>
+                <button
+                  type="button"
+                  class="sidebar-collapse-btn"
+                  aria-expanded="false"
+                  aria-controls="sidebarBodyAllTransactions"
+                  title="Expand All Upcoming Transactions"
+                >
+                  <svg class="sidebar-collapse-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M6 9l6 6 6-6" />
+                  </svg>
+                </button>
+              </div>
+              <div id="sidebarBodyAllTransactions" class="sidebar-section-body">
+                <div class="row three">
+                  <div>
+                    <label for="upcomingKindFilter">Type</label>
+                    <select id="upcomingKindFilter">
+                      <option value="all" selected>All</option>
+                      <option value="expense">Expense</option>
+                      <option value="income">Income</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label for="upcomingStartDate">Start</label>
+                    <input id="upcomingStartDate" type="date" />
+                  </div>
+                  <div>
+                    <label for="upcomingEndDate">End</label>
+                    <input id="upcomingEndDate" type="date" />
+                  </div>
+                </div>
+                <div style="height: 10px"></div>
+                <div class="row three">
+                  <div>
+                    <label for="upcomingSourceFilter">Show</label>
+                    <select id="upcomingSourceFilter">
+                      <option value="all" selected>Recurring + one-time</option>
+                      <option value="one_time">One-time only</option>
+                      <option value="recurring">Recurring only</option>
+                    </select>
+                  </div>
+                  <div id="upcomingRecurrenceWrap" style="display:none;">
+                    <label for="upcomingRecurrenceFilter">Frequency</label>
+                    <select id="upcomingRecurrenceFilter">
+                      <option value="all" selected>All</option>
+                      <option value="weekly">Weekly</option>
+                      <option value="monthly">Monthly</option>
+                      <option value="twice_monthly">Twice monthly</option>
+                      <option value="semiannual">Twice yearly</option>
+                      <option value="yearly">Annual</option>
+                    </select>
+                  </div>
+                  <div style="display:flex; align-items:end;">
+                    <button type="button" id="upcomingApplyBtn" style="width:100%;">Apply</button>
+                  </div>
+                </div>
+                <div style="height: 10px"></div>
+                <div class="list" id="txListMain"></div>
+              </div>
+            </div>
+
+            <div style="height: 14px"></div>
+
+            <div class="card sidebar-section" data-sidebar-key="uncategorizedTransactions">
+              <div class="sidebar-section-head">
+                <h2>Uncategorized Transactions</h2>
+              </div>
+              <div class="sidebar-section-body">
+                <div id="uncatTxErr" class="error"></div>
+                <div class="list" id="uncatTxList" aria-live="polite"></div>
+                <div style="height: 10px"></div>
+                <button type="button" id="uncatTxSaveBtn">Save</button>
+              </div>
+            </div>
+
+          </div>
+
+          <div id="settingsViewPanel" class="app-view" hidden>
+            <div class="settings-layout settings-layout--sidebar-nav">
+              <div class="settings-content card">
+                <div class="settings-pane is-active" data-settings-pane="accountDetails">
+                  <div class="balance-threshold-box" aria-label="Balance thresholds">
+                    <div class="form-row-h">
+                      <div class="form-row-h__label"><label for="balanceThresholdMin">Minimum balance</label></div>
+                      <div class="form-row-h__field">
+                        <div class="money-input threshold-input">
+                          <span class="money-input__prefix" aria-hidden="true">$</span>
+                          <input id="balanceThresholdMin" type="number" step="0.01" placeholder="e.g. 1000" />
+                        </div>
+                      </div>
+                    </div>
+                    <div class="tx-add-vspace" aria-hidden="true"></div>
+                    <div class="form-row-h">
+                      <div class="form-row-h__label"><label for="balanceThresholdMax">Maximum balance</label></div>
+                      <div class="form-row-h__field">
+                        <div class="money-input threshold-input">
+                          <span class="money-input__prefix" aria-hidden="true">$</span>
+                          <input id="balanceThresholdMax" type="number" step="0.01" placeholder="e.g. 50000" />
+                        </div>
+                      </div>
+                    </div>
+                    <p class="balance-threshold-hint">
+                      Leave a field blank to disable that alert. The calendar sidebar shows the next projected crossing for each threshold you set.
+                    </p>
+                  </div>
+
+                  <div class="card settings-accounts-card" id="settingsAccountsCard" aria-labelledby="settingsAccountsHeading">
+                    <div class="sidebar-section-head">
+                      <h2 id="settingsAccountsHeading">Accounts</h2>
+                    </div>
+                    <div class="sidebar-section-body">
+                      <div class="list" id="accountsList"></div>
+                      <button type="button" id="openAccountModalBtn">Add New Account</button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="settings-pane" data-settings-pane="categories" hidden>
+                  <div class="categories-toolbar" role="toolbar" aria-label="Category actions">
+                    <button type="button" id="addCategoryGroupBtn">Add group</button>
+                    <div id="addGroupInline" class="add-group-inline" hidden>
+                      <label for="newGroupName" class="sr-only">New group name</label>
+                      <input id="newGroupName" type="text" placeholder="New group name" />
+                      <button type="button" id="saveGroupBtn">Save</button>
+                      <button type="button" id="cancelGroupBtn" class="secondary">Cancel</button>
+                    </div>
+                  </div>
+                  <p class="meta categories-toolbar-hint">
+                    Groups are section headers (not selectable in transaction pickers). Drag a group header or a category row to reorder. New categories are
+                    added to the group you pick below.
+                  </p>
+                  <div id="categoriesTree" class="cat-tree" aria-live="polite"></div>
+                  <div style="height:10px;"></div>
+                  <div class="categories-actions">
+                    <div class="categories-new-field">
+                      <label for="newCategoryGroupId">Group</label>
+                      <select id="newCategoryGroupId" aria-label="Group for new category"></select>
+                    </div>
+                    <div class="categories-new-field">
+                      <label for="newCategoryName">New category</label>
+                      <input id="newCategoryName" type="text" placeholder="e.g. Groceries" />
+                    </div>
+                    <button id="addCategoryBtn">Add category</button>
+                  </div>
+                  <div id="catErr" class="error"></div>
+                </div>
+
+                <div class="settings-pane" data-settings-pane="familySharing" hidden>
+                  <p class="meta">
+                    The first person who creates a family is the owner. Owners can invite a partner by email (they can create an account from the link) or
+                    add someone who already uses Balance Whiz.
+                  </p>
+                  <div id="familyInviteWrap" class="family-invite-wrap" hidden>
+                    <h3 class="settings-subhead">Invite by email</h3>
+                    <p class="meta">
+                      Sends an invitation link. Your partner should use the same email when they sign up or log in. Email delivery uses the same Resend or
+                      SMTP settings as the contact form on the server.
+                    </p>
+                    <div class="form-row-h">
+                      <div class="form-row-h__label"><label for="familyInviteEmail">Email</label></div>
+                      <div class="form-row-h__field">
+                        <input id="familyInviteEmail" type="email" autocomplete="off" placeholder="name@example.com" />
+                      </div>
+                    </div>
+                    <div class="form-row-h">
+                      <div class="form-row-h__label"><label for="familyInviteAccess">Access</label></div>
+                      <div class="form-row-h__field">
+                        <select id="familyInviteAccess">
+                          <option value="view">View only</option>
+                          <option value="edit">Can edit</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="tx-add-vspace" aria-hidden="true"></div>
+                    <button type="button" id="familySendInviteBtn">Send email invite</button>
+                    <div class="tx-add-vspace" aria-hidden="true"></div>
+                    <h3 class="settings-subhead">Add existing account</h3>
+                    <p class="meta">If they already have a Balance Whiz login, you can add them immediately without email.</p>
+                    <button type="button" id="familyInviteBtn">Add to this family</button>
+                  </div>
+                  <div class="tx-add-vspace" aria-hidden="true"></div>
+                  <h3 class="settings-subhead">Pending email invites</h3>
+                  <div id="familyPendingInvites" class="family-pending-invites"></div>
+                  <div class="tx-add-vspace" aria-hidden="true"></div>
+                  <h3 class="settings-subhead">Members</h3>
+                  <div id="familyMembersList" class="family-members-list"></div>
+                  <div id="familyMembersErr" class="error"></div>
+                </div>
+
+                <div class="settings-pane" data-settings-pane="billing" hidden>
+                  <p class="meta">
+                    Your billing details are shown here.
+                  </p>
+                  <div class="form-row-h">
+                    <div class="form-row-h__label"><label>Plan</label></div>
+                    <div class="form-row-h__field"><div id="billingPlan">—</div></div>
+                  </div>
+                  <div class="form-row-h">
+                    <div class="form-row-h__label"><label>Billing frequency</label></div>
+                    <div class="form-row-h__field"><div id="billingFrequency">—</div></div>
+                  </div>
+                  <div class="form-row-h">
+                    <div class="form-row-h__label"><label>Next billing date</label></div>
+                    <div class="form-row-h__field"><div id="billingNextDate">—</div></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="reportsViewPanel" class="app-view" hidden>
+            <div class="card category-report-card" id="categoryTotalsReportCard">
+              <h2 class="category-report-card__title">Category totals</h2>
+              <p class="meta category-report-card__hint">
+                Totals by category for any date range. Choose Actual + future estimates to include scheduled recurring amounts from the day after the
+                split date through the end date (split uses today in UTC; same rules as the calendar).
+              </p>
+              <div class="category-report-presets" role="group" aria-label="Quick ranges">
+                <button type="button" class="category-report-preset-btn" id="catReportPreset30">Last 30 days</button>
+                <button type="button" class="category-report-preset-btn" id="catReportPresetYtd">YTD</button>
+                <button type="button" class="category-report-preset-btn" id="catReportPresetMonth">This month</button>
+                <label class="category-report-year-label">
+                  <span class="category-report-year-label__text">Calendar year</span>
+                  <select id="catReportYearSelect" class="category-report-year-select" title="Full Jan 1–Dec 31 for the selected year">
+                    <option value="">—</option>
+                  </select>
+                </label>
+              </div>
+              <div style="height: 12px"></div>
+              <div class="row two category-report-dates">
+                <div>
+                  <label for="catReportStart">Start</label>
+                  <input id="catReportStart" type="date" />
+                </div>
+                <div>
+                  <label for="catReportEnd">End</label>
+                  <input id="catReportEnd" type="date" />
+                </div>
+              </div>
+              <div style="height: 12px"></div>
+              <div class="category-report-mode" role="radiogroup" aria-label="Report basis">
+                <label class="kind-opt category-report-mode__opt"
+                  ><input type="radio" name="catReportMode" value="actual" checked /> Actual only</label
+                >
+                <label class="kind-opt category-report-mode__opt"
+                  ><input type="radio" name="catReportMode" value="actual_plus_estimated" /> Actual + future estimates</label
+                >
+              </div>
+              <div style="height: 12px"></div>
+              <button type="button" id="catReportRunBtn">Load report</button>
+              <div id="catReportErr" class="error"></div>
+              <p class="meta category-report-summary" id="catReportSummary" style="display: none"></p>
+              <div id="catReportTableWrap" class="category-report-table-wrap"></div>
+            </div>
+
+            <div style="height: 14px"></div>
+
+            <div class="card sidebar-section sidebar-section--collapsed" data-sidebar-key="month">
+              <div class="sidebar-section-head">
+                <h2>Month summary</h2>
+                <button
+                  type="button"
+                  class="sidebar-collapse-btn"
+                  aria-expanded="false"
+                  aria-controls="sidebarBodyMonth"
+                  title="Expand Month summary"
+                >
+                  <svg class="sidebar-collapse-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M6 9l6 6 6-6" />
+                  </svg>
+                </button>
+              </div>
+              <div id="sidebarBodyMonth" class="sidebar-section-body">
+              <div class="row two">
+                <div>
+                  <label for="monthInput">Month</label>
+                  <input id="monthInput" type="month" />
+                </div>
+                <div style="display:flex; align-items:end;">
+                  <button id="refreshBtn" style="width:100%;">Refresh</button>
+                </div>
+              </div>
+              <div style="height:12px;"></div>
+              <div class="totals" id="totals"></div>
+              <div id="txErr" class="error"></div>
+              </div>
+            </div>
+
+            <div style="height: 14px"></div>
+
+            <div class="card projection-panel projection-panel--collapsed" id="projectionPanel">
+              <div class="panel-header">
+                <h2 style="margin:0;">5-year daily projection</h2>
+                <button type="button" class="panel-collapse-btn" id="projectionCollapseBtn" aria-expanded="false" title="Expand projection">
+                  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path d="M6 9l6 6 6-6" />
+                  </svg>
+                </button>
+              </div>
+              <div class="projection-panel-body" id="projectionPanelBody">
+              <div class="row two">
+                <div>
+                  <label for="projectionStart">Start date</label>
+                  <input id="projectionStart" type="date" />
+                </div>
+                <div style="display:flex; align-items:end;">
+                  <button id="runProjectionBtn" style="width:100%;">Run projection</button>
+                </div>
+              </div>
+              <div style="height:12px;"></div>
+              <div class="totals" id="projectionSummary"></div>
+              <div id="projectionErr" class="error"></div>
+              <div class="list" id="projectionDailyList"></div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <footer class="app-footer" role="contentinfo">
+        <div class="app-footer__inner">
+          <span class="app-footer__brand" aria-hidden="true"></span>
+          <a href="/contactus" class="app-footer__link">Contact Us</a>
+        </div>
+      </footer>
+    </div>
+
+    <div id="txEditModal" class="modal-overlay" aria-hidden="true">
+      <div id="txEditInner" class="modal" role="dialog" aria-labelledby="txEditTitle">
+        <div id="txEditIntro">
+          <h3 id="txEditTitle" class="sr-only">Edit transaction</h3>
+          <div id="txEditErr" class="error"></div>
+          <input type="hidden" id="txEditId" value="" />
+          <input type="hidden" id="expectedEditId" value="" />
+          <input type="hidden" id="instanceExpectedTxId" value="" />
+        </div>
+
+        <div class="tx-edit-top">
+          <div id="txEditModeBanner" class="tx-edit-mode-banner" style="display: none" role="presentation"></div>
+          <div id="txEditNotesRow">
+            <div class="form-row-h">
+              <div class="form-row-h__label"><label for="txEditNotes" id="txEditNotesLabel">Notes</label></div>
+              <div class="form-row-h__field">
+                <input id="txEditNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="expectedEditInstancePanel" class="expected-edit-panel">
+          <div class="tx-edit-divider" aria-hidden="true"></div>
+
+          <div class="form-row-h">
+            <div class="form-row-h__label"><label>Type</label></div>
+            <div class="form-row-h__field">
+              <div class="kind-toggle" role="radiogroup" aria-label="Transaction type">
+                <label class="kind-opt"><input type="radio" name="txEditKind" value="expense" checked /> Expense</label>
+                <label class="kind-opt"><input type="radio" name="txEditKind" value="income" /> Income</label>
+              </div>
+            </div>
+          </div>
+          <div class="tx-add-vspace" aria-hidden="true"></div>
+          <div class="form-row-h">
+            <div class="form-row-h__label"><label for="txEditAmount">Amount</label></div>
+            <div class="form-row-h__field">
+              <div class="money-input">
+                <span class="money-input__prefix" aria-hidden="true">$</span>
+                <input id="txEditAmount" type="number" min="0" step="0.01" placeholder="0.00" />
+              </div>
+            </div>
+          </div>
+          <div class="tx-add-vspace" aria-hidden="true"></div>
+          <div class="form-row-h">
+            <div class="form-row-h__label"><label for="txEditCategoryId">Category</label></div>
+            <div class="form-row-h__field"><select id="txEditCategoryId"></select></div>
+          </div>
+          <div id="txEditCategoryColorRow" class="cat-color-row" hidden>
+            <div class="cat-color-row__label">Select color (optional)</div>
+            <div class="cat-color-row__swatches" id="txEditCategoryColorSwatches"></div>
+            <button type="button" class="cat-color-row__clear secondary" id="txEditCategoryColorClear" hidden>Clear</button>
+          </div>
+          <div class="tx-add-vspace" aria-hidden="true"></div>
+          <div class="form-row-h">
+            <div class="form-row-h__label"><label for="txEditDate" id="txEditDateLabel">Date</label></div>
+            <div class="form-row-h__field"><input id="txEditDate" type="date" /></div>
+          </div>
+
+          <div id="txEditRecurringScheduleWrap" style="display: none">
+            <div class="tx-add-vspace" aria-hidden="true"></div>
+            <div class="form-row-h">
+              <div class="form-row-h__label"><label for="instanceRecurrence">Recurrence</label></div>
+              <div class="form-row-h__field">
+                <select id="instanceRecurrence" title="How often this repeats">
+                  <option value="monthly" selected>Monthly</option>
+                  <option value="twice_monthly">Twice monthly</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="semiannual">Twice yearly (every 6 months)</option>
+                  <option value="yearly">Annual</option>
+                  <option value="once">Does not repeat</option>
+                </select>
+              </div>
+            </div>
+            <div id="instanceTwiceMonthlyFields" class="expected-second-day-row" style="display: none">
+              <label for="instanceSecondDayOfMonth">2nd day of month</label>
+              <input
+                id="instanceSecondDayOfMonth"
+                type="number"
+                min="1"
+                max="31"
+                step="1"
+                placeholder="e.g. 15"
+                title="Second scheduled day each month; must differ from the start date’s calendar day."
+              />
+              <p style="margin: 6px 0 0; font-size: 12px; color: var(--muted)">
+                Required for twice monthly: other day of the month (1–31), not the same as the start date’s day.
+              </p>
+            </div>
+            <div class="tx-add-vspace" aria-hidden="true"></div>
+            <div class="form-row-h">
+              <div class="form-row-h__label">
+                <label for="instanceEndCount" title="Optional. Number of times this recurring transaction happens. Blank = never ends.">Ends after</label>
+              </div>
+              <div class="form-row-h__field">
+                <div class="tx-edit-ends-after-row">
+                  <input id="instanceEndCount" type="number" min="1" step="1" placeholder="e.g. 12" title="Optional. Total number of occurrences." />
+                  <span class="tx-add-field-hint">occurrences</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="tx-add-vspace" aria-hidden="true"></div>
+          <div id="txEditAccountCol" style="display: none">
+            <div class="form-row-h">
+              <div class="form-row-h__label"><label for="instanceAccountId">Account</label></div>
+              <div class="form-row-h__field"><select id="instanceAccountId"></select></div>
+            </div>
+            <div class="tx-add-vspace" aria-hidden="true"></div>
+          </div>
+
+          <div id="txEditRecurringVariableWrap" style="display: none">
+            <div class="tx-add-vspace" aria-hidden="true"></div>
+            <div class="form-row-h">
+              <div class="form-row-h__label">
+                <label
+                  for="seriesVariable"
+                  title="Used for bills that change each month (e.g. utilities, credit cards)"
+                >Variable amount (estimate)</label>
+              </div>
+              <div class="form-row-h__field">
+                <input id="seriesVariable" type="checkbox" title="Shows italic on calendar until unchecked and saved as series" />
+              </div>
+            </div>
+          </div>
+
+          <div style="height: 12px"></div>
+          <div id="txEditRecurringPrimaryActions" class="tx-edit-recurring-update-row" style="display: none"></div>
+        </div>
+
+        <div class="modal-actions modal-actions--tx-edit-foot">
+          <div id="txEditFooterSecondary" class="tx-edit-actions-row">
+            <div id="txEditSaveRow" class="tx-edit-save-cell">
+              <button type="button" id="txEditSave">Save</button>
+              <button type="button" id="txEditRecurringUpdateBtn" style="display:none;">Save</button>
+            </div>
+            <button type="button" id="txEditCancel">Cancel</button>
+            <button type="button" id="txEditDelete" class="danger">Delete</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="txEditApplyScopeModal" class="modal-overlay modal-overlay--nested" aria-hidden="true">
+      <div class="modal modal--choice" role="dialog" aria-labelledby="txEditApplyScopeTitle" aria-modal="true">
+        <h3 id="txEditApplyScopeTitle">Apply changes</h3>
+        <p class="choice-subtitle" style="margin-bottom: 12px">
+          Should these edits affect only this date, or this date and every future occurrence in the series?
+        </p>
+        <div id="txEditApplyScopeErr" class="error"></div>
+        <div class="modal-actions">
+          <div class="expected-delete-actions">
+            <button type="button" id="txEditApplyScopeInstanceBtn">This occurrence only</button>
+            <button type="button" id="txEditApplyScopeSeriesBtn">This and all future</button>
+          </div>
+          <div style="height: 10px"></div>
+          <button type="button" id="txEditApplyScopeCancelBtn" style="width: 100%">Back</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="txEditDeleteScopeModal" class="modal-overlay modal-overlay--nested" aria-hidden="true">
+      <div class="modal modal--choice" role="dialog" aria-labelledby="txEditDeleteScopeTitle" aria-modal="true">
+        <h3 id="txEditDeleteScopeTitle">Delete</h3>
+        <p class="choice-subtitle" style="margin-bottom: 12px">
+          Remove only this date from the schedule, or end the series from this date forward (past dates stay). This cannot be undone.
+        </p>
+        <div id="txEditDeleteScopeErr" class="error"></div>
+        <div class="modal-actions">
+          <div class="expected-delete-actions">
+            <button type="button" id="txEditDeleteScopeInstanceBtn" class="expected-remove-btn">This occurrence only</button>
+            <button type="button" id="txEditDeleteScopeFutureBtn" class="expected-remove-btn expected-remove-btn--strong">
+              This and all future
+            </button>
+          </div>
+          <div style="height: 10px"></div>
+          <button type="button" id="txEditDeleteScopeCancelBtn" style="width: 100%">Back</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="txAddModal" class="modal-overlay" aria-hidden="true">
+      <div class="modal modal--tx-add" role="dialog" aria-labelledby="txAddTitle">
+        <h3 id="txAddTitle">Add transaction</h3>
+        <div id="txAddModalFormMount"></div>
+      </div>
+    </div>
+
+    <div id="expectedDeleteModal" class="modal-overlay" aria-hidden="true">
+      <div class="modal" role="dialog" aria-labelledby="expectedDeleteTitle">
+        <h3 id="expectedDeleteTitle">Delete recurring transaction</h3>
+        <div id="expectedDeleteErr" class="error"></div>
+        <p class="expected-modal-hint" style="margin-bottom: 12px">
+          Choose how much of the series to remove. This cannot be undone.
+        </p>
+        <div class="modal-actions">
+          <div class="expected-delete-actions">
+            <button type="button" id="expectedDeleteThisBtn">Delete only this transaction</button>
+            <button type="button" id="expectedDeleteFutureBtn">Delete this and all future transactions</button>
+            <button type="button" id="expectedDeleteAllBtn" class="danger">Delete all transactions in the series</button>
+          </div>
+          <div style="height: 10px"></div>
+          <button type="button" id="expectedDeleteCancelBtn" style="width: 100%">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="reconcileModal" class="modal-overlay" aria-hidden="true">
+      <div class="modal" role="dialog" aria-labelledby="reconcileTitle">
+        <h3 id="reconcileTitle">Day status</h3>
+        <div id="reconcileErr" class="error"></div>
+        <div class="reconcile-inline-row">
+          <div class="form-row-h">
+            <div class="form-row-h__label"><label>Date</label></div>
+            <div class="form-row-h__field"><div class="reconcile-date-value" id="reconcileDateText">—</div></div>
+          </div>
+          <div class="form-row-h">
+            <div class="form-row-h__label"><label for="reconcileChecked">Reconciled</label></div>
+            <div class="form-row-h__field"><input id="reconcileChecked" type="checkbox" /></div>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <div class="row two">
+            <button type="button" id="reconcileSaveBtn">Save</button>
+            <button type="button" id="reconcileCancelBtn" class="danger">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="accountModal" class="modal-overlay" aria-hidden="true">
+      <div class="modal" role="dialog" aria-labelledby="accountModalTitle" aria-modal="true">
+        <h3 id="accountModalTitle">Add New Account</h3>
+        <div id="accErr" class="error"></div>
+        <input id="accountEditId" type="hidden" />
+
+        <div class="row two">
+          <div>
+            <label for="accountName">Account name</label>
+            <input id="accountName" type="text" placeholder="e.g. Checking" />
+          </div>
+          <div>
+            <label for="accountType">Type</label>
+            <select id="accountType">
+              <option value="checking" selected>Checking</option>
+              <option value="savings">Savings</option>
+              <option value="credit_card">Credit card</option>
+              <option value="cash">Cash</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="height:10px;"></div>
+
+        <div class="row two">
+          <div>
+            <label for="accountStartingBalance">Starting balance</label>
+            <div class="money-input">
+              <span class="money-input__prefix" aria-hidden="true">$</span>
+              <input id="accountStartingBalance" type="number" step="0.01" placeholder="0.00" />
+            </div>
+          </div>
+          <div>
+            <label for="accountStartingBalanceDate">Starting balance date</label>
+            <input id="accountStartingBalanceDate" type="date" />
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" id="addAccountBtn">Add account</button>
+          <button type="button" id="cancelAccountEditBtn" class="secondary">Cancel</button>
+          <button type="button" id="saveAccountEditBtn" class="danger">Save balance/date edit</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="catEditModal" class="modal-overlay" aria-hidden="true">
+      <div class="modal" role="dialog" aria-labelledby="catEditTitle" aria-modal="true">
+        <h3 id="catEditTitle">Edit</h3>
+        <div id="catEditErr" class="error"></div>
+        <input id="catEditKind" type="hidden" value="" />
+        <input id="catEditId" type="hidden" value="" />
+
+        <div class="row">
+          <div>
+            <label for="catEditName">Name</label>
+            <input id="catEditName" type="text" />
+          </div>
+          <div id="catEditGroupWrap">
+            <label for="catEditGroupId">Group</label>
+            <select id="catEditGroupId"></select>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <div class="row two">
+            <button type="button" id="catEditSave">Save</button>
+            <button type="button" id="catEditCancel" class="secondary">Cancel</button>
+          </div>
+          <div style="height:10px;"></div>
+          <button type="button" id="catEditDelete" class="danger" style="width:100%;">Delete</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
+    <script src="../app.js?v=189"></script>
+  </body>
+</html>

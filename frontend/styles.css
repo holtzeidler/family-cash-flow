@@ -75,30 +75,76 @@ body.invite-page .top-nav .top-nav__inner.top-nav__inner--simple .top-nav__actio
   gap: 8px;
 }
 
-/* Plans / admin / signup page header: title left, action right */
+/* Plans / admin / signup / landing page header: title left, action right */
 body.plans-page .top-nav .top-nav__inner.top-nav__inner--simple,
 body.admin-page .top-nav .top-nav__inner.top-nav__inner--simple,
-body.signup-page .top-nav .top-nav__inner.top-nav__inner--simple{
+body.signup-page .top-nav .top-nav__inner.top-nav__inner--simple,
+body.landing-page .top-nav .top-nav__inner.top-nav__inner--simple{
   grid-template-columns: 1fr auto;
   justify-items: start;
 }
 body.plans-page .top-nav .top-nav__inner.top-nav__inner--simple .top-nav__actions,
 body.admin-page .top-nav .top-nav__inner.top-nav__inner--simple .top-nav__actions,
-body.signup-page .top-nav .top-nav__inner.top-nav__inner--simple .top-nav__actions{
+body.signup-page .top-nav .top-nav__inner.top-nav__inner--simple .top-nav__actions,
+body.landing-page .top-nav .top-nav__inner.top-nav__inner--simple .top-nav__actions{
   justify-self: end;
   gap: 8px;
 }
 body.plans-page .top-nav .top-nav__inner.top-nav__inner--simple .top-nav__title,
 body.admin-page .top-nav .top-nav__inner.top-nav__inner--simple .top-nav__title,
-body.signup-page .top-nav .top-nav__inner.top-nav__inner--simple .top-nav__title{
+body.signup-page .top-nav .top-nav__inner.top-nav__inner--simple .top-nav__title,
+body.landing-page .top-nav .top-nav__inner.top-nav__inner--simple .top-nav__title{
   justify-content: flex-start;
   width: auto;
   padding-left: 10px;
 }
 body.plans-page .top-nav .top-nav__inner.top-nav__inner--simple .app-title,
 body.admin-page .top-nav .top-nav__inner.top-nav__inner--simple .app-title,
-body.signup-page .top-nav .top-nav__inner.top-nav__inner--simple .app-title{
+body.signup-page .top-nav .top-nav__inner.top-nav__inner--simple .app-title,
+body.landing-page .top-nav .top-nav__inner.top-nav__inner--simple .app-title{
   text-align: left;
+}
+
+body.landing-page .top-nav__actions a.top-nav__logout{
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+body.landing-page .landing-main{
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px 48px;
+}
+body.landing-page .landing-hero{
+  max-width: 40rem;
+  margin: 0 auto;
+  text-align: center;
+}
+body.landing-page .landing-hero__text{
+  margin: 0;
+  font-size: clamp(1.125rem, 2.4vw, 1.4rem);
+  line-height: 1.55;
+  font-weight: 500;
+  color: var(--text);
+}
+body.landing-page .landing-hero__cta{
+  font-weight: 700;
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  margin-left: 0.25em;
+}
+body.landing-page .landing-hero__cta:hover{
+  filter: brightness(0.92);
+}
+body.landing-page .landing-hero__cta:focus-visible{
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 2px;
 }
 
 /* Ensure the HTML `hidden` attribute always wins (UA defaults can be overridden by our layout rules). */
@@ -271,29 +317,33 @@ body.signup-page .top-nav .top-nav__inner.top-nav__inner--simple .app-title{
     width: min(200px, 48vw);
     height: 50px;
   }
-  /* Plans / admin / signup: keep title left + actions right on narrow screens (overrides generic centered nav). */
+  /* Plans / admin / signup / landing: keep title left + actions right on narrow screens (overrides generic centered nav). */
   body.plans-page .top-nav .top-nav__inner.top-nav__inner--simple,
   body.admin-page .top-nav .top-nav__inner.top-nav__inner--simple,
-  body.signup-page .top-nav .top-nav__inner.top-nav__inner--simple{
+  body.signup-page .top-nav .top-nav__inner.top-nav__inner--simple,
+  body.landing-page .top-nav .top-nav__inner.top-nav__inner--simple{
     grid-template-columns: 1fr auto;
     justify-items: start;
     row-gap: 0;
   }
   body.plans-page .top-nav .top-nav__inner.top-nav__inner--simple .top-nav__title,
   body.admin-page .top-nav .top-nav__inner.top-nav__inner--simple .top-nav__title,
-  body.signup-page .top-nav .top-nav__inner.top-nav__inner--simple .top-nav__title{
+  body.signup-page .top-nav .top-nav__inner.top-nav__inner--simple .top-nav__title,
+  body.landing-page .top-nav .top-nav__inner.top-nav__inner--simple .top-nav__title{
     justify-content: flex-start;
     width: auto;
     padding-left: 10px;
   }
   body.plans-page .top-nav .top-nav__inner.top-nav__inner--simple .app-title,
   body.admin-page .top-nav .top-nav__inner.top-nav__inner--simple .app-title,
-  body.signup-page .top-nav .top-nav__inner.top-nav__inner--simple .app-title{
+  body.signup-page .top-nav .top-nav__inner.top-nav__inner--simple .app-title,
+  body.landing-page .top-nav .top-nav__inner.top-nav__inner--simple .app-title{
     text-align: left;
   }
   body.plans-page .top-nav .top-nav__inner.top-nav__inner--simple .top-nav__actions,
   body.admin-page .top-nav .top-nav__inner.top-nav__inner--simple .top-nav__actions,
-  body.signup-page .top-nav .top-nav__inner.top-nav__inner--simple .top-nav__actions{
+  body.signup-page .top-nav .top-nav__inner.top-nav__inner--simple .top-nav__actions,
+  body.landing-page .top-nav .top-nav__inner.top-nav__inner--simple .top-nav__actions{
     justify-self: end;
   }
 }
