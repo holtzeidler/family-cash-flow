@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=196" />
+    <link rel="stylesheet" href="./styles.css?v=200" />
   </head>
   <body>
     <div class="container">
@@ -580,7 +580,7 @@
 
             <div class="card chart-card" id="chartPanel">
               <div class="chart-panel-head">
-                <h2>Projected balance chart (daily)</h2>
+                <h2>Balance trendline</h2>
                 <button
                   type="button"
                   class="calendar-collapse-btn"
@@ -595,7 +595,65 @@
                 </button>
               </div>
               <div id="chartPanelBody" class="chart-panel-body">
-              <div class="chart-panel-controls">
+              <div class="chart-range-anchor">
+                <div class="chart-range-header">
+                  <div class="chart-range-header__titles">
+                    <div class="chart-range-header__kicker">Balances</div>
+                    <button
+                      type="button"
+                      id="chartRangeDisplay"
+                      class="chart-range-display"
+                      aria-haspopup="dialog"
+                      aria-expanded="false"
+                      aria-controls="chartRangePopover"
+                    >
+                      <span id="chartRangeDisplayText">—</span>
+                    </button>
+                  </div>
+                </div>
+                <div
+                  id="chartRangePopover"
+                  class="chart-range-popover"
+                  hidden
+                  role="dialog"
+                  aria-label="Chart date range"
+                  aria-modal="true"
+                >
+                  <div class="chart-range-popover__grid" role="group" aria-label="Preset ranges">
+                    <button type="button" class="chart-range-preset" data-range="this_week">This Week</button>
+                    <button type="button" class="chart-range-preset" data-range="last_week">Last Week</button>
+                    <button type="button" class="chart-range-preset" data-range="rolling_week">Rolling Week</button>
+                    <button type="button" class="chart-range-preset" data-range="this_month">This Month</button>
+                    <button type="button" class="chart-range-preset" data-range="last_month">Last Month</button>
+                    <button type="button" class="chart-range-preset" data-range="rolling_month">Rolling Month</button>
+                    <button type="button" class="chart-range-preset" data-range="this_quarter">This Quarter</button>
+                    <button type="button" class="chart-range-preset" data-range="last_quarter">Last Quarter</button>
+                    <button type="button" class="chart-range-preset" data-range="rolling_quarter">Rolling Quarter</button>
+                    <button type="button" class="chart-range-preset" data-range="this_year">This Year</button>
+                    <button type="button" class="chart-range-preset" data-range="last_year">Last Year</button>
+                    <button type="button" class="chart-range-preset" data-range="rolling_year">Rolling Year</button>
+                  </div>
+                  <div class="chart-range-popover__custom-block">
+                    <button type="button" id="chartRangeCustomToggle" class="chart-range-custom-toggle">Custom range</button>
+                    <div id="chartRangeCustomFields" class="chart-range-custom-fields" hidden>
+                      <label class="chart-range-custom-field">
+                        <span>Start</span>
+                        <input id="chartRangeCustomStart" type="date" />
+                      </label>
+                      <label class="chart-range-custom-field">
+                        <span>End</span>
+                        <input id="chartRangeCustomEnd" type="date" />
+                      </label>
+                    </div>
+                  </div>
+                  <p id="chartRangePopoverSummary" class="chart-range-popover__summary" aria-live="polite"></p>
+                  <div class="chart-range-popover__actions">
+                    <button type="button" id="chartRangeApplyBtn" class="chart-range-apply-btn">Apply</button>
+                    <button type="button" id="chartRangeCancelBtn" class="chart-range-cancel-btn">Cancel</button>
+                  </div>
+                </div>
+              </div>
+              <div class="chart-panel-controls" hidden aria-hidden="true">
                   <div class="chart-ctrl chart-ctrl-start">
                     <label for="chartStart">Start date</label>
                     <input id="chartStart" type="date" />
@@ -976,6 +1034,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="./app.js?v=188"></script>
+    <script src="./app.js?v=189"></script>
   </body>
 </html>

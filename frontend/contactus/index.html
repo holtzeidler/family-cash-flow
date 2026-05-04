@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=196" />
+    <link rel="stylesheet" href="../styles.css?v=200" />
   </head>
   <body class="contact-page">
     <div class="container">
@@ -29,10 +29,10 @@
             </h1>
           </div>
           <div class="top-nav__tabs" role="tablist" aria-label="Views">
-            <a class="top-nav__tab" href="../">Calendar View</a>
-            <a class="top-nav__tab" href="../">Transaction View</a>
-            <a class="top-nav__tab" href="../">Reports</a>
-            <a class="top-nav__tab" href="../">Settings</a>
+            <a class="top-nav__tab" href="../?view=calendar">Calendar View</a>
+            <a class="top-nav__tab" href="../?view=transactions">Transaction View</a>
+            <a class="top-nav__tab" href="../?view=reports">Reports</a>
+            <a class="top-nav__tab" href="../?view=settings">Settings</a>
           </div>
           <div class="top-nav__actions" aria-label="Account actions">
             <button type="button" id="logoutBtn" class="top-nav__logout">Logout</button>
@@ -54,7 +54,7 @@
                 <input id="contactName" name="name" type="text" autocomplete="name" required />
               </div>
               <div>
-                <label for="contactEmail">Email *</label>
+                <label for="contactEmail">Email Address *</label>
                 <input id="contactEmail" name="email" type="email" autocomplete="email" required />
               </div>
             </div>

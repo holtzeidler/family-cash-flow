@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=196" />
+    <link rel="stylesheet" href="../styles.css?v=200" />
   </head>
   <body class="login-page signup-page">
     <div class="container">
@@ -35,13 +35,12 @@
       </div>
 
       <div class="grid">
-        <section class="card auth-section auth-section--open" aria-label="Create account">
-          <div class="auth-section__head" style="cursor: default;">
-            <span class="auth-section__title">Create Account</span>
+        <section class="card auth-section auth-section--open" aria-label="Sign up">
+          <div class="auth-section__head auth-section__head--signup-plan" id="signupBannerHead" hidden>
+            <div id="signupPlanNote" class="callout callout--muted" style="display:none" role="status"></div>
           </div>
           <div class="auth-section__body">
             <div id="signupCallout" class="callout" style="display:none" role="status"></div>
-            <div id="signupPlanNote" class="callout callout--muted" style="display:none" role="status"></div>
 
             <div class="row two">
               <div>
@@ -79,7 +78,7 @@
       </footer>
     </div>
 
-    <script src="./signup.js?v=3"></script>
+    <script src="./signup.js?v=4"></script>
   </body>
 </html>
 

@@ -16,8 +16,14 @@
 }
 
 *{ box-sizing:border-box; }
+html{
+  /* Matches footer/nav so no neutral strip shows past the full-bleed green bar */
+  background: var(--accent);
+}
 body{
   margin:0;
+  min-height: 100vh;
+  min-height: 100dvh;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
   background: var(--bg);
   color: var(--text);
@@ -69,25 +75,29 @@ body.invite-page .top-nav .top-nav__inner.top-nav__inner--simple .top-nav__actio
   gap: 8px;
 }
 
-/* Plans / admin page header: title left, action right */
+/* Plans / admin / signup page header: title left, action right */
 body.plans-page .top-nav .top-nav__inner.top-nav__inner--simple,
-body.admin-page .top-nav .top-nav__inner.top-nav__inner--simple{
+body.admin-page .top-nav .top-nav__inner.top-nav__inner--simple,
+body.signup-page .top-nav .top-nav__inner.top-nav__inner--simple{
   grid-template-columns: 1fr auto;
   justify-items: start;
 }
 body.plans-page .top-nav .top-nav__inner.top-nav__inner--simple .top-nav__actions,
-body.admin-page .top-nav .top-nav__inner.top-nav__inner--simple .top-nav__actions{
+body.admin-page .top-nav .top-nav__inner.top-nav__inner--simple .top-nav__actions,
+body.signup-page .top-nav .top-nav__inner.top-nav__inner--simple .top-nav__actions{
   justify-self: end;
   gap: 8px;
 }
 body.plans-page .top-nav .top-nav__inner.top-nav__inner--simple .top-nav__title,
-body.admin-page .top-nav .top-nav__inner.top-nav__inner--simple .top-nav__title{
+body.admin-page .top-nav .top-nav__inner.top-nav__inner--simple .top-nav__title,
+body.signup-page .top-nav .top-nav__inner.top-nav__inner--simple .top-nav__title{
   justify-content: flex-start;
   width: auto;
   padding-left: 10px;
 }
 body.plans-page .top-nav .top-nav__inner.top-nav__inner--simple .app-title,
-body.admin-page .top-nav .top-nav__inner.top-nav__inner--simple .app-title{
+body.admin-page .top-nav .top-nav__inner.top-nav__inner--simple .app-title,
+body.signup-page .top-nav .top-nav__inner.top-nav__inner--simple .app-title{
   text-align: left;
 }
 
@@ -100,8 +110,10 @@ body.admin-page .top-nav .top-nav__inner.top-nav__inner--simple .app-title{
   max-width: 1920px;
   width: 100%;
   margin: 0 auto;
-  padding: 0 12px 24px;
+  /* No bottom padding: it sat below the flex footer and showed as gray past the green bar */
+  padding: 0 12px 0;
   min-height: 100vh;
+  min-height: 100dvh;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -259,25 +271,29 @@ body.admin-page .top-nav .top-nav__inner.top-nav__inner--simple .app-title{
     width: min(200px, 48vw);
     height: 50px;
   }
-  /* Plans / admin: keep title left + actions right on narrow screens (overrides generic centered nav). */
+  /* Plans / admin / signup: keep title left + actions right on narrow screens (overrides generic centered nav). */
   body.plans-page .top-nav .top-nav__inner.top-nav__inner--simple,
-  body.admin-page .top-nav .top-nav__inner.top-nav__inner--simple{
+  body.admin-page .top-nav .top-nav__inner.top-nav__inner--simple,
+  body.signup-page .top-nav .top-nav__inner.top-nav__inner--simple{
     grid-template-columns: 1fr auto;
     justify-items: start;
     row-gap: 0;
   }
   body.plans-page .top-nav .top-nav__inner.top-nav__inner--simple .top-nav__title,
-  body.admin-page .top-nav .top-nav__inner.top-nav__inner--simple .top-nav__title{
+  body.admin-page .top-nav .top-nav__inner.top-nav__inner--simple .top-nav__title,
+  body.signup-page .top-nav .top-nav__inner.top-nav__inner--simple .top-nav__title{
     justify-content: flex-start;
     width: auto;
     padding-left: 10px;
   }
   body.plans-page .top-nav .top-nav__inner.top-nav__inner--simple .app-title,
-  body.admin-page .top-nav .top-nav__inner.top-nav__inner--simple .app-title{
+  body.admin-page .top-nav .top-nav__inner.top-nav__inner--simple .app-title,
+  body.signup-page .top-nav .top-nav__inner.top-nav__inner--simple .app-title{
     text-align: left;
   }
   body.plans-page .top-nav .top-nav__inner.top-nav__inner--simple .top-nav__actions,
-  body.admin-page .top-nav .top-nav__inner.top-nav__inner--simple .top-nav__actions{
+  body.admin-page .top-nav .top-nav__inner.top-nav__inner--simple .top-nav__actions,
+  body.signup-page .top-nav .top-nav__inner.top-nav__inner--simple .top-nav__actions{
     justify-self: end;
   }
 }
@@ -323,6 +339,14 @@ body.admin-page .top-nav .top-nav__inner.top-nav__inner--simple .app-title{
   background: transparent;
   color: rgba(255,255,255,0.86);
   font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+.top-nav__tab:visited{
+  color: rgba(255,255,255,0.86);
+}
+.top-nav__tab.is-active:visited{
+  color: #fff;
 }
 .top-nav__tab:hover{
   background: rgba(255,255,255,0.10);
@@ -350,7 +374,7 @@ body.admin-page .top-nav .top-nav__inner.top-nav__inner--simple .app-title{
 .app-footer{
   flex-shrink: 0;
   margin-top: auto;
-  padding: 15px 0 12px;
+  padding: 15px 0 max(12px, env(safe-area-inset-bottom, 0px));
   background: var(--accent);
   border-top: 1px solid rgba(0, 0, 0, 0.18);
   /* Full-bleed footer even inside .container padding */
@@ -1376,6 +1400,192 @@ button.nav-link:hover{
   flex-direction: column;
   min-width: 0;
 }
+
+/* Clickable balance range + date-range popover */
+.chart-range-anchor{
+  position: relative;
+  align-self: stretch;
+  margin-bottom: 8px;
+}
+.chart-range-header{
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.chart-range-header__kicker{
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 2px;
+}
+.chart-range-display{
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 4px 0 2px;
+  text-align: left;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  background: transparent;
+  border: none;
+  border-bottom: 1px dashed rgba(0,0,0,0.22);
+  cursor: pointer;
+  border-radius: 2px;
+}
+.chart-range-display:hover{
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+.chart-range-display:focus-visible{
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.chart-range-popover{
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 6px);
+  right: 0;
+  left: auto;
+  width: min(360px, calc(100vw - 28px));
+  padding: 14px 14px 12px;
+  border-radius: 12px;
+  background: var(--cal-surface);
+  border: 1px solid var(--border);
+  box-shadow:
+    0 4px 18px rgba(0,0,0,0.12),
+    0 12px 40px rgba(0,0,0,0.08);
+}
+.chart-range-popover::before{
+  content: "";
+  position: absolute;
+  top: -7px;
+  right: 18px;
+  width: 12px;
+  height: 12px;
+  background: var(--cal-surface);
+  border-left: 1px solid var(--border);
+  border-top: 1px solid var(--border);
+  transform: rotate(45deg);
+}
+.chart-range-popover__grid{
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.chart-range-preset{
+  padding: 8px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+  color: var(--muted);
+  background: rgba(0,0,0,0.04);
+  border: 1px solid rgba(0,0,0,0.08);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.chart-range-preset:hover{
+  background: rgba(11, 61, 46, 0.08);
+  color: var(--text);
+}
+.chart-range-preset.is-active{
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(11, 61, 46, 0.1);
+}
+.chart-range-popover__custom-block{
+  margin-bottom: 8px;
+}
+.chart-range-custom-toggle{
+  padding: 7px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--accent);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.chart-range-custom-toggle:hover{
+  filter: brightness(1.08);
+}
+.chart-range-custom-fields{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  margin-top: 10px;
+}
+.chart-range-custom-field{
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.chart-range-custom-field input[type="date"]{
+  padding: 6px 8px;
+  font-size: 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+.chart-range-popover__summary{
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: var(--text);
+  text-align: center;
+  min-height: 1.35em;
+}
+.chart-range-popover__summary strong{
+  font-weight: 700;
+}
+.chart-range-popover__actions{
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.chart-range-apply-btn{
+  padding: 8px 18px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #fff;
+  background: var(--accent);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.chart-range-apply-btn:hover{
+  filter: brightness(1.08);
+}
+.chart-range-cancel-btn{
+  padding: 8px 4px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #1d4ed8;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.chart-range-cancel-btn:hover{
+  color: #1e40af;
+}
+@media (max-width: 420px){
+  .chart-range-popover__grid{
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
 .chart-card.chart-panel--collapsed .chart-panel-body{
   display: none;
 }
@@ -2397,10 +2607,25 @@ textarea::placeholder{
   font-size: 13px;
 }
 
-/* Signup: plan / invite banner matches plan selection card headers (.plan-card__top). */
+/* Signup: plan / invite banner in card header (replaces “Create Account” title). */
+body.signup-page .auth-section__head--signup-plan{
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding: 16px 16px 12px;
+  margin: 0;
+  background: transparent;
+  border: none;
+  border-bottom: none;
+  border-radius: 14px 14px 0 0;
+  cursor: default;
+}
+body.signup-page .auth-section:has(#signupBannerHead[hidden]) .auth-section__body{
+  border-radius: 14px;
+}
 body.signup-page #signupPlanNote.callout--muted{
   margin-top: 0;
-  margin-bottom: 12px;
+  margin-bottom: 0;
   padding: 16px 20px 14px;
   text-align: center;
   color: #fff;

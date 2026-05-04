@@ -873,6 +873,14 @@ const chartDaysLabel = document.getElementById("chartDaysLabel");
 const runProjectionChartBtn = document.getElementById("runProjectionChartBtn");
 const chartErr = document.getElementById("chartErr");
 const projectionChartCanvas = document.getElementById("projectionChartCanvas");
+const chartRangeDisplay = document.getElementById("chartRangeDisplay");
+const chartRangePopover = document.getElementById("chartRangePopover");
+const chartRangeCustomToggle = document.getElementById("chartRangeCustomToggle");
+const chartRangeCustomFields = document.getElementById("chartRangeCustomFields");
+const chartRangeCustomStart = document.getElementById("chartRangeCustomStart");
+const chartRangeCustomEnd = document.getElementById("chartRangeCustomEnd");
+const chartRangeApplyBtn = document.getElementById("chartRangeApplyBtn");
+const chartRangeCancelBtn = document.getElementById("chartRangeCancelBtn");
 
 let projectionChartInstance = null;
 let projectionChartDefaultsApplied = false;
@@ -1675,14 +1683,34 @@ if (catReportRunBtn) {
   });
 }
 
+function getInitialTopViewFromUrlOrStorage() {
+  try {
+    const q = new URLSearchParams(window.location.search);
+    const urlView = String(q.get("view") || "").trim().toLowerCase();
+    if (urlView === "calendar" || urlView === "transactions" || urlView === "reports" || urlView === "settings") {
+      return urlView;
+    }
+  } catch (_) {}
+  try {
+    const storedView = localStorage.getItem(ACTIVE_VIEW_KEY);
+    const v = storedView ? String(storedView) : "";
+    if (v === "calendar" || v === "transactions" || v === "reports" || v === "settings") {
+      return v;
+    }
+  } catch (_) {}
+  return "calendar";
+}
+
 try {
-  const storedView = localStorage.getItem(ACTIVE_VIEW_KEY);
-  const v = storedView ? String(storedView) : "";
-  // Default to Calendar View after login; only restore known valid values.
-  if (v === "calendar" || v === "transactions" || v === "reports" || v === "settings") {
-    setActiveTopView(v);
-  } else {
-    setActiveTopView("calendar");
+  setActiveTopView(getInitialTopViewFromUrlOrStorage());
+} catch (_) {}
+
+try {
+  const u = new URL(window.location.href);
+  if (u.searchParams.has("view")) {
+    u.searchParams.delete("view");
+    const qs = u.searchParams.toString();
+    window.history.replaceState({}, "", `${u.pathname}${qs ? `?${qs}` : ""}${u.hash}`);
   }
 } catch (_) {}
 
@@ -1729,6 +1757,13 @@ familySelect.addEventListener("change", async () => {
   await loadAccounts();
   await loadExpectedTransactions();
   await loadMonthAndCalendar();
+  if (state.activeFamilyId) {
+    try {
+      await refreshProjectionChart();
+    } catch (e) {
+      show(chartErr, e.message || "Failed to load balance chart");
+    }
+  }
 });
 
 const familyInviteBtn = document.getElementById("familyInviteBtn");
@@ -2626,8 +2661,12 @@ if (chartDaysRange && chartDaysLabel) {
   chartDaysRange.addEventListener("input", () => {
     chartDaysLabel.textContent = `${chartDaysRange.value} days`;
     document.querySelectorAll(".chart-duration-btn").forEach((b) => b.classList.remove("is-active"));
+    syncChartRangeDisplay();
   });
 }
+chartStart?.addEventListener("change", () => {
+  syncChartRangeDisplay();
+});
 
 function getYtdDaysFromChartStart() {
   if (!chartStart?.value) return 365;
@@ -2651,6 +2690,252 @@ function daysForPreset(preset) {
   };
   if (preset === "YTD") return getYtdDaysFromChartStart();
   return map[preset] ?? 365;
+}
+
+function isoAtNoon(iso) {
+  return new Date(`${iso}T12:00:00`);
+}
+
+function isoAddDays(iso, delta) {
+  const d = isoAtNoon(iso);
+  d.setDate(d.getDate() + delta);
+  return toISODate(d);
+}
+
+function daysInclusiveBetween(startIso, endIso) {
+  const a = isoAtNoon(startIso).getTime();
+  const b = isoAtNoon(endIso).getTime();
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return 1;
+  const n = Math.floor((b - a) / 864e5) + 1;
+  return Math.max(1, n);
+}
+
+function chartRangeEndIso(startIso, days) {
+  return isoAddDays(startIso, days - 1);
+}
+
+function formatChartRangeLongLabel(iso) {
+  const d = isoAtNoon(iso);
+  if (Number.isNaN(d.getTime())) return String(iso);
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
+
+function startOfWeekSundayFromDate(d) {
+  const x = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12, 0, 0);
+  const wd = x.getDay();
+  x.setDate(x.getDate() - wd);
+  return x;
+}
+
+function computeChartRangePreset(rangeId) {
+  const today = new Date();
+  const todayIso = toISODate(today);
+  switch (rangeId) {
+    case "this_week": {
+      const s = startOfWeekSundayFromDate(today);
+      return { start: toISODate(s), days: 7 };
+    }
+    case "last_week": {
+      const s0 = startOfWeekSundayFromDate(today);
+      s0.setDate(s0.getDate() - 7);
+      return { start: toISODate(s0), days: 7 };
+    }
+    case "rolling_week":
+      return { start: isoAddDays(todayIso, -6), days: 7 };
+    case "this_month": {
+      const y = today.getFullYear();
+      const m = today.getMonth();
+      const start = toISODate(new Date(y, m, 1));
+      const end = toISODate(new Date(y, m + 1, 0));
+      return { start, days: daysInclusiveBetween(start, end) };
+    }
+    case "last_month": {
+      const y = today.getFullYear();
+      const m = today.getMonth();
+      const endD = new Date(y, m, 0);
+      const start = toISODate(new Date(endD.getFullYear(), endD.getMonth(), 1));
+      const end = toISODate(endD);
+      return { start, days: daysInclusiveBetween(start, end) };
+    }
+    case "rolling_month":
+      return { start: isoAddDays(todayIso, -29), days: 30 };
+    case "this_quarter": {
+      const y = today.getFullYear();
+      const q = Math.floor(today.getMonth() / 3);
+      const startM = q * 3;
+      const start = toISODate(new Date(y, startM, 1));
+      const end = toISODate(new Date(y, startM + 3, 0));
+      return { start, days: daysInclusiveBetween(start, end) };
+    }
+    case "last_quarter": {
+      let y = today.getFullYear();
+      let q = Math.floor(today.getMonth() / 3) - 1;
+      if (q < 0) {
+        q = 3;
+        y -= 1;
+      }
+      const startM = q * 3;
+      const start = toISODate(new Date(y, startM, 1));
+      const end = toISODate(new Date(y, startM + 3, 0));
+      return { start, days: daysInclusiveBetween(start, end) };
+    }
+    case "rolling_quarter":
+      return { start: isoAddDays(todayIso, -89), days: 90 };
+    case "this_year": {
+      const y = today.getFullYear();
+      const start = `${y}-01-01`;
+      const end = `${y}-12-31`;
+      return { start, days: daysInclusiveBetween(start, end) };
+    }
+    case "last_year": {
+      const y = today.getFullYear() - 1;
+      const start = `${y}-01-01`;
+      const end = `${y}-12-31`;
+      return { start, days: daysInclusiveBetween(start, end) };
+    }
+    case "rolling_year":
+      return { start: isoAddDays(todayIso, -364), days: 365 };
+    default:
+      return null;
+  }
+}
+
+function readCommittedChartRange() {
+  const start = chartStart?.value || "";
+  let days = Number(chartDaysRange?.value);
+  if (!Number.isFinite(days) || days < 1) days = 365;
+  return { start, days };
+}
+
+let chartRangeDraft = { start: "", days: 365 };
+let chartRangeOutsideAbort = null;
+
+function syncChartRangeDisplay() {
+  const disp = document.getElementById("chartRangeDisplayText");
+  if (!disp || !chartStart?.value) {
+    if (disp) disp.textContent = "—";
+    return;
+  }
+  const days = Number(chartDaysRange?.value);
+  if (!Number.isFinite(days) || days < 1) {
+    disp.textContent = "—";
+    return;
+  }
+  const end = chartRangeEndIso(chartStart.value, days);
+  disp.textContent = `${formatChartRangeLongLabel(chartStart.value)} – ${formatChartRangeLongLabel(end)}`;
+}
+
+function presetMatchesDraft(rangeId) {
+  const p = computeChartRangePreset(rangeId);
+  if (!p || !chartRangeDraft.start) return false;
+  return p.start === chartRangeDraft.start && p.days === chartRangeDraft.days;
+}
+
+function setChartRangePresetHighlight() {
+  document.querySelectorAll(".chart-range-preset").forEach((btn) => {
+    const id = btn.dataset.range;
+    btn.classList.toggle("is-active", !!id && presetMatchesDraft(id));
+  });
+}
+
+function updateChartRangePopoverSummary() {
+  const el = document.getElementById("chartRangePopoverSummary");
+  if (!el) return;
+  const { start, days } = chartRangeDraft;
+  if (!start || !Number.isFinite(days) || days < 1) {
+    el.textContent = "";
+    return;
+  }
+  const end = chartRangeEndIso(start, days);
+  el.replaceChildren();
+  const strong = document.createElement("strong");
+  strong.textContent = `${formatChartRangeLongLabel(start)} – ${formatChartRangeLongLabel(end)}`;
+  el.appendChild(strong);
+}
+
+function syncCustomFieldsFromDraft() {
+  if (!chartRangeCustomStart || !chartRangeCustomEnd || !chartRangeDraft.start) return;
+  const { start, days } = chartRangeDraft;
+  chartRangeCustomStart.value = start;
+  chartRangeCustomEnd.value = chartRangeEndIso(start, days);
+}
+
+function onChartRangeOutsidePointer(e) {
+  if (!chartRangePopover || chartRangePopover.hidden) return;
+  const t = e.target;
+  if (chartRangePopover.contains(t) || chartRangeDisplay?.contains(t)) return;
+  closeChartRangePopover();
+}
+
+function onChartRangePopoverKeydown(e) {
+  if (e.key === "Escape") {
+    e.preventDefault();
+    closeChartRangePopover();
+  }
+}
+
+function openChartRangePopover() {
+  if (!chartRangePopover || !chartRangeDisplay) return;
+  chartRangeDraft = readCommittedChartRange();
+  if (chartRangeCustomFields) chartRangeCustomFields.hidden = true;
+  updateChartRangePopoverSummary();
+  setChartRangePresetHighlight();
+  chartRangePopover.hidden = false;
+  chartRangeDisplay.setAttribute("aria-expanded", "true");
+  if (chartRangeOutsideAbort) chartRangeOutsideAbort.abort();
+  chartRangeOutsideAbort = new AbortController();
+  const sig = chartRangeOutsideAbort.signal;
+  document.addEventListener("pointerdown", onChartRangeOutsidePointer, { capture: true, signal: sig });
+  document.addEventListener("keydown", onChartRangePopoverKeydown, { signal: sig });
+}
+
+function closeChartRangePopover() {
+  if (!chartRangePopover || !chartRangeDisplay) return;
+  chartRangePopover.hidden = true;
+  chartRangeDisplay.setAttribute("aria-expanded", "false");
+  if (chartRangeOutsideAbort) {
+    chartRangeOutsideAbort.abort();
+    chartRangeOutsideAbort = null;
+  }
+}
+
+async function applyChartRangeFromPopover() {
+  let start = chartRangeDraft.start;
+  let days = chartRangeDraft.days;
+  const customOpen = chartRangeCustomFields && !chartRangeCustomFields.hidden;
+  if (customOpen) {
+    const cs = chartRangeCustomStart?.value;
+    const ce = chartRangeCustomEnd?.value;
+    if (!cs || !ce) {
+      show(chartErr, "Select start and end dates.");
+      return;
+    }
+    if (ce < cs) {
+      show(chartErr, "End date must be on or after start date.");
+      return;
+    }
+    start = cs;
+    days = daysInclusiveBetween(cs, ce);
+  }
+  if (!start) {
+    show(chartErr, "Start date is required.");
+    return;
+  }
+  if (days > 4000) {
+    show(chartErr, "Range cannot exceed 4000 days.");
+    return;
+  }
+  show(chartErr, "");
+  chartStart.value = start;
+  chartDaysRange.value = String(days);
+  if (chartDaysLabel) chartDaysLabel.textContent = `${days} days`;
+  document.querySelectorAll(".chart-duration-btn").forEach((b) => b.classList.remove("is-active"));
+  closeChartRangePopover();
+  try {
+    await refreshProjectionChart();
+  } catch (err) {
+    show(chartErr, err.message || "Failed to update chart");
+  }
 }
 
 function formatProjectionAxisDate(iso) {
@@ -2696,9 +2981,10 @@ async function refreshProjectionChart() {
     "GET"
   );
   drawProjectionChart(summary?.daily || []);
+  syncChartRangeDisplay();
 }
 
-runProjectionChartBtn.addEventListener("click", async () => {
+runProjectionChartBtn?.addEventListener("click", async () => {
   try {
     document.querySelectorAll(".chart-duration-btn").forEach((b) => b.classList.remove("is-active"));
     await refreshProjectionChart();
@@ -2722,6 +3008,53 @@ document.querySelector(".chart-duration-bar")?.addEventListener("click", async (
     show(chartErr, err.message || "Failed to update chart");
   }
 });
+
+if (chartRangeDisplay && chartRangePopover) {
+  chartRangeDisplay.addEventListener("click", (ev) => {
+    ev.stopPropagation();
+    if (chartRangePopover.hidden) openChartRangePopover();
+    else closeChartRangePopover();
+  });
+  document.querySelectorAll(".chart-range-preset").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.range;
+      const p = id ? computeChartRangePreset(id) : null;
+      if (!p) return;
+      chartRangeDraft = { start: p.start, days: p.days };
+      if (chartRangeCustomFields) chartRangeCustomFields.hidden = true;
+      updateChartRangePopoverSummary();
+      setChartRangePresetHighlight();
+    });
+  });
+  chartRangeCustomToggle?.addEventListener("click", () => {
+    if (!chartRangeCustomFields) return;
+    const on = chartRangeCustomFields.hidden;
+    chartRangeCustomFields.hidden = !on;
+    if (!chartRangeCustomFields.hidden) syncCustomFieldsFromDraft();
+  });
+  chartRangeCustomStart?.addEventListener("change", () => {
+    const cs = chartRangeCustomStart.value;
+    const ce = chartRangeCustomEnd?.value;
+    if (!cs || !ce || ce < cs) return;
+    chartRangeDraft = { start: cs, days: daysInclusiveBetween(cs, ce) };
+    updateChartRangePopoverSummary();
+    document.querySelectorAll(".chart-range-preset").forEach((b) => b.classList.remove("is-active"));
+  });
+  chartRangeCustomEnd?.addEventListener("change", () => {
+    const cs = chartRangeCustomStart?.value;
+    const ce = chartRangeCustomEnd.value;
+    if (!cs || !ce || ce < cs) return;
+    chartRangeDraft = { start: cs, days: daysInclusiveBetween(cs, ce) };
+    updateChartRangePopoverSummary();
+    document.querySelectorAll(".chart-range-preset").forEach((b) => b.classList.remove("is-active"));
+  });
+  chartRangeApplyBtn?.addEventListener("click", () => {
+    applyChartRangeFromPopover();
+  });
+  chartRangeCancelBtn?.addEventListener("click", () => {
+    closeChartRangePopover();
+  });
+}
 
 function validateTxEditBeforeRecurringApply() {
   if (!state.activeFamilyId) return "Choose a family first";
@@ -6183,13 +6516,38 @@ function drawProjectionChart(daily) {
         {
           label: "Balance",
           data: values,
-          borderColor: "rgba(102,163,255,0.95)",
-          backgroundColor: "rgba(102,163,255,0.18)",
+          borderColor: "rgba(55,130,115,0.95)",
+          backgroundColor: (context) => {
+            const chart = context.chart;
+            const { ctx, chartArea, scales } = chart;
+            if (!chartArea || !scales?.y) return "rgba(55,130,115,0.16)";
+            const y0 = scales.y.getPixelForValue(0);
+            const top = chartArea.top;
+            const bottom = chartArea.bottom;
+            const g = ctx.createLinearGradient(0, top, 0, bottom);
+            const span = bottom - top || 1;
+            let t = (y0 - top) / span;
+            if (!Number.isFinite(t)) t = 0.5;
+            t = Math.max(0, Math.min(1, t));
+            g.addColorStop(0, "rgba(45,120,110,0.22)");
+            g.addColorStop(t, "rgba(45,120,110,0.22)");
+            g.addColorStop(t, "rgba(200,75,55,0.16)");
+            g.addColorStop(1, "rgba(200,75,55,0.16)");
+            return g;
+          },
           borderWidth: 1.5,
           fill: true,
           tension: 0,
           pointRadius: 0,
           pointHoverRadius: 4,
+          segment: {
+            borderColor: (ctx) => {
+              const y0 = ctx.p0.parsed.y;
+              const y1 = ctx.p1.parsed.y;
+              const mid = (Number(y0) + Number(y1)) / 2;
+              return mid >= 0 ? "rgba(45,120,110,0.95)" : "rgba(200,75,55,0.95)";
+            },
+          },
         },
       ],
     },
@@ -6295,6 +6653,7 @@ async function main() {
   setDefaultMonth();
   setDefaultProjectionStart();
   setDefaultChartStart();
+  syncChartRangeDisplay();
   setDefaultAccountStartDate();
   await loadMe();
   await loadFamilies();
@@ -6304,6 +6663,13 @@ async function main() {
     await loadExpectedTransactions();
   }
   await loadMonthAndCalendar();
+  if (state.activeFamilyId) {
+    try {
+      await refreshProjectionChart();
+    } catch (e) {
+      show(chartErr, e.message || "Failed to load balance chart");
+    }
+  }
   if (balanceThresholdMin || balanceThresholdMax) {
     try {
       const legacy = localStorage.getItem(LOW_BALANCE_THRESHOLD_KEY) || "";

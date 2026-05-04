@@ -113,7 +113,12 @@ function parsePlanFromQuery() {
 
 const signupCalloutEl = document.getElementById("signupCallout");
 const signupPlanNoteEl = document.getElementById("signupPlanNote");
+const signupBannerHead = document.getElementById("signupBannerHead");
 const signupBtn = document.getElementById("signupBtn");
+
+function showSignupPlanBanner() {
+  if (signupBannerHead) signupBannerHead.hidden = false;
+}
 
 function setBusy(isBusy) {
   if (!signupBtn) return;
@@ -164,6 +169,7 @@ try {
     signupPlanNoteEl.style.display = "block";
     signupPlanNoteEl.classList.toggle("signup-plan-note--pro", plan === "pro");
     signupPlanNoteEl.textContent = plan === "pro" ? "Selected plan: Add Budgeting" : "Selected plan: Cash Forecast Only";
+    showSignupPlanBanner();
   }
 } catch (_) {}
 
@@ -192,6 +198,7 @@ async function applyInvitePrefill() {
     signupPlanNoteEl.style.display = "block";
     signupPlanNoteEl.classList.remove("signup-plan-note--pro");
     signupPlanNoteEl.textContent = "You are signing up to accept a family invitation. Use the email above.";
+    showSignupPlanBanner();
   }
 }
 
