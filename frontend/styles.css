@@ -2886,13 +2886,21 @@ body.login-page:not(.signup-page) #loginSection > .auth-section__head:focus-visi
   outline-offset: 2px;
 }
 
+/* Signup page: field row — smaller type than login (login-page alone bumps .auth-section) */
+body.login-page.signup-page .auth-section{
+  font-size: 100%;
+}
+body.login-page.signup-page .auth-section label{
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
 /* Signup page: keep Name/Email/Password/Confirm visually identical */
 body.login-page.signup-page #name,
 body.login-page.signup-page #email,
 body.login-page.signup-page #password,
 body.login-page.signup-page #password2{
-  font-size: 121%;
-  line-height: 1.25;
+  font-size: 0.9375rem;
+  line-height: 1.3;
 }
 
 /* Login page: make accordion text larger */
