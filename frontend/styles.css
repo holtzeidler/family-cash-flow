@@ -1357,8 +1357,8 @@ button.nav-link:hover{
   top: var(--app-top-nav-offset);
   z-index: 24;
   background: var(--cal-surface);
-  padding-bottom: 8px;
-  margin-bottom: 4px;
+  padding-bottom: 0;
+  margin-bottom: 0;
   border-bottom: 1px solid rgba(0,0,0,0.08);
 }
 .calendar-sticky-header{
@@ -1375,7 +1375,7 @@ button.nav-link:hover{
 }
 
 .calendar-sticky-header .calendar-dow-row{
-  margin-bottom: 4px;
+  margin-bottom: 0;
 }
 
 .calendar-scroll{
@@ -3393,7 +3393,7 @@ body.plans-page .container > .grid{
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: var(--cal-gap, 4px);
-  margin-bottom: 4px;
+  margin-bottom: 0;
 }
 .cal-dow{
   font-size: 12px;
