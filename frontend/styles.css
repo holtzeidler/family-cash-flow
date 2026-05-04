@@ -1440,6 +1440,8 @@ button.nav-link:hover{
   /* Tighter horizontal inset so the day grid uses more width (default .card is 14px). */
   padding-left: 8px;
   padding-right: 8px;
+  /* Pull sticky nav strip up: default .card top padding left a large gap under the app header */
+  padding-top: 2px;
 }
 
 /* Transaction View should match Calendar's white surface. */
