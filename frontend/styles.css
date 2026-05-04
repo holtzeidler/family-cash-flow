@@ -2858,6 +2858,32 @@ body.login-page #password{
   font-size: 121%;
 }
 
+/* Login-only card header: same forest bar treatment as signup “Selected plan” banner */
+body.login-page:not(.signup-page) #loginSection > .auth-section__head{
+  justify-content: center;
+  gap: 0;
+  padding: 16px 20px 14px;
+  background: var(--accent);
+  border: none;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.14);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  border-radius: 14px 14px 0 0;
+}
+body.login-page:not(.signup-page) #loginSection > .auth-section__head .auth-section__title{
+  color: #fff;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  text-transform: none;
+}
+body.login-page:not(.signup-page) #loginSection > .auth-section__head .auth-section__chev{
+  display: none;
+}
+body.login-page:not(.signup-page) #loginSection > .auth-section__head:focus-visible{
+  outline: 2px solid rgba(255, 255, 255, 0.95);
+  outline-offset: 2px;
+}
+
 /* Signup page: keep Name/Email/Password/Confirm visually identical */
 body.login-page.signup-page #name,
 body.login-page.signup-page #email,
