@@ -47,7 +47,7 @@ async function goApp() {
   try {
     const t = sessionStorage.getItem("bw_invite_token");
     if (!t || !String(t).trim()) {
-      window.location.href = "./";
+      window.location.href = "/calendar";
       return;
     }
     const enc = encodeURIComponent(String(t).trim());
