@@ -2147,6 +2147,7 @@ textarea::placeholder{
 @media (min-width: 520px){
   .row.two{ grid-template-columns: 1fr 1fr; }
   .row.three{ grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .row.four{ grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 
 /* Upcoming transactions filters: allow selects to shrink so all 3 fields stay on one line */
@@ -2154,10 +2155,20 @@ textarea::placeholder{
 #reportsViewPanel .row.three > div{
   min-width: 0;
 }
+#transactionViewPanel .row.four > div{
+  min-width: 0;
+}
 #transactionViewPanel .row.three select,
 #transactionViewPanel .row.three input[type="date"],
 #reportsViewPanel .row.three select,
 #reportsViewPanel .row.three input[type="date"]{
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+#transactionViewPanel .row.four select,
+#transactionViewPanel .row.four input[type="date"]{
   width: 100%;
   min-width: 0;
   max-width: 100%;
