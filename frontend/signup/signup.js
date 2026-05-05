@@ -135,11 +135,47 @@ function isAccountSetupPath() {
   }
 }
 
+function isSignupPath() {
+  try {
+    return String(window.location.pathname || "").includes("/signup");
+  } catch (_) {
+    return false;
+  }
+}
+
 function goToAccountSetup() {
   if (!signupBtn) return;
   setCallout(signupCalloutEl, "", "");
   const q = window.location.search || "";
   window.location.assign("/account-setup" + q);
+}
+
+function goToSignupFromAccountSetup() {
+  if (!signupBtn) return;
+  setCallout(signupCalloutEl, "", "");
+  try {
+    const firstName = (document.getElementById("firstName")?.value || "").trim();
+    const lastName = (document.getElementById("lastName")?.value || "").trim();
+    const timeZone = String(document.getElementById("timeZone")?.value || "").trim();
+    if (!firstName) {
+      setCallout(signupCalloutEl, "First name is required.", "error");
+      return;
+    }
+    if (!lastName) {
+      setCallout(signupCalloutEl, "Last name is required.", "error");
+      return;
+    }
+    if (!timeZone) {
+      setCallout(signupCalloutEl, "Time zone is required.", "error");
+      return;
+    }
+    sessionStorage.setItem(BW_ACCOUNT_SETUP_DRAFT_KEY, JSON.stringify({ firstName, lastName, timeZone }));
+  } catch (e) {
+    setCallout(signupCalloutEl, (e && e.message) || "Could not continue.", "error");
+    return;
+  }
+  const q = window.location.search || "";
+  window.location.assign("/signup/" + q);
 }
 
 function listUsTimeZones() {
@@ -178,16 +214,10 @@ function hydrateAccountSetupDraft() {
     const firstNameEl = document.getElementById("firstName");
     const lastNameEl = document.getElementById("lastName");
     const tzEl = document.getElementById("timeZone");
-    const emailEl = document.getElementById("email");
-    const pwEl = document.getElementById("password");
-    const pw2El = document.getElementById("password2");
     if (nameEl && o.name) nameEl.value = String(o.name);
     if (firstNameEl && o.firstName) firstNameEl.value = String(o.firstName);
     if (lastNameEl && o.lastName) lastNameEl.value = String(o.lastName);
     if (tzEl && o.timeZone) tzEl.value = String(o.timeZone);
-    if (emailEl && o.email && !emailEl.readOnly) emailEl.value = String(o.email);
-    if (pwEl && o.password) pwEl.value = String(o.password);
-    if (pw2El && o.password2 != null) pw2El.value = String(o.password2);
   } catch (_) {}
 }
 
@@ -201,22 +231,42 @@ function setBusy(isBusy) {
   signupBtn.textContent = isBusy ? "Creating..." : "Create Account";
 }
 
+function readAccountSetupDraft() {
+  let raw = "";
+  try {
+    raw = sessionStorage.getItem(BW_ACCOUNT_SETUP_DRAFT_KEY) || "";
+  } catch (_) {}
+  if (!raw) return null;
+  try {
+    const o = JSON.parse(raw);
+    const firstName = (o && o.firstName != null ? String(o.firstName) : "").trim();
+    const lastName = (o && o.lastName != null ? String(o.lastName) : "").trim();
+    const timeZone = (o && o.timeZone != null ? String(o.timeZone) : "").trim();
+    if (!firstName || !lastName || !timeZone) return null;
+    return { firstName, lastName, timeZone };
+  } catch (_) {
+    return null;
+  }
+}
+
 async function doSignup() {
   if (!signupBtn) return;
   setBusy(true);
   setCallout(signupCalloutEl, "Creating your account...", "pending");
   try {
-    const firstName = (document.getElementById("firstName")?.value || "").trim();
-    const lastName = (document.getElementById("lastName")?.value || "").trim();
-    const nameFallback = (document.getElementById("name")?.value || "").trim();
-    const timeZone = String(document.getElementById("timeZone")?.value || "").trim();
-    const name = `${firstName} ${lastName}`.trim() || nameFallback;
+    const draft = readAccountSetupDraft();
+    if (!draft) {
+      setCallout(signupCalloutEl, "Please complete account setup first.", "error");
+      const q = window.location.search || "";
+      window.location.assign("/account-setup" + q);
+      return;
+    }
+    const { firstName, lastName, timeZone } = draft;
+    const name = `${firstName} ${lastName}`.trim();
     const email = (document.getElementById("email")?.value || "").trim();
     const password = document.getElementById("password")?.value || "";
     const password2 = document.getElementById("password2")?.value || "";
 
-    if (!name) throw new Error("First and last name are required.");
-    if (!timeZone) throw new Error("Time zone is required.");
     if (!email) throw new Error("Email is required.");
     if (!password || password.length < 8) throw new Error("Password must be at least 8 characters.");
     if (password !== password2) throw new Error("Passwords do not match.");
@@ -314,7 +364,8 @@ void (async () => {
 
 // Expose a global handler so the inline onclick works even if the event binding fails.
 function onSignupPrimaryClick() {
-  if (isAccountSetupPath()) void doSignup();
+  if (isAccountSetupPath()) void goToSignupFromAccountSetup();
+  else if (isSignupPath()) void doSignup();
   else void goToAccountSetup();
 }
 window.__bwSignup = onSignupPrimaryClick;
