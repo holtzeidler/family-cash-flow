@@ -241,7 +241,7 @@ async function doSignup() {
       sessionStorage.removeItem(BW_ACCOUNT_SETUP_DRAFT_KEY);
     } catch (_) {}
 
-    setCallout(signupCalloutEl, "Account ready. Opening app...", "ok");
+    setCallout(signupCalloutEl, "", "");
     await goApp();
   } catch (e) {
     setCallout(signupCalloutEl, (e && e.message) || "Signup failed.", "error");
