@@ -2338,6 +2338,56 @@ def platform_set_user_password(
     return {"ok": True}
 
 
+@app.delete("/api/platform/users/{target_user_id}")
+def platform_delete_user(
+    target_user_id: int,
+    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    require_platform_admin(db=db, user_id=user_id)
+    if int(target_user_id) == int(user_id):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot delete your own account")
+
+    target = db.execute(select(User).where(User.id == target_user_id)).scalar_one_or_none()
+    if target is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    # Prevent removing the operator/admin allowlisted accounts (avoid locking out admin access).
+    if str(target.email).lower().strip() in _platform_admin_email_set():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot delete a platform admin account")
+
+    # Delete rows that reference this user, then delete the user.
+    # (No cascade is configured on most FKs; handle explicitly.)
+    deleted_memberships = int(
+        db.execute(delete(FamilyMember).where(FamilyMember.user_id == target_user_id)).rowcount or 0
+    )
+    deleted_invites = int(
+        db.execute(delete(FamilyInvite).where(FamilyInvite.invited_by_user_id == target_user_id)).rowcount or 0
+    )
+
+    exp_ids = db.execute(select(ExpectedTransaction.id).where(ExpectedTransaction.created_by_user_id == target_user_id)).scalars().all()
+    deleted_overrides = 0
+    deleted_expected = 0
+    if exp_ids:
+        deleted_overrides = int(
+            db.execute(delete(ExpectedTransactionOverride).where(ExpectedTransactionOverride.expected_transaction_id.in_(list(exp_ids)))).rowcount or 0
+        )
+        deleted_expected = int(
+            db.execute(delete(ExpectedTransaction).where(ExpectedTransaction.id.in_(list(exp_ids)))).rowcount or 0
+        )
+
+    db.execute(delete(User).where(User.id == target_user_id))
+    db.commit()
+    return {
+        "ok": True,
+        "deleted_user_id": int(target_user_id),
+        "deleted_memberships": deleted_memberships,
+        "deleted_invites": deleted_invites,
+        "deleted_expected_transactions": deleted_expected,
+        "deleted_expected_overrides": deleted_overrides,
+    }
+
+
 @app.post(
     "/api/platform/families/{family_id}/members",
     response_model=FamilyMemberOut,

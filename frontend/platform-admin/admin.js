@@ -246,6 +246,27 @@
       });
       pwRow.appendChild(setPw);
       card.appendChild(pwRow);
+
+      const dangerRow = document.createElement("div");
+      dangerRow.className = "admin-inline-actions";
+      const delBtn = document.createElement("button");
+      delBtn.type = "button";
+      delBtn.className = "danger";
+      delBtn.textContent = "Delete user";
+      delBtn.addEventListener("click", async () => {
+        if (!window.confirm(`Delete user ${u.email}?\n\nThis permanently removes the user and related records they created.`)) return;
+        const callout = document.getElementById("adminCallout");
+        try {
+          setCallout(callout, "Deleting…", "pending");
+          await api(`/api/platform/users/${u.id}`, "DELETE");
+          setCallout(callout, "User deleted.", "ok");
+          await loadUsers();
+        } catch (e) {
+          setCallout(callout, (e && e.message) || String(e), "error");
+        }
+      });
+      dangerRow.appendChild(delBtn);
+      card.appendChild(dangerRow);
       mount.appendChild(card);
     }
   }
