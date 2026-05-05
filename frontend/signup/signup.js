@@ -47,7 +47,7 @@ async function goApp() {
   try {
     const t = sessionStorage.getItem("bw_invite_token");
     if (!t || !String(t).trim()) {
-      window.location.href = "../";
+      window.location.href = "/calendar";
       return;
     }
     const enc = encodeURIComponent(String(t).trim());
@@ -59,7 +59,7 @@ async function goApp() {
       try {
         sessionStorage.removeItem("bw_invite_token");
       } catch (_) {}
-      window.location.href = "../";
+      window.location.href = "/calendar";
       return;
     }
     const invited = String(inv.data.invitee_email || "")
@@ -72,12 +72,12 @@ async function goApp() {
             .toLowerCase()
         : "";
     if (logged && invited && logged !== invited) {
-      window.location.href = "../invite/?token=" + enc;
+      window.location.href = "/invite/?token=" + enc;
       return;
     }
-    window.location.href = "../invite/?token=" + enc;
+    window.location.href = "/invite/?token=" + enc;
   } catch (_) {
-    window.location.href = "../";
+    window.location.href = "/calendar";
   }
 }
 
@@ -124,6 +124,69 @@ const signupCalloutEl = document.getElementById("signupCallout");
 const signupPlanNoteEl = document.getElementById("signupPlanNote");
 const signupBannerHead = document.getElementById("signupBannerHead");
 const signupBtn = document.getElementById("signupBtn");
+
+const BW_ACCOUNT_SETUP_DRAFT_KEY = "bw_account_setup_draft";
+
+function isAccountSetupPath() {
+  try {
+    return String(window.location.pathname || "").includes("account-setup");
+  } catch (_) {
+    return false;
+  }
+}
+
+function goToAccountSetup() {
+  if (!signupBtn) return;
+  setCallout(signupCalloutEl, "", "");
+  try {
+    const name = document.getElementById("name")?.value?.trim() || "";
+    const email = document.getElementById("email")?.value?.trim() || "";
+    const password = document.getElementById("password")?.value || "";
+    const password2 = document.getElementById("password2")?.value || "";
+    if (!name) {
+      setCallout(signupCalloutEl, "Name is required.", "error");
+      return;
+    }
+    if (!email) {
+      setCallout(signupCalloutEl, "Email is required.", "error");
+      return;
+    }
+    if (!password || password.length < 8) {
+      setCallout(signupCalloutEl, "Password must be at least 8 characters.", "error");
+      return;
+    }
+    if (password !== password2) {
+      setCallout(signupCalloutEl, "Passwords do not match.", "error");
+      return;
+    }
+    sessionStorage.setItem(BW_ACCOUNT_SETUP_DRAFT_KEY, JSON.stringify({ name, email, password, password2 }));
+  } catch (e) {
+    setCallout(signupCalloutEl, (e && e.message) || "Could not continue.", "error");
+    return;
+  }
+  const q = window.location.search || "";
+  window.location.assign("/account-setup" + q);
+}
+
+function hydrateAccountSetupDraft() {
+  if (!isAccountSetupPath()) return;
+  let raw = "";
+  try {
+    raw = sessionStorage.getItem(BW_ACCOUNT_SETUP_DRAFT_KEY) || "";
+  } catch (_) {}
+  if (!raw) return;
+  try {
+    const o = JSON.parse(raw);
+    const nameEl = document.getElementById("name");
+    const emailEl = document.getElementById("email");
+    const pwEl = document.getElementById("password");
+    const pw2El = document.getElementById("password2");
+    if (nameEl && o.name) nameEl.value = String(o.name);
+    if (emailEl && o.email && !emailEl.readOnly) emailEl.value = String(o.email);
+    if (pwEl && o.password) pwEl.value = String(o.password);
+    if (pw2El && o.password2 != null) pw2El.value = String(o.password2);
+  } catch (_) {}
+}
 
 function showSignupPlanBanner() {
   if (signupBannerHead) signupBannerHead.hidden = false;
@@ -172,6 +235,10 @@ async function doSignup() {
         const d = String(now.getDate()).padStart(2, "0");
         localStorage.setItem("bw_billing_start", `${y}-${m}-${d}`);
       }
+    } catch (_) {}
+
+    try {
+      sessionStorage.removeItem(BW_ACCOUNT_SETUP_DRAFT_KEY);
     } catch (_) {}
 
     setCallout(signupCalloutEl, "Account ready. Opening app...", "ok");
@@ -226,9 +293,16 @@ async function applyInvitePrefill() {
   }
 }
 
-void applyInvitePrefill();
+void (async () => {
+  await applyInvitePrefill();
+  hydrateAccountSetupDraft();
+})();
 
 // Expose a global handler so the inline onclick works even if the event binding fails.
-window.__bwSignup = () => void doSignup();
-if (signupBtn) signupBtn.addEventListener("click", () => void doSignup());
+function onSignupPrimaryClick() {
+  if (isAccountSetupPath()) void doSignup();
+  else void goToAccountSetup();
+}
+window.__bwSignup = onSignupPrimaryClick;
+if (signupBtn) signupBtn.addEventListener("click", onSignupPrimaryClick);
 
