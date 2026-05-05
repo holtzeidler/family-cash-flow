@@ -1042,7 +1042,7 @@ button.nav-link:hover{
   margin-bottom: 0;
   font-weight: 800;
   /* Maximize size while staying single-line across viewports */
-  font-size: clamp(12px, 2.4vw, 18px);
+  font-size: clamp(11px, 2.0vw, 16px);
   white-space: nowrap;
 }
 .cash-outlook-icon{
