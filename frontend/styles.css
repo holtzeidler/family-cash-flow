@@ -196,7 +196,7 @@ body.landing-page .landing-hero__cta:focus-visible{
   padding-right: 10px;
 }
 /* Match Admin (link) to Logout (button): same font metrics + box + radius as top-nav buttons */
-.top-nav__actions .top-nav__logout,
+.top-nav__logout,
 .top-nav__actions .top-nav__admin{
   box-sizing: border-box;
   font-family: inherit;
