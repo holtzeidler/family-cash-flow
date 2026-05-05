@@ -1893,6 +1893,12 @@ label{
 .settings-pane[data-settings-pane="accountDetails"] .form-row-h + .form-row-h{
   margin-top: 6px;
 }
+.settings-pane[data-settings-pane="billing"] .form-row-h{
+  padding: 10px 0;
+}
+.settings-pane[data-settings-pane="billing"] .form-row-h + .form-row-h{
+  margin-top: 10px;
+}
 .settings-pane[data-settings-pane="accountDetails"] .account-details-top-row{
   margin-bottom: 8px;
 }
