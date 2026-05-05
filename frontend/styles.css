@@ -1341,10 +1341,11 @@ button.nav-link:hover{
     including grid gaps and the day-of-week header.
   */
   min-height: calc(
-    230px
+    /* Reserve less vertical chrome so there's less blank space above footer. */
+    58px
     + var(--cal-week-rows) * var(--cal-day-min-h)
     + (var(--cal-week-rows) - 1) * var(--cal-gap)
-    + 24px
+    + 6px
   );
   max-height: none;
   overflow: visible;
