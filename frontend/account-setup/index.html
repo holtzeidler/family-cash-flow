@@ -45,8 +45,28 @@
 
             <div class="row two">
               <div>
-                <label for="name">Name</label>
-                <input id="name" type="text" autocomplete="name" />
+                <label for="firstName">First Name</label>
+                <input id="firstName" type="text" autocomplete="given-name" />
+              </div>
+              <div>
+                <label for="lastName">Last Name</label>
+                <input id="lastName" type="text" autocomplete="family-name" />
+              </div>
+            </div>
+
+            <div class="row two">
+              <div>
+                <label for="timeZone">Time Zone</label>
+                <select id="timeZone">
+                  <option value="">Select a time zone</option>
+                  <option value="America/New_York">Eastern (ET)</option>
+                  <option value="America/Chicago">Central (CT)</option>
+                  <option value="America/Denver">Mountain (MT)</option>
+                  <option value="America/Phoenix">Arizona (no DST)</option>
+                  <option value="America/Los_Angeles">Pacific (PT)</option>
+                  <option value="America/Anchorage">Alaska (AKT)</option>
+                  <option value="Pacific/Honolulu">Hawaii (HST)</option>
+                </select>
               </div>
               <div>
                 <label for="email">Email</label>
