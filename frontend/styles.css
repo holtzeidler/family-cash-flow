@@ -61,18 +61,10 @@ body.account-setup-page .container{
 }
 body.account-setup-page .container > .grid{
   width: min(964px, 69%);
-  margin-left: auto;
+  margin-left: 0;
   margin-right: auto;
 }
 
-body.account-setup-page .account-setup-headline{
-  margin: 0 0 14px;
-  text-align: center;
-  font-size: clamp(1.4rem, 3.6vw, 2.1rem);
-  line-height: 1.15;
-  font-weight: 900;
-  color: var(--accent);
-}
 body.login-page .top-nav__inner--simple{
   justify-items: start;
 }
@@ -209,12 +201,12 @@ body.landing-page .landing-preview__note{
 }
 body.landing-page .landing-preview__mock.card{
   grid-area: mock;
-  width: min(760px, 100%);
-  margin-left: -8px;
+  width: min(608px, 100%);
+  margin-left: -6px;
   background: var(--cal-surface);
   border: 1px solid rgba(0,0,0,0.10);
-  box-shadow: 0 16px 42px rgba(0,0,0,0.12);
-  padding: 14px 14px 12px;
+  box-shadow: 0 13px 34px rgba(0,0,0,0.12);
+  padding: 11px 11px 10px;
 }
 .landing-how{
   width: min(1100px, 100%);
@@ -289,17 +281,18 @@ body.landing-page .landing-preview__mock.card{
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 10px;
+  gap: 8px;
+  margin-bottom: 8px;
 }
 .landing-mock__title{
+  font-size: 13px;
   font-weight: 800;
   color: var(--text);
 }
 .landing-mock__pill{
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 700;
-  padding: 6px 10px;
+  padding: 5px 8px;
   border-radius: 999px;
   border: 1px solid rgba(0,0,0,0.10);
   background: rgba(0,0,0,0.03);
@@ -307,21 +300,21 @@ body.landing-page .landing-preview__mock.card{
   white-space: nowrap;
 }
 .landing-mock__chart{
-  border-radius: 12px;
+  border-radius: 10px;
   background: linear-gradient(180deg, rgba(11,61,46,0.06), rgba(0,0,0,0.01));
   border: 1px solid rgba(0,0,0,0.08);
-  padding: 8px 10px;
+  padding: 6px 8px;
 }
 .landing-mock__svg{
   display: block;
   width: 100%;
-  height: 160px;
+  height: 128px;
 }
 .landing-mock__cols{
-  margin-top: 12px;
+  margin-top: 10px;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 14px;
+  gap: 11px;
 }
 .landing-mock__cols--with-underchart{
   /* allow an extra row under the "Future low point" column */
@@ -330,25 +323,26 @@ body.landing-page .landing-preview__mock.card{
 .landing-mock__chart--under-low{
   grid-column: 2;
   margin-top: -2px;
-  padding: 6px 8px;
+  padding: 5px 6px;
 }
 .landing-mock__chart--under-low .landing-mock__svg{
-  height: 92px;
+  height: 74px;
 }
 .landing-mock__label{
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: rgba(75,85,99,0.95);
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 .landing-mock__list{
   list-style: none;
   padding: 0;
   margin: 0;
   display: grid;
-  gap: 8px;
+  gap: 6px;
+  font-size: 13px;
   font-weight: 650;
   color: var(--text);
 }
@@ -356,26 +350,27 @@ body.landing-page .landing-preview__mock.card{
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  padding: 8px 10px;
-  border-radius: 10px;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 8px;
   border: 1px solid rgba(0,0,0,0.08);
   background: rgba(0,0,0,0.02);
 }
 .landing-mock__low{
-  padding: 12px 12px;
-  border-radius: 12px;
+  padding: 10px 10px;
+  border-radius: 10px;
   border: 1px solid rgba(167,55,68,0.25);
   background: rgba(167,55,68,0.08);
 }
 .landing-mock__lowAmt{
-  font-size: 26px;
+  font-size: 21px;
   font-weight: 900;
   color: #7f1d1d;
   line-height: 1.1;
 }
 .landing-mock__lowMeta{
   margin-top: 2px;
+  font-size: 13px;
   font-weight: 700;
   color: rgba(127,29,29,0.85);
 }
@@ -400,7 +395,7 @@ body.landing-page .landing-preview__mock.card{
   }
   .landing-mock__chart--under-low{
     grid-column: auto;
-    margin-top: 10px;
+    margin-top: 8px;
   }
 }
 
@@ -3265,7 +3260,7 @@ body.account-setup-page .account-setup-card{
 
 /* Account setup: make fields more spacious */
 body.account-setup-page .account-setup-card{
-  padding: 18px;
+  padding: 18px 14px;
 }
 body.account-setup-page .account-setup-card__toggle{
   padding: 12px 14px;
@@ -3300,6 +3295,10 @@ body.account-setup-page .as-password-row .form-row-h__label{
 body.account-setup-page .as-password-row .form-row-h__label label{
   white-space: nowrap;
 }
+body.account-setup-page .row.two.as-password-row{
+  justify-items: stretch;
+  width: 100%;
+}
 body.account-setup-page .account-setup-card{
   overflow: hidden;
 }
@@ -3329,11 +3328,11 @@ body.account-setup-page .account-setup-card__toggle:focus-visible{
   outline-offset: 3px;
 }
 body.account-setup-page .account-setup-card__title{
-  font-weight: 900;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  font-size: 12px;
-  color: rgba(255,255,255,0.92);
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  text-transform: none;
+  font-size: clamp(15px, 1.35vw, 18px);
+  color: rgba(255,255,255,0.95);
 }
 body.account-setup-page .account-setup-card__toggle::after{
   content: "▾";
