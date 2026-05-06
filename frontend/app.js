@@ -5201,7 +5201,7 @@ function renderUncategorizedTransactions() {
   if (!items.length) {
     const empty = document.createElement("div");
     empty.className = "pill";
-    empty.textContent = "No uncategorized transactions in this range.";
+    empty.textContent = "No uncategorized transactions.";
     uncatTxList.appendChild(empty);
     if (uncatTxSaveBtn) {
       uncatTxSaveBtn.disabled = true;
