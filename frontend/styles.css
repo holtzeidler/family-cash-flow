@@ -60,9 +60,9 @@ body.account-setup-page .container{
   max-width: 1920px;
 }
 body.account-setup-page .container > .grid{
-  width: min(1400px, 100%);
-  margin-left: 0;
-  margin-right: 0;
+  width: min(1260px, 90%);
+  margin-left: auto;
+  margin-right: auto;
 }
 body.login-page .top-nav__inner--simple{
   justify-items: start;
@@ -167,11 +167,12 @@ body.landing-page .landing-preview{
   /* Landing page centers children by default; force this section left */
   align-self: flex-start;
   display: grid;
-  grid-template-columns: 1fr 1.15fr;
-  grid-template-rows: auto 1fr;
+  /* Stack mock underneath the copy so the layout doesn't look "split" */
+  grid-template-columns: 1fr;
+  grid-template-rows: auto auto;
   grid-template-areas:
-    "copy ."
-    "copy mock";
+    "copy"
+    "mock";
   gap: 22px;
   align-items: start;
 }
@@ -195,6 +196,7 @@ body.landing-page .landing-preview__note{
 }
 body.landing-page .landing-preview__mock.card{
   grid-area: mock;
+  width: min(760px, 100%);
   background: var(--cal-surface);
   border: 1px solid rgba(0,0,0,0.10);
   box-shadow: 0 16px 42px rgba(0,0,0,0.12);
@@ -3307,7 +3309,7 @@ body.account-setup-page .account-setup-card__toggle::after{
   color: rgba(75,85,99,0.9);
 }
 body.account-setup-page .account-setup-card.is-collapsed .account-setup-card__toggle::after{
-  content: "▸";
+  content: "▾";
 }
 
 /* Smooth expand/collapse */
