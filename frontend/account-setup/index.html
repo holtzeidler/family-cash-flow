@@ -11,7 +11,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="../styles.css?v=200" />
   </head>
-  <body class="login-page signup-page">
+  <body class="login-page signup-page account-setup-page">
     <div class="container">
       <div class="top-nav" role="banner" aria-label="App header">
         <div class="top-nav__inner top-nav__inner--simple">
@@ -37,14 +37,16 @@
       </div>
 
       <div class="grid">
-        <section class="card auth-section auth-section--open" aria-label="Account setup">
-          <div class="auth-section__head auth-section__head--signup-plan" id="signupBannerHead" hidden>
-            <div id="signupPlanNote" class="callout callout--muted" style="display:none" role="status"></div>
-          </div>
-          <div class="auth-section__body">
-            <div id="signupCallout" class="callout" style="display:none" role="status"></div>
+        <div class="auth-section__head auth-section__head--signup-plan" id="signupBannerHead" hidden>
+          <div id="signupPlanNote" class="callout callout--muted" style="display:none" role="status"></div>
+        </div>
+        <div id="signupCallout" class="callout" style="display:none" role="status"></div>
 
-            <div id="accountSetupAccountSection">
+        <div id="accountSetupCards" class="account-setup-cards" aria-label="Account setup">
+          <section class="card auth-section auth-section--open account-setup-card" aria-label="Create login">
+            <div class="auth-section__body">
+              <h3 class="settings-subhead" style="margin-top: 0">Create Login</h3>
+
               <div class="row two">
                 <div class="form-row-h">
                   <div class="form-row-h__label"><label for="firstName">First Name</label></div>
@@ -56,27 +58,37 @@
                 </div>
               </div>
 
+              <div style="height: 14px;"></div>
+
+              <div class="row">
+                <div class="form-row-h">
+                  <div class="form-row-h__label"><label for="email">Email</label></div>
+                  <div class="form-row-h__field"><input id="email" type="email" autocomplete="email" /></div>
+                </div>
+              </div>
+
               <div style="height: 10px;"></div>
 
               <div class="row">
                 <div class="form-row-h">
-                  <div class="form-row-h__label"><label for="timeZone">Time Zone</label></div>
-                  <div class="form-row-h__field">
-                    <select id="timeZone">
-                      <option value="">Select a time zone</option>
-                      <option value="America/New_York">Eastern (ET)</option>
-                      <option value="America/Chicago">Central (CT)</option>
-                      <option value="America/Denver">Mountain (MT)</option>
-                      <option value="America/Phoenix">Arizona (no DST)</option>
-                      <option value="America/Los_Angeles">Pacific (PT)</option>
-                      <option value="America/Anchorage">Alaska (AKT)</option>
-                      <option value="Pacific/Honolulu">Hawaii (HST)</option>
-                    </select>
-                  </div>
+                  <div class="form-row-h__label"><label for="password">Password</label></div>
+                  <div class="form-row-h__field"><input id="password" type="password" autocomplete="new-password" /></div>
                 </div>
               </div>
 
-              <div style="height: 18px;"></div>
+              <div style="height: 10px;"></div>
+
+              <div class="row">
+                <div class="form-row-h">
+                  <div class="form-row-h__label"><label for="password2">Confirm password</label></div>
+                  <div class="form-row-h__field"><input id="password2" type="password" autocomplete="new-password" /></div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="card auth-section auth-section--open account-setup-card" aria-label="Add checking account">
+            <div class="auth-section__body">
               <h3 class="settings-subhead" style="margin-top: 0">Add Checking Account</h3>
               <p class="meta" style="margin: 0 0 12px">Enter your checking account balance to get started today</p>
 
@@ -105,9 +117,10 @@
                 </div>
               </div>
             </div>
+          </section>
 
-            <div id="accountSetupTransactionsSection" class="tx-add-form" hidden>
-              <div style="height: 18px;"></div>
+          <section class="card auth-section auth-section--open account-setup-card" aria-label="Enter transactions">
+            <div class="auth-section__body">
               <h3 class="settings-subhead" style="margin-top: 0">Enter Transactions</h3>
 
               <div class="form-row-h">
@@ -186,18 +199,18 @@
                 </div>
               </div>
             </div>
+          </section>
+        </div>
 
-            <div style="height:10px;"></div>
-            <div id="accountSetupActions" style="display:flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-              <button type="button" id="addMoreTxBtn" class="secondary" style="display:none;">
-                Add More Transactions
-              </button>
-              <button type="button" id="signupBtn" class="top-nav__logout" onclick="window.__bwSignup && window.__bwSignup()">
-                Next
-              </button>
-            </div>
-          </div>
-        </section>
+        <div style="height:10px;"></div>
+        <div id="accountSetupActions" class="account-setup-actions">
+          <button type="button" id="addMoreTxBtn" class="secondary">
+            Add More Transactions
+          </button>
+          <button type="button" id="signupBtn" class="top-nav__logout" onclick="window.__bwSignup && window.__bwSignup()">
+            Create Account
+          </button>
+        </div>
       </div>
 
       <footer class="app-footer" role="contentinfo">

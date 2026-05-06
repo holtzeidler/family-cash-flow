@@ -3251,6 +3251,29 @@ body.login-page.signup-page #password2{
   line-height: 1.3;
 }
 
+/* Account setup: three cards side-by-side */
+body.account-setup-page .account-setup-cards{
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+body.account-setup-page .account-setup-actions{
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+body.account-setup-page .account-setup-card .auth-section__body{
+  padding: 0;
+}
+
+@media (max-width: 1020px){
+  body.account-setup-page .account-setup-cards{
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Signup/account-setup: reuse nav button sizing, but ensure contrast on white cards. */
 body.login-page.signup-page .auth-section__body .top-nav__logout{
   background: var(--accent);

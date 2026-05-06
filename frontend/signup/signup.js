@@ -161,6 +161,14 @@ function getAccountSetupStep() {
 
 function setAccountSetupStep(step) {
   if (!isAccountSetupPath()) return;
+  // New account-setup layout shows all cards at once.
+  if (document.getElementById("accountSetupCards")) {
+    if (signupBtn) signupBtn.textContent = "Create Account";
+    if (addMoreTxBtn) addMoreTxBtn.style.display = "inline-flex";
+    if (accountSetupAccountSectionEl) accountSetupAccountSectionEl.hidden = false;
+    if (accountSetupTransactionsSectionEl) accountSetupTransactionsSectionEl.hidden = false;
+    return;
+  }
   if (!accountSetupAccountSectionEl || !accountSetupTransactionsSectionEl) return;
   const s = step === "transactions" ? "transactions" : "account";
   accountSetupAccountSectionEl.hidden = s !== "account";
@@ -177,10 +185,9 @@ function isoTodayLocal() {
   return `${y}-${m}-${d}`;
 }
 
-function canAdvanceAccountSetupAccountStep({ firstName, lastName, timeZone, accountName, accountStartingBalanceRaw, accountStartingBalance, accountStartingBalanceDate }) {
+function canAdvanceAccountSetupAccountStep({ firstName, lastName, accountName, accountStartingBalanceRaw, accountStartingBalance, accountStartingBalanceDate }) {
   if (!firstName) return { ok: false, message: "First name is required." };
   if (!lastName) return { ok: false, message: "Last name is required." };
-  if (!timeZone) return { ok: false, message: "Time zone is required." };
   const anyAccount =
     !!accountName ||
     (accountStartingBalanceRaw != null && String(accountStartingBalanceRaw).trim() !== "") ||
@@ -212,7 +219,6 @@ function goToSignupFromAccountSetup() {
 
     const firstName = (document.getElementById("firstName")?.value || "").trim();
     const lastName = (document.getElementById("lastName")?.value || "").trim();
-    const timeZone = String(document.getElementById("timeZone")?.value || "").trim();
     const accountName = (document.getElementById("accountName")?.value || "").trim();
     const accountStartingBalanceRaw = document.getElementById("accountStartingBalance")?.value || "";
     const accountStartingBalance = toMoneyNumber(accountStartingBalanceRaw);
@@ -231,10 +237,6 @@ function goToSignupFromAccountSetup() {
     }
     if (!lastName) {
       setCallout(signupCalloutEl, "Last name is required.", "error");
-      return;
-    }
-    if (!timeZone) {
-      setCallout(signupCalloutEl, "Time zone is required.", "error");
       return;
     }
     const anyAccount =
@@ -282,7 +284,6 @@ function goToSignupFromAccountSetup() {
       JSON.stringify({
         firstName,
         lastName,
-        timeZone,
         ...(anyAccount
           ? {
               account: {
@@ -318,29 +319,6 @@ function goToSignupFromAccountSetup() {
   }
   const q = window.location.search || "";
   window.location.assign("/signup/" + q);
-}
-
-function listUsTimeZones() {
-  return new Set([
-    "America/New_York",
-    "America/Chicago",
-    "America/Denver",
-    "America/Phoenix",
-    "America/Los_Angeles",
-    "America/Anchorage",
-    "Pacific/Honolulu",
-  ]);
-}
-
-function hydrateDefaultTimeZone() {
-  if (!isAccountSetupPath()) return;
-  const tzEl = document.getElementById("timeZone");
-  if (!tzEl) return;
-  try {
-    const raw = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
-    const tz = String(raw).trim();
-    if (tz && listUsTimeZones().has(tz)) tzEl.value = tz;
-  } catch (_) {}
 }
 
 function readAccountSetupDraftRaw() {
@@ -417,7 +395,6 @@ function addMoreTransactionsFromAccountSetup() {
   const rawDraft = readAccountSetupDraftRaw() || {};
   const firstName = (document.getElementById("firstName")?.value || "").trim();
   const lastName = (document.getElementById("lastName")?.value || "").trim();
-  const timeZone = String(document.getElementById("timeZone")?.value || "").trim();
   const accountName = (document.getElementById("accountName")?.value || "").trim();
   const accountStartingBalanceRaw = document.getElementById("accountStartingBalance")?.value || "";
   const accountStartingBalance = toMoneyNumber(accountStartingBalanceRaw);
@@ -426,7 +403,6 @@ function addMoreTransactionsFromAccountSetup() {
   const gate = canAdvanceAccountSetupAccountStep({
     firstName,
     lastName,
-    timeZone,
     accountName,
     accountStartingBalanceRaw,
     accountStartingBalance,
@@ -451,7 +427,6 @@ function addMoreTransactionsFromAccountSetup() {
       ...rawDraft,
       firstName,
       lastName,
-      timeZone,
       ...(gate.anyAccount
         ? {
             account: {
@@ -513,7 +488,7 @@ function hydrateAccountSetupDraft() {
     }
     if (txDateEl && !txDateEl.value) txDateEl.value = isoTodayLocal();
     const step = String(o.step || "").trim().toLowerCase();
-    if (step === "transactions" && o.firstName && o.lastName && o.timeZone) setAccountSetupStep("transactions");
+    if (step === "transactions" && o.firstName && o.lastName) setAccountSetupStep("transactions");
   } catch (_) {}
 }
 
@@ -538,8 +513,7 @@ function readAccountSetupDraft() {
     const o = JSON.parse(raw);
     const firstName = (o && o.firstName != null ? String(o.firstName) : "").trim();
     const lastName = (o && o.lastName != null ? String(o.lastName) : "").trim();
-    const timeZone = (o && o.timeZone != null ? String(o.timeZone) : "").trim();
-    if (!firstName || !lastName || !timeZone) return null;
+    if (!firstName || !lastName) return null;
     const account =
       o && o.account && o.account.name && o.account.starting_balance_date != null
         ? {
@@ -561,7 +535,7 @@ function readAccountSetupDraft() {
         bg_color: t?.bg_color != null ? String(t.bg_color) : null,
       }))
       .filter((t) => t.kind && t.date && Number.isFinite(t.amount) && t.amount > 0);
-    return { firstName, lastName, timeZone, account, transactions };
+    return { firstName, lastName, timeZone: "", account, transactions };
   } catch (_) {
     return null;
   }
@@ -623,7 +597,7 @@ async function doSignup() {
       window.location.assign("/account-setup" + q);
       return;
     }
-    const { firstName, lastName, timeZone } = draft;
+    const { firstName, lastName } = draft;
     const name = `${firstName} ${lastName}`.trim();
     const email = (document.getElementById("email")?.value || "").trim();
     const password = document.getElementById("password")?.value || "";
@@ -655,11 +629,6 @@ async function doSignup() {
         const d = String(now.getDate()).padStart(2, "0");
         localStorage.setItem("bw_billing_start", `${y}-${m}-${d}`);
       }
-    } catch (_) {}
-
-    // Cache user-selected timezone for frontend display (until stored server-side).
-    try {
-      if (timeZone) localStorage.setItem("bw_time_zone", timeZone);
     } catch (_) {}
 
     // If the user entered a starter account during setup, create it now.
@@ -725,7 +694,6 @@ async function applyInvitePrefill() {
 void (async () => {
   await applyInvitePrefill();
   hydrateAccountSetupDraft();
-  hydrateDefaultTimeZone();
   if (isAccountSetupPath()) {
     const dateEl = document.getElementById("asTxDate");
     if (dateEl && !String(dateEl.value || "").trim()) dateEl.value = isoTodayLocal();
@@ -735,12 +703,65 @@ void (async () => {
 // Expose a global handler so the inline onclick works even if the event binding fails.
 function onSignupPrimaryClick() {
   if (isAccountSetupPath()) {
+    // With the 3-card layout we create the account directly from this page.
+    if (document.getElementById("accountSetupCards")) {
+      setCallout(signupCalloutEl, "", "");
+      try {
+        const rawDraft = readAccountSetupDraftRaw() || {};
+        const existing = Array.isArray(rawDraft.transactions) ? rawDraft.transactions : [];
+
+        const firstName = (document.getElementById("firstName")?.value || "").trim();
+        const lastName = (document.getElementById("lastName")?.value || "").trim();
+        const accountName = (document.getElementById("accountName")?.value || "").trim();
+        const accountStartingBalanceRaw = document.getElementById("accountStartingBalance")?.value || "";
+        const accountStartingBalance = toMoneyNumber(accountStartingBalanceRaw);
+        const accountStartingBalanceDate = String(document.getElementById("accountStartingBalanceDate")?.value || "").trim();
+
+        const gate = canAdvanceAccountSetupAccountStep({
+          firstName,
+          lastName,
+          accountName,
+          accountStartingBalanceRaw,
+          accountStartingBalance,
+          accountStartingBalanceDate,
+        });
+        if (!gate.ok) {
+          setCallout(signupCalloutEl, gate.message, "error");
+          return;
+        }
+
+        const parsed = readAccountSetupTransactionFromInputs();
+        const txs = parsed.ok ? [...existing, parsed.tx] : existing;
+
+        sessionStorage.setItem(
+          BW_ACCOUNT_SETUP_DRAFT_KEY,
+          JSON.stringify({
+            ...rawDraft,
+            firstName,
+            lastName,
+            ...(gate.anyAccount
+              ? {
+                  account: {
+                    name: accountName,
+                    type: "checking",
+                    starting_balance: accountStartingBalance,
+                    starting_balance_date: accountStartingBalanceDate,
+                  },
+                }
+              : {}),
+            transactions: txs,
+          })
+        );
+      } catch (_) {}
+      void doSignup();
+      return;
+    }
+
     if (getAccountSetupStep() === "account") {
       setCallout(signupCalloutEl, "", "");
       try {
         const firstName = (document.getElementById("firstName")?.value || "").trim();
         const lastName = (document.getElementById("lastName")?.value || "").trim();
-        const timeZone = String(document.getElementById("timeZone")?.value || "").trim();
         const accountName = (document.getElementById("accountName")?.value || "").trim();
         const accountStartingBalanceRaw = document.getElementById("accountStartingBalance")?.value || "";
         const accountStartingBalance = toMoneyNumber(accountStartingBalanceRaw);
@@ -748,7 +769,6 @@ function onSignupPrimaryClick() {
         const gate = canAdvanceAccountSetupAccountStep({
           firstName,
           lastName,
-          timeZone,
           accountName,
           accountStartingBalanceRaw,
           accountStartingBalance,
@@ -764,7 +784,6 @@ function onSignupPrimaryClick() {
           JSON.stringify({
             firstName,
             lastName,
-            timeZone,
             ...(gate.anyAccount
               ? {
                   account: {
