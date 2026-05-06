@@ -88,7 +88,7 @@
                   aria-hidden="true"
                   inert
                 >
-                  <p class="meta" style="margin: 0 0 12px">Enter your checking account balance to get started today</p>
+                  <p class="meta" style="margin: 0 0 12px">Enter your current checking account balance to get started today</p>
                   <div class="row">
                     <div class="form-row-h">
                       <div class="form-row-h__label"><label for="accountName">Account name</label></div>
@@ -96,7 +96,7 @@
                     </div>
                   </div>
                   <div style="height:10px;"></div>
-                  <div class="row two">
+                  <div class="row">
                     <div class="form-row-h">
                       <div class="form-row-h__label"><label for="accountStartingBalance">Starting balance</label></div>
                       <div class="form-row-h__field">
@@ -106,6 +106,9 @@
                         </div>
                       </div>
                     </div>
+                  </div>
+                  <div style="height:10px;"></div>
+                  <div class="row">
                     <div class="form-row-h">
                       <div class="form-row-h__label"><label for="accountStartingBalanceDate">Starting balance date</label></div>
                       <div class="form-row-h__field"><input id="accountStartingBalanceDate" type="date" /></div>
@@ -186,23 +189,23 @@
                 </div>
               </div>
             </div>
+            <div id="accountSetupActions" class="account-setup-actions account-setup-actions--shell">
+              <button type="button" id="accountSetupBackBtn" class="secondary" style="display: none">
+                Back
+              </button>
+              <button type="button" id="addMoreTxBtn" class="secondary" style="display: none">
+                Add More Transactions
+              </button>
+              <button type="button" id="signupBtn" class="top-nav__logout" onclick="window.__bwSignup && window.__bwSignup()">
+                Next
+              </button>
+            </div>
           </div>
         </div>
 
         <div style="height:10px;"></div>
-        <div class="meta" style="margin: 0 0 12px;">
+        <div class="meta account-setup-trust-note">
           No spam. No credit check. Secure setup.
-        </div>
-        <div id="accountSetupActions" class="account-setup-actions">
-          <button type="button" id="accountSetupBackBtn" class="secondary" style="display: none">
-            Back
-          </button>
-          <button type="button" id="addMoreTxBtn" class="secondary" style="display: none">
-            Add More Transactions
-          </button>
-          <button type="button" id="signupBtn" class="top-nav__logout" onclick="window.__bwSignup && window.__bwSignup()">
-            Next
-          </button>
         </div>
       </div>
 
@@ -214,6 +217,6 @@
       </footer>
     </div>
 
-    <script src="../signup/signup.js?v=7"></script>
+    <script src="../signup/signup.js?v=8"></script>
   </body>
 </html>

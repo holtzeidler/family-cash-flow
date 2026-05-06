@@ -60,7 +60,7 @@ body.account-setup-page .container{
   max-width: 1920px;
 }
 body.account-setup-page .container > .grid{
-  width: min(964px, 69%);
+  width: min(640px, 94%);
   margin-left: auto;
   margin-right: auto;
 }
@@ -3257,7 +3257,7 @@ body.login-page.signup-page #password2{
 /* Account setup: sliding step wizard */
 body.account-setup-page .account-setup-wizard{
   width: 100%;
-  max-width: min(771px, 100%);
+  max-width: min(620px, 100%);
   margin-left: auto;
   margin-right: auto;
 }
@@ -3289,10 +3289,24 @@ body.account-setup-page .account-setup-wizard__dot.is-active{
 body.account-setup-page .account-setup-wizard__shell{
   padding: 0;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 body.account-setup-page .account-setup-wizard__viewport{
   overflow: hidden;
   width: 100%;
+  flex: 0 0 auto;
+  min-height: 0;
+}
+body.account-setup-page .account-setup-wizard__shell .account-setup-actions--shell{
+  flex-shrink: 0;
+  padding: 12px 14px 14px;
+  margin: 0;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+body.account-setup-page .account-setup-trust-note{
+  margin: 0 0 12px;
+  text-align: center;
 }
 body.account-setup-page .account-setup-wizard__track{
   display: flex;
@@ -3312,7 +3326,7 @@ body.account-setup-page .account-setup-wizard__panel{
   width: 33.333333%;
   box-sizing: border-box;
   min-width: 0;
-  padding: 18px 14px;
+  padding: 14px 12px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -3320,15 +3334,14 @@ body.account-setup-page .account-setup-wizard__panel{
 }
 body.account-setup-page .account-setup-wizard__panel > *{
   width: 100%;
-  max-width: min(540px, 94%);
+  max-width: 100%;
 }
 body.account-setup-page .account-setup-wizard__panel.auth-section__body{
-  padding: 18px 14px;
+  padding: 14px 12px;
 }
-/* Step 1: center email / password block in the card */
+/* Step 1: compact; card height follows content */
 body.account-setup-page #accountSetupWizardPanel0{
-  justify-content: center;
-  min-height: min(400px, 52vh);
+  justify-content: flex-start;
 }
 body.account-setup-page #accountSetupWizardPanel1,
 body.account-setup-page #accountSetupWizardPanel2{
@@ -3382,6 +3395,14 @@ body.account-setup-page #accountSetupWizardPanel0 .form-row-h__label{
   max-width: 44%;
 }
 body.account-setup-page #accountSetupWizardPanel0 .form-row-h__label label{
+  white-space: nowrap;
+}
+/* Step 2: full-width rows + wider label column so uppercase labels stay on one line */
+body.account-setup-page #accountSetupWizardPanel1 .form-row-h__label{
+  flex: 0 0 13.75rem;
+  max-width: 48%;
+}
+body.account-setup-page #accountSetupWizardPanel1 .form-row-h__label label{
   white-space: nowrap;
 }
 body.account-setup-page .account-setup-card{

@@ -131,6 +131,19 @@ const accountSetupBackBtn = document.getElementById("accountSetupBackBtn");
 
 const BW_ACCOUNT_SETUP_DRAFT_KEY = "bw_account_setup_draft";
 
+/**
+ * Ignore extra primary-button activations right after a wizard step change.
+ * A double-click on "Next" from step 0 would otherwise run step 1 with empty
+ * account fields — which is valid — and skip straight to step 2.
+ */
+let accountSetupWizardStepLockUntil = 0;
+function isAccountSetupWizardStepLocked() {
+  return performance.now() < accountSetupWizardStepLockUntil;
+}
+function lockAccountSetupWizardStepTransition(ms = 480) {
+  accountSetupWizardStepLockUntil = performance.now() + ms;
+}
+
 function initAccountSetupCardAccordion() {
   if (!isAccountSetupPath()) return;
   if (document.getElementById("accountSetupWizard")) return;
@@ -793,6 +806,7 @@ void (async () => {
 function onSignupPrimaryClick() {
   if (isAccountSetupPath()) {
     if (document.getElementById("accountSetupWizard")) {
+      if (isAccountSetupWizardStepLocked()) return;
       setCallout(signupCalloutEl, "", "");
       const st = getAccountSetupWizardStep();
       if (st === 0) {
@@ -811,6 +825,7 @@ function onSignupPrimaryClick() {
           setCallout(signupCalloutEl, "Passwords do not match.", "error");
           return;
         }
+        lockAccountSetupWizardStepTransition();
         setAccountSetupWizardStep(1);
         document.getElementById("accountName")?.focus();
         return;
@@ -850,6 +865,7 @@ function onSignupPrimaryClick() {
             })
           );
         } catch (_) {}
+        lockAccountSetupWizardStepTransition();
         setAccountSetupWizardStep(2, { skipPersist: true });
         document.getElementById("asTxAmount")?.focus();
         return;
