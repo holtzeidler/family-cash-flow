@@ -551,6 +551,7 @@ const lowBalanceErr = document.getElementById("lowBalanceErr");
 const sidebarLowBalanceBanner = document.getElementById("sidebarLowBalanceBanner");
 const sidebarHighBalanceBanner = document.getElementById("sidebarHighBalanceBanner");
 const sidebarBalanceThresholdHint = document.getElementById("sidebarBalanceThresholdHint");
+const balanceThresholdSaveBtn = document.getElementById("balanceThresholdSaveBtn");
 const cashOutlookHead = document.getElementById("cashOutlookHead");
 const BALANCE_THRESHOLD_MIN_KEY = "familyCashFlow_balanceThresholdMin";
 const BALANCE_THRESHOLD_MAX_KEY = "familyCashFlow_balanceThresholdMax";
@@ -1217,12 +1218,33 @@ async function refreshLowBalanceAlert() {
 
 function scheduleLowBalanceRefresh() {
   if (!balanceThresholdMin && !balanceThresholdMax) return;
+  if (lowBalanceDebounceTimer) clearTimeout(lowBalanceDebounceTimer);
+  lowBalanceDebounceTimer = setTimeout(() => refreshLowBalanceAlert(), 350);
+}
+
+function saveBalanceThresholds() {
+  if (!balanceThresholdMin && !balanceThresholdMax) return;
   try {
     if (balanceThresholdMin) localStorage.setItem(BALANCE_THRESHOLD_MIN_KEY, balanceThresholdMin.value || "");
     if (balanceThresholdMax) localStorage.setItem(BALANCE_THRESHOLD_MAX_KEY, balanceThresholdMax.value || "");
-  } catch (_) {}
+  } catch (e) {
+    show(lowBalanceErr, e.message || "Could not save thresholds.");
+    return;
+  }
+  show(lowBalanceErr, "");
+  invalidateLowBalanceAlertCache();
   if (lowBalanceDebounceTimer) clearTimeout(lowBalanceDebounceTimer);
-  lowBalanceDebounceTimer = setTimeout(() => refreshLowBalanceAlert(), 350);
+  lowBalanceDebounceTimer = null;
+  void refreshLowBalanceAlert();
+  if (balanceThresholdSaveBtn) {
+    const prev = balanceThresholdSaveBtn.textContent;
+    balanceThresholdSaveBtn.textContent = "Saved";
+    balanceThresholdSaveBtn.disabled = true;
+    window.setTimeout(() => {
+      balanceThresholdSaveBtn.textContent = prev;
+      balanceThresholdSaveBtn.disabled = false;
+    }, 1500);
+  }
 }
 
 function initCalendarYearOptions() {
@@ -6203,7 +6225,7 @@ function renderSidebarPendingTransactionsForMonth() {
   const checked = loadPendingAttentionChecked();
   const setTitle = (n) => {
     if (!sidebarPendingTitle) return;
-    sidebarPendingTitle.textContent = `Needs Attention (${Number(n) || 0})`;
+    sidebarPendingTitle.textContent = `💩 Needs Attention (${Number(n) || 0})`;
   };
   if (!range) {
     setTitle(0);
@@ -6759,6 +6781,32 @@ function renderCalendar() {
     expectedByDate.get(key).push(item);
   }
 
+  // Starting balances affect the running balance, but aren't "transactions".
+  // Surface them explicitly so users don't see unexplained balance jumps.
+  const startBalancesByDate = new Map(); // iso -> [items]
+  for (const account of state.accounts || []) {
+    const startBal = Number(account.starting_balance || 0);
+    if (!Number.isFinite(startBal) || startBal === 0) continue;
+    const startDate =
+      normalizeIsoDate(account.starting_balance_date) ||
+      account.starting_balance_date ||
+      null;
+    if (!startDate) continue;
+    const row = {
+      _type: "start_balance",
+      kind: "income",
+      amount: Math.abs(startBal),
+      description: `${String(account.name || "Account")} starting balance`,
+      notes: "",
+      category_id: null,
+      bg_color: null,
+      fg_color: null,
+      id: `start-balance-${String(account.id || "")}-${startDate}`,
+    };
+    if (!startBalancesByDate.has(startDate)) startBalancesByDate.set(startDate, []);
+    startBalancesByDate.get(startDate).push(row);
+  }
+
   function txSortKeyKindFirst(tx) {
     // income (positive) first, then expense (negative)
     return String(tx.kind) === "income" ? 0 : 1;
@@ -6790,6 +6838,9 @@ function renderCalendar() {
     arr.sort(txSortAmountDesc);
   }
   for (const arr of expectedByDate.values()) {
+    arr.sort(txSortAmountDesc);
+  }
+  for (const arr of startBalancesByDate.values()) {
     arr.sort(txSortAmountDesc);
   }
 
@@ -6874,6 +6925,7 @@ function renderCalendar() {
     if (showDetails) {
       for (const item of expectedItems) combined.push({ ...item, _type: "expected" });
       for (const tx of actualTxs) combined.push({ ...tx, _type: "actual" });
+      for (const sb of startBalancesByDate.get(iso) || []) combined.push(sb);
       combined.sort(txSortAmountDesc);
     }
 
@@ -6881,19 +6933,22 @@ function renderCalendar() {
       // Always show all transactions; the week row will expand to fit the tallest day.
       for (const row of combined) {
         const isExpected = row._type === "expected";
+        const isStartBalance = row._type === "start_balance";
         const line = document.createElement("div");
         line.className = isExpected
           ? "cal-day-tx-line cal-day-tx-line--expected"
-          : "cal-day-tx-line cal-tx-part";
+          : isStartBalance
+            ? "cal-day-tx-line cal-day-tx-line--expected"
+            : "cal-day-tx-line cal-tx-part";
         if (isExpected && row.variable) line.classList.add("cal-expected-variable");
-        if (!isExpected) line.dataset.txId = String(row.id);
+        if (!isExpected && !isStartBalance) line.dataset.txId = String(row.id);
 
         const categoryName = !isExpected
           ? effectiveTransactionCategoryName(row)
           : row.category && String(row.category).trim()
             ? leafCategoryName(String(row.category).trim())
             : "";
-        const descRaw = isExpected ? row.description || "(expected)" : (row.description || "Uncategorized").trim();
+        const descRaw = isExpected || isStartBalance ? row.description || "(expected)" : (row.description || "Uncategorized").trim();
         // Calendar UI should display only the category name (no group, no extra "• description").
         // If uncategorized, fall back to the description.
         const labelRaw = !isExpected ? (categoryName || descRaw) : descRaw;
@@ -7216,6 +7271,9 @@ async function main() {
     if (balanceThresholdMax) {
       balanceThresholdMax.addEventListener("input", scheduleLowBalanceRefresh);
       balanceThresholdMax.addEventListener("change", scheduleLowBalanceRefresh);
+    }
+    if (balanceThresholdSaveBtn) {
+      balanceThresholdSaveBtn.addEventListener("click", () => saveBalanceThresholds());
     }
     await refreshLowBalanceAlert();
   }

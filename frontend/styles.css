@@ -1425,6 +1425,14 @@ button.nav-link:hover{
 .sidebar-balance-threshold-hint-inline:hover{
   color: var(--text);
 }
+.balance-threshold-save-row{
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+.balance-threshold-save-row .secondary{
+  min-width: 5.5rem;
+}
 .balance-threshold-hint{
   margin: 10px 0 0;
   font-size: 12px;
