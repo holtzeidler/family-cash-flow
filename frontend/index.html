@@ -60,31 +60,7 @@
               <div class="landing-mock__pill">Next 30 days</div>
             </div>
 
-            <div class="landing-mock__chart" aria-hidden="true">
-              <svg viewBox="0 0 520 170" preserveAspectRatio="none" class="landing-mock__svg">
-                <defs>
-                  <linearGradient id="bwPreviewFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stop-color="#0B3D2E" stop-opacity="0.20" />
-                    <stop offset="100%" stop-color="#0B3D2E" stop-opacity="0.00" />
-                  </linearGradient>
-                </defs>
-                <path
-                  d="M10,90 C50,65 95,68 130,78 C165,88 205,105 245,102 C285,99 320,72 350,66 C380,60 415,70 450,92 C480,110 505,120 510,122"
-                  fill="none"
-                  stroke="#0B3D2E"
-                  stroke-width="4"
-                  stroke-linecap="round"
-                />
-                <path
-                  d="M10,90 C50,65 95,68 130,78 C165,88 205,105 245,102 C285,99 320,72 350,66 C380,60 415,70 450,92 C480,110 505,120 510,122 L510,168 L10,168 Z"
-                  fill="url(#bwPreviewFill)"
-                />
-                <circle cx="450" cy="92" r="6" fill="#0B3D2E" />
-                <line x1="450" y1="92" x2="450" y2="168" stroke="rgba(0,0,0,0.10)" stroke-dasharray="4 4" />
-              </svg>
-            </div>
-
-            <div class="landing-mock__cols">
+            <div class="landing-mock__cols landing-mock__cols--with-underchart">
               <div class="landing-mock__col">
                 <div class="landing-mock__label">Upcoming bills</div>
                 <ul class="landing-mock__list" aria-label="Upcoming bills">
@@ -99,6 +75,30 @@
                   <div class="landing-mock__lowAmt">$2,184</div>
                   <div class="landing-mock__lowMeta">on May 22</div>
                 </div>
+              </div>
+
+              <div class="landing-mock__chart landing-mock__chart--under-low" aria-hidden="true">
+                <svg viewBox="0 0 520 170" preserveAspectRatio="none" class="landing-mock__svg">
+                  <defs>
+                    <linearGradient id="bwPreviewFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="#0B3D2E" stop-opacity="0.20" />
+                      <stop offset="100%" stop-color="#0B3D2E" stop-opacity="0.00" />
+                    </linearGradient>
+                  </defs>
+                  <path
+                    d="M10,90 C50,65 95,68 130,78 C165,88 205,105 245,102 C285,99 320,72 350,66 C380,60 415,70 450,92 C480,110 505,120 510,122"
+                    fill="none"
+                    stroke="#0B3D2E"
+                    stroke-width="4"
+                    stroke-linecap="round"
+                  />
+                  <path
+                    d="M10,90 C50,65 95,68 130,78 C165,88 205,105 245,102 C285,99 320,72 350,66 C380,60 415,70 450,92 C480,110 505,120 510,122 L510,168 L10,168 Z"
+                    fill="url(#bwPreviewFill)"
+                  />
+                  <circle cx="450" cy="92" r="6" fill="#0B3D2E" />
+                  <line x1="450" y1="92" x2="450" y2="168" stroke="rgba(0,0,0,0.10)" stroke-dasharray="4 4" />
+                </svg>
               </div>
             </div>
           </div>
@@ -118,7 +118,7 @@
 
         <section class="landing-offer" aria-label="Build your forecast">
           <div class="landing-offer__copy">
-            <a class="landing-offer__title" href="./plans/">Build your forecast today</a>
+            <a class="landing-offer__title" href="https://balancewhiz.com/account-setup/">Build your forecast today</a>
             <ul class="landing-offer__bullets" aria-label="Offer details">
               <li>$5.99/month</li>
               <li>Start forecasting immediately</li>

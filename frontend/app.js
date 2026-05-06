@@ -1467,6 +1467,94 @@ const ACTIVE_VIEW_KEY = "familyCashFlow_activeView";
 const CALENDAR_DETAIL_MODE_KEY = "familyCashFlow_calendarDetailMode"; // "simplified" | "detailed"
 const PENDING_ATTENTION_CHECKED_KEY = "familyCashFlow_pendingAttentionChecked"; // JSON array of row keys
 
+function initReportsLeftNav() {
+  if (!reportsViewPanel) return;
+  if (reportsViewPanel.dataset.reportsNavInit === "1") return;
+  reportsViewPanel.dataset.reportsNavInit = "1";
+
+  const ids = [
+    { id: "chartPanel", label: "Balance trendline" },
+    { id: "incomeExpenseCard", label: "Income vs. Expense" },
+    { id: "categoryTotalsReportCard", label: "Category totals" },
+  ].filter((it) => document.getElementById(it.id));
+
+  if (!ids.length) return;
+
+  const layout = document.createElement("div");
+  layout.className = "reports-layout";
+
+  const nav = document.createElement("nav");
+  nav.className = "reports-left-nav";
+  nav.setAttribute("aria-label", "Reports");
+
+  const list = document.createElement("div");
+  list.className = "reports-left-nav__list";
+  nav.appendChild(list);
+
+  const content = document.createElement("div");
+  content.className = "reports-content";
+
+  const existingKids = [...reportsViewPanel.children];
+  for (const kid of existingKids) content.appendChild(kid);
+
+  layout.appendChild(nav);
+  layout.appendChild(content);
+  reportsViewPanel.appendChild(layout);
+
+  function setActiveNav(id) {
+    for (const btn of list.querySelectorAll("button[data-target]")) {
+      const active = btn.getAttribute("data-target") === id;
+      btn.classList.toggle("is-active", active);
+      btn.setAttribute("aria-current", active ? "true" : "false");
+    }
+  }
+
+  for (const it of ids) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "reports-left-nav__item";
+    btn.textContent = it.label;
+    btn.setAttribute("data-target", it.id);
+    btn.addEventListener("click", () => {
+      const el = document.getElementById(it.id);
+      if (!el) return;
+      setActiveNav(it.id);
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    list.appendChild(btn);
+  }
+
+  // Initialize active based on first visible card.
+  setActiveNav(ids[0].id);
+
+  // Keep active state roughly in sync while scrolling.
+  let raf = 0;
+  window.addEventListener(
+    "scroll",
+    () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        const topOffset = 90; // approx header + padding
+        let best = ids[0]?.id;
+        let bestDist = Number.POSITIVE_INFINITY;
+        for (const it of ids) {
+          const el = document.getElementById(it.id);
+          if (!el) continue;
+          const r = el.getBoundingClientRect();
+          const dist = Math.abs(r.top - topOffset);
+          if (r.bottom > topOffset && dist < bestDist) {
+            bestDist = dist;
+            best = it.id;
+          }
+        }
+        if (best) setActiveNav(best);
+      });
+    },
+    { passive: true }
+  );
+}
+
 function pendingAttentionKey(it) {
   const id = it?.expected_transaction_id ?? it?.id ?? "";
   const iso = normalizeIsoDate(it?.date) || String(it?.date || "");
@@ -1523,6 +1611,7 @@ function setActiveTopView(view) {
     navReportsView.setAttribute("aria-selected", v === "reports" ? "true" : "false");
   }
   if (v === "reports") {
+    initReportsLeftNav();
     populateCatReportYearSelect();
     ensureCatReportDateDefaults();
     if (projectionChartInstance) {

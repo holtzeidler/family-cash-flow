@@ -128,17 +128,16 @@ body.landing-page .landing-hero{
 }
 body.landing-page .landing-hero__text{
   margin: 0;
-  font-size: clamp(1.125rem, 2.4vw, 1.4rem);
-  line-height: 1.55;
-  font-weight: 500;
-  color: var(--text);
+  font-size: clamp(1.65rem, 4.2vw, 2.35rem);
+  line-height: 1.15;
+  font-weight: 800;
+  color: var(--accent);
 }
 body.landing-page .landing-hero__cta{
   display: block;
   font-weight: 700;
   color: var(--accent);
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  text-decoration: none;
   margin-left: 0;
   margin-top: 10px;
 }
@@ -293,6 +292,18 @@ body.landing-page .landing-preview__mock.card{
   grid-template-columns: 1fr 1fr;
   gap: 14px;
 }
+.landing-mock__cols--with-underchart{
+  /* allow an extra row under the "Future low point" column */
+  grid-auto-rows: min-content;
+}
+.landing-mock__chart--under-low{
+  grid-column: 2;
+  margin-top: -2px;
+  padding: 6px 8px;
+}
+.landing-mock__chart--under-low .landing-mock__svg{
+  height: 92px;
+}
 .landing-mock__label{
   font-size: 12px;
   font-weight: 800;
@@ -351,6 +362,10 @@ body.landing-page .landing-preview__mock.card{
   }
   .landing-mock__cols{
     grid-template-columns: 1fr;
+  }
+  .landing-mock__chart--under-low{
+    grid-column: auto;
+    margin-top: 10px;
   }
 }
 
@@ -1661,6 +1676,68 @@ button.nav-link:hover{
 /* Reports View should match Calendar's white surface. */
 #reportsViewPanel .card{
   background: var(--cal-surface);
+}
+
+/* Reports: left-nav layout */
+#reportsViewPanel .reports-layout{
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+  padding-top: 14px;
+}
+#reportsViewPanel .reports-left-nav{
+  position: sticky;
+  top: calc(var(--app-top-nav-offset) + 10px);
+  align-self: start;
+}
+#reportsViewPanel .reports-left-nav__list{
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--cal-surface);
+}
+#reportsViewPanel .reports-left-nav__item{
+  appearance: none;
+  width: 100%;
+  text-align: left;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  padding: 10px 10px;
+  border-radius: 12px;
+  cursor: pointer;
+}
+#reportsViewPanel .reports-left-nav__item:hover{
+  background: rgba(0,0,0,0.04);
+}
+#reportsViewPanel .reports-left-nav__item.is-active{
+  border-color: rgba(11, 61, 46, 0.35);
+  background: rgba(11, 61, 46, 0.08);
+}
+#reportsViewPanel .reports-content{
+  min-width: 0;
+}
+
+@media (max-width: 900px){
+  #reportsViewPanel .reports-layout{
+    grid-template-columns: 1fr;
+  }
+  #reportsViewPanel .reports-left-nav{
+    position: static;
+  }
+  #reportsViewPanel .reports-left-nav__list{
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  #reportsViewPanel .reports-left-nav__item{
+    width: auto;
+  }
 }
 
 /* Settings View should match Calendar's white surface. */
