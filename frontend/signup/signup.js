@@ -130,6 +130,46 @@ const addMoreTxBtn = document.getElementById("addMoreTxBtn");
 
 const BW_ACCOUNT_SETUP_DRAFT_KEY = "bw_account_setup_draft";
 
+function initAccountSetupCardAccordion() {
+  if (!isAccountSetupPath()) return;
+  const wrap = document.getElementById("accountSetupCards");
+  if (!wrap) return;
+  if (wrap.dataset.asAccordionInit === "1") return;
+  wrap.dataset.asAccordionInit = "1";
+
+  const cards = [...wrap.querySelectorAll("section.account-setup-card[data-as-card]")];
+  if (!cards.length) return;
+
+  function applyColumns() {
+    // Collapsed cards become thin tabs; expanded cards share remaining space.
+    const cols = cards.map((c) => (c.classList.contains("is-collapsed") ? "64px" : "minmax(0, 1fr)"));
+    wrap.style.gridTemplateColumns = cols.join(" ");
+  }
+
+  function setCollapsed(card, collapsed) {
+    card.classList.toggle("is-collapsed", collapsed);
+    const btn = card.querySelector("button.account-setup-card__toggle");
+    if (btn) btn.setAttribute("aria-expanded", collapsed ? "false" : "true");
+    applyColumns();
+  }
+
+  for (const card of cards) {
+    const btn = card.querySelector("button.account-setup-card__toggle");
+    if (!btn) continue;
+    btn.addEventListener("click", () => {
+      const nowCollapsed = !card.classList.contains("is-collapsed");
+      setCollapsed(card, nowCollapsed);
+    });
+  }
+
+  // Default: all expanded.
+  for (const c of cards) {
+    const btn = c.querySelector("button.account-setup-card__toggle");
+    if (btn && !btn.getAttribute("aria-expanded")) btn.setAttribute("aria-expanded", "true");
+  }
+  applyColumns();
+}
+
 function isAccountSetupPath() {
   try {
     return String(window.location.pathname || "").includes("account-setup");
@@ -837,5 +877,8 @@ function initAccountSetupTransactionUi() {
 
 try {
   initAccountSetupTransactionUi();
+} catch (_) {}
+try {
+  initAccountSetupCardAccordion();
 } catch (_) {}
 

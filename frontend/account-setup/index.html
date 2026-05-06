@@ -43,9 +43,13 @@
         <div id="signupCallout" class="callout" style="display:none" role="status"></div>
 
         <div id="accountSetupCards" class="account-setup-cards" aria-label="Account setup">
-          <section class="card auth-section auth-section--open account-setup-card" aria-label="Create login">
-            <div class="auth-section__body">
-              <h3 class="settings-subhead" style="margin-top: 0">Create Login</h3>
+          <section class="card auth-section auth-section--open account-setup-card" data-as-card="login" aria-label="Create login">
+            <div class="account-setup-card__head">
+              <button type="button" class="account-setup-card__toggle" aria-expanded="true">
+                <span class="account-setup-card__title">Create Login</span>
+              </button>
+            </div>
+            <div class="auth-section__body account-setup-card__body">
 
               <div class="row two">
                 <div class="form-row-h">
@@ -87,9 +91,13 @@
             </div>
           </section>
 
-          <section class="card auth-section auth-section--open account-setup-card" aria-label="Add checking account">
-            <div class="auth-section__body">
-              <h3 class="settings-subhead" style="margin-top: 0">Add Checking Account</h3>
+          <section class="card auth-section auth-section--open account-setup-card" data-as-card="account" aria-label="Add checking account">
+            <div class="account-setup-card__head">
+              <button type="button" class="account-setup-card__toggle" aria-expanded="true">
+                <span class="account-setup-card__title">Add Checking Account</span>
+              </button>
+            </div>
+            <div class="auth-section__body account-setup-card__body">
               <p class="meta" style="margin: 0 0 12px">Enter your checking account balance to get started today</p>
 
               <div class="row">
@@ -119,9 +127,13 @@
             </div>
           </section>
 
-          <section class="card auth-section auth-section--open account-setup-card" aria-label="Enter transactions">
-            <div class="auth-section__body">
-              <h3 class="settings-subhead" style="margin-top: 0">Enter Transactions</h3>
+          <section class="card auth-section auth-section--open account-setup-card" data-as-card="transactions" aria-label="Enter transactions">
+            <div class="account-setup-card__head">
+              <button type="button" class="account-setup-card__toggle" aria-expanded="true">
+                <span class="account-setup-card__title">Enter Transactions</span>
+              </button>
+            </div>
+            <div class="auth-section__body account-setup-card__body">
 
               <div class="form-row-h">
                 <div class="form-row-h__label"><label>Type</label></div>

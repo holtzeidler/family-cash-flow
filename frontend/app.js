@@ -1472,6 +1472,19 @@ function initReportsLeftNav() {
   if (reportsViewPanel.dataset.reportsNavInit === "1") return;
   reportsViewPanel.dataset.reportsNavInit = "1";
 
+  // If we previously rendered a 2-column reports layout, unwrap it.
+  try {
+    const existingLayout = reportsViewPanel.querySelector(":scope > .reports-layout");
+    if (existingLayout) {
+      const content = existingLayout.querySelector(":scope > .reports-content");
+      if (content) {
+        const kids = [...content.children];
+        existingLayout.remove();
+        for (const kid of kids) reportsViewPanel.appendChild(kid);
+      }
+    }
+  } catch (_) {}
+
   const ids = [
     { id: "chartPanel", label: "Balance trendline" },
     { id: "incomeExpenseCard", label: "Income vs. Expense" },
@@ -1480,26 +1493,47 @@ function initReportsLeftNav() {
 
   if (!ids.length) return;
 
-  const layout = document.createElement("div");
-  layout.className = "reports-layout";
+  // Render the report menu inside the existing app sidebar, below the
+  // threshold notification pillbox.
+  const sidebar = document.querySelector(".app-layout .sidebar");
+  const thresholdBox = document.getElementById("sidebarBalanceThresholdAlerts");
+  if (!sidebar || !thresholdBox) return;
+
+  const existingNav = document.getElementById("reportsLeftNav");
+  if (existingNav) existingNav.remove();
 
   const nav = document.createElement("nav");
-  nav.className = "reports-left-nav";
+  nav.id = "reportsLeftNav";
+  nav.className = "card reports-left-nav reports-left-nav--sidebar";
   nav.setAttribute("aria-label", "Reports");
 
   const list = document.createElement("div");
   list.className = "reports-left-nav__list";
   nav.appendChild(list);
 
-  const content = document.createElement("div");
-  content.className = "reports-content";
+  thresholdBox.insertAdjacentElement("afterend", nav);
 
-  const existingKids = [...reportsViewPanel.children];
-  for (const kid of existingKids) content.appendChild(kid);
-
-  layout.appendChild(nav);
-  layout.appendChild(content);
-  reportsViewPanel.appendChild(layout);
+  // Hide all other reports and show the selected one.
+  const reportEls = new Map();
+  for (const it of ids) {
+    const card = document.getElementById(it.id);
+    if (!card) continue;
+    const extras = [];
+    // Include the spacer just before the card (the UI uses inline height divs).
+    const prev = card.previousElementSibling;
+    if (prev && prev.tagName === "DIV") {
+      const h = String(prev.style?.height || "").trim();
+      if (h) extras.push(prev);
+    }
+    reportEls.set(it.id, { card, extras });
+  }
+  function showOnlyReport(targetId) {
+    for (const [id, it] of reportEls.entries()) {
+      const on = id === targetId;
+      it.card.hidden = !on;
+      for (const ex of it.extras) ex.hidden = !on;
+    }
+  }
 
   function setActiveNav(id) {
     for (const btn of list.querySelectorAll("button[data-target]")) {
@@ -1519,13 +1553,18 @@ function initReportsLeftNav() {
       const el = document.getElementById(it.id);
       if (!el) return;
       setActiveNav(it.id);
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      showOnlyReport(it.id);
+      // Ensure we're not scrolled into a blank spot after hiding other cards.
+      requestAnimationFrame(() => {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
     });
     list.appendChild(btn);
   }
 
   // Initialize active based on first visible card.
   setActiveNav(ids[0].id);
+  showOnlyReport(ids[0].id);
 
   // Keep active state roughly in sync while scrolling.
   let raf = 0;
@@ -1541,6 +1580,7 @@ function initReportsLeftNav() {
         for (const it of ids) {
           const el = document.getElementById(it.id);
           if (!el) continue;
+          if (el.hidden) continue;
           const r = el.getBoundingClientRect();
           const dist = Math.abs(r.top - topOffset);
           if (r.bottom > topOffset && dist < bestDist) {

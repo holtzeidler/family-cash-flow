@@ -153,10 +153,9 @@ body.landing-page .landing-hero__cta:focus-visible{
 /* Landing: product preview */
 body.landing-page .landing-preview{
   width: min(1100px, 100%);
-  margin: 92px auto 0;
-  align-self: stretch;
-  margin-left: 0;
-  margin-right: 0;
+  margin: 92px 0 0;
+  /* Landing page centers children by default; force this section left */
+  align-self: flex-start;
   display: grid;
   grid-template-columns: 1fr 1.15fr;
   gap: 22px;
@@ -1678,29 +1677,14 @@ button.nav-link:hover{
   background: var(--cal-surface);
 }
 
-/* Reports: left-nav layout */
-#reportsViewPanel .reports-layout{
-  display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
-  gap: 14px;
-  align-items: start;
-  padding-top: 14px;
-}
-#reportsViewPanel .reports-left-nav{
-  position: sticky;
-  top: calc(var(--app-top-nav-offset) + 10px);
-  align-self: start;
-}
-#reportsViewPanel .reports-left-nav__list{
+/* Reports: left-nav (sidebar card, below threshold pillbox) */
+.sidebar .reports-left-nav__list{
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 10px;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  background: var(--cal-surface);
+  padding: 0;
 }
-#reportsViewPanel .reports-left-nav__item{
+.sidebar .reports-left-nav__item{
   appearance: none;
   width: 100%;
   text-align: left;
@@ -1712,32 +1696,12 @@ button.nav-link:hover{
   border-radius: 12px;
   cursor: pointer;
 }
-#reportsViewPanel .reports-left-nav__item:hover{
+.sidebar .reports-left-nav__item:hover{
   background: rgba(0,0,0,0.04);
 }
-#reportsViewPanel .reports-left-nav__item.is-active{
+.sidebar .reports-left-nav__item.is-active{
   border-color: rgba(11, 61, 46, 0.35);
   background: rgba(11, 61, 46, 0.08);
-}
-#reportsViewPanel .reports-content{
-  min-width: 0;
-}
-
-@media (max-width: 900px){
-  #reportsViewPanel .reports-layout{
-    grid-template-columns: 1fr;
-  }
-  #reportsViewPanel .reports-left-nav{
-    position: static;
-  }
-  #reportsViewPanel .reports-left-nav__list{
-    flex-direction: row;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-  #reportsViewPanel .reports-left-nav__item{
-    width: auto;
-  }
 }
 
 /* Settings View should match Calendar's white surface. */
@@ -3258,6 +3222,72 @@ body.account-setup-page .account-setup-cards{
   gap: 14px;
   align-items: start;
 }
+body.account-setup-page .account-setup-card{
+  overflow: hidden;
+}
+body.account-setup-page .account-setup-card__head{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+body.account-setup-page .account-setup-card__toggle{
+  appearance: none;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid rgba(0,0,0,0.10);
+  background: rgba(0,0,0,0.02);
+  border-radius: 12px;
+  padding: 10px 12px;
+  cursor: pointer;
+  color: var(--text);
+  font: inherit;
+}
+body.account-setup-page .account-setup-card__toggle:focus-visible{
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+body.account-setup-page .account-setup-card__title{
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-size: 12px;
+  color: rgba(11, 61, 46, 0.85);
+}
+body.account-setup-page .account-setup-card__toggle::after{
+  content: "▾";
+  font-weight: 900;
+  color: rgba(75,85,99,0.9);
+}
+body.account-setup-page .account-setup-card.is-collapsed .account-setup-card__toggle::after{
+  content: "▸";
+}
+
+body.account-setup-page .account-setup-card.is-collapsed .account-setup-card__body{
+  display: none;
+}
+
+/* When collapsed, keep only a thin vertical tab */
+body.account-setup-page .account-setup-card.is-collapsed{
+  padding: 10px;
+}
+body.account-setup-page .account-setup-card.is-collapsed .account-setup-card__head{
+  margin-bottom: 0;
+}
+body.account-setup-page .account-setup-card.is-collapsed .account-setup-card__toggle{
+  justify-content: center;
+  padding: 10px 8px;
+}
+body.account-setup-page .account-setup-card.is-collapsed .account-setup-card__title{
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transform: rotate(180deg);
+  letter-spacing: 0.18em;
+}
+
 body.account-setup-page .account-setup-actions{
   display: flex;
   gap: 10px;
@@ -3271,6 +3301,13 @@ body.account-setup-page .account-setup-card .auth-section__body{
 @media (max-width: 1020px){
   body.account-setup-page .account-setup-cards{
     grid-template-columns: 1fr;
+  }
+  body.account-setup-page .account-setup-card.is-collapsed .account-setup-card__title{
+    writing-mode: horizontal-tb;
+    transform: none;
+  }
+  body.account-setup-page .account-setup-card.is-collapsed .account-setup-card__toggle{
+    justify-content: space-between;
   }
 }
 
