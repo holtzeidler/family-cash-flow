@@ -165,7 +165,6 @@ function goToSignupFromAccountSetup() {
     const lastName = (document.getElementById("lastName")?.value || "").trim();
     const timeZone = String(document.getElementById("timeZone")?.value || "").trim();
     const accountName = (document.getElementById("accountName")?.value || "").trim();
-    const accountType = String(document.getElementById("accountType")?.value || "checking").trim() || "checking";
     const accountStartingBalanceRaw = document.getElementById("accountStartingBalance")?.value || "";
     const accountStartingBalance = toMoneyNumber(accountStartingBalanceRaw);
     const accountStartingBalanceDate = String(document.getElementById("accountStartingBalanceDate")?.value || "").trim();
@@ -209,7 +208,7 @@ function goToSignupFromAccountSetup() {
           ? {
               account: {
                 name: accountName,
-                type: accountType,
+                type: "checking",
                 starting_balance: accountStartingBalance,
                 starting_balance_date: accountStartingBalanceDate,
               },
@@ -262,7 +261,6 @@ function hydrateAccountSetupDraft() {
     const lastNameEl = document.getElementById("lastName");
     const tzEl = document.getElementById("timeZone");
     const accNameEl = document.getElementById("accountName");
-    const accTypeEl = document.getElementById("accountType");
     const accBalEl = document.getElementById("accountStartingBalance");
     const accDateEl = document.getElementById("accountStartingBalanceDate");
     if (nameEl && o.name) nameEl.value = String(o.name);
@@ -271,7 +269,6 @@ function hydrateAccountSetupDraft() {
     if (tzEl && o.timeZone) tzEl.value = String(o.timeZone);
     if (o.account) {
       if (accNameEl && o.account.name) accNameEl.value = String(o.account.name);
-      if (accTypeEl && o.account.type) accTypeEl.value = String(o.account.type);
       if (accBalEl && o.account.starting_balance != null) accBalEl.value = String(o.account.starting_balance);
       if (accDateEl && o.account.starting_balance_date) accDateEl.value = String(o.account.starting_balance_date);
     }
