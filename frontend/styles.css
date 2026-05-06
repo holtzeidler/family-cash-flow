@@ -33,7 +33,7 @@ body{
 /* Login page */
 body.login-page .container{
   /* Narrow the login layout (about half width on desktop) */
-  max-width: 960px;
+  max-width: 864px;
 }
 body.signup-page .card{
   background: var(--cal-surface);
@@ -60,7 +60,7 @@ body.account-setup-page .container{
   max-width: 1920px;
 }
 body.account-setup-page .container > .grid{
-  width: min(1134px, 81%);
+  width: min(964px, 69%);
   margin-left: auto;
   margin-right: auto;
 }
@@ -3272,6 +3272,15 @@ body.account-setup-page .form-row-h__field select{
   padding-top: 12px;
   padding-bottom: 12px;
   font-size: 16px;
+}
+
+/* Account setup: tighten label → field spacing (e.g., Last Name) */
+body.account-setup-page .form-row-h{
+  gap: 10px 10px;
+}
+body.account-setup-page .form-row-h__label{
+  flex: 0 0 6.75rem;
+  max-width: 28%;
 }
 body.account-setup-page .account-setup-card{
   overflow: hidden;
