@@ -124,6 +124,8 @@ const signupCalloutEl = document.getElementById("signupCallout");
 const signupPlanNoteEl = document.getElementById("signupPlanNote");
 const signupBannerHead = document.getElementById("signupBannerHead");
 const signupBtn = document.getElementById("signupBtn");
+const accountSetupAccountSectionEl = document.getElementById("accountSetupAccountSection");
+const accountSetupTransactionsSectionEl = document.getElementById("accountSetupTransactionsSection");
 
 const BW_ACCOUNT_SETUP_DRAFT_KEY = "bw_account_setup_draft";
 
@@ -150,6 +152,29 @@ function toMoneyNumber(raw) {
   return Number.isFinite(n) ? n : null;
 }
 
+function getAccountSetupStep() {
+  if (!isAccountSetupPath()) return "account";
+  if (!accountSetupTransactionsSectionEl) return "account";
+  return accountSetupTransactionsSectionEl.hidden ? "account" : "transactions";
+}
+
+function setAccountSetupStep(step) {
+  if (!isAccountSetupPath()) return;
+  if (!accountSetupAccountSectionEl || !accountSetupTransactionsSectionEl) return;
+  const s = step === "transactions" ? "transactions" : "account";
+  accountSetupAccountSectionEl.hidden = s !== "account";
+  accountSetupTransactionsSectionEl.hidden = s !== "transactions";
+  if (signupBtn) signupBtn.textContent = s === "account" ? "Next" : "Create Account";
+}
+
+function isoTodayLocal() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+  const d = String(now.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 function goToAccountSetup() {
   if (!signupBtn) return;
   setCallout(signupCalloutEl, "", "");
@@ -168,6 +193,14 @@ function goToSignupFromAccountSetup() {
     const accountStartingBalanceRaw = document.getElementById("accountStartingBalance")?.value || "";
     const accountStartingBalance = toMoneyNumber(accountStartingBalanceRaw);
     const accountStartingBalanceDate = String(document.getElementById("accountStartingBalanceDate")?.value || "").trim();
+    const txKind = String(document.querySelector('input[name="asTxKind"]:checked')?.value || "").trim();
+    const txAmountRaw = document.getElementById("asTxAmount")?.value || "";
+    const txAmount = toMoneyNumber(txAmountRaw);
+    const txCategory = (document.getElementById("asTxCategory")?.value || "").trim();
+    const txDate = String(document.getElementById("asTxDate")?.value || "").trim();
+    const txNotes = (document.getElementById("asTxNotes")?.value || "").trim();
+    const txRecurring = !!document.getElementById("asTxRecurring")?.checked;
+    const txBgColor = String(document.getElementById("asTxBgColor")?.value || "").trim();
     if (!firstName) {
       setCallout(signupCalloutEl, "First name is required.", "error");
       return;
@@ -198,6 +231,28 @@ function goToSignupFromAccountSetup() {
         return;
       }
     }
+
+    const anyTx =
+      (txAmountRaw != null && String(txAmountRaw).trim() !== "") ||
+      !!txCategory ||
+      !!txDate ||
+      !!txNotes ||
+      txRecurring ||
+      !!txBgColor;
+    if (anyTx) {
+      if (!txKind) {
+        setCallout(signupCalloutEl, "Transaction type is required (or leave transactions blank).", "error");
+        return;
+      }
+      if (txAmount == null || txAmount <= 0) {
+        setCallout(signupCalloutEl, "Transaction amount is required (or leave transactions blank).", "error");
+        return;
+      }
+      if (!txDate) {
+        setCallout(signupCalloutEl, "Transaction date is required (or leave transactions blank).", "error");
+        return;
+      }
+    }
     sessionStorage.setItem(
       BW_ACCOUNT_SETUP_DRAFT_KEY,
       JSON.stringify({
@@ -214,6 +269,20 @@ function goToSignupFromAccountSetup() {
               },
             }
           : {}),
+        ...(anyTx
+          ? {
+              transaction: {
+                kind: txKind,
+                amount: txAmount,
+                category: txCategory,
+                date: txDate,
+                notes: txNotes,
+                recurring: txRecurring,
+                bg_color: txBgColor || null,
+              },
+            }
+          : {}),
+        step: "transactions",
       })
     );
   } catch (e) {
@@ -256,14 +325,18 @@ function hydrateAccountSetupDraft() {
   if (!raw) return;
   try {
     const o = JSON.parse(raw);
-    const nameEl = document.getElementById("name");
     const firstNameEl = document.getElementById("firstName");
     const lastNameEl = document.getElementById("lastName");
     const tzEl = document.getElementById("timeZone");
     const accNameEl = document.getElementById("accountName");
     const accBalEl = document.getElementById("accountStartingBalance");
     const accDateEl = document.getElementById("accountStartingBalanceDate");
-    if (nameEl && o.name) nameEl.value = String(o.name);
+    const txAmountEl = document.getElementById("asTxAmount");
+    const txCategoryEl = document.getElementById("asTxCategory");
+    const txDateEl = document.getElementById("asTxDate");
+    const txNotesEl = document.getElementById("asTxNotes");
+    const txRecurringEl = document.getElementById("asTxRecurring");
+    const txBgColorEl = document.getElementById("asTxBgColor");
     if (firstNameEl && o.firstName) firstNameEl.value = String(o.firstName);
     if (lastNameEl && o.lastName) lastNameEl.value = String(o.lastName);
     if (tzEl && o.timeZone) tzEl.value = String(o.timeZone);
@@ -272,6 +345,20 @@ function hydrateAccountSetupDraft() {
       if (accBalEl && o.account.starting_balance != null) accBalEl.value = String(o.account.starting_balance);
       if (accDateEl && o.account.starting_balance_date) accDateEl.value = String(o.account.starting_balance_date);
     }
+    if (o.transaction) {
+      const k = String(o.transaction.kind || "").trim().toLowerCase();
+      const kindEl = k ? document.querySelector(`input[name="asTxKind"][value="${k}"]`) : null;
+      if (kindEl) kindEl.checked = true;
+      if (txAmountEl && o.transaction.amount != null) txAmountEl.value = String(o.transaction.amount);
+      if (txCategoryEl && o.transaction.category) txCategoryEl.value = String(o.transaction.category);
+      if (txDateEl && o.transaction.date) txDateEl.value = String(o.transaction.date);
+      if (txNotesEl && o.transaction.notes) txNotesEl.value = String(o.transaction.notes);
+      if (txRecurringEl) txRecurringEl.checked = !!o.transaction.recurring;
+      if (txBgColorEl && o.transaction.bg_color) txBgColorEl.value = String(o.transaction.bg_color);
+    }
+    if (txDateEl && !txDateEl.value) txDateEl.value = isoTodayLocal();
+    const step = String(o.step || "").trim().toLowerCase();
+    if (step === "transactions") setAccountSetupStep("transactions");
   } catch (_) {}
 }
 
@@ -282,6 +369,7 @@ function showSignupPlanBanner() {
 function setBusy(isBusy) {
   if (!signupBtn) return;
   signupBtn.disabled = isBusy;
+  if (isAccountSetupPath()) return;
   signupBtn.textContent = isBusy ? "Creating..." : "Create Account";
 }
 
@@ -306,7 +394,19 @@ function readAccountSetupDraft() {
             starting_balance_date: String(o.account.starting_balance_date),
           }
         : null;
-    return { firstName, lastName, timeZone, account };
+    const transaction =
+      o && o.transaction && o.transaction.kind && o.transaction.date != null && o.transaction.amount != null
+        ? {
+            kind: String(o.transaction.kind),
+            amount: Number(o.transaction.amount),
+            category: String(o.transaction.category || ""),
+            date: String(o.transaction.date),
+            notes: o.transaction.notes != null ? String(o.transaction.notes) : "",
+            recurring: !!o.transaction.recurring,
+            bg_color: o.transaction.bg_color != null ? String(o.transaction.bg_color) : null,
+          }
+        : null;
+    return { firstName, lastName, timeZone, account, transaction };
   } catch (_) {
     return null;
   }
@@ -325,6 +425,33 @@ async function maybeCreateFirstAccountFromDraft(draft) {
       type: a.type,
       starting_balance: a.starting_balance,
       starting_balance_date: a.starting_balance_date,
+    });
+  } catch (_) {}
+}
+
+async function maybeCreateFirstTransactionFromDraft(draft) {
+  try {
+    if (!draft || !draft.transaction) return;
+    // Recurring transactions require extra scheduling fields; for setup we only create a one-time transaction.
+    if (draft.transaction.recurring) return;
+    const fams = await request("/api/families", "GET");
+    if (!fams.ok || !Array.isArray(fams.data) || fams.data.length === 0) return;
+    const familyId = fams.data[0]?.id;
+    if (!familyId) return;
+    const t = draft.transaction;
+    const description = (t.category || "").trim() || "Transaction";
+    const amount = Number(t.amount);
+    if (!Number.isFinite(amount) || amount <= 0) return;
+    await request(`/api/families/${encodeURIComponent(String(familyId))}/transactions`, "POST", {
+      date: t.date,
+      description,
+      notes: t.notes ? t.notes : null,
+      kind: t.kind,
+      amount,
+      category_id: null,
+      fg_color: null,
+      bg_color: t.bg_color ? t.bg_color : null,
+      reimbursable: false,
     });
   } catch (_) {}
 }
@@ -382,6 +509,7 @@ async function doSignup() {
 
     // If the user entered a starter account during setup, create it now.
     await maybeCreateFirstAccountFromDraft(draft);
+    await maybeCreateFirstTransactionFromDraft(draft);
 
     try {
       sessionStorage.removeItem(BW_ACCOUNT_SETUP_DRAFT_KEY);
@@ -443,14 +571,87 @@ void (async () => {
   await applyInvitePrefill();
   hydrateAccountSetupDraft();
   hydrateDefaultTimeZone();
+  if (isAccountSetupPath()) {
+    const dateEl = document.getElementById("asTxDate");
+    if (dateEl && !String(dateEl.value || "").trim()) dateEl.value = isoTodayLocal();
+  }
 })();
 
 // Expose a global handler so the inline onclick works even if the event binding fails.
 function onSignupPrimaryClick() {
-  if (isAccountSetupPath()) void goToSignupFromAccountSetup();
+  if (isAccountSetupPath()) {
+    if (getAccountSetupStep() === "account") {
+      // Save a draft snapshot so a refresh doesn't lose progress.
+      try {
+        const firstName = (document.getElementById("firstName")?.value || "").trim();
+        const lastName = (document.getElementById("lastName")?.value || "").trim();
+        const timeZone = String(document.getElementById("timeZone")?.value || "").trim();
+        const accountName = (document.getElementById("accountName")?.value || "").trim();
+        const accountStartingBalanceRaw = document.getElementById("accountStartingBalance")?.value || "";
+        const accountStartingBalance = toMoneyNumber(accountStartingBalanceRaw);
+        const accountStartingBalanceDate = String(document.getElementById("accountStartingBalanceDate")?.value || "").trim();
+        const anyAccount =
+          !!accountName ||
+          (accountStartingBalanceRaw != null && String(accountStartingBalanceRaw).trim() !== "") ||
+          !!accountStartingBalanceDate;
+        sessionStorage.setItem(
+          BW_ACCOUNT_SETUP_DRAFT_KEY,
+          JSON.stringify({
+            firstName,
+            lastName,
+            timeZone,
+            ...(anyAccount
+              ? {
+                  account: {
+                    name: accountName,
+                    type: "checking",
+                    starting_balance: accountStartingBalance,
+                    starting_balance_date: accountStartingBalanceDate,
+                  },
+                }
+              : {}),
+            step: "transactions",
+          })
+        );
+      } catch (_) {}
+      setCallout(signupCalloutEl, "", "");
+      setAccountSetupStep("transactions");
+      return;
+    }
+    void goToSignupFromAccountSetup();
+  }
   else if (isSignupPath()) void doSignup();
   else void goToAccountSetup();
 }
 window.__bwSignup = onSignupPrimaryClick;
 if (signupBtn) signupBtn.addEventListener("click", onSignupPrimaryClick);
+
+function initAccountSetupTransactionUi() {
+  if (!isAccountSetupPath()) return;
+  const swatches = document.getElementById("asTxColorSwatches");
+  const bgEl = document.getElementById("asTxBgColor");
+  const clearBtn = document.getElementById("asTxColorClear");
+  if (swatches) {
+    for (const btn of swatches.querySelectorAll("button.cat-swatch")) {
+      const bg = String(btn.getAttribute("data-bg") || "").trim();
+      if (bg) btn.style.background = bg;
+      btn.addEventListener("click", () => {
+        if (bgEl) bgEl.value = bg;
+        for (const b of swatches.querySelectorAll("button.cat-swatch")) b.classList.remove("is-active");
+        btn.classList.add("is-active");
+      });
+    }
+  }
+  if (clearBtn) {
+    clearBtn.addEventListener("click", () => {
+      if (bgEl) bgEl.value = "";
+      if (swatches) for (const b of swatches.querySelectorAll("button.cat-swatch")) b.classList.remove("is-active");
+    });
+  }
+  setAccountSetupStep(getAccountSetupStep());
+}
+
+try {
+  initAccountSetupTransactionUi();
+} catch (_) {}
 

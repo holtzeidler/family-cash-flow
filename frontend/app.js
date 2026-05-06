@@ -889,6 +889,7 @@ let projectionChartDefaultsApplied = false;
 const billingPlanEl = document.getElementById("billingPlan");
 const billingFrequencyEl = document.getElementById("billingFrequency");
 const billingNextDateEl = document.getElementById("billingNextDate");
+const billingAccountStatusEl = document.getElementById("billingAccountStatus");
 
 const BILLING_PLAN_KEY = "bw_billing_plan";
 const BILLING_START_KEY = "bw_billing_start";
@@ -3056,6 +3057,7 @@ function renderBillingPanel() {
   billingFrequencyEl.textContent = String(freq || "monthly").toLowerCase() === "monthly" ? "Monthly" : String(freq || "—");
   const next = computeNextBillingDate(start, freq);
   billingNextDateEl.textContent = next ? formatShortDateLong(next) : "—";
+  if (billingAccountStatusEl) billingAccountStatusEl.textContent = "Active";
 }
 
 function ensureProjectionChartDefaults() {
