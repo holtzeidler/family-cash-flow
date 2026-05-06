@@ -164,7 +164,7 @@ async function verifySessionWithProgress(targetInfoEl) {
     if (attempts[i] > 0) {
       await new Promise((resolve) => setTimeout(resolve, attempts[i]));
     }
-    setCallout(targetInfoEl, `Login accepted. Verifying session cookie (${i + 1}/${attempts.length})...`, "pending");
+    setCallout(targetInfoEl, "Logging in....", "pending");
     const me = await request("/api/auth/me", "GET");
     if (me.ok && me.data && me.data.user) {
       return { ok: true, elapsedMs: me.elapsedMs };

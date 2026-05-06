@@ -94,7 +94,7 @@ async function verifySessionWithProgress(targetInfoEl) {
   const attempts = [0, 800, 1800, 3200];
   for (let i = 0; i < attempts.length; i++) {
     if (attempts[i] > 0) await new Promise((resolve) => setTimeout(resolve, attempts[i]));
-    setCallout(targetInfoEl, `Account created. Verifying session cookie (${i + 1}/${attempts.length})...`, "pending");
+    setCallout(targetInfoEl, "Logging in....", "pending");
     const me = await request("/api/auth/me", "GET");
     if (me.ok && me.data && me.data.user) return { ok: true };
   }
@@ -150,8 +150,16 @@ function initAccountSetupCardAccordion() {
     const btn = card.querySelector("button.account-setup-card__toggle");
     if (!btn) continue;
     btn.addEventListener("click", () => {
-      const nowCollapsed = !card.classList.contains("is-collapsed");
-      setCollapsed(card, nowCollapsed);
+      const isCollapsed = card.classList.contains("is-collapsed");
+      if (isCollapsed) {
+        // True accordion behavior: expanding one collapses the others.
+        for (const other of cards) {
+          setCollapsed(other, other !== card);
+        }
+      } else {
+        // Allow collapsing the currently-open card.
+        setCollapsed(card, true);
+      }
     });
   }
 

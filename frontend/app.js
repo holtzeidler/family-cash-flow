@@ -1485,10 +1485,16 @@ function initReportsLeftNav() {
     }
   } catch (_) {}
 
+  // Month summary lives inside the reports view content (not the left sidebar).
+  // Give it a stable id so the report nav can target it.
+  const monthSummaryEl = reportsViewPanel.querySelector('.sidebar-section[data-sidebar-key="month"]');
+  if (monthSummaryEl && !monthSummaryEl.id) monthSummaryEl.id = "monthSummaryCard";
+
   const ids = [
     { id: "chartPanel", label: "Balance trendline" },
     { id: "incomeExpenseCard", label: "Income vs. Expense" },
     { id: "categoryTotalsReportCard", label: "Category totals" },
+    { id: "monthSummaryCard", label: "Month summary" },
   ].filter((it) => document.getElementById(it.id));
 
   if (!ids.length) return;
@@ -4538,6 +4544,7 @@ function renderCategoriesGrid(tree) {
 
     const head = document.createElement("div");
     head.className = "cat-group-head";
+    head.draggable = true;
 
     const nameInput = document.createElement("input");
     nameInput.type = "text";
@@ -4590,6 +4597,18 @@ function renderCategoriesGrid(tree) {
     gControls.appendChild(gUp);
     gControls.appendChild(gDown);
     head.appendChild(gControls);
+
+    head.addEventListener("dragstart", (e) => {
+      try {
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/plain", `group:${wrap.dataset.groupId}`);
+      } catch (_) {}
+      wrap.classList.add("is-dragging");
+    });
+    head.addEventListener("dragend", () => {
+      wrap.classList.remove("is-dragging");
+      clearDragUi();
+    });
 
     const body = document.createElement("div");
     body.className = "cat-group-body";
@@ -4759,7 +4778,9 @@ async function persistCategoryTreeFromDom() {
     await loadMonthAndCalendar();
   } catch (e) {
     show(catErr, e.message || "Failed to save category layout");
-    await loadCategories();
+    // Don't immediately reload from server on failure; that makes the UI "snap back"
+    // even though the user successfully reordered the DOM. Keep the current DOM order
+    // and let the user retry after addressing the error (permissions/network/etc).
   }
 }
 

@@ -54,6 +54,16 @@ body.login-page .container > .grid{
 body.login-page.signup-page .container > .grid{
   margin-top: 36px;
 }
+
+/* Account setup: allow full-width stacked cards */
+body.account-setup-page .container{
+  max-width: 1920px;
+}
+body.account-setup-page .container > .grid{
+  width: min(1400px, 100%);
+  margin-left: 0;
+  margin-right: 0;
+}
 body.login-page .top-nav__inner--simple{
   justify-items: start;
 }
@@ -3232,6 +3242,29 @@ body.account-setup-page .account-setup-cards{
   grid-auto-rows: min-content;
   gap: 14px;
   align-items: start;
+}
+body.account-setup-page .account-setup-card{
+  width: 100%;
+}
+
+/* Account setup: make fields more spacious */
+body.account-setup-page .account-setup-card{
+  padding: 18px;
+}
+body.account-setup-page .account-setup-card__toggle{
+  padding: 12px 14px;
+}
+body.account-setup-page .account-setup-card__body{
+  max-height: 5000px; /* avoid clipping when expanded */
+}
+body.account-setup-page .auth-section__body.account-setup-card__body{
+  padding: 18px 6px 10px;
+}
+body.account-setup-page .form-row-h__field input,
+body.account-setup-page .form-row-h__field select{
+  padding-top: 12px;
+  padding-bottom: 12px;
+  font-size: 16px;
 }
 body.account-setup-page .account-setup-card{
   overflow: hidden;
