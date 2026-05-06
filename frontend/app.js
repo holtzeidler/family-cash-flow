@@ -2674,34 +2674,36 @@ if (uncatTxSaveBtn) {
   });
 }
 
-runProjectionBtn.addEventListener("click", async () => {
-  try {
-    show(projectionErr, "");
-    projectionSummary.innerHTML = "";
-    projectionDailyList.innerHTML = "";
+if (runProjectionBtn) {
+  runProjectionBtn.addEventListener("click", async () => {
+    try {
+      show(projectionErr, "");
+      projectionSummary.innerHTML = "";
+      projectionDailyList.innerHTML = "";
 
-    if (!state.activeFamilyId) throw new Error("Choose a family first");
+      if (!state.activeFamilyId) throw new Error("Choose a family first");
 
-    const startVal = projectionStart.value;
-    if (!startVal) throw new Error("Projection start date is required");
+      const startVal = projectionStart.value;
+      if (!startVal) throw new Error("Projection start date is required");
 
-    const summary = await api(
-      `/api/families/${state.activeFamilyId}/projection?start=${encodeURIComponent(startVal)}&days=1825&include_accounts=false`,
-      "GET"
-    );
+      const summary = await api(
+        `/api/families/${state.activeFamilyId}/projection?start=${encodeURIComponent(startVal)}&days=1825&include_accounts=false`,
+        "GET"
+      );
 
-    renderProjectionSummary(summary);
+      renderProjectionSummary(summary);
 
-    const dailyShort = await api(
-      `/api/families/${state.activeFamilyId}/projection?start=${encodeURIComponent(startVal)}&days=90&include_accounts=true`,
-      "GET"
-    );
+      const dailyShort = await api(
+        `/api/families/${state.activeFamilyId}/projection?start=${encodeURIComponent(startVal)}&days=90&include_accounts=true`,
+        "GET"
+      );
 
-    renderProjectionDaily(dailyShort?.daily || []);
-  } catch (e) {
-    show(projectionErr, e.message || "Failed to run projection");
-  }
-});
+      renderProjectionDaily(dailyShort?.daily || []);
+    } catch (e) {
+      show(projectionErr, e.message || "Failed to run projection");
+    }
+  });
+}
 
 if (chartDaysRange && chartDaysLabel) {
   chartDaysRange.addEventListener("input", () => {
