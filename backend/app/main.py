@@ -1904,6 +1904,32 @@ def register(payload: RegisterIn, response: Response, db=Depends(get_db)):
     db.commit()
     db.refresh(user)
 
+    # Create a starter family for new users so the app can be used immediately.
+    try:
+        fam = Family(name="My Family")
+        db.add(fam)
+        db.flush()
+        db.add(
+            FamilyMember(
+                family_id=int(fam.id),
+                user_id=int(user.id),
+                role="admin",
+                is_family_owner=True,
+                access_mode="edit",
+            )
+        )
+        db.commit()
+        # Seed default category groups/categories for the starter family.
+        try:
+            apply_default_category_seed(db=db, family_id=int(fam.id), force=False)
+        except Exception:
+            pass
+    except Exception:
+        try:
+            db.rollback()
+        except Exception:
+            pass
+
     token = create_access_token(user_id=user.id)
     response.set_cookie(
         key="access_token",

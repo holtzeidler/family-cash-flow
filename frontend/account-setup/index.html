@@ -188,9 +188,14 @@
             </div>
 
             <div style="height:10px;"></div>
-            <button type="button" id="signupBtn" class="top-nav__logout" onclick="window.__bwSignup && window.__bwSignup()">
-              Next
-            </button>
+            <div id="accountSetupActions" style="display:flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+              <button type="button" id="addMoreTxBtn" class="secondary" style="display:none;">
+                Add More Transactions
+              </button>
+              <button type="button" id="signupBtn" class="top-nav__logout" onclick="window.__bwSignup && window.__bwSignup()">
+                Next
+              </button>
+            </div>
           </div>
         </section>
       </div>

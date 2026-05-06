@@ -151,6 +151,203 @@ body.landing-page .landing-hero__cta:focus-visible{
   border-radius: 2px;
 }
 
+/* Landing: product preview */
+body.landing-page .landing-preview{
+  width: min(1100px, 100%);
+  margin: 54px auto 0;
+  display: grid;
+  grid-template-columns: 1fr 1.15fr;
+  gap: 22px;
+  align-items: start;
+}
+body.landing-page .landing-preview__copy{
+  padding-top: 6px;
+}
+body.landing-page .landing-preview__eyebrow{
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-weight: 800;
+  color: rgba(11, 61, 46, 0.82);
+}
+body.landing-page .landing-preview__note{
+  margin-top: 14px;
+  font-size: 18px;
+  line-height: 1.5;
+  font-weight: 650;
+  color: var(--text);
+}
+body.landing-page .landing-preview__mock.card{
+  background: var(--cal-surface);
+  border: 1px solid rgba(0,0,0,0.10);
+  box-shadow: 0 16px 42px rgba(0,0,0,0.12);
+  padding: 14px 14px 12px;
+}
+.landing-how{
+  width: min(1100px, 100%);
+  margin: 26px auto 0;
+  display: grid;
+  grid-template-columns: 1fr 1.15fr;
+  gap: 22px;
+  align-items: start;
+}
+.landing-how__copy{
+  padding: 12px 12px 0;
+}
+.landing-how__title{
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(11, 61, 46, 0.85);
+  margin-bottom: 10px;
+}
+.landing-how__steps{
+  margin: 0;
+  padding-left: 1.1rem;
+  color: var(--text);
+  font-weight: 650;
+  line-height: 1.55;
+  display: grid;
+  gap: 10px;
+}
+
+/* Landing: offer callout (left column) */
+.landing-offer{
+  width: min(1100px, 100%);
+  margin: 26px auto 0;
+  display: grid;
+  grid-template-columns: 1fr 1.15fr;
+  gap: 22px;
+  align-items: start;
+}
+.landing-offer__copy{
+  padding: 12px 12px 0;
+}
+.landing-offer__title{
+  display: inline-block;
+  font-size: 20px;
+  font-weight: 900;
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.landing-offer__title:hover{
+  filter: brightness(0.92);
+}
+.landing-offer__title:focus-visible{
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+  border-radius: 6px;
+}
+.landing-offer__bullets{
+  margin: 12px 0 0;
+  padding-left: 1.1rem;
+  color: var(--text);
+  font-weight: 650;
+  line-height: 1.6;
+  display: grid;
+  gap: 6px;
+}
+.landing-mock__head{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.landing-mock__title{
+  font-weight: 800;
+  color: var(--text);
+}
+.landing-mock__pill{
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(0,0,0,0.10);
+  background: rgba(0,0,0,0.03);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.landing-mock__chart{
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(11,61,46,0.06), rgba(0,0,0,0.01));
+  border: 1px solid rgba(0,0,0,0.08);
+  padding: 8px 10px;
+}
+.landing-mock__svg{
+  display: block;
+  width: 100%;
+  height: 160px;
+}
+.landing-mock__cols{
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.landing-mock__label{
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(75,85,99,0.95);
+  margin-bottom: 8px;
+}
+.landing-mock__list{
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 8px;
+  font-weight: 650;
+  color: var(--text);
+}
+.landing-mock__list li{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(0,0,0,0.08);
+  background: rgba(0,0,0,0.02);
+}
+.landing-mock__low{
+  padding: 12px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(167,55,68,0.25);
+  background: rgba(167,55,68,0.08);
+}
+.landing-mock__lowAmt{
+  font-size: 26px;
+  font-weight: 900;
+  color: #7f1d1d;
+  line-height: 1.1;
+}
+.landing-mock__lowMeta{
+  margin-top: 2px;
+  font-weight: 700;
+  color: rgba(127,29,29,0.85);
+}
+@media (max-width: 860px){
+  body.landing-page .landing-preview{
+    grid-template-columns: 1fr;
+  }
+  .landing-how{
+    grid-template-columns: 1fr;
+    margin-top: 18px;
+  }
+  .landing-offer{
+    grid-template-columns: 1fr;
+    margin-top: 18px;
+  }
+  .landing-mock__cols{
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Ensure the HTML `hidden` attribute always wins (UA defaults can be overridden by our layout rules). */
 [hidden]{
   display: none !important;
@@ -3326,6 +3523,14 @@ body.plans-page .container > .grid{
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 18px;
   align-items: stretch;
+}
+/* When only one plan card is shown, center it. */
+.plans-grid:has(.plan-card:only-child){
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+}
+.plans-grid:has(.plan-card:only-child) .plan-card{
+  width: min(520px, 100%);
 }
 .plan-card{
   background: var(--cal-surface);
