@@ -42,150 +42,148 @@
         </div>
         <div id="signupCallout" class="callout" style="display:none" role="status"></div>
 
-        <div id="accountSetupCards" class="account-setup-cards" aria-label="Account setup">
-          <section class="card auth-section auth-section--open account-setup-card" data-as-card="login" aria-label="Let’s build your forecast — create login and add checking account">
-            <div class="account-setup-card__head">
-              <button type="button" class="account-setup-card__toggle" aria-expanded="true">
-                <span class="account-setup-card__title">Let’s build your forecast</span>
-              </button>
-            </div>
-            <div class="auth-section__body account-setup-card__body">
-
-              <div class="row">
-                <div class="form-row-h">
-                  <div class="form-row-h__label"><label for="email">Email</label></div>
-                  <div class="form-row-h__field"><input id="email" type="email" autocomplete="email" /></div>
-                </div>
-              </div>
-
-              <div style="height: 10px;"></div>
-
-              <div class="row two as-password-row">
-                <div class="form-row-h">
-                  <div class="form-row-h__label"><label for="password">Password</label></div>
-                  <div class="form-row-h__field"><input id="password" type="password" autocomplete="new-password" /></div>
-                </div>
-                <div class="form-row-h">
-                  <div class="form-row-h__label"><label for="password2">Confirm password</label></div>
-                  <div class="form-row-h__field"><input id="password2" type="password" autocomplete="new-password" /></div>
-                </div>
-              </div>
-
-              <div style="height: 18px;"></div>
-              <p class="meta" style="margin: 0 0 12px">Enter your checking account balance to get started today</p>
-
-              <div class="row">
-                <div class="form-row-h">
-                  <div class="form-row-h__label"><label for="accountName">Account name</label></div>
-                  <div class="form-row-h__field"><input id="accountName" type="text" placeholder="e.g. Checking" /></div>
-                </div>
-              </div>
-
-              <div style="height:10px;"></div>
-
-              <div class="row two">
-                <div class="form-row-h">
-                  <div class="form-row-h__label"><label for="accountStartingBalance">Starting balance</label></div>
-                  <div class="form-row-h__field">
-                    <div class="money-input">
-                      <span class="money-input__prefix" aria-hidden="true">$</span>
-                      <input id="accountStartingBalance" type="number" step="0.01" placeholder="0.00" />
+        <div id="accountSetupWizard" class="account-setup-wizard" data-step="0" aria-label="Account setup">
+          <p class="account-setup-wizard__eyebrow">Let’s build your forecast</p>
+          <div class="account-setup-wizard__dots" role="tablist" aria-label="Setup steps">
+            <span class="account-setup-wizard__dot is-active" data-wizard-dot="0" aria-current="step"></span>
+            <span class="account-setup-wizard__dot" data-wizard-dot="1" aria-hidden="true"></span>
+            <span class="account-setup-wizard__dot" data-wizard-dot="2" aria-hidden="true"></span>
+          </div>
+          <div class="card auth-section auth-section--open account-setup-wizard__shell">
+            <div class="account-setup-wizard__viewport">
+              <div class="account-setup-wizard__track" id="accountSetupWizardTrack">
+                <div
+                  class="account-setup-wizard__panel auth-section__body"
+                  id="accountSetupWizardPanel0"
+                  role="tabpanel"
+                  aria-label="Step 1: Email and password"
+                  aria-hidden="false"
+                >
+                  <div class="row">
+                    <div class="form-row-h">
+                      <div class="form-row-h__label"><label for="email">Email</label></div>
+                      <div class="form-row-h__field"><input id="email" type="email" autocomplete="email" /></div>
+                    </div>
+                  </div>
+                  <div style="height: 10px;"></div>
+                  <div class="row two as-password-row">
+                    <div class="form-row-h">
+                      <div class="form-row-h__label"><label for="password">Password</label></div>
+                      <div class="form-row-h__field"><input id="password" type="password" autocomplete="new-password" /></div>
+                    </div>
+                    <div class="form-row-h">
+                      <div class="form-row-h__label"><label for="password2">Confirm password</label></div>
+                      <div class="form-row-h__field"><input id="password2" type="password" autocomplete="new-password" /></div>
                     </div>
                   </div>
                 </div>
-                <div class="form-row-h">
-                  <div class="form-row-h__label"><label for="accountStartingBalanceDate">Starting balance date</label></div>
-                  <div class="form-row-h__field"><input id="accountStartingBalanceDate" type="date" /></div>
+                <div
+                  class="account-setup-wizard__panel auth-section__body"
+                  id="accountSetupWizardPanel1"
+                  role="tabpanel"
+                  aria-label="Step 2: Checking account"
+                  aria-hidden="true"
+                  inert
+                >
+                  <p class="meta" style="margin: 0 0 12px">Enter your checking account balance to get started today</p>
+                  <div class="row">
+                    <div class="form-row-h">
+                      <div class="form-row-h__label"><label for="accountName">Account name</label></div>
+                      <div class="form-row-h__field"><input id="accountName" type="text" placeholder="e.g. Checking" /></div>
+                    </div>
+                  </div>
+                  <div style="height:10px;"></div>
+                  <div class="row two">
+                    <div class="form-row-h">
+                      <div class="form-row-h__label"><label for="accountStartingBalance">Starting balance</label></div>
+                      <div class="form-row-h__field">
+                        <div class="money-input">
+                          <span class="money-input__prefix" aria-hidden="true">$</span>
+                          <input id="accountStartingBalance" type="number" step="0.01" placeholder="0.00" />
+                        </div>
+                      </div>
+                    </div>
+                    <div class="form-row-h">
+                      <div class="form-row-h__label"><label for="accountStartingBalanceDate">Starting balance date</label></div>
+                      <div class="form-row-h__field"><input id="accountStartingBalanceDate" type="date" /></div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-          </section>
-
-          <section class="card auth-section auth-section--open account-setup-card is-collapsed" data-as-card="transactions" aria-label="Enter transactions">
-            <div class="account-setup-card__head">
-              <button type="button" class="account-setup-card__toggle" aria-expanded="false">
-                <span class="account-setup-card__title">Enter Transactions</span>
-              </button>
-            </div>
-            <div class="auth-section__body account-setup-card__body">
-
-              <div class="form-row-h">
-                <div class="form-row-h__label"><label>Type</label></div>
-                <div class="form-row-h__field">
-                  <div class="kind-toggle" role="radiogroup" aria-label="Transaction type">
-                    <label class="kind-opt"><input type="radio" name="asTxKind" value="expense" checked /> Expense</label>
-                    <label class="kind-opt"><input type="radio" name="asTxKind" value="income" /> Income</label>
+                <div
+                  class="account-setup-wizard__panel auth-section__body"
+                  id="accountSetupWizardPanel2"
+                  role="tabpanel"
+                  aria-label="Step 3: Transactions"
+                  aria-hidden="true"
+                  inert
+                >
+                  <div class="form-row-h">
+                    <div class="form-row-h__label"><label>Type</label></div>
+                    <div class="form-row-h__field">
+                      <div class="kind-toggle" role="radiogroup" aria-label="Transaction type">
+                        <label class="kind-opt"><input type="radio" name="asTxKind" value="expense" checked /> Expense</label>
+                        <label class="kind-opt"><input type="radio" name="asTxKind" value="income" /> Income</label>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="tx-add-vspace" aria-hidden="true"></div>
+                  <div class="form-row-h">
+                    <div class="form-row-h__label"><label for="asTxAmount">Amount</label></div>
+                    <div class="form-row-h__field">
+                      <div class="money-input">
+                        <span class="money-input__prefix" aria-hidden="true">$</span>
+                        <input id="asTxAmount" type="number" min="0" step="0.01" placeholder="0.00" />
+                      </div>
+                    </div>
+                  </div>
+                  <div class="tx-add-vspace" aria-hidden="true"></div>
+                  <div class="form-row-h">
+                    <div class="form-row-h__label"><label for="asTxCategory">Category</label></div>
+                    <div class="form-row-h__field">
+                      <input id="asTxCategory" type="text" placeholder="Type to filter…" />
+                    </div>
+                  </div>
+                  <div class="tx-add-vspace" aria-hidden="true"></div>
+                  <div class="cat-color-row" aria-label="Select color (optional)">
+                    <div class="cat-color-row__label">Select color (optional)</div>
+                    <div class="cat-color-row__swatches" id="asTxColorSwatches">
+                      <button type="button" class="cat-swatch" data-bg="#22d3ee" aria-label="Color 1"></button>
+                      <button type="button" class="cat-swatch" data-bg="#fbbf24" aria-label="Color 2"></button>
+                      <button type="button" class="cat-swatch" data-bg="#fb923c" aria-label="Color 3"></button>
+                      <button type="button" class="cat-swatch" data-bg="#a855f7" aria-label="Color 4"></button>
+                      <button type="button" class="cat-swatch" data-bg="#ef4444" aria-label="Color 5"></button>
+                      <button type="button" class="cat-swatch" data-bg="#fde047" aria-label="Color 6"></button>
+                      <button type="button" class="cat-swatch" data-bg="#06b6d4" aria-label="Color 7"></button>
+                      <button type="button" class="cat-swatch" data-bg="#9ca3af" aria-label="Color 8"></button>
+                      <button type="button" class="cat-swatch" data-bg="#94a3b8" aria-label="Color 9"></button>
+                      <button type="button" class="cat-swatch" data-bg="#c4b5fd" aria-label="Color 10"></button>
+                      <button type="button" class="cat-swatch" data-bg="#111827" aria-label="Color 11"></button>
+                      <button type="button" class="cat-swatch" data-bg="#22c55e" aria-label="Color 12"></button>
+                    </div>
+                    <button type="button" class="cat-color-row__clear secondary" id="asTxColorClear">Clear</button>
+                    <input type="hidden" id="asTxBgColor" value="" />
+                  </div>
+                  <div class="tx-add-vspace" aria-hidden="true"></div>
+                  <div class="form-row-h">
+                    <div class="form-row-h__label"><label for="asTxDate">Date</label></div>
+                    <div class="form-row-h__field"><input id="asTxDate" type="date" /></div>
+                  </div>
+                  <div class="tx-add-vspace tx-add-vspace--lg" aria-hidden="true"></div>
+                  <label class="reimbursable-field" for="asTxRecurring">
+                    <span class="reimbursable-field__label">Make this recurring?</span>
+                    <input id="asTxRecurring" type="checkbox" />
+                  </label>
+                  <div class="tx-add-vspace" aria-hidden="true"></div>
+                  <div class="form-row-h">
+                    <div class="form-row-h__label"><label for="asTxNotes">Notes</label></div>
+                    <div class="form-row-h__field">
+                      <input id="asTxNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
+                    </div>
                   </div>
                 </div>
               </div>
-
-              <div class="tx-add-vspace" aria-hidden="true"></div>
-
-              <div class="form-row-h">
-                <div class="form-row-h__label"><label for="asTxAmount">Amount</label></div>
-                <div class="form-row-h__field">
-                  <div class="money-input">
-                    <span class="money-input__prefix" aria-hidden="true">$</span>
-                    <input id="asTxAmount" type="number" min="0" step="0.01" placeholder="0.00" />
-                  </div>
-                </div>
-              </div>
-
-              <div class="tx-add-vspace" aria-hidden="true"></div>
-
-              <div class="form-row-h">
-                <div class="form-row-h__label"><label for="asTxCategory">Category</label></div>
-                <div class="form-row-h__field">
-                  <input id="asTxCategory" type="text" placeholder="Type to filter…" />
-                </div>
-              </div>
-
-              <div class="tx-add-vspace" aria-hidden="true"></div>
-
-              <div class="cat-color-row" aria-label="Select color (optional)">
-                <div class="cat-color-row__label">Select color (optional)</div>
-                <div class="cat-color-row__swatches" id="asTxColorSwatches">
-                  <button type="button" class="cat-swatch" data-bg="#22d3ee" aria-label="Color 1"></button>
-                  <button type="button" class="cat-swatch" data-bg="#fbbf24" aria-label="Color 2"></button>
-                  <button type="button" class="cat-swatch" data-bg="#fb923c" aria-label="Color 3"></button>
-                  <button type="button" class="cat-swatch" data-bg="#a855f7" aria-label="Color 4"></button>
-                  <button type="button" class="cat-swatch" data-bg="#ef4444" aria-label="Color 5"></button>
-                  <button type="button" class="cat-swatch" data-bg="#fde047" aria-label="Color 6"></button>
-                  <button type="button" class="cat-swatch" data-bg="#06b6d4" aria-label="Color 7"></button>
-                  <button type="button" class="cat-swatch" data-bg="#9ca3af" aria-label="Color 8"></button>
-                  <button type="button" class="cat-swatch" data-bg="#94a3b8" aria-label="Color 9"></button>
-                  <button type="button" class="cat-swatch" data-bg="#c4b5fd" aria-label="Color 10"></button>
-                  <button type="button" class="cat-swatch" data-bg="#111827" aria-label="Color 11"></button>
-                  <button type="button" class="cat-swatch" data-bg="#22c55e" aria-label="Color 12"></button>
-                </div>
-                <button type="button" class="cat-color-row__clear secondary" id="asTxColorClear">Clear</button>
-                <input type="hidden" id="asTxBgColor" value="" />
-              </div>
-
-              <div class="tx-add-vspace" aria-hidden="true"></div>
-
-              <div class="form-row-h">
-                <div class="form-row-h__label"><label for="asTxDate">Date</label></div>
-                <div class="form-row-h__field"><input id="asTxDate" type="date" /></div>
-              </div>
-
-              <div class="tx-add-vspace tx-add-vspace--lg" aria-hidden="true"></div>
-
-              <label class="reimbursable-field" for="asTxRecurring">
-                <span class="reimbursable-field__label">Make this recurring?</span>
-                <input id="asTxRecurring" type="checkbox" />
-              </label>
-
-              <div class="tx-add-vspace" aria-hidden="true"></div>
-
-              <div class="form-row-h">
-                <div class="form-row-h__label"><label for="asTxNotes">Notes</label></div>
-                <div class="form-row-h__field">
-                  <input id="asTxNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
-                </div>
-              </div>
             </div>
-          </section>
+          </div>
         </div>
 
         <div style="height:10px;"></div>
@@ -193,11 +191,14 @@
           No spam. No credit check. Secure setup.
         </div>
         <div id="accountSetupActions" class="account-setup-actions">
-          <button type="button" id="addMoreTxBtn" class="secondary">
+          <button type="button" id="accountSetupBackBtn" class="secondary" style="display: none">
+            Back
+          </button>
+          <button type="button" id="addMoreTxBtn" class="secondary" style="display: none">
             Add More Transactions
           </button>
           <button type="button" id="signupBtn" class="top-nav__logout" onclick="window.__bwSignup && window.__bwSignup()">
-            Create Account
+            Next
           </button>
         </div>
       </div>
@@ -210,6 +211,6 @@
       </footer>
     </div>
 
-    <script src="../signup/signup.js?v=6"></script>
+    <script src="../signup/signup.js?v=7"></script>
   </body>
 </html>

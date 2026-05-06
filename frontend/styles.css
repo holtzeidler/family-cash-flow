@@ -176,8 +176,8 @@ body.landing-page .landing-preview{
     "mock";
   gap: 22px;
   align-items: start;
-  /* Center the text block above the centered mock card */
-  justify-items: center;
+  /* Align quote and mock card on the same left edge */
+  justify-items: start;
 }
 body.landing-page .landing-preview__copy{
   grid-area: copy;
@@ -202,7 +202,7 @@ body.landing-page .landing-preview__note{
 body.landing-page .landing-preview__mock.card{
   grid-area: mock;
   width: min(608px, 100%);
-  margin-left: -6px;
+  margin-left: -8px;
   background: var(--cal-surface);
   border: 1px solid rgba(0,0,0,0.10);
   box-shadow: 0 13px 34px rgba(0,0,0,0.12);
@@ -3246,7 +3246,70 @@ body.login-page.signup-page #password2{
   line-height: 1.3;
 }
 
-/* Account setup: stacked accordion cards */
+/* Account setup: sliding step wizard */
+body.account-setup-page .account-setup-wizard{
+  width: 100%;
+  max-width: min(771px, 100%);
+  margin-left: -6px;
+}
+body.account-setup-page .account-setup-wizard__eyebrow{
+  margin: 0 0 8px;
+  text-align: center;
+  font-size: clamp(1.05rem, 2.2vw, 1.4rem);
+  font-weight: 900;
+  color: var(--accent);
+  letter-spacing: 0.2px;
+}
+body.account-setup-page .account-setup-wizard__dots{
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+body.account-setup-page .account-setup-wizard__dot{
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.16);
+  flex-shrink: 0;
+}
+body.account-setup-page .account-setup-wizard__dot.is-active{
+  background: var(--accent);
+  transform: scale(1.12);
+}
+body.account-setup-page .account-setup-wizard__shell{
+  padding: 0;
+  overflow: hidden;
+}
+body.account-setup-page .account-setup-wizard__viewport{
+  overflow: hidden;
+  width: 100%;
+}
+body.account-setup-page .account-setup-wizard__track{
+  display: flex;
+  flex-direction: row;
+  width: 300%;
+  align-items: flex-start;
+  transition: transform 360ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+@media (prefers-reduced-motion: reduce){
+  body.account-setup-page .account-setup-wizard__track{
+    transition: none;
+  }
+}
+body.account-setup-page .account-setup-wizard__panel{
+  flex: 0 0 33.333333%;
+  width: 33.333333%;
+  box-sizing: border-box;
+  min-width: 0;
+  padding: 18px 14px;
+}
+body.account-setup-page .account-setup-wizard__panel.auth-section__body{
+  padding: 18px 14px;
+}
+
+/* Account setup: stacked accordion cards (legacy) */
 body.account-setup-page .account-setup-cards{
   display: grid;
   grid-template-columns: 1fr;
@@ -3369,6 +3432,9 @@ body.account-setup-page .account-setup-actions{
   gap: 10px;
   align-items: center;
   flex-wrap: wrap;
+}
+body.account-setup-page .account-setup-actions #accountSetupBackBtn{
+  margin-right: auto;
 }
 body.account-setup-page .account-setup-card .auth-section__body{
   padding: 0;

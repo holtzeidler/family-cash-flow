@@ -127,11 +127,13 @@ const signupBtn = document.getElementById("signupBtn");
 const accountSetupAccountSectionEl = document.getElementById("accountSetupAccountSection");
 const accountSetupTransactionsSectionEl = document.getElementById("accountSetupTransactionsSection");
 const addMoreTxBtn = document.getElementById("addMoreTxBtn");
+const accountSetupBackBtn = document.getElementById("accountSetupBackBtn");
 
 const BW_ACCOUNT_SETUP_DRAFT_KEY = "bw_account_setup_draft";
 
 function initAccountSetupCardAccordion() {
   if (!isAccountSetupPath()) return;
+  if (document.getElementById("accountSetupWizard")) return;
   const wrap = document.getElementById("accountSetupCards");
   if (!wrap) return;
   if (wrap.dataset.asAccordionInit === "1") return;
@@ -188,6 +190,61 @@ function isSignupPath() {
   }
 }
 
+function getAccountSetupWizardStep() {
+  const w = document.getElementById("accountSetupWizard");
+  if (!w) return 0;
+  const n = parseInt(w.dataset.step || "0", 10);
+  return Number.isFinite(n) ? Math.min(2, Math.max(0, n)) : 0;
+}
+
+function persistAccountSetupWizardMeta(stepIndex) {
+  try {
+    const prev = readAccountSetupDraftRaw();
+    const raw = prev && typeof prev === "object" && !Array.isArray(prev) ? { ...prev } : {};
+    raw.wizardStep = stepIndex;
+    sessionStorage.setItem(BW_ACCOUNT_SETUP_DRAFT_KEY, JSON.stringify(raw));
+  } catch (_) {}
+}
+
+function setAccountSetupWizardStep(step, opts = {}) {
+  const skipPersist = !!opts.skipPersist;
+  const w = document.getElementById("accountSetupWizard");
+  const track = document.getElementById("accountSetupWizardTrack");
+  if (!w || !track) return;
+  const s = Math.min(2, Math.max(0, step));
+  w.dataset.step = String(s);
+  track.style.transform = `translateX(-${(s * 100) / 3}%)`;
+
+  for (let i = 0; i < 3; i++) {
+    const p = document.getElementById(`accountSetupWizardPanel${i}`);
+    if (!p) continue;
+    const active = i === s;
+    p.setAttribute("aria-hidden", active ? "false" : "true");
+    if (active) p.removeAttribute("inert");
+    else p.setAttribute("inert", "");
+  }
+
+  const dots = w.querySelectorAll("[data-wizard-dot]");
+  for (const d of dots) {
+    const si = parseInt(d.getAttribute("data-wizard-dot") || "0", 10);
+    const on = si === s;
+    d.classList.toggle("is-active", on);
+    if (on) {
+      d.setAttribute("aria-current", "step");
+      d.removeAttribute("aria-hidden");
+    } else {
+      d.removeAttribute("aria-current");
+      d.setAttribute("aria-hidden", "true");
+    }
+  }
+
+  if (accountSetupBackBtn) accountSetupBackBtn.style.display = s > 0 ? "inline-flex" : "none";
+  if (addMoreTxBtn) addMoreTxBtn.style.display = s === 2 ? "inline-flex" : "none";
+  if (signupBtn) signupBtn.textContent = s === 2 ? "Create Account" : "Next";
+
+  if (!skipPersist) persistAccountSetupWizardMeta(s);
+}
+
 function toMoneyNumber(raw) {
   const s = raw != null ? String(raw).trim() : "";
   if (!s) return null;
@@ -197,18 +254,18 @@ function toMoneyNumber(raw) {
 
 function getAccountSetupStep() {
   if (!isAccountSetupPath()) return "account";
+  if (document.getElementById("accountSetupWizard")) {
+    return getAccountSetupWizardStep() >= 2 ? "transactions" : "account";
+  }
   if (!accountSetupTransactionsSectionEl) return "account";
   return accountSetupTransactionsSectionEl.hidden ? "account" : "transactions";
 }
 
 function setAccountSetupStep(step) {
   if (!isAccountSetupPath()) return;
-  // New account-setup layout shows all cards at once.
-  if (document.getElementById("accountSetupCards")) {
-    if (signupBtn) signupBtn.textContent = "Create Account";
-    if (addMoreTxBtn) addMoreTxBtn.style.display = "inline-flex";
-    if (accountSetupAccountSectionEl) accountSetupAccountSectionEl.hidden = false;
-    if (accountSetupTransactionsSectionEl) accountSetupTransactionsSectionEl.hidden = false;
+  if (document.getElementById("accountSetupWizard")) {
+    if (step === "transactions") setAccountSetupWizardStep(2);
+    else setAccountSetupWizardStep(1);
     return;
   }
   if (!accountSetupAccountSectionEl || !accountSetupTransactionsSectionEl) return;
@@ -505,6 +562,16 @@ function hydrateAccountSetupDraft() {
       if (txBgColorEl && lastTx.bg_color) txBgColorEl.value = String(lastTx.bg_color);
     }
     if (txDateEl && !txDateEl.value) txDateEl.value = isoTodayLocal();
+
+    if (document.getElementById("accountSetupWizard")) {
+      let target = 0;
+      const ws = Number(o.wizardStep);
+      if (Number.isFinite(ws) && ws >= 0 && ws <= 2) target = ws;
+      else if (o.step === "transactions" || (Array.isArray(o.transactions) && o.transactions.length)) target = 2;
+      else if (o.account && o.account.name) target = 1;
+      setAccountSetupWizardStep(target, { skipPersist: true });
+      return;
+    }
     const step = String(o.step || "").trim().toLowerCase();
     if (step === "transactions") setAccountSetupStep("transactions");
   } catch (_) {}
@@ -717,13 +784,76 @@ void (async () => {
     const dateEl = document.getElementById("asTxDate");
     if (dateEl && !String(dateEl.value || "").trim()) dateEl.value = isoTodayLocal();
   }
+  try {
+    initAccountSetupTransactionUi();
+  } catch (_) {}
 })();
 
 // Expose a global handler so the inline onclick works even if the event binding fails.
 function onSignupPrimaryClick() {
   if (isAccountSetupPath()) {
-    // With the 3-card layout we create the account directly from this page.
-    if (document.getElementById("accountSetupCards")) {
+    if (document.getElementById("accountSetupWizard")) {
+      setCallout(signupCalloutEl, "", "");
+      const st = getAccountSetupWizardStep();
+      if (st === 0) {
+        const email = (document.getElementById("email")?.value || "").trim();
+        const password = document.getElementById("password")?.value || "";
+        const password2 = document.getElementById("password2")?.value || "";
+        if (!email) {
+          setCallout(signupCalloutEl, "Email is required.", "error");
+          return;
+        }
+        if (!password || password.length < 8) {
+          setCallout(signupCalloutEl, "Password must be at least 8 characters.", "error");
+          return;
+        }
+        if (password !== password2) {
+          setCallout(signupCalloutEl, "Passwords do not match.", "error");
+          return;
+        }
+        setAccountSetupWizardStep(1);
+        document.getElementById("accountName")?.focus();
+        return;
+      }
+      if (st === 1) {
+        const accountName = (document.getElementById("accountName")?.value || "").trim();
+        const accountStartingBalanceRaw = document.getElementById("accountStartingBalance")?.value || "";
+        const accountStartingBalance = toMoneyNumber(accountStartingBalanceRaw);
+        const accountStartingBalanceDate = String(document.getElementById("accountStartingBalanceDate")?.value || "").trim();
+        const gate = canAdvanceAccountSetupAccountStep({
+          accountName,
+          accountStartingBalanceRaw,
+          accountStartingBalance,
+          accountStartingBalanceDate,
+        });
+        if (!gate.ok) {
+          setCallout(signupCalloutEl, gate.message, "error");
+          return;
+        }
+        try {
+          const rawDraft = readAccountSetupDraftRaw() || {};
+          sessionStorage.setItem(
+            BW_ACCOUNT_SETUP_DRAFT_KEY,
+            JSON.stringify({
+              ...rawDraft,
+              wizardStep: 2,
+              ...(gate.anyAccount
+                ? {
+                    account: {
+                      name: accountName,
+                      type: "checking",
+                      starting_balance: accountStartingBalance,
+                      starting_balance_date: accountStartingBalanceDate,
+                    },
+                  }
+                : {}),
+            })
+          );
+        } catch (_) {}
+        setAccountSetupWizardStep(2, { skipPersist: true });
+        document.getElementById("asTxAmount")?.focus();
+        return;
+      }
       setCallout(signupCalloutEl, "", "");
       try {
         const rawDraft = readAccountSetupDraftRaw() || {};
@@ -742,6 +872,7 @@ function onSignupPrimaryClick() {
         });
         if (!gate.ok) {
           setCallout(signupCalloutEl, gate.message, "error");
+          setAccountSetupWizardStep(1);
           return;
         }
 
@@ -752,6 +883,7 @@ function onSignupPrimaryClick() {
           BW_ACCOUNT_SETUP_DRAFT_KEY,
           JSON.stringify({
             ...rawDraft,
+            wizardStep: 2,
             ...(gate.anyAccount
               ? {
                   account: {
@@ -816,9 +948,44 @@ function onSignupPrimaryClick() {
 window.__bwSignup = onSignupPrimaryClick;
 if (signupBtn) signupBtn.addEventListener("click", onSignupPrimaryClick);
 if (addMoreTxBtn) addMoreTxBtn.addEventListener("click", addMoreTransactionsFromAccountSetup);
+if (accountSetupBackBtn) {
+  accountSetupBackBtn.addEventListener("click", () => {
+    if (!isAccountSetupPath() || !document.getElementById("accountSetupWizard")) return;
+    const s = getAccountSetupWizardStep();
+    if (s <= 0) return;
+    setCallout(signupCalloutEl, "", "");
+    setAccountSetupWizardStep(s - 1);
+    if (s - 1 === 0) document.getElementById("email")?.focus();
+    else document.getElementById("accountName")?.focus();
+  });
+}
 
 function initAccountSetupTransactionUi() {
   if (!isAccountSetupPath()) return;
+  if (document.getElementById("accountSetupWizard")) {
+    const swatches = document.getElementById("asTxColorSwatches");
+    const bgEl = document.getElementById("asTxBgColor");
+    const clearBtn = document.getElementById("asTxColorClear");
+    if (swatches) {
+      for (const btn of swatches.querySelectorAll("button.cat-swatch")) {
+        const bg = String(btn.getAttribute("data-bg") || "").trim();
+        if (bg) btn.style.background = bg;
+        btn.addEventListener("click", () => {
+          if (bgEl) bgEl.value = bg;
+          for (const b of swatches.querySelectorAll("button.cat-swatch")) b.classList.remove("is-active");
+          btn.classList.add("is-active");
+        });
+      }
+    }
+    if (clearBtn) {
+      clearBtn.addEventListener("click", () => {
+        if (bgEl) bgEl.value = "";
+        if (swatches) for (const b of swatches.querySelectorAll("button.cat-swatch")) b.classList.remove("is-active");
+      });
+    }
+    setAccountSetupWizardStep(getAccountSetupWizardStep(), { skipPersist: true });
+    return;
+  }
   const swatches = document.getElementById("asTxColorSwatches");
   const bgEl = document.getElementById("asTxBgColor");
   const clearBtn = document.getElementById("asTxColorClear");
@@ -842,9 +1009,6 @@ function initAccountSetupTransactionUi() {
   setAccountSetupStep(getAccountSetupStep());
 }
 
-try {
-  initAccountSetupTransactionUi();
-} catch (_) {}
 try {
   initAccountSetupCardAccordion();
 } catch (_) {}
