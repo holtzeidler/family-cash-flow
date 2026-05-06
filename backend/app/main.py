@@ -3168,6 +3168,8 @@ def create_expected_transaction(
     if account is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid account for this family")
 
+    _require_expected_start_on_or_after_account(account, payload.start_date)
+
     category_name: Optional[str] = None
     if payload.category_id is not None:
         category = db.execute(select(Category).where(Category.id == payload.category_id, Category.family_id == family_id)).scalar_one_or_none()
@@ -3269,6 +3271,8 @@ def update_expected_transaction(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="end_date cannot be before start_date")
 
     _validate_expected_transaction_recurrence(payload)
+
+    _require_expected_start_on_or_after_account(account, payload.start_date)
 
     tx.account_id = payload.account_id
     tx.start_date = payload.start_date
@@ -3395,6 +3399,8 @@ def upsert_expected_instance_override(
             category = db.execute(select(Category).where(Category.id == category_id, Category.family_id == family_id)).scalar_one_or_none()
             if category is None:
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid category for this family")
+        if moved_to_date is not None:
+            _require_expected_start_on_or_after_account(account, moved_to_date)
 
     existing = db.execute(
         select(ExpectedTransactionOverride).where(
@@ -3495,6 +3501,8 @@ def apply_expected_from_occurrence(
     account = db.execute(select(Account).where(Account.id == payload.account_id, Account.family_id == family_id)).scalar_one_or_none()
     if account is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid account for this family")
+
+    _require_expected_start_on_or_after_account(account, occurrence_date)
 
     category_id = payload.category_id
     if category_id is not None:
@@ -5007,6 +5015,35 @@ def maintenance_sql(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
+def _account_effective_start_date(account: Account) -> date:
+    return account.starting_balance_date or account.created_at.date()
+
+
+def _family_earliest_account_start_date(db, family_id: int) -> Optional[date]:
+    accounts = list(db.execute(select(Account).where(Account.family_id == family_id)).scalars().all())
+    if not accounts:
+        return None
+    return min(_account_effective_start_date(a) for a in accounts)
+
+
+def _require_transaction_date_on_or_after_family_start(db, family_id: int, tx_date: date) -> None:
+    earliest = _family_earliest_account_start_date(db, family_id)
+    if earliest is not None and tx_date < earliest:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="That date is before your starting balance.",
+        )
+
+
+def _require_expected_start_on_or_after_account(account: Account, start_date: date) -> None:
+    eff = _account_effective_start_date(account)
+    if start_date < eff:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="That date is before your starting balance.",
+        )
+
+
 @app.post("/api/families/{family_id}/transactions", response_model=TransactionOut)
 def create_transaction(
     family_id: int,
@@ -5023,6 +5060,8 @@ def create_transaction(
         ).scalar_one_or_none()
         if category is None:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid category for this family")
+
+    _require_transaction_date_on_or_after_family_start(db, family_id, payload.date)
 
     tx = Transaction(
         family_id=family_id,
@@ -5086,6 +5125,8 @@ def update_transaction(
         ).scalar_one_or_none()
         if category is None:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid category for this family")
+
+    _require_transaction_date_on_or_after_family_start(db, family_id, payload.date)
 
     tx.date = payload.date
     tx.description = payload.description

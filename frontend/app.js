@@ -2210,6 +2210,9 @@ if (txAddSave) {
 
       if (!dateVal) throw new Error(repeats ? "Start date is required" : "Date is required");
       if (!amountVal || Number(amountVal) <= 0) throw new Error("Amount must be > 0");
+      if (isDateBeforeEarliestStartingBalance(normalizeIsoDate(dateVal) || dateVal)) {
+        throw new Error("That date is before your starting balance.");
+      }
 
       if (repeats) {
         const recurrenceVal = txAddRecurrence?.value || "monthly";
@@ -2467,6 +2470,7 @@ function openTxEditModal(tx) {
   if (instanceExpectedTxId) instanceExpectedTxId.value = "";
   txEditId.value = String(tx.id);
   txEditDate.value = tx.date;
+  applyMinDateToTxEditDateInput();
   {
     const k = tx && tx.kind ? String(tx.kind) : "expense";
     const radio = document.querySelector(`input[type="radio"][name="txEditKind"][value="${k}"]`);
@@ -2539,6 +2543,7 @@ function closeTxEditModal() {
     txEditDate.value = "";
     txEditDate.disabled = false;
     txEditDate.readOnly = false;
+    txEditDate.removeAttribute("min");
   }
   if (instanceExpectedTxId) instanceExpectedTxId.value = "";
   if (expectedEditId) expectedEditId.value = "";
@@ -2586,6 +2591,12 @@ function openTxAddModal(opts = {}) {
   if (!txAddModal || !txAddDate) return;
   mountTxAddFormInModal();
   const dateVal = opts.date || "";
+  const dateNorm = dateVal ? normalizeIsoDate(dateVal) || dateVal : "";
+  if (dateNorm && isDateBeforeEarliestStartingBalance(dateNorm)) {
+    window.alert("That date is before your starting balance.");
+    return;
+  }
+  applyMinDateToTxAddDateInput();
   txAddDate.value = dateVal;
   if (txAddAmount) txAddAmount.value = "";
   if (txAddNotes) txAddNotes.value = "";
@@ -2618,13 +2629,16 @@ function closeTxAddModal() {
   txAddModal.classList.remove("modal-overlay--open");
   txAddModal.setAttribute("aria-hidden", "true");
   mountTxAddFormInSidebar();
+  if (txAddDate) txAddDate.removeAttribute("min");
   txAddSelectedBgColor = null;
   txAddColorTouched = false;
 }
 
 function openReconcileModal(iso) {
   if (!reconcileModal) return;
-  reconcileActiveDate = normalizeIsoDate(iso) || iso;
+  const d = normalizeIsoDate(iso) || iso;
+  if (alertIfDateBeforeStartingBalance(d)) return;
+  reconcileActiveDate = d;
   if (reconcileDateText) reconcileDateText.textContent = reconcileActiveDate ? fmtDateMDY(reconcileActiveDate) : "—";
   if (reconcileChecked) reconcileChecked.checked = state.reconciledDates?.has(reconcileActiveDate) || false;
   show(reconcileErr, "");
@@ -2649,6 +2663,10 @@ if (txEditSave) {
       if (!id) throw new Error("No transaction selected");
       const amountVal = txEditAmount.value;
       if (!amountVal || Number(amountVal) <= 0) throw new Error("Amount must be > 0");
+      const editDateIso = normalizeIsoDate(txEditDate.value) || txEditDate.value;
+      if (isDateBeforeEarliestStartingBalance(editDateIso)) {
+        throw new Error("That date is before your starting balance.");
+      }
       await api(`/api/families/${state.activeFamilyId}/transactions/${id}`, "PUT", {
         date: txEditDate.value,
         kind: getRadioValue("txEditKind", "expense"),
@@ -2785,6 +2803,7 @@ if (calendarGrid) {
     if (!cell || !calendarGrid.contains(cell)) return;
     const iso = cell.dataset.iso;
     if (!iso) return;
+    if (alertIfDateBeforeStartingBalance(iso)) return;
     openTxAddModal({ date: iso });
   });
 }
@@ -3633,6 +3652,9 @@ async function saveExpectedInstanceOverride() {
   // clear moved_to_date so it shows only once on that day.
   let movedTo = normalizeIsoDate(selectedExpectedMovedToDate || "") || null;
   if (movedTo && movedTo === occ) movedTo = null;
+  if (movedTo && isDateBeforeEarliestStartingBalance(movedTo)) {
+    throw new Error("That date is before your starting balance.");
+  }
 
   const payload = {
     action: "update",
@@ -5019,6 +5041,9 @@ async function loadAccounts() {
   if (expectedAccountIdEl && state.accounts.length > 0 && !expectedAccountIdEl.value) {
     expectedAccountIdEl.value = String(state.accounts[0].id);
   }
+  try {
+    renderCalendar();
+  } catch (_) {}
 }
 
 if (accountDetailsAccountId) {
@@ -5164,6 +5189,7 @@ function openExpectedEditModal(tx, opts = {}) {
   txEditModal.classList.add("modal-overlay--open");
   txEditModal.setAttribute("aria-hidden", "false");
   applyTransactionEditMode("recurring");
+  applyMinDateToTxEditDateInput();
 }
 
 function openExpectedDeleteModal(expectedId, occurrenceDate) {
@@ -6181,6 +6207,46 @@ function normalizeIsoDate(raw) {
   return `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}`;
 }
 
+/** Earliest account starting-balance date (YYYY-MM-DD); null if no accounts. */
+function getFamilyEarliestStartingBalanceIso() {
+  const accounts = state.accounts || [];
+  if (!accounts.length) return null;
+  let minIso = null;
+  for (const a of accounts) {
+    const iso = normalizeIsoDate(a.starting_balance_date);
+    if (!iso) continue;
+    if (!minIso || iso < minIso) minIso = iso;
+  }
+  return minIso;
+}
+
+function isDateBeforeEarliestStartingBalance(iso) {
+  if (!iso) return false;
+  const n = normalizeIsoDate(iso) || iso;
+  const earliest = getFamilyEarliestStartingBalanceIso();
+  return !!earliest && n < earliest;
+}
+
+function alertIfDateBeforeStartingBalance(iso) {
+  if (!isDateBeforeEarliestStartingBalance(iso)) return false;
+  window.alert("That date is before your starting balance.");
+  return true;
+}
+
+function applyMinDateToTxAddDateInput() {
+  if (!txAddDate) return;
+  const minD = getFamilyEarliestStartingBalanceIso();
+  if (minD) txAddDate.min = minD;
+  else txAddDate.removeAttribute("min");
+}
+
+function applyMinDateToTxEditDateInput() {
+  if (!txEditDate) return;
+  const minD = getFamilyEarliestStartingBalanceIso();
+  if (minD) txEditDate.min = minD;
+  else txEditDate.removeAttribute("min");
+}
+
 async function loadReconciledDays(month) {
   if (!state.activeFamilyId) return;
   if (!month) return;
@@ -6225,7 +6291,7 @@ function renderSidebarPendingTransactionsForMonth() {
   const checked = loadPendingAttentionChecked();
   const setTitle = (n) => {
     if (!sidebarPendingTitle) return;
-    sidebarPendingTitle.textContent = `💩 Needs Attention (${Number(n) || 0})`;
+    sidebarPendingTitle.textContent = `Needs Attention (${Number(n) || 0})`;
   };
   if (!range) {
     setTitle(0);
@@ -6715,6 +6781,7 @@ function selectExpectedInstance(item) {
     txEditDate.disabled = false;
     selectedExpectedMovedToDate = normalizeIsoDate(item.date) || item.date;
     txEditDate.value = selectedExpectedMovedToDate;
+    applyMinDateToTxEditDateInput();
   }
   if (instanceExpectedTxId) instanceExpectedTxId.value = String(item.expected_transaction_id);
   {
@@ -6766,6 +6833,7 @@ function renderCalendar() {
   const showExpected = mode === "both" || mode === "expected";
   // "Transactions" vs "Balance Only" toggle (detailed vs simplified).
   const showDetails = state.calendarDetailMode === "detailed";
+  const earliestStartIso = getFamilyEarliestStartingBalanceIso();
 
   const actualTxsByDate = new Map();
   for (const tx of [...(state.monthActualItems || []), ...(state.calendarExtraActualItems || [])]) {
@@ -6887,6 +6955,10 @@ function renderCalendar() {
     const dObj = new Date(year, monthIndex, dayNum);
     const iso = toISODate(dObj);
     cell.dataset.iso = iso;
+    if (earliestStartIso && iso < earliestStartIso) {
+      cell.classList.add("cal-cell--before-start");
+      cell.setAttribute("title", "Before your starting balance date");
+    }
     const todayIso = toISODate(new Date());
     const isToday = iso === todayIso;
     const isReconciled = state.reconciledDates && state.reconciledDates.has(iso);
@@ -6989,6 +7061,7 @@ function renderCalendar() {
         if (isExpected) {
           line.addEventListener("click", (e) => {
             e.stopPropagation();
+            if (alertIfDateBeforeStartingBalance(iso)) return;
             const meta = getExpectedSeriesMeta(row.expected_transaction_id);
             if (meta) openExpectedEditModal(meta, { calendarItem: row });
           });
