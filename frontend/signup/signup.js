@@ -685,7 +685,7 @@ try {
   if (signupPlanNoteEl && plan) {
     signupPlanNoteEl.style.display = "block";
     signupPlanNoteEl.classList.toggle("signup-plan-note--pro", plan === "pro");
-    signupPlanNoteEl.textContent = plan === "pro" ? "Selected Plan: Add Budgeting" : "Selected Plan: Cash Forecast Only";
+    signupPlanNoteEl.textContent = plan === "pro" ? "Selected Plan: Add Budgeting" : "Selected Plan: Cash Forecast";
     showSignupPlanBanner();
   }
 } catch (_) {}

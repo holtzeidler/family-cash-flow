@@ -154,7 +154,10 @@ body.landing-page .landing-hero__cta:focus-visible{
 /* Landing: product preview */
 body.landing-page .landing-preview{
   width: min(1100px, 100%);
-  margin: 54px auto 0;
+  margin: 92px auto 0;
+  align-self: stretch;
+  margin-left: 0;
+  margin-right: 0;
   display: grid;
   grid-template-columns: 1fr 1.15fr;
   gap: 22px;
@@ -186,6 +189,9 @@ body.landing-page .landing-preview__mock.card{
 .landing-how{
   width: min(1100px, 100%);
   margin: 26px auto 0;
+  align-self: flex-end;
+  margin-left: auto;
+  margin-right: 0;
   display: grid;
   grid-template-columns: 1fr 1.15fr;
   gap: 22px;
@@ -2734,8 +2740,14 @@ textarea::placeholder{
   transform: translateY(1px);
 }
 .settings-pane[data-settings-pane="categories"] .cat-group-head::after{
-  content: "Edit";
-  margin-left: 10px;
+  content: none;
+}
+.cat-group-edit-btn{
+  margin-left: auto;
+  border: none;
+  background: transparent;
+  padding: 6px 8px;
+  font: inherit;
   color: #1d4ed8;
   font-weight: 600;
   font-size: 13px;
@@ -2743,8 +2755,13 @@ textarea::placeholder{
   text-decoration: underline;
   text-underline-offset: 2px;
 }
-.settings-pane[data-settings-pane="categories"] .cat-group-head:hover::after{
+.cat-group-edit-btn:hover{
   color: #1e40af;
+}
+.cat-group-edit-btn:focus-visible{
+  outline: 2px solid rgba(29, 78, 216, 0.35);
+  outline-offset: 2px;
+  border-radius: 6px;
 }
 .cat-group-head.is-drag-over{
   outline: 2px dashed color-mix(in srgb, var(--accent) 55%, transparent);
@@ -3532,6 +3549,19 @@ body.plans-page .container > .grid{
 .plans-grid:has(.plan-card:only-child) .plan-card{
   width: min(520px, 100%);
 }
+
+/* Reports: Income vs. Expense */
+.income-expense-card{ background: var(--cal-surface); }
+.income-expense-head{ display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.income-expense-title{ margin: 0; font-size: 14px; color: var(--muted); font-weight: 600; letter-spacing: 0.3px; text-transform: uppercase; }
+.income-expense-subtitle{ margin-top: 2px; }
+.income-expense-controls{ display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.income-expense-select{ padding: 6px 10px; border-radius: 10px; border: 1px solid rgba(0,0,0,0.12); background: rgba(0,0,0,0.02); font: inherit; }
+.income-expense-toggle{ padding: 6px 10px; border-radius: 10px; border: 1px solid rgba(0,0,0,0.12); background: rgba(0,0,0,0.02); font: inherit; cursor: pointer; }
+.income-expense-toggle.is-active{ border-color: color-mix(in srgb, var(--accent) 45%, rgba(0,0,0,0.12)); background: color-mix(in srgb, var(--accent) 10%, rgba(0,0,0,0.02)); color: var(--accent); }
+.income-expense-icon-btn{ width: 36px; height: 36px; padding: 0; border-radius: 10px; border: 1px solid rgba(0,0,0,0.12); background: rgba(0,0,0,0.02); cursor: pointer; line-height: 0; }
+.income-expense-chart-wrap{ height: 240px; position: relative; }
+@media (min-width: 880px){ .income-expense-chart-wrap{ height: 280px; } }
 .plan-card{
   background: var(--cal-surface);
   padding: 0;

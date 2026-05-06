@@ -632,6 +632,39 @@
 
             <div style="height: 14px"></div>
 
+            <div class="card income-expense-card" id="incomeExpenseCard">
+              <div class="income-expense-head">
+                <div class="income-expense-head__titles">
+                  <h2 class="income-expense-title">Income vs. Expense</h2>
+                  <div class="meta income-expense-subtitle" id="incomeExpenseSubtitle">All time</div>
+                </div>
+                <div class="income-expense-controls" role="group" aria-label="Income vs expense controls">
+                  <label class="sr-only" for="incomeExpenseGranularity">Granularity</label>
+                  <select id="incomeExpenseGranularity" class="income-expense-select" disabled>
+                    <option value="monthly" selected>Monthly</option>
+                  </select>
+                  <button type="button" id="incomeExpenseGroupedBtn" class="income-expense-toggle is-active">Grouped</button>
+                  <button type="button" id="incomeExpenseStackedBtn" class="income-expense-toggle">Stacked</button>
+                  <button
+                    type="button"
+                    id="incomeExpenseDownloadBtn"
+                    class="income-expense-icon-btn"
+                    title="Download chart"
+                    aria-label="Download chart"
+                  >
+                    ⬇
+                  </button>
+                </div>
+              </div>
+              <div id="incomeExpenseErr" class="error"></div>
+              <div class="income-expense-chart-wrap">
+                <div id="incomeExpenseEmpty" class="projection-chart-empty" style="display: none" aria-live="polite"></div>
+                <canvas id="incomeExpenseChartCanvas" class="projection-chart-canvas"></canvas>
+              </div>
+            </div>
+
+            <div style="height: 14px"></div>
+
             <div class="card category-report-card" id="categoryTotalsReportCard">
               <h2 class="category-report-card__title">Category totals</h2>
               <p class="meta category-report-card__hint">

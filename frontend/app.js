@@ -141,6 +141,19 @@ function fmtMoney0(n) {
   return num.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 }
 
+function fmtMonthYearShort(yyyyMm) {
+  try {
+    const s = String(yyyyMm || "");
+    const y = Number(s.slice(0, 4));
+    const m = Number(s.slice(5, 7));
+    if (!Number.isFinite(y) || !Number.isFinite(m)) return s;
+    const dt = new Date(y, Math.max(0, m - 1), 1, 12, 0, 0, 0);
+    return dt.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+  } catch (_) {
+    return String(yyyyMm || "");
+  }
+}
+
 function fmtMoney0SignedDollar(n) {
   const num = typeof n === "string" ? Number(n) : n;
   if (Number.isNaN(num)) return `$${String(n ?? "")}`;
@@ -885,6 +898,18 @@ const chartRangeCancelBtn = document.getElementById("chartRangeCancelBtn");
 let projectionChartInstance = null;
 let projectionChartDefaultsApplied = false;
 
+// Reports: Income vs. Expense
+const incomeExpenseChartCanvas = document.getElementById("incomeExpenseChartCanvas");
+const incomeExpenseEmpty = document.getElementById("incomeExpenseEmpty");
+const incomeExpenseErr = document.getElementById("incomeExpenseErr");
+const incomeExpenseSubtitle = document.getElementById("incomeExpenseSubtitle");
+const incomeExpenseGroupedBtn = document.getElementById("incomeExpenseGroupedBtn");
+const incomeExpenseStackedBtn = document.getElementById("incomeExpenseStackedBtn");
+const incomeExpenseDownloadBtn = document.getElementById("incomeExpenseDownloadBtn");
+
+let incomeExpenseChartInstance = null;
+let incomeExpenseIsStacked = false;
+
 // Billing (Settings)
 const billingPlanEl = document.getElementById("billingPlan");
 const billingFrequencyEl = document.getElementById("billingFrequency");
@@ -1511,6 +1536,11 @@ function setActiveTopView(view) {
         void refreshProjectionChart().catch(() => {});
       });
     }
+    if (incomeExpenseChartCanvas && state.activeFamilyId) {
+      requestAnimationFrame(() => {
+        void refreshIncomeExpenseReport().catch(() => {});
+      });
+    }
   }
   if (v === "calendar") {
     lowBalanceLastQuery = { familyId: null, min: null, max: null, mode: null };
@@ -1885,6 +1915,30 @@ function defaultNewCategoryGroupId() {
   return g && Number.isFinite(Number(g.id)) ? Number(g.id) : null;
 }
 
+function normalizeNameForCompare(s) {
+  return String(s || "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLowerCase();
+}
+
+function hasDuplicateCategoryGroupName(name) {
+  const nm = normalizeNameForCompare(name);
+  if (!nm) return false;
+  const groups = state.categoryTree?.groups || [];
+  return groups.some((g) => normalizeNameForCompare(g?.name) === nm);
+}
+
+function hasDuplicateCategoryNameInGroup(name, groupId) {
+  const nm = normalizeNameForCompare(name);
+  const gid = groupId != null ? Number(groupId) : NaN;
+  if (!nm || !Number.isFinite(gid)) return false;
+  const groups = state.categoryTree?.groups || [];
+  const g = groups.find((x) => Number(x?.id) === gid);
+  const cats = g?.categories || [];
+  return cats.some((c) => normalizeNameForCompare(c?.name) === nm);
+}
+
 document.getElementById("addCategoryBtn").addEventListener("click", async () => {
   try {
     show(catErr, "");
@@ -1895,6 +1949,10 @@ document.getElementById("addCategoryBtn").addEventListener("click", async () => 
     if (newCategoryGroupId && newCategoryGroupId.value) {
       const n = Number(newCategoryGroupId.value);
       if (Number.isFinite(n)) gid = n;
+    }
+    if (hasDuplicateCategoryNameInGroup(name, gid)) {
+      const ok = window.confirm(`A category named "${name}" already exists in this group. Create a duplicate anyway?`);
+      if (!ok) return;
     }
     await api(`/api/families/${state.activeFamilyId}/categories`, "POST", { name, group_id: gid });
     document.getElementById("newCategoryName").value = "";
@@ -1964,6 +2022,10 @@ if (addCategoryGroupBtn) {
         if (!nm) throw new Error("Group name is required");
         if (nm.trim().toLowerCase() === "new group") {
           throw new Error('Please choose a more specific group name (not "New group").');
+        }
+        if (hasDuplicateCategoryGroupName(nm)) {
+          const ok = window.confirm(`A group named "${nm}" already exists. Create a duplicate anyway?`);
+          if (!ok) return;
         }
         await api(`/api/families/${state.activeFamilyId}/category-groups`, "POST", { name: nm });
         await loadCategories();
@@ -3041,7 +3103,7 @@ function computeNextBillingDate(startIso, frequency) {
 function getBillingPlanLabel(plan) {
   const p = String(plan || "").toLowerCase();
   if (p === "pro") return "Add Budgeting";
-  if (p === "base") return "Cash Forecast Only";
+  if (p === "base") return "Cash Forecast";
   return "—";
 }
 
@@ -3090,6 +3152,164 @@ async function refreshProjectionChart() {
   syncChartRangeDisplay();
 }
 
+function setIncomeExpenseEmpty(msg) {
+  if (!incomeExpenseEmpty) return;
+  incomeExpenseEmpty.textContent = msg || "";
+  incomeExpenseEmpty.style.display = msg ? "flex" : "none";
+}
+
+function destroyIncomeExpenseChart() {
+  if (incomeExpenseChartInstance) {
+    try {
+      incomeExpenseChartInstance.destroy();
+    } catch (_) {}
+    incomeExpenseChartInstance = null;
+  }
+}
+
+function applyIncomeExpenseToggleUi() {
+  if (incomeExpenseGroupedBtn) incomeExpenseGroupedBtn.classList.toggle("is-active", !incomeExpenseIsStacked);
+  if (incomeExpenseStackedBtn) incomeExpenseStackedBtn.classList.toggle("is-active", incomeExpenseIsStacked);
+}
+
+function aggregateIncomeExpenseByMonth(items) {
+  /** @type {Map<string,{income:number,expense:number}>} */
+  const byMonth = new Map();
+  for (const it of items || []) {
+    const iso = it && it.date ? String(it.date) : "";
+    if (!iso || iso.length < 7) continue;
+    const key = iso.slice(0, 7);
+    const kind = String(it.kind || "");
+    const amt = Number(it.amount || 0);
+    if (!Number.isFinite(amt)) continue;
+    const row = byMonth.get(key) || { income: 0, expense: 0 };
+    if (kind === "income") row.income += amt;
+    else if (kind === "expense") row.expense += amt;
+    byMonth.set(key, row);
+  }
+  const months = [...byMonth.keys()].sort();
+  return {
+    months,
+    income: months.map((m) => byMonth.get(m)?.income || 0),
+    expense: months.map((m) => byMonth.get(m)?.expense || 0),
+  };
+}
+
+function drawIncomeExpenseChart({ months, income, expense }) {
+  if (!incomeExpenseChartCanvas) return;
+  if (typeof Chart === "undefined") return;
+
+  const ctx = incomeExpenseChartCanvas.getContext("2d");
+  if (!ctx) return;
+
+  const labels = (months || []).map(fmtMonthYearShort);
+  const net = labels.map((_, i) => Number(income?.[i] || 0) - Number(expense?.[i] || 0));
+
+  destroyIncomeExpenseChart();
+  applyIncomeExpenseToggleUi();
+
+  incomeExpenseChartInstance = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [
+        {
+          label: "Income",
+          data: income || [],
+          backgroundColor: "rgba(45,120,110,0.80)",
+          borderColor: "rgba(45,120,110,0.95)",
+          borderWidth: 1,
+          stack: incomeExpenseIsStacked ? "stack" : undefined,
+        },
+        {
+          label: "Expense",
+          data: expense || [],
+          backgroundColor: "rgba(200,75,55,0.70)",
+          borderColor: "rgba(200,75,55,0.95)",
+          borderWidth: 1,
+          stack: incomeExpenseIsStacked ? "stack" : undefined,
+        },
+        {
+          type: "line",
+          label: "Net",
+          data: net,
+          borderColor: "rgba(17,24,39,0.85)",
+          backgroundColor: "rgba(17,24,39,0.10)",
+          borderWidth: 2,
+          pointRadius: 0,
+          tension: 0,
+          yAxisID: "y",
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: "index", intersect: false },
+      plugins: {
+        legend: { display: true, position: "top", labels: { boxWidth: 12 } },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => {
+              const v = ctx.parsed?.y ?? 0;
+              const sign = ctx.dataset.label === "Expense" ? "-" : ctx.dataset.label === "Income" ? "+" : "";
+              return ` ${ctx.dataset.label}: ${sign}$${fmtMoney(v)}`;
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          stacked: !!incomeExpenseIsStacked,
+          grid: { display: false },
+          ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 14 },
+        },
+        y: {
+          stacked: !!incomeExpenseIsStacked,
+          grid: { color: "rgba(0,0,0,0.06)", drawBorder: false },
+          ticks: {
+            callback: (value) => "$" + fmtMoney0(value),
+          },
+        },
+      },
+    },
+  });
+}
+
+async function refreshIncomeExpenseReport() {
+  if (!incomeExpenseChartCanvas) return;
+  if (!state.activeFamilyId) return;
+  show(incomeExpenseErr, "");
+  setIncomeExpenseEmpty("");
+  try {
+    const end = toISODate(new Date());
+    const start = "2000-01-01";
+    const r = await api(
+      `/api/families/${state.activeFamilyId}/transactions?start_date=${encodeURIComponent(start)}&end_date=${encodeURIComponent(end)}`,
+      "GET"
+    );
+    const items = r && r.items ? r.items : [];
+    if (!Array.isArray(items) || items.length === 0) {
+      destroyIncomeExpenseChart();
+      setIncomeExpenseEmpty("No data for this range.");
+      if (incomeExpenseSubtitle) incomeExpenseSubtitle.textContent = "All time";
+      return;
+    }
+    const agg = aggregateIncomeExpenseByMonth(items);
+    if (!agg.months.length) {
+      destroyIncomeExpenseChart();
+      setIncomeExpenseEmpty("No data for this range.");
+      if (incomeExpenseSubtitle) incomeExpenseSubtitle.textContent = "All time";
+      return;
+    }
+    if (incomeExpenseSubtitle) incomeExpenseSubtitle.textContent = "All time";
+    drawIncomeExpenseChart(agg);
+  } catch (e) {
+    destroyIncomeExpenseChart();
+    show(incomeExpenseErr, e.message || "Failed to load income vs expense report");
+  }
+}
+
 runProjectionChartBtn?.addEventListener("click", async () => {
   try {
     document.querySelectorAll(".chart-duration-btn").forEach((b) => b.classList.remove("is-active"));
@@ -3114,6 +3334,32 @@ document.querySelector(".chart-duration-bar")?.addEventListener("click", async (
     show(chartErr, err.message || "Failed to update chart");
   }
 });
+
+if (incomeExpenseGroupedBtn) {
+  incomeExpenseGroupedBtn.addEventListener("click", () => {
+    incomeExpenseIsStacked = false;
+    applyIncomeExpenseToggleUi();
+    void refreshIncomeExpenseReport().catch(() => {});
+  });
+}
+if (incomeExpenseStackedBtn) {
+  incomeExpenseStackedBtn.addEventListener("click", () => {
+    incomeExpenseIsStacked = true;
+    applyIncomeExpenseToggleUi();
+    void refreshIncomeExpenseReport().catch(() => {});
+  });
+}
+if (incomeExpenseDownloadBtn) {
+  incomeExpenseDownloadBtn.addEventListener("click", () => {
+    try {
+      if (!incomeExpenseChartInstance) return;
+      const a = document.createElement("a");
+      a.download = "income-vs-expense.png";
+      a.href = incomeExpenseChartInstance.toBase64Image("image/png", 1);
+      a.click();
+    } catch (_) {}
+  });
+}
 
 if (chartRangeDisplay && chartRangePopover) {
   chartRangeDisplay.addEventListener("click", (ev) => {
@@ -4188,6 +4434,17 @@ function renderCategoriesGrid(tree) {
 
     head.appendChild(nameDisplay);
     head.appendChild(nameInput);
+
+    const editBtn = document.createElement("button");
+    editBtn.type = "button";
+    editBtn.className = "cat-group-edit-btn";
+    editBtn.textContent = "Edit";
+    editBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      openCatEditModal({ kind: "group", id: Number(g.id), name: String(nameDisplay.textContent || "") });
+    });
+    head.appendChild(editBtn);
 
     const gControls = document.createElement("div");
     gControls.className = "cat-move-controls";
