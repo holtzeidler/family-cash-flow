@@ -2627,7 +2627,7 @@ textarea::placeholder{
 .settings-pane[data-settings-pane="categories"] .cat-group-body{
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 10px;
+  gap: 6px;
   align-items: center;
   padding: 0;
 }
@@ -2646,7 +2646,7 @@ textarea::placeholder{
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 14px 14px;
+  padding: 9px 12px;
   border-radius: 12px;
   border: 1px solid rgba(0,0,0,0.08);
   background: rgba(255,255,255,0.92);
