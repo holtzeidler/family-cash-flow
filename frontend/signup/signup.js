@@ -140,17 +140,10 @@ function initAccountSetupCardAccordion() {
   const cards = [...wrap.querySelectorAll("section.account-setup-card[data-as-card]")];
   if (!cards.length) return;
 
-  function applyColumns() {
-    // Collapsed cards become thin tabs; expanded cards share remaining space.
-    const cols = cards.map((c) => (c.classList.contains("is-collapsed") ? "64px" : "minmax(0, 1fr)"));
-    wrap.style.gridTemplateColumns = cols.join(" ");
-  }
-
   function setCollapsed(card, collapsed) {
     card.classList.toggle("is-collapsed", collapsed);
     const btn = card.querySelector("button.account-setup-card__toggle");
     if (btn) btn.setAttribute("aria-expanded", collapsed ? "false" : "true");
-    applyColumns();
   }
 
   for (const card of cards) {
@@ -162,12 +155,13 @@ function initAccountSetupCardAccordion() {
     });
   }
 
-  // Default: all expanded.
+  // Initialize aria-expanded from the current DOM state.
   for (const c of cards) {
     const btn = c.querySelector("button.account-setup-card__toggle");
-    if (btn && !btn.getAttribute("aria-expanded")) btn.setAttribute("aria-expanded", "true");
+    if (!btn) continue;
+    const collapsed = c.classList.contains("is-collapsed");
+    btn.setAttribute("aria-expanded", collapsed ? "false" : "true");
   }
-  applyColumns();
 }
 
 function isAccountSetupPath() {
