@@ -64,6 +64,15 @@ body.account-setup-page .container > .grid{
   margin-left: auto;
   margin-right: auto;
 }
+
+body.account-setup-page .account-setup-headline{
+  margin: 0 0 14px;
+  text-align: center;
+  font-size: clamp(1.4rem, 3.6vw, 2.1rem);
+  line-height: 1.15;
+  font-weight: 900;
+  color: var(--accent);
+}
 body.login-page .top-nav__inner--simple{
   justify-items: start;
 }
@@ -3247,7 +3256,7 @@ body.account-setup-page .account-setup-cards{
   display: grid;
   grid-template-columns: 1fr;
   grid-auto-rows: min-content;
-  gap: 14px;
+  gap: 8px;
   align-items: start;
 }
 body.account-setup-page .account-setup-card{
@@ -3281,6 +3290,15 @@ body.account-setup-page .form-row-h{
 body.account-setup-page .form-row-h__label{
   flex: 0 0 6.75rem;
   max-width: 28%;
+}
+
+/* Account setup: keep "Confirm password" on one line */
+body.account-setup-page .as-password-row .form-row-h__label{
+  flex-basis: 8.5rem;
+  max-width: 40%;
+}
+body.account-setup-page .as-password-row .form-row-h__label label{
+  white-space: nowrap;
 }
 body.account-setup-page .account-setup-card{
   overflow: hidden;
@@ -3363,13 +3381,13 @@ body.account-setup-page .account-setup-card .auth-section__body{
   }
 }
 
-/* Signup/account-setup: reuse nav button sizing, but ensure contrast on white cards. */
-body.login-page.signup-page .auth-section__body .top-nav__logout{
+/* Auth pages: reuse nav button sizing, but ensure contrast on white cards. */
+body.login-page .auth-section__body .top-nav__logout{
   background: var(--accent);
   border-color: rgba(0, 0, 0, 0.10);
   color: #fff;
 }
-body.login-page.signup-page .auth-section__body .top-nav__logout:hover{
+body.login-page .auth-section__body .top-nav__logout:hover{
   background: color-mix(in srgb, var(--accent) 92%, #000);
   border-color: rgba(0, 0, 0, 0.16);
 }

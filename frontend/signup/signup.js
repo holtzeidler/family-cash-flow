@@ -227,9 +227,7 @@ function isoTodayLocal() {
   return `${y}-${m}-${d}`;
 }
 
-function canAdvanceAccountSetupAccountStep({ firstName, lastName, accountName, accountStartingBalanceRaw, accountStartingBalance, accountStartingBalanceDate }) {
-  if (!firstName) return { ok: false, message: "First name is required." };
-  if (!lastName) return { ok: false, message: "Last name is required." };
+function canAdvanceAccountSetupAccountStep({ accountName, accountStartingBalanceRaw, accountStartingBalance, accountStartingBalanceDate }) {
   const anyAccount =
     !!accountName ||
     (accountStartingBalanceRaw != null && String(accountStartingBalanceRaw).trim() !== "") ||
@@ -259,8 +257,6 @@ function goToSignupFromAccountSetup() {
     } catch (_) {}
     const existingTransactions = Array.isArray(existingDraft?.transactions) ? existingDraft.transactions : [];
 
-    const firstName = (document.getElementById("firstName")?.value || "").trim();
-    const lastName = (document.getElementById("lastName")?.value || "").trim();
     const accountName = (document.getElementById("accountName")?.value || "").trim();
     const accountStartingBalanceRaw = document.getElementById("accountStartingBalance")?.value || "";
     const accountStartingBalance = toMoneyNumber(accountStartingBalanceRaw);
@@ -273,14 +269,6 @@ function goToSignupFromAccountSetup() {
     const txNotes = (document.getElementById("asTxNotes")?.value || "").trim();
     const txRecurring = !!document.getElementById("asTxRecurring")?.checked;
     const txBgColor = String(document.getElementById("asTxBgColor")?.value || "").trim();
-    if (!firstName) {
-      setCallout(signupCalloutEl, "First name is required.", "error");
-      return;
-    }
-    if (!lastName) {
-      setCallout(signupCalloutEl, "Last name is required.", "error");
-      return;
-    }
     const anyAccount =
       !!accountName ||
       (accountStartingBalanceRaw != null && String(accountStartingBalanceRaw).trim() !== "") ||
@@ -324,8 +312,6 @@ function goToSignupFromAccountSetup() {
     sessionStorage.setItem(
       BW_ACCOUNT_SETUP_DRAFT_KEY,
       JSON.stringify({
-        firstName,
-        lastName,
         ...(anyAccount
           ? {
               account: {
@@ -435,16 +421,12 @@ function addMoreTransactionsFromAccountSetup() {
   if (!isAccountSetupPath()) return;
   setCallout(signupCalloutEl, "", "");
   const rawDraft = readAccountSetupDraftRaw() || {};
-  const firstName = (document.getElementById("firstName")?.value || "").trim();
-  const lastName = (document.getElementById("lastName")?.value || "").trim();
   const accountName = (document.getElementById("accountName")?.value || "").trim();
   const accountStartingBalanceRaw = document.getElementById("accountStartingBalance")?.value || "";
   const accountStartingBalance = toMoneyNumber(accountStartingBalanceRaw);
   const accountStartingBalanceDate = String(document.getElementById("accountStartingBalanceDate")?.value || "").trim();
 
   const gate = canAdvanceAccountSetupAccountStep({
-    firstName,
-    lastName,
     accountName,
     accountStartingBalanceRaw,
     accountStartingBalance,
@@ -467,8 +449,6 @@ function addMoreTransactionsFromAccountSetup() {
     BW_ACCOUNT_SETUP_DRAFT_KEY,
     JSON.stringify({
       ...rawDraft,
-      firstName,
-      lastName,
       ...(gate.anyAccount
         ? {
             account: {
@@ -496,8 +476,6 @@ function hydrateAccountSetupDraft() {
   if (!raw) return;
   try {
     const o = JSON.parse(raw);
-    const firstNameEl = document.getElementById("firstName");
-    const lastNameEl = document.getElementById("lastName");
     const tzEl = document.getElementById("timeZone");
     const accNameEl = document.getElementById("accountName");
     const accBalEl = document.getElementById("accountStartingBalance");
@@ -508,8 +486,6 @@ function hydrateAccountSetupDraft() {
     const txNotesEl = document.getElementById("asTxNotes");
     const txRecurringEl = document.getElementById("asTxRecurring");
     const txBgColorEl = document.getElementById("asTxBgColor");
-    if (firstNameEl && o.firstName) firstNameEl.value = String(o.firstName);
-    if (lastNameEl && o.lastName) lastNameEl.value = String(o.lastName);
     if (tzEl && o.timeZone) tzEl.value = String(o.timeZone);
     if (o.account) {
       if (accNameEl && o.account.name) accNameEl.value = String(o.account.name);
@@ -530,7 +506,7 @@ function hydrateAccountSetupDraft() {
     }
     if (txDateEl && !txDateEl.value) txDateEl.value = isoTodayLocal();
     const step = String(o.step || "").trim().toLowerCase();
-    if (step === "transactions" && o.firstName && o.lastName) setAccountSetupStep("transactions");
+    if (step === "transactions") setAccountSetupStep("transactions");
   } catch (_) {}
 }
 
@@ -553,9 +529,6 @@ function readAccountSetupDraft() {
   if (!raw) return null;
   try {
     const o = JSON.parse(raw);
-    const firstName = (o && o.firstName != null ? String(o.firstName) : "").trim();
-    const lastName = (o && o.lastName != null ? String(o.lastName) : "").trim();
-    if (!firstName || !lastName) return null;
     const account =
       o && o.account && o.account.name && o.account.starting_balance_date != null
         ? {
@@ -577,7 +550,7 @@ function readAccountSetupDraft() {
         bg_color: t?.bg_color != null ? String(t.bg_color) : null,
       }))
       .filter((t) => t.kind && t.date && Number.isFinite(t.amount) && t.amount > 0);
-    return { firstName, lastName, timeZone: "", account, transactions };
+    return { timeZone: "", account, transactions };
   } catch (_) {
     return null;
   }
@@ -639,8 +612,6 @@ async function doSignup() {
       window.location.assign("/account-setup" + q);
       return;
     }
-    const { firstName, lastName } = draft;
-    const name = `${firstName} ${lastName}`.trim();
     const email = (document.getElementById("email")?.value || "").trim();
     const password = document.getElementById("password")?.value || "";
     const password2 = document.getElementById("password2")?.value || "";
@@ -648,6 +619,12 @@ async function doSignup() {
     if (!email) throw new Error("Email is required.");
     if (!password || password.length < 8) throw new Error("Password must be at least 8 characters.");
     if (password !== password2) throw new Error("Passwords do not match.");
+
+    const name = (() => {
+      const local = String(email).split("@")[0] || "";
+      const cleaned = local.replace(/[._-]+/g, " ").replace(/\s+/g, " ").trim();
+      return cleaned || "User";
+    })();
 
     const reg = await request("/api/auth/register", "POST", { name, email, password });
     if (!reg.ok) {
@@ -752,16 +729,12 @@ function onSignupPrimaryClick() {
         const rawDraft = readAccountSetupDraftRaw() || {};
         const existing = Array.isArray(rawDraft.transactions) ? rawDraft.transactions : [];
 
-        const firstName = (document.getElementById("firstName")?.value || "").trim();
-        const lastName = (document.getElementById("lastName")?.value || "").trim();
         const accountName = (document.getElementById("accountName")?.value || "").trim();
         const accountStartingBalanceRaw = document.getElementById("accountStartingBalance")?.value || "";
         const accountStartingBalance = toMoneyNumber(accountStartingBalanceRaw);
         const accountStartingBalanceDate = String(document.getElementById("accountStartingBalanceDate")?.value || "").trim();
 
         const gate = canAdvanceAccountSetupAccountStep({
-          firstName,
-          lastName,
           accountName,
           accountStartingBalanceRaw,
           accountStartingBalance,
@@ -779,8 +752,6 @@ function onSignupPrimaryClick() {
           BW_ACCOUNT_SETUP_DRAFT_KEY,
           JSON.stringify({
             ...rawDraft,
-            firstName,
-            lastName,
             ...(gate.anyAccount
               ? {
                   account: {
@@ -802,15 +773,11 @@ function onSignupPrimaryClick() {
     if (getAccountSetupStep() === "account") {
       setCallout(signupCalloutEl, "", "");
       try {
-        const firstName = (document.getElementById("firstName")?.value || "").trim();
-        const lastName = (document.getElementById("lastName")?.value || "").trim();
         const accountName = (document.getElementById("accountName")?.value || "").trim();
         const accountStartingBalanceRaw = document.getElementById("accountStartingBalance")?.value || "";
         const accountStartingBalance = toMoneyNumber(accountStartingBalanceRaw);
         const accountStartingBalanceDate = String(document.getElementById("accountStartingBalanceDate")?.value || "").trim();
         const gate = canAdvanceAccountSetupAccountStep({
-          firstName,
-          lastName,
           accountName,
           accountStartingBalanceRaw,
           accountStartingBalance,
@@ -824,8 +791,6 @@ function onSignupPrimaryClick() {
         sessionStorage.setItem(
           BW_ACCOUNT_SETUP_DRAFT_KEY,
           JSON.stringify({
-            firstName,
-            lastName,
             ...(gate.anyAccount
               ? {
                   account: {

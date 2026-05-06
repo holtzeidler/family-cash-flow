@@ -42,27 +42,16 @@
         </div>
         <div id="signupCallout" class="callout" style="display:none" role="status"></div>
 
+        <h2 class="account-setup-headline">Let’s build your forecast</h2>
+
         <div id="accountSetupCards" class="account-setup-cards" aria-label="Account setup">
-          <section class="card auth-section auth-section--open account-setup-card" data-as-card="login" aria-label="Create login">
+          <section class="card auth-section auth-section--open account-setup-card" data-as-card="login" aria-label="Create login and add checking account">
             <div class="account-setup-card__head">
               <button type="button" class="account-setup-card__toggle" aria-expanded="true">
                 <span class="account-setup-card__title">Create Login</span>
               </button>
             </div>
             <div class="auth-section__body account-setup-card__body">
-
-              <div class="row two">
-                <div class="form-row-h">
-                  <div class="form-row-h__label"><label for="firstName">First Name</label></div>
-                  <div class="form-row-h__field"><input id="firstName" type="text" autocomplete="given-name" /></div>
-                </div>
-                <div class="form-row-h">
-                  <div class="form-row-h__label"><label for="lastName">Last Name</label></div>
-                  <div class="form-row-h__field"><input id="lastName" type="text" autocomplete="family-name" /></div>
-                </div>
-              </div>
-
-              <div style="height: 14px;"></div>
 
               <div class="row">
                 <div class="form-row-h">
@@ -73,7 +62,7 @@
 
               <div style="height: 10px;"></div>
 
-              <div class="row two">
+              <div class="row two as-password-row">
                 <div class="form-row-h">
                   <div class="form-row-h__label"><label for="password">Password</label></div>
                   <div class="form-row-h__field"><input id="password" type="password" autocomplete="new-password" /></div>
@@ -83,16 +72,8 @@
                   <div class="form-row-h__field"><input id="password2" type="password" autocomplete="new-password" /></div>
                 </div>
               </div>
-            </div>
-          </section>
 
-          <section class="card auth-section auth-section--open account-setup-card is-collapsed" data-as-card="account" aria-label="Add checking account">
-            <div class="account-setup-card__head">
-              <button type="button" class="account-setup-card__toggle" aria-expanded="false">
-                <span class="account-setup-card__title">Add Checking Account</span>
-              </button>
-            </div>
-            <div class="auth-section__body account-setup-card__body">
+              <div style="height: 18px;"></div>
               <p class="meta" style="margin: 0 0 12px">Enter your checking account balance to get started today</p>
 
               <div class="row">
