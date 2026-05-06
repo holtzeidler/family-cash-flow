@@ -182,6 +182,7 @@ body.landing-page .landing-preview__copy{
   grid-area: copy;
   padding-top: 6px;
   width: min(760px, 100%);
+  margin-left: -8px;
 }
 body.landing-page .landing-preview__eyebrow{
   font-size: 12px;
@@ -200,6 +201,7 @@ body.landing-page .landing-preview__note{
 body.landing-page .landing-preview__mock.card{
   grid-area: mock;
   width: min(760px, 100%);
+  margin-left: -8px;
   background: var(--cal-surface);
   border: 1px solid rgba(0,0,0,0.10);
   box-shadow: 0 16px 42px rgba(0,0,0,0.12);
@@ -3287,12 +3289,12 @@ body.account-setup-page .account-setup-card__toggle{
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  border: 1px solid rgba(0,0,0,0.10);
-  background: rgba(0,0,0,0.02);
+  border: 1px solid rgba(0,0,0,0.14);
+  background: var(--accent);
   border-radius: 12px;
   padding: 10px 12px;
   cursor: pointer;
-  color: var(--text);
+  color: #fff;
   font: inherit;
 }
 body.account-setup-page .account-setup-card__toggle:focus-visible{
@@ -3304,12 +3306,12 @@ body.account-setup-page .account-setup-card__title{
   letter-spacing: 0.14em;
   text-transform: uppercase;
   font-size: 12px;
-  color: rgba(11, 61, 46, 0.85);
+  color: rgba(255,255,255,0.92);
 }
 body.account-setup-page .account-setup-card__toggle::after{
   content: "▾";
   font-weight: 900;
-  color: rgba(75,85,99,0.9);
+  color: rgba(255,255,255,0.92);
 }
 body.account-setup-page .account-setup-card.is-collapsed .account-setup-card__toggle::after{
   content: "▾";
