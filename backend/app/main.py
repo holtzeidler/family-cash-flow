@@ -1990,6 +1990,12 @@ def create_family(payload: FamilyCreateIn, access_token: Annotated[Optional[str]
     db.add(member)
     db.commit()
     db.refresh(family)
+    # Seed default category groups/categories for new families.
+    try:
+        apply_default_category_seed(db=db, family_id=int(family.id), force=False)
+    except Exception:
+        # Best-effort: avoid blocking family creation if seeding fails.
+        pass
     return FamilyOut(
         id=family.id,
         name=family.name,
