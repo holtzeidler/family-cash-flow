@@ -70,6 +70,43 @@
               </div>
             </div>
 
+            <div style="height: 18px;"></div>
+            <h3 class="settings-subhead" style="margin-top: 0">Add Account</h3>
+            <p class="meta" style="margin: 0 0 12px">Optional. Add your first account now, or you can do it later in Settings.</p>
+
+            <div class="row two">
+              <div>
+                <label for="accountName">Account name</label>
+                <input id="accountName" type="text" placeholder="e.g. Checking" />
+              </div>
+              <div>
+                <label for="accountType">Type</label>
+                <select id="accountType">
+                  <option value="checking" selected>Checking</option>
+                  <option value="savings">Savings</option>
+                  <option value="credit_card">Credit card</option>
+                  <option value="cash">Cash</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+            </div>
+
+            <div style="height:10px;"></div>
+
+            <div class="row two">
+              <div>
+                <label for="accountStartingBalance">Starting balance</label>
+                <div class="money-input">
+                  <span class="money-input__prefix" aria-hidden="true">$</span>
+                  <input id="accountStartingBalance" type="number" step="0.01" placeholder="0.00" />
+                </div>
+              </div>
+              <div>
+                <label for="accountStartingBalanceDate">Starting balance date</label>
+                <input id="accountStartingBalanceDate" type="date" />
+              </div>
+            </div>
+
             <div style="height:10px;"></div>
             <button type="button" id="signupBtn" class="top-nav__logout" onclick="window.__bwSignup && window.__bwSignup()">
               Create Account

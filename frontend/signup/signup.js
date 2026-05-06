@@ -143,6 +143,13 @@ function isSignupPath() {
   }
 }
 
+function toMoneyNumber(raw) {
+  const s = raw != null ? String(raw).trim() : "";
+  if (!s) return null;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+}
+
 function goToAccountSetup() {
   if (!signupBtn) return;
   setCallout(signupCalloutEl, "", "");
@@ -157,6 +164,11 @@ function goToSignupFromAccountSetup() {
     const firstName = (document.getElementById("firstName")?.value || "").trim();
     const lastName = (document.getElementById("lastName")?.value || "").trim();
     const timeZone = String(document.getElementById("timeZone")?.value || "").trim();
+    const accountName = (document.getElementById("accountName")?.value || "").trim();
+    const accountType = String(document.getElementById("accountType")?.value || "checking").trim() || "checking";
+    const accountStartingBalanceRaw = document.getElementById("accountStartingBalance")?.value || "";
+    const accountStartingBalance = toMoneyNumber(accountStartingBalanceRaw);
+    const accountStartingBalanceDate = String(document.getElementById("accountStartingBalanceDate")?.value || "").trim();
     if (!firstName) {
       setCallout(signupCalloutEl, "First name is required.", "error");
       return;
@@ -169,7 +181,42 @@ function goToSignupFromAccountSetup() {
       setCallout(signupCalloutEl, "Time zone is required.", "error");
       return;
     }
-    sessionStorage.setItem(BW_ACCOUNT_SETUP_DRAFT_KEY, JSON.stringify({ firstName, lastName, timeZone }));
+    const anyAccount =
+      !!accountName ||
+      (accountStartingBalanceRaw != null && String(accountStartingBalanceRaw).trim() !== "") ||
+      !!accountStartingBalanceDate;
+    if (anyAccount) {
+      if (!accountName) {
+        setCallout(signupCalloutEl, "Account name is required (or leave the account section blank).", "error");
+        return;
+      }
+      if (accountStartingBalance == null) {
+        setCallout(signupCalloutEl, "Starting balance is required (or leave the account section blank).", "error");
+        return;
+      }
+      if (!accountStartingBalanceDate) {
+        setCallout(signupCalloutEl, "Starting balance date is required (or leave the account section blank).", "error");
+        return;
+      }
+    }
+    sessionStorage.setItem(
+      BW_ACCOUNT_SETUP_DRAFT_KEY,
+      JSON.stringify({
+        firstName,
+        lastName,
+        timeZone,
+        ...(anyAccount
+          ? {
+              account: {
+                name: accountName,
+                type: accountType,
+                starting_balance: accountStartingBalance,
+                starting_balance_date: accountStartingBalanceDate,
+              },
+            }
+          : {}),
+      })
+    );
   } catch (e) {
     setCallout(signupCalloutEl, (e && e.message) || "Could not continue.", "error");
     return;
@@ -214,10 +261,20 @@ function hydrateAccountSetupDraft() {
     const firstNameEl = document.getElementById("firstName");
     const lastNameEl = document.getElementById("lastName");
     const tzEl = document.getElementById("timeZone");
+    const accNameEl = document.getElementById("accountName");
+    const accTypeEl = document.getElementById("accountType");
+    const accBalEl = document.getElementById("accountStartingBalance");
+    const accDateEl = document.getElementById("accountStartingBalanceDate");
     if (nameEl && o.name) nameEl.value = String(o.name);
     if (firstNameEl && o.firstName) firstNameEl.value = String(o.firstName);
     if (lastNameEl && o.lastName) lastNameEl.value = String(o.lastName);
     if (tzEl && o.timeZone) tzEl.value = String(o.timeZone);
+    if (o.account) {
+      if (accNameEl && o.account.name) accNameEl.value = String(o.account.name);
+      if (accTypeEl && o.account.type) accTypeEl.value = String(o.account.type);
+      if (accBalEl && o.account.starting_balance != null) accBalEl.value = String(o.account.starting_balance);
+      if (accDateEl && o.account.starting_balance_date) accDateEl.value = String(o.account.starting_balance_date);
+    }
   } catch (_) {}
 }
 
@@ -243,10 +300,36 @@ function readAccountSetupDraft() {
     const lastName = (o && o.lastName != null ? String(o.lastName) : "").trim();
     const timeZone = (o && o.timeZone != null ? String(o.timeZone) : "").trim();
     if (!firstName || !lastName || !timeZone) return null;
-    return { firstName, lastName, timeZone };
+    const account =
+      o && o.account && o.account.name && o.account.starting_balance_date != null
+        ? {
+            name: String(o.account.name),
+            type: String(o.account.type || "checking"),
+            starting_balance: Number(o.account.starting_balance ?? 0),
+            starting_balance_date: String(o.account.starting_balance_date),
+          }
+        : null;
+    return { firstName, lastName, timeZone, account };
   } catch (_) {
     return null;
   }
+}
+
+async function maybeCreateFirstAccountFromDraft(draft) {
+  try {
+    if (!draft || !draft.account) return;
+    const fams = await request("/api/families", "GET");
+    if (!fams.ok || !Array.isArray(fams.data) || fams.data.length === 0) return;
+    const familyId = fams.data[0]?.id;
+    if (!familyId) return;
+    const a = draft.account;
+    await request(`/api/families/${encodeURIComponent(String(familyId))}/accounts`, "POST", {
+      name: a.name,
+      type: a.type,
+      starting_balance: a.starting_balance,
+      starting_balance_date: a.starting_balance_date,
+    });
+  } catch (_) {}
 }
 
 async function doSignup() {
@@ -299,6 +382,9 @@ async function doSignup() {
     try {
       if (timeZone) localStorage.setItem("bw_time_zone", timeZone);
     } catch (_) {}
+
+    // If the user entered a starter account during setup, create it now.
+    await maybeCreateFirstAccountFromDraft(draft);
 
     try {
       sessionStorage.removeItem(BW_ACCOUNT_SETUP_DRAFT_KEY);
