@@ -43,31 +43,33 @@
             <div id="signupCallout" class="callout" style="display:none" role="status"></div>
 
             <div class="row two">
-              <div>
-                <label for="firstName">First Name</label>
-                <input id="firstName" type="text" autocomplete="given-name" />
+              <div class="form-row-h">
+                <div class="form-row-h__label"><label for="firstName">First Name</label></div>
+                <div class="form-row-h__field"><input id="firstName" type="text" autocomplete="given-name" /></div>
               </div>
-              <div>
-                <label for="lastName">Last Name</label>
-                <input id="lastName" type="text" autocomplete="family-name" />
+              <div class="form-row-h">
+                <div class="form-row-h__label"><label for="lastName">Last Name</label></div>
+                <div class="form-row-h__field"><input id="lastName" type="text" autocomplete="family-name" /></div>
               </div>
             </div>
 
             <div style="height: 10px;"></div>
 
-            <div class="row two">
-              <div>
-                <label for="timeZone">Time Zone</label>
-                <select id="timeZone">
-                  <option value="">Select a time zone</option>
-                  <option value="America/New_York">Eastern (ET)</option>
-                  <option value="America/Chicago">Central (CT)</option>
-                  <option value="America/Denver">Mountain (MT)</option>
-                  <option value="America/Phoenix">Arizona (no DST)</option>
-                  <option value="America/Los_Angeles">Pacific (PT)</option>
-                  <option value="America/Anchorage">Alaska (AKT)</option>
-                  <option value="Pacific/Honolulu">Hawaii (HST)</option>
-                </select>
+            <div class="row">
+              <div class="form-row-h">
+                <div class="form-row-h__label"><label for="timeZone">Time Zone</label></div>
+                <div class="form-row-h__field">
+                  <select id="timeZone">
+                    <option value="">Select a time zone</option>
+                    <option value="America/New_York">Eastern (ET)</option>
+                    <option value="America/Chicago">Central (CT)</option>
+                    <option value="America/Denver">Mountain (MT)</option>
+                    <option value="America/Phoenix">Arizona (no DST)</option>
+                    <option value="America/Los_Angeles">Pacific (PT)</option>
+                    <option value="America/Anchorage">Alaska (AKT)</option>
+                    <option value="Pacific/Honolulu">Hawaii (HST)</option>
+                  </select>
+                </div>
               </div>
             </div>
 
@@ -75,26 +77,28 @@
             <h3 class="settings-subhead" style="margin-top: 0">Add Checking Account</h3>
             <p class="meta" style="margin: 0 0 12px">Enter your checking account balance to get started today</p>
 
-            <div class="row two">
-              <div>
-                <label for="accountName">Account name</label>
-                <input id="accountName" type="text" placeholder="e.g. Checking" />
+            <div class="row">
+              <div class="form-row-h">
+                <div class="form-row-h__label"><label for="accountName">Account name</label></div>
+                <div class="form-row-h__field"><input id="accountName" type="text" placeholder="e.g. Checking" /></div>
               </div>
             </div>
 
             <div style="height:10px;"></div>
 
             <div class="row two">
-              <div>
-                <label for="accountStartingBalance">Starting balance</label>
-                <div class="money-input">
-                  <span class="money-input__prefix" aria-hidden="true">$</span>
-                  <input id="accountStartingBalance" type="number" step="0.01" placeholder="0.00" />
+              <div class="form-row-h">
+                <div class="form-row-h__label"><label for="accountStartingBalance">Starting balance</label></div>
+                <div class="form-row-h__field">
+                  <div class="money-input">
+                    <span class="money-input__prefix" aria-hidden="true">$</span>
+                    <input id="accountStartingBalance" type="number" step="0.01" placeholder="0.00" />
+                  </div>
                 </div>
               </div>
-              <div>
-                <label for="accountStartingBalanceDate">Starting balance date</label>
-                <input id="accountStartingBalanceDate" type="date" />
+              <div class="form-row-h">
+                <div class="form-row-h__label"><label for="accountStartingBalanceDate">Starting balance date</label></div>
+                <div class="form-row-h__field"><input id="accountStartingBalanceDate" type="date" /></div>
               </div>
             </div>
 
