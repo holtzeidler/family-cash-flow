@@ -3446,6 +3446,17 @@ body.account-setup-page .account-setup-step2-lede{
   text-align: center;
   font-weight: 700;
 }
+body.account-setup-page #accountSetupWizardPanel1 .account-setup-field-hint{
+  margin: 8px 0 0;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--muted);
+  max-width: 28rem;
+}
+body.account-setup-page #accountSetupWizardPanel1 .form-row-h__field input#accountName{
+  cursor: text;
+}
 body.account-setup-page .account-setup-step3-intro{
   width: 100%;
   max-width: 100%;

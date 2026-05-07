@@ -531,6 +531,17 @@ function ensureAccountStartingBalanceDateDefault() {
   if (!String(el.value || "").trim()) el.value = isoTodayLocal();
 }
 
+function ensureAccountSetupDefaultAccountName() {
+  if (!isAccountSetupPath()) return;
+  const el = document.getElementById("accountName");
+  if (!el) return;
+  try {
+    const raw = readAccountSetupDraftRaw();
+    if (raw && raw.account && String(raw.account.name || "").trim()) return;
+  } catch (_) {}
+  if (!String(el.value || "").trim()) el.value = "Checking";
+}
+
 function canAdvanceAccountSetupAccountStep({ accountName, accountStartingBalanceRaw, accountStartingBalance, accountStartingBalanceDate }) {
   const anyAccount =
     !!accountName ||
@@ -1449,6 +1460,7 @@ void (async () => {
   } catch (_) {}
   try {
     ensureAccountStartingBalanceDateDefault();
+    ensureAccountSetupDefaultAccountName();
   } catch (_) {}
 
   // Warm up the email availability check while the user is still typing Step 0.

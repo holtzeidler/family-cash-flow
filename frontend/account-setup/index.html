@@ -94,7 +94,20 @@
                   <div class="row">
                     <div class="form-row-h">
                       <div class="form-row-h__label"><label for="accountName">Account Name</label></div>
-                      <div class="form-row-h__field"><input id="accountName" type="text" placeholder="e.g. Checking" /></div>
+                      <div class="form-row-h__field">
+                        <input
+                          id="accountName"
+                          type="text"
+                          value="Checking"
+                          placeholder="e.g. Savings or Joint Checking"
+                          autocomplete="off"
+                          title="Click to edit this account name"
+                          aria-describedby="accountNameEditableHint"
+                        />
+                        <p class="account-setup-field-hint" id="accountNameEditableHint">
+                          You can change this anytime — most people keep it as Checking.
+                        </p>
+                      </div>
                     </div>
                   </div>
                   <div style="height:10px;"></div>
