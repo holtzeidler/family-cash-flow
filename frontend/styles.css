@@ -4638,37 +4638,45 @@ body.account-setup-page .account-setup-step3-form .reimbursable-field__label{
 body.account-setup-page .tx-add-schedule-toolbar__left{
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
+  align-items: center;
   gap: 10px 14px;
 }
 body.account-setup-page .tx-add-repeat-row{
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   margin-left: 0;
   justify-content: flex-start;
-}
-body.account-setup-page .tx-add-schedule-toolbar__left .tx-add-schedule-field--end-date{
-  flex: 0 0 auto;
-  margin-top: 0;
-  max-width: 16rem;
-  align-self: flex-end;
-  margin-left: -6px;
-}
-body.account-setup-page .tx-add-schedule-field--end-date input[type="date"]{
-  max-width: 12.5rem;
-}
-body.account-setup-page .tx-add-schedule-field--end-date label{
-  width: 100%;
-  text-align: left;
-}
-
-/* Account setup wizard: repeats row layout */
-body.account-setup-page .tx-add-repeat-row{
   display: grid;
-  grid-template-columns: 6.75rem 1fr;
+  grid-template-columns: 6.75rem auto;
   align-items: center;
   column-gap: 10px;
   row-gap: 8px;
 }
+body.account-setup-page .tx-add-schedule-toolbar__left .tx-add-schedule-field--end-date{
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px 10px;
+  flex: 0 1 auto;
+  margin-top: 0;
+  max-width: none;
+  align-self: center;
+  margin-left: 0;
+  min-width: 0;
+}
+body.account-setup-page .tx-add-schedule-field--end-date input[type="date"]{
+  flex: 0 1 auto;
+  width: auto;
+  min-width: 0;
+  max-width: 12.5rem;
+}
+body.account-setup-page .tx-add-schedule-field--end-date label{
+  width: auto;
+  flex-shrink: 0;
+  text-align: left;
+  margin: 0;
+}
+
+/* Account setup wizard: repeats row layout */
 body.account-setup-page .tx-add-repeat-toggle{
   display: inline-flex;
   align-items: center;
@@ -4688,8 +4696,10 @@ body.account-setup-page .tx-add-repeat-toggle input{
   accent-color: var(--accent);
 }
 body.account-setup-page .tx-add-recurrence-select{
-  width: 100%;
-  max-width: none;
+  width: auto;
+  max-width: 9.25rem;
+  min-width: 0;
+  justify-self: start;
 }
 
 /* Account setup wizard: bring the repeat toolbar rule closer to color swatches */
@@ -4900,7 +4910,24 @@ body.account-setup-page .account-setup-step3-form .cat-color-row + .tx-add-vspac
 }
 .tx-add-schedule-toolbar__left .tx-add-schedule-field--end-date{
   margin-top: 10px;
-  max-width: 16rem;
+  max-width: none;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px 10px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.tx-add-schedule-toolbar__left .tx-add-schedule-field--end-date label{
+  width: auto;
+  flex-shrink: 0;
+  margin: 0;
+}
+.tx-add-schedule-toolbar__left .tx-add-schedule-field--end-date input[type="date"]{
+  width: auto;
+  max-width: 12.5rem;
+  flex: 0 1 auto;
+  min-width: 0;
 }
 .tx-add-schedule-toolbar__right{
   flex: 0 1 14rem;
@@ -4948,7 +4975,7 @@ body.account-setup-page .account-setup-step3-form .cat-color-row + .tx-add-vspac
   flex: 1 1 auto;
   min-width: 0;
   width: auto;
-  max-width: 11rem;
+  max-width: 9.25rem;
   font-size: 14px;
   padding: 6px 8px;
   border-radius: 8px;
