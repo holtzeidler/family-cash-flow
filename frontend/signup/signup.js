@@ -1585,11 +1585,6 @@ function onSignupPrimaryClick() {
             setCallout(signupCalloutEl, "Please choose at least one option.", "error");
             return;
           }
-          if (selected.includes("other") && !otherVal) {
-            setCallout(signupCalloutEl, "Please type your answer for Other.", "error");
-            document.getElementById("accountSetupSurveyOther")?.focus();
-            return;
-          }
           const rawDraft = readAccountSetupDraftRaw() || {};
           sessionStorage.setItem(
             BW_ACCOUNT_SETUP_DRAFT_KEY,

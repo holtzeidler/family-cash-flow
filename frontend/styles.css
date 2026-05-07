@@ -3547,6 +3547,11 @@ body.account-setup-page .account-setup-survey__otherLabel{
   color: var(--muted);
   font-weight: 600;
 }
+body.account-setup-page .account-setup-survey__optional{
+  font-weight: 500;
+  font-size: 12px;
+  opacity: 0.9;
+}
 body.account-setup-page .account-setup-survey__otherInput{
   width: min(620px, 100%);
 }
