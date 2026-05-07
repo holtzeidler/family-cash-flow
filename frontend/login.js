@@ -3,6 +3,16 @@ function getApiBase() {
   return b.replace(/\/$/, "");
 }
 
+const BW_API_ACCESS_TOKEN_KEY = "bw_api_access_token";
+
+function apiBearerAuthHeaders() {
+  try {
+    const t = sessionStorage.getItem(BW_API_ACCESS_TOKEN_KEY);
+    if (t && String(t).trim()) return { Authorization: `Bearer ${String(t).trim()}` };
+  } catch (_) {}
+  return {};
+}
+
 async function request(path, method, body) {
   const apiBase = getApiBase();
   const fullPath = `${apiBase}${path}`;
@@ -10,7 +20,10 @@ async function request(path, method, body) {
   try {
     const res = await fetch(fullPath, {
       method,
-      headers: body ? { "Content-Type": "application/json" } : {},
+      headers: {
+        ...apiBearerAuthHeaders(),
+        ...(body ? { "Content-Type": "application/json" } : {}),
+      },
       credentials: "include",
       body: body ? JSON.stringify(body) : undefined,
     });
@@ -89,6 +102,9 @@ async function doLogin() {
   setBusy(true);
   setCallout(loginCalloutEl, "Contacting API...", "pending");
   try {
+    try {
+      sessionStorage.removeItem(BW_API_ACCESS_TOKEN_KEY);
+    } catch (_) {}
     const email = document.getElementById("email").value.trim();
     const password = document.getElementById("password").value;
     const loginResp = await request("/api/auth/login", "POST", { email, password });
@@ -96,6 +112,11 @@ async function doLogin() {
       setCallout(loginCalloutEl, messageFromFailure(loginResp, "Login failed"), "error");
       return;
     }
+    try {
+      const tok =
+        loginResp.data && loginResp.data.access_token != null ? String(loginResp.data.access_token).trim() : "";
+      if (tok) sessionStorage.setItem(BW_API_ACCESS_TOKEN_KEY, tok);
+    } catch (_) {}
 
     const check = await verifySessionWithProgress(loginCalloutEl);
     if (!check.ok) {

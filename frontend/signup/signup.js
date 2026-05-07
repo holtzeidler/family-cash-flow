@@ -3,6 +3,17 @@ function getApiBase() {
   return b.replace(/\/$/, "");
 }
 
+/** Cross-site cookie fallback (GitHub Pages → API); cleared on logout / 401. */
+const BW_API_ACCESS_TOKEN_KEY = "bw_api_access_token";
+
+function apiBearerAuthHeaders() {
+  try {
+    const t = sessionStorage.getItem(BW_API_ACCESS_TOKEN_KEY);
+    if (t && String(t).trim()) return { Authorization: `Bearer ${String(t).trim()}` };
+  } catch (_) {}
+  return {};
+}
+
 async function request(path, method, body) {
   const apiBase = getApiBase();
   const fullPath = `${apiBase}${path}`;
@@ -10,7 +21,10 @@ async function request(path, method, body) {
   try {
     const res = await fetch(fullPath, {
       method,
-      headers: body ? { "Content-Type": "application/json" } : {},
+      headers: {
+        ...apiBearerAuthHeaders(),
+        ...(body ? { "Content-Type": "application/json" } : {}),
+      },
       credentials: "include",
       body: body ? JSON.stringify(body) : undefined,
     });
@@ -135,6 +149,12 @@ const BW_ACCOUNT_SETUP_DRAFT_KEY = "bw_account_setup_draft";
 const ACCOUNT_SETUP_WIZARD_FLOW_VERSION = 2;
 /** Wizard step (0–4) → `accountSetupWizardPanel{N}` DOM id suffix. Survey is step 1 → panel 4. */
 const ACCOUNT_SETUP_PANEL_FOR_STEP = [0, 4, 1, 2, 3];
+
+/** Progress UI shows 4 dots; steps 3 (transaction hub / income) and 4 (expense) share the last dot. */
+function getAccountSetupWizardDisplayDotIndex(step) {
+  const s = Math.min(4, Math.max(0, step));
+  return s >= 4 ? 3 : s;
+}
 /** Pre–survey-as-step-1 layout: [email, checking, income, expense, survey] → new indices. */
 const LEGACY_ACCOUNT_SETUP_WIZARD_STEP_TO_NEW = [0, 2, 3, 4, 1];
 function normalizePersistedAccountSetupWizardStep(raw) {
@@ -162,15 +182,29 @@ async function precheckEmailExists(email) {
   bwEmailCheckCache = { email: e, checkedAt: 0, exists: null, pending: null };
   const p = (async () => {
     const chk = await request("/api/auth/check-email", "POST", { email: e });
+    const stillCurrent = () => bwEmailCheckCache.email === e && bwEmailCheckCache.pending === p;
     if (chk.ok) {
-      bwEmailCheckCache = { email: e, checkedAt: Date.now(), exists: !!(chk.data && chk.data.exists === true), pending: null };
-      return { ok: true, exists: bwEmailCheckCache.exists, cached: false };
+      const exists = !!(chk.data && chk.data.exists === true);
+      if (stillCurrent()) {
+        bwEmailCheckCache = { email: e, checkedAt: Date.now(), exists, pending: null };
+      }
+      return { ok: true, exists, cached: false };
     }
-    bwEmailCheckCache = { email: e, checkedAt: 0, exists: null, pending: null };
+    if (stillCurrent()) bwEmailCheckCache = { email: e, checkedAt: 0, exists: null, pending: null };
     return { ok: false, exists: null, cached: false };
   })();
   bwEmailCheckCache.pending = p;
   return p;
+}
+
+/** Shorter debounce once the address looks complete so the prefetch often finishes before Next. */
+function emailLooksPlausibleForPrecheckDebounce(em) {
+  const s = String(em || "").trim();
+  if (s.length < 6 || !s.includes("@")) return false;
+  const at = s.lastIndexOf("@");
+  if (at <= 0) return false;
+  const domain = s.slice(at + 1);
+  return domain.includes(".") && domain.length >= 3;
 }
 
 /** Fire-and-forget request to reduce perceived latency when the hosting provider cold-starts the API. */
@@ -178,14 +212,33 @@ function scheduleAuthApiWarmup() {
   if (!isAccountSetupPath() || !document.getElementById("accountSetupWizard")) return;
   const apiBase = getApiBase();
   if (!apiBase) return;
-  window.setTimeout(() => {
+  const run = () => {
     void fetch(`${apiBase}/api/auth/check-email`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
       body: JSON.stringify({ email: "bw-api-warmup@example.com" }),
     }).catch(() => {});
-  }, 80);
+  };
+  if (typeof window.requestAnimationFrame === "function") window.requestAnimationFrame(run);
+  else window.setTimeout(run, 0);
+}
+
+function accountSetupStep0FieldsPassClientGate() {
+  if (!isAccountSetupPath() || !document.getElementById("accountSetupWizard")) return false;
+  if (getAccountSetupWizardStep() !== 0) return false;
+  const email = (document.getElementById("email")?.value || "").trim();
+  const password = document.getElementById("password")?.value || "";
+  const password2 = document.getElementById("password2")?.value || "";
+  if (!email || password.length < 8 || password !== password2) return false;
+  return true;
+}
+
+/** Overlap network with click / Enter so Next often hits a warm cache or in-flight request. */
+function speculativePrecheckEmailIfStep0Ready() {
+  if (!accountSetupStep0FieldsPassClientGate()) return;
+  const email = (document.getElementById("email")?.value || "").trim();
+  void precheckEmailExists(email);
 }
 
 function openAccountSetupDuplicateEmailModal() {
@@ -452,10 +505,11 @@ function setAccountSetupWizardStep(step, opts = {}) {
     else p.setAttribute("inert", "");
   }
 
+  const displayDot = getAccountSetupWizardDisplayDotIndex(s);
   const dots = w.querySelectorAll("[data-wizard-dot]");
   for (const d of dots) {
     const si = parseInt(d.getAttribute("data-wizard-dot") || "0", 10);
-    const on = si === s;
+    const on = si === displayDot;
     d.classList.toggle("is-active", on);
     if (on) {
       d.setAttribute("aria-current", "step");
@@ -653,7 +707,7 @@ function goToSignupFromAccountSetup() {
                 {
                   kind: txKind,
                   amount: txAmount,
-                  category: txCategory,
+                  category: txCategory || "Uncategorized",
                   date: txDate,
                   notes: txNotes,
                   recurring: txRecurring,
@@ -710,6 +764,7 @@ function readAccountSetupTransactionFromInputs() {
   if (!txKind) return { ok: false, empty: false, tx: null, message: "Transaction type is required." };
   if (txAmount == null || txAmount <= 0) return { ok: false, empty: false, tx: null, message: "Transaction amount is required." };
   if (!txDate) return { ok: false, empty: false, tx: null, message: "Transaction date is required." };
+  const categoryResolved = txCategory || "Uncategorized";
   if (repeats) {
     if (endCount != null) {
       if (!Number.isFinite(endCount) || endCount < 1 || Math.floor(endCount) !== endCount) {
@@ -734,7 +789,7 @@ function readAccountSetupTransactionFromInputs() {
     tx: {
       kind: txKind,
       amount: txAmount,
-      category: txCategory,
+      category: categoryResolved,
       date: txDate,
       notes: txNotes,
       recurring: repeats,
@@ -1027,6 +1082,7 @@ function readAccountSetupExpenseTransactionFromInputs() {
   if (!txKind) return { ok: false, empty: false, tx: null, message: "Transaction type is required." };
   if (txAmount == null || txAmount <= 0) return { ok: false, empty: false, tx: null, message: "Transaction amount is required." };
   if (!txDate) return { ok: false, empty: false, tx: null, message: "Transaction date is required." };
+  const categoryResolved = txCategory || "Uncategorized";
   if (repeats) {
     if (endCount != null) {
       if (!Number.isFinite(endCount) || endCount < 1 || Math.floor(endCount) !== endCount) {
@@ -1051,7 +1107,7 @@ function readAccountSetupExpenseTransactionFromInputs() {
     tx: {
       kind: txKind,
       amount: txAmount,
-      category: txCategory,
+      category: categoryResolved,
       date: txDate,
       notes: txNotes,
       recurring: repeats,
@@ -1287,7 +1343,10 @@ function hydrateAccountSetupDraft() {
         const eEndCountWrap = document.getElementById("asExpEndCountWrap");
         const eBg = document.getElementById("asExpTxBgColor");
         if (eAmt && lastTx.amount != null) eAmt.value = String(lastTx.amount);
-        if (eCat && lastTx.category) eCat.value = String(lastTx.category);
+        if (eCat && lastTx.category) {
+          const c = String(lastTx.category).trim();
+          eCat.value = c === "Uncategorized" ? "" : c;
+        }
         if (eDate && lastTx.date) eDate.value = String(lastTx.date);
         if (eNotes && lastTx.notes) eNotes.value = String(lastTx.notes);
         if (eRec) eRec.checked = !!lastTx.recurring;
@@ -1303,7 +1362,10 @@ function hydrateAccountSetupDraft() {
         const kindEl = k ? document.querySelector(`input[name="asTxKind"][value="${k}"]`) : null;
         if (kindEl) kindEl.checked = true;
         if (txAmountEl && lastTx.amount != null) txAmountEl.value = String(lastTx.amount);
-        if (txCategoryEl && lastTx.category) txCategoryEl.value = String(lastTx.category);
+        if (txCategoryEl && lastTx.category) {
+          const c = String(lastTx.category).trim();
+          txCategoryEl.value = c === "Uncategorized" ? "" : c;
+        }
         if (txDateEl && lastTx.date) txDateEl.value = String(lastTx.date);
         if (txNotesEl && lastTx.notes) txNotesEl.value = String(lastTx.notes);
         if (txRecurringEl) txRecurringEl.checked = !!lastTx.recurring;
@@ -1480,6 +1542,9 @@ async function doSignup() {
   setBusy(true);
   setCallout(signupCalloutEl, "Creating your account...", "pending");
   try {
+    try {
+      sessionStorage.removeItem(BW_API_ACCESS_TOKEN_KEY);
+    } catch (_) {}
     const draft = readAccountSetupDraft();
     if (!draft) {
       setCallout(signupCalloutEl, "Please complete account setup first.", "error");
@@ -1506,10 +1571,18 @@ async function doSignup() {
       setCallout(signupCalloutEl, messageFromFailure(reg, "Signup failed."), "error");
       return;
     }
+    try {
+      const tok = reg.data && reg.data.access_token != null ? String(reg.data.access_token).trim() : "";
+      if (tok) sessionStorage.setItem(BW_API_ACCESS_TOKEN_KEY, tok);
+    } catch (_) {}
 
     const check = await verifySessionWithProgress(signupCalloutEl);
     if (!check.ok) {
-      setCallout(signupCalloutEl, "Account created, but session cookie was not detected. Try logging in.", "error");
+      setCallout(
+        signupCalloutEl,
+        "Account was created, but we could not confirm your session. Try the Login page with the same email and password.",
+        "error"
+      );
       return;
     }
 
@@ -1614,12 +1687,15 @@ void (async () => {
         const em = String(emailEl.value || "").trim();
         if (!em.includes("@") || em.length < 5) return;
         if (t) window.clearTimeout(t);
-        t = window.setTimeout(() => void precheckEmailExists(em), 380);
+        const delay = emailLooksPlausibleForPrecheckDebounce(em) ? 90 : 220;
+        t = window.setTimeout(() => void precheckEmailExists(em), delay);
       };
       emailEl.addEventListener("input", kickPrecheckIfStep0);
       emailEl.addEventListener("blur", () => void precheckEmailExists(emailEl.value));
       document.getElementById("password")?.addEventListener("input", kickPrecheckIfStep0);
       document.getElementById("password2")?.addEventListener("input", kickPrecheckIfStep0);
+      const pref = String(emailEl.value || "").trim();
+      if (pref.includes("@")) void precheckEmailExists(pref);
     }
   } catch (_) {}
 })();
@@ -1822,13 +1898,17 @@ function onAccountSetupSkipAccountClick() {
   document.getElementById("asTxHubAddIncomeBtn")?.focus();
 }
 window.__bwSignup = onSignupPrimaryClick;
-if (signupBtn) signupBtn.addEventListener("click", onSignupPrimaryClick);
+if (signupBtn) {
+  signupBtn.addEventListener("pointerdown", () => speculativePrecheckEmailIfStep0Ready(), { capture: true });
+  signupBtn.addEventListener("click", onSignupPrimaryClick);
+}
 accountSetupSkipBtn?.addEventListener("click", onAccountSetupSkipAccountClick);
 const password2El = document.getElementById("password2");
 if (password2El) {
   password2El.addEventListener("keydown", (e) => {
     const k = String(e.key || "");
     if (k !== "Enter" && k !== "NumpadEnter" && (e.keyCode || 0) !== 13) return;
+    speculativePrecheckEmailIfStep0Ready();
     // Mirror clicking "Next" from the password confirm field.
     e.preventDefault();
     onSignupPrimaryClick();

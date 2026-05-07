@@ -23,7 +23,7 @@ import urllib.error
 import urllib.request
 
 from fastapi import Cookie, Depends, FastAPI, Header, HTTPException, Query, Request, Response, status
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 import bcrypt
@@ -535,7 +535,25 @@ def create_access_token(*, user_id: int) -> str:
     return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
 
 
-def get_current_user_id(access_token: Annotated[Optional[str], Cookie(alias="access_token")] ) -> int:
+def _read_access_token_from_cookie_or_authorization(
+    authorization: Annotated[Optional[str], Header()] = None,
+    cookie_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+) -> Optional[str]:
+    """
+    Prefer HttpOnly cookie; fall back to Authorization: Bearer for static hosts (e.g. GitHub Pages)
+    where cross-site session cookies may not stick even with SameSite=None.
+    """
+    if cookie_token and str(cookie_token).strip():
+        return str(cookie_token).strip()
+    if not authorization:
+        return None
+    parts = authorization.split()
+    if len(parts) == 2 and parts[0].lower() == "bearer" and parts[1].strip():
+        return parts[1].strip()
+    return None
+
+
+def get_current_user_id(access_token: Optional[str]) -> int:
     if not access_token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
     try:
@@ -790,6 +808,8 @@ class MaintenanceUserOut(BaseModel):
 
 class RegisterOut(BaseModel):
     user: UserOut
+    # Same JWT as Set-Cookie; used when the browser does not persist cross-site cookies (e.g. some GitHub Pages + API setups).
+    access_token: str
 
 
 class FamilyCreateIn(BaseModel):
@@ -1336,7 +1356,7 @@ def public_debug_config():
         "contact_form_hint": c_hint,
         "family_invite_email_configured": _invite_email_delivery_configured(),
         "app_public_base_url_configured": bool((settings.APP_PUBLIC_BASE_URL or "").strip()),
-        "note": "GitHub Pages -> Render needs ENV=production so Set-Cookie uses SameSite=None; Secure.",
+        "note": "GitHub Pages -> Render: ENV=production for SameSite=None; Secure cookies. Register/login also return access_token for Authorization: Bearer when cookies are blocked.",
     }
 
 
@@ -1955,7 +1975,10 @@ def register(payload: RegisterIn, response: Response, db=Depends(get_db)):
         secure=settings.ENV == "production",
         path="/",
     )
-    return {"user": UserOut(id=user.id, email=user.email, name=user.name)}
+    return {
+        "user": UserOut(id=user.id, email=user.email, name=user.name),
+        "access_token": token,
+    }
 
 
 @app.post("/api/auth/login")
@@ -1964,7 +1987,7 @@ def login(payload: LoginIn, db=Depends(get_db)):
     if not user or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
     token = create_access_token(user_id=user.id)
-    resp = Response(status_code=status.HTTP_200_OK)
+    resp = JSONResponse(content={"ok": True, "access_token": token}, status_code=status.HTTP_200_OK)
     resp.set_cookie(
         key="access_token",
         value=token,
@@ -1983,7 +2006,7 @@ def logout(response: Response):
 
 
 @app.get("/api/auth/me", response_model=AuthMeOut)
-def me(access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None, db=Depends(get_db)):
+def me(access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization), db=Depends(get_db)):
     user_id = get_current_user_id(access_token)
     user = db.execute(select(User).where(User.id == user_id)).scalar_one_or_none()
     if not user:
@@ -1995,7 +2018,7 @@ def me(access_token: Annotated[Optional[str], Cookie(alias="access_token")] = No
 
 
 @app.get("/api/families", response_model=list[FamilyOut])
-def list_families(access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None, db=Depends(get_db)):
+def list_families(access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization), db=Depends(get_db)):
     user_id = get_current_user_id(access_token)
     stmt = (
         select(Family, FamilyMember.role, FamilyMember.is_family_owner, FamilyMember.access_mode)
@@ -2017,7 +2040,7 @@ def list_families(access_token: Annotated[Optional[str], Cookie(alias="access_to
 
 
 @app.post("/api/families", response_model=FamilyOut)
-def create_family(payload: FamilyCreateIn, access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None, db=Depends(get_db)):
+def create_family(payload: FamilyCreateIn, access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization), db=Depends(get_db)):
     user_id = get_current_user_id(access_token)
     family = Family(name=payload.name)
     db.add(family)
@@ -2050,7 +2073,7 @@ def create_family(payload: FamilyCreateIn, access_token: Annotated[Optional[str]
 @app.get("/api/families/{family_id}/members", response_model=list[FamilyMemberOut])
 def list_family_members(
     family_id: int,
-    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
@@ -2071,7 +2094,7 @@ def list_family_members(
 def add_family_member(
     family_id: int,
     payload: FamilyMemberAddIn,
-    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
@@ -2085,7 +2108,7 @@ def patch_family_member(
     family_id: int,
     member_user_id: int,
     payload: FamilyMemberUpdateIn,
-    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
@@ -2121,7 +2144,7 @@ async def create_family_invite(
     family_id: int,
     payload: FamilyInviteCreateIn,
     request: Request,
-    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
@@ -2215,7 +2238,7 @@ async def create_family_invite(
 @app.get("/api/families/{family_id}/invites", response_model=list[FamilyInvitePendingOut])
 def list_family_invites(
     family_id: int,
-    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
@@ -2251,7 +2274,7 @@ def list_family_invites(
 def revoke_family_invite(
     family_id: int,
     invite_id: int,
-    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
@@ -2271,7 +2294,7 @@ def revoke_family_invite(
 @app.post("/api/invites/accept", response_model=InviteAcceptOut)
 def accept_family_invite(
     payload: InviteAcceptIn,
-    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
@@ -2310,7 +2333,7 @@ def accept_family_invite(
 
 @app.get("/api/platform/overview", response_model=PlatformOverviewOut)
 def platform_overview(
-    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
@@ -2323,7 +2346,7 @@ def platform_overview(
 
 @app.get("/api/platform/families", response_model=list[PlatformFamilySummaryOut])
 def platform_list_families(
-    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
@@ -2334,7 +2357,7 @@ def platform_list_families(
 
 @app.get("/api/platform/users", response_model=list[PlatformAdminUserOut])
 def platform_list_users(
-    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
@@ -2373,7 +2396,7 @@ def platform_list_users(
 def platform_set_user_password(
     target_user_id: int,
     payload: PlatformPasswordIn,
-    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
@@ -2389,7 +2412,7 @@ def platform_set_user_password(
 @app.delete("/api/platform/users/{target_user_id}")
 def platform_delete_user(
     target_user_id: int,
-    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
@@ -2444,7 +2467,7 @@ def platform_delete_user(
 def platform_add_family_member(
     family_id: int,
     payload: FamilyMemberAddIn,
-    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
@@ -2461,7 +2484,7 @@ def platform_patch_family_member(
     family_id: int,
     member_user_id: int,
     payload: FamilyMemberUpdateIn,
-    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
@@ -2727,7 +2750,7 @@ def apply_default_category_seed(*, db, family_id: int, force: bool) -> Categorie
 @app.get("/api/families/{family_id}/categories", response_model=list[CategoryOut])
 def list_categories(
     family_id: int,
-    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
@@ -2744,7 +2767,7 @@ def list_categories(
 def create_category(
     family_id: int,
     payload: CategoryIn,
-    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
@@ -2770,7 +2793,7 @@ def update_category(
     family_id: int,
     category_id: int,
     payload: CategoryUpdateIn,
-    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
@@ -2813,7 +2836,7 @@ def update_category(
 def delete_category(
     family_id: int,
     category_id: int,
-    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
@@ -2848,7 +2871,7 @@ def delete_category(
 def reorder_categories(
     family_id: int,
     payload: CategoryReorderIn,
-    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
@@ -2874,7 +2897,7 @@ def reorder_categories(
 @app.get("/api/families/{family_id}/categories/tree", response_model=CategoriesTreeOut)
 def get_categories_tree_endpoint(
     family_id: int,
-    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
@@ -2886,7 +2909,7 @@ def get_categories_tree_endpoint(
 def put_categories_tree(
     family_id: int,
     payload: CategoryTreeLayoutIn,
-    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
@@ -2898,7 +2921,7 @@ def put_categories_tree(
 def create_category_group(
     family_id: int,
     payload: CategoryGroupIn,
-    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
@@ -2922,7 +2945,7 @@ def create_category_group(
 def delete_category_group(
     family_id: int,
     group_id: int,
-    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
@@ -2971,7 +2994,7 @@ def delete_category_group(
 def seed_default_categories(
     family_id: int,
     force: bool = False,
-    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
@@ -2983,7 +3006,7 @@ def seed_default_categories(
 def list_reconciled_days(
     family_id: int,
     month: str,
-    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
@@ -3011,7 +3034,7 @@ def list_reconciled_days(
 def upsert_reconciled_day(
     family_id: int,
     payload: ReconciledDayUpsertIn,
-    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
@@ -3035,7 +3058,7 @@ def upsert_reconciled_day(
 @app.get("/api/families/{family_id}/accounts", response_model=list[AccountOut])
 def list_accounts(
     family_id: int,
-    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
@@ -3057,7 +3080,7 @@ def list_accounts(
 def create_account(
     family_id: int,
     payload: AccountIn,
-    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
@@ -3088,7 +3111,7 @@ def update_account_starting_balance(
     family_id: int,
     account_id: int,
     payload: AccountUpdateIn,
-    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
@@ -3115,7 +3138,7 @@ def update_account_starting_balance(
 @app.get("/api/families/{family_id}/expected-transactions", response_model=list[ExpectedTransactionOut])
 def list_expected_transactions(
     family_id: int,
-    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
@@ -3174,7 +3197,7 @@ def list_expected_transactions(
 def create_expected_transaction(
     family_id: int,
     payload: ExpectedTransactionIn,
-    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
@@ -3257,7 +3280,7 @@ def update_expected_transaction(
     family_id: int,
     expected_id: int,
     payload: ExpectedTransactionIn,
-    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
@@ -3344,7 +3367,7 @@ def update_expected_transaction(
 def delete_expected_transaction(
     family_id: int,
     expected_id: int,
-    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
@@ -3370,7 +3393,7 @@ def upsert_expected_instance_override(
     expected_id: int,
     occurrence_date: date,
     payload: ExpectedInstanceOverrideIn,
-    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
@@ -3457,7 +3480,7 @@ def delete_expected_instance_override(
     family_id: int,
     expected_id: int,
     occurrence_date: date,
-    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
@@ -3487,7 +3510,7 @@ def apply_expected_from_occurrence(
     expected_id: int,
     occurrence_date: date,
     payload: ApplyFromOccurrenceIn,
-    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
     """
@@ -3661,7 +3684,7 @@ def end_expected_from_occurrence(
     family_id: int,
     expected_id: int,
     occurrence_date: date,
-    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
     """
@@ -3814,7 +3837,7 @@ def _build_expected_calendar_items(
 def expected_calendar(
     family_id: int,
     month: str,
-    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
@@ -3930,7 +3953,7 @@ def category_totals_report(
     start_date: Annotated[date, Query(description="Inclusive range start (YYYY-MM-DD).")],
     end_date: Annotated[date, Query(description="Inclusive range end (YYYY-MM-DD).")],
     mode: Annotated[Literal["actual", "actual_plus_estimated"], Query()] = "actual",
-    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
     """
@@ -4598,7 +4621,7 @@ def calendar_month_daily(
     family_id: int,
     month: str,
     mode: Literal["both", "actual", "expected"] = "both",
-    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
     """
@@ -4622,7 +4645,7 @@ def projection(
     start: Optional[date] = None,
     days: int = 1825,
     include_accounts: bool = False,
-    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
@@ -4746,7 +4769,7 @@ def low_balance_first(
     start: Optional[date] = None,
     days: int = 1825,
     mode: Literal["both", "actual", "expected"] = "both",
-    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
@@ -4762,7 +4785,7 @@ def high_balance_first(
     start: Optional[date] = None,
     days: int = 1825,
     mode: Literal["both", "actual", "expected"] = "both",
-    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
@@ -4798,7 +4821,7 @@ def list_transactions(
     month: Optional[str] = None,
     start_date: Annotated[Optional[date], Query(description="Inclusive range start (YYYY-MM-DD); use with end_date for date-range lists.")] = None,
     end_date: Annotated[Optional[date], Query(description="Inclusive range end (YYYY-MM-DD).")] = None,
-    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
@@ -4882,7 +4905,7 @@ def list_transactions(
 def purge_transactions_after(
     family_id: int,
     after_date: Annotated[date, Query(description="Delete transactions strictly after this date (YYYY-MM-DD).")],
-    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
     """
@@ -4926,7 +4949,7 @@ def _table_columns(db, table: str) -> set[str]:
 @app.post("/api/families/{family_id}/transactions/purge-imported", response_model=TransactionsPurgeImportedOut)
 def purge_imported_transactions(
     family_id: int,
-    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
     """
@@ -5064,7 +5087,7 @@ def _require_expected_start_on_or_after_account(account: Account, start_date: da
 def create_transaction(
     family_id: int,
     payload: TransactionIn,
-    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
@@ -5123,7 +5146,7 @@ def update_transaction(
     family_id: int,
     transaction_id: int,
     payload: TransactionIn,
-    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
@@ -5162,7 +5185,7 @@ def update_transaction(
 def delete_transaction(
     family_id: int,
     transaction_id: int,
-    access_token: Annotated[Optional[str], Cookie(alias="access_token")] = None,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)

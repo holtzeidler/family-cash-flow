@@ -4,12 +4,25 @@
     return b.replace(/\/$/, "");
   }
 
+  const BW_API_ACCESS_TOKEN_KEY = "bw_api_access_token";
+
+  function apiBearerAuthHeaders() {
+    try {
+      const t = sessionStorage.getItem(BW_API_ACCESS_TOKEN_KEY);
+      if (t && String(t).trim()) return { Authorization: `Bearer ${String(t).trim()}` };
+    } catch (_) {}
+    return {};
+  }
+
   async function request(path, method, body) {
     const apiBase = getApiBase();
     const fullPath = `${apiBase}${path}`;
     const res = await fetch(fullPath, {
       method,
-      headers: body ? { "Content-Type": "application/json" } : {},
+      headers: {
+        ...apiBearerAuthHeaders(),
+        ...(body ? { "Content-Type": "application/json" } : {}),
+      },
       credentials: "include",
       body: body ? JSON.stringify(body) : undefined,
     });

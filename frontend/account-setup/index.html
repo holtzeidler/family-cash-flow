@@ -49,7 +49,6 @@
             <span class="account-setup-wizard__dot" data-wizard-dot="1" aria-hidden="true"></span>
             <span class="account-setup-wizard__dot" data-wizard-dot="2" aria-hidden="true"></span>
             <span class="account-setup-wizard__dot" data-wizard-dot="3" aria-hidden="true"></span>
-            <span class="account-setup-wizard__dot" data-wizard-dot="4" aria-hidden="true"></span>
           </div>
           <div class="card auth-section auth-section--open account-setup-wizard__shell">
             <div class="account-setup-wizard__viewport">
@@ -174,33 +173,30 @@
                     <div class="form-row-h__field">
                       <select id="asTxCategory" aria-label="Category">
                         <option value="">Select a category…</option>
+                        <optgroup label="Income &amp; reimbursements">
+                          <option value="Paycheck">Paycheck</option>
+                          <option value="Reimbursement">Reimbursement</option>
+                        </optgroup>
                         <optgroup label="Utilities">
                           <option value="Utility">Utility</option>
                         </optgroup>
                         <optgroup label="Home">
-                          <option value="Mortgage">Mortgage</option>
+                          <option value="Mortgage/Rent">Mortgage/Rent</option>
                           <option value="Home Maintenance">Home Maintenance</option>
                         </optgroup>
                         <optgroup label="Loans &amp; payments">
                           <option value="Car Loan">Car Loan</option>
                           <option value="Credit Card Payment">Credit Card Payment</option>
-                          <option value="Insurance">Insurance</option>
-                          <option value="Taxes">Taxes</option>
                         </optgroup>
                         <optgroup label="Transfers &amp; investing">
                           <option value="Transfers">Transfers</option>
                           <option value="Investment">Investment</option>
                           <option value="Cash &amp; ATM">Cash &amp; ATM</option>
                         </optgroup>
-                        <optgroup label="Income &amp; reimbursements">
-                          <option value="Paycheck">Paycheck</option>
-                          <option value="Reimbursement">Reimbursement</option>
-                        </optgroup>
                         <optgroup label="Other">
                           <option value="Charity">Charity</option>
                           <option value="Gifts">Gifts</option>
                           <option value="Miscellaneous">Miscellaneous</option>
-                          <option value="Uncategorized">Uncategorized</option>
                         </optgroup>
                       </select>
                     </div>
@@ -306,33 +302,30 @@
                       <div class="form-row-h__field">
                         <select id="asExpTxCategory" aria-label="Category">
                           <option value="">Select a category…</option>
+                          <optgroup label="Income &amp; reimbursements">
+                            <option value="Paycheck">Paycheck</option>
+                            <option value="Reimbursement">Reimbursement</option>
+                          </optgroup>
                           <optgroup label="Utilities">
                             <option value="Utility">Utility</option>
                           </optgroup>
                           <optgroup label="Home">
-                            <option value="Mortgage">Mortgage</option>
+                            <option value="Mortgage/Rent">Mortgage/Rent</option>
                             <option value="Home Maintenance">Home Maintenance</option>
                           </optgroup>
                           <optgroup label="Loans &amp; payments">
                             <option value="Car Loan">Car Loan</option>
                             <option value="Credit Card Payment">Credit Card Payment</option>
-                            <option value="Insurance">Insurance</option>
-                            <option value="Taxes">Taxes</option>
                           </optgroup>
                           <optgroup label="Transfers &amp; investing">
                             <option value="Transfers">Transfers</option>
                             <option value="Investment">Investment</option>
                             <option value="Cash &amp; ATM">Cash &amp; ATM</option>
                           </optgroup>
-                          <optgroup label="Income &amp; reimbursements">
-                            <option value="Paycheck">Paycheck</option>
-                            <option value="Reimbursement">Reimbursement</option>
-                          </optgroup>
                           <optgroup label="Other">
                             <option value="Charity">Charity</option>
                             <option value="Gifts">Gifts</option>
                             <option value="Miscellaneous">Miscellaneous</option>
-                            <option value="Uncategorized">Uncategorized</option>
                           </optgroup>
                         </select>
                       </div>
@@ -494,6 +487,6 @@
       </div>
     </div>
 
-    <script src="../signup/signup.js?v=17"></script>
+    <script src="../signup/signup.js?v=21"></script>
   </body>
 </html>

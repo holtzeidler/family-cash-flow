@@ -186,10 +186,24 @@ function getApiBase() {
   return String(b || "").replace(/\/$/, "");
 }
 
+const BW_API_ACCESS_TOKEN_KEY = "bw_api_access_token";
+
+function apiBearerAuthHeaders() {
+  try {
+    const t = sessionStorage.getItem(BW_API_ACCESS_TOKEN_KEY);
+    if (t && String(t).trim()) return { Authorization: `Bearer ${String(t).trim()}` };
+  } catch (_) {}
+  return {};
+}
+
 async function api(path, method = "GET") {
   const apiBase = getApiBase();
   const fullPath = `${apiBase}${path}`;
-  await fetch(fullPath, { method, credentials: "include" });
+  await fetch(fullPath, {
+    method,
+    headers: { ...apiBearerAuthHeaders() },
+    credentials: "include",
+  });
 }
 
 function initLogout() {
@@ -198,6 +212,9 @@ function initLogout() {
   btn.addEventListener("click", async () => {
     try {
       await api("/api/auth/logout", "POST");
+    } catch (_) {}
+    try {
+      sessionStorage.removeItem(BW_API_ACCESS_TOKEN_KEY);
     } catch (_) {}
     window.location.href = "/";
   });

@@ -4,6 +4,16 @@
     return raw.replace(/\/+$/, "");
   }
 
+  const BW_API_ACCESS_TOKEN_KEY = "bw_api_access_token";
+
+  function apiBearerAuthHeaders() {
+    try {
+      const t = sessionStorage.getItem(BW_API_ACCESS_TOKEN_KEY);
+      if (t && String(t).trim()) return { Authorization: `Bearer ${String(t).trim()}` };
+    } catch (_) {}
+    return {};
+  }
+
   function isLocalhostHost(hostname) {
     return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
   }
@@ -51,11 +61,17 @@
     }
     const res = await fetch(fullPath, {
       method,
-      headers: body ? { "Content-Type": "application/json" } : {},
+      headers: {
+        ...apiBearerAuthHeaders(),
+        ...(body ? { "Content-Type": "application/json" } : {}),
+      },
       credentials: "include",
       body: body ? JSON.stringify(body) : undefined,
     });
     if (res.status === 401) {
+      try {
+        sessionStorage.removeItem(BW_API_ACCESS_TOKEN_KEY);
+      } catch (_) {}
       window.location.href = "../login.html";
       return null;
     }
