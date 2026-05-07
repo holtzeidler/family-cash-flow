@@ -3411,6 +3411,11 @@ body.account-setup-page .form-row-h__field select{
   font-size: 16px;
 }
 
+/* Account setup: slightly larger Expense/Income toggle text */
+body.account-setup-page .kind-toggle .kind-opt{
+  font-size: 16px;
+}
+
 /* Account setup: tighten label → field spacing (e.g., Last Name) */
 body.account-setup-page .form-row-h{
   gap: 10px 10px;
@@ -4578,10 +4583,12 @@ body.account-setup-page .tx-add-schedule-toolbar__left{
   gap: 10px 6px;
 }
 body.account-setup-page .tx-add-schedule-question{
-  flex: 0 0 auto;
+  /* Match the left label column width of .form-row-h labels */
+  flex: 0 0 6.75rem;
+  max-width: 28%;
 }
 body.account-setup-page .tx-add-repeat-row{
-  flex: 0 0 auto;
+  flex: 1 1 auto;
   margin-left: 0;
   justify-content: flex-start;
 }
@@ -4600,10 +4607,50 @@ body.account-setup-page .tx-add-schedule-toolbar__left .tx-add-schedule-field--e
   margin-top: 10px;
   max-width: 16rem;
 }
+body.account-setup-page .tx-add-schedule-field--end-date input[type="date"]{
+  max-width: 12.5rem;
+}
+
+/* Account setup wizard: stack recurrence select under "every" */
+body.account-setup-page .tx-add-recurrence-inline{
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+body.account-setup-page .tx-add-recurrence-select{
+  max-width: none;
+}
 
 /* Account setup wizard: bring the repeat toolbar rule closer to color swatches */
 body.account-setup-page .tx-add-schedule-toolbar + .tx-add-vspace.tx-add-vspace--lg{
   height: 10px;
+}
+
+/* Account setup wizard: align color label with other field labels */
+body.account-setup-page .cat-color-row{
+  align-items: flex-start;
+}
+body.account-setup-page .cat-color-row__label{
+  /* Match .form-row-h label column */
+  flex: 0 0 6.75rem;
+  max-width: 28%;
+  white-space: normal;
+}
+body.account-setup-page .cat-color-row__optional{
+  /* Keep 2nd line, but identical label styling */
+  display: block;
+  margin-top: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  opacity: 1;
+}
+
+/* Account setup wizard only: hide color picker row (keep it elsewhere, e.g. Calendar) */
+body.account-setup-page .account-setup-step3-form .cat-color-row{
+  display: none;
 }
 /* Less air between the repeat toolbar rule and Notes */
 .tx-add-form .tx-add-schedule-toolbar + .tx-add-vspace.tx-add-vspace--lg{

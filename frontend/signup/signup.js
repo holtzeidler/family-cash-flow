@@ -128,6 +128,7 @@ const accountSetupAccountSectionEl = document.getElementById("accountSetupAccoun
 const accountSetupTransactionsSectionEl = document.getElementById("accountSetupTransactionsSection");
 const addMoreTxBtn = document.getElementById("addMoreTxBtn");
 const accountSetupBackBtn = document.getElementById("accountSetupBackBtn");
+const accountSetupSkipBtn = document.getElementById("accountSetupSkipBtn");
 
 const BW_ACCOUNT_SETUP_DRAFT_KEY = "bw_account_setup_draft";
 
@@ -254,6 +255,7 @@ function syncAccountSetupWizardShellButtons() {
     if (el) el.style.display = "none";
   }
   if (addMoreTxBtn) addMoreTxBtn.style.display = "none";
+  if (accountSetupSkipBtn) accountSetupSkipBtn.style.display = s === 1 ? "inline-flex" : "none";
 
   if (s < 2) {
     if (signupBtn) {
@@ -1648,8 +1650,26 @@ function onSignupPrimaryClick() {
   else if (isSignupPath()) void doSignup();
   else void goToAccountSetup();
 }
+
+function onAccountSetupSkipAccountClick() {
+  if (!isAccountSetupPath() || !document.getElementById("accountSetupWizard")) return;
+  if (isAccountSetupWizardStepLocked()) return;
+  if (getAccountSetupWizardStep() !== 1) return;
+  setCallout(signupCalloutEl, "", "");
+  try {
+    const rawDraft = readAccountSetupDraftRaw() || {};
+    const next = { ...rawDraft, wizardStep: 2, step3Phase: "intro", expensePhase: "intro" };
+    delete next.account;
+    sessionStorage.setItem(BW_ACCOUNT_SETUP_DRAFT_KEY, JSON.stringify(next));
+  } catch (_) {}
+  lockAccountSetupWizardStepTransition();
+  setAccountSetupWizardStep(2, { skipPersist: true });
+  setAccountSetupStep3Phase("intro");
+  document.querySelector('input[name="asRecurringIncomePref"]')?.focus();
+}
 window.__bwSignup = onSignupPrimaryClick;
 if (signupBtn) signupBtn.addEventListener("click", onSignupPrimaryClick);
+accountSetupSkipBtn?.addEventListener("click", onAccountSetupSkipAccountClick);
 const password2El = document.getElementById("password2");
 if (password2El) {
   password2El.addEventListener("keydown", (e) => {
