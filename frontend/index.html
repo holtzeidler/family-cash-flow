@@ -127,6 +127,21 @@
           </div>
           <div></div>
         </section>
+
+        <section class="landing-survey card" aria-label="Quick survey">
+          <h3 class="landing-survey__title">What do you want help with?</h3>
+          <div class="landing-survey__grid" role="group" aria-label="Choose one">
+            <button type="button" class="landing-survey__opt" data-survey-opt="avoid_overdrafts">Avoid overdrafts</button>
+            <button type="button" class="landing-survey__opt" data-survey-opt="safe_to_spend">Know what’s safe to spend</button>
+            <button type="button" class="landing-survey__opt" data-survey-opt="prepare_bills">Prepare for upcoming bills</button>
+            <button type="button" class="landing-survey__opt" data-survey-opt="reduce_anxiety">Reduce money anxiety</button>
+            <button type="button" class="landing-survey__opt" data-survey-opt="other">Other</button>
+          </div>
+          <div class="landing-survey__other" id="landingSurveyOtherWrap" hidden>
+            <label class="landing-survey__otherLabel" for="landingSurveyOther">Other (please specify)</label>
+            <input id="landingSurveyOther" class="landing-survey__otherInput" type="text" maxlength="80" placeholder="Type your answer…" />
+          </div>
+        </section>
       </main>
 
       <footer class="app-footer" role="contentinfo">
@@ -136,5 +151,21 @@
         </div>
       </footer>
     </div>
+    <script>
+      (function () {
+        const wrap = document.querySelector(".landing-survey");
+        if (!wrap) return;
+        const buttons = Array.from(wrap.querySelectorAll("[data-survey-opt]"));
+        const otherWrap = document.getElementById("landingSurveyOtherWrap");
+        const otherInput = document.getElementById("landingSurveyOther");
+        const setActive = (opt) => {
+          for (const b of buttons) b.classList.toggle("is-active", b.getAttribute("data-survey-opt") === opt);
+          if (otherWrap) otherWrap.hidden = opt !== "other";
+          if (opt === "other" && otherInput) otherInput.focus();
+          if (opt !== "other" && otherInput) otherInput.value = "";
+        };
+        for (const b of buttons) b.addEventListener("click", () => setActive(b.getAttribute("data-survey-opt")));
+      })();
+    </script>
   </body>
 </html>

@@ -132,6 +132,31 @@ const accountSetupSkipBtn = document.getElementById("accountSetupSkipBtn");
 
 const BW_ACCOUNT_SETUP_DRAFT_KEY = "bw_account_setup_draft";
 
+// Prefetch check-email during Step 0 so Enter→Next feels instant.
+const BW_EMAIL_CHECK_CACHE_MS = 5 * 60 * 1000;
+let bwEmailCheckCache = { email: "", checkedAt: 0, exists: null, pending: null };
+async function precheckEmailExists(email) {
+  const e = String(email || "").trim().toLowerCase();
+  if (!e) return null;
+  const now = Date.now();
+  if (bwEmailCheckCache.email === e && bwEmailCheckCache.pending) return bwEmailCheckCache.pending;
+  if (bwEmailCheckCache.email === e && bwEmailCheckCache.exists != null && now - bwEmailCheckCache.checkedAt < BW_EMAIL_CHECK_CACHE_MS) {
+    return { ok: true, exists: !!bwEmailCheckCache.exists, cached: true };
+  }
+  bwEmailCheckCache = { email: e, checkedAt: 0, exists: null, pending: null };
+  const p = (async () => {
+    const chk = await request("/api/auth/check-email", "POST", { email: e });
+    if (chk.ok) {
+      bwEmailCheckCache = { email: e, checkedAt: Date.now(), exists: !!(chk.data && chk.data.exists === true), pending: null };
+      return { ok: true, exists: bwEmailCheckCache.exists, cached: false };
+    }
+    bwEmailCheckCache = { email: e, checkedAt: 0, exists: null, pending: null };
+    return { ok: false, exists: null, cached: false };
+  })();
+  bwEmailCheckCache.pending = p;
+  return p;
+}
+
 function openAccountSetupDuplicateEmailModal() {
   const el = document.getElementById("accountSetupDuplicateEmailModal");
   if (!el) return;
@@ -697,7 +722,7 @@ function resetAccountSetupTransactionForm() {
   if (bgEl) bgEl.value = "";
   const swatches = document.getElementById("asTxColorSwatches");
   if (swatches) for (const b of swatches.querySelectorAll("button.cat-swatch")) b.classList.remove("is-active");
-  if (dateEl) dateEl.value = isoTodayLocal();
+  if (dateEl) dateEl.value = "";
   const formEl = document.getElementById("accountSetupWizardStep3Form");
   const incomeOnly = formEl && !formEl.hidden;
   const inc = document.querySelector('input[name="asTxKind"][value="income"]');
@@ -921,7 +946,7 @@ function resetAccountSetupExpenseForm() {
   if (bgEl) bgEl.value = "";
   const swatches = document.getElementById("asExpTxColorSwatches");
   if (swatches) for (const b of swatches.querySelectorAll("button.cat-swatch")) b.classList.remove("is-active");
-  if (dateEl) dateEl.value = isoTodayLocal();
+  if (dateEl) dateEl.value = "";
   const ex = document.querySelector('input[name="asExpTxKind"][value="expense"]');
   if (ex) ex.checked = true;
 }
@@ -1112,9 +1137,7 @@ function hydrateAccountSetupDraft() {
         if (txBgColorEl && lastTx.bg_color) txBgColorEl.value = String(lastTx.bg_color);
       }
     }
-    if (txDateEl && !txDateEl.value) txDateEl.value = isoTodayLocal();
-    const expDateEl = document.getElementById("asExpTxDate");
-    if (expDateEl && !String(expDateEl.value || "").trim()) expDateEl.value = isoTodayLocal();
+    // Do not auto-populate account-setup dates; leave blank so browser shows locale placeholder (e.g. MM/DD/YYYY).
 
     if (document.getElementById("accountSetupWizard")) {
       let target = 0;
@@ -1383,14 +1406,25 @@ void (async () => {
     } catch (_) {}
   }
   hydrateAccountSetupDraft();
-  if (isAccountSetupPath()) {
-    const dateEl = document.getElementById("asTxDate");
-    if (dateEl && !String(dateEl.value || "").trim()) dateEl.value = isoTodayLocal();
-    const expDateEl = document.getElementById("asExpTxDate");
-    if (expDateEl && !String(expDateEl.value || "").trim()) expDateEl.value = isoTodayLocal();
-  }
+  // Do not auto-populate account-setup dates; leave blank so browser shows locale placeholder (e.g. MM/DD/YYYY).
   try {
     initAccountSetupTransactionUi();
+  } catch (_) {}
+
+  // Warm up the email availability check while the user is still typing Step 0.
+  try {
+    const emailEl = document.getElementById("email");
+    if (emailEl) {
+      let t = null;
+      const kick = () => {
+        if (!isAccountSetupPath() || !document.getElementById("accountSetupWizard")) return;
+        if (getAccountSetupWizardStep() !== 0) return;
+        if (t) window.clearTimeout(t);
+        t = window.setTimeout(() => void precheckEmailExists(emailEl.value), 450);
+      };
+      emailEl.addEventListener("input", kick);
+      emailEl.addEventListener("blur", () => void precheckEmailExists(emailEl.value));
+    }
   } catch (_) {}
 })();
 
@@ -1419,7 +1453,8 @@ function onSignupPrimaryClick() {
         }
         void (async () => {
           if (signupBtn) signupBtn.disabled = true;
-          const chk = await request("/api/auth/check-email", "POST", { email });
+          const cached = await precheckEmailExists(email);
+          const chk = cached && cached.ok ? { ok: true, data: { exists: cached.exists } } : await request("/api/auth/check-email", "POST", { email });
           if (signupBtn) signupBtn.disabled = false;
           if (!chk.ok) {
             setCallout(signupCalloutEl, messageFromFailure(chk, "Could not verify email. Try again."), "error");

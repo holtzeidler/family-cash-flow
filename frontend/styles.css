@@ -188,7 +188,7 @@ body.landing-page .landing-preview__copy{
 body.landing-page .landing-preview__eyebrow{
   font-size: 12px;
   letter-spacing: 0.18em;
-  text-transform: uppercase;
+  text-transform: none;
   font-weight: 800;
   color: rgba(11, 61, 46, 0.82);
 }
@@ -226,7 +226,7 @@ body.landing-page .landing-preview__mock.card{
   font-size: 14px;
   font-weight: 900;
   letter-spacing: 0.14em;
-  text-transform: uppercase;
+  text-transform: none;
   color: rgba(11, 61, 46, 0.85);
   margin-bottom: 10px;
 }
@@ -276,6 +276,68 @@ body.landing-page .landing-preview__mock.card{
   line-height: 1.6;
   display: grid;
   gap: 6px;
+}
+
+/* Landing: quick survey */
+.landing-survey.card{
+  width: min(1100px, 100%);
+  margin: 26px auto 0;
+  padding: 18px 18px 16px;
+  background: var(--cal-surface);
+  border: 1px solid rgba(0,0,0,0.10);
+  box-shadow: 0 10px 28px rgba(0,0,0,0.08);
+}
+.landing-survey__title{
+  margin: 0 0 12px;
+  font-size: 22px;
+  font-weight: 900;
+  color: var(--text);
+}
+.landing-survey__grid{
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+.landing-survey__opt{
+  border: 1px solid rgba(0,0,0,0.12);
+  border-radius: 14px;
+  padding: 12px 12px;
+  background: rgba(0,0,0,0.02);
+  color: var(--text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: center;
+}
+.landing-survey__opt:hover{
+  filter: brightness(0.985);
+}
+.landing-survey__opt.is-active{
+  border-color: color-mix(in srgb, var(--accent) 55%, rgba(0,0,0,0.12));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
+  background: color-mix(in srgb, var(--accent) 9%, rgba(0,0,0,0.02));
+}
+.landing-survey__other{
+  margin-top: 12px;
+}
+.landing-survey__otherLabel{
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 600;
+}
+.landing-survey__otherInput{
+  width: 100%;
+  max-width: 520px;
+}
+@media (max-width: 980px){
+  .landing-survey__grid{
+    grid-template-columns: 1fr;
+  }
+  .landing-survey__otherInput{
+    max-width: none;
+  }
 }
 .landing-mock__head{
   display: flex;
@@ -333,7 +395,7 @@ body.landing-page .landing-preview__mock.card{
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.12em;
-  text-transform: uppercase;
+  text-transform: none;
   color: rgba(75,85,99,0.95);
   margin-bottom: 6px;
 }
@@ -760,7 +822,7 @@ body.landing-page .landing-preview__mock.card{
   font: inherit;
   font-weight: 800;
   letter-spacing: 0.2px;
-  text-transform: uppercase;
+  text-transform: none;
   font-size: 12px;
 }
 .settings-nav-item:hover{
@@ -935,7 +997,7 @@ button.secondary{
   font-size: 14.3px; /* +10% */
   font-weight: 800;
   letter-spacing: 0.08em;
-  text-transform: uppercase;
+  text-transform: none;
   color: rgba(17, 24, 39, 0.70);
 }
 
@@ -1272,7 +1334,7 @@ button.nav-link:hover{
   font-size: 14.3px; /* +10% */
   font-weight: 800;
   letter-spacing: 0.08em;
-  text-transform: uppercase;
+  text-transform: none;
   color: rgba(17, 24, 39, 0.70);
   margin-top: 2px;
 }
@@ -1759,7 +1821,7 @@ button.nav-link:hover{
   color: var(--muted);
   font-weight: 600;
   letter-spacing: 0.3px;
-  text-transform: uppercase;
+  text-transform: none;
 }
 
 /* Projected balance chart: title row + collapse, then controls in body */
@@ -1800,7 +1862,7 @@ button.nav-link:hover{
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.12em;
-  text-transform: uppercase;
+  text-transform: none;
   color: var(--muted);
   margin-bottom: 2px;
 }
@@ -1938,7 +2000,7 @@ button.nav-link:hover{
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.06em;
-  text-transform: uppercase;
+  text-transform: none;
   color: #fff;
   background: var(--accent);
   border: none;
@@ -1953,7 +2015,7 @@ button.nav-link:hover{
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.06em;
-  text-transform: uppercase;
+  text-transform: none;
   color: #1d4ed8;
   background: transparent;
   border: none;
@@ -2132,7 +2194,7 @@ label{
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.04em;
-  text-transform: uppercase;
+  text-transform: none;
   color: var(--muted);
   line-height: 1.3;
 }
@@ -2212,7 +2274,7 @@ label{
   font-size: 14.3px;
   font-weight: 800;
   letter-spacing: 0.08em;
-  text-transform: uppercase;
+  text-transform: none;
   color: rgba(17, 24, 39, 0.7);
 }
 #settingsAccountsCard #accountsList .item .meta{
@@ -2555,7 +2617,7 @@ textarea::placeholder{
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.04em;
-  text-transform: uppercase;
+  text-transform: none;
   color: var(--muted);
   line-height: 1.3;
 }
@@ -2688,7 +2750,7 @@ textarea::placeholder{
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.04em;
-  text-transform: uppercase;
+  text-transform: none;
   color: var(--muted);
   white-space: nowrap;
   line-height: 1.3;
@@ -3012,7 +3074,7 @@ textarea::placeholder{
   color: var(--muted);
   font-size: 12px;
   font-weight: 600;
-  text-transform: uppercase;
+  text-transform: none;
   letter-spacing: 0.3px;
 }
 .low-balance-result .v{
@@ -3196,7 +3258,7 @@ body.signup-page #signupPlanNote.callout--muted.signup-plan-note--pro{
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.08em;
-  text-transform: uppercase;
+  text-transform: none;
   color: rgba(17, 24, 39, 0.70);
 }
 .auth-section__chev{
@@ -3641,7 +3703,7 @@ body.contact-page .app-footer{
   font-weight: 700;
   margin-bottom: 8px;
   font-size: 13px;
-  text-transform: uppercase;
+  text-transform: none;
   letter-spacing: 0.04em;
   opacity: 0.9;
 }
@@ -3961,7 +4023,7 @@ body.plans-page .container > .grid{
 /* Reports: Income vs. Expense */
 .income-expense-card{ background: var(--cal-surface); }
 .income-expense-head{ display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
-.income-expense-title{ margin: 0; font-size: 14px; color: var(--muted); font-weight: 600; letter-spacing: 0.3px; text-transform: uppercase; }
+.income-expense-title{ margin: 0; font-size: 14px; color: var(--muted); font-weight: 600; letter-spacing: 0.3px; text-transform: none; }
 .income-expense-subtitle{ margin-top: 2px; }
 .income-expense-controls{ display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .income-expense-select{ padding: 6px 10px; border-radius: 10px; border: 1px solid rgba(0,0,0,0.12); background: rgba(0,0,0,0.02); font: inherit; }
@@ -4164,7 +4226,7 @@ body.plans-page .container > .grid{
 .reconcile-date-label{
   font-size: 12px;
   color: var(--muted);
-  text-transform: uppercase;
+  text-transform: none;
   letter-spacing: 0.3px;
   font-weight: 600;
 }
@@ -4571,7 +4633,7 @@ body.account-setup-page .account-setup-step3-form .reimbursable-field__label{
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.04em;
-  text-transform: uppercase;
+  text-transform: none;
   color: var(--muted);
   line-height: 1.3;
 }
@@ -4593,6 +4655,7 @@ body.account-setup-page .tx-add-schedule-toolbar__left .tx-add-schedule-field--e
   margin-top: 0;
   max-width: 16rem;
   align-self: flex-end;
+  margin-left: -6px;
 }
 body.account-setup-page .tx-add-schedule-field--end-date input[type="date"]{
   max-width: 12.5rem;
@@ -4604,8 +4667,11 @@ body.account-setup-page .tx-add-schedule-field--end-date label{
 
 /* Account setup wizard: repeats row layout */
 body.account-setup-page .tx-add-repeat-row{
-  flex-wrap: nowrap;
-  gap: 10px 12px;
+  display: grid;
+  grid-template-columns: 6.75rem 1fr;
+  align-items: center;
+  column-gap: 10px;
+  row-gap: 8px;
 }
 body.account-setup-page .tx-add-repeat-toggle{
   display: inline-flex;
@@ -4616,7 +4682,7 @@ body.account-setup-page .tx-add-repeat-toggle{
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.04em;
-  text-transform: uppercase;
+  text-transform: none;
   color: var(--muted);
   line-height: 1.3;
 }
@@ -4626,12 +4692,31 @@ body.account-setup-page .tx-add-repeat-toggle input{
   accent-color: var(--accent);
 }
 body.account-setup-page .tx-add-recurrence-select{
-  max-width: 12.5rem;
+  width: 100%;
+  max-width: none;
 }
 
 /* Account setup wizard: bring the repeat toolbar rule closer to color swatches */
 body.account-setup-page .tx-add-schedule-toolbar + .tx-add-vspace.tx-add-vspace--lg{
   height: 10px;
+}
+
+/* Account setup wizard: pull the bottom section up slightly */
+body.account-setup-page .tx-add-schedule-toolbar{
+  padding-top: 4px;
+  padding-bottom: 8px;
+}
+
+/* Account setup wizard: Notes row slightly smaller/shorter */
+body.account-setup-page .account-setup-step3-form label[for="asTxNotes"],
+body.account-setup-page .account-setup-step3-form label[for="asExpTxNotes"]{
+  font-size: 10px;
+}
+body.account-setup-page #asTxNotes.input-notes-flex,
+body.account-setup-page #asExpTxNotes.input-notes-flex{
+  font-size: 14px;
+  padding-top: 10px;
+  padding-bottom: 10px;
 }
 
 /* Account setup wizard: align color label with other field labels */
@@ -4651,7 +4736,7 @@ body.account-setup-page .cat-color-row__optional{
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.04em;
-  text-transform: uppercase;
+  text-transform: none;
   color: var(--muted);
   opacity: 1;
 }
@@ -4684,7 +4769,7 @@ body.account-setup-page .account-setup-step3-form .cat-color-row + .tx-add-vspac
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.04em;
-  text-transform: uppercase;
+  text-transform: none;
   color: var(--muted);
   opacity: 0.88;
 }
@@ -4692,7 +4777,7 @@ body.account-setup-page .account-setup-step3-form .cat-color-row + .tx-add-vspac
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.04em;
-  text-transform: uppercase;
+  text-transform: none;
   color: var(--muted);
   opacity: 0.88;
 }
@@ -4700,7 +4785,7 @@ body.account-setup-page .account-setup-step3-form .cat-color-row + .tx-add-vspac
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.04em;
-  text-transform: uppercase;
+  text-transform: none;
   color: var(--muted);
   opacity: 0.88;
   margin-bottom: 10px;
@@ -4709,7 +4794,7 @@ body.account-setup-page .account-setup-step3-form .cat-color-row + .tx-add-vspac
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.04em;
-  text-transform: uppercase;
+  text-transform: none;
   color: var(--muted);
   opacity: 0.88;
 }
@@ -5101,7 +5186,7 @@ body.account-setup-page .account-setup-step3-form .cat-color-row + .tx-add-vspac
 .expected-modal-mode-label{
   font-size: 12px;
   color: var(--muted);
-  text-transform: uppercase;
+  text-transform: none;
   letter-spacing: 0.3px;
   font-weight: 600;
 }
