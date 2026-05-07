@@ -1719,7 +1719,7 @@ for (const r of document.querySelectorAll('input[name="asRecurringExpensePref"]'
         if (v2 !== "yes") return;
         setAccountSetupExpensePhase("form");
         document.getElementById("asExpTxAmount")?.focus();
-      }, 2000);
+      }, 1000);
     }
   });
 }

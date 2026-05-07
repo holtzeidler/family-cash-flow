@@ -4610,12 +4610,25 @@ body.account-setup-page .tx-add-schedule-toolbar__left .tx-add-schedule-field--e
 body.account-setup-page .tx-add-schedule-field--end-date input[type="date"]{
   max-width: 12.5rem;
 }
+body.account-setup-page .tx-add-schedule-field--end-date label{
+  width: 100%;
+  text-align: center;
+}
+
+/* Account setup wizard: reduce gap between Date and recurring toolbar */
+body.account-setup-page .account-setup-step3-form .tx-add-vspace.tx-add-vspace--lg + .tx-add-schedule-toolbar{
+  margin-top: -8px;
+}
 
 /* Account setup wizard: stack recurrence select under "every" */
 body.account-setup-page .tx-add-recurrence-inline{
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
   gap: 4px;
+}
+body.account-setup-page .tx-add-recurrence-inline__every{
+  width: 100%;
+  text-align: center;
 }
 body.account-setup-page .tx-add-recurrence-select{
   max-width: none;
@@ -4651,6 +4664,11 @@ body.account-setup-page .cat-color-row__optional{
 /* Account setup wizard only: hide color picker row (keep it elsewhere, e.g. Calendar) */
 body.account-setup-page .account-setup-step3-form .cat-color-row{
   display: none;
+}
+
+/* Account setup wizard: tighten space above Notes (since color row is hidden) */
+body.account-setup-page .account-setup-step3-form .cat-color-row + .tx-add-vspace{
+  height: 10px;
 }
 /* Less air between the repeat toolbar rule and Notes */
 .tx-add-form .tx-add-schedule-toolbar + .tx-add-vspace.tx-add-vspace--lg{
