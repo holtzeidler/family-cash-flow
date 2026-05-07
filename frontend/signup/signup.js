@@ -1257,6 +1257,12 @@ async function applyInvitePrefill() {
 
 void (async () => {
   await applyInvitePrefill();
+  if (isAccountSetupPath()) {
+    try {
+      const params = new URLSearchParams(String(window.location.search || ""));
+      if (params.get("fresh") === "1") sessionStorage.removeItem(BW_ACCOUNT_SETUP_DRAFT_KEY);
+    } catch (_) {}
+  }
   hydrateAccountSetupDraft();
   if (isAccountSetupPath()) {
     const dateEl = document.getElementById("asTxDate");
