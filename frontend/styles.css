@@ -3471,6 +3471,7 @@ body.account-setup-page .account-setup-step3-radios{
   gap: 16px 24px;
   justify-content: center;
   align-items: center;
+  margin-top: 6px;
 }
 body.account-setup-page .account-setup-step3-radio{
   display: inline-flex;
@@ -4579,22 +4580,39 @@ body.account-setup-page .account-setup-step3-form .reimbursable-field__label{
 body.account-setup-page .tx-add-schedule-toolbar__left{
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 10px 6px;
-}
-body.account-setup-page .tx-add-schedule-question{
-  /* Match the left label column width of .form-row-h labels */
-  flex: 0 0 6.75rem;
-  max-width: 28%;
+  align-items: flex-end;
+  gap: 10px 14px;
 }
 body.account-setup-page .tx-add-repeat-row{
   flex: 1 1 auto;
   margin-left: 0;
   justify-content: flex-start;
 }
-body.account-setup-page .tx-add-schedule-question{
-  display: block;
-  margin-bottom: 0;
+body.account-setup-page .tx-add-schedule-toolbar__left .tx-add-schedule-field--end-date{
+  flex: 0 0 auto;
+  margin-top: 0;
+  max-width: 16rem;
+  align-self: flex-end;
+}
+body.account-setup-page .tx-add-schedule-field--end-date input[type="date"]{
+  max-width: 12.5rem;
+}
+body.account-setup-page .tx-add-schedule-field--end-date label{
+  width: 100%;
+  text-align: left;
+}
+
+/* Account setup wizard: repeats row layout */
+body.account-setup-page .tx-add-repeat-row{
+  flex-wrap: nowrap;
+  gap: 10px 12px;
+}
+body.account-setup-page .tx-add-repeat-toggle{
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  white-space: nowrap;
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -4602,36 +4620,13 @@ body.account-setup-page .tx-add-schedule-question{
   color: var(--muted);
   line-height: 1.3;
 }
-body.account-setup-page .tx-add-schedule-toolbar__left .tx-add-schedule-field--end-date{
-  flex: 1 1 100%;
-  margin-top: 10px;
-  max-width: 16rem;
-}
-body.account-setup-page .tx-add-schedule-field--end-date input[type="date"]{
-  max-width: 12.5rem;
-}
-body.account-setup-page .tx-add-schedule-field--end-date label{
-  width: 100%;
-  text-align: center;
-}
-
-/* Account setup wizard: reduce gap between Date and recurring toolbar */
-body.account-setup-page .account-setup-step3-form .tx-add-vspace.tx-add-vspace--lg + .tx-add-schedule-toolbar{
-  margin-top: -8px;
-}
-
-/* Account setup wizard: stack recurrence select under "every" */
-body.account-setup-page .tx-add-recurrence-inline{
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-}
-body.account-setup-page .tx-add-recurrence-inline__every{
-  width: 100%;
-  text-align: center;
+body.account-setup-page .tx-add-repeat-toggle input{
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
 }
 body.account-setup-page .tx-add-recurrence-select{
-  max-width: none;
+  max-width: 12.5rem;
 }
 
 /* Account setup wizard: bring the repeat toolbar rule closer to color swatches */

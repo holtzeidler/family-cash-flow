@@ -89,7 +89,7 @@
                   aria-hidden="true"
                   inert
                 >
-                  <p class="meta account-setup-step2-lede">Enter your current checking account balance to get started today</p>
+                  <p class="meta account-setup-step2-lede">What’s your current checking balance?</p>
                   <div class="row">
                     <div class="form-row-h">
                       <div class="form-row-h__label"><label for="accountName">Account name</label></div>
@@ -172,27 +172,23 @@
                   </div>
                   <div class="tx-add-vspace" aria-hidden="true"></div>
                   <div class="form-row-h">
-                    <div class="form-row-h__label"><label for="asTxDate">Date</label></div>
+                    <div class="form-row-h__label"><label for="asTxDate">Next Occurance</label></div>
                     <div class="form-row-h__field"><input id="asTxDate" type="date" /></div>
                   </div>
                   <div class="tx-add-vspace tx-add-vspace--lg" aria-hidden="true"></div>
                   <div class="tx-add-schedule-toolbar" aria-label="Repeat and schedule">
                     <div class="tx-add-schedule-toolbar__left">
-                      <div class="tx-add-schedule-question">Make this recurring?</div>
                       <div class="tx-add-repeat-row">
-                        <label class="tx-add-repeat-yes">
+                        <label class="tx-add-repeat-toggle">
                           <input id="asTxRepeats" type="checkbox" />
-                          <span class="sr-only">Yes</span>
+                          <span>Repeats</span>
                         </label>
-                        <div id="asTxRecurrenceWrap" class="tx-add-recurrence-inline" hidden>
-                          <span class="tx-add-recurrence-inline__every">every</span>
-                          <select id="asTxRecurrence" class="tx-add-recurrence-select" title="How often this repeats">
-                            <option value="monthly" selected>month</option>
-                            <option value="weekly">week</option>
-                            <option value="semiannual">6 months</option>
-                            <option value="yearly">year</option>
-                          </select>
-                        </div>
+                        <select id="asTxRecurrence" class="tx-add-recurrence-select" title="How often this repeats" disabled>
+                          <option value="monthly" selected>monthly</option>
+                          <option value="weekly">weekly</option>
+                          <option value="semiannual">every 6 months</option>
+                          <option value="yearly">yearly</option>
+                        </select>
                       </div>
                       <div id="asTxEndDateWrap" class="tx-add-schedule-field tx-add-schedule-field--end-date" hidden>
                         <label for="asTxEndDate" title="Optional. End date for this recurring transaction. Blank = never ends.">Ends on</label>
@@ -296,27 +292,23 @@
                     </div>
                     <div class="tx-add-vspace" aria-hidden="true"></div>
                     <div class="form-row-h">
-                      <div class="form-row-h__label"><label for="asExpTxDate">Date</label></div>
+                      <div class="form-row-h__label"><label for="asExpTxDate">Next Occurance</label></div>
                       <div class="form-row-h__field"><input id="asExpTxDate" type="date" /></div>
                     </div>
                     <div class="tx-add-vspace tx-add-vspace--lg" aria-hidden="true"></div>
                     <div class="tx-add-schedule-toolbar" aria-label="Repeat and schedule">
                       <div class="tx-add-schedule-toolbar__left">
-                        <div class="tx-add-schedule-question">Make this recurring?</div>
                         <div class="tx-add-repeat-row">
-                          <label class="tx-add-repeat-yes">
+                          <label class="tx-add-repeat-toggle">
                             <input id="asExpRepeats" type="checkbox" />
-                            <span class="sr-only">Yes</span>
+                            <span>Repeats</span>
                           </label>
-                          <div id="asExpRecurrenceWrap" class="tx-add-recurrence-inline" hidden>
-                            <span class="tx-add-recurrence-inline__every">every</span>
-                            <select id="asExpRecurrence" class="tx-add-recurrence-select" title="How often this repeats">
-                              <option value="monthly" selected>month</option>
-                              <option value="weekly">week</option>
-                              <option value="semiannual">6 months</option>
-                              <option value="yearly">year</option>
-                            </select>
-                          </div>
+                          <select id="asExpRecurrence" class="tx-add-recurrence-select" title="How often this repeats" disabled>
+                            <option value="monthly" selected>monthly</option>
+                            <option value="weekly">weekly</option>
+                            <option value="semiannual">every 6 months</option>
+                            <option value="yearly">yearly</option>
+                          </select>
                         </div>
                         <div id="asExpEndDateWrap" class="tx-add-schedule-field tx-add-schedule-field--end-date" hidden>
                           <label for="asExpEndDate" title="Optional. End date for this recurring transaction. Blank = never ends.">Ends on</label>

@@ -408,6 +408,7 @@ function setAccountSetupWizardStep(step, opts = {}) {
 
   if (accountSetupBackBtn) accountSetupBackBtn.style.display = s > 0 ? "inline-flex" : "none";
   if (addMoreTxBtn) addMoreTxBtn.style.display = "none";
+  if (accountSetupSkipBtn) accountSetupSkipBtn.style.display = s === 1 ? "inline-flex" : "none";
   if (signupBtn) {
     if (s === 2 || s === 3) syncAccountSetupWizardShellButtons();
     else signupBtn.textContent = "Next";
@@ -678,7 +679,6 @@ function resetAccountSetupTransactionForm() {
   const dateEl = document.getElementById("asTxDate");
   const notesEl = document.getElementById("asTxNotes");
   const repeatsEl = document.getElementById("asTxRepeats");
-  const recWrap = document.getElementById("asTxRecurrenceWrap");
   const recSel = document.getElementById("asTxRecurrence");
   const endCountEl = document.getElementById("asTxEndCount");
   const endDateEl = document.getElementById("asTxEndDate");
@@ -689,7 +689,6 @@ function resetAccountSetupTransactionForm() {
   if (categoryEl) categoryEl.value = "";
   if (notesEl) notesEl.value = "";
   if (repeatsEl) repeatsEl.checked = false;
-  if (recWrap) recWrap.hidden = true;
   if (recSel) recSel.value = "monthly";
   if (endCountEl) endCountEl.value = "";
   if (endDateEl) endDateEl.value = "";
@@ -904,7 +903,6 @@ function resetAccountSetupExpenseForm() {
   const dateEl = document.getElementById("asExpTxDate");
   const notesEl = document.getElementById("asExpTxNotes");
   const repeatsEl = document.getElementById("asExpRepeats");
-  const recWrap = document.getElementById("asExpRecurrenceWrap");
   const recSel = document.getElementById("asExpRecurrence");
   const endCountEl = document.getElementById("asExpEndCount");
   const endDateEl = document.getElementById("asExpEndDate");
@@ -915,7 +913,6 @@ function resetAccountSetupExpenseForm() {
   if (categoryEl) categoryEl.value = "";
   if (notesEl) notesEl.value = "";
   if (repeatsEl) repeatsEl.checked = false;
-  if (recWrap) recWrap.hidden = true;
   if (recSel) recSel.value = "monthly";
   if (endCountEl) endCountEl.value = "";
   if (endDateEl) endDateEl.value = "";
@@ -1058,7 +1055,6 @@ function hydrateAccountSetupDraft() {
     const txRecSelEl = document.getElementById("asTxRecurrence");
     const txEndDateEl = document.getElementById("asTxEndDate");
     const txEndCountEl = document.getElementById("asTxEndCount");
-    const txRecWrapEl = document.getElementById("asTxRecurrenceWrap");
     const txEndDateWrapEl = document.getElementById("asTxEndDateWrap");
     const txEndCountWrapEl = document.getElementById("asTxEndCountWrap");
     const txBgColorEl = document.getElementById("asTxBgColor");
@@ -1082,7 +1078,6 @@ function hydrateAccountSetupDraft() {
         const eRecSel = document.getElementById("asExpRecurrence");
         const eEndDate = document.getElementById("asExpEndDate");
         const eEndCount = document.getElementById("asExpEndCount");
-        const eRecWrap = document.getElementById("asExpRecurrenceWrap");
         const eEndDateWrap = document.getElementById("asExpEndDateWrap");
         const eEndCountWrap = document.getElementById("asExpEndCountWrap");
         const eBg = document.getElementById("asExpTxBgColor");
@@ -1092,8 +1087,8 @@ function hydrateAccountSetupDraft() {
         if (eNotes && lastTx.notes) eNotes.value = String(lastTx.notes);
         if (eRec) eRec.checked = !!lastTx.recurring;
         const eOn = !!lastTx.recurring;
-        if (eRecWrap) eRecWrap.hidden = !eOn;
         if (eRecSel && lastTx.recurrence) eRecSel.value = String(lastTx.recurrence);
+        if (eRecSel) eRecSel.disabled = !eOn;
         if (eEndDateWrap) eEndDateWrap.hidden = !eOn;
         if (eEndCountWrap) eEndCountWrap.hidden = !eOn;
         if (eEndDate && lastTx.end_date) eEndDate.value = String(lastTx.end_date);
@@ -1108,8 +1103,8 @@ function hydrateAccountSetupDraft() {
         if (txNotesEl && lastTx.notes) txNotesEl.value = String(lastTx.notes);
         if (txRecurringEl) txRecurringEl.checked = !!lastTx.recurring;
         const on = !!lastTx.recurring;
-        if (txRecWrapEl) txRecWrapEl.hidden = !on;
         if (txRecSelEl && lastTx.recurrence) txRecSelEl.value = String(lastTx.recurrence);
+        if (txRecSelEl) txRecSelEl.disabled = !on;
         if (txEndDateWrapEl) txEndDateWrapEl.hidden = !on;
         if (txEndCountWrapEl) txEndCountWrapEl.hidden = !on;
         if (txEndDateEl && lastTx.end_date) txEndDateEl.value = String(lastTx.end_date);
@@ -1673,7 +1668,8 @@ accountSetupSkipBtn?.addEventListener("click", onAccountSetupSkipAccountClick);
 const password2El = document.getElementById("password2");
 if (password2El) {
   password2El.addEventListener("keydown", (e) => {
-    if (e.key !== "Enter") return;
+    const k = String(e.key || "");
+    if (k !== "Enter" && k !== "NumpadEnter" && (e.keyCode || 0) !== 13) return;
     // Mirror clicking "Next" from the password confirm field.
     e.preventDefault();
     onSignupPrimaryClick();
@@ -1778,7 +1774,6 @@ function initAccountSetupTransactionUi() {
 
     function bindRepeatsUi(prefix) {
       const repeatsEl = document.getElementById(prefix + "Repeats");
-      const recWrap = document.getElementById(prefix + "RecurrenceWrap");
       const recSel = document.getElementById(prefix + "Recurrence");
       const endCountWrap = document.getElementById(prefix + "EndCountWrap");
       const endCountEl = document.getElementById(prefix + "EndCount");
@@ -1788,7 +1783,6 @@ function initAccountSetupTransactionUi() {
 
       const update = () => {
         const on = !!repeatsEl.checked;
-        if (recWrap) recWrap.hidden = !on;
         if (recSel) recSel.disabled = !on;
         if (endCountWrap) endCountWrap.hidden = !on;
         if (endDateWrap) endDateWrap.hidden = !on;
