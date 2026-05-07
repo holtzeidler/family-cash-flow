@@ -3358,6 +3358,11 @@ body.account-setup-page #accountSetupWizardPanel2{
   justify-content: flex-start;
 }
 
+/* Step 2: nudge content down for breathing room */
+body.account-setup-page #accountSetupWizardPanel1.account-setup-wizard__panel{
+  padding-top: 20px;
+}
+
 /* Account setup: stacked accordion cards (legacy) */
 body.account-setup-page .account-setup-cards{
   display: grid;
@@ -3415,6 +3420,11 @@ body.account-setup-page #accountSetupWizardPanel1 .form-row-h__label{
 body.account-setup-page #accountSetupWizardPanel1 .form-row-h__label label{
   white-space: nowrap;
 }
+body.account-setup-page .account-setup-step2-lede{
+  margin: 0 0 12px;
+  text-align: center;
+  font-weight: 700;
+}
 body.account-setup-page .account-setup-step3-intro{
   width: 100%;
   max-width: 100%;
@@ -3425,6 +3435,13 @@ body.account-setup-page .account-setup-step3-q{
   line-height: 1.45;
   text-align: center;
   color: var(--text);
+}
+body.account-setup-page .account-setup-step3-subq{
+  margin: -8px 0 14px;
+  font-size: 0.9rem;
+  line-height: 1.35;
+  text-align: center;
+  color: rgba(0,0,0,0.64);
 }
 body.account-setup-page .account-setup-step3-radios{
   display: flex;

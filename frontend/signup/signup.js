@@ -1528,6 +1528,15 @@ function onSignupPrimaryClick() {
 }
 window.__bwSignup = onSignupPrimaryClick;
 if (signupBtn) signupBtn.addEventListener("click", onSignupPrimaryClick);
+const password2El = document.getElementById("password2");
+if (password2El) {
+  password2El.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    // Mirror clicking "Next" from the password confirm field.
+    e.preventDefault();
+    onSignupPrimaryClick();
+  });
+}
 if (addMoreTxBtn) addMoreTxBtn.addEventListener("click", addMoreTransactionsFromAccountSetup);
 document.getElementById("asTxSaveIncomeBtn")?.addEventListener("click", () => void accountSetupSaveIncomeClick());
 document.getElementById("asTxAddMoreIncomeBtn")?.addEventListener("click", () => addMoreTransactionsFromAccountSetup());
@@ -1535,6 +1544,20 @@ document.getElementById("asTxCancelIncomeBtn")?.addEventListener("click", () => 
 document.getElementById("asExpSaveBtn")?.addEventListener("click", () => void accountSetupSaveExpenseClick());
 document.getElementById("asExpAddMoreBtn")?.addEventListener("click", () => addMoreExpensesFromAccountSetup());
 document.getElementById("asExpCancelBtn")?.addEventListener("click", () => accountSetupCancelExpenseClick());
+for (const r of document.querySelectorAll('input[name="asRecurringIncomePref"]')) {
+  r.addEventListener("change", () => {
+    if (!isAccountSetupPath() || !document.getElementById("accountSetupWizard")) return;
+    if (getAccountSetupWizardStep() !== 2) return;
+    if (getAccountSetupStep3Phase() !== "intro") return;
+    const pref = document.querySelector('input[name="asRecurringIncomePref"]:checked');
+    const v = pref ? String(pref.value) : "";
+    if (v === "yes") {
+      setCallout(signupCalloutEl, "", "");
+      setAccountSetupStep3Phase("form");
+      document.getElementById("asTxAmount")?.focus();
+    }
+  });
+}
 for (const r of document.querySelectorAll('input[name="asRecurringExpensePref"]')) {
   r.addEventListener("change", () => {
     if (!isAccountSetupPath() || !document.getElementById("accountSetupWizard")) return;
@@ -1544,8 +1567,17 @@ for (const r of document.querySelectorAll('input[name="asRecurringExpensePref"]'
     const v = pref ? String(pref.value) : "";
     if (v === "yes") {
       setCallout(signupCalloutEl, "", "");
-      setAccountSetupExpensePhase("form");
-      document.getElementById("asExpTxAmount")?.focus();
+      // Pause briefly so the user sees their selection register first.
+      window.setTimeout(() => {
+        if (!isAccountSetupPath() || !document.getElementById("accountSetupWizard")) return;
+        if (getAccountSetupWizardStep() !== 3) return;
+        if (getAccountSetupExpensePhase() !== "intro") return;
+        const pref2 = document.querySelector('input[name="asRecurringExpensePref"]:checked');
+        const v2 = pref2 ? String(pref2.value) : "";
+        if (v2 !== "yes") return;
+        setAccountSetupExpensePhase("form");
+        document.getElementById("asExpTxAmount")?.focus();
+      }, 2000);
     }
   });
 }
