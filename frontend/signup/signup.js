@@ -385,7 +385,7 @@ function getAccountSetupWizardStep() {
   const w = document.getElementById("accountSetupWizard");
   if (!w) return 0;
   const n = parseInt(w.dataset.step || "0", 10);
-  return Number.isFinite(n) ? Math.min(3, Math.max(0, n)) : 0;
+  return Number.isFinite(n) ? Math.min(4, Math.max(0, n)) : 0;
 }
 
 function persistAccountSetupWizardMeta(stepIndex) {
@@ -402,12 +402,12 @@ function setAccountSetupWizardStep(step, opts = {}) {
   const w = document.getElementById("accountSetupWizard");
   const track = document.getElementById("accountSetupWizardTrack");
   if (!w || !track) return;
-  const s = Math.min(3, Math.max(0, step));
+  const s = Math.min(4, Math.max(0, step));
   w.dataset.step = String(s);
   /* Show one panel at a time (avoid translateX(%): % is vs. track width and can misalign panels). */
   if (track.style.transform) track.style.removeProperty("transform");
 
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < 5; i++) {
     const p = document.getElementById(`accountSetupWizardPanel${i}`);
     if (!p) continue;
     const active = i === s;
@@ -436,6 +436,7 @@ function setAccountSetupWizardStep(step, opts = {}) {
   if (accountSetupSkipBtn) accountSetupSkipBtn.style.display = s === 1 ? "inline-flex" : "none";
   if (signupBtn) {
     if (s === 2 || s === 3) syncAccountSetupWizardShellButtons();
+    else if (s === 4) signupBtn.textContent = "Create account";
     else signupBtn.textContent = "Next";
   }
 
@@ -1610,7 +1611,7 @@ function onSignupPrimaryClick() {
                 BW_ACCOUNT_SETUP_DRAFT_KEY,
                 JSON.stringify({
                   ...rawDraft,
-                  wizardStep: 3,
+                  wizardStep: 4,
                   expensePhase: "intro",
                   ...(gate.anyAccount
                     ? {
@@ -1626,13 +1627,45 @@ function onSignupPrimaryClick() {
                 })
               );
             } catch (_) {}
-            void doSignup();
+            lockAccountSetupWizardStepTransition();
+            setAccountSetupWizardStep(4, { skipPersist: true });
             return;
           }
           setAccountSetupExpensePhase("form");
           document.getElementById("asExpTxAmount")?.focus();
           return;
         }
+        return;
+      }
+      if (st === 4) {
+        setCallout(signupCalloutEl, "", "");
+        try {
+          const wrap = document.getElementById("accountSetupWizardPanel4");
+          const buttons = wrap ? [...wrap.querySelectorAll("[data-as-survey-opt]")] : [];
+          const active = buttons.find((b) => b.classList.contains("is-active"));
+          const opt = active ? String(active.getAttribute("data-as-survey-opt") || "") : "";
+          const otherVal = String(document.getElementById("accountSetupSurveyOther")?.value || "").trim();
+          if (!opt) {
+            setCallout(signupCalloutEl, "Please choose an option.", "error");
+            return;
+          }
+          if (opt === "other" && !otherVal) {
+            setCallout(signupCalloutEl, "Please type your answer for Other.", "error");
+            document.getElementById("accountSetupSurveyOther")?.focus();
+            return;
+          }
+          const rawDraft = readAccountSetupDraftRaw() || {};
+          sessionStorage.setItem(
+            BW_ACCOUNT_SETUP_DRAFT_KEY,
+            JSON.stringify({
+              ...rawDraft,
+              wizardStep: 4,
+              surveyHelpWith: opt,
+              surveyOther: opt === "other" ? otherVal : "",
+            })
+          );
+        } catch (_) {}
+        void doSignup();
         return;
       }
     }
@@ -1754,6 +1787,23 @@ for (const r of document.querySelectorAll('input[name="asRecurringExpensePref"]'
     }
   });
 }
+
+// Account setup survey step: toggle Other write-in.
+try {
+  const p4 = document.getElementById("accountSetupWizardPanel4");
+  if (p4) {
+    const buttons = [...p4.querySelectorAll("[data-as-survey-opt]")];
+    const otherWrap = document.getElementById("accountSetupSurveyOtherWrap");
+    const otherInput = document.getElementById("accountSetupSurveyOther");
+    const setActive = (opt) => {
+      for (const b of buttons) b.classList.toggle("is-active", b.getAttribute("data-as-survey-opt") === opt);
+      if (otherWrap) otherWrap.hidden = opt !== "other";
+      if (opt === "other" && otherInput) otherInput.focus();
+      if (opt !== "other" && otherInput) otherInput.value = "";
+    };
+    for (const b of buttons) b.addEventListener("click", () => setActive(b.getAttribute("data-as-survey-opt")));
+  }
+} catch (_) {}
 if (accountSetupBackBtn) {
   accountSetupBackBtn.addEventListener("click", () => {
     if (!isAccountSetupPath() || !document.getElementById("accountSetupWizard")) return;

@@ -49,6 +49,7 @@
             <span class="account-setup-wizard__dot" data-wizard-dot="1" aria-hidden="true"></span>
             <span class="account-setup-wizard__dot" data-wizard-dot="2" aria-hidden="true"></span>
             <span class="account-setup-wizard__dot" data-wizard-dot="3" aria-hidden="true"></span>
+            <span class="account-setup-wizard__dot" data-wizard-dot="4" aria-hidden="true"></span>
           </div>
           <div class="card auth-section auth-section--open account-setup-wizard__shell">
             <div class="account-setup-wizard__viewport">
@@ -418,6 +419,29 @@
                       <div class="form-row-h__field">
                         <input id="asExpTxNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
                       </div>
+                    </div>
+                  </div>
+                </div>
+                <div
+                  class="account-setup-wizard__panel auth-section__body"
+                  id="accountSetupWizardPanel4"
+                  role="tabpanel"
+                  aria-label="Step 5: Quick survey"
+                  aria-hidden="true"
+                  inert
+                >
+                  <div class="account-setup-survey">
+                    <h2 class="account-setup-survey__title">What do you want help with?</h2>
+                    <div class="account-setup-survey__grid" role="group" aria-label="Choose one">
+                      <button type="button" class="account-setup-survey__opt" data-as-survey-opt="avoid_overdrafts">Avoid overdrafts</button>
+                      <button type="button" class="account-setup-survey__opt" data-as-survey-opt="safe_to_spend">Know what’s safe to spend</button>
+                      <button type="button" class="account-setup-survey__opt" data-as-survey-opt="prepare_bills">Prepare for upcoming bills</button>
+                      <button type="button" class="account-setup-survey__opt" data-as-survey-opt="reduce_anxiety">Reduce money anxiety</button>
+                      <button type="button" class="account-setup-survey__opt" data-as-survey-opt="other">Other</button>
+                    </div>
+                    <div class="account-setup-survey__other" id="accountSetupSurveyOtherWrap" hidden>
+                      <label class="account-setup-survey__otherLabel" for="accountSetupSurveyOther">Other (please specify)</label>
+                      <input id="accountSetupSurveyOther" class="account-setup-survey__otherInput" type="text" maxlength="80" placeholder="Type your answer…" />
                     </div>
                   </div>
                 </div>
