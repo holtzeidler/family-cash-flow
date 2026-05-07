@@ -131,6 +131,36 @@ const accountSetupBackBtn = document.getElementById("accountSetupBackBtn");
 
 const BW_ACCOUNT_SETUP_DRAFT_KEY = "bw_account_setup_draft";
 
+function openAccountSetupDuplicateEmailModal() {
+  const el = document.getElementById("accountSetupDuplicateEmailModal");
+  if (!el) return;
+  el.classList.add("modal-overlay--open");
+  el.setAttribute("aria-hidden", "false");
+}
+
+function closeAccountSetupDuplicateEmailModal() {
+  const el = document.getElementById("accountSetupDuplicateEmailModal");
+  if (!el) return;
+  el.classList.remove("modal-overlay--open");
+  el.setAttribute("aria-hidden", "true");
+}
+
+(function initAccountSetupDuplicateEmailModal() {
+  const m = document.getElementById("accountSetupDuplicateEmailModal");
+  if (!m) return;
+  const closeBtn = document.getElementById("accountSetupDuplicateEmailClose");
+  closeBtn?.addEventListener("click", () => closeAccountSetupDuplicateEmailModal());
+  m.addEventListener("click", (e) => {
+    if (e.target === m) closeAccountSetupDuplicateEmailModal();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    if (!m.classList.contains("modal-overlay--open")) return;
+    e.preventDefault();
+    closeAccountSetupDuplicateEmailModal();
+  });
+})();
+
 /**
  * Ignore extra primary-button activations right after a wizard step change.
  * A double-click on "Next" from step 0 would otherwise run step 1 with empty
@@ -142,6 +172,127 @@ function isAccountSetupWizardStepLocked() {
 }
 function lockAccountSetupWizardStepTransition(ms = 480) {
   accountSetupWizardStepLockUntil = performance.now() + ms;
+}
+
+function getAccountSetupStep3Phase() {
+  const p2 = document.getElementById("accountSetupWizardPanel2");
+  if (!p2) return "intro";
+  return p2.getAttribute("data-step3-phase") === "form" ? "form" : "intro";
+}
+
+function persistDraftStep3Phase(phase) {
+  try {
+    const raw = readAccountSetupDraftRaw() || {};
+    raw.step3Phase = phase;
+    sessionStorage.setItem(BW_ACCOUNT_SETUP_DRAFT_KEY, JSON.stringify(raw));
+  } catch (_) {}
+}
+
+function setAccountSetupStep3Phase(phase) {
+  const p2 = document.getElementById("accountSetupWizardPanel2");
+  const intro = document.getElementById("accountSetupWizardStep3Intro");
+  const form = document.getElementById("accountSetupWizardStep3Form");
+  if (!p2 || !intro || !form) return;
+  const isForm = phase === "form";
+  p2.setAttribute("data-step3-phase", isForm ? "form" : "intro");
+  intro.hidden = isForm;
+  form.hidden = !isForm;
+  const kt = document.getElementById("accountSetupKindToggle");
+  if (kt) kt.classList.toggle("account-setup-kind-toggle--income-only", isForm);
+  if (isForm) {
+    const inc = document.querySelector('input[name="asTxKind"][value="income"]');
+    if (inc) inc.checked = true;
+  }
+  persistDraftStep3Phase(isForm ? "form" : "intro");
+  syncAccountSetupWizardShellButtons();
+}
+
+function getAccountSetupExpensePhase() {
+  const p3 = document.getElementById("accountSetupWizardPanel3");
+  if (!p3) return "intro";
+  return p3.getAttribute("data-expense-phase") === "form" ? "form" : "intro";
+}
+
+function persistDraftExpensePhase(phase) {
+  try {
+    const raw = readAccountSetupDraftRaw() || {};
+    raw.expensePhase = phase;
+    sessionStorage.setItem(BW_ACCOUNT_SETUP_DRAFT_KEY, JSON.stringify(raw));
+  } catch (_) {}
+}
+
+function setAccountSetupExpensePhase(phase) {
+  const p3 = document.getElementById("accountSetupWizardPanel3");
+  const intro = document.getElementById("accountSetupWizardStep4Intro");
+  const form = document.getElementById("accountSetupWizardStep4Form");
+  if (!p3 || !intro || !form) return;
+  const isForm = phase === "form";
+  p3.setAttribute("data-expense-phase", isForm ? "form" : "intro");
+  intro.hidden = isForm;
+  form.hidden = !isForm;
+  const kt = document.getElementById("accountSetupExpenseKindToggle");
+  if (kt) kt.classList.toggle("account-setup-kind-toggle--expense-only", isForm);
+  if (isForm) {
+    const ex = document.querySelector('input[name="asExpTxKind"][value="expense"]');
+    if (ex) ex.checked = true;
+  }
+  persistDraftExpensePhase(isForm ? "form" : "intro");
+  syncAccountSetupWizardShellButtons();
+}
+
+function syncAccountSetupWizardShellButtons() {
+  const s = getAccountSetupWizardStep();
+  const saveInc = document.getElementById("asTxSaveIncomeBtn");
+  const addMoreInc = document.getElementById("asTxAddMoreIncomeBtn");
+  const cancelInc = document.getElementById("asTxCancelIncomeBtn");
+  const saveExp = document.getElementById("asExpSaveBtn");
+  const addExp = document.getElementById("asExpAddMoreBtn");
+  const cancelExp = document.getElementById("asExpCancelBtn");
+  if (!document.getElementById("accountSetupWizard")) return;
+
+  for (const el of [saveInc, addMoreInc, cancelInc, saveExp, addExp, cancelExp]) {
+    if (el) el.style.display = "none";
+  }
+  if (addMoreTxBtn) addMoreTxBtn.style.display = "none";
+
+  if (s < 2) {
+    if (signupBtn) {
+      signupBtn.style.display = "";
+      signupBtn.textContent = "Next";
+    }
+    return;
+  }
+
+  if (s === 2) {
+    const phase = getAccountSetupStep3Phase();
+    if (phase === "form") {
+      if (saveInc) saveInc.style.display = "inline-flex";
+      if (addMoreInc) addMoreInc.style.display = "inline-flex";
+      if (cancelInc) cancelInc.style.display = "inline-flex";
+      if (signupBtn) signupBtn.style.display = "none";
+    } else {
+      if (signupBtn) {
+        signupBtn.style.display = "inline-flex";
+        signupBtn.textContent = "Continue";
+      }
+    }
+    return;
+  }
+
+  if (s === 3) {
+    const phase = getAccountSetupExpensePhase();
+    if (phase === "form") {
+      if (saveExp) saveExp.style.display = "inline-flex";
+      if (addExp) addExp.style.display = "inline-flex";
+      if (cancelExp) cancelExp.style.display = "inline-flex";
+      if (signupBtn) signupBtn.style.display = "none";
+    } else {
+      if (signupBtn) {
+        signupBtn.style.display = "inline-flex";
+        signupBtn.textContent = "Continue";
+      }
+    }
+  }
 }
 
 function initAccountSetupCardAccordion() {
@@ -207,7 +358,7 @@ function getAccountSetupWizardStep() {
   const w = document.getElementById("accountSetupWizard");
   if (!w) return 0;
   const n = parseInt(w.dataset.step || "0", 10);
-  return Number.isFinite(n) ? Math.min(2, Math.max(0, n)) : 0;
+  return Number.isFinite(n) ? Math.min(3, Math.max(0, n)) : 0;
 }
 
 function persistAccountSetupWizardMeta(stepIndex) {
@@ -224,14 +375,16 @@ function setAccountSetupWizardStep(step, opts = {}) {
   const w = document.getElementById("accountSetupWizard");
   const track = document.getElementById("accountSetupWizardTrack");
   if (!w || !track) return;
-  const s = Math.min(2, Math.max(0, step));
+  const s = Math.min(3, Math.max(0, step));
   w.dataset.step = String(s);
-  track.style.transform = `translateX(-${(s * 100) / 3}%)`;
+  /* Show one panel at a time (avoid translateX(%): % is vs. track width and can misalign panels). */
+  if (track.style.transform) track.style.removeProperty("transform");
 
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 4; i++) {
     const p = document.getElementById(`accountSetupWizardPanel${i}`);
     if (!p) continue;
     const active = i === s;
+    p.classList.toggle("account-setup-wizard__panel--active", active);
     p.setAttribute("aria-hidden", active ? "false" : "true");
     if (active) p.removeAttribute("inert");
     else p.setAttribute("inert", "");
@@ -252,10 +405,34 @@ function setAccountSetupWizardStep(step, opts = {}) {
   }
 
   if (accountSetupBackBtn) accountSetupBackBtn.style.display = s > 0 ? "inline-flex" : "none";
-  if (addMoreTxBtn) addMoreTxBtn.style.display = s === 2 ? "inline-flex" : "none";
-  if (signupBtn) signupBtn.textContent = s === 2 ? "Create Account" : "Next";
+  if (addMoreTxBtn) addMoreTxBtn.style.display = "none";
+  if (signupBtn) {
+    if (s === 2 || s === 3) syncAccountSetupWizardShellButtons();
+    else signupBtn.textContent = "Next";
+  }
 
   if (!skipPersist) persistAccountSetupWizardMeta(s);
+
+  if (s < 2 && document.getElementById("accountSetupWizardPanel2")) {
+    const p2 = document.getElementById("accountSetupWizardPanel2");
+    const intro = document.getElementById("accountSetupWizardStep3Intro");
+    const form = document.getElementById("accountSetupWizardStep3Form");
+    p2.setAttribute("data-step3-phase", "intro");
+    if (intro) intro.hidden = false;
+    if (form) form.hidden = true;
+    const kt = document.getElementById("accountSetupKindToggle");
+    if (kt) kt.classList.remove("account-setup-kind-toggle--income-only");
+  }
+  if (s < 3 && document.getElementById("accountSetupWizardPanel3")) {
+    const p3 = document.getElementById("accountSetupWizardPanel3");
+    const intro3 = document.getElementById("accountSetupWizardStep4Intro");
+    const form3 = document.getElementById("accountSetupWizardStep4Form");
+    p3.setAttribute("data-expense-phase", "intro");
+    if (intro3) intro3.hidden = false;
+    if (form3) form3.hidden = true;
+    const kte = document.getElementById("accountSetupExpenseKindToggle");
+    if (kte) kte.classList.remove("account-setup-kind-toggle--expense-only");
+  }
 }
 
 function toMoneyNumber(raw) {
@@ -277,7 +454,7 @@ function getAccountSetupStep() {
 function setAccountSetupStep(step) {
   if (!isAccountSetupPath()) return;
   if (document.getElementById("accountSetupWizard")) {
-    if (step === "transactions") setAccountSetupWizardStep(2);
+    if (step === "transactions") setAccountSetupWizardStep(3);
     else setAccountSetupWizardStep(1);
     return;
   }
@@ -483,8 +660,12 @@ function resetAccountSetupTransactionForm() {
   const swatches = document.getElementById("asTxColorSwatches");
   if (swatches) for (const b of swatches.querySelectorAll("button.cat-swatch")) b.classList.remove("is-active");
   if (dateEl) dateEl.value = isoTodayLocal();
+  const formEl = document.getElementById("accountSetupWizardStep3Form");
+  const incomeOnly = formEl && !formEl.hidden;
+  const inc = document.querySelector('input[name="asTxKind"][value="income"]');
   const exp = document.querySelector('input[name="asTxKind"][value="expense"]');
-  if (exp) exp.checked = true;
+  if (incomeOnly && inc) inc.checked = true;
+  else if (exp) exp.checked = true;
 }
 
 function addMoreTransactionsFromAccountSetup() {
@@ -519,6 +700,8 @@ function addMoreTransactionsFromAccountSetup() {
     BW_ACCOUNT_SETUP_DRAFT_KEY,
     JSON.stringify({
       ...rawDraft,
+      wizardStep: 2,
+      step3Phase: "form",
       ...(gate.anyAccount
         ? {
             account: {
@@ -535,6 +718,247 @@ function addMoreTransactionsFromAccountSetup() {
   );
 
   resetAccountSetupTransactionForm();
+}
+
+function accountSetupCancelIncomeClick() {
+  if (!isAccountSetupPath()) return;
+  setCallout(signupCalloutEl, "", "");
+  for (const r of document.querySelectorAll('input[name="asRecurringIncomePref"]')) {
+    r.checked = false;
+  }
+  setAccountSetupStep3Phase("intro");
+  resetAccountSetupTransactionForm();
+}
+
+async function accountSetupSaveIncomeClick() {
+  if (!isAccountSetupPath()) return;
+  setCallout(signupCalloutEl, "", "");
+  const rawDraft = readAccountSetupDraftRaw() || {};
+  const existing = Array.isArray(rawDraft.transactions) ? rawDraft.transactions : [];
+  const accountName = (document.getElementById("accountName")?.value || "").trim();
+  const accountStartingBalanceRaw = document.getElementById("accountStartingBalance")?.value || "";
+  const accountStartingBalance = toMoneyNumber(accountStartingBalanceRaw);
+  const accountStartingBalanceDate = String(document.getElementById("accountStartingBalanceDate")?.value || "").trim();
+  const gate = canAdvanceAccountSetupAccountStep({
+    accountName,
+    accountStartingBalanceRaw,
+    accountStartingBalance,
+    accountStartingBalanceDate,
+  });
+  if (!gate.ok) {
+    setCallout(signupCalloutEl, gate.message, "error");
+    setAccountSetupWizardStep(1);
+    return;
+  }
+  const parsed = readAccountSetupTransactionFromInputs();
+  if (!parsed.ok) {
+    setCallout(signupCalloutEl, parsed.message || "Please complete the transaction.", "error");
+    return;
+  }
+  const txs = [...existing, parsed.tx];
+  try {
+    sessionStorage.setItem(
+      BW_ACCOUNT_SETUP_DRAFT_KEY,
+      JSON.stringify({
+        ...rawDraft,
+        wizardStep: 2,
+        step3Phase: "form",
+        ...(gate.anyAccount
+          ? {
+              account: {
+                name: accountName,
+                type: "checking",
+                starting_balance: accountStartingBalance,
+                starting_balance_date: accountStartingBalanceDate,
+              },
+            }
+          : {}),
+        transactions: txs,
+      })
+    );
+  } catch (_) {}
+  advanceAccountSetupWizardToExpenseIntro();
+}
+
+function advanceAccountSetupWizardToExpenseIntro() {
+  const rawDraft = readAccountSetupDraftRaw() || {};
+  try {
+    sessionStorage.setItem(
+      BW_ACCOUNT_SETUP_DRAFT_KEY,
+      JSON.stringify({
+        ...rawDraft,
+        wizardStep: 3,
+        expensePhase: "intro",
+      })
+    );
+  } catch (_) {}
+  lockAccountSetupWizardStepTransition();
+  setAccountSetupWizardStep(3, { skipPersist: true });
+  setAccountSetupExpensePhase("intro");
+  document.querySelector('input[name="asRecurringExpensePref"]')?.focus();
+}
+
+function readAccountSetupExpenseTransactionFromInputs() {
+  const txKind = String(document.querySelector('input[name="asExpTxKind"]:checked')?.value || "").trim();
+  const txAmountRaw = document.getElementById("asExpTxAmount")?.value || "";
+  const txAmount = toMoneyNumber(txAmountRaw);
+  const txCategory = (document.getElementById("asExpTxCategory")?.value || "").trim();
+  const txDate = String(document.getElementById("asExpTxDate")?.value || "").trim();
+  const txNotes = (document.getElementById("asExpTxNotes")?.value || "").trim();
+  const txRecurring = !!document.getElementById("asExpTxRecurring")?.checked;
+  const txBgColor = String(document.getElementById("asExpTxBgColor")?.value || "").trim();
+  const anyTx =
+    (txAmountRaw != null && String(txAmountRaw).trim() !== "") ||
+    !!txCategory ||
+    !!txDate ||
+    !!txNotes ||
+    txRecurring ||
+    !!txBgColor;
+  if (!anyTx) return { ok: false, empty: true, tx: null, message: "" };
+  if (!txKind) return { ok: false, empty: false, tx: null, message: "Transaction type is required." };
+  if (txAmount == null || txAmount <= 0) return { ok: false, empty: false, tx: null, message: "Transaction amount is required." };
+  if (!txDate) return { ok: false, empty: false, tx: null, message: "Transaction date is required." };
+  return {
+    ok: true,
+    empty: false,
+    tx: {
+      kind: txKind,
+      amount: txAmount,
+      category: txCategory,
+      date: txDate,
+      notes: txNotes,
+      recurring: txRecurring,
+      bg_color: txBgColor || null,
+    },
+    message: "",
+  };
+}
+
+function resetAccountSetupExpenseForm() {
+  const amountEl = document.getElementById("asExpTxAmount");
+  const categoryEl = document.getElementById("asExpTxCategory");
+  const dateEl = document.getElementById("asExpTxDate");
+  const notesEl = document.getElementById("asExpTxNotes");
+  const recurringEl = document.getElementById("asExpTxRecurring");
+  const bgEl = document.getElementById("asExpTxBgColor");
+  if (amountEl) amountEl.value = "";
+  if (categoryEl) categoryEl.value = "";
+  if (notesEl) notesEl.value = "";
+  if (recurringEl) recurringEl.checked = false;
+  if (bgEl) bgEl.value = "";
+  const swatches = document.getElementById("asExpTxColorSwatches");
+  if (swatches) for (const b of swatches.querySelectorAll("button.cat-swatch")) b.classList.remove("is-active");
+  if (dateEl) dateEl.value = isoTodayLocal();
+  const ex = document.querySelector('input[name="asExpTxKind"][value="expense"]');
+  if (ex) ex.checked = true;
+}
+
+function addMoreExpensesFromAccountSetup() {
+  if (!isAccountSetupPath()) return;
+  setCallout(signupCalloutEl, "", "");
+  const rawDraft = readAccountSetupDraftRaw() || {};
+  const accountName = (document.getElementById("accountName")?.value || "").trim();
+  const accountStartingBalanceRaw = document.getElementById("accountStartingBalance")?.value || "";
+  const accountStartingBalance = toMoneyNumber(accountStartingBalanceRaw);
+  const accountStartingBalanceDate = String(document.getElementById("accountStartingBalanceDate")?.value || "").trim();
+  const gate = canAdvanceAccountSetupAccountStep({
+    accountName,
+    accountStartingBalanceRaw,
+    accountStartingBalance,
+    accountStartingBalanceDate,
+  });
+  if (!gate.ok) {
+    setCallout(signupCalloutEl, gate.message, "error");
+    setAccountSetupWizardStep(1);
+    return;
+  }
+  const parsed = readAccountSetupExpenseTransactionFromInputs();
+  if (!parsed.ok) {
+    if (!parsed.empty) setCallout(signupCalloutEl, parsed.message || "Please complete the transaction.", "error");
+    return;
+  }
+  const existing = Array.isArray(rawDraft.transactions) ? rawDraft.transactions : [];
+  sessionStorage.setItem(
+    BW_ACCOUNT_SETUP_DRAFT_KEY,
+    JSON.stringify({
+      ...rawDraft,
+      wizardStep: 3,
+      expensePhase: "form",
+      ...(gate.anyAccount
+        ? {
+            account: {
+              name: accountName,
+              type: "checking",
+              starting_balance: accountStartingBalance,
+              starting_balance_date: accountStartingBalanceDate,
+            },
+          }
+        : {}),
+      transactions: [...existing, parsed.tx],
+      step: "transactions",
+    })
+  );
+  resetAccountSetupExpenseForm();
+}
+
+function accountSetupCancelExpenseClick() {
+  if (!isAccountSetupPath()) return;
+  setCallout(signupCalloutEl, "", "");
+  for (const r of document.querySelectorAll('input[name="asRecurringExpensePref"]')) {
+    r.checked = false;
+  }
+  setAccountSetupExpensePhase("intro");
+  resetAccountSetupExpenseForm();
+}
+
+async function accountSetupSaveExpenseClick() {
+  if (!isAccountSetupPath()) return;
+  setCallout(signupCalloutEl, "", "");
+  const rawDraft = readAccountSetupDraftRaw() || {};
+  const existing = Array.isArray(rawDraft.transactions) ? rawDraft.transactions : [];
+  const accountName = (document.getElementById("accountName")?.value || "").trim();
+  const accountStartingBalanceRaw = document.getElementById("accountStartingBalance")?.value || "";
+  const accountStartingBalance = toMoneyNumber(accountStartingBalanceRaw);
+  const accountStartingBalanceDate = String(document.getElementById("accountStartingBalanceDate")?.value || "").trim();
+  const gate = canAdvanceAccountSetupAccountStep({
+    accountName,
+    accountStartingBalanceRaw,
+    accountStartingBalance,
+    accountStartingBalanceDate,
+  });
+  if (!gate.ok) {
+    setCallout(signupCalloutEl, gate.message, "error");
+    setAccountSetupWizardStep(1);
+    return;
+  }
+  const parsed = readAccountSetupExpenseTransactionFromInputs();
+  if (!parsed.ok) {
+    setCallout(signupCalloutEl, parsed.message || "Please complete the transaction.", "error");
+    return;
+  }
+  const txs = [...existing, parsed.tx];
+  try {
+    sessionStorage.setItem(
+      BW_ACCOUNT_SETUP_DRAFT_KEY,
+      JSON.stringify({
+        ...rawDraft,
+        wizardStep: 3,
+        expensePhase: "form",
+        ...(gate.anyAccount
+          ? {
+              account: {
+                name: accountName,
+                type: "checking",
+                starting_balance: accountStartingBalance,
+                starting_balance_date: accountStartingBalanceDate,
+              },
+            }
+          : {}),
+        transactions: txs,
+      })
+    );
+  } catch (_) {}
+  void doSignup();
 }
 
 function hydrateAccountSetupDraft() {
@@ -565,24 +989,54 @@ function hydrateAccountSetupDraft() {
     const lastTx = Array.isArray(o.transactions) && o.transactions.length ? o.transactions[o.transactions.length - 1] : o.transaction;
     if (lastTx) {
       const k = String(lastTx.kind || "").trim().toLowerCase();
-      const kindEl = k ? document.querySelector(`input[name="asTxKind"][value="${k}"]`) : null;
-      if (kindEl) kindEl.checked = true;
-      if (txAmountEl && lastTx.amount != null) txAmountEl.value = String(lastTx.amount);
-      if (txCategoryEl && lastTx.category) txCategoryEl.value = String(lastTx.category);
-      if (txDateEl && lastTx.date) txDateEl.value = String(lastTx.date);
-      if (txNotesEl && lastTx.notes) txNotesEl.value = String(lastTx.notes);
-      if (txRecurringEl) txRecurringEl.checked = !!lastTx.recurring;
-      if (txBgColorEl && lastTx.bg_color) txBgColorEl.value = String(lastTx.bg_color);
+      if (k === "expense") {
+        const kindElE = document.querySelector(`input[name="asExpTxKind"][value="expense"]`);
+        if (kindElE) kindElE.checked = true;
+        const eAmt = document.getElementById("asExpTxAmount");
+        const eCat = document.getElementById("asExpTxCategory");
+        const eDate = document.getElementById("asExpTxDate");
+        const eNotes = document.getElementById("asExpTxNotes");
+        const eRec = document.getElementById("asExpTxRecurring");
+        const eBg = document.getElementById("asExpTxBgColor");
+        if (eAmt && lastTx.amount != null) eAmt.value = String(lastTx.amount);
+        if (eCat && lastTx.category) eCat.value = String(lastTx.category);
+        if (eDate && lastTx.date) eDate.value = String(lastTx.date);
+        if (eNotes && lastTx.notes) eNotes.value = String(lastTx.notes);
+        if (eRec) eRec.checked = !!lastTx.recurring;
+        if (eBg && lastTx.bg_color) eBg.value = String(lastTx.bg_color);
+      } else {
+        const kindEl = k ? document.querySelector(`input[name="asTxKind"][value="${k}"]`) : null;
+        if (kindEl) kindEl.checked = true;
+        if (txAmountEl && lastTx.amount != null) txAmountEl.value = String(lastTx.amount);
+        if (txCategoryEl && lastTx.category) txCategoryEl.value = String(lastTx.category);
+        if (txDateEl && lastTx.date) txDateEl.value = String(lastTx.date);
+        if (txNotesEl && lastTx.notes) txNotesEl.value = String(lastTx.notes);
+        if (txRecurringEl) txRecurringEl.checked = !!lastTx.recurring;
+        if (txBgColorEl && lastTx.bg_color) txBgColorEl.value = String(lastTx.bg_color);
+      }
     }
     if (txDateEl && !txDateEl.value) txDateEl.value = isoTodayLocal();
+    const expDateEl = document.getElementById("asExpTxDate");
+    if (expDateEl && !String(expDateEl.value || "").trim()) expDateEl.value = isoTodayLocal();
 
     if (document.getElementById("accountSetupWizard")) {
       let target = 0;
       const ws = Number(o.wizardStep);
-      if (Number.isFinite(ws) && ws >= 0 && ws <= 2) target = ws;
+      if (Number.isFinite(ws) && ws >= 0 && ws <= 3) target = ws;
       else if (o.step === "transactions" || (Array.isArray(o.transactions) && o.transactions.length)) target = 2;
       else if (o.account && o.account.name) target = 1;
       setAccountSetupWizardStep(target, { skipPersist: true });
+      if (target === 2 && document.getElementById("accountSetupWizardPanel2")) {
+        const wantForm =
+          String(o.step3Phase || "") === "form" ||
+          (Array.isArray(o.transactions) && o.transactions.length > 0);
+        if (wantForm) setAccountSetupStep3Phase("form");
+        else syncAccountSetupWizardShellButtons();
+      }
+      if (target === 3 && document.getElementById("accountSetupWizardPanel3")) {
+        if (String(o.expensePhase || "") === "form") setAccountSetupExpensePhase("form");
+        else syncAccountSetupWizardShellButtons();
+      }
       return;
     }
     const step = String(o.step || "").trim().toLowerCase();
@@ -597,6 +1051,17 @@ function showSignupPlanBanner() {
 function setBusy(isBusy) {
   if (!signupBtn) return;
   signupBtn.disabled = isBusy;
+  for (const id of [
+    "asTxSaveIncomeBtn",
+    "asTxAddMoreIncomeBtn",
+    "asTxCancelIncomeBtn",
+    "asExpSaveBtn",
+    "asExpAddMoreBtn",
+    "asExpCancelBtn",
+  ]) {
+    const el = document.getElementById(id);
+    if (el) el.disabled = isBusy;
+  }
   if (isAccountSetupPath()) return;
   signupBtn.textContent = isBusy ? "Creating..." : "Create Account";
 }
@@ -796,6 +1261,8 @@ void (async () => {
   if (isAccountSetupPath()) {
     const dateEl = document.getElementById("asTxDate");
     if (dateEl && !String(dateEl.value || "").trim()) dateEl.value = isoTodayLocal();
+    const expDateEl = document.getElementById("asExpTxDate");
+    if (expDateEl && !String(expDateEl.value || "").trim()) expDateEl.value = isoTodayLocal();
   }
   try {
     initAccountSetupTransactionUi();
@@ -825,9 +1292,22 @@ function onSignupPrimaryClick() {
           setCallout(signupCalloutEl, "Passwords do not match.", "error");
           return;
         }
-        lockAccountSetupWizardStepTransition();
-        setAccountSetupWizardStep(1);
-        document.getElementById("accountName")?.focus();
+        void (async () => {
+          if (signupBtn) signupBtn.disabled = true;
+          const chk = await request("/api/auth/check-email", "POST", { email });
+          if (signupBtn) signupBtn.disabled = false;
+          if (!chk.ok) {
+            setCallout(signupCalloutEl, messageFromFailure(chk, "Could not verify email. Try again."), "error");
+            return;
+          }
+          if (chk.data && chk.data.exists === true) {
+            openAccountSetupDuplicateEmailModal();
+            return;
+          }
+          lockAccountSetupWizardStepTransition();
+          setAccountSetupWizardStep(1);
+          document.getElementById("accountName")?.focus();
+        })();
         return;
       }
       if (st === 1) {
@@ -852,6 +1332,8 @@ function onSignupPrimaryClick() {
             JSON.stringify({
               ...rawDraft,
               wizardStep: 2,
+              step3Phase: "intro",
+              expensePhase: "intro",
               ...(gate.anyAccount
                 ? {
                     account: {
@@ -867,55 +1349,132 @@ function onSignupPrimaryClick() {
         } catch (_) {}
         lockAccountSetupWizardStepTransition();
         setAccountSetupWizardStep(2, { skipPersist: true });
-        document.getElementById("asTxAmount")?.focus();
+        setAccountSetupStep3Phase("intro");
+        document.querySelector('input[name="asRecurringIncomePref"]')?.focus();
         return;
       }
-      setCallout(signupCalloutEl, "", "");
-      try {
-        const rawDraft = readAccountSetupDraftRaw() || {};
-        const existing = Array.isArray(rawDraft.transactions) ? rawDraft.transactions : [];
-
-        const accountName = (document.getElementById("accountName")?.value || "").trim();
-        const accountStartingBalanceRaw = document.getElementById("accountStartingBalance")?.value || "";
-        const accountStartingBalance = toMoneyNumber(accountStartingBalanceRaw);
-        const accountStartingBalanceDate = String(document.getElementById("accountStartingBalanceDate")?.value || "").trim();
-
-        const gate = canAdvanceAccountSetupAccountStep({
-          accountName,
-          accountStartingBalanceRaw,
-          accountStartingBalance,
-          accountStartingBalanceDate,
-        });
-        if (!gate.ok) {
-          setCallout(signupCalloutEl, gate.message, "error");
-          setAccountSetupWizardStep(1);
+      if (st === 2) {
+        if (getAccountSetupStep3Phase() === "intro") {
+          const pref = document.querySelector('input[name="asRecurringIncomePref"]:checked');
+          const v = pref ? String(pref.value) : "";
+          if (!v) {
+            setCallout(signupCalloutEl, "Please choose Yes or Not Now.", "error");
+            return;
+          }
+          if (v === "not_now") {
+            setCallout(signupCalloutEl, "", "");
+            try {
+              const rawDraft = readAccountSetupDraftRaw() || {};
+              const existing = Array.isArray(rawDraft.transactions) ? rawDraft.transactions : [];
+              const accountName = (document.getElementById("accountName")?.value || "").trim();
+              const accountStartingBalanceRaw = document.getElementById("accountStartingBalance")?.value || "";
+              const accountStartingBalance = toMoneyNumber(accountStartingBalanceRaw);
+              const accountStartingBalanceDate = String(
+                document.getElementById("accountStartingBalanceDate")?.value || ""
+              ).trim();
+              const gate = canAdvanceAccountSetupAccountStep({
+                accountName,
+                accountStartingBalanceRaw,
+                accountStartingBalance,
+                accountStartingBalanceDate,
+              });
+              if (!gate.ok) {
+                setCallout(signupCalloutEl, gate.message, "error");
+                setAccountSetupWizardStep(1);
+                return;
+              }
+              sessionStorage.setItem(
+                BW_ACCOUNT_SETUP_DRAFT_KEY,
+                JSON.stringify({
+                  ...rawDraft,
+                  wizardStep: 3,
+                  step3Phase: "intro",
+                  expensePhase: "intro",
+                  ...(gate.anyAccount
+                    ? {
+                        account: {
+                          name: accountName,
+                          type: "checking",
+                          starting_balance: accountStartingBalance,
+                          starting_balance_date: accountStartingBalanceDate,
+                        },
+                      }
+                    : {}),
+                  transactions: existing,
+                })
+              );
+            } catch (_) {}
+            lockAccountSetupWizardStepTransition();
+            setAccountSetupWizardStep(3, { skipPersist: true });
+            setAccountSetupExpensePhase("intro");
+            document.querySelector('input[name="asRecurringExpensePref"]')?.focus();
+            return;
+          }
+          setAccountSetupStep3Phase("form");
+          document.getElementById("asTxAmount")?.focus();
           return;
         }
-
-        const parsed = readAccountSetupTransactionFromInputs();
-        const txs = parsed.ok ? [...existing, parsed.tx] : existing;
-
-        sessionStorage.setItem(
-          BW_ACCOUNT_SETUP_DRAFT_KEY,
-          JSON.stringify({
-            ...rawDraft,
-            wizardStep: 2,
-            ...(gate.anyAccount
-              ? {
-                  account: {
-                    name: accountName,
-                    type: "checking",
-                    starting_balance: accountStartingBalance,
-                    starting_balance_date: accountStartingBalanceDate,
-                  },
-                }
-              : {}),
-            transactions: txs,
-          })
-        );
-      } catch (_) {}
-      void doSignup();
-      return;
+        return;
+      }
+      if (st === 3) {
+        if (getAccountSetupExpensePhase() === "intro") {
+          const pref = document.querySelector('input[name="asRecurringExpensePref"]:checked');
+          const v = pref ? String(pref.value) : "";
+          if (!v) {
+            setCallout(signupCalloutEl, "Please choose Yes or Not Now.", "error");
+            return;
+          }
+          if (v === "not_now") {
+            setCallout(signupCalloutEl, "", "");
+            try {
+              const rawDraft = readAccountSetupDraftRaw() || {};
+              const existing = Array.isArray(rawDraft.transactions) ? rawDraft.transactions : [];
+              const accountName = (document.getElementById("accountName")?.value || "").trim();
+              const accountStartingBalanceRaw = document.getElementById("accountStartingBalance")?.value || "";
+              const accountStartingBalance = toMoneyNumber(accountStartingBalanceRaw);
+              const accountStartingBalanceDate = String(
+                document.getElementById("accountStartingBalanceDate")?.value || ""
+              ).trim();
+              const gate = canAdvanceAccountSetupAccountStep({
+                accountName,
+                accountStartingBalanceRaw,
+                accountStartingBalance,
+                accountStartingBalanceDate,
+              });
+              if (!gate.ok) {
+                setCallout(signupCalloutEl, gate.message, "error");
+                setAccountSetupWizardStep(1);
+                return;
+              }
+              sessionStorage.setItem(
+                BW_ACCOUNT_SETUP_DRAFT_KEY,
+                JSON.stringify({
+                  ...rawDraft,
+                  wizardStep: 3,
+                  expensePhase: "intro",
+                  ...(gate.anyAccount
+                    ? {
+                        account: {
+                          name: accountName,
+                          type: "checking",
+                          starting_balance: accountStartingBalance,
+                          starting_balance_date: accountStartingBalanceDate,
+                        },
+                      }
+                    : {}),
+                  transactions: existing,
+                })
+              );
+            } catch (_) {}
+            void doSignup();
+            return;
+          }
+          setAccountSetupExpensePhase("form");
+          document.getElementById("asExpTxAmount")?.focus();
+          return;
+        }
+        return;
+      }
     }
 
     if (getAccountSetupStep() === "account") {
@@ -964,12 +1523,35 @@ function onSignupPrimaryClick() {
 window.__bwSignup = onSignupPrimaryClick;
 if (signupBtn) signupBtn.addEventListener("click", onSignupPrimaryClick);
 if (addMoreTxBtn) addMoreTxBtn.addEventListener("click", addMoreTransactionsFromAccountSetup);
+document.getElementById("asTxSaveIncomeBtn")?.addEventListener("click", () => void accountSetupSaveIncomeClick());
+document.getElementById("asTxAddMoreIncomeBtn")?.addEventListener("click", () => addMoreTransactionsFromAccountSetup());
+document.getElementById("asTxCancelIncomeBtn")?.addEventListener("click", () => accountSetupCancelIncomeClick());
+document.getElementById("asExpSaveBtn")?.addEventListener("click", () => void accountSetupSaveExpenseClick());
+document.getElementById("asExpAddMoreBtn")?.addEventListener("click", () => addMoreExpensesFromAccountSetup());
+document.getElementById("asExpCancelBtn")?.addEventListener("click", () => accountSetupCancelExpenseClick());
 if (accountSetupBackBtn) {
   accountSetupBackBtn.addEventListener("click", () => {
     if (!isAccountSetupPath() || !document.getElementById("accountSetupWizard")) return;
     const s = getAccountSetupWizardStep();
     if (s <= 0) return;
     setCallout(signupCalloutEl, "", "");
+    if (s === 2 && getAccountSetupStep3Phase() === "form") {
+      accountSetupCancelIncomeClick();
+      return;
+    }
+    if (s === 3 && getAccountSetupExpensePhase() === "form") {
+      accountSetupCancelExpenseClick();
+      return;
+    }
+    if (s === 3) {
+      setAccountSetupWizardStep(2);
+      const raw = readAccountSetupDraftRaw() || {};
+      if (String(raw.step3Phase || "") === "form") setAccountSetupStep3Phase("form");
+      else setAccountSetupStep3Phase("intro");
+      if (getAccountSetupStep3Phase() === "intro") document.querySelector('input[name="asRecurringIncomePref"]')?.focus();
+      else document.getElementById("asTxAmount")?.focus();
+      return;
+    }
     setAccountSetupWizardStep(s - 1);
     if (s - 1 === 0) document.getElementById("email")?.focus();
     else document.getElementById("accountName")?.focus();
@@ -997,6 +1579,26 @@ function initAccountSetupTransactionUi() {
       clearBtn.addEventListener("click", () => {
         if (bgEl) bgEl.value = "";
         if (swatches) for (const b of swatches.querySelectorAll("button.cat-swatch")) b.classList.remove("is-active");
+      });
+    }
+    const expSwatches = document.getElementById("asExpTxColorSwatches");
+    const expBgEl = document.getElementById("asExpTxBgColor");
+    const expClearBtn = document.getElementById("asExpTxColorClear");
+    if (expSwatches) {
+      for (const btn of expSwatches.querySelectorAll("button.cat-swatch")) {
+        const bg = String(btn.getAttribute("data-bg") || "").trim();
+        if (bg) btn.style.background = bg;
+        btn.addEventListener("click", () => {
+          if (expBgEl) expBgEl.value = bg;
+          for (const b of expSwatches.querySelectorAll("button.cat-swatch")) b.classList.remove("is-active");
+          btn.classList.add("is-active");
+        });
+      }
+    }
+    if (expClearBtn) {
+      expClearBtn.addEventListener("click", () => {
+        if (expBgEl) expBgEl.value = "";
+        if (expSwatches) for (const b of expSwatches.querySelectorAll("button.cat-swatch")) b.classList.remove("is-active");
       });
     }
     setAccountSetupWizardStep(getAccountSetupWizardStep(), { skipPersist: true });

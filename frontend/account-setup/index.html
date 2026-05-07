@@ -48,12 +48,13 @@
             <span class="account-setup-wizard__dot is-active" data-wizard-dot="0" aria-current="step"></span>
             <span class="account-setup-wizard__dot" data-wizard-dot="1" aria-hidden="true"></span>
             <span class="account-setup-wizard__dot" data-wizard-dot="2" aria-hidden="true"></span>
+            <span class="account-setup-wizard__dot" data-wizard-dot="3" aria-hidden="true"></span>
           </div>
           <div class="card auth-section auth-section--open account-setup-wizard__shell">
             <div class="account-setup-wizard__viewport">
               <div class="account-setup-wizard__track" id="accountSetupWizardTrack">
                 <div
-                  class="account-setup-wizard__panel auth-section__body"
+                  class="account-setup-wizard__panel account-setup-wizard__panel--active auth-section__body"
                   id="accountSetupWizardPanel0"
                   role="tabpanel"
                   aria-label="Step 1: Email and password"
@@ -119,14 +120,31 @@
                   class="account-setup-wizard__panel auth-section__body"
                   id="accountSetupWizardPanel2"
                   role="tabpanel"
-                  aria-label="Step 3: Transactions"
+                  aria-label="Step 3: Recurring income"
                   aria-hidden="true"
                   inert
+                  data-step3-phase="intro"
                 >
+                  <div id="accountSetupWizardStep3Intro" class="account-setup-step3-intro">
+                    <p class="meta account-setup-step3-q">
+                      Do you want to add recurring income, such as paychecks?
+                    </p>
+                    <div class="account-setup-step3-radios" role="radiogroup" aria-label="Recurring income">
+                      <label class="account-setup-step3-radio">
+                        <input type="radio" name="asRecurringIncomePref" value="yes" />
+                        Yes
+                      </label>
+                      <label class="account-setup-step3-radio">
+                        <input type="radio" name="asRecurringIncomePref" value="not_now" />
+                        Not Now
+                      </label>
+                    </div>
+                  </div>
+                  <div id="accountSetupWizardStep3Form" class="account-setup-step3-form" hidden>
                   <div class="form-row-h">
                     <div class="form-row-h__label"><label>Type</label></div>
                     <div class="form-row-h__field">
-                      <div class="kind-toggle" role="radiogroup" aria-label="Transaction type">
+                      <div id="accountSetupKindToggle" class="kind-toggle" role="radiogroup" aria-label="Transaction type">
                         <label class="kind-opt"><input type="radio" name="asTxKind" value="expense" checked /> Expense</label>
                         <label class="kind-opt"><input type="radio" name="asTxKind" value="income" /> Income</label>
                       </div>
@@ -186,6 +204,102 @@
                       <input id="asTxNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
                     </div>
                   </div>
+                  </div>
+                </div>
+                <div
+                  class="account-setup-wizard__panel auth-section__body"
+                  id="accountSetupWizardPanel3"
+                  role="tabpanel"
+                  aria-label="Step 4: Recurring expenses"
+                  aria-hidden="true"
+                  inert
+                  data-expense-phase="intro"
+                >
+                  <div id="accountSetupWizardStep4Intro" class="account-setup-step3-intro">
+                    <p class="meta account-setup-step3-q">
+                      Do you want to add recurring expenses, such as mortgage or rent?
+                    </p>
+                    <div class="account-setup-step3-radios" role="radiogroup" aria-label="Recurring expenses">
+                      <label class="account-setup-step3-radio">
+                        <input type="radio" name="asRecurringExpensePref" value="yes" />
+                        Yes
+                      </label>
+                      <label class="account-setup-step3-radio">
+                        <input type="radio" name="asRecurringExpensePref" value="not_now" />
+                        Not Now
+                      </label>
+                    </div>
+                  </div>
+                  <div id="accountSetupWizardStep4Form" class="account-setup-step3-form" hidden>
+                    <div class="form-row-h">
+                      <div class="form-row-h__label"><label>Type</label></div>
+                      <div class="form-row-h__field">
+                        <div
+                          id="accountSetupExpenseKindToggle"
+                          class="kind-toggle account-setup-kind-toggle--expense-only"
+                          role="radiogroup"
+                          aria-label="Transaction type"
+                        >
+                          <label class="kind-opt"><input type="radio" name="asExpTxKind" value="expense" checked /> Expense</label>
+                          <label class="kind-opt"><input type="radio" name="asExpTxKind" value="income" /> Income</label>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="tx-add-vspace" aria-hidden="true"></div>
+                    <div class="form-row-h">
+                      <div class="form-row-h__label"><label for="asExpTxAmount">Amount</label></div>
+                      <div class="form-row-h__field">
+                        <div class="money-input">
+                          <span class="money-input__prefix" aria-hidden="true">$</span>
+                          <input id="asExpTxAmount" type="number" min="0" step="0.01" placeholder="0.00" />
+                        </div>
+                      </div>
+                    </div>
+                    <div class="tx-add-vspace" aria-hidden="true"></div>
+                    <div class="form-row-h">
+                      <div class="form-row-h__label"><label for="asExpTxCategory">Category</label></div>
+                      <div class="form-row-h__field">
+                        <input id="asExpTxCategory" type="text" placeholder="Type to filter…" />
+                      </div>
+                    </div>
+                    <div class="tx-add-vspace" aria-hidden="true"></div>
+                    <div class="cat-color-row" aria-label="Select color (optional)">
+                      <div class="cat-color-row__label">Select color (optional)</div>
+                      <div class="cat-color-row__swatches" id="asExpTxColorSwatches">
+                        <button type="button" class="cat-swatch" data-bg="#22d3ee" aria-label="Color 1"></button>
+                        <button type="button" class="cat-swatch" data-bg="#fbbf24" aria-label="Color 2"></button>
+                        <button type="button" class="cat-swatch" data-bg="#fb923c" aria-label="Color 3"></button>
+                        <button type="button" class="cat-swatch" data-bg="#a855f7" aria-label="Color 4"></button>
+                        <button type="button" class="cat-swatch" data-bg="#ef4444" aria-label="Color 5"></button>
+                        <button type="button" class="cat-swatch" data-bg="#fde047" aria-label="Color 6"></button>
+                        <button type="button" class="cat-swatch" data-bg="#06b6d4" aria-label="Color 7"></button>
+                        <button type="button" class="cat-swatch" data-bg="#9ca3af" aria-label="Color 8"></button>
+                        <button type="button" class="cat-swatch" data-bg="#94a3b8" aria-label="Color 9"></button>
+                        <button type="button" class="cat-swatch" data-bg="#c4b5fd" aria-label="Color 10"></button>
+                        <button type="button" class="cat-swatch" data-bg="#111827" aria-label="Color 11"></button>
+                        <button type="button" class="cat-swatch" data-bg="#22c55e" aria-label="Color 12"></button>
+                      </div>
+                      <button type="button" class="cat-color-row__clear secondary" id="asExpTxColorClear">Clear</button>
+                      <input type="hidden" id="asExpTxBgColor" value="" />
+                    </div>
+                    <div class="tx-add-vspace" aria-hidden="true"></div>
+                    <div class="form-row-h">
+                      <div class="form-row-h__label"><label for="asExpTxDate">Date</label></div>
+                      <div class="form-row-h__field"><input id="asExpTxDate" type="date" /></div>
+                    </div>
+                    <div class="tx-add-vspace tx-add-vspace--lg" aria-hidden="true"></div>
+                    <label class="reimbursable-field" for="asExpTxRecurring">
+                      <span class="reimbursable-field__label">Make this recurring?</span>
+                      <input id="asExpTxRecurring" type="checkbox" />
+                    </label>
+                    <div class="tx-add-vspace" aria-hidden="true"></div>
+                    <div class="form-row-h">
+                      <div class="form-row-h__label"><label for="asExpTxNotes">Notes</label></div>
+                      <div class="form-row-h__field">
+                        <input id="asExpTxNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -195,6 +309,24 @@
               </button>
               <button type="button" id="addMoreTxBtn" class="secondary" style="display: none">
                 Add More Transactions
+              </button>
+              <button type="button" id="asTxSaveIncomeBtn" class="top-nav__logout" style="display: none">
+                Save
+              </button>
+              <button type="button" id="asTxAddMoreIncomeBtn" class="secondary" style="display: none">
+                Add More Income
+              </button>
+              <button type="button" id="asTxCancelIncomeBtn" class="secondary" style="display: none">
+                Cancel
+              </button>
+              <button type="button" id="asExpSaveBtn" class="top-nav__logout" style="display: none">
+                Save
+              </button>
+              <button type="button" id="asExpAddMoreBtn" class="secondary" style="display: none">
+                Add More Expenses
+              </button>
+              <button type="button" id="asExpCancelBtn" class="secondary" style="display: none">
+                Cancel
               </button>
               <button type="button" id="signupBtn" class="top-nav__logout" onclick="window.__bwSignup && window.__bwSignup()">
                 Next
@@ -217,6 +349,27 @@
       </footer>
     </div>
 
-    <script src="../signup/signup.js?v=8"></script>
+    <div
+      id="accountSetupDuplicateEmailModal"
+      class="modal-overlay"
+      aria-hidden="true"
+      role="dialog"
+      aria-labelledby="accountSetupDuplicateEmailTitle"
+      aria-modal="true"
+    >
+      <div class="modal" role="document">
+        <h3 id="accountSetupDuplicateEmailTitle" class="sr-only">Email already registered</h3>
+        <p class="account-setup-duplicate-email__body">
+          we found an account with that email address.
+          <a href="/login.html">Login</a>
+          now
+        </p>
+        <div class="modal-actions">
+          <button type="button" class="secondary" id="accountSetupDuplicateEmailClose">OK</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="../signup/signup.js?v=12"></script>
   </body>
 </html>

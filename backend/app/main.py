@@ -746,6 +746,14 @@ class LoginIn(BaseModel):
     password: str
 
 
+class CheckEmailIn(BaseModel):
+    email: EmailStr
+
+
+class EmailExistsOut(BaseModel):
+    exists: bool
+
+
 class ContactIn(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     email: EmailStr
@@ -1892,6 +1900,14 @@ def _ensure_expected_variable_column() -> None:
         else:
             conn.execute(text("ALTER TABLE expected_transactions ADD COLUMN IF NOT EXISTS variable BOOLEAN NOT NULL DEFAULT FALSE"))
             conn.execute(text("UPDATE expected_transactions SET variable = COALESCE(variable, FALSE)"))
+
+
+@app.post("/api/auth/check-email", response_model=EmailExistsOut)
+def check_email_registered(payload: CheckEmailIn, db=Depends(get_db)):
+    """Return whether an account already uses this email (case-insensitive). Used before signup."""
+    key = str(payload.email).strip().lower()
+    existing = db.execute(select(User).where(func.lower(User.email) == key)).scalar_one_or_none()
+    return EmailExistsOut(exists=existing is not None)
 
 
 @app.post("/api/auth/register", status_code=status.HTTP_201_CREATED, response_model=RegisterOut)
