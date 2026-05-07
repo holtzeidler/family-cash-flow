@@ -1119,6 +1119,28 @@ async function accountSetupSaveExpenseClick() {
   void doSignup();
 }
 
+function hydrateAccountSetupSurveyFromDraft(o) {
+  if (!o || typeof o !== "object") return;
+  const wrap = document.getElementById("accountSetupWizardPanel4");
+  if (!wrap) return;
+  let opts = o.surveyHelpWith;
+  if (opts == null) return;
+  if (typeof opts === "string") opts = [opts];
+  if (!Array.isArray(opts) || !opts.length) return;
+  const buttons = [...wrap.querySelectorAll("[data-as-survey-opt]")];
+  for (const b of buttons) {
+    const k = String(b.getAttribute("data-as-survey-opt") || "");
+    const on = !!k && opts.includes(k);
+    b.classList.toggle("is-active", on);
+    b.setAttribute("aria-pressed", on ? "true" : "false");
+  }
+  const hasOther = opts.includes("other");
+  const otherWrap = document.getElementById("accountSetupSurveyOtherWrap");
+  const otherInput = document.getElementById("accountSetupSurveyOther");
+  if (otherWrap) otherWrap.hidden = !hasOther;
+  if (otherInput && o.surveyOther != null) otherInput.value = String(o.surveyOther);
+}
+
 function hydrateAccountSetupDraft() {
   if (!isAccountSetupPath()) return;
   let raw = "";
@@ -1210,6 +1232,7 @@ function hydrateAccountSetupDraft() {
         else if (o.account && o.account.name) target = 2;
       }
       setAccountSetupWizardStep(target, { skipPersist: true });
+      if (target === 1) hydrateAccountSetupSurveyFromDraft(o);
       if (target === 3 && document.getElementById("accountSetupWizardPanel2")) {
         const wantForm =
           String(o.step3Phase || "") === "form" ||
@@ -1553,14 +1576,16 @@ function onSignupPrimaryClick() {
         try {
           const wrap = document.getElementById("accountSetupWizardPanel4");
           const buttons = wrap ? [...wrap.querySelectorAll("[data-as-survey-opt]")] : [];
-          const active = buttons.find((b) => b.classList.contains("is-active"));
-          const opt = active ? String(active.getAttribute("data-as-survey-opt") || "") : "";
+          const selected = buttons
+            .filter((b) => b.classList.contains("is-active"))
+            .map((b) => String(b.getAttribute("data-as-survey-opt") || "").trim())
+            .filter(Boolean);
           const otherVal = String(document.getElementById("accountSetupSurveyOther")?.value || "").trim();
-          if (!opt) {
-            setCallout(signupCalloutEl, "Please choose an option.", "error");
+          if (!selected.length) {
+            setCallout(signupCalloutEl, "Please choose at least one option.", "error");
             return;
           }
-          if (opt === "other" && !otherVal) {
+          if (selected.includes("other") && !otherVal) {
             setCallout(signupCalloutEl, "Please type your answer for Other.", "error");
             document.getElementById("accountSetupSurveyOther")?.focus();
             return;
@@ -1572,8 +1597,8 @@ function onSignupPrimaryClick() {
               ...rawDraft,
               wizardFlowVersion: ACCOUNT_SETUP_WIZARD_FLOW_VERSION,
               wizardStep: 2,
-              surveyHelpWith: opt,
-              surveyOther: opt === "other" ? otherVal : "",
+              surveyHelpWith: selected,
+              surveyOther: selected.includes("other") ? otherVal : "",
             })
           );
         } catch (_) {}
@@ -1876,20 +1901,29 @@ for (const r of document.querySelectorAll('input[name="asRecurringExpensePref"]'
   });
 }
 
-// Account setup survey step: toggle Other write-in.
+// Account setup survey: multi-select toggles + Other field when "other" is selected.
 try {
   const p4 = document.getElementById("accountSetupWizardPanel4");
   if (p4) {
     const buttons = [...p4.querySelectorAll("[data-as-survey-opt]")];
     const otherWrap = document.getElementById("accountSetupSurveyOtherWrap");
     const otherInput = document.getElementById("accountSetupSurveyOther");
-    const setActive = (opt) => {
-      for (const b of buttons) b.classList.toggle("is-active", b.getAttribute("data-as-survey-opt") === opt);
-      if (otherWrap) otherWrap.hidden = opt !== "other";
-      if (opt === "other" && otherInput) otherInput.focus();
-      if (opt !== "other" && otherInput) otherInput.value = "";
+    const syncOtherWrap = () => {
+      const otherBtn = buttons.find((b) => String(b.getAttribute("data-as-survey-opt")) === "other");
+      const on = !!(otherBtn && otherBtn.classList.contains("is-active"));
+      if (otherWrap) otherWrap.hidden = !on;
+      if (!on && otherInput) otherInput.value = "";
     };
-    for (const b of buttons) b.addEventListener("click", () => setActive(b.getAttribute("data-as-survey-opt")));
+    for (const b of buttons) {
+      b.addEventListener("click", () => {
+        b.classList.toggle("is-active");
+        b.setAttribute("aria-pressed", b.classList.contains("is-active") ? "true" : "false");
+        syncOtherWrap();
+        if (String(b.getAttribute("data-as-survey-opt")) === "other" && b.classList.contains("is-active") && otherInput) {
+          otherInput.focus();
+        }
+      });
+    }
   }
 } catch (_) {}
 if (accountSetupBackBtn) {
@@ -1917,6 +1951,11 @@ if (accountSetupBackBtn) {
     }
     setAccountSetupWizardStep(s - 1);
     const ns = s - 1;
+    if (ns === 1) {
+      try {
+        hydrateAccountSetupSurveyFromDraft(readAccountSetupDraftRaw() || {});
+      } catch (_) {}
+    }
     if (ns === 0) document.getElementById("email")?.focus();
     else if (ns === 1) document.querySelector("[data-as-survey-opt]")?.focus();
     else document.getElementById("accountName")?.focus();
