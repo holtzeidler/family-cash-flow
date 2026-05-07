@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=200" />
+    <link rel="stylesheet" href="../styles.css?v=201" />
   </head>
   <body class="login-page signup-page account-setup-page">
     <div class="container">
@@ -134,27 +134,18 @@
                   class="account-setup-wizard__panel auth-section__body"
                   id="accountSetupWizardPanel2"
                   role="tabpanel"
-                  aria-label="Step 4: Recurring income"
+                  aria-label="Step 4: Transactions"
                   aria-hidden="true"
                   inert
                   data-step3-phase="intro"
                 >
                   <div id="accountSetupWizardStep3Intro" class="account-setup-step3-intro">
-                    <p class="meta account-setup-step3-q">
-                      Add your income
-                    </p>
-                    <p class="meta account-setup-step3-subq">
-                      Such as paychecks and reimbursements
-                    </p>
-                    <div class="account-setup-step3-radios" role="radiogroup" aria-label="Recurring income">
-                      <label class="account-setup-step3-radio">
-                        <input type="radio" name="asRecurringIncomePref" value="yes" />
-                        Yes
-                      </label>
-                      <label class="account-setup-step3-radio">
-                        <input type="radio" name="asRecurringIncomePref" value="not_now" />
-                        I’ll Do it Later
-                      </label>
+                    <p class="meta account-setup-step3-q">Do you want to add transactions?</p>
+                    <p class="meta account-setup-step3-subq">Such as paychecks, bills, and other recurring items</p>
+                    <div class="account-setup-tx-choice-row" role="group" aria-label="Add transactions or skip">
+                      <button type="button" class="top-nav__logout" id="asTxHubAddIncomeBtn">Add Income</button>
+                      <button type="button" class="top-nav__logout" id="asTxHubAddExpenseBtn">Add Expense</button>
+                      <button type="button" class="secondary" id="asTxHubSkipBtn">Skip for Now</button>
                     </div>
                   </div>
                   <div id="accountSetupWizardStep3Form" class="account-setup-step3-form" hidden>
@@ -284,24 +275,6 @@
                   inert
                   data-expense-phase="intro"
                 >
-                  <div id="accountSetupWizardStep4Intro" class="account-setup-step3-intro">
-                    <p class="meta account-setup-step3-q">
-                      Add Recurring Expenses
-                    </p>
-                    <p class="meta account-setup-step3-subq">
-                      Such as mortgage, rent, utilities, etc.
-                    </p>
-                    <div class="account-setup-step3-radios" role="radiogroup" aria-label="Recurring expenses">
-                      <label class="account-setup-step3-radio">
-                        <input type="radio" name="asRecurringExpensePref" value="yes" />
-                        Yes
-                      </label>
-                      <label class="account-setup-step3-radio">
-                        <input type="radio" name="asRecurringExpensePref" value="not_now" />
-                        I’ll Do it Later
-                      </label>
-                    </div>
-                  </div>
                   <div id="accountSetupWizardStep4Form" class="account-setup-step3-form" hidden>
                     <div class="form-row-h">
                       <div class="form-row-h__label"><label>Type</label></div>
@@ -521,6 +494,6 @@
       </div>
     </div>
 
-    <script src="../signup/signup.js?v=16"></script>
+    <script src="../signup/signup.js?v=17"></script>
   </body>
 </html>

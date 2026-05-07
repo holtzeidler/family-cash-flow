@@ -3497,6 +3497,21 @@ body.account-setup-page .account-setup-step3-radio input{
   height: 1.1rem;
   accent-color: var(--accent);
 }
+body.account-setup-page .account-setup-tx-choice-row{
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: stretch;
+  width: 100%;
+  max-width: 280px;
+  margin: 10px auto 0;
+}
+body.account-setup-page .account-setup-tx-choice-row .top-nav__logout,
+body.account-setup-page .account-setup-tx-choice-row .secondary{
+  width: 100%;
+  justify-content: center;
+  box-sizing: border-box;
+}
 
 /* Account setup: survey step */
 body.account-setup-page .account-setup-survey{
