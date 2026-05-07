@@ -1535,6 +1535,20 @@ document.getElementById("asTxCancelIncomeBtn")?.addEventListener("click", () => 
 document.getElementById("asExpSaveBtn")?.addEventListener("click", () => void accountSetupSaveExpenseClick());
 document.getElementById("asExpAddMoreBtn")?.addEventListener("click", () => addMoreExpensesFromAccountSetup());
 document.getElementById("asExpCancelBtn")?.addEventListener("click", () => accountSetupCancelExpenseClick());
+for (const r of document.querySelectorAll('input[name="asRecurringExpensePref"]')) {
+  r.addEventListener("change", () => {
+    if (!isAccountSetupPath() || !document.getElementById("accountSetupWizard")) return;
+    if (getAccountSetupWizardStep() !== 3) return;
+    if (getAccountSetupExpensePhase() !== "intro") return;
+    const pref = document.querySelector('input[name="asRecurringExpensePref"]:checked');
+    const v = pref ? String(pref.value) : "";
+    if (v === "yes") {
+      setCallout(signupCalloutEl, "", "");
+      setAccountSetupExpensePhase("form");
+      document.getElementById("asExpTxAmount")?.focus();
+    }
+  });
+}
 if (accountSetupBackBtn) {
   accountSetupBackBtn.addEventListener("click", () => {
     if (!isAccountSetupPath() || !document.getElementById("accountSetupWizard")) return;
