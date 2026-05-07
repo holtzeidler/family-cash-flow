@@ -131,6 +131,22 @@ const accountSetupBackBtn = document.getElementById("accountSetupBackBtn");
 const accountSetupSkipBtn = document.getElementById("accountSetupSkipBtn");
 
 const BW_ACCOUNT_SETUP_DRAFT_KEY = "bw_account_setup_draft";
+/** Bumped when step order changes; used to migrate persisted `wizardStep`. */
+const ACCOUNT_SETUP_WIZARD_FLOW_VERSION = 2;
+/** Wizard step (0–4) → `accountSetupWizardPanel{N}` DOM id suffix. Survey is step 1 → panel 4. */
+const ACCOUNT_SETUP_PANEL_FOR_STEP = [0, 4, 1, 2, 3];
+/** Pre–survey-as-step-1 layout: [email, checking, income, expense, survey] → new indices. */
+const LEGACY_ACCOUNT_SETUP_WIZARD_STEP_TO_NEW = [0, 2, 3, 4, 1];
+function normalizePersistedAccountSetupWizardStep(raw) {
+  const o = raw && typeof raw === "object" ? raw : {};
+  const v = Number(o.wizardFlowVersion);
+  const ws = Number(o.wizardStep);
+  if (v === ACCOUNT_SETUP_WIZARD_FLOW_VERSION) {
+    return Number.isFinite(ws) && ws >= 0 && ws <= 4 ? ws : 0;
+  }
+  if (Number.isFinite(ws) && ws >= 0 && ws <= 4) return LEGACY_ACCOUNT_SETUP_WIZARD_STEP_TO_NEW[ws];
+  return 0;
+}
 
 // Prefetch check-email during Step 0 so Enter→Next feels instant.
 const BW_EMAIL_CHECK_CACHE_MS = 5 * 60 * 1000;
@@ -189,8 +205,8 @@ function closeAccountSetupDuplicateEmailModal() {
 
 /**
  * Ignore extra primary-button activations right after a wizard step change.
- * A double-click on "Next" from step 0 would otherwise run step 1 with empty
- * account fields — which is valid — and skip straight to step 2.
+ * A double-click on "Next" from step 0 would otherwise run step 2 (checking) with empty
+ * account fields — which is valid — and skip straight to step 3.
  */
 let accountSetupWizardStepLockUntil = 0;
 function isAccountSetupWizardStepLocked() {
@@ -280,7 +296,7 @@ function syncAccountSetupWizardShellButtons() {
     if (el) el.style.display = "none";
   }
   if (addMoreTxBtn) addMoreTxBtn.style.display = "none";
-  if (accountSetupSkipBtn) accountSetupSkipBtn.style.display = s === 1 ? "inline-flex" : "none";
+  if (accountSetupSkipBtn) accountSetupSkipBtn.style.display = s === 2 ? "inline-flex" : "none";
 
   if (s < 2) {
     if (signupBtn) {
@@ -291,6 +307,14 @@ function syncAccountSetupWizardShellButtons() {
   }
 
   if (s === 2) {
+    if (signupBtn) {
+      signupBtn.style.display = "";
+      signupBtn.textContent = "Next";
+    }
+    return;
+  }
+
+  if (s === 3) {
     const phase = getAccountSetupStep3Phase();
     if (phase === "form") {
       if (saveInc) saveInc.style.display = "inline-flex";
@@ -306,7 +330,7 @@ function syncAccountSetupWizardShellButtons() {
     return;
   }
 
-  if (s === 3) {
+  if (s === 4) {
     const phase = getAccountSetupExpensePhase();
     if (phase === "form") {
       if (saveExp) saveExp.style.display = "inline-flex";
@@ -316,7 +340,7 @@ function syncAccountSetupWizardShellButtons() {
     } else {
       if (signupBtn) {
         signupBtn.style.display = "inline-flex";
-        signupBtn.textContent = "Continue";
+        signupBtn.textContent = "Create account";
       }
     }
   }
@@ -393,6 +417,7 @@ function persistAccountSetupWizardMeta(stepIndex) {
     const prev = readAccountSetupDraftRaw();
     const raw = prev && typeof prev === "object" && !Array.isArray(prev) ? { ...prev } : {};
     raw.wizardStep = stepIndex;
+    raw.wizardFlowVersion = ACCOUNT_SETUP_WIZARD_FLOW_VERSION;
     sessionStorage.setItem(BW_ACCOUNT_SETUP_DRAFT_KEY, JSON.stringify(raw));
   } catch (_) {}
 }
@@ -404,13 +429,14 @@ function setAccountSetupWizardStep(step, opts = {}) {
   if (!w || !track) return;
   const s = Math.min(4, Math.max(0, step));
   w.dataset.step = String(s);
+  const activePanelIndex = ACCOUNT_SETUP_PANEL_FOR_STEP[s];
   /* Show one panel at a time (avoid translateX(%): % is vs. track width and can misalign panels). */
   if (track.style.transform) track.style.removeProperty("transform");
 
   for (let i = 0; i < 5; i++) {
     const p = document.getElementById(`accountSetupWizardPanel${i}`);
     if (!p) continue;
-    const active = i === s;
+    const active = i === activePanelIndex;
     p.classList.toggle("account-setup-wizard__panel--active", active);
     p.setAttribute("aria-hidden", active ? "false" : "true");
     if (active) p.removeAttribute("inert");
@@ -433,16 +459,11 @@ function setAccountSetupWizardStep(step, opts = {}) {
 
   if (accountSetupBackBtn) accountSetupBackBtn.style.display = s > 0 ? "inline-flex" : "none";
   if (addMoreTxBtn) addMoreTxBtn.style.display = "none";
-  if (accountSetupSkipBtn) accountSetupSkipBtn.style.display = s === 1 ? "inline-flex" : "none";
-  if (signupBtn) {
-    if (s === 2 || s === 3) syncAccountSetupWizardShellButtons();
-    else if (s === 4) signupBtn.textContent = "Create account";
-    else signupBtn.textContent = "Next";
-  }
+  syncAccountSetupWizardShellButtons();
 
   if (!skipPersist) persistAccountSetupWizardMeta(s);
 
-  if (s < 2 && document.getElementById("accountSetupWizardPanel2")) {
+  if (s < 3 && document.getElementById("accountSetupWizardPanel2")) {
     const p2 = document.getElementById("accountSetupWizardPanel2");
     const intro = document.getElementById("accountSetupWizardStep3Intro");
     const form = document.getElementById("accountSetupWizardStep3Form");
@@ -452,7 +473,7 @@ function setAccountSetupWizardStep(step, opts = {}) {
     const kt = document.getElementById("accountSetupKindToggle");
     if (kt) kt.classList.remove("account-setup-kind-toggle--income-only");
   }
-  if (s < 3 && document.getElementById("accountSetupWizardPanel3")) {
+  if (s < 4 && document.getElementById("accountSetupWizardPanel3")) {
     const p3 = document.getElementById("accountSetupWizardPanel3");
     const intro3 = document.getElementById("accountSetupWizardStep4Intro");
     const form3 = document.getElementById("accountSetupWizardStep4Form");
@@ -474,7 +495,7 @@ function toMoneyNumber(raw) {
 function getAccountSetupStep() {
   if (!isAccountSetupPath()) return "account";
   if (document.getElementById("accountSetupWizard")) {
-    return getAccountSetupWizardStep() >= 2 ? "transactions" : "account";
+    return getAccountSetupWizardStep() >= 3 ? "transactions" : "account";
   }
   if (!accountSetupTransactionsSectionEl) return "account";
   return accountSetupTransactionsSectionEl.hidden ? "account" : "transactions";
@@ -483,8 +504,8 @@ function getAccountSetupStep() {
 function setAccountSetupStep(step) {
   if (!isAccountSetupPath()) return;
   if (document.getElementById("accountSetupWizard")) {
-    if (step === "transactions") setAccountSetupWizardStep(3);
-    else setAccountSetupWizardStep(1);
+    if (step === "transactions") setAccountSetupWizardStep(4);
+    else setAccountSetupWizardStep(2);
     return;
   }
   if (!accountSetupAccountSectionEl || !accountSetupTransactionsSectionEl) return;
@@ -771,7 +792,8 @@ function addMoreTransactionsFromAccountSetup() {
     BW_ACCOUNT_SETUP_DRAFT_KEY,
     JSON.stringify({
       ...rawDraft,
-      wizardStep: 2,
+      wizardFlowVersion: ACCOUNT_SETUP_WIZARD_FLOW_VERSION,
+      wizardStep: 3,
       step3Phase: "form",
       ...(gate.anyAccount
         ? {
@@ -818,7 +840,7 @@ async function accountSetupSaveIncomeClick() {
   });
   if (!gate.ok) {
     setCallout(signupCalloutEl, gate.message, "error");
-    setAccountSetupWizardStep(1);
+    setAccountSetupWizardStep(2);
     return;
   }
   const parsed = readAccountSetupTransactionFromInputs();
@@ -832,7 +854,8 @@ async function accountSetupSaveIncomeClick() {
       BW_ACCOUNT_SETUP_DRAFT_KEY,
       JSON.stringify({
         ...rawDraft,
-        wizardStep: 2,
+        wizardFlowVersion: ACCOUNT_SETUP_WIZARD_FLOW_VERSION,
+        wizardStep: 3,
         step3Phase: "form",
         ...(gate.anyAccount
           ? {
@@ -858,13 +881,14 @@ function advanceAccountSetupWizardToExpenseIntro() {
       BW_ACCOUNT_SETUP_DRAFT_KEY,
       JSON.stringify({
         ...rawDraft,
-        wizardStep: 3,
+        wizardFlowVersion: ACCOUNT_SETUP_WIZARD_FLOW_VERSION,
+        wizardStep: 4,
         expensePhase: "intro",
       })
     );
   } catch (_) {}
   lockAccountSetupWizardStepTransition();
-  setAccountSetupWizardStep(3, { skipPersist: true });
+  setAccountSetupWizardStep(4, { skipPersist: true });
   setAccountSetupExpensePhase("intro");
   document.querySelector('input[name="asRecurringExpensePref"]')?.focus();
 }
@@ -975,7 +999,7 @@ function addMoreExpensesFromAccountSetup() {
   });
   if (!gate.ok) {
     setCallout(signupCalloutEl, gate.message, "error");
-    setAccountSetupWizardStep(1);
+    setAccountSetupWizardStep(2);
     return;
   }
   const parsed = readAccountSetupExpenseTransactionFromInputs();
@@ -988,7 +1012,8 @@ function addMoreExpensesFromAccountSetup() {
     BW_ACCOUNT_SETUP_DRAFT_KEY,
     JSON.stringify({
       ...rawDraft,
-      wizardStep: 3,
+      wizardFlowVersion: ACCOUNT_SETUP_WIZARD_FLOW_VERSION,
+      wizardStep: 4,
       expensePhase: "form",
       ...(gate.anyAccount
         ? {
@@ -1034,7 +1059,7 @@ async function accountSetupSaveExpenseClick() {
   });
   if (!gate.ok) {
     setCallout(signupCalloutEl, gate.message, "error");
-    setAccountSetupWizardStep(1);
+    setAccountSetupWizardStep(2);
     return;
   }
   const parsed = readAccountSetupExpenseTransactionFromInputs();
@@ -1048,7 +1073,8 @@ async function accountSetupSaveExpenseClick() {
       BW_ACCOUNT_SETUP_DRAFT_KEY,
       JSON.stringify({
         ...rawDraft,
-        wizardStep: 3,
+        wizardFlowVersion: ACCOUNT_SETUP_WIZARD_FLOW_VERSION,
+        wizardStep: 4,
         expensePhase: "form",
         ...(gate.anyAccount
           ? {
@@ -1148,20 +1174,24 @@ function hydrateAccountSetupDraft() {
     // Transaction "Next Occurance" fields stay blank until the user sets them (see reset/hydrate paths).
 
     if (document.getElementById("accountSetupWizard")) {
-      let target = 0;
-      const ws = Number(o.wizardStep);
-      if (Number.isFinite(ws) && ws >= 0 && ws <= 3) target = ws;
-      else if (o.step === "transactions" || (Array.isArray(o.transactions) && o.transactions.length)) target = 2;
-      else if (o.account && o.account.name) target = 1;
+      let target = normalizePersistedAccountSetupWizardStep(o);
+      const wsRaw = o.wizardStep;
+      if (
+        (!Number.isFinite(Number(wsRaw)) || wsRaw === "" || wsRaw === undefined || wsRaw === null) &&
+        Number(o.wizardFlowVersion) !== ACCOUNT_SETUP_WIZARD_FLOW_VERSION
+      ) {
+        if (o.step === "transactions" || (Array.isArray(o.transactions) && o.transactions.length)) target = 3;
+        else if (o.account && o.account.name) target = 2;
+      }
       setAccountSetupWizardStep(target, { skipPersist: true });
-      if (target === 2 && document.getElementById("accountSetupWizardPanel2")) {
+      if (target === 3 && document.getElementById("accountSetupWizardPanel2")) {
         const wantForm =
           String(o.step3Phase || "") === "form" ||
           (Array.isArray(o.transactions) && o.transactions.length > 0);
         if (wantForm) setAccountSetupStep3Phase("form");
         else syncAccountSetupWizardShellButtons();
       }
-      if (target === 3 && document.getElementById("accountSetupWizardPanel3")) {
+      if (target === 4 && document.getElementById("accountSetupWizardPanel3")) {
         if (String(o.expensePhase || "") === "form") setAccountSetupExpensePhase("form");
         else syncAccountSetupWizardShellButtons();
       }
@@ -1476,11 +1506,45 @@ function onSignupPrimaryClick() {
           }
           lockAccountSetupWizardStepTransition();
           setAccountSetupWizardStep(1);
-          document.getElementById("accountName")?.focus();
+          document.querySelector("[data-as-survey-opt]")?.focus();
         })();
         return;
       }
       if (st === 1) {
+        setCallout(signupCalloutEl, "", "");
+        try {
+          const wrap = document.getElementById("accountSetupWizardPanel4");
+          const buttons = wrap ? [...wrap.querySelectorAll("[data-as-survey-opt]")] : [];
+          const active = buttons.find((b) => b.classList.contains("is-active"));
+          const opt = active ? String(active.getAttribute("data-as-survey-opt") || "") : "";
+          const otherVal = String(document.getElementById("accountSetupSurveyOther")?.value || "").trim();
+          if (!opt) {
+            setCallout(signupCalloutEl, "Please choose an option.", "error");
+            return;
+          }
+          if (opt === "other" && !otherVal) {
+            setCallout(signupCalloutEl, "Please type your answer for Other.", "error");
+            document.getElementById("accountSetupSurveyOther")?.focus();
+            return;
+          }
+          const rawDraft = readAccountSetupDraftRaw() || {};
+          sessionStorage.setItem(
+            BW_ACCOUNT_SETUP_DRAFT_KEY,
+            JSON.stringify({
+              ...rawDraft,
+              wizardFlowVersion: ACCOUNT_SETUP_WIZARD_FLOW_VERSION,
+              wizardStep: 2,
+              surveyHelpWith: opt,
+              surveyOther: opt === "other" ? otherVal : "",
+            })
+          );
+        } catch (_) {}
+        lockAccountSetupWizardStepTransition();
+        setAccountSetupWizardStep(2, { skipPersist: true });
+        document.getElementById("accountName")?.focus();
+        return;
+      }
+      if (st === 2) {
         const accountName = (document.getElementById("accountName")?.value || "").trim();
         const accountStartingBalanceRaw = document.getElementById("accountStartingBalance")?.value || "";
         const accountStartingBalance = toMoneyNumber(accountStartingBalanceRaw);
@@ -1501,7 +1565,8 @@ function onSignupPrimaryClick() {
             BW_ACCOUNT_SETUP_DRAFT_KEY,
             JSON.stringify({
               ...rawDraft,
-              wizardStep: 2,
+              wizardFlowVersion: ACCOUNT_SETUP_WIZARD_FLOW_VERSION,
+              wizardStep: 3,
               step3Phase: "intro",
               expensePhase: "intro",
               ...(gate.anyAccount
@@ -1518,12 +1583,12 @@ function onSignupPrimaryClick() {
           );
         } catch (_) {}
         lockAccountSetupWizardStepTransition();
-        setAccountSetupWizardStep(2, { skipPersist: true });
+        setAccountSetupWizardStep(3, { skipPersist: true });
         setAccountSetupStep3Phase("intro");
         document.querySelector('input[name="asRecurringIncomePref"]')?.focus();
         return;
       }
-      if (st === 2) {
+      if (st === 3) {
         if (getAccountSetupStep3Phase() === "intro") {
           const pref = document.querySelector('input[name="asRecurringIncomePref"]:checked');
           const v = pref ? String(pref.value) : "";
@@ -1550,14 +1615,15 @@ function onSignupPrimaryClick() {
               });
               if (!gate.ok) {
                 setCallout(signupCalloutEl, gate.message, "error");
-                setAccountSetupWizardStep(1);
+                setAccountSetupWizardStep(2);
                 return;
               }
               sessionStorage.setItem(
                 BW_ACCOUNT_SETUP_DRAFT_KEY,
                 JSON.stringify({
                   ...rawDraft,
-                  wizardStep: 3,
+                  wizardFlowVersion: ACCOUNT_SETUP_WIZARD_FLOW_VERSION,
+                  wizardStep: 4,
                   step3Phase: "intro",
                   expensePhase: "intro",
                   ...(gate.anyAccount
@@ -1575,7 +1641,7 @@ function onSignupPrimaryClick() {
               );
             } catch (_) {}
             lockAccountSetupWizardStepTransition();
-            setAccountSetupWizardStep(3, { skipPersist: true });
+            setAccountSetupWizardStep(4, { skipPersist: true });
             setAccountSetupExpensePhase("intro");
             document.querySelector('input[name="asRecurringExpensePref"]')?.focus();
             return;
@@ -1586,7 +1652,7 @@ function onSignupPrimaryClick() {
         }
         return;
       }
-      if (st === 3) {
+      if (st === 4) {
         if (getAccountSetupExpensePhase() === "intro") {
           const pref = document.querySelector('input[name="asRecurringExpensePref"]:checked');
           const v = pref ? String(pref.value) : "";
@@ -1613,13 +1679,14 @@ function onSignupPrimaryClick() {
               });
               if (!gate.ok) {
                 setCallout(signupCalloutEl, gate.message, "error");
-                setAccountSetupWizardStep(1);
+                setAccountSetupWizardStep(2);
                 return;
               }
               sessionStorage.setItem(
                 BW_ACCOUNT_SETUP_DRAFT_KEY,
                 JSON.stringify({
                   ...rawDraft,
+                  wizardFlowVersion: ACCOUNT_SETUP_WIZARD_FLOW_VERSION,
                   wizardStep: 4,
                   expensePhase: "intro",
                   ...(gate.anyAccount
@@ -1636,45 +1703,13 @@ function onSignupPrimaryClick() {
                 })
               );
             } catch (_) {}
-            lockAccountSetupWizardStepTransition();
-            setAccountSetupWizardStep(4, { skipPersist: true });
+            void doSignup();
             return;
           }
           setAccountSetupExpensePhase("form");
           document.getElementById("asExpTxAmount")?.focus();
           return;
         }
-        return;
-      }
-      if (st === 4) {
-        setCallout(signupCalloutEl, "", "");
-        try {
-          const wrap = document.getElementById("accountSetupWizardPanel4");
-          const buttons = wrap ? [...wrap.querySelectorAll("[data-as-survey-opt]")] : [];
-          const active = buttons.find((b) => b.classList.contains("is-active"));
-          const opt = active ? String(active.getAttribute("data-as-survey-opt") || "") : "";
-          const otherVal = String(document.getElementById("accountSetupSurveyOther")?.value || "").trim();
-          if (!opt) {
-            setCallout(signupCalloutEl, "Please choose an option.", "error");
-            return;
-          }
-          if (opt === "other" && !otherVal) {
-            setCallout(signupCalloutEl, "Please type your answer for Other.", "error");
-            document.getElementById("accountSetupSurveyOther")?.focus();
-            return;
-          }
-          const rawDraft = readAccountSetupDraftRaw() || {};
-          sessionStorage.setItem(
-            BW_ACCOUNT_SETUP_DRAFT_KEY,
-            JSON.stringify({
-              ...rawDraft,
-              wizardStep: 4,
-              surveyHelpWith: opt,
-              surveyOther: opt === "other" ? otherVal : "",
-            })
-          );
-        } catch (_) {}
-        void doSignup();
         return;
       }
     }
@@ -1726,16 +1761,22 @@ function onSignupPrimaryClick() {
 function onAccountSetupSkipAccountClick() {
   if (!isAccountSetupPath() || !document.getElementById("accountSetupWizard")) return;
   if (isAccountSetupWizardStepLocked()) return;
-  if (getAccountSetupWizardStep() !== 1) return;
+  if (getAccountSetupWizardStep() !== 2) return;
   setCallout(signupCalloutEl, "", "");
   try {
     const rawDraft = readAccountSetupDraftRaw() || {};
-    const next = { ...rawDraft, wizardStep: 2, step3Phase: "intro", expensePhase: "intro" };
+    const next = {
+      ...rawDraft,
+      wizardFlowVersion: ACCOUNT_SETUP_WIZARD_FLOW_VERSION,
+      wizardStep: 3,
+      step3Phase: "intro",
+      expensePhase: "intro",
+    };
     delete next.account;
     sessionStorage.setItem(BW_ACCOUNT_SETUP_DRAFT_KEY, JSON.stringify(next));
   } catch (_) {}
   lockAccountSetupWizardStepTransition();
-  setAccountSetupWizardStep(2, { skipPersist: true });
+  setAccountSetupWizardStep(3, { skipPersist: true });
   setAccountSetupStep3Phase("intro");
   document.querySelector('input[name="asRecurringIncomePref"]')?.focus();
 }
@@ -1762,7 +1803,7 @@ document.getElementById("asExpCancelBtn")?.addEventListener("click", () => accou
 for (const r of document.querySelectorAll('input[name="asRecurringIncomePref"]')) {
   r.addEventListener("change", () => {
     if (!isAccountSetupPath() || !document.getElementById("accountSetupWizard")) return;
-    if (getAccountSetupWizardStep() !== 2) return;
+    if (getAccountSetupWizardStep() !== 3) return;
     if (getAccountSetupStep3Phase() !== "intro") return;
     const pref = document.querySelector('input[name="asRecurringIncomePref"]:checked');
     const v = pref ? String(pref.value) : "";
@@ -1776,7 +1817,7 @@ for (const r of document.querySelectorAll('input[name="asRecurringIncomePref"]')
 for (const r of document.querySelectorAll('input[name="asRecurringExpensePref"]')) {
   r.addEventListener("change", () => {
     if (!isAccountSetupPath() || !document.getElementById("accountSetupWizard")) return;
-    if (getAccountSetupWizardStep() !== 3) return;
+    if (getAccountSetupWizardStep() !== 4) return;
     if (getAccountSetupExpensePhase() !== "intro") return;
     const pref = document.querySelector('input[name="asRecurringExpensePref"]:checked');
     const v = pref ? String(pref.value) : "";
@@ -1785,7 +1826,7 @@ for (const r of document.querySelectorAll('input[name="asRecurringExpensePref"]'
       // Pause briefly so the user sees their selection register first.
       window.setTimeout(() => {
         if (!isAccountSetupPath() || !document.getElementById("accountSetupWizard")) return;
-        if (getAccountSetupWizardStep() !== 3) return;
+        if (getAccountSetupWizardStep() !== 4) return;
         if (getAccountSetupExpensePhase() !== "intro") return;
         const pref2 = document.querySelector('input[name="asRecurringExpensePref"]:checked');
         const v2 = pref2 ? String(pref2.value) : "";
@@ -1819,16 +1860,16 @@ if (accountSetupBackBtn) {
     const s = getAccountSetupWizardStep();
     if (s <= 0) return;
     setCallout(signupCalloutEl, "", "");
-    if (s === 2 && getAccountSetupStep3Phase() === "form") {
+    if (s === 3 && getAccountSetupStep3Phase() === "form") {
       accountSetupCancelIncomeClick();
       return;
     }
-    if (s === 3 && getAccountSetupExpensePhase() === "form") {
+    if (s === 4 && getAccountSetupExpensePhase() === "form") {
       accountSetupCancelExpenseClick();
       return;
     }
-    if (s === 3) {
-      setAccountSetupWizardStep(2);
+    if (s === 4) {
+      setAccountSetupWizardStep(3);
       const raw = readAccountSetupDraftRaw() || {};
       if (String(raw.step3Phase || "") === "form") setAccountSetupStep3Phase("form");
       else setAccountSetupStep3Phase("intro");
@@ -1837,7 +1878,9 @@ if (accountSetupBackBtn) {
       return;
     }
     setAccountSetupWizardStep(s - 1);
-    if (s - 1 === 0) document.getElementById("email")?.focus();
+    const ns = s - 1;
+    if (ns === 0) document.getElementById("email")?.focus();
+    else if (ns === 1) document.querySelector("[data-as-survey-opt]")?.focus();
     else document.getElementById("accountName")?.focus();
   });
 }
