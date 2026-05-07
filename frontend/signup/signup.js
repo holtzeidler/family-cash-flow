@@ -173,6 +173,21 @@ async function precheckEmailExists(email) {
   return p;
 }
 
+/** Fire-and-forget request to reduce perceived latency when the hosting provider cold-starts the API. */
+function scheduleAuthApiWarmup() {
+  if (!isAccountSetupPath() || !document.getElementById("accountSetupWizard")) return;
+  const apiBase = getApiBase();
+  if (!apiBase) return;
+  window.setTimeout(() => {
+    void fetch(`${apiBase}/api/auth/check-email`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ email: "bw-api-warmup@example.com" }),
+    }).catch(() => {});
+  }, 80);
+}
+
 function openAccountSetupDuplicateEmailModal() {
   const el = document.getElementById("accountSetupDuplicateEmailModal");
   if (!el) return;
@@ -1453,6 +1468,7 @@ void (async () => {
       const params = new URLSearchParams(String(window.location.search || ""));
       if (params.get("fresh") === "1") sessionStorage.removeItem(BW_ACCOUNT_SETUP_DRAFT_KEY);
     } catch (_) {}
+    scheduleAuthApiWarmup();
   }
   hydrateAccountSetupDraft();
   try {
@@ -1468,14 +1484,18 @@ void (async () => {
     const emailEl = document.getElementById("email");
     if (emailEl) {
       let t = null;
-      const kick = () => {
+      const kickPrecheckIfStep0 = () => {
         if (!isAccountSetupPath() || !document.getElementById("accountSetupWizard")) return;
         if (getAccountSetupWizardStep() !== 0) return;
+        const em = String(emailEl.value || "").trim();
+        if (!em.includes("@") || em.length < 5) return;
         if (t) window.clearTimeout(t);
-        t = window.setTimeout(() => void precheckEmailExists(emailEl.value), 450);
+        t = window.setTimeout(() => void precheckEmailExists(em), 380);
       };
-      emailEl.addEventListener("input", kick);
+      emailEl.addEventListener("input", kickPrecheckIfStep0);
       emailEl.addEventListener("blur", () => void precheckEmailExists(emailEl.value));
+      document.getElementById("password")?.addEventListener("input", kickPrecheckIfStep0);
+      document.getElementById("password2")?.addEventListener("input", kickPrecheckIfStep0);
     }
   } catch (_) {}
 })();
@@ -1505,17 +1525,23 @@ function onSignupPrimaryClick() {
         }
         void (async () => {
           if (signupBtn) signupBtn.disabled = true;
+          setCallout(signupCalloutEl, "Checking email…", "pending");
           const cached = await precheckEmailExists(email);
-          const chk = cached && cached.ok ? { ok: true, data: { exists: cached.exists } } : await request("/api/auth/check-email", "POST", { email });
           if (signupBtn) signupBtn.disabled = false;
-          if (!chk.ok) {
-            setCallout(signupCalloutEl, messageFromFailure(chk, "Could not verify email. Try again."), "error");
+          if (!cached || !cached.ok) {
+            setCallout(
+              signupCalloutEl,
+              "Could not verify email. Check your connection and try again.",
+              "error"
+            );
             return;
           }
-          if (chk.data && chk.data.exists === true) {
+          if (cached.exists === true) {
+            setCallout(signupCalloutEl, "", "");
             openAccountSetupDuplicateEmailModal();
             return;
           }
+          setCallout(signupCalloutEl, "", "");
           lockAccountSetupWizardStepTransition();
           setAccountSetupWizardStep(1);
           document.querySelector("[data-as-survey-opt]")?.focus();
