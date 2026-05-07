@@ -3316,6 +3316,9 @@ body.account-setup-page .account-setup-trust-note{
   margin: 0 0 12px;
   text-align: center;
 }
+body.account-setup-page .account-setup-trust-note > * + *{
+  margin-top: 4px;
+}
 body.account-setup-page .account-setup-duplicate-email__body{
   margin: 0;
   font-size: 1rem;
@@ -4557,6 +4560,35 @@ body.account-setup-page .account-setup-step3-form .reimbursable-field__label{
   text-transform: uppercase;
   color: var(--muted);
   line-height: 1.3;
+}
+
+/* Account setup wizard: keep the "Make this recurring?" prompt and controls on one row */
+body.account-setup-page .tx-add-schedule-toolbar__left{
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+}
+body.account-setup-page .tx-add-schedule-question{
+  flex: 0 0 auto;
+}
+body.account-setup-page .tx-add-repeat-row{
+  flex: 1 1 auto;
+  margin-left: auto;
+  justify-content: flex-end;
+}
+body.account-setup-page .tx-add-schedule-question{
+  color: var(--muted);
+}
+body.account-setup-page .tx-add-schedule-toolbar__left .tx-add-schedule-field--end-date{
+  flex: 1 1 100%;
+  margin-top: 10px;
+  max-width: 16rem;
+}
+
+/* Account setup wizard: bring the repeat toolbar rule closer to color swatches */
+body.account-setup-page .tx-add-schedule-toolbar + .tx-add-vspace.tx-add-vspace--lg{
+  height: 10px;
 }
 /* Less air between the repeat toolbar rule and Notes */
 .tx-add-form .tx-add-schedule-toolbar + .tx-add-vspace.tx-add-vspace--lg{
