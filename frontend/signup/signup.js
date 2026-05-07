@@ -503,6 +503,13 @@ function isoTodayLocal() {
   return `${y}-${m}-${d}`;
 }
 
+function ensureAccountStartingBalanceDateDefault() {
+  if (!isAccountSetupPath()) return;
+  const el = document.getElementById("accountStartingBalanceDate");
+  if (!el) return;
+  if (!String(el.value || "").trim()) el.value = isoTodayLocal();
+}
+
 function canAdvanceAccountSetupAccountStep({ accountName, accountStartingBalanceRaw, accountStartingBalance, accountStartingBalanceDate }) {
   const anyAccount =
     !!accountName ||
@@ -1138,7 +1145,7 @@ function hydrateAccountSetupDraft() {
         if (txBgColorEl && lastTx.bg_color) txBgColorEl.value = String(lastTx.bg_color);
       }
     }
-    // Do not auto-populate account-setup dates; leave blank so browser shows locale placeholder (e.g. MM/DD/YYYY).
+    // Transaction "Next Occurance" fields stay blank until the user sets them (see reset/hydrate paths).
 
     if (document.getElementById("accountSetupWizard")) {
       let target = 0;
@@ -1407,9 +1414,11 @@ void (async () => {
     } catch (_) {}
   }
   hydrateAccountSetupDraft();
-  // Do not auto-populate account-setup dates; leave blank so browser shows locale placeholder (e.g. MM/DD/YYYY).
   try {
     initAccountSetupTransactionUi();
+  } catch (_) {}
+  try {
+    ensureAccountStartingBalanceDateDefault();
   } catch (_) {}
 
   // Warm up the email availability check while the user is still typing Step 0.
