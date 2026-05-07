@@ -514,7 +514,7 @@ function goToSignupFromAccountSetup() {
     const txCategory = (document.getElementById("asTxCategory")?.value || "").trim();
     const txDate = String(document.getElementById("asTxDate")?.value || "").trim();
     const txNotes = (document.getElementById("asTxNotes")?.value || "").trim();
-    const txRecurring = !!document.getElementById("asTxRecurring")?.checked;
+    const txRecurring = !!document.getElementById("asTxRepeats")?.checked;
     const txBgColor = String(document.getElementById("asTxBgColor")?.value || "").trim();
     const anyAccount =
       !!accountName ||
@@ -616,19 +616,41 @@ function readAccountSetupTransactionFromInputs() {
   const txCategory = (document.getElementById("asTxCategory")?.value || "").trim();
   const txDate = String(document.getElementById("asTxDate")?.value || "").trim();
   const txNotes = (document.getElementById("asTxNotes")?.value || "").trim();
-  const txRecurring = !!document.getElementById("asTxRecurring")?.checked;
+  const repeats = !!document.getElementById("asTxRepeats")?.checked;
+  const recurrence = String(document.getElementById("asTxRecurrence")?.value || "monthly").trim() || "monthly";
+  const endDate = String(document.getElementById("asTxEndDate")?.value || "").trim() || null;
+  const endCountRaw = String(document.getElementById("asTxEndCount")?.value || "").trim();
+  const endCount = endCountRaw === "" ? null : Number(endCountRaw);
   const txBgColor = String(document.getElementById("asTxBgColor")?.value || "").trim();
   const anyTx =
     (txAmountRaw != null && String(txAmountRaw).trim() !== "") ||
     !!txCategory ||
     !!txDate ||
     !!txNotes ||
-    txRecurring ||
+    repeats ||
     !!txBgColor;
   if (!anyTx) return { ok: false, empty: true, tx: null, message: "" };
   if (!txKind) return { ok: false, empty: false, tx: null, message: "Transaction type is required." };
   if (txAmount == null || txAmount <= 0) return { ok: false, empty: false, tx: null, message: "Transaction amount is required." };
   if (!txDate) return { ok: false, empty: false, tx: null, message: "Transaction date is required." };
+  if (repeats) {
+    if (endCount != null) {
+      if (!Number.isFinite(endCount) || endCount < 1 || Math.floor(endCount) !== endCount) {
+        return { ok: false, empty: false, tx: null, message: "Ends after must be a whole number ≥ 1" };
+      }
+    }
+    if (endDate != null && endDate !== "") {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(endDate)) {
+        return { ok: false, empty: false, tx: null, message: "Ends on must be a date" };
+      }
+      if (endDate < txDate) {
+        return { ok: false, empty: false, tx: null, message: "Ends on cannot be before the start date" };
+      }
+    }
+    if (endCount != null && endDate != null && endDate !== "") {
+      return { ok: false, empty: false, tx: null, message: "Provide only one of Ends after or Ends on" };
+    }
+  }
   return {
     ok: true,
     empty: false,
@@ -638,7 +660,10 @@ function readAccountSetupTransactionFromInputs() {
       category: txCategory,
       date: txDate,
       notes: txNotes,
-      recurring: txRecurring,
+      recurring: repeats,
+      recurrence: repeats ? recurrence : null,
+      end_date: repeats ? (endDate && endDate !== "" ? endDate : null) : null,
+      end_count: repeats ? (endDate && endDate !== "" ? null : endCount) : null,
       bg_color: txBgColor || null,
     },
     message: "",
@@ -650,12 +675,24 @@ function resetAccountSetupTransactionForm() {
   const categoryEl = document.getElementById("asTxCategory");
   const dateEl = document.getElementById("asTxDate");
   const notesEl = document.getElementById("asTxNotes");
-  const recurringEl = document.getElementById("asTxRecurring");
+  const repeatsEl = document.getElementById("asTxRepeats");
+  const recWrap = document.getElementById("asTxRecurrenceWrap");
+  const recSel = document.getElementById("asTxRecurrence");
+  const endCountEl = document.getElementById("asTxEndCount");
+  const endDateEl = document.getElementById("asTxEndDate");
+  const endCountWrap = document.getElementById("asTxEndCountWrap");
+  const endDateWrap = document.getElementById("asTxEndDateWrap");
   const bgEl = document.getElementById("asTxBgColor");
   if (amountEl) amountEl.value = "";
   if (categoryEl) categoryEl.value = "";
   if (notesEl) notesEl.value = "";
-  if (recurringEl) recurringEl.checked = false;
+  if (repeatsEl) repeatsEl.checked = false;
+  if (recWrap) recWrap.hidden = true;
+  if (recSel) recSel.value = "monthly";
+  if (endCountEl) endCountEl.value = "";
+  if (endDateEl) endDateEl.value = "";
+  if (endCountWrap) endCountWrap.hidden = true;
+  if (endDateWrap) endDateWrap.hidden = true;
   if (bgEl) bgEl.value = "";
   const swatches = document.getElementById("asTxColorSwatches");
   if (swatches) for (const b of swatches.querySelectorAll("button.cat-swatch")) b.classList.remove("is-active");
@@ -805,19 +842,41 @@ function readAccountSetupExpenseTransactionFromInputs() {
   const txCategory = (document.getElementById("asExpTxCategory")?.value || "").trim();
   const txDate = String(document.getElementById("asExpTxDate")?.value || "").trim();
   const txNotes = (document.getElementById("asExpTxNotes")?.value || "").trim();
-  const txRecurring = !!document.getElementById("asExpTxRecurring")?.checked;
+  const repeats = !!document.getElementById("asExpRepeats")?.checked;
+  const recurrence = String(document.getElementById("asExpRecurrence")?.value || "monthly").trim() || "monthly";
+  const endDate = String(document.getElementById("asExpEndDate")?.value || "").trim() || null;
+  const endCountRaw = String(document.getElementById("asExpEndCount")?.value || "").trim();
+  const endCount = endCountRaw === "" ? null : Number(endCountRaw);
   const txBgColor = String(document.getElementById("asExpTxBgColor")?.value || "").trim();
   const anyTx =
     (txAmountRaw != null && String(txAmountRaw).trim() !== "") ||
     !!txCategory ||
     !!txDate ||
     !!txNotes ||
-    txRecurring ||
+    repeats ||
     !!txBgColor;
   if (!anyTx) return { ok: false, empty: true, tx: null, message: "" };
   if (!txKind) return { ok: false, empty: false, tx: null, message: "Transaction type is required." };
   if (txAmount == null || txAmount <= 0) return { ok: false, empty: false, tx: null, message: "Transaction amount is required." };
   if (!txDate) return { ok: false, empty: false, tx: null, message: "Transaction date is required." };
+  if (repeats) {
+    if (endCount != null) {
+      if (!Number.isFinite(endCount) || endCount < 1 || Math.floor(endCount) !== endCount) {
+        return { ok: false, empty: false, tx: null, message: "Ends after must be a whole number ≥ 1" };
+      }
+    }
+    if (endDate != null && endDate !== "") {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(endDate)) {
+        return { ok: false, empty: false, tx: null, message: "Ends on must be a date" };
+      }
+      if (endDate < txDate) {
+        return { ok: false, empty: false, tx: null, message: "Ends on cannot be before the start date" };
+      }
+    }
+    if (endCount != null && endDate != null && endDate !== "") {
+      return { ok: false, empty: false, tx: null, message: "Provide only one of Ends after or Ends on" };
+    }
+  }
   return {
     ok: true,
     empty: false,
@@ -827,7 +886,10 @@ function readAccountSetupExpenseTransactionFromInputs() {
       category: txCategory,
       date: txDate,
       notes: txNotes,
-      recurring: txRecurring,
+      recurring: repeats,
+      recurrence: repeats ? recurrence : null,
+      end_date: repeats ? (endDate && endDate !== "" ? endDate : null) : null,
+      end_count: repeats ? (endDate && endDate !== "" ? null : endCount) : null,
       bg_color: txBgColor || null,
     },
     message: "",
@@ -839,12 +901,24 @@ function resetAccountSetupExpenseForm() {
   const categoryEl = document.getElementById("asExpTxCategory");
   const dateEl = document.getElementById("asExpTxDate");
   const notesEl = document.getElementById("asExpTxNotes");
-  const recurringEl = document.getElementById("asExpTxRecurring");
+  const repeatsEl = document.getElementById("asExpRepeats");
+  const recWrap = document.getElementById("asExpRecurrenceWrap");
+  const recSel = document.getElementById("asExpRecurrence");
+  const endCountEl = document.getElementById("asExpEndCount");
+  const endDateEl = document.getElementById("asExpEndDate");
+  const endCountWrap = document.getElementById("asExpEndCountWrap");
+  const endDateWrap = document.getElementById("asExpEndDateWrap");
   const bgEl = document.getElementById("asExpTxBgColor");
   if (amountEl) amountEl.value = "";
   if (categoryEl) categoryEl.value = "";
   if (notesEl) notesEl.value = "";
-  if (recurringEl) recurringEl.checked = false;
+  if (repeatsEl) repeatsEl.checked = false;
+  if (recWrap) recWrap.hidden = true;
+  if (recSel) recSel.value = "monthly";
+  if (endCountEl) endCountEl.value = "";
+  if (endDateEl) endDateEl.value = "";
+  if (endCountWrap) endCountWrap.hidden = true;
+  if (endDateWrap) endDateWrap.hidden = true;
   if (bgEl) bgEl.value = "";
   const swatches = document.getElementById("asExpTxColorSwatches");
   if (swatches) for (const b of swatches.querySelectorAll("button.cat-swatch")) b.classList.remove("is-active");
@@ -978,7 +1052,13 @@ function hydrateAccountSetupDraft() {
     const txCategoryEl = document.getElementById("asTxCategory");
     const txDateEl = document.getElementById("asTxDate");
     const txNotesEl = document.getElementById("asTxNotes");
-    const txRecurringEl = document.getElementById("asTxRecurring");
+    const txRecurringEl = document.getElementById("asTxRepeats");
+    const txRecSelEl = document.getElementById("asTxRecurrence");
+    const txEndDateEl = document.getElementById("asTxEndDate");
+    const txEndCountEl = document.getElementById("asTxEndCount");
+    const txRecWrapEl = document.getElementById("asTxRecurrenceWrap");
+    const txEndDateWrapEl = document.getElementById("asTxEndDateWrap");
+    const txEndCountWrapEl = document.getElementById("asTxEndCountWrap");
     const txBgColorEl = document.getElementById("asTxBgColor");
     if (tzEl && o.timeZone) tzEl.value = String(o.timeZone);
     if (o.account) {
@@ -996,13 +1076,26 @@ function hydrateAccountSetupDraft() {
         const eCat = document.getElementById("asExpTxCategory");
         const eDate = document.getElementById("asExpTxDate");
         const eNotes = document.getElementById("asExpTxNotes");
-        const eRec = document.getElementById("asExpTxRecurring");
+        const eRec = document.getElementById("asExpRepeats");
+        const eRecSel = document.getElementById("asExpRecurrence");
+        const eEndDate = document.getElementById("asExpEndDate");
+        const eEndCount = document.getElementById("asExpEndCount");
+        const eRecWrap = document.getElementById("asExpRecurrenceWrap");
+        const eEndDateWrap = document.getElementById("asExpEndDateWrap");
+        const eEndCountWrap = document.getElementById("asExpEndCountWrap");
         const eBg = document.getElementById("asExpTxBgColor");
         if (eAmt && lastTx.amount != null) eAmt.value = String(lastTx.amount);
         if (eCat && lastTx.category) eCat.value = String(lastTx.category);
         if (eDate && lastTx.date) eDate.value = String(lastTx.date);
         if (eNotes && lastTx.notes) eNotes.value = String(lastTx.notes);
         if (eRec) eRec.checked = !!lastTx.recurring;
+        const eOn = !!lastTx.recurring;
+        if (eRecWrap) eRecWrap.hidden = !eOn;
+        if (eRecSel && lastTx.recurrence) eRecSel.value = String(lastTx.recurrence);
+        if (eEndDateWrap) eEndDateWrap.hidden = !eOn;
+        if (eEndCountWrap) eEndCountWrap.hidden = !eOn;
+        if (eEndDate && lastTx.end_date) eEndDate.value = String(lastTx.end_date);
+        if (eEndCount && lastTx.end_count != null) eEndCount.value = String(lastTx.end_count);
         if (eBg && lastTx.bg_color) eBg.value = String(lastTx.bg_color);
       } else {
         const kindEl = k ? document.querySelector(`input[name="asTxKind"][value="${k}"]`) : null;
@@ -1012,6 +1105,13 @@ function hydrateAccountSetupDraft() {
         if (txDateEl && lastTx.date) txDateEl.value = String(lastTx.date);
         if (txNotesEl && lastTx.notes) txNotesEl.value = String(lastTx.notes);
         if (txRecurringEl) txRecurringEl.checked = !!lastTx.recurring;
+        const on = !!lastTx.recurring;
+        if (txRecWrapEl) txRecWrapEl.hidden = !on;
+        if (txRecSelEl && lastTx.recurrence) txRecSelEl.value = String(lastTx.recurrence);
+        if (txEndDateWrapEl) txEndDateWrapEl.hidden = !on;
+        if (txEndCountWrapEl) txEndCountWrapEl.hidden = !on;
+        if (txEndDateEl && lastTx.end_date) txEndDateEl.value = String(lastTx.end_date);
+        if (txEndCountEl && lastTx.end_count != null) txEndCountEl.value = String(lastTx.end_count);
         if (txBgColorEl && lastTx.bg_color) txBgColorEl.value = String(lastTx.bg_color);
       }
     }
@@ -1109,16 +1209,17 @@ async function maybeCreateFirstAccountFromDraft(draft) {
     const familyId = fams.data[0]?.id;
     if (!familyId) return;
     const a = draft.account;
-    await request(`/api/families/${encodeURIComponent(String(familyId))}/accounts`, "POST", {
+    const created = await request(`/api/families/${encodeURIComponent(String(familyId))}/accounts`, "POST", {
       name: a.name,
       type: a.type,
       starting_balance: a.starting_balance,
       starting_balance_date: a.starting_balance_date,
     });
+    if (created && created.ok && created.data && created.data.id) return Number(created.data.id);
   } catch (_) {}
 }
 
-async function maybeCreateFirstTransactionFromDraft(draft) {
+async function maybeCreateFirstTransactionFromDraft(draft, createdAccountId) {
   try {
     if (!draft) return;
     const fams = await request("/api/families", "GET");
@@ -1130,17 +1231,38 @@ async function maybeCreateFirstTransactionFromDraft(draft) {
       const description = (t.category || "").trim() || "Transaction";
       const amount = Number(t.amount);
       if (!Number.isFinite(amount) || amount <= 0) continue;
-      await request(`/api/families/${encodeURIComponent(String(familyId))}/transactions`, "POST", {
-        date: t.date,
-        description,
-        notes: t.notes ? t.notes : null,
-        kind: t.kind,
-        amount,
-        category_id: null,
-        fg_color: null,
-        bg_color: t.bg_color ? t.bg_color : null,
-        reimbursable: false,
-      });
+      if (t.recurring) {
+        const accountId = Number(createdAccountId);
+        if (!Number.isFinite(accountId) || accountId <= 0) continue;
+        await request(`/api/families/${encodeURIComponent(String(familyId))}/expected-transactions`, "POST", {
+          account_id: accountId,
+          start_date: t.date,
+          end_date: t.end_date || null,
+          end_count: t.end_date ? null : t.end_count ?? null,
+          recurrence: t.recurrence || "monthly",
+          second_day_of_month: null,
+          description,
+          notes: t.notes ? t.notes : null,
+          kind: t.kind,
+          amount,
+          variable: false,
+          category_id: null,
+          bg_color: t.bg_color ? t.bg_color : null,
+          fg_color: null,
+        });
+      } else {
+        await request(`/api/families/${encodeURIComponent(String(familyId))}/transactions`, "POST", {
+          date: t.date,
+          description,
+          notes: t.notes ? t.notes : null,
+          kind: t.kind,
+          amount,
+          category_id: null,
+          fg_color: null,
+          bg_color: t.bg_color ? t.bg_color : null,
+          reimbursable: false,
+        });
+      }
     }
   } catch (_) {}
 }
@@ -1196,8 +1318,8 @@ async function doSignup() {
     } catch (_) {}
 
     // If the user entered a starter account during setup, create it now.
-    await maybeCreateFirstAccountFromDraft(draft);
-    await maybeCreateFirstTransactionFromDraft(draft);
+    const createdAccountId = await maybeCreateFirstAccountFromDraft(draft);
+    await maybeCreateFirstTransactionFromDraft(draft, createdAccountId);
 
     try {
       sessionStorage.removeItem(BW_ACCOUNT_SETUP_DRAFT_KEY);
@@ -1633,6 +1755,48 @@ function initAccountSetupTransactionUi() {
         if (swatches) for (const b of swatches.querySelectorAll("button.cat-swatch")) b.classList.remove("is-active");
       });
     }
+
+    function bindRepeatsUi(prefix) {
+      const repeatsEl = document.getElementById(prefix + "Repeats");
+      const recWrap = document.getElementById(prefix + "RecurrenceWrap");
+      const recSel = document.getElementById(prefix + "Recurrence");
+      const endCountWrap = document.getElementById(prefix + "EndCountWrap");
+      const endCountEl = document.getElementById(prefix + "EndCount");
+      const endDateWrap = document.getElementById(prefix + "EndDateWrap");
+      const endDateEl = document.getElementById(prefix + "EndDate");
+      if (!repeatsEl) return;
+
+      const update = () => {
+        const on = !!repeatsEl.checked;
+        if (recWrap) recWrap.hidden = !on;
+        if (recSel) recSel.disabled = !on;
+        if (endCountWrap) endCountWrap.hidden = !on;
+        if (endDateWrap) endDateWrap.hidden = !on;
+        if (endCountEl) {
+          if (!on) endCountEl.value = "";
+          endCountEl.disabled = !on;
+        }
+        if (endDateEl) {
+          if (!on) endDateEl.value = "";
+          endDateEl.disabled = !on;
+        }
+      };
+
+      repeatsEl.addEventListener("change", update);
+      update();
+
+      if (endCountEl && endDateEl) {
+        endCountEl.addEventListener("input", () => {
+          if (String(endCountEl.value || "").trim()) endDateEl.value = "";
+        });
+        endDateEl.addEventListener("input", () => {
+          if (String(endDateEl.value || "").trim()) endCountEl.value = "";
+        });
+      }
+    }
+
+    bindRepeatsUi("asTx");
+    bindRepeatsUi("asExp");
     const expSwatches = document.getElementById("asExpTxColorSwatches");
     const expBgEl = document.getElementById("asExpTxBgColor");
     const expClearBtn = document.getElementById("asExpTxColorClear");

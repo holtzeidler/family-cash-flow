@@ -164,17 +164,53 @@
                   <div class="form-row-h">
                     <div class="form-row-h__label"><label for="asTxCategory">Category</label></div>
                     <div class="form-row-h__field">
-                      <input id="asTxCategory" type="text" placeholder="Type to filter…" />
+                      <input id="asTxCategory" type="text" placeholder="Type to filter…" list="accountSetupDefaultCategories" />
                     </div>
                   </div>
                   <div class="tx-add-vspace" aria-hidden="true"></div>
+                  <div class="form-row-h">
+                    <div class="form-row-h__label"><label for="asTxDate">Date</label></div>
+                    <div class="form-row-h__field"><input id="asTxDate" type="date" /></div>
+                  </div>
+                  <div class="tx-add-vspace tx-add-vspace--lg" aria-hidden="true"></div>
+                  <div class="tx-add-schedule-toolbar" aria-label="Repeat and schedule">
+                    <div class="tx-add-schedule-toolbar__left">
+                      <div class="tx-add-schedule-question">Make this recurring?</div>
+                      <div class="tx-add-repeat-row">
+                        <label class="tx-add-repeat-yes">
+                          <input id="asTxRepeats" type="checkbox" />
+                          <span class="sr-only">Yes</span>
+                        </label>
+                        <div id="asTxRecurrenceWrap" class="tx-add-recurrence-inline" hidden>
+                          <span class="tx-add-recurrence-inline__every">every</span>
+                          <select id="asTxRecurrence" class="tx-add-recurrence-select" title="How often this repeats">
+                            <option value="monthly" selected>month</option>
+                            <option value="weekly">week</option>
+                            <option value="semiannual">6 months</option>
+                            <option value="yearly">year</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div id="asTxEndDateWrap" class="tx-add-schedule-field tx-add-schedule-field--end-date" hidden>
+                        <label for="asTxEndDate" title="Optional. End date for this recurring transaction. Blank = never ends.">Ends on</label>
+                        <input id="asTxEndDate" type="date" title="Optional. Last date this schedule can occur." />
+                      </div>
+                    </div>
+                    <div class="tx-add-schedule-toolbar__right">
+                      <div id="asTxEndCountWrap" class="tx-add-schedule-field tx-add-schedule-field--end-count" hidden>
+                        <label for="asTxEndCount" title="Optional. Number of times this recurring transaction happens. Blank = never ends.">Ends after</label>
+                        <input id="asTxEndCount" type="number" min="1" step="1" placeholder="e.g. 12" title="Optional. Total number of occurrences." />
+                        <span class="tx-add-field-hint">occurrences</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="tx-add-vspace tx-add-vspace--lg" aria-hidden="true"></div>
                   <div class="cat-color-row" aria-label="Select color (optional)">
                     <div class="cat-color-row__label">Select color (optional)</div>
                     <div class="cat-color-row__swatches" id="asTxColorSwatches">
                       <button type="button" class="cat-swatch" data-bg="#22d3ee" aria-label="Color 1"></button>
                       <button type="button" class="cat-swatch" data-bg="#fbbf24" aria-label="Color 2"></button>
                       <button type="button" class="cat-swatch" data-bg="#fb923c" aria-label="Color 3"></button>
-                      <button type="button" class="cat-swatch" data-bg="#a855f7" aria-label="Color 4"></button>
                       <button type="button" class="cat-swatch" data-bg="#ef4444" aria-label="Color 5"></button>
                       <button type="button" class="cat-swatch" data-bg="#fde047" aria-label="Color 6"></button>
                       <button type="button" class="cat-swatch" data-bg="#06b6d4" aria-label="Color 7"></button>
@@ -187,16 +223,6 @@
                     <button type="button" class="cat-color-row__clear secondary" id="asTxColorClear">Clear</button>
                     <input type="hidden" id="asTxBgColor" value="" />
                   </div>
-                  <div class="tx-add-vspace" aria-hidden="true"></div>
-                  <div class="form-row-h">
-                    <div class="form-row-h__label"><label for="asTxDate">Date</label></div>
-                    <div class="form-row-h__field"><input id="asTxDate" type="date" /></div>
-                  </div>
-                  <div class="tx-add-vspace tx-add-vspace--lg" aria-hidden="true"></div>
-                  <label class="reimbursable-field" for="asTxRecurring">
-                    <span class="reimbursable-field__label">Make this recurring?</span>
-                    <input id="asTxRecurring" type="checkbox" />
-                  </label>
                   <div class="tx-add-vspace" aria-hidden="true"></div>
                   <div class="form-row-h">
                     <div class="form-row-h__label"><label for="asTxNotes">Notes</label></div>
@@ -262,17 +288,53 @@
                     <div class="form-row-h">
                       <div class="form-row-h__label"><label for="asExpTxCategory">Category</label></div>
                       <div class="form-row-h__field">
-                        <input id="asExpTxCategory" type="text" placeholder="Type to filter…" />
+                        <input id="asExpTxCategory" type="text" placeholder="Type to filter…" list="accountSetupDefaultCategories" />
                       </div>
                     </div>
                     <div class="tx-add-vspace" aria-hidden="true"></div>
+                    <div class="form-row-h">
+                      <div class="form-row-h__label"><label for="asExpTxDate">Date</label></div>
+                      <div class="form-row-h__field"><input id="asExpTxDate" type="date" /></div>
+                    </div>
+                    <div class="tx-add-vspace tx-add-vspace--lg" aria-hidden="true"></div>
+                    <div class="tx-add-schedule-toolbar" aria-label="Repeat and schedule">
+                      <div class="tx-add-schedule-toolbar__left">
+                        <div class="tx-add-schedule-question">Make this recurring?</div>
+                        <div class="tx-add-repeat-row">
+                          <label class="tx-add-repeat-yes">
+                            <input id="asExpRepeats" type="checkbox" />
+                            <span class="sr-only">Yes</span>
+                          </label>
+                          <div id="asExpRecurrenceWrap" class="tx-add-recurrence-inline" hidden>
+                            <span class="tx-add-recurrence-inline__every">every</span>
+                            <select id="asExpRecurrence" class="tx-add-recurrence-select" title="How often this repeats">
+                              <option value="monthly" selected>month</option>
+                              <option value="weekly">week</option>
+                              <option value="semiannual">6 months</option>
+                              <option value="yearly">year</option>
+                            </select>
+                          </div>
+                        </div>
+                        <div id="asExpEndDateWrap" class="tx-add-schedule-field tx-add-schedule-field--end-date" hidden>
+                          <label for="asExpEndDate" title="Optional. End date for this recurring transaction. Blank = never ends.">Ends on</label>
+                          <input id="asExpEndDate" type="date" title="Optional. Last date this schedule can occur." />
+                        </div>
+                      </div>
+                      <div class="tx-add-schedule-toolbar__right">
+                        <div id="asExpEndCountWrap" class="tx-add-schedule-field tx-add-schedule-field--end-count" hidden>
+                          <label for="asExpEndCount" title="Optional. Number of times this recurring transaction happens. Blank = never ends.">Ends after</label>
+                          <input id="asExpEndCount" type="number" min="1" step="1" placeholder="e.g. 12" title="Optional. Total number of occurrences." />
+                          <span class="tx-add-field-hint">occurrences</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="tx-add-vspace tx-add-vspace--lg" aria-hidden="true"></div>
                     <div class="cat-color-row" aria-label="Select color (optional)">
                       <div class="cat-color-row__label">Select color (optional)</div>
                       <div class="cat-color-row__swatches" id="asExpTxColorSwatches">
                         <button type="button" class="cat-swatch" data-bg="#22d3ee" aria-label="Color 1"></button>
                         <button type="button" class="cat-swatch" data-bg="#fbbf24" aria-label="Color 2"></button>
                         <button type="button" class="cat-swatch" data-bg="#fb923c" aria-label="Color 3"></button>
-                        <button type="button" class="cat-swatch" data-bg="#a855f7" aria-label="Color 4"></button>
                         <button type="button" class="cat-swatch" data-bg="#ef4444" aria-label="Color 5"></button>
                         <button type="button" class="cat-swatch" data-bg="#fde047" aria-label="Color 6"></button>
                         <button type="button" class="cat-swatch" data-bg="#06b6d4" aria-label="Color 7"></button>
@@ -285,16 +347,6 @@
                       <button type="button" class="cat-color-row__clear secondary" id="asExpTxColorClear">Clear</button>
                       <input type="hidden" id="asExpTxBgColor" value="" />
                     </div>
-                    <div class="tx-add-vspace" aria-hidden="true"></div>
-                    <div class="form-row-h">
-                      <div class="form-row-h__label"><label for="asExpTxDate">Date</label></div>
-                      <div class="form-row-h__field"><input id="asExpTxDate" type="date" /></div>
-                    </div>
-                    <div class="tx-add-vspace tx-add-vspace--lg" aria-hidden="true"></div>
-                    <label class="reimbursable-field" for="asExpTxRecurring">
-                      <span class="reimbursable-field__label">Make this recurring?</span>
-                      <input id="asExpTxRecurring" type="checkbox" />
-                    </label>
                     <div class="tx-add-vspace" aria-hidden="true"></div>
                     <div class="form-row-h">
                       <div class="form-row-h__label"><label for="asExpTxNotes">Notes</label></div>
@@ -340,7 +392,8 @@
 
         <div style="height:10px;"></div>
         <div class="meta account-setup-trust-note">
-          No spam. No credit check. Secure setup.
+          <div>Takes just a few minutes to get started.</div>
+          <div>No bank connection required.</div>
         </div>
       </div>
 
@@ -372,6 +425,34 @@
         </div>
       </div>
     </div>
+
+    <datalist id="accountSetupDefaultCategories">
+      <option value="Electric"></option>
+      <option value="Internet &amp; Cable"></option>
+      <option value="Gas"></option>
+      <option value="Water"></option>
+      <option value="Cell Phone"></option>
+      <option value="Car Loan"></option>
+      <option value="Mortgage"></option>
+      <option value="Home Maintenance"></option>
+      <option value="Transfers"></option>
+      <option value="Credit Card Payment"></option>
+      <option value="Reimburseable Expense"></option>
+      <option value="Office Supplies"></option>
+      <option value="Taxes"></option>
+      <option value="Fees"></option>
+      <option value="Investment"></option>
+      <option value="Loan Repayment"></option>
+      <option value="Insurance"></option>
+      <option value="Cash &amp; ATM"></option>
+      <option value="Charity"></option>
+      <option value="Gifts"></option>
+      <option value="Paycheck"></option>
+      <option value="Reimbursement"></option>
+      <option value="Check"></option>
+      <option value="Miscellaneous"></option>
+      <option value="Uncategorized"></option>
+    </datalist>
 
     <script src="../signup/signup.js?v=12"></script>
   </body>

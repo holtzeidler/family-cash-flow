@@ -201,7 +201,7 @@ body.landing-page .landing-preview__note{
 }
 body.landing-page .landing-preview__mock.card{
   grid-area: mock;
-  width: min(608px, 100%);
+  width: min(560px, 100%);
   margin-left: -8px;
   background: var(--cal-surface);
   border: 1px solid rgba(0,0,0,0.10);
@@ -304,6 +304,7 @@ body.landing-page .landing-preview__mock.card{
   background: linear-gradient(180deg, rgba(11,61,46,0.06), rgba(0,0,0,0.01));
   border: 1px solid rgba(0,0,0,0.08);
   padding: 6px 8px;
+  margin-left: -6px;
 }
 .landing-mock__svg{
   display: block;
@@ -355,6 +356,10 @@ body.landing-page .landing-preview__mock.card{
   border-radius: 8px;
   border: 1px solid rgba(0,0,0,0.08);
   background: rgba(0,0,0,0.02);
+}
+/* Nudge the right-side dates left a bit */
+.landing-mock__list li > span:last-child{
+  padding-right: 8px;
 }
 .landing-mock__low{
   padding: 10px 10px;
@@ -3257,7 +3262,8 @@ body.login-page.signup-page #password2{
 /* Account setup: sliding step wizard */
 body.account-setup-page .account-setup-wizard{
   width: 100%;
-  max-width: min(620px, 100%);
+  /* Slightly wider so color swatches fit without clipping */
+  max-width: min(760px, 100%);
   margin-left: auto;
   margin-right: auto;
 }
@@ -3360,7 +3366,7 @@ body.account-setup-page #accountSetupWizardPanel2{
 
 /* Step 2: nudge content down for breathing room */
 body.account-setup-page #accountSetupWizardPanel1.account-setup-wizard__panel{
-  padding-top: 20px;
+  padding-top: 28px;
 }
 
 /* Account setup: stacked accordion cards (legacy) */
@@ -4530,6 +4536,27 @@ body.plans-page .container > .grid{
 }
 .tx-add-form .tx-add-vspace--sm{
   height: 14px;
+}
+
+/* Account setup wizard: slightly more breathing room between fields */
+body.account-setup-page .tx-add-vspace{
+  height: 20px;
+}
+body.account-setup-page .tx-add-vspace--lg{
+  height: 26px;
+}
+
+/* Account setup wizard: add space above "Make this recurring?" */
+body.account-setup-page .account-setup-step3-form .reimbursable-field{
+  margin-top: 8px;
+}
+body.account-setup-page .account-setup-step3-form .reimbursable-field__label{
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  line-height: 1.3;
 }
 /* Less air between the repeat toolbar rule and Notes */
 .tx-add-form .tx-add-schedule-toolbar + .tx-add-vspace.tx-add-vspace--lg{

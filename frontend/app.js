@@ -3895,6 +3895,23 @@ async function loadMe() {
   state.isPlatformAdmin = !!data.is_platform_admin;
   const adminLink = document.getElementById("platformAdminLink");
   if (adminLink) adminLink.hidden = !state.isPlatformAdmin;
+
+  // Hide admin-only tabs for non-admin users (and avoid a flash by defaulting hidden in HTML).
+  const tv = document.getElementById("navTransactionView");
+  const rv = document.getElementById("navReportsView");
+  if (tv) tv.hidden = !state.isPlatformAdmin;
+  if (rv) rv.hidden = !state.isPlatformAdmin;
+  for (const el of document.querySelectorAll(".admin-only-tab")) {
+    el.hidden = !state.isPlatformAdmin;
+  }
+
+  // If a non-admin hits a restricted page directly, send them back to Calendar.
+  try {
+    const p = String(location.pathname || "");
+    if (!state.isPlatformAdmin && (p.startsWith("/transactions") || p.startsWith("/reports"))) {
+      location.replace("/calendar");
+    }
+  } catch (_) {}
 }
 
 function syncActiveFamilyFlags() {

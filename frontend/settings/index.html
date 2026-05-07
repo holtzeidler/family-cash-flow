@@ -37,8 +37,8 @@
           </div>
           <div class="top-nav__tabs" role="tablist" aria-label="Views">
             <a class="top-nav__tab" id="navCalendarView" role="tab" aria-selected="true" href="/calendar">Calendar View</a>
-            <a class="top-nav__tab" id="navTransactionView" role="tab" aria-selected="false" href="/transactions">Transaction View</a>
-            <a class="top-nav__tab" id="navReportsView" role="tab" aria-selected="false" href="/reports">Reports</a>
+            <a class="top-nav__tab admin-only-tab" id="navTransactionView" role="tab" aria-selected="false" href="/transactions" hidden>Transaction View</a>
+            <a class="top-nav__tab admin-only-tab" id="navReportsView" role="tab" aria-selected="false" href="/reports" hidden>Reports</a>
             <a class="top-nav__tab is-active" id="navSettingsView" role="tab" aria-selected="false" href="/settings">Settings</a>
           </div>
           <div class="top-nav__actions" aria-label="Account actions">
@@ -126,11 +126,6 @@
                 <div class="form-row-h__label"><label for="txAddCategoryId">Category</label></div>
                 <div class="form-row-h__field"><select id="txAddCategoryId"></select></div>
               </div>
-              <div id="txAddCategoryColorRow" class="cat-color-row" hidden>
-                <div class="cat-color-row__label">Select color (optional)</div>
-                <div class="cat-color-row__swatches" id="txAddCategoryColorSwatches"></div>
-                <button type="button" class="cat-color-row__clear secondary" id="txAddCategoryColorClear" hidden>Clear</button>
-              </div>
               <div class="tx-add-vspace" aria-hidden="true"></div>
               <div class="form-row-h">
                 <div class="form-row-h__label"><label for="txAddDate" id="txAddDateLabel">Date</label></div>
@@ -194,9 +189,15 @@
                 </div>
                 <div class="tx-add-vspace tx-add-vspace--sm" aria-hidden="true"></div>
                 <label class="reimbursable-field" for="txAddVariable">
-                  <span class="reimbursable-field__label">Variable (estimate)</span>
+                  <span class="reimbursable-field__label">Amount changes month to month</span>
                   <input id="txAddVariable" type="checkbox" title="Amount is a placeholder until you enter actuals" />
                 </label>
+              </div>
+              <div class="tx-add-vspace tx-add-vspace--lg" aria-hidden="true"></div>
+              <div id="txAddCategoryColorRow" class="cat-color-row" hidden>
+                <div class="cat-color-row__label">Select color (optional)</div>
+                <div class="cat-color-row__swatches" id="txAddCategoryColorSwatches"></div>
+                <button type="button" class="cat-color-row__clear secondary" id="txAddCategoryColorClear" hidden>Clear</button>
               </div>
               <div class="tx-add-vspace" aria-hidden="true"></div>
               <div class="form-row-h">
