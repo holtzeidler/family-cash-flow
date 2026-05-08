@@ -661,11 +661,8 @@ function syncAccountSetupWizardShellButtons() {
         accountSetupSkipBtn.style.display = hasTx ? "inline-flex" : "none";
       }
       if (signupBtn) {
-        signupBtn.textContent = "Next";
-        signupBtn.style.display = hasTx ? "inline-flex" : "none";
-        const both = hasIncome && hasExpense;
-        signupBtn.classList.toggle("secondary", !both);
-        signupBtn.classList.toggle("top-nav__logout", both);
+        // Step 3: Skip serves as the only "continue" action once any tx exists.
+        signupBtn.style.display = "none";
       }
     } else {
       if (hubAddIncome) hubAddIncome.disabled = false;
