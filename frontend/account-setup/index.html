@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=234" />
+    <link rel="stylesheet" href="../styles.css?v=235" />
   </head>
   <body class="login-page signup-page account-setup-page">
     <div class="container">
@@ -148,6 +148,8 @@
                     <p class="account-setup-step3-subq">You can set up all your transactions after setup.</p>
                   </div>
                   <div id="accountSetupWizardStep3Form" class="account-setup-step3-form" hidden>
+                  <div class="account-setup-step3-form__success" id="accountSetupStep3Success" hidden></div>
+                  <div class="account-setup-step3-form__body">
                   <div class="form-row-h">
                     <div class="form-row-h__label"><label>Type</label></div>
                     <div class="form-row-h__field">
@@ -169,7 +171,7 @@
                   </div>
                   <div class="tx-add-vspace" aria-hidden="true"></div>
                   <div class="form-row-h">
-                    <div class="form-row-h__label"><label for="asTxCategorySearch">Search categories</label></div>
+                    <div class="form-row-h__label"><label for="asTxCategorySearch">Category</label></div>
                     <div class="form-row-h__field">
                       <div class="category-search">
                         <input type="hidden" id="asTxCategory" value="" autocomplete="off" />
@@ -180,7 +182,7 @@
                           placeholder="Search categories"
                           autocomplete="off"
                           spellcheck="false"
-                          aria-label="Search categories"
+                          aria-label="Category"
                           role="combobox"
                           aria-autocomplete="list"
                           aria-controls="asTxCategoryList"
@@ -252,6 +254,7 @@
                     </div>
                   </div>
                   </div>
+                  </div>
                 </div>
                 <div
                   class="account-setup-wizard__panel auth-section__body"
@@ -263,6 +266,8 @@
                   data-expense-phase="intro"
                 >
                   <div id="accountSetupWizardStep4Form" class="account-setup-step3-form" hidden>
+                    <div class="account-setup-step3-form__success" id="accountSetupStep4Success" hidden></div>
+                    <div class="account-setup-step3-form__body">
                     <div class="form-row-h">
                       <div class="form-row-h__label"><label>Type</label></div>
                       <div class="form-row-h__field">
@@ -289,7 +294,7 @@
                     </div>
                     <div class="tx-add-vspace" aria-hidden="true"></div>
                     <div class="form-row-h">
-                      <div class="form-row-h__label"><label for="asExpTxCategorySearch">Search categories</label></div>
+                    <div class="form-row-h__label"><label for="asExpTxCategorySearch">Category</label></div>
                       <div class="form-row-h__field">
                         <div class="category-search">
                           <input type="hidden" id="asExpTxCategory" value="" autocomplete="off" />
@@ -300,7 +305,7 @@
                             placeholder="Search categories"
                             autocomplete="off"
                             spellcheck="false"
-                            aria-label="Search categories"
+                            aria-label="Category"
                             role="combobox"
                             aria-autocomplete="list"
                             aria-controls="asExpTxCategoryList"
@@ -370,6 +375,7 @@
                       <div class="form-row-h__field">
                         <input id="asExpTxNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
                       </div>
+                    </div>
                     </div>
                   </div>
                 </div>
@@ -473,7 +479,7 @@
 
         <div style="height:10px;"></div>
         <div class="meta account-setup-trust-note">
-          <div>Built for clarity not complexity.</div>
+          <div>Built for clarity, not complexity.</div>
           <div>No bank connection required.</div>
         </div>
       </div>
@@ -506,6 +512,6 @@
       </div>
     </div>
 
-    <script src="../signup/signup.js?v=45"></script>
+    <script src="../signup/signup.js?v=46"></script>
   </body>
 </html>

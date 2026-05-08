@@ -3486,6 +3486,10 @@ body.account-setup-page .account-setup-trust-note{
   margin: 0 0 12px;
   text-align: center;
 }
+body.account-setup-page .account-setup-trust-note > :first-child{
+  font-size: 1.05em;
+  font-weight: 650;
+}
 body.account-setup-page .account-setup-trust-note > * + *{
   margin-top: 4px;
 }
@@ -3932,6 +3936,23 @@ body.account-setup-page .account-setup-survey__otherInput{
 body.account-setup-page .account-setup-step3-form{
   width: 100%;
   max-width: 100%;
+}
+body.account-setup-page .account-setup-step3-form__success{
+  width: 100%;
+  padding: 18px 14px 10px;
+  margin: 0;
+  text-align: center;
+  font-weight: 750;
+  color: rgba(11, 61, 46, 0.92);
+  font-size: 1rem;
+}
+body.account-setup-page #accountSetupWizardPanel2[data-after-save="1"] .account-setup-step3-form__body,
+body.account-setup-page #accountSetupWizardPanel3[data-after-save="1"] .account-setup-step3-form__body{
+  display: none;
+}
+body.account-setup-page #accountSetupWizardPanel2[data-after-save="1"] .account-setup-step3-form__success,
+body.account-setup-page #accountSetupWizardPanel3[data-after-save="1"] .account-setup-step3-form__success{
+  display: block !important;
 }
 body.account-setup-page .account-setup-kind-toggle--income-only .kind-opt:has(input[value="expense"]){
   display: none;

@@ -582,12 +582,6 @@ function setAccountSetupStep3Phase(phase) {
   if (!isForm) p2.dataset.afterSave = "";
   intro.hidden = isForm;
   form.hidden = !isForm;
-  const kt = document.getElementById("accountSetupKindToggle");
-  if (kt) kt.classList.toggle("account-setup-kind-toggle--income-only", isForm);
-  if (isForm) {
-    const inc = document.querySelector('input[name="asTxKind"][value="income"]');
-    if (inc) inc.checked = true;
-  }
   persistDraftStep3Phase(isForm ? "form" : "intro");
   syncAccountSetupWizardShellButtons();
 }
@@ -601,6 +595,8 @@ function setAccountSetupStep3AfterSave(on) {
   const p2 = document.getElementById("accountSetupWizardPanel2");
   if (!p2) return;
   p2.dataset.afterSave = on ? "1" : "";
+  const msg = document.getElementById("accountSetupStep3Success");
+  if (msg) msg.hidden = !on;
   syncAccountSetupWizardShellButtons();
 }
 
@@ -628,12 +624,6 @@ function setAccountSetupExpensePhase(phase) {
   if (!isForm) p3.dataset.afterSave = "";
   if (intro) intro.hidden = isForm;
   form.hidden = !isForm;
-  const kt = document.getElementById("accountSetupExpenseKindToggle");
-  if (kt) kt.classList.toggle("account-setup-kind-toggle--expense-only", isForm);
-  if (isForm) {
-    const ex = document.querySelector('input[name="asExpTxKind"][value="expense"]');
-    if (ex) ex.checked = true;
-  }
   persistDraftExpensePhase(isForm ? "form" : "intro");
   syncAccountSetupWizardShellButtons();
 }
@@ -647,6 +637,8 @@ function setAccountSetupExpenseAfterSave(on) {
   const p3 = document.getElementById("accountSetupWizardPanel3");
   if (!p3) return;
   p3.dataset.afterSave = on ? "1" : "";
+  const msg = document.getElementById("accountSetupStep4Success");
+  if (msg) msg.hidden = !on;
   syncAccountSetupWizardShellButtons();
 }
 
@@ -728,6 +720,12 @@ function syncAccountSetupWizardShellButtons() {
       const after = isAccountSetupStep3AfterSave();
       if (saveInc) saveInc.textContent = after ? "Add Another Transaction" : "Save";
       if (cancelInc) cancelInc.textContent = after ? "Continue Setup" : "Cancel";
+      if (accountSetupBackBtn) accountSetupBackBtn.style.display = "none";
+      const msg = document.getElementById("accountSetupStep3Success");
+      if (msg) {
+        msg.textContent = "✓ Transaction added successfully";
+        msg.hidden = !after;
+      }
     } else {
       // In hub/intro mode, leave Next/Skip visibility as determined above (based on tx count).
     }
@@ -744,6 +742,12 @@ function syncAccountSetupWizardShellButtons() {
       const after = isAccountSetupExpenseAfterSave();
       if (saveExp) saveExp.textContent = after ? "Add Another Transaction" : "Save";
       if (cancelExp) cancelExp.textContent = after ? "Continue Setup" : "Cancel";
+      if (accountSetupBackBtn) accountSetupBackBtn.style.display = "none";
+      const msg = document.getElementById("accountSetupStep4Success");
+      if (msg) {
+        msg.textContent = "✓ Transaction added successfully";
+        msg.hidden = !after;
+      }
     } else if (signupBtn) {
       signupBtn.style.display = "none";
     }
@@ -1347,6 +1351,8 @@ function advanceAccountSetupWizardToExpenseForm() {
   lockAccountSetupWizardStepTransition();
   setAccountSetupWizardStep(3, { skipPersist: true });
   setAccountSetupExpensePhase("form");
+  const ex = document.querySelector('input[name="asExpTxKind"][value="expense"]');
+  if (ex) ex.checked = true;
   document.getElementById("asExpTxAmount")?.focus();
 }
 
@@ -1368,6 +1374,8 @@ function accountSetupTxHubAddIncomeClick() {
     );
   } catch (_) {}
   setAccountSetupStep3Phase("form");
+  const inc = document.querySelector('input[name="asTxKind"][value="income"]');
+  if (inc) inc.checked = true;
   document.getElementById("asTxAmount")?.focus();
 }
 
