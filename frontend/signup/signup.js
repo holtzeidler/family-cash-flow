@@ -614,7 +614,6 @@ function syncAccountSetupWizardShellButtons() {
   const cancelInc = document.getElementById("asTxCancelIncomeBtn");
   const saveExp = document.getElementById("asExpSaveBtn");
   const cancelExp = document.getElementById("asExpCancelBtn");
-  const hubSkip = document.getElementById("asTxHubSkipBtn");
   const hubContinue = document.getElementById("asTxHubContinueBtn");
   if (!document.getElementById("accountSetupWizard")) return;
 
@@ -624,15 +623,13 @@ function syncAccountSetupWizardShellButtons() {
   if (addMoreTxBtn) addMoreTxBtn.style.display = "none";
   if (accountSetupSkipBtn) accountSetupSkipBtn.style.display = s === 1 ? "inline-flex" : "none";
 
-  // Tx hub: once any transaction exists, replace "Skip for now" with "Continue".
+  // Tx hub: show Continue once any transaction exists.
   try {
-    if (hubSkip && hubContinue && s === 2 && getAccountSetupStep3Phase() === "intro") {
+    if (hubContinue && s === 2 && getAccountSetupStep3Phase() === "intro") {
       const rawDraft = readAccountSetupDraftRaw() || {};
       const hasTx = Array.isArray(rawDraft.transactions) && rawDraft.transactions.length > 0;
-      hubSkip.hidden = hasTx;
       hubContinue.hidden = !hasTx;
     } else {
-      if (hubSkip) hubSkip.hidden = false;
       if (hubContinue) hubContinue.hidden = true;
     }
   } catch (_) {}
@@ -1300,56 +1297,6 @@ function accountSetupTxHubAddExpenseClick() {
   document.getElementById("asExpTxAmount")?.focus();
 }
 
-async function accountSetupTxHubSkipClick() {
-  if (!isAccountSetupPath() || !document.getElementById("accountSetupWizard")) return;
-  if (isAccountSetupWizardStepLocked()) return;
-  if (getAccountSetupWizardStep() !== 2 || getAccountSetupStep3Phase() !== "intro") return;
-  setCallout(signupCalloutEl, "", "");
-  try {
-    const rawDraft = readAccountSetupDraftRaw() || {};
-    const existing = Array.isArray(rawDraft.transactions) ? rawDraft.transactions : [];
-    const accountName = (document.getElementById("accountName")?.value || "").trim();
-    const accountStartingBalanceRaw = document.getElementById("accountStartingBalance")?.value || "";
-    const accountStartingBalance = toMoneyNumber(accountStartingBalanceRaw);
-    const accountStartingBalanceDate = String(document.getElementById("accountStartingBalanceDate")?.value || "").trim();
-    const gate = canAdvanceAccountSetupAccountStep({
-      accountName,
-      accountStartingBalanceRaw,
-      accountStartingBalance,
-      accountStartingBalanceDate,
-    });
-    if (!gate.ok) {
-      setCallout(signupCalloutEl, gate.message, "error");
-      setAccountSetupWizardStep(1);
-      return;
-    }
-    sessionStorage.setItem(
-      BW_ACCOUNT_SETUP_DRAFT_KEY,
-      JSON.stringify({
-        ...rawDraft,
-        wizardFlowVersion: ACCOUNT_SETUP_WIZARD_FLOW_VERSION,
-        wizardStep: 4,
-        step3Phase: "intro",
-        expensePhase: "intro",
-        ...(gate.anyAccount
-          ? {
-              account: {
-                name: accountName,
-                type: "checking",
-                starting_balance: accountStartingBalance,
-                starting_balance_date: accountStartingBalanceDate,
-              },
-            }
-          : {}),
-        transactions: existing,
-      })
-    );
-  } catch (_) {}
-  lockAccountSetupWizardStepTransition();
-  setAccountSetupWizardStep(4, { skipPersist: true });
-  document.querySelector("[data-as-survey-opt]")?.focus();
-}
-
 function accountSetupTxHubContinueClick() {
   if (!isAccountSetupPath() || !document.getElementById("accountSetupWizard")) return;
   if (isAccountSetupWizardStepLocked()) return;
@@ -1749,7 +1696,6 @@ function setBusy(isBusy) {
     "asExpCancelBtn",
     "asTxHubAddIncomeBtn",
     "asTxHubAddExpenseBtn",
-    "asTxHubSkipBtn",
     "asTxHubContinueBtn",
   ]) {
     const el = document.getElementById(id);
@@ -2243,7 +2189,6 @@ document.getElementById("asTxSaveIncomeBtn")?.addEventListener("click", () => vo
 document.getElementById("asTxCancelIncomeBtn")?.addEventListener("click", () => accountSetupCancelIncomeClick());
 document.getElementById("asTxHubAddIncomeBtn")?.addEventListener("click", () => accountSetupTxHubAddIncomeClick());
 document.getElementById("asTxHubAddExpenseBtn")?.addEventListener("click", () => accountSetupTxHubAddExpenseClick());
-document.getElementById("asTxHubSkipBtn")?.addEventListener("click", () => void accountSetupTxHubSkipClick());
 document.getElementById("asTxHubContinueBtn")?.addEventListener("click", () => accountSetupTxHubContinueClick());
 document.getElementById("asExpSaveBtn")?.addEventListener("click", () => void accountSetupSaveExpenseClick());
 document.getElementById("asExpCancelBtn")?.addEventListener("click", () => accountSetupCancelExpenseClick());
@@ -2286,12 +2231,20 @@ if (accountSetupBackBtn) {
       return;
     }
     if (s === 4) {
-      setAccountSetupWizardStep(3);
       const raw = readAccountSetupDraftRaw() || {};
-      if (String(raw.expensePhase || "") === "form") setAccountSetupExpensePhase("form");
-      else setAccountSetupExpensePhase("intro");
-      if (getAccountSetupExpensePhase() === "intro") document.getElementById("asTxHubAddExpenseBtn")?.focus();
-      else document.getElementById("asExpTxAmount")?.focus();
+      const wantExpenseForm = String(raw.expensePhase || "") === "form";
+      // If the user never opened the expense form, going "back" from the survey should
+      // return to the transactions hub (step 2). Step 3 has no intro UI, so showing it
+      // in "intro" mode would appear blank.
+      if (wantExpenseForm) {
+        setAccountSetupWizardStep(3, { skipPersist: true });
+        setAccountSetupExpensePhase("form");
+        document.getElementById("asExpTxAmount")?.focus();
+      } else {
+        setAccountSetupWizardStep(2, { skipPersist: true });
+        setAccountSetupStep3Phase("intro");
+        document.getElementById("asTxHubAddIncomeBtn")?.focus();
+      }
       return;
     }
     setAccountSetupWizardStep(s - 1);

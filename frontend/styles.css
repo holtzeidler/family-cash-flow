@@ -1549,8 +1549,7 @@ button.nav-link:hover{
 .balance-threshold-box{
   /* Nudge thresholds block right (requested) */
   padding-left: 12px;
-  /* Move the threshold fields down */
-  margin-top: 15%;
+  margin-top: 12px;
 }
 /* Settings → Account Details: balance threshold inputs should not stretch full-width */
 .settings-pane[data-settings-pane="accountDetails"] .form-row-h__field{
@@ -3734,14 +3733,14 @@ body.account-setup-page .account-setup-tx-continue-btn:focus-visible{
   outline-offset: 3px;
 }
 body.account-setup-page .account-setup-tx-choice-row > .top-nav__logout{
-  background: #fff;
-  color: var(--text);
+  background: transparent;
+  color: var(--accent);
   border: 3px solid var(--accent);
   border-radius: 999px;
 }
 body.account-setup-page .account-setup-tx-choice-row > .top-nav__logout:hover{
-  background: color-mix(in srgb, var(--accent) 10%, #fff);
-  color: var(--text);
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  color: var(--accent);
   border-color: var(--accent);
   filter: none;
 }
@@ -4468,9 +4467,16 @@ body.plans-page .container > .grid{
   border-color: rgba(0,0,0,0.14);
   box-shadow: 0 1px 2px rgba(0,0,0,0.04);
 }
+.cal-cell.cal-cell--out .cal-daynum-num{
+  color: rgba(75, 85, 99, 0.82);
+}
 .cal-cell.cal-cell--before-start{
-  background: color-mix(in srgb, var(--cal-surface) 78%, rgba(0,0,0,0.12));
+  /* Lighter than out-of-month days, but still visually "disabled" */
+  background: color-mix(in srgb, var(--cal-surface) 90%, rgba(0,0,0,0.06));
   box-shadow: inset 0 0 0 1px rgba(0,0,0,0.07);
+}
+.cal-cell.cal-cell--before-start .cal-daynum-num{
+  color: rgba(75, 85, 99, 0.58);
 }
 .cal-cell.cal-cell--before-start .cal-cell-fill{
   cursor: not-allowed;

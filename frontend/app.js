@@ -571,10 +571,19 @@ const balanceThresholdSaveBtn = document.getElementById("balanceThresholdSaveBtn
 const cashOutlookHead = document.getElementById("cashOutlookHead");
 const BALANCE_THRESHOLD_MIN_KEY = "familyCashFlow_balanceThresholdMin";
 const BALANCE_THRESHOLD_MAX_KEY = "familyCashFlow_balanceThresholdMax";
+const BALANCE_THRESHOLD_FAMILY_ID_KEY = "familyCashFlow_balanceThresholdFamilyId";
 /** @deprecated migrate to BALANCE_THRESHOLD_MIN_KEY */
 const LOW_BALANCE_THRESHOLD_KEY = "familyCashFlow_lowBalanceThreshold";
 let lowBalanceDebounceTimer = null;
 let lowBalanceLastQuery = { familyId: null, min: null, max: null, mode: null };
+
+function getBalanceThresholdKey(kind, familyId) {
+  const fid = Number(familyId || 0);
+  if (!Number.isFinite(fid) || fid <= 0) return null;
+  if (kind === "min") return `${BALANCE_THRESHOLD_MIN_KEY}:${fid}`;
+  if (kind === "max") return `${BALANCE_THRESHOLD_MAX_KEY}:${fid}`;
+  return null;
+}
 
 function invalidateLowBalanceAlertCache() {
   lowBalanceLastQuery = { familyId: null, min: null, max: null, mode: null };
@@ -1244,8 +1253,12 @@ function scheduleLowBalanceRefresh() {
 function saveBalanceThresholds() {
   if (!balanceThresholdMin && !balanceThresholdMax) return;
   try {
-    if (balanceThresholdMin) localStorage.setItem(BALANCE_THRESHOLD_MIN_KEY, balanceThresholdMin.value || "");
-    if (balanceThresholdMax) localStorage.setItem(BALANCE_THRESHOLD_MAX_KEY, balanceThresholdMax.value || "");
+    const fid = state.activeFamilyId;
+    const minKey = getBalanceThresholdKey("min", fid);
+    const maxKey = getBalanceThresholdKey("max", fid);
+    if (balanceThresholdMin && minKey) localStorage.setItem(minKey, balanceThresholdMin.value || "");
+    if (balanceThresholdMax && maxKey) localStorage.setItem(maxKey, balanceThresholdMax.value || "");
+    if (fid != null) localStorage.setItem(BALANCE_THRESHOLD_FAMILY_ID_KEY, String(fid));
   } catch (e) {
     show(lowBalanceErr, e.message || "Could not save thresholds.");
     return;
@@ -6911,7 +6924,7 @@ function renderCalendar() {
       _type: "start_balance",
       kind: "income",
       amount: Math.abs(startBal),
-      description: `${String(account.name || "Account")} starting balance`,
+      description: "Starting Balance",
       notes: "",
       category_id: null,
       bg_color: null,
@@ -7369,18 +7382,46 @@ async function main() {
   if (balanceThresholdMin || balanceThresholdMax) {
     try {
       const legacy = localStorage.getItem(LOW_BALANCE_THRESHOLD_KEY) || "";
-      const minStored = localStorage.getItem(BALANCE_THRESHOLD_MIN_KEY) || "";
-      if (legacy && !minStored && balanceThresholdMin && !balanceThresholdMin.value) {
-        balanceThresholdMin.value = legacy;
-        localStorage.setItem(BALANCE_THRESHOLD_MIN_KEY, legacy);
-      } else {
-        if (balanceThresholdMin) {
-          const s = localStorage.getItem(BALANCE_THRESHOLD_MIN_KEY) || "";
-          if (s && !balanceThresholdMin.value) balanceThresholdMin.value = s;
+      const fid = state.activeFamilyId;
+      const minKey = getBalanceThresholdKey("min", fid);
+      const maxKey = getBalanceThresholdKey("max", fid);
+      const storedFamilyId = localStorage.getItem(BALANCE_THRESHOLD_FAMILY_ID_KEY) || "";
+
+      // Per-family thresholds: prevent values leaking into brand-new accounts/families.
+      if (minKey && balanceThresholdMin) {
+        const s = localStorage.getItem(minKey) || "";
+        if (s && !balanceThresholdMin.value) balanceThresholdMin.value = s;
+      }
+      if (maxKey && balanceThresholdMax) {
+        const s2 = localStorage.getItem(maxKey) || "";
+        if (s2 && !balanceThresholdMax.value) balanceThresholdMax.value = s2;
+      }
+
+      // Legacy migration: only apply old unscoped values to the same family that saved them.
+      const allowLegacy =
+        !storedFamilyId ||
+        (fid != null && storedFamilyId && String(storedFamilyId) === String(fid));
+      if (allowLegacy && fid != null) {
+        if (legacy && balanceThresholdMin && !balanceThresholdMin.value && minKey && !localStorage.getItem(minKey)) {
+          balanceThresholdMin.value = legacy;
+          localStorage.setItem(minKey, legacy);
+          localStorage.setItem(BALANCE_THRESHOLD_FAMILY_ID_KEY, String(fid));
         }
-        if (balanceThresholdMax) {
-          const s2 = localStorage.getItem(BALANCE_THRESHOLD_MAX_KEY) || "";
-          if (s2 && !balanceThresholdMax.value) balanceThresholdMax.value = s2;
+        if (balanceThresholdMin && !balanceThresholdMin.value && minKey && !localStorage.getItem(minKey)) {
+          const oldMin = localStorage.getItem(BALANCE_THRESHOLD_MIN_KEY) || "";
+          if (oldMin) {
+            balanceThresholdMin.value = oldMin;
+            localStorage.setItem(minKey, oldMin);
+            localStorage.setItem(BALANCE_THRESHOLD_FAMILY_ID_KEY, String(fid));
+          }
+        }
+        if (balanceThresholdMax && !balanceThresholdMax.value && maxKey && !localStorage.getItem(maxKey)) {
+          const oldMax = localStorage.getItem(BALANCE_THRESHOLD_MAX_KEY) || "";
+          if (oldMax) {
+            balanceThresholdMax.value = oldMax;
+            localStorage.setItem(maxKey, oldMax);
+            localStorage.setItem(BALANCE_THRESHOLD_FAMILY_ID_KEY, String(fid));
+          }
         }
       }
     } catch (_) {}
