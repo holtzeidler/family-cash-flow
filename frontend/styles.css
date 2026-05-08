@@ -3728,7 +3728,7 @@ body.account-setup-page .account-setup-tx-choice-wrap{
   gap: 14px;
   width: 100%;
   max-width: 280px;
-  margin: 22px auto 0;
+  margin: 34px auto 0;
 }
 body.account-setup-page .account-setup-tx-choice-row{
   display: flex;

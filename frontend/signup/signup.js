@@ -638,7 +638,7 @@ function syncAccountSetupWizardShellButtons() {
     if (el) el.style.display = "none";
   }
   if (addMoreTxBtn) addMoreTxBtn.style.display = "none";
-  // Account step is required; no skip.
+  // Default: hide skip. We'll selectively show it on Step 3 once a tx exists.
   if (accountSetupSkipBtn) accountSetupSkipBtn.style.display = "none";
 
   // Step 3 (transactions hub): gate Add buttons + show Skip/Next behavior.
@@ -657,7 +657,8 @@ function syncAccountSetupWizardShellButtons() {
       // If both exist, show green Next button.
       if (accountSetupSkipBtn) {
         accountSetupSkipBtn.textContent = "Skip";
-        accountSetupSkipBtn.style.display = hasTx ? "none" : "inline-flex";
+        // Show Skip only after at least one item is entered.
+        accountSetupSkipBtn.style.display = hasTx ? "inline-flex" : "none";
       }
       if (signupBtn) {
         signupBtn.textContent = "Next";
