@@ -3681,6 +3681,21 @@ body.account-setup-page #accountSetupWizardPanel0 .form-row-h__label label{
   font-weight: 400;
   text-align: center;
 }
+
+/* Account setup: Step 1 uses top-stacked labels */
+body.account-setup-page #accountSetupWizardPanel0 .form-row-h{
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+body.account-setup-page #accountSetupWizardPanel0 .form-row-h__label{
+  flex: 0 0 auto;
+  max-width: none;
+}
+body.account-setup-page #accountSetupWizardPanel0 .form-row-h__label label{
+  text-align: left;
+}
 /* Step 2: full-width rows + wider label column so uppercase labels stay on one line */
 body.account-setup-page #accountSetupWizardPanel1 .form-row-h{
   align-items: center;
@@ -3693,6 +3708,42 @@ body.account-setup-page #accountSetupWizardPanel1 .form-row-h__label label{
   white-space: nowrap;
   color: #556173;
   font-weight: 400;
+}
+
+/* Account setup: Step 2 uses top-stacked labels */
+body.account-setup-page #accountSetupWizardPanel1 .form-row-h{
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+body.account-setup-page #accountSetupWizardPanel1 .form-row-h__label{
+  flex: 0 0 auto;
+  max-width: none;
+}
+
+/* Account setup: Step 3/4 transaction forms use top-stacked labels */
+body.account-setup-page #accountSetupWizardPanel2 .account-setup-step3-form__body .form-row-h,
+body.account-setup-page #accountSetupWizardPanel3 .account-setup-step3-form__body .form-row-h{
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+body.account-setup-page #accountSetupWizardPanel2 .account-setup-step3-form__body .form-row-h__label,
+body.account-setup-page #accountSetupWizardPanel3 .account-setup-step3-form__body .form-row-h__label{
+  flex: 0 0 auto;
+  max-width: none;
+}
+body.account-setup-page #accountSetupWizardPanel2 .account-setup-step3-form__body .form-row-h__label label,
+body.account-setup-page #accountSetupWizardPanel3 .account-setup-step3-form__body .form-row-h__label label{
+  color: #556173;
+  font-weight: 400;
+  text-align: left;
+}
+body.account-setup-page #accountSetupWizardPanel2 .account-setup-step3-form__body .form-row-h__field,
+body.account-setup-page #accountSetupWizardPanel3 .account-setup-step3-form__body .form-row-h__field{
+  width: 100%;
 }
 body.account-setup-page .account-setup-step2-lede{
   margin: 0 0 12px;
