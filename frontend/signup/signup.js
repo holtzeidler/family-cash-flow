@@ -721,6 +721,11 @@ function syncAccountSetupWizardShellButtons() {
       const after = isAccountSetupStep3AfterSave();
       if (saveInc) saveInc.textContent = "Save";
       if (cancelInc) cancelInc.textContent = after ? "Continue Setup" : "Cancel";
+      if (saveInc) saveInc.style.display = after ? "none" : "inline-flex";
+      if (cancelInc) {
+        cancelInc.classList.toggle("top-nav__logout", !!after);
+        cancelInc.classList.toggle("secondary", !after);
+      }
       if (accountSetupBackBtn) accountSetupBackBtn.style.display = after ? "none" : "inline-flex";
       if (addMoreTxBtn) addMoreTxBtn.style.display = "none";
       const msg = document.getElementById("accountSetupStep3Success");
