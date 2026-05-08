@@ -288,6 +288,59 @@ body.landing-page .landing-preview__mock.card{
   align-self: flex-start;
   display: block;
 }
+
+/* Landing: align Preview / How / Why on one row */
+body.landing-page .landing-triptych{
+  width: min(1100px, 100%);
+  margin: 64px auto 0;
+  display: grid;
+  grid-template-columns: 1.35fr 0.85fr 1fr;
+  gap: 26px;
+  align-items: start;
+}
+body.landing-page .landing-triptych > section{
+  width: 100%;
+  margin: 0;
+  align-self: stretch;
+}
+body.landing-page .landing-triptych .landing-preview{
+  grid-template-columns: 1fr;
+  grid-template-rows: auto auto;
+  gap: 18px;
+  justify-items: stretch;
+}
+body.landing-page .landing-triptych .landing-preview__copy{
+  width: 100%;
+  margin-left: 0;
+}
+body.landing-page .landing-triptych .landing-preview__mock.card{
+  width: 100%;
+  margin-left: 0;
+}
+body.landing-page .landing-triptych .landing-how__copy,
+body.landing-page .landing-triptych .landing-why__copy{
+  width: 100%;
+  padding-top: 6px;
+}
+body.landing-page .landing-triptych .landing-why__grid{
+  grid-template-columns: 1fr;
+}
+
+@media (max-width: 980px){
+  body.landing-page .landing-triptych{
+    grid-template-columns: 1fr;
+    margin-top: 40px;
+  }
+  body.landing-page .landing-triptych .landing-why__grid{
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px){
+  body.landing-page .landing-triptych .landing-why__grid{
+    grid-template-columns: 1fr;
+  }
+}
 .landing-why__copy{
   width: min(760px, 100%);
   padding: 12px 0 0;
@@ -3364,6 +3417,8 @@ body.account-setup-page .account-setup-wizard{
   max-width: min(760px, 100%);
   margin-left: auto;
   margin-right: auto;
+  /* Baseline card height: Step 2 is ~75% of prior size */
+  --as-compact-card-minh: 315px;
 }
 body.account-setup-page .account-setup-wizard__eyebrow{
   margin: 0 0 8px;
@@ -3401,7 +3456,7 @@ body.account-setup-page .account-setup-wizard__viewport{
   width: 100%;
   flex: 0 0 auto;
   /* Keep the card shell consistent across early steps (use Step 2 sizing). */
-  min-height: 360px;
+  min-height: var(--as-compact-card-minh);
 }
 body.account-setup-page .account-setup-wizard__shell .account-setup-actions--shell{
   flex-shrink: 0;
@@ -3466,19 +3521,16 @@ body.account-setup-page #accountSetupWizardPanel2{
   justify-content: flex-start;
 }
 
-/* Step 2: nudge content down for breathing room */
-body.account-setup-page #accountSetupWizardPanel1.account-setup-wizard__panel{
-  padding-top: 36px;
-}
+/* Step 1/2/3-intro: lock to the compact baseline height */
 body.account-setup-page #accountSetupWizardPanel0.account-setup-wizard__panel,
-body.account-setup-page #accountSetupWizardPanel2.account-setup-wizard__panel{
-  padding-top: 36px;
+body.account-setup-page #accountSetupWizardPanel1.account-setup-wizard__panel,
+body.account-setup-page #accountSetupWizardPanel2[data-step3-phase="intro"].account-setup-wizard__panel{
+  min-height: var(--as-compact-card-minh);
 }
 
-/* Step 1: center fields vertically within the fixed viewport */
+/* Step 1: center fields vertically within the compact baseline */
 body.account-setup-page #accountSetupWizardPanel0.account-setup-wizard__panel{
-  padding-top: 0;
-  padding-bottom: 0;
+  justify-content: center;
 }
 
 /* Account setup: stacked accordion cards (legacy) */
