@@ -3969,7 +3969,7 @@ body.account-setup-page .account-setup-step3-form__successActions{
   margin: 18px 0 0;
 }
 body.account-setup-page .account-setup-step3-form__successNote{
-  margin: 18px 0 0;
+  margin: 12px 0 0;
   font-size: 0.9rem;
   line-height: 1.35;
   font-weight: 500;
@@ -3978,6 +3978,16 @@ body.account-setup-page .account-setup-step3-form__successNote{
 body.account-setup-page .account-setup-step3-form__successActions .top-nav__logout{
   width: min(312px, 47%);
   border-radius: 999px;
+}
+body.account-setup-page .account-setup-step3-form__successActions .top-nav__logout.account-setup-success-secondary{
+  background: #fff;
+  color: rgba(75, 85, 99, 0.78);
+  border-color: rgba(75, 85, 99, 0.35);
+  filter: none;
+}
+body.account-setup-page .account-setup-step3-form__successActions .top-nav__logout.account-setup-success-secondary:hover{
+  background: rgba(0, 0, 0, 0.02);
+  border-color: rgba(75, 85, 99, 0.45);
 }
 @media (max-width: 560px){
   body.account-setup-page .account-setup-step3-form__successActions .top-nav__logout{

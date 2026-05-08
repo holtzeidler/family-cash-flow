@@ -732,9 +732,9 @@ function syncAccountSetupWizardShellButtons() {
         const rawDraft = readAccountSetupDraftRaw() || {};
         const txs = Array.isArray(rawDraft.transactions) ? rawDraft.transactions : [];
         const hasIncome = txs.some((t) => String(t?.kind || "").toLowerCase() === "income");
-        const hasExpense = txs.some((t) => String(t?.kind || "").toLowerCase() === "expense");
         if (successAddIncome) successAddIncome.disabled = hasIncome;
-        if (successAddExpense) successAddExpense.disabled = hasExpense;
+        // Allow adding multiple expenses; keep the button enabled.
+        if (successAddExpense) successAddExpense.disabled = false;
       } catch (_) {}
       if (saveInc) saveInc.textContent = "Save";
       if (cancelInc) cancelInc.textContent = after ? "Continue Setup" : "Cancel";
@@ -761,7 +761,6 @@ function syncAccountSetupWizardShellButtons() {
     const phase = getAccountSetupExpensePhase();
     if (phase === "form") {
       if (saveExp) saveExp.style.display = "inline-flex";
-      if (addExp) addExp.style.display = "inline-flex";
       if (cancelExp) cancelExp.style.display = "inline-flex";
       if (signupBtn) signupBtn.style.display = "none";
       const after = isAccountSetupExpenseAfterSave();
@@ -1401,6 +1400,30 @@ function advanceAccountSetupWizardToExpenseForm() {
   const ex = document.querySelector('input[name="asExpTxKind"][value="expense"]');
   if (ex) ex.checked = true;
   document.getElementById("asExpTxAmount")?.focus();
+}
+
+function advanceAccountSetupWizardToIncomeFormFromSuccess() {
+  if (!isAccountSetupPath() || !document.getElementById("accountSetupWizard")) return;
+  if (isAccountSetupWizardStepLocked()) return;
+  setCallout(signupCalloutEl, "", "");
+  try {
+    const rawDraft = readAccountSetupDraftRaw() || {};
+    sessionStorage.setItem(
+      BW_ACCOUNT_SETUP_DRAFT_KEY,
+      JSON.stringify({
+        ...rawDraft,
+        wizardFlowVersion: ACCOUNT_SETUP_WIZARD_FLOW_VERSION,
+        wizardStep: 2,
+        step3Phase: "form",
+      })
+    );
+  } catch (_) {}
+  setAccountSetupWizardStep(2, { skipPersist: true });
+  setAccountSetupStep3AfterSave(false);
+  setAccountSetupStep3Phase("form");
+  const inc = document.querySelector('input[name="asTxKind"][value="income"]');
+  if (inc) inc.checked = true;
+  document.getElementById("asTxAmount")?.focus();
 }
 
 function accountSetupTxHubAddIncomeClick() {
@@ -2412,6 +2435,7 @@ document.getElementById("asTxSaveIncomeBtn")?.addEventListener("click", () => vo
 document.getElementById("asTxCancelIncomeBtn")?.addEventListener("click", () => accountSetupCancelIncomeClick());
 document.getElementById("asTxHubAddIncomeBtn")?.addEventListener("click", () => accountSetupTxHubAddIncomeClick());
 document.getElementById("asTxHubAddExpenseBtn")?.addEventListener("click", () => accountSetupTxHubAddExpenseClick());
+document.getElementById("asStep3SuccessAddIncomeBtn")?.addEventListener("click", () => advanceAccountSetupWizardToIncomeFormFromSuccess());
 document.getElementById("asStep3SuccessAddExpenseBtn")?.addEventListener("click", () => advanceAccountSetupWizardToExpenseForm());
 document.getElementById("asExpSaveBtn")?.addEventListener("click", () => void accountSetupSaveExpenseClick());
 document.getElementById("asExpCancelBtn")?.addEventListener("click", () => accountSetupCancelExpenseClick());
@@ -2447,7 +2471,29 @@ function handleAccountSetupBack(e) {
   if (s <= 0) return;
   setCallout(signupCalloutEl, "", "");
   if (s === 2 && getAccountSetupStep3Phase() === "form") {
-    // From the transaction form, Back should return to the account step (Step 2).
+    // From the transaction form (pre-save), Back should return to the Step 3 intro hub.
+    if (!isAccountSetupStep3AfterSave()) {
+      try {
+        const rawDraft = readAccountSetupDraftRaw() || {};
+        sessionStorage.setItem(
+          BW_ACCOUNT_SETUP_DRAFT_KEY,
+          JSON.stringify({
+            ...rawDraft,
+            wizardFlowVersion: ACCOUNT_SETUP_WIZARD_FLOW_VERSION,
+            wizardStep: 2,
+            step3Phase: "intro",
+            expensePhase: "intro",
+          })
+        );
+      } catch (_) {}
+      setAccountSetupStep3Phase("intro");
+      try {
+        document.getElementById("asTxHubAddIncomeBtn")?.focus();
+      } catch (_) {}
+      return;
+    }
+
+    // If Back is ever visible in the post-save state, return to the account step.
     lockAccountSetupWizardStepTransition();
     setAccountSetupWizardStep(1, { skipPersist: true });
     try {
@@ -2469,7 +2515,25 @@ function handleAccountSetupBack(e) {
     return;
   }
   if (s === 3 && getAccountSetupExpensePhase() === "form") {
-    accountSetupCancelExpenseClick();
+    // From the expense form, Back should return to the Step 3 confirmation view.
+    lockAccountSetupWizardStepTransition();
+    setAccountSetupWizardStep(2, { skipPersist: true });
+    setAccountSetupStep3Phase("form");
+    setAccountSetupStep3AfterSave(true);
+    setAccountSetupExpensePhase("intro");
+    try {
+      const rawDraft = readAccountSetupDraftRaw() || {};
+      sessionStorage.setItem(
+        BW_ACCOUNT_SETUP_DRAFT_KEY,
+        JSON.stringify({
+          ...rawDraft,
+          wizardFlowVersion: ACCOUNT_SETUP_WIZARD_FLOW_VERSION,
+          wizardStep: 2,
+          step3Phase: "form",
+          expensePhase: "intro",
+        })
+      );
+    } catch (_) {}
     return;
   }
   if (s === 4) {
