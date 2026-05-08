@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=245" />
+    <link rel="stylesheet" href="../styles.css?v=246" />
   </head>
   <body class="login-page signup-page account-setup-page">
     <div class="container">
@@ -206,12 +206,12 @@
                   </div>
                   <div class="tx-add-vspace tx-add-vspace--lg" aria-hidden="true"></div>
                   <div class="form-row-h account-setup-repeat-row-h">
-                    <div class="form-row-h__label"><label for="asTxRepeats">Repeats</label></div>
+                    <div class="form-row-h__label"><label for="asTxRecurrence">Repeats</label></div>
                     <div class="form-row-h__field">
                       <div class="account-setup-repeat-controls">
-                        <input id="asTxRepeats" type="checkbox" />
-                        <select id="asTxRecurrence" class="tx-add-recurrence-select" title="How often this repeats" disabled>
-                          <option value="monthly" selected>monthly</option>
+                        <select id="asTxRecurrence" class="tx-add-recurrence-select" title="How often this repeats">
+                          <option value="" selected>—</option>
+                          <option value="monthly">monthly</option>
                           <option value="bimonthly">bi-monthly (15th &amp; last day)</option>
                           <option value="biweekly">every 2 weeks</option>
                           <option value="weekly">weekly</option>
@@ -329,12 +329,12 @@
                     </div>
                     <div class="tx-add-vspace tx-add-vspace--lg" aria-hidden="true"></div>
                     <div class="form-row-h account-setup-repeat-row-h">
-                      <div class="form-row-h__label"><label for="asExpRepeats">Repeats</label></div>
+                    <div class="form-row-h__label"><label for="asExpRecurrence">Repeats</label></div>
                       <div class="form-row-h__field">
                         <div class="account-setup-repeat-controls">
-                          <input id="asExpRepeats" type="checkbox" />
-                          <select id="asExpRecurrence" class="tx-add-recurrence-select" title="How often this repeats" disabled>
-                            <option value="monthly" selected>monthly</option>
+                        <select id="asExpRecurrence" class="tx-add-recurrence-select" title="How often this repeats">
+                          <option value="" selected>—</option>
+                          <option value="monthly">monthly</option>
                             <option value="bimonthly">bi-monthly (15th &amp; last day)</option>
                             <option value="biweekly">every 2 weeks</option>
                             <option value="weekly">weekly</option>
@@ -395,7 +395,7 @@
                   inert
                 >
                   <div class="account-setup-survey">
-                    <h2 class="account-setup-survey__title">What is your primary goal?</h2>
+                    <h2 class="account-setup-survey__title">What are your primary goals?</h2>
                     <div class="account-setup-survey__grid" role="group" aria-label="Choose all that apply">
                       <button type="button" class="account-setup-survey__opt" data-as-survey-opt="avoid_overdrafts" aria-pressed="false">
                         <span class="account-setup-survey__icon" aria-hidden="true">
@@ -528,6 +528,6 @@
       </div>
     </div>
 
-    <script src="../signup/signup.js?v=67"></script>
+    <script src="../signup/signup.js?v=68"></script>
   </body>
 </html>

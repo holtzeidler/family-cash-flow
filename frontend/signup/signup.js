@@ -1041,8 +1041,9 @@ function goToSignupFromAccountSetup() {
     const txCategory = (document.getElementById("asTxCategory")?.value || "").trim();
     const txDate = String(document.getElementById("asTxDate")?.value || "").trim();
     const txNotes = (document.getElementById("asTxNotes")?.value || "").trim();
-    const txRecurring = !!document.getElementById("asTxRepeats")?.checked;
-    const txRecurrence = String(document.getElementById("asTxRecurrence")?.value || "monthly").trim() || "monthly";
+    const txRecurrenceRaw = String(document.getElementById("asTxRecurrence")?.value || "").trim();
+    const txRecurring = !!txRecurrenceRaw;
+    const txRecurrence = txRecurrenceRaw || null;
     const txEndDateRaw = String(document.getElementById("asTxEndDate")?.value || "").trim();
     const txEndCountRaw = String(document.getElementById("asTxEndCount")?.value || "").trim();
     const txEndCount = txEndCountRaw === "" ? null : Number(txEndCountRaw);
@@ -1110,8 +1111,8 @@ function goToSignupFromAccountSetup() {
                   category: txCategory || "Uncategorized",
                   date: txDate,
                   notes: txNotes,
-                  recurring: txRecurring,
-                  recurrence: txRecurring ? txRecurrence : null,
+                recurring: txRecurring,
+                recurrence: txRecurring ? txRecurrence : null,
                   end_date: txRecurring ? (txEndDateRaw !== "" ? txEndDateRaw : null) : null,
                   end_count: txRecurring ? (txEndDateRaw !== "" ? null : txEndCount) : null,
                   bg_color: txBgColor || null,
@@ -1150,8 +1151,9 @@ function readAccountSetupTransactionFromInputs() {
   const txCategory = (document.getElementById("asTxCategory")?.value || "").trim();
   const txDate = String(document.getElementById("asTxDate")?.value || "").trim();
   const txNotes = (document.getElementById("asTxNotes")?.value || "").trim();
-  const repeats = !!document.getElementById("asTxRepeats")?.checked;
-  const recurrence = String(document.getElementById("asTxRecurrence")?.value || "monthly").trim() || "monthly";
+  const recurrenceRaw = String(document.getElementById("asTxRecurrence")?.value || "").trim();
+  const repeats = !!recurrenceRaw;
+  const recurrence = recurrenceRaw || null;
   const endDate = String(document.getElementById("asTxEndDate")?.value || "").trim() || null;
   const endCountRaw = String(document.getElementById("asTxEndCount")?.value || "").trim();
   const endCount = endCountRaw === "" ? null : Number(endCountRaw);
@@ -1210,7 +1212,6 @@ function resetAccountSetupTransactionForm() {
   const amountEl = document.getElementById("asTxAmount");
   const dateEl = document.getElementById("asTxDate");
   const notesEl = document.getElementById("asTxNotes");
-  const repeatsEl = document.getElementById("asTxRepeats");
   const recSel = document.getElementById("asTxRecurrence");
   const endCountEl = document.getElementById("asTxEndCount");
   const endDateEl = document.getElementById("asTxEndDate");
@@ -1220,8 +1221,7 @@ function resetAccountSetupTransactionForm() {
   if (amountEl) amountEl.value = "";
   clearAccountSetupCategoryCombobox("asTxCategory");
   if (notesEl) notesEl.value = "";
-  if (repeatsEl) repeatsEl.checked = false;
-  if (recSel) recSel.value = "monthly";
+  if (recSel) recSel.value = "";
   if (endCountEl) endCountEl.value = "";
   if (endDateEl) endDateEl.value = "";
   if (endCountWrap) endCountWrap.hidden = true;
@@ -1497,8 +1497,9 @@ function readAccountSetupExpenseTransactionFromInputs() {
   const txCategory = (document.getElementById("asExpTxCategory")?.value || "").trim();
   const txDate = String(document.getElementById("asExpTxDate")?.value || "").trim();
   const txNotes = (document.getElementById("asExpTxNotes")?.value || "").trim();
-  const repeats = !!document.getElementById("asExpRepeats")?.checked;
-  const recurrence = String(document.getElementById("asExpRecurrence")?.value || "monthly").trim() || "monthly";
+  const recurrenceRaw = String(document.getElementById("asExpRecurrence")?.value || "").trim();
+  const repeats = !!recurrenceRaw;
+  const recurrence = recurrenceRaw || null;
   const endDate = String(document.getElementById("asExpEndDate")?.value || "").trim() || null;
   const endCountRaw = String(document.getElementById("asExpEndCount")?.value || "").trim();
   const endCount = endCountRaw === "" ? null : Number(endCountRaw);
@@ -1557,7 +1558,6 @@ function resetAccountSetupExpenseForm() {
   const amountEl = document.getElementById("asExpTxAmount");
   const dateEl = document.getElementById("asExpTxDate");
   const notesEl = document.getElementById("asExpTxNotes");
-  const repeatsEl = document.getElementById("asExpRepeats");
   const recSel = document.getElementById("asExpRecurrence");
   const endCountEl = document.getElementById("asExpEndCount");
   const endDateEl = document.getElementById("asExpEndDate");
@@ -1567,8 +1567,7 @@ function resetAccountSetupExpenseForm() {
   if (amountEl) amountEl.value = "";
   clearAccountSetupCategoryCombobox("asExpTxCategory");
   if (notesEl) notesEl.value = "";
-  if (repeatsEl) repeatsEl.checked = false;
-  if (recSel) recSel.value = "monthly";
+  if (recSel) recSel.value = "";
   if (endCountEl) endCountEl.value = "";
   if (endDateEl) endDateEl.value = "";
   if (endCountWrap) endCountWrap.hidden = true;
@@ -1786,7 +1785,6 @@ function hydrateAccountSetupDraft() {
     const txCategoryEl = document.getElementById("asTxCategory");
     const txDateEl = document.getElementById("asTxDate");
     const txNotesEl = document.getElementById("asTxNotes");
-    const txRecurringEl = document.getElementById("asTxRepeats");
     const txRecSelEl = document.getElementById("asTxRecurrence");
     const txEndDateEl = document.getElementById("asTxEndDate");
     const txEndCountEl = document.getElementById("asTxEndCount");
@@ -1809,7 +1807,6 @@ function hydrateAccountSetupDraft() {
         const eCat = document.getElementById("asExpTxCategory");
         const eDate = document.getElementById("asExpTxDate");
         const eNotes = document.getElementById("asExpTxNotes");
-        const eRec = document.getElementById("asExpRepeats");
         const eRecSel = document.getElementById("asExpRecurrence");
         const eEndDate = document.getElementById("asExpEndDate");
         const eEndCount = document.getElementById("asExpEndCount");
@@ -1824,10 +1821,8 @@ function hydrateAccountSetupDraft() {
         }
         if (eDate && lastTx.date) eDate.value = String(lastTx.date);
         if (eNotes && lastTx.notes) eNotes.value = String(lastTx.notes);
-        if (eRec) eRec.checked = !!lastTx.recurring;
-        const eOn = !!lastTx.recurring;
-        if (eRecSel && lastTx.recurrence) eRecSel.value = String(lastTx.recurrence);
-        if (eRecSel) eRecSel.disabled = !eOn;
+        const eOn = !!lastTx.recurring && !!lastTx.recurrence;
+        if (eRecSel) eRecSel.value = eOn ? String(lastTx.recurrence) : "";
         if (eEndDateWrap) eEndDateWrap.hidden = !eOn;
         if (eEndCountWrap) eEndCountWrap.hidden = !eOn;
         if (eEndDate && lastTx.end_date) eEndDate.value = String(lastTx.end_date);
@@ -1844,10 +1839,8 @@ function hydrateAccountSetupDraft() {
         }
         if (txDateEl && lastTx.date) txDateEl.value = String(lastTx.date);
         if (txNotesEl && lastTx.notes) txNotesEl.value = String(lastTx.notes);
-        if (txRecurringEl) txRecurringEl.checked = !!lastTx.recurring;
-        const on = !!lastTx.recurring;
-        if (txRecSelEl && lastTx.recurrence) txRecSelEl.value = String(lastTx.recurrence);
-        if (txRecSelEl) txRecSelEl.disabled = !on;
+        const on = !!lastTx.recurring && !!lastTx.recurrence;
+        if (txRecSelEl) txRecSelEl.value = on ? String(lastTx.recurrence) : "";
         if (txEndDateWrapEl) txEndDateWrapEl.hidden = !on;
         if (txEndCountWrapEl) txEndCountWrapEl.hidden = !on;
         if (txEndDateEl && lastTx.end_date) txEndDateEl.value = String(lastTx.end_date);
@@ -2585,20 +2578,17 @@ if (accountSetupBackBtn) {
 function applyAccountSetupCategoryRecurrenceDefaults(categoryEl, prefix) {
   if (!categoryEl) return;
   const cat = String(categoryEl.value || "").trim();
-  const repeatsEl = document.getElementById(prefix + "Repeats");
   const recSel = document.getElementById(prefix + "Recurrence");
-  if (!repeatsEl || !recSel) return;
+  if (!recSel) return;
   let recurrence = null;
   if (cat === "Mortgage/Rent" || cat === "Credit Card Payment" || cat === "Utility") {
-    repeatsEl.checked = true;
     recurrence = "monthly";
   } else if (cat === "Paycheck") {
-    repeatsEl.checked = true;
     recurrence = "biweekly";
   }
   if (recurrence != null) {
     recSel.value = recurrence;
-    repeatsEl.dispatchEvent(new Event("change", { bubbles: true }));
+    recSel.dispatchEvent(new Event("change", { bubbles: true }));
   }
 }
 
@@ -2627,17 +2617,15 @@ function initAccountSetupTransactionUi() {
     }
 
     function bindRepeatsUi(prefix) {
-      const repeatsEl = document.getElementById(prefix + "Repeats");
       const recSel = document.getElementById(prefix + "Recurrence");
       const endCountWrap = document.getElementById(prefix + "EndCountWrap");
       const endCountEl = document.getElementById(prefix + "EndCount");
       const endDateWrap = document.getElementById(prefix + "EndDateWrap");
       const endDateEl = document.getElementById(prefix + "EndDate");
-      if (!repeatsEl) return;
+      if (!recSel) return;
 
       const update = () => {
-        const on = !!repeatsEl.checked;
-        if (recSel) recSel.disabled = !on;
+        const on = !!String(recSel.value || "").trim();
         if (endCountWrap) endCountWrap.hidden = !on;
         if (endDateWrap) endDateWrap.hidden = !on;
         if (endCountEl) {
@@ -2650,7 +2638,7 @@ function initAccountSetupTransactionUi() {
         }
       };
 
-      repeatsEl.addEventListener("change", update);
+      recSel.addEventListener("change", update);
       update();
 
       if (endCountEl && endDateEl) {
