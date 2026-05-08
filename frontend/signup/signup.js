@@ -744,7 +744,7 @@ function syncAccountSetupWizardShellButtons() {
         }
       } catch (_) {}
       if (saveInc) saveInc.textContent = "Save";
-      if (cancelInc) cancelInc.textContent = after ? "Continue Setup" : "Cancel";
+      if (cancelInc) cancelInc.textContent = after ? "Continue" : "Cancel";
       if (saveInc) saveInc.style.display = after ? "none" : "inline-flex";
       if (cancelInc) {
         cancelInc.classList.toggle("top-nav__logout", !!after);
@@ -1468,16 +1468,16 @@ function accountSetupTxHubAddExpenseClick() {
       JSON.stringify({
         ...rawDraft,
         wizardFlowVersion: ACCOUNT_SETUP_WIZARD_FLOW_VERSION,
-        wizardStep: 3,
-        step3Phase: "intro",
-        expensePhase: "form",
+        wizardStep: 2,
+        step3Phase: "form",
+        expensePhase: "intro",
       })
     );
   } catch (_) {}
-  lockAccountSetupWizardStepTransition();
-  setAccountSetupWizardStep(3, { skipPersist: true });
-  setAccountSetupExpensePhase("form");
-  document.getElementById("asExpTxAmount")?.focus();
+  setAccountSetupStep3Phase("form");
+  const exp = document.querySelector('input[name="asTxKind"][value="expense"]');
+  if (exp) exp.checked = true;
+  document.getElementById("asTxAmount")?.focus();
 }
 
 function accountSetupTxHubContinueClick() {

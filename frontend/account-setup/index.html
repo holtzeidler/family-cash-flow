@@ -445,7 +445,16 @@
                         </span>
                         <span class="account-setup-survey__label">Maximize savings interest</span>
                       </button>
-                      <button type="button" class="account-setup-survey__opt" data-as-survey-opt="other" aria-pressed="false">Other</button>
+                      <button type="button" class="account-setup-survey__opt" data-as-survey-opt="other" aria-pressed="false">
+                        <span class="account-setup-survey__icon" aria-hidden="true">
+                          <svg viewBox="0 0 24 24" focusable="false">
+                            <path d="M12 3l1.1 3.3L16.5 7.5l-3.4 1.2L12 12l-1.1-3.3L7.5 7.5l3.4-1.2L12 3z"></path>
+                            <path d="M18.5 13l.8 2.4 2.5.9-2.5.9-.8 2.4-.8-2.4-2.5-.9 2.5-.9.8-2.4z"></path>
+                            <path d="M6 13l.8 2.2 2.3.8-2.3.8L6 19l-.8-2.2-2.3-.8 2.3-.8L6 13z"></path>
+                          </svg>
+                        </span>
+                        <span class="account-setup-survey__label">Other</span>
+                      </button>
                     </div>
                     <div class="account-setup-survey__other" id="accountSetupSurveyOtherWrap" hidden>
                       <label class="account-setup-survey__otherLabel" for="accountSetupSurveyOther">Other <span class="account-setup-survey__optional">(optional)</span></label>
@@ -519,6 +528,6 @@
       </div>
     </div>
 
-    <script src="../signup/signup.js?v=65"></script>
+    <script src="../signup/signup.js?v=67"></script>
   </body>
 </html>
