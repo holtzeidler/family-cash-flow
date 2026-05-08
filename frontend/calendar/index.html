@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=250" />
+    <link rel="stylesheet" href="../styles.css?v=254" />
   </head>
   <body>
     <div class="container">
@@ -36,7 +36,7 @@
             </h1>
           </div>
           <div class="top-nav__tabs" role="tablist" aria-label="Views">
-            <a class="top-nav__tab is-active" id="navCalendarView" role="tab" aria-selected="true" href="/calendar">Calendar View</a>
+            <a class="top-nav__tab is-active" id="navCalendarView" role="tab" aria-selected="true" href="/calendar">Forecast</a>
             <a class="top-nav__tab admin-only-tab" id="navTransactionView" role="tab" aria-selected="false" href="/transactions" hidden>Transaction View</a>
             <a class="top-nav__tab admin-only-tab" id="navReportsView" role="tab" aria-selected="false" href="/reports" hidden>Reports</a>
             <a class="top-nav__tab" id="navSettingsView" role="tab" aria-selected="false" href="/settings">Settings</a>
@@ -185,15 +185,15 @@
                   </p>
                 </div>
                 <div class="tx-add-vspace tx-add-vspace--sm" aria-hidden="true"></div>
+                <label class="reimbursable-field" for="txAddVariable" title="Great for utilities, groceries or credit card bills.">
+                  <span class="reimbursable-field__label">Amount varies month to month</span>
+                  <input id="txAddVariable" type="checkbox" title="Amount is a placeholder until you enter actuals" />
+                </label>
+                <div class="tx-add-vspace tx-add-vspace--sm" aria-hidden="true"></div>
                 <div class="form-row-h">
                   <div class="form-row-h__label"><label for="txAddAccountId">Account</label></div>
                   <div class="form-row-h__field"><select id="txAddAccountId"></select></div>
                 </div>
-                <div class="tx-add-vspace tx-add-vspace--sm" aria-hidden="true"></div>
-                <label class="reimbursable-field" for="txAddVariable">
-                  <span class="reimbursable-field__label">Amount changes month to month</span>
-                  <input id="txAddVariable" type="checkbox" title="Amount is a placeholder until you enter actuals" />
-                </label>
               </div>
               <div class="tx-add-vspace tx-add-vspace--lg" aria-hidden="true"></div>
               <div id="txAddCategoryColorRow" class="cat-color-row" hidden>
@@ -298,6 +298,7 @@
                     <input type="hidden" id="calendarMonth" />
                   </div>
                 </div>
+                <div id="calendarSummaryRibbon" class="cal-summary-ribbon" hidden aria-label="Forecast summary"></div>
                 <div style="height:6px;"></div>
                 <div id="calendarErr" class="error"></div>
                 <div id="calendarDow" class="calendar-dow-row" aria-hidden="true"></div>
@@ -934,6 +935,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="../app.js?v=195"></script>
+    <script src="../app.js?v=198"></script>
   </body>
 </html>

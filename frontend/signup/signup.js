@@ -5,6 +5,7 @@ function getApiBase() {
 
 /** Cross-site cookie fallback (GitHub Pages → API); cleared on logout / 401. */
 const BW_API_ACCESS_TOKEN_KEY = "bw_api_access_token";
+const BW_FORECAST_READY_POPUP_KEY = "bw_forecast_ready_popup";
 
 function apiBearerAuthHeaders() {
   try {
@@ -50,7 +51,7 @@ async function request(path, method, body) {
   }
 }
 
-async function requestWithRetry(path, method, body, { maxMs = 1600, minDelayMs = 200 } = {}) {
+async function requestWithRetry(path, method, body, { maxMs = 9000, minDelayMs = 260 } = {}) {
   const started = Date.now();
   let attempt = 0;
   while (true) {
@@ -61,7 +62,8 @@ async function requestWithRetry(path, method, body, { maxMs = 1600, minDelayMs =
     if (!r.networkError) return r;
     const elapsed = Date.now() - started;
     if (elapsed >= maxMs) return r;
-    const delay = Math.min(650, minDelayMs * attempt);
+    // Back off quickly but cap so we still make several attempts.
+    const delay = Math.min(1500, minDelayMs * attempt);
     await new Promise((res) => window.setTimeout(res, delay));
   }
 }
@@ -112,7 +114,19 @@ async function goApp() {
 }
 
 function messageFromFailure(resp, fallback) {
-  if (resp.networkError) return `${resp.networkError}.`;
+  if (resp.networkError) {
+    const raw = String(resp.networkError || "").trim();
+    const norm = raw.toLowerCase();
+    if (
+      norm.includes("failed to fetch") ||
+      norm.includes("networkerror") ||
+      norm.includes("load failed") ||
+      norm.includes("the internet connection appears to be offline")
+    ) {
+      return "We’re having trouble connecting. Please wait a moment and try again.";
+    }
+    return "We hit a network issue. Please try again.";
+  }
   if (resp.status === 409) return "Email already registered.";
   if (resp.status === 400 && resp.data && resp.data.detail) return resp.data.detail;
   if (resp.status >= 500) return `Server error (${resp.status}). Try again in 30–60s.`;
@@ -1151,6 +1165,7 @@ function readAccountSetupTransactionFromInputs() {
   const txCategory = (document.getElementById("asTxCategory")?.value || "").trim();
   const txDate = String(document.getElementById("asTxDate")?.value || "").trim();
   const txNotes = (document.getElementById("asTxNotes")?.value || "").trim();
+  const txVariable = !!document.getElementById("asTxVariable")?.checked;
   const recurrenceRaw = String(document.getElementById("asTxRecurrence")?.value || "").trim();
   const repeats = !!recurrenceRaw;
   const recurrence = recurrenceRaw || null;
@@ -1197,6 +1212,7 @@ function readAccountSetupTransactionFromInputs() {
       category: categoryResolved,
       date: txDate,
       notes: txNotes,
+      variable: repeats ? txVariable : false,
       recurring: repeats,
       recurrence: repeats ? recurrence : null,
       end_date: repeats ? (endDate && endDate !== "" ? endDate : null) : null,
@@ -1212,6 +1228,7 @@ function resetAccountSetupTransactionForm() {
   const amountEl = document.getElementById("asTxAmount");
   const dateEl = document.getElementById("asTxDate");
   const notesEl = document.getElementById("asTxNotes");
+  const varEl = document.getElementById("asTxVariable");
   const recSel = document.getElementById("asTxRecurrence");
   const endCountEl = document.getElementById("asTxEndCount");
   const endDateEl = document.getElementById("asTxEndDate");
@@ -1221,6 +1238,7 @@ function resetAccountSetupTransactionForm() {
   if (amountEl) amountEl.value = "";
   clearAccountSetupCategoryCombobox("asTxCategory");
   if (notesEl) notesEl.value = "";
+  if (varEl) varEl.checked = false;
   if (recSel) recSel.value = "";
   if (endCountEl) endCountEl.value = "";
   if (endDateEl) endDateEl.value = "";
@@ -1497,6 +1515,7 @@ function readAccountSetupExpenseTransactionFromInputs() {
   const txCategory = (document.getElementById("asExpTxCategory")?.value || "").trim();
   const txDate = String(document.getElementById("asExpTxDate")?.value || "").trim();
   const txNotes = (document.getElementById("asExpTxNotes")?.value || "").trim();
+  const txVariable = !!document.getElementById("asExpVariable")?.checked;
   const recurrenceRaw = String(document.getElementById("asExpRecurrence")?.value || "").trim();
   const repeats = !!recurrenceRaw;
   const recurrence = recurrenceRaw || null;
@@ -1543,6 +1562,7 @@ function readAccountSetupExpenseTransactionFromInputs() {
       category: categoryResolved,
       date: txDate,
       notes: txNotes,
+      variable: repeats ? txVariable : false,
       recurring: repeats,
       recurrence: repeats ? recurrence : null,
       end_date: repeats ? (endDate && endDate !== "" ? endDate : null) : null,
@@ -1558,6 +1578,7 @@ function resetAccountSetupExpenseForm() {
   const amountEl = document.getElementById("asExpTxAmount");
   const dateEl = document.getElementById("asExpTxDate");
   const notesEl = document.getElementById("asExpTxNotes");
+  const varEl = document.getElementById("asExpVariable");
   const recSel = document.getElementById("asExpRecurrence");
   const endCountEl = document.getElementById("asExpEndCount");
   const endDateEl = document.getElementById("asExpEndDate");
@@ -1567,6 +1588,7 @@ function resetAccountSetupExpenseForm() {
   if (amountEl) amountEl.value = "";
   clearAccountSetupCategoryCombobox("asExpTxCategory");
   if (notesEl) notesEl.value = "";
+  if (varEl) varEl.checked = false;
   if (recSel) recSel.value = "";
   if (endCountEl) endCountEl.value = "";
   if (endDateEl) endDateEl.value = "";
@@ -1932,6 +1954,7 @@ function readAccountSetupDraft() {
         category: String(t?.category || ""),
         date: String(t?.date || ""),
         notes: t?.notes != null ? String(t.notes) : "",
+        variable: !!t?.variable,
         recurring: !!t?.recurring,
         recurrence: t?.recurrence != null && String(t.recurrence).trim() !== "" ? String(t.recurrence) : null,
         end_date: t?.end_date != null && String(t.end_date).trim() !== "" ? String(t.end_date) : null,
@@ -1995,7 +2018,7 @@ async function maybeCreateFirstTransactionFromDraft(draft, createdAccountId) {
           notes: t.notes ? t.notes : null,
           kind: t.kind,
           amount,
-          variable: false,
+          variable: !!t.variable,
           category_id: null,
           bg_color: t.bg_color ? t.bg_color : null,
           fg_color: null,
@@ -2062,7 +2085,7 @@ async function doSignup() {
       return cleaned || "User";
     })();
 
-    const reg = await requestWithRetry("/api/auth/register", "POST", { name, email, password }, { maxMs: 1800 });
+    const reg = await requestWithRetry("/api/auth/register", "POST", { name, email, password }, { maxMs: 14000 });
     if (!reg.ok) {
       if (isAccountSetup) {
         const remaining = Math.max(0, minOverlayMs - (Date.now() - startedAt));
@@ -2113,6 +2136,10 @@ async function doSignup() {
       hideForecastBuildOverlay(overlay);
     }
     setCallout(signupCalloutEl, "", "");
+    try {
+      // One-time "Your forecast is ready" modal on first calendar load.
+      sessionStorage.setItem(BW_FORECAST_READY_POPUP_KEY, "1");
+    } catch (_) {}
     await goApp();
   } catch (e) {
     if (isAccountSetup) {

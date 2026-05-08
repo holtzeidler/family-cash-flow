@@ -1501,12 +1501,16 @@ const calendarViewPanel = document.getElementById("calendarViewPanel");
 const transactionViewPanel = document.getElementById("transactionViewPanel");
 const settingsViewPanel = document.getElementById("settingsViewPanel");
 const reportsViewPanel = document.getElementById("reportsViewPanel");
+const calendarSummaryRibbon = document.getElementById("calendarSummaryRibbon");
 const settingsSidebarNav = document.getElementById("settingsSidebarNav");
 const sidebarPendingTxCard = document.getElementById("sidebarPendingTxCard");
 const sidebarPendingTxList = document.getElementById("sidebarPendingTxList");
 const sidebarPendingTitle = document.getElementById("sidebarPendingTitle");
 const catReportStart = document.getElementById("catReportStart");
 const catReportEnd = document.getElementById("catReportEnd");
+
+// After account creation, we show a one-time "forecast is ready" modal on first calendar load.
+const BW_FORECAST_READY_POPUP_KEY = "bw_forecast_ready_popup";
 const catReportYearSelect = document.getElementById("catReportYearSelect");
 const catReportRunBtn = document.getElementById("catReportRunBtn");
 const catReportErr = document.getElementById("catReportErr");
@@ -7194,6 +7198,217 @@ function renderCalendar() {
     const h = "170px";
     calendarPanel.style.setProperty("--cal-day-min-h", h);
   }
+
+  renderCalendarSummaryRibbon();
+}
+
+function getVisibleMonthIsoRange() {
+  const ym = getCalendarViewYm();
+  const parts = String(ym).split("-");
+  const year = Number(parts[0]);
+  const monthIndex = Number(parts[1]) - 1;
+  if (!Number.isFinite(year) || !Number.isFinite(monthIndex) || monthIndex < 0 || monthIndex > 11) {
+    return null;
+  }
+  const start = new Date(year, monthIndex, 1);
+  const end = new Date(year, monthIndex + 1, 0);
+  const startIso = toISODate(start);
+  const endIso = toISODate(end);
+  return { year, monthIndex, startIso, endIso, daysInMonth: end.getDate() };
+}
+
+function readActiveFamilyMinThreshold() {
+  try {
+    const k = getBalanceThresholdKey("min", state.activeFamilyId);
+    if (!k) return null;
+    const raw = localStorage.getItem(k);
+    if (raw == null) return null;
+    const n = toNum(String(raw));
+    return Number.isFinite(n) ? n : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function renderCalendarSummaryRibbon() {
+  if (!calendarSummaryRibbon) return;
+  // Only show on the calendar view.
+  if (!calendarViewPanel || calendarViewPanel.hidden) {
+    calendarSummaryRibbon.hidden = true;
+    calendarSummaryRibbon.innerHTML = "";
+    return;
+  }
+
+  const range = getVisibleMonthIsoRange();
+  if (!range) {
+    calendarSummaryRibbon.hidden = true;
+    calendarSummaryRibbon.innerHTML = "";
+    return;
+  }
+
+  const { startIso, endIso, daysInMonth, year, monthIndex } = range;
+  const todayIso = toISODate(new Date());
+  const minThreshold = readActiveFamilyMinThreshold();
+  const floor = Number.isFinite(minThreshold) ? Number(minThreshold) : 0;
+
+  /** @type {{title:string, line1:string, line2?:string}[]} */
+  const items = [];
+
+  // Lowest projected balance in the visible month.
+  {
+    let minBal = null;
+    let minIso = null;
+    for (let day = 1; day <= daysInMonth; day++) {
+      const iso = toISODate(new Date(year, monthIndex, day));
+      const dayBal = state.monthDailyBalances?.get?.(iso);
+      if (!dayBal) continue;
+      const endNum = Number(dayBal.end ?? dayBal.total_balance ?? 0);
+      if (!Number.isFinite(endNum)) continue;
+      if (minBal == null || endNum < minBal) {
+        minBal = endNum;
+        minIso = iso;
+      }
+    }
+    if (minBal != null && minIso) {
+      items.push({
+        title: "Lowest projected balance",
+        line1: `$${fmtMoney(minBal)}`,
+        line2: `on ${fmtMonthDay(minIso)}`,
+      });
+    }
+  }
+
+  // Largest upcoming expense (visible month, today+).
+  {
+    const all = [
+      ...(state.monthActualItems || []),
+      ...(state.calendarExtraActualItems || []),
+      ...(state.monthExpectedItems || []),
+      ...(state.calendarExtraExpectedItems || []),
+    ];
+    let best = null;
+    for (const tx of all) {
+      const iso = normalizeIsoDate(tx.date) || tx.date;
+      if (!iso || iso < startIso || iso > endIso) continue;
+      if (iso < todayIso) continue;
+      if (String(tx.kind) !== "expense") continue;
+      const amt = Number(tx.amount ?? 0);
+      if (!Number.isFinite(amt)) continue;
+      if (!best || amt > best.amt) {
+        best = { iso, amt, desc: String(tx.description || tx.category || "Expense") };
+      }
+    }
+    if (best) {
+      const label = truncate(String(best.desc || "Expense"), 18);
+      items.push({
+        title: "Largest upcoming expense",
+        line1: `${label} – $${fmtMoney(best.amt)}`,
+        line2: `on ${fmtMonthDay(best.iso)}`,
+      });
+    }
+  }
+
+  // Safe to spend this week: buffer above threshold using the minimum projected balance in next 7 days.
+  {
+    let minWeekBal = null;
+    let minWeekIso = null;
+    for (let i = 0; i < 7; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() + i);
+      const iso = toISODate(d);
+      if (iso < startIso || iso > endIso) continue;
+      const dayBal = state.monthDailyBalances?.get?.(iso);
+      if (!dayBal) continue;
+      const endNum = Number(dayBal.end ?? dayBal.total_balance ?? 0);
+      if (!Number.isFinite(endNum)) continue;
+      if (minWeekBal == null || endNum < minWeekBal) {
+        minWeekBal = endNum;
+        minWeekIso = iso;
+      }
+    }
+    if (minWeekBal != null) {
+      const safe = Math.max(0, Number(minWeekBal) - floor);
+      items.push({
+        title: "Safe to spend this week",
+        line1: `$${fmtMoney0(safe)}`,
+        line2: floor > 0 ? `Based on your minimum balance target ($${fmtMoney0(floor)})` : "Based on staying above $0",
+      });
+    }
+  }
+
+  // Next income (visible month, today+).
+  {
+    const all = [
+      ...(state.monthActualItems || []),
+      ...(state.calendarExtraActualItems || []),
+      ...(state.monthExpectedItems || []),
+      ...(state.calendarExtraExpectedItems || []),
+    ];
+    let next = null;
+    for (const tx of all) {
+      const iso = normalizeIsoDate(tx.date) || tx.date;
+      if (!iso || iso < startIso || iso > endIso) continue;
+      if (iso < todayIso) continue;
+      if (String(tx.kind) !== "income") continue;
+      const amt = Number(tx.amount ?? 0);
+      if (!Number.isFinite(amt)) continue;
+      if (!next || iso < next.iso) next = { iso, amt, desc: String(tx.description || tx.category || "Income") };
+    }
+    if (next) {
+      const label = truncate(String(next.desc || "Income"), 18);
+      items.push({
+        title: "Next income",
+        line1: `${label} +$${fmtMoney(next.amt)}`,
+        line2: `on ${fmtMonthDay(next.iso)}`,
+      });
+    }
+  }
+
+  // Good shape through: until first projected dip below threshold (or end of month).
+  {
+    let firstBadIso = null;
+    if (state.monthDailyBalances?.get) {
+      for (let day = 1; day <= daysInMonth; day++) {
+        const iso = toISODate(new Date(year, monthIndex, day));
+        if (iso < todayIso) continue;
+        const dayBal = state.monthDailyBalances.get(iso);
+        if (!dayBal) continue;
+        const endNum = Number(dayBal.end ?? dayBal.total_balance ?? 0);
+        if (!Number.isFinite(endNum)) continue;
+        if (endNum < floor) {
+          firstBadIso = iso;
+          break;
+        }
+      }
+    }
+    let throughIso = endIso;
+    if (firstBadIso) {
+      const d = new Date(firstBadIso);
+      d.setDate(d.getDate() - 1);
+      const prevIso = toISODate(d);
+      if (prevIso >= startIso) throughIso = prevIso;
+    }
+    // Only show if we have any projected balances for the month.
+    const hasAny = state.monthDailyBalances && typeof state.monthDailyBalances.size === "number" ? state.monthDailyBalances.size > 0 : true;
+    if (hasAny) {
+      items.unshift({
+        title: `You’re in good shape through ${fmtMonthDay(throughIso)}`,
+        line1: "",
+      });
+    }
+  }
+
+  const rendered = items
+    .filter((it) => it && it.title && (it.line1 || it.line2))
+    .map((it) => {
+      const v1 = it.line1 ? `<div class="cal-summary-vline">${escapeHtml(it.line1)}</div>` : "";
+      const v2 = it.line2 ? `<div class="cal-summary-sub">${escapeHtml(it.line2)}</div>` : "";
+      return `<div class="cal-summary-item"><div class="cal-summary-k">${escapeHtml(it.title)}</div>${v1}${v2}</div>`;
+    })
+    .join("");
+
+  calendarSummaryRibbon.innerHTML = rendered;
+  calendarSummaryRibbon.hidden = !rendered;
 }
 
 function drawProjectionChart(daily) {
@@ -7336,6 +7551,67 @@ function drawProjectionChart(daily) {
     },
   });
 }
+
+function ensureForecastReadyModal() {
+  const existing = document.getElementById("bwForecastReadyModal");
+  if (existing) return existing;
+  const wrap = document.createElement("div");
+  wrap.id = "bwForecastReadyModal";
+  wrap.className = "modal-overlay";
+  wrap.setAttribute("aria-hidden", "true");
+  wrap.innerHTML = `
+    <div class="modal modal--choice" role="dialog" aria-modal="true" aria-labelledby="bwForecastReadyTitle">
+      <h3 id="bwForecastReadyTitle" style="margin: 0 0 6px; text-align:center;">Your forecast is ready.</h3>
+      <div class="modal-actions" style="border-top: none; padding-top: 0; margin-top: 14px;">
+        <button type="button" id="bwForecastReadyCloseBtn">Close</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(wrap);
+
+  const close = () => {
+    try {
+      wrap.classList.remove("modal-overlay--open");
+      wrap.setAttribute("aria-hidden", "true");
+    } catch (_) {}
+  };
+  wrap.addEventListener("click", (e) => {
+    if (e.target === wrap) close();
+  });
+  wrap.querySelector("#bwForecastReadyCloseBtn")?.addEventListener("click", close);
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && wrap.classList.contains("modal-overlay--open")) close();
+  });
+
+  return wrap;
+}
+
+function maybeShowForecastReadyPopup() {
+  // Only on Calendar view.
+  if (!calendarViewPanel || calendarViewPanel.hidden) return;
+  try {
+    const v = sessionStorage.getItem(BW_FORECAST_READY_POPUP_KEY);
+    if (v !== "1") return;
+    sessionStorage.removeItem(BW_FORECAST_READY_POPUP_KEY);
+  } catch (_) {
+    return;
+  }
+
+  const modal = ensureForecastReadyModal();
+  try {
+    modal.classList.add("modal-overlay--open");
+    modal.setAttribute("aria-hidden", "false");
+    modal.querySelector("#bwForecastReadyCloseBtn")?.focus?.();
+  } catch (_) {}
+}
+
+// Show it once after initial calendar render (when the app has mounted).
+try {
+  if (window.__BW_FORCE_VIEW === "calendar") {
+    // Give the calendar a tick to render before showing.
+    window.setTimeout(maybeShowForecastReadyPopup, 60);
+  }
+} catch (_) {}
 
 function setDefaultMonth() {
   initCalendarYearOptions();
