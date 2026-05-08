@@ -3596,18 +3596,21 @@ body.account-setup-page #accountSetupWizardPanel0 .form-row-h__label{
 }
 body.account-setup-page #accountSetupWizardPanel0 .form-row-h__label label{
   white-space: nowrap;
-  color: #7b879a;
+  color: #556173;
   font-weight: 400;
   text-align: center;
 }
 /* Step 2: full-width rows + wider label column so uppercase labels stay on one line */
+body.account-setup-page #accountSetupWizardPanel1 .form-row-h{
+  align-items: center;
+}
 body.account-setup-page #accountSetupWizardPanel1 .form-row-h__label{
-  flex: 0 0 13.75rem;
-  max-width: 48%;
+  flex: 0 0 12.25rem;
+  max-width: 42%;
 }
 body.account-setup-page #accountSetupWizardPanel1 .form-row-h__label label{
   white-space: nowrap;
-  color: #7b879a;
+  color: #556173;
   font-weight: 400;
 }
 body.account-setup-page .account-setup-step2-lede{
@@ -3742,6 +3745,13 @@ body.account-setup-page .account-setup-tx-choice-row > .top-nav__logout:hover{
   background: color-mix(in srgb, var(--accent) 6%, transparent);
   color: var(--accent);
   border-color: var(--accent);
+  filter: none;
+}
+body.account-setup-page .account-setup-tx-choice-row > .top-nav__logout:disabled{
+  background: transparent;
+  color: rgba(75, 85, 99, 0.55);
+  border-color: rgba(75, 85, 99, 0.35);
+  cursor: not-allowed;
   filter: none;
 }
 body.account-setup-page .account-setup-tx-choice-row > .top-nav__logout:focus-visible{

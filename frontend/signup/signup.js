@@ -614,7 +614,10 @@ function syncAccountSetupWizardShellButtons() {
   const cancelInc = document.getElementById("asTxCancelIncomeBtn");
   const saveExp = document.getElementById("asExpSaveBtn");
   const cancelExp = document.getElementById("asExpCancelBtn");
+  const hubSkip = document.getElementById("asTxHubSkipBtn");
   const hubContinue = document.getElementById("asTxHubContinueBtn");
+  const hubAddIncome = document.getElementById("asTxHubAddIncomeBtn");
+  const hubAddExpense = document.getElementById("asTxHubAddExpenseBtn");
   if (!document.getElementById("accountSetupWizard")) return;
 
   for (const el of [saveInc, cancelInc, saveExp, cancelExp]) {
@@ -625,12 +628,21 @@ function syncAccountSetupWizardShellButtons() {
 
   // Tx hub: show Continue once any transaction exists.
   try {
-    if (hubContinue && s === 2 && getAccountSetupStep3Phase() === "intro") {
+    if ((hubSkip || hubContinue) && s === 2 && getAccountSetupStep3Phase() === "intro") {
       const rawDraft = readAccountSetupDraftRaw() || {};
-      const hasTx = Array.isArray(rawDraft.transactions) && rawDraft.transactions.length > 0;
+      const txs = Array.isArray(rawDraft.transactions) ? rawDraft.transactions : [];
+      const hasTx = txs.length > 0;
+      const hasIncome = txs.some((t) => String(t?.kind || "").toLowerCase() === "income");
+      const hasExpense = txs.some((t) => String(t?.kind || "").toLowerCase() === "expense");
+      if (hubSkip) hubSkip.hidden = !hasTx;
       hubContinue.hidden = !hasTx;
+      if (hubAddIncome) hubAddIncome.disabled = hasIncome;
+      if (hubAddExpense) hubAddExpense.disabled = hasExpense;
     } else {
+      if (hubSkip) hubSkip.hidden = true;
       if (hubContinue) hubContinue.hidden = true;
+      if (hubAddIncome) hubAddIncome.disabled = false;
+      if (hubAddExpense) hubAddExpense.disabled = false;
     }
   } catch (_) {}
 
@@ -1696,6 +1708,7 @@ function setBusy(isBusy) {
     "asExpCancelBtn",
     "asTxHubAddIncomeBtn",
     "asTxHubAddExpenseBtn",
+    "asTxHubSkipBtn",
     "asTxHubContinueBtn",
   ]) {
     const el = document.getElementById(id);
@@ -2189,6 +2202,7 @@ document.getElementById("asTxSaveIncomeBtn")?.addEventListener("click", () => vo
 document.getElementById("asTxCancelIncomeBtn")?.addEventListener("click", () => accountSetupCancelIncomeClick());
 document.getElementById("asTxHubAddIncomeBtn")?.addEventListener("click", () => accountSetupTxHubAddIncomeClick());
 document.getElementById("asTxHubAddExpenseBtn")?.addEventListener("click", () => accountSetupTxHubAddExpenseClick());
+document.getElementById("asTxHubSkipBtn")?.addEventListener("click", () => accountSetupTxHubContinueClick());
 document.getElementById("asTxHubContinueBtn")?.addEventListener("click", () => accountSetupTxHubContinueClick());
 document.getElementById("asExpSaveBtn")?.addEventListener("click", () => void accountSetupSaveExpenseClick());
 document.getElementById("asExpCancelBtn")?.addEventListener("click", () => accountSetupCancelExpenseClick());
