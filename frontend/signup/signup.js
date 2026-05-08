@@ -732,9 +732,16 @@ function syncAccountSetupWizardShellButtons() {
         const rawDraft = readAccountSetupDraftRaw() || {};
         const txs = Array.isArray(rawDraft.transactions) ? rawDraft.transactions : [];
         const hasIncome = txs.some((t) => String(t?.kind || "").toLowerCase() === "income");
-        if (successAddIncome) successAddIncome.disabled = hasIncome;
-        // Allow adding multiple expenses; keep the button enabled.
-        if (successAddExpense) successAddExpense.disabled = false;
+        const hasExpense = txs.some((t) => String(t?.kind || "").toLowerCase() === "expense");
+        // Buttons remain clickable; only styling changes based on what's already entered.
+        if (successAddIncome) {
+          successAddIncome.disabled = false;
+          successAddIncome.classList.toggle("account-setup-success-secondary", hasIncome);
+        }
+        if (successAddExpense) {
+          successAddExpense.disabled = false;
+          successAddExpense.classList.toggle("account-setup-success-secondary", hasExpense);
+        }
       } catch (_) {}
       if (saveInc) saveInc.textContent = "Save";
       if (cancelInc) cancelInc.textContent = after ? "Continue Setup" : "Cancel";
