@@ -3957,6 +3957,20 @@ body.account-setup-page .account-setup-step3-form__success{
   color: rgba(11, 61, 46, 0.92);
   font-size: 1rem;
 }
+body.account-setup-page .account-setup-step3-form__successText{
+  margin: 0;
+}
+body.account-setup-page .account-setup-step3-form__successActions{
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 14px;
+  margin: 18px 0 0;
+}
+body.account-setup-page .account-setup-step3-form__successActions .top-nav__logout{
+  min-width: min(280px, 46%);
+  border-radius: 999px;
+}
 body.account-setup-page #accountSetupWizardPanel2[data-after-save="1"] .account-setup-step3-form__body,
 body.account-setup-page #accountSetupWizardPanel3[data-after-save="1"] .account-setup-step3-form__body{
   display: none;

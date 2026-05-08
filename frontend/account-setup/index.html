@@ -148,7 +148,13 @@
                     <p class="account-setup-step3-subq">You can set up all your transactions after setup.</p>
                   </div>
                   <div id="accountSetupWizardStep3Form" class="account-setup-step3-form" hidden>
-                  <div class="account-setup-step3-form__success" id="accountSetupStep3Success" hidden></div>
+                  <div class="account-setup-step3-form__success" id="accountSetupStep3Success" hidden>
+                    <div class="account-setup-step3-form__successText">✓ Transaction added successfully</div>
+                    <div class="account-setup-step3-form__successActions" role="group" aria-label="Add another transaction">
+                      <button type="button" class="top-nav__logout" id="asStep3SuccessAddExpenseBtn">Add Expense</button>
+                      <button type="button" class="top-nav__logout" id="asStep3SuccessAddIncomeBtn" disabled>Add Income</button>
+                    </div>
+                  </div>
                   <div class="account-setup-step3-form__body">
                   <div class="form-row-h">
                     <div class="form-row-h__label"><label>Type</label></div>
@@ -512,6 +518,6 @@
       </div>
     </div>
 
-    <script src="../signup/signup.js?v=51"></script>
+    <script src="../signup/signup.js?v=52"></script>
   </body>
 </html>

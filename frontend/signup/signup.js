@@ -651,6 +651,8 @@ function syncAccountSetupWizardShellButtons() {
   const cancelExp = document.getElementById("asExpCancelBtn");
   const hubAddIncome = document.getElementById("asTxHubAddIncomeBtn");
   const hubAddExpense = document.getElementById("asTxHubAddExpenseBtn");
+  const successAddExpense = document.getElementById("asStep3SuccessAddExpenseBtn");
+  const successAddIncome = document.getElementById("asStep3SuccessAddIncomeBtn");
   if (!document.getElementById("accountSetupWizard")) return;
 
   for (const el of [saveInc, cancelInc, saveExp, cancelExp]) {
@@ -717,23 +719,16 @@ function syncAccountSetupWizardShellButtons() {
       if (cancelInc) cancelInc.style.display = "inline-flex";
       if (signupBtn) signupBtn.style.display = "none";
       const after = isAccountSetupStep3AfterSave();
-      if (saveInc) {
-        saveInc.textContent = after ? "Add Income" : "Save";
-        saveInc.disabled = !!after;
-      }
+      if (saveInc) saveInc.textContent = "Save";
       if (cancelInc) cancelInc.textContent = after ? "Continue Setup" : "Cancel";
       if (accountSetupBackBtn) accountSetupBackBtn.style.display = after ? "none" : "inline-flex";
-      if (addMoreTxBtn) {
-        addMoreTxBtn.textContent = after ? "Add Expense" : "Add More Transactions";
-        addMoreTxBtn.style.display = after ? "inline-flex" : "none";
-        addMoreTxBtn.classList.remove("secondary");
-        addMoreTxBtn.classList.add("top-nav__logout");
-      }
+      if (addMoreTxBtn) addMoreTxBtn.style.display = "none";
       const msg = document.getElementById("accountSetupStep3Success");
       if (msg) {
-        msg.textContent = "✓ Transaction added successfully";
         msg.hidden = !after;
       }
+      if (successAddExpense) successAddExpense.hidden = !after;
+      if (successAddIncome) successAddIncome.hidden = !after;
     } else {
       // In hub/intro mode, leave Next/Skip visibility as determined above (based on tx count).
     }
@@ -1209,12 +1204,6 @@ function resetAccountSetupTransactionForm() {
 
 function addMoreTransactionsFromAccountSetup() {
   if (!isAccountSetupPath()) return;
-  // In the Step 3 income form's collapsed success state, this button is repurposed
-  // as "– Add Expense" to quickly proceed to the expense form.
-  if (getAccountSetupWizardStep() === 2 && getAccountSetupStep3Phase() === "form" && isAccountSetupStep3AfterSave()) {
-    advanceAccountSetupWizardToExpenseForm();
-    return;
-  }
   setCallout(signupCalloutEl, "", "");
   const rawDraft = readAccountSetupDraftRaw() || {};
   const accountName = (document.getElementById("accountName")?.value || "").trim();
@@ -2365,6 +2354,7 @@ document.getElementById("asTxSaveIncomeBtn")?.addEventListener("click", () => vo
 document.getElementById("asTxCancelIncomeBtn")?.addEventListener("click", () => accountSetupCancelIncomeClick());
 document.getElementById("asTxHubAddIncomeBtn")?.addEventListener("click", () => accountSetupTxHubAddIncomeClick());
 document.getElementById("asTxHubAddExpenseBtn")?.addEventListener("click", () => accountSetupTxHubAddExpenseClick());
+document.getElementById("asStep3SuccessAddExpenseBtn")?.addEventListener("click", () => advanceAccountSetupWizardToExpenseForm());
 document.getElementById("asExpSaveBtn")?.addEventListener("click", () => void accountSetupSaveExpenseClick());
 document.getElementById("asExpCancelBtn")?.addEventListener("click", () => accountSetupCancelExpenseClick());
 try {
