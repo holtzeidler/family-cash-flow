@@ -3962,13 +3962,14 @@ body.account-setup-page .account-setup-step3-form__successText{
 }
 body.account-setup-page .account-setup-step3-form__successActions{
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
   gap: 14px;
   margin: 18px 0 0;
 }
 body.account-setup-page .account-setup-step3-form__successActions .top-nav__logout{
-  min-width: min(280px, 46%);
+  width: min(560px, 100%);
   border-radius: 999px;
 }
 body.account-setup-page #accountSetupWizardPanel2[data-after-save="1"] .account-setup-step3-form__body,
