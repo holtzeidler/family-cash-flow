@@ -2389,10 +2389,8 @@ try {
   }
 } catch (_) {}
 function handleAccountSetupBack(e) {
-  try {
-    e?.preventDefault?.();
-    e?.stopPropagation?.();
-  } catch (_) {}
+  // Avoid preventDefault here: on some browsers it can cancel the subsequent click,
+  // making the Back button feel unresponsive.
   if (!isAccountSetupPath() || !document.getElementById("accountSetupWizard")) return;
   const s = getAccountSetupWizardStep();
   if (s <= 0) return;
