@@ -3969,8 +3969,20 @@ body.account-setup-page .account-setup-step3-form__successActions{
   margin: 18px 0 0;
 }
 body.account-setup-page .account-setup-step3-form__successActions .top-nav__logout{
-  width: min(560px, 100%);
+  width: min(520px, 78%);
   border-radius: 999px;
+}
+@media (max-width: 560px){
+  body.account-setup-page .account-setup-step3-form__successActions .top-nav__logout{
+    width: 100%;
+  }
+}
+body.account-setup-page .account-setup-step3-form__successActions .top-nav__logout:disabled{
+  background: #fff;
+  color: rgba(75, 85, 99, 0.55);
+  border-color: rgba(75, 85, 99, 0.35);
+  cursor: not-allowed;
+  filter: none;
 }
 body.account-setup-page #accountSetupWizardPanel2[data-after-save="1"] .account-setup-step3-form__body,
 body.account-setup-page #accountSetupWizardPanel3[data-after-save="1"] .account-setup-step3-form__body{
