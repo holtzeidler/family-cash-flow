@@ -685,8 +685,8 @@ function syncAccountSetupWizardShellButtons() {
       if (saveInc) saveInc.style.display = "inline-flex";
       if (cancelInc) cancelInc.style.display = "inline-flex";
       if (signupBtn) signupBtn.style.display = "none";
-    } else if (signupBtn) {
-      signupBtn.style.display = "none";
+    } else {
+      // In hub/intro mode, leave Next/Skip visibility as determined above (based on tx count).
     }
     return;
   }

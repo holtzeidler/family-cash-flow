@@ -3401,7 +3401,7 @@ body.account-setup-page .account-setup-wizard__viewport{
   width: 100%;
   flex: 0 0 auto;
   /* Keep the card shell consistent across early steps (use Step 2 sizing). */
-  min-height: 420px;
+  min-height: 360px;
 }
 body.account-setup-page .account-setup-wizard__shell .account-setup-actions--shell{
   flex-shrink: 0;
@@ -3459,7 +3459,7 @@ body.account-setup-page .account-setup-wizard__panel.auth-section__body{
 }
 /* Step 1: compact; card height follows content */
 body.account-setup-page #accountSetupWizardPanel0{
-  justify-content: flex-start;
+  justify-content: center;
 }
 body.account-setup-page #accountSetupWizardPanel1,
 body.account-setup-page #accountSetupWizardPanel2{
@@ -3473,6 +3473,12 @@ body.account-setup-page #accountSetupWizardPanel1.account-setup-wizard__panel{
 body.account-setup-page #accountSetupWizardPanel0.account-setup-wizard__panel,
 body.account-setup-page #accountSetupWizardPanel2.account-setup-wizard__panel{
   padding-top: 36px;
+}
+
+/* Step 1: center fields vertically within the fixed viewport */
+body.account-setup-page #accountSetupWizardPanel0.account-setup-wizard__panel{
+  padding-top: 0;
+  padding-bottom: 0;
 }
 
 /* Account setup: stacked accordion cards (legacy) */
