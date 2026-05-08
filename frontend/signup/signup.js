@@ -652,6 +652,7 @@ function setAccountSetupExpenseAfterSave(on) {
 
 function syncAccountSetupWizardShellButtons() {
   const s = getAccountSetupWizardStep();
+  const eyebrow = document.getElementById("accountSetupWizardEyebrow");
   const saveInc = document.getElementById("asTxSaveIncomeBtn");
   const cancelInc = document.getElementById("asTxCancelIncomeBtn");
   const saveExp = document.getElementById("asExpSaveBtn");
@@ -667,6 +668,11 @@ function syncAccountSetupWizardShellButtons() {
   // Default: hide skip. We'll selectively show it on Step 3 once a tx exists.
   if (accountSetupSkipBtn) accountSetupSkipBtn.style.display = "none";
 
+  // Step-specific eyebrow copy
+  if (eyebrow) {
+    eyebrow.textContent = s === 2 ? "Great, now let’s add what affects your balance." : "Let’s build your forecast";
+  }
+
   // Step 3 (transactions hub): gate Add buttons + show Skip/Next behavior.
   try {
     if (s === 2 && getAccountSetupStep3Phase() === "intro") {
@@ -675,6 +681,12 @@ function syncAccountSetupWizardShellButtons() {
       const hasTx = txs.length > 0;
       const hasIncome = txs.some((t) => String(t?.kind || "").toLowerCase() === "income");
       const hasExpense = txs.some((t) => String(t?.kind || "").toLowerCase() === "expense");
+      const step3Q = document.querySelector("#accountSetupWizardPanel2 .account-setup-step3-q");
+      if (step3Q) {
+        step3Q.textContent = hasTx
+          ? "Perfect. Your forecast can now start projecting future balances."
+          : "Add your first recurring transaction";
+      }
       if (hubAddIncome) hubAddIncome.disabled = hasIncome;
       if (hubAddExpense) hubAddExpense.disabled = hasExpense;
 

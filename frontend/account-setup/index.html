@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=232" />
+    <link rel="stylesheet" href="../styles.css?v=234" />
   </head>
   <body class="login-page signup-page account-setup-page">
     <div class="container">
@@ -43,7 +43,7 @@
         <div id="signupCallout" class="callout" style="display:none" role="status"></div>
 
         <div id="accountSetupWizard" class="account-setup-wizard" data-step="0" aria-label="Account setup">
-          <p class="account-setup-wizard__eyebrow">Let’s build your forecast</p>
+          <p class="account-setup-wizard__eyebrow" id="accountSetupWizardEyebrow">Let’s build your forecast</p>
           <div class="account-setup-wizard__dots" role="tablist" aria-label="Setup steps">
             <span class="account-setup-wizard__dot is-active" data-wizard-dot="0" aria-current="step"></span>
             <span class="account-setup-wizard__dot" data-wizard-dot="1" aria-hidden="true"></span>
@@ -89,7 +89,7 @@
                   aria-hidden="true"
                   inert
                 >
-                  <p class="meta account-setup-step2-lede">Add your current checking account balance</p>
+                  <p class="meta account-setup-step2-lede">What’s your checking balance today?</p>
                   <div class="row">
                     <div class="form-row-h">
                       <div class="form-row-h__label"><label for="accountName">Account Name</label></div>
@@ -138,7 +138,7 @@
                   data-step3-phase="intro"
                 >
                   <div id="accountSetupWizardStep3Intro" class="account-setup-step3-intro">
-                    <p class="meta account-setup-step3-q">Get started by entering just one paycheck or bill.</p>
+                    <p class="meta account-setup-step3-q">Add your first recurring transaction</p>
                     <div class="account-setup-tx-choice-wrap">
                       <div class="account-setup-tx-choice-row" role="group" aria-label="Add income or expense">
                         <button type="button" class="top-nav__logout" id="asTxHubAddIncomeBtn">+ Add Income</button>
@@ -506,6 +506,6 @@
       </div>
     </div>
 
-    <script src="../signup/signup.js?v=43"></script>
+    <script src="../signup/signup.js?v=45"></script>
   </body>
 </html>

@@ -3465,6 +3465,23 @@ body.account-setup-page .account-setup-wizard__shell .account-setup-actions--she
   flex-wrap: wrap;
   justify-content: flex-end;
 }
+/* Account setup: Back button as subtle ghost */
+body.account-setup-page #accountSetupBackBtn.secondary{
+  background: transparent;
+  border-color: rgba(0,0,0,0.08);
+  color: rgba(17,24,39,0.78);
+  font-weight: 500;
+  box-shadow: none;
+}
+body.account-setup-page #accountSetupBackBtn.secondary:hover{
+  background: rgba(0,0,0,0.02);
+  border-color: rgba(0,0,0,0.10);
+  filter: none;
+}
+body.account-setup-page #accountSetupBackBtn.secondary:focus-visible{
+  outline: 3px solid rgba(11, 61, 46, 0.18);
+  outline-offset: 3px;
+}
 body.account-setup-page .account-setup-trust-note{
   margin: 0 0 12px;
   text-align: center;
@@ -5034,6 +5051,7 @@ body.account-setup-page .account-setup-repeat-controls .tx-add-schedule-field--e
   gap: 8px 10px;
   flex: 0 1 auto;
   min-width: 0;
+  margin-left: 6px;
 }
 body.account-setup-page .account-setup-repeat-controls input[type="checkbox"]{
   width: calc(18px * 0.92);
