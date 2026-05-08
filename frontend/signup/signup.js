@@ -900,6 +900,14 @@ function setAccountSetupWizardStep(step, opts = {}) {
 
   if (!skipPersist) persistAccountSetupWizardMeta(s);
 
+  // Step 2: default focus to the $ Starting Balance input.
+  if (s === 1) {
+    try {
+      // Defer to ensure the panel is visible/un-inert before focusing.
+      setTimeout(() => document.getElementById("accountStartingBalance")?.focus(), 0);
+    } catch (_) {}
+  }
+
   if (s < 2 && document.getElementById("accountSetupWizardPanel2")) {
     const p2 = document.getElementById("accountSetupWizardPanel2");
     const intro = document.getElementById("accountSetupWizardStep3Intro");
@@ -1272,11 +1280,24 @@ function addMoreTransactionsFromAccountSetup() {
 function accountSetupCancelIncomeClick() {
   if (!isAccountSetupPath()) return;
   if (isAccountSetupStep3AfterSave()) {
-    // Continue setup: return to hub.
     setCallout(signupCalloutEl, "", "");
-    setAccountSetupStep3AfterSave(false);
-    setAccountSetupStep3Phase("intro");
-    resetAccountSetupTransactionForm();
+    // Continue setup: advance to the survey (primary goal) step.
+    try {
+      const rawDraft = readAccountSetupDraftRaw() || {};
+      sessionStorage.setItem(
+        BW_ACCOUNT_SETUP_DRAFT_KEY,
+        JSON.stringify({
+          ...rawDraft,
+          wizardFlowVersion: ACCOUNT_SETUP_WIZARD_FLOW_VERSION,
+          wizardStep: 4,
+          step3Phase: "form",
+          expensePhase: "intro",
+        })
+      );
+    } catch (_) {}
+    lockAccountSetupWizardStepTransition();
+    setAccountSetupWizardStep(4, { skipPersist: true });
+    document.querySelector("[data-as-survey-opt]")?.focus();
     return;
   }
   setCallout(signupCalloutEl, "", "");
