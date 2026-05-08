@@ -638,7 +638,8 @@ function syncAccountSetupWizardShellButtons() {
     if (el) el.style.display = "none";
   }
   if (addMoreTxBtn) addMoreTxBtn.style.display = "none";
-  if (accountSetupSkipBtn) accountSetupSkipBtn.style.display = s === 1 ? "inline-flex" : "none";
+  // Account step is required; no skip.
+  if (accountSetupSkipBtn) accountSetupSkipBtn.style.display = "none";
 
   // Step 3 (transactions hub): gate Add buttons + show Skip/Next behavior.
   try {
@@ -2039,7 +2040,9 @@ function onSignupPrimaryClick() {
         }
         // Don't block Next on network latency. Move forward immediately and let the
         // email check finish in the background; if it's a duplicate, bounce back.
-        setCallout(signupCalloutEl, "Checking email…", "pending");
+        // Run the email check in the background; don't let a "Checking email…" banner
+        // persist into the next step.
+        setCallout(signupCalloutEl, "", "");
         const p = precheckEmailExists(email);
         lockAccountSetupWizardStepTransition();
         setAccountSetupWizardStep(1);
@@ -2074,6 +2077,10 @@ function onSignupPrimaryClick() {
         });
         if (!gate.ok) {
           setCallout(signupCalloutEl, gate.message, "error");
+          return;
+        }
+        if (!gate.anyAccount) {
+          setCallout(signupCalloutEl, "Please complete this step to continue.", "error");
           return;
         }
         try {

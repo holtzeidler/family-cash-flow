@@ -290,68 +290,52 @@ body.landing-page .landing-preview__mock.card{
 }
 
 /* Landing: align Preview / Why / How / Offer on one row (equal columns) */
-body.landing-page .landing-quad{
+/* Landing: sections below the Product Preview */
+body.landing-page .landing-below-preview{
   width: min(1400px, 96%);
-  margin: 64px auto 0;
+  margin: 34px auto 0;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 22px;
   align-items: start;
 }
-body.landing-page .landing-quad > section{
+body.landing-page .landing-below-preview > section{
   width: 100%;
   margin: 0;
   align-self: stretch;
 }
-body.landing-page .landing-quad .landing-preview{
-  grid-template-columns: 1fr;
-  grid-template-rows: auto auto;
-  gap: 14px;
-  justify-items: stretch;
-}
-body.landing-page .landing-quad .landing-preview__copy{ width: 100%; margin-left: 0; padding-top: 0; }
-body.landing-page .landing-quad .landing-preview__mock.card{
-  width: 100%;
-  margin-left: 0;
-}
-body.landing-page .landing-quad .landing-how__copy,
-body.landing-page .landing-quad .landing-why__copy{
+body.landing-page .landing-below-preview .landing-how__copy,
+body.landing-page .landing-below-preview .landing-why__copy{
   width: 100%;
   padding-top: 0;
 }
-body.landing-page .landing-quad .landing-why__grid{
+body.landing-page .landing-below-preview .landing-why__grid{
   grid-template-columns: 1fr;
 }
-body.landing-page .landing-quad .landing-offer{
+body.landing-page .landing-below-preview .landing-offer{
   width: 100%;
   margin: 0;
   display: block;
 }
-body.landing-page .landing-quad .landing-offer__copy{
+body.landing-page .landing-below-preview .landing-offer__copy{
   padding: 0;
 }
-body.landing-page .landing-quad .landing-offer__bullets{
+body.landing-page .landing-below-preview .landing-offer__bullets{
   margin-top: 10px;
 }
 
-/* Keep column headings aligned at the top */
-body.landing-page .landing-quad .landing-preview__eyebrow,
-body.landing-page .landing-quad .landing-how__title,
-body.landing-page .landing-quad .landing-why__title,
-body.landing-page .landing-quad .landing-offer__title{
-  margin-top: 0;
-}
-
 @media (max-width: 980px){
-  body.landing-page .landing-quad{
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    margin-top: 40px;
+  body.landing-page .landing-below-preview{
+    grid-template-columns: 1fr;
+    margin-top: 26px;
   }
-  body.landing-page .landing-quad .landing-why__grid{ grid-template-columns: 1fr; }
+  body.landing-page .landing-below-preview .landing-why__grid{
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 560px){
-  body.landing-page .landing-quad{
+  body.landing-page .landing-below-preview .landing-why__grid{
     grid-template-columns: 1fr;
   }
 }
@@ -1424,8 +1408,9 @@ button.nav-link:hover{
 }
 .cash-outlook-head{
   display: flex;
-  align-items: baseline;
-  gap: 10px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
 }
 .cash-outlook-title{
   font-size: 14.3px; /* +10% */
@@ -3743,7 +3728,7 @@ body.account-setup-page .account-setup-tx-choice-wrap{
   gap: 14px;
   width: 100%;
   max-width: 280px;
-  margin: 10px auto 0;
+  margin: 22px auto 0;
 }
 body.account-setup-page .account-setup-tx-choice-row{
   display: flex;
@@ -5061,7 +5046,9 @@ body.account-setup-page .tx-add-schedule-toolbar{
 /* Account setup wizard: Notes row slightly smaller/shorter */
 body.account-setup-page .account-setup-step3-form label[for="asTxNotes"],
 body.account-setup-page .account-setup-step3-form label[for="asExpTxNotes"]{
-  font-size: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
 }
 body.account-setup-page #asTxNotes.input-notes-flex,
 body.account-setup-page #asExpTxNotes.input-notes-flex{

@@ -1114,7 +1114,7 @@ async function refreshLowBalanceAlert() {
         true
       );
       lowBalanceLastQuery = { familyId: null, min: null, max: null, mode: null };
-      setSidebarBalanceThresholdHint("(Edit thresholds)");
+      setSidebarBalanceThresholdHint("Get alerted before your balance gets too low.");
       return;
     }
     if (cashOutlookHead) cashOutlookHead.hidden = false;

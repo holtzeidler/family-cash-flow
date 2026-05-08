@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=222" />
+    <link rel="stylesheet" href="../styles.css?v=224" />
   </head>
   <body class="login-page signup-page account-setup-page">
     <div class="container">
@@ -101,11 +101,7 @@
                           placeholder="e.g. Savings or Joint Checking"
                           autocomplete="off"
                           title="Click to edit this account name"
-                          aria-describedby="accountNameEditableHint"
                         />
-                        <p class="account-setup-field-hint" id="accountNameEditableHint">
-                          You can rename your account at any time
-                        </p>
                       </div>
                     </div>
                   </div>
@@ -125,7 +121,10 @@
                   <div class="row">
                     <div class="form-row-h">
                       <div class="form-row-h__label"><label for="accountStartingBalanceDate">Starting Balance Date</label></div>
-                      <div class="form-row-h__field"><input id="accountStartingBalanceDate" type="date" /></div>
+                      <div class="form-row-h__field">
+                        <input id="accountStartingBalanceDate" type="date" />
+                        <p class="account-setup-field-hint">You can edit this in Settings at any time</p>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -139,7 +138,7 @@
                   data-step3-phase="intro"
                 >
                   <div id="accountSetupWizardStep3Intro" class="account-setup-step3-intro">
-                    <p class="meta account-setup-step3-q">Add recurring transactions to get started.</p>
+                    <p class="meta account-setup-step3-q">Start with just one paycheck or bill.</p>
                     <div class="account-setup-tx-choice-wrap">
                       <div class="account-setup-tx-choice-row" role="group" aria-label="Add income or expense">
                         <button type="button" class="top-nav__logout" id="asTxHubAddIncomeBtn">Add Income</button>
@@ -464,6 +463,6 @@
       </div>
     </div>
 
-    <script src="../signup/signup.js?v=37"></script>
+    <script src="../signup/signup.js?v=39"></script>
   </body>
 </html>
