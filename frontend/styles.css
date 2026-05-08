@@ -3404,16 +3404,79 @@ body.account-setup-page .account-setup-card__body{
 body.account-setup-page .auth-section__body.account-setup-card__body{
   padding: 18px 6px 10px;
 }
-body.account-setup-page .form-row-h__field input,
+body.account-setup-page .form-row-h__field input:not([type="checkbox"]):not([type="radio"]),
 body.account-setup-page .form-row-h__field select{
-  padding-top: 12px;
-  padding-bottom: 12px;
-  font-size: 16px;
+  padding: calc(12px * 0.92) calc(12px * 0.92);
+  font-size: calc(16px * 0.92);
+}
+body.account-setup-page #accountSetupWizardPanel0 #email,
+body.account-setup-page #accountSetupWizardPanel0 #password,
+body.account-setup-page #accountSetupWizardPanel0 #password2{
+  font-size: calc(0.9375rem * 0.92);
+  line-height: 1.3;
+}
+body.account-setup-page .form-row-h__field .money-input__prefix{
+  padding: calc(10px * 0.92) calc(10px * 0.92) calc(10px * 0.92) calc(12px * 0.92);
+  font-size: calc(13px * 0.92);
+}
+body.account-setup-page .account-setup-step3-form .tx-add-schedule-toolbar input:not([type="radio"]):not([type="checkbox"]),
+body.account-setup-page .account-setup-step3-form .tx-add-schedule-toolbar select{
+  padding: calc(12px * 0.92) calc(12px * 0.92);
+  font-size: calc(16px * 0.92);
+}
+body.account-setup-page .form-row-h__field > .category-search{
+  width: 100%;
+  max-width: none;
+}
+body.account-setup-page .category-search{
+  position: relative;
+  width: 100%;
+}
+body.account-setup-page .category-search__list{
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 50;
+  margin: 0;
+  padding: 6px 0;
+  list-style: none;
+  max-height: min(280px, 45vh);
+  overflow-y: auto;
+  background: var(--cal-surface);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+body.account-setup-page .category-search__group-label{
+  padding: calc(8px * 0.92) calc(12px * 0.92) calc(4px * 0.92);
+  font-size: calc(10px * 0.92);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  pointer-events: none;
+}
+body.account-setup-page .category-search__option{
+  padding: calc(9px * 0.92) calc(12px * 0.92);
+  font-size: calc(16px * 0.92);
+  cursor: pointer;
+  color: var(--text);
+  line-height: 1.35;
+}
+body.account-setup-page .category-search__option:hover,
+body.account-setup-page .category-search__option.category-search__option--active{
+  background: rgba(11, 61, 46, 0.1);
+}
+body.account-setup-page .category-search__option mark{
+  background: transparent;
+  color: var(--accent);
+  font-weight: 700;
 }
 
 /* Account setup: slightly larger Expense/Income toggle text */
 body.account-setup-page .kind-toggle .kind-opt{
-  font-size: 16px;
+  font-size: calc(16px * 0.92);
 }
 
 /* Account setup: tighten label → field spacing (e.g., Last Name) */
@@ -3432,6 +3495,7 @@ body.account-setup-page #accountSetupWizardPanel0 .form-row-h__label{
 }
 body.account-setup-page #accountSetupWizardPanel0 .form-row-h__label label{
   white-space: nowrap;
+  color: #94a3b8;
 }
 /* Step 2: full-width rows + wider label column so uppercase labels stay on one line */
 body.account-setup-page #accountSetupWizardPanel1 .form-row-h__label{
@@ -3440,6 +3504,7 @@ body.account-setup-page #accountSetupWizardPanel1 .form-row-h__label{
 }
 body.account-setup-page #accountSetupWizardPanel1 .form-row-h__label label{
   white-space: nowrap;
+  color: #94a3b8;
 }
 body.account-setup-page .account-setup-step2-lede{
   margin: 0 0 12px;
@@ -3497,20 +3562,69 @@ body.account-setup-page .account-setup-step3-radio input{
   height: 1.1rem;
   accent-color: var(--accent);
 }
+body.account-setup-page .account-setup-tx-choice-wrap{
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 14px;
+  width: 100%;
+  max-width: 280px;
+  margin: 10px auto 0;
+}
 body.account-setup-page .account-setup-tx-choice-row{
   display: flex;
   flex-direction: column;
   gap: 12px;
   align-items: stretch;
   width: 100%;
-  max-width: 280px;
-  margin: 10px auto 0;
 }
-body.account-setup-page .account-setup-tx-choice-row .top-nav__logout,
-body.account-setup-page .account-setup-tx-choice-row .secondary{
+body.account-setup-page .account-setup-tx-choice-row .top-nav__logout{
   width: 100%;
   justify-content: center;
   box-sizing: border-box;
+}
+body.account-setup-page .account-setup-tx-skip-link{
+  align-self: flex-end;
+  margin: 0;
+  padding: 4px 0;
+  background: none;
+  border: none;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--text);
+  cursor: pointer;
+  text-align: right;
+  text-decoration: none;
+}
+body.account-setup-page .account-setup-tx-skip-link:hover{
+  text-decoration: underline;
+}
+body.account-setup-page .account-setup-tx-skip-link:focus-visible{
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+body.account-setup-page .account-setup-tx-skip-link:disabled{
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+body.account-setup-page .account-setup-tx-choice-row > .top-nav__logout{
+  background: #fff;
+  color: var(--text);
+  border: 3px solid var(--accent);
+  border-radius: 999px;
+}
+body.account-setup-page .account-setup-tx-choice-row > .top-nav__logout:hover{
+  background: color-mix(in srgb, var(--accent) 10%, #fff);
+  color: var(--text);
+  border-color: var(--accent);
+  filter: none;
+}
+body.account-setup-page .account-setup-tx-choice-row > .top-nav__logout:focus-visible{
+  outline: 3px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  outline-offset: 3px;
 }
 
 /* Account setup: survey step */
@@ -3569,6 +3683,8 @@ body.account-setup-page .account-setup-survey__optional{
 }
 body.account-setup-page .account-setup-survey__otherInput{
   width: min(620px, 100%);
+  padding: calc(12px * 0.92) calc(12px * 0.92);
+  font-size: calc(16px * 0.92);
 }
 @media (max-width: 520px){
   body.account-setup-page .account-setup-survey__grid{
@@ -4646,10 +4762,10 @@ body.plans-page .container > .grid{
 
 /* Account setup wizard: slightly more breathing room between fields */
 body.account-setup-page .tx-add-vspace{
-  height: 20px;
+  height: calc(20px * 0.92);
 }
 body.account-setup-page .tx-add-vspace--lg{
-  height: 26px;
+  height: calc(26px * 0.92);
 }
 
 /* Account setup wizard: add space above "Make this recurring?" */
@@ -4665,22 +4781,27 @@ body.account-setup-page .account-setup-step3-form .reimbursable-field__label{
   line-height: 1.3;
 }
 
-/* Account setup wizard: keep the "Make this recurring?" prompt and controls on one row */
+/* Account setup: Repeats row — label column + checkbox + cadence */
+body.account-setup-page .account-setup-repeat-controls{
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  min-width: 0;
+}
+body.account-setup-page .account-setup-repeat-controls input[type="checkbox"]{
+  width: calc(18px * 0.92);
+  height: calc(18px * 0.92);
+  accent-color: var(--accent);
+  flex-shrink: 0;
+  margin: 0;
+}
 body.account-setup-page .tx-add-schedule-toolbar__left{
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 10px 14px;
-}
-body.account-setup-page .tx-add-repeat-row{
-  flex: 0 1 auto;
-  margin-left: 0;
-  justify-content: flex-start;
-  display: grid;
-  grid-template-columns: 6.75rem auto;
-  align-items: center;
-  column-gap: 10px;
-  row-gap: 8px;
 }
 body.account-setup-page .tx-add-schedule-toolbar__left .tx-add-schedule-field--end-date{
   display: flex;
@@ -4707,26 +4828,8 @@ body.account-setup-page .tx-add-schedule-field--end-date label{
   margin: 0;
 }
 
-/* Account setup wizard: repeats row layout */
-body.account-setup-page .tx-add-repeat-toggle{
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  margin: 0;
-  white-space: nowrap;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: none;
-  color: var(--muted);
-  line-height: 1.3;
-}
-body.account-setup-page .tx-add-repeat-toggle input{
-  width: 18px;
-  height: 18px;
-  accent-color: var(--accent);
-}
-body.account-setup-page .tx-add-recurrence-select{
+/* Account setup wizard: recurrence dropdown next to checkbox */
+body.account-setup-page .account-setup-repeat-controls .tx-add-recurrence-select{
   width: auto;
   max-width: 9.25rem;
   min-width: 0;
@@ -4751,9 +4854,9 @@ body.account-setup-page .account-setup-step3-form label[for="asExpTxNotes"]{
 }
 body.account-setup-page #asTxNotes.input-notes-flex,
 body.account-setup-page #asExpTxNotes.input-notes-flex{
-  font-size: 14px;
-  padding-top: 10px;
-  padding-bottom: 10px;
+  font-size: calc(14px * 0.92);
+  padding-top: calc(10px * 0.92);
+  padding-bottom: calc(10px * 0.92);
 }
 
 /* Account setup wizard: align color label with other field labels */

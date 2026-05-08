@@ -5359,7 +5359,7 @@ function recurrenceLabel(value) {
   if (v === "yearly") return "Annual";
   if (v === "semiannual") return "Twice yearly";
   if (v === "twice_monthly") return "Twice monthly";
-  if (v === "weekly") return "Weekly";
+  if (v === "biweekly") return "Every 2 weeks";
   if (v === "monthly") return "Monthly";
   if (v === "once") return "Once";
   return v || "—";
@@ -5408,6 +5408,17 @@ function nextExpectedOccurrenceIso(tx, fromIso) {
         const delta = (startDow - cand.getDay() + 7) % 7;
         cand.setDate(cand.getDate() + delta);
       }
+    }
+  } else if (recurrence === "biweekly") {
+    if (from <= start) {
+      cand = start;
+    } else {
+      const diffDays = Math.floor((from - start) / (24 * 3600 * 1000));
+      const mod = ((diffDays % 14) + 14) % 14;
+      const add = mod === 0 ? 0 : 14 - mod;
+      cand = new Date(from);
+      cand.setDate(from.getDate() + add);
+      cand.setHours(12, 0, 0, 0);
     }
   } else if (recurrence === "twice_monthly") {
     const second = Number(tx.second_day_of_month);

@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=201" />
+    <link rel="stylesheet" href="../styles.css?v=208" />
   </head>
   <body class="login-page signup-page account-setup-page">
     <div class="container">
@@ -141,10 +141,12 @@
                   <div id="accountSetupWizardStep3Intro" class="account-setup-step3-intro">
                     <p class="meta account-setup-step3-q">Do you want to add transactions?</p>
                     <p class="meta account-setup-step3-subq">Such as paychecks, bills, and other recurring items</p>
-                    <div class="account-setup-tx-choice-row" role="group" aria-label="Add transactions or skip">
-                      <button type="button" class="top-nav__logout" id="asTxHubAddIncomeBtn">Add Income</button>
-                      <button type="button" class="top-nav__logout" id="asTxHubAddExpenseBtn">Add Expense</button>
-                      <button type="button" class="secondary" id="asTxHubSkipBtn">Skip for Now</button>
+                    <div class="account-setup-tx-choice-wrap">
+                      <div class="account-setup-tx-choice-row" role="group" aria-label="Add income or expense">
+                        <button type="button" class="top-nav__logout" id="asTxHubAddIncomeBtn">Add Income</button>
+                        <button type="button" class="top-nav__logout" id="asTxHubAddExpenseBtn">Add Expense</button>
+                      </div>
+                      <button type="button" class="account-setup-tx-skip-link" id="asTxHubSkipBtn">Skip for now →</button>
                     </div>
                   </div>
                   <div id="accountSetupWizardStep3Form" class="account-setup-step3-form" hidden>
@@ -153,7 +155,7 @@
                     <div class="form-row-h__field">
                       <div id="accountSetupKindToggle" class="kind-toggle" role="radiogroup" aria-label="Transaction type">
                         <label class="kind-opt"><input type="radio" name="asTxKind" value="expense" checked /> Expense</label>
-                        <label class="kind-opt"><input type="radio" name="asTxKind" value="income" /> Income</label>
+                        <label class="kind-opt"><input type="radio" name="asTxKind" value="income" /> Add Income</label>
                       </div>
                     </div>
                   </div>
@@ -169,58 +171,50 @@
                   </div>
                   <div class="tx-add-vspace" aria-hidden="true"></div>
                   <div class="form-row-h">
-                    <div class="form-row-h__label"><label for="asTxCategory">Category</label></div>
+                    <div class="form-row-h__label"><label for="asTxCategorySearch">Search categories</label></div>
                     <div class="form-row-h__field">
-                      <select id="asTxCategory" aria-label="Category">
-                        <option value="">Select a category…</option>
-                        <optgroup label="Income &amp; reimbursements">
-                          <option value="Paycheck">Paycheck</option>
-                          <option value="Reimbursement">Reimbursement</option>
-                        </optgroup>
-                        <optgroup label="Utilities">
-                          <option value="Utility">Utility</option>
-                        </optgroup>
-                        <optgroup label="Home">
-                          <option value="Mortgage/Rent">Mortgage/Rent</option>
-                          <option value="Home Maintenance">Home Maintenance</option>
-                        </optgroup>
-                        <optgroup label="Loans &amp; payments">
-                          <option value="Car Loan">Car Loan</option>
-                          <option value="Credit Card Payment">Credit Card Payment</option>
-                        </optgroup>
-                        <optgroup label="Transfers &amp; investing">
-                          <option value="Transfers">Transfers</option>
-                          <option value="Investment">Investment</option>
-                          <option value="Cash &amp; ATM">Cash &amp; ATM</option>
-                        </optgroup>
-                        <optgroup label="Other">
-                          <option value="Charity">Charity</option>
-                          <option value="Gifts">Gifts</option>
-                          <option value="Miscellaneous">Miscellaneous</option>
-                        </optgroup>
-                      </select>
+                      <div class="category-search">
+                        <input type="hidden" id="asTxCategory" value="" autocomplete="off" />
+                        <input
+                          type="text"
+                          id="asTxCategorySearch"
+                          class="category-search__input"
+                          placeholder="Search categories"
+                          autocomplete="off"
+                          spellcheck="false"
+                          aria-label="Search categories"
+                          role="combobox"
+                          aria-autocomplete="list"
+                          aria-controls="asTxCategoryList"
+                          aria-expanded="false"
+                        />
+                        <ul id="asTxCategoryList" class="category-search__list" role="listbox" hidden></ul>
+                      </div>
                     </div>
                   </div>
                   <div class="tx-add-vspace" aria-hidden="true"></div>
                   <div class="form-row-h">
-                    <div class="form-row-h__label"><label for="asTxDate">Next Occurance</label></div>
+                    <div class="form-row-h__label"><label for="asTxDate">Next Date</label></div>
                     <div class="form-row-h__field"><input id="asTxDate" type="date" /></div>
                   </div>
                   <div class="tx-add-vspace tx-add-vspace--lg" aria-hidden="true"></div>
-                  <div class="tx-add-schedule-toolbar" aria-label="Repeat and schedule">
-                    <div class="tx-add-schedule-toolbar__left">
-                      <div class="tx-add-repeat-row">
-                        <label class="tx-add-repeat-toggle">
-                          <input id="asTxRepeats" type="checkbox" />
-                          <span>Repeats</span>
-                        </label>
+                  <div class="form-row-h account-setup-repeat-row-h">
+                    <div class="form-row-h__label"><label for="asTxRepeats">Repeats</label></div>
+                    <div class="form-row-h__field">
+                      <div class="account-setup-repeat-controls">
+                        <input id="asTxRepeats" type="checkbox" />
                         <select id="asTxRecurrence" class="tx-add-recurrence-select" title="How often this repeats" disabled>
                           <option value="monthly" selected>monthly</option>
+                          <option value="biweekly">every 2 weeks</option>
                           <option value="weekly">weekly</option>
                           <option value="semiannual">every 6 months</option>
                           <option value="yearly">yearly</option>
                         </select>
                       </div>
+                    </div>
+                  </div>
+                  <div class="tx-add-schedule-toolbar" aria-label="Repeat and schedule">
+                    <div class="tx-add-schedule-toolbar__left">
                       <div id="asTxEndDateWrap" class="tx-add-schedule-field tx-add-schedule-field--end-date" hidden>
                         <label for="asTxEndDate" title="Optional. End date for this recurring transaction. Blank = never ends.">Ends on</label>
                         <input id="asTxEndDate" type="date" title="Optional. Last date this schedule can occur." />
@@ -281,7 +275,7 @@
                           role="radiogroup"
                           aria-label="Transaction type"
                         >
-                          <label class="kind-opt"><input type="radio" name="asExpTxKind" value="expense" checked /> Expense</label>
+                          <label class="kind-opt"><input type="radio" name="asExpTxKind" value="expense" checked /> Add Expense</label>
                           <label class="kind-opt"><input type="radio" name="asExpTxKind" value="income" /> Income</label>
                         </div>
                       </div>
@@ -298,58 +292,50 @@
                     </div>
                     <div class="tx-add-vspace" aria-hidden="true"></div>
                     <div class="form-row-h">
-                      <div class="form-row-h__label"><label for="asExpTxCategory">Category</label></div>
+                      <div class="form-row-h__label"><label for="asExpTxCategorySearch">Search categories</label></div>
                       <div class="form-row-h__field">
-                        <select id="asExpTxCategory" aria-label="Category">
-                          <option value="">Select a category…</option>
-                          <optgroup label="Income &amp; reimbursements">
-                            <option value="Paycheck">Paycheck</option>
-                            <option value="Reimbursement">Reimbursement</option>
-                          </optgroup>
-                          <optgroup label="Utilities">
-                            <option value="Utility">Utility</option>
-                          </optgroup>
-                          <optgroup label="Home">
-                            <option value="Mortgage/Rent">Mortgage/Rent</option>
-                            <option value="Home Maintenance">Home Maintenance</option>
-                          </optgroup>
-                          <optgroup label="Loans &amp; payments">
-                            <option value="Car Loan">Car Loan</option>
-                            <option value="Credit Card Payment">Credit Card Payment</option>
-                          </optgroup>
-                          <optgroup label="Transfers &amp; investing">
-                            <option value="Transfers">Transfers</option>
-                            <option value="Investment">Investment</option>
-                            <option value="Cash &amp; ATM">Cash &amp; ATM</option>
-                          </optgroup>
-                          <optgroup label="Other">
-                            <option value="Charity">Charity</option>
-                            <option value="Gifts">Gifts</option>
-                            <option value="Miscellaneous">Miscellaneous</option>
-                          </optgroup>
-                        </select>
+                        <div class="category-search">
+                          <input type="hidden" id="asExpTxCategory" value="" autocomplete="off" />
+                          <input
+                            type="text"
+                            id="asExpTxCategorySearch"
+                            class="category-search__input"
+                            placeholder="Search categories"
+                            autocomplete="off"
+                            spellcheck="false"
+                            aria-label="Search categories"
+                            role="combobox"
+                            aria-autocomplete="list"
+                            aria-controls="asExpTxCategoryList"
+                            aria-expanded="false"
+                          />
+                          <ul id="asExpTxCategoryList" class="category-search__list" role="listbox" hidden></ul>
+                        </div>
                       </div>
                     </div>
                     <div class="tx-add-vspace" aria-hidden="true"></div>
                     <div class="form-row-h">
-                      <div class="form-row-h__label"><label for="asExpTxDate">Next Occurance</label></div>
+                      <div class="form-row-h__label"><label for="asExpTxDate">Next Date</label></div>
                       <div class="form-row-h__field"><input id="asExpTxDate" type="date" /></div>
                     </div>
                     <div class="tx-add-vspace tx-add-vspace--lg" aria-hidden="true"></div>
-                    <div class="tx-add-schedule-toolbar" aria-label="Repeat and schedule">
-                      <div class="tx-add-schedule-toolbar__left">
-                        <div class="tx-add-repeat-row">
-                          <label class="tx-add-repeat-toggle">
-                            <input id="asExpRepeats" type="checkbox" />
-                            <span>Repeats</span>
-                          </label>
+                    <div class="form-row-h account-setup-repeat-row-h">
+                      <div class="form-row-h__label"><label for="asExpRepeats">Repeats</label></div>
+                      <div class="form-row-h__field">
+                        <div class="account-setup-repeat-controls">
+                          <input id="asExpRepeats" type="checkbox" />
                           <select id="asExpRecurrence" class="tx-add-recurrence-select" title="How often this repeats" disabled>
                             <option value="monthly" selected>monthly</option>
+                            <option value="biweekly">every 2 weeks</option>
                             <option value="weekly">weekly</option>
                             <option value="semiannual">every 6 months</option>
                             <option value="yearly">yearly</option>
                           </select>
                         </div>
+                      </div>
+                    </div>
+                    <div class="tx-add-schedule-toolbar" aria-label="Repeat and schedule">
+                      <div class="tx-add-schedule-toolbar__left">
                         <div id="asExpEndDateWrap" class="tx-add-schedule-field tx-add-schedule-field--end-date" hidden>
                           <label for="asExpEndDate" title="Optional. End date for this recurring transaction. Blank = never ends.">Ends on</label>
                           <input id="asExpEndDate" type="date" title="Optional. Last date this schedule can occur." />
@@ -395,7 +381,7 @@
                   class="account-setup-wizard__panel auth-section__body"
                   id="accountSetupWizardPanel4"
                   role="tabpanel"
-                  aria-label="Step 2: What you want help with"
+                  aria-label="Last step: what you want help with"
                   aria-hidden="true"
                   inert
                 >
@@ -487,6 +473,6 @@
       </div>
     </div>
 
-    <script src="../signup/signup.js?v=21"></script>
+    <script src="../signup/signup.js?v=26"></script>
   </body>
 </html>

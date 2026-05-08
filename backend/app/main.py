@@ -307,6 +307,7 @@ class AccountType(str, Enum):
 class Recurrence(str, Enum):
     once = "once"
     weekly = "weekly"
+    biweekly = "biweekly"
     monthly = "monthly"
     twice_monthly = "twice_monthly"  # two fixed days per month (start day + second day)
     semiannual = "semiannual"  # twice yearly / every 6 months
@@ -1811,7 +1812,7 @@ def _ensure_recurrence_enum_extensions_postgres() -> None:
         if not row:
             return
         typname = row[0]
-        for label in ("weekly", "twice_monthly"):
+        for label in ("weekly", "twice_monthly", "biweekly"):
             exists = conn.execute(
                 text(
                     "SELECT 1 FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid "
@@ -4170,6 +4171,18 @@ def _expected_occurrences_in_range(
                     return
                 yield current_w
                 current_w += timedelta(days=7)
+            return
+
+        if recurrence == Recurrence.biweekly:
+            current_b = start_date
+            for _ in range(2400):
+                if end_date is not None and current_b > end_date:
+                    return
+                n += 1
+                if end_count is not None and n > end_count:
+                    return
+                yield current_b
+                current_b += timedelta(days=14)
             return
 
         if recurrence == Recurrence.twice_monthly:

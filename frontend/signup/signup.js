@@ -146,16 +146,18 @@ const accountSetupSkipBtn = document.getElementById("accountSetupSkipBtn");
 
 const BW_ACCOUNT_SETUP_DRAFT_KEY = "bw_account_setup_draft";
 /** Bumped when step order changes; used to migrate persisted `wizardStep`. */
-const ACCOUNT_SETUP_WIZARD_FLOW_VERSION = 2;
-/** Wizard step (0–4) → `accountSetupWizardPanel{N}` DOM id suffix. Survey is step 1 → panel 4. */
-const ACCOUNT_SETUP_PANEL_FOR_STEP = [0, 4, 1, 2, 3];
+const ACCOUNT_SETUP_WIZARD_FLOW_VERSION = 3;
+/** Logical wizard step (0–4) → `accountSetupWizardPanel{N}` — email, checking, income, expense, survey (last). */
+const ACCOUNT_SETUP_PANEL_FOR_STEP = [0, 1, 2, 3, 4];
+/** v2 order was email → survey → checking → income → expense (`wizardStep` index). Maps step → panel index. */
+const V2_ACCOUNT_SETUP_PANEL_FOR_STEP = [0, 4, 1, 2, 3];
 
-/** Progress UI shows 4 dots; steps 3 (transaction hub / income) and 4 (expense) share the last dot. */
+/** Progress UI shows 4 dots; expense (step 3) and survey (step 4) share the last dot. */
 function getAccountSetupWizardDisplayDotIndex(step) {
   const s = Math.min(4, Math.max(0, step));
-  return s >= 4 ? 3 : s;
+  return s >= 3 ? 3 : s;
 }
-/** Pre–survey-as-step-1 layout: [email, checking, income, expense, survey] → new indices. */
+/** Pre–survey-as-step-1 layout: [email, checking, income, expense, survey] → v2 step indices. */
 const LEGACY_ACCOUNT_SETUP_WIZARD_STEP_TO_NEW = [0, 2, 3, 4, 1];
 function normalizePersistedAccountSetupWizardStep(raw) {
   const o = raw && typeof raw === "object" ? raw : {};
@@ -164,8 +166,259 @@ function normalizePersistedAccountSetupWizardStep(raw) {
   if (v === ACCOUNT_SETUP_WIZARD_FLOW_VERSION) {
     return Number.isFinite(ws) && ws >= 0 && ws <= 4 ? ws : 0;
   }
-  if (Number.isFinite(ws) && ws >= 0 && ws <= 4) return LEGACY_ACCOUNT_SETUP_WIZARD_STEP_TO_NEW[ws];
+  if (v === 2 && Number.isFinite(ws) && ws >= 0 && ws <= 4) {
+    const panel = V2_ACCOUNT_SETUP_PANEL_FOR_STEP[ws];
+    return Number.isFinite(panel) ? panel : 0;
+  }
+  if (Number.isFinite(ws) && ws >= 0 && ws <= 4) {
+    const v2 = LEGACY_ACCOUNT_SETUP_WIZARD_STEP_TO_NEW[ws];
+    if (!Number.isFinite(v2)) return 0;
+    const panel = V2_ACCOUNT_SETUP_PANEL_FOR_STEP[v2];
+    return Number.isFinite(panel) ? panel : 0;
+  }
   return 0;
+}
+
+/** Account setup wizard: category list (value = stored description id). */
+const ACCOUNT_SETUP_CATEGORY_ITEMS = [
+  { group: "Income & reimbursements", value: "Paycheck", label: "Paycheck" },
+  { group: "Income & reimbursements", value: "Reimbursement", label: "Reimbursement" },
+  { group: "Home", value: "Mortgage/Rent", label: "Mortgage/Rent" },
+  { group: "Home", value: "Home Maintenance", label: "Home Maintenance" },
+  { group: "Home", value: "Utility", label: "Utility" },
+  { group: "Loans & payments", value: "Car Loan", label: "Car Loan" },
+  { group: "Loans & payments", value: "Credit Card Payment", label: "Credit Card Payment" },
+  { group: "Transfers & investing", value: "Transfers", label: "Transfers" },
+  { group: "Transfers & investing", value: "Investment", label: "Investment" },
+  { group: "Transfers & investing", value: "Cash & ATM", label: "Cash & ATM" },
+  { group: "Other", value: "Charity", label: "Charity" },
+  { group: "Other", value: "Gifts", label: "Gifts" },
+  { group: "Other", value: "Miscellaneous", label: "Miscellaneous" },
+];
+
+function escapeHtmlPlain(s) {
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function escapeRegexChars(s) {
+  return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function highlightCategoryLabel(label, query) {
+  const esc = escapeHtmlPlain(label);
+  const q = query.trim();
+  if (!q) return esc;
+  const re = new RegExp(`(${escapeRegexChars(q)})`, "gi");
+  return esc.replace(re, "<mark>$1</mark>");
+}
+
+function rankCategorySearch(query, item) {
+  const q = query.trim().toLowerCase();
+  const label = item.label.toLowerCase();
+  const group = (item.group || "").toLowerCase();
+  if (!q) return 1;
+  if (label === q) return 100000;
+  const tokens = q.split(/\s+/).filter(Boolean);
+  if (tokens.length && tokens.every((t) => label.includes(t))) return 95000;
+  if (label.startsWith(q)) return 92000;
+  if (tokens.length && tokens.every((t) => label.includes(t) || group.includes(t))) return 88000;
+  if (label.includes(q)) return 85000;
+  if (group.includes(q)) return 80000;
+  const words = label.split(/[\s/&,\-]+/).filter(Boolean);
+  if (words.some((w) => w.startsWith(q))) return 75000;
+  let qi = 0;
+  for (let li = 0; li < label.length && qi < q.length; li++) {
+    if (label[li] === q[qi]) qi++;
+  }
+  if (qi === q.length) return 50000;
+  return 0;
+}
+
+function filterCategoriesForSearch(query) {
+  const q = query.trim();
+  if (!q) return [...ACCOUNT_SETUP_CATEGORY_ITEMS];
+  const scored = ACCOUNT_SETUP_CATEGORY_ITEMS.map((item) => ({
+    item,
+    score: rankCategorySearch(query, item),
+  }))
+    .filter((x) => x.score > 0)
+    .sort((a, b) => b.score - a.score || a.item.label.localeCompare(b.item.label));
+  return scored.map((x) => x.item);
+}
+
+function accountSetupSyncCategorySearchDisplay(hiddenId) {
+  const hidden = document.getElementById(hiddenId);
+  const inputId = hiddenId === "asTxCategory" ? "asTxCategorySearch" : "asExpTxCategorySearch";
+  const input = document.getElementById(inputId);
+  if (!hidden || !input) return;
+  const v = String(hidden.value || "").trim();
+  if (!v) {
+    input.value = "";
+    return;
+  }
+  const item = ACCOUNT_SETUP_CATEGORY_ITEMS.find((i) => i.value === v);
+  input.value = item ? item.label : v;
+}
+
+function clearAccountSetupCategoryCombobox(hiddenId) {
+  const inputId = hiddenId === "asTxCategory" ? "asTxCategorySearch" : "asExpTxCategorySearch";
+  const listId = hiddenId === "asTxCategory" ? "asTxCategoryList" : "asExpTxCategoryList";
+  const hidden = document.getElementById(hiddenId);
+  const input = document.getElementById(inputId);
+  const list = document.getElementById(listId);
+  if (hidden) hidden.value = "";
+  if (input) input.value = "";
+  if (list) {
+    list.hidden = true;
+    list.innerHTML = "";
+  }
+  if (input) input.setAttribute("aria-expanded", "false");
+}
+
+function initAccountSetupCategoryCombobox(hiddenId, inputId, listId) {
+  const hidden = document.getElementById(hiddenId);
+  const input = document.getElementById(inputId);
+  const list = document.getElementById(listId);
+  if (!hidden || !input || !list || input.dataset.categoryComboInit === "1") return;
+  input.dataset.categoryComboInit = "1";
+
+  let activeIdx = -1;
+
+  function optionElements() {
+    return [...list.querySelectorAll(".category-search__option")];
+  }
+
+  function setActive(i) {
+    const opts = optionElements();
+    if (!opts.length) return;
+    activeIdx = Math.max(0, Math.min(i, opts.length - 1));
+    opts.forEach((el, j) => el.classList.toggle("category-search__option--active", j === activeIdx));
+  }
+
+  function commit(item) {
+    hidden.value = item.value;
+    input.value = item.label;
+    list.hidden = true;
+    list.innerHTML = "";
+    input.setAttribute("aria-expanded", "false");
+    hidden.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+
+  function resolveInputOnBlur() {
+    const raw = input.value.trim();
+    if (!raw) {
+      hidden.value = "";
+      hidden.dispatchEvent(new Event("change", { bubbles: true }));
+      return;
+    }
+    const ranked = filterCategoriesForSearch(raw);
+    const exact = ACCOUNT_SETUP_CATEGORY_ITEMS.find(
+      (i) => i.label.toLowerCase() === raw.toLowerCase() || i.value.toLowerCase() === raw.toLowerCase()
+    );
+    if (exact) {
+      commit(exact);
+      return;
+    }
+    if (ranked.length === 1) {
+      commit(ranked[0]);
+      return;
+    }
+    const cur = ACCOUNT_SETUP_CATEGORY_ITEMS.find((i) => i.value === hidden.value);
+    if (cur && cur.label.trim() !== input.value.trim()) {
+      hidden.value = "";
+      hidden.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+  }
+
+  function renderDropdown() {
+    const q = input.value;
+    const items = filterCategoriesForSearch(q);
+    list.innerHTML = "";
+    let lastGroup = null;
+    items.forEach((item) => {
+      if (item.group !== lastGroup) {
+        lastGroup = item.group;
+        const gl = document.createElement("li");
+        gl.className = "category-search__group-label";
+        gl.setAttribute("role", "presentation");
+        gl.textContent = item.group;
+        list.appendChild(gl);
+      }
+      const li = document.createElement("li");
+      li.className = "category-search__option";
+      li.setAttribute("role", "option");
+      li.innerHTML = highlightCategoryLabel(item.label, q);
+      li.addEventListener("mousedown", (e) => e.preventDefault());
+      li.addEventListener("click", () => commit(item));
+      list.appendChild(li);
+    });
+    activeIdx = items.length ? 0 : -1;
+    const opts = optionElements();
+    opts.forEach((el, j) => el.classList.toggle("category-search__option--active", j === activeIdx));
+  }
+
+  input.addEventListener("focus", () => {
+    list.hidden = false;
+    input.setAttribute("aria-expanded", "true");
+    renderDropdown();
+  });
+
+  input.addEventListener("input", () => {
+    list.hidden = false;
+    input.setAttribute("aria-expanded", "true");
+    renderDropdown();
+  });
+
+  input.addEventListener("blur", () => {
+    window.setTimeout(() => {
+      list.hidden = true;
+      input.setAttribute("aria-expanded", "false");
+      resolveInputOnBlur();
+    }, 180);
+  });
+
+  input.addEventListener("keydown", (e) => {
+    const k = e.key;
+    if (k === "Escape") {
+      list.hidden = true;
+      input.setAttribute("aria-expanded", "false");
+      accountSetupSyncCategorySearchDisplay(hiddenId);
+      return;
+    }
+    if (k === "ArrowDown") {
+      e.preventDefault();
+      if (list.hidden) {
+        list.hidden = false;
+        input.setAttribute("aria-expanded", "true");
+        renderDropdown();
+      } else {
+        const o2 = optionElements();
+        if (o2.length) setActive(activeIdx + 1);
+      }
+      return;
+    }
+    if (k === "ArrowUp") {
+      e.preventDefault();
+      if (!list.hidden) {
+        const o2 = optionElements();
+        if (o2.length) setActive(activeIdx - 1);
+      }
+      return;
+    }
+    if (k === "Enter") {
+      const items = filterCategoriesForSearch(input.value);
+      if (!list.hidden && items.length && activeIdx >= 0 && activeIdx < items.length) {
+        e.preventDefault();
+        commit(items[activeIdx]);
+      }
+    }
+  });
+
+  accountSetupSyncCategorySearchDisplay(hiddenId);
 }
 
 // Prefetch check-email during Step 0 so Enter→Next feels instant.
@@ -364,7 +617,7 @@ function syncAccountSetupWizardShellButtons() {
     if (el) el.style.display = "none";
   }
   if (addMoreTxBtn) addMoreTxBtn.style.display = "none";
-  if (accountSetupSkipBtn) accountSetupSkipBtn.style.display = s === 2 ? "inline-flex" : "none";
+  if (accountSetupSkipBtn) accountSetupSkipBtn.style.display = s === 1 ? "inline-flex" : "none";
 
   if (s < 2) {
     if (signupBtn) {
@@ -375,27 +628,19 @@ function syncAccountSetupWizardShellButtons() {
   }
 
   if (s === 2) {
-    if (signupBtn) {
-      signupBtn.style.display = "";
-      signupBtn.textContent = "Next";
-    }
-    return;
-  }
-
-  if (s === 3) {
     const phase = getAccountSetupStep3Phase();
     if (phase === "form") {
       if (saveInc) saveInc.style.display = "inline-flex";
       if (addMoreInc) addMoreInc.style.display = "inline-flex";
       if (cancelInc) cancelInc.style.display = "inline-flex";
       if (signupBtn) signupBtn.style.display = "none";
-    } else {
-      if (signupBtn) signupBtn.style.display = "none";
+    } else if (signupBtn) {
+      signupBtn.style.display = "none";
     }
     return;
   }
 
-  if (s === 4) {
+  if (s === 3) {
     const phase = getAccountSetupExpensePhase();
     if (phase === "form") {
       if (saveExp) saveExp.style.display = "inline-flex";
@@ -404,6 +649,14 @@ function syncAccountSetupWizardShellButtons() {
       if (signupBtn) signupBtn.style.display = "none";
     } else if (signupBtn) {
       signupBtn.style.display = "none";
+    }
+    return;
+  }
+
+  if (s === 4) {
+    if (signupBtn) {
+      signupBtn.style.display = "";
+      signupBtn.textContent = "Create Account";
     }
   }
 }
@@ -526,7 +779,7 @@ function setAccountSetupWizardStep(step, opts = {}) {
 
   if (!skipPersist) persistAccountSetupWizardMeta(s);
 
-  if (s < 3 && document.getElementById("accountSetupWizardPanel2")) {
+  if (s < 2 && document.getElementById("accountSetupWizardPanel2")) {
     const p2 = document.getElementById("accountSetupWizardPanel2");
     const intro = document.getElementById("accountSetupWizardStep3Intro");
     const form = document.getElementById("accountSetupWizardStep3Form");
@@ -536,7 +789,7 @@ function setAccountSetupWizardStep(step, opts = {}) {
     const kt = document.getElementById("accountSetupKindToggle");
     if (kt) kt.classList.remove("account-setup-kind-toggle--income-only");
   }
-  if (s < 4 && document.getElementById("accountSetupWizardPanel3")) {
+  if (s < 3 && document.getElementById("accountSetupWizardPanel3")) {
     const p3 = document.getElementById("accountSetupWizardPanel3");
     const intro3 = document.getElementById("accountSetupWizardStep4Intro");
     const form3 = document.getElementById("accountSetupWizardStep4Form");
@@ -558,7 +811,7 @@ function toMoneyNumber(raw) {
 function getAccountSetupStep() {
   if (!isAccountSetupPath()) return "account";
   if (document.getElementById("accountSetupWizard")) {
-    return getAccountSetupWizardStep() >= 3 ? "transactions" : "account";
+    return getAccountSetupWizardStep() >= 2 ? "transactions" : "account";
   }
   if (!accountSetupTransactionsSectionEl) return "account";
   return accountSetupTransactionsSectionEl.hidden ? "account" : "transactions";
@@ -567,8 +820,8 @@ function getAccountSetupStep() {
 function setAccountSetupStep(step) {
   if (!isAccountSetupPath()) return;
   if (document.getElementById("accountSetupWizard")) {
-    if (step === "transactions") setAccountSetupWizardStep(4);
-    else setAccountSetupWizardStep(2);
+    if (step === "transactions") setAccountSetupWizardStep(2);
+    else setAccountSetupWizardStep(1);
     return;
   }
   if (!accountSetupAccountSectionEl || !accountSetupTransactionsSectionEl) return;
@@ -646,6 +899,10 @@ function goToSignupFromAccountSetup() {
     const txDate = String(document.getElementById("asTxDate")?.value || "").trim();
     const txNotes = (document.getElementById("asTxNotes")?.value || "").trim();
     const txRecurring = !!document.getElementById("asTxRepeats")?.checked;
+    const txRecurrence = String(document.getElementById("asTxRecurrence")?.value || "monthly").trim() || "monthly";
+    const txEndDateRaw = String(document.getElementById("asTxEndDate")?.value || "").trim();
+    const txEndCountRaw = String(document.getElementById("asTxEndCount")?.value || "").trim();
+    const txEndCount = txEndCountRaw === "" ? null : Number(txEndCountRaw);
     const txBgColor = String(document.getElementById("asTxBgColor")?.value || "").trim();
     const anyAccount =
       !!accountName ||
@@ -711,6 +968,9 @@ function goToSignupFromAccountSetup() {
                   date: txDate,
                   notes: txNotes,
                   recurring: txRecurring,
+                  recurrence: txRecurring ? txRecurrence : null,
+                  end_date: txRecurring ? (txEndDateRaw !== "" ? txEndDateRaw : null) : null,
+                  end_count: txRecurring ? (txEndDateRaw !== "" ? null : txEndCount) : null,
                   bg_color: txBgColor || null,
                 },
               ],
@@ -804,7 +1064,6 @@ function readAccountSetupTransactionFromInputs() {
 
 function resetAccountSetupTransactionForm() {
   const amountEl = document.getElementById("asTxAmount");
-  const categoryEl = document.getElementById("asTxCategory");
   const dateEl = document.getElementById("asTxDate");
   const notesEl = document.getElementById("asTxNotes");
   const repeatsEl = document.getElementById("asTxRepeats");
@@ -815,7 +1074,7 @@ function resetAccountSetupTransactionForm() {
   const endDateWrap = document.getElementById("asTxEndDateWrap");
   const bgEl = document.getElementById("asTxBgColor");
   if (amountEl) amountEl.value = "";
-  if (categoryEl) categoryEl.value = "";
+  clearAccountSetupCategoryCombobox("asTxCategory");
   if (notesEl) notesEl.value = "";
   if (repeatsEl) repeatsEl.checked = false;
   if (recSel) recSel.value = "monthly";
@@ -868,7 +1127,7 @@ function addMoreTransactionsFromAccountSetup() {
     JSON.stringify({
       ...rawDraft,
       wizardFlowVersion: ACCOUNT_SETUP_WIZARD_FLOW_VERSION,
-      wizardStep: 3,
+      wizardStep: 2,
       step3Phase: "form",
       ...(gate.anyAccount
         ? {
@@ -912,7 +1171,7 @@ async function accountSetupSaveIncomeClick() {
   });
   if (!gate.ok) {
     setCallout(signupCalloutEl, gate.message, "error");
-    setAccountSetupWizardStep(2);
+    setAccountSetupWizardStep(1);
     return;
   }
   const parsed = readAccountSetupTransactionFromInputs();
@@ -927,8 +1186,8 @@ async function accountSetupSaveIncomeClick() {
       JSON.stringify({
         ...rawDraft,
         wizardFlowVersion: ACCOUNT_SETUP_WIZARD_FLOW_VERSION,
-        wizardStep: 3,
-        step3Phase: "form",
+        wizardStep: 2,
+        step3Phase: "intro",
         ...(gate.anyAccount
           ? {
               account: {
@@ -943,7 +1202,21 @@ async function accountSetupSaveIncomeClick() {
       })
     );
   } catch (_) {}
-  advanceAccountSetupWizardToExpenseForm();
+  resetAccountSetupTransactionForm();
+  lockAccountSetupWizardStepTransition();
+  setAccountSetupWizardStep(2, { skipPersist: true });
+  setAccountSetupStep3Phase("intro");
+  setCallout(signupCalloutEl, "Transaction saved. Add another or skip when you're ready.", "ok");
+  try {
+    signupCalloutEl?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  } catch (_) {}
+  window.setTimeout(() => {
+    try {
+      if (signupCalloutEl && signupCalloutEl.classList.contains("callout--ok")) setCallout(signupCalloutEl, "", "");
+    } catch (_) {}
+  }, 6500);
+  syncAccountSetupWizardShellButtons();
+  document.getElementById("asTxHubAddIncomeBtn")?.focus();
 }
 
 function advanceAccountSetupWizardToExpenseForm() {
@@ -954,13 +1227,13 @@ function advanceAccountSetupWizardToExpenseForm() {
       JSON.stringify({
         ...rawDraft,
         wizardFlowVersion: ACCOUNT_SETUP_WIZARD_FLOW_VERSION,
-        wizardStep: 4,
+        wizardStep: 3,
         expensePhase: "form",
       })
     );
   } catch (_) {}
   lockAccountSetupWizardStepTransition();
-  setAccountSetupWizardStep(4, { skipPersist: true });
+  setAccountSetupWizardStep(3, { skipPersist: true });
   setAccountSetupExpensePhase("form");
   document.getElementById("asExpTxAmount")?.focus();
 }
@@ -968,7 +1241,7 @@ function advanceAccountSetupWizardToExpenseForm() {
 function accountSetupTxHubAddIncomeClick() {
   if (!isAccountSetupPath() || !document.getElementById("accountSetupWizard")) return;
   if (isAccountSetupWizardStepLocked()) return;
-  if (getAccountSetupWizardStep() !== 3 || getAccountSetupStep3Phase() !== "intro") return;
+  if (getAccountSetupWizardStep() !== 2 || getAccountSetupStep3Phase() !== "intro") return;
   setCallout(signupCalloutEl, "", "");
   try {
     const rawDraft = readAccountSetupDraftRaw() || {};
@@ -977,7 +1250,7 @@ function accountSetupTxHubAddIncomeClick() {
       JSON.stringify({
         ...rawDraft,
         wizardFlowVersion: ACCOUNT_SETUP_WIZARD_FLOW_VERSION,
-        wizardStep: 3,
+        wizardStep: 2,
         step3Phase: "form",
       })
     );
@@ -989,7 +1262,7 @@ function accountSetupTxHubAddIncomeClick() {
 function accountSetupTxHubAddExpenseClick() {
   if (!isAccountSetupPath() || !document.getElementById("accountSetupWizard")) return;
   if (isAccountSetupWizardStepLocked()) return;
-  if (getAccountSetupWizardStep() !== 3 || getAccountSetupStep3Phase() !== "intro") return;
+  if (getAccountSetupWizardStep() !== 2 || getAccountSetupStep3Phase() !== "intro") return;
   setCallout(signupCalloutEl, "", "");
   try {
     const rawDraft = readAccountSetupDraftRaw() || {};
@@ -998,14 +1271,14 @@ function accountSetupTxHubAddExpenseClick() {
       JSON.stringify({
         ...rawDraft,
         wizardFlowVersion: ACCOUNT_SETUP_WIZARD_FLOW_VERSION,
-        wizardStep: 4,
+        wizardStep: 3,
         step3Phase: "intro",
         expensePhase: "form",
       })
     );
   } catch (_) {}
   lockAccountSetupWizardStepTransition();
-  setAccountSetupWizardStep(4, { skipPersist: true });
+  setAccountSetupWizardStep(3, { skipPersist: true });
   setAccountSetupExpensePhase("form");
   document.getElementById("asExpTxAmount")?.focus();
 }
@@ -1013,7 +1286,7 @@ function accountSetupTxHubAddExpenseClick() {
 async function accountSetupTxHubSkipClick() {
   if (!isAccountSetupPath() || !document.getElementById("accountSetupWizard")) return;
   if (isAccountSetupWizardStepLocked()) return;
-  if (getAccountSetupWizardStep() !== 3 || getAccountSetupStep3Phase() !== "intro") return;
+  if (getAccountSetupWizardStep() !== 2 || getAccountSetupStep3Phase() !== "intro") return;
   setCallout(signupCalloutEl, "", "");
   try {
     const rawDraft = readAccountSetupDraftRaw() || {};
@@ -1030,7 +1303,7 @@ async function accountSetupTxHubSkipClick() {
     });
     if (!gate.ok) {
       setCallout(signupCalloutEl, gate.message, "error");
-      setAccountSetupWizardStep(2);
+      setAccountSetupWizardStep(1);
       return;
     }
     sessionStorage.setItem(
@@ -1038,7 +1311,7 @@ async function accountSetupTxHubSkipClick() {
       JSON.stringify({
         ...rawDraft,
         wizardFlowVersion: ACCOUNT_SETUP_WIZARD_FLOW_VERSION,
-        wizardStep: 3,
+        wizardStep: 4,
         step3Phase: "intro",
         expensePhase: "intro",
         ...(gate.anyAccount
@@ -1055,7 +1328,9 @@ async function accountSetupTxHubSkipClick() {
       })
     );
   } catch (_) {}
-  void doSignup();
+  lockAccountSetupWizardStepTransition();
+  setAccountSetupWizardStep(4, { skipPersist: true });
+  document.querySelector("[data-as-survey-opt]")?.focus();
 }
 
 function readAccountSetupExpenseTransactionFromInputs() {
@@ -1122,7 +1397,6 @@ function readAccountSetupExpenseTransactionFromInputs() {
 
 function resetAccountSetupExpenseForm() {
   const amountEl = document.getElementById("asExpTxAmount");
-  const categoryEl = document.getElementById("asExpTxCategory");
   const dateEl = document.getElementById("asExpTxDate");
   const notesEl = document.getElementById("asExpTxNotes");
   const repeatsEl = document.getElementById("asExpRepeats");
@@ -1133,7 +1407,7 @@ function resetAccountSetupExpenseForm() {
   const endDateWrap = document.getElementById("asExpEndDateWrap");
   const bgEl = document.getElementById("asExpTxBgColor");
   if (amountEl) amountEl.value = "";
-  if (categoryEl) categoryEl.value = "";
+  clearAccountSetupCategoryCombobox("asExpTxCategory");
   if (notesEl) notesEl.value = "";
   if (repeatsEl) repeatsEl.checked = false;
   if (recSel) recSel.value = "monthly";
@@ -1165,7 +1439,7 @@ function addMoreExpensesFromAccountSetup() {
   });
   if (!gate.ok) {
     setCallout(signupCalloutEl, gate.message, "error");
-    setAccountSetupWizardStep(2);
+    setAccountSetupWizardStep(1);
     return;
   }
   const parsed = readAccountSetupExpenseTransactionFromInputs();
@@ -1179,7 +1453,7 @@ function addMoreExpensesFromAccountSetup() {
     JSON.stringify({
       ...rawDraft,
       wizardFlowVersion: ACCOUNT_SETUP_WIZARD_FLOW_VERSION,
-      wizardStep: 4,
+      wizardStep: 3,
       expensePhase: "form",
       ...(gate.anyAccount
         ? {
@@ -1209,14 +1483,14 @@ function accountSetupCancelExpenseClick() {
       JSON.stringify({
         ...rawDraft,
         wizardFlowVersion: ACCOUNT_SETUP_WIZARD_FLOW_VERSION,
-        wizardStep: 3,
+        wizardStep: 2,
         step3Phase: "intro",
         expensePhase: "intro",
       })
     );
   } catch (_) {}
   lockAccountSetupWizardStepTransition();
-  setAccountSetupWizardStep(3, { skipPersist: true });
+  setAccountSetupWizardStep(2, { skipPersist: true });
   setAccountSetupExpensePhase("intro");
   setAccountSetupStep3Phase("intro");
   document.getElementById("asTxHubAddIncomeBtn")?.focus();
@@ -1239,7 +1513,7 @@ async function accountSetupSaveExpenseClick() {
   });
   if (!gate.ok) {
     setCallout(signupCalloutEl, gate.message, "error");
-    setAccountSetupWizardStep(2);
+    setAccountSetupWizardStep(1);
     return;
   }
   const parsed = readAccountSetupExpenseTransactionFromInputs();
@@ -1254,8 +1528,9 @@ async function accountSetupSaveExpenseClick() {
       JSON.stringify({
         ...rawDraft,
         wizardFlowVersion: ACCOUNT_SETUP_WIZARD_FLOW_VERSION,
-        wizardStep: 4,
-        expensePhase: "form",
+        wizardStep: 2,
+        step3Phase: "intro",
+        expensePhase: "intro",
         ...(gate.anyAccount
           ? {
               account: {
@@ -1270,7 +1545,22 @@ async function accountSetupSaveExpenseClick() {
       })
     );
   } catch (_) {}
-  void doSignup();
+  resetAccountSetupExpenseForm();
+  lockAccountSetupWizardStepTransition();
+  setAccountSetupWizardStep(2, { skipPersist: true });
+  setAccountSetupStep3Phase("intro");
+  setAccountSetupExpensePhase("intro");
+  setCallout(signupCalloutEl, "Transaction saved. Add another or skip when you're ready.", "ok");
+  try {
+    signupCalloutEl?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  } catch (_) {}
+  window.setTimeout(() => {
+    try {
+      if (signupCalloutEl && signupCalloutEl.classList.contains("callout--ok")) setCallout(signupCalloutEl, "", "");
+    } catch (_) {}
+  }, 6500);
+  syncAccountSetupWizardShellButtons();
+  document.getElementById("asTxHubAddIncomeBtn")?.focus();
 }
 
 function hydrateAccountSetupSurveyFromDraft(o) {
@@ -1346,6 +1636,7 @@ function hydrateAccountSetupDraft() {
         if (eCat && lastTx.category) {
           const c = String(lastTx.category).trim();
           eCat.value = c === "Uncategorized" ? "" : c;
+          accountSetupSyncCategorySearchDisplay("asExpTxCategory");
         }
         if (eDate && lastTx.date) eDate.value = String(lastTx.date);
         if (eNotes && lastTx.notes) eNotes.value = String(lastTx.notes);
@@ -1365,6 +1656,7 @@ function hydrateAccountSetupDraft() {
         if (txCategoryEl && lastTx.category) {
           const c = String(lastTx.category).trim();
           txCategoryEl.value = c === "Uncategorized" ? "" : c;
+          accountSetupSyncCategorySearchDisplay("asTxCategory");
         }
         if (txDateEl && lastTx.date) txDateEl.value = String(lastTx.date);
         if (txNotesEl && lastTx.notes) txNotesEl.value = String(lastTx.notes);
@@ -1379,7 +1671,7 @@ function hydrateAccountSetupDraft() {
         if (txBgColorEl && lastTx.bg_color) txBgColorEl.value = String(lastTx.bg_color);
       }
     }
-    // Transaction "Next Occurance" fields stay blank until the user sets them (see reset/hydrate paths).
+    // Transaction "Next Date" fields stay blank until the user sets them (see reset/hydrate paths).
 
     if (document.getElementById("accountSetupWizard")) {
       let target = normalizePersistedAccountSetupWizardStep(o);
@@ -1388,21 +1680,26 @@ function hydrateAccountSetupDraft() {
         (!Number.isFinite(Number(wsRaw)) || wsRaw === "" || wsRaw === undefined || wsRaw === null) &&
         Number(o.wizardFlowVersion) !== ACCOUNT_SETUP_WIZARD_FLOW_VERSION
       ) {
-        if (o.step === "transactions" || (Array.isArray(o.transactions) && o.transactions.length)) target = 3;
-        else if (o.account && o.account.name) target = 2;
+        if (o.step === "transactions" || (Array.isArray(o.transactions) && o.transactions.length)) target = 2;
+        else if (o.account && o.account.name) target = 1;
       }
       setAccountSetupWizardStep(target, { skipPersist: true });
-      if (target === 1) hydrateAccountSetupSurveyFromDraft(o);
-      if (target === 3 && document.getElementById("accountSetupWizardPanel2")) {
+      if (target === 4) hydrateAccountSetupSurveyFromDraft(o);
+      if (target === 2 && document.getElementById("accountSetupWizardPanel2")) {
         const wantForm =
           String(o.step3Phase || "") === "form" ||
           (Array.isArray(o.transactions) && o.transactions.length > 0);
         if (wantForm) setAccountSetupStep3Phase("form");
         else syncAccountSetupWizardShellButtons();
       }
-      if (target === 4 && document.getElementById("accountSetupWizardPanel3")) {
-        setAccountSetupExpensePhase("form");
-        syncAccountSetupWizardShellButtons();
+      if (target === 3 && document.getElementById("accountSetupWizardPanel3")) {
+        const wantExpenseForm =
+          String(o.expensePhase || "") === "form" ||
+          (Array.isArray(o.transactions) &&
+            o.transactions.length > 0 &&
+            String(o.transactions[o.transactions.length - 1]?.kind || "").toLowerCase() === "expense");
+        if (wantExpenseForm) setAccountSetupExpensePhase("form");
+        else syncAccountSetupWizardShellButtons();
       }
       return;
     }
@@ -1462,6 +1759,10 @@ function readAccountSetupDraft() {
         date: String(t?.date || ""),
         notes: t?.notes != null ? String(t.notes) : "",
         recurring: !!t?.recurring,
+        recurrence: t?.recurrence != null && String(t.recurrence).trim() !== "" ? String(t.recurrence) : null,
+        end_date: t?.end_date != null && String(t.end_date).trim() !== "" ? String(t.end_date) : null,
+        end_count:
+          t?.end_count != null && Number.isFinite(Number(t.end_count)) ? Number(t.end_count) : null,
         bg_color: t?.bg_color != null ? String(t.bg_color) : null,
       }))
       .filter((t) => t.kind && t.date && Number.isFinite(t.amount) && t.amount > 0);
@@ -1744,42 +2045,11 @@ function onSignupPrimaryClick() {
           setCallout(signupCalloutEl, "", "");
           lockAccountSetupWizardStepTransition();
           setAccountSetupWizardStep(1);
-          document.querySelector("[data-as-survey-opt]")?.focus();
+          document.getElementById("accountName")?.focus();
         })();
         return;
       }
       if (st === 1) {
-        setCallout(signupCalloutEl, "", "");
-        try {
-          const wrap = document.getElementById("accountSetupWizardPanel4");
-          const buttons = wrap ? [...wrap.querySelectorAll("[data-as-survey-opt]")] : [];
-          const selected = buttons
-            .filter((b) => b.classList.contains("is-active"))
-            .map((b) => String(b.getAttribute("data-as-survey-opt") || "").trim())
-            .filter(Boolean);
-          const otherVal = String(document.getElementById("accountSetupSurveyOther")?.value || "").trim();
-          if (!selected.length) {
-            setCallout(signupCalloutEl, "Please choose at least one option.", "error");
-            return;
-          }
-          const rawDraft = readAccountSetupDraftRaw() || {};
-          sessionStorage.setItem(
-            BW_ACCOUNT_SETUP_DRAFT_KEY,
-            JSON.stringify({
-              ...rawDraft,
-              wizardFlowVersion: ACCOUNT_SETUP_WIZARD_FLOW_VERSION,
-              wizardStep: 2,
-              surveyHelpWith: selected,
-              surveyOther: selected.includes("other") ? otherVal : "",
-            })
-          );
-        } catch (_) {}
-        lockAccountSetupWizardStepTransition();
-        setAccountSetupWizardStep(2, { skipPersist: true });
-        document.getElementById("accountName")?.focus();
-        return;
-      }
-      if (st === 2) {
         const accountName = (document.getElementById("accountName")?.value || "").trim();
         const accountStartingBalanceRaw = document.getElementById("accountStartingBalance")?.value || "";
         const accountStartingBalance = toMoneyNumber(accountStartingBalanceRaw);
@@ -1801,7 +2071,7 @@ function onSignupPrimaryClick() {
             JSON.stringify({
               ...rawDraft,
               wizardFlowVersion: ACCOUNT_SETUP_WIZARD_FLOW_VERSION,
-              wizardStep: 3,
+              wizardStep: 2,
               step3Phase: "intro",
               expensePhase: "intro",
               ...(gate.anyAccount
@@ -1818,15 +2088,44 @@ function onSignupPrimaryClick() {
           );
         } catch (_) {}
         lockAccountSetupWizardStepTransition();
-        setAccountSetupWizardStep(3, { skipPersist: true });
+        setAccountSetupWizardStep(2, { skipPersist: true });
         setAccountSetupStep3Phase("intro");
         document.getElementById("asTxHubAddIncomeBtn")?.focus();
+        return;
+      }
+      if (st === 2) {
         return;
       }
       if (st === 3) {
         return;
       }
       if (st === 4) {
+        setCallout(signupCalloutEl, "", "");
+        try {
+          const wrap = document.getElementById("accountSetupWizardPanel4");
+          const buttons = wrap ? [...wrap.querySelectorAll("[data-as-survey-opt]")] : [];
+          const selected = buttons
+            .filter((b) => b.classList.contains("is-active"))
+            .map((b) => String(b.getAttribute("data-as-survey-opt") || "").trim())
+            .filter(Boolean);
+          const otherVal = String(document.getElementById("accountSetupSurveyOther")?.value || "").trim();
+          if (!selected.length) {
+            setCallout(signupCalloutEl, "Please choose at least one option.", "error");
+            return;
+          }
+          const rawDraft = readAccountSetupDraftRaw() || {};
+          sessionStorage.setItem(
+            BW_ACCOUNT_SETUP_DRAFT_KEY,
+            JSON.stringify({
+              ...rawDraft,
+              wizardFlowVersion: ACCOUNT_SETUP_WIZARD_FLOW_VERSION,
+              wizardStep: 4,
+              surveyHelpWith: selected,
+              surveyOther: selected.includes("other") ? otherVal : "",
+            })
+          );
+        } catch (_) {}
+        void doSignup();
         return;
       }
     }
@@ -1878,14 +2177,14 @@ function onSignupPrimaryClick() {
 function onAccountSetupSkipAccountClick() {
   if (!isAccountSetupPath() || !document.getElementById("accountSetupWizard")) return;
   if (isAccountSetupWizardStepLocked()) return;
-  if (getAccountSetupWizardStep() !== 2) return;
+  if (getAccountSetupWizardStep() !== 1) return;
   setCallout(signupCalloutEl, "", "");
   try {
     const rawDraft = readAccountSetupDraftRaw() || {};
     const next = {
       ...rawDraft,
       wizardFlowVersion: ACCOUNT_SETUP_WIZARD_FLOW_VERSION,
-      wizardStep: 3,
+      wizardStep: 2,
       step3Phase: "intro",
       expensePhase: "intro",
     };
@@ -1893,7 +2192,7 @@ function onAccountSetupSkipAccountClick() {
     sessionStorage.setItem(BW_ACCOUNT_SETUP_DRAFT_KEY, JSON.stringify(next));
   } catch (_) {}
   lockAccountSetupWizardStepTransition();
-  setAccountSetupWizardStep(3, { skipPersist: true });
+  setAccountSetupWizardStep(2, { skipPersist: true });
   setAccountSetupStep3Phase("intro");
   document.getElementById("asTxHubAddIncomeBtn")?.focus();
 }
@@ -1954,34 +2253,58 @@ if (accountSetupBackBtn) {
     const s = getAccountSetupWizardStep();
     if (s <= 0) return;
     setCallout(signupCalloutEl, "", "");
-    if (s === 3 && getAccountSetupStep3Phase() === "form") {
+    if (s === 2 && getAccountSetupStep3Phase() === "form") {
       accountSetupCancelIncomeClick();
       return;
     }
-    if (s === 4 && getAccountSetupExpensePhase() === "form") {
+    if (s === 3 && getAccountSetupExpensePhase() === "form") {
       accountSetupCancelExpenseClick();
       return;
     }
     if (s === 4) {
       setAccountSetupWizardStep(3);
       const raw = readAccountSetupDraftRaw() || {};
-      if (String(raw.step3Phase || "") === "form") setAccountSetupStep3Phase("form");
-      else setAccountSetupStep3Phase("intro");
-      if (getAccountSetupStep3Phase() === "intro") document.getElementById("asTxHubAddIncomeBtn")?.focus();
-      else document.getElementById("asTxAmount")?.focus();
+      if (String(raw.expensePhase || "") === "form") setAccountSetupExpensePhase("form");
+      else setAccountSetupExpensePhase("intro");
+      if (getAccountSetupExpensePhase() === "intro") document.getElementById("asTxHubAddExpenseBtn")?.focus();
+      else document.getElementById("asExpTxAmount")?.focus();
       return;
     }
     setAccountSetupWizardStep(s - 1);
     const ns = s - 1;
-    if (ns === 1) {
-      try {
-        hydrateAccountSetupSurveyFromDraft(readAccountSetupDraftRaw() || {});
-      } catch (_) {}
-    }
     if (ns === 0) document.getElementById("email")?.focus();
-    else if (ns === 1) document.querySelector("[data-as-survey-opt]")?.focus();
-    else document.getElementById("accountName")?.focus();
+    else if (ns === 1) document.getElementById("accountName")?.focus();
+    else if (ns === 2) {
+      const raw = readAccountSetupDraftRaw() || {};
+      if (String(raw.step3Phase || "") === "form") document.getElementById("asTxAmount")?.focus();
+      else document.getElementById("asTxHubAddIncomeBtn")?.focus();
+    } else if (ns === 3) {
+      const raw = readAccountSetupDraftRaw() || {};
+      if (String(raw.expensePhase || "") === "form") document.getElementById("asExpTxAmount")?.focus();
+      else document.getElementById("asTxHubAddExpenseBtn")?.focus();
+    }
   });
+}
+
+/** When category implies a typical cadence, enable Repeats and set recurrence (account setup wizard). */
+function applyAccountSetupCategoryRecurrenceDefaults(categoryEl, prefix) {
+  if (!categoryEl) return;
+  const cat = String(categoryEl.value || "").trim();
+  const repeatsEl = document.getElementById(prefix + "Repeats");
+  const recSel = document.getElementById(prefix + "Recurrence");
+  if (!repeatsEl || !recSel) return;
+  let recurrence = null;
+  if (cat === "Mortgage/Rent" || cat === "Credit Card Payment" || cat === "Utility") {
+    repeatsEl.checked = true;
+    recurrence = "monthly";
+  } else if (cat === "Paycheck") {
+    repeatsEl.checked = true;
+    recurrence = "biweekly";
+  }
+  if (recurrence != null) {
+    recSel.value = recurrence;
+    repeatsEl.dispatchEvent(new Event("change", { bubbles: true }));
+  }
 }
 
 function initAccountSetupTransactionUi() {
@@ -2047,6 +2370,12 @@ function initAccountSetupTransactionUi() {
 
     bindRepeatsUi("asTx");
     bindRepeatsUi("asExp");
+    const txCat = document.getElementById("asTxCategory");
+    const expCat = document.getElementById("asExpTxCategory");
+    if (txCat) txCat.addEventListener("change", () => applyAccountSetupCategoryRecurrenceDefaults(txCat, "asTx"));
+    if (expCat) expCat.addEventListener("change", () => applyAccountSetupCategoryRecurrenceDefaults(expCat, "asExp"));
+    initAccountSetupCategoryCombobox("asTxCategory", "asTxCategorySearch", "asTxCategoryList");
+    initAccountSetupCategoryCombobox("asExpTxCategory", "asExpTxCategorySearch", "asExpTxCategoryList");
     const expSwatches = document.getElementById("asExpTxColorSwatches");
     const expBgEl = document.getElementById("asExpTxBgColor");
     const expClearBtn = document.getElementById("asExpTxColorClear");
