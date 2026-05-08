@@ -5225,12 +5225,12 @@ body.account-setup-page .tx-add-schedule-toolbar{
   padding-bottom: 8px;
 }
 
-/* Account setup wizard: Notes row slightly smaller/shorter */
+/* Account setup wizard: Notes label matches other field labels */
 body.account-setup-page .account-setup-step3-form label[for="asTxNotes"],
 body.account-setup-page .account-setup-step3-form label[for="asExpTxNotes"]{
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  font-size: inherit;
+  font-weight: inherit;
+  letter-spacing: normal;
 }
 body.account-setup-page #asTxNotes.input-notes-flex,
 body.account-setup-page #asExpTxNotes.input-notes-flex{
