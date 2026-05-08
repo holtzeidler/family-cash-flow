@@ -717,11 +717,14 @@ function syncAccountSetupWizardShellButtons() {
       if (cancelInc) cancelInc.style.display = "inline-flex";
       if (signupBtn) signupBtn.style.display = "none";
       const after = isAccountSetupStep3AfterSave();
-      if (saveInc) saveInc.textContent = after ? "Add Another Transaction" : "Save";
+      if (saveInc) {
+        saveInc.textContent = after ? "Add Income" : "Save";
+        saveInc.disabled = !!after;
+      }
       if (cancelInc) cancelInc.textContent = after ? "Continue Setup" : "Cancel";
       if (accountSetupBackBtn) accountSetupBackBtn.style.display = after ? "none" : "inline-flex";
       if (addMoreTxBtn) {
-        addMoreTxBtn.textContent = "– Add Expense";
+        addMoreTxBtn.textContent = after ? "Add Expense" : "Add More Transactions";
         addMoreTxBtn.style.display = after ? "inline-flex" : "none";
         addMoreTxBtn.classList.remove("secondary");
         addMoreTxBtn.classList.add("top-nav__logout");
