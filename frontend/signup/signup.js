@@ -720,7 +720,7 @@ function syncAccountSetupWizardShellButtons() {
       const after = isAccountSetupStep3AfterSave();
       if (saveInc) saveInc.textContent = after ? "Add Another Transaction" : "Save";
       if (cancelInc) cancelInc.textContent = after ? "Continue Setup" : "Cancel";
-      if (accountSetupBackBtn) accountSetupBackBtn.style.display = "none";
+      if (accountSetupBackBtn) accountSetupBackBtn.style.display = after ? "none" : "inline-flex";
       const msg = document.getElementById("accountSetupStep3Success");
       if (msg) {
         msg.textContent = "✓ Transaction added successfully";
@@ -742,7 +742,7 @@ function syncAccountSetupWizardShellButtons() {
       const after = isAccountSetupExpenseAfterSave();
       if (saveExp) saveExp.textContent = after ? "Add Another Transaction" : "Save";
       if (cancelExp) cancelExp.textContent = after ? "Continue Setup" : "Cancel";
-      if (accountSetupBackBtn) accountSetupBackBtn.style.display = "none";
+      if (accountSetupBackBtn) accountSetupBackBtn.style.display = after ? "none" : "inline-flex";
       const msg = document.getElementById("accountSetupStep4Success");
       if (msg) {
         msg.textContent = "✓ Transaction added successfully";
@@ -1329,7 +1329,8 @@ async function accountSetupSaveIncomeClick() {
   setAccountSetupWizardStep(2, { skipPersist: true });
   setAccountSetupStep3Phase("form");
   setAccountSetupStep3AfterSave(true);
-  setCallout(signupCalloutEl, "✓ Income added successfully", "ok");
+  // Success is shown inside the collapsed form state (not in the global callout).
+  setCallout(signupCalloutEl, "", "");
   try {
     signupCalloutEl?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   } catch (_) {}
@@ -1662,7 +1663,8 @@ async function accountSetupSaveExpenseClick() {
   setAccountSetupWizardStep(3, { skipPersist: true });
   setAccountSetupExpensePhase("form");
   setAccountSetupExpenseAfterSave(true);
-  setCallout(signupCalloutEl, "✓ Expense added successfully", "ok");
+  // Success is shown inside the collapsed form state (not in the global callout).
+  setCallout(signupCalloutEl, "", "");
   try {
     signupCalloutEl?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   } catch (_) {}
@@ -2375,51 +2377,59 @@ try {
     }
   }
 } catch (_) {}
+function handleAccountSetupBack(e) {
+  try {
+    e?.preventDefault?.();
+    e?.stopPropagation?.();
+  } catch (_) {}
+  if (!isAccountSetupPath() || !document.getElementById("accountSetupWizard")) return;
+  const s = getAccountSetupWizardStep();
+  if (s <= 0) return;
+  setCallout(signupCalloutEl, "", "");
+  if (s === 2 && getAccountSetupStep3Phase() === "form") {
+    accountSetupCancelIncomeClick();
+    return;
+  }
+  if (s === 3 && getAccountSetupExpensePhase() === "form") {
+    accountSetupCancelExpenseClick();
+    return;
+  }
+  if (s === 4) {
+    const raw = readAccountSetupDraftRaw() || {};
+    const wantExpenseForm = String(raw.expensePhase || "") === "form";
+    // If the user never opened the expense form, going "back" from the survey should
+    // return to the transactions hub (step 2). Step 3 has no intro UI, so showing it
+    // in "intro" mode would appear blank.
+    if (wantExpenseForm) {
+      setAccountSetupWizardStep(3, { skipPersist: true });
+      setAccountSetupExpensePhase("form");
+      document.getElementById("asExpTxAmount")?.focus();
+    } else {
+      setAccountSetupWizardStep(2, { skipPersist: true });
+      setAccountSetupStep3Phase("intro");
+      document.getElementById("asTxHubAddIncomeBtn")?.focus();
+    }
+    return;
+  }
+  setAccountSetupWizardStep(s - 1);
+  const ns = s - 1;
+  if (ns === 0) document.getElementById("email")?.focus();
+  else if (ns === 1) document.getElementById("accountName")?.focus();
+  else if (ns === 2) {
+    const raw = readAccountSetupDraftRaw() || {};
+    if (String(raw.step3Phase || "") === "form") document.getElementById("asTxAmount")?.focus();
+    else document.getElementById("asTxHubAddIncomeBtn")?.focus();
+  } else if (ns === 3) {
+    const raw = readAccountSetupDraftRaw() || {};
+    if (String(raw.expensePhase || "") === "form") document.getElementById("asExpTxAmount")?.focus();
+    else document.getElementById("asTxHubAddExpenseBtn")?.focus();
+  }
+}
+
 if (accountSetupBackBtn) {
-  accountSetupBackBtn.addEventListener("click", () => {
-    if (!isAccountSetupPath() || !document.getElementById("accountSetupWizard")) return;
-    const s = getAccountSetupWizardStep();
-    if (s <= 0) return;
-    setCallout(signupCalloutEl, "", "");
-    if (s === 2 && getAccountSetupStep3Phase() === "form") {
-      accountSetupCancelIncomeClick();
-      return;
-    }
-    if (s === 3 && getAccountSetupExpensePhase() === "form") {
-      accountSetupCancelExpenseClick();
-      return;
-    }
-    if (s === 4) {
-      const raw = readAccountSetupDraftRaw() || {};
-      const wantExpenseForm = String(raw.expensePhase || "") === "form";
-      // If the user never opened the expense form, going "back" from the survey should
-      // return to the transactions hub (step 2). Step 3 has no intro UI, so showing it
-      // in "intro" mode would appear blank.
-      if (wantExpenseForm) {
-        setAccountSetupWizardStep(3, { skipPersist: true });
-        setAccountSetupExpensePhase("form");
-        document.getElementById("asExpTxAmount")?.focus();
-      } else {
-        setAccountSetupWizardStep(2, { skipPersist: true });
-        setAccountSetupStep3Phase("intro");
-        document.getElementById("asTxHubAddIncomeBtn")?.focus();
-      }
-      return;
-    }
-    setAccountSetupWizardStep(s - 1);
-    const ns = s - 1;
-    if (ns === 0) document.getElementById("email")?.focus();
-    else if (ns === 1) document.getElementById("accountName")?.focus();
-    else if (ns === 2) {
-      const raw = readAccountSetupDraftRaw() || {};
-      if (String(raw.step3Phase || "") === "form") document.getElementById("asTxAmount")?.focus();
-      else document.getElementById("asTxHubAddIncomeBtn")?.focus();
-    } else if (ns === 3) {
-      const raw = readAccountSetupDraftRaw() || {};
-      if (String(raw.expensePhase || "") === "form") document.getElementById("asExpTxAmount")?.focus();
-      else document.getElementById("asTxHubAddExpenseBtn")?.focus();
-    }
-  });
+  // Use pointerdown so it still works even if a later click is swallowed.
+  accountSetupBackBtn.addEventListener("pointerdown", handleAccountSetupBack, { capture: true });
+  accountSetupBackBtn.addEventListener("click", handleAccountSetupBack);
 }
 
 /** When category implies a typical cadence, enable Repeats and set recurrence (account setup wizard). */
