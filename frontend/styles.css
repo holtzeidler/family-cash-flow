@@ -3477,6 +3477,14 @@ body.account-setup-page .account-setup-duplicate-email__body{
   font-size: 1rem;
   line-height: 1.55;
   color: var(--text);
+  text-align: center;
+}
+body.account-setup-page .account-setup-duplicate-email__line{
+  display: block;
+}
+body.account-setup-page .account-setup-duplicate-email__login{
+  display: inline-block;
+  margin-top: 8px;
 }
 body.account-setup-page .account-setup-duplicate-email__body a{
   font-weight: 700;

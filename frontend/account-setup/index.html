@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=225" />
+    <link rel="stylesheet" href="../styles.css?v=226" />
   </head>
   <body class="login-page signup-page account-setup-page">
     <div class="container">
@@ -454,9 +454,8 @@
       <div class="modal" role="document">
         <h3 id="accountSetupDuplicateEmailTitle" class="sr-only">Email already registered</h3>
         <p class="account-setup-duplicate-email__body">
-          we found an account with that email address.
-          <a href="/login.html">Login</a>
-          now
+          <span class="account-setup-duplicate-email__line">We found an account with that email address.</span>
+          <a class="account-setup-duplicate-email__login" href="/login.html">Login now</a>
         </p>
         <div class="modal-actions">
           <button type="button" class="secondary" id="accountSetupDuplicateEmailClose">OK</button>
@@ -464,6 +463,6 @@
       </div>
     </div>
 
-    <script src="../signup/signup.js?v=41"></script>
+    <script src="../signup/signup.js?v=42"></script>
   </body>
 </html>

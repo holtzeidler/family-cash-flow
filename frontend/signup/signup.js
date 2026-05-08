@@ -674,6 +674,9 @@ function syncAccountSetupWizardShellButtons() {
     if (signupBtn) {
       signupBtn.style.display = "";
       signupBtn.textContent = "Next";
+      // Ensure Next is always the primary (green) style.
+      signupBtn.classList.remove("secondary");
+      signupBtn.classList.add("top-nav__logout");
     }
     return;
   }
@@ -707,6 +710,9 @@ function syncAccountSetupWizardShellButtons() {
     if (signupBtn) {
       signupBtn.style.display = "";
       signupBtn.textContent = "Create Account";
+      // Ensure primary styling in the final step as well.
+      signupBtn.classList.remove("secondary");
+      signupBtn.classList.add("top-nav__logout");
     }
   }
 }
