@@ -210,17 +210,13 @@ body.landing-page .landing-preview__mock.card{
 }
 .landing-how{
   width: min(1100px, 100%);
-  margin: 26px auto 0;
-  align-self: flex-end;
-  margin-left: auto;
-  margin-right: 0;
-  display: grid;
-  grid-template-columns: 1fr 1.15fr;
-  gap: 22px;
-  align-items: start;
+  margin: 26px 0 0;
+  align-self: flex-start;
+  display: block;
 }
 .landing-how__copy{
-  padding: 12px 12px 0;
+  width: min(760px, 100%);
+  padding: 12px 0 0;
 }
 .landing-how__title{
   font-size: 14px;
@@ -288,17 +284,13 @@ body.landing-page .landing-preview__mock.card{
 /* Landing: why people use BalanceWhiz */
 .landing-why{
   width: min(1100px, 100%);
-  margin: 22px auto 0;
-  align-self: flex-end;
-  margin-left: auto;
-  margin-right: 0;
-  display: grid;
-  grid-template-columns: 1fr 1.15fr;
-  gap: 22px;
-  align-items: start;
+  margin: 22px 0 0;
+  align-self: flex-start;
+  display: block;
 }
 .landing-why__copy{
-  padding: 12px 12px 0;
+  width: min(760px, 100%);
+  padding: 12px 0 0;
 }
 .landing-why__title{
   font-size: 14px;
@@ -480,11 +472,9 @@ body.landing-page .landing-preview__mock.card{
       "mock";
   }
   .landing-how{
-    grid-template-columns: 1fr;
     margin-top: 18px;
   }
   .landing-why{
-    grid-template-columns: 1fr;
     margin-top: 18px;
   }
   .landing-offer{
@@ -3410,7 +3400,8 @@ body.account-setup-page .account-setup-wizard__viewport{
   overflow: hidden;
   width: 100%;
   flex: 0 0 auto;
-  min-height: 0;
+  /* Keep the card shell consistent across early steps (use Step 2 sizing). */
+  min-height: 420px;
 }
 body.account-setup-page .account-setup-wizard__shell .account-setup-actions--shell{
   flex-shrink: 0;
@@ -3477,6 +3468,10 @@ body.account-setup-page #accountSetupWizardPanel2{
 
 /* Step 2: nudge content down for breathing room */
 body.account-setup-page #accountSetupWizardPanel1.account-setup-wizard__panel{
+  padding-top: 36px;
+}
+body.account-setup-page #accountSetupWizardPanel0.account-setup-wizard__panel,
+body.account-setup-page #accountSetupWizardPanel2.account-setup-wizard__panel{
   padding-top: 36px;
 }
 
@@ -4479,6 +4474,14 @@ body.plans-page .container > .grid{
 }
 .cal-cell.cal-cell--out .cal-daynum-num{
   color: rgba(75, 85, 99, 0.82);
+}
+.cal-cell.cal-cell--past{
+  background: rgba(0,0,0,0.05);
+  border-color: rgba(0,0,0,0.12);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+}
+.cal-cell.cal-cell--past .cal-daynum-num{
+  color: rgba(75, 85, 99, 0.62);
 }
 .cal-cell.cal-cell--before-start{
   /* Lighter than out-of-month days, but still visually "disabled" */

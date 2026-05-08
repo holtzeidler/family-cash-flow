@@ -50,6 +50,22 @@ async function request(path, method, body) {
   }
 }
 
+async function requestWithRetry(path, method, body, { maxMs = 1600, minDelayMs = 200 } = {}) {
+  const started = Date.now();
+  let attempt = 0;
+  while (true) {
+    attempt += 1;
+    const r = await request(path, method, body);
+    if (r.ok) return r;
+    // Only retry on network-level failures (cold start / transient fetch issues).
+    if (!r.networkError) return r;
+    const elapsed = Date.now() - started;
+    if (elapsed >= maxMs) return r;
+    const delay = Math.min(650, minDelayMs * attempt);
+    await new Promise((res) => window.setTimeout(res, delay));
+  }
+}
+
 function setCallout(el, msg, mode = "pending") {
   if (!el) return;
   el.textContent = msg || "";
@@ -614,8 +630,6 @@ function syncAccountSetupWizardShellButtons() {
   const cancelInc = document.getElementById("asTxCancelIncomeBtn");
   const saveExp = document.getElementById("asExpSaveBtn");
   const cancelExp = document.getElementById("asExpCancelBtn");
-  const hubSkip = document.getElementById("asTxHubSkipBtn");
-  const hubContinue = document.getElementById("asTxHubContinueBtn");
   const hubAddIncome = document.getElementById("asTxHubAddIncomeBtn");
   const hubAddExpense = document.getElementById("asTxHubAddExpenseBtn");
   if (!document.getElementById("accountSetupWizard")) return;
@@ -626,21 +640,32 @@ function syncAccountSetupWizardShellButtons() {
   if (addMoreTxBtn) addMoreTxBtn.style.display = "none";
   if (accountSetupSkipBtn) accountSetupSkipBtn.style.display = s === 1 ? "inline-flex" : "none";
 
-  // Tx hub: show Continue once any transaction exists.
+  // Step 3 (transactions hub): gate Add buttons + show Skip/Next behavior.
   try {
-    if ((hubSkip || hubContinue) && s === 2 && getAccountSetupStep3Phase() === "intro") {
+    if (s === 2 && getAccountSetupStep3Phase() === "intro") {
       const rawDraft = readAccountSetupDraftRaw() || {};
       const txs = Array.isArray(rawDraft.transactions) ? rawDraft.transactions : [];
       const hasTx = txs.length > 0;
       const hasIncome = txs.some((t) => String(t?.kind || "").toLowerCase() === "income");
       const hasExpense = txs.some((t) => String(t?.kind || "").toLowerCase() === "expense");
-      if (hubSkip) hubSkip.hidden = !hasTx;
-      hubContinue.hidden = !hasTx;
       if (hubAddIncome) hubAddIncome.disabled = hasIncome;
       if (hubAddExpense) hubAddExpense.disabled = hasExpense;
+
+      // Actions row: if no tx yet, show Skip (secondary) and hide Next.
+      // If one tx exists, hide Skip and show a white Next button.
+      // If both exist, show green Next button.
+      if (accountSetupSkipBtn) {
+        accountSetupSkipBtn.textContent = "Skip";
+        accountSetupSkipBtn.style.display = hasTx ? "none" : "inline-flex";
+      }
+      if (signupBtn) {
+        signupBtn.textContent = "Next";
+        signupBtn.style.display = hasTx ? "inline-flex" : "none";
+        const both = hasIncome && hasExpense;
+        signupBtn.classList.toggle("secondary", !both);
+        signupBtn.classList.toggle("top-nav__logout", both);
+      }
     } else {
-      if (hubSkip) hubSkip.hidden = true;
-      if (hubContinue) hubContinue.hidden = true;
       if (hubAddIncome) hubAddIncome.disabled = false;
       if (hubAddExpense) hubAddExpense.disabled = false;
     }
@@ -1708,8 +1733,6 @@ function setBusy(isBusy) {
     "asExpCancelBtn",
     "asTxHubAddIncomeBtn",
     "asTxHubAddExpenseBtn",
-    "asTxHubSkipBtn",
-    "asTxHubContinueBtn",
   ]) {
     const el = document.getElementById(id);
     if (el) el.disabled = isBusy;
@@ -1765,12 +1788,17 @@ async function maybeCreateFirstAccountFromDraft(draft) {
     const familyId = fams.data[0]?.id;
     if (!familyId) return;
     const a = draft.account;
-    const created = await request(`/api/families/${encodeURIComponent(String(familyId))}/accounts`, "POST", {
+    const created = await requestWithRetry(
+      `/api/families/${encodeURIComponent(String(familyId))}/accounts`,
+      "POST",
+      {
       name: a.name,
       type: a.type,
       starting_balance: a.starting_balance,
       starting_balance_date: a.starting_balance_date,
-    });
+      },
+      { maxMs: 1600 }
+    );
     if (created && created.ok && created.data && created.data.id) return Number(created.data.id);
   } catch (_) {}
 }
@@ -1778,7 +1806,7 @@ async function maybeCreateFirstAccountFromDraft(draft) {
 async function maybeCreateFirstTransactionFromDraft(draft, createdAccountId) {
   try {
     if (!draft) return;
-    const fams = await request("/api/families", "GET");
+    const fams = await requestWithRetry("/api/families", "GET", null, { maxMs: 1600 });
     if (!fams.ok || !Array.isArray(fams.data) || fams.data.length === 0) return;
     const familyId = fams.data[0]?.id;
     if (!familyId) return;
@@ -1790,7 +1818,7 @@ async function maybeCreateFirstTransactionFromDraft(draft, createdAccountId) {
       if (t.recurring) {
         const accountId = Number(createdAccountId);
         if (!Number.isFinite(accountId) || accountId <= 0) continue;
-        await request(`/api/families/${encodeURIComponent(String(familyId))}/expected-transactions`, "POST", {
+        await requestWithRetry(`/api/families/${encodeURIComponent(String(familyId))}/expected-transactions`, "POST", {
           account_id: accountId,
           start_date: t.date,
           end_date: t.end_date || null,
@@ -1805,9 +1833,9 @@ async function maybeCreateFirstTransactionFromDraft(draft, createdAccountId) {
           category_id: null,
           bg_color: t.bg_color ? t.bg_color : null,
           fg_color: null,
-        });
+        }, { maxMs: 1600 });
       } else {
-        await request(`/api/families/${encodeURIComponent(String(familyId))}/transactions`, "POST", {
+        await requestWithRetry(`/api/families/${encodeURIComponent(String(familyId))}/transactions`, "POST", {
           date: t.date,
           description,
           notes: t.notes ? t.notes : null,
@@ -1817,7 +1845,7 @@ async function maybeCreateFirstTransactionFromDraft(draft, createdAccountId) {
           fg_color: null,
           bg_color: t.bg_color ? t.bg_color : null,
           reimbursable: false,
-        });
+        }, { maxMs: 1600 });
       }
     }
   } catch (_) {}
@@ -1852,7 +1880,7 @@ async function doSignup() {
       return cleaned || "User";
     })();
 
-    const reg = await request("/api/auth/register", "POST", { name, email, password });
+    const reg = await requestWithRetry("/api/auth/register", "POST", { name, email, password }, { maxMs: 1800 });
     if (!reg.ok) {
       setCallout(signupCalloutEl, messageFromFailure(reg, "Signup failed."), "error");
       return;
@@ -2078,6 +2106,16 @@ function onSignupPrimaryClick() {
         return;
       }
       if (st === 2) {
+        // Step 3 hub "Next" (only visible once at least one tx is added).
+        if (getAccountSetupStep3Phase() !== "intro") return;
+        try {
+          const rawDraft = readAccountSetupDraftRaw() || {};
+          const txs = Array.isArray(rawDraft.transactions) ? rawDraft.transactions : [];
+          if (!txs.length) return;
+        } catch (_) {
+          return;
+        }
+        accountSetupTxHubContinueClick();
         return;
       }
       if (st === 3) {
@@ -2161,24 +2199,33 @@ function onSignupPrimaryClick() {
 function onAccountSetupSkipAccountClick() {
   if (!isAccountSetupPath() || !document.getElementById("accountSetupWizard")) return;
   if (isAccountSetupWizardStepLocked()) return;
-  if (getAccountSetupWizardStep() !== 1) return;
+  const st = getAccountSetupWizardStep();
+  if (st !== 1 && st !== 2) return;
   setCallout(signupCalloutEl, "", "");
-  try {
-    const rawDraft = readAccountSetupDraftRaw() || {};
-    const next = {
-      ...rawDraft,
-      wizardFlowVersion: ACCOUNT_SETUP_WIZARD_FLOW_VERSION,
-      wizardStep: 2,
-      step3Phase: "intro",
-      expensePhase: "intro",
-    };
-    delete next.account;
-    sessionStorage.setItem(BW_ACCOUNT_SETUP_DRAFT_KEY, JSON.stringify(next));
-  } catch (_) {}
+  if (st === 1) {
+    try {
+      const rawDraft = readAccountSetupDraftRaw() || {};
+      const next = {
+        ...rawDraft,
+        wizardFlowVersion: ACCOUNT_SETUP_WIZARD_FLOW_VERSION,
+        wizardStep: 2,
+        step3Phase: "intro",
+        expensePhase: "intro",
+      };
+      delete next.account;
+      sessionStorage.setItem(BW_ACCOUNT_SETUP_DRAFT_KEY, JSON.stringify(next));
+    } catch (_) {}
+    lockAccountSetupWizardStepTransition();
+    setAccountSetupWizardStep(2, { skipPersist: true });
+    setAccountSetupStep3Phase("intro");
+    document.getElementById("asTxHubAddIncomeBtn")?.focus();
+    return;
+  }
+
+  // Step 3 Skip: jump to survey (Step 4).
   lockAccountSetupWizardStepTransition();
-  setAccountSetupWizardStep(2, { skipPersist: true });
-  setAccountSetupStep3Phase("intro");
-  document.getElementById("asTxHubAddIncomeBtn")?.focus();
+  setAccountSetupWizardStep(4, { skipPersist: true });
+  document.querySelector("[data-as-survey-opt]")?.focus();
 }
 window.__bwSignup = onSignupPrimaryClick;
 if (signupBtn) {
@@ -2202,8 +2249,6 @@ document.getElementById("asTxSaveIncomeBtn")?.addEventListener("click", () => vo
 document.getElementById("asTxCancelIncomeBtn")?.addEventListener("click", () => accountSetupCancelIncomeClick());
 document.getElementById("asTxHubAddIncomeBtn")?.addEventListener("click", () => accountSetupTxHubAddIncomeClick());
 document.getElementById("asTxHubAddExpenseBtn")?.addEventListener("click", () => accountSetupTxHubAddExpenseClick());
-document.getElementById("asTxHubSkipBtn")?.addEventListener("click", () => accountSetupTxHubContinueClick());
-document.getElementById("asTxHubContinueBtn")?.addEventListener("click", () => accountSetupTxHubContinueClick());
 document.getElementById("asExpSaveBtn")?.addEventListener("click", () => void accountSetupSaveExpenseClick());
 document.getElementById("asExpCancelBtn")?.addEventListener("click", () => accountSetupCancelExpenseClick());
 try {

@@ -5372,6 +5372,7 @@ function recurrenceLabel(value) {
   if (v === "yearly") return "Annual";
   if (v === "semiannual") return "Twice yearly";
   if (v === "twice_monthly") return "Twice monthly";
+  if (v === "bimonthly") return "Bi-monthly";
   if (v === "biweekly") return "Every 2 weeks";
   if (v === "monthly") return "Monthly";
   if (v === "once") return "Once";
@@ -5437,6 +5438,19 @@ function nextExpectedOccurrenceIso(tx, fromIso) {
     const second = Number(tx.second_day_of_month);
     const days = [startDom, second].filter((n) => Number.isFinite(n) && n >= 1 && n <= 31).sort((a, b) => a - b);
     if (days.length === 0) return null;
+    const y = from.getFullYear();
+    const m0 = from.getMonth();
+    const todayDom = from.getDate();
+    const pick = days.find((d) => d >= todayDom);
+    if (from <= start) {
+      cand = start;
+    } else if (pick != null) {
+      cand = dateFromYMDClamped(y, m0, pick);
+    } else {
+      cand = dateFromYMDClamped(y, m0 + 1, days[0]);
+    }
+  } else if (recurrence === "bimonthly") {
+    const days = [15, 31];
     const y = from.getFullYear();
     const m0 = from.getMonth();
     const todayDom = from.getDate();
@@ -7021,6 +7035,7 @@ function renderCalendar() {
     }
     const todayIso = toISODate(new Date());
     const isToday = iso === todayIso;
+    const isPast = iso < todayIso;
     const isReconciled = state.reconciledDates && state.reconciledDates.has(iso);
     cell.innerHTML = `
       <div class="cal-daynum">${isReconciled ? `
@@ -7037,6 +7052,7 @@ function renderCalendar() {
       </div>
     `;
     if (isOutOfMonth) cell.classList.add("cal-cell--out");
+    if (!isOutOfMonth && isPast) cell.classList.add("cal-cell--past");
     const txnsEl = cell.querySelector(".cal-day-txns");
     const metricsEl = cell.querySelector(".cal-ledger-metrics");
 

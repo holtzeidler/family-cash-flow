@@ -310,6 +310,7 @@ class Recurrence(str, Enum):
     biweekly = "biweekly"
     monthly = "monthly"
     twice_monthly = "twice_monthly"  # two fixed days per month (start day + second day)
+    bimonthly = "bimonthly"  # 15th + last day of month
     semiannual = "semiannual"  # twice yearly / every 6 months
     yearly = "yearly"
 
@@ -1159,6 +1160,13 @@ def _validate_expected_transaction_recurrence(payload: ExpectedTransactionIn) ->
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Second day of month must differ from the start date's day of month",
             )
+    elif payload.recurrence == Recurrence.bimonthly:
+        # Fixed schedule (15th + last day); no extra parameters allowed.
+        if payload.second_day_of_month is not None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="second_day_of_month is not valid when recurrence is bimonthly",
+            )
     elif payload.second_day_of_month is not None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -1812,7 +1820,7 @@ def _ensure_recurrence_enum_extensions_postgres() -> None:
         if not row:
             return
         typname = row[0]
-        for label in ("weekly", "twice_monthly", "biweekly"):
+        for label in ("weekly", "twice_monthly", "biweekly", "bimonthly"):
             exists = conn.execute(
                 text(
                     "SELECT 1 FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid "
@@ -4198,6 +4206,14 @@ def _expected_occurrences_in_range(
                 yield d
             return
 
+        if recurrence == Recurrence.bimonthly:
+            for d in _iter_twice_monthly_occurrences(start_date, end_date, 15, 31):
+                n += 1
+                if end_count is not None and n > end_count:
+                    return
+                yield d
+            return
+
         if recurrence == Recurrence.monthly:
             step_months = 1
         elif recurrence == Recurrence.semiannual:
@@ -4330,6 +4346,14 @@ def _occurrence_immediately_before(
             )
         prev_tm: Optional[date] = None
         for d in _iter_twice_monthly_occurrences(start_date, series_end_date, start_date.day, second_day_of_month):
+            if d >= occurrence_date:
+                return prev_tm
+            prev_tm = d
+        return prev_tm
+
+    if recurrence == Recurrence.bimonthly:
+        prev_tm: Optional[date] = None
+        for d in _iter_twice_monthly_occurrences(start_date, series_end_date, 15, 31):
             if d >= occurrence_date:
                 return prev_tm
             prev_tm = d

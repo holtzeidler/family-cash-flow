@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=217" />
+    <link rel="stylesheet" href="../styles.css?v=219" />
   </head>
   <body class="login-page signup-page account-setup-page">
     <div class="container">
@@ -139,14 +139,12 @@
                   data-step3-phase="intro"
                 >
                   <div id="accountSetupWizardStep3Intro" class="account-setup-step3-intro">
-                    <p class="meta account-setup-step3-q">Add one recurring transaction to get started.</p>
+                    <p class="meta account-setup-step3-q">Add recurring transactions to get started.</p>
                     <div class="account-setup-tx-choice-wrap">
                       <div class="account-setup-tx-choice-row" role="group" aria-label="Add income or expense">
                         <button type="button" class="top-nav__logout" id="asTxHubAddIncomeBtn">Add Income</button>
                         <button type="button" class="top-nav__logout" id="asTxHubAddExpenseBtn">Add Expense</button>
                       </div>
-                      <button type="button" class="account-setup-tx-skip-link" id="asTxHubSkipBtn" hidden>Skip for now →</button>
-                      <button type="button" class="top-nav__logout account-setup-tx-continue-btn" id="asTxHubContinueBtn" hidden>Continue</button>
                     </div>
                   </div>
                   <div id="accountSetupWizardStep3Form" class="account-setup-step3-form" hidden>
@@ -205,6 +203,7 @@
                         <input id="asTxRepeats" type="checkbox" />
                         <select id="asTxRecurrence" class="tx-add-recurrence-select" title="How often this repeats" disabled>
                           <option value="monthly" selected>monthly</option>
+                          <option value="bimonthly">bi-monthly (15th &amp; last day)</option>
                           <option value="biweekly">every 2 weeks</option>
                           <option value="weekly">weekly</option>
                           <option value="semiannual">every 6 months</option>
@@ -324,6 +323,7 @@
                           <input id="asExpRepeats" type="checkbox" />
                           <select id="asExpRecurrence" class="tx-add-recurrence-select" title="How often this repeats" disabled>
                             <option value="monthly" selected>monthly</option>
+                            <option value="bimonthly">bi-monthly (15th &amp; last day)</option>
                             <option value="biweekly">every 2 weeks</option>
                             <option value="weekly">weekly</option>
                             <option value="semiannual">every 6 months</option>
@@ -464,6 +464,6 @@
       </div>
     </div>
 
-    <script src="../signup/signup.js?v=34"></script>
+    <script src="../signup/signup.js?v=36"></script>
   </body>
 </html>
