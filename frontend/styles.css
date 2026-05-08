@@ -3722,6 +3722,10 @@ body.account-setup-page .account-setup-step3-q{
   color: var(--text);
   font-weight: 700;
 }
+body.account-setup-page .account-setup-step3-q.account-setup-step3-q--success{
+  color: var(--ok);
+  font-weight: 750;
+}
 body.account-setup-page .account-setup-step3-subq{
   /* Sits below the Add buttons; give it breathing room. */
   margin: 40px 0 0;

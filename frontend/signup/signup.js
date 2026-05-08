@@ -675,9 +675,8 @@ function syncAccountSetupWizardShellButtons() {
       const hasExpense = txs.some((t) => String(t?.kind || "").toLowerCase() === "expense");
       const step3Q = document.querySelector("#accountSetupWizardPanel2 .account-setup-step3-q");
       if (step3Q) {
-        step3Q.textContent = hasTx
-          ? "Perfect. Your forecast can now start projecting future balances."
-          : "Add your first recurring transaction";
+        step3Q.textContent = hasTx ? "✓ Transaction added successfully" : "Add your first recurring transaction";
+        step3Q.classList.toggle("account-setup-step3-q--success", hasTx);
       }
       if (hubAddIncome) hubAddIncome.disabled = hasIncome;
       if (hubAddExpense) hubAddExpense.disabled = hasExpense;
