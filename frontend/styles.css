@@ -3495,7 +3495,9 @@ body.account-setup-page #accountSetupWizardPanel0 .form-row-h__label{
 }
 body.account-setup-page #accountSetupWizardPanel0 .form-row-h__label label{
   white-space: nowrap;
-  color: #94a3b8;
+  color: #7b879a;
+  font-weight: 400;
+  text-align: center;
 }
 /* Step 2: full-width rows + wider label column so uppercase labels stay on one line */
 body.account-setup-page #accountSetupWizardPanel1 .form-row-h__label{
@@ -3504,7 +3506,8 @@ body.account-setup-page #accountSetupWizardPanel1 .form-row-h__label{
 }
 body.account-setup-page #accountSetupWizardPanel1 .form-row-h__label label{
   white-space: nowrap;
-  color: #94a3b8;
+  color: #7b879a;
+  font-weight: 400;
 }
 body.account-setup-page .account-setup-step2-lede{
   margin: 0 0 12px;
@@ -3609,6 +3612,24 @@ body.account-setup-page .account-setup-tx-skip-link:focus-visible{
 body.account-setup-page .account-setup-tx-skip-link:disabled{
   opacity: 0.45;
   cursor: not-allowed;
+}
+body.account-setup-page .account-setup-tx-continue-btn{
+  align-self: flex-end;
+  width: auto;
+  min-width: 9.25rem;
+  justify-content: center;
+  background: var(--accent);
+  border-color: rgba(0, 0, 0, 0.10);
+  color: #fff;
+}
+body.account-setup-page .account-setup-tx-continue-btn:hover{
+  background: color-mix(in srgb, var(--accent) 92%, #000);
+  border-color: rgba(0, 0, 0, 0.16);
+  filter: none;
+}
+body.account-setup-page .account-setup-tx-continue-btn:focus-visible{
+  outline: 3px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  outline-offset: 3px;
 }
 body.account-setup-page .account-setup-tx-choice-row > .top-nav__logout{
   background: #fff;
@@ -4790,6 +4811,14 @@ body.account-setup-page .account-setup-repeat-controls{
   gap: 10px;
   min-width: 0;
 }
+body.account-setup-page .account-setup-repeat-controls .tx-add-schedule-field--end-date{
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px 10px;
+  flex: 0 1 auto;
+  min-width: 0;
+}
 body.account-setup-page .account-setup-repeat-controls input[type="checkbox"]{
   width: calc(18px * 0.92);
   height: calc(18px * 0.92);
@@ -4802,18 +4831,6 @@ body.account-setup-page .tx-add-schedule-toolbar__left{
   flex-wrap: wrap;
   align-items: center;
   gap: 10px 14px;
-}
-body.account-setup-page .tx-add-schedule-toolbar__left .tx-add-schedule-field--end-date{
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 8px 10px;
-  flex: 0 1 auto;
-  margin-top: 0;
-  max-width: none;
-  align-self: center;
-  margin-left: 0;
-  min-width: 0;
 }
 body.account-setup-page .tx-add-schedule-field--end-date input[type="date"]{
   flex: 0 1 auto;

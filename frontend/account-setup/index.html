@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=208" />
+    <link rel="stylesheet" href="../styles.css?v=213" />
   </head>
   <body class="login-page signup-page account-setup-page">
     <div class="container">
@@ -147,6 +147,7 @@
                         <button type="button" class="top-nav__logout" id="asTxHubAddExpenseBtn">Add Expense</button>
                       </div>
                       <button type="button" class="account-setup-tx-skip-link" id="asTxHubSkipBtn">Skip for now →</button>
+                      <button type="button" class="top-nav__logout account-setup-tx-continue-btn" id="asTxHubContinueBtn" hidden>Continue</button>
                     </div>
                   </div>
                   <div id="accountSetupWizardStep3Form" class="account-setup-step3-form" hidden>
@@ -210,16 +211,14 @@
                           <option value="semiannual">every 6 months</option>
                           <option value="yearly">yearly</option>
                         </select>
+                        <div id="asTxEndDateWrap" class="tx-add-schedule-field tx-add-schedule-field--end-date" hidden>
+                          <label for="asTxEndDate" title="Optional. End date for this recurring transaction. Blank = never ends.">Ends on</label>
+                          <input id="asTxEndDate" type="date" title="Optional. Last date this schedule can occur." />
+                        </div>
                       </div>
                     </div>
                   </div>
                   <div class="tx-add-schedule-toolbar" aria-label="Repeat and schedule">
-                    <div class="tx-add-schedule-toolbar__left">
-                      <div id="asTxEndDateWrap" class="tx-add-schedule-field tx-add-schedule-field--end-date" hidden>
-                        <label for="asTxEndDate" title="Optional. End date for this recurring transaction. Blank = never ends.">Ends on</label>
-                        <input id="asTxEndDate" type="date" title="Optional. Last date this schedule can occur." />
-                      </div>
-                    </div>
                     <div class="tx-add-schedule-toolbar__right">
                       <div id="asTxEndCountWrap" class="tx-add-schedule-field tx-add-schedule-field--end-count" hidden>
                         <label for="asTxEndCount" title="Optional. Number of times this recurring transaction happens. Blank = never ends.">Ends after</label>
@@ -331,16 +330,14 @@
                             <option value="semiannual">every 6 months</option>
                             <option value="yearly">yearly</option>
                           </select>
+                          <div id="asExpEndDateWrap" class="tx-add-schedule-field tx-add-schedule-field--end-date" hidden>
+                            <label for="asExpEndDate" title="Optional. End date for this recurring transaction. Blank = never ends.">Ends on</label>
+                            <input id="asExpEndDate" type="date" title="Optional. Last date this schedule can occur." />
+                          </div>
                         </div>
                       </div>
                     </div>
                     <div class="tx-add-schedule-toolbar" aria-label="Repeat and schedule">
-                      <div class="tx-add-schedule-toolbar__left">
-                        <div id="asExpEndDateWrap" class="tx-add-schedule-field tx-add-schedule-field--end-date" hidden>
-                          <label for="asExpEndDate" title="Optional. End date for this recurring transaction. Blank = never ends.">Ends on</label>
-                          <input id="asExpEndDate" type="date" title="Optional. Last date this schedule can occur." />
-                        </div>
-                      </div>
                       <div class="tx-add-schedule-toolbar__right">
                         <div id="asExpEndCountWrap" class="tx-add-schedule-field tx-add-schedule-field--end-count" hidden>
                           <label for="asExpEndCount" title="Optional. Number of times this recurring transaction happens. Blank = never ends.">Ends after</label>
@@ -415,17 +412,11 @@
               <button type="button" id="asTxSaveIncomeBtn" class="top-nav__logout" style="display: none">
                 Save
               </button>
-              <button type="button" id="asTxAddMoreIncomeBtn" class="secondary" style="display: none">
-                Add More Income
-              </button>
               <button type="button" id="asTxCancelIncomeBtn" class="secondary" style="display: none">
                 Cancel
               </button>
               <button type="button" id="asExpSaveBtn" class="top-nav__logout" style="display: none">
                 Save
-              </button>
-              <button type="button" id="asExpAddMoreBtn" class="secondary" style="display: none">
-                Add More Expenses
               </button>
               <button type="button" id="asExpCancelBtn" class="secondary" style="display: none">
                 Cancel
@@ -439,7 +430,7 @@
 
         <div style="height:10px;"></div>
         <div class="meta account-setup-trust-note">
-          <div>Takes just a few minutes to get started.</div>
+          <div>Built for clarity not complexity.</div>
           <div>No bank connection required.</div>
         </div>
       </div>
@@ -473,6 +464,6 @@
       </div>
     </div>
 
-    <script src="../signup/signup.js?v=26"></script>
+    <script src="../signup/signup.js?v=30"></script>
   </body>
 </html>

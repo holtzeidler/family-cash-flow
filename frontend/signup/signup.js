@@ -497,6 +497,11 @@ function speculativePrecheckEmailIfStep0Ready() {
 function openAccountSetupDuplicateEmailModal() {
   const el = document.getElementById("accountSetupDuplicateEmailModal");
   if (!el) return;
+  try {
+    lockAccountSetupWizardStepTransition();
+    setAccountSetupWizardStep(0);
+    document.getElementById("email")?.focus();
+  } catch (_) {}
   el.classList.add("modal-overlay--open");
   el.setAttribute("aria-hidden", "false");
 }
@@ -606,18 +611,31 @@ function setAccountSetupExpensePhase(phase) {
 function syncAccountSetupWizardShellButtons() {
   const s = getAccountSetupWizardStep();
   const saveInc = document.getElementById("asTxSaveIncomeBtn");
-  const addMoreInc = document.getElementById("asTxAddMoreIncomeBtn");
   const cancelInc = document.getElementById("asTxCancelIncomeBtn");
   const saveExp = document.getElementById("asExpSaveBtn");
-  const addExp = document.getElementById("asExpAddMoreBtn");
   const cancelExp = document.getElementById("asExpCancelBtn");
+  const hubSkip = document.getElementById("asTxHubSkipBtn");
+  const hubContinue = document.getElementById("asTxHubContinueBtn");
   if (!document.getElementById("accountSetupWizard")) return;
 
-  for (const el of [saveInc, addMoreInc, cancelInc, saveExp, addExp, cancelExp]) {
+  for (const el of [saveInc, cancelInc, saveExp, cancelExp]) {
     if (el) el.style.display = "none";
   }
   if (addMoreTxBtn) addMoreTxBtn.style.display = "none";
   if (accountSetupSkipBtn) accountSetupSkipBtn.style.display = s === 1 ? "inline-flex" : "none";
+
+  // Tx hub: once any transaction exists, replace "Skip for now" with "Continue".
+  try {
+    if (hubSkip && hubContinue && s === 2 && getAccountSetupStep3Phase() === "intro") {
+      const rawDraft = readAccountSetupDraftRaw() || {};
+      const hasTx = Array.isArray(rawDraft.transactions) && rawDraft.transactions.length > 0;
+      hubSkip.hidden = hasTx;
+      hubContinue.hidden = !hasTx;
+    } else {
+      if (hubSkip) hubSkip.hidden = false;
+      if (hubContinue) hubContinue.hidden = true;
+    }
+  } catch (_) {}
 
   if (s < 2) {
     if (signupBtn) {
@@ -631,7 +649,6 @@ function syncAccountSetupWizardShellButtons() {
     const phase = getAccountSetupStep3Phase();
     if (phase === "form") {
       if (saveInc) saveInc.style.display = "inline-flex";
-      if (addMoreInc) addMoreInc.style.display = "inline-flex";
       if (cancelInc) cancelInc.style.display = "inline-flex";
       if (signupBtn) signupBtn.style.display = "none";
     } else if (signupBtn) {
@@ -1333,6 +1350,16 @@ async function accountSetupTxHubSkipClick() {
   document.querySelector("[data-as-survey-opt]")?.focus();
 }
 
+function accountSetupTxHubContinueClick() {
+  if (!isAccountSetupPath() || !document.getElementById("accountSetupWizard")) return;
+  if (isAccountSetupWizardStepLocked()) return;
+  if (getAccountSetupWizardStep() !== 2 || getAccountSetupStep3Phase() !== "intro") return;
+  setCallout(signupCalloutEl, "", "");
+  lockAccountSetupWizardStepTransition();
+  setAccountSetupWizardStep(4, { skipPersist: true });
+  document.querySelector("[data-as-survey-opt]")?.focus();
+}
+
 function readAccountSetupExpenseTransactionFromInputs() {
   const txKind = String(document.querySelector('input[name="asExpTxKind"]:checked')?.value || "").trim();
   const txAmountRaw = document.getElementById("asExpTxAmount")?.value || "";
@@ -1717,14 +1744,13 @@ function setBusy(isBusy) {
   signupBtn.disabled = isBusy;
   for (const id of [
     "asTxSaveIncomeBtn",
-    "asTxAddMoreIncomeBtn",
     "asTxCancelIncomeBtn",
     "asExpSaveBtn",
-    "asExpAddMoreBtn",
     "asExpCancelBtn",
     "asTxHubAddIncomeBtn",
     "asTxHubAddExpenseBtn",
     "asTxHubSkipBtn",
+    "asTxHubContinueBtn",
   ]) {
     const el = document.getElementById(id);
     if (el) el.disabled = isBusy;
@@ -2024,29 +2050,28 @@ function onSignupPrimaryClick() {
           setCallout(signupCalloutEl, "Passwords do not match.", "error");
           return;
         }
-        void (async () => {
-          if (signupBtn) signupBtn.disabled = true;
-          setCallout(signupCalloutEl, "Checking email…", "pending");
-          const cached = await precheckEmailExists(email);
-          if (signupBtn) signupBtn.disabled = false;
-          if (!cached || !cached.ok) {
-            setCallout(
-              signupCalloutEl,
-              "Could not verify email. Check your connection and try again.",
-              "error"
-            );
-            return;
-          }
-          if (cached.exists === true) {
+        // Don't block Next on network latency. Move forward immediately and let the
+        // email check finish in the background; if it's a duplicate, bounce back.
+        setCallout(signupCalloutEl, "Checking email…", "pending");
+        const p = precheckEmailExists(email);
+        lockAccountSetupWizardStepTransition();
+        setAccountSetupWizardStep(1);
+        document.getElementById("accountName")?.focus();
+        Promise.resolve(p)
+          .then((cached) => {
+            if (!cached || !cached.ok) {
+              // Non-blocking: user can continue; register will still enforce uniqueness.
+              setCallout(signupCalloutEl, "", "");
+              return;
+            }
+            if (cached.exists === true) {
+              setCallout(signupCalloutEl, "", "");
+              openAccountSetupDuplicateEmailModal();
+              return;
+            }
             setCallout(signupCalloutEl, "", "");
-            openAccountSetupDuplicateEmailModal();
-            return;
-          }
-          setCallout(signupCalloutEl, "", "");
-          lockAccountSetupWizardStepTransition();
-          setAccountSetupWizardStep(1);
-          document.getElementById("accountName")?.focus();
-        })();
+          })
+          .catch(() => setCallout(signupCalloutEl, "", ""));
         return;
       }
       if (st === 1) {
@@ -2215,13 +2240,12 @@ if (password2El) {
 }
 if (addMoreTxBtn) addMoreTxBtn.addEventListener("click", addMoreTransactionsFromAccountSetup);
 document.getElementById("asTxSaveIncomeBtn")?.addEventListener("click", () => void accountSetupSaveIncomeClick());
-document.getElementById("asTxAddMoreIncomeBtn")?.addEventListener("click", () => addMoreTransactionsFromAccountSetup());
 document.getElementById("asTxCancelIncomeBtn")?.addEventListener("click", () => accountSetupCancelIncomeClick());
 document.getElementById("asTxHubAddIncomeBtn")?.addEventListener("click", () => accountSetupTxHubAddIncomeClick());
 document.getElementById("asTxHubAddExpenseBtn")?.addEventListener("click", () => accountSetupTxHubAddExpenseClick());
 document.getElementById("asTxHubSkipBtn")?.addEventListener("click", () => void accountSetupTxHubSkipClick());
+document.getElementById("asTxHubContinueBtn")?.addEventListener("click", () => accountSetupTxHubContinueClick());
 document.getElementById("asExpSaveBtn")?.addEventListener("click", () => void accountSetupSaveExpenseClick());
-document.getElementById("asExpAddMoreBtn")?.addEventListener("click", () => addMoreExpensesFromAccountSetup());
 document.getElementById("asExpCancelBtn")?.addEventListener("click", () => accountSetupCancelExpenseClick());
 try {
   const p4 = document.getElementById("accountSetupWizardPanel4");
