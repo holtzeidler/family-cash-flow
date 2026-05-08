@@ -3703,7 +3703,7 @@ body.account-setup-page .account-setup-step3-q{
 }
 body.account-setup-page .account-setup-step3-subq{
   /* Sits below the Add buttons; give it breathing room. */
-  margin: 48px 0 0;
+  margin: 40px 0 0;
   font-size: 0.9rem;
   line-height: 1.35;
   text-align: center;
@@ -3797,33 +3797,19 @@ body.account-setup-page .account-setup-tx-continue-btn:focus-visible{
   outline-offset: 3px;
 }
 body.account-setup-page .account-setup-tx-choice-row > .top-nav__logout{
-  background: transparent;
+  background: #fff;
   color: var(--accent);
-  border: 3px solid var(--accent);
+  border: 2px solid var(--accent);
   border-radius: 999px;
 }
-/* Step 3 hub: subtle tint per action */
-body.account-setup-page #asTxHubAddIncomeBtn.top-nav__logout{
-  background: color-mix(in srgb, var(--accent) 8%, #fff);
-}
-body.account-setup-page #asTxHubAddIncomeBtn.top-nav__logout:hover{
-  background: color-mix(in srgb, var(--accent) 12%, #fff);
-}
-body.account-setup-page #asTxHubAddExpenseBtn.top-nav__logout{
-  /* Warm tint to differentiate from Income */
-  background: rgba(251, 146, 60, 0.12);
-}
-body.account-setup-page #asTxHubAddExpenseBtn.top-nav__logout:hover{
-  background: rgba(251, 146, 60, 0.18);
-}
 body.account-setup-page .account-setup-tx-choice-row > .top-nav__logout:hover{
-  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  background: color-mix(in srgb, var(--accent) 7%, #fff);
   color: var(--accent);
   border-color: var(--accent);
   filter: none;
 }
 body.account-setup-page .account-setup-tx-choice-row > .top-nav__logout:disabled{
-  background: transparent;
+  background: #fff;
   color: rgba(75, 85, 99, 0.55);
   border-color: rgba(75, 85, 99, 0.35);
   cursor: not-allowed;
