@@ -2022,7 +2022,7 @@ async function doSignup() {
   setBusy(true);
   const isAccountSetup = isAccountSetupPath();
   const startedAt = Date.now();
-  const minOverlayMs = 5000;
+  const minOverlayMs = 8000;
   let overlay = null;
   try {
     overlay = ensureForecastBuildOverlay();
