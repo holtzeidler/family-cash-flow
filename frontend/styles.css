@@ -3417,7 +3417,7 @@ body.account-setup-page .account-setup-wizard{
   margin-left: auto;
   margin-right: auto;
   /* Baseline card height: Step 2 is ~75% of prior size */
-  --as-compact-card-minh: 236px;
+  --as-compact-card-minh: 224px;
 }
 body.account-setup-page .account-setup-wizard__eyebrow{
   margin: 0 0 8px;
@@ -3702,7 +3702,8 @@ body.account-setup-page .account-setup-step3-q{
   font-weight: 700;
 }
 body.account-setup-page .account-setup-step3-subq{
-  margin: -8px 0 14px;
+  /* Sits below the Add buttons; give it breathing room. */
+  margin: 48px 0 0;
   font-size: 0.9rem;
   line-height: 1.35;
   text-align: center;
@@ -3801,6 +3802,20 @@ body.account-setup-page .account-setup-tx-choice-row > .top-nav__logout{
   border: 3px solid var(--accent);
   border-radius: 999px;
 }
+/* Step 3 hub: subtle tint per action */
+body.account-setup-page #asTxHubAddIncomeBtn.top-nav__logout{
+  background: color-mix(in srgb, var(--accent) 8%, #fff);
+}
+body.account-setup-page #asTxHubAddIncomeBtn.top-nav__logout:hover{
+  background: color-mix(in srgb, var(--accent) 12%, #fff);
+}
+body.account-setup-page #asTxHubAddExpenseBtn.top-nav__logout{
+  /* Warm tint to differentiate from Income */
+  background: rgba(251, 146, 60, 0.12);
+}
+body.account-setup-page #asTxHubAddExpenseBtn.top-nav__logout:hover{
+  background: rgba(251, 146, 60, 0.18);
+}
 body.account-setup-page .account-setup-tx-choice-row > .top-nav__logout:hover{
   background: color-mix(in srgb, var(--accent) 6%, transparent);
   color: var(--accent);
@@ -3840,23 +3855,51 @@ body.account-setup-page .account-setup-survey__grid{
   margin: 0 auto;
 }
 body.account-setup-page .account-setup-survey__opt{
-  border: 1px solid rgba(0,0,0,0.12);
+  border: 1px solid rgba(0,0,0,0.10);
   border-radius: 14px;
-  padding: 12px 12px;
-  background: rgba(0,0,0,0.02);
+  padding: 11px 12px;
+  background: rgba(0,0,0,0.015);
   color: var(--text);
   font: inherit;
   font-weight: 700;
   cursor: pointer;
   text-align: center;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
 }
 body.account-setup-page .account-setup-survey__opt:hover{
-  filter: brightness(0.985);
+  background: rgba(0,0,0,0.02);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+  filter: none;
 }
 body.account-setup-page .account-setup-survey__opt.is-active{
-  border-color: color-mix(in srgb, var(--accent) 55%, rgba(0,0,0,0.12));
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
-  background: color-mix(in srgb, var(--accent) 9%, rgba(0,0,0,0.02));
+  border-color: color-mix(in srgb, var(--accent) 45%, rgba(0,0,0,0.10));
+  box-shadow:
+    0 1px 2px rgba(0,0,0,0.06),
+    0 0 0 3px color-mix(in srgb, var(--accent) 10%, transparent);
+  background: color-mix(in srgb, var(--accent) 7%, rgba(0,0,0,0.015));
+}
+body.account-setup-page .account-setup-survey__icon{
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: color-mix(in srgb, var(--accent) 70%, rgba(17,24,39,0.65));
+  flex: 0 0 auto;
+}
+body.account-setup-page .account-setup-survey__icon svg{
+  width: 18px;
+  height: 18px;
+  display: block;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 body.account-setup-page .account-setup-survey__other{
   margin-top: 14px;

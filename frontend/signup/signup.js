@@ -579,6 +579,7 @@ function setAccountSetupStep3Phase(phase) {
   if (!p2 || !intro || !form) return;
   const isForm = phase === "form";
   p2.setAttribute("data-step3-phase", isForm ? "form" : "intro");
+  if (!isForm) p2.dataset.afterSave = "";
   intro.hidden = isForm;
   form.hidden = !isForm;
   const kt = document.getElementById("accountSetupKindToggle");
@@ -588,6 +589,18 @@ function setAccountSetupStep3Phase(phase) {
     if (inc) inc.checked = true;
   }
   persistDraftStep3Phase(isForm ? "form" : "intro");
+  syncAccountSetupWizardShellButtons();
+}
+
+function isAccountSetupStep3AfterSave() {
+  const p2 = document.getElementById("accountSetupWizardPanel2");
+  return !!p2 && p2.dataset.afterSave === "1";
+}
+
+function setAccountSetupStep3AfterSave(on) {
+  const p2 = document.getElementById("accountSetupWizardPanel2");
+  if (!p2) return;
+  p2.dataset.afterSave = on ? "1" : "";
   syncAccountSetupWizardShellButtons();
 }
 
@@ -612,6 +625,7 @@ function setAccountSetupExpensePhase(phase) {
   if (!p3 || !form) return;
   const isForm = phase === "form";
   p3.setAttribute("data-expense-phase", isForm ? "form" : "intro");
+  if (!isForm) p3.dataset.afterSave = "";
   if (intro) intro.hidden = isForm;
   form.hidden = !isForm;
   const kt = document.getElementById("accountSetupExpenseKindToggle");
@@ -621,6 +635,18 @@ function setAccountSetupExpensePhase(phase) {
     if (ex) ex.checked = true;
   }
   persistDraftExpensePhase(isForm ? "form" : "intro");
+  syncAccountSetupWizardShellButtons();
+}
+
+function isAccountSetupExpenseAfterSave() {
+  const p3 = document.getElementById("accountSetupWizardPanel3");
+  return !!p3 && p3.dataset.afterSave === "1";
+}
+
+function setAccountSetupExpenseAfterSave(on) {
+  const p3 = document.getElementById("accountSetupWizardPanel3");
+  if (!p3) return;
+  p3.dataset.afterSave = on ? "1" : "";
   syncAccountSetupWizardShellButtons();
 }
 
@@ -687,6 +713,9 @@ function syncAccountSetupWizardShellButtons() {
       if (saveInc) saveInc.style.display = "inline-flex";
       if (cancelInc) cancelInc.style.display = "inline-flex";
       if (signupBtn) signupBtn.style.display = "none";
+      const after = isAccountSetupStep3AfterSave();
+      if (saveInc) saveInc.textContent = after ? "Add Another Transaction" : "Save";
+      if (cancelInc) cancelInc.textContent = after ? "Continue Setup" : "Cancel";
     } else {
       // In hub/intro mode, leave Next/Skip visibility as determined above (based on tx count).
     }
@@ -700,6 +729,9 @@ function syncAccountSetupWizardShellButtons() {
       if (addExp) addExp.style.display = "inline-flex";
       if (cancelExp) cancelExp.style.display = "inline-flex";
       if (signupBtn) signupBtn.style.display = "none";
+      const after = isAccountSetupExpenseAfterSave();
+      if (saveExp) saveExp.textContent = after ? "Add Another Transaction" : "Save";
+      if (cancelExp) cancelExp.textContent = after ? "Continue Setup" : "Cancel";
     } else if (signupBtn) {
       signupBtn.style.display = "none";
     }
@@ -1119,6 +1151,7 @@ function readAccountSetupTransactionFromInputs() {
 }
 
 function resetAccountSetupTransactionForm() {
+  setAccountSetupStep3AfterSave(false);
   const amountEl = document.getElementById("asTxAmount");
   const dateEl = document.getElementById("asTxDate");
   const notesEl = document.getElementById("asTxNotes");
@@ -1205,6 +1238,14 @@ function addMoreTransactionsFromAccountSetup() {
 
 function accountSetupCancelIncomeClick() {
   if (!isAccountSetupPath()) return;
+  if (isAccountSetupStep3AfterSave()) {
+    // Continue setup: return to hub.
+    setCallout(signupCalloutEl, "", "");
+    setAccountSetupStep3AfterSave(false);
+    setAccountSetupStep3Phase("intro");
+    resetAccountSetupTransactionForm();
+    return;
+  }
   setCallout(signupCalloutEl, "", "");
   setAccountSetupStep3Phase("intro");
   resetAccountSetupTransactionForm();
@@ -1212,6 +1253,15 @@ function accountSetupCancelIncomeClick() {
 
 async function accountSetupSaveIncomeClick() {
   if (!isAccountSetupPath()) return;
+  if (isAccountSetupStep3AfterSave()) {
+    // Add another transaction: clear the form but keep it open.
+    setCallout(signupCalloutEl, "", "");
+    setAccountSetupStep3AfterSave(false);
+    resetAccountSetupTransactionForm();
+    setAccountSetupStep3Phase("form");
+    document.getElementById("asTxAmount")?.focus();
+    return;
+  }
   setCallout(signupCalloutEl, "", "");
   const rawDraft = readAccountSetupDraftRaw() || {};
   const existing = Array.isArray(rawDraft.transactions) ? rawDraft.transactions : [];
@@ -1258,21 +1308,15 @@ async function accountSetupSaveIncomeClick() {
       })
     );
   } catch (_) {}
-  resetAccountSetupTransactionForm();
+  // Keep the form visible; show success and swap actions.
   lockAccountSetupWizardStepTransition();
   setAccountSetupWizardStep(2, { skipPersist: true });
-  setAccountSetupStep3Phase("intro");
-  setCallout(signupCalloutEl, "Transaction saved. Add another or skip when you're ready.", "ok");
+  setAccountSetupStep3Phase("form");
+  setAccountSetupStep3AfterSave(true);
+  setCallout(signupCalloutEl, "✓ Income added successfully", "ok");
   try {
     signupCalloutEl?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   } catch (_) {}
-  window.setTimeout(() => {
-    try {
-      if (signupCalloutEl && signupCalloutEl.classList.contains("callout--ok")) setCallout(signupCalloutEl, "", "");
-    } catch (_) {}
-  }, 6500);
-  syncAccountSetupWizardShellButtons();
-  document.getElementById("asTxHubAddIncomeBtn")?.focus();
 }
 
 function advanceAccountSetupWizardToExpenseForm() {
@@ -1412,6 +1456,7 @@ function readAccountSetupExpenseTransactionFromInputs() {
 }
 
 function resetAccountSetupExpenseForm() {
+  setAccountSetupExpenseAfterSave(false);
   const amountEl = document.getElementById("asExpTxAmount");
   const dateEl = document.getElementById("asExpTxDate");
   const notesEl = document.getElementById("asExpTxNotes");
@@ -1490,6 +1535,30 @@ function addMoreExpensesFromAccountSetup() {
 
 function accountSetupCancelExpenseClick() {
   if (!isAccountSetupPath()) return;
+  if (isAccountSetupExpenseAfterSave()) {
+    setCallout(signupCalloutEl, "", "");
+    setAccountSetupExpenseAfterSave(false);
+    resetAccountSetupExpenseForm();
+    try {
+      const rawDraft = readAccountSetupDraftRaw() || {};
+      sessionStorage.setItem(
+        BW_ACCOUNT_SETUP_DRAFT_KEY,
+        JSON.stringify({
+          ...rawDraft,
+          wizardFlowVersion: ACCOUNT_SETUP_WIZARD_FLOW_VERSION,
+          wizardStep: 2,
+          step3Phase: "intro",
+          expensePhase: "intro",
+        })
+      );
+    } catch (_) {}
+    lockAccountSetupWizardStepTransition();
+    setAccountSetupWizardStep(2, { skipPersist: true });
+    setAccountSetupExpensePhase("intro");
+    setAccountSetupStep3Phase("intro");
+    document.getElementById("asTxHubAddIncomeBtn")?.focus();
+    return;
+  }
   setCallout(signupCalloutEl, "", "");
   resetAccountSetupExpenseForm();
   try {
@@ -1514,6 +1583,14 @@ function accountSetupCancelExpenseClick() {
 
 async function accountSetupSaveExpenseClick() {
   if (!isAccountSetupPath()) return;
+  if (isAccountSetupExpenseAfterSave()) {
+    setCallout(signupCalloutEl, "", "");
+    setAccountSetupExpenseAfterSave(false);
+    resetAccountSetupExpenseForm();
+    setAccountSetupExpensePhase("form");
+    document.getElementById("asExpTxAmount")?.focus();
+    return;
+  }
   setCallout(signupCalloutEl, "", "");
   const rawDraft = readAccountSetupDraftRaw() || {};
   const existing = Array.isArray(rawDraft.transactions) ? rawDraft.transactions : [];
@@ -1561,22 +1638,14 @@ async function accountSetupSaveExpenseClick() {
       })
     );
   } catch (_) {}
-  resetAccountSetupExpenseForm();
   lockAccountSetupWizardStepTransition();
-  setAccountSetupWizardStep(2, { skipPersist: true });
-  setAccountSetupStep3Phase("intro");
-  setAccountSetupExpensePhase("intro");
-  setCallout(signupCalloutEl, "Transaction saved. Add another or skip when you're ready.", "ok");
+  setAccountSetupWizardStep(3, { skipPersist: true });
+  setAccountSetupExpensePhase("form");
+  setAccountSetupExpenseAfterSave(true);
+  setCallout(signupCalloutEl, "✓ Expense added successfully", "ok");
   try {
     signupCalloutEl?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   } catch (_) {}
-  window.setTimeout(() => {
-    try {
-      if (signupCalloutEl && signupCalloutEl.classList.contains("callout--ok")) setCallout(signupCalloutEl, "", "");
-    } catch (_) {}
-  }, 6500);
-  syncAccountSetupWizardShellButtons();
-  document.getElementById("asTxHubAddIncomeBtn")?.focus();
 }
 
 function hydrateAccountSetupSurveyFromDraft(o) {
