@@ -2134,8 +2134,8 @@ function ensureForecastBuildOverlay() {
   wrap.className = "bw-build-overlay";
   wrap.hidden = true;
   wrap.innerHTML = `
-    <div class="bw-build-overlay__card" role="status" aria-live="polite" aria-label="Building your forecast">
-      <div class="bw-build-overlay__title">Building your forecast…</div>
+    <div class="bw-build-overlay__card" role="status" aria-live="polite" aria-label="Preparing your forecast">
+      <div class="bw-build-overlay__title">Preparing your forecast…</div>
       <div class="bw-build-overlay__bar" aria-hidden="true">
         <div class="bw-build-overlay__barFill"></div>
       </div>
