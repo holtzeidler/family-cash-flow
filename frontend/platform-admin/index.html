@@ -6,7 +6,7 @@
     <title>Balance Whiz — Platform admin</title>
     <link rel="icon" href="../favicon.png" type="image/png" />
     <script>window.API_BASE = "__API_BASE__";</script>
-    <link rel="stylesheet" href="../styles.css?v=200" />
+    <link rel="stylesheet" href="../styles.css?v=250" />
   </head>
   <body class="admin-page">
     <div class="container">
@@ -98,10 +98,17 @@
         padding: 12px;
         margin-bottom: 12px;
         background: var(--cal-surface);
+        position: relative;
       }
       .admin-user-card h3 {
         margin: 0 0 6px;
         font-size: 1rem;
+      }
+      .admin-user-card__delete {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        padding: 8px 10px;
       }
       .admin-membership {
         font-size: 13px;
@@ -121,6 +128,6 @@
         min-width: 160px;
       }
     </style>
-    <script src="./admin.js?v=3"></script>
+    <script src="./admin.js?v=4"></script>
   </body>
 </html>

@@ -153,6 +153,7 @@
     for (const u of users) {
       const card = document.createElement("div");
       card.className = "admin-user-card";
+      card.dataset.userCard = "1";
       const h = document.createElement("h3");
       h.textContent = u.email;
       card.appendChild(h);
@@ -281,7 +282,9 @@
           setCallout(callout, (e && e.message) || String(e), "error");
         }
       });
-      dangerRow.appendChild(delBtn);
+      // Place Delete user at upper-right of the card.
+      delBtn.classList.add("admin-user-card__delete");
+      card.appendChild(delBtn);
       card.appendChild(dangerRow);
       mount.appendChild(card);
     }

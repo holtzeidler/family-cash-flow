@@ -2020,7 +2020,23 @@ async function maybeCreateFirstTransactionFromDraft(draft, createdAccountId) {
 async function doSignup() {
   if (!signupBtn) return;
   setBusy(true);
-  setCallout(signupCalloutEl, "Creating your account...", "pending");
+  const isAccountSetup = isAccountSetupPath();
+  const startedAt = Date.now();
+  const minOverlayMs = 5000;
+  let overlay = null;
+  try {
+    overlay = ensureForecastBuildOverlay();
+    if (isAccountSetup) {
+      // Replace the transient "Failed to fetch" callout with a calmer progress UI.
+      setCallout(signupCalloutEl, "", "");
+      showForecastBuildOverlay(overlay, { durationMs: minOverlayMs });
+    } else {
+      setCallout(signupCalloutEl, "Creating your account...", "pending");
+    }
+  } catch (_) {
+    // If overlay can't render, fall back to callout only.
+    setCallout(signupCalloutEl, "Creating your account...", "pending");
+  }
   try {
     try {
       sessionStorage.removeItem(BW_API_ACCESS_TOKEN_KEY);
@@ -2048,6 +2064,11 @@ async function doSignup() {
 
     const reg = await requestWithRetry("/api/auth/register", "POST", { name, email, password }, { maxMs: 1800 });
     if (!reg.ok) {
+      if (isAccountSetup) {
+        const remaining = Math.max(0, minOverlayMs - (Date.now() - startedAt));
+        if (remaining) await new Promise((r) => setTimeout(r, remaining));
+        hideForecastBuildOverlay(overlay);
+      }
       setCallout(signupCalloutEl, messageFromFailure(reg, "Signup failed."), "error");
       return;
     }
@@ -2086,12 +2107,68 @@ async function doSignup() {
       sessionStorage.removeItem(BW_ACCOUNT_SETUP_DRAFT_KEY);
     } catch (_) {}
 
+    if (isAccountSetup) {
+      const remaining = Math.max(0, minOverlayMs - (Date.now() - startedAt));
+      if (remaining) await new Promise((r) => setTimeout(r, remaining));
+      hideForecastBuildOverlay(overlay);
+    }
     setCallout(signupCalloutEl, "", "");
     await goApp();
   } catch (e) {
+    if (isAccountSetup) {
+      const remaining = Math.max(0, minOverlayMs - (Date.now() - startedAt));
+      if (remaining) await new Promise((r) => setTimeout(r, remaining));
+      hideForecastBuildOverlay(overlay);
+    }
     setCallout(signupCalloutEl, (e && e.message) || "Signup failed.", "error");
   } finally {
     setBusy(false);
+  }
+}
+
+function ensureForecastBuildOverlay() {
+  const existing = document.getElementById("bwForecastBuildOverlay");
+  if (existing) return existing;
+  const wrap = document.createElement("div");
+  wrap.id = "bwForecastBuildOverlay";
+  wrap.className = "bw-build-overlay";
+  wrap.hidden = true;
+  wrap.innerHTML = `
+    <div class="bw-build-overlay__card" role="status" aria-live="polite" aria-label="Building your forecast">
+      <div class="bw-build-overlay__title">Building your forecast…</div>
+      <div class="bw-build-overlay__bar" aria-hidden="true">
+        <div class="bw-build-overlay__barFill"></div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(wrap);
+  return wrap;
+}
+
+function showForecastBuildOverlay(overlayEl, { durationMs = 5000 } = {}) {
+  if (!overlayEl) return;
+  overlayEl.hidden = false;
+  overlayEl.classList.add("bw-build-overlay--open");
+  const fill = overlayEl.querySelector(".bw-build-overlay__barFill");
+  if (fill) {
+    fill.style.transition = "none";
+    fill.style.width = "0%";
+    // Next tick: animate to 100%.
+    requestAnimationFrame(() => {
+      fill.style.transition = `width ${Math.max(0, durationMs)}ms linear`;
+      fill.style.width = "100%";
+    });
+  }
+}
+
+function hideForecastBuildOverlay(overlayEl) {
+  if (!overlayEl) return;
+  overlayEl.classList.remove("bw-build-overlay--open");
+  overlayEl.hidden = true;
+  const fill = overlayEl.querySelector(".bw-build-overlay__barFill");
+  if (fill) {
+    fill.style.transition = "none";
+    fill.style.width = "0%";
   }
 }
 
