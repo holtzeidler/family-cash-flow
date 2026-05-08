@@ -720,6 +720,12 @@ function syncAccountSetupWizardShellButtons() {
       if (saveInc) saveInc.textContent = after ? "Add Another Transaction" : "Save";
       if (cancelInc) cancelInc.textContent = after ? "Continue Setup" : "Cancel";
       if (accountSetupBackBtn) accountSetupBackBtn.style.display = after ? "none" : "inline-flex";
+      if (addMoreTxBtn) {
+        addMoreTxBtn.textContent = "– Add Expense";
+        addMoreTxBtn.style.display = after ? "inline-flex" : "none";
+        addMoreTxBtn.classList.remove("secondary");
+        addMoreTxBtn.classList.add("top-nav__logout");
+      }
       const msg = document.getElementById("accountSetupStep3Success");
       if (msg) {
         msg.textContent = "✓ Transaction added successfully";
@@ -1200,6 +1206,12 @@ function resetAccountSetupTransactionForm() {
 
 function addMoreTransactionsFromAccountSetup() {
   if (!isAccountSetupPath()) return;
+  // In the Step 3 income form's collapsed success state, this button is repurposed
+  // as "– Add Expense" to quickly proceed to the expense form.
+  if (getAccountSetupWizardStep() === 2 && getAccountSetupStep3Phase() === "form" && isAccountSetupStep3AfterSave()) {
+    advanceAccountSetupWizardToExpenseForm();
+    return;
+  }
   setCallout(signupCalloutEl, "", "");
   const rawDraft = readAccountSetupDraftRaw() || {};
   const accountName = (document.getElementById("accountName")?.value || "").trim();
