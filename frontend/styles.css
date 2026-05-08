@@ -3418,7 +3418,7 @@ body.account-setup-page .account-setup-wizard{
   margin-left: auto;
   margin-right: auto;
   /* Baseline card height: Step 2 is ~75% of prior size */
-  --as-compact-card-minh: 315px;
+  --as-compact-card-minh: 236px;
 }
 body.account-setup-page .account-setup-wizard__eyebrow{
   margin: 0 0 8px;
@@ -4542,9 +4542,10 @@ body.plans-page .container > .grid{
   color: rgba(75, 85, 99, 0.62);
 }
 .cal-cell.cal-cell--before-start{
-  /* Lighter than out-of-month days, but still visually "disabled" */
-  background: color-mix(in srgb, var(--cal-surface) 90%, rgba(0,0,0,0.06));
-  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.07);
+  /* Before your starting balance date: subtly disabled + slightly tinted */
+  background: rgba(11, 61, 46, 0.06);
+  border-color: rgba(11, 61, 46, 0.14);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
 }
 .cal-cell.cal-cell--before-start .cal-daynum-num{
   color: rgba(75, 85, 99, 0.58);
