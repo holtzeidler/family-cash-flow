@@ -728,6 +728,14 @@ function syncAccountSetupWizardShellButtons() {
       if (cancelInc) cancelInc.style.display = "inline-flex";
       if (signupBtn) signupBtn.style.display = "none";
       const after = isAccountSetupStep3AfterSave();
+      try {
+        const rawDraft = readAccountSetupDraftRaw() || {};
+        const txs = Array.isArray(rawDraft.transactions) ? rawDraft.transactions : [];
+        const hasIncome = txs.some((t) => String(t?.kind || "").toLowerCase() === "income");
+        const hasExpense = txs.some((t) => String(t?.kind || "").toLowerCase() === "expense");
+        if (successAddIncome) successAddIncome.disabled = hasIncome;
+        if (successAddExpense) successAddExpense.disabled = hasExpense;
+      } catch (_) {}
       if (saveInc) saveInc.textContent = "Save";
       if (cancelInc) cancelInc.textContent = after ? "Continue Setup" : "Cancel";
       if (saveInc) saveInc.style.display = after ? "none" : "inline-flex";
@@ -1698,9 +1706,10 @@ async function accountSetupSaveExpenseClick() {
     );
   } catch (_) {}
   lockAccountSetupWizardStepTransition();
-  setAccountSetupWizardStep(3, { skipPersist: true });
-  setAccountSetupExpensePhase("form");
-  setAccountSetupExpenseAfterSave(true);
+  // After saving an expense, show the same confirmation/success view on Step 3.
+  setAccountSetupWizardStep(2, { skipPersist: true });
+  setAccountSetupStep3Phase("form");
+  setAccountSetupStep3AfterSave(true);
   // Success is shown inside the collapsed form state (not in the global callout).
   setCallout(signupCalloutEl, "", "");
   try {
@@ -2384,6 +2393,20 @@ if (password2El) {
     onSignupPrimaryClick();
   });
 }
+
+const accountStartingBalanceEl = document.getElementById("accountStartingBalance");
+if (accountStartingBalanceEl) {
+  accountStartingBalanceEl.addEventListener("keydown", (e) => {
+    const k = String(e.key || "");
+    if (k !== "Enter" && k !== "NumpadEnter" && (e.keyCode || 0) !== 13) return;
+    if (!isAccountSetupPath() || !document.getElementById("accountSetupWizard")) return;
+    if (getAccountSetupWizardStep() !== 1) return;
+    // Mirror clicking "Next" from the starting balance field.
+    e.preventDefault();
+    onSignupPrimaryClick();
+  });
+}
+
 if (addMoreTxBtn) addMoreTxBtn.addEventListener("click", addMoreTransactionsFromAccountSetup);
 document.getElementById("asTxSaveIncomeBtn")?.addEventListener("click", () => void accountSetupSaveIncomeClick());
 document.getElementById("asTxCancelIncomeBtn")?.addEventListener("click", () => accountSetupCancelIncomeClick());
@@ -2424,7 +2447,25 @@ function handleAccountSetupBack(e) {
   if (s <= 0) return;
   setCallout(signupCalloutEl, "", "");
   if (s === 2 && getAccountSetupStep3Phase() === "form") {
-    accountSetupCancelIncomeClick();
+    // From the transaction form, Back should return to the account step (Step 2).
+    lockAccountSetupWizardStepTransition();
+    setAccountSetupWizardStep(1, { skipPersist: true });
+    try {
+      const rawDraft = readAccountSetupDraftRaw() || {};
+      sessionStorage.setItem(
+        BW_ACCOUNT_SETUP_DRAFT_KEY,
+        JSON.stringify({
+          ...rawDraft,
+          wizardFlowVersion: ACCOUNT_SETUP_WIZARD_FLOW_VERSION,
+          wizardStep: 1,
+          step3Phase: "form",
+          expensePhase: "intro",
+        })
+      );
+    } catch (_) {}
+    try {
+      setTimeout(() => document.getElementById("accountStartingBalance")?.focus(), 0);
+    } catch (_) {}
     return;
   }
   if (s === 3 && getAccountSetupExpensePhase() === "form") {
