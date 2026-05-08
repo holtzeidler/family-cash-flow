@@ -680,6 +680,15 @@ function syncAccountSetupWizardShellButtons() {
         step3Q.textContent = hasTx ? "✓ Transaction added successfully" : "Add your first recurring transaction";
         step3Q.classList.toggle("account-setup-step3-q--success", hasTx);
       }
+
+      // Once any transaction exists, do not show the hub/intro screen anymore.
+      // Keep the user in the (collapsed) form success state instead.
+      if (hasTx) {
+        setAccountSetupStep3Phase("form");
+        setAccountSetupStep3AfterSave(true);
+        return;
+      }
+
       if (hubAddIncome) hubAddIncome.disabled = hasIncome;
       if (hubAddExpense) hubAddExpense.disabled = hasExpense;
 
