@@ -1,6 +1,7 @@
 :root{
-  --bg:#E5E7EB;
-  --card:#E5E7EB;
+  /* Slightly warmer gray across the site */
+  --bg:#E7E3DD;
+  --card:#E7E3DD;
   /* Calendar day strip + in-month day cells (below global nav) */
   --cal-surface:#F9FAFB;
   --text:#111827;
@@ -702,8 +703,8 @@ body.landing-page .landing-below-preview .landing-offer__bullets{
 }
 .app-title--logo .app-logo{
   display: block;
-  width: min(220px, 52vw);
-  height: 56px;
+  width: min(209px, 49.4vw);
+  height: 53px;
   object-fit: cover;
   object-position: 50% 0;
   border-radius: 8px;
@@ -728,8 +729,8 @@ body.landing-page .landing-below-preview .landing-offer__bullets{
     text-align: center;
   }
   .app-title--logo .app-logo{
-    width: min(200px, 48vw);
-    height: 50px;
+    width: min(190px, 45.6vw);
+    height: 48px;
   }
   /* Plans / admin / signup / landing: keep title left + actions right on narrow screens (overrides generic centered nav). */
   body.plans-page .top-nav .top-nav__inner.top-nav__inner--simple,
@@ -3514,7 +3515,7 @@ body.account-setup-page .account-setup-wizard__shell{
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 8px 24px rgba(0,0,0,.04);
+  box-shadow: 0 10px 30px rgba(0,0,0,.05);
 }
 body.account-setup-page .account-setup-wizard__viewport{
   overflow: hidden;
