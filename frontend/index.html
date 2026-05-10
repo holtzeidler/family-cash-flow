@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=314" />
+    <link rel="stylesheet" href="./styles.css?v=315" />
   </head>
   <body class="landing-page">
     <div class="container">
@@ -94,7 +94,11 @@
                     </div>
 
                     <div class="landing-mock__chart landing-mock__chart--under-savings" aria-hidden="true">
-                      <svg viewBox="0 0 520 170" preserveAspectRatio="none" class="landing-mock__svg">
+                      <svg viewBox="0 0 520 170" preserveAspectRatio="none" class="landing-mock__svg landing-mock__svg--story">
+                        <!-- Quiet reference: future low cushion -->
+                        <line x1="10" y1="132" x2="505" y2="132" stroke="rgba(167,55,68,0.14)" stroke-width="1" stroke-dasharray="4 4" />
+                        <text x="12" y="128" class="landing-mock__chartCap" fill="rgba(120,55,60,0.65)">Future low</text>
+                        <!-- Projected balance path -->
                         <path
                           d="M10,118 C90,112 170,102 250,92 C330,82 410,68 510,52"
                           fill="none"
@@ -105,6 +109,24 @@
                         <path
                           d="M10,118 C90,112 170,102 250,92 C330,82 410,68 510,52 L510,168 L10,168 Z"
                           fill="rgba(11, 61, 46, 0.07)"
+                        />
+                        <!-- Income in -->
+                        <circle cx="168" cy="100" r="3.2" fill="#047857" opacity="0.9" />
+                        <text x="175" y="102" class="landing-mock__chartCap landing-mock__chartCap--in">Income</text>
+                        <!-- Bills out -->
+                        <circle cx="252" cy="90" r="3" fill="#a73744" opacity="0.88" />
+                        <text x="259" y="93" class="landing-mock__chartCap landing-mock__chartCap--out">Bill</text>
+                        <circle cx="348" cy="82" r="2.8" fill="#a73744" opacity="0.82" />
+                        <text x="355" y="85" class="landing-mock__chartCap landing-mock__chartCap--out">Bill</text>
+                        <!-- Soft projected continuation -->
+                        <path
+                          d="M510,52 C520,48 528,46 536,44"
+                          fill="none"
+                          stroke="#0B3D2E"
+                          stroke-width="2"
+                          stroke-opacity="0.35"
+                          stroke-dasharray="5 4"
+                          stroke-linecap="round"
                         />
                         <circle cx="510" cy="52" r="4.8" fill="#0B3D2E" />
                         <line x1="510" y1="52" x2="510" y2="168" stroke="rgba(0,0,0,0.10)" stroke-dasharray="3 3" />
@@ -124,6 +146,10 @@
                         <span class="landing-mock__calReconPill">Verified balance</span>
                       </div>
                     </div>
+                    <p class="landing-mock__calReconStamp">
+                      <span class="landing-mock__calReconStampDot" aria-hidden="true"></span>
+                      Verified to ledger · May 9, 9:15 AM
+                    </p>
                     <p class="landing-mock__calReconLead">
                       <span class="landing-mock__calReconLeadIcon" aria-hidden="true">
                         <svg viewBox="0 0 24 24" width="24" height="24" focusable="false">
@@ -143,7 +169,10 @@
                     <p class="landing-mock__calReconSub">System verification matches your entered balance for this day.</p>
                   </div>
                   <div class="landing-mock__calDaynumPreview">
-                    <span class="landing-mock__calDateText">Fri, May 9</span>
+                    <span class="landing-mock__calDateText">
+                      Fri, May 9
+                      <span class="landing-mock__calScope">Projected day</span>
+                    </span>
                     <span class="cal-reconciled-mark" title="Reconciled" aria-label="Reconciled">
                       <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                         <path d="M8 12.5l2.6 2.6L16.5 9.2" fill="none"></path>

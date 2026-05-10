@@ -224,7 +224,7 @@ body.landing-page .landing-hero__cta:focus-visible{
 body.landing-page .landing-preview{
   width: 100%;
   max-width: min(52rem, 100%);
-  margin: 1.02rem auto 0;
+  margin: 0.95rem auto 0;
   align-self: center;
   display: block;
 }
@@ -323,6 +323,21 @@ body.landing-page .landing-preview .landing-mock__forecastFresh{
 body.landing-page .landing-preview .landing-mock__chart{
   background: rgba(11, 61, 46, 0.045);
 }
+body.landing-page .landing-preview .landing-mock__svg--story .landing-mock__chartCap{
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 7.5px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+}
+body.landing-page .landing-preview .landing-mock__svg--story .landing-mock__chartCap--in{
+  fill: rgba(11, 61, 46, 0.62);
+}
+body.landing-page .landing-preview .landing-mock__svg--story .landing-mock__chartCap--out{
+  fill: rgba(120, 55, 60, 0.68);
+}
+body.landing-page .landing-preview .landing-mock__chart--under-savings .landing-mock__svg--story{
+  height: 82px;
+}
 body.landing-page .landing-preview__mock-row{
   width: 100%;
   margin: 0;
@@ -356,11 +371,31 @@ body.landing-page .landing-preview__mock--day .landing-mock__calPreview{
 }
 body.landing-page .landing-preview__mock--day .landing-mock__calReconBand{
   margin: 0 0 12px;
-  padding: 12px 11px 11px;
+  padding: 11px 11px 10px;
   border-radius: 10px;
-  border: 1px solid rgba(11, 61, 46, 0.14);
-  border-left: 3px solid color-mix(in srgb, var(--ok) 75%, var(--accent) 25%);
-  background: color-mix(in srgb, var(--ok) 10%, #fafdfb 90%);
+  border: 1px solid rgba(11, 61, 46, 0.12);
+  border-left: 4px solid color-mix(in srgb, var(--ok) 70%, var(--accent) 30%);
+  background: color-mix(in srgb, var(--ok) 12%, #fbfcfb 88%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+}
+body.landing-page .landing-preview__mock--day .landing-mock__calReconStamp{
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: rgba(11, 61, 46, 0.78);
+  font-variant-numeric: tabular-nums;
+}
+body.landing-page .landing-preview__mock--day .landing-mock__calReconStampDot{
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  flex-shrink: 0;
+  background: var(--ok);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85);
 }
 body.landing-page .landing-preview__mock--day .landing-mock__calReconBandMeta{
   display: flex;
@@ -368,7 +403,7 @@ body.landing-page .landing-preview__mock--day .landing-mock__calReconBandMeta{
   align-items: center;
   justify-content: space-between;
   gap: 8px 10px;
-  margin-bottom: 10px;
+  margin-bottom: 7px;
 }
 body.landing-page .landing-preview__mock--day .landing-mock__calReconEyebrow{
   font-size: 9px;
@@ -408,10 +443,10 @@ body.landing-page .landing-preview__mock--day .landing-mock__calReconSub{
   margin: 8px 0 0;
   padding-top: 8px;
   border-top: 1px solid rgba(11, 61, 46, 0.1);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
   line-height: 1.4;
-  color: rgba(45, 72, 58, 0.68);
+  color: rgba(45, 72, 58, 0.62);
 }
 body.landing-page .landing-preview__mock--day .landing-mock__calReconLeadIcon{
   flex-shrink: 0;
@@ -437,10 +472,22 @@ body.landing-page .landing-preview__mock--day .landing-mock__calDaynumPreview{
   border-bottom: 1px solid rgba(0, 0, 0, 0.10);
 }
 body.landing-page .landing-preview__mock--day .landing-mock__calDateText{
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
   font-size: 12px;
   font-weight: 600;
   color: var(--text);
   letter-spacing: 0.01em;
+  line-height: 1.2;
+}
+body.landing-page .landing-preview__mock--day .landing-mock__calScope{
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(75, 85, 99, 0.72);
 }
 body.landing-page .landing-preview__mock--day .cal-reconciled-mark{
   flex-shrink: 0;
@@ -553,7 +600,7 @@ body.landing-page .landing-preview__mock--day .cal-day-tx-line .cal-tx-label{
 /* Landing: lightweight highlights row */
 .landing-trust-row{
   width: min(52rem, 100%);
-  margin: 1.05rem auto 0;
+  margin: 0.95rem auto 0;
   display: flex;
   justify-content: center;
   align-self: center;
@@ -622,13 +669,24 @@ body.landing-page .landing-trust-row__item--signal .landing-trust-row__icon{
 /* Landing: sections below the example insight preview */
 body.landing-page .landing-below-preview{
   width: min(52rem, 100%);
-  margin: 1.15rem auto 0;
+  margin: 1rem auto 0;
   padding: 0 2px;
   display: grid;
-  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.18fr) minmax(0, 0.86fr);
-  gap: 20px;
-  align-items: start;
+  grid-template-columns: minmax(0, 1.06fr) minmax(0, 0.9fr) minmax(0, 0.98fr);
+  gap: 22px 24px;
+  align-items: stretch;
   box-sizing: border-box;
+}
+body.landing-page .landing-below-preview .landing-offer{
+  width: 100%;
+  margin: 0;
+  border-left: 1px solid rgba(11, 61, 46, 0.1);
+  padding-left: 20px;
+  margin-left: 2px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  min-height: 100%;
 }
 body.landing-page .landing-below-preview .landing-how__title{
   font-size: 11px;
@@ -636,79 +694,80 @@ body.landing-page .landing-below-preview .landing-how__title{
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: rgba(11, 61, 46, 0.62);
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
 body.landing-page .landing-below-preview .landing-why__title{
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 850;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.055em;
   text-transform: none;
   color: rgba(11, 61, 46, 0.88);
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 body.landing-page .landing-below-preview .landing-why__card{
-  border: 1px solid rgba(11, 61, 46, 0.12);
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.035);
-  padding: 16px 16px 15px;
-  border-radius: 12px;
-  background: #fff;
+  border: 1px solid rgba(11, 61, 46, 0.09);
+  box-shadow: none;
+  padding: 10px 12px 9px;
+  border-radius: 10px;
+  background: #fdfdfc;
 }
 body.landing-page .landing-below-preview .landing-why__cardTitle{
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 800;
   letter-spacing: 0.01em;
-  margin: 0 0 8px;
-  line-height: 1.25;
+  margin: 0 0 5px;
+  line-height: 1.22;
 }
 body.landing-page .landing-below-preview .landing-why__cardBody{
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 500;
-  line-height: 1.45;
-  color: rgba(75, 85, 99, 0.92);
+  line-height: 1.38;
+  color: rgba(75, 85, 99, 0.9);
 }
 body.landing-page .landing-below-preview .landing-why__card--featured{
-  padding: 17px 17px 16px;
-  border: 1px solid rgba(11, 61, 46, 0.17);
-  box-shadow: 0 3px 16px rgba(11, 61, 46, 0.055);
+  padding: 11px 12px 10px;
+  border: 1px solid rgba(11, 61, 46, 0.13);
+  background: #fff;
 }
 body.landing-page .landing-below-preview .landing-why__card--featured .landing-why__cardTitle{
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 850;
   letter-spacing: 0.005em;
-  margin-bottom: 9px;
+  margin-bottom: 6px;
 }
 body.landing-page .landing-offer--calm .landing-offer__title{
-  font-size: 17px;
+  font-size: 16.5px;
   font-weight: 800;
   letter-spacing: 0.02em;
+  line-height: 1.25;
 }
 body.landing-page .landing-offer--calm .landing-offer__tagline{
-  margin: 6px 0 0;
-  font-size: 13px;
+  margin: 5px 0 0;
+  font-size: 12.5px;
   font-weight: 500;
-  line-height: 1.45;
-  color: rgba(75, 85, 99, 0.92);
+  line-height: 1.4;
+  color: rgba(75, 85, 99, 0.9);
 }
 body.landing-page .landing-offer--calm .landing-offer__bullets{
   margin-top: 9px;
 }
 body.landing-page .landing-below-preview .landing-how__steps{
-  gap: 15px;
+  gap: 13px;
   font-weight: 600;
-  line-height: 1.45;
+  line-height: 1.4;
 }
 body.landing-page .landing-below-preview .landing-how__stepTitle{
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 800;
   letter-spacing: 0.01em;
-  line-height: 1.3;
+  line-height: 1.28;
 }
 body.landing-page .landing-below-preview .landing-how__stepBody{
-  margin-top: 4px;
-  font-size: 13px;
+  margin-top: 3px;
+  font-size: 12.5px;
   font-weight: 500;
-  line-height: 1.45;
-  color: rgba(75, 85, 99, 0.9);
+  line-height: 1.38;
+  color: rgba(75, 85, 99, 0.88);
 }
 body.landing-page .landing-below-preview > section{
   width: 100%;
@@ -718,16 +777,16 @@ body.landing-page .landing-below-preview > section{
 body.landing-page .landing-below-preview .landing-how__copy,
 body.landing-page .landing-below-preview .landing-why__copy{
   width: 100%;
-  padding-top: 0;
+}
+body.landing-page .landing-below-preview .landing-how__copy{
+  padding: 4px 10px 0 0;
+}
+body.landing-page .landing-below-preview .landing-why__copy{
+  padding: 0 2px;
 }
 body.landing-page .landing-below-preview .landing-why__grid{
   grid-template-columns: 1fr;
-  gap: 15px;
-}
-body.landing-page .landing-below-preview .landing-offer{
-  width: 100%;
-  margin: 0;
-  display: block;
+  gap: 10px;
 }
 body.landing-page .landing-below-preview .landing-offer__copy{
   padding: 3px 0 0;
@@ -750,6 +809,16 @@ body.landing-page .landing-below-preview .landing-offer__bullets{
   body.landing-page .landing-below-preview .landing-why__grid{
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 14px;
+  }
+  body.landing-page .landing-below-preview .landing-offer{
+    border-left: none;
+    padding-left: 0;
+    margin-left: 0;
+    padding-top: 4px;
+    border-top: 1px solid rgba(11, 61, 46, 0.08);
+  }
+  body.landing-page .landing-below-preview .landing-how__copy{
+    padding-right: 0;
   }
 }
 
