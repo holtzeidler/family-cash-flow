@@ -1,7 +1,7 @@
 :root{
-  /* Slightly warmer gray across the site */
-  --bg:#E7E3DD;
-  --card:#E7E3DD;
+  /* Neutral page chrome (less beige, slightly cool gray) */
+  --bg:#E6E7EA;
+  --card:#E6E7EA;
   /* Calendar day strip + in-month day cells (below global nav) */
   --cal-surface:#F9FAFB;
   --text:#111827;
@@ -52,12 +52,12 @@ body.login-page .auth-section.card{
     0 2px 8px rgba(11, 61, 46, 0.08),
     0 12px 32px rgba(0, 0, 0, 0.1);
 }
-/* Space between header and cards; pull column up ~10% viewport (login, signup, account setup wizard). */
+/* Space between header and cards; lift column ~10vh but never overlap sticky nav (keeps header border visible). */
 body.login-page:not(.signup-page):not(.invite-page) .container > .grid{
-  margin-top: calc(54px - 10vh);
+  margin-top: max(18px, calc(54px - 10vh));
 }
 body.login-page.signup-page:not(.account-setup-page):not(.invite-page) .container > .grid{
-  margin-top: calc(36px - 10vh);
+  margin-top: max(18px, calc(36px - 10vh));
 }
 
 /* Account setup: ultra-soft elevation (wizard shell + in-flow card tiles) */
@@ -79,7 +79,7 @@ body.account-setup-page .container > .grid{
   width: min(640px, 94%);
   margin-left: auto;
   margin-right: auto;
-  margin-top: calc(36px - 10vh);
+  margin-top: max(18px, calc(36px - 10vh));
 }
 
 body.login-page .top-nav__inner--simple{
