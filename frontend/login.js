@@ -136,25 +136,16 @@ async function doLogin() {
 }
 
 function setSectionOpen(sectionEl, toggleBtnEl, bodyEl, isOpen) {
-  if (!sectionEl || !toggleBtnEl || !bodyEl) return;
+  if (!sectionEl || !bodyEl) return;
   sectionEl.classList.toggle("auth-section--open", !!isOpen);
-  toggleBtnEl.setAttribute("aria-expanded", isOpen ? "true" : "false");
+  if (toggleBtnEl) toggleBtnEl.setAttribute("aria-expanded", isOpen ? "true" : "false");
   bodyEl.hidden = !isOpen;
 }
 
 function initAccordion() {
   const loginSection = document.getElementById("loginSection");
-  const loginToggle = document.getElementById("loginSectionToggle");
   const loginBody = document.getElementById("loginSectionBody");
-
-  // Defaults: Login open.
-  setSectionOpen(loginSection, loginToggle, loginBody, true);
-
-  if (loginToggle) {
-    loginToggle.addEventListener("click", () => {
-      setSectionOpen(loginSection, loginToggle, loginBody, true);
-    });
-  }
+  setSectionOpen(loginSection, null, loginBody, true);
 }
 
 initAccordion();
