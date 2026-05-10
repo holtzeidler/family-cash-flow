@@ -812,7 +812,8 @@ function syncAccountSetupWizardShellButtons() {
       if (cancelExp) cancelExp.textContent = after ? "Continue Setup" : "Cancel";
       const msg = document.getElementById("accountSetupStep4Success");
       if (msg) {
-        msg.textContent = "✓ Your forecast is starting to take shape";
+        const textEl = msg.querySelector(".account-setup-step3-form__successText");
+        if (textEl) textEl.textContent = "✓ Your forecast is starting to take shape";
         msg.hidden = !after;
       }
     } else if (signupBtn) {

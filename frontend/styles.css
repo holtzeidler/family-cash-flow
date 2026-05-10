@@ -4118,6 +4118,13 @@ body.account-setup-page .account-setup-step3-form__success{
 body.account-setup-page .account-setup-step3-form__successText{
   margin: 0;
 }
+body.account-setup-page .account-setup-step3-form__successSubtext{
+  margin: 8px 0 0;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.58);
+}
 body.account-setup-page .account-setup-step3-form__successActions{
   display: flex;
   flex-direction: column;
