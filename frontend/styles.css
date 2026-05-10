@@ -226,14 +226,105 @@ body.landing-page .landing-preview__note{
   font-weight: 650;
   color: var(--text);
 }
-body.landing-page .landing-preview__mock.card{
+body.landing-page .landing-preview__mock-row{
   grid-area: mock;
   width: 100%;
+  margin-left: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 16px;
+}
+body.landing-page .landing-preview__mock-row > .landing-preview__mock.card{
   margin-left: 0;
   background: var(--cal-surface);
   border: var(--card-border-accent);
   box-shadow: 0 13px 34px rgba(0,0,0,0.12);
   padding: 11px 11px 10px;
+  box-sizing: border-box;
+  min-width: 0;
+}
+body.landing-page .landing-preview__mock--forecast{
+  flex: 1.2 1 300px;
+}
+body.landing-page .landing-preview__mock--day{
+  flex: 1 1 220px;
+  max-width: 300px;
+}
+body.landing-page .landing-preview__mock--day .landing-mock__calPreview{
+  width: 100%;
+  min-width: 0;
+}
+body.landing-page .landing-preview__mock--day .landing-mock__calDaynumPreview{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 3px;
+  margin-bottom: 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.10);
+}
+body.landing-page .landing-preview__mock--day .landing-mock__calDateText{
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: 0.01em;
+}
+body.landing-page .landing-preview__mock--day .cal-reconciled-mark{
+  flex-shrink: 0;
+}
+body.landing-page .landing-preview__mock--day .cal-cell-stack{
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  justify-content: space-between;
+  align-items: stretch;
+  width: 100%;
+  min-height: 0;
+}
+body.landing-page .landing-preview__mock--day .cal-day-txns{
+  padding-top: 6px;
+}
+body.landing-page .landing-preview__mock--day .landing-mock__calTxLine{
+  cursor: default;
+  text-decoration: none;
+}
+body.landing-page .landing-preview__mock--day .cal-ledger-metrics{
+  margin-top: 10px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+body.landing-page .landing-preview__mock--day .landing-mock__calBalance{
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 14px;
+  line-height: 1.15;
+  font-weight: 400;
+  color: rgba(17, 24, 39, 0.45);
+}
+body.landing-page .landing-preview__mock--day .landing-mock__calBalanceLabel{
+  color: rgba(17, 24, 39, 0.45);
+}
+body.landing-page .landing-preview__mock--day .landing-mock__calBalanceAmt{
+  font-weight: 700;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+body.landing-page .landing-preview__mock--day .cal-amt.income{
+  color: var(--ok);
+}
+body.landing-page .landing-preview__mock--day .cal-amt.expense{
+  color: var(--danger);
+}
+body.landing-page .landing-preview__mock--day .cal-day-tx-line .cal-amt{
+  font-weight: 700;
+}
+body.landing-page .landing-preview__mock--day .cal-day-tx-line .cal-tx-label{
+  font-weight: 600;
+  color: var(--text);
 }
 .landing-how{
   width: 100%;
@@ -439,99 +530,9 @@ body.landing-page .landing-below-preview .landing-offer__bullets{
   display: grid;
   gap: 6px;
 }
-.landing-mock__split{
-  display: flex;
-  flex-wrap: wrap;
-  align-items: stretch;
-  gap: 16px;
-}
 .landing-mock__main{
-  flex: 1 1 0;
+  width: 100%;
   min-width: 0;
-  max-width: 380px;
-}
-.landing-mock__day-card{
-  flex: 1 1 200px;
-  min-width: 188px;
-  max-width: 248px;
-  align-self: flex-start;
-  padding: 10px 10px 9px;
-  border-radius: 10px;
-  border: 1px solid rgba(0, 0, 0, 0.10);
-  background: rgba(255, 255, 255, 0.65);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-}
-.landing-mock__dayCardHead{
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 8px;
-  padding-bottom: 6px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-}
-.landing-mock__dayDate{
-  font-size: 13px;
-  font-weight: 800;
-  color: var(--text);
-  letter-spacing: 0.01em;
-}
-.landing-mock__dayReconciled{
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 900;
-  line-height: 1;
-  color: #fff;
-  background: var(--ok);
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
-}
-.landing-mock__dayTxList{
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 6px;
-  font-size: 12px;
-  font-weight: 650;
-  color: var(--text);
-}
-.landing-mock__dayTxList li{
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 5px 6px;
-  border-radius: 8px;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  background: rgba(0, 0, 0, 0.02);
-}
-.landing-mock__dayTxName{
-  min-width: 0;
-}
-.landing-mock__dayTxAmt{
-  flex-shrink: 0;
-  font-variant-numeric: tabular-nums;
-  color: rgba(17, 24, 39, 0.82);
-}
-.landing-mock__dayBalance{
-  margin-top: 10px;
-  padding-top: 8px;
-  border-top: 1px solid rgba(0, 0, 0, 0.08);
-  font-size: 12px;
-  font-weight: 700;
-  color: rgba(17, 24, 39, 0.78);
-  text-align: right;
-}
-.landing-mock__dayBalance strong{
-  font-size: 15px;
-  font-weight: 900;
-  color: var(--accent);
-  margin-left: 4px;
 }
 .landing-mock__head{
   display: flex;
@@ -677,10 +678,9 @@ body.landing-page .landing-below-preview .landing-offer__bullets{
     grid-column: auto;
     margin-top: 8px;
   }
-  .landing-mock__main{
-    max-width: none;
-  }
-  .landing-mock__day-card{
+  body.landing-page .landing-preview__mock--forecast,
+  body.landing-page .landing-preview__mock--day{
+    flex: 1 1 100%;
     max-width: none;
     width: 100%;
   }

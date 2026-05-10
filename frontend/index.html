@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=306" />
+    <link rel="stylesheet" href="./styles.css?v=308" />
   </head>
   <body class="landing-page">
     <div class="container">
@@ -54,8 +54,8 @@
               </div>
             </div>
 
-            <div class="landing-preview__mock card" aria-label="Preview mockup">
-              <div class="landing-mock__split">
+            <div class="landing-preview__mock-row" aria-label="Product preview mockups">
+              <div class="landing-preview__mock card landing-preview__mock--forecast" aria-label="Projected balance preview">
                 <div class="landing-mock__main">
                   <div class="landing-mock__head">
                     <div class="landing-mock__title">Projected balance</div>
@@ -106,24 +106,42 @@
                     </div>
                   </div>
                 </div>
+              </div>
 
-                <aside class="landing-mock__day-card" aria-label="Example calendar day">
-                  <div class="landing-mock__dayCardHead">
-                    <div class="landing-mock__dayDate">Fri, May 9</div>
-                    <span class="landing-mock__dayReconciled" title="Reconciled" aria-label="Reconciled">✓</span>
+              <div class="landing-preview__mock card landing-preview__mock--day" aria-label="Example calendar day">
+                <div class="landing-mock__calPreview">
+                  <div class="landing-mock__calDaynumPreview">
+                    <span class="landing-mock__calDateText">Fri, May 9</span>
+                    <span class="cal-reconciled-mark" title="Reconciled" aria-label="Reconciled">
+                      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                        <circle cx="12" cy="12" r="9" fill="none"></circle>
+                        <path d="M8 12.5l2.6 2.6L16.5 9.2" fill="none"></path>
+                      </svg>
+                    </span>
                   </div>
-                  <ul class="landing-mock__dayTxList">
-                    <li>
-                      <span class="landing-mock__dayTxName">Cash &amp; ATM</span>
-                      <span class="landing-mock__dayTxAmt">$200</span>
-                    </li>
-                    <li>
-                      <span class="landing-mock__dayTxName">Auto Payment</span>
-                      <span class="landing-mock__dayTxAmt">$450</span>
-                    </li>
-                  </ul>
-                  <div class="landing-mock__dayBalance">Balance <strong>$2,554</strong></div>
-                </aside>
+                  <div class="cal-cell-stack">
+                    <div class="cal-day-txns">
+                      <div class="cal-day-tx-line landing-mock__calTxLine">
+                        <span class="cal-tx-label-wrap">
+                          <span class="cal-tx-label">Cash &amp; ATM</span>
+                        </span>
+                        <span class="cal-amt expense">$200</span>
+                      </div>
+                      <div class="cal-day-tx-line landing-mock__calTxLine">
+                        <span class="cal-tx-label-wrap">
+                          <span class="cal-tx-label">Auto Payment</span>
+                        </span>
+                        <span class="cal-amt expense">$450</span>
+                      </div>
+                    </div>
+                    <div class="cal-ledger-metrics">
+                      <div class="cal-stat cal-balance landing-mock__calBalance">
+                        <span class="landing-mock__calBalanceLabel">Balance</span>
+                        <span class="landing-mock__calBalanceAmt">$2,554</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
         </section>
