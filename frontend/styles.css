@@ -14,6 +14,8 @@
   --danger:#a73744; /* darker maroon-leaning red */
   --ok:#005a4a;     /* green from palette */
   --border: rgba(0,0,0,0.10);
+  /* Text fields: a touch darker than --border for readability on card surfaces */
+  --input-border: rgba(0,0,0,0.16);
   /* Shared button radius (use across the site) */
   --btn-radius: 14px;
   /* Sticky strips sit below the primary nav (tabs); keep in sync with .top-nav height */
@@ -2399,7 +2401,7 @@ input, select{
   width: 100%;
   padding: 10px 12px;
   border-radius: 10px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--input-border);
   background: rgba(0,0,0,0.02);
   color: var(--text);
 }
@@ -2414,7 +2416,7 @@ textarea::placeholder{
   display: flex;
   align-items: center;
   border-radius: 10px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--input-border);
   background: rgba(0,0,0,0.02);
   overflow: hidden;
 }
@@ -3467,10 +3469,14 @@ body.account-setup-page .account-setup-wizard{
 body.account-setup-page .account-setup-wizard__eyebrow{
   margin: 0 0 4px;
   text-align: center;
-  font-size: clamp(1.05rem, 2.2vw, 1.4rem);
+  font-size: calc(clamp(1.05rem, 2.2vw, 1.4rem) / 2);
   font-weight: 900;
   color: var(--accent);
   letter-spacing: 0.2px;
+}
+/* Transactions step: “Great, now…” reads large above the card — half again vs other steps */
+body.account-setup-page .account-setup-wizard__eyebrow.account-setup-wizard__eyebrow--step3{
+  font-size: calc(clamp(1.05rem, 2.2vw, 1.4rem) / 4);
 }
 body.account-setup-page .account-setup-wizard__subeyebrow{
   margin: 0 0 10px;
@@ -3851,13 +3857,12 @@ body.account-setup-page .account-setup-step3-q.account-setup-step3-q--success{
   color: var(--ok);
   font-weight: 750;
 }
-body.account-setup-page .account-setup-step3-subq{
-  /* Sits below the Add buttons; give it breathing room. */
-  margin: 40px 0 0;
+body.account-setup-page .account-setup-step3-intro-hint{
+  margin: 0 0 18px;
   font-size: 0.9rem;
-  line-height: 1.35;
+  line-height: 1.45;
   text-align: center;
-  color: rgba(0,0,0,0.64);
+  color: rgba(0, 0, 0, 0.64);
 }
 body.account-setup-page .account-setup-step3-radios{
   display: flex;
@@ -3887,7 +3892,7 @@ body.account-setup-page .account-setup-tx-choice-wrap{
   gap: 14px;
   width: 100%;
   max-width: 280px;
-  margin: 34px auto 0;
+  margin: 8px auto 0;
 }
 body.account-setup-page .account-setup-tx-choice-row{
   display: flex;
@@ -3947,23 +3952,41 @@ body.account-setup-page .account-setup-tx-continue-btn:focus-visible{
   outline-offset: 3px;
 }
 body.account-setup-page .account-setup-tx-choice-row > .top-nav__logout{
-  background: #fff;
-  color: var(--accent);
-  border: 2px solid var(--accent);
   border-radius: 999px;
+  border-width: 2px;
+  border-style: solid;
+  box-sizing: border-box;
 }
-body.account-setup-page .account-setup-tx-choice-row > .top-nav__logout:hover{
-  background: color-mix(in srgb, var(--accent) 7%, #fff);
+/* Hub: primary income vs outlined expense */
+body.account-setup-page #asTxHubAddIncomeBtn{
+  background: var(--accent);
+  color: #fff;
+  border-color: color-mix(in srgb, var(--accent) 80%, #000);
+}
+body.account-setup-page #asTxHubAddIncomeBtn:hover:not(:disabled){
+  background: color-mix(in srgb, var(--accent) 90%, #000);
+  border-color: color-mix(in srgb, var(--accent) 68%, #000);
+  color: #fff;
+  filter: none;
+}
+body.account-setup-page #asTxHubAddExpenseBtn{
+  background: var(--cal-surface);
   color: var(--accent);
   border-color: var(--accent);
+}
+body.account-setup-page #asTxHubAddExpenseBtn:hover:not(:disabled){
+  background: color-mix(in srgb, var(--accent) 7%, #fff);
+  border-color: color-mix(in srgb, var(--accent) 75%, #000);
+  color: var(--accent);
   filter: none;
 }
 body.account-setup-page .account-setup-tx-choice-row > .top-nav__logout:disabled{
-  background: #fff;
-  color: rgba(75, 85, 99, 0.55);
-  border-color: rgba(75, 85, 99, 0.35);
+  background: rgba(255, 255, 255, 0.85);
+  color: rgba(75, 85, 99, 0.45);
+  border-color: rgba(75, 85, 99, 0.28);
   cursor: not-allowed;
   filter: none;
+  box-shadow: none;
 }
 body.account-setup-page .account-setup-actions .top-nav__logout:disabled{
   background: #fff;
@@ -3973,8 +3996,17 @@ body.account-setup-page .account-setup-actions .top-nav__logout:disabled{
   filter: none;
 }
 body.account-setup-page .account-setup-tx-choice-row > .top-nav__logout:focus-visible{
-  outline: 3px solid color-mix(in srgb, var(--accent) 55%, transparent);
-  outline-offset: 3px;
+  outline: none;
+  border-color: color-mix(in srgb, var(--accent) 62%, #000);
+  box-shadow: 0 2px 10px rgba(11, 61, 46, 0.14);
+}
+body.account-setup-page #asTxHubAddIncomeBtn:focus-visible:not(:disabled){
+  border-color: color-mix(in srgb, var(--accent) 58%, #000);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+}
+body.account-setup-page #asTxHubAddExpenseBtn:focus-visible:not(:disabled){
+  border-color: color-mix(in srgb, var(--accent) 62%, #000);
+  box-shadow: 0 2px 10px rgba(11, 61, 46, 0.12);
 }
 
 /* Account setup: survey step */
@@ -4103,16 +4135,58 @@ body.account-setup-page .account-setup-step3-form__successNote{
 body.account-setup-page .account-setup-step3-form__successActions .top-nav__logout{
   width: min(312px, 47%);
   border-radius: 999px;
+  border-width: 2px;
+  border-style: solid;
+  box-sizing: border-box;
 }
-body.account-setup-page .account-setup-step3-form__successActions .top-nav__logout.account-setup-success-secondary{
+body.account-setup-page .account-setup-step3-form__successActions #asStep3SuccessAddIncomeBtn{
+  background: var(--accent);
+  color: #fff;
+  border-color: color-mix(in srgb, var(--accent) 80%, #000);
+}
+body.account-setup-page .account-setup-step3-form__successActions #asStep3SuccessAddIncomeBtn:hover:not(:disabled){
+  background: color-mix(in srgb, var(--accent) 90%, #000);
+  border-color: color-mix(in srgb, var(--accent) 68%, #000);
+  color: #fff;
+  filter: none;
+}
+body.account-setup-page .account-setup-step3-form__successActions #asStep3SuccessAddExpenseBtn{
+  background: var(--cal-surface);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+body.account-setup-page .account-setup-step3-form__successActions #asStep3SuccessAddExpenseBtn:hover:not(:disabled){
+  background: color-mix(in srgb, var(--accent) 7%, #fff);
+  border-color: color-mix(in srgb, var(--accent) 75%, #000);
+  color: var(--accent);
+  filter: none;
+}
+body.account-setup-page .account-setup-step3-form__successActions #asStep3SuccessAddIncomeBtn.account-setup-success-secondary,
+body.account-setup-page .account-setup-step3-form__successActions #asStep3SuccessAddExpenseBtn.account-setup-success-secondary{
   background: #fff;
   color: rgba(75, 85, 99, 0.78);
   border-color: rgba(75, 85, 99, 0.35);
   filter: none;
 }
-body.account-setup-page .account-setup-step3-form__successActions .top-nav__logout.account-setup-success-secondary:hover{
+body.account-setup-page .account-setup-step3-form__successActions #asStep3SuccessAddIncomeBtn.account-setup-success-secondary:hover:not(:disabled),
+body.account-setup-page .account-setup-step3-form__successActions #asStep3SuccessAddExpenseBtn.account-setup-success-secondary:hover:not(:disabled){
   background: rgba(0, 0, 0, 0.02);
   border-color: rgba(75, 85, 99, 0.45);
+}
+body.account-setup-page .account-setup-step3-form__successActions .top-nav__logout:focus-visible:not(:disabled){
+  outline: none;
+}
+body.account-setup-page .account-setup-step3-form__successActions #asStep3SuccessAddIncomeBtn:focus-visible:not(:disabled):not(.account-setup-success-secondary){
+  border-color: color-mix(in srgb, var(--accent) 58%, #000);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+}
+body.account-setup-page .account-setup-step3-form__successActions #asStep3SuccessAddExpenseBtn:focus-visible:not(:disabled):not(.account-setup-success-secondary){
+  border-color: color-mix(in srgb, var(--accent) 62%, #000);
+  box-shadow: 0 2px 10px rgba(11, 61, 46, 0.12);
+}
+body.account-setup-page .account-setup-step3-form__successActions .top-nav__logout.account-setup-success-secondary:focus-visible:not(:disabled){
+  border-color: rgba(55, 65, 81, 0.48);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
 }
 @media (max-width: 560px){
   body.account-setup-page .account-setup-step3-form__successActions .top-nav__logout{

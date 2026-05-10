@@ -700,6 +700,7 @@ function syncAccountSetupWizardShellButtons() {
   // Step-specific eyebrow copy
   if (eyebrow) {
     eyebrow.textContent = s === 2 ? "Great, now let’s add what affects your balance." : "Let’s build your forecast";
+    eyebrow.classList.toggle("account-setup-wizard__eyebrow--step3", s === 2);
   }
   if (subEyebrow) {
     subEyebrow.hidden = s === 2;
