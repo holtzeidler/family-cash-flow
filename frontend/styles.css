@@ -3514,7 +3514,7 @@ body.account-setup-page .account-setup-wizard__shell{
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  box-shadow: var(--as-ultra-soft-card-shadow);
+  box-shadow: 0 8px 24px rgba(0,0,0,.04);
 }
 body.account-setup-page .account-setup-wizard__viewport{
   overflow: hidden;
@@ -3750,7 +3750,7 @@ body.account-setup-page #accountSetupWizardPanel0 .form-row-h__label{
 body.account-setup-page #accountSetupWizardPanel0 .form-row-h__label label{
   white-space: nowrap;
   color: #556173;
-  font-weight: 400;
+  font-weight: 380;
   text-align: center;
 }
 
