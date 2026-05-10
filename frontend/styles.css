@@ -3476,10 +3476,6 @@ body.account-setup-page .account-setup-wizard__eyebrow{
   color: var(--accent);
   letter-spacing: 0.2px;
 }
-/* Transactions step: “Great, now…” reads large above the card — half again vs other steps */
-body.account-setup-page .account-setup-wizard__eyebrow.account-setup-wizard__eyebrow--step3{
-  font-size: calc(var(--as-wizard-subeyebrow-size) * 1.05 / 2 * 1.2);
-}
 body.account-setup-page .account-setup-wizard__subeyebrow{
   margin: 0 0 10px;
   text-align: center;

@@ -700,7 +700,6 @@ function syncAccountSetupWizardShellButtons() {
   // Step-specific eyebrow copy
   if (eyebrow) {
     eyebrow.textContent = s === 2 ? "Great, now let’s add what affects your balance." : "Let’s build your forecast";
-    eyebrow.classList.toggle("account-setup-wizard__eyebrow--step3", s === 2);
   }
   if (subEyebrow) {
     subEyebrow.hidden = s === 2;
@@ -716,7 +715,7 @@ function syncAccountSetupWizardShellButtons() {
       const hasExpense = txs.some((t) => String(t?.kind || "").toLowerCase() === "expense");
       const step3Q = document.querySelector("#accountSetupWizardPanel2 .account-setup-step3-q");
       if (step3Q) {
-        step3Q.textContent = hasTx ? "✓ Transaction added successfully" : "Add your first recurring transaction";
+        step3Q.textContent = hasTx ? "✓ Your forecast is starting to take shape" : "Add your first recurring transaction";
         step3Q.classList.toggle("account-setup-step3-q--success", hasTx);
       }
 
@@ -813,7 +812,7 @@ function syncAccountSetupWizardShellButtons() {
       if (cancelExp) cancelExp.textContent = after ? "Continue Setup" : "Cancel";
       const msg = document.getElementById("accountSetupStep4Success");
       if (msg) {
-        msg.textContent = "✓ Transaction added successfully";
+        msg.textContent = "✓ Your forecast is starting to take shape";
         msg.hidden = !after;
       }
     } else if (signupBtn) {
