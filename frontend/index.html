@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=311" />
+    <link rel="stylesheet" href="./styles.css?v=312" />
   </head>
   <body class="landing-page">
     <div class="container">
@@ -37,21 +37,23 @@
 
       <main class="landing-main" aria-label="Welcome">
         <div class="landing-hero">
-          <h2 class="landing-hero__text" style="margin: 0 0 10px;">
-            Stop guessing how much cash you really have available.
-          </h2>
-          <p class="meta" style="margin: 0;">
-            Know what’s safe to spend, save, or transfer before upcoming bills hit.
-            <a href="https://balancewhiz.com/account-setup/?fresh=1" class="landing-hero__cta">Start Forecasting &rarr;</a>
+          <h2 class="landing-hero__text">Stop guessing how much cash you really have available.</h2>
+          <p class="landing-hero__sub">
+            Know what’s truly available to spend or move to savings, then reconcile your forecast when your balance changes—so transfers stay safe.
           </p>
+          <a href="https://balancewhiz.com/account-setup/?fresh=1" class="landing-hero__cta">Start Forecasting</a>
         </div>
 
         <section class="landing-preview" aria-label="Product preview">
-            <div class="landing-preview__copy">
-              <div class="landing-preview__eyebrow">Example BalanceWhiz insight</div>
-              <div class="landing-preview__note">
-                “You could safely move <strong>$1,850</strong> to savings while keeping bills covered through May 31.”
-              </div>
+          <div class="landing-preview__demo">
+            <header class="landing-preview__demoHead">
+              <p class="landing-preview__eyebrow">Example BalanceWhiz insight</p>
+            </header>
+            <div class="landing-preview__insight" role="status" aria-label="Transfer recommendation">
+              <span class="landing-preview__insightKind">Transfer recommendation</span>
+              <p class="landing-preview__insightText">
+                You could safely move <strong>$1,850</strong> to savings while keeping bills covered through May 31.
+              </p>
             </div>
 
             <div class="landing-preview__mock-row" aria-label="Product preview mockups">
@@ -77,18 +79,12 @@
                         <div class="landing-mock__savingsKicker">Safe to move to savings</div>
                         <div class="landing-mock__savingsAmt">$1,850</div>
                         <p class="landing-mock__savingsMeta">Based on upcoming bills and income through May 31.</p>
-                        <p class="landing-mock__savingsFoot">[ Transfer recommendation updated today ]</p>
+                        <p class="landing-mock__savingsFoot">Transfer recommendation updated today</p>
                       </div>
                     </div>
 
                     <div class="landing-mock__chart landing-mock__chart--under-savings" aria-hidden="true">
                       <svg viewBox="0 0 520 170" preserveAspectRatio="none" class="landing-mock__svg">
-                        <defs>
-                          <linearGradient id="bwPreviewFill" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stop-color="#0B3D2E" stop-opacity="0.20" />
-                            <stop offset="100%" stop-color="#0B3D2E" stop-opacity="0.00" />
-                          </linearGradient>
-                        </defs>
                         <path
                           d="M10,118 C90,112 170,102 250,92 C330,82 410,68 510,52"
                           fill="none"
@@ -98,7 +94,7 @@
                         />
                         <path
                           d="M10,118 C90,112 170,102 250,92 C330,82 410,68 510,52 L510,168 L10,168 Z"
-                          fill="url(#bwPreviewFill)"
+                          fill="rgba(11, 61, 46, 0.07)"
                         />
                         <circle cx="510" cy="52" r="4.8" fill="#0B3D2E" />
                         <line x1="510" y1="52" x2="510" y2="168" stroke="rgba(0,0,0,0.10)" stroke-dasharray="3 3" />
@@ -110,12 +106,35 @@
 
               <div class="landing-preview__mock card landing-preview__mock--day" aria-label="Example calendar day">
                 <div class="landing-mock__calPreview">
-                  <div class="landing-mock__calReconBanner">✓ Forecast reconciled through May 9</div>
+                  <div class="landing-mock__calReconBand" role="group" aria-label="Reconciliation status">
+                    <div class="landing-mock__calReconBandMeta">
+                      <span class="landing-mock__calReconEyebrow">Forecast accuracy</span>
+                      <div class="landing-mock__calReconPills">
+                        <span class="landing-mock__calReconPill">Reconciled</span>
+                        <span class="landing-mock__calReconPill">Verified balance</span>
+                      </div>
+                    </div>
+                    <p class="landing-mock__calReconLead">
+                      <span class="landing-mock__calReconLeadIcon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" width="22" height="22" focusable="false">
+                          <circle cx="12" cy="12" r="10" fill="currentColor" />
+                          <path
+                            d="M8 12.5l2.6 2.6L16.5 9.2"
+                            fill="none"
+                            stroke="#fff"
+                            stroke-width="2.2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          />
+                        </svg>
+                      </span>
+                      <span class="landing-mock__calReconLeadText">Forecast reconciled through May 9</span>
+                    </p>
+                  </div>
                   <div class="landing-mock__calDaynumPreview">
                     <span class="landing-mock__calDateText">Fri, May 9</span>
                     <span class="cal-reconciled-mark" title="Reconciled" aria-label="Reconciled">
                       <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                        <circle cx="12" cy="12" r="9" fill="none"></circle>
                         <path d="M8 12.5l2.6 2.6L16.5 9.2" fill="none"></path>
                       </svg>
                     </span>
@@ -145,13 +164,14 @@
                 </div>
               </div>
             </div>
+          </div>
         </section>
 
         <section class="landing-trust-row" aria-label="Quick highlights">
           <div class="landing-trust-row__inner" role="list" aria-label="Highlights">
             <div class="landing-trust-row__item" role="listitem"><span class="landing-trust-row__icon" aria-hidden="true">✓</span> No bank connection required</div>
             <div class="landing-trust-row__item" role="listitem"><span class="landing-trust-row__icon" aria-hidden="true">✓</span> Add only what you want to track</div>
-            <div class="landing-trust-row__item" role="listitem"><span class="landing-trust-row__icon" aria-hidden="true">✓</span> Works in minutes</div>
+            <div class="landing-trust-row__item" role="listitem"><span class="landing-trust-row__icon" aria-hidden="true">✓</span> Reconcile in seconds</div>
             <div class="landing-trust-row__item" role="listitem"><span class="landing-trust-row__icon" aria-hidden="true">✓</span> Cancel anytime</div>
           </div>
         </section>
