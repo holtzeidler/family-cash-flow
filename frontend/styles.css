@@ -179,7 +179,10 @@ body.landing-page .landing-hero__text{
 }
 body.landing-page .landing-hero__sub{
   margin: 0 auto;
-  max-width: 26rem;
+  max-width: none;
+  width: 100%;
+  padding: 0 0.35rem;
+  box-sizing: border-box;
   font-size: clamp(0.86rem, 1.85vw, 0.95rem);
   line-height: 1.42;
   font-weight: 500;
@@ -440,8 +443,9 @@ body.landing-page .landing-preview .landing-mock__savingsFoot{
   color: rgba(75, 85, 99, 0.78);
 }
 body.landing-page .landing-preview__mock--day{
-  flex: 1 1 228px;
-  max-width: min(296px, 100%);
+  flex: 1 1 258px;
+  max-width: min(322px, 100%);
+  margin-left: 5ch;
 }
 body.landing-page .landing-preview__mock--day .landing-mock__calPreview{
   width: 100%;
@@ -732,15 +736,6 @@ body.landing-page .landing-preview .landing-mock__curve{
   gap: 10px;
   min-width: 0;
 }
-body.landing-page .landing-trust-row__item--signal{
-  color: rgba(11, 61, 46, 0.92);
-  font-weight: 650;
-}
-body.landing-page .landing-trust-row__item--signal .landing-trust-row__icon{
-  color: #fff;
-  background: color-mix(in srgb, var(--ok) 82%, var(--accent) 18%);
-  border-color: rgba(11, 61, 46, 0.2);
-}
 .landing-trust-row__icon{
   display: inline-flex;
   width: 18px;
@@ -763,20 +758,25 @@ body.landing-page .landing-trust-row__inner{
   padding: 8px 12px 9px;
   gap: 5px 16px;
   font-size: 12.5px;
-  font-weight: 600;
+  font-weight: 500;
   line-height: 1.26;
-  color: rgba(17, 24, 39, 0.72);
+  color: rgba(17, 24, 39, 0.62);
   border-color: rgba(11, 61, 46, 0.08);
 }
 body.landing-page .landing-trust-row__item{
   align-items: center;
+  color: rgba(17, 24, 39, 0.62);
+  font-weight: 500;
 }
 body.landing-page .landing-trust-row__icon{
   width: 16px;
   height: 16px;
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 600;
   margin-top: 0;
+  color: rgba(11, 61, 46, 0.52);
+  background: rgba(11, 61, 46, 0.06);
+  border: 1px solid rgba(11, 61, 46, 0.1);
 }
 @media (max-width: 560px){
   .landing-trust-row__inner{
@@ -824,20 +824,9 @@ body.landing-page .landing-below-preview .landing-offer{
   display: block;
   min-height: 0;
 }
-body.landing-page .landing-below-preview .landing-how__title{
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: rgba(11, 61, 46, 0.42);
-  margin: 0 0 var(--below-heading-gap);
-  padding: 0;
-  min-height: var(--below-heading-band);
-  display: flex;
-  align-items: flex-end;
-  line-height: 1.2;
-}
-body.landing-page .landing-below-preview .landing-why__title{
+body.landing-page .landing-below-preview .landing-how__title,
+body.landing-page .landing-below-preview .landing-why__title,
+body.landing-page .landing-below-preview .landing-offer--calm .landing-offer__title{
   font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -849,6 +838,7 @@ body.landing-page .landing-below-preview .landing-why__title{
   display: flex;
   align-items: flex-end;
   line-height: 1.22;
+  text-decoration: none;
 }
 body.landing-page .landing-below-preview .landing-why__card{
   border: 1px solid rgba(11, 61, 46, 0.055);
@@ -919,22 +909,12 @@ body.landing-page .landing-offer--calm .landing-offer__bullets{
 body.landing-page .landing-below-preview .landing-offer__panel{
   max-width: 17.5rem;
   margin: 0;
-  padding: 7px 9px 8px;
-  background: #fafaf9;
-  border: 1px solid rgba(11, 61, 46, 0.07);
-  border-radius: 8px;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.75) inset;
-}
-body.landing-page .landing-below-preview .landing-offer--calm .landing-offer__title{
-  font-size: 12.75px;
-  font-weight: 600;
-  letter-spacing: 0.012em;
-  line-height: 1.28;
-  min-height: var(--below-heading-band);
-  display: inline-flex;
-  align-items: flex-end;
-  margin: 0 0 var(--below-heading-gap);
-  color: rgba(11, 61, 46, 0.68);
+  padding: 0 9px 8px;
+  /* Same surface as How / Why: strip background only, no inner card */
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
 }
 body.landing-page .landing-below-preview .landing-offer--calm .landing-offer__tagline{
   margin: 4px 0 0;
@@ -1043,10 +1023,7 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
     padding: 11px 12px 12px;
   }
   body.landing-page .landing-below-preview .landing-how__title,
-  body.landing-page .landing-below-preview .landing-why__title{
-    min-height: 0;
-    align-items: flex-start;
-  }
+  body.landing-page .landing-below-preview .landing-why__title,
   body.landing-page .landing-below-preview .landing-offer--calm .landing-offer__title{
     min-height: 0;
     align-items: flex-start;
@@ -1338,6 +1315,9 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
     flex: 1 1 100%;
     max-width: none;
     width: 100%;
+  }
+  body.landing-page .landing-preview__mock--day{
+    margin-left: 0;
   }
 }
 
