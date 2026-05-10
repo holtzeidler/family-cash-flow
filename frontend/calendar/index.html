@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=254" />
+    <link rel="stylesheet" href="../styles.css?v=263" />
   </head>
   <body>
     <div class="container">
@@ -78,7 +78,7 @@
                 <span class="settings-nav-item__label">Categories</span>
                 <span class="settings-nav-item__chev" aria-hidden="true">▸</span>
               </button>
-              <button type="button" class="settings-nav-item" data-settings-key="familySharing">
+              <button type="button" class="settings-nav-item" data-settings-key="familySharing" hidden>
                 <span class="settings-nav-item__label">Family sharing</span>
                 <span class="settings-nav-item__chev" aria-hidden="true">▸</span>
               </button>
@@ -298,7 +298,6 @@
                     <input type="hidden" id="calendarMonth" />
                   </div>
                 </div>
-                <div id="calendarSummaryRibbon" class="cal-summary-ribbon" hidden aria-label="Forecast summary"></div>
                 <div style="height:6px;"></div>
                 <div id="calendarErr" class="error"></div>
                 <div id="calendarDow" class="calendar-dow-row" aria-hidden="true"></div>
@@ -935,6 +934,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="../app.js?v=198"></script>
+    <script src="../app.js?v=201"></script>
   </body>
 </html>
