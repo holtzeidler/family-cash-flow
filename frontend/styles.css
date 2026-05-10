@@ -57,6 +57,17 @@ body.login-page.signup-page .container > .grid{
   margin-top: 36px;
 }
 
+/* Account setup: ultra-soft elevation (wizard shell + in-flow card tiles) */
+body.account-setup-page{
+  --as-ultra-soft-card-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.036),
+    0 8px 26px rgba(0, 0, 0, 0.048),
+    0 18px 48px rgba(11, 61, 46, 0.038);
+  --as-ultra-soft-tile-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    0 5px 18px rgba(0, 0, 0, 0.042);
+}
+
 /* Account setup: allow full-width stacked cards */
 body.account-setup-page .container{
   max-width: 1920px;
@@ -3450,18 +3461,42 @@ body.account-setup-page .account-setup-wizard{
   --as-compact-card-minh: 224px;
 }
 body.account-setup-page .account-setup-wizard__eyebrow{
-  margin: 0 0 8px;
+  margin: 0 0 4px;
   text-align: center;
   font-size: clamp(1.05rem, 2.2vw, 1.4rem);
   font-weight: 900;
   color: var(--accent);
   letter-spacing: 0.2px;
 }
+body.account-setup-page .account-setup-wizard__subeyebrow{
+  margin: 0 0 10px;
+  text-align: center;
+  font-size: clamp(0.88rem, 1.65vw, 1rem);
+  font-weight: 500;
+  color: rgba(17, 24, 39, 0.52);
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+}
 body.account-setup-page .account-setup-wizard__dots{
   display: flex;
   justify-content: center;
   gap: 8px;
-  margin: 0 0 12px;
+  margin: 0 0 8px;
+}
+body.account-setup-page .account-setup-wizard__roadmap{
+  margin: 0 0 14px;
+  padding: 0 12px;
+  text-align: center;
+  font-size: clamp(0.8rem, 1.45vw, 0.92rem);
+  font-weight: 500;
+  color: rgba(17, 24, 39, 0.48);
+  line-height: 1.45;
+  letter-spacing: 0.02em;
+}
+body.account-setup-page .account-setup-wizard__roadmap-kicker{
+  font-weight: 600;
+  color: rgba(17, 24, 39, 0.55);
+  margin-right: 0.28em;
 }
 body.account-setup-page .account-setup-wizard__dot{
   width: 8px;
@@ -3479,6 +3514,7 @@ body.account-setup-page .account-setup-wizard__shell{
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  box-shadow: var(--as-ultra-soft-card-shadow);
 }
 body.account-setup-page .account-setup-wizard__viewport{
   overflow: hidden;
@@ -3492,6 +3528,8 @@ body.account-setup-page .account-setup-wizard__shell .account-setup-actions--she
   padding: 12px 14px 14px;
   margin: 0;
   border-top: 1px solid rgba(0, 0, 0, 0.08);
+  /* Keep the wizard card height consistent even when only "Back" is visible. */
+  min-height: 66px;
   flex-wrap: wrap;
   justify-content: flex-end;
 }
@@ -3971,7 +4009,7 @@ body.account-setup-page .account-setup-survey__opt{
   font-weight: 400;
   cursor: pointer;
   text-align: center;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  box-shadow: var(--as-ultra-soft-tile-shadow);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3979,13 +4017,13 @@ body.account-setup-page .account-setup-survey__opt{
 }
 body.account-setup-page .account-setup-survey__opt:hover{
   background: rgba(0,0,0,0.02);
-  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+  box-shadow: var(--as-ultra-soft-tile-shadow);
   filter: none;
 }
 body.account-setup-page .account-setup-survey__opt.is-active{
   border-color: color-mix(in srgb, var(--accent) 45%, rgba(0,0,0,0.10));
   box-shadow:
-    0 1px 2px rgba(0,0,0,0.06),
+    var(--as-ultra-soft-tile-shadow),
     0 0 0 3px color-mix(in srgb, var(--accent) 10%, transparent);
   background: color-mix(in srgb, var(--accent) 7%, rgba(0,0,0,0.015));
 }

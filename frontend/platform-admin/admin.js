@@ -141,16 +141,54 @@
     mount.innerHTML = `<ul class="meta" style="margin:0;padding-left:1.2rem">${lines.join("")}</ul>`;
   }
 
-  async function loadUsers() {
+  /** @type {any[]|null} */
+  let cachedPlatformUsers = null;
+
+  function platformUserSearchBlob(u) {
+    const parts = [u.email, u.name, String(u.id)];
+    for (const m of u.memberships || []) {
+      parts.push(m.family_name, String(m.family_id));
+    }
+    return parts
+      .filter((x) => x != null && String(x).trim() !== "")
+      .join("\n")
+      .toLowerCase();
+  }
+
+  function platformUserMatchesQuery(u, q) {
+    const raw = String(q || "").trim().toLowerCase();
+    if (!raw) return true;
+    const blob = platformUserSearchBlob(u);
+    const tokens = raw.split(/\s+/).filter(Boolean);
+    return tokens.every((t) => blob.includes(t));
+  }
+
+  function wirePlatformUserSearch() {
+    const input = document.getElementById("adminUsersSearch");
+    if (!input || input.dataset.bwWired === "1") return;
+    input.dataset.bwWired = "1";
+    input.addEventListener("input", () => {
+      if (!cachedPlatformUsers) return;
+      renderPlatformUserCards(cachedPlatformUsers);
+    });
+  }
+
+  function renderPlatformUserCards(users) {
     const mount = document.getElementById("adminUsersMount");
     if (!mount) return;
-    const users = await api("/api/platform/users", "GET");
-    if (!users || !users.length) {
+    const searchEl = document.getElementById("adminUsersSearch");
+    const query = searchEl ? String(searchEl.value || "") : "";
+    const filtered = users.filter((u) => platformUserMatchesQuery(u, query));
+    if (!users.length) {
       mount.innerHTML = '<p class="meta">No users.</p>';
       return;
     }
+    if (!filtered.length) {
+      mount.innerHTML = '<p class="meta">No users match your search.</p>';
+      return;
+    }
     mount.innerHTML = "";
-    for (const u of users) {
+    for (const u of filtered) {
       const card = document.createElement("div");
       card.className = "admin-user-card";
       card.dataset.userCard = "1";
@@ -290,6 +328,15 @@
     }
   }
 
+  async function loadUsers() {
+    const mount = document.getElementById("adminUsersMount");
+    if (!mount) return;
+    wirePlatformUserSearch();
+    const users = await api("/api/platform/users", "GET");
+    cachedPlatformUsers = Array.isArray(users) ? users : [];
+    renderPlatformUserCards(cachedPlatformUsers);
+  }
+
   const platformAdminBackBtn = document.getElementById("platformAdminBackBtn");
   if (platformAdminBackBtn) {
     platformAdminBackBtn.addEventListener("click", () => {
@@ -338,6 +385,8 @@
       setCallout(callout, (e && e.message) || String(e), "error");
     }
   }
+
+  wirePlatformUserSearch();
 
   boot();
 })();

@@ -678,6 +678,8 @@ function syncAccountSetupBackButtonVisibility() {
 function syncAccountSetupWizardShellButtons() {
   const s = getAccountSetupWizardStep();
   const eyebrow = document.getElementById("accountSetupWizardEyebrow");
+  const subEyebrow = document.getElementById("accountSetupWizardSubeyebrow");
+  const roadmap = document.getElementById("accountSetupWizardRoadmap");
   const saveInc = document.getElementById("asTxSaveIncomeBtn");
   const cancelInc = document.getElementById("asTxCancelIncomeBtn");
   const saveExp = document.getElementById("asExpSaveBtn");
@@ -699,6 +701,12 @@ function syncAccountSetupWizardShellButtons() {
   // Step-specific eyebrow copy
   if (eyebrow) {
     eyebrow.textContent = s === 2 ? "Great, now let’s add what affects your balance." : "Let’s build your forecast";
+  }
+  if (subEyebrow) {
+    subEyebrow.hidden = s === 2;
+  }
+  if (roadmap) {
+    roadmap.hidden = s >= 2;
   }
 
   // Step 3 (transactions hub): gate Add buttons + show Skip/Next behavior.

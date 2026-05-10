@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=266" />
+    <link rel="stylesheet" href="../styles.css?v=270" />
   </head>
   <body class="login-page signup-page account-setup-page">
     <div class="container">
@@ -44,12 +44,19 @@
 
         <div id="accountSetupWizard" class="account-setup-wizard" data-step="0" aria-label="Account setup">
           <p class="account-setup-wizard__eyebrow" id="accountSetupWizardEyebrow">Let’s build your forecast</p>
+          <p class="account-setup-wizard__subeyebrow" id="accountSetupWizardSubeyebrow">
+            Start simple. You can refine everything later.
+          </p>
           <div class="account-setup-wizard__dots" role="tablist" aria-label="Setup steps">
             <span class="account-setup-wizard__dot is-active" data-wizard-dot="0" aria-current="step"></span>
             <span class="account-setup-wizard__dot" data-wizard-dot="1" aria-hidden="true"></span>
             <span class="account-setup-wizard__dot" data-wizard-dot="2" aria-hidden="true"></span>
             <span class="account-setup-wizard__dot" data-wizard-dot="3" aria-hidden="true"></span>
           </div>
+          <p class="account-setup-wizard__roadmap" id="accountSetupWizardRoadmap">
+            <span class="account-setup-wizard__roadmap-kicker">Next:</span>
+            starting balance → transactions → forecast
+          </p>
           <div class="card auth-section auth-section--open account-setup-wizard__shell">
             <div class="account-setup-wizard__viewport">
               <div class="account-setup-wizard__track" id="accountSetupWizardTrack">
@@ -542,6 +549,6 @@
       </div>
     </div>
 
-    <script src="../signup/signup.js?v=75"></script>
+    <script src="../signup/signup.js?v=77"></script>
   </body>
 </html>
