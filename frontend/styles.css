@@ -2571,27 +2571,13 @@ textarea::placeholder{
   cursor: pointer;
   user-select: none;
 }
-.reimbursable-field__info{
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  margin-left: 6px;
-  border-radius: 999px;
-  border: 2px solid rgba(0,0,0,0.30);
-  color: rgba(17, 24, 39, 0.70);
-  background: rgba(255,255,255,0.0);
-  flex: 0 0 auto;
-}
-.reimbursable-field__info svg{
-  width: 12px;
-  height: 12px;
-  display: block;
-}
-.reimbursable-field:hover .reimbursable-field__info{
-  border-color: rgba(11,61,46,0.55);
-  color: rgba(11,61,46,0.85);
+.reimbursable-field__text{
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  align-items: flex-start;
+  min-width: 0;
+  flex: 1;
 }
 .reimbursable-field__label{
   /* Match other form field labels */
@@ -2601,6 +2587,15 @@ textarea::placeholder{
   text-transform: none;
   color: var(--muted);
   line-height: 1.3;
+}
+.reimbursable-field__hint{
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: var(--muted);
+  opacity: 0.72;
+  line-height: 1.25;
 }
 .reimbursable-field input[type="checkbox"]{
   width: auto;
@@ -3446,6 +3441,8 @@ body.account-setup-page .account-setup-wizard{
   max-width: min(760px, 100%);
   margin-left: auto;
   margin-right: auto;
+  margin-top: 16px;
+  margin-bottom: 28px;
   /* Baseline card height: Step 2 is ~75% of prior size */
   --as-compact-card-minh: 224px;
 }
@@ -5233,36 +5230,58 @@ body.account-setup-page .account-setup-step3-form .reimbursable-field{
 }
 body.account-setup-page .account-setup-step3-form .reimbursable-field__label{
   font-size: calc(11px * 1.12);
-  font-weight: 600;
+  font-weight: 400;
   letter-spacing: 0.04em;
   text-transform: none;
-  color: var(--muted);
+  color: #556173;
   line-height: 1.3;
+  text-align: left;
+}
+body.account-setup-page .account-setup-step3-form .reimbursable-field__hint{
+  font-size: calc(10px * 1.12);
+  opacity: 0.68;
 }
 
-/* Account setup: Repeats row — label column + checkbox + cadence */
-body.account-setup-page .account-setup-repeat-controls{
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
+/* Account setup: Repeats + Ends on — labels on one row, controls stacked below */
+body.account-setup-page .account-setup-repeat-duo{
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px 16px;
+  align-items: start;
   min-width: 0;
 }
-body.account-setup-page .account-setup-repeat-controls .tx-add-schedule-field--end-date{
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 8px 10px;
-  flex: 0 1 auto;
-  min-width: 0;
-  margin-left: 20px;
+body.account-setup-page .account-setup-repeat-duo:has(.tx-add-schedule-field--end-date:not([hidden])){
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
-body.account-setup-page .account-setup-repeat-controls input[type="checkbox"]{
-  width: calc(18px * 0.92);
-  height: calc(18px * 0.92);
-  accent-color: var(--accent);
-  flex-shrink: 0;
+body.account-setup-page .account-setup-repeat-duo__stack{
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  min-width: 0;
+}
+body.account-setup-page .account-setup-repeat-duo__label{
+  display: block;
+  margin: 0;
+  font-size: calc(11px * 1.12);
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  color: #556173;
+  line-height: 1.3;
+  text-align: left;
+}
+body.account-setup-page .account-setup-repeat-duo .tx-add-recurrence-select{
+  width: 100%;
+  max-width: 9.25rem;
+  min-width: 0;
+}
+body.account-setup-page .account-setup-repeat-duo__stack.tx-add-schedule-field--end-date input[type="date"]{
+  width: 100%;
+  max-width: 12.5rem;
+  min-width: 0;
+}
+body.account-setup-page .account-setup-repeat-duo__stack.tx-add-schedule-field--end-date label{
   margin: 0;
 }
 body.account-setup-page .tx-add-schedule-toolbar__left{
@@ -5270,26 +5289,6 @@ body.account-setup-page .tx-add-schedule-toolbar__left{
   flex-wrap: wrap;
   align-items: center;
   gap: 10px 14px;
-}
-body.account-setup-page .tx-add-schedule-field--end-date input[type="date"]{
-  flex: 0 1 auto;
-  width: auto;
-  min-width: 0;
-  max-width: 12.5rem;
-}
-body.account-setup-page .tx-add-schedule-field--end-date label{
-  width: auto;
-  flex-shrink: 0;
-  text-align: left;
-  margin: 0;
-}
-
-/* Account setup wizard: recurrence dropdown next to checkbox */
-body.account-setup-page .account-setup-repeat-controls .tx-add-recurrence-select{
-  width: auto;
-  max-width: 9.25rem;
-  min-width: 0;
-  justify-self: start;
 }
 
 /* Account setup wizard: bring the repeat toolbar rule closer to color swatches */
@@ -5944,6 +5943,75 @@ body.account-setup-page .account-setup-step3-form .cat-color-row + .tx-add-vspac
   text-align: center;
   border-radius: 10px;
   border-bottom: none;
+  box-sizing: border-box;
+}
+
+#bwForecastReadyModal .modal--forecast-ready{
+  overflow: hidden;
+}
+#bwForecastReadyModal .bw-forecast-ready__body{
+  text-align: left;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.45;
+}
+#bwForecastReadyModal .bw-forecast-ready__trial-lead{
+  margin: 0 0 10px;
+  font-size: 1.08rem;
+  font-weight: 700;
+  color: var(--text);
+}
+#bwForecastReadyModal .bw-forecast-ready__trial-sub{
+  margin: 0 0 6px;
+  font-weight: 400;
+  color: var(--muted);
+}
+#bwForecastReadyModal .bw-forecast-ready__trial-list{
+  margin: 0 0 14px;
+  padding-left: 1.25rem;
+  color: var(--muted);
+}
+#bwForecastReadyModal .bw-forecast-ready__trial-list li{
+  margin-bottom: 4px;
+}
+#bwForecastReadyModal .bw-forecast-ready__trial-list li:last-child{
+  margin-bottom: 0;
+}
+#bwForecastReadyModal .bw-forecast-ready__trial-pricing{
+  margin: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+}
+#bwForecastReadyModal .bw-forecast-ready__actions{
+  margin-top: 8px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(0,0,0,0.10);
+}
+#bwForecastReadyModal .bw-forecast-ready__actions.modal-actions > button{
+  max-width: none;
+  width: 100%;
+}
+#bwForecastReadyModal .bw-forecast-ready__cta{
+  box-sizing: border-box;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.25;
+  padding: 10px 16px;
+  border-radius: var(--btn-radius);
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+}
+#bwForecastReadyModal .bw-forecast-ready__cta:hover{
+  background: color-mix(in srgb, var(--accent) 92%, #000);
+  border-color: rgba(0, 0, 0, 0.16);
+}
+#bwForecastReadyModal .bw-forecast-ready__cta:focus-visible{
+  outline: 2px solid color-mix(in srgb, var(--accent) 55%, #fff);
+  outline-offset: 2px;
 }
 .badge{
   font-size:12px;

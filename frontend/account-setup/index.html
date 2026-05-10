@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=260" />
+    <link rel="stylesheet" href="../styles.css?v=264" />
   </head>
   <body class="login-page signup-page account-setup-page">
     <div class="container">
@@ -205,10 +205,10 @@
                     <div class="form-row-h__field"><input id="asTxDate" type="date" /></div>
                   </div>
                   <div class="tx-add-vspace tx-add-vspace--lg" aria-hidden="true"></div>
-                  <div class="form-row-h account-setup-repeat-row-h">
-                    <div class="form-row-h__label"><label for="asTxRecurrence">Repeats</label></div>
-                    <div class="form-row-h__field">
-                      <div class="account-setup-repeat-controls">
+                  <div class="account-setup-repeat-row-h">
+                    <div class="account-setup-repeat-duo">
+                      <div class="account-setup-repeat-duo__stack">
+                        <label for="asTxRecurrence" class="account-setup-repeat-duo__label">Repeats</label>
                         <select id="asTxRecurrence" class="tx-add-recurrence-select" title="How often this repeats">
                           <option value="" selected>—</option>
                           <option value="monthly">monthly</option>
@@ -218,10 +218,10 @@
                           <option value="semiannual">every 6 months</option>
                           <option value="yearly">yearly</option>
                         </select>
-                        <div id="asTxEndDateWrap" class="tx-add-schedule-field tx-add-schedule-field--end-date" hidden>
-                          <label for="asTxEndDate" title="Optional. End date for this recurring transaction. Blank = never ends.">Ends on</label>
-                          <input id="asTxEndDate" type="date" title="Optional. Last date this schedule can occur." />
-                        </div>
+                      </div>
+                      <div id="asTxEndDateWrap" class="account-setup-repeat-duo__stack tx-add-schedule-field tx-add-schedule-field--end-date" hidden>
+                        <label for="asTxEndDate" class="account-setup-repeat-duo__label" title="Optional. End date for this recurring transaction. Blank = never ends.">Ends on</label>
+                        <input id="asTxEndDate" type="date" title="Optional. Last date this schedule can occur." />
                       </div>
                     </div>
                   </div>
@@ -235,13 +235,9 @@
                     </div>
                   </div>
                   <label class="reimbursable-field" for="asTxVariable" title="Great for utilities, groceries or credit card bills.">
-                    <span class="reimbursable-field__label">Amount varies month to month</span>
-                    <span class="reimbursable-field__info" aria-hidden="true">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false">
-                        <circle cx="12" cy="12" r="9"></circle>
-                        <path d="M12 10v6"></path>
-                        <path d="M12 7h.01"></path>
-                      </svg>
+                    <span class="reimbursable-field__text">
+                      <span class="reimbursable-field__label">Amount varies month to month</span>
+                      <span class="reimbursable-field__hint">Great for utilities &amp; credit card bills</span>
                     </span>
                     <input id="asTxVariable" type="checkbox" title="Amount is an estimate that may change month to month" />
                   </label>
@@ -339,23 +335,23 @@
                       <div class="form-row-h__field"><input id="asExpTxDate" type="date" /></div>
                     </div>
                     <div class="tx-add-vspace tx-add-vspace--lg" aria-hidden="true"></div>
-                    <div class="form-row-h account-setup-repeat-row-h">
-                    <div class="form-row-h__label"><label for="asExpRecurrence">Repeats</label></div>
-                      <div class="form-row-h__field">
-                        <div class="account-setup-repeat-controls">
-                        <select id="asExpRecurrence" class="tx-add-recurrence-select" title="How often this repeats">
-                          <option value="" selected>—</option>
-                          <option value="monthly">monthly</option>
+                    <div class="account-setup-repeat-row-h">
+                      <div class="account-setup-repeat-duo">
+                        <div class="account-setup-repeat-duo__stack">
+                          <label for="asExpRecurrence" class="account-setup-repeat-duo__label">Repeats</label>
+                          <select id="asExpRecurrence" class="tx-add-recurrence-select" title="How often this repeats">
+                            <option value="" selected>—</option>
+                            <option value="monthly">monthly</option>
                             <option value="bimonthly">bi-monthly (15th &amp; last day)</option>
                             <option value="biweekly">every 2 weeks</option>
                             <option value="weekly">weekly</option>
                             <option value="semiannual">every 6 months</option>
                             <option value="yearly">yearly</option>
                           </select>
-                          <div id="asExpEndDateWrap" class="tx-add-schedule-field tx-add-schedule-field--end-date" hidden>
-                            <label for="asExpEndDate" title="Optional. End date for this recurring transaction. Blank = never ends.">Ends on</label>
-                            <input id="asExpEndDate" type="date" title="Optional. Last date this schedule can occur." />
-                          </div>
+                        </div>
+                        <div id="asExpEndDateWrap" class="account-setup-repeat-duo__stack tx-add-schedule-field tx-add-schedule-field--end-date" hidden>
+                          <label for="asExpEndDate" class="account-setup-repeat-duo__label" title="Optional. End date for this recurring transaction. Blank = never ends.">Ends on</label>
+                          <input id="asExpEndDate" type="date" title="Optional. Last date this schedule can occur." />
                         </div>
                       </div>
                     </div>
@@ -369,13 +365,9 @@
                       </div>
                     </div>
                     <label class="reimbursable-field" for="asExpVariable" title="Great for utilities, groceries or credit card bills.">
-                      <span class="reimbursable-field__label">Amount varies month to month</span>
-                      <span class="reimbursable-field__info" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false">
-                          <circle cx="12" cy="12" r="9"></circle>
-                          <path d="M12 10v6"></path>
-                          <path d="M12 7h.01"></path>
-                        </svg>
+                      <span class="reimbursable-field__text">
+                        <span class="reimbursable-field__label">Amount varies month to month</span>
+                        <span class="reimbursable-field__hint">Great for utilities &amp; credit card bills</span>
                       </span>
                       <input id="asExpVariable" type="checkbox" title="Amount is an estimate that may change month to month" />
                     </label>
@@ -497,13 +489,13 @@
                 Add More Transactions
               </button>
               <button type="button" id="asTxSaveIncomeBtn" class="top-nav__logout" style="display: none">
-                Save
+                Next
               </button>
               <button type="button" id="asTxCancelIncomeBtn" class="secondary" style="display: none">
                 Cancel
               </button>
               <button type="button" id="asExpSaveBtn" class="top-nav__logout" style="display: none">
-                Save
+                Next
               </button>
               <button type="button" id="asExpCancelBtn" class="secondary" style="display: none">
                 Cancel
@@ -550,6 +542,6 @@
       </div>
     </div>
 
-    <script src="../signup/signup.js?v=73"></script>
+    <script src="../signup/signup.js?v=75"></script>
   </body>
 </html>

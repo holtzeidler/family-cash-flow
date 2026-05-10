@@ -656,6 +656,25 @@ function setAccountSetupExpenseAfterSave(on) {
   syncAccountSetupWizardShellButtons();
 }
 
+function syncAccountSetupBackButtonVisibility() {
+  if (!accountSetupBackBtn) return;
+  if (!document.getElementById("accountSetupWizard")) return;
+  const s = getAccountSetupWizardStep();
+  if (s <= 0) {
+    accountSetupBackBtn.style.display = "none";
+    return;
+  }
+  if (s === 2 && getAccountSetupStep3Phase() === "form") {
+    accountSetupBackBtn.style.display = "none";
+    return;
+  }
+  if (s === 3 && getAccountSetupExpensePhase() === "form") {
+    accountSetupBackBtn.style.display = "none";
+    return;
+  }
+  accountSetupBackBtn.style.display = "inline-flex";
+}
+
 function syncAccountSetupWizardShellButtons() {
   const s = getAccountSetupWizardStep();
   const eyebrow = document.getElementById("accountSetupWizardEyebrow");
@@ -669,6 +688,7 @@ function syncAccountSetupWizardShellButtons() {
   const successAddIncome = document.getElementById("asStep3SuccessAddIncomeBtn");
   if (!document.getElementById("accountSetupWizard")) return;
 
+  try {
   for (const el of [saveInc, cancelInc, saveExp, cancelExp]) {
     if (el) el.style.display = "none";
   }
@@ -757,14 +777,13 @@ function syncAccountSetupWizardShellButtons() {
           successAddExpense.classList.toggle("account-setup-success-secondary", hasExpense);
         }
       } catch (_) {}
-      if (saveInc) saveInc.textContent = "Save";
+      if (saveInc) saveInc.textContent = "Next";
       if (cancelInc) cancelInc.textContent = after ? "Continue" : "Cancel";
       if (saveInc) saveInc.style.display = after ? "none" : "inline-flex";
       if (cancelInc) {
         cancelInc.classList.toggle("top-nav__logout", !!after);
         cancelInc.classList.toggle("secondary", !after);
       }
-      if (accountSetupBackBtn) accountSetupBackBtn.style.display = after ? "none" : "inline-flex";
       if (addMoreTxBtn) addMoreTxBtn.style.display = "none";
       const msg = document.getElementById("accountSetupStep3Success");
       if (msg) {
@@ -785,9 +804,8 @@ function syncAccountSetupWizardShellButtons() {
       if (cancelExp) cancelExp.style.display = "inline-flex";
       if (signupBtn) signupBtn.style.display = "none";
       const after = isAccountSetupExpenseAfterSave();
-      if (saveExp) saveExp.textContent = after ? "Add Another Transaction" : "Save";
+      if (saveExp) saveExp.textContent = after ? "Add Another Transaction" : "Next";
       if (cancelExp) cancelExp.textContent = after ? "Continue Setup" : "Cancel";
-      if (accountSetupBackBtn) accountSetupBackBtn.style.display = after ? "none" : "inline-flex";
       const msg = document.getElementById("accountSetupStep4Success");
       if (msg) {
         msg.textContent = "✓ Transaction added successfully";
@@ -807,6 +825,9 @@ function syncAccountSetupWizardShellButtons() {
       signupBtn.classList.remove("secondary");
       signupBtn.classList.add("top-nav__logout");
     }
+  }
+  } finally {
+    syncAccountSetupBackButtonVisibility();
   }
 }
 
@@ -922,7 +943,6 @@ function setAccountSetupWizardStep(step, opts = {}) {
     }
   }
 
-  if (accountSetupBackBtn) accountSetupBackBtn.style.display = s > 0 ? "inline-flex" : "none";
   if (addMoreTxBtn) addMoreTxBtn.style.display = "none";
   syncAccountSetupWizardShellButtons();
 

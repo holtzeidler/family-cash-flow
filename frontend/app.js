@@ -1510,6 +1510,7 @@ const catReportEnd = document.getElementById("catReportEnd");
 
 // After account creation, we show a one-time "forecast is ready" modal on first calendar load.
 const BW_FORECAST_READY_POPUP_KEY = "bw_forecast_ready_popup";
+const BW_FORECAST_READY_MODAL_VERSION = "2";
 const catReportYearSelect = document.getElementById("catReportYearSelect");
 const catReportRunBtn = document.getElementById("catReportRunBtn");
 const catReportErr = document.getElementById("catReportErr");
@@ -7360,22 +7361,49 @@ function drawProjectionChart(daily) {
   });
 }
 
+/** Shown in forecast-ready modal; keep in sync with marketing/plans pages. */
+function getTrialContinueMonthlyPriceDisplay() {
+  return "5.99";
+}
+
+function setForecastReadyTrialPricing() {
+  const el = document.getElementById("bwForecastReadyPricing");
+  if (!el) return;
+  const price = getTrialContinueMonthlyPriceDisplay();
+  el.textContent = `Continue for $${price}/month after trial.`;
+}
+
 function ensureForecastReadyModal() {
   const existing = document.getElementById("bwForecastReadyModal");
-  if (existing) return existing;
+  if (existing) {
+    if (String(existing.dataset.bwForecastReadyVersion || "") === BW_FORECAST_READY_MODAL_VERSION) return existing;
+    existing.remove();
+  }
   const wrap = document.createElement("div");
   wrap.id = "bwForecastReadyModal";
   wrap.className = "modal-overlay";
+  wrap.dataset.bwForecastReadyVersion = BW_FORECAST_READY_MODAL_VERSION;
   wrap.setAttribute("aria-hidden", "true");
   wrap.innerHTML = `
-    <div class="modal modal--choice modal--forecast-ready" role="dialog" aria-modal="true" aria-labelledby="bwForecastReadyTitle">
+    <div class="modal modal--choice modal--forecast-ready" role="dialog" aria-modal="true" aria-labelledby="bwForecastReadyTitle" aria-describedby="bwForecastReadyDesc">
       <h3 id="bwForecastReadyTitle">Your forecast is ready.</h3>
-      <div class="modal-actions" style="border-top: none; padding-top: 0; margin-top: 14px;">
-        <button type="button" id="bwForecastReadyCloseBtn">Close</button>
+      <div id="bwForecastReadyDesc" class="bw-forecast-ready__body">
+        <p class="bw-forecast-ready__trial-lead">Your free trial has started</p>
+        <p class="bw-forecast-ready__trial-sub">You now have 14 days to:</p>
+        <ul class="bw-forecast-ready__trial-list">
+          <li>forecast upcoming balances</li>
+          <li>track recurring bills</li>
+          <li>plan ahead with confidence</li>
+        </ul>
+        <p class="bw-forecast-ready__trial-pricing" id="bwForecastReadyPricing">Continue for $5.99/month after trial.</p>
+      </div>
+      <div class="modal-actions bw-forecast-ready__actions">
+        <button type="button" class="bw-forecast-ready__cta" id="bwForecastReadyCloseBtn">Start your free trial</button>
       </div>
     </div>
   `;
   document.body.appendChild(wrap);
+  setForecastReadyTrialPricing();
 
   const close = () => {
     try {
@@ -7406,6 +7434,7 @@ function maybeShowForecastReadyPopup() {
   }
 
   const modal = ensureForecastReadyModal();
+  setForecastReadyTrialPricing();
   try {
     modal.classList.add("modal-overlay--open");
     modal.setAttribute("aria-hidden", "false");
