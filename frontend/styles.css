@@ -797,31 +797,31 @@ body.landing-page .landing-trust-row__icon{
   display: block;
 }
 
-/* Landing: How (supporting) | Why (primary) | Offer (secondary) — asymmetric columns */
+/* Landing: How (supporting) | Why (primary) | Offer (secondary) — ~25% / 45% / 30% */
 /* Landing: sections below the example insight preview */
 body.landing-page .landing-below-preview{
+  --below-heading-band: 2.5rem;
+  --below-heading-gap: 10px;
   width: 100%;
   max-width: var(--landing-below-max);
   margin: 1.15rem auto 0;
-  padding: 14px 14px 16px;
+  padding: 10px 12px 11px;
   display: grid;
-  grid-template-columns: minmax(0, 0.68fr) minmax(0, 1.34fr) minmax(0, 0.58fr);
-  column-gap: 18px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.8fr) minmax(0, 1.2fr);
+  column-gap: 16px;
   row-gap: 0;
   align-items: start;
   box-sizing: border-box;
-  border-radius: 12px;
+  border-radius: 10px;
   background: #f5f6f5;
-  border: 1px solid rgba(11, 61, 46, 0.055);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.65) inset;
+  border: 1px solid rgba(11, 61, 46, 0.06);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.55) inset;
 }
 body.landing-page .landing-below-preview .landing-offer{
   width: 100%;
   margin: 0;
   padding: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
+  display: block;
   min-height: 0;
 }
 body.landing-page .landing-below-preview .landing-how__title{
@@ -830,12 +830,12 @@ body.landing-page .landing-below-preview .landing-how__title{
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: rgba(11, 61, 46, 0.42);
-  margin: 0 0 14px;
+  margin: 0 0 var(--below-heading-gap);
   padding: 0;
-  min-height: 2.75rem;
+  min-height: var(--below-heading-band);
   display: flex;
   align-items: flex-end;
-  line-height: 1.25;
+  line-height: 1.2;
 }
 body.landing-page .landing-below-preview .landing-why__title{
   font-size: 13px;
@@ -843,55 +843,53 @@ body.landing-page .landing-below-preview .landing-why__title{
   letter-spacing: 0.04em;
   text-transform: none;
   color: rgba(11, 61, 46, 0.84);
-  margin: 0 0 14px;
+  margin: 0 0 var(--below-heading-gap);
   padding: 0;
-  min-height: 2.75rem;
+  min-height: var(--below-heading-band);
   display: flex;
   align-items: flex-end;
-  line-height: 1.28;
+  line-height: 1.22;
 }
 body.landing-page .landing-below-preview .landing-why__card{
-  border: 1px solid rgba(11, 61, 46, 0.042);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.92) inset;
-  padding: 9px 12px 10px;
-  border-radius: 11px;
+  border: 1px solid rgba(11, 61, 46, 0.055);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.85) inset;
+  padding: 5px 10px 6px;
+  border-radius: 8px;
   background: #fff;
-  transition: border-color 0.22s ease, box-shadow 0.22s ease, transform 0.22s ease;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
 }
 body.landing-page .landing-below-preview .landing-why__card:hover{
-  border-color: rgba(11, 61, 46, 0.075);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.94) inset,
-    0 10px 28px rgba(11, 61, 46, 0.045);
-  transform: translateY(-1px);
+  border-color: rgba(11, 61, 46, 0.1);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset, 0 2px 8px rgba(11, 61, 46, 0.06);
+  transform: translateY(-0.5px);
 }
 body.landing-page .landing-below-preview .landing-why__cardTitle{
   font-size: 12.5px;
   font-weight: 600;
-  letter-spacing: 0.008em;
-  margin: 0 0 5px;
-  line-height: 1.3;
+  letter-spacing: 0.006em;
+  margin: 0 0 2px;
+  line-height: 1.22;
   color: rgba(17, 24, 39, 0.9);
 }
 body.landing-page .landing-below-preview .landing-why__cardBody{
   font-size: 11px;
   font-weight: 400;
-  line-height: 1.38;
-  color: rgba(75, 85, 99, 0.62);
+  line-height: 1.3;
+  color: rgba(75, 85, 99, 0.6);
 }
 body.landing-page .landing-below-preview .landing-why__card--featured{
-  padding: 9px 12px 10px;
-  border: 1px solid rgba(11, 61, 46, 0.055);
+  padding: 5px 10px 6px;
+  border: 1px solid rgba(11, 61, 46, 0.065);
   background: #fdfefc;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.92) inset;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.88) inset;
 }
 body.landing-page .landing-below-preview .landing-why__card--featured .landing-why__cardTitle{
-  font-size: 12.75px;
+  font-size: 12.5px;
   font-weight: 600;
   letter-spacing: 0.006em;
-  margin-bottom: 5px;
-  line-height: 1.3;
-  color: rgba(17, 24, 39, 0.91);
+  margin-bottom: 2px;
+  line-height: 1.22;
+  color: rgba(17, 24, 39, 0.9);
 }
 body.landing-page .landing-offer--calm .landing-offer__title{
   transition: color 0.2s ease, filter 0.2s ease, transform 0.2s ease;
@@ -918,21 +916,30 @@ body.landing-page .landing-offer--calm .landing-offer__price{
 body.landing-page .landing-offer--calm .landing-offer__bullets{
   margin-top: 8px;
 }
+body.landing-page .landing-below-preview .landing-offer__panel{
+  max-width: 17.5rem;
+  margin: 0;
+  padding: 7px 9px 8px;
+  background: #fafaf9;
+  border: 1px solid rgba(11, 61, 46, 0.07);
+  border-radius: 8px;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.75) inset;
+}
 body.landing-page .landing-below-preview .landing-offer--calm .landing-offer__title{
   font-size: 12.75px;
   font-weight: 600;
   letter-spacing: 0.012em;
-  line-height: 1.35;
-  min-height: 2.75rem;
+  line-height: 1.28;
+  min-height: var(--below-heading-band);
   display: inline-flex;
   align-items: flex-end;
-  margin: 0 0 14px;
+  margin: 0 0 var(--below-heading-gap);
   color: rgba(11, 61, 46, 0.68);
 }
 body.landing-page .landing-below-preview .landing-offer--calm .landing-offer__tagline{
-  margin: 6px 0 0;
+  margin: 4px 0 0;
   font-size: 11px;
-  line-height: 1.42;
+  line-height: 1.34;
   color: rgba(75, 85, 99, 0.55);
 }
 body.landing-page .landing-below-preview .landing-offer--calm .landing-offer__trial{
@@ -947,8 +954,8 @@ body.landing-page .landing-below-preview .landing-offer--calm .landing-offer__pr
   color: rgba(75, 85, 99, 0.48);
 }
 body.landing-page .landing-below-preview .landing-offer--calm .landing-offer__bullets{
-  margin-top: 5px;
-  gap: 2px;
+  margin-top: 4px;
+  gap: 1px;
 }
 body.landing-page .landing-offer--calm .landing-offer__title:hover{
   transform: translateY(-0.5px);
@@ -961,9 +968,9 @@ body.landing-page .landing-below-preview .landing-how__steps{
   padding-left: 1rem;
 }
 body.landing-page .landing-below-preview .landing-how__steps li{
-  padding-top: 14px;
+  padding-top: 11px;
   margin: 0;
-  border-top: 1px solid rgba(11, 61, 46, 0.055);
+  border-top: 1px solid rgba(11, 61, 46, 0.08);
 }
 body.landing-page .landing-below-preview .landing-how__steps li:first-child{
   padding-top: 0;
@@ -982,10 +989,10 @@ body.landing-page .landing-below-preview .landing-how__stepTitle{
   color: rgba(17, 24, 39, 0.86);
 }
 body.landing-page .landing-below-preview .landing-how__stepBody{
-  margin-top: 4px;
+  margin-top: 3px;
   font-size: 11px;
   font-weight: 400;
-  line-height: 1.44;
+  line-height: 1.38;
   color: rgba(75, 85, 99, 0.58);
 }
 body.landing-page .landing-below-preview > section{
@@ -998,16 +1005,16 @@ body.landing-page .landing-below-preview .landing-why__copy{
   width: 100%;
 }
 body.landing-page .landing-below-preview .landing-how__copy{
-  padding: 0 6px 0 0;
-  max-width: 14rem;
+  padding: 0 4px 0 0;
+  max-width: 13rem;
 }
 body.landing-page .landing-below-preview .landing-why__copy{
-  padding: 0 4px 0 0;
+  padding: 0 2px 0 0;
   max-width: 100%;
 }
 body.landing-page .landing-below-preview .landing-why__grid{
   grid-template-columns: 1fr;
-  gap: 9px;
+  gap: 6px;
 }
 body.landing-page .landing-below-preview .landing-offer__copy{
   padding: 0;
@@ -1032,8 +1039,8 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
     display: flex;
     flex-direction: column;
     margin-top: 1.05rem;
-    gap: 1.25rem;
-    padding: 14px 14px 16px;
+    gap: 1.1rem;
+    padding: 11px 12px 12px;
   }
   body.landing-page .landing-below-preview .landing-how__title,
   body.landing-page .landing-below-preview .landing-why__title{
@@ -1049,11 +1056,15 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
   }
   body.landing-page .landing-below-preview .landing-why__grid{
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 9px;
+    gap: 6px;
   }
   body.landing-page .landing-below-preview .landing-offer{
-    padding: 6px 0 0;
+    padding: 4px 0 0;
     margin: 0;
+  }
+  body.landing-page .landing-below-preview .landing-offer__panel{
+    max-width: none;
+    width: 100%;
   }
   body.landing-page .landing-below-preview .landing-how__copy{
     padding-right: 0;
@@ -1067,10 +1078,10 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
 @media (max-width: 560px){
   body.landing-page .landing-below-preview .landing-why__grid{
     grid-template-columns: 1fr;
-    gap: 9px;
+    gap: 6px;
   }
   body.landing-page .landing-below-preview{
-    padding: 12px 12px 14px;
+    padding: 10px 11px 11px;
   }
   body.landing-page .landing-main{
     padding: 14px 14px 48px;
