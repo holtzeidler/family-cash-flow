@@ -1111,11 +1111,11 @@ async function refreshLowBalanceAlert() {
       setSidebarLowBalanceBanner("", "off");
       setSidebarHighBalanceBanner("", "off");
       setLowBalanceResult(
-        '<div class="k">Balance thresholds</div><div class="v">Enter a minimum and/or maximum to see projected alert dates.</div>',
+        '<div class="k">Balance thresholds</div><div class="v">Set balance thresholds to be alerted when your cash needs reviewing.</div>',
         true
       );
       lowBalanceLastQuery = { familyId: null, min: null, max: null, mode: null };
-      setSidebarBalanceThresholdHint("Get alerted before your balance gets too low.");
+      setSidebarBalanceThresholdHint("Set balance thresholds to be alerted when your cash needs reviewing.");
       return;
     }
     if (cashOutlookHead) cashOutlookHead.hidden = false;
