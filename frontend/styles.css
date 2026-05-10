@@ -398,6 +398,12 @@ body.landing-page .landing-preview__mock-row > .landing-preview__mock.card:hover
   border-color: rgba(11, 61, 46, 0.14);
   box-shadow: 0 6px 20px rgba(11, 61, 46, 0.08);
 }
+/* Must beat `.mock-row > .mock.card { margin-left: 0 }` (one fewer class). */
+@media (min-width: 861px){
+  body.landing-page .landing-preview__mock-row > .landing-preview__mock.card.landing-preview__mock--day{
+    margin-left: 5ch;
+  }
+}
 body.landing-page .landing-preview__mock--forecast{
   flex: 1 1 248px;
   max-width: min(400px, 100%);
@@ -445,7 +451,6 @@ body.landing-page .landing-preview .landing-mock__savingsFoot{
 body.landing-page .landing-preview__mock--day{
   flex: 1 1 258px;
   max-width: min(322px, 100%);
-  margin-left: 5ch;
 }
 body.landing-page .landing-preview__mock--day .landing-mock__calPreview{
   width: 100%;
@@ -1378,9 +1383,6 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
     flex: 1 1 100%;
     max-width: none;
     width: 100%;
-  }
-  body.landing-page .landing-preview__mock--day{
-    margin-left: 0;
   }
 }
 
