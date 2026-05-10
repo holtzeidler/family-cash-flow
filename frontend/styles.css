@@ -245,7 +245,9 @@ body.landing-page .landing-preview__mock-row > .landing-preview__mock.card{
   min-width: 0;
 }
 body.landing-page .landing-preview__mock--forecast{
-  flex: 1.2 1 300px;
+  /* ~25% narrower than prior 1.2 / 300px flex footprint */
+  flex: 0.9 1 225px;
+  max-width: min(360px, 100%);
 }
 body.landing-page .landing-preview__mock--day{
   flex: 1 1 220px;
@@ -254,12 +256,22 @@ body.landing-page .landing-preview__mock--day{
 body.landing-page .landing-preview__mock--day .landing-mock__calPreview{
   width: 100%;
   min-width: 0;
+  padding-top: 12px;
+}
+body.landing-page .landing-preview__mock--day .landing-mock__calReconBanner{
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.35;
+  letter-spacing: 0.02em;
+  color: rgba(17, 24, 39, 0.58);
+  margin: 0 0 10px;
 }
 body.landing-page .landing-preview__mock--day .landing-mock__calDaynumPreview{
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  margin-top: 2px;
   padding-bottom: 3px;
   margin-bottom: 0;
   border-bottom: 1px solid rgba(0, 0, 0, 0.10);
@@ -310,7 +322,7 @@ body.landing-page .landing-preview__mock--day .landing-mock__calBalanceLabel{
 }
 body.landing-page .landing-preview__mock--day .landing-mock__calBalanceAmt{
   font-weight: 700;
-  color: var(--accent);
+  color: #2c3436;
   font-variant-numeric: tabular-nums;
 }
 body.landing-page .landing-preview__mock--day .cal-amt.income{
@@ -408,7 +420,7 @@ body.landing-page .landing-preview__mock--day .cal-day-tx-line .cal-tx-label{
 }
 
 /* Landing: align Preview / Why / How / Offer on one row (equal columns) */
-/* Landing: sections below the Product Preview */
+/* Landing: sections below the example insight preview */
 body.landing-page .landing-below-preview{
   width: min(1400px, 96%);
   margin: 34px auto 0;
@@ -523,12 +535,26 @@ body.landing-page .landing-below-preview .landing-offer__bullets{
 }
 .landing-offer__bullets{
   margin: 12px 0 0;
-  padding-left: 1.1rem;
+  padding-left: 0;
+  list-style: none;
   color: var(--text);
-  font-weight: 650;
+  font-weight: 400;
   line-height: 1.6;
   display: grid;
   gap: 6px;
+}
+.landing-offer__bullets li{
+  position: relative;
+  padding-left: 1.35em;
+}
+.landing-offer__bullets li::before{
+  content: "\2713";
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-weight: 700;
+  color: var(--accent);
+  font-size: 0.92em;
 }
 .landing-mock__main{
   width: 100%;
