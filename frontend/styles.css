@@ -3469,14 +3469,14 @@ body.account-setup-page .account-setup-wizard{
 body.account-setup-page .account-setup-wizard__eyebrow{
   margin: 0 0 4px;
   text-align: center;
-  font-size: calc(clamp(1.05rem, 2.2vw, 1.4rem) / 2);
+  font-size: calc(clamp(1.05rem, 2.2vw, 1.4rem) / 2 * 1.2);
   font-weight: 900;
   color: var(--accent);
   letter-spacing: 0.2px;
 }
 /* Transactions step: “Great, now…” reads large above the card — half again vs other steps */
 body.account-setup-page .account-setup-wizard__eyebrow.account-setup-wizard__eyebrow--step3{
-  font-size: calc(clamp(1.05rem, 2.2vw, 1.4rem) / 4);
+  font-size: calc(clamp(1.05rem, 2.2vw, 1.4rem) / 4 * 1.2);
 }
 body.account-setup-page .account-setup-wizard__subeyebrow{
   margin: 0 0 10px;
