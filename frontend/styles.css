@@ -3465,23 +3465,25 @@ body.account-setup-page .account-setup-wizard{
   margin-bottom: 28px;
   /* Baseline card height: Step 2 is ~75% of prior size */
   --as-compact-card-minh: 224px;
+  /* Subeyebrow size; eyebrow is 5% larger (see __eyebrow) */
+  --as-wizard-subeyebrow-size: clamp(0.88rem, 1.65vw, 1rem);
 }
 body.account-setup-page .account-setup-wizard__eyebrow{
   margin: 0 0 4px;
   text-align: center;
-  font-size: calc(clamp(1.05rem, 2.2vw, 1.4rem) / 2 * 1.2);
+  font-size: calc(var(--as-wizard-subeyebrow-size) * 1.05);
   font-weight: 900;
   color: var(--accent);
   letter-spacing: 0.2px;
 }
 /* Transactions step: “Great, now…” reads large above the card — half again vs other steps */
 body.account-setup-page .account-setup-wizard__eyebrow.account-setup-wizard__eyebrow--step3{
-  font-size: calc(clamp(1.05rem, 2.2vw, 1.4rem) / 4 * 1.2);
+  font-size: calc(var(--as-wizard-subeyebrow-size) * 1.05 / 2 * 1.2);
 }
 body.account-setup-page .account-setup-wizard__subeyebrow{
   margin: 0 0 10px;
   text-align: center;
-  font-size: clamp(0.88rem, 1.65vw, 1rem);
+  font-size: var(--as-wizard-subeyebrow-size);
   font-weight: 500;
   color: rgba(17, 24, 39, 0.52);
   line-height: 1.4;
@@ -3567,9 +3569,12 @@ body.account-setup-page .account-setup-trust-note{
 body.account-setup-page .account-setup-trust-note > :first-child{
   font-size: 1.05em;
   font-weight: 650;
+  color: #252525;
 }
 body.account-setup-page .account-setup-trust-note > * + *{
   margin-top: 4px;
+  color: #5f6368;
+  font-weight: 500;
 }
 body.account-setup-page .account-setup-duplicate-email__body{
   margin: 0;
