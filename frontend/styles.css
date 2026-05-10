@@ -234,7 +234,7 @@ body.landing-page .landing-hero__cta:focus-visible{
   border-radius: 9px;
 }
 
-/* Landing: product preview (cohesive demo shell) */
+/* Landing: product preview (simple demo — one idea, low noise) */
 body.landing-page .landing-preview{
   width: var(--landing-rail);
   max-width: 100%;
@@ -246,414 +246,111 @@ body.landing-page .landing-preview__demo{
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  padding: 0.72rem 0.85rem 0.85rem;
-  border-radius: 12px;
-  border: 1px solid rgba(11, 61, 46, 0.14);
-  background: #fcfdfc;
+  gap: 1.65rem;
+  padding: 1.35rem 1.4rem 1.5rem;
+  border-radius: 16px;
+  border: 1px solid rgba(11, 61, 46, 0.07);
+  background: #f9faf9;
   box-sizing: border-box;
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.92) inset,
-    0 4px 28px rgba(11, 61, 46, 0.1),
-    0 1px 3px rgba(0, 0, 0, 0.04);
-  transition: box-shadow 0.28s ease, border-color 0.28s ease, transform 0.28s ease;
+  box-shadow: 0 10px 36px rgba(11, 61, 46, 0.05);
+  transition: box-shadow 0.28s ease, border-color 0.28s ease;
 }
 body.landing-page .landing-preview__demo:hover{
-  border-color: rgba(11, 61, 46, 0.18);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.92) inset,
-    0 10px 40px rgba(11, 61, 46, 0.12),
-    0 2px 8px rgba(0, 0, 0, 0.05);
+  border-color: rgba(11, 61, 46, 0.1);
+  box-shadow: 0 14px 44px rgba(11, 61, 46, 0.07);
 }
-body.landing-page .landing-preview__demoHead{
+body.landing-page .landing-preview__tagline{
   margin: 0;
-  padding: 0 0.1rem 0.05rem;
-}
-body.landing-page .landing-preview__eyebrow{
-  margin: 0;
-  font-size: 11px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  font-weight: 800;
-  color: rgba(11, 61, 46, 0.78);
-}
-body.landing-page .landing-preview__insight{
-  margin: 0;
-  padding: 0.62rem 0.78rem 0.55rem 0.88rem;
-  border-radius: 10px;
-  border: 1px solid rgba(11, 61, 46, 0.11);
-  border-left: 4px solid var(--accent);
-  border-bottom: 1px solid rgba(11, 61, 46, 0.08);
-  background: #fff;
-}
-body.landing-page .landing-preview__insightTop{
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 6px 12px;
-  margin-bottom: 0.4rem;
-}
-body.landing-page .landing-preview__insightKind{
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: rgba(11, 61, 46, 0.72);
-}
-body.landing-page .landing-preview__insightStamp{
-  font-size: 10px;
-  font-weight: 650;
-  letter-spacing: 0.04em;
-  color: rgba(45, 72, 58, 0.62);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-body.landing-page .landing-preview__insightText{
-  margin: 0;
-  font-size: clamp(0.92rem, 1.9vw, 1.04rem);
-  line-height: 1.38;
-  font-weight: 650;
-  color: var(--text);
-}
-body.landing-page .landing-preview__insightSupport{
-  margin: 0.32rem 0 0;
-  font-size: 0.8rem;
-  line-height: 1.38;
-  font-weight: 550;
-  color: rgba(55, 65, 60, 0.72);
-}
-body.landing-page .landing-preview__insightSupport strong{
-  font-weight: 800;
-  color: rgba(11, 61, 46, 0.92);
-  font-variant-numeric: tabular-nums;
-}
-body.landing-page .landing-preview__insightFresh{
-  margin: 0.32rem 0 0;
-  padding-top: 0.32rem;
-  border-top: 1px solid rgba(11, 61, 46, 0.07);
-  font-size: 9.5px;
+  max-width: 34rem;
+  font-size: clamp(1.02rem, 2.2vw, 1.18rem);
   font-weight: 600;
-  letter-spacing: 0.03em;
-  color: rgba(45, 72, 58, 0.52);
+  line-height: 1.38;
+  letter-spacing: -0.015em;
+  color: rgba(11, 61, 46, 0.9);
 }
-body.landing-page .landing-preview__insightText strong{
-  font-weight: 800;
+body.landing-page .landing-preview__transfer{
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+body.landing-page .landing-preview__transferLine{
+  margin: 0 0 0.4rem;
+  font-size: 0.98rem;
+  font-weight: 500;
+  color: rgba(55, 65, 60, 0.7);
+}
+body.landing-page .landing-preview__transferAmt{
+  margin: 0;
+  font-size: clamp(2.4rem, 7vw, 3.35rem);
+  font-weight: 700;
+  line-height: 1.02;
+  letter-spacing: -0.035em;
   color: var(--accent);
   font-variant-numeric: tabular-nums;
 }
-body.landing-page .landing-preview .landing-mock__forecastFresh{
-  margin: -1px 0 6px;
-  font-size: 9.5px;
+body.landing-page .landing-preview__transferFoot{
+  margin: 0.55rem 0 0;
+  max-width: 22rem;
+  font-size: 0.96rem;
+  font-weight: 500;
+  line-height: 1.45;
+  color: rgba(55, 65, 60, 0.66);
+}
+body.landing-page .landing-preview__body{
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.55fr);
+  gap: 1.6rem 2rem;
+  align-items: start;
+}
+body.landing-page .landing-preview__billsHead{
+  margin: 0 0 0.7rem;
+  font-size: 1rem;
   font-weight: 600;
-  letter-spacing: 0.02em;
-  line-height: 1.32;
-  color: rgba(45, 72, 58, 0.5);
-}
-body.landing-page .landing-preview .landing-mock__chart{
-  background: rgba(11, 61, 46, 0.045);
-}
-body.landing-page .landing-preview .landing-mock__svg--story .landing-mock__chartCap{
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  font-size: 7.5px;
-  font-weight: 650;
-  letter-spacing: 0.02em;
-}
-body.landing-page .landing-preview .landing-mock__svg--story .landing-mock__chartCap--in{
-  fill: rgba(11, 61, 46, 0.62);
-}
-body.landing-page .landing-preview .landing-mock__svg--story .landing-mock__chartCap--out{
-  fill: rgba(120, 55, 60, 0.68);
-}
-body.landing-page .landing-preview .landing-mock__svg--story .landing-mock__chartCap--safe{
-  fill: rgba(11, 61, 46, 0.55);
-}
-body.landing-page .landing-preview .landing-mock__chart--under-savings .landing-mock__svg--story{
-  height: 88px;
-}
-body.landing-page .landing-preview__mock-row{
-  width: 100%;
-  margin: 0;
-  padding-top: 0.1rem;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: stretch;
-  gap: 11px;
-}
-body.landing-page .landing-preview__mock-row > .landing-preview__mock.card{
-  margin-left: 0;
-  background: #fff;
-  border: 1px solid rgba(11, 61, 46, 0.12);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
-  padding: 11px 11px 10px;
-  box-sizing: border-box;
-  min-width: 0;
-  border-radius: 10px;
-  display: flex;
-  flex-direction: column;
-  transition: box-shadow 0.22s ease, transform 0.22s ease, border-color 0.22s ease;
-}
-body.landing-page .landing-preview__mock-row > .landing-preview__mock.card:hover{
-  transform: translateY(-1px);
-  border-color: rgba(11, 61, 46, 0.14);
-  box-shadow: 0 6px 20px rgba(11, 61, 46, 0.08);
-}
-/* Must beat `.mock-row > .mock.card { margin-left: 0 }` (one fewer class). */
-@media (min-width: 861px){
-  body.landing-page .landing-preview__mock-row > .landing-preview__mock.card.landing-preview__mock--day{
-    margin-left: 5ch;
-  }
-}
-body.landing-page .landing-preview__mock--forecast{
-  flex: 1 1 248px;
-  max-width: min(400px, 100%);
-}
-body.landing-page .landing-preview__mock--forecast .landing-mock__main{
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-body.landing-page .landing-preview .landing-mock__head{
-  margin-bottom: 5px;
-}
-body.landing-page .landing-preview .landing-mock__title{
-  font-size: 12.5px;
-}
-body.landing-page .landing-preview .landing-mock__pill{
-  font-size: 9.5px;
-  padding: 4px 7px;
-}
-body.landing-page .landing-preview .landing-mock__cols{
-  margin-top: 6px;
-}
-body.landing-page .landing-preview .landing-mock__label{
-  margin-bottom: 4px;
-  font-size: 9.5px;
-}
-body.landing-page .landing-preview .landing-mock__list li{
-  padding: 5px 7px;
-  font-size: 12.5px;
-  font-weight: 600;
-}
-body.landing-page .landing-preview .landing-mock__savingsKicker{
-  font-size: 10px;
-}
-body.landing-page .landing-preview .landing-mock__savingsAmt{
-  font-size: 19px;
-}
-body.landing-page .landing-preview .landing-mock__savingsMeta,
-body.landing-page .landing-preview .landing-mock__savingsFoot{
-  font-size: 10.5px;
-  font-weight: 550;
-  color: rgba(75, 85, 99, 0.78);
-}
-body.landing-page .landing-preview__mock--day{
-  flex: 1 1 258px;
-  max-width: min(322px, 100%);
-}
-body.landing-page .landing-preview__mock--day .landing-mock__calPreview{
-  width: 100%;
-  min-width: 0;
-  padding-top: 0;
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-}
-body.landing-page .landing-preview__mock--day .landing-mock__calReconBand{
-  margin: 0 0 10px;
-  padding: 8px 9px 8px;
-  border-radius: 9px;
-  border: 1px solid rgba(11, 61, 46, 0.11);
-  border-left: 4px solid color-mix(in srgb, var(--ok) 70%, var(--accent) 30%);
-  background: color-mix(in srgb, var(--ok) 11%, #fbfcfb 89%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
-}
-body.landing-page .landing-preview__mock--day .landing-mock__calReconStamp{
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 0 0 6px;
-  font-size: 9.5px;
-  font-weight: 700;
-  letter-spacing: 0.035em;
-  color: rgba(11, 61, 46, 0.72);
-  font-variant-numeric: tabular-nums;
-}
-body.landing-page .landing-preview__mock--day .landing-mock__calReconStampDot{
-  width: 7px;
-  height: 7px;
-  border-radius: 999px;
-  flex-shrink: 0;
-  background: var(--ok);
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85);
-}
-body.landing-page .landing-preview__mock--day .landing-mock__calReconBandMeta{
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px 10px;
-  margin-bottom: 7px;
-}
-body.landing-page .landing-preview__mock--day .landing-mock__calReconEyebrow{
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: rgba(11, 61, 46, 0.68);
-}
-body.landing-page .landing-preview__mock--day .landing-mock__calReconPills{
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  justify-content: flex-end;
-}
-body.landing-page .landing-preview__mock--day .landing-mock__calReconPill{
-  font-size: 9px;
-  font-weight: 750;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  padding: 4px 8px;
-  border-radius: 999px;
-  border: 1px solid rgba(11, 61, 46, 0.2);
-  color: rgba(11, 61, 46, 0.9);
-  background: rgba(255, 255, 255, 0.88);
-}
-body.landing-page .landing-preview__mock--day .landing-mock__calReconLead{
-  display: flex;
-  align-items: flex-start;
-  gap: 9px;
-  margin: 0;
-  font-size: 13px;
-  font-weight: 800;
-  line-height: 1.3;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--text);
 }
-body.landing-page .landing-preview__mock--day .landing-mock__calReconSub{
-  margin: 8px 0 0;
-  padding-top: 8px;
-  border-top: 1px solid rgba(11, 61, 46, 0.1);
-  font-size: 10px;
-  font-weight: 600;
-  line-height: 1.4;
-  color: rgba(45, 72, 58, 0.62);
-}
-body.landing-page .landing-preview__mock--day .landing-mock__calReconLeadIcon{
-  flex-shrink: 0;
-  margin-top: 0;
-  color: var(--ok);
-  line-height: 0;
-}
-body.landing-page .landing-preview__mock--day .landing-mock__calReconLeadIcon svg{
-  display: block;
-  width: 20px;
-  height: 20px;
-}
-body.landing-page .landing-preview__mock--day .landing-mock__calReconLeadText{
-  flex: 1;
-  min-width: 0;
-}
-body.landing-page .landing-preview__mock--day .landing-mock__calDaynumPreview{
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-top: 2px;
-  padding-bottom: 3px;
-  margin-bottom: 0;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.10);
-}
-body.landing-page .landing-preview__mock--day .landing-mock__calDateText{
+body.landing-page .landing-preview__billList{
+  list-style: none;
+  padding: 0;
+  margin: 0;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 3px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text);
-  letter-spacing: 0.01em;
-  line-height: 1.2;
+  gap: 0.7rem;
 }
-body.landing-page .landing-preview__mock--day .landing-mock__calScope{
-  font-size: 9px;
-  font-weight: 750;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: rgba(75, 85, 99, 0.72);
-}
-body.landing-page .landing-preview__mock--day .cal-reconciled-mark{
-  flex-shrink: 0;
-  width: 18px;
-  height: 18px;
-  color: #fff;
-  border-radius: 999px;
-  background: var(--ok);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
-}
-body.landing-page .landing-preview__mock--day .cal-reconciled-mark svg{
-  width: 12px;
-  height: 12px;
-  stroke: #fff;
-  fill: none;
-}
-body.landing-page .landing-preview__mock--day .cal-reconciled-mark svg path{
-  stroke-width: 2.6;
-}
-body.landing-page .landing-preview__mock--day .cal-cell-stack{
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  justify-content: flex-start;
-  flex: 1;
-  align-items: stretch;
-  width: 100%;
-  min-height: 0;
-}
-body.landing-page .landing-preview__mock--day .cal-day-txns{
-  padding-top: 4px;
-}
-body.landing-page .landing-preview__mock--day .landing-mock__calTxLine{
-  cursor: default;
-  text-decoration: none;
-}
-body.landing-page .landing-preview__mock--day .cal-ledger-metrics{
-  margin-top: auto;
-  padding-top: 8px;
-  border-top: 1px solid rgba(0, 0, 0, 0.08);
-}
-body.landing-page .landing-preview__mock--day .landing-mock__calBalance{
+body.landing-page .landing-preview__billList li{
   display: flex;
   align-items: baseline;
-  justify-content: flex-end;
-  gap: 6px;
-  flex-wrap: wrap;
-  font-size: 14px;
-  line-height: 1.15;
-  font-weight: 400;
-  color: rgba(17, 24, 39, 0.45);
-}
-body.landing-page .landing-preview__mock--day .landing-mock__calBalanceLabel{
-  color: rgba(17, 24, 39, 0.45);
-}
-body.landing-page .landing-preview__mock--day .landing-mock__calBalanceAmt{
-  font-weight: 700;
-  color: #2c3436;
-  font-variant-numeric: tabular-nums;
-}
-body.landing-page .landing-preview__mock--day .cal-amt.income{
-  color: var(--ok);
-}
-body.landing-page .landing-preview__mock--day .cal-amt.expense{
-  color: var(--danger);
-}
-body.landing-page .landing-preview__mock--day .cal-day-tx-line .cal-amt{
-  font-weight: 700;
-}
-body.landing-page .landing-preview__mock--day .cal-day-tx-line .cal-tx-label{
-  font-weight: 600;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  font-size: 0.94rem;
+  font-weight: 500;
   color: var(--text);
+}
+body.landing-page .landing-preview__billList li span:last-child{
+  flex-shrink: 0;
+  font-size: 0.88rem;
+  font-variant-numeric: tabular-nums;
+  color: rgba(75, 85, 99, 0.72);
+}
+body.landing-page .landing-preview__chart{
+  margin: 0;
+  padding: 0.5rem 0.25rem 0.35rem;
+  border: none;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.55);
+}
+body.landing-page .landing-preview__chartSvg{
+  display: block;
+  width: 100%;
+  height: auto;
+  min-height: 168px;
+  max-height: 240px;
 }
 
 @keyframes landing-curve-breath{
@@ -665,11 +362,11 @@ body.landing-page .landing-preview__mock--day .cal-day-tx-line .cal-tx-label{
     stroke-opacity: 0.78;
   }
 }
-body.landing-page .landing-preview .landing-mock__curve{
+body.landing-page .landing-preview__curve{
   animation: landing-curve-breath 5s ease-in-out infinite;
 }
 @media (prefers-reduced-motion: reduce){
-  body.landing-page .landing-preview .landing-mock__curve{
+  body.landing-page .landing-preview__curve{
     animation: none;
   }
 }
@@ -1229,137 +926,18 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
   color: var(--accent);
   font-size: 0.92em;
 }
-.landing-mock__main{
-  width: 100%;
-  min-width: 0;
-}
-.landing-mock__head{
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-.landing-mock__title{
-  font-size: 13px;
-  font-weight: 800;
-  color: var(--text);
-}
-.landing-mock__pill{
-  font-size: 10px;
-  font-weight: 700;
-  padding: 5px 8px;
-  border-radius: 999px;
-  border: 1px solid rgba(0,0,0,0.10);
-  background: rgba(0,0,0,0.03);
-  color: var(--muted);
-  white-space: nowrap;
-}
-.landing-mock__chart{
-  border-radius: 10px;
-  background: linear-gradient(180deg, rgba(11,61,46,0.06), rgba(0,0,0,0.01));
-  border: 1px solid rgba(0,0,0,0.08);
-  padding: 6px 8px;
-  margin-left: -6px;
-}
-.landing-mock__svg{
-  display: block;
-  width: 100%;
-  height: 128px;
-}
-.landing-mock__cols{
-  margin-top: 10px;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 11px;
-}
-.landing-mock__cols--with-underchart{
-  /* allow an extra row under the savings / chart column */
-  grid-auto-rows: min-content;
-}
-.landing-mock__chart--under-savings{
-  grid-column: 2;
-  margin-top: -2px;
-  padding: 5px 6px;
-}
-.landing-mock__chart--under-savings .landing-mock__svg{
-  height: 74px;
-}
-.landing-mock__label{
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: none;
-  color: rgba(75,85,99,0.95);
-  margin-bottom: 6px;
-}
-.landing-mock__list{
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: grid;
-  gap: 6px;
-  font-size: 13px;
-  font-weight: 650;
-  color: var(--text);
-}
-.landing-mock__list li{
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 6px 8px;
-  border-radius: 8px;
-  border: 1px solid rgba(0,0,0,0.08);
-  background: rgba(0,0,0,0.02);
-}
-/* Nudge the right-side dates left a bit */
-.landing-mock__list li > span:last-child{
-  padding-right: 8px;
-}
-.landing-mock__savings{
-  padding: 10px 10px 9px;
-  border-radius: 10px;
-  border: 1px solid color-mix(in srgb, var(--ok) 35%, rgba(0, 0, 0, 0.08));
-  background: color-mix(in srgb, var(--ok) 10%, rgba(255, 255, 255, 0.92));
-}
-.landing-mock__savingsKicker{
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: none;
-  color: rgba(11, 61, 46, 0.88);
-  line-height: 1.25;
-  margin-bottom: 4px;
-}
-.landing-mock__savingsAmt{
-  font-size: 21px;
-  font-weight: 900;
-  color: var(--accent);
-  line-height: 1.1;
-}
-.landing-mock__savingsMeta{
-  margin: 8px 0 0;
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1.4;
-  color: rgba(17, 24, 39, 0.72);
-}
-.landing-mock__savingsFoot{
-  margin: 8px 0 0;
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1.35;
-  color: rgba(75, 85, 99, 0.88);
-}
 @media (max-width: 860px){
   body.landing-page .landing-preview{
     margin-top: 0.4rem;
     max-width: 100%;
   }
   body.landing-page .landing-preview__demo{
-    padding: 0.65rem 0.72rem 0.75rem;
-    gap: 0.42rem;
+    padding: 1.1rem 1rem 1.2rem;
+    gap: 1.35rem;
+  }
+  body.landing-page .landing-preview__body{
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
   }
   .landing-how{
     margin-top: 18px;
@@ -1370,19 +948,6 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
   .landing-offer{
     grid-template-columns: 1fr;
     margin-top: 18px;
-  }
-  .landing-mock__cols{
-    grid-template-columns: 1fr;
-  }
-  .landing-mock__chart--under-savings{
-    grid-column: auto;
-    margin-top: 8px;
-  }
-  body.landing-page .landing-preview__mock--forecast,
-  body.landing-page .landing-preview__mock--day{
-    flex: 1 1 100%;
-    max-width: none;
-    width: 100%;
   }
 }
 

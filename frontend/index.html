@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=335" />
+    <link rel="stylesheet" href="./styles.css?v=336" />
   </head>
   <body class="landing-page">
     <div class="container">
@@ -47,165 +47,52 @@
 
         <section class="landing-preview" aria-label="Product preview">
           <div class="landing-preview__demo">
-            <header class="landing-preview__demoHead">
-              <p class="landing-preview__eyebrow">Example BalanceWhiz insight</p>
-            </header>
-            <div class="landing-preview__insight" role="status" aria-label="Transfer recommendation">
-              <div class="landing-preview__insightTop">
-                <span class="landing-preview__insightKind">Transfer recommendation</span>
-                <time class="landing-preview__insightStamp" datetime="2026-05-10T09:42">Updated today at 9:42 AM</time>
-              </div>
-              <p class="landing-preview__insightText">
-                You could safely move <strong>$1,850</strong> to savings while keeping bills covered through May 31.
-              </p>
-              <p class="landing-preview__insightSupport">
-                Projected minimum balance stays at <strong>$2,184</strong>.
-              </p>
-              <p class="landing-preview__insightFresh">Forecast refreshed 2 minutes ago</p>
+            <p class="landing-preview__tagline">BalanceWhiz tells you how much money can safely leave checking.</p>
+
+            <div class="landing-preview__transfer" role="status" aria-label="Safe transfer amount">
+              <p class="landing-preview__transferLine">Safe to move to savings</p>
+              <p class="landing-preview__transferAmt">$1,850</p>
+              <p class="landing-preview__transferFoot">while keeping upcoming bills covered</p>
             </div>
 
-            <div class="landing-preview__mock-row" aria-label="Product preview mockups">
-              <div class="landing-preview__mock card landing-preview__mock--forecast" aria-label="Projected balance preview">
-                <div class="landing-mock__main">
-                  <div class="landing-mock__head">
-                    <div class="landing-mock__title">Projected balance</div>
-                    <div class="landing-mock__pill">Next 30 days</div>
-                  </div>
-                  <p class="landing-mock__forecastFresh" aria-label="Forecast scope">Uses the same bills and income as your live forecast.</p>
-
-                  <div class="landing-mock__cols landing-mock__cols--with-underchart">
-                    <div class="landing-mock__col">
-                      <div class="landing-mock__label">Upcoming bills</div>
-                      <ul class="landing-mock__list" aria-label="Upcoming bills">
-                        <li><span>Electric</span><span>May 12</span></li>
-                        <li><span>Mortgage/Rent</span><span>May 15</span></li>
-                        <li><span>Internet</span><span>May 18</span></li>
-                      </ul>
-                    </div>
-                    <div class="landing-mock__col">
-                      <div class="landing-mock__label">Savings window</div>
-                      <div class="landing-mock__savings">
-                        <div class="landing-mock__savingsKicker">Safe to move to savings</div>
-                        <div class="landing-mock__savingsAmt">$1,850</div>
-                        <p class="landing-mock__savingsMeta">Based on upcoming bills and income through May 31.</p>
-                        <p class="landing-mock__savingsFoot">Transfer recommendation updated today</p>
-                      </div>
-                    </div>
-
-                    <div class="landing-mock__chart landing-mock__chart--under-savings" aria-hidden="true">
-                      <svg viewBox="0 0 520 170" preserveAspectRatio="none" class="landing-mock__svg landing-mock__svg--story">
-                        <!-- Quiet reference: future low cushion -->
-                        <line x1="10" y1="132" x2="505" y2="132" stroke="rgba(167,55,68,0.14)" stroke-width="1" stroke-dasharray="4 4" />
-                        <text x="12" y="128" class="landing-mock__chartCap" fill="rgba(120,55,60,0.65)">Future low</text>
-                        <!-- Projected balance path: dip then recovery (cash rhythm) -->
-                        <path
-                          class="landing-mock__curve"
-                          d="M10,116 C78,112 130,124 188,118 C248,108 292,132 338,114 C392,92 452,72 510,52"
-                          fill="none"
-                          stroke="#0B3D2E"
-                          stroke-width="3.2"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                        />
-                        <path
-                          d="M10,116 C78,112 130,124 188,118 C248,108 292,132 338,114 C392,92 452,72 510,52 L510,168 L10,168 Z"
-                          fill="rgba(11, 61, 46, 0.07)"
-                        />
-                        <!-- Income in (after payroll) -->
-                        <circle cx="155" cy="111" r="3.2" fill="#047857" opacity="0.9" />
-                        <text x="162" y="113" class="landing-mock__chartCap landing-mock__chartCap--in">Income</text>
-                        <!-- Bills out (dip drivers) -->
-                        <circle cx="248" cy="118" r="3" fill="#a73744" opacity="0.88" />
-                        <text x="255" y="121" class="landing-mock__chartCap landing-mock__chartCap--out">Bill</text>
-                        <circle cx="302" cy="126" r="2.8" fill="#a73744" opacity="0.82" />
-                        <text x="309" y="128" class="landing-mock__chartCap landing-mock__chartCap--out">Bill</text>
-                        <!-- Safe transfer window (after path recovers) -->
-                        <line x1="388" y1="52" x2="388" y2="100" stroke="rgba(11,61,46,0.22)" stroke-width="1" stroke-dasharray="3 3" />
-                        <text x="392" y="48" class="landing-mock__chartCap landing-mock__chartCap--safe">Safe window</text>
-                        <!-- Soft projected continuation -->
-                        <path
-                          d="M510,52 C520,48 528,46 536,44"
-                          fill="none"
-                          stroke="#0B3D2E"
-                          stroke-width="2"
-                          stroke-opacity="0.35"
-                          stroke-dasharray="5 4"
-                          stroke-linecap="round"
-                        />
-                        <circle cx="510" cy="52" r="4.8" fill="#0B3D2E" />
-                        <line x1="510" y1="52" x2="510" y2="168" stroke="rgba(0,0,0,0.10)" stroke-dasharray="3 3" />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
+            <div class="landing-preview__body">
+              <div class="landing-preview__bills">
+                <h3 class="landing-preview__billsHead">Upcoming bills</h3>
+                <ul class="landing-preview__billList" aria-label="Upcoming bills">
+                  <li><span>Electric</span><span>May 12</span></li>
+                  <li><span>Mortgage / rent</span><span>May 15</span></li>
+                  <li><span>Internet</span><span>May 18</span></li>
+                </ul>
               </div>
-
-              <div class="landing-preview__mock card landing-preview__mock--day" aria-label="Example calendar day">
-                <div class="landing-mock__calPreview">
-                  <div class="landing-mock__calReconBand" role="group" aria-label="Reconciliation status">
-                    <div class="landing-mock__calReconBandMeta">
-                      <span class="landing-mock__calReconEyebrow">Forecast accuracy</span>
-                      <div class="landing-mock__calReconPills">
-                        <span class="landing-mock__calReconPill">Forecast reconciled</span>
-                        <span class="landing-mock__calReconPill">Verified balance</span>
-                      </div>
-                    </div>
-                    <p class="landing-mock__calReconStamp">
-                      <span class="landing-mock__calReconStampDot" aria-hidden="true"></span>
-                      Verified to ledger · May 9, 9:15 AM
-                    </p>
-                    <p class="landing-mock__calReconLead">
-                      <span class="landing-mock__calReconLeadIcon" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" width="20" height="20" focusable="false">
-                          <circle cx="12" cy="12" r="10.5" fill="currentColor" />
-                          <path
-                            d="M8 12.5l2.6 2.6L16.5 9.2"
-                            fill="none"
-                            stroke="#fff"
-                            stroke-width="2.35"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                          />
-                        </svg>
-                      </span>
-                      <span class="landing-mock__calReconLeadText">Forecast reconciled through May 9</span>
-                    </p>
-                    <p class="landing-mock__calReconSub">System verification matches your entered balance for this day.</p>
-                  </div>
-                  <div class="landing-mock__calDaynumPreview">
-                    <span class="landing-mock__calDateText">
-                      Fri, May 9
-                      <span class="landing-mock__calScope">Projected day</span>
-                    </span>
-                    <span class="cal-reconciled-mark" title="Reconciled" aria-label="Reconciled">
-                      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                        <path d="M8 12.5l2.6 2.6L16.5 9.2" fill="none"></path>
-                      </svg>
-                    </span>
-                  </div>
-                  <div class="cal-cell-stack">
-                    <div class="cal-day-txns">
-                      <div class="cal-day-tx-line landing-mock__calTxLine">
-                        <span class="cal-tx-label-wrap">
-                          <span class="cal-tx-label">Cash &amp; ATM</span>
-                        </span>
-                        <span class="cal-amt expense">$200</span>
-                      </div>
-                      <div class="cal-day-tx-line landing-mock__calTxLine">
-                        <span class="cal-tx-label-wrap">
-                          <span class="cal-tx-label">Auto Payment</span>
-                        </span>
-                        <span class="cal-amt expense">$450</span>
-                      </div>
-                    </div>
-                    <div class="cal-ledger-metrics">
-                      <div class="cal-stat cal-balance landing-mock__calBalance">
-                        <span class="landing-mock__calBalanceLabel">Balance</span>
-                        <span class="landing-mock__calBalanceAmt">$2,184</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+              <div class="landing-preview__chart" aria-hidden="true">
+                <svg
+                  class="landing-preview__chartSvg"
+                  viewBox="0 0 640 200"
+                  preserveAspectRatio="xMidYMid meet"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <defs>
+                    <linearGradient id="landingPreviewBalanceFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="rgba(11, 61, 46, 0.14)" />
+                      <stop offset="100%" stop-color="rgba(11, 61, 46, 0)" />
+                    </linearGradient>
+                  </defs>
+                  <path
+                    d="M24,118 C120,108 168,128 240,112 C312,96 360,138 420,100 C480,68 540,52 616,44 L616,188 L24,188 Z"
+                    fill="url(#landingPreviewBalanceFill)"
+                  />
+                  <path
+                    class="landing-preview__curve"
+                    d="M24,118 C120,108 168,128 240,112 C312,96 360,138 420,100 C480,68 540,52 616,44"
+                    fill="none"
+                    stroke="#0B3D2E"
+                    stroke-width="4"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                  <circle cx="188" cy="114" r="7" fill="#047857" opacity="0.92" />
+                  <circle cx="312" cy="124" r="7" fill="#a73744" opacity="0.88" />
+                </svg>
               </div>
             </div>
           </div>
