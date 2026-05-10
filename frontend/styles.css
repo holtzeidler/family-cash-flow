@@ -3525,7 +3525,7 @@ body.account-setup-page .account-setup-wizard__viewport{
 }
 body.account-setup-page .account-setup-wizard__shell .account-setup-actions--shell{
   flex-shrink: 0;
-  padding: 12px 14px 14px;
+  padding: 10px 14px 10px;
   margin: 0;
   border-top: 1px solid rgba(0, 0, 0, 0.08);
   /* Keep the wizard card height consistent even when only "Back" is visible. */
@@ -3656,7 +3656,8 @@ body.account-setup-page .auth-section__body.account-setup-card__body{
 }
 body.account-setup-page .form-row-h__field input:not([type="checkbox"]):not([type="radio"]),
 body.account-setup-page .form-row-h__field select{
-  padding: calc(12px * 0.92) calc(12px * 0.92);
+  /* Slightly shorter inputs (≈5%) while keeping readability. */
+  padding: calc(12px * 0.874) calc(12px * 0.874);
   font-size: calc(16px * 0.92);
 }
 body.account-setup-page #accountSetupWizardPanel0 #email,
@@ -3666,7 +3667,7 @@ body.account-setup-page #accountSetupWizardPanel0 #password2{
   line-height: 1.3;
 }
 body.account-setup-page .form-row-h__field .money-input__prefix{
-  padding: calc(10px * 0.92) calc(10px * 0.92) calc(10px * 0.92) calc(12px * 0.92);
+  padding: calc(10px * 0.874) calc(10px * 0.874) calc(10px * 0.874) calc(12px * 0.874);
   font-size: calc(13px * 0.92);
 }
 body.account-setup-page .account-setup-step3-form .tx-add-schedule-toolbar input:not([type="radio"]):not([type="checkbox"]),
@@ -3758,7 +3759,8 @@ body.account-setup-page #accountSetupWizardPanel0 .form-row-h{
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 8px;
+  /* Reduce label→field spacing slightly. */
+  gap: 7px;
 }
 body.account-setup-page #accountSetupWizardPanel0 .form-row-h__label{
   flex: 0 0 auto;
@@ -3786,7 +3788,7 @@ body.account-setup-page #accountSetupWizardPanel1 .form-row-h{
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 8px;
+  gap: 7px;
 }
 body.account-setup-page #accountSetupWizardPanel1 .form-row-h__label{
   flex: 0 0 auto;
@@ -4232,6 +4234,9 @@ body.account-setup-page .account-setup-actions .top-nav__logout{
   background: var(--accent);
   border-color: rgba(0, 0, 0, 0.10);
   color: #fff;
+  /* Slightly taller primary action on the wizard footer. */
+  padding-top: 9px;
+  padding-bottom: 9px;
 }
 body.login-page .auth-section__body .top-nav__logout:hover,
 body.account-setup-page .account-setup-actions .top-nav__logout:hover{

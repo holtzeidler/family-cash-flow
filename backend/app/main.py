@@ -911,6 +911,16 @@ class PlatformPasswordIn(BaseModel):
     new_password: str = Field(min_length=8, max_length=200)
 
 
+class PlatformUserPurgeOut(BaseModel):
+    ok: bool
+    deleted_user_id: int
+    deleted_email: EmailStr
+    deleted_memberships: int
+    deleted_invites: int
+    deleted_expected_transactions: int
+    deleted_expected_overrides: int
+
+
 class PlatformOverviewOut(BaseModel):
     message: str
 
@@ -2436,36 +2446,78 @@ def platform_delete_user(
     if str(target.email).lower().strip() in _platform_admin_email_set():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot delete a platform admin account")
 
+    out = _platform_purge_user(db=db, target_user_id=int(target_user_id))
+    return out.model_dump()
+
+
+def _platform_purge_user(*, db, target_user_id: int) -> PlatformUserPurgeOut:
+    """Hard-delete a user and dependent rows (platform-admin only)."""
+    target = db.execute(select(User).where(User.id == target_user_id)).scalar_one_or_none()
+    if target is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
     # Delete rows that reference this user, then delete the user.
     # (No cascade is configured on most FKs; handle explicitly.)
-    deleted_memberships = int(
-        db.execute(delete(FamilyMember).where(FamilyMember.user_id == target_user_id)).rowcount or 0
-    )
+    deleted_memberships = int(db.execute(delete(FamilyMember).where(FamilyMember.user_id == target_user_id)).rowcount or 0)
     deleted_invites = int(
         db.execute(delete(FamilyInvite).where(FamilyInvite.invited_by_user_id == target_user_id)).rowcount or 0
     )
 
-    exp_ids = db.execute(select(ExpectedTransaction.id).where(ExpectedTransaction.created_by_user_id == target_user_id)).scalars().all()
+    exp_ids = (
+        db.execute(select(ExpectedTransaction.id).where(ExpectedTransaction.created_by_user_id == target_user_id))
+        .scalars()
+        .all()
+    )
     deleted_overrides = 0
     deleted_expected = 0
     if exp_ids:
         deleted_overrides = int(
-            db.execute(delete(ExpectedTransactionOverride).where(ExpectedTransactionOverride.expected_transaction_id.in_(list(exp_ids)))).rowcount or 0
+            db.execute(
+                delete(ExpectedTransactionOverride).where(ExpectedTransactionOverride.expected_transaction_id.in_(list(exp_ids)))
+            ).rowcount
+            or 0
         )
         deleted_expected = int(
             db.execute(delete(ExpectedTransaction).where(ExpectedTransaction.id.in_(list(exp_ids)))).rowcount or 0
         )
 
+    deleted_email = str(target.email)
     db.execute(delete(User).where(User.id == target_user_id))
     db.commit()
-    return {
-        "ok": True,
-        "deleted_user_id": int(target_user_id),
-        "deleted_memberships": deleted_memberships,
-        "deleted_invites": deleted_invites,
-        "deleted_expected_transactions": deleted_expected,
-        "deleted_expected_overrides": deleted_overrides,
-    }
+    return PlatformUserPurgeOut(
+        ok=True,
+        deleted_user_id=int(target_user_id),
+        deleted_email=deleted_email,
+        deleted_memberships=deleted_memberships,
+        deleted_invites=deleted_invites,
+        deleted_expected_transactions=deleted_expected,
+        deleted_expected_overrides=deleted_overrides,
+    )
+
+
+@app.delete("/api/platform/users/purge", response_model=PlatformUserPurgeOut)
+def platform_purge_user_by_email(
+    email: Annotated[str, Query(description="Email to purge (case-insensitive).")],
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    require_platform_admin(db=db, user_id=user_id)
+
+    key = str(email or "").strip().lower()
+    if not key or "@" not in key:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Valid email is required")
+
+    target = db.execute(select(User).where(func.lower(User.email) == key)).scalar_one_or_none()
+    if target is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    if int(target.id) == int(user_id):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot delete your own account")
+    # Prevent removing the operator/admin allowlisted accounts (avoid locking out admin access).
+    if str(target.email).lower().strip() in _platform_admin_email_set():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot delete a platform admin account")
+
+    return _platform_purge_user(db=db, target_user_id=int(target.id))
 
 
 @app.post(
