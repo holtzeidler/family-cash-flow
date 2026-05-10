@@ -7076,7 +7076,9 @@ function renderCalendar() {
       </div>
     `;
     if (isOutOfMonth) cell.classList.add("cal-cell--out");
-    if (!isOutOfMonth && isPast) cell.classList.add("cal-cell--past");
+    // In-month "past" gray only when we have no starting-balance date; otherwise only
+    // cal-cell--before-start tints days before the anchor (days on/after stay white).
+    if (!isOutOfMonth && isPast && !earliestStartIso) cell.classList.add("cal-cell--past");
     const txnsEl = cell.querySelector(".cal-day-txns");
     const metricsEl = cell.querySelector(".cal-ledger-metrics");
 
@@ -7110,7 +7112,7 @@ function renderCalendar() {
         line.className = isExpected
           ? "cal-day-tx-line cal-day-tx-line--expected"
           : isStartBalance
-            ? "cal-day-tx-line cal-day-tx-line--expected"
+            ? "cal-day-tx-line cal-day-tx-line--start-balance"
             : "cal-day-tx-line cal-tx-part";
         if (isExpected && row.variable) line.classList.add("cal-expected-variable");
         if (!isExpected && !isStartBalance) line.dataset.txId = String(row.id);
@@ -7144,6 +7146,15 @@ function renderCalendar() {
 
         const labelWrap = document.createElement("span");
         labelWrap.className = "cal-tx-label-wrap";
+        if (isStartBalance) {
+          line.title = "Starting balance — your forecast begins here";
+          const flag = document.createElement("span");
+          flag.className = "cal-tx-start-flag";
+          flag.setAttribute("aria-hidden", "true");
+          flag.innerHTML =
+            '<svg viewBox="0 0 12 14" width="11" height="13" focusable="false"><path fill="currentColor" d="M0.75 0h1.25v14H0.75V0zm2.75 1.5L11 5.2 3.5 8.9V1.5z"/></svg>';
+          labelWrap.appendChild(flag);
+        }
         labelWrap.appendChild(labelSpan);
 
         const amtSpan = document.createElement("span");

@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=258" />
+    <link rel="stylesheet" href="../styles.css?v=259" />
   </head>
   <body>
     <div class="container">
@@ -186,11 +186,11 @@
                 </div>
                 <div class="tx-add-vspace tx-add-vspace--sm" aria-hidden="true"></div>
                 <label class="reimbursable-field" for="txAddVariable" title="Great for utilities, groceries or credit card bills.">
-                  <span class="reimbursable-field__text">
+                  <span class="reimbursable-field__lead">
                     <span class="reimbursable-field__label">Amount varies month to month</span>
-                    <span class="reimbursable-field__hint">Great for utilities &amp; credit card bills</span>
+                    <input id="txAddVariable" type="checkbox" title="Amount is a placeholder until you enter actuals" />
                   </span>
-                  <input id="txAddVariable" type="checkbox" title="Amount is a placeholder until you enter actuals" />
+                  <span class="reimbursable-field__hint">Great for utilities &amp; credit card bills</span>
                 </label>
                 <div class="tx-add-vspace tx-add-vspace--sm" aria-hidden="true"></div>
                 <div class="form-row-h">
@@ -1079,6 +1079,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="../app.js?v=202"></script>
+    <script src="../app.js?v=204"></script>
   </body>
 </html>

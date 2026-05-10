@@ -2565,19 +2565,19 @@ textarea::placeholder{
 .cal-tx-label.tx-kind-fg--expense{ color: var(--text); }
 .reimbursable-field{
   display: flex;
-  flex-direction: row;
-  gap: 8px;
-  align-items: center;
-  cursor: pointer;
-  user-select: none;
-}
-.reimbursable-field__text{
-  display: flex;
   flex-direction: column;
   gap: 3px;
   align-items: flex-start;
-  min-width: 0;
-  flex: 1;
+  cursor: pointer;
+  user-select: none;
+}
+.reimbursable-field__lead{
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.75em;
+  max-width: 100%;
+  flex-wrap: wrap;
 }
 .reimbursable-field__label{
   /* Match other form field labels */
@@ -2596,10 +2596,13 @@ textarea::placeholder{
   color: var(--muted);
   opacity: 0.72;
   line-height: 1.25;
+  width: 100%;
+  max-width: 100%;
 }
 .reimbursable-field input[type="checkbox"]{
   width: auto;
   margin: 0;
+  flex-shrink: 0;
   accent-color: var(--accent);
 }
 
@@ -3766,9 +3769,14 @@ body.account-setup-page #accountSetupWizardPanel3 .account-setup-step3-form__bod
   max-width: none;
 }
 body.account-setup-page #accountSetupWizardPanel2 .account-setup-step3-form__body .form-row-h__label label,
-body.account-setup-page #accountSetupWizardPanel3 .account-setup-step3-form__body .form-row-h__label label{
-  color: #556173;
+body.account-setup-page #accountSetupWizardPanel3 .account-setup-step3-form__body .form-row-h__label label,
+body.account-setup-page .account-setup-step3-form .account-setup-repeat-duo__label{
+  font-size: calc(11px * 1.12);
   font-weight: 400;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  color: #556173;
+  line-height: 1.3;
   text-align: left;
 }
 body.account-setup-page #accountSetupWizardPanel2 .account-setup-step3-form__body .form-row-h__field,
@@ -4943,10 +4951,25 @@ body.plans-page .container > .grid{
   min-width: 0;
   overflow: hidden;
   text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.cal-tx-start-flag{
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  color: var(--accent);
+  line-height: 0;
+}
+.cal-tx-start-flag svg{
+  display: block;
 }
 .cal-day-tx-line .cal-tx-label{
   display: inline-flex;
   align-items: baseline;
+  min-width: 0;
+  flex: 1 1 auto;
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -4964,6 +4987,15 @@ body.plans-page .container > .grid{
 
 .cal-day-tx-line--expected{
   cursor: pointer;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+}
+.cal-day-tx-line--start-balance{
+  cursor: default;
+  text-decoration: none;
+}
+.cal-day-tx-line--start-balance .cal-tx-label,
+.cal-day-tx-line--start-balance .cal-amt{
   text-decoration: underline dotted;
   text-underline-offset: 2px;
 }
@@ -5228,6 +5260,9 @@ body.account-setup-page .tx-add-vspace--lg{
 body.account-setup-page .account-setup-step3-form .reimbursable-field{
   margin-top: 8px;
 }
+body.account-setup-page .account-setup-step3-form .reimbursable-field__lead{
+  gap: calc(0.22 * 3 * 11px * 1.12);
+}
 body.account-setup-page .account-setup-step3-form .reimbursable-field__label{
   font-size: calc(11px * 1.12);
   font-weight: 400;
@@ -5263,13 +5298,6 @@ body.account-setup-page .account-setup-repeat-duo__stack{
 body.account-setup-page .account-setup-repeat-duo__label{
   display: block;
   margin: 0;
-  font-size: calc(11px * 1.12);
-  font-weight: 400;
-  letter-spacing: 0.04em;
-  text-transform: none;
-  color: #556173;
-  line-height: 1.3;
-  text-align: left;
 }
 body.account-setup-page .account-setup-repeat-duo .tx-add-recurrence-select{
   width: 100%;
