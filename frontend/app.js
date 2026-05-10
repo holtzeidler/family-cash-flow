@@ -1594,7 +1594,7 @@ const catReportEnd = document.getElementById("catReportEnd");
 
 // After account creation, we show a one-time "forecast is ready" modal on first calendar load.
 const BW_FORECAST_READY_POPUP_KEY = "bw_forecast_ready_popup";
-const BW_FORECAST_READY_MODAL_VERSION = "2";
+const BW_FORECAST_READY_MODAL_VERSION = "4";
 const catReportYearSelect = document.getElementById("catReportYearSelect");
 const catReportRunBtn = document.getElementById("catReportRunBtn");
 const catReportErr = document.getElementById("catReportErr");
@@ -7464,10 +7464,10 @@ function getTrialContinueMonthlyPriceDisplay() {
 }
 
 function setForecastReadyTrialPricing() {
-  const el = document.getElementById("bwForecastReadyPricing");
+  const el = document.getElementById("bwForecastReadyPricingLine");
   if (!el) return;
   const price = getTrialContinueMonthlyPriceDisplay();
-  el.textContent = `Continue for $${price}/month after trial.`;
+  el.textContent = `$${price}/month after trial unless canceled.`;
 }
 
 function ensureForecastReadyModal() {
@@ -7483,16 +7483,19 @@ function ensureForecastReadyModal() {
   wrap.setAttribute("aria-hidden", "true");
   wrap.innerHTML = `
     <div class="modal modal--choice modal--forecast-ready" role="dialog" aria-modal="true" aria-labelledby="bwForecastReadyTitle" aria-describedby="bwForecastReadyDesc">
-      <h3 id="bwForecastReadyTitle">Your forecast is ready.</h3>
+      <h3 id="bwForecastReadyTitle">✓ Your forecast is ready</h3>
       <div id="bwForecastReadyDesc" class="bw-forecast-ready__body">
-        <p class="bw-forecast-ready__trial-lead">Your free trial has started</p>
-        <p class="bw-forecast-ready__trial-sub">You now have 14 days to:</p>
-        <ul class="bw-forecast-ready__trial-list">
+        <p class="bw-forecast-ready__tagline">See what’s coming before it happens.</p>
+        <p class="bw-forecast-ready__can-now">You can now:</p>
+        <ul class="bw-forecast-ready__can-list">
           <li>forecast upcoming balances</li>
-          <li>track recurring bills</li>
-          <li>plan ahead with confidence</li>
+          <li>track recurring income &amp; bills</li>
+          <li>spot low-balance periods before they happen</li>
         </ul>
-        <p class="bw-forecast-ready__trial-pricing" id="bwForecastReadyPricing">Continue for $5.99/month after trial.</p>
+        <ul class="bw-forecast-ready__fine-list" aria-label="Trial and pricing">
+          <li>14-day free trial included.</li>
+          <li><span id="bwForecastReadyPricingLine">$5.99/month after trial unless canceled.</span></li>
+        </ul>
       </div>
       <div class="modal-actions bw-forecast-ready__actions">
         <button type="button" class="bw-forecast-ready__cta" id="bwForecastReadyCloseBtn">Start your free trial</button>
