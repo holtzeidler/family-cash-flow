@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=312" />
+    <link rel="stylesheet" href="./styles.css?v=313" />
   </head>
   <body class="landing-page">
     <div class="container">
@@ -38,11 +38,13 @@
       <main class="landing-main" aria-label="Welcome">
         <div class="landing-hero">
           <h2 class="landing-hero__text">Stop guessing how much cash you really have available.</h2>
-          <p class="landing-hero__sub">
-            Know what’s truly available to spend or move to savings, then reconcile your forecast when your balance changes—so transfers stay safe.
-          </p>
+          <p class="landing-hero__sub">Know what’s safe to spend, save, or transfer before bills hit.</p>
           <a href="https://balancewhiz.com/account-setup/?fresh=1" class="landing-hero__cta">Start Forecasting</a>
         </div>
+
+        <p class="landing-truth" role="note">
+          Most people check their balance without knowing what’s already committed.
+        </p>
 
         <section class="landing-preview" aria-label="Product preview">
           <div class="landing-preview__demo">
@@ -50,10 +52,17 @@
               <p class="landing-preview__eyebrow">Example BalanceWhiz insight</p>
             </header>
             <div class="landing-preview__insight" role="status" aria-label="Transfer recommendation">
-              <span class="landing-preview__insightKind">Transfer recommendation</span>
+              <div class="landing-preview__insightTop">
+                <span class="landing-preview__insightKind">Transfer recommendation</span>
+                <time class="landing-preview__insightStamp" datetime="2026-05-10T09:42">Updated today at 9:42 AM</time>
+              </div>
               <p class="landing-preview__insightText">
                 You could safely move <strong>$1,850</strong> to savings while keeping bills covered through May 31.
               </p>
+              <p class="landing-preview__insightSupport">
+                while maintaining a projected minimum balance of <strong>$2,184</strong>.
+              </p>
+              <p class="landing-preview__insightFresh">Forecast refreshed 2 minutes ago</p>
             </div>
 
             <div class="landing-preview__mock-row" aria-label="Product preview mockups">
@@ -63,6 +72,7 @@
                     <div class="landing-mock__title">Projected balance</div>
                     <div class="landing-mock__pill">Next 30 days</div>
                   </div>
+                  <p class="landing-mock__forecastFresh" aria-label="Forecast scope">Uses the same bills and income as your live forecast.</p>
 
                   <div class="landing-mock__cols landing-mock__cols--with-underchart">
                     <div class="landing-mock__col">
@@ -110,19 +120,19 @@
                     <div class="landing-mock__calReconBandMeta">
                       <span class="landing-mock__calReconEyebrow">Forecast accuracy</span>
                       <div class="landing-mock__calReconPills">
-                        <span class="landing-mock__calReconPill">Reconciled</span>
+                        <span class="landing-mock__calReconPill">Forecast reconciled</span>
                         <span class="landing-mock__calReconPill">Verified balance</span>
                       </div>
                     </div>
                     <p class="landing-mock__calReconLead">
                       <span class="landing-mock__calReconLeadIcon" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" width="22" height="22" focusable="false">
-                          <circle cx="12" cy="12" r="10" fill="currentColor" />
+                        <svg viewBox="0 0 24 24" width="24" height="24" focusable="false">
+                          <circle cx="12" cy="12" r="10.5" fill="currentColor" />
                           <path
                             d="M8 12.5l2.6 2.6L16.5 9.2"
                             fill="none"
                             stroke="#fff"
-                            stroke-width="2.2"
+                            stroke-width="2.35"
                             stroke-linecap="round"
                             stroke-linejoin="round"
                           />
@@ -130,6 +140,7 @@
                       </span>
                       <span class="landing-mock__calReconLeadText">Forecast reconciled through May 9</span>
                     </p>
+                    <p class="landing-mock__calReconSub">System verification matches your entered balance for this day.</p>
                   </div>
                   <div class="landing-mock__calDaynumPreview">
                     <span class="landing-mock__calDateText">Fri, May 9</span>
@@ -170,7 +181,7 @@
         <section class="landing-trust-row" aria-label="Quick highlights">
           <div class="landing-trust-row__inner" role="list" aria-label="Highlights">
             <div class="landing-trust-row__item" role="listitem"><span class="landing-trust-row__icon" aria-hidden="true">✓</span> No bank connection required</div>
-            <div class="landing-trust-row__item" role="listitem"><span class="landing-trust-row__icon" aria-hidden="true">✓</span> Add only what you want to track</div>
+            <div class="landing-trust-row__item" role="listitem"><span class="landing-trust-row__icon" aria-hidden="true">✓</span> Know what can safely leave checking</div>
             <div class="landing-trust-row__item" role="listitem"><span class="landing-trust-row__icon" aria-hidden="true">✓</span> Reconcile in seconds</div>
             <div class="landing-trust-row__item" role="listitem"><span class="landing-trust-row__icon" aria-hidden="true">✓</span> Cancel anytime</div>
           </div>
@@ -190,8 +201,8 @@
                 <div class="landing-how__stepBody">Quickly confirm your forecast still matches reality.</div>
               </li>
               <li>
-                <div class="landing-how__stepTitle">Know what’s safe to spend or transfer</div>
-                <div class="landing-how__stepBody">See future low points before moving money.</div>
+                <div class="landing-how__stepTitle">Move cash to savings without guessing</div>
+                <div class="landing-how__stepBody">See what can safely leave checking before you transfer.</div>
               </li>
             </ol>
           </div>
@@ -205,26 +216,27 @@
                 <div class="landing-why__cardTitle">Avoid overdrafts</div>
                 <div class="landing-why__cardBody">See future low points before they happen.</div>
               </div>
-              <div class="landing-why__card" role="listitem">
+              <div class="landing-why__card landing-why__card--featured" role="listitem">
                 <div class="landing-why__cardTitle">Know what can safely leave checking</div>
-                <div class="landing-why__cardBody">Move extra cash to savings without risking upcoming bills.</div>
+                <div class="landing-why__cardBody">Transfer to savings without guessing—BalanceWhiz keeps upcoming bills in view.</div>
               </div>
-              <div class="landing-why__card" role="listitem">
+              <div class="landing-why__card landing-why__card--featured" role="listitem">
                 <div class="landing-why__cardTitle">Keep your forecast accurate</div>
-                <div class="landing-why__cardBody">Quickly reconcile transactions so your forecast stays trustworthy.</div>
+                <div class="landing-why__cardBody">Reconcile in seconds so your numbers stay trustworthy when you move cash.</div>
               </div>
               <div class="landing-why__card" role="listitem">
-                <div class="landing-why__cardTitle">Keep more money earning interest</div>
-                <div class="landing-why__cardBody">Move extra cash confidently instead of leaving excess in checking.</div>
+                <div class="landing-why__cardTitle">Keep more cash earning interest</div>
+                <div class="landing-why__cardBody">Move extra cash confidently instead of leaving it idle in checking.</div>
               </div>
             </div>
           </div>
           </section>
-          <section class="landing-offer" aria-label="Build your forecast">
+          <section class="landing-offer landing-offer--calm" aria-label="Build your forecast">
             <div class="landing-offer__copy">
               <a class="landing-offer__title" href="https://balancewhiz.com/account-setup/?fresh=1">Build your forecast today</a>
+              <p class="landing-offer__tagline">14-day free trial, then $5.99/month.</p>
               <ul class="landing-offer__bullets" aria-label="Offer details">
-                <li>$5.99/month</li>
+                <li>No charge until the trial ends</li>
                 <li>Start forecasting immediately</li>
                 <li>Cancel anytime</li>
               </ul>

@@ -155,7 +155,18 @@ body.landing-page .landing-main{
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  padding: 32px 16px 48px;
+  padding: 26px 16px 38px;
+}
+body.landing-page .landing-truth{
+  width: min(100%, 30rem);
+  margin: 0.55rem auto 0.65rem;
+  padding: 0 0.5rem;
+  text-align: center;
+  font-size: clamp(0.9rem, 2vw, 0.98rem);
+  line-height: 1.5;
+  font-weight: 500;
+  color: rgba(55, 65, 60, 0.88);
+  letter-spacing: 0.01em;
 }
 body.landing-page .landing-hero{
   width: min(100%, 32rem);
@@ -184,7 +195,7 @@ body.landing-page .landing-hero__cta{
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  margin: 1rem auto 0;
+  margin: 0.78rem auto 0;
   padding: 0.72rem 1.35rem;
   min-height: 44px;
   font-weight: 700;
@@ -213,7 +224,7 @@ body.landing-page .landing-hero__cta:focus-visible{
 body.landing-page .landing-preview{
   width: 100%;
   max-width: min(52rem, 100%);
-  margin: 1.35rem auto 0;
+  margin: 1.02rem auto 0;
   align-self: center;
   display: block;
 }
@@ -238,21 +249,35 @@ body.landing-page .landing-preview__eyebrow{
   color: rgba(11, 61, 46, 0.78);
 }
 body.landing-page .landing-preview__insight{
-  margin: 0 0 1rem;
-  padding: 0.75rem 0.85rem 0.8rem 0.95rem;
+  margin: 0 0 0.85rem;
+  padding: 0.72rem 0.85rem 0.65rem 0.95rem;
   border-radius: 10px;
   border: 1px solid rgba(11, 61, 46, 0.14);
   border-left: 3px solid var(--accent);
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.94);
+}
+body.landing-page .landing-preview__insightTop{
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px 12px;
+  margin-bottom: 0.4rem;
 }
 body.landing-page .landing-preview__insightKind{
-  display: block;
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: rgba(11, 61, 46, 0.72);
-  margin-bottom: 0.35rem;
+}
+body.landing-page .landing-preview__insightStamp{
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  color: rgba(45, 72, 58, 0.62);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 body.landing-page .landing-preview__insightText{
   margin: 0;
@@ -261,10 +286,42 @@ body.landing-page .landing-preview__insightText{
   font-weight: 600;
   color: var(--text);
 }
+body.landing-page .landing-preview__insightSupport{
+  margin: 0.45rem 0 0;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  font-weight: 600;
+  color: rgba(45, 60, 52, 0.78);
+}
+body.landing-page .landing-preview__insightSupport strong{
+  font-weight: 800;
+  color: rgba(11, 61, 46, 0.92);
+  font-variant-numeric: tabular-nums;
+}
+body.landing-page .landing-preview__insightFresh{
+  margin: 0.45rem 0 0;
+  padding-top: 0.4rem;
+  border-top: 1px solid rgba(11, 61, 46, 0.08);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.03em;
+  color: rgba(45, 72, 58, 0.58);
+}
 body.landing-page .landing-preview__insightText strong{
   font-weight: 800;
   color: var(--accent);
   font-variant-numeric: tabular-nums;
+}
+body.landing-page .landing-preview .landing-mock__forecastFresh{
+  margin: -2px 0 8px;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  line-height: 1.35;
+  color: rgba(45, 72, 58, 0.56);
+}
+body.landing-page .landing-preview .landing-mock__chart{
+  background: rgba(11, 61, 46, 0.045);
 }
 body.landing-page .landing-preview__mock-row{
   width: 100%;
@@ -299,10 +356,10 @@ body.landing-page .landing-preview__mock--day .landing-mock__calPreview{
 }
 body.landing-page .landing-preview__mock--day .landing-mock__calReconBand{
   margin: 0 0 12px;
-  padding: 10px 10px 11px;
+  padding: 12px 11px 11px;
   border-radius: 10px;
-  border: 1px solid rgba(11, 61, 46, 0.14);
-  background: color-mix(in srgb, var(--ok) 7%, #fff 93%);
+  border: 1px solid rgba(11, 61, 46, 0.16);
+  background: color-mix(in srgb, var(--ok) 11%, #fafdfb 89%);
 }
 body.landing-page .landing-preview__mock--day .landing-mock__calReconBandMeta{
   display: flex;
@@ -310,14 +367,14 @@ body.landing-page .landing-preview__mock--day .landing-mock__calReconBandMeta{
   align-items: center;
   justify-content: space-between;
   gap: 8px 10px;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 body.landing-page .landing-preview__mock--day .landing-mock__calReconEyebrow{
   font-size: 9px;
   font-weight: 800;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: rgba(11, 61, 46, 0.62);
+  color: rgba(11, 61, 46, 0.68);
 }
 body.landing-page .landing-preview__mock--day .landing-mock__calReconPills{
   display: flex;
@@ -330,25 +387,34 @@ body.landing-page .landing-preview__mock--day .landing-mock__calReconPill{
   font-weight: 750;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  padding: 3px 7px;
+  padding: 4px 8px;
   border-radius: 999px;
-  border: 1px solid rgba(11, 61, 46, 0.18);
-  color: rgba(11, 61, 46, 0.85);
-  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid rgba(11, 61, 46, 0.2);
+  color: rgba(11, 61, 46, 0.9);
+  background: rgba(255, 255, 255, 0.88);
 }
 body.landing-page .landing-preview__mock--day .landing-mock__calReconLead{
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: 11px;
   margin: 0;
-  font-size: 13px;
-  font-weight: 800;
-  line-height: 1.35;
+  font-size: 14px;
+  font-weight: 850;
+  line-height: 1.32;
   color: var(--text);
+}
+body.landing-page .landing-preview__mock--day .landing-mock__calReconSub{
+  margin: 8px 0 0;
+  padding-top: 8px;
+  border-top: 1px solid rgba(11, 61, 46, 0.1);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: rgba(45, 72, 58, 0.68);
 }
 body.landing-page .landing-preview__mock--day .landing-mock__calReconLeadIcon{
   flex-shrink: 0;
-  margin-top: 1px;
+  margin-top: 0;
   color: var(--ok);
   line-height: 0;
 }
@@ -486,7 +552,7 @@ body.landing-page .landing-preview__mock--day .cal-day-tx-line .cal-tx-label{
 /* Landing: lightweight highlights row */
 .landing-trust-row{
   width: min(52rem, 100%);
-  margin: 1.65rem auto 0;
+  margin: 1.22rem auto 0;
   display: flex;
   justify-content: center;
   align-self: center;
@@ -546,11 +612,50 @@ body.landing-page .landing-preview__mock--day .cal-day-tx-line .cal-tx-label{
 /* Landing: sections below the example insight preview */
 body.landing-page .landing-below-preview{
   width: min(1400px, 96%);
-  margin: 34px auto 0;
+  margin: 25px auto 0;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 22px;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.18fr) minmax(0, 0.86fr);
+  gap: 17px;
   align-items: start;
+}
+body.landing-page .landing-below-preview .landing-how__title{
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: rgba(11, 61, 46, 0.72);
+  margin-bottom: 8px;
+}
+body.landing-page .landing-below-preview .landing-why__title{
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  color: rgba(11, 61, 46, 0.9);
+  margin-bottom: 14px;
+}
+body.landing-page .landing-below-preview .landing-why__card--featured{
+  padding: 17px 17px 16px;
+  border: 1px solid rgba(11, 61, 46, 0.22);
+  box-shadow: 0 3px 14px rgba(0, 0, 0, 0.055);
+}
+body.landing-page .landing-below-preview .landing-why__card--featured .landing-why__cardTitle{
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 0.01em;
+}
+body.landing-page .landing-offer--calm .landing-offer__title{
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+body.landing-page .landing-offer--calm .landing-offer__tagline{
+  margin: 6px 0 0;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.45;
+  color: rgba(75, 85, 99, 0.92);
+}
+body.landing-page .landing-offer--calm .landing-offer__bullets{
+  margin-top: 9px;
 }
 body.landing-page .landing-below-preview > section{
   width: 100%;
@@ -579,8 +684,13 @@ body.landing-page .landing-below-preview .landing-offer__bullets{
 
 @media (max-width: 980px){
   body.landing-page .landing-below-preview{
-    grid-template-columns: 1fr;
-    margin-top: 26px;
+    display: flex;
+    flex-direction: column;
+    margin-top: 20px;
+    gap: 16px;
+  }
+  body.landing-page .landing-below-preview .landing-why{
+    order: -1;
   }
   body.landing-page .landing-below-preview .landing-why__grid{
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -804,7 +914,7 @@ body.landing-page .landing-below-preview .landing-offer__bullets{
 }
 @media (max-width: 860px){
   body.landing-page .landing-preview{
-    margin-top: 1.1rem;
+    margin-top: 0.85rem;
     max-width: 100%;
   }
   body.landing-page .landing-preview__demo{
