@@ -9,6 +9,8 @@
   /* Palette */
   /* Forest green accent (replaces light blue theme accent) */
   --accent:#0B3D2E;
+  /* Prominent outline for primary surface cards (auth, wizard, panels). */
+  --card-border-accent: 2px solid #0B4F3A;
   --danger:#a73744; /* darker maroon-leaning red */
   --ok:#005a4a;     /* green from palette */
   --border: rgba(0,0,0,0.10);
@@ -45,17 +47,17 @@ body.signup-page .card{
 /* Login page: match calendar white surface + dark green outline */
 body.login-page .auth-section.card{
   background: var(--cal-surface);
-  border: 2px solid var(--accent);
+  border: var(--card-border-accent);
   box-shadow:
     0 2px 8px rgba(11, 61, 46, 0.08),
     0 12px 32px rgba(0, 0, 0, 0.1);
 }
-body.login-page .container > .grid{
-  /* Space between header and cards */
-  margin-top: 54px;
+/* Space between header and cards; pull column up ~10% viewport (login, signup, account setup wizard). */
+body.login-page:not(.signup-page):not(.invite-page) .container > .grid{
+  margin-top: calc(54px - 10vh);
 }
-body.login-page.signup-page .container > .grid{
-  margin-top: 36px;
+body.login-page.signup-page:not(.account-setup-page):not(.invite-page) .container > .grid{
+  margin-top: calc(36px - 10vh);
 }
 
 /* Account setup: ultra-soft elevation (wizard shell + in-flow card tiles) */
@@ -77,6 +79,7 @@ body.account-setup-page .container > .grid{
   width: min(640px, 94%);
   margin-left: auto;
   margin-right: auto;
+  margin-top: calc(36px - 10vh);
 }
 
 body.login-page .top-nav__inner--simple{
@@ -219,7 +222,7 @@ body.landing-page .landing-preview__mock.card{
   width: 100%;
   margin-left: 0;
   background: var(--cal-surface);
-  border: 1px solid rgba(0,0,0,0.10);
+  border: var(--card-border-accent);
   box-shadow: 0 13px 34px rgba(0,0,0,0.12);
   padding: 11px 11px 10px;
 }
@@ -373,7 +376,7 @@ body.landing-page .landing-below-preview .landing-offer__bullets{
 }
 .landing-why__card{
   border-radius: 14px;
-  border: 1px solid rgba(0,0,0,0.10);
+  border: var(--card-border-accent);
   background: var(--cal-surface);
   box-shadow: 0 10px 28px rgba(0,0,0,0.08);
   padding: 14px 14px;
@@ -1850,7 +1853,7 @@ button.nav-link:hover{
 }
 
 .card{
-  border: 1px solid var(--border);
+  border: var(--card-border-accent);
   background: var(--card);
   border-radius: 14px;
   padding: 14px;
@@ -3481,7 +3484,7 @@ body.account-setup-page .account-setup-wizard__subeyebrow{
 body.account-setup-page .account-setup-wizard__dots{
   display: flex;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
   margin: 0 0 8px;
 }
 body.account-setup-page .account-setup-wizard__roadmap{
@@ -3500,15 +3503,15 @@ body.account-setup-page .account-setup-wizard__roadmap-kicker{
   margin-right: 0.28em;
 }
 body.account-setup-page .account-setup-wizard__dot{
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
   border-radius: 999px;
   background: rgba(0, 0, 0, 0.16);
   flex-shrink: 0;
 }
 body.account-setup-page .account-setup-wizard__dot.is-active{
   background: var(--accent);
-  transform: scale(1.12);
+  transform: scale(1.1);
 }
 body.account-setup-page .account-setup-wizard__shell{
   padding: 0;
@@ -3609,9 +3612,9 @@ body.account-setup-page .account-setup-wizard__panel > *{
 body.account-setup-page .account-setup-wizard__panel.auth-section__body{
   padding: 14px 12px;
 }
-/* Step 1: compact; card height follows content */
+/* Step 1: title + fields from top (matches checking-account step) */
 body.account-setup-page #accountSetupWizardPanel0{
-  justify-content: center;
+  justify-content: flex-start;
 }
 body.account-setup-page #accountSetupWizardPanel1,
 body.account-setup-page #accountSetupWizardPanel2{
@@ -3625,9 +3628,9 @@ body.account-setup-page #accountSetupWizardPanel2[data-step3-phase="intro"].acco
   min-height: var(--as-compact-card-minh);
 }
 
-/* Step 1: center fields vertically within the compact baseline */
+/* Step 1: align content from top within the compact baseline */
 body.account-setup-page #accountSetupWizardPanel0.account-setup-wizard__panel{
-  justify-content: center;
+  justify-content: flex-start;
 }
 
 /* Account setup: stacked accordion cards (legacy) */
@@ -3828,14 +3831,6 @@ body.account-setup-page .account-setup-step2-lede{
   margin: 0 0 12px;
   text-align: center;
   font-weight: 700;
-}
-body.account-setup-page #accountSetupWizardPanel1 .account-setup-field-hint{
-  margin: 8px 0 0;
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 1.4;
-  color: var(--muted);
-  max-width: 28rem;
 }
 body.account-setup-page #accountSetupWizardPanel1 .form-row-h__field input#accountName{
   cursor: text;
@@ -4627,7 +4622,7 @@ body.plans-page .container > .grid{
   padding: 0;
   overflow: hidden;
   box-shadow: 0 10px 28px rgba(0,0,0,0.10);
-  border-color: rgba(0,0,0,0.12);
+  border: var(--card-border-accent);
   display: flex;
   flex-direction: column;
   min-height: 468px;
