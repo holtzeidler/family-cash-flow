@@ -439,6 +439,100 @@ body.landing-page .landing-below-preview .landing-offer__bullets{
   display: grid;
   gap: 6px;
 }
+.landing-mock__split{
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 16px;
+}
+.landing-mock__main{
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 380px;
+}
+.landing-mock__day-card{
+  flex: 1 1 200px;
+  min-width: 188px;
+  max-width: 248px;
+  align-self: flex-start;
+  padding: 10px 10px 9px;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  background: rgba(255, 255, 255, 0.65);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+.landing-mock__dayCardHead{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+.landing-mock__dayDate{
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: 0.01em;
+}
+.landing-mock__dayReconciled{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+  color: #fff;
+  background: var(--ok);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+}
+.landing-mock__dayTxList{
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--text);
+}
+.landing-mock__dayTxList li{
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 5px 6px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  background: rgba(0, 0, 0, 0.02);
+}
+.landing-mock__dayTxName{
+  min-width: 0;
+}
+.landing-mock__dayTxAmt{
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  color: rgba(17, 24, 39, 0.82);
+}
+.landing-mock__dayBalance{
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(17, 24, 39, 0.78);
+  text-align: right;
+}
+.landing-mock__dayBalance strong{
+  font-size: 15px;
+  font-weight: 900;
+  color: var(--accent);
+  margin-left: 4px;
+}
 .landing-mock__head{
   display: flex;
   align-items: center;
@@ -480,15 +574,15 @@ body.landing-page .landing-below-preview .landing-offer__bullets{
   gap: 11px;
 }
 .landing-mock__cols--with-underchart{
-  /* allow an extra row under the "Future low point" column */
+  /* allow an extra row under the savings / chart column */
   grid-auto-rows: min-content;
 }
-.landing-mock__chart--under-low{
+.landing-mock__chart--under-savings{
   grid-column: 2;
   margin-top: -2px;
   padding: 5px 6px;
 }
-.landing-mock__chart--under-low .landing-mock__svg{
+.landing-mock__chart--under-savings .landing-mock__svg{
   height: 74px;
 }
 .landing-mock__label{
@@ -523,23 +617,40 @@ body.landing-page .landing-below-preview .landing-offer__bullets{
 .landing-mock__list li > span:last-child{
   padding-right: 8px;
 }
-.landing-mock__low{
-  padding: 10px 10px;
+.landing-mock__savings{
+  padding: 10px 10px 9px;
   border-radius: 10px;
-  border: 1px solid rgba(167,55,68,0.25);
-  background: rgba(167,55,68,0.08);
+  border: 1px solid color-mix(in srgb, var(--ok) 35%, rgba(0, 0, 0, 0.08));
+  background: color-mix(in srgb, var(--ok) 10%, rgba(255, 255, 255, 0.92));
 }
-.landing-mock__lowAmt{
+.landing-mock__savingsKicker{
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  color: rgba(11, 61, 46, 0.88);
+  line-height: 1.25;
+  margin-bottom: 4px;
+}
+.landing-mock__savingsAmt{
   font-size: 21px;
   font-weight: 900;
-  color: #7f1d1d;
+  color: var(--accent);
   line-height: 1.1;
 }
-.landing-mock__lowMeta{
-  margin-top: 2px;
-  font-size: 13px;
-  font-weight: 700;
-  color: rgba(127,29,29,0.85);
+.landing-mock__savingsMeta{
+  margin: 8px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: rgba(17, 24, 39, 0.72);
+}
+.landing-mock__savingsFoot{
+  margin: 8px 0 0;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: rgba(75, 85, 99, 0.88);
 }
 @media (max-width: 860px){
   body.landing-page .landing-preview{
@@ -562,9 +673,16 @@ body.landing-page .landing-below-preview .landing-offer__bullets{
   .landing-mock__cols{
     grid-template-columns: 1fr;
   }
-  .landing-mock__chart--under-low{
+  .landing-mock__chart--under-savings{
     grid-column: auto;
     margin-top: 8px;
+  }
+  .landing-mock__main{
+    max-width: none;
+  }
+  .landing-mock__day-card{
+    max-width: none;
+    width: 100%;
   }
 }
 
