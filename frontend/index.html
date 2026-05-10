@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=317" />
+    <link rel="stylesheet" href="./styles.css?v=319" />
   </head>
   <body class="landing-page">
     <div class="container">
@@ -59,7 +59,7 @@
                 You could safely move <strong>$1,850</strong> to savings while keeping bills covered through May 31.
               </p>
               <p class="landing-preview__insightSupport">
-                while maintaining a projected minimum balance of <strong>$2,184</strong>.
+                Projected minimum balance stays at <strong>$2,184</strong>.
               </p>
               <p class="landing-preview__insightFresh">Forecast refreshed 2 minutes ago</p>
             </div>
@@ -99,6 +99,7 @@
                         <text x="12" y="128" class="landing-mock__chartCap" fill="rgba(120,55,60,0.65)">Future low</text>
                         <!-- Projected balance path: dip then recovery (cash rhythm) -->
                         <path
+                          class="landing-mock__curve"
                           d="M10,116 C78,112 130,124 188,118 C248,108 292,132 338,114 C392,92 452,72 510,52"
                           fill="none"
                           stroke="#0B3D2E"
@@ -226,15 +227,15 @@
             <ol class="landing-how__steps">
               <li>
                 <div class="landing-how__stepTitle">Add income and bills</div>
-                <div class="landing-how__stepBody">A few minutes sets the baseline.</div>
+                <div class="landing-how__stepBody">Set your baseline in minutes.</div>
               </li>
               <li>
                 <div class="landing-how__stepTitle">Reconcile to your real balance</div>
-                <div class="landing-how__stepBody">Keeps the forecast verified against what you actually have.</div>
+                <div class="landing-how__stepBody">Match the forecast to what you actually have.</div>
               </li>
               <li>
                 <div class="landing-how__stepTitle">Move cash when it’s safe</div>
-                <div class="landing-how__stepBody">See what can leave checking before you transfer.</div>
+                <div class="landing-how__stepBody">Know what can leave checking before you transfer.</div>
               </li>
             </ol>
           </div>
@@ -250,15 +251,15 @@
               </div>
               <div class="landing-why__card landing-why__card--featured" role="listitem">
                 <div class="landing-why__cardTitle">Know what can safely leave checking</div>
-                <div class="landing-why__cardBody">Move cash confidently while keeping bills covered.</div>
+                <div class="landing-why__cardBody">Move cash while keeping bills covered.</div>
               </div>
               <div class="landing-why__card landing-why__card--featured" role="listitem">
                 <div class="landing-why__cardTitle">Keep your forecast accurate</div>
-                <div class="landing-why__cardBody">Stay aligned as balances change.</div>
+                <div class="landing-why__cardBody">Stay aligned when balances change.</div>
               </div>
               <div class="landing-why__card" role="listitem">
                 <div class="landing-why__cardTitle">Keep more cash earning interest</div>
-                <div class="landing-why__cardBody">Shift idle checking to savings when the math says it’s safe.</div>
+                <div class="landing-why__cardBody">Shift idle checking when the math says it’s safe.</div>
               </div>
             </div>
           </div>
@@ -270,7 +271,7 @@
                 <span class="landing-offer__trial">14-day free trial</span><span class="landing-offer__price">, then $5.99/month.</span>
               </p>
               <ul class="landing-offer__bullets" aria-label="Offer details">
-                <li>No charge until the trial ends</li>
+                <li>Not billed until the trial ends</li>
                 <li>Start in minutes</li>
                 <li>Cancel anytime</li>
               </ul>
