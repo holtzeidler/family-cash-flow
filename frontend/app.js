@@ -899,6 +899,8 @@ const tmFrequency = document.getElementById("tmFrequency");
 const tmMinAmt = document.getElementById("tmMinAmt");
 const tmMaxAmt = document.getElementById("tmMaxAmt");
 const tmSummaryLine = document.getElementById("tmSummaryLine");
+const tmInsightsEl = document.getElementById("tmInsights");
+const tmPrimaryAction = document.getElementById("tmPrimaryAction");
 const tmCategory = document.getElementById("tmCategory");
 const tmMoreFiltersBtn = document.getElementById("tmMoreFiltersBtn");
 const tmAdvancedFilters = document.getElementById("tmAdvancedFilters");
@@ -2489,6 +2491,8 @@ if (addCategoryGroupBtn) {
   function showAddGroupInline(showIt) {
     if (addGroupInline) addGroupInline.hidden = !showIt;
     if (addCategoryGroupBtn) addCategoryGroupBtn.style.display = showIt ? "none" : "inline-flex";
+    const focusNewCatBtn = document.getElementById("focusNewCategoryBtn");
+    if (focusNewCatBtn) focusNewCatBtn.style.display = showIt ? "none" : "inline-flex";
     if (showIt && newGroupName) {
       newGroupName.value = "";
       try {
@@ -2506,6 +2510,20 @@ if (addCategoryGroupBtn) {
     cancelGroupBtn.addEventListener("click", () => {
       show(catErr, "");
       showAddGroupInline(false);
+    });
+  }
+
+  const focusNewCategoryBtn = document.getElementById("focusNewCategoryBtn");
+  const newCategoryNameEl = document.getElementById("newCategoryName");
+  if (focusNewCategoryBtn && newCategoryNameEl) {
+    focusNewCategoryBtn.addEventListener("click", () => {
+      try {
+        document.querySelector(".categories-actions")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      } catch (_) {}
+      try {
+        newCategoryNameEl.focus();
+        newCategoryNameEl.select();
+      } catch (_) {}
     });
   }
 
@@ -3278,6 +3296,21 @@ for (const btn of tmChips || []) {
   } catch (_) {}
 }
 
+if (tmPrimaryAction) {
+  tmPrimaryAction.addEventListener("click", () => {
+    const mode = String(tmPrimaryAction.dataset.tmAction || "add");
+    if (mode === "uncat") {
+      tmApplyQuickView("uncategorized");
+      tmRefetchAndRender();
+      requestAnimationFrame(() => {
+        document.querySelector(".tm__uncat")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    } else {
+      openTxAddModal({});
+    }
+  });
+}
+
 async function saveUncategorizedAssignments() {
   try {
     if (uncatTxErr) show(uncatTxErr, "");
@@ -3438,30 +3471,170 @@ function countTmExpectedOccurrencesInNextDays(days) {
   return n;
 }
 
-function refreshTmSummaryStrip() {
-  if (!tmSummaryLine) return;
-  const parts = [];
+function tmUniqueExpectedMap() {
+  const byId = new Map();
+  for (const tx of state.expectedTransactions || []) {
+    const id = Number(tx?.id);
+    if (id) byId.set(id, tx);
+  }
+  return byId;
+}
+
+function tmCountUncategorizedActual() {
+  return (state.upcomingActualItems || []).filter((t) => {
+    const cid = t && t.category_id;
+    return cid == null || cid === "" || Number(cid) === 0;
+  }).length;
+}
+
+function tmCountLargeHitsBetween(todayIso, endIso, kindFilter, minAbs) {
+  let n = 0;
+  for (const t of state.upcomingActualItems || []) {
+    const iso = normalizeIsoDate(t?.date) || String(t?.date || "");
+    if (!iso || iso < todayIso || iso > endIso) continue;
+    if (String(t.kind || "") !== kindFilter) continue;
+    if (Math.abs(Number(t.amount) || 0) < minAbs) continue;
+    n++;
+  }
+  const byId = tmUniqueExpectedMap();
+  for (const tx of byId.values()) {
+    const eff = effectiveNextOccurrenceListFields(tx);
+    const nextIso = nextOccurrenceIsoForRecurringList(tx, todayIso);
+    if (!nextIso || nextIso < todayIso || nextIso > endIso) continue;
+    if (String(eff.kind || "") !== kindFilter) continue;
+    if (Math.abs(Number(eff.amount) || 0) < minAbs) continue;
+    n++;
+  }
+  return n;
+}
+
+function tmAmtModifierClass(kind, amount) {
+  const abs = Math.abs(Number(amount) || 0);
+  const k = String(kind || "expense");
+  const large = (k === "expense" && abs >= 500) || (k === "income" && abs >= 800);
+  return large ? "tm-amt--standout" : "tm-amt--calm";
+}
+
+function refreshTmChipCounts() {
+  if (!tmChips || !tmChips.length) return;
   const today = toISODate(new Date());
   const d30 = new Date();
   d30.setDate(d30.getDate() + 30);
   const end30 = toISODate(d30);
+  const end365 = toISODate((() => {
+    const x = new Date();
+    x.setDate(x.getDate() + 365);
+    return x;
+  })());
 
-  const uncatN = (state.upcomingActualItems || []).filter((t) => {
-    const cid = t && t.category_id;
-    return cid == null || cid === "" || Number(cid) === 0;
-  }).length;
-  if (uncatN > 0) parts.push(`${uncatN} uncategorized`);
+  const uncat = tmCountUncategorizedActual();
+  const recurringN = tmUniqueExpectedMap().size;
 
-  const actual30 = (state.upcomingActualItems || []).filter((t) => {
+  let up30 = 0;
+  for (const t of state.upcomingActualItems || []) {
     const iso = normalizeIsoDate(t?.date) || String(t?.date || "");
-    return iso && iso >= today && iso <= end30;
-  }).length;
-  const exp30 = countTmExpectedOccurrencesInNextDays(30);
-  const upN = actual30 + exp30;
-  if (upN > 0) parts.push(`${upN} upcoming in next 30 days`);
+    if (iso && iso >= today && iso <= end30) up30++;
+  }
+  up30 += countTmExpectedOccurrencesInNextDays(30);
 
-  const yearlyN = (state.expectedTransactions || []).filter((t) => String(t?.recurrence || "") === "yearly").length;
-  if (yearlyN > 0) parts.push(`${yearlyN} annual bill${yearlyN === 1 ? "" : "s"}`);
+  const annualN = [...tmUniqueExpectedMap().values()].filter((t) => String(t?.recurrence || "") === "yearly").length;
+
+  const largeN = tmCountLargeHitsBetween(today, end365, "expense", 500);
+
+  /** @type {Record<string, number>} */
+  const counts = {
+    uncategorized: uncat,
+    recurring: recurringN,
+    upcoming30: up30,
+    annual: annualN,
+    large: largeN,
+  };
+
+  for (const btn of tmChips) {
+    const k = String(btn?.dataset?.tmView || "");
+    const el = btn.querySelector(".tm-chip__count");
+    if (!el) continue;
+    const n = counts[k];
+    if (n == null || !Number.isFinite(n)) {
+      el.textContent = "";
+      continue;
+    }
+    el.textContent = n > 0 ? ` (${n})` : "";
+  }
+}
+
+function refreshTmInsights() {
+  if (!tmInsightsEl) return;
+  const today = toISODate(new Date());
+  const end14 = toISODate((() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 14);
+    return d;
+  })());
+  const large14 = tmCountLargeHitsBetween(today, end14, "expense", 500);
+  const annualSoon = (() => {
+    let n = 0;
+    const end45 = toISODate((() => {
+      const d = new Date();
+      d.setDate(d.getDate() + 45);
+      return d;
+    })());
+    for (const tx of tmUniqueExpectedMap().values()) {
+      if (String(tx?.recurrence || "") !== "yearly") continue;
+      const nextIso = nextOccurrenceIsoForRecurringList(tx, today);
+      if (!nextIso || nextIso < today || nextIso > end45) continue;
+      n++;
+    }
+    return n;
+  })();
+  const uncat = tmCountUncategorizedActual();
+
+  const lines = [];
+  if (large14 > 0) {
+    lines.push(`${large14} large expense${large14 === 1 ? "" : "s"} in the next 14 days`);
+  }
+  if (annualSoon > 0) {
+    lines.push(`${annualSoon} annual bill${annualSoon === 1 ? "" : "s"} due soon`);
+  }
+  if (uncat > 0) {
+    lines.push(`${uncat} transaction${uncat === 1 ? "" : "s"} still uncategorized`);
+  }
+
+  if (!lines.length) {
+    tmInsightsEl.innerHTML = "";
+    tmInsightsEl.hidden = true;
+    return;
+  }
+  tmInsightsEl.innerHTML = lines.map((t) => `<span class="tm-insight">${escapeHtml(t)}</span>`).join("");
+  tmInsightsEl.hidden = false;
+}
+
+function refreshTmPrimaryAction() {
+  if (!tmPrimaryAction) return;
+  const uncat = tmCountUncategorizedActual();
+  if (uncat > 0) {
+    tmPrimaryAction.dataset.tmAction = "uncat";
+    tmPrimaryAction.textContent = "Review uncategorized";
+    tmPrimaryAction.title = `${uncat} transaction${uncat === 1 ? "" : "s"} need a category`;
+  } else {
+    tmPrimaryAction.dataset.tmAction = "add";
+    tmPrimaryAction.textContent = "Add transaction";
+    tmPrimaryAction.title = "Add a one-time or recurring transaction";
+  }
+}
+
+function refreshTmSummaryStrip() {
+  if (!tmSummaryLine) return;
+  refreshTmChipCounts();
+  refreshTmInsights();
+  refreshTmPrimaryAction();
+
+  const parts = [];
+  let rowCount = 0;
+  try {
+    rowCount = txListMain ? txListMain.querySelectorAll(".tm-row").length : 0;
+  } catch (_) {}
+  if (rowCount > 0) parts.push(`${rowCount} in this list`);
 
   const varN = (state.expectedTransactions || []).filter(
     (t) => t && (!!t.variable || t.next_occurrence_variable === true),
@@ -5098,7 +5271,7 @@ function renderCategoriesGrid(tree) {
   if (!groups.length) {
     const empty = document.createElement("div");
     empty.className = "pill";
-    empty.textContent = "No category groups yet. Use “Add group”.";
+    empty.textContent = "No category groups yet. Use + Add group.";
     categoriesTree.appendChild(empty);
     return;
   }
@@ -5242,7 +5415,9 @@ function renderCategoriesGrid(tree) {
     const editBtn = document.createElement("button");
     editBtn.type = "button";
     editBtn.className = "cat-group-edit-btn";
-    editBtn.textContent = "Edit";
+    editBtn.setAttribute("aria-label", "Edit group");
+    editBtn.innerHTML =
+      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M12 20h9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M16.5 3.5a2.12 2.12 0 013 3L9 17l-4 1 1-4 10.5-10.5z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>';
     editBtn.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -5621,11 +5796,13 @@ function renderAccountsList(accounts) {
     el.innerHTML = `
       <div class="left">
         <div class="desc">${escapeHtml(a.name)}</div>
-        <div class="meta">${typeLabel} · Starting: $${fmtMoney(a.starting_balance)} on ${escapeHtml(fmtDateMDY(startDate))}</div>
+        <div class="settings-account-row__bal">$${fmtMoney(a.starting_balance)}</div>
+        <div class="meta">${typeLabel} · Starting balance dated ${escapeHtml(fmtDateMDY(startDate))}</div>
       </div>
       <div class="row-actions">
-        <div class="amt">${fmtMoney(a.starting_balance)}</div>
-        <button type="button" class="edit-account-btn" data-account-id="${a.id}">Edit</button>
+        <button type="button" class="edit-account-btn" data-account-id="${a.id}" aria-label="Edit account">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M12 20h9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M16.5 3.5a2.12 2.12 0 013 3L9 17l-4 1 1-4 10.5-10.5z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+        </button>
       </div>
     `;
     accountsList.appendChild(el);
@@ -6288,10 +6465,10 @@ function renderUpcomingTransactionsFiltered() {
 
       const cStatus = document.createElement("div");
       cStatus.className = "tm-col tm-col--status";
-      cStatus.innerHTML = `<span class="tm-badge ${isUncat ? "is-warn" : "is-ok"}">${isUncat ? "Uncategorized" : "Confirmed"}</span>`;
+      cStatus.innerHTML = `<span class="tm-badge ${isUncat ? "is-warn" : "is-soft is-ok"}">${isUncat ? "Uncategorized" : "Confirmed"}</span>`;
 
       const cAmt = document.createElement("div");
-      cAmt.className = `tm-col tm-col--amt ${tx.kind === "income" ? "income" : "expense"}`;
+      cAmt.className = `tm-col tm-col--amt ${tx.kind === "income" ? "income" : "expense"} ${tmAmtModifierClass(tx.kind, tx.amount)}`;
       cAmt.textContent = `${tx.kind === "income" ? "+" : "-"}$${fmtMoney(tx.amount)}`;
 
       row.appendChild(cDate);
@@ -6330,7 +6507,6 @@ function renderUpcomingTransactionsFiltered() {
     const cn = effectiveTransactionCategoryName(tx) || "";
     const metaBits = [];
     metaBits.push(cn.trim() ? cn.trim() : "Uncategorized");
-    if (eff.variable) metaBits.push("Variable amount");
     d2.textContent = metaBits.join(" · ");
     cDesc.appendChild(d1);
     cDesc.appendChild(d2);
@@ -6341,10 +6517,18 @@ function renderUpcomingTransactionsFiltered() {
 
     const cStatus = document.createElement("div");
     cStatus.className = "tm-col tm-col--status";
-    cStatus.innerHTML = `<span class="tm-badge ${isUncat ? "is-warn" : "is-muted"}">${isUncat ? "Uncategorized" : "Upcoming"}</span>`;
+    let statusHtml = "";
+    if (isUncat) {
+      statusHtml = `<span class="tm-badge is-warn">Uncategorized</span>`;
+    } else if (eff.variable) {
+      statusHtml = `<span class="tm-badge is-accent">Variable amount</span>`;
+    } else {
+      statusHtml = `<span class="tm-badge is-muted is-soft">Upcoming</span>`;
+    }
+    cStatus.innerHTML = statusHtml;
 
     const cAmt = document.createElement("div");
-    cAmt.className = `tm-col tm-col--amt ${eff.kind === "income" ? "income" : "expense"}`;
+    cAmt.className = `tm-col tm-col--amt ${eff.kind === "income" ? "income" : "expense"} ${tmAmtModifierClass(eff.kind, eff.amount)}`;
     cAmt.textContent = `${eff.kind === "income" ? "+" : "-"}$${fmtMoney(eff.amount)}`;
 
     row.appendChild(cDate);
@@ -6669,6 +6853,25 @@ function renderTotals(totals) {
   const income = totals?.income ?? 0;
   const expense = totals?.expense ?? 0;
   const net = totals?.net ?? 0;
+
+  if (totalsEl.classList.contains("totals--compact")) {
+    totalsEl.innerHTML = `
+      <div class="totals-compact">
+        <div class="totals-compact__row">
+          <span class="totals-compact__k">Income</span>
+          <span class="totals-compact__v ok">$${fmtMoney(income)}</span>
+        </div>
+        <div class="totals-compact__row">
+          <span class="totals-compact__k">Expenses</span>
+          <span class="totals-compact__v danger">$${fmtMoney(expense)}</span>
+        </div>
+        <div class="totals-compact__row totals-compact__row--net">
+          <span class="totals-compact__k">Net</span>
+          <span class="totals-compact__v ${net >= 0 ? "ok" : "danger"}">$${fmtMoney(net)}</span>
+        </div>
+      </div>`;
+    return;
+  }
 
   const incomeEl = document.createElement("div");
   incomeEl.className = "total";
@@ -7650,6 +7853,34 @@ function renderCalendar() {
     return txSortAmountDesc(a, b);
   }
 
+  /** Larger score = show first when the day is collapsed (income + large expenses beat transfers). */
+  function calendarTxnPriority(row) {
+    if (row && row._type === "start_balance") return 1e12;
+    const amt = Math.abs(Number(row.amount ?? 0));
+    const isInc = String(row.kind) === "income";
+    const isExpected = row && row._type === "expected";
+    let cat = "";
+    try {
+      cat = String(effectiveTransactionCategoryName(row) || "").toLowerCase();
+    } catch (_) {
+      cat = "";
+    }
+    const desc = String(row.description || "").toLowerCase();
+    const isXfer =
+      cat.includes("transfer") ||
+      cat.includes("xfer") ||
+      desc.includes("transfer") ||
+      desc.includes("xfer") ||
+      /\bxfr\b/.test(desc);
+    let p = amt;
+    if (isInc) p += 250000;
+    else p += 80000;
+    if (!isInc && amt >= 1500) p += 40000;
+    if (isExpected) p *= 0.82;
+    if (isXfer) p *= 0.28;
+    return p;
+  }
+
   // Sort transactions within each day.
   for (const arr of actualTxsByDate.values()) {
     arr.sort(txSortAmountDesc);
@@ -7726,8 +7957,8 @@ function renderCalendar() {
       totalCells = 35;
     }
   }
-  const MIN_CELL_H = 168;
-  const MAX_VISIBLE_TXNS = 3;
+  const MIN_CELL_H = 162;
+  const MAX_VISIBLE_TXNS = 2;
   const minBalFloor = readStoredMinBalanceThresholdForReports();
   /** @type {HTMLElement[]} */
   const cells = [];
@@ -7789,7 +8020,15 @@ function renderCalendar() {
       for (const item of expectedItems) combined.push({ ...item, _type: "expected" });
       for (const tx of actualTxs) combined.push({ ...tx, _type: "actual" });
       for (const sb of startBalancesByDate.get(iso) || []) combined.push(sb);
-      combined.sort(txSortCalendarDayImpact);
+      combined.sort((a, b) => {
+        const aSb = a && a._type === "start_balance" ? 1 : 0;
+        const bSb = b && b._type === "start_balance" ? 1 : 0;
+        if (aSb !== bSb) return bSb - aSb;
+        const pa = calendarTxnPriority(a);
+        const pb = calendarTxnPriority(b);
+        if (pb !== pa) return pb - pa;
+        return txSortCalendarDayImpact(a, b);
+      });
     }
 
     if (showDetails) {
@@ -7808,7 +8047,14 @@ function renderCalendar() {
           : isStartBalance
             ? "cal-day-tx-line cal-day-tx-line--start-balance"
             : "cal-day-tx-line cal-tx-part";
-        if (isExpanded && vri >= 2) line.classList.add("cal-day-tx-line--deemph");
+        if (isExpanded) {
+          if (vri === 0) line.classList.add("cal-day-tx-line--primary");
+          else if (vri === 1) line.classList.add("cal-day-tx-line--secondary");
+          else if (vri >= 2) line.classList.add("cal-day-tx-line--deemph");
+        } else {
+          if (vri === 0) line.classList.add("cal-day-tx-line--primary");
+          else if (vri === 1) line.classList.add("cal-day-tx-line--secondary");
+        }
         for (const p of calendarDayTxLineToneParts(row)) line.classList.add(p);
         if (isExpected && row.variable) line.classList.add("cal-expected-variable");
         if (!isExpected && !isStartBalance) line.dataset.txId = String(row.id);
@@ -7885,13 +8131,40 @@ function renderCalendar() {
       }
     }
 
+    if (!showDetails || combined.length === 0) {
+      cell.classList.add("cal-cell--no-tx");
+    }
+
     const dayBal = state.monthDailyBalances.get(iso);
 
     if (dayBal && metricsEl) {
       const endNum = Number(dayBal.end ?? 0);
-      const negClass = Number.isFinite(endNum) && endNum < 0 ? " is-negative" : "";
-      const pastClass = !isOutOfMonth && isPast && Number.isFinite(endNum) && endNum >= 0 ? " is-past" : "";
-      const mutedClass = isOutOfMonth && Number.isFinite(endNum) && endNum >= 0 ? " is-muted" : "";
+      const balParts = ["cal-stat", "cal-balance"];
+      if (Number.isFinite(endNum)) {
+        if (endNum < 0) {
+          balParts.push("is-negative", "cal-balance--risk");
+        } else if (isOutOfMonth) {
+          balParts.push("is-muted");
+        } else {
+          const hasFloor = minBalFloor != null && Number.isFinite(minBalFloor) && minBalFloor > 0;
+          if (hasFloor && endNum < minBalFloor) {
+            balParts.push("cal-balance--below-floor");
+          } else if (hasFloor && endNum < minBalFloor * 1.25) {
+            balParts.push("cal-balance--watch-zone");
+          } else if (monthLowPointIso === iso) {
+            balParts.push("cal-balance--month-low-mark");
+          } else if (isPast) {
+            balParts.push("cal-balance--quiet", "cal-balance--past-day");
+          } else {
+            balParts.push("cal-balance--quiet");
+          }
+        }
+      }
+      const balanceClass = balParts.join(" ");
+      const riskIcon =
+        Number.isFinite(endNum) && endNum < 0
+          ? `<span class="cal-balance-risk-icon" aria-hidden="true"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M8 2.25L14 13.75H2L8 2.25z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" fill="none"/><path d="M8 6.25v3M8 11.1v.01" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg></span>`
+          : "";
       let momHtml = "";
       const prevD = new Date(year, monthIndex, dayNum);
       prevD.setDate(prevD.getDate() - 1);
@@ -7917,7 +8190,7 @@ function renderCalendar() {
           momHtml = `<span class="${momCls}" title="${momTitle}" aria-hidden="true">${momChar}</span>`;
         }
       }
-      metricsEl.innerHTML = `<div class="cal-balance-strip"><div class="cal-balance-strip__row">${momHtml}<div class="cal-stat cal-balance${negClass}${mutedClass}${pastClass}" title="Projected end-of-day balance">$${fmtMoneyParens(
+      metricsEl.innerHTML = `<div class="cal-balance-strip"><div class="cal-balance-strip__row">${momHtml}${riskIcon}<div class="${balanceClass}" title="Projected end-of-day balance">$${fmtMoneyParens(
         endNum
       )}</div></div></div>`;
     }
@@ -7989,7 +8262,7 @@ function renderCalendar() {
   if (calendarPanel) {
     calendarPanel.style.setProperty("--cal-week-rows", String(weekRows));
     // Keep day boxes tall enough for balance strip + top forecast rows.
-    const h = "168px";
+    const h = `${MIN_CELL_H}px`;
     calendarPanel.style.setProperty("--cal-day-min-h", h);
   }
 }
@@ -8089,6 +8362,63 @@ function estimatedMonthlyFromRecurrence(amount, recurrence) {
   return a;
 }
 
+function renderReportsBalanceTakeaway(items, dateLabels, values) {
+  const el = document.getElementById("reportsBalanceTakeaway");
+  if (!el) return;
+  if (!items?.length || values.length < 2) {
+    el.textContent = "";
+    el.hidden = true;
+    return;
+  }
+  const thr = readStoredMinBalanceThresholdForReports();
+  let lowIdx = 0;
+  for (let i = 1; i < values.length; i++) {
+    if (values[i] < values[lowIdx]) lowIdx = i;
+  }
+  const minV = Number(values[lowIdx]);
+  const lowIso = String(dateLabels[lowIdx] || "");
+
+  let firstNeg = -1;
+  for (let i = 0; i < values.length; i++) {
+    if (values[i] < 0) {
+      firstNeg = i;
+      break;
+    }
+  }
+  let recoveryPos = -1;
+  if (firstNeg >= 0) {
+    for (let j = firstNeg + 1; j < values.length; j++) {
+      if (values[j] >= 0) {
+        recoveryPos = j;
+        break;
+      }
+    }
+  }
+  let lastNegIdx = -1;
+  for (let i = 0; i < values.length; i++) {
+    if (values[i] < 0) lastNegIdx = i;
+  }
+
+  let msg = "";
+  if (firstNeg >= 0) {
+    const d0 = fmtDateMDY(String(dateLabels[firstNeg] || ""));
+    const dip = Math.abs(minV);
+    if (recoveryPos >= 0) {
+      const dRec = fmtDateMDY(String(dateLabels[recoveryPos] || ""));
+      msg = `Your balance drops below zero around ${d0}, then recovers by ${dRec}. The deepest point in this window is about $${fmtMoney(dip)} below zero.`;
+    } else {
+      const dLast = fmtDateMDY(String(dateLabels[lastNegIdx] || ""));
+      msg = `Your balance turns negative on ${d0} and stays below zero through at least ${dLast}—about $${fmtMoney(dip)} at the low point unless income or transfers change.`;
+    }
+  } else if (thr != null && Number.isFinite(thr) && thr > 0 && minV < thr) {
+    msg = `Balances stay above zero but slide toward your $${fmtMoney(thr)} floor, bottoming near $${fmtMoney(minV)} on ${fmtDateMDY(lowIso)}.`;
+  } else {
+    msg = `Over this stretch your balance stays positive, with a low near $${fmtMoney(minV)} on ${fmtDateMDY(lowIso)}.`;
+  }
+  el.textContent = msg;
+  el.hidden = false;
+}
+
 function renderReportsBalanceLegend(daily, dateLabels, values) {
   const el = document.getElementById("reportsBalanceLegend");
   if (!el) return;
@@ -8113,39 +8443,41 @@ function renderReportsBalanceLegend(daily, dateLabels, values) {
     }
   }
   if (spanStart >= 0) negSpans.push({ a: spanStart, b: values.length - 1 });
-  const deposits = [];
-  const outflows = [];
+
+  let worstOutflow = null;
   for (let i = 0; i < items.length; i++) {
     const net = Number(items[i].net_cashflow ?? 0);
-    if (net >= 1200) deposits.push({ i, iso: String(items[i].date), net });
-    if (net <= -900) outflows.push({ i, iso: String(items[i].date), net });
+    if (!Number.isFinite(net) || net >= 0) continue;
+    if (!worstOutflow || net < worstOutflow.net) worstOutflow = { iso: String(items[i].date), net };
   }
-  const depShow = deposits.slice(0, 3);
-  const outShow = outflows.slice(0, 3);
+
   const thr = readStoredMinBalanceThresholdForReports();
-  const parts = [
-    `<span class="reports-legend__item"><strong>Low point</strong> ${fmtDateMDY(lowIso)} · $${fmtMoney(values[lowIdx])}</span>`,
-  ];
-  if (thr != null) {
-    parts.push(`<span class="reports-legend__item"><strong>Floor</strong> $${fmtMoney(thr)} (from Settings minimum)</span>`);
-  }
-  if (depShow.length) {
-    parts.push(
-      `<span class="reports-legend__item"><strong>Strong deposits</strong> ${depShow.map((d) => `${fmtDateMDY(d.iso)} (+$${fmtMoney(d.net)})`).join(" · ")}</span>`
+  const pills = [];
+
+  pills.push(
+    `<span class="reports-legend__item">Lowest <strong>$${fmtMoney(values[lowIdx])}</strong> · ${escapeHtml(fmtDateMDY(lowIso))}</span>`
+  );
+
+  if (worstOutflow) {
+    pills.push(
+      `<span class="reports-legend__item">Large outflow <strong>−$${fmtMoney(Math.abs(worstOutflow.net))}</strong> · ${escapeHtml(fmtDateMDY(worstOutflow.iso))}</span>`
     );
   }
-  if (outShow.length) {
-    parts.push(
-      `<span class="reports-legend__item"><strong>Large outflows</strong> ${outShow.map((d) => `${fmtDateMDY(d.iso)} (−$${fmtMoney(Math.abs(d.net))})`).join(" · ")}</span>`
-    );
-  }
+
   if (negSpans.length) {
-    const txt = negSpans
-      .map((sp) => `${fmtDateMDY(String(dateLabels[sp.a]))}–${fmtDateMDY(String(dateLabels[sp.b]))}`)
-      .join(" · ");
-    parts.push(`<span class="reports-legend__item reports-legend__item--warn"><strong>Negative balance</strong> ${txt}</span>`);
+    const sp = negSpans[0];
+    const a = escapeHtml(fmtDateMDY(String(dateLabels[sp.a] || "")));
+    const b = escapeHtml(fmtDateMDY(String(dateLabels[sp.b] || "")));
+    const negTxt = sp.a === sp.b ? `Negative ${a}` : `Negative ${a}–${b}`;
+    pills.push(`<span class="reports-legend__item reports-legend__item--risk">${negTxt}</span>`);
   }
-  el.innerHTML = `<div class="reports-legend__inner">${parts.join("")}</div>`;
+
+  if (thr != null && Number.isFinite(thr) && thr > 0) {
+    pills.push(`<span class="reports-legend__item reports-legend__item--floor">Floor $${fmtMoney(thr)}</span>`);
+  }
+
+  const maxPills = 4;
+  el.innerHTML = `<div class="reports-legend__inner">${pills.slice(0, maxPills).join("")}</div>`;
 }
 
 function drawReportsSafeTransferChart(daily) {
@@ -8368,6 +8700,11 @@ function drawProjectionChart(daily) {
     }
     const leg = document.getElementById("reportsBalanceLegend");
     if (leg) leg.innerHTML = "";
+    const take = document.getElementById("reportsBalanceTakeaway");
+    if (take) {
+      take.textContent = "";
+      take.hidden = true;
+    }
     return;
   }
 
@@ -8375,6 +8712,11 @@ function drawProjectionChart(daily) {
     if (emptyEl) {
       emptyEl.style.display = "flex";
       emptyEl.textContent = "Chart library failed to load. Check your network connection.";
+    }
+    const take = document.getElementById("reportsBalanceTakeaway");
+    if (take) {
+      take.textContent = "";
+      take.hidden = true;
     }
     return;
   }
@@ -8424,6 +8766,12 @@ function drawProjectionChart(daily) {
   });
 
   renderReportsBalanceLegend(items, dateLabels, values);
+  renderReportsBalanceTakeaway(items, dateLabels, values);
+
+  const negFillBelow =
+    onReports ? "rgba(185, 28, 28, 0.045)" : "rgba(167, 55, 68, 0.12)";
+  const negFillBelowEnd = onReports ? "rgba(185, 28, 28, 0.055)" : "rgba(167, 55, 68, 0.12)";
+  const posFillAbove = onReports ? "rgba(11, 61, 46, 0.06)" : "rgba(11, 61, 46, 0.12)";
 
   const datasets = [
     {
@@ -8442,15 +8790,15 @@ function drawProjectionChart(daily) {
         let t = (y0 - top) / span;
         if (!Number.isFinite(t)) t = 0.5;
         t = Math.max(0, Math.min(1, t));
-        g.addColorStop(0, "rgba(11, 61, 46, 0.12)");
-        g.addColorStop(t, "rgba(11, 61, 46, 0.12)");
-        g.addColorStop(t, "rgba(167, 55, 68, 0.12)");
-        g.addColorStop(1, "rgba(167, 55, 68, 0.12)");
+        g.addColorStop(0, posFillAbove);
+        g.addColorStop(t, posFillAbove);
+        g.addColorStop(t, negFillBelow);
+        g.addColorStop(1, negFillBelowEnd);
         return g;
       },
-      borderWidth: 2,
+      borderWidth: onReports ? 2.25 : 2,
       fill: true,
-      tension: 0.15,
+      tension: onReports ? 0.26 : 0.15,
       pointRadius,
       pointHoverRadius: 5,
       pointBackgroundColor,
@@ -8468,9 +8816,9 @@ function drawProjectionChart(daily) {
     datasets.push({
       label: "Minimum",
       data: dateLabels.map(() => thr),
-      borderColor: "rgba(75, 85, 99, 0.55)",
-      borderWidth: 1.5,
-      borderDash: [5, 5],
+      borderColor: onReports ? "rgba(100, 116, 139, 0.38)" : "rgba(75, 85, 99, 0.55)",
+      borderWidth: onReports ? 1 : 1.5,
+      borderDash: onReports ? [6, 5] : [5, 5],
       pointRadius: 0,
       fill: false,
       tension: 0,
@@ -8503,6 +8851,11 @@ function drawProjectionChart(daily) {
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      layout: onReports
+        ? {
+            padding: { top: 20, right: 10, bottom: 6, left: 2 },
+          }
+        : undefined,
       interaction: { mode: "index", intersect: false },
       plugins: {
         legend: { display: false },
@@ -8538,13 +8891,16 @@ function drawProjectionChart(daily) {
           type: "category",
           grid: {
             display: onReports,
-            color: "rgba(11, 61, 46, 0.07)",
+            color: "rgba(148, 163, 184, 0.22)",
+            lineWidth: onReports ? 1 : 1,
             drawTicks: false,
           },
           ticks: {
             autoSkip: true,
             maxTicksLimit: 8,
             maxRotation: 0,
+            color: onReports ? "rgba(100, 116, 139, 0.55)" : undefined,
+            font: onReports ? { size: 10, weight: "500" } : undefined,
             callback: function (tickValue) {
               const lbl = typeof tickValue === "number" ? dateLabels[tickValue] : tickValue;
               if (lbl == null || lbl === "") return "";
@@ -8554,11 +8910,13 @@ function drawProjectionChart(daily) {
         },
         y: {
           grid: {
-            color: onReports ? "rgba(11, 61, 46, 0.055)" : "rgba(0,0,0,0.045)",
+            color: onReports ? "rgba(148, 163, 184, 0.2)" : "rgba(0,0,0,0.045)",
             drawBorder: false,
           },
           ticks: {
             maxTicksLimit: 6,
+            color: onReports ? "rgba(100, 116, 139, 0.52)" : undefined,
+            font: onReports ? { size: 10, weight: "500" } : undefined,
             callback: (value) =>
               "$" +
               Number(value).toLocaleString(undefined, {

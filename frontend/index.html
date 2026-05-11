@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=347" />
+    <link rel="stylesheet" href="./styles.css?v=353" />
   </head>
   <body class="landing-page">
     <div class="container">
@@ -36,6 +36,7 @@
       </div>
 
       <main class="landing-main" aria-label="Welcome">
+        <div class="landing-shell">
         <div class="landing-hero">
           <h2 class="landing-hero__text">Stop guessing how much cash you really have available.</h2>
           <p class="landing-hero__sub">Know what’s safe to spend, save, or transfer before bills hit.</p>
@@ -101,14 +102,30 @@
                     d="M24,118 C120,108 168,128 240,112 C312,96 360,138 420,100 C480,68 540,52 616,44"
                     fill="none"
                     stroke="#0B3D2E"
-                    stroke-width="4"
+                    stroke-width="3.75"
                     stroke-linecap="round"
                     stroke-linejoin="round"
                   />
-                  <circle cx="188" cy="114" r="7" fill="#047857" opacity="0.92" />
-                  <text x="202" y="110" class="landing-preview__markerLabel landing-preview__markerLabel--in">Income</text>
-                  <circle cx="312" cy="124" r="7" fill="#a73744" opacity="0.88" />
-                  <text x="326" y="120" class="landing-preview__markerLabel landing-preview__markerLabel--out">Bill</text>
+                  <circle class="landing-preview__markerDot landing-preview__markerDot--in" cx="188" cy="114" r="4.5" />
+                  <text
+                    x="198"
+                    y="112"
+                    class="landing-preview__markerLabel landing-preview__markerLabel--in"
+                    text-anchor="start"
+                    dominant-baseline="middle"
+                  >
+                    Paycheck
+                  </text>
+                  <circle class="landing-preview__markerDot landing-preview__markerDot--out" cx="312" cy="124" r="4.5" />
+                  <text
+                    x="322"
+                    y="122"
+                    class="landing-preview__markerLabel landing-preview__markerLabel--out"
+                    text-anchor="start"
+                    dominant-baseline="middle"
+                  >
+                    Credit card
+                  </text>
                 </svg>
               </div>
             </div>
@@ -225,33 +242,31 @@
                 <div class="landing-how__stepBody">Know what can leave checking before you transfer.</div>
               </li>
             </ol>
-            <ul class="landing-setup-ease" aria-label="Getting started">
-              <li>Start with just your bills and income.</li>
-              <li>No spending categories required.</li>
-              <li>Useful in minutes.</li>
-            </ul>
+            <p class="landing-setup-note">
+              Start with just your bills and income — no spending categories required — useful in minutes.
+            </p>
           </div>
           </section>
 
           <section class="landing-why" aria-label="Why people use BalanceWhiz">
           <div class="landing-why__copy">
             <div class="landing-why__title">Why people use BalanceWhiz</div>
-            <div class="landing-why__grid" role="list" aria-label="Why people use BalanceWhiz">
-              <div class="landing-why__card" role="listitem">
-                <div class="landing-why__cardTitle">Avoid overdrafts</div>
-                <div class="landing-why__cardBody">Catch low points before they land.</div>
+            <div class="landing-why__list" role="list" aria-label="Why people use BalanceWhiz">
+              <div class="landing-why__item" role="listitem">
+                <span class="landing-why__itemTitle">Avoid overdrafts</span>
+                <span class="landing-why__itemBody">Catch low points before they land.</span>
               </div>
-              <div class="landing-why__card landing-why__card--featured" role="listitem">
-                <div class="landing-why__cardTitle">Know what can safely leave checking</div>
-                <div class="landing-why__cardBody">Move cash while keeping bills covered.</div>
+              <div class="landing-why__item" role="listitem">
+                <span class="landing-why__itemTitle">Know what can safely leave checking</span>
+                <span class="landing-why__itemBody">Move cash while keeping bills covered.</span>
               </div>
-              <div class="landing-why__card landing-why__card--featured" role="listitem">
-                <div class="landing-why__cardTitle">Keep your forecast accurate</div>
-                <div class="landing-why__cardBody">Stay aligned when balances change.</div>
+              <div class="landing-why__item" role="listitem">
+                <span class="landing-why__itemTitle">Keep your forecast accurate</span>
+                <span class="landing-why__itemBody">Stay aligned when balances change.</span>
               </div>
-              <div class="landing-why__card" role="listitem">
-                <div class="landing-why__cardTitle">Keep more cash earning interest</div>
-                <div class="landing-why__cardBody">Shift idle checking when the math says it’s safe.</div>
+              <div class="landing-why__item" role="listitem">
+                <span class="landing-why__itemTitle">Keep more cash earning interest</span>
+                <span class="landing-why__itemBody">Shift idle checking when the math says it’s safe.</span>
               </div>
             </div>
           </div>
@@ -295,6 +310,7 @@
               <li>Anyone tired of guessing</li>
             </ul>
           </section>
+        </div>
         </div>
 
       </main>

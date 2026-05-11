@@ -6,7 +6,7 @@
     <title>BalanceWhiz</title>
     <link rel="icon" href="./favicon.png" type="image/png" />
     <script>window.API_BASE = "__API_BASE__";</script>
-    <link rel="stylesheet" href="./styles.css?v=352" />
+    <link rel="stylesheet" href="./styles.css?v=353" />
   </head>
   <body class="login-page">
     <div class="container">
@@ -72,10 +72,28 @@
                     stroke-linecap="round"
                     stroke-linejoin="round"
                   />
-                  <circle cx="128" cy="70" r="4.5" fill="#047857" stroke="#fff" stroke-width="1.2" />
-                  <text x="136" y="73" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="8.5" font-weight="650" fill="rgba(11, 61, 46, 0.55)">Bill</text>
-                  <circle cx="268" cy="42" r="4" fill="#a73744" stroke="#fff" stroke-width="1.1" opacity="0.92" />
-                  <text x="276" y="45" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="8.5" font-weight="650" fill="rgba(167, 55, 68, 0.65)">Pay</text>
+                  <!-- Outflow at low point: subtle marker, label below so it does not sit on the line -->
+                  <circle class="login-page__chart-dot login-page__chart-dot--out" cx="128" cy="70" r="3.2" />
+                  <text
+                    class="login-page__chart-label login-page__chart-label--out"
+                    x="128"
+                    y="88"
+                    text-anchor="middle"
+                    dominant-baseline="middle"
+                  >
+                    Mortgage
+                  </text>
+                  <!-- Income as balance recovers: label above the line -->
+                  <circle class="login-page__chart-dot login-page__chart-dot--in" cx="268" cy="42" r="3" />
+                  <text
+                    class="login-page__chart-label login-page__chart-label--in"
+                    x="268"
+                    y="28"
+                    text-anchor="middle"
+                    dominant-baseline="middle"
+                  >
+                    Paycheck
+                  </text>
                 </svg>
               </div>
               <figcaption class="login-page__brand-chart-caption">Projected balance, not just current balance</figcaption>
