@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=342" />
+    <link rel="stylesheet" href="../styles.css?v=347" />
   </head>
   <body>
     <div class="container">
@@ -345,22 +345,43 @@
               <header class="tm__head">
                 <div>
                   <h2 class="tm__title">Transaction Manager</h2>
-                  <p class="tm__sub">Search, filter, and clean up the transactions driving your forecast.</p>
+                  <p class="tm__sub">See what needs cleanup, what repeats, and what is coming—without digging through a spreadsheet.</p>
                 </div>
               </header>
 
-              <div class="tm__toolbar" role="region" aria-label="Search and filters">
-                <div class="tm__toolbarRow">
+              <div class="tm__top" role="region" aria-label="Search and quick filters">
+                <div class="tm__searchRow">
                   <div class="tm__field tm__field--search">
-                    <label for="tmSearch">Search</label>
-                    <input id="tmSearch" type="search" placeholder="Search description, notes, category…" autocomplete="off" />
+                    <label for="tmSearch" class="sr-only">Search transactions</label>
+                    <input id="tmSearch" type="search" placeholder="Search description, notes, or category" autocomplete="off" />
                   </div>
+                  <button
+                    type="button"
+                    class="tm__moreFiltersBtn secondary"
+                    id="tmMoreFiltersBtn"
+                    aria-expanded="false"
+                    aria-controls="tmAdvancedFilters"
+                  >
+                    More filters
+                  </button>
+                </div>
+                <div class="tm__chips" role="toolbar" aria-label="Quick filters">
+                  <button type="button" class="tm-chip" data-tm-view="uncategorized">Uncategorized</button>
+                  <button type="button" class="tm-chip" data-tm-view="recurring">Recurring</button>
+                  <button type="button" class="tm-chip" data-tm-view="upcoming30">Upcoming</button>
+                  <button type="button" class="tm-chip" data-tm-view="annual">Annual bills</button>
+                  <button type="button" class="tm-chip" data-tm-view="large">Large</button>
+                </div>
+              </div>
+
+              <div id="tmAdvancedFilters" class="tm__advanced" hidden>
+                <div class="tm__toolbarRow">
                   <div class="tm__field">
-                    <label for="tmStartDate">Start</label>
+                    <label for="tmStartDate">Start date</label>
                     <input id="tmStartDate" type="date" />
                   </div>
                   <div class="tm__field">
-                    <label for="tmEndDate">End</label>
+                    <label for="tmEndDate">End date</label>
                     <input id="tmEndDate" type="date" />
                   </div>
                   <div class="tm__field">
@@ -371,8 +392,13 @@
                       <option value="income">Income</option>
                     </select>
                   </div>
+                  <div class="tm__field">
+                    <label for="tmCategory">Category</label>
+                    <select id="tmCategory">
+                      <option value="all" selected>All categories</option>
+                    </select>
+                  </div>
                 </div>
-
                 <div class="tm__toolbarRow">
                   <div class="tm__field">
                     <label for="tmStatus">Status</label>
@@ -407,7 +433,7 @@
                     </select>
                   </div>
                   <div class="tm__field tm__field--amount">
-                    <label for="tmMinAmt">Amount</label>
+                    <label for="tmMinAmt">Amount range</label>
                     <div class="tm__amountRow">
                       <input id="tmMinAmt" type="text" inputmode="decimal" placeholder="Min" autocomplete="off" />
                       <span class="tm__amountSep" aria-hidden="true">–</span>
@@ -415,25 +441,9 @@
                     </div>
                   </div>
                 </div>
-
-                <div class="tm__chips" role="toolbar" aria-label="Quick filters">
-                  <button type="button" class="tm-chip is-active" data-tm-view="all">All</button>
-                  <button type="button" class="tm-chip" data-tm-view="uncategorized">Uncategorized</button>
-                  <button type="button" class="tm-chip" data-tm-view="recurring">Recurring</button>
-                  <button type="button" class="tm-chip" data-tm-view="income">Income</button>
-                  <button type="button" class="tm-chip" data-tm-view="expense">Expenses</button>
-                  <button type="button" class="tm-chip" data-tm-view="large">Large</button>
-                  <button type="button" class="tm-chip" data-tm-view="upcoming30">Upcoming 30 days</button>
-                  <button type="button" class="tm-chip" data-tm-view="annual">Annual / irregular</button>
-                </div>
               </div>
 
-              <div class="tm__summaries" aria-label="Summary cards">
-                <div class="tm-card" id="tmSumUncat"><div class="tm-card__k">Uncategorized</div><div class="tm-card__v">—</div></div>
-                <div class="tm-card" id="tmSumUpcoming30"><div class="tm-card__k">Upcoming 30 days</div><div class="tm-card__v">—</div></div>
-                <div class="tm-card" id="tmSumAnnual"><div class="tm-card__k">Annual bills soon</div><div class="tm-card__v">—</div></div>
-                <div class="tm-card" id="tmSumVariable"><div class="tm-card__k">Variable items</div><div class="tm-card__v">—</div></div>
-              </div>
+              <p class="tm__summaryLine" id="tmSummaryLine" aria-live="polite"></p>
 
               <!-- Legacy filter nodes kept for app.js; hidden and driven by the toolbar above. -->
               <div class="tm__legacy" hidden aria-hidden="true">
@@ -463,19 +473,18 @@
                 <button type="button" id="upcomingApplyBtn">Apply</button>
               </div>
 
-              <div class="tm__table card" aria-label="Transactions list">
+              <div class="tm__table" aria-label="Transactions list">
                 <div class="tm-table__head" aria-hidden="true">
                   <div>Date</div>
                   <div>Description</div>
-                  <div>Category</div>
+                  <div class="tm-table__amt">Amount</div>
                   <div>Frequency</div>
                   <div>Status</div>
-                  <div class="tm-table__amt">Amount</div>
                 </div>
                 <div class="tm-table__body" id="txListMain" aria-live="polite"></div>
               </div>
 
-              <section class="tm__uncat card" aria-label="Uncategorized workflow">
+              <section class="tm__uncat" aria-label="Uncategorized workflow">
                 <div class="tm-sec__head">
                   <h3>Uncategorized Transactions</h3>
                   <div class="tm-sec__hint">Assign categories inline. Use Save to apply changes.</div>
@@ -514,10 +523,13 @@
                         </div>
                       </div>
                     </div>
-                    <div class="balance-threshold-save-row">
-                      <button type="button" id="balanceThresholdSaveBtn" class="secondary">
-                        Save
-                      </button>
+                    <div class="form-row-h balance-threshold-save-row">
+                      <div class="form-row-h__label" aria-hidden="true"></div>
+                      <div class="form-row-h__field">
+                        <button type="button" id="balanceThresholdSaveBtn" class="secondary">
+                          Save
+                        </button>
+                      </div>
                     </div>
                     <div id="lowBalanceErr" class="error" style="display: none" role="alert"></div>
                     <p class="balance-threshold-hint">
@@ -631,34 +643,38 @@
 
           <div id="reportsViewPanel" class="app-view app-view--reports" hidden>
             <div class="reports-hub">
-              <header class="reports-hub__intro">
-                <p class="reports-hub__lede">See what your balance will be—not just what it is today.</p>
-              </header>
-
-              <section class="card reports-card reports-card--primary" id="chartPanel">
-                <div class="reports-card__head">
-                  <h2 class="reports-card__title">Balance trendline</h2>
-                  <p class="reports-card__desc">Projected ending balance by day. Answers: when does cash get tight, when does it recover, and is transfer headroom realistic?</p>
-                </div>
-                <div class="reports-chart-toolbar">
-                  <div class="reports-horizon" role="tablist" aria-label="Forecast horizon">
-                    <button type="button" class="reports-horizon__btn is-active" data-report-days="30">30 days</button>
-                    <button type="button" class="reports-horizon__btn" data-report-days="60">60 days</button>
-                    <button type="button" class="reports-horizon__btn" data-report-days="90">90 days</button>
+              <section class="card reports-card reports-card--primary reports-card--hero" id="chartPanel">
+                <header class="reports-card__hero">
+                  <p class="reports-card__lede">See what your balance will be—not just what it is today.</p>
+                  <div class="reports-card__head">
+                    <h2 class="reports-card__title">Balance trendline</h2>
+                    <p class="reports-card__desc">
+                      Day-by-day projected balance—where cash tightens, when it recovers, and what is safe to move.
+                    </p>
                   </div>
-                  <label class="reports-chart-start">
-                    <span>From</span>
-                    <input id="chartStart" type="date" />
-                  </label>
-                  <input id="chartDaysRange" type="hidden" value="30" />
-                  <span id="chartDaysLabel" class="reports-chart-daysmeta" hidden>30 days</span>
-                </div>
-                <p class="reports-range-meta"><span id="chartRangeDisplayText">—</span></p>
-                <div id="reportsBalanceLegend" class="reports-legend" aria-live="polite"></div>
-                <div id="chartErr" class="error"></div>
-                <div class="projection-chart-wrap projection-chart-wrap--reports">
-                  <div id="projectionChartEmpty" class="projection-chart-empty" style="display: none" aria-live="polite"></div>
-                  <canvas id="projectionChartCanvas" class="projection-chart-canvas" height="280"></canvas>
+                </header>
+                <div class="reports-chart-shell">
+                  <div class="reports-chart-toolbar">
+                    <div class="reports-horizon" role="tablist" aria-label="Forecast horizon">
+                      <button type="button" class="reports-horizon__btn is-active" data-report-days="30">30 days</button>
+                      <button type="button" class="reports-horizon__btn" data-report-days="60">60 days</button>
+                      <button type="button" class="reports-horizon__btn" data-report-days="90">90 days</button>
+                    </div>
+                    <label class="reports-chart-start">
+                      <span class="reports-chart-start__lbl">From</span>
+                      <input id="chartStart" type="date" />
+                    </label>
+                    <input id="chartDaysRange" type="hidden" value="30" />
+                    <span id="chartDaysLabel" class="reports-chart-daysmeta" hidden>30 days</span>
+                  </div>
+                  <p class="reports-range-meta"><span id="chartRangeDisplayText">—</span></p>
+                  <div id="reportsBalanceLegend" class="reports-legend" aria-live="polite"></div>
+                  <div id="chartErr" class="error"></div>
+                  <div class="projection-chart-wrap projection-chart-wrap--reports">
+                    <div class="reports-chart-gridfill" aria-hidden="true"></div>
+                    <div id="projectionChartEmpty" class="projection-chart-empty" style="display: none" aria-live="polite"></div>
+                    <canvas id="projectionChartCanvas" class="projection-chart-canvas" height="300"></canvas>
+                  </div>
                 </div>
               </section>
 
@@ -1075,6 +1091,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="../app.js?v=219"></script>
+    <script src="../app.js?v=224"></script>
   </body>
 </html>

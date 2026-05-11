@@ -591,6 +591,14 @@ function parseBalanceThresholdFieldRaw(raw) {
   return { ok: true, empty: false, canonical: String(n), num: n };
 }
 
+/** Maximum threshold: 0 is treated as "off" (same as blank) so we never persist a misleading ceiling of $0. */
+function parseBalanceThresholdMaxFieldRaw(raw) {
+  const p = parseBalanceThresholdFieldRaw(raw);
+  if (!p.ok || p.empty) return p;
+  if (p.num === 0) return { ok: true, empty: true, canonical: "", num: null };
+  return p;
+}
+
 function parseMoneyRangeField(raw) {
   const p = parseBalanceThresholdFieldRaw(raw);
   if (!p.ok || p.empty) return null;
@@ -890,10 +898,10 @@ const tmSource = document.getElementById("tmSource");
 const tmFrequency = document.getElementById("tmFrequency");
 const tmMinAmt = document.getElementById("tmMinAmt");
 const tmMaxAmt = document.getElementById("tmMaxAmt");
-const tmSumUncat = document.getElementById("tmSumUncat");
-const tmSumUpcoming30 = document.getElementById("tmSumUpcoming30");
-const tmSumAnnual = document.getElementById("tmSumAnnual");
-const tmSumVariable = document.getElementById("tmSumVariable");
+const tmSummaryLine = document.getElementById("tmSummaryLine");
+const tmCategory = document.getElementById("tmCategory");
+const tmMoreFiltersBtn = document.getElementById("tmMoreFiltersBtn");
+const tmAdvancedFilters = document.getElementById("tmAdvancedFilters");
 const tmChips = document.querySelectorAll?.(".tm-chip") || [];
 
 let upcomingFetchDebounce = null;
@@ -1163,7 +1171,7 @@ async function refreshLowBalanceAlert() {
     }
 
     const minP = parseBalanceThresholdFieldRaw(btMinEl?.value ?? "");
-    const maxP = parseBalanceThresholdFieldRaw(btMaxEl?.value ?? "");
+    const maxP = parseBalanceThresholdMaxFieldRaw(btMaxEl?.value ?? "");
     const minVal = minP.ok && !minP.empty ? minP.num : null;
     const maxVal = maxP.ok && !maxP.empty ? maxP.num : null;
     const minOk = minVal != null && Number.isFinite(minVal);
@@ -1356,7 +1364,7 @@ function hydrateBalanceThresholdInputsFromStorage() {
 
     if (maxKey && maxEl) {
       const s2 = localStorage.getItem(maxKey) || "";
-      const mp2 = parseBalanceThresholdFieldRaw(s2);
+      const mp2 = parseBalanceThresholdMaxFieldRaw(s2);
       const next2 = mp2.ok && !mp2.empty ? mp2.canonical : "";
       if (!(next2 === "" && String(maxEl.value || "").trim())) maxEl.value = next2;
     } else if (maxEl) maxEl.value = "";
@@ -1378,10 +1386,11 @@ function hydrateBalanceThresholdInputsFromStorage() {
         }
       }
       if (maxEl && !maxEl.value && maxKey && !localStorage.getItem(maxKey)) {
-        const oldMax = localStorage.getItem(BALANCE_THRESHOLD_MAX_KEY) || "";
-        if (oldMax) {
-          maxEl.value = oldMax;
-          localStorage.setItem(maxKey, oldMax);
+        const oldMaxRaw = localStorage.getItem(BALANCE_THRESHOLD_MAX_KEY) || "";
+        const oldMx = parseBalanceThresholdMaxFieldRaw(oldMaxRaw);
+        if (oldMx.ok && !oldMx.empty) {
+          maxEl.value = oldMx.canonical;
+          localStorage.setItem(maxKey, oldMx.canonical);
           localStorage.setItem(BALANCE_THRESHOLD_FAMILY_ID_KEY, String(fid));
         }
       }
@@ -1414,7 +1423,7 @@ function saveBalanceThresholds(opts = {}) {
     return;
   }
   const minParsed = parseBalanceThresholdFieldRaw(minEl?.value ?? "");
-  const maxParsed = parseBalanceThresholdFieldRaw(maxEl?.value ?? "");
+  const maxParsed = parseBalanceThresholdMaxFieldRaw(maxEl?.value ?? "");
   if (!minParsed.ok || !maxParsed.ok) {
     if (!silent) {
       show(
@@ -1428,16 +1437,16 @@ function saveBalanceThresholds(opts = {}) {
     if (minEl) localStorage.setItem(minKey, minParsed.empty ? "" : minParsed.canonical);
     if (maxEl) localStorage.setItem(maxKey, maxParsed.empty ? "" : maxParsed.canonical);
     localStorage.setItem(BALANCE_THRESHOLD_FAMILY_ID_KEY, String(fidNum));
+    // Update inputs before touching familySelect so any synchronous change → hydrate
+    // sees the same values we just wrote to storage.
+    if (minEl) minEl.value = minParsed.empty ? "" : minParsed.canonical;
+    if (maxEl) maxEl.value = maxParsed.empty ? "" : maxParsed.canonical;
     state.activeFamilyId = fidNum;
     if (familySelect && Number(fidNum) > 0) {
       try {
         familySelect.value = String(fidNum);
       } catch (_) {}
     }
-    // Keep the fields showing what we just saved. Re-hydrating from storage here could
-    // blank inputs if family id / storage reads ever disagree with the values we parsed above.
-    if (minEl) minEl.value = minParsed.empty ? "" : minParsed.canonical;
-    if (maxEl) maxEl.value = maxParsed.empty ? "" : maxParsed.canonical;
   } catch (e) {
     show(errEl, e.message || "Could not save thresholds.");
     return;
@@ -1938,6 +1947,9 @@ function setActiveTopView(view) {
   }
   try {
     localStorage.setItem(ACTIVE_VIEW_KEY, v);
+  } catch (_) {}
+  try {
+    document.body.dataset.bwView = v;
   } catch (_) {}
 }
 
@@ -3101,20 +3113,69 @@ function tmRefetchAndRender() {
 }
 
 if (tmSearch) tmSearch.addEventListener("input", () => tmRenderOnly());
-if (tmMinAmt) tmMinAmt.addEventListener("input", () => tmRenderOnly());
-if (tmMaxAmt) tmMaxAmt.addEventListener("input", () => tmRenderOnly());
-if (tmType) tmType.addEventListener("change", () => tmRenderOnly());
-if (tmStatus) tmStatus.addEventListener("change", () => tmRenderOnly());
-if (tmSource) tmSource.addEventListener("change", () => tmRenderOnly());
-if (tmFrequency) tmFrequency.addEventListener("change", () => tmRenderOnly());
-if (tmStartDate) tmStartDate.addEventListener("change", () => tmRefetchAndRender());
-if (tmEndDate) tmEndDate.addEventListener("change", () => tmRefetchAndRender());
+if (tmMinAmt) tmMinAmt.addEventListener("input", () => {
+  tmClearChips();
+  tmRenderOnly();
+});
+if (tmMaxAmt) tmMaxAmt.addEventListener("input", () => {
+  tmClearChips();
+  tmRenderOnly();
+});
+if (tmType)
+  tmType.addEventListener("change", () => {
+    tmClearChips();
+    tmRenderOnly();
+  });
+if (tmStatus)
+  tmStatus.addEventListener("change", () => {
+    tmClearChips();
+    tmRenderOnly();
+  });
+if (tmSource)
+  tmSource.addEventListener("change", () => {
+    tmClearChips();
+    tmRenderOnly();
+  });
+if (tmFrequency)
+  tmFrequency.addEventListener("change", () => {
+    tmClearChips();
+    tmRenderOnly();
+  });
+if (tmCategory)
+  tmCategory.addEventListener("change", () => {
+    tmClearChips();
+    tmRenderOnly();
+  });
+if (tmStartDate)
+  tmStartDate.addEventListener("change", () => {
+    tmClearChips();
+    tmRefetchAndRender();
+  });
+if (tmEndDate)
+  tmEndDate.addEventListener("change", () => {
+    tmClearChips();
+    tmRefetchAndRender();
+  });
+
+if (tmMoreFiltersBtn && tmAdvancedFilters) {
+  tmMoreFiltersBtn.addEventListener("click", () => {
+    const willOpen = !!tmAdvancedFilters.hidden;
+    tmAdvancedFilters.hidden = !willOpen;
+    tmMoreFiltersBtn.setAttribute("aria-expanded", willOpen ? "true" : "false");
+  });
+}
 
 for (const btn of tmChips || []) {
   try {
     btn.addEventListener("click", () => {
-      const v = btn?.dataset?.tmView || "all";
-      tmApplyQuickView(v);
+      const v = String(btn?.dataset?.tmView || "");
+      if (!v) return;
+      const already = btn.classList.contains("is-active");
+      if (already) {
+        tmApplyQuickView("all");
+      } else {
+        tmApplyQuickView(v);
+      }
       tmRefetchAndRender();
     });
   } catch (_) {}
@@ -3161,6 +3222,7 @@ async function saveUncategorizedAssignments() {
     await loadCategories();
     await loadMonthAndCalendar();
     renderUncategorizedTransactions();
+    refreshTmSummaryStrip();
   } catch (e) {
     if (uncatTxErr) show(uncatTxErr, e.message || "Failed to save");
   } finally {
@@ -3225,6 +3287,93 @@ function tmApplyQuickView(view) {
       btn.classList.toggle("is-active", String(btn?.dataset?.tmView || "") === v);
     } catch (_) {}
   }
+}
+
+function tmClearChips() {
+  for (const btn of tmChips || []) {
+    try {
+      btn.classList.remove("is-active");
+    } catch (_) {}
+  }
+}
+
+function rebuildTmCategorySelect() {
+  if (!tmCategory) return;
+  const prev = String(tmCategory.value || "all");
+  tmCategory.replaceChildren();
+  const allOpt = document.createElement("option");
+  allOpt.value = "all";
+  allOpt.textContent = "All categories";
+  tmCategory.appendChild(allOpt);
+  const arr = (state.categories || []).slice();
+  arr.sort((a, b) => String(a?.name || "").localeCompare(String(b?.name || "")));
+  for (const c of arr) {
+    const id = Number(c && c.id);
+    if (!Number.isFinite(id) || id <= 0) continue;
+    const opt = document.createElement("option");
+    opt.value = String(id);
+    opt.textContent = String(c?.name || "").trim() || "(unnamed)";
+    tmCategory.appendChild(opt);
+  }
+  const ok = [...tmCategory.options].some((o) => o.value === prev);
+  tmCategory.value = ok ? prev : "all";
+}
+
+function countTmExpectedOccurrencesInNextDays(days) {
+  const items = state.expectedTransactions || [];
+  if (!items.length) return 0;
+  const todayIso = toISODate(new Date());
+  const endD = new Date();
+  endD.setDate(endD.getDate() + days);
+  const endIso = toISODate(endD);
+  const byId = new Map();
+  for (const tx of items) {
+    const id = Number(tx && tx.id);
+    if (!id) continue;
+    if (!byId.has(id)) byId.set(id, tx);
+  }
+  let n = 0;
+  for (const tx of byId.values()) {
+    const nextIso = nextOccurrenceIsoForRecurringList(tx, todayIso);
+    if (!nextIso) continue;
+    if (nextIso >= todayIso && nextIso <= endIso) n++;
+  }
+  return n;
+}
+
+function refreshTmSummaryStrip() {
+  if (!tmSummaryLine) return;
+  const parts = [];
+  const today = toISODate(new Date());
+  const d30 = new Date();
+  d30.setDate(d30.getDate() + 30);
+  const end30 = toISODate(d30);
+
+  const uncatN = (state.upcomingActualItems || []).filter((t) => {
+    const cid = t && t.category_id;
+    return cid == null || cid === "" || Number(cid) === 0;
+  }).length;
+  if (uncatN > 0) parts.push(`${uncatN} uncategorized`);
+
+  const actual30 = (state.upcomingActualItems || []).filter((t) => {
+    const iso = normalizeIsoDate(t?.date) || String(t?.date || "");
+    return iso && iso >= today && iso <= end30;
+  }).length;
+  const exp30 = countTmExpectedOccurrencesInNextDays(30);
+  const upN = actual30 + exp30;
+  if (upN > 0) parts.push(`${upN} upcoming in next 30 days`);
+
+  const yearlyN = (state.expectedTransactions || []).filter((t) => String(t?.recurrence || "") === "yearly").length;
+  if (yearlyN > 0) parts.push(`${yearlyN} annual bill${yearlyN === 1 ? "" : "s"}`);
+
+  const varN = (state.expectedTransactions || []).filter(
+    (t) => t && (!!t.variable || t.next_occurrence_variable === true),
+  ).length;
+  if (varN > 0) parts.push(`${varN} variable item${varN === 1 ? "" : "s"}`);
+
+  tmSummaryLine.textContent = parts.length
+    ? parts.join(" · ")
+    : "Nothing flagged for cleanup in this view.";
 }
 
 if (runProjectionBtn) {
@@ -5174,6 +5323,7 @@ function applyCategoryTreeToState(tree) {
   state.categories = flattenCategoryTree(state.categoryTree);
   renderCategoriesGrid(state.categoryTree);
   syncAllCategoryComboboxes(state.categories);
+  rebuildTmCategorySelect();
 }
 
 async function persistCategoryTreeFromDom() {
@@ -5334,6 +5484,25 @@ function calendarLabelColorFromCategoryPillStyle(st) {
 /** Default label text color: green income / red expense (custom category fg overrides where applied). */
 function kindFgClass(kind) {
   return String(kind) === "income" ? "tx-kind-fg--income" : "tx-kind-fg--expense";
+}
+
+/** Subtle forecast-calendar row modifiers (transfers, uncategorized actuals). */
+function calendarDayTxLineToneParts(row) {
+  const parts = [];
+  if (!row || row._type === "start_balance") return parts;
+  const cat = String(effectiveTransactionCategoryName(row) || "").toLowerCase();
+  const desc = String(row.description || "").trim().toLowerCase();
+  const isTransfer =
+    cat.includes("transfer") ||
+    cat.includes("xfer") ||
+    desc.includes("transfer") ||
+    desc.includes("xfer");
+  if (isTransfer) parts.push("cal-day-tx-line--kind-transfer");
+  const flagged =
+    row._type === "actual" &&
+    (!row.category_id || cat === "uncategorized" || desc === "uncategorized");
+  if (flagged) parts.push("cal-day-tx-line--flag");
+  return parts;
 }
 
 function renderAccountsList(accounts) {
@@ -5882,6 +6051,7 @@ function renderUpcomingTransactionsFiltered() {
   const minAmt = tmMinAmt ? parseMoneyRangeField(tmMinAmt.value) : null;
   const maxAmt = tmMaxAmt ? parseMoneyRangeField(tmMaxAmt.value) : null;
   const statusSel = tmStatus ? String(tmStatus.value || "all") : "all";
+  const catIdSel = tmCategory ? String(tmCategory.value || "all") : "all";
 
   const withinRange = (iso) => {
     if (!iso) return false;
@@ -5920,6 +6090,10 @@ function renderUpcomingTransactionsFiltered() {
       if (statusSel === "recurring") continue;
       if (statusSel === "upcoming" && isPast) continue;
       if (statusSel === "past" && !isPast) continue;
+      if (catIdSel !== "all") {
+        const cid = Number(tx?.category_id);
+        if (!Number.isFinite(cid) || String(cid) !== catIdSel) continue;
+      }
       if (q && ![primary, catName, notes].some(matchesQuery)) continue;
       rows.push({ sortIso: iso, type: "actual", tx });
     }
@@ -5957,6 +6131,10 @@ function renderUpcomingTransactionsFiltered() {
         // ok
       }
       const catName = effectiveTransactionCategoryName(tx);
+      if (catIdSel !== "all") {
+        const cid = Number(tx?.category_id);
+        if (!Number.isFinite(cid) || String(cid) !== catIdSel) continue;
+      }
       if (q && ![eff.description, catName, tx?.notes].some(matchesQuery)) continue;
       rows.push({ sortIso: nextIso, type: "expected", tx, nextIso });
     }
@@ -5970,6 +6148,8 @@ function renderUpcomingTransactionsFiltered() {
     empty.className = "pill";
     empty.textContent = "No transactions match these filters.";
     txListMain.appendChild(empty);
+    renderUncategorizedTransactions();
+    refreshTmSummaryStrip();
     return;
   }
 
@@ -5997,13 +6177,13 @@ function renderUpcomingTransactionsFiltered() {
       d1.textContent = primary;
       const d2 = document.createElement("div");
       d2.className = "tm-meta";
-      d2.textContent = (tx?.notes && String(tx.notes).trim()) ? String(tx.notes).trim() : "";
+      const metaBits = [];
+      metaBits.push(catName && String(catName).trim() ? String(catName).trim() : "Uncategorized");
+      const nt = tx?.notes && String(tx.notes).trim() ? String(tx.notes).trim() : "";
+      if (nt) metaBits.push(nt);
+      d2.textContent = metaBits.join(" · ");
       cDesc.appendChild(d1);
       cDesc.appendChild(d2);
-
-      const cCat = document.createElement("div");
-      cCat.className = "tm-col tm-col--cat";
-      cCat.textContent = catName || "—";
 
       const cFreq = document.createElement("div");
       cFreq.className = "tm-col tm-col--freq";
@@ -6019,10 +6199,9 @@ function renderUpcomingTransactionsFiltered() {
 
       row.appendChild(cDate);
       row.appendChild(cDesc);
-      row.appendChild(cCat);
+      row.appendChild(cAmt);
       row.appendChild(cFreq);
       row.appendChild(cStatus);
-      row.appendChild(cAmt);
       txListMain.appendChild(row);
       continue;
     }
@@ -6051,13 +6230,13 @@ function renderUpcomingTransactionsFiltered() {
     d1.textContent = String(eff.description || "(no description)").trim() || "(no description)";
     const d2 = document.createElement("div");
     d2.className = "tm-meta";
-    d2.textContent = eff.variable ? "Variable amount" : "";
+    const cn = effectiveTransactionCategoryName(tx) || "";
+    const metaBits = [];
+    metaBits.push(cn.trim() ? cn.trim() : "Uncategorized");
+    if (eff.variable) metaBits.push("Variable amount");
+    d2.textContent = metaBits.join(" · ");
     cDesc.appendChild(d1);
     cDesc.appendChild(d2);
-
-    const cCat = document.createElement("div");
-    cCat.className = "tm-col tm-col--cat";
-    cCat.textContent = effectiveTransactionCategoryName(tx) || "—";
 
     const cFreq = document.createElement("div");
     cFreq.className = "tm-col tm-col--freq";
@@ -6073,14 +6252,14 @@ function renderUpcomingTransactionsFiltered() {
 
     row.appendChild(cDate);
     row.appendChild(cDesc);
-    row.appendChild(cCat);
+    row.appendChild(cAmt);
     row.appendChild(cFreq);
     row.appendChild(cStatus);
-    row.appendChild(cAmt);
     txListMain.appendChild(row);
   }
 
   renderUncategorizedTransactions();
+  refreshTmSummaryStrip();
 }
 
 function renderUncategorizedTransactions() {
@@ -6090,16 +6269,6 @@ function renderUncategorizedTransactions() {
     const cid = t && t.category_id;
     return cid == null || cid === "" || Number(cid) === 0;
   });
-
-  try {
-    const setV = (el, v) => {
-      if (!el) return;
-      const n = Number(v || 0);
-      const node = el.querySelector(".tm-card__v");
-      if (node) node.textContent = Number.isFinite(n) ? String(n) : "—";
-    };
-    setV(tmSumUncat, items.length);
-  } catch (_) {}
 
   uncatTxList.innerHTML = "";
   if (!items.length) {
@@ -6323,15 +6492,6 @@ async function loadExpectedTransactions() {
   if (!state.activeFamilyId) return;
   const items = await api(`/api/families/${state.activeFamilyId}/expected-transactions`, "GET");
   state.expectedTransactions = items || [];
-  try {
-    const arr = state.expectedTransactions || [];
-    const annual = arr.filter((t) => String(t?.recurrence || "") === "yearly").length;
-    const variable = arr.filter((t) => !!t && (!!t.variable || t.next_occurrence_variable === true)).length;
-    const nAnnual = tmSumAnnual ? tmSumAnnual.querySelector(".tm-card__v") : null;
-    const nVar = tmSumVariable ? tmSumVariable.querySelector(".tm-card__v") : null;
-    if (nAnnual) nAnnual.textContent = String(annual);
-    if (nVar) nVar.textContent = String(variable);
-  } catch (_) {}
   renderUpcomingTransactionsFiltered();
 }
 
@@ -6592,18 +6752,6 @@ async function loadUpcomingTransactionsPanel() {
     const data = await api(`/api/families/${state.activeFamilyId}/transactions${qs}`, "GET");
     const items = data?.items || [];
     state.upcomingActualItems = items;
-    try {
-      const today = toISODate(new Date());
-      const d = new Date();
-      d.setDate(d.getDate() + 30);
-      const end30 = toISODate(d);
-      const in30 = items.filter((t) => {
-        const iso = normalizeIsoDate(t?.date) || String(t?.date || "");
-        return iso && iso >= today && iso <= end30;
-      });
-      const node = tmSumUpcoming30 ? tmSumUpcoming30.querySelector(".tm-card__v") : null;
-      if (node) node.textContent = String(in30.length);
-    } catch (_) {}
     renderUpcomingTransactionsFiltered();
   } catch (e) {
     show(txErr, e.message || "Failed to load upcoming transactions");
@@ -6812,12 +6960,18 @@ function renderSidebarPendingTransactionsForMonth() {
       if (meta) openExpectedEditModal(meta, { calendarItem: it });
     };
 
-    const key = pendingAttentionKey(it);
     const kind = String(it?.kind || "expense");
 
     const el = document.createElement("div");
     el.className = "pending-attn-item";
-    if (idx === 0) el.classList.add("is-critical");
+    let daysUntil = 999;
+    try {
+      const t0 = new Date(`${todayIso}T12:00:00`).getTime();
+      const t1 = new Date(`${r.sortIso}T12:00:00`).getTime();
+      if (Number.isFinite(t0) && Number.isFinite(t1)) daysUntil = Math.round((t1 - t0) / 86400000);
+    } catch (_) {}
+    if (daysUntil >= 0 && daysUntil <= 3) el.classList.add("is-critical");
+    else if (daysUntil >= 0 && daysUntil <= 10) el.classList.add("is-soon");
     el.style.cursor = "pointer";
     el.addEventListener("click", () => open());
 
@@ -7389,6 +7543,16 @@ function renderCalendar() {
     return aid - bid;
   }
 
+  function txSortCalendarDayImpact(a, b) {
+    const aSb = a && a._type === "start_balance" ? 0 : 1;
+    const bSb = b && b._type === "start_balance" ? 0 : 1;
+    if (aSb !== bSb) return aSb - bSb;
+    const aa = Math.abs(Number(a.amount ?? 0));
+    const ba = Math.abs(Number(b.amount ?? 0));
+    if (ba !== aa) return ba - aa;
+    return txSortAmountDesc(a, b);
+  }
+
   // Sort transactions within each day.
   for (const arr of actualTxsByDate.values()) {
     arr.sort(txSortAmountDesc);
@@ -7465,8 +7629,9 @@ function renderCalendar() {
       totalCells = 35;
     }
   }
-  const MIN_CELL_H = 170;
-  const MAX_VISIBLE_TXNS = 3;
+  const MIN_CELL_H = 156;
+  const MAX_VISIBLE_TXNS = 2;
+  const minBalFloor = readStoredMinBalanceThresholdForReports();
   /** @type {HTMLElement[]} */
   const cells = [];
   for (let i = 0; i < totalCells; i++) {
@@ -7497,8 +7662,8 @@ function renderCalendar() {
       <div class="cal-cell-fill"></div>
       <div class="cal-cell-stack">
         <div class="cal-forecast-note" hidden></div>
-        <div class="cal-day-txns"></div>
         <div class="cal-ledger-metrics"></div>
+        <div class="cal-day-txns"></div>
       </div>
     `;
     if (isOutOfMonth) cell.classList.add("cal-cell--out");
@@ -7527,7 +7692,7 @@ function renderCalendar() {
       for (const item of expectedItems) combined.push({ ...item, _type: "expected" });
       for (const tx of actualTxs) combined.push({ ...tx, _type: "actual" });
       for (const sb of startBalancesByDate.get(iso) || []) combined.push(sb);
-      combined.sort(txSortAmountDesc);
+      combined.sort(txSortCalendarDayImpact);
     }
 
     if (showDetails) {
@@ -7536,7 +7701,8 @@ function renderCalendar() {
       const hiddenCount = Math.max(0, combined.length - visibleRows.length);
 
       // Render a compact, forecast-first list. Expand only on demand.
-      for (const row of visibleRows) {
+      for (let vri = 0; vri < visibleRows.length; vri++) {
+        const row = visibleRows[vri];
         const isExpected = row._type === "expected";
         const isStartBalance = row._type === "start_balance";
         const line = document.createElement("div");
@@ -7545,6 +7711,8 @@ function renderCalendar() {
           : isStartBalance
             ? "cal-day-tx-line cal-day-tx-line--start-balance"
             : "cal-day-tx-line cal-tx-part";
+        if (isExpanded && vri >= 2) line.classList.add("cal-day-tx-line--deemph");
+        for (const p of calendarDayTxLineToneParts(row)) line.classList.add(p);
         if (isExpected && row.variable) line.classList.add("cal-expected-variable");
         if (!isExpected && !isStartBalance) line.dataset.txId = String(row.id);
 
@@ -7625,8 +7793,60 @@ function renderCalendar() {
     if (dayBal && metricsEl) {
       const endNum = Number(dayBal.end ?? 0);
       const negClass = Number.isFinite(endNum) && endNum < 0 ? " is-negative" : "";
-      const mutedClass = Number.isFinite(endNum) && endNum >= 0 ? " is-muted" : "";
-      metricsEl.innerHTML = `<div class="cal-stat cal-balance${negClass}${mutedClass}">$${fmtMoneyParens(endNum)}</div>`;
+      const pastClass = !isOutOfMonth && isPast && Number.isFinite(endNum) && endNum >= 0 ? " is-past" : "";
+      const mutedClass = isOutOfMonth && Number.isFinite(endNum) && endNum >= 0 ? " is-muted" : "";
+      let momHtml = "";
+      const prevD = new Date(year, monthIndex, dayNum);
+      prevD.setDate(prevD.getDate() - 1);
+      const prevIso = toISODate(prevD);
+      const prevRow = state.monthDailyBalances.get(prevIso);
+      if (prevRow && Number.isFinite(endNum)) {
+        const pd = Number(prevRow.end);
+        if (Number.isFinite(pd)) {
+          const delta = endNum - pd;
+          const tol = 0.005;
+          let momCls = "cal-balance-mom cal-balance-mom--flat";
+          let momTitle = "Flat vs prior day";
+          let momChar = "·";
+          if (delta > tol) {
+            momCls = "cal-balance-mom cal-balance-mom--up";
+            momTitle = "Higher than prior day";
+            momChar = "↑";
+          } else if (delta < -tol) {
+            momCls = "cal-balance-mom cal-balance-mom--down";
+            momTitle = "Lower than prior day";
+            momChar = "↓";
+          }
+          momHtml = `<span class="${momCls}" title="${momTitle}" aria-hidden="true">${momChar}</span>`;
+        }
+      }
+      metricsEl.innerHTML = `<div class="cal-balance-strip"><div class="cal-balance-strip__row">${momHtml}<div class="cal-stat cal-balance${negClass}${mutedClass}${pastClass}" title="Projected end-of-day balance">$${fmtMoneyParens(
+        endNum
+      )}</div></div></div>`;
+    }
+
+    if (
+      minBalFloor != null &&
+      Number.isFinite(minBalFloor) &&
+      minBalFloor > 0 &&
+      dayBal &&
+      !isOutOfMonth &&
+      !cell.classList.contains("cal-cell--before-start")
+    ) {
+      const endNum = Number(dayBal.end ?? 0);
+      if (Number.isFinite(endNum)) {
+        if (endNum < 0) cell.classList.add("cal-cell--bal-risk");
+        else if (endNum < minBalFloor) cell.classList.add("cal-cell--bal-warn");
+        else if (endNum < minBalFloor * 1.25) cell.classList.add("cal-cell--bal-watch");
+      }
+    }
+    if (
+      monthLowPointIso === iso &&
+      !isOutOfMonth &&
+      !cell.classList.contains("cal-cell--bal-risk") &&
+      !cell.classList.contains("cal-cell--bal-warn")
+    ) {
+      cell.classList.add("cal-cell--month-low");
     }
 
     // Hide forecast "storytelling" annotations (ex: "Low point", "Balance recovers") — keep the calendar clean.
@@ -7671,8 +7891,8 @@ function renderCalendar() {
   const calendarPanel = document.getElementById("calendarPanel");
   if (calendarPanel) {
     calendarPanel.style.setProperty("--cal-week-rows", String(weekRows));
-    // Keep day boxes tall enough to show at least 3 transactions clearly.
-    const h = "170px";
+    // Keep day boxes tall enough for balance strip + top forecast rows.
+    const h = "156px";
     calendarPanel.style.setProperty("--cal-day-min-h", h);
   }
 }
@@ -8069,15 +8289,42 @@ function drawProjectionChart(daily) {
   const dateLabels = items.map((d) => d.date);
   const values = items.map((d) => Number(d.total_balance ?? 0));
   const thr = readStoredMinBalanceThresholdForReports();
+  const onReports = !!(reportsViewPanel && !reportsViewPanel.hidden);
 
   let lowIdx = 0;
   for (let i = 1; i < values.length; i++) {
     if (values[i] < values[lowIdx]) lowIdx = i;
   }
-  const pointRadius = values.map((_, i) => (i === lowIdx ? 5 : 0));
-  const pointBackgroundColor = values.map((_, i) =>
-    i === lowIdx ? "rgba(167, 55, 68, 0.95)" : "rgba(55, 130, 115, 0)"
-  );
+
+  let recoveryIdx = -1;
+  const startBal0 = Number(values[0] ?? 0);
+  for (let j = lowIdx + 1; j < values.length; j++) {
+    if (values[j] >= startBal0) {
+      recoveryIdx = j;
+      break;
+    }
+  }
+
+  const outflowMarkers = new Set();
+  if (onReports && items.length === values.length) {
+    const ranked = items
+      .map((row, i) => ({ i, n: Number(row?.net_cashflow ?? NaN) }))
+      .filter((x) => Number.isFinite(x.n) && x.n < 0)
+      .sort((a, b) => a.n - b.n)
+      .slice(0, 3);
+    for (const x of ranked) outflowMarkers.add(x.i);
+  }
+
+  const pointRadius = values.map((_, i) => {
+    if (i === lowIdx) return 5;
+    if (onReports && recoveryIdx !== -1 && i === recoveryIdx && recoveryIdx !== lowIdx) return 4;
+    return 0;
+  });
+  const pointBackgroundColor = values.map((_, i) => {
+    if (i === lowIdx) return "rgba(167, 55, 68, 0.95)";
+    if (onReports && recoveryIdx !== -1 && i === recoveryIdx && recoveryIdx !== lowIdx) return "rgba(4, 120, 87, 0.92)";
+    return "rgba(55, 130, 115, 0)";
+  });
 
   renderReportsBalanceLegend(items, dateLabels, values);
 
@@ -8132,6 +8379,20 @@ function drawProjectionChart(daily) {
       tension: 0,
     });
   }
+  if (onReports && outflowMarkers.size) {
+    datasets.push({
+      label: "Heavy outflow days",
+      data: values.map((v, i) => (outflowMarkers.has(i) ? v : null)),
+      borderColor: "rgba(0, 0, 0, 0)",
+      backgroundColor: "rgba(62, 99, 221, 0.88)",
+      borderWidth: 0,
+      pointRadius: values.map((_, i) => (outflowMarkers.has(i) ? 4 : 0)),
+      pointHoverRadius: 5,
+      pointStyle: "circle",
+      showLine: false,
+      spanGaps: false,
+    });
+  }
 
   const ctx = projectionChartCanvas.getContext("2d");
   if (!ctx) return;
@@ -8164,6 +8425,12 @@ function drawProjectionChart(daily) {
             },
             label: (ctx) => {
               if (ctx.dataset.label === "Minimum") return ` Floor $${fmtMoney(ctx.parsed.y)}`;
+              if (ctx.dataset.label === "Heavy outflow days") {
+                const i = ctx.dataIndex;
+                const net = Number(items[i]?.net_cashflow ?? 0);
+                if (!Number.isFinite(net)) return "";
+                return ` Large outflow −$${fmtMoney(Math.abs(net))}`;
+              }
               return ` Balance $${fmtMoney(ctx.parsed.y)}`;
             },
           },
@@ -8172,7 +8439,11 @@ function drawProjectionChart(daily) {
       scales: {
         x: {
           type: "category",
-          grid: { display: false },
+          grid: {
+            display: onReports,
+            color: "rgba(11, 61, 46, 0.07)",
+            drawTicks: false,
+          },
           ticks: {
             autoSkip: true,
             maxTicksLimit: 8,
@@ -8185,7 +8456,10 @@ function drawProjectionChart(daily) {
           },
         },
         y: {
-          grid: { color: "rgba(0,0,0,0.045)", drawBorder: false },
+          grid: {
+            color: onReports ? "rgba(11, 61, 46, 0.055)" : "rgba(0,0,0,0.045)",
+            drawBorder: false,
+          },
           ticks: {
             maxTicksLimit: 6,
             callback: (value) =>

@@ -6,7 +6,7 @@
     <title>BalanceWhiz</title>
     <link rel="icon" href="./favicon.png" type="image/png" />
     <script>window.API_BASE = "__API_BASE__";</script>
-    <link rel="stylesheet" href="./styles.css?v=348" />
+    <link rel="stylesheet" href="./styles.css?v=350" />
   </head>
   <body class="login-page">
     <div class="container">
@@ -33,30 +33,49 @@
       <div class="grid login-page__grid">
         <div class="login-page__split">
           <aside class="login-page__brand" aria-label="Why BalanceWhiz">
-            <h2 class="login-page__brand-head">Know what’s safe before bills hit.</h2>
+            <h2 class="login-page__brand-head">Know what’s safe before<br />bills hit.</h2>
             <p class="login-page__brand-sub">See what’s left after planned bills—not just today’s balance.</p>
             <figure class="login-page__brand-chart-wrap">
               <div class="login-page__brand-chart" aria-hidden="true">
                 <svg viewBox="0 0 320 120" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
                   <defs>
                     <linearGradient id="loginBrandChartFill" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stop-color="rgba(11, 61, 46, 0.26)" />
-                      <stop offset="100%" stop-color="rgba(11, 61, 46, 0.03)" />
+                      <stop offset="0%" stop-color="rgba(11, 61, 46, 0.28)" />
+                      <stop offset="55%" stop-color="rgba(11, 61, 46, 0.08)" />
+                      <stop offset="100%" stop-color="rgba(11, 61, 46, 0.02)" />
+                    </linearGradient>
+                    <linearGradient id="loginBrandChartFade" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stop-color="rgba(255,255,255,0.22)" />
+                      <stop offset="18%" stop-color="rgba(255,255,255,0)" />
+                      <stop offset="82%" stop-color="rgba(255,255,255,0)" />
+                      <stop offset="100%" stop-color="rgba(255,255,255,0.18)" />
                     </linearGradient>
                   </defs>
-                  <rect x="8" y="12" width="304" height="72" rx="10" fill="rgba(4, 120, 87, 0.105)" />
+                  <rect x="8" y="12" width="304" height="72" rx="10" fill="rgba(4, 120, 87, 0.09)" />
+                  <g opacity="0.55" stroke="rgba(11, 61, 46, 0.12)" stroke-width="1">
+                    <line x1="12" y1="36" x2="308" y2="36" />
+                    <line x1="12" y1="52" x2="308" y2="52" />
+                    <line x1="12" y1="68" x2="308" y2="68" />
+                    <line x1="12" y1="84" x2="308" y2="84" />
+                  </g>
+                  <line x1="20" y1="20" x2="20" y2="100" stroke="rgba(11, 61, 46, 0.14)" stroke-width="1" />
                   <path
                     d="M12,78 C52,72 88,86 128,70 C168,54 200,88 240,62 C272,44 300,38 308,36 L308,96 L12,96 Z"
                     fill="url(#loginBrandChartFill)"
                   />
+                  <rect x="8" y="12" width="304" height="72" rx="10" fill="url(#loginBrandChartFade)" />
                   <path
                     d="M12,78 C52,72 88,86 128,70 C168,54 200,88 240,62 C272,44 300,38 308,36"
                     fill="none"
-                    stroke="#0A3628"
-                    stroke-width="3.05"
+                    stroke="#083528"
+                    stroke-width="3.2"
                     stroke-linecap="round"
                     stroke-linejoin="round"
                   />
+                  <circle cx="128" cy="70" r="4.5" fill="#047857" stroke="#fff" stroke-width="1.2" />
+                  <text x="136" y="73" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="8.5" font-weight="650" fill="rgba(11, 61, 46, 0.55)">Bill</text>
+                  <circle cx="268" cy="42" r="4" fill="#a73744" stroke="#fff" stroke-width="1.1" opacity="0.92" />
+                  <text x="276" y="45" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="8.5" font-weight="650" fill="rgba(167, 55, 68, 0.65)">Pay</text>
                 </svg>
               </div>
               <figcaption class="login-page__brand-chart-caption">Projected balance, not just current balance</figcaption>
