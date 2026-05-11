@@ -574,13 +574,30 @@ let lowBalanceDebounceTimer = null;
 let balanceThresholdPersistTimer = null;
 let lowBalanceLastQuery = { familyId: null, min: null, max: null, mode: null };
 
+/**
+ * Parse threshold field text (min/max). Empty string disables that side.
+ * Allows $, commas, and spaces so blur/Save does not wipe user intent like native type="number" can.
+ * @returns {{ ok: true, empty: true, canonical: string, num: null } | { ok: true, empty: false, canonical: string, num: number } | { ok: false }}
+ */
+function parseBalanceThresholdFieldRaw(raw) {
+  const trimmed = String(raw ?? "").trim();
+  if (!trimmed) return { ok: true, empty: true, canonical: "", num: null };
+  const cleaned = trimmed.replace(/[$,\s]/g, "");
+  if (!cleaned || cleaned === "-" || cleaned === "." || cleaned === "-.") return { ok: false };
+  const n = Number(cleaned);
+  if (!Number.isFinite(n)) return { ok: false };
+  return { ok: true, empty: false, canonical: String(n), num: n };
+}
+
 /** Always read fresh nodes — avoids writing to a detached input if the DOM is ever rebuilt. */
 function balanceThresholdFieldEls() {
+  const root = document.getElementById("settingsViewPanel");
+  const q = (sel) => (root ? root.querySelector(sel) : null);
   return {
-    min: document.getElementById("balanceThresholdMin"),
-    max: document.getElementById("balanceThresholdMax"),
-    err: document.getElementById("lowBalanceErr"),
-    saveBtn: document.getElementById("balanceThresholdSaveBtn"),
+    min: q("#balanceThresholdMin"),
+    max: q("#balanceThresholdMax"),
+    err: q("#lowBalanceErr") || document.getElementById("lowBalanceErr"),
+    saveBtn: q("#balanceThresholdSaveBtn"),
   };
 }
 
@@ -953,6 +970,10 @@ const incomeExpenseDownloadBtn = document.getElementById("incomeExpenseDownloadB
 let incomeExpenseChartInstance = null;
 let incomeExpenseIsStacked = false;
 
+/** Last projection series used by Reports operational panels (safe transfer, risk map, pressure). */
+let lastProjectionDailyForReports = [];
+let reportsSafeTransferChartInstance = null;
+
 // Billing (Settings)
 const billingPlanEl = document.getElementById("billingPlan");
 const billingFrequencyEl = document.getElementById("billingFrequency");
@@ -1107,7 +1128,8 @@ async function refreshLowBalanceAlert() {
   const { min: btMinEl, max: btMaxEl, err: btErr } = balanceThresholdFieldEls();
   try {
     show(btErr, "");
-    if (!state.activeFamilyId) {
+    const activeFid = activeFamilyIdForBalanceThresholds();
+    if (!activeFid) {
       setSidebarLowBalanceBanner("", "off");
       setSidebarHighBalanceBanner("", "off");
       setSidebarBalanceThresholdHint("");
@@ -1115,10 +1137,10 @@ async function refreshLowBalanceAlert() {
       return;
     }
 
-    const minRaw = btMinEl?.value?.trim() ?? "";
-    const maxRaw = btMaxEl?.value?.trim() ?? "";
-    const minVal = minRaw === "" ? null : toNum(minRaw);
-    const maxVal = maxRaw === "" ? null : toNum(maxRaw);
+    const minP = parseBalanceThresholdFieldRaw(btMinEl?.value ?? "");
+    const maxP = parseBalanceThresholdFieldRaw(btMaxEl?.value ?? "");
+    const minVal = minP.ok && !minP.empty ? minP.num : null;
+    const maxVal = maxP.ok && !maxP.empty ? maxP.num : null;
     const minOk = minVal != null && Number.isFinite(minVal);
     const maxOk = maxVal != null && Number.isFinite(maxVal);
     const SHOW_PEAK_BALANCE = false;
@@ -1142,21 +1164,21 @@ async function refreshLowBalanceAlert() {
     const highDays = 180;
     const mode = calendarMode?.value || "both";
     if (
-      lowBalanceLastQuery.familyId === state.activeFamilyId &&
+      lowBalanceLastQuery.familyId === activeFid &&
       lowBalanceLastQuery.min === minVal &&
       lowBalanceLastQuery.max === maxVal &&
       lowBalanceLastQuery.mode === mode
     ) {
       return;
     }
-    lowBalanceLastQuery = { familyId: state.activeFamilyId, min: minVal, max: maxVal, mode };
+    lowBalanceLastQuery = { familyId: activeFid, min: minVal, max: maxVal, mode };
 
     setLowBalanceResult('<div class="k">Balance thresholds</div><div class="v">Checking…</div>', true);
 
     let lowHit = null;
     if (minOk) {
       const data = await api(
-        `/api/families/${state.activeFamilyId}/low-balance-first?threshold=${encodeURIComponent(String(minVal))}&start=${encodeURIComponent(
+        `/api/families/${activeFid}/low-balance-first?threshold=${encodeURIComponent(String(minVal))}&start=${encodeURIComponent(
           startIso
         )}&days=${lowDays}&mode=${encodeURIComponent(mode)}`,
         "GET"
@@ -1172,7 +1194,7 @@ async function refreshLowBalanceAlert() {
     } else if (maxOk) {
       try {
         const dataHi = await api(
-          `/api/families/${state.activeFamilyId}/high-balance-first?ceiling=${encodeURIComponent(String(maxVal))}&start=${encodeURIComponent(
+          `/api/families/${activeFid}/high-balance-first?ceiling=${encodeURIComponent(String(maxVal))}&start=${encodeURIComponent(
             startIso
           )}&days=${highDays}&mode=${encodeURIComponent(mode)}`,
           "GET"
@@ -1301,14 +1323,14 @@ function hydrateBalanceThresholdInputsFromStorage() {
 
     if (minKey && minEl) {
       const s = localStorage.getItem(minKey) || "";
-      if (s) minEl.value = s;
-      else minEl.value = "";
+      const mp = parseBalanceThresholdFieldRaw(s);
+      minEl.value = mp.ok && !mp.empty ? mp.canonical : "";
     } else if (minEl) minEl.value = "";
 
     if (maxKey && maxEl) {
       const s2 = localStorage.getItem(maxKey) || "";
-      if (s2) maxEl.value = s2;
-      else maxEl.value = "";
+      const mp2 = parseBalanceThresholdFieldRaw(s2);
+      maxEl.value = mp2.ok && !mp2.empty ? mp2.canonical : "";
     } else if (maxEl) maxEl.value = "";
 
     const allowLegacy =
@@ -1355,11 +1377,24 @@ function saveBalanceThresholds(opts = {}) {
     if (!silent) show(errEl, "Could not save thresholds for this family. Try refreshing the page.");
     return;
   }
+  const minParsed = parseBalanceThresholdFieldRaw(minEl?.value ?? "");
+  const maxParsed = parseBalanceThresholdFieldRaw(maxEl?.value ?? "");
+  if (!minParsed.ok || !maxParsed.ok) {
+    if (!silent) {
+      show(
+        errEl,
+        "Use plain numbers for thresholds (optional $ and commas). Fix invalid entries, or leave a field blank to turn off that alert."
+      );
+    }
+    return;
+  }
   try {
-    if (minEl) localStorage.setItem(minKey, minEl.value || "");
-    if (maxEl) localStorage.setItem(maxKey, maxEl.value || "");
+    if (minEl) localStorage.setItem(minKey, minParsed.empty ? "" : minParsed.canonical);
+    if (maxEl) localStorage.setItem(maxKey, maxParsed.empty ? "" : maxParsed.canonical);
     localStorage.setItem(BALANCE_THRESHOLD_FAMILY_ID_KEY, String(fidNum));
     state.activeFamilyId = fidNum;
+    if (minEl) minEl.value = minParsed.empty ? "" : minParsed.canonical;
+    if (maxEl) maxEl.value = maxParsed.empty ? "" : maxParsed.canonical;
   } catch (e) {
     show(errEl, e.message || "Could not save thresholds.");
     return;
@@ -1369,6 +1404,10 @@ function saveBalanceThresholds(opts = {}) {
   if (lowBalanceDebounceTimer) clearTimeout(lowBalanceDebounceTimer);
   lowBalanceDebounceTimer = null;
   void refreshLowBalanceAlert();
+  if (reportsViewPanel && !reportsViewPanel.hidden && lastProjectionDailyForReports?.length > 1 && projectionChartCanvas) {
+    drawProjectionChart(lastProjectionDailyForReports);
+    renderReportsOperationalPanels();
+  }
   if (!silent && saveBtn) {
     const prev = saveBtn.textContent;
     saveBtn.textContent = "Saved";
@@ -1475,8 +1514,8 @@ async function shiftCalendarMonth(delta) {
   await loadMonthAndCalendar();
 }
 
-document.getElementById("refreshBtn").addEventListener("click", async () => {
-  applyCalendarMonthToPickers(monthInput.value);
+document.getElementById("refreshBtn")?.addEventListener("click", async () => {
+  if (monthInput) applyCalendarMonthToPickers(monthInput.value);
   await loadMonthAndCalendar();
 });
 
@@ -1602,6 +1641,25 @@ const calendarViewPanel = document.getElementById("calendarViewPanel");
 const transactionViewPanel = document.getElementById("transactionViewPanel");
 const settingsViewPanel = document.getElementById("settingsViewPanel");
 const reportsViewPanel = document.getElementById("reportsViewPanel");
+if (reportsViewPanel && reportsViewPanel.dataset.bwReportsHorizonInit !== "1") {
+  reportsViewPanel.dataset.bwReportsHorizonInit = "1";
+  reportsViewPanel.addEventListener("click", async (e) => {
+    const btn = e.target.closest(".reports-horizon__btn[data-report-days]");
+    if (!btn || !reportsViewPanel.contains(btn)) return;
+    const d = Number(btn.dataset.reportDays);
+    if (!Number.isFinite(d) || d < 1) return;
+    if (chartDaysRange) chartDaysRange.value = String(d);
+    if (chartDaysLabel) chartDaysLabel.textContent = `${d} days`;
+    reportsViewPanel.querySelectorAll(".reports-horizon__btn").forEach((b) => {
+      b.classList.toggle("is-active", b === btn);
+    });
+    try {
+      await refreshProjectionChart();
+    } catch (err) {
+      show(chartErr, err.message || "Failed to update chart");
+    }
+  });
+}
 const settingsSidebarNav = document.getElementById("settingsSidebarNav");
 const sidebarPendingTxCard = document.getElementById("sidebarPendingTxCard");
 const sidebarPendingTxList = document.getElementById("sidebarPendingTxList");
@@ -1631,29 +1689,13 @@ function initReportsLeftNav() {
   if (reportsViewPanel.dataset.reportsNavInit === "1") return;
   reportsViewPanel.dataset.reportsNavInit = "1";
 
-  // If we previously rendered a 2-column reports layout, unwrap it.
-  try {
-    const existingLayout = reportsViewPanel.querySelector(":scope > .reports-layout");
-    if (existingLayout) {
-      const content = existingLayout.querySelector(":scope > .reports-content");
-      if (content) {
-        const kids = [...content.children];
-        existingLayout.remove();
-        for (const kid of kids) reportsViewPanel.appendChild(kid);
-      }
-    }
-  } catch (_) {}
-
-  // Month summary lives inside the reports view content (not the left sidebar).
-  // Give it a stable id so the report nav can target it.
-  const monthSummaryEl = reportsViewPanel.querySelector('.sidebar-section[data-sidebar-key="month"]');
-  if (monthSummaryEl && !monthSummaryEl.id) monthSummaryEl.id = "monthSummaryCard";
-
   const ids = [
     { id: "chartPanel", label: "Balance trendline" },
-    { id: "incomeExpenseCard", label: "Income vs. Expense" },
-    { id: "categoryTotalsReportCard", label: "Category totals" },
-    { id: "monthSummaryCard", label: "Month summary" },
+    { id: "reportCashTiming", label: "Income vs. expense timing" },
+    { id: "reportSafeTransfer", label: "Safe-to-transfer outlook" },
+    { id: "reportRiskHeatmap", label: "Low balance risk map" },
+    { id: "reportObligations", label: "Recurring obligations" },
+    { id: "reportCashPressure", label: "Upcoming cash pressure" },
   ].filter((it) => document.getElementById(it.id));
 
   if (!ids.length) return;
@@ -1819,10 +1861,11 @@ function setActiveTopView(view) {
     initReportsLeftNav();
     populateCatReportYearSelect();
     ensureCatReportDateDefaults();
-    if (projectionChartInstance) {
+    if (projectionChartInstance || reportsSafeTransferChartInstance) {
       requestAnimationFrame(() => {
         try {
-          projectionChartInstance.resize();
+          projectionChartInstance?.resize();
+          reportsSafeTransferChartInstance?.resize();
         } catch (_) {}
       });
     } else if (projectionChartCanvas && state.activeFamilyId) {
@@ -1835,6 +1878,9 @@ function setActiveTopView(view) {
         void refreshIncomeExpenseReport().catch(() => {});
       });
     }
+    requestAnimationFrame(() => {
+      renderReportsOperationalPanels();
+    });
   }
   if (v === "calendar") {
     lowBalanceLastQuery = { familyId: null, min: null, max: null, mode: null };
@@ -3467,8 +3513,10 @@ async function refreshProjectionChart() {
     `/api/families/${state.activeFamilyId}/projection?start=${encodeURIComponent(chartStart.value)}&days=${daysVal}&include_accounts=false`,
     "GET"
   );
-  drawProjectionChart(summary?.daily || []);
+  lastProjectionDailyForReports = summary?.daily || [];
+  drawProjectionChart(lastProjectionDailyForReports);
   syncChartRangeDisplay();
+  renderReportsOperationalPanels();
 }
 
 function setIncomeExpenseEmpty(msg) {
@@ -3514,15 +3562,26 @@ function aggregateIncomeExpenseByMonth(items) {
   };
 }
 
-function drawIncomeExpenseChart({ months, income, expense }) {
+function fmtWeekStartShort(iso) {
+  const d = new Date(`${iso}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return String(iso);
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function drawIncomeExpenseChart(agg) {
   if (!incomeExpenseChartCanvas) return;
   if (typeof Chart === "undefined") return;
 
   const ctx = incomeExpenseChartCanvas.getContext("2d");
   if (!ctx) return;
 
-  const labels = (months || []).map(fmtMonthYearShort);
-  const net = labels.map((_, i) => Number(income?.[i] || 0) - Number(expense?.[i] || 0));
+  const useWeeks = Array.isArray(agg?.weeks) && agg.weeks.length > 0;
+  const labels = useWeeks
+    ? agg.weeks.map(fmtWeekStartShort)
+    : (agg.months || []).map(fmtMonthYearShort);
+  const income = agg.income || [];
+  const expense = agg.expense || [];
+  const net = labels.map((_, i) => Number(income[i] || 0) - Number(expense[i] || 0));
 
   destroyIncomeExpenseChart();
   applyIncomeExpenseToggleUi();
@@ -3534,17 +3593,17 @@ function drawIncomeExpenseChart({ months, income, expense }) {
       datasets: [
         {
           label: "Income",
-          data: income || [],
-          backgroundColor: "rgba(45,120,110,0.80)",
-          borderColor: "rgba(45,120,110,0.95)",
+          data: income,
+          backgroundColor: "rgba(11, 61, 46, 0.72)",
+          borderColor: "rgba(11, 61, 46, 0.9)",
           borderWidth: 1,
           stack: incomeExpenseIsStacked ? "stack" : undefined,
         },
         {
           label: "Expense",
-          data: expense || [],
-          backgroundColor: "rgba(200,75,55,0.70)",
-          borderColor: "rgba(200,75,55,0.95)",
+          data: expense,
+          backgroundColor: "rgba(167, 55, 68, 0.65)",
+          borderColor: "rgba(167, 55, 68, 0.9)",
           borderWidth: 1,
           stack: incomeExpenseIsStacked ? "stack" : undefined,
         },
@@ -3602,7 +3661,9 @@ async function refreshIncomeExpenseReport() {
   setIncomeExpenseEmpty("");
   try {
     const end = toISODate(new Date());
-    const start = "2000-01-01";
+    const startD = new Date();
+    startD.setDate(startD.getDate() - 119);
+    const start = toISODate(startD);
     const r = await api(
       `/api/families/${state.activeFamilyId}/transactions?start_date=${encodeURIComponent(start)}&end_date=${encodeURIComponent(end)}`,
       "GET"
@@ -3611,17 +3672,17 @@ async function refreshIncomeExpenseReport() {
     if (!Array.isArray(items) || items.length === 0) {
       destroyIncomeExpenseChart();
       setIncomeExpenseEmpty("No data for this range.");
-      if (incomeExpenseSubtitle) incomeExpenseSubtitle.textContent = "All time";
+      if (incomeExpenseSubtitle) incomeExpenseSubtitle.textContent = "Last ~17 weeks (actual)";
       return;
     }
-    const agg = aggregateIncomeExpenseByMonth(items);
-    if (!agg.months.length) {
+    const agg = aggregateIncomeExpenseByWeek(items);
+    if (!agg.weeks.length) {
       destroyIncomeExpenseChart();
       setIncomeExpenseEmpty("No data for this range.");
-      if (incomeExpenseSubtitle) incomeExpenseSubtitle.textContent = "All time";
+      if (incomeExpenseSubtitle) incomeExpenseSubtitle.textContent = "Last ~17 weeks (actual)";
       return;
     }
-    if (incomeExpenseSubtitle) incomeExpenseSubtitle.textContent = "All time";
+    if (incomeExpenseSubtitle) incomeExpenseSubtitle.textContent = "Last ~17 weeks (actual) · weekly totals";
     drawIncomeExpenseChart(agg);
   } catch (e) {
     destroyIncomeExpenseChart();
@@ -5470,7 +5531,7 @@ if (reconcileSaveBtn) {
       if (!state.activeFamilyId) throw new Error("Choose a family first");
       const iso = normalizeIsoDate(reconcileActiveDate);
       if (!iso) throw new Error("Invalid date");
-      const month = (calendarMonth?.value || monthInput.value) || iso.slice(0, 7);
+      const month = (calendarMonth?.value || monthInput?.value) || iso.slice(0, 7);
       await api(`/api/families/${state.activeFamilyId}/reconciled-days`, "POST", {
         date: iso,
         reconciled: !!reconcileChecked?.checked,
@@ -6098,6 +6159,7 @@ async function loadExpectedTransactions() {
 }
 
 function renderProjectionSummary(summary) {
+  if (!projectionSummary) return;
   projectionSummary.innerHTML = "";
   if (!summary?.daily || summary.daily.length === 0) return;
 
@@ -6168,6 +6230,7 @@ function renderProjectionDaily(dailyItems) {
 }
 
 function renderTotals(totals) {
+  if (!totalsEl) return;
   totalsEl.innerHTML = "";
   const income = totals?.income ?? 0;
   const expense = totals?.expense ?? 0;
@@ -6364,7 +6427,7 @@ async function loadExpectedCalendar() {
     state.monthExpectedItems = [];
     if (!state.activeFamilyId) return;
 
-    const month = calendarMonth?.value || monthInput.value;
+    const month = calendarMonth?.value || monthInput?.value;
     if (!month) return;
 
     const data = await api(`/api/families/${state.activeFamilyId}/expected-calendar?month=${encodeURIComponent(month)}`, "GET");
@@ -6388,7 +6451,7 @@ async function loadCalendarExtras() {
   state.calendarExtraActualItems = [];
   state.calendarExtraExpectedItems = [];
   if (!state.activeFamilyId) return;
-  const month = calendarMonth?.value || monthInput.value;
+  const month = calendarMonth?.value || monthInput?.value;
   if (!month) return;
   const prev = shiftMonthStr(month, -1);
   const next = shiftMonthStr(month, 1);
@@ -6500,7 +6563,7 @@ function monthStartEndIso(ym) {
 
 function renderSidebarPendingTransactionsForMonth() {
   if (!sidebarPendingTxList) return;
-  const month = calendarMonth?.value || monthInput.value;
+  const month = calendarMonth?.value || monthInput?.value;
   const range = monthStartEndIso(month);
   sidebarPendingTxList.innerHTML = "";
   if (sidebarPendingTxCard) sidebarPendingTxCard.classList.remove("sidebar-pending--empty");
@@ -6571,14 +6634,18 @@ function renderSidebarPendingTransactionsForMonth() {
 
     const name = document.createElement("div");
     name.className = `pending-attn-name ${kindFgClass(kind)}`;
-    name.textContent = String(it?.description || "(expected)").trim() || "(expected)";
+    const descFull = String(it?.description || "(expected)").trim() || "(expected)";
+    name.textContent = descFull;
+    name.title = descFull;
 
     const est = document.createElement("div");
     est.className = "pending-attn-est";
     const amt = Math.abs(toNum(it?.amount));
     const sign = String(kind) === "income" ? "+" : "–";
     const catLabel = effectiveTransactionCategoryName(it) || "Uncategorized";
-    est.textContent = `${truncate(catLabel, 28)} ${sign}$${fmtMoney0(amt)}`;
+    const estParts = `${truncate(catLabel, 40)} ${sign}$${fmtMoney0(amt)}`;
+    est.textContent = estParts;
+    est.title = `${catLabel} ${sign}$${fmtMoney0(amt)}`;
 
     const date = document.createElement("div");
     date.className = "pending-attn-date";
@@ -6594,7 +6661,7 @@ function renderSidebarPendingTransactionsForMonth() {
 async function loadCalendarMonthDaily() {
   state.monthDailyBalances = new Map();
   if (!state.activeFamilyId) return;
-  const month = calendarMonth?.value || monthInput.value;
+  const month = calendarMonth?.value || monthInput?.value;
   if (!month) return;
   const mode = calendarMode?.value || "both";
   try {
@@ -7300,7 +7367,7 @@ function renderCalendar() {
         // If uncategorized, fall back to the description.
         const labelRaw = !isExpected ? (categoryName || descRaw) : descRaw;
         // Keep labels short so they don't wrap into the amount column.
-        const label = truncate(labelRaw, 24);
+        const label = truncate(labelRaw, 34);
 
         const labelSpan = document.createElement("span");
         labelSpan.className = `cal-tx-label ${kindFgClass(row.kind)}`;
@@ -7330,6 +7397,7 @@ function renderCalendar() {
 
         line.appendChild(labelWrap);
         line.appendChild(amtSpan);
+        line.title = String(labelRaw || "").trim();
 
         {
           const noteStr = row.notes && String(row.notes).trim() ? String(row.notes).trim() : "";
@@ -7432,12 +7500,368 @@ function renderCalendar() {
   }
 }
 
+function readStoredMinBalanceThresholdForReports() {
+  const fid = activeFamilyIdForBalanceThresholds();
+  if (fid == null) return null;
+  const k = getBalanceThresholdKey("min", fid);
+  if (!k) return null;
+  let raw = "";
+  try {
+    raw = localStorage.getItem(k) || "";
+  } catch (_) {}
+  const n = Number(String(raw).replace(/,/g, "").trim());
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return n;
+}
+
+function weekKeyMondayFromIso(iso) {
+  const d = new Date(`${iso}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return "";
+  const day = d.getDay();
+  const diff = (day + 6) % 7;
+  d.setDate(d.getDate() - diff);
+  return toISODate(d);
+}
+
+function aggregateIncomeExpenseByWeek(items) {
+  /** @type {Map<string,{income:number,expense:number}>} */
+  const byWeek = new Map();
+  for (const it of items || []) {
+    const iso = it && it.date ? String(it.date) : "";
+    if (!iso || iso.length < 10) continue;
+    const wk = weekKeyMondayFromIso(iso);
+    if (!wk) continue;
+    const kind = String(it.kind || "");
+    const amt = Number(it.amount || 0);
+    if (!Number.isFinite(amt)) continue;
+    const row = byWeek.get(wk) || { income: 0, expense: 0 };
+    if (kind === "income") row.income += amt;
+    else if (kind === "expense") row.expense += amt;
+    byWeek.set(wk, row);
+  }
+  const weeks = [...byWeek.keys()].sort();
+  return {
+    weeks,
+    income: weeks.map((w) => byWeek.get(w)?.income || 0),
+    expense: weeks.map((w) => byWeek.get(w)?.expense || 0),
+  };
+}
+
+function destroyReportsSafeTransferChart() {
+  if (reportsSafeTransferChartInstance) {
+    try {
+      reportsSafeTransferChartInstance.destroy();
+    } catch (_) {}
+    reportsSafeTransferChartInstance = null;
+  }
+}
+
+function computeSafeToTransferSeries(daily, floor) {
+  const items = daily || [];
+  const n = items.length;
+  const balances = items.map((d) => Number(d.total_balance ?? 0));
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    let minF = Number.POSITIVE_INFINITY;
+    for (let j = i; j < n; j++) {
+      minF = Math.min(minF, balances[j]);
+    }
+    out.push(Math.max(0, minF - floor));
+  }
+  return out;
+}
+
+function mapObligationGroup(description, category) {
+  const s = `${String(description || "")} ${String(category || "")}`.toLowerCase();
+  if (/mortgage|rent|hoa|housing|landlord/.test(s)) return "Housing";
+  if (/electric|gas|water|utility|utilities|internet|sewer|trash/.test(s)) return "Utilities";
+  if (/loan|card|credit|debt|student|auto loan/.test(s)) return "Debt";
+  if (/subscription|netflix|spotify|software|saas|apple|google/.test(s)) return "Subscriptions";
+  if (/insurance|premium/.test(s)) return "Insurance";
+  if (/daycare|school|sport|activity|kids|child/.test(s)) return "Kids / activities";
+  return "Other obligations";
+}
+
+function estimatedMonthlyFromRecurrence(amount, recurrence) {
+  const r = String(recurrence || "monthly").toLowerCase();
+  const a = Number(amount || 0);
+  if (!Number.isFinite(a)) return 0;
+  if (r === "weekly") return a * 4.345;
+  if (r === "biweekly") return a * 2.1725;
+  if (r === "twice_monthly") return a * 2;
+  if (r === "bimonthly") return a / 2;
+  if (r === "semiannual") return a / 6;
+  if (r === "yearly" || r === "annual") return a / 12;
+  return a;
+}
+
+function renderReportsBalanceLegend(daily, dateLabels, values) {
+  const el = document.getElementById("reportsBalanceLegend");
+  if (!el) return;
+  const items = daily || [];
+  if (!items.length) {
+    el.innerHTML = "";
+    return;
+  }
+  let lowIdx = 0;
+  for (let i = 1; i < values.length; i++) {
+    if (values[i] < values[lowIdx]) lowIdx = i;
+  }
+  const lowIso = String(dateLabels[lowIdx] || "");
+  const negSpans = [];
+  let spanStart = -1;
+  for (let i = 0; i < values.length; i++) {
+    const neg = values[i] < 0;
+    if (neg && spanStart < 0) spanStart = i;
+    if (!neg && spanStart >= 0) {
+      negSpans.push({ a: spanStart, b: i - 1 });
+      spanStart = -1;
+    }
+  }
+  if (spanStart >= 0) negSpans.push({ a: spanStart, b: values.length - 1 });
+  const deposits = [];
+  const outflows = [];
+  for (let i = 0; i < items.length; i++) {
+    const net = Number(items[i].net_cashflow ?? 0);
+    if (net >= 1200) deposits.push({ i, iso: String(items[i].date), net });
+    if (net <= -900) outflows.push({ i, iso: String(items[i].date), net });
+  }
+  const depShow = deposits.slice(0, 3);
+  const outShow = outflows.slice(0, 3);
+  const thr = readStoredMinBalanceThresholdForReports();
+  const parts = [
+    `<span class="reports-legend__item"><strong>Low point</strong> ${fmtDateMDY(lowIso)} · $${fmtMoney(values[lowIdx])}</span>`,
+  ];
+  if (thr != null) {
+    parts.push(`<span class="reports-legend__item"><strong>Floor</strong> $${fmtMoney(thr)} (from Settings minimum)</span>`);
+  }
+  if (depShow.length) {
+    parts.push(
+      `<span class="reports-legend__item"><strong>Strong deposits</strong> ${depShow.map((d) => `${fmtDateMDY(d.iso)} (+$${fmtMoney(d.net)})`).join(" · ")}</span>`
+    );
+  }
+  if (outShow.length) {
+    parts.push(
+      `<span class="reports-legend__item"><strong>Large outflows</strong> ${outShow.map((d) => `${fmtDateMDY(d.iso)} (−$${fmtMoney(Math.abs(d.net))})`).join(" · ")}</span>`
+    );
+  }
+  if (negSpans.length) {
+    const txt = negSpans
+      .map((sp) => `${fmtDateMDY(String(dateLabels[sp.a]))}–${fmtDateMDY(String(dateLabels[sp.b]))}`)
+      .join(" · ");
+    parts.push(`<span class="reports-legend__item reports-legend__item--warn"><strong>Negative balance</strong> ${txt}</span>`);
+  }
+  el.innerHTML = `<div class="reports-legend__inner">${parts.join("")}</div>`;
+}
+
+function drawReportsSafeTransferChart(daily) {
+  const canvas = document.getElementById("reportsSafeTransferCanvas");
+  const emptyEl = document.getElementById("reportsSafeTransferEmpty");
+  const statsEl = document.getElementById("reportsSafeTransferStats");
+  if (!canvas || typeof Chart === "undefined") return;
+  destroyReportsSafeTransferChart();
+  const floor = readStoredMinBalanceThresholdForReports();
+  const items = daily || [];
+  if (items.length < 2) {
+    if (emptyEl) {
+      emptyEl.style.display = "flex";
+      emptyEl.textContent = items.length ? "Not enough projection days." : "No projection data.";
+    }
+    if (statsEl) statsEl.innerHTML = "";
+    return;
+  }
+  if (floor == null) {
+    if (emptyEl) {
+      emptyEl.style.display = "flex";
+      emptyEl.textContent = "Set a minimum balance in Settings to see safe-to-transfer headroom.";
+    }
+    if (statsEl) {
+      statsEl.innerHTML =
+        '<p class="meta">Safe transfer uses your saved minimum balance as a floor across the remaining forecast path.</p>';
+    }
+    return;
+  }
+  if (emptyEl) emptyEl.style.display = "none";
+  const labels = items.map((d) => d.date);
+  const series = computeSafeToTransferSeries(items, floor);
+  const hi = Math.max(...series);
+  const lo = Math.min(...series);
+  const avg = series.reduce((a, b) => a + b, 0) / series.length;
+  if (statsEl) {
+    statsEl.innerHTML = `<div class="reports-mini-stats__row">
+      <div><span class="k">High</span><span class="v">$${fmtMoney(hi)}</span></div>
+      <div><span class="k">Low</span><span class="v">$${fmtMoney(lo)}</span></div>
+      <div><span class="k">Average</span><span class="v">$${fmtMoney(avg)}</span></div>
+    </div>`;
+  }
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+  reportsSafeTransferChartInstance = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels,
+      datasets: [
+        {
+          label: "Safe to move",
+          data: series,
+          borderColor: "rgba(11, 61, 46, 0.88)",
+          backgroundColor: "rgba(11, 61, 46, 0.08)",
+          borderWidth: 2,
+          fill: true,
+          tension: 0.2,
+          pointRadius: 0,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: (t) => formatProjectionTooltipDate(labels[t[0]?.dataIndex ?? 0]),
+            label: (c) => ` Headroom $${fmtMoney(c.parsed.y)}`,
+          },
+        },
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 8 },
+        },
+        y: {
+          grid: { color: "rgba(0,0,0,0.05)", drawBorder: false },
+          ticks: {
+            callback: (v) => "$" + fmtMoney0(v),
+          },
+        },
+      },
+    },
+  });
+}
+
+function renderReportsRiskHeatmap(daily) {
+  const host = document.getElementById("reportsRiskHeatmapGrid");
+  if (!host) return;
+  host.innerHTML = "";
+  const items = (daily || []).slice(0, 60);
+  const thr = readStoredMinBalanceThresholdForReports();
+  for (const row of items) {
+    const iso = String(row.date || "");
+    const bal = Number(row.total_balance ?? 0);
+    let cls = "reports-risk-cell--safe";
+    if (bal < 0) cls = "reports-risk-cell--neg";
+    else if (thr != null && bal < thr * 0.5) cls = "reports-risk-cell--low";
+    else if (thr != null && bal < thr * 1.05) cls = "reports-risk-cell--caution";
+    const cell = document.createElement("button");
+    cell.type = "button";
+    cell.className = `reports-risk-cell ${cls}`;
+    cell.title = `${fmtDateMDY(iso)} · $${fmtMoney(bal)}`;
+    cell.textContent = String(new Date(`${iso}T12:00:00`).getDate());
+    host.appendChild(cell);
+  }
+}
+
+function renderReportsObligations() {
+  const body = document.getElementById("reportsObligationBody");
+  if (!body) return;
+  body.innerHTML = "";
+  const todayIso = toISODate(new Date());
+  const rows = [];
+  for (const tx of state.expectedTransactions || []) {
+    if (String(tx.kind || "") !== "expense") continue;
+    const nextIso = nextOccurrenceIsoForRecurringList(tx, todayIso);
+    if (!nextIso) continue;
+    const grp = mapObligationGroup(tx.description, tx.category);
+    const est = estimatedMonthlyFromRecurrence(tx.amount, tx.recurrence);
+    rows.push({
+      grp,
+      desc: String(tx.description || "Recurring"),
+      amt: Number(tx.amount || 0),
+      rec: recurrenceLabel(tx.recurrence),
+      nextIso,
+      est,
+    });
+  }
+  rows.sort((a, b) => String(a.grp).localeCompare(String(b.grp)) || String(a.nextIso).localeCompare(String(b.nextIso)));
+  for (const r of rows) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${escapeHtml(r.grp)}</td><td>${escapeHtml(r.desc)}</td><td>$${fmtMoney(r.amt)}</td><td>${escapeHtml(r.rec)}</td><td>${fmtDateMDY(r.nextIso)}</td><td>$${fmtMoney(r.est)}</td>`;
+    body.appendChild(tr);
+  }
+  if (!rows.length) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td colspan="6" class="reports-table__empty">No recurring expenses on file.</td>`;
+    body.appendChild(tr);
+  }
+}
+
+function renderReportsCashPressure(daily) {
+  const body = document.getElementById("reportsPressureBody");
+  const hint = document.getElementById("reportsPressureHint");
+  if (!body) return;
+  body.innerHTML = "";
+  const balByDate = new Map((daily || []).map((d) => [String(d.date), Number(d.total_balance ?? 0)]));
+  const todayIso = toISODate(new Date());
+  const horizon = new Date();
+  horizon.setDate(horizon.getDate() + 90);
+  const horizonIso = toISODate(horizon);
+  const hits = [];
+  for (const tx of state.expectedTransactions || []) {
+    if (String(tx.kind || "") !== "expense") continue;
+    const amt = Number(tx.amount || 0);
+    if (!Number.isFinite(amt) || amt < 400) continue;
+    const nextIso = nextOccurrenceIsoForRecurringList(tx, todayIso);
+    if (!nextIso || nextIso > horizonIso) continue;
+    hits.push({
+      iso: nextIso,
+      desc: String(tx.description || "Scheduled expense"),
+      amt,
+      after: balByDate.get(nextIso),
+    });
+  }
+  hits.sort((a, b) => String(a.iso).localeCompare(String(b.iso)));
+  if (hint) {
+    hint.textContent = hits.length
+      ? "Sorted by next impact date. Balance after uses the projected day-ending total for that date."
+      : "No large scheduled outflows in the next 90 days (threshold: $400).";
+  }
+  for (const h of hits) {
+    const tr = document.createElement("tr");
+    const after =
+      h.after != null && Number.isFinite(h.after) ? `$${fmtMoney(h.after)}` : "—";
+    tr.innerHTML = `<td>${fmtDateMDY(h.iso)}</td><td>${escapeHtml(h.desc)}</td><td>$${fmtMoney(h.amt)}</td><td>${after}</td>`;
+    body.appendChild(tr);
+  }
+  if (!hits.length) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td colspan="4" class="reports-table__empty">No upcoming pressure rows.</td>`;
+    body.appendChild(tr);
+  }
+}
+
+function renderReportsOperationalPanels() {
+  const daily = lastProjectionDailyForReports || [];
+  drawReportsSafeTransferChart(daily);
+  renderReportsRiskHeatmap(daily);
+  renderReportsObligations();
+  renderReportsCashPressure(daily);
+  requestAnimationFrame(() => {
+    try {
+      reportsSafeTransferChartInstance?.resize();
+    } catch (_) {}
+  });
+}
+
 function drawProjectionChart(daily) {
   const emptyEl = document.getElementById("projectionChartEmpty");
   if (!projectionChartCanvas) return;
 
   if (projectionChartInstance) {
-    projectionChartInstance.destroy();
+    try {
+      projectionChartInstance.destroy();
+    } catch (_) {}
     projectionChartInstance = null;
   }
 
@@ -7448,6 +7872,8 @@ function drawProjectionChart(daily) {
       emptyEl.textContent =
         items.length === 0 ? "No data for this range." : "Not enough data points to draw the chart.";
     }
+    const leg = document.getElementById("reportsBalanceLegend");
+    if (leg) leg.innerHTML = "";
     return;
   }
 
@@ -7465,6 +7891,70 @@ function drawProjectionChart(daily) {
 
   const dateLabels = items.map((d) => d.date);
   const values = items.map((d) => Number(d.total_balance ?? 0));
+  const thr = readStoredMinBalanceThresholdForReports();
+
+  let lowIdx = 0;
+  for (let i = 1; i < values.length; i++) {
+    if (values[i] < values[lowIdx]) lowIdx = i;
+  }
+  const pointRadius = values.map((_, i) => (i === lowIdx ? 5 : 0));
+  const pointBackgroundColor = values.map((_, i) =>
+    i === lowIdx ? "rgba(167, 55, 68, 0.95)" : "rgba(55, 130, 115, 0)"
+  );
+
+  renderReportsBalanceLegend(items, dateLabels, values);
+
+  const datasets = [
+    {
+      label: "Balance",
+      data: values,
+      borderColor: "rgba(11, 61, 46, 0.92)",
+      backgroundColor: (context) => {
+        const chart = context.chart;
+        const { ctx, chartArea, scales } = chart;
+        if (!chartArea || !scales?.y) return "rgba(11, 61, 46, 0.08)";
+        const y0 = scales.y.getPixelForValue(0);
+        const top = chartArea.top;
+        const bottom = chartArea.bottom;
+        const g = ctx.createLinearGradient(0, top, 0, bottom);
+        const span = bottom - top || 1;
+        let t = (y0 - top) / span;
+        if (!Number.isFinite(t)) t = 0.5;
+        t = Math.max(0, Math.min(1, t));
+        g.addColorStop(0, "rgba(11, 61, 46, 0.12)");
+        g.addColorStop(t, "rgba(11, 61, 46, 0.12)");
+        g.addColorStop(t, "rgba(167, 55, 68, 0.12)");
+        g.addColorStop(1, "rgba(167, 55, 68, 0.12)");
+        return g;
+      },
+      borderWidth: 2,
+      fill: true,
+      tension: 0.15,
+      pointRadius,
+      pointHoverRadius: 5,
+      pointBackgroundColor,
+      segment: {
+        borderColor: (ctx) => {
+          const y0 = ctx.p0.parsed.y;
+          const y1 = ctx.p1.parsed.y;
+          const mid = (Number(y0) + Number(y1)) / 2;
+          return mid >= 0 ? "rgba(11, 61, 46, 0.92)" : "rgba(167, 55, 68, 0.9)";
+        },
+      },
+    },
+  ];
+  if (thr != null) {
+    datasets.push({
+      label: "Minimum",
+      data: dateLabels.map(() => thr),
+      borderColor: "rgba(75, 85, 99, 0.55)",
+      borderWidth: 1.5,
+      borderDash: [5, 5],
+      pointRadius: 0,
+      fill: false,
+      tension: 0,
+    });
+  }
 
   const ctx = projectionChartCanvas.getContext("2d");
   if (!ctx) return;
@@ -7473,44 +7963,7 @@ function drawProjectionChart(daily) {
     type: "line",
     data: {
       labels: dateLabels,
-      datasets: [
-        {
-          label: "Balance",
-          data: values,
-          borderColor: "rgba(55,130,115,0.95)",
-          backgroundColor: (context) => {
-            const chart = context.chart;
-            const { ctx, chartArea, scales } = chart;
-            if (!chartArea || !scales?.y) return "rgba(55,130,115,0.16)";
-            const y0 = scales.y.getPixelForValue(0);
-            const top = chartArea.top;
-            const bottom = chartArea.bottom;
-            const g = ctx.createLinearGradient(0, top, 0, bottom);
-            const span = bottom - top || 1;
-            let t = (y0 - top) / span;
-            if (!Number.isFinite(t)) t = 0.5;
-            t = Math.max(0, Math.min(1, t));
-            g.addColorStop(0, "rgba(45,120,110,0.22)");
-            g.addColorStop(t, "rgba(45,120,110,0.22)");
-            g.addColorStop(t, "rgba(200,75,55,0.16)");
-            g.addColorStop(1, "rgba(200,75,55,0.16)");
-            return g;
-          },
-          borderWidth: 1.5,
-          fill: true,
-          tension: 0,
-          pointRadius: 0,
-          pointHoverRadius: 4,
-          segment: {
-            borderColor: (ctx) => {
-              const y0 = ctx.p0.parsed.y;
-              const y1 = ctx.p1.parsed.y;
-              const mid = (Number(y0) + Number(y1)) / 2;
-              return mid >= 0 ? "rgba(45,120,110,0.95)" : "rgba(200,75,55,0.95)";
-            },
-          },
-        },
-      ],
+      datasets,
     },
     options: {
       responsive: true,
@@ -7524,17 +7977,28 @@ function drawProjectionChart(daily) {
               const i = ctxItems[0]?.dataIndex ?? 0;
               return formatProjectionTooltipDate(dateLabels[i]);
             },
-            label: (ctx) => ` Balance $${fmtMoney(ctx.parsed.y)}`,
+            footer: (ctxItems) => {
+              if (!ctxItems || !ctxItems.length) return "";
+              const i = ctxItems[0]?.dataIndex ?? 0;
+              const net = Number(items[i]?.net_cashflow ?? 0);
+              if (!net) return "";
+              const sign = net >= 0 ? "+" : "−";
+              return `Day net ${sign}$${fmtMoney(Math.abs(net))}`;
+            },
+            label: (ctx) => {
+              if (ctx.dataset.label === "Minimum") return ` Floor $${fmtMoney(ctx.parsed.y)}`;
+              return ` Balance $${fmtMoney(ctx.parsed.y)}`;
+            },
           },
         },
       },
       scales: {
         x: {
           type: "category",
-          grid: { color: "rgba(0,0,0,0.06)", drawBorder: false },
+          grid: { display: false },
           ticks: {
             autoSkip: true,
-            maxTicksLimit: 10,
+            maxTicksLimit: 8,
             maxRotation: 0,
             callback: function (tickValue) {
               const lbl = typeof tickValue === "number" ? dateLabels[tickValue] : tickValue;
@@ -7542,18 +8006,11 @@ function drawProjectionChart(daily) {
               return formatProjectionAxisDate(String(lbl));
             },
           },
-          title: {
-            display: true,
-            text: "Date",
-            color: "#4b5563",
-            font: { size: 11, weight: "500" },
-            padding: { top: 6 },
-          },
         },
         y: {
-          grid: { color: "rgba(0,0,0,0.06)", drawBorder: false },
+          grid: { color: "rgba(0,0,0,0.045)", drawBorder: false },
           ticks: {
-            maxTicksLimit: 7,
+            maxTicksLimit: 6,
             callback: (value) =>
               "$" +
               Number(value).toLocaleString(undefined, {
@@ -7561,18 +8018,11 @@ function drawProjectionChart(daily) {
                 minimumFractionDigits: 0,
               }),
           },
-          title: {
-            display: true,
-            text: "Balance",
-            color: "#4b5563",
-            font: { size: 11, weight: "500" },
-          },
         },
       },
     },
   });
 }
-
 /** Shown in forecast-ready modal; keep in sync with marketing/plans pages. */
 function getTrialContinueMonthlyPriceDisplay() {
   return "5.99";
@@ -7670,7 +8120,7 @@ function setDefaultMonth() {
   const d = new Date();
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const ym = `${d.getFullYear()}-${m}`;
-  monthInput.value = ym;
+  if (monthInput) monthInput.value = ym;
   applyCalendarMonthToPickers(ym);
 }
 

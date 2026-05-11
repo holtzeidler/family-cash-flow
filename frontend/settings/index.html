@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=334" />
+    <link rel="stylesheet" href="../styles.css?v=342" />
   </head>
   <body>
     <div class="container">
@@ -220,6 +220,37 @@
             </div>
           </div>
 
+          <div class="card sidebar-section sidebar-section--collapsed" data-sidebar-key="month">
+            <div class="sidebar-section-head">
+              <h2>Month summary</h2>
+              <button
+                type="button"
+                class="sidebar-collapse-btn"
+                aria-expanded="false"
+                aria-controls="sidebarBodyMonth"
+                title="Expand Month summary"
+              >
+                <svg class="sidebar-collapse-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M6 9l6 6 6-6" />
+                </svg>
+              </button>
+            </div>
+            <div id="sidebarBodyMonth" class="sidebar-section-body">
+              <div class="row two">
+                <div>
+                  <label for="monthInput">Month</label>
+                  <input id="monthInput" type="month" />
+                </div>
+                <div style="display: flex; align-items: end">
+                  <button type="button" id="refreshBtn" style="width: 100%">Refresh</button>
+                </div>
+              </div>
+              <div style="height: 12px"></div>
+              <div class="totals" id="totals"></div>
+              <div id="txErr" class="error"></div>
+            </div>
+          </div>
+
         </aside>
 
         <div class="main-column">
@@ -407,7 +438,7 @@
                       <div class="form-row-h__field">
                         <div class="money-input threshold-input">
                           <span class="money-input__prefix" aria-hidden="true">$</span>
-                          <input id="balanceThresholdMin" type="number" step="0.01" placeholder="e.g. 1000" />
+                          <input id="balanceThresholdMin" type="text" inputmode="decimal" autocomplete="off" placeholder="e.g. 1000" />
                         </div>
                       </div>
                     </div>
@@ -417,7 +448,7 @@
                       <div class="form-row-h__field">
                         <div class="money-input threshold-input">
                           <span class="money-input__prefix" aria-hidden="true">$</span>
-                          <input id="balanceThresholdMax" type="number" step="0.01" placeholder="e.g. 10000" />
+                          <input id="balanceThresholdMax" type="text" inputmode="decimal" autocomplete="off" placeholder="e.g. 10000" />
                         </div>
                       </div>
                     </div>
@@ -540,84 +571,132 @@
             </div>
           </div>
 
-          <div id="reportsViewPanel" class="app-view" hidden>
-            <div class="card category-report-card" id="categoryTotalsReportCard">
-              <h2 class="category-report-card__title">Category totals</h2>
-              <p class="meta category-report-card__hint">
-                Totals by category for any date range. Choose Actual + future estimates to include scheduled recurring amounts from the day after the
-                split date through the end date (split uses today in UTC; same rules as the calendar).
-              </p>
-              <div class="category-report-presets" role="group" aria-label="Quick ranges">
-                <button type="button" class="category-report-preset-btn" id="catReportPreset30">Last 30 days</button>
-                <button type="button" class="category-report-preset-btn" id="catReportPresetYtd">Ytd</button>
-                <button type="button" class="category-report-preset-btn" id="catReportPresetMonth">This month</button>
-                <label class="category-report-year-label">
-                  <span class="category-report-year-label__text">Calendar year</span>
-                  <select id="catReportYearSelect" class="category-report-year-select" title="Full Jan 1–Dec 31 for the selected year">
-                    <option value="">—</option>
-                  </select>
-                </label>
-              </div>
-              <div style="height: 12px"></div>
-              <div class="row two category-report-dates">
-                <div>
-                  <label for="catReportStart">Start</label>
-                  <input id="catReportStart" type="date" />
+          <div id="reportsViewPanel" class="app-view app-view--reports" hidden>
+            <div class="reports-hub">
+              <header class="reports-hub__intro">
+                <p class="reports-hub__lede">BalanceWhiz is not a budgeting app and not an accounting system.</p>
+                <p class="reports-hub__pillars">
+                  Forecast-oriented reports: cash timing, balance stability, future risk, safe transfers, and recurring obligations—without pie charts or
+                  “you spent more on…” dashboards.
+                </p>
+              </header>
+
+              <section class="card reports-card reports-card--primary" id="chartPanel">
+                <div class="reports-card__head">
+                  <h2 class="reports-card__title">Balance trendline</h2>
+                  <p class="reports-card__desc">Projected ending balance by day. Answers: when does cash get tight, when does it recover, and is transfer headroom realistic?</p>
                 </div>
-                <div>
-                  <label for="catReportEnd">End</label>
-                  <input id="catReportEnd" type="date" />
+                <div class="reports-chart-toolbar">
+                  <div class="reports-horizon" role="tablist" aria-label="Forecast horizon">
+                    <button type="button" class="reports-horizon__btn is-active" data-report-days="30">30 days</button>
+                    <button type="button" class="reports-horizon__btn" data-report-days="60">60 days</button>
+                    <button type="button" class="reports-horizon__btn" data-report-days="90">90 days</button>
+                  </div>
+                  <label class="reports-chart-start">
+                    <span>From</span>
+                    <input id="chartStart" type="date" />
+                  </label>
+                  <input id="chartDaysRange" type="hidden" value="30" />
+                  <span id="chartDaysLabel" class="reports-chart-daysmeta" hidden>30 days</span>
                 </div>
-              </div>
-              <div style="height: 12px"></div>
-              <div class="category-report-mode" role="radiogroup" aria-label="Report basis">
-                <label class="kind-opt category-report-mode__opt"
-                  ><input type="radio" name="catReportMode" value="actual" checked /> Actual only</label
-                >
-                <label class="kind-opt category-report-mode__opt"
-                  ><input type="radio" name="catReportMode" value="actual_plus_estimated" /> Actual + future estimates</label
-                >
-              </div>
-              <div style="height: 12px"></div>
-              <button type="button" id="catReportRunBtn">Load report</button>
-              <div id="catReportErr" class="error"></div>
-              <p class="meta category-report-summary" id="catReportSummary" style="display: none"></p>
-              <div id="catReportTableWrap" class="category-report-table-wrap"></div>
+                <p class="reports-range-meta"><span id="chartRangeDisplayText">—</span></p>
+                <div id="reportsBalanceLegend" class="reports-legend" aria-live="polite"></div>
+                <div id="chartErr" class="error"></div>
+                <div class="projection-chart-wrap projection-chart-wrap--reports">
+                  <div id="projectionChartEmpty" class="projection-chart-empty" style="display: none" aria-live="polite"></div>
+                  <canvas id="projectionChartCanvas" class="projection-chart-canvas" height="280"></canvas>
+                </div>
+              </section>
+
+              <section class="card reports-card" id="reportCashTiming">
+                <div class="reports-card__head">
+                  <h2 class="reports-card__title">Income vs. expense timing</h2>
+                  <p class="reports-card__desc">Weekly cash-in vs cash-out (last ~17 weeks). Highlights timing mismatch and heavy outflow weeks—not budget categories.</p>
+                </div>
+                <div class="reports-card__toolbar">
+                  <div class="meta" id="incomeExpenseSubtitle">—</div>
+                  <div class="reports-ie-toggles" role="group" aria-label="Bar style">
+                    <button type="button" id="incomeExpenseGroupedBtn" class="reports-ie-toggle is-active">Grouped</button>
+                    <button type="button" id="incomeExpenseStackedBtn" class="reports-ie-toggle">Stacked</button>
+                    <button type="button" id="incomeExpenseDownloadBtn" class="reports-ie-download" title="Download chart" aria-label="Download chart">PNG</button>
+                  </div>
+                </div>
+                <div id="incomeExpenseErr" class="error"></div>
+                <div class="income-expense-chart-wrap income-expense-chart-wrap--reports">
+                  <div id="incomeExpenseEmpty" class="projection-chart-empty" style="display: none" aria-live="polite"></div>
+                  <canvas id="incomeExpenseChartCanvas" class="projection-chart-canvas" height="240"></canvas>
+                </div>
+              </section>
+
+              <section class="card reports-card" id="reportSafeTransfer">
+                <div class="reports-card__head">
+                  <h2 class="reports-card__title">Safe-to-transfer outlook</h2>
+                  <p class="reports-card__desc">Headroom above your minimum threshold along the forecast path—how much could leave checking without breaching your floor.</p>
+                </div>
+                <div id="reportsSafeTransferStats" class="reports-mini-stats" aria-live="polite"></div>
+                <div class="projection-chart-wrap projection-chart-wrap--reports projection-chart-wrap--short">
+                  <div id="reportsSafeTransferEmpty" class="projection-chart-empty" style="display: none" aria-live="polite"></div>
+                  <canvas id="reportsSafeTransferCanvas" height="200"></canvas>
+                </div>
+              </section>
+
+              <section class="card reports-card" id="reportRiskHeatmap">
+                <div class="reports-card__head">
+                  <h2 class="reports-card__title">Low balance risk map</h2>
+                  <p class="reports-card__desc">Operational view of projected cushion by day (next 60 days). Set minimum balance in Settings to tune severity.</p>
+                </div>
+                <div class="reports-risk-legend" aria-hidden="true">
+                  <span><i class="reports-risk-dot reports-risk-dot--safe"></i> Comfortable</span>
+                  <span><i class="reports-risk-dot reports-risk-dot--caution"></i> Caution</span>
+                  <span><i class="reports-risk-dot reports-risk-dot--low"></i> Low</span>
+                  <span><i class="reports-risk-dot reports-risk-dot--neg"></i> Negative</span>
+                </div>
+                <div id="reportsRiskHeatmapGrid" class="reports-risk-grid" aria-label="Daily risk heatmap"></div>
+              </section>
+
+              <section class="card reports-card" id="reportObligations">
+                <div class="reports-card__head">
+                  <h2 class="reports-card__title">Recurring obligation summary</h2>
+                  <p class="reports-card__desc">Predictable cash commitments from recurring schedules (grouped for readability—not a budget drill-down).</p>
+                </div>
+                <div class="reports-table-scroll">
+                  <table class="reports-table" aria-label="Recurring obligations">
+                    <thead>
+                      <tr>
+                        <th scope="col">Group</th>
+                        <th scope="col">Description</th>
+                        <th scope="col">Amount</th>
+                        <th scope="col">Frequency</th>
+                        <th scope="col">Next</th>
+                        <th scope="col">Est. monthly</th>
+                      </tr>
+                    </thead>
+                    <tbody id="reportsObligationBody"></tbody>
+                  </table>
+                </div>
+              </section>
+
+              <section class="card reports-card" id="reportCashPressure">
+                <div class="reports-card__head">
+                  <h2 class="reports-card__title">Upcoming cash pressure</h2>
+                  <p class="reports-card__desc">Large scheduled outflows in the next 90 days and projected balance after each hit.</p>
+                </div>
+                <div class="reports-pressure-hint meta" id="reportsPressureHint"></div>
+                <div class="reports-table-scroll">
+                  <table class="reports-table" aria-label="Upcoming cash pressure">
+                    <thead>
+                      <tr>
+                        <th scope="col">Date</th>
+                        <th scope="col">Description</th>
+                        <th scope="col">Amount</th>
+                        <th scope="col">Balance after</th>
+                      </tr>
+                    </thead>
+                    <tbody id="reportsPressureBody"></tbody>
+                  </table>
+                </div>
+              </section>
             </div>
-
-            <div style="height: 14px"></div>
-
-            <div class="card sidebar-section sidebar-section--collapsed" data-sidebar-key="month">
-              <div class="sidebar-section-head">
-                <h2>Month summary</h2>
-                <button
-                  type="button"
-                  class="sidebar-collapse-btn"
-                  aria-expanded="false"
-                  aria-controls="sidebarBodyMonth"
-                  title="Expand Month summary"
-                >
-                  <svg class="sidebar-collapse-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M6 9l6 6 6-6" />
-                  </svg>
-                </button>
-              </div>
-              <div id="sidebarBodyMonth" class="sidebar-section-body">
-              <div class="row two">
-                <div>
-                  <label for="monthInput">Month</label>
-                  <input id="monthInput" type="month" />
-                </div>
-                <div style="display:flex; align-items:end;">
-                  <button id="refreshBtn" style="width:100%;">Refresh</button>
-                </div>
-              </div>
-              <div style="height:12px;"></div>
-              <div class="totals" id="totals"></div>
-              <div id="txErr" class="error"></div>
-              </div>
-            </div>
-
           </div>
 
         </div>
@@ -942,6 +1021,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="../app.js?v=208"></script>
+    <script src="../app.js?v=211"></script>
   </body>
 </html>
