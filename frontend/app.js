@@ -572,6 +572,8 @@ const BALANCE_THRESHOLD_FAMILY_ID_KEY = "familyCashFlow_balanceThresholdFamilyId
 const LOW_BALANCE_THRESHOLD_KEY = "familyCashFlow_lowBalanceThreshold";
 let lowBalanceDebounceTimer = null;
 let balanceThresholdPersistTimer = null;
+/** Used to ignore a pending silent persist that was scheduled before an explicit Save (race on blur/click ordering). */
+let lastExplicitBalanceThresholdSaveMs = 0;
 let lowBalanceLastQuery = { familyId: null, min: null, max: null, mode: null };
 
 /**
@@ -1364,6 +1366,14 @@ function hydrateBalanceThresholdInputsFromStorage() {
 
 function saveBalanceThresholds(opts = {}) {
   const silent = !!opts.silent;
+  if (balanceThresholdPersistTimer) {
+    clearTimeout(balanceThresholdPersistTimer);
+    balanceThresholdPersistTimer = null;
+  }
+  if (silent && lastExplicitBalanceThresholdSaveMs) {
+    const sinceExplicit = Date.now() - lastExplicitBalanceThresholdSaveMs;
+    if (sinceExplicit >= 0 && sinceExplicit < 750) return;
+  }
   const { min: minEl, max: maxEl, err: errEl, saveBtn } = balanceThresholdFieldEls();
   if (!minEl && !maxEl) return;
   const fidNum = activeFamilyIdForBalanceThresholds();
@@ -1393,12 +1403,12 @@ function saveBalanceThresholds(opts = {}) {
     if (maxEl) localStorage.setItem(maxKey, maxParsed.empty ? "" : maxParsed.canonical);
     localStorage.setItem(BALANCE_THRESHOLD_FAMILY_ID_KEY, String(fidNum));
     state.activeFamilyId = fidNum;
-    if (minEl) minEl.value = minParsed.empty ? "" : minParsed.canonical;
-    if (maxEl) maxEl.value = maxParsed.empty ? "" : maxParsed.canonical;
+    hydrateBalanceThresholdInputsFromStorage();
   } catch (e) {
     show(errEl, e.message || "Could not save thresholds.");
     return;
   }
+  if (!silent) lastExplicitBalanceThresholdSaveMs = Date.now();
   show(errEl, "");
   invalidateLowBalanceAlertCache();
   if (lowBalanceDebounceTimer) clearTimeout(lowBalanceDebounceTimer);
@@ -1514,10 +1524,12 @@ async function shiftCalendarMonth(delta) {
   await loadMonthAndCalendar();
 }
 
-document.getElementById("refreshBtn")?.addEventListener("click", async () => {
-  if (monthInput) applyCalendarMonthToPickers(monthInput.value);
-  await loadMonthAndCalendar();
-});
+if (monthInput) {
+  monthInput.addEventListener("change", async () => {
+    if (monthInput.value) applyCalendarMonthToPickers(monthInput.value);
+    await loadMonthAndCalendar();
+  });
+}
 
 if (calendarMonthNum) {
   calendarMonthNum.addEventListener("change", () => onCalendarPickerChange());
@@ -3080,10 +3092,8 @@ async function saveUncategorizedAssignments() {
     }
 
     uncatPendingCategoryByTxId.clear();
-    // Refresh both the underlying data and the uncategorized view so rows disappear immediately.
     await loadCategories();
-    await loadUpcomingTransactionsPanel();
-    renderUpcomingTransactionsFiltered();
+    await loadMonthAndCalendar();
     renderUncategorizedTransactions();
   } catch (e) {
     if (uncatTxErr) show(uncatTxErr, e.message || "Failed to save");
@@ -5191,6 +5201,20 @@ function pillStyleForTransaction(txOrItem) {
   return null;
 }
 
+/** Day cells use a white/near-white surface; pill fg is chosen for colored chip backgrounds — do not reuse light fg alone. */
+const CALENDAR_TX_LABEL_SURFACE_RGB = { r: 255, g: 255, b: 255 };
+const MIN_CONTRAST_TX_LABEL_ON_CALENDAR = 3.05;
+
+function calendarLabelColorFromCategoryPillStyle(st) {
+  if (!st || !st.fg) return null;
+  const fgRgb = parseCssColorToRgb(st.fg);
+  if (!fgRgb) return null;
+  if (contrastRatioBetweenRgb(fgRgb, CALENDAR_TX_LABEL_SURFACE_RGB) >= MIN_CONTRAST_TX_LABEL_ON_CALENDAR) {
+    return String(st.fg).trim();
+  }
+  return null;
+}
+
 /** Default label text color: green income / red expense (custom category fg overrides where applied). */
 function kindFgClass(kind) {
   return String(kind) === "income" ? "tx-kind-fg--income" : "tx-kind-fg--expense";
@@ -5343,6 +5367,7 @@ async function refreshExpectedCalendarAndMonth() {
   await loadExpectedTransactions();
   await loadExpectedCalendar();
   renderSidebarPendingTransactionsForMonth();
+  renderMonthSummaryTotalsFromState();
   await loadCalendarMonthDaily();
   renderCalendar();
 }
@@ -6603,8 +6628,8 @@ function renderSidebarPendingTransactionsForMonth() {
     const aa = Math.abs(toNum(a?.tx?.amount));
     const bb = Math.abs(toNum(b?.tx?.amount));
     if (bb !== aa) return bb - aa;
-    const an = String(a?.tx?.description || "");
-    const bn = String(b?.tx?.description || "");
+    const an = effectiveTransactionCategoryName(a?.tx || {}) || "";
+    const bn = effectiveTransactionCategoryName(b?.tx || {}) || "";
     return an.localeCompare(bn);
   });
 
@@ -6632,19 +6657,21 @@ function renderSidebarPendingTransactionsForMonth() {
     el.style.cursor = "pointer";
     el.addEventListener("click", () => open());
 
+    const catLabel = effectiveTransactionCategoryName(it) || "Uncategorized";
+    const descFull = String(it?.description || "").trim();
+    const notesFull = String(it?.notes || "").trim();
+    const hintParts = [descFull, notesFull].filter(Boolean);
+
     const name = document.createElement("div");
     name.className = `pending-attn-name ${kindFgClass(kind)}`;
-    const descFull = String(it?.description || "(expected)").trim() || "(expected)";
-    name.textContent = descFull;
-    name.title = descFull;
+    name.textContent = truncate(catLabel, 44);
+    name.title = hintParts.length ? `${catLabel} — ${hintParts.join(" · ")}` : catLabel;
 
     const est = document.createElement("div");
     est.className = "pending-attn-est";
     const amt = Math.abs(toNum(it?.amount));
     const sign = String(kind) === "income" ? "+" : "–";
-    const catLabel = effectiveTransactionCategoryName(it) || "Uncategorized";
-    const estParts = `${truncate(catLabel, 40)} ${sign}$${fmtMoney0(amt)}`;
-    est.textContent = estParts;
+    est.textContent = `${sign}$${fmtMoney0(amt)}`;
     est.title = `${catLabel} ${sign}$${fmtMoney0(amt)}`;
 
     const date = document.createElement("div");
@@ -7374,8 +7401,8 @@ function renderCalendar() {
         labelSpan.textContent = `${label} `;
         if (row.category_id) {
           const st = pillStyleForTransaction(row);
-          // Keep the calendar calm: allow subtle color, avoid heavy pill backgrounds.
-          if (st?.fg) labelSpan.style.color = st.fg;
+          const calFg = calendarLabelColorFromCategoryPillStyle(st);
+          if (calFg) labelSpan.style.color = calFg;
         }
 
         const labelWrap = document.createElement("span");

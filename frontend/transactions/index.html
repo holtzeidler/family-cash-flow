@@ -236,14 +236,9 @@
               </button>
             </div>
             <div id="sidebarBodyMonth" class="sidebar-section-body">
-              <div class="row two">
-                <div>
-                  <label for="monthInput">Month</label>
-                  <input id="monthInput" type="month" />
-                </div>
-                <div style="display: flex; align-items: end">
-                  <button type="button" id="refreshBtn" style="width: 100%">Refresh</button>
-                </div>
+              <div>
+                <label for="monthInput">Month</label>
+                <input id="monthInput" type="month" />
               </div>
               <div style="height: 12px"></div>
               <div class="totals" id="totals"></div>
@@ -570,11 +565,7 @@
           <div id="reportsViewPanel" class="app-view app-view--reports" hidden>
             <div class="reports-hub">
               <header class="reports-hub__intro">
-                <p class="reports-hub__lede">BalanceWhiz is not a budgeting app and not an accounting system.</p>
-                <p class="reports-hub__pillars">
-                  Forecast-oriented reports: cash timing, balance stability, future risk, safe transfers, and recurring obligations—without pie charts or
-                  “you spent more on…” dashboards.
-                </p>
+                <p class="reports-hub__lede">See what your balance will be—not just what it is today.</p>
               </header>
 
               <section class="card reports-card reports-card--primary" id="chartPanel">
@@ -1017,6 +1008,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="../app.js?v=211"></script>
+    <script src="../app.js?v=215"></script>
   </body>
 </html>
