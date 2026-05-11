@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=344" />
+    <link rel="stylesheet" href="./styles.css?v=346" />
   </head>
   <body class="landing-page">
     <div class="container">
@@ -46,15 +46,17 @@
           <div class="landing-preview__demo">
             <p class="landing-preview__tagline">BalanceWhiz tells you how much money can safely leave checking.</p>
 
-            <div class="landing-preview__transfer" role="status" aria-label="Safe transfer amount">
-              <p class="landing-preview__transferLine">Safe to move to savings</p>
-              <p class="landing-preview__transferAmt">$1,850</p>
-              <p class="landing-preview__transferFoot">while keeping upcoming bills covered</p>
-            </div>
+            <div class="landing-preview__transferBand" role="status" aria-label="Safe transfer amount">
+              <div class="landing-preview__transfer">
+                <p class="landing-preview__transferLine">Safe to move to savings</p>
+                <p class="landing-preview__transferAmt">$1,850</p>
+                <p class="landing-preview__transferFoot">while keeping upcoming bills covered</p>
+              </div>
 
-            <div class="landing-preview__trust" aria-label="Forecast status">
-              <span class="landing-preview__trustIcon" aria-hidden="true">✓</span>
-              <span class="landing-preview__trustText">Forecast reconciled through May 9</span>
+              <div class="landing-preview__trust" aria-label="Forecast status">
+                <span class="landing-preview__trustIcon" aria-hidden="true">✓</span>
+                <span class="landing-preview__trustText">Forecast reconciled through May 9</span>
+              </div>
             </div>
 
             <div class="landing-preview__body">
@@ -100,15 +102,15 @@
                 </svg>
               </div>
             </div>
-          </div>
-        </section>
 
-        <section class="landing-trust-row" aria-label="Quick highlights">
-          <div class="landing-trust-row__inner" role="list" aria-label="Highlights">
-            <div class="landing-trust-row__item" role="listitem"><span class="landing-trust-row__icon" aria-hidden="true">✓</span> No bank connection required</div>
-            <div class="landing-trust-row__item" role="listitem"><span class="landing-trust-row__icon" aria-hidden="true">✓</span> Know what can safely leave checking</div>
-            <div class="landing-trust-row__item" role="listitem"><span class="landing-trust-row__icon" aria-hidden="true">✓</span> Reconcile in seconds</div>
-            <div class="landing-trust-row__item" role="listitem"><span class="landing-trust-row__icon" aria-hidden="true">✓</span> Cancel anytime</div>
+            <div class="landing-trust-row" aria-label="Quick highlights">
+              <div class="landing-trust-row__inner" role="list" aria-label="Highlights">
+                <div class="landing-trust-row__item" role="listitem"><span class="landing-trust-row__icon" aria-hidden="true">✓</span> No bank connection required</div>
+                <div class="landing-trust-row__item" role="listitem"><span class="landing-trust-row__icon" aria-hidden="true">✓</span> Know what can safely leave checking</div>
+                <div class="landing-trust-row__item" role="listitem"><span class="landing-trust-row__icon" aria-hidden="true">✓</span> Reconcile in seconds</div>
+                <div class="landing-trust-row__item" role="listitem"><span class="landing-trust-row__icon" aria-hidden="true">✓</span> Cancel anytime</div>
+              </div>
+            </div>
           </div>
         </section>
 

@@ -591,6 +591,13 @@ function parseBalanceThresholdFieldRaw(raw) {
   return { ok: true, empty: false, canonical: String(n), num: n };
 }
 
+function parseMoneyRangeField(raw) {
+  const p = parseBalanceThresholdFieldRaw(raw);
+  if (!p.ok || p.empty) return null;
+  const n = Number(p.num);
+  return Number.isFinite(n) ? n : null;
+}
+
 /** Always read fresh nodes — avoids writing to a detached input if the DOM is ever rebuilt. */
 function balanceThresholdFieldEls() {
   const root = document.getElementById("settingsViewPanel");
@@ -872,6 +879,22 @@ const upcomingSourceFilter = document.getElementById("upcomingSourceFilter");
 const upcomingRecurrenceWrap = document.getElementById("upcomingRecurrenceWrap");
 const upcomingRecurrenceFilter = document.getElementById("upcomingRecurrenceFilter");
 const upcomingApplyBtn = document.getElementById("upcomingApplyBtn");
+
+// Transaction Manager (Transaction View) UI
+const tmSearch = document.getElementById("tmSearch");
+const tmStartDate = document.getElementById("tmStartDate");
+const tmEndDate = document.getElementById("tmEndDate");
+const tmType = document.getElementById("tmType");
+const tmStatus = document.getElementById("tmStatus");
+const tmSource = document.getElementById("tmSource");
+const tmFrequency = document.getElementById("tmFrequency");
+const tmMinAmt = document.getElementById("tmMinAmt");
+const tmMaxAmt = document.getElementById("tmMaxAmt");
+const tmSumUncat = document.getElementById("tmSumUncat");
+const tmSumUpcoming30 = document.getElementById("tmSumUpcoming30");
+const tmSumAnnual = document.getElementById("tmSumAnnual");
+const tmSumVariable = document.getElementById("tmSumVariable");
+const tmChips = document.querySelectorAll?.(".tm-chip") || [];
 
 let upcomingFetchDebounce = null;
 const variableTodoList = document.getElementById("variableTodoList");
@@ -1326,13 +1349,16 @@ function hydrateBalanceThresholdInputsFromStorage() {
     if (minKey && minEl) {
       const s = localStorage.getItem(minKey) || "";
       const mp = parseBalanceThresholdFieldRaw(s);
-      minEl.value = mp.ok && !mp.empty ? mp.canonical : "";
+      const next = mp.ok && !mp.empty ? mp.canonical : "";
+      // Never wipe a non-empty field due to a storage/family mismatch.
+      if (!(next === "" && String(minEl.value || "").trim())) minEl.value = next;
     } else if (minEl) minEl.value = "";
 
     if (maxKey && maxEl) {
       const s2 = localStorage.getItem(maxKey) || "";
       const mp2 = parseBalanceThresholdFieldRaw(s2);
-      maxEl.value = mp2.ok && !mp2.empty ? mp2.canonical : "";
+      const next2 = mp2.ok && !mp2.empty ? mp2.canonical : "";
+      if (!(next2 === "" && String(maxEl.value || "").trim())) maxEl.value = next2;
     } else if (maxEl) maxEl.value = "";
 
     const allowLegacy =
@@ -3062,6 +3088,38 @@ if (upcomingRecurrenceFilter) upcomingRecurrenceFilter.addEventListener("change"
 if (upcomingStartDate) upcomingStartDate.addEventListener("change", () => scheduleUpcomingRefetchAndRender());
 if (upcomingEndDate) upcomingEndDate.addEventListener("change", () => scheduleUpcomingRefetchAndRender());
 
+// Transaction Manager toolbar drives the legacy filters above.
+function tmRenderOnly() {
+  tmSyncLegacyFiltersFromToolbar();
+  syncUpcomingRecurrenceVisibility();
+  scheduleUpcomingRenderOnly();
+}
+function tmRefetchAndRender() {
+  tmSyncLegacyFiltersFromToolbar();
+  syncUpcomingRecurrenceVisibility();
+  scheduleUpcomingRefetchAndRender();
+}
+
+if (tmSearch) tmSearch.addEventListener("input", () => tmRenderOnly());
+if (tmMinAmt) tmMinAmt.addEventListener("input", () => tmRenderOnly());
+if (tmMaxAmt) tmMaxAmt.addEventListener("input", () => tmRenderOnly());
+if (tmType) tmType.addEventListener("change", () => tmRenderOnly());
+if (tmStatus) tmStatus.addEventListener("change", () => tmRenderOnly());
+if (tmSource) tmSource.addEventListener("change", () => tmRenderOnly());
+if (tmFrequency) tmFrequency.addEventListener("change", () => tmRenderOnly());
+if (tmStartDate) tmStartDate.addEventListener("change", () => tmRefetchAndRender());
+if (tmEndDate) tmEndDate.addEventListener("change", () => tmRefetchAndRender());
+
+for (const btn of tmChips || []) {
+  try {
+    btn.addEventListener("click", () => {
+      const v = btn?.dataset?.tmView || "all";
+      tmApplyQuickView(v);
+      tmRefetchAndRender();
+    });
+  } catch (_) {}
+}
+
 async function saveUncategorizedAssignments() {
   try {
     if (uncatTxErr) show(uncatTxErr, "");
@@ -3117,6 +3175,56 @@ if (uncatTxSaveBtn) {
   uncatTxSaveBtn.addEventListener("click", () => {
     void saveUncategorizedAssignments();
   });
+}
+
+function tmSyncLegacyFiltersFromToolbar() {
+  if (tmType && upcomingKindFilter) upcomingKindFilter.value = String(tmType.value || "all");
+  if (tmSource && upcomingSourceFilter) upcomingSourceFilter.value = String(tmSource.value || "all");
+  if (tmFrequency && upcomingRecurrenceFilter) {
+    const v = String(tmFrequency.value || "all");
+    upcomingRecurrenceFilter.value = v === "quarterly" ? "all" : v === "semiannual" ? "semiannual" : v;
+  }
+  if (tmStartDate && upcomingStartDate) upcomingStartDate.value = String(tmStartDate.value || "");
+  if (tmEndDate && upcomingEndDate) upcomingEndDate.value = String(tmEndDate.value || "");
+}
+
+function tmApplyQuickView(view) {
+  const v = String(view || "all");
+  if (tmStatus) tmStatus.value = "all";
+  if (tmType) tmType.value = "all";
+  if (tmSource) tmSource.value = "all";
+  if (tmFrequency) tmFrequency.value = "all";
+  if (tmMinAmt) tmMinAmt.value = "";
+  if (tmMaxAmt) tmMaxAmt.value = "";
+  if (v === "uncategorized") {
+    if (tmStatus) tmStatus.value = "uncategorized";
+  } else if (v === "recurring") {
+    if (tmStatus) tmStatus.value = "recurring";
+    if (tmSource) tmSource.value = "recurring";
+  } else if (v === "income") {
+    if (tmType) tmType.value = "income";
+  } else if (v === "expense") {
+    if (tmType) tmType.value = "expense";
+  } else if (v === "large") {
+    if (tmMinAmt) tmMinAmt.value = "500";
+  } else if (v === "upcoming30") {
+    const start = toISODate(new Date());
+    const d = new Date();
+    d.setDate(d.getDate() + 30);
+    const end = toISODate(d);
+    if (tmStartDate) tmStartDate.value = start;
+    if (tmEndDate) tmEndDate.value = end;
+    if (tmStatus) tmStatus.value = "upcoming";
+  } else if (v === "annual") {
+    if (tmSource) tmSource.value = "recurring";
+    if (tmFrequency) tmFrequency.value = "yearly";
+  }
+
+  for (const btn of tmChips || []) {
+    try {
+      btn.classList.toggle("is-active", String(btn?.dataset?.tmView || "") === v);
+    } catch (_) {}
+  }
 }
 
 if (runProjectionBtn) {
@@ -5770,11 +5878,27 @@ function renderUpcomingTransactionsFiltered() {
   const freqSel = upcomingRecurrenceFilter ? String(upcomingRecurrenceFilter.value || "all") : "all";
   const startIso = upcomingStartDate?.value || toISODate(new Date());
   const endIso = upcomingEndDate?.value || "";
+  const q = tmSearch ? String(tmSearch.value || "").trim().toLowerCase() : "";
+  const minAmt = tmMinAmt ? parseMoneyRangeField(tmMinAmt.value) : null;
+  const maxAmt = tmMaxAmt ? parseMoneyRangeField(tmMaxAmt.value) : null;
+  const statusSel = tmStatus ? String(tmStatus.value || "all") : "all";
 
   const withinRange = (iso) => {
     if (!iso) return false;
     if (startIso && String(iso) < String(startIso)) return false;
     if (endIso && String(iso) > String(endIso)) return false;
+    return true;
+  };
+
+  const matchesQuery = (txt) => {
+    if (!q) return true;
+    return String(txt || "").toLowerCase().includes(q);
+  };
+  const matchesAmount = (n) => {
+    const v = Math.abs(toNum(n));
+    if (!Number.isFinite(v)) return false;
+    if (minAmt != null && v < minAmt) return false;
+    if (maxAmt != null && v > maxAmt) return false;
     return true;
   };
 
@@ -5786,6 +5910,17 @@ function renderUpcomingTransactionsFiltered() {
       const iso = normalizeIsoDate(tx?.date) || String(tx?.date || "");
       if (!withinRange(iso)) continue;
       if (kindSel !== "all" && String(tx?.kind || "expense") !== kindSel) continue;
+      if (!matchesAmount(tx?.amount)) continue;
+      const primary = actualTransactionPrimaryLabel(tx);
+      const catName = effectiveTransactionCategoryName(tx);
+      const notes = tx?.notes != null ? String(tx.notes) : "";
+      const isUncat = tx?.category_id == null || tx?.category_id === "" || Number(tx?.category_id) === 0;
+      const isPast = iso && String(iso) < toISODate(new Date());
+      if (statusSel === "uncategorized" && !isUncat) continue;
+      if (statusSel === "recurring") continue;
+      if (statusSel === "upcoming" && isPast) continue;
+      if (statusSel === "past" && !isPast) continue;
+      if (q && ![primary, catName, notes].some(matchesQuery)) continue;
       rows.push({ sortIso: iso, type: "actual", tx });
     }
   }
@@ -5810,6 +5945,19 @@ function renderUpcomingTransactionsFiltered() {
       if (kindSel !== "all" && String(eff.kind || "expense") !== kindSel) continue;
       const nextIso = nextOccurrenceIsoForRecurringList(tx, todayIso);
       if (!withinRange(nextIso)) continue;
+      if (!matchesAmount(eff.amount)) continue;
+      const cid = tx && tx.category_id;
+      const isUncat = cid == null || cid === "" || Number(cid) === 0;
+      if (statusSel === "uncategorized" && !isUncat) continue;
+      if (statusSel === "past") continue;
+      if (statusSel === "upcoming") {
+        // ok (next occurrence)
+      }
+      if (statusSel === "recurring") {
+        // ok
+      }
+      const catName = effectiveTransactionCategoryName(tx);
+      if (q && ![eff.description, catName, tx?.notes].some(matchesQuery)) continue;
       rows.push({ sortIso: nextIso, type: "expected", tx, nextIso });
     }
   }
@@ -5820,7 +5968,7 @@ function renderUpcomingTransactionsFiltered() {
   if (!rows.length) {
     const empty = document.createElement("div");
     empty.className = "pill";
-    empty.textContent = "No upcoming transactions for these filters.";
+    empty.textContent = "No transactions match these filters.";
     txListMain.appendChild(empty);
     return;
   }
@@ -5828,59 +5976,54 @@ function renderUpcomingTransactionsFiltered() {
   for (const r of rows) {
     if (r.type === "actual") {
       const tx = r.tx;
-      const el = document.createElement("div");
-      el.className = "item";
-      el.style.cursor = "pointer";
-
-      const amtClass = tx.kind === "income" ? "income" : "expense";
-      const left = document.createElement("div");
-      left.className = "left";
-      const link = document.createElement("a");
-      link.href = "#";
-      link.className = `desc tx-desc-link ${kindFgClass(tx.kind)}`;
+      const iso = normalizeIsoDate(tx?.date) || String(tx?.date || "");
       const primary = actualTransactionPrimaryLabel(tx);
-      link.textContent = primary;
       const catName = effectiveTransactionCategoryName(tx);
-      const n = tx.notes && String(tx.notes).trim();
-      if (n) bindFastTxnTipHover(el, n);
-      link.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        openTxEditModal(tx);
-      });
-      const meta = document.createElement("div");
-      meta.className = "meta";
-      meta.appendChild(document.createTextNode(fmtDateMDY(tx.date || "")));
-      const showCatPill = !!catName && primary !== catName;
-      if (showCatPill && tx.category_id) {
-        const st = pillStyleForTransaction(tx);
-        const pill = document.createElement("span");
-        pill.className = `cat-pill ${kindFgClass(tx.kind)}`;
-        pill.textContent = catName;
-        if (st?.fg) pill.style.color = st.fg;
-        if (st?.bg) {
-          pill.style.background = st.bg;
-        }
-        meta.appendChild(document.createTextNode(" · "));
-        meta.appendChild(pill);
-        if (n) meta.appendChild(document.createTextNode(` ${n}`));
-      } else if (showCatPill && tx.category) {
-        meta.appendChild(document.createTextNode(` · ${catName}`));
-        if (n) meta.appendChild(document.createTextNode(` ${n}`));
-      } else if (n) {
-        meta.appendChild(document.createTextNode(` · ${n}`));
-      }
-      left.appendChild(link);
-      left.appendChild(meta);
+      const isUncat = tx?.category_id == null || tx?.category_id === "" || Number(tx?.category_id) === 0;
 
-      const amt = document.createElement("div");
-      amt.className = `amt ${amtClass}`;
-      amt.textContent = `${tx.kind === "income" ? "+" : "-"}$${fmtMoney(tx.amount)}`;
+      const row = document.createElement("div");
+      row.className = "tm-row";
+      row.tabIndex = 0;
+      row.addEventListener("click", () => openTxEditModal(tx));
 
-      el.appendChild(left);
-      el.appendChild(amt);
-      el.addEventListener("click", () => openTxEditModal(tx));
-      txListMain.appendChild(el);
+      const cDate = document.createElement("div");
+      cDate.className = "tm-col tm-col--date";
+      cDate.textContent = iso ? fmtDateMDY(iso) : "—";
+
+      const cDesc = document.createElement("div");
+      cDesc.className = "tm-col tm-col--desc";
+      const d1 = document.createElement("div");
+      d1.className = `tm-desc ${kindFgClass(tx.kind)}`;
+      d1.textContent = primary;
+      const d2 = document.createElement("div");
+      d2.className = "tm-meta";
+      d2.textContent = (tx?.notes && String(tx.notes).trim()) ? String(tx.notes).trim() : "";
+      cDesc.appendChild(d1);
+      cDesc.appendChild(d2);
+
+      const cCat = document.createElement("div");
+      cCat.className = "tm-col tm-col--cat";
+      cCat.textContent = catName || "—";
+
+      const cFreq = document.createElement("div");
+      cFreq.className = "tm-col tm-col--freq";
+      cFreq.textContent = "One-time";
+
+      const cStatus = document.createElement("div");
+      cStatus.className = "tm-col tm-col--status";
+      cStatus.innerHTML = `<span class="tm-badge ${isUncat ? "is-warn" : "is-ok"}">${isUncat ? "Uncategorized" : "Confirmed"}</span>`;
+
+      const cAmt = document.createElement("div");
+      cAmt.className = `tm-col tm-col--amt ${tx.kind === "income" ? "income" : "expense"}`;
+      cAmt.textContent = `${tx.kind === "income" ? "+" : "-"}$${fmtMoney(tx.amount)}`;
+
+      row.appendChild(cDate);
+      row.appendChild(cDesc);
+      row.appendChild(cCat);
+      row.appendChild(cFreq);
+      row.appendChild(cStatus);
+      row.appendChild(cAmt);
+      txListMain.appendChild(row);
       continue;
     }
 
@@ -5888,71 +6031,53 @@ function renderUpcomingTransactionsFiltered() {
     const nextIso = r.nextIso;
     const eff = effectiveNextOccurrenceListFields(tx);
 
-    const el = document.createElement("div");
-    el.className = "item";
-    if (eff.variable) el.classList.add("expected-item--variable");
-    el.style.cursor = "pointer";
+    const cid = tx && tx.category_id;
+    const isUncat = cid == null || cid === "" || Number(cid) === 0;
 
-    const amtClass = eff.kind === "income" ? "income" : "expense";
-    const kindSign = eff.kind === "income" ? "+" : "-";
+    const row = document.createElement("div");
+    row.className = "tm-row";
+    if (eff.variable) row.classList.add("is-variable");
+    row.tabIndex = 0;
+    row.addEventListener("click", () => openExpectedEditModal(tx, { nextOccurrenceIso: nextIso }));
 
-    const left = document.createElement("div");
-    left.className = "left";
+    const cDate = document.createElement("div");
+    cDate.className = "tm-col tm-col--date";
+    cDate.textContent = nextIso ? fmtDateMDY(nextIso) : "—";
 
-    const link = document.createElement("a");
-    link.href = "#";
-    link.className = `desc tx-desc-link ${kindFgClass(eff.kind)}`;
-    link.textContent = String(eff.description || "(no description)").trim() || "(no description)";
-    link.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      openExpectedEditModal(tx, { nextOccurrenceIso: nextIso });
-    });
+    const cDesc = document.createElement("div");
+    cDesc.className = "tm-col tm-col--desc";
+    const d1 = document.createElement("div");
+    d1.className = `tm-desc ${kindFgClass(eff.kind)}`;
+    d1.textContent = String(eff.description || "(no description)").trim() || "(no description)";
+    const d2 = document.createElement("div");
+    d2.className = "tm-meta";
+    d2.textContent = eff.variable ? "Variable amount" : "";
+    cDesc.appendChild(d1);
+    cDesc.appendChild(d2);
 
-    const meta = document.createElement("div");
-    meta.className = "meta";
-    meta.appendChild(document.createTextNode(fmtDateMDY(nextIso)));
-    const rn = tx?.notes && String(tx.notes).trim();
-    if (rn) bindFastTxnTipHover(el, rn);
-    if (tx?.category_id && tx?.category) {
-      const st = pillStyleForTransaction(tx);
-      const pill = document.createElement("span");
-      pill.className = `cat-pill ${kindFgClass(eff.kind)}`;
-      pill.textContent = leafCategoryName(tx.category);
-      if (st?.fg) pill.style.color = st.fg;
-      if (st?.bg) {
-        pill.style.background = st.bg;
-      }
-      meta.appendChild(document.createTextNode(" · "));
-      meta.appendChild(pill);
-      if (rn) meta.appendChild(document.createTextNode(` ${rn}`));
-    } else if (tx?.category) {
-      meta.appendChild(document.createTextNode(` · ${leafCategoryName(tx.category)}`));
-      if (rn) meta.appendChild(document.createTextNode(` ${rn}`));
-    } else if (rn) {
-      meta.appendChild(document.createTextNode(` · ${rn}`));
-    }
-    meta.appendChild(document.createTextNode(` · ${recurrenceLabel(tx.recurrence || "monthly")}`));
+    const cCat = document.createElement("div");
+    cCat.className = "tm-col tm-col--cat";
+    cCat.textContent = effectiveTransactionCategoryName(tx) || "—";
 
-    left.appendChild(link);
-    left.appendChild(meta);
+    const cFreq = document.createElement("div");
+    cFreq.className = "tm-col tm-col--freq";
+    cFreq.textContent = recurrenceLabel(tx.recurrence || "monthly");
 
-    const amtBtn = document.createElement("button");
-    amtBtn.type = "button";
-    amtBtn.className = `amt ${amtClass} expected-amt-link`;
-    amtBtn.textContent = `${kindSign}$${fmtMoney(eff.amount)}`;
-    amtBtn.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      openExpectedEditModal(tx, { nextOccurrenceIso: nextIso });
-    });
+    const cStatus = document.createElement("div");
+    cStatus.className = "tm-col tm-col--status";
+    cStatus.innerHTML = `<span class="tm-badge ${isUncat ? "is-warn" : "is-muted"}">${isUncat ? "Uncategorized" : "Upcoming"}</span>`;
 
-    el.appendChild(left);
-    el.appendChild(amtBtn);
-    bindFastTxnTipHover(left, `Recurring schedule #${tx.id} · next ${nextIso}`);
-    bindFastTxnTipHover(amtBtn, "Edit recurring transaction");
-    el.addEventListener("click", () => openExpectedEditModal(tx, { nextOccurrenceIso: nextIso }));
-    txListMain.appendChild(el);
+    const cAmt = document.createElement("div");
+    cAmt.className = `tm-col tm-col--amt ${eff.kind === "income" ? "income" : "expense"}`;
+    cAmt.textContent = `${eff.kind === "income" ? "+" : "-"}$${fmtMoney(eff.amount)}`;
+
+    row.appendChild(cDate);
+    row.appendChild(cDesc);
+    row.appendChild(cCat);
+    row.appendChild(cFreq);
+    row.appendChild(cStatus);
+    row.appendChild(cAmt);
+    txListMain.appendChild(row);
   }
 
   renderUncategorizedTransactions();
@@ -5966,11 +6091,21 @@ function renderUncategorizedTransactions() {
     return cid == null || cid === "" || Number(cid) === 0;
   });
 
+  try {
+    const setV = (el, v) => {
+      if (!el) return;
+      const n = Number(v || 0);
+      const node = el.querySelector(".tm-card__v");
+      if (node) node.textContent = Number.isFinite(n) ? String(n) : "—";
+    };
+    setV(tmSumUncat, items.length);
+  } catch (_) {}
+
   uncatTxList.innerHTML = "";
   if (!items.length) {
     const empty = document.createElement("div");
     empty.className = "pill";
-    empty.textContent = "No uncategorized transactions.";
+    empty.textContent = "No uncategorized transactions. New imported or manually added transactions that need cleanup will appear here.";
     uncatTxList.appendChild(empty);
     if (uncatTxSaveBtn) {
       uncatTxSaveBtn.disabled = true;
@@ -6188,6 +6323,15 @@ async function loadExpectedTransactions() {
   if (!state.activeFamilyId) return;
   const items = await api(`/api/families/${state.activeFamilyId}/expected-transactions`, "GET");
   state.expectedTransactions = items || [];
+  try {
+    const arr = state.expectedTransactions || [];
+    const annual = arr.filter((t) => String(t?.recurrence || "") === "yearly").length;
+    const variable = arr.filter((t) => !!t && (!!t.variable || t.next_occurrence_variable === true)).length;
+    const nAnnual = tmSumAnnual ? tmSumAnnual.querySelector(".tm-card__v") : null;
+    const nVar = tmSumVariable ? tmSumVariable.querySelector(".tm-card__v") : null;
+    if (nAnnual) nAnnual.textContent = String(annual);
+    if (nVar) nVar.textContent = String(variable);
+  } catch (_) {}
   renderUpcomingTransactionsFiltered();
 }
 
@@ -6448,6 +6592,18 @@ async function loadUpcomingTransactionsPanel() {
     const data = await api(`/api/families/${state.activeFamilyId}/transactions${qs}`, "GET");
     const items = data?.items || [];
     state.upcomingActualItems = items;
+    try {
+      const today = toISODate(new Date());
+      const d = new Date();
+      d.setDate(d.getDate() + 30);
+      const end30 = toISODate(d);
+      const in30 = items.filter((t) => {
+        const iso = normalizeIsoDate(t?.date) || String(t?.date || "");
+        return iso && iso >= today && iso <= end30;
+      });
+      const node = tmSumUpcoming30 ? tmSumUpcoming30.querySelector(".tm-card__v") : null;
+      if (node) node.textContent = String(in30.length);
+    } catch (_) {}
     renderUpcomingTransactionsFiltered();
   } catch (e) {
     show(txErr, e.message || "Failed to load upcoming transactions");
@@ -7473,21 +7629,11 @@ function renderCalendar() {
       metricsEl.innerHTML = `<div class="cal-stat cal-balance${negClass}${mutedClass}">$${fmtMoneyParens(endNum)}</div>`;
     }
 
-    // One light annotation per day: forecast storytelling cues (no "Payday" / "Large expense" — too noisy).
-    if (noteEl && !isOutOfMonth && showDetails) {
-      let note = "";
-      if (monthLowPointIso && iso === monthLowPointIso) note = "Low point";
-      if (!note && monthRecoveryIso && iso === monthRecoveryIso) note = "Balance recovers";
-      if (note) {
-        noteEl.textContent = note;
-        noteEl.hidden = false;
-        noteEl.classList.toggle("is-danger", note === "Low point");
-        noteEl.classList.toggle("is-ok", note === "Balance recovers");
-      } else {
-        noteEl.textContent = "";
-        noteEl.hidden = true;
-        noteEl.classList.remove("is-danger", "is-ok");
-      }
+    // Hide forecast "storytelling" annotations (ex: "Low point", "Balance recovers") — keep the calendar clean.
+    if (noteEl) {
+      noteEl.textContent = "";
+      noteEl.hidden = true;
+      noteEl.classList.remove("is-danger", "is-ok");
     }
 
     wrapper.appendChild(cell);
