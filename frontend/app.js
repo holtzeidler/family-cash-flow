@@ -1183,11 +1183,11 @@ async function refreshLowBalanceAlert() {
       setSidebarLowBalanceBanner("", "off");
       setSidebarHighBalanceBanner("", "off");
       setLowBalanceResult(
-        '<div class="k">Balance thresholds</div><div class="v">Set balance thresholds to be alerted when your cash needs reviewing.</div>',
+        '<div class="k">Balance thresholds</div><div class="v">Add a minimum (optional maximum) in Settings to enable outlook.</div>',
         true
       );
       lowBalanceLastQuery = { familyId: null, min: null, max: null, mode: null };
-      setSidebarBalanceThresholdHint("Set balance thresholds to be alerted when your cash needs reviewing.");
+      setSidebarBalanceThresholdHint("Configure in Settings.");
       return;
     }
     if (cashOutlookHead) cashOutlookHead.hidden = false;
@@ -1270,9 +1270,9 @@ async function refreshLowBalanceAlert() {
           const shortfall = Math.max(0, target - bal);
           const shortfallDisp = `–$${fmtMoney0(shortfall)}`;
           setSidebarLowBalanceBanner(
-            `⚠ Below target on ${fmtMonthDay(lowHit.date)}\nHERO:Balance: $${fmtMoney0(
-              Math.abs(bal)
-            )}\nTarget: $${fmtMoney0(Math.abs(target))} (${shortfallDisp})`,
+            `⚠ Below target on ${fmtMonthDay(lowHit.date)}\nHERO:$${fmtMoney0(Math.abs(bal))} · floor $${fmtMoney0(
+              Math.abs(target)
+            )} (${shortfallDisp})`,
             "danger"
           );
         }
@@ -7629,8 +7629,8 @@ function renderCalendar() {
       totalCells = 35;
     }
   }
-  const MIN_CELL_H = 156;
-  const MAX_VISIBLE_TXNS = 2;
+  const MIN_CELL_H = 168;
+  const MAX_VISIBLE_TXNS = 3;
   const minBalFloor = readStoredMinBalanceThresholdForReports();
   /** @type {HTMLElement[]} */
   const cells = [];
@@ -7722,7 +7722,7 @@ function renderCalendar() {
         const descRaw = isExpected || isStartBalance ? row.description || "(expected)" : (row.description || "Uncategorized").trim();
         const labelRaw = categoryName || descRaw;
         // Keep labels short so they don't wrap into the amount column.
-        const label = truncate(labelRaw, 34);
+        const label = truncate(labelRaw, 48);
 
         const labelSpan = document.createElement("span");
         labelSpan.className = `cal-tx-label ${kindFgClass(row.kind)}`;
@@ -7892,7 +7892,7 @@ function renderCalendar() {
   if (calendarPanel) {
     calendarPanel.style.setProperty("--cal-week-rows", String(weekRows));
     // Keep day boxes tall enough for balance strip + top forecast rows.
-    const h = "156px";
+    const h = "168px";
     calendarPanel.style.setProperty("--cal-day-min-h", h);
   }
 }
