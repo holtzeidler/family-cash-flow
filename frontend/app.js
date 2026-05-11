@@ -560,14 +560,10 @@ if (catEditDelete) {
 }
 
 // Balance threshold alerts (settings + calendar sidebar)
-const balanceThresholdMin = document.getElementById("balanceThresholdMin");
-const balanceThresholdMax = document.getElementById("balanceThresholdMax");
 const lowBalanceResult = document.getElementById("lowBalanceResult");
-const lowBalanceErr = document.getElementById("lowBalanceErr");
 const sidebarLowBalanceBanner = document.getElementById("sidebarLowBalanceBanner");
 const sidebarHighBalanceBanner = document.getElementById("sidebarHighBalanceBanner");
 const sidebarBalanceThresholdHint = document.getElementById("sidebarBalanceThresholdHint");
-const balanceThresholdSaveBtn = document.getElementById("balanceThresholdSaveBtn");
 const cashOutlookHead = document.getElementById("cashOutlookHead");
 const BALANCE_THRESHOLD_MIN_KEY = "familyCashFlow_balanceThresholdMin";
 const BALANCE_THRESHOLD_MAX_KEY = "familyCashFlow_balanceThresholdMax";
@@ -577,6 +573,25 @@ const LOW_BALANCE_THRESHOLD_KEY = "familyCashFlow_lowBalanceThreshold";
 let lowBalanceDebounceTimer = null;
 let balanceThresholdPersistTimer = null;
 let lowBalanceLastQuery = { familyId: null, min: null, max: null, mode: null };
+
+/** Always read fresh nodes — avoids writing to a detached input if the DOM is ever rebuilt. */
+function balanceThresholdFieldEls() {
+  return {
+    min: document.getElementById("balanceThresholdMin"),
+    max: document.getElementById("balanceThresholdMax"),
+    err: document.getElementById("lowBalanceErr"),
+    saveBtn: document.getElementById("balanceThresholdSaveBtn"),
+  };
+}
+
+function activeFamilyIdForBalanceThresholds() {
+  let fid = Number(state.activeFamilyId);
+  if (familySelect && familySelect.value) {
+    const v = Number(familySelect.value);
+    if (Number.isFinite(v) && v > 0) fid = v;
+  }
+  return Number.isFinite(fid) && fid > 0 ? fid : null;
+}
 
 function getBalanceThresholdKey(kind, familyId) {
   const fid = Number(familyId || 0);
@@ -780,7 +795,8 @@ function setSidebarBalanceThresholdHint(text) {
       setActiveTopView("settings");
       activateSettingsSection("accountDetails");
       // Scroll directly to the thresholds section.
-      const target = balanceThresholdMin || balanceThresholdMax;
+      const { min: btMin, max: btMax } = balanceThresholdFieldEls();
+      const target = btMin || btMax;
       if (target && typeof target.scrollIntoView === "function") {
         target.scrollIntoView({ behavior: "smooth", block: "center" });
         try {
@@ -1088,8 +1104,9 @@ function setLowBalanceResult(contentHtml, isEmpty = false) {
 }
 
 async function refreshLowBalanceAlert() {
+  const { min: btMinEl, max: btMaxEl, err: btErr } = balanceThresholdFieldEls();
   try {
-    show(lowBalanceErr, "");
+    show(btErr, "");
     if (!state.activeFamilyId) {
       setSidebarLowBalanceBanner("", "off");
       setSidebarHighBalanceBanner("", "off");
@@ -1098,8 +1115,8 @@ async function refreshLowBalanceAlert() {
       return;
     }
 
-    const minRaw = balanceThresholdMin?.value?.trim() ?? "";
-    const maxRaw = balanceThresholdMax?.value?.trim() ?? "";
+    const minRaw = btMinEl?.value?.trim() ?? "";
+    const maxRaw = btMaxEl?.value?.trim() ?? "";
     const minVal = minRaw === "" ? null : toNum(minRaw);
     const maxVal = maxRaw === "" ? null : toNum(maxRaw);
     const minOk = minVal != null && Number.isFinite(minVal);
@@ -1180,12 +1197,12 @@ async function refreshLowBalanceAlert() {
     if (minOk) {
       if (!lowHit) {
         parts.push(
-          `<div class="balance-threshold-result-block"><div class="k">First date ≤ $${fmtMoneyThreshold(balanceThresholdMin?.value || "", minVal)}</div><div class="v">None in the next ${lowDays} days.</div></div>`
+          `<div class="balance-threshold-result-block"><div class="k">First date ≤ $${fmtMoneyThreshold(btMinEl?.value || "", minVal)}</div><div class="v">None in the next ${lowDays} days.</div></div>`
         );
         setSidebarLowBalanceBanner("✓ Within your target range", "muted");
       } else {
         parts.push(
-          `<div class="balance-threshold-result-block"><div class="k">First date ≤ $${fmtMoneyThreshold(balanceThresholdMin?.value || "", minVal)}</div><div class="v danger">${fmtDateMDY(lowHit.date)} — $${fmtMoney(lowHit.balance)}</div></div>`
+          `<div class="balance-threshold-result-block"><div class="k">First date ≤ $${fmtMoneyThreshold(btMinEl?.value || "", minVal)}</div><div class="v danger">${fmtDateMDY(lowHit.date)} — $${fmtMoney(lowHit.balance)}</div></div>`
         );
         const bal = Number(lowHit.balance);
         const target = Number(minVal);
@@ -1217,12 +1234,12 @@ async function refreshLowBalanceAlert() {
         setSidebarHighBalanceBanner("✓ Peak balance\nCould not check", "muted");
       } else if (!highHit) {
         parts.push(
-          `<div class="balance-threshold-result-block"><div class="k">First date ≥ $${fmtMoneyThreshold(balanceThresholdMax?.value || "", maxVal)}</div><div class="v">No dates found in the next ${highDays} days.</div></div>`
+          `<div class="balance-threshold-result-block"><div class="k">First date ≥ $${fmtMoneyThreshold(btMaxEl?.value || "", maxVal)}</div><div class="v">No dates found in the next ${highDays} days.</div></div>`
         );
         setSidebarHighBalanceBanner("✓ Peak balance\nNone", "muted");
       } else {
         parts.push(
-          `<div class="balance-threshold-result-block"><div class="k">First date ≥ $${fmtMoneyThreshold(balanceThresholdMax?.value || "", maxVal)}</div><div class="v">${fmtDateMDY(highHit.date)} — $${fmtMoney(highHit.balance)}</div></div>`
+          `<div class="balance-threshold-result-block"><div class="k">First date ≥ $${fmtMoneyThreshold(btMaxEl?.value || "", maxVal)}</div><div class="v">${fmtDateMDY(highHit.date)} — $${fmtMoney(highHit.balance)}</div></div>`
         );
         setSidebarHighBalanceBanner(
           `✓ Peak balance on ${fmtMonthDay(highHit.date)}\nCENTER:${fmtMoney0SignedDollar(highHit.balance)}`,
@@ -1236,7 +1253,7 @@ async function refreshLowBalanceAlert() {
     const hasAlert = (minOk && lowHit) || (SHOW_PEAK_BALANCE && maxOk && highHit && !highFetchErr);
     setLowBalanceResult(parts.join(""), !hasAlert);
   } catch (e) {
-    show(lowBalanceErr, e.message || "Failed to compute balance threshold alerts");
+    show(btErr, e.message || "Failed to compute balance threshold alerts");
     setLowBalanceResult("", true);
     setSidebarLowBalanceBanner("", "off");
     setSidebarHighBalanceBanner("", "off");
@@ -1246,13 +1263,15 @@ async function refreshLowBalanceAlert() {
 }
 
 function scheduleLowBalanceRefresh() {
-  if (!balanceThresholdMin && !balanceThresholdMax) return;
+  const { min, max } = balanceThresholdFieldEls();
+  if (!min && !max) return;
   if (lowBalanceDebounceTimer) clearTimeout(lowBalanceDebounceTimer);
   lowBalanceDebounceTimer = setTimeout(() => refreshLowBalanceAlert(), 350);
 }
 
 function schedulePersistBalanceThresholds() {
-  if (!balanceThresholdMin && !balanceThresholdMax) return;
+  const { min, max } = balanceThresholdFieldEls();
+  if (!min && !max) return;
   if (balanceThresholdPersistTimer) clearTimeout(balanceThresholdPersistTimer);
   balanceThresholdPersistTimer = setTimeout(() => {
     balanceThresholdPersistTimer = null;
@@ -1267,14 +1286,11 @@ function onBalanceThresholdFieldEdited() {
 
 /** Load threshold inputs from localStorage for the current family (call after family switch or boot). */
 function hydrateBalanceThresholdInputsFromStorage() {
-  if (!balanceThresholdMin && !balanceThresholdMax) return;
+  const { min: minEl, max: maxEl } = balanceThresholdFieldEls();
+  if (!minEl && !maxEl) return;
   try {
     const legacy = localStorage.getItem(LOW_BALANCE_THRESHOLD_KEY) || "";
-    let fid = state.activeFamilyId;
-    if (familySelect && familySelect.value) {
-      const v = Number(familySelect.value);
-      if (Number.isFinite(v) && v > 0) fid = v;
-    }
+    const fid = activeFamilyIdForBalanceThresholds();
     const minKey = getBalanceThresholdKey("min", fid);
     const maxKey = getBalanceThresholdKey("max", fid);
     const storedFamilyId = localStorage.getItem(BALANCE_THRESHOLD_FAMILY_ID_KEY) || "";
@@ -1283,38 +1299,38 @@ function hydrateBalanceThresholdInputsFromStorage() {
     // do not clear the user's in-progress inputs.
     if (!minKey || !maxKey) return;
 
-    if (minKey && balanceThresholdMin) {
+    if (minKey && minEl) {
       const s = localStorage.getItem(minKey) || "";
-      if (s) balanceThresholdMin.value = s;
-      else balanceThresholdMin.value = "";
-    } else if (balanceThresholdMin) balanceThresholdMin.value = "";
+      if (s) minEl.value = s;
+      else minEl.value = "";
+    } else if (minEl) minEl.value = "";
 
-    if (maxKey && balanceThresholdMax) {
+    if (maxKey && maxEl) {
       const s2 = localStorage.getItem(maxKey) || "";
-      if (s2) balanceThresholdMax.value = s2;
-      else balanceThresholdMax.value = "";
-    } else if (balanceThresholdMax) balanceThresholdMax.value = "";
+      if (s2) maxEl.value = s2;
+      else maxEl.value = "";
+    } else if (maxEl) maxEl.value = "";
 
     const allowLegacy =
       !storedFamilyId || (fid != null && storedFamilyId && String(storedFamilyId) === String(fid));
     if (allowLegacy && fid != null) {
-      if (legacy && balanceThresholdMin && !balanceThresholdMin.value && minKey && !localStorage.getItem(minKey)) {
-        balanceThresholdMin.value = legacy;
+      if (legacy && minEl && !minEl.value && minKey && !localStorage.getItem(minKey)) {
+        minEl.value = legacy;
         localStorage.setItem(minKey, legacy);
         localStorage.setItem(BALANCE_THRESHOLD_FAMILY_ID_KEY, String(fid));
       }
-      if (balanceThresholdMin && !balanceThresholdMin.value && minKey && !localStorage.getItem(minKey)) {
+      if (minEl && !minEl.value && minKey && !localStorage.getItem(minKey)) {
         const oldMin = localStorage.getItem(BALANCE_THRESHOLD_MIN_KEY) || "";
         if (oldMin) {
-          balanceThresholdMin.value = oldMin;
+          minEl.value = oldMin;
           localStorage.setItem(minKey, oldMin);
           localStorage.setItem(BALANCE_THRESHOLD_FAMILY_ID_KEY, String(fid));
         }
       }
-      if (balanceThresholdMax && !balanceThresholdMax.value && maxKey && !localStorage.getItem(maxKey)) {
+      if (maxEl && !maxEl.value && maxKey && !localStorage.getItem(maxKey)) {
         const oldMax = localStorage.getItem(BALANCE_THRESHOLD_MAX_KEY) || "";
         if (oldMax) {
-          balanceThresholdMax.value = oldMax;
+          maxEl.value = oldMax;
           localStorage.setItem(maxKey, oldMax);
           localStorage.setItem(BALANCE_THRESHOLD_FAMILY_ID_KEY, String(fid));
         }
@@ -1326,43 +1342,40 @@ function hydrateBalanceThresholdInputsFromStorage() {
 
 function saveBalanceThresholds(opts = {}) {
   const silent = !!opts.silent;
-  if (!balanceThresholdMin && !balanceThresholdMax) return;
-  let fidNum = Number(state.activeFamilyId);
-  if (familySelect && familySelect.value) {
-    const v = Number(familySelect.value);
-    if (Number.isFinite(v) && v > 0) fidNum = v;
-  }
-  if (!Number.isFinite(fidNum) || fidNum <= 0) {
-    if (!silent) show(lowBalanceErr, "Select an active family to save balance thresholds.");
+  const { min: minEl, max: maxEl, err: errEl, saveBtn } = balanceThresholdFieldEls();
+  if (!minEl && !maxEl) return;
+  const fidNum = activeFamilyIdForBalanceThresholds();
+  if (!fidNum) {
+    if (!silent) show(errEl, "Select an active family to save balance thresholds.");
     return;
   }
   const minKey = getBalanceThresholdKey("min", fidNum);
   const maxKey = getBalanceThresholdKey("max", fidNum);
   if (!minKey || !maxKey) {
-    if (!silent) show(lowBalanceErr, "Could not save thresholds for this family. Try refreshing the page.");
+    if (!silent) show(errEl, "Could not save thresholds for this family. Try refreshing the page.");
     return;
   }
   try {
-    if (balanceThresholdMin) localStorage.setItem(minKey, balanceThresholdMin.value || "");
-    if (balanceThresholdMax) localStorage.setItem(maxKey, balanceThresholdMax.value || "");
+    if (minEl) localStorage.setItem(minKey, minEl.value || "");
+    if (maxEl) localStorage.setItem(maxKey, maxEl.value || "");
     localStorage.setItem(BALANCE_THRESHOLD_FAMILY_ID_KEY, String(fidNum));
     state.activeFamilyId = fidNum;
   } catch (e) {
-    show(lowBalanceErr, e.message || "Could not save thresholds.");
+    show(errEl, e.message || "Could not save thresholds.");
     return;
   }
-  show(lowBalanceErr, "");
+  show(errEl, "");
   invalidateLowBalanceAlertCache();
   if (lowBalanceDebounceTimer) clearTimeout(lowBalanceDebounceTimer);
   lowBalanceDebounceTimer = null;
   void refreshLowBalanceAlert();
-  if (!silent && balanceThresholdSaveBtn) {
-    const prev = balanceThresholdSaveBtn.textContent;
-    balanceThresholdSaveBtn.textContent = "Saved";
-    balanceThresholdSaveBtn.disabled = true;
+  if (!silent && saveBtn) {
+    const prev = saveBtn.textContent;
+    saveBtn.textContent = "Saved";
+    saveBtn.disabled = true;
     window.setTimeout(() => {
-      balanceThresholdSaveBtn.textContent = prev;
-      balanceThresholdSaveBtn.disabled = false;
+      saveBtn.textContent = prev;
+      saveBtn.disabled = false;
     }, 1500);
   }
 }
@@ -4203,6 +4216,12 @@ async function loadFamilies() {
   const families = await api("/api/families", "GET");
   state.families = families || [];
 
+  const prevIdRaw =
+    familySelect && familySelect.value
+      ? familySelect.value
+      : state.activeFamilyId != null
+        ? String(state.activeFamilyId)
+        : "";
   familySelect.innerHTML = "";
   for (const f of state.families) {
     const opt = document.createElement("option");
@@ -4212,9 +4231,18 @@ async function loadFamilies() {
   }
 
   if (state.families.length > 0) {
+    const prevNum = Number(prevIdRaw);
+    const prevOk =
+      Number.isFinite(prevNum) &&
+      prevNum > 0 &&
+      state.families.some((f) => Number(f.id) === prevNum);
+    if (prevOk) familySelect.value = String(prevNum);
     state.activeFamilyId = Number(familySelect.value);
+  } else {
+    state.activeFamilyId = null;
   }
   syncActiveFamilyFlags();
+  hydrateBalanceThresholdInputsFromStorage();
 }
 
 function categoryIdFromSelectValue(raw) {
@@ -6549,7 +6577,8 @@ function renderSidebarPendingTransactionsForMonth() {
     est.className = "pending-attn-est";
     const amt = Math.abs(toNum(it?.amount));
     const sign = String(kind) === "income" ? "+" : "–";
-    est.textContent = `Impact ${sign}$${fmtMoney0(amt)}`;
+    const catLabel = effectiveTransactionCategoryName(it) || "Uncategorized";
+    est.textContent = `${truncate(catLabel, 28)} ${sign}$${fmtMoney0(amt)}`;
 
     const date = document.createElement("div");
     date.className = "pending-attn-date";
@@ -7345,24 +7374,16 @@ function renderCalendar() {
       metricsEl.innerHTML = `<div class="cal-stat cal-balance${negClass}${mutedClass}">$${fmtMoneyParens(endNum)}</div>`;
     }
 
-    // One light annotation per day: forecast storytelling cues.
+    // One light annotation per day: forecast storytelling cues (no "Payday" / "Large expense" — too noisy).
     if (noteEl && !isOutOfMonth && showDetails) {
       let note = "";
       if (monthLowPointIso && iso === monthLowPointIso) note = "Low point";
-      if (!note) {
-        const hasIncome = combined.some((r) => String(r?.kind || "") === "income" && Number(r?.amount ?? 0) > 0);
-        if (hasIncome) note = "Payday";
-      }
-      if (!note) {
-        const bigExpense = combined.some((r) => String(r?.kind || "") !== "income" && Number(r?.amount ?? 0) >= 750);
-        if (bigExpense) note = "Large expense";
-      }
       if (!note && monthRecoveryIso && iso === monthRecoveryIso) note = "Balance recovers";
       if (note) {
         noteEl.textContent = note;
         noteEl.hidden = false;
-        noteEl.classList.toggle("is-danger", note === "Low point" || note === "Large expense");
-        noteEl.classList.toggle("is-ok", note === "Payday" || note === "Balance recovers");
+        noteEl.classList.toggle("is-danger", note === "Low point");
+        noteEl.classList.toggle("is-ok", note === "Balance recovers");
       } else {
         noteEl.textContent = "";
         noteEl.hidden = true;
@@ -7702,18 +7723,19 @@ async function main() {
       show(chartErr, e.message || "Failed to load balance chart");
     }
   }
-  if (balanceThresholdMin || balanceThresholdMax) {
+  const bt = balanceThresholdFieldEls();
+  if (bt.min || bt.max) {
     hydrateBalanceThresholdInputsFromStorage();
-    if (balanceThresholdMin) {
-      balanceThresholdMin.addEventListener("input", onBalanceThresholdFieldEdited);
-      balanceThresholdMin.addEventListener("change", onBalanceThresholdFieldEdited);
+    if (bt.min) {
+      bt.min.addEventListener("input", onBalanceThresholdFieldEdited);
+      bt.min.addEventListener("change", onBalanceThresholdFieldEdited);
     }
-    if (balanceThresholdMax) {
-      balanceThresholdMax.addEventListener("input", onBalanceThresholdFieldEdited);
-      balanceThresholdMax.addEventListener("change", onBalanceThresholdFieldEdited);
+    if (bt.max) {
+      bt.max.addEventListener("input", onBalanceThresholdFieldEdited);
+      bt.max.addEventListener("change", onBalanceThresholdFieldEdited);
     }
-    if (balanceThresholdSaveBtn) {
-      balanceThresholdSaveBtn.addEventListener("click", () => saveBalanceThresholds());
+    if (bt.saveBtn) {
+      bt.saveBtn.addEventListener("click", () => saveBalanceThresholds());
     }
     await refreshLowBalanceAlert();
   }
