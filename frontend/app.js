@@ -1279,6 +1279,10 @@ function hydrateBalanceThresholdInputsFromStorage() {
     const maxKey = getBalanceThresholdKey("max", fid);
     const storedFamilyId = localStorage.getItem(BALANCE_THRESHOLD_FAMILY_ID_KEY) || "";
 
+    // If we don't yet have a valid family id (boot race, transient view switch),
+    // do not clear the user's in-progress inputs.
+    if (!minKey || !maxKey) return;
+
     if (minKey && balanceThresholdMin) {
       const s = localStorage.getItem(minKey) || "";
       if (s) balanceThresholdMin.value = s;
@@ -6501,7 +6505,17 @@ function renderSidebarPendingTransactionsForMonth() {
     rows.push({ sortIso: iso, type: "expected", tx: it });
   }
 
-  rows.sort((a, b) => String(a.sortIso).localeCompare(String(b.sortIso)));
+  // Sort by urgency (soonest first), then by magnitude (larger impact first).
+  rows.sort((a, b) => {
+    const dc = String(a.sortIso).localeCompare(String(b.sortIso));
+    if (dc !== 0) return dc;
+    const aa = Math.abs(toNum(a?.tx?.amount));
+    const bb = Math.abs(toNum(b?.tx?.amount));
+    if (bb !== aa) return bb - aa;
+    const an = String(a?.tx?.description || "");
+    const bn = String(b?.tx?.description || "");
+    return an.localeCompare(bn);
+  });
 
   if (!rows.length) {
     setTitle(0);
@@ -6510,7 +6524,8 @@ function renderSidebarPendingTransactionsForMonth() {
   }
 
   setTitle(rows.length);
-  for (const r of rows) {
+  for (let idx = 0; idx < rows.length; idx++) {
+    const r = rows[idx];
     const it = r.tx;
     const open = () => {
       const meta = getExpectedSeriesMeta(it?.expected_transaction_id);
@@ -6522,6 +6537,7 @@ function renderSidebarPendingTransactionsForMonth() {
 
     const el = document.createElement("div");
     el.className = "pending-attn-item";
+    if (idx === 0) el.classList.add("is-critical");
     el.style.cursor = "pointer";
     el.addEventListener("click", () => open());
 
@@ -6532,7 +6548,8 @@ function renderSidebarPendingTransactionsForMonth() {
     const est = document.createElement("div");
     est.className = "pending-attn-est";
     const amt = Math.abs(toNum(it?.amount));
-    est.textContent = `Est. $${fmtMoney0(amt)}`;
+    const sign = String(kind) === "income" ? "+" : "–";
+    est.textContent = `Impact ${sign}$${fmtMoney0(amt)}`;
 
     const date = document.createElement("div");
     date.className = "pending-attn-date";
@@ -7096,6 +7113,40 @@ function renderCalendar() {
     arr.sort(txSortAmountDesc);
   }
 
+  // Forecast storytelling cues (lightweight, single label per day).
+  let monthLowPointIso = null;
+  let monthLowPointBal = null;
+  try {
+    const monthStartIso = `${String(year)}-${String(monthIndex + 1).padStart(2, "0")}-01`;
+    const monthEndIso = `${String(year)}-${String(monthIndex + 1).padStart(2, "0")}-${String(daysInMonth).padStart(2, "0")}`;
+    for (const [iso, bal] of state.monthDailyBalances.entries()) {
+      if (!iso || iso < monthStartIso || iso > monthEndIso) continue;
+      const endNum = Number(bal?.end ?? NaN);
+      if (!Number.isFinite(endNum)) continue;
+      if (monthLowPointBal == null || endNum < monthLowPointBal) {
+        monthLowPointBal = endNum;
+        monthLowPointIso = iso;
+      }
+    }
+  } catch (_) {}
+
+  let monthRecoveryIso = null;
+  try {
+    if (monthLowPointIso && monthLowPointBal != null) {
+      const target = Number(monthLowPointBal) + Math.max(100, Math.abs(Number(monthLowPointBal)) * 0.25);
+      for (let day = 1; day <= daysInMonth; day++) {
+        const iso = toISODate(new Date(year, monthIndex, day));
+        if (iso <= monthLowPointIso) continue;
+        const bal = state.monthDailyBalances.get(iso);
+        const endNum = Number(bal?.end ?? NaN);
+        if (Number.isFinite(endNum) && endNum >= target) {
+          monthRecoveryIso = iso;
+          break;
+        }
+      }
+    }
+  } catch (_) {}
+
   const dow = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const wrapper = document.createElement("div");
   wrapper.className = "calendar";
@@ -7128,6 +7179,7 @@ function renderCalendar() {
     }
   }
   const MIN_CELL_H = 170;
+  const MAX_VISIBLE_TXNS = 3;
   /** @type {HTMLElement[]} */
   const cells = [];
   for (let i = 0; i < totalCells; i++) {
@@ -7157,6 +7209,7 @@ function renderCalendar() {
         </span>` : ""}<span class="cal-daynum-num${isToday ? " is-today" : ""}">${dObj.getDate()}</span></div>
       <div class="cal-cell-fill"></div>
       <div class="cal-cell-stack">
+        <div class="cal-forecast-note" hidden></div>
         <div class="cal-day-txns"></div>
         <div class="cal-ledger-metrics"></div>
       </div>
@@ -7167,6 +7220,7 @@ function renderCalendar() {
     if (!isOutOfMonth && isPast && !earliestStartIso) cell.classList.add("cal-cell--past");
     const txnsEl = cell.querySelector(".cal-day-txns");
     const metricsEl = cell.querySelector(".cal-ledger-metrics");
+    const noteEl = cell.querySelector(".cal-forecast-note");
 
     const dayNumEl = cell.querySelector(".cal-daynum");
     if (dayNumEl) {
@@ -7190,8 +7244,12 @@ function renderCalendar() {
     }
 
     if (showDetails) {
-      // Always show all transactions; the week row will expand to fit the tallest day.
-      for (const row of combined) {
+      const isExpanded = !!(state.calendarExpandedDays && state.calendarExpandedDays.has(iso));
+      const visibleRows = isExpanded ? combined : combined.slice(0, MAX_VISIBLE_TXNS);
+      const hiddenCount = Math.max(0, combined.length - visibleRows.length);
+
+      // Render a compact, forecast-first list. Expand only on demand.
+      for (const row of visibleRows) {
         const isExpected = row._type === "expected";
         const isStartBalance = row._type === "start_balance";
         const line = document.createElement("div");
@@ -7220,14 +7278,8 @@ function renderCalendar() {
         labelSpan.textContent = `${label} `;
         if (row.category_id) {
           const st = pillStyleForTransaction(row);
+          // Keep the calendar calm: allow subtle color, avoid heavy pill backgrounds.
           if (st?.fg) labelSpan.style.color = st.fg;
-          if (st?.bg) labelSpan.style.background = st.bg;
-          if (st?.bg) {
-            labelSpan.style.padding = "1px 6px";
-            labelSpan.style.borderRadius = "6px";
-            labelSpan.style.border = "1px solid rgba(0,0,0,0.12)";
-            labelSpan.style.fontWeight = "600";
-          }
         }
 
         const labelWrap = document.createElement("span");
@@ -7266,6 +7318,22 @@ function renderCalendar() {
 
         txnsEl.appendChild(line);
       }
+
+      if (hiddenCount > 0 && txnsEl) {
+        const moreBtn = document.createElement("button");
+        moreBtn.type = "button";
+        moreBtn.className = "cal-day-more";
+        moreBtn.textContent = `+${hiddenCount} more`;
+        moreBtn.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (!state.calendarExpandedDays) state.calendarExpandedDays = new Set();
+          if (state.calendarExpandedDays.has(iso)) state.calendarExpandedDays.delete(iso);
+          else state.calendarExpandedDays.add(iso);
+          renderCalendar();
+        });
+        txnsEl.appendChild(moreBtn);
+      }
     }
 
     const dayBal = state.monthDailyBalances.get(iso);
@@ -7273,7 +7341,33 @@ function renderCalendar() {
     if (dayBal && metricsEl) {
       const endNum = Number(dayBal.end ?? 0);
       const negClass = Number.isFinite(endNum) && endNum < 0 ? " is-negative" : "";
-      metricsEl.innerHTML = `<div class="cal-stat cal-balance${negClass}">$${fmtMoneyParens(endNum)}</div>`;
+      const mutedClass = Number.isFinite(endNum) && endNum >= 0 ? " is-muted" : "";
+      metricsEl.innerHTML = `<div class="cal-stat cal-balance${negClass}${mutedClass}">$${fmtMoneyParens(endNum)}</div>`;
+    }
+
+    // One light annotation per day: forecast storytelling cues.
+    if (noteEl && !isOutOfMonth && showDetails) {
+      let note = "";
+      if (monthLowPointIso && iso === monthLowPointIso) note = "Low point";
+      if (!note) {
+        const hasIncome = combined.some((r) => String(r?.kind || "") === "income" && Number(r?.amount ?? 0) > 0);
+        if (hasIncome) note = "Payday";
+      }
+      if (!note) {
+        const bigExpense = combined.some((r) => String(r?.kind || "") !== "income" && Number(r?.amount ?? 0) >= 750);
+        if (bigExpense) note = "Large expense";
+      }
+      if (!note && monthRecoveryIso && iso === monthRecoveryIso) note = "Balance recovers";
+      if (note) {
+        noteEl.textContent = note;
+        noteEl.hidden = false;
+        noteEl.classList.toggle("is-danger", note === "Low point" || note === "Large expense");
+        noteEl.classList.toggle("is-ok", note === "Payday" || note === "Balance recovers");
+      } else {
+        noteEl.textContent = "";
+        noteEl.hidden = true;
+        noteEl.classList.remove("is-danger", "is-ok");
+      }
     }
 
     wrapper.appendChild(cell);

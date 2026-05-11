@@ -39,8 +39,7 @@ body{
 
 /* Login page */
 body.login-page .container{
-  /* Narrow the login layout (about half width on desktop) */
-  max-width: 778px;
+  max-width: 1920px;
 }
 body.signup-page .card{
   background: var(--cal-surface);
@@ -49,21 +48,22 @@ body.signup-page .card{
 /* Login page: match calendar white surface + dark green outline */
 body.login-page .auth-section.card{
   background: var(--cal-surface);
-  border: var(--card-border-accent);
+  border: 1px solid rgba(11, 61, 46, 0.14);
   box-shadow:
-    0 2px 8px rgba(11, 61, 46, 0.08),
-    0 12px 32px rgba(0, 0, 0, 0.1);
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    0 10px 30px rgba(11, 61, 46, 0.07);
 }
 body.login-page:not(.signup-page):not(.invite-page) #loginSection.auth-section.card{
-  border: 1px solid color-mix(in srgb, #0b4f3a 82%, rgba(0, 0, 0, 0.14));
+  border-color: rgba(11, 61, 46, 0.14);
 }
 /* Space between header and cards; lift column ~10vh but never overlap sticky nav (keeps header border visible). */
 body.login-page:not(.signup-page):not(.invite-page) .container > .grid{
-  margin-top: max(18px, calc(54px - 10vh));
-  max-width: 600px;
-  margin-left: auto;
-  margin-right: auto;
-  width: 100%;
+  width: min(540px, 92%);
+  margin: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 0 26px;
 }
 body.login-page.signup-page:not(.account-setup-page):not(.invite-page) .container > .grid{
   margin-top: max(18px, calc(36px - 10vh));
@@ -246,8 +246,8 @@ body.landing-page .landing-preview__demo{
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 1.65rem;
-  padding: 1.35rem 1.4rem 1.5rem;
+  gap: 1.15rem;
+  padding: 1.15rem 1.25rem 1.25rem;
   border-radius: 16px;
   border: 1px solid rgba(11, 61, 46, 0.07);
   background: #f9faf9;
@@ -297,10 +297,35 @@ body.landing-page .landing-preview__transferFoot{
   line-height: 1.45;
   color: rgba(55, 65, 60, 0.66);
 }
+body.landing-page .landing-preview__trust{
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: -0.35rem 0 0;
+  font-size: 0.9rem;
+  font-weight: 550;
+  color: rgba(45, 72, 58, 0.62);
+}
+body.landing-page .landing-preview__trustIcon{
+  width: 1.2rem;
+  height: 1.2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(4, 120, 87, 0.12);
+  color: rgba(4, 120, 87, 0.92);
+  font-size: 0.85rem;
+  font-weight: 800;
+  line-height: 1;
+}
+body.landing-page .landing-preview__trustText{
+  line-height: 1.35;
+}
 body.landing-page .landing-preview__body{
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.55fr);
-  gap: 1.6rem 2rem;
+  gap: 1.1rem 1.5rem;
   align-items: start;
 }
 body.landing-page .landing-preview__billsHead{
@@ -340,7 +365,7 @@ body.landing-page .landing-preview__billList li span:last-child{
 }
 body.landing-page .landing-preview__chart{
   margin: 0;
-  padding: 0.5rem 0.25rem 0.35rem;
+  padding: 0.4rem 0.1rem 0.3rem;
   border: none;
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.55);
@@ -351,6 +376,18 @@ body.landing-page .landing-preview__chartSvg{
   height: auto;
   min-height: 168px;
   max-height: 240px;
+}
+body.landing-page .landing-preview__markerLabel{
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+}
+body.landing-page .landing-preview__markerLabel--in{
+  fill: rgba(4, 120, 87, 0.75);
+}
+body.landing-page .landing-preview__markerLabel--out{
+  fill: rgba(167, 55, 68, 0.72);
 }
 
 @keyframes landing-curve-breath{
@@ -932,12 +969,12 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
     max-width: 100%;
   }
   body.landing-page .landing-preview__demo{
-    padding: 1.1rem 1rem 1.2rem;
-    gap: 1.35rem;
+    padding: 1rem 0.95rem 1.05rem;
+    gap: 1.05rem;
   }
   body.landing-page .landing-preview__body{
     grid-template-columns: 1fr;
-    gap: 1.25rem;
+    gap: 0.95rem;
   }
   .landing-how{
     margin-top: 18px;
@@ -1467,7 +1504,7 @@ button.secondary{
 /* Main app: sidebar (left), calendar + tools (right) — slightly wider calendar column */
 .app-layout{
   display:grid;
-  grid-template-columns: 0.76fr 3.24fr;
+  grid-template-columns: 0.68fr 3.32fr;
   gap: 10px;
   align-items: stretch;
   margin-top: 0;
@@ -1546,6 +1583,13 @@ button.secondary{
   background: rgba(0,0,0,0.02);
   width: 100%;
   box-sizing: border-box;
+}
+.pending-attn-item.is-critical{
+  border-color: rgba(167, 55, 68, 0.32);
+  background: rgba(167, 55, 68, 0.06);
+}
+.pending-attn-item.is-critical .pending-attn-name{
+  font-weight: 850;
 }
 .pending-attn-item:hover{
   background: rgba(0,0,0,0.035);
@@ -3823,11 +3867,11 @@ body.login-page #loginSectionBody .row.two{
 }
 body.login-page #email,
 body.login-page #password{
-  font-size: 121%;
+  font-size: 1rem;
 }
 body.login-page:not(.signup-page) #loginSectionBody #email,
 body.login-page:not(.signup-page) #loginSectionBody #password{
-  padding: 8px 12px;
+  padding: 10px 12px;
 }
 body.login-page:not(.signup-page) #loginSectionBody{
   text-align: left;
@@ -3837,9 +3881,9 @@ body.login-page:not(.signup-page) #loginSectionBody .row.two > div{
 }
 body.login-page:not(.signup-page) .login-page__forgot-link{
   display: block;
-  margin: 6px 0 0;
+  margin: 6px 0 12px;
   width: fit-content;
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   font-weight: 500;
   color: var(--accent);
   text-decoration: underline;
@@ -3849,21 +3893,19 @@ body.login-page:not(.signup-page) .login-page__forgot-link:hover{
   color: color-mix(in srgb, var(--accent) 88%, #000);
 }
 body.login-page:not(.signup-page) .login-page__signup-prompt{
-  margin-top: 14px;
-  font-size: 1.05rem;
-  line-height: 1.45;
+  margin-top: 12px;
+  font-size: 0.98rem;
+  line-height: 1.35;
   text-align: left;
   color: var(--text);
 }
-body.login-page:not(.signup-page) .login-page__signup-prompt > div{
-  margin: 0;
-}
 body.login-page:not(.signup-page) .login-page__signup-cta{
   display: inline-block;
-  margin-top: 6px;
-  font-size: 1.05rem;
-  font-weight: 600;
-  color: #252525;
+  margin-top: 0;
+  margin-left: 0.35rem;
+  font-size: 0.98rem;
+  font-weight: 650;
+  color: rgba(17, 24, 39, 0.88);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
@@ -3875,7 +3917,7 @@ body.login-page:not(.signup-page) .login-page__signup-cta:hover{
 body.login-page:not(.signup-page) #loginSection > .auth-section__head{
   justify-content: flex-start;
   gap: 0;
-  padding: 18px 16px 12px;
+  padding: 18px 18px 10px;
   background: transparent;
   border: none;
   border-bottom: 1px solid rgba(0, 0, 0, 0.08);
@@ -3886,12 +3928,19 @@ body.login-page:not(.signup-page) #loginSection > .auth-section__head{
 }
 body.login-page:not(.signup-page) #loginSection > .auth-section__head .auth-section__title{
   color: var(--text);
-  font-size: 1.05rem;
-  font-weight: 750;
+  font-size: 1.18rem;
+  font-weight: 800;
   letter-spacing: 0.02em;
   text-transform: none;
   text-align: left;
   width: 100%;
+}
+body.login-page:not(.signup-page) #loginSection > .auth-section__head .login-page__subhead{
+  margin: 6px 0 0;
+  font-size: 0.95rem;
+  font-weight: 550;
+  line-height: 1.35;
+  color: rgba(75, 85, 99, 0.72);
 }
 
 /* Signup page: field row — smaller type than login (login-page alone bumps .auth-section) */
@@ -4781,15 +4830,17 @@ body.account-setup-page .account-setup-actions .top-nav__logout:hover{
 
 /* Login page: make accordion text larger */
 body.login-page .auth-section{
-  font-size: 115%;
+  font-size: 100%;
 }
 
 /* Login page: bump field label size */
 body.login-page .auth-section label{
-  font-size: 126.5%;
+  font-size: 0.86rem;
+  font-weight: 650;
+  color: rgba(55, 65, 60, 0.72);
 }
 body.login-page:not(.signup-page) .auth-section label{
-  font-size: calc(126.5% * 0.95);
+  font-size: 0.86rem;
 }
 
 /* Contact page layout */
@@ -5311,10 +5362,10 @@ body.plans-page .container > .grid{
   font-weight: 700;
 }
 .cal-cell{
-  border: 1px solid var(--border);
-  background: var(--cal-surface);
+  border: 1px solid rgba(0,0,0,0.08);
+  background: rgba(255,255,255,0.62);
   border-radius: 8px;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.035);
   /* Base height; JS will expand week rows when needed. */
   min-height: var(--cal-day-min-h, 108px);
   height: auto;
@@ -5434,16 +5485,17 @@ body.plans-page .container > .grid{
   }
 }
 .cal-daynum{
-  font-weight:400;
-  font-size: 12px;
-  padding-bottom: 3px;
+  font-weight:500;
+  font-size: 11px;
+  padding-bottom: 0;
   margin-bottom: 0;
-  border-bottom: 1px solid rgba(0,0,0,0.10);
+  border-bottom: none;
   text-align: right;
   display: flex;
   justify-content: flex-end;
   align-items: center;
   gap: 6px;
+  color: rgba(75, 85, 99, 0.62);
 }
 
 .cal-daynum-num{
@@ -5506,8 +5558,8 @@ body.plans-page .container > .grid{
 .cal-day-txns{
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding-top: 6px;
+  gap: 8px;
+  padding-top: 8px;
   align-items: stretch;
   text-align: left;
   width: 100%;
@@ -5518,7 +5570,7 @@ body.plans-page .container > .grid{
 }
 
 .cal-day-tx-line{
-  font-size: 12px;
+  font-size: 11.5px;
   line-height: 1.35;
   max-width: 100%;
   display: flex;
@@ -5568,8 +5620,7 @@ body.plans-page .container > .grid{
 
 .cal-day-tx-line--expected{
   cursor: pointer;
-  text-decoration: underline dotted;
-  text-underline-offset: 2px;
+  text-decoration: none;
 }
 .cal-day-tx-line--start-balance{
   cursor: default;
@@ -5577,8 +5628,8 @@ body.plans-page .container > .grid{
 }
 .cal-day-tx-line--start-balance .cal-tx-label,
 .cal-day-tx-line--start-balance .cal-amt{
-  text-decoration: underline dotted;
-  text-underline-offset: 2px;
+  text-decoration: none;
+  color: rgba(75, 85, 99, 0.78);
 }
 
 .cal-day-tx-line--expected.cal-expected-variable .cal-tx-label,
@@ -5593,8 +5644,30 @@ body.plans-page .container > .grid{
 
 .cal-tx-part.cal-day-tx-line{
   cursor: pointer;
-  text-decoration: underline dotted;
+  text-decoration: none;
+}
+.cal-day-tx-line:hover .cal-tx-label{
+  text-decoration: underline;
+  text-decoration-color: rgba(17, 24, 39, 0.25);
   text-underline-offset: 2px;
+}
+
+.cal-day-more{
+  margin-top: 2px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  width: fit-content;
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: rgba(11, 61, 46, 0.72);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.cal-day-more:hover{
+  color: rgba(11, 61, 46, 0.9);
 }
 
 .cal-ledger-metrics{
@@ -5604,8 +5677,8 @@ body.plans-page .container > .grid{
   gap:4px;
   align-items: stretch;
   margin-top: 10px;
-  padding-top: 6px;
-  border-top: 1px solid rgba(0,0,0,0.08);
+  padding-top: 0;
+  border-top: none;
 }
 
 .cal-ledger-metrics .cal-stat{
@@ -5621,17 +5694,32 @@ body.plans-page .container > .grid{
 .cal-stat.income{ color: var(--text); }
 .cal-stat.expense{ color: var(--text); }
 .cal-stat.cal-balance{
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.15;
-  font-weight: 400;
-  /* Positive balances should be a softer gray */
-  color: rgba(17, 24, 39, 0.45);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  color: rgba(17, 24, 39, 0.78);
 }
 .cal-stat.cal-balance.is-negative{
   color: var(--danger);
 }
 .cal-stat.cal-balance.is-muted{
-  color: rgba(17, 24, 39, 0.35);
+  color: rgba(17, 24, 39, 0.52);
+}
+
+.cal-forecast-note{
+  margin-top: 6px;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  color: rgba(75, 85, 99, 0.72);
+}
+.cal-forecast-note.is-danger{
+  color: rgba(167, 55, 68, 0.86);
+}
+.cal-forecast-note.is-ok{
+  color: rgba(4, 120, 87, 0.82);
 }
 
 /* Transaction edit modal */

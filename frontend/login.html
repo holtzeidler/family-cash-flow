@@ -6,7 +6,7 @@
     <title>BalanceWhiz</title>
     <link rel="icon" href="./favicon.png" type="image/png" />
     <script>window.API_BASE = "__API_BASE__";</script>
-    <link rel="stylesheet" href="./styles.css?v=334" />
+    <link rel="stylesheet" href="./styles.css?v=338" />
   </head>
   <body class="login-page">
     <div class="container">
@@ -34,6 +34,7 @@
         <section class="card auth-section auth-section--open" id="loginSection" aria-label="Sign in">
           <div class="auth-section__head login-page__card-head">
             <span class="auth-section__title">Pick up where you left off.</span>
+            <p class="login-page__subhead">Your forecast is waiting for you.</p>
           </div>
           <div class="auth-section__body" id="loginSectionBody">
             <div id="loginCallout" class="callout" style="display:none" role="status"></div>
@@ -48,10 +49,9 @@
               </div>
             </div>
             <a href="./contactus/" class="login-page__forgot-link">Forgot password?</a>
-            <div style="height:12px;"></div>
             <button type="button" id="loginBtn" class="top-nav__logout" onclick="window.__bwLogin && window.__bwLogin()">Login</button>
             <div class="login-page__signup-prompt">
-              <div>Don’t have an account?</div>
+              <span>Don’t have an account?</span>
               <a href="https://balancewhiz.com/account-setup/?fresh=1" class="login-page__signup-cta">Start building your forecast</a>
             </div>
           </div>
