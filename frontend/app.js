@@ -1403,7 +1403,15 @@ function saveBalanceThresholds(opts = {}) {
     if (maxEl) localStorage.setItem(maxKey, maxParsed.empty ? "" : maxParsed.canonical);
     localStorage.setItem(BALANCE_THRESHOLD_FAMILY_ID_KEY, String(fidNum));
     state.activeFamilyId = fidNum;
-    hydrateBalanceThresholdInputsFromStorage();
+    if (familySelect && Number(fidNum) > 0) {
+      try {
+        familySelect.value = String(fidNum);
+      } catch (_) {}
+    }
+    // Keep the fields showing what we just saved. Re-hydrating from storage here could
+    // blank inputs if family id / storage reads ever disagree with the values we parsed above.
+    if (minEl) minEl.value = minParsed.empty ? "" : minParsed.canonical;
+    if (maxEl) maxEl.value = maxParsed.empty ? "" : maxParsed.canonical;
   } catch (e) {
     show(errEl, e.message || "Could not save thresholds.");
     return;
@@ -7384,15 +7392,11 @@ function renderCalendar() {
         if (isExpected && row.variable) line.classList.add("cal-expected-variable");
         if (!isExpected && !isStartBalance) line.dataset.txId = String(row.id);
 
-        const categoryName = !isExpected
-          ? effectiveTransactionCategoryName(row)
-          : row.category && String(row.category).trim()
-            ? leafCategoryName(String(row.category).trim())
-            : "";
+        // Match list UIs: prefer category (from API string or category_id → state.categories).
+        // Forecast rows used to always show description (e.g. "ComEd") even when category was "Gas".
+        const categoryName = isStartBalance ? "" : effectiveTransactionCategoryName(row);
         const descRaw = isExpected || isStartBalance ? row.description || "(expected)" : (row.description || "Uncategorized").trim();
-        // Calendar UI should display only the category name (no group, no extra "• description").
-        // If uncategorized, fall back to the description.
-        const labelRaw = !isExpected ? (categoryName || descRaw) : descRaw;
+        const labelRaw = categoryName || descRaw;
         // Keep labels short so they don't wrap into the amount column.
         const label = truncate(labelRaw, 34);
 
