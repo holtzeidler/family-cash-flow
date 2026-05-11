@@ -333,6 +333,9 @@ class Family(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(255), index=True)
     created_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
+    # Forecast alert thresholds (USD); NULL means “off” for that side.
+    balance_threshold_min: Mapped[Optional[Decimal]] = mapped_column(Numeric(14, 2), nullable=True)
+    balance_threshold_max: Mapped[Optional[Decimal]] = mapped_column(Numeric(14, 2), nullable=True)
 
     memberships: Mapped[list[FamilyMember]] = relationship(back_populates="family")
     accounts: Mapped[list[Account]] = relationship(back_populates="family")
@@ -824,6 +827,13 @@ class FamilyOut(BaseModel):
     role: str
     is_family_owner: bool = False
     access_mode: str = "edit"
+    balance_threshold_min: Optional[float] = None
+    balance_threshold_max: Optional[float] = None
+
+
+class FamilyForecastThresholdsPatch(BaseModel):
+    balance_threshold_min: Optional[float] = None
+    balance_threshold_max: Optional[float] = None
 
 
 class FamilyMemberOut(BaseModel):
@@ -1522,6 +1532,7 @@ def startup_populate_schema():
     _ensure_family_member_rbac_columns()
     _backfill_family_member_owners()
     _ensure_family_invites_table()
+    _ensure_family_balance_threshold_columns()
 
 
 def _ensure_transaction_color_columns() -> None:
@@ -1765,6 +1776,21 @@ def _ensure_family_invites_table() -> None:
             conn.execute(
                 text("CREATE INDEX IF NOT EXISTS ix_family_invites_family_email ON family_invites (family_id, email_normalized)")
             )
+
+
+def _ensure_family_balance_threshold_columns() -> None:
+    """Persist low-balance / ceiling forecast thresholds per family (server-side)."""
+    with engine.begin() as conn:
+        if settings.DATABASE_URL.startswith("sqlite"):
+            cols = conn.execute(text("PRAGMA table_info(families)")).fetchall()
+            names = {str(row[1]) for row in cols}
+            if "balance_threshold_min" not in names:
+                conn.execute(text("ALTER TABLE families ADD COLUMN balance_threshold_min NUMERIC(14, 2)"))
+            if "balance_threshold_max" not in names:
+                conn.execute(text("ALTER TABLE families ADD COLUMN balance_threshold_max NUMERIC(14, 2)"))
+        else:
+            conn.execute(text("ALTER TABLE families ADD COLUMN IF NOT EXISTS balance_threshold_min NUMERIC(14, 2)"))
+            conn.execute(text("ALTER TABLE families ADD COLUMN IF NOT EXISTS balance_threshold_max NUMERIC(14, 2)"))
 
 
 def _ensure_account_starting_balance_date_column():
@@ -2053,9 +2079,52 @@ def list_families(access_token: Optional[str] = Depends(_read_access_token_from_
             role=row[1],
             is_family_owner=bool(row[2]),
             access_mode=str(row[3] or "edit"),
+            balance_threshold_min=float(row[0].balance_threshold_min)
+            if getattr(row[0], "balance_threshold_min", None) is not None
+            else None,
+            balance_threshold_max=float(row[0].balance_threshold_max)
+            if getattr(row[0], "balance_threshold_max", None) is not None
+            else None,
         )
         for row in rows
     ]
+
+
+@app.patch("/api/families/{family_id}/forecast-thresholds", response_model=FamilyOut)
+def patch_family_forecast_thresholds(
+    family_id: int,
+    payload: FamilyForecastThresholdsPatch,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    require_family_write(db=db, family_id=family_id, user_id=user_id)
+    fam = db.get(Family, family_id)
+    if fam is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Family not found")
+    patch = payload.model_dump(exclude_unset=True)
+    if "balance_threshold_min" in patch:
+        v = patch["balance_threshold_min"]
+        fam.balance_threshold_min = None if v is None else Decimal(str(v))
+    if "balance_threshold_max" in patch:
+        v = patch["balance_threshold_max"]
+        fam.balance_threshold_max = None if v is None else Decimal(str(v))
+    db.commit()
+    db.refresh(fam)
+    member = db.execute(
+        select(FamilyMember).where(FamilyMember.family_id == family_id, FamilyMember.user_id == user_id)
+    ).scalar_one_or_none()
+    if member is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a family member")
+    return FamilyOut(
+        id=fam.id,
+        name=fam.name,
+        role=str(member.role or "member"),
+        is_family_owner=bool(member.is_family_owner),
+        access_mode=str(member.access_mode or "edit"),
+        balance_threshold_min=float(fam.balance_threshold_min) if fam.balance_threshold_min is not None else None,
+        balance_threshold_max=float(fam.balance_threshold_max) if fam.balance_threshold_max is not None else None,
+    )
 
 
 @app.post("/api/families", response_model=FamilyOut)
@@ -2086,6 +2155,8 @@ def create_family(payload: FamilyCreateIn, access_token: Optional[str] = Depends
         role=member.role,
         is_family_owner=bool(member.is_family_owner),
         access_mode=str(member.access_mode or "edit"),
+        balance_threshold_min=None,
+        balance_threshold_max=None,
     )
 
 

@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=348" />
+    <link rel="stylesheet" href="../styles.css?v=351" />
   </head>
   <body>
     <div class="container">
@@ -69,21 +69,33 @@
               <div id="sidebarHighBalanceBanner" class="calendar-low-balance calendar-low-balance--sidebar calendar-low-balance--high" style="display: none" role="status"></div>
             </div>
 
-            <div id="settingsSidebarNav" class="card settings-nav settings-nav--sidebar" hidden aria-label="Settings sections">
-              <button type="button" class="settings-nav-item is-active" data-settings-key="accountDetails">
-                <span class="settings-nav-item__label">Account Details</span>
+            <div id="settingsSidebarNav" class="settings-nav settings-nav--sidebar settings-nav--rail" hidden aria-label="Settings sections">
+              <button type="button" class="settings-nav-item is-active" data-settings-key="accounts">
+                <span class="settings-nav-item__label">Accounts</span>
+                <span class="settings-nav-item__chev" aria-hidden="true">▸</span>
+              </button>
+              <button type="button" class="settings-nav-item" data-settings-key="forecastRules">
+                <span class="settings-nav-item__label">Forecast rules</span>
                 <span class="settings-nav-item__chev" aria-hidden="true">▸</span>
               </button>
               <button type="button" class="settings-nav-item" data-settings-key="categories">
-                <span class="settings-nav-item__label">Categories</span>
+                <span class="settings-nav-item__label">Categories &amp; groups</span>
                 <span class="settings-nav-item__chev" aria-hidden="true">▸</span>
               </button>
               <button type="button" class="settings-nav-item" data-settings-key="familySharing" hidden>
-                <span class="settings-nav-item__label">Family sharing</span>
+                <span class="settings-nav-item__label">Household</span>
+                <span class="settings-nav-item__chev" aria-hidden="true">▸</span>
+              </button>
+              <button type="button" class="settings-nav-item" data-settings-key="notifications">
+                <span class="settings-nav-item__label">Notifications</span>
                 <span class="settings-nav-item__chev" aria-hidden="true">▸</span>
               </button>
               <button type="button" class="settings-nav-item" data-settings-key="billing">
                 <span class="settings-nav-item__label">Billing</span>
+                <span class="settings-nav-item__chev" aria-hidden="true">▸</span>
+              </button>
+              <button type="button" class="settings-nav-item" data-settings-key="preferences">
+                <span class="settings-nav-item__label">Preferences</span>
                 <span class="settings-nav-item__chev" aria-hidden="true">▸</span>
               </button>
             </div>
@@ -425,11 +437,31 @@
 
           <div id="settingsViewPanel" class="app-view" hidden>
             <div class="settings-layout settings-layout--sidebar-nav">
-              <div class="settings-content card">
-                <div class="settings-pane is-active" data-settings-pane="accountDetails">
-                  <div class="balance-threshold-box" aria-label="Balance thresholds">
+              <div class="settings-content settings-content--hub card">
+                <div class="settings-pane is-active" data-settings-pane="accounts" id="settingsAccountsPane">
+                  <header class="settings-section-head">
+                    <h2 class="settings-section-title" id="settingsAccountsHeading">Accounts</h2>
+                    <p class="settings-section-lede">Checking, savings, and credit accounts used in your forecast.</p>
+                  </header>
+                  <div class="settings-section-body">
+                    <div class="list settings-account-list" id="accountsList"></div>
+                    <div class="settings-actions-row">
+                      <button type="button" id="openAccountModalBtn" class="secondary">Add account</button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="settings-pane" data-settings-pane="forecastRules" hidden>
+                  <header class="settings-section-head">
+                    <h2 class="settings-section-title">Forecast rules</h2>
+                    <p class="settings-section-lede">How BalanceWhiz spots low-balance risk and cash you could move elsewhere.</p>
+                  </header>
+                  <div class="balance-threshold-box balance-threshold-box--panel" aria-label="Forecast thresholds">
+                    <p class="balance-threshold-intro meta">
+                      These thresholds help identify when balances may dip below what you want to keep on hand, and when checking may be above your target ceiling.
+                    </p>
                     <div class="form-row-h">
-                      <div class="form-row-h__label"><label for="balanceThresholdMin">Minimum balance</label></div>
+                      <div class="form-row-h__label"><label for="balanceThresholdMin">Low balance warning</label></div>
                       <div class="form-row-h__field">
                         <div class="money-input threshold-input">
                           <span class="money-input__prefix" aria-hidden="true">$</span>
@@ -439,7 +471,7 @@
                     </div>
                     <div class="tx-add-vspace" aria-hidden="true"></div>
                     <div class="form-row-h">
-                      <div class="form-row-h__label"><label for="balanceThresholdMax">Maximum balance</label></div>
+                      <div class="form-row-h__label"><label for="balanceThresholdMax">Target checking ceiling</label></div>
                       <div class="form-row-h__field">
                         <div class="money-input threshold-input">
                           <span class="money-input__prefix" aria-hidden="true">$</span>
@@ -450,29 +482,22 @@
                     <div class="form-row-h balance-threshold-save-row">
                       <div class="form-row-h__label" aria-hidden="true"></div>
                       <div class="form-row-h__field">
-                        <button type="button" id="balanceThresholdSaveBtn" class="secondary">
-                          Save
-                        </button>
+                        <button type="button" id="balanceThresholdSaveBtn" class="secondary">Save</button>
                       </div>
                     </div>
                     <div id="lowBalanceErr" class="error" style="display: none" role="alert"></div>
+                    <p id="balanceThresholdSavedMsg" class="balance-threshold-saved-msg" hidden aria-live="polite" role="status"></p>
                     <p class="balance-threshold-hint">
-                      Thresholds save automatically for the selected family. Leave a field blank to disable that alert. You can also click Save for confirmation. The calendar sidebar shows the next projected crossing for each threshold you set.
+                      Leave blank to turn off that side. Click <strong>Save</strong> to store thresholds on your account for this household. While you type, the forecast outlook may preview using this browser only until you save.
                     </p>
-                  </div>
-
-                  <div class="card settings-accounts-card" id="settingsAccountsCard" aria-labelledby="settingsAccountsHeading">
-                    <div class="sidebar-section-head">
-                      <h2 id="settingsAccountsHeading">Accounts</h2>
-                    </div>
-                    <div class="sidebar-section-body">
-                      <div class="list" id="accountsList"></div>
-                      <button type="button" id="openAccountModalBtn">Add New Account</button>
-                    </div>
                   </div>
                 </div>
 
                 <div class="settings-pane" data-settings-pane="categories" hidden>
+                  <header class="settings-section-head">
+                    <h2 class="settings-section-title">Categories &amp; groups</h2>
+                    <p class="settings-section-lede">Structure for organizing transactions—groups are headers only.</p>
+                  </header>
                   <div class="categories-toolbar" role="toolbar" aria-label="Category actions">
                     <button type="button" id="addCategoryGroupBtn" class="top-nav__logout">Add Group</button>
                     <div id="addGroupInline" class="add-group-inline" hidden>
@@ -503,6 +528,10 @@
                 </div>
 
                 <div class="settings-pane" data-settings-pane="familySharing" hidden>
+                  <header class="settings-section-head">
+                    <h2 class="settings-section-title">Household</h2>
+                    <p class="settings-section-lede">Share forecasting with a partner or family member.</p>
+                  </header>
                   <p class="meta">
                     The first person who creates a family is the owner. Owners can invite a partner by email (they can create an account from the link) or
                     add someone who already uses Balance Whiz.
@@ -544,7 +573,41 @@
                   <div id="familyMembersErr" class="error"></div>
                 </div>
 
+                <div class="settings-pane" data-settings-pane="notifications" hidden>
+                  <header class="settings-section-head">
+                    <h2 class="settings-section-title">Notifications &amp; alerts</h2>
+                    <p class="settings-section-lede">Choose how BalanceWhiz warns you about balance and transfers.</p>
+                  </header>
+                  <p class="meta">
+                    Risk levels follow the dollar thresholds in <strong>Forecast rules</strong>. Expanded delivery options (email, summaries, large-expense alerts)
+                    will appear here.
+                  </p>
+                  <div class="settings-callout settings-callout--muted">
+                    <p class="meta">Tip: set <button type="button" class="settings-text-btn" id="settingsJumpForecastRulesBtn">Forecast rules</button> first so alerts have numbers to compare against.</p>
+                  </div>
+                </div>
+
+                <div class="settings-pane" data-settings-pane="preferences" hidden>
+                  <header class="settings-section-head">
+                    <h2 class="settings-section-title">Preferences</h2>
+                    <p class="settings-section-lede">Defaults for how BalanceWhiz opens and displays information.</p>
+                  </header>
+                  <div class="form-row-h">
+                    <div class="form-row-h__label"><label for="prefDefaultLanding">Default landing page</label></div>
+                    <div class="form-row-h__field">
+                      <select id="prefDefaultLanding" disabled class="settings-select-muted">
+                        <option selected>Forecast</option>
+                      </select>
+                    </div>
+                  </div>
+                  <p class="meta settings-pref-note">More defaults (calendar mode, currency, date format) coming soon.</p>
+                </div>
+
                 <div class="settings-pane" data-settings-pane="billing" hidden>
+                  <header class="settings-section-head">
+                    <h2 class="settings-section-title">Billing &amp; subscription</h2>
+                    <p class="settings-section-lede">Plan status and renewal.</p>
+                  </header>
                   <p class="meta">
                     Your billing details are shown here.
                   </p>
@@ -1019,6 +1082,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="../app.js?v=226"></script>
+    <script src="../app.js?v=229"></script>
   </body>
 </html>

@@ -572,6 +572,7 @@ const BALANCE_THRESHOLD_FAMILY_ID_KEY = "familyCashFlow_balanceThresholdFamilyId
 const LOW_BALANCE_THRESHOLD_KEY = "familyCashFlow_lowBalanceThreshold";
 let lowBalanceDebounceTimer = null;
 let balanceThresholdPersistTimer = null;
+let balanceThresholdSavedHideTimer = null;
 /** Used to ignore a pending silent persist that was scheduled before an explicit Save (race on blur/click ordering). */
 let lastExplicitBalanceThresholdSaveMs = 0;
 let lowBalanceLastQuery = { familyId: null, min: null, max: null, mode: null };
@@ -606,15 +607,14 @@ function parseMoneyRangeField(raw) {
   return Number.isFinite(n) ? n : null;
 }
 
-/** Always read fresh nodes — avoids writing to a detached input if the DOM is ever rebuilt. */
+/** Always read fresh nodes — IDs are unique; use getElementById so inputs are found even if markup moves. */
 function balanceThresholdFieldEls() {
-  const root = document.getElementById("settingsViewPanel");
-  const q = (sel) => (root ? root.querySelector(sel) : null);
   return {
-    min: q("#balanceThresholdMin"),
-    max: q("#balanceThresholdMax"),
-    err: q("#lowBalanceErr") || document.getElementById("lowBalanceErr"),
-    saveBtn: q("#balanceThresholdSaveBtn"),
+    min: document.getElementById("balanceThresholdMin"),
+    max: document.getElementById("balanceThresholdMax"),
+    err: document.getElementById("lowBalanceErr"),
+    saveBtn: document.getElementById("balanceThresholdSaveBtn"),
+    savedMsg: document.getElementById("balanceThresholdSavedMsg"),
   };
 }
 
@@ -827,7 +827,7 @@ function setSidebarBalanceThresholdHint(text) {
     sidebarBalanceThresholdHint.dataset.boundClick = "1";
     sidebarBalanceThresholdHint.addEventListener("click", () => {
       setActiveTopView("settings");
-      activateSettingsSection("accountDetails");
+      activateSettingsSection("accounts");
       // Scroll directly to the thresholds section.
       const { min: btMin, max: btMax } = balanceThresholdFieldEls();
       const target = btMin || btMax;
@@ -1330,7 +1330,7 @@ function schedulePersistBalanceThresholds() {
   if (balanceThresholdPersistTimer) clearTimeout(balanceThresholdPersistTimer);
   balanceThresholdPersistTimer = setTimeout(() => {
     balanceThresholdPersistTimer = null;
-    saveBalanceThresholds({ silent: true });
+    void saveBalanceThresholds({ silent: true });
   }, 550);
 }
 
@@ -1339,7 +1339,7 @@ function onBalanceThresholdFieldEdited() {
   schedulePersistBalanceThresholds();
 }
 
-/** Load threshold inputs from localStorage for the current family (call after family switch or boot). */
+/** Load threshold inputs from the API for the current family, with localStorage fallback for older sessions. */
 function hydrateBalanceThresholdInputsFromStorage() {
   const { min: minEl, max: maxEl } = balanceThresholdFieldEls();
   if (!minEl && !maxEl) return;
@@ -1354,18 +1354,37 @@ function hydrateBalanceThresholdInputsFromStorage() {
     // do not clear the user's in-progress inputs.
     if (!minKey || !maxKey) return;
 
-    if (minKey && minEl) {
+    const fam = fid ? (state.families || []).find((x) => Number(x.id) === Number(fid)) : null;
+
+    function pickMinCanonical() {
+      if (fam != null && fam.balance_threshold_min != null && fam.balance_threshold_min !== "") {
+        const mp = parseBalanceThresholdFieldRaw(String(fam.balance_threshold_min));
+        if (mp.ok && !mp.empty) return mp.canonical;
+      }
       const s = localStorage.getItem(minKey) || "";
       const mp = parseBalanceThresholdFieldRaw(s);
-      const next = mp.ok && !mp.empty ? mp.canonical : "";
+      return mp.ok && !mp.empty ? mp.canonical : "";
+    }
+
+    function pickMaxCanonical() {
+      if (fam != null && fam.balance_threshold_max != null && fam.balance_threshold_max !== "") {
+        const mp = parseBalanceThresholdMaxFieldRaw(String(fam.balance_threshold_max));
+        if (mp.ok && !mp.empty) return mp.canonical;
+      }
+      const s2 = localStorage.getItem(maxKey) || "";
+      const mp2 = parseBalanceThresholdMaxFieldRaw(s2);
+      return mp2.ok && !mp2.empty ? mp2.canonical : "";
+    }
+
+    const next = pickMinCanonical();
+    const next2 = pickMaxCanonical();
+
+    if (minKey && minEl) {
       // Never wipe a non-empty field due to a storage/family mismatch.
       if (!(next === "" && String(minEl.value || "").trim())) minEl.value = next;
     } else if (minEl) minEl.value = "";
 
     if (maxKey && maxEl) {
-      const s2 = localStorage.getItem(maxKey) || "";
-      const mp2 = parseBalanceThresholdMaxFieldRaw(s2);
-      const next2 = mp2.ok && !mp2.empty ? mp2.canonical : "";
       if (!(next2 === "" && String(maxEl.value || "").trim())) maxEl.value = next2;
     } else if (maxEl) maxEl.value = "";
 
@@ -1399,7 +1418,7 @@ function hydrateBalanceThresholdInputsFromStorage() {
   invalidateLowBalanceAlertCache();
 }
 
-function saveBalanceThresholds(opts = {}) {
+async function saveBalanceThresholds(opts = {}) {
   const silent = !!opts.silent;
   if (balanceThresholdPersistTimer) {
     clearTimeout(balanceThresholdPersistTimer);
@@ -1409,22 +1428,38 @@ function saveBalanceThresholds(opts = {}) {
     const sinceExplicit = Date.now() - lastExplicitBalanceThresholdSaveMs;
     if (sinceExplicit >= 0 && sinceExplicit < 750) return;
   }
-  const { min: minEl, max: maxEl, err: errEl, saveBtn } = balanceThresholdFieldEls();
+  const { min: minEl, max: maxEl, err: errEl, saveBtn, savedMsg } = balanceThresholdFieldEls();
+
+  const hideThresholdSavedFeedback = () => {
+    if (balanceThresholdSavedHideTimer) {
+      clearTimeout(balanceThresholdSavedHideTimer);
+      balanceThresholdSavedHideTimer = null;
+    }
+    if (savedMsg) {
+      savedMsg.textContent = "";
+      savedMsg.hidden = true;
+    }
+    if (saveBtn) saveBtn.classList.remove("is-saved");
+  };
+
   if (!minEl && !maxEl) return;
   const fidNum = activeFamilyIdForBalanceThresholds();
   if (!fidNum) {
+    hideThresholdSavedFeedback();
     if (!silent) show(errEl, "Select an active family to save balance thresholds.");
     return;
   }
   const minKey = getBalanceThresholdKey("min", fidNum);
   const maxKey = getBalanceThresholdKey("max", fidNum);
   if (!minKey || !maxKey) {
+    hideThresholdSavedFeedback();
     if (!silent) show(errEl, "Could not save thresholds for this family. Try refreshing the page.");
     return;
   }
   const minParsed = parseBalanceThresholdFieldRaw(minEl?.value ?? "");
   const maxParsed = parseBalanceThresholdMaxFieldRaw(maxEl?.value ?? "");
   if (!minParsed.ok || !maxParsed.ok) {
+    hideThresholdSavedFeedback();
     if (!silent) {
       show(
         errEl,
@@ -1433,12 +1468,45 @@ function saveBalanceThresholds(opts = {}) {
     }
     return;
   }
+
+  // While typing: mirror to localStorage only so the sidebar outlook updates without spamming the API.
+  if (silent) {
+    try {
+      if (minEl) localStorage.setItem(minKey, minParsed.empty ? "" : minParsed.canonical);
+      if (maxEl) localStorage.setItem(maxKey, maxParsed.empty ? "" : maxParsed.canonical);
+      localStorage.setItem(BALANCE_THRESHOLD_FAMILY_ID_KEY, String(fidNum));
+      if (minEl) minEl.value = minParsed.empty ? "" : minParsed.canonical;
+      if (maxEl) maxEl.value = maxParsed.empty ? "" : maxParsed.canonical;
+      state.activeFamilyId = fidNum;
+      if (familySelect && Number(fidNum) > 0) {
+        try {
+          familySelect.value = String(fidNum);
+        } catch (_) {}
+      }
+    } catch (_) {
+      return;
+    }
+    invalidateLowBalanceAlertCache();
+    if (lowBalanceDebounceTimer) clearTimeout(lowBalanceDebounceTimer);
+    lowBalanceDebounceTimer = null;
+    void refreshLowBalanceAlert();
+    return;
+  }
+
   try {
+    const updated = await api(`/api/families/${fidNum}/forecast-thresholds`, "PATCH", {
+      balance_threshold_min: minParsed.empty ? null : minParsed.num,
+      balance_threshold_max: maxParsed.empty ? null : maxParsed.num,
+    });
+    if (updated && Array.isArray(state.families)) {
+      const ix = state.families.findIndex((x) => Number(x.id) === Number(fidNum));
+      if (ix >= 0) {
+        state.families[ix] = { ...state.families[ix], ...updated };
+      }
+    }
     if (minEl) localStorage.setItem(minKey, minParsed.empty ? "" : minParsed.canonical);
     if (maxEl) localStorage.setItem(maxKey, maxParsed.empty ? "" : maxParsed.canonical);
     localStorage.setItem(BALANCE_THRESHOLD_FAMILY_ID_KEY, String(fidNum));
-    // Update inputs before touching familySelect so any synchronous change → hydrate
-    // sees the same values we just wrote to storage.
     if (minEl) minEl.value = minParsed.empty ? "" : minParsed.canonical;
     if (maxEl) maxEl.value = maxParsed.empty ? "" : maxParsed.canonical;
     state.activeFamilyId = fidNum;
@@ -1448,10 +1516,12 @@ function saveBalanceThresholds(opts = {}) {
       } catch (_) {}
     }
   } catch (e) {
+    hideThresholdSavedFeedback();
     show(errEl, e.message || "Could not save thresholds.");
     return;
   }
-  if (!silent) lastExplicitBalanceThresholdSaveMs = Date.now();
+
+  lastExplicitBalanceThresholdSaveMs = Date.now();
   show(errEl, "");
   invalidateLowBalanceAlertCache();
   if (lowBalanceDebounceTimer) clearTimeout(lowBalanceDebounceTimer);
@@ -1461,14 +1531,32 @@ function saveBalanceThresholds(opts = {}) {
     drawProjectionChart(lastProjectionDailyForReports);
     renderReportsOperationalPanels();
   }
-  if (!silent && saveBtn) {
-    const prev = saveBtn.textContent;
+  if (balanceThresholdSavedHideTimer) clearTimeout(balanceThresholdSavedHideTimer);
+  if (savedMsg) {
+    savedMsg.textContent = "Saved — stored on your account for this household.";
+    savedMsg.hidden = false;
+  }
+  balanceThresholdSavedHideTimer = window.setTimeout(() => {
+    balanceThresholdSavedHideTimer = null;
+    if (savedMsg) {
+      savedMsg.textContent = "";
+      savedMsg.hidden = true;
+    }
+  }, 5000);
+  if (saveBtn) {
+    const prev =
+      saveBtn.dataset.origLabel && saveBtn.dataset.origLabel.length
+        ? saveBtn.dataset.origLabel
+        : saveBtn.textContent.trim();
+    saveBtn.dataset.origLabel = prev;
     saveBtn.textContent = "Saved";
     saveBtn.disabled = true;
+    saveBtn.classList.add("is-saved");
     window.setTimeout(() => {
-      saveBtn.textContent = prev;
+      saveBtn.textContent = saveBtn.dataset.origLabel || prev;
       saveBtn.disabled = false;
-    }, 1500);
+      saveBtn.classList.remove("is-saved");
+    }, 2200);
   }
 }
 
@@ -1943,7 +2031,7 @@ function setActiveTopView(view) {
   }
   if (v === "settings") {
     renderAccountDetailsPanel();
-    activateSettingsSection("accountDetails");
+    activateSettingsSection("accounts");
   }
   try {
     localStorage.setItem(ACTIVE_VIEW_KEY, v);
@@ -1989,6 +2077,14 @@ document.querySelectorAll("#settingsViewPanel .settings-nav-item, #settingsSideb
     activateSettingsSection(k);
   });
 });
+if (settingsViewPanel) {
+  settingsViewPanel.addEventListener("click", (e) => {
+    const jump = e.target && e.target.closest("#settingsJumpForecastRulesBtn");
+    if (!jump) return;
+    e.preventDefault();
+    activateSettingsSection("forecastRules");
+  });
+}
 
 function populateCatReportYearSelect() {
   if (!catReportYearSelect || catReportYearOptionsPopulated) return;
@@ -2808,10 +2904,11 @@ function mountTxAddFormInSidebar() {
 }
 
 function activateSettingsSection(key) {
-  let k = String(key || "accountDetails");
+  let k = String(key || "accounts");
+  if (k === "accountDetails") k = "accounts";
   const f = (state.families || []).find((x) => Number(x.id) === Number(state.activeFamilyId));
   const isFamilyAdmin = !!(f && String(f.role || "").toLowerCase() === "admin");
-  if (k === "familySharing" && !isFamilyAdmin) k = "accountDetails";
+  if (k === "familySharing" && !isFamilyAdmin) k = "accounts";
 
   document.querySelectorAll("#settingsViewPanel .settings-nav-item, #settingsSidebarNav .settings-nav-item").forEach((btn) => {
     const on = btn.dataset.settingsKey === k;
@@ -4419,7 +4516,7 @@ function syncSettingsFamilySharingNav() {
     const active = document.querySelector(
       '.settings-nav-item.is-active[data-settings-key="familySharing"]'
     );
-    if (active) activateSettingsSection("accountDetails");
+    if (active) activateSettingsSection("accounts");
   }
 }
 
@@ -5517,7 +5614,7 @@ function renderAccountsList(accounts) {
 
   for (const a of accounts) {
     const el = document.createElement("div");
-    el.className = "item";
+    el.className = "item settings-account-row";
 
     const typeLabel = String(a.type).replaceAll("_", " ");
     const startDate = a.starting_balance_date || "";
@@ -8636,7 +8733,7 @@ async function main() {
       bt.max.addEventListener("change", onBalanceThresholdFieldEdited);
     }
     if (bt.saveBtn) {
-      bt.saveBtn.addEventListener("click", () => saveBalanceThresholds());
+      bt.saveBtn.addEventListener("click", () => void saveBalanceThresholds());
     }
     await refreshLowBalanceAlert();
   }
