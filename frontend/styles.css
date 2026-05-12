@@ -2098,6 +2098,249 @@ body.landing-page .app-footer{
   text-decoration: underline;
 }
 
+/* ---------------------------------------------------------------------------
+   Polished legal / support pages (Terms of Service, etc.)
+   Scoped under body.support-doc-page so the simpler legacy support-doc rules
+   above continue to work for any page that doesn't opt in.
+   --------------------------------------------------------------------------- */
+body.support-doc-page{
+  background: #fafbfd;
+}
+body.support-doc-page .container > .grid{
+  display: block;
+  padding: 48px 16px 56px;
+}
+.support-doc-layout{
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 28px;
+  align-items: flex-start;
+  max-width: 1080px;
+  margin: 0 auto;
+}
+@media (min-width: 980px){
+  .support-doc-layout{
+    grid-template-columns: 220px minmax(0, 1fr);
+    gap: 48px;
+  }
+}
+
+/* Anchor nav (desktop only) */
+.support-doc-nav{
+  display: none;
+}
+@media (min-width: 980px){
+  .support-doc-nav{
+    display: block;
+    position: sticky;
+    top: 32px;
+    align-self: flex-start;
+  }
+}
+.support-doc-nav__label{
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(100, 116, 139, 0.68);
+  margin-bottom: 10px;
+  padding-left: 14px;
+  border-left: 2px solid rgba(15, 23, 42, 0.06);
+  line-height: 1.6;
+}
+.support-doc-nav__list{
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 14px;
+  border-left: 2px solid rgba(15, 23, 42, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.support-doc-nav__link{
+  display: block;
+  position: relative;
+  padding: 5px 6px 5px 0;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: rgba(100, 116, 139, 0.82);
+  text-decoration: none;
+  border-radius: 6px;
+  line-height: 1.35;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.support-doc-nav__link::before{
+  content: "";
+  position: absolute;
+  left: -16px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2px;
+  height: 0;
+  background: var(--accent, #16a34a);
+  border-radius: 2px;
+  transition: height 0.15s ease;
+}
+.support-doc-nav__link:hover{
+  color: rgba(15, 23, 42, 0.92);
+}
+.support-doc-nav__link.is-active{
+  color: rgba(11, 61, 46, 0.95);
+  font-weight: 650;
+}
+.support-doc-nav__link.is-active::before{
+  height: 60%;
+}
+
+/* Document card */
+body.support-doc-page .support-doc{
+  max-width: 720px;
+  margin: 0;
+  border: 1px solid rgba(17, 24, 39, 0.06);
+  background: #ffffff;
+  border-radius: 18px;
+  padding: clamp(28px, 5vw, 56px) clamp(24px, 5vw, 56px) clamp(28px, 5vw, 48px);
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 12px 36px -16px rgba(15, 23, 42, 0.12);
+}
+html:has(body.support-doc-page){
+  scroll-padding-top: 32px;
+  scroll-behavior: smooth;
+}
+
+body.support-doc-page .support-doc__head{
+  margin-bottom: 18px;
+}
+body.support-doc-page .support-doc__eyebrow{
+  display: inline-block;
+  margin: 0 0 14px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(16, 185, 129, 0.08);
+  color: rgba(11, 61, 46, 0.85);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+body.support-doc-page .support-doc h1{
+  margin: 0 0 8px;
+  font-size: clamp(1.75rem, 3.2vw, 2.25rem);
+  font-weight: 700;
+  letter-spacing: -0.022em;
+  color: rgba(15, 23, 42, 0.96);
+  line-height: 1.15;
+}
+body.support-doc-page .support-doc__meta-lede{
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: rgba(100, 116, 139, 0.78);
+  letter-spacing: 0;
+}
+body.support-doc-page .support-doc__lead{
+  font-size: 1.02rem;
+  line-height: 1.7;
+  color: rgba(51, 65, 85, 0.88);
+  margin: 0 0 14px;
+  max-width: 60ch;
+}
+
+body.support-doc-page .support-doc__section{
+  margin-top: 38px;
+  padding-top: 24px;
+  border-top: 1px solid rgba(15, 23, 42, 0.05);
+  max-width: 65ch;
+}
+body.support-doc-page .support-doc__section:first-of-type{
+  margin-top: 32px;
+}
+body.support-doc-page .support-doc__section h2{
+  margin: 0 0 12px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: rgba(71, 85, 105, 0.88);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+body.support-doc-page .support-doc__section p{
+  margin: 0 0 12px;
+  font-size: 0.95rem;
+  line-height: 1.72;
+  color: rgba(51, 65, 85, 0.92);
+  letter-spacing: 0;
+}
+body.support-doc-page .support-doc__section p:last-child{
+  margin-bottom: 0;
+}
+body.support-doc-page .support-doc__section ul{
+  margin: 0 0 12px;
+  padding-left: 1.2rem;
+}
+body.support-doc-page .support-doc__section li{
+  margin: 0 0 6px;
+  font-size: 0.95rem;
+  line-height: 1.7;
+  color: rgba(51, 65, 85, 0.92);
+}
+body.support-doc-page .support-doc a{
+  color: var(--accent, #16a34a);
+  font-weight: 600;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.15s ease;
+}
+body.support-doc-page .support-doc a:hover{
+  text-decoration: none;
+  border-bottom-color: color-mix(in srgb, var(--accent, #16a34a) 55%, transparent);
+}
+
+body.support-doc-page .support-doc__footer{
+  margin-top: 40px;
+  padding-top: 22px;
+  border-top: 1px solid rgba(15, 23, 42, 0.06);
+}
+body.support-doc-page .support-doc__quicklinks{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: center;
+  font-size: 0.78rem;
+  color: rgba(100, 116, 139, 0.78);
+}
+body.support-doc-page .support-doc__quicklinks a{
+  color: rgba(71, 85, 105, 0.88);
+  font-weight: 500;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+}
+body.support-doc-page .support-doc__quicklinks a:hover{
+  color: var(--accent, #16a34a);
+  border-bottom-color: color-mix(in srgb, var(--accent, #16a34a) 35%, transparent);
+}
+body.support-doc-page .support-doc__quicklinks span{
+  color: rgba(148, 163, 184, 0.62);
+}
+
+/* Mobile refinements — generous padding, no cramped text */
+@media (max-width: 720px){
+  body.support-doc-page .container > .grid{
+    padding: 28px 12px 36px;
+  }
+  body.support-doc-page .support-doc{
+    border-radius: 14px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  }
+  body.support-doc-page .support-doc__section{
+    margin-top: 28px;
+    padding-top: 20px;
+  }
+  body.support-doc-page .support-doc h1{
+    font-size: 1.7rem;
+  }
+}
+
 /* Login page: let main content grow so the footer sits at the bottom when the viewport is tall */
 .container > .grid{
   flex: 1 1 auto;

@@ -8,9 +8,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=398" />
+    <link rel="stylesheet" href="./styles.css?v=399" />
   </head>
-  <body class="plans-page">
+  <body class="plans-page support-doc-page">
     <div class="container">
       <div class="top-nav" role="navigation" aria-label="Primary">
         <div class="top-nav__inner top-nav__inner--simple">
@@ -36,48 +36,108 @@
       </div>
 
       <div class="grid">
-        <article class="card support-doc">
-          <h1>Terms of Service</h1>
-          <p class="support-doc__lead">
-            By using BalanceWhiz you agree to these terms. They are meant to be readable; if something conflicts with a
-            signed agreement you have with us, the signed agreement controls.
-          </p>
+        <div class="support-doc-layout">
+          <aside class="support-doc-nav" aria-label="On this page">
+            <div class="support-doc-nav__label">On this page</div>
+            <ol class="support-doc-nav__list">
+              <li><a href="#the-service" class="support-doc-nav__link is-active">The service</a></li>
+              <li><a href="#not-financial-advice" class="support-doc-nav__link">Not financial advice</a></li>
+              <li><a href="#your-account" class="support-doc-nav__link">Your account</a></li>
+              <li><a href="#acceptable-use" class="support-doc-nav__link">Acceptable use</a></li>
+              <li><a href="#subscriptions" class="support-doc-nav__link">Subscriptions &amp; billing</a></li>
+              <li><a href="#disclaimer" class="support-doc-nav__link">Disclaimer</a></li>
+              <li><a href="#contact" class="support-doc-nav__link">Contact</a></li>
+            </ol>
+          </aside>
 
-          <h2>The service</h2>
-          <p>
-            BalanceWhiz provides software to help you model and visualize cash flow timing. Features and availability
-            may change as we improve the product.
-          </p>
+          <article class="card support-doc support-doc--polished">
+            <header class="support-doc__head">
+              <p class="support-doc__eyebrow">Legal</p>
+              <h1>Terms of Service</h1>
+              <p class="support-doc__meta-lede">Last updated May 2026 · ~3 min read</p>
+            </header>
 
-          <h2>Not financial advice</h2>
-          <p>
-            BalanceWhiz is not a bank, broker, advisor, or tax preparer. Outputs depend on information you enter. You
-            remain responsible for your financial decisions.
-          </p>
+            <p class="support-doc__lead">
+              We wrote these terms to be understandable — not buried in legal jargon. By using BalanceWhiz you agree
+              to them. If something here conflicts with a signed agreement you have with us, the signed agreement
+              controls.
+            </p>
 
-          <h2>Your account</h2>
-          <p>Keep your login secure. You are responsible for activity under your account except where we are at fault.</p>
+            <section class="support-doc__section" id="the-service" aria-labelledby="the-service-h">
+              <h2 id="the-service-h">The service</h2>
+              <p>
+                BalanceWhiz is software that helps you model and visualize the timing of your cash flow. Features and
+                availability will evolve as we improve the product, and we may change, add, or retire functionality
+                from time to time.
+              </p>
+            </section>
 
-          <h2>Acceptable use</h2>
-          <p>No misuse of the service (for example, probing, scraping, or attempting to access others’ data). We may suspend access that puts users or the service at risk.</p>
+            <section class="support-doc__section" id="not-financial-advice" aria-labelledby="not-financial-advice-h">
+              <h2 id="not-financial-advice-h">Not financial advice</h2>
+              <p>
+                BalanceWhiz is not a bank, broker, advisor, accountant, or tax preparer. Forecasts and projections are
+                only as accurate as the information you provide, and they should be used as decision support — not as
+                advice. You remain responsible for your own financial decisions.
+              </p>
+            </section>
 
-          <h2>Subscriptions</h2>
-          <p>
-            Paid plans, trials, and cancellation are described at checkout and on <a href="./plans/">Pricing</a>. Fees
-            are charged as shown when you subscribe.
-          </p>
+            <section class="support-doc__section" id="your-account" aria-labelledby="your-account-h">
+              <h2 id="your-account-h">Your account</h2>
+              <p>
+                Keep your login credentials secure and don't share them. You're responsible for activity that happens
+                under your account, except where the cause is something we're at fault for. Let us know promptly if you
+                suspect your account has been accessed by someone else.
+              </p>
+            </section>
 
-          <h2>Disclaimer</h2>
-          <p>
-            The service is provided on an “as is” basis to the extent permitted by law. We do not warrant uninterrupted
-            or error-free operation.
-          </p>
+            <section class="support-doc__section" id="acceptable-use" aria-labelledby="acceptable-use-h">
+              <h2 id="acceptable-use-h">Acceptable use</h2>
+              <p>
+                Please don't misuse the service — that includes things like probing, scraping, reverse-engineering, or
+                attempting to access data that isn't yours. We may suspend access that puts users or the service at
+                risk, and we'll try to be reasonable about it.
+              </p>
+            </section>
 
-          <h2>Contact</h2>
-          <p><a href="./contactus/">Contact Us</a> for questions about these terms.</p>
+            <section class="support-doc__section" id="subscriptions" aria-labelledby="subscriptions-h">
+              <h2 id="subscriptions-h">Subscriptions &amp; billing</h2>
+              <p>
+                Paid plans, trials, and cancellation are described at checkout and on the
+                <a href="./plans/">Pricing</a> page. Fees are charged as shown when you subscribe, and you can cancel
+                at any time from your account.
+              </p>
+            </section>
 
-          <p class="support-doc__meta">Last updated May 2026.</p>
-        </article>
+            <section class="support-doc__section" id="disclaimer" aria-labelledby="disclaimer-h">
+              <h2 id="disclaimer-h">Disclaimer</h2>
+              <p>
+                The service is provided on an "as is" basis to the extent permitted by law. We work hard to keep
+                BalanceWhiz available and accurate, but we can't warrant that operation will be uninterrupted or
+                error-free.
+              </p>
+            </section>
+
+            <section class="support-doc__section" id="contact" aria-labelledby="contact-h">
+              <h2 id="contact-h">Contact</h2>
+              <p>
+                Questions about these terms? <a href="./contactus/">Reach out to us</a> or email
+                <a href="mailto:support@balancewhiz.com">support@balancewhiz.com</a> — we read everything.
+              </p>
+            </section>
+
+            <footer class="support-doc__footer">
+              <nav class="support-doc__quicklinks" aria-label="Related pages">
+                <a href="./privacy.html">Privacy Policy</a>
+                <span aria-hidden="true">·</span>
+                <a href="./contactus/">Contact Support</a>
+                <span aria-hidden="true">·</span>
+                <a href="./plans/">Pricing</a>
+                <span aria-hidden="true">·</span>
+                <a href="/">Return to home</a>
+              </nav>
+            </footer>
+          </article>
+        </div>
       </div>
 
       <footer class="app-footer" role="contentinfo">
@@ -128,5 +188,42 @@
         </div>
       </footer>
     </div>
+    <script>
+      // Lightweight scroll-spy: highlights the current section in the side nav
+      // while the user scrolls through the document.
+      (function () {
+        const links = Array.from(
+          document.querySelectorAll(".support-doc-nav__link[href^='#']")
+        );
+        if (!links.length || !("IntersectionObserver" in window)) return;
+        const byId = new Map();
+        for (const a of links) {
+          const id = a.getAttribute("href").slice(1);
+          if (id) byId.set(id, a);
+        }
+        const setActive = (id) => {
+          for (const a of links) a.classList.remove("is-active");
+          const a = byId.get(id);
+          if (a) a.classList.add("is-active");
+        };
+        const visible = new Map();
+        const obs = new IntersectionObserver(
+          (entries) => {
+            for (const e of entries) {
+              if (e.isIntersecting) visible.set(e.target.id, e.intersectionRatio);
+              else visible.delete(e.target.id);
+            }
+            if (!visible.size) return;
+            const top = [...visible.entries()].sort((a, b) => b[1] - a[1])[0];
+            if (top) setActive(top[0]);
+          },
+          { rootMargin: "-30% 0px -55% 0px", threshold: [0, 0.25, 0.5, 0.75, 1] }
+        );
+        for (const id of byId.keys()) {
+          const sec = document.getElementById(id);
+          if (sec) obs.observe(sec);
+        }
+      })();
+    </script>
   </body>
 </html>
