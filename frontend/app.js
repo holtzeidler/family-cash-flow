@@ -305,6 +305,25 @@ let state = {
   calendarDetailMode: "detailed",
 };
 
+// Expose state on window so peripheral modules (e.g. feedback.js) can read
+// non-sensitive context like the active family id and signed-in user.
+window.state = state;
+
+/**
+ * Dispatch a beta-pulse milestone event. The feedback module (frontend/feedback.js)
+ * listens for "bw:milestone" and shows a one-time prompt for each id.
+ * It is safe to call this multiple times for the same id — the listener
+ * dedupes via localStorage.
+ */
+function bwDispatchMilestone(id) {
+  if (!id) return;
+  try {
+    document.dispatchEvent(new CustomEvent("bw:milestone", { detail: { id: String(id) } }));
+  } catch (_) {
+    /* ignore */
+  }
+}
+
 let selectedExpectedInstance = null;
 let selectedExpectedMovedToDate = null;
 let txEditReimbursableValue = false;
@@ -2230,6 +2249,7 @@ function setActiveTopView(view) {
     requestAnimationFrame(() => {
       renderReportsOperationalPanels();
     });
+    bwDispatchMilestone("first-report-visit");
   }
   if (v === "calendar") {
     lowBalanceLastQuery = { familyId: null, min: null, max: null, mode: null };
@@ -2835,6 +2855,7 @@ if (txAddSave) {
         closeTxAddModal();
       invalidateLowBalanceAlertCache();
         await refreshExpectedCalendarAndMonth();
+        bwDispatchMilestone("first-recurring");
         return;
       }
 
@@ -3030,7 +3051,6 @@ function applyTransactionEditMode(mode, opts = {}) {
   const notesRowEl = document.getElementById("txEditNotesRow");
   const varWrapEl = document.getElementById("txEditRecurringVariableWrap");
   const schWrap = document.getElementById("txEditRecurringScheduleWrap");
-  const acctCol = document.getElementById("txEditAccountCol");
   const panel = document.getElementById("expectedEditInstancePanel");
   // Recurring layout order:
   //   Type → Amount → Category → Color → Date
@@ -5453,22 +5473,18 @@ async function loadMe() {
   const adminLink = document.getElementById("platformAdminLink");
   if (adminLink) adminLink.hidden = !state.isPlatformAdmin;
 
-  // Hide admin-only tabs for non-admin users (and avoid a flash by defaulting hidden in HTML).
+  // Transaction View and Reports are available to every signed-in user.
+  // Older builds restricted them behind isPlatformAdmin; we leave the elements
+  // visible and clear any stale `.admin-only-tab` class / `hidden` attribute
+  // that might still ship in someone's cached HTML.
+  for (const el of document.querySelectorAll(".admin-only-tab")) {
+    el.classList.remove("admin-only-tab");
+    el.hidden = false;
+  }
   const tv = document.getElementById("navTransactionView");
   const rv = document.getElementById("navReportsView");
-  if (tv) tv.hidden = !state.isPlatformAdmin;
-  if (rv) rv.hidden = !state.isPlatformAdmin;
-  for (const el of document.querySelectorAll(".admin-only-tab")) {
-    el.hidden = !state.isPlatformAdmin;
-  }
-
-  // If a non-admin hits a restricted page directly, send them back to Calendar.
-  try {
-    const p = String(location.pathname || "");
-    if (!state.isPlatformAdmin && (p.startsWith("/transactions") || p.startsWith("/reports"))) {
-      location.replace("/calendar");
-    }
-  } catch (_) {}
+  if (tv) tv.hidden = false;
+  if (rv) rv.hidden = false;
 }
 
 function syncActiveFamilyFlags() {
@@ -7043,6 +7059,7 @@ if (reconcileSaveBtn) {
       if (typeof showBwToast === "function") {
         showBwToast(nowReconciled ? "✓ Reconciled successfully" : "Reconciliation cleared");
       }
+      if (nowReconciled) bwDispatchMilestone("first-reconcile");
     } catch (e) {
       show(reconcileErr, e.message || "Failed to save");
     }
@@ -11246,6 +11263,134 @@ function setDefaultAccountStartDate() {
   if (accountStartingBalanceDate) accountStartingBalanceDate.value = toISODate(new Date());
 }
 
+/**
+ * Recovers an interrupted onboarding wizard.
+ *
+ * The signup flow stores a draft (account + first transactions) in sessionStorage and
+ * normally creates them server-side before redirecting to /calendar. If those POSTs
+ * timed out, failed, or the user closed the tab before the redirect, the calendar
+ * page would load with a brand-new family that has zero accounts and no transactions.
+ *
+ * This function detects that situation and finishes the creation server-side using
+ * the same draft the wizard captured. On success it clears the draft and refreshes
+ * accounts so the calendar renders with the user's data.
+ *
+ * Returns true if recovery ran AND succeeded enough to require refreshing accounts.
+ */
+async function tryRecoverAccountSetupDraft() {
+  let draftRaw = "";
+  try {
+    draftRaw = sessionStorage.getItem("bw_account_setup_draft") || "";
+  } catch (_) {
+    return false;
+  }
+  if (!draftRaw) return false;
+
+  let draft = null;
+  try {
+    draft = JSON.parse(draftRaw);
+  } catch (_) {
+    draft = null;
+  }
+  if (!draft || typeof draft !== "object") {
+    try { sessionStorage.removeItem("bw_account_setup_draft"); } catch (_) {}
+    return false;
+  }
+
+  // Only run if the user really has a fresh, empty family. If they already have
+  // accounts, the draft is stale and we should just discard it.
+  if (!state.activeFamilyId) return false;
+  if (Array.isArray(state.accounts) && state.accounts.length > 0) {
+    try { sessionStorage.removeItem("bw_account_setup_draft"); } catch (_) {}
+    return false;
+  }
+
+  let createdAccountId = null;
+  let anyAccountWork = false;
+  if (draft.account && draft.account.name && Number.isFinite(Number(draft.account.starting_balance))) {
+    anyAccountWork = true;
+    try {
+      const created = await api(`/api/families/${state.activeFamilyId}/accounts`, "POST", {
+        name: draft.account.name,
+        type: draft.account.type || "checking",
+        starting_balance: Number(draft.account.starting_balance),
+        starting_balance_date: draft.account.starting_balance_date,
+      });
+      if (created && created.id) createdAccountId = Number(created.id);
+    } catch (e) {
+      // If even the account-create fails here, abort recovery and leave the draft
+      // for the next reload to try again.
+      try {
+        if (window.console && console.warn) {
+          console.warn("[onboarding] account recovery failed", e && e.message);
+        }
+      } catch (_) {}
+      return false;
+    }
+  }
+
+  const txs = Array.isArray(draft.transactions) ? draft.transactions : [];
+  let txTotal = 0;
+  let txCreated = 0;
+  for (const t of txs) {
+    const amt = Number(t.amount);
+    if (!Number.isFinite(amt) || amt <= 0) continue;
+    txTotal += 1;
+    const description = (t.category || "").trim() || "Transaction";
+    try {
+      if (t.recurring) {
+        if (!createdAccountId) continue;
+        await api(`/api/families/${state.activeFamilyId}/expected-transactions`, "POST", {
+          account_id: createdAccountId,
+          start_date: t.date,
+          end_date: t.end_date || null,
+          end_count: t.end_date ? null : t.end_count ?? null,
+          recurrence: t.recurrence || "monthly",
+          second_day_of_month: null,
+          description,
+          notes: t.notes ? t.notes : null,
+          kind: t.kind,
+          amount: amt,
+          variable: !!t.variable,
+          category_id: null,
+          bg_color: t.bg_color ? t.bg_color : null,
+          fg_color: null,
+        });
+        txCreated += 1;
+      } else {
+        await api(`/api/families/${state.activeFamilyId}/transactions`, "POST", {
+          date: t.date,
+          description,
+          notes: t.notes ? t.notes : null,
+          kind: t.kind,
+          amount: amt,
+          category_id: null,
+          fg_color: null,
+          bg_color: t.bg_color ? t.bg_color : null,
+          reimbursable: false,
+        });
+        txCreated += 1;
+      }
+    } catch (e) {
+      try {
+        if (window.console && console.warn) {
+          console.warn("[onboarding] transaction recovery failed", e && e.message);
+        }
+      } catch (_) {}
+      // Continue the loop — one transaction failure shouldn't block the rest.
+    }
+  }
+
+  // We did at least one piece of recovery work. Clear the draft so we don't replay it.
+  // If some transactions failed, the user can re-add them manually — but at minimum
+  // the account itself is in place.
+  if (anyAccountWork || txCreated > 0) {
+    try { sessionStorage.removeItem("bw_account_setup_draft"); } catch (_) {}
+    return true;
+  }
+  return false;
+}
+
 async function main() {
   const apiBase = apiBaseUrl();
   if (location.hostname.endsWith("github.io") && !apiBase) {
@@ -11261,13 +11406,34 @@ async function main() {
   syncChartRangeDisplay();
   setDefaultAccountStartDate();
   await loadMe();
+  bwDispatchMilestone("first-login");
   await loadFamilies();
   if (state.activeFamilyId) {
     await loadCategories();
     await loadAccounts();
+    // If the signup wizard's account/transaction POSTs didn't complete (cold start,
+    // dropped connection, slow tab), finish that work now using the draft still in
+    // sessionStorage. This is what keeps a new user from landing on an empty calendar.
+    try {
+      const recovered = await tryRecoverAccountSetupDraft();
+      if (recovered) {
+        await loadAccounts();
+      }
+    } catch (e) {
+      try {
+        if (window.console && console.warn) {
+          console.warn("[onboarding] recovery wrapper threw", e && e.message);
+        }
+      } catch (_) {}
+    }
     await loadExpectedTransactions();
   }
   await loadMonthAndCalendar();
+  // Defensive re-render: if any upstream step threw and cleared the grid without
+  // refilling it, this guarantees the day cells are visible (even on an empty family).
+  try {
+    renderCalendar();
+  } catch (_) {}
   if (state.activeFamilyId) {
     try {
       await refreshProjectionChart();
@@ -11298,5 +11464,10 @@ main().catch((e) => {
   const m = e.message || "Failed to load app";
   show(familiesErr, m);
   show(txErr, m);
+  // Even if bootstrap failed (e.g. transient /api/auth/me hiccup), make sure the
+  // calendar grid still draws so the user isn't staring at an empty page.
+  try {
+    renderCalendar();
+  } catch (_) {}
 });
 

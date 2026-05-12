@@ -36,6 +36,7 @@ from sqlalchemy import Enum as SAEnum
 from sqlalchemy import Boolean, Integer, UniqueConstraint
 from sqlalchemy import ForeignKey
 from sqlalchemy import String
+from sqlalchemy import Text
 from sqlalchemy import delete, func, or_, select, text, update
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, sessionmaker
@@ -532,6 +533,52 @@ class ReconciledDay(Base):
     updated_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now(), onupdate=func.now())
 
     __table_args__ = (UniqueConstraint("family_id", "date", name="uq_reconciled_day"),)
+
+
+class Feedback(Base):
+    """In-app feedback / bug reports / quick reactions / beta pulse responses.
+
+    Stored as a single table differentiated by `kind`:
+      * "bug"      — long-form bug or feedback from the floating button
+      * "reaction" — thumbs up/down on a specific surface (report card, etc.)
+      * "pulse"    — onboarding milestone prompt ("clear"/"confusing" + comment)
+
+    Screenshots are stored inline as base64 (cap enforced server-side).
+    """
+
+    __tablename__ = "feedback"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now(), index=True)
+    user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    family_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, index=True)
+
+    kind: Mapped[str] = mapped_column(String(16), nullable=False, index=True)
+    category: Mapped[Optional[str]] = mapped_column(String(32), nullable=True, index=True)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="new", index=True)
+
+    route: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    view: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    forecast_month: Mapped[Optional[str]] = mapped_column(String(8), nullable=True)
+    browser_ua: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    viewport: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+
+    what_trying: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    what_happened: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    contact_email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+
+    # Stored without the `data:image/...;base64,` prefix; mime kept separately.
+    # Use TEXT (unbounded on Postgres / SQLite) — size is enforced server-side
+    # in submit_feedback to keep rows reasonable.
+    screenshot_b64: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    screenshot_mime: Mapped[Optional[str]] = mapped_column(String(48), nullable=True)
+
+    rating: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
+    comment: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    prompt_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
+    context_key: Mapped[Optional[str]] = mapped_column(String(128), nullable=True, index=True)
+
+    admin_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
 
 engine = create_engine(settings.DATABASE_URL, connect_args={"check_same_thread": False} if settings.DATABASE_URL.startswith("sqlite") else {})
@@ -1579,6 +1626,334 @@ async def public_contact(payload: ContactIn, request: Request):
     return {"ok": True}
 
 
+# ---------------------------------------------------------------------------
+# In-app feedback: bug reports, quick reactions, beta pulse responses.
+# ---------------------------------------------------------------------------
+
+
+_FEEDBACK_KINDS = {"bug", "reaction", "pulse"}
+_FEEDBACK_STATUSES = {"new", "in_progress", "resolved"}
+_FEEDBACK_CATEGORIES = {"Bug", "UX confusion", "Feature request", "Praise"}
+# Cap raw base64 payload at ~700 KB. A 500 KB PNG encodes to ~683 KB base64.
+_FEEDBACK_SCREENSHOT_MAX_B64 = 700_000
+
+
+class FeedbackIn(BaseModel):
+    kind: Literal["bug", "reaction", "pulse"]
+    what_trying: Optional[str] = None
+    what_happened: Optional[str] = None
+    contact_email: Optional[str] = None
+    # Screenshot may arrive as a data URL or raw base64.
+    screenshot: Optional[str] = None
+    rating: Optional[str] = None
+    comment: Optional[str] = None
+    prompt_id: Optional[str] = None
+    context_key: Optional[str] = None
+    family_id: Optional[int] = None
+    route: Optional[str] = None
+    view: Optional[str] = None
+    forecast_month: Optional[str] = None
+    browser_ua: Optional[str] = None
+    viewport: Optional[str] = None
+
+
+class FeedbackOut(BaseModel):
+    id: int
+    kind: str
+    status: str
+    created_at: datetime
+
+
+def _split_screenshot_data_url(payload: Optional[str]) -> tuple[Optional[str], Optional[str]]:
+    """Accept either a `data:image/...;base64,xxx` URL or raw base64.
+
+    Returns (base64_payload, mime_type) or (None, None) when absent/invalid.
+    """
+    if not payload:
+        return None, None
+    raw = str(payload).strip()
+    if not raw:
+        return None, None
+    mime = "image/png"
+    if raw.startswith("data:"):
+        try:
+            head, b64 = raw.split(",", 1)
+        except ValueError:
+            return None, None
+        if "base64" not in head.lower():
+            return None, None
+        # head looks like "data:image/png;base64"
+        try:
+            mime = head[5:].split(";", 1)[0].strip() or "image/png"
+        except Exception:
+            mime = "image/png"
+        b64 = b64.strip()
+    else:
+        b64 = raw
+    if not b64:
+        return None, None
+    if len(b64) > _FEEDBACK_SCREENSHOT_MAX_B64:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="Screenshot too large (max ~500 KB).",
+        )
+    return b64, mime[:48]
+
+
+def _trim(value: Optional[str], limit: int) -> Optional[str]:
+    if value is None:
+        return None
+    s = str(value).strip()
+    if not s:
+        return None
+    return s[:limit]
+
+
+@app.post("/api/feedback", response_model=FeedbackOut)
+def submit_feedback(
+    payload: FeedbackIn,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+
+    if payload.kind not in _FEEDBACK_KINDS:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid kind.")
+
+    # Per-kind minimum content checks so we never persist empty rows.
+    if payload.kind == "bug":
+        if not (payload.what_trying or payload.what_happened):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Please describe what you were trying to do or what happened.",
+            )
+    elif payload.kind == "reaction":
+        if payload.rating not in {"up", "down"}:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Reaction rating must be up or down.")
+        if not payload.context_key:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Reaction context is required.")
+    elif payload.kind == "pulse":
+        if not payload.prompt_id:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Pulse prompt id is required.")
+        if not (payload.rating or payload.comment):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Pulse response needs a rating or comment.",
+            )
+
+    b64, mime = _split_screenshot_data_url(payload.screenshot)
+
+    row = Feedback(
+        user_id=int(user_id),
+        family_id=int(payload.family_id) if payload.family_id else None,
+        kind=str(payload.kind),
+        category=("Bug" if payload.kind == "bug" else None),
+        status="new",
+        route=_trim(payload.route, 255),
+        view=_trim(payload.view, 64),
+        forecast_month=_trim(payload.forecast_month, 8),
+        browser_ua=_trim(payload.browser_ua, 500),
+        viewport=_trim(payload.viewport, 32),
+        what_trying=_trim(payload.what_trying, 2000),
+        what_happened=_trim(payload.what_happened, 2000),
+        contact_email=_trim(payload.contact_email, 255),
+        screenshot_b64=b64,
+        screenshot_mime=mime,
+        rating=_trim(payload.rating, 16),
+        comment=_trim(payload.comment, 2000),
+        prompt_id=_trim(payload.prompt_id, 64),
+        context_key=_trim(payload.context_key, 128),
+    )
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return FeedbackOut(id=int(row.id), kind=row.kind, status=row.status, created_at=row.created_at)
+
+
+class FeedbackAdminListItem(BaseModel):
+    id: int
+    created_at: datetime
+    kind: str
+    category: Optional[str]
+    status: str
+    route: Optional[str]
+    view: Optional[str]
+    forecast_month: Optional[str]
+    viewport: Optional[str]
+    browser_ua: Optional[str]
+    user_id: Optional[int]
+    user_email: Optional[str]
+    user_name: Optional[str]
+    family_id: Optional[int]
+    contact_email: Optional[str]
+    what_trying: Optional[str]
+    what_happened: Optional[str]
+    rating: Optional[str]
+    comment: Optional[str]
+    prompt_id: Optional[str]
+    context_key: Optional[str]
+    has_screenshot: bool
+    admin_notes: Optional[str]
+
+
+class FeedbackAdminListOut(BaseModel):
+    items: list[FeedbackAdminListItem]
+    total: int
+
+
+class FeedbackAdminUpdateIn(BaseModel):
+    status: Optional[str] = None
+    category: Optional[str] = None
+    admin_notes: Optional[str] = None
+
+
+def _feedback_row_to_admin(row: Feedback, user: Optional[User]) -> FeedbackAdminListItem:
+    return FeedbackAdminListItem(
+        id=int(row.id),
+        created_at=row.created_at,
+        kind=str(row.kind),
+        category=row.category,
+        status=str(row.status or "new"),
+        route=row.route,
+        view=row.view,
+        forecast_month=row.forecast_month,
+        viewport=row.viewport,
+        browser_ua=row.browser_ua,
+        user_id=row.user_id,
+        user_email=(str(user.email) if user else None),
+        user_name=(str(user.name) if user and user.name else None),
+        family_id=row.family_id,
+        contact_email=row.contact_email,
+        what_trying=row.what_trying,
+        what_happened=row.what_happened,
+        rating=row.rating,
+        comment=row.comment,
+        prompt_id=row.prompt_id,
+        context_key=row.context_key,
+        has_screenshot=bool(row.screenshot_b64),
+        admin_notes=row.admin_notes,
+    )
+
+
+@app.get("/api/admin/feedback", response_model=FeedbackAdminListOut)
+def list_feedback_admin(
+    kind: Optional[str] = Query(None),
+    status_: Optional[str] = Query(None, alias="status"),
+    category: Optional[str] = Query(None),
+    q: Optional[str] = Query(None),
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    require_platform_admin(db=db, user_id=user_id)
+
+    base = select(Feedback)
+    count_base = select(func.count(Feedback.id))
+
+    conds = []
+    if kind and kind in _FEEDBACK_KINDS:
+        conds.append(Feedback.kind == kind)
+    if status_ and status_ in _FEEDBACK_STATUSES:
+        conds.append(Feedback.status == status_)
+    if category and category in _FEEDBACK_CATEGORIES:
+        conds.append(Feedback.category == category)
+    if q:
+        like = f"%{q.strip()}%"
+        conds.append(
+            or_(
+                Feedback.what_trying.like(like),
+                Feedback.what_happened.like(like),
+                Feedback.comment.like(like),
+                Feedback.route.like(like),
+                Feedback.view.like(like),
+                Feedback.context_key.like(like),
+                Feedback.prompt_id.like(like),
+            )
+        )
+    for c in conds:
+        base = base.where(c)
+        count_base = count_base.where(c)
+
+    total = int(db.execute(count_base).scalar_one() or 0)
+
+    rows = (
+        db.execute(base.order_by(Feedback.created_at.desc(), Feedback.id.desc()).limit(limit).offset(offset))
+        .scalars()
+        .all()
+    )
+
+    user_ids = sorted({int(r.user_id) for r in rows if r.user_id})
+    users_by_id: dict[int, User] = {}
+    if user_ids:
+        for u in db.execute(select(User).where(User.id.in_(user_ids))).scalars().all():
+            users_by_id[int(u.id)] = u
+
+    items = [_feedback_row_to_admin(r, users_by_id.get(int(r.user_id)) if r.user_id else None) for r in rows]
+    return FeedbackAdminListOut(items=items, total=total)
+
+
+@app.patch("/api/admin/feedback/{feedback_id}", response_model=FeedbackAdminListItem)
+def update_feedback_admin(
+    feedback_id: int,
+    payload: FeedbackAdminUpdateIn,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    require_platform_admin(db=db, user_id=user_id)
+
+    row = db.execute(select(Feedback).where(Feedback.id == feedback_id)).scalar_one_or_none()
+    if row is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Feedback not found")
+
+    if payload.status is not None:
+        if payload.status not in _FEEDBACK_STATUSES:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid status.")
+        row.status = payload.status
+    if payload.category is not None:
+        if payload.category == "":
+            row.category = None
+        elif payload.category in _FEEDBACK_CATEGORIES:
+            row.category = payload.category
+        else:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid category.")
+    if payload.admin_notes is not None:
+        row.admin_notes = _trim(payload.admin_notes, 2000)
+
+    db.commit()
+    db.refresh(row)
+
+    user = None
+    if row.user_id:
+        user = db.execute(select(User).where(User.id == row.user_id)).scalar_one_or_none()
+    return _feedback_row_to_admin(row, user)
+
+
+@app.get("/api/admin/feedback/{feedback_id}/screenshot")
+def get_feedback_screenshot_admin(
+    feedback_id: int,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
+    db=Depends(get_db),
+):
+    import base64 as _b64
+
+    user_id = get_current_user_id(access_token)
+    require_platform_admin(db=db, user_id=user_id)
+
+    row = db.execute(select(Feedback).where(Feedback.id == feedback_id)).scalar_one_or_none()
+    if row is None or not row.screenshot_b64:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No screenshot")
+
+    try:
+        raw = _b64.b64decode(row.screenshot_b64, validate=False)
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Decode failed") from None
+    mime = row.screenshot_mime or "image/png"
+    return Response(content=raw, media_type=mime)
+
+
 @app.on_event("startup")
 def startup_populate_schema():
     # For a starter app we create tables on startup.
@@ -1606,6 +1981,7 @@ def startup_populate_schema():
     _backfill_category_groups_for_existing_families()
     _cleanup_new_group_placeholders()
     _ensure_reconciled_days_table()
+    _ensure_feedback_table()
     _ensure_family_member_rbac_columns()
     _backfill_family_member_owners()
     _ensure_family_invites_table()
@@ -1763,6 +2139,78 @@ def _ensure_reconciled_days_table() -> None:
             )
             conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reconciled_days_family_id ON reconciled_days (family_id)"))
             conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reconciled_days_date ON reconciled_days (date)"))
+
+
+def _ensure_feedback_table() -> None:
+    """Lightweight startup migration: create feedback table if missing.
+
+    The table is used by all in-app feedback surfaces (bug button, quick
+    reactions, beta pulse prompts). Storage is intentionally one wide table
+    differentiated by `kind` so admin review can show everything in one list.
+    """
+    with engine.begin() as conn:
+        if settings.DATABASE_URL.startswith("sqlite"):
+            conn.execute(
+                text(
+                    "CREATE TABLE IF NOT EXISTS feedback ("
+                    "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                    "created_at DATETIME DEFAULT CURRENT_TIMESTAMP, "
+                    "user_id INTEGER, "
+                    "family_id INTEGER, "
+                    "kind VARCHAR(16) NOT NULL, "
+                    "category VARCHAR(32), "
+                    "status VARCHAR(16) NOT NULL DEFAULT 'new', "
+                    "route VARCHAR(255), "
+                    "view VARCHAR(64), "
+                    "forecast_month VARCHAR(8), "
+                    "browser_ua VARCHAR(500), "
+                    "viewport VARCHAR(32), "
+                    "what_trying TEXT, "
+                    "what_happened TEXT, "
+                    "contact_email VARCHAR(255), "
+                    "screenshot_b64 TEXT, "
+                    "screenshot_mime VARCHAR(48), "
+                    "rating VARCHAR(16), "
+                    "comment TEXT, "
+                    "prompt_id VARCHAR(64), "
+                    "context_key VARCHAR(128), "
+                    "admin_notes TEXT"
+                    ")"
+                )
+            )
+        else:
+            conn.execute(
+                text(
+                    "CREATE TABLE IF NOT EXISTS feedback ("
+                    "id SERIAL PRIMARY KEY, "
+                    "created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), "
+                    "user_id INTEGER REFERENCES users(id), "
+                    "family_id INTEGER, "
+                    "kind VARCHAR(16) NOT NULL, "
+                    "category VARCHAR(32), "
+                    "status VARCHAR(16) NOT NULL DEFAULT 'new', "
+                    "route VARCHAR(255), "
+                    "view VARCHAR(64), "
+                    "forecast_month VARCHAR(8), "
+                    "browser_ua VARCHAR(500), "
+                    "viewport VARCHAR(32), "
+                    "what_trying TEXT, "
+                    "what_happened TEXT, "
+                    "contact_email VARCHAR(255), "
+                    "screenshot_b64 TEXT, "
+                    "screenshot_mime VARCHAR(48), "
+                    "rating VARCHAR(16), "
+                    "comment TEXT, "
+                    "prompt_id VARCHAR(64), "
+                    "context_key VARCHAR(128), "
+                    "admin_notes TEXT"
+                    ")"
+                )
+            )
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_feedback_created_at ON feedback (created_at)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_feedback_kind ON feedback (kind)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_feedback_status ON feedback (status)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_feedback_user_id ON feedback (user_id)"))
 
 
 def _ensure_family_member_rbac_columns() -> None:

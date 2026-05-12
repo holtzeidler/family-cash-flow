@@ -7448,41 +7448,49 @@ body.login-page:not(.signup-page) .login-page__forgot-link:focus-visible{
   outline-offset: 2px;
   border-radius: 2px;
 }
-body.login-page:not(.signup-page) .login-page__trust{
-  display: flex;
+/* Combined reassurance microcopy: shield icon + three concise pieces of
+   trust info on a single calm line directly under the Login button. */
+body.login-page:not(.signup-page) .login-page__reassure{
+  margin: 12px 0 0;
+  padding: 0;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
+  align-self: center;
+  flex-wrap: wrap;
   gap: 7px;
-  margin: 10px 0 0;
   font-size: 0.78rem;
   font-weight: 500;
-  letter-spacing: 0.012em;
+  letter-spacing: 0.005em;
   color: rgba(71, 85, 105, 0.78);
-}
-body.login-page:not(.signup-page) .login-page__trust-dot{
-  width: 6px;
-  height: 6px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--accent) 58%, transparent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent);
-}
-body.login-page:not(.signup-page) .login-page__trial-note{
-  margin: 6px 0 0;
-  padding: 0;
-  border-radius: 0;
-  font-size: 0.72rem;
-  font-weight: 500;
-  line-height: 1.4;
-  letter-spacing: 0.02em;
-  color: rgba(100, 116, 139, 0.6);
-  background: transparent;
-  border: none;
   text-align: center;
+  line-height: 1.45;
+  max-width: 100%;
+}
+body.login-page:not(.signup-page) .login-page__reassure-icon{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 12%, #ffffff);
+  color: var(--accent);
+  flex: 0 0 22px;
+}
+body.login-page:not(.signup-page) .login-page__reassure-text{
+  display: inline;
+  color: rgba(71, 85, 105, 0.84);
+}
+body.login-page:not(.signup-page) .login-page__reassure-dot{
+  display: inline-block;
+  margin: 0 6px;
+  color: rgba(148, 163, 184, 0.85);
 }
 body.login-page:not(.signup-page) .login-page__signup-prompt{
-  margin-top: 16px;
-  padding-top: 14px;
-  border-top: 1px solid rgba(17, 24, 39, 0.06);
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(17, 24, 39, 0.07);
   font-size: 0.92rem;
   line-height: 1.45;
   text-align: center;
@@ -7523,6 +7531,11 @@ body.login-page:not(.signup-page) .login-flow{
 body.login-page:not(.signup-page) .login-flow[hidden]{
   display: none !important;
 }
+/* Polished primary login flow: slightly tighter rhythm so the card
+   feels cohesive without losing air. */
+body.login-page:not(.signup-page) .login-flow.login-flow--polished{
+  gap: 9px;
+}
 body.login-page:not(.signup-page) .login-flow__helper{
   margin: 0 0 2px;
   font-size: 0.84rem;
@@ -7543,6 +7556,163 @@ body.login-page:not(.signup-page) .login-flow__busy{
   font-weight: 500;
   color: rgba(71, 85, 105, 0.78);
 }
+body.login-page:not(.signup-page) .login-flow__helper--muted{
+  font-size: 0.78rem;
+  color: rgba(100, 116, 139, 0.78);
+  margin-top: -2px;
+}
+body.login-page:not(.signup-page) .login-flow__helper--muted a{
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--accent) 38%, transparent);
+  text-underline-offset: 3px;
+}
+body.login-page:not(.signup-page) .login-flow__helper--muted a:hover{
+  text-decoration-color: color-mix(in srgb, var(--accent) 70%, transparent);
+}
+
+/* Soft inline alert directly under the Send button. Used for transient,
+   recoverable problems (empty field, malformed email, rate limit). */
+body.login-page:not(.signup-page) .login-flow__alert{
+  margin: 8px 0 0;
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: #fff7f4;
+  border: 1px solid #f7d3c4;
+  color: #8a3a1d;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+body.login-page:not(.signup-page) .login-flow__alert[hidden]{
+  display: none;
+}
+
+/* Larger "help card" for substantive failures — soft pink/red bg with a
+   small icon, suggestions, and a clear path forward (signup or back).
+   Designed to feel supportive, not alarming. */
+body.login-page:not(.signup-page) .login-flow__help{
+  margin: 10px 0 0;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #fff5f2 0%, #fffafa 100%);
+  border: 1px solid #f5d2c3;
+  color: rgba(51, 65, 85, 0.94);
+}
+body.login-page:not(.signup-page) .login-flow__help[hidden]{
+  display: none;
+}
+body.login-page:not(.signup-page) .login-flow__help-icon{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  margin-top: 2px;
+  border-radius: 999px;
+  background: rgba(194, 65, 12, 0.1);
+  color: #c2410c;
+}
+body.login-page:not(.signup-page) .login-flow__help-body{
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+}
+body.login-page:not(.signup-page) .login-flow__help-title{
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: -0.005em;
+  color: rgba(31, 41, 55, 0.96);
+}
+body.login-page:not(.signup-page) .login-flow__help-text{
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: rgba(71, 85, 105, 0.88);
+}
+body.login-page:not(.signup-page) .login-flow__help-hints{
+  list-style: none;
+  margin: 2px 0 4px;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: 0.75rem;
+  color: rgba(100, 116, 139, 0.84);
+}
+body.login-page:not(.signup-page) .login-flow__help-hints li{
+  position: relative;
+  padding-left: 12px;
+}
+body.login-page:not(.signup-page) .login-flow__help-hints li::before{
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 50%;
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.7);
+  transform: translateY(-50%);
+}
+body.login-page:not(.signup-page) .login-flow__help-actions{
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 6px;
+}
+body.login-page:not(.signup-page) .login-flow__help-cta{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.84rem;
+  font-weight: 600;
+  text-decoration: none;
+  letter-spacing: 0.005em;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.05), 0 10px 22px -12px rgba(11, 61, 46, 0.5);
+  transition: background 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+body.login-page:not(.signup-page) .login-flow__help-cta:hover{
+  background: color-mix(in srgb, var(--accent) 92%, #000 8%);
+  transform: translateY(-1px);
+  box-shadow: 0 1px 0 rgba(0,0,0,0.06), 0 14px 26px -12px rgba(11, 61, 46, 0.55);
+}
+body.login-page:not(.signup-page) .login-flow__help-back{
+  background: transparent;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: rgba(71, 85, 105, 0.84);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: rgba(71, 85, 105, 0.25);
+  cursor: pointer;
+}
+body.login-page:not(.signup-page) .login-flow__help-back:hover{
+  color: var(--accent);
+  text-decoration-color: var(--accent);
+}
+
+/* Inline variant of the signup CTA used in the success page link. */
+body.login-page:not(.signup-page) .login-page__signup-cta--inline{
+  margin-left: 0;
+  font-size: inherit;
+  font-weight: 600;
+}
 body.login-page:not(.signup-page) .login-flow__field label{
   font-size: 0.8125rem;
   font-weight: 600;
@@ -7554,7 +7724,7 @@ body.login-page:not(.signup-page) .login-flow__pw-row{
 }
 body.login-page:not(.signup-page) .login-page__forgot-btn{
   display: block;
-  margin: 6px 0 0;
+  margin: 8px auto 0;
   width: fit-content;
   max-width: 100%;
   padding: 0;
@@ -7564,11 +7734,16 @@ body.login-page:not(.signup-page) .login-page__forgot-btn{
   font-size: 0.8rem;
   font-weight: 500;
   color: rgba(75, 85, 99, 0.72);
-  text-align: left;
+  text-align: center;
   text-decoration: none;
   text-underline-offset: 3px;
   cursor: pointer;
   transition: color 160ms ease, text-decoration-color 160ms ease, opacity 160ms ease;
+}
+/* Attach the "Forgot password?" link to the reassurance row when both
+   are present (the primary login flow), reducing the vertical gap. */
+body.login-page:not(.signup-page) .login-page__reassure + .login-page__forgot-btn{
+  margin-top: 4px;
 }
 body.login-page:not(.signup-page) .login-page__forgot-btn:hover{
   color: rgba(11, 61, 46, 0.92);
@@ -13455,4 +13630,527 @@ body.account-setup-page .account-setup-step3-form .cat-color-row + .tx-add-vspac
   font-size: 11.5px;
   line-height: 1.4;
   max-width: 52ch;
+}
+
+/* =========================================================
+   In-app feedback widgets (floating button, modal, reactions, pulse)
+   Loaded on authenticated SPA pages via frontend/feedback.js.
+   ========================================================= */
+
+/* Floating launcher */
+.bw-fb-launcher{
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 1200;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: 0.005em;
+  cursor: pointer;
+  box-shadow:
+    0 1px 0 rgba(0,0,0,0.06),
+    0 14px 28px -14px rgba(11, 61, 46, 0.55);
+  transition: background 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+.bw-fb-launcher:hover{
+  background: color-mix(in srgb, var(--accent) 92%, #000 8%);
+  transform: translateY(-1px);
+  box-shadow:
+    0 1px 0 rgba(0,0,0,0.07),
+    0 18px 30px -16px rgba(11, 61, 46, 0.6);
+}
+.bw-fb-launcher:focus-visible{
+  outline: none;
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent),
+    0 14px 28px -14px rgba(11, 61, 46, 0.55);
+}
+.bw-fb-launcher__icon{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+@media (max-width: 720px){
+  .bw-fb-launcher{
+    right: 12px;
+    bottom: 12px;
+    padding: 10px 12px;
+  }
+  .bw-fb-launcher__label{
+    display: none;
+  }
+  .bw-fb-launcher{
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    justify-content: center;
+  }
+}
+
+/* Bug modal */
+.bw-fb-overlay{
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.42);
+  z-index: 1300;
+}
+.bw-fb-overlay.modal-overlay--open{
+  display: flex;
+}
+.bw-fb-modal{
+  width: min(560px, 94vw);
+  max-height: 92vh;
+  overflow: auto;
+  background: #ffffff;
+  border: 1px solid #E5E7EB;
+  border-radius: 16px;
+  padding: 22px 22px 18px;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.06),
+    0 20px 40px -16px rgba(15, 23, 42, 0.32);
+}
+.bw-fb-modal__head{
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.bw-fb-modal__eyebrow{
+  margin: 0 0 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(11, 61, 46, 0.78);
+}
+.bw-fb-modal__title{
+  margin: 0 0 4px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+.bw-fb-modal__subtitle{
+  margin: 0;
+  font-size: 0.85rem;
+  color: rgba(71, 85, 105, 0.84);
+  max-width: 48ch;
+  line-height: 1.45;
+}
+.bw-fb-modal__close{
+  border: 0;
+  background: transparent;
+  font-size: 22px;
+  color: rgba(71, 85, 105, 0.7);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 8px;
+  line-height: 1;
+}
+.bw-fb-modal__close:hover{
+  background: rgba(15, 23, 42, 0.06);
+  color: #0f172a;
+}
+.bw-fb-form{
+  display: grid;
+  gap: 14px;
+}
+.bw-fb-form__row{
+  display: grid;
+  gap: 6px;
+}
+.bw-fb-form__label{
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: rgba(71, 85, 105, 0.94);
+  letter-spacing: 0.005em;
+}
+.bw-fb-form__hint{
+  font-weight: 400;
+  color: rgba(100, 116, 139, 0.78);
+  margin-left: 4px;
+}
+.bw-fb-form__input,
+.bw-fb-form__textarea{
+  width: 100%;
+  font: inherit;
+  font-size: 0.92rem;
+  color: #0f172a;
+  background: #ffffff;
+  border: 1px solid #E5E7EB;
+  border-radius: 10px;
+  padding: 10px 12px;
+  line-height: 1.45;
+  resize: vertical;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.bw-fb-form__textarea{
+  min-height: 64px;
+  max-height: 240px;
+}
+.bw-fb-form__input:focus,
+.bw-fb-form__textarea:focus{
+  outline: none;
+  border-color: color-mix(in srgb, var(--accent) 55%, #cbd5e1);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+/* Screenshot drop zone */
+.bw-fb-drop{
+  border: 1.5px dashed rgba(15, 23, 42, 0.14);
+  border-radius: 12px;
+  padding: 14px;
+  background: #f8fafc;
+  text-align: center;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.bw-fb-drop.is-dragover{
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 5%, #ffffff);
+}
+.bw-fb-drop__empty{
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  color: rgba(71, 85, 105, 0.84);
+}
+.bw-fb-drop__title{
+  margin: 6px 0 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: rgba(31, 41, 55, 0.92);
+}
+.bw-fb-drop__hint{
+  margin: 0;
+  font-size: 12px;
+  color: rgba(100, 116, 139, 0.84);
+}
+.bw-fb-drop__btn{
+  margin-top: 8px;
+  border: 1px solid #E5E7EB;
+  background: #ffffff;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 0.85rem;
+  color: rgba(31, 41, 55, 0.92);
+  cursor: pointer;
+}
+.bw-fb-drop__btn:hover{
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.bw-fb-drop__preview{
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+}
+.bw-fb-drop__img{
+  max-width: 100%;
+  max-height: 220px;
+  border-radius: 8px;
+  border: 1px solid #E5E7EB;
+}
+.bw-fb-drop__remove{
+  border: 0;
+  background: transparent;
+  color: rgba(185, 28, 28, 0.78);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.bw-fb-drop__remove:hover{
+  text-decoration: underline;
+}
+
+.bw-fb-context{
+  margin: 0;
+  font-size: 12px;
+  color: rgba(100, 116, 139, 0.84);
+}
+.bw-fb-error{
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fff7f4;
+  border: 1px solid #fad7c5;
+  color: #8a3a1d;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.bw-fb-form__actions{
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.bw-fb-form__cancel{
+  background: transparent;
+  border: 0;
+  color: rgba(71, 85, 105, 0.84);
+  padding: 8px 12px;
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+  border-radius: 8px;
+}
+.bw-fb-form__cancel:hover{
+  background: rgba(15, 23, 42, 0.04);
+}
+.bw-fb-form__submit{
+  background: var(--accent);
+  color: #fff;
+  border: 0;
+  padding: 9px 18px;
+  border-radius: 999px;
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.05), 0 10px 22px -12px rgba(11, 61, 46, 0.55);
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+.bw-fb-form__submit:hover:not(:disabled){
+  background: color-mix(in srgb, var(--accent) 92%, #000 8%);
+  transform: translateY(-1px);
+}
+.bw-fb-form__submit:disabled{
+  background: #E5E7EB;
+  color: rgba(71, 85, 105, 0.66);
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Quick reactions (attached to cards / surfaces) */
+.bw-fb-reactions{
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(15, 23, 42, 0.06);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: rgba(100, 116, 139, 0.88);
+}
+.bw-fb-reactions__label{
+  font-weight: 500;
+  letter-spacing: 0.005em;
+}
+.bw-fb-reactions__btns{
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.bw-fb-reactions__btn{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 1px solid #E5E7EB;
+  background: #ffffff;
+  color: rgba(71, 85, 105, 0.84);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+.bw-fb-reactions__btn:hover:not(:disabled){
+  border-color: var(--accent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 6%, #ffffff);
+}
+.bw-fb-reactions__btn.is-active{
+  border-color: var(--accent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, #ffffff);
+}
+.bw-fb-reactions__btn:disabled{
+  opacity: 0.55;
+  cursor: default;
+}
+.bw-fb-reactions__follow{
+  flex: 1 1 100%;
+  display: grid;
+  gap: 6px;
+}
+.bw-fb-reactions__text{
+  width: 100%;
+  border: 1px solid #E5E7EB;
+  border-radius: 10px;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 13px;
+  resize: vertical;
+  min-height: 56px;
+}
+.bw-fb-reactions__follow-actions{
+  display: flex;
+  justify-content: flex-end;
+}
+.bw-fb-reactions__send{
+  background: var(--accent);
+  color: #fff;
+  border: 0;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.bw-fb-reactions__send:hover:not(:disabled){
+  background: color-mix(in srgb, var(--accent) 92%, #000 8%);
+}
+.bw-fb-reactions__thanks{
+  color: var(--accent);
+  font-weight: 500;
+}
+
+/* Beta pulse prompt */
+.bw-fb-pulse{
+  position: fixed;
+  right: 18px;
+  bottom: 76px;
+  z-index: 1199;
+  width: min(340px, 92vw);
+  background: #ffffff;
+  border: 1px solid #E5E7EB;
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.06),
+    0 18px 36px -16px rgba(15, 23, 42, 0.28);
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+.bw-fb-pulse.is-visible{
+  opacity: 1;
+  transform: translateY(0);
+}
+.bw-fb-pulse__head{
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+.bw-fb-pulse__eyebrow{
+  margin: 0 0 2px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(11, 61, 46, 0.78);
+}
+.bw-fb-pulse__title{
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.3;
+}
+.bw-fb-pulse__close{
+  border: 0;
+  background: transparent;
+  font-size: 18px;
+  color: rgba(71, 85, 105, 0.7);
+  cursor: pointer;
+  padding: 0 4px;
+  border-radius: 6px;
+}
+.bw-fb-pulse__close:hover{
+  background: rgba(15, 23, 42, 0.06);
+  color: #0f172a;
+}
+.bw-fb-pulse__body{
+  margin: 8px 0 12px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: rgba(51, 65, 85, 0.92);
+}
+.bw-fb-pulse__rate{
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.bw-fb-pulse__rate-btn{
+  flex: 1 1 0;
+  padding: 6px 8px;
+  border: 1px solid #E5E7EB;
+  background: #ffffff;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  color: rgba(71, 85, 105, 0.92);
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+.bw-fb-pulse__rate-btn:hover{
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.bw-fb-pulse__rate-btn.is-active{
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, #ffffff);
+  color: var(--accent);
+  font-weight: 600;
+}
+.bw-fb-pulse__text{
+  width: 100%;
+  border: 1px solid #E5E7EB;
+  border-radius: 10px;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 13px;
+  resize: vertical;
+  min-height: 52px;
+  margin-bottom: 10px;
+}
+.bw-fb-pulse__actions{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.bw-fb-pulse__never{
+  background: transparent;
+  border: 0;
+  font: inherit;
+  font-size: 12px;
+  color: rgba(100, 116, 139, 0.8);
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+}
+.bw-fb-pulse__never:hover{
+  color: rgba(31, 41, 55, 0.94);
+  background: rgba(15, 23, 42, 0.04);
+}
+.bw-fb-pulse__send{
+  background: var(--accent);
+  color: #fff;
+  border: 0;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.bw-fb-pulse__send:hover{
+  background: color-mix(in srgb, var(--accent) 92%, #000 8%);
 }

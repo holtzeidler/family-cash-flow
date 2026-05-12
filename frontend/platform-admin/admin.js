@@ -364,8 +364,255 @@
       if (k === "users") loadUsers().catch((e) => setCallout(document.getElementById("adminCallout"), e.message, "error"));
       if (k === "families")
         loadFamiliesList().catch((e) => setCallout(document.getElementById("adminCallout"), e.message, "error"));
+      if (k === "feedback")
+        loadFeedback().catch((e) => setCallout(document.getElementById("adminCallout"), e.message, "error"));
     });
   });
+
+  // -------------------------------------------------------------------
+  // Feedback review section
+  // -------------------------------------------------------------------
+
+  const FB_KIND_LABEL = { bug: "Bug / feedback", reaction: "Reaction", pulse: "Pulse" };
+
+  function fmtFeedbackTime(iso) {
+    try {
+      const d = new Date(iso);
+      return d.toLocaleString();
+    } catch (_) {
+      return String(iso || "");
+    }
+  }
+
+  function getApiBaseForLinks() {
+    return apiBaseUrl();
+  }
+
+  async function loadFeedback() {
+    const mount = document.getElementById("adminFbMount");
+    const metaEl = document.getElementById("adminFbMeta");
+    if (!mount) return;
+    const kind = (document.getElementById("adminFbKind") || {}).value || "";
+    const status_ = (document.getElementById("adminFbStatus") || {}).value || "";
+    const category = (document.getElementById("adminFbCategory") || {}).value || "";
+    const q = (document.getElementById("adminFbSearch") || {}).value || "";
+    const params = new URLSearchParams();
+    if (kind) params.set("kind", kind);
+    if (status_) params.set("status", status_);
+    if (category) params.set("category", category);
+    if (q) params.set("q", q);
+    params.set("limit", "200");
+
+    mount.innerHTML = '<p class="admin-feedback-empty">Loading…</p>';
+    if (metaEl) metaEl.textContent = "";
+    const data = await api(`/api/admin/feedback?${params.toString()}`, "GET");
+    const items = (data && data.items) || [];
+    if (metaEl) metaEl.textContent = `${data.total || 0} match${(data.total || 0) === 1 ? "" : "es"}`;
+
+    if (!items.length) {
+      mount.innerHTML = '<p class="admin-feedback-empty">No feedback matches these filters.</p>';
+      return;
+    }
+
+    mount.innerHTML = "";
+    for (const item of items) {
+      mount.appendChild(renderFeedbackCard(item));
+    }
+  }
+
+  function renderFeedbackCard(item) {
+    const card = document.createElement("article");
+    card.className = "admin-feedback-card";
+    card.dataset.kind = item.kind;
+    card.dataset.id = String(item.id);
+
+    const head = document.createElement("div");
+    head.className = "admin-feedback-card__head";
+    head.innerHTML = `
+      <span class="admin-feedback-card__kind">
+        <span class="admin-feedback-card__kind-dot" aria-hidden="true"></span>
+        ${escapeHtml(FB_KIND_LABEL[item.kind] || item.kind)}
+        ${item.category ? ` · ${escapeHtml(item.category)}` : ""}
+      </span>
+      <span class="admin-feedback-card__time" title="${escapeHtml(item.created_at)}">${escapeHtml(fmtFeedbackTime(item.created_at))}</span>
+    `;
+    card.appendChild(head);
+
+    // Title / content body varies by kind.
+    if (item.kind === "bug") {
+      const title = document.createElement("h3");
+      title.className = "admin-feedback-card__title";
+      title.textContent = item.what_trying || item.what_happened || "(no description)";
+      card.appendChild(title);
+      if (item.what_happened) {
+        const body = document.createElement("div");
+        body.className = "admin-feedback-card__body";
+        body.textContent = item.what_happened;
+        card.appendChild(body);
+      }
+    } else if (item.kind === "reaction") {
+      const title = document.createElement("h3");
+      title.className = "admin-feedback-card__title";
+      title.textContent = `${item.rating === "up" ? "👍 Useful" : "👎 Not useful"} — ${item.context_key || "(no context)"}`;
+      card.appendChild(title);
+      if (item.comment) {
+        const body = document.createElement("div");
+        body.className = "admin-feedback-card__body";
+        body.textContent = item.comment;
+        card.appendChild(body);
+      }
+    } else if (item.kind === "pulse") {
+      const title = document.createElement("h3");
+      title.className = "admin-feedback-card__title";
+      title.textContent = `${item.prompt_id || "pulse"} — ${item.rating || "(no rating)"}`;
+      card.appendChild(title);
+      if (item.comment) {
+        const body = document.createElement("div");
+        body.className = "admin-feedback-card__body";
+        body.textContent = item.comment;
+        card.appendChild(body);
+      }
+    }
+
+    const meta = document.createElement("div");
+    meta.className = "admin-feedback-card__meta";
+    const bits = [];
+    bits.push(
+      `<span><strong>User:</strong> ${item.user_email ? escapeHtml(item.user_email) : "—"}${item.user_name ? ` (${escapeHtml(item.user_name)})` : ""}</span>`
+    );
+    if (item.contact_email && item.contact_email !== item.user_email) {
+      bits.push(`<span><strong>Reply to:</strong> ${escapeHtml(item.contact_email)}</span>`);
+    }
+    if (item.route) bits.push(`<span><strong>Route:</strong> ${escapeHtml(item.route)}</span>`);
+    if (item.view) bits.push(`<span><strong>View:</strong> ${escapeHtml(item.view)}</span>`);
+    if (item.forecast_month) bits.push(`<span><strong>Month:</strong> ${escapeHtml(item.forecast_month)}</span>`);
+    if (item.viewport) bits.push(`<span><strong>Viewport:</strong> ${escapeHtml(item.viewport)}</span>`);
+    if (item.browser_ua) bits.push(`<span><strong>UA:</strong> ${escapeHtml(item.browser_ua)}</span>`);
+    meta.innerHTML = bits.join("");
+    card.appendChild(meta);
+
+    if (item.has_screenshot) {
+      const sw = document.createElement("div");
+      sw.className = "admin-feedback-card__screenshot";
+      const img = document.createElement("img");
+      const base = getApiBaseForLinks();
+      img.src = `${base}/api/admin/feedback/${item.id}/screenshot`;
+      img.alt = `Screenshot for feedback #${item.id}`;
+      img.loading = "lazy";
+      // Image fetch needs the bearer token; modern browsers don't allow custom
+      // headers on <img>. Workaround: fetch + objectURL.
+      void fetch(img.src, { headers: apiBearerAuthHeaders(), credentials: "include" })
+        .then((r) => (r.ok ? r.blob() : null))
+        .then((blob) => {
+          if (blob) img.src = URL.createObjectURL(blob);
+        })
+        .catch(() => {});
+      sw.appendChild(img);
+      card.appendChild(sw);
+    }
+
+    // Inline admin actions
+    const actions = document.createElement("div");
+    actions.className = "admin-feedback-card__actions";
+
+    const statusSel = document.createElement("select");
+    for (const s of ["new", "in_progress", "resolved"]) {
+      const opt = document.createElement("option");
+      opt.value = s;
+      opt.textContent = s.replace("_", " ");
+      if (item.status === s) opt.selected = true;
+      statusSel.appendChild(opt);
+    }
+    statusSel.setAttribute("aria-label", "Status");
+    actions.appendChild(labeled("Status", statusSel));
+
+    const catSel = document.createElement("select");
+    const catOpts = ["", "Bug", "UX confusion", "Feature request", "Praise"];
+    for (const c of catOpts) {
+      const opt = document.createElement("option");
+      opt.value = c;
+      opt.textContent = c || "—";
+      if ((item.category || "") === c) opt.selected = true;
+      catSel.appendChild(opt);
+    }
+    catSel.setAttribute("aria-label", "Category");
+    actions.appendChild(labeled("Category", catSel));
+
+    const notes = document.createElement("textarea");
+    notes.rows = 1;
+    notes.placeholder = "Admin notes…";
+    notes.value = item.admin_notes || "";
+    notes.setAttribute("aria-label", "Admin notes");
+    actions.appendChild(notes);
+
+    const save = document.createElement("button");
+    save.type = "button";
+    save.className = "admin-feedback-card__save";
+    save.textContent = "Save";
+    save.addEventListener("click", async () => {
+      save.disabled = true;
+      try {
+        await api(`/api/admin/feedback/${item.id}`, "PATCH", {
+          status: statusSel.value,
+          category: catSel.value || "",
+          admin_notes: notes.value,
+        });
+        item.status = statusSel.value;
+        item.category = catSel.value || null;
+        item.admin_notes = notes.value;
+        save.textContent = "Saved";
+        setTimeout(() => (save.textContent = "Save"), 1400);
+      } catch (e) {
+        save.textContent = "Retry";
+        const cb = document.getElementById("adminCallout");
+        if (cb) setCallout(cb, (e && e.message) || "Save failed", "error");
+      } finally {
+        save.disabled = false;
+      }
+    });
+    actions.appendChild(save);
+
+    card.appendChild(actions);
+    return card;
+  }
+
+  function labeled(label, control) {
+    const wrap = document.createElement("label");
+    wrap.style.display = "inline-flex";
+    wrap.style.flexDirection = "column";
+    wrap.style.gap = "2px";
+    wrap.style.fontSize = "11px";
+    wrap.style.color = "var(--muted)";
+    wrap.appendChild(document.createTextNode(label));
+    wrap.appendChild(control);
+    return wrap;
+  }
+
+  // Wire filter inputs (admin.js is loaded at end of body, so the inputs
+  // already exist by this point).
+  {
+    const refresh = () => {
+      loadFeedback().catch((e) => {
+        const cb = document.getElementById("adminCallout");
+        if (cb) setCallout(cb, (e && e.message) || "Could not load feedback.", "error");
+      });
+    };
+    const ids = ["adminFbKind", "adminFbStatus", "adminFbCategory"];
+    ids.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener("change", refresh);
+    });
+    const search = document.getElementById("adminFbSearch");
+    if (search) {
+      let t = null;
+      search.addEventListener("input", () => {
+        if (t) clearTimeout(t);
+        t = setTimeout(refresh, 300);
+      });
+    }
+    const refreshBtn = document.getElementById("adminFbRefresh");
+    if (refreshBtn) refreshBtn.addEventListener("click", refresh);
+  }
 
   async function boot() {
     const callout = document.getElementById("adminCallout");

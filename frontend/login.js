@@ -3,6 +3,48 @@ function getApiBase() {
   return b.replace(/\/$/, "");
 }
 
+/**
+ * Mode for the password-reset experience.
+ *
+ *   "beta-friendly"     — On any non-success response (network error, 5xx,
+ *                         404 from a misrouted API, etc.) show the friendly
+ *                         help card that nudges new users toward signup.
+ *                         The submit path itself still calls the same neutral
+ *                         backend endpoint, so we never *explicitly* reveal
+ *                         whether an account exists — but the on-screen copy
+ *                         and signup CTA are more helpful during onboarding.
+ *
+ *   "production-secure" — Always show a generic, neutral error message and
+ *                         hide the help card entirely. Used once the product
+ *                         is publicly listed and account enumeration matters.
+ *
+ * The default below can be overridden by setting `window.BW_RESET_MODE` in a
+ * preceding script or via a build step.
+ */
+const BW_RESET_MODE =
+  typeof window !== "undefined" && (window.BW_RESET_MODE === "production-secure" || window.BW_RESET_MODE === "beta-friendly")
+    ? window.BW_RESET_MODE
+    : "beta-friendly";
+
+/**
+ * Some HTTP detail strings come from upstream defaults (e.g. FastAPI's plain
+ * "Not Found" or a CDN's "Bad Gateway"). We never want to surface those to a
+ * user trying to reset their password — they sound alarming and broken.
+ */
+function _isGenericHttpDetail(detail) {
+  const s = String(detail || "").trim().toLowerCase();
+  return (
+    s === "" ||
+    s === "not found" ||
+    s === "bad request" ||
+    s === "internal server error" ||
+    s === "service unavailable" ||
+    s === "bad gateway" ||
+    s === "gateway timeout" ||
+    s === "method not allowed"
+  );
+}
+
 const BW_API_ACCESS_TOKEN_KEY = "bw_api_access_token";
 
 function apiBearerAuthHeaders() {
@@ -123,7 +165,16 @@ let activeResetToken = "";
 function showPwFlowErr(el, msg) {
   if (!el) return;
   el.textContent = msg || "";
-  el.style.display = msg ? "block" : "none";
+  // Prefer the [hidden] attribute over inline display so the element can be
+  // styled with `display: flex` / `grid` from CSS without being clobbered.
+  // For legacy callers that still rely on `style.display`, also clear it.
+  if (msg) {
+    el.hidden = false;
+    if (el.style.display === "none") el.style.removeProperty("display");
+  } else {
+    el.hidden = true;
+    if (el.style.display) el.style.removeProperty("display");
+  }
 }
 
 function showFlow(name) {
@@ -141,6 +192,17 @@ function showFlow(name) {
     el.hidden = k !== name;
   }
   setCallout(loginCalloutEl, "", "");
+  // Leaving the forgot-request flow should always wipe any leftover error
+  // card so it doesn't reappear on the next visit.
+  if (name !== "forgotRequest") {
+    const card = document.getElementById("pwForgotHelpCard");
+    if (card) card.hidden = true;
+    const errEl = document.getElementById("pwForgotRequestErr");
+    if (errEl) {
+      errEl.hidden = true;
+      errEl.textContent = "";
+    }
+  }
 }
 
 function clearResetQuery() {
@@ -262,31 +324,108 @@ function messageFromFailure(resp, fallback) {
   return fallback;
 }
 
+function showForgotHelpCard(show, opts) {
+  const card = document.getElementById("pwForgotHelpCard");
+  if (!card) return;
+  card.hidden = !show;
+  if (!show) return;
+  // Allow overriding the title / body for context-specific failures (rate
+  // limit, server unreachable, etc.) while keeping the default optimistic
+  // new-account framing.
+  const titleEl = card.querySelector("[data-bw-help-title]");
+  const textEl = card.querySelector("[data-bw-help-text]");
+  if (opts && opts.title && titleEl) titleEl.textContent = String(opts.title);
+  if (opts && opts.text && textEl) textEl.textContent = String(opts.text);
+}
+
+function resetForgotMessaging() {
+  const errEl = document.getElementById("pwForgotRequestErr");
+  showPwFlowErr(errEl, "");
+  showForgotHelpCard(false);
+  // Restore defaults so the next failure starts from the canonical copy.
+  const titleEl = document.querySelector("#pwForgotHelpCard [data-bw-help-title]");
+  const textEl = document.querySelector("#pwForgotHelpCard [data-bw-help-text]");
+  if (titleEl) titleEl.textContent = "We couldn’t find an account with that email.";
+  if (textEl)
+    textEl.textContent =
+      "Double-check the address you entered, or create a new BalanceWhiz account to start forecasting.";
+}
+
 async function sendPasswordResetRequest() {
   const btn = document.getElementById("pwForgotSendBtn");
   const emailEl = document.getElementById("pwForgotEmail");
   const errEl = document.getElementById("pwForgotRequestErr");
   const email = emailEl && emailEl.value ? String(emailEl.value).trim() : "";
-  showPwFlowErr(errEl, "");
+  resetForgotMessaging();
+
   if (!email) {
     showPwFlowErr(errEl, "Please enter your email.");
     return;
   }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    showPwFlowErr(errEl, "That email address doesn’t look quite right — please double-check it.");
+    return;
+  }
+
   if (btn) {
     btn.disabled = true;
     btn.textContent = "Sending…";
   }
   try {
     const r = await request("/api/public/password-reset/request", "POST", { email });
-    if (!r.ok) {
-      if (r.status === 429) {
-        showPwFlowErr(errEl, "Too many requests. Please try again later.");
-        return;
-      }
-      showPwFlowErr(errEl, messageFromFailure(r, "Could not send reset link."));
+
+    // Happy path — the backend always returns 200 OK regardless of whether
+    // the email exists, so the success screen is neutral by design.
+    if (r.ok) {
+      showFlow("forgotSent");
       return;
     }
-    showFlow("forgotSent");
+
+    // Rate-limited — surface a small inline notice; not a "broken" state.
+    if (r.status === 429) {
+      showPwFlowErr(
+        errEl,
+        "Too many requests right now. Please wait a few minutes and try again."
+      );
+      return;
+    }
+
+    // Everything else: network failure, 404 from a misrouted API, 5xx, etc.
+    // Avoid showing technical/raw upstream details. In beta-friendly mode we
+    // also offer the "create a new BalanceWhiz account" path so the user has
+    // a clear next step — without revealing whether their email exists.
+    if (BW_RESET_MODE === "production-secure") {
+      showPwFlowErr(
+        errEl,
+        "We couldn’t send a reset link right now. Please try again in a moment."
+      );
+      return;
+    }
+
+    let detail = r.data && r.data.detail ? String(r.data.detail) : "";
+    if (_isGenericHttpDetail(detail) || r.networkError) detail = "";
+
+    if (r.networkError) {
+      showForgotHelpCard(true, {
+        title: "We couldn’t reach BalanceWhiz right now.",
+        text:
+          "Check your connection and try again in a moment. If it keeps failing, you can also create a new account or contact support.",
+      });
+    } else if (r.status && r.status >= 500) {
+      showForgotHelpCard(true, {
+        title: "Our server is taking a moment.",
+        text:
+          "Please try again in 30–60 seconds. If this keeps happening, you can create a new BalanceWhiz account or contact support.",
+      });
+    } else if (detail) {
+      // Use the upstream's detail when it sounds human (not "Not Found").
+      showForgotHelpCard(true, {
+        title: "We couldn’t send your reset link.",
+        text: `${detail} Double-check the address, or create a new BalanceWhiz account to start forecasting.`,
+      });
+    } else {
+      showForgotHelpCard(true);
+    }
   } finally {
     if (btn) {
       btn.disabled = false;
@@ -368,15 +507,31 @@ function wirePasswordResetUi() {
       const mainEmail = document.getElementById("email");
       const fe = document.getElementById("pwForgotEmail");
       if (fe && mainEmail) fe.value = String(mainEmail.value || "").trim();
-      showPwFlowErr(document.getElementById("pwForgotRequestErr"), "");
+      resetForgotMessaging();
       showFlow("forgotRequest");
     });
   }
-  const backSelectors = ["pwForgotBackLogin1", "pwForgotSentBackBtn", "pwResetFormBackBtn", "pwResetInvalidBackBtn", "pwResetSuccessBtn"];
+  const backSelectors = [
+    "pwForgotBackLogin1",
+    "pwForgotHelpBackBtn",
+    "pwForgotSentBackBtn",
+    "pwResetFormBackBtn",
+    "pwResetInvalidBackBtn",
+    "pwResetSuccessBtn",
+  ];
   for (const id of backSelectors) {
     const el = document.getElementById(id);
-    if (el) el.addEventListener("click", () => backToLogin());
+    if (el) {
+      el.addEventListener("click", () => {
+        resetForgotMessaging();
+        backToLogin();
+      });
+    }
   }
+  // Re-typing in the email field should clear stale error messaging so the
+  // form doesn't feel "broken" while the user iterates.
+  const fe = document.getElementById("pwForgotEmail");
+  if (fe) fe.addEventListener("input", () => resetForgotMessaging());
   const sendBtn = document.getElementById("pwForgotSendBtn");
   if (sendBtn) sendBtn.addEventListener("click", () => void sendPasswordResetRequest());
   const saveBtn = document.getElementById("pwResetSaveBtn");

@@ -1994,75 +1994,145 @@ function readAccountSetupDraft() {
   }
 }
 
+/**
+ * Create the user's first account from the wizard draft. Returns:
+ *   { ok: true,  accountId: number }            — account created successfully
+ *   { ok: true,  accountId: null, skipped: true } — nothing to create (no draft.account)
+ *   { ok: false, accountId: null, error: string } — creation failed; draft should be retained
+ *
+ * Timeouts are intentionally generous (cold-start tolerance) because we'd rather wait a few
+ * extra seconds than lose the user's onboarding data. The calendar page has a fallback that
+ * retries from the draft if anything was missed.
+ */
 async function maybeCreateFirstAccountFromDraft(draft) {
+  if (!draft || !draft.account) {
+    return { ok: true, accountId: null, skipped: true };
+  }
+  let familyId = null;
   try {
-    if (!draft || !draft.account) return;
-    const fams = await request("/api/families", "GET");
-    if (!fams.ok || !Array.isArray(fams.data) || fams.data.length === 0) return;
-    const familyId = fams.data[0]?.id;
-    if (!familyId) return;
-    const a = draft.account;
+    const fams = await requestWithRetry("/api/families", "GET", null, { maxMs: 12000 });
+    if (!fams.ok || !Array.isArray(fams.data) || fams.data.length === 0) {
+      return { ok: false, accountId: null, error: "no_family" };
+    }
+    familyId = fams.data[0]?.id;
+    if (!familyId) return { ok: false, accountId: null, error: "no_family" };
+  } catch (e) {
+    return { ok: false, accountId: null, error: (e && e.message) || "families_fetch_failed" };
+  }
+
+  const a = draft.account;
+  try {
     const created = await requestWithRetry(
       `/api/families/${encodeURIComponent(String(familyId))}/accounts`,
       "POST",
       {
-      name: a.name,
-      type: a.type,
-      starting_balance: a.starting_balance,
-      starting_balance_date: a.starting_balance_date,
+        name: a.name,
+        type: a.type,
+        starting_balance: a.starting_balance,
+        starting_balance_date: a.starting_balance_date,
       },
-      { maxMs: 1600 }
+      { maxMs: 12000 }
     );
-    if (created && created.ok && created.data && created.data.id) return Number(created.data.id);
-  } catch (_) {}
+    if (created && created.ok && created.data && created.data.id) {
+      return { ok: true, accountId: Number(created.data.id) };
+    }
+    return { ok: false, accountId: null, error: `account_create_failed_${created?.status || "network"}` };
+  } catch (e) {
+    return { ok: false, accountId: null, error: (e && e.message) || "account_create_threw" };
+  }
 }
 
+/**
+ * Create the user's first transactions from the wizard draft. Returns:
+ *   { ok: true,  createdCount, totalCount }   — every applicable item created
+ *   { ok: false, createdCount, totalCount, error }
+ */
 async function maybeCreateFirstTransactionFromDraft(draft, createdAccountId) {
+  if (!draft) return { ok: true, createdCount: 0, totalCount: 0 };
+  let familyId = null;
   try {
-    if (!draft) return;
-    const fams = await requestWithRetry("/api/families", "GET", null, { maxMs: 1600 });
-    if (!fams.ok || !Array.isArray(fams.data) || fams.data.length === 0) return;
-    const familyId = fams.data[0]?.id;
-    if (!familyId) return;
-    const list = Array.isArray(draft.transactions) ? draft.transactions : [];
-    for (const t of list) {
-      const description = (t.category || "").trim() || "Transaction";
-      const amount = Number(t.amount);
-      if (!Number.isFinite(amount) || amount <= 0) continue;
+    const fams = await requestWithRetry("/api/families", "GET", null, { maxMs: 12000 });
+    if (!fams.ok || !Array.isArray(fams.data) || fams.data.length === 0) {
+      return { ok: false, createdCount: 0, totalCount: 0, error: "no_family" };
+    }
+    familyId = fams.data[0]?.id;
+    if (!familyId) return { ok: false, createdCount: 0, totalCount: 0, error: "no_family" };
+  } catch (e) {
+    return { ok: false, createdCount: 0, totalCount: 0, error: (e && e.message) || "families_fetch_failed" };
+  }
+
+  const list = Array.isArray(draft.transactions) ? draft.transactions : [];
+  let createdCount = 0;
+  let totalApplicable = 0;
+  let lastError = null;
+
+  for (const t of list) {
+    const description = (t.category || "").trim() || "Transaction";
+    const amount = Number(t.amount);
+    if (!Number.isFinite(amount) || amount <= 0) continue;
+    totalApplicable += 1;
+    try {
       if (t.recurring) {
         const accountId = Number(createdAccountId);
-        if (!Number.isFinite(accountId) || accountId <= 0) continue;
-        await requestWithRetry(`/api/families/${encodeURIComponent(String(familyId))}/expected-transactions`, "POST", {
-          account_id: accountId,
-          start_date: t.date,
-          end_date: t.end_date || null,
-          end_count: t.end_date ? null : t.end_count ?? null,
-          recurrence: t.recurrence || "monthly",
-          second_day_of_month: null,
-          description,
-          notes: t.notes ? t.notes : null,
-          kind: t.kind,
-          amount,
-          variable: !!t.variable,
-          category_id: null,
-          bg_color: t.bg_color ? t.bg_color : null,
-          fg_color: null,
-        }, { maxMs: 1600 });
+        if (!Number.isFinite(accountId) || accountId <= 0) {
+          lastError = "missing_account_for_recurring";
+          continue;
+        }
+        const r = await requestWithRetry(
+          `/api/families/${encodeURIComponent(String(familyId))}/expected-transactions`,
+          "POST",
+          {
+            account_id: accountId,
+            start_date: t.date,
+            end_date: t.end_date || null,
+            end_count: t.end_date ? null : t.end_count ?? null,
+            recurrence: t.recurrence || "monthly",
+            second_day_of_month: null,
+            description,
+            notes: t.notes ? t.notes : null,
+            kind: t.kind,
+            amount,
+            variable: !!t.variable,
+            category_id: null,
+            bg_color: t.bg_color ? t.bg_color : null,
+            fg_color: null,
+          },
+          { maxMs: 12000 }
+        );
+        if (r && r.ok) createdCount += 1;
+        else lastError = `expected_create_failed_${r?.status || "network"}`;
       } else {
-        await requestWithRetry(`/api/families/${encodeURIComponent(String(familyId))}/transactions`, "POST", {
-          date: t.date,
-          description,
-          notes: t.notes ? t.notes : null,
-          kind: t.kind,
-          amount,
-          category_id: null,
-          fg_color: null,
-          bg_color: t.bg_color ? t.bg_color : null,
-          reimbursable: false,
-        }, { maxMs: 1600 });
+        const r = await requestWithRetry(
+          `/api/families/${encodeURIComponent(String(familyId))}/transactions`,
+          "POST",
+          {
+            date: t.date,
+            description,
+            notes: t.notes ? t.notes : null,
+            kind: t.kind,
+            amount,
+            category_id: null,
+            fg_color: null,
+            bg_color: t.bg_color ? t.bg_color : null,
+            reimbursable: false,
+          },
+          { maxMs: 12000 }
+        );
+        if (r && r.ok) createdCount += 1;
+        else lastError = `transaction_create_failed_${r?.status || "network"}`;
       }
+    } catch (e) {
+      lastError = (e && e.message) || "transaction_create_threw";
     }
-  } catch (_) {}
+  }
+
+  if (totalApplicable === 0) return { ok: true, createdCount: 0, totalCount: 0 };
+  return {
+    ok: createdCount === totalApplicable,
+    createdCount,
+    totalCount: totalApplicable,
+    error: createdCount === totalApplicable ? null : lastError,
+  };
 }
 
 async function doSignup() {
@@ -2148,12 +2218,31 @@ async function doSignup() {
     } catch (_) {}
 
     // If the user entered a starter account during setup, create it now.
-    const createdAccountId = await maybeCreateFirstAccountFromDraft(draft);
-    await maybeCreateFirstTransactionFromDraft(draft, createdAccountId);
+    // We deliberately wait for both helpers to finish (with cold-start-tolerant timeouts)
+    // before redirecting — otherwise the user lands on /calendar with no data.
+    const accountResult = await maybeCreateFirstAccountFromDraft(draft);
+    const createdAccountId = accountResult && accountResult.accountId ? accountResult.accountId : null;
+    const txResult = await maybeCreateFirstTransactionFromDraft(draft, createdAccountId);
 
-    try {
-      sessionStorage.removeItem(BW_ACCOUNT_SETUP_DRAFT_KEY);
-    } catch (_) {}
+    // Only clear the draft when everything that should have been created actually was.
+    // Otherwise we leave it in sessionStorage so the /calendar bootstrap can finish the job.
+    const accountStepOk =
+      !draft.account || (accountResult && accountResult.ok && (accountResult.accountId || accountResult.skipped));
+    const txStepOk = txResult && txResult.ok;
+    if (accountStepOk && txStepOk) {
+      try {
+        sessionStorage.removeItem(BW_ACCOUNT_SETUP_DRAFT_KEY);
+      } catch (_) {}
+    } else {
+      try {
+        if (window.console && console.warn) {
+          console.warn("[signup] partial setup; leaving draft for /calendar recovery", {
+            accountResult,
+            txResult,
+          });
+        }
+      } catch (_) {}
+    }
 
     if (isAccountSetup) {
       const remaining = Math.max(0, minOverlayMs - (Date.now() - startedAt));

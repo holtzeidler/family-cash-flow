@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=402" />
+    <link rel="stylesheet" href="../styles.css?v=405" />
   </head>
   <body>
     <div class="container">
@@ -37,8 +37,8 @@
           </div>
           <div class="top-nav__tabs" role="tablist" aria-label="Views">
             <a class="top-nav__tab is-active" id="navCalendarView" role="tab" aria-selected="true" href="/calendar">Forecast</a>
-            <a class="top-nav__tab admin-only-tab" id="navTransactionView" role="tab" aria-selected="false" href="/transactions" hidden>Transaction View</a>
-            <a class="top-nav__tab admin-only-tab" id="navReportsView" role="tab" aria-selected="false" href="/reports" hidden>Reports</a>
+            <a class="top-nav__tab" id="navTransactionView" role="tab" aria-selected="false" href="/transactions">Transaction View</a>
+            <a class="top-nav__tab" id="navReportsView" role="tab" aria-selected="false" href="/reports">Reports</a>
             <a class="top-nav__tab" id="navSettingsView" role="tab" aria-selected="false" href="/settings">Settings</a>
           </div>
           <div class="top-nav__actions" aria-label="Account actions">
@@ -1248,6 +1248,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="../app.js?v=262"></script>
+    <script src="../app.js?v=265"></script>
+    <script src="../feedback.js?v=1" defer></script>
   </body>
 </html>

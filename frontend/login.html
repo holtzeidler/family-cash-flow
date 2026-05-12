@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=402" />
+    <link rel="stylesheet" href="./styles.css?v=405" />
   </head>
   <body class="login-page">
     <div class="container">
@@ -112,7 +112,7 @@
               <div class="auth-section__body" id="loginSectionBody">
                 <div id="loginCallout" class="callout" style="display:none" role="status"></div>
 
-                <div id="loginFlowLogin" class="login-flow">
+                <div id="loginFlowLogin" class="login-flow login-flow--polished">
                   <div class="row two">
                     <div>
                       <label for="email">Email</label>
@@ -124,12 +124,19 @@
                     </div>
                   </div>
                   <button type="button" id="loginBtn" class="top-nav__logout" onclick="window.__bwLogin && window.__bwLogin()">Login</button>
-                  <p class="login-page__trust" aria-label="Trust signal">
-                    <span class="login-page__trust-dot" aria-hidden="true"></span>
-                    No bank connection required
+                  <p class="login-page__reassure" role="note" aria-label="What to expect">
+                    <span class="login-page__reassure-icon" aria-hidden="true">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+                    </span>
+                    <span class="login-page__reassure-text">
+                      No bank connection required
+                      <span class="login-page__reassure-dot" aria-hidden="true">•</span>
+                      14-day free trial
+                      <span class="login-page__reassure-dot" aria-hidden="true">•</span>
+                      Cancel anytime
+                    </span>
                   </p>
                   <button type="button" class="login-page__forgot-btn" id="loginForgotBtn">Forgot password?</button>
-                  <p class="login-page__trial-note" role="note">14-day free trial · cancel anytime</p>
                   <div class="login-page__signup-prompt">
                     <span>Don't have an account?</span>
                     <a href="https://balancewhiz.com/account-setup/?fresh=1" class="login-page__signup-cta">Create your forecast</a>
@@ -145,14 +152,42 @@
                     <input id="pwForgotEmail" type="email" autocomplete="email" />
                   </div>
                   <button type="button" id="pwForgotSendBtn" class="top-nav__logout">Send reset link</button>
+
+                  <div id="pwForgotRequestErr" class="login-flow__alert" role="alert" hidden></div>
+
+                  <div id="pwForgotHelpCard" class="login-flow__help" hidden role="status" aria-live="polite">
+                    <span class="login-flow__help-icon" aria-hidden="true">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+                    </span>
+                    <div class="login-flow__help-body">
+                      <p class="login-flow__help-title" data-bw-help-title>We couldn’t find an account with that email.</p>
+                      <p class="login-flow__help-text" data-bw-help-text>
+                        Double-check the address you entered, or create a new BalanceWhiz account to start forecasting.
+                      </p>
+                      <ul class="login-flow__help-hints">
+                        <li>Check for typos</li>
+                        <li>Try another email address</li>
+                        <li>Or create a new account</li>
+                      </ul>
+                      <div class="login-flow__help-actions">
+                        <a href="https://balancewhiz.com/account-setup/?fresh=1" class="login-flow__help-cta">Create your forecast</a>
+                        <button type="button" class="login-flow__help-back" id="pwForgotHelpBackBtn">Back to login</button>
+                      </div>
+                    </div>
+                  </div>
+
                   <button type="button" class="login-page__forgot-btn login-page__forgot-btn--quiet" id="pwForgotBackLogin1">Back to login</button>
-                  <div id="pwForgotRequestErr" class="error" style="display: none" role="alert"></div>
                 </div>
 
                 <div id="loginFlowForgotSent" class="login-flow" hidden>
                   <p class="login-flow__lede">Check your email</p>
                   <p class="login-flow__helper">
                     If an account exists for that email, we’ll send a password reset link shortly.
+                    It usually arrives within a few minutes.
+                  </p>
+                  <p class="login-flow__helper login-flow__helper--muted">
+                    Didn’t see it? Make sure you used the email you signed up with, or
+                    <a href="https://balancewhiz.com/account-setup/?fresh=1" class="login-page__signup-cta login-page__signup-cta--inline">create a new BalanceWhiz account</a>.
                   </p>
                   <button type="button" id="pwForgotSentBackBtn" class="top-nav__logout">Back to login</button>
                 </div>
@@ -244,7 +279,7 @@
       </footer>
     </div>
 
-    <script src="./login.js?v=8"></script>
+    <script src="./login.js?v=9"></script>
   </body>
 </html>
 
