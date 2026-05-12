@@ -1385,7 +1385,7 @@ async function refreshLowBalanceAlert() {
         const target = Number(minVal);
         if (Number.isFinite(bal) && bal <= 0) {
           setSidebarLowBalanceBanner(
-            `🚨 Transfer cash before ${fmtMonthDay(lowHit.date)}\nCENTER:Balance: ${fmtMoney0SignedDollar(bal)}`,
+            `⚠ Transfer cash before ${fmtMonthDay(lowHit.date)}\nCENTER:Balance: ${fmtMoney0SignedDollar(bal)}`,
             "danger"
           );
         } else {
@@ -7760,7 +7760,7 @@ function renderSidebarPendingTransactionsForMonth() {
   const checked = loadPendingAttentionChecked();
   const setTitle = (n) => {
     if (!sidebarPendingTitle) return;
-    sidebarPendingTitle.textContent = `Needs Attention (${Number(n) || 0})`;
+    sidebarPendingTitle.textContent = `Needs review (${Number(n) || 0})`;
   };
   if (!range) {
     setTitle(0);

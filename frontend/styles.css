@@ -2338,14 +2338,18 @@ button.secondary{
   justify-content: flex-start;
 }
 
-/* "Needs Attention" pending checklist */
+/* "Needs review" pending checklist */
+#sidebarPendingTxList.list{
+  gap: 6px;
+  margin-top: 6px;
+}
 .pending-attn-item{
   position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1.75fr) auto auto;
-  gap: 6px 8px;
+  gap: 5px 8px;
   align-items: center;
-  padding: 6px 9px 6px 13px;
+  padding: 5px 9px 5px 13px;
   border-radius: 10px;
   border: 1px solid rgba(0, 0, 0, 0.055);
   background: rgba(0, 0, 0, 0.018);
@@ -2434,6 +2438,9 @@ button.secondary{
 }
 .sidebar-section:not(.sidebar-section--collapsed) .sidebar-section-head{
   margin-bottom: 10px;
+}
+#sidebarPendingTxCard:not(.sidebar-section--collapsed) .sidebar-section-head{
+  margin-bottom: 6px;
 }
 .sidebar-section--collapsed .sidebar-section-body{
   display: none;
@@ -5600,13 +5607,17 @@ textarea::placeholder{
   border-top: 1px solid rgba(17, 24, 39, 0.06);
 }
 .totals-compact__k{
-  color: rgba(75, 85, 99, 0.62);
+  color: rgba(100, 116, 139, 0.55);
   font-weight: 500;
+  font-size: 11px;
+  letter-spacing: 0.01em;
 }
 .totals-compact__v{
   font-variant-numeric: tabular-nums;
-  font-weight: 620;
-  font-size: 13px;
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: -0.012em;
+  color: rgba(17, 24, 39, 0.95);
 }
 .totals-compact__v.ok{
   color: var(--ok);
@@ -8058,13 +8069,13 @@ body.plans-page .container > .grid{
     inset 2px 0 0 rgba(180, 83, 9, 0.28),
     0 1px 2px rgba(17, 24, 39, 0.028);
 }
-/* Negative projected balance: normal cell surface; risk reads on balance strip */
+/* Negative projected balance: calm surface, soft red left border; risk reads on balance strip */
 .cal-cell.cal-cell--bal-risk{
-  background: rgba(255, 255, 255, 0.78);
-  border-color: rgba(17, 24, 39, 0.065);
+  background: rgba(255, 252, 252, 0.86);
+  border-color: rgba(17, 24, 39, 0.055);
   box-shadow:
-    inset 2px 0 0 rgba(185, 28, 28, 0.38),
-    0 1px 2px rgba(17, 24, 39, 0.028);
+    inset 2px 0 0 rgba(185, 28, 28, 0.26),
+    0 1px 2px rgba(17, 24, 39, 0.024);
 }
 .cal-cell.cal-cell--recovery-milestone:not(.cal-cell--out):not(.cal-cell--before-start){
   box-shadow:
@@ -8301,7 +8312,10 @@ body.plans-page .container > .grid{
   min-width: 28px;
   padding: 0 9px;
   border-radius: 10px;
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.18);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.22),
+    0 2px 6px rgba(11, 61, 46, 0.32),
+    0 0 0 3px rgba(4, 120, 87, 0.1);
 }
 
 .cal-reconciled-mark{
@@ -8397,27 +8411,27 @@ body.plans-page .container > .grid{
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 5px;
+  gap: 8px;
   position: relative;
 }
 .cal-day-tx-line--primary .cal-tx-label{
-  font-weight: 600;
-  color: rgba(31, 41, 55, 0.9);
+  font-weight: 700;
+  color: rgba(17, 24, 39, 0.96);
 }
 .cal-day-tx-line--secondary .cal-tx-label{
-  font-weight: 400;
-  color: rgba(71, 85, 105, 0.76);
+  font-weight: 500;
+  color: rgba(71, 85, 105, 0.66);
 }
 .cal-day-tx-line--primary .cal-amt{
   font-size: 9.75px;
   font-weight: 700;
-  color: rgba(17, 24, 39, 0.88);
+  color: rgba(17, 24, 39, 0.96);
 }
 .cal-day-tx-line--secondary .cal-amt{
   font-size: 8.85px;
   font-weight: 600;
   opacity: 1;
-  color: rgba(55, 65, 75, 0.76);
+  color: rgba(55, 65, 75, 0.66);
 }
 .cal-day-tx-line--start-balance.cal-day-tx-line--primary .cal-tx-label,
 .cal-day-tx-line--start-balance.cal-day-tx-line--secondary .cal-tx-label{
@@ -8502,20 +8516,20 @@ body.plans-page .container > .grid{
   font-size: 8.85px;
 }
 .cal-day-tx-line--flow-out .cal-tx-label{
-  color: rgba(91, 32, 24, 0.82);
-  font-weight: 600;
+  color: rgba(72, 24, 18, 0.94);
+  font-weight: 700;
 }
 .cal-day-tx-line--flow-out .cal-amt{
-  color: rgba(127, 42, 36, 0.9);
+  color: rgba(96, 30, 24, 0.96);
   font-weight: 700;
 }
 .cal-day-tx-line--secondary.cal-day-tx-line--flow-out .cal-tx-label{
-  color: rgba(120, 53, 44, 0.72);
-  font-weight: 480;
+  color: rgba(96, 40, 34, 0.78);
+  font-weight: 500;
 }
 .cal-day-tx-line--secondary.cal-day-tx-line--flow-out .cal-amt{
-  color: rgba(154, 68, 58, 0.82);
-  font-weight: 640;
+  color: rgba(118, 46, 38, 0.88);
+  font-weight: 600;
   font-size: 8.85px;
 }
 .cal-day-tx-line--flow-neutral .cal-tx-label,
@@ -9181,26 +9195,26 @@ body.plans-page .container > .grid{
 .cal-day-more{
   margin-top: 2px;
   align-self: flex-end;
-  padding: 2px 7px;
+  padding: 1px 8px 2px;
   border-radius: 999px;
-  border: 1px solid rgba(17, 24, 39, 0.06);
-  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(17, 24, 39, 0.16);
+  background: rgba(255, 255, 255, 0.82);
   width: fit-content;
   max-width: 100%;
   font: inherit;
-  font-size: 8.25px;
-  font-weight: 600;
+  font-size: 8.5px;
+  font-weight: 700;
   letter-spacing: 0.03em;
   text-transform: uppercase;
-  color: rgba(100, 116, 139, 0.62);
+  color: rgba(51, 65, 85, 0.86);
   cursor: pointer;
   text-decoration: none;
   line-height: 1.2;
 }
 .cal-day-more:hover{
-  color: rgba(17, 24, 39, 0.68);
-  border-color: rgba(17, 24, 39, 0.11);
-  background: rgba(255, 255, 255, 0.9);
+  color: rgba(17, 24, 39, 0.95);
+  border-color: rgba(17, 24, 39, 0.24);
+  background: rgba(255, 255, 255, 0.95);
 }
 .cal-day-more:focus-visible{
   outline: 2px solid rgba(4, 120, 87, 0.35);
@@ -9231,8 +9245,8 @@ body.plans-page .container > .grid{
 .cal-balance-strip--cue-risk{
   margin: 0 -1px;
   padding: 2px 5px 2px;
-  background: linear-gradient(180deg, rgba(254, 242, 242, 0.88), rgba(255, 255, 255, 0.55));
-  box-shadow: inset 0 0 0 1px rgba(185, 28, 28, 0.1);
+  background: linear-gradient(180deg, rgba(254, 246, 246, 0.7), rgba(255, 255, 255, 0.35));
+  box-shadow: inset 0 0 0 1px rgba(185, 28, 28, 0.07);
 }
 .cal-balance-strip--cue-warn{
   margin: 0 -1px;
@@ -9291,8 +9305,8 @@ body.plans-page .container > .grid{
 .cal-stat.cal-balance.cal-balance--risk,
 .cal-stat.cal-balance.is-negative{
   font-weight: 700;
-  font-size: clamp(11px, 1.95vw, 12px);
-  color: rgba(153, 45, 45, 0.94);
+  font-size: clamp(10.75px, 1.85vw, 11.75px);
+  color: rgba(140, 42, 42, 0.86);
 }
 .cal-stat.cal-balance.cal-balance--recovery-milestone{
   font-weight: 700;
@@ -9320,8 +9334,8 @@ body.plans-page .container > .grid{
   justify-content: center;
   flex-shrink: 0;
   margin-right: 3px;
-  color: rgba(153, 45, 45, 0.58);
-  opacity: 0.92;
+  color: rgba(153, 45, 45, 0.5);
+  opacity: 0.85;
 }
 .cal-balance-risk-icon svg{
   display: block;
