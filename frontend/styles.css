@@ -10689,19 +10689,326 @@ body.account-setup-page .account-setup-step3-form .cat-color-row + .tx-add-vspac
   margin: 0 0 14px;
 }
 
-/* Spread form rows inside the transaction sheet */
+/* Tighter form rhythm inside the transaction sheet (calmer, less form-driven). */
 #expectedEditInstancePanel .tx-add-vspace{
-  height: 18px;
+  height: 12px;
 }
 #expectedEditInstancePanel .tx-add-vspace--lg{
-  height: 24px;
+  height: 16px;
 }
 #expectedEditInstancePanel .tx-add-vspace--sm{
-  height: 14px;
+  height: 10px;
 }
 .modal--expected-edit > .modal-actions{
-  margin: 0 16px 16px;
-  padding-top: 14px;
+  margin: 0 16px 14px;
+  padding-top: 12px;
+}
+
+/* === Recurring/transaction edit modal: density + hierarchy polish === */
+
+/* Header band: less vertical padding, smaller mode banner. */
+.modal--expected-edit .tx-edit-top{
+  margin: 0;
+  padding: 10px 16px 11px;
+  border-radius: 14px 14px 0 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.14);
+}
+.modal--expected-edit .tx-edit-mode-banner{
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 0;
+  letter-spacing: 0;
+  color: rgba(255, 255, 255, 0.95);
+}
+.modal--expected-edit .tx-edit-top #txEditNotesRow{
+  /* Notes is moved out for recurring; hide any residual notes inside the header. */
+  display: none;
+}
+.modal--expected-edit #expectedEditInstancePanel{
+  padding: 14px 16px 14px;
+}
+.modal--expected-edit #expectedEditInstancePanel > .tx-edit-divider{
+  display: none;
+}
+
+/* Tighter, less spreadsheet-feeling label column. */
+.modal--expected-edit .form-row-h{
+  gap: 8px 12px;
+}
+.modal--expected-edit .form-row-h__label{
+  flex: 0 0 6.5rem;
+  max-width: 32%;
+}
+.modal--expected-edit .form-row-h__label label{
+  font-size: 11px;
+  color: rgba(75, 85, 99, 0.78);
+  font-weight: 600;
+}
+
+/* Type toggle: richer selected red, sharper text weight, softer border. */
+.modal--expected-edit .kind-toggle{
+  border-color: rgba(17, 24, 39, 0.08);
+  background: rgba(15, 23, 42, 0.025);
+  max-width: none;
+}
+.modal--expected-edit .kind-toggle .kind-opt{
+  min-height: 34px;
+  padding: 7px 12px;
+  font-size: 13px;
+  color: rgba(71, 85, 105, 0.62);
+}
+.modal--expected-edit .kind-toggle .kind-opt + .kind-opt{
+  border-left-color: rgba(17, 24, 39, 0.06);
+}
+.modal--expected-edit .kind-toggle .kind-opt:has(input[value="expense"]:checked){
+  background: rgba(167, 55, 68, 0.13);
+  color: color-mix(in srgb, var(--danger) 92%, var(--text));
+  font-weight: 700;
+}
+.modal--expected-edit .kind-toggle .kind-opt:has(input[value="expense"]:checked):hover{
+  background: rgba(167, 55, 68, 0.17);
+}
+.modal--expected-edit .kind-toggle .kind-opt:has(input[value="income"]:checked){
+  background: rgba(0, 90, 74, 0.14);
+  color: color-mix(in srgb, var(--ok) 92%, var(--text));
+  font-weight: 700;
+}
+.modal--expected-edit .kind-toggle .kind-opt:has(input[value="income"]:checked):hover{
+  background: rgba(0, 90, 74, 0.18);
+}
+
+/* "+ Add color" trigger: quiet link that lives where the color row used to sit. */
+.tx-edit-add-color-row{
+  display: flex;
+  margin: 6px 0 0;
+}
+.modal--expected-edit .tx-edit-add-color-row{
+  /* Indent past the label column so it visually attaches to the field column. */
+  padding-left: calc(6.5rem + 12px);
+}
+.tx-edit-add-color-btn{
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 4px 6px 4px 0;
+  margin: 0;
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: rgba(75, 85, 99, 0.72);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: color 0.12s ease;
+}
+.tx-edit-add-color-btn:hover{
+  color: rgba(17, 24, 39, 0.86);
+}
+.tx-edit-add-color-btn__plus{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
+  color: rgba(100, 116, 139, 0.7);
+  border: 1px dashed rgba(100, 116, 139, 0.35);
+  border-radius: 50%;
+}
+.tx-edit-add-color-btn:hover .tx-edit-add-color-btn__plus{
+  color: rgba(17, 24, 39, 0.86);
+  border-color: rgba(17, 24, 39, 0.42);
+}
+
+/* Compact color row when expanded: smaller swatches, tighter spacing, link Clear. */
+.modal--expected-edit .cat-color-row.tx-edit-cat-color-panel{
+  margin: 6px 0 2px;
+  padding: 6px 10px 6px calc(6.5rem + 12px);
+  gap: 6px;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.025);
+  border: 1px solid rgba(17, 24, 39, 0.04);
+  flex-wrap: wrap;
+}
+.modal--expected-edit .cat-color-row.tx-edit-cat-color-panel .cat-color-row__label{
+  flex: 0 0 auto;
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: rgba(100, 116, 139, 0.78);
+  margin-right: 2px;
+}
+.modal--expected-edit .cat-color-row.tx-edit-cat-color-panel .cat-color-row__swatches{
+  gap: 5px;
+  overflow: visible;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.modal--expected-edit .cat-color-row.tx-edit-cat-color-panel .cat-swatch{
+  width: 14px;
+  height: 14px;
+}
+.modal--expected-edit .cat-color-row.tx-edit-cat-color-panel .cat-swatch.is-active{
+  outline-width: 2px;
+  outline-offset: 1px;
+}
+.modal--expected-edit .cat-color-row.tx-edit-cat-color-panel .cat-swatch--custom::before{
+  font-size: 12px;
+}
+.modal--expected-edit .tx-edit-cat-color-clear{
+  appearance: none;
+  background: transparent !important;
+  border: none !important;
+  padding: 2px 4px !important;
+  margin-left: 4px;
+  font: inherit;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  color: rgba(100, 116, 139, 0.78) !important;
+  text-decoration: underline !important;
+  text-decoration-thickness: 1px !important;
+  text-underline-offset: 2px !important;
+  cursor: pointer;
+  box-shadow: none !important;
+  min-height: 0 !important;
+  border-radius: 0 !important;
+}
+.modal--expected-edit .tx-edit-cat-color-clear:hover{
+  color: rgba(17, 24, 39, 0.86) !important;
+}
+.modal--expected-edit .tx-edit-cat-color-clear[disabled]{
+  opacity: 0.4;
+  cursor: not-allowed;
+  text-decoration: none !important;
+}
+
+/* Recurring settings: tinted group so frequency/end/variable read as one cluster. */
+.modal--expected-edit .tx-edit-recurring-group{
+  position: relative;
+  margin: 10px 0 4px;
+  padding: 10px 12px 8px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.022);
+  border: 1px solid rgba(17, 24, 39, 0.045);
+}
+.modal--expected-edit .tx-edit-recurring-group::before{
+  content: "Recurring settings";
+  display: block;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(100, 116, 139, 0.78);
+  margin: -2px 0 8px;
+}
+.modal--expected-edit .tx-edit-recurring-group .form-row-h + .form-row-h{
+  margin-top: 6px;
+}
+.modal--expected-edit .tx-edit-recurring-group .tx-add-vspace{
+  height: 4px;
+}
+.modal--expected-edit .tx-edit-recurring-group #txEditRecurringVariableWrap{
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(17, 24, 39, 0.05);
+}
+.modal--expected-edit .tx-edit-recurring-group #txEditRecurringVariableWrap .form-row-h__label{
+  white-space: normal;
+}
+.modal--expected-edit .tx-edit-recurring-group #txEditRecurringVariableWrap .form-row-h__label label{
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(55, 65, 81, 0.92);
+  text-transform: none;
+  letter-spacing: 0;
+  white-space: normal;
+}
+.modal--expected-edit .tx-edit-recurring-group #txEditRecurringVariableWrap .form-row-h__field{
+  padding-left: 0;
+  align-self: center;
+}
+.tx-edit-variable-hint{
+  display: block;
+  font-size: 10px;
+  font-weight: 400;
+  color: rgba(100, 116, 139, 0.72);
+  letter-spacing: 0;
+  line-height: 1.25;
+}
+
+/* Ends dropdown: matches other selects, narrower so it doesn't dominate. */
+.modal--expected-edit .tx-edit-ends-mode-select{
+  font-size: 13px;
+}
+.modal--expected-edit .tx-edit-ends-after-row{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.modal--expected-edit .tx-edit-ends-after-row > input{
+  width: 5.5rem;
+  flex: 0 0 5.5rem;
+}
+.modal--expected-edit .tx-edit-ends-after-row .tx-add-field-hint{
+  font-size: 11px;
+  color: rgba(100, 116, 139, 0.78);
+}
+
+/* Notes: shorter resting state, recedes until focused. */
+.modal--expected-edit #txEditNotes.input-notes-flex{
+  padding: 5px 9px;
+  font-size: 12.5px;
+  line-height: 1.25;
+  background: rgba(15, 23, 42, 0.015);
+  border-color: rgba(17, 24, 39, 0.06);
+  min-height: 0;
+}
+.modal--expected-edit #txEditNotes.input-notes-flex:focus{
+  padding-top: 6px;
+  padding-bottom: 6px;
+  background: var(--panel, #fff);
+  border-color: rgba(17, 24, 39, 0.2);
+}
+
+/* Footer actions: Save dominates; Close + Delete recede. */
+.modal--expected-edit #txEditInner > .modal-actions #txEditFooterSecondary.tx-edit-actions-row,
+#txEditInner > .modal-actions #txEditFooterSecondary.tx-edit-actions-row{
+  gap: 8px;
+  align-items: center;
+}
+.modal--expected-edit #txEditCancel,
+#txEditInner #txEditCancel.tx-edit-dismiss--close{
+  background: transparent !important;
+  border-color: transparent !important;
+  color: rgba(100, 116, 139, 0.68) !important;
+  font-weight: 500 !important;
+  box-shadow: none !important;
+}
+.modal--expected-edit #txEditCancel:hover,
+#txEditInner #txEditCancel.tx-edit-dismiss--close:hover{
+  background: rgba(15, 23, 42, 0.05) !important;
+  border-color: transparent !important;
+  color: rgba(31, 41, 55, 0.88) !important;
+}
+.modal--expected-edit #txEditDelete.danger{
+  background: transparent !important;
+  border: 1px solid rgba(167, 55, 68, 0.22) !important;
+  color: rgba(167, 55, 68, 0.78) !important;
+  font-weight: 500 !important;
+  box-shadow: none !important;
+}
+.modal--expected-edit #txEditDelete.danger:hover{
+  background: rgba(167, 55, 68, 0.06) !important;
+  border-color: rgba(167, 55, 68, 0.32) !important;
+  color: rgba(167, 55, 68, 0.92) !important;
 }
 .expected-modal-mode-row{
   display: flex;

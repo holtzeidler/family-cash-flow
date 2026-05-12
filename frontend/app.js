@@ -1102,8 +1102,25 @@ function updateInstanceTwiceMonthlyVisibility() {
   instanceTwiceMonthlyFields.style.display = on ? "block" : "none";
 }
 
+const instanceEndsMode = document.getElementById("instanceEndsMode");
+
+function updateInstanceEndsDetailUi() {
+  const row = document.getElementById("txEditEndCountRow");
+  if (!row) return;
+  const mode = instanceEndsMode?.value || "never";
+  if (mode === "after_count") {
+    row.hidden = false;
+  } else {
+    row.hidden = true;
+    if (instanceEndCount) instanceEndCount.value = "";
+  }
+}
+
 if (instanceRecurrence) {
   instanceRecurrence.addEventListener("change", updateInstanceTwiceMonthlyVisibility);
+}
+if (instanceEndsMode) {
+  instanceEndsMode.addEventListener("change", updateInstanceEndsDetailUi);
 }
 
 const txEditModal = document.getElementById("txEditModal");
@@ -2858,6 +2875,11 @@ function applyTransactionEditMode(mode, opts = {}) {
     if (instanceAccountId) instanceAccountId.disabled = false;
     if (instanceSecondDayOfMonth) instanceSecondDayOfMonth.disabled = false;
     if (instanceEndCount) instanceEndCount.disabled = false;
+    if (instanceEndsMode) {
+      instanceEndsMode.disabled = false;
+      instanceEndsMode.value = "never";
+    }
+    try { updateInstanceEndsDetailUi(); } catch (_) {}
     const saveRow = document.getElementById("txEditSaveRow");
     if (saveRow) saveRow.style.display = "";
     const txEditDel = document.getElementById("txEditDelete");
@@ -2904,6 +2926,11 @@ function applyTransactionEditMode(mode, opts = {}) {
   }
   if (instanceSecondDayOfMonth) instanceSecondDayOfMonth.disabled = !recurring;
   if (instanceEndCount) instanceEndCount.disabled = !recurring;
+  if (instanceEndsMode) {
+    instanceEndsMode.disabled = !recurring;
+    if (!recurring) instanceEndsMode.value = "never";
+  }
+  try { updateInstanceEndsDetailUi(); } catch (_) {}
 
   const acctCol = document.getElementById("txEditAccountCol");
   if (acctCol) acctCol.style.display = "block";
@@ -2936,9 +2963,34 @@ function applyTransactionEditMode(mode, opts = {}) {
 
   const notesRowEl = document.getElementById("txEditNotesRow");
   const varWrapEl = document.getElementById("txEditRecurringVariableWrap");
-  if (notesRowEl && varWrapEl && varWrapEl.parentNode) {
-    varWrapEl.parentNode.insertBefore(notesRowEl, varWrapEl);
-    notesRowEl.classList.add("tx-edit-notes-row--in-panel");
+  const schWrap = document.getElementById("txEditRecurringScheduleWrap");
+  const acctCol = document.getElementById("txEditAccountCol");
+  const panel = document.getElementById("expectedEditInstancePanel");
+  // Recurring layout order:
+  //   Type → Amount → Category → Color → Date
+  //   Recurring group { Recurrence, Ends, Variable amount }
+  //   Account
+  //   Notes
+  if (recurring) {
+    if (varWrapEl && schWrap && varWrapEl.parentNode !== schWrap) {
+      schWrap.appendChild(varWrapEl);
+    }
+    if (notesRowEl && acctCol && acctCol.parentNode) {
+      acctCol.parentNode.insertBefore(notesRowEl, acctCol.nextSibling);
+      notesRowEl.classList.add("tx-edit-notes-row--in-panel");
+    }
+  } else {
+    if (varWrapEl && panel && varWrapEl.parentNode === schWrap) {
+      panel.appendChild(varWrapEl);
+    }
+    if (notesRowEl && varWrapEl && varWrapEl.parentNode) {
+      varWrapEl.parentNode.insertBefore(notesRowEl, varWrapEl);
+      notesRowEl.classList.add("tx-edit-notes-row--in-panel");
+    }
+  }
+  // Label the recurring schedule wrap so we can group it visually via CSS.
+  if (schWrap) {
+    schWrap.classList.toggle("tx-edit-recurring-group", recurring);
   }
 }
 
@@ -5724,6 +5776,7 @@ const txEditCategoryColorPicker = renderCategoryColorPicker({
   rowEl: txEditCategoryColorRow,
   swatchesEl: txEditCategoryColorSwatches,
   clearBtn: txEditCategoryColorClear,
+  unhideRow: false,
   getCategoryId: () => categoryIdFromCategoryField("txEditCategoryId"),
   getBg: () => txEditSelectedBgColor,
   setBg: (v) => {
@@ -5732,12 +5785,54 @@ const txEditCategoryColorPicker = renderCategoryColorPicker({
   },
 });
 
+function txEditEffectiveColor() {
+  const raw = txEditSelectedBgColor ? String(txEditSelectedBgColor).trim() : "";
+  if (raw && raw.toLowerCase() === "none") return null;
+  if (raw) return raw;
+  const cid = categoryIdFromCategoryField("txEditCategoryId");
+  const st = categoryStyleFromId(cid);
+  const catBg = st && st.bg ? String(st.bg).trim() : "";
+  if (catBg && catBg.toLowerCase() !== "none") return catBg;
+  return null;
+}
+
+function applyTxEditColorPanelOpen(open) {
+  const btn = document.getElementById("txEditAddColorBtn");
+  const trigger = document.getElementById("txEditAddColorRow");
+  const panel = txEditCategoryColorRow;
+  if (!panel) return;
+  if (open) {
+    panel.hidden = false;
+    if (trigger) trigger.hidden = true;
+    if (btn) btn.setAttribute("aria-expanded", "true");
+  } else {
+    panel.hidden = true;
+    if (trigger) trigger.hidden = false;
+    if (btn) btn.setAttribute("aria-expanded", "false");
+  }
+}
+
+function updateTxEditAddColorButtonState() {
+  applyTxEditColorPanelOpen(!!txEditEffectiveColor());
+}
+
 function refreshTxCategoryColorPickers() {
   try {
     if (txAddCategoryColorPicker) txAddCategoryColorPicker.refresh();
     if (txEditCategoryColorPicker) txEditCategoryColorPicker.refresh();
   } catch (_) {}
   try { refreshTxAddColorChipDot(); } catch (_) {}
+  try { updateTxEditAddColorButtonState(); } catch (_) {}
+}
+
+{
+  const addColorBtn = document.getElementById("txEditAddColorBtn");
+  if (addColorBtn && txEditCategoryColorRow) {
+    addColorBtn.addEventListener("click", () => {
+      applyTxEditColorPanelOpen(true);
+      try { txEditCategoryColorPicker.refresh(); } catch (_) {}
+    });
+  }
 }
 
 function setCategoryFieldValue(fieldId, categoryIdOrNull) {
@@ -6560,6 +6655,11 @@ function openExpectedEditModal(tx, opts = {}) {
     const v = (selectedExpectedSeriesTx && selectedExpectedSeriesTx.end_count) != null ? selectedExpectedSeriesTx.end_count : tx.end_count;
     instanceEndCount.value = v != null ? String(v) : "";
   }
+  if (instanceEndsMode) {
+    const cnt = instanceEndCount && instanceEndCount.value ? Number(instanceEndCount.value) : null;
+    instanceEndsMode.value = cnt && cnt > 0 ? "after_count" : "never";
+  }
+  updateInstanceEndsDetailUi();
   updateInstanceTwiceMonthlyVisibility();
 
   // Seed the color picker from the effective instance/series style.

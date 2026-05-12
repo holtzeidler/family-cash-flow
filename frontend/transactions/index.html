@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=392" />
+    <link rel="stylesheet" href="../styles.css?v=393" />
   </head>
   <body>
     <div class="container">
@@ -1072,10 +1072,16 @@
             <div class="form-row-h__label"><label for="txEditCategoryId">Category</label></div>
             <div class="form-row-h__field"><select id="txEditCategoryId"></select></div>
           </div>
-          <div id="txEditCategoryColorRow" class="cat-color-row" hidden>
-            <div class="cat-color-row__label">Select color (optional)</div>
+          <div id="txEditAddColorRow" class="tx-edit-add-color-row">
+            <button type="button" id="txEditAddColorBtn" class="tx-edit-add-color-btn" aria-expanded="false" aria-controls="txEditCategoryColorRow">
+              <span class="tx-edit-add-color-btn__plus" aria-hidden="true">+</span>
+              <span>Add color</span>
+            </button>
+          </div>
+          <div id="txEditCategoryColorRow" class="cat-color-row tx-edit-cat-color-panel" hidden>
+            <div class="cat-color-row__label">Color</div>
             <div class="cat-color-row__swatches" id="txEditCategoryColorSwatches"></div>
-            <button type="button" class="cat-color-row__clear secondary" id="txEditCategoryColorClear" hidden>Clear</button>
+            <button type="button" class="cat-color-row__clear tx-edit-cat-color-clear" id="txEditCategoryColorClear" hidden>Clear</button>
           </div>
           <div class="tx-add-vspace" aria-hidden="true"></div>
           <div class="form-row-h">
@@ -1118,12 +1124,23 @@
             <div class="tx-add-vspace" aria-hidden="true"></div>
             <div class="form-row-h">
               <div class="form-row-h__label">
-                <label for="instanceEndCount" title="Optional. Number of times this recurring transaction happens. Blank = never ends.">Ends after</label>
+                <label for="instanceEndsMode" title="When the recurring series stops.">Ends</label>
+              </div>
+              <div class="form-row-h__field">
+                <select id="instanceEndsMode" class="tx-edit-ends-mode-select" title="When the recurring series stops.">
+                  <option value="never" selected>Never</option>
+                  <option value="after_count">After number of times</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row-h tx-edit-ends-detail" id="txEditEndCountRow" hidden>
+              <div class="form-row-h__label">
+                <label for="instanceEndCount">Occurrences</label>
               </div>
               <div class="form-row-h__field">
                 <div class="tx-edit-ends-after-row">
-                  <input id="instanceEndCount" type="number" min="1" step="1" placeholder="e.g. 12" title="Optional. Total number of occurrences." />
-                  <span class="tx-add-field-hint">occurrences</span>
+                  <input id="instanceEndCount" type="number" min="1" step="1" placeholder="e.g. 12" title="Total number of occurrences." />
+                  <span class="tx-add-field-hint">total</span>
                 </div>
               </div>
             </div>
@@ -1145,7 +1162,9 @@
                 <label
                   for="seriesVariable"
                   title="Used for bills that change each month (e.g. utilities, credit cards)"
-                >Variable amount (estimate)</label>
+                >Variable amount
+                  <span class="tx-edit-variable-hint">Smooths month-to-month bills</span>
+                </label>
               </div>
               <div class="form-row-h__field">
                 <input id="seriesVariable" type="checkbox" title="Shows italic on calendar until unchecked and saved as series" />
@@ -1335,6 +1354,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="../app.js?v=256"></script>
+    <script src="../app.js?v=257"></script>
   </body>
 </html>
