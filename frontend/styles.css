@@ -6045,6 +6045,14 @@ label{
 .balance-threshold-box--panel.balance-threshold-box--compact{
   padding: 10px 12px 12px;
 }
+/* Used when the threshold box sits inside a Settings subsection that already
+   provides the surrounding card; we drop the redundant border/background. */
+.balance-threshold-box--panel.balance-threshold-box--flush{
+  border: 0;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+}
 .settings-pane[data-settings-pane="forecastRules"] .settings-subhead--thresholds{
   margin: 0 0 8px;
   font-size: 0.8125rem;
@@ -6191,13 +6199,16 @@ body[data-bw-view="settings"] .settings-section-body{
 body[data-bw-view="settings"] .settings-actions-row{
   margin-top: 8px;
 }
-body[data-bw-view="settings"] .settings-pane[data-settings-pane="forecastRules"] .balance-threshold-box--panel{
+body[data-bw-view="settings"] .settings-pane[data-settings-pane="forecastSetup"] .balance-threshold-box--panel{
   padding: 10px 12px;
 }
-body[data-bw-view="settings"] .settings-pane[data-settings-pane="forecastRules"] .form-row-h{
+body[data-bw-view="settings"] .settings-pane[data-settings-pane="forecastSetup"] .balance-threshold-box--panel.balance-threshold-box--flush{
+  padding: 0;
+}
+body[data-bw-view="settings"] .settings-pane[data-settings-pane="forecastSetup"] .form-row-h{
   padding: 4px 0;
 }
-body[data-bw-view="settings"] .settings-pane[data-settings-pane="forecastRules"] .form-row-h + .form-row-h{
+body[data-bw-view="settings"] .settings-pane[data-settings-pane="forecastSetup"] .form-row-h + .form-row-h{
   margin-top: 2px;
 }
 .settings-nav.settings-nav--rail{
@@ -6226,18 +6237,18 @@ body[data-bw-view="settings"] .settings-pane[data-settings-pane="forecastRules"]
   box-shadow: none;
 }
 body[data-bw-view="settings"] .settings-nav.settings-nav--rail{
-  padding: 5px;
-  gap: 2px;
+  padding: 4px;
+  gap: 1px;
 }
 body[data-bw-view="settings"] .settings-nav--rail .settings-nav-item{
-  padding: 5px 7px;
-  font-size: 10.25px;
+  padding: 6px 8px;
+  font-size: 11px;
   font-weight: 500;
-  color: rgba(75, 85, 99, 0.72);
+  color: rgba(75, 85, 99, 0.78);
 }
 body[data-bw-view="settings"] .settings-nav--rail .settings-nav-item:hover{
   background: rgba(0, 0, 0, 0.02);
-  color: rgba(55, 65, 75, 0.88);
+  color: rgba(55, 65, 75, 0.92);
 }
 body[data-bw-view="settings"] .settings-nav--rail .settings-nav-item.is-active{
   font-weight: 600;
@@ -6250,6 +6261,65 @@ body[data-bw-view="settings"] .settings-nav--rail .settings-nav-item.is-active{
   width: auto;
   height: auto;
   font-size: 9px;
+}
+/* Flat rail variant: consolidated nav (no chevrons, no boxed active state).
+   The selected item is signaled by a soft left rule + slightly darker text,
+   so the rail reads as part of the page rather than a tray of buttons. */
+.settings-nav.settings-nav--flat{
+  border: 0;
+  background: transparent;
+  padding: 0;
+  gap: 0;
+}
+.settings-nav--flat .settings-nav-item{
+  position: relative;
+  border: 0;
+  background: transparent;
+  border-radius: 0;
+  padding: 7px 10px 7px 14px;
+  margin: 0;
+  box-shadow: none;
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.1px;
+  color: rgba(55, 65, 75, 0.74);
+  justify-content: flex-start;
+}
+.settings-nav--flat .settings-nav-item:hover{
+  background: rgba(11, 61, 46, 0.035);
+  color: rgba(31, 41, 55, 0.92);
+}
+.settings-nav--flat .settings-nav-item.is-active{
+  background: transparent;
+  color: rgba(11, 61, 46, 0.96);
+  font-weight: 700;
+  box-shadow: none;
+  border-color: transparent;
+}
+.settings-nav--flat .settings-nav-item.is-active::before{
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 6px;
+  bottom: 6px;
+  width: 2px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--accent) 78%, transparent);
+}
+.settings-nav--flat .settings-nav-item__chev{
+  display: none;
+}
+body[data-bw-view="settings"] .settings-nav.settings-nav--flat{
+  padding: 2px 0;
+  gap: 0;
+}
+body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item{
+  padding: 5px 8px 5px 13px;
+  font-size: 11px;
+}
+body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::before{
+  top: 4px;
+  bottom: 4px;
 }
 .tx-edit-top .form-row-h__label label{
   color: rgba(255, 255, 255, 0.92);
@@ -10775,7 +10845,8 @@ body.plans-page--polished .plans-wrap{
   border-radius: 5px;
 }
 .cal-day-tx-line--impact-lg::before,
-.cal-day-tx-line--impact-xxl::before{
+.cal-day-tx-line--impact-xxl::before,
+.cal-day-tx-line--has-color::before{
   content: "";
   position: absolute;
   left: 0;
@@ -10783,16 +10854,20 @@ body.plans-page--polished .plans-wrap{
   bottom: 1px;
   width: 2px;
   border-radius: 2px;
-  background: rgba(100, 116, 139, 0.38);
+  background: var(--cal-tx-stripe, rgba(100, 116, 139, 0.38));
   pointer-events: none;
 }
 .cal-day-tx-line--impact-lg.cal-day-tx-line--flow-in::before,
 .cal-day-tx-line--impact-xxl.cal-day-tx-line--flow-in::before{
-  background: rgba(22, 101, 52, 0.55);
+  background: var(--cal-tx-stripe, rgba(22, 101, 52, 0.55));
 }
 .cal-day-tx-line--impact-lg.cal-day-tx-line--flow-out::before,
 .cal-day-tx-line--impact-xxl.cal-day-tx-line--flow-out::before{
-  background: rgba(180, 83, 9, 0.42);
+  background: var(--cal-tx-stripe, rgba(180, 83, 9, 0.42));
+}
+.cal-day-tx-line--has-color{
+  padding-left: 5px;
+  border-radius: 5px;
 }
 .cal-day-tx-line--impact-lg{
   background: rgba(248, 250, 249, 0.65);

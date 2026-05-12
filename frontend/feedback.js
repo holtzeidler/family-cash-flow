@@ -593,7 +593,9 @@
         btn.classList.add("is-active");
       });
     });
-    card.querySelector("[data-bw-pulse-dismiss]").addEventListener("click", () => closePulse(false));
+    // Treat the "×" as a permanent dismissal — the user has decided they're done
+    // with this prompt. Don't requeue it from any future milestone events.
+    card.querySelector("[data-bw-pulse-dismiss]").addEventListener("click", () => closePulse(true));
     card.querySelector("[data-bw-pulse-never]").addEventListener("click", () => {
       if (pulseCurrentId) markPulseSeen(pulseCurrentId);
       closePulse(false);

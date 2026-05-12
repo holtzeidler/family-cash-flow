@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=407" />
+    <link rel="stylesheet" href="../styles.css?v=409" />
   </head>
   <body>
     <div class="container">
@@ -69,34 +69,18 @@
               <div id="sidebarHighBalanceBanner" class="calendar-low-balance calendar-low-balance--sidebar calendar-low-balance--high" style="display: none" role="status"></div>
             </div>
 
-            <div id="settingsSidebarNav" class="settings-nav settings-nav--sidebar settings-nav--rail" hidden aria-label="Settings sections">
+            <div id="settingsSidebarNav" class="settings-nav settings-nav--sidebar settings-nav--rail settings-nav--flat" hidden aria-label="Settings sections">
               <button type="button" class="settings-nav-item is-active" data-settings-key="accounts">
-                <span class="settings-nav-item__label">Accounts</span>
-                <span class="settings-nav-item__chev" aria-hidden="true">▸</span>
+                <span class="settings-nav-item__label">Accounts &amp; Household</span>
               </button>
-              <button type="button" class="settings-nav-item" data-settings-key="forecastRules">
-                <span class="settings-nav-item__label">Forecast rules</span>
-                <span class="settings-nav-item__chev" aria-hidden="true">▸</span>
+              <button type="button" class="settings-nav-item" data-settings-key="forecastSetup">
+                <span class="settings-nav-item__label">Forecast Setup</span>
               </button>
-              <button type="button" class="settings-nav-item" data-settings-key="categories">
-                <span class="settings-nav-item__label">Categories &amp; groups</span>
-                <span class="settings-nav-item__chev" aria-hidden="true">▸</span>
-              </button>
-              <button type="button" class="settings-nav-item" data-settings-key="familySharing" hidden>
-                <span class="settings-nav-item__label">Household</span>
-                <span class="settings-nav-item__chev" aria-hidden="true">▸</span>
-              </button>
-              <button type="button" class="settings-nav-item" data-settings-key="notifications">
-                <span class="settings-nav-item__label">Notifications</span>
-                <span class="settings-nav-item__chev" aria-hidden="true">▸</span>
+              <button type="button" class="settings-nav-item" data-settings-key="preferences">
+                <span class="settings-nav-item__label">Preferences &amp; Alerts</span>
               </button>
               <button type="button" class="settings-nav-item" data-settings-key="billing">
                 <span class="settings-nav-item__label">Billing</span>
-                <span class="settings-nav-item__chev" aria-hidden="true">▸</span>
-              </button>
-              <button type="button" class="settings-nav-item" data-settings-key="preferences">
-                <span class="settings-nav-item__label">Preferences</span>
-                <span class="settings-nav-item__chev" aria-hidden="true">▸</span>
               </button>
             </div>
           </div>
@@ -442,191 +426,194 @@
               <div class="settings-content settings-content--hub card">
                 <div class="settings-pane is-active" data-settings-pane="accounts" id="settingsAccountsPane">
                   <header class="settings-section-head">
-                    <h2 class="settings-section-title" id="settingsAccountsHeading">Accounts</h2>
-                    <p class="settings-section-lede">Accounts included in your forecast.</p>
+                    <h2 class="settings-section-title" id="settingsAccountsHeading">Accounts &amp; Household</h2>
+                    <p class="settings-section-lede">Who and what belongs in your forecast.</p>
                   </header>
                   <div class="settings-section-body">
-                    <div class="list settings-account-list" id="accountsList"></div>
-                    <div class="settings-actions-row">
-                      <button type="button" id="openAccountModalBtn" class="secondary settings-add-account-btn">Add account</button>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="settings-pane" data-settings-pane="forecastRules" hidden>
-                  <header class="settings-section-head">
-                    <h2 class="settings-section-title">Forecast rules</h2>
-                    <p class="settings-section-lede">Balance signals for Forecast, Reports, and sidebar outlook.</p>
-                  </header>
-                  <div class="balance-threshold-box balance-threshold-box--panel balance-threshold-box--compact" aria-label="Forecast thresholds">
-                    <h3 class="settings-subhead settings-subhead--thresholds">Thresholds</h3>
-                    <p class="balance-threshold-lede">Surface tight cash before transfers, and when checking sits above your comfort zone.</p>
-                    <div class="balance-threshold-fields">
-                      <div class="form-row-h">
-                        <div class="form-row-h__label"><label for="balanceThresholdMin">Balance floor (warn below)</label></div>
-                        <div class="form-row-h__field">
-                          <div class="money-input threshold-input">
-                            <span class="money-input__prefix" aria-hidden="true">$</span>
-                            <input id="balanceThresholdMin" type="text" inputmode="decimal" autocomplete="off" placeholder="e.g. 1000" />
-                          </div>
-                        </div>
-                      </div>
-                      <div class="form-row-h">
-                        <div class="form-row-h__label"><label for="balanceThresholdMax">Comfort ceiling (optional)</label></div>
-                        <div class="form-row-h__field">
-                          <div class="money-input threshold-input">
-                            <span class="money-input__prefix" aria-hidden="true">$</span>
-                            <input id="balanceThresholdMax" type="text" inputmode="decimal" autocomplete="off" placeholder="e.g. 10000" />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div class="balance-threshold-card-foot">
-                      <div class="balance-threshold-card-foot__msg">
-                        <div id="lowBalanceErr" class="error" style="display: none" role="alert"></div>
-                        <p id="balanceThresholdSavedMsg" class="balance-threshold-saved-msg" hidden aria-live="polite" role="status"></p>
-                      </div>
-                      <button type="button" id="balanceThresholdSaveBtn" class="secondary">Save</button>
-                    </div>
-                    <p class="balance-threshold-hint meta">Blank turns a threshold off. Save applies for this household.</p>
-                  </div>
-                </div>
-
-                <div class="settings-pane" data-settings-pane="categories" hidden>
-                  <header class="settings-section-head">
-                    <h2 class="settings-section-title">Categories &amp; groups</h2>
-                    <p class="settings-section-lede">Structure for organizing transactions—groups are headers only.</p>
-                  </header>
-                  <div class="categories-toolbar categories-toolbar--lite" role="toolbar" aria-label="Category actions">
-                    <button type="button" id="addCategoryGroupBtn" class="settings-cat-toolbar__btn">+ Add group</button>
-                    <button type="button" id="focusNewCategoryBtn" class="settings-cat-toolbar__btn">+ Add category</button>
-                    <div id="addGroupInline" class="add-group-inline" hidden>
-                      <label for="newGroupName" class="sr-only">New group name</label>
-                      <input id="newGroupName" type="text" placeholder="New group name" />
-                      <button type="button" id="saveGroupBtn">Save</button>
-                      <button type="button" id="cancelGroupBtn" class="secondary">Cancel</button>
-                    </div>
-                  </div>
-                  <p class="meta categories-toolbar-hint">
-                    Groups are section headers only. Drag to reorder groups or categories; add new categories using the row below.
-                  </p>
-                  <div id="categoriesTree" class="cat-tree" aria-live="polite"></div>
-                  <div style="height:10px;"></div>
-                  <div class="categories-actions">
-                    <div class="categories-new-field">
-                      <label for="newCategoryGroupId">Group</label>
-                      <select id="newCategoryGroupId" aria-label="Group for new category"></select>
-                    </div>
-                    <div class="categories-new-field">
-                      <label for="newCategoryName">New category</label>
-                      <input id="newCategoryName" type="text" placeholder="e.g. Groceries" />
-                    </div>
-                    <button id="addCategoryBtn">Add category</button>
-                  </div>
-                  <div id="catErr" class="error"></div>
-                </div>
-
-                <div class="settings-pane" data-settings-pane="familySharing" hidden>
-                  <header class="settings-section-head">
-                    <h2 class="settings-section-title">Household</h2>
-                    <p class="settings-section-lede">Invite someone to shared forecasting, or manage who’s already in.</p>
-                  </header>
-                  <div id="familyInviteWrap" class="family-invite-wrap" hidden>
                     <div class="settings-subsection">
-                      <h3 class="settings-subhead">Invite someone</h3>
-                      <div class="form-row-h">
-                        <div class="form-row-h__label"><label for="familyInviteEmail">Email</label></div>
-                        <div class="form-row-h__field">
-                          <input id="familyInviteEmail" type="email" autocomplete="off" placeholder="name@example.com" />
+                      <h3 class="settings-subhead">Accounts</h3>
+                      <div class="list settings-account-list" id="accountsList"></div>
+                      <div class="settings-actions-row">
+                        <button type="button" id="openAccountModalBtn" class="secondary settings-add-account-btn">Add account</button>
+                      </div>
+                    </div>
+                    <div class="settings-subsection settings-subsection--spaced" data-settings-subsection="familySharing">
+                      <h3 class="settings-subhead">Household</h3>
+                      <p class="settings-subsection-hint">Invite someone to shared forecasting, or manage who’s already in.</p>
+                      <div id="familyInviteWrap" class="family-invite-wrap" hidden>
+                        <div class="settings-subsection">
+                          <h4 class="settings-subhead">Invite someone</h4>
+                          <div class="form-row-h">
+                            <div class="form-row-h__label"><label for="familyInviteEmail">Email</label></div>
+                            <div class="form-row-h__field">
+                              <input id="familyInviteEmail" type="email" autocomplete="off" placeholder="name@example.com" />
+                            </div>
+                          </div>
+                          <div class="form-row-h">
+                            <div class="form-row-h__label"><label for="familyInviteAccess">Access</label></div>
+                            <div class="form-row-h__field">
+                              <select id="familyInviteAccess">
+                                <option value="view">View only</option>
+                                <option value="edit">Can edit</option>
+                              </select>
+                            </div>
+                          </div>
+                          <button type="button" id="familySendInviteBtn" class="settings-house-primary-btn">Send invite</button>
+                        </div>
+                        <div class="settings-subsection settings-subsection--spaced">
+                          <h4 class="settings-subhead">Already on BalanceWhiz?</h4>
+                          <p class="settings-subsection-hint">Add them to this household without email.</p>
+                          <button type="button" id="familyInviteBtn" class="secondary">Add to household</button>
                         </div>
                       </div>
-                      <div class="form-row-h">
-                        <div class="form-row-h__label"><label for="familyInviteAccess">Access</label></div>
-                        <div class="form-row-h__field">
-                          <select id="familyInviteAccess">
-                            <option value="view">View only</option>
-                            <option value="edit">Can edit</option>
-                          </select>
-                        </div>
+                      <div class="settings-house-section">
+                        <h4 class="settings-subhead">Pending invites</h4>
+                        <div id="familyPendingInvites" class="family-pending-invites"></div>
                       </div>
-                      <button type="button" id="familySendInviteBtn" class="settings-house-primary-btn">Send invite</button>
+                      <div class="settings-house-section">
+                        <h4 class="settings-subhead">Household members</h4>
+                        <div id="familyMembersList" class="family-members-list"></div>
+                        <div id="familyMembersErr" class="error"></div>
+                      </div>
                     </div>
-                    <div class="settings-subsection settings-subsection--spaced">
-                      <h3 class="settings-subhead">Already on BalanceWhiz?</h3>
-                      <p class="settings-subsection-hint">Add them to this household without email.</p>
-                      <button type="button" id="familyInviteBtn" class="secondary">Add to household</button>
-                    </div>
-                  </div>
-                  <div class="settings-house-section">
-                    <h3 class="settings-subhead">Pending invites</h3>
-                    <div id="familyPendingInvites" class="family-pending-invites"></div>
-                  </div>
-                  <div class="settings-house-section">
-                    <h3 class="settings-subhead">Household members</h3>
-                    <div id="familyMembersList" class="family-members-list"></div>
-                    <div id="familyMembersErr" class="error"></div>
                   </div>
                 </div>
 
-                <div class="settings-pane" data-settings-pane="notifications" hidden>
+                <div class="settings-pane" data-settings-pane="forecastSetup" hidden>
                   <header class="settings-section-head">
-                    <h2 class="settings-section-title">Notifications &amp; alerts</h2>
-                    <p class="settings-section-lede">How BalanceWhiz flags balance risk and big moves.</p>
+                    <h2 class="settings-section-title">Forecast Setup</h2>
+                    <p class="settings-section-lede">How your forecast behaves and how transactions are organized.</p>
                   </header>
-                  <ul class="settings-notif-list" aria-label="Notification preferences">
-                    <li class="settings-notif-row">
-                      <div class="settings-notif-row__main">
-                        <span class="settings-notif-row__label">Low balance alerts</span>
-                        <span class="settings-notif-row__hint">Uses your floor in Forecast rules</span>
+
+                  <div class="settings-subsection">
+                    <h3 class="settings-subhead">Thresholds</h3>
+                    <div class="balance-threshold-box balance-threshold-box--panel balance-threshold-box--compact balance-threshold-box--flush" aria-label="Forecast thresholds">
+                      <p class="balance-threshold-lede">Surface tight cash before transfers, and when checking sits above your comfort zone.</p>
+                      <div class="balance-threshold-fields">
+                        <div class="form-row-h">
+                          <div class="form-row-h__label"><label for="balanceThresholdMin">Balance floor (warn below)</label></div>
+                          <div class="form-row-h__field">
+                            <div class="money-input threshold-input">
+                              <span class="money-input__prefix" aria-hidden="true">$</span>
+                              <input id="balanceThresholdMin" type="text" inputmode="decimal" autocomplete="off" placeholder="e.g. 1000" />
+                            </div>
+                          </div>
+                        </div>
+                        <div class="form-row-h">
+                          <div class="form-row-h__label"><label for="balanceThresholdMax">Comfort ceiling (optional)</label></div>
+                          <div class="form-row-h__field">
+                            <div class="money-input threshold-input">
+                              <span class="money-input__prefix" aria-hidden="true">$</span>
+                              <input id="balanceThresholdMax" type="text" inputmode="decimal" autocomplete="off" placeholder="e.g. 10000" />
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                      <span class="settings-notif-pill settings-notif-pill--on">On</span>
-                    </li>
-                    <li class="settings-notif-row">
-                      <div class="settings-notif-row__main">
-                        <span class="settings-notif-row__label">Large expense warnings</span>
+                      <div class="balance-threshold-card-foot">
+                        <div class="balance-threshold-card-foot__msg">
+                          <div id="lowBalanceErr" class="error" style="display: none" role="alert"></div>
+                          <p id="balanceThresholdSavedMsg" class="balance-threshold-saved-msg" hidden aria-live="polite" role="status"></p>
+                        </div>
+                        <button type="button" id="balanceThresholdSaveBtn" class="secondary">Save</button>
                       </div>
-                      <span class="settings-notif-pill settings-notif-pill--off">Off</span>
-                    </li>
-                    <li class="settings-notif-row">
-                      <div class="settings-notif-row__main">
-                        <span class="settings-notif-row__label">Weekly summary</span>
+                      <p class="balance-threshold-hint meta">Blank turns a threshold off. Save applies for this household.</p>
+                    </div>
+                  </div>
+
+                  <div class="settings-subsection settings-subsection--spaced">
+                    <h3 class="settings-subhead">Categories &amp; groups</h3>
+                    <p class="settings-subsection-hint">Structure for organizing transactions—groups are headers only.</p>
+                    <div class="categories-toolbar categories-toolbar--lite" role="toolbar" aria-label="Category actions">
+                      <button type="button" id="addCategoryGroupBtn" class="settings-cat-toolbar__btn">+ Add group</button>
+                      <button type="button" id="focusNewCategoryBtn" class="settings-cat-toolbar__btn">+ Add category</button>
+                      <div id="addGroupInline" class="add-group-inline" hidden>
+                        <label for="newGroupName" class="sr-only">New group name</label>
+                        <input id="newGroupName" type="text" placeholder="New group name" />
+                        <button type="button" id="saveGroupBtn">Save</button>
+                        <button type="button" id="cancelGroupBtn" class="secondary">Cancel</button>
                       </div>
-                      <span class="settings-notif-pill settings-notif-pill--soon">Soon</span>
-                    </li>
-                    <li class="settings-notif-row">
-                      <div class="settings-notif-row__main">
-                        <span class="settings-notif-row__label">Email alerts</span>
+                    </div>
+                    <p class="meta categories-toolbar-hint">
+                      Drag to reorder groups or categories; add new categories using the row below.
+                    </p>
+                    <div id="categoriesTree" class="cat-tree" aria-live="polite"></div>
+                    <div style="height:10px;"></div>
+                    <div class="categories-actions">
+                      <div class="categories-new-field">
+                        <label for="newCategoryGroupId">Group</label>
+                        <select id="newCategoryGroupId" aria-label="Group for new category"></select>
                       </div>
-                      <span class="settings-notif-pill settings-notif-pill--soon">Soon</span>
-                    </li>
-                  </ul>
-                  <p class="meta settings-notif-foot">
-                    More channels are on the way. Tune balance numbers in
-                    <button type="button" class="settings-text-btn" id="settingsJumpForecastRulesBtn">Forecast rules</button>.
-                  </p>
+                      <div class="categories-new-field">
+                        <label for="newCategoryName">New category</label>
+                        <input id="newCategoryName" type="text" placeholder="e.g. Groceries" />
+                      </div>
+                      <button id="addCategoryBtn">Add category</button>
+                    </div>
+                    <div id="catErr" class="error"></div>
+                  </div>
                 </div>
 
                 <div class="settings-pane" data-settings-pane="preferences" hidden>
                   <header class="settings-section-head">
-                    <h2 class="settings-section-title">Preferences</h2>
-                    <p class="settings-section-lede">Defaults for how BalanceWhiz opens and displays information.</p>
+                    <h2 class="settings-section-title">Preferences &amp; Alerts</h2>
+                    <p class="settings-section-lede">How BalanceWhiz opens, displays information, and signals balance risk.</p>
                   </header>
-                  <div class="form-row-h">
-                    <div class="form-row-h__label"><label for="prefDefaultLanding">Default landing page</label></div>
-                    <div class="form-row-h__field">
-                      <select id="prefDefaultLanding" disabled class="settings-select-muted">
-                        <option selected>Forecast</option>
-                      </select>
+
+                  <div class="settings-subsection">
+                    <h3 class="settings-subhead">Display</h3>
+                    <div class="form-row-h">
+                      <div class="form-row-h__label"><label for="prefDefaultLanding">Default landing page</label></div>
+                      <div class="form-row-h__field">
+                        <select id="prefDefaultLanding" disabled class="settings-select-muted">
+                          <option selected>Forecast</option>
+                        </select>
+                      </div>
                     </div>
-                  </div>
-                  <div class="form-row-h">
-                    <div class="form-row-h__label"><label>Quick tour</label></div>
-                    <div class="form-row-h__field">
-                      <button type="button" id="prefRestartTourBtn" class="bw-tour-restart-link" data-bw-tour-restart>Show me around again</button>
-                      <p class="meta settings-pref-note" style="margin-top:6px;">A 30-second walkthrough of the three most important interactions.</p>
+                    <div class="form-row-h">
+                      <div class="form-row-h__label"><label>Quick tour</label></div>
+                      <div class="form-row-h__field">
+                        <button type="button" id="prefRestartTourBtn" class="bw-tour-restart-link" data-bw-tour-restart>Show me around again</button>
+                        <p class="meta settings-pref-note" style="margin-top:6px;">A 30-second walkthrough of the three most important interactions.</p>
+                      </div>
                     </div>
+                    <p class="meta settings-pref-note">More defaults (calendar mode, currency, date format) coming soon.</p>
                   </div>
-                  <p class="meta settings-pref-note">More defaults (calendar mode, currency, date format) coming soon.</p>
+
+                  <div class="settings-subsection settings-subsection--spaced">
+                    <h3 class="settings-subhead">Alerts</h3>
+                    <p class="settings-subsection-hint">How BalanceWhiz flags balance risk and big moves.</p>
+                    <ul class="settings-notif-list" aria-label="Notification preferences">
+                      <li class="settings-notif-row">
+                        <div class="settings-notif-row__main">
+                          <span class="settings-notif-row__label">Low balance alerts</span>
+                          <span class="settings-notif-row__hint">Uses your floor in Forecast Setup</span>
+                        </div>
+                        <span class="settings-notif-pill settings-notif-pill--on">On</span>
+                      </li>
+                      <li class="settings-notif-row">
+                        <div class="settings-notif-row__main">
+                          <span class="settings-notif-row__label">Large expense warnings</span>
+                        </div>
+                        <span class="settings-notif-pill settings-notif-pill--off">Off</span>
+                      </li>
+                      <li class="settings-notif-row">
+                        <div class="settings-notif-row__main">
+                          <span class="settings-notif-row__label">Weekly summary</span>
+                        </div>
+                        <span class="settings-notif-pill settings-notif-pill--soon">Soon</span>
+                      </li>
+                      <li class="settings-notif-row">
+                        <div class="settings-notif-row__main">
+                          <span class="settings-notif-row__label">Email alerts</span>
+                        </div>
+                        <span class="settings-notif-pill settings-notif-pill--soon">Soon</span>
+                      </li>
+                    </ul>
+                    <p class="meta settings-notif-foot">
+                      More channels are on the way. Tune balance numbers in
+                      <button type="button" class="settings-text-btn" id="settingsJumpForecastRulesBtn">Forecast Setup</button>.
+                    </p>
+                  </div>
                 </div>
 
                 <div class="settings-pane" data-settings-pane="billing" hidden>
@@ -1255,8 +1242,8 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="../app.js?v=267"></script>
-    <script src="../feedback.js?v=2" defer></script>
+    <script src="../app.js?v=269"></script>
+    <script src="../feedback.js?v=3" defer></script>
     <script src="../tour.js?v=1" defer></script>
   </body>
 </html>

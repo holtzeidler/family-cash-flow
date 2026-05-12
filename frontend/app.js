@@ -2308,7 +2308,7 @@ if (settingsViewPanel) {
     const jump = e.target && e.target.closest("#settingsJumpForecastRulesBtn");
     if (!jump) return;
     e.preventDefault();
-    activateSettingsSection("forecastRules");
+    activateSettingsSection("forecastSetup");
   });
 }
 
@@ -3186,11 +3186,19 @@ function mountTxAddFormInSidebar() {
 }
 
 function activateSettingsSection(key) {
+  // Settings IA was consolidated from 7 panes down to 4 (Accounts & Household,
+  // Forecast Setup, Preferences & Alerts, Billing). The old section keys still
+  // appear in some call sites and external deep-links, so map them onto the
+  // new home rather than 404ing the navigation.
   let k = String(key || "accounts");
-  if (k === "accountDetails") k = "accounts";
-  const f = (state.families || []).find((x) => Number(x.id) === Number(state.activeFamilyId));
-  const isFamilyAdmin = !!(f && String(f.role || "").toLowerCase() === "admin");
-  if (k === "familySharing" && !isFamilyAdmin) k = "accounts";
+  const LEGACY_KEY_MAP = {
+    accountDetails: "accounts",
+    familySharing: "accounts",
+    forecastRules: "forecastSetup",
+    categories: "forecastSetup",
+    notifications: "preferences",
+  };
+  if (LEGACY_KEY_MAP[k]) k = LEGACY_KEY_MAP[k];
 
   document.querySelectorAll("#settingsViewPanel .settings-nav-item, #settingsSidebarNav .settings-nav-item").forEach((btn) => {
     const on = btn.dataset.settingsKey === k;
@@ -3202,7 +3210,10 @@ function activateSettingsSection(key) {
     pane.classList.toggle("is-active", on);
     pane.hidden = !on;
   });
-  if (k === "familySharing") {
+  // Household lives inside the Accounts pane now. Load membership data as soon
+  // as that pane becomes active so the subsection isn't empty when a user
+  // scrolls down to it.
+  if (k === "accounts") {
     loadFamilyMembersPanel().catch((e) => {
       const el = document.getElementById("familyMembersErr");
       show(el, e.message || String(e));
@@ -5506,15 +5517,12 @@ function syncActiveFamilyFlags() {
 function syncSettingsFamilySharingNav() {
   const fam = (state.families || []).find((x) => Number(x.id) === Number(state.activeFamilyId));
   const isFamilyAdmin = !!(fam && String(fam.role || "").toLowerCase() === "admin");
-  document.querySelectorAll('.settings-nav-item[data-settings-key="familySharing"]').forEach((el) => {
+  // After the IA consolidation, Household lives inside the Accounts pane as a
+  // subsection rather than a standalone nav item. Hide that subsection from
+  // members who can't act on it.
+  document.querySelectorAll('[data-settings-subsection="familySharing"]').forEach((el) => {
     el.hidden = !isFamilyAdmin;
   });
-  if (!isFamilyAdmin) {
-    const active = document.querySelector(
-      '.settings-nav-item.is-active[data-settings-key="familySharing"]'
-    );
-    if (active) activateSettingsSection("accounts");
-  }
 }
 
 async function loadFamilyMembersPanel() {
@@ -9057,6 +9065,17 @@ function renderCalendar() {
         for (const p of calendarDayTxSemanticParts(row)) line.classList.add(p);
         if (isExpected && row.variable) line.classList.add("cal-expected-variable");
         if (!isExpected && !isStartBalance) line.dataset.txId = String(row.id);
+        // Apply an explicit per-transaction color to the row's left stripe.
+        // We only honor explicit overrides (not the category-inherited color),
+        // otherwise large categories would paint stripes for every row and
+        // make the calendar feel busy.
+        if (!isStartBalance) {
+          const rawBg = row && row.bg_color ? String(row.bg_color).trim() : "";
+          if (rawBg && rawBg.toLowerCase() !== "none") {
+            line.classList.add("cal-day-tx-line--has-color");
+            line.style.setProperty("--cal-tx-stripe", rawBg);
+          }
+        }
 
         // Match list UIs: prefer category (from API string or category_id → state.categories).
         // Forecast rows used to always show description (e.g. "ComEd") even when category was "Gas".
