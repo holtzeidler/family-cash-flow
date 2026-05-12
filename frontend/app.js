@@ -1971,7 +1971,7 @@ const catReportEnd = document.getElementById("catReportEnd");
 
 // After account creation, we show a one-time "forecast is ready" modal on first calendar load.
 const BW_FORECAST_READY_POPUP_KEY = "bw_forecast_ready_popup";
-const BW_FORECAST_READY_MODAL_VERSION = "4";
+const BW_FORECAST_READY_MODAL_VERSION = "6";
 const catReportYearSelect = document.getElementById("catReportYearSelect");
 const catReportRunBtn = document.getElementById("catReportRunBtn");
 const catReportErr = document.getElementById("catReportErr");
@@ -11158,23 +11158,17 @@ function ensureForecastReadyModal() {
   wrap.setAttribute("aria-hidden", "true");
   wrap.innerHTML = `
     <div class="modal modal--choice modal--forecast-ready" role="dialog" aria-modal="true" aria-labelledby="bwForecastReadyTitle" aria-describedby="bwForecastReadyDesc">
-      <h3 id="bwForecastReadyTitle">✓ Your forecast is ready</h3>
+      <h3 id="bwForecastReadyTitle">Your forecast is ready</h3>
       <div id="bwForecastReadyDesc" class="bw-forecast-ready__body">
-        <p class="bw-forecast-ready__tagline">See what’s coming before it happens.</p>
-        <p class="bw-forecast-ready__can-now">You can now:</p>
-        <ul class="bw-forecast-ready__can-list">
-          <li>forecast upcoming balances</li>
-          <li>track recurring income &amp; bills</li>
-          <li>spot low-balance periods before they happen</li>
-        </ul>
-        <ul class="bw-forecast-ready__fine-list" aria-label="Trial and pricing">
-          <li>14-day free trial included.</li>
-          <li><span id="bwForecastReadyPricingLine">$5.99/month after trial unless canceled.</span></li>
-        </ul>
+        <p class="bw-forecast-ready__tagline">Here are 3 quick things to know before you start.</p>
       </div>
       <div class="modal-actions bw-forecast-ready__actions">
-        <button type="button" class="bw-forecast-ready__cta" id="bwForecastReadyCloseBtn">Start your free trial</button>
+        <button type="button" class="bw-forecast-ready__cta" id="bwForecastReadyStartTourBtn">Start quick tour</button>
+        <button type="button" class="bw-forecast-ready__skip" id="bwForecastReadySkipBtn">Skip for now</button>
       </div>
+      <p class="bw-forecast-ready__finePrint" aria-label="Trial and pricing">
+        14-day free trial. <span id="bwForecastReadyPricingLine">$5.99/month after trial unless canceled.</span>
+      </p>
     </div>
   `;
   document.body.appendChild(wrap);
@@ -11186,10 +11180,31 @@ function ensureForecastReadyModal() {
       wrap.setAttribute("aria-hidden", "true");
     } catch (_) {}
   };
+  const startTourFromModal = () => {
+    close();
+    // Let the modal's fade-out finish so the spotlight calculations measure
+    // a stable layout — otherwise the first tooltip can land off-center.
+    window.setTimeout(() => {
+      try {
+        if (window.BW && window.BW.tour && typeof window.BW.tour.start === "function") {
+          window.BW.tour.start();
+        }
+      } catch (_) {}
+    }, 180);
+  };
+  const skipTourFromModal = () => {
+    close();
+    try {
+      if (window.BW && window.BW.tour && typeof window.BW.tour.markSkipped === "function") {
+        window.BW.tour.markSkipped();
+      }
+    } catch (_) {}
+  };
   wrap.addEventListener("click", (e) => {
     if (e.target === wrap) close();
   });
-  wrap.querySelector("#bwForecastReadyCloseBtn")?.addEventListener("click", close);
+  wrap.querySelector("#bwForecastReadyStartTourBtn")?.addEventListener("click", startTourFromModal);
+  wrap.querySelector("#bwForecastReadySkipBtn")?.addEventListener("click", skipTourFromModal);
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && wrap.classList.contains("modal-overlay--open")) close();
   });
@@ -11213,7 +11228,7 @@ function maybeShowForecastReadyPopup() {
   try {
     modal.classList.add("modal-overlay--open");
     modal.setAttribute("aria-hidden", "false");
-    modal.querySelector("#bwForecastReadyCloseBtn")?.focus?.();
+    modal.querySelector("#bwForecastReadyStartTourBtn")?.focus?.();
   } catch (_) {}
 }
 

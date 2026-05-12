@@ -91,6 +91,53 @@
     }
   }
 
+  /**
+   * Translate raw API error text into something we can show a user without
+   * leaking implementation details. The app.js `api()` helper throws
+   * `new Error(detail)` where `detail` is the raw FastAPI `detail` field —
+   * which for a missing route is just "Not Found". Surfacing that verbatim
+   * inside a feedback modal looks like a validation failure to the user.
+   *
+   * Special-cases the situation we hit during deploy: the feedback endpoint
+   * isn't live yet (`/api/feedback` → 404), so we tell the user to retry in
+   * a moment instead of showing a bare "Not Found".
+   */
+  const GENERIC_HTTP_DETAILS = new Set([
+    "not found",
+    "internal server error",
+    "bad gateway",
+    "service unavailable",
+    "gateway timeout",
+    "unauthorized",
+    "forbidden",
+    "method not allowed",
+    "request failed",
+  ]);
+
+  function friendlyFeedbackErrorMessage(err, opts) {
+    const raw = (err && err.message ? String(err.message) : "").trim();
+    if (!raw) return (opts && opts.fallback) || "Couldn’t send right now. Please try again in a moment.";
+    const lower = raw.toLowerCase();
+    // Generic HTTP detail bleeding through → mask completely.
+    if (GENERIC_HTTP_DETAILS.has(lower)) {
+      return (opts && opts.fallback) || "Couldn’t send right now. Please try again in a moment.";
+    }
+    // Anything beginning with "Request failed (5xx)" / "Request failed (4xx)" → mask.
+    if (/^request failed\s*\(\d{3}\)/i.test(raw)) {
+      return (opts && opts.fallback) || "Couldn’t send right now. Please try again in a moment.";
+    }
+    // Network / TypeError style failures.
+    if (/^(failed to fetch|network error|load failed)/i.test(raw)) {
+      return (opts && opts.fallback) || "Looks like the network blinked. Try again in a moment.";
+    }
+    // Anything genuinely long is almost certainly debug detail from app.js's
+    // api() helper (CORS hints etc.) — collapse to the generic copy.
+    if (raw.length > 160) {
+      return (opts && opts.fallback) || "Couldn’t send right now. Please try again in a moment.";
+    }
+    return raw;
+  }
+
   function currentContext() {
     const body = document.body;
     const view = (body && body.dataset && body.dataset.bwView) || null;
@@ -375,8 +422,9 @@
       closeBugModal();
       toast("Thanks — your feedback was sent.", { durationMs: 3200 });
     } catch (err) {
-      const msg = (err && err.message) || "Could not send feedback. Please try again.";
-      flashError(msg.length > 200 ? "Could not send feedback. Please try again." : msg);
+      flashError(friendlyFeedbackErrorMessage(err, {
+        fallback: "Couldn’t send feedback right now. Please try again in a moment.",
+      }));
     } finally {
       if (submitBtn) {
         submitBtn.disabled = false;

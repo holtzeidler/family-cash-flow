@@ -675,8 +675,74 @@ function syncAccountSetupBackButtonVisibility() {
   accountSetupBackBtn.style.display = "inline-flex";
 }
 
+/**
+ * Logical step → user-facing "Step N of 4" mapping. The wizard has five logical
+ * steps (0..4) but only four perceptible phases — both transaction panels (2 and 3)
+ * share Step 3 of 4 because they are the same "recurring items" activity.
+ */
+function getAccountSetupDisplayStepNumber(step) {
+  if (step <= 0) return 1;
+  if (step === 1) return 2;
+  if (step === 2 || step === 3) return 3;
+  return 4;
+}
+
+/** Per-step copy. Title + subtitle are intentionally outcome-oriented, not "now…". */
+function getAccountSetupStepCopy(step, ctx) {
+  const phase3 = ctx && ctx.step3Phase;
+  const phase3After = !!(ctx && ctx.step3After);
+  const phase3HasAny = !!(ctx && ctx.hasAnyTransaction);
+  switch (step) {
+    case 0:
+      return {
+        title: "Create your account",
+        subtitle: "Start with an email and password — takes about 2 minutes.",
+      };
+    case 1:
+      return {
+        title: "Start with your current checking balance",
+        subtitle: "This anchors your forecast to today. You can adjust it anytime.",
+      };
+    case 2: {
+      if (phase3 === "form" && phase3After) {
+        return {
+          title: "Your forecast is taking shape",
+          subtitle: "Add another predictable item, or continue when ready.",
+        };
+      }
+      if (phase3 === "form") {
+        return {
+          title: "Add a recurring income or bill",
+          subtitle: "Things like a paycheck, mortgage, or credit card payment.",
+        };
+      }
+      return {
+        title: phase3HasAny
+          ? "Want to add another predictable item?"
+          : "Now add the income and bills you expect",
+        subtitle: phase3HasAny
+          ? "A couple more is usually enough — you can refine later."
+          : "Most people start with just 2–3 items. You can edit everything later.",
+      };
+    }
+    case 3:
+      return {
+        title: "Add another recurring item",
+        subtitle: "A few predictable transactions is usually enough to get a useful forecast.",
+      };
+    case 4:
+      return {
+        title: "What matters most to you?",
+        subtitle: "We’ll prioritize the right insights for you.",
+      };
+    default:
+      return { title: "Let’s build your forecast", subtitle: "Start simple. You can refine everything later." };
+  }
+}
+
 function syncAccountSetupWizardShellButtons() {
   const s = getAccountSetupWizardStep();
+  const stepLabel = document.getElementById("accountSetupWizardStepLabel");
   const eyebrow = document.getElementById("accountSetupWizardEyebrow");
   const subEyebrow = document.getElementById("accountSetupWizardSubeyebrow");
   const saveInc = document.getElementById("asTxSaveIncomeBtn");
@@ -697,15 +763,31 @@ function syncAccountSetupWizardShellButtons() {
   // Default: hide skip. We'll selectively show it on Step 3 once a tx exists.
   if (accountSetupSkipBtn) accountSetupSkipBtn.style.display = "none";
 
-  // Step-specific eyebrow copy
-  if (eyebrow) {
-    eyebrow.textContent = s === 2 ? "Great, now let’s add what affects your balance." : "Let’s build your forecast";
-  }
-  if (subEyebrow) {
-    subEyebrow.hidden = s === 2;
+  // Step-aware narrative copy: "Step N of 4" label + a precise headline and subline.
+  // We read the draft once for the title decision (form/after-save/intro) to keep
+  // the headline in sync with what's already on screen.
+  try {
+    const draft = readAccountSetupDraftRaw() || {};
+    const txs = Array.isArray(draft.transactions) ? draft.transactions : [];
+    const copy = getAccountSetupStepCopy(s, {
+      step3Phase: getAccountSetupStep3Phase(),
+      step3After: isAccountSetupStep3AfterSave(),
+      hasAnyTransaction: txs.length > 0,
+    });
+    if (stepLabel) stepLabel.textContent = `Step ${getAccountSetupDisplayStepNumber(s)} of 4`;
+    if (eyebrow) eyebrow.textContent = copy.title;
+    if (subEyebrow) {
+      subEyebrow.textContent = copy.subtitle;
+      subEyebrow.hidden = false;
+    }
+  } catch (_) {
+    if (stepLabel) stepLabel.textContent = `Step ${getAccountSetupDisplayStepNumber(s)} of 4`;
+    if (eyebrow) eyebrow.textContent = "Let’s build your forecast";
+    if (subEyebrow) subEyebrow.hidden = false;
   }
 
   // Step 3 (transactions hub): gate Add buttons + show Skip/Next behavior.
+  // The global wizard eyebrow handles the headline; in-panel copy stays minimal.
   try {
     if (s === 2 && getAccountSetupStep3Phase() === "intro") {
       const rawDraft = readAccountSetupDraftRaw() || {};
@@ -713,11 +795,6 @@ function syncAccountSetupWizardShellButtons() {
       const hasTx = txs.length > 0;
       const hasIncome = txs.some((t) => String(t?.kind || "").toLowerCase() === "income");
       const hasExpense = txs.some((t) => String(t?.kind || "").toLowerCase() === "expense");
-      const step3Q = document.querySelector("#accountSetupWizardPanel2 .account-setup-step3-q");
-      if (step3Q) {
-        step3Q.textContent = hasTx ? "✓ Your forecast is starting to take shape" : "Add your first recurring transaction";
-        step3Q.classList.toggle("account-setup-step3-q--success", hasTx);
-      }
 
       // Once any transaction exists, do not show the hub/intro screen anymore.
       // Keep the user in the (collapsed) form success state instead.
@@ -792,6 +869,9 @@ function syncAccountSetupWizardShellButtons() {
       const msg = document.getElementById("accountSetupStep3Success");
       if (msg) {
         msg.hidden = !after;
+        if (after) {
+          try { renderAccountSetupSuccessSummary("accountSetupStep3SuccessSummary"); } catch (_) {}
+        }
       }
       if (successAddExpense) successAddExpense.hidden = !after;
       if (successAddIncome) successAddIncome.hidden = !after;
@@ -813,8 +893,11 @@ function syncAccountSetupWizardShellButtons() {
       const msg = document.getElementById("accountSetupStep4Success");
       if (msg) {
         const textEl = msg.querySelector(".account-setup-step3-form__successText");
-        if (textEl) textEl.textContent = "✓ Your forecast is starting to take shape";
+        if (textEl) textEl.textContent = "✓ Your forecast is taking shape";
         msg.hidden = !after;
+        if (after) {
+          try { renderAccountSetupSuccessSummary("accountSetupStep4SuccessSummary"); } catch (_) {}
+        }
       }
     } else if (signupBtn) {
       signupBtn.style.display = "none";
@@ -2267,6 +2350,22 @@ async function doSignup() {
   }
 }
 
+/**
+ * "Preparing your forecast…" overlay shown during account registration.
+ *
+ * The bar fills over `durationMs` (typically 8s) so the user sees deliberate
+ * progress while we wait for register + session verify + initial-data POSTs.
+ * Helpful messages rotate every ~2.4s so the wait feels like real work and not
+ * a generic spinner. Static fallback title is set in markup for screen readers.
+ */
+const FORECAST_BUILD_MESSAGES = [
+  "Building your cash timeline…",
+  "Calculating recurring impacts…",
+  "Looking for low-balance periods…",
+  "Aligning paydays and bills…",
+  "Almost ready…",
+];
+
 function ensureForecastBuildOverlay() {
   const existing = document.getElementById("bwForecastBuildOverlay");
   if (existing) return existing;
@@ -2277,6 +2376,7 @@ function ensureForecastBuildOverlay() {
   wrap.innerHTML = `
     <div class="bw-build-overlay__card" role="status" aria-live="polite" aria-label="Preparing your forecast">
       <div class="bw-build-overlay__title">Preparing your forecast…</div>
+      <div class="bw-build-overlay__message" id="bwForecastBuildMessage">Building your cash timeline…</div>
       <div class="bw-build-overlay__bar" aria-hidden="true">
         <div class="bw-build-overlay__barFill"></div>
       </div>
@@ -2300,6 +2400,28 @@ function showForecastBuildOverlay(overlayEl, { durationMs = 5000 } = {}) {
       fill.style.width = "100%";
     });
   }
+  // Rotate helpful messages so the wait reads like deliberate work.
+  const msgEl = overlayEl.querySelector("#bwForecastBuildMessage");
+  if (msgEl) {
+    // Cancel any prior rotation so multiple show() calls don't stack timers.
+    if (overlayEl._bwMsgInterval) {
+      try { clearInterval(overlayEl._bwMsgInterval); } catch (_) {}
+      overlayEl._bwMsgInterval = null;
+    }
+    let idx = 0;
+    msgEl.textContent = FORECAST_BUILD_MESSAGES[0];
+    msgEl.classList.remove("bw-build-overlay__message--show");
+    requestAnimationFrame(() => msgEl.classList.add("bw-build-overlay__message--show"));
+    overlayEl._bwMsgInterval = window.setInterval(() => {
+      idx = (idx + 1) % FORECAST_BUILD_MESSAGES.length;
+      msgEl.classList.remove("bw-build-overlay__message--show");
+      // Brief fade-out → swap → fade-in for a calm, non-flashy transition.
+      window.setTimeout(() => {
+        msgEl.textContent = FORECAST_BUILD_MESSAGES[idx];
+        msgEl.classList.add("bw-build-overlay__message--show");
+      }, 220);
+    }, 2400);
+  }
 }
 
 function hideForecastBuildOverlay(overlayEl) {
@@ -2310,6 +2432,10 @@ function hideForecastBuildOverlay(overlayEl) {
   if (fill) {
     fill.style.transition = "none";
     fill.style.width = "0%";
+  }
+  if (overlayEl._bwMsgInterval) {
+    try { clearInterval(overlayEl._bwMsgInterval); } catch (_) {}
+    overlayEl._bwMsgInterval = null;
   }
 }
 
@@ -2792,6 +2918,141 @@ if (accountSetupBackBtn) {
   accountSetupBackBtn.addEventListener("click", handleAccountSetupBack);
 }
 
+/**
+ * Quick-pick category chips for the onboarding transaction forms.
+ *
+ * Most users entering their first 2–3 recurring items pick from a tiny set of
+ * categories (paycheck, mortgage, credit card, utility, etc.). The chips skip
+ * the category combobox search entirely: clicking a chip sets the hidden
+ * category id, mirrors the label into the visible search box, dispatches the
+ * "change" event so recurrence defaults still fire, then focuses the Amount
+ * field so the user can keep typing.
+ */
+const ACCOUNT_SETUP_INCOME_CHIPS = [
+  { label: "Paycheck", value: "Paycheck" },
+  { label: "Transfer in", value: "Transfer In" },
+  { label: "Other income", value: "Other Income" },
+];
+const ACCOUNT_SETUP_EXPENSE_CHIPS = [
+  { label: "Mortgage / Rent", value: "Mortgage/Rent" },
+  { label: "Credit Card", value: "Credit Card Payment" },
+  { label: "Utility", value: "Utility" },
+  { label: "Insurance", value: "Insurance" },
+  { label: "Subscription", value: "Subscription" },
+];
+
+function applyAccountSetupChipSelection(prefix, value) {
+  const hidden = document.getElementById(prefix + "Category");
+  const search = document.getElementById(prefix + "CategorySearch");
+  const amount = document.getElementById(prefix + "Amount");
+  if (hidden) {
+    hidden.value = value || "";
+    hidden.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+  if (search) {
+    search.value = value || "";
+    // Briefly highlight the input so users see what was filled in.
+    try {
+      search.classList.add("category-search__input--prefilled");
+      window.setTimeout(() => search.classList.remove("category-search__input--prefilled"), 600);
+    } catch (_) {}
+  }
+  if (amount) {
+    try { amount.focus({ preventScroll: true }); } catch (_) { amount.focus(); }
+  }
+}
+
+function renderAccountSetupCategoryChips(prefix, kind) {
+  const containerId = prefix === "asTx" ? "asTxQuickChips" : "asExpTxQuickChips";
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const chips = String(kind).toLowerCase() === "income" ? ACCOUNT_SETUP_INCOME_CHIPS : ACCOUNT_SETUP_EXPENSE_CHIPS;
+  // If chips already rendered for this kind, just update active state.
+  if (container.dataset.kind === kind) {
+    const cur = (document.getElementById(prefix + "Category")?.value || "").trim();
+    for (const btn of container.querySelectorAll(".as-quick-chip")) {
+      btn.classList.toggle("is-active", btn.getAttribute("data-chip-value") === cur);
+    }
+    return;
+  }
+  container.dataset.kind = kind;
+  container.innerHTML = "";
+  const cur = (document.getElementById(prefix + "Category")?.value || "").trim();
+  for (const chip of chips) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "as-quick-chip";
+    btn.textContent = chip.label;
+    btn.setAttribute("data-chip-value", chip.value);
+    if (chip.value === cur) btn.classList.add("is-active");
+    btn.addEventListener("click", () => {
+      for (const other of container.querySelectorAll(".as-quick-chip")) other.classList.remove("is-active");
+      btn.classList.add("is-active");
+      applyAccountSetupChipSelection(prefix, chip.value);
+    });
+    container.appendChild(btn);
+  }
+}
+
+function initAccountSetupQuickChips() {
+  if (!isAccountSetupPath() || !document.getElementById("accountSetupWizard")) return;
+  // Panel 2 chips follow the visible Type radio.
+  const update2 = () => {
+    const checked = document.querySelector('input[name="asTxKind"]:checked');
+    renderAccountSetupCategoryChips("asTx", checked ? checked.value : "expense");
+  };
+  for (const r of document.querySelectorAll('input[name="asTxKind"]')) {
+    r.addEventListener("change", update2);
+  }
+  update2();
+
+  // Panel 3 is expense-only by visible affordance, but we still mirror the radio.
+  const update3 = () => {
+    const checked = document.querySelector('input[name="asExpTxKind"]:checked');
+    renderAccountSetupCategoryChips("asExpTx", checked ? checked.value : "expense");
+  };
+  for (const r of document.querySelectorAll('input[name="asExpTxKind"]')) {
+    r.addEventListener("change", update3);
+  }
+  update3();
+}
+
+/**
+ * Counts the income/expense items in the draft and renders a compact "✓ N
+ * income, ✓ N expense(s)" summary list on the success state of each panel.
+ * Pure derived UI — never persists state.
+ */
+function renderAccountSetupSuccessSummary(listId) {
+  const list = document.getElementById(listId);
+  if (!list) return;
+  let draft = null;
+  try { draft = readAccountSetupDraftRaw() || {}; } catch (_) { draft = {}; }
+  const txs = Array.isArray(draft.transactions) ? draft.transactions : [];
+  let incomeCount = 0;
+  let expenseCount = 0;
+  for (const t of txs) {
+    const kind = String((t && t.kind) || "").toLowerCase();
+    if (kind === "income") incomeCount += 1;
+    else if (kind === "expense") expenseCount += 1;
+  }
+  list.innerHTML = "";
+  const items = [];
+  if (incomeCount > 0) items.push(`${incomeCount} income source${incomeCount === 1 ? "" : "s"}`);
+  if (expenseCount > 0) items.push(`${expenseCount} recurring expense${expenseCount === 1 ? "" : "s"}`);
+  if (items.length === 0) {
+    const li = document.createElement("li");
+    li.className = "account-setup-success-summary__empty";
+    li.textContent = "Add your first item to see your forecast start to take shape.";
+    list.appendChild(li);
+    return;
+  }
+  for (const text of items) {
+    const li = document.createElement("li");
+    li.innerHTML = `<span class="account-setup-success-summary__check" aria-hidden="true">✓</span><span>${text}</span>`;
+    list.appendChild(li);
+  }
+}
+
 /** When category implies a typical cadence, enable Repeats and set recurrence (account setup wizard). */
 function applyAccountSetupCategoryRecurrenceDefaults(categoryEl, prefix) {
   if (!categoryEl) return;
@@ -2877,6 +3138,7 @@ function initAccountSetupTransactionUi() {
     if (expCat) expCat.addEventListener("change", () => applyAccountSetupCategoryRecurrenceDefaults(expCat, "asExp"));
     initAccountSetupCategoryCombobox("asTxCategory", "asTxCategorySearch", "asTxCategoryList");
     initAccountSetupCategoryCombobox("asExpTxCategory", "asExpTxCategorySearch", "asExpTxCategoryList");
+    initAccountSetupQuickChips();
     const expSwatches = document.getElementById("asExpTxColorSwatches");
     const expBgEl = document.getElementById("asExpTxBgColor");
     const expClearBtn = document.getElementById("asExpTxColorClear");

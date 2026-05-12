@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=405" />
+    <link rel="stylesheet" href="../styles.css?v=407" />
   </head>
   <body class="login-page signup-page account-setup-page">
     <div class="container">
@@ -43,9 +43,10 @@
         <div id="signupCallout" class="callout" style="display:none" role="status"></div>
 
         <div id="accountSetupWizard" class="account-setup-wizard" data-step="0" aria-label="Account setup">
-          <p class="account-setup-wizard__eyebrow" id="accountSetupWizardEyebrow">Let’s build your forecast</p>
+          <p class="account-setup-wizard__stepLabel" id="accountSetupWizardStepLabel" aria-live="polite">Step 1 of 4</p>
+          <p class="account-setup-wizard__eyebrow" id="accountSetupWizardEyebrow">Create your account</p>
           <p class="account-setup-wizard__subeyebrow" id="accountSetupWizardSubeyebrow">
-            Start simple. You can refine everything later.
+            Start with an email and password — takes about 2 minutes.
           </p>
           <div class="account-setup-wizard__dots" role="tablist" aria-label="Setup steps">
             <span class="account-setup-wizard__dot is-active" data-wizard-dot="0" aria-current="step"></span>
@@ -60,10 +61,10 @@
                   class="account-setup-wizard__panel account-setup-wizard__panel--active auth-section__body"
                   id="accountSetupWizardPanel0"
                   role="tabpanel"
-                  aria-label="Step 1: Email and password"
+                  aria-label="Step 1 of 4: Email and password"
                   aria-hidden="false"
                 >
-                  <p class="meta account-setup-step2-lede">Let’s create your account</p>
+                  <p class="meta account-setup-step2-lede">Choose how you’ll sign in.</p>
                   <div class="row">
                     <div class="form-row-h">
                       <div class="form-row-h__label"><label for="email">Email</label></div>
@@ -89,11 +90,11 @@
                   class="account-setup-wizard__panel auth-section__body"
                   id="accountSetupWizardPanel1"
                   role="tabpanel"
-                  aria-label="Step 3: Checking account"
+                  aria-label="Step 2 of 4: Current cash position"
                   aria-hidden="true"
                   inert
                 >
-                  <p class="meta account-setup-step2-lede">What’s your checking balance today?</p>
+                  <p class="meta account-setup-step2-lede">This anchors your forecast to today. You can adjust it anytime.</p>
                   <div class="row">
                     <div class="form-row-h">
                       <div class="form-row-h__label"><label for="accountName">Account Name</label></div>
@@ -135,15 +136,14 @@
                   class="account-setup-wizard__panel auth-section__body"
                   id="accountSetupWizardPanel2"
                   role="tabpanel"
-                  aria-label="Step 4: Transactions"
+                  aria-label="Step 3 of 4: Recurring income and bills"
                   aria-hidden="true"
                   inert
                   data-step3-phase="intro"
                 >
                   <div id="accountSetupWizardStep3Intro" class="account-setup-step3-intro">
-                    <p class="meta account-setup-step3-q">Add your first recurring transaction</p>
                     <p class="account-setup-step3-intro-hint">
-                      Start with the transactions you know happen regularly.
+                      Paycheck, mortgage, credit card — the items that hit your account on a regular schedule.
                     </p>
                     <div class="account-setup-tx-choice-wrap">
                       <div class="account-setup-tx-choice-row" role="group" aria-label="Add income or expense">
@@ -154,13 +154,14 @@
                   </div>
                   <div id="accountSetupWizardStep3Form" class="account-setup-step3-form" hidden>
                   <div class="account-setup-step3-form__success" id="accountSetupStep3Success" hidden>
-                    <div class="account-setup-step3-form__successText">✓ Your forecast is starting to take shape</div>
-                    <p class="account-setup-step3-form__successSubtext">Add another transaction or continue setup.</p>
+                    <div class="account-setup-step3-form__successText">✓ Your forecast is taking shape</div>
+                    <p class="account-setup-step3-form__successSubtext">Here’s what you’ve added so far:</p>
+                    <ul class="account-setup-success-summary" id="accountSetupStep3SuccessSummary" aria-label="Items added"></ul>
                     <div class="account-setup-step3-form__successActions" role="group" aria-label="Add another transaction">
                       <button type="button" class="top-nav__logout" id="asStep3SuccessAddIncomeBtn">+ Add Income</button>
                       <button type="button" class="top-nav__logout" id="asStep3SuccessAddExpenseBtn">– Add Expense</button>
                     </div>
-                    <div class="account-setup-step3-form__successNote">You can set up all your transactions after setup.</div>
+                    <div class="account-setup-step3-form__successNote">A few predictable items is usually enough to start. You can add more later.</div>
                   </div>
                   <div class="account-setup-step3-form__body">
                   <div class="form-row-h">
@@ -186,6 +187,9 @@
                   <div class="form-row-h">
                     <div class="form-row-h__label"><label for="asTxCategorySearch">Category</label></div>
                     <div class="form-row-h__field">
+                      <div class="as-quick-chips" id="asTxQuickChips" role="group" aria-label="Common categories">
+                        <!-- Chips are populated by JS based on the selected Type (income vs expense). -->
+                      </div>
                       <div class="category-search">
                         <input type="hidden" id="asTxCategory" value="" autocomplete="off" />
                         <input
@@ -280,7 +284,7 @@
                   class="account-setup-wizard__panel auth-section__body"
                   id="accountSetupWizardPanel3"
                   role="tabpanel"
-                  aria-label="Step 5: Recurring expenses"
+                  aria-label="Step 3 of 4: Add another recurring item"
                   aria-hidden="true"
                   inert
                   data-expense-phase="intro"
@@ -288,7 +292,8 @@
                   <div id="accountSetupWizardStep4Form" class="account-setup-step3-form" hidden>
                     <div class="account-setup-step3-form__success" id="accountSetupStep4Success" hidden>
                       <div class="account-setup-step3-form__successText"></div>
-                      <p class="account-setup-step3-form__successSubtext">Add another transaction or continue setup.</p>
+                      <p class="account-setup-step3-form__successSubtext">Here’s what you’ve added so far:</p>
+                      <ul class="account-setup-success-summary" id="accountSetupStep4SuccessSummary" aria-label="Items added"></ul>
                     </div>
                     <div class="account-setup-step3-form__body">
                     <div class="form-row-h">
@@ -319,6 +324,9 @@
                     <div class="form-row-h">
                     <div class="form-row-h__label"><label for="asExpTxCategorySearch">Category</label></div>
                       <div class="form-row-h__field">
+                        <div class="as-quick-chips" id="asExpTxQuickChips" role="group" aria-label="Common categories">
+                          <!-- Chips are populated by JS based on the selected Type (income vs expense). -->
+                        </div>
                         <div class="category-search">
                           <input type="hidden" id="asExpTxCategory" value="" autocomplete="off" />
                           <input
@@ -413,12 +421,13 @@
                   class="account-setup-wizard__panel auth-section__body"
                   id="accountSetupWizardPanel4"
                   role="tabpanel"
-                  aria-label="Last step: what you want help with"
+                  aria-label="Step 4 of 4: What matters most"
                   aria-hidden="true"
                   inert
                 >
                   <div class="account-setup-survey">
-                    <h2 class="account-setup-survey__title">What are your primary goals?</h2>
+                    <h2 class="account-setup-survey__title">What matters most to you?</h2>
+                    <p class="account-setup-survey__sublede">Pick anything that applies — we’ll prioritize the right insights for you.</p>
                     <div class="account-setup-survey__grid" role="group" aria-label="Choose all that apply">
                       <button type="button" class="account-setup-survey__opt" data-as-survey-opt="avoid_overdrafts" aria-pressed="false">
                         <span class="account-setup-survey__icon" aria-hidden="true">
@@ -517,58 +526,42 @@
         </div>
 
         <div style="height:6px;"></div>
-        <div class="meta account-setup-trust-note">
-          <div>Built for clarity, not complexity.</div>
-          <div>No bank connection required.</div>
+        <div class="account-setup-trust-strip" role="note" aria-label="Reassurance">
+          <span class="account-setup-trust-strip__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2l8 4v6c0 6-3.5 9.8-8 10-4.5-.2-8-4-8-10V6l8-4z"></path>
+              <path d="M8.5 12.2l2.2 2.2 4.9-5"></path>
+            </svg>
+          </span>
+          <span class="account-setup-trust-strip__items">
+            <span>No bank connection required</span>
+            <span aria-hidden="true">•</span>
+            <span>You can edit everything later</span>
+            <span aria-hidden="true">•</span>
+            <span>14-day free trial</span>
+          </span>
         </div>
       </div>
 
-      <footer class="app-footer" role="contentinfo">
-        <div class="app-footer__inner">
-          <div class="app-footer__grid">
-            <div class="app-footer__col app-footer__col--brand">
-              <a class="app-footer__logo" href="/" aria-label="BalanceWhiz home">
-                <img
-                  class="app-footer__logo-img"
-                  src="../assets/balance-whiz-logo.png?v=20260504"
-                  width="160"
-                  height="41"
-                  alt="BalanceWhiz"
-                  decoding="async"
-                />
-              </a>
-              <p class="app-footer__tagline">See your cash flow before it happens.</p>
-              <p class="app-footer__copyright">© 2026 BalanceWhiz</p>
-            </div>
-            <nav class="app-footer__col" aria-label="Product">
-              <h2 class="app-footer__heading">Product</h2>
-              <ul class="app-footer__list">
-                <li><a class="app-footer__link" href="/#features">Features</a></li>
-                <li><a class="app-footer__link" href="/calendar">Forecast Calendar</a></li>
-                <li><a class="app-footer__link" href="/reports">Reports</a></li>
-                <li><a class="app-footer__link" href="/plans/">Pricing</a></li>
-                <li><a class="app-footer__link" href="/login.html">Login</a></li>
-              </ul>
-            </nav>
-            <nav class="app-footer__col" aria-label="Support">
-              <h2 class="app-footer__heading">Support</h2>
-              <ul class="app-footer__list">
-                <li><a class="app-footer__link" href="/contactus/">Contact Us</a></li>
-                <li><a class="app-footer__link" href="/help.html">Help / FAQ</a></li>
-                <li><a class="app-footer__link" href="/login.html#forgot">Forgot Password</a></li>
-                <li><a class="app-footer__link" href="/privacy.html">Privacy Policy</a></li>
-                <li><a class="app-footer__link" href="/terms.html">Terms of Service</a></li>
-              </ul>
-            </nav>
-            <div class="app-footer__col app-footer__col--trust" aria-label="What to expect">
-              <ul class="app-footer__bullets">
-                <li>No bank connection required</li>
-                <li>Know what can safely leave checking</li>
-                <li>Cancel anytime</li>
-              </ul>
-            </div>
-          </div>
-        </div>
+      <footer class="onboarding-footer" role="contentinfo" aria-label="Setup footer">
+        <a class="onboarding-footer__brand" href="/" aria-label="BalanceWhiz home">
+          <img
+            class="onboarding-footer__logo"
+            src="../assets/balance-whiz-logo.png?v=20260504"
+            width="120"
+            height="31"
+            alt="BalanceWhiz"
+            decoding="async"
+          />
+        </a>
+        <p class="onboarding-footer__line">No bank connection required · Cancel anytime</p>
+        <p class="onboarding-footer__legal">
+          <a href="/privacy.html">Privacy</a>
+          <span aria-hidden="true">·</span>
+          <a href="/terms.html">Terms</a>
+          <span aria-hidden="true">·</span>
+          <a href="/contactus/">Contact</a>
+        </p>
       </footer>
     </div>
 
@@ -592,6 +585,6 @@
       </div>
     </div>
 
-    <script src="../signup/signup.js?v=82"></script>
+    <script src="../signup/signup.js?v=83"></script>
   </body>
 </html>
