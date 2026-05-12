@@ -2600,10 +2600,50 @@ button.danger{
   background: rgba(255,107,107,0.12);
   border-color: rgba(255,107,107,0.35);
 }
+
+/* ----------------------------------------------------------------------
+   Canonical secondary button
+   ----------------------------------------------------------------------
+   Used for Cancel / Back / Skip / Close / Maybe later / Dismiss and any
+   other secondary action. Reads as clearly clickable and supportive,
+   never as a disabled state or as plain text floating without a
+   boundary.
+
+   Pairing rules:
+   - Sits next to a filled primary CTA in modal footers / form rows.
+   - Same border-radius and roughly matching height as the primary.
+   - Lower emphasis: white fill + accent-tinted outline + accent text
+     (vs the primary's filled-green look).
+   - Tertiary actions (rare) may still be plain text links; default
+     dismiss/cancel actions should ALWAYS use this style. */
 button.secondary{
-  background: rgba(0,0,0,0.02);
-  border-color: rgba(0,0,0,0.10);
-  color: var(--text);
+  background: #fff;
+  border: 1px solid rgba(11, 61, 46, 0.22);
+  color: rgba(11, 61, 46, 0.92);
+  font-weight: 600;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.85) inset;
+  transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
+}
+button.secondary:hover{
+  background: color-mix(in srgb, var(--accent) 5%, #fff);
+  border-color: rgba(11, 61, 46, 0.36);
+  color: rgba(11, 61, 46, 1);
+  filter: none;
+}
+button.secondary:active{
+  background: color-mix(in srgb, var(--accent) 9%, #fff);
+  border-color: rgba(11, 61, 46, 0.42);
+}
+button.secondary:focus-visible{
+  outline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  outline-offset: 2px;
+}
+button.secondary:disabled,
+button.secondary[disabled],
+button.secondary[aria-disabled="true"]{
+  opacity: 0.55;
+  cursor: not-allowed;
+  filter: none;
 }
 
 /* Main app: sidebar (left), calendar + tools (right) — slightly wider calendar column */
@@ -12082,14 +12122,18 @@ body[data-bw-view="transactions"] .cash-outlook-title{
 .apply-scope-btn--primary:hover{
   filter: brightness(1.04);
 }
+/* Apply-scope modal Cancel/secondary: matches canonical secondary. */
 .apply-scope-btn--secondary{
-  color: rgba(11, 61, 46, 0.9);
-  background: rgba(255, 255, 255, 0.96);
-  border: 1px solid rgba(11, 61, 46, 0.2);
+  color: rgba(11, 61, 46, 0.92);
+  background: #fff;
+  border: 1px solid rgba(11, 61, 46, 0.22);
+  font-weight: 600;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.85) inset;
 }
 .apply-scope-btn--secondary:hover{
-  background: color-mix(in srgb, var(--accent) 6%, #fff);
-  border-color: rgba(11, 61, 46, 0.28);
+  background: color-mix(in srgb, var(--accent) 5%, #fff);
+  border-color: rgba(11, 61, 46, 0.36);
+  color: rgba(11, 61, 46, 1);
 }
 .apply-scope-btn--ghost{
   margin-top: 8px;
@@ -12433,17 +12477,22 @@ body[data-bw-view="transactions"] .cash-outlook-title{
 .tx-add-btn-primary{
   line-height: 1.25;
 }
+/* Tx-add Cancel: inherits the canonical secondary outlined style and
+   only overrides what's needed for the compact footer (size, weight).
+   Previously this button was rendered transparent-on-transparent and
+   read as missing UI; the user expects a calm, clearly clickable
+   Cancel paired with the primary Save. */
 .modal--tx-add .tx-add-btn-secondary{
-  background: transparent !important;
-  border-color: transparent !important;
-  color: rgba(100, 116, 139, 0.68) !important;
-  font-weight: 500 !important;
-  box-shadow: none !important;
+  background: #fff !important;
+  border: 1px solid rgba(11, 61, 46, 0.22) !important;
+  color: rgba(11, 61, 46, 0.92) !important;
+  font-weight: 600 !important;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.85) inset !important;
 }
 .modal--tx-add .tx-add-btn-secondary:hover{
-  background: rgba(15, 23, 42, 0.04) !important;
-  border-color: transparent !important;
-  color: rgba(31, 41, 55, 0.86) !important;
+  background: color-mix(in srgb, var(--accent) 5%, #fff) !important;
+  border-color: rgba(11, 61, 46, 0.36) !important;
+  color: rgba(11, 61, 46, 1) !important;
 }
 .tx-add-form .tx-add-vspace{
   height: 12px;
@@ -13504,18 +13553,21 @@ body.account-setup-page .account-setup-step3-form .cat-color-row + .tx-add-vspac
   align-items: center;
 }
 .modal--expected-edit #txEditCancel,
+/* Transaction-edit Cancel/Close: align to the canonical secondary
+   outlined treatment so it never reads as "missing" next to the
+   primary Save in the modal footer. */
 #txEditInner #txEditCancel.tx-edit-dismiss--close{
-  background: transparent !important;
-  border-color: transparent !important;
-  color: rgba(100, 116, 139, 0.68) !important;
-  font-weight: 500 !important;
-  box-shadow: none !important;
+  background: #fff !important;
+  border: 1px solid rgba(11, 61, 46, 0.22) !important;
+  color: rgba(11, 61, 46, 0.92) !important;
+  font-weight: 600 !important;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.85) inset !important;
 }
 .modal--expected-edit #txEditCancel:hover,
 #txEditInner #txEditCancel.tx-edit-dismiss--close:hover{
-  background: rgba(15, 23, 42, 0.05) !important;
-  border-color: transparent !important;
-  color: rgba(31, 41, 55, 0.88) !important;
+  background: color-mix(in srgb, var(--accent) 5%, #fff) !important;
+  border-color: rgba(11, 61, 46, 0.36) !important;
+  color: rgba(11, 61, 46, 1) !important;
 }
 .modal--expected-edit #txEditDelete.danger{
   background: transparent !important;
@@ -13769,6 +13821,9 @@ body.account-setup-page .account-setup-step3-form .cat-color-row + .tx-add-vspac
   outline: 2px solid color-mix(in srgb, var(--accent) 55%, #fff);
   outline-offset: 2px;
 }
+/* "Skip for now" is paired with the primary "Start quick tour" CTA;
+   matches the canonical secondary outlined style (white fill, accent
+   border, accent text) so the two actions feel intentionally paired. */
 #bwForecastReadyModal .bw-forecast-ready__skip{
   box-sizing: border-box;
   font-family: inherit;
@@ -13777,15 +13832,17 @@ body.account-setup-page .account-setup-step3-form .cat-color-row + .tx-add-vspac
   line-height: 1.25;
   padding: 9px 14px;
   border-radius: var(--btn-radius);
-  border: 1px solid rgba(0, 0, 0, 0.10);
+  border: 1px solid rgba(11, 61, 46, 0.22);
   background: #fff;
-  color: color-mix(in srgb, var(--accent) 78%, #1f2937);
+  color: rgba(11, 61, 46, 0.92);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.85) inset;
   cursor: pointer;
   margin-top: 8px;
 }
 #bwForecastReadyModal .bw-forecast-ready__skip:hover{
-  background: rgba(11, 61, 46, 0.04);
-  border-color: rgba(0, 0, 0, 0.16);
+  background: color-mix(in srgb, var(--accent) 5%, #fff);
+  border-color: rgba(11, 61, 46, 0.36);
+  color: rgba(11, 61, 46, 1);
 }
 #bwForecastReadyModal .bw-forecast-ready__skip:focus-visible{
   outline: 2px solid color-mix(in srgb, var(--accent) 40%, transparent);
@@ -14491,18 +14548,31 @@ body.account-setup-page .account-setup-step3-form .cat-color-row + .tx-add-vspac
   justify-content: flex-end;
   gap: 10px;
 }
+/* Feedback modal Cancel: paired with the filled green Submit.
+   Matches the submit's pill radius and roughly its height so the two
+   actions feel intentionally paired rather than "filled CTA + plain
+   text drifting beside it". */
 .bw-fb-form__cancel{
-  background: transparent;
-  border: 0;
-  color: rgba(71, 85, 105, 0.84);
-  padding: 8px 12px;
+  background: #fff;
+  border: 1px solid rgba(11, 61, 46, 0.22);
+  color: rgba(11, 61, 46, 0.92);
+  padding: 9px 18px;
   font: inherit;
   font-size: 0.9rem;
+  font-weight: 600;
   cursor: pointer;
-  border-radius: 8px;
+  border-radius: 999px;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.85) inset;
+  transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease;
 }
 .bw-fb-form__cancel:hover{
-  background: rgba(15, 23, 42, 0.04);
+  background: color-mix(in srgb, var(--accent) 5%, #fff);
+  border-color: rgba(11, 61, 46, 0.36);
+  color: rgba(11, 61, 46, 1);
+}
+.bw-fb-form__cancel:focus-visible{
+  outline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  outline-offset: 2px;
 }
 .bw-fb-form__submit{
   background: var(--accent);
