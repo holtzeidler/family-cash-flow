@@ -10210,10 +10210,200 @@ function renderReportsRiskHeatmap(daily) {
   renderRiskHeatmapActionPanel(items, occByIso, thr, todayIso, worstIso);
 }
 
+const OBLIGATION_GROUP_ICONS = {
+  Housing: "🏠",
+  Utilities: "💡",
+  Debt: "💳",
+  Subscriptions: "🔁",
+  Insurance: "🛡",
+  "Kids / activities": "🎒",
+  "Other obligations": "📦",
+};
+
+/**
+ * Expand all recurring expense occurrences in [startIso, endIso] inclusive.
+ * Returns Map<iso, [{description, amount}]> for the timing-cluster analysis.
+ */
+function buildObligationOccurrencesIndex(startIso, endIso) {
+  const idx = new Map();
+  for (const tx of state.expectedTransactions || []) {
+    if (String(tx.kind || "") !== "expense") continue;
+    const amt = Number(tx.amount || 0);
+    if (!Number.isFinite(amt) || amt <= 0) continue;
+    let cursor = startIso;
+    let safety = 0;
+    while (cursor && safety < 400) {
+      safety++;
+      let next;
+      try {
+        next = nextExpectedOccurrenceIso(tx, cursor);
+      } catch (_) {
+        next = null;
+      }
+      if (!next) break;
+      if (String(next) > String(endIso)) break;
+      if (!idx.has(next)) idx.set(next, []);
+      idx.get(next).push({
+        description: String(tx.description || "Recurring").trim() || "Recurring",
+        amount: amt,
+      });
+      cursor = addDaysIso(next, 1);
+      if (!cursor || String(cursor) > String(endIso)) break;
+    }
+  }
+  return idx;
+}
+
+/** Monday-aligned ISO for the week containing `iso`. */
+function isoWeekStart(iso) {
+  const d = parseIsoDateLocal(iso);
+  if (!d) return iso;
+  const dow = (d.getDay() + 6) % 7;
+  d.setDate(d.getDate() - dow);
+  return toISODate(d);
+}
+
+function fmtWeekRange(startIso) {
+  const start = parseIsoDateLocal(startIso);
+  if (!start) return startIso;
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  const s = start.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  const e = end.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  // If same month, collapse: "May 14–20"
+  if (start.getMonth() === end.getMonth()) {
+    return `${s.split(" ")[0]} ${start.getDate()}–${end.getDate()}`;
+  }
+  return `${s} – ${e}`;
+}
+
+function renderObligationMixBars(allRows) {
+  const host = document.getElementById("reportsObligationMixBars");
+  const caption = document.getElementById("reportsObligationMixCaption");
+  if (!host) return;
+  host.innerHTML = "";
+  if (!allRows.length) {
+    if (caption) caption.textContent = "";
+    return;
+  }
+  // Sum estimated monthly by group.
+  const byGroup = new Map();
+  let total = 0;
+  for (const r of allRows) {
+    byGroup.set(r.grp, (byGroup.get(r.grp) || 0) + r.est);
+    total += r.est;
+  }
+  const entries = [...byGroup.entries()].sort((a, b) => b[1] - a[1]);
+  const top = entries.slice(0, 5);
+  const max = top[0]?.[1] || 1;
+  if (caption) {
+    if (top.length) {
+      const [biggestName, biggestVal] = top[0];
+      const pct = total > 0 ? Math.round((biggestVal / total) * 100) : 0;
+      caption.textContent = `${biggestName} accounts for ${pct}% of your $${fmtMoney(total)} monthly recurring.`;
+    } else {
+      caption.textContent = "";
+    }
+  }
+  for (const [g, val] of top) {
+    const li = document.createElement("li");
+    li.className = "reports-ob-bar";
+    const pct = total > 0 ? (val / total) * 100 : 0;
+    const width = max > 0 ? Math.max(6, (val / max) * 100) : 0;
+    const icon = OBLIGATION_GROUP_ICONS[g] || "•";
+    li.innerHTML = `
+      <span class="reports-ob-bar__label"><span class="reports-ob-bar__icon" aria-hidden="true">${icon}</span>${escapeHtml(g)}</span>
+      <span class="reports-ob-bar__track"><span class="reports-ob-bar__fill" style="width: ${width.toFixed(1)}%"></span></span>
+      <span class="reports-ob-bar__value">$${fmtMoney(val)} <span class="reports-ob-bar__pct">${pct.toFixed(0)}%</span></span>
+    `;
+    host.appendChild(li);
+  }
+}
+
+function renderObligationHeavyWeeks(allRows) {
+  const host = document.getElementById("reportsObligationTimingList");
+  const caption = document.getElementById("reportsObligationTimingCaption");
+  if (!host) return;
+  host.innerHTML = "";
+  if (!allRows.length) {
+    if (caption) caption.textContent = "";
+    return;
+  }
+
+  const todayIso = toISODate(new Date());
+  const endIso = addDaysIso(todayIso, 56); // ~8 weeks
+  const idx = buildObligationOccurrencesIndex(todayIso, endIso);
+
+  // Bucket occurrences by Monday-aligned week start.
+  const weeks = new Map();
+  for (const [iso, evs] of idx.entries()) {
+    const wk = isoWeekStart(iso);
+    if (!weeks.has(wk)) weeks.set(wk, { sum: 0, count: 0, big: [], hits: [] });
+    const bucket = weeks.get(wk);
+    for (const e of evs) {
+      bucket.sum += e.amount;
+      bucket.count++;
+      bucket.hits.push({ iso, ...e });
+      if (e.amount >= 1000) bucket.big.push({ iso, ...e });
+    }
+  }
+  if (!weeks.size) {
+    if (caption) caption.textContent = "No recurring obligations in the next 8 weeks.";
+    return;
+  }
+  const weekEntries = [...weeks.entries()].map(([wk, b]) => ({ wk, ...b }));
+  // Average across all 8 weeks (use 8 as denominator so empty weeks pull the mean down).
+  const meanForRef = weekEntries.reduce((a, w) => a + w.sum, 0) / 8;
+
+  const sorted = weekEntries.slice().sort((a, b) => b.sum - a.sum);
+  // Show up to 3 "heavy" weeks: those significantly above the mean OR having
+  // 3+ obligations OR a single big hit.
+  const heavy = sorted.filter((w) => {
+    return (
+      (meanForRef > 0 && w.sum >= meanForRef * 1.4) ||
+      w.count >= 3 ||
+      w.big.length >= 1
+    );
+  });
+  // If nothing flagged, still show the top week so users have temporal grounding.
+  const items = heavy.length ? heavy.slice(0, 3) : sorted.slice(0, 1);
+
+  if (caption) {
+    if (heavy.length) {
+      caption.textContent = "Weeks with clustered obligations or oversized hits.";
+    } else {
+      caption.textContent = "No clustered cash pressure in the next 8 weeks.";
+    }
+  }
+
+  for (const w of items) {
+    const li = document.createElement("li");
+    li.className = "reports-ob-timing-item";
+    const sorted = w.hits.slice().sort((a, b) => b.amount - a.amount);
+    const headline =
+      w.big.length >= 1
+        ? `${w.count} obligation${w.count === 1 ? "" : "s"} totaling $${fmtMoney(w.sum)}`
+        : `${w.count} obligations totaling $${fmtMoney(w.sum)}`;
+    const top3 = sorted
+      .slice(0, 3)
+      .map((h) => `<li><span>${escapeHtml(h.description)}</span><span class="reports-ob-timing-amt">−$${fmtMoney(h.amount)}</span></li>`)
+      .join("");
+    li.innerHTML = `
+      <div class="reports-ob-timing-head">
+        <span class="reports-ob-timing-week">${escapeHtml(fmtWeekRange(w.wk))}</span>
+        <span class="reports-ob-timing-meta">${escapeHtml(headline)}</span>
+      </div>
+      <ul class="reports-ob-timing-sub">${top3}</ul>
+    `;
+    host.appendChild(li);
+  }
+}
+
 function renderReportsObligations() {
   const body = document.getElementById("reportsObligationBody");
   const foot = document.getElementById("reportsObligationFoot");
   const summaryWrap = document.getElementById("reportsObligationSummary");
+  const insightsRow = document.getElementById("reportsObligationInsightRow");
   if (!body) return;
   wireReportsObligationControlsOnce();
 
@@ -10269,7 +10459,23 @@ function renderReportsObligations() {
       const due7Sum = due7.reduce((a, r) => a + r.amt, 0);
       if (statTotal) statTotal.textContent = `$${fmtMoney(totalEst)}`;
       if (statLargest) statLargest.textContent = `${largest.desc} · $${fmtMoney(largest.amt)}`;
-      if (statWeek) statWeek.textContent = due7.length ? `$${fmtMoney(due7Sum)} · ${due7.length} due` : "—";
+      if (statWeek) {
+        if (due7.length) {
+          statWeek.textContent = `$${fmtMoney(due7Sum)} · ${due7.length} due in next 7 days`;
+        } else {
+          statWeek.textContent = "Quiet week — none in next 7 days";
+        }
+      }
+    }
+  }
+
+  if (insightsRow) {
+    if (!allRows.length) {
+      insightsRow.hidden = true;
+    } else {
+      insightsRow.hidden = false;
+      renderObligationMixBars(allRows);
+      renderObligationHeavyWeeks(allRows);
     }
   }
 
@@ -10347,25 +10553,26 @@ function renderReportsObligations() {
     const th = document.createElement("th");
     th.scope = "colgroup";
     th.colSpan = 5;
-    th.textContent = g;
+    const icon = OBLIGATION_GROUP_ICONS[g] || "•";
+    th.innerHTML = `<span class="reports-obligation-group-head__icon" aria-hidden="true">${icon}</span><span class="reports-obligation-group-head__label">${escapeHtml(g)}</span><span class="reports-obligation-group-head__sub">${list.length} item${list.length === 1 ? "" : "s"} · $${fmtMoney(subEst)} / mo</span>`;
     headTr.appendChild(th);
     body.appendChild(headTr);
 
     for (const r of list) {
       const tr = document.createElement("tr");
       if (r.isLarge) tr.classList.add("reports-obligation-row--large");
-      const pill = r.isLarge ? `<span class="reports-obligation-pill">Large</span>` : "";
-      tr.innerHTML = `<td class="reports-obligation-desc">${escapeHtml(r.desc)}${pill ? ` ${pill}` : ""}</td><td class="num reports-obligation-amt">$${fmtMoney(
+      const pill = r.isLarge ? `<span class="reports-obligation-pill" title="Significant portion of monthly recurring cash flow">High impact</span>` : "";
+      tr.innerHTML = `<td class="reports-obligation-desc"><span class="reports-obligation-desc__name">${escapeHtml(r.desc)}</span>${pill ? ` ${pill}` : ""}</td><td class="num reports-obligation-amt">$${fmtMoney(
         r.amt
-      )}</td><td class="reports-obligation-freq">${escapeHtml(r.recLabel)}</td><td>${escapeHtml(
+      )}</td><td class="reports-obligation-next">${escapeHtml(
         fmtObligationNextDate(r.nextIso)
-      )}</td><td class="num reports-ob-est">$${fmtMoney(r.est)}</td>`;
+      )}</td><td class="reports-obligation-freq">${escapeHtml(r.recLabel)}</td><td class="num reports-ob-est">$${fmtMoney(r.est)}</td>`;
       body.appendChild(tr);
     }
 
     const subTr = document.createElement("tr");
     subTr.className = "reports-obligation-subtotal";
-    subTr.innerHTML = `<td colspan="4" class="reports-obligation-subtotal__k">${escapeHtml(g)} · Est. monthly (this view)</td><td class="num reports-ob-est">$${fmtMoney(
+    subTr.innerHTML = `<td colspan="4" class="reports-obligation-subtotal__k">${escapeHtml(g)} · monthly est.</td><td class="num reports-ob-est">$${fmtMoney(
       subEst
     )}</td>`;
     body.appendChild(subTr);
@@ -10374,7 +10581,7 @@ function renderReportsObligations() {
   if (foot && rows.length) {
     const tr = document.createElement("tr");
     tr.className = "reports-obligation-grand";
-    tr.innerHTML = `<td colspan="4">Total · Est. monthly (this view)</td><td class="num reports-ob-est">$${fmtMoney(grandEst)}</td>`;
+    tr.innerHTML = `<td colspan="4">Total monthly recurring (this view)</td><td class="num reports-ob-est">$${fmtMoney(grandEst)}</td>`;
     foot.appendChild(tr);
   }
 }

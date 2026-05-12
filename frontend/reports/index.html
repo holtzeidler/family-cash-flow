@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=396" />
+    <link rel="stylesheet" href="../styles.css?v=397" />
   </head>
   <body>
     <div class="container">
@@ -794,52 +794,67 @@
               <section class="card reports-card reports-card--obligations" id="reportObligations">
                 <div class="reports-card__head">
                   <h2 class="reports-card__title">Recurring cash commitments</h2>
-                  <p class="reports-card__desc">Your recurring bills and obligations—normalized to a monthly view for timing and planning.</p>
+                  <p class="reports-card__desc">What recurring obligations shape your cash flow—where pressure clusters and what dominates each month.</p>
                 </div>
                 <div id="reportsObligationSummary" class="reports-ob-summary" hidden>
                   <div class="reports-ob-card" role="status">
-                    <div class="reports-ob-card__k">Monthly burden (normalized)</div>
+                    <div class="reports-ob-card__k">Recurring monthly commitments</div>
                     <div class="reports-ob-card__v" id="reportsObligationStatTotal">—</div>
                   </div>
                   <div class="reports-ob-card" role="status">
-                    <div class="reports-ob-card__k">Largest per payment</div>
+                    <div class="reports-ob-card__k">Largest single obligation</div>
                     <div class="reports-ob-card__v" id="reportsObligationStatLargest">—</div>
                   </div>
                   <div class="reports-ob-card" role="status">
-                    <div class="reports-ob-card__k">Due in next 7 days (per occurrence)</div>
+                    <div class="reports-ob-card__k">Upcoming recurring outflows</div>
                     <div class="reports-ob-card__v" id="reportsObligationStatWeek">—</div>
                   </div>
                 </div>
-                <div class="reports-obligation-toolbar">
-                  <label class="reports-obligation-field">
-                    <span class="reports-obligation-field__k">Sort</span>
-                    <select id="reportsObligationSort" class="reports-obligation-select">
-                      <option value="next" selected>Next due date</option>
-                      <option value="monthly_desc">Largest monthly (est.)</option>
-                      <option value="monthly_asc">Smallest monthly (est.)</option>
-                      <option value="amount_desc">Largest payment</option>
-                    </select>
-                  </label>
-                  <label class="reports-obligation-field">
-                    <span class="reports-obligation-field__k">Group</span>
-                    <select id="reportsObligationFilterGroup" class="reports-obligation-select">
-                      <option value="">All groups</option>
-                    </select>
-                  </label>
-                  <label class="reports-obligation-check">
-                    <input type="checkbox" id="reportsObligationLargeOnly" />
-                    <span>Large only (≥ $2,500 / hit or est. mo.)</span>
-                  </label>
+                <div id="reportsObligationInsightRow" class="reports-ob-insights" hidden>
+                  <div class="reports-ob-insight reports-ob-insight--mix">
+                    <div class="reports-ob-insight__title">Where the money goes</div>
+                    <div class="reports-ob-insight__desc" id="reportsObligationMixCaption"></div>
+                    <ul id="reportsObligationMixBars" class="reports-ob-bars"></ul>
+                  </div>
+                  <div class="reports-ob-insight reports-ob-insight--timing">
+                    <div class="reports-ob-insight__title">Heavy weeks ahead</div>
+                    <div class="reports-ob-insight__desc" id="reportsObligationTimingCaption"></div>
+                    <ul id="reportsObligationTimingList" class="reports-ob-timing-list"></ul>
+                  </div>
+                </div>
+                <div class="reports-ob-table-head">
+                  <div class="reports-ob-table-head__title">All recurring obligations</div>
+                  <div class="reports-obligation-toolbar reports-obligation-toolbar--compact">
+                    <label class="reports-obligation-field">
+                      <span class="reports-obligation-field__k">Sort</span>
+                      <select id="reportsObligationSort" class="reports-obligation-select">
+                        <option value="next" selected>Next due date</option>
+                        <option value="monthly_desc">Largest monthly (est.)</option>
+                        <option value="monthly_asc">Smallest monthly (est.)</option>
+                        <option value="amount_desc">Largest payment</option>
+                      </select>
+                    </label>
+                    <label class="reports-obligation-field">
+                      <span class="reports-obligation-field__k">Group</span>
+                      <select id="reportsObligationFilterGroup" class="reports-obligation-select">
+                        <option value="">All groups</option>
+                      </select>
+                    </label>
+                    <label class="reports-obligation-check" title="Show only obligations of $2,500 or more (per payment or estimated monthly)">
+                      <input type="checkbox" id="reportsObligationLargeOnly" />
+                      <span>Large only</span>
+                    </label>
+                  </div>
                 </div>
                 <div class="reports-table-scroll reports-table-scroll--obligations">
                   <table class="reports-table reports-table--obligations" aria-label="Recurring cash commitments">
                     <thead>
                       <tr>
-                        <th scope="col">Description</th>
+                        <th scope="col">Obligation</th>
                         <th scope="col" class="num">Amount</th>
-                        <th scope="col">Frequency</th>
                         <th scope="col">Next</th>
-                        <th scope="col" class="num reports-ob-est-col">Est. monthly</th>
+                        <th scope="col" class="reports-ob-freq-col">Frequency</th>
+                        <th scope="col" class="num reports-ob-est-col">Monthly est.</th>
                       </tr>
                     </thead>
                     <tbody id="reportsObligationBody"></tbody>
@@ -1270,6 +1285,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="../app.js?v=260"></script>
+    <script src="../app.js?v=261"></script>
   </body>
 </html>
