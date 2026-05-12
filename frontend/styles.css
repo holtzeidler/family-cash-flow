@@ -370,11 +370,16 @@ body.landing-page .top-nav__actions a.top-nav__logout{
 body.landing-page{
   overflow-x: hidden;
   color: rgba(15, 23, 42, 0.98);
-  /* Single source of truth for homepage horizontal alignment */
-  --landing-content-max: min(52rem, calc(100vw - 2rem));
-  /* Standardized vertical rhythm: ~72px between major sections, ~32px internal */
-  --landing-section-gap: clamp(2.6rem, 5.2vw, 4.5rem);
-  --landing-section-gap-tight: clamp(1.1rem, 2.4vw, 1.6rem);
+  /* Single source of truth for homepage horizontal alignment.
+     The main column was 52rem; widened to 60rem (≈+15%) so the demo card
+     feels like the anchor of the page rather than a sample floating in
+     empty gray space. */
+  --landing-content-max: min(60rem, calc(100vw - 2rem));
+  /* Vertical rhythm: tightened so the page reads as one continuous scroll
+     rather than a stack of disconnected islands.
+     Was: clamp(2.6rem, 5.2vw, 4.5rem) / clamp(1.1rem, 2.4vw, 1.6rem). */
+  --landing-section-gap: clamp(1.6rem, 3.4vw, 2.8rem);
+  --landing-section-gap-tight: clamp(0.7rem, 1.6vw, 1.1rem);
   --landing-rail: var(--landing-content-max);
   --landing-below-max: var(--landing-content-max);
 }
@@ -384,7 +389,9 @@ body.landing-page .landing-main{
   flex-direction: column;
   align-items: stretch;
   justify-content: flex-start;
-  padding: clamp(0.42rem, 1.2vw, 0.72rem) 0 clamp(1.85rem, 4.4vw, 2.65rem);
+  /* Slightly more top padding so the hero doesn't feel pinned to the nav;
+     bottom stays modest so the footer doesn't dominate. */
+  padding: clamp(0.95rem, 2.2vw, 1.6rem) 0 clamp(1.85rem, 4.4vw, 2.65rem);
   /* Calm, premium canvas (less "blocks on a page") */
   background:
     radial-gradient(900px 260px at 50% 0%, rgba(4, 120, 87, 0.085) 0%, rgba(4, 120, 87, 0) 72%),
@@ -562,8 +569,8 @@ body.landing-page .landing-hero-viz__foot{
 }
 body.landing-page .landing-hero__text{
   margin: 0 auto 0.22rem;
-  max-width: 27rem;
-  font-size: clamp(1.42rem, 3.3vw, 2rem);
+  max-width: 30rem;
+  font-size: clamp(1.65rem, 3.6vw, 2.35rem);
   line-height: 1.08;
   font-weight: 800;
   color: rgba(15, 23, 42, 1);
@@ -572,24 +579,24 @@ body.landing-page .landing-hero__text{
 }
 body.landing-page .landing-hero__sub{
   margin: 0 auto;
-  max-width: 22.5rem;
+  max-width: 24rem;
   width: 100%;
   padding: 0 0.35rem;
   box-sizing: border-box;
-  font-size: clamp(0.84rem, 1.7vw, 0.94rem);
-  line-height: 1.42;
+  font-size: clamp(0.92rem, 1.85vw, 1.04rem);
+  line-height: 1.45;
   font-weight: 500;
-  color: rgba(71, 85, 105, 0.88);
+  color: rgba(71, 85, 105, 0.9);
 }
 body.landing-page .landing-hero__cta{
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  margin: 0.7rem auto 0;
-  padding: 0 1.2rem;
-  min-height: 40px;
+  margin: 0.95rem auto 0;
+  padding: 0 1.35rem;
+  min-height: 44px;
   font-weight: 700;
-  font-size: 0.92rem;
+  font-size: 0.98rem;
   letter-spacing: 0.015em;
   color: #fff;
   background: var(--accent);
@@ -676,13 +683,17 @@ body.landing-page .landing-preview__transferLine{
 }
 body.landing-page .landing-preview__transferAmt{
   margin: 0;
-  font-size: clamp(2.45rem, 7vw, 3.45rem);
+  /* Big and intentional, but never enormous; ranges from ~42px on small
+     screens to ~58–60px on desktop. Keep the range on one line — the
+     en dash should never be the breakpoint between $650 and $900. */
+  font-size: clamp(2.6rem, 5.6vw, 3.85rem);
   font-weight: 900;
-  line-height: 0.98;
-  letter-spacing: -0.042em;
+  line-height: 1.02;
+  letter-spacing: -0.03em;
   color: var(--accent);
   font-variant-numeric: tabular-nums;
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+  white-space: nowrap;
 }
 body.landing-page .landing-preview__transferFoot{
   margin: 0.42rem 0 0;
@@ -962,7 +973,7 @@ body.landing-page .landing-cal-peek__svg{
   display: block;
   width: 100%;
   height: auto;
-  min-height: 168px;
+  min-height: 188px;
 }
 @media (max-width: 720px){
   body.landing-page .landing-cal-peek__inner{
