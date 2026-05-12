@@ -9665,11 +9665,12 @@ body.plans-page .container > .grid{
   box-sizing: border-box;
   width: calc(100% + 28px);
   margin: -14px -14px 8px;
-  padding: 8px 14px 9px;
+  padding: 6px 14px 7px;
   text-align: left;
-  font-size: 0.9375rem;
+  font-size: 0.9rem;
   font-weight: 700;
   letter-spacing: -0.02em;
+  line-height: 1.2;
   color: rgba(17, 24, 39, 0.92);
   background: color-mix(in srgb, var(--accent) 10%, var(--cal-surface));
   border: none;
@@ -9814,18 +9815,18 @@ body.plans-page .container > .grid{
 
 .tx-add-advanced{
   margin-top: 2px;
-  padding: 8px 10px 6px;
+  padding: 5px 9px 5px;
   border-radius: 10px;
-  background: rgba(15, 23, 42, 0.03);
-  border: 1px solid rgba(17, 24, 39, 0.06);
+  background: rgba(15, 23, 42, 0.025);
+  border: 1px solid rgba(17, 24, 39, 0.05);
 }
 .tx-add-advanced__title{
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: rgba(100, 116, 139, 0.88);
-  margin: 0 0 6px;
+  color: rgba(100, 116, 139, 0.78);
+  margin: 0 0 4px;
 }
 .tx-add-advanced__chips{
   display: flex;
@@ -9841,7 +9842,7 @@ body.plans-page .container > .grid{
   color: rgba(55, 65, 81, 0.95);
   background: var(--panel, #fff);
   border: 1px solid rgba(17, 24, 39, 0.1);
-  padding: 5px 11px;
+  padding: 4px 10px;
   border-radius: 999px;
   cursor: pointer;
   box-shadow: 0 1px 0 rgba(15, 23, 42, 0.04);
@@ -9856,11 +9857,29 @@ body.plans-page .container > .grid{
   background: color-mix(in srgb, var(--accent) 9%, var(--panel, #fff));
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent);
 }
+.tx-add-advanced__chip--color{
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding-left: 9px;
+}
+.tx-add-advanced__chip-dot{
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: rgba(148, 163, 184, 0.45);
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.12);
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+  flex-shrink: 0;
+}
+.tx-add-advanced__chip-label{
+  line-height: 1;
+}
 .tx-add-cat-color-panel.cat-color-row{
   width: 100%;
   flex-wrap: wrap;
-  padding: 8px 0 2px;
-  margin-top: 4px;
+  padding: 6px 0 1px;
+  margin-top: 3px;
   gap: 6px;
 }
 .tx-add-form .tx-add-cat-color-panel .cat-swatch{
@@ -9895,6 +9914,16 @@ body.plans-page .container > .grid{
 .tx-add-btn-primary{
   line-height: 1.25;
 }
+.modal--tx-add .tx-add-btn-secondary{
+  background: rgba(15, 23, 42, 0.015) !important;
+  border-color: rgba(15, 23, 42, 0.06) !important;
+  color: rgba(75, 85, 99, 0.78) !important;
+}
+.modal--tx-add .tx-add-btn-secondary:hover{
+  background: rgba(15, 23, 42, 0.045) !important;
+  border-color: rgba(15, 23, 42, 0.1) !important;
+  color: rgba(17, 24, 39, 0.92) !important;
+}
 .tx-add-form .tx-add-vspace{
   height: 12px;
   flex-shrink: 0;
@@ -9916,14 +9945,30 @@ body.plans-page .container > .grid{
   opacity: 0.92;
 }
 .modal--tx-add .tx-add-optional-mark{
-  font-weight: 500;
-  font-size: 0.92em;
-  opacity: 0.75;
+  margin-left: 2px;
+  font-weight: 400;
+  font-style: italic;
+  font-size: 0.82em;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  color: rgba(100, 116, 139, 0.72);
+  opacity: 1;
 }
 .modal--tx-add .kind-toggle .kind-opt{
   padding: 7px 10px;
   min-height: 34px;
   font-size: 12.5px;
+  color: rgba(55, 65, 81, 0.78);
+}
+.modal--tx-add .kind-toggle .kind-opt:has(input[value="expense"]:checked){
+  background: rgba(167, 55, 68, 0.055);
+  color: color-mix(in srgb, var(--danger) 76%, var(--text));
+}
+.modal--tx-add .kind-toggle .kind-opt:has(input[value="expense"]:checked):hover{
+  background: rgba(167, 55, 68, 0.085);
+}
+.modal--tx-add .kind-toggle .kind-opt:has(input[value="income"]:checked){
+  background: rgba(0, 90, 74, 0.085);
 }
 .modal--tx-add .tx-add-form .form-row-h__field > input:not([type="checkbox"]):not([type="radio"]),
 .modal--tx-add .tx-add-form .form-row-h__field > select,
@@ -9936,20 +9981,54 @@ body.plans-page .container > .grid{
   font-size: 13px;
 }
 .modal--tx-add .tx-add-form .money-input input{
-  padding-top: 6px;
-  padding-bottom: 6px;
+  padding: 7px 10px 7px 6px;
   font-size: 13px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+  line-height: 1.25;
+  -moz-appearance: textfield;
+}
+.modal--tx-add .tx-add-form .money-input input::-webkit-outer-spin-button,
+.modal--tx-add .tx-add-form .money-input input::-webkit-inner-spin-button{
+  -webkit-appearance: none;
+  opacity: 0.35;
+  margin-left: 4px;
+}
+.modal--tx-add .tx-add-form .money-input input:hover::-webkit-inner-spin-button,
+.modal--tx-add .tx-add-form .money-input input:focus::-webkit-inner-spin-button{
+  opacity: 0.7;
 }
 .modal--tx-add .tx-add-form .money-input__prefix{
-  padding: 6px 8px 6px 10px;
+  padding: 7px 4px 7px 11px;
   font-size: 12.5px;
+  color: rgba(75, 85, 99, 0.85);
 }
 .modal--tx-add .tx-add-form #txAddDate,
 .modal--tx-add .tx-add-form #txAddEndDate{
   padding: 6px 9px;
   font-size: 13px;
+}
+.modal--tx-add .tx-add-form #txAddDate::-webkit-calendar-picker-indicator,
+.modal--tx-add .tx-add-form #txAddEndDate::-webkit-calendar-picker-indicator{
+  opacity: 0.45;
+  filter: grayscale(1);
+  transform: scale(0.92);
+  transform-origin: right center;
+  cursor: pointer;
+}
+.modal--tx-add .tx-add-form #txAddDate:hover::-webkit-calendar-picker-indicator,
+.modal--tx-add .tx-add-form #txAddEndDate:hover::-webkit-calendar-picker-indicator{
+  opacity: 0.75;
+}
+.modal--tx-add .tx-add-form .input-notes-flex{
+  padding: 5px 9px;
+  font-size: 13px;
+  line-height: 1.2;
+  min-height: 0;
+}
+.modal--tx-add .tx-add-form .input-notes-flex:focus{
+  padding-top: 6px;
+  padding-bottom: 6px;
 }
 .modal--tx-add .tx-add-form .tx-add-recurrence-select{
   padding: 5px 7px;

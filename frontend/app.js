@@ -5683,7 +5683,30 @@ function syncAllCategoryComboboxes(categories) {
   }
 }
 
-// Hook category color pickers into category fields.
+function refreshTxAddColorChipDot() {
+  const dot = document.getElementById("txAddColorChipDot");
+  if (!dot) return;
+  let bg = "";
+  const raw = txAddSelectedBgColor;
+  if (raw && String(raw).trim().toLowerCase() !== "none") {
+    bg = String(raw).trim();
+  }
+  if (!bg) {
+    const catId = categoryIdFromCategoryField("txAddCategoryId");
+    if (catId) {
+      const st = categoryStyleFromId(catId);
+      if (st && st.bg) bg = st.bg;
+    }
+  }
+  if (bg) {
+    dot.style.background = bg;
+    dot.style.boxShadow = "inset 0 0 0 1px rgba(15, 23, 42, 0.18)";
+  } else {
+    dot.style.background = "rgba(148, 163, 184, 0.45)";
+    dot.style.boxShadow = "inset 0 0 0 1px rgba(15, 23, 42, 0.12)";
+  }
+}
+
 const txAddCategoryColorPicker = renderCategoryColorPicker({
   rowEl: txAddCategoryColorRow,
   swatchesEl: txAddCategoryColorSwatches,
@@ -5694,6 +5717,7 @@ const txAddCategoryColorPicker = renderCategoryColorPicker({
   setBg: (v) => {
     txAddColorTouched = true;
     txAddSelectedBgColor = v && String(v).trim() ? String(v).trim() : null;
+    refreshTxAddColorChipDot();
   },
 });
 const txEditCategoryColorPicker = renderCategoryColorPicker({
@@ -5713,6 +5737,7 @@ function refreshTxCategoryColorPickers() {
     if (txAddCategoryColorPicker) txAddCategoryColorPicker.refresh();
     if (txEditCategoryColorPicker) txEditCategoryColorPicker.refresh();
   } catch (_) {}
+  try { refreshTxAddColorChipDot(); } catch (_) {}
 }
 
 function setCategoryFieldValue(fieldId, categoryIdOrNull) {
