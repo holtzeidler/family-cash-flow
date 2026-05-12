@@ -4440,6 +4440,198 @@ function ensureProjectionChartDefaults() {
   Chart.defaults.font.family =
     'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
   Chart.defaults.font.size = 11;
+  registerProjectionAnnotationPlugins();
+}
+
+/*
+ * Custom Chart.js plugin: draws inline event annotations + a "Today" guide line
+ * on the Balance Trendline. Pure canvas drawing so it works without
+ * chartjs-plugin-annotation. Annotations come from chart options
+ * `plugins.balanceAnnotations.annotations`, today index from
+ * `plugins.balanceAnnotations.todayIdx`.
+ */
+function registerProjectionAnnotationPlugins() {
+  if (typeof Chart === "undefined") return;
+  if (Chart.__bwBalanceAnnotationsRegistered) return;
+  Chart.__bwBalanceAnnotationsRegistered = true;
+
+  Chart.register({
+    id: "balanceAnnotations",
+    afterDatasetsDraw(chart, _args, opts) {
+      const { ctx, chartArea, scales } = chart;
+      if (!chartArea || !scales?.x || !scales?.y) return;
+      const xScale = scales.x;
+      const yScale = scales.y;
+
+      const todayIdx = opts && Number.isFinite(opts.todayIdx) ? Number(opts.todayIdx) : -1;
+      if (todayIdx >= 0) {
+        const x = xScale.getPixelForValue(todayIdx);
+        if (x >= chartArea.left && x <= chartArea.right) {
+          ctx.save();
+          ctx.strokeStyle = "rgba(11, 61, 46, 0.42)";
+          ctx.setLineDash([3, 4]);
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(x, chartArea.top + 2);
+          ctx.lineTo(x, chartArea.bottom);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.fillStyle = "rgba(11, 61, 46, 0.92)";
+          ctx.font =
+            '600 10px ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+          ctx.textBaseline = "top";
+          const labelX = Math.min(chartArea.right - 32, x + 4);
+          ctx.fillText("Today", labelX, chartArea.top + 2);
+          ctx.restore();
+        }
+      }
+
+      const floor = opts && Number.isFinite(opts.floor) ? Number(opts.floor) : null;
+      if (floor != null) {
+        const y = yScale.getPixelForValue(floor);
+        if (y >= chartArea.top && y <= chartArea.bottom) {
+          ctx.save();
+          ctx.fillStyle = "rgba(100, 116, 139, 0.92)";
+          ctx.font =
+            '600 9.5px ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+          ctx.textBaseline = "bottom";
+          ctx.textAlign = "right";
+          const label = `Floor $${formatChartMoneyShort(floor)}`;
+          const pad = 6;
+          const txtW = ctx.measureText(label).width;
+          // Subtle background chip so the label stays legible over the grid.
+          ctx.fillStyle = "rgba(248, 250, 252, 0.92)";
+          ctx.fillRect(chartArea.right - txtW - pad - 4, y - 14, txtW + pad + 4, 14);
+          ctx.fillStyle = "rgba(71, 85, 105, 0.95)";
+          ctx.fillText(label, chartArea.right - 4, y - 2);
+          ctx.restore();
+        }
+      }
+
+      const annotations = (opts && Array.isArray(opts.annotations)) ? opts.annotations : [];
+      if (!annotations.length) return;
+      ctx.save();
+      ctx.font =
+        '600 10px ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+      ctx.textBaseline = "middle";
+
+      // Track label rectangles so we can dodge collisions between markers.
+      const placed = [];
+      const PAD_X = 6;
+      const PAD_Y = 3;
+      const GAP = 4;
+
+      for (const ann of annotations) {
+        if (!ann) continue;
+        const idx = Number(ann.idx);
+        const val = Number(ann.value);
+        if (!Number.isFinite(idx) || !Number.isFinite(val)) continue;
+        const px = xScale.getPixelForValue(idx);
+        const py = yScale.getPixelForValue(val);
+        if (px < chartArea.left - 4 || px > chartArea.right + 4) continue;
+
+        const isInflow = ann.kind === "inflow";
+        const dot = isInflow ? "rgba(4, 120, 87, 0.95)" : "rgba(167, 55, 68, 0.95)";
+        const ring = isInflow ? "rgba(4, 120, 87, 0.18)" : "rgba(167, 55, 68, 0.18)";
+
+        // Halo + dot
+        ctx.beginPath();
+        ctx.fillStyle = ring;
+        ctx.arc(px, py, 7, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.fillStyle = dot;
+        ctx.arc(px, py, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Label chip
+        const label = String(ann.label || "");
+        if (!label) continue;
+        const txtW = ctx.measureText(label).width;
+        const chipW = txtW + PAD_X * 2;
+        const chipH = 18;
+
+        // Try placing above the point first; below if it would clip.
+        let chipX = px - chipW / 2;
+        if (chipX < chartArea.left + 2) chipX = chartArea.left + 2;
+        if (chipX + chipW > chartArea.right - 2) chipX = chartArea.right - 2 - chipW;
+        let chipY = py - 12 - chipH;
+        if (chipY < chartArea.top + 2) chipY = py + 12;
+
+        // Dodge: shift down/up if it overlaps a previously placed chip.
+        for (let attempt = 0; attempt < 8; attempt++) {
+          const collides = placed.some((r) => {
+            return !(
+              chipX + chipW + GAP < r.x ||
+              chipX > r.x + r.w + GAP ||
+              chipY + chipH + GAP < r.y ||
+              chipY > r.y + r.h + GAP
+            );
+          });
+          if (!collides) break;
+          chipY += chipH + GAP;
+          if (chipY + chipH > chartArea.bottom - 2) {
+            chipY = chartArea.top + 2 + attempt * (chipH + GAP);
+          }
+        }
+        placed.push({ x: chipX, y: chipY, w: chipW, h: chipH });
+
+        // Subtle leader from the point to the chip.
+        ctx.save();
+        ctx.strokeStyle = isInflow ? "rgba(4, 120, 87, 0.4)" : "rgba(167, 55, 68, 0.42)";
+        ctx.lineWidth = 1;
+        const chipCx = chipX + chipW / 2;
+        const chipCy = chipY + (py > chipY ? chipH : 0);
+        ctx.beginPath();
+        ctx.moveTo(px, py);
+        ctx.lineTo(chipCx, chipCy);
+        ctx.stroke();
+        ctx.restore();
+
+        // Chip background
+        const radius = 8;
+        const bg = isInflow ? "rgba(232, 248, 240, 0.96)" : "rgba(253, 235, 237, 0.96)";
+        const bd = isInflow ? "rgba(4, 120, 87, 0.45)" : "rgba(167, 55, 68, 0.5)";
+        drawRoundedRect(ctx, chipX, chipY, chipW, chipH, radius);
+        ctx.fillStyle = bg;
+        ctx.fill();
+        ctx.strokeStyle = bd;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        ctx.fillStyle = isInflow ? "rgba(6, 78, 59, 0.95)" : "rgba(127, 29, 29, 0.95)";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(label, chipX + chipW / 2, chipY + chipH / 2);
+      }
+      ctx.restore();
+    },
+  });
+}
+
+function drawRoundedRect(ctx, x, y, w, h, r) {
+  const rr = Math.max(0, Math.min(r, w / 2, h / 2));
+  ctx.beginPath();
+  ctx.moveTo(x + rr, y);
+  ctx.lineTo(x + w - rr, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + rr);
+  ctx.lineTo(x + w, y + h - rr);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - rr, y + h);
+  ctx.lineTo(x + rr, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - rr);
+  ctx.lineTo(x, y + rr);
+  ctx.quadraticCurveTo(x, y, x + rr, y);
+  ctx.closePath();
+}
+
+function formatChartMoneyShort(v) {
+  const n = Number(v ?? 0);
+  if (!Number.isFinite(n)) return "0";
+  const abs = Math.abs(n);
+  if (abs >= 1_000_000) return (n / 1_000_000).toFixed(abs >= 10_000_000 ? 0 : 1) + "M";
+  if (abs >= 10_000) return Math.round(n / 1000) + "k";
+  if (abs >= 1_000) return (n / 1000).toFixed(1).replace(/\.0$/, "") + "k";
+  return Math.round(n).toLocaleString();
 }
 
 async function refreshProjectionChart() {
@@ -9335,36 +9527,42 @@ function renderReportsBalanceLegend(daily, dateLabels, values) {
   }
 
   const thr = readStoredMinBalanceThresholdForReports();
-  const pills = [];
   const hasNeg = negSpans.length > 0;
-  const secondary = hasNeg ? "reports-legend__item reports-legend__item--secondary" : "reports-legend__item";
 
+  // Primary insight: the one thing the user should read first.
+  let primary = "";
   if (hasNeg) {
     const sp = negSpans[0];
     const a = escapeHtml(fmtMonthDay(String(dateLabels[sp.a] || "")));
     const b = escapeHtml(fmtMonthDay(String(dateLabels[sp.b] || "")));
-    const negTxt = sp.a === sp.b ? `Negative · ${a}` : `Negative · ${a} – ${b}`;
-    pills.push(`<span class="reports-legend__item reports-legend__item--risk reports-legend__item--primary">${negTxt}</span>`);
+    primary = sp.a === sp.b
+      ? `<span class="reports-legend__primary reports-legend__primary--risk">Projected below zero · ${a}</span>`
+      : `<span class="reports-legend__primary reports-legend__primary--risk">Projected below zero · ${a} – ${b}</span>`;
+  } else if (thr != null && Number.isFinite(thr) && thr > 0 && Number(values[lowIdx]) < thr) {
+    const aDate = escapeHtml(fmtMonthDay(lowIso));
+    primary = `<span class="reports-legend__primary reports-legend__primary--warn">Approaches your floor · ${aDate}</span>`;
+  } else {
+    primary = `<span class="reports-legend__primary reports-legend__primary--calm">Stays above your floor</span>`;
   }
 
-  pills.push(
-    `<span class="${secondary}">Lowest <strong>$${fmtMoney(values[lowIdx])}</strong> · ${escapeHtml(fmtMonthDay(lowIso))}</span>`
+  // Secondary, calmer metadata — keep tight and visually subordinate.
+  const meta = [];
+  meta.push(
+    `<span class="reports-legend__meta-item">Lowest <strong>$${fmtMoney(values[lowIdx])}</strong> · ${escapeHtml(fmtMonthDay(lowIso))}</span>`
   );
-
   if (worstOutflow) {
-    pills.push(
-      `<span class="${secondary}">Large outflow <strong>−$${fmtMoney(Math.abs(worstOutflow.net))}</strong> · ${escapeHtml(fmtMonthDay(worstOutflow.iso))}</span>`
+    meta.push(
+      `<span class="reports-legend__meta-item">Largest outflow <strong>−$${fmtMoney(Math.abs(worstOutflow.net))}</strong> · ${escapeHtml(fmtMonthDay(worstOutflow.iso))}</span>`
     );
   }
-
   if (thr != null && Number.isFinite(thr) && thr > 0) {
-    pills.push(
-      `<span class="reports-legend__item reports-legend__item--floor reports-legend__item--muted">Floor $${fmtMoney(thr)}</span>`
-    );
+    meta.push(`<span class="reports-legend__meta-item reports-legend__meta-item--floor">Floor $${fmtMoney(thr)}</span>`);
   }
 
-  const maxPills = 4;
-  el.innerHTML = `<div class="reports-legend__inner">${pills.slice(0, maxPills).join("")}</div>`;
+  el.innerHTML = `
+    <div class="reports-legend__primary-row">${primary}</div>
+    <div class="reports-legend__meta">${meta.join("")}</div>
+  `;
 }
 
 function drawReportsSafeTransferChart(daily) {
@@ -9936,6 +10134,7 @@ function drawProjectionChart(daily) {
   }
 
   const outflowMarkers = new Set();
+  const inflowMarkers = new Set();
   if (onReports && items.length === values.length) {
     const ranked = items
       .map((row, i) => ({ i, n: Number(row?.net_cashflow ?? NaN) }))
@@ -9943,6 +10142,13 @@ function drawProjectionChart(daily) {
       .sort((a, b) => a.n - b.n)
       .slice(0, 3);
     for (const x of ranked) outflowMarkers.add(x.i);
+
+    const rankedIn = items
+      .map((row, i) => ({ i, n: Number(row?.net_cashflow ?? NaN) }))
+      .filter((x) => Number.isFinite(x.n) && x.n > 0)
+      .sort((a, b) => b.n - a.n)
+      .slice(0, 2);
+    for (const x of rankedIn) inflowMarkers.add(x.i);
   }
 
   const pointRadius = values.map((_, i) => {
@@ -9959,10 +10165,46 @@ function drawProjectionChart(daily) {
   renderReportsBalanceLegend(items, dateLabels, values);
   renderReportsBalanceTakeaway(items, dateLabels, values);
 
+  // Slightly stronger fills on the reports view so positive vs. negative
+  // regions read as zones instead of empty whitespace.
   const negFillBelow =
-    onReports ? "rgba(185, 28, 28, 0.014)" : "rgba(167, 55, 68, 0.12)";
-  const negFillBelowEnd = onReports ? "rgba(185, 28, 28, 0.018)" : "rgba(167, 55, 68, 0.12)";
-  const posFillAbove = onReports ? "rgba(11, 61, 46, 0.045)" : "rgba(11, 61, 46, 0.12)";
+    onReports ? "rgba(185, 28, 28, 0.065)" : "rgba(167, 55, 68, 0.12)";
+  const negFillBelowEnd = onReports ? "rgba(185, 28, 28, 0.085)" : "rgba(167, 55, 68, 0.12)";
+  const posFillAbove = onReports ? "rgba(11, 61, 46, 0.09)" : "rgba(11, 61, 46, 0.12)";
+
+  // Build annotation list (top outflows and inflows) for the custom plugin.
+  const annotations = [];
+  if (onReports) {
+    for (const i of outflowMarkers) {
+      const net = Number(items[i]?.net_cashflow ?? 0);
+      if (!Number.isFinite(net) || net >= 0) continue;
+      annotations.push({
+        idx: i,
+        value: Number(values[i] ?? 0),
+        kind: "outflow",
+        label: `−$${formatChartMoneyShort(Math.abs(net))}`,
+      });
+    }
+    for (const i of inflowMarkers) {
+      const net = Number(items[i]?.net_cashflow ?? 0);
+      if (!Number.isFinite(net) || net <= 0) continue;
+      annotations.push({
+        idx: i,
+        value: Number(values[i] ?? 0),
+        kind: "inflow",
+        label: `+$${formatChartMoneyShort(net)}`,
+      });
+    }
+  }
+
+  // Find "today" within the chart range, if present, for the vertical guide.
+  let todayIdx = -1;
+  if (onReports) {
+    try {
+      const todayIso = toISODate(new Date());
+      todayIdx = dateLabels.findIndex((d) => String(d) === todayIso);
+    } catch (_) {}
+  }
 
   const datasets = [
     {
@@ -9989,7 +10231,8 @@ function drawProjectionChart(daily) {
       },
       borderWidth: onReports ? 2.25 : 2,
       fill: true,
-      tension: onReports ? 0.26 : 0.15,
+      cubicInterpolationMode: onReports ? "monotone" : "default",
+      tension: onReports ? 0.34 : 0.15,
       pointRadius,
       pointHoverRadius: 5,
       pointBackgroundColor,
@@ -10007,28 +10250,17 @@ function drawProjectionChart(daily) {
     datasets.push({
       label: "Minimum",
       data: dateLabels.map(() => thr),
-      borderColor: onReports ? "rgba(100, 116, 139, 0.38)" : "rgba(75, 85, 99, 0.55)",
-      borderWidth: onReports ? 1 : 1.5,
-      borderDash: onReports ? [6, 5] : [5, 5],
+      borderColor: onReports ? "rgba(100, 116, 139, 0.62)" : "rgba(75, 85, 99, 0.55)",
+      borderWidth: onReports ? 1.25 : 1.5,
+      borderDash: onReports ? [5, 4] : [5, 5],
       pointRadius: 0,
       fill: false,
       tension: 0,
     });
   }
-  if (onReports && outflowMarkers.size) {
-    datasets.push({
-      label: "Heavy outflow days",
-      data: values.map((v, i) => (outflowMarkers.has(i) ? v : null)),
-      borderColor: "rgba(0, 0, 0, 0)",
-      backgroundColor: "rgba(62, 99, 221, 0.88)",
-      borderWidth: 0,
-      pointRadius: values.map((_, i) => (outflowMarkers.has(i) ? 4 : 0)),
-      pointHoverRadius: 5,
-      pointStyle: "circle",
-      showLine: false,
-      spanGaps: false,
-    });
-  }
+  // Heavy outflow / inflow visual markers are now drawn by the
+  // `balanceAnnotations` plugin so they can carry an inline label.
+  // The main "Balance" dataset still drives tooltips via interaction mode "index".
 
   const ctx = projectionChartCanvas.getContext("2d");
   if (!ctx) return;
@@ -10044,12 +10276,19 @@ function drawProjectionChart(daily) {
       maintainAspectRatio: false,
       layout: onReports
         ? {
-            padding: { top: 12, right: 8, bottom: 4, left: 0 },
+            padding: { top: 32, right: 14, bottom: 4, left: 0 },
           }
         : undefined,
       interaction: { mode: "index", intersect: false },
       plugins: {
         legend: { display: false },
+        balanceAnnotations: onReports
+          ? {
+              annotations,
+              todayIdx,
+              floor: thr != null ? Number(thr) : null,
+            }
+          : { annotations: [], todayIdx: -1, floor: null },
         tooltip: {
           callbacks: {
             title: (ctxItems) => {
@@ -10066,12 +10305,6 @@ function drawProjectionChart(daily) {
             },
             label: (ctx) => {
               if (ctx.dataset.label === "Minimum") return ` Floor $${fmtMoney(ctx.parsed.y)}`;
-              if (ctx.dataset.label === "Heavy outflow days") {
-                const i = ctx.dataIndex;
-                const net = Number(items[i]?.net_cashflow ?? 0);
-                if (!Number.isFinite(net)) return "";
-                return ` Large outflow −$${fmtMoney(Math.abs(net))}`;
-              }
               return ` Balance $${fmtMoney(ctx.parsed.y)}`;
             },
           },

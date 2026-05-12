@@ -3370,6 +3370,72 @@ body[data-bw-view="calendar"] .calendar-panel-sticky-zone{
 .reports-legend{
   margin-bottom: 6px;
 }
+.reports-legend__primary-row{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: center;
+  margin-bottom: 4px;
+}
+.reports-legend__primary{
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 9px;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: -0.005em;
+  line-height: 1.25;
+}
+.reports-legend__primary::before{
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.65;
+}
+.reports-legend__primary--risk{
+  background: linear-gradient(165deg, rgba(254, 226, 226, 0.78) 0%, rgba(254, 242, 242, 0.7) 100%);
+  border: 1px solid rgba(185, 28, 28, 0.28);
+  color: rgba(127, 29, 29, 0.95);
+  box-shadow: 0 1px 2px rgba(185, 28, 28, 0.07);
+}
+.reports-legend__primary--warn{
+  background: rgba(254, 243, 199, 0.72);
+  border: 1px solid rgba(180, 83, 9, 0.28);
+  color: rgba(120, 53, 15, 0.92);
+}
+.reports-legend__primary--calm{
+  background: rgba(232, 248, 240, 0.78);
+  border: 1px solid rgba(4, 120, 87, 0.22);
+  color: rgba(6, 78, 59, 0.88);
+}
+.reports-legend__meta{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: rgba(100, 116, 139, 0.7);
+  letter-spacing: 0.005em;
+}
+.reports-legend__meta-item{
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+}
+.reports-legend__meta-item strong{
+  font-weight: 650;
+  color: rgba(71, 85, 105, 0.92);
+  font-variant-numeric: tabular-nums;
+}
+.reports-legend__meta-item--floor{
+  color: rgba(100, 116, 139, 0.55);
+  font-style: italic;
+}
 .reports-legend__inner{
   display: flex;
   flex-wrap: wrap;
@@ -4114,12 +4180,36 @@ body[data-bw-view="reports"] #sidebarBodyMonth input[type="month"]{
 body[data-bw-view="reports"] #sidebarBodyMonth > div:nth-child(2){
   height: 6px !important;
 }
-body[data-bw-view="reports"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger{
-  border-color: rgba(185, 28, 28, 0.12);
-  background: rgba(254, 242, 242, 0.38);
-  color: rgba(100, 23, 23, 0.78);
-  padding: 7px 9px;
-  line-height: 1.28;
+body[data-bw-view="reports"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger,
+body[data-bw-view="reports"] #sidebarHighBalanceBanner.calendar-low-balance--sidebar{
+  border-color: rgba(185, 28, 28, 0.08);
+  background: rgba(254, 247, 247, 0.45);
+  color: rgba(100, 23, 23, 0.74);
+  padding: 6px 9px;
+  line-height: 1.25;
+  box-shadow: none;
+  border-radius: 10px;
+}
+body[data-bw-view="reports"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger .cash-outlook-icon{
+  color: rgba(185, 28, 28, 0.6);
+}
+body[data-bw-view="reports"] #reportsLeftNav{
+  background: transparent;
+  padding: 4px 2px 2px;
+}
+body[data-bw-view="reports"] .sidebar .reports-left-nav__item.is-active{
+  background: rgba(11, 61, 46, 0.05);
+  color: rgba(11, 61, 46, 0.96);
+}
+body[data-bw-view="reports"] #sidebarBodyMonth.card{
+  border: 1px solid rgba(17, 24, 39, 0.05);
+  background: rgba(255, 255, 255, 0.9);
+}
+body[data-bw-view="reports"] .totals-compact__row{
+  border-bottom-color: rgba(17, 24, 39, 0.025);
+}
+body[data-bw-view="reports"] .totals-compact__row--net{
+  border-top-color: rgba(17, 24, 39, 0.045);
 }
 body[data-bw-view="reports"] .calendar-low-balance--sidebar.is-danger .cash-outlook-subhead--inline{
   font-size: 12px;
