@@ -9229,9 +9229,9 @@ function renderCalendar() {
         belowFloor && !negativeBal
           ? `<span class="cal-balance-warn-icon" aria-hidden="true" title="Below your balance floor"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 2.25L14 13.75H2L8 2.25z" stroke="currentColor" stroke-width="1.15" stroke-linejoin="round" fill="none"/><path d="M8 6.25v3M8 11.1v.01" stroke="currentColor" stroke-width="1.15" stroke-linecap="round"/></svg></span>`
           : "";
-      metricsEl.innerHTML = `<div class="cal-balance-strip${stripCue ? ` ${stripCue}` : ""}"><div class="cal-balance-strip__row">${riskIcon}${warnIcon}<div class="${balanceClass}" title="Projected end-of-day balance">$${fmtMoneyParens(
+      metricsEl.innerHTML = `<div class="cal-balance-strip${stripCue ? ` ${stripCue}` : ""}"><div class="cal-balance-strip__row"><span class="cal-balance-strip__label" aria-hidden="true">End of day</span><span class="cal-balance-strip__amt">${riskIcon}${warnIcon}<span class="${balanceClass}" title="Projected end-of-day balance">$${fmtMoneyParens(
         endNum
-      )}</div></div></div>`;
+      )}</span></span></div></div>`;
     }
 
     if (

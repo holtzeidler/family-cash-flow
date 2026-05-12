@@ -10656,16 +10656,26 @@ body.plans-page--polished .plans-wrap{
   min-height: 0;
   margin-top: -2px;
 }
-/* End-of-day projected balance lives at the bottom of the cell, separated from the
-   transaction list by a faint divider so the day reads: activity → ending balance. */
+/* End-of-day projected balance follows the transaction list directly.
+   Previously `.cal-day-txns` had `flex: 1 1 auto` and `.cal-ledger-metrics`
+   had `margin-top: auto`, which pushed the balance to the very bottom of
+   the cell and created a "floating amount" feeling with a large empty
+   gap between the last transaction and the balance. Now the txns
+   container takes its natural height and the divider+balance sit right
+   after — any spare cell height falls quietly below the balance. */
 .cal-cell-stack > .cal-day-txns{
-  flex: 1 1 auto;
+  flex: 0 1 auto;
 }
+/* Divider above the "End of day" balance.
+   Quiet organizational line — never a hard border. Tight space ABOVE
+   the divider (so it sits close to the last transaction), generous
+   space BELOW so the ending balance reads as a deliberate final state. */
 .cal-cell-stack > .cal-ledger-metrics{
   flex: 0 0 auto;
-  margin-top: auto;
-  padding-top: 4px;
-  border-top: 1px solid rgba(17, 24, 39, 0.05);
+  margin-top: 5px;
+  padding-top: 7px;
+  padding-bottom: 2px;
+  border-top: 1px solid rgba(11, 61, 46, 0.085);
 }
 
 .cal-cell.cal-cell--no-tx:not(.cal-cell--out):not(.cal-cell--before-start):hover{
@@ -11753,12 +11763,35 @@ body[data-bw-view="transactions"] .cash-outlook-title{
   background: transparent;
   box-shadow: none;
 }
+/* Final ledger row: tiny label on the left, amount on the right.
+   Mirrors the label/amount rhythm of the transaction rows above so the
+   ending balance reads as the closing line of the day's ledger, not as
+   a detached number floating at the bottom of the cell. */
 .cal-balance-strip__row{
   display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 4px;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
   min-height: 18px;
+}
+.cal-balance-strip__label{
+  flex: 0 1 auto;
+  min-width: 0;
+  font-size: 8.75px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(71, 85, 105, 0.62);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cal-balance-strip__amt{
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  white-space: nowrap;
 }
 .cal-stat{
   font-size: 12px;
