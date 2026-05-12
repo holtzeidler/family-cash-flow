@@ -2044,8 +2044,15 @@ function initReportsLeftNav() {
       if (!el) return;
       setActiveNav(it.id);
       showOnlyReport(it.id);
-      // Ensure we're not scrolled into a blank spot after hiding other cards.
+      // Chart.js draws onto canvas using the canvas's current pixel size. A chart
+      // drawn while its card was hidden ends up with a 0×0 chart area and looks
+      // blank until something else triggers a redraw (the user previously had to
+      // toggle Grouped/Stacked to force this). Now that the card is visible,
+      // re-flow or re-draw the chart that lives inside it.
       requestAnimationFrame(() => {
+        try {
+          reflowReportChartFor(it.id);
+        } catch (_) {}
         el.scrollIntoView({ behavior: "smooth", block: "start" });
       });
     });
@@ -2083,6 +2090,58 @@ function initReportsLeftNav() {
     },
     { passive: true }
   );
+}
+
+/*
+ * After a report card becomes visible, ensure the chart inside it renders at the
+ * right size. If the chart was first drawn while its card was hidden, its
+ * internal layout is 0×0 — Chart.js's `resize()` recomputes from the live DOM,
+ * and as a hard fallback we redraw from the cached aggregation.
+ */
+function reflowReportChartFor(reportId) {
+  if (reportId === "chartPanel") {
+    if (projectionChartInstance) {
+      try { projectionChartInstance.resize(); } catch (_) {}
+    } else if (state.activeFamilyId) {
+      void refreshProjectionChart().catch(() => {});
+    }
+    return;
+  }
+  if (reportId === "reportCashTiming") {
+    if (incomeExpenseChartInstance) {
+      try {
+        incomeExpenseChartInstance.resize();
+      } catch (_) {}
+      // If the chart was first drawn at 0×0 the resize alone may leave it blank;
+      // re-issue the draw from the cached aggregation so the bars actually paint.
+      if (lastIncomeExpenseAggForChart) {
+        try { drawIncomeExpenseChart(lastIncomeExpenseAggForChart); } catch (_) {}
+      }
+    } else if (state.activeFamilyId) {
+      void refreshIncomeExpenseReport().catch(() => {});
+    }
+    return;
+  }
+  if (reportId === "reportSafeTransfer") {
+    if (reportsSafeTransferChartInstance) {
+      try { reportsSafeTransferChartInstance.resize(); } catch (_) {}
+      try { drawReportsSafeTransferChart(lastProjectionDailyForReports || []); } catch (_) {}
+    } else {
+      try { drawReportsSafeTransferChart(lastProjectionDailyForReports || []); } catch (_) {}
+    }
+    return;
+  }
+  if (reportId === "reportRiskHeatmap") {
+    try { renderReportsRiskHeatmap(lastProjectionDailyForReports || []); } catch (_) {}
+    return;
+  }
+  if (reportId === "reportObligations") {
+    try { renderReportsObligations(); } catch (_) {}
+    return;
+  }
+  if (reportId === "reportCashPressure") {
+    try { renderReportsCashPressure(lastProjectionDailyForReports || []); } catch (_) {}
+  }
 }
 
 function pendingAttentionKey(it) {
