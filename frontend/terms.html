@@ -3,13 +3,12 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>BalanceWhiz</title>
-    <link rel="icon" href="../favicon.png" type="image/png" />
-    <script>window.API_BASE = "__API_BASE__";</script>
+    <title>BalanceWhiz — Terms of Service</title>
+    <link rel="icon" href="./favicon.png" type="image/png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=384" />
+    <link rel="stylesheet" href="./styles.css?v=384" />
   </head>
   <body class="plans-page">
     <div class="container">
@@ -20,7 +19,7 @@
               <a href="/" aria-label="Balance Whiz home">
                 <img
                   class="app-logo"
-                  src="../assets/balance-whiz-logo.png?v=20260504"
+                  src="./assets/balance-whiz-logo.png?v=20260504"
                   width="220"
                   height="56"
                   alt="Balance Whiz"
@@ -31,39 +30,54 @@
             </h1>
           </div>
           <div class="top-nav__actions" aria-label="Account actions">
-            <button type="button" class="top-nav__logout" onclick="window.location.href='../login/'">Login</button>
+            <a href="./login.html" class="top-nav__logout">Login</a>
           </div>
         </div>
       </div>
 
       <div class="grid">
-        <div class="plans-wrap">
-          <div class="plans-headline">Stop guessing how much cash you really have available.</div>
-          <div class="meta" style="margin: 10px 0 0;">
-            BalanceWhiz forecasts upcoming cash flow so you can avoid surprises and keep more money earning interest.
-          </div>
-          <div class="plans-grid" aria-label="Plans">
-            <div class="card plan-card plan-card--base">
-              <div class="plan-card__top">
-                <div class="plan-card__name">Cash Forecast</div>
-              </div>
-              <div class="plan-card__body">
-                <div class="plan-price">
-                  <div class="plan-price__main">$5.99</div>
-                  <div class="plan-price__sub">per month</div>
-                </div>
-                <div class="plan-divider" aria-hidden="true"></div>
-                <div class="plan-kicker">What’s included</div>
-                <ul class="plan-features">
-                  <li>See future balance changes before they happen</li>
-                  <li>Get alerted before balances run low</li>
-                  <li>Automatically project recurring bills and income</li>
-                </ul>
-                <button type="button" class="plan-cta" onclick="window.location.href='../signup/?plan=base'">Build my Forecast</button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <article class="card support-doc">
+          <h1>Terms of Service</h1>
+          <p class="support-doc__lead">
+            By using BalanceWhiz you agree to these terms. They are meant to be readable; if something conflicts with a
+            signed agreement you have with us, the signed agreement controls.
+          </p>
+
+          <h2>The service</h2>
+          <p>
+            BalanceWhiz provides software to help you model and visualize cash flow timing. Features and availability
+            may change as we improve the product.
+          </p>
+
+          <h2>Not financial advice</h2>
+          <p>
+            BalanceWhiz is not a bank, broker, advisor, or tax preparer. Outputs depend on information you enter. You
+            remain responsible for your financial decisions.
+          </p>
+
+          <h2>Your account</h2>
+          <p>Keep your login secure. You are responsible for activity under your account except where we are at fault.</p>
+
+          <h2>Acceptable use</h2>
+          <p>No misuse of the service (for example, probing, scraping, or attempting to access others’ data). We may suspend access that puts users or the service at risk.</p>
+
+          <h2>Subscriptions</h2>
+          <p>
+            Paid plans, trials, and cancellation are described at checkout and on <a href="./plans/">Pricing</a>. Fees
+            are charged as shown when you subscribe.
+          </p>
+
+          <h2>Disclaimer</h2>
+          <p>
+            The service is provided on an “as is” basis to the extent permitted by law. We do not warrant uninterrupted
+            or error-free operation.
+          </p>
+
+          <h2>Contact</h2>
+          <p><a href="./contactus/">Contact Us</a> for questions about these terms.</p>
+
+          <p class="support-doc__meta">Last updated May 2026.</p>
+        </article>
       </div>
 
       <footer class="app-footer" role="contentinfo">
@@ -73,7 +87,7 @@
               <a class="app-footer__logo" href="/" aria-label="BalanceWhiz home">
                 <img
                   class="app-footer__logo-img"
-                  src="../assets/balance-whiz-logo.png?v=20260504"
+                  src="./assets/balance-whiz-logo.png?v=20260504"
                   width="160"
                   height="41"
                   alt="BalanceWhiz"
@@ -89,18 +103,18 @@
                 <li><a class="app-footer__link" href="/#features">Features</a></li>
                 <li><a class="app-footer__link" href="/calendar">Forecast Calendar</a></li>
                 <li><a class="app-footer__link" href="/reports">Reports</a></li>
-                <li><a class="app-footer__link" href="./">Pricing</a></li>
-                <li><a class="app-footer__link" href="../login.html">Login</a></li>
+                <li><a class="app-footer__link" href="./plans/">Pricing</a></li>
+                <li><a class="app-footer__link" href="./login.html">Login</a></li>
               </ul>
             </nav>
             <nav class="app-footer__col" aria-label="Support">
               <h2 class="app-footer__heading">Support</h2>
               <ul class="app-footer__list">
-                <li><a class="app-footer__link" href="../contactus/">Contact Us</a></li>
-                <li><a class="app-footer__link" href="../help.html">Help / FAQ</a></li>
-                <li><a class="app-footer__link" href="../login.html#forgot">Forgot Password</a></li>
-                <li><a class="app-footer__link" href="../privacy.html">Privacy Policy</a></li>
-                <li><a class="app-footer__link" href="../terms.html">Terms of Service</a></li>
+                <li><a class="app-footer__link" href="./contactus/">Contact Us</a></li>
+                <li><a class="app-footer__link" href="./help.html">Help / FAQ</a></li>
+                <li><a class="app-footer__link" href="./login.html#forgot">Forgot Password</a></li>
+                <li><a class="app-footer__link" href="./privacy.html">Privacy Policy</a></li>
+                <li><a class="app-footer__link" href="./terms.html">Terms of Service</a></li>
               </ul>
             </nav>
             <div class="app-footer__col app-footer__col--trust" aria-label="What to expect">
@@ -116,4 +130,3 @@
     </div>
   </body>
 </html>
-

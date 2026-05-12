@@ -56,6 +56,19 @@ function setCallout(el, msg, mode = "pending") {
   el.style.display = msg ? "block" : "none";
 }
 
+async function fetchServerPublicConfig() {
+  return request("/api/debug/public-config", "GET");
+}
+
+function formatServerDiag(resp) {
+  if (!resp || !resp.ok || !resp.data) return "";
+  try {
+    return ` ${JSON.stringify(resp.data).slice(0, 400)}`;
+  } catch (_) {
+    return "";
+  }
+}
+
 async function goApp() {
   try {
     const t = sessionStorage.getItem("bw_invite_token");
@@ -96,6 +109,54 @@ async function goApp() {
 
 const loginCalloutEl = document.getElementById("loginCallout");
 const loginBtn = document.getElementById("loginBtn");
+const authFlowTitle = document.getElementById("authFlowTitle");
+const flows = {
+  login: document.getElementById("loginFlowLogin"),
+  forgotRequest: document.getElementById("forgot"),
+  forgotSent: document.getElementById("loginFlowForgotSent"),
+  reset: document.getElementById("loginFlowReset"),
+  resetSuccess: document.getElementById("loginFlowResetSuccess"),
+};
+
+let activeResetToken = "";
+
+function showPwFlowErr(el, msg) {
+  if (!el) return;
+  el.textContent = msg || "";
+  el.style.display = msg ? "block" : "none";
+}
+
+function showFlow(name) {
+  const titles = {
+    login: "Welcome back",
+    forgotRequest: "Reset your password",
+    forgotSent: "Check your email",
+    reset: "Create a new password",
+    resetSuccess: "Password updated",
+  };
+  if (authFlowTitle) authFlowTitle.textContent = titles[name] || titles.login;
+  for (const k of Object.keys(flows)) {
+    const el = flows[k];
+    if (!el) continue;
+    el.hidden = k !== name;
+  }
+  setCallout(loginCalloutEl, "", "");
+}
+
+function clearResetQuery() {
+  try {
+    const u = new URL(window.location.href);
+    u.searchParams.delete("reset");
+    const qs = u.searchParams.toString();
+    window.history.replaceState({}, "", u.pathname + (qs ? `?${qs}` : "") + u.hash);
+  } catch (_) {}
+}
+
+function backToLogin() {
+  activeResetToken = "";
+  clearResetQuery();
+  showFlow("login");
+}
 
 async function doLogin() {
   if (!loginBtn) return;
@@ -155,6 +216,7 @@ function getClientOrigin() {
 }
 
 function setBusy(isBusy) {
+  if (!loginBtn) return;
   loginBtn.disabled = isBusy;
   loginBtn.textContent = isBusy ? "Logging in..." : "Login";
 }
@@ -170,7 +232,7 @@ function networkHint() {
   );
 }
 
-async function verifySessionWithProgress(targetInfoEl) {
+async function verifySessionWithProgress() {
   const attempts = [0, 800, 1800, 3200];
   for (let i = 0; i < attempts.length; i++) {
     if (attempts[i] > 0) {
@@ -200,18 +262,168 @@ function messageFromFailure(resp, fallback) {
   return fallback;
 }
 
+async function sendPasswordResetRequest() {
+  const btn = document.getElementById("pwForgotSendBtn");
+  const emailEl = document.getElementById("pwForgotEmail");
+  const errEl = document.getElementById("pwForgotRequestErr");
+  const email = emailEl && emailEl.value ? String(emailEl.value).trim() : "";
+  showPwFlowErr(errEl, "");
+  if (!email) {
+    showPwFlowErr(errEl, "Please enter your email.");
+    return;
+  }
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Sending…";
+  }
+  try {
+    const r = await request("/api/public/password-reset/request", "POST", { email });
+    if (!r.ok) {
+      if (r.status === 429) {
+        showPwFlowErr(errEl, "Too many requests. Please try again later.");
+        return;
+      }
+      showPwFlowErr(errEl, messageFromFailure(r, "Could not send reset link."));
+      return;
+    }
+    showFlow("forgotSent");
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "Send reset link";
+    }
+  }
+}
+
+async function runResetTokenValidate() {
+  const busy = document.getElementById("pwResetBusy");
+  const formWrap = document.getElementById("pwResetFormWrap");
+  const invalidWrap = document.getElementById("pwResetInvalidWrap");
+  if (busy) busy.hidden = false;
+  if (formWrap) formWrap.hidden = true;
+  if (invalidWrap) invalidWrap.hidden = true;
+  const enc = encodeURIComponent(activeResetToken);
+  const r = await request(`/api/public/password-reset/validate?token=${enc}`, "GET");
+  if (busy) busy.hidden = true;
+  if (r.ok) {
+    if (formWrap) formWrap.hidden = false;
+    const p1 = document.getElementById("pwResetNew");
+    const p2 = document.getElementById("pwResetConfirm");
+    if (p1) p1.value = "";
+    if (p2) p2.value = "";
+    showPwFlowErr(document.getElementById("pwResetFormErr"), "");
+  } else {
+    if (invalidWrap) invalidWrap.hidden = false;
+  }
+}
+
+async function submitNewPassword() {
+  const errEl = document.getElementById("pwResetFormErr");
+  const btn = document.getElementById("pwResetSaveBtn");
+  const p1 = document.getElementById("pwResetNew");
+  const p2 = document.getElementById("pwResetConfirm");
+  const a = p1 && p1.value ? String(p1.value) : "";
+  const b = p2 && p2.value ? String(p2.value) : "";
+  showPwFlowErr(errEl, "");
+  if (a.length < 8) {
+    showPwFlowErr(errEl, "Password must be at least 8 characters.");
+    return;
+  }
+  if (a !== b) {
+    showPwFlowErr(errEl, "Passwords do not match.");
+    return;
+  }
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Saving…";
+  }
+  try {
+    const r = await request("/api/public/password-reset/complete", "POST", {
+      token: activeResetToken,
+      new_password: a,
+    });
+    if (!r.ok) {
+      const msg =
+        r.data && r.data.detail
+          ? String(r.data.detail)
+          : "This reset link has expired or has already been used.";
+      showPwFlowErr(errEl, msg);
+      return;
+    }
+    activeResetToken = "";
+    clearResetQuery();
+    showFlow("resetSuccess");
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "Save new password";
+    }
+  }
+}
+
+function wirePasswordResetUi() {
+  const forgotBtn = document.getElementById("loginForgotBtn");
+  if (forgotBtn) {
+    forgotBtn.addEventListener("click", () => {
+      const mainEmail = document.getElementById("email");
+      const fe = document.getElementById("pwForgotEmail");
+      if (fe && mainEmail) fe.value = String(mainEmail.value || "").trim();
+      showPwFlowErr(document.getElementById("pwForgotRequestErr"), "");
+      showFlow("forgotRequest");
+    });
+  }
+  const backSelectors = ["pwForgotBackLogin1", "pwForgotSentBackBtn", "pwResetFormBackBtn", "pwResetInvalidBackBtn", "pwResetSuccessBtn"];
+  for (const id of backSelectors) {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener("click", () => backToLogin());
+  }
+  const sendBtn = document.getElementById("pwForgotSendBtn");
+  if (sendBtn) sendBtn.addEventListener("click", () => void sendPasswordResetRequest());
+  const saveBtn = document.getElementById("pwResetSaveBtn");
+  if (saveBtn) saveBtn.addEventListener("click", () => void submitNewPassword());
+  const reqNew = document.getElementById("pwResetInvalidRequestBtn");
+  if (reqNew) {
+    reqNew.addEventListener("click", () => {
+      clearResetQuery();
+      activeResetToken = "";
+      showFlow("forgotRequest");
+    });
+  }
+}
+
 if (location.hostname.endsWith("github.io") && !getApiBase()) {
   const msg =
     "This site was built without API_BASE. Repo > Settings > Secrets > Actions > set API_BASE to your Render API URL, then re-run Deploy frontend to GitHub Pages.";
   setCallout(loginCalloutEl, msg, "error");
 }
 
-// Expose a global handler so the inline onclick works even if the event binding fails.
 window.__bwLogin = () => void doLogin();
 if (loginBtn) loginBtn.addEventListener("click", () => void doLogin());
+
+wirePasswordResetUi();
 
 try {
   const t = new URLSearchParams(location.search).get("invite");
   if (t && String(t).trim()) sessionStorage.setItem("bw_invite_token", String(t).trim());
   else sessionStorage.removeItem("bw_invite_token");
+} catch (_) {}
+
+try {
+  const tok = new URLSearchParams(location.search).get("reset");
+  if (tok && String(tok).trim().length >= 24) {
+    activeResetToken = String(tok).trim();
+    showFlow("reset");
+    void runResetTokenValidate();
+  }
+} catch (_) {}
+
+try {
+  const resetTok = new URLSearchParams(location.search).get("reset");
+  if (!resetTok && location.hash === "#forgot" && flows.forgotRequest) {
+    const fe = document.getElementById("pwForgotEmail");
+    const mainEmail = document.getElementById("email");
+    if (fe && mainEmail) fe.value = String(mainEmail.value || "").trim();
+    showPwFlowErr(document.getElementById("pwForgotRequestErr"), "");
+    showFlow("forgotRequest");
+  }
 } catch (_) {}

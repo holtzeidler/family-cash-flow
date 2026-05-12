@@ -31,6 +31,7 @@ from jose import jwt
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from pydantic_settings import BaseSettings
 from sqlalchemy import Date as SA_Date
+from sqlalchemy import DateTime
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy import Boolean, Integer, UniqueConstraint
 from sqlalchemy import ForeignKey
@@ -59,6 +60,8 @@ class Settings(BaseSettings):
     # Public URL of the web app (no trailing slash), e.g. https://app.example.com or https://user.github.io/repo
     # Used in family invite emails. If unset, the API uses the Origin header from the browser when the owner sends an invite.
     APP_PUBLIC_BASE_URL: str = ""
+    # Password reset links expire this many minutes after issue (single-use tokens).
+    PASSWORD_RESET_TOKEN_MINUTES: int = 45
 
     # Server-side contact form (SMTP). Leave any of these empty to disable POST /api/public/contact.
     # Microsoft 365 / GoDaddy: host smtp.office365.com, port 587, user support@yourdomain, app password.
@@ -266,6 +269,13 @@ _contact_rate_lock = threading.Lock()
 CONTACT_RATE_WINDOW_S = 15 * 60
 CONTACT_RATE_MAX = 5
 
+_pw_reset_req_by_ip: dict[str, list[float]] = {}
+_pw_reset_req_by_email: dict[str, list[float]] = {}
+_pw_reset_rate_lock = threading.Lock()
+_PW_RESET_WINDOW_S = 60 * 60
+_PW_RESET_MAX_PER_IP_PER_HOUR = 20
+_PW_RESET_MAX_PER_EMAIL_PER_HOUR = 5
+
 
 def _client_ip_for_rate_limit(request: Request) -> str:
     xff = (request.headers.get("x-forwarded-for") or "").strip()
@@ -357,6 +367,18 @@ class FamilyMember(Base):
 
     family: Mapped[Family] = relationship(back_populates="memberships")
     user: Mapped[User] = relationship(back_populates="memberships")
+
+
+class PasswordResetToken(Base):
+    """Single-use password reset tokens (raw token never stored; SHA-256 hex only)."""
+
+    __tablename__ = "password_reset_tokens"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
 
 class FamilyInvite(Base):
@@ -531,6 +553,32 @@ def hash_password(password: str) -> str:
 
 def verify_password(password: str, password_hash: str) -> bool:
     return bcrypt.checkpw(password.encode("utf-8"), password_hash.encode("utf-8"))
+
+
+_PW_RESET_TIMING_DUMMY_HASH: Optional[str] = None
+
+
+def _pw_reset_dummy_hash() -> str:
+    global _PW_RESET_TIMING_DUMMY_HASH
+    if _PW_RESET_TIMING_DUMMY_HASH is None:
+        _PW_RESET_TIMING_DUMMY_HASH = hash_password("__pw_reset_timing_dummy__")
+    return _PW_RESET_TIMING_DUMMY_HASH
+
+
+def _allow_password_reset_request(*, ip: str, email_key: str) -> bool:
+    now = time.time()
+    with _pw_reset_rate_lock:
+        lip = _pw_reset_req_by_ip.setdefault(ip, [])
+        lip[:] = [t for t in lip if now - t < _PW_RESET_WINDOW_S]
+        if len(lip) >= _PW_RESET_MAX_PER_IP_PER_HOUR:
+            return False
+        lem = _pw_reset_req_by_email.setdefault(email_key, [])
+        lem[:] = [t for t in lem if now - t < _PW_RESET_WINDOW_S]
+        if len(lem) >= _PW_RESET_MAX_PER_EMAIL_PER_HOUR:
+            return False
+        lip.append(now)
+        lem.append(now)
+        return True
 
 
 def create_access_token(*, user_id: int) -> str:
@@ -758,6 +806,25 @@ def _invite_accept_url(*, token: str, request: Optional[Request]) -> str:
     return f"./{path_suffix}"
 
 
+def _login_password_reset_url(*, token: str, request: Optional[Request]) -> str:
+    base = _public_app_base_url(request=request).rstrip("/")
+    tail = "login.html?reset=" + quote(token, safe="")
+    if base:
+        return f"{base}/{tail}"
+    return f"./{tail}"
+
+
+def _send_password_reset_email_sync(*, to_addr: str, subject: str, text_body: str) -> None:
+    """Transactional email to the account owner (same delivery stack as invites)."""
+    if _contact_resend_configured():
+        _send_invite_via_resend_sync(to_addr=to_addr, subject=subject, text_body=text_body, reply_to=None)
+        return
+    if _contact_smtp_configured():
+        _send_invite_via_smtp_sync(to_addr=to_addr, subject=subject, text_body=text_body, reply_to=None)
+        return
+    raise RuntimeError("Password reset email is not configured (need Resend or SMTP).")
+
+
 class RegisterIn(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=200)
@@ -767,6 +834,15 @@ class RegisterIn(BaseModel):
 class LoginIn(BaseModel):
     email: EmailStr
     password: str
+
+
+class PasswordResetRequestIn(BaseModel):
+    email: EmailStr
+
+
+class PasswordResetCompleteIn(BaseModel):
+    token: str = Field(min_length=24, max_length=500)
+    new_password: str = Field(min_length=8, max_length=200)
 
 
 class CheckEmailIn(BaseModel):
@@ -1384,6 +1460,7 @@ def public_debug_config():
         "contact_form_delivery": ("resend" if resend_on else ("smtp" if smtp_on else "none")),
         "contact_form_hint": c_hint,
         "family_invite_email_configured": _invite_email_delivery_configured(),
+        "password_reset_email_configured": _invite_email_delivery_configured(),
         "app_public_base_url_configured": bool((settings.APP_PUBLIC_BASE_URL or "").strip()),
         "note": "GitHub Pages -> Render: ENV=production for SameSite=None; Secure cookies. Register/login also return access_token for Authorization: Bearer when cookies are blocked.",
     }
@@ -2047,6 +2124,78 @@ def login(payload: LoginIn, db=Depends(get_db)):
 @app.post("/api/auth/logout")
 def logout(response: Response):
     response.delete_cookie(key="access_token", path="/")
+    return {"ok": True}
+
+
+_INVALID_PW_RESET_MSG = "This reset link has expired or has already been used."
+
+
+@app.post("/api/public/password-reset/request")
+def password_reset_request(payload: PasswordResetRequestIn, request: Request, db=Depends(get_db)):
+    """Same response whether or not the email is registered; does not reveal account existence."""
+    ip = _client_ip_for_rate_limit(request)
+    email_key = str(payload.email).strip().lower()
+    if not _allow_password_reset_request(ip=ip, email_key=email_key):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many requests. Please try again later.",
+        )
+    user = db.execute(select(User).where(func.lower(User.email) == email_key)).scalar_one_or_none()
+    if user is None:
+        verify_password("not-the-password", _pw_reset_dummy_hash())
+        return {"ok": True}
+    db.execute(delete(PasswordResetToken).where(PasswordResetToken.user_id == int(user.id)))
+    raw = secrets.token_urlsafe(32)
+    th = _hash_invite_token(raw)
+    mins = max(15, min(120, int(settings.PASSWORD_RESET_TOKEN_MINUTES or 45)))
+    exp = datetime.utcnow() + timedelta(minutes=mins)
+    db.add(PasswordResetToken(user_id=int(user.id), token_hash=th, expires_at=exp))
+    db.commit()
+    if not _invite_email_delivery_configured():
+        logger.warning("Password reset requested for %s but email delivery is not configured", email_key)
+        return {"ok": True}
+    try:
+        link = _login_password_reset_url(token=raw, request=request)
+        subj = "Reset your BalanceWhiz password"
+        body = (
+            "We received a request to reset the password for your BalanceWhiz account.\n\n"
+            f"Open this link within {mins} minutes. It can only be used once:\n{link}\n\n"
+            "If you did not request a reset, you can ignore this email."
+        )
+        _send_password_reset_email_sync(to_addr=str(user.email), subject=subj, text_body=body)
+    except Exception:
+        logger.exception("Password reset email failed for user id=%s", user.id)
+    return {"ok": True}
+
+
+@app.get("/api/public/password-reset/validate")
+def password_reset_validate(
+    token: str = Query(..., min_length=24, max_length=500),
+    db=Depends(get_db),
+):
+    raw = str(token).strip()
+    th = _hash_invite_token(raw)
+    row = db.execute(select(PasswordResetToken).where(PasswordResetToken.token_hash == th)).scalar_one_or_none()
+    now = datetime.utcnow()
+    if row is None or row.expires_at <= now:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=_INVALID_PW_RESET_MSG)
+    return {"ok": True}
+
+
+@app.post("/api/public/password-reset/complete")
+def password_reset_complete(payload: PasswordResetCompleteIn, db=Depends(get_db)):
+    raw = str(payload.token).strip()
+    th = _hash_invite_token(raw)
+    row = db.execute(select(PasswordResetToken).where(PasswordResetToken.token_hash == th)).scalar_one_or_none()
+    if row is None or row.expires_at <= datetime.utcnow():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=_INVALID_PW_RESET_MSG)
+    user = db.execute(select(User).where(User.id == int(row.user_id))).scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=_INVALID_PW_RESET_MSG)
+    user.password_hash = hash_password(payload.new_password)
+    db.execute(delete(PasswordResetToken).where(PasswordResetToken.user_id == int(user.id)))
+    db.add(user)
+    db.commit()
     return {"ok": True}
 
 

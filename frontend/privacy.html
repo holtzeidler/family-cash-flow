@@ -3,24 +3,23 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>BalanceWhiz — Sign up</title>
-    <link rel="icon" href="../favicon.png" type="image/png" />
-    <script>window.API_BASE = "__API_BASE__";</script>
+    <title>BalanceWhiz — Privacy Policy</title>
+    <link rel="icon" href="./favicon.png" type="image/png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=384" />
+    <link rel="stylesheet" href="./styles.css?v=384" />
   </head>
-  <body class="login-page signup-page">
+  <body class="plans-page">
     <div class="container">
-      <div class="top-nav" role="banner" aria-label="App header">
+      <div class="top-nav" role="navigation" aria-label="Primary">
         <div class="top-nav__inner top-nav__inner--simple">
           <div class="top-nav__title" aria-label="App title">
             <h1 class="app-title app-title--logo">
               <a href="/" aria-label="Balance Whiz home">
                 <img
                   class="app-logo"
-                  src="../assets/balance-whiz-logo.png?v=20260504"
+                  src="./assets/balance-whiz-logo.png?v=20260504"
                   width="220"
                   height="56"
                   alt="Balance Whiz"
@@ -31,51 +30,46 @@
             </h1>
           </div>
           <div class="top-nav__actions" aria-label="Account actions">
-            <button type="button" class="top-nav__logout" onclick="window.location.href='../login.html'">Login</button>
+            <a href="./login.html" class="top-nav__logout">Login</a>
           </div>
         </div>
       </div>
 
       <div class="grid">
-        <section class="card auth-section auth-section--open" aria-label="Sign up">
-          <div class="auth-section__head auth-section__head--signup-plan" id="signupBannerHead" hidden>
-            <div id="signupPlanNote" class="callout callout--muted" style="display:none" role="status"></div>
-          </div>
-          <div class="auth-section__body">
-            <div id="signupCallout" class="callout" style="display:none" role="status"></div>
+        <article class="card support-doc">
+          <h1>Privacy Policy</h1>
+          <p class="support-doc__lead">
+            BalanceWhiz is built around operational trust. This page summarizes what we collect and why—in plain
+            language, not legalese wallpaper.
+          </p>
 
-            <div class="row">
-              <div>
-                <label for="email">Email</label>
-                <input id="email" type="email" autocomplete="email" />
-              </div>
-            </div>
+          <h2>What we collect</h2>
+          <ul>
+            <li>Account details you provide (for example, name and email).</li>
+            <li>Forecast and household data you enter in the product (bills, income, balances, and related notes).</li>
+            <li>Technical data needed to run the service (for example, authentication cookies, basic logs, and support messages you send us).</li>
+          </ul>
 
-            <div style="height: 10px;"></div>
+          <h2>What we do not do</h2>
+          <p>
+            BalanceWhiz does not require linking your bank. We do not sell your personal data to data brokers, and we
+            do not use it for unrelated advertising profiles.
+          </p>
 
-            <div class="row two">
-              <div>
-                <label for="password">Password</label>
-                <input id="password" type="password" autocomplete="new-password" />
-              </div>
-              <div>
-                <label for="password2">Confirm Password</label>
-                <input id="password2" type="password" autocomplete="new-password" />
-              </div>
-            </div>
+          <h2>How we use information</h2>
+          <p>To operate your account, provide the forecast, respond to support requests, meet legal obligations, and protect security and integrity of the service.</p>
 
-            <div style="height:10px;"></div>
-            <button
-              type="button"
-              id="signupBtn"
-              class="top-nav__logout"
-              onclick="window.location.assign('/account-setup' + (window.location.search || ''))"
-            >
-              Create Account
-            </button>
-          </div>
-        </section>
-        <p class="meta" style="margin: 10px 0 0; text-align: center;">No spam. No credit check. Secure setup.</p>
+          <h2>Retention</h2>
+          <p>We keep information as long as your account is active and for a reasonable period afterward for backups, disputes, and legal requirements.</p>
+
+          <h2>Contact</h2>
+          <p>
+            Questions or requests: <a href="./contactus/">Contact Us</a> or email
+            <a href="mailto:support@balancewhiz.com">support@balancewhiz.com</a>.
+          </p>
+
+          <p class="support-doc__meta">Last updated May 2026.</p>
+        </article>
       </div>
 
       <footer class="app-footer" role="contentinfo">
@@ -85,7 +79,7 @@
               <a class="app-footer__logo" href="/" aria-label="BalanceWhiz home">
                 <img
                   class="app-footer__logo-img"
-                  src="../assets/balance-whiz-logo.png?v=20260504"
+                  src="./assets/balance-whiz-logo.png?v=20260504"
                   width="160"
                   height="41"
                   alt="BalanceWhiz"
@@ -101,18 +95,18 @@
                 <li><a class="app-footer__link" href="/#features">Features</a></li>
                 <li><a class="app-footer__link" href="/calendar">Forecast Calendar</a></li>
                 <li><a class="app-footer__link" href="/reports">Reports</a></li>
-                <li><a class="app-footer__link" href="../plans/">Pricing</a></li>
-                <li><a class="app-footer__link" href="../login.html">Login</a></li>
+                <li><a class="app-footer__link" href="./plans/">Pricing</a></li>
+                <li><a class="app-footer__link" href="./login.html">Login</a></li>
               </ul>
             </nav>
             <nav class="app-footer__col" aria-label="Support">
               <h2 class="app-footer__heading">Support</h2>
               <ul class="app-footer__list">
-                <li><a class="app-footer__link" href="../contactus/">Contact Us</a></li>
-                <li><a class="app-footer__link" href="../help.html">Help / FAQ</a></li>
-                <li><a class="app-footer__link" href="../login.html#forgot">Forgot Password</a></li>
-                <li><a class="app-footer__link" href="../privacy.html">Privacy Policy</a></li>
-                <li><a class="app-footer__link" href="../terms.html">Terms of Service</a></li>
+                <li><a class="app-footer__link" href="./contactus/">Contact Us</a></li>
+                <li><a class="app-footer__link" href="./help.html">Help / FAQ</a></li>
+                <li><a class="app-footer__link" href="./login.html#forgot">Forgot Password</a></li>
+                <li><a class="app-footer__link" href="./privacy.html">Privacy Policy</a></li>
+                <li><a class="app-footer__link" href="./terms.html">Terms of Service</a></li>
               </ul>
             </nav>
             <div class="app-footer__col app-footer__col--trust" aria-label="What to expect">
@@ -126,8 +120,5 @@
         </div>
       </footer>
     </div>
-
-    <script src="./signup.js?v=9"></script>
   </body>
 </html>
-

@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=334" />
+    <link rel="stylesheet" href="../styles.css?v=384" />
   </head>
   <body class="admin-page">
     <div class="container">
@@ -152,9 +152,49 @@
 
       <footer class="app-footer" role="contentinfo">
         <div class="app-footer__inner">
-          <span class="app-footer__brand" aria-hidden="true"></span>
-          <a href="../plans/" class="app-footer__link">Plans</a>
-          <a href="../contactus/" class="app-footer__link">Contact</a>
+          <div class="app-footer__grid">
+            <div class="app-footer__col app-footer__col--brand">
+              <a class="app-footer__logo" href="/" aria-label="BalanceWhiz home">
+                <img
+                  class="app-footer__logo-img"
+                  src="../assets/balance-whiz-logo.png?v=20260504"
+                  width="160"
+                  height="41"
+                  alt="BalanceWhiz"
+                  decoding="async"
+                />
+              </a>
+              <p class="app-footer__tagline">See your cash flow before it happens.</p>
+              <p class="app-footer__copyright">© 2026 BalanceWhiz</p>
+            </div>
+            <nav class="app-footer__col" aria-label="Product">
+              <h2 class="app-footer__heading">Product</h2>
+              <ul class="app-footer__list">
+                <li><a class="app-footer__link" href="/#features">Features</a></li>
+                <li><a class="app-footer__link" href="/calendar">Forecast Calendar</a></li>
+                <li><a class="app-footer__link" href="/reports">Reports</a></li>
+                <li><a class="app-footer__link" href="../plans/">Pricing</a></li>
+                <li><a class="app-footer__link" href="../login.html">Login</a></li>
+              </ul>
+            </nav>
+            <nav class="app-footer__col" aria-label="Support">
+              <h2 class="app-footer__heading">Support</h2>
+              <ul class="app-footer__list">
+                <li><a class="app-footer__link" href="../contactus/">Contact Us</a></li>
+                <li><a class="app-footer__link" href="../help.html">Help / FAQ</a></li>
+                <li><a class="app-footer__link" href="../login.html#forgot">Forgot Password</a></li>
+                <li><a class="app-footer__link" href="../privacy.html">Privacy Policy</a></li>
+                <li><a class="app-footer__link" href="../terms.html">Terms of Service</a></li>
+              </ul>
+            </nav>
+            <div class="app-footer__col app-footer__col--trust" aria-label="What to expect">
+              <ul class="app-footer__bullets">
+                <li>No bank connection required</li>
+                <li>Know what can safely leave checking</li>
+                <li>Cancel anytime</li>
+              </ul>
+            </div>
+          </div>
         </div>
       </footer>
     </div>
