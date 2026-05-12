@@ -8607,8 +8607,8 @@ function renderCalendar() {
       <div class="cal-cell-fill"></div>
       <div class="cal-cell-stack">
         <div class="cal-forecast-note" hidden></div>
-        <div class="cal-ledger-metrics"></div>
         <div class="cal-day-txns"></div>
+        <div class="cal-ledger-metrics"></div>
       </div>
     `;
     if (isOutOfMonth) cell.classList.add("cal-cell--out");
@@ -8705,15 +8705,6 @@ function renderCalendar() {
           flag.innerHTML =
             '<svg viewBox="0 0 12 14" width="11" height="13" focusable="false"><path fill="currentColor" d="M0.75 0h1.25v14H0.75V0zm2.75 1.5L11 5.2 3.5 8.9V1.5z"/></svg>';
           labelWrap.appendChild(flag);
-        } else {
-          const pillSt = pillStyleForTransaction(row);
-          if (pillSt && pillSt.bg) {
-            const dot = document.createElement("span");
-            dot.className = "cal-tx-color-dot";
-            dot.setAttribute("aria-hidden", "true");
-            dot.style.background = pillSt.bg;
-            labelWrap.appendChild(dot);
-          }
         }
         labelWrap.appendChild(labelSpan);
 

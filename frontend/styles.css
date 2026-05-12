@@ -2349,7 +2349,7 @@ button.secondary{
   grid-template-columns: minmax(0, 1.75fr) auto auto;
   gap: 5px 8px;
   align-items: center;
-  padding: 5px 9px 5px 13px;
+  padding: 5px 9px;
   border-radius: 10px;
   border: 1px solid rgba(0, 0, 0, 0.055);
   background: rgba(0, 0, 0, 0.018);
@@ -2357,29 +2357,15 @@ button.secondary{
   box-sizing: border-box;
 }
 .pending-attn-item::before{
-  content: "";
-  position: absolute;
-  left: 7px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 5px;
-  height: 5px;
-  border-radius: 999px;
-  background: rgba(100, 116, 139, 0.32);
+  content: none;
 }
 .pending-attn-item.is-critical{
   border-color: rgba(167, 55, 68, 0.22);
   background: rgba(167, 55, 68, 0.045);
 }
-.pending-attn-item.is-critical::before{
-  background: rgba(167, 55, 68, 0.52);
-}
 .pending-attn-item.is-soon{
   border-color: rgba(180, 83, 9, 0.16);
   background: rgba(253, 230, 138, 0.06);
-}
-.pending-attn-item.is-soon::before{
-  background: rgba(180, 83, 9, 0.42);
 }
 .pending-attn-item.is-critical .pending-attn-name{
   font-weight: 700;
@@ -4230,7 +4216,7 @@ body[data-bw-view="calendar"] .sidebar-balance-threshold-alerts{
   gap: 5px;
 }
 body[data-bw-view="calendar"] .pending-attn-item{
-  padding: 8px 9px 8px 13px;
+  padding: 8px 10px;
   row-gap: 7px;
   border-color: rgba(17, 24, 39, 0.044);
   background: rgba(255, 255, 255, 0.42);
@@ -4245,7 +4231,7 @@ body[data-bw-view="calendar"] .pending-attn-item.is-soon{
   background: rgba(253, 230, 138, 0.045);
 }
 body[data-bw-view="calendar"] .pending-attn-item::before{
-  opacity: 0.85;
+  display: none;
 }
 body[data-bw-view="calendar"] .cash-outlook-title{
   font-size: 11.5px;
@@ -4285,16 +4271,26 @@ body[data-bw-view="calendar"] #sidebarBodyMonth .totals{
   gap: 5px;
 }
 body[data-bw-view="calendar"] #sidebarBalanceThresholdAlerts{
-  padding: 7px 8px 6px;
+  padding: 5px 8px 5px;
   margin-bottom: 1px;
   border-radius: 12px;
   border: 1px solid rgba(11, 61, 46, 0.07);
   background: rgba(255, 255, 255, 0.62);
   box-shadow: 0 1px 2px rgba(11, 61, 46, 0.03);
 }
+body[data-bw-view="calendar"] .calendar-low-balance--sidebar{
+  padding: 2px 0;
+  gap: 2px;
+}
+body[data-bw-view="calendar"] .calendar-low-balance--sidebar .cash-outlook-hero{
+  margin: 2px 0 3px;
+}
+body[data-bw-view="calendar"] .sidebar .card[data-sidebar-key="month"]{
+  padding: 5px 8px;
+}
 body[data-bw-view="calendar"] #sidebarBodyMonth .total{
   flex: 0 0 auto;
-  padding: 6px 8px;
+  padding: 5px 7px;
   border-radius: 8px;
 }
 body[data-bw-view="calendar"] #sidebarBodyMonth .total .k{
@@ -8356,8 +8352,18 @@ body.plans-page .container > .grid{
   align-items: stretch;
   width: 100%;
   min-height: 0;
-  /* Tuck the projected balance under the date row without crowding transactions */
   margin-top: -2px;
+}
+/* End-of-day projected balance lives at the bottom of the cell, separated from the
+   transaction list by a faint divider so the day reads: activity → ending balance. */
+.cal-cell-stack > .cal-day-txns{
+  flex: 1 1 auto;
+}
+.cal-cell-stack > .cal-ledger-metrics{
+  flex: 0 0 auto;
+  margin-top: auto;
+  padding-top: 4px;
+  border-top: 1px solid rgba(17, 24, 39, 0.05);
 }
 
 .cal-cell.cal-cell--no-tx:not(.cal-cell--out):not(.cal-cell--before-start):hover{
@@ -8373,9 +8379,9 @@ body.plans-page .container > .grid{
   border-color: rgba(17, 24, 39, 0.05);
 }
 .cal-cell.cal-cell--no-tx .cal-ledger-metrics{
-  padding-top: 3px;
-  margin-top: 0;
-  border-top: 1px solid rgba(17, 24, 39, 0.06);
+  padding-top: 0;
+  margin-top: auto;
+  border-top: none;
 }
 
 .cal-cell.cal-cell--no-tx .cal-cell-stack{
@@ -8392,9 +8398,9 @@ body.plans-page .container > .grid{
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding-top: 4px;
+  padding-top: 2px;
   margin-top: 1px;
-  border-top: 1px solid rgba(17, 24, 39, 0.06);
+  border-top: none;
   align-items: stretch;
   text-align: left;
   width: 100%;
@@ -8465,15 +8471,6 @@ body.plans-page .container > .grid{
   display: flex;
   align-items: center;
   gap: 4px;
-}
-/* Optional transaction / category color (matches edit modal swatches on calendar). */
-.cal-tx-color-dot{
-  flex-shrink: 0;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  align-self: center;
-  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.14);
 }
 .cal-tx-start-flag{
   flex-shrink: 0;
@@ -9251,23 +9248,24 @@ body.plans-page .container > .grid{
   padding: 0;
   border-radius: 6px;
 }
+/* Soft cue only: keep the amber/rust color on the amount, drop the boxed look. */
 .cal-balance-strip--cue-risk{
-  margin: 0 -1px;
-  padding: 2px 5px 2px;
-  background: linear-gradient(180deg, rgba(254, 246, 246, 0.7), rgba(255, 255, 255, 0.35));
-  box-shadow: inset 0 0 0 1px rgba(185, 28, 28, 0.07);
+  margin: 0;
+  padding: 1px 2px;
+  background: transparent;
+  box-shadow: none;
 }
 .cal-balance-strip--cue-warn{
-  margin: 0 -1px;
-  padding: 2px 5px 2px;
-  background: linear-gradient(180deg, rgba(255, 247, 237, 0.85), rgba(255, 255, 255, 0.45));
-  box-shadow: inset 0 0 0 1px rgba(217, 119, 6, 0.12);
+  margin: 0;
+  padding: 1px 2px;
+  background: transparent;
+  box-shadow: none;
 }
 .cal-balance-strip--cue-watch{
-  margin: 0 -1px;
-  padding: 1px 4px;
-  background: rgba(248, 250, 252, 0.75);
-  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.14);
+  margin: 0;
+  padding: 1px 2px;
+  background: transparent;
+  box-shadow: none;
 }
 .cal-balance-strip__row{
   display: flex;
@@ -9383,15 +9381,17 @@ body.plans-page .container > .grid{
   z-index: 12000;
   left: 0;
   top: 0;
-  max-width: min(380px, 94vw);
-  padding: 8px 11px;
-  font-size: 12px;
+  max-width: min(340px, 92vw);
+  padding: 6px 9px;
+  font-size: 11.25px;
   line-height: 1.4;
   font-weight: 500;
-  color: #f9fafb;
-  background: rgba(17, 24, 39, 0.94);
-  border-radius: 8px;
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.38);
+  letter-spacing: 0.005em;
+  color: rgba(248, 250, 252, 0.96);
+  background: rgba(51, 65, 85, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 7px;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.18);
   pointer-events: none;
   opacity: 0;
   transition: opacity 70ms ease;
