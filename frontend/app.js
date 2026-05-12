@@ -2972,6 +2972,7 @@ function openTxEditModal(tx) {
     instanceAccountId.value = String(state.accounts[0].id);
   }
   show(txEditErr, "");
+  try { txEditModal.style.display = ""; } catch (_) {}
   txEditModal.classList.add("modal-overlay--open");
   txEditModal.setAttribute("aria-hidden", "false");
   applyTransactionEditMode("actual");
@@ -3013,10 +3014,12 @@ function openTxEditDeleteScopeModal() {
 
 function closeTxEditModal() {
   if (!txEditModal) return;
-  closeTxEditApplyScopeModal();
-  closeTxEditDeleteScopeModal();
+  try { closeTxEditApplyScopeModal(); } catch (_) {}
+  try { closeTxEditDeleteScopeModal(); } catch (_) {}
   txEditModal.classList.remove("modal-overlay--open");
   txEditModal.setAttribute("aria-hidden", "true");
+  // Defensive: force display:none in case a stray class or inline style is keeping the overlay visible.
+  try { txEditModal.style.display = "none"; } catch (_) {}
   selectedExpectedInstance = null;
   selectedExpectedMovedToDate = null;
   if (txEditDate) {
@@ -3157,6 +3160,8 @@ function closeReconcileModal() {
 
 if (txEditSave) {
   txEditSave.addEventListener("click", async () => {
+    let savedOk = false;
+    let savedDateIso = "";
     try {
       if (transactionEditMode === "recurring") return;
       show(txEditErr, "");
@@ -3165,12 +3170,13 @@ if (txEditSave) {
       if (!id) throw new Error("No transaction selected");
       const amountVal = txEditAmount.value;
       if (!amountVal || Number(amountVal) <= 0) throw new Error("Amount must be > 0");
-      const editDateIso = normalizeIsoDate(txEditDate.value) || txEditDate.value;
+      const rawDate = txEditDate.value;
+      const editDateIso = normalizeIsoDate(rawDate) || rawDate;
       if (isDateBeforeEarliestStartingBalance(editDateIso)) {
         throw new Error("That date is before your starting balance.");
       }
       await api(`/api/families/${state.activeFamilyId}/transactions/${id}`, "PUT", {
-        date: txEditDate.value,
+        date: rawDate,
         kind: getRadioValue("txEditKind", "expense"),
         amount: Number(amountVal),
         description: txEditDescriptionSnapshot,
@@ -3184,28 +3190,42 @@ if (txEditSave) {
           : {}),
         reimbursable: txEditReimbursableValue,
       });
+      savedOk = true;
+      savedDateIso = editDateIso || "";
+    } catch (e) {
+      show(txEditErr, e.message || "Failed to save");
+      return;
+    }
+    // Close the modal first so the user gets immediate feedback. All
+    // post-save refreshes are isolated in a separate try/catch so a refresh
+    // failure can never leave the modal stuck open.
+    try {
       closeTxEditModal();
+    } catch (_) {}
+    if (!savedOk) return;
+    try {
       invalidateLowBalanceAlertCache();
-      // If the transaction moved to a different month, jump the UI to that month
-      // so it doesn't look like the transaction "disappeared".
-      {
-        const iso = normalizeIsoDate(txEditDate.value);
-        const movedYm = iso ? String(iso).slice(0, 7) : "";
-        const curYm = (calendarMonth?.value || monthInput?.value || "").slice(0, 7);
-        if (movedYm && curYm && movedYm !== curYm) {
-          if (monthInput) monthInput.value = movedYm;
-          applyCalendarMonthToPickers(movedYm);
-        }
+      const movedYm = savedDateIso ? String(savedDateIso).slice(0, 7) : "";
+      const curYm = (calendarMonth?.value || monthInput?.value || "").slice(0, 7);
+      if (movedYm && curYm && movedYm !== curYm) {
+        if (monthInput) monthInput.value = movedYm;
+        applyCalendarMonthToPickers(movedYm);
       }
       await loadMonthAndCalendar();
     } catch (e) {
-      show(txEditErr, e.message || "Failed to save");
+      if (typeof console !== "undefined" && console && console.warn) {
+        console.warn("Post-save refresh failed:", e);
+      }
+      if (typeof showBwToast === "function") {
+        showBwToast("Saved. Reload the page if changes don't appear.");
+      }
     }
   });
 }
 
 if (txEditDelete) {
   txEditDelete.addEventListener("click", async () => {
+    let deletedOk = false;
     try {
       if (transactionEditMode === "recurring") {
         show(txEditErr, "");
@@ -3223,11 +3243,25 @@ if (txEditDelete) {
       if (!id) throw new Error("No transaction selected");
       if (!confirm("Delete this transaction?")) return;
       await api(`/api/families/${state.activeFamilyId}/transactions/${id}`, "DELETE");
+      deletedOk = true;
+    } catch (e) {
+      show(txEditErr, e.message || "Failed to delete");
+      return;
+    }
+    try {
       closeTxEditModal();
+    } catch (_) {}
+    if (!deletedOk) return;
+    try {
       invalidateLowBalanceAlertCache();
       await loadMonthAndCalendar();
     } catch (e) {
-      show(txEditErr, e.message || "Failed to delete");
+      if (typeof console !== "undefined" && console && console.warn) {
+        console.warn("Post-delete refresh failed:", e);
+      }
+      if (typeof showBwToast === "function") {
+        showBwToast("Deleted. Reload the page if changes don't appear.");
+      }
     }
   });
 }
@@ -6520,6 +6554,7 @@ function openExpectedEditModal(tx, opts = {}) {
 
   setExpectedModalMode();
   show(txEditErr, "");
+  try { txEditModal.style.display = ""; } catch (_) {}
   txEditModal.classList.add("modal-overlay--open");
   txEditModal.setAttribute("aria-hidden", "false");
   applyTransactionEditMode("recurring");
