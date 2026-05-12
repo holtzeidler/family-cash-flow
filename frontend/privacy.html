@@ -8,9 +8,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=399" />
+    <link rel="stylesheet" href="./styles.css?v=400" />
   </head>
-  <body class="plans-page">
+  <body class="plans-page support-doc-page">
     <div class="container">
       <div class="top-nav" role="navigation" aria-label="Primary">
         <div class="top-nav__inner top-nav__inner--simple">
@@ -36,40 +36,126 @@
       </div>
 
       <div class="grid">
-        <article class="card support-doc">
-          <h1>Privacy Policy</h1>
-          <p class="support-doc__lead">
-            BalanceWhiz is built around operational trust. This page summarizes what we collect and why—in plain
-            language, not legalese wallpaper.
-          </p>
+        <div class="support-doc-layout">
+          <aside class="support-doc-nav" aria-label="On this page">
+            <div class="support-doc-nav__label">On this page</div>
+            <ol class="support-doc-nav__list">
+              <li><a href="#what-we-collect" class="support-doc-nav__link is-active">What we collect</a></li>
+              <li><a href="#what-we-dont-do" class="support-doc-nav__link">What we don't do</a></li>
+              <li><a href="#how-we-use" class="support-doc-nav__link">How we use information</a></li>
+              <li><a href="#security" class="support-doc-nav__link">Security</a></li>
+              <li><a href="#retention" class="support-doc-nav__link">Retention</a></li>
+              <li><a href="#your-controls" class="support-doc-nav__link">Your controls</a></li>
+              <li><a href="#contact" class="support-doc-nav__link">Contact</a></li>
+            </ol>
+          </aside>
 
-          <h2>What we collect</h2>
-          <ul>
-            <li>Account details you provide (for example, name and email).</li>
-            <li>Forecast and household data you enter in the product (bills, income, balances, and related notes).</li>
-            <li>Technical data needed to run the service (for example, authentication cookies, basic logs, and support messages you send us).</li>
-          </ul>
+          <article class="card support-doc support-doc--polished">
+            <header class="support-doc__head">
+              <p class="support-doc__eyebrow">Privacy</p>
+              <h1>Privacy Policy</h1>
+              <p class="support-doc__meta-lede">Last updated May 2026 · ~3 min read</p>
+            </header>
 
-          <h2>What we do not do</h2>
-          <p>
-            BalanceWhiz does not require linking your bank. We do not sell your personal data to data brokers, and we
-            do not use it for unrelated advertising profiles.
-          </p>
+            <p class="support-doc__lead">
+              BalanceWhiz is built around operational trust. This page summarizes what we collect and why — in plain
+              language, not legalese wallpaper.
+            </p>
 
-          <h2>How we use information</h2>
-          <p>To operate your account, provide the forecast, respond to support requests, meet legal obligations, and protect security and integrity of the service.</p>
+            <aside class="support-doc__trust-callout" role="note" aria-label="Trust summary">
+              <span class="support-doc__trust-callout__icon" aria-hidden="true">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                  <path d="M9 12l2 2 4-4" />
+                </svg>
+              </span>
+              <div class="support-doc__trust-callout__body">
+                <p class="support-doc__trust-callout__title">Privacy-first forecasting</p>
+                <p class="support-doc__trust-callout__text">
+                  BalanceWhiz does not require direct bank connections, does not sell personal financial data, and is
+                  not built on advertising profiles. Your forecast stays your forecast.
+                </p>
+              </div>
+            </aside>
 
-          <h2>Retention</h2>
-          <p>We keep information as long as your account is active and for a reasonable period afterward for backups, disputes, and legal requirements.</p>
+            <section class="support-doc__section" id="what-we-collect" aria-labelledby="what-we-collect-h">
+              <h2 id="what-we-collect-h">What we collect</h2>
+              <p>The minimum needed to run the product well:</p>
+              <ul class="support-doc__checks">
+                <li>Account details you provide — for example your name and email address.</li>
+                <li>Forecast and household data you enter in the product (bills, income, balances, account notes, and the categories you create).</li>
+                <li>Basic technical information required to securely operate the product — for example authentication cookies, server logs, and any support messages you send us.</li>
+              </ul>
+            </section>
 
-          <h2>Contact</h2>
-          <p>
-            Questions or requests: <a href="./contactus/">Contact Us</a> or email
-            <a href="mailto:support@balancewhiz.com">support@balancewhiz.com</a>.
-          </p>
+            <section class="support-doc__section" id="what-we-dont-do" aria-labelledby="what-we-dont-do-h">
+              <h2 id="what-we-dont-do-h">What we don't do</h2>
+              <ul class="support-doc__checks support-doc__checks--neg">
+                <li>We don't require linking your bank.</li>
+                <li>We don't sell your personal data to data brokers.</li>
+                <li>We don't use your forecast or household data to build advertising profiles.</li>
+                <li>We don't share your data with third parties for their own marketing.</li>
+              </ul>
+            </section>
 
-          <p class="support-doc__meta">Last updated May 2026.</p>
-        </article>
+            <section class="support-doc__section" id="how-we-use" aria-labelledby="how-we-use-h">
+              <h2 id="how-we-use-h">How we use information</h2>
+              <p>
+                We use your information to operate your account, generate your forecast, respond to support requests,
+                meet legal obligations, and protect the security and integrity of the service. That's it.
+              </p>
+            </section>
+
+            <section class="support-doc__section" id="security" aria-labelledby="security-h">
+              <h2 id="security-h">Security</h2>
+              <p>
+                Data is transmitted over TLS and stored on managed infrastructure with industry-standard safeguards.
+                We use scoped credentials, principle-of-least-privilege access, and routine backups. No system is
+                perfect — if we ever experience an incident that affects your data, we'll tell you about it.
+              </p>
+            </section>
+
+            <section class="support-doc__section" id="retention" aria-labelledby="retention-h">
+              <h2 id="retention-h">Retention</h2>
+              <p>
+                We keep your information as long as your account is active, and for a reasonable period afterward to
+                support backups, dispute resolution, and legal requirements. You can request deletion of your data at
+                any time via <a href="./contactus/">Contact Us</a>.
+              </p>
+            </section>
+
+            <section class="support-doc__section" id="your-controls" aria-labelledby="your-controls-h">
+              <h2 id="your-controls-h">Your controls</h2>
+              <p>You can:</p>
+              <ul class="support-doc__checks">
+                <li>Update your account details or change your password from inside the product.</li>
+                <li>Export or delete your data on request — we'll respond within a reasonable timeframe.</li>
+                <li>Cancel your subscription at any time; we'll stop charging immediately.</li>
+              </ul>
+            </section>
+
+            <section class="support-doc__section" id="contact" aria-labelledby="contact-h">
+              <h2 id="contact-h">Contact</h2>
+              <p>
+                Questions, requests, or concerns about privacy? <a href="./contactus/">Reach out to us</a> or email
+                <a href="mailto:support@balancewhiz.com">support@balancewhiz.com</a> — a person, not a bot, reads
+                every message.
+              </p>
+            </section>
+
+            <footer class="support-doc__footer">
+              <nav class="support-doc__quicklinks" aria-label="Related pages">
+                <a href="./terms.html">Terms of Service</a>
+                <span aria-hidden="true">·</span>
+                <a href="./contactus/">Contact Support</a>
+                <span aria-hidden="true">·</span>
+                <a href="./plans/">Pricing</a>
+                <span aria-hidden="true">·</span>
+                <a href="/">Return to home</a>
+              </nav>
+            </footer>
+          </article>
+        </div>
       </div>
 
       <footer class="app-footer" role="contentinfo">
@@ -120,5 +206,42 @@
         </div>
       </footer>
     </div>
+    <script>
+      // Scroll-spy: highlights the current section in the side nav while
+      // the user scrolls through the document.
+      (function () {
+        const links = Array.from(
+          document.querySelectorAll(".support-doc-nav__link[href^='#']")
+        );
+        if (!links.length || !("IntersectionObserver" in window)) return;
+        const byId = new Map();
+        for (const a of links) {
+          const id = a.getAttribute("href").slice(1);
+          if (id) byId.set(id, a);
+        }
+        const setActive = (id) => {
+          for (const a of links) a.classList.remove("is-active");
+          const a = byId.get(id);
+          if (a) a.classList.add("is-active");
+        };
+        const visible = new Map();
+        const obs = new IntersectionObserver(
+          (entries) => {
+            for (const e of entries) {
+              if (e.isIntersecting) visible.set(e.target.id, e.intersectionRatio);
+              else visible.delete(e.target.id);
+            }
+            if (!visible.size) return;
+            const top = [...visible.entries()].sort((a, b) => b[1] - a[1])[0];
+            if (top) setActive(top[0]);
+          },
+          { rootMargin: "-30% 0px -55% 0px", threshold: [0, 0.25, 0.5, 0.75, 1] }
+        );
+        for (const id of byId.keys()) {
+          const sec = document.getElementById(id);
+          if (sec) obs.observe(sec);
+        }
+      })();
+    </script>
   </body>
 </html>

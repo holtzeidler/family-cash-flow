@@ -2256,6 +2256,90 @@ body.support-doc-page .support-doc__section{
 body.support-doc-page .support-doc__section:first-of-type{
   margin-top: 32px;
 }
+
+/* Trust callout (privacy page) — quiet green band that anchors the page's
+   positioning without shouting. */
+body.support-doc-page .support-doc__trust-callout{
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  margin: 18px 0 4px;
+  padding: 16px 18px 17px;
+  border-radius: 14px;
+  background: linear-gradient(180deg,
+    rgba(16, 185, 129, 0.07) 0%,
+    rgba(16, 185, 129, 0.04) 100%);
+  border: 1px solid rgba(16, 185, 129, 0.18);
+  color: rgba(15, 23, 42, 0.92);
+  max-width: 65ch;
+}
+body.support-doc-page .support-doc__trust-callout__icon{
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: rgba(16, 185, 129, 0.14);
+  color: rgba(11, 61, 46, 0.92);
+}
+body.support-doc-page .support-doc__trust-callout__body{
+  flex: 1 1 auto;
+  min-width: 0;
+}
+body.support-doc-page .support-doc__trust-callout__title{
+  margin: 0 0 4px;
+  font-size: 0.86rem;
+  font-weight: 700;
+  letter-spacing: -0.005em;
+  color: rgba(11, 61, 46, 0.95);
+}
+body.support-doc-page .support-doc__trust-callout__text{
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.55;
+  color: rgba(30, 41, 59, 0.88);
+}
+
+/* Check-mark bullets (privacy page lists). Replaces the default browser disc
+   with a small subtle "✓" or "✕" glyph for negative lists. The selectors
+   use `ul.support-doc__checks` to win specificity against the generic
+   `.support-doc__section ul/li` rules above. */
+body.support-doc-page ul.support-doc__checks{
+  list-style: none;
+  margin: 4px 0 12px;
+  padding: 0;
+  max-width: 65ch;
+}
+body.support-doc-page ul.support-doc__checks li{
+  position: relative;
+  padding: 0 0 0 28px;
+  margin: 0 0 10px;
+  font-size: 0.95rem;
+  line-height: 1.7;
+  color: rgba(51, 65, 85, 0.92);
+}
+body.support-doc-page ul.support-doc__checks li:last-child{
+  margin-bottom: 0;
+}
+body.support-doc-page ul.support-doc__checks li::before{
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.45em;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgba(16, 185, 129, 0.14)
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%2316a34a' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><path d='M3.5 8.5l3 3 6-7'/></svg>")
+    center/11px 11px no-repeat;
+}
+body.support-doc-page ul.support-doc__checks.support-doc__checks--neg li::before{
+  background: rgba(148, 163, 184, 0.16)
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%2364748b' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><path d='M4 4l8 8M12 4l-8 8'/></svg>")
+    center/10px 10px no-repeat;
+}
 body.support-doc-page .support-doc__section h2{
   margin: 0 0 12px;
   font-size: 0.74rem;
