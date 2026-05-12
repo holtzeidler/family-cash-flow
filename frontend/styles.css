@@ -3712,6 +3712,36 @@ body[data-bw-view="reports"] .reports-card--hero .projection-chart-wrap--reports
   color: rgba(100, 116, 139, 0.62);
   justify-content: flex-start;
 }
+.reports-risk-legend--rich{
+  margin: 14px 0 0;
+  gap: 6px 18px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: rgba(71, 85, 105, 0.78);
+  justify-content: flex-start;
+  align-items: center;
+}
+.reports-risk-legend__item{
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  line-height: 1.2;
+}
+.reports-risk-legend__label{
+  font-weight: 650;
+  color: rgba(30, 41, 59, 0.86);
+  letter-spacing: 0.01em;
+}
+.reports-risk-legend__meta{
+  color: rgba(100, 116, 139, 0.7);
+  font-size: 0.66rem;
+  font-weight: 500;
+}
+.reports-risk-legend__meta::before{
+  content: "·";
+  margin: 0 5px 0 2px;
+  color: rgba(148, 163, 184, 0.6);
+}
 .reports-risk-insight{
   margin: 0 0 12px;
   padding: 9px 11px;
@@ -3723,9 +3753,21 @@ body[data-bw-view="reports"] .reports-card--hero .projection-chart-wrap--reports
   font-weight: 500;
   color: rgba(51, 65, 85, 0.92);
 }
+.reports-risk-layout{
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  align-items: flex-start;
+}
+@media (min-width: 1100px){
+  .reports-risk-layout{
+    grid-template-columns: minmax(0, 1fr) clamp(220px, 22%, 280px);
+    gap: 16px;
+  }
+}
 .reports-risk-cal-wrap{
   width: 100%;
-  max-width: 920px;
+  min-width: 0;
 }
 .reports-risk-dow-row{
   display: grid;
@@ -3742,48 +3784,53 @@ body[data-bw-view="reports"] .reports-card--hero .projection-chart-wrap--reports
 }
 .reports-risk-dot{
   display: inline-block;
-  width: 9px;
-  height: 9px;
-  border-radius: 2px;
-  margin-right: 5px;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
   vertical-align: middle;
+  flex-shrink: 0;
 }
-.reports-risk-dot--safe{ background: color-mix(in srgb, #22c55e 55%, #f8fafc); border: 1px solid rgba(22, 163, 74, 0.35); }
-.reports-risk-dot--caution{ background: color-mix(in srgb, #eab308 50%, #fffbeb); border: 1px solid rgba(202, 138, 4, 0.38); }
-.reports-risk-dot--low{ background: color-mix(in srgb, #f97316 52%, #fff7ed); border: 1px solid rgba(234, 88, 12, 0.42); }
-.reports-risk-dot--neg{ background: color-mix(in srgb, #ef4444 48%, #fef2f2); border: 1px solid rgba(220, 38, 38, 0.42); }
+.reports-risk-dot--safe{ background: color-mix(in srgb, #22c55e 50%, #f8fafc); border: 1px solid rgba(22, 163, 74, 0.32); }
+.reports-risk-dot--caution{ background: color-mix(in srgb, #eab308 46%, #fffbeb); border: 1px solid rgba(202, 138, 4, 0.34); }
+.reports-risk-dot--low{ background: color-mix(in srgb, #f97316 48%, #fff7ed); border: 1px solid rgba(234, 88, 12, 0.38); }
+.reports-risk-dot--critical{
+  background: linear-gradient(135deg,
+    color-mix(in srgb, #fca5a5 65%, #fef2f2) 0%,
+    color-mix(in srgb, #ef4444 70%, #b91c1c) 100%);
+  border: 1px solid rgba(159, 18, 18, 0.5);
+}
 .reports-risk-grid{
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 8px 10px;
   width: 100%;
-  max-width: 920px;
 }
 .reports-risk-pad{
   min-height: 0;
   aspect-ratio: 1;
-  border-radius: 10px;
-  border: 1px dashed rgba(148, 163, 184, 0.14);
-  background: rgba(248, 250, 252, 0.25);
+  border: none;
+  background: transparent;
   pointer-events: none;
 }
 .reports-risk-cell{
+  position: relative;
   aspect-ratio: 1;
   min-height: 56px;
   width: 100%;
   max-height: 96px;
   border-radius: 10px;
-  border: 1px solid rgba(17, 24, 39, 0.06);
+  border: 1px solid rgba(17, 24, 39, 0.05);
+  background: rgba(248, 250, 252, 0.7);
   font: inherit;
   cursor: pointer;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
-  padding: 5px 4px 6px;
+  gap: 2px;
+  padding: 6px 4px 6px;
   box-sizing: border-box;
-  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
 }
 .reports-risk-cell:hover{
   transform: translateY(-1px);
@@ -3793,18 +3840,24 @@ body[data-bw-view="reports"] .reports-card--hero .projection-chart-wrap--reports
   outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
   outline-offset: 2px;
 }
+.reports-risk-cell--active{
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.12);
+  transform: translateY(-1px);
+  border-color: rgba(15, 23, 42, 0.22);
+}
 .reports-risk-cell__d{
-  font-size: clamp(0.82rem, 1.6vw, 1rem);
-  font-weight: 800;
+  font-size: clamp(0.92rem, 1.55vw, 1.05rem);
+  font-weight: 750;
   line-height: 1;
-  color: rgba(15, 23, 42, 0.88);
+  color: rgba(15, 23, 42, 0.92);
+  letter-spacing: -0.005em;
 }
 .reports-risk-cell__b{
-  font-size: clamp(0.58rem, 1.15vw, 0.72rem);
-  font-weight: 650;
-  letter-spacing: 0.02em;
+  font-size: clamp(0.56rem, 1vw, 0.68rem);
+  font-weight: 600;
+  letter-spacing: 0.01em;
   line-height: 1.1;
-  color: rgba(30, 41, 59, 0.78);
+  color: rgba(51, 65, 85, 0.62);
 }
 .reports-risk-cell--month-start{
   position: relative;
@@ -3812,39 +3865,101 @@ body[data-bw-view="reports"] .reports-card--hero .projection-chart-wrap--reports
 .reports-risk-cell--month-start::before{
   content: attr(data-month);
   position: absolute;
-  top: 4px;
+  top: 5px;
   left: 50%;
   transform: translateX(-50%);
-  font-size: 0.58rem;
+  font-size: 0.6rem;
   font-weight: 800;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: rgba(100, 116, 139, 0.55);
+  color: rgba(71, 85, 105, 0.7);
+  pointer-events: none;
+  white-space: nowrap;
+}
+.reports-risk-cell--month-start::after{
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -6px;
+  width: 2px;
+  border-radius: 2px;
+  background: rgba(15, 23, 42, 0.16);
   pointer-events: none;
 }
+.reports-risk-grid > .reports-risk-cell--month-start:nth-child(7n+1)::after{
+  display: none;
+}
 .reports-risk-cell--month-start .reports-risk-cell__d{
-  margin-top: 10px;
+  margin-top: 11px;
 }
 .reports-risk-cell--safe{
-  background: color-mix(in srgb, #22c55e 22%, #f0fdf4);
-  border-color: rgba(22, 163, 74, 0.28);
+  background: color-mix(in srgb, #22c55e 14%, #f0fdf4);
+  border-color: rgba(22, 163, 74, 0.18);
 }
 .reports-risk-cell--caution{
-  background: color-mix(in srgb, #eab308 26%, #fffbeb);
-  border-color: rgba(202, 138, 4, 0.35);
+  background: color-mix(in srgb, #eab308 18%, #fffbeb);
+  border-color: rgba(202, 138, 4, 0.26);
 }
 .reports-risk-cell--low{
-  background: color-mix(in srgb, #fb923c 30%, #fff7ed);
-  border-color: rgba(234, 88, 12, 0.38);
+  background: color-mix(in srgb, #fb923c 22%, #fff7ed);
+  border-color: rgba(234, 88, 12, 0.3);
 }
-.reports-risk-cell--neg{
-  background: color-mix(in srgb, #f87171 34%, #fef2f2);
-  border-color: rgba(220, 38, 38, 0.38);
-  color: rgba(127, 29, 29, 0.95);
+.reports-risk-cell--neg-1{
+  background: color-mix(in srgb, #fecaca 55%, #fef2f2);
+  border-color: rgba(220, 38, 38, 0.22);
+  color: rgba(127, 29, 29, 0.9);
 }
-.reports-risk-cell--neg .reports-risk-cell__d,
-.reports-risk-cell--neg .reports-risk-cell__b{
-  color: rgba(91, 15, 15, 0.92);
+.reports-risk-cell--neg-2{
+  background: color-mix(in srgb, #f87171 36%, #fef2f2);
+  border-color: rgba(220, 38, 38, 0.34);
+  color: rgba(120, 20, 20, 0.94);
+}
+.reports-risk-cell--neg-3{
+  background: linear-gradient(155deg,
+    color-mix(in srgb, #ef4444 38%, #fef2f2) 0%,
+    color-mix(in srgb, #b91c1c 48%, #fee2e2) 100%);
+  border-color: rgba(159, 18, 18, 0.46);
+  color: rgba(91, 15, 15, 0.96);
+}
+.reports-risk-cell--neg-1 .reports-risk-cell__d,
+.reports-risk-cell--neg-2 .reports-risk-cell__d,
+.reports-risk-cell--neg-3 .reports-risk-cell__d{
+  color: rgba(91, 15, 15, 0.95);
+}
+.reports-risk-cell--neg-1 .reports-risk-cell__b{
+  color: rgba(120, 30, 30, 0.74);
+}
+.reports-risk-cell--neg-2 .reports-risk-cell__b{
+  color: rgba(110, 22, 22, 0.82);
+}
+.reports-risk-cell--neg-3 .reports-risk-cell__b{
+  color: rgba(96, 12, 12, 0.92);
+  font-weight: 700;
+}
+.reports-risk-cell--today{
+  border-color: rgba(15, 23, 42, 0.5);
+  box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.16),
+    0 4px 12px rgba(15, 23, 42, 0.08);
+}
+.reports-risk-cell--today::after{
+  content: "Today";
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.52rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(15, 23, 42, 0.72);
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.85);
+  pointer-events: none;
+}
+.reports-risk-cell--today.reports-risk-cell--month-start::after{
+  display: none;
 }
 @media (min-width: 720px){
   .reports-risk-cell{
@@ -3856,6 +3971,146 @@ body[data-bw-view="reports"] .reports-card--hero .projection-chart-wrap--reports
     min-height: 72px;
     max-height: 104px;
   }
+}
+
+/* Day detail panel — surfaces the "why" behind a cell */
+.reports-risk-detail{
+  border-radius: 12px;
+  background: rgba(248, 250, 252, 0.72);
+  border: 1px solid rgba(15, 23, 42, 0.05);
+  padding: 12px 13px 13px;
+  min-height: 168px;
+  font-size: 0.8rem;
+  color: rgba(51, 65, 85, 0.92);
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.reports-risk-detail__hint{
+  font-size: 0.74rem;
+  color: rgba(100, 116, 139, 0.78);
+  line-height: 1.35;
+}
+.reports-risk-detail__head{
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.reports-risk-detail__date{
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(71, 85, 105, 0.78);
+}
+.reports-risk-detail__balance{
+  font-size: 1.1rem;
+  font-weight: 750;
+  letter-spacing: -0.01em;
+  color: rgba(15, 23, 42, 0.94);
+}
+.reports-risk-detail--neg .reports-risk-detail__balance{
+  color: rgba(127, 29, 29, 0.95);
+}
+.reports-risk-detail--low .reports-risk-detail__balance{
+  color: rgba(120, 53, 15, 0.94);
+}
+.reports-risk-detail__gap{
+  font-size: 0.72rem;
+  color: rgba(100, 116, 139, 0.84);
+  margin-top: -3px;
+}
+.reports-risk-detail__sec-title{
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(100, 116, 139, 0.7);
+  margin: 0 0 4px;
+}
+.reports-risk-detail__list{
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.reports-risk-detail__list li{
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 0.78rem;
+  line-height: 1.25;
+}
+.reports-risk-detail__list li .reports-risk-detail__desc{
+  color: rgba(30, 41, 59, 0.88);
+  font-weight: 500;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.reports-risk-detail__list li .reports-risk-detail__amt{
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+.reports-risk-detail__list li .reports-risk-detail__amt--exp{
+  color: rgba(127, 29, 29, 0.92);
+}
+.reports-risk-detail__list li .reports-risk-detail__amt--inc{
+  color: rgba(22, 101, 52, 0.92);
+}
+.reports-risk-detail__rec{
+  margin-top: auto;
+  font-size: 0.74rem;
+  color: rgba(22, 101, 52, 0.86);
+  line-height: 1.35;
+  border-top: 1px solid rgba(15, 23, 42, 0.05);
+  padding-top: 7px;
+}
+.reports-risk-detail__rec--muted{
+  color: rgba(100, 116, 139, 0.7);
+}
+
+/* Actionability — "What could help?" suggestions */
+.reports-risk-action{
+  margin-top: 12px;
+  padding: 10px 12px 11px;
+  border-radius: 11px;
+  background: rgba(240, 253, 244, 0.6);
+  border: 1px solid rgba(22, 101, 52, 0.14);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.reports-risk-action__title{
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(22, 101, 52, 0.85);
+}
+.reports-risk-action__items{
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.reports-risk-action__items li{
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: rgba(30, 41, 59, 0.9);
+}
+.reports-risk-action__items li strong{
+  font-weight: 700;
+  color: rgba(15, 23, 42, 0.95);
 }
 .reports-table-scroll{
   overflow-x: auto;
@@ -4152,10 +4407,11 @@ body[data-bw-view="reports"] .app-layout{
 }
 body[data-bw-view="reports"] .sidebar{
   gap: 8px;
-  opacity: 0.93;
+  opacity: 0.86;
 }
 body[data-bw-view="reports"] .sidebar .card{
-  border: 1px solid rgba(17, 24, 39, 0.045);
+  border: 1px solid rgba(17, 24, 39, 0.028);
+  background: rgba(252, 252, 253, 0.7);
   box-shadow: none;
 }
 body[data-bw-view="reports"] #reportsLeftNav{
@@ -4182,16 +4438,24 @@ body[data-bw-view="reports"] #sidebarBodyMonth > div:nth-child(2){
 }
 body[data-bw-view="reports"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger,
 body[data-bw-view="reports"] #sidebarHighBalanceBanner.calendar-low-balance--sidebar{
-  border-color: rgba(185, 28, 28, 0.08);
-  background: rgba(254, 247, 247, 0.45);
-  color: rgba(100, 23, 23, 0.74);
-  padding: 6px 9px;
-  line-height: 1.25;
+  border-color: rgba(185, 28, 28, 0.05);
+  background: rgba(254, 247, 247, 0.32);
+  color: rgba(120, 40, 40, 0.66);
+  padding: 5px 8px;
+  line-height: 1.22;
   box-shadow: none;
-  border-radius: 10px;
+  border-radius: 9px;
+  font-size: 12px;
 }
 body[data-bw-view="reports"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger .cash-outlook-icon{
-  color: rgba(185, 28, 28, 0.6);
+  color: rgba(185, 28, 28, 0.42);
+}
+body[data-bw-view="reports"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger .cash-outlook-subhead--inline{
+  font-weight: 600;
+  color: rgba(120, 40, 40, 0.7);
+}
+body[data-bw-view="reports"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger .cash-outlook-line{
+  color: rgba(100, 50, 50, 0.62);
 }
 body[data-bw-view="reports"] #reportsLeftNav{
   background: transparent;
@@ -4202,8 +4466,8 @@ body[data-bw-view="reports"] .sidebar .reports-left-nav__item.is-active{
   color: rgba(11, 61, 46, 0.96);
 }
 body[data-bw-view="reports"] #sidebarBodyMonth.card{
-  border: 1px solid rgba(17, 24, 39, 0.05);
-  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(17, 24, 39, 0.025);
+  background: rgba(252, 252, 253, 0.62);
 }
 body[data-bw-view="reports"] .totals-compact__row{
   border-bottom-color: rgba(17, 24, 39, 0.025);

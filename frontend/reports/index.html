@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=395" />
+    <link rel="stylesheet" href="../styles.css?v=396" />
   </head>
   <body>
     <div class="container">
@@ -749,23 +749,45 @@
                   <p class="reports-card__desc">See which days are projected to run tight—next 60 days, Monday-aligned weeks.</p>
                 </div>
                 <div id="reportsRiskHeatmapInsight" class="reports-risk-insight" aria-live="polite"></div>
-                <div class="reports-risk-cal-wrap">
-                  <div class="reports-risk-dow-row" aria-hidden="true">
-                    <span>Mon</span>
-                    <span>Tue</span>
-                    <span>Wed</span>
-                    <span>Thu</span>
-                    <span>Fri</span>
-                    <span>Sat</span>
-                    <span>Sun</span>
+                <div class="reports-risk-layout">
+                  <div class="reports-risk-cal-wrap">
+                    <div class="reports-risk-dow-row" aria-hidden="true">
+                      <span>Mon</span>
+                      <span>Tue</span>
+                      <span>Wed</span>
+                      <span>Thu</span>
+                      <span>Fri</span>
+                      <span>Sat</span>
+                      <span>Sun</span>
+                    </div>
+                    <div id="reportsRiskHeatmapGrid" class="reports-risk-grid" aria-label="Projected balance pressure by day"></div>
                   </div>
-                  <div id="reportsRiskHeatmapGrid" class="reports-risk-grid" aria-label="Projected balance pressure by day"></div>
+                  <aside id="reportsRiskHeatmapDetail" class="reports-risk-detail" aria-live="polite" aria-label="Day details">
+                    <div class="reports-risk-detail__hint">Hover or focus a day to see what's driving the balance.</div>
+                  </aside>
                 </div>
-                <div class="reports-risk-legend reports-risk-legend--compact" aria-hidden="true">
-                  <span><i class="reports-risk-dot reports-risk-dot--safe"></i> Comfortable</span>
-                  <span><i class="reports-risk-dot reports-risk-dot--caution"></i> Caution</span>
-                  <span><i class="reports-risk-dot reports-risk-dot--low"></i> Low</span>
-                  <span><i class="reports-risk-dot reports-risk-dot--neg"></i> Negative</span>
+                <div id="reportsRiskHeatmapAction" class="reports-risk-action" hidden></div>
+                <div class="reports-risk-legend reports-risk-legend--rich" aria-label="Heatmap legend">
+                  <span class="reports-risk-legend__item">
+                    <i class="reports-risk-dot reports-risk-dot--safe"></i>
+                    <span class="reports-risk-legend__label">Comfortable</span>
+                    <span class="reports-risk-legend__meta">Above floor</span>
+                  </span>
+                  <span class="reports-risk-legend__item">
+                    <i class="reports-risk-dot reports-risk-dot--caution"></i>
+                    <span class="reports-risk-legend__label">Caution</span>
+                    <span class="reports-risk-legend__meta">Near floor</span>
+                  </span>
+                  <span class="reports-risk-legend__item">
+                    <i class="reports-risk-dot reports-risk-dot--low"></i>
+                    <span class="reports-risk-legend__label">Low</span>
+                    <span class="reports-risk-legend__meta">Below floor</span>
+                  </span>
+                  <span class="reports-risk-legend__item">
+                    <i class="reports-risk-dot reports-risk-dot--critical"></i>
+                    <span class="reports-risk-legend__label">Critical</span>
+                    <span class="reports-risk-legend__meta">Deep negative</span>
+                  </span>
                 </div>
               </section>
 
@@ -1248,6 +1270,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="../app.js?v=259"></script>
+    <script src="../app.js?v=260"></script>
   </body>
 </html>

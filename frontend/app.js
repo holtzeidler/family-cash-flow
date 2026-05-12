@@ -2180,8 +2180,15 @@ function setActiveTopView(view) {
   if (reportsViewPanel) reportsViewPanel.hidden = v !== "reports";
   if (settingsSidebarNav) settingsSidebarNav.hidden = v !== "settings";
   if (sidebarPendingTxCard) sidebarPendingTxCard.hidden = v !== "calendar";
-  if (v === "transactions") {
-    void loadUpcomingTransactionsPanel();
+  if (v === "transactions" || v === "reports") {
+    // Reports use the same upcoming actuals list to power the risk heatmap's
+    // "triggered by" detail; load lazily on view entry so we don't fetch on
+    // every page load.
+    void loadUpcomingTransactionsPanel().then(() => {
+      if (v === "reports") {
+        try { renderReportsRiskHeatmap(lastProjectionDailyForReports || []); } catch (_) {}
+      }
+    });
   }
   if (navCalendarView) {
     navCalendarView.classList.toggle("is-active", v === "calendar");
@@ -9723,6 +9730,256 @@ function navigateToCalendarForRiskDay(iso) {
   }
 }
 
+/**
+ * Build an index of {iso -> [{description, amount, kind, category}]} occurrences
+ * for the projection window. Combines recurring expected transactions and
+ * one-time upcoming actuals so we can explain *why* a day is tight.
+ */
+function buildRiskOccurrencesIndex(startIso, endIso) {
+  const idx = new Map();
+  const push = (iso, entry) => {
+    if (!iso || !entry) return;
+    if (!idx.has(iso)) idx.set(iso, []);
+    idx.get(iso).push(entry);
+  };
+
+  for (const tx of state.expectedTransactions || []) {
+    let cursor = startIso;
+    let safety = 0;
+    while (cursor && safety < 400) {
+      safety++;
+      let next;
+      try {
+        next = nextExpectedOccurrenceIso(tx, cursor);
+      } catch (_) {
+        next = null;
+      }
+      if (!next) break;
+      if (String(next) > String(endIso)) break;
+      push(next, {
+        description: String(tx.description || "Recurring").trim() || "Recurring",
+        amount: Math.abs(Number(tx.amount || 0)),
+        kind: String(tx.kind || "expense"),
+        source: "expected",
+      });
+      cursor = addDaysIso(next, 1);
+      if (!cursor || String(cursor) > String(endIso)) break;
+    }
+  }
+
+  for (const tx of state.upcomingActualItems || []) {
+    const iso = normalizeIsoDate(tx?.date) || String(tx?.date || "");
+    if (!iso || iso < startIso || iso > endIso) continue;
+    push(iso, {
+      description: String(tx?.description || "Transaction").trim() || "Transaction",
+      amount: Math.abs(Number(tx?.amount || 0)),
+      kind: String(tx?.kind || "expense"),
+      source: "actual",
+    });
+  }
+
+  return idx;
+}
+
+/**
+ * Pick the appropriate severity class for a day's projected balance.
+ * Negatives use depth-based tiers so the eye can quickly tell a $500 dip
+ * from a $15k deficit, instead of "wall of red".
+ */
+function riskSeverityClass(bal, thr, worstNeg) {
+  if (bal < 0) {
+    const depth = Math.abs(bal);
+    const worst = Math.max(Math.abs(worstNeg || 0), 1);
+    const ratio = depth / worst;
+    if (ratio >= 0.7) return "reports-risk-cell--neg-3";
+    if (ratio >= 0.35) return "reports-risk-cell--neg-2";
+    return "reports-risk-cell--neg-1";
+  }
+  if (thr != null && bal < thr * 0.5) return "reports-risk-cell--low";
+  if (thr != null && bal < thr * 1.05) return "reports-risk-cell--caution";
+  return "reports-risk-cell--safe";
+}
+
+function riskDetailSeverityClass(severityClass) {
+  if (!severityClass) return "";
+  if (severityClass.startsWith("reports-risk-cell--neg")) return "reports-risk-detail--neg";
+  if (severityClass === "reports-risk-cell--low") return "reports-risk-detail--low";
+  return "";
+}
+
+function renderRiskHeatmapDetail(payload, options) {
+  const host = document.getElementById("reportsRiskHeatmapDetail");
+  if (!host) return;
+  host.classList.remove("reports-risk-detail--neg", "reports-risk-detail--low");
+  if (!payload) {
+    host.innerHTML = `<div class="reports-risk-detail__hint">Hover or focus a day to see what's driving the balance.</div>`;
+    return;
+  }
+  const sevDetailCls = riskDetailSeverityClass(payload.severityClass);
+  if (sevDetailCls) host.classList.add(sevDetailCls);
+
+  const dateLabel = fmtDateMedDisplay(payload.iso);
+  const balLabel = fmtMoney0SignedDollar(payload.balance);
+
+  let gapHtml = "";
+  if (payload.thr != null) {
+    const gap = payload.balance - payload.thr;
+    if (gap < 0) {
+      gapHtml = `<div class="reports-risk-detail__gap">$${fmtMoney0(Math.abs(gap))} below your $${fmtMoney0(payload.thr)} floor</div>`;
+    } else {
+      gapHtml = `<div class="reports-risk-detail__gap">$${fmtMoney0(gap)} cushion above your $${fmtMoney0(payload.thr)} floor</div>`;
+    }
+  } else if (payload.balance < 0) {
+    gapHtml = `<div class="reports-risk-detail__gap">Projected negative balance</div>`;
+  }
+
+  let triggeredHtml = "";
+  const outs = (payload.events || [])
+    .filter((e) => e.kind === "expense")
+    .sort((a, b) => b.amount - a.amount)
+    .slice(0, 3);
+  const ins = (payload.events || [])
+    .filter((e) => e.kind === "income")
+    .sort((a, b) => b.amount - a.amount)
+    .slice(0, 2);
+  if (outs.length) {
+    const label = payload.balance < 0 || (payload.thr != null && payload.balance < payload.thr)
+      ? "Triggered by"
+      : "Largest outflows";
+    const lis = outs
+      .map(
+        (e) =>
+          `<li><span class="reports-risk-detail__desc">${escapeHtml(e.description)}</span><span class="reports-risk-detail__amt reports-risk-detail__amt--exp">−$${fmtMoney0(e.amount)}</span></li>`
+      )
+      .join("");
+    triggeredHtml = `<div class="reports-risk-detail__sec"><div class="reports-risk-detail__sec-title">${label}</div><ul class="reports-risk-detail__list">${lis}</ul></div>`;
+  }
+  if (!triggeredHtml && ins.length) {
+    const lis = ins
+      .map(
+        (e) =>
+          `<li><span class="reports-risk-detail__desc">${escapeHtml(e.description)}</span><span class="reports-risk-detail__amt reports-risk-detail__amt--inc">+$${fmtMoney0(e.amount)}</span></li>`
+      )
+      .join("");
+    triggeredHtml = `<div class="reports-risk-detail__sec"><div class="reports-risk-detail__sec-title">Inflows today</div><ul class="reports-risk-detail__list">${lis}</ul></div>`;
+  }
+  if (!triggeredHtml) {
+    triggeredHtml = `<div class="reports-risk-detail__sec"><div class="reports-risk-detail__sec-title">Activity</div><div class="reports-risk-detail__gap">No scheduled transactions on this day.</div></div>`;
+  }
+
+  let recHtml = "";
+  if (payload.recovery) {
+    const r = payload.recovery;
+    recHtml = `<div class="reports-risk-detail__rec">Next inflow · <strong>+$${fmtMoney0(r.amount)}</strong> on ${escapeHtml(fmtMonthDay(r.iso))} — ${escapeHtml(r.description)}</div>`;
+  } else if (payload.balance < 0 || (payload.thr != null && payload.balance < payload.thr)) {
+    recHtml = `<div class="reports-risk-detail__rec reports-risk-detail__rec--muted">No projected inflow before the end of this window.</div>`;
+  }
+
+  host.innerHTML = `
+    <div class="reports-risk-detail__head">
+      <div class="reports-risk-detail__date">${escapeHtml(dateLabel)}</div>
+      <div class="reports-risk-detail__balance">${escapeHtml(balLabel)}</div>
+    </div>
+    ${gapHtml}
+    ${triggeredHtml}
+    ${recHtml}
+  `;
+}
+
+function renderRiskHeatmapActionPanel(items, occByIso, thr, todayIso, worstIso) {
+  const host = document.getElementById("reportsRiskHeatmapAction");
+  if (!host) return;
+  host.hidden = true;
+  host.innerHTML = "";
+  if (!items?.length) return;
+
+  const anyTrouble = items.some((row) => {
+    const bal = Number(row.total_balance ?? 0);
+    return bal < 0 || (thr != null && bal < thr);
+  });
+  if (!anyTrouble) return;
+
+  const suggestions = [];
+
+  // Largest outflow in the window
+  let largestOut = null;
+  for (const row of items) {
+    const iso = String(row.date || "");
+    const ev = occByIso.get(iso) || [];
+    for (const e of ev) {
+      if (e.kind !== "expense") continue;
+      if (!largestOut || e.amount > largestOut.amount) {
+        largestOut = { ...e, iso };
+      }
+    }
+  }
+  if (largestOut) {
+    suggestions.push(
+      `The biggest hit in this window is <strong>${escapeHtml(largestOut.description)}</strong> on ${escapeHtml(fmtMonthDay(largestOut.iso))} (<strong>−$${fmtMoney0(largestOut.amount)}</strong>). Shifting it by a few days could relieve pressure.`
+    );
+  }
+
+  // First "below floor" day — find an income that lands within ~7 days before it.
+  const troubleIdx = items.findIndex((row) => {
+    const bal = Number(row.total_balance ?? 0);
+    return bal < 0 || (thr != null && bal < thr);
+  });
+  if (troubleIdx >= 0) {
+    const troubleIso = String(items[troubleIdx].date || "");
+    // Look for the largest inflow within the 14 days before trouble.
+    let bestInflow = null;
+    for (let k = Math.max(0, troubleIdx - 14); k < troubleIdx; k++) {
+      const iso = String(items[k].date || "");
+      const ev = occByIso.get(iso) || [];
+      for (const e of ev) {
+        if (e.kind !== "income") continue;
+        if (!bestInflow || e.amount > bestInflow.amount) {
+          bestInflow = { ...e, iso };
+        }
+      }
+    }
+    if (bestInflow) {
+      suggestions.push(
+        `A paycheck of <strong>+$${fmtMoney0(bestInflow.amount)}</strong> arrives on ${escapeHtml(fmtMonthDay(bestInflow.iso))} — consider moving a buffer before ${escapeHtml(fmtMonthDay(troubleIso))}.`
+      );
+    } else {
+      suggestions.push(
+        `No paycheck is projected before ${escapeHtml(fmtMonthDay(troubleIso))} — a transfer from savings ahead of that date would keep you above your floor.`
+      );
+    }
+  }
+
+  // Largest recovery — a big inflow after the worst day.
+  if (worstIso) {
+    let bestRecovery = null;
+    for (const row of items) {
+      const iso = String(row.date || "");
+      if (iso <= worstIso) continue;
+      const ev = occByIso.get(iso) || [];
+      for (const e of ev) {
+        if (e.kind !== "income") continue;
+        if (!bestRecovery || e.amount > bestRecovery.amount) {
+          bestRecovery = { ...e, iso };
+        }
+      }
+    }
+    if (bestRecovery) {
+      suggestions.push(
+        `Largest recovery: <strong>+$${fmtMoney0(bestRecovery.amount)}</strong> on ${escapeHtml(fmtMonthDay(bestRecovery.iso))} — ${escapeHtml(bestRecovery.description)}.`
+      );
+    }
+  }
+
+  if (!suggestions.length) return;
+  host.innerHTML = `
+    <div class="reports-risk-action__title">What could help?</div>
+    <ul class="reports-risk-action__items">
+      ${suggestions.slice(0, 3).map((s) => `<li>${s}</li>`).join("")}
+    </ul>
+  `;
+  host.hidden = false;
+}
+
 function renderReportsRiskHeatmap(daily) {
   const host = document.getElementById("reportsRiskHeatmapGrid");
   const insightEl = document.getElementById("reportsRiskHeatmapInsight");
@@ -9739,9 +9996,13 @@ function renderReportsRiskHeatmap(daily) {
 
   if (!items.length) {
     setInsight("", true);
+    renderRiskHeatmapDetail(null);
+    const actionHost = document.getElementById("reportsRiskHeatmapAction");
+    if (actionHost) { actionHost.innerHTML = ""; actionHost.hidden = true; }
     return;
   }
 
+  // Streak insight (primary "headline" at top of report)
   const isTightForStreak = (bal) => (thr != null ? bal < thr : bal < 0);
   let run = 0;
   let runStart = -1;
@@ -9791,8 +10052,44 @@ function renderReportsRiskHeatmap(daily) {
     );
   }
 
-  const firstIso = String(items[0].date || "");
-  const firstDt = new Date(`${firstIso}T12:00:00`);
+  // Compute the worst (most negative) balance and its date — anchors severity tiers
+  // and powers the default "preview" shown in the detail panel.
+  let worstNeg = 0;
+  let worstIso = "";
+  for (const row of items) {
+    const bal = Number(row.total_balance ?? 0);
+    if (bal < worstNeg) {
+      worstNeg = bal;
+      worstIso = String(row.date || "");
+    }
+  }
+
+  // Per-day occurrence index — expand recurring + one-time across the window.
+  const startIso = String(items[0].date || "");
+  const endIso = String(items[items.length - 1].date || "");
+  const occByIso = buildRiskOccurrencesIndex(startIso, endIso);
+
+  // Pre-compute lookup of next significant inflow after each iso (for "recovery").
+  const incomeIsoSorted = [];
+  for (const [iso, evs] of occByIso.entries()) {
+    const incomes = evs.filter((e) => e.kind === "income");
+    if (!incomes.length) continue;
+    incomes.sort((a, b) => b.amount - a.amount);
+    incomeIsoSorted.push({ iso, event: incomes[0] });
+  }
+  incomeIsoSorted.sort((a, b) => (a.iso < b.iso ? -1 : a.iso > b.iso ? 1 : 0));
+  const nextInflowFromIso = (iso) => {
+    for (const row of incomeIsoSorted) {
+      if (row.iso >= iso) return { iso: row.iso, ...row.event };
+    }
+    return null;
+  };
+
+  const todayIso = toISODate(new Date());
+  const cellByIso = new Map();
+  const detailPayloadByIso = new Map();
+
+  const firstDt = new Date(`${startIso}T12:00:00`);
   const lead = Number.isNaN(firstDt.getTime()) ? 0 : (firstDt.getDay() + 6) % 7;
   for (let p = 0; p < lead; p++) {
     const ph = document.createElement("div");
@@ -9805,10 +10102,7 @@ function renderReportsRiskHeatmap(daily) {
   for (const row of items) {
     const iso = String(row.date || "");
     const bal = Number(row.total_balance ?? 0);
-    let cls = "reports-risk-cell--safe";
-    if (bal < 0) cls = "reports-risk-cell--neg";
-    else if (thr != null && bal < thr * 0.5) cls = "reports-risk-cell--low";
-    else if (thr != null && bal < thr * 1.05) cls = "reports-risk-cell--caution";
+    const sevCls = riskSeverityClass(bal, thr, worstNeg);
 
     const dt = new Date(`${iso}T12:00:00`);
     const dom = Number.isNaN(dt.getTime()) ? 0 : dt.getDate();
@@ -9816,17 +10110,36 @@ function renderReportsRiskHeatmap(daily) {
 
     const cell = document.createElement("button");
     cell.type = "button";
-    cell.className = `reports-risk-cell ${cls}`;
+    cell.className = `reports-risk-cell ${sevCls}`;
     if (m0 !== prevMonth) {
       cell.classList.add("reports-risk-cell--month-start");
       cell.dataset.month = Number.isNaN(dt.getTime()) ? "" : dt.toLocaleDateString("en-US", { month: "short" });
       prevMonth = m0;
     }
+    if (iso === todayIso) cell.classList.add("reports-risk-cell--today");
+
+    const recovery = nextInflowFromIso(addDaysIso(iso, 1) || iso);
+    const events = occByIso.get(iso) || [];
+    const payload = {
+      iso,
+      balance: bal,
+      thr,
+      severityClass: sevCls,
+      events,
+      recovery,
+    };
+    detailPayloadByIso.set(iso, payload);
 
     let tip = `${fmtDateMedDisplay(iso)} — Projected ${fmtMoney0SignedDollar(bal)}`;
     if (thr != null) {
       const gap = bal - thr;
       tip += ` · ${gap < 0 ? "" : "+"}$${fmtMoney0(Math.abs(gap))} vs $${fmtMoney0(thr)} floor`;
+    }
+    if (events.length) {
+      const outs = events.filter((e) => e.kind === "expense").sort((a, b) => b.amount - a.amount).slice(0, 2);
+      if (outs.length) {
+        tip += " · " + outs.map((e) => `${e.description} −$${fmtMoney0(e.amount)}`).join(", ");
+      }
     }
     tip += " — Click to open Forecast for this month.";
     cell.title = tip;
@@ -9840,7 +10153,17 @@ function renderReportsRiskHeatmap(daily) {
     bEl.textContent = fmtMoneyCompactTile(bal);
     cell.appendChild(dEl);
     cell.appendChild(bEl);
+
+    const activate = () => {
+      for (const el of cellByIso.values()) el.classList.remove("reports-risk-cell--active");
+      cell.classList.add("reports-risk-cell--active");
+      renderRiskHeatmapDetail(payload);
+    };
+    cell.addEventListener("mouseenter", activate);
+    cell.addEventListener("focus", activate);
     cell.addEventListener("click", () => navigateToCalendarForRiskDay(iso));
+
+    cellByIso.set(iso, cell);
     host.appendChild(cell);
   }
 
@@ -9852,6 +10175,39 @@ function renderReportsRiskHeatmap(daily) {
     ph.setAttribute("aria-hidden", "true");
     host.appendChild(ph);
   }
+
+  // Show a sensible default in the detail panel — pick the worst day if there's
+  // any stress, otherwise show "today". This gives an immediate example of what
+  // hovering reveals, instead of an empty panel on first load.
+  let defaultIso = "";
+  if (worstIso && (worstNeg < 0 || (thr != null && worstNeg < thr))) {
+    defaultIso = worstIso;
+  } else if (cellByIso.has(todayIso)) {
+    defaultIso = todayIso;
+  } else if (items.length) {
+    defaultIso = String(items[0].date || "");
+  }
+  if (defaultIso && detailPayloadByIso.has(defaultIso)) {
+    renderRiskHeatmapDetail(detailPayloadByIso.get(defaultIso));
+    const c = cellByIso.get(defaultIso);
+    if (c) c.classList.add("reports-risk-cell--active");
+  } else {
+    renderRiskHeatmapDetail(null);
+  }
+
+  // Reset to default when the cursor leaves the grid entirely.
+  if (host && host.dataset.riskMouseLeaveWired !== "1") {
+    host.dataset.riskMouseLeaveWired = "1";
+    host.addEventListener("mouseleave", () => {
+      const activeCell = host.querySelector(".reports-risk-cell--active");
+      if (activeCell) activeCell.classList.remove("reports-risk-cell--active");
+      // Re-render default based on latest data — re-walk the cells to find
+      // the worst one again is overkill, just leave the hint.
+      renderRiskHeatmapDetail(null);
+    });
+  }
+
+  renderRiskHeatmapActionPanel(items, occByIso, thr, todayIso, worstIso);
 }
 
 function renderReportsObligations() {
