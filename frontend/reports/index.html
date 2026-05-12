@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=375" />
+    <link rel="stylesheet" href="../styles.css?v=381" />
   </head>
   <body>
     <div class="container">
@@ -433,20 +433,6 @@
                 </div>
                 <div style="height: 10px"></div>
                 <div class="list" id="txListMain"></div>
-              </div>
-            </div>
-
-            <div style="height: 14px"></div>
-
-            <div class="card sidebar-section" data-sidebar-key="uncategorizedTransactions">
-              <div class="sidebar-section-head">
-                <h2>Uncategorized Transactions</h2>
-              </div>
-              <div class="sidebar-section-body">
-                <div id="uncatTxErr" class="error"></div>
-                <div class="list" id="uncatTxList" aria-live="polite"></div>
-                <div style="height: 10px"></div>
-                <button type="button" id="uncatTxSaveBtn">Save</button>
               </div>
             </div>
 
@@ -1039,19 +1025,18 @@
     </div>
 
     <div id="txEditApplyScopeModal" class="modal-overlay modal-overlay--nested" aria-hidden="true">
-      <div class="modal modal--choice" role="dialog" aria-labelledby="txEditApplyScopeTitle" aria-modal="true">
+      <div class="modal modal--choice modal--apply-scope" role="dialog" aria-labelledby="txEditApplyScopeTitle" aria-describedby="txEditApplyScopeDesc" aria-modal="true">
         <h3 id="txEditApplyScopeTitle">Apply changes</h3>
-        <p class="choice-subtitle" style="margin-bottom: 12px">
-          Should these edits affect only this date, or this date and every future occurrence in the series?
-        </p>
+        <p id="txEditApplyScopeDesc" class="choice-subtitle modal--apply-scope__lede">Apply changes to only this transaction or all future occurrences?</p>
         <div id="txEditApplyScopeErr" class="error"></div>
-        <div class="modal-actions">
-          <div class="expected-delete-actions">
-            <button type="button" id="txEditApplyScopeInstanceBtn">This occurrence only</button>
-            <button type="button" id="txEditApplyScopeSeriesBtn">This and all future</button>
+        <div class="modal-actions modal-actions--apply-scope">
+          <div class="apply-scope-actions">
+            <button type="button" id="txEditApplyScopeSeriesBtn" class="apply-scope-btn apply-scope-btn--primary">This + future</button>
+            <p class="apply-scope-hint" role="note">Updates the recurring schedule going forward.</p>
+            <button type="button" id="txEditApplyScopeInstanceBtn" class="apply-scope-btn apply-scope-btn--secondary">Only this one</button>
+            <p class="apply-scope-hint" role="note">Creates a one-time override for this date.</p>
+            <button type="button" id="txEditApplyScopeCancelBtn" class="apply-scope-btn apply-scope-btn--ghost">Cancel</button>
           </div>
-          <div style="height: 10px"></div>
-          <button type="button" id="txEditApplyScopeCancelBtn" style="width: 100%">Back</button>
         </div>
       </div>
     </div>
@@ -1204,6 +1189,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="../app.js?v=248"></script>
+    <script src="../app.js?v=249"></script>
   </body>
 </html>

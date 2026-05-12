@@ -100,7 +100,7 @@ const loginBtn = document.getElementById("loginBtn");
 async function doLogin() {
   if (!loginBtn) return;
   setBusy(true);
-  setCallout(loginCalloutEl, "Contacting API...", "pending");
+  setCallout(loginCalloutEl, "", "");
   try {
     try {
       sessionStorage.removeItem(BW_API_ACCESS_TOKEN_KEY);
@@ -176,7 +176,6 @@ async function verifySessionWithProgress(targetInfoEl) {
     if (attempts[i] > 0) {
       await new Promise((resolve) => setTimeout(resolve, attempts[i]));
     }
-    setCallout(targetInfoEl, "Logging in....", "pending");
     const me = await request("/api/auth/me", "GET");
     if (me.ok && me.data && me.data.user) {
       return { ok: true, elapsedMs: me.elapsedMs };

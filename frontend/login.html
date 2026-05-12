@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=361" />
+    <link rel="stylesheet" href="./styles.css?v=378" />
   </head>
   <body class="login-page">
     <div class="container">
@@ -21,8 +21,8 @@
                 <img
                   class="app-logo"
                   src="./assets/balance-whiz-logo.png?v=20260504"
-                  width="216"
-                  height="54"
+                  width="200"
+                  height="50"
                   alt="Balance Whiz"
                   decoding="async"
                   fetchpriority="high"
@@ -30,7 +30,6 @@
               </a>
             </h1>
           </div>
-          <span class="login-page__nav-hint">14-day free trial</span>
         </div>
       </div>
 
@@ -44,9 +43,9 @@
                 <svg viewBox="0 0 336 120" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
                   <defs>
                     <linearGradient id="loginBrandChartFill" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stop-color="rgba(11, 61, 46, 0.28)" />
-                      <stop offset="55%" stop-color="rgba(11, 61, 46, 0.08)" />
-                      <stop offset="100%" stop-color="rgba(11, 61, 46, 0.02)" />
+                      <stop offset="0%" stop-color="rgba(11, 61, 46, 0.34)" />
+                      <stop offset="55%" stop-color="rgba(11, 61, 46, 0.12)" />
+                      <stop offset="100%" stop-color="rgba(11, 61, 46, 0.04)" />
                     </linearGradient>
                     <linearGradient id="loginBrandChartFade" x1="0" y1="0" x2="1" y2="0">
                       <stop offset="0%" stop-color="rgba(255,255,255,0.22)" />
@@ -55,15 +54,15 @@
                       <stop offset="100%" stop-color="rgba(255,255,255,0.18)" />
                     </linearGradient>
                   </defs>
-                  <g class="login-page__brand-chart-graph" opacity="0.86">
-                    <rect x="8" y="12" width="304" height="72" rx="10" fill="rgba(4, 120, 87, 0.11)" />
-                    <g opacity="0.62" stroke="rgba(11, 61, 46, 0.14)" stroke-width="1">
+                  <g class="login-page__brand-chart-graph" opacity="0.94">
+                    <rect x="8" y="12" width="304" height="72" rx="10" fill="rgba(4, 120, 87, 0.14)" />
+                    <g opacity="0.72" stroke="rgba(11, 61, 46, 0.2)" stroke-width="1">
                       <line x1="12" y1="36" x2="308" y2="36" />
                       <line x1="12" y1="52" x2="308" y2="52" />
                       <line x1="12" y1="68" x2="308" y2="68" />
                       <line x1="12" y1="84" x2="308" y2="84" />
                     </g>
-                    <line x1="20" y1="20" x2="20" y2="100" stroke="rgba(11, 61, 46, 0.14)" stroke-width="1" />
+                    <line x1="20" y1="20" x2="20" y2="100" stroke="rgba(11, 61, 46, 0.2)" stroke-width="1" />
                     <path
                       d="M12,78 C52,72 88,86 128,70 C168,54 200,88 240,62 C272,44 300,38 308,36 L308,96 L12,96 Z"
                       fill="url(#loginBrandChartFill)"
@@ -72,8 +71,8 @@
                     <path
                       d="M12,78 C52,72 88,86 128,70 C168,54 200,88 240,62 C272,44 300,38 308,36"
                       fill="none"
-                      stroke="#062a20"
-                      stroke-width="3.5"
+                      stroke="#041f18"
+                      stroke-width="3.75"
                       stroke-linecap="round"
                       stroke-linejoin="round"
                     />
@@ -124,6 +123,7 @@
                 </div>
                 <button type="button" id="loginBtn" class="top-nav__logout" onclick="window.__bwLogin && window.__bwLogin()">Login</button>
                 <a href="./contactus/" class="login-page__forgot-link">Forgot password?</a>
+                <p class="login-page__trial-note" role="note">14-day free trial — cancel anytime.</p>
                 <div class="login-page__signup-prompt">
                   <span>Don't have an account?</span>
                   <a href="https://balancewhiz.com/account-setup/?fresh=1" class="login-page__signup-cta">Create your forecast</a>
@@ -142,7 +142,7 @@
       </footer>
     </div>
 
-    <script src="./login.js?v=5"></script>
+    <script src="./login.js?v=6"></script>
   </body>
 </html>
 

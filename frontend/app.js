@@ -6204,7 +6204,7 @@ function pillStyleForTransaction(txOrItem) {
   return null;
 }
 
-/** Default label text color: green income / red expense (lists + pills; calendar day rows stay neutral in CSS). */
+/** Default label text color: green income / red expense (lists + pills). Calendar uses row flow modifiers + `.cal-amt.income|expense`. */
 function kindFgClass(kind) {
   return String(kind) === "income" ? "tx-kind-fg--income" : "tx-kind-fg--expense";
 }
@@ -6226,6 +6226,51 @@ function calendarDayTxLineToneParts(row) {
     (!row.category_id || cat === "uncategorized" || desc === "uncategorized");
   if (flagged) parts.push("cal-day-tx-line--flag");
   return parts;
+}
+
+const CAL_TX_IMPACT_LG = 4500;
+const CAL_TX_IMPACT_XL = 12000;
+
+/**
+ * Calendar row semantics: income vs expense direction (muted), high-impact amounts,
+ * and neutral treatment for uncategorized actuals. Keeps cells untinted — row text only.
+ */
+function calendarDayTxSemanticParts(row) {
+  const parts = [];
+  if (!row || row._type === "start_balance") return parts;
+
+  const absAmt = Math.abs(Number(row.amount ?? 0));
+  if (absAmt >= CAL_TX_IMPACT_XL) parts.push("cal-day-tx-line--impact-xxl");
+  else if (absAmt >= CAL_TX_IMPACT_LG) parts.push("cal-day-tx-line--impact-lg");
+
+  const cat = String(effectiveTransactionCategoryName(row) || "").toLowerCase();
+  const desc = String(row.description || "").trim().toLowerCase();
+  const isUncatActual =
+    row._type === "actual" &&
+    (!row.category_id || cat === "uncategorized" || desc === "uncategorized");
+  if (isUncatActual) {
+    parts.push("cal-day-tx-line--flow-neutral");
+    return parts;
+  }
+
+  const kind = String(row.kind || "").toLowerCase();
+  if (kind === "income") parts.push("cal-day-tx-line--flow-in");
+  else if (kind === "expense") parts.push("cal-day-tx-line--flow-out");
+  else parts.push("cal-day-tx-line--flow-neutral");
+  return parts;
+}
+
+/** True if this day has a paycheck-like income (actual or expected). */
+function dayHasPaycheckLikeIncome(rows) {
+  if (!rows || !rows.length) return false;
+  const re = /(paycheck|pay roll|payroll|direct dep|salary|stipend|deposit)/i;
+  for (const r of rows) {
+    if (!r || r._type === "start_balance") continue;
+    if (String(r.kind || "").toLowerCase() !== "income") continue;
+    const label = `${effectiveTransactionCategoryName(r) || ""} ${r.description || ""}`;
+    if (re.test(label)) return true;
+  }
+  return false;
 }
 
 function renderAccountsList(accounts) {
@@ -8521,6 +8566,12 @@ function renderCalendar() {
 
     const actualTxs = showActual ? actualTxsByDate.get(iso) || [] : [];
     const expectedItems = showExpected ? expectedByDate.get(iso) || [] : [];
+    const stabilizingDay =
+      isReconciled &&
+      dayHasPaycheckLikeIncome([
+        ...actualTxs.map((tx) => ({ ...tx, _type: "actual" })),
+        ...expectedItems.map((tx) => ({ ...tx, _type: "expected" })),
+      ]);
 
     // Combine and sort expected + actual for consistent ordering per-day.
     const combined = [];
@@ -8564,6 +8615,7 @@ function renderCalendar() {
           else if (vri === 1) line.classList.add("cal-day-tx-line--secondary");
         }
         for (const p of calendarDayTxLineToneParts(row)) line.classList.add(p);
+        for (const p of calendarDayTxSemanticParts(row)) line.classList.add(p);
         if (isExpected && row.variable) line.classList.add("cal-expected-variable");
         if (!isExpected && !isStartBalance) line.dataset.txId = String(row.id);
 
@@ -8594,6 +8646,11 @@ function renderCalendar() {
 
         const amtSpan = document.createElement("span");
         amtSpan.className = "cal-amt";
+        if (!isStartBalance) {
+          const k = String(row.kind || "").toLowerCase();
+          if (k === "income") amtSpan.classList.add("income");
+          else if (k === "expense") amtSpan.classList.add("expense");
+        }
         amtSpan.textContent = `$${fmtMoney(row.amount)}`;
 
         line.appendChild(labelWrap);
@@ -8638,18 +8695,23 @@ function renderCalendar() {
       cell.classList.add("cal-cell--no-tx");
     }
 
+    if (iso === monthRecoveryIso && !isOutOfMonth && !cell.classList.contains("cal-cell--before-start")) {
+      cell.classList.add("cal-cell--recovery-milestone");
+    }
+
     const dayBal = state.monthDailyBalances.get(iso);
 
     if (dayBal && metricsEl) {
       const endNum = Number(dayBal.end ?? 0);
+      const txNetNum = Number(dayBal.tx_net);
       const balParts = ["cal-stat", "cal-balance"];
+      const hasFloor = minBalFloor != null && Number.isFinite(minBalFloor) && minBalFloor > 0;
       if (Number.isFinite(endNum)) {
         if (endNum < 0) {
           balParts.push("is-negative", "cal-balance--risk");
         } else if (isOutOfMonth) {
           balParts.push("is-muted");
         } else {
-          const hasFloor = minBalFloor != null && Number.isFinite(minBalFloor) && minBalFloor > 0;
           if (hasFloor && endNum < minBalFloor) {
             balParts.push("cal-balance--below-floor");
           } else if (hasFloor && endNum < minBalFloor * 1.25) {
@@ -8663,12 +8725,53 @@ function renderCalendar() {
           }
         }
       }
+      const belowFloor = hasFloor && Number.isFinite(endNum) && endNum >= 0 && endNum < minBalFloor;
+      const negativeBal = Number.isFinite(endNum) && endNum < 0;
+      const watchOnly = hasFloor && Number.isFinite(endNum) && endNum >= minBalFloor && endNum < minBalFloor * 1.25;
+      if (
+        iso === monthRecoveryIso &&
+        !isOutOfMonth &&
+        Number.isFinite(endNum) &&
+        endNum >= 0 &&
+        !negativeBal &&
+        !(hasFloor && endNum < minBalFloor * 1.25)
+      ) {
+        balParts.push("cal-balance--recovery-milestone");
+      } else if (
+        stabilizingDay &&
+        !isOutOfMonth &&
+        Number.isFinite(endNum) &&
+        endNum >= 0 &&
+        !negativeBal &&
+        !belowFloor
+      ) {
+        balParts.push("cal-balance--stabilizing");
+      } else if (
+        !isOutOfMonth &&
+        !negativeBal &&
+        !belowFloor &&
+        !watchOnly &&
+        Number.isFinite(txNetNum) &&
+        txNetNum >= 3200
+      ) {
+        balParts.push("cal-balance--strong-inflow");
+      }
+
+      let stripCue = "";
+      if (negativeBal) stripCue = "cal-balance-strip--cue-risk";
+      else if (belowFloor) stripCue = "cal-balance-strip--cue-warn";
+      else if (watchOnly) stripCue = "cal-balance-strip--cue-watch";
+
       const balanceClass = balParts.join(" ");
       const riskIcon =
-        Number.isFinite(endNum) && endNum < 0
+        negativeBal
           ? `<span class="cal-balance-risk-icon" aria-hidden="true"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M8 2.25L14 13.75H2L8 2.25z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" fill="none"/><path d="M8 6.25v3M8 11.1v.01" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg></span>`
           : "";
-      metricsEl.innerHTML = `<div class="cal-balance-strip"><div class="cal-balance-strip__row">${riskIcon}<div class="${balanceClass}" title="Projected end-of-day balance">$${fmtMoneyParens(
+      const warnIcon =
+        belowFloor && !negativeBal
+          ? `<span class="cal-balance-warn-icon" aria-hidden="true" title="Below your balance floor"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 2.25L14 13.75H2L8 2.25z" stroke="currentColor" stroke-width="1.15" stroke-linejoin="round" fill="none"/><path d="M8 6.25v3M8 11.1v.01" stroke="currentColor" stroke-width="1.15" stroke-linecap="round"/></svg></span>`
+          : "";
+      metricsEl.innerHTML = `<div class="cal-balance-strip${stripCue ? ` ${stripCue}` : ""}"><div class="cal-balance-strip__row">${riskIcon}${warnIcon}<div class="${balanceClass}" title="Projected end-of-day balance">$${fmtMoneyParens(
         endNum
       )}</div></div></div>`;
     }
