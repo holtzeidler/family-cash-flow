@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=384" />
+    <link rel="stylesheet" href="./styles.css?v=386" />
   </head>
   <body class="login-page">
     <div class="container">
@@ -36,8 +36,8 @@
       <div class="grid login-page__grid">
         <div class="login-page__split">
           <aside class="login-page__brand" aria-label="Why BalanceWhiz">
-            <h2 class="login-page__brand-head">Know what's safe before<br />bills hit.</h2>
-            <p class="login-page__brand-sub">See what's left after planned bills—not just today's balance.</p>
+            <h2 class="login-page__brand-head">Know what's safe before bills hit.</h2>
+            <p class="login-page__brand-sub">Know what stays covered after bills land.</p>
             <figure class="login-page__brand-chart-wrap">
               <div class="login-page__brand-chart" aria-hidden="true">
                 <svg viewBox="0 0 336 120" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
@@ -124,8 +124,12 @@
                     </div>
                   </div>
                   <button type="button" id="loginBtn" class="top-nav__logout" onclick="window.__bwLogin && window.__bwLogin()">Login</button>
+                  <p class="login-page__trust" aria-label="Trust signal">
+                    <span class="login-page__trust-dot" aria-hidden="true"></span>
+                    No bank connection required
+                  </p>
                   <button type="button" class="login-page__forgot-btn" id="loginForgotBtn">Forgot password?</button>
-                  <p class="login-page__trial-note" role="note">14-day free trial — cancel anytime.</p>
+                  <p class="login-page__trial-note" role="note">14-day free trial · cancel anytime</p>
                   <div class="login-page__signup-prompt">
                     <span>Don't have an account?</span>
                     <a href="https://balancewhiz.com/account-setup/?fresh=1" class="login-page__signup-cta">Create your forecast</a>
