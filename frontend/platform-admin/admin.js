@@ -405,7 +405,26 @@
 
     mount.innerHTML = '<p class="admin-feedback-empty">Loading…</p>';
     if (metaEl) metaEl.textContent = "";
-    const data = await api(`/api/admin/feedback?${params.toString()}`, "GET");
+    let data;
+    try {
+      data = await api(`/api/admin/feedback?${params.toString()}`, "GET");
+    } catch (err) {
+      const raw = err && err.message ? String(err.message) : "";
+      // Production has occasionally served the older build that predates the
+      // feedback endpoints. Detect that specifically and tell the operator
+      // exactly what to do, rather than leaving a stuck "Loading…" and a
+      // bare "Not Found" callout that looks like a real bug.
+      const isMissingEndpoint = /not found/i.test(raw) || /\(404\)/.test(raw);
+      if (isMissingEndpoint) {
+        mount.innerHTML =
+          '<p class="admin-feedback-empty">Feedback endpoint isn’t available on this backend yet.</p>';
+        throw new Error(
+          "Feedback endpoints aren’t deployed yet. Trigger a manual redeploy of family-cash-flow-api in the Render dashboard, then retry."
+        );
+      }
+      mount.innerHTML = '<p class="admin-feedback-empty">Couldn’t load feedback. Try again in a moment.</p>';
+      throw err;
+    }
     const items = (data && data.items) || [];
     if (metaEl) metaEl.textContent = `${data.total || 0} match${(data.total || 0) === 1 ? "" : "es"}`;
 
