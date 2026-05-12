@@ -10699,7 +10699,8 @@ body.plans-page--polished .plans-wrap{
 .cal-day-txns{
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  /* Tight, ledger-like stack — uniform spacing, no card-stack rhythm. */
+  gap: 1px;
   padding-top: 2px;
   margin-top: 1px;
   border-top: none;
@@ -10712,57 +10713,21 @@ body.plans-page--polished .plans-wrap{
   overflow: visible;
 }
 
+/* === Transaction row: flat, ledger-like typography ===
+   One font-size and two weights govern the entire list. Differentiation
+   between rows comes from color/opacity, never from size or weight, so
+   adjacent rows of the same kind always render at the same scale. */
 .cal-day-tx-line{
   font-size: 9.75px;
-  line-height: 1.32;
+  line-height: 1.35;
   max-width: 100%;
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 8px;
   position: relative;
-}
-.cal-day-tx-line--primary .cal-tx-label{
-  font-weight: 700;
-  color: rgba(17, 24, 39, 0.96);
-}
-.cal-day-tx-line--secondary .cal-tx-label{
-  font-weight: 500;
-  color: rgba(71, 85, 105, 0.66);
-}
-.cal-day-tx-line--primary .cal-amt{
-  font-size: 9.75px;
-  font-weight: 700;
-  color: rgba(17, 24, 39, 0.96);
-}
-.cal-day-tx-line--secondary .cal-amt{
-  font-size: 8.85px;
-  font-weight: 600;
-  opacity: 1;
-  color: rgba(55, 65, 75, 0.66);
-}
-.cal-day-tx-line--start-balance.cal-day-tx-line--primary .cal-tx-label,
-.cal-day-tx-line--start-balance.cal-day-tx-line--secondary .cal-tx-label{
-  font-weight: 500;
-  color: rgba(75, 85, 99, 0.74);
-}
-.cal-day-tx-line--start-balance.cal-day-tx-line--primary .cal-amt,
-.cal-day-tx-line--start-balance.cal-day-tx-line--secondary .cal-amt{
-  font-size: 9.25px;
-  font-weight: 600;
-  color: rgba(75, 85, 99, 0.78);
-  opacity: 1;
-}
-.cal-day-tx-line--deemph{
-  opacity: 0.9;
-}
-.cal-day-tx-line--kind-transfer .cal-tx-label{
-  font-style: normal;
-  letter-spacing: 0.01em;
-}
-.cal-day-tx-line--flag .cal-tx-label{
-  box-decoration-break: clone;
-  border-bottom: 1px dotted rgba(100, 116, 139, 0.35);
+  /* base color tone for everything inside; modifiers tweak opacity only */
+  color: rgba(17, 24, 39, 0.92);
 }
 
 .cal-day-tx-line .cal-tx-label-wrap{
@@ -10784,6 +10749,8 @@ body.plans-page--polished .plans-wrap{
 .cal-tx-start-flag svg{
   display: block;
 }
+
+/* Label and amount: identical size, two stable weights. */
 .cal-day-tx-line .cal-tx-label{
   display: inline-flex;
   align-items: baseline;
@@ -10793,61 +10760,57 @@ body.plans-page--polished .plans-wrap{
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: inherit;
+  font-weight: 550;
+  color: inherit;
 }
-
 .cal-day-tx-line .cal-amt{
   flex: 0 0 auto;
   text-align: right;
   white-space: nowrap;
-  font-size: 9.5px;
+  font-size: inherit;
   font-variant-numeric: tabular-nums;
-  font-weight: 600;
-  color: rgba(31, 41, 55, 0.82);
+  font-weight: 650;
+  color: inherit;
 }
 
-/* Calendar rows: subtle financial direction (muted fintech — not category rainbow) */
-.cal-day-tx-line--flow-in .cal-tx-label{
-  color: rgba(22, 78, 48, 0.88);
-  font-weight: 600;
+/* Hierarchy via opacity only — never size, never weight. */
+.cal-day-tx-line--primary{ opacity: 1; }
+.cal-day-tx-line--secondary{ opacity: 0.82; }
+.cal-day-tx-line--deemph{ opacity: 0.62; }
+
+.cal-day-tx-line--kind-transfer .cal-tx-label{
+  font-style: normal;
+  letter-spacing: 0.01em;
 }
-.cal-day-tx-line--flow-in .cal-amt{
+.cal-day-tx-line--flag .cal-tx-label{
+  box-decoration-break: clone;
+  border-bottom: 1px dotted rgba(100, 116, 139, 0.35);
+}
+
+/* Flow direction: gentle color shift only. No weight or size changes. */
+.cal-day-tx-line--flow-in{
   color: rgba(20, 83, 45, 0.92);
-  font-weight: 700;
 }
-.cal-day-tx-line--secondary.cal-day-tx-line--flow-in .cal-tx-label{
-  color: rgba(22, 101, 52, 0.78);
+.cal-day-tx-line--flow-out{
+  color: rgba(96, 30, 24, 0.92);
+}
+.cal-day-tx-line--flow-neutral{
+  color: rgba(71, 85, 105, 0.78);
+}
+
+/* Start-of-day balance row: muted helper, not a primary line. */
+.cal-day-tx-line--start-balance,
+.cal-day-tx-line--start-balance.cal-day-tx-line--primary,
+.cal-day-tx-line--start-balance.cal-day-tx-line--secondary{
+  color: rgba(75, 85, 99, 0.78);
+  opacity: 1;
+}
+.cal-day-tx-line--start-balance .cal-tx-label{
   font-weight: 500;
 }
-.cal-day-tx-line--secondary.cal-day-tx-line--flow-in .cal-amt{
-  color: rgba(21, 128, 61, 0.88);
-  font-weight: 650;
-  font-size: 8.85px;
-}
-.cal-day-tx-line--flow-out .cal-tx-label{
-  color: rgba(72, 24, 18, 0.94);
-  font-weight: 700;
-}
-.cal-day-tx-line--flow-out .cal-amt{
-  color: rgba(96, 30, 24, 0.96);
-  font-weight: 700;
-}
-.cal-day-tx-line--secondary.cal-day-tx-line--flow-out .cal-tx-label{
-  color: rgba(96, 40, 34, 0.78);
-  font-weight: 500;
-}
-.cal-day-tx-line--secondary.cal-day-tx-line--flow-out .cal-amt{
-  color: rgba(118, 46, 38, 0.88);
+.cal-day-tx-line--start-balance .cal-amt{
   font-weight: 600;
-  font-size: 8.85px;
-}
-.cal-day-tx-line--flow-neutral .cal-tx-label,
-.cal-day-tx-line--flow-neutral .cal-amt{
-  color: rgba(100, 116, 139, 0.68) !important;
-  font-weight: 500;
-}
-.cal-day-tx-line--secondary.cal-day-tx-line--flow-neutral .cal-amt{
-  font-weight: 520;
-  font-size: 8.75px;
 }
 
 .cal-day-tx-line--impact-lg,
@@ -10891,14 +10854,11 @@ body.plans-page--polished .plans-wrap{
   background: rgba(255, 251, 250, 0.82);
   box-shadow: inset 0 0 0 1px rgba(154, 68, 58, 0.1);
 }
-.cal-day-tx-line--impact-xxl.cal-day-tx-line--flow-in .cal-amt{
-  font-weight: 800;
-  letter-spacing: -0.02em;
-}
-.cal-day-tx-line--impact-xxl.cal-day-tx-line--flow-out .cal-amt{
-  font-weight: 800;
-  letter-spacing: -0.02em;
-}
+/* Impact rows used to amplify the amount typography (800 weight,
+   tightened tracking). That made an impactful expense visually heavier
+   than an identical-category expense one row above. Keep the subtle
+   stripe + background as the impact signal, but inherit the standard
+   amount weight/tracking so adjacent rows always read as the same scale. */
 
 .cal-day-tx-line--expected.cal-day-tx-line--flow-in .cal-tx-label,
 .cal-day-tx-line--expected.cal-day-tx-line--flow-in .cal-amt,
@@ -11721,29 +11681,32 @@ body[data-bw-view="transactions"] .cash-outlook-title{
   text-decoration: none;
 }
 
+/* Secondary affordance — quietly reveals the rest of the day's rows.
+   Previously this was a high-contrast uppercase pill that visually
+   competed with the transactions themselves. Now it reads as a soft
+   helper link that sits below the ledger. */
 .cal-day-more{
   margin-top: 2px;
   align-self: flex-end;
-  padding: 1px 8px 2px;
-  border-radius: 999px;
-  border: 1px solid rgba(17, 24, 39, 0.16);
-  background: rgba(255, 255, 255, 0.82);
+  padding: 1px 4px 2px;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
   width: fit-content;
   max-width: 100%;
   font: inherit;
-  font-size: 8.5px;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  color: rgba(51, 65, 85, 0.86);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: rgba(71, 85, 105, 0.7);
   cursor: pointer;
   text-decoration: none;
-  line-height: 1.2;
+  line-height: 1.25;
 }
 .cal-day-more:hover{
-  color: rgba(17, 24, 39, 0.95);
-  border-color: rgba(17, 24, 39, 0.24);
-  background: rgba(255, 255, 255, 0.95);
+  color: rgba(31, 41, 55, 0.92);
+  background: rgba(17, 24, 39, 0.04);
 }
 .cal-day-more:focus-visible{
   outline: 2px solid rgba(4, 120, 87, 0.35);
