@@ -8466,6 +8466,15 @@ body.plans-page .container > .grid{
   align-items: center;
   gap: 4px;
 }
+/* Optional transaction / category color (matches edit modal swatches on calendar). */
+.cal-tx-color-dot{
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  align-self: center;
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.14);
+}
 .cal-tx-start-flag{
   flex-shrink: 0;
   display: inline-flex;
