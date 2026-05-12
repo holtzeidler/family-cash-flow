@@ -3,18 +3,18 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>BalanceWhiz</title>
+    <title>BalanceWhiz — Contact Us</title>
     <link rel="icon" href="../favicon.png" type="image/png" />
     <script>window.API_BASE = "__API_BASE__";</script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=400" />
+    <link rel="stylesheet" href="../styles.css?v=402" />
   </head>
   <body class="contact-page">
     <div class="container">
       <div class="top-nav" role="navigation" aria-label="Primary">
-        <div class="top-nav__inner">
+        <div class="top-nav__inner top-nav__inner--simple">
           <div class="top-nav__title" aria-label="App title">
             <h1 class="app-title app-title--logo">
               <a href="/" aria-label="Balance Whiz home">
@@ -30,69 +30,101 @@
               </a>
             </h1>
           </div>
-          <div class="top-nav__tabs" role="tablist" aria-label="Views">
-            <a class="top-nav__tab" href="/calendar">Forecast</a>
-            <a class="top-nav__tab admin-only-tab" href="/transactions" hidden>Transaction View</a>
-            <a class="top-nav__tab admin-only-tab" href="/reports" hidden>Reports</a>
-            <a class="top-nav__tab" href="/settings">Settings</a>
-          </div>
-          <div class="top-nav__actions" aria-label="Account actions">
-            <button type="button" id="logoutBtn" class="top-nav__logout">Logout</button>
-          </div>
+          <nav class="contact-public-nav" aria-label="Site">
+            <a href="/" class="contact-public-nav__link">Home</a>
+            <a href="../plans/" class="contact-public-nav__link">Pricing</a>
+            <a href="../login.html" class="contact-public-nav__link contact-public-nav__link--cta">Login</a>
+          </nav>
         </div>
       </div>
 
       <div class="grid">
-        <div class="card">
-          <h2 style="margin-bottom: 8px">Contact Us</h2>
-          <p class="meta" style="margin: 0 0 12px">
-            Send us a message and we’ll get back to you. <strong>Send</strong> delivers it to <strong>support@balancewhiz.com</strong> directly. If the server cannot send mail, your email app opens as a backup.
-          </p>
+        <div class="contact-layout">
+          <article class="card contact-card">
+            <header class="contact-card__head">
+              <p class="contact-card__eyebrow">Support</p>
+              <h1 class="contact-card__title">Contact Us</h1>
+              <p class="contact-card__subtitle">
+                Need help, have a question, or want to share feedback? Send us a note — we usually respond within
+                1–2 business days.
+              </p>
+            </header>
 
-          <form id="contactForm" novalidate action="#">
-            <div class="row two">
-              <div>
-                <label for="contactName">Name *</label>
-                <input id="contactName" name="name" type="text" autocomplete="name" required />
+            <form id="contactForm" class="contact-form" novalidate action="#">
+              <div class="contact-form__row contact-form__row--two">
+                <div class="contact-form__field">
+                  <label for="contactName" class="contact-form__label">Name <span class="contact-form__req" aria-hidden="true">·</span></label>
+                  <input id="contactName" name="name" class="contact-form__input" type="text" autocomplete="name" placeholder="Your name" required />
+                </div>
+                <div class="contact-form__field">
+                  <label for="contactEmail" class="contact-form__label">Email address <span class="contact-form__req" aria-hidden="true">·</span></label>
+                  <input id="contactEmail" name="email" class="contact-form__input" type="email" autocomplete="email" placeholder="you@example.com" required />
+                </div>
               </div>
-              <div>
-                <label for="contactEmail">Email Address *</label>
-                <input id="contactEmail" name="email" type="email" autocomplete="email" required />
+
+              <div class="contact-form__field">
+                <label for="contactSubject" class="contact-form__label">Subject</label>
+                <select id="contactSubject" name="subject" class="contact-form__select">
+                  <option value="General question" selected>General question</option>
+                  <option value="Billing or subscription">Billing or subscription</option>
+                  <option value="Login or password help">Login or password help</option>
+                  <option value="Forecast or account setup">Forecast or account setup</option>
+                  <option value="Bug or technical issue">Bug or technical issue</option>
+                  <option value="Feedback or feature request">Feedback or feature request</option>
+                </select>
               </div>
+
+              <div class="contact-form__field">
+                <label for="contactMessage" class="contact-form__label">Message <span class="contact-form__req" aria-hidden="true">·</span></label>
+                <textarea id="contactMessage" name="message" class="contact-form__textarea" rows="5" placeholder="Tell us what you're seeing or what we can help with…" required></textarea>
+              </div>
+
+              <p class="contact-form__safety-note" role="note">
+                <span class="contact-form__safety-icon" aria-hidden="true">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+                </span>
+                <span>
+                  BalanceWhiz doesn't require bank logins. Please don't include account numbers, passwords, or other
+                  sensitive credentials in your message.
+                </span>
+              </p>
+
+              <div id="contactErr" class="contact-form__alert contact-form__alert--err" role="alert" hidden></div>
+              <div id="contactOk" class="contact-form__alert contact-form__alert--ok" role="status" hidden>
+                Thanks — your message has been sent. We'll reply to the email you provided.
+              </div>
+
+              <div id="contactTroubleshoot" class="contact-troubleshoot" hidden>
+                <div class="contact-troubleshoot__title">Troubleshooting (for you and support)</div>
+                <ul id="contactTroubleshootList" class="contact-troubleshoot__list"></ul>
+              </div>
+
+              <div class="contact-form__actions">
+                <button type="submit" id="contactSendBtn" class="contact-form__send" disabled>Send message</button>
+              </div>
+            </form>
+          </article>
+
+          <aside class="contact-aside" aria-label="More ways to get help">
+            <div class="contact-aside__card">
+              <h2 class="contact-aside__title">Other ways to reach us</h2>
+              <ul class="contact-aside__list">
+                <li>
+                  <span class="contact-aside__k">Email</span>
+                  <a class="contact-aside__v" href="mailto:support@balancewhiz.com">support@balancewhiz.com</a>
+                </li>
+                <li>
+                  <span class="contact-aside__k">Help</span>
+                  <a class="contact-aside__v" href="../help.html">Help &amp; FAQ</a>
+                </li>
+                <li>
+                  <span class="contact-aside__k">Account</span>
+                  <a class="contact-aside__v" href="../login.html#forgot">Reset password</a>
+                </li>
+              </ul>
+              <p class="contact-aside__hint">A real person reads every message — typically within one business day.</p>
             </div>
-
-            <div style="height: 10px"></div>
-
-            <div>
-              <label for="contactSubject">Subject</label>
-              <select id="contactSubject" name="subject">
-                <option value="General question" selected>General question</option>
-                <option value="Login help">Login help</option>
-                <option value="Categories help">Categories help</option>
-                <option value="Bug report">Bug report</option>
-                <option value="Feature request">Feature request</option>
-              </select>
-            </div>
-
-            <div style="height: 10px"></div>
-
-            <div>
-              <label for="contactMessage">Message *</label>
-              <textarea id="contactMessage" name="message" rows="6" required style="width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); background: rgba(0,0,0,0.02); color: var(--text);"></textarea>
-            </div>
-
-            <div id="contactErr" class="error"></div>
-            <div id="contactOk" class="success" role="status">Thanks — your message was sent. We’ll reply to the email you entered.</div>
-
-            <div id="contactTroubleshoot" class="contact-troubleshoot" hidden>
-              <div class="contact-troubleshoot__title">Troubleshooting (for you and support)</div>
-              <ul id="contactTroubleshootList" class="contact-troubleshoot__list"></ul>
-            </div>
-
-            <div class="modal-actions" style="padding-top: 0; border-top: none">
-              <button type="submit" id="contactSendBtn" class="top-nav__logout">Send</button>
-            </div>
-          </form>
+          </aside>
         </div>
       </div>
 
@@ -145,7 +177,6 @@
       </footer>
     </div>
 
-    <script src="./contactus.js"></script>
+    <script src="./contactus.js?v=2"></script>
   </body>
 </html>
-

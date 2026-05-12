@@ -1,12 +1,13 @@
 function setErr(el, msg) {
   if (!el) return;
   el.textContent = msg || "";
-  el.style.display = msg ? "block" : "none";
+  el.hidden = !msg;
 }
 
-function setOk(el, show) {
+function setOk(el, show, msg) {
   if (!el) return;
-  el.style.display = show ? "block" : "none";
+  if (msg) el.textContent = msg;
+  el.hidden = !show;
 }
 
 function hideContactTroubleshoot() {
@@ -222,6 +223,34 @@ function initLogout() {
 
 initLogout();
 
+// Live form validity: enable the Send button only when name, a roughly valid
+// email, and a non-empty message are present. Subject defaults to "General
+// question" so it never blocks submission.
+function initContactValidation() {
+  const f = document.getElementById("contactForm");
+  if (!f) return;
+  const nameEl = document.getElementById("contactName");
+  const emailEl = document.getElementById("contactEmail");
+  const messageEl = document.getElementById("contactMessage");
+  const sendBtn = document.getElementById("contactSendBtn");
+  if (!sendBtn) return;
+  const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const refresh = () => {
+    const okName = String(nameEl?.value || "").trim().length > 0;
+    const okEmail = emailRe.test(String(emailEl?.value || "").trim());
+    const okMsg = String(messageEl?.value || "").trim().length > 0;
+    sendBtn.disabled = !(okName && okEmail && okMsg);
+  };
+  for (const el of [nameEl, emailEl, messageEl]) {
+    if (!el) continue;
+    el.addEventListener("input", refresh);
+    el.addEventListener("blur", refresh);
+  }
+  refresh();
+}
+
+initContactValidation();
+
 const form = document.getElementById("contactForm");
 const errEl = document.getElementById("contactErr");
 const okEl = document.getElementById("contactOk");
@@ -264,23 +293,28 @@ if (form) {
     const msg = String((messageEl && messageEl.value) || "").trim();
 
     if (!name) {
-      setErr(errEl, "Name is required.");
+      setErr(errEl, "Please add your name so we know who we're replying to.");
       hideContactTroubleshoot();
       return;
     }
     if (!email) {
-      setErr(errEl, "Email is required.");
+      setErr(errEl, "Please add an email address so we can reply.");
       hideContactTroubleshoot();
       return;
     }
     if (!msg) {
-      setErr(errEl, "Message is required.");
+      setErr(errEl, "Tell us a bit about what we can help with.");
       hideContactTroubleshoot();
       return;
     }
 
+    const supportEmail = getSupportEmail();
+    const friendlyError =
+      "We couldn't send your message right now. Please try again in a moment, or email us directly at " +
+      supportEmail + ".";
+
     const apiBase = getApiBase();
-    const sendLabel = (sendBtn && sendBtn.textContent) || "Send";
+    const sendLabel = "Send message";
     if (sendBtn) {
       sendBtn.disabled = true;
       sendBtn.textContent = "Sending…";
@@ -306,17 +340,24 @@ if (form) {
         }
         if (res.ok) {
           form.reset();
-          setOk(okEl, true);
+          if (sendBtn) sendBtn.disabled = true;
+          setOk(
+            okEl,
+            true,
+            "Thanks — your message has been sent. We'll reply to " + email + " within 1–2 business days."
+          );
           hideContactTroubleshoot();
           return;
         }
         if (res.status === 503) {
+          // Server can't send mail right now → keep things calm, still open mailto.
           showContactTroubleshootFromApi(503, "");
+          setErr(errEl, friendlyError);
           openMailtoFallback(name, email, subject, msg);
           return;
         }
         var errInfo = await readErrorFromResponse(res);
-        setErr(errEl, errInfo.detail);
+        setErr(errEl, friendlyError);
         showContactTroubleshootFromApi(errInfo.status, errInfo.detail);
         return;
       }
@@ -324,24 +365,23 @@ if (form) {
       hideContactTroubleshoot();
       openMailtoFallback(name, email, subject, msg);
     } catch (err) {
+      setErr(errEl, friendlyError);
       if (err && err.name === "AbortError") {
-        setErr(
-          errEl,
-          "The server did not answer in time. Opening your email app instead — you can send the same message from there."
-        );
         showContactTroubleshootTimeout();
       } else {
-        setErr(
-          errEl,
-          "Could not reach the server from this page. Opening your email app instead — or try again after checking your connection."
-        );
         showContactTroubleshootNetwork();
       }
       openMailtoFallback(name, email, subject, msg);
     } finally {
       if (sendBtn) {
-        sendBtn.disabled = false;
         sendBtn.textContent = sendLabel;
+        // Re-run validation so button reflects current field state.
+        try {
+          var ev = new Event("input");
+          if (nameEl) nameEl.dispatchEvent(ev);
+        } catch (_) {
+          sendBtn.disabled = false;
+        }
       }
     }
   });

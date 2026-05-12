@@ -8557,47 +8557,392 @@ body.login-page:not(.signup-page):not(.invite-page) #loginSectionBody label{
   letter-spacing: 0.012em;
 }
 
-/* Contact page layout */
-body.contact-page .container > .grid{
-  margin-top: 18px;
-  width: min(70%, 980px);
-  margin-left: auto;
-  margin-right: auto;
-}
-/* Contact page: bump form labels/fields by 10% */
-body.contact-page label{
-  font-size: 110%;
-}
-body.contact-page input,
-body.contact-page select,
-body.contact-page textarea{
-  font-size: 110%;
+/* =========================================================
+   Contact page — polished support layout
+   ========================================================= */
+body.contact-page{
+  background: linear-gradient(180deg, #fafbfc 0%, #f4f6f8 100%);
 }
 body.contact-page .container{
   min-height: auto;
 }
-body.contact-page .app-footer{
-  margin-top: 10px;
+
+/* Public-friendly top nav: logo on the left, lightweight links on the right.
+   Mirrors the geometry used by plans/admin/signup pages. */
+body.contact-page .top-nav .top-nav__inner.top-nav__inner--simple{
+  grid-template-columns: 1fr auto;
+  justify-items: start;
+  align-items: center;
+}
+body.contact-page .top-nav__inner--simple .top-nav__title{
+  justify-content: flex-start;
+  width: auto;
+  padding-left: 10px;
+}
+body.contact-page .top-nav__inner--simple .app-title{
+  text-align: left;
+}
+.contact-public-nav{
+  display: inline-flex;
+  align-items: center;
+  gap: 22px;
+  justify-self: end;
+}
+.contact-public-nav__link{
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(31, 41, 55, 0.78);
+  text-decoration: none;
+  letter-spacing: 0.005em;
+  transition: color 0.15s ease;
+}
+.contact-public-nav__link:hover{
+  color: var(--accent);
+}
+.contact-public-nav__link--cta{
+  background: var(--accent);
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-weight: 600;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.04), 0 4px 14px -8px rgba(11, 61, 46, 0.45);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+.contact-public-nav__link--cta:hover{
+  color: #fff;
+  background: color-mix(in srgb, var(--accent) 92%, #000 8%);
+  box-shadow: 0 1px 0 rgba(0,0,0,0.05), 0 8px 20px -10px rgba(11, 61, 46, 0.55);
+  transform: translateY(-1px);
 }
 
-/* Contact form: contextual help when server/browser errors occur */
+/* Page wrapper for the form card + side rail */
+body.contact-page .container > .grid{
+  margin: 32px auto 56px;
+  width: min(94%, 1120px);
+  padding: 0;
+}
+.contact-layout{
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 28px;
+  align-items: start;
+}
+@media (max-width: 880px){
+  .contact-layout{
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+}
+
+/* --- Main form card --- */
+body.contact-page .card.contact-card{
+  background: #ffffff;
+  border: 1px solid #E5E7EB;
+  border-radius: 18px;
+  padding: clamp(28px, 4vw, 48px);
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 10px 30px -18px rgba(15, 23, 42, 0.12);
+}
+.contact-card__head{
+  margin-bottom: 28px;
+}
+.contact-card__eyebrow{
+  margin: 0 0 10px;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(11, 61, 46, 0.78);
+}
+.contact-card__title{
+  margin: 0 0 10px;
+  font-size: clamp(28px, 3.4vw, 36px);
+  font-weight: 700;
+  letter-spacing: -0.012em;
+  line-height: 1.15;
+  color: #0f172a;
+}
+.contact-card__subtitle{
+  margin: 0;
+  max-width: 56ch;
+  font-size: 15.5px;
+  line-height: 1.6;
+  color: rgba(51, 65, 85, 0.84);
+}
+
+/* --- Form --- */
+.contact-form{
+  display: grid;
+  gap: 18px;
+}
+.contact-form__row{
+  display: grid;
+  gap: 18px;
+}
+.contact-form__row--two{
+  grid-template-columns: 1fr 1fr;
+}
+@media (max-width: 620px){
+  .contact-form__row--two{
+    grid-template-columns: 1fr;
+  }
+}
+.contact-form__field{
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.contact-form__label{
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.012em;
+  color: rgba(71, 85, 105, 0.92);
+  text-transform: none;
+}
+.contact-form__req{
+  color: rgba(148, 163, 184, 0.9);
+  font-weight: 500;
+  margin-left: 2px;
+}
+
+/* Inputs: white, soft border, brand-green focus. Override the bumped 110%
+   font-size from the previous design so fields feel right-sized. */
+body.contact-page .contact-form__input,
+body.contact-page .contact-form__select,
+body.contact-page .contact-form__textarea{
+  width: 100%;
+  font-size: 14.5px;
+  font-family: inherit;
+  color: #0f172a;
+  background: #ffffff;
+  border: 1px solid #E5E7EB;
+  border-radius: 10px;
+  padding: 10px 12px;
+  line-height: 1.45;
+  box-shadow: inset 0 1px 0 rgba(15, 23, 42, 0.015);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  appearance: none;
+}
+body.contact-page .contact-form__input,
+body.contact-page .contact-form__select{
+  height: 42px;
+}
+body.contact-page .contact-form__select{
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path fill='none' stroke='%2364748b' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' d='M1 1.5l5 5 5-5'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  padding-right: 36px;
+  cursor: pointer;
+}
+body.contact-page .contact-form__textarea{
+  resize: vertical;
+  min-height: 124px;
+  max-height: 360px;
+  overflow: auto;
+}
+body.contact-page .contact-form__input::placeholder,
+body.contact-page .contact-form__textarea::placeholder{
+  color: rgba(148, 163, 184, 0.85);
+}
+body.contact-page .contact-form__input:hover,
+body.contact-page .contact-form__select:hover,
+body.contact-page .contact-form__textarea:hover{
+  border-color: #D1D5DB;
+}
+body.contact-page .contact-form__input:focus,
+body.contact-page .contact-form__select:focus,
+body.contact-page .contact-form__textarea:focus{
+  outline: none;
+  border-color: color-mix(in srgb, var(--accent) 55%, #cbd5e1);
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, var(--accent) 14%, transparent),
+    inset 0 1px 0 rgba(15, 23, 42, 0.015);
+  background: #ffffff;
+}
+
+/* Safety note */
+.contact-form__safety-note{
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin: 4px 0 0;
+  padding: 12px 14px;
+  background: color-mix(in srgb, var(--accent) 5%, #f8fafc);
+  border: 1px solid color-mix(in srgb, var(--accent) 14%, #e2e8f0);
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: rgba(51, 65, 85, 0.92);
+}
+.contact-form__safety-icon{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 12%, #ffffff);
+  color: var(--accent);
+}
+
+/* Inline alerts (calm and human) */
+.contact-form__alert{
+  margin: 6px 0 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.contact-form__alert[hidden]{ display: none; }
+.contact-form__alert--ok{
+  background: color-mix(in srgb, var(--accent) 8%, #ffffff);
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, #e5e7eb);
+  color: color-mix(in srgb, var(--accent) 88%, #000);
+}
+.contact-form__alert--err{
+  background: #fff7f4;
+  border: 1px solid #fad7c5;
+  color: #8a3a1d;
+}
+
+/* Actions */
+.contact-form__actions{
+  margin-top: 6px;
+  display: flex;
+  justify-content: flex-end;
+}
+.contact-form__send{
+  appearance: none;
+  border: 0;
+  cursor: pointer;
+  background: var(--accent);
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 14.5px;
+  padding: 0 22px;
+  height: 44px;
+  border-radius: 999px;
+  letter-spacing: 0.005em;
+  box-shadow:
+    0 1px 0 rgba(0,0,0,0.05),
+    0 8px 18px -10px rgba(11, 61, 46, 0.5);
+  transition: background 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease, color 0.15s ease;
+}
+.contact-form__send:hover:not(:disabled){
+  background: color-mix(in srgb, var(--accent) 92%, #000 8%);
+  transform: translateY(-1px);
+  box-shadow:
+    0 1px 0 rgba(0,0,0,0.06),
+    0 12px 22px -10px rgba(11, 61, 46, 0.55);
+}
+.contact-form__send:focus-visible{
+  outline: none;
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent),
+    0 8px 18px -10px rgba(11, 61, 46, 0.5);
+}
+.contact-form__send:disabled,
+.contact-form__send[disabled]{
+  background: #E5E7EB;
+  color: rgba(71, 85, 105, 0.66);
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+@media (max-width: 620px){
+  .contact-form__actions{ justify-content: stretch; }
+  .contact-form__send{ width: 100%; }
+}
+
+/* --- Side rail --- */
+.contact-aside{
+  position: sticky;
+  top: 24px;
+}
+@media (max-width: 880px){
+  .contact-aside{ position: static; }
+}
+.contact-aside__card{
+  background: #ffffff;
+  border: 1px solid #EEF1F4;
+  border-radius: 16px;
+  padding: 22px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+.contact-aside__title{
+  margin: 0 0 14px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(51, 65, 85, 0.78);
+}
+.contact-aside__list{
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+.contact-aside__list li{
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 14px;
+}
+.contact-aside__k{
+  color: rgba(100, 116, 139, 0.9);
+  font-size: 12.5px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.contact-aside__v{
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 500;
+  word-break: break-word;
+  text-align: right;
+}
+.contact-aside__v:hover{ text-decoration: underline; }
+.contact-aside__hint{
+  margin: 14px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid #EEF1F4;
+  font-size: 13px;
+  line-height: 1.55;
+  color: rgba(100, 116, 139, 0.92);
+}
+
+/* Footer breathing room */
+body.contact-page .app-footer{
+  margin-top: 24px;
+}
+
+/* Troubleshooting (only shown when something actually fails) */
 .contact-troubleshoot{
   margin-top: 12px;
   padding: 12px 14px;
-  border-radius: 10px;
-  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border));
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
-  font-size: 14px;
-  line-height: 1.5;
-  color: var(--text);
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: rgba(51, 65, 85, 0.94);
 }
 .contact-troubleshoot__title{
   font-weight: 700;
   margin-bottom: 8px;
-  font-size: 13px;
-  text-transform: none;
-  letter-spacing: 0.04em;
-  opacity: 0.9;
+  font-size: 12.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(71, 85, 105, 0.78);
 }
 .contact-troubleshoot__list{
   margin: 0;
@@ -9054,6 +9399,393 @@ body.plans-page .container > .grid{
     grid-template-columns: 1fr;
     width: min(520px, 100%);
   }
+}
+
+/* =========================================================
+   Plans page — polished pricing layout
+   (scoped under .plans-page--polished so we don't disturb
+    any older surfaces that may still rely on the legacy
+    .plan-card markup)
+   ========================================================= */
+body.plans-page.plans-page--polished{
+  background: linear-gradient(180deg, #fafbfc 0%, #f4f6f8 100%);
+}
+body.plans-page--polished .container{ min-height: auto; }
+
+/* Public nav (Features / Pricing / Login) */
+body.plans-page--polished .top-nav .top-nav__inner.top-nav__inner--simple{
+  grid-template-columns: 1fr auto;
+}
+.plans-public-nav{
+  display: inline-flex;
+  align-items: center;
+  gap: 22px;
+  justify-self: end;
+}
+.plans-public-nav__link{
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(31, 41, 55, 0.78);
+  text-decoration: none;
+  letter-spacing: 0.005em;
+  transition: color 0.15s ease;
+}
+.plans-public-nav__link:hover{ color: var(--accent); }
+.plans-public-nav__link--active{
+  color: var(--accent);
+  font-weight: 600;
+}
+.plans-public-nav__link--cta{
+  background: var(--accent);
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-weight: 600;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.04), 0 4px 14px -8px rgba(11, 61, 46, 0.45);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+.plans-public-nav__link--cta:hover{
+  color: #fff;
+  background: color-mix(in srgb, var(--accent) 92%, #000 8%);
+  box-shadow: 0 1px 0 rgba(0,0,0,0.05), 0 8px 20px -10px rgba(11, 61, 46, 0.55);
+  transform: translateY(-1px);
+}
+
+/* Main column rhythm — bring hero and card visually close together */
+body.plans-page--polished .container > .grid{
+  margin: 24px auto 56px;
+  width: min(94%, 1080px);
+  padding: 0;
+  display: block;
+}
+
+/* Hero */
+.plans-hero{
+  text-align: center;
+  margin: 12px auto 22px;
+  max-width: 760px;
+}
+.plans-hero__eyebrow{
+  margin: 0 0 12px;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(11, 61, 46, 0.78);
+}
+.plans-hero__title{
+  margin: 0 0 14px;
+  font-size: clamp(30px, 4.2vw, 42px);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.018em;
+  color: #0f172a;
+}
+.plans-hero__subtitle{
+  margin: 0 auto;
+  max-width: 56ch;
+  font-size: clamp(15px, 1.7vw, 17px);
+  line-height: 1.6;
+  color: rgba(51, 65, 85, 0.86);
+  font-weight: 500;
+}
+
+/* Pricing grid wrapper */
+body.plans-page--polished .plans-wrap{
+  margin: 0 auto;
+  width: 100%;
+  align-items: center;
+}
+body.plans-page--polished .plans-grid{
+  margin: 0 auto;
+  width: min(520px, 100%);
+  grid-template-columns: 1fr;
+}
+
+/* Polished pricing card — soft neutral border, subtle shadow */
+body.plans-page--polished .plan-card.plan-card--polished{
+  background: #ffffff;
+  border: 1px solid #E5E7EB;
+  border-radius: 20px;
+  padding: clamp(28px, 4vw, 40px);
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 18px 40px -22px rgba(15, 23, 42, 0.18);
+  overflow: visible;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+body.plans-page--polished .plan-card.plan-card--polished:hover{
+  transform: translateY(-2px);
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.05),
+    0 22px 48px -22px rgba(15, 23, 42, 0.22);
+}
+
+.plan-card.plan-card--polished .plan-card__head{
+  text-align: center;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  border: 0;
+  min-height: 0;
+}
+.plan-card.plan-card--polished .plan-card__eyebrow{
+  margin: 0 0 14px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(11, 61, 46, 0.82);
+}
+
+/* Price — dominant; "per month" small and muted */
+.plan-card.plan-card--polished .plan-price{
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 4px;
+  line-height: 1;
+}
+.plan-card.plan-card--polished .plan-price__currency{
+  font-size: clamp(22px, 2.4vw, 26px);
+  font-weight: 700;
+  color: #0f172a;
+  transform: translateY(-12px);
+}
+.plan-card.plan-card--polished .plan-price__main{
+  font-size: clamp(54px, 7vw, 68px);
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  color: #0f172a;
+  line-height: 1;
+}
+.plan-card.plan-card--polished .plan-price__sub{
+  margin: 0 0 6px 4px;
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(100, 116, 139, 0.92);
+  letter-spacing: 0.005em;
+}
+.plan-card.plan-card--polished .plan-price__caption{
+  margin: 10px 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 13px;
+  color: rgba(71, 85, 105, 0.88);
+}
+.plan-card.plan-card--polished .plan-price__free{
+  display: inline-flex;
+  align-items: center;
+  background: color-mix(in srgb, var(--accent) 9%, #ffffff);
+  color: color-mix(in srgb, var(--accent) 88%, #000);
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, #e5e7eb);
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.005em;
+}
+.plan-card.plan-card--polished .plan-price__dot{
+  color: rgba(148, 163, 184, 0.85);
+}
+
+/* Primary CTA — full-width, brand green, taller, dominant */
+.plan-card.plan-card--polished .plan-cta.plan-cta--primary{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 52px;
+  padding: 0 22px;
+  margin: 0;
+  background: var(--accent);
+  color: #ffffff;
+  font-size: 15.5px;
+  font-weight: 700;
+  letter-spacing: 0.005em;
+  border: 0;
+  border-radius: 14px;
+  text-decoration: none;
+  cursor: pointer;
+  box-shadow:
+    0 1px 0 rgba(0,0,0,0.05),
+    0 14px 26px -14px rgba(11, 61, 46, 0.55);
+  transition: background 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+.plan-card.plan-card--polished .plan-cta.plan-cta--primary:hover{
+  background: color-mix(in srgb, var(--accent) 92%, #000 8%);
+  transform: translateY(-1px);
+  box-shadow:
+    0 1px 0 rgba(0,0,0,0.06),
+    0 18px 30px -16px rgba(11, 61, 46, 0.6);
+}
+.plan-card.plan-card--polished .plan-cta.plan-cta--primary:focus-visible{
+  outline: none;
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent),
+    0 14px 26px -14px rgba(11, 61, 46, 0.55);
+}
+
+/* Outcome features — green check icons, generous spacing */
+.plan-card.plan-card--polished .plan-features--outcomes{
+  list-style: none;
+  padding: 0;
+  margin: 4px 0 0;
+  display: grid;
+  gap: 12px;
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: rgba(31, 41, 55, 0.94);
+}
+.plan-card.plan-card--polished .plan-features--outcomes li{
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.plan-features__icon{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 12%, #ffffff);
+  color: var(--accent);
+}
+
+/* Trust row beneath the card */
+.plans-trust{
+  list-style: none;
+  padding: 0;
+  margin: 22px auto 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px 14px;
+  max-width: 720px;
+}
+.plans-trust li{
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  background: #ffffff;
+  border: 1px solid #EEF1F4;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(51, 65, 85, 0.92);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+.plans-trust__check{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 12%, #ffffff);
+  color: var(--accent);
+}
+
+/* "Great for" audience grid */
+.plans-audience{
+  margin: 56px auto 0;
+  max-width: 880px;
+  text-align: center;
+}
+.plans-audience__title{
+  margin: 0 0 22px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(71, 85, 105, 0.7);
+}
+.plans-audience__grid{
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  text-align: left;
+}
+@media (max-width: 620px){
+  .plans-audience__grid{ grid-template-columns: 1fr; }
+}
+.plans-audience__item{
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 18px 18px;
+  background: #ffffff;
+  border: 1px solid #EEF1F4;
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+.plans-audience__item p{
+  margin: 2px 0 0;
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: rgba(31, 41, 55, 0.94);
+}
+.plans-audience__icon{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 38px;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent) 10%, #ffffff);
+  color: var(--accent);
+}
+
+/* Reassurance quote */
+.plans-quote{
+  margin: 48px auto 0;
+  max-width: 640px;
+  padding: 26px 30px;
+  background: color-mix(in srgb, var(--accent) 4%, #ffffff);
+  border: 1px solid color-mix(in srgb, var(--accent) 14%, #e5e7eb);
+  border-radius: 18px;
+  text-align: center;
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+}
+.plans-quote__mark{
+  color: color-mix(in srgb, var(--accent) 35%, transparent);
+}
+.plans-quote__text{
+  margin: 0;
+  font-size: clamp(18px, 2.2vw, 22px);
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: -0.005em;
+  color: #0f172a;
+  font-style: italic;
+}
+
+/* Footer breathing room */
+body.plans-page--polished .app-footer{ margin-top: 48px; }
+
+/* Hide the legacy headline so the new hero doesn't double up if some
+   stale markup ships in cache. */
+body.plans-page--polished .plans-headline,
+body.plans-page--polished .plans-wrap > .meta{
+  display: none;
+}
+
+/* Override legacy `.plans-headline` margin that pulled content up */
+body.plans-page--polished .plans-wrap{
+  display: block;
 }
 
 .calendar{

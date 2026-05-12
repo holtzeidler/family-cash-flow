@@ -3,15 +3,15 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>BalanceWhiz</title>
+    <title>BalanceWhiz — Pricing</title>
     <link rel="icon" href="../favicon.png" type="image/png" />
     <script>window.API_BASE = "__API_BASE__";</script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=400" />
+    <link rel="stylesheet" href="../styles.css?v=402" />
   </head>
-  <body class="plans-page">
+  <body class="plans-page plans-page--polished">
     <div class="container">
       <div class="top-nav" role="navigation" aria-label="Primary">
         <div class="top-nav__inner top-nav__inner--simple">
@@ -30,41 +30,123 @@
               </a>
             </h1>
           </div>
-          <div class="top-nav__actions" aria-label="Account actions">
-            <button type="button" class="top-nav__logout" onclick="window.location.href='../login/'">Login</button>
-          </div>
+          <nav class="plans-public-nav" aria-label="Site">
+            <a href="/#features" class="plans-public-nav__link">Features</a>
+            <a href="./" class="plans-public-nav__link plans-public-nav__link--active" aria-current="page">Pricing</a>
+            <a href="../login.html" class="plans-public-nav__link plans-public-nav__link--cta">Login</a>
+          </nav>
         </div>
       </div>
 
-      <div class="grid">
-        <div class="plans-wrap">
-          <div class="plans-headline">Stop guessing how much cash you really have available.</div>
-          <div class="meta" style="margin: 10px 0 0;">
-            BalanceWhiz forecasts upcoming cash flow so you can avoid surprises and keep more money earning interest.
-          </div>
-          <div class="plans-grid" aria-label="Plans">
-            <div class="card plan-card plan-card--base">
-              <div class="plan-card__top">
-                <div class="plan-card__name">Cash Forecast</div>
-              </div>
-              <div class="plan-card__body">
+      <main class="grid">
+        <section class="plans-hero" aria-labelledby="plansHeroTitle">
+          <p class="plans-hero__eyebrow">Pricing</p>
+          <h2 id="plansHeroTitle" class="plans-hero__title">Know what cash is actually safe to use.</h2>
+          <p class="plans-hero__subtitle">
+            BalanceWhiz forecasts your upcoming cash flow so you can avoid overdrafts, move excess cash with
+            confidence, and keep more of it earning interest.
+          </p>
+        </section>
+
+        <section class="plans-wrap" aria-label="Plans">
+          <div class="plans-grid" role="list">
+            <article class="plan-card plan-card--polished" role="listitem">
+              <header class="plan-card__head">
+                <p class="plan-card__eyebrow">Cash Forecast</p>
                 <div class="plan-price">
-                  <div class="plan-price__main">$5.99</div>
-                  <div class="plan-price__sub">per month</div>
+                  <span class="plan-price__currency" aria-hidden="true">$</span>
+                  <span class="plan-price__main">5.99</span>
+                  <span class="plan-price__sub">per month</span>
                 </div>
-                <div class="plan-divider" aria-hidden="true"></div>
-                <div class="plan-kicker">What’s included</div>
-                <ul class="plan-features">
-                  <li>See future balance changes before they happen</li>
-                  <li>Get alerted before balances run low</li>
-                  <li>Automatically project recurring bills and income</li>
-                </ul>
-                <button type="button" class="plan-cta" onclick="window.location.href='../signup/?plan=base'">Build my Forecast</button>
-              </div>
+                <p class="plan-price__caption">
+                  <span class="plan-price__free">14-day free trial</span>
+                  <span class="plan-price__dot" aria-hidden="true">·</span>
+                  <span>Cancel anytime</span>
+                </p>
+              </header>
+
+              <a
+                class="plan-cta plan-cta--primary"
+                href="../signup/?plan=base"
+                role="button"
+                aria-label="Start my forecast (14-day free trial)"
+              >Start My Forecast</a>
+
+              <ul class="plan-features plan-features--outcomes" aria-label="What's included">
+                <li><span class="plan-features__icon" aria-hidden="true">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                </span><span>Know when cash will run tight — before it happens</span></li>
+                <li><span class="plan-features__icon" aria-hidden="true">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                </span><span>See what money can safely leave checking</span></li>
+                <li><span class="plan-features__icon" aria-hidden="true">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                </span><span>Forecast bills, paychecks, and transfers together</span></li>
+                <li><span class="plan-features__icon" aria-hidden="true">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                </span><span>Catch low-balance weeks early</span></li>
+                <li><span class="plan-features__icon" aria-hidden="true">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                </span><span>Keep more cash earning interest</span></li>
+              </ul>
+            </article>
+          </div>
+
+          <ul class="plans-trust" aria-label="What to expect">
+            <li><span class="plans-trust__check" aria-hidden="true">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </span>No bank connection required</li>
+            <li><span class="plans-trust__check" aria-hidden="true">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </span>Cancel anytime</li>
+            <li><span class="plans-trust__check" aria-hidden="true">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </span>Setup in minutes</li>
+            <li><span class="plans-trust__check" aria-hidden="true">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </span>Privacy-first forecasting</li>
+          </ul>
+        </section>
+
+        <section class="plans-audience" aria-labelledby="plansAudienceTitle">
+          <h2 id="plansAudienceTitle" class="plans-audience__title">Great for</h2>
+          <div class="plans-audience__grid">
+            <div class="plans-audience__item">
+              <span class="plans-audience__icon" aria-hidden="true">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21v-1a4 4 0 0 1 4-4h3"/><circle cx="9" cy="8" r="3"/><path d="M16 11a3 3 0 1 0 0-6"/><path d="M21 21v-1a4 4 0 0 0-3-3.87"/></svg>
+              </span>
+              <p>Families managing large monthly bills</p>
+            </div>
+            <div class="plans-audience__item">
+              <span class="plans-audience__icon" aria-hidden="true">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3l4 4-4 4"/><path d="M3 7h18"/><path d="M7 21l-4-4 4-4"/><path d="M21 17H3"/></svg>
+              </span>
+              <p>People moving money between checking and savings</p>
+            </div>
+            <div class="plans-audience__item">
+              <span class="plans-audience__icon" aria-hidden="true">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 17 9 11 13 15 21 7"/><polyline points="14 7 21 7 21 14"/></svg>
+              </span>
+              <p>Variable-income households</p>
+            </div>
+            <div class="plans-audience__item">
+              <span class="plans-audience__icon" aria-hidden="true">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v6l4 2"/></svg>
+              </span>
+              <p>Anyone tired of mentally tracking cash flow</p>
             </div>
           </div>
-        </div>
-      </div>
+        </section>
+
+        <figure class="plans-quote" aria-label="Customer reassurance">
+          <svg class="plans-quote__mark" width="32" height="28" viewBox="0 0 32 28" aria-hidden="true">
+            <path d="M0 28V14C0 6.27 6.27 0 14 0v6c-4.42 0-8 3.58-8 8h6v14H0zm18 0V14c0-7.73 6.27-14 14-14v6c-4.42 0-8 3.58-8 8h6v14H18z" fill="currentColor"/>
+          </svg>
+          <blockquote class="plans-quote__text">
+            I finally know what money is actually safe to use.
+          </blockquote>
+        </figure>
+      </main>
 
       <footer class="app-footer" role="contentinfo">
         <div class="app-footer__inner">
@@ -116,4 +198,3 @@
     </div>
   </body>
 </html>
-
