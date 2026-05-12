@@ -137,6 +137,29 @@ function show(el, msg) {
   el.style.display = s ? "block" : "none";
 }
 
+let bwToastHideTimer = null;
+/** Lightweight toast for settings and other saves (non-blocking). */
+function showBwToast(message, { durationMs = 2800 } = {}) {
+  const text = String(message || "").trim();
+  if (!text) return;
+  let el = document.getElementById("bwToast");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "bwToast";
+    el.className = "bw-toast";
+    el.setAttribute("role", "status");
+    el.setAttribute("aria-live", "polite");
+    document.body.appendChild(el);
+  }
+  el.textContent = text;
+  el.classList.add("bw-toast--visible");
+  if (bwToastHideTimer) clearTimeout(bwToastHideTimer);
+  bwToastHideTimer = window.setTimeout(() => {
+    bwToastHideTimer = null;
+    el.classList.remove("bw-toast--visible");
+  }, durationMs);
+}
+
 function expandSidebarSection(key) {
   const card = document.querySelector(`.sidebar-section[data-sidebar-key="${key}"]`);
   if (!card) return null;
@@ -216,6 +239,18 @@ function fmtMonthDay(raw) {
   const dt = new Date(y, m - 1, d, 12, 0, 0, 0);
   const mon = dt.toLocaleDateString("en-US", { month: "short" });
   return `${mon} ${d}`;
+}
+
+/** e.g. "May 10, 2026" — for reconcile modal and other human-facing dates */
+function fmtDateLongDisplay(raw) {
+  const iso = normalizeIsoDate(raw) || "";
+  if (!iso) return String(raw ?? "");
+  const y = Number(iso.slice(0, 4));
+  const m = Number(iso.slice(5, 7));
+  const d = Number(iso.slice(8, 10));
+  if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return String(raw ?? "");
+  const dt = new Date(y, m - 1, d, 12, 0, 0, 0);
+  return dt.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 }
 
 function toNum(v) {
@@ -318,13 +353,12 @@ const CATEGORY_COLOR_PALETTE = [
   "#4CAF50", // green
 ];
 
-function renderCategoryColorPicker({ rowEl, swatchesEl, clearBtn, getCategoryId, getBg, setBg }) {
-  if (!rowEl || !swatchesEl) return;
+function renderCategoryColorPicker({ rowEl, swatchesEl, clearBtn, getCategoryId, getBg, setBg, unhideRow = true }) {
+  if (!swatchesEl) return;
 
   function refresh() {
-    // Always show the row in add/edit modals (even before a category is chosen),
-    // because the color applies to the transaction/occurrence, not the category.
-    rowEl.hidden = false;
+    // Usually show the row in add/edit modals; Add-transaction uses a collapsible panel (unhideRow: false).
+    if (rowEl && unhideRow) rowEl.hidden = false;
     const rawBg = getBg && getBg() ? String(getBg()).trim() : "";
     const overrideNone = !!(rawBg && rawBg.toLowerCase() === "none");
     const activeBg = rawBg && rawBg.toLowerCase() !== "none" ? rawBg : null;
@@ -900,11 +934,15 @@ const tmMinAmt = document.getElementById("tmMinAmt");
 const tmMaxAmt = document.getElementById("tmMaxAmt");
 const tmSummaryLine = document.getElementById("tmSummaryLine");
 const tmInsightsEl = document.getElementById("tmInsights");
+const tmForecastNote = document.getElementById("tmForecastNote");
+const sidebarForecastHints = document.getElementById("sidebarForecastHints");
 const tmPrimaryAction = document.getElementById("tmPrimaryAction");
 const tmCategory = document.getElementById("tmCategory");
 const tmMoreFiltersBtn = document.getElementById("tmMoreFiltersBtn");
 const tmAdvancedFilters = document.getElementById("tmAdvancedFilters");
 const tmChips = document.querySelectorAll?.(".tm-chip") || [];
+
+const TM_ROW_EDIT_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M12 20h9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M16.5 3.5a2.12 2.12 0 013 3L9 17l-4 1 1-4 10.5-10.5z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>`;
 
 let upcomingFetchDebounce = null;
 const variableTodoList = document.getElementById("variableTodoList");
@@ -1070,7 +1108,10 @@ if (txEditDate) {
 // Reconcile day modal
 const reconcileModal = document.getElementById("reconcileModal");
 const reconcileErr = document.getElementById("reconcileErr");
-const reconcileDateText = document.getElementById("reconcileDateText");
+const reconcileTitle = document.getElementById("reconcileTitle");
+const reconcileLead = document.getElementById("reconcileLead");
+const reconcileBalanceBlock = document.getElementById("reconcileBalanceBlock");
+const reconcileForecastBal = document.getElementById("reconcileForecastBal");
 const reconcileChecked = document.getElementById("reconcileChecked");
 const reconcileSaveBtn = document.getElementById("reconcileSaveBtn");
 const reconcileCancelBtn = document.getElementById("reconcileCancelBtn");
@@ -1083,9 +1124,9 @@ const txAddDate = document.getElementById("txAddDate");
 const txAddDateLabel = document.getElementById("txAddDateLabel");
 const txAddAmount = document.getElementById("txAddAmount");
 const txAddNotes = document.getElementById("txAddNotes");
-const txAddRepeats = document.getElementById("txAddRepeats");
 const txAddRecurringBlock = document.getElementById("txAddRecurringBlock");
 const txAddRecurrence = document.getElementById("txAddRecurrence");
+const txAddEndsMode = document.getElementById("txAddEndsMode");
 const txAddEndCount = document.getElementById("txAddEndCount");
 const txAddEndDate = document.getElementById("txAddEndDate");
 const txAddTwiceMonthlyFields = document.getElementById("txAddTwiceMonthlyFields");
@@ -1095,39 +1136,79 @@ const txAddVariable = document.getElementById("txAddVariable");
 const txAddSave = document.getElementById("txAddSave");
 const txAddCancel = document.getElementById("txAddCancel");
 
+function txAddRepeatsActive() {
+  return !!(txAddRecurrence && String(txAddRecurrence.value || "").trim() !== "");
+}
+
 function updateTxAddTwiceMonthlyVisibility() {
   if (!txAddTwiceMonthlyFields || !txAddRecurrence) return;
   const on = txAddRecurrence.value === "twice_monthly";
   txAddTwiceMonthlyFields.style.display = on ? "block" : "none";
 }
 
+function updateTxAddEndsDetailUi() {
+  const repeats = txAddRepeatsActive();
+  const endsRow = document.getElementById("txAddEndsRow");
+  const detail = document.getElementById("txAddEndDetailWrap");
+  const endDateWrap = document.getElementById("txAddEndDateWrap");
+  const endCountWrap = document.getElementById("txAddEndCountWrap");
+  const mode = txAddEndsMode?.value || "never";
+  if (!repeats) {
+    if (endsRow) endsRow.hidden = true;
+    if (detail) detail.hidden = true;
+    if (endDateWrap) endDateWrap.hidden = true;
+    if (endCountWrap) endCountWrap.hidden = true;
+    if (txAddEndsMode) txAddEndsMode.value = "never";
+    if (txAddEndDate) txAddEndDate.value = "";
+    if (txAddEndCount) txAddEndCount.value = "";
+    return;
+  }
+  if (endsRow) endsRow.hidden = false;
+  if (mode === "never") {
+    if (detail) detail.hidden = true;
+    if (endDateWrap) endDateWrap.hidden = true;
+    if (endCountWrap) endCountWrap.hidden = true;
+    if (txAddEndDate) txAddEndDate.value = "";
+    if (txAddEndCount) txAddEndCount.value = "";
+  } else if (mode === "on_date") {
+    if (detail) detail.hidden = false;
+    if (endDateWrap) endDateWrap.hidden = false;
+    if (endCountWrap) endCountWrap.hidden = true;
+    if (txAddEndCount) txAddEndCount.value = "";
+  } else if (mode === "after_count") {
+    if (detail) detail.hidden = false;
+    if (endDateWrap) endDateWrap.hidden = true;
+    if (endCountWrap) endCountWrap.hidden = false;
+    if (txAddEndDate) txAddEndDate.value = "";
+  }
+}
+
 function updateTxAddRepeatingUi() {
-  const repeats = !!txAddRepeats?.checked;
+  const repeats = txAddRepeatsActive();
   if (txAddRecurringBlock) txAddRecurringBlock.style.display = repeats ? "block" : "none";
   if (txAddDateLabel) txAddDateLabel.textContent = repeats ? "Start date" : "Date";
-  const recWrap = document.getElementById("txAddRecurrenceWrap");
-  if (recWrap) recWrap.hidden = !repeats;
-  if (txAddRecurrence) txAddRecurrence.disabled = !repeats;
-  const endWrap = document.getElementById("txAddEndCountWrap");
-  if (endWrap) endWrap.hidden = !repeats;
+  if (txAddRecurrence) txAddRecurrence.disabled = false;
+  updateTxAddEndsDetailUi();
+  const mode = txAddEndsMode?.value || "never";
   if (txAddEndCount) {
     if (!repeats) txAddEndCount.value = "";
-    txAddEndCount.disabled = !repeats;
+    txAddEndCount.disabled = !repeats || mode !== "after_count";
   }
-  const endDateWrap = document.getElementById("txAddEndDateWrap");
-  if (endDateWrap) endDateWrap.hidden = !repeats;
   if (txAddEndDate) {
     if (!repeats) txAddEndDate.value = "";
-    txAddEndDate.disabled = !repeats;
+    txAddEndDate.disabled = !repeats || mode !== "on_date";
   }
   updateTxAddTwiceMonthlyVisibility();
 }
 
-if (txAddRepeats) {
-  txAddRepeats.addEventListener("change", updateTxAddRepeatingUi);
-}
 if (txAddRecurrence) {
-  txAddRecurrence.addEventListener("change", updateTxAddTwiceMonthlyVisibility);
+  txAddRecurrence.addEventListener("change", () => {
+    if (!txAddRepeatsActive() && txAddEndsMode) txAddEndsMode.value = "never";
+    updateTxAddRepeatingUi();
+  });
+}
+if (txAddEndsMode) {
+  txAddEndsMode.addEventListener("change", updateTxAddRepeatingUi);
 }
 if (txAddEndCount && txAddEndDate) {
   txAddEndCount.addEventListener("input", () => {
@@ -1136,6 +1217,15 @@ if (txAddEndCount && txAddEndDate) {
   txAddEndDate.addEventListener("input", () => {
     if (String(txAddEndDate.value || "").trim()) txAddEndCount.value = "";
   });
+}
+{
+  const txAddColorToggle = document.getElementById("txAddColorToggle");
+  if (txAddColorToggle && txAddCategoryColorRow) {
+    txAddColorToggle.addEventListener("click", () => {
+      txAddCategoryColorRow.hidden = !txAddCategoryColorRow.hidden;
+      txAddColorToggle.setAttribute("aria-expanded", txAddCategoryColorRow.hidden ? "false" : "true");
+    });
+  }
 }
 updateTxAddRepeatingUi();
 
@@ -1535,9 +1625,10 @@ async function saveBalanceThresholds(opts = {}) {
   }
   if (balanceThresholdSavedHideTimer) clearTimeout(balanceThresholdSavedHideTimer);
   if (savedMsg) {
-    savedMsg.textContent = "Saved — stored on your account for this household.";
+    savedMsg.textContent = "Saved for this household.";
     savedMsg.hidden = false;
   }
+  showBwToast("Forecast rules saved.");
   balanceThresholdSavedHideTimer = window.setTimeout(() => {
     balanceThresholdSavedHideTimer = null;
     if (savedMsg) {
@@ -2562,7 +2653,7 @@ if (txAddSave) {
       const kind = getRadioValue("txAddKind", "expense");
       const amountVal = txAddAmount?.value || "";
       const categoryId = categoryIdFromCategoryField("txAddCategoryId");
-      const repeats = !!txAddRepeats?.checked;
+      const repeats = txAddRepeatsActive();
       const desc = descriptionForNewTransaction(categoryId, { recurring: repeats });
 
       if (!dateVal) throw new Error(repeats ? "Start date is required" : "Date is required");
@@ -2684,6 +2775,7 @@ addAccountBtn.addEventListener("click", async () => {
     closeAccountModal();
     await loadAccounts();
     await loadMonthAndCalendar();
+    showBwToast("Account added.");
   } catch (e) {
     show(accErr, e.message || "Failed to add account");
   }
@@ -2706,6 +2798,7 @@ saveAccountEditBtn.addEventListener("click", async () => {
     closeAccountModal();
     await loadAccounts();
     await loadMonthAndCalendar();
+    showBwToast("Account updated.");
   } catch (e) {
     show(accErr, e.message || "Failed to update account");
   }
@@ -2965,9 +3058,8 @@ function openTxAddModal(opts = {}) {
   setCategoryFieldValue("txAddCategoryId", null);
   txAddSelectedBgColor = null;
   txAddColorTouched = false;
-  refreshTxCategoryColorPickers();
-  if (txAddRepeats) txAddRepeats.checked = !!opts.repeats;
-  if (txAddRecurrence) txAddRecurrence.value = "monthly";
+  if (txAddRecurrence) txAddRecurrence.value = opts.repeats ? "monthly" : "";
+  if (txAddEndsMode) txAddEndsMode.value = "never";
   if (txAddEndCount) txAddEndCount.value = "";
   if (txAddEndDate) txAddEndDate.value = "";
   if (txAddSecondDayOfMonth) txAddSecondDayOfMonth.value = "";
@@ -2977,6 +3069,10 @@ function openTxAddModal(opts = {}) {
     if (state.accounts && state.accounts.length > 0) txAddAccountId.value = String(state.accounts[0].id);
   }
   updateTxAddRepeatingUi();
+  refreshTxCategoryColorPickers();
+  if (txAddCategoryColorRow) txAddCategoryColorRow.hidden = true;
+  const txAddColorToggleEl = document.getElementById("txAddColorToggle");
+  if (txAddColorToggleEl) txAddColorToggleEl.setAttribute("aria-expanded", "false");
   const kind = opts.kind || "expense";
   const radio = document.querySelector(`input[type="radio"][name="txAddKind"][value="${kind}"]`);
   if (radio) radio.checked = true;
@@ -3001,8 +3097,25 @@ function openReconcileModal(iso) {
   const d = normalizeIsoDate(iso) || iso;
   if (alertIfDateBeforeStartingBalance(d)) return;
   reconcileActiveDate = d;
-  if (reconcileDateText) reconcileDateText.textContent = reconcileActiveDate ? fmtDateMDY(reconcileActiveDate) : "—";
+  const when = reconcileActiveDate ? fmtDateLongDisplay(reconcileActiveDate) : "this day";
+  if (reconcileTitle) reconcileTitle.textContent = reconcileActiveDate ? `Reconcile ${fmtDateLongDisplay(reconcileActiveDate)}` : "Reconcile day";
+  if (reconcileLead) {
+    reconcileLead.textContent = reconcileActiveDate
+      ? `Does your actual balance match the forecast for ${when}?`
+      : "Does your actual balance match the forecast for this day?";
+  }
   if (reconcileChecked) reconcileChecked.checked = state.reconciledDates?.has(reconcileActiveDate) || false;
+  if (reconcileBalanceBlock && reconcileForecastBal) {
+    const row = reconcileActiveDate && state.monthDailyBalances ? state.monthDailyBalances.get(reconcileActiveDate) : null;
+    const end = row && Number.isFinite(Number(row.end)) ? Number(row.end) : null;
+    if (end != null) {
+      reconcileBalanceBlock.hidden = false;
+      reconcileForecastBal.textContent = fmtMoney(end);
+    } else {
+      reconcileBalanceBlock.hidden = true;
+      reconcileForecastBal.textContent = "—";
+    }
+  }
   show(reconcileErr, "");
   reconcileModal.classList.add("modal-overlay--open");
   reconcileModal.setAttribute("aria-hidden", "false");
@@ -3511,7 +3624,7 @@ function tmCountLargeHitsBetween(todayIso, endIso, kindFilter, minAbs) {
 function tmAmtModifierClass(kind, amount) {
   const abs = Math.abs(Number(amount) || 0);
   const k = String(kind || "expense");
-  const large = (k === "expense" && abs >= 500) || (k === "income" && abs >= 800);
+  const large = (k === "expense" && abs >= 2000) || (k === "income" && abs >= 3500);
   return large ? "tm-amt--standout" : "tm-amt--calm";
 }
 
@@ -3563,50 +3676,248 @@ function refreshTmChipCounts() {
   }
 }
 
+function tmDateRangeFromToolbar() {
+  const startIso = upcomingStartDate?.value || toISODate(new Date());
+  const endIso = upcomingEndDate?.value || startIso;
+  return { startIso, endIso };
+}
+
+function ymBounds(ym) {
+  if (!ym || String(ym).length < 7) return { start: "", end: "" };
+  const parts = String(ym).split("-");
+  const y = Number(parts[0]);
+  const mo = Number(parts[1]);
+  if (!Number.isFinite(y) || !Number.isFinite(mo) || mo < 1 || mo > 12) return { start: "", end: "" };
+  const last = new Date(y, mo, 0).getDate();
+  return { start: `${String(ym).slice(0, 7)}-01`, end: `${String(ym).slice(0, 7)}-${String(last).padStart(2, "0")}` };
+}
+
+function tmVariableExpectedCountInRange(startIso, endIso) {
+  const todayIso = toISODate(new Date());
+  let n = 0;
+  for (const tx of tmUniqueExpectedMap().values()) {
+    const eff = effectiveNextOccurrenceListFields(tx);
+    if (!eff.variable) continue;
+    const nextIso = nextOccurrenceIsoForRecurringList(tx, todayIso);
+    if (!nextIso || nextIso < startIso || nextIso > endIso) continue;
+    n++;
+  }
+  return n;
+}
+
+function tmLargestExpenseInRange(startIso, endIso) {
+  let best = null;
+  for (const t of state.upcomingActualItems || []) {
+    const iso = normalizeIsoDate(t?.date) || String(t?.date || "");
+    if (!iso || iso < startIso || iso > endIso) continue;
+    if (String(t.kind || "") !== "expense") continue;
+    const a = Math.abs(Number(t.amount) || 0);
+    if (!best || a > best.amt) best = { amt: a, iso, label: actualTransactionPrimaryLabel(t) };
+  }
+  const todayIso = toISODate(new Date());
+  for (const tx of tmUniqueExpectedMap().values()) {
+    const eff = effectiveNextOccurrenceListFields(tx);
+    if (String(eff.kind || "") !== "expense") continue;
+    const nextIso = nextOccurrenceIsoForRecurringList(tx, todayIso);
+    if (!nextIso || nextIso < startIso || nextIso > endIso) continue;
+    const a = Math.abs(Number(eff.amount) || 0);
+    const label = String(eff.description || "").trim() || "(no description)";
+    if (!best || a > best.amt) best = { amt: a, iso: nextIso, label };
+  }
+  return best;
+}
+
+function tmCountDaysBelowFloorInRange(startIso, endIso) {
+  const floor = readStoredMinBalanceThresholdForReports();
+  if (floor == null || !Number.isFinite(floor) || floor <= 0) return 0;
+  if (!state.monthDailyBalances || !state.monthDailyBalances.size) return 0;
+  let n = 0;
+  for (const [iso, row] of state.monthDailyBalances.entries()) {
+    if (!iso || iso < startIso || iso > endIso) continue;
+    const endNum = Number(row?.end);
+    if (!Number.isFinite(endNum) || endNum < 0) continue;
+    if (endNum < floor) n++;
+  }
+  return n;
+}
+
+function tmLatestReconciledIsoBefore(endIso) {
+  const s = state.reconciledDates;
+  if (!s || !s.size || !endIso) return "";
+  let best = "";
+  for (const iso of s) {
+    if (!iso || iso > endIso) continue;
+    if (!best || iso > best) best = iso;
+  }
+  return best;
+}
+
+function tmForecastLowInMonthYm(ym) {
+  const { start, end } = ymBounds(ym);
+  if (!start || !end || !state.monthDailyBalances || !state.monthDailyBalances.size) return null;
+  let low = null;
+  for (const [iso, row] of state.monthDailyBalances.entries()) {
+    if (!iso || iso < start || iso > end) continue;
+    const endNum = Number(row?.end);
+    if (!Number.isFinite(endNum)) continue;
+    if (low == null || endNum < low.bal) low = { bal: endNum, iso };
+  }
+  return low;
+}
+
+function tmInsightCard(title, body, extraClass = "") {
+  const ec = extraClass ? ` ${extraClass}` : "";
+  return `<div class="tm-insight-card${ec}"><div class="tm-insight-card__title">${escapeHtml(title)}</div><div class="tm-insight-card__body">${escapeHtml(body)}</div></div>`;
+}
+
 function refreshTmInsights() {
   if (!tmInsightsEl) return;
-  const today = toISODate(new Date());
-  const end14 = toISODate((() => {
-    const d = new Date();
-    d.setDate(d.getDate() + 14);
-    return d;
-  })());
-  const large14 = tmCountLargeHitsBetween(today, end14, "expense", 500);
-  const annualSoon = (() => {
-    let n = 0;
-    const end45 = toISODate((() => {
-      const d = new Date();
-      d.setDate(d.getDate() + 45);
-      return d;
-    })());
-    for (const tx of tmUniqueExpectedMap().values()) {
-      if (String(tx?.recurrence || "") !== "yearly") continue;
-      const nextIso = nextOccurrenceIsoForRecurringList(tx, today);
-      if (!nextIso || nextIso < today || nextIso > end45) continue;
-      n++;
-    }
-    return n;
-  })();
+  const { startIso, endIso } = tmDateRangeFromToolbar();
+  const cards = [];
+
+  const varsInRange = tmVariableExpectedCountInRange(startIso, endIso);
+  if (varsInRange > 0) {
+    cards.push(
+      tmInsightCard(
+        "Variable amounts",
+        `${varsInRange} recurring ${varsInRange === 1 ? "item" : "items"} in this window still use placeholder amounts—confirm when you know the real number so your forecast stays tight.`,
+        "tm-insight-card--variable"
+      )
+    );
+  }
+
   const uncat = tmCountUncategorizedActual();
-
-  const lines = [];
-  if (large14 > 0) {
-    lines.push(`${large14} large expense${large14 === 1 ? "" : "s"} in the next 14 days`);
-  }
-  if (annualSoon > 0) {
-    lines.push(`${annualSoon} annual bill${annualSoon === 1 ? "" : "s"} due soon`);
-  }
   if (uncat > 0) {
-    lines.push(`${uncat} transaction${uncat === 1 ? "" : "s"} still uncategorized`);
+    cards.push(
+      tmInsightCard(
+        "Uncategorized",
+        `${uncat} one-time ${uncat === 1 ? "transaction needs" : "transactions need"} a category. Uncategorized lines can skew what your forecast thinks is safe to spend.`,
+        "tm-insight-card--uncat"
+      )
+    );
   }
 
-  if (!lines.length) {
-    tmInsightsEl.innerHTML = "";
-    tmInsightsEl.hidden = true;
+  const largest = tmLargestExpenseInRange(startIso, endIso);
+  if (largest && largest.amt >= 1) {
+    cards.push(
+      tmInsightCard(
+        "Largest expense here",
+        `${largest.label} · $${fmtMoney(largest.amt)} on ${fmtDateMDY(largest.iso)}. Large hits move your projected balance the fastest.`,
+        "tm-insight-card--bill"
+      )
+    );
+  }
+
+  const floorDays = tmCountDaysBelowFloorInRange(startIso, endIso);
+  if (floorDays > 0) {
+    cards.push(
+      tmInsightCard(
+        "Below comfort threshold",
+        `${floorDays} projected ${floorDays === 1 ? "day" : "days"} in this window dip below your minimum balance threshold—tune dates or amounts to recover cushion.`,
+        "tm-insight-card--risk"
+      )
+    );
+  }
+
+  const latestRec = tmLatestReconciledIsoBefore(endIso || startIso);
+  if (latestRec && cards.length < 4) {
+    cards.push(
+      tmInsightCard(
+        "Reconciliation anchor",
+        `Last reconciled day in this window: ${fmtDateMDY(latestRec)}. Keeping reconciliation current is what makes the forecast feel trustworthy.`,
+        "tm-insight-card--calm"
+      )
+    );
+  }
+
+  let rowCount = 0;
+  try {
+    rowCount = txListMain ? txListMain.querySelectorAll(".tm-row").length : 0;
+  } catch (_) {}
+
+  if (!cards.length) {
+    if (rowCount > 0) {
+      cards.push(
+        tmInsightCard(
+          "Forecast hygiene",
+          "Nothing urgent surfaced for these filters—your list is a good place to fine-tune recurring amounts before they hit the calendar.",
+          "tm-insight-card--calm"
+        )
+      );
+    } else {
+      tmInsightsEl.innerHTML = "";
+      tmInsightsEl.hidden = true;
+      return;
+    }
+  }
+
+  tmInsightsEl.innerHTML = `<div class="tm-insight-grid__inner">${cards.slice(0, 4).join("")}</div>`;
+  tmInsightsEl.hidden = false;
+}
+
+function refreshTmForecastNote() {
+  if (!tmForecastNote) return;
+  const uncat = tmCountUncategorizedActual();
+  let rowCount = 0;
+  try {
+    rowCount = txListMain ? txListMain.querySelectorAll(".tm-row").length : 0;
+  } catch (_) {}
+  const latest = tmLatestReconciledIsoBefore(toISODate(new Date()));
+  if (rowCount > 0 && uncat === 0 && latest) {
+    tmForecastNote.textContent = `Everything in this list is categorized. Your forecast is reconciled through ${fmtDateMDY(latest)}—nice work keeping the model honest.`;
+    tmForecastNote.hidden = false;
+  } else if (rowCount > 0) {
+    tmForecastNote.textContent =
+      "Tip: accurate dates and amounts here flow straight into your projected daily balances and safe-to-transfer headroom.";
+    tmForecastNote.hidden = false;
+  } else {
+    tmForecastNote.textContent = "";
+    tmForecastNote.hidden = true;
+  }
+}
+
+function refreshSidebarForecastHints() {
+  if (!sidebarForecastHints) return;
+  const ym = monthInput?.value || "";
+  const { start: mStart, end: mEnd } = ymBounds(ym);
+  const parts = [];
+  const low = tmForecastLowInMonthYm(ym);
+  if (low) {
+    parts.push(
+      `<div class="sidebar-fqh__row"><span class="sidebar-fqh__k">Forecast low</span><span class="sidebar-fqh__v">$${fmtMoney(low.bal)} <span class="sidebar-fqh__d">${fmtDateMDY(low.iso)}</span></span></div>`
+    );
+  }
+  if (mStart && mEnd) {
+    const largest = tmLargestExpenseInRange(mStart, mEnd);
+    if (largest && largest.amt >= 1) {
+      parts.push(
+        `<div class="sidebar-fqh__row"><span class="sidebar-fqh__k">Largest bill (month)</span><span class="sidebar-fqh__v">$${fmtMoney(largest.amt)} <span class="sidebar-fqh__d">${escapeHtml(largest.label)} · ${fmtDateMDY(
+          largest.iso
+        )}</span></span></div>`
+      );
+    }
+  }
+  const latestRec = mEnd ? tmLatestReconciledIsoBefore(mEnd) : tmLatestReconciledIsoBefore(toISODate(new Date()));
+  if (latestRec) {
+    parts.push(
+      `<div class="sidebar-fqh__row"><span class="sidebar-fqh__k">Reconciled through</span><span class="sidebar-fqh__v">${fmtDateMDY(latestRec)}</span></div>`
+    );
+  }
+  if (mStart && mEnd) {
+    const floorDays = tmCountDaysBelowFloorInRange(mStart, mEnd);
+    if (floorDays > 0) {
+      parts.push(
+        `<div class="sidebar-fqh__row"><span class="sidebar-fqh__k">Below threshold</span><span class="sidebar-fqh__v">${floorDays} ${floorDays === 1 ? "day" : "days"} this month</span></div>`
+      );
+    }
+  }
+  if (!parts.length) {
+    sidebarForecastHints.innerHTML = "";
+    sidebarForecastHints.hidden = true;
     return;
   }
-  tmInsightsEl.innerHTML = lines.map((t) => `<span class="tm-insight">${escapeHtml(t)}</span>`).join("");
-  tmInsightsEl.hidden = false;
+  sidebarForecastHints.innerHTML = `<div class="sidebar-fqh">${parts.join("")}</div>`;
+  sidebarForecastHints.hidden = false;
 }
 
 function refreshTmPrimaryAction() {
@@ -3628,6 +3939,7 @@ function refreshTmSummaryStrip() {
   refreshTmChipCounts();
   refreshTmInsights();
   refreshTmPrimaryAction();
+  refreshTmForecastNote();
 
   const parts = [];
   let rowCount = 0;
@@ -5190,6 +5502,7 @@ const txAddCategoryColorPicker = renderCategoryColorPicker({
   rowEl: txAddCategoryColorRow,
   swatchesEl: txAddCategoryColorSwatches,
   clearBtn: txAddCategoryColorClear,
+  unhideRow: false,
   getCategoryId: () => categoryIdFromCategoryField("txAddCategoryId"),
   getBg: () => txAddSelectedBgColor,
   setBg: (v) => {
@@ -5739,21 +6052,7 @@ function pillStyleForTransaction(txOrItem) {
   return null;
 }
 
-/** Day cells use a white/near-white surface; pill fg is chosen for colored chip backgrounds — do not reuse light fg alone. */
-const CALENDAR_TX_LABEL_SURFACE_RGB = { r: 255, g: 255, b: 255 };
-const MIN_CONTRAST_TX_LABEL_ON_CALENDAR = 3.05;
-
-function calendarLabelColorFromCategoryPillStyle(st) {
-  if (!st || !st.fg) return null;
-  const fgRgb = parseCssColorToRgb(st.fg);
-  if (!fgRgb) return null;
-  if (contrastRatioBetweenRgb(fgRgb, CALENDAR_TX_LABEL_SURFACE_RGB) >= MIN_CONTRAST_TX_LABEL_ON_CALENDAR) {
-    return String(st.fg).trim();
-  }
-  return null;
-}
-
-/** Default label text color: green income / red expense (custom category fg overrides where applied). */
+/** Default label text color: green income / red expense (lists + pills; calendar day rows stay neutral in CSS). */
 function kindFgClass(kind) {
   return String(kind) === "income" ? "tx-kind-fg--income" : "tx-kind-fg--expense";
 }
@@ -5778,6 +6077,7 @@ function calendarDayTxLineToneParts(row) {
 }
 
 function renderAccountsList(accounts) {
+  if (!accountsList) return;
   accountsList.innerHTML = "";
   if (!accounts || accounts.length === 0) {
     const empty = document.createElement("div");
@@ -5791,24 +6091,25 @@ function renderAccountsList(accounts) {
     const el = document.createElement("div");
     el.className = "item settings-account-row";
 
-    const typeLabel = String(a.type).replaceAll("_", " ");
+    const typeLabel = String(a.type || "")
+      .replaceAll("_", " ")
+      .replace(/\b\w/g, (c) => c.toUpperCase());
     const startDate = a.starting_balance_date || "";
     el.innerHTML = `
-      <div class="left">
-        <div class="desc">${escapeHtml(a.name)}</div>
-        <div class="settings-account-row__bal">$${fmtMoney(a.starting_balance)}</div>
-        <div class="meta">${typeLabel} · Starting balance dated ${escapeHtml(fmtDateMDY(startDate))}</div>
-      </div>
-      <div class="row-actions">
-        <button type="button" class="edit-account-btn" data-account-id="${a.id}" aria-label="Edit account">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M12 20h9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M16.5 3.5a2.12 2.12 0 013 3L9 17l-4 1 1-4 10.5-10.5z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
-        </button>
+      <div class="settings-account-row__main">
+        <div class="settings-account-row__top">
+          <div class="settings-account-row__name">${escapeHtml(a.name)}</div>
+          <button type="button" class="settings-account-edit-btn" data-account-id="${a.id}">Edit</button>
+        </div>
+        <div class="settings-account-row__detail">${escapeHtml(typeLabel)} · Starting balance $${fmtMoney(a.starting_balance)} · ${escapeHtml(
+      fmtDateMDY(startDate),
+    )}</div>
       </div>
     `;
     accountsList.appendChild(el);
   }
 
-  for (const btn of accountsList.querySelectorAll(".edit-account-btn")) {
+  for (const btn of accountsList.querySelectorAll(".settings-account-edit-btn")) {
     btn.addEventListener("click", () => {
       const accountId = Number(btn.dataset.accountId);
       const account = state.accounts.find((a) => Number(a.id) === accountId);
@@ -6419,8 +6720,8 @@ function renderUpcomingTransactionsFiltered() {
   txListMain.innerHTML = "";
   if (!rows.length) {
     const empty = document.createElement("div");
-    empty.className = "pill";
-    empty.textContent = "No transactions match these filters.";
+    empty.className = "tm-empty-state";
+    empty.innerHTML = `<div class="tm-empty-state__title">No transactions match these filters</div><p class="tm-empty-state__lede">Try a wider date range, clearing quick filters, or loosening amount bounds—then tighten again once you see the rows you care about.</p>`;
     txListMain.appendChild(empty);
     renderUncategorizedTransactions();
     refreshTmSummaryStrip();
@@ -6438,7 +6739,18 @@ function renderUpcomingTransactionsFiltered() {
       const row = document.createElement("div");
       row.className = "tm-row";
       row.tabIndex = 0;
-      row.addEventListener("click", () => openTxEditModal(tx));
+      row.setAttribute("title", "Open editor — changes flow into your forecast");
+      row.addEventListener("click", (e) => {
+        if (e.target.closest(".tm-row__edit")) return;
+        openTxEditModal(tx);
+      });
+      row.addEventListener("keydown", (e) => {
+        if (e.target.closest(".tm-row__edit")) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          openTxEditModal(tx);
+        }
+      });
 
       const cDate = document.createElement("div");
       cDate.className = "tm-col tm-col--date";
@@ -6447,7 +6759,7 @@ function renderUpcomingTransactionsFiltered() {
       const cDesc = document.createElement("div");
       cDesc.className = "tm-col tm-col--desc";
       const d1 = document.createElement("div");
-      d1.className = `tm-desc ${kindFgClass(tx.kind)}`;
+      d1.className = `tm-desc${String(tx.kind) === "income" ? " tm-desc--income" : ""}`;
       d1.textContent = primary;
       const d2 = document.createElement("div");
       d2.className = "tm-meta";
@@ -6465,17 +6777,33 @@ function renderUpcomingTransactionsFiltered() {
 
       const cStatus = document.createElement("div");
       cStatus.className = "tm-col tm-col--status";
-      cStatus.innerHTML = `<span class="tm-badge ${isUncat ? "is-warn" : "is-soft is-ok"}">${isUncat ? "Uncategorized" : "Confirmed"}</span>`;
+      cStatus.innerHTML = `<span class="tm-badge ${isUncat ? "tm-badge--uncategorized" : "tm-badge--confirmed"}">${isUncat ? "Uncategorized" : "Confirmed"}</span>`;
 
       const cAmt = document.createElement("div");
       cAmt.className = `tm-col tm-col--amt ${tx.kind === "income" ? "income" : "expense"} ${tmAmtModifierClass(tx.kind, tx.amount)}`;
       cAmt.textContent = `${tx.kind === "income" ? "+" : "-"}$${fmtMoney(tx.amount)}`;
+
+      const cAct = document.createElement("div");
+      cAct.className = "tm-col tm-col--action";
+      const editBtn = document.createElement("button");
+      editBtn.type = "button";
+      editBtn.className = "tm-row__edit";
+      editBtn.setAttribute("aria-label", "Edit transaction");
+      editBtn.setAttribute("title", "Edit — updates your forecast");
+      editBtn.innerHTML = TM_ROW_EDIT_SVG;
+      editBtn.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        ev.preventDefault();
+        openTxEditModal(tx);
+      });
+      cAct.appendChild(editBtn);
 
       row.appendChild(cDate);
       row.appendChild(cDesc);
       row.appendChild(cAmt);
       row.appendChild(cFreq);
       row.appendChild(cStatus);
+      row.appendChild(cAct);
       txListMain.appendChild(row);
       continue;
     }
@@ -6491,7 +6819,18 @@ function renderUpcomingTransactionsFiltered() {
     row.className = "tm-row";
     if (eff.variable) row.classList.add("is-variable");
     row.tabIndex = 0;
-    row.addEventListener("click", () => openExpectedEditModal(tx, { nextOccurrenceIso: nextIso }));
+    row.setAttribute("title", "Open series editor — updates your forecast");
+    row.addEventListener("click", (e) => {
+      if (e.target.closest(".tm-row__edit")) return;
+      openExpectedEditModal(tx, { nextOccurrenceIso: nextIso });
+    });
+    row.addEventListener("keydown", (e) => {
+      if (e.target.closest(".tm-row__edit")) return;
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        openExpectedEditModal(tx, { nextOccurrenceIso: nextIso });
+      }
+    });
 
     const cDate = document.createElement("div");
     cDate.className = "tm-col tm-col--date";
@@ -6500,7 +6839,7 @@ function renderUpcomingTransactionsFiltered() {
     const cDesc = document.createElement("div");
     cDesc.className = "tm-col tm-col--desc";
     const d1 = document.createElement("div");
-    d1.className = `tm-desc ${kindFgClass(eff.kind)}`;
+    d1.className = `tm-desc${String(eff.kind) === "income" ? " tm-desc--income" : ""}`;
     d1.textContent = String(eff.description || "(no description)").trim() || "(no description)";
     const d2 = document.createElement("div");
     d2.className = "tm-meta";
@@ -6519,11 +6858,11 @@ function renderUpcomingTransactionsFiltered() {
     cStatus.className = "tm-col tm-col--status";
     let statusHtml = "";
     if (isUncat) {
-      statusHtml = `<span class="tm-badge is-warn">Uncategorized</span>`;
+      statusHtml = `<span class="tm-badge tm-badge--uncategorized">Uncategorized</span>`;
     } else if (eff.variable) {
-      statusHtml = `<span class="tm-badge is-accent">Variable amount</span>`;
+      statusHtml = `<span class="tm-badge tm-badge--variable">Variable amount</span>`;
     } else {
-      statusHtml = `<span class="tm-badge is-muted is-soft">Upcoming</span>`;
+      statusHtml = `<span class="tm-badge tm-badge--upcoming">Upcoming</span>`;
     }
     cStatus.innerHTML = statusHtml;
 
@@ -6531,11 +6870,27 @@ function renderUpcomingTransactionsFiltered() {
     cAmt.className = `tm-col tm-col--amt ${eff.kind === "income" ? "income" : "expense"} ${tmAmtModifierClass(eff.kind, eff.amount)}`;
     cAmt.textContent = `${eff.kind === "income" ? "+" : "-"}$${fmtMoney(eff.amount)}`;
 
+    const cAct = document.createElement("div");
+    cAct.className = "tm-col tm-col--action";
+    const editBtn = document.createElement("button");
+    editBtn.type = "button";
+    editBtn.className = "tm-row__edit";
+    editBtn.setAttribute("aria-label", "Edit recurring transaction");
+    editBtn.setAttribute("title", "Edit series — updates your forecast");
+    editBtn.innerHTML = TM_ROW_EDIT_SVG;
+    editBtn.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      ev.preventDefault();
+      openExpectedEditModal(tx, { nextOccurrenceIso: nextIso });
+    });
+    cAct.appendChild(editBtn);
+
     row.appendChild(cDate);
     row.appendChild(cDesc);
     row.appendChild(cAmt);
     row.appendChild(cFreq);
     row.appendChild(cStatus);
+    row.appendChild(cAct);
     txListMain.appendChild(row);
   }
 
@@ -6921,6 +7276,7 @@ function computeMonthSummaryTotalsFromState() {
 
 function renderMonthSummaryTotalsFromState() {
   renderTotals(computeMonthSummaryTotalsFromState());
+  refreshSidebarForecastHints();
 }
 
 function renderTransactionsInto(listEl, items, emptyMessage) {
@@ -7983,8 +8339,8 @@ function renderCalendar() {
       <div class="cal-daynum">${isReconciled ? `
         <span class="cal-reconciled-mark" title="Reconciled" aria-label="Reconciled">
           <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-            <circle cx="12" cy="12" r="9"></circle>
-            <path d="M8 12.5l2.6 2.6L16.5 9.2"></path>
+            <circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" stroke-width="1.65"></circle>
+            <path d="M8 12.5l2.6 2.6L16.5 9.2" fill="none" stroke="currentColor" stroke-width="2.35" stroke-linecap="round" stroke-linejoin="round"></path>
           </svg>
         </span>` : ""}<span class="cal-daynum-num${isToday ? " is-today" : ""}">${dObj.getDate()}</span></div>
       <div class="cal-cell-fill"></div>
@@ -8068,13 +8424,8 @@ function renderCalendar() {
         const label = truncate(labelRaw, 48);
 
         const labelSpan = document.createElement("span");
-        labelSpan.className = `cal-tx-label ${kindFgClass(row.kind)}`;
+        labelSpan.className = "cal-tx-label";
         labelSpan.textContent = `${label} `;
-        if (row.category_id) {
-          const st = pillStyleForTransaction(row);
-          const calFg = calendarLabelColorFromCategoryPillStyle(st);
-          if (calFg) labelSpan.style.color = calFg;
-        }
 
         const labelWrap = document.createElement("span");
         labelWrap.className = "cal-tx-label-wrap";
@@ -8090,7 +8441,7 @@ function renderCalendar() {
         labelWrap.appendChild(labelSpan);
 
         const amtSpan = document.createElement("span");
-        amtSpan.className = `cal-amt ${row.kind === "income" ? "income" : "expense"}`;
+        amtSpan.className = "cal-amt";
         amtSpan.textContent = `$${fmtMoney(row.amount)}`;
 
         line.appendChild(labelWrap);
@@ -8210,15 +8561,6 @@ function renderCalendar() {
         else if (endNum < minBalFloor * 1.25) cell.classList.add("cal-cell--bal-watch");
       }
     }
-    if (
-      monthLowPointIso === iso &&
-      !isOutOfMonth &&
-      !cell.classList.contains("cal-cell--bal-risk") &&
-      !cell.classList.contains("cal-cell--bal-warn")
-    ) {
-      cell.classList.add("cal-cell--month-low");
-    }
-
     // Hide forecast "storytelling" annotations (ex: "Low point", "Balance recovers") — keep the calendar clean.
     if (noteEl) {
       noteEl.textContent = "";

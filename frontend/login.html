@@ -6,7 +6,7 @@
     <title>BalanceWhiz</title>
     <link rel="icon" href="./favicon.png" type="image/png" />
     <script>window.API_BASE = "__API_BASE__";</script>
-    <link rel="stylesheet" href="./styles.css?v=353" />
+    <link rel="stylesheet" href="./styles.css?v=360" />
   </head>
   <body class="login-page">
     <div class="container">
@@ -37,7 +37,7 @@
             <p class="login-page__brand-sub">See what’s left after planned bills—not just today’s balance.</p>
             <figure class="login-page__brand-chart-wrap">
               <div class="login-page__brand-chart" aria-hidden="true">
-                <svg viewBox="0 0 320 120" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
+                <svg viewBox="0 0 336 120" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
                   <defs>
                     <linearGradient id="loginBrandChartFill" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stop-color="rgba(11, 61, 46, 0.28)" />
@@ -51,49 +51,51 @@
                       <stop offset="100%" stop-color="rgba(255,255,255,0.18)" />
                     </linearGradient>
                   </defs>
-                  <rect x="8" y="12" width="304" height="72" rx="10" fill="rgba(4, 120, 87, 0.11)" />
-                  <g opacity="0.62" stroke="rgba(11, 61, 46, 0.14)" stroke-width="1">
-                    <line x1="12" y1="36" x2="308" y2="36" />
-                    <line x1="12" y1="52" x2="308" y2="52" />
-                    <line x1="12" y1="68" x2="308" y2="68" />
-                    <line x1="12" y1="84" x2="308" y2="84" />
+                  <g class="login-page__brand-chart-graph" opacity="0.86">
+                    <rect x="8" y="12" width="304" height="72" rx="10" fill="rgba(4, 120, 87, 0.11)" />
+                    <g opacity="0.62" stroke="rgba(11, 61, 46, 0.14)" stroke-width="1">
+                      <line x1="12" y1="36" x2="308" y2="36" />
+                      <line x1="12" y1="52" x2="308" y2="52" />
+                      <line x1="12" y1="68" x2="308" y2="68" />
+                      <line x1="12" y1="84" x2="308" y2="84" />
+                    </g>
+                    <line x1="20" y1="20" x2="20" y2="100" stroke="rgba(11, 61, 46, 0.14)" stroke-width="1" />
+                    <path
+                      d="M12,78 C52,72 88,86 128,70 C168,54 200,88 240,62 C272,44 300,38 308,36 L308,96 L12,96 Z"
+                      fill="url(#loginBrandChartFill)"
+                    />
+                    <rect x="8" y="12" width="304" height="72" rx="10" fill="url(#loginBrandChartFade)" />
+                    <path
+                      d="M12,78 C52,72 88,86 128,70 C168,54 200,88 240,62 C272,44 300,38 308,36"
+                      fill="none"
+                      stroke="#062a20"
+                      stroke-width="3.5"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                    <!-- Outflow at low point: subtle marker, label below so it does not sit on the line -->
+                    <circle class="login-page__chart-dot login-page__chart-dot--out" cx="128" cy="70" r="3.2" />
+                    <text
+                      class="login-page__chart-label login-page__chart-label--out"
+                      x="128"
+                      y="88"
+                      text-anchor="middle"
+                      dominant-baseline="middle"
+                    >
+                      Mortgage
+                    </text>
+                    <!-- Income as balance recovers: label above the line -->
+                    <circle class="login-page__chart-dot login-page__chart-dot--in" cx="268" cy="42" r="3" />
+                    <text
+                      class="login-page__chart-label login-page__chart-label--in"
+                      x="268"
+                      y="28"
+                      text-anchor="middle"
+                      dominant-baseline="middle"
+                    >
+                      Paycheck
+                    </text>
                   </g>
-                  <line x1="20" y1="20" x2="20" y2="100" stroke="rgba(11, 61, 46, 0.14)" stroke-width="1" />
-                  <path
-                    d="M12,78 C52,72 88,86 128,70 C168,54 200,88 240,62 C272,44 300,38 308,36 L308,96 L12,96 Z"
-                    fill="url(#loginBrandChartFill)"
-                  />
-                  <rect x="8" y="12" width="304" height="72" rx="10" fill="url(#loginBrandChartFade)" />
-                  <path
-                    d="M12,78 C52,72 88,86 128,70 C168,54 200,88 240,62 C272,44 300,38 308,36"
-                    fill="none"
-                    stroke="#062a20"
-                    stroke-width="3.5"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                  <!-- Outflow at low point: subtle marker, label below so it does not sit on the line -->
-                  <circle class="login-page__chart-dot login-page__chart-dot--out" cx="128" cy="70" r="3.2" />
-                  <text
-                    class="login-page__chart-label login-page__chart-label--out"
-                    x="128"
-                    y="88"
-                    text-anchor="middle"
-                    dominant-baseline="middle"
-                  >
-                    Mortgage
-                  </text>
-                  <!-- Income as balance recovers: label above the line -->
-                  <circle class="login-page__chart-dot login-page__chart-dot--in" cx="268" cy="42" r="3" />
-                  <text
-                    class="login-page__chart-label login-page__chart-label--in"
-                    x="268"
-                    y="28"
-                    text-anchor="middle"
-                    dominant-baseline="middle"
-                  >
-                    Paycheck
-                  </text>
                 </svg>
               </div>
               <figcaption class="login-page__brand-chart-caption">Projected balance, not just current balance</figcaption>

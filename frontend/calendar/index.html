@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=357" />
+    <link rel="stylesheet" href="../styles.css?v=365" />
   </head>
   <body>
     <div class="container">
@@ -123,7 +123,7 @@
                   </div>
                 </div>
               </div>
-              <div class="tx-add-vspace" aria-hidden="true"></div>
+              <div class="tx-add-vspace tx-add-vspace--xs" aria-hidden="true"></div>
               <div class="form-row-h">
                 <div class="form-row-h__label"><label for="txAddAmount">Amount</label></div>
                 <div class="form-row-h__field">
@@ -133,54 +133,67 @@
                   </div>
                 </div>
               </div>
-              <div class="tx-add-vspace" aria-hidden="true"></div>
+              <div class="tx-add-vspace tx-add-vspace--xs" aria-hidden="true"></div>
               <div class="form-row-h">
                 <div class="form-row-h__label"><label for="txAddCategoryId">Category</label></div>
                 <div class="form-row-h__field"><select id="txAddCategoryId"></select></div>
               </div>
-              <div class="tx-add-vspace" aria-hidden="true"></div>
+              <div class="tx-add-vspace tx-add-vspace--xs" aria-hidden="true"></div>
+              <div class="form-row-h">
+                <div class="form-row-h__label"><label for="txAddAccountId">Account</label></div>
+                <div class="form-row-h__field"><select id="txAddAccountId"></select></div>
+              </div>
+              <div class="tx-add-vspace tx-add-vspace--xs" aria-hidden="true"></div>
               <div class="form-row-h">
                 <div class="form-row-h__label"><label for="txAddDate" id="txAddDateLabel">Date</label></div>
                 <div class="form-row-h__field"><input id="txAddDate" type="date" /></div>
               </div>
-              <div class="tx-add-vspace tx-add-vspace--lg" aria-hidden="true"></div>
-              <div class="tx-add-schedule-toolbar" aria-label="Repeat and schedule">
-                <div class="tx-add-schedule-toolbar__left">
-                  <div class="tx-add-schedule-question">Make this recurring?</div>
-                  <div class="tx-add-repeat-row">
-                    <label class="tx-add-repeat-yes">
-                      <input id="txAddRepeats" type="checkbox" />
-                      <span class="sr-only">Yes</span>
-                    </label>
-                    <div id="txAddRecurrenceWrap" class="tx-add-recurrence-inline" hidden>
-                      <span class="tx-add-recurrence-inline__every">every</span>
-                      <select id="txAddRecurrence" class="tx-add-recurrence-select" title="How often this repeats">
-                        <option value="monthly" selected>month</option>
-                        <option value="twice_monthly">2× / month</option>
-                        <option value="bimonthly">bi-monthly</option>
-                        <option value="biweekly">2 weeks</option>
-                        <option value="weekly">week</option>
-                        <option value="semiannual">6 months</option>
-                        <option value="yearly">year</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div id="txAddEndDateWrap" class="tx-add-schedule-field tx-add-schedule-field--end-date" hidden>
-                    <label for="txAddEndDate" title="Optional. End date for this recurring transaction. Blank = never ends.">Ends on</label>
-                    <input id="txAddEndDate" type="date" title="Optional. Last date this schedule can occur." />
+              <div class="tx-add-vspace tx-add-vspace--sm" aria-hidden="true"></div>
+              <div id="txAddScheduleCompact" class="tx-add-schedule-compact" aria-label="Repeat and schedule">
+                <div class="form-row-h">
+                  <div class="form-row-h__label"><label for="txAddRecurrence">Repeat</label></div>
+                  <div class="form-row-h__field">
+                    <select id="txAddRecurrence" class="tx-add-recurrence-select" title="How often this repeats">
+                      <option value="" selected>Does not repeat</option>
+                      <option value="monthly">Every month</option>
+                      <option value="twice_monthly">Twice monthly</option>
+                      <option value="bimonthly">Every 2 months</option>
+                      <option value="biweekly">Every 2 weeks</option>
+                      <option value="weekly">Every week</option>
+                      <option value="semiannual">Every 6 months</option>
+                      <option value="yearly">Every year</option>
+                    </select>
                   </div>
                 </div>
-                <div class="tx-add-schedule-toolbar__right">
-                  <div id="txAddEndCountWrap" class="tx-add-schedule-field tx-add-schedule-field--end-count" hidden>
-                    <label for="txAddEndCount" title="Optional. Number of times this recurring transaction happens. Blank = never ends.">Ends after</label>
-                    <input id="txAddEndCount" type="number" min="1" step="1" placeholder="e.g. 12" title="Optional. Total number of occurrences." />
-                    <span class="tx-add-field-hint">occurrences</span>
+                <div id="txAddEndsRow" class="form-row-h tx-add-ends-row" hidden>
+                  <div class="form-row-h__label"><label for="txAddEndsMode">Ends</label></div>
+                  <div class="form-row-h__field">
+                    <select id="txAddEndsMode" class="tx-add-recurrence-select" title="When the schedule stops">
+                      <option value="never" selected>Never</option>
+                      <option value="on_date">On date…</option>
+                      <option value="after_count">After N times…</option>
+                    </select>
+                  </div>
+                </div>
+                <div id="txAddEndDetailWrap" class="tx-add-end-detail" hidden>
+                  <div id="txAddEndDateWrap" class="form-row-h tx-add-end-detail__row" hidden>
+                    <div class="form-row-h__label"><label for="txAddEndDate">End date</label></div>
+                    <div class="form-row-h__field">
+                      <input id="txAddEndDate" type="date" title="Last date this schedule can occur." />
+                    </div>
+                  </div>
+                  <div id="txAddEndCountWrap" class="form-row-h tx-add-end-detail__row" hidden>
+                    <div class="form-row-h__label"><label for="txAddEndCount">Occurrences</label></div>
+                    <div class="form-row-h__field tx-add-end-count-field">
+                      <input id="txAddEndCount" type="number" min="1" step="1" placeholder="e.g. 12" title="Total number of times." />
+                      <span class="tx-add-field-hint">total</span>
+                    </div>
                   </div>
                 </div>
               </div>
-              <div class="tx-add-vspace tx-add-vspace--lg" aria-hidden="true"></div>
+              <div class="tx-add-vspace tx-add-vspace--xs" aria-hidden="true"></div>
               <div id="txAddRecurringBlock" style="display: none">
-                <div class="tx-add-vspace tx-add-vspace--sm" aria-hidden="true"></div>
+                <div class="tx-add-vspace tx-add-vspace--2xs" aria-hidden="true"></div>
                 <div id="txAddTwiceMonthlyFields" class="expected-second-day-row" style="display: none">
                   <label for="txAddSecondDayOfMonth">2nd day of month</label>
                   <input
@@ -192,11 +205,9 @@
                     placeholder="e.g. 15"
                     title="Second scheduled day each month; must differ from the start date’s calendar day."
                   />
-                  <p style="margin: 6px 0 0; font-size: 12px; color: var(--muted)">
-                    Required for twice monthly: other day of the month (1–31), not the same as the start date’s day.
-                  </p>
+                  <p class="tx-add-twice-monthly-hint">Required for twice monthly: pick another day (1–31), not the same as the start date’s day.</p>
                 </div>
-                <div class="tx-add-vspace tx-add-vspace--sm" aria-hidden="true"></div>
+                <div class="tx-add-vspace tx-add-vspace--2xs" aria-hidden="true"></div>
                 <label class="reimbursable-field" for="txAddVariable" title="Great for utilities, groceries or credit card bills.">
                   <span class="reimbursable-field__lead">
                     <span class="reimbursable-field__label">Amount varies month to month</span>
@@ -204,29 +215,29 @@
                   </span>
                   <span class="reimbursable-field__hint">Great for utilities &amp; credit card bills</span>
                 </label>
-                <div class="tx-add-vspace tx-add-vspace--sm" aria-hidden="true"></div>
-                <div class="form-row-h">
-                  <div class="form-row-h__label"><label for="txAddAccountId">Account</label></div>
-                  <div class="form-row-h__field"><select id="txAddAccountId"></select></div>
-                </div>
               </div>
-              <div class="tx-add-vspace tx-add-vspace--lg" aria-hidden="true"></div>
-              <div id="txAddCategoryColorRow" class="cat-color-row" hidden>
-                <div class="cat-color-row__label">Select color (optional)</div>
-                <div class="cat-color-row__swatches" id="txAddCategoryColorSwatches"></div>
-                <button type="button" class="cat-color-row__clear secondary" id="txAddCategoryColorClear" hidden>Clear</button>
-              </div>
-              <div class="tx-add-vspace" aria-hidden="true"></div>
+              <div class="tx-add-vspace tx-add-vspace--sm" aria-hidden="true"></div>
               <div class="form-row-h">
                 <div class="form-row-h__label"><label for="txAddNotes">Notes</label></div>
                 <div class="form-row-h__field">
                   <input id="txAddNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
                 </div>
               </div>
-              <div class="modal-actions">
-                <div class="row two">
-                  <button type="button" id="txAddSave">Add</button>
-                  <button type="button" id="txAddCancel" class="secondary">Cancel</button>
+              <div class="tx-add-vspace tx-add-vspace--2xs" aria-hidden="true"></div>
+              <div class="tx-add-color-wrap">
+                <button type="button" id="txAddColorToggle" class="tx-add-color-toggle" aria-expanded="false" aria-controls="txAddCategoryColorRow">
+                  Color (optional)
+                </button>
+                <div id="txAddCategoryColorRow" class="cat-color-row tx-add-cat-color-panel" hidden>
+                  <div class="cat-color-row__label">Select color</div>
+                  <div class="cat-color-row__swatches" id="txAddCategoryColorSwatches"></div>
+                  <button type="button" class="cat-color-row__clear secondary" id="txAddCategoryColorClear" hidden>Clear</button>
+                </div>
+              </div>
+              <div class="modal-actions modal-actions--tx-add-foot">
+                <div class="row two tx-add-actions-row">
+                  <button type="button" id="txAddSave" class="tx-add-btn-primary">Add</button>
+                  <button type="button" id="txAddCancel" class="secondary tx-add-btn-secondary">Cancel</button>
                 </div>
               </div>
             </div>
@@ -441,12 +452,12 @@
                 <div class="settings-pane is-active" data-settings-pane="accounts" id="settingsAccountsPane">
                   <header class="settings-section-head">
                     <h2 class="settings-section-title" id="settingsAccountsHeading">Accounts</h2>
-                    <p class="settings-section-lede">Checking, savings, and credit accounts used in your forecast.</p>
+                    <p class="settings-section-lede">Accounts included in your forecast.</p>
                   </header>
                   <div class="settings-section-body">
                     <div class="list settings-account-list" id="accountsList"></div>
                     <div class="settings-actions-row">
-                      <button type="button" id="openAccountModalBtn" class="secondary">Add account</button>
+                      <button type="button" id="openAccountModalBtn" class="secondary settings-add-account-btn">Add account</button>
                     </div>
                   </div>
                 </div>
@@ -454,14 +465,14 @@
                 <div class="settings-pane" data-settings-pane="forecastRules" hidden>
                   <header class="settings-section-head">
                     <h2 class="settings-section-title">Forecast rules</h2>
-                    <p class="settings-section-lede">Numbers used for low-balance warnings and high-balance hints in Reports and the sidebar.</p>
+                    <p class="settings-section-lede">Balance signals for Forecast, Reports, and sidebar outlook.</p>
                   </header>
                   <div class="balance-threshold-box balance-threshold-box--panel balance-threshold-box--compact" aria-label="Forecast thresholds">
                     <h3 class="settings-subhead settings-subhead--thresholds">Thresholds</h3>
-                    <p class="balance-threshold-lede">Warn when projected balance drops below your floor, or when checking rises above your ceiling.</p>
+                    <p class="balance-threshold-lede">Surface tight cash before transfers, and when checking sits above your comfort zone.</p>
                     <div class="balance-threshold-fields">
                       <div class="form-row-h">
-                        <div class="form-row-h__label"><label for="balanceThresholdMin">Low balance warning</label></div>
+                        <div class="form-row-h__label"><label for="balanceThresholdMin">Balance floor (warn below)</label></div>
                         <div class="form-row-h__field">
                           <div class="money-input threshold-input">
                             <span class="money-input__prefix" aria-hidden="true">$</span>
@@ -470,7 +481,7 @@
                         </div>
                       </div>
                       <div class="form-row-h">
-                        <div class="form-row-h__label"><label for="balanceThresholdMax">Target checking ceiling</label></div>
+                        <div class="form-row-h__label"><label for="balanceThresholdMax">Comfort ceiling (optional)</label></div>
                         <div class="form-row-h__field">
                           <div class="money-input threshold-input">
                             <span class="money-input__prefix" aria-hidden="true">$</span>
@@ -479,17 +490,14 @@
                         </div>
                       </div>
                     </div>
-                    <div class="form-row-h balance-threshold-save-row">
-                      <div class="form-row-h__label" aria-hidden="true"></div>
-                      <div class="form-row-h__field">
-                        <button type="button" id="balanceThresholdSaveBtn" class="secondary">Save</button>
+                    <div class="balance-threshold-card-foot">
+                      <div class="balance-threshold-card-foot__msg">
+                        <div id="lowBalanceErr" class="error" style="display: none" role="alert"></div>
+                        <p id="balanceThresholdSavedMsg" class="balance-threshold-saved-msg" hidden aria-live="polite" role="status"></p>
                       </div>
+                      <button type="button" id="balanceThresholdSaveBtn" class="secondary">Save</button>
                     </div>
-                    <div id="lowBalanceErr" class="error" style="display: none" role="alert"></div>
-                    <p id="balanceThresholdSavedMsg" class="balance-threshold-saved-msg" hidden aria-live="polite" role="status"></p>
-                    <p class="balance-threshold-hint meta">
-                      Leave blank to turn off a threshold. <strong>Save</strong> stores values for this household; until then, this browser may preview changes only.
-                    </p>
+                    <p class="balance-threshold-hint meta">Blank turns a threshold off. Save applies for this household.</p>
                   </div>
                 </div>
 
@@ -530,61 +538,81 @@
                 <div class="settings-pane" data-settings-pane="familySharing" hidden>
                   <header class="settings-section-head">
                     <h2 class="settings-section-title">Household</h2>
-                    <p class="settings-section-lede">Share forecasting with a partner or family member.</p>
+                    <p class="settings-section-lede">Invite someone to shared forecasting, or manage who’s already in.</p>
                   </header>
-                  <p class="meta">
-                    The first person who creates a family is the owner. Owners can invite a partner by email (they can create an account from the link) or
-                    add someone who already uses Balance Whiz.
-                  </p>
                   <div id="familyInviteWrap" class="family-invite-wrap" hidden>
-                    <h3 class="settings-subhead">Invite by email</h3>
-                    <p class="meta">
-                      Sends an invitation link. Your partner should use the same email when they sign up or log in. Email delivery uses the same Resend or
-                      SMTP settings as the contact form on the server.
-                    </p>
-                    <div class="form-row-h">
-                      <div class="form-row-h__label"><label for="familyInviteEmail">Email</label></div>
-                      <div class="form-row-h__field">
-                        <input id="familyInviteEmail" type="email" autocomplete="off" placeholder="name@example.com" />
+                    <div class="settings-subsection">
+                      <h3 class="settings-subhead">Invite someone</h3>
+                      <div class="form-row-h">
+                        <div class="form-row-h__label"><label for="familyInviteEmail">Email</label></div>
+                        <div class="form-row-h__field">
+                          <input id="familyInviteEmail" type="email" autocomplete="off" placeholder="name@example.com" />
+                        </div>
                       </div>
-                    </div>
-                    <div class="form-row-h">
-                      <div class="form-row-h__label"><label for="familyInviteAccess">Access</label></div>
-                      <div class="form-row-h__field">
-                        <select id="familyInviteAccess">
-                          <option value="view">View only</option>
-                          <option value="edit">Can edit</option>
-                        </select>
+                      <div class="form-row-h">
+                        <div class="form-row-h__label"><label for="familyInviteAccess">Access</label></div>
+                        <div class="form-row-h__field">
+                          <select id="familyInviteAccess">
+                            <option value="view">View only</option>
+                            <option value="edit">Can edit</option>
+                          </select>
+                        </div>
                       </div>
+                      <button type="button" id="familySendInviteBtn" class="settings-house-primary-btn">Send invite</button>
                     </div>
-                    <div class="tx-add-vspace" aria-hidden="true"></div>
-                    <button type="button" id="familySendInviteBtn">Send email invite</button>
-                    <div class="tx-add-vspace" aria-hidden="true"></div>
-                    <h3 class="settings-subhead">Add existing account</h3>
-                    <p class="meta">If they already have a Balance Whiz login, you can add them immediately without email.</p>
-                    <button type="button" id="familyInviteBtn">Add to this family</button>
+                    <div class="settings-subsection settings-subsection--spaced">
+                      <h3 class="settings-subhead">Already on BalanceWhiz?</h3>
+                      <p class="settings-subsection-hint">Add them to this household without email.</p>
+                      <button type="button" id="familyInviteBtn" class="secondary">Add to household</button>
+                    </div>
                   </div>
-                  <div class="tx-add-vspace" aria-hidden="true"></div>
-                  <h3 class="settings-subhead">Pending email invites</h3>
-                  <div id="familyPendingInvites" class="family-pending-invites"></div>
-                  <div class="tx-add-vspace" aria-hidden="true"></div>
-                  <h3 class="settings-subhead">Members</h3>
-                  <div id="familyMembersList" class="family-members-list"></div>
-                  <div id="familyMembersErr" class="error"></div>
+                  <div class="settings-house-section">
+                    <h3 class="settings-subhead">Pending invites</h3>
+                    <div id="familyPendingInvites" class="family-pending-invites"></div>
+                  </div>
+                  <div class="settings-house-section">
+                    <h3 class="settings-subhead">Household members</h3>
+                    <div id="familyMembersList" class="family-members-list"></div>
+                    <div id="familyMembersErr" class="error"></div>
+                  </div>
                 </div>
 
                 <div class="settings-pane" data-settings-pane="notifications" hidden>
                   <header class="settings-section-head">
                     <h2 class="settings-section-title">Notifications &amp; alerts</h2>
-                    <p class="settings-section-lede">Choose how BalanceWhiz warns you about balance and transfers.</p>
+                    <p class="settings-section-lede">How BalanceWhiz flags balance risk and big moves.</p>
                   </header>
-                  <p class="meta">
-                    Risk levels follow the dollar thresholds in <strong>Forecast rules</strong>. Expanded delivery options (email, summaries, large-expense alerts)
-                    will appear here.
+                  <ul class="settings-notif-list" aria-label="Notification preferences">
+                    <li class="settings-notif-row">
+                      <div class="settings-notif-row__main">
+                        <span class="settings-notif-row__label">Low balance alerts</span>
+                        <span class="settings-notif-row__hint">Uses your floor in Forecast rules</span>
+                      </div>
+                      <span class="settings-notif-pill settings-notif-pill--on">On</span>
+                    </li>
+                    <li class="settings-notif-row">
+                      <div class="settings-notif-row__main">
+                        <span class="settings-notif-row__label">Large expense warnings</span>
+                      </div>
+                      <span class="settings-notif-pill settings-notif-pill--off">Off</span>
+                    </li>
+                    <li class="settings-notif-row">
+                      <div class="settings-notif-row__main">
+                        <span class="settings-notif-row__label">Weekly summary</span>
+                      </div>
+                      <span class="settings-notif-pill settings-notif-pill--soon">Soon</span>
+                    </li>
+                    <li class="settings-notif-row">
+                      <div class="settings-notif-row__main">
+                        <span class="settings-notif-row__label">Email alerts</span>
+                      </div>
+                      <span class="settings-notif-pill settings-notif-pill--soon">Soon</span>
+                    </li>
+                  </ul>
+                  <p class="meta settings-notif-foot">
+                    More channels are on the way. Tune balance numbers in
+                    <button type="button" class="settings-text-btn" id="settingsJumpForecastRulesBtn">Forecast rules</button>.
                   </p>
-                  <div class="settings-callout settings-callout--muted">
-                    <p class="meta">Tip: set <button type="button" class="settings-text-btn" id="settingsJumpForecastRulesBtn">Forecast rules</button> first so alerts have numbers to compare against.</p>
-                  </div>
                 </div>
 
                 <div class="settings-pane" data-settings-pane="preferences" hidden>
@@ -983,24 +1011,39 @@
     </div>
 
     <div id="reconcileModal" class="modal-overlay" aria-hidden="true">
-      <div class="modal" role="dialog" aria-labelledby="reconcileTitle">
-        <h3 id="reconcileTitle">Day status</h3>
-        <div id="reconcileErr" class="error"></div>
-        <div class="reconcile-inline-row">
-          <div class="form-row-h">
-            <div class="form-row-h__label"><label>Date</label></div>
-            <div class="form-row-h__field"><div class="reconcile-date-value" id="reconcileDateText">—</div></div>
+      <div class="modal modal--reconcile" role="dialog" aria-labelledby="reconcileTitle" aria-modal="true">
+        <h3 id="reconcileTitle" class="reconcile-modal__title">Reconcile</h3>
+        <p id="reconcileLead" class="reconcile-modal__lead"></p>
+        <p class="reconcile-modal__sub">Mark this day as reconciled when your real-world balance lines up with what you see here.</p>
+        <div id="reconcileBalanceBlock" class="reconcile-modal__balance" hidden>
+          <div class="reconcile-modal__balance-row">
+            <span class="reconcile-modal__balance-k">Forecasted end-of-day</span>
+            <span class="reconcile-modal__balance-v" id="reconcileForecastBal">—</span>
           </div>
-          <div class="form-row-h">
-            <div class="form-row-h__label"><label for="reconcileChecked">Reconciled</label></div>
-            <div class="form-row-h__field"><input id="reconcileChecked" type="checkbox" /></div>
+          <div class="reconcile-modal__balance-row reconcile-modal__balance-row--field">
+            <label class="reconcile-modal__balance-k" for="reconcileActualBal">Actual balance</label>
+            <input
+              id="reconcileActualBal"
+              type="text"
+              class="reconcile-modal__actual-input"
+              disabled
+              placeholder="Coming soon"
+              autocomplete="off"
+            />
           </div>
         </div>
-        <div class="modal-actions">
-          <div class="row two">
-            <button type="button" id="reconcileSaveBtn">Save</button>
-            <button type="button" id="reconcileCancelBtn" class="danger">Cancel</button>
-          </div>
+        <div id="reconcileErr" class="error"></div>
+        <div class="reconcile-modal__status">
+          <label class="reconcile-switch">
+            <span class="reconcile-switch__text">Mark as reconciled</span>
+            <input id="reconcileChecked" type="checkbox" class="sr-only" />
+            <span class="reconcile-switch__track" aria-hidden="true"></span>
+          </label>
+        </div>
+        <p class="reconcile-modal__footnote">Reconciled days help keep your forecast accurate.</p>
+        <div class="modal-actions reconcile-modal__actions">
+          <button type="button" id="reconcileCancelBtn" class="reconcile-modal__cancel">Cancel</button>
+          <button type="button" id="reconcileSaveBtn" class="reconcile-modal__primary">Save</button>
         </div>
       </div>
     </div>
@@ -1082,6 +1125,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="../app.js?v=233"></script>
+    <script src="../app.js?v=238"></script>
   </body>
 </html>
