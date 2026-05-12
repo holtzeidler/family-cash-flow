@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=391" />
+    <link rel="stylesheet" href="../styles.css?v=392" />
   </head>
   <body>
     <div class="container">
@@ -209,12 +209,10 @@
                   <p class="tx-add-twice-monthly-hint">Choose another day from 1–31 (not the same as the start date).</p>
                 </div>
                 <div class="tx-add-vspace tx-add-vspace--2xs" aria-hidden="true"></div>
-                <label class="reimbursable-field tx-add-variable-field" for="txAddVariable">
-                  <span class="reimbursable-field__lead">
-                    <span class="reimbursable-field__label">Amount varies</span>
-                    <input id="txAddVariable" type="checkbox" />
-                  </span>
-                  <span class="reimbursable-field__hint">For utilities, credit cards, and bills that change each cycle.</span>
+                <label class="tx-add-variable-toggle" for="txAddVariable">
+                  <input id="txAddVariable" type="checkbox" />
+                  <span class="tx-add-variable-toggle__label">Variable amount</span>
+                  <span class="tx-add-variable-toggle__hint">Estimate changes month-to-month</span>
                 </label>
               </div>
               <div class="tx-add-vspace tx-add-vspace--sm" aria-hidden="true"></div>
@@ -228,15 +226,15 @@
               </div>
               <div class="tx-add-vspace tx-add-vspace--2xs" aria-hidden="true"></div>
               <div class="tx-add-advanced">
-                <div class="tx-add-advanced__title">Advanced options</div>
-                <div class="tx-add-advanced__chips">
-                  <button type="button" id="txAddColorToggle" class="tx-add-advanced__chip tx-add-advanced__chip--color" aria-expanded="false" aria-controls="txAddCategoryColorRow">
-                    <span class="tx-add-advanced__chip-dot" id="txAddColorChipDot" aria-hidden="true"></span>
-                    <span class="tx-add-advanced__chip-label">Color</span>
-                  </button>
-                </div>
+                <button type="button" id="txAddColorToggle" class="tx-add-advanced__expander" aria-expanded="false" aria-controls="txAddCategoryColorRow">
+                  <span class="tx-add-advanced__expander-chev" aria-hidden="true">
+                    <svg viewBox="0 0 12 12" width="9" height="9" focusable="false"><path d="M3.5 2.5 L8 6 L3.5 9.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  </span>
+                  <span class="tx-add-advanced__expander-label">Advanced options</span>
+                  <span class="tx-add-advanced__chip-dot" id="txAddColorChipDot" aria-hidden="true"></span>
+                </button>
                 <div id="txAddCategoryColorRow" class="cat-color-row tx-add-cat-color-panel" hidden>
-                  <div class="cat-color-row__label">Select color</div>
+                  <div class="cat-color-row__label">Color</div>
                   <div class="cat-color-row__swatches" id="txAddCategoryColorSwatches"></div>
                   <button type="button" class="cat-color-row__clear secondary" id="txAddCategoryColorClear" hidden>Clear</button>
                 </div>
@@ -1337,6 +1335,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="../app.js?v=255"></script>
+    <script src="../app.js?v=256"></script>
   </body>
 </html>

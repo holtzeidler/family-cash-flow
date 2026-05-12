@@ -9701,8 +9701,8 @@ body.plans-page .container > .grid{
 }
 
 .tx-add-schedule-compact{
-  padding: 2px 0 4px;
-  border-bottom: 1px solid rgba(17, 24, 39, 0.06);
+  padding: 2px 0 2px;
+  border-bottom: none;
 }
 .tx-add-schedule-compact .form-row-h{
   margin: 0;
@@ -9813,74 +9813,74 @@ body.plans-page .container > .grid{
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
+/* "Advanced options" expander: a quiet single-line trigger, NOT a framed block. */
 .tx-add-advanced{
-  margin-top: 2px;
-  padding: 5px 9px 5px;
-  border-radius: 10px;
-  background: rgba(15, 23, 42, 0.025);
-  border: 1px solid rgba(17, 24, 39, 0.05);
+  margin-top: 4px;
+  padding: 0;
+  border: none;
+  background: transparent;
 }
-.tx-add-advanced__title{
-  font-size: 9.5px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: rgba(100, 116, 139, 0.78);
-  margin: 0 0 4px;
-}
-.tx-add-advanced__chips{
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  align-items: center;
-}
-.tx-add-advanced__chip{
+.tx-add-advanced__expander{
   appearance: none;
+  background: transparent;
+  border: none;
+  padding: 4px 2px;
+  margin: 0;
   font: inherit;
-  font-size: 12px;
-  font-weight: 600;
-  color: rgba(55, 65, 81, 0.95);
-  background: var(--panel, #fff);
-  border: 1px solid rgba(17, 24, 39, 0.1);
-  padding: 4px 10px;
-  border-radius: 999px;
-  cursor: pointer;
-  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.04);
-  transition: background 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
-}
-.tx-add-advanced__chip:hover{
-  border-color: rgba(17, 24, 39, 0.16);
-  background: rgba(255, 255, 255, 0.95);
-}
-.tx-add-advanced__chip.is-open{
-  border-color: color-mix(in srgb, var(--accent) 45%, rgba(17, 24, 39, 0.12));
-  background: color-mix(in srgb, var(--accent) 9%, var(--panel, #fff));
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent);
-}
-.tx-add-advanced__chip--color{
+  font-size: 11.5px;
+  font-weight: 500;
+  color: rgba(75, 85, 99, 0.72);
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding-left: 9px;
+  gap: 6px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: color 0.12s ease, background 0.12s ease;
+}
+.tx-add-advanced__expander:hover{
+  color: rgba(17, 24, 39, 0.86);
+  background: rgba(15, 23, 42, 0.04);
+}
+.tx-add-advanced__expander.is-open{
+  color: rgba(17, 24, 39, 0.86);
+}
+.tx-add-advanced__expander-chev{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 9px;
+  height: 9px;
+  color: rgba(100, 116, 139, 0.65);
+  transition: transform 0.15s ease, color 0.12s ease;
+}
+.tx-add-advanced__expander.is-open .tx-add-advanced__expander-chev{
+  transform: rotate(90deg);
+  color: rgba(17, 24, 39, 0.8);
+}
+.tx-add-advanced__expander-label{
+  line-height: 1.1;
 }
 .tx-add-advanced__chip-dot{
-  width: 11px;
-  height: 11px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
   background: rgba(148, 163, 184, 0.45);
   box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.12);
   transition: background 0.15s ease, box-shadow 0.15s ease;
   flex-shrink: 0;
-}
-.tx-add-advanced__chip-label{
-  line-height: 1;
+  margin-left: 1px;
 }
 .tx-add-cat-color-panel.cat-color-row{
   width: 100%;
   flex-wrap: wrap;
-  padding: 6px 0 1px;
+  padding: 4px 0 0 18px;
   margin-top: 3px;
   gap: 6px;
+}
+.tx-add-cat-color-panel .cat-color-row__label{
+  font-size: 10.5px;
+  font-weight: 500;
+  color: rgba(100, 116, 139, 0.78);
 }
 .tx-add-form .tx-add-cat-color-panel .cat-swatch{
   width: 15px;
@@ -9915,14 +9915,16 @@ body.plans-page .container > .grid{
   line-height: 1.25;
 }
 .modal--tx-add .tx-add-btn-secondary{
-  background: rgba(15, 23, 42, 0.015) !important;
-  border-color: rgba(15, 23, 42, 0.06) !important;
-  color: rgba(75, 85, 99, 0.78) !important;
+  background: transparent !important;
+  border-color: transparent !important;
+  color: rgba(100, 116, 139, 0.68) !important;
+  font-weight: 500 !important;
+  box-shadow: none !important;
 }
 .modal--tx-add .tx-add-btn-secondary:hover{
-  background: rgba(15, 23, 42, 0.045) !important;
-  border-color: rgba(15, 23, 42, 0.1) !important;
-  color: rgba(17, 24, 39, 0.92) !important;
+  background: rgba(15, 23, 42, 0.04) !important;
+  border-color: transparent !important;
+  color: rgba(31, 41, 55, 0.86) !important;
 }
 .tx-add-form .tx-add-vspace{
   height: 12px;
@@ -9954,21 +9956,34 @@ body.plans-page .container > .grid{
   color: rgba(100, 116, 139, 0.72);
   opacity: 1;
 }
+.modal--tx-add .kind-toggle{
+  border-color: rgba(17, 24, 39, 0.075);
+  background: rgba(15, 23, 42, 0.022);
+}
 .modal--tx-add .kind-toggle .kind-opt{
   padding: 7px 10px;
   min-height: 34px;
   font-size: 12.5px;
-  color: rgba(55, 65, 81, 0.78);
+  color: rgba(71, 85, 105, 0.58);
+}
+.modal--tx-add .kind-toggle .kind-opt + .kind-opt{
+  border-left-color: rgba(17, 24, 39, 0.06);
 }
 .modal--tx-add .kind-toggle .kind-opt:has(input[value="expense"]:checked){
-  background: rgba(167, 55, 68, 0.055);
-  color: color-mix(in srgb, var(--danger) 76%, var(--text));
+  background: rgba(167, 55, 68, 0.075);
+  color: color-mix(in srgb, var(--danger) 86%, var(--text));
+  font-weight: 700;
 }
 .modal--tx-add .kind-toggle .kind-opt:has(input[value="expense"]:checked):hover{
-  background: rgba(167, 55, 68, 0.085);
+  background: rgba(167, 55, 68, 0.105);
 }
 .modal--tx-add .kind-toggle .kind-opt:has(input[value="income"]:checked){
-  background: rgba(0, 90, 74, 0.085);
+  background: rgba(0, 90, 74, 0.105);
+  color: color-mix(in srgb, var(--ok) 92%, var(--text));
+  font-weight: 700;
+}
+.modal--tx-add .kind-toggle .kind-opt:has(input[value="income"]:checked):hover{
+  background: rgba(0, 90, 74, 0.135);
 }
 .modal--tx-add .tx-add-form .form-row-h__field > input:not([type="checkbox"]):not([type="radio"]),
 .modal--tx-add .tx-add-form .form-row-h__field > select,
@@ -10021,30 +10036,44 @@ body.plans-page .container > .grid{
   opacity: 0.75;
 }
 .modal--tx-add .tx-add-form .input-notes-flex{
-  padding: 5px 9px;
-  font-size: 13px;
+  padding: 4px 9px;
+  font-size: 12.5px;
   line-height: 1.2;
   min-height: 0;
+  background: rgba(15, 23, 42, 0.015);
+  border-color: rgba(17, 24, 39, 0.06);
 }
 .modal--tx-add .tx-add-form .input-notes-flex:focus{
-  padding-top: 6px;
-  padding-bottom: 6px;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  background: var(--panel, #fff);
+  border-color: rgba(17, 24, 39, 0.18);
 }
 .modal--tx-add .tx-add-form .tx-add-recurrence-select{
   padding: 5px 7px;
   font-size: 13px;
 }
 .modal--tx-add .tx-add-form .tx-add-vspace--xs{
-  height: 5px;
+  height: 4px;
 }
 .modal--tx-add .tx-add-form .tx-add-vspace--sm{
-  height: 7px;
+  height: 6px;
+}
+.modal--tx-add .tx-add-form .tx-add-vspace--2xs{
+  height: 3px;
 }
 .modal--tx-add .tx-add-form .tx-add-vspace{
-  height: 8px;
+  height: 7px;
+}
+.modal--tx-add .tx-add-form .tx-add-vspace--lg{
+  height: 11px;
 }
 .modal--tx-add #txAddRecurringBlock .tx-add-vspace--2xs{
-  height: 4px;
+  height: 3px;
+}
+/* Slight nudge: a touch less label/field gap inside the modal form. */
+.modal--tx-add .tx-add-form .form-row-h{
+  gap: 6px 10px;
 }
 .modal--tx-add .tx-add-form .tx-add-variable-field{
   gap: 2px;
@@ -10053,6 +10082,53 @@ body.plans-page .container > .grid{
 .modal--tx-add .tx-add-form .tx-add-variable-field .reimbursable-field__hint{
   font-size: 10px;
   opacity: 0.78;
+}
+/* Compact inline "Variable amount" toggle (replaces the old labelled checkbox block). */
+.tx-add-variable-toggle{
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  cursor: pointer;
+  user-select: none;
+  padding: 2px 0;
+}
+.tx-add-variable-toggle input[type="checkbox"]{
+  margin: 0;
+  flex-shrink: 0;
+  accent-color: var(--accent);
+}
+.tx-add-variable-toggle__label{
+  font-size: 11.5px;
+  font-weight: 600;
+  color: rgba(55, 65, 81, 0.92);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.tx-add-variable-toggle__hint{
+  font-size: 10px;
+  font-weight: 400;
+  color: rgba(100, 116, 139, 0.7);
+  letter-spacing: 0.005em;
+}
+/* Recurring sub-cluster: lighter background to mark it as secondary configuration. */
+.modal--tx-add #txAddRecurringBlock{
+  margin-top: 4px;
+  padding: 6px 8px 5px;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.02);
+  border: 1px solid rgba(17, 24, 39, 0.04);
+}
+.modal--tx-add #txAddRecurringBlock .tx-add-second-monthly__row label{
+  font-size: 10px;
+  font-weight: 500;
+  color: rgba(100, 116, 139, 0.78);
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+.modal--tx-add #txAddRecurringBlock .tx-add-twice-monthly-hint{
+  font-size: 9.5px;
+  color: rgba(100, 116, 139, 0.66);
 }
 .modal--tx-add .kind-toggle{
   max-width: 100%;
