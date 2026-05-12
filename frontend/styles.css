@@ -4525,105 +4525,238 @@ body[data-bw-view="reports"] .reports-card--hero .projection-chart-wrap--reports
 }
 .reports-pressure-hint{
   margin: 0 0 8px;
+  font-size: 0.78rem;
+  color: rgba(100, 116, 139, 0.78);
 }
 .reports-card--pressure .reports-card__head{
   margin-bottom: 12px;
 }
 .reports-ob-summary--pressure{
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
+
+/* Narrative summary (the "story" above the table) */
+.reports-pressure-narrative{
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(17, 24, 39, 0.05);
+  background: rgba(252, 252, 253, 0.7);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.reports-pressure-narrative--clear{
+  background: rgba(240, 253, 244, 0.55);
+  border-color: rgba(22, 101, 52, 0.12);
+}
+.reports-pressure-narrative--caution{
+  background: rgba(254, 250, 240, 0.7);
+  border-color: rgba(180, 83, 9, 0.14);
+}
+.reports-pressure-narrative--danger{
+  background: rgba(254, 247, 247, 0.72);
+  border-color: rgba(159, 18, 18, 0.16);
+}
+.reports-pressure-narrative__lede{
+  font-size: 0.92rem;
+  line-height: 1.45;
+  font-weight: 600;
+  color: rgba(15, 23, 42, 0.94);
+  letter-spacing: -0.005em;
+}
+.reports-pressure-narrative--clear .reports-pressure-narrative__lede{
+  color: rgba(22, 101, 52, 0.92);
+}
+.reports-pressure-narrative--caution .reports-pressure-narrative__lede{
+  color: rgba(120, 53, 15, 0.94);
+}
+.reports-pressure-narrative--danger .reports-pressure-narrative__lede{
+  color: rgba(127, 29, 29, 0.95);
+}
+.reports-pressure-narrative__rec{
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: rgba(71, 85, 105, 0.84);
+  line-height: 1.4;
+}
+.reports-pressure-narrative__rec:empty{ display: none; }
+
 .reports-table-scroll--pressure{
   margin-top: 4px;
 }
 .reports-table--pressure th,
 .reports-table--pressure td{
-  padding: 12px 14px;
-  vertical-align: top;
+  padding: 11px 14px;
+  vertical-align: middle;
+}
+.reports-table--pressure thead th{
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: rgba(100, 116, 139, 0.78);
+  text-transform: none;
+  background: transparent;
+  border-bottom: 1px solid rgba(17, 24, 39, 0.06);
 }
 .reports-table--pressure tbody tr.reports-pressure-row{
-  border-bottom: 1px solid rgba(17, 24, 39, 0.05);
+  border-bottom: 1px solid rgba(17, 24, 39, 0.035);
+  transition: background 0.12s ease;
+}
+.reports-table--pressure tbody tr.reports-pressure-row:hover{
+  background: rgba(248, 250, 252, 0.5);
 }
 .reports-table--pressure tbody tr.reports-pressure-row:last-of-type{
-  border-bottom: 1px solid rgba(17, 24, 39, 0.08);
+  border-bottom: 1px solid rgba(17, 24, 39, 0.05);
+}
+.reports-table--pressure tbody tr.reports-pressure-row--danger{
+  background: rgba(254, 247, 247, 0.32);
+}
+.reports-table--pressure tbody tr.reports-pressure-row--danger:hover{
+  background: rgba(254, 247, 247, 0.5);
+}
+.reports-table--pressure tbody tr.reports-pressure-row--danger .reports-pressure-date,
+.reports-table--pressure tbody tr.reports-pressure-row--danger .reports-pressure-desc{
+  color: rgba(60, 8, 8, 0.95);
+  font-weight: 650;
+}
+.reports-table--pressure tbody tr.reports-pressure-row--neg{
+  background: rgba(254, 242, 242, 0.55);
+}
+.reports-table--pressure tbody tr.reports-pressure-row--neg:hover{
+  background: rgba(254, 242, 242, 0.72);
 }
 .reports-table--pressure .reports-pressure-date{
   font-weight: 600;
-  color: rgba(51, 65, 85, 0.92);
+  color: rgba(30, 41, 59, 0.92);
   white-space: nowrap;
+  font-size: 0.88rem;
 }
+.reports-pressure-danger-icon{
+  display: inline-block;
+  margin-right: 6px;
+  color: rgba(159, 18, 18, 0.72);
+  font-size: 0.92em;
+  line-height: 1;
+}
+.reports-table--pressure th.reports-pressure-days-col,
 .reports-table--pressure .reports-pressure-days{
-  font-size: 0.82rem;
-  color: rgba(100, 116, 139, 0.88);
+  font-size: 0.72rem;
+  color: rgba(100, 116, 139, 0.62);
   white-space: nowrap;
+  font-weight: 500;
+  letter-spacing: 0;
 }
 .reports-table--pressure .reports-pressure-desc{
-  font-size: 0.84rem;
+  font-size: 0.86rem;
   line-height: 1.4;
-  color: rgba(51, 65, 85, 0.92);
+  color: rgba(30, 41, 59, 0.92);
+  font-weight: 500;
 }
 .reports-table--pressure .reports-pressure-amt{
-  font-weight: 600;
-  color: rgba(75, 85, 99, 0.9);
+  font-weight: 700;
+  color: rgba(15, 23, 42, 0.92);
+  font-variant-numeric: tabular-nums;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  line-height: 1.1;
 }
+.reports-pressure-amt__v{
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+.reports-pressure-amt__bar{
+  display: block;
+  width: 60px;
+  height: 3px;
+  border-radius: 4px;
+  background: rgba(15, 23, 42, 0.06);
+  overflow: hidden;
+}
+.reports-pressure-amt__bar > span{
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  background: linear-gradient(90deg,
+    rgba(159, 18, 18, 0.55) 0%,
+    rgba(220, 38, 38, 0.4) 100%);
+}
+.reports-pressure-row--neg .reports-pressure-amt__bar > span{
+  background: linear-gradient(90deg,
+    rgba(127, 29, 29, 0.85) 0%,
+    rgba(159, 18, 18, 0.65) 100%);
+}
+
+/* Balance after — softened from "Excel conditional formatting" to calm signal */
 .reports-table--pressure th.reports-pressure-hero-col{
-  background: color-mix(in srgb, var(--accent) 12%, rgba(0, 0, 0, 0.02));
-  color: color-mix(in srgb, var(--accent) 45%, rgba(51, 65, 85, 0.9));
+  background: transparent;
+  color: rgba(100, 116, 139, 0.78);
   font-size: 0.7rem;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.02em;
+  font-weight: 600;
+}
+.reports-table--pressure th.reports-pressure-rec-col{
+  cursor: help;
+  text-decoration: underline dotted rgba(148, 163, 184, 0.5);
+  text-underline-offset: 3px;
 }
 .reports-table--pressure .reports-pressure-bal{
-  font-size: 1.05rem;
-  font-weight: 800;
+  font-size: 0.92rem;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
-  letter-spacing: 0.01em;
-  border-left: 3px solid transparent;
-  background: rgba(248, 250, 252, 0.55);
+  letter-spacing: 0;
+  border-left: 2px solid transparent;
+  background: transparent;
 }
 .reports-table--pressure .reports-pressure-bal--ok{
-  color: rgba(11, 61, 46, 0.95);
-  border-left-color: rgba(34, 197, 94, 0.55);
-  background: color-mix(in srgb, #22c55e 10%, rgba(248, 250, 252, 0.9));
+  color: rgba(22, 101, 52, 0.88);
+  border-left-color: rgba(34, 197, 94, 0.3);
+  background: color-mix(in srgb, #22c55e 5%, transparent);
 }
 .reports-table--pressure .reports-pressure-bal--caution{
-  color: rgba(120, 53, 15, 0.95);
-  border-left-color: rgba(234, 179, 8, 0.75);
-  background: color-mix(in srgb, #eab308 14%, rgba(255, 251, 235, 0.95));
+  color: rgba(133, 77, 14, 0.92);
+  border-left-color: rgba(202, 138, 4, 0.42);
+  background: color-mix(in srgb, #eab308 6%, transparent);
 }
 .reports-table--pressure .reports-pressure-bal--low{
-  color: rgba(154, 52, 18, 0.96);
-  border-left-color: rgba(249, 115, 22, 0.8);
-  background: color-mix(in srgb, #fb923c 16%, rgba(255, 247, 237, 0.95));
+  color: rgba(154, 52, 18, 0.94);
+  border-left-color: rgba(234, 88, 12, 0.46);
+  background: color-mix(in srgb, #fb923c 7%, transparent);
 }
 .reports-table--pressure .reports-pressure-bal--neg{
-  color: rgba(127, 29, 29, 0.98);
-  border-left-color: rgba(239, 68, 68, 0.85);
-  background: color-mix(in srgb, #fecaca 38%, rgba(254, 242, 242, 0.98));
+  color: rgba(127, 29, 29, 0.96);
+  border-left-color: rgba(220, 38, 38, 0.55);
+  background: color-mix(in srgb, #ef4444 10%, transparent);
 }
 .reports-table--pressure .reports-pressure-bal--unknown{
-  font-size: 0.78rem;
-  font-weight: 600;
-  font-style: italic;
-  color: rgba(100, 116, 139, 0.78);
-  background: rgba(248, 250, 252, 0.65);
+  font-size: 1.1rem;
+  font-weight: 500;
+  font-style: normal;
+  color: rgba(148, 163, 184, 0.78);
+  background: transparent;
+  letter-spacing: 0.05em;
 }
 .reports-table--pressure .reports-pressure-rec{
   font-size: 0.8rem;
-  font-weight: 600;
-  color: rgba(71, 85, 105, 0.9);
+  font-weight: 500;
+  color: rgba(71, 85, 105, 0.86);
 }
 .reports-table--pressure .reports-pressure-rec--ok{
-  color: rgba(11, 61, 46, 0.88);
-  font-weight: 650;
+  color: rgba(22, 101, 52, 0.82);
+  font-weight: 600;
 }
 .reports-table--pressure .reports-pressure-rec--date{
-  color: rgba(30, 64, 175, 0.9);
-  font-weight: 700;
+  color: rgba(15, 23, 42, 0.86);
+  font-weight: 600;
 }
 .reports-table--pressure .reports-pressure-rec--muted{
-  font-size: 0.76rem;
+  font-size: 1.05rem;
   font-weight: 500;
-  font-style: italic;
-  color: rgba(100, 116, 139, 0.75);
+  font-style: normal;
+  color: rgba(148, 163, 184, 0.78);
+  letter-spacing: 0.05em;
 }
 
 /* Reports: narrow nav rail + wide chart workspace */

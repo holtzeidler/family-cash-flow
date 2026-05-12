@@ -10586,6 +10586,124 @@ function renderReportsObligations() {
   }
 }
 
+/**
+ * Build a short narrative + recovery hint above the pressure table.
+ * Returns true if any narrative is meaningful enough to show.
+ */
+function renderPressureNarrative(hits, daily, floor) {
+  const wrap = document.getElementById("reportsPressureNarrative");
+  const ledeEl = document.getElementById("reportsPressureNarrativeLede");
+  const recEl = document.getElementById("reportsPressureNarrativeRec");
+  if (!wrap || !ledeEl || !recEl) return;
+  wrap.hidden = true;
+  wrap.classList.remove(
+    "reports-pressure-narrative--danger",
+    "reports-pressure-narrative--caution",
+    "reports-pressure-narrative--clear"
+  );
+  ledeEl.textContent = "";
+  recEl.textContent = "";
+
+  if (!hits.length) return;
+
+  const dangerThr = floor != null ? floor : 0;
+  const danger = hits
+    .filter((h) => h.after != null && Number.isFinite(h.after) && h.after < dangerThr)
+    .sort((a, b) => String(a.iso).localeCompare(String(b.iso)));
+
+  if (!danger.length) {
+    // Calm/clear path — everything stays above the floor.
+    wrap.classList.add("reports-pressure-narrative--clear");
+    if (floor != null) {
+      ledeEl.textContent = `All upcoming hits stay above your $${fmtMoney(floor)} floor. No projected cash pressure in this window.`;
+    } else {
+      ledeEl.textContent = "All upcoming hits stay in the black. No projected cash pressure in this window.";
+    }
+    recEl.textContent = "";
+    wrap.hidden = false;
+    return;
+  }
+
+  // Cluster danger hits: hits within 7 days of the previous belong to the same window.
+  const clusters = [];
+  let current = null;
+  for (const h of danger) {
+    if (!current) {
+      current = { startIso: h.iso, endIso: h.iso, items: [h] };
+      continue;
+    }
+    const gapDays = calendarDaysBetweenIso(current.endIso, h.iso);
+    if (gapDays != null && gapDays <= 7) {
+      current.items.push(h);
+      current.endIso = h.iso;
+    } else {
+      clusters.push(current);
+      current = { startIso: h.iso, endIso: h.iso, items: [h] };
+    }
+  }
+  if (current) clusters.push(current);
+
+  // Pick the most severe cluster — most items, then largest total amount.
+  let worstCluster = clusters[0];
+  for (const c of clusters) {
+    if (
+      c.items.length > worstCluster.items.length ||
+      (c.items.length === worstCluster.items.length &&
+        c.items.reduce((a, x) => a + x.amt, 0) > worstCluster.items.reduce((a, x) => a + x.amt, 0))
+    ) {
+      worstCluster = c;
+    }
+  }
+
+  // Compose narrative.
+  const count = worstCluster.items.length;
+  const totalAmt = worstCluster.items.reduce((a, x) => a + x.amt, 0);
+  const lowest = danger.reduce((acc, h) => (acc == null || h.after < acc.after ? h : acc), null);
+
+  // Severity flavor.
+  if (lowest && lowest.after < 0) {
+    wrap.classList.add("reports-pressure-narrative--danger");
+  } else {
+    wrap.classList.add("reports-pressure-narrative--caution");
+  }
+
+  const rangeLabel =
+    worstCluster.startIso === worstCluster.endIso
+      ? fmtMonthDay(worstCluster.startIso)
+      : `${fmtMonthDay(worstCluster.startIso)}–${fmtMonthDay(worstCluster.endIso)}`;
+  const floorPhrase = floor != null ? `your $${fmtMoney(floor)} comfort floor` : "zero";
+  const lowestPhrase = lowest ? ` Lowest projected: ${fmtMoney0SignedDollar(lowest.after)} on ${fmtMonthDay(lowest.iso)}.` : "";
+  if (count >= 2) {
+    ledeEl.textContent = `${count} large hits between ${rangeLabel} totaling $${fmtMoney(totalAmt)} push your forecast below ${floorPhrase}.${lowestPhrase}`;
+  } else {
+    const only = worstCluster.items[0];
+    ledeEl.textContent = `${only.desc} on ${fmtMonthDay(only.iso)} ($${fmtMoney(only.amt)}) pushes your forecast below ${floorPhrase}.${lowestPhrase}`;
+  }
+
+  // Recovery hint — first iso after the cluster end where balance >= floor (or 0).
+  const target = floor != null ? floor : 0;
+  let recoveryIso = "";
+  if (Array.isArray(daily) && daily.length) {
+    for (const row of daily) {
+      const iso = String(row?.date || "");
+      if (!iso || iso <= worstCluster.endIso) continue;
+      const bal = Number(row?.total_balance ?? NaN);
+      if (Number.isFinite(bal) && bal >= target) {
+        recoveryIso = iso;
+        break;
+      }
+    }
+  }
+  if (recoveryIso) {
+    recEl.textContent = floor != null
+      ? `Back above your floor by ${fmtMonthDay(recoveryIso)}.`
+      : `Back in the black by ${fmtMonthDay(recoveryIso)}.`;
+  } else {
+    recEl.textContent = "Forecast does not recover within the current range.";
+  }
+  wrap.hidden = false;
+}
+
 function renderReportsCashPressure(daily) {
   const body = document.getElementById("reportsPressureBody");
   const hint = document.getElementById("reportsPressureHint");
@@ -10622,9 +10740,11 @@ function renderReportsCashPressure(daily) {
 
   if (hint) {
     hint.textContent = hits.length
-      ? 'Sorted by impact date. "Balance after" is end-of-day projected total; recovery is first day back above your floor (Settings) or in the black.'
+      ? "Balance after reflects projected end-of-day cash after each hit."
       : "No scheduled outflows of $400+ in the next 90 days.";
   }
+
+  renderPressureNarrative(hits, daily, floor);
 
   if (summaryEl) {
     if (!hits.length) {
@@ -10639,36 +10759,57 @@ function renderReportsCashPressure(daily) {
         if (h.amt > maxHit.amt) maxHit = h;
       }
       const withBal = hits.filter((h) => h.after != null && Number.isFinite(h.after));
-      let lowLine = "Outside forecast range";
+      let lowLine = "—";
       if (withBal.length) {
         let low = withBal[0];
         for (const h of withBal) {
           if (h.after < low.after) low = h;
         }
-        lowLine = `${fmtObligationNextDate(low.iso)} · ${fmtMoney0SignedDollar(low.after)}`;
+        lowLine = `${fmtMoney0SignedDollar(low.after)} · ${fmtMonthDay(low.iso)}`;
       }
       if (statLargest) statLargest.textContent = `${maxHit.desc} · $${fmtMoney(maxHit.amt)}`;
       if (statLowBal) statLowBal.textContent = lowLine;
-      if (statCount) statCount.textContent = String(hits.length);
+      if (statCount) {
+        const c = hits.length;
+        statCount.textContent = `${c} date${c === 1 ? "" : "s"}`;
+      }
     }
   }
+
+  // For micro impact bars: anchor widths to the largest hit in view.
+  const maxAmt = hits.reduce((m, h) => (h.amt > m ? h.amt : m), 0);
 
   for (const h of hits) {
     const tr = document.createElement("tr");
     tr.className = "reports-pressure-row";
     const balCls = balanceAfterPressureClass(h.after, floor);
+    // Flag rows that visibly hurt the forecast so they read as the "events
+    // that matter", not just rows in a table.
+    const isDanger = h.after != null && Number.isFinite(h.after) && (h.after < (floor != null ? floor : 0));
+    if (isDanger) tr.classList.add("reports-pressure-row--danger");
+    if (h.after != null && Number.isFinite(h.after) && h.after < 0) {
+      tr.classList.add("reports-pressure-row--neg");
+    }
+
     let balHtml;
     if (h.after != null && Number.isFinite(h.after)) {
       balHtml = `<td class="num reports-pressure-bal ${balCls}">${fmtMoney0SignedDollar(h.after)}</td>`;
     } else {
-      balHtml = `<td class="num reports-pressure-bal reports-pressure-bal--unknown">Outside forecast range</td>`;
+      balHtml = `<td class="num reports-pressure-bal reports-pressure-bal--unknown" title="This date is beyond the current forecast range — extend horizon in Settings to project further out.">—</td>`;
     }
-    const rec = h.recovery || { label: "Outside forecast range", cls: "reports-pressure-rec--muted" };
-    tr.innerHTML = `<td class="reports-pressure-date">${escapeHtml(fmtObligationNextDate(h.iso))}</td><td class="reports-pressure-days">${escapeHtml(
+
+    const rec = h.recovery || { label: "—", cls: "reports-pressure-rec--muted" };
+    const recLabel = rec.label === "Outside forecast range" ? "—" : rec.label;
+    const recTitle = rec.label === "Outside forecast range" ? ' title="Outside the current forecast range"' : "";
+
+    const barPct = maxAmt > 0 ? Math.max(3, Math.round((h.amt / maxAmt) * 100)) : 0;
+    const dangerIcon = isDanger ? `<span class="reports-pressure-danger-icon" aria-hidden="true" title="Projected below your floor after this hit">⚠</span>` : "";
+
+    tr.innerHTML = `<td class="reports-pressure-date">${dangerIcon}${escapeHtml(fmtObligationNextDate(h.iso))}</td><td class="reports-pressure-days">${escapeHtml(
       formatDaysUntilImpact(todayIso, h.iso)
-    )}</td><td class="reports-pressure-desc">${escapeHtml(h.desc)}</td><td class="num reports-pressure-amt">$${fmtMoney(
+    )}</td><td class="reports-pressure-desc">${escapeHtml(h.desc)}</td><td class="num reports-pressure-amt"><span class="reports-pressure-amt__v">$${fmtMoney(
       h.amt
-    )}</td>${balHtml}<td class="reports-pressure-rec ${rec.cls}">${escapeHtml(rec.label)}</td>`;
+    )}</span><span class="reports-pressure-amt__bar" aria-hidden="true"><span style="width: ${barPct}%"></span></span></td>${balHtml}<td class="reports-pressure-rec ${rec.cls}"${recTitle}>${escapeHtml(recLabel)}</td>`;
     body.appendChild(tr);
   }
   if (!hits.length) {

@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=397" />
+    <link rel="stylesheet" href="../styles.css?v=398" />
   </head>
   <body>
     <div class="container">
@@ -866,19 +866,23 @@
               <section class="card reports-card reports-card--pressure" id="reportCashPressure">
                 <div class="reports-card__head">
                   <h2 class="reports-card__title">Upcoming cash pressure</h2>
-                  <p class="reports-card__desc">Large scheduled outflows in the next 90 days—where the balance lands after each hit.</p>
+                  <p class="reports-card__desc">The moments that could hurt your cash position in the next 90 days—and when the forecast recovers.</p>
+                </div>
+                <div id="reportsPressureNarrative" class="reports-pressure-narrative" hidden>
+                  <div class="reports-pressure-narrative__lede" id="reportsPressureNarrativeLede"></div>
+                  <div class="reports-pressure-narrative__rec" id="reportsPressureNarrativeRec"></div>
                 </div>
                 <div id="reportsPressureSummary" class="reports-ob-summary reports-ob-summary--pressure" hidden>
                   <div class="reports-ob-card" role="status">
-                    <div class="reports-ob-card__k">Largest upcoming expense</div>
+                    <div class="reports-ob-card__k">Biggest upcoming hit</div>
                     <div class="reports-ob-card__v" id="reportsPressureStatLargest">—</div>
                   </div>
                   <div class="reports-ob-card" role="status">
-                    <div class="reports-ob-card__k">Lowest projected balance (among hits)</div>
+                    <div class="reports-ob-card__k">Worst projected cash position</div>
                     <div class="reports-ob-card__v" id="reportsPressureStatLowBal">—</div>
                   </div>
                   <div class="reports-ob-card" role="status">
-                    <div class="reports-ob-card__k">Pressure points</div>
+                    <div class="reports-ob-card__k">High-impact dates</div>
                     <div class="reports-ob-card__v" id="reportsPressureStatCount">—</div>
                   </div>
                 </div>
@@ -888,11 +892,11 @@
                     <thead>
                       <tr>
                         <th scope="col">Impact date</th>
-                        <th scope="col">Days until</th>
+                        <th scope="col" class="reports-pressure-days-col">Days until</th>
                         <th scope="col">Description</th>
                         <th scope="col" class="num">Amount</th>
                         <th scope="col" class="num reports-pressure-hero-col">Balance after</th>
-                        <th scope="col">Recovery</th>
+                        <th scope="col" class="reports-pressure-rec-col" title="First date the balance is projected back above your floor (set in Settings), or in the black if no floor.">Recovers by</th>
                       </tr>
                     </thead>
                     <tbody id="reportsPressureBody"></tbody>
@@ -1285,6 +1289,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="../app.js?v=261"></script>
+    <script src="../app.js?v=262"></script>
   </body>
 </html>
