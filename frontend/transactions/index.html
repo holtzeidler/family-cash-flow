@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=365" />
+    <link rel="stylesheet" href="../styles.css?v=375" />
   </head>
   <body>
     <div class="container">
@@ -153,7 +153,7 @@
                 <div class="form-row-h">
                   <div class="form-row-h__label"><label for="txAddRecurrence">Repeat</label></div>
                   <div class="form-row-h__field">
-                    <select id="txAddRecurrence" class="tx-add-recurrence-select" title="How often this repeats">
+                    <select id="txAddRecurrence" class="tx-add-recurrence-select">
                       <option value="" selected>Does not repeat</option>
                       <option value="monthly">Every month</option>
                       <option value="twice_monthly">Twice monthly</option>
@@ -167,25 +167,26 @@
                 </div>
                 <div id="txAddEndsRow" class="form-row-h tx-add-ends-row" hidden>
                   <div class="form-row-h__label"><label for="txAddEndsMode">Ends</label></div>
-                  <div class="form-row-h__field">
-                    <select id="txAddEndsMode" class="tx-add-recurrence-select" title="When the schedule stops">
+                  <div class="form-row-h__field tx-add-ends-field">
+                    <select id="txAddEndsMode" class="tx-add-recurrence-select">
                       <option value="never" selected>Never</option>
                       <option value="on_date">On date…</option>
                       <option value="after_count">After N times…</option>
                     </select>
+                    <p class="tx-add-ends-hint">Ongoing unless you set a stop date or number of times.</p>
                   </div>
                 </div>
                 <div id="txAddEndDetailWrap" class="tx-add-end-detail" hidden>
                   <div id="txAddEndDateWrap" class="form-row-h tx-add-end-detail__row" hidden>
                     <div class="form-row-h__label"><label for="txAddEndDate">End date</label></div>
                     <div class="form-row-h__field">
-                      <input id="txAddEndDate" type="date" title="Last date this schedule can occur." />
+                      <input id="txAddEndDate" type="date" />
                     </div>
                   </div>
                   <div id="txAddEndCountWrap" class="form-row-h tx-add-end-detail__row" hidden>
                     <div class="form-row-h__label"><label for="txAddEndCount">Occurrences</label></div>
                     <div class="form-row-h__field tx-add-end-count-field">
-                      <input id="txAddEndCount" type="number" min="1" step="1" placeholder="e.g. 12" title="Total number of times." />
+                      <input id="txAddEndCount" type="number" min="1" step="1" placeholder="e.g. 12" />
                       <span class="tx-add-field-hint">total</span>
                     </div>
                   </div>
@@ -193,41 +194,46 @@
               </div>
               <div class="tx-add-vspace tx-add-vspace--xs" aria-hidden="true"></div>
               <div id="txAddRecurringBlock" style="display: none">
-                <div class="tx-add-vspace tx-add-vspace--2xs" aria-hidden="true"></div>
-                <div id="txAddTwiceMonthlyFields" class="expected-second-day-row" style="display: none">
-                  <label for="txAddSecondDayOfMonth">2nd day of month</label>
-                  <input
-                    id="txAddSecondDayOfMonth"
-                    type="number"
-                    min="1"
-                    max="31"
-                    step="1"
-                    placeholder="e.g. 15"
-                    title="Second scheduled day each month; must differ from the start date’s calendar day."
-                  />
-                  <p class="tx-add-twice-monthly-hint">Required for twice monthly: pick another day (1–31), not the same as the start date’s day.</p>
+                <div id="txAddTwiceMonthlyFields" class="tx-add-second-monthly" style="display: none">
+                  <div class="tx-add-second-monthly__row">
+                    <label for="txAddSecondDayOfMonth">Second monthly date</label>
+                    <input
+                      id="txAddSecondDayOfMonth"
+                      type="number"
+                      min="1"
+                      max="31"
+                      step="1"
+                      placeholder="e.g. 15"
+                    />
+                  </div>
+                  <p class="tx-add-twice-monthly-hint">Choose another day from 1–31 (not the same as the start date).</p>
                 </div>
                 <div class="tx-add-vspace tx-add-vspace--2xs" aria-hidden="true"></div>
-                <label class="reimbursable-field" for="txAddVariable" title="Great for utilities, groceries or credit card bills.">
+                <label class="reimbursable-field tx-add-variable-field" for="txAddVariable">
                   <span class="reimbursable-field__lead">
-                    <span class="reimbursable-field__label">Amount varies month to month</span>
-                    <input id="txAddVariable" type="checkbox" title="Amount is a placeholder until you enter actuals" />
+                    <span class="reimbursable-field__label">Amount varies</span>
+                    <input id="txAddVariable" type="checkbox" />
                   </span>
-                  <span class="reimbursable-field__hint">Great for utilities &amp; credit card bills</span>
+                  <span class="reimbursable-field__hint">For utilities, credit cards, and bills that change each cycle.</span>
                 </label>
               </div>
               <div class="tx-add-vspace tx-add-vspace--sm" aria-hidden="true"></div>
               <div class="form-row-h">
-                <div class="form-row-h__label"><label for="txAddNotes">Notes</label></div>
+                <div class="form-row-h__label">
+                  <label for="txAddNotes">Notes <span class="tx-add-optional-mark">(optional)</span></label>
+                </div>
                 <div class="form-row-h__field">
                   <input id="txAddNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
                 </div>
               </div>
               <div class="tx-add-vspace tx-add-vspace--2xs" aria-hidden="true"></div>
-              <div class="tx-add-color-wrap">
-                <button type="button" id="txAddColorToggle" class="tx-add-color-toggle" aria-expanded="false" aria-controls="txAddCategoryColorRow">
-                  Color (optional)
-                </button>
+              <div class="tx-add-advanced">
+                <div class="tx-add-advanced__title">Advanced options</div>
+                <div class="tx-add-advanced__chips">
+                  <button type="button" id="txAddColorToggle" class="tx-add-advanced__chip" aria-expanded="false" aria-controls="txAddCategoryColorRow">
+                    Color
+                  </button>
+                </div>
                 <div id="txAddCategoryColorRow" class="cat-color-row tx-add-cat-color-panel" hidden>
                   <div class="cat-color-row__label">Select color</div>
                   <div class="cat-color-row__swatches" id="txAddCategoryColorSwatches"></div>
@@ -768,12 +774,9 @@
             <div class="reports-hub">
               <section class="card reports-card reports-card--primary reports-card--hero" id="chartPanel">
                 <header class="reports-card__hero">
-                  <p class="reports-card__lede">See what your balance will be—not just what it is today.</p>
                   <div class="reports-card__head">
                     <h2 class="reports-card__title">Balance trendline</h2>
-                    <p class="reports-card__desc">
-                      Day-by-day projected balance—where cash tightens, when it recovers, and what is safe to move.
-                    </p>
+                    <p class="reports-card__desc">See where cash tightens, recovers, and becomes safe to move.</p>
                   </div>
                 </header>
                 <div class="reports-chart-shell">
@@ -791,33 +794,59 @@
                     <span id="chartDaysLabel" class="reports-chart-daysmeta" hidden>30 days</span>
                   </div>
                   <p class="reports-range-meta"><span id="chartRangeDisplayText">—</span></p>
+                  <div class="reports-card__takeaway" id="reportsBalanceTakeaway" hidden aria-live="polite"></div>
                   <div id="reportsBalanceLegend" class="reports-legend" aria-live="polite"></div>
                   <div id="chartErr" class="error"></div>
                   <div class="projection-chart-wrap projection-chart-wrap--reports">
                     <div class="reports-chart-gridfill" aria-hidden="true"></div>
                     <div id="projectionChartEmpty" class="projection-chart-empty" style="display: none" aria-live="polite"></div>
-                    <canvas id="projectionChartCanvas" class="projection-chart-canvas" height="300"></canvas>
+                    <canvas id="projectionChartCanvas" class="projection-chart-canvas" height="360"></canvas>
                   </div>
                 </div>
               </section>
 
               <section class="card reports-card" id="reportCashTiming">
-                <div class="reports-card__head">
-                  <h2 class="reports-card__title">Income vs. expense timing</h2>
-                  <p class="reports-card__desc">Weekly cash-in vs cash-out (last ~17 weeks). Highlights timing mismatch and heavy outflow weeks—not budget categories.</p>
-                </div>
-                <div class="reports-card__toolbar">
-                  <div class="meta" id="incomeExpenseSubtitle">—</div>
-                  <div class="reports-ie-toggles" role="group" aria-label="Bar style">
-                    <button type="button" id="incomeExpenseGroupedBtn" class="reports-ie-toggle is-active">Grouped</button>
-                    <button type="button" id="incomeExpenseStackedBtn" class="reports-ie-toggle">Stacked</button>
-                    <button type="button" id="incomeExpenseDownloadBtn" class="reports-ie-download" title="Download chart" aria-label="Download chart">PNG</button>
+                <div class="reports-card__head reports-card__head--cash-timing">
+                  <div class="reports-cash-timing-head__text">
+                    <h2 class="reports-card__title">Income vs. expense timing</h2>
+                    <p class="reports-card__desc">See which weeks are cash-heavy and where timing gets tight.</p>
+                    <div class="meta reports-cash-timing-meta" id="incomeExpenseSubtitle">—</div>
+                  </div>
+                  <div class="reports-ie-chart-toolbar" role="group" aria-label="Chart options">
+                    <div class="reports-ie-seg" role="group" aria-label="Bar style">
+                      <button type="button" id="incomeExpenseGroupedBtn" class="reports-ie-toggle">Grouped</button>
+                      <button type="button" id="incomeExpenseStackedBtn" class="reports-ie-toggle is-active">Stacked</button>
+                    </div>
+                    <button
+                      type="button"
+                      id="incomeExpenseNetToggle"
+                      class="reports-ie-toggle reports-ie-toggle--net"
+                      aria-pressed="false"
+                      title="Show weekly net (income minus expenses)"
+                    >
+                      Net line
+                    </button>
+                    <button
+                      type="button"
+                      id="incomeExpenseDownloadBtn"
+                      class="reports-ie-download"
+                      title="Export chart as PNG"
+                      aria-label="Export chart as PNG"
+                    >
+                      <svg class="reports-ie-download__icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="7 10 12 15 17 10" />
+                        <line x1="12" y1="15" x2="12" y2="3" />
+                      </svg>
+                      <span class="reports-ie-download__txt">Export</span>
+                    </button>
                   </div>
                 </div>
+                <div id="incomeExpenseInsights" class="reports-ie-insights" hidden aria-live="polite"></div>
                 <div id="incomeExpenseErr" class="error"></div>
                 <div class="income-expense-chart-wrap income-expense-chart-wrap--reports">
                   <div id="incomeExpenseEmpty" class="projection-chart-empty" style="display: none" aria-live="polite"></div>
-                  <canvas id="incomeExpenseChartCanvas" class="projection-chart-canvas" height="240"></canvas>
+                  <canvas id="incomeExpenseChartCanvas" class="projection-chart-canvas" height="200"></canvas>
                 </div>
               </section>
 
@@ -836,53 +865,116 @@
               <section class="card reports-card" id="reportRiskHeatmap">
                 <div class="reports-card__head">
                   <h2 class="reports-card__title">Low balance risk map</h2>
-                  <p class="reports-card__desc">Operational view of projected cushion by day (next 60 days). Set minimum balance in Settings to tune severity.</p>
+                  <p class="reports-card__desc">See which days are projected to run tight—next 60 days, Monday-aligned weeks.</p>
                 </div>
-                <div class="reports-risk-legend" aria-hidden="true">
+                <div id="reportsRiskHeatmapInsight" class="reports-risk-insight" aria-live="polite"></div>
+                <div class="reports-risk-cal-wrap">
+                  <div class="reports-risk-dow-row" aria-hidden="true">
+                    <span>Mon</span>
+                    <span>Tue</span>
+                    <span>Wed</span>
+                    <span>Thu</span>
+                    <span>Fri</span>
+                    <span>Sat</span>
+                    <span>Sun</span>
+                  </div>
+                  <div id="reportsRiskHeatmapGrid" class="reports-risk-grid" aria-label="Projected balance pressure by day"></div>
+                </div>
+                <div class="reports-risk-legend reports-risk-legend--compact" aria-hidden="true">
                   <span><i class="reports-risk-dot reports-risk-dot--safe"></i> Comfortable</span>
                   <span><i class="reports-risk-dot reports-risk-dot--caution"></i> Caution</span>
                   <span><i class="reports-risk-dot reports-risk-dot--low"></i> Low</span>
                   <span><i class="reports-risk-dot reports-risk-dot--neg"></i> Negative</span>
                 </div>
-                <div id="reportsRiskHeatmapGrid" class="reports-risk-grid" aria-label="Daily risk heatmap"></div>
               </section>
 
-              <section class="card reports-card" id="reportObligations">
+              <section class="card reports-card reports-card--obligations" id="reportObligations">
                 <div class="reports-card__head">
-                  <h2 class="reports-card__title">Recurring obligation summary</h2>
-                  <p class="reports-card__desc">Predictable cash commitments from recurring schedules (grouped for readability—not a budget drill-down).</p>
+                  <h2 class="reports-card__title">Recurring cash commitments</h2>
+                  <p class="reports-card__desc">Your recurring bills and obligations—normalized to a monthly view for timing and planning.</p>
                 </div>
-                <div class="reports-table-scroll">
-                  <table class="reports-table" aria-label="Recurring obligations">
+                <div id="reportsObligationSummary" class="reports-ob-summary" hidden>
+                  <div class="reports-ob-card" role="status">
+                    <div class="reports-ob-card__k">Monthly burden (normalized)</div>
+                    <div class="reports-ob-card__v" id="reportsObligationStatTotal">—</div>
+                  </div>
+                  <div class="reports-ob-card" role="status">
+                    <div class="reports-ob-card__k">Largest per payment</div>
+                    <div class="reports-ob-card__v" id="reportsObligationStatLargest">—</div>
+                  </div>
+                  <div class="reports-ob-card" role="status">
+                    <div class="reports-ob-card__k">Due in next 7 days (per occurrence)</div>
+                    <div class="reports-ob-card__v" id="reportsObligationStatWeek">—</div>
+                  </div>
+                </div>
+                <div class="reports-obligation-toolbar">
+                  <label class="reports-obligation-field">
+                    <span class="reports-obligation-field__k">Sort</span>
+                    <select id="reportsObligationSort" class="reports-obligation-select">
+                      <option value="next" selected>Next due date</option>
+                      <option value="monthly_desc">Largest monthly (est.)</option>
+                      <option value="monthly_asc">Smallest monthly (est.)</option>
+                      <option value="amount_desc">Largest payment</option>
+                    </select>
+                  </label>
+                  <label class="reports-obligation-field">
+                    <span class="reports-obligation-field__k">Group</span>
+                    <select id="reportsObligationFilterGroup" class="reports-obligation-select">
+                      <option value="">All groups</option>
+                    </select>
+                  </label>
+                  <label class="reports-obligation-check">
+                    <input type="checkbox" id="reportsObligationLargeOnly" />
+                    <span>Large only (≥ $2,500 / hit or est. mo.)</span>
+                  </label>
+                </div>
+                <div class="reports-table-scroll reports-table-scroll--obligations">
+                  <table class="reports-table reports-table--obligations" aria-label="Recurring cash commitments">
                     <thead>
                       <tr>
-                        <th scope="col">Group</th>
                         <th scope="col">Description</th>
-                        <th scope="col">Amount</th>
+                        <th scope="col" class="num">Amount</th>
                         <th scope="col">Frequency</th>
                         <th scope="col">Next</th>
-                        <th scope="col">Est. monthly</th>
+                        <th scope="col" class="num reports-ob-est-col">Est. monthly</th>
                       </tr>
                     </thead>
                     <tbody id="reportsObligationBody"></tbody>
+                    <tfoot id="reportsObligationFoot"></tfoot>
                   </table>
                 </div>
               </section>
 
-              <section class="card reports-card" id="reportCashPressure">
+              <section class="card reports-card reports-card--pressure" id="reportCashPressure">
                 <div class="reports-card__head">
                   <h2 class="reports-card__title">Upcoming cash pressure</h2>
-                  <p class="reports-card__desc">Large scheduled outflows in the next 90 days and projected balance after each hit.</p>
+                  <p class="reports-card__desc">Large scheduled outflows in the next 90 days—where the balance lands after each hit.</p>
+                </div>
+                <div id="reportsPressureSummary" class="reports-ob-summary reports-ob-summary--pressure" hidden>
+                  <div class="reports-ob-card" role="status">
+                    <div class="reports-ob-card__k">Largest upcoming expense</div>
+                    <div class="reports-ob-card__v" id="reportsPressureStatLargest">—</div>
+                  </div>
+                  <div class="reports-ob-card" role="status">
+                    <div class="reports-ob-card__k">Lowest projected balance (among hits)</div>
+                    <div class="reports-ob-card__v" id="reportsPressureStatLowBal">—</div>
+                  </div>
+                  <div class="reports-ob-card" role="status">
+                    <div class="reports-ob-card__k">Pressure points</div>
+                    <div class="reports-ob-card__v" id="reportsPressureStatCount">—</div>
+                  </div>
                 </div>
                 <div class="reports-pressure-hint meta" id="reportsPressureHint"></div>
-                <div class="reports-table-scroll">
-                  <table class="reports-table" aria-label="Upcoming cash pressure">
+                <div class="reports-table-scroll reports-table-scroll--pressure">
+                  <table class="reports-table reports-table--pressure" aria-label="Upcoming cash pressure">
                     <thead>
                       <tr>
-                        <th scope="col">Date</th>
+                        <th scope="col">Impact date</th>
+                        <th scope="col">Days until</th>
                         <th scope="col">Description</th>
-                        <th scope="col">Amount</th>
-                        <th scope="col">Balance after</th>
+                        <th scope="col" class="num">Amount</th>
+                        <th scope="col" class="num reports-pressure-hero-col">Balance after</th>
+                        <th scope="col">Recovery</th>
                       </tr>
                     </thead>
                     <tbody id="reportsPressureBody"></tbody>
@@ -1117,34 +1209,21 @@
     <div id="reconcileModal" class="modal-overlay" aria-hidden="true">
       <div class="modal modal--reconcile" role="dialog" aria-labelledby="reconcileTitle" aria-modal="true">
         <h3 id="reconcileTitle" class="reconcile-modal__title">Reconcile</h3>
-        <p id="reconcileLead" class="reconcile-modal__lead"></p>
-        <p class="reconcile-modal__sub">Mark this day as reconciled when your real-world balance lines up with what you see here.</p>
+        <p class="reconcile-modal__lead">Does your actual balance match your forecast?</p>
         <div id="reconcileBalanceBlock" class="reconcile-modal__balance" hidden>
-          <div class="reconcile-modal__balance-row">
-            <span class="reconcile-modal__balance-k">Forecasted end-of-day</span>
-            <span class="reconcile-modal__balance-v" id="reconcileForecastBal">—</span>
-          </div>
-          <div class="reconcile-modal__balance-row reconcile-modal__balance-row--field">
-            <label class="reconcile-modal__balance-k" for="reconcileActualBal">Actual balance</label>
-            <input
-              id="reconcileActualBal"
-              type="text"
-              class="reconcile-modal__actual-input"
-              disabled
-              placeholder="Coming soon"
-              autocomplete="off"
-            />
+          <div class="reconcile-modal__forecast">
+            <span class="reconcile-modal__forecast-k">Forecasted balance</span>
+            <span class="reconcile-modal__forecast-v" id="reconcileForecastBal">—</span>
           </div>
         </div>
         <div id="reconcileErr" class="error"></div>
         <div class="reconcile-modal__status">
           <label class="reconcile-switch">
-            <span class="reconcile-switch__text">Mark as reconciled</span>
             <input id="reconcileChecked" type="checkbox" class="sr-only" />
             <span class="reconcile-switch__track" aria-hidden="true"></span>
+            <span class="reconcile-switch__text">Mark as reconciled</span>
           </label>
         </div>
-        <p class="reconcile-modal__footnote">Reconciled days help keep your forecast accurate.</p>
         <div class="modal-actions reconcile-modal__actions">
           <button type="button" id="reconcileCancelBtn" class="reconcile-modal__cancel">Cancel</button>
           <button type="button" id="reconcileSaveBtn" class="reconcile-modal__primary">Save</button>
@@ -1229,6 +1308,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="../app.js?v=238"></script>
+    <script src="../app.js?v=248"></script>
   </body>
 </html>

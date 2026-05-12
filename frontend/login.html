@@ -6,7 +6,10 @@
     <title>BalanceWhiz</title>
     <link rel="icon" href="./favicon.png" type="image/png" />
     <script>window.API_BASE = "__API_BASE__";</script>
-    <link rel="stylesheet" href="./styles.css?v=360" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./styles.css?v=361" />
   </head>
   <body class="login-page">
     <div class="container">
@@ -18,8 +21,8 @@
                 <img
                   class="app-logo"
                   src="./assets/balance-whiz-logo.png?v=20260504"
-                  width="204"
-                  height="52"
+                  width="216"
+                  height="54"
                   alt="Balance Whiz"
                   decoding="async"
                   fetchpriority="high"
@@ -27,14 +30,15 @@
               </a>
             </h1>
           </div>
+          <span class="login-page__nav-hint">14-day free trial</span>
         </div>
       </div>
 
       <div class="grid login-page__grid">
         <div class="login-page__split">
           <aside class="login-page__brand" aria-label="Why BalanceWhiz">
-            <h2 class="login-page__brand-head">Know what’s safe before<br />bills hit.</h2>
-            <p class="login-page__brand-sub">See what’s left after planned bills—not just today’s balance.</p>
+            <h2 class="login-page__brand-head">Know what's safe before<br />bills hit.</h2>
+            <p class="login-page__brand-sub">See what's left after planned bills—not just today's balance.</p>
             <figure class="login-page__brand-chart-wrap">
               <div class="login-page__brand-chart" aria-hidden="true">
                 <svg viewBox="0 0 336 120" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
@@ -121,7 +125,7 @@
                 <button type="button" id="loginBtn" class="top-nav__logout" onclick="window.__bwLogin && window.__bwLogin()">Login</button>
                 <a href="./contactus/" class="login-page__forgot-link">Forgot password?</a>
                 <div class="login-page__signup-prompt">
-                  <span>Don’t have an account?</span>
+                  <span>Don't have an account?</span>
                   <a href="https://balancewhiz.com/account-setup/?fresh=1" class="login-page__signup-cta">Create your forecast</a>
                 </div>
               </div>
