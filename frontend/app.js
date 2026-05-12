@@ -6649,13 +6649,17 @@ if (reconcileSaveBtn) {
       const iso = normalizeIsoDate(reconcileActiveDate);
       if (!iso) throw new Error("Invalid date");
       const month = (calendarMonth?.value || monthInput?.value) || iso.slice(0, 7);
+      const nowReconciled = !!reconcileChecked?.checked;
       await api(`/api/families/${state.activeFamilyId}/reconciled-days`, "POST", {
         date: iso,
-        reconciled: !!reconcileChecked?.checked,
+        reconciled: nowReconciled,
       });
       await loadReconciledDays(month);
       closeReconcileModal();
       renderCalendar();
+      if (typeof showBwToast === "function") {
+        showBwToast(nowReconciled ? "✓ Reconciled successfully" : "Reconciliation cleared");
+      }
     } catch (e) {
       show(reconcileErr, e.message || "Failed to save");
     }

@@ -8121,14 +8121,14 @@ body.plans-page .container > .grid{
 
 /* Reconcile day modal — minimal “quick grounding” */
 .modal.modal--reconcile{
-  max-width: 306px;
-  width: min(88vw, 306px);
-  padding: 12px 14px 10px;
+  max-width: 324px;
+  width: min(90vw, 324px);
+  padding: 12px 16px 10px;
   box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12);
 }
 .modal.modal--reconcile > h3.reconcile-modal__title{
   width: 100%;
-  margin: 0 0 6px;
+  margin: 0 0 4px;
   padding: 0;
   font-size: 1.05rem;
   font-weight: 800;
@@ -8144,12 +8144,12 @@ body.plans-page .container > .grid{
   margin: 0 0 10px;
   font-size: 0.8125rem;
   line-height: 1.4;
-  color: rgba(100, 116, 139, 0.92);
-  font-weight: 450;
+  color: rgba(100, 116, 139, 0.74);
+  font-weight: 400;
 }
 .reconcile-modal__balance{
   margin: 0 0 10px;
-  padding: 8px 10px 10px;
+  padding: 7px 10px 8px;
   border-radius: 10px;
   background: rgba(249, 250, 251, 0.95);
   border: 1px solid rgba(17, 24, 39, 0.06);
@@ -8159,14 +8159,14 @@ body.plans-page .container > .grid{
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 4px;
+  gap: 3px;
 }
 .reconcile-modal__forecast-k{
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.04em;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
-  color: rgba(100, 116, 139, 0.78);
+  color: rgba(71, 85, 105, 0.92);
 }
 .reconcile-modal__forecast-v{
   font-size: 1.28rem;
@@ -8187,7 +8187,7 @@ body.plans-page .container > .grid{
   flex-direction: row;
   align-items: center;
   justify-content: flex-start;
-  gap: 10px;
+  gap: 14px;
   cursor: pointer;
   user-select: none;
   padding: 4px 0;
@@ -8198,25 +8198,25 @@ body.plans-page .container > .grid{
   outline-offset: 2px;
 }
 .reconcile-switch__text{
-  font-size: 12.5px;
+  font-size: 12.75px;
   font-weight: 500;
-  color: rgba(71, 85, 105, 0.88);
+  color: rgba(51, 65, 85, 0.92);
 }
 .reconcile-switch > input.sr-only:checked + .reconcile-switch__track{
-  background: color-mix(in srgb, var(--accent) 55%, #e8f5ef);
-  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+  background: color-mix(in srgb, var(--accent) 42%, #eaf3ee);
+  border-color: color-mix(in srgb, var(--accent) 32%, transparent);
 }
 .reconcile-switch > input.sr-only:checked + .reconcile-switch__track::after{
-  transform: translate(16px, -50%);
+  transform: translate(14px, -50%);
 }
 .reconcile-switch__track{
   position: relative;
   flex: 0 0 auto;
-  width: 40px;
-  height: 24px;
+  width: 34px;
+  height: 20px;
   border-radius: 999px;
-  background: rgba(148, 163, 184, 0.4);
-  border: 1px solid rgba(100, 116, 139, 0.22);
+  background: rgba(148, 163, 184, 0.36);
+  border: 1px solid rgba(100, 116, 139, 0.2);
   transition: background 160ms ease, border-color 160ms ease;
 }
 .reconcile-switch__track::after{
@@ -8224,8 +8224,8 @@ body.plans-page .container > .grid{
   position: absolute;
   top: 50%;
   left: 3px;
-  width: 18px;
-  height: 18px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   background: #fff;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.16);
@@ -8249,22 +8249,22 @@ body.plans-page .container > .grid{
   padding: 5px 6px;
   font-size: 12.5px;
   font-weight: 500;
-  color: rgba(75, 85, 99, 0.88);
+  color: rgba(75, 85, 99, 0.62);
   background: transparent;
   border: none;
   border-radius: 8px;
   box-shadow: none;
 }
 .reconcile-modal__cancel:hover{
-  color: rgba(17, 24, 39, 0.95);
+  color: rgba(17, 24, 39, 0.9);
   background: rgba(15, 23, 42, 0.05);
   filter: none;
 }
 .reconcile-modal__primary{
   order: 1;
-  padding: 6px 14px;
-  min-width: 0;
-  font-size: 12.5px;
+  padding: 6px 26px;
+  min-width: 96px;
+  font-size: 12.75px;
   font-weight: 600;
   border-radius: 8px;
   color: #fff;
