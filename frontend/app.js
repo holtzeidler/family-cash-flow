@@ -907,8 +907,8 @@ function setSidebarBalanceThresholdHint(text) {
     sidebarBalanceThresholdHint.dataset.boundClick = "1";
     sidebarBalanceThresholdHint.addEventListener("click", () => {
       setActiveTopView("settings");
-      activateSettingsSection("accounts");
-      // Scroll directly to the thresholds section.
+      // Threshold lives in Forecast Preferences now; jump straight to it.
+      activateSettingsSection("preferences");
       const { min: btMin, max: btMax } = balanceThresholdFieldEls();
       const target = btMin || btMax;
       if (target && typeof target.scrollIntoView === "function") {
@@ -1408,20 +1408,29 @@ async function refreshLowBalanceAlert() {
       if (highIso && highIso < todayIso) highHit = null;
     }
 
+    const lowBalanceAlertsEnabled = readPrefAlertLowBalanceEnabled();
     const parts = [];
     if (minOk) {
       if (!lowHit) {
         parts.push(
           `<div class="balance-threshold-result-block"><div class="k">First date ≤ $${fmtMoneyThreshold(btMinEl?.value || "", minVal)}</div><div class="v">None in the next ${lowDays} days.</div></div>`
         );
-        setSidebarLowBalanceBanner("✓ Within your target range", "muted");
+        if (lowBalanceAlertsEnabled) {
+          setSidebarLowBalanceBanner("✓ Within your target range", "muted");
+        } else {
+          setSidebarLowBalanceBanner("", "off");
+        }
       } else {
         parts.push(
           `<div class="balance-threshold-result-block"><div class="k">First date ≤ $${fmtMoneyThreshold(btMinEl?.value || "", minVal)}</div><div class="v danger">${fmtDateMDY(lowHit.date)} — $${fmtMoney(lowHit.balance)}</div></div>`
         );
         const bal = Number(lowHit.balance);
         const target = Number(minVal);
-        if (Number.isFinite(bal) && bal <= 0) {
+        if (!lowBalanceAlertsEnabled) {
+          // User opted out of the sidebar warning; the in-pane outlook still
+          // surfaces the underlying date/amount above.
+          setSidebarLowBalanceBanner("", "off");
+        } else if (Number.isFinite(bal) && bal <= 0) {
           setSidebarLowBalanceBanner(
             `⚠ Transfer cash before ${fmtMonthDay(lowHit.date)}\nCENTER:Balance: ${fmtMoney0SignedDollar(bal)}`,
             "danger"
@@ -1696,7 +1705,7 @@ async function saveBalanceThresholds(opts = {}) {
     savedMsg.textContent = "Saved for this household.";
     savedMsg.hidden = false;
   }
-  showBwToast("Forecast rules saved.");
+  showBwToast("Safe balance threshold saved.");
   balanceThresholdSavedHideTimer = window.setTimeout(() => {
     balanceThresholdSavedHideTimer = null;
     if (savedMsg) {
@@ -1987,6 +1996,39 @@ let catReportYearOptionsPopulated = false;
 const ACTIVE_VIEW_KEY = "familyCashFlow_activeView";
 const CALENDAR_DETAIL_MODE_KEY = "familyCashFlow_calendarDetailMode"; // "simplified" | "detailed"
 const PENDING_ATTENTION_CHECKED_KEY = "familyCashFlow_pendingAttentionChecked"; // JSON array of row keys
+
+// Forecast Preferences (persisted per browser; the explicit landing-page choice
+// is consulted only when no URL view= param and no last-active view exist, so
+// users who navigate around still land where they left off).
+const PREF_DEFAULT_LANDING_KEY = "bw_pref_default_landing"; // "calendar" | "transactions" | "reports"
+const PREF_BALANCE_DISPLAY_MODE_KEY = "bw_pref_balance_display_mode"; // "projected" | "safe" | "both"
+const PREF_ALERT_LOW_BALANCE_KEY = "bw_pref_alert_low_balance"; // "1" | "0" (default on)
+
+function readPrefDefaultLanding() {
+  try {
+    const v = String(localStorage.getItem(PREF_DEFAULT_LANDING_KEY) || "").trim().toLowerCase();
+    if (v === "calendar" || v === "transactions" || v === "reports") return v;
+  } catch (_) {}
+  return "";
+}
+
+function readPrefAlertLowBalanceEnabled() {
+  try {
+    const v = localStorage.getItem(PREF_ALERT_LOW_BALANCE_KEY);
+    if (v == null) return true;
+    return String(v) !== "0";
+  } catch (_) {
+    return true;
+  }
+}
+
+function readPrefBalanceDisplayMode() {
+  try {
+    const v = String(localStorage.getItem(PREF_BALANCE_DISPLAY_MODE_KEY) || "").trim().toLowerCase();
+    if (v === "projected" || v === "safe" || v === "both") return v;
+  } catch (_) {}
+  return "both";
+}
 
 function initReportsLeftNav() {
   if (!reportsViewPanel) return;
@@ -2310,7 +2352,7 @@ if (settingsViewPanel) {
     const jump = e.target && e.target.closest("#settingsJumpForecastRulesBtn");
     if (!jump) return;
     e.preventDefault();
-    activateSettingsSection("forecastSetup");
+    activateSettingsSection("forecastRules");
   });
 }
 
@@ -2493,6 +2535,11 @@ function getInitialTopViewFromUrlOrStorage() {
       return v;
     }
   } catch (_) {}
+  // Honor the user's chosen Default landing page when there's no stored view
+  // (fresh device / cleared storage). It deliberately does NOT override the
+  // last-active view above, so navigating around still sticks across reloads.
+  const prefLanding = readPrefDefaultLanding();
+  if (prefLanding) return prefLanding;
   return "calendar";
 }
 
@@ -3272,17 +3319,20 @@ function mountTxAddFormInSidebar() {
 }
 
 function activateSettingsSection(key) {
-  // Settings IA was consolidated from 7 panes down to 4 (Accounts & Household,
-  // Forecast Setup, Preferences & Alerts, Billing). The old section keys still
-  // appear in some call sites and external deep-links, so map them onto the
-  // new home rather than 404ing the navigation.
+  // Settings IA is four panes everywhere: Accounts, Forecast Rules,
+  // Preferences, Billing. Old keys still leak in via deep-links, sidebar
+  // shortcuts, and stale localStorage values, so map them onto their new
+  // homes rather than 404ing the navigation.
   let k = String(key || "accounts");
   const LEGACY_KEY_MAP = {
     accountDetails: "accounts",
     familySharing: "accounts",
-    forecastRules: "forecastSetup",
-    categories: "forecastSetup",
+    // The Forecast Setup → Forecast Rules rename and the move of the
+    // safe-balance threshold into Preferences are reflected here.
+    forecastSetup: "forecastRules",
+    categories: "forecastRules",
     notifications: "preferences",
+    thresholds: "preferences",
   };
   if (LEGACY_KEY_MAP[k]) k = LEGACY_KEY_MAP[k];
 
@@ -11809,6 +11859,69 @@ async function main() {
       bt.saveBtn.addEventListener("click", () => void saveBalanceThresholds());
     }
     await refreshLowBalanceAlert();
+  }
+
+  wireForecastPreferencesUi();
+}
+
+// Wire the new Forecast Preferences controls (default landing, balance display
+// mode, low-balance alerts toggle). Each preference is browser-local and reads
+// from localStorage on load so the UI mirrors the persisted choice.
+function wireForecastPreferencesUi() {
+  const landing = document.getElementById("prefDefaultLanding");
+  if (landing && !landing.dataset.bwPrefBound) {
+    landing.dataset.bwPrefBound = "1";
+    const stored = readPrefDefaultLanding();
+    if (stored) {
+      try {
+        landing.value = stored;
+      } catch (_) {}
+    }
+    landing.addEventListener("change", () => {
+      try {
+        const v = String(landing.value || "").trim().toLowerCase();
+        if (v === "calendar" || v === "transactions" || v === "reports") {
+          localStorage.setItem(PREF_DEFAULT_LANDING_KEY, v);
+        } else {
+          localStorage.removeItem(PREF_DEFAULT_LANDING_KEY);
+        }
+      } catch (_) {}
+    });
+  }
+
+  const lowBal = document.getElementById("prefAlertLowBalance");
+  if (lowBal && !lowBal.dataset.bwPrefBound) {
+    lowBal.dataset.bwPrefBound = "1";
+    lowBal.checked = readPrefAlertLowBalanceEnabled();
+    lowBal.addEventListener("change", () => {
+      try {
+        localStorage.setItem(PREF_ALERT_LOW_BALANCE_KEY, lowBal.checked ? "1" : "0");
+      } catch (_) {}
+      // Re-evaluate sidebar banners; refreshLowBalanceAlert respects the
+      // toggle state via readPrefAlertLowBalanceEnabled().
+      void refreshLowBalanceAlert();
+    });
+  }
+
+  const modeRadios = document.querySelectorAll('input[name="prefBalanceDisplayMode"]');
+  if (modeRadios.length) {
+    const current = readPrefBalanceDisplayMode();
+    modeRadios.forEach((r) => {
+      try {
+        r.checked = String(r.value) === current;
+      } catch (_) {}
+      if (r.dataset.bwPrefBound === "1") return;
+      r.dataset.bwPrefBound = "1";
+      r.addEventListener("change", () => {
+        if (!r.checked) return;
+        try {
+          const v = String(r.value || "").trim().toLowerCase();
+          if (v === "projected" || v === "safe" || v === "both") {
+            localStorage.setItem(PREF_BALANCE_DISPLAY_MODE_KEY, v);
+          }
+        } catch (_) {}
+      });
+    });
   }
 }
 

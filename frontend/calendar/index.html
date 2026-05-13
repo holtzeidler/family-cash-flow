@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=415" />
+    <link rel="stylesheet" href="../styles.css?v=416" />
   </head>
   <body>
     <div class="container">
@@ -75,27 +75,15 @@
                 <span class="settings-nav-item__chev" aria-hidden="true">▸</span>
               </button>
               <button type="button" class="settings-nav-item" data-settings-key="forecastRules">
-                <span class="settings-nav-item__label">Forecast rules</span>
-                <span class="settings-nav-item__chev" aria-hidden="true">▸</span>
-              </button>
-              <button type="button" class="settings-nav-item" data-settings-key="categories">
-                <span class="settings-nav-item__label">Categories &amp; groups</span>
-                <span class="settings-nav-item__chev" aria-hidden="true">▸</span>
-              </button>
-              <button type="button" class="settings-nav-item" data-settings-key="familySharing" hidden>
-                <span class="settings-nav-item__label">Household</span>
-                <span class="settings-nav-item__chev" aria-hidden="true">▸</span>
-              </button>
-              <button type="button" class="settings-nav-item" data-settings-key="notifications">
-                <span class="settings-nav-item__label">Notifications</span>
-                <span class="settings-nav-item__chev" aria-hidden="true">▸</span>
-              </button>
-              <button type="button" class="settings-nav-item" data-settings-key="billing">
-                <span class="settings-nav-item__label">Billing</span>
+                <span class="settings-nav-item__label">Forecast Rules</span>
                 <span class="settings-nav-item__chev" aria-hidden="true">▸</span>
               </button>
               <button type="button" class="settings-nav-item" data-settings-key="preferences">
                 <span class="settings-nav-item__label">Preferences</span>
+                <span class="settings-nav-item__chev" aria-hidden="true">▸</span>
+              </button>
+              <button type="button" class="settings-nav-item" data-settings-key="billing">
+                <span class="settings-nav-item__label">Billing</span>
                 <span class="settings-nav-item__chev" aria-hidden="true">▸</span>
               </button>
             </div>
@@ -453,48 +441,9 @@
                   </div>
                 </div>
 
-                <div class="settings-pane" data-settings-pane="forecastRules" hidden>
-                  <header class="settings-section-head">
-                    <h2 class="settings-section-title">Forecast rules</h2>
-                    <p class="settings-section-lede">Balance signals for Forecast, Reports, and sidebar outlook.</p>
-                  </header>
-                  <div class="balance-threshold-box balance-threshold-box--panel balance-threshold-box--compact" aria-label="Forecast thresholds">
-                    <h3 class="settings-subhead settings-subhead--thresholds">Thresholds</h3>
-                    <p class="balance-threshold-lede">Surface tight cash before transfers, and when checking sits above your comfort zone.</p>
-                    <div class="balance-threshold-fields">
-                      <div class="form-row-h">
-                        <div class="form-row-h__label"><label for="balanceThresholdMin">Balance floor (warn below)</label></div>
-                        <div class="form-row-h__field">
-                          <div class="money-input threshold-input">
-                            <span class="money-input__prefix" aria-hidden="true">$</span>
-                            <input id="balanceThresholdMin" type="text" inputmode="decimal" autocomplete="off" placeholder="e.g. 1000" />
-                          </div>
-                        </div>
-                      </div>
-                      <div class="form-row-h">
-                        <div class="form-row-h__label"><label for="balanceThresholdMax">Comfort ceiling (optional)</label></div>
-                        <div class="form-row-h__field">
-                          <div class="money-input threshold-input">
-                            <span class="money-input__prefix" aria-hidden="true">$</span>
-                            <input id="balanceThresholdMax" type="text" inputmode="decimal" autocomplete="off" placeholder="e.g. 10000" />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div class="balance-threshold-card-foot">
-                      <div class="balance-threshold-card-foot__msg">
-                        <div id="lowBalanceErr" class="error" style="display: none" role="alert"></div>
-                        <p id="balanceThresholdSavedMsg" class="balance-threshold-saved-msg" hidden aria-live="polite" role="status"></p>
-                      </div>
-                      <button type="button" id="balanceThresholdSaveBtn" class="secondary">Save</button>
-                    </div>
-                    <p class="balance-threshold-hint meta">Blank turns a threshold off. Save applies for this household.</p>
-                  </div>
-                </div>
-
-                <div class="settings-pane cats-pane" data-settings-pane="categories" data-cats-pane hidden>
+                <div class="settings-pane cats-pane" data-settings-pane="forecastRules" data-cats-pane hidden>
                   <header class="settings-section-head cats-pane__head">
-                    <h2 class="settings-section-title cats-pane__title">Categories &amp; Groups</h2>
+                    <h2 class="settings-section-title cats-pane__title">Forecast Rules</h2>
                     <p class="settings-section-lede cats-pane__helper">Groups organize your categories. Categories are what you assign to transactions.</p>
                     <p class="cats-pane__note">Most people use the defaults and customize over time.</p>
                   </header>
@@ -567,58 +516,123 @@
                   </div>
                 </div>
 
-                <div class="settings-pane" data-settings-pane="notifications" hidden>
-                  <header class="settings-section-head">
-                    <h2 class="settings-section-title">Notifications &amp; alerts</h2>
-                    <p class="settings-section-lede">How BalanceWhiz flags balance risk and big moves.</p>
+                <div class="settings-pane prefs-pane" data-settings-pane="preferences" data-prefs-pane hidden>
+                  <header class="settings-section-head prefs-pane__head">
+                    <h2 class="settings-section-title prefs-pane__title">Forecast Preferences</h2>
+                    <p class="settings-section-lede prefs-pane__lede">Control how BalanceWhiz warns you, displays balances, and keeps forecasts accurate.</p>
                   </header>
-                  <ul class="settings-notif-list" aria-label="Notification preferences">
-                    <li class="settings-notif-row">
-                      <div class="settings-notif-row__main">
-                        <span class="settings-notif-row__label">Low balance alerts</span>
-                        <span class="settings-notif-row__hint">Uses your floor in Forecast rules</span>
-                      </div>
-                      <span class="settings-notif-pill settings-notif-pill--on">On</span>
-                    </li>
-                    <li class="settings-notif-row">
-                      <div class="settings-notif-row__main">
-                        <span class="settings-notif-row__label">Large expense warnings</span>
-                      </div>
-                      <span class="settings-notif-pill settings-notif-pill--off">Off</span>
-                    </li>
-                    <li class="settings-notif-row">
-                      <div class="settings-notif-row__main">
-                        <span class="settings-notif-row__label">Weekly summary</span>
-                      </div>
-                      <span class="settings-notif-pill settings-notif-pill--soon">Soon</span>
-                    </li>
-                    <li class="settings-notif-row">
-                      <div class="settings-notif-row__main">
-                        <span class="settings-notif-row__label">Email alerts</span>
-                      </div>
-                      <span class="settings-notif-pill settings-notif-pill--soon">Soon</span>
-                    </li>
-                  </ul>
-                  <p class="meta settings-notif-foot">
-                    More channels are on the way. Tune balance numbers in
-                    <button type="button" class="settings-text-btn" id="settingsJumpForecastRulesBtn">Forecast Setup</button>.
-                  </p>
-                </div>
 
-                <div class="settings-pane" data-settings-pane="preferences" hidden>
-                  <header class="settings-section-head">
-                    <h2 class="settings-section-title">Preferences</h2>
-                    <p class="settings-section-lede">Defaults for how BalanceWhiz opens and displays information.</p>
-                  </header>
-                  <div class="form-row-h">
-                    <div class="form-row-h__label"><label for="prefDefaultLanding">Default landing page</label></div>
-                    <div class="form-row-h__field">
-                      <select id="prefDefaultLanding" disabled class="settings-select-muted">
-                        <option selected>Forecast</option>
-                      </select>
+                  <section class="prefs-card prefs-card--tinted" aria-labelledby="prefsForecastBehaviorTitle">
+                    <header class="prefs-card__head">
+                      <h3 class="prefs-card__title" id="prefsForecastBehaviorTitle">Forecast behavior</h3>
+                      <p class="prefs-card__lede">The numbers and screens BalanceWhiz uses by default.</p>
+                    </header>
+
+                    <div class="prefs-field">
+                      <label class="prefs-field__label" for="balanceThresholdMin">Safe balance threshold</label>
+                      <p class="prefs-field__hint">The minimum amount you prefer to keep in checking.</p>
+                      <div class="prefs-field__control">
+                        <div class="money-input threshold-input prefs-money">
+                          <span class="money-input__prefix" aria-hidden="true">$</span>
+                          <input id="balanceThresholdMin" type="text" inputmode="decimal" autocomplete="off" placeholder="1,000" />
+                        </div>
+                        <button type="button" id="balanceThresholdSaveBtn" class="secondary prefs-field__save">Save</button>
+                      </div>
+                      <input type="hidden" id="balanceThresholdMax" value="" />
+                      <div id="lowBalanceErr" class="error prefs-field__err" style="display: none" role="alert"></div>
+                      <p id="balanceThresholdSavedMsg" class="prefs-field__saved" hidden aria-live="polite" role="status"></p>
+                      <p class="prefs-field__helper">BalanceWhiz warns you before projected balances fall below this amount.</p>
                     </div>
-                  </div>
-                  <p class="meta settings-pref-note">More defaults (calendar mode, currency, date format) coming soon.</p>
+
+                    <div class="prefs-field">
+                      <label class="prefs-field__label" for="prefDefaultLanding">Default landing page</label>
+                      <p class="prefs-field__hint">Where BalanceWhiz opens when you log in.</p>
+                      <div class="prefs-field__control">
+                        <select id="prefDefaultLanding" class="prefs-select">
+                          <option value="calendar">Forecast</option>
+                          <option value="transactions">Transactions</option>
+                          <option value="reports">Reports</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div class="prefs-field">
+                      <span class="prefs-field__label">Balance display mode</span>
+                      <p class="prefs-field__hint">Choose which balance style is emphasized throughout the app.</p>
+                      <div class="prefs-field__control">
+                        <div class="prefs-segmented" role="radiogroup" aria-label="Balance display mode">
+                          <input type="radio" name="prefBalanceDisplayMode" id="prefBalanceModeProjected" value="projected" />
+                          <label for="prefBalanceModeProjected" class="prefs-segmented__opt">Projected balance</label>
+                          <input type="radio" name="prefBalanceDisplayMode" id="prefBalanceModeSafe" value="safe" />
+                          <label for="prefBalanceModeSafe" class="prefs-segmented__opt">Safe-to-transfer</label>
+                          <input type="radio" name="prefBalanceDisplayMode" id="prefBalanceModeBoth" value="both" checked />
+                          <label for="prefBalanceModeBoth" class="prefs-segmented__opt">Both</label>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section class="prefs-card" aria-labelledby="prefsAlertsTitle">
+                    <header class="prefs-card__head">
+                      <h3 class="prefs-card__title" id="prefsAlertsTitle">Alerts</h3>
+                      <p class="prefs-card__lede">How BalanceWhiz pings you about balance risk and big moves.</p>
+                    </header>
+                    <ul class="prefs-toggles" role="list">
+                      <li class="prefs-toggle">
+                        <div class="prefs-toggle__main">
+                          <span class="prefs-toggle__label">Low balance alerts</span>
+                          <span class="prefs-toggle__hint">Warn me when checking is projected below my safe balance.</span>
+                        </div>
+                        <label class="prefs-switch" aria-label="Low balance alerts">
+                          <input type="checkbox" id="prefAlertLowBalance" checked />
+                          <span class="prefs-switch__track" aria-hidden="true"></span>
+                        </label>
+                      </li>
+                      <li class="prefs-toggle prefs-toggle--disabled">
+                        <div class="prefs-toggle__main">
+                          <span class="prefs-toggle__label">Large expense warnings</span>
+                          <span class="prefs-toggle__hint">Coming soon.</span>
+                        </div>
+                        <label class="prefs-switch prefs-switch--disabled" aria-label="Large expense warnings (disabled)">
+                          <input type="checkbox" id="prefAlertLargeExpense" disabled />
+                          <span class="prefs-switch__track" aria-hidden="true"></span>
+                        </label>
+                      </li>
+                      <li class="prefs-toggle prefs-toggle--disabled">
+                        <div class="prefs-toggle__main">
+                          <span class="prefs-toggle__label">Weekly summary emails</span>
+                          <span class="prefs-toggle__hint">Email delivery coming soon.</span>
+                        </div>
+                        <label class="prefs-switch prefs-switch--disabled" aria-label="Weekly summary emails (disabled)">
+                          <input type="checkbox" id="prefAlertWeeklySummary" disabled />
+                          <span class="prefs-switch__track" aria-hidden="true"></span>
+                        </label>
+                      </li>
+                      <li class="prefs-toggle prefs-toggle--disabled">
+                        <div class="prefs-toggle__main">
+                          <span class="prefs-toggle__label">Reconciliation reminders</span>
+                          <span class="prefs-toggle__hint">Coming soon.</span>
+                        </div>
+                        <label class="prefs-switch prefs-switch--disabled" aria-label="Reconciliation reminders (disabled)">
+                          <input type="checkbox" id="prefAlertReconciliation" disabled />
+                          <span class="prefs-switch__track" aria-hidden="true"></span>
+                        </label>
+                      </li>
+                    </ul>
+                  </section>
+
+                  <section class="prefs-card prefs-card--tour" aria-labelledby="prefsTourTitle">
+                    <header class="prefs-card__head">
+                      <h3 class="prefs-card__title" id="prefsTourTitle">Quick walkthrough</h3>
+                      <p class="prefs-card__lede">Revisit the 30-second tour anytime.</p>
+                    </header>
+                    <div class="prefs-tour-actions">
+                      <button type="button" id="prefRestartTourBtn" class="prefs-tour-cta" data-bw-tour-restart>Show me around</button>
+                      <p class="prefs-tour-sub">Covers calendar updates, balance alerts, and reconciliation.</p>
+                    </div>
+                  </section>
+
+                  <p class="prefs-pane__footnote">Your forecast becomes more useful as balances and transactions stay current.</p>
                 </div>
 
                 <div class="settings-pane" data-settings-pane="billing" hidden>
@@ -1247,7 +1261,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="../app.js?v=271"></script>
+    <script src="../app.js?v=272"></script>
     <script src="../feedback.js?v=3" defer></script>
     <script src="../tour.js?v=2" defer></script>
   </body>

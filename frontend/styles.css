@@ -2460,10 +2460,6 @@ body.support-doc-page .support-doc__quicklinks span{
   gap: 10px;
   padding: 12px;
 }
-.settings-nav.settings-nav--sidebar{
-  padding: 10px;
-  gap: 8px;
-}
 .settings-nav-item{
   width: 100%;
   display: flex;
@@ -2471,36 +2467,51 @@ body.support-doc-page .support-doc__quicklinks span{
   justify-content: space-between;
   gap: 10px;
   text-align: left;
-  border: 1px solid rgba(0,0,0,0.12);
-  background: rgba(255,255,255,0.55);
-  color: var(--text);
-  border-radius: 12px;
-  padding: 10px 12px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: color-mix(in srgb, var(--text) 78%, transparent);
+  border-radius: 10px;
+  padding: 11px 14px;
   cursor: pointer;
   font: inherit;
-  font-weight: 800;
-  letter-spacing: 0.2px;
+  font-weight: 600;
+  letter-spacing: 0;
   text-transform: none;
-  font-size: 12px;
+  font-size: 13px;
+  position: relative;
+  transition: background-color 140ms ease, color 140ms ease, border-color 140ms ease;
 }
 .settings-nav-item:hover{
-  filter: brightness(0.98);
+  background: color-mix(in srgb, var(--accent) 5%, transparent);
+  color: var(--text);
+}
+.settings-nav-item:focus-visible{
+  outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  outline-offset: 2px;
 }
 .settings-nav-item.is-active{
-  border-color: color-mix(in srgb, var(--accent) 45%, rgba(0,0,0,0.12));
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent);
+  background: color-mix(in srgb, var(--accent) 9%, #ffffff);
+  border-color: color-mix(in srgb, var(--accent) 18%, rgba(0,0,0,0.05));
+  color: color-mix(in srgb, var(--accent) 70%, var(--text));
+  font-weight: 700;
+  box-shadow: none;
+}
+.settings-nav-item.is-active::before{
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 22%;
+  bottom: 22%;
+  width: 3px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--accent) 65%, transparent);
+}
+.settings-nav.settings-nav--sidebar{
+  padding: 12px 8px;
+  gap: 4px;
 }
 .settings-nav-item__chev{
-  width: 28px;
-  height: 28px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 8px;
-  border: 1px solid rgba(0,0,0,0.10);
-  background: rgba(0,0,0,0.03);
-  color: var(--muted);
-  font-weight: 700;
+  display: none;
 }
 .settings-content{
   padding: 14px;
@@ -3280,16 +3291,19 @@ button.nav-link:hover{
 .balance-threshold-card-foot .balance-threshold-saved-msg{
   margin: 0;
 }
-body[data-bw-view="settings"] .settings-pane[data-settings-pane="forecastRules"] .threshold-input.money-input{
-  border-radius: 8px;
+body[data-bw-view="settings"] .settings-pane[data-settings-pane="preferences"] .threshold-input.money-input,
+body[data-bw-view="settings"] .settings-pane[data-settings-pane="preferences"] .prefs-money.money-input{
+  border-radius: 10px;
 }
-body[data-bw-view="settings"] .settings-pane[data-settings-pane="forecastRules"] .threshold-input .money-input__prefix{
-  padding: 5px 5px 5px 8px;
-  font-size: 12px;
-}
-body[data-bw-view="settings"] .settings-pane[data-settings-pane="forecastRules"] .threshold-input input{
-  padding: 6px 8px;
+body[data-bw-view="settings"] .settings-pane[data-settings-pane="preferences"] .threshold-input .money-input__prefix,
+body[data-bw-view="settings"] .settings-pane[data-settings-pane="preferences"] .prefs-money .money-input__prefix{
+  padding: 7px 6px 7px 11px;
   font-size: 13px;
+}
+body[data-bw-view="settings"] .settings-pane[data-settings-pane="preferences"] .threshold-input input,
+body[data-bw-view="settings"] .settings-pane[data-settings-pane="preferences"] .prefs-money input{
+  padding: 9px 12px;
+  font-size: 14px;
 }
 .balance-threshold-box{
   /* Nudge thresholds block right (requested) */
@@ -6225,7 +6239,7 @@ body[data-bw-view="settings"] .sidebar .card.sidebar-section[data-sidebar-key="m
 }
 body[data-bw-view="settings"] #settingsViewPanel{
   padding-top: 4px;
-  max-width: 1160px;
+  max-width: 1080px;
   width: 100%;
 }
 body[data-bw-view="settings"] .settings-content--hub.card{
@@ -6250,18 +6264,9 @@ body[data-bw-view="settings"] .settings-section-body{
 body[data-bw-view="settings"] .settings-actions-row{
   margin-top: 8px;
 }
-body[data-bw-view="settings"] .settings-pane[data-settings-pane="forecastSetup"] .balance-threshold-box--panel{
-  padding: 10px 12px;
-}
-body[data-bw-view="settings"] .settings-pane[data-settings-pane="forecastSetup"] .balance-threshold-box--panel.balance-threshold-box--flush{
-  padding: 0;
-}
-body[data-bw-view="settings"] .settings-pane[data-settings-pane="forecastSetup"] .form-row-h{
-  padding: 4px 0;
-}
-body[data-bw-view="settings"] .settings-pane[data-settings-pane="forecastSetup"] .form-row-h + .form-row-h{
-  margin-top: 2px;
-}
+/* Threshold input styling now lives inside Forecast Preferences (.prefs-card)
+   instead of a forecastSetup pane; keep these selectors intentionally empty
+   so legacy callers don't suddenly get a different layout. */
 .settings-nav.settings-nav--rail{
   padding: 6px;
   gap: 3px;
@@ -6288,22 +6293,38 @@ body[data-bw-view="settings"] .settings-pane[data-settings-pane="forecastSetup"]
   box-shadow: none;
 }
 body[data-bw-view="settings"] .settings-nav.settings-nav--rail{
-  padding: 4px;
-  gap: 1px;
+  padding: 6px 4px;
+  gap: 2px;
 }
 body[data-bw-view="settings"] .settings-nav--rail .settings-nav-item{
-  padding: 6px 8px;
-  font-size: 11px;
-  font-weight: 500;
-  color: rgba(75, 85, 99, 0.78);
+  padding: 9px 12px 9px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(75, 85, 99, 0.82);
+  border-radius: 8px;
+  position: relative;
+  transition: background-color 140ms ease, color 140ms ease;
 }
 body[data-bw-view="settings"] .settings-nav--rail .settings-nav-item:hover{
-  background: rgba(0, 0, 0, 0.02);
-  color: rgba(55, 65, 75, 0.92);
+  background: color-mix(in srgb, var(--accent) 5%, transparent);
+  color: color-mix(in srgb, var(--accent) 50%, var(--text));
 }
 body[data-bw-view="settings"] .settings-nav--rail .settings-nav-item.is-active{
-  font-weight: 600;
-  color: rgba(11, 61, 46, 0.95);
+  font-weight: 700;
+  color: color-mix(in srgb, var(--accent) 70%, var(--text));
+  background: color-mix(in srgb, var(--accent) 9%, #ffffff);
+  border-color: transparent;
+  box-shadow: none;
+}
+body[data-bw-view="settings"] .settings-nav--rail .settings-nav-item.is-active::before{
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 22%;
+  bottom: 22%;
+  width: 3px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--accent) 65%, transparent);
 }
 .settings-nav--rail .settings-nav-item__chev{
   opacity: 0.32;
@@ -15445,4 +15466,357 @@ body.account-setup-page .account-setup-step3-form .cat-color-row + .tx-add-vspac
 }
 .bw-fb-pulse__send:hover{
   background: color-mix(in srgb, var(--accent) 92%, #000 8%);
+}
+
+/* ============================================================
+   Forecast Preferences (Settings → Preferences pane)
+   Card-based "personal forecasting preferences" layout. The
+   pane itself owns spacing tokens so individual cards stay
+   visually paired. All selectors are scoped to .prefs-pane to
+   avoid leaking onto Accounts / Forecast Rules / Billing.
+   ============================================================ */
+.prefs-pane{
+  --prefs-card-bg: #ffffff;
+  --prefs-card-bg-tinted: color-mix(in srgb, var(--accent) 4%, #ffffff);
+  --prefs-card-border: rgba(11, 61, 46, 0.10);
+  --prefs-card-shadow: 0 1px 0 rgba(17, 24, 39, 0.025), 0 6px 18px -14px rgba(11, 61, 46, 0.18);
+  --prefs-text: #0f172a;
+  --prefs-text-soft: rgba(55, 65, 81, 0.85);
+  --prefs-text-mute: rgba(75, 85, 99, 0.78);
+  --prefs-divider: rgba(17, 24, 39, 0.06);
+
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding-top: 4px;
+}
+.prefs-pane__head{
+  margin: 0 0 4px;
+}
+.prefs-pane__title{
+  font-size: 1.18rem;
+  font-weight: 700;
+  letter-spacing: -0.005em;
+  color: var(--prefs-text);
+  margin: 0;
+}
+.prefs-pane__lede{
+  margin: 4px 0 0;
+  font-size: 0.84rem;
+  line-height: 1.5;
+  color: var(--prefs-text-soft);
+  max-width: 60ch;
+}
+.prefs-pane__footnote{
+  margin: 6px 4px 0;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--prefs-text-mute);
+  font-style: italic;
+}
+
+.prefs-card{
+  background: var(--prefs-card-bg);
+  border: 1px solid var(--prefs-card-border);
+  border-radius: 14px;
+  box-shadow: var(--prefs-card-shadow);
+  padding: 22px 24px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.prefs-card--tinted{
+  background: var(--prefs-card-bg-tinted);
+}
+.prefs-card--tour{
+  padding: 18px 22px;
+}
+.prefs-card__head{
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.prefs-card__title{
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.005em;
+  color: var(--prefs-text);
+}
+.prefs-card__lede{
+  margin: 0;
+  font-size: 0.81rem;
+  line-height: 1.5;
+  color: var(--prefs-text-mute);
+}
+
+/* Field row inside a card. Stacks label/hint over control so the field
+   never feels like a database row. */
+.prefs-field{
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 14px;
+  border-top: 1px solid var(--prefs-divider);
+}
+.prefs-card__head + .prefs-field,
+.prefs-field:first-of-type{
+  padding-top: 0;
+  border-top: 0;
+}
+.prefs-field__label{
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--prefs-text);
+}
+.prefs-field__hint{
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--prefs-text-mute);
+}
+.prefs-field__control{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+.prefs-field__save{
+  flex: 0 0 auto;
+}
+.prefs-field__helper{
+  margin: 6px 0 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--prefs-text-mute);
+}
+.prefs-field__err{
+  margin: 4px 0 0 !important;
+  font-size: 0.8rem;
+}
+.prefs-field__saved{
+  margin: 4px 0 0;
+  font-size: 0.78rem;
+  color: color-mix(in srgb, var(--accent) 72%, var(--text));
+}
+
+/* Constrain the threshold money input to a comfortable column. */
+.prefs-pane .prefs-money.money-input{
+  max-width: 200px;
+}
+
+/* Native select styled for the prefs surface. */
+.prefs-select{
+  appearance: none;
+  -webkit-appearance: none;
+  background-color: #ffffff;
+  background-image:
+    linear-gradient(45deg, transparent 50%, rgba(75, 85, 99, 0.65) 50%),
+    linear-gradient(135deg, rgba(75, 85, 99, 0.65) 50%, transparent 50%);
+  background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  border: 1px solid rgba(11, 61, 46, 0.16);
+  border-radius: 10px;
+  padding: 9px 36px 9px 12px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--prefs-text);
+  min-width: 220px;
+  cursor: pointer;
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+.prefs-select:hover{
+  border-color: color-mix(in srgb, var(--accent) 30%, rgba(11, 61, 46, 0.16));
+}
+.prefs-select:focus-visible{
+  outline: none;
+  border-color: color-mix(in srgb, var(--accent) 55%, rgba(11, 61, 46, 0.16));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+/* Segmented (radio-group) for Balance display mode. */
+.prefs-segmented{
+  display: inline-flex;
+  background: #ffffff;
+  border: 1px solid rgba(11, 61, 46, 0.14);
+  border-radius: 10px;
+  padding: 3px;
+  gap: 2px;
+  box-shadow: inset 0 1px 0 rgba(17, 24, 39, 0.02);
+}
+.prefs-segmented input[type="radio"]{
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+  width: 0;
+  height: 0;
+}
+.prefs-segmented__opt{
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--prefs-text-mute);
+  padding: 7px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 140ms ease, color 140ms ease;
+  user-select: none;
+}
+.prefs-segmented__opt:hover{
+  color: var(--prefs-text);
+}
+.prefs-segmented input[type="radio"]:checked + .prefs-segmented__opt{
+  background: color-mix(in srgb, var(--accent) 92%, #000 0%);
+  color: #ffffff;
+  box-shadow: 0 1px 2px rgba(11, 61, 46, 0.15);
+}
+.prefs-segmented input[type="radio"]:focus-visible + .prefs-segmented__opt{
+  outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  outline-offset: 2px;
+}
+
+/* Alerts toggle list */
+.prefs-toggles{
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.prefs-toggle{
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 0;
+  border-top: 1px solid var(--prefs-divider);
+}
+.prefs-toggle:first-child{
+  border-top: 0;
+  padding-top: 4px;
+}
+.prefs-toggle:last-child{
+  padding-bottom: 4px;
+}
+.prefs-toggle__main{
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.prefs-toggle__label{
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--prefs-text);
+}
+.prefs-toggle__hint{
+  font-size: 0.78rem;
+  color: var(--prefs-text-mute);
+  line-height: 1.4;
+}
+.prefs-toggle--disabled .prefs-toggle__label{
+  color: color-mix(in srgb, var(--prefs-text) 65%, transparent);
+}
+
+/* iOS-style toggle switch. The disabled variant flattens shadow + dims. */
+.prefs-switch{
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  width: 42px;
+  height: 24px;
+  cursor: pointer;
+}
+.prefs-switch input[type="checkbox"]{
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+.prefs-switch__track{
+  position: absolute;
+  inset: 0;
+  background: rgba(17, 24, 39, 0.18);
+  border-radius: 999px;
+  transition: background-color 160ms ease;
+}
+.prefs-switch__track::after{
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  background: #ffffff;
+  border-radius: 999px;
+  box-shadow: 0 1px 3px rgba(17, 24, 39, 0.18);
+  transition: transform 160ms ease;
+}
+.prefs-switch input[type="checkbox"]:checked + .prefs-switch__track{
+  background: color-mix(in srgb, var(--accent) 80%, #000 0%);
+}
+.prefs-switch input[type="checkbox"]:checked + .prefs-switch__track::after{
+  transform: translateX(18px);
+}
+.prefs-switch input[type="checkbox"]:focus-visible + .prefs-switch__track{
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+.prefs-switch--disabled{
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+.prefs-switch--disabled .prefs-switch__track{
+  background: rgba(17, 24, 39, 0.12);
+}
+
+/* Quick walkthrough card */
+.prefs-tour-actions{
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.prefs-tour-cta{
+  align-self: flex-start;
+  background: color-mix(in srgb, var(--accent) 92%, #000 8%);
+  color: #ffffff;
+  border: 0;
+  border-radius: 10px;
+  padding: 9px 18px;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 140ms ease, transform 80ms ease;
+}
+.prefs-tour-cta:hover{
+  background: color-mix(in srgb, var(--accent) 86%, #000 14%);
+}
+.prefs-tour-cta:active{
+  transform: translateY(0.5px);
+}
+.prefs-tour-cta:focus-visible{
+  outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  outline-offset: 2px;
+}
+.prefs-tour-sub{
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--prefs-text-mute);
+}
+
+/* Narrow viewports: cards keep the same order but tighten side padding. */
+@media (max-width: 720px){
+  .prefs-card{
+    padding: 18px 16px 16px;
+  }
+  .prefs-pane{
+    gap: 16px;
+  }
+  .prefs-segmented{
+    flex-wrap: wrap;
+  }
 }
