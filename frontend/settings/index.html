@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=418" />
+    <link rel="stylesheet" href="../styles.css?v=427" />
   </head>
   <body>
     <div class="container">
@@ -37,7 +37,7 @@
           </div>
           <div class="top-nav__tabs" role="tablist" aria-label="Views">
             <a class="top-nav__tab" id="navCalendarView" role="tab" aria-selected="true" href="/calendar">Forecast</a>
-            <a class="top-nav__tab" id="navTransactionView" role="tab" aria-selected="false" href="/transactions">Transaction View</a>
+            <a class="top-nav__tab" id="navTransactionView" role="tab" aria-selected="false" href="/transactions">Transactions</a>
             <a class="top-nav__tab" id="navReportsView" role="tab" aria-selected="false" href="/reports">Reports</a>
             <a class="top-nav__tab is-active" id="navSettingsView" role="tab" aria-selected="false" href="/settings">Settings</a>
           </div>
@@ -639,28 +639,78 @@
                 </div>
 
                 <div class="settings-pane" data-settings-pane="billing" hidden>
-                  <header class="settings-section-head">
-                    <h2 class="settings-section-title">Billing &amp; subscription</h2>
-                    <p class="settings-section-lede">Plan status and renewal.</p>
-                  </header>
-                  <p class="meta">
-                    Your billing details are shown here.
-                  </p>
-                  <div class="form-row-h">
-                    <div class="form-row-h__label"><label>Plan</label></div>
-                    <div class="form-row-h__field"><div id="billingPlan">—</div></div>
-                  </div>
-                  <div class="form-row-h">
-                    <div class="form-row-h__label"><label>Billing frequency</label></div>
-                    <div class="form-row-h__field"><div id="billingFrequency">—</div></div>
-                  </div>
-                  <div class="form-row-h">
-                    <div class="form-row-h__label"><label>Next billing date</label></div>
-                    <div class="form-row-h__field"><div id="billingNextDate">—</div></div>
-                  </div>
-                  <div class="form-row-h">
-                    <div class="form-row-h__label"><label>Account status</label></div>
-                    <div class="form-row-h__field"><div id="billingAccountStatus">—</div></div>
+                  <div class="billing-page">
+                    <header class="settings-section-head billing-page__head">
+                      <h2 class="settings-section-title">Plan &amp; billing</h2>
+                      <p class="settings-section-lede">Simple subscription details, renewal timing, and billing management in one place.</p>
+                    </header>
+                    <div class="billing-page__shell">
+                      <section class="billing-page__main">
+                        <div class="billing-hero">
+                          <div class="billing-hero__eyebrow">Current access</div>
+                          <div class="billing-hero__title" id="billingPlanHeadline">Cash Forecast</div>
+                          <p class="billing-hero__copy" id="billingPlanContext">Forecast cash flow before balances tighten.</p>
+                          <p class="billing-hero__renewal" id="billingRenewalMessage">Your next renewal is —.</p>
+                        </div>
+
+                        <div class="billing-stat-grid">
+                          <article class="billing-stat-card">
+                            <div class="billing-stat-card__label">Plan</div>
+                            <div class="billing-stat-card__value" id="billingPlan">—</div>
+                          </article>
+                          <article class="billing-stat-card">
+                            <div class="billing-stat-card__label">Billing</div>
+                            <div class="billing-stat-card__value" id="billingFrequency">—</div>
+                          </article>
+                          <article class="billing-stat-card">
+                            <div class="billing-stat-card__label" id="billingNextDateLabel">Next renewal</div>
+                            <div class="billing-stat-card__value" id="billingNextDate">—</div>
+                          </article>
+                          <article class="billing-stat-card">
+                            <div class="billing-stat-card__label">Status</div>
+                            <div class="billing-stat-card__value" id="billingAccountStatus">—</div>
+                          </article>
+                        </div>
+
+                        <section class="billing-section">
+                          <div class="billing-section__head">
+                            <h3 class="billing-section__title">Manage subscription</h3>
+                            <p class="billing-section__copy">Billing is simple and predictable. Cancel anytime.</p>
+                          </div>
+                          <div class="settings-actions-row billing-actions-row">
+                            <button type="button" class="secondary billing-action-btn" data-billing-action="payment">Update payment method</button>
+                            <button type="button" class="secondary billing-action-btn" data-billing-action="cycle">Change billing cycle</button>
+                            <button type="button" class="secondary billing-action-btn billing-action-btn--danger" data-billing-action="cancel">Cancel subscription</button>
+                            <button type="button" class="secondary billing-action-btn" data-billing-action="invoices">View invoices</button>
+                          </div>
+                          <p class="billing-section__note">Self-serve billing updates are on the way. For now, these actions can still be handled through support.</p>
+                          <p class="billing-section__support">Need help today? <a class="settings-text-btn" href="/contactus/">Contact support</a>.</p>
+                        </section>
+                      </section>
+
+                      <aside class="billing-page__side">
+                        <section class="billing-panel">
+                          <h3 class="billing-section__title">Plan includes</h3>
+                          <ul class="billing-feature-list">
+                            <li>Forecast calendar</li>
+                            <li>Cash pressure reports</li>
+                            <li>Safe-to-transfer guidance</li>
+                            <li>Unlimited recurring transactions</li>
+                          </ul>
+                        </section>
+
+                        <section class="billing-panel billing-panel--reassure">
+                          <h3 class="billing-section__title">Good to know</h3>
+                          <p class="billing-panel__copy">Your forecast stays active as long as your subscription remains active.</p>
+                          <ul class="billing-note-list">
+                            <li>Cancel anytime.</li>
+                            <li>No bank connection required.</li>
+                            <li>Your forecast data stays editable.</li>
+                            <li>Billing is simple and predictable.</li>
+                          </ul>
+                        </section>
+                      </aside>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -844,20 +894,20 @@
 
               <section class="card reports-card reports-card--pressure" id="reportCashPressure">
                 <div class="reports-card__head">
-                  <h2 class="reports-card__title">Upcoming cash pressure</h2>
-                  <p class="reports-card__desc">Large scheduled outflows in the next 90 days—where the balance lands after each hit.</p>
+                  <h2 class="reports-card__title">Cash flow pressure points</h2>
+                  <p class="reports-card__desc">See which upcoming transactions tighten projected cash flow the most.</p>
                 </div>
                 <div id="reportsPressureSummary" class="reports-ob-summary reports-ob-summary--pressure" hidden>
                   <div class="reports-ob-card" role="status">
-                    <div class="reports-ob-card__k">Largest upcoming expense</div>
+                    <div class="reports-ob-card__k">Largest upcoming payment</div>
                     <div class="reports-ob-card__v" id="reportsPressureStatLargest">—</div>
                   </div>
                   <div class="reports-ob-card" role="status">
-                    <div class="reports-ob-card__k">Lowest projected balance (among hits)</div>
+                    <div class="reports-ob-card__k">Lowest projected balance</div>
                     <div class="reports-ob-card__v" id="reportsPressureStatLowBal">—</div>
                   </div>
                   <div class="reports-ob-card" role="status">
-                    <div class="reports-ob-card__k">Pressure points</div>
+                    <div class="reports-ob-card__k">High-impact dates</div>
                     <div class="reports-ob-card__v" id="reportsPressureStatCount">—</div>
                   </div>
                 </div>
@@ -866,9 +916,9 @@
                   <table class="reports-table reports-table--pressure" aria-label="Upcoming cash pressure">
                     <thead>
                       <tr>
-                        <th scope="col">Impact date</th>
-                        <th scope="col">Days until</th>
-                        <th scope="col">Description</th>
+                        <th scope="col">Date</th>
+                        <th scope="col">Timing</th>
+                        <th scope="col">Payment</th>
                         <th scope="col" class="num">Amount</th>
                         <th scope="col" class="num reports-pressure-hero-col">Balance after</th>
                         <th scope="col">Recovery</th>
@@ -1264,7 +1314,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="../app.js?v=273"></script>
+    <script src="../app.js?v=279"></script>
     <script src="../feedback.js?v=3" defer></script>
     <script src="../tour.js?v=2" defer></script>
   </body>

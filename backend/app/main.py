@@ -321,6 +321,7 @@ class Recurrence(str, Enum):
     biweekly = "biweekly"
     monthly = "monthly"
     twice_monthly = "twice_monthly"  # two fixed days per month (start day + second day)
+    quarterly = "quarterly"  # every 3 months
     bimonthly = "bimonthly"  # 15th + last day of month
     semiannual = "semiannual"  # twice yearly / every 6 months
     yearly = "yearly"
@@ -2388,7 +2389,7 @@ def _ensure_recurrence_enum_extensions_postgres() -> None:
         if not row:
             return
         typname = row[0]
-        for label in ("weekly", "twice_monthly", "biweekly", "bimonthly"):
+        for label in ("weekly", "twice_monthly", "biweekly", "quarterly", "bimonthly"):
             exists = conn.execute(
                 text(
                     "SELECT 1 FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid "
@@ -4982,6 +4983,8 @@ def _expected_occurrences_in_range(
 
         if recurrence == Recurrence.monthly:
             step_months = 1
+        elif recurrence == Recurrence.quarterly:
+            step_months = 3
         elif recurrence == Recurrence.semiannual:
             step_months = 6
         elif recurrence == Recurrence.yearly:
@@ -5127,6 +5130,8 @@ def _occurrence_immediately_before(
 
     if recurrence == Recurrence.monthly:
         step_months = 1
+    elif recurrence == Recurrence.quarterly:
+        step_months = 3
     elif recurrence == Recurrence.semiannual:
         step_months = 6
     elif recurrence == Recurrence.yearly:

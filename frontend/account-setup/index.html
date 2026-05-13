@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=418" />
+    <link rel="stylesheet" href="../styles.css?v=421" />
   </head>
   <body class="login-page signup-page account-setup-page">
     <div class="container">
@@ -44,9 +44,9 @@
 
         <div id="accountSetupWizard" class="account-setup-wizard" data-step="0" aria-label="Account setup">
           <p class="account-setup-wizard__stepLabel" id="accountSetupWizardStepLabel" aria-live="polite">Step 1 of 4</p>
-          <p class="account-setup-wizard__eyebrow" id="accountSetupWizardEyebrow">Create your account</p>
+          <p class="account-setup-wizard__eyebrow" id="accountSetupWizardEyebrow">Create your login</p>
           <p class="account-setup-wizard__subeyebrow" id="accountSetupWizardSubeyebrow">
-            Start with an email and password — takes about 2 minutes.
+            Start with an email and password. You can edit the rest later.
           </p>
           <div class="account-setup-wizard__dots" role="tablist" aria-label="Setup steps">
             <span class="account-setup-wizard__dot is-active" data-wizard-dot="0" aria-current="step"></span>
@@ -64,7 +64,6 @@
                   aria-label="Step 1 of 4: Email and password"
                   aria-hidden="false"
                 >
-                  <p class="meta account-setup-step2-lede">Choose how you’ll sign in.</p>
                   <div class="row">
                     <div class="form-row-h">
                       <div class="form-row-h__label"><label for="email">Email</label></div>
@@ -75,7 +74,10 @@
                   <div class="row">
                     <div class="form-row-h">
                       <div class="form-row-h__label"><label for="password">Password</label></div>
-                      <div class="form-row-h__field"><input id="password" type="password" autocomplete="new-password" /></div>
+                      <div class="form-row-h__field">
+                        <input id="password" type="password" autocomplete="new-password" />
+                        <p class="account-setup-field-hint">Use at least 8 characters.</p>
+                      </div>
                     </div>
                   </div>
                   <div style="height: 9px;"></div>
@@ -94,10 +96,10 @@
                   aria-hidden="true"
                   inert
                 >
-                  <p class="meta account-setup-step2-lede">This anchors your forecast to today. You can adjust it anytime.</p>
+                  <p class="meta account-setup-step2-lede">Name the account and enter today&rsquo;s available balance.</p>
                   <div class="row">
                     <div class="form-row-h">
-                      <div class="form-row-h__label"><label for="accountName">Account Name</label></div>
+                      <div class="form-row-h__label"><label for="accountName">Account name</label></div>
                       <div class="form-row-h__field">
                         <input
                           id="accountName"
@@ -107,6 +109,7 @@
                           autocomplete="off"
                           title="Click to edit this account name"
                         />
+                        <p class="account-setup-field-hint">You can rename this anytime.</p>
                       </div>
                     </div>
                   </div>
@@ -125,9 +128,10 @@
                   <div style="height:10px;"></div>
                   <div class="row">
                     <div class="form-row-h">
-                      <div class="form-row-h__label"><label for="accountStartingBalanceDate">Balance as of:</label></div>
+                      <div class="form-row-h__label"><label for="accountStartingBalanceDate">Balance as of</label></div>
                       <div class="form-row-h__field">
                         <input id="accountStartingBalanceDate" type="date" />
+                        <p class="account-setup-field-hint">Usually today.</p>
                       </div>
                     </div>
                   </div>
@@ -143,7 +147,7 @@
                 >
                   <div id="accountSetupWizardStep3Intro" class="account-setup-step3-intro">
                     <p class="account-setup-step3-intro-hint">
-                      Paycheck, mortgage, credit card — the items that hit your account on a regular schedule.
+                      Start with the paydays and bills you already know. Most people add 2-3 predictable items, and you can edit everything later.
                     </p>
                     <div class="account-setup-tx-choice-wrap">
                       <div class="account-setup-tx-choice-row" role="group" aria-label="Add income or expense">
@@ -161,7 +165,7 @@
                       <button type="button" class="top-nav__logout" id="asStep3SuccessAddIncomeBtn">+ Add Income</button>
                       <button type="button" class="top-nav__logout" id="asStep3SuccessAddExpenseBtn">– Add Expense</button>
                     </div>
-                    <div class="account-setup-step3-form__successNote">A few predictable items is usually enough to start. You can add more later.</div>
+                    <div class="account-setup-step3-form__successNote">A few predictable items are usually enough to start. You can edit or add more later.</div>
                   </div>
                   <div class="account-setup-step3-form__body">
                   <div class="form-row-h">
@@ -187,25 +191,28 @@
                   <div class="form-row-h">
                     <div class="form-row-h__label"><label for="asTxCategorySearch">Category</label></div>
                     <div class="form-row-h__field">
-                      <div class="as-quick-chips" id="asTxQuickChips" role="group" aria-label="Common categories">
-                        <!-- Chips are populated by JS based on the selected Type (income vs expense). -->
-                      </div>
-                      <div class="category-search">
-                        <input type="hidden" id="asTxCategory" value="" autocomplete="off" />
-                        <input
-                          type="text"
-                          id="asTxCategorySearch"
-                          class="category-search__input"
-                          placeholder="Search categories"
-                          autocomplete="off"
-                          spellcheck="false"
-                          aria-label="Category"
-                          role="combobox"
-                          aria-autocomplete="list"
-                          aria-controls="asTxCategoryList"
-                          aria-expanded="false"
-                        />
-                        <ul id="asTxCategoryList" class="category-search__list" role="listbox" hidden></ul>
+                      <div class="account-setup-category-picker">
+                        <p class="account-setup-field-hint account-setup-field-hint--tight">Quick picks, or search for another category.</p>
+                        <div class="as-quick-chips" id="asTxQuickChips" role="group" aria-label="Common categories">
+                          <!-- Chips are populated by JS based on the selected Type (income vs expense). -->
+                        </div>
+                        <div class="category-search">
+                          <input type="hidden" id="asTxCategory" value="" autocomplete="off" />
+                          <input
+                            type="text"
+                            id="asTxCategorySearch"
+                            class="category-search__input"
+                            placeholder="Search for any category"
+                            autocomplete="off"
+                            spellcheck="false"
+                            aria-label="Category"
+                            role="combobox"
+                            aria-autocomplete="list"
+                            aria-controls="asTxCategoryList"
+                            aria-expanded="false"
+                          />
+                          <ul id="asTxCategoryList" class="category-search__list" role="listbox" hidden></ul>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -218,27 +225,43 @@
                   <div class="account-setup-repeat-row-h">
                     <div class="account-setup-repeat-duo">
                       <div class="account-setup-repeat-duo__stack">
-                        <label for="asTxRecurrence" class="account-setup-repeat-duo__label">Repeats</label>
+                        <label for="asTxRecurrence" class="account-setup-repeat-duo__label">How often</label>
                         <select id="asTxRecurrence" class="tx-add-recurrence-select" title="How often this repeats">
-                          <option value="" selected>—</option>
-                          <option value="monthly">monthly</option>
-                          <option value="bimonthly">bi-monthly (15th &amp; last day)</option>
-                          <option value="biweekly">every 2 weeks</option>
-                          <option value="weekly">weekly</option>
-                          <option value="semiannual">every 6 months</option>
-                          <option value="yearly">yearly</option>
+                          <option value="once" selected>One-time</option>
+                          <option value="weekly">Weekly</option>
+                          <option value="biweekly">Every 2 weeks</option>
+                          <option value="twice_monthly">Twice monthly</option>
+                          <option value="monthly">Monthly</option>
+                          <option value="quarterly">Every 3 months</option>
+                          <option value="semiannual">Every 6 months</option>
+                          <option value="yearly">Yearly</option>
                         </select>
                       </div>
-                      <div id="asTxEndDateWrap" class="account-setup-repeat-duo__stack tx-add-schedule-field tx-add-schedule-field--end-date" hidden>
-                        <label for="asTxEndDate" class="account-setup-repeat-duo__label" title="Optional. End date for this recurring transaction. Blank = never ends.">Ends on</label>
-                        <input id="asTxEndDate" type="date" title="Optional. Last date this schedule can occur." />
+                      <div id="asTxSecondDayWrap" class="account-setup-repeat-duo__stack tx-add-schedule-field tx-add-schedule-field--second-day" hidden>
+                        <label for="asTxSecondDayOfMonth" class="account-setup-repeat-duo__label">Also occurs on</label>
+                        <select id="asTxSecondDayOfMonth" class="tx-add-recurrence-select" title="Second monthly date for twice-monthly schedules"></select>
                       </div>
                     </div>
+                    <p id="asTxScheduleSummary" class="account-setup-schedule-summary" hidden></p>
                   </div>
-                  <div class="tx-add-schedule-toolbar" aria-label="Repeat and schedule">
+                  <div class="tx-add-schedule-toolbar" id="asTxEndsRow" aria-label="Repeat and schedule" hidden>
+                    <div class="tx-add-schedule-toolbar__left">
+                      <div class="account-setup-repeat-duo__stack tx-add-schedule-field tx-add-schedule-field--end-mode">
+                        <label for="asTxEndsMode" class="account-setup-repeat-duo__label">Ends</label>
+                        <select id="asTxEndsMode" class="tx-add-recurrence-select" title="When this schedule ends">
+                          <option value="never" selected>Never</option>
+                          <option value="on_date">On a date</option>
+                          <option value="after_count">After a number of times</option>
+                        </select>
+                      </div>
+                    </div>
                     <div class="tx-add-schedule-toolbar__right">
+                      <div id="asTxEndDateWrap" class="account-setup-repeat-duo__stack tx-add-schedule-field tx-add-schedule-field--end-date" hidden>
+                        <label for="asTxEndDate" class="account-setup-repeat-duo__label" title="Optional. Last date this schedule can occur.">Ends on</label>
+                        <input id="asTxEndDate" type="date" title="Optional. Last date this schedule can occur." />
+                      </div>
                       <div id="asTxEndCountWrap" class="tx-add-schedule-field tx-add-schedule-field--end-count" hidden>
-                        <label for="asTxEndCount" title="Optional. Number of times this recurring transaction happens. Blank = never ends.">Ends after</label>
+                        <label for="asTxEndCount" class="account-setup-repeat-duo__label" title="Optional. Number of times this recurring transaction happens.">Ends after</label>
                         <input id="asTxEndCount" type="number" min="1" step="1" placeholder="e.g. 12" title="Optional. Total number of occurrences." />
                         <span class="tx-add-field-hint">occurrences</span>
                       </div>
@@ -249,7 +272,7 @@
                       <span class="reimbursable-field__label">Amount varies month to month</span>
                       <input id="asTxVariable" type="checkbox" title="Amount is an estimate that may change month to month" />
                     </span>
-                    <span class="reimbursable-field__hint">Great for utilities &amp; credit card bills</span>
+                    <span class="reimbursable-field__hint">Helpful for utilities, credit cards, and fluctuating bills.</span>
                   </label>
                   <div class="tx-add-vspace tx-add-vspace--lg" aria-hidden="true"></div>
                   <div class="cat-color-row" aria-label="Select color (optional)">
@@ -324,25 +347,28 @@
                     <div class="form-row-h">
                     <div class="form-row-h__label"><label for="asExpTxCategorySearch">Category</label></div>
                       <div class="form-row-h__field">
-                        <div class="as-quick-chips" id="asExpTxQuickChips" role="group" aria-label="Common categories">
-                          <!-- Chips are populated by JS based on the selected Type (income vs expense). -->
-                        </div>
-                        <div class="category-search">
-                          <input type="hidden" id="asExpTxCategory" value="" autocomplete="off" />
-                          <input
-                            type="text"
-                            id="asExpTxCategorySearch"
-                            class="category-search__input"
-                            placeholder="Search categories"
-                            autocomplete="off"
-                            spellcheck="false"
-                            aria-label="Category"
-                            role="combobox"
-                            aria-autocomplete="list"
-                            aria-controls="asExpTxCategoryList"
-                            aria-expanded="false"
-                          />
-                          <ul id="asExpTxCategoryList" class="category-search__list" role="listbox" hidden></ul>
+                        <div class="account-setup-category-picker">
+                          <p class="account-setup-field-hint account-setup-field-hint--tight">Quick picks, or search for another category.</p>
+                          <div class="as-quick-chips" id="asExpTxQuickChips" role="group" aria-label="Common categories">
+                            <!-- Chips are populated by JS based on the selected Type (income vs expense). -->
+                          </div>
+                          <div class="category-search">
+                            <input type="hidden" id="asExpTxCategory" value="" autocomplete="off" />
+                            <input
+                              type="text"
+                              id="asExpTxCategorySearch"
+                              class="category-search__input"
+                              placeholder="Search for any category"
+                              autocomplete="off"
+                              spellcheck="false"
+                              aria-label="Category"
+                              role="combobox"
+                              aria-autocomplete="list"
+                              aria-controls="asExpTxCategoryList"
+                              aria-expanded="false"
+                            />
+                            <ul id="asExpTxCategoryList" class="category-search__list" role="listbox" hidden></ul>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -355,27 +381,43 @@
                     <div class="account-setup-repeat-row-h">
                       <div class="account-setup-repeat-duo">
                         <div class="account-setup-repeat-duo__stack">
-                          <label for="asExpRecurrence" class="account-setup-repeat-duo__label">Repeats</label>
+                          <label for="asExpRecurrence" class="account-setup-repeat-duo__label">How often</label>
                           <select id="asExpRecurrence" class="tx-add-recurrence-select" title="How often this repeats">
-                            <option value="" selected>—</option>
-                            <option value="monthly">monthly</option>
-                            <option value="bimonthly">bi-monthly (15th &amp; last day)</option>
-                            <option value="biweekly">every 2 weeks</option>
-                            <option value="weekly">weekly</option>
-                            <option value="semiannual">every 6 months</option>
-                            <option value="yearly">yearly</option>
+                            <option value="once" selected>One-time</option>
+                            <option value="weekly">Weekly</option>
+                            <option value="biweekly">Every 2 weeks</option>
+                            <option value="twice_monthly">Twice monthly</option>
+                            <option value="monthly">Monthly</option>
+                            <option value="quarterly">Every 3 months</option>
+                            <option value="semiannual">Every 6 months</option>
+                            <option value="yearly">Yearly</option>
                           </select>
                         </div>
-                        <div id="asExpEndDateWrap" class="account-setup-repeat-duo__stack tx-add-schedule-field tx-add-schedule-field--end-date" hidden>
-                          <label for="asExpEndDate" class="account-setup-repeat-duo__label" title="Optional. End date for this recurring transaction. Blank = never ends.">Ends on</label>
-                          <input id="asExpEndDate" type="date" title="Optional. Last date this schedule can occur." />
+                        <div id="asExpSecondDayWrap" class="account-setup-repeat-duo__stack tx-add-schedule-field tx-add-schedule-field--second-day" hidden>
+                          <label for="asExpSecondDayOfMonth" class="account-setup-repeat-duo__label">Also occurs on</label>
+                          <select id="asExpSecondDayOfMonth" class="tx-add-recurrence-select" title="Second monthly date for twice-monthly schedules"></select>
                         </div>
                       </div>
+                      <p id="asExpScheduleSummary" class="account-setup-schedule-summary" hidden></p>
                     </div>
-                    <div class="tx-add-schedule-toolbar" aria-label="Repeat and schedule">
+                    <div class="tx-add-schedule-toolbar" id="asExpEndsRow" aria-label="Repeat and schedule" hidden>
+                      <div class="tx-add-schedule-toolbar__left">
+                        <div class="account-setup-repeat-duo__stack tx-add-schedule-field tx-add-schedule-field--end-mode">
+                          <label for="asExpEndsMode" class="account-setup-repeat-duo__label">Ends</label>
+                          <select id="asExpEndsMode" class="tx-add-recurrence-select" title="When this schedule ends">
+                            <option value="never" selected>Never</option>
+                            <option value="on_date">On a date</option>
+                            <option value="after_count">After a number of times</option>
+                          </select>
+                        </div>
+                      </div>
                       <div class="tx-add-schedule-toolbar__right">
+                        <div id="asExpEndDateWrap" class="account-setup-repeat-duo__stack tx-add-schedule-field tx-add-schedule-field--end-date" hidden>
+                          <label for="asExpEndDate" class="account-setup-repeat-duo__label" title="Optional. Last date this schedule can occur.">Ends on</label>
+                          <input id="asExpEndDate" type="date" title="Optional. Last date this schedule can occur." />
+                        </div>
                         <div id="asExpEndCountWrap" class="tx-add-schedule-field tx-add-schedule-field--end-count" hidden>
-                          <label for="asExpEndCount" title="Optional. Number of times this recurring transaction happens. Blank = never ends.">Ends after</label>
+                          <label for="asExpEndCount" class="account-setup-repeat-duo__label" title="Optional. Number of times this recurring transaction happens.">Ends after</label>
                           <input id="asExpEndCount" type="number" min="1" step="1" placeholder="e.g. 12" title="Optional. Total number of occurrences." />
                           <span class="tx-add-field-hint">occurrences</span>
                         </div>
@@ -386,7 +428,7 @@
                         <span class="reimbursable-field__label">Amount varies month to month</span>
                         <input id="asExpVariable" type="checkbox" title="Amount is an estimate that may change month to month" />
                       </span>
-                      <span class="reimbursable-field__hint">Great for utilities &amp; credit card bills</span>
+                      <span class="reimbursable-field__hint">Helpful for utilities, credit cards, and fluctuating bills.</span>
                     </label>
                     <div class="tx-add-vspace tx-add-vspace--lg" aria-hidden="true"></div>
                     <div class="cat-color-row" aria-label="Select color (optional)">
@@ -426,8 +468,8 @@
                   inert
                 >
                   <div class="account-setup-survey">
-                    <h2 class="account-setup-survey__title">What matters most to you?</h2>
-                    <p class="account-setup-survey__sublede">Pick anything that applies — we’ll prioritize the right insights for you.</p>
+                    <h2 class="account-setup-survey__title">Select all that apply</h2>
+                    <p class="account-setup-survey__sublede">We&rsquo;ll use these priorities to surface the most useful forecast insights for you.</p>
                     <div class="account-setup-survey__grid" role="group" aria-label="Choose all that apply">
                       <button type="button" class="account-setup-survey__opt" data-as-survey-opt="avoid_overdrafts" aria-pressed="false">
                         <span class="account-setup-survey__icon" aria-hidden="true">
@@ -585,6 +627,6 @@
       </div>
     </div>
 
-    <script src="../signup/signup.js?v=83"></script>
+    <script src="../signup/signup.js?v=85"></script>
   </body>
 </html>

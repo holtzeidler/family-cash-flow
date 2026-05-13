@@ -1098,10 +1098,15 @@ let lastProjectionDailyForReports = [];
 let reportsSafeTransferChartInstance = null;
 
 // Billing (Settings)
+const billingPlanHeadlineEl = document.getElementById("billingPlanHeadline");
 const billingPlanEl = document.getElementById("billingPlan");
+const billingPlanContextEl = document.getElementById("billingPlanContext");
 const billingFrequencyEl = document.getElementById("billingFrequency");
+const billingNextDateLabelEl = document.getElementById("billingNextDateLabel");
 const billingNextDateEl = document.getElementById("billingNextDate");
+const billingRenewalMessageEl = document.getElementById("billingRenewalMessage");
 const billingAccountStatusEl = document.getElementById("billingAccountStatus");
+let billingActionsWired = false;
 
 const BILLING_PLAN_KEY = "bw_billing_plan";
 const BILLING_START_KEY = "bw_billing_start";
@@ -2036,12 +2041,12 @@ function initReportsLeftNav() {
   reportsViewPanel.dataset.reportsNavInit = "1";
 
   const ids = [
-    { id: "chartPanel", label: "Balance trendline" },
-    { id: "reportCashTiming", label: "Income vs. expense timing" },
-    { id: "reportSafeTransfer", label: "Safe-to-transfer outlook" },
-    { id: "reportRiskHeatmap", label: "Low balance risk map" },
-    { id: "reportObligations", label: "Recurring commitments" },
-    { id: "reportCashPressure", label: "Upcoming cash pressure" },
+    { id: "chartPanel", label: "Trendline" },
+    { id: "reportCashTiming", label: "Income vs Expense" },
+    { id: "reportSafeTransfer", label: "Safe to Transfer" },
+    { id: "reportRiskHeatmap", label: "Risk Calendar" },
+    { id: "reportObligations", label: "Commitments" },
+    { id: "reportCashPressure", label: "Pressure Points" },
   ].filter((it) => document.getElementById(it.id));
 
   if (!ids.length) return;
@@ -3833,7 +3838,7 @@ function tmSyncLegacyFiltersFromToolbar() {
   if (tmSource && upcomingSourceFilter) upcomingSourceFilter.value = String(tmSource.value || "all");
   if (tmFrequency && upcomingRecurrenceFilter) {
     const v = String(tmFrequency.value || "all");
-    upcomingRecurrenceFilter.value = v === "quarterly" ? "all" : v === "semiannual" ? "semiannual" : v;
+    upcomingRecurrenceFilter.value = v === "semiannual" ? "semiannual" : v;
   }
   if (tmStartDate && upcomingStartDate) upcomingStartDate.value = String(tmStartDate.value || "");
   if (tmEndDate && upcomingEndDate) upcomingEndDate.value = String(tmEndDate.value || "");
@@ -4681,7 +4686,8 @@ function computeNextBillingDate(startIso, frequency) {
   const freq = String(frequency || "monthly");
   const todayIso = toISODate(new Date());
   if (freq !== "monthly") return "";
-  let next = addMonthsIso(startIso, 1);
+  const trialEnd = addDaysIso(startIso, 14);
+  let next = trialEnd || addMonthsIso(startIso, 1);
   let guard = 0;
   while (next && next < todayIso && guard < 60) {
     guard += 1;
@@ -4697,6 +4703,38 @@ function getBillingPlanLabel(plan) {
   return "—";
 }
 
+function getBillingPlanContext(plan) {
+  const p = String(plan || "").toLowerCase();
+  if (p === "pro") {
+    return "Includes forecasting, reports, recurring cash planning, and budgeting support.";
+  }
+  return "Forecast cash flow before balances tighten. Includes forecasting, reports, and recurring cash planning.";
+}
+
+function billingStatusPillHtml(status) {
+  const s = String(status || "Active").trim() || "Active";
+  return `<span class="billing-status-pill billing-status-pill--active"><span class="billing-status-pill__icon" aria-hidden="true">✓</span>${escapeHtml(
+    s
+  )}</span>`;
+}
+
+function wireBillingActionsOnce() {
+  if (billingActionsWired) return;
+  document.querySelectorAll("[data-billing-action]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const action = String(btn.getAttribute("data-billing-action") || "");
+      const messages = {
+        payment: "Payment method updates will be handled here soon. Support can help with billing changes today.",
+        cycle: "Billing cycle changes are coming soon. Support can help review options today.",
+        cancel: "Cancellation tools will live here soon. Support can help cancel anytime.",
+        invoices: "Invoice history will appear here once billing tools are fully connected.",
+      };
+      showBwToast(messages[action] || "Billing tools are still being connected.");
+    });
+  });
+  billingActionsWired = true;
+}
+
 function renderBillingPanel() {
   if (!billingPlanEl || !billingFrequencyEl || !billingNextDateEl) return;
   let plan = "";
@@ -4707,11 +4745,33 @@ function renderBillingPanel() {
     freq = localStorage.getItem(BILLING_FREQUENCY_KEY) || "monthly";
     start = localStorage.getItem(BILLING_START_KEY) || "";
   } catch (_) {}
-  billingPlanEl.textContent = getBillingPlanLabel(plan);
-  billingFrequencyEl.textContent = String(freq || "monthly").toLowerCase() === "monthly" ? "Monthly" : String(freq || "—");
+  wireBillingActionsOnce();
+  const planLabel = getBillingPlanLabel(plan);
+  const frequencyLabel = String(freq || "monthly").toLowerCase() === "monthly" ? "Monthly" : String(freq || "—");
+  const todayIso = toISODate(new Date());
+  const trialEnd = start ? addDaysIso(start, 14) : "";
   const next = computeNextBillingDate(start, freq);
-  billingNextDateEl.textContent = next ? formatShortDateLong(next) : "—";
-  if (billingAccountStatusEl) billingAccountStatusEl.textContent = "Active";
+  const inTrial = !!(trialEnd && trialEnd >= todayIso);
+  if (billingPlanHeadlineEl) billingPlanHeadlineEl.textContent = planLabel === "—" ? "Cash Forecast" : planLabel;
+  billingPlanEl.textContent = planLabel;
+  billingFrequencyEl.textContent = frequencyLabel;
+  if (billingPlanContextEl) billingPlanContextEl.textContent = getBillingPlanContext(plan);
+  if (billingNextDateLabelEl) billingNextDateLabelEl.textContent = inTrial ? "Trial ends" : "Next renewal";
+  billingNextDateEl.textContent = inTrial
+    ? formatShortDateLong(trialEnd)
+    : next
+      ? formatShortDateLong(next)
+      : "—";
+  if (billingRenewalMessageEl) {
+    billingRenewalMessageEl.textContent = inTrial
+      ? `Your 14-day trial ends ${formatShortDateLong(trialEnd)}.`
+      : next
+        ? `Your next renewal is ${formatShortDateLong(next)}.`
+        : "Billing details update here as your subscription becomes active.";
+  }
+  if (billingAccountStatusEl) {
+    billingAccountStatusEl.innerHTML = billingStatusPillHtml(planLabel === "—" ? "Active" : "Active");
+  }
 }
 
 function ensureProjectionChartDefaults() {
@@ -4773,18 +4833,18 @@ function registerProjectionAnnotationPlugins() {
         const y = yScale.getPixelForValue(floor);
         if (y >= chartArea.top && y <= chartArea.bottom) {
           ctx.save();
-          ctx.fillStyle = "rgba(100, 116, 139, 0.92)";
+          ctx.fillStyle = "rgba(100, 116, 139, 0.78)";
           ctx.font =
-            '600 9.5px ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+            '600 9px ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
           ctx.textBaseline = "bottom";
           ctx.textAlign = "right";
           const label = `Floor $${formatChartMoneyShort(floor)}`;
           const pad = 6;
           const txtW = ctx.measureText(label).width;
           // Subtle background chip so the label stays legible over the grid.
-          ctx.fillStyle = "rgba(248, 250, 252, 0.92)";
-          ctx.fillRect(chartArea.right - txtW - pad - 4, y - 14, txtW + pad + 4, 14);
-          ctx.fillStyle = "rgba(71, 85, 105, 0.95)";
+          ctx.fillStyle = "rgba(248, 250, 252, 0.72)";
+          ctx.fillRect(chartArea.right - txtW - pad - 4, y - 13, txtW + pad + 4, 13);
+          ctx.fillStyle = "rgba(71, 85, 105, 0.78)";
           ctx.fillText(label, chartArea.right - 4, y - 2);
           ctx.restore();
         }
@@ -4794,13 +4854,12 @@ function registerProjectionAnnotationPlugins() {
       if (!annotations.length) return;
       ctx.save();
       ctx.font =
-        '600 10px ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+        '600 9.5px ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
       ctx.textBaseline = "middle";
 
       // Track label rectangles so we can dodge collisions between markers.
       const placed = [];
-      const PAD_X = 6;
-      const PAD_Y = 3;
+      const PAD_X = 5;
       const GAP = 4;
 
       for (const ann of annotations) {
@@ -4813,17 +4872,17 @@ function registerProjectionAnnotationPlugins() {
         if (px < chartArea.left - 4 || px > chartArea.right + 4) continue;
 
         const isInflow = ann.kind === "inflow";
-        const dot = isInflow ? "rgba(4, 120, 87, 0.95)" : "rgba(167, 55, 68, 0.95)";
-        const ring = isInflow ? "rgba(4, 120, 87, 0.18)" : "rgba(167, 55, 68, 0.18)";
+        const dot = isInflow ? "rgba(4, 120, 87, 0.88)" : "rgba(167, 55, 68, 0.82)";
+        const ring = isInflow ? "rgba(4, 120, 87, 0.12)" : "rgba(167, 55, 68, 0.12)";
 
         // Halo + dot
         ctx.beginPath();
         ctx.fillStyle = ring;
-        ctx.arc(px, py, 7, 0, Math.PI * 2);
+        ctx.arc(px, py, 6, 0, Math.PI * 2);
         ctx.fill();
         ctx.beginPath();
         ctx.fillStyle = dot;
-        ctx.arc(px, py, 3.5, 0, Math.PI * 2);
+        ctx.arc(px, py, 3, 0, Math.PI * 2);
         ctx.fill();
 
         // Label chip
@@ -4831,14 +4890,15 @@ function registerProjectionAnnotationPlugins() {
         if (!label) continue;
         const txtW = ctx.measureText(label).width;
         const chipW = txtW + PAD_X * 2;
-        const chipH = 18;
+        const chipH = 16;
 
-        // Try placing above the point first; below if it would clip.
-        let chipX = px - chipW / 2;
+        // Keep labels closer to their points so they read as part of the line.
+        let chipX = px + 8;
+        if (chipX + chipW > chartArea.right - 2) chipX = px - chipW - 8;
         if (chipX < chartArea.left + 2) chipX = chartArea.left + 2;
-        if (chipX + chipW > chartArea.right - 2) chipX = chartArea.right - 2 - chipW;
-        let chipY = py - 12 - chipH;
-        if (chipY < chartArea.top + 2) chipY = py + 12;
+        let chipY = py + (isInflow ? -chipH - 8 : 8);
+        if (chipY < chartArea.top + 2) chipY = py + 8;
+        if (chipY + chipH > chartArea.bottom - 2) chipY = py - chipH - 8;
 
         // Dodge: shift down/up if it overlaps a previously placed chip.
         for (let attempt = 0; attempt < 8; attempt++) {
@@ -4851,19 +4911,19 @@ function registerProjectionAnnotationPlugins() {
             );
           });
           if (!collides) break;
-          chipY += chipH + GAP;
-          if (chipY + chipH > chartArea.bottom - 2) {
-            chipY = chartArea.top + 2 + attempt * (chipH + GAP);
-          }
+          const dir = attempt % 2 === 0 ? 1 : -1;
+          chipY += dir * (chipH + GAP - 1);
+          if (chipY < chartArea.top + 2) chipY = chartArea.top + 2;
+          if (chipY + chipH > chartArea.bottom - 2) chipY = chartArea.bottom - chipH - 2;
         }
         placed.push({ x: chipX, y: chipY, w: chipW, h: chipH });
 
         // Subtle leader from the point to the chip.
         ctx.save();
-        ctx.strokeStyle = isInflow ? "rgba(4, 120, 87, 0.4)" : "rgba(167, 55, 68, 0.42)";
+        ctx.strokeStyle = isInflow ? "rgba(4, 120, 87, 0.28)" : "rgba(167, 55, 68, 0.3)";
         ctx.lineWidth = 1;
-        const chipCx = chipX + chipW / 2;
-        const chipCy = chipY + (py > chipY ? chipH : 0);
+        const chipCx = chipX <= px ? chipX + chipW : chipX;
+        const chipCy = chipY + chipH / 2;
         ctx.beginPath();
         ctx.moveTo(px, py);
         ctx.lineTo(chipCx, chipCy);
@@ -4872,8 +4932,8 @@ function registerProjectionAnnotationPlugins() {
 
         // Chip background
         const radius = 8;
-        const bg = isInflow ? "rgba(232, 248, 240, 0.96)" : "rgba(253, 235, 237, 0.96)";
-        const bd = isInflow ? "rgba(4, 120, 87, 0.45)" : "rgba(167, 55, 68, 0.5)";
+        const bg = isInflow ? "rgba(236, 253, 245, 0.92)" : "rgba(254, 242, 242, 0.92)";
+        const bd = isInflow ? "rgba(4, 120, 87, 0.24)" : "rgba(167, 55, 68, 0.26)";
         drawRoundedRect(ctx, chipX, chipY, chipW, chipH, radius);
         ctx.fillStyle = bg;
         ctx.fill();
@@ -4881,7 +4941,7 @@ function registerProjectionAnnotationPlugins() {
         ctx.lineWidth = 1;
         ctx.stroke();
 
-        ctx.fillStyle = isInflow ? "rgba(6, 78, 59, 0.95)" : "rgba(127, 29, 29, 0.95)";
+        ctx.fillStyle = isInflow ? "rgba(6, 78, 59, 0.88)" : "rgba(127, 29, 29, 0.82)";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText(label, chipX + chipW / 2, chipY + chipH / 2);
@@ -7521,6 +7581,7 @@ function recurrenceLabel(value) {
   const v = String(value || "");
   if (v === "yearly") return "Annual";
   if (v === "semiannual") return "Twice yearly";
+  if (v === "quarterly") return "Every 3 months";
   if (v === "twice_monthly") return "Twice monthly";
   if (v === "bimonthly") return "Bi-monthly";
   if (v === "biweekly") return "Every 2 weeks";
@@ -7616,6 +7677,17 @@ function nextExpectedOccurrenceIso(tx, fromIso) {
     const y = from.getFullYear();
     const thisYear = dateFromYMDClamped(y, startMonth, startDom);
     cand = thisYear >= from ? thisYear : dateFromYMDClamped(y + 1, startMonth, startDom);
+  } else if (recurrence === "quarterly") {
+    if (from <= start) {
+      cand = start;
+    } else {
+      let cur = start;
+      const monthsDiff = (from.getFullYear() - start.getFullYear()) * 12 + (from.getMonth() - start.getMonth());
+      const steps = Math.max(0, Math.floor(monthsDiff / 3) * 3);
+      cur = addMonthsClamped(start, steps, startDom);
+      while (cur < from) cur = addMonthsClamped(cur, 3, startDom);
+      cand = cur;
+    }
   } else if (recurrence === "semiannual") {
     // Every 6 months from start.
     if (from <= start) {
@@ -8715,7 +8787,7 @@ function renderSidebarPendingTransactionsForMonth() {
 
     const name = document.createElement("div");
     name.className = `pending-attn-name ${kindFgClass(kind)}`;
-    name.textContent = truncate(catLabel, 72);
+    name.textContent = catLabel;
     name.title = hintParts.length ? `${catLabel} — ${hintParts.join(" · ")}` : catLabel;
 
     const est = document.createElement("div");
@@ -8733,6 +8805,7 @@ function renderSidebarPendingTransactionsForMonth() {
       "aria-label",
       `${catLabel}, ${sign}$${fmtMoney0(amt)}, ${it?.date ? fmtMonthDay(it.date) : "date unknown"}`
     );
+    el.title = name.title;
     el.appendChild(name);
     el.appendChild(est);
     el.appendChild(date);
@@ -9407,8 +9480,9 @@ function renderCalendar() {
     const isOutOfMonth = dayNum < 1 || dayNum > daysInMonth;
     const dObj = new Date(year, monthIndex, dayNum);
     const iso = toISODate(dObj);
+    const isBeforeStart = !!(earliestStartIso && iso < earliestStartIso);
     cell.dataset.iso = iso;
-    if (earliestStartIso && iso < earliestStartIso) {
+    if (isBeforeStart) {
       cell.classList.add("cal-cell--before-start");
       cell.setAttribute("title", "Before your starting balance date");
     }
@@ -9448,8 +9522,8 @@ function renderCalendar() {
       });
     }
 
-    const actualTxs = showActual ? actualTxsByDate.get(iso) || [] : [];
-    const expectedItems = showExpected ? expectedByDate.get(iso) || [] : [];
+    const actualTxs = !isBeforeStart && showActual ? actualTxsByDate.get(iso) || [] : [];
+    const expectedItems = !isBeforeStart && showExpected ? expectedByDate.get(iso) || [] : [];
     const stabilizingDay =
       isReconciled &&
       dayHasPaycheckLikeIncome([
@@ -9462,7 +9536,9 @@ function renderCalendar() {
     if (showDetails) {
       for (const item of expectedItems) combined.push({ ...item, _type: "expected" });
       for (const tx of actualTxs) combined.push({ ...tx, _type: "actual" });
-      for (const sb of startBalancesByDate.get(iso) || []) combined.push(sb);
+      if (!isBeforeStart) {
+        for (const sb of startBalancesByDate.get(iso) || []) combined.push(sb);
+      }
       combined.sort((a, b) => {
         const aSb = a && a._type === "start_balance" ? 1 : 0;
         const bSb = b && b._type === "start_balance" ? 1 : 0;
@@ -9586,7 +9662,7 @@ function renderCalendar() {
       }
     }
 
-    if (!showDetails || combined.length === 0) {
+    if (isBeforeStart || !showDetails || combined.length === 0) {
       cell.classList.add("cal-cell--no-tx");
     }
 
@@ -9596,7 +9672,7 @@ function renderCalendar() {
 
     const dayBal = state.monthDailyBalances.get(iso);
 
-    if (dayBal && metricsEl) {
+    if (!isBeforeStart && dayBal && metricsEl) {
       const endNum = Number(dayBal.end ?? 0);
       const txNetNum = Number(dayBal.tx_net);
       const balParts = ["cal-stat", "cal-balance"];
@@ -9803,17 +9879,11 @@ function destroyReportsSafeTransferChart() {
 
 function computeSafeToTransferSeries(daily, floor) {
   const items = daily || [];
-  const n = items.length;
-  const balances = items.map((d) => Number(d.total_balance ?? 0));
-  const out = [];
-  for (let i = 0; i < n; i++) {
-    let minF = Number.POSITIVE_INFINITY;
-    for (let j = i; j < n; j++) {
-      minF = Math.min(minF, balances[j]);
-    }
-    out.push(Math.max(0, minF - floor));
-  }
-  return out;
+  return items.map((d) => {
+    const projectedBalance = Number(d?.total_balance ?? NaN);
+    if (!Number.isFinite(projectedBalance)) return 0;
+    return Math.max(0, projectedBalance - floor);
+  });
 }
 
 function mapObligationGroup(description, category) {
@@ -9830,13 +9900,14 @@ function mapObligationGroup(description, category) {
 /** Conversational recurrence copy for the obligations report (does not replace `recurrenceLabel` elsewhere). */
 function obligationRecurrenceLabel(raw) {
   const v = String(raw || "").toLowerCase();
-  if (v === "yearly" || v === "annual") return "Once per year";
+  if (v === "yearly" || v === "annual") return "Yearly";
   if (v === "semiannual") return "Every 6 months";
-  if (v === "twice_monthly") return "Twice a month";
+  if (v === "quarterly") return "Every 3 months";
+  if (v === "twice_monthly") return "Twice monthly";
   if (v === "bimonthly") return "Every 2 months";
   if (v === "biweekly") return "Every 2 weeks";
-  if (v === "weekly") return "Every week";
-  if (v === "monthly") return "Every month";
+  if (v === "weekly") return "Weekly";
+  if (v === "monthly") return "Monthly";
   if (v === "once") return "Once";
   return recurrenceLabel(raw);
 }
@@ -9875,25 +9946,72 @@ function categoryNameForPressure(cid) {
 
 /** Richer label for generic short descriptions (e.g. card names + category). */
 function pressureRowDescription(tx) {
-  const base = String(tx.description || "Scheduled expense").trim() || "Scheduled expense";
-  const cn = categoryNameForPressure(tx.category_id);
-  if (!cn) return base;
-  return `${base} · ${cn}`;
+  return String(tx.description || "Scheduled expense").trim() || "Scheduled expense";
+}
+
+function pressureCategoryLabel(tx) {
+  const cn = categoryNameForPressure(tx?.category_id);
+  if (cn) return cn;
+  const fallback = mapObligationGroup(tx?.description, tx?.category);
+  return fallback === "Other obligations" ? "" : fallback;
+}
+
+function pressureSeverityMeta(after, floor) {
+  if (after == null || !Number.isFinite(after)) {
+    return {
+      key: "unknown",
+      label: "Unknown",
+      rowClass: "reports-pressure-row--unknown",
+      balClass: "reports-pressure-bal--unknown",
+      levelClass: "reports-pressure-level--unknown",
+    };
+  }
+  const target = floor != null ? floor : 0;
+  if (after < target) {
+    return {
+      key: "below",
+      label: floor != null ? "Below floor" : "Below zero",
+      rowClass: "reports-pressure-row--below",
+      balClass: "reports-pressure-bal--below",
+      levelClass: "reports-pressure-level--below",
+    };
+  }
+  if (floor != null && after < floor * 1.12) {
+    return {
+      key: "tight",
+      label: "Tight",
+      rowClass: "reports-pressure-row--tight",
+      balClass: "reports-pressure-bal--tight",
+      levelClass: "reports-pressure-level--tight",
+    };
+  }
+  if ((floor != null && after < floor * 1.4) || (floor == null && after < 1500)) {
+    return {
+      key: "watch",
+      label: "Watch",
+      rowClass: "reports-pressure-row--watch",
+      balClass: "reports-pressure-bal--watch",
+      levelClass: "reports-pressure-level--watch",
+    };
+  }
+  return {
+    key: "comfortable",
+    label: "Comfortable",
+    rowClass: "reports-pressure-row--comfortable",
+    balClass: "reports-pressure-bal--comfortable",
+    levelClass: "reports-pressure-level--comfortable",
+  };
 }
 
 function balanceAfterPressureClass(after, floor) {
-  if (after == null || !Number.isFinite(after)) return "reports-pressure-bal--unknown";
-  if (after < 0) return "reports-pressure-bal--neg";
-  if (floor != null && after < floor * 0.5) return "reports-pressure-bal--low";
-  if (floor != null && after < floor * 1.05) return "reports-pressure-bal--caution";
-  return "reports-pressure-bal--ok";
+  return pressureSeverityMeta(after, floor).balClass;
 }
 
 function computePressureRecoveryLabel(daily, impactIso, afterBal) {
   const thr = readStoredMinBalanceThresholdForReports();
   const target = thr != null ? thr : 0;
   if (afterBal == null || !Number.isFinite(afterBal)) {
-    return { label: "Outside forecast range", cls: "reports-pressure-rec--muted" };
+    return { label: "Not within current range", cls: "reports-pressure-rec--muted", state: "outside" };
   }
   const norm = (s) => normalizeIsoDate(s) || "";
   const imp = norm(impactIso);
@@ -9902,21 +10020,65 @@ function computePressureRecoveryLabel(daily, impactIso, afterBal) {
     .sort((a, b) => norm(a.date).localeCompare(norm(b.date)));
   const idx = rows.findIndex((r) => norm(r.date) === imp);
   if (idx < 0) {
-    return { label: "Outside forecast range", cls: "reports-pressure-rec--muted" };
+    return { label: "Not within current range", cls: "reports-pressure-rec--muted", state: "outside" };
   }
   if (afterBal >= target) {
     return {
-      label: thr != null ? "Above your floor" : "In the black",
+      label: thr != null ? "Already above floor" : "Already covered",
       cls: "reports-pressure-rec--ok",
+      state: "covered",
     };
   }
   for (let j = idx + 1; j < rows.length; j++) {
     const b = Number(rows[j].total_balance ?? 0);
     if (b >= target) {
-      return { label: fmtObligationNextDate(norm(rows[j].date)), cls: "reports-pressure-rec--date" };
+      return { label: fmtObligationNextDate(norm(rows[j].date)), cls: "reports-pressure-rec--date", state: "date" };
     }
   }
-  return { label: "Outside forecast range", cls: "reports-pressure-rec--muted" };
+  return {
+    label: thr != null ? "Still below floor" : "Still below zero",
+    cls: "reports-pressure-rec--stale",
+    state: "stale",
+  };
+}
+
+function pressureWhyItMatters(hit, floor, lowestHit) {
+  const recovery = hit?.recovery || null;
+  const after = Number(hit?.after ?? NaN);
+  const target = floor != null ? floor : 0;
+  const isLowest =
+    !!lowestHit &&
+    String(lowestHit.iso || "") === String(hit?.iso || "") &&
+    Number(lowestHit.after ?? NaN) === after;
+
+  if (!Number.isFinite(after)) {
+    return "Outside the current forecast range, so recovery is not yet projected.";
+  }
+  if (isLowest) {
+    if (recovery?.state === "date") {
+      return `Creates the lowest balance point before recovery on ${recovery.label}.`;
+    }
+    if (recovery?.state === "stale") {
+      return floor != null
+        ? "Creates the lowest balance point and stays below your floor in this range."
+        : "Creates the lowest balance point and stays below zero in this range.";
+    }
+    return "Creates the lowest projected balance point in this range.";
+  }
+  if (after < target) {
+    if (recovery?.state === "date") {
+      return floor != null
+        ? `Pushes projected cash below your floor until ${recovery.label}.`
+        : `Pushes projected cash below zero until ${recovery.label}.`;
+    }
+    return floor != null
+      ? "Pushes projected cash below your floor with no recovery shown in this range."
+      : "Pushes projected cash below zero with no recovery shown in this range.";
+  }
+  if (recovery?.state === "date" && floor != null && after < floor * 1.15) {
+    return `Tightens cash flow, but recovers by ${recovery.label}.`;
+  }
+  return "Larger payment, but projected cash remains covered.";
 }
 
 function addDaysIso(baseIso, days) {
@@ -9949,6 +10111,7 @@ function estimatedMonthlyFromRecurrence(amount, recurrence) {
   if (r === "weekly") return a * 4.345;
   if (r === "biweekly") return a * 2.1725;
   if (r === "twice_monthly") return a * 2;
+  if (r === "quarterly") return a / 3;
   if (r === "bimonthly") return a / 2;
   if (r === "semiannual") return a / 6;
   if (r === "yearly" || r === "annual") return a / 12;
@@ -9992,55 +10155,45 @@ function renderReportsBalanceTakeaway(items, dateLabels, values) {
     if (values[i] < 0) lastNegIdx = i;
   }
 
-  const stack = document.createElement("div");
-  stack.className = "reports-takeaway-stack";
+  let worstI = -1;
+  let worstNet = 0;
+  for (let i = 0; i < items.length; i++) {
+    const net = Number(items[i]?.net_cashflow ?? 0);
+    if (Number.isFinite(net) && net < worstNet) {
+      worstNet = net;
+      worstI = i;
+    }
+  }
 
-  const addLine = (cls, text) => {
-    const line = document.createElement("div");
-    line.className = cls;
-    line.textContent = text;
-    stack.appendChild(line);
-  };
+  let guidance = "";
 
   if (firstNeg >= 0) {
     const d0 = fmtMonthDay(String(dateLabels[firstNeg] || ""));
-    const dip = Math.abs(minV);
-    const lowMoney = minV < 0 ? `−$${fmtMoney(dip)}` : `$${fmtMoney(minV)}`;
-    addLine("reports-takeaway__kicker", `Negative starting ${d0}`);
-    addLine("reports-takeaway__stat", `Projected low: ${lowMoney}`);
     if (recoveryPos >= 0) {
       const dRec = fmtMonthDay(String(dateLabels[recoveryPos] || ""));
-      addLine("reports-takeaway__detail", `Back to zero by ${dRec}`);
+      guidance = `Your forecast turns negative after ${d0} and recovers by ${dRec}.`;
     } else {
       const dLast = fmtMonthDay(String(dateLabels[lastNegIdx] || ""));
-      addLine("reports-takeaway__detail", `Below zero through ${dLast}`);
-    }
-    let worstI = -1;
-    let worstNet = 0;
-    for (let i = firstNeg; i <= lastNegIdx; i++) {
-      const net = Number(items[i]?.net_cashflow ?? 0);
-      if (Number.isFinite(net) && net < worstNet) {
-        worstNet = net;
-        worstI = i;
-      }
+      guidance = `Your forecast turns negative after ${d0} and stays below zero through ${dLast}.`;
     }
     if (worstI >= 0 && worstNet < -250) {
       const dn = fmtMonthDay(String(dateLabels[worstI] || ""));
-      const p = document.createElement("p");
-      p.className = "reports-takeaway__driver";
-      p.textContent = `Largest single-day drain in this stretch: −$${fmtMoney(Math.abs(worstNet))} (${dn}).`;
-      stack.appendChild(p);
+      guidance += ` Most pressure comes from the ${dn} outflow of −$${fmtMoney(Math.abs(worstNet))}.`;
     }
   } else if (thr != null && Number.isFinite(thr) && thr > 0 && minV < thr) {
-    addLine("reports-takeaway__lead", "Approaching your comfort floor");
-    addLine("reports-takeaway__stat", `Low: $${fmtMoney(minV)}`);
-    addLine("reports-takeaway__detail", `Near your $${fmtMoney(thr)} floor on ${fmtMonthDay(lowIso)}`);
+    guidance = `Your forecast stays positive but brushes your $${fmtMoney(thr)} floor on ${fmtMonthDay(lowIso)}.`;
   } else {
-    addLine("reports-takeaway__lead", `Low near $${fmtMoney(minV)} on ${fmtMonthDay(lowIso)}`);
-    addLine("reports-takeaway__detail reports-takeaway__detail--muted", "Stays above zero in this window.");
+    guidance = `Your forecast stays above zero, with the lowest balance around $${fmtMoney(minV)} on ${fmtMonthDay(lowIso)}.`;
+    if (worstI >= 0 && worstNet < -250) {
+      const dn = fmtMonthDay(String(dateLabels[worstI] || ""));
+      guidance += ` The largest single-day drag is ${dn}'s −$${fmtMoney(Math.abs(worstNet))} outflow.`;
+    }
   }
 
-  el.appendChild(stack);
+  const p = document.createElement("p");
+  p.className = "reports-takeaway-guidance";
+  p.textContent = guidance;
+  el.appendChild(p);
   el.hidden = false;
 }
 
@@ -10078,40 +10231,84 @@ function renderReportsBalanceLegend(daily, dateLabels, values) {
 
   const thr = readStoredMinBalanceThresholdForReports();
   const hasNeg = negSpans.length > 0;
+  let firstNeg = -1;
+  for (let i = 0; i < values.length; i++) {
+    if (values[i] < 0) {
+      firstNeg = i;
+      break;
+    }
+  }
+  let recoveryPos = -1;
+  if (firstNeg >= 0) {
+    for (let j = firstNeg + 1; j < values.length; j++) {
+      if (values[j] >= 0) {
+        recoveryPos = j;
+        break;
+      }
+    }
+  }
+  let lastNegIdx = -1;
+  for (let i = 0; i < values.length; i++) {
+    if (values[i] < 0) lastNegIdx = i;
+  }
 
-  // Primary insight: the one thing the user should read first.
-  let primary = "";
-  if (hasNeg) {
-    const sp = negSpans[0];
-    const a = escapeHtml(fmtMonthDay(String(dateLabels[sp.a] || "")));
-    const b = escapeHtml(fmtMonthDay(String(dateLabels[sp.b] || "")));
-    primary = sp.a === sp.b
-      ? `<span class="reports-legend__primary reports-legend__primary--risk">Projected below zero · ${a}</span>`
-      : `<span class="reports-legend__primary reports-legend__primary--risk">Projected below zero · ${a} – ${b}</span>`;
+  const lowValue = Number(values[lowIdx]) < 0
+    ? `−$${fmtMoney(Math.abs(Number(values[lowIdx]) || 0))}`
+    : `$${fmtMoney(Number(values[lowIdx]) || 0)}`;
+
+  let statusLabel = "Status";
+  let statusValue = "Above zero";
+  let statusSub = "Stays above zero in this window";
+  let statusClass = " reports-kpi--calm";
+  if (hasNeg && firstNeg >= 0) {
+    statusLabel = "Negative starting";
+    statusValue = fmtMonthDay(String(dateLabels[firstNeg] || ""));
+    statusSub = recoveryPos >= 0
+      ? `Recovers by ${fmtMonthDay(String(dateLabels[recoveryPos] || ""))}`
+      : `Below zero through ${fmtMonthDay(String(dateLabels[lastNegIdx] || ""))}`;
+    statusClass = " reports-kpi--risk";
   } else if (thr != null && Number.isFinite(thr) && thr > 0 && Number(values[lowIdx]) < thr) {
-    const aDate = escapeHtml(fmtMonthDay(lowIso));
-    primary = `<span class="reports-legend__primary reports-legend__primary--warn">Approaches your floor · ${aDate}</span>`;
-  } else {
-    primary = `<span class="reports-legend__primary reports-legend__primary--calm">Stays above your floor</span>`;
+    statusLabel = "Comfort floor";
+    statusValue = "Near floor";
+    statusSub = `${fmtMonthDay(lowIso)} at ${lowValue}`;
+    statusClass = " reports-kpi--warn";
   }
 
-  // Secondary, calmer metadata — keep tight and visually subordinate.
-  const meta = [];
-  meta.push(
-    `<span class="reports-legend__meta-item">Lowest <strong>$${fmtMoney(values[lowIdx])}</strong> · ${escapeHtml(fmtMonthDay(lowIso))}</span>`
-  );
-  if (worstOutflow) {
-    meta.push(
-      `<span class="reports-legend__meta-item">Largest outflow <strong>−$${fmtMoney(Math.abs(worstOutflow.net))}</strong> · ${escapeHtml(fmtMonthDay(worstOutflow.iso))}</span>`
-    );
-  }
-  if (thr != null && Number.isFinite(thr) && thr > 0) {
-    meta.push(`<span class="reports-legend__meta-item reports-legend__meta-item--floor">Floor $${fmtMoney(thr)}</span>`);
-  }
+  const lowClass = hasNeg
+    ? " reports-kpi--risk"
+    : thr != null && Number.isFinite(thr) && thr > 0 && Number(values[lowIdx]) < thr
+      ? " reports-kpi--warn"
+      : "";
+
+  const outflowValue = worstOutflow
+    ? `−$${fmtMoney(Math.abs(Number(worstOutflow.net) || 0))}`
+    : "—";
+  const outflowSub = worstOutflow
+    ? fmtMonthDay(String(worstOutflow.iso || ""))
+    : "No major negative day in this range";
+
+  const floorValue = thr != null && Number.isFinite(thr) && thr > 0
+    ? `$${fmtMoney(thr)}`
+    : "Not set";
+  const floorSub = thr != null && Number.isFinite(thr) && thr > 0
+    ? "Saved threshold"
+    : "Set in Settings";
+
+  const kpi = (label, value, sub, extraClass = "") => `
+    <div class="reports-kpi${extraClass}">
+      <div class="reports-kpi__label">${escapeHtml(label)}</div>
+      <div class="reports-kpi__value">${escapeHtml(value)}</div>
+      <div class="reports-kpi__sub">${escapeHtml(sub)}</div>
+    </div>
+  `;
 
   el.innerHTML = `
-    <div class="reports-legend__primary-row">${primary}</div>
-    <div class="reports-legend__meta">${meta.join("")}</div>
+    <div class="reports-kpi-strip">
+      ${kpi("Lowest Balance", lowValue, fmtMonthDay(lowIso), lowClass)}
+      ${kpi(statusLabel, statusValue, statusSub, statusClass)}
+      ${kpi("Largest Outflow", outflowValue, outflowSub)}
+      ${kpi("Floor Threshold", floorValue, floorSub, " reports-kpi--muted")}
+    </div>
   `;
 }
 
@@ -10145,6 +10342,18 @@ function drawReportsSafeTransferChart(daily) {
   if (emptyEl) emptyEl.style.display = "none";
   const labels = items.map((d) => d.date);
   const series = computeSafeToTransferSeries(items, floor);
+  const allZero = series.every((v) => !Number.isFinite(v) || v <= 0);
+  if (allZero) {
+    if (emptyEl) {
+      emptyEl.style.display = "flex";
+      emptyEl.textContent = "Your forecast does not currently have excess cash above your floor threshold.";
+    }
+    if (statsEl) {
+      statsEl.innerHTML =
+        '<p class="meta">Your projected balances remain at or below your saved transfer floor across this period.</p>';
+    }
+    return;
+  }
   const hi = Math.max(...series);
   const lo = Math.min(...series);
   const avg = series.reduce((a, b) => a + b, 0) / series.length;
@@ -10279,8 +10488,12 @@ function riskSeverityClass(bal, thr, worstNeg) {
     if (ratio >= 0.35) return "reports-risk-cell--neg-2";
     return "reports-risk-cell--neg-1";
   }
-  if (thr != null && bal < thr * 0.5) return "reports-risk-cell--low";
-  if (thr != null && bal < thr * 1.05) return "reports-risk-cell--caution";
+  if (thr != null && bal < thr) {
+    const shortfall = thr - bal;
+    if (shortfall > Math.max(150, thr * 0.18)) return "reports-risk-cell--low";
+    return "reports-risk-cell--caution";
+  }
+  if (thr != null && bal < thr * 1.12) return "reports-risk-cell--caution";
   return "reports-risk-cell--safe";
 }
 
@@ -10291,12 +10504,26 @@ function riskDetailSeverityClass(severityClass) {
   return "";
 }
 
+function riskActionGuidance(payload, primaryExpense) {
+  const when = fmtMonthDay(String(payload?.iso || ""));
+  if (primaryExpense?.description) {
+    return `Move, reduce, or offset ${primaryExpense.description} before ${when}.`;
+  }
+  if (payload?.balance < 0) {
+    return `Add or move cash before ${when} to keep this day out of the red.`;
+  }
+  if (payload?.thr != null && payload?.balance < payload.thr) {
+    return `Shift a little cash before ${when} to stay above your floor.`;
+  }
+  return "Keep upcoming large payments and inflows in sync so this day stays comfortable.";
+}
+
 function renderRiskHeatmapDetail(payload, options) {
   const host = document.getElementById("reportsRiskHeatmapDetail");
   if (!host) return;
   host.classList.remove("reports-risk-detail--neg", "reports-risk-detail--low");
   if (!payload) {
-    host.innerHTML = `<div class="reports-risk-detail__hint">Hover or focus a day to see what's driving the balance.</div>`;
+    host.innerHTML = `<div class="reports-risk-detail__hint">Hover or select a day to see what happened, what drove it, and what could help.</div>`;
     return;
   }
   const sevDetailCls = riskDetailSeverityClass(payload.severityClass);
@@ -10309,15 +10536,14 @@ function renderRiskHeatmapDetail(payload, options) {
   if (payload.thr != null) {
     const gap = payload.balance - payload.thr;
     if (gap < 0) {
-      gapHtml = `<div class="reports-risk-detail__gap">$${fmtMoney0(Math.abs(gap))} below your $${fmtMoney0(payload.thr)} floor</div>`;
+      gapHtml = `<div class="reports-risk-detail__gap">Below floor by $${fmtMoney0(Math.abs(gap))} · floor $${fmtMoney0(payload.thr)}</div>`;
     } else {
-      gapHtml = `<div class="reports-risk-detail__gap">$${fmtMoney0(gap)} cushion above your $${fmtMoney0(payload.thr)} floor</div>`;
+      gapHtml = `<div class="reports-risk-detail__gap">Above floor by $${fmtMoney0(gap)} · floor $${fmtMoney0(payload.thr)}</div>`;
     }
   } else if (payload.balance < 0) {
     gapHtml = `<div class="reports-risk-detail__gap">Projected negative balance</div>`;
   }
 
-  let triggeredHtml = "";
   const outs = (payload.events || [])
     .filter((e) => e.kind === "expense")
     .sort((a, b) => b.amount - a.amount)
@@ -10326,37 +10552,48 @@ function renderRiskHeatmapDetail(payload, options) {
     .filter((e) => e.kind === "income")
     .sort((a, b) => b.amount - a.amount)
     .slice(0, 2);
-  if (outs.length) {
-    const label = payload.balance < 0 || (payload.thr != null && payload.balance < payload.thr)
-      ? "Triggered by"
-      : "Largest outflows";
-    const lis = outs
-      .map(
-        (e) =>
-          `<li><span class="reports-risk-detail__desc">${escapeHtml(e.description)}</span><span class="reports-risk-detail__amt reports-risk-detail__amt--exp">−$${fmtMoney0(e.amount)}</span></li>`
-      )
-      .join("");
-    triggeredHtml = `<div class="reports-risk-detail__sec"><div class="reports-risk-detail__sec-title">${label}</div><ul class="reports-risk-detail__list">${lis}</ul></div>`;
+  const primaryExpense = outs[0] || null;
+
+  let driverHtml = "";
+  if (primaryExpense) {
+    driverHtml = `
+      <div class="reports-risk-detail__sec">
+        <div class="reports-risk-detail__sec-title">Main driver</div>
+        <div class="reports-risk-detail__driver">
+          <span class="reports-risk-detail__desc">${escapeHtml(primaryExpense.description)}</span>
+          <span class="reports-risk-detail__amt reports-risk-detail__amt--exp">−$${fmtMoney0(primaryExpense.amount)}</span>
+        </div>
+      </div>
+    `;
+  } else if (ins.length) {
+    const leadIn = ins[0];
+    driverHtml = `
+      <div class="reports-risk-detail__sec">
+        <div class="reports-risk-detail__sec-title">Main driver</div>
+        <div class="reports-risk-detail__driver">
+          <span class="reports-risk-detail__desc">${escapeHtml(leadIn.description)}</span>
+          <span class="reports-risk-detail__amt reports-risk-detail__amt--inc">+$${fmtMoney0(leadIn.amount)}</span>
+        </div>
+      </div>
+    `;
+  } else {
+    driverHtml = `<div class="reports-risk-detail__sec"><div class="reports-risk-detail__sec-title">Main driver</div><div class="reports-risk-detail__gap">No scheduled transactions on this day.</div></div>`;
   }
-  if (!triggeredHtml && ins.length) {
-    const lis = ins
-      .map(
-        (e) =>
-          `<li><span class="reports-risk-detail__desc">${escapeHtml(e.description)}</span><span class="reports-risk-detail__amt reports-risk-detail__amt--inc">+$${fmtMoney0(e.amount)}</span></li>`
-      )
-      .join("");
-    triggeredHtml = `<div class="reports-risk-detail__sec"><div class="reports-risk-detail__sec-title">Inflows today</div><ul class="reports-risk-detail__list">${lis}</ul></div>`;
-  }
-  if (!triggeredHtml) {
-    triggeredHtml = `<div class="reports-risk-detail__sec"><div class="reports-risk-detail__sec-title">Activity</div><div class="reports-risk-detail__gap">No scheduled transactions on this day.</div></div>`;
-  }
+
+  const helpText = riskActionGuidance(payload, primaryExpense);
+  const helpHtml = `
+    <div class="reports-risk-detail__sec">
+      <div class="reports-risk-detail__sec-title">What could help</div>
+      <div class="reports-risk-detail__help">${escapeHtml(helpText)}</div>
+    </div>
+  `;
 
   let recHtml = "";
   if (payload.recovery) {
     const r = payload.recovery;
-    recHtml = `<div class="reports-risk-detail__rec">Next inflow · <strong>+$${fmtMoney0(r.amount)}</strong> on ${escapeHtml(fmtMonthDay(r.iso))} — ${escapeHtml(r.description)}</div>`;
+    recHtml = `<div class="reports-risk-detail__rec"><span class="reports-risk-detail__sec-title">Next inflow</span><div><strong>+$${fmtMoney0(r.amount)}</strong> on ${escapeHtml(fmtMonthDay(r.iso))} — ${escapeHtml(r.description)}</div></div>`;
   } else if (payload.balance < 0 || (payload.thr != null && payload.balance < payload.thr)) {
-    recHtml = `<div class="reports-risk-detail__rec reports-risk-detail__rec--muted">No projected inflow before the end of this window.</div>`;
+    recHtml = `<div class="reports-risk-detail__rec reports-risk-detail__rec--muted"><span class="reports-risk-detail__sec-title">Next inflow</span><div>No projected inflow before the end of this window.</div></div>`;
   }
 
   host.innerHTML = `
@@ -10365,7 +10602,8 @@ function renderRiskHeatmapDetail(payload, options) {
       <div class="reports-risk-detail__balance">${escapeHtml(balLabel)}</div>
     </div>
     ${gapHtml}
-    ${triggeredHtml}
+    ${driverHtml}
+    ${helpHtml}
     ${recHtml}
   `;
 }
@@ -10525,7 +10763,7 @@ function renderReportsRiskHeatmap(daily) {
       false
     );
   } else if (thr != null) {
-    setInsight("No below-floor days in the next 60 days.", false);
+    setInsight(`Stays above your $${fmtMoney(thr)} floor across the next 60 days.`, false);
   } else {
     const anyNeg = items.some((row) => Number(row.total_balance ?? 0) < 0);
     setInsight(
@@ -10572,6 +10810,7 @@ function renderReportsRiskHeatmap(daily) {
   const todayIso = toISODate(new Date());
   const cellByIso = new Map();
   const detailPayloadByIso = new Map();
+  let selectedIso = "";
 
   const firstDt = new Date(`${startIso}T12:00:00`);
   const lead = Number.isNaN(firstDt.getTime()) ? 0 : (firstDt.getDay() + 6) % 7;
@@ -10617,17 +10856,16 @@ function renderReportsRiskHeatmap(daily) {
     let tip = `${fmtDateMedDisplay(iso)} — Projected ${fmtMoney0SignedDollar(bal)}`;
     if (thr != null) {
       const gap = bal - thr;
-      tip += ` · ${gap < 0 ? "" : "+"}$${fmtMoney0(Math.abs(gap))} vs $${fmtMoney0(thr)} floor`;
+      tip += ` · ${gap < 0 ? "$" + fmtMoney0(Math.abs(gap)) + " below" : "$" + fmtMoney0(Math.abs(gap)) + " above"} $${fmtMoney0(thr)} floor`;
     }
-    if (events.length) {
-      const outs = events.filter((e) => e.kind === "expense").sort((a, b) => b.amount - a.amount).slice(0, 2);
-      if (outs.length) {
-        tip += " · " + outs.map((e) => `${e.description} −$${fmtMoney0(e.amount)}`).join(", ");
-      }
+    const largestEvent = events.slice().sort((a, b) => b.amount - a.amount)[0];
+    if (largestEvent) {
+      const sign = largestEvent.kind === "income" ? "+" : "−";
+      tip += ` · Largest: ${largestEvent.description} ${sign}$${fmtMoney0(largestEvent.amount)}`;
     }
-    tip += " — Click to open Forecast for this month.";
+    tip += " — Hover or click for details.";
     cell.title = tip;
-    cell.setAttribute("aria-label", `${fmtDateMedDisplay(iso)}, projected ${fmtMoney0SignedDollar(bal)}. Open forecast.`);
+    cell.setAttribute("aria-label", `${fmtDateMedDisplay(iso)}, projected ${fmtMoney0SignedDollar(bal)}. Show details.`);
 
     const dEl = document.createElement("span");
     dEl.className = "reports-risk-cell__d";
@@ -10638,14 +10876,18 @@ function renderReportsRiskHeatmap(daily) {
     cell.appendChild(dEl);
     cell.appendChild(bEl);
 
-    const activate = () => {
+    const activate = (persist = false) => {
       for (const el of cellByIso.values()) el.classList.remove("reports-risk-cell--active");
       cell.classList.add("reports-risk-cell--active");
       renderRiskHeatmapDetail(payload);
+      if (persist) selectedIso = iso;
     };
-    cell.addEventListener("mouseenter", activate);
-    cell.addEventListener("focus", activate);
-    cell.addEventListener("click", () => navigateToCalendarForRiskDay(iso));
+    cell.addEventListener("mouseenter", () => activate(false));
+    cell.addEventListener("focus", () => activate(false));
+    cell.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      activate(true);
+    });
 
     cellByIso.set(iso, cell);
     host.appendChild(cell);
@@ -10672,6 +10914,7 @@ function renderReportsRiskHeatmap(daily) {
     defaultIso = String(items[0].date || "");
   }
   if (defaultIso && detailPayloadByIso.has(defaultIso)) {
+    selectedIso = defaultIso;
     renderRiskHeatmapDetail(detailPayloadByIso.get(defaultIso));
     const c = cellByIso.get(defaultIso);
     if (c) c.classList.add("reports-risk-cell--active");
@@ -10680,18 +10923,23 @@ function renderReportsRiskHeatmap(daily) {
   }
 
   // Reset to default when the cursor leaves the grid entirely.
-  if (host && host.dataset.riskMouseLeaveWired !== "1") {
-    host.dataset.riskMouseLeaveWired = "1";
-    host.addEventListener("mouseleave", () => {
-      const activeCell = host.querySelector(".reports-risk-cell--active");
-      if (activeCell) activeCell.classList.remove("reports-risk-cell--active");
-      // Re-render default based on latest data — re-walk the cells to find
-      // the worst one again is overkill, just leave the hint.
+  host.onmouseleave = () => {
+    const activeCell = host.querySelector(".reports-risk-cell--active");
+    if (activeCell) activeCell.classList.remove("reports-risk-cell--active");
+    if (selectedIso && detailPayloadByIso.has(selectedIso)) {
+      const c = cellByIso.get(selectedIso);
+      if (c) c.classList.add("reports-risk-cell--active");
+      renderRiskHeatmapDetail(detailPayloadByIso.get(selectedIso));
+    } else {
       renderRiskHeatmapDetail(null);
-    });
-  }
+    }
+  };
 
-  renderRiskHeatmapActionPanel(items, occByIso, thr, todayIso, worstIso);
+  const actionHost = document.getElementById("reportsRiskHeatmapAction");
+  if (actionHost) {
+    actionHost.innerHTML = "";
+    actionHost.hidden = true;
+  }
 }
 
 const OBLIGATION_GROUP_ICONS = {
@@ -10702,6 +10950,16 @@ const OBLIGATION_GROUP_ICONS = {
   Insurance: "🛡",
   "Kids / activities": "🎒",
   "Other obligations": "📦",
+};
+
+const OBLIGATION_GROUP_TONES = {
+  Housing: "#2563eb",
+  Utilities: "#0f766e",
+  Debt: "#b45309",
+  Subscriptions: "#7c3aed",
+  Insurance: "#0891b2",
+  "Kids / activities": "#db2777",
+  "Other obligations": "#64748b",
 };
 
 /**
@@ -10761,6 +11019,65 @@ function fmtWeekRange(startIso) {
   return `${s} – ${e}`;
 }
 
+function setReportsObligationStat(el, primary, secondary) {
+  if (!el) return;
+  if (!primary) {
+    el.textContent = "—";
+    return;
+  }
+  const primaryHtml = escapeHtml(String(primary));
+  if (!secondary) {
+    el.innerHTML = `<span class="reports-ob-card__big">${primaryHtml}</span>`;
+    return;
+  }
+  el.innerHTML = `<span class="reports-ob-card__big">${primaryHtml}</span><span class="reports-ob-card__sub">${escapeHtml(
+    String(secondary)
+  )}</span>`;
+}
+
+function renderObligationTakeaway(allRows) {
+  const el = document.getElementById("reportsObligationTakeaway");
+  if (!el) return;
+  el.hidden = true;
+  el.textContent = "";
+  if (!allRows.length) return;
+
+  const total = allRows.reduce((sum, row) => sum + row.est, 0);
+  if (!(total > 0)) return;
+
+  const byGroup = new Map();
+  for (const row of allRows) byGroup.set(row.grp, (byGroup.get(row.grp) || 0) + row.est);
+  const groups = [...byGroup.entries()].sort((a, b) => b[1] - a[1]);
+  const largestGroup = groups[0] || null;
+
+  const topRows = allRows
+    .slice()
+    .sort((a, b) => b.est - a.est || b.amt - a.amt)
+    .slice(0, 2);
+
+  let text = "";
+  if (largestGroup) {
+    const pct = Math.round((largestGroup[1] / total) * 100);
+    if (pct >= 58) {
+      text = `${largestGroup[0]} payments account for ${pct}% of recurring monthly obligations.`;
+    }
+  }
+  if (!text && topRows.length >= 2) {
+    const topTwoPct = Math.round(((topRows[0].est + topRows[1].est) / total) * 100);
+    if (topTwoPct >= 48) {
+      text = `Most recurring pressure comes from ${topRows[0].desc} and ${topRows[1].desc}, which together make up ${topTwoPct}% of monthly commitments.`;
+    }
+  }
+  if (!text && largestGroup) {
+    const pct = Math.round((largestGroup[1] / total) * 100);
+    text = `${largestGroup[0]} is your largest recurring category at ${pct}% of monthly commitments.`;
+  }
+  if (!text) return;
+
+  el.textContent = text;
+  el.hidden = false;
+}
+
 function renderObligationMixBars(allRows) {
   const host = document.getElementById("reportsObligationMixBars");
   const caption = document.getElementById("reportsObligationMixCaption");
@@ -10792,13 +11109,16 @@ function renderObligationMixBars(allRows) {
   for (const [g, val] of top) {
     const li = document.createElement("li");
     li.className = "reports-ob-bar";
+    li.style.setProperty("--reports-ob-tone", OBLIGATION_GROUP_TONES[g] || "var(--accent)");
     const pct = total > 0 ? (val / total) * 100 : 0;
     const width = max > 0 ? Math.max(6, (val / max) * 100) : 0;
     const icon = OBLIGATION_GROUP_ICONS[g] || "•";
     li.innerHTML = `
       <span class="reports-ob-bar__label"><span class="reports-ob-bar__icon" aria-hidden="true">${icon}</span>${escapeHtml(g)}</span>
       <span class="reports-ob-bar__track"><span class="reports-ob-bar__fill" style="width: ${width.toFixed(1)}%"></span></span>
-      <span class="reports-ob-bar__value">$${fmtMoney(val)} <span class="reports-ob-bar__pct">${pct.toFixed(0)}%</span></span>
+      <span class="reports-ob-bar__value"><span class="reports-ob-bar__money">$${fmtMoney(val)}</span><span class="reports-ob-bar__pct">${pct.toFixed(
+        0
+      )}%</span></span>
     `;
     host.appendChild(li);
   }
@@ -10832,7 +11152,7 @@ function renderObligationHeavyWeeks(allRows) {
     }
   }
   if (!weeks.size) {
-    if (caption) caption.textContent = "No recurring obligations in the next 8 weeks.";
+    if (caption) caption.textContent = "No recurring commitments in the next 8 weeks.";
     return;
   }
   const weekEntries = [...weeks.entries()].map(([wk, b]) => ({ wk, ...b }));
@@ -10854,9 +11174,9 @@ function renderObligationHeavyWeeks(allRows) {
 
   if (caption) {
     if (heavy.length) {
-      caption.textContent = "Weeks with clustered obligations or oversized hits.";
+      caption.textContent = "Weeks where recurring bills cluster more than usual.";
     } else {
-      caption.textContent = "No clustered cash pressure in the next 8 weeks.";
+      caption.textContent = "No unusual recurring pressure in the next 8 weeks.";
     }
   }
 
@@ -10864,18 +11184,20 @@ function renderObligationHeavyWeeks(allRows) {
     const li = document.createElement("li");
     li.className = "reports-ob-timing-item";
     const sorted = w.hits.slice().sort((a, b) => b.amount - a.amount);
-    const headline =
-      w.big.length >= 1
-        ? `${w.count} obligation${w.count === 1 ? "" : "s"} totaling $${fmtMoney(w.sum)}`
-        : `${w.count} obligations totaling $${fmtMoney(w.sum)}`;
+    const headlineCount = `${w.count} obligation${w.count === 1 ? "" : "s"}`;
     const top3 = sorted
       .slice(0, 3)
-      .map((h) => `<li><span>${escapeHtml(h.description)}</span><span class="reports-ob-timing-amt">−$${fmtMoney(h.amount)}</span></li>`)
+      .map(
+        (h) =>
+          `<li><span>${escapeHtml(h.description)}</span><span class="reports-ob-timing-amt">−$${fmtMoney(h.amount)}</span></li>`
+      )
       .join("");
     li.innerHTML = `
       <div class="reports-ob-timing-head">
         <span class="reports-ob-timing-week">${escapeHtml(fmtWeekRange(w.wk))}</span>
-        <span class="reports-ob-timing-meta">${escapeHtml(headline)}</span>
+        <span class="reports-ob-timing-meta"><span class="reports-ob-timing-meta__count">${escapeHtml(
+          headlineCount
+        )}</span><span class="reports-ob-timing-meta__total">$${fmtMoney(w.sum)}</span></span>
       </div>
       <ul class="reports-ob-timing-sub">${top3}</ul>
     `;
@@ -10929,9 +11251,9 @@ function renderReportsObligations() {
   if (summaryWrap) {
     if (!allRows.length) {
       summaryWrap.hidden = true;
-      if (statTotal) statTotal.textContent = "—";
-      if (statLargest) statLargest.textContent = "—";
-      if (statWeek) statWeek.textContent = "—";
+      setReportsObligationStat(statTotal, null);
+      setReportsObligationStat(statLargest, null);
+      setReportsObligationStat(statWeek, null);
     } else {
       summaryWrap.hidden = false;
       const totalEst = allRows.reduce((a, r) => a + r.est, 0);
@@ -10941,17 +11263,13 @@ function renderReportsObligations() {
       }
       const due7 = allRows.filter((r) => r.nextIso >= todayIso && r.nextIso <= weekEndIso);
       const due7Sum = due7.reduce((a, r) => a + r.amt, 0);
-      if (statTotal) statTotal.textContent = `$${fmtMoney(totalEst)}`;
-      if (statLargest) statLargest.textContent = `${largest.desc} · $${fmtMoney(largest.amt)}`;
-      if (statWeek) {
-        if (due7.length) {
-          statWeek.textContent = `$${fmtMoney(due7Sum)} · ${due7.length} due in next 7 days`;
-        } else {
-          statWeek.textContent = "Quiet week — none in next 7 days";
-        }
-      }
+      setReportsObligationStat(statTotal, `$${fmtMoney(totalEst)}`, "Normalized monthly recurring");
+      setReportsObligationStat(statLargest, `$${fmtMoney(largest.amt)}`, largest.desc);
+      setReportsObligationStat(statWeek, `$${fmtMoney(due7Sum)}`, due7.length ? `${due7.length} due in next 7 days` : "None due in next 7 days");
     }
   }
+
+  renderObligationTakeaway(allRows);
 
   if (insightsRow) {
     if (!allRows.length) {
@@ -11044,6 +11362,7 @@ function renderReportsObligations() {
 
     for (const r of list) {
       const tr = document.createElement("tr");
+      tr.className = "reports-obligation-row";
       if (r.isLarge) tr.classList.add("reports-obligation-row--large");
       const pill = r.isLarge ? `<span class="reports-obligation-pill" title="Significant portion of monthly recurring cash flow">High impact</span>` : "";
       tr.innerHTML = `<td class="reports-obligation-desc"><span class="reports-obligation-desc__name">${escapeHtml(r.desc)}</span>${pill ? ` ${pill}` : ""}</td><td class="num reports-obligation-amt">$${fmtMoney(
@@ -11090,101 +11409,55 @@ function renderPressureNarrative(hits, daily, floor) {
 
   if (!hits.length) return;
 
-  const dangerThr = floor != null ? floor : 0;
-  const danger = hits
-    .filter((h) => h.after != null && Number.isFinite(h.after) && h.after < dangerThr)
-    .sort((a, b) => String(a.iso).localeCompare(String(b.iso)));
+  const byDate = hits.slice().sort((a, b) => String(a.iso).localeCompare(String(b.iso)));
+  const flagged = byDate.filter((h) => {
+    const sev = pressureSeverityMeta(h.after, floor);
+    return sev.key === "watch" || sev.key === "tight" || sev.key === "below";
+  });
+  const focus = flagged.length ? flagged : byDate.slice(0, Math.min(3, byDate.length));
+  const lowest = byDate.reduce((acc, h) => {
+    if (h.after == null || !Number.isFinite(h.after)) return acc;
+    if (!acc || h.after < acc.after) return h;
+    return acc;
+  }, null);
+  const largest = hits.reduce((acc, h) => (!acc || h.amt > acc.amt ? h : acc), null);
 
-  if (!danger.length) {
-    // Calm/clear path — everything stays above the floor.
+  if (!flagged.length) {
     wrap.classList.add("reports-pressure-narrative--clear");
-    if (floor != null) {
-      ledeEl.textContent = `All upcoming hits stay above your $${fmtMoney(floor)} floor. No projected cash pressure in this window.`;
-    } else {
-      ledeEl.textContent = "All upcoming hits stay in the black. No projected cash pressure in this window.";
-    }
-    recEl.textContent = "";
+    ledeEl.textContent = "Larger upcoming payments stay covered across this range.";
+    recEl.textContent = largest
+      ? `Largest impact: ${largest.desc} — $${fmtMoney(largest.amt)} on ${fmtMonthDay(largest.iso)}.`
+      : "";
     wrap.hidden = false;
     return;
   }
 
-  // Cluster danger hits: hits within 7 days of the previous belong to the same window.
-  const clusters = [];
-  let current = null;
-  for (const h of danger) {
-    if (!current) {
-      current = { startIso: h.iso, endIso: h.iso, items: [h] };
-      continue;
-    }
-    const gapDays = calendarDaysBetweenIso(current.endIso, h.iso);
-    if (gapDays != null && gapDays <= 7) {
-      current.items.push(h);
-      current.endIso = h.iso;
-    } else {
-      clusters.push(current);
-      current = { startIso: h.iso, endIso: h.iso, items: [h] };
-    }
-  }
-  if (current) clusters.push(current);
-
-  // Pick the most severe cluster — most items, then largest total amount.
-  let worstCluster = clusters[0];
-  for (const c of clusters) {
-    if (
-      c.items.length > worstCluster.items.length ||
-      (c.items.length === worstCluster.items.length &&
-        c.items.reduce((a, x) => a + x.amt, 0) > worstCluster.items.reduce((a, x) => a + x.amt, 0))
-    ) {
-      worstCluster = c;
-    }
-  }
-
-  // Compose narrative.
-  const count = worstCluster.items.length;
-  const totalAmt = worstCluster.items.reduce((a, x) => a + x.amt, 0);
-  const lowest = danger.reduce((acc, h) => (acc == null || h.after < acc.after ? h : acc), null);
-
-  // Severity flavor.
-  if (lowest && lowest.after < 0) {
+  if (lowest && lowest.after < (floor != null ? floor : 0)) {
     wrap.classList.add("reports-pressure-narrative--danger");
   } else {
     wrap.classList.add("reports-pressure-narrative--caution");
   }
 
-  const rangeLabel =
-    worstCluster.startIso === worstCluster.endIso
-      ? fmtMonthDay(worstCluster.startIso)
-      : `${fmtMonthDay(worstCluster.startIso)}–${fmtMonthDay(worstCluster.endIso)}`;
-  const floorPhrase = floor != null ? `your $${fmtMoney(floor)} comfort floor` : "zero";
-  const lowestPhrase = lowest ? ` Lowest projected: ${fmtMoney0SignedDollar(lowest.after)} on ${fmtMonthDay(lowest.iso)}.` : "";
-  if (count >= 2) {
-    ledeEl.textContent = `${count} large hits between ${rangeLabel} totaling $${fmtMoney(totalAmt)} push your forecast below ${floorPhrase}.${lowestPhrase}`;
-  } else {
-    const only = worstCluster.items[0];
-    ledeEl.textContent = `${only.desc} on ${fmtMonthDay(only.iso)} ($${fmtMoney(only.amt)}) pushes your forecast below ${floorPhrase}.${lowestPhrase}`;
-  }
+  const startIso = focus[0]?.iso || "";
+  const endIso = focus[focus.length - 1]?.iso || startIso;
+  const rangeLabel = startIso && endIso
+    ? startIso === endIso
+      ? fmtMonthDay(startIso)
+      : `${fmtMonthDay(startIso)} and ${fmtMonthDay(endIso)}`
+    : "";
+  ledeEl.textContent =
+    focus.length === 1
+      ? `Upcoming cash pressure centers on one larger payment around ${rangeLabel}.`
+      : `Upcoming cash pressure is concentrated around ${focus.length} larger payments between ${rangeLabel}.`;
 
-  // Recovery hint — first iso after the cluster end where balance >= floor (or 0).
-  const target = floor != null ? floor : 0;
-  let recoveryIso = "";
-  if (Array.isArray(daily) && daily.length) {
-    for (const row of daily) {
-      const iso = String(row?.date || "");
-      if (!iso || iso <= worstCluster.endIso) continue;
-      const bal = Number(row?.total_balance ?? NaN);
-      if (Number.isFinite(bal) && bal >= target) {
-        recoveryIso = iso;
-        break;
-      }
-    }
+  const details = [];
+  if (largest) {
+    details.push(`Largest impact: ${largest.desc} — $${fmtMoney(largest.amt)} on ${fmtMonthDay(largest.iso)}.`);
   }
-  if (recoveryIso) {
-    recEl.textContent = floor != null
-      ? `Back above your floor by ${fmtMonthDay(recoveryIso)}.`
-      : `Back in the black by ${fmtMonthDay(recoveryIso)}.`;
-  } else {
-    recEl.textContent = "Forecast does not recover within the current range.";
+  if (lowest && Number.isFinite(lowest.after)) {
+    details.push(`Lowest projected balance: ${fmtMoney0SignedDollar(lowest.after)} on ${fmtMonthDay(lowest.iso)}.`);
   }
+  recEl.textContent = details.join(" ");
   wrap.hidden = false;
 }
 
@@ -11215,6 +11488,7 @@ function renderReportsCashPressure(daily) {
     hits.push({
       iso: nextIso,
       desc: pressureRowDescription(tx),
+      categoryLabel: pressureCategoryLabel(tx),
       amt,
       after,
       recovery: computePressureRecoveryLabel(daily, nextIso, after),
@@ -11222,9 +11496,15 @@ function renderReportsCashPressure(daily) {
   }
   hits.sort((a, b) => String(a.iso).localeCompare(String(b.iso)));
 
+  const lowestHit = hits.reduce((acc, h) => {
+    if (h.after == null || !Number.isFinite(h.after)) return acc;
+    if (!acc || h.after < acc.after) return h;
+    return acc;
+  }, null);
+
   if (hint) {
     hint.textContent = hits.length
-      ? "Balance after reflects projected end-of-day cash after each hit."
+      ? "Rows focus on larger upcoming payments. Balance after shows projected end-of-day cash, and recovery shows when coverage returns."
       : "No scheduled outflows of $400+ in the next 90 days.";
   }
 
@@ -11233,67 +11513,72 @@ function renderReportsCashPressure(daily) {
   if (summaryEl) {
     if (!hits.length) {
       summaryEl.hidden = true;
-      if (statLargest) statLargest.textContent = "—";
-      if (statLowBal) statLowBal.textContent = "—";
-      if (statCount) statCount.textContent = "—";
+      setReportsObligationStat(statLargest, null);
+      setReportsObligationStat(statLowBal, null);
+      setReportsObligationStat(statCount, null);
     } else {
       summaryEl.hidden = false;
       let maxHit = hits[0];
       for (const h of hits) {
         if (h.amt > maxHit.amt) maxHit = h;
       }
-      const withBal = hits.filter((h) => h.after != null && Number.isFinite(h.after));
-      let lowLine = "—";
-      if (withBal.length) {
-        let low = withBal[0];
-        for (const h of withBal) {
-          if (h.after < low.after) low = h;
-        }
-        lowLine = `${fmtMoney0SignedDollar(low.after)} · ${fmtMonthDay(low.iso)}`;
-      }
-      if (statLargest) statLargest.textContent = `${maxHit.desc} · $${fmtMoney(maxHit.amt)}`;
-      if (statLowBal) statLowBal.textContent = lowLine;
-      if (statCount) {
-        const c = hits.length;
-        statCount.textContent = `${c} date${c === 1 ? "" : "s"}`;
-      }
+      const datesToWatch = hits.filter((h) => {
+        const sev = pressureSeverityMeta(h.after, floor);
+        return sev.key === "watch" || sev.key === "tight" || sev.key === "below";
+      }).length;
+      setReportsObligationStat(
+        statLargest,
+        `$${fmtMoney(maxHit.amt)}`,
+        `${maxHit.desc} · ${fmtMonthDay(maxHit.iso)}`
+      );
+      setReportsObligationStat(
+        statLowBal,
+        lowestHit && Number.isFinite(lowestHit.after) ? fmtMoney0SignedDollar(lowestHit.after) : "—",
+        lowestHit ? `${fmtMonthDay(lowestHit.iso)}` : "No projected low point"
+      );
+      setReportsObligationStat(
+        statCount,
+        String(datesToWatch),
+        datesToWatch === 1 ? "date to watch" : "dates to watch"
+      );
     }
   }
-
-  // For micro impact bars: anchor widths to the largest hit in view.
-  const maxAmt = hits.reduce((m, h) => (h.amt > m ? h.amt : m), 0);
 
   for (const h of hits) {
     const tr = document.createElement("tr");
     tr.className = "reports-pressure-row";
-    const balCls = balanceAfterPressureClass(h.after, floor);
-    // Flag rows that visibly hurt the forecast so they read as the "events
-    // that matter", not just rows in a table.
-    const isDanger = h.after != null && Number.isFinite(h.after) && (h.after < (floor != null ? floor : 0));
-    if (isDanger) tr.classList.add("reports-pressure-row--danger");
-    if (h.after != null && Number.isFinite(h.after) && h.after < 0) {
-      tr.classList.add("reports-pressure-row--neg");
-    }
+    const sev = pressureSeverityMeta(h.after, floor);
+    tr.classList.add(sev.rowClass);
+    const isPrimary =
+      !!lowestHit &&
+      String(lowestHit.iso || "") === String(h.iso || "") &&
+      Number(lowestHit.after ?? NaN) === Number(h.after ?? NaN);
+    if (isPrimary) tr.classList.add("reports-pressure-row--primary");
+
+    const why = pressureWhyItMatters(h, floor, lowestHit);
 
     let balHtml;
     if (h.after != null && Number.isFinite(h.after)) {
-      balHtml = `<td class="num reports-pressure-bal ${balCls}">${fmtMoney0SignedDollar(h.after)}</td>`;
+      balHtml = `<td class="num reports-pressure-bal ${sev.balClass}"><span class="reports-pressure-bal__value">${fmtMoney0SignedDollar(
+        h.after
+      )}</span><span class="reports-pressure-level ${sev.levelClass}">${escapeHtml(sev.label)}</span></td>`;
     } else {
-      balHtml = `<td class="num reports-pressure-bal reports-pressure-bal--unknown" title="This date is beyond the current forecast range — extend horizon in Settings to project further out.">—</td>`;
+      balHtml = `<td class="num reports-pressure-bal reports-pressure-bal--unknown" title="This date is beyond the current forecast range — extend horizon in Settings to project further out."><span class="reports-pressure-bal__value">—</span><span class="reports-pressure-level reports-pressure-level--unknown">Unknown</span></td>`;
     }
 
     const rec = h.recovery || { label: "—", cls: "reports-pressure-rec--muted" };
-    const recLabel = rec.label === "Outside forecast range" ? "—" : rec.label;
-    const recTitle = rec.label === "Outside forecast range" ? ' title="Outside the current forecast range"' : "";
+    const recTitle = rec.state === "outside" ? ' title="Outside the current forecast range"' : "";
+    const catBadge = h.categoryLabel
+      ? `<span class="reports-pressure-category">${escapeHtml(h.categoryLabel)}</span>`
+      : "";
 
-    const barPct = maxAmt > 0 ? Math.max(3, Math.round((h.amt / maxAmt) * 100)) : 0;
-    const dangerIcon = isDanger ? `<span class="reports-pressure-danger-icon" aria-hidden="true" title="Projected below your floor after this hit">⚠</span>` : "";
-
-    tr.innerHTML = `<td class="reports-pressure-date">${dangerIcon}${escapeHtml(fmtObligationNextDate(h.iso))}</td><td class="reports-pressure-days">${escapeHtml(
+    tr.innerHTML = `<td class="reports-pressure-date">${escapeHtml(fmtObligationNextDate(h.iso))}</td><td class="reports-pressure-days">${escapeHtml(
       formatDaysUntilImpact(todayIso, h.iso)
-    )}</td><td class="reports-pressure-desc">${escapeHtml(h.desc)}</td><td class="num reports-pressure-amt"><span class="reports-pressure-amt__v">$${fmtMoney(
+    )}</td><td class="reports-pressure-desc"><div class="reports-pressure-desc__top"><span class="reports-pressure-desc__name">${escapeHtml(
+      h.desc
+    )}</span>${catBadge}</div><div class="reports-pressure-desc__note">${escapeHtml(why)}</div></td><td class="num reports-pressure-amt"><span class="reports-pressure-amt__v">$${fmtMoney(
       h.amt
-    )}</span><span class="reports-pressure-amt__bar" aria-hidden="true"><span style="width: ${barPct}%"></span></span></td>${balHtml}<td class="reports-pressure-rec ${rec.cls}"${recTitle}>${escapeHtml(recLabel)}</td>`;
+    )}</span></td>${balHtml}<td class="reports-pressure-rec ${rec.cls}"${recTitle}>${escapeHtml(rec.label)}</td>`;
     body.appendChild(tr);
   }
   if (!hits.length) {
@@ -11415,9 +11700,18 @@ function drawProjectionChart(daily) {
   // Slightly stronger fills on the reports view so positive vs. negative
   // regions read as zones instead of empty whitespace.
   const negFillBelow =
-    onReports ? "rgba(185, 28, 28, 0.065)" : "rgba(167, 55, 68, 0.12)";
-  const negFillBelowEnd = onReports ? "rgba(185, 28, 28, 0.085)" : "rgba(167, 55, 68, 0.12)";
-  const posFillAbove = onReports ? "rgba(11, 61, 46, 0.09)" : "rgba(11, 61, 46, 0.12)";
+    onReports ? "rgba(185, 28, 28, 0.038)" : "rgba(167, 55, 68, 0.12)";
+  const negFillBelowEnd = onReports ? "rgba(185, 28, 28, 0.052)" : "rgba(167, 55, 68, 0.12)";
+  const posFillAbove = onReports ? "rgba(11, 61, 46, 0.07)" : "rgba(11, 61, 46, 0.12)";
+
+  const yDomain = values.filter((n) => Number.isFinite(Number(n))).map((n) => Number(n));
+  yDomain.push(0);
+  if (thr != null && Number.isFinite(Number(thr))) yDomain.push(Number(thr));
+  const minDomain = Math.min(...yDomain);
+  const maxDomain = Math.max(...yDomain);
+  const span = Math.max(800, maxDomain - minDomain);
+  const suggestedMin = minDomain - span * (onReports ? 0.08 : 0.12);
+  const suggestedMax = maxDomain + span * (onReports ? 0.14 : 0.18);
 
   // Build annotation list (top outflows and inflows) for the custom plugin.
   const annotations = [];
@@ -11457,7 +11751,7 @@ function drawProjectionChart(daily) {
     {
       label: "Balance",
       data: values,
-      borderColor: "rgba(11, 61, 46, 0.92)",
+      borderColor: "rgba(11, 61, 46, 0.88)",
       backgroundColor: (context) => {
         const chart = context.chart;
         const { ctx, chartArea, scales } = chart;
@@ -11488,7 +11782,7 @@ function drawProjectionChart(daily) {
           const y0 = ctx.p0.parsed.y;
           const y1 = ctx.p1.parsed.y;
           const mid = (Number(y0) + Number(y1)) / 2;
-          return mid >= 0 ? "rgba(11, 61, 46, 0.92)" : "rgba(167, 55, 68, 0.9)";
+          return mid >= 0 ? "rgba(11, 61, 46, 0.88)" : "rgba(167, 55, 68, 0.76)";
         },
       },
     },
@@ -11497,9 +11791,9 @@ function drawProjectionChart(daily) {
     datasets.push({
       label: "Minimum",
       data: dateLabels.map(() => thr),
-      borderColor: onReports ? "rgba(100, 116, 139, 0.62)" : "rgba(75, 85, 99, 0.55)",
-      borderWidth: onReports ? 1.25 : 1.5,
-      borderDash: onReports ? [5, 4] : [5, 5],
+      borderColor: onReports ? "rgba(100, 116, 139, 0.4)" : "rgba(75, 85, 99, 0.55)",
+      borderWidth: onReports ? 1 : 1.5,
+      borderDash: onReports ? [4, 5] : [5, 5],
       pointRadius: 0,
       fill: false,
       tension: 0,
@@ -11523,7 +11817,7 @@ function drawProjectionChart(daily) {
       maintainAspectRatio: false,
       layout: onReports
         ? {
-            padding: { top: 32, right: 14, bottom: 4, left: 0 },
+            padding: { top: 24, right: 10, bottom: 2, left: 0 },
           }
         : undefined,
       interaction: { mode: "index", intersect: false },
@@ -11580,6 +11874,8 @@ function drawProjectionChart(daily) {
           },
         },
         y: {
+          suggestedMin: onReports ? suggestedMin : undefined,
+          suggestedMax: onReports ? suggestedMax : undefined,
           grid: {
             color: onReports ? "rgba(148, 163, 184, 0.2)" : "rgba(0,0,0,0.045)",
             drawBorder: false,

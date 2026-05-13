@@ -211,19 +211,23 @@ function normalizePersistedAccountSetupWizardStep(raw) {
 
 /** Account setup wizard: category list (value = stored description id). */
 const ACCOUNT_SETUP_CATEGORY_ITEMS = [
-  { group: "Income & reimbursements", value: "Paycheck", label: "Paycheck" },
-  { group: "Income & reimbursements", value: "Reimbursement", label: "Reimbursement" },
-  { group: "Home", value: "Mortgage/Rent", label: "Mortgage/Rent" },
-  { group: "Home", value: "Home Maintenance", label: "Home Maintenance" },
-  { group: "Home", value: "Utility", label: "Utility" },
-  { group: "Loans & payments", value: "Car Loan", label: "Car Loan" },
-  { group: "Loans & payments", value: "Credit Card Payment", label: "Credit Card Payment" },
-  { group: "Transfers & investing", value: "Transfers", label: "Transfers" },
-  { group: "Transfers & investing", value: "Investment", label: "Investment" },
-  { group: "Transfers & investing", value: "Cash & ATM", label: "Cash & ATM" },
-  { group: "Other", value: "Charity", label: "Charity" },
-  { group: "Other", value: "Gifts", label: "Gifts" },
-  { group: "Other", value: "Miscellaneous", label: "Miscellaneous" },
+  { kind: "income", group: "Income & reimbursements", value: "Paycheck", label: "Paycheck" },
+  { kind: "income", group: "Income & reimbursements", value: "Reimbursement", label: "Reimbursement" },
+  { kind: "income", group: "Income & reimbursements", value: "Transfer In", label: "Transfer In" },
+  { kind: "income", group: "Income & reimbursements", value: "Other Income", label: "Other Income" },
+  { kind: "expense", group: "Home", value: "Mortgage/Rent", label: "Mortgage/Rent" },
+  { kind: "expense", group: "Home", value: "Home Maintenance", label: "Home Maintenance" },
+  { kind: "expense", group: "Home", value: "Utility", label: "Utility" },
+  { kind: "expense", group: "Loans & payments", value: "Car Loan", label: "Car Loan" },
+  { kind: "expense", group: "Loans & payments", value: "Credit Card Payment", label: "Credit Card Payment" },
+  { kind: "expense", group: "Transfers & investing", value: "Transfers", label: "Transfers" },
+  { kind: "expense", group: "Transfers & investing", value: "Investment", label: "Investment" },
+  { kind: "expense", group: "Transfers & investing", value: "Cash & ATM", label: "Cash & ATM" },
+  { kind: "expense", group: "Other", value: "Insurance", label: "Insurance" },
+  { kind: "expense", group: "Other", value: "Subscription", label: "Subscription" },
+  { kind: "expense", group: "Other", value: "Charity", label: "Charity" },
+  { kind: "expense", group: "Other", value: "Gifts", label: "Gifts" },
+  { kind: "expense", group: "Other", value: "Miscellaneous", label: "Miscellaneous" },
 ];
 
 function escapeHtmlPlain(s) {
@@ -268,10 +272,40 @@ function rankCategorySearch(query, item) {
   return 0;
 }
 
-function filterCategoriesForSearch(query) {
+function getAccountSetupCategoryKindForHiddenId(hiddenId) {
+  if (hiddenId === "asTxCategory") {
+    return String(document.querySelector('input[name="asTxKind"]:checked')?.value || "")
+      .trim()
+      .toLowerCase();
+  }
+  if (hiddenId === "asExpTxCategory") {
+    return String(document.querySelector('input[name="asExpTxKind"]:checked')?.value || "")
+      .trim()
+      .toLowerCase();
+  }
+  return "";
+}
+
+function getAccountSetupCategoryItemsForKind(kind) {
+  const normalized = String(kind || "").trim().toLowerCase();
+  if (!normalized) return [...ACCOUNT_SETUP_CATEGORY_ITEMS];
+  return ACCOUNT_SETUP_CATEGORY_ITEMS.filter((item) => String(item.kind || "").trim().toLowerCase() === normalized);
+}
+
+function isAccountSetupCategoryAllowedForKind(value, kind) {
+  const normalizedValue = String(value || "").trim();
+  const normalizedKind = String(kind || "").trim().toLowerCase();
+  if (!normalizedValue || !normalizedKind) return true;
+  const item = ACCOUNT_SETUP_CATEGORY_ITEMS.find((entry) => entry.value === normalizedValue);
+  if (!item) return false;
+  return String(item.kind || "").trim().toLowerCase() === normalizedKind;
+}
+
+function filterCategoriesForSearch(query, kind = "") {
+  const items = getAccountSetupCategoryItemsForKind(kind);
   const q = query.trim();
-  if (!q) return [...ACCOUNT_SETUP_CATEGORY_ITEMS];
-  const scored = ACCOUNT_SETUP_CATEGORY_ITEMS.map((item) => ({
+  if (!q) return items;
+  const scored = items.map((item) => ({
     item,
     score: rankCategorySearch(query, item),
   }))
@@ -340,13 +374,14 @@ function initAccountSetupCategoryCombobox(hiddenId, inputId, listId) {
 
   function resolveInputOnBlur() {
     const raw = input.value.trim();
+    const allowedKind = getAccountSetupCategoryKindForHiddenId(hiddenId);
     if (!raw) {
       hidden.value = "";
       hidden.dispatchEvent(new Event("change", { bubbles: true }));
       return;
     }
-    const ranked = filterCategoriesForSearch(raw);
-    const exact = ACCOUNT_SETUP_CATEGORY_ITEMS.find(
+    const ranked = filterCategoriesForSearch(raw, allowedKind);
+    const exact = ranked.find(
       (i) => i.label.toLowerCase() === raw.toLowerCase() || i.value.toLowerCase() === raw.toLowerCase()
     );
     if (exact) {
@@ -366,7 +401,7 @@ function initAccountSetupCategoryCombobox(hiddenId, inputId, listId) {
 
   function renderDropdown() {
     const q = input.value;
-    const items = filterCategoriesForSearch(q);
+    const items = filterCategoriesForSearch(q, getAccountSetupCategoryKindForHiddenId(hiddenId));
     list.innerHTML = "";
     let lastGroup = null;
     items.forEach((item) => {
@@ -695,45 +730,45 @@ function getAccountSetupStepCopy(step, ctx) {
   switch (step) {
     case 0:
       return {
-        title: "Create your account",
-        subtitle: "Start with an email and password — takes about 2 minutes.",
+        title: "Create your login",
+        subtitle: "Start with an email and password. You can edit the rest later.",
       };
     case 1:
       return {
         title: "Start with your current checking balance",
-        subtitle: "This anchors your forecast to today. You can adjust it anytime.",
+        subtitle: "Use today’s balance so your forecast starts from reality.",
       };
     case 2: {
       if (phase3 === "form" && phase3After) {
         return {
           title: "Your forecast is taking shape",
-          subtitle: "Add another predictable item, or continue when ready.",
+          subtitle: "Add another predictable item, or continue when you’re ready to see your forecast.",
         };
       }
       if (phase3 === "form") {
         return {
-          title: "Add a recurring income or bill",
-          subtitle: "Things like a paycheck, mortgage, or credit card payment.",
+          title: "Add an upcoming paycheck or bill",
+          subtitle: "A few predictable items are usually enough to see what stays covered.",
         };
       }
       return {
         title: phase3HasAny
           ? "Want to add another predictable item?"
-          : "Now add the income and bills you expect",
+          : "Add the upcoming items you already know",
         subtitle: phase3HasAny
-          ? "A couple more is usually enough — you can refine later."
-          : "Most people start with just 2–3 items. You can edit everything later.",
+          ? "A few predictable items are usually enough. You can edit everything later."
+          : "Most people start with 2–3 predictable items. You can edit everything later.",
       };
     }
     case 3:
       return {
         title: "Add another recurring item",
-        subtitle: "A few predictable transactions is usually enough to get a useful forecast.",
+        subtitle: "Utilities, card payments, and transfers all help make your forecast more predictable.",
       };
     case 4:
       return {
         title: "What matters most to you?",
-        subtitle: "We’ll prioritize the right insights for you.",
+        subtitle: "Choose the forecast priorities that matter most right now.",
       };
     default:
       return { title: "Let’s build your forecast", subtitle: "Start simple. You can refine everything later." };
@@ -908,7 +943,7 @@ function syncAccountSetupWizardShellButtons() {
   if (s === 4) {
     if (signupBtn) {
       signupBtn.style.display = "";
-      signupBtn.textContent = "Create Account";
+      signupBtn.textContent = "Create My Forecast";
       // Ensure primary styling in the final step as well.
       signupBtn.classList.remove("secondary");
       signupBtn.classList.add("top-nav__logout");
@@ -1036,12 +1071,9 @@ function setAccountSetupWizardStep(step, opts = {}) {
 
   if (!skipPersist) persistAccountSetupWizardMeta(s);
 
-  // Step 2: default focus to the $ Starting Balance input.
+  // Step 2: land on the editable account name so it feels obviously customizable.
   if (s === 1) {
-    try {
-      // Defer to ensure the panel is visible/un-inert before focusing.
-      setTimeout(() => document.getElementById("accountStartingBalance")?.focus(), 0);
-    } catch (_) {}
+    focusAccountSetupAccountNameInput();
   }
 
   if (s < 2 && document.getElementById("accountSetupWizardPanel2")) {
@@ -1123,6 +1155,17 @@ function ensureAccountSetupDefaultAccountName() {
   if (!String(el.value || "").trim()) el.value = "Checking";
 }
 
+function focusAccountSetupAccountNameInput() {
+  const el = document.getElementById("accountName");
+  if (!el) return;
+  window.setTimeout(() => {
+    try {
+      el.focus();
+      if (String(el.value || "").trim()) el.select();
+    } catch (_) {}
+  }, 0);
+}
+
 function canAdvanceAccountSetupAccountStep({ accountName, accountStartingBalanceRaw, accountStartingBalance, accountStartingBalanceDate }) {
   const anyAccount =
     !!accountName ||
@@ -1157,19 +1200,6 @@ function goToSignupFromAccountSetup() {
     const accountStartingBalanceRaw = document.getElementById("accountStartingBalance")?.value || "";
     const accountStartingBalance = toMoneyNumber(accountStartingBalanceRaw);
     const accountStartingBalanceDate = String(document.getElementById("accountStartingBalanceDate")?.value || "").trim();
-    const txKind = String(document.querySelector('input[name="asTxKind"]:checked')?.value || "").trim();
-    const txAmountRaw = document.getElementById("asTxAmount")?.value || "";
-    const txAmount = toMoneyNumber(txAmountRaw);
-    const txCategory = (document.getElementById("asTxCategory")?.value || "").trim();
-    const txDate = String(document.getElementById("asTxDate")?.value || "").trim();
-    const txNotes = (document.getElementById("asTxNotes")?.value || "").trim();
-    const txRecurrenceRaw = String(document.getElementById("asTxRecurrence")?.value || "").trim();
-    const txRecurring = !!txRecurrenceRaw;
-    const txRecurrence = txRecurrenceRaw || null;
-    const txEndDateRaw = String(document.getElementById("asTxEndDate")?.value || "").trim();
-    const txEndCountRaw = String(document.getElementById("asTxEndCount")?.value || "").trim();
-    const txEndCount = txEndCountRaw === "" ? null : Number(txEndCountRaw);
-    const txBgColor = String(document.getElementById("asTxBgColor")?.value || "").trim();
     const anyAccount =
       !!accountName ||
       (accountStartingBalanceRaw != null && String(accountStartingBalanceRaw).trim() !== "") ||
@@ -1189,24 +1219,11 @@ function goToSignupFromAccountSetup() {
       }
     }
 
-    const anyTx =
-      (txAmountRaw != null && String(txAmountRaw).trim() !== "") ||
-      !!txCategory ||
-      !!txDate ||
-      !!txNotes ||
-      txRecurring ||
-      !!txBgColor;
+    const parsedTx = readAccountSetupTransactionFromInputs();
+    const anyTx = !parsedTx.empty;
     if (anyTx) {
-      if (!txKind) {
-        setCallout(signupCalloutEl, "Transaction type is required (or leave transactions blank).", "error");
-        return;
-      }
-      if (txAmount == null || txAmount <= 0) {
-        setCallout(signupCalloutEl, "Transaction amount is required (or leave transactions blank).", "error");
-        return;
-      }
-      if (!txDate) {
-        setCallout(signupCalloutEl, "Transaction date is required (or leave transactions blank).", "error");
+      if (!parsedTx.ok) {
+        setCallout(signupCalloutEl, parsedTx.message || "Please complete the transaction.", "error");
         return;
       }
     }
@@ -1227,18 +1244,7 @@ function goToSignupFromAccountSetup() {
           ? {
               transactions: [
                 ...existingTransactions,
-                {
-                  kind: txKind,
-                  amount: txAmount,
-                  category: txCategory || "Uncategorized",
-                  date: txDate,
-                  notes: txNotes,
-                recurring: txRecurring,
-                recurrence: txRecurring ? txRecurrence : null,
-                  end_date: txRecurring ? (txEndDateRaw !== "" ? txEndDateRaw : null) : null,
-                  end_count: txRecurring ? (txEndDateRaw !== "" ? null : txEndCount) : null,
-                  bg_color: txBgColor || null,
-                },
+                parsedTx.tx,
               ],
             }
           : { transactions: existingTransactions }),
@@ -1266,6 +1272,306 @@ function readAccountSetupDraftRaw() {
   }
 }
 
+const ACCOUNT_SETUP_REPEAT_RECURRENCES = new Set([
+  "weekly",
+  "biweekly",
+  "twice_monthly",
+  "monthly",
+  "quarterly",
+  "semiannual",
+  "yearly",
+]);
+
+const ACCOUNT_SETUP_LONG_DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+});
+const ACCOUNT_SETUP_MONTH_DAY_FORMATTER = new Intl.DateTimeFormat("en-US", {
+  month: "long",
+  day: "numeric",
+});
+const ACCOUNT_SETUP_WEEKDAY_FORMATTER = new Intl.DateTimeFormat("en-US", {
+  weekday: "long",
+});
+
+function normalizeAccountSetupRecurrenceSelection(raw) {
+  const v = String(raw || "").trim().toLowerCase();
+  if (!v || v === "once") return null;
+  return ACCOUNT_SETUP_REPEAT_RECURRENCES.has(v) ? v : null;
+}
+
+function parseAccountSetupIsoDate(iso) {
+  const raw = String(iso || "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return null;
+  const y = Number(raw.slice(0, 4));
+  const m = Number(raw.slice(5, 7));
+  const d = Number(raw.slice(8, 10));
+  if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return null;
+  return new Date(y, m - 1, d, 12, 0, 0, 0);
+}
+
+function formatAccountSetupOrdinalDay(n, opts = {}) {
+  const day = Number(n);
+  if (!Number.isFinite(day) || day < 1) return "";
+  if (opts.useLastDayLabel && day === 31) return "last day";
+  const mod100 = day % 100;
+  const mod10 = day % 10;
+  let suffix = "th";
+  if (mod100 < 11 || mod100 > 13) {
+    if (mod10 === 1) suffix = "st";
+    else if (mod10 === 2) suffix = "nd";
+    else if (mod10 === 3) suffix = "rd";
+  }
+  return `${day}${suffix}`;
+}
+
+function getAccountSetupScheduleFields(prefix) {
+  if (prefix === "asExp") {
+    return {
+      recurrenceEl: document.getElementById("asExpRecurrence"),
+      dateEl: document.getElementById("asExpTxDate"),
+      secondDayWrap: document.getElementById("asExpSecondDayWrap"),
+      secondDayEl: document.getElementById("asExpSecondDayOfMonth"),
+      summaryEl: document.getElementById("asExpScheduleSummary"),
+      endsRow: document.getElementById("asExpEndsRow"),
+      endsModeEl: document.getElementById("asExpEndsMode"),
+      endDateWrap: document.getElementById("asExpEndDateWrap"),
+      endDateEl: document.getElementById("asExpEndDate"),
+      endCountWrap: document.getElementById("asExpEndCountWrap"),
+      endCountEl: document.getElementById("asExpEndCount"),
+    };
+  }
+  return {
+    recurrenceEl: document.getElementById("asTxRecurrence"),
+    dateEl: document.getElementById("asTxDate"),
+    secondDayWrap: document.getElementById("asTxSecondDayWrap"),
+    secondDayEl: document.getElementById("asTxSecondDayOfMonth"),
+    summaryEl: document.getElementById("asTxScheduleSummary"),
+    endsRow: document.getElementById("asTxEndsRow"),
+    endsModeEl: document.getElementById("asTxEndsMode"),
+    endDateWrap: document.getElementById("asTxEndDateWrap"),
+    endDateEl: document.getElementById("asTxEndDate"),
+    endCountWrap: document.getElementById("asTxEndCountWrap"),
+    endCountEl: document.getElementById("asTxEndCount"),
+  };
+}
+
+function populateAccountSetupSecondDayOptions(selectEl) {
+  if (!selectEl || selectEl.dataset.secondDayInit === "1") return;
+  selectEl.dataset.secondDayInit = "1";
+  selectEl.innerHTML = "";
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "Choose second date";
+  selectEl.appendChild(placeholder);
+  for (let day = 1; day <= 31; day += 1) {
+    const opt = document.createElement("option");
+    opt.value = String(day);
+    opt.textContent = day === 31 ? "Last day" : formatAccountSetupOrdinalDay(day);
+    selectEl.appendChild(opt);
+  }
+}
+
+function inferAccountSetupSecondDayValue(startIso) {
+  const start = parseAccountSetupIsoDate(startIso);
+  if (!start) return "";
+  const day = start.getDate();
+  if (day <= 15) return "31";
+  return "15";
+}
+
+function accountSetupScheduleSummaryText(recurrence, startIso, secondDayValue) {
+  if (!recurrence) return "";
+  const start = parseAccountSetupIsoDate(startIso);
+  if (!start) return "Pick a next date and we’ll set the schedule automatically.";
+  if (recurrence === "weekly") {
+    return `Repeats weekly on ${ACCOUNT_SETUP_WEEKDAY_FORMATTER.format(start)}.`;
+  }
+  if (recurrence === "biweekly") {
+    return `Repeats every 2 weeks starting ${ACCOUNT_SETUP_LONG_DATE_FORMATTER.format(start)}.`;
+  }
+  if (recurrence === "twice_monthly") {
+    const second = Number(secondDayValue);
+    if (!Number.isFinite(second) || second < 1 || second > 31) {
+      return `Next date sets the first monthly date (${formatAccountSetupOrdinalDay(start.getDate())}). Choose the second date.`;
+    }
+    return `Repeats twice monthly on the ${formatAccountSetupOrdinalDay(start.getDate())} and ${formatAccountSetupOrdinalDay(second, { useLastDayLabel: true })}.`;
+  }
+  if (recurrence === "monthly") {
+    return `Repeats monthly on the ${formatAccountSetupOrdinalDay(start.getDate())}.`;
+  }
+  if (recurrence === "quarterly") {
+    return `Repeats every 3 months on the ${formatAccountSetupOrdinalDay(start.getDate())}.`;
+  }
+  if (recurrence === "semiannual") {
+    return `Repeats every 6 months on the ${formatAccountSetupOrdinalDay(start.getDate())}.`;
+  }
+  if (recurrence === "yearly") {
+    return `Repeats every year on ${ACCOUNT_SETUP_MONTH_DAY_FORMATTER.format(start)}.`;
+  }
+  return "";
+}
+
+function syncAccountSetupScheduleUi(prefix) {
+  const fields = getAccountSetupScheduleFields(prefix);
+  const recurrence = normalizeAccountSetupRecurrenceSelection(fields.recurrenceEl?.value || "");
+  const repeats = !!recurrence;
+  const startIso = String(fields.dateEl?.value || "").trim();
+  if (fields.secondDayEl) populateAccountSetupSecondDayOptions(fields.secondDayEl);
+
+  if (fields.secondDayWrap) fields.secondDayWrap.hidden = recurrence !== "twice_monthly";
+  if (fields.secondDayEl) {
+    const needsSuggestedDefault =
+      recurrence === "twice_monthly" &&
+      startIso &&
+      (!String(fields.secondDayEl.value || "").trim() || Number(fields.secondDayEl.value) === Number(startIso.slice(8, 10)));
+    if (needsSuggestedDefault) fields.secondDayEl.value = inferAccountSetupSecondDayValue(startIso);
+    if (recurrence !== "twice_monthly") fields.secondDayEl.value = "";
+    fields.secondDayEl.disabled = recurrence !== "twice_monthly";
+  }
+
+  if (fields.endsRow) fields.endsRow.hidden = !repeats;
+  if (!repeats) {
+    if (fields.endsModeEl) fields.endsModeEl.value = "never";
+    if (fields.endDateWrap) fields.endDateWrap.hidden = true;
+    if (fields.endCountWrap) fields.endCountWrap.hidden = true;
+    if (fields.endDateEl) {
+      fields.endDateEl.value = "";
+      fields.endDateEl.disabled = true;
+    }
+    if (fields.endCountEl) {
+      fields.endCountEl.value = "";
+      fields.endCountEl.disabled = true;
+    }
+  } else {
+    const endsMode = String(fields.endsModeEl?.value || "never").trim().toLowerCase();
+    if (fields.endDateWrap) fields.endDateWrap.hidden = endsMode !== "on_date";
+    if (fields.endCountWrap) fields.endCountWrap.hidden = endsMode !== "after_count";
+    if (fields.endDateEl) {
+      if (endsMode !== "on_date") fields.endDateEl.value = "";
+      fields.endDateEl.disabled = endsMode !== "on_date";
+    }
+    if (fields.endCountEl) {
+      if (endsMode !== "after_count") fields.endCountEl.value = "";
+      fields.endCountEl.disabled = endsMode !== "after_count";
+    }
+  }
+
+  if (fields.summaryEl) {
+    const summary = accountSetupScheduleSummaryText(
+      recurrence,
+      startIso,
+      String(fields.secondDayEl?.value || "").trim()
+    );
+    fields.summaryEl.textContent = summary;
+    fields.summaryEl.hidden = !summary;
+  }
+}
+
+function readAccountSetupScheduleFromInputs(prefix, startDateIso) {
+  const fields = getAccountSetupScheduleFields(prefix);
+  const recurrence = normalizeAccountSetupRecurrenceSelection(fields.recurrenceEl?.value || "");
+  if (!recurrence) {
+    return {
+      recurring: false,
+      recurrence: null,
+      second_day_of_month: null,
+      end_date: null,
+      end_count: null,
+      message: "",
+    };
+  }
+
+  let secondDayOfMonth = null;
+  if (recurrence === "twice_monthly") {
+    const raw = String(fields.secondDayEl?.value || "").trim();
+    const n = raw ? Number(raw) : NaN;
+    if (!Number.isFinite(n) || n < 1 || n > 31) {
+      return {
+        recurring: false,
+        recurrence: null,
+        second_day_of_month: null,
+        end_date: null,
+        end_count: null,
+        message: "Choose the second monthly date.",
+      };
+    }
+    const startDay = /^\d{4}-\d{2}-\d{2}$/.test(String(startDateIso || "")) ? Number(String(startDateIso).slice(8, 10)) : NaN;
+    if (Number.isFinite(startDay) && n === startDay) {
+      return {
+        recurring: false,
+        recurrence: null,
+        second_day_of_month: null,
+        end_date: null,
+        end_count: null,
+        message: "The second monthly date must differ from the next date.",
+      };
+    }
+    secondDayOfMonth = n;
+  }
+
+  const endsMode = String(fields.endsModeEl?.value || "never").trim().toLowerCase();
+  let endDate = null;
+  let endCount = null;
+  if (endsMode === "on_date") {
+    endDate = String(fields.endDateEl?.value || "").trim() || null;
+    if (!endDate) {
+      return {
+        recurring: false,
+        recurrence: null,
+        second_day_of_month: null,
+        end_date: null,
+        end_count: null,
+        message: "Choose when this repeating item ends.",
+      };
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(endDate)) {
+      return {
+        recurring: false,
+        recurrence: null,
+        second_day_of_month: null,
+        end_date: null,
+        end_count: null,
+        message: "Ends on must be a date",
+      };
+    }
+    if (startDateIso && endDate < startDateIso) {
+      return {
+        recurring: false,
+        recurrence: null,
+        second_day_of_month: null,
+        end_date: null,
+        end_count: null,
+        message: "Ends on cannot be before the start date",
+      };
+    }
+  } else if (endsMode === "after_count") {
+    const raw = String(fields.endCountEl?.value || "").trim();
+    const n = raw === "" ? NaN : Number(raw);
+    if (!Number.isFinite(n) || n < 1 || Math.floor(n) !== n) {
+      return {
+        recurring: false,
+        recurrence: null,
+        second_day_of_month: null,
+        end_date: null,
+        end_count: null,
+        message: "Ends after must be a whole number ≥ 1",
+      };
+    }
+    endCount = n;
+  }
+
+  return {
+    recurring: true,
+    recurrence,
+    second_day_of_month: secondDayOfMonth,
+    end_date: endDate,
+    end_count: endCount,
+    message: "",
+  };
+}
+
 function readAccountSetupTransactionFromInputs() {
   const txKind = String(document.querySelector('input[name="asTxKind"]:checked')?.value || "").trim();
   const txAmountRaw = document.getElementById("asTxAmount")?.value || "";
@@ -1274,12 +1580,8 @@ function readAccountSetupTransactionFromInputs() {
   const txDate = String(document.getElementById("asTxDate")?.value || "").trim();
   const txNotes = (document.getElementById("asTxNotes")?.value || "").trim();
   const txVariable = !!document.getElementById("asTxVariable")?.checked;
-  const recurrenceRaw = String(document.getElementById("asTxRecurrence")?.value || "").trim();
-  const repeats = !!recurrenceRaw;
-  const recurrence = recurrenceRaw || null;
-  const endDate = String(document.getElementById("asTxEndDate")?.value || "").trim() || null;
-  const endCountRaw = String(document.getElementById("asTxEndCount")?.value || "").trim();
-  const endCount = endCountRaw === "" ? null : Number(endCountRaw);
+  const recurrence = normalizeAccountSetupRecurrenceSelection(document.getElementById("asTxRecurrence")?.value || "");
+  const repeats = !!recurrence;
   const txBgColor = String(document.getElementById("asTxBgColor")?.value || "").trim();
   const anyTx =
     (txAmountRaw != null && String(txAmountRaw).trim() !== "") ||
@@ -1293,24 +1595,8 @@ function readAccountSetupTransactionFromInputs() {
   if (txAmount == null || txAmount <= 0) return { ok: false, empty: false, tx: null, message: "Transaction amount is required." };
   if (!txDate) return { ok: false, empty: false, tx: null, message: "Transaction date is required." };
   const categoryResolved = txCategory || "Uncategorized";
-  if (repeats) {
-    if (endCount != null) {
-      if (!Number.isFinite(endCount) || endCount < 1 || Math.floor(endCount) !== endCount) {
-        return { ok: false, empty: false, tx: null, message: "Ends after must be a whole number ≥ 1" };
-      }
-    }
-    if (endDate != null && endDate !== "") {
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(endDate)) {
-        return { ok: false, empty: false, tx: null, message: "Ends on must be a date" };
-      }
-      if (endDate < txDate) {
-        return { ok: false, empty: false, tx: null, message: "Ends on cannot be before the start date" };
-      }
-    }
-    if (endCount != null && endDate != null && endDate !== "") {
-      return { ok: false, empty: false, tx: null, message: "Provide only one of Ends after or Ends on" };
-    }
-  }
+  const schedule = readAccountSetupScheduleFromInputs("asTx", txDate);
+  if (repeats && schedule.message) return { ok: false, empty: false, tx: null, message: schedule.message };
   return {
     ok: true,
     empty: false,
@@ -1321,10 +1607,11 @@ function readAccountSetupTransactionFromInputs() {
       date: txDate,
       notes: txNotes,
       variable: repeats ? txVariable : false,
-      recurring: repeats,
-      recurrence: repeats ? recurrence : null,
-      end_date: repeats ? (endDate && endDate !== "" ? endDate : null) : null,
-      end_count: repeats ? (endDate && endDate !== "" ? null : endCount) : null,
+      recurring: schedule.recurring,
+      recurrence: schedule.recurrence,
+      second_day_of_month: schedule.second_day_of_month,
+      end_date: schedule.end_date,
+      end_count: schedule.end_count,
       bg_color: txBgColor || null,
     },
     message: "",
@@ -1338,20 +1625,20 @@ function resetAccountSetupTransactionForm() {
   const notesEl = document.getElementById("asTxNotes");
   const varEl = document.getElementById("asTxVariable");
   const recSel = document.getElementById("asTxRecurrence");
+  const endsModeEl = document.getElementById("asTxEndsMode");
+  const secondDayEl = document.getElementById("asTxSecondDayOfMonth");
   const endCountEl = document.getElementById("asTxEndCount");
   const endDateEl = document.getElementById("asTxEndDate");
-  const endCountWrap = document.getElementById("asTxEndCountWrap");
-  const endDateWrap = document.getElementById("asTxEndDateWrap");
   const bgEl = document.getElementById("asTxBgColor");
   if (amountEl) amountEl.value = "";
   clearAccountSetupCategoryCombobox("asTxCategory");
   if (notesEl) notesEl.value = "";
   if (varEl) varEl.checked = false;
-  if (recSel) recSel.value = "";
+  if (recSel) recSel.value = "once";
+  if (endsModeEl) endsModeEl.value = "never";
+  if (secondDayEl) secondDayEl.value = "";
   if (endCountEl) endCountEl.value = "";
   if (endDateEl) endDateEl.value = "";
-  if (endCountWrap) endCountWrap.hidden = true;
-  if (endDateWrap) endDateWrap.hidden = true;
   if (bgEl) bgEl.value = "";
   const swatches = document.getElementById("asTxColorSwatches");
   if (swatches) for (const b of swatches.querySelectorAll("button.cat-swatch")) b.classList.remove("is-active");
@@ -1362,6 +1649,7 @@ function resetAccountSetupTransactionForm() {
   const exp = document.querySelector('input[name="asTxKind"][value="expense"]');
   if (incomeOnly && inc) inc.checked = true;
   else if (exp) exp.checked = true;
+  syncAccountSetupScheduleUi("asTx");
 }
 
 function addMoreTransactionsFromAccountSetup() {
@@ -1624,12 +1912,8 @@ function readAccountSetupExpenseTransactionFromInputs() {
   const txDate = String(document.getElementById("asExpTxDate")?.value || "").trim();
   const txNotes = (document.getElementById("asExpTxNotes")?.value || "").trim();
   const txVariable = !!document.getElementById("asExpVariable")?.checked;
-  const recurrenceRaw = String(document.getElementById("asExpRecurrence")?.value || "").trim();
-  const repeats = !!recurrenceRaw;
-  const recurrence = recurrenceRaw || null;
-  const endDate = String(document.getElementById("asExpEndDate")?.value || "").trim() || null;
-  const endCountRaw = String(document.getElementById("asExpEndCount")?.value || "").trim();
-  const endCount = endCountRaw === "" ? null : Number(endCountRaw);
+  const recurrence = normalizeAccountSetupRecurrenceSelection(document.getElementById("asExpRecurrence")?.value || "");
+  const repeats = !!recurrence;
   const txBgColor = String(document.getElementById("asExpTxBgColor")?.value || "").trim();
   const anyTx =
     (txAmountRaw != null && String(txAmountRaw).trim() !== "") ||
@@ -1643,24 +1927,8 @@ function readAccountSetupExpenseTransactionFromInputs() {
   if (txAmount == null || txAmount <= 0) return { ok: false, empty: false, tx: null, message: "Transaction amount is required." };
   if (!txDate) return { ok: false, empty: false, tx: null, message: "Transaction date is required." };
   const categoryResolved = txCategory || "Uncategorized";
-  if (repeats) {
-    if (endCount != null) {
-      if (!Number.isFinite(endCount) || endCount < 1 || Math.floor(endCount) !== endCount) {
-        return { ok: false, empty: false, tx: null, message: "Ends after must be a whole number ≥ 1" };
-      }
-    }
-    if (endDate != null && endDate !== "") {
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(endDate)) {
-        return { ok: false, empty: false, tx: null, message: "Ends on must be a date" };
-      }
-      if (endDate < txDate) {
-        return { ok: false, empty: false, tx: null, message: "Ends on cannot be before the start date" };
-      }
-    }
-    if (endCount != null && endDate != null && endDate !== "") {
-      return { ok: false, empty: false, tx: null, message: "Provide only one of Ends after or Ends on" };
-    }
-  }
+  const schedule = readAccountSetupScheduleFromInputs("asExp", txDate);
+  if (repeats && schedule.message) return { ok: false, empty: false, tx: null, message: schedule.message };
   return {
     ok: true,
     empty: false,
@@ -1671,10 +1939,11 @@ function readAccountSetupExpenseTransactionFromInputs() {
       date: txDate,
       notes: txNotes,
       variable: repeats ? txVariable : false,
-      recurring: repeats,
-      recurrence: repeats ? recurrence : null,
-      end_date: repeats ? (endDate && endDate !== "" ? endDate : null) : null,
-      end_count: repeats ? (endDate && endDate !== "" ? null : endCount) : null,
+      recurring: schedule.recurring,
+      recurrence: schedule.recurrence,
+      second_day_of_month: schedule.second_day_of_month,
+      end_date: schedule.end_date,
+      end_count: schedule.end_count,
       bg_color: txBgColor || null,
     },
     message: "",
@@ -1688,26 +1957,27 @@ function resetAccountSetupExpenseForm() {
   const notesEl = document.getElementById("asExpTxNotes");
   const varEl = document.getElementById("asExpVariable");
   const recSel = document.getElementById("asExpRecurrence");
+  const endsModeEl = document.getElementById("asExpEndsMode");
+  const secondDayEl = document.getElementById("asExpSecondDayOfMonth");
   const endCountEl = document.getElementById("asExpEndCount");
   const endDateEl = document.getElementById("asExpEndDate");
-  const endCountWrap = document.getElementById("asExpEndCountWrap");
-  const endDateWrap = document.getElementById("asExpEndDateWrap");
   const bgEl = document.getElementById("asExpTxBgColor");
   if (amountEl) amountEl.value = "";
   clearAccountSetupCategoryCombobox("asExpTxCategory");
   if (notesEl) notesEl.value = "";
   if (varEl) varEl.checked = false;
-  if (recSel) recSel.value = "";
+  if (recSel) recSel.value = "once";
+  if (endsModeEl) endsModeEl.value = "never";
+  if (secondDayEl) secondDayEl.value = "";
   if (endCountEl) endCountEl.value = "";
   if (endDateEl) endDateEl.value = "";
-  if (endCountWrap) endCountWrap.hidden = true;
-  if (endDateWrap) endDateWrap.hidden = true;
   if (bgEl) bgEl.value = "";
   const swatches = document.getElementById("asExpTxColorSwatches");
   if (swatches) for (const b of swatches.querySelectorAll("button.cat-swatch")) b.classList.remove("is-active");
   if (dateEl) dateEl.value = "";
   const ex = document.querySelector('input[name="asExpTxKind"][value="expense"]');
   if (ex) ex.checked = true;
+  syncAccountSetupScheduleUi("asExp");
 }
 
 function addMoreExpensesFromAccountSetup() {
@@ -1938,10 +2208,10 @@ function hydrateAccountSetupDraft() {
         const eDate = document.getElementById("asExpTxDate");
         const eNotes = document.getElementById("asExpTxNotes");
         const eRecSel = document.getElementById("asExpRecurrence");
+        const eSecondDay = document.getElementById("asExpSecondDayOfMonth");
+        const eEndsMode = document.getElementById("asExpEndsMode");
         const eEndDate = document.getElementById("asExpEndDate");
         const eEndCount = document.getElementById("asExpEndCount");
-        const eEndDateWrap = document.getElementById("asExpEndDateWrap");
-        const eEndCountWrap = document.getElementById("asExpEndCountWrap");
         const eBg = document.getElementById("asExpTxBgColor");
         if (eAmt && lastTx.amount != null) eAmt.value = String(lastTx.amount);
         if (eCat && lastTx.category) {
@@ -1951,13 +2221,16 @@ function hydrateAccountSetupDraft() {
         }
         if (eDate && lastTx.date) eDate.value = String(lastTx.date);
         if (eNotes && lastTx.notes) eNotes.value = String(lastTx.notes);
-        const eOn = !!lastTx.recurring && !!lastTx.recurrence;
-        if (eRecSel) eRecSel.value = eOn ? String(lastTx.recurrence) : "";
-        if (eEndDateWrap) eEndDateWrap.hidden = !eOn;
-        if (eEndCountWrap) eEndCountWrap.hidden = !eOn;
+        const eRecurring = !!lastTx.recurring && !!lastTx.recurrence;
+        const eHydratedRecurrence =
+          String(lastTx.recurrence || "") === "bimonthly" ? "twice_monthly" : String(lastTx.recurrence || "");
+        if (eRecSel) eRecSel.value = eRecurring ? eHydratedRecurrence : "once";
+        if (eSecondDay && lastTx.second_day_of_month != null) eSecondDay.value = String(lastTx.second_day_of_month);
+        if (eEndsMode) eEndsMode.value = lastTx.end_date ? "on_date" : lastTx.end_count != null ? "after_count" : "never";
         if (eEndDate && lastTx.end_date) eEndDate.value = String(lastTx.end_date);
         if (eEndCount && lastTx.end_count != null) eEndCount.value = String(lastTx.end_count);
         if (eBg && lastTx.bg_color) eBg.value = String(lastTx.bg_color);
+        syncAccountSetupScheduleUi("asExp");
       } else {
         const kindEl = k ? document.querySelector(`input[name="asTxKind"][value="${k}"]`) : null;
         if (kindEl) kindEl.checked = true;
@@ -1969,13 +2242,18 @@ function hydrateAccountSetupDraft() {
         }
         if (txDateEl && lastTx.date) txDateEl.value = String(lastTx.date);
         if (txNotesEl && lastTx.notes) txNotesEl.value = String(lastTx.notes);
+        const txSecondDayEl = document.getElementById("asTxSecondDayOfMonth");
+        const txEndsModeEl = document.getElementById("asTxEndsMode");
         const on = !!lastTx.recurring && !!lastTx.recurrence;
-        if (txRecSelEl) txRecSelEl.value = on ? String(lastTx.recurrence) : "";
-        if (txEndDateWrapEl) txEndDateWrapEl.hidden = !on;
-        if (txEndCountWrapEl) txEndCountWrapEl.hidden = !on;
+        const hydratedRecurrence =
+          String(lastTx.recurrence || "") === "bimonthly" ? "twice_monthly" : String(lastTx.recurrence || "");
+        if (txRecSelEl) txRecSelEl.value = on ? hydratedRecurrence : "once";
+        if (txSecondDayEl && lastTx.second_day_of_month != null) txSecondDayEl.value = String(lastTx.second_day_of_month);
+        if (txEndsModeEl) txEndsModeEl.value = lastTx.end_date ? "on_date" : lastTx.end_count != null ? "after_count" : "never";
         if (txEndDateEl && lastTx.end_date) txEndDateEl.value = String(lastTx.end_date);
         if (txEndCountEl && lastTx.end_count != null) txEndCountEl.value = String(lastTx.end_count);
         if (txBgColorEl && lastTx.bg_color) txBgColorEl.value = String(lastTx.bg_color);
+        syncAccountSetupScheduleUi("asTx");
       }
     }
     // Transaction "Next Date" fields stay blank until the user sets them (see reset/hydrate paths).
@@ -2065,6 +2343,10 @@ function readAccountSetupDraft() {
         variable: !!t?.variable,
         recurring: !!t?.recurring,
         recurrence: t?.recurrence != null && String(t.recurrence).trim() !== "" ? String(t.recurrence) : null,
+        second_day_of_month:
+          t?.second_day_of_month != null && Number.isFinite(Number(t.second_day_of_month))
+            ? Number(t.second_day_of_month)
+            : null,
         end_date: t?.end_date != null && String(t.end_date).trim() !== "" ? String(t.end_date) : null,
         end_count:
           t?.end_count != null && Number.isFinite(Number(t.end_count)) ? Number(t.end_count) : null,
@@ -2170,7 +2452,7 @@ async function maybeCreateFirstTransactionFromDraft(draft, createdAccountId) {
             end_date: t.end_date || null,
             end_count: t.end_date ? null : t.end_count ?? null,
             recurrence: t.recurrence || "monthly",
-            second_day_of_month: null,
+            second_day_of_month: t.recurrence === "twice_monthly" ? t.second_day_of_month ?? null : null,
             description,
             notes: t.notes ? t.notes : null,
             kind: t.kind,
@@ -2555,7 +2837,7 @@ function onSignupPrimaryClick() {
         const p = precheckEmailExists(email);
         lockAccountSetupWizardStepTransition();
         setAccountSetupWizardStep(1);
-        document.getElementById("accountName")?.focus();
+        focusAccountSetupAccountNameInput();
         Promise.resolve(p)
           .then((cached) => {
             if (!cached || !cached.ok) {
@@ -2853,9 +3135,7 @@ function handleAccountSetupBack(e) {
         })
       );
     } catch (_) {}
-    try {
-      setTimeout(() => document.getElementById("accountStartingBalance")?.focus(), 0);
-    } catch (_) {}
+    focusAccountSetupAccountNameInput();
     return;
   }
   if (s === 3 && getAccountSetupExpensePhase() === "form") {
@@ -2994,12 +3274,30 @@ function renderAccountSetupCategoryChips(prefix, kind) {
   }
 }
 
+function syncAccountSetupCategorySelectionForKind(hiddenId) {
+  const hidden = document.getElementById(hiddenId);
+  if (!hidden) return;
+  const current = String(hidden.value || "").trim();
+  if (!current) return;
+  const kind = getAccountSetupCategoryKindForHiddenId(hiddenId);
+  if (isAccountSetupCategoryAllowedForKind(current, kind)) return;
+  clearAccountSetupCategoryCombobox(hiddenId);
+}
+
 function initAccountSetupQuickChips() {
   if (!isAccountSetupPath() || !document.getElementById("accountSetupWizard")) return;
   // Panel 2 chips follow the visible Type radio.
   const update2 = () => {
     const checked = document.querySelector('input[name="asTxKind"]:checked');
-    renderAccountSetupCategoryChips("asTx", checked ? checked.value : "expense");
+    const kind = checked ? checked.value : "expense";
+    syncAccountSetupCategorySelectionForKind("asTxCategory");
+    renderAccountSetupCategoryChips("asTx", kind);
+    const list = document.getElementById("asTxCategoryList");
+    const input = document.getElementById("asTxCategorySearch");
+    if (list && input && input.getAttribute("aria-expanded") === "true") {
+      list.hidden = false;
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    }
   };
   for (const r of document.querySelectorAll('input[name="asTxKind"]')) {
     r.addEventListener("change", update2);
@@ -3009,7 +3307,15 @@ function initAccountSetupQuickChips() {
   // Panel 3 is expense-only by visible affordance, but we still mirror the radio.
   const update3 = () => {
     const checked = document.querySelector('input[name="asExpTxKind"]:checked');
-    renderAccountSetupCategoryChips("asExpTx", checked ? checked.value : "expense");
+    const kind = checked ? checked.value : "expense";
+    syncAccountSetupCategorySelectionForKind("asExpTxCategory");
+    renderAccountSetupCategoryChips("asExpTx", kind);
+    const list = document.getElementById("asExpTxCategoryList");
+    const input = document.getElementById("asExpTxCategorySearch");
+    if (list && input && input.getAttribute("aria-expanded") === "true") {
+      list.hidden = false;
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    }
   };
   for (const r of document.querySelectorAll('input[name="asExpTxKind"]')) {
     r.addEventListener("change", update3);
@@ -3095,43 +3401,19 @@ function initAccountSetupTransactionUi() {
       });
     }
 
-    function bindRepeatsUi(prefix) {
-      const recSel = document.getElementById(prefix + "Recurrence");
-      const endCountWrap = document.getElementById(prefix + "EndCountWrap");
-      const endCountEl = document.getElementById(prefix + "EndCount");
-      const endDateWrap = document.getElementById(prefix + "EndDateWrap");
-      const endDateEl = document.getElementById(prefix + "EndDate");
-      if (!recSel) return;
-
-      const update = () => {
-        const on = !!String(recSel.value || "").trim();
-        if (endCountWrap) endCountWrap.hidden = !on;
-        if (endDateWrap) endDateWrap.hidden = !on;
-        if (endCountEl) {
-          if (!on) endCountEl.value = "";
-          endCountEl.disabled = !on;
-        }
-        if (endDateEl) {
-          if (!on) endDateEl.value = "";
-          endDateEl.disabled = !on;
-        }
-      };
-
-      recSel.addEventListener("change", update);
-      update();
-
-      if (endCountEl && endDateEl) {
-        endCountEl.addEventListener("input", () => {
-          if (String(endCountEl.value || "").trim()) endDateEl.value = "";
-        });
-        endDateEl.addEventListener("input", () => {
-          if (String(endDateEl.value || "").trim()) endCountEl.value = "";
-        });
+    function bindScheduleUi(prefix) {
+      const fields = getAccountSetupScheduleFields(prefix);
+      if (fields.secondDayEl) populateAccountSetupSecondDayOptions(fields.secondDayEl);
+      for (const el of [fields.recurrenceEl, fields.dateEl, fields.secondDayEl, fields.endsModeEl]) {
+        el?.addEventListener("change", () => syncAccountSetupScheduleUi(prefix));
       }
+      fields.endDateEl?.addEventListener("input", () => syncAccountSetupScheduleUi(prefix));
+      fields.endCountEl?.addEventListener("input", () => syncAccountSetupScheduleUi(prefix));
+      syncAccountSetupScheduleUi(prefix);
     }
 
-    bindRepeatsUi("asTx");
-    bindRepeatsUi("asExp");
+    bindScheduleUi("asTx");
+    bindScheduleUi("asExp");
     const txCat = document.getElementById("asTxCategory");
     const expCat = document.getElementById("asExpTxCategory");
     if (txCat) txCat.addEventListener("change", () => applyAccountSetupCategoryRecurrenceDefaults(txCat, "asTx"));
