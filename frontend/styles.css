@@ -10985,33 +10985,31 @@ body.plans-page--polished .plans-wrap{
   /* Base height; JS will expand week rows when needed. */
   min-height: var(--cal-day-min-h, 108px);
   height: auto;
-  padding: 8px 7px 7px;
+  /* Slightly more breathing room top + bottom so the date/transactions
+     and the projected balance both have room to breathe. */
+  padding: 10px 9px 9px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
-/* Near floor: keep cell calm — story lives on balance strip + projected number */
+/* Low-balance / warn / risk states: keep the surrounding cell calm so the
+   warning emphasis lives only on the projected balance area at the bottom.
+   No tinted backgrounds, no coloured left rules — those pulled the whole
+   day card into "alert red" territory and competed with the transactions. */
 .cal-cell.cal-cell--bal-watch{
   background: rgba(255, 255, 255, 0.78);
-  border-color: rgba(17, 24, 39, 0.07);
-  box-shadow:
-    inset 2px 0 0 rgba(148, 163, 184, 0.35),
-    0 1px 2px rgba(17, 24, 39, 0.028);
+  border-color: rgba(17, 24, 39, 0.06);
+  box-shadow: 0 1px 2px rgba(17, 24, 39, 0.028);
 }
 .cal-cell.cal-cell--bal-warn{
   background: rgba(255, 255, 255, 0.82);
-  border-color: rgba(17, 24, 39, 0.07);
-  box-shadow:
-    inset 2px 0 0 rgba(180, 83, 9, 0.28),
-    0 1px 2px rgba(17, 24, 39, 0.028);
+  border-color: rgba(17, 24, 39, 0.06);
+  box-shadow: 0 1px 2px rgba(17, 24, 39, 0.028);
 }
-/* Negative projected balance: calm surface, soft red left border; risk reads on balance strip */
 .cal-cell.cal-cell--bal-risk{
-  background: rgba(255, 252, 252, 0.86);
-  border-color: rgba(17, 24, 39, 0.055);
-  box-shadow:
-    inset 2px 0 0 rgba(185, 28, 28, 0.26),
-    0 1px 2px rgba(17, 24, 39, 0.024);
+  background: rgba(255, 254, 254, 0.86);
+  border-color: rgba(17, 24, 39, 0.06);
+  box-shadow: 0 1px 2px rgba(17, 24, 39, 0.024);
 }
 .cal-cell.cal-cell--recovery-milestone:not(.cal-cell--out):not(.cal-cell--before-start){
   box-shadow:
@@ -11294,26 +11292,23 @@ body.plans-page--polished .plans-wrap{
   min-height: 0;
   margin-top: -2px;
 }
-/* End-of-day projected balance follows the transaction list directly.
-   Previously `.cal-day-txns` had `flex: 1 1 auto` and `.cal-ledger-metrics`
-   had `margin-top: auto`, which pushed the balance to the very bottom of
-   the cell and created a "floating amount" feeling with a large empty
-   gap between the last transaction and the balance. Now the txns
-   container takes its natural height and the divider+balance sit right
-   after — any spare cell height falls quietly below the balance. */
+/* Anchor projected balance to the bottom of the cell. The transaction
+   list keeps its natural height; any remaining cell height becomes the
+   gap above the divider so days with one transaction and days with
+   many share the same final-balance baseline. */
 .cal-cell-stack > .cal-day-txns{
   flex: 0 1 auto;
 }
-/* Divider above the "End of day" balance.
-   Quiet organizational line — never a hard border. Tight space ABOVE
-   the divider (so it sits close to the last transaction), generous
-   space BELOW so the ending balance reads as a deliberate final state. */
+/* Divider above the projected balance.
+   Intentionally near-invisible — a soft gray-green hairline with
+   generous breathing room above and below. It gently separates
+   activity from result without ever drawing the eye. */
 .cal-cell-stack > .cal-ledger-metrics{
   flex: 0 0 auto;
-  margin-top: 5px;
-  padding-top: 7px;
-  padding-bottom: 2px;
-  border-top: 1px solid rgba(11, 61, 46, 0.085);
+  margin-top: auto;
+  padding-top: 11px;
+  padding-bottom: 4px;
+  border-top: 1px solid rgba(11, 61, 46, 0.045);
 }
 
 .cal-cell.cal-cell--no-tx:not(.cal-cell--out):not(.cal-cell--before-start):hover{
@@ -11347,8 +11342,11 @@ body.plans-page--polished .plans-wrap{
 .cal-day-txns{
   display: flex;
   flex-direction: column;
-  /* Tight, ledger-like stack — uniform spacing, no card-stack rhythm. */
-  gap: 1px;
+  /* Uniform 3px row gap so adjacent transactions never bunch together
+     or float apart. Modifiers (impact, expected, etc.) only change
+     color/opacity — never the row height — so the column reads as a
+     stable ledger. */
+  gap: 3px;
   padding-top: 2px;
   margin-top: 1px;
   border-top: none;
@@ -11368,11 +11366,16 @@ body.plans-page--polished .plans-wrap{
 .cal-day-tx-line{
   font-size: 9.75px;
   line-height: 1.35;
+  /* Lock row height so plain rows, impact rows, expected rows and
+     coloured rows all share the same vertical footprint. */
+  min-height: 15px;
   max-width: 100%;
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 8px;
+  padding-top: 0;
+  padding-bottom: 0;
   position: relative;
   /* base color tone for everything inside; modifiers tweak opacity only */
   color: rgba(17, 24, 39, 0.92);
@@ -12329,36 +12332,36 @@ body[data-bw-view="transactions"] .cash-outlook-title{
   text-decoration: none;
 }
 
-/* Secondary affordance — quietly reveals the rest of the day's rows.
-   Previously this was a high-contrast uppercase pill that visually
-   competed with the transactions themselves. Now it reads as a soft
-   helper link that sits below the ledger. */
+/* "+N more" — quietly reveals the rest of the day's rows.
+   Reads as a soft helper hint tucked into the transaction stack
+   (left-aligned with the ledger), not as a clickable button. No
+   border, no background by default, smaller and lighter than a row. */
 .cal-day-more{
-  margin-top: 2px;
-  align-self: flex-end;
-  padding: 1px 4px 2px;
-  border-radius: 4px;
+  margin-top: 1px;
+  align-self: flex-start;
+  padding: 0 2px;
+  border-radius: 3px;
   border: none;
   background: transparent;
   width: fit-content;
   max-width: 100%;
   font: inherit;
-  font-size: 9px;
-  font-weight: 500;
+  font-size: 8.75px;
+  font-weight: 450;
   letter-spacing: 0;
   text-transform: none;
-  color: rgba(71, 85, 105, 0.7);
+  color: rgba(100, 116, 139, 0.62);
   cursor: pointer;
   text-decoration: none;
-  line-height: 1.25;
+  line-height: 1.3;
 }
 .cal-day-more:hover{
-  color: rgba(31, 41, 55, 0.92);
-  background: rgba(17, 24, 39, 0.04);
+  color: rgba(71, 85, 105, 0.85);
+  background: transparent;
 }
 .cal-day-more:focus-visible{
-  outline: 2px solid rgba(4, 120, 87, 0.35);
-  outline-offset: 2px;
+  outline: 2px solid rgba(4, 120, 87, 0.3);
+  outline-offset: 1px;
 }
 
 .cal-ledger-metrics{
@@ -12382,17 +12385,22 @@ body[data-bw-view="transactions"] .cash-outlook-title{
   padding: 0;
   border-radius: 6px;
 }
-/* Soft cue only: keep the amber/rust color on the amount, drop the boxed look. */
+/* Soft cue only: keep the amber/rust color on the amount, drop the boxed
+   look. Cue-risk and cue-warn add a faint tint behind the balance row to
+   reinforce that the warning is bounded to the balance area, not the
+   whole card. */
 .cal-balance-strip--cue-risk{
-  margin: 0;
-  padding: 1px 2px;
-  background: transparent;
+  margin: 0 -4px;
+  padding: 2px 6px;
+  background: linear-gradient(180deg, transparent, rgba(160, 60, 60, 0.05));
+  border-radius: 0 0 6px 6px;
   box-shadow: none;
 }
 .cal-balance-strip--cue-warn{
-  margin: 0;
-  padding: 1px 2px;
-  background: transparent;
+  margin: 0 -4px;
+  padding: 2px 6px;
+  background: linear-gradient(180deg, transparent, rgba(146, 84, 17, 0.05));
+  border-radius: 0 0 6px 6px;
   box-shadow: none;
 }
 .cal-balance-strip--cue-watch{
@@ -12401,28 +12409,15 @@ body[data-bw-view="transactions"] .cash-outlook-title{
   background: transparent;
   box-shadow: none;
 }
-/* Final ledger row: tiny label on the left, amount on the right.
-   Mirrors the label/amount rhythm of the transaction rows above so the
-   ending balance reads as the closing line of the day's ledger, not as
-   a detached number floating at the bottom of the cell. */
+/* Final ledger row: amount only, right-aligned at the bottom of the
+   cell. The placement at the bottom communicates "end of day" — no
+   label needed. */
 .cal-balance-strip__row{
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 8px;
-  min-height: 18px;
-}
-.cal-balance-strip__label{
-  flex: 0 1 auto;
-  min-width: 0;
-  font-size: 8.75px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: rgba(71, 85, 105, 0.62);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  min-height: 16px;
 }
 .cal-balance-strip__amt{
   flex: 0 0 auto;
@@ -12439,58 +12434,63 @@ body[data-bw-view="transactions"] .cash-outlook-title{
 .cal-stat.income{ color: var(--text); }
 .cal-stat.expense{ color: var(--text); }
 .cal-stat.cal-balance{
-  font-size: clamp(10.75px, 1.85vw, 11.75px);
-  line-height: 1.22;
-  font-weight: 600;
-  letter-spacing: -0.008em;
+  /* Quiet anchor at the bottom of the day card — slightly smaller and
+     lighter than before so the balance feels trustworthy and stable
+     rather than shouty. Hierarchy comes from placement, not weight. */
+  font-size: clamp(10.25px, 1.7vw, 11.25px);
+  line-height: 1.2;
+  font-weight: 500;
+  letter-spacing: -0.005em;
   font-variant-numeric: tabular-nums;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  color: rgba(17, 24, 39, 0.74);
+  color: rgba(55, 65, 81, 0.72);
 }
 .cal-stat.cal-balance.cal-balance--quiet{
-  font-weight: 600;
-  color: rgba(55, 65, 75, 0.68);
+  font-weight: 500;
+  color: rgba(75, 85, 99, 0.62);
 }
 .cal-stat.cal-balance.cal-balance--past-day{
-  color: rgba(75, 85, 99, 0.55);
+  color: rgba(100, 116, 139, 0.5);
 }
 .cal-stat.cal-balance.cal-balance--watch-zone{
-  font-weight: 600;
-  color: rgba(120, 53, 15, 0.78);
+  /* Muted amber: warning emphasis lives only on the balance number,
+     never on the surrounding transactions or the entire card. */
+  font-weight: 550;
+  color: rgba(146, 84, 17, 0.78);
 }
 .cal-stat.cal-balance.cal-balance--below-floor{
-  font-weight: 700;
-  color: rgba(154, 52, 18, 0.92);
+  font-weight: 600;
+  color: rgba(170, 80, 30, 0.86);
 }
 .cal-stat.cal-balance.cal-balance--month-low-mark{
-  font-weight: 600;
-  color: rgba(55, 65, 75, 0.62);
+  font-weight: 500;
+  color: rgba(75, 85, 99, 0.58);
 }
 .cal-stat.cal-balance.cal-balance--risk,
 .cal-stat.cal-balance.is-negative{
-  font-weight: 700;
-  font-size: clamp(10.75px, 1.85vw, 11.75px);
-  color: rgba(140, 42, 42, 0.86);
+  font-weight: 600;
+  font-size: clamp(10.25px, 1.7vw, 11.25px);
+  color: rgba(160, 60, 60, 0.82);
 }
 .cal-stat.cal-balance.cal-balance--recovery-milestone{
-  font-weight: 700;
-  color: rgba(21, 128, 61, 0.92);
-  letter-spacing: -0.02em;
+  font-weight: 550;
+  color: rgba(21, 128, 61, 0.82);
+  letter-spacing: -0.012em;
 }
 .cal-stat.cal-balance.cal-balance--stabilizing{
-  font-weight: 700;
-  color: rgba(22, 101, 52, 0.88);
+  font-weight: 550;
+  color: rgba(22, 101, 52, 0.78);
 }
 .cal-stat.cal-balance.cal-balance--strong-inflow{
-  font-weight: 700;
-  color: rgba(4, 120, 87, 0.86);
+  font-weight: 550;
+  color: rgba(4, 120, 87, 0.78);
 }
 .cal-stat.cal-balance.is-muted{
-  color: rgba(71, 85, 105, 0.52);
-  font-weight: 500;
+  color: rgba(100, 116, 139, 0.5);
+  font-weight: 450;
 }
 .cal-stat.cal-balance.is-past{
-  color: rgba(17, 24, 39, 0.72);
+  color: rgba(55, 65, 81, 0.7);
 }
 .cal-balance-risk-icon{
   display: inline-flex;
@@ -12498,8 +12498,8 @@ body[data-bw-view="transactions"] .cash-outlook-title{
   justify-content: center;
   flex-shrink: 0;
   margin-right: 3px;
-  color: rgba(153, 45, 45, 0.5);
-  opacity: 0.85;
+  color: rgba(160, 60, 60, 0.45);
+  opacity: 0.8;
 }
 .cal-balance-risk-icon svg{
   display: block;
@@ -12510,8 +12510,8 @@ body[data-bw-view="transactions"] .cash-outlook-title{
   justify-content: center;
   flex-shrink: 0;
   margin-right: 3px;
-  color: rgba(180, 83, 9, 0.55);
-  opacity: 0.9;
+  color: rgba(146, 84, 17, 0.5);
+  opacity: 0.85;
 }
 .cal-balance-warn-icon svg{
   display: block;
