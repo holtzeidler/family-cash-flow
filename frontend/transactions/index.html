@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=433" />
+    <link rel="stylesheet" href="../styles.css?v=437" />
   </head>
   <body>
     <div class="container">
@@ -25,7 +25,7 @@
               <a href="/" aria-label="Balance Whiz home">
                 <img
                   class="app-logo"
-                  src="../assets/balance-whiz-logo.png?v=20260504"
+                  src="../assets/balance-whiz-logo.svg?v=20260513"
                   width="220"
                   height="56"
                   alt="Balance Whiz"
@@ -745,7 +745,7 @@
                       <p class="settings-section-lede">Simple subscription details, renewal timing, and billing management in one place.</p>
                     </header>
                     <div class="billing-page__shell">
-                      <section class="billing-page__main">
+                      <section class="billing-overview" aria-label="Billing overview">
                         <div class="billing-hero">
                           <div class="billing-hero__eyebrow">Current access</div>
                           <div class="billing-hero__title" id="billingPlanHeadline">Cash Forecast</div>
@@ -753,43 +753,48 @@
                           <p class="billing-hero__renewal" id="billingRenewalMessage">Your next renewal is —.</p>
                         </div>
 
-                        <div class="billing-stat-grid">
-                          <article class="billing-stat-card">
+                        <div class="billing-stat-grid" role="list" aria-label="Plan details">
+                          <article class="billing-stat-card" role="listitem">
                             <div class="billing-stat-card__label">Plan</div>
                             <div class="billing-stat-card__value" id="billingPlan">—</div>
                           </article>
-                          <article class="billing-stat-card">
-                            <div class="billing-stat-card__label">Billing</div>
+                          <article class="billing-stat-card" role="listitem">
+                            <div class="billing-stat-card__label">Billing cycle</div>
                             <div class="billing-stat-card__value" id="billingFrequency">—</div>
                           </article>
-                          <article class="billing-stat-card">
+                          <article class="billing-stat-card" role="listitem">
                             <div class="billing-stat-card__label" id="billingNextDateLabel">Next renewal</div>
                             <div class="billing-stat-card__value" id="billingNextDate">—</div>
                           </article>
-                          <article class="billing-stat-card">
+                          <article class="billing-stat-card" role="listitem">
                             <div class="billing-stat-card__label">Status</div>
                             <div class="billing-stat-card__value" id="billingAccountStatus">—</div>
                           </article>
                         </div>
 
-                        <section class="billing-section">
+                        <section class="billing-overview__section">
                           <div class="billing-section__head">
                             <h3 class="billing-section__title">Manage subscription</h3>
-                            <p class="billing-section__copy">Billing is simple and predictable. Cancel anytime.</p>
+                            <p class="billing-section__copy">Keep billing simple, predictable, and easy to adjust when you need to.</p>
                           </div>
                           <div class="settings-actions-row billing-actions-row">
-                            <button type="button" class="secondary billing-action-btn" data-billing-action="payment">Update payment method</button>
-                            <button type="button" class="secondary billing-action-btn" data-billing-action="cycle">Change billing cycle</button>
-                            <button type="button" class="secondary billing-action-btn billing-action-btn--danger" data-billing-action="cancel">Cancel subscription</button>
-                            <button type="button" class="secondary billing-action-btn" data-billing-action="invoices">View invoices</button>
+                            <button type="button" class="billing-action-btn billing-action-btn--primary" data-billing-action="payment">Update payment method</button>
+                            <button type="button" class="billing-action-link" data-billing-action="cycle">Change billing cycle</button>
+                            <button type="button" class="billing-action-link" data-billing-action="invoices">View invoices</button>
+                            <button type="button" class="billing-action-link billing-action-link--danger" data-billing-action="cancel">Cancel subscription</button>
                           </div>
-                          <p class="billing-section__note">Self-serve billing updates are on the way. For now, these actions can still be handled through support.</p>
+                          <ul class="billing-reassurance-list" aria-label="Subscription reassurance">
+                            <li>Cancel anytime</li>
+                            <li>No hidden fees</li>
+                            <li>Your data stays editable</li>
+                          </ul>
+                          <p class="billing-section__note">Self-serve billing updates are on the way. For now, support can handle any changes for you.</p>
                           <p class="billing-section__support">Need help today? <a class="settings-text-btn" href="/contactus/">Contact support</a>.</p>
                         </section>
                       </section>
 
-                      <aside class="billing-page__side">
-                        <section class="billing-panel">
+                      <aside class="billing-side" aria-label="Billing details">
+                        <section class="billing-side__section">
                           <h3 class="billing-section__title">Plan includes</h3>
                           <ul class="billing-feature-list">
                             <li>Forecast calendar</li>
@@ -799,14 +804,13 @@
                           </ul>
                         </section>
 
-                        <section class="billing-panel billing-panel--reassure">
+                        <section class="billing-side__section">
                           <h3 class="billing-section__title">Good to know</h3>
                           <p class="billing-panel__copy">Your forecast stays active as long as your subscription remains active.</p>
                           <ul class="billing-note-list">
-                            <li>Cancel anytime.</li>
+                            <li>Billing changes can still be handled through support.</li>
                             <li>No bank connection required.</li>
                             <li>Your forecast data stays editable.</li>
-                            <li>Billing is simple and predictable.</li>
                           </ul>
                         </section>
                       </aside>
@@ -1041,7 +1045,7 @@
               <a class="app-footer__logo" href="/" aria-label="BalanceWhiz home">
                 <img
                   class="app-footer__logo-img"
-                  src="../assets/balance-whiz-logo.png?v=20260504"
+                  src="../assets/balance-whiz-logo.svg?v=20260513"
                   width="160"
                   height="41"
                   alt="BalanceWhiz"

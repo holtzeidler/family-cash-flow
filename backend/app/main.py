@@ -2188,12 +2188,22 @@ def _ensure_feedback_table() -> None:
             )
             cols = conn.execute(text("PRAGMA table_info(feedback)")).fetchall()
             names = {str(row[1]) for row in cols}
+            # Older deployed builds created narrower versions of this table.
+            # Keep the startup repair exhaustive so inserts do not fail when a
+            # later code path starts writing additional fields.
             sqlite_additions = {
                 "family_id": "ALTER TABLE feedback ADD COLUMN family_id INTEGER",
                 "category": "ALTER TABLE feedback ADD COLUMN category VARCHAR(32)",
+                "status": "ALTER TABLE feedback ADD COLUMN status VARCHAR(16) NOT NULL DEFAULT 'new'",
+                "route": "ALTER TABLE feedback ADD COLUMN route VARCHAR(255)",
+                "view": "ALTER TABLE feedback ADD COLUMN view VARCHAR(64)",
                 "forecast_month": "ALTER TABLE feedback ADD COLUMN forecast_month VARCHAR(8)",
                 "browser_ua": "ALTER TABLE feedback ADD COLUMN browser_ua VARCHAR(500)",
                 "viewport": "ALTER TABLE feedback ADD COLUMN viewport VARCHAR(32)",
+                "what_trying": "ALTER TABLE feedback ADD COLUMN what_trying TEXT",
+                "what_happened": "ALTER TABLE feedback ADD COLUMN what_happened TEXT",
+                "contact_email": "ALTER TABLE feedback ADD COLUMN contact_email VARCHAR(255)",
+                "screenshot_b64": "ALTER TABLE feedback ADD COLUMN screenshot_b64 TEXT",
                 "screenshot_mime": "ALTER TABLE feedback ADD COLUMN screenshot_mime VARCHAR(48)",
                 "rating": "ALTER TABLE feedback ADD COLUMN rating VARCHAR(16)",
                 "comment": "ALTER TABLE feedback ADD COLUMN comment TEXT",
@@ -2236,9 +2246,16 @@ def _ensure_feedback_table() -> None:
             postgres_additions = [
                 "ALTER TABLE feedback ADD COLUMN IF NOT EXISTS family_id INTEGER",
                 "ALTER TABLE feedback ADD COLUMN IF NOT EXISTS category VARCHAR(32)",
+                "ALTER TABLE feedback ADD COLUMN IF NOT EXISTS status VARCHAR(16) NOT NULL DEFAULT 'new'",
+                "ALTER TABLE feedback ADD COLUMN IF NOT EXISTS route VARCHAR(255)",
+                "ALTER TABLE feedback ADD COLUMN IF NOT EXISTS view VARCHAR(64)",
                 "ALTER TABLE feedback ADD COLUMN IF NOT EXISTS forecast_month VARCHAR(8)",
                 "ALTER TABLE feedback ADD COLUMN IF NOT EXISTS browser_ua VARCHAR(500)",
                 "ALTER TABLE feedback ADD COLUMN IF NOT EXISTS viewport VARCHAR(32)",
+                "ALTER TABLE feedback ADD COLUMN IF NOT EXISTS what_trying TEXT",
+                "ALTER TABLE feedback ADD COLUMN IF NOT EXISTS what_happened TEXT",
+                "ALTER TABLE feedback ADD COLUMN IF NOT EXISTS contact_email VARCHAR(255)",
+                "ALTER TABLE feedback ADD COLUMN IF NOT EXISTS screenshot_b64 TEXT",
                 "ALTER TABLE feedback ADD COLUMN IF NOT EXISTS screenshot_mime VARCHAR(48)",
                 "ALTER TABLE feedback ADD COLUMN IF NOT EXISTS rating VARCHAR(16)",
                 "ALTER TABLE feedback ADD COLUMN IF NOT EXISTS comment TEXT",
