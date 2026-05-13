@@ -34,6 +34,8 @@
   let backdropEl = null;
   let tooltipEl = null;
   let currentTargetEl = null;
+  let currentTargetExtraClass = null;
+  let currentDimEl = null;
   let currentStepIdx = -1;
   let resizeHandler = null;
   let scrollHandler = null;
@@ -43,6 +45,18 @@
    * Steps are intentionally short. Each `findTarget()` returns either an
    * existing DOM element (preferred) or null. When null, the step is skipped
    * gracefully and the tour advances.
+   */
+  /**
+   * Tour progression: Input → Awareness → Accuracy.
+   *
+   * Step 1 (Input)     — anchor the calendar grid: where you record what's
+   *                      coming and going.
+   * Step 2 (Awareness) — anchor the Cash Outlook card on the left sidebar:
+   *                      this is the user's "warning system." The tooltip
+   *                      sits to the right of the card with the arrow
+   *                      pointing into it.
+   * Step 3 (Accuracy)  — anchor the Needs review card: confirm cleared
+   *                      transactions so the forecast stays accurate.
    */
   const STEPS = [
     {
@@ -55,21 +69,29 @@
       placement: "auto",
     },
     {
-      id: "safe-balance",
-      findTarget: () => document.getElementById("navSettingsView"),
-      title: "Define your safe balance",
+      id: "cash-outlook",
+      findTarget: findCashOutlookTarget,
+      title: "Know when cash gets tight",
+      // Two short paragraphs separated by a blank line. The tooltip body
+      // CSS uses `white-space: pre-line` so the newline becomes a visible
+      // paragraph gap.
       body:
-        "Set a minimum checking balance in Settings so BalanceWhiz can warn you before cash gets tight.",
-      helper: "Example: Keep at least $1,000 in checking.",
+        "BalanceWhiz watches your upcoming balances and alerts you before cash drops below your comfort zone.\n\nYou can set your own minimum checking balance anytime in Settings.",
+      helper: 'Example: "Warn me if checking falls below $1,000."',
       ctaLabel: "Next",
-      placement: "below",
+      placement: "right",
+      // Adds a subtle glow + brighter background on the highlighted card
+      // and slightly dims unrelated sidebar siblings so the user's eye
+      // lands on the warning system.
+      targetExtraClass: "bw-tour-target--cash-outlook",
+      dimSelector: ".sidebar",
     },
     {
       id: "reconcile",
       findTarget: () => document.getElementById("sidebarPendingTxCard"),
       title: "Keep your forecast accurate",
       body:
-        "As transactions clear your account, mark them confirmed so your forecast reflects reality instead of estimates.",
+        "As transactions clear your account, mark them confirmed so your forecast stays accurate.",
       ctaLabel: "Got it",
       placement: "auto",
     },
@@ -87,6 +109,40 @@
    *      (regardless of past/future), so we always have *something* to point at.
    * Returns null if the grid hasn't rendered any cells yet (caller will retry).
    */
+  /**
+   * Pick the best Cash Outlook anchor for Step 2. Preference order:
+   *   1. The active "Transfer cash before…" warning card
+   *      (`#sidebarLowBalanceBanner`) if it has rendered content.
+   *   2. The high-balance equivalent (`#sidebarHighBalanceBanner`).
+   *   3. The Cash Outlook section wrapper
+   *      (`#sidebarBalanceThresholdAlerts`) — even when there's no
+   *      active warning, this still anchors the user to the area of
+   *      the sidebar that *will* show alerts so the educational copy
+   *      lands on the right region.
+   * Returns null only if the sidebar isn't rendered yet (caller will
+   * gracefully advance past the step).
+   */
+  function findCashOutlookTarget() {
+    function isVisible(el) {
+      if (!el) return false;
+      const cs = window.getComputedStyle(el);
+      if (cs.display === "none" || cs.visibility === "hidden") return false;
+      const r = el.getBoundingClientRect();
+      return r.width > 0 && r.height > 0;
+    }
+    const low = document.getElementById("sidebarLowBalanceBanner");
+    if (isVisible(low)) return low;
+    const high = document.getElementById("sidebarHighBalanceBanner");
+    if (isVisible(high)) return high;
+    const alerts = document.getElementById("sidebarBalanceThresholdAlerts");
+    if (isVisible(alerts)) return alerts;
+    // Last resort: anchor on the sidebar itself so the educational
+    // copy still has a meaningful left-edge anchor.
+    const sidebar = document.querySelector("aside.sidebar");
+    if (isVisible(sidebar)) return sidebar;
+    return null;
+  }
+
   function findFutureCalendarCellTarget() {
     const today = new Date();
     const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
@@ -158,6 +214,9 @@
   function clearTargetHighlight() {
     if (currentTargetEl) {
       currentTargetEl.classList.remove("bw-tour-target");
+      if (currentTargetExtraClass) {
+        currentTargetEl.classList.remove(currentTargetExtraClass);
+      }
       // Restore the original inline z-index/position we stamped on.
       const prevZ = currentTargetEl.dataset.bwTourPrevZIndex;
       const prevPos = currentTargetEl.dataset.bwTourPrevPosition;
@@ -169,9 +228,14 @@
       delete currentTargetEl.dataset.bwTourPrevPosition;
       currentTargetEl = null;
     }
+    currentTargetExtraClass = null;
+    if (currentDimEl) {
+      currentDimEl.classList.remove("bw-tour-sidebar-dim");
+      currentDimEl = null;
+    }
   }
 
-  function applyTargetHighlight(el) {
+  function applyTargetHighlight(el, opts) {
     clearTargetHighlight();
     if (!el) return;
     currentTargetEl = el;
@@ -190,6 +254,17 @@
     }
     el.style.zIndex = String(ZINDEX_HIGHLIGHT);
     el.classList.add("bw-tour-target");
+    if (opts && opts.targetExtraClass) {
+      el.classList.add(opts.targetExtraClass);
+      currentTargetExtraClass = opts.targetExtraClass;
+    }
+    if (opts && opts.dimSelector) {
+      const dimEl = document.querySelector(opts.dimSelector);
+      if (dimEl) {
+        dimEl.classList.add("bw-tour-sidebar-dim");
+        currentDimEl = dimEl;
+      }
+    }
   }
 
   // ---------------------------------------------------------------------
@@ -198,7 +273,7 @@
 
   function positionTooltip(targetEl, placement) {
     if (!tooltipEl) return;
-    const margin = 12;
+    const margin = 14;
     const vw = window.innerWidth;
     const vh = window.innerHeight;
     const tr = targetEl.getBoundingClientRect();
@@ -212,7 +287,47 @@
     const tw = tt.width;
     const th = tt.height;
 
-    // Decide vertical placement.
+    const arrow = tooltipEl.querySelector("[data-bw-tour-arrow]");
+
+    // Side placements (right / left) anchor the tooltip beside the
+    // target with a horizontal arrow pointing into the highlighted
+    // card. Auto-flip if there isn't enough horizontal room.
+    const isHorizontal = placement === "right" || placement === "left";
+    if (isHorizontal) {
+      let placeRight = placement === "right";
+      const spaceRight = vw - tr.right;
+      const spaceLeft = tr.left;
+      if (placeRight && spaceRight < tw + margin && spaceLeft >= tw + margin) {
+        placeRight = false;
+      } else if (!placeRight && spaceLeft < tw + margin && spaceRight >= tw + margin) {
+        placeRight = true;
+      }
+
+      let left = placeRight ? tr.right + margin : tr.left - tw - margin;
+      left = Math.max(8, Math.min(left, vw - tw - 8));
+
+      // Vertical: align the tooltip's vertical center with the
+      // target's center, slightly biased downward so the arrow lands
+      // inside the card body rather than at the very top edge. Then
+      // clamp to viewport.
+      const targetCenterY = tr.top + tr.height / 2;
+      let top = targetCenterY - th / 2 + 8;
+      top = Math.max(8, Math.min(top, vh - th - 8));
+
+      tooltipEl.style.left = `${Math.round(left)}px`;
+      tooltipEl.style.top = `${Math.round(top)}px`;
+      tooltipEl.style.visibility = "";
+
+      if (arrow) {
+        arrow.dataset.side = placeRight ? "left" : "right";
+        const arrowTopWithinTooltip = Math.max(20, Math.min(th - 20, targetCenterY - top));
+        arrow.style.top = `${Math.round(arrowTopWithinTooltip)}px`;
+        arrow.style.left = "";
+      }
+      return;
+    }
+
+    // Vertical (above/below/auto) placement.
     let placeBelow;
     if (placement === "below") placeBelow = true;
     else if (placement === "above") placeBelow = false;
@@ -243,11 +358,11 @@
     tooltipEl.style.visibility = "";
 
     // Arrow placement: above tooltip if tooltip is below target, vice versa.
-    const arrow = tooltipEl.querySelector("[data-bw-tour-arrow]");
     if (arrow) {
       arrow.dataset.side = placeBelow ? "top" : "bottom";
       const arrowLeftWithinTooltip = Math.max(16, Math.min(tw - 16, targetCenterX - left));
       arrow.style.left = `${Math.round(arrowLeftWithinTooltip)}px`;
+      arrow.style.top = "";
     }
   }
 
@@ -304,7 +419,10 @@
     }
     tooltipEl.querySelector("[data-bw-tour-next]").textContent = step.ctaLabel || "Next";
 
-    applyTargetHighlight(target);
+    applyTargetHighlight(target, {
+      targetExtraClass: step.targetExtraClass,
+      dimSelector: step.dimSelector,
+    });
     // Position after a frame so layout (incl. scrollIntoView) settles.
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {

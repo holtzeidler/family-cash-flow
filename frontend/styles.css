@@ -14454,10 +14454,49 @@ body.account-setup-page .account-setup-step3-form .cat-color-row + .tx-add-vspac
     0 0 0 8px color-mix(in srgb, var(--accent) 18%, transparent),
     0 8px 28px -10px rgba(11, 61, 46, 0.35) !important;
   border-radius: 12px;
-  transition: box-shadow 220ms ease;
+  transition: box-shadow 220ms ease, background-color 220ms ease;
 }
 @media (prefers-reduced-motion: reduce){
   .bw-tour-target{ transition: none; }
+}
+
+/* Step 2 "Cash Outlook" treatment: brighter background + softer green
+   outline + a subtle outer glow so the warning system reads as the
+   primary focus on the page. Used on top of `.bw-tour-target`. */
+.bw-tour-target--cash-outlook{
+  background-color: color-mix(in srgb, var(--accent) 5%, #ffffff) !important;
+  box-shadow:
+    0 0 0 1.5px color-mix(in srgb, var(--accent) 42%, transparent),
+    0 0 0 6px color-mix(in srgb, var(--accent) 14%, transparent),
+    0 0 28px 6px color-mix(in srgb, var(--accent) 16%, transparent),
+    0 14px 40px -18px rgba(11, 61, 46, 0.32) !important;
+  border-radius: 14px;
+}
+
+/* Step 2 sidebar dimming. We slightly fade non-target sidebar cards so
+   the user understands the Cash Outlook section is the area being
+   discussed. The target's own ancestor chain stays at full opacity via
+   `:has(.bw-tour-target)`.
+
+   Two scopes:
+     1. Direct children of the sidebar (e.g. `#sidebarPendingTxCard`,
+        `#txAddFormHome`).
+     2. Direct children of the sticky-head row that holds Cash Outlook
+        AND the Settings nav rail — so the rail dims while Cash Outlook
+        stays bright. */
+.sidebar.bw-tour-sidebar-dim > *,
+.sidebar.bw-tour-sidebar-dim .sidebar-sticky-head > *{
+  transition: opacity 220ms ease;
+}
+.sidebar.bw-tour-sidebar-dim > *:not(:has(.bw-tour-target)):not(.bw-tour-target),
+.sidebar.bw-tour-sidebar-dim .sidebar-sticky-head > *:not(:has(.bw-tour-target)):not(.bw-tour-target){
+  opacity: 0.5;
+}
+@media (prefers-reduced-motion: reduce){
+  .sidebar.bw-tour-sidebar-dim > *,
+  .sidebar.bw-tour-sidebar-dim .sidebar-sticky-head > *{
+    transition: none;
+  }
 }
 
 .bw-tour-tooltip{
@@ -14502,6 +14541,15 @@ body.account-setup-page .account-setup-step3-form .cat-color-row + .tx-add-vspac
 .bw-tour-tooltip__arrow[data-side="bottom"]{
   bottom: -8px;
   transform: rotate(225deg);
+}
+/* Side arrows for tooltips placed beside their target (Step 2). */
+.bw-tour-tooltip__arrow[data-side="left"]{
+  left: -8px;
+  transform: rotate(-45deg);
+}
+.bw-tour-tooltip__arrow[data-side="right"]{
+  right: -8px;
+  transform: rotate(135deg);
 }
 
 .bw-tour-tooltip__head{
@@ -14558,6 +14606,9 @@ body.account-setup-page .account-setup-step3-form .cat-color-row + .tx-add-vspac
   font-size: 0.92rem;
   line-height: 1.5;
   color: #374151;
+  /* Preserve `\n\n` paragraph breaks in step copy without rendering
+     stray whitespace. */
+  white-space: pre-line;
 }
 .bw-tour-tooltip__helper{
   margin: 4px 0 0;
