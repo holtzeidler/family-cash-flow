@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=418" />
+    <link rel="stylesheet" href="./styles.css?v=419" />
   </head>
   <body class="login-page">
     <div class="container">
@@ -56,6 +56,7 @@
                   </defs>
                   <g class="login-page__brand-chart-graph" opacity="0.94">
                     <rect x="8" y="12" width="304" height="72" rx="10" fill="rgba(4, 120, 87, 0.14)" />
+                    <rect x="8" y="58" width="304" height="26" rx="10" fill="rgba(180, 83, 9, 0.045)" />
                     <g opacity="0.72" stroke="rgba(11, 61, 46, 0.2)" stroke-width="1">
                       <line x1="12" y1="36" x2="308" y2="36" />
                       <line x1="12" y1="52" x2="308" y2="52" />
@@ -63,36 +64,48 @@
                       <line x1="12" y1="84" x2="308" y2="84" />
                     </g>
                     <line x1="20" y1="20" x2="20" y2="100" stroke="rgba(11, 61, 46, 0.2)" stroke-width="1" />
+                    <g fill="rgba(71, 85, 105, 0.78)" font-size="6.8" font-family="Inter, system-ui, sans-serif" font-weight="600">
+                      <text x="24" y="106">May 12</text>
+                      <text x="88" y="106">15</text>
+                      <text x="152" y="106">18</text>
+                      <text x="216" y="106">21</text>
+                      <text x="280" y="106">24</text>
+                    </g>
+                    <g fill="rgba(71, 85, 105, 0.56)" font-size="6.5" font-family="Inter, system-ui, sans-serif" font-weight="600" text-anchor="end">
+                      <text x="18" y="38">$4k</text>
+                      <text x="18" y="54">$3k</text>
+                      <text x="18" y="70">$2k</text>
+                    </g>
                     <path
-                      d="M12,78 C52,72 88,86 128,70 C168,54 200,88 240,62 C272,44 300,38 308,36 L308,96 L12,96 Z"
+                      d="M12,76 C40,72 66,74 92,82 C110,88 122,84 136,72 C156,55 176,49 196,60 C214,70 228,82 244,68 C260,54 280,46 308,40 L308,96 L12,96 Z"
                       fill="url(#loginBrandChartFill)"
                     />
                     <rect x="8" y="12" width="304" height="72" rx="10" fill="url(#loginBrandChartFade)" />
                     <path
-                      d="M12,78 C52,72 88,86 128,70 C168,54 200,88 240,62 C272,44 300,38 308,36"
+                      d="M12,76 C40,72 66,74 92,82 C110,88 122,84 136,72 C156,55 176,49 196,60 C214,70 228,82 244,68 C260,54 280,46 308,40"
                       fill="none"
-                      stroke="#041f18"
-                      stroke-width="3.75"
+                      stroke="rgba(6, 31, 24, 0.84)"
+                      stroke-width="3.1"
                       stroke-linecap="round"
                       stroke-linejoin="round"
                     />
                     <!-- Outflow at low point: subtle marker, label below so it does not sit on the line -->
-                    <circle class="login-page__chart-dot login-page__chart-dot--out" cx="128" cy="70" r="3.2" />
+                    <circle class="login-page__chart-dot login-page__chart-dot--out" cx="136" cy="72" r="3.2" />
                     <text
                       class="login-page__chart-label login-page__chart-label--out"
-                      x="128"
-                      y="88"
+                      x="136"
+                      y="89"
                       text-anchor="middle"
                       dominant-baseline="middle"
                     >
                       Mortgage
                     </text>
                     <!-- Income as balance recovers: label above the line -->
-                    <circle class="login-page__chart-dot login-page__chart-dot--in" cx="268" cy="42" r="3" />
+                    <circle class="login-page__chart-dot login-page__chart-dot--in" cx="262" cy="52" r="3" />
                     <text
                       class="login-page__chart-label login-page__chart-label--in"
-                      x="268"
-                      y="28"
+                      x="262"
+                      y="34"
                       text-anchor="middle"
                       dominant-baseline="middle"
                     >
@@ -125,15 +138,12 @@
                   </div>
                   <button type="button" id="loginBtn" class="top-nav__logout" onclick="window.__bwLogin && window.__bwLogin()">Login</button>
                   <p class="login-page__reassure" role="note" aria-label="What to expect">
-                    <span class="login-page__reassure-icon" aria-hidden="true">
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
-                    </span>
                     <span class="login-page__reassure-text">
-                      No bank connection required
+                      <span class="login-page__reassure-item">No bank connection required</span>
                       <span class="login-page__reassure-dot" aria-hidden="true">•</span>
-                      14-day free trial
+                      <span class="login-page__reassure-item login-page__reassure-item--primary">14-day free trial</span>
                       <span class="login-page__reassure-dot" aria-hidden="true">•</span>
-                      Cancel anytime
+                      <span class="login-page__reassure-item">Cancel anytime</span>
                     </span>
                   </p>
                   <button type="button" class="login-page__forgot-btn" id="loginForgotBtn">Forgot password?</button>

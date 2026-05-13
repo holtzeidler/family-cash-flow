@@ -2242,7 +2242,7 @@ function setActiveTopView(view) {
   if (settingsViewPanel) settingsViewPanel.hidden = v !== "settings";
   if (reportsViewPanel) reportsViewPanel.hidden = v !== "reports";
   if (settingsSidebarNav) settingsSidebarNav.hidden = v !== "settings";
-  if (sidebarPendingTxCard) sidebarPendingTxCard.hidden = v !== "calendar";
+  if (sidebarPendingTxCard) sidebarPendingTxCard.hidden = !(v === "calendar" || v === "transactions");
   if (v === "transactions" || v === "reports") {
     // Reports use the same upcoming actuals list to power the risk heatmap's
     // "triggered by" detail; load lazily on view entry so we don't fetch on
@@ -3886,6 +3886,55 @@ function tmClearChips() {
   }
 }
 
+function tmQueueExpectedReviewFocus(expectedId, nextIso) {
+  const n = Number(expectedId);
+  state.tmFocusExpectedTransactionId = Number.isFinite(n) && n > 0 ? n : null;
+  state.tmFocusExpectedOccurrenceIso = normalizeIsoDate(nextIso) || "";
+}
+
+function tmApplyQueuedReviewFocus() {
+  if (!txListMain) return false;
+  const queuedId = Number(state.tmFocusExpectedTransactionId);
+  if (!Number.isFinite(queuedId) || queuedId <= 0) return false;
+  const queuedIso = normalizeIsoDate(state.tmFocusExpectedOccurrenceIso || "") || "";
+  let row = queuedIso
+    ? txListMain.querySelector(`.tm-row[data-tm-expected-id="${queuedId}"][data-tm-next-iso="${queuedIso}"]`)
+    : null;
+  if (!row) row = txListMain.querySelector(`.tm-row[data-tm-expected-id="${queuedId}"]`);
+  if (!(row instanceof HTMLElement)) return false;
+  row.classList.add("tm-row--context");
+  if (state.tmFocusHighlightTimer) clearTimeout(state.tmFocusHighlightTimer);
+  state.tmFocusHighlightTimer = setTimeout(() => {
+    try {
+      row.classList.remove("tm-row--context");
+    } catch (_) {}
+  }, 2200);
+  requestAnimationFrame(() => {
+    try {
+      row.scrollIntoView({ behavior: "smooth", block: "center" });
+    } catch (_) {}
+    try {
+      row.focus({ preventScroll: true });
+    } catch (_) {}
+  });
+  state.tmFocusExpectedTransactionId = null;
+  state.tmFocusExpectedOccurrenceIso = "";
+  return true;
+}
+
+function tmFocusExpectedReviewItem(it) {
+  const searchText = String(it?.description || effectiveTransactionCategoryName(it) || "").trim();
+  const itemIso = normalizeIsoDate(it?.date) || "";
+  const todayIso = toISODate(new Date());
+  tmApplyQuickView("all");
+  if (tmSource) tmSource.value = "recurring";
+  if (tmSearch) tmSearch.value = searchText;
+  if (tmStartDate) tmStartDate.value = todayIso;
+  if (tmEndDate) tmEndDate.value = itemIso || "";
+  tmQueueExpectedReviewFocus(it?.expected_transaction_id || it?.id, itemIso);
+  tmRefetchAndRender();
+}
+
 function rebuildTmCategorySelect() {
   if (!tmCategory) return;
   const prev = String(tmCategory.value || "all");
@@ -4210,7 +4259,7 @@ function refreshSidebarForecastHints() {
     const largest = tmLargestExpenseInRange(mStart, mEnd);
     if (largest && largest.amt >= 1) {
       parts.push(
-        `<div class="sidebar-fqh__row"><span class="sidebar-fqh__k">Largest bill (month)</span><span class="sidebar-fqh__v">$${fmtMoney(largest.amt)} <span class="sidebar-fqh__d">${escapeHtml(largest.label)} · ${fmtDateMedDisplay(
+        `<div class="sidebar-fqh__row sidebar-fqh__row--bill"><span class="sidebar-fqh__k">Largest bill</span><span class="sidebar-fqh__v">$${fmtMoney(largest.amt)} <span class="sidebar-fqh__d sidebar-fqh__d--inline">${escapeHtml(largest.label)} · ${fmtDateMedDisplay(
           largest.iso
         )}</span></span></div>`
       );
@@ -7831,6 +7880,8 @@ function renderUpcomingTransactionsFiltered() {
     const row = document.createElement("div");
     row.className = "tm-row";
     if (eff.variable) row.classList.add("is-variable");
+    if (tx?.id != null) row.dataset.tmExpectedId = String(tx.id);
+    if (nextIso) row.dataset.tmNextIso = String(nextIso);
     row.tabIndex = 0;
     row.setAttribute("title", "Open series editor — updates your forecast");
     row.addEventListener("click", (e) => {
@@ -7907,6 +7958,7 @@ function renderUpcomingTransactionsFiltered() {
     txListMain.appendChild(row);
   }
 
+  tmApplyQueuedReviewFocus();
   renderUncategorizedTransactions();
   refreshTmSummaryStrip();
 }
@@ -8625,6 +8677,10 @@ function renderSidebarPendingTransactionsForMonth() {
     const r = rows[idx];
     const it = r.tx;
     const open = () => {
+      if (document.body?.dataset?.bwView === "transactions") {
+        tmFocusExpectedReviewItem(it);
+        return;
+      }
       const meta = getExpectedSeriesMeta(it?.expected_transaction_id);
       if (meta) openExpectedEditModal(meta, { calendarItem: it });
     };
@@ -8641,8 +8697,16 @@ function renderSidebarPendingTransactionsForMonth() {
     } catch (_) {}
     if (daysUntil >= 0 && daysUntil <= 3) el.classList.add("is-critical");
     else if (daysUntil >= 0 && daysUntil <= 10) el.classList.add("is-soon");
+    el.tabIndex = 0;
+    el.setAttribute("role", "button");
     el.style.cursor = "pointer";
     el.addEventListener("click", () => open());
+    el.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter" || ev.key === " ") {
+        ev.preventDefault();
+        open();
+      }
+    });
 
     const catLabel = effectiveTransactionCategoryName(it) || "Uncategorized";
     const descFull = String(it?.description || "").trim();
@@ -8665,6 +8729,10 @@ function renderSidebarPendingTransactionsForMonth() {
     date.className = "pending-attn-date";
     date.textContent = it?.date ? fmtMonthDay(it.date) : "—";
 
+    el.setAttribute(
+      "aria-label",
+      `${catLabel}, ${sign}$${fmtMoney0(amt)}, ${it?.date ? fmtMonthDay(it.date) : "date unknown"}`
+    );
     el.appendChild(name);
     el.appendChild(est);
     el.appendChild(date);
@@ -9533,9 +9601,20 @@ function renderCalendar() {
       const txNetNum = Number(dayBal.tx_net);
       const balParts = ["cal-stat", "cal-balance"];
       const hasFloor = minBalFloor != null && Number.isFinite(minBalFloor) && minBalFloor > 0;
+      const prevEndNum = Number(state.monthDailyBalances.get(isoAddDays(iso, -1))?.end);
+      const repeatedNegativeRun =
+        !isOutOfMonth &&
+        !isPast &&
+        Number.isFinite(endNum) &&
+        endNum < 0 &&
+        Number.isFinite(prevEndNum) &&
+        Math.abs(prevEndNum - endNum) < 0.005 &&
+        Number.isFinite(txNetNum) &&
+        Math.abs(txNetNum) < 0.005;
       if (Number.isFinite(endNum)) {
         if (endNum < 0) {
           balParts.push("is-negative", "cal-balance--risk");
+          if (repeatedNegativeRun) balParts.push("cal-balance--repeated");
         } else if (isOutOfMonth) {
           balParts.push("is-muted");
         } else {
@@ -9591,7 +9670,7 @@ function renderCalendar() {
 
       const balanceClass = balParts.join(" ");
       const riskIcon =
-        negativeBal
+        negativeBal && !repeatedNegativeRun
           ? `<span class="cal-balance-risk-icon" aria-hidden="true"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M8 2.25L14 13.75H2L8 2.25z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" fill="none"/><path d="M8 6.25v3M8 11.1v.01" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg></span>`
           : "";
       const warnIcon =
