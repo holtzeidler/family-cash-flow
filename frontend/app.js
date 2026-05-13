@@ -125,6 +125,10 @@ async function api(path, method = "GET", body) {
   }
 }
 
+// Expose shared helpers for peripheral modules loaded after app.js
+// (for example feedback.js) so they use the exact same auth/session logic.
+window.api = api;
+
 function show(el, msg) {
   if (!el) return;
   const s =
@@ -159,6 +163,8 @@ function showBwToast(message, { durationMs = 2800 } = {}) {
     el.classList.remove("bw-toast--visible");
   }, durationMs);
 }
+
+window.showBwToast = showBwToast;
 
 function expandSidebarSection(key) {
   const card = document.querySelector(`.sidebar-section[data-sidebar-key="${key}"]`);
