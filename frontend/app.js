@@ -566,7 +566,9 @@ if (catEditSave) {
           throw new Error('Please choose a more specific group name (not "New group").');
         }
         // Update DOM group name input, then persist via existing tree layout API.
-        const gEl = categoriesTree?.querySelector(`.cat-group[data-group-id="${String(id)}"]`);
+        const gEl = categoriesTree?.querySelector(
+          `.cats-group[data-group-id="${String(id)}"], .cat-group[data-group-id="${String(id)}"]`
+        );
         const inp = gEl ? gEl.querySelector("[data-group-name]") : null;
         if (inp) {
           if ("value" in inp) {
@@ -2661,29 +2663,45 @@ function hasDuplicateCategoryNameInGroup(name, groupId) {
   return cats.some((c) => normalizeNameForCompare(c?.name) === nm);
 }
 
-document.getElementById("addCategoryBtn").addEventListener("click", async () => {
-  try {
-    show(catErr, "");
-    if (!state.activeFamilyId) throw new Error("Choose a family first");
-    const name = document.getElementById("newCategoryName").value.trim();
-    if (!name) throw new Error("Category name is required");
-    let gid = defaultNewCategoryGroupId();
-    if (newCategoryGroupId && newCategoryGroupId.value) {
-      const n = Number(newCategoryGroupId.value);
-      if (Number.isFinite(n)) gid = n;
-    }
-    if (hasDuplicateCategoryNameInGroup(name, gid)) {
-      const ok = window.confirm(`A category named "${name}" already exists in this group. Create a duplicate anyway?`);
-      if (!ok) return;
-    }
-    await api(`/api/families/${state.activeFamilyId}/categories`, "POST", { name, group_id: gid });
-    document.getElementById("newCategoryName").value = "";
-    await loadCategories();
-    await loadMonthAndCalendar();
-  } catch (e) {
-    show(catErr, e.message || "Failed to add category");
+// Helper used by the per-group inline "+ Add category" form and any
+// other surface that needs to add a category to a specific group.
+async function addCategoryToGroup(gid, name) {
+  if (!state.activeFamilyId) throw new Error("Choose a family first");
+  const nm = String(name || "").trim();
+  if (!nm) throw new Error("Category name is required");
+  const targetGid = Number.isFinite(Number(gid)) ? Number(gid) : defaultNewCategoryGroupId();
+  if (hasDuplicateCategoryNameInGroup(nm, targetGid)) {
+    const ok = window.confirm(`A category named "${nm}" already exists in this group. Create a duplicate anyway?`);
+    if (!ok) return false;
   }
-});
+  await api(`/api/families/${state.activeFamilyId}/categories`, "POST", { name: nm, group_id: targetGid });
+  await loadCategories();
+  await loadMonthAndCalendar();
+  return true;
+}
+
+// Legacy bottom-of-pane "Add category" form is no longer rendered, but
+// keep the listener guarded so any test/dev surface that still has it
+// continues to work.
+const __legacyAddCategoryBtn = document.getElementById("addCategoryBtn");
+if (__legacyAddCategoryBtn) {
+  __legacyAddCategoryBtn.addEventListener("click", async () => {
+    try {
+      show(catErr, "");
+      const nameEl = document.getElementById("newCategoryName");
+      const name = String(nameEl?.value || "").trim();
+      let gid = defaultNewCategoryGroupId();
+      if (newCategoryGroupId && newCategoryGroupId.value) {
+        const n = Number(newCategoryGroupId.value);
+        if (Number.isFinite(n)) gid = n;
+      }
+      const created = await addCategoryToGroup(gid, name);
+      if (created && nameEl) nameEl.value = "";
+    } catch (e) {
+      show(catErr, e.message || "Failed to add category");
+    }
+  });
+}
 
 if (seedDefaultCategoriesBtn) {
   seedDefaultCategoriesBtn.addEventListener("click", async () => {
@@ -2737,16 +2755,84 @@ if (addCategoryGroupBtn) {
     });
   }
 
+  // Top-level "+ Add category" toolbar button.
+  // The new design has a per-group add input at the bottom of each card.
+  // The toolbar button focuses the first group's add input (and opens its
+  // collapsed form), so the user gets a single, predictable target.
   const focusNewCategoryBtn = document.getElementById("focusNewCategoryBtn");
-  const newCategoryNameEl = document.getElementById("newCategoryName");
-  if (focusNewCategoryBtn && newCategoryNameEl) {
+  if (focusNewCategoryBtn) {
     focusNewCategoryBtn.addEventListener("click", () => {
+      show(catErr, "");
+      const firstCard = categoriesTree?.querySelector(".cats-group");
+      if (!firstCard) {
+        // No groups yet — guide the user to add a group first.
+        if (addCategoryGroupBtn) {
+          try {
+            addCategoryGroupBtn.click();
+          } catch (_) {}
+        }
+        return;
+      }
+      const trigger = firstCard.querySelector(".cats-group__add-trigger");
+      if (trigger) {
+        try {
+          trigger.click();
+        } catch (_) {}
+      }
+      const input = firstCard.querySelector(".cats-group__add-input");
+      if (input) {
+        try {
+          input.focus();
+          input.select();
+          input.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        } catch (_) {}
+      }
+    });
+  }
+
+  // Empty-state buttons (rendered only when no groups exist).
+  const loadDefaultCategoriesBtn = document.getElementById("loadDefaultCategoriesBtn");
+  if (loadDefaultCategoriesBtn) {
+    loadDefaultCategoriesBtn.addEventListener("click", async () => {
       try {
-        document.querySelector(".categories-actions")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-      } catch (_) {}
+        show(catErr, "");
+        if (!state.activeFamilyId) throw new Error("Choose a family first");
+        await api(`/api/families/${state.activeFamilyId}/categories/seed-defaults`, "POST");
+        await loadCategories();
+        await loadMonthAndCalendar();
+      } catch (e) {
+        const msg = String(e?.message || "").toLowerCase();
+        if (msg.includes("already exist") || msg.includes("409")) {
+          // Defaults are only meant for the empty-state surface, but if
+          // the user already has a structure, offer a clear choice
+          // before wiping it.
+          if (
+            window.confirm(
+              "You already have category groups. Replace them with the defaults? This cannot be undone."
+            )
+          ) {
+            try {
+              await api(`/api/families/${state.activeFamilyId}/categories/seed-defaults?force=true`, "POST");
+              await loadCategories();
+              await loadMonthAndCalendar();
+              return;
+            } catch (e2) {
+              show(catErr, e2?.message || "Failed to load default categories");
+              return;
+            }
+          }
+          return;
+        }
+        show(catErr, e?.message || "Failed to load default categories");
+      }
+    });
+  }
+
+  const addFirstGroupBtn = document.getElementById("addFirstGroupBtn");
+  if (addFirstGroupBtn && addCategoryGroupBtn) {
+    addFirstGroupBtn.addEventListener("click", () => {
       try {
-        newCategoryNameEl.focus();
-        newCategoryNameEl.select();
+        addCategoryGroupBtn.click();
       } catch (_) {}
     });
   }
@@ -6154,12 +6240,46 @@ function ensureCategoryComboDocClick() {
   });
 }
 
+/**
+ * Categories & Groups: clean nested list with hover-only controls.
+ *
+ * Visual model:
+ *   - Each group is a card with a header (drag handle on hover, name,
+ *     count, kebab menu) and a body of category rows.
+ *   - Each category row is a tight ledger-like line with a hover-only
+ *     drag handle and a hover-only archive control. Click the name to
+ *     rename inline; press Enter or click elsewhere to commit.
+ *   - The bottom of each group card has a "+ Add category" affordance
+ *     that expands into a tiny inline form.
+ *
+ * Reordering / regrouping:
+ *   - Native HTML5 drag/drop. Categories can be dragged within or
+ *     between groups; groups can be dragged to reorder.
+ *   - Persistence routes through the same `PUT /categories/tree`
+ *     endpoint as before via `persistCategoryTreeFromDom()`.
+ *
+ * Inline rename:
+ *   - Group rename updates the in-DOM `[data-group-name]` element and
+ *     calls `persistCategoryTreeFromDom()` (the tree layout PUT carries
+ *     group names).
+ *   - Category rename calls `PUT /categories/{id}` with the new name.
+ *
+ * Deletion:
+ *   - Both groups and categories use the existing DELETE endpoints.
+ *     The backend soft-archives a category that is referenced by any
+ *     transaction (real, expected, or override) and hard-deletes it
+ *     otherwise. The UI uses the safer "Archive" wording.
+ *
+ * Data attributes preserved for back-compat with persist + cat-edit
+ * modal: `data-group-id`, `data-category-id`, `[data-group-name]`.
+ */
 function renderCategoriesGrid(tree) {
   if (!categoriesTree) return;
   categoriesTree.innerHTML = "";
-  const groups = tree?.groups || [];
+  const groups = (tree?.groups || []).filter(Boolean);
 
-  if (newCategoryGroupId) {
+  // Keep legacy hidden <select id="newCategoryGroupId"> in sync if present.
+  if (newCategoryGroupId && "innerHTML" in newCategoryGroupId) {
     newCategoryGroupId.innerHTML = "";
     for (const g of groups) {
       const o = document.createElement("option");
@@ -6169,77 +6289,116 @@ function renderCategoriesGrid(tree) {
     }
   }
 
+  // Find the empty-state element scoped to the same pane (preferred) or
+  // global fallback.
+  const pane = categoriesTree.closest("[data-cats-pane]") || document;
+  const emptyEl = pane.querySelector("#categoriesEmpty");
   if (!groups.length) {
-    const empty = document.createElement("div");
-    empty.className = "pill";
-    empty.textContent = "No category groups yet. Use + Add group.";
-    categoriesTree.appendChild(empty);
+    if (emptyEl) emptyEl.hidden = false;
+    categoriesTree.hidden = true;
     return;
   }
+  if (emptyEl) emptyEl.hidden = true;
+  categoriesTree.hidden = false;
 
   function clearDragUi() {
-    categoriesTree.querySelectorAll(".cat-row.is-drag-over, .cat-group-head.is-drag-over, .cat-group-body.is-drag-over").forEach((x) => {
-      x.classList.remove("is-drag-over");
+    categoriesTree
+      .querySelectorAll(
+        ".cats-cat.is-drag-over, .cats-group__head.is-drag-over, .cats-group__body.is-drag-over, .cats-group.is-drag-over"
+      )
+      .forEach((x) => x.classList.remove("is-drag-over"));
+  }
+
+  function makeInlineEditable(el, { onCommit }) {
+    el.setAttribute("role", "textbox");
+    el.setAttribute("contenteditable", "true");
+    el.spellcheck = false;
+    el.addEventListener("focus", () => {
+      el.dataset.originalValue = String(el.textContent || "").trim();
+    });
+    el.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        el.blur();
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        el.textContent = el.dataset.originalValue || "";
+        el.blur();
+      }
+    });
+    el.addEventListener("blur", async () => {
+      const newValue = String(el.textContent || "").trim();
+      const oldValue = String(el.dataset.originalValue || "");
+      if (!newValue) {
+        // Empty rename — restore.
+        el.textContent = oldValue;
+        return;
+      }
+      if (newValue === oldValue) return;
+      try {
+        await onCommit(newValue, oldValue);
+      } catch (e) {
+        // Restore on failure.
+        el.textContent = oldValue;
+        show(catErr, e?.message || "Failed to rename");
+      }
     });
   }
 
-  function mountCategoryRow(c) {
+  function mountCategoryRow(c, gid) {
     const row = document.createElement("div");
-    row.className = "cat-row";
+    row.className = "cats-cat";
     row.dataset.categoryId = String(c.id);
     row.draggable = true;
 
-    const nameEl = document.createElement("div");
-    nameEl.className = "cat-name cat-drag-handle";
+    const handle = document.createElement("span");
+    handle.className = "cats-cat__handle";
+    handle.setAttribute("aria-hidden", "true");
+    handle.title = "Drag to reorder";
+
+    const nameEl = document.createElement("span");
+    nameEl.className = "cats-cat__name";
     nameEl.textContent = c.name;
-    nameEl.title = categoryDisplayLabel(c);
+    nameEl.title = `Rename — ${categoryDisplayLabel(c)}`;
+    makeInlineEditable(nameEl, {
+      onCommit: async (newName) => {
+        await api(`/api/families/${state.activeFamilyId}/categories/${Number(c.id)}`, "PUT", {
+          name: newName,
+        });
+        await loadCategories();
+        await loadMonthAndCalendar();
+      },
+    });
 
-    const controls = document.createElement("div");
-    controls.className = "cat-move-controls";
-    const upBtn = document.createElement("button");
-    upBtn.type = "button";
-    upBtn.className = "cat-move-btn";
-    upBtn.title = "Move up";
-    upBtn.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 14l6-6 6 6" /></svg>`;
-    const downBtn = document.createElement("button");
-    downBtn.type = "button";
-    downBtn.className = "cat-move-btn";
-    downBtn.title = "Move down";
-    downBtn.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 10l6 6 6-6" /></svg>`;
-    controls.appendChild(upBtn);
-    controls.appendChild(downBtn);
+    const action = document.createElement("button");
+    action.type = "button";
+    action.className = "cats-cat__action";
+    action.setAttribute("aria-label", `Archive ${c.name}`);
+    action.title = "Archive category";
+    action.innerHTML =
+      '<svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M2 4h12v2H2V4zm1 3h10l-1 7H4L3 7zm3 2v3h4V9H6z" fill="currentColor"/></svg>';
+    action.addEventListener("click", async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const ok = window.confirm(
+        `Archive "${c.name}"? Any transactions using it stay attached but the category disappears from pickers.`
+      );
+      if (!ok) return;
+      try {
+        show(catErr, "");
+        await api(`/api/families/${state.activeFamilyId}/categories/${Number(c.id)}`, "DELETE");
+        await loadCategories();
+        await loadMonthAndCalendar();
+      } catch (err) {
+        show(catErr, err?.message || "Failed to archive category");
+      }
+    });
 
+    row.appendChild(handle);
     row.appendChild(nameEl);
-    row.appendChild(controls);
+    row.appendChild(action);
 
-    nameEl.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      // Find the group from DOM ancestry.
-      const groupEl = row.closest(".cat-group");
-      const gid = groupEl && groupEl.dataset && groupEl.dataset.groupId ? Number(groupEl.dataset.groupId) : null;
-      openCatEditModal({ kind: "category", id: Number(c.id), name: String(c.name), groupId: gid });
-    });
-
-    upBtn.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const prev = row.previousElementSibling;
-      if (prev && prev.classList.contains("cat-row")) {
-        row.parentElement.insertBefore(row, prev);
-        scheduleCategoryTreePersist();
-      }
-    });
-    downBtn.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const next = row.nextElementSibling;
-      if (next && next.classList.contains("cat-row")) {
-        row.parentElement.insertBefore(next, row);
-        scheduleCategoryTreePersist();
-      }
-    });
-
+    // Drag-and-drop: row reorder + cross-group move
     row.addEventListener("dragstart", (e) => {
       try {
         e.dataTransfer.effectAllowed = "move";
@@ -6271,136 +6430,176 @@ function renderCategoriesGrid(tree) {
       const movingId = Number(raw.slice("cat:".length));
       const beforeId = Number(row.dataset.categoryId);
       if (!movingId || !beforeId || movingId === beforeId) return;
-      const movingRow = categoriesTree.querySelector(`.cat-row[data-category-id="${movingId}"]`);
+      const movingRow = categoriesTree.querySelector(`.cats-cat[data-category-id="${movingId}"]`);
       if (!movingRow) return;
       row.parentElement.insertBefore(movingRow, row);
       scheduleCategoryTreePersist();
     });
+
     return row;
   }
 
-  function mountGroup(g) {
-    const wrap = document.createElement("div");
-    wrap.className = "cat-group";
-    wrap.dataset.groupId = String(g.id);
+  function mountGroupCard(g) {
+    const card = document.createElement("section");
+    card.className = "cats-group";
+    card.dataset.groupId = String(g.id);
 
-    const head = document.createElement("div");
-    head.className = "cat-group-head";
+    const head = document.createElement("header");
+    head.className = "cats-group__head";
     head.draggable = true;
 
-    const nameInput = document.createElement("input");
-    nameInput.type = "text";
-    nameInput.className = "cat-group-name-input";
-    nameInput.dataset.groupName = "1";
-    nameInput.value = g.name;
-    nameInput.readOnly = true;
-    nameInput.disabled = true;
-    nameInput.title = "";
-    nameInput.tabIndex = -1;
-    nameInput.setAttribute("aria-hidden", "true");
+    const handle = document.createElement("span");
+    handle.className = "cats-group__handle";
+    handle.setAttribute("aria-hidden", "true");
+    handle.title = "Drag to reorder group";
 
-    const nameDisplay = document.createElement("div");
-    nameDisplay.className = "cat-group-name-display";
-    nameDisplay.dataset.groupName = "1";
-    nameDisplay.textContent = g.name;
-    nameDisplay.title = "Click to edit group name";
-    nameDisplay.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      openCatEditModal({ kind: "group", id: Number(g.id), name: String(nameDisplay.textContent || "") });
+    const nameWrap = document.createElement("h4");
+    nameWrap.className = "cats-group__name";
+
+    const nameText = document.createElement("span");
+    nameText.className = "cats-group__name-text";
+    nameText.dataset.groupName = "1";
+    nameText.textContent = g.name;
+    nameText.title = "Click to rename";
+    makeInlineEditable(nameText, {
+      onCommit: async (newName) => {
+        await persistCategoryTreeFromDom();
+      },
     });
 
-    head.appendChild(nameDisplay);
-    head.appendChild(nameInput);
+    const count = document.createElement("span");
+    count.className = "cats-group__count";
+    const n = (g.categories || []).length;
+    count.textContent = n === 0 ? "empty" : `${n} ${n === 1 ? "category" : "categories"}`;
 
-    const editBtn = document.createElement("button");
-    editBtn.type = "button";
-    editBtn.className = "cat-group-edit-btn";
-    editBtn.setAttribute("aria-label", "Edit group");
-    editBtn.innerHTML =
-      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M12 20h9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M16.5 3.5a2.12 2.12 0 013 3L9 17l-4 1 1-4 10.5-10.5z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>';
-    editBtn.addEventListener("click", (e) => {
+    nameWrap.appendChild(nameText);
+    nameWrap.appendChild(count);
+
+    // Kebab menu: Rename / Add category / Collapse / Archive group
+    const menuWrap = document.createElement("div");
+    menuWrap.className = "cats-group__menu";
+
+    const menuBtn = document.createElement("button");
+    menuBtn.type = "button";
+    menuBtn.className = "cats-group__menu-btn";
+    menuBtn.setAttribute("aria-label", "Group actions");
+    menuBtn.setAttribute("aria-haspopup", "menu");
+    menuBtn.setAttribute("aria-expanded", "false");
+    menuBtn.innerHTML =
+      '<svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true"><circle cx="8" cy="3" r="1.4"/><circle cx="8" cy="8" r="1.4"/><circle cx="8" cy="13" r="1.4"/></svg>';
+
+    const menuList = document.createElement("ul");
+    menuList.className = "cats-group__menu-list";
+    menuList.setAttribute("role", "menu");
+
+    function buildMenuItem(label, onClick, opts = {}) {
+      const li = document.createElement("li");
+      li.setAttribute("role", "none");
+      const b = document.createElement("button");
+      b.type = "button";
+      b.setAttribute("role", "menuitem");
+      b.className = "cats-group__menu-item" + (opts.danger ? " cats-group__menu-item--danger" : "");
+      b.textContent = label;
+      b.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        closeMenu();
+        onClick();
+      });
+      li.appendChild(b);
+      return li;
+    }
+
+    function closeMenu() {
+      menuList.classList.remove("is-open");
+      menuBtn.setAttribute("aria-expanded", "false");
+      document.removeEventListener("click", outsideClose, true);
+    }
+    function outsideClose(e) {
+      if (!menuWrap.contains(e.target)) closeMenu();
+    }
+    function openMenu() {
+      menuList.classList.add("is-open");
+      menuBtn.setAttribute("aria-expanded", "true");
+      setTimeout(() => document.addEventListener("click", outsideClose, true), 0);
+    }
+
+    menuBtn.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
-      openCatEditModal({ kind: "group", id: Number(g.id), name: String(nameDisplay.textContent || "") });
+      const open = menuList.classList.contains("is-open");
+      if (open) closeMenu();
+      else openMenu();
     });
-    head.appendChild(editBtn);
 
-    const gControls = document.createElement("div");
-    gControls.className = "cat-move-controls";
-    const gUp = document.createElement("button");
-    gUp.type = "button";
-    gUp.className = "cat-move-btn";
-    gUp.title = "Move group up";
-    gUp.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 14l6-6 6 6" /></svg>`;
-    const gDown = document.createElement("button");
-    gDown.type = "button";
-    gDown.className = "cat-move-btn";
-    gDown.title = "Move group down";
-    gDown.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 10l6 6 6-6" /></svg>`;
-    gControls.appendChild(gUp);
-    gControls.appendChild(gDown);
-    head.appendChild(gControls);
+    menuList.appendChild(
+      buildMenuItem("Rename", () => {
+        try {
+          nameText.focus();
+          // Select the text content for easy overwrite.
+          const range = document.createRange();
+          range.selectNodeContents(nameText);
+          const sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(range);
+        } catch (_) {}
+      })
+    );
+    menuList.appendChild(
+      buildMenuItem("Add category", () => {
+        const input = card.querySelector(".cats-group__add-input");
+        if (input) {
+          try {
+            input.focus();
+          } catch (_) {}
+        }
+      })
+    );
+    menuList.appendChild(
+      buildMenuItem(card.classList.contains("is-collapsed") ? "Expand" : "Collapse", () => {
+        card.classList.toggle("is-collapsed");
+      })
+    );
+    menuList.appendChild(
+      buildMenuItem(
+        "Archive group",
+        async () => {
+          const cats = g.categories || [];
+          const msg = cats.length
+            ? `Archive "${g.name}"? Its ${cats.length} ${cats.length === 1 ? "category" : "categories"} will move to another group.`
+            : `Archive "${g.name}"? It's empty so this will remove it.`;
+          if (!window.confirm(msg)) return;
+          try {
+            show(catErr, "");
+            await api(`/api/families/${state.activeFamilyId}/category-groups/${Number(g.id)}`, "DELETE");
+            await loadCategories();
+            await loadMonthAndCalendar();
+          } catch (e) {
+            show(catErr, e?.message || "Failed to archive group");
+          }
+        },
+        { danger: true }
+      )
+    );
 
+    menuWrap.appendChild(menuBtn);
+    menuWrap.appendChild(menuList);
+
+    head.appendChild(handle);
+    head.appendChild(nameWrap);
+    head.appendChild(menuWrap);
+
+    // Group drag (start on the head)
     head.addEventListener("dragstart", (e) => {
       try {
         e.dataTransfer.effectAllowed = "move";
-        e.dataTransfer.setData("text/plain", `group:${wrap.dataset.groupId}`);
+        e.dataTransfer.setData("text/plain", `group:${card.dataset.groupId}`);
       } catch (_) {}
-      wrap.classList.add("is-dragging");
+      card.classList.add("is-dragging");
     });
     head.addEventListener("dragend", () => {
-      wrap.classList.remove("is-dragging");
+      card.classList.remove("is-dragging");
       clearDragUi();
-    });
-
-    const body = document.createElement("div");
-    body.className = "cat-group-body";
-    body.addEventListener("dragover", (e) => {
-      e.preventDefault();
-      body.classList.add("is-drag-over");
-      if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
-    });
-    body.addEventListener("dragleave", () => body.classList.remove("is-drag-over"));
-    body.addEventListener("drop", (e) => {
-      e.preventDefault();
-      body.classList.remove("is-drag-over");
-      const raw = (() => {
-        try {
-          return e.dataTransfer.getData("text/plain");
-        } catch (_) {
-          return "";
-        }
-      })();
-      if (!raw.startsWith("cat:")) return;
-      const movingId = Number(raw.slice("cat:".length));
-      const movingRow = categoriesTree.querySelector(`.cat-row[data-category-id="${movingId}"]`);
-      if (!movingRow) return;
-      body.appendChild(movingRow);
-      scheduleCategoryTreePersist();
-    });
-
-    for (const c of g.categories || []) {
-      body.appendChild(mountCategoryRow(c));
-    }
-
-    gUp.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const prev = wrap.previousElementSibling;
-      if (prev && prev.classList.contains("cat-group")) {
-        categoriesTree.insertBefore(wrap, prev);
-        scheduleCategoryTreePersist();
-      }
-    });
-    gDown.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const next = wrap.nextElementSibling;
-      if (next && next.classList.contains("cat-group")) {
-        categoriesTree.insertBefore(next, wrap);
-        scheduleCategoryTreePersist();
-      }
     });
     head.addEventListener("dragover", (e) => {
       e.preventDefault();
@@ -6423,32 +6622,147 @@ function renderCategoriesGrid(tree) {
       })();
       if (raw.startsWith("cat:")) {
         const movingId = Number(raw.slice("cat:".length));
-        const movingRow = categoriesTree.querySelector(`.cat-row[data-category-id="${movingId}"]`);
+        const movingRow = categoriesTree.querySelector(`.cats-cat[data-category-id="${movingId}"]`);
         if (movingRow) {
-          const first = body.querySelector(".cat-row");
+          const first = body.querySelector(".cats-cat");
           if (first) body.insertBefore(movingRow, first);
-          else body.appendChild(movingRow);
+          else body.insertBefore(movingRow, body.firstChild);
           scheduleCategoryTreePersist();
         }
         return;
       }
       if (!raw.startsWith("group:")) return;
       const movingGid = String(raw.slice("group:".length));
-      const targetGid = String(wrap.dataset.groupId);
+      const targetGid = String(card.dataset.groupId);
       if (!movingGid || !targetGid || movingGid === targetGid) return;
-      const movingEl = categoriesTree.querySelector(`.cat-group[data-group-id="${movingGid}"]`);
+      const movingEl = categoriesTree.querySelector(`.cats-group[data-group-id="${movingGid}"]`);
       if (!movingEl) return;
-      categoriesTree.insertBefore(movingEl, wrap);
+      categoriesTree.insertBefore(movingEl, card);
       scheduleCategoryTreePersist();
     });
 
-    wrap.appendChild(head);
-    wrap.appendChild(body);
-    categoriesTree.appendChild(wrap);
+    // Group body
+    const body = document.createElement("div");
+    body.className = "cats-group__body";
+
+    const cats = g.categories || [];
+    if (cats.length === 0) {
+      body.classList.add("is-empty");
+      const emptyRow = document.createElement("p");
+      emptyRow.className = "cats-group__empty-row";
+      emptyRow.textContent = "No categories yet — add one below.";
+      body.appendChild(emptyRow);
+    }
+    for (const c of cats) {
+      body.appendChild(mountCategoryRow(c, g.id));
+    }
+
+    body.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      body.classList.add("is-drag-over");
+      if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+    });
+    body.addEventListener("dragleave", () => body.classList.remove("is-drag-over"));
+    body.addEventListener("drop", (e) => {
+      e.preventDefault();
+      body.classList.remove("is-drag-over");
+      const raw = (() => {
+        try {
+          return e.dataTransfer.getData("text/plain");
+        } catch (_) {
+          return "";
+        }
+      })();
+      if (!raw.startsWith("cat:")) return;
+      const movingId = Number(raw.slice("cat:".length));
+      const movingRow = categoriesTree.querySelector(`.cats-cat[data-category-id="${movingId}"]`);
+      if (!movingRow) return;
+      // Drop into empty area: append at end (above the add row).
+      body.appendChild(movingRow);
+      scheduleCategoryTreePersist();
+    });
+
+    // Bottom-of-card "+ Add category" — collapsed trigger that expands
+    // into a tiny inline form on click. Keeps the card visually quiet.
+    const addRow = document.createElement("div");
+    addRow.className = "cats-group__add-row";
+
+    const trigger = document.createElement("button");
+    trigger.type = "button";
+    trigger.className = "cats-group__add-trigger";
+    trigger.textContent = "+ Add category";
+
+    const form = document.createElement("form");
+    form.className = "cats-group__add-form";
+    form.hidden = true;
+
+    const input = document.createElement("input");
+    input.type = "text";
+    input.className = "cats-group__add-input";
+    input.placeholder = "New category";
+    input.autocomplete = "off";
+
+    const submit = document.createElement("button");
+    submit.type = "submit";
+    submit.className = "cats-group__add-submit";
+    submit.textContent = "Add";
+
+    const cancel = document.createElement("button");
+    cancel.type = "button";
+    cancel.className = "cats-group__add-trigger";
+    cancel.textContent = "Cancel";
+    cancel.style.flex = "0 0 auto";
+    cancel.style.width = "auto";
+    cancel.style.borderStyle = "solid";
+    cancel.style.borderColor = "transparent";
+    cancel.style.color = "rgba(71, 85, 105, 0.78)";
+
+    form.appendChild(input);
+    form.appendChild(submit);
+    form.appendChild(cancel);
+
+    addRow.appendChild(trigger);
+    addRow.appendChild(form);
+
+    function showForm(yes) {
+      form.hidden = !yes;
+      trigger.hidden = yes;
+      if (yes) {
+        try {
+          input.value = "";
+          input.focus();
+        } catch (_) {}
+      }
+    }
+    trigger.addEventListener("click", () => showForm(true));
+    cancel.addEventListener("click", () => showForm(false));
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const nm = input.value.trim();
+      if (!nm) return;
+      try {
+        show(catErr, "");
+        const ok = await addCategoryToGroup(Number(g.id), nm);
+        if (ok) {
+          input.value = "";
+          // Keep form open so the user can keep adding categories quickly.
+          try {
+            input.focus();
+          } catch (_) {}
+        }
+      } catch (err) {
+        show(catErr, err?.message || "Failed to add category");
+      }
+    });
+
+    card.appendChild(head);
+    card.appendChild(body);
+    card.appendChild(addRow);
+    return card;
   }
 
   for (const g of groups) {
-    mountGroup(g);
+    categoriesTree.appendChild(mountGroupCard(g));
   }
 }
 
@@ -6504,18 +6818,23 @@ async function persistCategoryTreeFromDom() {
   try {
     show(catErr, "");
     const groups = [];
-    for (const gEl of categoriesTree.querySelectorAll(":scope > .cat-group")) {
+    // Match both the new (.cats-group / .cats-cat) and legacy
+    // (.cat-group / .cat-row) class names so any not-yet-migrated
+    // surface keeps persisting cleanly.
+    const groupSel = ":scope > .cats-group, :scope > .cat-group";
+    for (const gEl of categoriesTree.querySelectorAll(groupSel)) {
       const gidRaw = String(gEl.dataset.groupId || "").trim();
       const parsed = Number(gidRaw);
       const gid = gidRaw !== "" && Number.isFinite(parsed) ? parsed : null;
       const nameInput = gEl.querySelector("[data-group-name]");
       const rawName =
-        nameInput && "value" in nameInput
+        nameInput && "value" in nameInput && typeof nameInput.value === "string"
           ? String(nameInput.value || "")
           : String(nameInput?.textContent || "");
       const nm = rawName.trim();
       if (!nm) throw new Error("Each group needs a name");
-      const ids = [...gEl.querySelectorAll(".cat-group-body .cat-row[data-category-id]")].map((r) => Number(r.dataset.categoryId));
+      const rowSel = ".cats-group__body .cats-cat[data-category-id], .cat-group-body .cat-row[data-category-id]";
+      const ids = [...gEl.querySelectorAll(rowSel)].map((r) => Number(r.dataset.categoryId));
       groups.push({ id: gid, name: nm, category_ids: ids });
     }
     const tree = await api(`/api/families/${state.activeFamilyId}/categories/tree`, "PUT", { groups });

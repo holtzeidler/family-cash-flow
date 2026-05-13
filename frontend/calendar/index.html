@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=413" />
+    <link rel="stylesheet" href="../styles.css?v=414" />
   </head>
   <body>
     <div class="container">
@@ -492,38 +492,37 @@
                   </div>
                 </div>
 
-                <div class="settings-pane" data-settings-pane="categories" hidden>
-                  <header class="settings-section-head">
-                    <h2 class="settings-section-title">Categories &amp; groups</h2>
-                    <p class="settings-section-lede">Structure for organizing transactions—groups are headers only.</p>
+                <div class="settings-pane cats-pane" data-settings-pane="categories" data-cats-pane hidden>
+                  <header class="settings-section-head cats-pane__head">
+                    <h2 class="settings-section-title cats-pane__title">Categories &amp; Groups</h2>
+                    <p class="settings-section-lede cats-pane__helper">Groups organize your categories. Categories are what you assign to transactions.</p>
+                    <p class="cats-pane__note">Most people use the defaults and customize over time.</p>
                   </header>
-                  <div class="categories-toolbar categories-toolbar--lite" role="toolbar" aria-label="Category actions">
-                    <button type="button" id="addCategoryGroupBtn" class="settings-cat-toolbar__btn">+ Add group</button>
-                    <button type="button" id="focusNewCategoryBtn" class="settings-cat-toolbar__btn">+ Add category</button>
-                    <div id="addGroupInline" class="add-group-inline" hidden>
-                      <label for="newGroupName" class="sr-only">New group name</label>
-                      <input id="newGroupName" type="text" placeholder="New group name" />
-                      <button type="button" id="saveGroupBtn">Save</button>
-                      <button type="button" id="cancelGroupBtn" class="secondary">Cancel</button>
+
+                  <div class="cats-pane__toolbar" role="toolbar" aria-label="Category actions">
+                    <button type="button" id="addCategoryGroupBtn" class="cats-pane__action">+ Add group</button>
+                    <button type="button" id="focusNewCategoryBtn" class="cats-pane__action">+ Add category</button>
+                  </div>
+
+                  <div id="addGroupInline" class="cats-pane__inline-add" hidden>
+                    <label for="newGroupName" class="sr-only">New group name</label>
+                    <input id="newGroupName" type="text" placeholder="New group name" autocomplete="off" />
+                    <button type="button" id="saveGroupBtn">Save</button>
+                    <button type="button" id="cancelGroupBtn" class="secondary">Cancel</button>
+                  </div>
+
+                  <div id="categoriesEmpty" class="cats-pane__empty" hidden>
+                    <p class="cats-pane__empty-title">No categories yet.</p>
+                    <p class="cats-pane__empty-sub">Start with our defaults, or create your own structure from scratch.</p>
+                    <div class="cats-pane__empty-actions">
+                      <button type="button" id="loadDefaultCategoriesBtn">Load defaults</button>
+                      <button type="button" id="addFirstGroupBtn" class="secondary">Add first group</button>
                     </div>
                   </div>
-                  <p class="meta categories-toolbar-hint">
-                    Groups are section headers only. Drag to reorder groups or categories; add new categories using the row below.
-                  </p>
-                  <div id="categoriesTree" class="cat-tree" aria-live="polite"></div>
-                  <div style="height:10px;"></div>
-                  <div class="categories-actions">
-                    <div class="categories-new-field">
-                      <label for="newCategoryGroupId">Group</label>
-                      <select id="newCategoryGroupId" aria-label="Group for new category"></select>
-                    </div>
-                    <div class="categories-new-field">
-                      <label for="newCategoryName">New category</label>
-                      <input id="newCategoryName" type="text" placeholder="e.g. Groceries" />
-                    </div>
-                    <button id="addCategoryBtn">Add category</button>
-                  </div>
-                  <div id="catErr" class="error"></div>
+
+                  <div id="categoriesTree" class="cats-tree" aria-live="polite"></div>
+
+                  <p id="catErr" class="error" role="alert"></p>
                 </div>
 
                 <div class="settings-pane" data-settings-pane="familySharing" hidden>
@@ -1248,7 +1247,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="../app.js?v=270"></script>
+    <script src="../app.js?v=271"></script>
     <script src="../feedback.js?v=3" defer></script>
     <script src="../tour.js?v=1" defer></script>
   </body>

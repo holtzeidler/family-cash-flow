@@ -419,6 +419,10 @@ class Category(Base):
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     fg_color: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     bg_color: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    # Soft-delete flag. Archived categories disappear from pickers and
+    # the live tree but stay attached to historical transactions so the
+    # ledger keeps reading correctly.
+    archived: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
 
     family: Mapped[Family] = relationship(back_populates="categories")
     group: Mapped[Optional[CategoryGroup]] = relationship(back_populates="categories")
@@ -1071,6 +1075,7 @@ class CategoryOut(BaseModel):
     group_name: Optional[str] = None
     fg_color: Optional[str] = None
     bg_color: Optional[str] = None
+    archived: bool = False
 
 
 class CategoryUpdateIn(BaseModel):
@@ -1079,6 +1084,7 @@ class CategoryUpdateIn(BaseModel):
     bg_color: Optional[str] = Field(default=None, max_length=20)
     sort_order: Optional[int] = None
     group_id: Optional[int] = None
+    archived: Optional[bool] = None
 
 
 class CategoryReorderIn(BaseModel):
@@ -1978,6 +1984,7 @@ def startup_populate_schema():
     _ensure_category_sort_order_column()
     _ensure_category_group_sort_order_column()
     _ensure_category_group_id_column()
+    _ensure_category_archived_column()
     _backfill_category_groups_for_existing_families()
     _cleanup_new_group_placeholders()
     _ensure_reconciled_days_table()
@@ -2457,6 +2464,25 @@ def _ensure_category_group_id_column() -> None:
                 conn.execute(text("ALTER TABLE categories ADD COLUMN group_id INTEGER"))
         else:
             conn.execute(text("ALTER TABLE categories ADD COLUMN IF NOT EXISTS group_id INTEGER"))
+
+
+def _ensure_category_archived_column() -> None:
+    """Lightweight startup migration: soft-delete flag for categories.
+
+    Archived categories are hidden from pickers and the live tree but
+    remain attached to historical transactions so the ledger keeps
+    reading correctly.
+    """
+    with engine.begin() as conn:
+        if settings.DATABASE_URL.startswith("sqlite"):
+            cols = conn.execute(text("PRAGMA table_info(categories)")).fetchall()
+            has_col = any(str(row[1]) == "archived" for row in cols)
+            if not has_col:
+                conn.execute(text("ALTER TABLE categories ADD COLUMN archived BOOLEAN NOT NULL DEFAULT 0"))
+            conn.execute(text("UPDATE categories SET archived = COALESCE(archived, 0)"))
+        else:
+            conn.execute(text("ALTER TABLE categories ADD COLUMN IF NOT EXISTS archived BOOLEAN NOT NULL DEFAULT FALSE"))
+            conn.execute(text("UPDATE categories SET archived = COALESCE(archived, FALSE)"))
 
 
 def _ensure_reimbursable_columns() -> None:
@@ -3234,6 +3260,7 @@ def _category_out_from_model(*, cat: Category, group_name: Optional[str] = None)
         group_name=group_name,
         fg_color=cat.fg_color,
         bg_color=cat.bg_color,
+        archived=bool(getattr(cat, "archived", False)),
     )
 
 
@@ -3254,7 +3281,7 @@ def _default_category_group_id(*, db, family_id: int) -> int:
     return int(g.id)
 
 
-def get_categories_tree(*, db, family_id: int) -> CategoriesTreeOut:
+def get_categories_tree(*, db, family_id: int, include_archived: bool = False) -> CategoriesTreeOut:
     groups = (
         db.execute(
             select(CategoryGroup)
@@ -3264,9 +3291,12 @@ def get_categories_tree(*, db, family_id: int) -> CategoriesTreeOut:
         .scalars()
         .all()
     )
+    cat_query = select(Category).where(Category.family_id == family_id)
+    if not include_archived:
+        cat_query = cat_query.where(Category.archived.is_(False))
     cats = (
         db.execute(
-            select(Category).where(Category.family_id == family_id).order_by(Category.sort_order.asc(), Category.name.asc(), Category.id.asc())
+            cat_query.order_by(Category.sort_order.asc(), Category.name.asc(), Category.id.asc())
         )
         .scalars()
         .all()
@@ -3552,6 +3582,9 @@ def update_category(
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid group_id")
         cat.group_id = gid
 
+    if payload.archived is not None:
+        cat.archived = bool(payload.archived)
+
     db.commit()
     db.refresh(cat)
     gname: Optional[str] = None
@@ -3568,6 +3601,16 @@ def delete_category(
     access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
+    """Delete or archive a category.
+
+    A category is hard-deleted only when it is safe to do so — i.e. no
+    real or planned transaction is referencing it. If any transaction
+    (real, expected, or override) references the category, the category
+    is archived instead so historical entries keep a readable label.
+
+    The frontend "Archive" action also routes through here; the response
+    body carries `{ ok, archived }` so the UI can confirm what happened.
+    """
     user_id = get_current_user_id(access_token)
     require_family_write(db=db, family_id=family_id, user_id=user_id)
 
@@ -3575,25 +3618,27 @@ def delete_category(
     if cat is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Category not found")
 
-    # Leave existing transactions uncategorized instead of failing FK constraints.
-    db.execute(
-        update(Transaction)
+    has_tx = db.execute(
+        select(func.count(Transaction.id))
         .where(Transaction.family_id == family_id, Transaction.category_id == category_id)
-        .values(category_id=None)
-    )
-    db.execute(
-        update(ExpectedTransaction)
+    ).scalar_one() or 0
+    has_exp = db.execute(
+        select(func.count(ExpectedTransaction.id))
         .where(ExpectedTransaction.family_id == family_id, ExpectedTransaction.category_id == category_id)
-        .values(category_id=None)
-    )
-    db.execute(
-        update(ExpectedTransactionOverride)
+    ).scalar_one() or 0
+    has_ovr = db.execute(
+        select(func.count(ExpectedTransactionOverride.id))
         .where(ExpectedTransactionOverride.family_id == family_id, ExpectedTransactionOverride.category_id == category_id)
-        .values(category_id=None)
-    )
+    ).scalar_one() or 0
+
+    if int(has_tx) + int(has_exp) + int(has_ovr) > 0:
+        cat.archived = True
+        db.commit()
+        return {"ok": True, "archived": True}
+
     db.execute(delete(Category).where(Category.id == category_id, Category.family_id == family_id))
     db.commit()
-    return {"ok": True}
+    return {"ok": True, "archived": False}
 
 
 @app.post("/api/families/{family_id}/categories/reorder", response_model=list[CategoryOut])
@@ -3626,12 +3671,13 @@ def reorder_categories(
 @app.get("/api/families/{family_id}/categories/tree", response_model=CategoriesTreeOut)
 def get_categories_tree_endpoint(
     family_id: int,
+    include_archived: bool = False,
     access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
     require_family_member(db=db, family_id=family_id, user_id=user_id)
-    return get_categories_tree(db=db, family_id=family_id)
+    return get_categories_tree(db=db, family_id=family_id, include_archived=include_archived)
 
 
 @app.put("/api/families/{family_id}/categories/tree", response_model=CategoriesTreeOut)
