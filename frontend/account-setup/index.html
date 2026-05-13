@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=421" />
+    <link rel="stylesheet" href="../styles.css?v=422" />
   </head>
   <body class="login-page signup-page account-setup-page">
     <div class="container">
@@ -152,20 +152,19 @@
                     <div class="account-setup-tx-choice-wrap">
                       <div class="account-setup-tx-choice-row" role="group" aria-label="Add income or expense">
                         <button type="button" class="top-nav__logout" id="asTxHubAddIncomeBtn">+ Add Income</button>
-                        <button type="button" class="top-nav__logout" id="asTxHubAddExpenseBtn">– Add Expense</button>
+                        <button type="button" class="top-nav__logout" id="asTxHubAddExpenseBtn">+ Add Expense</button>
                       </div>
                     </div>
                   </div>
                   <div id="accountSetupWizardStep3Form" class="account-setup-step3-form" hidden>
                   <div class="account-setup-step3-form__success" id="accountSetupStep3Success" hidden>
-                    <div class="account-setup-step3-form__successText">✓ Your forecast is taking shape</div>
-                    <p class="account-setup-step3-form__successSubtext">Here’s what you’ve added so far:</p>
                     <ul class="account-setup-success-summary" id="accountSetupStep3SuccessSummary" aria-label="Items added"></ul>
+                    <p class="account-setup-step3-form__optionalLabel">Optional before continuing</p>
                     <div class="account-setup-step3-form__successActions" role="group" aria-label="Add another transaction">
+                      <button type="button" class="top-nav__logout" id="asStep3SuccessAddExpenseBtn">+ Add Expense</button>
                       <button type="button" class="top-nav__logout" id="asStep3SuccessAddIncomeBtn">+ Add Income</button>
-                      <button type="button" class="top-nav__logout" id="asStep3SuccessAddExpenseBtn">– Add Expense</button>
                     </div>
-                    <div class="account-setup-step3-form__successNote">A few predictable items are usually enough to start. You can edit or add more later.</div>
+                    <button type="button" class="top-nav__logout account-setup-step3-form__continueBtn" id="asStep3ContinueBtn">Continue</button>
                   </div>
                   <div class="account-setup-step3-form__body">
                   <div class="form-row-h">
@@ -627,6 +626,6 @@
       </div>
     </div>
 
-    <script src="../signup/signup.js?v=85"></script>
+    <script src="../signup/signup.js?v=86"></script>
   </body>
 </html>

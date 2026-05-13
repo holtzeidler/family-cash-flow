@@ -741,8 +741,8 @@ function getAccountSetupStepCopy(step, ctx) {
     case 2: {
       if (phase3 === "form" && phase3After) {
         return {
-          title: "Your forecast is taking shape",
-          subtitle: "Add another predictable item, or continue when you’re ready to see your forecast.",
+          title: "Build your starting forecast",
+          subtitle: "You’ve added enough to generate your first forecast. You can continue now and refine things later.",
         };
       }
       if (phase3 === "form") {
@@ -788,6 +788,8 @@ function syncAccountSetupWizardShellButtons() {
   const hubAddExpense = document.getElementById("asTxHubAddExpenseBtn");
   const successAddExpense = document.getElementById("asStep3SuccessAddExpenseBtn");
   const successAddIncome = document.getElementById("asStep3SuccessAddIncomeBtn");
+  const successContinue = document.getElementById("asStep3ContinueBtn");
+  const actionsShell = document.getElementById("accountSetupActions");
   if (!document.getElementById("accountSetupWizard")) return;
 
   try {
@@ -797,6 +799,7 @@ function syncAccountSetupWizardShellButtons() {
   if (addMoreTxBtn) addMoreTxBtn.style.display = "none";
   // Default: hide skip. We'll selectively show it on Step 3 once a tx exists.
   if (accountSetupSkipBtn) accountSetupSkipBtn.style.display = "none";
+  if (actionsShell) actionsShell.classList.remove("account-setup-actions--step3-success");
 
   // Step-aware narrative copy: "Step N of 4" label + a precise headline and subline.
   // We read the draft once for the title decision (form/after-save/intro) to keep
@@ -896,6 +899,7 @@ function syncAccountSetupWizardShellButtons() {
       if (saveInc) saveInc.textContent = "Next";
       if (cancelInc) cancelInc.textContent = after ? "Continue" : "Cancel";
       if (saveInc) saveInc.style.display = after ? "none" : "inline-flex";
+      if (cancelInc) cancelInc.style.display = after ? "none" : "inline-flex";
       if (cancelInc) {
         cancelInc.classList.toggle("top-nav__logout", !!after);
         cancelInc.classList.toggle("secondary", !after);
@@ -910,8 +914,11 @@ function syncAccountSetupWizardShellButtons() {
       }
       if (successAddExpense) successAddExpense.hidden = !after;
       if (successAddIncome) successAddIncome.hidden = !after;
+      if (successContinue) successContinue.hidden = !after;
+      if (actionsShell && after) actionsShell.classList.add("account-setup-actions--step3-success");
     } else {
       // In hub/intro mode, leave Next/Skip visibility as determined above (based on tx count).
+      if (successContinue) successContinue.hidden = true;
     }
     return;
   }
@@ -3063,6 +3070,7 @@ document.getElementById("asTxHubAddIncomeBtn")?.addEventListener("click", () => 
 document.getElementById("asTxHubAddExpenseBtn")?.addEventListener("click", () => accountSetupTxHubAddExpenseClick());
 document.getElementById("asStep3SuccessAddIncomeBtn")?.addEventListener("click", () => advanceAccountSetupWizardToIncomeFormFromSuccess());
 document.getElementById("asStep3SuccessAddExpenseBtn")?.addEventListener("click", () => advanceAccountSetupWizardToExpenseForm());
+document.getElementById("asStep3ContinueBtn")?.addEventListener("click", () => accountSetupCancelIncomeClick());
 document.getElementById("asExpSaveBtn")?.addEventListener("click", () => void accountSetupSaveExpenseClick());
 document.getElementById("asExpCancelBtn")?.addEventListener("click", () => accountSetupCancelExpenseClick());
 try {
@@ -3343,8 +3351,10 @@ function renderAccountSetupSuccessSummary(listId) {
   }
   list.innerHTML = "";
   const items = [];
-  if (incomeCount > 0) items.push(`${incomeCount} income source${incomeCount === 1 ? "" : "s"}`);
-  if (expenseCount > 0) items.push(`${expenseCount} recurring expense${expenseCount === 1 ? "" : "s"}`);
+  if (incomeCount === 1) items.push("Income added");
+  else if (incomeCount > 1) items.push(`${incomeCount} income sources`);
+  if (expenseCount === 1) items.push("Recurring expense added");
+  else if (expenseCount > 1) items.push(`${expenseCount} recurring expenses`);
   if (items.length === 0) {
     const li = document.createElement("li");
     li.className = "account-setup-success-summary__empty";

@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=427" />
+    <link rel="stylesheet" href="../styles.css?v=433" />
   </head>
   <body>
     <div class="container">
@@ -224,7 +224,7 @@
                 <div id="txAddCategoryColorRow" class="cat-color-row tx-add-cat-color-panel" hidden>
                   <div class="cat-color-row__label">Color</div>
                   <div class="cat-color-row__swatches" id="txAddCategoryColorSwatches"></div>
-                  <button type="button" class="cat-color-row__clear secondary" id="txAddCategoryColorClear" hidden>Clear</button>
+                  <button type="button" class="cat-color-row__clear secondary" id="txAddCategoryColorClear" hidden>Clear color</button>
                 </div>
               </div>
               <div class="modal-actions modal-actions--tx-add-foot">
@@ -541,17 +541,14 @@
                   </header>
                   <div class="settings-section-body">
                     <div class="list settings-account-list" id="accountsList"></div>
-                    <div class="settings-actions-row">
-                      <button type="button" id="openAccountModalBtn" class="secondary settings-add-account-btn">Add account</button>
-                    </div>
                   </div>
                 </div>
 
                 <div class="settings-pane cats-pane" data-settings-pane="forecastRules" data-cats-pane hidden>
                   <header class="settings-section-head cats-pane__head">
                     <h2 class="settings-section-title cats-pane__title">Forecast Rules</h2>
-                    <p class="settings-section-lede cats-pane__helper">Groups organize your categories. Categories are what you assign to transactions.</p>
-                    <p class="cats-pane__note">Most people use the defaults and customize over time.</p>
+                    <p class="settings-section-lede cats-pane__helper">Groups help organize related categories.<br />Categories are what you assign to transactions.</p>
+                    <p class="cats-pane__note">You can customize these anytime.</p>
                   </header>
 
                   <div class="cats-pane__toolbar" role="toolbar" aria-label="Category actions">
@@ -568,7 +565,7 @@
 
                   <div id="categoriesEmpty" class="cats-pane__empty" hidden>
                     <p class="cats-pane__empty-title">No categories yet.</p>
-                    <p class="cats-pane__empty-sub">Start with our defaults, or create your own structure from scratch.</p>
+                    <p class="cats-pane__empty-sub">Start with a few simple categories. You can refine them anytime.</p>
                     <div class="cats-pane__empty-actions">
                       <button type="button" id="loadDefaultCategoriesBtn">Load defaults</button>
                       <button type="button" id="addFirstGroupBtn" class="secondary">Add first group</button>
@@ -1341,12 +1338,16 @@
     </div>
 
     <div id="accountModal" class="modal-overlay" aria-hidden="true">
-      <div class="modal" role="dialog" aria-labelledby="accountModalTitle" aria-modal="true">
+      <div class="modal modal--account" role="dialog" aria-labelledby="accountModalTitle" aria-modal="true">
         <h3 id="accountModalTitle">Add New Account</h3>
+        <div id="accountEditInfo" class="account-modal__info" hidden>
+          <p class="account-modal__infoTitle">Changing the starting balance or date will recalculate future forecast balances.</p>
+          <p class="account-modal__infoSub">This does not delete transactions.</p>
+        </div>
         <div id="accErr" class="error"></div>
         <input id="accountEditId" type="hidden" />
 
-        <div class="row two">
+        <div class="row two account-modal__row">
           <div>
             <label for="accountName">Account Name</label>
             <input id="accountName" type="text" placeholder="e.g. Checking" />
@@ -1363,26 +1364,26 @@
           </div>
         </div>
 
-        <div style="height:10px;"></div>
-
-        <div class="row two">
-          <div>
+        <div class="row two account-modal__row account-modal__row--balance">
+          <div class="account-modal__field">
             <label for="accountStartingBalance">Starting Balance</label>
             <div class="money-input">
               <span class="money-input__prefix" aria-hidden="true">$</span>
               <input id="accountStartingBalance" type="number" step="0.01" placeholder="0.00" />
             </div>
+            <p class="account-modal__fieldHelp">Balance in this account on the selected start date.</p>
           </div>
-          <div>
-            <label for="accountStartingBalanceDate">Starting Balance Date</label>
+          <div class="account-modal__field">
+            <label for="accountStartingBalanceDate">Balance As Of</label>
             <input id="accountStartingBalanceDate" type="date" />
           </div>
         </div>
 
-        <div class="modal-actions">
-          <button type="button" id="addAccountBtn">Add account</button>
+        <div class="modal-actions account-modal__actions">
+          <p id="accountEditFootnote" class="account-modal__footnote" hidden>Forecast updates immediately after saving.</p>
+          <button type="button" id="addAccountBtn" class="account-modal__primary">Add account</button>
           <button type="button" id="cancelAccountEditBtn" class="secondary">Cancel</button>
-          <button type="button" id="saveAccountEditBtn" class="danger">Save balance/date edit</button>
+          <button type="button" id="saveAccountEditBtn" class="account-modal__primary">Save changes</button>
         </div>
       </div>
     </div>
@@ -1417,8 +1418,8 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="../app.js?v=279"></script>
+    <script src="../app.js?v=284"></script>
     <script src="../feedback.js?v=3" defer></script>
-    <script src="../tour.js?v=2" defer></script>
+    <script src="../tour.js?v=3" defer></script>
   </body>
 </html>

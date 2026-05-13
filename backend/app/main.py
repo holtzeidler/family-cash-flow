@@ -2186,6 +2186,24 @@ def _ensure_feedback_table() -> None:
                     ")"
                 )
             )
+            cols = conn.execute(text("PRAGMA table_info(feedback)")).fetchall()
+            names = {str(row[1]) for row in cols}
+            sqlite_additions = {
+                "family_id": "ALTER TABLE feedback ADD COLUMN family_id INTEGER",
+                "category": "ALTER TABLE feedback ADD COLUMN category VARCHAR(32)",
+                "forecast_month": "ALTER TABLE feedback ADD COLUMN forecast_month VARCHAR(8)",
+                "browser_ua": "ALTER TABLE feedback ADD COLUMN browser_ua VARCHAR(500)",
+                "viewport": "ALTER TABLE feedback ADD COLUMN viewport VARCHAR(32)",
+                "screenshot_mime": "ALTER TABLE feedback ADD COLUMN screenshot_mime VARCHAR(48)",
+                "rating": "ALTER TABLE feedback ADD COLUMN rating VARCHAR(16)",
+                "comment": "ALTER TABLE feedback ADD COLUMN comment TEXT",
+                "prompt_id": "ALTER TABLE feedback ADD COLUMN prompt_id VARCHAR(64)",
+                "context_key": "ALTER TABLE feedback ADD COLUMN context_key VARCHAR(128)",
+                "admin_notes": "ALTER TABLE feedback ADD COLUMN admin_notes TEXT",
+            }
+            for col, stmt in sqlite_additions.items():
+                if col not in names:
+                    conn.execute(text(stmt))
         else:
             conn.execute(
                 text(
@@ -2215,6 +2233,21 @@ def _ensure_feedback_table() -> None:
                     ")"
                 )
             )
+            postgres_additions = [
+                "ALTER TABLE feedback ADD COLUMN IF NOT EXISTS family_id INTEGER",
+                "ALTER TABLE feedback ADD COLUMN IF NOT EXISTS category VARCHAR(32)",
+                "ALTER TABLE feedback ADD COLUMN IF NOT EXISTS forecast_month VARCHAR(8)",
+                "ALTER TABLE feedback ADD COLUMN IF NOT EXISTS browser_ua VARCHAR(500)",
+                "ALTER TABLE feedback ADD COLUMN IF NOT EXISTS viewport VARCHAR(32)",
+                "ALTER TABLE feedback ADD COLUMN IF NOT EXISTS screenshot_mime VARCHAR(48)",
+                "ALTER TABLE feedback ADD COLUMN IF NOT EXISTS rating VARCHAR(16)",
+                "ALTER TABLE feedback ADD COLUMN IF NOT EXISTS comment TEXT",
+                "ALTER TABLE feedback ADD COLUMN IF NOT EXISTS prompt_id VARCHAR(64)",
+                "ALTER TABLE feedback ADD COLUMN IF NOT EXISTS context_key VARCHAR(128)",
+                "ALTER TABLE feedback ADD COLUMN IF NOT EXISTS admin_notes TEXT",
+            ]
+            for stmt in postgres_additions:
+                conn.execute(text(stmt))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_feedback_created_at ON feedback (created_at)"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_feedback_kind ON feedback (kind)"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_feedback_status ON feedback (status)"))

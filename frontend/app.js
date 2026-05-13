@@ -417,9 +417,9 @@ function renderCategoryColorPicker({ rowEl, swatchesEl, clearBtn, getCategoryId,
     // (so the user can explicitly save with no color despite the category default).
     const canClear = overrideNone || !!activeBg || categoryTint;
     if (clearBtn) {
-      clearBtn.hidden = false;
+      clearBtn.hidden = !canClear;
       clearBtn.disabled = !canClear;
-      clearBtn.title = canClear ? "Clear color for this transaction (save to apply)" : "No color to clear";
+      clearBtn.title = canClear ? "Clear color for this transaction" : "";
     }
 
     swatchesEl.innerHTML = "";
@@ -460,7 +460,7 @@ function renderCategoryColorPicker({ rowEl, swatchesEl, clearBtn, getCategoryId,
       if (clearBtn) {
         clearBtn.hidden = false;
         clearBtn.disabled = false;
-        clearBtn.title = "Clear selected color";
+        clearBtn.title = "Clear color for this transaction";
       }
     });
     // Re-render once the user commits/closes the picker.
@@ -940,12 +940,16 @@ const cancelAccountEditBtn = document.getElementById("cancelAccountEditBtn");
 const openAccountModalBtn = document.getElementById("openAccountModalBtn");
 const accountModal = document.getElementById("accountModal");
 const accountModalTitle = document.getElementById("accountModalTitle");
+const accountEditInfo = document.getElementById("accountEditInfo");
+const accountEditFootnote = document.getElementById("accountEditFootnote");
 
 function openAccountModal(mode = "add") {
   if (!accountModal) return;
   if (accountModalTitle) accountModalTitle.textContent = mode === "edit" ? "Edit Account" : "Add New Account";
   if (addAccountBtn) addAccountBtn.style.display = mode === "edit" ? "none" : "";
   if (saveAccountEditBtn) saveAccountEditBtn.style.display = mode === "edit" ? "" : "none";
+  if (accountEditInfo) accountEditInfo.hidden = mode !== "edit";
+  if (accountEditFootnote) accountEditFootnote.hidden = mode !== "edit";
   accountModal.classList.add("modal-overlay--open");
   accountModal.setAttribute("aria-hidden", "false");
   try {
@@ -1592,6 +1596,88 @@ function hydrateBalanceThresholdInputsFromStorage() {
   invalidateLowBalanceAlertCache();
 }
 
+function isForecastThresholdRouteMissing(err) {
+  const msg = String(err && err.message ? err.message : "").trim().toLowerCase();
+  return msg === "not found";
+}
+
+function finishBalanceThresholdSave({
+  fidNum,
+  minParsed,
+  maxParsed,
+  minEl,
+  maxEl,
+  errEl,
+  saveBtn,
+  savedMsg,
+  savedText,
+  toastText,
+  familyPatch,
+}) {
+  const minKey = getBalanceThresholdKey("min", fidNum);
+  const maxKey = getBalanceThresholdKey("max", fidNum);
+  if (Array.isArray(state.families)) {
+    const ix = state.families.findIndex((x) => Number(x.id) === Number(fidNum));
+    if (ix >= 0) {
+      state.families[ix] = {
+        ...state.families[ix],
+        ...(familyPatch || {}),
+        balance_threshold_min: minParsed.empty ? null : minParsed.num,
+        balance_threshold_max: maxParsed.empty ? null : maxParsed.num,
+      };
+    }
+  }
+  if (minKey && minEl) localStorage.setItem(minKey, minParsed.empty ? "" : minParsed.canonical);
+  if (maxKey && maxEl) localStorage.setItem(maxKey, maxParsed.empty ? "" : maxParsed.canonical);
+  localStorage.setItem(BALANCE_THRESHOLD_FAMILY_ID_KEY, String(fidNum));
+  if (minEl) minEl.value = minParsed.empty ? "" : minParsed.canonical;
+  if (maxEl) maxEl.value = maxParsed.empty ? "" : maxParsed.canonical;
+  state.activeFamilyId = fidNum;
+  if (familySelect && Number(fidNum) > 0) {
+    try {
+      familySelect.value = String(fidNum);
+    } catch (_) {}
+  }
+  lastExplicitBalanceThresholdSaveMs = Date.now();
+  show(errEl, "");
+  invalidateLowBalanceAlertCache();
+  if (lowBalanceDebounceTimer) clearTimeout(lowBalanceDebounceTimer);
+  lowBalanceDebounceTimer = null;
+  void refreshLowBalanceAlert();
+  if (reportsViewPanel && !reportsViewPanel.hidden && lastProjectionDailyForReports?.length > 1 && projectionChartCanvas) {
+    drawProjectionChart(lastProjectionDailyForReports);
+    renderReportsOperationalPanels();
+  }
+  if (balanceThresholdSavedHideTimer) clearTimeout(balanceThresholdSavedHideTimer);
+  if (savedMsg) {
+    savedMsg.textContent = savedText;
+    savedMsg.hidden = false;
+  }
+  showBwToast(toastText);
+  balanceThresholdSavedHideTimer = window.setTimeout(() => {
+    balanceThresholdSavedHideTimer = null;
+    if (savedMsg) {
+      savedMsg.textContent = "";
+      savedMsg.hidden = true;
+    }
+  }, 5000);
+  if (saveBtn) {
+    const prev =
+      saveBtn.dataset.origLabel && saveBtn.dataset.origLabel.length
+        ? saveBtn.dataset.origLabel
+        : saveBtn.textContent.trim();
+    saveBtn.dataset.origLabel = prev;
+    saveBtn.textContent = "Saved";
+    saveBtn.disabled = true;
+    saveBtn.classList.add("is-saved");
+    window.setTimeout(() => {
+      saveBtn.textContent = saveBtn.dataset.origLabel || prev;
+      saveBtn.disabled = false;
+      saveBtn.classList.remove("is-saved");
+    }, 2200);
+  }
+}
+
 async function saveBalanceThresholds(opts = {}) {
   const silent = !!opts.silent;
   if (balanceThresholdPersistTimer) {
@@ -1672,66 +1758,38 @@ async function saveBalanceThresholds(opts = {}) {
       balance_threshold_min: minParsed.empty ? null : minParsed.num,
       balance_threshold_max: maxParsed.empty ? null : maxParsed.num,
     });
-    if (updated && Array.isArray(state.families)) {
-      const ix = state.families.findIndex((x) => Number(x.id) === Number(fidNum));
-      if (ix >= 0) {
-        state.families[ix] = { ...state.families[ix], ...updated };
-      }
-    }
-    if (minEl) localStorage.setItem(minKey, minParsed.empty ? "" : minParsed.canonical);
-    if (maxEl) localStorage.setItem(maxKey, maxParsed.empty ? "" : maxParsed.canonical);
-    localStorage.setItem(BALANCE_THRESHOLD_FAMILY_ID_KEY, String(fidNum));
-    if (minEl) minEl.value = minParsed.empty ? "" : minParsed.canonical;
-    if (maxEl) maxEl.value = maxParsed.empty ? "" : maxParsed.canonical;
-    state.activeFamilyId = fidNum;
-    if (familySelect && Number(fidNum) > 0) {
-      try {
-        familySelect.value = String(fidNum);
-      } catch (_) {}
-    }
+    finishBalanceThresholdSave({
+      fidNum,
+      minParsed,
+      maxParsed,
+      minEl,
+      maxEl,
+      errEl,
+      saveBtn,
+      savedMsg,
+      savedText: "Saved for this household.",
+      toastText: "Safe balance threshold saved.",
+      familyPatch: updated,
+    });
   } catch (e) {
+    if (isForecastThresholdRouteMissing(e)) {
+      finishBalanceThresholdSave({
+        fidNum,
+        minParsed,
+        maxParsed,
+        minEl,
+        maxEl,
+        errEl,
+        saveBtn,
+        savedMsg,
+        savedText: "Saved on this device.",
+        toastText: "Safe balance threshold saved on this device.",
+      });
+      return;
+    }
     hideThresholdSavedFeedback();
     show(errEl, e.message || "Could not save thresholds.");
     return;
-  }
-
-  lastExplicitBalanceThresholdSaveMs = Date.now();
-  show(errEl, "");
-  invalidateLowBalanceAlertCache();
-  if (lowBalanceDebounceTimer) clearTimeout(lowBalanceDebounceTimer);
-  lowBalanceDebounceTimer = null;
-  void refreshLowBalanceAlert();
-  if (reportsViewPanel && !reportsViewPanel.hidden && lastProjectionDailyForReports?.length > 1 && projectionChartCanvas) {
-    drawProjectionChart(lastProjectionDailyForReports);
-    renderReportsOperationalPanels();
-  }
-  if (balanceThresholdSavedHideTimer) clearTimeout(balanceThresholdSavedHideTimer);
-  if (savedMsg) {
-    savedMsg.textContent = "Saved for this household.";
-    savedMsg.hidden = false;
-  }
-  showBwToast("Safe balance threshold saved.");
-  balanceThresholdSavedHideTimer = window.setTimeout(() => {
-    balanceThresholdSavedHideTimer = null;
-    if (savedMsg) {
-      savedMsg.textContent = "";
-      savedMsg.hidden = true;
-    }
-  }, 5000);
-  if (saveBtn) {
-    const prev =
-      saveBtn.dataset.origLabel && saveBtn.dataset.origLabel.length
-        ? saveBtn.dataset.origLabel
-        : saveBtn.textContent.trim();
-    saveBtn.dataset.origLabel = prev;
-    saveBtn.textContent = "Saved";
-    saveBtn.disabled = true;
-    saveBtn.classList.add("is-saved");
-    window.setTimeout(() => {
-      saveBtn.textContent = saveBtn.dataset.origLabel || prev;
-      saveBtn.disabled = false;
-      saveBtn.classList.remove("is-saved");
-    }, 2200);
   }
 }
 
@@ -1987,7 +2045,7 @@ const catReportEnd = document.getElementById("catReportEnd");
 
 // After account creation, we show a one-time "forecast is ready" modal on first calendar load.
 const BW_FORECAST_READY_POPUP_KEY = "bw_forecast_ready_popup";
-const BW_FORECAST_READY_MODAL_VERSION = "6";
+const BW_FORECAST_READY_MODAL_VERSION = "7";
 const catReportYearSelect = document.getElementById("catReportYearSelect");
 const catReportRunBtn = document.getElementById("catReportRunBtn");
 const catReportErr = document.getElementById("catReportErr");
@@ -2698,11 +2756,15 @@ function normalizeNameForCompare(s) {
     .toLowerCase();
 }
 
-function hasDuplicateCategoryGroupName(name) {
+function hasDuplicateCategoryGroupName(name, exceptGroupId = null) {
   const nm = normalizeNameForCompare(name);
   if (!nm) return false;
+  const exceptId = exceptGroupId != null ? Number(exceptGroupId) : NaN;
   const groups = state.categoryTree?.groups || [];
-  return groups.some((g) => normalizeNameForCompare(g?.name) === nm);
+  return groups.some((g) => {
+    if (Number.isFinite(exceptId) && Number(g?.id) === exceptId) return false;
+    return normalizeNameForCompare(g?.name) === nm;
+  });
 }
 
 function hasDuplicateCategoryNameInGroup(name, groupId) {
@@ -2815,7 +2877,8 @@ if (addCategoryGroupBtn) {
   if (focusNewCategoryBtn) {
     focusNewCategoryBtn.addEventListener("click", () => {
       show(catErr, "");
-      const firstCard = categoriesTree?.querySelector(".cats-group");
+      const firstCard = categoriesTree?.querySelector('.cats-group:not([data-system-group="1"])')
+        || categoriesTree?.querySelector(".cats-group");
       if (!firstCard) {
         // No groups yet — guide the user to add a group first.
         if (addCategoryGroupBtn) {
@@ -2898,6 +2961,9 @@ if (addCategoryGroupBtn) {
         if (!nm) throw new Error("Group name is required");
         if (nm.trim().toLowerCase() === "new group") {
           throw new Error('Please choose a more specific group name (not "New group").');
+        }
+        if (isSystemUncategorizedGroupName(nm) && hasDuplicateCategoryGroupName(nm)) {
+          throw new Error('"Uncategorized" is reserved for the system fallback group.');
         }
         if (hasDuplicateCategoryGroupName(nm)) {
           const ok = window.confirm(`A group named "${nm}" already exists. Create a duplicate anyway?`);
@@ -6399,45 +6465,36 @@ function ensureCategoryComboDocClick() {
   });
 }
 
-/**
- * Categories & Groups: clean nested list with hover-only controls.
- *
- * Visual model:
- *   - Each group is a card with a header (drag handle on hover, name,
- *     count, kebab menu) and a body of category rows.
- *   - Each category row is a tight ledger-like line with a hover-only
- *     drag handle and a hover-only archive control. Click the name to
- *     rename inline; press Enter or click elsewhere to commit.
- *   - The bottom of each group card has a "+ Add category" affordance
- *     that expands into a tiny inline form.
- *
- * Reordering / regrouping:
- *   - Native HTML5 drag/drop. Categories can be dragged within or
- *     between groups; groups can be dragged to reorder.
- *   - Persistence routes through the same `PUT /categories/tree`
- *     endpoint as before via `persistCategoryTreeFromDom()`.
- *
- * Inline rename:
- *   - Group rename updates the in-DOM `[data-group-name]` element and
- *     calls `persistCategoryTreeFromDom()` (the tree layout PUT carries
- *     group names).
- *   - Category rename calls `PUT /categories/{id}` with the new name.
- *
- * Deletion:
- *   - Both groups and categories use the existing DELETE endpoints.
- *     The backend soft-archives a category that is referenced by any
- *     transaction (real, expected, or override) and hard-deletes it
- *     otherwise. The UI uses the safer "Archive" wording.
- *
- * Data attributes preserved for back-compat with persist + cat-edit
- * modal: `data-group-id`, `data-category-id`, `[data-group-name]`.
- */
+const SYSTEM_UNCATEGORIZED_GROUP_NAME = "Uncategorized";
+
+function normalizeCategoryGroupName(name) {
+  return String(name || "").trim().toLowerCase();
+}
+
+function isSystemUncategorizedGroupName(name) {
+  return normalizeCategoryGroupName(name) === normalizeCategoryGroupName(SYSTEM_UNCATEGORIZED_GROUP_NAME);
+}
+
+async function maybeEnsureSystemUncategorizedGroup(tree) {
+  const groups = Array.isArray(tree?.groups) ? tree.groups.filter(Boolean) : [];
+  if (!state.activeFamilyId || groups.length === 0 || groups.some((g) => isSystemUncategorizedGroupName(g?.name))) {
+    return tree || { groups: [] };
+  }
+  try {
+    await api(`/api/families/${state.activeFamilyId}/category-groups`, "POST", {
+      name: SYSTEM_UNCATEGORIZED_GROUP_NAME,
+    });
+    return await api(`/api/families/${state.activeFamilyId}/categories/tree`, "GET");
+  } catch (_) {
+    return tree || { groups: [] };
+  }
+}
+
 function renderCategoriesGrid(tree) {
   if (!categoriesTree) return;
   categoriesTree.innerHTML = "";
   const groups = (tree?.groups || []).filter(Boolean);
 
-  // Keep legacy hidden <select id="newCategoryGroupId"> in sync if present.
   if (newCategoryGroupId && "innerHTML" in newCategoryGroupId) {
     newCategoryGroupId.innerHTML = "";
     for (const g of groups) {
@@ -6448,8 +6505,6 @@ function renderCategoriesGrid(tree) {
     }
   }
 
-  // Find the empty-state element scoped to the same pane (preferred) or
-  // global fallback.
   const pane = categoriesTree.closest("[data-cats-pane]") || document;
   const emptyEl = pane.querySelector("#categoriesEmpty");
   if (!groups.length) {
@@ -6466,6 +6521,32 @@ function renderCategoriesGrid(tree) {
         ".cats-cat.is-drag-over, .cats-group__head.is-drag-over, .cats-group__body.is-drag-over, .cats-group.is-drag-over"
       )
       .forEach((x) => x.classList.remove("is-drag-over"));
+  }
+
+  function selectEditableText(el) {
+    try {
+      el.focus();
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    } catch (_) {}
+  }
+
+  function buildIconButton({ className, label, title, svg, onClick }) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = className;
+    btn.setAttribute("aria-label", label);
+    btn.title = title || label;
+    btn.innerHTML = svg;
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (typeof onClick === "function") onClick(e);
+    });
+    return btn;
   }
 
   function makeInlineEditable(el, { onCommit }) {
@@ -6489,7 +6570,6 @@ function renderCategoriesGrid(tree) {
       const newValue = String(el.textContent || "").trim();
       const oldValue = String(el.dataset.originalValue || "");
       if (!newValue) {
-        // Empty rename — restore.
         el.textContent = oldValue;
         return;
       }
@@ -6497,23 +6577,17 @@ function renderCategoriesGrid(tree) {
       try {
         await onCommit(newValue, oldValue);
       } catch (e) {
-        // Restore on failure.
         el.textContent = oldValue;
         show(catErr, e?.message || "Failed to rename");
       }
     });
   }
 
-  function mountCategoryRow(c, gid) {
+  function mountCategoryRow(c) {
     const row = document.createElement("div");
     row.className = "cats-cat";
     row.dataset.categoryId = String(c.id);
     row.draggable = true;
-
-    const handle = document.createElement("span");
-    handle.className = "cats-cat__handle";
-    handle.setAttribute("aria-hidden", "true");
-    handle.title = "Drag to reorder";
 
     const nameEl = document.createElement("span");
     nameEl.className = "cats-cat__name";
@@ -6529,35 +6603,50 @@ function renderCategoriesGrid(tree) {
       },
     });
 
-    const action = document.createElement("button");
-    action.type = "button";
-    action.className = "cats-cat__action";
-    action.setAttribute("aria-label", `Archive ${c.name}`);
-    action.title = "Archive category";
-    action.innerHTML =
-      '<svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M2 4h12v2H2V4zm1 3h10l-1 7H4L3 7zm3 2v3h4V9H6z" fill="currentColor"/></svg>';
-    action.addEventListener("click", async (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const ok = window.confirm(
-        `Archive "${c.name}"? Any transactions using it stay attached but the category disappears from pickers.`
-      );
-      if (!ok) return;
-      try {
-        show(catErr, "");
-        await api(`/api/families/${state.activeFamilyId}/categories/${Number(c.id)}`, "DELETE");
-        await loadCategories();
-        await loadMonthAndCalendar();
-      } catch (err) {
-        show(catErr, err?.message || "Failed to archive category");
-      }
+    const actions = document.createElement("div");
+    actions.className = "cats-cat__actions";
+
+    const renameBtn = buildIconButton({
+      className: "cats-cat__btn cats-cat__btn--rename",
+      label: `Rename ${c.name}`,
+      title: "Rename category",
+      svg: '<svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M11.9 2.6a1.5 1.5 0 0 1 2.1 2.1L6.2 12.5 3 13l.5-3.2L11.9 2.6Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="m10.7 3.8 1.5 1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
+      onClick: () => selectEditableText(nameEl),
     });
 
-    row.appendChild(handle);
-    row.appendChild(nameEl);
-    row.appendChild(action);
+    const deleteBtn = buildIconButton({
+      className: "cats-cat__btn cats-cat__btn--delete",
+      label: `Delete ${c.name}`,
+      title: "Delete category",
+      svg: '<svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M2.5 4.25h11M6 2.75h4M5.25 6.25v5.5M8 6.25v5.5M10.75 6.25v5.5M4.25 4.25l.5 8.5h6.5l.5-8.5" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+      onClick: async () => {
+        const ok = window.confirm(
+          `Delete "${c.name}"? Past transactions stay intact, and this category will be removed from future pickers.`
+        );
+        if (!ok) return;
+        try {
+          show(catErr, "");
+          await api(`/api/families/${state.activeFamilyId}/categories/${Number(c.id)}`, "DELETE");
+          await loadCategories();
+          await loadMonthAndCalendar();
+        } catch (err) {
+          show(catErr, err?.message || "Failed to delete category");
+        }
+      },
+    });
 
-    // Drag-and-drop: row reorder + cross-group move
+    const handle = document.createElement("span");
+    handle.className = "cats-cat__handle";
+    handle.setAttribute("aria-hidden", "true");
+    handle.title = "Drag to move";
+
+    actions.appendChild(renameBtn);
+    actions.appendChild(deleteBtn);
+    actions.appendChild(handle);
+
+    row.appendChild(nameEl);
+    row.appendChild(actions);
+
     row.addEventListener("dragstart", (e) => {
       try {
         e.dataTransfer.effectAllowed = "move";
@@ -6599,18 +6688,22 @@ function renderCategoriesGrid(tree) {
   }
 
   function mountGroupCard(g) {
+    const isSystemGroup = isSystemUncategorizedGroupName(g.name);
     const card = document.createElement("section");
     card.className = "cats-group";
     card.dataset.groupId = String(g.id);
+    if (isSystemGroup) card.dataset.systemGroup = "1";
 
     const head = document.createElement("header");
     head.className = "cats-group__head";
     head.draggable = true;
 
-    const handle = document.createElement("span");
-    handle.className = "cats-group__handle";
-    handle.setAttribute("aria-hidden", "true");
-    handle.title = "Drag to reorder group";
+    const collapseBtn = document.createElement("button");
+    collapseBtn.type = "button";
+    collapseBtn.className = "cats-group__collapse";
+    collapseBtn.setAttribute("aria-label", `Collapse ${g.name}`);
+    collapseBtn.innerHTML =
+      '<svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="m5 3.5 6 4.5-6 4.5V3.5Z" fill="currentColor"/></svg>';
 
     const nameWrap = document.createElement("h4");
     nameWrap.className = "cats-group__name";
@@ -6619,12 +6712,20 @@ function renderCategoriesGrid(tree) {
     nameText.className = "cats-group__name-text";
     nameText.dataset.groupName = "1";
     nameText.textContent = g.name;
-    nameText.title = "Click to rename";
-    makeInlineEditable(nameText, {
-      onCommit: async (newName) => {
-        await persistCategoryTreeFromDom();
-      },
-    });
+    nameText.title = isSystemGroup ? "System group" : "Click to rename";
+    if (!isSystemGroup) {
+      makeInlineEditable(nameText, {
+        onCommit: async (newName) => {
+          if (isSystemUncategorizedGroupName(newName)) {
+            throw new Error('"Uncategorized" is reserved for the system fallback group.');
+          }
+          if (hasDuplicateCategoryGroupName(newName, g.id)) {
+            throw new Error("A group with that name already exists.");
+          }
+          await persistCategoryTreeFromDom();
+        },
+      });
+    }
 
     const count = document.createElement("span");
     count.className = "cats-group__count";
@@ -6634,121 +6735,79 @@ function renderCategoriesGrid(tree) {
     nameWrap.appendChild(nameText);
     nameWrap.appendChild(count);
 
-    // Kebab menu: Rename / Add category / Collapse / Archive group
-    const menuWrap = document.createElement("div");
-    menuWrap.className = "cats-group__menu";
+    const body = document.createElement("div");
+    body.className = "cats-group__body";
 
-    const menuBtn = document.createElement("button");
-    menuBtn.type = "button";
-    menuBtn.className = "cats-group__menu-btn";
-    menuBtn.setAttribute("aria-label", "Group actions");
-    menuBtn.setAttribute("aria-haspopup", "menu");
-    menuBtn.setAttribute("aria-expanded", "false");
-    menuBtn.innerHTML =
-      '<svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true"><circle cx="8" cy="3" r="1.4"/><circle cx="8" cy="8" r="1.4"/><circle cx="8" cy="13" r="1.4"/></svg>';
+    const actions = document.createElement("div");
+    actions.className = "cats-group__actions";
 
-    const menuList = document.createElement("ul");
-    menuList.className = "cats-group__menu-list";
-    menuList.setAttribute("role", "menu");
-
-    function buildMenuItem(label, onClick, opts = {}) {
-      const li = document.createElement("li");
-      li.setAttribute("role", "none");
-      const b = document.createElement("button");
-      b.type = "button";
-      b.setAttribute("role", "menuitem");
-      b.className = "cats-group__menu-item" + (opts.danger ? " cats-group__menu-item--danger" : "");
-      b.textContent = label;
-      b.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        closeMenu();
-        onClick();
-      });
-      li.appendChild(b);
-      return li;
+    if (!isSystemGroup) {
+      actions.appendChild(
+        buildIconButton({
+          className: "cats-group__action cats-group__action--rename",
+          label: `Rename ${g.name}`,
+          title: "Rename group",
+          svg: '<svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M11.9 2.6a1.5 1.5 0 0 1 2.1 2.1L6.2 12.5 3 13l.5-3.2L11.9 2.6Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="m10.7 3.8 1.5 1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
+          onClick: () => selectEditableText(nameText),
+        })
+      );
+      actions.appendChild(
+        buildIconButton({
+          className: "cats-group__action cats-group__action--delete",
+          label: `Delete ${g.name}`,
+          title: "Delete group",
+          svg: '<svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M2.5 4.25h11M6 2.75h4M5.25 6.25v5.5M8 6.25v5.5M10.75 6.25v5.5M4.25 4.25l.5 8.5h6.5l.5-8.5" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+          onClick: async () => {
+            const catsCount = body.querySelectorAll(".cats-cat").length;
+            const fallbackCard = categoriesTree.querySelector(
+              `.cats-group[data-system-group="1"]:not([data-group-id="${String(g.id)}"])`
+            );
+            const fallbackName =
+              fallbackCard?.querySelector("[data-group-name]")?.textContent?.trim() || "another group";
+            const msg = catsCount
+              ? `Delete "${g.name}"? Its ${catsCount} ${catsCount === 1 ? "category" : "categories"} will move to ${fallbackName}.`
+              : `Delete "${g.name}"?`;
+            if (!window.confirm(msg)) return;
+            try {
+              show(catErr, "");
+              if (catsCount > 0 && fallbackCard) {
+                const fallbackBody = fallbackCard.querySelector(".cats-group__body");
+                if (fallbackBody) {
+                  [...body.querySelectorAll(".cats-cat")].forEach((rowEl) => fallbackBody.appendChild(rowEl));
+                  await persistCategoryTreeFromDom();
+                }
+              }
+              await api(`/api/families/${state.activeFamilyId}/category-groups/${Number(g.id)}`, "DELETE");
+              await loadCategories();
+              await loadMonthAndCalendar();
+            } catch (e) {
+              show(catErr, e?.message || "Failed to delete group");
+            }
+          },
+        })
+      );
     }
 
-    function closeMenu() {
-      menuList.classList.remove("is-open");
-      menuBtn.setAttribute("aria-expanded", "false");
-      document.removeEventListener("click", outsideClose, true);
-    }
-    function outsideClose(e) {
-      if (!menuWrap.contains(e.target)) closeMenu();
-    }
-    function openMenu() {
-      menuList.classList.add("is-open");
-      menuBtn.setAttribute("aria-expanded", "true");
-      setTimeout(() => document.addEventListener("click", outsideClose, true), 0);
-    }
+    const handle = document.createElement("span");
+    handle.className = "cats-group__handle";
+    handle.setAttribute("aria-hidden", "true");
+    handle.title = "Drag to reorder group";
+    actions.appendChild(handle);
 
-    menuBtn.addEventListener("click", (e) => {
+    head.appendChild(collapseBtn);
+    head.appendChild(nameWrap);
+    head.appendChild(actions);
+
+    collapseBtn.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
-      const open = menuList.classList.contains("is-open");
-      if (open) closeMenu();
-      else openMenu();
+      card.classList.toggle("is-collapsed");
+      collapseBtn.setAttribute(
+        "aria-label",
+        `${card.classList.contains("is-collapsed") ? "Expand" : "Collapse"} ${g.name}`
+      );
     });
 
-    menuList.appendChild(
-      buildMenuItem("Rename", () => {
-        try {
-          nameText.focus();
-          // Select the text content for easy overwrite.
-          const range = document.createRange();
-          range.selectNodeContents(nameText);
-          const sel = window.getSelection();
-          sel.removeAllRanges();
-          sel.addRange(range);
-        } catch (_) {}
-      })
-    );
-    menuList.appendChild(
-      buildMenuItem("Add category", () => {
-        const input = card.querySelector(".cats-group__add-input");
-        if (input) {
-          try {
-            input.focus();
-          } catch (_) {}
-        }
-      })
-    );
-    menuList.appendChild(
-      buildMenuItem(card.classList.contains("is-collapsed") ? "Expand" : "Collapse", () => {
-        card.classList.toggle("is-collapsed");
-      })
-    );
-    menuList.appendChild(
-      buildMenuItem(
-        "Archive group",
-        async () => {
-          const cats = g.categories || [];
-          const msg = cats.length
-            ? `Archive "${g.name}"? Its ${cats.length} ${cats.length === 1 ? "category" : "categories"} will move to another group.`
-            : `Archive "${g.name}"? It's empty so this will remove it.`;
-          if (!window.confirm(msg)) return;
-          try {
-            show(catErr, "");
-            await api(`/api/families/${state.activeFamilyId}/category-groups/${Number(g.id)}`, "DELETE");
-            await loadCategories();
-            await loadMonthAndCalendar();
-          } catch (e) {
-            show(catErr, e?.message || "Failed to archive group");
-          }
-        },
-        { danger: true }
-      )
-    );
-
-    menuWrap.appendChild(menuBtn);
-    menuWrap.appendChild(menuList);
-
-    head.appendChild(handle);
-    head.appendChild(nameWrap);
-    head.appendChild(menuWrap);
-
-    // Group drag (start on the head)
     head.addEventListener("dragstart", (e) => {
       try {
         e.dataTransfer.effectAllowed = "move";
@@ -6800,20 +6859,18 @@ function renderCategoriesGrid(tree) {
       scheduleCategoryTreePersist();
     });
 
-    // Group body
-    const body = document.createElement("div");
-    body.className = "cats-group__body";
-
     const cats = g.categories || [];
     if (cats.length === 0) {
       body.classList.add("is-empty");
       const emptyRow = document.createElement("p");
       emptyRow.className = "cats-group__empty-row";
-      emptyRow.textContent = "No categories yet — add one below.";
+      emptyRow.textContent = isSystemGroup
+        ? "New or moved categories can land here."
+        : "Start with a few simple categories. You can refine them anytime.";
       body.appendChild(emptyRow);
     }
     for (const c of cats) {
-      body.appendChild(mountCategoryRow(c, g.id));
+      body.appendChild(mountCategoryRow(c));
     }
 
     body.addEventListener("dragover", (e) => {
@@ -6836,20 +6893,17 @@ function renderCategoriesGrid(tree) {
       const movingId = Number(raw.slice("cat:".length));
       const movingRow = categoriesTree.querySelector(`.cats-cat[data-category-id="${movingId}"]`);
       if (!movingRow) return;
-      // Drop into empty area: append at end (above the add row).
       body.appendChild(movingRow);
       scheduleCategoryTreePersist();
     });
 
-    // Bottom-of-card "+ Add category" — collapsed trigger that expands
-    // into a tiny inline form on click. Keeps the card visually quiet.
     const addRow = document.createElement("div");
     addRow.className = "cats-group__add-row";
 
     const trigger = document.createElement("button");
     trigger.type = "button";
     trigger.className = "cats-group__add-trigger";
-    trigger.textContent = "+ Add category";
+    trigger.innerHTML = '<span class="cats-group__add-plus" aria-hidden="true">+</span><span>Add category</span>';
 
     const form = document.createElement("form");
     form.className = "cats-group__add-form";
@@ -6868,13 +6922,8 @@ function renderCategoriesGrid(tree) {
 
     const cancel = document.createElement("button");
     cancel.type = "button";
-    cancel.className = "cats-group__add-trigger";
+    cancel.className = "cats-group__add-cancel";
     cancel.textContent = "Cancel";
-    cancel.style.flex = "0 0 auto";
-    cancel.style.width = "auto";
-    cancel.style.borderStyle = "solid";
-    cancel.style.borderColor = "transparent";
-    cancel.style.color = "rgba(71, 85, 105, 0.78)";
 
     form.appendChild(input);
     form.appendChild(submit);
@@ -6904,7 +6953,6 @@ function renderCategoriesGrid(tree) {
         const ok = await addCategoryToGroup(Number(g.id), nm);
         if (ok) {
           input.value = "";
-          // Keep form open so the user can keep adding categories quickly.
           try {
             input.focus();
           } catch (_) {}
@@ -7010,7 +7058,8 @@ async function persistCategoryTreeFromDom() {
 async function loadCategories() {
   if (!state.activeFamilyId) return;
   await flushCategoryTreePersistIfPending();
-  const tree = await api(`/api/families/${state.activeFamilyId}/categories/tree`, "GET");
+  let tree = await api(`/api/families/${state.activeFamilyId}/categories/tree`, "GET");
+  tree = await maybeEnsureSystemUncategorizedGroup(tree);
   applyCategoryTreeToState(tree);
 }
 
@@ -7232,7 +7281,7 @@ function renderAccountsList(accounts) {
       accountStartingBalanceDate.value = account.starting_balance_date || "";
       accountName.disabled = true;
       accountType.disabled = true;
-      show(accErr, "Editing selected account's starting balance/date.");
+      show(accErr, "");
       openAccountModal("edit");
     });
   }
@@ -7327,6 +7376,8 @@ function clearAccountEdit() {
   show(accErr, "");
   if (addAccountBtn) addAccountBtn.style.display = "";
   if (saveAccountEditBtn) saveAccountEditBtn.style.display = "none";
+  if (accountEditInfo) accountEditInfo.hidden = true;
+  if (accountEditFootnote) accountEditFootnote.hidden = true;
 }
 
 function setExpectedModalMode() {
@@ -11904,8 +11955,7 @@ function getTrialContinueMonthlyPriceDisplay() {
 function setForecastReadyTrialPricing() {
   const el = document.getElementById("bwForecastReadyPricingLine");
   if (!el) return;
-  const price = getTrialContinueMonthlyPriceDisplay();
-  el.textContent = `$${price}/month after trial unless canceled.`;
+  el.textContent = "Cancel anytime.";
 }
 
 function ensureForecastReadyModal() {
@@ -11926,11 +11976,12 @@ function ensureForecastReadyModal() {
         <p class="bw-forecast-ready__tagline">Here are 3 quick things to know before you start.</p>
       </div>
       <div class="modal-actions bw-forecast-ready__actions">
-        <button type="button" class="bw-forecast-ready__cta" id="bwForecastReadyStartTourBtn">Start quick tour</button>
+        <button type="button" class="bw-forecast-ready__cta" id="bwForecastReadyStartTourBtn">Take the quick tour</button>
         <button type="button" class="bw-forecast-ready__skip" id="bwForecastReadySkipBtn">Skip for now</button>
+        <p class="bw-forecast-ready__reassure">Takes less than 60 seconds. You can revisit the tour anytime.</p>
       </div>
       <p class="bw-forecast-ready__finePrint" aria-label="Trial and pricing">
-        14-day free trial. <span id="bwForecastReadyPricingLine">$5.99/month after trial unless canceled.</span>
+        14-day free trial <span aria-hidden="true">•</span> <span id="bwForecastReadyPricingLine">Cancel anytime.</span>
       </p>
     </div>
   `;
