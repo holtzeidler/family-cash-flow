@@ -1986,6 +1986,7 @@ def startup_populate_schema():
     _ensure_category_group_sort_order_column()
     _ensure_category_group_id_column()
     _ensure_category_archived_column()
+    _ensure_family_balance_threshold_columns()
     _backfill_category_groups_for_existing_families()
     _cleanup_new_group_placeholders()
     _ensure_reconciled_days_table()
@@ -1993,7 +1994,6 @@ def startup_populate_schema():
     _ensure_family_member_rbac_columns()
     _backfill_family_member_owners()
     _ensure_family_invites_table()
-    _ensure_family_balance_threshold_columns()
 
 
 def _ensure_transaction_color_columns() -> None:
@@ -3434,8 +3434,8 @@ def apply_category_tree_layout(*, db, family_id: int, payload: CategoryTreeLayou
 
 def _backfill_category_groups_for_existing_families() -> None:
     with SessionLocal() as db:
-        for fam in db.execute(select(Family)).scalars().all():
-            fam_id = int(fam.id)
+        family_ids = [int(fam_id) for fam_id in db.execute(select(Family.id)).scalars().all()]
+        for fam_id in family_ids:
             ngrp = int(
                 db.execute(select(func.count()).select_from(CategoryGroup).where(CategoryGroup.family_id == fam_id)).scalar_one() or 0
             )
