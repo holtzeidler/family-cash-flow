@@ -4333,7 +4333,7 @@ function refreshTmInsights() {
     cards.push(
       tmInsightCard(
         "Variable amounts",
-        `${varsInRange} recurring ${varsInRange === 1 ? "item" : "items"} in this window still use placeholder amounts. Update them with real amounts so your projected balance stays accurate.`,
+        `${varsInRange} recurring ${varsInRange === 1 ? "item still uses" : "items still use"} placeholder amounts. Update ${varsInRange === 1 ? "it" : "them"} before ${varsInRange === 1 ? "it affects" : "they affect"} your forecast.`,
         "tm-insight-card--variable"
       )
     );
@@ -4385,13 +4385,12 @@ function refreshTmForecastNote() {
   } catch (_) {}
   const latest = tmLatestReconciledIsoBefore(toISODate(new Date()));
   tmForecastNote.classList.remove("tm__forecastNote--status", "tm__forecastNote--tip");
-  if (rowCount <= 0) {
+  if (!tmInsightsEl?.hidden) {
     tmForecastNote.textContent = "";
     tmForecastNote.hidden = true;
-  } else if (varsInRange > 0) {
-    tmForecastNote.textContent = `Start with ${varsInRange} variable recurring ${varsInRange === 1 ? "amount" : "amounts"}, then review upcoming rows before they affect the forecast.`;
-    tmForecastNote.classList.add("tm__forecastNote--tip");
-    tmForecastNote.hidden = false;
+  } else if (rowCount <= 0) {
+    tmForecastNote.textContent = "";
+    tmForecastNote.hidden = true;
   } else if (uncat > 0) {
     tmForecastNote.textContent = `Start with uncategorized transactions, then review upcoming rows so your forecast stays easy to trust.`;
     tmForecastNote.classList.add("tm__forecastNote--tip");
@@ -4417,16 +4416,6 @@ function refreshSidebarForecastHints() {
     parts.push(
       `<div class="sidebar-fqh__row"><span class="sidebar-fqh__k">Forecast low</span><span class="sidebar-fqh__v">$${fmtMoney(low.bal)} <span class="sidebar-fqh__d">${fmtDateMedDisplay(low.iso)}</span></span></div>`
     );
-  }
-  if (mStart && mEnd) {
-    const largest = tmLargestExpenseInRange(mStart, mEnd);
-    if (largest && largest.amt >= 1) {
-      parts.push(
-        `<div class="sidebar-fqh__row sidebar-fqh__row--bill"><span class="sidebar-fqh__k">Largest bill</span><span class="sidebar-fqh__v">$${fmtMoney(largest.amt)} <span class="sidebar-fqh__d sidebar-fqh__d--inline">${escapeHtml(largest.label)} · ${fmtDateMedDisplay(
-          largest.iso
-        )}</span></span></div>`
-      );
-    }
   }
   const latestRec = mEnd ? tmLatestReconciledIsoBefore(mEnd) : tmLatestReconciledIsoBefore(toISODate(new Date()));
   if (latestRec) {
@@ -6343,7 +6332,7 @@ function mountCategoryComboboxFromSelect(selectEl) {
   input.setAttribute("aria-expanded", "false");
   input.setAttribute("aria-controls", `${fieldId}_list`);
   input.autocomplete = "off";
-  input.placeholder = "Type to filter…";
+  input.placeholder = "Select category";
   input.spellcheck = false;
 
   const hidden = document.createElement("input");
@@ -8254,7 +8243,7 @@ function renderUncategorizedTransactions() {
     {
       const opt0 = document.createElement("option");
       opt0.value = "";
-      opt0.textContent = "Select category…";
+      opt0.textContent = "Select category";
       sel.appendChild(opt0);
     }
 
@@ -9812,11 +9801,15 @@ function renderCalendar() {
         txnsEl.appendChild(line);
       }
 
-      if (hiddenCount > 0 && txnsEl) {
+      if (combined.length > MAX_VISIBLE_TXNS && txnsEl) {
         const moreBtn = document.createElement("button");
         moreBtn.type = "button";
-        moreBtn.className = "cal-day-more";
-        moreBtn.textContent = `+${hiddenCount} more`;
+        moreBtn.className = `cal-day-more${isExpanded ? " is-expanded" : ""}`;
+        moreBtn.setAttribute("aria-expanded", isExpanded ? "true" : "false");
+        moreBtn.title = isExpanded
+          ? "Show fewer transactions"
+          : `Show ${hiddenCount} more transaction${hiddenCount === 1 ? "" : "s"}`;
+        moreBtn.textContent = isExpanded ? "Show less" : `+${hiddenCount} more`;
         moreBtn.addEventListener("click", (e) => {
           e.preventDefault();
           e.stopPropagation();

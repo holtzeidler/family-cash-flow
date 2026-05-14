@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=443" />
+    <link rel="stylesheet" href="../styles.css?v=444" />
   </head>
   <body class="login-page signup-page account-setup-page">
     <div class="container">
@@ -146,34 +146,31 @@
                   data-step3-phase="intro"
                 >
                   <div id="accountSetupWizardStep3Intro" class="account-setup-step3-intro">
-                    <p class="account-setup-step3-intro-hint">
-                      Start with the paydays and bills you already know. Most people add 2-3 recurring items, and you can edit everything later.
-                    </p>
-                    <p id="accountSetupStep3Progress" class="account-setup-step3-progress" aria-live="polite"></p>
+                    <div class="account-setup-step3-recommend">
+                      <p class="account-setup-step3-recommend__eyebrow">Recommended to start</p>
+                      <ul class="account-setup-step3-checklist" aria-label="Recommended recurring items">
+                        <li>Paycheck or income</li>
+                        <li>Rent/mortgage or major bill</li>
+                        <li>Credit card or utility</li>
+                      </ul>
+                    </div>
+                    <p id="accountSetupStep3Summary" class="account-setup-step3-summary" aria-live="polite" hidden></p>
                     <div class="account-setup-tx-choice-wrap" aria-label="Add recurring items">
-                      <div class="account-setup-step3-action">
-                        <button type="button" class="top-nav__logout account-setup-step3-actionBtn" id="asTxHubAddIncomeBtn">
-                          <span class="account-setup-step3-actionBtn__content">
-                            <span class="account-setup-step3-actionBtn__check" aria-hidden="true" hidden>✓</span>
-                            <span class="account-setup-step3-actionBtn__label">Add Income</span>
-                          </span>
-                        </button>
-                        <p id="asTxHubAddIncomeMeta" class="account-setup-step3-action__meta" hidden></p>
-                      </div>
-                      <div class="account-setup-step3-action">
-                        <button type="button" class="top-nav__logout account-setup-step3-actionBtn" id="asTxHubAddExpenseBtn">
-                          <span class="account-setup-step3-actionBtn__content">
-                            <span class="account-setup-step3-actionBtn__check" aria-hidden="true" hidden>✓</span>
-                            <span class="account-setup-step3-actionBtn__label">Add Expense</span>
-                          </span>
-                        </button>
-                        <p id="asTxHubAddExpenseMeta" class="account-setup-step3-action__meta" hidden></p>
-                      </div>
-                      <button type="button" class="top-nav__logout account-setup-step3-continueBtn" id="asTxHubContinueBtn" disabled>
-                        Continue
+                      <button type="button" class="top-nav__logout account-setup-step3-actionBtn" id="asTxHubAddIncomeBtn">
+                        <span class="account-setup-step3-actionBtn__content">
+                          <span class="account-setup-step3-actionBtn__plus" aria-hidden="true">+</span>
+                          <span class="account-setup-step3-actionBtn__label">Add Income</span>
+                        </span>
+                      </button>
+                      <button type="button" class="top-nav__logout account-setup-step3-actionBtn" id="asTxHubAddExpenseBtn">
+                        <span class="account-setup-step3-actionBtn__content">
+                          <span class="account-setup-step3-actionBtn__plus" aria-hidden="true">+</span>
+                          <span class="account-setup-step3-actionBtn__label">Add Expense</span>
+                        </span>
                       </button>
                     </div>
-                    <p class="account-setup-step3-intro-note">Optional: add more recurring items now, or continue and refine later.</p>
+                    <div class="account-setup-step3-divider" aria-hidden="true"></div>
+                    <p id="accountSetupStep3Helper" class="account-setup-step3-helper">You can skip this and add items from the calendar later.</p>
                   </div>
                   <div id="accountSetupWizardStep3Form" class="account-setup-step3-form" hidden>
                   <div class="account-setup-step3-form__body">
@@ -634,6 +631,6 @@
       </div>
     </div>
 
-    <script src="../signup/signup.js?v=87"></script>
+    <script src="../signup/signup.js?v=88"></script>
   </body>
 </html>

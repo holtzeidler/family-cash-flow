@@ -2094,31 +2094,31 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
   }
 
   body.landing-page .app-footer__grid{
-    grid-template-columns: minmax(0, 1.12fr) minmax(0, 0.9fr) minmax(0, 0.9fr) minmax(0, 0.98fr);
-    gap: 16px 24px;
+    grid-template-columns: minmax(0, 1.16fr) minmax(0, 0.82fr) minmax(0, 0.82fr);
+    gap: 14px 22px;
   }
 
   body.landing-page .app-footer__logo-img{
-    height: 28px;
+    height: 26px;
   }
 
   body.landing-page .app-footer__tagline{
-    margin-bottom: 6px;
-    max-width: 18rem;
-    font-size: 12px;
-  }
-
-  body.landing-page .app-footer__copyright{
+    margin-bottom: 5px;
+    max-width: 16rem;
     font-size: 11.5px;
   }
 
+  body.landing-page .app-footer__copyright{
+    font-size: 10.75px;
+  }
+
   body.landing-page .app-footer__heading{
-    margin-bottom: 7px;
+    margin-bottom: 5px;
   }
 
   body.landing-page .app-footer__link,
-  body.landing-page .app-footer__bullets{
-    font-size: 12px;
+  body.landing-page .app-footer__text{
+    font-size: 11.5px;
   }
 }
 
@@ -2428,16 +2428,14 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
 .app-footer{
   flex-shrink: 0;
   margin-top: auto;
-  /* More top padding so the footer doesn't crash into the content above
-     it; bottom is unchanged to respect safe-area on iOS. */
-  padding: 26px 0 max(16px, env(safe-area-inset-bottom, 0px));
+  padding: 18px 0 max(12px, env(safe-area-inset-bottom, 0px));
   background: #f7f6f4;
   border-top: 1px solid rgba(17, 24, 39, 0.07);
   width: 100vw;
   margin-left: calc(50% - 50vw);
-  color: rgba(55, 65, 81, 0.76);
-  font-size: 12.5px;
-  line-height: 1.45;
+  color: rgba(55, 65, 81, 0.68);
+  font-size: 12px;
+  line-height: 1.38;
 }
 .app-footer__inner{
   /* Match the landing-page content rail so footer columns line up with
@@ -2449,47 +2447,46 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
 }
 .app-footer__grid{
   display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.9fr) minmax(0, 0.9fr) minmax(0, 1fr);
-  /* Slightly tighter horizontal gap so columns feel like one footer
-     instead of four floating columns. */
-  gap: clamp(14px, 2vw, 22px);
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.82fr) minmax(0, 0.82fr);
+  gap: clamp(12px, 1.6vw, 18px);
   align-items: start;
+}
+.app-footer__col{
+  min-width: 0;
 }
 .app-footer__col--brand{
   min-width: 0;
 }
 .app-footer__logo{
   display: inline-block;
-  margin: 0 0 10px;
+  margin: 0 0 8px;
   line-height: 0;
 }
 .app-footer__logo-img{
   display: block;
-  /* Larger and more legible — the previous 34px footer logo was hard
-     to read against the off-white footer. */
-  height: 35px;
+  height: 29px;
   width: auto;
 }
 .app-footer__tagline{
-  margin: 0 0 10px;
-  max-width: 22rem;
-  font-size: 13px;
+  margin: 0 0 5px;
+  max-width: 16rem;
+  font-size: 12px;
   font-weight: 500;
-  line-height: 1.5;
-  color: rgba(55, 65, 81, 0.82);
+  line-height: 1.38;
+  color: rgba(55, 65, 81, 0.72);
 }
 .app-footer__copyright{
   margin: 0;
-  font-size: 12px;
-  color: rgba(55, 65, 81, 0.7);
+  font-size: 10.9px;
+  color: rgba(55, 65, 81, 0.56);
 }
 .app-footer__heading{
-  margin: 0 0 10px;
-  font-size: 11.5px;
+  margin: 0 0 6px;
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: rgba(31, 41, 55, 0.76);
+  color: rgba(31, 41, 55, 0.58);
 }
 .app-footer__list{
   list-style: none;
@@ -2497,16 +2494,21 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 3px;
 }
-.app-footer__link{
+.app-footer__link,
+.app-footer__text{
   display: inline-block;
-  padding: 2px 0;
-  color: rgba(55, 65, 81, 0.84);
-  font-weight: 500;
-  font-size: 12.5px;
+  padding: 1px 0;
+  color: rgba(55, 65, 81, 0.72);
+  font-weight: 450;
+  font-size: 12px;
+  line-height: 1.35;
   text-decoration: none;
   border-radius: 4px;
+}
+.app-footer__text{
+  color: rgba(55, 65, 81, 0.52);
 }
 .app-footer__link:hover{
   color: var(--accent);
@@ -2541,28 +2543,19 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
 @media (max-width: 900px){
   .app-footer__grid{
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 26px 28px;
+    gap: 18px 24px;
   }
   .app-footer__col--brand{
     grid-column: 1 / -1;
   }
-  .app-footer__col--trust{
-    grid-column: 1 / -1;
-    padding-top: 22px;
-    border-top: 1px solid rgba(17, 24, 39, 0.06);
-  }
 }
 @media (max-width: 520px){
   .app-footer{
-    padding-top: 22px;
+    padding-top: 16px;
   }
   .app-footer__grid{
     grid-template-columns: 1fr;
-    gap: 24px;
-  }
-  .app-footer__col--trust{
-    padding-top: 20px;
-    border-top: 1px solid rgba(17, 24, 39, 0.06);
+    gap: 16px;
   }
 }
 
@@ -2571,7 +2564,7 @@ body.landing-page .app-footer{
      a margin on top of that creates the disconnected "footer crashing
      into content" feeling we just fixed. */
   margin-top: clamp(0.35rem, 0.8vw, 0.55rem);
-  padding-top: 20px;
+  padding-top: 16px;
 }
 body.landing-page .app-footer__inner{
   max-width: var(--landing-content-max);
@@ -2579,48 +2572,42 @@ body.landing-page .app-footer__inner{
   padding-right: max(1rem, env(safe-area-inset-right, 0px));
 }
 body.landing-page .app-footer__grid{
-  gap: clamp(12px, 1.55vw, 17px);
+  gap: clamp(10px, 1.25vw, 14px);
 }
 body.landing-page .app-footer__logo{
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 body.landing-page .app-footer__logo-img{
-  height: 32px;
+  height: 28px;
 }
 body.landing-page .app-footer__tagline{
-  margin-bottom: 8px;
-  font-size: 12.5px;
-  line-height: 1.42;
+  margin-bottom: 5px;
+  font-size: 11.75px;
+  line-height: 1.36;
 }
 body.landing-page .app-footer__heading{
-  margin-bottom: 8px;
+  margin-bottom: 5px;
 }
 body.landing-page .app-footer__list{
-  gap: 4px;
+  gap: 3px;
 }
 body.landing-page .app-footer__link{
   padding: 1px 0;
 }
-body.landing-page .app-footer__bullets{
-  gap: 6px;
+body.landing-page .app-footer__text{
+  font-size: 11.75px;
 }
 @media (max-width: 900px){
   body.landing-page .app-footer__grid{
-    gap: 18px 22px;
-  }
-  body.landing-page .app-footer__col--trust{
-    padding-top: 16px;
+    gap: 14px 18px;
   }
 }
 @media (max-width: 520px){
   body.landing-page .app-footer{
-    padding-top: 18px;
+    padding-top: 15px;
   }
   body.landing-page .app-footer__grid{
-    gap: 18px;
-  }
-  body.landing-page .app-footer__col--trust{
-    padding-top: 14px;
+    gap: 14px;
   }
 }
 
@@ -3815,7 +3802,7 @@ button.secondary[aria-disabled="true"]{
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto auto;
   gap: 4px 8px;
-  align-items: baseline;
+  align-items: start;
   padding: 6px 9px 5px;
   border-radius: 10px;
   border: 1px solid rgba(0, 0, 0, 0.055);
@@ -3843,12 +3830,14 @@ button.secondary[aria-disabled="true"]{
 .pending-attn-name{
   min-width: 0;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   font-weight: 500;
   font-style: normal;
   color: rgba(55, 65, 75, 0.78);
-  font-size: 12.5px;
+  font-size: 12px;
+  line-height: 1.24;
 }
 .pending-attn-name.tx-kind-fg--income,
 .pending-attn-name.tx-kind-fg--expense{
@@ -6766,13 +6755,13 @@ body[data-bw-view="calendar"] .sidebar .card{
   border: 1px solid rgba(17, 24, 39, 0.06);
   background: rgba(255, 255, 255, 0.88);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.025);
-  padding: 6px 7px;
+  padding: 5px 7px;
 }
 body[data-bw-view="calendar"] #sidebarPendingTxCard:not(.sidebar-pending--empty){
-  padding: 6px 8px 7px;
+  padding: 5px 7px 6px;
 }
 body[data-bw-view="calendar"] #sidebarPendingTxCard.sidebar-pending--empty{
-  padding: 8px 9px;
+  padding: 7px 8px;
 }
 body[data-bw-view="calendar"] #sidebarPendingTxCard .sidebar-section-head{
   margin-bottom: 4px;
@@ -6783,19 +6772,24 @@ body[data-bw-view="calendar"] #sidebarPendingTitle{
   letter-spacing: 0.03em;
 }
 body[data-bw-view="calendar"] .sidebar-section:not(.sidebar-section--collapsed) .sidebar-section-head{
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 body[data-bw-view="calendar"] .sidebar-section-head h2{
-  font-size: 0.8125rem;
+  font-size: 0.79rem;
   font-weight: 700;
+}
+body[data-bw-view="calendar"] .sidebar-collapse-btn{
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
 }
 body[data-bw-view="calendar"] .sidebar-balance-threshold-alerts{
   margin-bottom: 5px;
   gap: 5px;
 }
 body[data-bw-view="calendar"] .pending-attn-item{
-  padding: 8px 10px;
-  row-gap: 7px;
+  padding: 7px 9px;
+  row-gap: 5px;
   border-color: rgba(17, 24, 39, 0.044);
   background: rgba(255, 255, 255, 0.42);
   box-shadow: none;
@@ -6846,10 +6840,10 @@ body[data-bw-view="calendar"] .calendar-low-balance--sidebar strong{
 body[data-bw-view="calendar"] #sidebarBodyMonth .totals{
   flex-direction: column;
   flex-wrap: nowrap;
-  gap: 5px;
+  gap: 4px;
 }
 body[data-bw-view="calendar"] #sidebarBalanceThresholdAlerts{
-  padding: 5px 8px 5px;
+  padding: 4px 7px 4px;
   margin-bottom: 1px;
   border-radius: 12px;
   border: 1px solid rgba(11, 61, 46, 0.07);
@@ -6864,12 +6858,12 @@ body[data-bw-view="calendar"] .calendar-low-balance--sidebar .cash-outlook-hero{
   margin: 2px 0 3px;
 }
 body[data-bw-view="calendar"] .sidebar .card[data-sidebar-key="month"]{
-  padding: 5px 8px;
+  padding: 4px 7px;
 }
 body[data-bw-view="calendar"] #sidebarBodyMonth .total{
   flex: 0 0 auto;
-  padding: 5px 7px;
-  border-radius: 8px;
+  padding: 4px 6px;
+  border-radius: 7px;
 }
 body[data-bw-view="calendar"] #sidebarBodyMonth .total:last-child{
   border-color: rgba(11, 61, 46, 0.12);
@@ -6877,7 +6871,7 @@ body[data-bw-view="calendar"] #sidebarBodyMonth .total:last-child{
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.68);
 }
 body[data-bw-view="calendar"] #sidebarBodyMonth .total .k{
-  font-size: 10.25px;
+  font-size: 10px;
   font-weight: 500;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -6888,23 +6882,23 @@ body[data-bw-view="calendar"] #sidebarBodyMonth .total:last-child .k{
   font-weight: 650;
 }
 body[data-bw-view="calendar"] #sidebarBodyMonth .total .v{
-  font-size: 15.5px;
+  font-size: 14.5px;
   font-weight: 800;
-  margin-top: 3px;
+  margin-top: 2px;
   letter-spacing: -0.02em;
 }
 body[data-bw-view="calendar"] #sidebarBodyMonth .total:last-child .v{
-  font-size: 16px;
+  font-size: 15px;
 }
 body[data-bw-view="calendar"] #sidebarBodyMonth > div:nth-child(2){
-  height: 6px !important;
+  height: 4px !important;
 }
 body[data-bw-view="calendar"] #sidebarBodyMonth label{
-  font-size: 11.5px;
+  font-size: 11px;
 }
 body[data-bw-view="calendar"] #sidebarBodyMonth input[type="month"]{
-  font-size: 13px;
-  padding: 4px 6px;
+  font-size: 12.5px;
+  padding: 3px 6px;
 }
 body[data-bw-view="calendar"] .card.calendar-panel{
   padding-left: 10px;
@@ -7032,7 +7026,7 @@ body[data-bw-view="calendar"] .cal-detail-btn.is-active{
 }
 
 .sidebar-month-spacer{
-  height: 6px;
+  height: 4px;
 }
 
 body[data-bw-view="transactions"] .sidebar .card[data-sidebar-key="month"]{
@@ -8392,10 +8386,22 @@ textarea::placeholder{
   cursor: pointer;
   user-select: none;
   background: transparent;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
 }
 .kind-toggle .kind-opt + .kind-opt{
   border-left: 1px solid var(--border);
+}
+.kind-toggle .kind-opt::after{
+  content: "";
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 6px;
+  height: 2px;
+  border-radius: 999px;
+  background: transparent;
+  opacity: 0;
+  transition: opacity 0.15s ease, background 0.15s ease;
 }
 .kind-toggle .kind-opt input[type="radio"]{
   position: absolute;
@@ -8410,20 +8416,30 @@ textarea::placeholder{
   background: rgba(0, 0, 0, 0.045);
 }
 .kind-toggle .kind-opt:has(input[value="expense"]:checked):hover{
-  background: rgba(167, 55, 68, 0.11);
+  background: rgba(255, 255, 255, 0.95);
 }
 .kind-toggle .kind-opt:has(input[value="income"]:checked):hover{
-  background: rgba(0, 90, 74, 0.16);
+  background: rgba(255, 255, 255, 0.95);
 }
 .kind-toggle .kind-opt:has(input[value="expense"]:checked){
-  background: rgba(167, 55, 68, 0.075);
-  color: color-mix(in srgb, var(--danger) 82%, var(--text));
+  background: rgba(255, 255, 255, 0.92);
+  color: rgba(17, 24, 39, 0.88);
   font-weight: 600;
+  box-shadow: inset 0 0 0 1px rgba(17, 24, 39, 0.06);
 }
 .kind-toggle .kind-opt:has(input[value="income"]:checked){
-  background: rgba(0, 90, 74, 0.12);
-  color: var(--ok);
+  background: rgba(255, 255, 255, 0.92);
+  color: rgba(17, 24, 39, 0.88);
   font-weight: 600;
+  box-shadow: inset 0 0 0 1px rgba(17, 24, 39, 0.06);
+}
+.kind-toggle .kind-opt:has(input[value="expense"]:checked)::after{
+  opacity: 1;
+  background: rgba(167, 55, 68, 0.42);
+}
+.kind-toggle .kind-opt:has(input[value="income"]:checked)::after{
+  opacity: 1;
+  background: rgba(4, 120, 87, 0.42);
 }
 .kind-toggle .kind-opt:has(input:focus-visible){
   outline: 2px solid var(--accent);
@@ -10560,15 +10576,15 @@ body.login-page:not(.signup-page):not(.invite-page) #loginSection .auth-section_
 }
 
 body.login-page:not(.signup-page):not(.invite-page) .app-footer{
-  padding: 10px 0 max(10px, env(safe-area-inset-bottom, 0px));
+  padding: 8px 0 max(10px, env(safe-area-inset-bottom, 0px));
   color: rgba(55, 65, 81, 0.5);
   font-size: 11.75px;
 }
 body.login-page:not(.signup-page):not(.invite-page) .app-footer .app-footer__logo-img{
-  height: 26px;
+  height: 24px;
 }
 body.login-page:not(.signup-page):not(.invite-page) .app-footer .app-footer__tagline{
-  font-size: 11.5px;
+  font-size: 11px;
   color: rgba(55, 65, 81, 0.42);
 }
 body.login-page:not(.signup-page):not(.invite-page) .app-footer .app-footer__copyright{
@@ -10581,16 +10597,15 @@ body.login-page:not(.signup-page):not(.invite-page) .app-footer .app-footer__hea
   margin-bottom: 6px;
 }
 body.login-page:not(.signup-page):not(.invite-page) .app-footer .app-footer__list{
-  gap: 5px;
+  gap: 4px;
 }
-body.login-page:not(.signup-page):not(.invite-page) .app-footer .app-footer__link{
-  font-size: 11.25px;
+body.login-page:not(.signup-page):not(.invite-page) .app-footer .app-footer__link,
+body.login-page:not(.signup-page):not(.invite-page) .app-footer .app-footer__text{
+  font-size: 11px;
   color: rgba(55, 65, 81, 0.46);
 }
-body.login-page:not(.signup-page):not(.invite-page) .app-footer .app-footer__bullets{
-  font-size: 11.5px;
-  color: rgba(55, 65, 81, 0.42);
-  gap: 5px;
+body.login-page:not(.signup-page):not(.invite-page) .app-footer .app-footer__text{
+  color: rgba(55, 65, 81, 0.4);
 }
 
 /* Signup page: field row — smaller type than login (login-page alone bumps .auth-section) */
@@ -11721,147 +11736,137 @@ body.account-setup-page .account-setup-kind-toggle--expense-only .kind-opt:has(i
   display: none;
 }
 body.account-setup-page #accountSetupWizardPanel2[data-step3-phase="intro"].account-setup-wizard__panel{
-  min-height: 204px;
-  padding: 10px 12px 8px;
+  min-height: 0;
+  padding: 12px 14px 10px;
 }
 body.account-setup-page .account-setup-step3-intro{
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 8px;
+  align-items: stretch;
+  gap: 12px;
 }
-body.account-setup-page .account-setup-step3-intro-hint{
-  margin: 0 auto;
-  max-width: 470px;
-  font-size: 0.9rem;
-  line-height: 1.45;
-  color: rgba(17, 24, 39, 0.62);
+body.account-setup-page .account-setup-step3-recommend{
+  padding: 12px 13px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 14px;
+  background: rgba(248, 250, 252, 0.74);
 }
-body.account-setup-page .account-setup-step3-progress{
+body.account-setup-page .account-setup-step3-recommend__eyebrow{
+  margin: 0 0 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(100, 116, 139, 0.72);
+}
+body.account-setup-page .account-setup-step3-checklist{
+  list-style: none;
   margin: 0;
-  min-height: 1.25rem;
-  font-size: 0.84rem;
-  line-height: 1.4;
+  padding: 0;
+  display: grid;
+  gap: 7px;
+}
+body.account-setup-page .account-setup-step3-checklist li{
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  font-size: 0.96rem;
+  line-height: 1.35;
   font-weight: 600;
-  text-align: center;
-  color: rgba(100, 116, 139, 0.82);
+  color: rgba(17, 24, 39, 0.82);
 }
-body.account-setup-page .account-setup-step3-progress.is-ready{
-  color: rgba(11, 61, 46, 0.86);
+body.account-setup-page .account-setup-step3-checklist li::before{
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  margin-top: 0.42em;
+  flex-shrink: 0;
+  background: rgba(11, 61, 46, 0.35);
 }
-body.account-setup-page .account-setup-step3-progress.is-pending{
-  color: rgba(100, 116, 139, 0.82);
+body.account-setup-page .account-setup-step3-summary{
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.35;
+  font-weight: 600;
+  color: rgba(11, 61, 46, 0.82);
 }
 body.account-setup-page .account-setup-tx-choice-wrap{
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
   width: 100%;
-  max-width: 320px;
-  margin: 0 auto;
+  max-width: none;
+  margin: 0;
   gap: 10px;
 }
-body.account-setup-page .account-setup-step3-action{
-  width: 100%;
-}
-body.account-setup-page .account-setup-step3-actionBtn,
-body.account-setup-page .account-setup-step3-continueBtn{
+body.account-setup-page .account-setup-step3-actionBtn{
   width: 100%;
   justify-content: center;
   box-sizing: border-box;
 }
 body.account-setup-page #asTxHubAddIncomeBtn.account-setup-step3-actionBtn,
 body.account-setup-page #asTxHubAddExpenseBtn.account-setup-step3-actionBtn{
-  min-height: 46px;
-  padding: 0 14px;
-  border-radius: 14px;
+  min-height: 42px;
+  padding: 0 12px;
+  border-radius: 12px;
   border: 1px solid rgba(11, 61, 46, 0.16);
-  background: rgba(255, 255, 255, 0.98);
+  background: #fff;
   color: rgba(11, 61, 46, 0.9);
   box-shadow: none;
 }
 body.account-setup-page #asTxHubAddIncomeBtn.account-setup-step3-actionBtn:hover:not(:disabled),
 body.account-setup-page #asTxHubAddExpenseBtn.account-setup-step3-actionBtn:hover:not(:disabled){
-  background: rgba(248, 250, 249, 1);
+  background: color-mix(in srgb, var(--accent) 3%, #fff);
   border-color: rgba(11, 61, 46, 0.22);
   color: rgba(11, 61, 46, 0.94);
   filter: none;
 }
 body.account-setup-page #asTxHubAddIncomeBtn.account-setup-step3-actionBtn:focus-visible:not(:disabled),
 body.account-setup-page #asTxHubAddExpenseBtn.account-setup-step3-actionBtn:focus-visible:not(:disabled){
-  outline: 2px solid rgba(11, 61, 46, 0.14);
+  outline: 2px solid rgba(11, 61, 46, 0.12);
   outline-offset: 2px;
   box-shadow: none;
 }
 body.account-setup-page .account-setup-step3-actionBtn.is-complete{
-  border-color: rgba(11, 61, 46, 0.22);
+  border-color: rgba(11, 61, 46, 0.24);
+  background: color-mix(in srgb, var(--accent) 4%, #fff);
 }
 body.account-setup-page .account-setup-step3-actionBtn__content{
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
 }
-body.account-setup-page .account-setup-step3-actionBtn__check{
+body.account-setup-page .account-setup-step3-actionBtn__plus{
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 14px;
-  height: 14px;
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 1;
-  color: rgba(4, 120, 87, 0.9);
-}
-body.account-setup-page .account-setup-step3-actionBtn__label{
   font-size: 1rem;
   font-weight: 700;
+  line-height: 1;
+  color: rgba(11, 61, 46, 0.76);
+}
+body.account-setup-page .account-setup-step3-actionBtn__label{
+  font-size: 0.96rem;
+  font-weight: 650;
   letter-spacing: 0.01em;
 }
-body.account-setup-page .account-setup-step3-action__meta{
-  margin: 4px 0 0;
-  min-height: 1rem;
-  font-size: 0.76rem;
-  line-height: 1.35;
-  text-align: center;
-  color: rgba(4, 120, 87, 0.78);
+body.account-setup-page .account-setup-step3-divider{
+  height: 1px;
+  width: 100%;
+  background: rgba(148, 163, 184, 0.2);
 }
-body.account-setup-page .account-setup-step3-action__meta.is-empty{
-  visibility: hidden;
-}
-body.account-setup-page #asTxHubContinueBtn.account-setup-step3-continueBtn{
-  min-height: 48px;
-  margin-top: 2px;
-  border-radius: 14px;
-  border: 1px solid color-mix(in srgb, var(--accent) 82%, #000 18%);
-  background: var(--accent);
-  color: #fff;
-  box-shadow: none;
-}
-body.account-setup-page #asTxHubContinueBtn.account-setup-step3-continueBtn:hover:not(:disabled){
-  background: color-mix(in srgb, var(--accent) 92%, #000);
-  border-color: color-mix(in srgb, var(--accent) 72%, #000);
-  filter: none;
-}
-body.account-setup-page #asTxHubContinueBtn.account-setup-step3-continueBtn:focus-visible{
-  outline: 2px solid rgba(11, 61, 46, 0.18);
-  outline-offset: 2px;
-}
-body.account-setup-page #asTxHubContinueBtn.account-setup-step3-continueBtn:disabled{
-  background: var(--accent);
-  color: rgba(255, 255, 255, 0.92);
-  border-color: color-mix(in srgb, var(--accent) 82%, #000 18%);
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-body.account-setup-page .account-setup-step3-intro-note{
+body.account-setup-page .account-setup-step3-helper{
   margin: 0;
-  max-width: 360px;
   font-size: 0.78rem;
   line-height: 1.4;
-  text-align: center;
   color: rgba(100, 116, 139, 0.8);
 }
 @media (max-width: 560px){
   body.account-setup-page .account-setup-tx-choice-wrap{
-    max-width: 100%;
+    grid-template-columns: 1fr;
   }
 }
 body.account-setup-page .account-setup-card{
@@ -13491,7 +13496,7 @@ body.plans-page--polished .plans-wrap{
   display: flex;
   justify-content: flex-end;
   align-items: center;
-  gap: 7px;
+  gap: 4px;
   color: rgba(75, 85, 99, 0.66);
 }
 .cal-daynum::after{
@@ -13541,23 +13546,24 @@ body.plans-page--polished .plans-wrap{
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 17px;
+  height: 17px;
   flex-shrink: 0;
   border-radius: 999px;
-  background: rgba(22, 163, 74, 0.18);
-  border: 1px solid rgba(21, 128, 61, 0.42);
-  color: #166534;
+  background: rgba(22, 163, 74, 0.06);
+  border: 1px solid rgba(21, 128, 61, 0.18);
+  color: rgba(22, 101, 52, 0.58);
   line-height: 0;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.42) inset;
+  transform: translate(2px, -2px);
 }
 .cal-reconciled-mark svg{
-  width: 14px;
-  height: 14px;
+  width: 8.5px;
+  height: 8.5px;
   display: block;
   fill: none;
   stroke: currentColor;
-  stroke-width: 2.5;
+  stroke-width: 1.9;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
@@ -13639,7 +13645,7 @@ body.plans-page--polished .plans-wrap{
      or float apart. Modifiers (impact, expected, etc.) only change
      color/opacity — never the row height — so the column reads as a
      stable ledger. */
-  gap: 2px;
+  gap: 4px;
   padding-top: 1px;
   margin-top: 0;
   border-top: none;
@@ -13658,10 +13664,10 @@ body.plans-page--polished .plans-wrap{
    adjacent rows of the same kind always render at the same scale. */
 .cal-day-tx-line{
   font-size: 9.75px;
-  line-height: 1.28;
+  line-height: 1.34;
   /* Lock row height so plain rows, impact rows, expected rows and
      coloured rows all share the same vertical footprint. */
-  min-height: 16px;
+  min-height: 18px;
   max-width: 100%;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -13704,7 +13710,7 @@ body.plans-page--polished .plans-wrap{
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: inherit;
-  font-weight: 550;
+  font-weight: 520;
   color: inherit;
 }
 .cal-day-tx-line .cal-amt{
@@ -13739,6 +13745,12 @@ body.plans-page--polished .plans-wrap{
 }
 .cal-day-tx-line--flow-out{
   color: rgba(96, 30, 24, 0.92);
+}
+.cal-day-tx-line--flow-in .cal-amt{
+  color: rgba(18, 91, 50, 0.98);
+}
+.cal-day-tx-line--flow-out .cal-amt{
+  color: rgba(115, 38, 30, 0.98);
 }
 .cal-day-tx-line--flow-neutral{
   color: rgba(71, 85, 105, 0.78);
@@ -14465,6 +14477,8 @@ body[data-bw-view="transactions"] .pending-attn-item:focus-visible{
 body[data-bw-view="transactions"] .pending-attn-name{
   color: rgba(30, 41, 59, 0.88);
   font-weight: 600;
+  font-size: 11.75px;
+  line-height: 1.24;
 }
 body[data-bw-view="transactions"] .pending-attn-est{
   font-size: 12.75px;
@@ -14475,6 +14489,9 @@ body[data-bw-view="transactions"] .pending-attn-date{
   color: rgba(100, 116, 139, 0.7);
 }
 body[data-bw-view="transactions"] .pending-attn-cta{
+  grid-column: 1 / -1;
+  justify-self: start;
+  margin-top: 1px;
   background: rgba(11, 61, 46, 0.06);
   color: rgba(11, 61, 46, 0.8);
 }
@@ -14607,10 +14624,10 @@ body[data-bw-view="transactions"] .pending-attn-item:focus-visible .pending-attn
   background: rgba(248, 250, 252, 0.72);
   border-bottom-color: rgba(17, 24, 39, 0.06);
   padding: 10px 14px 11px;
-  font-size: 9.8px;
-  font-weight: 760;
-  color: rgba(71, 85, 105, 0.82);
-  letter-spacing: 0.085em;
+  font-size: 10px;
+  font-weight: 790;
+  color: rgba(51, 65, 85, 0.9);
+  letter-spacing: 0.065em;
 }
 .tm-row{
   position: relative;
@@ -14672,9 +14689,9 @@ body[data-bw-view="transactions"] .pending-attn-item:focus-visible .pending-attn
 
 /* Status badges: smaller, softer; let the amount carry weight. */
 .tm-badge{
-  padding: 2px 6px;
-  font-size: 9px;
-  font-weight: 540;
+  padding: 1px 5px;
+  font-size: 8.5px;
+  font-weight: 530;
   letter-spacing: 0.02em;
   border-color: transparent;
 }
@@ -14719,15 +14736,16 @@ body[data-bw-view="transactions"] .pending-attn-item:focus-visible .pending-attn
 
 /* Edit affordance: clearer at rest, stronger on hover. */
 .tm-row__edit{
-  padding: 3px;
+  padding: 4px;
   border-color: transparent;
   background: transparent;
-  color: rgba(100, 116, 139, 0.58);
+  color: rgba(100, 116, 139, 0.72);
   border-radius: 999px;
+  transition: background 0.14s ease, color 0.14s ease, opacity 0.14s ease;
 }
 @media (hover: hover) and (pointer: fine){
   .tm-row .tm-row__edit{
-    opacity: 0.14;
+    opacity: 0.42;
   }
   .tm-row:hover .tm-row__edit,
   .tm-row:focus-within .tm-row__edit{
@@ -14735,13 +14753,17 @@ body[data-bw-view="transactions"] .pending-attn-item:focus-visible .pending-attn
   }
 }
 .tm-row:hover .tm-row__edit{
-  color: rgba(17, 24, 39, 0.76);
+  color: rgba(51, 65, 85, 0.86);
   border-color: transparent;
-  background: rgba(15, 23, 42, 0.045);
+  background: rgba(15, 23, 42, 0.055);
 }
 .tm-row__edit:hover{
-  color: rgba(17, 24, 39, 0.88);
+  color: rgba(17, 24, 39, 0.92);
   border-color: transparent;
+  background: rgba(15, 23, 42, 0.085);
+}
+.tm-row__edit:focus-visible{
+  color: rgba(17, 24, 39, 0.92);
   background: rgba(15, 23, 42, 0.07);
 }
 
@@ -14813,36 +14835,43 @@ body[data-bw-view="transactions"] .pending-attn-item:focus-visible .pending-attn
   text-decoration: none;
 }
 
-/* "+N more" — quietly reveals the rest of the day's rows.
-   Reads as a soft helper hint tucked into the transaction stack
-   (left-aligned with the ledger), not as a clickable button. No
-   border, no background by default, smaller and lighter than a row. */
+/* "+N more" / "Show less" — keep inline and lightweight, but make
+   the affordance feel intentionally clickable. */
 .cal-day-more{
-  margin-top: 0;
+  margin-top: 1px;
   align-self: flex-start;
-  padding: 0 1px;
+  padding: 0;
   border-radius: 3px;
   border: none;
   background: transparent;
   width: fit-content;
   max-width: 100%;
   font: inherit;
-  font-size: 8.75px;
-  font-weight: 450;
+  font-size: 8.9px;
+  font-weight: 500;
   letter-spacing: 0;
   text-transform: none;
-  color: rgba(100, 116, 139, 0.62);
+  color: rgba(71, 85, 105, 0.76);
   cursor: pointer;
-  text-decoration: none;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 2px;
+  transition: color 140ms ease, text-decoration-color 140ms ease;
   line-height: 1.2;
 }
 .cal-day-more:hover{
-  color: rgba(71, 85, 105, 0.85);
+  color: rgba(51, 65, 85, 0.92);
   background: transparent;
+  text-decoration-color: currentColor;
 }
 .cal-day-more:focus-visible{
   outline: 2px solid rgba(4, 120, 87, 0.3);
   outline-offset: 1px;
+  text-decoration-color: currentColor;
+}
+.cal-day-more.is-expanded{
+  color: rgba(100, 116, 139, 0.78);
+  font-size: 8.65px;
 }
 
 .cal-ledger-metrics{
@@ -14881,8 +14910,8 @@ body[data-bw-view="transactions"] .pending-attn-item:focus-visible .pending-attn
 }
 .cal-balance-strip--cue-warn{
   margin: 0 -4px;
-  padding: 3px 6px 4px;
-  background: linear-gradient(180deg, transparent, rgba(146, 84, 17, 0.05));
+  padding: 2px 5px 3px;
+  background: linear-gradient(180deg, transparent, rgba(180, 104, 55, 0.028));
   border-radius: 0 0 6px 6px;
   box-shadow: none;
 }
@@ -14942,8 +14971,9 @@ body[data-bw-view="transactions"] .pending-attn-item:focus-visible .pending-attn
   color: rgba(146, 84, 17, 0.78);
 }
 .cal-stat.cal-balance.cal-balance--below-floor{
-  font-weight: 600;
-  color: rgba(170, 80, 30, 0.86);
+  font-size: clamp(9.85px, 1.6vw, 10.75px);
+  font-weight: 560;
+  color: rgba(176, 101, 58, 0.8);
 }
 .cal-stat.cal-balance.cal-balance--month-low-mark{
   font-weight: 500;
@@ -14996,12 +15026,14 @@ body[data-bw-view="transactions"] .pending-attn-item:focus-visible .pending-attn
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  margin-right: 3px;
-  color: rgba(146, 84, 17, 0.5);
-  opacity: 0.85;
+  margin-right: 2px;
+  color: rgba(176, 101, 58, 0.42);
+  opacity: 0.72;
 }
 .cal-balance-warn-icon svg{
   display: block;
+  width: 9px;
+  height: 9px;
 }
 
 .cal-forecast-note{
@@ -15621,6 +15653,17 @@ body[data-bw-view="transactions"] .pending-attn-item:focus-visible .pending-attn
 }
 .tx-add-btn-primary{
   line-height: 1.25;
+  background: var(--accent) !important;
+  border: 1px solid color-mix(in srgb, var(--accent) 82%, #0d1f18) !important;
+  color: #fff !important;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.16) inset,
+    0 1px 2px rgba(11, 61, 46, 0.12) !important;
+}
+.tx-add-btn-primary:hover{
+  background: color-mix(in srgb, var(--accent) 92%, #000) !important;
+  border-color: color-mix(in srgb, var(--accent) 72%, #0d1f18) !important;
+  color: #fff !important;
 }
 /* Tx-add Cancel: inherits the canonical secondary outlined style and
    only overrides what's needed for the compact footer (size, weight).
@@ -15629,15 +15672,15 @@ body[data-bw-view="transactions"] .pending-attn-item:focus-visible .pending-attn
    Cancel paired with the primary Save. */
 .modal--tx-add .tx-add-btn-secondary{
   background: #fff !important;
-  border: 1px solid rgba(11, 61, 46, 0.22) !important;
-  color: rgba(11, 61, 46, 0.92) !important;
-  font-weight: 600 !important;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.85) inset !important;
+  border: 1px solid rgba(11, 61, 46, 0.16) !important;
+  color: rgba(11, 61, 46, 0.78) !important;
+  font-weight: 550 !important;
+  box-shadow: none !important;
 }
 .modal--tx-add .tx-add-btn-secondary:hover{
-  background: color-mix(in srgb, var(--accent) 5%, #fff) !important;
-  border-color: rgba(11, 61, 46, 0.36) !important;
-  color: rgba(11, 61, 46, 1) !important;
+  background: rgba(11, 61, 46, 0.035) !important;
+  border-color: rgba(11, 61, 46, 0.24) !important;
+  color: rgba(11, 61, 46, 0.9) !important;
 }
 .tx-add-form .tx-add-vspace{
   height: 12px;
@@ -15679,24 +15722,35 @@ body[data-bw-view="transactions"] .pending-attn-item:focus-visible .pending-attn
   font-size: 12.5px;
   color: rgba(71, 85, 105, 0.58);
 }
+.modal--tx-add .kind-toggle .kind-opt::after{
+  left: 12px;
+  right: 12px;
+  bottom: 5px;
+}
 .modal--tx-add .kind-toggle .kind-opt + .kind-opt{
   border-left-color: rgba(17, 24, 39, 0.06);
 }
 .modal--tx-add .kind-toggle .kind-opt:has(input[value="expense"]:checked){
-  background: rgba(167, 55, 68, 0.075);
-  color: color-mix(in srgb, var(--danger) 86%, var(--text));
-  font-weight: 700;
+  background: rgba(255, 255, 255, 0.94);
+  color: rgba(17, 24, 39, 0.9);
+  font-weight: 650;
+  box-shadow:
+    inset 0 0 0 1px rgba(17, 24, 39, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
 }
 .modal--tx-add .kind-toggle .kind-opt:has(input[value="expense"]:checked):hover{
-  background: rgba(167, 55, 68, 0.105);
+  background: rgba(255, 255, 255, 0.98);
 }
 .modal--tx-add .kind-toggle .kind-opt:has(input[value="income"]:checked){
-  background: rgba(0, 90, 74, 0.105);
-  color: color-mix(in srgb, var(--ok) 92%, var(--text));
-  font-weight: 700;
+  background: rgba(255, 255, 255, 0.94);
+  color: rgba(17, 24, 39, 0.9);
+  font-weight: 650;
+  box-shadow:
+    inset 0 0 0 1px rgba(17, 24, 39, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
 }
 .modal--tx-add .kind-toggle .kind-opt:has(input[value="income"]:checked):hover{
-  background: rgba(0, 90, 74, 0.135);
+  background: rgba(255, 255, 255, 0.98);
 }
 .modal--tx-add .tx-add-form .form-row-h__field > input:not([type="checkbox"]):not([type="radio"]),
 .modal--tx-add .tx-add-form .form-row-h__field > select,
@@ -16351,25 +16405,61 @@ body.account-setup-page .account-setup-step3-form .cat-color-row + .tx-add-vspac
   padding-left: 14px;
   padding-right: 14px;
 }
+#txEditSave,
+#txEditRecurringUpdateBtn{
+  background: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 82%, #0d1f18);
+  color: #fff;
+  font-weight: 650;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.16) inset,
+    0 1px 2px rgba(11, 61, 46, 0.12);
+}
+#txEditSave:hover,
+#txEditRecurringUpdateBtn:hover{
+  background: color-mix(in srgb, var(--accent) 92%, #000);
+  border-color: color-mix(in srgb, var(--accent) 72%, #0d1f18);
+  color: #fff;
+  filter: none;
+}
 #txEditCancel{
   width: 100%;
   min-width: 0;
   padding-left: 14px;
   padding-right: 14px;
-  background: transparent;
-  color: var(--danger);
-  border: 2px solid var(--danger);
+  background: #fff;
+  border: 1px solid rgba(11, 61, 46, 0.22);
+  color: rgba(11, 61, 46, 0.92);
+  font-weight: 600;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.85) inset;
 }
 #txEditCancel:hover{
-  background: rgba(167, 55, 68, 0.08);
+  background: color-mix(in srgb, var(--accent) 5%, #fff);
+  border-color: rgba(11, 61, 46, 0.36);
+  color: rgba(11, 61, 46, 1);
   filter: none;
 }
 #txEditCancel.tx-edit-dismiss--close{
-  color: var(--text);
-  border-color: rgba(75, 85, 99, 0.5);
+  color: rgba(11, 61, 46, 0.92);
+  border-color: rgba(11, 61, 46, 0.22);
 }
 #txEditCancel.tx-edit-dismiss--close:hover{
-  background: rgba(0, 0, 0, 0.05);
+  background: color-mix(in srgb, var(--accent) 5%, #fff);
+  border-color: rgba(11, 61, 46, 0.36);
+}
+#txEditDelete.danger{
+  background: transparent;
+  border: 1px solid transparent;
+  color: rgba(100, 116, 139, 0.82);
+  font-weight: 550;
+  box-shadow: none;
+}
+#txEditDelete.danger:hover,
+#txEditDelete.danger:focus-visible{
+  background: rgba(167, 55, 68, 0.04);
+  border-color: transparent;
+  color: rgba(167, 55, 68, 0.9);
+  filter: none;
 }
 #txEditInner #txEditRecurringPrimaryActions.tx-edit-recurring-update-row{
   display: none !important;
@@ -16476,7 +16566,7 @@ body.account-setup-page .account-setup-step3-form .cat-color-row + .tx-add-vspac
   font-weight: 600;
 }
 
-/* Type toggle: richer selected red, sharper text weight, softer border. */
+/* Type toggle: calm selected state with subtle accent only. */
 .modal--expected-edit .kind-toggle{
   border-color: rgba(17, 24, 39, 0.08);
   background: rgba(15, 23, 42, 0.025);
@@ -16488,24 +16578,35 @@ body.account-setup-page .account-setup-step3-form .cat-color-row + .tx-add-vspac
   font-size: 13px;
   color: rgba(71, 85, 105, 0.62);
 }
+.modal--expected-edit .kind-toggle .kind-opt::after{
+  left: 12px;
+  right: 12px;
+  bottom: 5px;
+}
 .modal--expected-edit .kind-toggle .kind-opt + .kind-opt{
   border-left-color: rgba(17, 24, 39, 0.06);
 }
 .modal--expected-edit .kind-toggle .kind-opt:has(input[value="expense"]:checked){
-  background: rgba(167, 55, 68, 0.13);
-  color: color-mix(in srgb, var(--danger) 92%, var(--text));
-  font-weight: 700;
+  background: rgba(255, 255, 255, 0.95);
+  color: rgba(17, 24, 39, 0.9);
+  font-weight: 650;
+  box-shadow:
+    inset 0 0 0 1px rgba(17, 24, 39, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
 }
 .modal--expected-edit .kind-toggle .kind-opt:has(input[value="expense"]:checked):hover{
-  background: rgba(167, 55, 68, 0.17);
+  background: rgba(255, 255, 255, 0.98);
 }
 .modal--expected-edit .kind-toggle .kind-opt:has(input[value="income"]:checked){
-  background: rgba(0, 90, 74, 0.14);
-  color: color-mix(in srgb, var(--ok) 92%, var(--text));
-  font-weight: 700;
+  background: rgba(255, 255, 255, 0.95);
+  color: rgba(17, 24, 39, 0.9);
+  font-weight: 650;
+  box-shadow:
+    inset 0 0 0 1px rgba(17, 24, 39, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
 }
 .modal--expected-edit .kind-toggle .kind-opt:has(input[value="income"]:checked):hover{
-  background: rgba(0, 90, 74, 0.18);
+  background: rgba(255, 255, 255, 0.98);
 }
 
 /* "+ Add color" trigger: quiet link that lives where the color row used to sit. */
@@ -16734,15 +16835,17 @@ body.account-setup-page .account-setup-step3-form .cat-color-row + .tx-add-vspac
 }
 .modal--expected-edit #txEditDelete.danger{
   background: transparent !important;
-  border: 1px solid rgba(167, 55, 68, 0.22) !important;
-  color: rgba(167, 55, 68, 0.78) !important;
-  font-weight: 500 !important;
+  border: 1px solid transparent !important;
+  color: rgba(100, 116, 139, 0.82) !important;
+  font-weight: 550 !important;
   box-shadow: none !important;
 }
-.modal--expected-edit #txEditDelete.danger:hover{
-  background: rgba(167, 55, 68, 0.06) !important;
-  border-color: rgba(167, 55, 68, 0.32) !important;
-  color: rgba(167, 55, 68, 0.92) !important;
+.modal--expected-edit #txEditDelete.danger:hover,
+.modal--expected-edit #txEditDelete.danger:focus-visible{
+  background: rgba(167, 55, 68, 0.04) !important;
+  border-color: transparent !important;
+  color: rgba(167, 55, 68, 0.9) !important;
+  filter: none !important;
 }
 .expected-modal-mode-row{
   display: flex;
@@ -18903,7 +19006,7 @@ body[data-bw-view="calendar"] .pending-attn-item.bw-tour-support-highlight--pend
 
   .calendar--mobile .cal-daynum{
     justify-content: space-between;
-    gap: 10px;
+    gap: 7px;
     margin-bottom: 8px;
     padding-bottom: 8px;
   }
@@ -18928,6 +19031,17 @@ body[data-bw-view="calendar"] .pending-attn-item.bw-tour-support-highlight--pend
     height: 24px;
     padding: 0 8px;
     font-size: 0.82rem;
+  }
+
+  .calendar--mobile .cal-reconciled-mark{
+    width: 16px;
+    height: 16px;
+    transform: translate(1px, -1px);
+  }
+
+  .calendar--mobile .cal-reconciled-mark svg{
+    width: 8px;
+    height: 8px;
   }
 
   .calendar--mobile .cal-cell-stack{
@@ -18975,6 +19089,10 @@ body[data-bw-view="calendar"] .pending-attn-item.bw-tour-support-highlight--pend
 
   .calendar--mobile .cal-stat.cal-balance{
     font-size: 12.5px;
+  }
+
+  .calendar--mobile .cal-stat.cal-balance.cal-balance--below-floor{
+    font-size: 11.5px;
   }
 
   body[data-bw-view="transactions"] .tm{
