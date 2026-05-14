@@ -825,7 +825,7 @@ function getAccountSetupStepCopy(step, ctx) {
     case 4:
       return {
         title: "What matters most to you?",
-        subtitle: "Choose the forecast priorities that matter most right now.",
+        subtitle: "Choose what you want help keeping track of.",
       };
     default:
       return { title: "Let’s build your forecast", subtitle: "Start simple. You can refine everything later." };

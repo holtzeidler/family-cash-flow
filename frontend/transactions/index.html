@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=440" />
+    <link rel="stylesheet" href="../styles.css?v=442" />
   </head>
   <body>
     <div class="container">
@@ -632,7 +632,7 @@
                     </header>
 
                     <div class="prefs-field">
-                      <label class="prefs-field__label" for="balanceThresholdMin">Floor</label>
+                      <label class="prefs-field__label" for="balanceThresholdMin">Minimum balance</label>
                       <p class="prefs-field__hint">The amount you want to protect in checking.</p>
                       <div class="prefs-field__control">
                         <div class="money-input threshold-input prefs-money">
@@ -684,7 +684,7 @@
                       <li class="prefs-toggle">
                         <div class="prefs-toggle__main">
                           <span class="prefs-toggle__label">Low balance alerts</span>
-                          <span class="prefs-toggle__hint">Warn me when projected balance falls below my Floor.</span>
+                          <span class="prefs-toggle__hint">Warn me when projected balance falls below my minimum balance.</span>
                         </div>
                         <label class="prefs-switch" aria-label="Low balance alerts">
                           <input type="checkbox" id="prefAlertLowBalance" checked />
@@ -731,7 +731,7 @@
                     </header>
                     <div class="prefs-tour-actions">
                       <button type="button" id="prefRestartTourBtn" class="prefs-tour-cta" data-bw-tour-restart>Show me around</button>
-                      <p class="prefs-tour-sub">Covers calendar updates, Floor alerts, and forecast reconciliation.</p>
+                      <p class="prefs-tour-sub">Covers calendar updates, minimum balance alerts, and forecast reconciliation.</p>
                     </div>
                   </section>
 
@@ -1422,8 +1422,8 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="../app.js?v=286"></script>
+    <script src="../app.js?v=291"></script>
     <script src="../feedback.js?v=3" defer></script>
-    <script src="../tour.js?v=3" defer></script>
+    <script src="../tour.js?v=4" defer></script>
   </body>
 </html>

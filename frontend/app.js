@@ -1559,7 +1559,7 @@ async function refreshLowBalanceAlert() {
           const shortfall = Math.max(0, target - bal);
           const shortfallDisp = `–$${fmtMoney0(shortfall)}`;
           setSidebarLowBalanceBanner(
-            `⚠ Below target on ${fmtMonthDay(lowHit.date)}\nHERO:$${fmtMoney0(Math.abs(bal))} · floor $${fmtMoney0(
+            `⚠ Below target on ${fmtMonthDay(lowHit.date)}\nHERO:$${fmtMoney0(Math.abs(bal))} · minimum balance $${fmtMoney0(
               Math.abs(target)
             )} (${shortfallDisp})`,
             "danger"
@@ -2138,6 +2138,7 @@ function initReportsLeftNav() {
       title: "Trendline",
       items: [
         { id: "chartPanel", label: "Balance Trendline" },
+        { id: "reportCashInsights", label: "Cash Insights" },
         { id: "reportCashTiming", label: "Income vs Expense" },
         { id: "reportSafeTransfer", label: "Safe to Move" },
       ],
@@ -4348,7 +4349,7 @@ function refreshTmInsights() {
     cards.push(
       tmInsightCard(
         "Cash pressure ahead",
-        `${floorDays} projected ${floorDays === 1 ? "day" : "days"} in this window dip below your Floor. Adjust dates or amounts to restore room.`,
+        `${floorDays} projected ${floorDays === 1 ? "day" : "days"} in this window dip below your minimum balance. Adjust dates or amounts to restore room.`,
         "tm-insight-card--risk"
       )
     );
@@ -4376,19 +4377,33 @@ function refreshTmInsights() {
 function refreshTmForecastNote() {
   if (!tmForecastNote) return;
   const uncat = tmCountUncategorizedActual();
+  const { startIso, endIso } = tmDateRangeFromToolbar();
+  const varsInRange = tmVariableExpectedCountInRange(startIso, endIso);
   let rowCount = 0;
   try {
     rowCount = txListMain ? txListMain.querySelectorAll(".tm-row").length : 0;
   } catch (_) {}
   const latest = tmLatestReconciledIsoBefore(toISODate(new Date()));
   tmForecastNote.classList.remove("tm__forecastNote--status", "tm__forecastNote--tip");
-  if (rowCount > 0 && uncat === 0 && latest) {
+  if (rowCount <= 0) {
+    tmForecastNote.textContent = "";
+    tmForecastNote.hidden = true;
+  } else if (varsInRange > 0) {
+    tmForecastNote.textContent = `Start with ${varsInRange} variable recurring ${varsInRange === 1 ? "amount" : "amounts"}, then review upcoming rows before they affect the forecast.`;
+    tmForecastNote.classList.add("tm__forecastNote--tip");
+    tmForecastNote.hidden = false;
+  } else if (uncat > 0) {
+    tmForecastNote.textContent = `Start with uncategorized transactions, then review upcoming rows so your forecast stays easy to trust.`;
+    tmForecastNote.classList.add("tm__forecastNote--tip");
+    tmForecastNote.hidden = false;
+  } else if (latest) {
     tmForecastNote.textContent = `Everything in this list is categorized. Your forecast is reconciled through ${fmtDateMedDisplay(latest)}.`;
     tmForecastNote.classList.add("tm__forecastNote--status");
     tmForecastNote.hidden = false;
   } else {
-    tmForecastNote.textContent = "";
-    tmForecastNote.hidden = true;
+    tmForecastNote.textContent = "Review upcoming rows here, then reconcile your forecast to your real balance after any edits.";
+    tmForecastNote.classList.add("tm__forecastNote--tip");
+    tmForecastNote.hidden = false;
   }
 }
 
@@ -4423,7 +4438,7 @@ function refreshSidebarForecastHints() {
     const floorDays = tmCountDaysBelowFloorInRange(mStart, mEnd);
     if (floorDays > 0) {
       parts.push(
-        `<div class="sidebar-fqh__row"><span class="sidebar-fqh__k">Cash pressure</span><span class="sidebar-fqh__v">${floorDays} ${floorDays === 1 ? "day" : "days"} below your Floor</span></div>`
+        `<div class="sidebar-fqh__row"><span class="sidebar-fqh__k">Cash pressure</span><span class="sidebar-fqh__v">${floorDays} ${floorDays === 1 ? "day" : "days"} below your minimum balance</span></div>`
       );
     }
   }
@@ -4981,7 +4996,7 @@ function registerProjectionAnnotationPlugins() {
             '600 9px ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
           ctx.textBaseline = "bottom";
           ctx.textAlign = "right";
-          const label = `Floor $${formatChartMoneyShort(floor)}`;
+          const label = `Minimum balance $${formatChartMoneyShort(floor)}`;
           const pad = 6;
           const txtW = ctx.measureText(label).width;
           // Subtle background chip so the label stays legible over the grid.
@@ -8923,9 +8938,9 @@ function renderSidebarPendingTransactionsForMonth() {
     const hintParts = [descFull, notesFull].filter(Boolean);
 
     const name = document.createElement("div");
-    name.className = `pending-attn-name ${kindFgClass(kind)}`;
-    name.textContent = catLabel;
-    name.title = hintParts.length ? `${catLabel} — ${hintParts.join(" · ")}` : catLabel;
+    name.className = "pending-attn-name";
+    name.textContent = descFull || catLabel;
+    name.title = hintParts.length ? `${descFull || catLabel} — ${catLabel}${notesFull ? ` · ${notesFull}` : ""}` : (descFull || catLabel);
 
     const est = document.createElement("div");
     est.className = "pending-attn-est";
@@ -8938,14 +8953,19 @@ function renderSidebarPendingTransactionsForMonth() {
     date.className = "pending-attn-date";
     date.textContent = it?.date ? fmtMonthDay(it.date) : "—";
 
+    const cta = document.createElement("div");
+    cta.className = "pending-attn-cta";
+    cta.textContent = "Review";
+
     el.setAttribute(
       "aria-label",
-      `${catLabel}, ${sign}$${fmtMoney0(amt)}, ${it?.date ? fmtMonthDay(it.date) : "date unknown"}`
+      `${descFull || catLabel}, ${sign}$${fmtMoney0(amt)}, ${it?.date ? fmtMonthDay(it.date) : "date unknown"}, review`
     );
     el.title = name.title;
     el.appendChild(name);
     el.appendChild(est);
     el.appendChild(date);
+    el.appendChild(cta);
     sidebarPendingTxList.appendChild(el);
   }
 }
@@ -9610,7 +9630,7 @@ function renderCalendar() {
     }
   }
   const MIN_CELL_H = isMobileCalendarLayout ? 0 : 162;
-  const MAX_VISIBLE_TXNS = isMobileCalendarLayout ? 3 : 2;
+  const MAX_VISIBLE_TXNS = 3;
   const minBalFloor = readStoredMinBalanceThresholdForReports();
   /** @type {HTMLElement[]} */
   const cells = [];
@@ -9898,7 +9918,7 @@ function renderCalendar() {
           : "";
       const warnIcon =
         belowFloor && !negativeBal
-          ? `<span class="cal-balance-warn-icon" aria-hidden="true" title="Below your balance floor"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 2.25L14 13.75H2L8 2.25z" stroke="currentColor" stroke-width="1.15" stroke-linejoin="round" fill="none"/><path d="M8 6.25v3M8 11.1v.01" stroke="currentColor" stroke-width="1.15" stroke-linecap="round"/></svg></span>`
+          ? `<span class="cal-balance-warn-icon" aria-hidden="true" title="Below your minimum balance"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 2.25L14 13.75H2L8 2.25z" stroke="currentColor" stroke-width="1.15" stroke-linejoin="round" fill="none"/><path d="M8 6.25v3M8 11.1v.01" stroke="currentColor" stroke-width="1.15" stroke-linecap="round"/></svg></span>`
           : "";
       metricsEl.innerHTML = `<div class="cal-balance-strip${stripCue ? ` ${stripCue}` : ""}"><div class="cal-balance-strip__row"><span class="cal-balance-strip__amt">${riskIcon}${warnIcon}<span class="${balanceClass}" title="Projected end-of-day balance">$${fmtMoneyParens(
         endNum
@@ -10115,7 +10135,7 @@ function pressureSeverityMeta(after, floor) {
   if (after < target) {
     return {
       key: "below",
-      label: floor != null ? "Below floor" : "Below zero",
+      label: floor != null ? "Below minimum balance" : "Below zero",
       rowClass: "reports-pressure-row--below",
       balClass: "reports-pressure-bal--below",
       levelClass: "reports-pressure-level--below",
@@ -10169,7 +10189,7 @@ function computePressureRecoveryLabel(daily, impactIso, afterBal) {
   }
   if (afterBal >= target) {
     return {
-      label: thr != null ? "Already above floor" : "Already covered",
+      label: thr != null ? "Already above minimum balance" : "Already covered",
       cls: "reports-pressure-rec--ok",
       state: "covered",
     };
@@ -10181,7 +10201,7 @@ function computePressureRecoveryLabel(daily, impactIso, afterBal) {
     }
   }
   return {
-    label: thr != null ? "Still below floor" : "Still below zero",
+    label: thr != null ? "Still below minimum balance" : "Still below zero",
     cls: "reports-pressure-rec--stale",
     state: "stale",
   };
@@ -10205,7 +10225,7 @@ function pressureWhyItMatters(hit, floor, lowestHit) {
     }
     if (recovery?.state === "stale") {
       return floor != null
-        ? "Creates the lowest balance point and stays below your floor in this range."
+        ? "Creates the lowest balance point and stays below your minimum balance in this range."
         : "Creates the lowest balance point and stays below zero in this range.";
     }
     return "Creates the lowest projected balance point in this range.";
@@ -10213,11 +10233,11 @@ function pressureWhyItMatters(hit, floor, lowestHit) {
   if (after < target) {
     if (recovery?.state === "date") {
       return floor != null
-        ? `Pushes projected cash below your floor until ${recovery.label}.`
+        ? `Pushes projected cash below your minimum balance until ${recovery.label}.`
         : `Pushes projected cash below zero until ${recovery.label}.`;
     }
     return floor != null
-      ? "Pushes projected cash below your floor with no recovery shown in this range."
+      ? "Pushes projected cash below your minimum balance with no recovery shown in this range."
       : "Pushes projected cash below zero with no recovery shown in this range.";
   }
   if (recovery?.state === "date" && floor != null && after < floor * 1.15) {
@@ -10541,7 +10561,7 @@ function buildCashInsightsForSurface({ daily, startIso = "", endIso = "", surfac
       title: "Cash pressure ahead",
       message:
         floor != null
-          ? `Cash gets tight on ${fmtMonthDay(nextLow.date)}, when your projected balance dips below your $${fmtMoney(floor)} floor at ${fmtMoney0SignedDollar(nextLow.amount)}.`
+          ? `Cash gets tight on ${fmtMonthDay(nextLow.date)}, when your projected balance dips below your $${fmtMoney(floor)} minimum balance at ${fmtMoney0SignedDollar(nextLow.amount)}.`
           : `Cash gets tight on ${fmtMonthDay(nextLow.date)}, when your projected balance reaches ${fmtMoney0SignedDollar(nextLow.amount)}.`,
       date: nextLow.date,
       amount: nextLow.amount,
@@ -10571,7 +10591,7 @@ function buildCashInsightsForSurface({ daily, startIso = "", endIso = "", surfac
         title: "Tightest day in range",
         message:
           floor != null && low.amount >= floor
-            ? `Your tightest day is ${fmtMonthDay(low.date)}, and the projected balance still stays above your $${fmtMoney(floor)} Floor.`
+            ? `Your tightest day is ${fmtMonthDay(low.date)}, and the projected balance still stays above your $${fmtMoney(floor)} minimum balance.`
             : `Your tightest day is ${fmtMonthDay(low.date)}, with a projected balance of ${fmtMoney0SignedDollar(low.amount)}.`,
         date: low.date,
         amount: low.amount,
@@ -10716,7 +10736,7 @@ function refreshCalendarCashInsights() {
 }
 
 function renderReportsBalanceTakeaway(items, dateLabels, values) {
-  const el = document.getElementById("reportsBalanceTakeaway");
+  const el = document.getElementById("reportsCashInsightsBody") || document.getElementById("reportsBalanceTakeaway");
   if (!el) return;
   const lastItem = Array.isArray(items) && items.length ? items[items.length - 1] : null;
   const insights = lastCashInsightsForReports?.length
@@ -10808,8 +10828,8 @@ function renderReportsBalanceLegend(daily, dateLabels, values) {
       : `Below zero through ${fmtMonthDay(String(dateLabels[lastNegIdx] || ""))}`;
     statusClass = " reports-kpi--risk";
   } else if (thr != null && Number.isFinite(thr) && thr > 0 && Number(values[lowIdx]) < thr) {
-    statusLabel = "Floor";
-    statusValue = "Near Floor";
+    statusLabel = "Minimum balance";
+    statusValue = "Near minimum balance";
     statusSub = `${fmtMonthDay(lowIso)} at ${lowValue}`;
     statusClass = " reports-kpi--warn";
   }
@@ -10831,7 +10851,7 @@ function renderReportsBalanceLegend(daily, dateLabels, values) {
     ? `$${fmtMoney(thr)}`
     : "Not set";
   const floorSub = thr != null && Number.isFinite(thr) && thr > 0
-    ? "Saved Floor"
+    ? "Saved minimum balance"
     : "Set in Settings";
 
   const kpi = (label, value, sub, extraClass = "") => `
@@ -10847,7 +10867,7 @@ function renderReportsBalanceLegend(daily, dateLabels, values) {
       ${kpi("Lowest Balance", lowValue, fmtMonthDay(lowIso), lowClass)}
       ${kpi(statusLabel, statusValue, statusSub, statusClass)}
       ${kpi("Largest Outflow", outflowValue, outflowSub)}
-      ${kpi("Floor", floorValue, floorSub, " reports-kpi--muted")}
+      ${kpi("Minimum balance", floorValue, floorSub, " reports-kpi--muted")}
     </div>
   `;
 }
@@ -11028,11 +11048,11 @@ function drawReportsSafeTransferChart(daily) {
   if (floor == null) {
     if (emptyEl) {
       emptyEl.style.display = "flex";
-      emptyEl.textContent = "Set a Floor in Settings to see Safe to move headroom.";
+      emptyEl.textContent = "Set a minimum balance in Settings to see Safe to move headroom.";
     }
     if (statsEl) {
       statsEl.innerHTML =
-        '<p class="meta">Safe to move uses your saved Floor across the remaining forecast path.</p>';
+        '<p class="meta">Safe to move uses your saved minimum balance across the remaining forecast path.</p>';
     }
     renderReportsSafeTransferNarrative(null);
     return;
@@ -11045,11 +11065,11 @@ function drawReportsSafeTransferChart(daily) {
   if (allZero) {
     if (emptyEl) {
       emptyEl.style.display = "flex";
-      emptyEl.textContent = "Your forecast does not currently have Safe to move room above your Floor.";
+      emptyEl.textContent = "Your forecast does not currently have Safe to move room above your minimum balance.";
     }
     if (statsEl) {
       statsEl.innerHTML =
-        '<p class="meta">Your projected balances remain at or below your saved Floor across this period.</p>';
+        '<p class="meta">Your projected balances remain at or below your saved minimum balance across this period.</p>';
     }
     renderReportsSafeTransferNarrative({
       summary:
@@ -11234,7 +11254,7 @@ function riskActionGuidance(payload, primaryExpense) {
     return `Add or move cash before ${when} to keep this day out of the red.`;
   }
   if (payload?.thr != null && payload?.balance < payload.thr) {
-    return `Shift a little cash before ${when} to stay above your floor.`;
+    return `Shift a little cash before ${when} to stay above your minimum balance.`;
   }
   return "Keep upcoming large payments and inflows in sync so this day stays comfortable.";
 }
@@ -11257,9 +11277,9 @@ function renderRiskHeatmapDetail(payload, options) {
   if (payload.thr != null) {
     const gap = payload.balance - payload.thr;
     if (gap < 0) {
-      gapHtml = `<div class="reports-risk-detail__gap">Below floor by $${fmtMoney0(Math.abs(gap))} · floor $${fmtMoney0(payload.thr)}</div>`;
+      gapHtml = `<div class="reports-risk-detail__gap">Below minimum balance by $${fmtMoney0(Math.abs(gap))} · minimum balance $${fmtMoney0(payload.thr)}</div>`;
     } else {
-      gapHtml = `<div class="reports-risk-detail__gap">Above floor by $${fmtMoney0(gap)} · floor $${fmtMoney0(payload.thr)}</div>`;
+      gapHtml = `<div class="reports-risk-detail__gap">Above minimum balance by $${fmtMoney0(gap)} · minimum balance $${fmtMoney0(payload.thr)}</div>`;
     }
   } else if (payload.balance < 0) {
     gapHtml = `<div class="reports-risk-detail__gap">Projected negative balance</div>`;
@@ -11362,7 +11382,7 @@ function renderRiskHeatmapActionPanel(items, occByIso, thr, todayIso, worstIso) 
     );
   }
 
-  // First "below floor" day — find an income that lands within ~7 days before it.
+  // First day below the minimum balance — find an income that lands within ~7 days before it.
   const troubleIdx = items.findIndex((row) => {
     const bal = Number(row.total_balance ?? 0);
     return bal < 0 || (thr != null && bal < thr);
@@ -11387,7 +11407,7 @@ function renderRiskHeatmapActionPanel(items, occByIso, thr, todayIso, worstIso) 
       );
     } else {
       suggestions.push(
-        `No paycheck is projected before ${escapeHtml(fmtMonthDay(troubleIso))} — a transfer from savings ahead of that date would keep you above your floor.`
+        `No paycheck is projected before ${escapeHtml(fmtMonthDay(troubleIso))} — a transfer from savings ahead of that date would keep you above your minimum balance.`
       );
     }
   }
@@ -11472,19 +11492,19 @@ function renderReportsRiskHeatmap(daily) {
   if (bestLen >= 2 && bestStartIso) {
     setInsight(
       thr != null
-        ? `Projected below your $${fmtMoney(thr)} floor for ${bestLen} straight days beginning ${fmtMonthDay(bestStartIso)}.`
+        ? `Projected below your $${fmtMoney(thr)} minimum balance for ${bestLen} straight days beginning ${fmtMonthDay(bestStartIso)}.`
         : `Projected negative balance for ${bestLen} straight days beginning ${fmtMonthDay(bestStartIso)}.`,
       false
     );
   } else if (bestLen === 1 && bestStartIso) {
     setInsight(
       thr != null
-        ? `Projected below your $${fmtMoney(thr)} floor on ${fmtMonthDay(bestStartIso)}.`
+        ? `Projected below your $${fmtMoney(thr)} minimum balance on ${fmtMonthDay(bestStartIso)}.`
         : `Projected negative balance on ${fmtMonthDay(bestStartIso)}.`,
       false
     );
   } else if (thr != null) {
-    setInsight(`Stays above your $${fmtMoney(thr)} floor across the next 60 days.`, false);
+    setInsight(`Stays above your $${fmtMoney(thr)} minimum balance across the next 60 days.`, false);
   } else {
     const anyNeg = items.some((row) => Number(row.total_balance ?? 0) < 0);
     setInsight(
@@ -11577,7 +11597,7 @@ function renderReportsRiskHeatmap(daily) {
     let tip = `${fmtDateMedDisplay(iso)} — Projected ${fmtMoney0SignedDollar(bal)}`;
     if (thr != null) {
       const gap = bal - thr;
-      tip += ` · ${gap < 0 ? "$" + fmtMoney0(Math.abs(gap)) + " below" : "$" + fmtMoney0(Math.abs(gap)) + " above"} $${fmtMoney0(thr)} floor`;
+      tip += ` · ${gap < 0 ? "$" + fmtMoney0(Math.abs(gap)) + " below" : "$" + fmtMoney0(Math.abs(gap)) + " above"} $${fmtMoney0(thr)} minimum balance`;
     }
     const largestEvent = events.slice().sort((a, b) => b.amount - a.amount)[0];
     if (largestEvent) {
@@ -12342,7 +12362,7 @@ function drawProjectionChart(daily) {
     }
     const leg = document.getElementById("reportsBalanceLegend");
     if (leg) leg.innerHTML = "";
-    const take = document.getElementById("reportsBalanceTakeaway");
+    const take = document.getElementById("reportsCashInsightsBody") || document.getElementById("reportsBalanceTakeaway");
     if (take) {
       take.textContent = "";
       take.hidden = true;
@@ -12355,7 +12375,7 @@ function drawProjectionChart(daily) {
       emptyEl.style.display = "flex";
       emptyEl.textContent = "Chart library failed to load. Check your network connection.";
     }
-    const take = document.getElementById("reportsBalanceTakeaway");
+    const take = document.getElementById("reportsCashInsightsBody") || document.getElementById("reportsBalanceTakeaway");
     if (take) {
       take.textContent = "";
       take.hidden = true;
@@ -12566,7 +12586,7 @@ function drawProjectionChart(daily) {
               return `Day net ${sign}$${fmtMoney(Math.abs(net))}`;
             },
             label: (ctx) => {
-              if (ctx.dataset.label === "Minimum") return ` Floor $${fmtMoney(ctx.parsed.y)}`;
+              if (ctx.dataset.label === "Minimum") return ` Minimum balance $${fmtMoney(ctx.parsed.y)}`;
               return ` Balance $${fmtMoney(ctx.parsed.y)}`;
             },
           },

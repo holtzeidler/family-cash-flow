@@ -3,7 +3,7 @@
  *
  * A lightweight 4-step spotlight tour shown to a user after they finish account
  * setup. The goal is to teach the BalanceWhiz mental model quickly:
- * where to add items, how the Floor works, how to keep the forecast
+ * where to add items, how the minimum balance works, how to keep the forecast
  * accurate, and why variable bills need occasional attention.
  *
  * Entry points:
@@ -77,9 +77,9 @@
       findTarget: findCashOutlookTarget,
       title: "Know when cash gets tight",
       context: "Quick overview before you begin.",
-      body: "BalanceWhiz flags when your projected balance drops below your Floor.",
+      body: "BalanceWhiz flags when your projected balance drops below your minimum balance.",
       helper: 'Example: "Alert me if projected balance falls below $1,000."',
-      note: "Your Floor can be updated anytime in Settings.",
+      note: "Your minimum balance can be updated anytime in Settings.",
       ctaLabel: "Next",
       placement: ["right", "left", "below", "above"],
       targetExtraClass: "bw-tour-target--cash-outlook",

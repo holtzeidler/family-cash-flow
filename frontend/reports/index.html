@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=441" />
+    <link rel="stylesheet" href="../styles.css?v=442" />
   </head>
   <body>
     <div class="container">
@@ -526,7 +526,7 @@
                     </header>
 
                     <div class="prefs-field">
-                      <label class="prefs-field__label" for="balanceThresholdMin">Floor</label>
+                      <label class="prefs-field__label" for="balanceThresholdMin">Minimum balance</label>
                       <p class="prefs-field__hint">The amount you want to protect in checking.</p>
                       <div class="prefs-field__control">
                         <div class="money-input threshold-input prefs-money">
@@ -578,7 +578,7 @@
                       <li class="prefs-toggle">
                         <div class="prefs-toggle__main">
                           <span class="prefs-toggle__label">Low balance alerts</span>
-                          <span class="prefs-toggle__hint">Warn me when projected balance falls below my Floor.</span>
+                          <span class="prefs-toggle__hint">Warn me when projected balance falls below my minimum balance.</span>
                         </div>
                         <label class="prefs-switch" aria-label="Low balance alerts">
                           <input type="checkbox" id="prefAlertLowBalance" checked />
@@ -625,7 +625,7 @@
                     </header>
                     <div class="prefs-tour-actions">
                       <button type="button" id="prefRestartTourBtn" class="prefs-tour-cta" data-bw-tour-restart>Show me around</button>
-                      <p class="prefs-tour-sub">Covers calendar updates, Floor alerts, and forecast reconciliation.</p>
+                      <p class="prefs-tour-sub">Covers calendar updates, minimum balance alerts, and forecast reconciliation.</p>
                     </div>
                   </section>
 
@@ -740,7 +740,6 @@
                     <span id="chartDaysLabel" class="reports-chart-daysmeta" hidden>30 days</span>
                   </div>
                   <div id="reportsBalanceLegend" class="reports-legend reports-legend--kpis" aria-live="polite"></div>
-                  <div class="reports-card__takeaway reports-card__takeaway--guidance" id="reportsBalanceTakeaway" hidden aria-live="polite"></div>
                   <div id="chartErr" class="error"></div>
                   <div class="projection-chart-wrap projection-chart-wrap--reports">
                     <div class="reports-chart-gridfill" aria-hidden="true"></div>
@@ -748,6 +747,14 @@
                     <canvas id="projectionChartCanvas" class="projection-chart-canvas" height="400"></canvas>
                   </div>
                 </div>
+              </section>
+
+              <section class="card reports-card" id="reportCashInsights">
+                <div class="reports-card__head">
+                  <h2 class="reports-card__title">Cash insights</h2>
+                  <p class="reports-card__desc">High-priority guidance pulled from this forecast range so you can see what changed and what to watch next.</p>
+                </div>
+                <div class="reports-card__takeaway reports-card__takeaway--guidance" id="reportsCashInsightsBody" hidden aria-live="polite"></div>
               </section>
 
               <section class="card reports-card" id="reportCashTiming">
@@ -819,16 +826,16 @@
                   <span class="reports-risk-legend__item">
                     <i class="reports-risk-dot reports-risk-dot--safe"></i>
                     <span class="reports-risk-legend__label">Comfortable</span>
-                    <span class="reports-risk-legend__meta">Above Floor</span>
+                    <span class="reports-risk-legend__meta">Above minimum balance</span>
                   </span>
                   <span class="reports-risk-legend__item">
                     <i class="reports-risk-dot reports-risk-dot--caution"></i>
-                    <span class="reports-risk-legend__label">Near Floor</span>
+                    <span class="reports-risk-legend__label">Near minimum balance</span>
                     <span class="reports-risk-legend__meta">Watch</span>
                   </span>
                   <span class="reports-risk-legend__item">
                     <i class="reports-risk-dot reports-risk-dot--low"></i>
-                    <span class="reports-risk-legend__label">Below Floor</span>
+                    <span class="reports-risk-legend__label">Below minimum balance</span>
                     <span class="reports-risk-legend__meta">Tight</span>
                   </span>
                   <span class="reports-risk-legend__item">
@@ -963,7 +970,7 @@
                         <th scope="col">Payment</th>
                         <th scope="col" class="num">Amount</th>
                         <th scope="col" class="num reports-pressure-hero-col">Balance after</th>
-                        <th scope="col" class="reports-pressure-rec-col" title="First date the balance is projected back above your floor (set in Settings), or in the black if no floor.">Recovery</th>
+                        <th scope="col" class="reports-pressure-rec-col" title="First date the balance is projected back above your minimum balance (set in Settings), or back in the black if no minimum balance is set.">Recovery</th>
                       </tr>
                     </thead>
                     <tbody id="reportsPressureBody"></tbody>
@@ -1360,8 +1367,8 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="../app.js?v=287"></script>
+    <script src="../app.js?v=291"></script>
     <script src="../feedback.js?v=4" defer></script>
-    <script src="../tour.js?v=3" defer></script>
+    <script src="../tour.js?v=4" defer></script>
   </body>
 </html>
