@@ -680,16 +680,6 @@
   function init() {
     ensureFloatingButton();
     document.addEventListener("bw:milestone", onMilestone);
-    // For pages that render report cards, attach reactions opportunistically.
-    if (document.body && document.body.dataset.bwView === "reports") {
-      // Try a few times to catch async card renders.
-      let tries = 0;
-      const id = setInterval(() => {
-        autoAttachReportReactions(document.body);
-        tries += 1;
-        if (tries > 6) clearInterval(id);
-      }, 1200);
-    }
   }
 
   // Public API surface

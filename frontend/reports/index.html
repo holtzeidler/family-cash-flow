@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=440" />
+    <link rel="stylesheet" href="../styles.css?v=441" />
   </head>
   <body>
     <div class="container">
@@ -798,13 +798,15 @@
               <section class="card reports-card" id="reportSafeTransfer">
                 <div class="reports-card__head">
                   <h2 class="reports-card__title">Safe to move outlook</h2>
-                  <p class="reports-card__desc">Projected room above your Floor along the forecast path, showing how much can move from checking without crossing it.</p>
+                  <p class="reports-card__desc">How much money can safely leave checking while staying above your minimum balance.</p>
                 </div>
                 <div id="reportsSafeTransferStats" class="reports-mini-stats" aria-live="polite"></div>
+                <div id="reportsSafeTransferInsight" class="reports-safe-transfer-insight" hidden aria-live="polite"></div>
                 <div class="projection-chart-wrap projection-chart-wrap--reports projection-chart-wrap--short">
                   <div id="reportsSafeTransferEmpty" class="projection-chart-empty" style="display: none" aria-live="polite"></div>
                   <canvas id="reportsSafeTransferCanvas" height="200"></canvas>
                 </div>
+                <div id="reportsSafeTransferContext" class="reports-safe-transfer-context" hidden aria-live="polite"></div>
               </section>
 
               <section class="card reports-card" id="reportRiskHeatmap">
@@ -1358,8 +1360,8 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="../app.js?v=286"></script>
-    <script src="../feedback.js?v=3" defer></script>
+    <script src="../app.js?v=287"></script>
+    <script src="../feedback.js?v=4" defer></script>
     <script src="../tour.js?v=3" defer></script>
   </body>
 </html>

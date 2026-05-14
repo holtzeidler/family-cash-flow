@@ -2133,14 +2133,30 @@ function initReportsLeftNav() {
   if (reportsViewPanel.dataset.reportsNavInit === "1") return;
   reportsViewPanel.dataset.reportsNavInit = "1";
 
-  const ids = [
-    { id: "chartPanel", label: "Trendline" },
-    { id: "reportCashTiming", label: "Income vs Expense" },
-    { id: "reportSafeTransfer", label: "Safe to Transfer" },
-    { id: "reportRiskHeatmap", label: "Risk Calendar" },
-    { id: "reportObligations", label: "Commitments" },
-    { id: "reportCashPressure", label: "Pressure Points" },
-  ].filter((it) => document.getElementById(it.id));
+  const sections = [
+    {
+      title: "Trendline",
+      items: [
+        { id: "chartPanel", label: "Balance Trendline" },
+        { id: "reportCashTiming", label: "Income vs Expense" },
+        { id: "reportSafeTransfer", label: "Safe to Move" },
+      ],
+    },
+    {
+      title: "Forecast Risks",
+      items: [
+        { id: "reportRiskHeatmap", label: "Risk Calendar" },
+        { id: "reportObligations", label: "Commitments" },
+        { id: "reportCashPressure", label: "Pressure Points" },
+      ],
+    },
+  ]
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((it) => document.getElementById(it.id)),
+    }))
+    .filter((section) => section.items.length);
+  const ids = sections.flatMap((section) => section.items);
 
   if (!ids.length) return;
 
@@ -2157,6 +2173,11 @@ function initReportsLeftNav() {
   nav.id = "reportsLeftNav";
   nav.className = "card reports-left-nav reports-left-nav--sidebar";
   nav.setAttribute("aria-label", "Reports");
+
+  const eyebrow = document.createElement("div");
+  eyebrow.className = "reports-left-nav__eyebrow";
+  eyebrow.textContent = "Reports";
+  nav.appendChild(eyebrow);
 
   const list = document.createElement("div");
   list.className = "reports-left-nav__list";
@@ -2194,30 +2215,46 @@ function initReportsLeftNav() {
     }
   }
 
-  for (const it of ids) {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "reports-left-nav__item";
-    btn.textContent = it.label;
-    btn.setAttribute("data-target", it.id);
-    btn.addEventListener("click", () => {
-      const el = document.getElementById(it.id);
-      if (!el) return;
-      setActiveNav(it.id);
-      showOnlyReport(it.id);
-      // Chart.js draws onto canvas using the canvas's current pixel size. A chart
-      // drawn while its card was hidden ends up with a 0×0 chart area and looks
-      // blank until something else triggers a redraw (the user previously had to
-      // toggle Grouped/Stacked to force this). Now that the card is visible,
-      // re-flow or re-draw the chart that lives inside it.
-      requestAnimationFrame(() => {
-        try {
-          reflowReportChartFor(it.id);
-        } catch (_) {}
-        el.scrollIntoView({ behavior: "smooth", block: "start" });
+  for (const section of sections) {
+    const sectionEl = document.createElement("section");
+    sectionEl.className = "reports-left-nav__section";
+
+    const title = document.createElement("div");
+    title.className = "reports-left-nav__section-title";
+    title.textContent = section.title;
+    sectionEl.appendChild(title);
+
+    const group = document.createElement("div");
+    group.className = "reports-left-nav__group";
+    sectionEl.appendChild(group);
+
+    for (const it of section.items) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "reports-left-nav__item";
+      btn.textContent = it.label;
+      btn.setAttribute("data-target", it.id);
+      btn.addEventListener("click", () => {
+        const el = document.getElementById(it.id);
+        if (!el) return;
+        setActiveNav(it.id);
+        showOnlyReport(it.id);
+        // Chart.js draws onto canvas using the canvas's current pixel size. A chart
+        // drawn while its card was hidden ends up with a 0×0 chart area and looks
+        // blank until something else triggers a redraw (the user previously had to
+        // toggle Grouped/Stacked to force this). Now that the card is visible,
+        // re-flow or re-draw the chart that lives inside it.
+        requestAnimationFrame(() => {
+          try {
+            reflowReportChartFor(it.id);
+          } catch (_) {}
+          el.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
       });
-    });
-    list.appendChild(btn);
+      group.appendChild(btn);
+    }
+
+    list.appendChild(sectionEl);
   }
 
   // Initialize active based on first visible card.
@@ -10815,6 +10852,162 @@ function renderReportsBalanceLegend(daily, dateLabels, values) {
   `;
 }
 
+function renderReportsSafeTransferNarrative(result) {
+  const insightEl = document.getElementById("reportsSafeTransferInsight");
+  const contextEl = document.getElementById("reportsSafeTransferContext");
+  if (insightEl) {
+    if (!result?.summary) {
+      insightEl.hidden = true;
+      insightEl.innerHTML = "";
+    } else {
+      insightEl.hidden = false;
+      insightEl.innerHTML = `<p class="reports-safe-transfer-insight__text">${escapeHtml(result.summary)}</p>`;
+    }
+  }
+  if (contextEl) {
+    if (!result?.cards?.length) {
+      contextEl.hidden = true;
+      contextEl.innerHTML = "";
+    } else {
+      contextEl.hidden = false;
+      contextEl.innerHTML = result.cards
+        .map(
+          (card) => `
+            <article class="reports-safe-transfer-context__card">
+              <div class="reports-safe-transfer-context__label">${escapeHtml(card.label)}</div>
+              <p class="reports-safe-transfer-context__text">${escapeHtml(card.text)}</p>
+            </article>
+          `
+        )
+        .join("");
+    }
+  }
+}
+
+function pickReportsSafeTransferDriver(entries, kind) {
+  const matches = (entries || [])
+    .filter((entry) => String(entry?.kind || "") === kind)
+    .sort((a, b) => Number(b?.amount || 0) - Number(a?.amount || 0));
+  return matches[0] || null;
+}
+
+function buildReportsSafeTransferNarrative(items, series, floor) {
+  const rows = Array.isArray(items) ? items : [];
+  const labels = rows.map((row) => String(row?.date || ""));
+  if (!rows.length || !series.length || !labels[0] || !labels[labels.length - 1]) return null;
+
+  const occByIso = buildRiskOccurrencesIndex(labels[0], labels[labels.length - 1]);
+  const peakIdx = series.reduce((best, value, idx, arr) => (value > arr[best] ? idx : best), 0);
+  const lowIdx = series.reduce((best, value, idx, arr) => (value < arr[best] ? idx : best), 0);
+  const firstZeroIdx = series.findIndex((value) => Number(value || 0) <= 0.5);
+  const recoveryIdx =
+    firstZeroIdx >= 0 ? series.findIndex((value, idx) => idx > firstZeroIdx && Number(value || 0) > 0.5) : -1;
+
+  const peakIso = labels[peakIdx];
+  const lowIso = labels[lowIdx];
+  const peakValue = Number(series[peakIdx] || 0);
+  const lowValue = Number(series[lowIdx] || 0);
+  const lowEvents = occByIso.get(lowIso) || [];
+  const lowExpense = pickReportsSafeTransferDriver(lowEvents, "expense");
+
+  if (firstZeroIdx >= 0) {
+    const zeroIso = labels[firstZeroIdx];
+    const zeroEvents = occByIso.get(zeroIso) || [];
+    const zeroExpense = pickReportsSafeTransferDriver(zeroEvents, "expense");
+    const recoveryIso = recoveryIdx >= 0 ? labels[recoveryIdx] : "";
+    const recoveryEvents = recoveryIdx >= 0 ? occByIso.get(recoveryIso) || [] : [];
+    const recoveryIncome = pickReportsSafeTransferDriver(recoveryEvents, "income");
+    const summary = zeroExpense
+      ? `Safe-to-move room falls to $0 on ${fmtMonthDay(zeroIso)} after ${zeroExpense.description} clears. $0 here means your projected balance has reached your minimum balance, not that checking is empty.`
+      : `Safe-to-move room falls to $0 on ${fmtMonthDay(zeroIso)}. $0 here means your projected balance has reached your minimum balance, not that checking is empty.`;
+    const cards = [
+      {
+        label: "What happened",
+        text: `Room hits $0 on ${fmtMonthDay(zeroIso)}.`,
+      },
+      {
+        label: "Why",
+        text: zeroExpense
+          ? `${zeroExpense.description} (${fmtMoneyCompactTile(-Math.abs(Number(zeroExpense.amount || 0)))}) uses the remaining room above your minimum balance.`
+          : "Upcoming outflows bring your projected balance down to your minimum balance.",
+      },
+      {
+        label: "What to watch",
+        text:
+          recoveryIdx >= 0
+            ? `${recoveryIncome ? recoveryIncome.description : "The next inflow"} opens room back up on ${fmtMonthDay(
+                recoveryIso
+              )} to about ${fmtMoneyCompactTile(series[recoveryIdx])}.`
+            : "Any money leaving checking before the end of this window would need an added buffer first.",
+      },
+    ];
+    const annotations = [
+      {
+        idx: firstZeroIdx,
+        value: Number(series[firstZeroIdx] || 0),
+        label: zeroExpense ? truncate(zeroExpense.description, 18) : "Room hits $0",
+        kind: "outflow",
+      },
+    ];
+    if (recoveryIdx >= 0) {
+      annotations.push({
+        idx: recoveryIdx,
+        value: Number(series[recoveryIdx] || 0),
+        label: recoveryIncome ? truncate(recoveryIncome.description, 18) : "Room returns",
+        kind: "inflow",
+      });
+    }
+    return { summary, cards, annotations };
+  }
+
+  const summary =
+    peakIdx !== lowIdx
+      ? `Most available cash sits near ${fmtMonthDay(peakIso)} at about ${fmtMoneyCompactTile(
+          peakValue
+        )}, then narrows to about ${fmtMoneyCompactTile(lowValue)} by ${fmtMonthDay(lowIso)}.`
+      : `Safe-to-move room stays fairly steady in this window at about ${fmtMoneyCompactTile(peakValue)}.`;
+  const cards = [
+    {
+      label: "What happened",
+      text:
+        peakIdx !== lowIdx
+          ? `The widest room to move cash is around ${fmtMonthDay(peakIso)} at ${fmtMoneyCompactTile(peakValue)}.`
+          : `Room stays available throughout this window.`,
+    },
+    {
+      label: "Why",
+      text: lowExpense
+        ? `${lowExpense.description} (${fmtMoneyCompactTile(-Math.abs(Number(lowExpense.amount || 0)))}) is the main drag on ${fmtMonthDay(lowIso)}.`
+        : "Upcoming bills gradually reduce the room available later in the range.",
+    },
+    {
+      label: "What to watch",
+      text:
+        lowValue <= Math.max(250, peakValue * 0.2)
+          ? `Larger moves are safer earlier in the window before room narrows on ${fmtMonthDay(lowIso)}.`
+          : `This range stays above your minimum balance, so timing is flexible unless new bills are added.`,
+    },
+  ];
+  const annotations = [];
+  if (peakValue > 0) {
+    annotations.push({
+      idx: peakIdx,
+      value: peakValue,
+      label: "Best room",
+      kind: "inflow",
+    });
+  }
+  if (lowIdx !== peakIdx) {
+    annotations.push({
+      idx: lowIdx,
+      value: lowValue,
+      label: lowExpense ? truncate(lowExpense.description, 18) : "Tighter point",
+      kind: "outflow",
+    });
+  }
+  return { summary, cards, annotations };
+}
+
 function drawReportsSafeTransferChart(daily) {
   const canvas = document.getElementById("reportsSafeTransferCanvas");
   const emptyEl = document.getElementById("reportsSafeTransferEmpty");
@@ -10829,6 +11022,7 @@ function drawReportsSafeTransferChart(daily) {
       emptyEl.textContent = items.length ? "Not enough projection days." : "No projection data.";
     }
     if (statsEl) statsEl.innerHTML = "";
+    renderReportsSafeTransferNarrative(null);
     return;
   }
   if (floor == null) {
@@ -10840,11 +11034,13 @@ function drawReportsSafeTransferChart(daily) {
       statsEl.innerHTML =
         '<p class="meta">Safe to move uses your saved Floor across the remaining forecast path.</p>';
     }
+    renderReportsSafeTransferNarrative(null);
     return;
   }
   if (emptyEl) emptyEl.style.display = "none";
   const labels = items.map((d) => d.date);
   const series = computeSafeToTransferSeries(items, floor);
+  const narrative = buildReportsSafeTransferNarrative(items, series, floor);
   const allZero = series.every((v) => !Number.isFinite(v) || v <= 0);
   if (allZero) {
     if (emptyEl) {
@@ -10855,6 +11051,24 @@ function drawReportsSafeTransferChart(daily) {
       statsEl.innerHTML =
         '<p class="meta">Your projected balances remain at or below your saved Floor across this period.</p>';
     }
+    renderReportsSafeTransferNarrative({
+      summary:
+        "Safe-to-move room stays at $0 across this whole window. That means your projected balance is already sitting at your minimum balance before any extra money leaves checking.",
+      cards: [
+        {
+          label: "What happened",
+          text: "This range never builds room above your minimum balance.",
+        },
+        {
+          label: "Why",
+          text: "Upcoming bills use the available cushion before a later inflow restores it.",
+        },
+        {
+          label: "What to watch",
+          text: "Wait for the next stronger income day or add a buffer before moving cash out of checking.",
+        },
+      ],
+    });
     return;
   }
   const hi = Math.max(...series);
@@ -10862,11 +11076,12 @@ function drawReportsSafeTransferChart(daily) {
   const avg = series.reduce((a, b) => a + b, 0) / series.length;
   if (statsEl) {
     statsEl.innerHTML = `<div class="reports-mini-stats__row">
-      <div><span class="k">High</span><span class="v">$${fmtMoney(hi)}</span></div>
-      <div><span class="k">Low</span><span class="v">$${fmtMoney(lo)}</span></div>
-      <div><span class="k">Average</span><span class="v">$${fmtMoney(avg)}</span></div>
+      <div><span class="k">Peak available</span><span class="v">${fmtMoneyCompactTile(hi)}</span></div>
+      <div><span class="k">Lowest available</span><span class="v">${fmtMoneyCompactTile(lo)}</span></div>
+      <div><span class="k">Average available</span><span class="v">${fmtMoneyCompactTile(avg)}</span></div>
     </div>`;
   }
+  renderReportsSafeTransferNarrative(narrative);
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
   reportsSafeTransferChartInstance = new Chart(ctx, {
@@ -10891,10 +11106,13 @@ function drawReportsSafeTransferChart(daily) {
       maintainAspectRatio: false,
       plugins: {
         legend: { display: false },
+        balanceAnnotations: {
+          annotations: Array.isArray(narrative?.annotations) ? narrative.annotations.slice(0, 2) : [],
+        },
         tooltip: {
           callbacks: {
             title: (t) => formatProjectionTooltipDate(labels[t[0]?.dataIndex ?? 0]),
-            label: (c) => ` Safe to move $${fmtMoney(c.parsed.y)}`,
+            label: (c) => ` Safe to move ${fmtMoneyCompactTile(c.parsed.y)}`,
           },
         },
       },
@@ -10906,7 +11124,7 @@ function drawReportsSafeTransferChart(daily) {
         y: {
           grid: { color: "rgba(0,0,0,0.05)", drawBorder: false },
           ticks: {
-            callback: (v) => "$" + fmtMoney0(v),
+            callback: (v) => "$" + formatChartMoneyShort(v),
           },
         },
       },
