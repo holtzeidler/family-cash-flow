@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=440" />
+    <link rel="stylesheet" href="./styles.css?v=441" />
   </head>
   <body class="landing-page">
     <div class="container">
@@ -40,8 +40,8 @@
         <div class="landing-hero">
           <div class="landing-hero__inner">
             <div class="landing-hero__copy">
-              <h2 class="landing-hero__text">Stop guessing what is safe to move.</h2>
-              <p class="landing-hero__sub">Know your projected balance, not just today’s balance.</p>
+              <h2 class="landing-hero__text">Know what’s safe before bills hit.</h2>
+              <p class="landing-hero__sub">See your projected checking balance before upcoming bills and paychecks land.</p>
               <a href="https://balancewhiz.com/account-setup/?fresh=1" class="landing-hero__cta">Start your forecast</a>
             </div>
             <div class="landing-hero__viz" aria-label="Illustrative forecast preview">
@@ -77,7 +77,7 @@
                   />
                   <line x1="4" y1="20" x2="276" y2="20" stroke="rgba(180, 83, 9, 0.35)" stroke-dasharray="4 4" stroke-width="1" />
                 </svg>
-                <p class="landing-hero-viz__foot">Safe to move guidance as your projected balance changes.</p>
+                <p class="landing-hero-viz__foot">Projected balance updates as your forecast changes.</p>
               </div>
             </div>
           </div>
@@ -99,19 +99,21 @@
                 </svg>
               </span>
               <p class="landing-insight__copy">
-                May 20 gets close to your $1,000 floor after a large card payment.
+                May 20 gets close to your $1,000 Floor after a large card payment.
               </p>
             </div>
           </div>
         </section>
 
         <section id="features" class="landing-preview" aria-label="Product preview">
+          <div class="landing-preview__intro">
+            <h3 class="landing-preview__title">See what’s safe to move.</h3>
+            <p class="landing-preview__lede">BalanceWhiz looks ahead at income, bills, and your Floor before showing what can leave checking.</p>
+          </div>
           <div class="landing-preview__demo">
-            <p class="landing-preview__tagline">What is safe to move from checking after income and bills land on the calendar.</p>
-
             <div class="landing-preview__main">
               <div class="landing-preview__leftCol">
-                <div class="landing-preview__transferBand" role="status" aria-label="Safe transfer amount">
+                <div class="landing-preview__transferBand" role="status" aria-label="Safe to move guidance">
                   <div class="landing-preview__transfer">
                     <p class="landing-preview__transferLine">Safe to move guidance</p>
                     <p class="landing-preview__transferAmt">$650 to $900</p>
@@ -149,7 +151,7 @@
                   <rect x="24" y="18" width="592" height="116" rx="12" fill="rgba(4, 120, 87, 0.06)" />
                   <rect x="24" y="111" width="592" height="18" rx="8" fill="rgba(180, 83, 9, 0.06)" />
                   <line x1="24" y1="120" x2="616" y2="120" stroke="rgba(180, 83, 9, 0.4)" stroke-dasharray="6 6" stroke-width="1.4" />
-                  <text x="612" y="114" text-anchor="end" fill="rgba(146, 64, 14, 0.92)" font-size="12" font-family="Inter, system-ui, sans-serif" font-weight="700">$1k floor</text>
+                  <text x="612" y="114" text-anchor="end" fill="rgba(146, 64, 14, 0.92)" font-size="12" font-family="Inter, system-ui, sans-serif" font-weight="700">$1k Floor</text>
                   <path
                     d="M24,68 L120,76 L220,98 L300,120 L360,132 L430,102 L510,76 L616,78 L616,188 L24,188 Z"
                     fill="url(#landingPreviewBalanceFill)"
@@ -184,15 +186,6 @@
                     Paycheck
                   </text>
                 </svg>
-              </div>
-            </div>
-
-            <div class="landing-trust-row" aria-label="Quick highlights">
-                <div class="landing-trust-row__inner" role="list" aria-label="Highlights">
-                <div class="landing-trust-row__item" role="listitem"><span class="landing-trust-row__icon" aria-hidden="true">✓</span> No bank login</div>
-                <div class="landing-trust-row__item" role="listitem"><span class="landing-trust-row__icon" aria-hidden="true">✓</span> Safe to move clarity</div>
-                <div class="landing-trust-row__item" role="listitem"><span class="landing-trust-row__icon" aria-hidden="true">✓</span> Reconcile forecast fast</div>
-                <div class="landing-trust-row__item" role="listitem"><span class="landing-trust-row__icon" aria-hidden="true">✓</span> Cancel anytime</div>
               </div>
             </div>
           </div>
@@ -292,8 +285,7 @@
           </div>
         </section>
 
-        <div class="landing-below-preview" aria-label="How it works and benefits">
-          <section class="landing-how" aria-label="How it works">
+        <section class="landing-how" aria-label="How it works">
           <div class="landing-how__copy">
             <div class="landing-how__title">How it works</div>
             <ol class="landing-how__steps">
@@ -310,47 +302,23 @@
                 <div class="landing-how__stepBody">Move money when the calendar gives you room.</div>
               </li>
             </ol>
-            <p class="landing-setup-note">No category overhaul needed.</p>
           </div>
-          </section>
+        </section>
 
-          <section class="landing-why" aria-label="Why people use BalanceWhiz">
-          <div class="landing-why__copy">
-            <div class="landing-why__title">Why people use BalanceWhiz</div>
-            <div class="landing-why__list" role="list" aria-label="Why people use BalanceWhiz">
-              <div class="landing-why__item" role="listitem">
-                <p class="landing-why__line"><strong>Cash pressure, before it hits.</strong><span>See low points before they happen.</span></p>
-              </div>
-              <div class="landing-why__item" role="listitem">
-                <p class="landing-why__line"><strong>Safe to move, spelled out.</strong><span>See what can leave checking without crossing your Floor.</span></p>
-              </div>
-              <div class="landing-why__item" role="listitem">
-                <p class="landing-why__line"><strong>Forecasts that stay accurate.</strong><span>Reconcile quickly as life changes.</span></p>
-              </div>
-              <div class="landing-why__item" role="listitem">
-                <p class="landing-why__line"><strong>Move cash with better timing.</strong><span>Wait until the calendar gives you more room.</span></p>
-              </div>
+        <section class="landing-offer landing-offer--calm" aria-label="Start your forecast">
+          <div class="landing-offer__panel">
+            <div class="landing-offer__copy">
+              <h3 class="landing-offer__heading">Start your forecast</h3>
+              <p class="landing-offer__support">14-day free trial. No bank connection required.</p>
+              <ul class="landing-offer__bullets" aria-label="Offer details">
+                <li>Billing starts after trial</li>
+                <li>Live in minutes</li>
+                <li>Cancel anytime</li>
+              </ul>
+              <a class="landing-offer__cta" href="https://balancewhiz.com/account-setup/?fresh=1">Start your forecast</a>
             </div>
           </div>
-          </section>
-
-          <section class="landing-offer landing-offer--calm" aria-label="Build your forecast">
-            <div class="landing-offer__panel">
-              <div class="landing-offer__copy">
-                <h3 class="landing-offer__heading">Start your forecast</h3>
-                <p class="landing-offer__tagline">
-                  <span class="landing-offer__trial">14-day free trial</span><span class="landing-offer__price"> · then $5.99/mo.</span>
-                </p>
-                <ul class="landing-offer__bullets" aria-label="Offer details">
-                  <li>Billing starts after trial</li>
-                  <li>Live in minutes</li>
-                  <li>Cancel anytime</li>
-                </ul>
-                <a class="landing-offer__cta" href="https://balancewhiz.com/account-setup/?fresh=1">Start your forecast</a>
-              </div>
-            </div>
-          </section>
-        </div>
+        </section>
 
         </div>
 

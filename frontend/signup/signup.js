@@ -649,6 +649,75 @@ function setAccountSetupStep3AfterSave(on) {
   syncAccountSetupWizardShellButtons();
 }
 
+function getAccountSetupTransactionCounts() {
+  let draft = null;
+  try { draft = readAccountSetupDraftRaw() || {}; } catch (_) { draft = {}; }
+  const txs = Array.isArray(draft.transactions) ? draft.transactions : [];
+  let incomeCount = 0;
+  let expenseCount = 0;
+  for (const tx of txs) {
+    const kind = String((tx && tx.kind) || "").trim().toLowerCase();
+    if (kind === "income") incomeCount += 1;
+    else if (kind === "expense") expenseCount += 1;
+  }
+  return {
+    incomeCount,
+    expenseCount,
+    totalCount: incomeCount + expenseCount,
+  };
+}
+
+function formatAccountSetupStep3Meta(kind, count) {
+  if (!count) return "";
+  if (kind === "income") return count === 1 ? "1 income source added" : `${count} income sources added`;
+  return count === 1 ? "1 recurring expense added" : `${count} recurring expenses added`;
+}
+
+function syncAccountSetupStep3HubState() {
+  const panel = document.getElementById("accountSetupWizardPanel2");
+  const intro = document.getElementById("accountSetupWizardStep3Intro");
+  if (!panel || !intro) return;
+  const progress = document.getElementById("accountSetupStep3Progress");
+  const continueBtn = document.getElementById("asTxHubContinueBtn");
+  const { incomeCount, expenseCount, totalCount } = getAccountSetupTransactionCounts();
+  const ready = totalCount > 0;
+
+  if (progress) {
+    progress.textContent = ready
+      ? "You’re ready to generate your first forecast."
+      : "Add one or two recurring items to start forecasting.";
+    progress.classList.toggle("is-ready", ready);
+    progress.classList.toggle("is-pending", !ready);
+  }
+
+  const syncAction = (buttonId, metaId, count) => {
+    const button = document.getElementById(buttonId);
+    const meta = document.getElementById(metaId);
+    const check = button?.querySelector(".account-setup-step3-actionBtn__check");
+    if (button) {
+      button.disabled = false;
+      button.classList.toggle("is-complete", count > 0);
+    }
+    if (check) check.hidden = count <= 0;
+    if (meta) {
+      const kind = buttonId === "asTxHubAddIncomeBtn" ? "income" : "expense";
+      const text = formatAccountSetupStep3Meta(kind, count);
+      meta.textContent = text;
+      meta.hidden = false;
+      meta.classList.toggle("is-empty", !text);
+    }
+  };
+
+  syncAction("asTxHubAddIncomeBtn", "asTxHubAddIncomeMeta", incomeCount);
+  syncAction("asTxHubAddExpenseBtn", "asTxHubAddExpenseMeta", expenseCount);
+
+  if (continueBtn) {
+    continueBtn.disabled = !ready;
+    continueBtn.classList.toggle("is-ready", ready);
+    continueBtn.setAttribute("aria-disabled", ready ? "false" : "true");
+  }
+}
+
 function getAccountSetupExpensePhase() {
   const p3 = document.getElementById("accountSetupWizardPanel3");
   if (!p3) return "intro";
@@ -725,8 +794,6 @@ function getAccountSetupDisplayStepNumber(step) {
 /** Per-step copy. Title + subtitle are intentionally outcome-oriented, not "now…". */
 function getAccountSetupStepCopy(step, ctx) {
   const phase3 = ctx && ctx.step3Phase;
-  const phase3After = !!(ctx && ctx.step3After);
-  const phase3HasAny = !!(ctx && ctx.hasAnyTransaction);
   switch (step) {
     case 0:
       return {
@@ -739,12 +806,6 @@ function getAccountSetupStepCopy(step, ctx) {
         subtitle: "Use today’s balance so your forecast starts from reality.",
       };
     case 2: {
-      if (phase3 === "form" && phase3After) {
-        return {
-          title: "Build your starting forecast",
-          subtitle: "You’ve added enough to generate your first forecast. You can continue now and refine things later.",
-        };
-      }
       if (phase3 === "form") {
         return {
           title: "Add an upcoming paycheck or bill",
@@ -752,12 +813,8 @@ function getAccountSetupStepCopy(step, ctx) {
         };
       }
       return {
-        title: phase3HasAny
-          ? "Want to add another recurring item?"
-          : "Add the upcoming items you already know",
-        subtitle: phase3HasAny
-          ? "A few recurring items are usually enough. You can edit everything later."
-          : "Most people start with 2–3 recurring items. You can edit everything later.",
+        title: "Add the upcoming items you already know",
+        subtitle: "Most people start with 2–3 recurring items. You can edit everything later.",
       };
     }
     case 3:
@@ -786,6 +843,7 @@ function syncAccountSetupWizardShellButtons() {
   const cancelExp = document.getElementById("asExpCancelBtn");
   const hubAddIncome = document.getElementById("asTxHubAddIncomeBtn");
   const hubAddExpense = document.getElementById("asTxHubAddExpenseBtn");
+  const hubContinue = document.getElementById("asTxHubContinueBtn");
   const successAddExpense = document.getElementById("asStep3SuccessAddExpenseBtn");
   const successAddIncome = document.getElementById("asStep3SuccessAddIncomeBtn");
   const successContinue = document.getElementById("asStep3ContinueBtn");
@@ -824,43 +882,8 @@ function syncAccountSetupWizardShellButtons() {
     if (subEyebrow) subEyebrow.hidden = false;
   }
 
-  // Step 3 (transactions hub): gate Add buttons + show Skip/Next behavior.
-  // The global wizard eyebrow handles the headline; in-panel copy stays minimal.
   try {
-    if (s === 2 && getAccountSetupStep3Phase() === "intro") {
-      const rawDraft = readAccountSetupDraftRaw() || {};
-      const txs = Array.isArray(rawDraft.transactions) ? rawDraft.transactions : [];
-      const hasTx = txs.length > 0;
-      const hasIncome = txs.some((t) => String(t?.kind || "").toLowerCase() === "income");
-      const hasExpense = txs.some((t) => String(t?.kind || "").toLowerCase() === "expense");
-
-      // Once any transaction exists, do not show the hub/intro screen anymore.
-      // Keep the user in the (collapsed) form success state instead.
-      if (hasTx) {
-        setAccountSetupStep3Phase("form");
-        setAccountSetupStep3AfterSave(true);
-        return;
-      }
-
-      if (hubAddIncome) hubAddIncome.disabled = hasIncome;
-      if (hubAddExpense) hubAddExpense.disabled = hasExpense;
-
-      // Actions row: if no tx yet, show Skip (secondary) and hide Next.
-      // If one tx exists, hide Skip and show a white Next button.
-      // If both exist, show green Next button.
-      if (accountSetupSkipBtn) {
-        accountSetupSkipBtn.textContent = "Skip";
-        // Show Skip only after at least one item is entered.
-        accountSetupSkipBtn.style.display = hasTx ? "inline-flex" : "none";
-      }
-      if (signupBtn) {
-        // Step 3: Skip serves as the only "continue" action once any tx exists.
-        signupBtn.style.display = "none";
-      }
-    } else {
-      if (hubAddIncome) hubAddIncome.disabled = false;
-      if (hubAddExpense) hubAddExpense.disabled = false;
-    }
+    if (s === 2) syncAccountSetupStep3HubState();
   } catch (_) {}
 
   if (s < 2) {
@@ -880,44 +903,20 @@ function syncAccountSetupWizardShellButtons() {
       if (saveInc) saveInc.style.display = "inline-flex";
       if (cancelInc) cancelInc.style.display = "inline-flex";
       if (signupBtn) signupBtn.style.display = "none";
-      const after = isAccountSetupStep3AfterSave();
-      try {
-        const rawDraft = readAccountSetupDraftRaw() || {};
-        const txs = Array.isArray(rawDraft.transactions) ? rawDraft.transactions : [];
-        const hasIncome = txs.some((t) => String(t?.kind || "").toLowerCase() === "income");
-        const hasExpense = txs.some((t) => String(t?.kind || "").toLowerCase() === "expense");
-        // Buttons remain clickable; only styling changes based on what's already entered.
-        if (successAddIncome) {
-          successAddIncome.disabled = false;
-          successAddIncome.classList.toggle("account-setup-success-secondary", hasIncome);
-        }
-        if (successAddExpense) {
-          successAddExpense.disabled = false;
-          successAddExpense.classList.toggle("account-setup-success-secondary", hasExpense);
-        }
-      } catch (_) {}
       if (saveInc) saveInc.textContent = "Next";
-      if (cancelInc) cancelInc.textContent = after ? "Continue" : "Cancel";
-      if (saveInc) saveInc.style.display = after ? "none" : "inline-flex";
-      if (cancelInc) cancelInc.style.display = after ? "none" : "inline-flex";
-      if (cancelInc) {
-        cancelInc.classList.toggle("top-nav__logout", !!after);
-        cancelInc.classList.toggle("secondary", !after);
-      }
+      if (cancelInc) cancelInc.textContent = "Cancel";
       if (addMoreTxBtn) addMoreTxBtn.style.display = "none";
       const msg = document.getElementById("accountSetupStep3Success");
-      if (msg) {
-        msg.hidden = !after;
-        if (after) {
-          try { renderAccountSetupSuccessSummary("accountSetupStep3SuccessSummary"); } catch (_) {}
-        }
-      }
-      if (successAddExpense) successAddExpense.hidden = !after;
-      if (successAddIncome) successAddIncome.hidden = !after;
-      if (successContinue) successContinue.hidden = !after;
-      if (actionsShell && after) actionsShell.classList.add("account-setup-actions--step3-success");
+      if (msg) msg.hidden = true;
+      if (successAddExpense) successAddExpense.hidden = true;
+      if (successAddIncome) successAddIncome.hidden = true;
+      if (successContinue) successContinue.hidden = true;
     } else {
-      // In hub/intro mode, leave Next/Skip visibility as determined above (based on tx count).
+      if (signupBtn) signupBtn.style.display = "none";
+      if (accountSetupSkipBtn) accountSetupSkipBtn.style.display = "none";
+      if (hubAddIncome) hubAddIncome.disabled = false;
+      if (hubAddExpense) hubAddExpense.disabled = false;
+      if (hubContinue) hubContinue.style.display = "inline-flex";
       if (successContinue) successContinue.hidden = true;
     }
     return;
@@ -1625,6 +1624,14 @@ function readAccountSetupTransactionFromInputs() {
   };
 }
 
+function setAccountSetupKindRadioValue(groupName, value) {
+  const radio = document.querySelector(`input[name="${groupName}"][value="${value}"]`);
+  if (!radio) return null;
+  radio.checked = true;
+  radio.dispatchEvent(new Event("change", { bubbles: true }));
+  return radio;
+}
+
 function resetAccountSetupTransactionForm() {
   setAccountSetupStep3AfterSave(false);
   const amountEl = document.getElementById("asTxAmount");
@@ -1652,10 +1659,8 @@ function resetAccountSetupTransactionForm() {
   if (dateEl) dateEl.value = "";
   const formEl = document.getElementById("accountSetupWizardStep3Form");
   const incomeOnly = formEl && !formEl.hidden;
-  const inc = document.querySelector('input[name="asTxKind"][value="income"]');
-  const exp = document.querySelector('input[name="asTxKind"][value="expense"]');
-  if (incomeOnly && inc) inc.checked = true;
-  else if (exp) exp.checked = true;
+  if (incomeOnly) setAccountSetupKindRadioValue("asTxKind", "income");
+  else setAccountSetupKindRadioValue("asTxKind", "expense");
   syncAccountSetupScheduleUi("asTx");
 }
 
@@ -1738,6 +1743,7 @@ function accountSetupCancelIncomeClick() {
   setCallout(signupCalloutEl, "", "");
   setAccountSetupStep3Phase("intro");
   resetAccountSetupTransactionForm();
+  document.getElementById("asTxHubAddIncomeBtn")?.focus();
 }
 
 async function accountSetupSaveIncomeClick() {
@@ -1797,16 +1803,15 @@ async function accountSetupSaveIncomeClick() {
       })
     );
   } catch (_) {}
-  // Keep the form visible; show success and swap actions.
+  // Return to the stable Step 3 hub with updated progress state.
   lockAccountSetupWizardStepTransition();
   setAccountSetupWizardStep(2, { skipPersist: true });
-  setAccountSetupStep3Phase("form");
-  setAccountSetupStep3AfterSave(true);
-  // Success is shown inside the collapsed form state (not in the global callout).
+  setAccountSetupStep3AfterSave(false);
+  setAccountSetupStep3Phase("intro");
   setCallout(signupCalloutEl, "", "");
-  try {
-    signupCalloutEl?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  } catch (_) {}
+  (document.getElementById("asTxHubContinueBtn")?.disabled
+    ? document.getElementById("asTxHubAddExpenseBtn")
+    : document.getElementById("asTxHubContinueBtn"))?.focus();
 }
 
 function advanceAccountSetupWizardToExpenseForm() {
@@ -1849,8 +1854,7 @@ function advanceAccountSetupWizardToIncomeFormFromSuccess() {
   setAccountSetupWizardStep(2, { skipPersist: true });
   setAccountSetupStep3AfterSave(false);
   setAccountSetupStep3Phase("form");
-  const inc = document.querySelector('input[name="asTxKind"][value="income"]');
-  if (inc) inc.checked = true;
+  setAccountSetupKindRadioValue("asTxKind", "income");
   document.getElementById("asTxAmount")?.focus();
 }
 
@@ -1872,8 +1876,7 @@ function accountSetupTxHubAddIncomeClick() {
     );
   } catch (_) {}
   setAccountSetupStep3Phase("form");
-  const inc = document.querySelector('input[name="asTxKind"][value="income"]');
-  if (inc) inc.checked = true;
+  setAccountSetupKindRadioValue("asTxKind", "income");
   document.getElementById("asTxAmount")?.focus();
 }
 
@@ -1896,8 +1899,7 @@ function accountSetupTxHubAddExpenseClick() {
     );
   } catch (_) {}
   setAccountSetupStep3Phase("form");
-  const exp = document.querySelector('input[name="asTxKind"][value="expense"]');
-  if (exp) exp.checked = true;
+  setAccountSetupKindRadioValue("asTxKind", "expense");
   document.getElementById("asTxAmount")?.focus();
 }
 
@@ -1982,8 +1984,7 @@ function resetAccountSetupExpenseForm() {
   const swatches = document.getElementById("asExpTxColorSwatches");
   if (swatches) for (const b of swatches.querySelectorAll("button.cat-swatch")) b.classList.remove("is-active");
   if (dateEl) dateEl.value = "";
-  const ex = document.querySelector('input[name="asExpTxKind"][value="expense"]');
-  if (ex) ex.checked = true;
+  setAccountSetupKindRadioValue("asExpTxKind", "expense");
   syncAccountSetupScheduleUi("asExp");
 }
 
@@ -2142,15 +2143,14 @@ async function accountSetupSaveExpenseClick() {
     );
   } catch (_) {}
   lockAccountSetupWizardStepTransition();
-  // After saving an expense, show the same confirmation/success view on Step 3.
+  // Return to the stable Step 3 hub with updated progress state.
   setAccountSetupWizardStep(2, { skipPersist: true });
-  setAccountSetupStep3Phase("form");
-  setAccountSetupStep3AfterSave(true);
-  // Success is shown inside the collapsed form state (not in the global callout).
+  setAccountSetupStep3AfterSave(false);
+  setAccountSetupStep3Phase("intro");
   setCallout(signupCalloutEl, "", "");
-  try {
-    signupCalloutEl?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  } catch (_) {}
+  (document.getElementById("asTxHubContinueBtn")?.disabled
+    ? document.getElementById("asTxHubAddExpenseBtn")
+    : document.getElementById("asTxHubContinueBtn"))?.focus();
 }
 
 function hydrateAccountSetupSurveyFromDraft(o) {
@@ -2278,18 +2278,12 @@ function hydrateAccountSetupDraft() {
       setAccountSetupWizardStep(target, { skipPersist: true });
       if (target === 4) hydrateAccountSetupSurveyFromDraft(o);
       if (target === 2 && document.getElementById("accountSetupWizardPanel2")) {
-        const wantForm =
-          String(o.step3Phase || "") === "form" ||
-          (Array.isArray(o.transactions) && o.transactions.length > 0);
+        const wantForm = String(o.step3Phase || "") === "form";
         if (wantForm) setAccountSetupStep3Phase("form");
         else syncAccountSetupWizardShellButtons();
       }
       if (target === 3 && document.getElementById("accountSetupWizardPanel3")) {
-        const wantExpenseForm =
-          String(o.expensePhase || "") === "form" ||
-          (Array.isArray(o.transactions) &&
-            o.transactions.length > 0 &&
-            String(o.transactions[o.transactions.length - 1]?.kind || "").toLowerCase() === "expense");
+        const wantExpenseForm = String(o.expensePhase || "") === "form";
         if (wantExpenseForm) setAccountSetupExpensePhase("form");
         else syncAccountSetupWizardShellButtons();
       }
@@ -2314,6 +2308,7 @@ function setBusy(isBusy) {
     "asExpCancelBtn",
     "asTxHubAddIncomeBtn",
     "asTxHubAddExpenseBtn",
+    "asTxHubContinueBtn",
   ]) {
     const el = document.getElementById(id);
     if (el) el.disabled = isBusy;
@@ -3065,13 +3060,16 @@ if (accountStartingBalanceEl) {
 
 if (addMoreTxBtn) addMoreTxBtn.addEventListener("click", addMoreTransactionsFromAccountSetup);
 document.getElementById("asTxSaveIncomeBtn")?.addEventListener("click", () => void accountSetupSaveIncomeClick());
+document.getElementById("asTxCancelIncomeBtn")?.addEventListener("pointerdown", accountSetupCancelIncomeClick, { capture: true });
 document.getElementById("asTxCancelIncomeBtn")?.addEventListener("click", () => accountSetupCancelIncomeClick());
 document.getElementById("asTxHubAddIncomeBtn")?.addEventListener("click", () => accountSetupTxHubAddIncomeClick());
 document.getElementById("asTxHubAddExpenseBtn")?.addEventListener("click", () => accountSetupTxHubAddExpenseClick());
+document.getElementById("asTxHubContinueBtn")?.addEventListener("click", onAccountSetupSkipAccountClick);
 document.getElementById("asStep3SuccessAddIncomeBtn")?.addEventListener("click", () => advanceAccountSetupWizardToIncomeFormFromSuccess());
 document.getElementById("asStep3SuccessAddExpenseBtn")?.addEventListener("click", () => advanceAccountSetupWizardToExpenseForm());
 document.getElementById("asStep3ContinueBtn")?.addEventListener("click", () => accountSetupCancelIncomeClick());
 document.getElementById("asExpSaveBtn")?.addEventListener("click", () => void accountSetupSaveExpenseClick());
+document.getElementById("asExpCancelBtn")?.addEventListener("pointerdown", accountSetupCancelExpenseClick, { capture: true });
 document.getElementById("asExpCancelBtn")?.addEventListener("click", () => accountSetupCancelExpenseClick());
 try {
   const p4 = document.getElementById("accountSetupWizardPanel4");

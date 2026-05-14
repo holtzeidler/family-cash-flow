@@ -2624,6 +2624,524 @@ body.landing-page .app-footer__bullets{
   }
 }
 
+/* Landing page cleanup: calmer guided homepage story */
+body.landing-page{
+  --landing-content-max: min(75rem, calc(100vw - 2rem));
+  --landing-section-gap: clamp(2.25rem, 4vw, 3rem);
+  --landing-section-gap-tight: clamp(1rem, 2vw, 1.35rem);
+}
+body.landing-page .landing-main{
+  padding: 0.45rem 0 0;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 1) 0%, rgba(250, 251, 250, 0.92) 42%, rgba(255, 255, 255, 1) 100%);
+}
+body.landing-page .landing-shell{
+  gap: var(--landing-section-gap);
+  max-width: var(--landing-content-max);
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
+}
+body.landing-page .landing-shell > .landing-insight,
+body.landing-page .landing-shell > .landing-preview,
+body.landing-page .landing-shell > .landing-cal-peek,
+body.landing-page .landing-shell > .landing-how,
+body.landing-page .landing-shell > .landing-offer{
+  margin-top: 0;
+}
+body.landing-page .landing-hero{
+  padding-top: clamp(2.5rem, 6vw, 4rem);
+}
+body.landing-page .landing-hero__inner{
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 400px);
+  gap: clamp(1.5rem, 4vw, 3.5rem);
+  padding: 0;
+  align-items: center;
+}
+body.landing-page .landing-hero__copy{
+  max-width: 32rem;
+}
+body.landing-page .landing-hero__text{
+  margin: 0;
+  max-width: 11ch;
+  font-size: clamp(2.2rem, 4.4vw, 3.25rem);
+  line-height: 0.98;
+}
+body.landing-page .landing-hero__sub{
+  margin: 1rem 0 0;
+  max-width: 29rem;
+  padding: 0;
+  font-size: clamp(1rem, 1.7vw, 1.08rem);
+  line-height: 1.46;
+}
+body.landing-page .landing-hero__cta{
+  margin: 1.05rem 0 0;
+  min-height: 48px;
+  padding: 0 1.45rem;
+  border-radius: 12px;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.16) inset,
+    0 10px 24px rgba(11, 61, 46, 0.14);
+}
+body.landing-page .landing-hero__viz{
+  justify-self: end;
+  max-width: 100%;
+}
+body.landing-page .landing-hero-viz{
+  border-radius: 20px;
+  padding: 16px 16px 14px;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.94) inset,
+    0 10px 28px -18px rgba(11, 61, 46, 0.16);
+}
+body.landing-page .landing-hero-viz__foot{
+  margin-top: 7px;
+}
+body.landing-page .landing-insight{
+  padding: 0;
+}
+body.landing-page .landing-insight__card{
+  max-width: 54rem;
+  padding: 0.72rem 1rem;
+  border-radius: 14px;
+  border-color: rgba(180, 83, 9, 0.18);
+  background: linear-gradient(180deg, rgba(255, 248, 235, 0.9) 0%, rgba(255, 251, 242, 0.7) 100%);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.72) inset,
+    0 4px 12px -10px rgba(146, 64, 14, 0.14);
+}
+body.landing-page .landing-preview{
+  display: grid;
+  gap: 1rem;
+}
+body.landing-page .landing-preview__intro{
+  max-width: 39rem;
+}
+body.landing-page .landing-preview__title{
+  margin: 0 0 0.5rem;
+  font-size: clamp(1.45rem, 2.7vw, 1.9rem);
+  line-height: 1.12;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  color: rgba(15, 23, 42, 0.98);
+}
+body.landing-page .landing-preview__lede{
+  margin: 0;
+  font-size: clamp(0.96rem, 1.45vw, 1.04rem);
+  line-height: 1.5;
+  font-weight: 500;
+  color: rgba(71, 85, 105, 0.92);
+}
+body.landing-page .landing-preview__demo{
+  gap: 1rem;
+  padding: 1.15rem 1.2rem 1.1rem;
+  border-radius: 20px;
+  border-color: rgba(11, 61, 46, 0.1);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.99) 0%, rgba(252, 253, 252, 0.98) 100%);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.86) inset,
+    0 16px 36px -28px rgba(11, 61, 46, 0.22);
+}
+body.landing-page .landing-preview__tagline{
+  display: none;
+}
+body.landing-page .landing-preview__main{
+  grid-template-columns: minmax(0, 1.04fr) minmax(0, 0.96fr);
+  gap: 1rem 1.5rem;
+  align-items: center;
+}
+body.landing-page .landing-preview__leftCol{
+  gap: 0.7rem;
+}
+body.landing-page .landing-preview__transferBand{
+  max-width: none;
+  padding: 0.9rem 1rem 0.95rem;
+  border-radius: 16px;
+  background:
+    radial-gradient(460px 180px at 12% 0%, rgba(4, 120, 87, 0.12) 0%, rgba(4, 120, 87, 0) 72%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(236, 253, 245, 0.6) 100%);
+}
+body.landing-page .landing-preview__transferLine{
+  margin-bottom: 0.18rem;
+  font-size: 0.9rem;
+}
+body.landing-page .landing-preview__transferAmt{
+  font-size: clamp(2rem, 3.6vw, 2.8rem);
+}
+body.landing-page .landing-preview__transferFoot{
+  margin-top: 0.42rem;
+  max-width: 23rem;
+  font-size: 0.96rem;
+  line-height: 1.42;
+}
+body.landing-page .landing-preview__trust{
+  margin-top: 0.7rem;
+}
+body.landing-page .landing-preview__bills{
+  padding-top: 0.1rem;
+}
+body.landing-page .landing-preview__billsHead{
+  margin-bottom: 0.5rem;
+}
+body.landing-page .landing-preview__billList{
+  gap: 0.5rem;
+}
+body.landing-page .landing-preview__billList li{
+  font-size: 0.88rem;
+}
+body.landing-page .landing-preview__billList li span:last-child{
+  font-size: 0.82rem;
+}
+body.landing-page .landing-preview__chart{
+  padding: 0.65rem 0.7rem 0.62rem;
+  border-radius: 16px;
+  align-self: stretch;
+}
+body.landing-page .landing-preview__chartSvg{
+  min-height: 160px;
+  max-height: 188px;
+}
+body.landing-page .landing-cal-peek{
+  padding: clamp(1.15rem, 2.6vw, 1.6rem);
+  border-radius: 28px;
+  background: linear-gradient(180deg, rgba(247, 249, 248, 0.94) 0%, rgba(251, 252, 251, 0.8) 100%);
+  border: 1px solid rgba(17, 24, 39, 0.05);
+}
+body.landing-page .landing-cal-peek__inner{
+  grid-template-columns: minmax(0, 0.88fr) minmax(0, 1.12fr);
+  gap: 1.1rem 1.9rem;
+  align-items: center;
+}
+body.landing-page .landing-cal-peek__copy{
+  max-width: 22rem;
+  padding-top: 0;
+}
+body.landing-page .landing-cal-peek__title{
+  margin-bottom: 0.6rem;
+  max-width: 13ch;
+  font-size: clamp(1.45rem, 2.55vw, 1.9rem);
+  line-height: 1.12;
+}
+body.landing-page .landing-cal-peek__lede{
+  max-width: 26ch;
+  font-size: clamp(0.95rem, 1.45vw, 1.02rem);
+  line-height: 1.5;
+}
+body.landing-page .landing-cal-peek__frame{
+  border-radius: 18px;
+  box-shadow: 0 14px 32px -24px rgba(11, 61, 46, 0.22);
+}
+body.landing-page .landing-cal-peek__chrome{
+  padding: 10px 14px 8px;
+}
+body.landing-page .landing-cal-peek__svg{
+  min-height: 0;
+}
+body.landing-page .landing-how{
+  padding: 0.15rem 0 0;
+}
+body.landing-page .landing-how__copy{
+  width: 100%;
+  padding: 0;
+}
+body.landing-page .landing-how__title{
+  margin: 0 0 0.8rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(11, 61, 46, 0.62);
+}
+body.landing-page .landing-how__steps{
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem 1.25rem;
+  counter-reset: landingStep;
+}
+body.landing-page .landing-how__steps li{
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  column-gap: 0.75rem;
+  align-items: start;
+}
+body.landing-page .landing-how__steps li::before{
+  counter-increment: landingStep;
+  content: counter(landingStep);
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: rgba(11, 61, 46, 0.94);
+  background: rgba(4, 120, 87, 0.1);
+  border: 1px solid rgba(11, 61, 46, 0.14);
+}
+body.landing-page .landing-how__stepTitle{
+  font-size: 0.95rem;
+  line-height: 1.28;
+  font-weight: 700;
+  color: rgba(15, 23, 42, 0.96);
+}
+body.landing-page .landing-how__stepBody{
+  margin-top: 0.16rem;
+  font-size: 0.9rem;
+  line-height: 1.42;
+  font-weight: 500;
+  color: rgba(71, 85, 105, 0.84);
+}
+body.landing-page .landing-offer{
+  padding: 0;
+}
+body.landing-page .landing-offer__panel{
+  width: 100%;
+  max-width: 56rem;
+  margin: 0 auto;
+  padding: 1.5rem 1.6rem;
+  border-radius: 20px;
+  border: 1px solid rgba(11, 61, 46, 0.1);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.99) 0%, rgba(250, 252, 251, 0.96) 100%);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.86) inset,
+    0 18px 34px -26px rgba(11, 61, 46, 0.22);
+}
+body.landing-page .landing-offer__copy{
+  align-items: flex-start;
+  gap: 0.45rem;
+}
+body.landing-page .landing-offer__heading{
+  margin: 0;
+  min-height: 0;
+  font-size: clamp(1.4rem, 2.2vw, 1.8rem);
+  line-height: 1.12;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  text-transform: none;
+  color: rgba(15, 23, 42, 0.98);
+}
+body.landing-page .landing-offer__support{
+  margin: 0;
+  font-size: 0.98rem;
+  line-height: 1.48;
+  font-weight: 500;
+  color: rgba(71, 85, 105, 0.88);
+}
+body.landing-page .landing-offer__bullets{
+  margin: 0.25rem 0 0;
+  padding-left: 1.1rem;
+  display: grid;
+  gap: 0.32rem;
+  color: rgba(31, 41, 55, 0.92);
+}
+body.landing-page .landing-offer__bullets li{
+  font-size: 0.92rem;
+  line-height: 1.42;
+  font-weight: 500;
+}
+body.landing-page .landing-offer__cta{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0.65rem;
+  min-height: 46px;
+  padding: 0 1.45rem;
+  border-radius: 12px;
+  font-size: 0.96rem;
+  font-weight: 700;
+  color: #fff;
+  background: var(--accent);
+  text-decoration: none;
+  border: 1px solid color-mix(in srgb, var(--accent) 82%, #000 18%);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.14) inset,
+    0 10px 24px rgba(11, 61, 46, 0.14);
+}
+body.landing-page .landing-offer__cta:hover{
+  transform: translateY(-1px);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.14) inset,
+    0 14px 28px rgba(11, 61, 46, 0.18);
+}
+body.landing-page .landing-offer__cta:focus-visible{
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+body.landing-page .app-footer{
+  margin-top: clamp(2rem, 3vw, 2.75rem);
+  padding-top: 24px;
+}
+@media (max-width: 980px){
+  body.landing-page{
+    --landing-section-gap: 2rem;
+  }
+  body.landing-page .landing-hero{
+    padding-top: 1.8rem;
+  }
+  body.landing-page .landing-hero__inner,
+  body.landing-page .landing-cal-peek__inner{
+    grid-template-columns: 1fr;
+  }
+  body.landing-page .landing-hero__copy{
+    max-width: 36rem;
+    text-align: left;
+    justify-self: start;
+  }
+  body.landing-page .landing-hero__text,
+  body.landing-page .landing-hero__sub,
+  body.landing-page .landing-hero__cta{
+    margin-left: 0;
+    margin-right: 0;
+  }
+  body.landing-page .landing-hero__viz{
+    justify-self: start;
+    max-width: min(26rem, 100%);
+  }
+  body.landing-page .landing-preview__main,
+  body.landing-page .landing-how__steps{
+    grid-template-columns: 1fr;
+  }
+  body.landing-page .landing-insight__card,
+  body.landing-page .landing-offer__panel{
+    max-width: none;
+  }
+  body.landing-page .landing-cal-peek{
+    padding: 1rem;
+  }
+}
+@media (max-width: 768px){
+  body.landing-page{
+    --landing-content-max: min(100vw - 1.5rem, 75rem);
+    --landing-section-gap: 1.75rem;
+  }
+  body.landing-page .landing-shell{
+    padding-left: max(0.75rem, env(safe-area-inset-left));
+    padding-right: max(0.75rem, env(safe-area-inset-right));
+  }
+  body.landing-page .landing-hero__text{
+    max-width: 12ch;
+    font-size: clamp(1.9rem, 8vw, 2.45rem);
+  }
+  body.landing-page .landing-hero__sub{
+    font-size: 0.98rem;
+  }
+  body.landing-page .landing-hero__cta,
+  body.landing-page .landing-offer__cta{
+    width: 100%;
+  }
+  body.landing-page .landing-hero__viz{
+    max-width: 100%;
+  }
+  body.landing-page .landing-hero-viz{
+    padding: 13px 13px 11px;
+  }
+  body.landing-page .landing-insight__card{
+    padding: 0.7rem 0.85rem;
+  }
+  body.landing-page .landing-preview{
+    gap: 0.85rem;
+  }
+  body.landing-page .landing-preview__title,
+  body.landing-page .landing-cal-peek__title,
+  body.landing-page .landing-offer__heading{
+    font-size: clamp(1.28rem, 5vw, 1.55rem);
+  }
+  body.landing-page .landing-preview__demo{
+    padding: 0.95rem;
+    border-radius: 16px;
+  }
+  body.landing-page .landing-preview__transferBand{
+    padding: 0.8rem 0.85rem 0.84rem;
+  }
+  body.landing-page .landing-preview__transferAmt{
+    font-size: clamp(1.55rem, 7vw, 2rem);
+  }
+  body.landing-page .landing-preview__transferFoot,
+  body.landing-page .landing-how__stepBody,
+  body.landing-page .landing-offer__support{
+    font-size: 0.88rem;
+  }
+  body.landing-page .landing-preview__chartSvg{
+    min-height: 144px;
+    max-height: 172px;
+  }
+  body.landing-page .landing-cal-peek{
+    border-radius: 22px;
+  }
+  body.landing-page .landing-cal-peek__frame{
+    border-radius: 16px;
+  }
+  body.landing-page .landing-how__steps{
+    gap: 0.85rem;
+  }
+  body.landing-page .landing-offer__panel{
+    padding: 1.2rem 1.05rem;
+    border-radius: 18px;
+  }
+}
+@media (max-width: 560px){
+  body.landing-page{
+    --landing-content-max: calc(100vw - 1rem);
+    --landing-section-gap: 1.6rem;
+  }
+  body.landing-page .landing-main{
+    padding-top: 0.25rem;
+  }
+  body.landing-page .landing-hero{
+    padding-top: 1.1rem;
+  }
+  body.landing-page .landing-hero__text{
+    font-size: clamp(1.72rem, 8.6vw, 2.08rem);
+  }
+  body.landing-page .landing-hero__sub{
+    line-height: 1.42;
+  }
+  body.landing-page .landing-hero-viz__week{
+    gap: 4px;
+  }
+  body.landing-page .landing-hero-viz__cell{
+    padding: 5px 3px 6px;
+  }
+  body.landing-page .landing-hero-viz__d{
+    font-size: 9px;
+  }
+  body.landing-page .landing-hero-viz__b{
+    font-size: 10px;
+  }
+  body.landing-page .landing-preview__billList li{
+    font-size: 0.84rem;
+  }
+  body.landing-page .landing-preview__billList li span:last-child{
+    font-size: 0.78rem;
+  }
+  body.landing-page .landing-preview__chart{
+    padding: 0.55rem 0.55rem 0.52rem;
+  }
+  body.landing-page .landing-cal-peek{
+    padding: 0.85rem;
+  }
+  body.landing-page .landing-how__title{
+    margin-bottom: 0.65rem;
+  }
+  body.landing-page .landing-how__steps li{
+    grid-template-columns: 28px minmax(0, 1fr);
+    column-gap: 0.65rem;
+  }
+  body.landing-page .landing-how__steps li::before{
+    width: 28px;
+    height: 28px;
+    font-size: 0.75rem;
+  }
+  body.landing-page .app-footer{
+    margin-top: 1.75rem;
+  }
+}
+
 .support-doc{
   max-width: 640px;
   margin: 0 auto;
@@ -11083,6 +11601,150 @@ body.account-setup-page .account-setup-kind-toggle--income-only .kind-opt:has(in
 }
 body.account-setup-page .account-setup-kind-toggle--expense-only .kind-opt:has(input[value="income"]){
   display: none;
+}
+body.account-setup-page #accountSetupWizardPanel2[data-step3-phase="intro"].account-setup-wizard__panel{
+  min-height: 204px;
+  padding: 10px 12px 8px;
+}
+body.account-setup-page .account-setup-step3-intro{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+body.account-setup-page .account-setup-step3-intro-hint{
+  margin: 0 auto;
+  max-width: 470px;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: rgba(17, 24, 39, 0.62);
+}
+body.account-setup-page .account-setup-step3-progress{
+  margin: 0;
+  min-height: 1.25rem;
+  font-size: 0.84rem;
+  line-height: 1.4;
+  font-weight: 600;
+  text-align: center;
+  color: rgba(100, 116, 139, 0.82);
+}
+body.account-setup-page .account-setup-step3-progress.is-ready{
+  color: rgba(11, 61, 46, 0.86);
+}
+body.account-setup-page .account-setup-step3-progress.is-pending{
+  color: rgba(100, 116, 139, 0.82);
+}
+body.account-setup-page .account-setup-tx-choice-wrap{
+  width: 100%;
+  max-width: 320px;
+  margin: 0 auto;
+  gap: 10px;
+}
+body.account-setup-page .account-setup-step3-action{
+  width: 100%;
+}
+body.account-setup-page .account-setup-step3-actionBtn,
+body.account-setup-page .account-setup-step3-continueBtn{
+  width: 100%;
+  justify-content: center;
+  box-sizing: border-box;
+}
+body.account-setup-page #asTxHubAddIncomeBtn.account-setup-step3-actionBtn,
+body.account-setup-page #asTxHubAddExpenseBtn.account-setup-step3-actionBtn{
+  min-height: 46px;
+  padding: 0 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(11, 61, 46, 0.16);
+  background: rgba(255, 255, 255, 0.98);
+  color: rgba(11, 61, 46, 0.9);
+  box-shadow: none;
+}
+body.account-setup-page #asTxHubAddIncomeBtn.account-setup-step3-actionBtn:hover:not(:disabled),
+body.account-setup-page #asTxHubAddExpenseBtn.account-setup-step3-actionBtn:hover:not(:disabled){
+  background: rgba(248, 250, 249, 1);
+  border-color: rgba(11, 61, 46, 0.22);
+  color: rgba(11, 61, 46, 0.94);
+  filter: none;
+}
+body.account-setup-page #asTxHubAddIncomeBtn.account-setup-step3-actionBtn:focus-visible:not(:disabled),
+body.account-setup-page #asTxHubAddExpenseBtn.account-setup-step3-actionBtn:focus-visible:not(:disabled){
+  outline: 2px solid rgba(11, 61, 46, 0.14);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+body.account-setup-page .account-setup-step3-actionBtn.is-complete{
+  border-color: rgba(11, 61, 46, 0.22);
+}
+body.account-setup-page .account-setup-step3-actionBtn__content{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+body.account-setup-page .account-setup-step3-actionBtn__check{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  color: rgba(4, 120, 87, 0.9);
+}
+body.account-setup-page .account-setup-step3-actionBtn__label{
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+body.account-setup-page .account-setup-step3-action__meta{
+  margin: 4px 0 0;
+  min-height: 1rem;
+  font-size: 0.76rem;
+  line-height: 1.35;
+  text-align: center;
+  color: rgba(4, 120, 87, 0.78);
+}
+body.account-setup-page .account-setup-step3-action__meta.is-empty{
+  visibility: hidden;
+}
+body.account-setup-page #asTxHubContinueBtn.account-setup-step3-continueBtn{
+  min-height: 48px;
+  margin-top: 2px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--accent) 82%, #000 18%);
+  background: var(--accent);
+  color: #fff;
+  box-shadow: none;
+}
+body.account-setup-page #asTxHubContinueBtn.account-setup-step3-continueBtn:hover:not(:disabled){
+  background: color-mix(in srgb, var(--accent) 92%, #000);
+  border-color: color-mix(in srgb, var(--accent) 72%, #000);
+  filter: none;
+}
+body.account-setup-page #asTxHubContinueBtn.account-setup-step3-continueBtn:focus-visible{
+  outline: 2px solid rgba(11, 61, 46, 0.18);
+  outline-offset: 2px;
+}
+body.account-setup-page #asTxHubContinueBtn.account-setup-step3-continueBtn:disabled{
+  background: var(--accent);
+  color: rgba(255, 255, 255, 0.92);
+  border-color: color-mix(in srgb, var(--accent) 82%, #000 18%);
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+body.account-setup-page .account-setup-step3-intro-note{
+  margin: 0;
+  max-width: 360px;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  text-align: center;
+  color: rgba(100, 116, 139, 0.8);
+}
+@media (max-width: 560px){
+  body.account-setup-page .account-setup-tx-choice-wrap{
+    max-width: 100%;
+  }
 }
 body.account-setup-page .account-setup-card{
   overflow: hidden;
