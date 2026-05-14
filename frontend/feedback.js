@@ -39,7 +39,7 @@
     },
     "first-reconcile": {
       title: "First reconciliation — nice",
-      body: "Was confirming your balance against the forecast straightforward?",
+      body: "Was reconciling your forecast against your actual balance straightforward?",
       promptId: "first_reconcile",
     },
     "first-recurring": {
@@ -199,7 +199,7 @@
         <form class="bw-fb-form" data-bw-fb-form>
           <div class="bw-fb-form__row">
             <label class="bw-fb-form__label" for="bwFbTrying">What were you trying to do?</label>
-            <textarea id="bwFbTrying" class="bw-fb-form__textarea" rows="3" placeholder="Example: I was trying to mark today's balance as reconciled"></textarea>
+            <textarea id="bwFbTrying" class="bw-fb-form__textarea" rows="3" placeholder="Example: I was trying to reconcile my forecast for today's balance"></textarea>
           </div>
           <div class="bw-fb-form__row">
             <label class="bw-fb-form__label" for="bwFbHappened">What happened?</label>

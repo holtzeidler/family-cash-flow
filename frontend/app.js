@@ -651,6 +651,8 @@ const sidebarLowBalanceBanner = document.getElementById("sidebarLowBalanceBanner
 const sidebarHighBalanceBanner = document.getElementById("sidebarHighBalanceBanner");
 const sidebarBalanceThresholdHint = document.getElementById("sidebarBalanceThresholdHint");
 const cashOutlookHead = document.getElementById("cashOutlookHead");
+// Legacy browser-local keys kept only long enough to migrate older sessions to
+// the server-backed family threshold fields.
 const BALANCE_THRESHOLD_MIN_KEY = "familyCashFlow_balanceThresholdMin";
 const BALANCE_THRESHOLD_MAX_KEY = "familyCashFlow_balanceThresholdMax";
 const BALANCE_THRESHOLD_FAMILY_ID_KEY = "familyCashFlow_balanceThresholdFamilyId";
@@ -719,6 +721,107 @@ function getBalanceThresholdKey(kind, familyId) {
   if (kind === "min") return `${BALANCE_THRESHOLD_MIN_KEY}:${fid}`;
   if (kind === "max") return `${BALANCE_THRESHOLD_MAX_KEY}:${fid}`;
   return null;
+}
+
+function parseBalanceThresholdForKind(kind, raw) {
+  return kind === "max" ? parseBalanceThresholdMaxFieldRaw(raw) : parseBalanceThresholdFieldRaw(raw);
+}
+
+function findFamilyForBalanceThresholds(familyId = activeFamilyIdForBalanceThresholds()) {
+  const fid = Number(familyId || 0);
+  if (!Number.isFinite(fid) || fid <= 0) return null;
+  return (state.families || []).find((x) => Number(x.id) === fid) || null;
+}
+
+function readFamilyBalanceThresholdCanonical(kind, familyId = activeFamilyIdForBalanceThresholds()) {
+  const fam = findFamilyForBalanceThresholds(familyId);
+  if (!fam) return "";
+  const raw = kind === "max" ? fam.balance_threshold_max : fam.balance_threshold_min;
+  const parsed = parseBalanceThresholdForKind(kind, raw == null ? "" : String(raw));
+  return parsed.ok && !parsed.empty ? parsed.canonical : "";
+}
+
+function readFamilyBalanceThresholdNumber(kind, familyId = activeFamilyIdForBalanceThresholds()) {
+  const canonical = readFamilyBalanceThresholdCanonical(kind, familyId);
+  if (!canonical) return null;
+  const num = Number(canonical);
+  return Number.isFinite(num) ? num : null;
+}
+
+function readEditedBalanceThresholdNumber(kind) {
+  const { min, max } = balanceThresholdFieldEls();
+  const el = kind === "max" ? max : min;
+  if (!el) return null;
+  const parsed = parseBalanceThresholdForKind(kind, el.value ?? "");
+  return parsed.ok && !parsed.empty && Number.isFinite(parsed.num) ? parsed.num : null;
+}
+
+function readLegacyDeviceBalanceThresholdCanonical(kind, familyId = activeFamilyIdForBalanceThresholds()) {
+  const fid = Number(familyId || 0);
+  if (!Number.isFinite(fid) || fid <= 0) return "";
+  try {
+    const storedFamilyId = localStorage.getItem(BALANCE_THRESHOLD_FAMILY_ID_KEY) || "";
+    const allowLegacy = !storedFamilyId || String(storedFamilyId) === String(fid);
+    const scopedKey = getBalanceThresholdKey(kind, fid);
+    if (scopedKey) {
+      const scopedParsed = parseBalanceThresholdForKind(kind, localStorage.getItem(scopedKey) || "");
+      if (scopedParsed.ok && !scopedParsed.empty) return scopedParsed.canonical;
+    }
+    if (!allowLegacy) return "";
+    if (kind === "min") {
+      const legacyParsed = parseBalanceThresholdFieldRaw(localStorage.getItem(LOW_BALANCE_THRESHOLD_KEY) || "");
+      if (legacyParsed.ok && !legacyParsed.empty) return legacyParsed.canonical;
+      const oldParsed = parseBalanceThresholdFieldRaw(localStorage.getItem(BALANCE_THRESHOLD_MIN_KEY) || "");
+      return oldParsed.ok && !oldParsed.empty ? oldParsed.canonical : "";
+    }
+    const oldMaxParsed = parseBalanceThresholdMaxFieldRaw(localStorage.getItem(BALANCE_THRESHOLD_MAX_KEY) || "");
+    return oldMaxParsed.ok && !oldMaxParsed.empty ? oldMaxParsed.canonical : "";
+  } catch (_) {
+    return "";
+  }
+}
+
+function clearLegacyDeviceBalanceThresholds(familyId = activeFamilyIdForBalanceThresholds()) {
+  const fid = Number(familyId || 0);
+  if (!Number.isFinite(fid) || fid <= 0) return;
+  try {
+    const minKey = getBalanceThresholdKey("min", fid);
+    const maxKey = getBalanceThresholdKey("max", fid);
+    if (minKey) localStorage.removeItem(minKey);
+    if (maxKey) localStorage.removeItem(maxKey);
+    const storedFamilyId = localStorage.getItem(BALANCE_THRESHOLD_FAMILY_ID_KEY) || "";
+    if (!storedFamilyId || storedFamilyId === String(fid)) {
+      localStorage.removeItem(LOW_BALANCE_THRESHOLD_KEY);
+      localStorage.removeItem(BALANCE_THRESHOLD_MIN_KEY);
+      localStorage.removeItem(BALANCE_THRESHOLD_MAX_KEY);
+      localStorage.removeItem(BALANCE_THRESHOLD_FAMILY_ID_KEY);
+    }
+  } catch (_) {}
+}
+
+async function migrateLegacyDeviceBalanceThresholdsToAccount() {
+  const fid = activeFamilyIdForBalanceThresholds();
+  if (!fid) return;
+  const serverMin = readFamilyBalanceThresholdCanonical("min", fid);
+  const serverMax = readFamilyBalanceThresholdCanonical("max", fid);
+  if (serverMin || serverMax) return;
+  const legacyMin = readLegacyDeviceBalanceThresholdCanonical("min", fid);
+  const legacyMax = readLegacyDeviceBalanceThresholdCanonical("max", fid);
+  if (!legacyMin && !legacyMax) return;
+  const minParsed = parseBalanceThresholdFieldRaw(legacyMin);
+  const maxParsed = parseBalanceThresholdMaxFieldRaw(legacyMax);
+  if ((!legacyMin || !minParsed.ok) && (!legacyMax || !maxParsed.ok)) return;
+  try {
+    const updated = await api(`/api/families/${fid}/forecast-thresholds`, "PATCH", {
+      balance_threshold_min: minParsed.ok && !minParsed.empty ? minParsed.num : null,
+      balance_threshold_max: maxParsed.ok && !maxParsed.empty ? maxParsed.num : null,
+    });
+    if (Array.isArray(state.families)) {
+      const ix = state.families.findIndex((x) => Number(x.id) === Number(fid));
+      if (ix >= 0) state.families[ix] = { ...state.families[ix], ...updated };
+    }
+    clearLegacyDeviceBalanceThresholds(fid);
+  } catch (_) {}
 }
 
 function invalidateLowBalanceAlertCache() {
@@ -992,6 +1095,7 @@ const tmSummaryLine = document.getElementById("tmSummaryLine");
 const tmInsightsEl = document.getElementById("tmInsights");
 const tmForecastNote = document.getElementById("tmForecastNote");
 const sidebarForecastHints = document.getElementById("sidebarForecastHints");
+const sidebarCashInsights = document.getElementById("sidebarCashInsights");
 const tmPrimaryAction = document.getElementById("tmPrimaryAction");
 const tmCategory = document.getElementById("tmCategory");
 const tmMoreFiltersBtn = document.getElementById("tmMoreFiltersBtn");
@@ -1105,6 +1209,7 @@ let lastIncomeExpenseAggForChart = null;
 
 /** Last projection series used by Reports operational panels (safe transfer, risk map, pressure). */
 let lastProjectionDailyForReports = [];
+let lastCashInsightsForReports = [];
 let reportsSafeTransferChartInstance = null;
 
 // Billing (Settings)
@@ -1523,88 +1628,30 @@ function onBalanceThresholdFieldEdited() {
   schedulePersistBalanceThresholds();
 }
 
-/** Load threshold inputs from the API for the current family, with localStorage fallback for older sessions. */
+/** Load threshold inputs from the current account-backed family, with legacy device fallback only for migration. */
 function hydrateBalanceThresholdInputsFromStorage() {
   const { min: minEl, max: maxEl } = balanceThresholdFieldEls();
   if (!minEl && !maxEl) return;
   try {
-    const legacy = localStorage.getItem(LOW_BALANCE_THRESHOLD_KEY) || "";
     const fid = activeFamilyIdForBalanceThresholds();
-    const minKey = getBalanceThresholdKey("min", fid);
-    const maxKey = getBalanceThresholdKey("max", fid);
-    const storedFamilyId = localStorage.getItem(BALANCE_THRESHOLD_FAMILY_ID_KEY) || "";
+    if (!fid) return;
+    const next = readFamilyBalanceThresholdCanonical("min", fid) || readLegacyDeviceBalanceThresholdCanonical("min", fid);
+    const next2 = readFamilyBalanceThresholdCanonical("max", fid) || readLegacyDeviceBalanceThresholdCanonical("max", fid);
 
-    // If we don't yet have a valid family id (boot race, transient view switch),
-    // do not clear the user's in-progress inputs.
-    if (!minKey || !maxKey) return;
-
-    const fam = fid ? (state.families || []).find((x) => Number(x.id) === Number(fid)) : null;
-
-    function pickMinCanonical() {
-      if (fam != null && fam.balance_threshold_min != null && fam.balance_threshold_min !== "") {
-        const mp = parseBalanceThresholdFieldRaw(String(fam.balance_threshold_min));
-        if (mp.ok && !mp.empty) return mp.canonical;
-      }
-      const s = localStorage.getItem(minKey) || "";
-      const mp = parseBalanceThresholdFieldRaw(s);
-      return mp.ok && !mp.empty ? mp.canonical : "";
-    }
-
-    function pickMaxCanonical() {
-      if (fam != null && fam.balance_threshold_max != null && fam.balance_threshold_max !== "") {
-        const mp = parseBalanceThresholdMaxFieldRaw(String(fam.balance_threshold_max));
-        if (mp.ok && !mp.empty) return mp.canonical;
-      }
-      const s2 = localStorage.getItem(maxKey) || "";
-      const mp2 = parseBalanceThresholdMaxFieldRaw(s2);
-      return mp2.ok && !mp2.empty ? mp2.canonical : "";
-    }
-
-    const next = pickMinCanonical();
-    const next2 = pickMaxCanonical();
-
-    if (minKey && minEl) {
+    if (minEl) {
       // Never wipe a non-empty field due to a storage/family mismatch.
       if (!(next === "" && String(minEl.value || "").trim())) minEl.value = next;
-    } else if (minEl) minEl.value = "";
+    } else if (minEl) {
+      minEl.value = "";
+    }
 
-    if (maxKey && maxEl) {
+    if (maxEl) {
       if (!(next2 === "" && String(maxEl.value || "").trim())) maxEl.value = next2;
-    } else if (maxEl) maxEl.value = "";
-
-    const allowLegacy =
-      !storedFamilyId || (fid != null && storedFamilyId && String(storedFamilyId) === String(fid));
-    if (allowLegacy && fid != null) {
-      if (legacy && minEl && !minEl.value && minKey && !localStorage.getItem(minKey)) {
-        minEl.value = legacy;
-        localStorage.setItem(minKey, legacy);
-        localStorage.setItem(BALANCE_THRESHOLD_FAMILY_ID_KEY, String(fid));
-      }
-      if (minEl && !minEl.value && minKey && !localStorage.getItem(minKey)) {
-        const oldMin = localStorage.getItem(BALANCE_THRESHOLD_MIN_KEY) || "";
-        if (oldMin) {
-          minEl.value = oldMin;
-          localStorage.setItem(minKey, oldMin);
-          localStorage.setItem(BALANCE_THRESHOLD_FAMILY_ID_KEY, String(fid));
-        }
-      }
-      if (maxEl && !maxEl.value && maxKey && !localStorage.getItem(maxKey)) {
-        const oldMaxRaw = localStorage.getItem(BALANCE_THRESHOLD_MAX_KEY) || "";
-        const oldMx = parseBalanceThresholdMaxFieldRaw(oldMaxRaw);
-        if (oldMx.ok && !oldMx.empty) {
-          maxEl.value = oldMx.canonical;
-          localStorage.setItem(maxKey, oldMx.canonical);
-          localStorage.setItem(BALANCE_THRESHOLD_FAMILY_ID_KEY, String(fid));
-        }
-      }
+    } else if (maxEl) {
+      maxEl.value = "";
     }
   } catch (_) {}
   invalidateLowBalanceAlertCache();
-}
-
-function isForecastThresholdRouteMissing(err) {
-  const msg = String(err && err.message ? err.message : "").trim().toLowerCase();
-  return msg === "not found";
 }
 
 function finishBalanceThresholdSave({
@@ -1619,9 +1666,9 @@ function finishBalanceThresholdSave({
   savedText,
   toastText,
   familyPatch,
+  showSavedFeedback = true,
+  showToast = true,
 }) {
-  const minKey = getBalanceThresholdKey("min", fidNum);
-  const maxKey = getBalanceThresholdKey("max", fidNum);
   if (Array.isArray(state.families)) {
     const ix = state.families.findIndex((x) => Number(x.id) === Number(fidNum));
     if (ix >= 0) {
@@ -1633,9 +1680,7 @@ function finishBalanceThresholdSave({
       };
     }
   }
-  if (minKey && minEl) localStorage.setItem(minKey, minParsed.empty ? "" : minParsed.canonical);
-  if (maxKey && maxEl) localStorage.setItem(maxKey, maxParsed.empty ? "" : maxParsed.canonical);
-  localStorage.setItem(BALANCE_THRESHOLD_FAMILY_ID_KEY, String(fidNum));
+  clearLegacyDeviceBalanceThresholds(fidNum);
   if (minEl) minEl.value = minParsed.empty ? "" : minParsed.canonical;
   if (maxEl) maxEl.value = maxParsed.empty ? "" : maxParsed.canonical;
   state.activeFamilyId = fidNum;
@@ -1650,24 +1695,39 @@ function finishBalanceThresholdSave({
   if (lowBalanceDebounceTimer) clearTimeout(lowBalanceDebounceTimer);
   lowBalanceDebounceTimer = null;
   void refreshLowBalanceAlert();
+  refreshCalendarCashInsights();
   if (reportsViewPanel && !reportsViewPanel.hidden && lastProjectionDailyForReports?.length > 1 && projectionChartCanvas) {
+    lastCashInsightsForReports = buildCashInsightsForSurface({
+      daily: lastProjectionDailyForReports,
+      startIso: chartStart?.value || String(lastProjectionDailyForReports[0]?.date || ""),
+      endIso:
+        chartStart?.value && chartDaysRange?.value
+          ? chartRangeEndIso(chartStart.value, Number(chartDaysRange.value || 0) || lastProjectionDailyForReports.length || 1)
+          : String(lastProjectionDailyForReports[lastProjectionDailyForReports.length - 1]?.date || ""),
+      surface: "reports",
+    });
     drawProjectionChart(lastProjectionDailyForReports);
     renderReportsOperationalPanels();
   }
   if (balanceThresholdSavedHideTimer) clearTimeout(balanceThresholdSavedHideTimer);
-  if (savedMsg) {
+  if (showSavedFeedback && savedMsg) {
     savedMsg.textContent = savedText;
     savedMsg.hidden = false;
   }
-  showBwToast(toastText);
-  balanceThresholdSavedHideTimer = window.setTimeout(() => {
-    balanceThresholdSavedHideTimer = null;
-    if (savedMsg) {
-      savedMsg.textContent = "";
-      savedMsg.hidden = true;
-    }
-  }, 5000);
-  if (saveBtn) {
+  if (showToast && toastText) showBwToast(toastText);
+  if (showSavedFeedback) {
+    balanceThresholdSavedHideTimer = window.setTimeout(() => {
+      balanceThresholdSavedHideTimer = null;
+      if (savedMsg) {
+        savedMsg.textContent = "";
+        savedMsg.hidden = true;
+      }
+    }, 5000);
+  } else if (savedMsg) {
+    savedMsg.textContent = "";
+    savedMsg.hidden = true;
+  }
+  if (showSavedFeedback && saveBtn) {
     const prev =
       saveBtn.dataset.origLabel && saveBtn.dataset.origLabel.length
         ? saveBtn.dataset.origLabel
@@ -1715,13 +1775,6 @@ async function saveBalanceThresholds(opts = {}) {
     if (!silent) show(errEl, "Select an active family to save balance thresholds.");
     return;
   }
-  const minKey = getBalanceThresholdKey("min", fidNum);
-  const maxKey = getBalanceThresholdKey("max", fidNum);
-  if (!minKey || !maxKey) {
-    hideThresholdSavedFeedback();
-    if (!silent) show(errEl, "Could not save thresholds for this family. Try refreshing the page.");
-    return;
-  }
   const minParsed = parseBalanceThresholdFieldRaw(minEl?.value ?? "");
   const maxParsed = parseBalanceThresholdMaxFieldRaw(maxEl?.value ?? "");
   if (!minParsed.ok || !maxParsed.ok) {
@@ -1734,24 +1787,12 @@ async function saveBalanceThresholds(opts = {}) {
     }
     return;
   }
-
-  // While typing: mirror to localStorage only so the sidebar outlook updates without spamming the API.
-  if (silent) {
-    try {
-      if (minEl) localStorage.setItem(minKey, minParsed.empty ? "" : minParsed.canonical);
-      if (maxEl) localStorage.setItem(maxKey, maxParsed.empty ? "" : maxParsed.canonical);
-      localStorage.setItem(BALANCE_THRESHOLD_FAMILY_ID_KEY, String(fidNum));
-      if (minEl) minEl.value = minParsed.empty ? "" : minParsed.canonical;
-      if (maxEl) maxEl.value = maxParsed.empty ? "" : maxParsed.canonical;
-      state.activeFamilyId = fidNum;
-      if (familySelect && Number(fidNum) > 0) {
-        try {
-          familySelect.value = String(fidNum);
-        } catch (_) {}
-      }
-    } catch (_) {
-      return;
-    }
+  const currentMin = readFamilyBalanceThresholdNumber("min", fidNum);
+  const currentMax = readFamilyBalanceThresholdNumber("max", fidNum);
+  const nextMin = minParsed.empty ? null : minParsed.num;
+  const nextMax = maxParsed.empty ? null : maxParsed.num;
+  if (currentMin === nextMin && currentMax === nextMax) {
+    if (!silent) show(errEl, "");
     invalidateLowBalanceAlertCache();
     if (lowBalanceDebounceTimer) clearTimeout(lowBalanceDebounceTimer);
     lowBalanceDebounceTimer = null;
@@ -1761,8 +1802,8 @@ async function saveBalanceThresholds(opts = {}) {
 
   try {
     const updated = await api(`/api/families/${fidNum}/forecast-thresholds`, "PATCH", {
-      balance_threshold_min: minParsed.empty ? null : minParsed.num,
-      balance_threshold_max: maxParsed.empty ? null : maxParsed.num,
+      balance_threshold_min: nextMin,
+      balance_threshold_max: nextMax,
     });
     finishBalanceThresholdSave({
       fidNum,
@@ -1773,26 +1814,14 @@ async function saveBalanceThresholds(opts = {}) {
       errEl,
       saveBtn,
       savedMsg,
-      savedText: "Saved for this household.",
-      toastText: "Safe balance threshold saved.",
+      savedText: silent ? "" : "Saved for this household.",
+      toastText: silent ? "" : "Safe balance threshold saved.",
       familyPatch: updated,
+      showSavedFeedback: !silent,
+      showToast: !silent,
     });
   } catch (e) {
-    if (isForecastThresholdRouteMissing(e)) {
-      finishBalanceThresholdSave({
-        fidNum,
-        minParsed,
-        maxParsed,
-        minEl,
-        maxEl,
-        errEl,
-        saveBtn,
-        savedMsg,
-        savedText: "Saved on this device.",
-        toastText: "Safe balance threshold saved on this device.",
-      });
-      return;
-    }
+    if (silent) return;
     hideThresholdSavedFeedback();
     show(errEl, e.message || "Could not save thresholds.");
     return;
@@ -2664,6 +2693,7 @@ if (calendarMode) {
 familySelect.addEventListener("change", async () => {
   state.activeFamilyId = Number(familySelect.value);
   syncActiveFamilyFlags();
+  await migrateLegacyDeviceBalanceThresholdsToAccount();
   hydrateBalanceThresholdInputsFromStorage();
   await loadCategories();
   await loadAccounts();
@@ -3495,7 +3525,11 @@ function openReconcileModal(iso) {
   const d = normalizeIsoDate(iso) || iso;
   if (alertIfDateBeforeStartingBalance(d)) return;
   reconcileActiveDate = d;
-  if (reconcileTitle) reconcileTitle.textContent = reconcileActiveDate ? `Reconcile ${fmtDateLongDisplay(reconcileActiveDate)}` : "Reconcile day";
+  if (reconcileTitle) {
+    reconcileTitle.textContent = reconcileActiveDate
+      ? `Reconcile forecast · ${fmtDateLongDisplay(reconcileActiveDate)}`
+      : "Reconcile forecast";
+  }
   if (reconcileChecked) reconcileChecked.checked = state.reconciledDates?.has(reconcileActiveDate) || false;
   if (reconcileBalanceBlock && reconcileForecastBal) {
     const row = reconcileActiveDate && state.monthDailyBalances ? state.monthDailyBalances.get(reconcileActiveDate) : null;
@@ -4261,7 +4295,7 @@ function refreshTmInsights() {
     cards.push(
       tmInsightCard(
         "Variable amounts",
-        `${varsInRange} recurring ${varsInRange === 1 ? "item" : "items"} in this window still use placeholder amounts—confirm real amounts so your forecast stays tight.`,
+        `${varsInRange} recurring ${varsInRange === 1 ? "item" : "items"} in this window still use placeholder amounts. Update them with real amounts so your projected balance stays accurate.`,
         "tm-insight-card--variable"
       )
     );
@@ -4269,15 +4303,15 @@ function refreshTmInsights() {
     cards.push(
       tmInsightCard(
         "Uncategorized",
-        `${uncat} one-time ${uncat === 1 ? "transaction needs" : "transactions need"} a category. Uncategorized lines can skew what your forecast thinks is safe to spend.`,
+        `${uncat} one-time ${uncat === 1 ? "transaction needs" : "transactions need"} a category. Uncategorized lines can blur what is safe to move from checking.`,
         "tm-insight-card--uncat"
       )
     );
   } else if (floorDays > 0) {
     cards.push(
       tmInsightCard(
-        "Below comfort threshold",
-        `${floorDays} projected ${floorDays === 1 ? "day" : "days"} in this window dip below your minimum balance threshold—tune dates or amounts to recover cushion.`,
+        "Cash pressure ahead",
+        `${floorDays} projected ${floorDays === 1 ? "day" : "days"} in this window dip below your Floor. Adjust dates or amounts to restore room.`,
         "tm-insight-card--risk"
       )
     );
@@ -4352,7 +4386,7 @@ function refreshSidebarForecastHints() {
     const floorDays = tmCountDaysBelowFloorInRange(mStart, mEnd);
     if (floorDays > 0) {
       parts.push(
-        `<div class="sidebar-fqh__row"><span class="sidebar-fqh__k">Below threshold</span><span class="sidebar-fqh__v">${floorDays} ${floorDays === 1 ? "day" : "days"} this month</span></div>`
+        `<div class="sidebar-fqh__row"><span class="sidebar-fqh__k">Cash pressure</span><span class="sidebar-fqh__v">${floorDays} ${floorDays === 1 ? "day" : "days"} below your Floor</span></div>`
       );
     }
   }
@@ -4931,8 +4965,8 @@ function registerProjectionAnnotationPlugins() {
 
       // Track label rectangles so we can dodge collisions between markers.
       const placed = [];
-      const PAD_X = 5;
-      const GAP = 4;
+      const PAD_X = 4;
+      const GAP = 3;
 
       for (const ann of annotations) {
         if (!ann) continue;
@@ -4945,16 +4979,16 @@ function registerProjectionAnnotationPlugins() {
 
         const isInflow = ann.kind === "inflow";
         const dot = isInflow ? "rgba(4, 120, 87, 0.88)" : "rgba(167, 55, 68, 0.82)";
-        const ring = isInflow ? "rgba(4, 120, 87, 0.12)" : "rgba(167, 55, 68, 0.12)";
+        const ring = isInflow ? "rgba(4, 120, 87, 0.1)" : "rgba(167, 55, 68, 0.1)";
 
         // Halo + dot
         ctx.beginPath();
         ctx.fillStyle = ring;
-        ctx.arc(px, py, 6, 0, Math.PI * 2);
+        ctx.arc(px, py, 4.5, 0, Math.PI * 2);
         ctx.fill();
         ctx.beginPath();
         ctx.fillStyle = dot;
-        ctx.arc(px, py, 3, 0, Math.PI * 2);
+        ctx.arc(px, py, 2.25, 0, Math.PI * 2);
         ctx.fill();
 
         // Label chip
@@ -4962,15 +4996,15 @@ function registerProjectionAnnotationPlugins() {
         if (!label) continue;
         const txtW = ctx.measureText(label).width;
         const chipW = txtW + PAD_X * 2;
-        const chipH = 16;
+        const chipH = 14;
 
         // Keep labels closer to their points so they read as part of the line.
-        let chipX = px + 8;
-        if (chipX + chipW > chartArea.right - 2) chipX = px - chipW - 8;
+        let chipX = px + 7;
+        if (chipX + chipW > chartArea.right - 2) chipX = px - chipW - 7;
         if (chipX < chartArea.left + 2) chipX = chartArea.left + 2;
-        let chipY = py + (isInflow ? -chipH - 8 : 8);
-        if (chipY < chartArea.top + 2) chipY = py + 8;
-        if (chipY + chipH > chartArea.bottom - 2) chipY = py - chipH - 8;
+        let chipY = py + (isInflow ? -chipH - 6 : 6);
+        if (chipY < chartArea.top + 2) chipY = py + 6;
+        if (chipY + chipH > chartArea.bottom - 2) chipY = py - chipH - 6;
 
         // Dodge: shift down/up if it overlaps a previously placed chip.
         for (let attempt = 0; attempt < 8; attempt++) {
@@ -5003,9 +5037,9 @@ function registerProjectionAnnotationPlugins() {
         ctx.restore();
 
         // Chip background
-        const radius = 8;
-        const bg = isInflow ? "rgba(236, 253, 245, 0.92)" : "rgba(254, 242, 242, 0.92)";
-        const bd = isInflow ? "rgba(4, 120, 87, 0.24)" : "rgba(167, 55, 68, 0.26)";
+        const radius = 7;
+        const bg = isInflow ? "rgba(236, 253, 245, 0.9)" : "rgba(254, 242, 242, 0.9)";
+        const bd = isInflow ? "rgba(4, 120, 87, 0.22)" : "rgba(167, 55, 68, 0.24)";
         drawRoundedRect(ctx, chipX, chipY, chipW, chipH, radius);
         ctx.fillStyle = bg;
         ctx.fill();
@@ -5063,6 +5097,12 @@ async function refreshProjectionChart() {
     "GET"
   );
   lastProjectionDailyForReports = summary?.daily || [];
+  lastCashInsightsForReports = buildCashInsightsForSurface({
+    daily: lastProjectionDailyForReports,
+    startIso: chartStart.value,
+    endIso: chartRangeEndIso(chartStart.value, daysVal),
+    surface: "reports",
+  });
   drawProjectionChart(lastProjectionDailyForReports);
   syncChartRangeDisplay();
   renderReportsOperationalPanels();
@@ -5243,7 +5283,7 @@ function drawIncomeExpenseChart(agg) {
       borderWidth: 1.25,
       borderDash: [5, 4],
       pointRadius: 0,
-      tension: 0.25,
+      tension: 0.12,
       yAxisID: "y",
       order: 0,
     });
@@ -5997,6 +6037,7 @@ async function loadFamilies() {
     state.activeFamilyId = null;
   }
   syncActiveFamilyFlags();
+  await migrateLegacyDeviceBalanceThresholdsToAccount();
   hydrateBalanceThresholdInputsFromStorage();
 }
 
@@ -7600,7 +7641,7 @@ if (reconcileSaveBtn) {
       closeReconcileModal();
       renderCalendar();
       if (typeof showBwToast === "function") {
-        showBwToast(nowReconciled ? "✓ Reconciled successfully" : "Reconciliation cleared");
+        showBwToast(nowReconciled ? "✓ Forecast reconciled" : "Forecast reconciliation cleared");
       }
       if (nowReconciled) bwDispatchMilestone("first-reconcile");
     } catch (e) {
@@ -7968,7 +8009,7 @@ function renderUpcomingTransactionsFiltered() {
 
       const cStatus = document.createElement("div");
       cStatus.className = "tm-col tm-col--status";
-      cStatus.innerHTML = `<span class="tm-badge ${isUncat ? "tm-badge--uncategorized" : "tm-badge--confirmed"}">${isUncat ? "Uncategorized" : "Confirmed"}</span>`;
+      cStatus.innerHTML = `<span class="tm-badge ${isUncat ? "tm-badge--uncategorized" : "tm-badge--confirmed"}">${isUncat ? "Uncategorized" : "Categorized"}</span>`;
 
       const cAmt = document.createElement("div");
       cAmt.className = `tm-col tm-col--amt ${tx.kind === "income" ? "income" : "expense"} ${tmAmtModifierClass(tx.kind, tx.amount)}`;
@@ -8471,6 +8512,7 @@ function computeMonthSummaryTotalsFromState() {
 function renderMonthSummaryTotalsFromState() {
   renderTotals(computeMonthSummaryTotalsFromState());
   refreshSidebarForecastHints();
+  refreshCalendarCashInsights();
 }
 
 function renderTransactionsInto(listEl, items, emptyMessage) {
@@ -8736,6 +8778,7 @@ async function loadReconciledDays(month) {
   } catch (_) {
     state.reconciledDates = new Set();
   }
+  refreshCalendarCashInsights();
 }
 
 function monthStartEndIso(ym) {
@@ -9325,6 +9368,11 @@ function renderCalendar() {
   calendarGrid.innerHTML = "";
   const calendarDow = document.getElementById("calendarDow");
   if (calendarDow) calendarDow.innerHTML = "";
+  const isMobileCalendarLayout =
+    typeof window !== "undefined" && typeof window.matchMedia === "function"
+      ? window.matchMedia("(max-width: 768px)").matches
+      : false;
+  if (calendarDow) calendarDow.hidden = isMobileCalendarLayout;
 
   const month = getCalendarViewYm();
   const parts = String(month).split("-");
@@ -9495,9 +9543,9 @@ function renderCalendar() {
 
   const dow = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const wrapper = document.createElement("div");
-  wrapper.className = "calendar";
+  wrapper.className = isMobileCalendarLayout ? "calendar calendar--mobile" : "calendar";
 
-  if (calendarDow) {
+  if (calendarDow && !isMobileCalendarLayout) {
     for (const label of dow) {
       const el = document.createElement("div");
       el.className = "cal-dow";
@@ -9524,8 +9572,8 @@ function renderCalendar() {
       totalCells = 35;
     }
   }
-  const MIN_CELL_H = 162;
-  const MAX_VISIBLE_TXNS = 2;
+  const MIN_CELL_H = isMobileCalendarLayout ? 0 : 162;
+  const MAX_VISIBLE_TXNS = isMobileCalendarLayout ? 3 : 2;
   const minBalFloor = readStoredMinBalanceThresholdForReports();
   /** @type {HTMLElement[]} */
   const cells = [];
@@ -9572,6 +9620,11 @@ function renderCalendar() {
 
     const dayNumEl = cell.querySelector(".cal-daynum");
     if (dayNumEl) {
+      dayNumEl.dataset.mobileLabel = dObj.toLocaleDateString(undefined, {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+      });
       dayNumEl.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -9845,7 +9898,12 @@ function renderCalendar() {
 
   // Expand each week row to fit all transactions, keeping all 7 days the same height.
   try {
-    if (showDetails) {
+    if (isMobileCalendarLayout) {
+      for (const c of cells) {
+        if (!c) continue;
+        c.style.height = "auto";
+      }
+    } else if (showDetails) {
       for (let w = 0; w < weekRows; w++) {
         const start = w * 7;
         const end = Math.min(start + 7, cells.length);
@@ -9879,17 +9937,10 @@ function renderCalendar() {
 }
 
 function readStoredMinBalanceThresholdForReports() {
-  const fid = activeFamilyIdForBalanceThresholds();
-  if (fid == null) return null;
-  const k = getBalanceThresholdKey("min", fid);
-  if (!k) return null;
-  let raw = "";
-  try {
-    raw = localStorage.getItem(k) || "";
-  } catch (_) {}
-  const n = Number(String(raw).replace(/,/g, "").trim());
-  if (!Number.isFinite(n) || n <= 0) return null;
-  return n;
+  const edited = readEditedBalanceThresholdNumber("min");
+  if (edited != null && edited > 0) return edited;
+  const persisted = readFamilyBalanceThresholdNumber("min");
+  return persisted != null && persisted > 0 ? persisted : null;
 }
 
 function weekKeyMondayFromIso(iso) {
@@ -10175,83 +10226,478 @@ function estimatedMonthlyFromRecurrence(amount, recurrence) {
   return a;
 }
 
-function renderReportsBalanceTakeaway(items, dateLabels, values) {
-  const el = document.getElementById("reportsBalanceTakeaway");
-  if (!el) return;
-  el.replaceChildren();
-  if (!items?.length || values.length < 2) {
-    el.hidden = true;
-    return;
+function getProjectedBalancesByDate(source, options = {}) {
+  const startIso = normalizeIsoDate(options.startIso) || "";
+  const endIso = normalizeIsoDate(options.endIso) || "";
+  let rows = [];
+  if (Array.isArray(source)) {
+    rows = source.map((row) => {
+      const iso = normalizeIsoDate(row?.date) || "";
+      return {
+        date: iso,
+        balance: Number(row?.balance ?? row?.total_balance ?? NaN),
+        netCashflow: Number(row?.netCashflow ?? row?.net_cashflow ?? NaN),
+        raw: row || null,
+      };
+    });
+  } else if (source instanceof Map) {
+    rows = [...source.entries()].map(([iso, row]) => ({
+      date: normalizeIsoDate(iso) || "",
+      balance: Number(row?.end ?? row?.balance ?? NaN),
+      netCashflow: Number(row?.txNet ?? row?.net_cashflow ?? NaN),
+      raw: row || null,
+    }));
   }
-  const thr = readStoredMinBalanceThresholdForReports();
-  let lowIdx = 0;
-  for (let i = 1; i < values.length; i++) {
-    if (values[i] < values[lowIdx]) lowIdx = i;
-  }
-  const minV = Number(values[lowIdx]);
-  const lowIso = String(dateLabels[lowIdx] || "");
+  return rows
+    .filter((row) => row.date && Number.isFinite(row.balance))
+    .filter((row) => (!startIso || row.date >= startIso) && (!endIso || row.date <= endIso))
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
 
-  let firstNeg = -1;
-  for (let i = 0; i < values.length; i++) {
-    if (values[i] < 0) {
-      firstNeg = i;
-      break;
+function getLowestBalanceInRange(source, startIso, endIso) {
+  const rows = Array.isArray(source) && source.length && source[0]?.date && Object.prototype.hasOwnProperty.call(source[0], "balance")
+    ? source
+    : getProjectedBalancesByDate(source, { startIso, endIso });
+  if (!rows.length) return null;
+  let low = rows[0];
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i].balance < low.balance) low = rows[i];
+  }
+  return { date: low.date, amount: low.balance, row: low };
+}
+
+function getNextBelowFloorDate(source, floor, fromIso = "") {
+  if (!Number.isFinite(Number(floor))) return null;
+  const rows = Array.isArray(source) && source.length && source[0]?.date && Object.prototype.hasOwnProperty.call(source[0], "balance")
+    ? source
+    : getProjectedBalancesByDate(source);
+  const refIso = normalizeIsoDate(fromIso) || "";
+  for (const row of rows) {
+    if (refIso && row.date < refIso) continue;
+    if (row.balance < floor) return { date: row.date, amount: row.balance, row };
+  }
+  return null;
+}
+
+function getDaysSinceReconciled(endIso = toISODate(new Date())) {
+  const refIso = normalizeIsoDate(endIso) || toISODate(new Date());
+  const latest = tmLatestReconciledIsoBefore(refIso);
+  if (!latest) return null;
+  const days = calendarDaysBetweenIso(latest, refIso);
+  if (days == null || !Number.isFinite(days)) return null;
+  return { days, lastReconciledDate: latest };
+}
+
+function getRecurringExpenseMonthlyBaseline() {
+  let total = 0;
+  for (const tx of state.expectedTransactions || []) {
+    if (!tx || String(tx.kind || "") !== "expense") continue;
+    const recurrence = String(tx.recurrence || "").toLowerCase();
+    if (!recurrence || recurrence === "once") continue;
+    total += estimatedMonthlyFromRecurrence(Math.abs(Number(tx.amount || 0)), recurrence);
+  }
+  return total;
+}
+
+function collectForecastOccurrencesInRange(startIso, endIso, kinds = []) {
+  const want = new Set((Array.isArray(kinds) ? kinds : []).map((v) => String(v || "").toLowerCase()).filter(Boolean));
+  const includeKind = (kind) => !want.size || want.has(String(kind || "").toLowerCase());
+  const out = [];
+
+  for (const tx of state.expectedTransactions || []) {
+    if (!tx) continue;
+    const kind = String(tx.kind || "").toLowerCase() || "expense";
+    if (!includeKind(kind)) continue;
+    let cursor = startIso;
+    let safety = 0;
+    while (cursor && safety < 500) {
+      safety++;
+      let next = "";
+      try {
+        next = normalizeIsoDate(nextExpectedOccurrenceIso(tx, cursor)) || "";
+      } catch (_) {
+        next = "";
+      }
+      if (!next || next > endIso) break;
+      out.push({
+        id: String(tx.id ?? tx.expected_transaction_id ?? tx.series_id ?? `${kind}:${next}:${tx.description || "recurring"}`),
+        date: next,
+        amount: Math.abs(Number(tx.amount || 0)),
+        kind,
+        description: String(tx.description || "Recurring").trim() || "Recurring",
+        source: "expected",
+        recurrence: String(tx.recurrence || ""),
+      });
+      cursor = addDaysIso(next, 1);
+      if (!cursor || cursor > endIso) break;
     }
   }
-  let recoveryPos = -1;
-  if (firstNeg >= 0) {
-    for (let j = firstNeg + 1; j < values.length; j++) {
-      if (values[j] >= 0) {
-        recoveryPos = j;
+
+  for (const tx of state.upcomingActualItems || []) {
+    const iso = normalizeIsoDate(tx?.date) || "";
+    if (!iso || iso < startIso || iso > endIso) continue;
+    const kind = String(tx?.kind || "").toLowerCase() || "expense";
+    if (!includeKind(kind)) continue;
+    out.push({
+      id: String(tx?.id ?? tx?.transaction_id ?? `${kind}:${iso}:${tx?.description || "transaction"}`),
+      date: iso,
+      amount: Math.abs(Number(tx?.amount || 0)),
+      kind,
+      description: String(tx?.description || "Transaction").trim() || "Transaction",
+      source: "actual",
+      recurrence: "once",
+    });
+  }
+
+  return out
+    .filter((row) => row.date && Number.isFinite(row.amount) && row.amount > 0)
+    .sort((a, b) => (a.date === b.date ? b.amount - a.amount : a.date.localeCompare(b.date)));
+}
+
+function detectLargeExpenseClusters(startIso, endIso, options = {}) {
+  const defaultThreshold = Number(options.defaultThreshold);
+  const recurringBaseline = getRecurringExpenseMonthlyBaseline();
+  const dynamicThreshold = recurringBaseline > 0 ? recurringBaseline * 0.2 : 0;
+  const threshold = Math.max(Number.isFinite(defaultThreshold) && defaultThreshold > 0 ? defaultThreshold : 500, dynamicThreshold);
+  const expenses = collectForecastOccurrencesInRange(startIso, endIso, ["expense"]).filter((row) => row.amount >= threshold);
+  if (expenses.length < 2) return null;
+
+  let best = null;
+  for (let i = 0; i < expenses.length; i++) {
+    const first = expenses[i];
+    const windowEnd = isoAddDays(first.date, 6);
+    const grouped = expenses.filter((row) => row.date >= first.date && row.date <= windowEnd);
+    if (grouped.length < 2) continue;
+    const total = grouped.reduce((sum, row) => sum + row.amount, 0);
+    if (!best || grouped.length > best.count || (grouped.length === best.count && total > best.totalAmount)) {
+      best = {
+        startDate: grouped[0].date,
+        endDate: grouped[grouped.length - 1].date,
+        count: grouped.length,
+        totalAmount: total,
+        threshold,
+        events: grouped,
+        relatedTransactionIds: grouped.map((row) => row.id),
+      };
+    }
+  }
+  return best;
+}
+
+function compareSafeToTransferTodayVsFuture(daily, floor, options = {}) {
+  if (!Number.isFinite(Number(floor))) return null;
+  const rows = getProjectedBalancesByDate(daily, { startIso: options.startIso, endIso: options.endIso });
+  if (rows.length < 2) return null;
+  const referenceIso = normalizeIsoDate(options.fromIso) || toISODate(new Date());
+  const series = computeSafeToTransferSeries(rows.map((row) => ({ total_balance: row.balance })), floor);
+  const currentIndex = rows.findIndex((row) => row.date >= referenceIso);
+  if (currentIndex < 0) return null;
+  const currentAmount = Number(series[currentIndex] || 0);
+  const incomes = collectForecastOccurrencesInRange(rows[currentIndex].date, rows[rows.length - 1].date, ["income"]);
+  const nextIncome = incomes.find((row) => row.date > rows[currentIndex].date);
+  if (!nextIncome) return null;
+  const futureIndex = rows.findIndex((row) => row.date >= nextIncome.date);
+  if (futureIndex < 0) return null;
+  const futureAmount = Number(series[futureIndex] || 0);
+  const gain = futureAmount - currentAmount;
+  const meaningfulGain = gain >= 100 || (currentAmount > 0 && gain >= currentAmount * 0.1);
+  if (!meaningfulGain) return null;
+
+  const largeThreshold = Math.max(500, getRecurringExpenseMonthlyBaseline() * 0.2 || 0);
+  const nextMajorExpense = collectForecastOccurrencesInRange(rows[currentIndex].date, rows[rows.length - 1].date, ["expense"])
+    .find((row) => row.date >= nextIncome.date && row.amount >= largeThreshold);
+
+  return {
+    date: rows[futureIndex].date,
+    currentAmount,
+    futureAmount,
+    gain,
+    incomeEvent: nextIncome,
+    nextMajorExpense,
+  };
+}
+
+function getBestTransferDay(daily, floor, options = {}) {
+  if (!Number.isFinite(Number(floor))) return null;
+  const rows = getProjectedBalancesByDate(daily, { startIso: options.startIso, endIso: options.endIso });
+  if (!rows.length) return null;
+  const referenceIso = normalizeIsoDate(options.fromIso) || toISODate(new Date());
+  const series = computeSafeToTransferSeries(rows.map((row) => ({ total_balance: row.balance })), floor);
+  for (let i = 0; i < rows.length; i++) {
+    if (rows[i].date < referenceIso) continue;
+    if (series[i] <= 0) continue;
+    let staysAboveFloor = true;
+    for (let j = i; j < rows.length; j++) {
+      if (rows[j].balance < floor) {
+        staysAboveFloor = false;
         break;
       }
     }
+    if (staysAboveFloor) return { date: rows[i].date, amount: series[i] };
   }
-  let lastNegIdx = -1;
-  for (let i = 0; i < values.length; i++) {
-    if (values[i] < 0) lastNegIdx = i;
+  return null;
+}
+
+function getPressureEasingDate(daily, floor, options = {}) {
+  const threshold = Number.isFinite(Number(floor)) ? Number(floor) : 0;
+  const rows = getProjectedBalancesByDate(daily, { startIso: options.startIso, endIso: options.endIso });
+  if (!rows.length) return null;
+  const referenceIso = normalizeIsoDate(options.fromIso) || toISODate(new Date());
+  let seenPressure = false;
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    if (row.date < referenceIso) continue;
+    if (row.balance < threshold) {
+      seenPressure = true;
+      continue;
+    }
+    if (!seenPressure) continue;
+    let stable = true;
+    for (let j = i; j < Math.min(rows.length, i + 7); j++) {
+      if (rows[j].balance < threshold) {
+        stable = false;
+        break;
+      }
+    }
+    if (stable) return { date: row.date, amount: row.balance };
+  }
+  return null;
+}
+
+function cashInsightLabel(type) {
+  if (type === "reconcile") return "Reconcile forecast";
+  if (type === "large_cluster" || type === "pressure_easing") return "Cash pressure";
+  if (type === "transfer_timing" || type === "best_transfer_day") return "Safe to move";
+  return "Projected balance";
+}
+
+function cashInsightPriority(type) {
+  if (type === "low_balance") return 1;
+  if (type === "tightest_day") return 2;
+  if (type === "reconcile") return 3;
+  if (type === "large_cluster") return 4;
+  if (type === "transfer_timing") return 5;
+  if (type === "best_transfer_day") return 6;
+  if (type === "pressure_easing") return 7;
+  return 9;
+}
+
+function buildCashInsightsForSurface({ daily, startIso = "", endIso = "", surface = "reports" } = {}) {
+  const rows = getProjectedBalancesByDate(daily, { startIso, endIso });
+  if (!rows.length) return [];
+  const rangeStart = startIso || rows[0].date;
+  const rangeEnd = endIso || rows[rows.length - 1].date;
+  const todayIso = toISODate(new Date());
+  const referenceIso = rangeEnd < todayIso ? rangeEnd : (rangeStart > todayIso ? rangeStart : todayIso);
+  const floor = readStoredMinBalanceThresholdForReports();
+  const insights = [];
+  let positiveLowInsight = null;
+
+  const low = getLowestBalanceInRange(rows, rangeStart, rangeEnd);
+  const nextLow = floor != null ? getNextBelowFloorDate(rows, floor, referenceIso) : null;
+  if (nextLow) {
+    const shortfall = floor != null ? floor - nextLow.amount : 0;
+    insights.push({
+      id: `low-balance-${nextLow.date}`,
+      type: "low_balance",
+      severity: nextLow.amount < 0 || shortfall > Math.max(150, Number(floor || 0) * 0.15) ? "urgent" : "watch",
+      title: "Cash pressure ahead",
+      message:
+        floor != null
+          ? `Cash gets tight on ${fmtMonthDay(nextLow.date)}, when your projected balance dips below your $${fmtMoney(floor)} floor at ${fmtMoney0SignedDollar(nextLow.amount)}.`
+          : `Cash gets tight on ${fmtMonthDay(nextLow.date)}, when your projected balance reaches ${fmtMoney0SignedDollar(nextLow.amount)}.`,
+      date: nextLow.date,
+      amount: nextLow.amount,
+    });
+  } else if (floor != null) {
+    positiveLowInsight = {
+      id: `low-balance-clear-${rangeStart}-${rangeEnd}`,
+      type: "low_balance",
+      severity: "positive",
+      title: "Cash pressure is clear",
+      message: "No cash pressure days are currently projected in this range.",
+    };
   }
 
-  let worstI = -1;
-  let worstNet = 0;
-  for (let i = 0; i < items.length; i++) {
-    const net = Number(items[i]?.net_cashflow ?? 0);
-    if (Number.isFinite(net) && net < worstNet) {
-      worstNet = net;
-      worstI = i;
+  if (low) {
+    const sameAsNextLow = !!(nextLow && nextLow.date === low.date);
+    if (!sameAsNextLow || low.amount >= Number(floor ?? -Infinity)) {
+      insights.push({
+        id: `tightest-day-${low.date}`,
+        type: "tightest_day",
+        severity:
+          low.amount < 0
+            ? "urgent"
+            : floor != null && low.amount < floor
+              ? "watch"
+              : "info",
+        title: "Tightest day in range",
+        message:
+          floor != null && low.amount >= floor
+            ? `Your tightest day is ${fmtMonthDay(low.date)}, and the projected balance still stays above your $${fmtMoney(floor)} Floor.`
+            : `Your tightest day is ${fmtMonthDay(low.date)}, with a projected balance of ${fmtMoney0SignedDollar(low.amount)}.`,
+        date: low.date,
+        amount: low.amount,
+      });
     }
   }
 
-  let guidance = "";
+  const reconcile = getDaysSinceReconciled(todayIso);
+  if (reconcile && reconcile.days > 3) {
+    insights.push({
+      id: `reconcile-${reconcile.lastReconciledDate}`,
+      type: "reconcile",
+      severity: reconcile.days > 7 ? "watch" : "info",
+      title: reconcile.days > 7 ? "Reconcile forecast soon" : "Forecast could use a quick check-in",
+      message: `Your forecast has not been reconciled in ${reconcile.days} days. Update your actual balance to keep projected balances trustworthy.`,
+      date: reconcile.lastReconciledDate,
+    });
+  }
 
-  if (firstNeg >= 0) {
-    const d0 = fmtMonthDay(String(dateLabels[firstNeg] || ""));
-    if (recoveryPos >= 0) {
-      const dRec = fmtMonthDay(String(dateLabels[recoveryPos] || ""));
-      guidance = `Your forecast turns negative after ${d0} and recovers by ${dRec}.`;
-    } else {
-      const dLast = fmtMonthDay(String(dateLabels[lastNegIdx] || ""));
-      guidance = `Your forecast turns negative after ${d0} and stays below zero through ${dLast}.`;
-    }
-    if (worstI >= 0 && worstNet < -250) {
-      const dn = fmtMonthDay(String(dateLabels[worstI] || ""));
-      guidance += ` Most pressure comes from the ${dn} outflow of −$${fmtMoney(Math.abs(worstNet))}.`;
-    }
-  } else if (thr != null && Number.isFinite(thr) && thr > 0 && minV < thr) {
-    guidance = `Your forecast stays positive but brushes your $${fmtMoney(thr)} floor on ${fmtMonthDay(lowIso)}.`;
+  const cluster = detectLargeExpenseClusters(rangeStart, rangeEnd);
+  if (cluster) {
+    insights.push({
+      id: `large-cluster-${cluster.startDate}-${cluster.endDate}`,
+      type: "large_cluster",
+      severity: cluster.count >= 3 ? "watch" : "info",
+      title: "Bills cluster together",
+      message: `${cluster.count} large expenses hit between ${fmtMonthDay(cluster.startDate)} and ${fmtMonthDay(cluster.endDate)}. Grouped expenses can make cash feel tighter even when the month looks okay overall.`,
+      date: cluster.startDate,
+      amount: cluster.totalAmount,
+      relatedTransactionIds: cluster.relatedTransactionIds,
+    });
+  }
+
+  const transfer = floor != null
+    ? compareSafeToTransferTodayVsFuture(rows, floor, { startIso: rangeStart, endIso: rangeEnd, fromIso: referenceIso })
+    : null;
+  if (transfer) {
+    const helper = transfer.nextMajorExpense
+      ? `${transfer.incomeEvent.description} clears before ${transfer.nextMajorExpense.description}.`
+      : `${transfer.incomeEvent.description} clears before the next heavier stretch in this range.`;
+    insights.push({
+      id: `transfer-timing-${transfer.date}`,
+      type: "transfer_timing",
+      severity: "info",
+      title: "Safe to move improves after payday",
+      message: `Waiting until ${fmtMonthDay(transfer.date)} increases what is safe to move by about $${fmtMoney0(transfer.gain)}. ${helper}`,
+      date: transfer.date,
+      amount: transfer.gain,
+    });
+  }
+
+  if (!insights.length && positiveLowInsight) insights.push(positiveLowInsight);
+  if (!insights.length && surface === "forecast" && low) {
+    insights.push({
+      id: `cash-steady-${low.date}`,
+      type: "tightest_day",
+      severity: "positive",
+      title: "Forecast looks steady",
+      message: `Your lowest projected balance in this range is ${fmtMoney0SignedDollar(low.amount)} on ${fmtMonthDay(low.date)}.`,
+      date: low.date,
+      amount: low.amount,
+    });
+  }
+
+  return insights.sort((a, b) => {
+    const pa = cashInsightPriority(a?.type);
+    const pb = cashInsightPriority(b?.type);
+    if (pa !== pb) return pa - pb;
+    const sa = ["urgent", "watch", "info", "positive"].indexOf(String(a?.severity || ""));
+    const sb = ["urgent", "watch", "info", "positive"].indexOf(String(b?.severity || ""));
+    return sa - sb;
+  });
+}
+
+function renderCashInsights(host, insights, options = {}) {
+  if (!host) return;
+  const list = Array.isArray(insights) ? insights.filter(Boolean) : [];
+  if (!list.length) {
+    host.innerHTML = "";
+    host.hidden = true;
+    return;
+  }
+  const limit = Math.max(1, Number(options.limit || 3));
+  const visible = list.slice(0, limit);
+  const extra = list.slice(limit);
+  const renderCard = (insight) => {
+    const label = cashInsightLabel(insight.type);
+    const actionHtml = insight.actionLabel && insight.actionHref
+      ? `<a class="cash-insights__action" href="${escapeHtml(insight.actionHref)}">${escapeHtml(insight.actionLabel)}</a>`
+      : "";
+    return `<article class="cash-insights__card cash-insights__card--${escapeHtml(insight.severity || "info")}">
+      <div class="cash-insights__eyebrow">${escapeHtml(label)}</div>
+      <h3 class="cash-insights__title">${escapeHtml(insight.title || "")}</h3>
+      <p class="cash-insights__message">${escapeHtml(insight.message || "")}</p>
+      ${actionHtml}
+    </article>`;
+  };
+  const introHtml = options.description
+    ? `<p class="cash-insights__intro">${escapeHtml(options.description)}</p>`
+    : "";
+  const moreHtml = extra.length
+    ? `<details class="cash-insights__more"><summary>View more insights</summary><div class="cash-insights__stack cash-insights__stack--extra">${extra.map(renderCard).join("")}</div></details>`
+    : "";
+  const bodyHtml = `${introHtml}<div class="cash-insights__stack">${visible.map(renderCard).join("")}</div>${moreHtml}`;
+
+  if (options.variant === "sidebar") {
+    host.innerHTML = `
+      <div class="sidebar-section-head">
+        <h2>${escapeHtml(options.title || "Cash insights")}</h2>
+      </div>
+      <div class="sidebar-section-body">
+        <div class="cash-insights cash-insights--sidebar">${bodyHtml}</div>
+      </div>
+    `;
   } else {
-    guidance = `Your forecast stays above zero, with the lowest balance around $${fmtMoney(minV)} on ${fmtMonthDay(lowIso)}.`;
-    if (worstI >= 0 && worstNet < -250) {
-      const dn = fmtMonthDay(String(dateLabels[worstI] || ""));
-      guidance += ` The largest single-day drag is ${dn}'s −$${fmtMoney(Math.abs(worstNet))} outflow.`;
-    }
+    host.innerHTML = `<div class="cash-insights cash-insights--inline">${bodyHtml}</div>`;
   }
+  host.hidden = false;
+}
 
-  const p = document.createElement("p");
-  p.className = "reports-takeaway-guidance";
-  p.textContent = guidance;
-  el.appendChild(p);
-  el.hidden = false;
+function refreshCalendarCashInsights() {
+  if (!sidebarCashInsights) return;
+  const ym = String(monthInput?.value || calendarMonth?.value || "").trim();
+  const { start, end } = ymBounds(ym);
+  if (!start || !end) {
+    sidebarCashInsights.innerHTML = "";
+    sidebarCashInsights.hidden = true;
+    return;
+  }
+  const insights = buildCashInsightsForSurface({
+    daily: getProjectedBalancesByDate(state.monthDailyBalances, { startIso: start, endIso: end }),
+    startIso: start,
+    endIso: end,
+    surface: "forecast",
+  });
+  renderCashInsights(sidebarCashInsights, insights, {
+    title: "Cash insights",
+    description: "Forward-looking guidance based on your projected balances, timing, and reconciliation status.",
+    variant: "sidebar",
+    limit: 3,
+  });
+}
+
+function renderReportsBalanceTakeaway(items, dateLabels, values) {
+  const el = document.getElementById("reportsBalanceTakeaway");
+  if (!el) return;
+  const lastItem = Array.isArray(items) && items.length ? items[items.length - 1] : null;
+  const insights = lastCashInsightsForReports?.length
+    ? lastCashInsightsForReports
+    : buildCashInsightsForSurface({
+      daily: items || [],
+      startIso: chartStart?.value || String(items?.[0]?.date || ""),
+      endIso:
+        chartStart?.value && chartDaysRange?.value
+          ? chartRangeEndIso(chartStart.value, Number(chartDaysRange.value || 0) || Math.max(1, items?.length || 1))
+          : String(lastItem?.date || ""),
+      surface: "reports",
+    });
+  renderCashInsights(el, insights, {
+    description: "A few calm, high-priority notes pulled from this forecast range.",
+    variant: "inline",
+    limit: 3,
+  });
 }
 
 function renderReportsBalanceLegend(daily, dateLabels, values) {
@@ -10325,8 +10771,8 @@ function renderReportsBalanceLegend(daily, dateLabels, values) {
       : `Below zero through ${fmtMonthDay(String(dateLabels[lastNegIdx] || ""))}`;
     statusClass = " reports-kpi--risk";
   } else if (thr != null && Number.isFinite(thr) && thr > 0 && Number(values[lowIdx]) < thr) {
-    statusLabel = "Comfort floor";
-    statusValue = "Near floor";
+    statusLabel = "Floor";
+    statusValue = "Near Floor";
     statusSub = `${fmtMonthDay(lowIso)} at ${lowValue}`;
     statusClass = " reports-kpi--warn";
   }
@@ -10348,7 +10794,7 @@ function renderReportsBalanceLegend(daily, dateLabels, values) {
     ? `$${fmtMoney(thr)}`
     : "Not set";
   const floorSub = thr != null && Number.isFinite(thr) && thr > 0
-    ? "Saved threshold"
+    ? "Saved Floor"
     : "Set in Settings";
 
   const kpi = (label, value, sub, extraClass = "") => `
@@ -10364,7 +10810,7 @@ function renderReportsBalanceLegend(daily, dateLabels, values) {
       ${kpi("Lowest Balance", lowValue, fmtMonthDay(lowIso), lowClass)}
       ${kpi(statusLabel, statusValue, statusSub, statusClass)}
       ${kpi("Largest Outflow", outflowValue, outflowSub)}
-      ${kpi("Floor Threshold", floorValue, floorSub, " reports-kpi--muted")}
+      ${kpi("Floor", floorValue, floorSub, " reports-kpi--muted")}
     </div>
   `;
 }
@@ -10388,11 +10834,11 @@ function drawReportsSafeTransferChart(daily) {
   if (floor == null) {
     if (emptyEl) {
       emptyEl.style.display = "flex";
-      emptyEl.textContent = "Set a minimum balance in Settings to see safe-to-transfer headroom.";
+      emptyEl.textContent = "Set a Floor in Settings to see Safe to move headroom.";
     }
     if (statsEl) {
       statsEl.innerHTML =
-        '<p class="meta">Safe transfer uses your saved minimum balance as a floor across the remaining forecast path.</p>';
+        '<p class="meta">Safe to move uses your saved Floor across the remaining forecast path.</p>';
     }
     return;
   }
@@ -10403,11 +10849,11 @@ function drawReportsSafeTransferChart(daily) {
   if (allZero) {
     if (emptyEl) {
       emptyEl.style.display = "flex";
-      emptyEl.textContent = "Your forecast does not currently have excess cash above your floor threshold.";
+      emptyEl.textContent = "Your forecast does not currently have Safe to move room above your Floor.";
     }
     if (statsEl) {
       statsEl.innerHTML =
-        '<p class="meta">Your projected balances remain at or below your saved transfer floor across this period.</p>';
+        '<p class="meta">Your projected balances remain at or below your saved Floor across this period.</p>';
     }
     return;
   }
@@ -10435,7 +10881,7 @@ function drawReportsSafeTransferChart(daily) {
           backgroundColor: "rgba(11, 61, 46, 0.08)",
           borderWidth: 2,
           fill: true,
-          tension: 0.2,
+          tension: 0.08,
           pointRadius: 0,
         },
       ],
@@ -10448,7 +10894,7 @@ function drawReportsSafeTransferChart(daily) {
         tooltip: {
           callbacks: {
             title: (t) => formatProjectionTooltipDate(labels[t[0]?.dataIndex ?? 0]),
-            label: (c) => ` Headroom $${fmtMoney(c.parsed.y)}`,
+            label: (c) => ` Safe to move $${fmtMoney(c.parsed.y)}`,
           },
         },
       },
@@ -11729,14 +12175,14 @@ function drawProjectionChart(daily) {
       .map((row, i) => ({ i, n: Number(row?.net_cashflow ?? NaN) }))
       .filter((x) => Number.isFinite(x.n) && x.n < 0)
       .sort((a, b) => a.n - b.n)
-      .slice(0, 3);
+      .slice(0, 2);
     for (const x of ranked) outflowMarkers.add(x.i);
 
     const rankedIn = items
       .map((row, i) => ({ i, n: Number(row?.net_cashflow ?? NaN) }))
       .filter((x) => Number.isFinite(x.n) && x.n > 0)
       .sort((a, b) => b.n - a.n)
-      .slice(0, 2);
+      .slice(0, 1);
     for (const x of rankedIn) inflowMarkers.add(x.i);
   }
 
@@ -11827,12 +12273,12 @@ function drawProjectionChart(daily) {
         g.addColorStop(1, negFillBelowEnd);
         return g;
       },
-      borderWidth: onReports ? 2.25 : 2,
+      borderWidth: onReports ? 2 : 2,
       fill: true,
-      cubicInterpolationMode: onReports ? "monotone" : "default",
-      tension: onReports ? 0.34 : 0.15,
+      cubicInterpolationMode: "default",
+      tension: onReports ? 0.12 : 0.08,
       pointRadius,
-      pointHoverRadius: 5,
+      pointHoverRadius: 4,
       pointBackgroundColor,
       segment: {
         borderColor: (ctx) => {

@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=437" />
+    <link rel="stylesheet" href="./styles.css?v=440" />
   </head>
   <body class="landing-page">
     <div class="container">
@@ -40,9 +40,9 @@
         <div class="landing-hero">
           <div class="landing-hero__inner">
             <div class="landing-hero__copy">
-              <h2 class="landing-hero__text">Stop guessing how much cash you can safely use.</h2>
-              <p class="landing-hero__sub">Know your future balance, not just today’s balance.</p>
-              <a href="https://balancewhiz.com/account-setup/?fresh=1" class="landing-hero__cta">Start Forecasting</a>
+              <h2 class="landing-hero__text">Stop guessing what is safe to move.</h2>
+              <p class="landing-hero__sub">Know your projected balance, not just today’s balance.</p>
+              <a href="https://balancewhiz.com/account-setup/?fresh=1" class="landing-hero__cta">Start your forecast</a>
             </div>
             <div class="landing-hero__viz" aria-label="Illustrative forecast preview">
               <div class="landing-hero-viz">
@@ -77,7 +77,7 @@
                   />
                   <line x1="4" y1="20" x2="276" y2="20" stroke="rgba(180, 83, 9, 0.35)" stroke-dasharray="4 4" stroke-width="1" />
                 </svg>
-                <p class="landing-hero-viz__foot">Safe-to-transfer updates as your forecast changes.</p>
+                <p class="landing-hero-viz__foot">Safe to move guidance as your projected balance changes.</p>
               </div>
             </div>
           </div>
@@ -85,7 +85,7 @@
 
         <section class="landing-insight" aria-label="Example forecast insight">
           <div class="landing-insight__card">
-            <p class="landing-insight__eyebrow">Forecast insight</p>
+            <p class="landing-insight__eyebrow">Cash pressure note</p>
             <div class="landing-insight__body">
               <span class="landing-insight__icon" aria-hidden="true" title="Heads up">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -107,29 +107,29 @@
 
         <section id="features" class="landing-preview" aria-label="Product preview">
           <div class="landing-preview__demo">
-            <p class="landing-preview__tagline">What can leave checking after income and bills land on the calendar.</p>
+            <p class="landing-preview__tagline">What is safe to move from checking after income and bills land on the calendar.</p>
 
             <div class="landing-preview__main">
               <div class="landing-preview__leftCol">
                 <div class="landing-preview__transferBand" role="status" aria-label="Safe transfer amount">
                   <div class="landing-preview__transfer">
-                    <p class="landing-preview__transferLine">Safe-to-move range</p>
+                    <p class="landing-preview__transferLine">Safe to move guidance</p>
                     <p class="landing-preview__transferAmt">$650 to $900</p>
-                    <p class="landing-preview__transferFoot">After upcoming bills and your $1,000 floor stay covered.</p>
+                    <p class="landing-preview__transferFoot">After upcoming bills and your $1,000 Floor stay covered.</p>
                   </div>
 
                   <div class="landing-preview__trust" aria-label="Forecast status">
                     <span class="landing-preview__trustIcon" aria-hidden="true">✓</span>
-                    <span class="landing-preview__trustText">Forecast reconciled through May 9</span>
+                    <span class="landing-preview__trustText">Forecast reconciled through May 17</span>
                   </div>
                 </div>
 
                 <div class="landing-preview__bills">
                   <h3 class="landing-preview__billsHead">Upcoming bills</h3>
                   <ul class="landing-preview__billList" aria-label="Upcoming bills">
-                    <li><span>Electric</span><span>May 12</span></li>
-                    <li><span>Mortgage / rent</span><span>May 15</span></li>
-                    <li><span>Internet</span><span>May 18</span></li>
+                    <li><span>Utilities</span><span>May 18</span></li>
+                    <li><span>Credit card payment</span><span>May 20</span></li>
+                    <li><span>Mortgage</span><span>May 22</span></li>
                   </ul>
                 </div>
               </div>
@@ -151,12 +151,12 @@
                   <line x1="24" y1="120" x2="616" y2="120" stroke="rgba(180, 83, 9, 0.4)" stroke-dasharray="6 6" stroke-width="1.4" />
                   <text x="612" y="114" text-anchor="end" fill="rgba(146, 64, 14, 0.92)" font-size="12" font-family="Inter, system-ui, sans-serif" font-weight="700">$1k floor</text>
                   <path
-                    d="M24,68 C120,74 220,106 360,132 C420,112 480,84 510,76 C560,76 600,78 616,78 L616,188 L24,188 Z"
+                    d="M24,68 L120,76 L220,98 L300,120 L360,132 L430,102 L510,76 L616,78 L616,188 L24,188 Z"
                     fill="url(#landingPreviewBalanceFill)"
                   />
                   <path
                     class="landing-preview__curve"
-                    d="M24,68 C120,74 220,106 360,132 C420,112 480,84 510,76 C560,76 600,78 616,78"
+                    d="M24,68 L120,76 L220,98 L300,120 L360,132 L430,102 L510,76 L616,78"
                     fill="none"
                     stroke="#0B3D2E"
                     stroke-width="4"
@@ -171,7 +171,7 @@
                     text-anchor="start"
                     dominant-baseline="middle"
                   >
-                    Card payment
+                    Credit card payment
                   </text>
                   <circle class="landing-preview__markerDot landing-preview__markerDot--in" cx="510" cy="76" r="4.5" />
                   <text
@@ -190,8 +190,8 @@
             <div class="landing-trust-row" aria-label="Quick highlights">
                 <div class="landing-trust-row__inner" role="list" aria-label="Highlights">
                 <div class="landing-trust-row__item" role="listitem"><span class="landing-trust-row__icon" aria-hidden="true">✓</span> No bank login</div>
-                <div class="landing-trust-row__item" role="listitem"><span class="landing-trust-row__icon" aria-hidden="true">✓</span> Safe-to-move clarity</div>
-                <div class="landing-trust-row__item" role="listitem"><span class="landing-trust-row__icon" aria-hidden="true">✓</span> Fast reconcile</div>
+                <div class="landing-trust-row__item" role="listitem"><span class="landing-trust-row__icon" aria-hidden="true">✓</span> Safe to move clarity</div>
+                <div class="landing-trust-row__item" role="listitem"><span class="landing-trust-row__icon" aria-hidden="true">✓</span> Reconcile forecast fast</div>
                 <div class="landing-trust-row__item" role="listitem"><span class="landing-trust-row__icon" aria-hidden="true">✓</span> Cancel anytime</div>
               </div>
             </div>
@@ -203,7 +203,7 @@
             <div class="landing-cal-peek__copy">
               <h3 class="landing-cal-peek__title">See timing, not just totals</h3>
               <p class="landing-cal-peek__lede">
-                See upcoming bills and paychecks before balances tighten.
+                See upcoming bills and paychecks before cash pressure builds.
               </p>
             </div>
             <div class="landing-cal-peek__frame" aria-hidden="true">
@@ -211,7 +211,7 @@
                 <span class="landing-cal-peek__month">May 2026</span>
                 <span class="landing-cal-peek__hint">Projected balance by day</span>
               </div>
-              <svg class="landing-cal-peek__svg" viewBox="0 0 560 238" xmlns="http://www.w3.org/2000/svg">
+              <svg class="landing-cal-peek__svg" viewBox="0 0 560 220" xmlns="http://www.w3.org/2000/svg">
                 <defs>
                   <linearGradient id="landingCalCell" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stop-color="rgba(255,255,255,0.99)" />
@@ -265,27 +265,27 @@
                   <text x="470" y="92" fill="rgba(11,61,46,0.94)" font-size="11" font-weight="700">$2,310</text>
                 </g>
                 <g opacity="1">
-                  <rect x="8" y="126" width="524" height="34" rx="8" fill="rgba(180,83,9,0.05)" stroke="rgba(180,83,9,0.18)" />
-                  <circle cx="22" cy="143" r="4" fill="rgba(180,83,9,0.55)" />
-                  <text x="34" y="147" fill="rgba(31,41,55,0.88)" font-size="10" font-family="Inter, system-ui, sans-serif" font-weight="600">
-                    Card payment due · May 20
+                  <rect x="8" y="118" width="524" height="30" rx="8" fill="rgba(180,83,9,0.05)" stroke="rgba(180,83,9,0.18)" />
+                  <circle cx="22" cy="133" r="4" fill="rgba(180,83,9,0.55)" />
+                  <text x="34" y="137" fill="rgba(31,41,55,0.88)" font-size="10" font-family="Inter, system-ui, sans-serif" font-weight="600">
+                    Credit card payment · May 20
                   </text>
-                  <text x="420" y="147" fill="rgba(146,45,55,0.78)" font-size="10" font-family="Inter, system-ui, sans-serif" font-weight="700">
+                  <text x="420" y="137" fill="rgba(146,45,55,0.78)" font-size="10" font-family="Inter, system-ui, sans-serif" font-weight="700">
                     −$1,850
                   </text>
                 </g>
                 <g opacity="1">
-                  <rect x="8" y="166" width="524" height="34" rx="8" fill="rgba(4,120,87,0.08)" stroke="rgba(4,120,87,0.22)" />
-                  <circle cx="22" cy="183" r="4" fill="rgba(4,120,87,0.72)" />
-                  <text x="34" y="187" fill="rgba(31,41,55,0.88)" font-size="10" font-family="Inter, system-ui, sans-serif" font-weight="600">
+                  <rect x="8" y="154" width="524" height="30" rx="8" fill="rgba(4,120,87,0.08)" stroke="rgba(4,120,87,0.22)" />
+                  <circle cx="22" cy="169" r="4" fill="rgba(4,120,87,0.72)" />
+                  <text x="34" y="173" fill="rgba(31,41,55,0.88)" font-size="10" font-family="Inter, system-ui, sans-serif" font-weight="600">
                     Paycheck clears · May 21
                   </text>
-                  <text x="420" y="187" fill="rgba(4,120,87,0.88)" font-size="10" font-family="Inter, system-ui, sans-serif" font-weight="700">
+                  <text x="420" y="173" fill="rgba(4,120,87,0.88)" font-size="10" font-family="Inter, system-ui, sans-serif" font-weight="700">
                     +$2,030
                   </text>
                 </g>
-                <text x="16" y="224" fill="rgba(75,85,99,0.55)" font-size="10" font-family="Inter, system-ui, sans-serif" font-weight="500">
-                  Your actual forecast reflects your own accounts and schedule.
+                <text x="16" y="204" fill="rgba(75,85,99,0.55)" font-size="10" font-family="Inter, system-ui, sans-serif" font-weight="500">
+                  Your projected balance reflects your own accounts and schedule.
                 </text>
               </svg>
             </div>
@@ -302,12 +302,12 @@
                 <div class="landing-how__stepBody">Baseline in minutes.</div>
               </li>
               <li>
-                <div class="landing-how__stepTitle">Reconcile to your balance</div>
-                <div class="landing-how__stepBody">Keep your forecast accurate.</div>
+                <div class="landing-how__stepTitle">Reconcile forecast</div>
+                <div class="landing-how__stepBody">Keep projected balance aligned with reality.</div>
               </li>
               <li>
-                <div class="landing-how__stepTitle">Move cash confidently</div>
-                <div class="landing-how__stepBody">Move money confidently.</div>
+                <div class="landing-how__stepTitle">Use Safe to move guidance</div>
+                <div class="landing-how__stepBody">Move money when the calendar gives you room.</div>
               </li>
             </ol>
             <p class="landing-setup-note">No category overhaul needed.</p>
@@ -319,16 +319,16 @@
             <div class="landing-why__title">Why people use BalanceWhiz</div>
             <div class="landing-why__list" role="list" aria-label="Why people use BalanceWhiz">
               <div class="landing-why__item" role="listitem">
-                <p class="landing-why__line"><strong>Avoid overdrafts.</strong><span>See low points before they happen.</span></p>
+                <p class="landing-why__line"><strong>Cash pressure, before it hits.</strong><span>See low points before they happen.</span></p>
               </div>
               <div class="landing-why__item" role="listitem">
-                <p class="landing-why__line"><strong>Safe-to-move, spelled out.</strong><span>Shift extra cash with confidence.</span></p>
+                <p class="landing-why__line"><strong>Safe to move, spelled out.</strong><span>See what can leave checking without crossing your Floor.</span></p>
               </div>
               <div class="landing-why__item" role="listitem">
-                <p class="landing-why__line"><strong>Forecasts that stay honest.</strong><span>Quick reconcile as life changes.</span></p>
+                <p class="landing-why__line"><strong>Forecasts that stay accurate.</strong><span>Reconcile quickly as life changes.</span></p>
               </div>
               <div class="landing-why__item" role="listitem">
-                <p class="landing-why__line"><strong>Put idle cash to work.</strong><span>When the timing says it is safe.</span></p>
+                <p class="landing-why__line"><strong>Move cash with better timing.</strong><span>Wait until the calendar gives you more room.</span></p>
               </div>
             </div>
           </div>
@@ -346,7 +346,7 @@
                   <li>Live in minutes</li>
                   <li>Cancel anytime</li>
                 </ul>
-                <a class="landing-offer__cta" href="https://balancewhiz.com/account-setup/?fresh=1">Start Forecasting</a>
+                <a class="landing-offer__cta" href="https://balancewhiz.com/account-setup/?fresh=1">Start your forecast</a>
               </div>
             </div>
           </section>
@@ -361,7 +361,7 @@
               </div>
               <div class="landing-shift__story landing-shift__story--after">
                 <span class="landing-shift__tag">After</span>
-                <p class="landing-shift__after">"I finally know what's actually safe to move."</p>
+                <p class="landing-shift__after">"I finally know what is safe to move after bills hit."</p>
                 <p class="landing-shift__personCopy">Used to constantly guess around bills, paydays, and transfers.</p>
               </div>
             </div>
@@ -420,7 +420,7 @@
             <div class="app-footer__col app-footer__col--trust" aria-label="What to expect">
               <ul class="app-footer__bullets">
                 <li>No bank connection required</li>
-                <li>Know what can safely leave checking</li>
+                <li>Know what is safe to move from checking</li>
                 <li>Cancel anytime</li>
               </ul>
             </div>

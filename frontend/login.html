@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=437" />
+    <link rel="stylesheet" href="./styles.css?v=440" />
   </head>
   <body class="login-page">
     <div class="container">
@@ -36,8 +36,8 @@
       <div class="grid login-page__grid">
         <div class="login-page__split">
           <aside class="login-page__brand" aria-label="Why BalanceWhiz">
-            <h2 class="login-page__brand-head">Know what's safe before bills hit.</h2>
-            <p class="login-page__brand-sub">Know what stays covered after bills land.</p>
+            <h2 class="login-page__brand-head">Know your projected balance before bills hit.</h2>
+            <p class="login-page__brand-sub">See what stays covered after income and bills land.</p>
             <figure class="login-page__brand-chart-wrap">
               <div class="login-page__brand-chart" aria-hidden="true">
                 <svg viewBox="0 0 336 120" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
@@ -65,11 +65,11 @@
                     </g>
                     <line x1="20" y1="20" x2="20" y2="100" stroke="rgba(11, 61, 46, 0.2)" stroke-width="1" />
                     <g fill="rgba(71, 85, 105, 0.78)" font-size="6.8" font-family="Inter, system-ui, sans-serif" font-weight="600">
-                      <text x="24" y="106">May 12</text>
-                      <text x="88" y="106">15</text>
-                      <text x="152" y="106">18</text>
+                      <text x="24" y="106">May 17</text>
+                      <text x="88" y="106">18</text>
+                      <text x="152" y="106">20</text>
                       <text x="216" y="106">21</text>
-                      <text x="280" y="106">24</text>
+                      <text x="280" y="106">23</text>
                     </g>
                     <g fill="rgba(71, 85, 105, 0.56)" font-size="6.5" font-family="Inter, system-ui, sans-serif" font-weight="600" text-anchor="end">
                       <text x="18" y="38">$4k</text>
@@ -77,12 +77,12 @@
                       <text x="18" y="70">$2k</text>
                     </g>
                     <path
-                      d="M12,76 C40,72 66,74 92,82 C110,88 122,84 136,72 C156,55 176,49 196,60 C214,70 228,82 244,68 C260,54 280,46 308,40 L308,96 L12,96 Z"
+                      d="M12,62 L92,68 L152,82 L216,52 L308,58 L308,96 L12,96 Z"
                       fill="url(#loginBrandChartFill)"
                     />
                     <rect x="8" y="12" width="304" height="72" rx="10" fill="url(#loginBrandChartFade)" />
                     <path
-                      d="M12,76 C40,72 66,74 92,82 C110,88 122,84 136,72 C156,55 176,49 196,60 C214,70 228,82 244,68 C260,54 280,46 308,40"
+                      d="M12,62 L92,68 L152,82 L216,52 L308,58"
                       fill="none"
                       stroke="rgba(6, 31, 24, 0.84)"
                       stroke-width="3.1"
@@ -90,21 +90,21 @@
                       stroke-linejoin="round"
                     />
                     <!-- Outflow at low point: subtle marker, label below so it does not sit on the line -->
-                    <circle class="login-page__chart-dot login-page__chart-dot--out" cx="136" cy="72" r="3.2" />
+                    <circle class="login-page__chart-dot login-page__chart-dot--out" cx="152" cy="82" r="2.8" />
                     <text
                       class="login-page__chart-label login-page__chart-label--out"
-                      x="136"
-                      y="89"
+                      x="152"
+                      y="96"
                       text-anchor="middle"
                       dominant-baseline="middle"
                     >
-                      Mortgage
+                      Credit card payment
                     </text>
                     <!-- Income as balance recovers: label above the line -->
-                    <circle class="login-page__chart-dot login-page__chart-dot--in" cx="262" cy="52" r="3" />
+                    <circle class="login-page__chart-dot login-page__chart-dot--in" cx="216" cy="52" r="2.8" />
                     <text
                       class="login-page__chart-label login-page__chart-label--in"
-                      x="262"
+                      x="216"
                       y="34"
                       text-anchor="middle"
                       dominant-baseline="middle"
@@ -114,7 +114,7 @@
                   </g>
                 </svg>
               </div>
-              <figcaption class="login-page__brand-chart-caption">Projected balance, not just current balance</figcaption>
+              <figcaption class="login-page__brand-chart-caption">Projected balance for one checking account</figcaption>
             </figure>
           </aside>
           <div class="login-page__form-col">
@@ -149,7 +149,7 @@
                   <button type="button" class="login-page__forgot-btn" id="loginForgotBtn">Forgot password?</button>
                   <div class="login-page__signup-prompt">
                     <span>Don't have an account?</span>
-                    <a href="https://balancewhiz.com/account-setup/?fresh=1" class="login-page__signup-cta">Create your forecast</a>
+                    <a href="https://balancewhiz.com/account-setup/?fresh=1" class="login-page__signup-cta">Start your forecast</a>
                   </div>
                 </div>
 
@@ -180,7 +180,7 @@
                         <li>Or create a new account</li>
                       </ul>
                       <div class="login-flow__help-actions">
-                        <a href="https://balancewhiz.com/account-setup/?fresh=1" class="login-flow__help-cta">Create your forecast</a>
+                        <a href="https://balancewhiz.com/account-setup/?fresh=1" class="login-flow__help-cta">Start your forecast</a>
                         <button type="button" class="login-flow__help-back" id="pwForgotHelpBackBtn">Back to login</button>
                       </div>
                     </div>
@@ -280,7 +280,7 @@
             <div class="app-footer__col app-footer__col--trust" aria-label="What to expect">
               <ul class="app-footer__bullets">
                 <li>No bank connection required</li>
-                <li>Know what can safely leave checking</li>
+                <li>Know what is safe to move from checking</li>
                 <li>Cancel anytime</li>
               </ul>
             </div>

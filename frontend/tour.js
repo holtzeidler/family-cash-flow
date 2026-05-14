@@ -3,8 +3,8 @@
  *
  * A lightweight 4-step spotlight tour shown to a user after they finish account
  * setup. The goal is to teach the BalanceWhiz mental model quickly:
- * where to add items, how the comfort floor works, how to keep the forecast
- * honest, and why variable bills need occasional attention.
+ * where to add items, how the Floor works, how to keep the forecast
+ * accurate, and why variable bills need occasional attention.
  *
  * Entry points:
  *   - window.BW.tour.start()        Begin the tour now (called from the
@@ -54,8 +54,8 @@
    *                      coming and going.
    * Step 2 (Awareness) — anchor the Cash Outlook card on the left sidebar:
    *                      this is the user's warning system.
-   * Step 3 (Accuracy)  — anchor a forecast row + its day header: confirm
-   *                      cleared transactions so the forecast stays honest.
+   * Step 3 (Accuracy)  — anchor the day-level reconcile entry point: check
+   *                      that the forecast still matches the real checking balance.
    * Step 4 (Attention) — anchor the Needs review panel: variable amounts need
    *                      occasional updates as real statements arrive.
    */
@@ -77,9 +77,9 @@
       findTarget: findCashOutlookTarget,
       title: "Know when cash gets tight",
       context: "Quick overview before you begin.",
-      body: "BalanceWhiz warns you before your balance drops below your comfort floor.",
-      helper: 'Example: "Alert me if checking falls below $1,000."',
-      note: "Your floor can be changed anytime in Settings.",
+      body: "BalanceWhiz flags when your projected balance drops below your Floor.",
+      helper: 'Example: "Alert me if projected balance falls below $1,000."',
+      note: "Your Floor can be updated anytime in Settings.",
       ctaLabel: "Next",
       placement: ["right", "left", "below", "above"],
       targetExtraClass: "bw-tour-target--cash-outlook",
@@ -93,21 +93,16 @@
     },
     {
       id: "reconcile",
-      findTarget: findExpectedCalendarRowTarget,
-      title: "Keep your forecast honest",
+      findTarget: findExpectedCalendarConfirmAnchor,
+      title: "Keep your forecast accurate",
       body:
-        "As bills and purchases clear, mark them confirmed so future balances stay accurate.",
-      helper: "Think of this as reconciling your forecast with real life.",
+        "As life changes, quickly reconcile your forecast to your real checking balance so projected balances stay reliable.",
+      helper: "Think of this as checking that your forecast still matches reality.",
+      note: "Small updates keep your projected balances trustworthy.",
       ctaLabel: "Next",
       placement: ["below", "above", "right", "left"],
       retryable: true,
-      targetExtraClass: "bw-tour-target--confirm-row",
-      supportHighlights: [
-        {
-          findEl: findExpectedCalendarConfirmAnchor,
-          className: "bw-tour-support-highlight--confirm-head",
-        },
-      ],
+      targetExtraClass: "bw-tour-target--reconcile-head",
     },
     {
       id: "needs-review",
@@ -144,7 +139,7 @@
    */
   /**
    * Pick the best Cash Outlook anchor for Step 2. Preference order:
-   *   1. The active "Transfer cash before…" warning card
+   *   1. The active cash pressure alert
    *      (`#sidebarLowBalanceBanner`) if it has rendered content.
    *   2. The high-balance equivalent (`#sidebarHighBalanceBanner`).
    *   3. The Cash Outlook section wrapper

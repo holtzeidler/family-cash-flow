@@ -748,22 +748,22 @@ function getAccountSetupStepCopy(step, ctx) {
       if (phase3 === "form") {
         return {
           title: "Add an upcoming paycheck or bill",
-          subtitle: "A few predictable items are usually enough to see what stays covered.",
+          subtitle: "A few recurring items are usually enough to see what stays covered.",
         };
       }
       return {
         title: phase3HasAny
-          ? "Want to add another predictable item?"
+          ? "Want to add another recurring item?"
           : "Add the upcoming items you already know",
         subtitle: phase3HasAny
-          ? "A few predictable items are usually enough. You can edit everything later."
-          : "Most people start with 2–3 predictable items. You can edit everything later.",
+          ? "A few recurring items are usually enough. You can edit everything later."
+          : "Most people start with 2–3 recurring items. You can edit everything later.",
       };
     }
     case 3:
       return {
         title: "Add another recurring item",
-        subtitle: "Utilities, card payments, and transfers all help make your forecast more predictable.",
+        subtitle: "Utilities, card payments, and transfers all help make your projected balance more accurate.",
       };
     case 4:
       return {
