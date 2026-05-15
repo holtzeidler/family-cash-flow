@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=473" />
+    <link rel="stylesheet" href="../styles.css?v=480" />
   </head>
   <body>
     <div class="container">
@@ -646,70 +646,94 @@
 
                 <div class="settings-pane prefs-pane" data-settings-pane="preferences" data-prefs-pane hidden>
                   <header class="settings-section-head prefs-pane__head">
-                    <h2 class="settings-section-title prefs-pane__title">Forecast Preferences</h2>
-                    <p class="settings-section-lede prefs-pane__lede">Control how BalanceWhiz warns you, displays balances, and keeps forecasts accurate.</p>
+                    <h2 class="settings-section-title prefs-pane__title">Forecast preferences</h2>
+                    <p class="settings-section-lede prefs-pane__lede">Balances, alerts, and the product tour.</p>
                   </header>
 
-                  <section class="prefs-card prefs-card--tinted" aria-labelledby="prefsForecastBehaviorTitle">
-                    <header class="prefs-card__head">
-                      <h3 class="prefs-card__title" id="prefsForecastBehaviorTitle">Forecast defaults</h3>
-                      <p class="prefs-card__lede">The numbers and screens BalanceWhiz uses by default.</p>
+                  <section class="prefs-card prefs-card--tinted prefs-card--elevated" aria-labelledby="prefsForecastBehaviorTitle">
+                    <header class="prefs-card__head prefs-card__head--row">
+                      <span class="prefs-card__icon" aria-hidden="true">
+                        <svg class="prefs-card__icon-svg" width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M4 19V5M4 19h16M8 17V9m4 8v-5m4 5V7" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                        </svg>
+                      </span>
+                      <div class="prefs-card__head-text">
+                        <h3 class="prefs-card__title" id="prefsForecastBehaviorTitle">Forecast defaults</h3>
+                        <p class="prefs-card__lede">Threshold and how balances read in the app.</p>
+                      </div>
                     </header>
 
-                    <div class="prefs-field">
-                      <label class="prefs-field__label" for="balanceThresholdMin">Minimum balance</label>
-                      <p class="prefs-field__hint">The amount you want to protect in checking.</p>
-                      <div class="prefs-field__control">
-                        <div class="money-input threshold-input prefs-money">
-                          <span class="money-input__prefix" aria-hidden="true">$</span>
-                          <input id="balanceThresholdMin" type="text" inputmode="decimal" autocomplete="off" placeholder="1,000" />
+                    <div class="prefs-stack">
+                      <div class="prefs-field-group">
+                        <div class="prefs-field">
+                          <label class="prefs-field__label" for="balanceThresholdMin">Minimum balance</label>
+                          <div class="prefs-field__control prefs-field__control--threshold">
+                            <div class="money-input threshold-input prefs-money">
+                              <span class="money-input__prefix" aria-hidden="true">$</span>
+                              <input id="balanceThresholdMin" type="text" inputmode="decimal" autocomplete="off" placeholder="1,000" />
+                            </div>
+                            <button type="button" id="balanceThresholdSaveBtn" class="secondary prefs-field__save">Save</button>
+                          </div>
+                          <input type="hidden" id="balanceThresholdMax" value="" />
+                          <div id="lowBalanceErr" class="error prefs-field__err" style="display: none" role="alert"></div>
+                          <p id="balanceThresholdSavedMsg" class="prefs-field__saved" hidden aria-live="polite" role="status"></p>
+                          <p class="prefs-field__helper">Drives low-balance checks against your forecast.</p>
                         </div>
-                        <button type="button" id="balanceThresholdSaveBtn" class="secondary prefs-field__save">Save</button>
                       </div>
-                      <input type="hidden" id="balanceThresholdMax" value="" />
-                      <div id="lowBalanceErr" class="error prefs-field__err" style="display: none" role="alert"></div>
-                      <p id="balanceThresholdSavedMsg" class="prefs-field__saved" hidden aria-live="polite" role="status"></p>
-                      <p class="prefs-field__helper">BalanceWhiz flags when projected balance is expected to fall below this amount.</p>
-                    </div>
 
-                    <div class="prefs-field">
-                      <label class="prefs-field__label" for="prefDefaultLanding">Default landing page</label>
-                      <p class="prefs-field__hint">Where BalanceWhiz opens when you log in.</p>
-                      <div class="prefs-field__control">
-                        <select id="prefDefaultLanding" class="prefs-select">
-                          <option value="calendar">Forecast</option>
-                          <option value="transactions">Transactions</option>
-                          <option value="reports">Reports</option>
-                        </select>
-                      </div>
-                    </div>
+                      <div class="prefs-field-group">
+                        <div class="prefs-field">
+                          <label class="prefs-field__label" for="prefDefaultLanding">Starting screen</label>
+                          <div class="prefs-field__control">
+                            <select id="prefDefaultLanding" class="prefs-select">
+                              <option value="calendar">Forecast</option>
+                              <option value="transactions">Transactions</option>
+                              <option value="reports">Reports</option>
+                            </select>
+                          </div>
+                        </div>
 
-                    <div class="prefs-field">
-                      <span class="prefs-field__label">Balance display mode</span>
-                      <p class="prefs-field__hint">Choose which balance style is emphasized throughout the app.</p>
-                      <div class="prefs-field__control">
-                        <div class="prefs-segmented" role="radiogroup" aria-label="Balance display mode">
-                          <input type="radio" name="prefBalanceDisplayMode" id="prefBalanceModeProjected" value="projected" />
-                          <label for="prefBalanceModeProjected" class="prefs-segmented__opt">Projected balance</label>
-                          <input type="radio" name="prefBalanceDisplayMode" id="prefBalanceModeSafe" value="safe" />
-                          <label for="prefBalanceModeSafe" class="prefs-segmented__opt">Safe to move</label>
-                          <input type="radio" name="prefBalanceDisplayMode" id="prefBalanceModeBoth" value="both" checked />
-                          <label for="prefBalanceModeBoth" class="prefs-segmented__opt">Both</label>
+                        <div class="prefs-field">
+                          <span class="prefs-field__label">Balance display</span>
+                          <div class="prefs-field__control">
+                            <div class="prefs-segmented" role="radiogroup" aria-label="Balance display mode">
+                              <input type="radio" name="prefBalanceDisplayMode" id="prefBalanceModeProjected" value="projected" />
+                              <label for="prefBalanceModeProjected" class="prefs-segmented__opt">Projected</label>
+                              <input type="radio" name="prefBalanceDisplayMode" id="prefBalanceModeSafe" value="safe" />
+                              <label for="prefBalanceModeSafe" class="prefs-segmented__opt">Safe to move</label>
+                              <input type="radio" name="prefBalanceDisplayMode" id="prefBalanceModeBoth" value="both" checked />
+                              <label for="prefBalanceModeBoth" class="prefs-segmented__opt">Both</label>
+                            </div>
+                          </div>
+                          <p class="prefs-field__helper prefs-field__helper--tight">Shown in headers and sidebars.</p>
                         </div>
                       </div>
                     </div>
                   </section>
 
-                  <section class="prefs-card" aria-labelledby="prefsAlertsTitle">
-                    <header class="prefs-card__head">
-                      <h3 class="prefs-card__title" id="prefsAlertsTitle">Alerts</h3>
-                      <p class="prefs-card__lede">How BalanceWhiz pings you about balance risk and big moves.</p>
+                  <section class="prefs-card prefs-card--alerts prefs-card--elevated" aria-labelledby="prefsAlertsTitle">
+                    <header class="prefs-card__head prefs-card__head--row">
+                      <span class="prefs-card__icon" aria-hidden="true">
+                        <svg class="prefs-card__icon-svg" width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path
+                            d="M18 8A6 6 0 106 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          />
+                        </svg>
+                      </span>
+                      <div class="prefs-card__head-text">
+                        <h3 class="prefs-card__title" id="prefsAlertsTitle">Alerts</h3>
+                        <p class="prefs-card__lede">In-app only for now.</p>
+                      </div>
                     </header>
                     <ul class="prefs-toggles" role="list">
-                      <li class="prefs-toggle">
+                      <li class="prefs-toggle prefs-toggle--row">
                         <div class="prefs-toggle__main">
-                          <span class="prefs-toggle__label">Low balance alerts</span>
-                          <span class="prefs-toggle__hint">Warn me when projected balance falls below my minimum balance.</span>
+                          <span class="prefs-toggle__label">Low balance</span>
+                          <span class="prefs-toggle__hint">When projected cash falls below your minimum.</span>
                         </div>
                         <label class="prefs-switch" aria-label="Low balance alerts">
                           <input type="checkbox" id="prefAlertLowBalance" checked />
@@ -718,128 +742,142 @@
                       </li>
                       <li class="prefs-toggle prefs-toggle--disabled">
                         <div class="prefs-toggle__main">
-                          <span class="prefs-toggle__label">Large expense warnings</span>
-                          <span class="prefs-toggle__hint">Coming soon.</span>
+                          <div class="prefs-toggle__titleline">
+                            <span class="prefs-toggle__label">Large expense warnings</span>
+                            <span class="prefs-soon-pill">Soon</span>
+                          </div>
                         </div>
-                        <label class="prefs-switch prefs-switch--disabled" aria-label="Large expense warnings (disabled)">
-                          <input type="checkbox" id="prefAlertLargeExpense" disabled />
+                        <label class="prefs-switch prefs-switch--disabled" aria-label="Large expense warnings (coming soon)">
+                          <input type="checkbox" id="prefAlertLargeExpense" disabled aria-disabled="true" />
                           <span class="prefs-switch__track" aria-hidden="true"></span>
                         </label>
                       </li>
                       <li class="prefs-toggle prefs-toggle--disabled">
                         <div class="prefs-toggle__main">
-                          <span class="prefs-toggle__label">Weekly summary emails</span>
-                          <span class="prefs-toggle__hint">Email delivery coming soon.</span>
+                          <div class="prefs-toggle__titleline">
+                            <span class="prefs-toggle__label">Weekly digest email</span>
+                            <span class="prefs-soon-pill">Soon</span>
+                          </div>
                         </div>
-                        <label class="prefs-switch prefs-switch--disabled" aria-label="Weekly summary emails (disabled)">
-                          <input type="checkbox" id="prefAlertWeeklySummary" disabled />
+                        <label class="prefs-switch prefs-switch--disabled" aria-label="Weekly digest email (coming soon)">
+                          <input type="checkbox" id="prefAlertWeeklySummary" disabled aria-disabled="true" />
                           <span class="prefs-switch__track" aria-hidden="true"></span>
                         </label>
                       </li>
                       <li class="prefs-toggle prefs-toggle--disabled">
                         <div class="prefs-toggle__main">
-                          <span class="prefs-toggle__label">Reconciliation reminders</span>
-                          <span class="prefs-toggle__hint">Coming soon.</span>
+                          <div class="prefs-toggle__titleline">
+                            <span class="prefs-toggle__label">Reconciliation nudges</span>
+                            <span class="prefs-soon-pill">Soon</span>
+                          </div>
                         </div>
-                        <label class="prefs-switch prefs-switch--disabled" aria-label="Reconciliation reminders (disabled)">
-                          <input type="checkbox" id="prefAlertReconciliation" disabled />
+                        <label class="prefs-switch prefs-switch--disabled" aria-label="Reconciliation reminders (coming soon)">
+                          <input type="checkbox" id="prefAlertReconciliation" disabled aria-disabled="true" />
                           <span class="prefs-switch__track" aria-hidden="true"></span>
                         </label>
                       </li>
                     </ul>
                   </section>
 
-                  <section class="prefs-card prefs-card--tour" aria-labelledby="prefsTourTitle">
-                    <header class="prefs-card__head">
-                      <h3 class="prefs-card__title" id="prefsTourTitle">Quick walkthrough</h3>
-                      <p class="prefs-card__lede">Revisit the quick walkthrough anytime.</p>
-                    </header>
-                    <div class="prefs-tour-actions">
-                      <button type="button" id="prefRestartTourBtn" class="prefs-tour-cta" data-bw-tour-restart>Show me around</button>
-                      <p class="prefs-tour-sub">Covers calendar updates, minimum balance alerts, and forecast reconciliation.</p>
+                  <section class="prefs-card prefs-card--tour prefs-card--elevated" aria-labelledby="prefsTourTitle">
+                    <div class="prefs-tour-inline">
+                      <span class="prefs-card__icon prefs-card__icon--muted" aria-hidden="true">
+                        <svg class="prefs-card__icon-svg" width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M6 4a2 2 0 012-2h8a2 2 0 012 2v18l-6-4-6 4V4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+                        </svg>
+                      </span>
+                      <div class="prefs-tour-inline__copy">
+                        <h3 class="prefs-card__title prefs-card__title--inline" id="prefsTourTitle">Product tour</h3>
+                        <p class="prefs-tour-inline__lede">Calendar, thresholds, and reconciliation (~1 min).</p>
+                      </div>
+                      <button type="button" id="prefRestartTourBtn" class="prefs-tour-cta" data-bw-tour-restart>Start tour</button>
                     </div>
                   </section>
 
-                  <p class="prefs-pane__footnote">Your forecast becomes more useful as balances and transactions stay current.</p>
+                  <p class="prefs-pane__footnote">More accurate balances make forecasts more trustworthy.</p>
                 </div>
 
                 <div class="settings-pane" data-settings-pane="billing" hidden>
                   <div class="billing-page">
                     <header class="settings-section-head billing-page__head">
-                      <h2 class="settings-section-title">Plan &amp; billing</h2>
-                      <p class="settings-section-lede">Simple subscription details, renewal timing, and billing management in one place.</p>
+                      <h2 class="settings-section-title billing-page__title">Plan &amp; billing</h2>
+                      <p class="settings-section-lede billing-page__lede">Subscription status and payment actions.</p>
                     </header>
+
                     <div class="billing-page__shell">
-                      <section class="billing-overview" aria-label="Billing overview">
-                        <div class="billing-hero">
-                          <div class="billing-hero__eyebrow">Current access</div>
-                          <div class="billing-hero__title" id="billingPlanHeadline">Cash Forecast</div>
-                          <p class="billing-hero__copy" id="billingPlanContext">Forecast cash flow before balances tighten.</p>
-                          <p class="billing-hero__renewal" id="billingRenewalMessage">Your next renewal is —.</p>
-                        </div>
-
-                        <div class="billing-stat-grid" role="list" aria-label="Plan details">
-                          <article class="billing-stat-card" role="listitem">
-                            <div class="billing-stat-card__label">Plan</div>
-                            <div class="billing-stat-card__value" id="billingPlan">—</div>
-                          </article>
-                          <article class="billing-stat-card" role="listitem">
-                            <div class="billing-stat-card__label">Billing cycle</div>
-                            <div class="billing-stat-card__value" id="billingFrequency">—</div>
-                          </article>
-                          <article class="billing-stat-card" role="listitem">
-                            <div class="billing-stat-card__label" id="billingNextDateLabel">Next renewal</div>
-                            <div class="billing-stat-card__value" id="billingNextDate">—</div>
-                          </article>
-                          <article class="billing-stat-card" role="listitem">
-                            <div class="billing-stat-card__label">Status</div>
-                            <div class="billing-stat-card__value" id="billingAccountStatus">—</div>
-                          </article>
-                        </div>
-
-                        <section class="billing-overview__section">
-                          <div class="billing-section__head">
-                            <h3 class="billing-section__title">Manage subscription</h3>
-                            <p class="billing-section__copy">Keep billing simple, predictable, and easy to adjust when you need to.</p>
+                      <div class="billing-primary">
+                        <section class="billing-overview" aria-label="Billing overview">
+                          <div class="billing-hero">
+                            <div class="billing-hero__eyebrow">Current access</div>
+                            <div class="billing-hero__title" id="billingPlanHeadline">Cash Forecast</div>
+                            <p class="billing-hero__copy" id="billingPlanContext">Forecast cash flow before balances tighten.</p>
+                            <p class="billing-hero__renewal" id="billingRenewalMessage" role="status">Your next renewal is —.</p>
                           </div>
-                          <div class="settings-actions-row billing-actions-row">
-                            <button type="button" class="billing-action-btn billing-action-btn--primary" data-billing-action="payment">Update payment method</button>
-                            <button type="button" class="billing-action-link" data-billing-action="cycle">Change billing cycle</button>
-                            <button type="button" class="billing-action-link" data-billing-action="invoices">View invoices</button>
-                            <button type="button" class="billing-action-link billing-action-link--danger" data-billing-action="cancel">Cancel subscription</button>
+
+                          <dl class="billing-meta">
+                            <div class="billing-meta__pair">
+                              <dt class="billing-meta__term">Plan</dt>
+                              <dd class="billing-meta__def" id="billingPlan">—</dd>
+                            </div>
+                            <div class="billing-meta__pair">
+                              <dt class="billing-meta__term">Billing cycle</dt>
+                              <dd class="billing-meta__def" id="billingFrequency">—</dd>
+                            </div>
+                            <div class="billing-meta__pair">
+                              <dt class="billing-meta__term" id="billingNextDateLabel">Next renewal</dt>
+                              <dd class="billing-meta__def" id="billingNextDate">—</dd>
+                            </div>
+                            <div class="billing-meta__pair">
+                              <dt class="billing-meta__term">Status</dt>
+                              <dd class="billing-meta__def" id="billingAccountStatus">—</dd>
+                            </div>
+                          </dl>
+
+                          <div class="billing-actions" aria-labelledby="billingManageHeading">
+                            <h3 class="billing-actions__title" id="billingManageHeading">Manage subscription</h3>
+                            <div class="billing-actions__primary">
+                              <button type="button" class="billing-action-btn billing-action-btn--primary" data-billing-action="payment">
+                                Update payment method
+                              </button>
+                            </div>
+                            <div class="billing-actions__secondary">
+                              <button type="button" class="billing-action-link" data-billing-action="cycle">Change billing cycle</button>
+                              <button type="button" class="billing-action-link" data-billing-action="invoices">View invoices</button>
+                            </div>
+                            <ul class="billing-reassurance-list" aria-label="Subscription policies">
+                              <li>Cancel anytime</li>
+                              <li>No hidden fees</li>
+                              <li>Data stays editable</li>
+                            </ul>
+                            <div class="billing-cancel">
+                              <p class="billing-cancel__label">Cancel subscription</p>
+                              <button type="button" class="billing-action-link billing-cancel__btn" data-billing-action="cancel">Request cancellation</button>
+                            </div>
+                            <p class="billing-section__note">Contact support for billing changes until self‑serve tools ship.</p>
+                            <p class="billing-section__support"><a class="settings-text-btn" href="/contactus/">Contact support</a></p>
                           </div>
-                          <ul class="billing-reassurance-list" aria-label="Subscription reassurance">
-                            <li>Cancel anytime</li>
-                            <li>No hidden fees</li>
-                            <li>Your data stays editable</li>
-                          </ul>
-                          <p class="billing-section__note">Self-serve billing updates are on the way. For now, support can handle any changes for you.</p>
-                          <p class="billing-section__support">Need help today? <a class="settings-text-btn" href="/contactus/">Contact support</a>.</p>
                         </section>
-                      </section>
+                      </div>
 
-                      <aside class="billing-side" aria-label="Billing details">
-                        <section class="billing-side__section">
-                          <h3 class="billing-section__title">Plan includes</h3>
-                          <ul class="billing-feature-list">
-                            <li>Forecast calendar</li>
-                            <li>Cash pressure reports</li>
-                            <li>Safe to move guidance</li>
-                            <li>Unlimited recurring transactions</li>
-                          </ul>
-                        </section>
-
-                        <section class="billing-side__section">
-                          <h3 class="billing-section__title">Good to know</h3>
-                          <p class="billing-panel__copy">Your forecast stays active as long as your subscription remains active.</p>
-                          <ul class="billing-note-list">
-                            <li>Billing changes can still be handled through support.</li>
-                            <li>No bank connection required.</li>
-                            <li>Your forecast data stays editable.</li>
-                          </ul>
-                        </section>
+                      <aside class="billing-side" aria-label="Plan includes">
+                        <h3 class="billing-side__title">Plan includes</h3>
+                        <ul class="billing-feature-list">
+                          <li>Forecast calendar</li>
+                          <li>Cash pressure reports</li>
+                          <li>Safe to move guidance</li>
+                          <li>Unlimited recurring transactions</li>
+                        </ul>
                       </aside>
                     </div>
+
+                    <section class="billing-good-to-know" aria-label="Good to know">
+                      <h3 class="billing-good-to-know__title">Good to know</h3>
+                      <ul class="billing-note-list">
+                        <li>Support can help with billing anytime.</li>
+                        <li>No bank connection required.</li>
+                        <li>Forecast access needs an active plan.</li>
+                      </ul>
+                    </section>
                   </div>
                 </div>
               </div>
@@ -1033,30 +1071,25 @@
                   <p class="reports-card__desc">See which upcoming transactions tighten projected cash flow the most.</p>
                 </div>
                 <div id="reportsPressureSummary" class="reports-ob-summary reports-ob-summary--pressure" hidden>
-                  <div class="reports-ob-card" role="status">
+                  <div class="reports-ob-card reports-ob-card--pressure" role="status">
                     <div class="reports-ob-card__k">Largest upcoming payment</div>
                     <div class="reports-ob-card__v" id="reportsPressureStatLargest">—</div>
                   </div>
-                  <div class="reports-ob-card" role="status">
+                  <div class="reports-ob-card reports-ob-card--pressure" role="status">
                     <div class="reports-ob-card__k">Lowest projected balance</div>
                     <div class="reports-ob-card__v" id="reportsPressureStatLowBal">—</div>
                   </div>
-                  <div class="reports-ob-card" role="status">
-                    <div class="reports-ob-card__k">High-impact dates</div>
-                    <div class="reports-ob-card__v" id="reportsPressureStatCount">—</div>
-                  </div>
                 </div>
-                <div class="reports-pressure-hint meta" id="reportsPressureHint"></div>
+                <div class="reports-pressure-hint meta" id="reportsPressureHint" hidden></div>
                 <div class="reports-table-scroll reports-table-scroll--pressure">
                   <table class="reports-table reports-table--pressure" aria-label="Upcoming cash pressure">
                     <thead>
                       <tr>
                         <th scope="col">Date</th>
-                        <th scope="col">Timing</th>
                         <th scope="col">Payment</th>
                         <th scope="col" class="num">Amount</th>
-                        <th scope="col" class="num reports-pressure-hero-col">Balance after</th>
-                        <th scope="col">Recovery</th>
+                        <th scope="col" class="num">Balance after</th>
+                        <th scope="col">Status</th>
                       </tr>
                     </thead>
                     <tbody id="reportsPressureBody"></tbody>
@@ -1443,7 +1476,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="../app.js?v=308"></script>
+    <script src="../app.js?v=313"></script>
     <script src="../feedback.js?v=3" defer></script>
     <script src="../tour.js?v=9" defer></script>
   </body>

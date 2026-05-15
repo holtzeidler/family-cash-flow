@@ -897,13 +897,15 @@ function setSidebarLowBalanceBanner(text, style = "off") {
           .join("");
         bodyHtml = `${sub}<div class="cash-outlook-details cash-outlook-details--center">${kv}</div>`;
       } else
-      if (b.startsWith("CENTER:")) {
+      if (b.startsWith("SECONDARY:")) {
+        const txt = b.slice("SECONDARY:".length).trim();
+        bodyHtml = `<div class="cash-outlook-secondary">${escapeHtml(txt)}</div>`;
+      } else if (b.startsWith("CENTER:")) {
         const amt = b.slice("CENTER:".length).trim();
         bodyHtml = `<div class="cash-outlook-line cash-outlook-line--center"><span class="cash-outlook-amt cash-outlook-amt--center">${escapeHtml(
           amt
         )}</span></div>`;
-      } else
-      if (b.includes("|")) {
+      } else if (b.includes("|")) {
         const [l, r] = b.split("|", 2);
         bodyHtml = `<div class="cash-outlook-line"><span class="cash-outlook-date">${escapeHtml(String(l || "").trim())}</span><span class="cash-outlook-amt">${escapeHtml(String(r || "").trim())}</span></div>`;
       } else {
@@ -977,14 +979,15 @@ function setSidebarHighBalanceBanner(text, style = "off") {
           })
           .join("");
         bodyHtml = `${sub}<div class="cash-outlook-details cash-outlook-details--center">${kv}</div>`;
-      } else
-      if (b.startsWith("CENTER:")) {
+      } else if (b.startsWith("SECONDARY:")) {
+        const txt = b.slice("SECONDARY:".length).trim();
+        bodyHtml = `<div class="cash-outlook-secondary">${escapeHtml(txt)}</div>`;
+      } else if (b.startsWith("CENTER:")) {
         const amt = b.slice("CENTER:".length).trim();
         bodyHtml = `<div class="cash-outlook-line cash-outlook-line--center"><span class="cash-outlook-amt cash-outlook-amt--center">${escapeHtml(
           amt
         )}</span></div>`;
-      } else
-      if (b.includes("|")) {
+      } else if (b.includes("|")) {
         const [l, r] = b.split("|", 2);
         bodyHtml = `<div class="cash-outlook-line"><span class="cash-outlook-date">${escapeHtml(String(l || "").trim())}</span><span class="cash-outlook-amt">${escapeHtml(String(r || "").trim())}</span></div>`;
       } else {
@@ -1549,7 +1552,7 @@ async function refreshLowBalanceAlert() {
           setSidebarLowBalanceBanner("", "off");
         } else if (Number.isFinite(bal) && bal <= 0) {
           setSidebarLowBalanceBanner(
-            `⚠ Transfer cash before ${fmtMonthDay(lowHit.date)}\nCENTER:Balance: ${fmtMoney0SignedDollar(bal)}`,
+            `⚠ Transfer cash before ${fmtMonthDay(lowHit.date)}\nSECONDARY:Projected balance: ${fmtMoney0SignedDollar(bal)}`,
             "danger"
           );
         } else {
@@ -1583,7 +1586,7 @@ async function refreshLowBalanceAlert() {
           `<div class="balance-threshold-result-block"><div class="k">First date ≥ $${fmtMoneyThreshold(btMaxEl?.value || "", maxVal)}</div><div class="v">${fmtDateMDY(highHit.date)} — $${fmtMoney(highHit.balance)}</div></div>`
         );
         setSidebarHighBalanceBanner(
-          `✓ Peak balance on ${fmtMonthDay(highHit.date)}\nCENTER:${fmtMoney0SignedDollar(highHit.balance)}`,
+          `✓ Peak balance on ${fmtMonthDay(highHit.date)}\nSECONDARY:${fmtMoney0SignedDollar(highHit.balance)}`,
           "high"
         );
       }
@@ -2125,6 +2128,18 @@ function readPrefBalanceDisplayMode() {
   return "both";
 }
 
+/** When Pressure Points is the active report, sidebar threshold alerts tone down (see styles.css). */
+function syncReportsPressureViewBodyFlag(activeReportId) {
+  try {
+    if (typeof document === "undefined" || !document.body) return;
+    if (activeReportId === "reportCashPressure") {
+      document.body.setAttribute("data-bw-pressure-report", "1");
+    } else {
+      document.body.removeAttribute("data-bw-pressure-report");
+    }
+  } catch (_) {}
+}
+
 function initReportsLeftNav() {
   if (!reportsViewPanel) return;
   if (reportsViewPanel.dataset.reportsNavInit === "1") return;
@@ -2205,6 +2220,7 @@ function initReportsLeftNav() {
       btn.classList.toggle("is-active", active);
       btn.setAttribute("aria-current", active ? "true" : "false");
     }
+    syncReportsPressureViewBodyFlag(id);
   }
 
   for (const section of sections) {
@@ -2444,6 +2460,7 @@ function setActiveTopView(view) {
   } catch (_) {}
   try {
     document.body.dataset.bwView = v;
+    if (v !== "reports") document.body.removeAttribute("data-bw-pressure-report");
   } catch (_) {}
 }
 
@@ -4916,9 +4933,9 @@ function getBillingPlanLabel(plan) {
 function getBillingPlanContext(plan) {
   const p = String(plan || "").toLowerCase();
   if (p === "pro") {
-    return "Includes forecasting, reports, recurring cash planning, and budgeting support.";
+    return "Forecasting, reports, recurring cash, plus budgeting.";
   }
-  return "Forecast cash flow before balances tighten. Includes forecasting, reports, and recurring cash planning.";
+  return "Forecast, reports, and recurring cash planning.";
 }
 
 function billingStatusPillHtml(status) {
@@ -4977,7 +4994,7 @@ function renderBillingPanel() {
       ? `Your 14-day trial ends ${formatShortDateLong(trialEnd)}.`
       : next
         ? `Your next renewal is ${formatShortDateLong(next)}.`
-        : "Billing details update here as your subscription becomes active.";
+        : "Renewal dates appear here once billing is active.";
   }
   if (billingAccountStatusEl) {
     billingAccountStatusEl.innerHTML = billingStatusPillHtml(planLabel === "—" ? "Active" : "Active");
@@ -6844,6 +6861,170 @@ function refreshCategoriesManagerChrome() {
 
 let _categoryDeleteReassignModalEl = null;
 let categoryDeleteReassignPending = null;
+let _categorySimpleDeleteModalEl = null;
+let categorySimpleDeletePending = null;
+let _categoryMoveModalEl = null;
+let categoryMovePending = null;
+
+function syncCategoryDeleteReassignModalMode() {
+  const wrap = _categoryDeleteReassignModalEl;
+  if (!wrap) return;
+  const moveBlock = wrap.querySelector("#categoryDeleteReassignMoveBlock");
+  const note = wrap.querySelector("#categoryDeleteUncatNote");
+  const mode = wrap.querySelector('input[name="catdelmode"]:checked')?.value || "move";
+  if (moveBlock) moveBlock.hidden = mode !== "move";
+  if (note) note.hidden = mode !== "uncategorize";
+}
+
+function ensureCategorySimpleDeleteModal() {
+  if (_categorySimpleDeleteModalEl) return _categorySimpleDeleteModalEl;
+  const wrap = document.createElement("div");
+  wrap.id = "categorySimpleDeleteModal";
+  wrap.className = "modal-overlay category-simple-delete-modal";
+  wrap.setAttribute("aria-hidden", "true");
+  wrap.innerHTML =
+    '<div class="modal-dialog category-simple-delete-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="categorySimpleDeleteTitle">' +
+    '<h3 id="categorySimpleDeleteTitle" class="modal-title category-simple-delete-modal__title"></h3>' +
+    '<p id="categorySimpleDeleteBody" class="category-simple-delete-modal__body"></p>' +
+    '<div class="category-simple-delete-modal__actions">' +
+    '<button type="button" class="secondary" id="categorySimpleDeleteCancel">Cancel</button>' +
+    '<button type="button" class="btn-category-delete" id="categorySimpleDeleteConfirm">Delete category</button>' +
+    "</div></div>";
+  document.body.appendChild(wrap);
+  wrap.querySelector("#categorySimpleDeleteCancel")?.addEventListener("click", () => {
+    wrap.classList.remove("modal-overlay--open");
+    wrap.setAttribute("aria-hidden", "true");
+    categorySimpleDeletePending = null;
+  });
+  wrap.addEventListener("click", (e) => {
+    if (e.target === wrap) {
+      wrap.classList.remove("modal-overlay--open");
+      wrap.setAttribute("aria-hidden", "true");
+      categorySimpleDeletePending = null;
+    }
+  });
+  wrap.querySelector("#categorySimpleDeleteConfirm")?.addEventListener("click", async () => {
+    const pend = categorySimpleDeletePending;
+    if (!pend || !state.activeFamilyId) return;
+    try {
+      show(catErr, "");
+      await api(`/api/families/${state.activeFamilyId}/categories/${pend.id}`, "DELETE");
+      wrap.classList.remove("modal-overlay--open");
+      wrap.setAttribute("aria-hidden", "true");
+      categorySimpleDeletePending = null;
+      await loadCategories();
+      await loadMonthAndCalendar();
+      if (typeof closeCatEditModal === "function") {
+        try {
+          closeCatEditModal();
+        } catch (_) {}
+      }
+    } catch (e) {
+      show(catErr, e.message || "Failed to delete category");
+    }
+  });
+  _categorySimpleDeleteModalEl = wrap;
+  return wrap;
+}
+
+function openCategorySimpleDeleteModal({ id, name }) {
+  const wrap = ensureCategorySimpleDeleteModal();
+  categorySimpleDeletePending = { id: Number(id), name: String(name || "") };
+  const t = wrap.querySelector("#categorySimpleDeleteTitle");
+  const b = wrap.querySelector("#categorySimpleDeleteBody");
+  if (t) t.textContent = `Delete category “${name}”?`;
+  if (b) {
+    b.textContent =
+      "This will remove the category from future organization. No entries use it yet, so your ledger stays the same.";
+  }
+  wrap.classList.add("modal-overlay--open");
+  wrap.setAttribute("aria-hidden", "false");
+}
+
+function ensureCategoryMoveModal() {
+  if (_categoryMoveModalEl) return _categoryMoveModalEl;
+  const wrap = document.createElement("div");
+  wrap.id = "categoryMoveModal";
+  wrap.className = "modal-overlay category-move-modal";
+  wrap.setAttribute("aria-hidden", "true");
+  wrap.innerHTML =
+    '<div class="modal-dialog category-move-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="categoryMoveTitle">' +
+    '<h3 id="categoryMoveTitle" class="modal-title">Move to group</h3>' +
+    '<p id="categoryMoveHint" class="category-move-modal__hint"></p>' +
+    '<label class="category-move-modal__label" for="categoryMoveGroupSelect">Group</label>' +
+    '<select id="categoryMoveGroupSelect" class="category-move-modal__select"></select>' +
+    '<div class="category-move-modal__actions">' +
+    '<button type="button" class="secondary" id="categoryMoveCancel">Cancel</button>' +
+    '<button type="button" class="settings-house-primary-btn" id="categoryMoveConfirm">Move</button>' +
+    "</div></div>";
+  document.body.appendChild(wrap);
+  wrap.querySelector("#categoryMoveCancel")?.addEventListener("click", () => {
+    wrap.classList.remove("modal-overlay--open");
+    wrap.setAttribute("aria-hidden", "true");
+    categoryMovePending = null;
+  });
+  wrap.addEventListener("click", (e) => {
+    if (e.target === wrap) {
+      wrap.classList.remove("modal-overlay--open");
+      wrap.setAttribute("aria-hidden", "true");
+      categoryMovePending = null;
+    }
+  });
+  wrap.querySelector("#categoryMoveConfirm")?.addEventListener("click", async () => {
+    const pend = categoryMovePending;
+    const sel = wrap.querySelector("#categoryMoveGroupSelect");
+    if (!pend || !sel || !state.activeFamilyId) return;
+    const gid = Number(sel.value);
+    if (!Number.isFinite(gid)) return;
+    try {
+      show(catErr, "");
+      await api(`/api/families/${state.activeFamilyId}/categories/${pend.id}`, "PUT", { group_id: gid });
+      wrap.classList.remove("modal-overlay--open");
+      wrap.setAttribute("aria-hidden", "true");
+      categoryMovePending = null;
+      await loadCategories();
+      await loadMonthAndCalendar();
+    } catch (e) {
+      show(catErr, e.message || "Failed to move category");
+    }
+  });
+  _categoryMoveModalEl = wrap;
+  return wrap;
+}
+
+function openCategoryMoveModal({ categoryId, currentGroupId, name }) {
+  const wrap = ensureCategoryMoveModal();
+  const hint = wrap.querySelector("#categoryMoveHint");
+  const sel = wrap.querySelector("#categoryMoveGroupSelect");
+  let added = 0;
+  if (hint) hint.textContent = `Move “${name}” into another group. Drag-and-drop still works if you prefer.`;
+  if (sel) {
+    sel.innerHTML = "";
+    const groups = state.categoryTree?.groups || [];
+    for (const g of groups) {
+      if (Number(g.id) === Number(currentGroupId)) continue;
+      const o = document.createElement("option");
+      o.value = String(g.id);
+      o.textContent = String(g.name || "").trim() || `Group ${g.id}`;
+      sel.appendChild(o);
+      added += 1;
+    }
+    if (!added) {
+      const o = document.createElement("option");
+      o.value = "";
+      o.textContent = "No other groups yet";
+      sel.appendChild(o);
+      sel.disabled = true;
+    } else {
+      sel.disabled = false;
+    }
+  }
+  categoryMovePending = { id: Number(categoryId) };
+  const goBtn = wrap.querySelector("#categoryMoveConfirm");
+  if (goBtn) goBtn.disabled = !added;
+  wrap.classList.add("modal-overlay--open");
+  wrap.setAttribute("aria-hidden", "false");
+}
 
 function ensureCategoryDeleteReassignModal() {
   if (_categoryDeleteReassignModalEl) return _categoryDeleteReassignModalEl;
@@ -6853,26 +7034,45 @@ function ensureCategoryDeleteReassignModal() {
   wrap.setAttribute("aria-hidden", "true");
   wrap.innerHTML =
     '<div class="modal-dialog category-delete-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="categoryDeleteReassignTitle">' +
-    '<h3 id="categoryDeleteReassignTitle" class="modal-title">Delete category</h3>' +
+    '<h3 id="categoryDeleteReassignTitle" class="modal-title">Delete category in use?</h3>' +
     '<p id="categoryDeleteReassignMsg" class="category-delete-modal__msg"></p>' +
-    '<label class="category-delete-modal__label" for="categoryDeleteReassignSelect">Move existing uses to</label>' +
+    '<fieldset class="category-delete-modal__fieldset">' +
+    '<legend class="category-delete-modal__legend">What should happen to existing uses?</legend>' +
+    '<label class="category-delete-modal__radio">' +
+    '<input type="radio" name="catdelmode" value="move" checked />' +
+    "<span>Move entries to another category</span></label>" +
+    '<label class="category-delete-modal__radio">' +
+    '<input type="radio" name="catdelmode" value="uncategorize" />' +
+    "<span>Remove category from entries (uncategorize)</span></label>" +
+    "</fieldset>" +
+    '<div id="categoryDeleteReassignMoveBlock">' +
+    '<label class="category-delete-modal__label" for="categoryDeleteReassignSelect">Category</label>' +
     '<select id="categoryDeleteReassignSelect" class="category-delete-modal__select"></select>' +
+    "</div>" +
+    '<p id="categoryDeleteUncatNote" class="category-delete-modal__note" hidden>' +
+    "Transactions and scheduled items will have no category until you assign one." +
+    "</p>" +
     '<div class="category-delete-modal__actions">' +
-    '<button type="button" id="categoryDeleteReassignConfirm" class="settings-house-primary-btn">Delete and reassign</button>' +
     '<button type="button" id="categoryDeleteReassignCancel" class="secondary">Cancel</button>' +
+    '<button type="button" id="categoryDeleteReassignConfirm" class="btn-category-delete">Delete category</button>' +
     "</div></div>";
   document.body.appendChild(wrap);
+  for (const r of wrap.querySelectorAll('input[name="catdelmode"]')) {
+    r.addEventListener("change", () => syncCategoryDeleteReassignModalMode());
+  }
   const cancel = wrap.querySelector("#categoryDeleteReassignCancel");
   if (cancel) {
     cancel.addEventListener("click", () => {
       wrap.classList.remove("modal-overlay--open");
       wrap.setAttribute("aria-hidden", "true");
+      categoryDeleteReassignPending = null;
     });
   }
   wrap.addEventListener("click", (e) => {
     if (e.target === wrap) {
       wrap.classList.remove("modal-overlay--open");
       wrap.setAttribute("aria-hidden", "true");
+      categoryDeleteReassignPending = null;
     }
   });
   const confirm = wrap.querySelector("#categoryDeleteReassignConfirm");
@@ -6880,13 +7080,23 @@ function ensureCategoryDeleteReassignModal() {
     confirm.addEventListener("click", async () => {
       const pend = categoryDeleteReassignPending;
       const sel = wrap.querySelector("#categoryDeleteReassignSelect");
-      if (!pend || !sel) return;
-      const rid = Number(sel.value);
-      if (!Number.isFinite(rid)) return;
+      const mode = wrap.querySelector('input[name="catdelmode"]:checked')?.value || "move";
+      if (!pend || !state.activeFamilyId) return;
       try {
         show(catErr, "");
-        const path = `/api/families/${state.activeFamilyId}/categories/${pend.id}?reassign_to=${encodeURIComponent(String(rid))}`;
-        await api(path, "DELETE");
+        if (mode === "uncategorize") {
+          const path = `/api/families/${state.activeFamilyId}/categories/${pend.id}?uncategorize_refs=1`;
+          await api(path, "DELETE");
+        } else {
+          if (!sel) return;
+          const rid = Number(sel.value);
+          if (!Number.isFinite(rid)) {
+            show(catErr, "Choose a category to move entries into.");
+            return;
+          }
+          const path = `/api/families/${state.activeFamilyId}/categories/${pend.id}?reassign_to=${encodeURIComponent(String(rid))}`;
+          await api(path, "DELETE");
+        }
         wrap.classList.remove("modal-overlay--open");
         wrap.setAttribute("aria-hidden", "true");
         categoryDeleteReassignPending = null;
@@ -6903,6 +7113,7 @@ function ensureCategoryDeleteReassignModal() {
     });
   }
   _categoryDeleteReassignModalEl = wrap;
+  syncCategoryDeleteReassignModalMode();
   return wrap;
 }
 
@@ -6910,8 +7121,10 @@ function openCategoryDeleteReassignModal({ id, name, total }) {
   const wrap = ensureCategoryDeleteReassignModal();
   const msg = wrap.querySelector("#categoryDeleteReassignMsg");
   const sel = wrap.querySelector("#categoryDeleteReassignSelect");
+  const moveRadio = wrap.querySelector('input[name="catdelmode"][value="move"]');
+  if (moveRadio) moveRadio.checked = true;
   if (msg) {
-    msg.textContent = `This category is used by ${total} ${total === 1 ? "entry" : "entries"} across transactions, scheduled items, and overrides. Choose a replacement category before deleting.`;
+    msg.textContent = `“${name}” is used by ${total} ${total === 1 ? "entry" : "entries"} (transactions, scheduled items, or overrides). Choose how to handle them before deleting the category.`;
   }
   if (sel) {
     sel.innerHTML = "";
@@ -6924,6 +7137,7 @@ function openCategoryDeleteReassignModal({ id, name, total }) {
     }
   }
   categoryDeleteReassignPending = { id: Number(id), name };
+  syncCategoryDeleteReassignModalMode();
   wrap.classList.add("modal-overlay--open");
   wrap.setAttribute("aria-hidden", "false");
 }
@@ -6935,16 +7149,7 @@ async function deleteCategoryWithOptionalReassign(categoryId, categoryName) {
   await loadCategoryUsageSummary();
   const used = categoryAssignmentsForCategoryId(cid);
   if (used <= 0) {
-    const ok = window.confirm(`Delete "${categoryName}"? This cannot be undone.`);
-    if (!ok) return;
-    await api(`/api/families/${state.activeFamilyId}/categories/${cid}`, "DELETE");
-    await loadCategories();
-    await loadMonthAndCalendar();
-    if (typeof closeCatEditModal === "function") {
-      try {
-        closeCatEditModal();
-      } catch (_) {}
-    }
+    openCategorySimpleDeleteModal({ id: cid, name: categoryName });
     return;
   }
   openCategoryDeleteReassignModal({ id: cid, name: categoryName, total: used });
@@ -6994,21 +7199,6 @@ function renderCategoriesGrid(tree) {
     } catch (_) {}
   }
 
-  function buildIconButton({ className, label, title, svg, onClick }) {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = className;
-    btn.setAttribute("aria-label", label);
-    btn.title = title || label;
-    btn.innerHTML = svg;
-    btn.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (typeof onClick === "function") onClick(e);
-    });
-    return btn;
-  }
-
   function makeInlineEditable(el, { onCommit }) {
     el.setAttribute("role", "textbox");
     el.setAttribute("contenteditable", "true");
@@ -7043,7 +7233,7 @@ function renderCategoriesGrid(tree) {
     });
   }
 
-  function mountCategoryRow(c) {
+  function mountCategoryRow(c, grp) {
     const row = document.createElement("div");
     row.className = "cats-cat";
     row.dataset.categoryId = String(c.id);
@@ -7063,35 +7253,81 @@ function renderCategoriesGrid(tree) {
       },
     });
 
-    const actions = document.createElement("div");
-    actions.className = "cats-cat__actions";
+    const menu = document.createElement("details");
+    menu.className = "cats-cat__menu";
 
-    const renameBtn = buildIconButton({
-      className: "cats-cat__btn cats-cat__btn--rename",
-      label: `Rename ${c.name}`,
-      title: "Rename category",
-      svg: '<svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M11.9 2.6a1.5 1.5 0 0 1 2.1 2.1L6.2 12.5 3 13l.5-3.2L11.9 2.6Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="m10.7 3.8 1.5 1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
-      onClick: () => selectEditableText(nameEl),
-    });
+    const menuSummary = document.createElement("summary");
+    menuSummary.className = "cats-cat__menu-summary";
+    menuSummary.setAttribute("aria-label", `Actions for ${c.name}`);
+    menuSummary.innerHTML =
+      '<svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true"><circle cx="8" cy="3.5" r="1.35"/><circle cx="8" cy="8" r="1.35"/><circle cx="8" cy="12.5" r="1.35"/></svg>';
 
-    const deleteBtn = buildIconButton({
-      className: "cats-cat__btn cats-cat__btn--delete",
-      label: `Delete ${c.name}`,
-      title: "Delete category",
-      svg: '<svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M2.5 4.25h11M6 2.75h4M5.25 6.25v5.5M8 6.25v5.5M10.75 6.25v5.5M4.25 4.25l.5 8.5h6.5l.5-8.5" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-      onClick: async () => {
-        try {
-          show(catErr, "");
-          await deleteCategoryWithOptionalReassign(Number(c.id), c.name);
-        } catch (err) {
-          show(catErr, err?.message || "Failed to delete category");
+    const menuPanel = document.createElement("div");
+    menuPanel.className = "cats-cat__menu-panel";
+
+    function closeCatMenu() {
+      try {
+        menu.open = false;
+      } catch (_) {}
+    }
+
+    const mkItem = (label, classExtra, onClick) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = `cats-cat__menu-item${classExtra ? ` ${classExtra}` : ""}`;
+      b.textContent = label;
+      b.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        closeCatMenu();
+        onClick();
+      });
+      return b;
+    };
+
+    menuPanel.appendChild(
+      mkItem("Rename", "", () => {
+        selectEditableText(nameEl);
+      })
+    );
+    menuPanel.appendChild(
+      mkItem("Reorder", "", () => {
+        const h = row.querySelector(".cats-cat__handle");
+        if (h && typeof h.focus === "function") {
+          h.focus();
+          h.classList.add("cats-cat__handle--pulse");
+          window.setTimeout(() => h.classList.remove("cats-cat__handle--pulse"), 1400);
         }
-      },
-    });
+      })
+    );
+    menuPanel.appendChild(
+      mkItem("Move", "", () => {
+        openCategoryMoveModal({
+          categoryId: c.id,
+          currentGroupId: grp?.id,
+          name: c.name,
+        });
+      })
+    );
+    menuPanel.appendChild(
+      mkItem("Delete", "cats-cat__menu-item--danger", () => {
+        void (async () => {
+          try {
+            show(catErr, "");
+            await deleteCategoryWithOptionalReassign(Number(c.id), c.name);
+          } catch (err) {
+            show(catErr, err?.message || "Failed to delete category");
+          }
+        })();
+      })
+    );
+
+    menu.appendChild(menuSummary);
+    menu.appendChild(menuPanel);
 
     const handle = document.createElement("span");
     handle.className = "cats-cat__handle";
     handle.setAttribute("aria-hidden", "true");
+    handle.tabIndex = 0;
     handle.title = "Drag to move";
     handle.draggable = true;
 
@@ -7100,13 +7336,10 @@ function renderCategoriesGrid(tree) {
     meta.className = "cats-cat__meta";
     meta.textContent = nUse > 0 ? `Used by ${nUse} ${nUse === 1 ? "entry" : "entries"}` : "";
 
-    actions.appendChild(renameBtn);
-    actions.appendChild(deleteBtn);
-
     row.appendChild(handle);
     row.appendChild(nameEl);
     row.appendChild(meta);
-    row.appendChild(actions);
+    row.appendChild(menu);
 
     handle.addEventListener("dragstart", (e) => {
       try {
@@ -7371,7 +7604,7 @@ function renderCategoriesGrid(tree) {
       body.appendChild(emptyRow);
     }
     for (const c of cats) {
-      body.appendChild(mountCategoryRow(c));
+      body.appendChild(mountCategoryRow(c, g));
     }
 
     body.addEventListener("dragover", (e) => {
@@ -9321,7 +9554,8 @@ function renderSidebarPendingTransactionsForMonth() {
 
     const kind = String(it?.kind || "expense");
 
-    const el = document.createElement("div");
+    const el = document.createElement("button");
+    el.type = "button";
     el.className = "pending-attn-item";
     let daysUntil = 999;
     try {
@@ -9331,9 +9565,6 @@ function renderSidebarPendingTransactionsForMonth() {
     } catch (_) {}
     if (daysUntil >= 0 && daysUntil <= 3) el.classList.add("is-critical");
     else if (daysUntil >= 0 && daysUntil <= 10) el.classList.add("is-soon");
-    el.tabIndex = 0;
-    el.setAttribute("role", "button");
-    el.style.cursor = "pointer";
     el.addEventListener("click", () => open());
     el.addEventListener("keydown", (ev) => {
       if (ev.key === "Enter" || ev.key === " ") {
@@ -9352,16 +9583,14 @@ function renderSidebarPendingTransactionsForMonth() {
     name.textContent = descFull || catLabel;
     name.title = hintParts.length ? `${descFull || catLabel} — ${catLabel}${notesFull ? ` · ${notesFull}` : ""}` : (descFull || catLabel);
 
-    const est = document.createElement("div");
-    est.className = "pending-attn-est";
     const amt = Math.abs(toNum(it?.amount));
     const sign = String(kind) === "income" ? "+" : "–";
-    est.textContent = `${sign}$${fmtMoney0(amt)}`;
-    est.title = `${catLabel} ${sign}$${fmtMoney0(amt)}`;
+    const dateStr = it?.date ? fmtMonthDay(it.date) : "—";
 
-    const date = document.createElement("div");
-    date.className = "pending-attn-date";
-    date.textContent = it?.date ? fmtMonthDay(it.date) : "—";
+    const meta = document.createElement("div");
+    meta.className = "pending-attn-meta";
+    meta.textContent = `${sign}$${fmtMoney0(amt)} • ${dateStr}`;
+    meta.title = `${catLabel} · ${sign}$${fmtMoney0(amt)} · ${dateStr}`;
 
     const cta = document.createElement("div");
     cta.className = "pending-attn-cta";
@@ -9373,8 +9602,7 @@ function renderSidebarPendingTransactionsForMonth() {
     );
     el.title = name.title;
     el.appendChild(name);
-    el.appendChild(est);
-    el.appendChild(date);
+    el.appendChild(meta);
     el.appendChild(cta);
     const hint = document.createElement("div");
     hint.className = "pending-attn-hint";
@@ -10736,9 +10964,9 @@ function pressureSeverityMeta(after, floor) {
     return {
       key: "unknown",
       label: "Outside forecast range",
-      rowClass: "reports-pressure-row--unknown",
       balClass: "reports-pressure-bal--unknown",
       levelClass: "reports-pressure-level--unknown",
+      accentClass: "reports-pressure-row--accent-unknown",
     };
   }
   const target = floor != null ? floor : 0;
@@ -10746,35 +10974,35 @@ function pressureSeverityMeta(after, floor) {
     return {
       key: "below",
       label: floor != null ? "Below minimum balance" : "Below zero",
-      rowClass: "reports-pressure-row--below",
       balClass: "reports-pressure-bal--below",
       levelClass: "reports-pressure-level--below",
+      accentClass: "reports-pressure-row--accent-below",
     };
   }
   if (floor != null && after < floor * 1.12) {
     return {
       key: "tight",
       label: "Tight",
-      rowClass: "reports-pressure-row--tight",
       balClass: "reports-pressure-bal--tight",
       levelClass: "reports-pressure-level--tight",
+      accentClass: "reports-pressure-row--accent-tight",
     };
   }
   if ((floor != null && after < floor * 1.4) || (floor == null && after < 1500)) {
     return {
       key: "watch",
       label: "Watch",
-      rowClass: "reports-pressure-row--watch",
       balClass: "reports-pressure-bal--watch",
       levelClass: "reports-pressure-level--watch",
+      accentClass: "reports-pressure-row--accent-watch",
     };
   }
   return {
     key: "comfortable",
     label: "Comfortable",
-    rowClass: "reports-pressure-row--comfortable",
     balClass: "reports-pressure-bal--comfortable",
     levelClass: "reports-pressure-level--comfortable",
+    accentClass: "reports-pressure-row--accent-comfortable",
   };
 }
 
@@ -10815,10 +11043,23 @@ function computePressureRecoveryLabel(daily, impactIso, afterBal) {
     }
   }
   return {
-    label: thr != null ? "Remains below minimum" : "Remains below zero",
+    label: thr != null ? "Below minimum" : "Below zero",
     cls: "reports-pressure-rec--stale",
     state: "stale",
   };
+}
+
+/** Short label for the Status column (scan-friendly). */
+function pressureStatusColumnText(rec, thr) {
+  if (!rec || !rec.label) return "—";
+  if (rec.state === "covered") return thr != null ? "OK" : "In range";
+  if (rec.state === "date") {
+    const m = /^Recovers\s+(.+)$/.exec(String(rec.label || ""));
+    return m ? `Recovers ${m[1]}` : String(rec.label);
+  }
+  if (rec.state === "stale") return thr != null ? "Below min" : "Below zero";
+  if (rec.state === "outside") return "Outside range";
+  return String(rec.label);
 }
 
 function pressureWhyItMatters(hit, floor, lowestHit) {
@@ -13112,11 +13353,7 @@ function renderPressureNarrative(hits, daily, floor) {
     return;
   }
 
-  if (lowest && lowest.after < (floor != null ? floor : 0)) {
-    wrap.classList.add("reports-pressure-narrative--danger");
-  } else {
-    wrap.classList.add("reports-pressure-narrative--caution");
-  }
+  wrap.classList.add("reports-pressure-narrative--caution");
 
   const startIso = focus[0]?.iso || "";
   const endIso = focus[focus.length - 1]?.iso || startIso;
@@ -13145,7 +13382,6 @@ function renderReportsCashPressure(daily) {
   const summaryEl = document.getElementById("reportsPressureSummary");
   const statLargest = document.getElementById("reportsPressureStatLargest");
   const statLowBal = document.getElementById("reportsPressureStatLowBal");
-  const statCount = document.getElementById("reportsPressureStatCount");
   if (!body) return;
   body.innerHTML = "";
   const balByDate = new Map((daily || []).map((d) => [String(d.date), Number(d.total_balance ?? 0)]));
@@ -13181,32 +13417,31 @@ function renderReportsCashPressure(daily) {
   }, null);
 
   if (hint) {
-    hint.textContent = hits.length
-      ? "Rows focus on larger upcoming payments. Balance after shows projected end-of-day cash, and recovery shows when coverage returns."
-      : "No scheduled outflows of $400+ in the next 90 days.";
+    if (!hits.length) {
+      hint.textContent = "No scheduled outflows of $400+ in the next 90 days.";
+      hint.hidden = false;
+    } else {
+      hint.textContent = "";
+      hint.hidden = true;
+    }
   }
 
   renderPressureNarrative(hits, daily, floor);
 
   if (summaryEl) {
     for (const c of summaryEl.querySelectorAll(".reports-ob-card")) {
-      c.classList.remove("reports-ob-card--pressure-alert", "reports-ob-card--pressure-warn");
+      c.classList.remove("reports-ob-card--pressure-alert", "reports-ob-card--pressure-warn", "reports-ob-card--pressure-neutral");
     }
     if (!hits.length) {
       summaryEl.hidden = true;
       setReportsObligationStat(statLargest, null);
       setReportsObligationStat(statLowBal, null);
-      setReportsObligationStat(statCount, null);
     } else {
       summaryEl.hidden = false;
       let maxHit = hits[0];
       for (const h of hits) {
         if (h.amt > maxHit.amt) maxHit = h;
       }
-      const datesToWatch = hits.filter((h) => {
-        const sev = pressureSeverityMeta(h.after, floor);
-        return sev.key === "watch" || sev.key === "tight" || sev.key === "below";
-      }).length;
       setReportsObligationStat(
         statLargest,
         `$${fmtMoney(maxHit.amt)}`,
@@ -13217,91 +13452,111 @@ function renderReportsCashPressure(daily) {
         lowestHit && Number.isFinite(lowestHit.after) ? fmtMoney0SignedDollar(lowestHit.after) : "—",
         lowestHit ? `${fmtMonthDay(lowestHit.iso)}` : "No projected low in range",
       );
-      setReportsObligationStat(statCount, String(datesToWatch), datesToWatch === 1 ? "date to watch" : "dates to watch");
+      statLargest?.closest(".reports-ob-card")?.classList.add("reports-ob-card--pressure-neutral");
       if (lowestHit && Number.isFinite(lowestHit.after) && floor != null && lowestHit.after < floor) {
         statLowBal.closest(".reports-ob-card")?.classList.add("reports-ob-card--pressure-alert");
-      }
-      if (datesToWatch >= 2) {
-        statCount.closest(".reports-ob-card")?.classList.add("reports-ob-card--pressure-warn");
       }
     }
   }
 
   for (const h of hits) {
-    const tr = document.createElement("tr");
-    tr.className = "reports-pressure-row";
+    const mainTr = document.createElement("tr");
+    mainTr.className = "reports-pressure-row reports-pressure-row--main";
     const sev = pressureSeverityMeta(h.after, floor);
-    tr.classList.add(sev.rowClass);
+    mainTr.classList.add(sev.accentClass);
     const isPrimary =
       !!lowestHit &&
       String(lowestHit.iso || "") === String(h.iso || "") &&
       Number(lowestHit.after ?? NaN) === Number(h.after ?? NaN);
-    if (isPrimary) tr.classList.add("reports-pressure-row--primary");
-    if (sev.key === "below") tr.classList.add("reports-pressure-row--severe");
+    if (isPrimary) mainTr.classList.add("reports-pressure-row--focus");
 
     const why = pressureWhyItMatters(h, floor, lowestHit);
 
-    const levelGlyph = sev.key === "below" ? `<span class="reports-pressure-level__glyph" aria-hidden="true"></span>` : "";
-
-    let balHtml;
+    let balCell = "";
     if (h.after != null && Number.isFinite(h.after)) {
-      balHtml = `<td class="num reports-pressure-bal ${sev.balClass}"><div class="reports-pressure-bal__pill reports-pressure-bal__pill--${
-        sev.key
-      }"><span class="reports-pressure-bal__value">${fmtMoney0SignedDollar(
+      const tone =
+        sev.key === "below"
+          ? "reports-pressure-bal__num--neg"
+          : sev.key === "tight" || sev.key === "watch"
+            ? "reports-pressure-bal__num--amber"
+            : "reports-pressure-bal__num--ok";
+      const weight = isPrimary ? " reports-pressure-bal__num--lead" : "";
+      balCell = `<td class="num reports-pressure-bal-cell"><span class="reports-pressure-bal__num ${tone}${weight}">${fmtMoney0SignedDollar(
         h.after,
-      )}</span><span class="reports-pressure-level ${sev.levelClass}">${levelGlyph}${escapeHtml(sev.label)}</span></div></td>`;
+      )}</span></td>`;
     } else {
-      const uk = pressureSeverityMeta(h.after, floor);
-      balHtml = `<td class="num reports-pressure-bal reports-pressure-bal--unknown"><div class="reports-pressure-bal__pill reports-pressure-bal__pill--${
-        uk.key
-      } reports-pressure-bal__pill--muted"><span class="reports-pressure-bal__value">—</span><span class="reports-pressure-level ${uk.levelClass}">${escapeHtml(
-        uk.label,
-      )}</span></div></td>`;
+      balCell = `<td class="num reports-pressure-bal-cell"><span class="reports-pressure-bal__num reports-pressure-bal__num--muted">—</span></td>`;
     }
 
-    const rec = h.recovery || { label: "—", cls: "reports-pressure-rec--muted", state: "" };
+    const rec = h.recovery || { label: "—", cls: "reports-pressure-status--muted", state: "" };
     const recTitle =
       rec.state === "outside"
-        ? ' title="Recovery not shown — extend the forecast horizon to see when cash may recover"'
+        ? ' title="Extend the forecast horizon to see recovery timing"'
         : rec.state === "stale"
-          ? ' title="Remains below target through the end of the visible forecast"'
+          ? ' title="Stays below target through the end of the visible forecast"'
           : "";
-    const catBadge = h.categoryLabel
-      ? `<span class="reports-pressure-category">${escapeHtml(h.categoryLabel)}</span>`
+    const statusText = pressureStatusColumnText(rec, floor);
+    const statusClass =
+      rec.state === "covered"
+        ? "reports-pressure-status--ok"
+        : rec.state === "date"
+          ? "reports-pressure-status--date"
+          : rec.state === "stale"
+            ? "reports-pressure-status--stale"
+            : "reports-pressure-status--muted";
+
+    const catInline = h.categoryLabel
+      ? `<span class="reports-pressure-pay__cat">${escapeHtml(h.categoryLabel)}</span>`
       : "";
 
-    const rel = formatPressureRelativeTiming(todayIso, h.iso);
-    const daysInner =
-      rel === ""
-        ? `<span class="reports-pressure-days reports-pressure-days--far" title="More than 30 days away — timing is shown as a date in the first column.">—</span>`
-        : `<span class="reports-pressure-days">${escapeHtml(rel)}</span>`;
-
-    tr.innerHTML = `<td class="reports-pressure-date">${escapeHtml(fmtObligationNextDate(h.iso))}</td><td class="reports-pressure-days-cell">${daysInner}</td><td class="reports-pressure-desc"><div class="reports-pressure-desc__top"><span class="reports-pressure-desc__name">${escapeHtml(
+    mainTr.innerHTML = `<td class="reports-pressure-date">${escapeHtml(fmtObligationNextDate(h.iso))}</td><td class="reports-pressure-pay"><span class="reports-pressure-pay__name">${escapeHtml(
       h.desc,
-    )}</span>${catBadge}</div><div class="reports-pressure-desc__note">${escapeHtml(why)}</div></td><td class="num reports-pressure-amt"><span class="reports-pressure-amt__v">$${fmtMoney(
-      h.amt,
-    )}</span></td>${balHtml}<td class="reports-pressure-rec ${rec.cls}"${recTitle}>${escapeHtml(rec.label)}</td>`;
+    )}</span>${catInline}</td><td class="num reports-pressure-amt"><span class="reports-pressure-amt__v">$${fmtMoney(h.amt)}</span></td>${balCell}<td class="reports-pressure-status ${statusClass}"${recTitle}>${escapeHtml(
+      statusText,
+    )}</td>`;
+
+    const detailTr = document.createElement("tr");
+    detailTr.className = "reports-pressure-detail";
+    detailTr.hidden = true;
+    detailTr.innerHTML = `<td colspan="5" class="reports-pressure-detail__cell"><div class="reports-pressure-detail__body">${escapeHtml(
+      why,
+    )}</div></td>`;
 
     const floorTip = floor != null ? `Minimum balance: $${fmtMoney(floor)}` : "No minimum balance — pressure uses $0.";
     const tipBits = [
       floorTip,
       `Payment −$${fmtMoney(h.amt)} on ${fmtMonthDay(h.iso)}`,
-      h.after != null && Number.isFinite(h.after)
-        ? `Projected after: ${fmtMoney0SignedDollar(h.after)} (${sev.label})`
-        : sev.label,
-      rec.label && rec.label !== "—" ? `Recovery: ${rec.label}` : "",
-      why ? `Why it matters: ${why}` : "",
+      h.after != null && Number.isFinite(h.after) ? `Projected after: ${fmtMoney0SignedDollar(h.after)}` : "",
+      statusText && statusText !== "—" ? `Status: ${statusText}` : "",
+      why ? `Details: ${why}` : "",
     ].filter(Boolean);
     const tip = tipBits.join(" · ");
-    bindFastTxnTipHover(tr.querySelector(".reports-pressure-desc"), tip);
-    bindFastTxnTipHover(tr.querySelector(".reports-pressure-bal"), tip);
-    bindFastTxnTipHover(tr.querySelector(".reports-pressure-rec"), tip);
+    bindFastTxnTipHover(mainTr.querySelector(".reports-pressure-pay"), tip);
+    bindFastTxnTipHover(mainTr.querySelector(".reports-pressure-bal-cell"), tip);
 
-    body.appendChild(tr);
+    mainTr.addEventListener("click", (e) => {
+      if (e.target.closest("a, button, input, select, textarea, label")) return;
+      detailTr.hidden = !detailTr.hidden;
+      const open = !detailTr.hidden;
+      mainTr.classList.toggle("is-open", open);
+      mainTr.setAttribute("aria-expanded", open ? "true" : "false");
+    });
+    mainTr.setAttribute("tabindex", "0");
+    mainTr.setAttribute("role", "button");
+    mainTr.setAttribute("aria-expanded", "false");
+    mainTr.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        mainTr.click();
+      }
+    });
+
+    body.appendChild(mainTr);
+    body.appendChild(detailTr);
   }
   if (!hits.length) {
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td colspan="6" class="reports-table__empty">No upcoming pressure rows.</td>`;
+    tr.innerHTML = `<td colspan="5" class="reports-table__empty">No upcoming pressure rows.</td>`;
     body.appendChild(tr);
   }
 }

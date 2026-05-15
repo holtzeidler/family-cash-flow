@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=463" />
+    <link rel="stylesheet" href="./styles.css?v=465" />
   </head>
   <body class="landing-page">
     <div class="container">
@@ -42,7 +42,9 @@
             <div class="landing-hero__copy">
               <h2 class="landing-hero__text">Know what’s safe before bills hit.</h2>
               <p class="landing-hero__sub">See your projected checking balance before upcoming bills and paychecks land.</p>
+              <p class="landing-hero__emotion">See future cash pressure before it hits checking—so you can move money with confidence.</p>
               <a href="https://balancewhiz.com/account-setup/?fresh=1" class="landing-hero__cta">Start forecasting</a>
+              <p class="landing-hero__proof">Built for real-life cash flow planning. No budgeting required.</p>
               <p class="landing-hero__reassurance">No bank connection required.</p>
             </div>
             <div class="landing-hero__viz" aria-label="Illustrative forecast preview">
@@ -52,13 +54,13 @@
                   <span class="landing-hero-viz__sub">Next 7 days</span>
                 </div>
                 <div class="landing-hero-viz__week" role="presentation">
-                  <div class="landing-hero-viz__cell"><span class="landing-hero-viz__d">17</span><span class="landing-hero-viz__b">$4.3k</span></div>
-                  <div class="landing-hero-viz__cell"><span class="landing-hero-viz__d">18</span><span class="landing-hero-viz__b">$3.9k</span></div>
-                  <div class="landing-hero-viz__cell"><span class="landing-hero-viz__d">19</span><span class="landing-hero-viz__b">$2.2k</span></div>
-                  <div class="landing-hero-viz__cell landing-hero-viz__cell--watch"><span class="landing-hero-viz__d">20</span><span class="landing-hero-viz__b">$1.02k</span></div>
-                  <div class="landing-hero-viz__cell"><span class="landing-hero-viz__d">21</span><span class="landing-hero-viz__b">$3.0k</span></div>
-                  <div class="landing-hero-viz__cell"><span class="landing-hero-viz__d">22</span><span class="landing-hero-viz__b">$2.7k</span></div>
-                  <div class="landing-hero-viz__cell"><span class="landing-hero-viz__d">23</span><span class="landing-hero-viz__b">$2.3k</span></div>
+                  <div class="landing-hero-viz__cell"><span class="landing-hero-viz__d">17</span><span class="landing-hero-viz__b">$4,280</span></div>
+                  <div class="landing-hero-viz__cell"><span class="landing-hero-viz__d">18</span><span class="landing-hero-viz__b">$3,847</span></div>
+                  <div class="landing-hero-viz__cell"><span class="landing-hero-viz__d">19</span><span class="landing-hero-viz__b">$2,156</span></div>
+                  <div class="landing-hero-viz__cell landing-hero-viz__cell--watch"><span class="landing-hero-viz__d">20</span><span class="landing-hero-viz__b">$1,020</span></div>
+                  <div class="landing-hero-viz__cell"><span class="landing-hero-viz__d">21</span><span class="landing-hero-viz__b">$3,095</span></div>
+                  <div class="landing-hero-viz__cell"><span class="landing-hero-viz__d">22</span><span class="landing-hero-viz__b">$2,684</span></div>
+                  <div class="landing-hero-viz__cell"><span class="landing-hero-viz__d">23</span><span class="landing-hero-viz__b">$2,291</span></div>
                 </div>
                 <svg class="landing-hero-viz__spark" viewBox="0 0 280 48" preserveAspectRatio="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
                   <defs>
@@ -69,10 +71,11 @@
                   </defs>
                   <path d="M4,12 L44,14 L84,20 L124,24 L164,16 L204,17 L244,18 L276,18 L276,44 L4,44 Z" fill="url(#landingHeroSparkFill)" />
                   <path
+                    class="landing-hero-viz__sparkLine"
                     d="M4,12 L44,14 L84,20 L124,24 L164,16 L204,17 L244,18 L276,18"
                     fill="none"
-                    stroke="rgba(11, 61, 46, 0.88)"
-                    stroke-width="2.6"
+                    stroke="rgba(11, 61, 46, 0.92)"
+                    stroke-width="2.75"
                     stroke-linecap="round"
                     stroke-linejoin="round"
                   />
@@ -108,7 +111,7 @@
           </div>
         </section>
 
-        <section id="features" class="landing-preview" aria-label="Product preview">
+        <section id="features" class="landing-preview landing-section landing-section--tint-safe landing-reveal" aria-label="Product preview">
           <div class="landing-preview__intro">
             <h3 class="landing-preview__title">See what’s safe to move.</h3>
             <p class="landing-preview__lede">BalanceWhiz looks ahead at income, bills, and your minimum balance before showing what can leave checking.</p>
@@ -132,9 +135,11 @@
                 <div class="landing-preview__bills">
                   <h3 class="landing-preview__billsHead">Upcoming bills</h3>
                   <ul class="landing-preview__billList" aria-label="Upcoming bills">
-                    <li><span>Utilities</span><span>May 18</span></li>
-                    <li><span>Credit card payment</span><span>May 20</span></li>
+                    <li><span>Electric &amp; gas</span><span>May 18</span></li>
+                    <li><span>Car insurance</span><span>May 19</span></li>
+                    <li><span>Credit card</span><span>May 20</span></li>
                     <li><span>Mortgage</span><span>May 22</span></li>
+                    <li><span>Streaming &amp; phone</span><span>May 24</span></li>
                   </ul>
                 </div>
               </div>
@@ -153,35 +158,35 @@
                   </defs>
                   <rect x="24" y="18" width="592" height="116" rx="12" fill="rgba(4, 120, 87, 0.06)" />
                   <rect x="24" y="111" width="592" height="18" rx="8" fill="rgba(180, 83, 9, 0.06)" />
-                  <line x1="24" y1="120" x2="616" y2="120" stroke="rgba(180, 83, 9, 0.4)" stroke-dasharray="6 6" stroke-width="1.4" />
+                  <line x1="24" y1="118" x2="616" y2="118" stroke="rgba(180, 83, 9, 0.38)" stroke-dasharray="6 6" stroke-width="1.35" />
                   <text x="612" y="114" text-anchor="end" fill="rgba(146, 64, 14, 0.92)" font-size="11" font-family="Inter, system-ui, sans-serif" font-weight="700">$1k minimum balance</text>
                   <path
-                    d="M24,68 L120,76 L220,98 L300,120 L360,132 L430,102 L510,76 L616,78 L616,188 L24,188 Z"
+                    d="M24,64 L92,82 L160,96 L220,112 L300,128 L360,136 L420,118 L510,92 L616,84 L616,188 L24,188 Z"
                     fill="url(#landingPreviewBalanceFill)"
                   />
                   <path
                     class="landing-preview__curve"
-                    d="M24,68 L120,76 L220,98 L300,120 L360,132 L430,102 L510,76 L616,78"
+                    d="M24,64 L92,82 L160,96 L220,112 L300,128 L360,136 L420,118 L510,92 L616,84"
                     fill="none"
                     stroke="#0B3D2E"
                     stroke-width="4"
                     stroke-linecap="round"
                     stroke-linejoin="round"
                   />
-                  <circle class="landing-preview__markerDot landing-preview__markerDot--out" cx="360" cy="132" r="4.5" />
+                  <circle class="landing-preview__markerDot landing-preview__markerDot--out" cx="360" cy="136" r="4.5" />
                   <text
                     x="372"
-                    y="132"
+                    y="136"
                     class="landing-preview__markerLabel landing-preview__markerLabel--out"
                     text-anchor="start"
                     dominant-baseline="middle"
                   >
-                    Credit card payment
+                    Credit card
                   </text>
-                  <circle class="landing-preview__markerDot landing-preview__markerDot--in" cx="510" cy="76" r="4.5" />
+                  <circle class="landing-preview__markerDot landing-preview__markerDot--in" cx="510" cy="92" r="4.5" />
                   <text
                     x="522"
-                    y="76"
+                    y="92"
                     class="landing-preview__markerLabel landing-preview__markerLabel--in"
                     text-anchor="start"
                     dominant-baseline="middle"
@@ -194,7 +199,7 @@
           </div>
         </section>
 
-        <section class="landing-cal-peek" aria-label="Forecast calendar preview">
+        <section class="landing-cal-peek landing-section landing-section--surface-white landing-reveal" aria-label="Forecast calendar preview">
           <div class="landing-cal-peek__inner">
             <div class="landing-cal-peek__copy">
               <h3 class="landing-cal-peek__title">See timing, not just totals</h3>
@@ -288,22 +293,45 @@
           </div>
         </section>
 
-        <section id="how" class="landing-how" aria-label="How it works">
+        <section id="how" class="landing-how landing-section landing-section--tint-neutral landing-reveal" aria-label="How it works">
           <div class="landing-how__copy">
             <h2 class="landing-how__title">How it works</h2>
             <div class="landing-how__grid" role="list">
               <article class="landing-how__card" role="listitem">
-                <div class="landing-how__stepMark" aria-hidden="true">1</div>
+                <div class="landing-how__stepTop">
+                  <span class="landing-how__stepIcon" aria-hidden="true">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M8 2v4M16 2v4M4 8h16M6 4h12a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+                    </svg>
+                  </span>
+                  <div class="landing-how__stepMark" aria-hidden="true">1</div>
+                </div>
                 <h3 class="landing-how__cardTitle">Add bills and income</h3>
                 <p class="landing-how__cardBody">Set a quick baseline in just a few minutes.</p>
               </article>
               <article class="landing-how__card" role="listitem">
-                <div class="landing-how__stepMark" aria-hidden="true">2</div>
+                <div class="landing-how__stepTop">
+                  <span class="landing-how__stepIcon" aria-hidden="true">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M4 12a8 8 0 1116 0 8 8 0 01-16 0z" stroke="currentColor" stroke-width="1.6" />
+                      <path d="M12 8v4l2.5 2.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+                    </svg>
+                  </span>
+                  <div class="landing-how__stepMark" aria-hidden="true">2</div>
+                </div>
                 <h3 class="landing-how__cardTitle">Reconcile your forecast</h3>
                 <p class="landing-how__cardBody">Keep projected balances aligned with what actually cleared.</p>
               </article>
-              <article class="landing-how__card" role="listitem">
-                <div class="landing-how__stepMark" aria-hidden="true">3</div>
+              <article class="landing-how__card landing-how__card--featured" role="listitem">
+                <div class="landing-how__stepTop">
+                  <span class="landing-how__stepIcon landing-how__stepIcon--featured" aria-hidden="true">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M7 10h8l-2.5-2.5M15 10l-2.5 2.5" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" />
+                      <path d="M17 14H9l2.5 2.5M9 14l2.5-2.5" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                  </span>
+                  <div class="landing-how__stepMark landing-how__stepMark--featured" aria-hidden="true">3</div>
+                </div>
                 <h3 class="landing-how__cardTitle">Use Safe to move</h3>
                 <p class="landing-how__cardBody">Shift money when your calendar shows real room.</p>
               </article>
@@ -311,7 +339,7 @@
           </div>
         </section>
 
-        <section class="landing-offer landing-offer--calm" aria-label="Start forecasting">
+        <section class="landing-offer landing-offer--calm landing-reveal" aria-label="Start forecasting">
           <div class="landing-offer__panel">
             <div class="landing-offer__copy">
               <h3 class="landing-offer__heading">Start forecasting</h3>
@@ -346,6 +374,7 @@
               </a>
               <p class="app-footer__tagline">See your cash flow before it happens.</p>
               <p class="app-footer__copyright">© 2026 BalanceWhiz</p>
+              <p class="app-footer__madein">Built in Chicago</p>
             </div>
             <nav class="app-footer__col" aria-label="Product">
               <h2 class="app-footer__heading">Product</h2>
@@ -367,5 +396,27 @@
         </div>
       </footer>
     </div>
+    <script>
+      (function () {
+        if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+        var nodes = document.querySelectorAll(".landing-reveal");
+        if (!nodes.length || !("IntersectionObserver" in window)) {
+          for (var i = 0; i < nodes.length; i++) nodes[i].classList.add("landing-reveal--in");
+          return;
+        }
+        var io = new IntersectionObserver(
+          function (entries) {
+            entries.forEach(function (e) {
+              if (e.isIntersecting) {
+                e.target.classList.add("landing-reveal--in");
+                io.unobserve(e.target);
+              }
+            });
+          },
+          { root: null, rootMargin: "0px 0px -4% 0px", threshold: 0.05 }
+        );
+        for (var j = 0; j < nodes.length; j++) io.observe(nodes[j]);
+      })();
+    </script>
   </body>
 </html>

@@ -3713,14 +3713,19 @@ def delete_category(
     family_id: int,
     category_id: int,
     reassign_to: Optional[int] = Query(None, description="When the category is in use, move all references to this category id, then delete."),
+    uncategorize_refs: bool = Query(
+        False,
+        description="When references exist, clear category_id on those rows (uncategorize), then delete the category.",
+    ),
     access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
     """Hard-delete a category when unused, or after reassigning references.
 
     If any transaction / expected row / override still references this category,
-    pass ``reassign_to`` with another category id in the same family. Omitting
-    it when references exist returns HTTP 400 with structured detail.
+    pass ``reassign_to`` with another category id in the same family, **or**
+    pass ``uncategorize_refs=true`` to drop the category from those rows.
+    Omitting both when references exist returns HTTP 400 with structured detail.
     """
     user_id = get_current_user_id(access_token)
     require_family_write(db=db, family_id=family_id, user_id=user_id)
@@ -3746,7 +3751,63 @@ def delete_category(
 
     total_refs = int(has_tx) + int(has_exp) + int(has_ovr)
     if total_refs > 0:
-        if reassign_to is None:
+        if uncategorize_refs and reassign_to is not None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Choose either uncategorize_refs or reassign_to, not both.",
+            )
+        if uncategorize_refs:
+            db.execute(
+                update(Transaction)
+                .where(Transaction.family_id == family_id, Transaction.category_id == category_id)
+                .values(category_id=None)
+            )
+            db.execute(
+                update(ExpectedTransaction)
+                .where(ExpectedTransaction.family_id == family_id, ExpectedTransaction.category_id == category_id)
+                .values(category_id=None)
+            )
+            db.execute(
+                update(ExpectedTransactionOverride)
+                .where(
+                    ExpectedTransactionOverride.category_id == category_id,
+                    ExpectedTransactionOverride.expected_transaction_id.in_(
+                        select(ExpectedTransaction.id).where(ExpectedTransaction.family_id == family_id)
+                    ),
+                )
+                .values(category_id=None)
+            )
+        elif reassign_to is not None:
+            rid = int(reassign_to)
+            if rid == int(category_id):
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Replacement category must be different from the one being deleted")
+            rep = db.execute(
+                select(Category).where(Category.id == rid, Category.family_id == family_id, Category.archived.is_(False))
+            ).scalar_one_or_none()
+            if rep is None:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Replacement category not found or is archived")
+
+            db.execute(
+                update(Transaction)
+                .where(Transaction.family_id == family_id, Transaction.category_id == category_id)
+                .values(category_id=rid)
+            )
+            db.execute(
+                update(ExpectedTransaction)
+                .where(ExpectedTransaction.family_id == family_id, ExpectedTransaction.category_id == category_id)
+                .values(category_id=rid)
+            )
+            db.execute(
+                update(ExpectedTransactionOverride)
+                .where(
+                    ExpectedTransactionOverride.category_id == category_id,
+                    ExpectedTransactionOverride.expected_transaction_id.in_(
+                        select(ExpectedTransaction.id).where(ExpectedTransaction.family_id == family_id)
+                    ),
+                )
+                .values(category_id=rid)
+            )
+        else:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
@@ -3762,35 +3823,6 @@ def delete_category(
                     "total": total_refs,
                 },
             )
-        rid = int(reassign_to)
-        if rid == int(category_id):
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Replacement category must be different from the one being deleted")
-        rep = db.execute(
-            select(Category).where(Category.id == rid, Category.family_id == family_id, Category.archived.is_(False))
-        ).scalar_one_or_none()
-        if rep is None:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Replacement category not found or is archived")
-
-        db.execute(
-            update(Transaction)
-            .where(Transaction.family_id == family_id, Transaction.category_id == category_id)
-            .values(category_id=rid)
-        )
-        db.execute(
-            update(ExpectedTransaction)
-            .where(ExpectedTransaction.family_id == family_id, ExpectedTransaction.category_id == category_id)
-            .values(category_id=rid)
-        )
-        db.execute(
-            update(ExpectedTransactionOverride)
-            .where(
-                ExpectedTransactionOverride.category_id == category_id,
-                ExpectedTransactionOverride.expected_transaction_id.in_(
-                    select(ExpectedTransaction.id).where(ExpectedTransaction.family_id == family_id)
-                ),
-            )
-            .values(category_id=rid)
-        )
 
     db.execute(delete(Category).where(Category.id == category_id, Category.family_id == family_id))
     db.commit()
