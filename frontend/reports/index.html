@@ -729,13 +729,17 @@
 
                           <div class="billing-actions" aria-labelledby="billingManageHeading">
                             <h3 class="billing-actions__title" id="billingManageHeading">Manage subscription</h3>
+                            <p class="billing-actions__hint">
+                              Updating your card will be available here soon—for now, support handles payment changes.
+                            </p>
                             <div class="billing-actions__primary">
                               <button type="button" class="billing-action-btn billing-action-btn--primary" data-billing-action="payment">
                                 Update payment method
                               </button>
                             </div>
-                            <div class="billing-actions__secondary">
+                            <div class="billing-actions__secondary billing-actions__secondary--inline" aria-label="Additional billing tasks">
                               <button type="button" class="billing-action-link" data-billing-action="cycle">Change billing cycle</button>
+                              <span class="billing-actions__sep" aria-hidden="true">·</span>
                               <button type="button" class="billing-action-link" data-billing-action="invoices">View invoices</button>
                             </div>
                             <ul class="billing-reassurance-list" aria-label="Subscription policies">
@@ -743,35 +747,45 @@
                               <li>No hidden fees</li>
                               <li>Data stays editable</li>
                             </ul>
-                            <div class="billing-cancel">
-                              <p class="billing-cancel__label">Cancel subscription</p>
-                              <button type="button" class="billing-action-link billing-cancel__btn" data-billing-action="cancel">Request cancellation</button>
+                            <div class="billing-cancel" aria-labelledby="billingCancelTitle">
+                              <h4 class="billing-cancel__title" id="billingCancelTitle">Cancel subscription</h4>
+                              <p class="billing-cancel__lede">Need to cancel? Send a request and we’ll help.</p>
+                              <button type="button" class="billing-cancel__request" data-billing-action="cancel">
+                                Request cancellation
+                              </button>
                             </div>
-                            <p class="billing-section__note">Contact support for billing changes until self‑serve tools ship.</p>
-                            <p class="billing-section__support"><a class="settings-text-btn" href="/contactus/">Contact support</a></p>
                           </div>
                         </section>
                       </div>
 
-                      <aside class="billing-side" aria-label="Plan includes">
-                        <h3 class="billing-side__title">Plan includes</h3>
-                        <ul class="billing-feature-list">
-                          <li>Forecast calendar</li>
-                          <li>Cash pressure reports</li>
-                          <li>Safe to move guidance</li>
-                          <li>Unlimited recurring transactions</li>
-                        </ul>
+                      <aside class="billing-side" aria-label="Plan and billing information">
+                        <section class="billing-side__block" aria-labelledby="billingIncludesTitle">
+                          <h3 class="billing-side__title" id="billingIncludesTitle">Plan includes</h3>
+                          <ul class="billing-feature-list">
+                            <li>Forecast calendar</li>
+                            <li>Cash pressure reports</li>
+                            <li>Safe to move guidance</li>
+                            <li>Unlimited recurring transactions</li>
+                          </ul>
+                        </section>
+
+                        <section class="billing-side__block" aria-labelledby="billingNotesTitle">
+                          <h3 class="billing-side__title" id="billingNotesTitle">Good to know</h3>
+                          <ul class="billing-note-list">
+                            <li>No bank connection required.</li>
+                            <li>Forecast access needs an active plan.</li>
+                          </ul>
+                        </section>
+
+                        <section class="billing-side__block billing-side__support" aria-label="Billing help">
+                          <h3 class="billing-side__subtitle">Billing help</h3>
+                          <p class="billing-side__support-copy">
+                            Self-service billing is coming soon. For now, contact support for billing changes.
+                          </p>
+                          <p class="billing-side__support-cta"><a class="billing-side__support-link" href="/contactus/">Contact support</a></p>
+                        </section>
                       </aside>
                     </div>
-
-                    <section class="billing-good-to-know" aria-label="Good to know">
-                      <h3 class="billing-good-to-know__title">Good to know</h3>
-                      <ul class="billing-note-list">
-                        <li>Support can help with billing anytime.</li>
-                        <li>No bank connection required.</li>
-                        <li>Forecast access needs an active plan.</li>
-                      </ul>
-                    </section>
                   </div>
                 </div>
               </div>

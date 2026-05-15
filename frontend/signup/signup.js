@@ -182,11 +182,6 @@ const ACCOUNT_SETUP_PANEL_FOR_STEP = [0, 1, 2, 3, 4];
 /** v2 order was email → survey → checking → income → expense (`wizardStep` index). Maps step → panel index. */
 const V2_ACCOUNT_SETUP_PANEL_FOR_STEP = [0, 4, 1, 2, 3];
 
-/** Progress bar fills in 4 segments; expense (step 3) and survey (step 4) share the last segment (matches former dot UI). */
-function getAccountSetupWizardDisplayDotIndex(step) {
-  const s = Math.min(4, Math.max(0, step));
-  return s >= 3 ? 3 : s;
-}
 /** Pre–survey-as-step-1 layout: [email, checking, income, expense, survey] → v2 step indices. */
 const LEGACY_ACCOUNT_SETUP_WIZARD_STEP_TO_NEW = [0, 2, 3, 4, 1];
 function normalizePersistedAccountSetupWizardStep(raw) {
@@ -759,7 +754,7 @@ function syncAccountSetupStep3HubState() {
     helper.textContent =
       totalCount > 0
         ? "You can continue now, or add more items if you know them."
-        : "Add at least one item to generate your first forecast. You can always add more items later from the calendar.";
+        : "Add at least one bill or income to generate your first forecast. You can add or edit more anytime from the calendar.";
   }
 
   const syncAction = (buttonId, count) => {
@@ -869,8 +864,8 @@ function getAccountSetupStepCopy(step, ctx) {
         };
       }
       return {
-        title: "Add your first known items",
-        subtitle: "Start with the bills and income you already know. You can add more later.",
+        title: "Add your first bills and income",
+        subtitle: "A paycheck and a couple of bills are enough to see your forecast—add more when you’re ready.",
       };
     }
     case 3:
@@ -881,7 +876,7 @@ function getAccountSetupStepCopy(step, ctx) {
     case 4:
       return {
         title: "What matters most to you?",
-        subtitle: "Choose what you want help keeping track of.",
+        subtitle: "Pick what you want help with first—we’ll tailor your forecast around it.",
       };
     default:
       return { title: "Let’s build your forecast", subtitle: "Start simple. You can refine everything later." };
@@ -1010,7 +1005,7 @@ function syncAccountSetupWizardShellButtons() {
   if (s === 4) {
     if (signupBtn) {
       signupBtn.style.display = "";
-      signupBtn.textContent = "Create My Forecast";
+      signupBtn.textContent = "See My Forecast";
       // Ensure primary styling in the final step as well.
       signupBtn.classList.remove("secondary");
       signupBtn.classList.add("top-nav__logout");
@@ -1118,11 +1113,11 @@ function setAccountSetupWizardStep(step, opts = {}) {
     else p.setAttribute("inert", "");
   }
 
-  const displayDot = getAccountSetupWizardDisplayDotIndex(s);
-  const pct = ((displayDot + 1) / 4) * 100;
+  const displayStepNum = getAccountSetupDisplayStepNumber(s);
+  const pct = (displayStepNum / 4) * 100;
   w.style.setProperty("--as-wizard-progress-pct", `${pct}%`);
   const prog = document.getElementById("accountSetupWizardProgress");
-  if (prog) prog.setAttribute("aria-valuenow", String(displayDot + 1));
+  if (prog) prog.setAttribute("aria-valuenow", String(displayStepNum));
 
   if (addMoreTxBtn) addMoreTxBtn.style.display = "none";
   syncAccountSetupWizardShellButtons();

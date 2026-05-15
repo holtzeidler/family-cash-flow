@@ -2192,6 +2192,46 @@ function initReportsLeftNav() {
 
   thresholdBox.insertAdjacentElement("afterend", nav);
 
+  const hub = reportsViewPanel.querySelector(".reports-hub");
+  /** @type {HTMLSelectElement | null} */
+  let mobileSelect = null;
+  if (hub) {
+    let mobileWrap = document.getElementById("reportsMobileNav");
+    if (!mobileWrap) {
+      mobileWrap = document.createElement("div");
+      mobileWrap.id = "reportsMobileNav";
+      mobileWrap.className = "reports-mobile-nav";
+      hub.insertBefore(mobileWrap, hub.firstChild);
+    }
+    mobileWrap.replaceChildren();
+    const mobileInner = document.createElement("div");
+    mobileInner.className = "reports-mobile-nav__inner";
+    const mobileLbl = document.createElement("label");
+    mobileLbl.className = "reports-mobile-nav__label";
+    mobileLbl.htmlFor = "reportsMobileNavSelect";
+    mobileLbl.textContent = "Report";
+    mobileSelect = document.createElement("select");
+    mobileSelect.id = "reportsMobileNavSelect";
+    mobileSelect.className = "reports-mobile-nav__select";
+    mobileSelect.setAttribute("aria-label", "Choose a report");
+    mobileInner.appendChild(mobileLbl);
+    mobileInner.appendChild(mobileSelect);
+    mobileWrap.appendChild(mobileInner);
+  }
+
+  const labelForId = new Map();
+  for (const section of sections) {
+    for (const it of section.items) labelForId.set(it.id, it.label);
+  }
+  if (mobileSelect) {
+    for (const id of ids) {
+      const opt = document.createElement("option");
+      opt.value = id;
+      opt.textContent = labelForId.get(id) || id;
+      mobileSelect.appendChild(opt);
+    }
+  }
+
   // Hide all other reports and show the selected one.
   const reportEls = new Map();
   for (const it of ids) {
@@ -2221,6 +2261,26 @@ function initReportsLeftNav() {
       btn.setAttribute("aria-current", active ? "true" : "false");
     }
     syncReportsPressureViewBodyFlag(id);
+    if (mobileSelect && mobileSelect.value !== id) mobileSelect.value = id;
+  }
+
+  function activateReport(targetId) {
+    const el = document.getElementById(targetId);
+    if (!el) return;
+    setActiveNav(targetId);
+    showOnlyReport(targetId);
+    requestAnimationFrame(() => {
+      try {
+        reflowReportChartFor(targetId);
+      } catch (_) {}
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+
+  if (mobileSelect) {
+    mobileSelect.addEventListener("change", () => {
+      activateReport(mobileSelect.value);
+    });
   }
 
   for (const section of sections) {
@@ -2243,21 +2303,7 @@ function initReportsLeftNav() {
       btn.textContent = it.label;
       btn.setAttribute("data-target", it.id);
       btn.addEventListener("click", () => {
-        const el = document.getElementById(it.id);
-        if (!el) return;
-        setActiveNav(it.id);
-        showOnlyReport(it.id);
-        // Chart.js draws onto canvas using the canvas's current pixel size. A chart
-        // drawn while its card was hidden ends up with a 0×0 chart area and looks
-        // blank until something else triggers a redraw (the user previously had to
-        // toggle Grouped/Stacked to force this). Now that the card is visible,
-        // re-flow or re-draw the chart that lives inside it.
-        requestAnimationFrame(() => {
-          try {
-            reflowReportChartFor(it.id);
-          } catch (_) {}
-          el.scrollIntoView({ behavior: "smooth", block: "start" });
-        });
+        activateReport(it.id);
       });
       group.appendChild(btn);
     }
@@ -4951,10 +4997,11 @@ function wireBillingActionsOnce() {
     btn.addEventListener("click", () => {
       const action = String(btn.getAttribute("data-billing-action") || "");
       const messages = {
-        payment: "Payment method updates will be handled here soon. Support can help with billing changes today.",
-        cycle: "Billing cycle changes are coming soon. Support can help review options today.",
-        cancel: "Cancellation tools will live here soon. Support can help cancel anytime.",
-        invoices: "Invoice history will appear here once billing tools are fully connected.",
+        payment:
+          "Updating your card isn’t available here yet—for payment changes, use Contact support.",
+        cycle: "Billing cycle changes go through support for now.",
+        cancel: "Send this request via support—we’ll help with cancellation.",
+        invoices: "Invoices aren’t linked here yet; support can help with receipts or history.",
       };
       showBwToast(messages[action] || "Billing tools are still being connected.");
     });
@@ -4995,6 +5042,7 @@ function renderBillingPanel() {
       : next
         ? `Your next renewal is ${formatShortDateLong(next)}.`
         : "Renewal dates appear here once billing is active.";
+    billingRenewalMessageEl.classList.toggle("billing-hero__renewal--trial", inTrial);
   }
   if (billingAccountStatusEl) {
     billingAccountStatusEl.innerHTML = billingStatusPillHtml(planLabel === "—" ? "Active" : "Active");
@@ -12252,13 +12300,17 @@ function riskSeverityClass(bal, thr, worstNeg) {
     const depth = Math.abs(bal);
     const worst = Math.max(Math.abs(worstNeg || 0), 1);
     const ratio = depth / worst;
-    if (ratio >= 0.7) return "reports-risk-cell--neg-3";
-    if (ratio >= 0.35) return "reports-risk-cell--neg-2";
+    // Shallow negatives stay visually quiet; deeper deficits step up separately.
+    const shallowCut = Math.max(550, worst * 0.08);
+    if (depth <= shallowCut) return "reports-risk-cell--neg-1";
+    if (ratio >= 0.68 || depth >= worst * 0.82) return "reports-risk-cell--neg-3";
+    if (ratio >= 0.33 || depth >= worst * 0.2) return "reports-risk-cell--neg-2";
     return "reports-risk-cell--neg-1";
   }
   if (thr != null && bal < thr) {
     const shortfall = thr - bal;
-    const deep = Math.max(200, thr * 0.22);
+    // Keep modest cushion gaps in the lightest tier; reserve "deep" for material shortfalls.
+    const deep = Math.max(380, thr * 0.28);
     if (shortfall >= deep) return "reports-risk-cell--below-deep";
     return "reports-risk-cell--below-soft";
   }
