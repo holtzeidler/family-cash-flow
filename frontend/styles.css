@@ -4719,26 +4719,35 @@ button.secondary[aria-disabled="true"]{
   justify-content: flex-start;
 }
 
-/* "Needs review" pending checklist */
+/* "Needs review" pending checklist — compact queue row */
 #sidebarPendingTxList.list{
-  gap: 6px;
-  margin-top: 4px;
+  gap: 4px;
+  margin-top: 3px;
 }
 .pending-attn-item{
   position: relative;
   display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 3px;
-  padding: 6px 8px 7px;
-  border-radius: 8px;
-  border: 1px solid rgba(0, 0, 0, 0.055);
-  background: rgba(0, 0, 0, 0.018);
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 8px 4px 9px;
+  border-radius: 7px;
+  border: 1px solid rgba(0, 0, 0, 0.032);
+  background: rgba(0, 0, 0, 0.01);
   width: 100%;
   box-sizing: border-box;
 }
 .pending-attn-item::before{
   content: none;
+}
+.pending-attn-item.is-major{
+  border-color: rgba(17, 24, 39, 0.07);
+  background: rgba(0, 0, 0, 0.026);
+}
+.pending-attn-item.is-notable{
+  border-color: rgba(0, 0, 0, 0.04);
+  background: rgba(0, 0, 0, 0.016);
 }
 .pending-attn-item.is-critical{
   border-color: rgba(167, 55, 68, 0.22);
@@ -4752,7 +4761,18 @@ button.secondary[aria-disabled="true"]{
   font-weight: 700;
 }
 .pending-attn-item:hover{
-  background: rgba(0,0,0,0.03);
+  background: rgba(0,0,0,0.028);
+}
+.pending-attn-item.is-major:hover{
+  background: rgba(0, 0, 0, 0.038);
+}
+.pending-attn-text{
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
 }
 .pending-attn-name{
   min-width: 0;
@@ -4760,45 +4780,50 @@ button.secondary[aria-disabled="true"]{
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
-  font-weight: 550;
+  font-weight: 600;
   font-style: normal;
-  color: rgba(55, 65, 75, 0.82);
+  color: rgba(55, 65, 75, 0.88);
   font-size: 12px;
-  line-height: 1.26;
+  line-height: 1.22;
 }
 .pending-attn-name.tx-kind-fg--income,
 .pending-attn-name.tx-kind-fg--expense{
   color: var(--muted);
 }
 .pending-attn-meta{
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 500;
-  line-height: 1.34;
-  letter-spacing: -0.012em;
-  color: rgba(71, 85, 105, 0.76);
+  line-height: 1.22;
+  letter-spacing: -0.01em;
+  color: rgba(100, 116, 139, 0.72);
   font-variant-numeric: tabular-nums;
 }
-.pending-attn-cta{
-  display: inline-flex;
-  align-items: center;
-  align-self: flex-start;
-  margin-top: 5px;
-  margin-bottom: 1px;
-  padding: 2px 9px;
-  border-radius: 7px;
-  border: 1px solid rgba(17, 24, 39, 0.08);
-  background: rgba(255, 255, 255, 0.92);
-  color: rgba(71, 85, 105, 0.74);
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.012em;
+.pending-attn-item.is-notable .pending-attn-meta{
+  font-weight: 580;
+  color: rgba(71, 85, 105, 0.8);
 }
-.pending-attn-hint{
-  margin: 1px 0 0;
-  font-size: 10.25px;
-  font-weight: 500;
-  line-height: 1.35;
-  color: rgba(100, 116, 139, 0.68);
+.pending-attn-item.is-major .pending-attn-meta{
+  font-weight: 650;
+  color: rgba(51, 65, 85, 0.88);
+}
+.pending-attn-cta{
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: rgba(100, 116, 139, 0.62);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.pending-attn-item:hover .pending-attn-cta{
+  color: rgba(71, 85, 105, 0.78);
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 button.pending-attn-item{
   font: inherit;
@@ -8268,13 +8293,13 @@ body[data-bw-view="calendar"] .sidebar .card{
 }
 body[data-bw-view="calendar"] #sidebarPendingTxCard:not(.sidebar-pending--empty){
   padding: 6px 8px 7px;
-  border-color: rgba(11, 61, 46, 0.09);
+  border-color: rgba(11, 61, 46, 0.065);
   background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 1px 2px rgba(11, 61, 46, 0.04);
+  box-shadow: 0 1px 2px rgba(11, 61, 46, 0.03);
 }
 body[data-bw-view="calendar"] #sidebarPendingTxCard:not(.sidebar-pending--empty):hover{
-  border-color: rgba(11, 61, 46, 0.12);
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.045);
+  border-color: rgba(11, 61, 46, 0.09);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
 }
 body[data-bw-view="calendar"] #sidebarPendingTxCard.sidebar-pending--empty{
   padding: 8px 9px;
@@ -8306,36 +8331,22 @@ body[data-bw-view="calendar"] .sidebar-balance-threshold-alerts{
   gap: 5px;
 }
 body[data-bw-view="calendar"] .pending-attn-item{
-  padding: 6px 8px 6px;
-  gap: 3px;
-  border-radius: 8px;
-  border-color: rgba(17, 24, 39, 0.042);
-  background: rgba(255, 255, 255, 0.5);
+  padding: 4px 8px 4px 9px;
+  gap: 8px;
+  border-radius: 7px;
+  border-color: rgba(17, 24, 39, 0.03);
+  background: rgba(255, 255, 255, 0.45);
   box-shadow: none;
   transition: background 0.14s ease, border-color 0.14s ease, box-shadow 0.14s ease;
 }
 body[data-bw-view="calendar"] .pending-attn-meta{
-  font-size: 10.75px;
+  font-size: 10.5px;
   letter-spacing: -0.01em;
 }
-body[data-bw-view="calendar"] .pending-attn-cta{
-  margin-top: 6px;
-  margin-bottom: 2px;
-  padding: 2px 8px;
-  border-radius: 7px;
-  border: 1px solid rgba(17, 24, 39, 0.075);
-  font-size: 10.35px;
-  font-weight: 580;
-}
-body[data-bw-view="calendar"] .pending-attn-hint{
-  margin-top: 2px;
-  font-size: 10px;
-  color: rgba(100, 116, 139, 0.65);
-}
 body[data-bw-view="calendar"] .pending-attn-item:hover{
-  background: rgba(255, 255, 255, 0.92);
-  border-color: rgba(17, 24, 39, 0.075);
-  box-shadow: 0 1px 5px rgba(15, 23, 42, 0.035);
+  background: rgba(255, 255, 255, 0.88);
+  border-color: rgba(17, 24, 39, 0.055);
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.03);
 }
 body[data-bw-view="calendar"] .pending-attn-item.is-critical{
   border-color: rgba(167, 55, 68, 0.14);
@@ -13339,7 +13350,7 @@ body.account-setup-page .account-setup-wizard__panel.auth-section__body{
   padding: 14px 12px;
 }
 body.account-setup-page #accountSetupWizardPanel4.account-setup-wizard__panel.auth-section__body{
-  padding: 0 16px 6px;
+  padding: 12px 18px 6px;
 }
 /* Step 1: title + fields from top (matches checking-account step) */
 body.account-setup-page #accountSetupWizardPanel0{
@@ -13801,6 +13812,13 @@ body.account-setup-page .account-setup-survey__hint{
   text-transform: none;
   color: rgba(100, 116, 139, 0.48);
 }
+body.account-setup-page .account-setup-survey__options{
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  width: 100%;
+}
 body.account-setup-page .account-setup-survey__title{
   margin: 0 0 8px;
   font-size: 1.05rem;
@@ -13817,17 +13835,17 @@ body.account-setup-page .account-setup-survey__sublede{
 body.account-setup-page .account-setup-survey__grid{
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px 12px;
+  gap: 6px 10px;
   justify-content: center;
   max-width: 100%;
-  margin: 2px auto 0;
+  margin: 0;
 }
 body.account-setup-page .account-setup-survey__opt{
   position: relative;
-  border: 1px solid rgba(17, 24, 39, 0.09);
+  border: 1px solid rgba(17, 24, 39, 0.075);
   border-radius: 10px;
-  padding: 5px 10px;
-  min-height: 40px;
+  padding: 4px 9px;
+  min-height: 38px;
   box-sizing: border-box;
   background: #fff;
   color: var(--text);
@@ -13839,7 +13857,7 @@ body.account-setup-page .account-setup-survey__opt{
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 5px;
+  gap: 6px;
   transition:
     border-color 0.22s cubic-bezier(0.22, 1, 0.36, 1),
     background 0.22s cubic-bezier(0.22, 1, 0.36, 1),
@@ -13849,9 +13867,9 @@ body.account-setup-page .account-setup-survey__opt{
 }
 body.account-setup-page .account-setup-survey__opt:hover{
   background: linear-gradient(180deg, #fffefb 0%, #fafbfc 100%);
-  border-color: rgba(11, 61, 46, 0.16);
+  border-color: rgba(11, 61, 46, 0.13);
   box-shadow:
-    0 2px 10px rgba(11, 61, 46, 0.06),
+    0 2px 8px rgba(11, 61, 46, 0.05),
     0 1px 0 rgba(255, 255, 255, 0.85) inset;
   transform: translateY(-1px);
   filter: none;
@@ -13878,22 +13896,22 @@ body.account-setup-page .account-setup-survey__opt.is-active:focus-visible{
   }
 }
 body.account-setup-page .account-setup-survey__opt.is-active{
-  border-color: rgba(217, 119, 6, 0.32);
+  border-color: rgba(217, 119, 6, 0.28);
   background: linear-gradient(180deg, rgba(255, 251, 235, 0.98) 0%, rgba(254, 252, 247, 0.99) 100%);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.85),
-    0 2px 12px rgba(180, 83, 9, 0.08),
-    0 1px 3px rgba(11, 61, 46, 0.05);
+    0 2px 10px rgba(180, 83, 9, 0.07),
+    0 1px 2px rgba(11, 61, 46, 0.04);
   font-weight: 600;
   color: rgba(55, 48, 35, 0.92);
   transform: translateY(0);
-  padding-right: 26px;
+  padding-right: 24px;
 }
 body.account-setup-page .account-setup-survey__opt.is-active::after{
   content: "✓";
   position: absolute;
-  top: 4px;
-  right: 6px;
+  top: 3px;
+  right: 5px;
   width: 16px;
   height: 16px;
   display: inline-flex;
@@ -13963,31 +13981,32 @@ body.account-setup-page .account-setup-survey__otherInput{
   padding: 10px 11px;
   font-size: 0.92rem;
 }
-/* Step 4: tighter product card, uniform 2-col grid, grouped footer, closer trust strip */
+/* Step 4: calmer header hierarchy, cohesive card, subtle footer separation */
 body.account-setup-page #accountSetupWizard[data-step="4"]{
   max-width: min(532px, 92vw);
-  margin-top: 2px;
+  margin-top: 0;
   margin-bottom: 0;
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__stepHead{
-  margin-bottom: 0.24rem;
+  margin-bottom: 0.18rem;
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__stepLabel{
-  margin-bottom: 0.2rem;
+  margin-bottom: 0.15rem;
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__eyebrow{
-  margin: 0 0 0.18rem;
-  font-size: clamp(1.02rem, 2.55vw, 1.26rem);
-  font-weight: 760;
-  letter-spacing: 0.02em;
-  line-height: 1.18;
+  margin: 0 0 0.12rem;
+  font-size: clamp(0.9rem, 2.05vw, 1.05rem);
+  font-weight: 700;
+  letter-spacing: 0.015em;
+  line-height: 1.2;
   color: color-mix(in srgb, var(--accent) 88%, #0d2818);
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__subeyebrow{
-  margin: 0 0 0.2rem;
-  font-size: calc(var(--as-wizard-subeyebrow-size) * 0.94);
-  line-height: 1.34;
-  color: rgba(17, 24, 39, 0.5);
+  margin: 0 0 0.45rem;
+  font-size: calc(var(--as-wizard-subeyebrow-size) * 0.87);
+  font-weight: 480;
+  line-height: 1.32;
+  color: rgba(17, 24, 39, 0.48);
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__roadmap{
   margin: 0 0 8px;
@@ -13999,38 +14018,35 @@ body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard
     0 1px 0 rgba(255, 255, 255, 0.65) inset;
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey{
-  max-width: 26.5rem;
   width: 100%;
+  max-width: 100%;
+  margin-inline: 0;
+  gap: 12px;
+  align-self: stretch;
+}
+body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey__options{
+  width: 100%;
+  max-width: 26.5rem;
   margin-inline: auto;
-  gap: 0;
-  align-self: center;
+  gap: 5px;
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey__hint{
-  margin: 0 0 3px;
+  margin: 0;
   max-width: 100%;
   text-align: left;
-  font-size: 0.58rem;
+  font-size: 0.56rem;
   font-weight: 440;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.035em;
+  color: rgba(100, 116, 139, 0.44);
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey__grid{
-  width: 100%;
-  margin-top: 0;
-  gap: 6px 10px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey__opt{
-  width: 100%;
-  min-width: 0;
-  align-self: stretch;
-  min-height: 44px;
-  box-sizing: border-box;
+  gap: 5px 8px;
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__shell .account-setup-actions--shell{
   width: 100%;
   max-width: none;
   box-sizing: border-box;
-  padding: 14px 16px 11px;
+  padding: 9px 16px 7px;
   margin-top: 0;
   min-height: 0;
   display: flex;
@@ -14038,26 +14054,31 @@ body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  column-gap: 14px;
-  row-gap: 8px;
-  border-top: 1px solid rgba(11, 61, 46, 0.11);
-  background: linear-gradient(180deg, rgba(249, 251, 250, 0.92) 0%, rgba(252, 252, 252, 0.99) 55%, #fafbfb 100%);
+  gap: 10px 14px;
+  border-top: 1px solid rgba(11, 61, 46, 0.042);
+  background: transparent;
+  box-shadow: none;
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-actions--shell #accountSetupBackBtn.secondary{
   flex: 0 0 auto;
   margin-right: 0;
-  min-height: 38px;
-  padding: 7px 14px;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  height: 36px;
+  padding: 0 12px;
   appearance: none;
   -webkit-appearance: none;
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   font-weight: 600;
-  line-height: 1.25;
-  color: rgba(11, 61, 46, 0.78);
-  background: rgba(255, 255, 255, 0.75);
-  border: 1px solid rgba(11, 61, 46, 0.14);
+  line-height: 1.2;
+  color: rgba(11, 61, 46, 0.76);
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(11, 61, 46, 0.12);
   border-radius: 10px;
-  box-shadow: 0 1px 2px rgba(11, 61, 46, 0.05);
+  box-shadow: 0 1px 1px rgba(11, 61, 46, 0.04);
   transition:
     background 0.15s ease,
     border-color 0.15s ease,
@@ -14065,7 +14086,7 @@ body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-action
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-actions--shell #accountSetupBackBtn.secondary:hover{
   background: color-mix(in srgb, var(--accent) 7%, #fff);
-  border-color: rgba(11, 61, 46, 0.22);
+  border-color: rgba(11, 61, 46, 0.2);
   color: rgba(11, 61, 46, 0.92);
   filter: none;
 }
@@ -14074,13 +14095,18 @@ body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-action
   outline-offset: 2px;
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__shell .account-setup-actions--shell #signupBtn{
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex: 0 0 auto;
-  max-width: min(200px, 80vw);
-  min-height: 38px;
-  padding: 7px 14px;
-  font-size: 0.875rem;
+  min-height: 36px;
+  height: 36px;
+  padding: 0 15px;
+  max-width: min(188px, 78vw);
+  font-size: 0.83rem;
   font-weight: 650;
-  line-height: 1.22;
+  line-height: 1.2;
   white-space: nowrap;
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] + .account-setup-trust-strip-spacer{
@@ -14088,7 +14114,7 @@ body.account-setup-page #accountSetupWizard[data-step="4"] + .account-setup-trus
   min-height: 0;
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] ~ .account-setup-trust-strip{
-  margin-top: 2px;
+  margin-top: -4px;
   margin-bottom: 6px;
   color: rgba(17, 24, 39, 0.46);
   font-size: 0.68rem;
@@ -14108,22 +14134,22 @@ body.account-setup-page #accountSetupWizard[data-step="4"] ~ .account-setup-trus
     grid-template-columns: 1fr;
     gap: 6px;
   }
-  body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey{
+  body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey__options{
     max-width: 100%;
   }
   body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey__hint{
     text-align: center;
   }
   body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__shell .account-setup-actions--shell{
-    padding: 12px 12px 10px;
+    padding: 9px 12px 7px;
     justify-content: center;
     row-gap: 8px;
   }
   body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__shell .account-setup-actions--shell #signupBtn{
-    max-width: min(200px, 100%);
+    max-width: min(188px, 100%);
   }
   body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__eyebrow{
-    font-size: clamp(0.98rem, 4vw, 1.2rem);
+    font-size: clamp(0.88rem, 3.8vw, 1.02rem);
     line-height: 1.2;
   }
 }
@@ -17464,10 +17490,10 @@ body[data-bw-view="transactions"] .sidebar{
 body[data-bw-view="transactions"] #sidebarPendingTxCard{
   margin-top: 0;
   padding: 6px 8px;
-  border: 1px solid rgba(11, 61, 46, 0.1);
+  border: 1px solid rgba(11, 61, 46, 0.07);
   background: rgba(255, 255, 255, 0.9);
   border-radius: 11px;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.025);
 }
 body[data-bw-view="transactions"] #sidebarPendingTxCard .sidebar-section-head{
   margin-bottom: 4px;
@@ -17544,10 +17570,11 @@ body[data-bw-view="transactions"] .calendar-low-balance--sidebar strong{
   font-size: clamp(10px, 1.8vw, 13.5px);
 }
 body[data-bw-view="transactions"] .pending-attn-item{
-  padding: 8px 9px;
-  border-color: rgba(17, 24, 39, 0.07);
-  background: rgba(255, 255, 255, 0.72);
-  border-radius: 10px;
+  padding: 4px 8px 4px 9px;
+  gap: 8px;
+  border-color: rgba(17, 24, 39, 0.035);
+  background: rgba(255, 255, 255, 0.55);
+  border-radius: 7px;
   transition:
     background 0.14s ease,
     border-color 0.14s ease,
@@ -17555,47 +17582,20 @@ body[data-bw-view="transactions"] .pending-attn-item{
 }
 body[data-bw-view="transactions"] .pending-attn-item:hover,
 body[data-bw-view="transactions"] .pending-attn-item:focus-visible{
-  background: rgba(255, 255, 255, 0.98);
-  border-color: rgba(11, 61, 46, 0.2);
-  box-shadow:
-    0 0 0 1px rgba(11, 61, 46, 0.06),
-    0 4px 14px rgba(15, 23, 42, 0.06);
+  background: rgba(255, 255, 255, 0.92);
+  border-color: rgba(17, 24, 39, 0.055);
+  box-shadow: none;
   outline: none;
 }
 body[data-bw-view="transactions"] .pending-attn-name{
   color: rgba(30, 41, 59, 0.88);
   font-weight: 600;
-  font-size: 11.75px;
-  line-height: 1.24;
+  font-size: 12px;
+  line-height: 1.22;
 }
 body[data-bw-view="transactions"] .pending-attn-meta{
-  font-size: 11.5px;
-  color: rgba(15, 23, 42, 0.8);
-}
-body[data-bw-view="transactions"] .pending-attn-cta{
-  align-self: flex-start;
-  margin-top: 2px;
-  padding: 4px 10px;
-  border: 1px solid rgba(11, 61, 46, 0.15);
-  border-radius: 999px;
-  font-size: 10.25px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  background: rgba(4, 120, 87, 0.1);
-  color: rgba(11, 61, 46, 0.92);
-  box-shadow: 0 1px 2px rgba(11, 61, 46, 0.06);
-}
-body[data-bw-view="transactions"] .pending-attn-item:hover .pending-attn-cta,
-body[data-bw-view="transactions"] .pending-attn-item:focus-visible .pending-attn-cta{
-  background: rgba(4, 120, 87, 0.16);
-  border-color: rgba(11, 61, 46, 0.24);
-  color: rgba(8, 50, 36, 0.98);
-}
-body[data-bw-view="transactions"] .pending-attn-hint{
-  margin-top: 5px;
-  font-size: 10px;
-  font-weight: 550;
-  color: rgba(71, 85, 105, 0.82);
+  font-size: 10.5px;
+  color: rgba(100, 116, 139, 0.72);
 }
 
 /* Transactions: insight cards use base hierarchy; scoped spacing only. */
@@ -19419,8 +19419,102 @@ body.account-setup-page #accountSetupWizardPanel3 .account-setup-step3-form__bod
 }
 body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPanel2[data-step3-phase="form"]) .account-setup-actions--shell,
 body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPanel3[data-expense-phase="form"]) .account-setup-actions--shell{
-  padding: 4px 12px 6px;
-  min-height: 48px;
+  --as-tx-form-footer-btn-h: 44px;
+  --as-tx-form-footer-radius: 11px;
+  padding: 10px 14px 7px;
+  min-height: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px 16px;
+}
+body.account-setup-page
+  .account-setup-wizard__shell:has(#accountSetupWizardPanel2[data-step3-phase="form"])
+  .account-setup-actions--shell
+  #asTxSaveIncomeBtn.top-nav__logout,
+body.account-setup-page
+  .account-setup-wizard__shell:has(#accountSetupWizardPanel3[data-expense-phase="form"])
+  .account-setup-actions--shell
+  #asExpSaveBtn.top-nav__logout{
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--as-tx-form-footer-btn-h);
+  height: var(--as-tx-form-footer-btn-h);
+  padding: 0 22px;
+  border-radius: var(--as-tx-form-footer-radius);
+  font-size: 0.94rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+body.account-setup-page
+  .account-setup-wizard__shell:has(#accountSetupWizardPanel2[data-step3-phase="form"])
+  .account-setup-actions--shell
+  #asTxCancelIncomeBtn.secondary,
+body.account-setup-page
+  .account-setup-wizard__shell:has(#accountSetupWizardPanel3[data-expense-phase="form"])
+  .account-setup-actions--shell
+  #asExpCancelBtn.secondary{
+  box-sizing: border-box;
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--as-tx-form-footer-btn-h);
+  height: var(--as-tx-form-footer-btn-h);
+  padding: 0 16px;
+  border-radius: var(--as-tx-form-footer-radius);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.2;
+  background: #fff;
+  border: 1px solid rgba(11, 61, 46, 0.12);
+  color: rgba(30, 41, 59, 0.84);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.92) inset;
+  cursor: pointer;
+  transition:
+    background 0.16s ease,
+    border-color 0.16s ease,
+    color 0.16s ease,
+    box-shadow 0.16s ease;
+}
+body.account-setup-page
+  .account-setup-wizard__shell:has(#accountSetupWizardPanel2[data-step3-phase="form"])
+  .account-setup-actions--shell
+  #asTxCancelIncomeBtn.secondary:hover,
+body.account-setup-page
+  .account-setup-wizard__shell:has(#accountSetupWizardPanel3[data-expense-phase="form"])
+  .account-setup-actions--shell
+  #asExpCancelBtn.secondary:hover{
+  background: color-mix(in srgb, var(--accent) 4%, #fff);
+  border-color: rgba(11, 61, 46, 0.2);
+  color: rgba(11, 61, 46, 0.9);
+  filter: none;
+}
+body.account-setup-page
+  .account-setup-wizard__shell:has(#accountSetupWizardPanel2[data-step3-phase="form"])
+  .account-setup-actions--shell
+  #asTxCancelIncomeBtn.secondary:active,
+body.account-setup-page
+  .account-setup-wizard__shell:has(#accountSetupWizardPanel3[data-expense-phase="form"])
+  .account-setup-actions--shell
+  #asExpCancelBtn.secondary:active{
+  background: color-mix(in srgb, var(--accent) 7%, #fff);
+  border-color: rgba(11, 61, 46, 0.26);
+}
+body.account-setup-page
+  .account-setup-wizard__shell:has(#accountSetupWizardPanel2[data-step3-phase="form"])
+  .account-setup-actions--shell
+  #asTxCancelIncomeBtn.secondary:focus-visible,
+body.account-setup-page
+  .account-setup-wizard__shell:has(#accountSetupWizardPanel3[data-expense-phase="form"])
+  .account-setup-actions--shell
+  #asExpCancelBtn.secondary:focus-visible{
+  outline: 2px solid color-mix(in srgb, var(--accent) 38%, transparent);
+  outline-offset: 2px;
 }
 
 /* Less air between the repeat toolbar rule and Notes */
@@ -22684,17 +22778,19 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   }
 
   .pending-attn-item{
-    flex-direction: column;
-    align-items: stretch;
-    gap: 4px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
   }
 
   .pending-attn-meta{
-    align-self: flex-start;
+    align-self: auto;
   }
 
   .pending-attn-cta{
-    align-self: flex-start;
+    align-self: center;
+    flex-shrink: 0;
   }
 
   body[data-bw-view="calendar"] .calendar-panel-sticky-zone{

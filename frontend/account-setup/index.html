@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=486" />
+    <link rel="stylesheet" href="../styles.css?v=488" />
   </head>
   <body class="login-page signup-page account-setup-page">
     <div class="container">
@@ -518,8 +518,9 @@
                   inert
                 >
                   <div class="account-setup-survey">
-                    <p class="account-setup-survey__hint" id="accountSetupSurveyHint">Select any that apply.</p>
-                    <div class="account-setup-survey__grid" role="group" aria-label="Choose forecast priorities">
+                    <div class="account-setup-survey__options">
+                      <p class="account-setup-survey__hint" id="accountSetupSurveyHint">Select any that apply.</p>
+                      <div class="account-setup-survey__grid" role="group" aria-label="Choose forecast priorities">
                       <button type="button" class="account-setup-survey__opt" data-as-survey-opt="avoid_overdrafts" aria-pressed="false">
                         <span class="account-setup-survey__icon" aria-hidden="true">
                           <svg viewBox="0 0 24 24" focusable="false">
@@ -578,6 +579,7 @@
                         </span>
                         <span class="account-setup-survey__label">Other</span>
                       </button>
+                    </div>
                     </div>
                     <div class="account-setup-survey__other" id="accountSetupSurveyOtherWrap" hidden>
                       <label class="account-setup-survey__otherLabel" for="accountSetupSurveyOther">Other <span class="account-setup-survey__optional">(optional)</span></label>

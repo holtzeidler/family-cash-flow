@@ -9745,28 +9745,31 @@ function renderSidebarPendingTransactionsForMonth() {
     const amt = Math.abs(toNum(it?.amount));
     const sign = String(kind) === "income" ? "+" : "–";
     const dateStr = it?.date ? fmtMonthDay(it.date) : "—";
+    if (amt >= 7500) el.classList.add("is-major");
+    else if (amt >= 1200) el.classList.add("is-notable");
 
     const meta = document.createElement("div");
     meta.className = "pending-attn-meta";
     meta.textContent = `${sign}$${fmtMoney0(amt)} • ${dateStr}`;
     meta.title = `${catLabel} · ${sign}$${fmtMoney0(amt)} · ${dateStr}`;
 
-    const cta = document.createElement("div");
+    const textCol = document.createElement("div");
+    textCol.className = "pending-attn-text";
+    textCol.appendChild(name);
+    textCol.appendChild(meta);
+
+    const cta = document.createElement("span");
     cta.className = "pending-attn-cta";
-    cta.textContent = "Review amounts";
+    cta.setAttribute("aria-hidden", "true");
+    cta.textContent = "Review \u2192";
 
     el.setAttribute(
       "aria-label",
-      `${descFull || catLabel}, ${sign}$${fmtMoney0(amt)}, ${it?.date ? fmtMonthDay(it.date) : "date unknown"}, review amounts`
+      `${descFull || catLabel}, ${sign}$${fmtMoney0(amt)}, ${it?.date ? fmtMonthDay(it.date) : "date unknown"}, review`
     );
     el.title = name.title;
-    el.appendChild(name);
-    el.appendChild(meta);
+    el.appendChild(textCol);
     el.appendChild(cta);
-    const hint = document.createElement("div");
-    hint.className = "pending-attn-hint";
-    hint.textContent = "Update estimated amounts";
-    el.appendChild(hint);
     sidebarPendingTxList.appendChild(el);
   }
 }
