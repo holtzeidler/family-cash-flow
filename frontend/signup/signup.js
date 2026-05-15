@@ -292,13 +292,43 @@ function getAccountSetupCategoryItemsForKind(kind) {
   return ACCOUNT_SETUP_CATEGORY_ITEMS.filter((item) => String(item.kind || "").trim().toLowerCase() === normalized);
 }
 
-function isAccountSetupCategoryAllowedForKind(value, kind) {
-  const normalizedValue = String(value || "").trim();
+/** Preset row must match txn kind; custom labels are bound via data-as-category-kind on the hidden input. */
+function accountSetupStoredCategoryMatchesKind(hidden, kind) {
+  if (!hidden) return true;
   const normalizedKind = String(kind || "").trim().toLowerCase();
-  if (!normalizedValue || !normalizedKind) return true;
-  const item = ACCOUNT_SETUP_CATEGORY_ITEMS.find((entry) => entry.value === normalizedValue);
-  if (!item) return false;
-  return String(item.kind || "").trim().toLowerCase() === normalizedKind;
+  const current = String(hidden.value || "").trim();
+  if (!current || !normalizedKind) return true;
+  const item =
+    ACCOUNT_SETUP_CATEGORY_ITEMS.find((e) => e.value === current) ||
+    ACCOUNT_SETUP_CATEGORY_ITEMS.find((e) => e.label.trim().toLowerCase() === current.toLowerCase());
+  if (item) return String(item.kind || "").trim().toLowerCase() === normalizedKind;
+  const bound = String(hidden.dataset.asCategoryKindForCustom || "").trim().toLowerCase();
+  if (bound) return bound === normalizedKind;
+  return true;
+}
+
+function accountSetupCategoryExactMatchItem(query, kind) {
+  const raw = String(query || "").trim();
+  const k = String(kind || "").trim().toLowerCase();
+  if (!raw || !k) return null;
+  const items = getAccountSetupCategoryItemsForKind(k);
+  const low = raw.toLowerCase();
+  return (
+    items.find((i) => i.label.trim().toLowerCase() === low) ||
+    items.find((i) => String(i.value || "").trim().toLowerCase() === low) ||
+    null
+  );
+}
+
+function bindAccountSetupCategoryKindFromTxn(hiddenEl, categoryStr, txnKind) {
+  if (!hiddenEl) return;
+  const c = String(categoryStr || "").trim();
+  delete hiddenEl.dataset.asCategoryKindForCustom;
+  if (!c || c === "Uncategorized") return;
+  const item =
+    ACCOUNT_SETUP_CATEGORY_ITEMS.find((e) => e.value === c) ||
+    ACCOUNT_SETUP_CATEGORY_ITEMS.find((e) => e.label.trim().toLowerCase() === c.toLowerCase());
+  if (!item) hiddenEl.dataset.asCategoryKindForCustom = String(txnKind || "").trim().toLowerCase();
 }
 
 function filterCategoriesForSearch(query, kind = "") {
@@ -334,7 +364,10 @@ function clearAccountSetupCategoryCombobox(hiddenId) {
   const hidden = document.getElementById(hiddenId);
   const input = document.getElementById(inputId);
   const list = document.getElementById(listId);
-  if (hidden) hidden.value = "";
+  if (hidden) {
+    hidden.value = "";
+    delete hidden.dataset.asCategoryKindForCustom;
+  }
   if (input) input.value = "";
   if (list) {
     list.hidden = true;
@@ -364,6 +397,12 @@ function initAccountSetupCategoryCombobox(hiddenId, inputId, listId) {
   }
 
   function commit(item) {
+    const isCustom = !!(item && item.isCustom);
+    if (isCustom) {
+      hidden.dataset.asCategoryKindForCustom = getAccountSetupCategoryKindForHiddenId(hiddenId);
+    } else {
+      delete hidden.dataset.asCategoryKindForCustom;
+    }
     hidden.value = item.value;
     input.value = item.label;
     list.hidden = true;
@@ -377,17 +416,16 @@ function initAccountSetupCategoryCombobox(hiddenId, inputId, listId) {
     const allowedKind = getAccountSetupCategoryKindForHiddenId(hiddenId);
     if (!raw) {
       hidden.value = "";
+      delete hidden.dataset.asCategoryKindForCustom;
       hidden.dispatchEvent(new Event("change", { bubbles: true }));
       return;
     }
-    const ranked = filterCategoriesForSearch(raw, allowedKind);
-    const exact = ranked.find(
-      (i) => i.label.toLowerCase() === raw.toLowerCase() || i.value.toLowerCase() === raw.toLowerCase()
-    );
-    if (exact) {
-      commit(exact);
+    const exactPreset = accountSetupCategoryExactMatchItem(raw, allowedKind);
+    if (exactPreset) {
+      commit(exactPreset);
       return;
     }
+    const ranked = filterCategoriesForSearch(raw, allowedKind);
     if (ranked.length === 1) {
       commit(ranked[0]);
       return;
@@ -395,13 +433,15 @@ function initAccountSetupCategoryCombobox(hiddenId, inputId, listId) {
     const cur = ACCOUNT_SETUP_CATEGORY_ITEMS.find((i) => i.value === hidden.value);
     if (cur && cur.label.trim() !== input.value.trim()) {
       hidden.value = "";
+      delete hidden.dataset.asCategoryKindForCustom;
       hidden.dispatchEvent(new Event("change", { bubbles: true }));
     }
   }
 
   function renderDropdown() {
     const q = input.value;
-    const items = filterCategoriesForSearch(q, getAccountSetupCategoryKindForHiddenId(hiddenId));
+    const allowedKind = getAccountSetupCategoryKindForHiddenId(hiddenId);
+    const items = filterCategoriesForSearch(q, allowedKind);
     list.innerHTML = "";
     let lastGroup = null;
     items.forEach((item) => {
@@ -421,8 +461,20 @@ function initAccountSetupCategoryCombobox(hiddenId, inputId, listId) {
       li.addEventListener("click", () => commit(item));
       list.appendChild(li);
     });
-    activeIdx = items.length ? 0 : -1;
+    const rawQ = q.trim();
+    if (rawQ && !accountSetupCategoryExactMatchItem(rawQ, allowedKind)) {
+      const addLi = document.createElement("li");
+      addLi.className = "category-search__option category-search__option--create";
+      addLi.setAttribute("role", "option");
+      addLi.dataset.createName = rawQ;
+      const safe = escapeHtmlPlain(rawQ);
+      addLi.innerHTML = `<span class="category-search__plus" aria-hidden="true">+</span><span class="category-search__create-text">Add “${safe}” as new category</span>`;
+      addLi.addEventListener("mousedown", (e) => e.preventDefault());
+      addLi.addEventListener("click", () => commit({ value: rawQ, label: rawQ, isCustom: true }));
+      list.appendChild(addLi);
+    }
     const opts = optionElements();
+    activeIdx = opts.length ? 0 : -1;
     opts.forEach((el, j) => el.classList.toggle("category-search__option--active", j === activeIdx));
   }
 
@@ -475,10 +527,18 @@ function initAccountSetupCategoryCombobox(hiddenId, inputId, listId) {
       return;
     }
     if (k === "Enter") {
-      const items = filterCategoriesForSearch(input.value);
-      if (!list.hidden && items.length && activeIdx >= 0 && activeIdx < items.length) {
+      const allowedKind = getAccountSetupCategoryKindForHiddenId(hiddenId);
+      const items = filterCategoriesForSearch(input.value, allowedKind);
+      const opts = optionElements();
+      if (!list.hidden && opts.length && activeIdx >= 0 && activeIdx < opts.length) {
         e.preventDefault();
-        commit(items[activeIdx]);
+        const el = opts[activeIdx];
+        if (el.classList.contains("category-search__option--create")) {
+          const nm = String(el.dataset.createName || "").trim();
+          if (nm) commit({ value: nm, label: nm, isCustom: true });
+        } else if (activeIdx < items.length) {
+          commit(items[activeIdx]);
+        }
       }
     }
   });
@@ -696,9 +756,10 @@ function syncAccountSetupStep3HubState() {
     summary.hidden = !text;
   }
   if (helper) {
-    helper.textContent = totalCount > 0
-      ? "You can continue now, or add more items if you know them."
-      : "You can skip this and add items from the calendar later.";
+    helper.textContent =
+      totalCount > 0
+        ? "You can continue now, or add more items if you know them."
+        : "Add at least one item to generate your first forecast. You can always add more items later from the calendar.";
   }
 
   const syncAction = (buttonId, count) => {
@@ -911,6 +972,8 @@ function syncAccountSetupWizardShellButtons() {
         signupBtn.textContent = "Continue";
         signupBtn.classList.remove("secondary");
         signupBtn.classList.add("top-nav__logout");
+        const { totalCount } = getAccountSetupTransactionCounts();
+        signupBtn.disabled = totalCount < 1;
       }
       if (accountSetupSkipBtn) accountSetupSkipBtn.style.display = "none";
       if (hubAddIncome) hubAddIncome.disabled = false;
@@ -1903,6 +1966,7 @@ function accountSetupTxHubContinueClick() {
   if (!isAccountSetupPath() || !document.getElementById("accountSetupWizard")) return;
   if (isAccountSetupWizardStepLocked()) return;
   if (getAccountSetupWizardStep() !== 2 || getAccountSetupStep3Phase() !== "intro") return;
+  if (getAccountSetupTransactionCounts().totalCount < 1) return;
   setCallout(signupCalloutEl, "", "");
   lockAccountSetupWizardStepTransition();
   setAccountSetupWizardStep(4, { skipPersist: true });
@@ -2218,6 +2282,7 @@ function hydrateAccountSetupDraft() {
         if (eCat && lastTx.category) {
           const c = String(lastTx.category).trim();
           eCat.value = c === "Uncategorized" ? "" : c;
+          bindAccountSetupCategoryKindFromTxn(eCat, c === "Uncategorized" ? "" : c, lastTx.kind);
           accountSetupSyncCategorySearchDisplay("asExpTxCategory");
         }
         if (eDate && lastTx.date) eDate.value = String(lastTx.date);
@@ -2239,6 +2304,7 @@ function hydrateAccountSetupDraft() {
         if (txCategoryEl && lastTx.category) {
           const c = String(lastTx.category).trim();
           txCategoryEl.value = c === "Uncategorized" ? "" : c;
+          bindAccountSetupCategoryKindFromTxn(txCategoryEl, c === "Uncategorized" ? "" : c, lastTx.kind);
           accountSetupSyncCategorySearchDisplay("asTxCategory");
         }
         if (txDateEl && lastTx.date) txDateEl.value = String(lastTx.date);
@@ -2306,7 +2372,10 @@ function setBusy(isBusy) {
     const el = document.getElementById(id);
     if (el) el.disabled = isBusy;
   }
-  if (isAccountSetupPath()) return;
+  if (isAccountSetupPath()) {
+    if (!isBusy) syncAccountSetupWizardShellButtons();
+    return;
+  }
   signupBtn.textContent = isBusy ? "Creating..." : "Create Account";
 }
 
@@ -2899,8 +2968,8 @@ function onSignupPrimaryClick() {
         return;
       }
       if (st === 2) {
-        // Step 3 intro: Continue can always advance, even if the user skips.
         if (getAccountSetupStep3Phase() !== "intro") return;
+        if (getAccountSetupTransactionCounts().totalCount < 1) return;
         accountSetupTxHubContinueClick();
         return;
       }
@@ -3218,6 +3287,7 @@ function applyAccountSetupChipSelection(prefix, value) {
   const amount = document.getElementById(prefix + "Amount");
   if (hidden) {
     hidden.value = value || "";
+    delete hidden.dataset.asCategoryKindForCustom;
     hidden.dispatchEvent(new Event("change", { bubbles: true }));
   }
   if (search) {
@@ -3271,7 +3341,7 @@ function syncAccountSetupCategorySelectionForKind(hiddenId) {
   const current = String(hidden.value || "").trim();
   if (!current) return;
   const kind = getAccountSetupCategoryKindForHiddenId(hiddenId);
-  if (isAccountSetupCategoryAllowedForKind(current, kind)) return;
+  if (accountSetupStoredCategoryMatchesKind(hidden, kind)) return;
   clearAccountSetupCategoryCombobox(hiddenId);
 }
 

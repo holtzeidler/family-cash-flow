@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=438" />
+    <link rel="stylesheet" href="../styles.css?v=455" />
   </head>
   <body class="plans-page plans-page--polished">
     <div class="container">
@@ -32,6 +32,7 @@
           </div>
           <nav class="plans-public-nav" aria-label="Site">
             <a href="./" class="plans-public-nav__link plans-public-nav__link--active" aria-current="page">Pricing</a>
+            <a href="../help.html" class="plans-public-nav__link">FAQ</a>
             <a href="../login.html" class="plans-public-nav__link plans-public-nav__link--cta">Login</a>
           </nav>
         </div>
@@ -40,7 +41,7 @@
       <main class="grid">
         <section class="plans-hero" aria-labelledby="plansHeroTitle">
           <p class="plans-hero__eyebrow">Pricing</p>
-          <h2 id="plansHeroTitle" class="plans-hero__title">Know what cash is actually safe to use.</h2>
+          <h2 id="plansHeroTitle" class="plans-hero__title">Know what cash is safe to use.</h2>
           <p class="plans-hero__subtitle">
             BalanceWhiz forecasts your upcoming cash flow so you can avoid overdrafts, move excess cash with
             confidence, and keep more of it earning interest.
@@ -64,31 +65,49 @@
                 </p>
               </header>
 
-              <a
-                class="plan-cta plan-cta--primary"
-                href="../signup/?plan=base"
-                role="button"
-                aria-label="Start my forecast (14-day free trial)"
-              >Start My Forecast</a>
+              <div class="plan-cta-block">
+                <a
+                  class="plan-cta plan-cta--primary"
+                  href="../signup/?plan=base"
+                  role="button"
+                  aria-label="Start free trial (14 days)"
+                >Start Free Trial</a>
+                <p class="plan-cta-reassurance">No credit card required during trial</p>
+              </div>
 
               <ul class="plan-features plan-features--outcomes" aria-label="What's included">
                 <li><span class="plan-features__icon" aria-hidden="true">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                </span><span>Know when cash will run tight — before it happens</span></li>
+                </span><span>See upcoming cash pressure before it happens</span></li>
                 <li><span class="plan-features__icon" aria-hidden="true">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                </span><span>See what money can safely leave checking</span></li>
+                </span><span>Know what money can safely leave checking</span></li>
                 <li><span class="plan-features__icon" aria-hidden="true">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                 </span><span>Forecast bills, paychecks, and transfers together</span></li>
                 <li><span class="plan-features__icon" aria-hidden="true">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                </span><span>Catch low-balance weeks early</span></li>
+                </span><span>Catch low-balance periods early</span></li>
                 <li><span class="plan-features__icon" aria-hidden="true">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                </span><span>Keep more cash earning interest</span></li>
+                </span><span>Keep extra cash earning interest</span></li>
               </ul>
             </article>
+          </div>
+
+          <div class="plans-micro-faq" aria-label="Quick answers">
+            <div class="plans-micro-faq__item">
+              <span class="plans-micro-faq__q">Do I connect my bank?</span>
+              <span class="plans-micro-faq__a">No</span>
+            </div>
+            <div class="plans-micro-faq__item">
+              <span class="plans-micro-faq__q">Can I cancel anytime?</span>
+              <span class="plans-micro-faq__a">Yes</span>
+            </div>
+            <div class="plans-micro-faq__item">
+              <span class="plans-micro-faq__q">How long does setup take?</span>
+              <span class="plans-micro-faq__a">About 5 minutes</span>
+            </div>
           </div>
 
           <ul class="plans-trust" aria-label="What to expect">
@@ -142,7 +161,7 @@
             <path d="M0 28V14C0 6.27 6.27 0 14 0v6c-4.42 0-8 3.58-8 8h6v14H0zm18 0V14c0-7.73 6.27-14 14-14v6c-4.42 0-8 3.58-8 8h6v14H18z" fill="currentColor"/>
           </svg>
           <blockquote class="plans-quote__text">
-            I finally know what money is actually safe to use.
+            I finally know what money is safe to use.
           </blockquote>
         </figure>
       </main>

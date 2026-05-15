@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=453" />
+    <link rel="stylesheet" href="../styles.css?v=457" />
   </head>
   <body>
     <div class="container">
@@ -72,6 +72,9 @@
             <div id="settingsSidebarNav" class="settings-nav settings-nav--sidebar settings-nav--rail settings-nav--flat" hidden aria-label="Settings sections">
               <button type="button" class="settings-nav-item is-active" data-settings-key="accounts">
                 <span class="settings-nav-item__label">Accounts</span>
+              </button>
+              <button type="button" class="settings-nav-item" data-settings-key="categories">
+                <span class="settings-nav-item__label">Categories</span>
               </button>
               <button type="button" class="settings-nav-item" data-settings-key="forecastRules">
                 <span class="settings-nav-item__label">Forecast Rules</span>
@@ -475,18 +478,37 @@
                   </div>
                 </div>
 
-                <div class="settings-pane" data-settings-pane="forecastRules" hidden>
-                  <header class="settings-section-head">
-                    <h2 class="settings-section-title">Forecast Rules</h2>
-                    <p class="settings-section-lede">How transactions are grouped so your forecast stays organized and easy to scan.</p>
-                  </header>
-
-                  <div class="settings-subsection cats-pane" data-cats-pane>
-                    <header class="cats-pane__head">
-                      <h3 class="settings-subhead cats-pane__title">Categories &amp; Groups</h3>
-                      <p class="cats-pane__helper">Groups help organize related categories.<br />Categories are what you assign to transactions.</p>
-                      <p class="cats-pane__note">You can customize these anytime.</p>
+                <div class="settings-pane cats-pane categories-manager" data-settings-pane="categories" data-cats-pane hidden>
+                  <div class="categories-manager__shell">
+                    <header class="settings-section-head cats-pane__head categories-manager__head">
+                      <h2 class="settings-section-title cats-pane__title">Categories</h2>
+                      <p class="settings-section-lede cats-pane__helper">
+                        Categories help organize your transactions. Groups are just headings; categories are what you assign to bills, income, and transfers.
+                      </p>
+                      <p class="cats-pane__note categories-manager__note">You can rename, reorder, add, or delete categories anytime.</p>
                     </header>
+
+                    <div id="categoriesUncategorizedCallout" class="categories-callout" hidden role="region" aria-label="Uncategorized transactions">
+                      <div class="categories-callout__text">
+                        <span id="categoriesUncatCount">0</span> transactions need a category
+                      </div>
+                      <button type="button" id="categoriesReviewUncatBtn" class="categories-callout__btn">Review uncategorized</button>
+                    </div>
+
+                    <div class="categories-manager__summary" aria-label="Category overview">
+                      <div class="categories-stat-card">
+                        <span class="categories-stat-card__label">Groups</span>
+                        <span id="categoriesStatGroups" class="categories-stat-card__value">—</span>
+                      </div>
+                      <div class="categories-stat-card">
+                        <span class="categories-stat-card__label">Categories</span>
+                        <span id="categoriesStatCategories" class="categories-stat-card__value">—</span>
+                      </div>
+                      <div class="categories-stat-card categories-stat-card--wide">
+                        <span class="categories-stat-card__label">Activity</span>
+                        <span id="categoriesStatHighlight" class="categories-stat-card__value categories-stat-card__value--soft">—</span>
+                      </div>
+                    </div>
 
                     <div class="cats-pane__toolbar" role="toolbar" aria-label="Category actions">
                       <button type="button" id="addCategoryGroupBtn" class="cats-pane__action">+ Add group</button>
@@ -512,6 +534,26 @@
                     <div id="categoriesTree" class="cats-tree" aria-live="polite"></div>
 
                     <p id="catErr" class="error" role="alert"></p>
+                  </div>
+                </div>
+
+                <div class="settings-pane settings-pane--forecast-rules-intro" data-settings-pane="forecastRules" hidden>
+                  <div class="categories-manager__shell">
+                    <header class="settings-section-head">
+                      <h2 class="settings-section-title">Forecast Rules</h2>
+                      <p class="settings-section-lede">How BalanceWhiz rolls your cash flow into the calendar and transaction lists.</p>
+                    </header>
+                    <section class="prefs-card prefs-card--tinted categories-manager__forecast-card" aria-labelledby="forecastRulesExplTitle">
+                      <h3 class="prefs-card__title" id="forecastRulesExplTitle">What “rules” means here</h3>
+                      <p class="prefs-card__lede">
+                        Your <strong>categories</strong> control how income, expenses, and transfers read across the app. The <strong>Forecast</strong> view groups scheduled and
+                        actual activity using those labels so long-range balances stay scannable.
+                      </p>
+                      <p class="categories-manager__forecast-p">
+                        Actual lines from the bank use the categories you assign in <strong>Transactions</strong>. Edit names, groups, and order anytime under
+                        <strong>Categories</strong> — nothing here needs a separate “rules engine.”
+                      </p>
+                    </section>
                   </div>
                 </div>
 
@@ -1022,17 +1064,16 @@
             <div class="form-row-h__label"><label for="txEditCategoryId">Category</label></div>
             <div class="form-row-h__field"><select id="txEditCategoryId"></select></div>
           </div>
-          <div id="txEditAddColorRow" class="tx-edit-add-color-row">
-            <button type="button" id="txEditAddColorBtn" class="tx-edit-add-color-btn" aria-expanded="false" aria-controls="txEditCategoryColorRow">
-              <span class="tx-edit-add-color-btn__plus" aria-hidden="true">+</span>
-              <span>Add color</span>
-            </button>
-          </div>
-          <div id="txEditCategoryColorRow" class="cat-color-row tx-edit-cat-color-panel" hidden>
-            <div class="cat-color-row__label">Color</div>
-            <div class="cat-color-row__swatches" id="txEditCategoryColorSwatches"></div>
-            <button type="button" class="cat-color-row__clear tx-edit-cat-color-clear" id="txEditCategoryColorClear" hidden>Clear</button>
-          </div>
+          <details class="tx-edit-advanced" id="txEditAdvancedDetails">
+            <summary class="tx-edit-advanced__summary">Advanced options</summary>
+            <div class="tx-edit-advanced__body">
+              <div id="txEditCategoryColorRow" class="cat-color-row tx-edit-cat-color-panel">
+                <div class="cat-color-row__label">Color</div>
+                <div class="cat-color-row__swatches" id="txEditCategoryColorSwatches"></div>
+                <button type="button" class="cat-color-row__clear tx-edit-cat-color-clear" id="txEditCategoryColorClear" hidden>Clear</button>
+              </div>
+            </div>
+          </details>
           <div class="tx-add-vspace" aria-hidden="true"></div>
           <div class="form-row-h">
             <div class="form-row-h__label"><label for="txEditDate" id="txEditDateLabel">Date</label></div>
@@ -1041,19 +1082,32 @@
 
           <div id="txEditRecurringScheduleWrap" style="display: none">
             <div class="tx-add-vspace" aria-hidden="true"></div>
-            <div class="form-row-h">
-              <div class="form-row-h__label"><label for="instanceRecurrence">Recurrence</label></div>
-              <div class="form-row-h__field">
-                <select id="instanceRecurrence" title="How often this repeats">
-                  <option value="monthly" selected>Monthly</option>
-                  <option value="twice_monthly">Twice monthly</option>
-                  <option value="bimonthly">Bi-monthly</option>
-                  <option value="biweekly">Every 2 weeks</option>
-                  <option value="weekly">Weekly</option>
-                  <option value="semiannual">Twice yearly (every 6 months)</option>
-                  <option value="yearly">Annual</option>
-                  <option value="once">Does not repeat</option>
-                </select>
+            <div class="tx-edit-recurrence-ends-row">
+              <div class="form-row-h tx-edit-recurrence-field">
+                <div class="form-row-h__label"><label for="instanceRecurrence">Recurrence</label></div>
+                <div class="form-row-h__field">
+                  <select id="instanceRecurrence" title="How often this repeats">
+                    <option value="monthly" selected>Monthly</option>
+                    <option value="twice_monthly">Twice monthly</option>
+                    <option value="bimonthly">Bi-monthly</option>
+                    <option value="biweekly">Every 2 weeks</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="semiannual">Twice yearly (every 6 months)</option>
+                    <option value="yearly">Annual</option>
+                    <option value="once">Does not repeat</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-row-h tx-edit-ends-field">
+                <div class="form-row-h__label">
+                  <label for="instanceEndsMode" title="When the recurring series stops.">Ends</label>
+                </div>
+                <div class="form-row-h__field">
+                  <select id="instanceEndsMode" class="tx-edit-ends-mode-select" title="When the recurring series stops.">
+                    <option value="never" selected>Never</option>
+                    <option value="after_count">After number of times</option>
+                  </select>
+                </div>
               </div>
             </div>
             <div id="instanceTwiceMonthlyFields" class="expected-second-day-row" style="display: none">
@@ -1070,18 +1124,6 @@
               <p style="margin: 6px 0 0; font-size: 12px; color: var(--muted)">
                 Required for twice monthly: other day of the month (1–31), not the same as the start date’s day.
               </p>
-            </div>
-            <div class="tx-add-vspace" aria-hidden="true"></div>
-            <div class="form-row-h">
-              <div class="form-row-h__label">
-                <label for="instanceEndsMode" title="When the recurring series stops.">Ends</label>
-              </div>
-              <div class="form-row-h__field">
-                <select id="instanceEndsMode" class="tx-edit-ends-mode-select" title="When the recurring series stops.">
-                  <option value="never" selected>Never</option>
-                  <option value="after_count">After number of times</option>
-                </select>
-              </div>
             </div>
             <div class="form-row-h tx-edit-ends-detail" id="txEditEndCountRow" hidden>
               <div class="form-row-h__label">
@@ -1122,7 +1164,7 @@
             </div>
           </div>
 
-          <div style="height: 12px"></div>
+          <div style="height: 7px"></div>
           <div id="txEditRecurringPrimaryActions" class="tx-edit-recurring-update-row" style="display: none"></div>
         </div>
 
@@ -1308,7 +1350,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="../app.js?v=294"></script>
+    <script src="../app.js?v=296"></script>
     <script src="../feedback.js?v=3" defer></script>
     <script src="../tour.js?v=4" defer></script>
   </body>

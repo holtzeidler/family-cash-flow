@@ -298,6 +298,7 @@ let state = {
   activeFamilyIsOwner: false,
   categories: [],
   categoryTree: null,
+  categoryUsageSummary: null,
   accounts: [],
   expectedTransactions: [],
   monthActualItems: [],
@@ -617,12 +618,8 @@ if (catEditDelete) {
       if (!Number.isFinite(id) || id < 1) throw new Error("Invalid selection");
 
       if (kind === "category") {
-        const ok = window.confirm("Delete this category? Any transactions using it will be left uncategorized.");
-        if (!ok) return;
-        await api(`/api/families/${state.activeFamilyId}/categories/${id}`, "DELETE");
-        await loadCategories();
-        await loadMonthAndCalendar();
-        closeCatEditModal();
+        const nm = String(catEditName?.value || "").trim() || "category";
+        await deleteCategoryWithOptionalReassign(id, nm);
         return;
       }
 
@@ -2387,6 +2384,15 @@ function setActiveTopView(view) {
       if (v === "reports") {
         try { renderReportsRiskHeatmap(lastProjectionDailyForReports || []); } catch (_) {}
       }
+      if (v === "transactions") {
+        try {
+          if (sessionStorage.getItem("BW_OPEN_TX_UNCATEGORIZED") === "1") {
+            sessionStorage.removeItem("BW_OPEN_TX_UNCATEGORIZED");
+            if (typeof tmApplyQuickView === "function") tmApplyQuickView("uncategorized");
+            if (typeof tmRefetchAndRender === "function") void tmRefetchAndRender();
+          }
+        } catch (_) {}
+      }
     });
   }
   if (navCalendarView) {
@@ -2486,9 +2492,19 @@ document.querySelectorAll("#settingsViewPanel .settings-nav-item, #settingsSideb
 if (settingsViewPanel) {
   settingsViewPanel.addEventListener("click", (e) => {
     const jump = e.target && e.target.closest("#settingsJumpForecastRulesBtn");
-    if (!jump) return;
-    e.preventDefault();
-    activateSettingsSection("forecastRules");
+    if (jump) {
+      e.preventDefault();
+      activateSettingsSection("forecastRules");
+      return;
+    }
+    const uncat = e.target && e.target.closest("#categoriesReviewUncatBtn");
+    if (uncat) {
+      e.preventDefault();
+      try {
+        sessionStorage.setItem("BW_OPEN_TX_UNCATEGORIZED", "1");
+      } catch (_) {}
+      setActiveTopView("transactions");
+    }
   });
 }
 
@@ -2821,6 +2837,44 @@ function descriptionForNewTransaction(categoryId, opts = {}) {
 function defaultNewCategoryGroupId() {
   const g = state.categoryTree?.groups?.[0];
   return g && Number.isFinite(Number(g.id)) ? Number(g.id) : null;
+}
+
+/** Pick a category group for API-created categories based on transaction kind (Income vs expense). */
+function categoryGroupIdForNewCategory(kind) {
+  const groups = state.categoryTree?.groups || [];
+  if (!groups.length) return defaultNewCategoryGroupId();
+  const k = String(kind || "").trim().toLowerCase();
+  const norm = (s) => normalizeNameForCompare(s);
+  const findId = (pred) => {
+    for (const g of groups) {
+      const n = norm(g?.name);
+      if (pred(n)) return Number(g.id);
+    }
+    return null;
+  };
+  if (k === "income") {
+    const id =
+      findId((n) => n === "income") ||
+      findId((n) => n.includes("income")) ||
+      findId((n) => n.includes("reimburse"));
+    if (Number.isFinite(id)) return id;
+  } else {
+    const id =
+      findId((n) => n === "miscellaneous") ||
+      findId((n) => n.includes("misc")) ||
+      findId((n) => n === "other") ||
+      findId((n) => n.includes("other"));
+    if (Number.isFinite(id)) return id;
+  }
+  return defaultNewCategoryGroupId();
+}
+
+function categoryKindForComboboxField(fieldId) {
+  if (fieldId === "txAddCategoryId") return getRadioValue("txAddKind", "expense");
+  if (fieldId === "txEditCategoryId") {
+    return String(document.querySelector('input[name="txEditKind"]:checked')?.value || "expense").trim().toLowerCase() || "expense";
+  }
+  return "expense";
 }
 
 function normalizeNameForCompare(s) {
@@ -3392,6 +3446,7 @@ function openTxEditModal(tx) {
   txEditModal.classList.add("modal-overlay--open");
   txEditModal.setAttribute("aria-hidden", "false");
   applyTransactionEditMode("actual");
+  resetTxEditAdvancedPanel();
 }
 
 function closeTxEditApplyScopeModal() {
@@ -3449,6 +3504,7 @@ function closeTxEditModal() {
   txEditSelectedBgColor = null;
   txEditColorTouched = false;
   applyTransactionEditMode("actual", { resetting: true });
+  resetTxEditAdvancedPanel();
 }
 
 function mountTxAddFormInModal() {
@@ -3464,10 +3520,7 @@ function mountTxAddFormInSidebar() {
 }
 
 function activateSettingsSection(key) {
-  // Settings IA is four panes everywhere: Accounts, Forecast Rules,
-  // Preferences, Billing. Old keys still leak in via deep-links, sidebar
-  // shortcuts, and stale localStorage values, so map them onto their new
-  // homes rather than 404ing the navigation.
+  // Settings IA: Accounts, Categories, Forecast Rules, Preferences, Billing.
   let k = String(key || "accounts");
   const LEGACY_KEY_MAP = {
     accountDetails: "accounts",
@@ -3475,7 +3528,6 @@ function activateSettingsSection(key) {
     // The Forecast Setup → Forecast Rules rename and the move of the
     // safe-balance threshold into Preferences are reflected here.
     forecastSetup: "forecastRules",
-    categories: "forecastRules",
     notifications: "preferences",
     thresholds: "preferences",
   };
@@ -3491,6 +3543,7 @@ function activateSettingsSection(key) {
     pane.classList.toggle("is-active", on);
     pane.hidden = !on;
   });
+  syncSettingsFamilySharingNav();
   // Household lives inside the Accounts pane now. Load membership data as soon
   // as that pane becomes active so the subsection isn't empty when a user
   // scrolls down to it.
@@ -3502,6 +3555,9 @@ function activateSettingsSection(key) {
   }
   if (k === "billing") {
     renderBillingPanel();
+  }
+  if (k === "categories") {
+    void loadCategoryUsageSummary().then(() => refreshCategoriesManagerChrome());
   }
 }
 
@@ -5915,10 +5971,14 @@ function syncActiveFamilyFlags() {
 function syncSettingsFamilySharingNav() {
   const fam = (state.families || []).find((x) => Number(x.id) === Number(state.activeFamilyId));
   const isFamilyAdmin = !!(fam && String(fam.role || "").toLowerCase() === "admin");
-  // After the IA consolidation, Household lives inside the Accounts pane as a
-  // subsection rather than a standalone nav item. Hide that subsection from
-  // members who can't act on it.
+  // Household lives inside Accounts (`data-settings-subsection`) on the Settings
+  // hub, and still exists as a legacy pane (`data-settings-pane`) in embedded
+  // settings on Forecast / Transactions / Reports. Hide all of it from
+  // non-admins.
   document.querySelectorAll('[data-settings-subsection="familySharing"]').forEach((el) => {
+    el.hidden = !isFamilyAdmin;
+  });
+  document.querySelectorAll('[data-settings-pane="familySharing"]').forEach((el) => {
     el.hidden = !isFamilyAdmin;
   });
 }
@@ -5927,16 +5987,25 @@ async function loadFamilyMembersPanel() {
   const errEl = document.getElementById("familyMembersErr");
   const listEl = document.getElementById("familyMembersList");
   const inviteWrap = document.getElementById("familyInviteWrap");
+  const pendingEl = document.getElementById("familyPendingInvites");
   show(errEl, "");
   if (!listEl) return;
-  if (!state.activeFamilyId) {
-    listEl.innerHTML = '<p class="meta">Select a family from the app first.</p>';
+  syncActiveFamilyFlags();
+  const fam = (state.families || []).find((x) => Number(x.id) === Number(state.activeFamilyId));
+  const isFamilyAdmin = !!(fam && String(fam.role || "").toLowerCase() === "admin");
+  if (!isFamilyAdmin) {
+    listEl.innerHTML = "";
+    if (pendingEl) pendingEl.innerHTML = "";
     if (inviteWrap) inviteWrap.hidden = true;
     return;
   }
-  syncActiveFamilyFlags();
+  if (!state.activeFamilyId) {
+    listEl.innerHTML = '<p class="meta">Select a family from the app first.</p>';
+    if (inviteWrap) inviteWrap.hidden = true;
+    if (pendingEl) pendingEl.innerHTML = "";
+    return;
+  }
   if (inviteWrap) inviteWrap.hidden = !state.activeFamilyIsOwner;
-  const pendingEl = document.getElementById("familyPendingInvites");
   if (pendingEl) {
     pendingEl.innerHTML = "";
     if (state.activeFamilyIsOwner) {
@@ -6226,17 +6295,32 @@ function filterCategoryCombobox(fieldId) {
       st.list.appendChild(li);
     }
   }
-  const addLi = document.createElement("li");
-  addLi.className = "category-combobox__option category-combobox__option--add";
-  addLi.setAttribute("role", "option");
-  addLi.textContent = "Add new category…";
-  st.list.appendChild(addLi);
+  const rawQ = st.input.value.trim();
+  const qExact = rawQ.toLowerCase();
+  let hasExactNameMatch = false;
+  if (rawQ) {
+    hasExactNameMatch = cats.some((c) => {
+      const n = String(c.name || "").trim().toLowerCase();
+      const d = categoryDisplayLabel(c).trim().toLowerCase();
+      return n === qExact || d === qExact;
+    });
+  }
+  if (rawQ && !hasExactNameMatch) {
+    const addLi = document.createElement("li");
+    addLi.className = "category-combobox__option category-combobox__option--create";
+    addLi.setAttribute("role", "option");
+    addLi.dataset.createName = rawQ;
+    const safe = escapeHtml(rawQ);
+    addLi.innerHTML = `<span class="category-combobox__plus" aria-hidden="true">+</span><span class="category-combobox__create-text">Add “${safe}” as new category</span>`;
+    st.list.appendChild(addLi);
+  }
 }
 
 function applyCategoryComboboxPickFromLi(fieldId, li) {
   if (!li) return;
-  if (li.classList.contains("category-combobox__option--add")) {
-    void handleAddNewCategoryFromCombobox(fieldId);
+  if (li.classList.contains("category-combobox__option--create")) {
+    const nm = li.dataset.createName || "";
+    void createCategoryFromCombobox(fieldId, nm);
     return;
   }
   const id = li.dataset.id;
@@ -6244,18 +6328,19 @@ function applyCategoryComboboxPickFromLi(fieldId, li) {
   if (id) selectCategoryComboboxChoice(fieldId, id, display);
 }
 
-async function handleAddNewCategoryFromCombobox(fieldId) {
+async function createCategoryFromCombobox(fieldId, rawName) {
+  const name = String(rawName || "").trim();
+  if (!name) return;
   const st = categoryComboboxRegistry.get(fieldId);
   if (st) hideCategoryComboboxList(st);
-  const name = window.prompt("Name for the new category:");
-  if (!name || !String(name).trim()) return;
   try {
     if (!state.activeFamilyId) throw new Error("Choose a family first");
-    const gid = defaultNewCategoryGroupId();
-    await api(`/api/families/${state.activeFamilyId}/categories`, "POST", { name: String(name).trim(), group_id: gid });
-    await loadCategories();
-    const trimmed = String(name).trim();
-    const newCat = (state.categories || []).find((c) => String(c.name).trim() === trimmed);
+    const kind = categoryKindForComboboxField(fieldId);
+    const gid = categoryGroupIdForNewCategory(kind);
+    if (gid == null || !Number.isFinite(Number(gid))) throw new Error("No category group available yet.");
+    const ok = await addCategoryToGroup(gid, name);
+    if (!ok) return;
+    const newCat = (state.categories || []).find((c) => normalizeNameForCompare(c?.name) === normalizeNameForCompare(name));
     if (newCat) selectCategoryComboboxChoice(fieldId, newCat.id, categoryDisplayLabel(newCat));
   } catch (err) {
     window.alert(err.message || "Failed to add category");
@@ -6457,7 +6542,7 @@ const txEditCategoryColorPicker = renderCategoryColorPicker({
   rowEl: txEditCategoryColorRow,
   swatchesEl: txEditCategoryColorSwatches,
   clearBtn: txEditCategoryColorClear,
-  unhideRow: false,
+  unhideRow: true,
   getCategoryId: () => categoryIdFromCategoryField("txEditCategoryId"),
   getBg: () => txEditSelectedBgColor,
   setBg: (v) => {
@@ -6477,24 +6562,13 @@ function txEditEffectiveColor() {
   return null;
 }
 
-function applyTxEditColorPanelOpen(open) {
-  const btn = document.getElementById("txEditAddColorBtn");
-  const trigger = document.getElementById("txEditAddColorRow");
-  const panel = txEditCategoryColorRow;
-  if (!panel) return;
-  if (open) {
-    panel.hidden = false;
-    if (trigger) trigger.hidden = true;
-    if (btn) btn.setAttribute("aria-expanded", "true");
-  } else {
-    panel.hidden = true;
-    if (trigger) trigger.hidden = false;
-    if (btn) btn.setAttribute("aria-expanded", "false");
-  }
+function resetTxEditAdvancedPanel() {
+  const det = document.getElementById("txEditAdvancedDetails");
+  if (det) det.open = false;
 }
 
 function updateTxEditAddColorButtonState() {
-  applyTxEditColorPanelOpen(!!txEditEffectiveColor());
+  /* Color UI is under "Advanced options"; collapsed by default when the edit sheet opens. */
 }
 
 function refreshTxCategoryColorPickers() {
@@ -6507,11 +6581,14 @@ function refreshTxCategoryColorPickers() {
 }
 
 {
-  const addColorBtn = document.getElementById("txEditAddColorBtn");
-  if (addColorBtn && txEditCategoryColorRow) {
-    addColorBtn.addEventListener("click", () => {
-      applyTxEditColorPanelOpen(true);
-      try { txEditCategoryColorPicker.refresh(); } catch (_) {}
+  const adv = document.getElementById("txEditAdvancedDetails");
+  if (adv) {
+    adv.addEventListener("toggle", () => {
+      if (adv.open) {
+        try {
+          txEditCategoryColorPicker.refresh();
+        } catch (_) {}
+      }
     });
   }
 }
@@ -6576,6 +6653,172 @@ async function maybeEnsureSystemUncategorizedGroup(tree) {
   } catch (_) {
     return tree || { groups: [] };
   }
+}
+
+async function loadCategoryUsageSummary() {
+  if (!state.activeFamilyId) {
+    state.categoryUsageSummary = null;
+    return;
+  }
+  try {
+    state.categoryUsageSummary = await api(`/api/families/${state.activeFamilyId}/categories/usage-summary`, "GET");
+  } catch (_) {
+    state.categoryUsageSummary = null;
+  }
+}
+
+function categoryAssignmentsForCategoryId(catId) {
+  const s = state.categoryUsageSummary;
+  if (!s || catId == null) return 0;
+  const m = s.by_category_id || {};
+  const v = m[String(catId)] ?? m[String(Number(catId))];
+  return Number(v) || 0;
+}
+
+function refreshCategoriesManagerChrome() {
+  const tree = state.categoryTree;
+  const groups = (tree?.groups || []).filter(Boolean);
+  const elG = document.getElementById("categoriesStatGroups");
+  const elC = document.getElementById("categoriesStatCategories");
+  const elH = document.getElementById("categoriesStatHighlight");
+  if (elG) elG.textContent = String(groups.length);
+  let nCats = 0;
+  const gidTotals = new Map();
+  for (const g of groups) {
+    const arr = g.categories || [];
+    nCats += arr.length;
+    let sum = 0;
+    for (const c of arr) sum += categoryAssignmentsForCategoryId(c.id);
+    gidTotals.set(Number(g.id), { name: String(g.name || "").trim() || "Group", sum });
+  }
+  if (elC) elC.textContent = String(nCats);
+  if (elH) {
+    let totalAssigned = 0;
+    const by = state.categoryUsageSummary?.by_category_id || {};
+    for (const k of Object.keys(by)) totalAssigned += Number(by[k]) || 0;
+    if (totalAssigned === 0) elH.textContent = "Default groups active";
+    else {
+      let best = null;
+      for (const [, v] of gidTotals) {
+        if (!best || v.sum > best.sum) best = v;
+      }
+      elH.textContent = best && best.sum > 0 ? `Busiest group: ${best.name}` : "No assignments yet";
+    }
+  }
+  const s = state.categoryUsageSummary;
+  const callout = document.getElementById("categoriesUncategorizedCallout");
+  const countEl = document.getElementById("categoriesUncatCount");
+  const uTx = s ? Number(s.uncategorized_transactions) || 0 : 0;
+  if (callout) callout.hidden = !uTx;
+  if (countEl) countEl.textContent = String(uTx);
+}
+
+let _categoryDeleteReassignModalEl = null;
+let categoryDeleteReassignPending = null;
+
+function ensureCategoryDeleteReassignModal() {
+  if (_categoryDeleteReassignModalEl) return _categoryDeleteReassignModalEl;
+  const wrap = document.createElement("div");
+  wrap.id = "categoryDeleteReassignModal";
+  wrap.className = "modal-overlay category-delete-modal";
+  wrap.setAttribute("aria-hidden", "true");
+  wrap.innerHTML =
+    '<div class="modal-dialog category-delete-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="categoryDeleteReassignTitle">' +
+    '<h3 id="categoryDeleteReassignTitle" class="modal-title">Delete category</h3>' +
+    '<p id="categoryDeleteReassignMsg" class="category-delete-modal__msg"></p>' +
+    '<label class="category-delete-modal__label" for="categoryDeleteReassignSelect">Move existing uses to</label>' +
+    '<select id="categoryDeleteReassignSelect" class="category-delete-modal__select"></select>' +
+    '<div class="category-delete-modal__actions">' +
+    '<button type="button" id="categoryDeleteReassignConfirm" class="settings-house-primary-btn">Delete and reassign</button>' +
+    '<button type="button" id="categoryDeleteReassignCancel" class="secondary">Cancel</button>' +
+    "</div></div>";
+  document.body.appendChild(wrap);
+  const cancel = wrap.querySelector("#categoryDeleteReassignCancel");
+  if (cancel) {
+    cancel.addEventListener("click", () => {
+      wrap.classList.remove("modal-overlay--open");
+      wrap.setAttribute("aria-hidden", "true");
+    });
+  }
+  wrap.addEventListener("click", (e) => {
+    if (e.target === wrap) {
+      wrap.classList.remove("modal-overlay--open");
+      wrap.setAttribute("aria-hidden", "true");
+    }
+  });
+  const confirm = wrap.querySelector("#categoryDeleteReassignConfirm");
+  if (confirm) {
+    confirm.addEventListener("click", async () => {
+      const pend = categoryDeleteReassignPending;
+      const sel = wrap.querySelector("#categoryDeleteReassignSelect");
+      if (!pend || !sel) return;
+      const rid = Number(sel.value);
+      if (!Number.isFinite(rid)) return;
+      try {
+        show(catErr, "");
+        const path = `/api/families/${state.activeFamilyId}/categories/${pend.id}?reassign_to=${encodeURIComponent(String(rid))}`;
+        await api(path, "DELETE");
+        wrap.classList.remove("modal-overlay--open");
+        wrap.setAttribute("aria-hidden", "true");
+        categoryDeleteReassignPending = null;
+        await loadCategories();
+        await loadMonthAndCalendar();
+        if (typeof closeCatEditModal === "function") {
+          try {
+            closeCatEditModal();
+          } catch (_) {}
+        }
+      } catch (e) {
+        show(catErr, e.message || "Failed to delete category");
+      }
+    });
+  }
+  _categoryDeleteReassignModalEl = wrap;
+  return wrap;
+}
+
+function openCategoryDeleteReassignModal({ id, name, total }) {
+  const wrap = ensureCategoryDeleteReassignModal();
+  const msg = wrap.querySelector("#categoryDeleteReassignMsg");
+  const sel = wrap.querySelector("#categoryDeleteReassignSelect");
+  if (msg) {
+    msg.textContent = `This category is used by ${total} ${total === 1 ? "entry" : "entries"} across transactions, scheduled items, and overrides. Choose a replacement category before deleting.`;
+  }
+  if (sel) {
+    sel.innerHTML = "";
+    for (const c of state.categories || []) {
+      if (Number(c.id) === Number(id)) continue;
+      const o = document.createElement("option");
+      o.value = String(c.id);
+      o.textContent = categoryDisplayLabel(c);
+      sel.appendChild(o);
+    }
+  }
+  categoryDeleteReassignPending = { id: Number(id), name };
+  wrap.classList.add("modal-overlay--open");
+  wrap.setAttribute("aria-hidden", "false");
+}
+
+async function deleteCategoryWithOptionalReassign(categoryId, categoryName) {
+  if (!state.activeFamilyId) throw new Error("Choose a family first");
+  const cid = Number(categoryId);
+  if (!Number.isFinite(cid)) throw new Error("Invalid category");
+  await loadCategoryUsageSummary();
+  const used = categoryAssignmentsForCategoryId(cid);
+  if (used <= 0) {
+    const ok = window.confirm(`Delete "${categoryName}"? This cannot be undone.`);
+    if (!ok) return;
+    await api(`/api/families/${state.activeFamilyId}/categories/${cid}`, "DELETE");
+    await loadCategories();
+    await loadMonthAndCalendar();
+    if (typeof closeCatEditModal === "function") {
+      try {
+        closeCatEditModal();
+      } catch (_) {}
+    }
+    return;
+  }
+  openCategoryDeleteReassignModal({ id: cid, name: categoryName, total: used });
 }
 
 function renderCategoriesGrid(tree) {
@@ -6675,7 +6918,7 @@ function renderCategoriesGrid(tree) {
     const row = document.createElement("div");
     row.className = "cats-cat";
     row.dataset.categoryId = String(c.id);
-    row.draggable = true;
+    row.draggable = false;
 
     const nameEl = document.createElement("span");
     nameEl.className = "cats-cat__name";
@@ -6708,15 +6951,9 @@ function renderCategoriesGrid(tree) {
       title: "Delete category",
       svg: '<svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M2.5 4.25h11M6 2.75h4M5.25 6.25v5.5M8 6.25v5.5M10.75 6.25v5.5M4.25 4.25l.5 8.5h6.5l.5-8.5" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"/></svg>',
       onClick: async () => {
-        const ok = window.confirm(
-          `Delete "${c.name}"? Past transactions stay intact, and this category will be removed from future pickers.`
-        );
-        if (!ok) return;
         try {
           show(catErr, "");
-          await api(`/api/families/${state.activeFamilyId}/categories/${Number(c.id)}`, "DELETE");
-          await loadCategories();
-          await loadMonthAndCalendar();
+          await deleteCategoryWithOptionalReassign(Number(c.id), c.name);
         } catch (err) {
           show(catErr, err?.message || "Failed to delete category");
         }
@@ -6727,22 +6964,29 @@ function renderCategoriesGrid(tree) {
     handle.className = "cats-cat__handle";
     handle.setAttribute("aria-hidden", "true");
     handle.title = "Drag to move";
+    handle.draggable = true;
+
+    const nUse = categoryAssignmentsForCategoryId(c.id);
+    const meta = document.createElement("span");
+    meta.className = "cats-cat__meta";
+    meta.textContent = nUse > 0 ? `Used by ${nUse} ${nUse === 1 ? "entry" : "entries"}` : "";
 
     actions.appendChild(renameBtn);
     actions.appendChild(deleteBtn);
-    actions.appendChild(handle);
 
+    row.appendChild(handle);
     row.appendChild(nameEl);
+    row.appendChild(meta);
     row.appendChild(actions);
 
-    row.addEventListener("dragstart", (e) => {
+    handle.addEventListener("dragstart", (e) => {
       try {
         e.dataTransfer.effectAllowed = "move";
         e.dataTransfer.setData("text/plain", `cat:${row.dataset.categoryId}`);
       } catch (_) {}
       row.classList.add("is-dragging");
     });
-    row.addEventListener("dragend", () => {
+    handle.addEventListener("dragend", () => {
       row.classList.remove("is-dragging");
       clearDragUi();
     });
@@ -6784,7 +7028,7 @@ function renderCategoriesGrid(tree) {
 
     const head = document.createElement("header");
     head.className = "cats-group__head";
-    head.draggable = true;
+    head.draggable = false;
 
     const collapseBtn = document.createElement("button");
     collapseBtn.type = "button";
@@ -6823,68 +7067,108 @@ function renderCategoriesGrid(tree) {
     nameWrap.appendChild(nameText);
     nameWrap.appendChild(count);
 
+    const groupDragHandle = document.createElement("span");
+    groupDragHandle.className = "cats-group__drag";
+    groupDragHandle.setAttribute("aria-hidden", "true");
+    groupDragHandle.title = "Drag to reorder group";
+    groupDragHandle.draggable = true;
+
+    const menu = document.createElement("details");
+    menu.className = "cats-group__menu";
+
+    const menuSummary = document.createElement("summary");
+    menuSummary.className = "cats-group__menu-summary";
+    menuSummary.setAttribute("aria-label", `Actions for ${g.name}`);
+    menuSummary.textContent = "⋮";
+
+    const menuPanel = document.createElement("div");
+    menuPanel.className = "cats-group__menu-panel";
+
+    function closeGroupMenu() {
+      try {
+        menu.open = false;
+      } catch (_) {}
+    }
+
+    if (!isSystemGroup) {
+      const mkBtn = (label, onClick) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "cats-group__menu-item";
+        b.textContent = label;
+        b.addEventListener("click", (ev) => {
+          ev.preventDefault();
+          closeGroupMenu();
+          onClick();
+        });
+        return b;
+      };
+      menuPanel.appendChild(
+        mkBtn("Rename group", () => {
+          selectEditableText(nameText);
+        })
+      );
+      menuPanel.appendChild(
+        mkBtn("Move group up", () => {
+          const prev = card.previousElementSibling;
+          if (prev && prev.classList && prev.classList.contains("cats-group")) {
+            card.parentElement.insertBefore(card, prev);
+            scheduleCategoryTreePersist();
+          }
+        })
+      );
+      menuPanel.appendChild(
+        mkBtn("Move group down", () => {
+          const next = card.nextElementSibling;
+          if (next && next.classList && next.classList.contains("cats-group")) {
+            card.parentElement.insertBefore(next, card);
+            scheduleCategoryTreePersist();
+          }
+        })
+      );
+      menuPanel.appendChild(
+        mkBtn("Delete group", async () => {
+          const catsCount = body.querySelectorAll(".cats-cat").length;
+          const fallbackCard = categoriesTree.querySelector(
+            `.cats-group[data-system-group="1"]:not([data-group-id="${String(g.id)}"])`
+          );
+          const fallbackName =
+            fallbackCard?.querySelector("[data-group-name]")?.textContent?.trim() || "another group";
+          const msg = catsCount
+            ? `Delete "${g.name}"? Its ${catsCount} ${catsCount === 1 ? "category" : "categories"} will move to ${fallbackName}.`
+            : `Delete "${g.name}"?`;
+          if (!window.confirm(msg)) return;
+          try {
+            show(catErr, "");
+            if (catsCount > 0 && fallbackCard) {
+              const fallbackBody = fallbackCard.querySelector(".cats-group__body");
+              if (fallbackBody) {
+                [...body.querySelectorAll(".cats-cat")].forEach((rowEl) => fallbackBody.appendChild(rowEl));
+                await persistCategoryTreeFromDom();
+              }
+            }
+            await api(`/api/families/${state.activeFamilyId}/category-groups/${Number(g.id)}`, "DELETE");
+            await loadCategories();
+            await loadMonthAndCalendar();
+          } catch (e) {
+            show(catErr, e?.message || "Failed to delete group");
+          }
+        })
+      );
+    } else {
+      menu.hidden = true;
+    }
+
+    menu.appendChild(menuSummary);
+    menu.appendChild(menuPanel);
+
     const body = document.createElement("div");
     body.className = "cats-group__body";
 
-    const actions = document.createElement("div");
-    actions.className = "cats-group__actions";
-
-    if (!isSystemGroup) {
-      actions.appendChild(
-        buildIconButton({
-          className: "cats-group__action cats-group__action--rename",
-          label: `Rename ${g.name}`,
-          title: "Rename group",
-          svg: '<svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M11.9 2.6a1.5 1.5 0 0 1 2.1 2.1L6.2 12.5 3 13l.5-3.2L11.9 2.6Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="m10.7 3.8 1.5 1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
-          onClick: () => selectEditableText(nameText),
-        })
-      );
-      actions.appendChild(
-        buildIconButton({
-          className: "cats-group__action cats-group__action--delete",
-          label: `Delete ${g.name}`,
-          title: "Delete group",
-          svg: '<svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M2.5 4.25h11M6 2.75h4M5.25 6.25v5.5M8 6.25v5.5M10.75 6.25v5.5M4.25 4.25l.5 8.5h6.5l.5-8.5" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-          onClick: async () => {
-            const catsCount = body.querySelectorAll(".cats-cat").length;
-            const fallbackCard = categoriesTree.querySelector(
-              `.cats-group[data-system-group="1"]:not([data-group-id="${String(g.id)}"])`
-            );
-            const fallbackName =
-              fallbackCard?.querySelector("[data-group-name]")?.textContent?.trim() || "another group";
-            const msg = catsCount
-              ? `Delete "${g.name}"? Its ${catsCount} ${catsCount === 1 ? "category" : "categories"} will move to ${fallbackName}.`
-              : `Delete "${g.name}"?`;
-            if (!window.confirm(msg)) return;
-            try {
-              show(catErr, "");
-              if (catsCount > 0 && fallbackCard) {
-                const fallbackBody = fallbackCard.querySelector(".cats-group__body");
-                if (fallbackBody) {
-                  [...body.querySelectorAll(".cats-cat")].forEach((rowEl) => fallbackBody.appendChild(rowEl));
-                  await persistCategoryTreeFromDom();
-                }
-              }
-              await api(`/api/families/${state.activeFamilyId}/category-groups/${Number(g.id)}`, "DELETE");
-              await loadCategories();
-              await loadMonthAndCalendar();
-            } catch (e) {
-              show(catErr, e?.message || "Failed to delete group");
-            }
-          },
-        })
-      );
-    }
-
-    const handle = document.createElement("span");
-    handle.className = "cats-group__handle";
-    handle.setAttribute("aria-hidden", "true");
-    handle.title = "Drag to reorder group";
-    actions.appendChild(handle);
-
     head.appendChild(collapseBtn);
+    head.appendChild(groupDragHandle);
     head.appendChild(nameWrap);
-    head.appendChild(actions);
+    head.appendChild(menu);
 
     collapseBtn.addEventListener("click", (e) => {
       e.preventDefault();
@@ -6896,14 +7180,14 @@ function renderCategoriesGrid(tree) {
       );
     });
 
-    head.addEventListener("dragstart", (e) => {
+    groupDragHandle.addEventListener("dragstart", (e) => {
       try {
         e.dataTransfer.effectAllowed = "move";
         e.dataTransfer.setData("text/plain", `group:${card.dataset.groupId}`);
       } catch (_) {}
       card.classList.add("is-dragging");
     });
-    head.addEventListener("dragend", () => {
+    groupDragHandle.addEventListener("dragend", () => {
       card.classList.remove("is-dragging");
       clearDragUi();
     });
@@ -6991,7 +7275,8 @@ function renderCategoriesGrid(tree) {
     const trigger = document.createElement("button");
     trigger.type = "button";
     trigger.className = "cats-group__add-trigger";
-    trigger.innerHTML = '<span class="cats-group__add-plus" aria-hidden="true">+</span><span>Add category</span>';
+    const gnm = String(g.name || "").trim() || "this group";
+    trigger.innerHTML = `<span class="cats-group__add-plus" aria-hidden="true">+</span><span>Add category to ${escapeHtml(gnm)}</span>`;
 
     const form = document.createElement("form");
     form.className = "cats-group__add-form";
@@ -7134,6 +7419,9 @@ async function persistCategoryTreeFromDom() {
     }
     const tree = await api(`/api/families/${state.activeFamilyId}/categories/tree`, "PUT", { groups });
     applyCategoryTreeToState(tree);
+    await loadCategoryUsageSummary();
+    refreshCategoriesManagerChrome();
+    renderCategoriesGrid(state.categoryTree);
     await loadMonthAndCalendar();
   } catch (e) {
     show(catErr, e.message || "Failed to save category layout");
@@ -7149,6 +7437,9 @@ async function loadCategories() {
   let tree = await api(`/api/families/${state.activeFamilyId}/categories/tree`, "GET");
   tree = await maybeEnsureSystemUncategorizedGroup(tree);
   applyCategoryTreeToState(tree);
+  await loadCategoryUsageSummary();
+  refreshCategoriesManagerChrome();
+  renderCategoriesGrid(state.categoryTree);
 }
 
 function categoryStyleFromId(categoryId) {
@@ -7583,6 +7874,7 @@ function openExpectedEditModal(tx, opts = {}) {
   txEditModal.setAttribute("aria-hidden", "false");
   applyTransactionEditMode("recurring");
   applyMinDateToTxEditDateInput();
+  resetTxEditAdvancedPanel();
 }
 
 function openExpectedDeleteModal(expectedId, occurrenceDate) {

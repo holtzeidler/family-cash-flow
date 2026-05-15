@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=444" />
+    <link rel="stylesheet" href="../styles.css?v=446" />
   </head>
   <body class="login-page signup-page account-setup-page">
     <div class="container">
@@ -169,8 +169,12 @@
                         </span>
                       </button>
                     </div>
-                    <div class="account-setup-step3-divider" aria-hidden="true"></div>
-                    <p id="accountSetupStep3Helper" class="account-setup-step3-helper">You can skip this and add items from the calendar later.</p>
+                    <div class="account-setup-step3-footnote">
+                      <div class="account-setup-step3-divider" aria-hidden="true"></div>
+                      <p id="accountSetupStep3Helper" class="account-setup-step3-helper">
+                        Add at least one item to generate your first forecast. You can always add more items later from the calendar.
+                      </p>
+                    </div>
                   </div>
                   <div id="accountSetupWizardStep3Form" class="account-setup-step3-form" hidden>
                   <div class="account-setup-step3-form__body">
@@ -474,6 +478,7 @@
                   inert
                 >
                   <div class="account-setup-survey">
+                    <p class="account-setup-survey__hint" id="accountSetupSurveyHint">Select any that apply.</p>
                     <div class="account-setup-survey__grid" role="group" aria-label="Choose forecast priorities">
                       <button type="button" class="account-setup-survey__opt" data-as-survey-opt="avoid_overdrafts" aria-pressed="false">
                         <span class="account-setup-survey__icon" aria-hidden="true">
@@ -631,6 +636,6 @@
       </div>
     </div>
 
-    <script src="../signup/signup.js?v=88"></script>
+    <script src="../signup/signup.js?v=90"></script>
   </body>
 </html>

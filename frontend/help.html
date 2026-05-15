@@ -8,9 +8,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=440" />
+    <link rel="stylesheet" href="./styles.css?v=454" />
   </head>
-  <body class="plans-page">
+  <body class="plans-page help-page">
     <div class="container">
       <div class="top-nav" role="navigation" aria-label="Primary">
         <div class="top-nav__inner top-nav__inner--simple">
@@ -36,38 +36,126 @@
       </div>
 
       <div class="grid">
-        <article class="card support-doc">
-          <h1>Help / FAQ</h1>
-          <p class="support-doc__lead">
-            Quick answers about how BalanceWhiz fits into your routine. For anything else, use
-            <a href="./contactus/">Contact Us</a>.
-          </p>
-          <p class="support-doc__lead">
-            New here? <a href="./calendar/?tour=1">Show me around</a> — a quick walkthrough of the core forecast
-            actions. You'll be asked to sign in first if needed.
-          </p>
+        <article class="help-center" aria-labelledby="helpFaqTitle">
+          <header class="help-center__header">
+            <h1 id="helpFaqTitle" class="help-center__title">Help / FAQ</h1>
+            <p class="help-center__lede">
+              Quick answers about how BalanceWhiz fits into your routine. For anything else, use
+              <a href="./contactus/">Contact Us</a>.
+            </p>
+          </header>
 
-          <h2>What is BalanceWhiz?</h2>
-          <p>
-            A cash flow forecast for your checking balance: upcoming bills and income on a calendar, plus a projected
-            balance so you can see cash pressure, not just month-end totals.
-          </p>
+          <aside class="help-callout" aria-label="Getting started">
+            <span class="help-callout__icon" aria-hidden="true">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path
+                  d="M12 2l7 4v6c0 5-3 9-7 10-4-1-7-5-7-10V6l7-4z"
+                  stroke="currentColor"
+                  stroke-width="1.75"
+                  stroke-linejoin="round"
+                />
+                <path d="M12 8v5M12 16h.01" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" />
+              </svg>
+            </span>
+            <div class="help-callout__body">
+              <h2 class="help-callout__title">New to BalanceWhiz?</h2>
+              <a class="help-callout__cta" href="./calendar/?tour=1">Take a quick walkthrough</a>
+              <p class="help-callout__hint">You'll be asked to sign in first if needed.</p>
+            </div>
+          </aside>
 
-          <h2>Do I connect my bank?</h2>
-          <p>No. You enter amounts and dates you already know (or export). The forecast stays yours to reconcile.</p>
+          <div class="help-faq" role="region" aria-label="Frequently asked questions">
+            <details class="help-faq__item">
+              <summary class="help-faq__summary">
+                <span class="help-faq__question">What is BalanceWhiz?</span>
+                <span class="help-faq__chev" aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path
+                      d="M6 9l6 6 6-6"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </span>
+              </summary>
+              <div class="help-faq__panel">
+                <p>
+                  A cash flow forecast for your checking balance: upcoming bills and income on a calendar, plus a
+                  projected balance so you can see cash pressure, not just month-end totals.
+                </p>
+              </div>
+            </details>
 
-          <h2>How do I reset my password?</h2>
-          <p>
-            On the <a href="./login.html#forgot">login page</a>, choose “Forgot password?” and follow the email link.
-          </p>
+            <details class="help-faq__item">
+              <summary class="help-faq__summary">
+                <span class="help-faq__question">Do I connect my bank?</span>
+                <span class="help-faq__chev" aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path
+                      d="M6 9l6 6 6-6"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </span>
+              </summary>
+              <div class="help-faq__panel">
+                <p>No. You enter amounts and dates you already know (or export). The forecast stays yours to reconcile.</p>
+              </div>
+            </details>
 
-          <h2>How does billing work?</h2>
-          <p>
-            Plans and trial details are on <a href="./plans/">Pricing</a>. You can cancel from your account flow when
-            logged in; if you are stuck, contact support.
-          </p>
+            <details class="help-faq__item">
+              <summary class="help-faq__summary">
+                <span class="help-faq__question">How do I reset my password?</span>
+                <span class="help-faq__chev" aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path
+                      d="M6 9l6 6 6-6"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </span>
+              </summary>
+              <div class="help-faq__panel">
+                <p>
+                  On the <a href="./login.html#forgot">login page</a>, choose “Forgot password?” and follow the email
+                  link.
+                </p>
+              </div>
+            </details>
 
-          <p class="support-doc__meta">Last updated May 2026.</p>
+            <details class="help-faq__item">
+              <summary class="help-faq__summary">
+                <span class="help-faq__question">How does billing work?</span>
+                <span class="help-faq__chev" aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path
+                      d="M6 9l6 6 6-6"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </span>
+              </summary>
+              <div class="help-faq__panel">
+                <p>
+                  Plans and trial details are on <a href="./plans/">Pricing</a>. You can cancel from your account flow
+                  when logged in; if you are stuck, contact support.
+                </p>
+              </div>
+            </details>
+          </div>
+
+          <p class="help-center__meta">Last updated May 2026.</p>
         </article>
       </div>
 

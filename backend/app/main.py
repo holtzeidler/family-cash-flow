@@ -1120,6 +1120,14 @@ class CategoryTreeLayoutIn(BaseModel):
     groups: list[CategoryTreeGroupLayoutIn] = Field(min_length=1)
 
 
+class CategoryUsageSummaryOut(BaseModel):
+    """Rollups for category manager UI (assignments + uncategorized safety)."""
+
+    by_category_id: dict[str, int] = Field(default_factory=dict)
+    uncategorized_transactions: int = 0
+    uncategorized_expected: int = 0
+
+
 class CategorySeedDefaultsIn(BaseModel):
     force: bool = False
 
@@ -3645,22 +3653,74 @@ def update_category(
     return _category_out_from_model(cat=cat, group_name=gname)
 
 
+@app.get("/api/families/{family_id}/categories/usage-summary", response_model=CategoryUsageSummaryOut)
+def category_usage_summary(
+    family_id: int,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    require_family_member(db=db, family_id=family_id, user_id=user_id)
+
+    by_id: dict[str, int] = defaultdict(int)
+    for cid, n in db.execute(
+        select(Transaction.category_id, func.count(Transaction.id))
+        .where(Transaction.family_id == family_id, Transaction.category_id.is_not(None))
+        .group_by(Transaction.category_id)
+    ).all():
+        if cid is not None:
+            by_id[str(int(cid))] += int(n or 0)
+    for cid, n in db.execute(
+        select(ExpectedTransaction.category_id, func.count(ExpectedTransaction.id))
+        .where(ExpectedTransaction.family_id == family_id, ExpectedTransaction.category_id.is_not(None))
+        .group_by(ExpectedTransaction.category_id)
+    ).all():
+        if cid is not None:
+            by_id[str(int(cid))] += int(n or 0)
+    for cid, n in db.execute(
+        select(ExpectedTransactionOverride.category_id, func.count(ExpectedTransactionOverride.id))
+        .join(ExpectedTransaction, ExpectedTransaction.id == ExpectedTransactionOverride.expected_transaction_id)
+        .where(ExpectedTransaction.family_id == family_id, ExpectedTransactionOverride.category_id.is_not(None))
+        .group_by(ExpectedTransactionOverride.category_id)
+    ).all():
+        if cid is not None:
+            by_id[str(int(cid))] += int(n or 0)
+
+    uncat_tx = int(
+        db.execute(
+            select(func.count(Transaction.id)).where(Transaction.family_id == family_id, Transaction.category_id.is_(None))
+        ).scalar_one()
+        or 0
+    )
+    uncat_exp = int(
+        db.execute(
+            select(func.count(ExpectedTransaction.id)).where(
+                ExpectedTransaction.family_id == family_id, ExpectedTransaction.category_id.is_(None)
+            )
+        ).scalar_one()
+        or 0
+    )
+
+    return CategoryUsageSummaryOut(
+        by_category_id=dict(by_id),
+        uncategorized_transactions=uncat_tx,
+        uncategorized_expected=uncat_exp,
+    )
+
+
 @app.delete("/api/families/{family_id}/categories/{category_id}")
 def delete_category(
     family_id: int,
     category_id: int,
+    reassign_to: Optional[int] = Query(None, description="When the category is in use, move all references to this category id, then delete."),
     access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
-    """Delete or archive a category.
+    """Hard-delete a category when unused, or after reassigning references.
 
-    A category is hard-deleted only when it is safe to do so — i.e. no
-    real or planned transaction is referencing it. If any transaction
-    (real, expected, or override) references the category, the category
-    is archived instead so historical entries keep a readable label.
-
-    The frontend "Archive" action also routes through here; the response
-    body carries `{ ok, archived }` so the UI can confirm what happened.
+    If any transaction / expected row / override still references this category,
+    pass ``reassign_to`` with another category id in the same family. Omitting
+    it when references exist returns HTTP 400 with structured detail.
     """
     user_id = get_current_user_id(access_token)
     require_family_write(db=db, family_id=family_id, user_id=user_id)
@@ -3679,13 +3739,58 @@ def delete_category(
     ).scalar_one() or 0
     has_ovr = db.execute(
         select(func.count(ExpectedTransactionOverride.id))
-        .where(ExpectedTransactionOverride.family_id == family_id, ExpectedTransactionOverride.category_id == category_id)
+        .select_from(ExpectedTransactionOverride)
+        .join(ExpectedTransaction, ExpectedTransaction.id == ExpectedTransactionOverride.expected_transaction_id)
+        .where(ExpectedTransaction.family_id == family_id, ExpectedTransactionOverride.category_id == category_id)
     ).scalar_one() or 0
 
-    if int(has_tx) + int(has_exp) + int(has_ovr) > 0:
-        cat.archived = True
-        db.commit()
-        return {"ok": True, "archived": True}
+    total_refs = int(has_tx) + int(has_exp) + int(has_ovr)
+    if total_refs > 0:
+        if reassign_to is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "code": "category_in_use",
+                    "message": (
+                        f"This category is used by {total_refs} "
+                        f"{'entry' if total_refs == 1 else 'entries'} (transactions, scheduled items, or overrides). "
+                        "Choose a replacement category before deleting."
+                    ),
+                    "transaction_count": int(has_tx),
+                    "expected_count": int(has_exp),
+                    "override_count": int(has_ovr),
+                    "total": total_refs,
+                },
+            )
+        rid = int(reassign_to)
+        if rid == int(category_id):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Replacement category must be different from the one being deleted")
+        rep = db.execute(
+            select(Category).where(Category.id == rid, Category.family_id == family_id, Category.archived.is_(False))
+        ).scalar_one_or_none()
+        if rep is None:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Replacement category not found or is archived")
+
+        db.execute(
+            update(Transaction)
+            .where(Transaction.family_id == family_id, Transaction.category_id == category_id)
+            .values(category_id=rid)
+        )
+        db.execute(
+            update(ExpectedTransaction)
+            .where(ExpectedTransaction.family_id == family_id, ExpectedTransaction.category_id == category_id)
+            .values(category_id=rid)
+        )
+        db.execute(
+            update(ExpectedTransactionOverride)
+            .where(
+                ExpectedTransactionOverride.category_id == category_id,
+                ExpectedTransactionOverride.expected_transaction_id.in_(
+                    select(ExpectedTransaction.id).where(ExpectedTransaction.family_id == family_id)
+                ),
+            )
+            .values(category_id=rid)
+        )
 
     db.execute(delete(Category).where(Category.id == category_id, Category.family_id == family_id))
     db.commit()
