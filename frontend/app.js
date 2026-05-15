@@ -7155,8 +7155,105 @@ async function deleteCategoryWithOptionalReassign(categoryId, categoryName) {
   openCategoryDeleteReassignModal({ id: cid, name: categoryName, total: used });
 }
 
+const CATS_MENU_FLOAT_Z = 14000;
+let _catsMenuFloatingBound = false;
+
+function resetCategoriesMenuPanelPosition(panelEl) {
+  if (!panelEl) return;
+  panelEl.classList.remove("cats-menu-panel--floating");
+  panelEl.style.removeProperty("position");
+  panelEl.style.removeProperty("top");
+  panelEl.style.removeProperty("left");
+  panelEl.style.removeProperty("right");
+  panelEl.style.removeProperty("z-index");
+  panelEl.style.removeProperty("visibility");
+}
+
+function positionCategoriesFloatingMenu(detailsEl) {
+  const panel = detailsEl.querySelector(".cats-cat__menu-panel, .cats-group__menu-panel");
+  const summary = detailsEl.querySelector("summary");
+  if (!panel || !summary) return;
+  if (!detailsEl.open) {
+    resetCategoriesMenuPanelPosition(panel);
+    return;
+  }
+
+  const rect = summary.getBoundingClientRect();
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const pad = 10;
+  const gap = 10;
+
+  panel.classList.add("cats-menu-panel--floating");
+  panel.style.position = "fixed";
+  panel.style.zIndex = String(CATS_MENU_FLOAT_Z);
+  panel.style.right = "auto";
+  /* Off-screen measure so intrinsic width resolves before viewport clamping */
+  panel.style.left = "-99999px";
+  panel.style.top = "0";
+  panel.style.visibility = "visible";
+
+  const pr = panel.getBoundingClientRect();
+  const pw = Math.max(pr.width, 1);
+  const ph = Math.max(pr.height, 1);
+
+  let left = rect.right - pw;
+  if (left < pad) left = pad;
+  if (left + pw > vw - pad) left = Math.max(pad, vw - pad - pw);
+
+  let top = rect.bottom + gap;
+  const belowSpace = vh - pad - top;
+  const aboveSpace = rect.top - pad - gap;
+  if (belowSpace < ph && aboveSpace > belowSpace) {
+    top = rect.top - gap - ph;
+  }
+  if (top < pad) top = pad;
+  if (top + ph > vh - pad) top = Math.max(pad, vh - pad - ph);
+
+  panel.style.left = `${Math.round(left)}px`;
+  panel.style.top = `${Math.round(top)}px`;
+}
+
+function refreshOpenCategoriesFloatingMenus() {
+  document.querySelectorAll("details.cats-cat__menu[open], details.cats-group__menu[open]").forEach((d) =>
+    positionCategoriesFloatingMenu(d)
+  );
+}
+
+function bindCategoriesFloatingMenusGlobally() {
+  if (_catsMenuFloatingBound) return;
+  _catsMenuFloatingBound = true;
+
+  document.addEventListener(
+    "toggle",
+    (e) => {
+      const det = e.target;
+      if (!(det instanceof HTMLDetailsElement)) return;
+      if (!det.matches(".cats-cat__menu, .cats-group__menu")) return;
+      if (det.open) {
+        document.querySelectorAll("details.cats-cat__menu[open], details.cats-group__menu[open]").forEach((other) => {
+          if (other !== det) {
+            try {
+              other.open = false;
+            } catch (_) {}
+          }
+        });
+      }
+      positionCategoriesFloatingMenu(det);
+      if (det.open) {
+        window.requestAnimationFrame(() => refreshOpenCategoriesFloatingMenus());
+      }
+    },
+    true
+  );
+
+  window.addEventListener("resize", refreshOpenCategoriesFloatingMenus);
+  window.addEventListener("scroll", refreshOpenCategoriesFloatingMenus, true);
+}
+
 function renderCategoriesGrid(tree) {
   if (!categoriesTree) return;
+  bindCategoriesFloatingMenusGlobally();
   categoriesTree.innerHTML = "";
   const groups = (tree?.groups || []).filter(Boolean);
 
@@ -7308,6 +7405,10 @@ function renderCategoriesGrid(tree) {
         });
       })
     );
+    const dangerSep = document.createElement("div");
+    dangerSep.className = "cats-menu-divider";
+    dangerSep.setAttribute("role", "separator");
+    menuPanel.appendChild(dangerSep);
     menuPanel.appendChild(
       mkItem("Delete", "cats-cat__menu-item--danger", () => {
         void (async () => {
@@ -7453,10 +7554,12 @@ function renderCategoriesGrid(tree) {
     }
 
     if (!isSystemGroup) {
-      const mkBtn = (label, onClick) => {
+      const mkBtn = (label, onClick, opts = {}) => {
+        const danger = !!opts.danger;
         const b = document.createElement("button");
         b.type = "button";
         b.className = "cats-group__menu-item";
+        if (danger) b.classList.add("cats-group__menu-item--danger");
         b.textContent = label;
         b.addEventListener("click", (ev) => {
           ev.preventDefault();
@@ -7488,34 +7591,42 @@ function renderCategoriesGrid(tree) {
           }
         })
       );
+      const groupDangerSep = document.createElement("div");
+      groupDangerSep.className = "cats-menu-divider";
+      groupDangerSep.setAttribute("role", "separator");
+      menuPanel.appendChild(groupDangerSep);
       menuPanel.appendChild(
-        mkBtn("Delete group", async () => {
-          const catsCount = body.querySelectorAll(".cats-cat").length;
-          const fallbackCard = categoriesTree.querySelector(
-            `.cats-group[data-system-group="1"]:not([data-group-id="${String(g.id)}"])`
-          );
-          const fallbackName =
-            fallbackCard?.querySelector("[data-group-name]")?.textContent?.trim() || "another group";
-          const msg = catsCount
-            ? `Delete "${g.name}"? Its ${catsCount} ${catsCount === 1 ? "category" : "categories"} will move to ${fallbackName}.`
-            : `Delete "${g.name}"?`;
-          if (!window.confirm(msg)) return;
-          try {
-            show(catErr, "");
-            if (catsCount > 0 && fallbackCard) {
-              const fallbackBody = fallbackCard.querySelector(".cats-group__body");
-              if (fallbackBody) {
-                [...body.querySelectorAll(".cats-cat")].forEach((rowEl) => fallbackBody.appendChild(rowEl));
-                await persistCategoryTreeFromDom();
+        mkBtn(
+          "Delete group",
+          async () => {
+            const catsCount = body.querySelectorAll(".cats-cat").length;
+            const fallbackCard = categoriesTree.querySelector(
+              `.cats-group[data-system-group="1"]:not([data-group-id="${String(g.id)}"])`
+            );
+            const fallbackName =
+              fallbackCard?.querySelector("[data-group-name]")?.textContent?.trim() || "another group";
+            const msg = catsCount
+              ? `Delete "${g.name}"? Its ${catsCount} ${catsCount === 1 ? "category" : "categories"} will move to ${fallbackName}.`
+              : `Delete "${g.name}"?`;
+            if (!window.confirm(msg)) return;
+            try {
+              show(catErr, "");
+              if (catsCount > 0 && fallbackCard) {
+                const fallbackBody = fallbackCard.querySelector(".cats-group__body");
+                if (fallbackBody) {
+                  [...body.querySelectorAll(".cats-cat")].forEach((rowEl) => fallbackBody.appendChild(rowEl));
+                  await persistCategoryTreeFromDom();
+                }
               }
+              await api(`/api/families/${state.activeFamilyId}/category-groups/${Number(g.id)}`, "DELETE");
+              await loadCategories();
+              await loadMonthAndCalendar();
+            } catch (e) {
+              show(catErr, e?.message || "Failed to delete group");
             }
-            await api(`/api/families/${state.activeFamilyId}/category-groups/${Number(g.id)}`, "DELETE");
-            await loadCategories();
-            await loadMonthAndCalendar();
-          } catch (e) {
-            show(catErr, e?.message || "Failed to delete group");
-          }
-        })
+          },
+          { danger: true }
+        )
       );
     } else {
       menu.hidden = true;
@@ -10366,7 +10477,7 @@ function renderCalendar() {
     }
   }
   const MIN_CELL_H = isMobileCalendarLayout ? 0 : 162;
-  const MAX_VISIBLE_TXNS = 4;
+  const MAX_VISIBLE_TXNS = 3;
   const minBalFloor = readStoredMinBalanceThresholdForReports();
   /** @type {HTMLElement[]} */
   const cells = [];
