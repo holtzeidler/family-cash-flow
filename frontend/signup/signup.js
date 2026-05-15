@@ -723,10 +723,14 @@ function getAccountSetupTransactionCounts() {
 }
 
 function formatAccountSetupStep3Summary(incomeCount, expenseCount) {
-  const parts = [];
-  if (incomeCount) parts.push(incomeCount === 1 ? "1 income" : `${incomeCount} income items`);
-  if (expenseCount) parts.push(expenseCount === 1 ? "1 expense" : `${expenseCount} expenses`);
-  return parts.length ? `Added so far: ${parts.join(", ")}` : "";
+  const i = Number(incomeCount) || 0;
+  const e = Number(expenseCount) || 0;
+  if (!i && !e) return "";
+  const iPart = i === 1 ? "1 income" : `${i} income`;
+  const ePart = e === 1 ? "1 expense" : `${e} expenses`;
+  if (i && e) return `✓ ${iPart} • ${ePart} added`;
+  if (i) return `✓ ${iPart} added`;
+  return `✓ ${ePart} added`;
 }
 
 function getAccountSetupStep3HubFocusTarget() {
@@ -742,19 +746,12 @@ function syncAccountSetupStep3HubState() {
   const intro = document.getElementById("accountSetupWizardStep3Intro");
   if (!panel || !intro) return;
   const summary = document.getElementById("accountSetupStep3Summary");
-  const helper = document.getElementById("accountSetupStep3Helper");
-  const { incomeCount, expenseCount, totalCount } = getAccountSetupTransactionCounts();
+  const { incomeCount, expenseCount } = getAccountSetupTransactionCounts();
 
   if (summary) {
     const text = formatAccountSetupStep3Summary(incomeCount, expenseCount);
     summary.textContent = text;
     summary.hidden = !text;
-  }
-  if (helper) {
-    helper.textContent =
-      totalCount > 0
-        ? "You can continue now, or add more items if you know them."
-        : "Add at least one bill or income to generate your first forecast. You can add or edit more anytime from the calendar.";
   }
 
   const syncAction = (buttonId, count) => {
@@ -864,8 +861,8 @@ function getAccountSetupStepCopy(step, ctx) {
         };
       }
       return {
-        title: "Add your first bills and income",
-        subtitle: "A paycheck and a couple of bills are enough to see your forecast—add more when you’re ready.",
+        title: "Add your first income & expenses",
+        subtitle: "A paycheck and a couple of bills are enough to see your forecast. You can add more later.",
       };
     }
     case 3:
@@ -899,10 +896,12 @@ function syncAccountSetupWizardShellButtons() {
   const successContinue = document.getElementById("asStep3ContinueBtn");
   const actionsShell = document.getElementById("accountSetupActions");
   const continueGateHint = document.getElementById("accountSetupContinueGateHint");
+  const forecastReadyHint = document.getElementById("accountSetupStep3ForecastReady");
   if (!document.getElementById("accountSetupWizard")) return;
 
   const hideContinueGateHint = () => {
     if (continueGateHint) continueGateHint.hidden = true;
+    if (forecastReadyHint) forecastReadyHint.hidden = true;
     if (signupBtn) signupBtn.removeAttribute("aria-describedby");
   };
 
@@ -972,15 +971,21 @@ function syncAccountSetupWizardShellButtons() {
     } else {
       if (signupBtn) {
         signupBtn.style.display = "";
-        signupBtn.textContent = "Continue";
+        const { incomeCount, expenseCount, totalCount } = getAccountSetupTransactionCounts();
+        const hasMinForForecast = incomeCount >= 1 && expenseCount >= 1;
+        signupBtn.textContent = hasMinForForecast ? "See My Forecast" : "Continue";
         signupBtn.classList.remove("secondary");
         signupBtn.classList.add("top-nav__logout");
-        const { totalCount } = getAccountSetupTransactionCounts();
         signupBtn.disabled = totalCount < 1;
+        if (forecastReadyHint) forecastReadyHint.hidden = !hasMinForForecast;
         if (continueGateHint) {
           continueGateHint.hidden = totalCount >= 1;
-          if (totalCount < 1) signupBtn.setAttribute("aria-describedby", "accountSetupContinueGateHint");
-          else signupBtn.removeAttribute("aria-describedby");
+        }
+        signupBtn.removeAttribute("aria-describedby");
+        if (totalCount < 1) {
+          signupBtn.setAttribute("aria-describedby", "accountSetupContinueGateHint");
+        } else if (hasMinForForecast) {
+          signupBtn.setAttribute("aria-describedby", "accountSetupStep3ForecastReady");
         }
       }
       if (accountSetupSkipBtn) accountSetupSkipBtn.style.display = "none";
@@ -1445,6 +1450,31 @@ function formatAccountSetupOrdinalDay(n, opts = {}) {
   return `${day}${suffix}`;
 }
 
+/** `yyyy-mm-dd` for `<input type="date">`; prefers the checking account starting-balance date when set. */
+function accountSetupDefaultNextDateIso() {
+  try {
+    const bal = String(document.getElementById("accountStartingBalanceDate")?.value || "").trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(bal)) return bal;
+  } catch (_) {}
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function revealAccountSetupFormError(message, focusElId) {
+  setCallout(signupCalloutEl, message || "Please complete the transaction.", "error");
+  try {
+    signupCalloutEl?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  } catch (_) {}
+  if (focusElId) {
+    try {
+      document.getElementById(focusElId)?.focus();
+    } catch (_) {}
+  }
+}
+
 function getAccountSetupScheduleFields(prefix) {
   if (prefix === "asExp") {
     return {
@@ -1534,6 +1564,10 @@ function accountSetupScheduleSummaryText(recurrence, startIso, secondDayValue) {
 
 function syncAccountSetupScheduleUi(prefix) {
   const fields = getAccountSetupScheduleFields(prefix);
+  if (fields.dateEl) {
+    const cur = String(fields.dateEl.value || "").trim();
+    if (!cur) fields.dateEl.value = accountSetupDefaultNextDateIso();
+  }
   const recurrence = normalizeAccountSetupRecurrenceSelection(fields.recurrenceEl?.value || "");
   const repeats = !!recurrence;
   const startIso = String(fields.dateEl?.value || "").trim();
@@ -1712,7 +1746,7 @@ function readAccountSetupTransactionFromInputs() {
   if (!anyTx) return { ok: false, empty: true, tx: null, message: "" };
   if (!txKind) return { ok: false, empty: false, tx: null, message: "Transaction type is required." };
   if (txAmount == null || txAmount <= 0) return { ok: false, empty: false, tx: null, message: "Transaction amount is required." };
-  if (!txDate) return { ok: false, empty: false, tx: null, message: "Transaction date is required." };
+  if (!txDate) return { ok: false, empty: false, tx: null, message: "Next date is required — choose the first day this should occur." };
   const categoryResolved = txCategory || "Uncategorized";
   const schedule = readAccountSetupScheduleFromInputs("asTx", txDate);
   if (repeats && schedule.message) return { ok: false, empty: false, tx: null, message: schedule.message };
@@ -1745,8 +1779,13 @@ function setAccountSetupKindRadioValue(groupName, value) {
   return radio;
 }
 
-function resetAccountSetupTransactionForm() {
+/** @param {"income"|"expense"|void} forKind When set (e.g. hub buttons), form resets to that type; otherwise the current type is preserved when possible. */
+function resetAccountSetupTransactionForm(forKind) {
   setAccountSetupStep3AfterSave(false);
+  const preservedKind =
+    forKind === "income" || forKind === "expense"
+      ? forKind
+      : String(document.querySelector('input[name="asTxKind"]:checked')?.value || "").trim();
   const amountEl = document.getElementById("asTxAmount");
   const dateEl = document.getElementById("asTxDate");
   const notesEl = document.getElementById("asTxNotes");
@@ -1769,11 +1808,15 @@ function resetAccountSetupTransactionForm() {
   if (bgEl) bgEl.value = "";
   const swatches = document.getElementById("asTxColorSwatches");
   if (swatches) for (const b of swatches.querySelectorAll("button.cat-swatch")) b.classList.remove("is-active");
-  if (dateEl) dateEl.value = "";
-  const formEl = document.getElementById("accountSetupWizardStep3Form");
-  const incomeOnly = formEl && !formEl.hidden;
-  if (incomeOnly) setAccountSetupKindRadioValue("asTxKind", "income");
-  else setAccountSetupKindRadioValue("asTxKind", "expense");
+  let resolved =
+    preservedKind === "income" || preservedKind === "expense"
+      ? preservedKind
+      : (() => {
+          const formEl = document.getElementById("accountSetupWizardStep3Form");
+          const incomeOnly = formEl && !formEl.hidden;
+          return incomeOnly ? "income" : "expense";
+        })();
+  setAccountSetupKindRadioValue("asTxKind", resolved);
   syncAccountSetupScheduleUi("asTx");
 }
 
@@ -1800,7 +1843,10 @@ function addMoreTransactionsFromAccountSetup() {
 
   const parsed = readAccountSetupTransactionFromInputs();
   if (!parsed.ok) {
-    if (!parsed.empty) setCallout(signupCalloutEl, parsed.message || "Please complete the transaction.", "error");
+    if (!parsed.empty) {
+      const msg = parsed.message || "Please complete the transaction.";
+      revealAccountSetupFormError(msg, /date|first day/i.test(msg) ? "asTxDate" : null);
+    }
     return;
   }
 
@@ -1891,7 +1937,8 @@ async function accountSetupSaveIncomeClick() {
   }
   const parsed = readAccountSetupTransactionFromInputs();
   if (!parsed.ok) {
-    setCallout(signupCalloutEl, parsed.message || "Please complete the transaction.", "error");
+    const msg = parsed.message || "Please complete the transaction.";
+    revealAccountSetupFormError(msg, /date|first day/i.test(msg) ? "asTxDate" : null);
     return;
   }
   const txs = [...existing, parsed.tx];
@@ -1967,7 +2014,7 @@ function advanceAccountSetupWizardToIncomeFormFromSuccess() {
   setAccountSetupWizardStep(2, { skipPersist: true });
   setAccountSetupStep3AfterSave(false);
   setAccountSetupStep3Phase("form");
-  setAccountSetupKindRadioValue("asTxKind", "income");
+  resetAccountSetupTransactionForm("income");
   document.getElementById("asTxAmount")?.focus();
 }
 
@@ -1989,7 +2036,7 @@ function accountSetupTxHubAddIncomeClick() {
     );
   } catch (_) {}
   setAccountSetupStep3Phase("form");
-  setAccountSetupKindRadioValue("asTxKind", "income");
+  resetAccountSetupTransactionForm("income");
   document.getElementById("asTxAmount")?.focus();
 }
 
@@ -2012,7 +2059,7 @@ function accountSetupTxHubAddExpenseClick() {
     );
   } catch (_) {}
   setAccountSetupStep3Phase("form");
-  setAccountSetupKindRadioValue("asTxKind", "expense");
+  resetAccountSetupTransactionForm("expense");
   document.getElementById("asTxAmount")?.focus();
 }
 
@@ -2048,7 +2095,7 @@ function readAccountSetupExpenseTransactionFromInputs() {
   if (!anyTx) return { ok: false, empty: true, tx: null, message: "" };
   if (!txKind) return { ok: false, empty: false, tx: null, message: "Transaction type is required." };
   if (txAmount == null || txAmount <= 0) return { ok: false, empty: false, tx: null, message: "Transaction amount is required." };
-  if (!txDate) return { ok: false, empty: false, tx: null, message: "Transaction date is required." };
+  if (!txDate) return { ok: false, empty: false, tx: null, message: "Next date is required — choose the first day this should occur." };
   const categoryResolved = txCategory || "Uncategorized";
   const schedule = readAccountSetupScheduleFromInputs("asExp", txDate);
   if (repeats && schedule.message) return { ok: false, empty: false, tx: null, message: schedule.message };
@@ -2097,7 +2144,6 @@ function resetAccountSetupExpenseForm() {
   if (bgEl) bgEl.value = "";
   const swatches = document.getElementById("asExpTxColorSwatches");
   if (swatches) for (const b of swatches.querySelectorAll("button.cat-swatch")) b.classList.remove("is-active");
-  if (dateEl) dateEl.value = "";
   setAccountSetupKindRadioValue("asExpTxKind", "expense");
   syncAccountSetupScheduleUi("asExp");
 }
@@ -2123,7 +2169,10 @@ function addMoreExpensesFromAccountSetup() {
   }
   const parsed = readAccountSetupExpenseTransactionFromInputs();
   if (!parsed.ok) {
-    if (!parsed.empty) setCallout(signupCalloutEl, parsed.message || "Please complete the transaction.", "error");
+    if (!parsed.empty) {
+      const msg = parsed.message || "Please complete the transaction.";
+      revealAccountSetupFormError(msg, /date|first day/i.test(msg) ? "asExpTxDate" : null);
+    }
     return;
   }
   const existing = Array.isArray(rawDraft.transactions) ? rawDraft.transactions : [];
@@ -2230,7 +2279,8 @@ async function accountSetupSaveExpenseClick() {
   }
   const parsed = readAccountSetupExpenseTransactionFromInputs();
   if (!parsed.ok) {
-    setCallout(signupCalloutEl, parsed.message || "Please complete the transaction.", "error");
+    const msg = parsed.message || "Please complete the transaction.";
+    revealAccountSetupFormError(msg, /date|first day/i.test(msg) ? "asExpTxDate" : null);
     return;
   }
   const txs = [...existing, parsed.tx];
@@ -2385,8 +2435,6 @@ function hydrateAccountSetupDraft() {
         syncAccountSetupScheduleUi("asTx");
       }
     }
-    // Transaction "Next Date" fields stay blank until the user sets them (see reset/hydrate paths).
-
     if (document.getElementById("accountSetupWizard")) {
       let target = normalizePersistedAccountSetupWizardStep(o);
       const wsRaw = o.wizardStep;
@@ -3467,9 +3515,35 @@ function syncAccountSetupCategorySelectionForKind(hiddenId) {
 function initAccountSetupQuickChips() {
   if (!isAccountSetupPath() || !document.getElementById("accountSetupWizard")) return;
   // Panel 2 chips follow the visible Type radio.
+  let asTxKindSticky = /** @type {string|null} */ (null);
   const update2 = () => {
     const checked = document.querySelector('input[name="asTxKind"]:checked');
-    const kind = checked ? checked.value : "expense";
+    const kind = checked ? String(checked.value) : "expense";
+    if (asTxKindSticky != null && kind && asTxKindSticky !== kind) {
+      const amountEl = document.getElementById("asTxAmount");
+      if (amountEl) amountEl.value = "";
+      const notesEl = document.getElementById("asTxNotes");
+      if (notesEl) notesEl.value = "";
+      clearAccountSetupCategoryCombobox("asTxCategory");
+      const recSel = document.getElementById("asTxRecurrence");
+      if (recSel) recSel.value = "once";
+      const endsModeEl = document.getElementById("asTxEndsMode");
+      if (endsModeEl) endsModeEl.value = "never";
+      const secondDayEl = document.getElementById("asTxSecondDayOfMonth");
+      if (secondDayEl) secondDayEl.value = "";
+      const endCountEl = document.getElementById("asTxEndCount");
+      if (endCountEl) endCountEl.value = "";
+      const endDateEl = document.getElementById("asTxEndDate");
+      if (endDateEl) endDateEl.value = "";
+      const varEl = document.getElementById("asTxVariable");
+      if (varEl) varEl.checked = false;
+      const bgEl = document.getElementById("asTxBgColor");
+      if (bgEl) bgEl.value = "";
+      const swatches = document.getElementById("asTxColorSwatches");
+      if (swatches) for (const b of swatches.querySelectorAll("button.cat-swatch")) b.classList.remove("is-active");
+      syncAccountSetupScheduleUi("asTx");
+    }
+    asTxKindSticky = kind;
     syncAccountSetupCategorySelectionForKind("asTxCategory");
     renderAccountSetupCategoryChips("asTx", kind);
     const list = document.getElementById("asTxCategoryList");

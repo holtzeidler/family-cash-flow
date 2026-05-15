@@ -13081,21 +13081,21 @@ body.account-setup-page .account-setup-trust-strip{
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin: clamp(0.08rem, 0.55vw, 0.28rem) auto 6px;
-  padding: 3px 8px;
+  margin: clamp(0.12rem, 0.65vw, 0.35rem) auto 8px;
+  padding: 4px 10px;
   border-radius: 999px;
   background: transparent;
   border: none;
-  color: rgba(17, 24, 39, 0.64);
-  font-size: 0.72rem;
-  font-weight: 500;
-  letter-spacing: 0.01em;
-  line-height: 1.3;
+  color: rgba(30, 41, 59, 0.72);
+  font-size: 0.74rem;
+  font-weight: 550;
+  letter-spacing: 0.012em;
+  line-height: 1.35;
 }
 body.account-setup-page .account-setup-trust-strip__icon{
   width: 12px;
   height: 12px;
-  color: rgba(71, 85, 105, 0.62);
+  color: rgba(71, 85, 105, 0.72);
   display: inline-flex;
   align-items: center;
 }
@@ -14306,29 +14306,25 @@ body.account-setup-page .account-setup-step3-section{
   padding: 0;
 }
 body.account-setup-page .account-setup-step3-section--guidance{
-  padding-bottom: 6px;
+  padding-bottom: 4px;
 }
 body.account-setup-page .account-setup-step3-section--actions{
-  padding: 7px 0 5px;
-  border-top: 1px solid rgba(11, 61, 46, 0.055);
-}
-body.account-setup-page .account-setup-step3-section--hint{
-  padding: 5px 0 1px;
-  border-top: 1px solid rgba(148, 163, 184, 0.11);
+  padding: 8px 0 4px;
+  border-top: none;
 }
 body.account-setup-page .account-setup-step3-recommend{
-  padding: 6px 9px 7px;
-  border: 1px solid rgba(148, 163, 184, 0.11);
-  border-radius: 10px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(250, 251, 252, 0.94) 100%);
+  padding: 5px 8px 6px;
+  border: 1px solid rgba(148, 163, 184, 0.07);
+  border-radius: 9px;
+  background: rgba(248, 250, 252, 0.65);
 }
 body.account-setup-page .account-setup-step3-recommend__eyebrow{
-  margin: 0 0 5px;
-  font-size: 0.8125rem;
+  margin: 0 0 4px;
+  font-size: 0.76rem;
   font-weight: 600;
   letter-spacing: 0.01em;
   text-transform: none;
-  color: rgba(71, 85, 105, 0.72);
+  color: rgba(100, 116, 139, 0.68);
 }
 body.account-setup-page .account-setup-step3-checklist{
   list-style: none;
@@ -14342,10 +14338,10 @@ body.account-setup-page .account-setup-step3-checklist li{
   align-items: flex-start;
   gap: 6px;
   margin: 0;
-  font-size: 0.8125rem;
-  line-height: 1.32;
+  font-size: 0.76rem;
+  line-height: 1.3;
   font-weight: 500;
-  color: rgba(30, 41, 59, 0.78);
+  color: rgba(71, 85, 105, 0.75);
 }
 body.account-setup-page .account-setup-step3-checklist li::before{
   content: "";
@@ -14357,11 +14353,21 @@ body.account-setup-page .account-setup-step3-checklist li::before{
   background: rgba(100, 116, 139, 0.35);
 }
 body.account-setup-page .account-setup-step3-summary{
-  margin: 2px 0 0;
-  font-size: 0.8rem;
-  line-height: 1.32;
+  display: inline-flex;
+  align-items: center;
+  align-self: center;
+  margin: 6px auto 2px;
+  padding: 4px 11px 4px 9px;
+  max-width: 100%;
+  box-sizing: border-box;
+  font-size: 0.72rem;
+  line-height: 1.28;
   font-weight: 600;
-  color: rgba(11, 61, 46, 0.82);
+  letter-spacing: 0.01em;
+  color: rgba(51, 65, 85, 0.78);
+  background: rgba(241, 245, 249, 0.85);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 999px;
 }
 body.account-setup-page .account-setup-tx-choice-wrap{
   display: grid;
@@ -14371,19 +14377,6 @@ body.account-setup-page .account-setup-tx-choice-wrap{
   max-width: none;
   margin: 0;
   gap: 8px;
-}
-body.account-setup-page .account-setup-step3-inlineTip{
-  margin: 5px 0 0;
-  font-size: 0.72rem;
-  line-height: 1.38;
-  font-weight: 500;
-  text-align: center;
-  color: rgba(71, 85, 105, 0.62);
-}
-@media (min-width: 521px){
-  body.account-setup-page .account-setup-step3-inlineTip{
-    text-align: left;
-  }
 }
 body.account-setup-page .account-setup-step3-actionBtn{
   width: 100%;
@@ -14397,32 +14390,28 @@ body.account-setup-page .account-setup-step3-actionBtn{
 }
 body.account-setup-page #asTxHubAddIncomeBtn.account-setup-step3-actionBtn,
 body.account-setup-page #asTxHubAddExpenseBtn.account-setup-step3-actionBtn{
-  min-height: 38px;
-  padding: 0 10px;
+  min-height: 40px;
+  padding: 0 12px;
   border-radius: 10px;
   border-width: 1px;
   border-style: solid;
-  box-shadow: none;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.92);
 }
 body.account-setup-page #asTxHubAddIncomeBtn.account-setup-step3-actionBtn--income{
-  border-color: rgba(11, 61, 46, 0.14);
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--accent) 12%, #fff) 0%,
-    color-mix(in srgb, var(--accent) 7%, #fff) 100%
-  );
+  border-color: rgba(11, 61, 46, 0.18);
+  background: #fff;
   color: rgba(11, 61, 46, 0.9);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.75),
-    0 1px 2px rgba(11, 61, 46, 0.06);
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 1px 2px rgba(11, 61, 46, 0.05);
 }
 body.account-setup-page #asTxHubAddExpenseBtn.account-setup-step3-actionBtn--expense{
-  border-color: rgba(180, 83, 9, 0.16);
-  background: linear-gradient(180deg, color-mix(in srgb, #ffedd5 78%, #fff) 0%, color-mix(in srgb, #fed7aa 42%, #fff) 100%);
-  color: rgba(120, 53, 15, 0.9);
+  border-color: rgba(148, 163, 184, 0.28);
+  background: #fff;
+  color: rgba(51, 65, 85, 0.88);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.65),
-    0 1px 2px rgba(180, 83, 9, 0.07);
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 1px 2px rgba(15, 23, 42, 0.04);
 }
 body.account-setup-page #asTxHubAddIncomeBtn.account-setup-step3-actionBtn--income .account-setup-step3-actionBtn__plus,
 body.account-setup-page #asTxHubAddIncomeBtn.account-setup-step3-actionBtn--income .account-setup-step3-actionBtn__label{
@@ -14430,30 +14419,26 @@ body.account-setup-page #asTxHubAddIncomeBtn.account-setup-step3-actionBtn--inco
 }
 body.account-setup-page #asTxHubAddExpenseBtn.account-setup-step3-actionBtn--expense .account-setup-step3-actionBtn__plus,
 body.account-setup-page #asTxHubAddExpenseBtn.account-setup-step3-actionBtn--expense .account-setup-step3-actionBtn__label{
-  color: rgba(120, 53, 15, 0.9);
+  color: rgba(51, 65, 85, 0.86);
 }
 body.account-setup-page #asTxHubAddIncomeBtn.account-setup-step3-actionBtn:hover:not(:disabled),
 body.account-setup-page #asTxHubAddExpenseBtn.account-setup-step3-actionBtn:hover:not(:disabled){
   filter: none;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
 }
 body.account-setup-page #asTxHubAddIncomeBtn.account-setup-step3-actionBtn--income:hover:not(:disabled){
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--accent) 16%, #fff) 0%,
-    color-mix(in srgb, var(--accent) 10%, #fff) 100%
-  );
-  border-color: rgba(11, 61, 46, 0.2);
+  background: color-mix(in srgb, var(--accent) 5%, #fff);
+  border-color: rgba(11, 61, 46, 0.24);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.8),
-    0 2px 6px rgba(11, 61, 46, 0.08);
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    0 2px 6px rgba(11, 61, 46, 0.07);
 }
 body.account-setup-page #asTxHubAddExpenseBtn.account-setup-step3-actionBtn--expense:hover:not(:disabled){
-  background: linear-gradient(180deg, color-mix(in srgb, #ffedd5 88%, #fff) 0%, color-mix(in srgb, #fdba74 35%, #fff) 100%);
-  border-color: rgba(180, 83, 9, 0.24);
+  background: rgba(248, 250, 252, 0.95);
+  border-color: rgba(100, 116, 139, 0.28);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.75),
-    0 2px 6px rgba(180, 83, 9, 0.1);
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    0 2px 6px rgba(15, 23, 42, 0.06);
 }
 body.account-setup-page #asTxHubAddIncomeBtn.account-setup-step3-actionBtn:active:not(:disabled),
 body.account-setup-page #asTxHubAddExpenseBtn.account-setup-step3-actionBtn:active:not(:disabled){
@@ -14461,7 +14446,7 @@ body.account-setup-page #asTxHubAddExpenseBtn.account-setup-step3-actionBtn:acti
 }
 body.account-setup-page #asTxHubAddIncomeBtn.account-setup-step3-actionBtn:focus-visible:not(:disabled),
 body.account-setup-page #asTxHubAddExpenseBtn.account-setup-step3-actionBtn:focus-visible:not(:disabled){
-  outline: 2px solid rgba(11, 61, 46, 0.14);
+  outline: 2px solid rgba(11, 61, 46, 0.16);
   outline-offset: 2px;
   box-shadow: none;
 }
@@ -14503,20 +14488,18 @@ body.account-setup-page .account-setup-step3-actionBtn__label{
   font-weight: 650;
   letter-spacing: 0.01em;
 }
-body.account-setup-page .account-setup-step3-helper{
+body.account-setup-page .account-setup-step3-forecast-ready{
+  flex-shrink: 0;
   margin: 0;
-  max-width: none;
-  width: 100%;
-  font-size: 0.72rem;
-  line-height: 1.38;
-  font-weight: 450;
+  padding: 8px 16px 6px;
   text-align: center;
-  color: rgba(100, 116, 139, 0.62);
-}
-@media (min-width: 521px){
-  body.account-setup-page .account-setup-step3-helper{
-    text-align: left;
-  }
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  color: rgba(11, 61, 46, 0.84);
+  background: linear-gradient(180deg, rgba(248, 250, 249, 0.96) 0%, rgba(252, 252, 252, 0.72) 100%);
+  border-top: 1px solid rgba(11, 61, 46, 0.07);
 }
 /* Step 3 intro: tighter footer, gate hint, ghost Back, clearer disabled Continue */
 body.account-setup-page #accountSetupWizard[data-step="2"]:has(#accountSetupWizardPanel2[data-step3-phase="intro"])

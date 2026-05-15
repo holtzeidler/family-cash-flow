@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=488" />
+    <link rel="stylesheet" href="../styles.css?v=489" />
   </head>
   <body class="login-page signup-page account-setup-page">
     <div class="container">
@@ -176,7 +176,7 @@
                   class="account-setup-wizard__panel auth-section__body"
                   id="accountSetupWizardPanel2"
                   role="tabpanel"
-                  aria-label="Step 3 of 4: Recurring income and bills"
+                  aria-label="Step 3 of 4: First income and expenses"
                   aria-hidden="true"
                   inert
                   data-step3-phase="intro"
@@ -208,12 +208,6 @@
                           </span>
                         </button>
                       </div>
-                      <p class="account-setup-step3-inlineTip">You can start with just one item—each button opens a short form.</p>
-                    </section>
-                    <section class="account-setup-step3-section account-setup-step3-section--hint" aria-label="Next step">
-                      <p id="accountSetupStep3Helper" class="account-setup-step3-helper">
-                        Add at least one bill or income to generate your first forecast. You can add or edit more anytime from the calendar.
-                      </p>
                     </section>
                   </div>
                   <div id="accountSetupWizardStep3Form" class="account-setup-step3-form" hidden>
@@ -589,6 +583,9 @@
                 </div>
               </div>
             </div>
+            <p id="accountSetupStep3ForecastReady" class="account-setup-step3-forecast-ready" hidden aria-live="polite">
+              Great — you have enough to generate your first forecast.
+            </p>
             <div id="accountSetupActions" class="account-setup-actions account-setup-actions--shell">
               <button type="button" id="accountSetupBackBtn" class="secondary" style="display: none">
                 Back
@@ -632,9 +629,9 @@
           <span class="account-setup-trust-strip__items">
             <span>No bank connection required</span>
             <span aria-hidden="true">•</span>
-            <span>You can edit everything later</span>
+            <span>Edit anytime</span>
             <span aria-hidden="true">•</span>
-            <span>14-day free trial</span>
+            <span>Free to try</span>
           </span>
         </div>
       </div>
@@ -681,6 +678,6 @@
       </div>
     </div>
 
-    <script src="../signup/signup.js?v=91"></script>
+    <script src="../signup/signup.js?v=94"></script>
   </body>
 </html>
