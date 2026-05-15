@@ -1172,6 +1172,21 @@ function toMoneyNumber(raw) {
   return Number.isFinite(n) ? n : null;
 }
 
+/** Same rules as app balance-threshold inputs: optional, allows $/commas. */
+function parseAccountSetupCushionRaw(raw) {
+  const trimmed = String(raw ?? "").trim();
+  if (!trimmed) return { ok: true, empty: true, num: null };
+  const cleaned = trimmed.replace(/[$,\s]/g, "");
+  if (!cleaned || cleaned === "-" || cleaned === "." || cleaned === "-.") return { ok: false };
+  const n = Number(cleaned);
+  if (!Number.isFinite(n) || n < 0) return { ok: false };
+  return { ok: true, empty: false, num: n };
+}
+
+function accountSetupCheckingCushionRawFromDom() {
+  return String(document.getElementById("accountSetupKeepInChecking")?.value ?? "").trim();
+}
+
 function getAccountSetupStep() {
   if (!isAccountSetupPath()) return "account";
   if (document.getElementById("accountSetupWizard")) {
@@ -1233,7 +1248,14 @@ function focusAccountSetupAccountNameInput() {
   }, 0);
 }
 
-function canAdvanceAccountSetupAccountStep({ accountName, accountStartingBalanceRaw, accountStartingBalance, accountStartingBalanceDate }) {
+function canAdvanceAccountSetupAccountStep({
+  accountName,
+  accountStartingBalanceRaw,
+  accountStartingBalance,
+  accountStartingBalanceDate,
+  checkingCushionRaw = "",
+}) {
+  const cushionP = parseAccountSetupCushionRaw(String(checkingCushionRaw ?? ""));
   const anyAccount =
     !!accountName ||
     (accountStartingBalanceRaw != null && String(accountStartingBalanceRaw).trim() !== "") ||
@@ -1242,8 +1264,15 @@ function canAdvanceAccountSetupAccountStep({ accountName, accountStartingBalance
     if (!accountName) return { ok: false, message: "Account name is required (or leave the account section blank)." };
     if (accountStartingBalance == null) return { ok: false, message: "Starting balance is required (or leave the account section blank)." };
     if (!accountStartingBalanceDate) return { ok: false, message: "Starting balance date is required (or leave the account section blank)." };
+    if (!cushionP.ok) {
+      return {
+        ok: false,
+        message: "Use a number for how much you like to keep in checking, or clear the field to skip.",
+      };
+    }
   }
-  return { ok: true, anyAccount };
+  const cushionThresholdMin = cushionP.empty || (cushionP.ok && cushionP.num === 0) ? null : cushionP.num;
+  return { ok: true, anyAccount, cushionThresholdMin };
 }
 
 function goToAccountSetup() {
@@ -1267,23 +1296,17 @@ function goToSignupFromAccountSetup() {
     const accountStartingBalanceRaw = document.getElementById("accountStartingBalance")?.value || "";
     const accountStartingBalance = toMoneyNumber(accountStartingBalanceRaw);
     const accountStartingBalanceDate = String(document.getElementById("accountStartingBalanceDate")?.value || "").trim();
-    const anyAccount =
-      !!accountName ||
-      (accountStartingBalanceRaw != null && String(accountStartingBalanceRaw).trim() !== "") ||
-      !!accountStartingBalanceDate;
-    if (anyAccount) {
-      if (!accountName) {
-        setCallout(signupCalloutEl, "Account name is required (or leave the account section blank).", "error");
-        return;
-      }
-      if (accountStartingBalance == null) {
-        setCallout(signupCalloutEl, "Starting balance is required (or leave the account section blank).", "error");
-        return;
-      }
-      if (!accountStartingBalanceDate) {
-        setCallout(signupCalloutEl, "Starting balance date is required (or leave the account section blank).", "error");
-        return;
-      }
+    const checkingCushionRaw = accountSetupCheckingCushionRawFromDom();
+    const gate = canAdvanceAccountSetupAccountStep({
+      accountName,
+      accountStartingBalanceRaw,
+      accountStartingBalance,
+      accountStartingBalanceDate,
+      checkingCushionRaw,
+    });
+    if (!gate.ok) {
+      setCallout(signupCalloutEl, gate.message, "error");
+      return;
     }
 
     const parsedTx = readAccountSetupTransactionFromInputs();
@@ -1297,22 +1320,20 @@ function goToSignupFromAccountSetup() {
     sessionStorage.setItem(
       BW_ACCOUNT_SETUP_DRAFT_KEY,
       JSON.stringify({
-        ...(anyAccount
+        ...(gate.anyAccount
           ? {
               account: {
                 name: accountName,
                 type: "checking",
                 starting_balance: accountStartingBalance,
                 starting_balance_date: accountStartingBalanceDate,
+                balance_threshold_min: gate.cushionThresholdMin,
               },
             }
           : {}),
         ...(anyTx
           ? {
-              transactions: [
-                ...existingTransactions,
-                parsedTx.tx,
-              ],
+              transactions: [...existingTransactions, parsedTx.tx],
             }
           : { transactions: existingTransactions }),
         step: "transactions",
@@ -1739,6 +1760,7 @@ function addMoreTransactionsFromAccountSetup() {
     accountStartingBalanceRaw,
     accountStartingBalance,
     accountStartingBalanceDate,
+    checkingCushionRaw: accountSetupCheckingCushionRawFromDom(),
   });
   if (!gate.ok) {
     setCallout(signupCalloutEl, gate.message, "error");
@@ -1767,6 +1789,7 @@ function addMoreTransactionsFromAccountSetup() {
               type: "checking",
               starting_balance: accountStartingBalance,
               starting_balance_date: accountStartingBalanceDate,
+              balance_threshold_min: gate.cushionThresholdMin,
             },
           }
         : {}),
@@ -1830,6 +1853,7 @@ async function accountSetupSaveIncomeClick() {
     accountStartingBalanceRaw,
     accountStartingBalance,
     accountStartingBalanceDate,
+    checkingCushionRaw: accountSetupCheckingCushionRawFromDom(),
   });
   if (!gate.ok) {
     setCallout(signupCalloutEl, gate.message, "error");
@@ -1857,6 +1881,7 @@ async function accountSetupSaveIncomeClick() {
                 type: "checking",
                 starting_balance: accountStartingBalance,
                 starting_balance_date: accountStartingBalanceDate,
+                balance_threshold_min: gate.cushionThresholdMin,
               },
             }
           : {}),
@@ -2061,6 +2086,7 @@ function addMoreExpensesFromAccountSetup() {
     accountStartingBalanceRaw,
     accountStartingBalance,
     accountStartingBalanceDate,
+    checkingCushionRaw: accountSetupCheckingCushionRawFromDom(),
   });
   if (!gate.ok) {
     setCallout(signupCalloutEl, gate.message, "error");
@@ -2087,6 +2113,7 @@ function addMoreExpensesFromAccountSetup() {
               type: "checking",
               starting_balance: accountStartingBalance,
               starting_balance_date: accountStartingBalanceDate,
+              balance_threshold_min: gate.cushionThresholdMin,
             },
           }
         : {}),
@@ -2167,6 +2194,7 @@ async function accountSetupSaveExpenseClick() {
     accountStartingBalanceRaw,
     accountStartingBalance,
     accountStartingBalanceDate,
+    checkingCushionRaw: accountSetupCheckingCushionRawFromDom(),
   });
   if (!gate.ok) {
     setCallout(signupCalloutEl, gate.message, "error");
@@ -2195,6 +2223,7 @@ async function accountSetupSaveExpenseClick() {
                 type: "checking",
                 starting_balance: accountStartingBalance,
                 starting_balance_date: accountStartingBalanceDate,
+                balance_threshold_min: gate.cushionThresholdMin,
               },
             }
           : {}),
@@ -2246,6 +2275,7 @@ function hydrateAccountSetupDraft() {
     const accNameEl = document.getElementById("accountName");
     const accBalEl = document.getElementById("accountStartingBalance");
     const accDateEl = document.getElementById("accountStartingBalanceDate");
+    const accCushionEl = document.getElementById("accountSetupKeepInChecking");
     const txAmountEl = document.getElementById("asTxAmount");
     const txCategoryEl = document.getElementById("asTxCategory");
     const txDateEl = document.getElementById("asTxDate");
@@ -2261,6 +2291,11 @@ function hydrateAccountSetupDraft() {
       if (accNameEl && o.account.name) accNameEl.value = String(o.account.name);
       if (accBalEl && o.account.starting_balance != null) accBalEl.value = String(o.account.starting_balance);
       if (accDateEl && o.account.starting_balance_date) accDateEl.value = String(o.account.starting_balance_date);
+      if (accCushionEl && o.account && Object.prototype.hasOwnProperty.call(o.account, "balance_threshold_min")) {
+        const m = o.account.balance_threshold_min;
+        accCushionEl.value =
+          m != null && m !== "" && Number.isFinite(Number(m)) ? String(Number(m)) : "";
+      }
     }
     const lastTx = Array.isArray(o.transactions) && o.transactions.length ? o.transactions[o.transactions.length - 1] : o.transaction;
     if (lastTx) {
@@ -2387,15 +2422,24 @@ function readAccountSetupDraft() {
   if (!raw) return null;
   try {
     const o = JSON.parse(raw);
-    const account =
-      o && o.account && o.account.name && o.account.starting_balance_date != null
-        ? {
-            name: String(o.account.name),
-            type: String(o.account.type || "checking"),
-            starting_balance: Number(o.account.starting_balance ?? 0),
-            starting_balance_date: String(o.account.starting_balance_date),
-          }
-        : null;
+    const rawAcc =
+      o && o.account && o.account.name && o.account.starting_balance_date != null ? o.account : null;
+    const account = rawAcc
+      ? {
+          name: String(rawAcc.name),
+          type: String(rawAcc.type || "checking"),
+          starting_balance: Number(rawAcc.starting_balance ?? 0),
+          starting_balance_date: String(rawAcc.starting_balance_date),
+          ...(Object.prototype.hasOwnProperty.call(rawAcc, "balance_threshold_min")
+            ? {
+                balance_threshold_min:
+                  rawAcc.balance_threshold_min == null || rawAcc.balance_threshold_min === ""
+                    ? null
+                    : Number(rawAcc.balance_threshold_min),
+              }
+            : {}),
+        }
+      : null;
     const txListRaw = Array.isArray(o?.transactions) ? o.transactions : o?.transaction ? [o.transaction] : [];
     const transactions = txListRaw
       .map((t) => ({
@@ -2564,6 +2608,35 @@ async function maybeCreateFirstTransactionFromDraft(draft, createdAccountId) {
   };
 }
 
+async function maybePatchForecastThresholdsFromDraft(draft) {
+  const raw = draft?.account?.balance_threshold_min;
+  const minNum = Number(raw);
+  if (raw === undefined || !Number.isFinite(minNum) || minNum <= 0) return { ok: true, skipped: true };
+  let familyId = null;
+  try {
+    const fams = await requestWithRetry("/api/families", "GET", null, { maxMs: 12000 });
+    if (!fams.ok || !Array.isArray(fams.data) || fams.data.length === 0) {
+      return { ok: false, error: "no_family" };
+    }
+    familyId = fams.data[0]?.id;
+    if (!familyId) return { ok: false, error: "no_family" };
+  } catch (e) {
+    return { ok: false, error: (e && e.message) || "families_fetch_failed" };
+  }
+  try {
+    const r = await requestWithRetry(
+      `/api/families/${encodeURIComponent(String(familyId))}/forecast-thresholds`,
+      "PATCH",
+      { balance_threshold_min: minNum },
+      { maxMs: 12000 }
+    );
+    if (r && r.ok) return { ok: true, skipped: false };
+    return { ok: false, error: `threshold_patch_${r?.status || "network"}` };
+  } catch (e) {
+    return { ok: false, error: (e && e.message) || "threshold_patch_threw" };
+  }
+}
+
 async function doSignup() {
   if (!signupBtn) return;
   setBusy(true);
@@ -2652,6 +2725,13 @@ async function doSignup() {
     const accountResult = await maybeCreateFirstAccountFromDraft(draft);
     const createdAccountId = accountResult && accountResult.accountId ? accountResult.accountId : null;
     const txResult = await maybeCreateFirstTransactionFromDraft(draft, createdAccountId);
+
+    const thresholdResult = await maybePatchForecastThresholdsFromDraft(draft);
+    if (thresholdResult && !thresholdResult.ok && !thresholdResult.skipped) {
+      try {
+        if (window.console && console.warn) console.warn("[signup] forecast threshold update failed", thresholdResult);
+      } catch (_) {}
+    }
 
     // Only clear the draft when everything that should have been created actually was.
     // Otherwise we leave it in sessionStorage so the /calendar bootstrap can finish the job.
@@ -2929,6 +3009,7 @@ function onSignupPrimaryClick() {
           accountStartingBalanceRaw,
           accountStartingBalance,
           accountStartingBalanceDate,
+          checkingCushionRaw: accountSetupCheckingCushionRawFromDom(),
         });
         if (!gate.ok) {
           setCallout(signupCalloutEl, gate.message, "error");
@@ -2955,6 +3036,7 @@ function onSignupPrimaryClick() {
                       type: "checking",
                       starting_balance: accountStartingBalance,
                       starting_balance_date: accountStartingBalanceDate,
+                      balance_threshold_min: gate.cushionThresholdMin,
                     },
                   }
                 : {}),
@@ -3019,6 +3101,7 @@ function onSignupPrimaryClick() {
           accountStartingBalanceRaw,
           accountStartingBalance,
           accountStartingBalanceDate,
+          checkingCushionRaw: accountSetupCheckingCushionRawFromDom(),
         });
         if (!gate.ok) {
           setCallout(signupCalloutEl, gate.message, "error");
@@ -3035,6 +3118,7 @@ function onSignupPrimaryClick() {
                     type: "checking",
                     starting_balance: accountStartingBalance,
                     starting_balance_date: accountStartingBalanceDate,
+                    balance_threshold_min: gate.cushionThresholdMin,
                   },
                 }
               : {}),
@@ -3108,6 +3192,18 @@ if (accountStartingBalanceEl) {
     if (!isAccountSetupPath() || !document.getElementById("accountSetupWizard")) return;
     if (getAccountSetupWizardStep() !== 1) return;
     // Mirror clicking "Next" from the starting balance field.
+    e.preventDefault();
+    onSignupPrimaryClick();
+  });
+}
+
+const accountSetupKeepInCheckingEl = document.getElementById("accountSetupKeepInChecking");
+if (accountSetupKeepInCheckingEl) {
+  accountSetupKeepInCheckingEl.addEventListener("keydown", (e) => {
+    const k = String(e.key || "");
+    if (k !== "Enter" && k !== "NumpadEnter" && (e.keyCode || 0) !== 13) return;
+    if (!isAccountSetupPath() || !document.getElementById("accountSetupWizard")) return;
+    if (getAccountSetupWizardStep() !== 1) return;
     e.preventDefault();
     onSignupPrimaryClick();
   });

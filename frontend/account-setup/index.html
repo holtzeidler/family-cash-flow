@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=446" />
+    <link rel="stylesheet" href="../styles.css?v=463" />
   </head>
   <body class="login-page signup-page account-setup-page">
     <div class="container">
@@ -132,6 +132,32 @@
                       <div class="form-row-h__field">
                         <input id="accountStartingBalanceDate" type="date" />
                         <p class="account-setup-field-hint">Usually today.</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div style="height:10px;"></div>
+                  <div class="row">
+                    <div class="form-row-h">
+                      <div class="form-row-h__label">
+                        <label for="accountSetupKeepInChecking">How much would you like to keep in checking?</label>
+                      </div>
+                      <div class="form-row-h__field">
+                        <div class="money-input">
+                          <span class="money-input__prefix" aria-hidden="true">$</span>
+                          <input
+                            id="accountSetupKeepInChecking"
+                            type="text"
+                            inputmode="decimal"
+                            autocomplete="off"
+                            value="1000"
+                            placeholder="e.g. 1,500"
+                            aria-describedby="accountSetupKeepInCheckingHints"
+                          />
+                        </div>
+                        <div id="accountSetupKeepInCheckingHints">
+                          <p class="account-setup-field-hint">BalanceWhiz uses this to warn you before cash gets tight.</p>
+                          <p class="account-setup-field-hint account-setup-field-hint--cushion">Most people choose $500–$3,000.</p>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -636,6 +662,6 @@
       </div>
     </div>
 
-    <script src="../signup/signup.js?v=90"></script>
+    <script src="../signup/signup.js?v=91"></script>
   </body>
 </html>

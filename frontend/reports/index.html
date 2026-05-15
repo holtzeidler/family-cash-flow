@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=457" />
+    <link rel="stylesheet" href="../styles.css?v=464" />
   </head>
   <body>
     <div class="container">
@@ -76,10 +76,6 @@
               </button>
               <button type="button" class="settings-nav-item" data-settings-key="categories">
                 <span class="settings-nav-item__label">Categories</span>
-                <span class="settings-nav-item__chev" aria-hidden="true">▸</span>
-              </button>
-              <button type="button" class="settings-nav-item" data-settings-key="forecastRules">
-                <span class="settings-nav-item__label">Forecast Rules</span>
                 <span class="settings-nav-item__chev" aria-hidden="true">▸</span>
               </button>
               <button type="button" class="settings-nav-item" data-settings-key="preferences">
@@ -500,26 +496,6 @@
                   </div>
                 </div>
 
-                <div class="settings-pane settings-pane--forecast-rules-intro" data-settings-pane="forecastRules" hidden>
-                  <div class="categories-manager__shell">
-                    <header class="settings-section-head">
-                      <h2 class="settings-section-title">Forecast Rules</h2>
-                      <p class="settings-section-lede">How BalanceWhiz rolls your cash flow into the calendar and transaction lists.</p>
-                    </header>
-                    <section class="prefs-card prefs-card--tinted categories-manager__forecast-card" aria-labelledby="forecastRulesExplTitle">
-                      <h3 class="prefs-card__title" id="forecastRulesExplTitle">What “rules” means here</h3>
-                      <p class="prefs-card__lede">
-                        Your <strong>categories</strong> control how income, expenses, and transfers read across the app. The <strong>Forecast</strong> view groups scheduled and
-                        actual activity using those labels so long-range balances stay scannable.
-                      </p>
-                      <p class="categories-manager__forecast-p">
-                        Actual lines from the bank use the categories you assign in <strong>Transactions</strong>. Edit names, groups, and order anytime under
-                        <strong>Categories</strong> — nothing here needs a separate “rules engine.”
-                      </p>
-                    </section>
-                  </div>
-                </div>
-
                 <div class="settings-pane" data-settings-pane="familySharing" hidden>
                   <header class="settings-section-head">
                     <h2 class="settings-section-title">Household</h2>
@@ -789,21 +765,22 @@
                     <span id="chartDaysLabel" class="reports-chart-daysmeta" hidden>30 days</span>
                   </div>
                   <div id="reportsBalanceLegend" class="reports-legend reports-legend--kpis" aria-live="polite"></div>
+                  <p class="reports-chart-explainer">
+                    The line shows your projected checking balance after each bill, paycheck, and transfer clears for the dates in view.
+                  </p>
                   <div id="chartErr" class="error"></div>
                   <div class="projection-chart-wrap projection-chart-wrap--reports">
                     <div class="reports-chart-gridfill" aria-hidden="true"></div>
                     <div id="projectionChartEmpty" class="projection-chart-empty" style="display: none" aria-live="polite"></div>
-                    <canvas id="projectionChartCanvas" class="projection-chart-canvas" height="400"></canvas>
+                    <canvas id="projectionChartCanvas" class="projection-chart-canvas" height="438"></canvas>
                   </div>
+                  <div
+                    class="reports-card__takeaway reports-card__takeaway--guidance"
+                    id="reportsBalanceTakeaway"
+                    hidden
+                    aria-live="polite"
+                  ></div>
                 </div>
-              </section>
-
-              <section class="card reports-card" id="reportCashInsights">
-                <div class="reports-card__head">
-                  <h2 class="reports-card__title">Cash insights</h2>
-                  <p class="reports-card__desc">High-priority guidance pulled from this forecast range so you can see what changed and what to watch next.</p>
-                </div>
-                <div class="reports-card__takeaway reports-card__takeaway--guidance" id="reportsCashInsightsBody" hidden aria-live="polite"></div>
               </section>
 
               <section class="card reports-card" id="reportCashTiming">
@@ -811,21 +788,22 @@
                   <div class="reports-cash-timing-head__text">
                     <h2 class="reports-card__title">Income vs. expense timing</h2>
                     <p class="reports-card__desc">See which weeks are cash-heavy and where timing gets tight.</p>
+                    <p class="reports-cash-timing-hint">Compare when income and expenses occur throughout the month.</p>
                     <div class="meta reports-cash-timing-meta" id="incomeExpenseSubtitle">—</div>
                   </div>
                   <div class="reports-ie-chart-toolbar" role="group" aria-label="Chart options">
-                    <div class="reports-ie-seg" role="group" aria-label="Bar style">
-                      <button type="button" id="incomeExpenseGroupedBtn" class="reports-ie-toggle">Grouped</button>
-                      <button type="button" id="incomeExpenseStackedBtn" class="reports-ie-toggle is-active">Stacked</button>
+                    <div class="reports-ie-seg" role="group" aria-label="Bar layout">
+                      <button type="button" id="incomeExpenseGroupedBtn" class="reports-ie-toggle">Grouped Bars</button>
+                      <button type="button" id="incomeExpenseStackedBtn" class="reports-ie-toggle is-active">Stacked Bars</button>
                     </div>
                     <button
                       type="button"
                       id="incomeExpenseNetToggle"
                       class="reports-ie-toggle reports-ie-toggle--net"
                       aria-pressed="false"
-                      title="Show weekly net (income minus expenses)"
+                      title="Overlay weekly net cash-flow trend (income minus expenses)"
                     >
-                      Net line
+                      Net Trend
                     </button>
                     <button
                       type="button"
@@ -853,10 +831,10 @@
 
               <section class="card reports-card" id="reportSafeTransfer">
                 <div class="reports-card__head">
-                  <h2 class="reports-card__title">Safe to move outlook</h2>
-                  <p class="reports-card__desc">How much money can safely leave checking while staying above your minimum balance.</p>
+                  <h2 class="reports-card__title">Safe to Move</h2>
+                  <p class="reports-card__desc">Shows how much money can safely leave checking while protecting your minimum balance.</p>
                 </div>
-                <div id="reportsSafeTransferStats" class="reports-mini-stats" aria-live="polite"></div>
+                <div id="reportsSafeTransferStats" aria-live="polite"></div>
                 <div id="reportsSafeTransferInsight" class="reports-safe-transfer-insight" hidden aria-live="polite"></div>
                 <div class="projection-chart-wrap projection-chart-wrap--reports projection-chart-wrap--short">
                   <div id="reportsSafeTransferEmpty" class="projection-chart-empty" style="display: none" aria-live="polite"></div>
@@ -867,31 +845,15 @@
 
               <section class="card reports-card" id="reportRiskHeatmap">
                 <div class="reports-card__head">
-                  <h2 class="reports-card__title">Cash pressure calendar</h2>
-                  <p class="reports-card__desc">See which days carry cash pressure so you can adjust before it builds.</p>
+                  <h2 class="reports-card__title">Risk Calendar</h2>
+                  <p class="reports-card__desc">See when projected balances enter warning or negative territory.</p>
                 </div>
                 <div id="reportsRiskHeatmapInsight" class="reports-risk-insight" aria-live="polite"></div>
-                <div class="reports-risk-legend reports-risk-legend--rich" aria-label="Heatmap legend">
-                  <span class="reports-risk-legend__item">
-                    <i class="reports-risk-dot reports-risk-dot--safe"></i>
-                    <span class="reports-risk-legend__label">Comfortable</span>
-                    <span class="reports-risk-legend__meta">Above minimum balance</span>
-                  </span>
-                  <span class="reports-risk-legend__item">
-                    <i class="reports-risk-dot reports-risk-dot--caution"></i>
-                    <span class="reports-risk-legend__label">Near minimum balance</span>
-                    <span class="reports-risk-legend__meta">Watch</span>
-                  </span>
-                  <span class="reports-risk-legend__item">
-                    <i class="reports-risk-dot reports-risk-dot--low"></i>
-                    <span class="reports-risk-legend__label">Below minimum balance</span>
-                    <span class="reports-risk-legend__meta">Tight</span>
-                  </span>
-                  <span class="reports-risk-legend__item">
-                    <i class="reports-risk-dot reports-risk-dot--critical"></i>
-                    <span class="reports-risk-legend__label">Negative</span>
-                    <span class="reports-risk-legend__meta">Below zero</span>
-                  </span>
+                <div class="reports-risk-legend reports-risk-legend--compact" aria-hidden="true">
+                  <span><i class="reports-risk-dot reports-risk-dot--safe"></i> Comfortable</span>
+                  <span><i class="reports-risk-dot reports-risk-dot--caution"></i> Near minimum</span>
+                  <span><i class="reports-risk-dot reports-risk-dot--below"></i> Below minimum</span>
+                  <span><i class="reports-risk-dot reports-risk-dot--neg"></i> Negative</span>
                 </div>
                 <div class="reports-risk-layout">
                   <div class="reports-risk-cal-wrap">
@@ -904,10 +866,10 @@
                       <span>Sat</span>
                       <span>Sun</span>
                     </div>
-                    <div id="reportsRiskHeatmapGrid" class="reports-risk-grid" aria-label="Balance risk by day"></div>
+                    <div id="reportsRiskHeatmapGrid" class="reports-risk-grid" aria-label="Projected balances by day"></div>
                   </div>
                   <aside id="reportsRiskHeatmapDetail" class="reports-risk-detail" aria-live="polite" aria-label="Day details">
-                    <div class="reports-risk-detail__hint">Hover or select a day to see what happened, what drove it, and what could help.</div>
+                    <div class="reports-risk-detail__hint">Hover or select a day to see projected balance, what drove it, and what could help.</div>
                   </aside>
                 </div>
                 <div id="reportsRiskHeatmapAction" class="reports-risk-action" hidden></div>
@@ -946,14 +908,14 @@
                   </div>
                 </div>
                 <div class="reports-ob-table-head">
-                  <div class="reports-ob-table-head__title">All recurring obligations</div>
+                  <div class="reports-ob-table-head__title">Recurring bills &amp; commitments</div>
                   <div class="reports-obligation-toolbar reports-obligation-toolbar--compact">
                     <label class="reports-obligation-field">
                       <span class="reports-obligation-field__k">Sort</span>
                       <select id="reportsObligationSort" class="reports-obligation-select">
                         <option value="next" selected>Next due date</option>
-                        <option value="monthly_desc">Largest monthly (est.)</option>
-                        <option value="monthly_asc">Smallest monthly (est.)</option>
+                      <option value="monthly_desc">Largest est. monthly</option>
+                      <option value="monthly_asc">Smallest est. monthly</option>
                         <option value="amount_desc">Largest payment</option>
                       </select>
                     </label>
@@ -977,7 +939,7 @@
                         <th scope="col" class="num">Amount</th>
                         <th scope="col">Next</th>
                         <th scope="col" class="reports-ob-freq-col">Frequency</th>
-                        <th scope="col" class="num reports-ob-est-col">Monthly est.</th>
+                        <th scope="col" class="num reports-ob-est-col">Est. / mo</th>
                       </tr>
                     </thead>
                     <tbody id="reportsObligationBody"></tbody>
@@ -996,15 +958,15 @@
                   <div class="reports-pressure-narrative__rec" id="reportsPressureNarrativeRec"></div>
                 </div>
                 <div id="reportsPressureSummary" class="reports-ob-summary reports-ob-summary--pressure" hidden>
-                  <div class="reports-ob-card" role="status">
+                  <div class="reports-ob-card reports-ob-card--pressure" role="status">
                     <div class="reports-ob-card__k">Largest upcoming payment</div>
                     <div class="reports-ob-card__v" id="reportsPressureStatLargest">—</div>
                   </div>
-                  <div class="reports-ob-card" role="status">
+                  <div class="reports-ob-card reports-ob-card--pressure" role="status">
                     <div class="reports-ob-card__k">Lowest projected balance</div>
                     <div class="reports-ob-card__v" id="reportsPressureStatLowBal">—</div>
                   </div>
-                  <div class="reports-ob-card" role="status">
+                  <div class="reports-ob-card reports-ob-card--pressure" role="status">
                     <div class="reports-ob-card__k">High-impact dates</div>
                     <div class="reports-ob-card__v" id="reportsPressureStatCount">—</div>
                   </div>
@@ -1406,8 +1368,8 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="../app.js?v=296"></script>
+    <script src="../app.js?v=309"></script>
     <script src="../feedback.js?v=4" defer></script>
-    <script src="../tour.js?v=4" defer></script>
+    <script src="../tour.js?v=9" defer></script>
   </body>
 </html>

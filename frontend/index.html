@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=456" />
+    <link rel="stylesheet" href="./styles.css?v=463" />
   </head>
   <body class="landing-page">
     <div class="container">
@@ -42,7 +42,8 @@
             <div class="landing-hero__copy">
               <h2 class="landing-hero__text">Know what’s safe before bills hit.</h2>
               <p class="landing-hero__sub">See your projected checking balance before upcoming bills and paychecks land.</p>
-              <a href="https://balancewhiz.com/account-setup/?fresh=1" class="landing-hero__cta">Start your forecast</a>
+              <a href="https://balancewhiz.com/account-setup/?fresh=1" class="landing-hero__cta">Start forecasting</a>
+              <p class="landing-hero__reassurance">No bank connection required.</p>
             </div>
             <div class="landing-hero__viz" aria-label="Illustrative forecast preview">
               <div class="landing-hero-viz">
@@ -85,9 +86,8 @@
 
         <section class="landing-insight" aria-label="Example forecast insight">
           <div class="landing-insight__card">
-            <p class="landing-insight__eyebrow">Cash pressure note</p>
-            <div class="landing-insight__body">
-              <span class="landing-insight__icon" aria-hidden="true" title="Heads up">
+            <div class="landing-insight__iconCol" aria-hidden="true">
+              <span class="landing-insight__icon" title="Heads up">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M12 9v4M12 17h.01" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
                   <path
@@ -98,6 +98,9 @@
                   />
                 </svg>
               </span>
+            </div>
+            <div class="landing-insight__main">
+              <p class="landing-insight__label">Forecast alert</p>
               <p class="landing-insight__copy">
                 May 20 gets close to your $1,000 minimum balance after a large card payment.
               </p>
@@ -285,37 +288,40 @@
           </div>
         </section>
 
-        <section class="landing-how" aria-label="How it works">
+        <section id="how" class="landing-how" aria-label="How it works">
           <div class="landing-how__copy">
-            <div class="landing-how__title">How it works</div>
-            <ol class="landing-how__steps">
-              <li>
-                <div class="landing-how__stepTitle">Add bills and income</div>
-                <div class="landing-how__stepBody">Baseline in minutes.</div>
-              </li>
-              <li>
-                <div class="landing-how__stepTitle">Reconcile forecast</div>
-                <div class="landing-how__stepBody">Keep projected balance aligned with reality.</div>
-              </li>
-              <li>
-                <div class="landing-how__stepTitle">Use Safe to move guidance</div>
-                <div class="landing-how__stepBody">Move money when the calendar gives you room.</div>
-              </li>
-            </ol>
+            <h2 class="landing-how__title">How it works</h2>
+            <div class="landing-how__grid" role="list">
+              <article class="landing-how__card" role="listitem">
+                <div class="landing-how__stepMark" aria-hidden="true">1</div>
+                <h3 class="landing-how__cardTitle">Add bills and income</h3>
+                <p class="landing-how__cardBody">Set a quick baseline in just a few minutes.</p>
+              </article>
+              <article class="landing-how__card" role="listitem">
+                <div class="landing-how__stepMark" aria-hidden="true">2</div>
+                <h3 class="landing-how__cardTitle">Reconcile your forecast</h3>
+                <p class="landing-how__cardBody">Keep projected balances aligned with what actually cleared.</p>
+              </article>
+              <article class="landing-how__card" role="listitem">
+                <div class="landing-how__stepMark" aria-hidden="true">3</div>
+                <h3 class="landing-how__cardTitle">Use Safe to move</h3>
+                <p class="landing-how__cardBody">Shift money when your calendar shows real room.</p>
+              </article>
+            </div>
           </div>
         </section>
 
-        <section class="landing-offer landing-offer--calm" aria-label="Start your forecast">
+        <section class="landing-offer landing-offer--calm" aria-label="Start forecasting">
           <div class="landing-offer__panel">
             <div class="landing-offer__copy">
-              <h3 class="landing-offer__heading">Start your forecast</h3>
+              <h3 class="landing-offer__heading">Start forecasting</h3>
               <p class="landing-offer__support">14-day free trial. No bank connection required.</p>
               <ul class="landing-offer__bullets" aria-label="Offer details">
                 <li>Billing starts after trial</li>
                 <li>Live in minutes</li>
                 <li>Cancel anytime</li>
               </ul>
-              <a class="landing-offer__cta" href="https://balancewhiz.com/account-setup/?fresh=1">Start your forecast</a>
+              <a class="landing-offer__cta" href="https://balancewhiz.com/account-setup/?fresh=1">Start forecasting</a>
             </div>
           </div>
         </section>
@@ -346,7 +352,6 @@
               <ul class="app-footer__list">
                 <li><a class="app-footer__link" href="/#how">How It Works</a></li>
                 <li><a class="app-footer__link" href="./plans/">Pricing</a></li>
-                <li><span class="app-footer__text">Security (coming soon)</span></li>
                 <li><a class="app-footer__link" href="./help.html">FAQ</a></li>
               </ul>
             </nav>

@@ -3,18 +3,18 @@
  *
  * A lightweight 4-step spotlight tour shown to a user after they finish account
  * setup. The goal is to teach the BalanceWhiz mental model quickly:
- * where to add items, how the minimum balance works, how to keep the forecast
- * accurate, and why variable bills need occasional attention.
+ * where to add items, which bills change month to month, when cash gets tight,
+ * and how to lightly maintain the forecast over time.
  *
  * Entry points:
  *   - window.BW.tour.start()        Begin the tour now (called from the
- *                                   "Start quick tour" CTA of the forecast-
+ *                                   "Take the Tour" CTA of the forecast-
  *                                   ready modal, or from Settings/Help).
  *   - window.BW.tour.reset()        Clear the localStorage "seen" flag.
  *   - window.BW.tour.hasSeen()      Returns true if the user has already
  *                                   completed or explicitly skipped the tour.
  *   - window.BW.tour.markSkipped()  Mark the tour as skipped (used by the
- *                                   intro modal's "Skip for now" CTA).
+ *                                   intro modal's "Go to Forecast" CTA).
  *
  * Visual approach (per design direction):
  *   - A very light backdrop (~18% opacity) instead of heavy darkening.
@@ -48,38 +48,56 @@
    * gracefully and the tour advances.
    */
   /**
-   * Tour progression: Input → Awareness → Accuracy → Variable attention.
+   * Tour progression: Input → Variable attention → Awareness → Accuracy.
    *
-   * Step 1 (Input)     — anchor the calendar grid: where you record what's
-   *                      coming and going.
-   * Step 2 (Awareness) — anchor the Cash Outlook card on the left sidebar:
-   *                      this is the user's warning system.
-   * Step 3 (Accuracy)  — anchor the day-level reconcile entry point: check
-   *                      that the forecast still matches the real checking balance.
-   * Step 4 (Attention) — anchor the Needs review panel: variable amounts need
-   *                      occasional updates as real statements arrive.
+   * Step 1 (Input)     — calendar grid: add bills, paychecks, and transfers.
+   * Step 2 (Attention) — Needs review: variable amounts and low maintenance.
+   * Step 3 (Awareness) — Cash Outlook: why the forecast matters (alerts).
+   * Step 4 (Accuracy)  — reconcile: lightweight maintenance to close the tour.
    */
   const STEPS = [
     {
       id: "calendar-add",
       findTarget: findFutureCalendarCellTarget,
       title: "Add bills, paychecks, and transfers",
-      context: "Quick overview before you begin.",
       body:
-        "Click any calendar day to add income, bills, transfers, or one-time spending. Start simple. You can refine later.",
+        "Click any day to add bills, paychecks, transfers, or spending.\nStart simple — you can refine everything later.",
       ctaLabel: "Next",
       placement: ["below", "above", "right", "left"],
       retryable: true,
       targetExtraClass: "bw-tour-target--calendar-add",
     },
     {
+      id: "needs-review",
+      findTarget: findNeedsReviewTarget,
+      title: "Some bills change month to month — and that's okay",
+      body:
+        'When you mark an item as "amount varies month to month," BalanceWhiz reminds you to update it later.',
+      instruction: "Variable items appear in Needs Review when it's time to update them.",
+      helperList: {
+        lead: "Good for",
+        items: ["Credit card payments", "Utilities", "Groceries or irregular spending"],
+      },
+      note: "Everything else can stay on autopilot.",
+      ctaLabel: "Next",
+      placement: ["right", "left", "below", "above"],
+      targetExtraClass: "bw-tour-target--needs-review",
+      dimSelector: ".sidebar",
+      supportHighlights: [
+        {
+          findEl: findFirstPendingReviewItem,
+          className: "bw-tour-support-highlight--pending-item",
+        },
+      ],
+    },
+    {
       id: "cash-outlook",
       findTarget: findCashOutlookTarget,
       title: "Know when cash gets tight",
-      context: "Quick overview before you begin.",
-      body: "BalanceWhiz flags when your projected balance drops below your minimum balance.",
-      helper: 'Example: "Alert me if projected balance falls below $1,000."',
-      note: "Your minimum balance can be updated anytime in Settings.",
+      context: "BalanceWhiz watches for low-balance days.",
+      body: "You'll get alerts before your balance drops too low.",
+      helperExample: { label: "Example minimum balance", amount: "$1,000" },
+      note: "You can change this anytime.",
       ctaLabel: "Next",
       placement: ["right", "left", "below", "above"],
       targetExtraClass: "bw-tour-target--cash-outlook",
@@ -95,33 +113,20 @@
       id: "reconcile",
       findTarget: findExpectedCalendarConfirmAnchor,
       title: "Keep your forecast accurate",
-      body:
-        "As life changes, quickly reconcile your forecast to your real checking balance so projected balances stay reliable.",
-      helper: "Think of this as checking that your forecast still matches reality.",
-      note: "Small updates keep your projected balances trustworthy.",
-      ctaLabel: "Next",
+      body: "Update your forecast occasionally so it stays aligned with your real checking balance.",
+      instruction: "Click any calendar day to mark your balance as reconciled.",
+      reconcilePreview: {
+        dayNum: "17",
+        dayLabel: "Thu",
+        status: "Reconciled through May 17",
+        balanceLabel: "Actual checking balance",
+        balance: "$3,240",
+      },
+      note: "You're set — reconcile occasionally and update variable bills when they change.",
+      ctaLabel: "Start forecasting",
       placement: ["below", "above", "right", "left"],
       retryable: true,
       targetExtraClass: "bw-tour-target--reconcile-head",
-    },
-    {
-      id: "needs-review",
-      findTarget: findNeedsReviewTarget,
-      title: "Some bills change month to month",
-      body:
-        "BalanceWhiz flags estimated items like credit cards, utilities, or irregular spending. Update them when real amounts arrive.",
-      helper: "Examples: credit card payments, electric bills, irregular expenses.",
-      note: "You only need to update the items that change.",
-      ctaLabel: "Start forecasting",
-      placement: ["right", "left", "below", "above"],
-      targetExtraClass: "bw-tour-target--needs-review",
-      dimSelector: ".sidebar",
-      supportHighlights: [
-        {
-          findEl: findFirstPendingReviewItem,
-          className: "bw-tour-support-highlight--pending-item",
-        },
-      ],
     },
   ];
 
@@ -138,7 +143,7 @@
    * Returns null if the grid hasn't rendered any cells yet (caller will retry).
    */
   /**
-   * Pick the best Cash Outlook anchor for Step 2. Preference order:
+   * Pick the best Cash Outlook anchor for Step 3. Preference order:
    *   1. The active cash pressure alert
    *      (`#sidebarLowBalanceBanner`) if it has rendered content.
    *   2. The high-balance equivalent (`#sidebarHighBalanceBanner`).
@@ -238,6 +243,64 @@
     return isVisible(item) ? item : null;
   }
 
+  function renderTourReconcilePreview(container, preview) {
+    container.replaceChildren();
+    const card = document.createElement("div");
+    card.className = "bw-tour-tooltip__reconcile-preview";
+    const statusText = `${preview.status || ""}. ${preview.balanceLabel || ""}: ${preview.balance || ""}`;
+    card.setAttribute("role", "img");
+    card.setAttribute("aria-label", statusText.trim());
+
+    const dayRow = document.createElement("div");
+    dayRow.className = "bw-tour-tooltip__reconcile-preview-dayrow";
+    const dayNum = document.createElement("span");
+    dayNum.className = "bw-tour-tooltip__reconcile-preview-daynum";
+    dayNum.textContent = String(preview.dayNum || "17");
+    const dayMeta = document.createElement("span");
+    dayMeta.className = "bw-tour-tooltip__reconcile-preview-daymeta";
+    dayMeta.textContent = String(preview.dayLabel || "");
+    const check = document.createElement("span");
+    check.className = "bw-tour-tooltip__reconcile-preview-check";
+    check.setAttribute("aria-hidden", "true");
+    check.textContent = "✓";
+    dayRow.append(dayNum, dayMeta, check);
+
+    const status = document.createElement("div");
+    status.className = "bw-tour-tooltip__reconcile-preview-status";
+    status.textContent = String(preview.status || "");
+
+    const balRow = document.createElement("div");
+    balRow.className = "bw-tour-tooltip__reconcile-preview-balance";
+    const balLabel = document.createElement("span");
+    balLabel.className = "bw-tour-tooltip__reconcile-preview-balance-k";
+    balLabel.textContent = String(preview.balanceLabel || "");
+    const balVal = document.createElement("span");
+    balVal.className = "bw-tour-tooltip__reconcile-preview-balance-v";
+    balVal.textContent = String(preview.balance || "");
+    balRow.append(balLabel, balVal);
+
+    card.append(dayRow, status, balRow);
+    container.appendChild(card);
+  }
+
+  function renderTourHelperList(container, list) {
+    container.replaceChildren();
+    const wrap = document.createElement("div");
+    wrap.className = "bw-tour-tooltip__helper-list";
+    const lead = document.createElement("div");
+    lead.className = "bw-tour-tooltip__helper-list-lead";
+    lead.textContent = String(list.lead || "Good for");
+    const ul = document.createElement("ul");
+    ul.className = "bw-tour-tooltip__helper-list-items";
+    for (const item of list.items || []) {
+      const li = document.createElement("li");
+      li.textContent = String(item);
+      ul.appendChild(li);
+    }
+    wrap.append(lead, ul);
+    container.appendChild(wrap);
+  }
+
   // ---------------------------------------------------------------------
   // Backdrop + tooltip element lifecycle
   // ---------------------------------------------------------------------
@@ -269,6 +332,7 @@
       <h3 class="bw-tour-tooltip__title" id="bwTourTitle" data-bw-tour-title></h3>
       <p class="bw-tour-tooltip__context" data-bw-tour-context hidden></p>
       <p class="bw-tour-tooltip__body" data-bw-tour-body></p>
+      <p class="bw-tour-tooltip__instruction" data-bw-tour-instruction hidden></p>
       <p class="bw-tour-tooltip__helper" data-bw-tour-helper hidden></p>
       <p class="bw-tour-tooltip__note" data-bw-tour-note hidden></p>
       <div class="bw-tour-tooltip__actions">
@@ -507,9 +571,46 @@
         contextEl.hidden = true;
       }
     }
+    const instructionEl = tooltipEl.querySelector("[data-bw-tour-instruction]");
+    if (instructionEl) {
+      if (step.instruction) {
+        instructionEl.textContent = step.instruction;
+        instructionEl.hidden = false;
+      } else {
+        instructionEl.textContent = "";
+        instructionEl.hidden = true;
+      }
+    }
     const helperEl = tooltipEl.querySelector("[data-bw-tour-helper]");
     if (helperEl) {
-      if (step.helper) {
+      helperEl.classList.remove(
+        "bw-tour-tooltip__helper--example",
+        "bw-tour-tooltip__helper--reconcile-preview",
+        "bw-tour-tooltip__helper--list"
+      );
+      if (step.reconcilePreview) {
+        renderTourReconcilePreview(helperEl, step.reconcilePreview);
+        helperEl.hidden = false;
+        helperEl.classList.add("bw-tour-tooltip__helper--reconcile-preview");
+      } else if (step.helperExample && step.helperExample.amount) {
+        helperEl.replaceChildren();
+        const wrap = document.createElement("span");
+        wrap.className = "bw-tour-tooltip__helper-example";
+        const lab = document.createElement("span");
+        lab.className = "bw-tour-tooltip__helper-example-label";
+        lab.textContent = String(step.helperExample.label || "Example");
+        const amt = document.createElement("span");
+        amt.className = "bw-tour-tooltip__helper-example-amount";
+        amt.textContent = String(step.helperExample.amount);
+        wrap.append(lab, amt);
+        helperEl.appendChild(wrap);
+        helperEl.hidden = false;
+        helperEl.classList.add("bw-tour-tooltip__helper--example");
+      } else if (step.helperList && Array.isArray(step.helperList.items) && step.helperList.items.length) {
+        renderTourHelperList(helperEl, step.helperList);
+        helperEl.hidden = false;
+        helperEl.classList.add("bw-tour-tooltip__helper--list");
+      } else if (step.helper) {
         helperEl.textContent = step.helper;
         helperEl.hidden = false;
       } else {

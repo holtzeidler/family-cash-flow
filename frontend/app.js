@@ -2077,7 +2077,7 @@ const catReportEnd = document.getElementById("catReportEnd");
 
 // After account creation, we show a one-time "forecast is ready" modal on first calendar load.
 const BW_FORECAST_READY_POPUP_KEY = "bw_forecast_ready_popup";
-const BW_FORECAST_READY_MODAL_VERSION = "7";
+const BW_FORECAST_READY_MODAL_VERSION = "8";
 const catReportYearSelect = document.getElementById("catReportYearSelect");
 const catReportRunBtn = document.getElementById("catReportRunBtn");
 const catReportErr = document.getElementById("catReportErr");
@@ -2132,10 +2132,9 @@ function initReportsLeftNav() {
 
   const sections = [
     {
-      title: "Trendline",
+      title: "Reports",
       items: [
         { id: "chartPanel", label: "Balance Trendline" },
-        { id: "reportCashInsights", label: "Cash Insights" },
         { id: "reportCashTiming", label: "Income vs Expense" },
         { id: "reportSafeTransfer", label: "Safe to Move" },
       ],
@@ -2171,11 +2170,6 @@ function initReportsLeftNav() {
   nav.id = "reportsLeftNav";
   nav.className = "card reports-left-nav reports-left-nav--sidebar";
   nav.setAttribute("aria-label", "Reports");
-
-  const eyebrow = document.createElement("div");
-  eyebrow.className = "reports-left-nav__eyebrow";
-  eyebrow.textContent = "Reports";
-  nav.appendChild(eyebrow);
 
   const list = document.createElement("div");
   list.className = "reports-left-nav__list";
@@ -2491,12 +2485,6 @@ document.querySelectorAll("#settingsViewPanel .settings-nav-item, #settingsSideb
 });
 if (settingsViewPanel) {
   settingsViewPanel.addEventListener("click", (e) => {
-    const jump = e.target && e.target.closest("#settingsJumpForecastRulesBtn");
-    if (jump) {
-      e.preventDefault();
-      activateSettingsSection("forecastRules");
-      return;
-    }
     const uncat = e.target && e.target.closest("#categoriesReviewUncatBtn");
     if (uncat) {
       e.preventDefault();
@@ -3520,14 +3508,14 @@ function mountTxAddFormInSidebar() {
 }
 
 function activateSettingsSection(key) {
-  // Settings IA: Accounts, Categories, Forecast Rules, Preferences, Billing.
+  // Settings IA: Accounts, Categories, Preferences, Billing.
   let k = String(key || "accounts");
   const LEGACY_KEY_MAP = {
     accountDetails: "accounts",
     familySharing: "accounts",
-    // The Forecast Setup → Forecast Rules rename and the move of the
-    // safe-balance threshold into Preferences are reflected here.
-    forecastSetup: "forecastRules",
+    forecastRules: "preferences",
+    // Legacy “Forecast setup” routes to Preferences (thresholds, defaults).
+    forecastSetup: "preferences",
     notifications: "preferences",
     thresholds: "preferences",
   };
@@ -3823,12 +3811,27 @@ if (calendarGrid) {
       return;
     }
 
-    // Click on an empty part of a day cell opens the add transaction modal.
-    // (Expected tx lines stopPropagation in their own handler.)
     const cell = e.target.closest(".cal-cell");
     if (!cell || !calendarGrid.contains(cell)) return;
     const iso = cell.dataset.iso;
     if (!iso) return;
+
+    // Busy days: first click anywhere outside interactive rows expands the list
+    // (matches "+N more" behavior; the "+N more" button still works on its own).
+    if (
+      cell.classList.contains("cal-cell--has-collapsed-rows") &&
+      !e.target.closest(".cal-day-tx-line--expected") &&
+      !e.target.closest(".cal-day-tx-line--start-balance") &&
+      !e.target.closest(".cal-day-more")
+    ) {
+      if (!state.calendarExpandedDays) state.calendarExpandedDays = new Set();
+      state.calendarExpandedDays.add(iso);
+      renderCalendar();
+      return;
+    }
+
+    // Click on an empty part of a day cell opens the add transaction modal.
+    // (Expected tx lines stopPropagation in their own handler.)
     if (alertIfDateBeforeStartingBalance(iso)) return;
     openTxAddModal({ date: iso });
   });
@@ -4365,9 +4368,10 @@ function tmForecastLowInMonthYm(ym) {
   return low;
 }
 
-function tmInsightCard(title, body, extraClass = "") {
+function tmInsightCard(title, body, extraClass = "", opts = {}) {
   const ec = extraClass ? ` ${extraClass}` : "";
-  return `<div class="tm-insight-card${ec}"><div class="tm-insight-card__title">${escapeHtml(title)}</div><div class="tm-insight-card__body">${escapeHtml(body)}</div></div>`;
+  const bodyInner = opts && opts.htmlBody ? body : escapeHtml(body);
+  return `<div class="tm-insight-card${ec}"><div class="tm-insight-card__title">${escapeHtml(title)}</div><div class="tm-insight-card__body">${bodyInner}</div></div>`;
 }
 
 function refreshTmInsights() {
@@ -4386,11 +4390,14 @@ function refreshTmInsights() {
 
   /* One primary insight at a time — variable amounts first when actionable */
   if (varsInRange > 0) {
+    const lead = `${varsInRange} recurring ${varsInRange === 1 ? "item still uses" : "items still use"} placeholder amounts.`;
+    const tail = `Update ${varsInRange === 1 ? "it" : "them"} before ${varsInRange === 1 ? "it affects" : "they affect"} your forecast.`;
     cards.push(
       tmInsightCard(
         "Variable amounts",
-        `${varsInRange} recurring ${varsInRange === 1 ? "item still uses" : "items still use"} placeholder amounts. Update ${varsInRange === 1 ? "it" : "them"} before ${varsInRange === 1 ? "it affects" : "they affect"} your forecast.`,
-        "tm-insight-card--variable"
+        `<strong class="tm-insight-card__lead">${escapeHtml(lead)}</strong> <span class="tm-insight-card__tail">${escapeHtml(tail)}</span>`,
+        "tm-insight-card--variable",
+        { htmlBody: true }
       )
     );
   } else if (uncat > 0) {
@@ -5009,45 +5016,95 @@ function registerProjectionAnnotationPlugins() {
       const yScale = scales.y;
 
       const todayIdx = opts && Number.isFinite(opts.todayIdx) ? Number(opts.todayIdx) : -1;
+      const todayBal = opts && Number.isFinite(opts.todayBal) ? Number(opts.todayBal) : null;
       if (todayIdx >= 0) {
         const x = xScale.getPixelForValue(todayIdx);
         if (x >= chartArea.left && x <= chartArea.right) {
           ctx.save();
-          ctx.strokeStyle = "rgba(11, 61, 46, 0.42)";
-          ctx.setLineDash([3, 4]);
-          ctx.lineWidth = 1;
+          ctx.strokeStyle = "rgba(30, 41, 59, 0.45)";
+          ctx.setLineDash([6, 5]);
+          ctx.lineWidth = 1.85;
           ctx.beginPath();
           ctx.moveTo(x, chartArea.top + 2);
           ctx.lineTo(x, chartArea.bottom);
           ctx.stroke();
           ctx.setLineDash([]);
-          ctx.fillStyle = "rgba(11, 61, 46, 0.92)";
+          if (todayBal != null) {
+            const py = yScale.getPixelForValue(todayBal);
+            if (py >= chartArea.top && py <= chartArea.bottom) {
+              ctx.beginPath();
+              ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
+              ctx.strokeStyle = "rgba(51, 65, 85, 0.35)";
+              ctx.lineWidth = 1.25;
+              ctx.arc(x, py, 4.2, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.stroke();
+              ctx.beginPath();
+              ctx.fillStyle =
+                todayBal >= 0 ? "rgba(11, 61, 46, 0.88)" : "rgba(185, 28, 28, 0.92)";
+              ctx.arc(x, py, 2.1, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
+          const pillPadX = 8;
+          const pillPadY = 4;
+          const pillH = 21;
           ctx.font =
-            '600 10px ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
-          ctx.textBaseline = "top";
-          const labelX = Math.min(chartArea.right - 32, x + 4);
-          ctx.fillText("Today", labelX, chartArea.top + 2);
+            '700 11px ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+          const tw = ctx.measureText("Today").width;
+          const pillW = tw + pillPadX * 2;
+          let pillX = Math.min(chartArea.right - pillW - 3, x + 5);
+          if (pillX < chartArea.left + 2) pillX = chartArea.left + 2;
+          const pillY = chartArea.top + 2;
+          drawRoundedRect(ctx, pillX, pillY, pillW, pillH, 6);
+          ctx.fillStyle = "rgba(255, 255, 255, 0.96)";
+          ctx.fill();
+          ctx.strokeStyle = "rgba(17, 24, 39, 0.2)";
+          ctx.lineWidth = 1.05;
+          ctx.stroke();
+          ctx.fillStyle = "rgba(15, 23, 42, 0.88)";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText("Today", pillX + pillW / 2, pillY + pillH / 2);
           ctx.restore();
         }
       }
 
-      const floor = opts && Number.isFinite(opts.floor) ? Number(opts.floor) : null;
+      const floor =
+        opts && Number.isFinite(opts.floor) ? Number(opts.floor) : null;
+      const floorDrawLine = !!(opts && opts.floorDrawLine);
+      const floorLabelCustom =
+        opts && typeof opts.floorLabel === "string" && opts.floorLabel.trim()
+          ? String(opts.floorLabel).trim()
+          : "";
       if (floor != null) {
         const y = yScale.getPixelForValue(floor);
         if (y >= chartArea.top && y <= chartArea.bottom) {
           ctx.save();
-          ctx.fillStyle = "rgba(100, 116, 139, 0.78)";
+          if (floorDrawLine) {
+            ctx.setLineDash([5, 5]);
+            ctx.strokeStyle = "rgba(71, 85, 105, 0.48)";
+            ctx.lineWidth = 1.4;
+            ctx.beginPath();
+            ctx.moveTo(chartArea.left, y);
+            ctx.lineTo(chartArea.right, y);
+            ctx.stroke();
+            ctx.setLineDash([]);
+          }
+          const label =
+            floorLabelCustom || `Minimum balance $${formatChartMoneyShort(floor)}`;
           ctx.font =
-            '600 9px ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+            '700 9.5px ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
           ctx.textBaseline = "bottom";
           ctx.textAlign = "right";
-          const label = `Minimum balance $${formatChartMoneyShort(floor)}`;
           const pad = 6;
           const txtW = ctx.measureText(label).width;
-          // Subtle background chip so the label stays legible over the grid.
-          ctx.fillStyle = "rgba(248, 250, 252, 0.72)";
-          ctx.fillRect(chartArea.right - txtW - pad - 4, y - 13, txtW + pad + 4, 13);
-          ctx.fillStyle = "rgba(71, 85, 105, 0.78)";
+          ctx.fillStyle = "rgba(252, 252, 253, 0.92)";
+          ctx.fillRect(chartArea.right - txtW - pad - 5, y - 14, txtW + pad + 6, 14);
+          ctx.strokeStyle = "rgba(51, 65, 85, 0.32)";
+          ctx.lineWidth = 1;
+          ctx.strokeRect(chartArea.right - txtW - pad - 5, y - 14, txtW + pad + 6, 14);
+          ctx.fillStyle = "rgba(51, 65, 85, 0.88)";
           ctx.fillText(label, chartArea.right - 4, y - 2);
           ctx.restore();
         }
@@ -5056,9 +5113,6 @@ function registerProjectionAnnotationPlugins() {
       const annotations = (opts && Array.isArray(opts.annotations)) ? opts.annotations : [];
       if (!annotations.length) return;
       ctx.save();
-      ctx.font =
-        '600 9.5px ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
-      ctx.textBaseline = "middle";
 
       // Track label rectangles so we can dodge collisions between markers.
       const placed = [];
@@ -5088,12 +5142,25 @@ function registerProjectionAnnotationPlugins() {
         ctx.arc(px, py, 2.25, 0, Math.PI * 2);
         ctx.fill();
 
-        // Label chip
+        // Label chip (+ optional framing caption beneath the amount)
         const label = String(ann.label || "");
         if (!label) continue;
-        const txtW = ctx.measureText(label).width;
-        const chipW = txtW + PAD_X * 2;
-        const chipH = 14;
+        const caption = String(ann.caption || "").trim();
+        const fontMain =
+          '650 11px ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+        const fontCap =
+          '600 8px ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+        ctx.font = fontMain;
+        const wLabel = ctx.measureText(label).width;
+        let wCap = 0;
+        if (caption) {
+          ctx.font = fontCap;
+          wCap = ctx.measureText(caption).width;
+        }
+        const txtW = Math.max(wLabel, wCap);
+        const chipW = txtW + PAD_X * 2 + 6;
+        const chipH = caption ? 32 : 19;
+        const radius = caption ? 8 : 8;
 
         // Keep labels closer to their points so they read as part of the line.
         let chipX = px + 7;
@@ -5123,8 +5190,8 @@ function registerProjectionAnnotationPlugins() {
 
         // Subtle leader from the point to the chip.
         ctx.save();
-        ctx.strokeStyle = isInflow ? "rgba(4, 120, 87, 0.28)" : "rgba(167, 55, 68, 0.3)";
-        ctx.lineWidth = 1;
+        ctx.strokeStyle = isInflow ? "rgba(4, 120, 87, 0.35)" : "rgba(185, 28, 28, 0.38)";
+        ctx.lineWidth = 1.1;
         const chipCx = chipX <= px ? chipX + chipW : chipX;
         const chipCy = chipY + chipH / 2;
         ctx.beginPath();
@@ -5134,9 +5201,8 @@ function registerProjectionAnnotationPlugins() {
         ctx.restore();
 
         // Chip background
-        const radius = 7;
-        const bg = isInflow ? "rgba(236, 253, 245, 0.9)" : "rgba(254, 242, 242, 0.9)";
-        const bd = isInflow ? "rgba(4, 120, 87, 0.22)" : "rgba(167, 55, 68, 0.24)";
+        const bg = isInflow ? "rgba(236, 253, 245, 0.96)" : "rgba(254, 242, 242, 0.96)";
+        const bd = isInflow ? "rgba(4, 120, 87, 0.28)" : "rgba(185, 28, 28, 0.3)";
         drawRoundedRect(ctx, chipX, chipY, chipW, chipH, radius);
         ctx.fillStyle = bg;
         ctx.fill();
@@ -5144,10 +5210,21 @@ function registerProjectionAnnotationPlugins() {
         ctx.lineWidth = 1;
         ctx.stroke();
 
-        ctx.fillStyle = isInflow ? "rgba(6, 78, 59, 0.88)" : "rgba(127, 29, 29, 0.82)";
         ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(label, chipX + chipW / 2, chipY + chipH / 2);
+        if (caption) {
+          ctx.font = fontMain;
+          ctx.fillStyle = isInflow ? "rgba(6, 78, 59, 0.92)" : "rgba(127, 29, 29, 0.9)";
+          ctx.textBaseline = "middle";
+          ctx.fillText(label, chipX + chipW / 2, chipY + 11);
+          ctx.font = fontCap;
+          ctx.fillStyle = isInflow ? "rgba(6, 95, 70, 0.62)" : "rgba(130, 40, 40, 0.65)";
+          ctx.fillText(caption, chipX + chipW / 2, chipY + 23);
+        } else {
+          ctx.font = fontMain;
+          ctx.fillStyle = isInflow ? "rgba(6, 78, 59, 0.92)" : "rgba(127, 29, 29, 0.9)";
+          ctx.textBaseline = "middle";
+          ctx.fillText(label, chipX + chipW / 2, chipY + chipH / 2);
+        }
       }
       ctx.restore();
     },
@@ -5299,28 +5376,35 @@ function renderIncomeExpenseInsights(agg) {
     }
     if (exp > inc) deficitWeeks++;
   }
-  const parts = [];
+  const cards = [];
   if (maxEI >= 0 && maxE > 0) {
-    parts.push(
-      `<div class="reports-ie-insights__line"><span class="reports-ie-insights__k">Highest expense week</span><span class="reports-ie-insights__v">${escapeHtml(fmtWeekRangeLabel(weeks[maxEI]))} · $${fmtMoney(maxE)}</span></div>`
-    );
+    cards.push(`
+      <div class="reports-ie-card reports-ie-card--expensepeak" aria-label="Highest expense week">
+        <div class="reports-ie-card__label">Highest expense week</div>
+        <div class="reports-ie-card__value reports-ie-card__value--out">$${escapeHtml(fmtMoney(maxE))}</div>
+        <div class="reports-ie-card__period">${escapeHtml(fmtWeekRangeLabel(weeks[maxEI]))}</div>
+      </div>
+    `);
   }
   if (maxNetI >= 0 && maxNet > 0) {
-    parts.push(
-      `<div class="reports-ie-insights__line"><span class="reports-ie-insights__k">Largest positive cash week</span><span class="reports-ie-insights__v">${escapeHtml(fmtWeekRangeLabel(weeks[maxNetI]))} · +$${fmtMoney(maxNet)}</span></div>`
-    );
+    cards.push(`
+      <div class="reports-ie-card reports-ie-card--cashpeak" aria-label="Largest positive cash week">
+        <div class="reports-ie-card__label">Largest positive cash week</div>
+        <div class="reports-ie-card__value reports-ie-card__value--in">+$${escapeHtml(fmtMoney(maxNet))}</div>
+        <div class="reports-ie-card__period">${escapeHtml(fmtWeekRangeLabel(weeks[maxNetI]))}</div>
+      </div>
+    `);
   }
-  if (deficitWeeks > 0) {
-    parts.push(
-      `<div class="reports-ie-insights__note">${deficitWeeks} week${deficitWeeks === 1 ? "" : "s"} with expenses above income</div>`
-    );
-  }
-  if (!parts.length) {
+  const note =
+    deficitWeeks > 0
+      ? `<div class="reports-ie-note">${deficitWeeks} week${deficitWeeks === 1 ? "" : "s"} with expenses above income</div>`
+      : "";
+  if (!cards.length && !note) {
     host.innerHTML = "";
     host.hidden = true;
     return;
   }
-  host.innerHTML = `<div class="reports-ie-insights__inner">${parts.join("")}</div>`;
+  host.innerHTML = `<div class="reports-ie-cards">${cards.join("")}</div>${note}`;
   host.hidden = false;
 }
 
@@ -5328,8 +5412,12 @@ function drawIncomeExpenseChart(agg) {
   if (!incomeExpenseChartCanvas) return;
   if (typeof Chart === "undefined") return;
 
+  ensureIncomeExpenseChartPlugins();
+
   const ctx = incomeExpenseChartCanvas.getContext("2d");
   if (!ctx) return;
+
+  const onReportsView = !!(reportsViewPanel && !reportsViewPanel.hidden);
 
   const useWeeks = Array.isArray(agg?.weeks) && agg.weeks.length > 0;
   const labels = useWeeks
@@ -5354,17 +5442,19 @@ function drawIncomeExpenseChart(agg) {
 
   const expenseBg = expense.map((e, i) => {
     if (!useWeeks) return "rgba(167, 55, 68, 0.62)";
-    const exp = Number(e || 0);
-    if (i === maxExpIdx && maxExp > 0) return "rgba(167, 55, 68, 0.92)";
-    if (expGtInc[i]) return "rgba(185, 28, 28, 0.68)";
-    return "rgba(167, 55, 68, 0.48)";
+    const expv = Number(e || 0);
+    if (i === maxExpIdx && maxExp > 0) return "rgba(153, 27, 27, 0.88)";
+    if (expGtInc[i]) return "rgba(185, 28, 28, 0.72)";
+    return "rgba(167, 55, 68, 0.52)";
   });
   const expenseBorder = expense.map((e, i) => {
-    if (!useWeeks) return "rgba(167, 55, 68, 0.75)";
-    if (i === maxExpIdx && maxExp > 0) return "rgba(127, 29, 29, 0.95)";
-    if (expGtInc[i]) return "rgba(153, 27, 27, 0.85)";
-    return "rgba(167, 55, 68, 0.55)";
+    if (!useWeeks) return "rgba(127, 29, 29, 0.82)";
+    if (i === maxExpIdx && maxExp > 0) return "rgba(99, 16, 16, 0.95)";
+    if (expGtInc[i]) return "rgba(153, 27, 27, 0.9)";
+    return "rgba(167, 55, 68, 0.62)";
   });
+
+  const incomeBg = "rgba(6, 95, 70, 0.72)";
 
   destroyIncomeExpenseChart();
   applyIncomeExpenseToggleUi();
@@ -5375,9 +5465,9 @@ function drawIncomeExpenseChart(agg) {
       type: "line",
       label: "Net",
       data: net,
-      borderColor: "rgba(71, 85, 105, 0.32)",
+      borderColor: "rgba(51, 65, 85, 0.42)",
       backgroundColor: "transparent",
-      borderWidth: 1.25,
+      borderWidth: 1.6,
       borderDash: [5, 4],
       pointRadius: 0,
       tension: 0.12,
@@ -5389,9 +5479,10 @@ function drawIncomeExpenseChart(agg) {
     {
       label: "Income",
       data: income,
-      backgroundColor: "rgba(11, 61, 46, 0.58)",
-      borderColor: "rgba(11, 61, 46, 0.72)",
+      backgroundColor: incomeBg,
+      borderColor: "rgba(4, 64, 48, 0.88)",
       borderWidth: 1,
+      borderSkipped: false,
       stack: incomeExpenseIsStacked ? "stack" : undefined,
       order: 1,
     },
@@ -5406,6 +5497,8 @@ function drawIncomeExpenseChart(agg) {
     }
   );
 
+  const lastBarDatasetIndex = datasets.length - 1;
+
   incomeExpenseChartInstance = new Chart(ctx, {
     type: "bar",
     data: {
@@ -5417,6 +5510,12 @@ function drawIncomeExpenseChart(agg) {
       maintainAspectRatio: false,
       interaction: { mode: "index", intersect: false },
       plugins: {
+        incomeExpenseHighlight: {
+          highlightIndex: useWeeks && maxExpIdx >= 0 && maxExp > 0 ? maxExpIdx : -1,
+        },
+        incomeExpenseDivider: {
+          stacked: !!incomeExpenseIsStacked,
+        },
         legend: {
           display: true,
           position: "top",
@@ -5432,16 +5531,28 @@ function drawIncomeExpenseChart(agg) {
           },
         },
         tooltip: {
+          displayColors: false,
+          padding: 10,
+          filter: (tooltipItem) => tooltipItem.dataset.label === "Expense",
+          titleFont: { size: 12, weight: "700" },
+          bodyFont: { size: 11.5, weight: "500" },
           callbacks: {
             title: (items) => {
               const i = items[0]?.dataIndex ?? 0;
-              if (useWeeks && agg.weeks[i]) return `Week of ${fmtWeekStartShort(agg.weeks[i])}`;
+              if (useWeeks && agg.weeks[i]) return `Week of ${fmtWeekRangeLabel(agg.weeks[i])}`;
               return items[0]?.label || "";
             },
             label: (ctx) => {
-              const v = ctx.parsed?.y ?? 0;
-              const sign = ctx.dataset.label === "Expense" ? "-" : ctx.dataset.label === "Income" ? "+" : "";
-              return ` ${ctx.dataset.label}: ${sign}$${fmtMoney(v)}`;
+              if (ctx.datasetIndex !== lastBarDatasetIndex) return null;
+              const i = ctx.dataIndex ?? 0;
+              const inc = Number(income[i] || 0);
+              const expv = Number(expense[i] || 0);
+              const nf = Number(inc) - Number(expv);
+              const netStr =
+                nf >= 0
+                  ? `+$${fmtMoney(nf)}`
+                  : `−$${fmtMoney(Math.abs(nf))}`;
+              return [`Income: $${fmtMoney(inc)}`, `Expenses: $${fmtMoney(expv)}`, `Net: ${netStr}`];
             },
           },
         },
@@ -5450,14 +5561,23 @@ function drawIncomeExpenseChart(agg) {
         x: {
           stacked: !!incomeExpenseIsStacked,
           grid: { display: false },
-          ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 14, font: { size: 9.5 }, color: "rgba(100, 116, 139, 0.62)" },
+          ticks: {
+            maxRotation: 0,
+            autoSkip: true,
+            maxTicksLimit: 14,
+            font: { size: 10, weight: "600" },
+            color: onReportsView ? "rgba(71, 85, 105, 0.78)" : "rgba(100, 116, 139, 0.62)",
+          },
         },
         y: {
           stacked: !!incomeExpenseIsStacked,
-          grid: { color: "rgba(0,0,0,0.045)", drawBorder: false },
+          grid: {
+            color: onReportsView ? "rgba(100, 116, 139, 0.1)" : "rgba(0,0,0,0.045)",
+            drawBorder: false,
+          },
           ticks: {
-            font: { size: 9.5 },
-            color: "rgba(100, 116, 139, 0.58)",
+            font: { size: 9.75, weight: "600" },
+            color: onReportsView ? "rgba(71, 85, 105, 0.76)" : "rgba(100, 116, 139, 0.58)",
             callback: (value) => "$" + fmtMoney0(value),
           },
         },
@@ -5496,11 +5616,20 @@ async function refreshIncomeExpenseReport() {
       clearInsights();
       return;
     }
-    const agg = aggregateIncomeExpenseByWeek(items);
-    if (!agg.weeks.length) {
+    const aggRaw = aggregateIncomeExpenseByWeek(items);
+    if (!aggRaw.weeks.length) {
       destroyIncomeExpenseChart();
       lastIncomeExpenseAggForChart = null;
       setIncomeExpenseEmpty("No data for this range.");
+      if (incomeExpenseSubtitle) incomeExpenseSubtitle.textContent = "Last 17 weeks · weekly totals";
+      clearInsights();
+      return;
+    }
+    const agg = filterIncomeExpenseWeeksWithoutActivity(aggRaw);
+    if (!agg.weeks.length) {
+      destroyIncomeExpenseChart();
+      lastIncomeExpenseAggForChart = null;
+      setIncomeExpenseEmpty("No income or expense activity in weekly buckets for this range.");
       if (incomeExpenseSubtitle) incomeExpenseSubtitle.textContent = "Last 17 weeks · weekly totals";
       clearInsights();
       return;
@@ -9236,17 +9365,21 @@ function renderSidebarPendingTransactionsForMonth() {
 
     const cta = document.createElement("div");
     cta.className = "pending-attn-cta";
-    cta.textContent = "Review";
+    cta.textContent = "Review amounts";
 
     el.setAttribute(
       "aria-label",
-      `${descFull || catLabel}, ${sign}$${fmtMoney0(amt)}, ${it?.date ? fmtMonthDay(it.date) : "date unknown"}, review`
+      `${descFull || catLabel}, ${sign}$${fmtMoney0(amt)}, ${it?.date ? fmtMonthDay(it.date) : "date unknown"}, review amounts`
     );
     el.title = name.title;
     el.appendChild(name);
     el.appendChild(est);
     el.appendChild(date);
     el.appendChild(cta);
+    const hint = document.createElement("div");
+    hint.className = "pending-attn-hint";
+    hint.textContent = "Update estimated amounts";
+    el.appendChild(hint);
     sidebarPendingTxList.appendChild(el);
   }
 }
@@ -9454,6 +9587,100 @@ function truncate(s, maxLen) {
   const str = String(s ?? "");
   if (str.length <= maxLen) return str;
   return str.slice(0, Math.max(0, maxLen - 1)) + "…";
+}
+
+const RISK_PRESSURE_TIP_SHOW_MS = 115;
+let riskPressureTipEl = null;
+let riskPressureTipShowTimer = null;
+let riskPressureTipHideTimer = null;
+let riskPressureTipScrollBound = false;
+
+function hideRiskPressureTipNow() {
+  if (riskPressureTipShowTimer) {
+    clearTimeout(riskPressureTipShowTimer);
+    riskPressureTipShowTimer = null;
+  }
+  if (riskPressureTipHideTimer) {
+    clearTimeout(riskPressureTipHideTimer);
+    riskPressureTipHideTimer = null;
+  }
+  if (riskPressureTipEl) {
+    riskPressureTipEl.classList.remove("reports-risk-tip--visible");
+    riskPressureTipEl.hidden = true;
+    riskPressureTipEl.innerHTML = "";
+  }
+}
+
+function ensureRiskPressureTipEl() {
+  if (riskPressureTipEl && riskPressureTipEl.isConnected) return riskPressureTipEl;
+  riskPressureTipEl = document.createElement("div");
+  riskPressureTipEl.className = "reports-risk-tip";
+  riskPressureTipEl.setAttribute("role", "tooltip");
+  riskPressureTipEl.hidden = true;
+  document.body.appendChild(riskPressureTipEl);
+  if (!riskPressureTipScrollBound) {
+    riskPressureTipScrollBound = true;
+    window.addEventListener("scroll", hideRiskPressureTipNow, true);
+    window.addEventListener("resize", hideRiskPressureTipNow);
+  }
+  return riskPressureTipEl;
+}
+
+function positionRiskPressureTip(anchorEl) {
+  const tip = ensureRiskPressureTipEl();
+  const rect = anchorEl.getBoundingClientRect();
+  const gap = 8;
+  const margin = 8;
+  requestAnimationFrame(() => {
+    let x = rect.left + rect.width / 2 - tip.offsetWidth / 2;
+    let y = rect.bottom + gap;
+    const maxX = window.innerWidth - tip.offsetWidth - margin;
+    const maxY = window.innerHeight - tip.offsetHeight - margin;
+    x = Math.max(margin, Math.min(x, maxX));
+    if (y > maxY) y = Math.max(margin, rect.top - tip.offsetHeight - gap);
+    y = Math.max(margin, Math.min(y, maxY));
+    tip.style.left = `${Math.round(x)}px`;
+    tip.style.top = `${Math.round(y)}px`;
+  });
+}
+
+/** Rich hover detail for projected-balance tiles (risk / cash pressure calendar). */
+function bindRiskPressureCellHover(cell, anchorEl, html) {
+  const h = String(html ?? "").trim();
+  if (!cell || !anchorEl || !h) return;
+
+  const onEnter = () => {
+    hideRiskPressureTipNow();
+    if (riskPressureTipHideTimer) {
+      clearTimeout(riskPressureTipHideTimer);
+      riskPressureTipHideTimer = null;
+    }
+    riskPressureTipShowTimer = window.setTimeout(() => {
+      riskPressureTipShowTimer = null;
+      const tip = ensureRiskPressureTipEl();
+      tip.innerHTML = h;
+      tip.hidden = false;
+      tip.classList.remove("reports-risk-tip--visible");
+      positionRiskPressureTip(anchorEl);
+      requestAnimationFrame(() => {
+        positionRiskPressureTip(anchorEl);
+        tip.classList.add("reports-risk-tip--visible");
+      });
+    }, RISK_PRESSURE_TIP_SHOW_MS);
+  };
+  const onLeave = () => {
+    if (riskPressureTipShowTimer) {
+      clearTimeout(riskPressureTipShowTimer);
+      riskPressureTipShowTimer = null;
+    }
+    riskPressureTipHideTimer = window.setTimeout(() => {
+      riskPressureTipHideTimer = null;
+      hideRiskPressureTipNow();
+    }, 55);
+  };
+  cell.addEventListener("mouseenter", onEnter);
+  cell.addEventListener("mouseleave", onLeave);
+  cell.addEventListener("blur", hideRiskPressureTipNow);
 }
 
 /** Faster than native `title` tooltips (browser delay is ~500ms+). */
@@ -9911,7 +10138,7 @@ function renderCalendar() {
     }
   }
   const MIN_CELL_H = isMobileCalendarLayout ? 0 : 162;
-  const MAX_VISIBLE_TXNS = 3;
+  const MAX_VISIBLE_TXNS = 4;
   const minBalFloor = readStoredMinBalanceThresholdForReports();
   /** @type {HTMLElement[]} */
   const cells = [];
@@ -9949,6 +10176,7 @@ function renderCalendar() {
       </div>
     `;
     if (isOutOfMonth) cell.classList.add("cal-cell--out");
+    if (isReconciled && !isOutOfMonth) cell.classList.add("cal-cell--reconciled");
     // In-month "past" gray only when we have no starting-balance date; otherwise only
     // cal-cell--before-start tints days before the anchor (days on/after stay white).
     if (!isOutOfMonth && isPast && !earliestStartIso) cell.classList.add("cal-cell--past");
@@ -10044,7 +10272,7 @@ function renderCalendar() {
         const descRaw = isExpected || isStartBalance ? row.description || "(expected)" : (row.description || "Uncategorized").trim();
         const labelRaw = categoryName || descRaw;
         // Keep labels short so they don't wrap into the amount column.
-        const label = truncate(labelRaw, 48);
+        const label = truncate(labelRaw, 52);
 
         const labelSpan = document.createElement("span");
         labelSpan.className = "cal-tx-label";
@@ -10053,13 +10281,14 @@ function renderCalendar() {
         const labelWrap = document.createElement("span");
         labelWrap.className = "cal-tx-label-wrap";
         if (isStartBalance) {
-          line.title = "Starting balance — your forecast begins here";
-          const flag = document.createElement("span");
-          flag.className = "cal-tx-start-flag";
-          flag.setAttribute("aria-hidden", "true");
-          flag.innerHTML =
-            '<svg viewBox="0 0 12 14" width="11" height="13" focusable="false"><path fill="currentColor" d="M0.75 0h1.25v14H0.75V0zm2.75 1.5L11 5.2 3.5 8.9V1.5z"/></svg>';
-          labelWrap.appendChild(flag);
+          line.title = "Starting balance — trusted anchor your forecast builds from";
+          const lock = document.createElement("span");
+          lock.className = "cal-tx-start-lock";
+          lock.setAttribute("role", "img");
+          lock.setAttribute("aria-label", "Locked forecast anchor");
+          lock.innerHTML =
+            '<svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>';
+          labelWrap.appendChild(lock);
         }
         labelWrap.appendChild(labelSpan);
 
@@ -10074,7 +10303,7 @@ function renderCalendar() {
 
         line.appendChild(labelWrap);
         line.appendChild(amtSpan);
-        line.title = String(labelRaw || "").trim();
+        if (!isStartBalance) line.title = String(labelRaw || "").trim();
 
         {
           const noteStr = row.notes && String(row.notes).trim() ? String(row.notes).trim() : "";
@@ -10111,6 +10340,10 @@ function renderCalendar() {
           renderCalendar();
         });
         txnsEl.appendChild(moreBtn);
+      }
+
+      if (combined.length > MAX_VISIBLE_TXNS && !isExpanded) {
+        cell.classList.add("cal-cell--has-collapsed-rows");
       }
     }
 
@@ -10199,11 +10432,11 @@ function renderCalendar() {
       const balanceClass = balParts.join(" ");
       const riskIcon =
         negativeBal && !repeatedNegativeRun
-          ? `<span class="cal-balance-risk-icon" aria-hidden="true"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M8 2.25L14 13.75H2L8 2.25z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" fill="none"/><path d="M8 6.25v3M8 11.1v.01" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg></span>`
+          ? `<span class="cal-balance-risk-icon" aria-hidden="true"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M8 2.25L14 13.75H2L8 2.25z" stroke="currentColor" stroke-width="1.35" stroke-linejoin="round" fill="none"/><path d="M8 6.25v3M8 11.1v.01" stroke="currentColor" stroke-width="1.35" stroke-linecap="round"/></svg></span>`
           : "";
       const warnIcon =
         belowFloor && !negativeBal
-          ? `<span class="cal-balance-warn-icon" aria-hidden="true" title="Below your minimum balance"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 2.25L14 13.75H2L8 2.25z" stroke="currentColor" stroke-width="1.15" stroke-linejoin="round" fill="none"/><path d="M8 6.25v3M8 11.1v.01" stroke="currentColor" stroke-width="1.15" stroke-linecap="round"/></svg></span>`
+          ? `<span class="cal-balance-warn-icon" aria-hidden="true" title="Below your minimum balance"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 2.25L14 13.75H2L8 2.25z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round" fill="none"/><path d="M8 6.25v3M8 11.1v.01" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></span>`
           : "";
       metricsEl.innerHTML = `<div class="cal-balance-strip${stripCue ? ` ${stripCue}` : ""}"><div class="cal-balance-strip__row"><span class="cal-balance-strip__amt">${riskIcon}${warnIcon}<span class="${balanceClass}" title="Projected end-of-day balance">$${fmtMoneyParens(
         endNum
@@ -10292,6 +10525,85 @@ function weekKeyMondayFromIso(iso) {
   const diff = (day + 6) % 7;
   d.setDate(d.getDate() - diff);
   return toISODate(d);
+}
+
+/** Drop demo / edge weeks with no categorized cashflow so sparse columns disappear. */
+function filterIncomeExpenseWeeksWithoutActivity(agg) {
+  if (!agg || !Array.isArray(agg.weeks)) return agg;
+  const inc = agg.income || [];
+  const exp = agg.expense || [];
+  const nw = [];
+  const ni = [];
+  const ne = [];
+  for (let i = 0; i < agg.weeks.length; i++) {
+    const a = Number(inc[i] || 0);
+    const b = Number(exp[i] || 0);
+    if (a === 0 && b === 0) continue;
+    nw.push(agg.weeks[i]);
+    ni.push(a);
+    ne.push(b);
+  }
+  return { ...agg, weeks: nw, income: ni, expense: ne };
+}
+
+let incomeExpenseChartPluginsRegistered = false;
+function ensureIncomeExpenseChartPlugins() {
+  if (typeof Chart === "undefined" || incomeExpenseChartPluginsRegistered) return;
+  incomeExpenseChartPluginsRegistered = true;
+  Chart.register({
+    id: "incomeExpenseWeekHighlight",
+    beforeDatasetsDraw(chart) {
+      const hi = chart.options?.plugins?.incomeExpenseHighlight;
+      const ix =
+        hi && Number.isFinite(Number(hi.highlightIndex)) ? Number(hi.highlightIndex) : -1;
+      if (ix < 0) return;
+      const dsInc = chart.data.datasets.findIndex((d) => d && d.label === "Income");
+      const dsExp = chart.data.datasets.findIndex((d) => d && d.label === "Expense");
+      let el =
+        dsInc >= 0 ? chart.getDatasetMeta(dsInc)?.data?.[ix] : null;
+      if (!el || el.skip) {
+        el = dsExp >= 0 ? chart.getDatasetMeta(dsExp)?.data?.[ix] : null;
+      }
+      if (!el || el.hidden || el.skip) return;
+      const { x, width } = el.getProps(["x", "width"], true);
+      if (x == null || !width) return;
+      const { ctx, chartArea } = chart;
+      if (!chartArea) return;
+      const pad = 5;
+      const left = Math.max(chartArea.left, x - width / 2 - pad);
+      const right = Math.min(chartArea.right, x + width / 2 + pad);
+      ctx.save();
+      const g = ctx.createLinearGradient(left, chartArea.top, left, chartArea.bottom);
+      g.addColorStop(0, "rgba(254, 202, 202, 0.14)");
+      g.addColorStop(0.42, "rgba(252, 165, 165, 0.2)");
+      g.addColorStop(1, "rgba(254, 226, 226, 0.12)");
+      ctx.fillStyle = g;
+      ctx.fillRect(left, chartArea.top, right - left, chartArea.bottom - chartArea.top);
+      ctx.restore();
+    },
+    afterDatasetsDraw(chart) {
+      const div = chart.options?.plugins?.incomeExpenseDivider;
+      if (!div?.stacked) return;
+      const iIdx = chart.data.datasets.findIndex((d) => d && d.label === "Income");
+      if (iIdx < 0) return;
+      const meta = chart.getDatasetMeta(iIdx);
+      const { ctx } = chart;
+      if (!meta?.data?.length) return;
+      ctx.save();
+      for (const bar of meta.data) {
+        if (!bar || bar.hidden || bar.skip) continue;
+        const { x, y, width } = bar.getProps(["x", "y", "width"], true);
+        if (x == null || y == null || !width) continue;
+        ctx.beginPath();
+        ctx.strokeStyle = "rgba(15, 23, 42, 0.34)";
+        ctx.lineWidth = 1.65;
+        ctx.moveTo(x - width / 2, y);
+        ctx.lineTo(x + width / 2, y);
+        ctx.stroke();
+      }
+      ctx.restore();
+    },
+  });
 }
 
 function aggregateIncomeExpenseByWeek(items) {
@@ -10406,11 +10718,24 @@ function pressureCategoryLabel(tx) {
   return fallback === "Other obligations" ? "" : fallback;
 }
 
+/**
+ * Relative timing for pressure table: show countdown only when within 30 days;
+ * far-dated rows leave timing subtle (date is in the first column).
+ */
+function formatPressureRelativeTiming(todayIso, impactIso) {
+  const d = calendarDaysBetweenIso(todayIso, impactIso);
+  if (d == null || !Number.isFinite(d)) return "—";
+  if (d <= 0) return "Today";
+  if (d > 30) return "";
+  if (d === 1) return "Tomorrow";
+  return `In ${d} days`;
+}
+
 function pressureSeverityMeta(after, floor) {
   if (after == null || !Number.isFinite(after)) {
     return {
       key: "unknown",
-      label: "Unknown",
+      label: "Outside forecast range",
       rowClass: "reports-pressure-row--unknown",
       balClass: "reports-pressure-bal--unknown",
       levelClass: "reports-pressure-level--unknown",
@@ -10460,21 +10785,21 @@ function balanceAfterPressureClass(after, floor) {
 function computePressureRecoveryLabel(daily, impactIso, afterBal) {
   const thr = readStoredMinBalanceThresholdForReports();
   const target = thr != null ? thr : 0;
-  if (afterBal == null || !Number.isFinite(afterBal)) {
-    return { label: "Not within current range", cls: "reports-pressure-rec--muted", state: "outside" };
-  }
   const norm = (s) => normalizeIsoDate(s) || "";
   const imp = norm(impactIso);
   const rows = (daily || [])
     .slice()
     .sort((a, b) => norm(a.date).localeCompare(norm(b.date)));
   const idx = rows.findIndex((r) => norm(r.date) === imp);
+  if (afterBal == null || !Number.isFinite(afterBal)) {
+    return { label: "Recovery not shown", cls: "reports-pressure-rec--muted", state: "outside" };
+  }
   if (idx < 0) {
-    return { label: "Not within current range", cls: "reports-pressure-rec--muted", state: "outside" };
+    return { label: "Recovery not shown", cls: "reports-pressure-rec--muted", state: "outside" };
   }
   if (afterBal >= target) {
     return {
-      label: thr != null ? "Already above minimum balance" : "Already covered",
+      label: thr != null ? "Above minimum" : "In the black",
       cls: "reports-pressure-rec--ok",
       state: "covered",
     };
@@ -10482,11 +10807,15 @@ function computePressureRecoveryLabel(daily, impactIso, afterBal) {
   for (let j = idx + 1; j < rows.length; j++) {
     const b = Number(rows[j].total_balance ?? 0);
     if (b >= target) {
-      return { label: fmtObligationNextDate(norm(rows[j].date)), cls: "reports-pressure-rec--date", state: "date" };
+      return {
+        label: `Recovers ${fmtMonthDay(norm(rows[j].date))}`,
+        cls: "reports-pressure-rec--date",
+        state: "date",
+      };
     }
   }
   return {
-    label: thr != null ? "Still below minimum balance" : "Still below zero",
+    label: thr != null ? "Remains below minimum" : "Remains below zero",
     cls: "reports-pressure-rec--stale",
     state: "stale",
   };
@@ -10999,29 +11328,13 @@ function renderCashInsights(host, insights, options = {}) {
 
 function refreshCalendarCashInsights() {
   if (!sidebarCashInsights) return;
-  const ym = String(monthInput?.value || calendarMonth?.value || "").trim();
-  const { start, end } = ymBounds(ym);
-  if (!start || !end) {
-    sidebarCashInsights.innerHTML = "";
-    sidebarCashInsights.hidden = true;
-    return;
-  }
-  const insights = buildCashInsightsForSurface({
-    daily: getProjectedBalancesByDate(state.monthDailyBalances, { startIso: start, endIso: end }),
-    startIso: start,
-    endIso: end,
-    surface: "forecast",
-  });
-  renderCashInsights(sidebarCashInsights, insights, {
-    title: "Cash insights",
-    description: "Forward-looking guidance based on your projected balances, timing, and reconciliation status.",
-    variant: "sidebar",
-    limit: 3,
-  });
+  // Launch: hide Cash Insights in the sidebar to reduce noise; inline report insights remain.
+  sidebarCashInsights.innerHTML = "";
+  sidebarCashInsights.hidden = true;
 }
 
 function renderReportsBalanceTakeaway(items, dateLabels, values) {
-  const el = document.getElementById("reportsCashInsightsBody") || document.getElementById("reportsBalanceTakeaway");
+  const el = document.getElementById("reportsBalanceTakeaway");
   if (!el) return;
   const lastItem = Array.isArray(items) && items.length ? items[items.length - 1] : null;
   const insights = lastCashInsightsForReports?.length
@@ -11036,7 +11349,6 @@ function renderReportsBalanceTakeaway(items, dateLabels, values) {
       surface: "reports",
     });
   renderCashInsights(el, insights, {
-    description: "A few calm, high-priority notes pulled from this forecast range.",
     variant: "inline",
     limit: 3,
   });
@@ -11151,8 +11463,8 @@ function renderReportsBalanceLegend(daily, dateLabels, values) {
     <div class="reports-kpi-strip">
       ${kpi("Lowest Balance", lowValue, fmtMonthDay(lowIso), lowClass)}
       ${kpi(statusLabel, statusValue, statusSub, statusClass)}
-      ${kpi("Largest Outflow", outflowValue, outflowSub)}
-      ${kpi("Minimum balance", floorValue, floorSub, " reports-kpi--muted")}
+      ${kpi("Largest Outflow", outflowValue, outflowSub, " reports-kpi--neutral")}
+      ${kpi("Minimum balance", floorValue, floorSub, " reports-kpi--floor")}
     </div>
   `;
 }
@@ -11161,13 +11473,21 @@ function renderReportsSafeTransferNarrative(result) {
   const insightEl = document.getElementById("reportsSafeTransferInsight");
   const contextEl = document.getElementById("reportsSafeTransferContext");
   if (insightEl) {
-    if (!result?.summary) {
-      insightEl.hidden = true;
-      insightEl.innerHTML = "";
-    } else {
-      insightEl.hidden = false;
-      insightEl.innerHTML = `<p class="reports-safe-transfer-insight__text">${escapeHtml(result.summary)}</p>`;
+    const leadRaw = result ? String(result.summaryLead || result.summary || "").trim() : "";
+    const noteRaw = result ? String(result.summaryNote || "").trim() : "";
+    const recRaw = result ? String(result.recoveryLine || "").trim() : "";
+    const parts = [];
+    if (leadRaw) {
+      parts.push(`<p class="reports-safe-transfer-insight__lead">${escapeHtml(leadRaw)}</p>`);
     }
+    if (noteRaw) {
+      parts.push(`<p class="reports-safe-transfer-insight__note">${escapeHtml(noteRaw)}</p>`);
+    }
+    if (recRaw) {
+      parts.push(`<p class="reports-safe-transfer-insight__recovery">${escapeHtml(recRaw)}</p>`);
+    }
+    insightEl.hidden = !parts.length;
+    insightEl.innerHTML = parts.join("");
   }
   if (contextEl) {
     if (!result?.cards?.length) {
@@ -11222,35 +11542,44 @@ function buildReportsSafeTransferNarrative(items, series, floor) {
     const recoveryIso = recoveryIdx >= 0 ? labels[recoveryIdx] : "";
     const recoveryEvents = recoveryIdx >= 0 ? occByIso.get(recoveryIso) || [] : [];
     const recoveryIncome = pickReportsSafeTransferDriver(recoveryEvents, "income");
-    const summary = zeroExpense
-      ? `Safe-to-move room falls to $0 on ${fmtMonthDay(zeroIso)} after ${zeroExpense.description} clears. $0 here means your projected balance has reached your minimum balance, not that checking is empty.`
-      : `Safe-to-move room falls to $0 on ${fmtMonthDay(zeroIso)}. $0 here means your projected balance has reached your minimum balance, not that checking is empty.`;
+
+    const payer = zeroExpense ? String(zeroExpense.description || "").trim() : "";
+    const summaryLead = payer
+      ? `Safe to Move reaches $0 on ${fmtMonthDay(zeroIso)} after ${payer} clears.`
+      : `Safe to Move reaches $0 on ${fmtMonthDay(zeroIso)}.`;
+    const summaryNote =
+      "$0 means your projected balance has reached your minimum balance — not that your account is empty.";
+    let recoveryLine = "";
+    if (recoveryIdx >= 0 && recoveryIso) {
+      if (recoveryIncome && String(recoveryIncome.description || "").trim()) {
+        const rn = String(recoveryIncome.description || "").trim();
+        recoveryLine = `Safe to Move returns after ${rn} on ${fmtMonthDay(recoveryIso)}.`;
+      } else {
+        recoveryLine = `Safe to Move goes back above $0 around ${fmtMonthDay(recoveryIso)}.`;
+      }
+    }
+
     const cards = [
       {
         label: "What happened",
-        text: `Room hits $0 on ${fmtMonthDay(zeroIso)}.`,
+        text: `Your safe to move reaches $0 on ${fmtMonthDay(zeroIso)}.`,
       },
       {
         label: "Why",
-        text: zeroExpense
-          ? `${zeroExpense.description} (${fmtMoneyCompactTile(-Math.abs(Number(zeroExpense.amount || 0)))}) uses the remaining room above your minimum balance.`
-          : "Upcoming outflows bring your projected balance down to your minimum balance.",
+        text: payer
+          ? `The ${payer} payment uses the remaining cushion above your minimum balance.`
+          : "Scheduled outflows use the cushion above your minimum balance.",
       },
       {
         label: "What to watch",
-        text:
-          recoveryIdx >= 0
-            ? `${recoveryIncome ? recoveryIncome.description : "The next inflow"} opens room back up on ${fmtMonthDay(
-                recoveryIso
-              )} to about ${fmtMoneyCompactTile(series[recoveryIdx])}.`
-            : "Any money leaving checking before the end of this window would need an added buffer first.",
+        text: "Avoid transferring additional money out before new income arrives.",
       },
     ];
     const annotations = [
       {
         idx: firstZeroIdx,
         value: Number(series[firstZeroIdx] || 0),
-        label: zeroExpense ? truncate(zeroExpense.description, 18) : "Room hits $0",
+        label: zeroExpense ? truncate(zeroExpense.description, 18) : "Hits $0",
         kind: "outflow",
       },
     ];
@@ -11258,39 +11587,46 @@ function buildReportsSafeTransferNarrative(items, series, floor) {
       annotations.push({
         idx: recoveryIdx,
         value: Number(series[recoveryIdx] || 0),
-        label: recoveryIncome ? truncate(recoveryIncome.description, 18) : "Room returns",
+        label: recoveryIncome ? truncate(recoveryIncome.description, 18) : "Rebuilds",
         kind: "inflow",
       });
     }
-    return { summary, cards, annotations };
+    return {
+      summaryLead,
+      summaryNote,
+      recoveryLine,
+      cards,
+      annotations,
+    };
   }
 
-  const summary =
+  const summaryLead =
     peakIdx !== lowIdx
-      ? `Most available cash sits near ${fmtMonthDay(peakIso)} at about ${fmtMoneyCompactTile(
-          peakValue
-        )}, then narrows to about ${fmtMoneyCompactTile(lowValue)} by ${fmtMonthDay(lowIso)}.`
-      : `Safe-to-move room stays fairly steady in this window at about ${fmtMoneyCompactTile(peakValue)}.`;
+      ? `Highest safe to move sits near ${fmtMonthDay(peakIso)} (${fmtMoneyCompactTile(peakValue)}), narrowing to ${fmtMoneyCompactTile(
+          lowValue
+        )} by ${fmtMonthDay(lowIso)}.`
+      : `Safe to Move stays near ${fmtMoneyCompactTile(peakValue)} across this window.`;
+
   const cards = [
     {
       label: "What happened",
       text:
         peakIdx !== lowIdx
-          ? `The widest room to move cash is around ${fmtMonthDay(peakIso)} at ${fmtMoneyCompactTile(peakValue)}.`
-          : `Room stays available throughout this window.`,
+          ? `The most you can move peaks around ${fmtMonthDay(peakIso)} (${fmtMoneyCompactTile(peakValue)}).`
+          : `Safe to Move stays available across this forecast.`,
     },
     {
       label: "Why",
       text: lowExpense
-        ? `${lowExpense.description} (${fmtMoneyCompactTile(-Math.abs(Number(lowExpense.amount || 0)))}) is the main drag on ${fmtMonthDay(lowIso)}.`
-        : "Upcoming bills gradually reduce the room available later in the range.",
+        ? `${lowExpense.description} (${fmtMoneyCompactTile(-Math.abs(Number(lowExpense.amount || 0)))}) is the main reason it tightens on ${fmtMonthDay(lowIso)}.`
+        : "Upcoming bills lower how much can leave checking while keeping your minimum balance.",
     },
     {
       label: "What to watch",
       text:
         lowValue <= Math.max(250, peakValue * 0.2)
-          ? `Larger moves are safer earlier in the window before room narrows on ${fmtMonthDay(lowIso)}.`
-          : `This range stays above your minimum balance, so timing is flexible unless new bills are added.`,
+          ? `Bigger transfers are safer earlier in this window—before safe to move narrows ${peakIdx !== lowIdx ? `around ${fmtMonthDay(lowIso)}` : ""}.`
+          : `Your minimum balance stays protected; timing stays flexible unless you add new bills.`,
     },
   ];
   const annotations = [];
@@ -11298,7 +11634,7 @@ function buildReportsSafeTransferNarrative(items, series, floor) {
     annotations.push({
       idx: peakIdx,
       value: peakValue,
-      label: "Best room",
+      label: "Peak",
       kind: "inflow",
     });
   }
@@ -11306,11 +11642,11 @@ function buildReportsSafeTransferNarrative(items, series, floor) {
     annotations.push({
       idx: lowIdx,
       value: lowValue,
-      label: lowExpense ? truncate(lowExpense.description, 18) : "Tighter point",
+      label: lowExpense ? truncate(lowExpense.description, 18) : "Lowest point",
       kind: "outflow",
     });
   }
-  return { summary, cards, annotations };
+  return { summaryLead, cards, annotations };
 }
 
 function drawReportsSafeTransferChart(daily) {
@@ -11333,11 +11669,11 @@ function drawReportsSafeTransferChart(daily) {
   if (floor == null) {
     if (emptyEl) {
       emptyEl.style.display = "flex";
-      emptyEl.textContent = "Set a minimum balance in Settings to see Safe to move headroom.";
+      emptyEl.textContent = "Set a minimum balance in Settings to see Safe to Move.";
     }
     if (statsEl) {
       statsEl.innerHTML =
-        '<p class="meta">Safe to move uses your saved minimum balance across the remaining forecast path.</p>';
+        '<p class="meta reports-safe-transfer-meta">Safe to Move uses your saved minimum balance across the forecast range.</p>';
     }
     renderReportsSafeTransferNarrative(null);
     return;
@@ -11350,27 +11686,29 @@ function drawReportsSafeTransferChart(daily) {
   if (allZero) {
     if (emptyEl) {
       emptyEl.style.display = "flex";
-      emptyEl.textContent = "Your forecast does not currently have Safe to move room above your minimum balance.";
+      emptyEl.textContent = "No Safe to Move above your minimum balance in this range.";
     }
     if (statsEl) {
       statsEl.innerHTML =
-        '<p class="meta">Your projected balances remain at or below your saved minimum balance across this period.</p>';
+        '<p class="meta reports-safe-transfer-meta">Projected checking stays at or below your saved minimum balance for these dates.</p>';
     }
     renderReportsSafeTransferNarrative({
-      summary:
-        "Safe-to-move room stays at $0 across this whole window. That means your projected balance is already sitting at your minimum balance before any extra money leaves checking.",
+      summaryLead:
+        "Safe to Move stays at $0 for this entire range—checking is projected at your minimum balance before any transfers.",
+      summaryNote:
+        "$0 means no cushion above your minimum balance yet, not necessarily an empty bank account.",
       cards: [
         {
           label: "What happened",
-          text: "This range never builds room above your minimum balance.",
+          text: "Safe to Move does not climb above $0 anywhere in this window.",
         },
         {
           label: "Why",
-          text: "Upcoming bills use the available cushion before a later inflow restores it.",
+          text: "Bills scheduled in this forecast use the cushion that would normally be above your minimum balance.",
         },
         {
           label: "What to watch",
-          text: "Wait for the next stronger income day or add a buffer before moving cash out of checking.",
+          text: "Wait for the next paycheck or add a buffer before moving more money out of checking.",
         },
       ],
     });
@@ -11379,30 +11717,67 @@ function drawReportsSafeTransferChart(daily) {
   const hi = Math.max(...series);
   const lo = Math.min(...series);
   const avg = series.reduce((a, b) => a + b, 0) / series.length;
+  const loTight = Number.isFinite(lo) && lo <= 0.55;
+  const hiStrong = Number.isFinite(hi) && hi >= 500;
   if (statsEl) {
-    statsEl.innerHTML = `<div class="reports-mini-stats__row">
-      <div><span class="k">Peak available</span><span class="v">${fmtMoneyCompactTile(hi)}</span></div>
-      <div><span class="k">Lowest available</span><span class="v">${fmtMoneyCompactTile(lo)}</span></div>
-      <div><span class="k">Average available</span><span class="v">${fmtMoneyCompactTile(avg)}</span></div>
+    statsEl.innerHTML = `<div class="reports-safe-stats">
+      <div class="reports-safe-stats__tile${hiStrong ? " reports-safe-stats__tile--high" : ""}">
+        <span class="reports-safe-stats__label">Highest safe to move</span>
+        <span class="reports-safe-stats__amount">${fmtMoneyCompactTile(hi)}</span>
+      </div>
+      <div class="reports-safe-stats__tile${loTight ? " reports-safe-stats__tile--atfloor" : ""}">
+        <span class="reports-safe-stats__label">Lowest safe to move</span>
+        <span class="reports-safe-stats__amount">${fmtMoneyCompactTile(lo)}</span>
+      </div>
+      <div class="reports-safe-stats__tile">
+        <span class="reports-safe-stats__label">Typical safe to move</span>
+        <span class="reports-safe-stats__amount">${fmtMoneyCompactTile(avg)}</span>
+      </div>
     </div>`;
   }
   renderReportsSafeTransferNarrative(narrative);
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
+  const dipZeroIdx = series.findIndex((v) => Number(v || 0) <= 0.5);
+  const pointRadii = series.map((_, i) => (i === dipZeroIdx && dipZeroIdx >= 0 ? 6 : 0));
+  const pointBorderWidths = series.map((_, i) => (i === dipZeroIdx && dipZeroIdx >= 0 ? 2.25 : 0));
+  const pointBackgroundColors = series.map((_, i) =>
+    i === dipZeroIdx && dipZeroIdx >= 0 ? "rgba(254, 249, 247, 0.98)" : "rgba(255, 255, 255, 0)",
+  );
+  const pointBorderColors = series.map((_, i) =>
+    i === dipZeroIdx && dipZeroIdx >= 0 ? "rgba(185, 28, 28, 0.95)" : "transparent",
+  );
+  const yTop = Math.max(...series.map((v) => Number(v) || 0));
+  const suggestedMax = Math.max(800, yTop * 1.12);
   reportsSafeTransferChartInstance = new Chart(ctx, {
     type: "line",
     data: {
       labels,
       datasets: [
         {
-          label: "Safe to move",
+          label: "Safe to Move",
           data: series,
-          borderColor: "rgba(11, 61, 46, 0.88)",
-          backgroundColor: "rgba(11, 61, 46, 0.08)",
-          borderWidth: 2,
+          borderColor: "rgba(11, 61, 46, 0.92)",
+          borderWidth: 2.85,
           fill: true,
-          tension: 0.08,
-          pointRadius: 0,
+          backgroundColor: ({ chart }) => {
+            const { ctx: c, chartArea } = chart;
+            if (!chartArea) return "rgba(22, 101, 71, 0.12)";
+            const top = chartArea.top;
+            const bot = chartArea.bottom;
+            const gr = c.createLinearGradient(0, top, 0, bot);
+            gr.addColorStop(0, "rgba(22, 101, 71, 0.18)");
+            gr.addColorStop(0.65, "rgba(22, 101, 71, 0.06)");
+            gr.addColorStop(1, "rgba(22, 101, 71, 0)");
+            return gr;
+          },
+          tension: 0.1,
+          pointRadius: pointRadii,
+          pointHoverRadius: series.map((_, i) => (pointRadii[i] ? 8 : 5)),
+          pointHitRadius: series.map((_, i) => (pointRadii[i] ? 14 : 8)),
+          pointBorderWidth: pointBorderWidths,
+          pointBackgroundColor: pointBackgroundColors,
+          pointBorderColor: pointBorderColors,
         },
       ],
     },
@@ -11413,22 +11788,37 @@ function drawReportsSafeTransferChart(daily) {
         legend: { display: false },
         balanceAnnotations: {
           annotations: Array.isArray(narrative?.annotations) ? narrative.annotations.slice(0, 2) : [],
+          todayIdx: -1,
+          floor: 0,
+          floorDrawLine: true,
+          floorLabel: "Minimum balance reached",
+          todayBal: null,
         },
         tooltip: {
           callbacks: {
             title: (t) => formatProjectionTooltipDate(labels[t[0]?.dataIndex ?? 0]),
-            label: (c) => ` Safe to move ${fmtMoneyCompactTile(c.parsed.y)}`,
+            label: (c) => ` Safe to Move ${fmtMoneyCompactTile(c.parsed.y)}`,
           },
         },
       },
       scales: {
         x: {
           grid: { display: false },
-          ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 8 },
+          ticks: {
+            maxRotation: 0,
+            autoSkip: true,
+            maxTicksLimit: 8,
+            font: { size: 10, weight: "600" },
+            color: "rgba(71, 85, 105, 0.74)",
+          },
         },
         y: {
-          grid: { color: "rgba(0,0,0,0.05)", drawBorder: false },
+          suggestedMin: 0,
+          suggestedMax,
+          grid: { color: "rgba(100, 116, 139, 0.1)", drawBorder: false },
           ticks: {
+            font: { size: 10, weight: "600" },
+            color: "rgba(71, 85, 105, 0.72)",
             callback: (v) => "$" + formatChartMoneyShort(v),
           },
         },
@@ -11516,17 +11906,123 @@ function riskSeverityClass(bal, thr, worstNeg) {
   }
   if (thr != null && bal < thr) {
     const shortfall = thr - bal;
-    if (shortfall > Math.max(150, thr * 0.18)) return "reports-risk-cell--low";
-    return "reports-risk-cell--caution";
+    const deep = Math.max(200, thr * 0.22);
+    if (shortfall >= deep) return "reports-risk-cell--below-deep";
+    return "reports-risk-cell--below-soft";
   }
   if (thr != null && bal < thr * 1.12) return "reports-risk-cell--caution";
   return "reports-risk-cell--safe";
 }
 
+/** Human-readable cushion state for tooltip / scan (matches legend tiers). */
+function riskPressureThresholdLabel(bal, thr, severityClass) {
+  if (bal < 0) return "Negative balance";
+  if (severityClass === "reports-risk-cell--below-soft" || severityClass === "reports-risk-cell--below-deep") {
+    return "Below minimum balance";
+  }
+  if (severityClass === "reports-risk-cell--caution") return "Near minimum balance";
+  return "Comfortable";
+}
+
+/** Short title for accessibility on calendar cells (plain text only). */
+function riskPressureAriaLabel(iso, bal, thr, severityClass, firstStressIso, recoveryIso) {
+  let s = `${fmtDateMedDisplay(iso)}, projected ${fmtMoney0SignedDollar(bal)}.`;
+  const st = riskPressureThresholdLabel(bal, thr, severityClass);
+  s += ` ${st}`;
+  const gap = thr != null ? bal - thr : null;
+  if (thr != null && gap != null) {
+    if (gap < 0) s += ` (${fmtMoney0(Math.abs(gap))} below ${fmtMoney0(thr)} minimum).`;
+    else s += ` (${fmtMoney0(gap)} above ${fmtMoney0(thr)} minimum).`;
+  }
+  if (firstStressIso && iso === firstStressIso) {
+    s += " First day projected below cushion.";
+  }
+  if (recoveryIso && iso === recoveryIso) {
+    s += " Cushion restores this day.";
+  }
+  s += " Show details.";
+  return s;
+}
+
+function buildRiskPressureHoverTipHtml(payload, firstStressIso) {
+  if (!payload) return "";
+  const iso = String(payload.iso || "");
+  const bal = Number(payload.balance ?? 0);
+  const thr = payload.thr;
+  const sev = String(payload.severityClass || "");
+  const status = riskPressureThresholdLabel(bal, thr, sev);
+  const outs = (payload.events || [])
+    .filter((e) => e.kind === "expense")
+    .sort((a, b) => b.amount - a.amount)
+    .slice(0, 3);
+  const ins = (payload.events || [])
+    .filter((e) => e.kind === "income")
+    .sort((a, b) => b.amount - a.amount)
+    .slice(0, 2);
+  const parts = [];
+  parts.push(`<div class="reports-risk-tip__date">${escapeHtml(fmtDateMedDisplay(iso))}</div>`);
+  parts.push(`<div class="reports-risk-tip__bal">${escapeHtml(fmtMoney0SignedDollar(bal))}</div>`);
+  parts.push(`<div class="reports-risk-tip__status">${escapeHtml(status)}</div>`);
+  if (thr != null) {
+    const gap = bal - thr;
+    if (gap < 0) {
+      parts.push(
+        `<div class="reports-risk-tip__muted">${escapeHtml(
+          `$${fmtMoney0(Math.abs(gap))} below your $${fmtMoney0(thr)} minimum balance.`,
+        )}</div>`,
+      );
+    } else if (gap >= 0) {
+      parts.push(
+        `<div class="reports-risk-tip__muted">${escapeHtml(
+          `$${fmtMoney0(gap)} above your $${fmtMoney0(thr)} minimum balance.`,
+        )}</div>`,
+      );
+    }
+  } else if (bal < 0) {
+    parts.push(`<div class="reports-risk-tip__muted">Projected checking balance goes negative.</div>`);
+  }
+  if (firstStressIso === iso && firstStressIso) {
+    parts.push(`<div class="reports-risk-tip__flag">Risk begins · timing matters from here.</div>`);
+  }
+  if (outs.length) {
+    parts.push('<div class="reports-risk-tip__sub">Driving outflows</div><ul class="reports-risk-tip__list">');
+    for (const e of outs) {
+      parts.push(
+        `<li><span>${escapeHtml(truncate(e.description || "Expense", 40))}</span><span class="reports-risk-tip__amt reports-risk-tip__amt--out">−$${fmtMoney0(e.amount)}</span></li>`,
+      );
+    }
+    parts.push("</ul>");
+  }
+  if (ins.length) {
+    parts.push('<div class="reports-risk-tip__sub">Inflows today</div><ul class="reports-risk-tip__list reports-risk-tip__list--in">');
+    for (const e of ins.slice(0, 2)) {
+      parts.push(
+        `<li><span>${escapeHtml(truncate(e.description || "Income", 36))}</span><span class="reports-risk-tip__amt reports-risk-tip__amt--in">+$${fmtMoney0(e.amount)}</span></li>`,
+      );
+    }
+    parts.push("</ul>");
+  }
+  if (payload.recovery && (bal < 0 || (thr != null && bal < thr))) {
+    const r = payload.recovery;
+    parts.push(
+      `<div class="reports-risk-tip__recovery">Next inflow · <strong>+$${fmtMoney0(r.amount)}</strong> ${escapeHtml(
+        truncate(r.description || "", 42),
+      )} on ${escapeHtml(fmtMonthDay(r.iso))}</div>`,
+    );
+  }
+  parts.push(`<div class="reports-risk-tip__foot">Click to pin details in the side panel.</div>`);
+  return `<div class="reports-risk-tip__inner">${parts.join("")}</div>`;
+}
+
 function riskDetailSeverityClass(severityClass) {
   if (!severityClass) return "";
   if (severityClass.startsWith("reports-risk-cell--neg")) return "reports-risk-detail--neg";
-  if (severityClass === "reports-risk-cell--low") return "reports-risk-detail--low";
+  if (
+    severityClass === "reports-risk-cell--below-soft" ||
+    severityClass === "reports-risk-cell--below-deep"
+  ) {
+    return "reports-risk-detail--low";
+  }
   return "";
 }
 
@@ -11544,12 +12040,12 @@ function riskActionGuidance(payload, primaryExpense) {
   return "Keep upcoming large payments and inflows in sync so this day stays comfortable.";
 }
 
-function renderRiskHeatmapDetail(payload, options) {
+function renderRiskHeatmapDetail(payload) {
   const host = document.getElementById("reportsRiskHeatmapDetail");
   if (!host) return;
   host.classList.remove("reports-risk-detail--neg", "reports-risk-detail--low");
   if (!payload) {
-    host.innerHTML = `<div class="reports-risk-detail__hint">Hover or select a day to see what happened, what drove it, and what could help.</div>`;
+    host.innerHTML = `<div class="reports-risk-detail__hint">Hover or select a day to see projected balance, what drove it, and what could help.</div>`;
     return;
   }
   const sevDetailCls = riskDetailSeverityClass(payload.severityClass);
@@ -11559,15 +12055,22 @@ function renderRiskHeatmapDetail(payload, options) {
   const balLabel = fmtMoney0SignedDollar(payload.balance);
 
   let gapHtml = "";
+  let statusLine = "";
+  const threshLabel = riskPressureThresholdLabel(Number(payload.balance), payload.thr, String(payload.severityClass || ""));
+  if (threshLabel === "Near minimum balance") {
+    statusLine = `<div class="reports-risk-detail__status">${escapeHtml(threshLabel)}</div>`;
+  }
   if (payload.thr != null) {
     const gap = payload.balance - payload.thr;
     if (gap < 0) {
-      gapHtml = `<div class="reports-risk-detail__gap">Below minimum balance by $${fmtMoney0(Math.abs(gap))} · minimum balance $${fmtMoney0(payload.thr)}</div>`;
+      gapHtml = `<div class="reports-risk-detail__gap">Below your $${fmtMoney0(payload.thr)} minimum balance by $${fmtMoney0(Math.abs(gap))}.</div>`;
     } else {
-      gapHtml = `<div class="reports-risk-detail__gap">Above minimum balance by $${fmtMoney0(gap)} · minimum balance $${fmtMoney0(payload.thr)}</div>`;
+      gapHtml = `<div class="reports-risk-detail__gap">Above your $${fmtMoney0(payload.thr)} minimum balance by $${fmtMoney0(gap)}.</div>`;
     }
   } else if (payload.balance < 0) {
-    gapHtml = `<div class="reports-risk-detail__gap">Projected negative balance</div>`;
+    gapHtml = `<div class="reports-risk-detail__gap">Projected checking balance crosses below zero.</div>`;
+  } else if (threshLabel !== "Comfortable") {
+    gapHtml = `<div class="reports-risk-detail__gap">Set a minimum balance in Settings to flag cushion versus negative.</div>`;
   }
 
   const outs = (payload.events || [])
@@ -11583,32 +12086,36 @@ function renderRiskHeatmapDetail(payload, options) {
   let driverHtml = "";
   if (primaryExpense) {
     driverHtml = `
-      <div class="reports-risk-detail__sec">
+      <div class="reports-risk-detail__sec reports-risk-detail__sec--divider">
         <div class="reports-risk-detail__sec-title">Main driver</div>
         <div class="reports-risk-detail__driver">
-          <span class="reports-risk-detail__desc">${escapeHtml(primaryExpense.description)}</span>
-          <span class="reports-risk-detail__amt reports-risk-detail__amt--exp">−$${fmtMoney0(primaryExpense.amount)}</span>
+          <div class="reports-risk-detail__driver-text">
+            <div class="reports-risk-detail__desc">${escapeHtml(primaryExpense.description)}</div>
+          </div>
+          <span class="reports-risk-detail__amtblk reports-risk-detail__amtblk--exp">−$${fmtMoney0(primaryExpense.amount)}</span>
         </div>
       </div>
     `;
   } else if (ins.length) {
     const leadIn = ins[0];
     driverHtml = `
-      <div class="reports-risk-detail__sec">
+      <div class="reports-risk-detail__sec reports-risk-detail__sec--divider">
         <div class="reports-risk-detail__sec-title">Main driver</div>
         <div class="reports-risk-detail__driver">
-          <span class="reports-risk-detail__desc">${escapeHtml(leadIn.description)}</span>
-          <span class="reports-risk-detail__amt reports-risk-detail__amt--inc">+$${fmtMoney0(leadIn.amount)}</span>
+          <div class="reports-risk-detail__driver-text">
+            <div class="reports-risk-detail__desc">${escapeHtml(leadIn.description)}</div>
+          </div>
+          <span class="reports-risk-detail__amtblk reports-risk-detail__amtblk--inc">+$${fmtMoney0(leadIn.amount)}</span>
         </div>
       </div>
     `;
   } else {
-    driverHtml = `<div class="reports-risk-detail__sec"><div class="reports-risk-detail__sec-title">Main driver</div><div class="reports-risk-detail__gap">No scheduled transactions on this day.</div></div>`;
+    driverHtml = `<div class="reports-risk-detail__sec reports-risk-detail__sec--divider"><div class="reports-risk-detail__sec-title">Main driver</div><div class="reports-risk-detail__muted">No scheduled flows on this day.</div></div>`;
   }
 
   const helpText = riskActionGuidance(payload, primaryExpense);
   const helpHtml = `
-    <div class="reports-risk-detail__sec">
+    <div class="reports-risk-detail__sec reports-risk-detail__sec--divider">
       <div class="reports-risk-detail__sec-title">What could help</div>
       <div class="reports-risk-detail__help">${escapeHtml(helpText)}</div>
     </div>
@@ -11617,17 +12124,27 @@ function renderRiskHeatmapDetail(payload, options) {
   let recHtml = "";
   if (payload.recovery) {
     const r = payload.recovery;
-    recHtml = `<div class="reports-risk-detail__rec"><span class="reports-risk-detail__sec-title">Next inflow</span><div><strong>+$${fmtMoney0(r.amount)}</strong> on ${escapeHtml(fmtMonthDay(r.iso))} — ${escapeHtml(r.description)}</div></div>`;
+    recHtml = `<div class="reports-risk-detail__rec reports-risk-detail__rec--divider">
+      <div class="reports-risk-detail__sec-title">Next inflow</div>
+      <div class="reports-risk-detail__inflow">
+        <div class="reports-risk-detail__inflow-amt">+$${fmtMoney0(r.amount)}</div>
+        <div class="reports-risk-detail__inflow-meta">${escapeHtml(r.description)} on ${escapeHtml(fmtMonthDay(r.iso))}</div>
+      </div>
+    </div>`;
   } else if (payload.balance < 0 || (payload.thr != null && payload.balance < payload.thr)) {
-    recHtml = `<div class="reports-risk-detail__rec reports-risk-detail__rec--muted"><span class="reports-risk-detail__sec-title">Next inflow</span><div>No projected inflow before the end of this window.</div></div>`;
+    recHtml = `<div class="reports-risk-detail__rec reports-risk-detail__rec--muted reports-risk-detail__rec--divider"><div class="reports-risk-detail__sec-title">Next inflow</div><div class="reports-risk-detail__muted">No projected inflow before the end of this window.</div></div>`;
   }
 
   host.innerHTML = `
-    <div class="reports-risk-detail__head">
+    <div class="reports-risk-detail__head reports-risk-detail__head--stack">
       <div class="reports-risk-detail__date">${escapeHtml(dateLabel)}</div>
-      <div class="reports-risk-detail__balance">${escapeHtml(balLabel)}</div>
+      <div class="reports-risk-detail__balblock">
+        <div class="reports-risk-detail__bal-label">Projected balance</div>
+        <div class="reports-risk-detail__balance">${escapeHtml(balLabel)}</div>
+      </div>
     </div>
     ${gapHtml}
+    ${statusLine}
     ${driverHtml}
     ${helpHtml}
     ${recHtml}
@@ -11733,6 +12250,7 @@ function renderReportsRiskHeatmap(daily) {
   const insightEl = document.getElementById("reportsRiskHeatmapInsight");
   if (!host) return;
   host.innerHTML = "";
+  hideRiskPressureTipNow();
   const items = (daily || []).slice(0, 60);
   const thr = readStoredMinBalanceThresholdForReports();
 
@@ -11750,15 +12268,15 @@ function renderReportsRiskHeatmap(daily) {
     return;
   }
 
-  // Streak insight (primary "headline" at top of report)
-  const isTightForStreak = (bal) => (thr != null ? bal < thr : bal < 0);
+  const dayTight = (bal) => (thr != null ? bal < thr : bal < 0);
+
   let run = 0;
   let runStart = -1;
   let bestLen = 0;
   let bestStartIso = "";
   for (let i = 0; i < items.length; i++) {
     const bal = Number(items[i].total_balance ?? 0);
-    if (isTightForStreak(bal)) {
+    if (dayTight(bal)) {
       if (run === 0) runStart = i;
       run++;
     } else {
@@ -11774,19 +12292,38 @@ function renderReportsRiskHeatmap(daily) {
     bestStartIso = String(items[runStart]?.date || "");
   }
 
+  const firstStressIdx = items.findIndex((row) => dayTight(Number(row.total_balance ?? 0)));
+  const firstStressIso = firstStressIdx >= 0 ? String(items[firstStressIdx]?.date || "") : "";
+  const eveBeforeStressIso =
+    firstStressIdx > 0 ? String(items[firstStressIdx - 1]?.date || "") : "";
+
+  let recoveryIso = "";
+  let seenStress = false;
+  for (const row of items) {
+    const bal = Number(row.total_balance ?? 0);
+    const iso = String(row.date || "");
+    if (dayTight(bal)) {
+      seenStress = true;
+    } else if (seenStress && !recoveryIso) {
+      recoveryIso = iso;
+    }
+  }
+
+  const recoverySuffix = recoveryIso && firstStressIso ? ` Safe again ${fmtMonthDay(recoveryIso)}.` : "";
+
   if (bestLen >= 2 && bestStartIso) {
     setInsight(
-      thr != null
+      (thr != null
         ? `Projected below your $${fmtMoney(thr)} minimum balance for ${bestLen} straight days beginning ${fmtMonthDay(bestStartIso)}.`
-        : `Projected negative balance for ${bestLen} straight days beginning ${fmtMonthDay(bestStartIso)}.`,
-      false
+        : `Projected negative balance for ${bestLen} straight days beginning ${fmtMonthDay(bestStartIso)}.`) + recoverySuffix,
+      false,
     );
   } else if (bestLen === 1 && bestStartIso) {
     setInsight(
-      thr != null
+      (thr != null
         ? `Projected below your $${fmtMoney(thr)} minimum balance on ${fmtMonthDay(bestStartIso)}.`
-        : `Projected negative balance on ${fmtMonthDay(bestStartIso)}.`,
-      false
+        : `Projected negative balance on ${fmtMonthDay(bestStartIso)}.`) + recoverySuffix,
+      false,
     );
   } else if (thr != null) {
     setInsight(`Stays above your $${fmtMoney(thr)} minimum balance across the next 60 days.`, false);
@@ -11866,6 +12403,9 @@ function renderReportsRiskHeatmap(daily) {
       prevMonth = m0;
     }
     if (iso === todayIso) cell.classList.add("reports-risk-cell--today");
+    if (firstStressIso && iso === firstStressIso) cell.classList.add("reports-risk-cell--risk-start");
+    if (recoveryIso && iso === recoveryIso) cell.classList.add("reports-risk-cell--recovery-day");
+    if (eveBeforeStressIso && iso === eveBeforeStressIso) cell.classList.add("reports-risk-cell--eve-risk");
 
     const recovery = nextInflowFromIso(addDaysIso(iso, 1) || iso);
     const events = occByIso.get(iso) || [];
@@ -11879,28 +12419,37 @@ function renderReportsRiskHeatmap(daily) {
     };
     detailPayloadByIso.set(iso, payload);
 
-    let tip = `${fmtDateMedDisplay(iso)} — Projected ${fmtMoney0SignedDollar(bal)}`;
-    if (thr != null) {
-      const gap = bal - thr;
-      tip += ` · ${gap < 0 ? "$" + fmtMoney0(Math.abs(gap)) + " below" : "$" + fmtMoney0(Math.abs(gap)) + " above"} $${fmtMoney0(thr)} minimum balance`;
-    }
-    const largestEvent = events.slice().sort((a, b) => b.amount - a.amount)[0];
-    if (largestEvent) {
-      const sign = largestEvent.kind === "income" ? "+" : "−";
-      tip += ` · Largest: ${largestEvent.description} ${sign}$${fmtMoney0(largestEvent.amount)}`;
-    }
-    tip += " — Hover or click for details.";
-    cell.title = tip;
-    cell.setAttribute("aria-label", `${fmtDateMedDisplay(iso)}, projected ${fmtMoney0SignedDollar(bal)}. Show details.`);
+    cell.removeAttribute("title");
 
-    const dEl = document.createElement("span");
-    dEl.className = "reports-risk-cell__d";
-    dEl.textContent = String(dom || "");
+    if (firstStressIso && iso === firstStressIso) {
+      const mark = document.createElement("span");
+      mark.className = "reports-risk-cell__risk-mark";
+      mark.setAttribute("aria-hidden", "true");
+      cell.appendChild(mark);
+    }
+
+    if (recoveryIso && iso === recoveryIso) {
+      const pill = document.createElement("span");
+      pill.className = "reports-risk-cell__recovery-pill";
+      pill.textContent = "Safe again";
+      cell.appendChild(pill);
+    }
+
     const bEl = document.createElement("span");
     bEl.className = "reports-risk-cell__b";
     bEl.textContent = fmtMoneyCompactTile(bal);
-    cell.appendChild(dEl);
+    const dEl = document.createElement("span");
+    dEl.className = "reports-risk-cell__d";
+    dEl.textContent = String(dom || "");
     cell.appendChild(bEl);
+    cell.appendChild(dEl);
+
+    cell.setAttribute(
+      "aria-label",
+      riskPressureAriaLabel(iso, bal, thr, sevCls, firstStressIso, recoveryIso),
+    );
+
+    bindRiskPressureCellHover(cell, cell, buildRiskPressureHoverTipHtml(payload, firstStressIso));
 
     const activate = (persist = false) => {
       for (const el of cellByIso.values()) el.classList.remove("reports-risk-cell--active");
@@ -11950,6 +12499,7 @@ function renderReportsRiskHeatmap(daily) {
 
   // Reset to default when the cursor leaves the grid entirely.
   host.onmouseleave = () => {
+    hideRiskPressureTipNow();
     const activeCell = host.querySelector(".reports-risk-cell--active");
     if (activeCell) activeCell.classList.remove("reports-risk-cell--active");
     if (selectedIso && detailPayloadByIso.has(selectedIso)) {
@@ -11979,13 +12529,13 @@ const OBLIGATION_GROUP_ICONS = {
 };
 
 const OBLIGATION_GROUP_TONES = {
-  Housing: "#2563eb",
-  Utilities: "#0f766e",
-  Debt: "#b45309",
-  Subscriptions: "#7c3aed",
-  Insurance: "#0891b2",
-  "Kids / activities": "#db2777",
-  "Other obligations": "#64748b",
+  Housing: "#1d4ed8",
+  Utilities: "#0d9488",
+  Debt: "#be123c",
+  Subscriptions: "#6d28d9",
+  Insurance: "#0369a1",
+  "Kids / activities": "#be185d",
+  "Other obligations": "#475569",
 };
 
 /**
@@ -12061,11 +12611,26 @@ function setReportsObligationStat(el, primary, secondary) {
   )}</span>`;
 }
 
+function obligationForecastBalanceOnIso(iso) {
+  const key = normalizeIsoDate(String(iso || "")) || "";
+  if (!key) return null;
+  const daily = lastProjectionDailyForReports || [];
+  for (let i = 0; i < daily.length; i++) {
+    const d = daily[i];
+    if (String(d?.date || "") === key) {
+      const b = Number(d?.total_balance ?? NaN);
+      return Number.isFinite(b) ? b : null;
+    }
+  }
+  return null;
+}
+
 function renderObligationTakeaway(allRows) {
   const el = document.getElementById("reportsObligationTakeaway");
   if (!el) return;
   el.hidden = true;
   el.textContent = "";
+  el.classList.remove("reports-ob-takeaway--strong");
   if (!allRows.length) return;
 
   const total = allRows.reduce((sum, row) => sum + row.est, 0);
@@ -12073,30 +12638,78 @@ function renderObligationTakeaway(allRows) {
 
   const byGroup = new Map();
   for (const row of allRows) byGroup.set(row.grp, (byGroup.get(row.grp) || 0) + row.est);
-  const groups = [...byGroup.entries()].sort((a, b) => b[1] - a[1]);
-  const largestGroup = groups[0] || null;
+  const grpShare = (g) => ((byGroup.get(g) || 0) / total) * 100;
+  const sharePair = (a, b) => (((byGroup.get(a) || 0) + (byGroup.get(b) || 0)) / total) * 100;
 
+  const todayIso = toISODate(new Date());
+
+  /** First intelligence-style sentence wins (clearer than stacking generic stats). */
+  let text = "";
+
+  const buckets = new Map();
+  for (const r of allRows) {
+    const wk = isoWeekStart(r.nextIso || "");
+    if (!wk || r.nextIso < todayIso) continue;
+    if (!buckets.has(wk)) buckets.set(wk, []);
+    buckets.get(wk).push(r);
+  }
+
+  outer: for (const [, list] of [...buckets.entries()].sort((a, b) => String(a[0]).localeCompare(String(b[0])))) {
+    const majors = list.filter((r) => r.amt >= REPORTS_OBL_LARGE_THRESHOLD || r.est >= REPORTS_OBL_LARGE_THRESHOLD * 0.45);
+    if (majors.length >= 2) {
+      majors.sort((a, b) => b.amt - a.amt || b.est - a.est);
+      text = `${majors[0].desc} and ${majors[1].desc} are both due in the same week (${fmtWeekRange(isoWeekStart(majors[0].nextIso))}).`;
+      break outer;
+    }
+    if (
+      majors.length &&
+      list.length >= 2 &&
+      majors[0].amt >= REPORTS_OBL_LARGE_THRESHOLD &&
+      list.filter((r) => r.amt >= Math.max(1500, majors[0].amt * 0.35)).length >= 2
+    ) {
+      list.sort((a, b) => b.amt - a.amt);
+      text = `Two sizeable recurring bills — ${list[0].desc} and ${list[1].desc} — land together in ${fmtWeekRange(
+        isoWeekStart(list[0].nextIso),
+      )}.`;
+      break outer;
+    }
+  }
+
+  if (!text && grpShare("Debt") >= 36) {
+    text = "Debt obligations dominate this forecast.";
+    el.classList.add("reports-ob-takeaway--strong");
+  }
+
+  if (!text && sharePair("Housing", "Debt") >= 85) {
+    text = `Housing and debt account for ${Math.round(sharePair("Housing", "Debt"))}% of recurring obligations.`;
+  }
+
+  if (!text && grpShare("Housing") >= 48) {
+    text = `${Math.round(grpShare("Housing"))}% of monthly commitments ties back to housing.`;
+  }
+
+  const sortedGrp = [...byGroup.entries()].sort((a, b) => b[1] - a[1]);
+  const largestEntry = sortedGrp[0] || null;
   const topRows = allRows
     .slice()
     .sort((a, b) => b.est - a.est || b.amt - a.amt)
     .slice(0, 2);
 
-  let text = "";
-  if (largestGroup) {
-    const pct = Math.round((largestGroup[1] / total) * 100);
+  if (!text && largestEntry?.[0]) {
+    const pct = Math.round((largestEntry[1] / total) * 100);
     if (pct >= 58) {
-      text = `${largestGroup[0]} payments account for ${pct}% of recurring monthly obligations.`;
+      text = `${largestEntry[0]} accounts for ${pct}% of recurring monthly obligations.`;
     }
   }
   if (!text && topRows.length >= 2) {
     const topTwoPct = Math.round(((topRows[0].est + topRows[1].est) / total) * 100);
     if (topTwoPct >= 48) {
-      text = `Most recurring pressure comes from ${topRows[0].desc} and ${topRows[1].desc}, which together make up ${topTwoPct}% of monthly commitments.`;
+      text = `${topRows[0].desc} and ${topRows[1].desc} together shape ${topTwoPct}% of monthly commitments.`;
     }
   }
-  if (!text && largestGroup) {
-    const pct = Math.round((largestGroup[1] / total) * 100);
-    text = `${largestGroup[0]} is your largest recurring category at ${pct}% of monthly commitments.`;
+  if (!text && largestEntry?.[0]) {
+    const pct = Math.round((largestEntry[1] / total) * 100);
+    text = `${largestEntry[0]} is your largest recurring category (${pct}% of commitments).`;
   }
   if (!text) return;
 
@@ -12147,6 +12760,12 @@ function renderObligationMixBars(allRows) {
       )}%</span></span>
     `;
     host.appendChild(li);
+    bindFastTxnTipHover(
+      li,
+      `$${fmtMoney(val)}/mo normalized · ${pct.toFixed(0)}% of $${fmtMoney(
+        total,
+      )} recurring · Obligation category: ${g}`,
+    );
   }
 }
 
@@ -12209,25 +12828,34 @@ function renderObligationHeavyWeeks(allRows) {
   for (const w of items) {
     const li = document.createElement("li");
     li.className = "reports-ob-timing-item";
-    const sorted = w.hits.slice().sort((a, b) => b.amount - a.amount);
+    const sortedHits = w.hits.slice().sort((a, b) => b.amount - a.amount);
     const headlineCount = `${w.count} obligation${w.count === 1 ? "" : "s"}`;
-    const top3 = sorted
+    const top3 = sortedHits
       .slice(0, 3)
       .map(
         (h) =>
-          `<li><span>${escapeHtml(h.description)}</span><span class="reports-ob-timing-amt">−$${fmtMoney(h.amount)}</span></li>`
+          `<li class="reports-ob-timing-line"><span class="reports-ob-timing-line__name">${escapeHtml(h.description)}</span><span class="reports-ob-timing-line__leader" aria-hidden="true"></span><span class="reports-ob-timing-line__amt">−$${fmtMoney(h.amount)}</span></li>`,
       )
       .join("");
     li.innerHTML = `
-      <div class="reports-ob-timing-head">
-        <span class="reports-ob-timing-week">${escapeHtml(fmtWeekRange(w.wk))}</span>
-        <span class="reports-ob-timing-meta"><span class="reports-ob-timing-meta__count">${escapeHtml(
-          headlineCount
-        )}</span><span class="reports-ob-timing-meta__total">$${fmtMoney(w.sum)}</span></span>
+      <div class="reports-ob-timing-stack">
+        <div class="reports-ob-timing-weekline">${escapeHtml(fmtWeekRange(w.wk))}</div>
+        <div class="reports-ob-timing-hero">
+          <span class="reports-ob-timing-hero__amt">$${fmtMoney(w.sum)} due</span>
+          <span class="reports-ob-timing-hero__meta">${escapeHtml(headlineCount)}</span>
+        </div>
+        <ul class="reports-ob-timing-sub">${top3}</ul>
       </div>
-      <ul class="reports-ob-timing-sub">${top3}</ul>
     `;
     host.appendChild(li);
+    const topNames = sortedHits
+      .slice(0, 3)
+      .map((h) => `${h.description} −$${fmtMoney(h.amount)}`)
+      .join(" · ");
+    bindFastTxnTipHover(
+      li,
+      `${fmtWeekRange(w.wk)}: $${fmtMoney(w.sum)} recurring due across ${w.count} payment${w.count === 1 ? "" : "s"}. ${topNames}`,
+    );
   }
 }
 
@@ -12275,6 +12903,9 @@ function renderReportsObligations() {
   }
 
   if (summaryWrap) {
+    for (const c of summaryWrap.querySelectorAll(".reports-ob-card")) {
+      c.classList.remove("reports-ob-card--attention");
+    }
     if (!allRows.length) {
       summaryWrap.hidden = true;
       setReportsObligationStat(statTotal, null);
@@ -12289,9 +12920,19 @@ function renderReportsObligations() {
       }
       const due7 = allRows.filter((r) => r.nextIso >= todayIso && r.nextIso <= weekEndIso);
       const due7Sum = due7.reduce((a, r) => a + r.amt, 0);
-      setReportsObligationStat(statTotal, `$${fmtMoney(totalEst)}`, "Normalized monthly recurring");
+      setReportsObligationStat(statTotal, `$${fmtMoney(totalEst)}`);
       setReportsObligationStat(statLargest, `$${fmtMoney(largest.amt)}`, largest.desc);
-      setReportsObligationStat(statWeek, `$${fmtMoney(due7Sum)}`, due7.length ? `${due7.length} due in next 7 days` : "None due in next 7 days");
+      const weekSub = due7.length
+        ? `${due7.length} upcoming payment${due7.length === 1 ? "" : "s"}`
+        : "No payments this week";
+      setReportsObligationStat(statWeek, `$${fmtMoney(due7Sum)}`, weekSub);
+      const weekCard = statWeek && statWeek.closest(".reports-ob-card");
+      if (
+        weekCard &&
+        (due7.length >= 2 || due7Sum >= Math.min(REPORTS_OBL_LARGE_THRESHOLD, Math.max(totalEst * 0.12, 4000)))
+      ) {
+        weekCard.classList.add("reports-ob-card--attention");
+      }
     }
   }
 
@@ -12390,18 +13031,31 @@ function renderReportsObligations() {
       const tr = document.createElement("tr");
       tr.className = "reports-obligation-row";
       if (r.isLarge) tr.classList.add("reports-obligation-row--large");
-      const pill = r.isLarge ? `<span class="reports-obligation-pill" title="Significant portion of monthly recurring cash flow">High impact</span>` : "";
+      const pill = r.isLarge
+        ? `<span class="reports-obligation-pill" title="Large recurring payment relative to the rest of your obligations and forecast—worth watching on tight weeks">High impact</span>`
+        : "";
       tr.innerHTML = `<td class="reports-obligation-desc"><span class="reports-obligation-desc__name">${escapeHtml(r.desc)}</span>${pill ? ` ${pill}` : ""}</td><td class="num reports-obligation-amt">$${fmtMoney(
         r.amt
       )}</td><td class="reports-obligation-next">${escapeHtml(
         fmtObligationNextDate(r.nextIso)
       )}</td><td class="reports-obligation-freq">${escapeHtml(r.recLabel)}</td><td class="num reports-ob-est">$${fmtMoney(r.est)}</td>`;
+      const forecastBal = obligationForecastBalanceOnIso(r.nextIso);
+      const tipParts = [
+        `${r.recLabel} · ~$${fmtMoney(r.est)}/mo normalized`,
+        `Next payment ${fmtObligationNextDate(r.nextIso)} for $${fmtMoney(r.amt)}`,
+      ];
+      if (forecastBal != null && Number.isFinite(forecastBal)) {
+        tipParts.push(`Forecast balance end of that day (trendline): ${fmtMoney0SignedDollar(forecastBal)}`);
+      } else {
+        tipParts.push("Open Reports with a loaded forecast to see projected balance on that date.");
+      }
+      bindFastTxnTipHover(tr, tipParts.join(" · "));
       body.appendChild(tr);
     }
 
     const subTr = document.createElement("tr");
     subTr.className = "reports-obligation-subtotal";
-    subTr.innerHTML = `<td colspan="4" class="reports-obligation-subtotal__k">${escapeHtml(g)} · monthly est.</td><td class="num reports-ob-est">$${fmtMoney(
+    subTr.innerHTML = `<td colspan="4" class="reports-obligation-subtotal__k">${escapeHtml(g)} · subtotal</td><td class="num reports-ob-est">$${fmtMoney(
       subEst
     )}</td>`;
     body.appendChild(subTr);
@@ -12410,7 +13064,7 @@ function renderReportsObligations() {
   if (foot && rows.length) {
     const tr = document.createElement("tr");
     tr.className = "reports-obligation-grand";
-    tr.innerHTML = `<td colspan="4">Total monthly recurring (this view)</td><td class="num reports-ob-est">$${fmtMoney(grandEst)}</td>`;
+    tr.innerHTML = `<td colspan="4" class="reports-obligation-grand__label">Total recurring (this view)</td><td class="num reports-ob-est">$${fmtMoney(grandEst)}</td>`;
     foot.appendChild(tr);
   }
 }
@@ -12466,24 +13120,22 @@ function renderPressureNarrative(hits, daily, floor) {
 
   const startIso = focus[0]?.iso || "";
   const endIso = focus[focus.length - 1]?.iso || startIso;
-  const rangeLabel = startIso && endIso
-    ? startIso === endIso
-      ? fmtMonthDay(startIso)
-      : `${fmtMonthDay(startIso)} and ${fmtMonthDay(endIso)}`
-    : "";
+  const dateSpan =
+    startIso && endIso
+      ? startIso === endIso
+        ? fmtMonthDay(startIso)
+        : `${fmtMonthDay(startIso)} and ${fmtMonthDay(endIso)}`
+      : "";
   ledeEl.textContent =
     focus.length === 1
-      ? `Upcoming cash pressure centers on one larger payment around ${rangeLabel}.`
-      : `Upcoming cash pressure is concentrated around ${focus.length} larger payments between ${rangeLabel}.`;
+      ? `Upcoming cash pressure centers on one larger payment on ${dateSpan}.`
+      : `Upcoming cash pressure centers around ${focus.length} larger payments between ${dateSpan}.`;
 
-  const details = [];
-  if (largest) {
-    details.push(`Largest impact: ${largest.desc} — $${fmtMoney(largest.amt)} on ${fmtMonthDay(largest.iso)}.`);
-  }
   if (lowest && Number.isFinite(lowest.after)) {
-    details.push(`Lowest projected balance: ${fmtMoney0SignedDollar(lowest.after)} on ${fmtMonthDay(lowest.iso)}.`);
+    recEl.textContent = `Lowest projected balance: ${fmtMoney0SignedDollar(lowest.after)} on ${fmtMonthDay(lowest.iso)}.`;
+  } else {
+    recEl.textContent = "";
   }
-  recEl.textContent = details.join(" ");
   wrap.hidden = false;
 }
 
@@ -12537,6 +13189,9 @@ function renderReportsCashPressure(daily) {
   renderPressureNarrative(hits, daily, floor);
 
   if (summaryEl) {
+    for (const c of summaryEl.querySelectorAll(".reports-ob-card")) {
+      c.classList.remove("reports-ob-card--pressure-alert", "reports-ob-card--pressure-warn");
+    }
     if (!hits.length) {
       summaryEl.hidden = true;
       setReportsObligationStat(statLargest, null);
@@ -12555,18 +13210,20 @@ function renderReportsCashPressure(daily) {
       setReportsObligationStat(
         statLargest,
         `$${fmtMoney(maxHit.amt)}`,
-        `${maxHit.desc} · ${fmtMonthDay(maxHit.iso)}`
+        `${maxHit.desc} · ${fmtMonthDay(maxHit.iso)}`,
       );
       setReportsObligationStat(
         statLowBal,
         lowestHit && Number.isFinite(lowestHit.after) ? fmtMoney0SignedDollar(lowestHit.after) : "—",
-        lowestHit ? `${fmtMonthDay(lowestHit.iso)}` : "No projected low point"
+        lowestHit ? `${fmtMonthDay(lowestHit.iso)}` : "No projected low in range",
       );
-      setReportsObligationStat(
-        statCount,
-        String(datesToWatch),
-        datesToWatch === 1 ? "date to watch" : "dates to watch"
-      );
+      setReportsObligationStat(statCount, String(datesToWatch), datesToWatch === 1 ? "date to watch" : "dates to watch");
+      if (lowestHit && Number.isFinite(lowestHit.after) && floor != null && lowestHit.after < floor) {
+        statLowBal.closest(".reports-ob-card")?.classList.add("reports-ob-card--pressure-alert");
+      }
+      if (datesToWatch >= 2) {
+        statCount.closest(".reports-ob-card")?.classList.add("reports-ob-card--pressure-warn");
+      }
     }
   }
 
@@ -12580,31 +13237,66 @@ function renderReportsCashPressure(daily) {
       String(lowestHit.iso || "") === String(h.iso || "") &&
       Number(lowestHit.after ?? NaN) === Number(h.after ?? NaN);
     if (isPrimary) tr.classList.add("reports-pressure-row--primary");
+    if (sev.key === "below") tr.classList.add("reports-pressure-row--severe");
 
     const why = pressureWhyItMatters(h, floor, lowestHit);
 
+    const levelGlyph = sev.key === "below" ? `<span class="reports-pressure-level__glyph" aria-hidden="true"></span>` : "";
+
     let balHtml;
     if (h.after != null && Number.isFinite(h.after)) {
-      balHtml = `<td class="num reports-pressure-bal ${sev.balClass}"><span class="reports-pressure-bal__value">${fmtMoney0SignedDollar(
-        h.after
-      )}</span><span class="reports-pressure-level ${sev.levelClass}">${escapeHtml(sev.label)}</span></td>`;
+      balHtml = `<td class="num reports-pressure-bal ${sev.balClass}"><div class="reports-pressure-bal__pill reports-pressure-bal__pill--${
+        sev.key
+      }"><span class="reports-pressure-bal__value">${fmtMoney0SignedDollar(
+        h.after,
+      )}</span><span class="reports-pressure-level ${sev.levelClass}">${levelGlyph}${escapeHtml(sev.label)}</span></div></td>`;
     } else {
-      balHtml = `<td class="num reports-pressure-bal reports-pressure-bal--unknown" title="This date is beyond the current forecast range — extend horizon in Settings to project further out."><span class="reports-pressure-bal__value">—</span><span class="reports-pressure-level reports-pressure-level--unknown">Unknown</span></td>`;
+      const uk = pressureSeverityMeta(h.after, floor);
+      balHtml = `<td class="num reports-pressure-bal reports-pressure-bal--unknown"><div class="reports-pressure-bal__pill reports-pressure-bal__pill--${
+        uk.key
+      } reports-pressure-bal__pill--muted"><span class="reports-pressure-bal__value">—</span><span class="reports-pressure-level ${uk.levelClass}">${escapeHtml(
+        uk.label,
+      )}</span></div></td>`;
     }
 
-    const rec = h.recovery || { label: "—", cls: "reports-pressure-rec--muted" };
-    const recTitle = rec.state === "outside" ? ' title="Outside the current forecast range"' : "";
+    const rec = h.recovery || { label: "—", cls: "reports-pressure-rec--muted", state: "" };
+    const recTitle =
+      rec.state === "outside"
+        ? ' title="Recovery not shown — extend the forecast horizon to see when cash may recover"'
+        : rec.state === "stale"
+          ? ' title="Remains below target through the end of the visible forecast"'
+          : "";
     const catBadge = h.categoryLabel
       ? `<span class="reports-pressure-category">${escapeHtml(h.categoryLabel)}</span>`
       : "";
 
-    tr.innerHTML = `<td class="reports-pressure-date">${escapeHtml(fmtObligationNextDate(h.iso))}</td><td class="reports-pressure-days">${escapeHtml(
-      formatDaysUntilImpact(todayIso, h.iso)
-    )}</td><td class="reports-pressure-desc"><div class="reports-pressure-desc__top"><span class="reports-pressure-desc__name">${escapeHtml(
-      h.desc
+    const rel = formatPressureRelativeTiming(todayIso, h.iso);
+    const daysInner =
+      rel === ""
+        ? `<span class="reports-pressure-days reports-pressure-days--far" title="More than 30 days away — timing is shown as a date in the first column.">—</span>`
+        : `<span class="reports-pressure-days">${escapeHtml(rel)}</span>`;
+
+    tr.innerHTML = `<td class="reports-pressure-date">${escapeHtml(fmtObligationNextDate(h.iso))}</td><td class="reports-pressure-days-cell">${daysInner}</td><td class="reports-pressure-desc"><div class="reports-pressure-desc__top"><span class="reports-pressure-desc__name">${escapeHtml(
+      h.desc,
     )}</span>${catBadge}</div><div class="reports-pressure-desc__note">${escapeHtml(why)}</div></td><td class="num reports-pressure-amt"><span class="reports-pressure-amt__v">$${fmtMoney(
-      h.amt
+      h.amt,
     )}</span></td>${balHtml}<td class="reports-pressure-rec ${rec.cls}"${recTitle}>${escapeHtml(rec.label)}</td>`;
+
+    const floorTip = floor != null ? `Minimum balance: $${fmtMoney(floor)}` : "No minimum balance — pressure uses $0.";
+    const tipBits = [
+      floorTip,
+      `Payment −$${fmtMoney(h.amt)} on ${fmtMonthDay(h.iso)}`,
+      h.after != null && Number.isFinite(h.after)
+        ? `Projected after: ${fmtMoney0SignedDollar(h.after)} (${sev.label})`
+        : sev.label,
+      rec.label && rec.label !== "—" ? `Recovery: ${rec.label}` : "",
+      why ? `Why it matters: ${why}` : "",
+    ].filter(Boolean);
+    const tip = tipBits.join(" · ");
+    bindFastTxnTipHover(tr.querySelector(".reports-pressure-desc"), tip);
+    bindFastTxnTipHover(tr.querySelector(".reports-pressure-bal"), tip);
+    bindFastTxnTipHover(tr.querySelector(".reports-pressure-rec"), tip);
+
     body.appendChild(tr);
   }
   if (!hits.length) {
@@ -12647,7 +13339,7 @@ function drawProjectionChart(daily) {
     }
     const leg = document.getElementById("reportsBalanceLegend");
     if (leg) leg.innerHTML = "";
-    const take = document.getElementById("reportsCashInsightsBody") || document.getElementById("reportsBalanceTakeaway");
+    const take = document.getElementById("reportsBalanceTakeaway");
     if (take) {
       take.textContent = "";
       take.hidden = true;
@@ -12660,7 +13352,7 @@ function drawProjectionChart(daily) {
       emptyEl.style.display = "flex";
       emptyEl.textContent = "Chart library failed to load. Check your network connection.";
     }
-    const take = document.getElementById("reportsCashInsightsBody") || document.getElementById("reportsBalanceTakeaway");
+    const take = document.getElementById("reportsBalanceTakeaway");
     if (take) {
       take.textContent = "";
       take.hidden = true;
@@ -12726,9 +13418,10 @@ function drawProjectionChart(daily) {
   // Slightly stronger fills on the reports view so positive vs. negative
   // regions read as zones instead of empty whitespace.
   const negFillBelow =
-    onReports ? "rgba(185, 28, 28, 0.038)" : "rgba(167, 55, 68, 0.12)";
-  const negFillBelowEnd = onReports ? "rgba(185, 28, 28, 0.052)" : "rgba(167, 55, 68, 0.12)";
-  const posFillAbove = onReports ? "rgba(11, 61, 46, 0.07)" : "rgba(11, 61, 46, 0.12)";
+    onReports ? "rgba(220, 38, 38, 0.115)" : "rgba(167, 55, 68, 0.12)";
+  const negFillBelowEnd = onReports ? "rgba(127, 29, 29, 0.18)" : "rgba(167, 55, 68, 0.12)";
+  const posFillAbove = onReports ? "rgba(11, 61, 46, 0.032)" : "rgba(11, 61, 46, 0.12)";
+  const posFillTop = onReports ? "rgba(255, 255, 255, 0)" : "rgba(11, 61, 46, 0.12)";
 
   const yDomain = values.filter((n) => Number.isFinite(Number(n))).map((n) => Number(n));
   yDomain.push(0);
@@ -12736,8 +13429,8 @@ function drawProjectionChart(daily) {
   const minDomain = Math.min(...yDomain);
   const maxDomain = Math.max(...yDomain);
   const span = Math.max(800, maxDomain - minDomain);
-  const suggestedMin = minDomain - span * (onReports ? 0.08 : 0.12);
-  const suggestedMax = maxDomain + span * (onReports ? 0.14 : 0.18);
+  const suggestedMin = minDomain - span * (onReports ? 0.065 : 0.12);
+  const suggestedMax = maxDomain + span * (onReports ? 0.124 : 0.18);
 
   // Build annotation list (top outflows and inflows) for the custom plugin.
   const annotations = [];
@@ -12750,6 +13443,7 @@ function drawProjectionChart(daily) {
         value: Number(values[i] ?? 0),
         kind: "outflow",
         label: `−$${formatChartMoneyShort(Math.abs(net))}`,
+        caption: "Heaviest outflow day",
       });
     }
     for (const i of inflowMarkers) {
@@ -12760,6 +13454,7 @@ function drawProjectionChart(daily) {
         value: Number(values[i] ?? 0),
         kind: "inflow",
         label: `+$${formatChartMoneyShort(net)}`,
+        caption: "Strongest inflow day",
       });
     }
   }
@@ -12771,6 +13466,11 @@ function drawProjectionChart(daily) {
       const todayIso = toISODate(new Date());
       todayIdx = dateLabels.findIndex((d) => String(d) === todayIso);
     } catch (_) {}
+  }
+  let todayBalForAnn = null;
+  if (onReports && todayIdx >= 0) {
+    const tb = Number(values[todayIdx]);
+    if (Number.isFinite(tb)) todayBalForAnn = tb;
   }
 
   const datasets = [
@@ -12790,13 +13490,22 @@ function drawProjectionChart(daily) {
         let t = (y0 - top) / span;
         if (!Number.isFinite(t)) t = 0.5;
         t = Math.max(0, Math.min(1, t));
-        g.addColorStop(0, posFillAbove);
-        g.addColorStop(t, posFillAbove);
-        g.addColorStop(t, negFillBelow);
-        g.addColorStop(1, negFillBelowEnd);
+        if (onReports) {
+          g.addColorStop(0, posFillTop);
+          g.addColorStop(Math.max(0, t - 0.12), posFillAbove);
+          g.addColorStop(t, posFillAbove);
+          g.addColorStop(t, negFillBelow);
+          g.addColorStop(t + (1 - t) * 0.45, "rgba(185, 28, 28, 0.13)");
+          g.addColorStop(1, negFillBelowEnd);
+        } else {
+          g.addColorStop(0, posFillAbove);
+          g.addColorStop(t, posFillAbove);
+          g.addColorStop(t, negFillBelow);
+          g.addColorStop(1, negFillBelowEnd);
+        }
         return g;
       },
-      borderWidth: onReports ? 2 : 2,
+      borderWidth: onReports ? 3 : 2,
       fill: true,
       cubicInterpolationMode: "default",
       tension: onReports ? 0.12 : 0.08,
@@ -12808,7 +13517,7 @@ function drawProjectionChart(daily) {
           const y0 = ctx.p0.parsed.y;
           const y1 = ctx.p1.parsed.y;
           const mid = (Number(y0) + Number(y1)) / 2;
-          return mid >= 0 ? "rgba(11, 61, 46, 0.88)" : "rgba(167, 55, 68, 0.76)";
+          return mid >= 0 ? "rgba(11, 61, 46, 0.94)" : "rgba(185, 28, 28, 0.9)";
         },
       },
     },
@@ -12817,9 +13526,9 @@ function drawProjectionChart(daily) {
     datasets.push({
       label: "Minimum",
       data: dateLabels.map(() => thr),
-      borderColor: onReports ? "rgba(100, 116, 139, 0.4)" : "rgba(75, 85, 99, 0.55)",
-      borderWidth: onReports ? 1 : 1.5,
-      borderDash: onReports ? [4, 5] : [5, 5],
+      borderColor: onReports ? "rgba(51, 65, 85, 0.62)" : "rgba(75, 85, 99, 0.55)",
+      borderWidth: onReports ? 1.85 : 1.5,
+      borderDash: onReports ? [8, 5] : [5, 5],
       pointRadius: 0,
       fill: false,
       tension: 0,
@@ -12843,7 +13552,7 @@ function drawProjectionChart(daily) {
       maintainAspectRatio: false,
       layout: onReports
         ? {
-            padding: { top: 24, right: 10, bottom: 2, left: 0 },
+            padding: { top: 32, right: 3, bottom: 8, left: 1 },
           }
         : undefined,
       interaction: { mode: "index", intersect: false },
@@ -12854,8 +13563,9 @@ function drawProjectionChart(daily) {
               annotations,
               todayIdx,
               floor: thr != null ? Number(thr) : null,
+              todayBal: todayBalForAnn,
             }
-          : { annotations: [], todayIdx: -1, floor: null },
+          : { annotations: [], todayIdx: -1, floor: null, todayBal: null },
         tooltip: {
           callbacks: {
             title: (ctxItems) => {
@@ -12882,7 +13592,7 @@ function drawProjectionChart(daily) {
           type: "category",
           grid: {
             display: onReports,
-            color: "rgba(148, 163, 184, 0.22)",
+            color: "rgba(100, 116, 139, 0.22)",
             lineWidth: onReports ? 1 : 1,
             drawTicks: false,
           },
@@ -12890,8 +13600,8 @@ function drawProjectionChart(daily) {
             autoSkip: true,
             maxTicksLimit: 8,
             maxRotation: 0,
-            color: onReports ? "rgba(100, 116, 139, 0.55)" : undefined,
-            font: onReports ? { size: 10, weight: "500" } : undefined,
+            color: onReports ? "rgba(30, 41, 59, 0.8)" : undefined,
+            font: onReports ? { size: 11, weight: "600" } : undefined,
             callback: function (tickValue) {
               const lbl = typeof tickValue === "number" ? dateLabels[tickValue] : tickValue;
               if (lbl == null || lbl === "") return "";
@@ -12903,13 +13613,13 @@ function drawProjectionChart(daily) {
           suggestedMin: onReports ? suggestedMin : undefined,
           suggestedMax: onReports ? suggestedMax : undefined,
           grid: {
-            color: onReports ? "rgba(148, 163, 184, 0.2)" : "rgba(0,0,0,0.045)",
+            color: onReports ? "rgba(71, 85, 105, 0.2)" : "rgba(0,0,0,0.045)",
             drawBorder: false,
           },
           ticks: {
             maxTicksLimit: 6,
-            color: onReports ? "rgba(100, 116, 139, 0.52)" : undefined,
-            font: onReports ? { size: 10, weight: "500" } : undefined,
+            color: onReports ? "rgba(30, 41, 59, 0.78)" : undefined,
+            font: onReports ? { size: 11, weight: "600" } : undefined,
             callback: (value) =>
               "$" +
               Number(value).toLocaleString(undefined, {
@@ -12948,12 +13658,12 @@ function ensureForecastReadyModal() {
     <div class="modal modal--choice modal--forecast-ready" role="dialog" aria-modal="true" aria-labelledby="bwForecastReadyTitle" aria-describedby="bwForecastReadyDesc">
       <h3 id="bwForecastReadyTitle">Your forecast is ready</h3>
       <div id="bwForecastReadyDesc" class="bw-forecast-ready__body">
-        <p class="bw-forecast-ready__tagline">Here are 3 quick things to know before you start.</p>
+        <p class="bw-forecast-ready__tagline">Take a quick walkthrough to learn the basics.</p>
       </div>
       <div class="modal-actions bw-forecast-ready__actions">
-        <button type="button" class="bw-forecast-ready__cta" id="bwForecastReadyStartTourBtn">Take the quick tour</button>
-        <button type="button" class="bw-forecast-ready__skip" id="bwForecastReadySkipBtn">Skip for now</button>
-        <p class="bw-forecast-ready__reassure">Takes less than 60 seconds. You can revisit the tour anytime.</p>
+        <button type="button" class="bw-forecast-ready__cta" id="bwForecastReadyStartTourBtn">Take the Tour</button>
+        <button type="button" class="bw-forecast-ready__skip" id="bwForecastReadySkipBtn">Go to Forecast</button>
+        <p class="bw-forecast-ready__reassure">About 60 seconds. Reopen the tour anytime from Help.</p>
       </div>
       <p class="bw-forecast-ready__finePrint" aria-label="Trial and pricing">
         14-day free trial <span aria-hidden="true">•</span> <span id="bwForecastReadyPricingLine">Cancel anytime.</span>
