@@ -252,6 +252,10 @@ body.account-setup-page{
   --as-ultra-soft-tile-shadow:
     0 1px 2px rgba(0, 0, 0, 0.04),
     0 5px 18px rgba(0, 0, 0, 0.042);
+  /* Slightly warmer neutral than global --bg while staying quiet */
+  background:
+    radial-gradient(120% 70% at 50% -8%, rgba(11, 61, 46, 0.055), transparent 58%),
+    linear-gradient(180deg, #e9eae6 0%, #e7e8e8 52%, #e4e6e9 100%);
 }
 
 /* Account setup: allow full-width stacked cards */
@@ -259,7 +263,7 @@ body.account-setup-page .container{
   max-width: 1920px;
 }
 body.account-setup-page .container > .grid{
-  width: min(640px, 94%);
+  width: min(572px, 92%);
   margin-left: auto;
   margin-right: auto;
   margin-top: max(18px, calc(36px - 10vh));
@@ -385,8 +389,8 @@ body.landing-page{
   /* Vertical rhythm: tightened again — the previous gap left noticeable
      "white islands" between sections. The page should feel architected,
      not assembled. */
-  --landing-section-gap: clamp(0.68rem, 1.55vw, 1.08rem);
-  --landing-section-gap-tight: clamp(0.26rem, 0.72vw, 0.46rem);
+  --landing-section-gap: clamp(1.35rem, 2.8vw, 2.35rem);
+  --landing-section-gap-tight: clamp(0.75rem, 1.8vw, 1.15rem);
   --landing-rail: var(--landing-content-max);
   --landing-below-max: var(--landing-content-max);
 }
@@ -398,7 +402,7 @@ body.landing-page .landing-main{
   justify-content: flex-start;
   /* Slight top breathing room below the nav; bottom is modest so the
      footer feels intentionally connected to the content above it. */
-  padding: clamp(0.52rem, 1.15vw, 0.82rem) 0 clamp(0.62rem, 1.35vw, 0.92rem);
+  padding: clamp(0.85rem, 1.6vw, 1.35rem) 0 clamp(0.75rem, 1.5vw, 1.1rem);
   /* Calm, premium canvas (less "blocks on a page") */
   background:
     radial-gradient(900px 260px at 50% 0%, rgba(4, 120, 87, 0.085) 0%, rgba(4, 120, 87, 0) 72%),
@@ -421,7 +425,7 @@ body.landing-page .landing-shell{
 /* Subtle rhythm bands so major blocks read as one scroll, not stacked islands */
 body.landing-page .landing-shell > .landing-preview{
   padding: 0;
-  margin: calc(var(--landing-section-gap-tight) - var(--landing-section-gap)) 0 0;
+  margin: 0;
   width: auto;
   border-radius: 0;
   background: transparent;
@@ -432,10 +436,6 @@ body.landing-page .landing-shell > .landing-below-preview{
   background: transparent;
   margin-top: calc(var(--landing-section-gap-tight) - var(--landing-section-gap));
 }
-/* Pull insight up so hero + insight read as a single connected block */
-body.landing-page .landing-shell > .landing-insight{
-  margin-top: calc(var(--landing-section-gap-tight) - var(--landing-section-gap));
-}
 body.landing-page .landing-hero{
   width: 100%;
   max-width: none;
@@ -443,6 +443,13 @@ body.landing-page .landing-hero{
   padding: 0;
   text-align: left;
   align-self: stretch;
+}
+body.landing-page .landing-hero > .landing-insight{
+  margin-top: clamp(1rem, 2.2vw, 1.6rem);
+  width: 100%;
+  max-width: min(40rem, 100%);
+  margin-left: auto;
+  margin-right: auto;
 }
 body.landing-page .landing-hero__inner{
   display: grid;
@@ -462,7 +469,7 @@ body.landing-page .landing-hero__copy{
   min-width: 0;
   text-align: center;
   justify-self: center;
-  max-width: 25.5rem;
+  max-width: min(34rem, 100%);
   width: 100%;
 }
 @media (min-width: 821px){
@@ -473,6 +480,7 @@ body.landing-page .landing-hero__copy{
   body.landing-page .landing-hero__text,
   body.landing-page .landing-hero__sub,
   body.landing-page .landing-hero__emotion,
+  body.landing-page .landing-hero__ctaGroup,
   body.landing-page .landing-hero__cta,
   body.landing-page .landing-hero__proof,
   body.landing-page .landing-hero__reassurance{
@@ -618,7 +626,7 @@ body.landing-page .landing-hero__cta{
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  margin: 0.56rem auto 0;
+  margin: 0;
   padding: 0 1.35rem;
   min-height: 44px;
   font-weight: 700;
@@ -633,6 +641,44 @@ body.landing-page .landing-hero__cta{
     0 1px 0 rgba(255, 255, 255, 0.14) inset,
     0 4px 14px rgba(11, 61, 46, 0.16);
   transition: transform 0.22s ease, box-shadow 0.22s ease, filter 0.2s ease;
+}
+body.landing-page .landing-hero__ctaGroup{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.32rem;
+  margin: 0.62rem auto 0;
+  width: 100%;
+  max-width: 34rem;
+}
+@media (min-width: 821px){
+  body.landing-page .landing-hero__ctaGroup{
+    align-items: flex-start;
+    margin-left: 0;
+    margin-right: 0;
+  }
+}
+body.landing-page .landing-hero__proof{
+  margin: 0.85rem auto 0;
+  max-width: min(34rem, 100%);
+  padding: 0 0.25rem;
+  box-sizing: border-box;
+  font-size: 0.72rem;
+  line-height: 1.42;
+  font-weight: 450;
+  letter-spacing: 0;
+  text-transform: none;
+  color: rgba(100, 116, 139, 0.78);
+}
+body.landing-page .landing-hero__reassurance{
+  margin: 0;
+  max-width: none;
+  padding: 0;
+  font-size: 0.7rem;
+  line-height: 1.35;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: rgba(100, 116, 139, 0.72);
 }
 body.landing-page .landing-hero__cta:hover{
   transform: translateY(-1px);
@@ -1755,7 +1801,6 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
     padding-right: max(24px, env(safe-area-inset-right));
   }
 
-  body.landing-page .landing-shell > .landing-insight,
   body.landing-page .landing-shell > .landing-preview,
   body.landing-page .landing-shell > .landing-below-preview{
     margin-top: 0;
@@ -1777,7 +1822,7 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
   }
 
   body.landing-page .landing-hero__copy{
-    max-width: 31rem;
+    max-width: min(34rem, 100%);
   }
 
   body.landing-page .landing-hero__text{
@@ -2648,12 +2693,11 @@ body.landing-page .app-footer__text{
 /* Landing page cleanup: calmer guided homepage story */
 body.landing-page{
   --landing-content-max: min(71rem, calc(100vw - 2.25rem));
-  /* Tighter vertical rhythm (~15–18% vs prior) */
-  --landing-section-gap: clamp(0.62rem, 1.35vw, 1.02rem);
-  --landing-section-gap-tight: clamp(0.28rem, 0.62vw, 0.48rem);
+  --landing-section-gap: clamp(1.35rem, 2.6vw, 2.35rem);
+  --landing-section-gap-tight: clamp(0.85rem, 1.9vw, 1.2rem);
 }
 body.landing-page .landing-main{
-  padding: 0.22rem 0 0;
+  padding: clamp(0.65rem, 1.4vw, 1rem) 0 clamp(0.55rem, 1.2vw, 0.85rem);
   background: #fff;
 }
 body.landing-page .landing-shell{
@@ -2668,31 +2712,31 @@ body.landing-page .landing-shell > .landing-how,
 body.landing-page .landing-shell > .landing-offer{
   margin-top: 0;
 }
-/* Pull narrative sections slightly closer so the scroll reads as one story */
 body.landing-page .landing-shell > .landing-cal-peek{
-  margin-top: calc(var(--landing-section-gap) * -0.22);
+  margin-top: calc(var(--landing-section-gap) * -0.12);
 }
 body.landing-page .landing-shell > .landing-how{
-  margin-top: calc(var(--landing-section-gap) * -0.18);
+  margin-top: calc(var(--landing-section-gap) * -0.1);
 }
 body.landing-page .landing-shell > .landing-offer{
-  margin-top: calc(var(--landing-section-gap) * -0.28);
-}
-/* Pull the insight strip closer to the hero so it reads as one beat */
-body.landing-page .landing-shell > .landing-insight{
-  margin-top: -0.22rem;
+  margin-top: calc(var(--landing-section-gap) * -0.14);
 }
 body.landing-page .landing-hero{
-  padding-top: clamp(0.95rem, 2.45vw, 1.72rem);
+  padding-top: clamp(1.1rem, 2.8vw, 2rem);
 }
 body.landing-page .landing-hero__inner{
-  grid-template-columns: minmax(0, 1fr) minmax(352px, 496px);
-  gap: clamp(0.72rem, 2vw, 1.55rem);
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 460px);
+  gap: clamp(1.1rem, 2.6vw, 2.25rem);
   padding: 0;
   align-items: center;
 }
 body.landing-page .landing-hero__copy{
-  max-width: min(27.5rem, 100%);
+  max-width: min(34rem, 100%);
+}
+@media (min-width: 821px){
+  body.landing-page .landing-hero__copy{
+    padding-top: clamp(0.4rem, 1.4vw, 1.15rem);
+  }
 }
 body.landing-page .landing-hero__text{
   margin: 0;
@@ -2702,23 +2746,34 @@ body.landing-page .landing-hero__text{
 }
 body.landing-page .landing-hero__sub{
   margin: 0.58rem 0 0;
-  max-width: 27.5rem;
+  max-width: min(34rem, 100%);
   padding: 0;
-  font-size: clamp(0.98rem, 1.65vw, 1.06rem);
-  line-height: 1.46;
+  font-size: clamp(0.9rem, 1.35vw, 1.02rem);
+  line-height: 1.48;
+  font-weight: 480;
+  color: rgba(71, 85, 105, 0.82);
 }
 body.landing-page .landing-hero__emotion{
-  margin: 0.62rem 0 0;
-  max-width: 27.5rem;
+  margin: 0.52rem 0 0;
+  max-width: min(34rem, 100%);
   padding: 0;
-  font-size: clamp(0.9rem, 1.45vw, 1rem);
-  line-height: 1.4;
-  font-weight: 600;
-  color: rgba(30, 41, 59, 0.88);
-  letter-spacing: -0.015em;
+  font-size: clamp(0.84rem, 1.2vw, 0.94rem);
+  line-height: 1.45;
+  font-weight: 500;
+  color: rgba(71, 85, 105, 0.76);
+  letter-spacing: -0.01em;
+}
+body.landing-page .landing-hero__ctaGroup{
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.3rem;
+  margin: 0.56rem 0 0;
+  width: 100%;
+  max-width: min(34rem, 100%);
 }
 body.landing-page .landing-hero__cta{
-  margin: 0.52rem 0 0;
+  margin: 0;
   min-height: 46px;
   padding: 0 1.35rem;
   border-radius: 12px;
@@ -2727,26 +2782,25 @@ body.landing-page .landing-hero__cta{
     0 10px 24px rgba(11, 61, 46, 0.14);
 }
 body.landing-page .landing-hero__proof{
-  margin: 0.45rem 0 0;
-  max-width: 26rem;
+  margin: 0.75rem 0 0;
+  max-width: min(34rem, 100%);
   padding: 0;
-  font-size: 0.78rem;
-  line-height: 1.38;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  color: rgba(71, 85, 105, 0.68);
+  font-size: 0.72rem;
+  line-height: 1.42;
+  font-weight: 450;
+  letter-spacing: 0;
+  text-transform: none;
+  color: rgba(100, 116, 139, 0.74);
 }
 body.landing-page .landing-hero__reassurance{
-  margin: 0.28rem auto 0;
-  max-width: 24rem;
-  padding: 0 0.35rem;
-  box-sizing: border-box;
-  font-size: 0.78rem;
+  margin: 0;
+  max-width: none;
+  padding: 0;
+  font-size: 0.7rem;
   line-height: 1.35;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  color: rgba(100, 116, 139, 0.76);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: rgba(100, 116, 139, 0.7);
 }
 body.landing-page .landing-hero__viz{
   justify-self: end;
@@ -2764,16 +2818,16 @@ body.landing-page .landing-hero__viz:hover{
 }
 body.landing-page .landing-hero-viz{
   border-radius: 20px;
-  padding: 16px 16px 13px;
+  padding: 17px 18px 15px;
   transform-origin: 50% 55%;
   transition:
     transform 0.45s cubic-bezier(0.22, 1, 0.36, 1),
     box-shadow 0.45s ease;
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.94) inset,
-    0 4px 6px rgba(11, 61, 46, 0.05),
-    0 22px 48px -20px rgba(11, 61, 46, 0.28),
-    0 40px 72px -36px rgba(11, 61, 46, 0.2);
+    0 5px 10px rgba(11, 61, 46, 0.06),
+    0 24px 52px -20px rgba(11, 61, 46, 0.3),
+    0 44px 78px -34px rgba(11, 61, 46, 0.22);
   border-color: rgba(11, 61, 46, 0.14);
   filter: saturate(1.03) contrast(1.02);
 }
@@ -2797,27 +2851,29 @@ body.landing-page .landing-insight{
   padding: 0;
 }
 body.landing-page .landing-insight__card{
-  max-width: 54rem;
+  max-width: min(40rem, 100%);
   margin-left: auto;
   margin-right: auto;
-  border-color: rgba(13, 148, 136, 0.16);
-  background: linear-gradient(175deg, rgba(236, 253, 250, 0.52) 0%, rgba(255, 255, 255, 0.96) 100%);
+  border-radius: 12px;
+  border-color: rgba(13, 148, 136, 0.11);
+  background: linear-gradient(175deg, rgba(240, 253, 250, 0.42) 0%, rgba(255, 255, 255, 0.97) 100%);
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.75) inset,
-    0 5px 18px -14px rgba(13, 148, 136, 0.2);
+    0 1px 0 rgba(255, 255, 255, 0.78) inset,
+    0 4px 14px -10px rgba(13, 148, 136, 0.14);
 }
 body.landing-page .landing-insight__iconCol{
-  padding: 0.3rem 0.48rem;
-  background: linear-gradient(180deg, rgba(13, 148, 136, 0.09) 0%, rgba(45, 212, 191, 0.05) 100%);
-  border-right: 1px solid rgba(13, 148, 136, 0.14);
+  padding: 0.26rem 0.42rem;
+  background: linear-gradient(180deg, rgba(13, 148, 136, 0.06) 0%, rgba(45, 212, 191, 0.03) 100%);
+  border-right: 1px solid rgba(13, 148, 136, 0.1);
 }
 body.landing-page .landing-insight__main{
-  padding: 0.32rem 0.76rem 0.36rem;
-  gap: 0.08rem;
+  padding: 0.28rem 0.65rem 0.32rem;
+  gap: 0.06rem;
 }
 body.landing-page .landing-insight__label{
-  color: rgba(17, 94, 89, 0.78);
-  letter-spacing: 0.1em;
+  color: rgba(17, 94, 89, 0.65);
+  letter-spacing: 0.08em;
+  font-size: 0.58rem;
 }
 body.landing-page .landing-insight__icon{
   width: 32px;
@@ -2830,6 +2886,11 @@ body.landing-page .landing-insight__icon svg{
   width: 15px;
   height: 15px;
 }
+body.landing-page .landing-insight__copy{
+  font-weight: 540;
+  color: rgba(30, 41, 55, 0.9);
+  font-size: clamp(0.82rem, 1.35vw, 0.9rem);
+}
 body.landing-page .landing-preview{
   display: grid;
   gap: 0.36rem;
@@ -2839,20 +2900,23 @@ body.landing-page .landing-section{
   isolation: isolate;
 }
 body.landing-page .landing-section--tint-safe{
-  padding: clamp(0.44rem, 1.12vw, 0.72rem) 0;
+  margin-top: clamp(0.85rem, 2.2vw, 1.65rem);
+  padding: clamp(2rem, 4.8vw, 3.4rem) 0 clamp(1.35rem, 3vw, 2.1rem);
 }
 body.landing-page .landing-section--tint-safe::before{
   content: "";
   position: absolute;
   z-index: 0;
-  inset: 0;
+  top: clamp(0.65rem, 1.8vw, 1.1rem);
+  right: 0;
+  bottom: 0;
   left: 50%;
   transform: translateX(-50%);
   width: 100vw;
   background: linear-gradient(
     180deg,
-    rgba(233, 252, 244, 0.78) 0%,
-    rgba(248, 250, 249, 0.42) 52%,
+    rgba(233, 252, 244, 0.72) 0%,
+    rgba(248, 250, 249, 0.38) 52%,
     rgba(255, 255, 255, 0.94) 100%
   );
   pointer-events: none;
@@ -2885,6 +2949,8 @@ body.landing-page .landing-section--tint-neutral > *{
 }
 body.landing-page .landing-preview__intro{
   max-width: 38rem;
+  padding-top: clamp(0.25rem, 0.9vw, 0.65rem);
+  margin-bottom: clamp(0.45rem, 1.2vw, 0.75rem);
 }
 body.landing-page .landing-preview__title{
   margin: 0 0 0.26rem;
@@ -2902,8 +2968,8 @@ body.landing-page .landing-preview__lede{
   color: rgba(71, 85, 105, 0.92);
 }
 body.landing-page .landing-preview__demo{
-  gap: 0.72rem;
-  padding: 0.82rem 0.95rem 0.78rem;
+  gap: 0.62rem;
+  padding: 0.76rem 0.88rem 0.72rem;
   border-radius: 18px;
   border-color: rgba(11, 61, 46, 0.1);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.99) 0%, rgba(252, 253, 252, 0.98) 100%);
@@ -3376,11 +3442,16 @@ body.landing-page .app-footer__tagline{
   body.landing-page .landing-hero__text,
   body.landing-page .landing-hero__sub,
   body.landing-page .landing-hero__emotion,
+  body.landing-page .landing-hero__ctaGroup,
   body.landing-page .landing-hero__cta,
   body.landing-page .landing-hero__proof,
   body.landing-page .landing-hero__reassurance{
     margin-left: 0;
     margin-right: 0;
+  }
+  body.landing-page .landing-hero__ctaGroup{
+    align-items: center;
+    max-width: 100%;
   }
   body.landing-page .landing-hero__viz{
     justify-self: start;
@@ -3416,6 +3487,10 @@ body.landing-page .app-footer__tagline{
   }
   body.landing-page .landing-hero__sub{
     font-size: 0.98rem;
+  }
+  body.landing-page .landing-hero__ctaGroup{
+    width: 100%;
+    max-width: 100%;
   }
   body.landing-page .landing-hero__cta,
   body.landing-page .landing-offer__cta{
@@ -12333,8 +12408,7 @@ body.login-page.signup-page #password2{
 /* Account setup: sliding step wizard */
 body.account-setup-page .account-setup-wizard{
   width: 100%;
-  /* Slightly wider so color swatches fit without clipping */
-  max-width: min(760px, 100%);
+  max-width: min(572px, 100%);
   margin-left: auto;
   margin-right: auto;
   margin-top: 10px;
@@ -12343,9 +12417,49 @@ body.account-setup-page .account-setup-wizard{
   --as-compact-card-minh: 224px;
   /* Subeyebrow size; eyebrow is 5% larger (see __eyebrow) */
   --as-wizard-subeyebrow-size: clamp(0.88rem, 1.65vw, 1rem);
+  --as-wizard-progress-pct: 25%;
+}
+body.account-setup-page .account-setup-wizard__stepHead{
+  margin: 0 0 clamp(0.8rem, 1.95vw, 1.08rem);
+  padding: 0 min(8%, 22px);
+  box-sizing: border-box;
+}
+body.account-setup-page .account-setup-wizard__stepLabel{
+  margin: 0 0 0.48rem;
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: rgba(11, 61, 46, 0.62);
+}
+body.account-setup-page .account-setup-wizard__progress{
+  box-sizing: border-box;
+  max-width: min(208px, 84%);
+  margin-left: auto;
+  margin-right: auto;
+}
+body.account-setup-page .account-setup-wizard__progressTrack{
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(11, 61, 46, 0.1);
+  overflow: hidden;
+}
+body.account-setup-page .account-setup-wizard__progressFill{
+  display: block;
+  height: 100%;
+  width: var(--as-wizard-progress-pct, 25%);
+  max-width: 100%;
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--accent) 72%, #1a4736),
+    color-mix(in srgb, var(--accent) 82%, #2d7a54)
+  );
+  transition: width 260ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 body.account-setup-page .account-setup-wizard__eyebrow{
-  margin: 0 0 3px;
+  margin: 0 0 clamp(0.55rem, 1.15vw, 0.72rem);
   text-align: center;
   font-size: calc(var(--as-wizard-subeyebrow-size) * 1.05 * 1.1);
   font-weight: 900;
@@ -12353,19 +12467,13 @@ body.account-setup-page .account-setup-wizard__eyebrow{
   letter-spacing: 0.2px;
 }
 body.account-setup-page .account-setup-wizard__subeyebrow{
-  margin: 0 0 6px;
+  margin: 0 0 clamp(0.65rem, 1.4vw, 0.92rem);
   text-align: center;
   font-size: var(--as-wizard-subeyebrow-size);
   font-weight: 500;
   color: rgba(17, 24, 39, 0.58);
-  line-height: 1.4;
+  line-height: 1.45;
   letter-spacing: 0.02em;
-}
-body.account-setup-page .account-setup-wizard__dots{
-  display: flex;
-  justify-content: center;
-  gap: 5px;
-  margin: 0 0 4px;
 }
 body.account-setup-page .account-setup-wizard__roadmap{
   margin: 0 0 14px;
@@ -12382,23 +12490,17 @@ body.account-setup-page .account-setup-wizard__roadmap-kicker{
   color: rgba(17, 24, 39, 0.55);
   margin-right: 0.28em;
 }
-body.account-setup-page .account-setup-wizard__dot{
-  width: 5px;
-  height: 5px;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.12);
-  flex-shrink: 0;
-}
-body.account-setup-page .account-setup-wizard__dot.is-active{
-  background: var(--accent);
-  transform: scale(1.1);
-}
-body.account-setup-page .account-setup-wizard__shell{
+body.account-setup-page .account-setup-wizard__shell.auth-section.card{
   padding: 0;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 8px 22px rgba(0,0,0,.04);
+  background: linear-gradient(180deg, #fdfcfa 0%, #fafbf9 52%, #f7faf8 100%);
+  border: 1px solid rgba(11, 61, 46, 0.09);
+  box-shadow:
+    0 8px 22px rgba(0, 0, 0, 0.035),
+    0 14px 36px rgba(11, 61, 46, 0.06),
+    0 1px 0 rgba(255, 255, 255, 0.65) inset;
 }
 body.account-setup-page .account-setup-wizard__viewport{
   overflow: hidden;
@@ -12412,33 +12514,47 @@ body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard
 }
 body.account-setup-page .account-setup-wizard__shell .account-setup-actions--shell{
   flex-shrink: 0;
-  padding: 7px 12px;
+  padding: 8px 12px 9px;
   margin: 0;
   border-top: 1px solid rgba(0, 0, 0, 0.05);
   /* Keep the wizard card height consistent even when only "Back" is visible. */
   min-height: 56px;
   flex-wrap: wrap;
   justify-content: flex-end;
+  align-items: center;
+  column-gap: 10px;
+  row-gap: 8px;
 }
 body.account-setup-page .account-setup-wizard__shell .account-setup-actions--shell.account-setup-actions--step3-success{
   display: none;
 }
-/* Account setup: Back button as subtle ghost */
+/* Account setup: Back = quiet text-style secondary (Next stays dominant) */
 body.account-setup-page #accountSetupBackBtn.secondary{
+  appearance: none;
+  -webkit-appearance: none;
+  margin-right: auto;
   background: transparent;
-  border-color: rgba(0,0,0,0.08);
-  color: rgba(17,24,39,0.78);
-  font-weight: 500;
+  border: none;
   box-shadow: none;
+  border-radius: 9px;
+  padding: 8px 10px;
+  min-height: 42px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: rgba(17, 24, 39, 0.52);
+  text-decoration: none;
+  line-height: 1.2;
+  transition: color 120ms ease, background 120ms ease;
 }
 body.account-setup-page #accountSetupBackBtn.secondary:hover{
-  background: rgba(0,0,0,0.02);
-  border-color: rgba(0,0,0,0.10);
+  background: rgba(11, 61, 46, 0.06);
+  color: rgba(11, 61, 46, 0.88);
+  border-color: transparent;
   filter: none;
 }
 body.account-setup-page #accountSetupBackBtn.secondary:focus-visible{
-  outline: 3px solid rgba(11, 61, 46, 0.18);
-  outline-offset: 3px;
+  outline: 3px solid rgba(11, 61, 46, 0.2);
+  outline-offset: 2px;
 }
 body.account-setup-page .account-setup-trust-note{
   margin: 0 0 12px;
@@ -12455,19 +12571,8 @@ body.account-setup-page .account-setup-trust-note > * + *{
   font-weight: 500;
 }
 
-/* Onboarding refinement (2026-05): step label, trust strip, quick chips,
+/* Onboarding refinement (2026-05): trust strip, quick chips,
    success summary, slim footer, stronger survey selection, overlay messages. */
-
-/* --- Step "N of 4" eyebrow above the headline --- */
-body.account-setup-page .account-setup-wizard__stepLabel{
-  margin: 0 0 3px;
-  text-align: center;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.10em;
-  text-transform: uppercase;
-  color: rgba(11, 61, 46, 0.62);
-}
 
 /* --- Trust microcopy strip under the wizard --- */
 body.account-setup-page .account-setup-trust-strip{
@@ -12479,8 +12584,8 @@ body.account-setup-page .account-setup-trust-strip{
   border-radius: 999px;
   background: transparent;
   border: none;
-  color: rgba(17, 24, 39, 0.5);
-  font-size: 0.7rem;
+  color: rgba(17, 24, 39, 0.64);
+  font-size: 0.72rem;
   font-weight: 500;
   letter-spacing: 0.01em;
   line-height: 1.3;
@@ -12488,7 +12593,7 @@ body.account-setup-page .account-setup-trust-strip{
 body.account-setup-page .account-setup-trust-strip__icon{
   width: 12px;
   height: 12px;
-  color: rgba(100, 116, 139, 0.5);
+  color: rgba(71, 85, 105, 0.62);
   display: inline-flex;
   align-items: center;
 }
@@ -12500,12 +12605,13 @@ body.account-setup-page .account-setup-trust-strip__icon svg{
 body.account-setup-page .account-setup-trust-strip__items{
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 3px;
   flex-wrap: wrap;
   justify-content: center;
 }
 body.account-setup-page .account-setup-trust-strip__items > span[aria-hidden="true"]{
-  opacity: 0.4;
+  opacity: 0.55;
+  margin: 0 1px;
 }
 body.account-setup-page .grid > .account-setup-trust-strip{
   display: flex;
@@ -12671,10 +12777,14 @@ body.account-setup-page .account-setup-success-summary__empty{
 
 /* --- Subtle polish: tighten form spacing + soften labels in onboarding only --- */
 body.account-setup-page .account-setup-wizard__panel .form-row-h__label label{
-  font-size: 0.86rem;
-  font-weight: 500;
-  color: rgba(17, 24, 39, 0.58);
+  font-size: 0.8125rem;
+  font-weight: 400;
+  color: rgba(17, 24, 39, 0.54);
   letter-spacing: 0.01em;
+}
+body.account-setup-page .account-setup-wizard__panel .form-row-h__field input::placeholder{
+  color: rgba(17, 24, 39, 0.38);
+  font-weight: 400;
 }
 body.account-setup-page .account-setup-wizard__panel .tx-add-vspace{
   height: 7px;
@@ -12791,6 +12901,8 @@ body.account-setup-page .form-row-h__field select{
   /* Slightly shorter inputs (≈5%) while keeping readability. */
   padding: calc(12px * 0.874) calc(12px * 0.874);
   font-size: calc(16px * 0.92);
+  font-weight: 500;
+  color: rgba(17, 24, 39, 0.92);
 }
 body.account-setup-page #accountSetupWizardPanel0 #email,
 body.account-setup-page #accountSetupWizardPanel0 #password,
@@ -12997,11 +13109,6 @@ body.account-setup-page .account-setup-field-hint{
 }
 body.account-setup-page .account-setup-field-hint--tight{
   margin: 0;
-}
-body.account-setup-page .account-setup-field-hint--cushion{
-  margin-top: 2px;
-  font-size: 0.78rem;
-  color: rgba(17, 24, 39, 0.45);
 }
 body.account-setup-page .account-setup-category-picker{
   display: flex;
@@ -13341,8 +13448,8 @@ body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__subeyebrow{
   margin: 0 0 3px;
 }
-body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__dots{
-  margin: 0 0 2px;
+body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__stepHead{
+  margin-bottom: 0.38rem;
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__roadmap{
   margin: 0 0 8px;
@@ -13364,9 +13471,9 @@ body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-action
   margin-right: 0;
   flex: 0 0 auto;
   min-height: 40px;
-  padding: 7px 14px;
-  font-size: 0.9rem;
-  font-weight: 600;
+  padding: 7px 12px;
+  font-size: 0.875rem;
+  font-weight: 500;
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__shell .account-setup-actions--shell #signupBtn{
   flex: 0 1 auto;
@@ -13384,10 +13491,10 @@ body.account-setup-page #accountSetupWizard[data-step="4"] + div[style]{
 body.account-setup-page #accountSetupWizard[data-step="4"] ~ .account-setup-trust-strip{
   margin-top: 0;
   margin-bottom: 6px;
-  color: rgba(17, 24, 39, 0.42);
+  color: rgba(17, 24, 39, 0.6);
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] ~ .account-setup-trust-strip .account-setup-trust-strip__icon{
-  color: rgba(100, 116, 139, 0.42);
+  color: rgba(71, 85, 105, 0.55);
 }
 @media (max-width: 560px){
   body.account-setup-page .account-setup-survey__grid{

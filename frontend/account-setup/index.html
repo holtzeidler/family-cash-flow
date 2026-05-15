@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=463" />
+    <link rel="stylesheet" href="../styles.css?v=483" />
   </head>
   <body class="login-page signup-page account-setup-page">
     <div class="container">
@@ -43,17 +43,26 @@
         <div id="signupCallout" class="callout" style="display:none" role="status"></div>
 
         <div id="accountSetupWizard" class="account-setup-wizard" data-step="0" aria-label="Account setup">
-          <p class="account-setup-wizard__stepLabel" id="accountSetupWizardStepLabel" aria-live="polite">Step 1 of 4</p>
+          <div class="account-setup-wizard__stepHead">
+            <p class="account-setup-wizard__stepLabel" id="accountSetupWizardStepLabel" aria-live="polite">Step 1 of 4</p>
+            <div
+              class="account-setup-wizard__progress"
+              role="progressbar"
+              aria-valuemin="1"
+              aria-valuemax="4"
+              aria-valuenow="1"
+              aria-labelledby="accountSetupWizardStepLabel"
+              id="accountSetupWizardProgress"
+            >
+              <div class="account-setup-wizard__progressTrack" aria-hidden="true">
+                <div class="account-setup-wizard__progressFill"></div>
+              </div>
+            </div>
+          </div>
           <p class="account-setup-wizard__eyebrow" id="accountSetupWizardEyebrow">Create your login</p>
           <p class="account-setup-wizard__subeyebrow" id="accountSetupWizardSubeyebrow">
             Start with an email and password. You can edit the rest later.
           </p>
-          <div class="account-setup-wizard__dots" role="tablist" aria-label="Setup steps">
-            <span class="account-setup-wizard__dot is-active" data-wizard-dot="0" aria-current="step"></span>
-            <span class="account-setup-wizard__dot" data-wizard-dot="1" aria-hidden="true"></span>
-            <span class="account-setup-wizard__dot" data-wizard-dot="2" aria-hidden="true"></span>
-            <span class="account-setup-wizard__dot" data-wizard-dot="3" aria-hidden="true"></span>
-          </div>
           <div class="card auth-section auth-section--open account-setup-wizard__shell">
             <div class="account-setup-wizard__viewport">
               <div class="account-setup-wizard__track" id="accountSetupWizardTrack">
@@ -105,7 +114,7 @@
                           id="accountName"
                           type="text"
                           value="Checking"
-                          placeholder="e.g. Savings or Joint Checking"
+                          placeholder="Example: Everyday Checking"
                           autocomplete="off"
                           title="Click to edit this account name"
                         />
@@ -120,7 +129,7 @@
                       <div class="form-row-h__field">
                         <div class="money-input">
                           <span class="money-input__prefix" aria-hidden="true">$</span>
-                          <input id="accountStartingBalance" type="number" step="0.01" placeholder="0.00" />
+                          <input id="accountStartingBalance" type="number" step="0.01" placeholder="Example: 3250" />
                         </div>
                       </div>
                     </div>
@@ -139,7 +148,7 @@
                   <div class="row">
                     <div class="form-row-h">
                       <div class="form-row-h__label">
-                        <label for="accountSetupKeepInChecking">How much would you like to keep in checking?</label>
+                        <label for="accountSetupKeepInChecking">What balance helps you feel comfortable?</label>
                       </div>
                       <div class="form-row-h__field">
                         <div class="money-input">
@@ -150,13 +159,14 @@
                             inputmode="decimal"
                             autocomplete="off"
                             value="1000"
-                            placeholder="e.g. 1,500"
+                            placeholder="Example: 2500"
                             aria-describedby="accountSetupKeepInCheckingHints"
                           />
                         </div>
                         <div id="accountSetupKeepInCheckingHints">
-                          <p class="account-setup-field-hint">BalanceWhiz uses this to warn you before cash gets tight.</p>
-                          <p class="account-setup-field-hint account-setup-field-hint--cushion">Most people choose $500–$3,000.</p>
+                          <p class="account-setup-field-hint">
+                            Most people keep $500–$3,000 as a safety buffer.
+                          </p>
                         </div>
                       </div>
                     </div>

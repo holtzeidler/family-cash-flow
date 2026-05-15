@@ -182,7 +182,7 @@ const ACCOUNT_SETUP_PANEL_FOR_STEP = [0, 1, 2, 3, 4];
 /** v2 order was email → survey → checking → income → expense (`wizardStep` index). Maps step → panel index. */
 const V2_ACCOUNT_SETUP_PANEL_FOR_STEP = [0, 4, 1, 2, 3];
 
-/** Progress UI shows 4 dots; expense (step 3) and survey (step 4) share the last dot. */
+/** Progress bar fills in 4 segments; expense (step 3) and survey (step 4) share the last segment (matches former dot UI). */
 function getAccountSetupWizardDisplayDotIndex(step) {
   const s = Math.min(4, Math.max(0, step));
   return s >= 3 ? 3 : s;
@@ -1119,19 +1119,10 @@ function setAccountSetupWizardStep(step, opts = {}) {
   }
 
   const displayDot = getAccountSetupWizardDisplayDotIndex(s);
-  const dots = w.querySelectorAll("[data-wizard-dot]");
-  for (const d of dots) {
-    const si = parseInt(d.getAttribute("data-wizard-dot") || "0", 10);
-    const on = si === displayDot;
-    d.classList.toggle("is-active", on);
-    if (on) {
-      d.setAttribute("aria-current", "step");
-      d.removeAttribute("aria-hidden");
-    } else {
-      d.removeAttribute("aria-current");
-      d.setAttribute("aria-hidden", "true");
-    }
-  }
+  const pct = ((displayDot + 1) / 4) * 100;
+  w.style.setProperty("--as-wizard-progress-pct", `${pct}%`);
+  const prog = document.getElementById("accountSetupWizardProgress");
+  if (prog) prog.setAttribute("aria-valuenow", String(displayDot + 1));
 
   if (addMoreTxBtn) addMoreTxBtn.style.display = "none";
   syncAccountSetupWizardShellButtons();
@@ -1261,18 +1252,53 @@ function canAdvanceAccountSetupAccountStep({
     (accountStartingBalanceRaw != null && String(accountStartingBalanceRaw).trim() !== "") ||
     !!accountStartingBalanceDate;
   if (anyAccount) {
-    if (!accountName) return { ok: false, message: "Account name is required (or leave the account section blank)." };
-    if (accountStartingBalance == null) return { ok: false, message: "Starting balance is required (or leave the account section blank)." };
-    if (!accountStartingBalanceDate) return { ok: false, message: "Starting balance date is required (or leave the account section blank)." };
+    if (!accountName)
+      return {
+        ok: false,
+        message: "Account name is required (or leave the account section blank).",
+        focusFieldId: "accountName",
+      };
+    if (accountStartingBalance == null)
+      return {
+        ok: false,
+        message:
+          "Enter today's available balance in Starting Balance (the first dollar field under Account name). The lower field is for your cushion only—not your current balance.",
+        focusFieldId: "accountStartingBalance",
+      };
+    if (!accountStartingBalanceDate)
+      return {
+        ok: false,
+        message: "Choose a Balance as of date (or leave the account section blank).",
+        focusFieldId: "accountStartingBalanceDate",
+      };
     if (!cushionP.ok) {
       return {
         ok: false,
         message: "Use a number for how much you like to keep in checking, or clear the field to skip.",
+        focusFieldId: "accountSetupKeepInChecking",
       };
     }
   }
   const cushionThresholdMin = cushionP.empty || (cushionP.ok && cushionP.num === 0) ? null : cushionP.num;
   return { ok: true, anyAccount, cushionThresholdMin };
+}
+
+/** Applies account-step validation error banner and focuses the offending field when possible. */
+function showAccountSetupAccountGateError(gate) {
+  if (!gate || gate.ok) return false;
+  setCallout(signupCalloutEl, gate.message, "error");
+  const fid = gate.focusFieldId;
+  if (fid && typeof fid === "string") {
+    window.setTimeout(() => {
+      try {
+        const el = document.getElementById(fid);
+        if (!el) return;
+        el.scrollIntoView({ block: "nearest", behavior: "smooth" });
+        el.focus({ preventScroll: true });
+      } catch (_) {}
+    }, 0);
+  }
+  return true;
 }
 
 function goToAccountSetup() {
@@ -1304,10 +1330,7 @@ function goToSignupFromAccountSetup() {
       accountStartingBalanceDate,
       checkingCushionRaw,
     });
-    if (!gate.ok) {
-      setCallout(signupCalloutEl, gate.message, "error");
-      return;
-    }
+    if (showAccountSetupAccountGateError(gate)) return;
 
     const parsedTx = readAccountSetupTransactionFromInputs();
     const anyTx = !parsedTx.empty;
@@ -1762,8 +1785,7 @@ function addMoreTransactionsFromAccountSetup() {
     accountStartingBalanceDate,
     checkingCushionRaw: accountSetupCheckingCushionRawFromDom(),
   });
-  if (!gate.ok) {
-    setCallout(signupCalloutEl, gate.message, "error");
+  if (showAccountSetupAccountGateError(gate)) {
     setAccountSetupStep("account");
     return;
   }
@@ -1855,8 +1877,7 @@ async function accountSetupSaveIncomeClick() {
     accountStartingBalanceDate,
     checkingCushionRaw: accountSetupCheckingCushionRawFromDom(),
   });
-  if (!gate.ok) {
-    setCallout(signupCalloutEl, gate.message, "error");
+  if (showAccountSetupAccountGateError(gate)) {
     setAccountSetupWizardStep(1);
     return;
   }
@@ -2088,8 +2109,7 @@ function addMoreExpensesFromAccountSetup() {
     accountStartingBalanceDate,
     checkingCushionRaw: accountSetupCheckingCushionRawFromDom(),
   });
-  if (!gate.ok) {
-    setCallout(signupCalloutEl, gate.message, "error");
+  if (showAccountSetupAccountGateError(gate)) {
     setAccountSetupWizardStep(1);
     return;
   }
@@ -2196,8 +2216,7 @@ async function accountSetupSaveExpenseClick() {
     accountStartingBalanceDate,
     checkingCushionRaw: accountSetupCheckingCushionRawFromDom(),
   });
-  if (!gate.ok) {
-    setCallout(signupCalloutEl, gate.message, "error");
+  if (showAccountSetupAccountGateError(gate)) {
     setAccountSetupWizardStep(1);
     return;
   }
@@ -3011,10 +3030,7 @@ function onSignupPrimaryClick() {
           accountStartingBalanceDate,
           checkingCushionRaw: accountSetupCheckingCushionRawFromDom(),
         });
-        if (!gate.ok) {
-          setCallout(signupCalloutEl, gate.message, "error");
-          return;
-        }
+        if (showAccountSetupAccountGateError(gate)) return;
         if (!gate.anyAccount) {
           setCallout(signupCalloutEl, "Please complete this step to continue.", "error");
           return;
@@ -3103,8 +3119,7 @@ function onSignupPrimaryClick() {
           accountStartingBalanceDate,
           checkingCushionRaw: accountSetupCheckingCushionRawFromDom(),
         });
-        if (!gate.ok) {
-          setCallout(signupCalloutEl, gate.message, "error");
+        if (showAccountSetupAccountGateError(gate)) {
           setAccountSetupStep("account");
           return;
         }
