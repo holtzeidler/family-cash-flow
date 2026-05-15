@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=484" />
+    <link rel="stylesheet" href="../styles.css?v=486" />
   </head>
   <body class="login-page signup-page account-setup-page">
     <div class="container">
@@ -184,7 +184,7 @@
                   <div id="accountSetupWizardStep3Intro" class="account-setup-step3-intro">
                     <section class="account-setup-step3-section account-setup-step3-section--guidance" aria-label="What to add first">
                       <div class="account-setup-step3-recommend">
-                        <p class="account-setup-step3-recommend__eyebrow">Most people start with:</p>
+                        <p class="account-setup-step3-recommend__eyebrow">Most people start with these common items:</p>
                         <ul class="account-setup-step3-checklist" aria-label="Common first items">
                           <li>Paycheck or income</li>
                           <li>Rent, mortgage, or another major bill</li>
@@ -612,6 +612,9 @@
               <button type="button" id="signupBtn" class="top-nav__logout" onclick="window.__bwSignup && window.__bwSignup()">
                 Next
               </button>
+              <p id="accountSetupContinueGateHint" class="account-setup-continue-gateHint" hidden>
+                Add at least one item to continue.
+              </p>
             </div>
           </div>
         </div>

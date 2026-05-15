@@ -898,9 +898,16 @@ function syncAccountSetupWizardShellButtons() {
   const successAddIncome = document.getElementById("asStep3SuccessAddIncomeBtn");
   const successContinue = document.getElementById("asStep3ContinueBtn");
   const actionsShell = document.getElementById("accountSetupActions");
+  const continueGateHint = document.getElementById("accountSetupContinueGateHint");
   if (!document.getElementById("accountSetupWizard")) return;
 
+  const hideContinueGateHint = () => {
+    if (continueGateHint) continueGateHint.hidden = true;
+    if (signupBtn) signupBtn.removeAttribute("aria-describedby");
+  };
+
   try {
+  hideContinueGateHint();
   for (const el of [saveInc, cancelInc, saveExp, cancelExp]) {
     if (el) el.style.display = "none";
   }
@@ -950,6 +957,7 @@ function syncAccountSetupWizardShellButtons() {
   if (s === 2) {
     const phase = getAccountSetupStep3Phase();
     if (phase === "form") {
+      hideContinueGateHint();
       if (saveInc) saveInc.style.display = "inline-flex";
       if (cancelInc) cancelInc.style.display = "inline-flex";
       if (signupBtn) signupBtn.style.display = "none";
@@ -969,6 +977,11 @@ function syncAccountSetupWizardShellButtons() {
         signupBtn.classList.add("top-nav__logout");
         const { totalCount } = getAccountSetupTransactionCounts();
         signupBtn.disabled = totalCount < 1;
+        if (continueGateHint) {
+          continueGateHint.hidden = totalCount >= 1;
+          if (totalCount < 1) signupBtn.setAttribute("aria-describedby", "accountSetupContinueGateHint");
+          else signupBtn.removeAttribute("aria-describedby");
+        }
       }
       if (accountSetupSkipBtn) accountSetupSkipBtn.style.display = "none";
       if (hubAddIncome) hubAddIncome.disabled = false;
