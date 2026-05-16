@@ -454,7 +454,23 @@ body.landing-page .landing-shell{
   gap: var(--landing-section-gap);
 }
 /* Subtle rhythm bands so major blocks read as one scroll, not stacked islands */
-body.landing-page .landing-shell > .landing-preview{
+body.landing-page .landing-shell > .landing-features{
+  display: flex;
+  flex-direction: column;
+  gap: clamp(1.1rem, 2.4vw, 1.75rem);
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+}
+body.landing-page .landing-features > .landing-cal-peek--primary{
+  margin: 0;
+}
+body.landing-page .landing-features > .landing-preview--secondary{
+  margin: 0;
+}
+body.landing-page .landing-shell > .landing-preview,
+body.landing-page .landing-features .landing-preview{
   padding: 0;
   margin: 0;
   width: auto;
@@ -468,38 +484,54 @@ body.landing-page .landing-shell > .landing-below-preview{
   margin-top: calc(var(--landing-section-gap-tight) - var(--landing-section-gap));
 }
 body.landing-page .landing-hero{
+  position: relative;
   width: 100%;
   max-width: none;
   margin: 0;
   padding: 0;
   text-align: left;
   align-self: stretch;
+  overflow: hidden;
+}
+body.landing-page .landing-hero__ambient{
+  position: absolute;
+  inset: -12% -8% auto -8%;
+  height: min(320px, 72%);
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 68% 58% at 18% 28%, rgba(4, 120, 87, 0.09) 0%, transparent 72%),
+    radial-gradient(ellipse 52% 48% at 82% 18%, rgba(11, 61, 46, 0.05) 0%, transparent 70%);
+  opacity: 0.95;
+}
+body.landing-page .landing-hero__inner,
+body.landing-page .landing-hero > .landing-insight{
+  position: relative;
+  z-index: 1;
 }
 body.landing-page .landing-hero > .landing-insight{
-  /* Clearly below hero columns; aligns to shell gutters (never overlaps copy) */
-  margin-top: clamp(1.15rem, 2.65vw, 1.95rem);
+  /* Clearly below hero copy; aligns to shell gutters */
+  margin-top: clamp(0.95rem, 2.1vw, 1.45rem);
   margin-left: 0;
   margin-right: 0;
   width: 100%;
   max-width: none;
 }
 body.landing-page .landing-hero__inner{
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(308px, 408px);
-  gap: clamp(0.9rem, 2.2vw, 1.35rem);
-  align-items: start;
+  display: block;
   width: 100%;
   max-width: none;
   margin: 0;
-  padding: clamp(0.08rem, 0.45vw, 0.22rem) 0 0;
+  padding: clamp(0.2rem, 0.8vw, 0.55rem) 0 0;
   box-sizing: border-box;
 }
 body.landing-page .landing-hero__copy{
   min-width: 0;
   text-align: center;
   justify-self: center;
-  max-width: min(34rem, 100%);
+  max-width: min(38rem, 100%);
   width: 100%;
+  margin: 0 auto;
 }
 @media (min-width: 821px){
   body.landing-page .landing-hero__copy{
@@ -1040,6 +1072,31 @@ body.landing-page .landing-cal-peek{
   border-radius: 0;
   background: transparent;
   border: none;
+}
+body.landing-page .landing-cal-peek--primary{
+  margin: 0;
+}
+body.landing-page .landing-cal-peek--primary .landing-cal-peek__title{
+  font-size: clamp(1.18rem, 2.35vw, 1.38rem);
+  max-width: 16ch;
+}
+body.landing-page .landing-cal-peek--primary .landing-cal-peek__lede{
+  font-size: clamp(0.88rem, 1.65vw, 0.98rem);
+  max-width: 28ch;
+}
+body.landing-page .landing-cal-peek--primary .landing-cal-peek__frame{
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.85) inset,
+    0 14px 32px -14px rgba(11, 61, 46, 0.16);
+}
+body.landing-page .landing-preview--secondary .landing-preview__title{
+  font-size: clamp(0.98rem, 1.85vw, 1.12rem);
+  font-weight: 750;
+  color: rgba(30, 41, 59, 0.9);
+}
+body.landing-page .landing-preview--secondary .landing-preview__lede{
+  font-size: clamp(0.82rem, 1.45vw, 0.9rem);
+  color: rgba(71, 85, 105, 0.82);
 }
 body.landing-page .landing-cal-peek__inner{
   display: grid;
@@ -2760,7 +2817,10 @@ body.landing-page .landing-shell > .landing-cal-peek,
 body.landing-page .landing-shell > .landing-conversion-flow{
   margin-top: 0;
 }
-body.landing-page .landing-shell > .landing-cal-peek{
+body.landing-page .landing-shell > .landing-features{
+  margin-top: calc(var(--landing-section-gap) * -0.12);
+}
+body.landing-page .landing-shell > .landing-cal-peek:not(.landing-cal-peek--primary){
   margin-top: calc(var(--landing-section-gap) * -0.28);
 }
 body.landing-page .landing-shell > .landing-conversion-flow{
@@ -2784,10 +2844,7 @@ body.landing-page .landing-hero{
   padding-bottom: 0;
 }
 body.landing-page .landing-hero__inner{
-  grid-template-columns: minmax(0, 1fr) minmax(300px, 432px);
-  gap: clamp(0.92rem, 2.25vw, 1.72rem);
   padding: 0;
-  align-items: start;
 }
 body.landing-page .landing-hero__copy{
   max-width: min(36rem, 100%);

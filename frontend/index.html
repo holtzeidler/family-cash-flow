@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=509" />
+    <link rel="stylesheet" href="./styles.css?v=510" />
   </head>
   <body class="landing-page">
     <div class="container">
@@ -38,11 +38,11 @@
       <main class="landing-main" aria-label="Welcome">
         <div class="landing-shell">
         <div class="landing-hero">
+          <div class="landing-hero__ambient" aria-hidden="true"></div>
           <div class="landing-hero__inner">
             <div class="landing-hero__copy">
               <h2 class="landing-hero__text">Know what’s safe before bills hit.</h2>
               <p class="landing-hero__sub">See your projected checking balance before upcoming bills and paychecks land.</p>
-              <p class="landing-hero__emotion">Know when cash gets tight before bills hit.</p>
               <div class="landing-hero__ctaGroup">
                 <a href="https://balancewhiz.com/account-setup/?fresh=1" class="landing-hero__cta">Start forecasting</a>
                 <p class="landing-hero__microtrust" aria-label="What to expect">
@@ -50,80 +50,6 @@
                   <span class="landing-hero__microtrust__sep" aria-hidden="true">·</span>
                   <span class="landing-hero__proof">Everyday cash flow planning — no traditional budgeting required.</span>
                 </p>
-              </div>
-            </div>
-            <div class="landing-hero__viz" aria-label="Illustrative forecast preview">
-              <div class="landing-hero-viz">
-                <div class="landing-hero-viz__hdr">
-                  <span class="landing-hero-viz__title">Projected balance</span>
-                  <span class="landing-hero-viz__sub">Next 7 days</span>
-                </div>
-                <div class="landing-hero-viz__timeline">
-                  <div class="landing-hero-viz__nearBand">
-                    <div class="landing-hero-viz__week" role="presentation">
-                      <div class="landing-hero-viz__cell"><span class="landing-hero-viz__d">17</span><span class="landing-hero-viz__b">$4,280</span></div>
-                      <div class="landing-hero-viz__cell"><span class="landing-hero-viz__d">18</span><span class="landing-hero-viz__b">$3,847</span></div>
-                      <div class="landing-hero-viz__cell"><span class="landing-hero-viz__d">19</span><span class="landing-hero-viz__b">$2,156</span></div>
-                      <div class="landing-hero-viz__cell landing-hero-viz__cell--watch"><span class="landing-hero-viz__d">20</span><span class="landing-hero-viz__b">$1,020</span></div>
-                      <div class="landing-hero-viz__cell"><span class="landing-hero-viz__d">21</span><span class="landing-hero-viz__b">$3,095</span></div>
-                      <div class="landing-hero-viz__cell"><span class="landing-hero-viz__d">22</span><span class="landing-hero-viz__b">$2,684</span></div>
-                      <div class="landing-hero-viz__cell"><span class="landing-hero-viz__d">23</span><span class="landing-hero-viz__b">$2,291</span></div>
-                    </div>
-                  </div>
-                  <div class="landing-hero-viz__chartBlock">
-                    <div class="landing-hero-viz__chartWrap">
-                      <svg class="landing-hero-viz__spark" viewBox="0 0 300 48" preserveAspectRatio="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
-                        <defs>
-                          <linearGradient id="landingHeroSparkFill" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stop-color="rgba(4, 120, 87, 0.11)" />
-                            <stop offset="100%" stop-color="rgba(4, 120, 87, 0)" />
-                          </linearGradient>
-                          <linearGradient id="landingHeroSparkFade" gradientUnits="userSpaceOnUse" x1="252" y1="0" x2="286" y2="0">
-                            <stop offset="0%" stop-color="rgba(11, 61, 46, 0.62)" />
-                            <stop offset="72%" stop-color="rgba(11, 61, 46, 0.22)" />
-                            <stop offset="100%" stop-color="rgba(11, 61, 46, 0)" />
-                          </linearGradient>
-                        </defs>
-                        <rect x="0" y="0" width="300" height="48" fill="rgba(4, 120, 87, 0.045)" />
-                        <path d="M20,11 L54,13 L88,19 L122,23 L156,15 L190,16 L224,17 L252,17 L252,44 L20,44 Z" fill="url(#landingHeroSparkFill)" />
-                        <path
-                          class="landing-hero-viz__sparkLine"
-                          d="M20,11 L54,13 L88,19 L122,23 L156,15 L190,16 L224,17 L252,17"
-                          fill="none"
-                          stroke="rgba(11, 61, 46, 0.92)"
-                          stroke-width="2.75"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                        />
-                        <path
-                          class="landing-hero-viz__sparkFuture"
-                          d="M252,17 L266,16.75 L278,16.55 L286,16.45"
-                          fill="none"
-                          stroke="url(#landingHeroSparkFade)"
-                          stroke-width="2.15"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                        />
-                        <circle class="landing-hero-viz__sparkDot" cx="268" cy="16.68" r="1.5" fill="rgba(11, 61, 46, 0.22)" />
-                        <path
-                          class="landing-hero-viz__sparkArrow"
-                          d="M288,16.42 L291.5,16.38 L288,16.28"
-                          fill="none"
-                          stroke="rgba(11, 61, 46, 0.28)"
-                          stroke-width="1.35"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                        />
-                        <line x1="20" y1="20" x2="252" y2="20" stroke="rgba(180, 83, 9, 0.35)" stroke-dasharray="4 4" stroke-width="1" />
-                        <line x1="252" y1="20" x2="286" y2="20" stroke="rgba(180, 83, 9, 0.2)" stroke-dasharray="3 5" stroke-width="1" />
-                      </svg>
-                    </div>
-                    <p class="landing-hero-viz__horizon">Forecast extends months ahead</p>
-                  </div>
-
-                </div>
-
-                <p class="landing-hero-viz__foot">Projected balance updates as your forecast changes.</p>
               </div>
             </div>
           </div>
@@ -153,106 +79,8 @@
           </section>
         </div>
 
-        <section id="features" class="landing-preview landing-section landing-section--tint-safe landing-reveal" aria-label="Product preview">
-          <div class="landing-preview__intro">
-            <h3 class="landing-preview__title">See what’s safe to move.</h3>
-            <p class="landing-preview__lede">BalanceWhiz looks ahead at income, bills, and your minimum balance before identifying extra cash you can move with confidence.</p>
-          </div>
-          <div class="landing-preview__demo">
-            <div class="landing-preview__main">
-              <div class="landing-preview__leftCol">
-                <div class="landing-preview__transferBand" role="status" aria-label="Safe to move guidance">
-                  <div class="landing-preview__transfer">
-                    <p class="landing-preview__transferLine">Safe to move guidance</p>
-                    <p class="landing-preview__transferAmt">$650 to $900</p>
-                    <p class="landing-preview__transferFoot">After upcoming bills clear, your $1,000 safety buffer stays protected.</p>
-                  </div>
-                  <div class="landing-preview__divider" aria-hidden="true"></div>
-
-                  <div class="landing-preview__trust" aria-label="Forecast status">
-                    <span class="landing-preview__trustIcon" aria-hidden="true">✓</span>
-                    <span class="landing-preview__trustText">Forecast reconciled through May 17</span>
-                  </div>
-                </div>
-
-                <div class="landing-preview__bills">
-                  <h3 class="landing-preview__billsHead">Upcoming bills</h3>
-                  <ul class="landing-preview__billList" aria-label="Upcoming bills">
-                    <li><span>Electric &amp; gas</span><span>May 18</span></li>
-                    <li><span>Car insurance</span><span>May 19</span></li>
-                    <li><span>Credit card</span><span>May 20</span></li>
-                    <li><span>Mortgage</span><span>May 22</span></li>
-                    <li><span>Streaming &amp; phone</span><span>May 24</span></li>
-                  </ul>
-                </div>
-              </div>
-              <div class="landing-preview__chart" aria-hidden="true">
-                <svg
-                  class="landing-preview__chartSvg"
-                  viewBox="0 0 640 172"
-                  preserveAspectRatio="xMidYMid meet"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <defs>
-                    <linearGradient id="landingPreviewBalanceFill" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stop-color="rgba(11, 61, 46, 0.16)" />
-                      <stop offset="100%" stop-color="rgba(11, 61, 46, 0)" />
-                    </linearGradient>
-                  </defs>
-                  <rect x="24" y="14" width="592" height="122" rx="12" fill="rgba(4, 120, 87, 0.07)" />
-                  <rect x="24" y="112" width="592" height="20" rx="8" fill="rgba(180, 83, 9, 0.07)" />
-                  <line x1="24" y1="120" x2="616" y2="120" stroke="rgba(180, 83, 9, 0.48)" stroke-dasharray="5 5" stroke-width="1.45" />
-                  <text x="612" y="116" text-anchor="end" fill="rgba(120, 53, 15, 0.95)" font-size="11" font-family="Inter, system-ui, sans-serif" font-weight="700">$1k minimum balance</text>
-                  <path
-                    d="M24,58 L92,76 L160,90 L220,106 L300,122 L360,130 L420,112 L510,86 L616,78 L616,162 L24,162 Z"
-                    fill="url(#landingPreviewBalanceFill)"
-                  />
-                  <path
-                    class="landing-preview__curve"
-                    d="M24,58 L92,76 L160,90 L220,106 L300,122 L360,130 L420,112 L510,86 L616,78"
-                    fill="none"
-                    stroke="#0B3D2E"
-                    stroke-width="4.25"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                  <circle class="landing-preview__markerDot landing-preview__markerDot--out" cx="360" cy="130" r="4.5" />
-                  <text
-                    x="372"
-                    y="130"
-                    class="landing-preview__markerLabel landing-preview__markerLabel--out"
-                    text-anchor="start"
-                    dominant-baseline="middle"
-                  >
-                    Credit card
-                  </text>
-                  <circle class="landing-preview__markerDot landing-preview__markerDot--in" cx="510" cy="86" r="4.5" />
-                  <text
-                    x="522"
-                    y="86"
-                    class="landing-preview__markerLabel landing-preview__markerLabel--in"
-                    text-anchor="start"
-                    dominant-baseline="middle"
-                  >
-                    Paycheck
-                  </text>
-                </svg>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <p class="landing-trust-micro" aria-label="What to expect">
-          <span>No bank connection required</span>
-          <span class="landing-trust-micro__dot" aria-hidden="true">·</span>
-          <span>Set up in minutes</span>
-          <span class="landing-trust-micro__dot" aria-hidden="true">·</span>
-          <span>Edit everything anytime</span>
-          <span class="landing-trust-micro__dot" aria-hidden="true">·</span>
-          <span>Built for real-life cash flow</span>
-        </p>
-
-        <section class="landing-cal-peek landing-section landing-section--surface-white landing-reveal" aria-label="Forecast calendar preview">
+        <div id="features" class="landing-features landing-reveal" aria-label="Product features">
+          <section class="landing-cal-peek landing-cal-peek--primary landing-section landing-section--surface-white" aria-label="Forecast calendar preview">
           <div class="landing-cal-peek__inner">
             <div class="landing-cal-peek__copy">
               <h3 class="landing-cal-peek__title">See timing, not just totals</h3>
@@ -344,8 +172,106 @@
               </svg>
             </div>
           </div>
-        </section>
+          </section>
+          <section class="landing-preview landing-preview--secondary landing-section landing-section--tint-safe" aria-label="Product preview">
+          <div class="landing-preview__intro">
+            <h3 class="landing-preview__title">See what’s safe to move.</h3>
+            <p class="landing-preview__lede">BalanceWhiz looks ahead at income, bills, and your minimum balance before identifying extra cash you can move with confidence.</p>
+          </div>
+          <div class="landing-preview__demo">
+            <div class="landing-preview__main">
+              <div class="landing-preview__leftCol">
+                <div class="landing-preview__transferBand" role="status" aria-label="Safe to move guidance">
+                  <div class="landing-preview__transfer">
+                    <p class="landing-preview__transferLine">Safe to move guidance</p>
+                    <p class="landing-preview__transferAmt">$650 to $900</p>
+                    <p class="landing-preview__transferFoot">After upcoming bills clear, your $1,000 safety buffer stays protected.</p>
+                  </div>
+                  <div class="landing-preview__divider" aria-hidden="true"></div>
 
+                  <div class="landing-preview__trust" aria-label="Forecast status">
+                    <span class="landing-preview__trustIcon" aria-hidden="true">✓</span>
+                    <span class="landing-preview__trustText">Forecast reconciled through May 17</span>
+                  </div>
+                </div>
+
+                <div class="landing-preview__bills">
+                  <h3 class="landing-preview__billsHead">Upcoming bills</h3>
+                  <ul class="landing-preview__billList" aria-label="Upcoming bills">
+                    <li><span>Electric &amp; gas</span><span>May 18</span></li>
+                    <li><span>Car insurance</span><span>May 19</span></li>
+                    <li><span>Credit card</span><span>May 20</span></li>
+                    <li><span>Mortgage</span><span>May 22</span></li>
+                    <li><span>Streaming &amp; phone</span><span>May 24</span></li>
+                  </ul>
+                </div>
+              </div>
+              <div class="landing-preview__chart" aria-hidden="true">
+                <svg
+                  class="landing-preview__chartSvg"
+                  viewBox="0 0 640 172"
+                  preserveAspectRatio="xMidYMid meet"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <defs>
+                    <linearGradient id="landingPreviewBalanceFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="rgba(11, 61, 46, 0.16)" />
+                      <stop offset="100%" stop-color="rgba(11, 61, 46, 0)" />
+                    </linearGradient>
+                  </defs>
+                  <rect x="24" y="14" width="592" height="122" rx="12" fill="rgba(4, 120, 87, 0.07)" />
+                  <rect x="24" y="112" width="592" height="20" rx="8" fill="rgba(180, 83, 9, 0.07)" />
+                  <line x1="24" y1="120" x2="616" y2="120" stroke="rgba(180, 83, 9, 0.48)" stroke-dasharray="5 5" stroke-width="1.45" />
+                  <text x="612" y="116" text-anchor="end" fill="rgba(120, 53, 15, 0.95)" font-size="11" font-family="Inter, system-ui, sans-serif" font-weight="700">$1k minimum balance</text>
+                  <path
+                    d="M24,58 L92,76 L160,90 L220,106 L300,122 L360,130 L420,112 L510,86 L616,78 L616,162 L24,162 Z"
+                    fill="url(#landingPreviewBalanceFill)"
+                  />
+                  <path
+                    class="landing-preview__curve"
+                    d="M24,58 L92,76 L160,90 L220,106 L300,122 L360,130 L420,112 L510,86 L616,78"
+                    fill="none"
+                    stroke="#0B3D2E"
+                    stroke-width="4.25"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                  <circle class="landing-preview__markerDot landing-preview__markerDot--out" cx="360" cy="130" r="4.5" />
+                  <text
+                    x="372"
+                    y="130"
+                    class="landing-preview__markerLabel landing-preview__markerLabel--out"
+                    text-anchor="start"
+                    dominant-baseline="middle"
+                  >
+                    Credit card
+                  </text>
+                  <circle class="landing-preview__markerDot landing-preview__markerDot--in" cx="510" cy="86" r="4.5" />
+                  <text
+                    x="522"
+                    y="86"
+                    class="landing-preview__markerLabel landing-preview__markerLabel--in"
+                    text-anchor="start"
+                    dominant-baseline="middle"
+                  >
+                    Paycheck
+                  </text>
+                </svg>
+              </div>
+            </div>
+          </div>
+          </section>
+        </div>
+
+        <p class="landing-trust-micro" aria-label="What to expect">
+          <span>No bank connection required</span>
+          <span class="landing-trust-micro__dot" aria-hidden="true">·</span>
+          <span>Set up in minutes</span>
+          <span class="landing-trust-micro__dot" aria-hidden="true">·</span>
+          <span>Edit everything anytime</span>
+          <span class="landing-trust-micro__dot" aria-hidden="true">·</span>
+          <span>Built for real-life cash flow</span>
+        </p>
         <div class="landing-conversion-flow landing-reveal" aria-label="How it works and get started">
         <section id="how" class="landing-how landing-section landing-section--tint-neutral" aria-label="How it works">
           <div class="landing-how__copy">
