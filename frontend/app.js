@@ -3589,8 +3589,15 @@ function activateSettingsSection(key) {
     btn.classList.toggle("is-active", on);
     btn.setAttribute("aria-pressed", on ? "true" : "false");
   });
+  const isFamilyAdmin = isActiveFamilyAdmin();
   document.querySelectorAll("#settingsViewPanel .settings-pane").forEach((pane) => {
-    const on = pane.dataset.settingsPane === k;
+    const paneKey = String(pane.dataset.settingsPane || "");
+    if (paneKey === "familySharing" && !isFamilyAdmin) {
+      pane.classList.remove("is-active");
+      pane.hidden = true;
+      return;
+    }
+    const on = paneKey === k;
     pane.classList.toggle("is-active", on);
     pane.hidden = !on;
   });
@@ -6160,19 +6167,24 @@ function syncActiveFamilyFlags() {
   syncSettingsFamilySharingNav();
 }
 
+function isActiveFamilyAdmin() {
+  const fam = (state.families || []).find((x) => Number(x.id) === Number(state.activeFamilyId));
+  return !!(fam && String(fam.role || "").toLowerCase() === "admin");
+}
+
 /** Family “sharing” settings are limited to members whose family role is `admin` (see API FamilyOut.role). */
 function syncSettingsFamilySharingNav() {
-  const fam = (state.families || []).find((x) => Number(x.id) === Number(state.activeFamilyId));
-  const isFamilyAdmin = !!(fam && String(fam.role || "").toLowerCase() === "admin");
+  const isFamilyAdmin = isActiveFamilyAdmin();
   // Household lives inside Accounts (`data-settings-subsection`) on the Settings
   // hub, and still exists as a legacy pane (`data-settings-pane`) in embedded
   // settings on Forecast / Transactions / Reports. Hide all of it from
-  // non-admins.
+  // non-admins. For admins, subsection visibility is toggled here; pane
+  // visibility is left to activateSettingsSection so we don't unhide a stale pane.
   document.querySelectorAll('[data-settings-subsection="familySharing"]').forEach((el) => {
     el.hidden = !isFamilyAdmin;
   });
   document.querySelectorAll('[data-settings-pane="familySharing"]').forEach((el) => {
-    el.hidden = !isFamilyAdmin;
+    if (!isFamilyAdmin) el.hidden = true;
   });
 }
 
@@ -6184,9 +6196,7 @@ async function loadFamilyMembersPanel() {
   show(errEl, "");
   if (!listEl) return;
   syncActiveFamilyFlags();
-  const fam = (state.families || []).find((x) => Number(x.id) === Number(state.activeFamilyId));
-  const isFamilyAdmin = !!(fam && String(fam.role || "").toLowerCase() === "admin");
-  if (!isFamilyAdmin) {
+  if (!isActiveFamilyAdmin()) {
     listEl.innerHTML = "";
     if (pendingEl) pendingEl.innerHTML = "";
     if (inviteWrap) inviteWrap.hidden = true;
@@ -14245,15 +14255,67 @@ function setDefaultAccountStartDate() {
  *
  * Returns true if recovery ran AND succeeded enough to require refreshing accounts.
  */
+function accountSetupDraftTxFingerprint(t) {
+  if (!t || typeof t !== "object") return "";
+  return [
+    String(t.kind || "").trim().toLowerCase(),
+    Number(t.amount),
+    String(t.date || "").trim(),
+    String(t.category || "").trim().toLowerCase(),
+  ].join("|");
+}
+
+function mergeAccountSetupDraftTransactions(a, b) {
+  const out = [];
+  const seen = new Set();
+  for (const t of [...(Array.isArray(a) ? a : []), ...(Array.isArray(b) ? b : [])]) {
+    const fp = accountSetupDraftTxFingerprint(t);
+    if (!fp || seen.has(fp)) continue;
+    seen.add(fp);
+    out.push(t);
+  }
+  return out;
+}
+
+function mergeAccountSetupDraftObjects(sessionObj, localObj) {
+  if (!sessionObj || typeof sessionObj !== "object") return localObj;
+  if (!localObj || typeof localObj !== "object") return sessionObj;
+  const sessionTx = Array.isArray(sessionObj.transactions) ? sessionObj.transactions : [];
+  const localTx = Array.isArray(localObj.transactions) ? localObj.transactions : [];
+  const sessionAccount =
+    sessionObj.account && sessionObj.account.name && sessionObj.account.starting_balance_date != null
+      ? sessionObj.account
+      : null;
+  const localAccount =
+    localObj.account && localObj.account.name && localObj.account.starting_balance_date != null
+      ? localObj.account
+      : null;
+  return {
+    ...sessionObj,
+    ...localObj,
+    account: sessionAccount || localAccount || localObj.account || sessionObj.account || null,
+    transactions: mergeAccountSetupDraftTransactions(sessionTx, localTx),
+  };
+}
+
 function readAccountSetupDraftJsonRaw() {
+  let sessionRaw = "";
+  let localRaw = "";
   try {
-    const s = sessionStorage.getItem("bw_account_setup_draft") || "";
-    if (s) return s;
+    sessionRaw = sessionStorage.getItem("bw_account_setup_draft") || "";
   } catch (_) {}
   try {
-    return localStorage.getItem("bw_account_setup_draft") || "";
+    localRaw = localStorage.getItem("bw_account_setup_draft") || "";
   } catch (_) {}
-  return "";
+  if (!sessionRaw && !localRaw) return "";
+  if (!sessionRaw) return localRaw;
+  if (!localRaw) return sessionRaw;
+  if (sessionRaw === localRaw) return sessionRaw;
+  try {
+    return JSON.stringify(mergeAccountSetupDraftObjects(JSON.parse(sessionRaw), JSON.parse(localRaw)));
+  } catch (_) {
+    return sessionRaw || localRaw;
+  }
 }
 
 function clearAccountSetupDraftJsonStorage() {
@@ -14350,6 +14412,18 @@ async function tryRecoverAccountSetupDraft() {
     }
   }
 
+  const recoveryAcct = createdAccountId
+    ? (state.accounts || []).find((a) => Number(a.id) === Number(createdAccountId))
+    : null;
+  const recoveryAcctStart =
+    String(draft?.account?.starting_balance_date || recoveryAcct?.starting_balance_date || "").trim() || null;
+
+  function recoveryEffectiveTxDate(txDate) {
+    const d = String(txDate || "").trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || !recoveryAcctStart || !/^\d{4}-\d{2}-\d{2}$/.test(recoveryAcctStart)) return d;
+    return d < recoveryAcctStart ? recoveryAcctStart : d;
+  }
+
   let txTotal = 0;
   let txCreated = 0;
   for (const t of txs) {
@@ -14357,16 +14431,18 @@ async function tryRecoverAccountSetupDraft() {
     if (!Number.isFinite(amt) || amt <= 0) continue;
     txTotal += 1;
     const description = (t.category || "").trim() || "Transaction";
+    const txDate = recoveryEffectiveTxDate(t.date);
     try {
       if (t.recurring) {
         if (!createdAccountId) continue;
         await api(`/api/families/${state.activeFamilyId}/expected-transactions`, "POST", {
           account_id: createdAccountId,
-          start_date: t.date,
+          start_date: txDate,
           end_date: t.end_date || null,
           end_count: t.end_date ? null : t.end_count ?? null,
           recurrence: t.recurrence || "monthly",
-          second_day_of_month: null,
+          second_day_of_month:
+            t.recurrence === "twice_monthly" ? t.second_day_of_month ?? null : null,
           description,
           notes: t.notes ? t.notes : null,
           kind: t.kind,
@@ -14379,7 +14455,7 @@ async function tryRecoverAccountSetupDraft() {
         txCreated += 1;
       } else {
         await api(`/api/families/${state.activeFamilyId}/transactions`, "POST", {
-          date: t.date,
+          date: txDate,
           description,
           notes: t.notes ? t.notes : null,
           kind: t.kind,
@@ -14394,7 +14470,7 @@ async function tryRecoverAccountSetupDraft() {
     } catch (e) {
       try {
         if (window.console && console.warn) {
-          console.warn("[onboarding] transaction recovery failed", e && e.message);
+          console.warn("[onboarding] transaction recovery failed", e && e.message, { txDate, kind: t.kind });
         }
       } catch (_) {}
       // Continue the loop — one transaction failure shouldn't block the rest.

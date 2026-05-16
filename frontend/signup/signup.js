@@ -134,15 +134,35 @@ function messageFromFailure(resp, fallback) {
   return fallback;
 }
 
-async function verifySessionWithProgress(targetInfoEl) {
-  const attempts = [0, 800, 1800, 3200];
+async function verifySessionWithProgress(targetInfoEl, opts = {}) {
+  const silent = !!(opts && opts.silent);
+  const onStatus = opts && typeof opts.onStatus === "function" ? opts.onStatus : null;
+  const attempts = silent ? [0, 350, 900] : [0, 800, 1800, 3200];
   for (let i = 0; i < attempts.length; i++) {
     if (attempts[i] > 0) await new Promise((resolve) => setTimeout(resolve, attempts[i]));
-    setCallout(targetInfoEl, "Logging in....", "pending");
+    const status = "Confirming your session…";
+    if (onStatus) onStatus(status);
+    else if (!silent) setCallout(targetInfoEl, "Logging in....", "pending");
     const me = await request("/api/auth/me", "GET");
     if (me.ok && me.data && me.data.user) return { ok: true };
   }
   return { ok: false };
+}
+
+function prefetchCalendarPage() {
+  try {
+    if (document.querySelector('link[data-bw-prefetch="calendar"]')) return;
+    const link = document.createElement("link");
+    link.rel = "prefetch";
+    link.href = "/calendar/";
+    link.setAttribute("data-bw-prefetch", "calendar");
+    document.head.appendChild(link);
+  } catch (_) {}
+}
+
+async function ensureMinOverlayDuration(startedAt, minMs) {
+  const remaining = minMs - (Date.now() - startedAt);
+  if (remaining > 0) await new Promise((r) => setTimeout(r, remaining));
 }
 
 function parsePlanFromQuery() {
@@ -196,6 +216,103 @@ function removeAccountSetupDraftStorage() {
   try {
     localStorage.removeItem(BW_ACCOUNT_SETUP_DRAFT_KEY);
   } catch (_) {}
+}
+
+function accountSetupDraftTxFingerprint(t) {
+  if (!t || typeof t !== "object") return "";
+  return [
+    String(t.kind || "").trim().toLowerCase(),
+    Number(t.amount),
+    String(t.date || "").trim(),
+    String(t.category || "").trim().toLowerCase(),
+  ].join("|");
+}
+
+/** Union income/expense rows from two persisted copies (session vs local). */
+function mergeAccountSetupDraftTransactions(a, b) {
+  const out = [];
+  const seen = new Set();
+  for (const t of [...(Array.isArray(a) ? a : []), ...(Array.isArray(b) ? b : [])]) {
+    const fp = accountSetupDraftTxFingerprint(t);
+    if (!fp || seen.has(fp)) continue;
+    seen.add(fp);
+    out.push(t);
+  }
+  return out;
+}
+
+function draftAccountIsComplete(account) {
+  return !!(account && account.name && account.starting_balance_date != null);
+}
+
+/** Prefer the copy that has account + the most transactions; union transaction lists. */
+function mergeAccountSetupDraftObjects(sessionObj, localObj) {
+  if (!sessionObj || typeof sessionObj !== "object") return localObj;
+  if (!localObj || typeof localObj !== "object") return sessionObj;
+  const sessionTx = Array.isArray(sessionObj.transactions) ? sessionObj.transactions : [];
+  const localTx = Array.isArray(localObj.transactions) ? localObj.transactions : [];
+  const transactions = mergeAccountSetupDraftTransactions(sessionTx, localTx);
+  const sessionAccount = draftAccountIsComplete(sessionObj.account) ? sessionObj.account : null;
+  const localAccount = draftAccountIsComplete(localObj.account) ? localObj.account : null;
+  const account = sessionAccount || localAccount || localObj.account || sessionObj.account || null;
+  const sessionSurvey = Array.isArray(sessionObj.surveyHelpWith) ? sessionObj.surveyHelpWith : [];
+  const localSurvey = Array.isArray(localObj.surveyHelpWith) ? localObj.surveyHelpWith : [];
+  const surveyHelpWith = localSurvey.length >= sessionSurvey.length ? localSurvey : sessionSurvey;
+  const sessionV = Number(sessionObj.wizardFlowVersion);
+  const localV = Number(localObj.wizardFlowVersion);
+  const wizardFlowVersion =
+    Number.isFinite(sessionV) && Number.isFinite(localV)
+      ? Math.max(sessionV, localV)
+      : Number.isFinite(localV)
+        ? localV
+        : Number.isFinite(sessionV)
+          ? sessionV
+          : ACCOUNT_SETUP_WIZARD_FLOW_VERSION;
+  const sessionStep = Number(sessionObj.wizardStep);
+  const localStep = Number(localObj.wizardStep);
+  const wizardStep =
+    Number.isFinite(sessionStep) && Number.isFinite(localStep) ? Math.max(sessionStep, localStep) : localObj.wizardStep ?? sessionObj.wizardStep;
+  return {
+    ...sessionObj,
+    ...localObj,
+    wizardFlowVersion,
+    wizardStep,
+    account,
+    transactions,
+    surveyHelpWith,
+    surveyOther: localObj.surveyOther != null && String(localObj.surveyOther).trim() !== "" ? localObj.surveyOther : sessionObj.surveyOther,
+  };
+}
+
+/** Recurring/one-time rows must start on or after the account starting-balance date (API rule). */
+function accountSetupEffectiveTxDate(txDate, draft) {
+  const d = String(txDate || "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+  const acctStart = String(draft?.account?.starting_balance_date || "").trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(acctStart) && d < acctStart) return acctStart;
+  return d;
+}
+
+function readAccountSetupDraftJsonFromStorage() {
+  let sessionRaw = "";
+  let localRaw = "";
+  try {
+    sessionRaw = sessionStorage.getItem(BW_ACCOUNT_SETUP_DRAFT_KEY) || "";
+  } catch (_) {}
+  try {
+    localRaw = localStorage.getItem(BW_ACCOUNT_SETUP_DRAFT_KEY) || "";
+  } catch (_) {}
+  if (!sessionRaw && !localRaw) return "";
+  if (!sessionRaw) return localRaw;
+  if (!localRaw) return sessionRaw;
+  if (sessionRaw === localRaw) return sessionRaw;
+  try {
+    const sessionObj = JSON.parse(sessionRaw);
+    const localObj = JSON.parse(localRaw);
+    return JSON.stringify(mergeAccountSetupDraftObjects(sessionObj, localObj));
+  } catch (_) {
+    return sessionRaw || localRaw;
+  }
 }
 
 /** Bumped when step order changes; used to migrate persisted `wizardStep`. */
@@ -1465,11 +1582,8 @@ function goToSignupFromAccountSetup() {
   if (!signupBtn) return;
   setCallout(signupCalloutEl, "", "");
   try {
-    let existingDraft = null;
-    try {
-      existingDraft = JSON.parse(sessionStorage.getItem(BW_ACCOUNT_SETUP_DRAFT_KEY) || "null");
-    } catch (_) {}
-    const existingTransactions = Array.isArray(existingDraft?.transactions) ? existingDraft.transactions : [];
+    const existingDraft = readAccountSetupDraftRaw() || {};
+    const existingTransactions = Array.isArray(existingDraft.transactions) ? existingDraft.transactions : [];
 
     const accountName = (document.getElementById("accountName")?.value || "").trim();
     const accountStartingBalanceRaw = document.getElementById("accountStartingBalance")?.value || "";
@@ -1494,6 +1608,7 @@ function goToSignupFromAccountSetup() {
       }
     }
     persistAccountSetupDraftObject({
+        ...existingDraft,
         ...(gate.anyAccount
           ? {
               account: {
@@ -1521,15 +1636,7 @@ function goToSignupFromAccountSetup() {
 }
 
 function readAccountSetupDraftRaw() {
-  let raw = "";
-  try {
-    raw = sessionStorage.getItem(BW_ACCOUNT_SETUP_DRAFT_KEY) || "";
-  } catch (_) {}
-  if (!raw) {
-    try {
-      raw = localStorage.getItem(BW_ACCOUNT_SETUP_DRAFT_KEY) || "";
-    } catch (_) {}
-  }
+  const raw = readAccountSetupDraftJsonFromStorage();
   if (!raw) return null;
   try {
     return JSON.parse(raw);
@@ -2461,10 +2568,12 @@ function hydrateAccountSetupSurveyFromDraft(o) {
 
 function hydrateAccountSetupDraft() {
   if (!isAccountSetupPath()) return;
-  let raw = "";
+  const merged = readAccountSetupDraftRaw();
+  if (!merged) return;
   try {
-    raw = sessionStorage.getItem(BW_ACCOUNT_SETUP_DRAFT_KEY) || "";
+    persistAccountSetupDraftObject(merged);
   } catch (_) {}
+  const raw = readAccountSetupDraftJsonFromStorage();
   if (!raw) return;
   try {
     const o = JSON.parse(raw);
@@ -2618,10 +2727,7 @@ function setBusy(isBusy) {
 }
 
 function readAccountSetupDraft() {
-  let raw = "";
-  try {
-    raw = sessionStorage.getItem(BW_ACCOUNT_SETUP_DRAFT_KEY) || "";
-  } catch (_) {}
+  const raw = readAccountSetupDraftJsonFromStorage();
   if (!raw) return null;
   try {
     const o = JSON.parse(raw);
@@ -2747,6 +2853,7 @@ async function maybeCreateFirstTransactionFromDraft(draft, createdAccountId) {
     const amount = Number(t.amount);
     if (!Number.isFinite(amount) || amount <= 0) continue;
     totalApplicable += 1;
+    const txDate = accountSetupEffectiveTxDate(t.date, draft);
     try {
       if (t.recurring) {
         const accountId = Number(createdAccountId);
@@ -2759,7 +2866,7 @@ async function maybeCreateFirstTransactionFromDraft(draft, createdAccountId) {
           "POST",
           {
             account_id: accountId,
-            start_date: t.date,
+            start_date: txDate,
             end_date: t.end_date || null,
             end_count: t.end_date ? null : t.end_count ?? null,
             recurrence: t.recurrence || "monthly",
@@ -2782,7 +2889,7 @@ async function maybeCreateFirstTransactionFromDraft(draft, createdAccountId) {
           `/api/families/${encodeURIComponent(String(familyId))}/transactions`,
           "POST",
           {
-            date: t.date,
+            date: txDate,
             description,
             notes: t.notes ? t.notes : null,
             kind: t.kind,
@@ -2847,19 +2954,20 @@ async function doSignup() {
   setBusy(true);
   const isAccountSetup = isAccountSetupPath();
   const startedAt = Date.now();
-  const minOverlayMs = 8000;
+  const minOverlayMs = 3200;
+  const maxOverlayMs = 14000;
   let overlay = null;
   try {
     overlay = ensureForecastBuildOverlay();
     if (isAccountSetup) {
-      // Replace the transient "Failed to fetch" callout with a calmer progress UI.
       setCallout(signupCalloutEl, "", "");
-      showForecastBuildOverlay(overlay, { durationMs: minOverlayMs });
+      showForecastBuildOverlay(overlay, { durationMs: maxOverlayMs, rotateMessages: false });
+      setForecastBuildOverlayMessage(overlay, "Preparing your forecast…");
+      prefetchCalendarPage();
     } else {
       setCallout(signupCalloutEl, "Creating your account...", "pending");
     }
   } catch (_) {
-    // If overlay can't render, fall back to callout only.
     setCallout(signupCalloutEl, "Creating your account...", "pending");
   }
   try {
@@ -2887,13 +2995,13 @@ async function doSignup() {
       return cleaned || "User";
     })();
 
+    if (isAccountSetup && overlay) {
+      setForecastBuildOverlayMessage(overlay, "Creating your account…");
+    }
+
     const dupCheck = await precheckEmailExistsFresh(email);
     if (dupCheck && dupCheck.ok && dupCheck.exists === true) {
-      if (isAccountSetup) {
-        const remaining = Math.max(0, minOverlayMs - (Date.now() - startedAt));
-        if (remaining) await new Promise((r) => setTimeout(r, remaining));
-        hideForecastBuildOverlay(overlay);
-      }
+      if (isAccountSetup && overlay) hideForecastBuildOverlay(overlay);
       setCallout(signupCalloutEl, "", "");
       openAccountSetupDuplicateEmailModal();
       return;
@@ -2901,11 +3009,7 @@ async function doSignup() {
 
     const reg = await requestWithRetry("/api/auth/register", "POST", { name, email, password }, { maxMs: 14000 });
     if (!reg.ok) {
-      if (isAccountSetup) {
-        const remaining = Math.max(0, minOverlayMs - (Date.now() - startedAt));
-        if (remaining) await new Promise((r) => setTimeout(r, remaining));
-        hideForecastBuildOverlay(overlay);
-      }
+      if (isAccountSetup && overlay) hideForecastBuildOverlay(overlay);
       if (reg.status === 409 && isAccountSetup) {
         try {
           bwEmailCheckCache = { email, checkedAt: Date.now(), exists: true, pending: null };
@@ -2926,8 +3030,18 @@ async function doSignup() {
       bwEmailCheckCache = { email, checkedAt: Date.now(), exists: true, pending: null };
     } catch (_) {}
 
-    const check = await verifySessionWithProgress(signupCalloutEl);
+    if (isAccountSetup && overlay) {
+      setForecastBuildOverlayMessage(overlay, "Saving your income and bills…");
+    }
+
+    const check = await verifySessionWithProgress(signupCalloutEl, {
+      silent: isAccountSetup,
+      onStatus: isAccountSetup && overlay
+        ? (msg) => setForecastBuildOverlayMessage(overlay, msg)
+        : null,
+    });
     if (!check.ok) {
+      if (isAccountSetup && overlay) hideForecastBuildOverlay(overlay);
       setCallout(
         signupCalloutEl,
         "Account was created, but we could not confirm your session. Try the Login page with the same email and password.",
@@ -2953,9 +3067,10 @@ async function doSignup() {
     // before redirecting — otherwise the user lands on /calendar with no data.
     const accountResult = await maybeCreateFirstAccountFromDraft(draft);
     const createdAccountId = accountResult && accountResult.accountId ? accountResult.accountId : null;
-    const txResult = await maybeCreateFirstTransactionFromDraft(draft, createdAccountId);
-
-    const thresholdResult = await maybePatchForecastThresholdsFromDraft(draft);
+    const [txResult, thresholdResult] = await Promise.all([
+      maybeCreateFirstTransactionFromDraft(draft, createdAccountId),
+      maybePatchForecastThresholdsFromDraft(draft),
+    ]);
     if (thresholdResult && !thresholdResult.ok && !thresholdResult.skipped) {
       try {
         if (window.console && console.warn) console.warn("[signup] forecast threshold update failed", thresholdResult);
@@ -2982,23 +3097,17 @@ async function doSignup() {
       } catch (_) {}
     }
 
-    if (isAccountSetup) {
-      const remaining = Math.max(0, minOverlayMs - (Date.now() - startedAt));
-      if (remaining) await new Promise((r) => setTimeout(r, remaining));
-      hideForecastBuildOverlay(overlay);
+    if (isAccountSetup && overlay) {
+      await ensureMinOverlayDuration(startedAt, minOverlayMs);
+      await finishForecastBuildOverlay(overlay, { message: "Opening your forecast…" });
     }
     setCallout(signupCalloutEl, "", "");
     try {
-      // One-time "Your forecast is ready" modal on first calendar load.
       sessionStorage.setItem(BW_FORECAST_READY_POPUP_KEY, "1");
     } catch (_) {}
     await goApp();
   } catch (e) {
-    if (isAccountSetup) {
-      const remaining = Math.max(0, minOverlayMs - (Date.now() - startedAt));
-      if (remaining) await new Promise((r) => setTimeout(r, remaining));
-      hideForecastBuildOverlay(overlay);
-    }
+    if (isAccountSetup && overlay) hideForecastBuildOverlay(overlay);
     setCallout(signupCalloutEl, (e && e.message) || "Signup failed.", "error");
   } finally {
     bwSignupInFlight = false;
@@ -3007,12 +3116,9 @@ async function doSignup() {
 }
 
 /**
- * "Preparing your forecast…" overlay shown during account registration.
- *
- * The bar fills over `durationMs` (typically 8s) so the user sees deliberate
- * progress while we wait for register + session verify + initial-data POSTs.
- * Helpful messages rotate every ~2.4s so the wait feels like real work and not
- * a generic spinner. Static fallback title is set in markup for screen readers.
+ * Full-screen overlay while signup + initial forecast data are created.
+ * Work runs during the overlay; the bar completes when work finishes (not on a
+ * fixed timer). `durationMs` is a ceiling for the fill animation only.
  */
 const FORECAST_BUILD_MESSAGES = [
   "Building your cash timeline…",
@@ -3021,6 +3127,23 @@ const FORECAST_BUILD_MESSAGES = [
   "Aligning paydays and bills…",
   "Almost ready…",
 ];
+
+function stopForecastBuildOverlayRotation(overlayEl) {
+  if (!overlayEl || !overlayEl._bwMsgInterval) return;
+  try {
+    clearInterval(overlayEl._bwMsgInterval);
+  } catch (_) {}
+  overlayEl._bwMsgInterval = null;
+}
+
+function setForecastBuildOverlayMessage(overlayEl, text) {
+  if (!overlayEl) return;
+  stopForecastBuildOverlayRotation(overlayEl);
+  const msgEl = overlayEl.querySelector("#bwForecastBuildMessage");
+  if (!msgEl) return;
+  msgEl.textContent = String(text || "");
+  msgEl.classList.add("bw-build-overlay__message--show");
+}
 
 function ensureForecastBuildOverlay() {
   const existing = document.getElementById("bwForecastBuildOverlay");
@@ -3042,7 +3165,7 @@ function ensureForecastBuildOverlay() {
   return wrap;
 }
 
-function showForecastBuildOverlay(overlayEl, { durationMs = 5000 } = {}) {
+function showForecastBuildOverlay(overlayEl, { durationMs = 5000, rotateMessages = true } = {}) {
   if (!overlayEl) return;
   overlayEl.hidden = false;
   overlayEl.classList.add("bw-build-overlay--open");
@@ -3050,38 +3173,35 @@ function showForecastBuildOverlay(overlayEl, { durationMs = 5000 } = {}) {
   if (fill) {
     fill.style.transition = "none";
     fill.style.width = "0%";
-    // Next tick: animate to 100%.
     requestAnimationFrame(() => {
       fill.style.transition = `width ${Math.max(0, durationMs)}ms linear`;
       fill.style.width = "100%";
     });
   }
-  // Rotate helpful messages so the wait reads like deliberate work.
   const msgEl = overlayEl.querySelector("#bwForecastBuildMessage");
-  if (msgEl) {
-    // Cancel any prior rotation so multiple show() calls don't stack timers.
-    if (overlayEl._bwMsgInterval) {
-      try { clearInterval(overlayEl._bwMsgInterval); } catch (_) {}
-      overlayEl._bwMsgInterval = null;
-    }
-    let idx = 0;
-    msgEl.textContent = FORECAST_BUILD_MESSAGES[0];
-    msgEl.classList.remove("bw-build-overlay__message--show");
-    requestAnimationFrame(() => msgEl.classList.add("bw-build-overlay__message--show"));
-    overlayEl._bwMsgInterval = window.setInterval(() => {
-      idx = (idx + 1) % FORECAST_BUILD_MESSAGES.length;
-      msgEl.classList.remove("bw-build-overlay__message--show");
-      // Brief fade-out → swap → fade-in for a calm, non-flashy transition.
-      window.setTimeout(() => {
-        msgEl.textContent = FORECAST_BUILD_MESSAGES[idx];
-        msgEl.classList.add("bw-build-overlay__message--show");
-      }, 220);
-    }, 2400);
+  if (!msgEl) return;
+  stopForecastBuildOverlayRotation(overlayEl);
+  if (!rotateMessages) {
+    msgEl.classList.add("bw-build-overlay__message--show");
+    return;
   }
+  let idx = 0;
+  msgEl.textContent = FORECAST_BUILD_MESSAGES[0];
+  msgEl.classList.remove("bw-build-overlay__message--show");
+  requestAnimationFrame(() => msgEl.classList.add("bw-build-overlay__message--show"));
+  overlayEl._bwMsgInterval = window.setInterval(() => {
+    idx = (idx + 1) % FORECAST_BUILD_MESSAGES.length;
+    msgEl.classList.remove("bw-build-overlay__message--show");
+    window.setTimeout(() => {
+      msgEl.textContent = FORECAST_BUILD_MESSAGES[idx];
+      msgEl.classList.add("bw-build-overlay__message--show");
+    }, 220);
+  }, 2400);
 }
 
 function hideForecastBuildOverlay(overlayEl) {
   if (!overlayEl) return;
+  stopForecastBuildOverlayRotation(overlayEl);
   overlayEl.classList.remove("bw-build-overlay--open");
   overlayEl.hidden = true;
   const fill = overlayEl.querySelector(".bw-build-overlay__barFill");
@@ -3089,10 +3209,18 @@ function hideForecastBuildOverlay(overlayEl) {
     fill.style.transition = "none";
     fill.style.width = "0%";
   }
-  if (overlayEl._bwMsgInterval) {
-    try { clearInterval(overlayEl._bwMsgInterval); } catch (_) {}
-    overlayEl._bwMsgInterval = null;
+}
+
+async function finishForecastBuildOverlay(overlayEl, { message = "Opening your forecast…" } = {}) {
+  if (!overlayEl) return;
+  setForecastBuildOverlayMessage(overlayEl, message);
+  const fill = overlayEl.querySelector(".bw-build-overlay__barFill");
+  if (fill) {
+    fill.style.transition = "width 400ms ease-out";
+    fill.style.width = "100%";
   }
+  await new Promise((r) => setTimeout(r, 440));
+  hideForecastBuildOverlay(overlayEl);
 }
 
 // Plan note (for future billing wiring).
