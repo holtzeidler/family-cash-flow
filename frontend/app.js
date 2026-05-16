@@ -5951,6 +5951,12 @@ async function saveExpectedSeriesFromInstance() {
   const notesVal = txEditNotes ? txEditNotes.value.trim() || null : null;
 
   const recurrenceVal = instanceRecurrence?.value || meta.recurrence || "monthly";
+  const occRaw = selectedExpectedInstance
+    ? normalizeIsoDate(selectedExpectedInstance.occurrence_date) || selectedExpectedInstance.occurrence_date
+    : null;
+  if (!occRaw) {
+    throw new Error("Pick an occurrence from the calendar or recurring list to update this date and all future ones.");
+  }
   const endCountRaw = instanceEndCount?.value != null ? String(instanceEndCount.value).trim() : "";
   const endCountVal = endCountRaw === "" ? null : Number(endCountRaw);
   if (endCountVal != null) {
@@ -5983,13 +5989,6 @@ async function saveExpectedSeriesFromInstance() {
     }
   } else {
     secondDayVal = null;
-  }
-
-  const occRaw = selectedExpectedInstance
-    ? normalizeIsoDate(selectedExpectedInstance.occurrence_date) || selectedExpectedInstance.occurrence_date
-    : null;
-  if (!occRaw) {
-    throw new Error("Pick an occurrence from the calendar or recurring list to update this date and all future ones.");
   }
 
   if (String(meta.recurrence || "") === "once") {
@@ -9759,18 +9758,19 @@ function renderSidebarPendingTransactionsForMonth() {
     textCol.appendChild(name);
     textCol.appendChild(meta);
 
-    const cta = document.createElement("span");
-    cta.className = "pending-attn-cta";
-    cta.setAttribute("aria-hidden", "true");
-    cta.textContent = "Review estimate";
+    const indicator = document.createElement("span");
+    indicator.className = "pending-attn-indicator";
+    indicator.setAttribute("aria-hidden", "true");
+    indicator.innerHTML =
+      '<svg class="pending-attn-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>';
 
     el.setAttribute(
       "aria-label",
-      `${descFull || catLabel}, ${sign}$${fmtMoney0(amt)}, ${it?.date ? fmtMonthDay(it.date) : "date unknown"}, review estimate`
+      `${descFull || catLabel}, ${sign}$${fmtMoney0(amt)}, ${it?.date ? fmtMonthDay(it.date) : "date unknown"}`
     );
     el.title = name.title;
     el.appendChild(textCol);
-    el.appendChild(cta);
+    el.appendChild(indicator);
     sidebarPendingTxList.appendChild(el);
   }
 }

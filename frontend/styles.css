@@ -620,13 +620,13 @@ body.landing-page .landing-hero-viz__timeline::after{
   position: absolute;
   top: 0;
   right: 0;
-  width: 24%;
+  width: 16%;
   height: 100%;
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(250, 252, 251, 0.45) 42%,
-    rgba(255, 255, 255, 0.88) 100%
+    rgba(250, 252, 251, 0.18) 55%,
+    rgba(255, 255, 255, 0.42) 100%
   );
   pointer-events: none;
   z-index: 2;
@@ -634,6 +634,7 @@ body.landing-page .landing-hero-viz__timeline::after{
 body.landing-page .landing-hero-viz__chartWrap{
   position: relative;
   margin-top: 8px;
+  padding-bottom: 2px;
 }
 body.landing-page .landing-hero-viz__timeline .landing-hero-viz__spark{
   margin-top: 0;
@@ -647,44 +648,85 @@ body.landing-page .landing-hero-viz__spark{
   background: linear-gradient(180deg, rgba(4, 120, 87, 0.04) 0%, rgba(4, 120, 87, 0.09) 100%);
   box-shadow: inset 0 0 0 1px rgba(11, 61, 46, 0.06);
 }
-body.landing-page .landing-hero-viz__future{
+body.landing-page .landing-hero-viz__futureLane{
   position: absolute;
-  right: 7px;
-  bottom: 6px;
+  left: 72%;
+  right: 4px;
+  bottom: 3px;
+  z-index: 3;
   display: flex;
-  align-items: baseline;
-  gap: 0.38rem;
-  z-index: 1;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 3px;
   pointer-events: none;
 }
+body.landing-page .landing-hero-viz__future{
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.42rem;
+  padding: 0 1px;
+}
+body.landing-page .landing-hero-viz__futureStop{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  flex: 1 1 0;
+}
+body.landing-page .landing-hero-viz__futureDot{
+  display: block;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(11, 61, 46, 0.3);
+  flex-shrink: 0;
+}
+body.landing-page .landing-hero-viz__futureStop:nth-child(2) .landing-hero-viz__futureDot{
+  background: rgba(11, 61, 46, 0.24);
+}
+body.landing-page .landing-hero-viz__futureStop:nth-child(3) .landing-hero-viz__futureDot{
+  background: rgba(71, 85, 105, 0.22);
+}
+body.landing-page .landing-hero-viz__futureStop:nth-child(4) .landing-hero-viz__futureDot{
+  background: rgba(100, 116, 139, 0.18);
+}
 body.landing-page .landing-hero-viz__futureMo{
-  font-size: 0.58rem;
+  font-size: 0.68rem;
   font-weight: 600;
-  letter-spacing: 0.045em;
-  color: rgba(11, 61, 46, 0.42);
+  letter-spacing: 0.03em;
   line-height: 1;
+  white-space: nowrap;
 }
-body.landing-page .landing-hero-viz__futureMo:nth-child(1){
-  opacity: 0.52;
+body.landing-page .landing-hero-viz__futureStop:nth-child(1) .landing-hero-viz__futureMo{
+  color: rgba(71, 85, 105, 0.72);
 }
-body.landing-page .landing-hero-viz__futureMo:nth-child(2){
-  opacity: 0.38;
+body.landing-page .landing-hero-viz__futureStop:nth-child(2) .landing-hero-viz__futureMo{
+  color: rgba(100, 116, 139, 0.66);
 }
-body.landing-page .landing-hero-viz__futureMo:nth-child(3){
-  opacity: 0.26;
+body.landing-page .landing-hero-viz__futureStop:nth-child(3) .landing-hero-viz__futureMo{
+  color: rgba(100, 116, 139, 0.58);
 }
-body.landing-page .landing-hero-viz__futureMo:nth-child(4){
-  opacity: 0.15;
+body.landing-page .landing-hero-viz__futureStop:nth-child(4) .landing-hero-viz__futureMo{
+  color: rgba(148, 163, 184, 0.52);
 }
 body.landing-page .landing-hero-viz__horizon{
-  margin: 3px 2px 0;
-  padding: 0;
-  font-size: 0.58rem;
-  line-height: 1.32;
+  margin: 0;
+  padding: 0 2px 0 0;
+  font-size: 0.6rem;
+  line-height: 1.25;
   font-weight: 500;
-  letter-spacing: 0.018em;
-  color: rgba(100, 116, 139, 0.48);
+  font-style: normal;
+  letter-spacing: 0.02em;
+  color: rgba(100, 116, 139, 0.58);
   text-align: right;
+}
+body.landing-page .landing-hero-viz__sparkFuture{
+  opacity: 1;
+}
+body.landing-page .landing-hero-viz__sparkMilestone{
+  opacity: 1;
 }
 body.landing-page .landing-hero-viz__foot{
   margin: 5px 0 0;
@@ -4884,13 +4926,18 @@ button.secondary[aria-disabled="true"]{
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  padding: 4px 8px 4px 9px;
-  border-radius: 7px;
-  border: 1px solid rgba(0, 0, 0, 0.032);
-  background: rgba(0, 0, 0, 0.01);
+  gap: 6px;
+  padding: 5px 7px 5px 9px;
+  border-radius: 8px;
+  border: 1px solid rgba(17, 24, 39, 0.06);
+  background: rgba(255, 255, 255, 0.42);
   width: 100%;
   box-sizing: border-box;
+  transition:
+    background 0.14s ease,
+    border-color 0.14s ease,
+    box-shadow 0.14s ease,
+    transform 0.14s ease;
 }
 .pending-attn-item::before{
   content: none;
@@ -4912,13 +4959,21 @@ button.secondary[aria-disabled="true"]{
   background: rgba(253, 230, 138, 0.04);
 }
 .pending-attn-item.is-critical .pending-attn-name{
-  font-weight: 700;
+  font-weight: 680;
 }
 .pending-attn-item:hover{
-  background: rgba(0,0,0,0.028);
+  border-color: rgba(17, 24, 39, 0.1);
+  background: rgba(248, 250, 252, 0.96);
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.05);
 }
-.pending-attn-item.is-major:hover{
-  background: rgba(0, 0, 0, 0.038);
+.pending-attn-item.is-major:hover,
+.pending-attn-item.is-notable:hover{
+  border-color: rgba(17, 24, 39, 0.1);
+  background: rgba(248, 250, 252, 0.96);
+}
+.pending-attn-item:active{
+  transform: translateY(0.5px);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
 }
 .pending-attn-text{
   flex: 1;
@@ -4934,52 +4989,71 @@ button.secondary[aria-disabled="true"]{
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
-  font-weight: 600;
+  font-weight: 650;
   font-style: normal;
-  color: rgba(55, 65, 75, 0.88);
-  font-size: 12px;
-  line-height: 1.22;
+  color: rgba(15, 23, 42, 0.92);
+  font-size: 12.25px;
+  line-height: 1.24;
+  letter-spacing: -0.01em;
 }
 .pending-attn-name.tx-kind-fg--income,
 .pending-attn-name.tx-kind-fg--expense{
   color: var(--muted);
 }
 .pending-attn-meta{
-  font-size: 10.5px;
-  font-weight: 500;
-  line-height: 1.22;
-  letter-spacing: -0.01em;
-  color: rgba(100, 116, 139, 0.72);
+  font-size: 10.25px;
+  font-weight: 450;
+  line-height: 1.26;
+  letter-spacing: -0.005em;
+  color: rgba(100, 116, 139, 0.58);
   font-variant-numeric: tabular-nums;
 }
-.pending-attn-item.is-notable .pending-attn-meta{
-  font-weight: 580;
-  color: rgba(71, 85, 105, 0.8);
-}
+.pending-attn-item.is-notable .pending-attn-meta,
 .pending-attn-item.is-major .pending-attn-meta{
-  font-weight: 650;
-  color: rgba(51, 65, 85, 0.88);
+  font-weight: 450;
+  color: rgba(100, 116, 139, 0.62);
 }
-.pending-attn-cta{
+.pending-attn-indicator{
+  position: relative;
   flex-shrink: 0;
-  margin: 0;
-  padding: 2px 7px;
-  border: 1px solid rgba(17, 24, 39, 0.07);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.72);
-  color: rgba(71, 85, 105, 0.72);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.012em;
-  line-height: 1.2;
-  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-right: 1px;
+  color: rgba(100, 116, 139, 0.34);
   pointer-events: none;
+  transition: color 0.14s ease, transform 0.14s ease;
 }
-.pending-attn-item:hover .pending-attn-cta{
-  color: rgba(11, 61, 46, 0.82);
-  border-color: rgba(11, 61, 46, 0.14);
-  background: rgba(255, 255, 255, 0.95);
-  text-decoration: none;
+.pending-attn-chevron{
+  display: block;
+}
+.pending-attn-item:hover .pending-attn-indicator{
+  color: rgba(71, 85, 105, 0.55);
+  transform: translateX(1px);
+}
+.pending-attn-item.is-soon .pending-attn-indicator::before{
+  content: "";
+  position: absolute;
+  left: -3px;
+  top: 50%;
+  width: 4px;
+  height: 4px;
+  margin-top: -2px;
+  border-radius: 50%;
+  background: rgba(180, 83, 9, 0.38);
+}
+.pending-attn-item.is-critical .pending-attn-indicator::before{
+  content: "";
+  position: absolute;
+  left: -3px;
+  top: 50%;
+  width: 4px;
+  height: 4px;
+  margin-top: -2px;
+  border-radius: 50%;
+  background: rgba(220, 38, 38, 0.4);
 }
 button.pending-attn-item{
   font: inherit;
@@ -5654,9 +5728,9 @@ body[data-bw-view="settings"] .settings-pane[data-settings-pane="preferences"] .
   background: var(--cal-surface);
   /* --cal-week-rows set in JS (4–6); day row height scales with week count */
   --cal-week-rows: 5;
-  --cal-day-min-h: 102px;
-  /* Horizontal + vertical gutter between day cells (was 6px). */
-  --cal-gap: 4px;
+  --cal-day-min-h: 94px;
+  /* Horizontal + vertical gutter between day cells. */
+  --cal-gap: 3px;
   /*
     Ensure the panel is tall enough to show the full last row of day cards,
     including grid gaps and the day-of-week header.
@@ -8445,16 +8519,22 @@ body[data-bw-view="calendar"] .sidebar-sticky-head{
 }
 body[data-bw-view="calendar"] .sidebar .card,
 body[data-bw-view="calendar"] .sidebar-balance-threshold-alerts{
-  border: 1px solid rgba(17, 24, 39, 0.042);
-  background: rgba(255, 253, 250, 0.94);
-  border-radius: 10px;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.018);
-  padding: 8px 10px;
+  border: none;
+  background: rgba(255, 253, 250, 0.72);
+  border-radius: 0;
+  box-shadow: none;
+  padding: 7px 8px;
+}
+body[data-bw-view="calendar"] .sidebar .card + .card,
+body[data-bw-view="calendar"] .sidebar-balance-threshold-alerts + .card,
+body[data-bw-view="calendar"] .card + .sidebar-balance-threshold-alerts{
+  border-top: 1px solid rgba(17, 24, 39, 0.045);
+  margin-top: 0;
+  padding-top: 9px;
 }
 body[data-bw-view="calendar"] #sidebarPendingTxCard:not(.sidebar-pending--empty):hover,
 body[data-bw-view="calendar"] .sidebar .card[data-sidebar-key="month"]:hover{
-  border-color: rgba(17, 24, 39, 0.06);
-  box-shadow: 0 2px 7px rgba(15, 23, 42, 0.03);
+  background: rgba(255, 255, 255, 0.88);
 }
 body[data-bw-view="calendar"] #sidebarPendingTxCard.sidebar-pending--empty{
   padding: 8px 10px;
@@ -8481,22 +8561,27 @@ body[data-bw-view="calendar"] .sidebar-balance-threshold-alerts{
   gap: 5px;
 }
 body[data-bw-view="calendar"] .pending-attn-item{
-  padding: 4px 8px 4px 9px;
-  gap: 8px;
-  border-radius: 7px;
-  border-color: rgba(17, 24, 39, 0.03);
-  background: rgba(255, 255, 255, 0.45);
+  padding: 5px 7px 5px 9px;
+  gap: 6px;
+  border-radius: 8px;
+  border-color: rgba(17, 24, 39, 0.055);
+  background: rgba(255, 255, 255, 0.5);
   box-shadow: none;
-  transition: background 0.14s ease, border-color 0.14s ease, box-shadow 0.14s ease;
+}
+body[data-bw-view="calendar"] .pending-attn-name{
+  font-size: 12.15px;
+  font-weight: 660;
+  color: rgba(15, 23, 42, 0.9);
 }
 body[data-bw-view="calendar"] .pending-attn-meta{
-  font-size: 10.5px;
-  letter-spacing: -0.01em;
+  font-size: 10.2px;
+  letter-spacing: -0.005em;
+  color: rgba(100, 116, 139, 0.55);
 }
 body[data-bw-view="calendar"] .pending-attn-item:hover{
-  background: rgba(255, 255, 255, 0.88);
-  border-color: rgba(17, 24, 39, 0.055);
-  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.03);
+  background: rgba(255, 255, 255, 0.94);
+  border-color: rgba(17, 24, 39, 0.1);
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.05);
 }
 body[data-bw-view="calendar"] .pending-attn-item.is-critical{
   border-color: rgba(167, 55, 68, 0.1);
@@ -8667,7 +8752,7 @@ body[data-bw-view="calendar"] .card.calendar-panel{
   padding-right: 10px;
 }
 body[data-bw-view="calendar"] .calendar-panel{
-  --cal-gap: 6px;
+  --cal-gap: 3px;
   min-height: calc(
     44px
     + var(--cal-week-rows) * var(--cal-day-min-h)
@@ -8800,6 +8885,60 @@ body[data-bw-view="calendar"] .cal-detail-btn.is-active{
   body[data-bw-view="calendar"] .app-layout{
     grid-template-columns: 1fr;
   }
+}
+
+/* Calendar view: forecast sidebar + cash insights — data-dense, low chrome */
+body[data-bw-view="calendar"] .cash-insights-panel{
+  margin-top: 8px;
+  border-top: 1px solid rgba(17, 24, 39, 0.04);
+  padding-top: 8px;
+}
+body[data-bw-view="calendar"] .cash-insights__intro{
+  margin-bottom: 7px;
+  font-size: 0.72rem;
+  line-height: 1.38;
+}
+body[data-bw-view="calendar"] .cash-insights--sidebar .cash-insights__stack{
+  gap: 6px;
+}
+body[data-bw-view="calendar"] .cash-insights__card{
+  padding: 7px 8px 8px;
+  border: none;
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.5);
+  box-shadow: none;
+  border-left: 2px solid rgba(17, 24, 39, 0.07);
+}
+body[data-bw-view="calendar"] .cash-insights__card--positive{
+  border-left-color: rgba(4, 120, 87, 0.32);
+  background: rgba(236, 253, 245, 0.35);
+}
+body[data-bw-view="calendar"] .cash-insights__card--info{
+  border-left-color: rgba(14, 116, 144, 0.28);
+  background: rgba(240, 249, 255, 0.32);
+}
+body[data-bw-view="calendar"] .cash-insights__card--watch{
+  border-left-color: rgba(180, 83, 9, 0.26);
+  background: rgba(255, 251, 235, 0.38);
+}
+body[data-bw-view="calendar"] .cash-insights__card--urgent{
+  border-left-color: rgba(185, 28, 28, 0.22);
+  background: rgba(254, 242, 242, 0.32);
+}
+body[data-bw-view="calendar"] .cash-insights__title{
+  margin-top: 4px;
+  font-size: 0.84rem;
+  font-weight: 650;
+}
+body[data-bw-view="calendar"] .cash-insights__message{
+  margin-top: 5px;
+  font-size: 0.74rem;
+  line-height: 1.42;
+}
+body[data-bw-view="calendar"] .cash-insights__eyebrow{
+  font-size: 0.62rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
 }
 
 .sidebar-month-spacer{
@@ -10689,31 +10828,37 @@ textarea::placeholder{
 }
 
 .expected-second-day-row{
-  margin-top: 8px;
+  margin-top: 4px;
   display: grid;
-  grid-template-columns: 8.75rem minmax(0, 1fr);
-  gap: 8px 14px;
+  grid-template-columns: minmax(5.5rem, 6.75rem) minmax(0, 1fr);
+  gap: 4px 10px;
   align-items: start;
 }
 .expected-second-day-row label{
   display: block;
   margin-bottom: 0;
-  padding-top: 10px;
-  font-size: 11px;
+  padding-top: 8px;
+  font-size: 10.5px;
   font-weight: 600;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.02em;
   text-transform: none;
-  color: var(--muted);
-  line-height: 1.3;
+  color: rgba(75, 85, 99, 0.78);
+  line-height: 1.28;
 }
 .expected-second-day-row input[type="number"]{
   width: 100%;
-  max-width: none;
+  max-width: 7.5rem;
   box-sizing: border-box;
 }
-.expected-second-day-row > p{
-  grid-column: 1 / -1;
+.expected-second-day-row > p,
+.expected-second-day-row__hint{
+  grid-column: 2;
   margin: 0;
+  max-width: 28ch;
+  font-size: 10px;
+  line-height: 1.32;
+  font-weight: 450;
+  color: rgba(100, 116, 139, 0.68);
 }
 
 .totals{
@@ -13113,8 +13258,8 @@ body.account-setup-page .account-setup-wizard__progressFill{
 body.account-setup-page .account-setup-wizard__eyebrow{
   margin: 0 0 clamp(0.24rem, 0.65vw, 0.36rem);
   text-align: center;
-  font-size: calc(var(--as-wizard-subeyebrow-size) * 1.12);
-  font-weight: 880;
+  font-size: calc(var(--as-wizard-subeyebrow-size) * 1.06);
+  font-weight: 760;
   color: var(--accent);
   letter-spacing: 0.15px;
 }
@@ -16419,7 +16564,7 @@ body.plans-page--polished .plans-wrap{
   /* Base height; JS will expand week rows when needed. */
   min-height: var(--cal-day-min-h, 108px);
   height: auto;
-  padding: 8px 9px 8px;
+  padding: 5px 7px 4px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -16432,11 +16577,11 @@ body.plans-page--polished .plans-wrap{
 /* Forecast risk: calm awareness — keep the cell mostly neutral; status reads
    from the left accent, optional soft footer band, and balance pill (below). */
 .cal-cell.cal-cell--bal-watch{
-  background: color-mix(in srgb, #fffbeb 12%, #fff);
-  border-color: rgba(17, 24, 39, 0.055);
+  background: color-mix(in srgb, #fffbeb 8%, #fff);
+  border-color: rgba(17, 24, 39, 0.05);
   box-shadow:
-    inset 2px 0 0 rgba(217, 119, 6, 0.14),
-    0 1px 2px rgba(17, 24, 39, 0.025);
+    inset 2px 0 0 rgba(217, 119, 6, 0.1),
+    0 1px 2px rgba(17, 24, 39, 0.02);
 }
 .cal-cell.cal-cell--bal-watch:not(.cal-cell--out):not(.cal-cell--before-start)::after{
   content: "";
@@ -16450,18 +16595,18 @@ body.plans-page--polished .plans-wrap{
   pointer-events: none;
 }
 .cal-cell.cal-cell--bal-warn{
-  background: color-mix(in srgb, #fff7ed 14%, #fff);
-  border-color: rgba(17, 24, 39, 0.058);
+  background: color-mix(in srgb, #fff7ed 10%, #fff);
+  border-color: rgba(17, 24, 39, 0.052);
   box-shadow:
-    inset 2px 0 0 rgba(225, 29, 72, 0.14),
-    0 1px 2px rgba(17, 24, 39, 0.025);
+    inset 2px 0 0 rgba(225, 29, 72, 0.11),
+    0 1px 2px rgba(17, 24, 39, 0.02);
 }
 .cal-cell.cal-cell--bal-risk{
-  background: color-mix(in srgb, #fef2f2 16%, #fff);
-  border-color: rgba(17, 24, 39, 0.06);
+  background: color-mix(in srgb, #fef2f2 10%, #fff);
+  border-color: rgba(17, 24, 39, 0.055);
   box-shadow:
-    inset 2px 0 0 rgba(185, 28, 28, 0.16),
-    0 1px 2px rgba(17, 24, 39, 0.028);
+    inset 2px 0 0 rgba(185, 28, 28, 0.14),
+    0 1px 2px rgba(17, 24, 39, 0.025);
 }
 .cal-cell.cal-cell--bal-risk:not(.cal-cell--out):not(.cal-cell--before-start)::after{
   content: "";
@@ -16509,19 +16654,19 @@ body.plans-page--polished .plans-wrap{
 }
 
 .cal-cell.cal-cell--bal-warn:not(.cal-cell--out):not(.cal-cell--before-start):hover{
-  border-color: rgba(17, 24, 39, 0.09);
-  background: color-mix(in srgb, #fff7ed 18%, #fff);
+  border-color: rgba(17, 24, 39, 0.085);
+  background: color-mix(in srgb, #fff7ed 12%, #fff);
   box-shadow:
-    inset 2px 0 0 rgba(225, 29, 72, 0.18),
-    0 4px 14px rgba(127, 29, 29, 0.035);
+    inset 2px 0 0 rgba(225, 29, 72, 0.14),
+    0 4px 14px rgba(127, 29, 29, 0.028);
 }
 
 .cal-cell.cal-cell--bal-risk:not(.cal-cell--out):not(.cal-cell--before-start):hover{
-  border-color: rgba(17, 24, 39, 0.095);
-  background: color-mix(in srgb, #fef2f2 20%, #fff);
+  border-color: rgba(17, 24, 39, 0.09);
+  background: color-mix(in srgb, #fef2f2 14%, #fff);
   box-shadow:
-    inset 2px 0 0 rgba(185, 28, 28, 0.2),
-    0 4px 14px rgba(127, 29, 29, 0.04);
+    inset 2px 0 0 rgba(185, 28, 28, 0.16),
+    0 4px 14px rgba(127, 29, 29, 0.032);
 }
 
 @media (prefers-reduced-motion: reduce){
@@ -16700,32 +16845,53 @@ body.plans-page--polished .plans-wrap{
   flex-direction: row;
   align-items: center;
   justify-content: flex-end;
-  gap: 6px 8px;
-  flex-wrap: wrap;
-  margin-top: 8px;
-  padding: 8px 0 0;
+  gap: 8px;
+  flex-wrap: nowrap;
+  margin-top: 6px;
+  padding: 6px 0 0;
   border-top: 1px solid rgba(17, 24, 39, 0.055);
 }
 .reconcile-modal__cancel{
   order: 0;
   margin-right: auto;
-  padding: 5px 6px;
-  font-size: 12.5px;
-  font-weight: 500;
-  color: rgba(75, 85, 99, 0.62);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 7px 12px;
+  font: inherit;
+  font-size: 12.75px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: rgba(55, 65, 81, 0.84);
   background: transparent;
   border: none;
   border-radius: 8px;
   box-shadow: none;
+  cursor: pointer;
+  transition:
+    color 0.14s ease,
+    background 0.14s ease,
+    text-decoration-color 0.14s ease;
 }
 .reconcile-modal__cancel:hover{
-  color: rgba(17, 24, 39, 0.9);
-  background: rgba(15, 23, 42, 0.05);
+  color: rgba(17, 24, 39, 0.92);
+  background: rgba(17, 24, 39, 0.05);
+  text-decoration: underline;
+  text-underline-offset: 2px;
   filter: none;
+}
+.reconcile-modal__cancel:focus-visible{
+  outline: 2px solid rgba(11, 61, 46, 0.18);
+  outline-offset: 2px;
 }
 .reconcile-modal__primary{
   order: 1;
-  padding: 6px 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 7px 26px;
   min-width: 96px;
   font-size: 12.75px;
   font-weight: 600;
@@ -16740,15 +16906,15 @@ body.plans-page--polished .plans-wrap{
 
 @media (min-width: 1400px){
   .cal-cell{
-    padding: 7px 8px 7px;
+    padding: 5px 7px 4px;
   }
 }
 .cal-daynum{
   position: relative;
   font-weight: 450;
-  font-size: 11px;
-  padding-bottom: 6px;
-  margin-bottom: 3px;
+  font-size: 10.75px;
+  padding-bottom: 4px;
+  margin-bottom: 2px;
   border-bottom: none;
   text-align: right;
   display: flex;
@@ -16834,7 +17000,7 @@ body.plans-page--polished .plans-wrap{
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
   justify-content: flex-start;
   align-items: stretch;
   width: 100%;
@@ -16856,10 +17022,10 @@ body.plans-page--polished .plans-wrap{
 .cal-cell-stack > .cal-ledger-metrics{
   flex: 0 0 auto;
   margin-top: auto;
-  padding-top: 8px;
-  padding-bottom: 6px;
-  border-top: 1px solid rgba(11, 61, 46, 0.034);
-  min-height: 22px;
+  padding-top: 4px;
+  padding-bottom: 3px;
+  border-top: 1px solid rgba(11, 61, 46, 0.08);
+  min-height: 17px;
 }
 
 .cal-cell.cal-cell--no-tx:not(.cal-cell--out):not(.cal-cell--before-start):not(.cal-cell--bal-watch):not(.cal-cell--bal-warn):not(.cal-cell--bal-risk):hover{
@@ -16900,8 +17066,8 @@ body.plans-page--polished .plans-wrap{
   display: flex;
   flex-direction: column;
   /* Uniform row gap so busy days stay legible without crowding. */
-  gap: 4px;
-  padding-top: 1px;
+  gap: 2px;
+  padding-top: 0;
   margin-top: 0;
   border-top: none;
   align-items: stretch;
@@ -16918,22 +17084,24 @@ body.plans-page--polished .plans-wrap{
    between rows comes from color/opacity, never from size or weight, so
    adjacent rows of the same kind always render at the same scale. */
 .cal-day-tx-line{
-  font-size: 9.75px;
-  line-height: 1.4;
+  font-size: 9.5px;
+  line-height: 1.28;
   /* Lock row height so plain rows, impact rows, expected rows and
      coloured rows all share the same vertical footprint. */
-  min-height: 19px;
+  min-height: 16px;
   max-width: 100%;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  align-items: baseline;
+  align-items: center;
   justify-content: stretch;
-  gap: 6px;
-  padding-top: 0;
-  padding-bottom: 0;
+  gap: 4px;
+  padding: 0 0 0 5px;
   position: relative;
   /* base color tone for everything inside; modifiers tweak opacity only */
-  color: rgba(17, 24, 39, 0.92);
+  color: rgba(17, 24, 39, 0.9);
+}
+.cal-day-tx-line--start-balance{
+  padding-left: 0;
 }
 
 .cal-day-tx-line .cal-tx-label-wrap{
@@ -17018,11 +17186,11 @@ body.plans-page--polished .plans-wrap{
 .cal-day-tx-line--start-balance.cal-day-tx-line--secondary{
   align-items: center;
   color: rgba(51, 65, 85, 0.9);
-  background: rgba(11, 61, 46, 0.045);
-  border-left: 2px solid rgba(11, 61, 46, 0.14);
-  border-radius: 5px;
-  padding: 3px 5px 3px 7px;
-  margin-bottom: 1px;
+  background: rgba(11, 61, 46, 0.03);
+  border-left: 2px solid rgba(11, 61, 46, 0.12);
+  border-radius: 4px;
+  padding: 2px 4px 2px 5px;
+  margin-bottom: 0;
   box-sizing: border-box;
 }
 .cal-day-tx-line--start-balance .cal-tx-label-wrap{
@@ -17041,8 +17209,8 @@ body.plans-page--polished .plans-wrap{
 
 .cal-day-tx-line--impact-lg,
 .cal-day-tx-line--impact-xxl{
-  padding-left: 6px;
-  border-radius: 5px;
+  padding-left: 5px;
+  border-radius: 0;
 }
 .cal-day-tx-line--impact-lg::before,
 .cal-day-tx-line--impact-xxl::before,
@@ -17050,12 +17218,30 @@ body.plans-page--polished .plans-wrap{
   content: "";
   position: absolute;
   left: 0;
-  top: 1px;
-  bottom: 1px;
-  width: 3px;
-  border-radius: 3px;
-  background: var(--cal-tx-stripe, rgba(100, 116, 139, 0.5));
+  top: 2px;
+  bottom: 2px;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--cal-tx-stripe, rgba(100, 116, 139, 0.42));
   pointer-events: none;
+}
+/* Thin flow markers when no category stripe is present */
+.cal-day-tx-line--flow-in:not(.cal-day-tx-line--has-color):not(.cal-day-tx-line--impact-lg):not(.cal-day-tx-line--impact-xxl):not(.cal-day-tx-line--start-balance)::before,
+.cal-day-tx-line--flow-out:not(.cal-day-tx-line--has-color):not(.cal-day-tx-line--impact-lg):not(.cal-day-tx-line--impact-xxl):not(.cal-day-tx-line--start-balance)::before{
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 2px;
+  bottom: 2px;
+  width: 2px;
+  border-radius: 2px;
+  pointer-events: none;
+}
+.cal-day-tx-line--flow-in:not(.cal-day-tx-line--has-color):not(.cal-day-tx-line--impact-lg):not(.cal-day-tx-line--impact-xxl):not(.cal-day-tx-line--start-balance)::before{
+  background: rgba(22, 101, 52, 0.26);
+}
+.cal-day-tx-line--flow-out:not(.cal-day-tx-line--has-color):not(.cal-day-tx-line--impact-lg):not(.cal-day-tx-line--impact-xxl):not(.cal-day-tx-line--start-balance)::before{
+  background: rgba(167, 55, 68, 0.18);
 }
 .cal-day-tx-line--impact-lg.cal-day-tx-line--flow-in::before,
 .cal-day-tx-line--impact-xxl.cal-day-tx-line--flow-in::before{
@@ -17066,19 +17252,15 @@ body.plans-page--polished .plans-wrap{
   background: var(--cal-tx-stripe, rgba(180, 83, 9, 0.42));
 }
 .cal-day-tx-line--has-color{
-  padding-left: 6px;
-  border-radius: 5px;
+  padding-left: 5px;
+  border-radius: 0;
+  background: transparent;
 }
-.cal-day-tx-line--impact-lg{
-  background: rgba(248, 250, 249, 0.55);
-}
-.cal-day-tx-line--impact-xxl{
-  background: rgba(247, 249, 247, 0.72);
-  box-shadow: inset 0 0 0 1px rgba(11, 61, 46, 0.05);
-}
+.cal-day-tx-line--impact-lg,
+.cal-day-tx-line--impact-xxl,
 .cal-day-tx-line--impact-xxl.cal-day-tx-line--flow-out{
-  background: rgba(255, 252, 251, 0.78);
-  box-shadow: inset 0 0 0 1px rgba(154, 68, 58, 0.07);
+  background: transparent;
+  box-shadow: none;
 }
 /* Impact rows used to amplify the amount typography (800 weight,
    tightened tracking). That made an impactful expense visually heavier
@@ -17795,14 +17977,19 @@ body[data-bw-view="transactions"] .pending-attn-item:focus-visible{
   outline: none;
 }
 body[data-bw-view="transactions"] .pending-attn-name{
-  color: rgba(30, 41, 59, 0.88);
-  font-weight: 600;
-  font-size: 12px;
-  line-height: 1.22;
+  color: rgba(15, 23, 42, 0.92);
+  font-weight: 650;
+  font-size: 12.25px;
+  line-height: 1.24;
 }
 body[data-bw-view="transactions"] .pending-attn-meta{
-  font-size: 10.5px;
-  color: rgba(100, 116, 139, 0.72);
+  font-size: 10.25px;
+  font-weight: 450;
+  color: rgba(100, 116, 139, 0.58);
+}
+body[data-bw-view="transactions"] .pending-attn-item:hover,
+body[data-bw-view="transactions"] .pending-attn-item:focus-visible{
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.05);
 }
 
 /* Transactions: insight cards use base hierarchy; scoped spacing only. */
@@ -18178,18 +18365,14 @@ body[data-bw-view="transactions"] .tm__field label{
     transform 0.14s ease;
 }
 .cal-day-tx-line.cal-tx-part:hover:not(:active){
-  border-radius: 5px;
-  background: rgba(15, 23, 42, 0.03);
-  box-shadow:
-    inset 0 0 0 1px rgba(17, 24, 39, 0.06),
-    0 1px 5px rgba(15, 23, 42, 0.04);
+  border-radius: 3px;
+  background: rgba(15, 23, 42, 0.025);
+  box-shadow: none;
 }
 .cal-day-tx-line.cal-day-tx-line--expected:hover:not(:active){
-  border-radius: 5px;
-  background: rgba(11, 61, 46, 0.04);
-  box-shadow:
-    inset 0 0 0 1px rgba(11, 61, 46, 0.08),
-    0 1px 6px rgba(15, 23, 42, 0.04);
+  border-radius: 3px;
+  background: rgba(11, 61, 46, 0.035);
+  box-shadow: none;
 }
 .cal-day-tx-line:hover .cal-tx-label{
   text-decoration: none;
@@ -18197,24 +18380,24 @@ body[data-bw-view="transactions"] .tm__field label{
 
 /* "+N more" — pill affordance aligned with expandable busy days */
 .cal-day-more{
-  margin-top: 3px;
+  margin-top: 2px;
   align-self: flex-start;
-  padding: 4px 8px 4px;
+  padding: 2px 6px;
   border-radius: 999px;
-  border: 1px solid rgba(17, 24, 39, 0.06);
-  background: rgba(248, 250, 252, 0.85);
+  border: 1px solid rgba(17, 24, 39, 0.05);
+  background: rgba(248, 250, 252, 0.75);
   width: fit-content;
   max-width: 100%;
   font: inherit;
-  font-size: 8.85px;
+  font-size: 8.5px;
   font-weight: 600;
   letter-spacing: 0.02em;
   text-transform: none;
-  color: rgba(71, 85, 105, 0.84);
+  color: rgba(71, 85, 105, 0.82);
   cursor: pointer;
   text-decoration: none;
-  line-height: 1.22;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  line-height: 1.2;
+  box-shadow: none;
   transition:
     border-color 0.14s ease,
     background 0.14s ease,
@@ -18278,8 +18461,8 @@ body[data-bw-view="transactions"] .tm__field label{
   display: flex;
   align-items: baseline;
   justify-content: flex-end;
-  gap: 8px;
-  min-height: 16px;
+  gap: 6px;
+  min-height: 15px;
 }
 .cal-balance-strip__amt{
   flex: 0 0 auto;
@@ -18297,13 +18480,13 @@ body[data-bw-view="transactions"] .tm__field label{
 .cal-stat.expense{ color: var(--text); }
 .cal-stat.cal-balance{
   /* End-of-day balance: primary scan target in the cell. */
-  font-size: clamp(11px, 1.82vw, 12.25px);
-  line-height: 1.26;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  font-size: clamp(11.25px, 1.9vw, 12.5px);
+  line-height: 1.22;
+  font-weight: 680;
+  letter-spacing: -0.014em;
   font-variant-numeric: tabular-nums;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  color: rgba(30, 41, 55, 0.9);
+  color: rgba(15, 23, 42, 0.94);
 }
 .cal-stat.cal-balance.cal-balance--quiet{
   font-weight: 580;
@@ -18313,42 +18496,46 @@ body[data-bw-view="transactions"] .tm__field label{
   color: rgba(90, 100, 120, 0.58);
 }
 .cal-stat.cal-balance.cal-balance--watch-zone{
-  font-weight: 620;
-  color: rgba(146, 64, 14, 0.78);
-  padding: 2px 7px;
-  border-radius: 7px;
-  background: rgba(254, 252, 232, 0.72);
-  border: 1px solid rgba(253, 224, 71, 0.2);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.75) inset;
+  font-weight: 640;
+  color: rgba(146, 64, 14, 0.72);
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: rgba(254, 252, 232, 0.55);
+  border: 1px solid rgba(253, 224, 71, 0.14);
+  box-shadow: none;
 }
 .cal-stat.cal-balance.cal-balance--below-floor{
-  font-size: clamp(10.9px, 1.75vw, 11.9px);
-  font-weight: 630;
-  color: rgba(154, 52, 18, 0.8);
-  padding: 3px 8px;
-  border-radius: 7px;
-  background: rgba(255, 247, 237, 0.78);
-  border: 1px solid rgba(253, 186, 116, 0.24);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset;
+  font-size: clamp(11px, 1.82vw, 12.1px);
+  font-weight: 650;
+  color: rgba(154, 52, 18, 0.72);
+  padding: 1px 6px;
+  border-radius: 5px;
+  background: rgba(255, 247, 237, 0.55);
+  border: 1px solid rgba(253, 186, 116, 0.16);
+  box-shadow: none;
 }
 .cal-stat.cal-balance.cal-balance--repeated:not(.cal-balance--risk):not(.is-negative){
   font-weight: 630;
   color: rgba(120, 53, 15, 0.72);
 }
 .cal-stat.cal-balance.cal-balance--month-low-mark{
-  font-weight: 540;
-  color: rgba(75, 85, 99, 0.58);
+  font-weight: 620;
+  color: rgba(71, 85, 105, 0.72);
+  text-decoration: underline;
+  text-decoration-color: rgba(180, 83, 9, 0.28);
+  text-underline-offset: 2px;
+  text-decoration-thickness: 1px;
 }
 .cal-stat.cal-balance.cal-balance--risk,
 .cal-stat.cal-balance.is-negative{
-  font-weight: 680;
-  font-size: clamp(11.1px, 1.88vw, 12.35px);
-  color: rgba(127, 29, 29, 0.82);
-  padding: 3px 8px;
-  border-radius: 7px;
-  background: rgba(254, 242, 242, 0.72);
-  border: 1px solid rgba(252, 165, 165, 0.26);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.82) inset;
+  font-weight: 700;
+  font-size: clamp(11.35px, 1.92vw, 12.55px);
+  color: rgba(127, 29, 29, 0.88);
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: rgba(254, 242, 242, 0.62);
+  border: 1px solid rgba(252, 165, 165, 0.2);
+  box-shadow: none;
 }
 .cal-stat.cal-balance.cal-balance--risk.cal-balance--repeated,
 .cal-stat.cal-balance.is-negative.cal-balance--repeated{
@@ -18652,131 +18839,134 @@ body[data-bw-view="transactions"] .tm__field label{
 }
 
 .modal-actions{
-  margin-top: 14px;
-  padding-top: 14px;
-  border-top: 1px solid rgba(0,0,0,0.10);
+  margin-top: 11px;
+  padding-top: 11px;
+  border-top: 1px solid rgba(0,0,0,0.08);
 }
 
 .modal--choice{
   max-width: 380px;
 }
 
-/* Recurring transaction edit: "Apply changes" scope — compact, clear hierarchy */
+/* Recurring transaction edit: "Apply changes" scope — light dialog + option cards */
 #txEditApplyScopeModal.modal-overlay{
-  background: rgba(15, 23, 42, 0.42);
+  background: rgba(15, 23, 42, 0.36);
 }
 .modal.modal--apply-scope{
-  max-width: 340px;
+  max-width: 312px;
   padding: 0;
   border-radius: 12px;
   box-shadow:
-    0 4px 6px rgba(17, 24, 39, 0.05),
-    0 14px 36px rgba(17, 24, 39, 0.16);
-  border: 1px solid rgba(17, 24, 39, 0.08);
+    0 4px 6px rgba(17, 24, 39, 0.04),
+    0 12px 28px rgba(17, 24, 39, 0.12);
+  border: 1px solid rgba(17, 24, 39, 0.07);
 }
 .modal.modal--apply-scope > h3{
   box-sizing: border-box;
   width: 100%;
   margin: 0;
-  padding: 8px 14px 7px;
-  font-size: 0.8125rem;
-  font-weight: 700;
-  letter-spacing: -0.015em;
-  color: rgba(11, 61, 46, 0.9);
-  background: color-mix(in srgb, var(--accent) 8%, var(--cal-surface));
+  padding: 8px 12px 7px;
+  font-size: 0.78rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: rgba(11, 61, 46, 0.86);
+  background: rgba(248, 250, 249, 0.98);
   border-radius: 12px 12px 0 0;
-  border-bottom: 1px solid rgba(11, 61, 46, 0.1);
+  border-bottom: 1px solid rgba(11, 61, 46, 0.06);
   text-transform: none;
 }
+.modal.modal--apply-scope .modal--apply-scope__body{
+  padding: 8px 12px 10px;
+}
 .modal.modal--apply-scope .modal--apply-scope__lede{
-  margin: 0;
-  padding: 10px 14px 0;
-  font-size: 12.5px;
-  line-height: 1.45;
-  color: rgba(55, 65, 75, 0.88);
+  margin: 0 0 8px;
+  padding: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  font-weight: 450;
+  color: rgba(55, 65, 75, 0.82);
 }
 .modal.modal--apply-scope #txEditApplyScopeErr{
-  margin: 6px 14px 0;
-}
-.modal.modal--apply-scope .modal-actions--apply-scope{
-  margin-top: 0;
-  padding: 10px 14px 12px;
-  border-top: 1px solid rgba(17, 24, 39, 0.07);
+  margin: 0 0 6px;
 }
 .apply-scope-actions{
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 0;
+  gap: 6px;
 }
-.apply-scope-btn{
+.apply-scope-option{
   appearance: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
   width: 100%;
-  font: inherit;
-  font-size: 12.75px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
+  margin: 0;
+  padding: 8px 10px;
   border-radius: 9px;
-  padding: 7px 12px;
-  line-height: 1.28;
+  border: 1px solid rgba(11, 61, 46, 0.11);
+  background: rgba(255, 255, 255, 0.94);
+  text-align: left;
+  font: inherit;
   cursor: pointer;
-  text-align: center;
   transition:
-    background 120ms ease,
-    border-color 120ms ease,
-    box-shadow 120ms ease,
-    color 120ms ease,
-    filter 120ms ease;
+    background 0.14s ease,
+    border-color 0.14s ease,
+    box-shadow 0.14s ease;
 }
-.apply-scope-btn:focus-visible{
-  outline: 2px solid color-mix(in srgb, var(--accent) 42%, transparent);
+.apply-scope-option:hover{
+  border-color: rgba(11, 61, 46, 0.18);
+  background: color-mix(in srgb, var(--accent) 4%, #fff);
+  box-shadow: 0 1px 3px rgba(11, 61, 46, 0.05);
+}
+.apply-scope-option:focus-visible{
+  outline: 2px solid color-mix(in srgb, var(--accent) 38%, transparent);
   outline-offset: 2px;
+  border-color: rgba(11, 61, 46, 0.22);
+  background: color-mix(in srgb, var(--accent) 7%, #fff);
 }
-.apply-scope-btn--primary{
-  color: #fff;
-  background: var(--accent);
-  border: 1px solid color-mix(in srgb, var(--accent) 78%, #0d1f18);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.2) inset;
+.apply-scope-option:active{
+  transform: scale(0.995);
 }
-.apply-scope-btn--primary:hover{
-  filter: brightness(1.04);
+.apply-scope-option__title{
+  font-size: 12.75px;
+  font-weight: 650;
+  line-height: 1.25;
+  letter-spacing: 0.005em;
+  color: rgba(11, 61, 46, 0.9);
 }
-/* Apply-scope modal Cancel/secondary: matches canonical secondary. */
-.apply-scope-btn--secondary{
-  color: rgba(11, 61, 46, 0.92);
-  background: #fff;
-  border: 1px solid rgba(11, 61, 46, 0.22);
-  font-weight: 600;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.85) inset;
+.apply-scope-option__hint{
+  font-size: 10.75px;
+  font-weight: 450;
+  line-height: 1.32;
+  color: rgba(71, 85, 105, 0.72);
 }
-.apply-scope-btn--secondary:hover{
-  background: color-mix(in srgb, var(--accent) 5%, #fff);
-  border-color: rgba(11, 61, 46, 0.36);
-  color: rgba(11, 61, 46, 1);
-}
-.apply-scope-btn--ghost{
-  margin-top: 8px;
-  color: rgba(75, 85, 99, 0.88);
+.apply-scope-cancel{
+  appearance: none;
+  align-self: center;
+  margin: 2px 0 0;
+  padding: 4px 10px;
+  border: none;
   background: transparent;
-  border: 1px solid transparent;
+  font: inherit;
+  font-size: 11.75px;
   font-weight: 500;
-  font-size: 12.25px;
-  padding: 5px 8px;
+  line-height: 1.25;
+  color: rgba(100, 116, 139, 0.82);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color 0.14s ease;
 }
-.apply-scope-btn--ghost:hover{
-  background: rgba(17, 24, 39, 0.045);
-  color: rgba(17, 24, 39, 0.9);
+.apply-scope-cancel:hover{
+  color: rgba(55, 65, 81, 0.92);
 }
-.apply-scope-hint{
-  margin: 3px 0 0;
-  padding: 0 2px 0 3px;
-  font-size: 10.25px;
-  line-height: 1.35;
-  font-weight: 400;
-  color: rgba(100, 116, 139, 0.78);
-}
-.apply-scope-actions .apply-scope-hint + .apply-scope-btn--secondary{
-  margin-top: 7px;
+.apply-scope-cancel:focus-visible{
+  outline: 2px solid rgba(11, 61, 46, 0.16);
+  outline-offset: 2px;
+  border-radius: 6px;
+  text-decoration: none;
 }
 
 .choice-subtitle{
@@ -20068,15 +20258,16 @@ body.account-setup-page
 /* Edit modal: Save centered; Delete + Cancel on one row */
 #txEditInner > .modal-actions.modal-actions--tx-edit-foot{
   display: block;
-  margin-top: 5px;
-  padding-top: 8px;
+  margin-top: 4px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(17, 24, 39, 0.06);
 }
 #txEditInner > .modal-actions #txEditFooterSecondary.tx-edit-actions-row{
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  gap: 8px;
   width: 100%;
-  align-items: stretch;
+  align-items: center;
 }
 #txEditInner > .modal-actions #txEditSaveRow.tx-edit-save-cell{
   display: flex;
@@ -20092,10 +20283,12 @@ body.account-setup-page
   box-sizing: border-box;
   padding-left: 14px;
   padding-right: 14px;
-  min-height: 42px;
+  min-height: 36px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  border-radius: 9px;
+  font-size: 12.75px;
 }
 #txEditSave,
 #txEditRecurringUpdateBtn{
@@ -20190,17 +20383,17 @@ body.account-setup-page
 }
 
 .modal--expected-edit{
-  max-width: 520px;
-  max-height: min(92vh, 820px);
+  max-width: 500px;
+  max-height: min(90vh, 760px);
   overflow-y: auto;
   padding: 0;
 }
 /* Recurring uses padding:0 on the modal; pull the tinted notes strip flush without negative margins. */
 .modal--expected-edit .tx-edit-top{
   margin: 0;
-  padding: 9px 14px 10px;
-  border-radius: 14px 14px 0 0;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.14);
+  padding: 7px 12px 8px;
+  border-radius: 12px 12px 0 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
 }
 .modal--expected-edit #txEditIntro{
   /* Remove top whitespace above the green header; keep side padding for errors/hidden fields. */
@@ -20212,26 +20405,27 @@ body.account-setup-page
 
 /* Tighter form rhythm inside the transaction sheet (calmer, less form-driven). */
 #expectedEditInstancePanel .tx-add-vspace{
-  height: 8px;
-}
-#expectedEditInstancePanel .tx-add-vspace--lg{
-  height: 12px;
-}
-#expectedEditInstancePanel .tx-add-vspace--sm{
   height: 6px;
 }
+#expectedEditInstancePanel .tx-add-vspace--lg{
+  height: 10px;
+}
+#expectedEditInstancePanel .tx-add-vspace--sm{
+  height: 5px;
+}
 .modal--expected-edit > .modal-actions{
-  margin: 0 14px 10px;
-  padding-top: 6px;
+  margin: 0 12px 8px;
+  padding-top: 4px;
 }
 
 /* === Recurring/transaction edit modal: density + hierarchy polish === */
 
 .modal--expected-edit .tx-edit-mode-banner{
-  font-size: 0.95rem;
-  font-weight: 600;
+  font-size: 0.88rem;
+  font-weight: 650;
   margin: 0;
-  letter-spacing: 0;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
   color: rgba(255, 255, 255, 0.95);
 }
 .modal--expected-edit .tx-edit-top #txEditNotesRow{
@@ -20239,7 +20433,17 @@ body.account-setup-page
   display: none;
 }
 .modal--expected-edit #expectedEditInstancePanel{
-  padding: 12px 14px 12px;
+  padding: 10px 12px 8px;
+}
+.modal--expected-edit #txEditAccountCol{
+  margin-top: 6px;
+  padding-top: 7px;
+  border-top: 1px solid rgba(17, 24, 39, 0.045);
+}
+.modal--expected-edit .tx-edit-notes-row--in-panel{
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
 }
 .modal--expected-edit #expectedEditInstancePanel > .tx-edit-divider{
   display: none;
@@ -20302,28 +20506,53 @@ body.account-setup-page
   background: rgba(255, 255, 255, 0.98);
 }
 
-/* Advanced options: color picker (collapsed by default via <details>). */
+/* Advanced options: subtle expandable row (not a faux input). */
 #expectedEditInstancePanel .tx-edit-advanced{
-  margin: 2px 0 0;
-  border-radius: 10px;
-  border: 1px solid rgba(17, 24, 39, 0.06);
-  background: rgba(248, 250, 252, 0.65);
+  margin: 1px 0 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
 }
 #expectedEditInstancePanel .tx-edit-advanced__summary{
+  display: flex;
+  align-items: center;
+  gap: 6px;
   cursor: pointer;
   list-style: none;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  color: rgba(75, 85, 99, 0.88);
-  padding: 7px 10px;
+  min-height: 28px;
+  padding: 4px 2px;
   user-select: none;
+  border-radius: 6px;
+  transition: background 0.14s ease, color 0.14s ease;
+}
+#expectedEditInstancePanel .tx-edit-advanced__summary:hover{
+  background: rgba(17, 24, 39, 0.03);
 }
 #expectedEditInstancePanel .tx-edit-advanced__summary::-webkit-details-marker{
   display: none;
 }
+#expectedEditInstancePanel .tx-edit-advanced__chev{
+  flex-shrink: 0;
+  width: 5px;
+  height: 5px;
+  margin-top: -1px;
+  border-right: 1.5px solid rgba(100, 116, 139, 0.55);
+  border-bottom: 1.5px solid rgba(100, 116, 139, 0.55);
+  transform: rotate(-45deg);
+  transition: transform 0.15s ease;
+}
+#expectedEditInstancePanel .tx-edit-advanced[open] .tx-edit-advanced__chev{
+  transform: rotate(45deg);
+  margin-top: 1px;
+}
+#expectedEditInstancePanel .tx-edit-advanced__label{
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: rgba(100, 116, 139, 0.78);
+}
 #expectedEditInstancePanel .tx-edit-advanced__body{
-  padding: 0 8px 8px;
+  padding: 2px 2px 6px 14px;
 }
 @media (min-width: 560px){
   #expectedEditInstancePanel .tx-edit-recurrence-ends-row{
@@ -20428,53 +20657,68 @@ body.account-setup-page
   text-decoration: none !important;
 }
 
-/* Recurring settings: tinted group so frequency/end/variable read as one cluster. */
+/* Recurring schedule: soft cluster for recurrence + variable amount. */
 .modal--expected-edit .tx-edit-recurring-group{
   position: relative;
-  margin: 6px 0 2px;
-  padding: 8px 10px 6px;
-  border-radius: 10px;
-  background: rgba(15, 23, 42, 0.022);
-  border: 1px solid rgba(17, 24, 39, 0.045);
+  margin: 4px 0 0;
+  padding: 6px 8px 5px;
+  border-radius: 9px;
+  background: rgba(248, 250, 252, 0.55);
+  border: 1px solid rgba(17, 24, 39, 0.035);
+  box-shadow: none;
 }
 .modal--expected-edit .tx-edit-recurring-group::before{
-  content: "Recurring settings";
+  content: "Schedule";
   display: block;
-  font-size: 9.5px;
+  font-size: 9px;
   font-weight: 600;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: rgba(100, 116, 139, 0.78);
-  margin: -2px 0 8px;
-}
-.modal--expected-edit .tx-edit-recurring-group .form-row-h + .form-row-h{
-  margin-top: 6px;
+  color: rgba(100, 116, 139, 0.62);
+  margin: 0 0 5px;
 }
 .modal--expected-edit .tx-edit-recurring-group .tx-add-vspace{
-  height: 4px;
+  height: 3px;
 }
 .modal--expected-edit .tx-edit-recurring-group #txEditRecurringVariableWrap{
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px solid rgba(17, 24, 39, 0.05);
+  margin-top: 5px;
+  padding-top: 5px;
+  border-top: 1px solid rgba(17, 24, 39, 0.04);
 }
-.modal--expected-edit .tx-edit-recurring-group #txEditRecurringVariableWrap .form-row-h__label{
-  white-space: normal;
+.modal--expected-edit .tx-edit-variable-row{
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: 2px 0 0;
+  cursor: pointer;
+  user-select: none;
 }
-.modal--expected-edit .tx-edit-recurring-group #txEditRecurringVariableWrap .form-row-h__label label{
+.modal--expected-edit .tx-edit-variable-row__input{
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  margin: 2px 0 0;
+  accent-color: var(--accent);
+}
+.modal--expected-edit .tx-edit-variable-row__text{
   display: flex;
   flex-direction: column;
   gap: 1px;
+  min-width: 0;
+}
+.modal--expected-edit .tx-edit-variable-row__title{
   font-size: 12px;
   font-weight: 600;
-  color: rgba(55, 65, 81, 0.92);
-  text-transform: none;
-  letter-spacing: 0;
-  white-space: normal;
+  line-height: 1.28;
+  color: rgba(55, 65, 81, 0.9);
 }
-.modal--expected-edit .tx-edit-recurring-group #txEditRecurringVariableWrap .form-row-h__field{
-  padding-left: 0;
-  align-self: center;
+.modal--expected-edit .tx-edit-variable-row__hint{
+  font-size: 10px;
+  font-weight: 450;
+  line-height: 1.3;
+  color: rgba(100, 116, 139, 0.68);
+  max-width: 26ch;
 }
 .tx-edit-variable-hint{
   display: block;
@@ -20519,11 +20763,23 @@ body.account-setup-page
   border-color: rgba(17, 24, 39, 0.2);
 }
 
-/* Footer actions: Save dominates; Close + Delete recede. */
+/* Footer actions: Save primary; Close outline; Delete tertiary. */
+.modal--expected-edit #txEditInner > .modal-actions.modal-actions--tx-edit-foot{
+  margin-top: 3px;
+  padding-top: 5px;
+}
 .modal--expected-edit #txEditInner > .modal-actions #txEditFooterSecondary.tx-edit-actions-row,
 #txEditInner > .modal-actions #txEditFooterSecondary.tx-edit-actions-row{
   gap: 8px;
   align-items: center;
+}
+.modal--expected-edit #txEditInner > .modal-actions #txEditFooterSecondary.tx-edit-actions-row > button,
+.modal--expected-edit #txEditInner > .modal-actions #txEditFooterSecondary.tx-edit-actions-row #txEditSave,
+.modal--expected-edit #txEditInner > .modal-actions #txEditFooterSecondary.tx-edit-actions-row #txEditRecurringUpdateBtn{
+  min-height: 34px;
+  padding-top: 6px;
+  padding-bottom: 6px;
+  font-size: 12.5px;
 }
 .modal--expected-edit #txEditCancel,
 /* Transaction-edit Cancel/Close: align to the canonical secondary
@@ -20543,30 +20799,33 @@ body.account-setup-page
   color: rgba(11, 61, 46, 1) !important;
 }
 .modal--expected-edit #txEditDelete.danger{
-  background: #fff !important;
-  border: 1px solid color-mix(in srgb, var(--danger) 48%, rgba(17, 24, 39, 0.14)) !important;
-  color: color-mix(in srgb, var(--danger) 92%, #1f2937) !important;
-  font-weight: 600 !important;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.88) inset !important;
-  transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease, box-shadow 0.14s ease !important;
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  color: color-mix(in srgb, var(--danger) 78%, #64748b) !important;
+  font-weight: 550 !important;
+  font-size: 12.25px !important;
+  box-shadow: none !important;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color 0.14s ease, background 0.14s ease !important;
 }
 .modal--expected-edit #txEditDelete.danger:hover,
 .modal--expected-edit #txEditDelete.danger:focus-visible{
-  background: color-mix(in srgb, var(--danger) 9%, #fff) !important;
-  border-color: color-mix(in srgb, var(--danger) 58%, rgba(17, 24, 39, 0.12)) !important;
-  color: color-mix(in srgb, var(--danger) 100%, #111827) !important;
+  background: rgba(167, 55, 68, 0.05) !important;
+  border-color: transparent !important;
+  color: color-mix(in srgb, var(--danger) 92%, #1f2937) !important;
   filter: none !important;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.75) inset !important;
+  box-shadow: none !important;
 }
 .modal--expected-edit #txEditDelete.danger:active{
-  background: color-mix(in srgb, var(--danger) 14%, #fff) !important;
-  border-color: color-mix(in srgb, var(--danger) 68%, rgba(17, 24, 39, 0.14)) !important;
-  color: color-mix(in srgb, var(--danger) 100%, #0f172a) !important;
+  background: rgba(167, 55, 68, 0.08) !important;
+  color: color-mix(in srgb, var(--danger) 100%, #111827) !important;
   filter: none !important;
 }
 .modal--expected-edit #txEditDelete.danger:focus-visible{
-  outline: 2px solid color-mix(in srgb, var(--danger) 38%, transparent) !important;
+  outline: 2px solid color-mix(in srgb, var(--danger) 32%, transparent) !important;
   outline-offset: 2px !important;
+  text-decoration: none;
 }
 .expected-modal-mode-row{
   display: flex;
@@ -20671,16 +20930,29 @@ body.account-setup-page
 .modal h3:not(.sr-only){
   box-sizing: border-box;
   width: calc(100% + 32px);
-  margin: -16px -16px 12px;
-  padding: 14px 16px;
-  font-size: 16px;
-  font-weight: 800;
+  margin: -16px -16px 10px;
+  padding: 11px 16px;
+  font-size: 14.5px;
+  font-weight: 750;
   letter-spacing: 0.2px;
   color: #fff;
   background: var(--accent);
   border-radius: 14px 14px 0 0;
   border-bottom: 1px solid rgba(0,0,0,0.18);
   text-transform: none;
+}
+/* Apply-scope: override global green modal header (see .modal--apply-scope block above) */
+.modal.modal--apply-scope > h3:not(.sr-only){
+  width: 100%;
+  margin: 0;
+  padding: 8px 12px 7px;
+  font-size: 0.78rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: rgba(11, 61, 46, 0.86);
+  background: rgba(248, 250, 249, 0.98);
+  border-radius: 12px 12px 0 0;
+  border-bottom: 1px solid rgba(11, 61, 46, 0.06);
 }
 
 .modal.modal--account > h3{
@@ -22995,7 +23267,7 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
     align-self: auto;
   }
 
-  .pending-attn-cta{
+  .pending-attn-indicator{
     align-self: center;
     flex-shrink: 0;
   }
@@ -23411,16 +23683,20 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   body.landing-page .landing-hero-viz__timeline .landing-hero-viz__spark{
     margin-top: 0;
   }
+  body.landing-page .landing-hero-viz__futureLane{
+    left: 68%;
+    right: 3px;
+    bottom: 2px;
+    gap: 2px;
+  }
   body.landing-page .landing-hero-viz__future{
-    right: 5px;
-    bottom: 4px;
-    gap: 0.28rem;
+    gap: 0.32rem;
   }
   body.landing-page .landing-hero-viz__futureMo{
-    font-size: 0.54rem;
+    font-size: 0.62rem;
   }
   body.landing-page .landing-hero-viz__horizon{
-    font-size: 0.54rem;
+    font-size: 0.56rem;
   }
 
   body.landing-page .landing-preview__demo{

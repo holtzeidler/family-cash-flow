@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=501" />
+    <link rel="stylesheet" href="../styles.css?v=506" />
   </head>
   <body>
     <div class="container">
@@ -1101,7 +1101,10 @@
             <div class="form-row-h__field"><select id="txEditCategoryId"></select></div>
           </div>
           <details class="tx-edit-advanced" id="txEditAdvancedDetails">
-            <summary class="tx-edit-advanced__summary">Advanced options</summary>
+            <summary class="tx-edit-advanced__summary">
+              <span class="tx-edit-advanced__chev" aria-hidden="true"></span>
+              <span class="tx-edit-advanced__label">Advanced options</span>
+            </summary>
             <div class="tx-edit-advanced__body">
               <div id="txEditCategoryColorRow" class="cat-color-row tx-edit-cat-color-panel">
                 <div class="cat-color-row__label">Color</div>
@@ -1147,7 +1150,7 @@
               </div>
             </div>
             <div id="instanceTwiceMonthlyFields" class="expected-second-day-row" style="display: none">
-              <label for="instanceSecondDayOfMonth">2nd day of month</label>
+              <label for="instanceSecondDayOfMonth">Second monthly date</label>
               <input
                 id="instanceSecondDayOfMonth"
                 type="number"
@@ -1155,11 +1158,9 @@
                 max="31"
                 step="1"
                 placeholder="e.g. 15"
-                title="Second scheduled day each month; must differ from the start date’s calendar day."
+                title="Other day each month for twice-monthly schedules."
               />
-              <p style="margin: 6px 0 0; font-size: 12px; color: var(--muted)">
-                Required for twice monthly: other day of the month (1–31), not the same as the start date’s day.
-              </p>
+              <p class="expected-second-day-row__hint">Used for twice-monthly schedules.</p>
             </div>
             <div class="form-row-h tx-edit-ends-detail" id="txEditEndCountRow" hidden>
               <div class="form-row-h__label">
@@ -1184,23 +1185,21 @@
           </div>
 
           <div id="txEditRecurringVariableWrap" style="display: none">
-            <div class="tx-add-vspace" aria-hidden="true"></div>
-            <div class="form-row-h">
-              <div class="form-row-h__label">
-                <label
-                  for="seriesVariable"
-                    title="Amount is an estimate that may change month to month"
-                >Amount varies month to month
-                  <span class="tx-edit-variable-hint">Helpful for utilities, credit cards, and fluctuating bills.</span>
-                </label>
-              </div>
-              <div class="form-row-h__field">
-                <input id="seriesVariable" type="checkbox" title="Shows italic on calendar until unchecked and saved as series" />
-              </div>
-            </div>
+            <label class="tx-edit-variable-row" for="seriesVariable">
+              <input
+                id="seriesVariable"
+                type="checkbox"
+                class="tx-edit-variable-row__input"
+                title="Amount is an estimate that may change month to month"
+              />
+              <span class="tx-edit-variable-row__text">
+                <span class="tx-edit-variable-row__title">Amount varies month to month</span>
+                <span class="tx-edit-variable-row__hint">Helpful for utilities and fluctuating bills.</span>
+              </span>
+            </label>
           </div>
 
-          <div style="height: 7px"></div>
+          <div style="height: 3px" aria-hidden="true"></div>
           <div id="txEditRecurringPrimaryActions" class="tx-edit-recurring-update-row" style="display: none"></div>
         </div>
 
@@ -1220,15 +1219,19 @@
     <div id="txEditApplyScopeModal" class="modal-overlay modal-overlay--nested" aria-hidden="true">
       <div class="modal modal--choice modal--apply-scope" role="dialog" aria-labelledby="txEditApplyScopeTitle" aria-describedby="txEditApplyScopeDesc" aria-modal="true">
         <h3 id="txEditApplyScopeTitle">Apply changes</h3>
-        <p id="txEditApplyScopeDesc" class="choice-subtitle modal--apply-scope__lede">Apply changes to only this transaction or all future occurrences?</p>
-        <div id="txEditApplyScopeErr" class="error"></div>
-        <div class="modal-actions modal-actions--apply-scope">
-          <div class="apply-scope-actions">
-            <button type="button" id="txEditApplyScopeSeriesBtn" class="apply-scope-btn apply-scope-btn--primary">This + future</button>
-            <p class="apply-scope-hint" role="note">Updates the recurring schedule going forward.</p>
-            <button type="button" id="txEditApplyScopeInstanceBtn" class="apply-scope-btn apply-scope-btn--secondary">Only this one</button>
-            <p class="apply-scope-hint" role="note">Creates a one-time override for this date.</p>
-            <button type="button" id="txEditApplyScopeCancelBtn" class="apply-scope-btn apply-scope-btn--ghost">Cancel</button>
+        <div class="modal--apply-scope__body">
+          <p id="txEditApplyScopeDesc" class="modal--apply-scope__lede">Apply changes to only this transaction or all future occurrences?</p>
+          <div id="txEditApplyScopeErr" class="error"></div>
+          <div class="apply-scope-actions" role="group" aria-label="How to apply changes">
+            <button type="button" id="txEditApplyScopeSeriesBtn" class="apply-scope-option">
+              <span class="apply-scope-option__title">This + future</span>
+              <span class="apply-scope-option__hint">Updates all future recurring transactions.</span>
+            </button>
+            <button type="button" id="txEditApplyScopeInstanceBtn" class="apply-scope-option">
+              <span class="apply-scope-option__title">Only this one</span>
+              <span class="apply-scope-option__hint">Creates a one-time override for this date.</span>
+            </button>
+            <button type="button" id="txEditApplyScopeCancelBtn" class="apply-scope-cancel">Cancel</button>
           </div>
         </div>
       </div>
@@ -1295,7 +1298,7 @@
           <label class="reconcile-switch">
             <input id="reconcileChecked" type="checkbox" class="sr-only" />
             <span class="reconcile-switch__track" aria-hidden="true"></span>
-            <span class="reconcile-switch__text">Reconcile forecast for this day</span>
+            <span class="reconcile-switch__text">Mark this balance as reconciled</span>
           </label>
         </div>
         <div class="modal-actions reconcile-modal__actions">
@@ -1386,7 +1389,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="../app.js?v=313"></script>
+    <script src="../app.js?v=316"></script>
     <script src="../feedback.js?v=3" defer></script>
     <script src="../tour.js?v=9" defer></script>
   </body>
