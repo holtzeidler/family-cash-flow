@@ -11,7 +11,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=523" />
+    <link rel="stylesheet" href="../styles.css?v=524" />
   </head>
   <body class="login-page signup-page account-setup-page">
     <div class="container">
@@ -133,9 +133,15 @@
                     <div class="form-row-h">
                       <div class="form-row-h__label"><label for="accountStartingBalance">Starting balance</label></div>
                       <div class="form-row-h__field">
-                        <div class="money-input">
+                        <div class="money-input money-input--currency">
                           <span class="money-input__prefix" aria-hidden="true">$</span>
-                          <input id="accountStartingBalance" type="number" step="0.01" placeholder="Example: 3250" />
+                          <input
+                            id="accountStartingBalance"
+                            type="text"
+                            inputmode="decimal"
+                            autocomplete="off"
+                            placeholder="3,250"
+                          />
                         </div>
                       </div>
                     </div>
@@ -159,15 +165,15 @@
                             <label for="accountSetupKeepInChecking">Comfortable minimum balance</label>
                           </div>
                           <div class="form-row-h__field">
-                        <div class="money-input">
+                        <div class="money-input money-input--currency">
                           <span class="money-input__prefix" aria-hidden="true">$</span>
                           <input
                             id="accountSetupKeepInChecking"
                             type="text"
                             inputmode="decimal"
                             autocomplete="off"
-                            value="1000"
-                            placeholder="Example: 1000"
+                            value="1,000"
+                            placeholder="1,000"
                             aria-describedby="accountSetupKeepInCheckingHint"
                           />
                         </div>
@@ -692,6 +698,6 @@
       </div>
     </div>
 
-    <script src="../signup/signup.js?v=96"></script>
+    <script src="../signup/signup.js?v=97"></script>
   </body>
 </html>

@@ -1173,10 +1173,47 @@ function setAccountSetupWizardStep(step, opts = {}) {
 }
 
 function toMoneyNumber(raw) {
-  const s = raw != null ? String(raw).trim() : "";
-  if (!s) return null;
-  const n = Number(s);
-  return Number.isFinite(n) ? n : null;
+  const p = parseAccountSetupCushionRaw(raw);
+  return p.ok && !p.empty ? p.num : null;
+}
+
+/** Display dollars in onboarding fields (comma grouping; decimals only when typed). */
+function formatAccountSetupMoneyDisplay(raw, num) {
+  const n = typeof num === "number" ? num : null;
+  if (n == null || !Number.isFinite(n)) return "";
+  const rawStr = String(raw ?? "").trim();
+  const showDecimals = rawStr.includes(".") || Math.abs(n % 1) > 1e-9;
+  if (showDecimals) {
+    return n.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  }
+  return n.toLocaleString("en-US", { maximumFractionDigits: 0 });
+}
+
+function formatAccountSetupMoneyField(el) {
+  if (!el) return;
+  const parsed = parseAccountSetupCushionRaw(el.value);
+  if (!parsed.ok || parsed.empty) return;
+  el.value = formatAccountSetupMoneyDisplay(el.value, parsed.num);
+}
+
+function bindAccountSetupMoneyField(el) {
+  if (!el || el.dataset.bwMoneyBound === "1") return;
+  el.dataset.bwMoneyBound = "1";
+  el.addEventListener("blur", () => formatAccountSetupMoneyField(el));
+  el.addEventListener("focus", () => {
+    const parsed = parseAccountSetupCushionRaw(el.value);
+    if (!parsed.ok || parsed.empty) return;
+    const n = parsed.num;
+    el.value = Math.abs(n % 1) > 1e-9 ? String(n) : String(Math.trunc(n));
+  });
+}
+
+function initAccountSetupMoneyFields() {
+  for (const id of ["accountStartingBalance", "accountSetupKeepInChecking"]) {
+    const el = document.getElementById(id);
+    bindAccountSetupMoneyField(el);
+    formatAccountSetupMoneyField(el);
+  }
 }
 
 /** Same rules as app balance-threshold inputs: optional, allows $/commas. */
@@ -2369,12 +2406,16 @@ function hydrateAccountSetupDraft() {
     if (tzEl && o.timeZone) tzEl.value = String(o.timeZone);
     if (o.account) {
       if (accNameEl && o.account.name) accNameEl.value = String(o.account.name);
-      if (accBalEl && o.account.starting_balance != null) accBalEl.value = String(o.account.starting_balance);
+      if (accBalEl && o.account.starting_balance != null) {
+        accBalEl.value = formatAccountSetupMoneyDisplay("", Number(o.account.starting_balance));
+      }
       if (accDateEl && o.account.starting_balance_date) accDateEl.value = String(o.account.starting_balance_date);
       if (accCushionEl && o.account && Object.prototype.hasOwnProperty.call(o.account, "balance_threshold_min")) {
         const m = o.account.balance_threshold_min;
         accCushionEl.value =
-          m != null && m !== "" && Number.isFinite(Number(m)) ? String(Number(m)) : "";
+          m != null && m !== "" && Number.isFinite(Number(m))
+            ? formatAccountSetupMoneyDisplay("", Number(m))
+            : "";
       }
     }
     const lastTx = Array.isArray(o.transactions) && o.transactions.length ? o.transactions[o.transactions.length - 1] : o.transaction;
@@ -2996,6 +3037,9 @@ void (async () => {
     scheduleAuthApiWarmup();
   }
   hydrateAccountSetupDraft();
+  try {
+    initAccountSetupMoneyFields();
+  } catch (_) {}
   try {
     initAccountSetupTransactionUi();
   } catch (_) {}

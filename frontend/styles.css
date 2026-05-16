@@ -13339,42 +13339,43 @@ body.account-setup-page .account-setup-wizard__shell .account-setup-actions--she
   border-top: 1px solid rgba(11, 61, 46, 0.1);
   background: linear-gradient(180deg, rgba(248, 250, 249, 0.98) 0%, rgba(252, 253, 252, 1) 100%);
   min-height: var(--as-shell-actions-minh);
-  flex-wrap: wrap;
-  justify-content: flex-end;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  justify-content: space-between;
   align-items: center;
   align-content: center;
-  column-gap: 10px;
-  row-gap: 6px;
+  column-gap: 16px;
+  row-gap: 0;
 }
 body.account-setup-page .account-setup-wizard__shell .account-setup-actions--shell.account-setup-actions--step3-success{
   display: none;
 }
-/* Account setup: Back = paired secondary button (Next stays dominant) */
+/* Account setup: Back = ghost secondary (Next stays dominant) */
 body.account-setup-page #accountSetupBackBtn.secondary{
   appearance: none;
   -webkit-appearance: none;
   margin-right: 0;
-  background: #fff;
-  border: 1px solid rgba(11, 61, 46, 0.24);
-  box-shadow: 0 1px 2px rgba(11, 61, 46, 0.08);
+  background: transparent;
+  border: 1px solid rgba(11, 61, 46, 0.16);
+  box-shadow: none;
   border-radius: 10px;
-  padding: 12px 22px;
+  padding: 12px 20px;
   min-height: 52px;
   font-size: 1rem;
   font-weight: 600;
-  color: rgba(11, 61, 46, 0.9);
+  color: rgba(11, 61, 46, 0.72);
   text-decoration: none;
   line-height: 1.2;
   transition:
     background 0.15s ease,
     border-color 0.15s ease,
-    color 0.15s ease,
-    box-shadow 0.15s ease;
+    color 0.15s ease;
 }
 body.account-setup-page #accountSetupBackBtn.secondary:hover{
-  background: color-mix(in srgb, var(--accent) 6%, #fff);
-  border-color: rgba(11, 61, 46, 0.24);
-  color: rgba(11, 61, 46, 0.92);
+  background: rgba(11, 61, 46, 0.05);
+  border-color: rgba(11, 61, 46, 0.22);
+  color: rgba(11, 61, 46, 0.88);
   filter: none;
 }
 body.account-setup-page #accountSetupBackBtn.secondary:focus-visible{
@@ -13758,8 +13759,22 @@ body.account-setup-page #accountSetupWizardPanel0 #password2{
   line-height: 1.35;
   min-height: 54px;
 }
-/* Integrated currency field: $ inside input, single border */
-body.account-setup-page .form-row-h__field .money-input{
+/* Integrated currency field: $ inset inside input, single border */
+body.account-setup-page .form-row-h__field .money-input.money-input--currency{
+  --money-prefix-inset: 16px;
+  --money-prefix-gap: 7px;
+  position: relative;
+  display: block;
+  background: #fff;
+  border: 1px solid rgba(17, 24, 39, 0.34);
+  border-radius: 11px;
+  overflow: hidden;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    background-color 160ms ease;
+}
+body.account-setup-page .form-row-h__field .money-input:not(.money-input--currency){
   position: relative;
   display: block;
   background: #fff;
@@ -13780,6 +13795,22 @@ body.account-setup-page .form-row-h__field .money-input:focus-within{
   box-shadow: 0 0 0 3px rgba(11, 61, 46, 0.1);
   background: #fff;
 }
+body.account-setup-page .form-row-h__field .money-input.money-input--currency .money-input__prefix{
+  position: absolute;
+  left: var(--money-prefix-inset);
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 0;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  color: rgba(71, 85, 105, 0.62);
+  font-size: 1.0625rem;
+  font-weight: 500;
+  line-height: 1;
+  pointer-events: none;
+  z-index: 1;
+}
 body.account-setup-page .form-row-h__field .money-input__prefix{
   position: absolute;
   left: 14px;
@@ -13795,6 +13826,25 @@ body.account-setup-page .form-row-h__field .money-input__prefix{
   line-height: 1;
   pointer-events: none;
   z-index: 1;
+}
+body.account-setup-page .form-row-h__field .money-input.money-input--currency input{
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 54px;
+  padding: 15px 14px 15px calc(var(--money-prefix-inset) + 0.72rem + var(--money-prefix-gap));
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  font-size: 1rem;
+  font-weight: 500;
+  line-height: 1.35;
+  font-variant-numeric: tabular-nums;
+  color: rgba(17, 24, 39, 0.94);
+}
+body.account-setup-page .form-row-h__field .money-input.money-input--currency input::placeholder{
+  color: rgba(148, 163, 184, 0.95);
+  font-weight: 400;
 }
 body.account-setup-page .form-row-h__field .money-input input{
   display: block;
@@ -14969,11 +15019,11 @@ body.account-setup-page .account-setup-actions__cluster{
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: flex-end;
-  gap: 6px;
-  width: 100%;
-  min-height: 52px;
-  flex: 1 1 auto;
+  justify-content: flex-start;
+  gap: 10px;
+  width: auto;
+  min-height: 0;
+  flex: 0 1 auto;
 }
 body.account-setup-page .account-setup-step3-forecast-ready{
   flex-shrink: 0;
@@ -14988,32 +15038,19 @@ body.account-setup-page .account-setup-step3-forecast-ready{
   background: transparent;
   border-top: none;
 }
-body.account-setup-page .account-setup-wizard__shell .account-setup-actions--shell{
-  flex-direction: column;
-  align-items: stretch;
-}
 body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPanel2[data-step3-phase="intro"].account-setup-wizard__panel--active) .account-setup-actions--shell{
   --as-shell-actions-minh: 64px;
-  flex-direction: row;
-  flex-wrap: nowrap;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 8px;
   min-height: var(--as-shell-actions-minh);
   padding: 10px var(--as-card-pad-x) 12px;
-}
-body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPanel2[data-step3-phase="intro"].account-setup-wizard__panel--active) .account-setup-actions__cluster{
-  justify-content: flex-start;
-  width: auto;
-  min-height: 0;
-  flex: 0 0 auto;
 }
 body.account-setup-page .account-setup-actions__forward{
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 3px;
+  justify-content: center;
+  gap: 4px;
   flex: 0 0 auto;
+  margin-left: auto;
 }
 body.account-setup-page .account-setup-continue-gateHint{
   margin: 0;
