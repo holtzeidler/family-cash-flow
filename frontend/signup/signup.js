@@ -1209,7 +1209,12 @@ function bindAccountSetupMoneyField(el) {
 }
 
 function initAccountSetupMoneyFields() {
-  for (const id of ["accountStartingBalance", "accountSetupKeepInChecking"]) {
+  for (const id of [
+    "accountStartingBalance",
+    "accountSetupKeepInChecking",
+    "asTxAmount",
+    "asExpTxAmount",
+  ]) {
     const el = document.getElementById(id);
     bindAccountSetupMoneyField(el);
     formatAccountSetupMoneyField(el);
@@ -2434,7 +2439,9 @@ function hydrateAccountSetupDraft() {
         const eEndDate = document.getElementById("asExpEndDate");
         const eEndCount = document.getElementById("asExpEndCount");
         const eBg = document.getElementById("asExpTxBgColor");
-        if (eAmt && lastTx.amount != null) eAmt.value = String(lastTx.amount);
+        if (eAmt && lastTx.amount != null) {
+          eAmt.value = formatAccountSetupMoneyDisplay("", Number(lastTx.amount));
+        }
         if (eCat && lastTx.category) {
           const c = String(lastTx.category).trim();
           eCat.value = c === "Uncategorized" ? "" : c;
@@ -2456,7 +2463,9 @@ function hydrateAccountSetupDraft() {
       } else {
         const kindEl = k ? document.querySelector(`input[name="asTxKind"][value="${k}"]`) : null;
         if (kindEl) kindEl.checked = true;
-        if (txAmountEl && lastTx.amount != null) txAmountEl.value = String(lastTx.amount);
+        if (txAmountEl && lastTx.amount != null) {
+          txAmountEl.value = formatAccountSetupMoneyDisplay("", Number(lastTx.amount));
+        }
         if (txCategoryEl && lastTx.category) {
           const c = String(lastTx.category).trim();
           txCategoryEl.value = c === "Uncategorized" ? "" : c;
