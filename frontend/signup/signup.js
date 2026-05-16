@@ -760,7 +760,7 @@ function formatAccountSetupStep3Summary(incomeCount, expenseCount) {
   if (!i && !e) return "";
   const iPart = i === 1 ? "1 income" : `${i} income`;
   const ePart = e === 1 ? "1 expense" : `${e} expenses`;
-  if (i && e) return `✓ ${iPart} • ${ePart} added`;
+  if (i && e) return `✓ ${iPart} added · ✓ ${ePart} added`;
   if (i) return `✓ ${iPart} added`;
   return `✓ ${ePart} added`;
 }
@@ -1011,7 +1011,7 @@ function syncAccountSetupWizardShellButtons() {
         signupBtn.style.display = "";
         const { incomeCount, expenseCount, totalCount } = getAccountSetupTransactionCounts();
         const hasMinForForecast = incomeCount >= 1 && expenseCount >= 1;
-        signupBtn.textContent = hasMinForForecast ? "See My Forecast" : "Continue";
+        signupBtn.textContent = "Continue";
         signupBtn.classList.remove("secondary");
         signupBtn.classList.add("top-nav__logout");
         signupBtn.disabled = totalCount < 1;
