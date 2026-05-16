@@ -846,7 +846,7 @@ function getAccountSetupStepCopy(step, ctx) {
     case 0:
       return {
         title: "Create your login",
-        subtitle: "Start with an email and password. You can edit the rest later.",
+        subtitle: "Start with an email and password.",
       };
     case 1:
       return {
