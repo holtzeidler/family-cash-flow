@@ -202,11 +202,13 @@ body.login-page.signup-page:not(.account-setup-page):not(.invite-page) .containe
 
 /* Account setup: ultra-soft elevation (wizard shell + in-flow card tiles) */
 body.account-setup-page{
-  --as-wizard-column: min(600px, 94%);
+  --as-wizard-column: min(620px, 94%);
+  --as-card-pad-x: 32px;
+  --as-card-pad-y: 28px;
   --as-ultra-soft-card-shadow:
-    0 1px 3px rgba(0, 0, 0, 0.044),
-    0 10px 28px rgba(0, 0, 0, 0.058),
-    0 20px 52px rgba(11, 61, 46, 0.052);
+    0 2px 4px rgba(15, 23, 42, 0.05),
+    0 12px 32px rgba(15, 23, 42, 0.08),
+    0 24px 56px rgba(11, 61, 46, 0.07);
   --as-ultra-soft-tile-shadow:
     0 1px 2px rgba(0, 0, 0, 0.04),
     0 5px 18px rgba(0, 0, 0, 0.042);
@@ -219,38 +221,51 @@ body.account-setup-page{
 /* Account setup: allow full-width stacked cards */
 body.account-setup-page .container{
   max-width: 1920px;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
 }
 body.account-setup-page .container > .grid{
   width: var(--as-wizard-column);
-  max-width: 640px;
+  max-width: 620px;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   margin-left: auto;
   margin-right: auto;
-  margin-top: max(6px, calc(36px - 11vh));
+  margin-top: 0;
   margin-bottom: 0;
+  padding: 16px 0 20px;
 }
 body.account-setup-page .container > .grid:has(#accountSetupWizard[data-step="4"]){
-  width: min(600px, 94%);
-  max-width: 640px;
-  margin-top: max(6px, calc(28px - 9vh));
+  width: var(--as-wizard-column);
+  max-width: 620px;
+  padding: 12px 0 16px;
 }
 body.account-setup-page .top-nav{
-  padding: 4px 0 3px;
+  flex-shrink: 0;
+  padding: 6px 0 4px;
 }
-/* Onboarding/auth nav: wordmark only — no pill badge */
+/* Onboarding: hide competing footer — wizard is the focal point */
+body.account-setup-page .onboarding-footer{
+  display: none !important;
+}
+/* Onboarding/auth nav: compact wordmark — no pill badge */
 body.login-page.signup-page .app-title--logo > a,
 body.account-setup-page .app-title--logo > a{
-  padding: 4px 0;
+  padding: 0;
   border-radius: 0;
-  background: transparent;
-  border: none;
-  box-shadow: none;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 body.login-page.signup-page .app-title--logo .app-logo,
 body.account-setup-page .app-title--logo .app-logo{
-  width: min(168px, 42vw);
-  height: 34px;
+  width: min(132px, 36vw);
+  height: 26px;
   object-fit: contain;
   object-position: 0 50%;
 }
@@ -13180,17 +13195,15 @@ body.account-setup-page .account-setup-wizard{
   max-width: var(--as-wizard-column);
   margin-left: auto;
   margin-right: auto;
-  margin-top: 2px;
-  margin-bottom: 8px;
-  /* Baseline card height: Step 2 is ~75% of prior size */
-  --as-compact-card-minh: 208px;
-  /* Subeyebrow size; eyebrow is 5% larger (see __eyebrow) */
-  --as-wizard-subeyebrow-size: clamp(0.86rem, 1.5vw, 0.98rem);
+  margin-top: 0;
+  margin-bottom: 10px;
+  --as-compact-card-minh: 0;
+  --as-wizard-subeyebrow-size: clamp(0.92rem, 1.55vw, 1.05rem);
   --as-wizard-progress-pct: 25%;
 }
 body.account-setup-page .account-setup-wizard__stepHead{
-  margin: 0 0 clamp(0.38rem, 0.75vw, 0.5rem);
-  padding: 0 min(6%, 16px);
+  margin: 0 0 clamp(0.5rem, 1vw, 0.65rem);
+  padding: 0;
   box-sizing: border-box;
 }
 body.account-setup-page .account-setup-wizard__stepLabel{
@@ -13228,35 +13241,35 @@ body.account-setup-page .account-setup-wizard__progressFill{
   transition: width 260ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 body.account-setup-page .account-setup-wizard__eyebrow{
-  margin: 0 0 clamp(0.28rem, 0.55vw, 0.38rem);
+  margin: 0 0 clamp(0.35rem, 0.65vw, 0.48rem);
   text-align: center;
-  font-size: clamp(1.28rem, 2.35vw, 1.5rem);
-  font-weight: 750;
+  font-size: clamp(1.42rem, 2.65vw, 1.72rem);
+  font-weight: 780;
   color: var(--accent);
-  letter-spacing: -0.02em;
-  line-height: 1.15;
+  letter-spacing: -0.025em;
+  line-height: 1.12;
 }
 body.account-setup-page .account-setup-wizard__subeyebrow{
-  margin: 0 0 clamp(0.55rem, 1vw, 0.72rem);
+  margin: 0 0 clamp(0.65rem, 1.2vw, 0.85rem);
   text-align: center;
-  font-size: calc(var(--as-wizard-subeyebrow-size) * 0.96);
+  font-size: calc(var(--as-wizard-subeyebrow-size) * 1.02);
   font-weight: 500;
-  color: rgba(17, 24, 39, 0.62);
-  line-height: 1.4;
-  letter-spacing: 0.005em;
-  max-width: 32ch;
+  color: rgba(17, 24, 39, 0.68);
+  line-height: 1.45;
+  letter-spacing: 0.002em;
+  max-width: 36ch;
   margin-left: auto;
   margin-right: auto;
 }
 body.account-setup-page #accountSetupWizard[data-step="2"] .account-setup-wizard__stepHead{
-  margin-bottom: clamp(0.22rem, 0.55vw, 0.34rem);
+  margin-bottom: clamp(0.45rem, 0.9vw, 0.6rem);
 }
 body.account-setup-page #accountSetupWizard[data-step="2"] .account-setup-wizard__eyebrow{
-  margin-bottom: clamp(0.14rem, 0.4vw, 0.22rem);
+  margin-bottom: clamp(0.3rem, 0.55vw, 0.42rem);
 }
 body.account-setup-page #accountSetupWizard[data-step="2"] .account-setup-wizard__subeyebrow{
-  margin-bottom: clamp(0.26rem, 0.6vw, 0.36rem);
-  color: rgba(17, 24, 39, 0.5);
+  margin-bottom: clamp(0.6rem, 1.1vw, 0.8rem);
+  color: rgba(17, 24, 39, 0.68);
 }
 body.account-setup-page #accountSetupWizard[data-step="2"] .account-setup-wizard__progressTrack{
   height: 5px;
@@ -13296,20 +13309,16 @@ body.account-setup-page .account-setup-wizard__shell.auth-section.card{
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(180deg, #fdfcfa 0%, #fafbf9 52%, #f7faf8 100%);
-  border: 1px solid rgba(11, 61, 46, 0.14);
-  box-shadow:
-    0 6px 16px rgba(0, 0, 0, 0.042),
-    0 12px 32px rgba(11, 61, 46, 0.075),
-    0 22px 44px rgba(11, 61, 46, 0.04),
-    0 1px 0 rgba(255, 255, 255, 0.72) inset;
+  background: linear-gradient(180deg, #fff 0%, #fcfdfc 48%, #f8faf9 100%);
+  border: 1px solid rgba(11, 61, 46, 0.16);
+  border-radius: 14px;
+  box-shadow: var(--as-ultra-soft-card-shadow);
 }
 body.account-setup-page .account-setup-wizard__viewport{
   overflow: hidden;
   width: 100%;
   flex: 0 0 auto;
-  /* Keep the card shell consistent across early steps (use Step 2 sizing). */
-  min-height: var(--as-compact-card-minh);
+  min-height: 0;
 }
 body.account-setup-page #accountSetupWizard[data-step="2"]:has(
     #accountSetupWizardPanel2.account-setup-wizard__panel--active[data-step3-phase="intro"]
@@ -13322,17 +13331,16 @@ body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard
 }
 body.account-setup-page .account-setup-wizard__shell .account-setup-actions--shell{
   flex-shrink: 0;
-  padding: 12px 20px 14px;
+  padding: 16px var(--as-card-pad-x) 20px;
   margin: 0;
-  border-top: 1px solid rgba(11, 61, 46, 0.09);
-  background: linear-gradient(180deg, rgba(248, 250, 249, 0.96) 0%, rgba(252, 253, 252, 0.99) 100%);
-  /* Keep the wizard card height consistent even when only "Back" is visible. */
-  min-height: 52px;
+  border-top: 1px solid rgba(11, 61, 46, 0.1);
+  background: linear-gradient(180deg, rgba(248, 250, 249, 0.98) 0%, rgba(252, 253, 252, 1) 100%);
+  min-height: 56px;
   flex-wrap: wrap;
   justify-content: flex-end;
   align-items: center;
-  column-gap: 8px;
-  row-gap: 6px;
+  column-gap: 10px;
+  row-gap: 8px;
 }
 body.account-setup-page .account-setup-wizard__shell .account-setup-actions--shell.account-setup-actions--step3-success{
   display: none;
@@ -13342,15 +13350,15 @@ body.account-setup-page #accountSetupBackBtn.secondary{
   appearance: none;
   -webkit-appearance: none;
   margin-right: 0;
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(11, 61, 46, 0.16);
-  box-shadow: 0 1px 2px rgba(11, 61, 46, 0.05);
+  background: #fff;
+  border: 1px solid rgba(11, 61, 46, 0.22);
+  box-shadow: 0 1px 2px rgba(11, 61, 46, 0.06);
   border-radius: 10px;
-  padding: 6px 14px;
-  min-height: 38px;
-  font-size: 0.875rem;
+  padding: 10px 18px;
+  min-height: 48px;
+  font-size: 0.9375rem;
   font-weight: 600;
-  color: rgba(11, 61, 46, 0.78);
+  color: rgba(11, 61, 46, 0.88);
   text-decoration: none;
   line-height: 1.2;
   transition:
@@ -13395,7 +13403,7 @@ body.account-setup-page .account-setup-trust-strip{
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin: 4px auto 2px;
+  margin: 8px auto 0;
   padding: 3px 9px;
   border-radius: 999px;
   background: transparent;
@@ -13594,10 +13602,10 @@ body.account-setup-page .account-setup-success-summary__empty{
 
 /* --- Subtle polish: tighten form spacing + soften labels in onboarding only --- */
 body.account-setup-page .account-setup-wizard__panel .form-row-h__label label{
-  font-size: 0.8rem;
+  font-size: 0.875rem;
   font-weight: 600;
-  color: rgba(17, 24, 39, 0.72);
-  letter-spacing: 0.004em;
+  color: rgba(17, 24, 39, 0.78);
+  letter-spacing: 0.002em;
 }
 body.account-setup-page .account-setup-wizard__panel .form-row-h__field input::placeholder{
   color: rgba(17, 24, 39, 0.38);
@@ -13649,7 +13657,7 @@ body.account-setup-page .account-setup-wizard__panel{
   width: 100%;
   box-sizing: border-box;
   min-width: 0;
-  padding: 16px 20px 14px;
+  padding: var(--as-card-pad-y) var(--as-card-pad-x) calc(var(--as-card-pad-y) - 4px);
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
@@ -13662,7 +13670,7 @@ body.account-setup-page .account-setup-wizard__panel > *{
   max-width: 100%;
 }
 body.account-setup-page .account-setup-wizard__panel.auth-section__body{
-  padding: 16px 20px 14px;
+  padding: var(--as-card-pad-y) var(--as-card-pad-x) calc(var(--as-card-pad-y) - 4px);
 }
 body.account-setup-page #accountSetupWizardPanel4.account-setup-wizard__panel.auth-section__body{
   padding: 12px 18px 6px;
@@ -13676,15 +13684,10 @@ body.account-setup-page #accountSetupWizardPanel2{
   justify-content: flex-start;
 }
 
-/* Step 1/2: lock to the compact baseline height (Step 3 intro sizes to content) */
+/* Step 1/2: size to content (no forced min-height) */
 body.account-setup-page #accountSetupWizardPanel0.account-setup-wizard__panel,
 body.account-setup-page #accountSetupWizardPanel1.account-setup-wizard__panel{
-  min-height: var(--as-compact-card-minh);
-}
-
-/* Step 1: align content from top within the compact baseline */
-body.account-setup-page #accountSetupWizardPanel0.account-setup-wizard__panel{
-  justify-content: flex-start;
+  min-height: 0;
 }
 
 /* Account setup: stacked accordion cards (legacy) */
@@ -13714,14 +13717,14 @@ body.account-setup-page .auth-section__body.account-setup-card__body{
 }
 body.account-setup-page .form-row-h__field input:not([type="checkbox"]):not([type="radio"]),
 body.account-setup-page .form-row-h__field select{
-  padding: 14px 12px;
-  min-height: 52px;
-  font-size: 0.95rem;
+  padding: 15px 14px;
+  min-height: 54px;
+  font-size: 1rem;
   font-weight: 500;
-  color: rgba(17, 24, 39, 0.92);
+  color: rgba(17, 24, 39, 0.94);
   line-height: 1.35;
   background: #fff;
-  border: 1px solid rgba(17, 24, 39, 0.24);
+  border: 1px solid rgba(17, 24, 39, 0.26);
   border-radius: 10px;
   transition:
     border-color 160ms ease,
@@ -13867,10 +13870,10 @@ body.account-setup-page #accountSetupWizardPanel0 .form-row-h{
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 6px;
+  gap: 8px;
 }
 body.account-setup-page .account-setup-field-spacer{
-  height: 8px;
+  height: 12px;
   flex-shrink: 0;
 }
 body.account-setup-page .account-setup-step2-groups{
@@ -13885,18 +13888,18 @@ body.account-setup-page .account-setup-field-group{
   border: 0;
 }
 body.account-setup-page .account-setup-field-group + .account-setup-field-group{
-  margin-top: 0.85rem;
-  padding-top: 0.82rem;
-  border-top: 1px solid rgba(11, 61, 46, 0.06);
+  margin-top: 1.15rem;
+  padding-top: 1.1rem;
+  border-top: 1px solid rgba(11, 61, 46, 0.08);
 }
 body.account-setup-page .account-setup-field-group__title{
-  margin: 0 0 0.42rem;
-  font-size: 0.68rem;
+  margin: 0 0 0.65rem;
+  font-size: 0.7rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.075em;
   text-transform: uppercase;
-  color: rgba(11, 61, 46, 0.52);
-  line-height: 1.2;
+  color: rgba(11, 61, 46, 0.62);
+  line-height: 1.25;
 }
 body.account-setup-page .account-setup-field-group__fields{
   display: flex;
@@ -13934,25 +13937,27 @@ body.account-setup-page #accountSetupWizardPanel1 .form-row-h{
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 4px;
+  gap: 8px;
+  margin-bottom: 0.15rem;
 }
 body.account-setup-page #accountSetupWizardPanel1 .form-row-h__label label{
-  font-size: 0.76rem;
-  font-weight: 450;
-  color: rgba(17, 24, 39, 0.46);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: rgba(17, 24, 39, 0.78);
 }
-body.account-setup-page #accountSetupWizardPanel1 .form-row-h__field input:not([type="checkbox"]):not([type="radio"]),
+body.account-setup-page #accountSetupWizardPanel1 .form-row-h__field .money-input{
+  min-height: 54px;
+  border: 1px solid rgba(17, 24, 39, 0.26);
+}
 body.account-setup-page #accountSetupWizardPanel1 .form-row-h__field .money-input input{
-  padding: 8px 10px;
-  font-size: 0.88rem;
-  line-height: 1.3;
+  padding: 15px 12px;
+  font-size: 1rem;
+  line-height: 1.35;
+  min-height: 54px;
 }
 body.account-setup-page #accountSetupWizardPanel1 .form-row-h__field .money-input__prefix{
-  padding: 8px 8px 8px 10px;
-  font-size: 0.86rem;
-}
-body.account-setup-page #accountSetupWizardPanel1.account-setup-wizard__panel{
-  padding: 9px 12px 8px;
+  padding: 15px 10px 15px 14px;
+  font-size: 0.95rem;
 }
 body.account-setup-page #accountSetupWizardPanel1 .form-row-h__label{
   flex: 0 0 auto;
@@ -13994,11 +13999,11 @@ body.account-setup-page #accountSetupWizardPanel1 .form-row-h__field input#accou
   cursor: text;
 }
 body.account-setup-page .account-setup-field-hint{
-  margin: 4px 0 0;
-  font-size: 0.75rem;
-  line-height: 1.35;
+  margin: 5px 0 0;
+  font-size: 0.8rem;
+  line-height: 1.4;
   font-weight: 450;
-  color: rgba(100, 116, 139, 0.68);
+  color: rgba(71, 85, 105, 0.72);
 }
 body.account-setup-page .account-setup-field-hint--tight{
   margin: 0;
@@ -14974,14 +14979,19 @@ body.account-setup-page
   body.account-setup-page .account-setup-tx-choice-wrap{
     grid-template-columns: 1fr;
   }
+  body.account-setup-page{
+    --as-card-pad-x: 22px;
+    --as-card-pad-y: 22px;
+  }
+  body.account-setup-page .container > .grid{
+    padding: 12px 0 16px;
+  }
   body.account-setup-page .account-setup-wizard{
-    margin-top: 2px;
     margin-bottom: 8px;
-    --as-compact-card-minh: 196px;
   }
   body.account-setup-page .account-setup-wizard__eyebrow{
-    font-size: clamp(0.98rem, 4vw, 1.18rem);
-    line-height: 1.18;
+    font-size: clamp(1.28rem, 5vw, 1.5rem);
+    line-height: 1.15;
   }
   body.account-setup-page .account-setup-wizard__subeyebrow{
     font-size: clamp(0.8rem, 3.2vw, 0.9rem);
@@ -15103,8 +15113,8 @@ body.account-setup-page .account-setup-actions #accountSetupBackBtn{
 }
 body.account-setup-page .account-setup-wizard__shell .account-setup-actions--shell #signupBtn{
   min-height: 48px;
-  padding: 10px 22px;
-  font-size: 0.96rem;
+  padding: 11px 24px;
+  font-size: 1rem;
   font-weight: 700;
   border-radius: 10px;
   box-shadow:
