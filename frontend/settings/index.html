@@ -14,7 +14,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=535" />
+    <link rel="stylesheet" href="../styles.css?v=537" />
   </head>
   <body>
     <div class="container">
@@ -1200,32 +1200,62 @@
         </div>
 
         <div class="modal-actions modal-actions--tx-edit-foot">
-          <div id="txEditFooterSecondary" class="tx-edit-actions-row">
+          <div id="txEditFooterSecondary" class="tx-edit-actions-row tx-edit-actions-row--main">
             <div id="txEditSaveRow" class="tx-edit-save-cell">
               <button type="button" id="txEditSave">Save</button>
               <button type="button" id="txEditRecurringUpdateBtn" style="display:none;">Save</button>
             </div>
-            <button type="button" id="txEditCancel">Cancel</button>
-            <button type="button" id="txEditDelete" class="danger">Delete</button>
+            <button type="button" id="txEditCancel" class="tx-edit-cancel-btn secondary">Cancel</button>
           </div>
+          <button type="button" id="txEditDelete" class="danger tx-edit-delete-link">Delete</button>
         </div>
       </div>
     </div>
 
     <div id="txEditApplyScopeModal" class="modal-overlay modal-overlay--nested" aria-hidden="true">
       <div class="modal modal--choice modal--apply-scope" role="dialog" aria-labelledby="txEditApplyScopeTitle" aria-describedby="txEditApplyScopeDesc" aria-modal="true">
-        <h3 id="txEditApplyScopeTitle">Apply changes</h3>
+        <h3 id="txEditApplyScopeTitle">How should this change apply?</h3>
         <div class="modal--apply-scope__body">
-          <p id="txEditApplyScopeDesc" class="modal--apply-scope__lede">Apply changes to only this transaction or all future occurrences?</p>
+          <div id="txEditApplyScopeDesc" class="modal--apply-scope__intro">
+            <p class="modal--apply-scope__lede">This transaction is part of a recurring series.</p>
+            <p class="modal--apply-scope__helper">Choose whether to update just this occurrence or future ones too.</p>
+          </div>
           <div id="txEditApplyScopeErr" class="error"></div>
           <div class="apply-scope-actions" role="group" aria-label="How to apply changes">
-            <button type="button" id="txEditApplyScopeSeriesBtn" class="apply-scope-option">
-              <span class="apply-scope-option__title">This + future</span>
-              <span class="apply-scope-option__hint">Updates all future recurring transactions.</span>
+            <button type="button" id="txEditApplyScopeSeriesBtn" class="apply-scope-option apply-scope-option--recommended">
+              <span class="apply-scope-option__row">
+                <span class="apply-scope-option__icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" focusable="false">
+                    <path d="M4 12a8 8 0 0 1 13.5-5.7"></path>
+                    <path d="M17.5 6.3V10h-3.6"></path>
+                    <path d="M20 12a8 8 0 0 1-13.5 5.7"></path>
+                    <path d="M6.5 17.7V14h3.6"></path>
+                  </svg>
+                </span>
+                <span class="apply-scope-option__copy">
+                  <span class="apply-scope-option__title-row">
+                    <span class="apply-scope-option__title">Update this and future transactions</span>
+                    <span class="apply-scope-option__badge">Recommended</span>
+                  </span>
+                  <span class="apply-scope-option__hint">Changes this transaction and all upcoming recurring entries.</span>
+                </span>
+              </span>
             </button>
             <button type="button" id="txEditApplyScopeInstanceBtn" class="apply-scope-option">
-              <span class="apply-scope-option__title">Only this one</span>
-              <span class="apply-scope-option__hint">Creates a one-time override for this date.</span>
+              <span class="apply-scope-option__row">
+                <span class="apply-scope-option__icon apply-scope-option__icon--single" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" focusable="false">
+                    <rect x="4" y="5" width="16" height="16" rx="2"></rect>
+                    <path d="M8 3v4"></path>
+                    <path d="M16 3v4"></path>
+                    <circle cx="12" cy="14" r="2.25"></circle>
+                  </svg>
+                </span>
+                <span class="apply-scope-option__copy">
+                  <span class="apply-scope-option__title">Only update this occurrence</span>
+                  <span class="apply-scope-option__hint">Only changes this transaction. Future recurring entries stay the same.</span>
+                </span>
+              </span>
             </button>
             <button type="button" id="txEditApplyScopeCancelBtn" class="apply-scope-cancel">Cancel</button>
           </div>
