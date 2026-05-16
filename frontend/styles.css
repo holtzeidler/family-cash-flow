@@ -19,7 +19,7 @@
   /* Shared button radius (use across the site) */
   --btn-radius: 14px;
   /* Sticky strips sit below the primary nav (tabs); keep in sync with .top-nav height */
-  --app-top-nav-offset: 64px;
+  --app-top-nav-offset: 76px;
 }
 
 *{ box-sizing:border-box; }
@@ -264,7 +264,7 @@ body.plans-page .top-nav .app-title--logo > a,
 body.admin-page .top-nav .app-title--logo > a,
 body[data-bw-view] .top-nav .app-title--logo > a,
 body.landing-page .top-nav .app-title--logo > a{
-  padding: 0;
+  padding: 4px 12px 4px 6px;
   background: transparent;
   border: none;
   box-shadow: none;
@@ -276,8 +276,9 @@ body.plans-page .top-nav .app-title--logo .app-logo,
 body.admin-page .top-nav .app-title--logo .app-logo,
 body[data-bw-view] .top-nav .app-title--logo .app-logo,
 body.landing-page .top-nav .app-title--logo .app-logo{
-  width: min(148px, 40vw);
-  height: 24px;
+  width: auto;
+  max-width: min(300px, 62vw);
+  height: 44px;
 }
 
 /* Login only: align logo to far-left like the app. */
@@ -310,15 +311,16 @@ body.login-page:not(.signup-page):not(.invite-page) .top-nav__inner--simple .app
   text-align: left;
 }
 body.login-page:not(.signup-page):not(.invite-page) .top-nav .app-title--logo > a{
-  padding: 0;
+  padding: 4px 12px 4px 6px;
   background: transparent;
   border: none;
   box-shadow: none;
 }
 body.login-page:not(.signup-page):not(.invite-page) .top-nav .app-title--logo .app-logo{
   display: block;
-  width: min(148px, 40vw);
-  height: 24px;
+  width: auto;
+  max-width: min(300px, 62vw);
+  height: 44px;
   object-fit: contain;
   object-position: 0 50%;
 }
@@ -2430,10 +2432,22 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
   -webkit-backdrop-filter: none;
   text-decoration: none;
 }
+.top-nav .app-title--logo > a{
+  padding: 4px 12px 4px 6px;
+}
+.top-nav .app-title--logo .app-logo{
+  display: block;
+  width: auto;
+  max-width: min(300px, 62vw);
+  height: 44px;
+  object-fit: contain;
+  object-position: 0 50%;
+  border-radius: 0;
+}
 .app-title--logo .app-logo{
   display: block;
-  width: min(156px, 42vw);
-  height: 24px;
+  width: min(200px, 48vw);
+  height: 30px;
   object-fit: contain;
   object-position: 0 50%;
   border-radius: 0;
@@ -2457,9 +2471,9 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
     font-size: 28px;
     text-align: center;
   }
-  .app-title--logo .app-logo{
-    width: min(140px, 44vw);
-    height: 22px;
+  .top-nav .app-title--logo .app-logo{
+    height: 40px;
+    max-width: min(272px, 58vw);
   }
   /* Plans / admin / signup: keep title left + actions right on narrow screens (overrides generic centered nav). */
   body.plans-page .top-nav .top-nav__inner.top-nav__inner--simple,
@@ -23074,8 +23088,8 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   }
 
   .top-nav .app-title--logo .app-logo{
-    width: min(140px, 44vw);
-    height: 22px;
+    height: 40px;
+    max-width: min(272px, 58vw);
   }
 
   .top-nav__tabs{
@@ -23137,8 +23151,8 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
 
   body.login-page:not(.signup-page):not(.invite-page) .top-nav .app-title--logo .app-logo,
   body.landing-page .top-nav .app-title--logo .app-logo{
-    width: min(136px, 42vw);
-    height: 22px;
+    height: 40px;
+    max-width: min(272px, 58vw);
   }
 
   .app-layout,
@@ -23725,9 +23739,9 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
     gap: 7px 8px;
   }
 
-  .app-title--logo .app-logo{
-    width: min(168px, 50vw);
-    height: 30px;
+  .top-nav .app-title--logo .app-logo{
+    height: 38px;
+    max-width: min(252px, 56vw);
   }
 
   .top-nav__logout,

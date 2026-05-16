@@ -1,10 +1,10 @@
 <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="BalanceWhiz">
-  <rect x="2" y="21" width="28" height="1.5" rx="0.75" fill="#0B3D2E" opacity="0.16"/>
-  <rect x="4" y="16" width="24" height="1.5" rx="0.75" fill="#0B3D2E" opacity="0.26"/>
+  <rect x="1" y="22" width="30" height="2" rx="1" fill="#0B3D2E" opacity="0.14"/>
+  <rect x="3" y="16" width="26" height="2" rx="1" fill="#0B3D2E" opacity="0.24"/>
   <path
-    d="M3 23h26M6 21.5L10.5 17l5.5 1.2L17.5 13.5l7.5-8"
+    d="M2 24h28M6.5 21.5L10.5 17l5.5 1.5L17 14.5l7.5-8.5"
     stroke="#1A5C45"
-    stroke-width="2"
+    stroke-width="2.5"
     stroke-linecap="round"
     stroke-linejoin="round"
   />
