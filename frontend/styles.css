@@ -619,15 +619,18 @@ body.landing-page .landing-hero-viz__timeline{
   gap: 0;
 }
 body.landing-page .landing-hero-viz__nearBand{
-  width: 82%;
+  width: 100%;
   max-width: 100%;
 }
 body.landing-page .landing-hero-viz__nearBand .landing-hero-viz__week{
   width: 100%;
 }
+body.landing-page .landing-hero-viz__chartBlock{
+  margin-top: 6px;
+}
 body.landing-page .landing-hero-viz__chartWrap{
   position: relative;
-  margin-top: 6px;
+  margin-top: 0;
   width: 100%;
 }
 body.landing-page .landing-hero-viz__timeline .landing-hero-viz__spark{
@@ -636,53 +639,32 @@ body.landing-page .landing-hero-viz__timeline .landing-hero-viz__spark{
 body.landing-page .landing-hero-viz__spark{
   display: block;
   width: 100%;
-  height: 54px;
+  height: 52px;
   margin-top: 0;
   border-radius: 10px;
-  background: linear-gradient(
-    90deg,
-    rgba(4, 120, 87, 0.05) 0%,
-    rgba(4, 120, 87, 0.04) 78%,
-    rgba(248, 250, 249, 0.35) 100%
-  );
+  background: rgba(4, 120, 87, 0.045);
   box-shadow: inset 0 0 0 1px rgba(11, 61, 46, 0.06);
 }
-body.landing-page .landing-hero-viz__chartFade{
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 30%;
-  height: 100%;
-  border-radius: 0 10px 10px 0;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(255, 255, 255, 0.35) 55%,
-    rgba(255, 255, 255, 0.72) 100%
-  );
-  pointer-events: none;
-}
 body.landing-page .landing-hero-viz__horizon{
-  margin: 5px 0 0;
-  padding: 0 4px;
-  font-size: 0.62rem;
-  line-height: 1.3;
+  margin: 3px 0 0;
+  padding: 0 6px 0 0;
+  font-size: 0.6rem;
+  line-height: 1.25;
   font-weight: 500;
-  letter-spacing: 0.015em;
-  color: rgba(100, 116, 139, 0.62);
+  letter-spacing: 0.012em;
+  color: rgba(100, 116, 139, 0.58);
   text-align: right;
 }
-body.landing-page .landing-hero-viz__sparkFuture{
-  opacity: 1;
-}
-body.landing-page .landing-hero-viz__sparkDot{
+body.landing-page .landing-hero-viz__sparkFuture,
+body.landing-page .landing-hero-viz__sparkDot,
+body.landing-page .landing-hero-viz__sparkArrow{
   opacity: 1;
 }
 body.landing-page .landing-hero-viz__foot{
-  margin: 5px 0 0;
+  margin: 6px 0 0;
   padding: 0 2px;
   font-size: 0.64rem;
-  line-height: 1.35;
+  line-height: 1.32;
   font-weight: 550;
   color: rgba(55, 65, 81, 0.82);
   text-align: center;
@@ -23633,15 +23615,14 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   body.landing-page .landing-hero-viz__timeline .landing-hero-viz__spark{
     margin-top: 0;
   }
-  body.landing-page .landing-hero-viz__nearBand{
-    width: 100%;
-  }
   body.landing-page .landing-hero-viz__horizon{
-    font-size: 0.58rem;
+    margin-top: 2px;
+    font-size: 0.57rem;
     text-align: center;
+    padding-right: 0;
   }
-  body.landing-page .landing-hero-viz__chartFade{
-    width: 26%;
+  body.landing-page .landing-hero-viz__foot{
+    margin-top: 5px;
   }
 
   body.landing-page .landing-preview__demo{
