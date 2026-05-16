@@ -884,6 +884,7 @@ function syncAccountSetupWizardShellButtons() {
   const s = getAccountSetupWizardStep();
   const stepLabel = document.getElementById("accountSetupWizardStepLabel");
   const eyebrow = document.getElementById("accountSetupWizardEyebrow");
+  const reassurance = document.getElementById("accountSetupWizardReassurance");
   const subEyebrow = document.getElementById("accountSetupWizardSubeyebrow");
   const saveInc = document.getElementById("asTxSaveIncomeBtn");
   const cancelInc = document.getElementById("asTxCancelIncomeBtn");
@@ -928,6 +929,7 @@ function syncAccountSetupWizardShellButtons() {
     });
     if (stepLabel) stepLabel.textContent = `Step ${getAccountSetupDisplayStepNumber(s)} of 4`;
     if (eyebrow) eyebrow.textContent = copy.title;
+    if (reassurance) reassurance.hidden = s !== 0;
     if (subEyebrow) {
       subEyebrow.textContent = copy.subtitle;
       subEyebrow.hidden = false;
@@ -935,6 +937,7 @@ function syncAccountSetupWizardShellButtons() {
   } catch (_) {
     if (stepLabel) stepLabel.textContent = `Step ${getAccountSetupDisplayStepNumber(s)} of 4`;
     if (eyebrow) eyebrow.textContent = "Let’s build your forecast";
+    if (reassurance) reassurance.hidden = s !== 0;
     if (subEyebrow) subEyebrow.hidden = false;
   }
 
