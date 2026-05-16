@@ -13673,7 +13673,12 @@ body.account-setup-page .account-setup-wizard__shell .account-setup-actions--she
 body.account-setup-page #accountSetupBackBtn.secondary{
   appearance: none;
   -webkit-appearance: none;
-  margin-right: 0;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  flex-shrink: 0;
   background: rgba(248, 250, 249, 0.95);
   border: 1px solid rgba(11, 61, 46, 0.1);
   box-shadow: none;
@@ -13682,11 +13687,15 @@ body.account-setup-page #accountSetupBackBtn.secondary{
   min-height: 44px;
   height: 44px;
   min-width: 5.75rem;
+  font: inherit;
   font-size: 0.9375rem;
-  font-weight: 550;
+  font-weight: 500;
   color: rgba(11, 61, 46, 0.66);
   text-decoration: none;
-  line-height: 1.2;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  filter: none;
   transition:
     background 0.15s ease,
     border-color 0.15s ease,
@@ -15625,10 +15634,10 @@ body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPane
   align-self: flex-end;
   flex: 0 0 auto;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
 }
 body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPanel2[data-step3-phase="intro"].account-setup-wizard__panel--active) #accountSetupBackBtn.secondary{
-  align-self: flex-end;
+  align-self: auto;
 }
 body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPanel2[data-step3-phase="intro"].account-setup-wizard__panel--active) .account-setup-actions__forward{
   display: flex;
