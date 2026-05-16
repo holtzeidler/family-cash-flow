@@ -204,13 +204,13 @@ body.login-page.signup-page:not(.account-setup-page):not(.invite-page) .containe
 body.account-setup-page{
   --as-wizard-column: min(640px, 94%);
   --as-card-pad-x: 32px;
-  --as-card-pad-y: 28px;
+  --as-card-pad-y: 24px;
   --as-shell-min-height: 440px;
   --as-shell-actions-minh: 76px;
   --as-ultra-soft-card-shadow:
-    0 2px 6px rgba(15, 23, 42, 0.07),
-    0 14px 36px rgba(15, 23, 42, 0.1),
-    0 28px 60px rgba(11, 61, 46, 0.09);
+    0 1px 3px rgba(15, 23, 42, 0.04),
+    0 10px 32px rgba(15, 23, 42, 0.07),
+    0 32px 72px rgba(11, 61, 46, 0.055);
   --as-ultra-soft-tile-shadow:
     0 1px 2px rgba(0, 0, 0, 0.04),
     0 5px 18px rgba(0, 0, 0, 0.042);
@@ -13277,7 +13277,7 @@ body.account-setup-page .account-setup-wizard__reassurance{
   color: rgba(11, 61, 46, 0.62);
 }
 body.account-setup-page .account-setup-wizard__subeyebrow{
-  margin: 0 0 clamp(0.5rem, 0.95vw, 0.68rem);
+  margin: 0 0 clamp(0.28rem, 0.55vw, 0.42rem);
   text-align: center;
   font-size: calc(var(--as-wizard-subeyebrow-size) * 1.02);
   font-weight: 500;
@@ -13348,14 +13348,14 @@ body.account-setup-page #accountSetupBackBtn.secondary{
   -webkit-appearance: none;
   margin-right: 0;
   background: #fff;
-  border: 1px solid rgba(11, 61, 46, 0.22);
-  box-shadow: 0 1px 2px rgba(11, 61, 46, 0.06);
+  border: 1px solid rgba(11, 61, 46, 0.24);
+  box-shadow: 0 1px 2px rgba(11, 61, 46, 0.08);
   border-radius: 10px;
-  padding: 10px 18px;
-  min-height: 48px;
-  font-size: 0.9375rem;
+  padding: 12px 22px;
+  min-height: 52px;
+  font-size: 1rem;
   font-weight: 600;
-  color: rgba(11, 61, 46, 0.88);
+  color: rgba(11, 61, 46, 0.9);
   text-decoration: none;
   line-height: 1.2;
   transition:
@@ -13725,8 +13725,8 @@ body.account-setup-page .form-row-h__field select{
   color: rgba(17, 24, 39, 0.94);
   line-height: 1.35;
   background: #fff;
-  border: 1px solid rgba(17, 24, 39, 0.32);
-  border-radius: 10px;
+  border: 1px solid rgba(17, 24, 39, 0.34);
+  border-radius: 11px;
   transition:
     border-color 160ms ease,
     box-shadow 160ms ease,
@@ -13740,8 +13740,8 @@ body.account-setup-page .form-row-h__field select:hover{
 body.account-setup-page .form-row-h__field input:not([type="checkbox"]):not([type="radio"]):focus,
 body.account-setup-page .form-row-h__field select:focus{
   outline: none;
-  border-color: color-mix(in srgb, var(--accent) 58%, rgba(17, 24, 39, 0.24));
-  box-shadow: 0 0 0 3px rgba(11, 61, 46, 0.16);
+  border-color: color-mix(in srgb, var(--accent) 52%, rgba(17, 24, 39, 0.22));
+  box-shadow: 0 0 0 3px rgba(11, 61, 46, 0.1);
   background: #fff;
 }
 body.account-setup-page #accountSetupWizardPanel0 #email,
@@ -13751,14 +13751,65 @@ body.account-setup-page #accountSetupWizardPanel0 #password2{
   line-height: 1.35;
   min-height: 54px;
 }
+/* Integrated currency field: $ inside input, single border */
 body.account-setup-page .form-row-h__field .money-input{
+  position: relative;
+  display: block;
   background: #fff;
-  border: 1px solid rgba(17, 24, 39, 0.2);
-  border-radius: 9px;
+  border: 1px solid rgba(17, 24, 39, 0.34);
+  border-radius: 11px;
+  overflow: hidden;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    background-color 160ms ease;
+}
+body.account-setup-page .form-row-h__field .money-input:hover{
+  border-color: rgba(11, 61, 46, 0.36);
+  box-shadow: 0 0 0 1px rgba(11, 61, 46, 0.08);
+}
+body.account-setup-page .form-row-h__field .money-input:focus-within{
+  border-color: color-mix(in srgb, var(--accent) 52%, rgba(17, 24, 39, 0.22));
+  box-shadow: 0 0 0 3px rgba(11, 61, 46, 0.1);
+  background: #fff;
 }
 body.account-setup-page .form-row-h__field .money-input__prefix{
-  padding: calc(10px * 0.874) calc(10px * 0.874) calc(10px * 0.874) calc(12px * 0.874);
-  font-size: calc(13px * 0.92);
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-52%);
+  padding: 0;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  color: rgba(100, 116, 139, 0.78);
+  font-size: 1rem;
+  font-weight: 500;
+  line-height: 1;
+  pointer-events: none;
+  z-index: 1;
+}
+body.account-setup-page .form-row-h__field .money-input input{
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 54px;
+  padding: 15px 14px 15px 2rem;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  font-size: 1rem;
+  font-weight: 500;
+  line-height: 1.35;
+  color: rgba(17, 24, 39, 0.94);
+}
+body.account-setup-page .form-row-h__field .money-input input::placeholder{
+  color: rgba(17, 24, 39, 0.44);
+  font-weight: 400;
+}
+body.account-setup-page .form-row-h__field .money-input input:focus{
+  outline: none;
+  box-shadow: none;
 }
 body.account-setup-page .account-setup-step3-form .tx-add-schedule-toolbar input:not([type="radio"]):not([type="checkbox"]),
 body.account-setup-page .account-setup-step3-form .tx-add-schedule-toolbar select{
@@ -13874,7 +13925,7 @@ body.account-setup-page #accountSetupWizardPanel0 .form-row-h{
   gap: 8px;
 }
 body.account-setup-page .account-setup-field-spacer{
-  height: 12px;
+  height: 9px;
   flex-shrink: 0;
 }
 body.account-setup-page .account-setup-step2-groups{
@@ -13889,17 +13940,17 @@ body.account-setup-page .account-setup-field-group{
   border: 0;
 }
 body.account-setup-page .account-setup-field-group + .account-setup-field-group{
-  margin-top: 1.15rem;
-  padding-top: 1.1rem;
+  margin-top: 0.95rem;
+  padding-top: 0.9rem;
   border-top: 1px solid rgba(11, 61, 46, 0.08);
 }
 body.account-setup-page .account-setup-field-group__title{
-  margin: 0 0 0.65rem;
-  font-size: 0.7rem;
+  margin: 0 0 0.48rem;
+  font-size: 0.62rem;
   font-weight: 700;
-  letter-spacing: 0.075em;
+  letter-spacing: 0.062em;
   text-transform: uppercase;
-  color: rgba(11, 61, 46, 0.62);
+  color: rgba(11, 61, 46, 0.68);
   line-height: 1.25;
 }
 body.account-setup-page .account-setup-field-group__fields{
@@ -13938,27 +13989,17 @@ body.account-setup-page #accountSetupWizardPanel1 .form-row-h{
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 8px;
-  margin-bottom: 0.15rem;
+  gap: 7px;
+  margin-bottom: 0.05rem;
 }
 body.account-setup-page #accountSetupWizardPanel1 .form-row-h__label label{
   font-size: 0.875rem;
   font-weight: 600;
   color: rgba(17, 24, 39, 0.78);
 }
-body.account-setup-page #accountSetupWizardPanel1 .form-row-h__field .money-input{
-  min-height: 54px;
-  border: 1px solid rgba(17, 24, 39, 0.26);
-}
 body.account-setup-page #accountSetupWizardPanel1 .form-row-h__field .money-input input{
-  padding: 15px 12px;
-  font-size: 1rem;
-  line-height: 1.35;
-  min-height: 54px;
-}
-body.account-setup-page #accountSetupWizardPanel1 .form-row-h__field .money-input__prefix{
-  padding: 15px 10px 15px 14px;
-  font-size: 0.95rem;
+  padding-top: 16px;
+  padding-bottom: 16px;
 }
 body.account-setup-page #accountSetupWizardPanel1 .form-row-h__label{
   flex: 0 0 auto;
