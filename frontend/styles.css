@@ -69,17 +69,17 @@ body.login-page:not(.signup-page):not(.invite-page) #loginSection.auth-section.c
 }
 /* Login: two-column split — brand left, form right; confident scale, intentional columns. */
 body.login-page:not(.signup-page):not(.invite-page) .container > .grid.login-page__grid{
-  flex: 0 1 auto;
+  flex: 1 1 auto;
   min-height: 0;
   width: min(1120px, 92%);
   margin-left: auto;
   margin-right: auto;
-  margin-top: clamp(4px, 1.8vh, 22px);
+  margin-top: clamp(2px, 1.2vh, 14px);
   display: flex;
   flex-direction: column;
   align-items: stretch;
   justify-content: center;
-  padding: clamp(12px, 2.6vh, 30px) clamp(14px, 2.4vw, 24px) clamp(10px, 2.2vh, 22px);
+  padding: clamp(14px, 2.8vh, 32px) clamp(14px, 2.4vw, 24px) clamp(6px, 1vh, 10px);
 }
 body.login-page:not(.signup-page):not(.invite-page) .login-page__split{
   display: grid;
@@ -95,11 +95,13 @@ body.login-page:not(.signup-page):not(.invite-page) .login-page__brand{
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 0.65rem;
+  gap: 0.55rem;
   max-width: 26rem;
   min-width: 0;
-  min-height: min(280px, 42vh);
-  padding: clamp(0.5rem, 2vh, 1.25rem) clamp(0.25rem, 1.5vw, 1rem) clamp(0.5rem, 2vh, 1.25rem) 0;
+  min-height: 0;
+  padding: 0 clamp(0.25rem, 1.5vw, 1rem) 0 0;
+  align-self: center;
+  transform: translateY(clamp(-10px, -1.2vh, -6px));
 }
 body.login-page:not(.signup-page):not(.invite-page) .login-page__brand-ambient{
   position: absolute;
@@ -138,9 +140,10 @@ body.login-page:not(.signup-page):not(.invite-page) .login-page__brand-sub{
 body.login-page:not(.signup-page):not(.invite-page) .login-page__form-col{
   display: flex;
   justify-content: center;
-  align-items: stretch;
+  align-items: center;
   min-width: 0;
-  padding-top: 2px;
+  padding-top: 0;
+  align-self: center;
 }
 body.login-page:not(.signup-page):not(.invite-page) .login-page__form-col #loginSection{
   width: 100%;
@@ -170,6 +173,7 @@ body.login-page:not(.signup-page):not(.invite-page) .login-page__form-col #login
     padding: 0 0 0.25rem;
     align-items: center;
     text-align: center;
+    transform: none;
   }
   body.login-page:not(.signup-page):not(.invite-page) .login-page__brand-ambient{
     inset: -20% -8% -24% -8%;
@@ -247,9 +251,25 @@ body.account-setup-page .container > .grid{
 }
 body.account-setup-page .container > .grid:has(#accountSetupWizard[data-step="4"]){
   width: var(--as-wizard-column);
-  max-width: 532px;
-  padding: 8px 0 12px;
-  margin-top: clamp(-52px, calc(3vh - 48px), -36px);
+  max-width: 520px;
+  padding: 0 0 clamp(10px, 2vh, 16px);
+  margin-top: 0;
+  margin-bottom: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: stretch;
+}
+body.account-setup-page:has(#accountSetupWizard[data-step="4"]) .container{
+  min-height: 100dvh;
+  min-height: 100svh;
+}
+body.account-setup-page:has(#accountSetupWizard[data-step="4"]) .account-setup-wizard{
+  margin-top: 0;
+  margin-bottom: 0;
+  flex-shrink: 0;
 }
 body.account-setup-page .container > .grid:has(#accountSetupWizardPanel2[data-step3-phase="intro"].account-setup-wizard__panel--active){
   width: min(520px, 90vw);
@@ -282,7 +302,17 @@ body.account-setup-page input[type="number"]{
 }
 body.account-setup-page .top-nav{
   flex-shrink: 0;
-  padding: 6px 0 4px;
+  padding: 5px 0 3px;
+}
+body.account-setup-page:has(#accountSetupWizard[data-step="4"]) .top-nav{
+  padding: 3px 0 2px;
+}
+body.account-setup-page:has(#accountSetupWizard[data-step="4"]) .top-nav .app-title--logo .app-logo{
+  height: 38px;
+  transform: translateY(1px);
+}
+body.account-setup-page:has(#accountSetupWizard[data-step="4"]) .top-nav .app-title--logo > a{
+  padding: 2px 10px 2px 5px;
 }
 /* Onboarding: hide competing footer + repeated trust strip — wizard is the focal point */
 body.account-setup-page .onboarding-footer,
@@ -10339,11 +10369,11 @@ body[data-bw-view="settings"] .sidebar .card.sidebar-section[data-sidebar-key="m
 }
 body[data-bw-view="settings"] #settingsViewPanel{
   padding-top: 4px;
-  max-width: 1080px;
+  max-width: min(1180px, 100%);
   width: 100%;
 }
 body[data-bw-view="settings"] .settings-content--hub.card{
-  padding: 20px clamp(16px, 3.5vw, 36px) 30px;
+  padding: 16px clamp(14px, 2.2vw, 28px) 24px;
   background: linear-gradient(180deg, rgba(245, 247, 250, 0.72) 0%, rgba(238, 242, 247, 0.48) 48%, rgba(248, 250, 252, 0.32) 100%);
   border: 1px solid rgba(148, 163, 184, 0.16);
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.035), 0 8px 24px rgba(15, 23, 42, 0.04);
@@ -10352,6 +10382,70 @@ body[data-bw-view="settings"] .settings-content--hub.card{
 body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .cats-group{
   border-color: rgba(11, 61, 46, 0.11);
   box-shadow: var(--cats-card-shadow);
+}
+body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .categories-manager__shell{
+  max-width: none;
+  width: 100%;
+  padding: 0 0 4px;
+}
+body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .cats-pane__head,
+body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .categories-manager__head{
+  gap: 1px;
+  margin-bottom: 3px;
+}
+body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .cats-pane__helper,
+body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .categories-manager .settings-section-lede.cats-pane__helper{
+  max-width: 36rem;
+  line-height: 1.36;
+}
+body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .categories-manager__note{
+  max-width: 36rem;
+  margin: 0;
+  line-height: 1.32;
+}
+body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .categories-manager__summary{
+  gap: 5px;
+  margin: 0 0 4px;
+}
+body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .categories-stat-card{
+  padding: 3px 9px 3px 8px;
+  gap: 6px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.035);
+}
+body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .categories-stat-card__label{
+  font-size: 9px;
+  font-weight: 680;
+  letter-spacing: 0.05em;
+  color: rgba(71, 85, 105, 0.7);
+}
+body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .categories-stat-card__value{
+  font-size: 13px;
+  font-weight: 720;
+  color: rgba(15, 23, 42, 0.88);
+}
+body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .cats-pane__toolbar{
+  margin-bottom: 5px;
+  gap: 5px;
+}
+body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .cats-pane{
+  --cats-row-pad-y: 5px;
+  --cats-row-pad-x: 9px;
+}
+body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .cats-cat{
+  min-height: 30px;
+}
+body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .cats-group__head{
+  padding: 7px 11px 6px;
+}
+body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .cats-tree{
+  gap: 11px;
+}
+body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .cats-group__add-row{
+  padding: 3px 8px;
+}
+body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .cats-group__add-trigger{
+  padding: 4px 7px;
+  font-size: 11.5px;
 }
 body[data-bw-view="settings"] .settings-section-head{
   margin: 0 0 6px;
@@ -10513,9 +10607,27 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item{
   padding: 5px 8px 5px 13px;
   font-size: 11px;
 }
+body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active{
+  background: color-mix(in srgb, var(--accent) 14%, #fff);
+  color: rgba(11, 61, 46, 0.98);
+  font-weight: 730;
+}
 body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::before{
   top: 4px;
   bottom: 4px;
+  left: 3px;
+  width: 3px;
+  background: color-mix(in srgb, var(--accent) 90%, #0d2818);
+}
+body[data-bw-view="settings"] .settings-nav--rail .settings-nav-item.is-active{
+  font-weight: 740;
+  background: color-mix(in srgb, var(--accent) 16%, #fff);
+  box-shadow: inset 0 0 0 1px rgba(11, 61, 46, 0.12);
+}
+body[data-bw-view="settings"] .settings-nav--rail .settings-nav-item.is-active::before{
+  width: 4px;
+  left: 4px;
+  background: color-mix(in srgb, var(--accent) 88%, #0d2818);
 }
 .tx-edit-top .form-row-h__label label{
   color: rgba(255, 255, 255, 0.92);
@@ -11452,11 +11564,11 @@ textarea::placeholder{
 
 /* Header / IA */
 .cats-pane__head{
-  margin: 0 0 8px;
+  margin: 0 0 5px;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
   border: none;
   background: transparent;
 }
@@ -11468,9 +11580,9 @@ textarea::placeholder{
 .cats-pane__helper{
   margin: 0;
   font-size: 13.5px;
-  line-height: 1.42;
+  line-height: 1.38;
   color: var(--cats-muted);
-  max-width: 44ch;
+  max-width: 36rem;
 }
 .cats-pane__note{
   margin: 0;
@@ -11482,13 +11594,13 @@ textarea::placeholder{
 
 /* Categories manager (Settings + embedded settings shells) */
 .categories-manager__shell{
-  max-width: 760px;
+  max-width: min(920px, 100%);
   margin: 0;
-  padding: 0 8px 6px 4px;
+  padding: 0 2px 6px 0;
 }
 .categories-manager__head{
   margin-top: 0;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
   padding-top: 0;
 }
 .categories-manager__head .settings-section-title,
@@ -11502,7 +11614,7 @@ textarea::placeholder{
   margin-bottom: 2px;
 }
 .categories-manager .settings-section-lede.cats-pane__helper{
-  max-width: 40ch;
+  max-width: 36rem;
 }
 body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .categories-manager__summary{
   margin-bottom: 5px;
@@ -11514,8 +11626,8 @@ body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .c
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
-  margin: 0 0 6px;
+  gap: 5px;
+  margin: 0 0 4px;
 }
 @media (max-width: 720px){
   .categories-manager__summary{
@@ -11527,32 +11639,32 @@ body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .c
   display: inline-flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 10px;
+  gap: 7px;
   min-width: 0;
   flex: 0 1 auto;
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid var(--cats-card-border);
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(11, 61, 46, 0.14);
   border-radius: 999px;
-  padding: 5px 12px 5px 11px;
-  box-shadow: var(--cats-card-shadow);
+  padding: 3px 10px 3px 9px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 .categories-stat-card--wide{
   display: none !important;
 }
 .categories-stat-card__label{
   display: block;
-  font-size: 10px;
-  font-weight: 650;
-  letter-spacing: 0.055em;
+  font-size: 9px;
+  font-weight: 680;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: rgba(71, 85, 105, 0.78);
+  color: rgba(71, 85, 105, 0.72);
   margin: 0;
   white-space: nowrap;
 }
 .categories-stat-card__value{
-  font-size: 16px;
-  font-weight: 700;
-  color: rgba(15, 23, 42, 0.9);
+  font-size: 13px;
+  font-weight: 720;
+  color: rgba(15, 23, 42, 0.88);
   line-height: 1.1;
   font-variant-numeric: tabular-nums;
 }
@@ -12754,7 +12866,7 @@ body.signup-page #signupPlanNote.callout--muted.signup-plan-note--pro{
 /* Login page: stack Email/Password and slightly larger text */
 body.login-page #loginSectionBody .row.two{
   grid-template-columns: 1fr;
-  gap: 9px;
+  gap: 8px;
 }
 body.login-page #email,
 body.login-page #password,
@@ -12813,17 +12925,17 @@ body.login-page:not(.signup-page) #loginSectionBody .row.two > div{
 body.login-page:not(.signup-page) #loginSectionBody #loginBtn,
 body.login-page:not(.signup-page) #loginSectionBody .login-flow .top-nav__logout{
   width: 100%;
-  margin-top: 8px;
+  margin-top: 6px;
   padding: 0 16px;
-  min-height: 46px;
+  min-height: 48px;
   font-size: 1rem;
   font-weight: 800;
   letter-spacing: 0.012em;
-  border-radius: 11px;
+  border-radius: 13px;
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.18) inset,
-    0 5px 16px rgba(11, 61, 46, 0.18),
-    0 1px 3px rgba(0, 0, 0, 0.06);
+    0 1px 0 rgba(255, 255, 255, 0.2) inset,
+    0 6px 20px rgba(11, 61, 46, 0.22),
+    0 2px 5px rgba(0, 0, 0, 0.07);
   transition:
     transform 180ms cubic-bezier(0.22, 1, 0.36, 1),
     box-shadow 180ms ease,
@@ -12880,7 +12992,7 @@ body.login-page:not(.signup-page) .login-page__forgot-link:focus-visible{
 /* Combined reassurance microcopy: shield icon + three concise pieces of
    trust info on a single calm line directly under the Login button. */
 body.login-page:not(.signup-page) .login-page__reassure{
-  margin: 7px 0 0;
+  margin: 5px 0 0;
   padding: 0;
   display: flex;
   align-items: center;
@@ -12916,8 +13028,8 @@ body.login-page:not(.signup-page) .login-page__reassure-dot{
   display: none;
 }
 body.login-page:not(.signup-page) .login-page__signup-prompt{
-  margin-top: 14px;
-  padding-top: 12px;
+  margin-top: 11px;
+  padding-top: 10px;
   border-top: 1px solid rgba(17, 24, 39, 0.04);
   font-size: 0.92rem;
   line-height: 1.45;
@@ -12962,7 +13074,7 @@ body.login-page:not(.signup-page) .login-flow[hidden]{
 /* Polished primary login flow: slightly tighter rhythm so the card
    feels cohesive without losing air. */
 body.login-page:not(.signup-page) .login-flow.login-flow--polished{
-  gap: 8px;
+  gap: 7px;
 }
 body.login-page:not(.signup-page) .login-flow__helper{
   margin: 0 0 2px;
@@ -13171,7 +13283,7 @@ body.login-page:not(.signup-page) .login-page__forgot-btn{
 /* Attach the "Forgot password?" link to the reassurance row when both
    are present (the primary login flow), reducing the vertical gap. */
 body.login-page:not(.signup-page) .login-page__reassure + .login-page__forgot-btn{
-  margin-top: 2px;
+  margin-top: 1px;
 }
 body.login-page:not(.signup-page) .login-page__forgot-btn:hover{
   color: rgba(11, 61, 46, 0.92);
@@ -13195,7 +13307,7 @@ body.login-page:not(.signup-page) .login-page__forgot-btn--quiet{
 body.login-page:not(.signup-page) #loginSection > .auth-section__head{
   justify-content: flex-start;
   gap: 0;
-  padding: 18px 24px 10px;
+  padding: 16px 22px 8px;
   background: transparent;
   border: none;
   border-bottom: 1px solid rgba(17, 24, 39, 0.07);
@@ -13214,46 +13326,60 @@ body.login-page:not(.signup-page) #loginSection > .auth-section__head .auth-sect
   width: 100%;
 }
 body.login-page:not(.signup-page):not(.invite-page) #loginSectionBody.auth-section__body{
-  padding: 16px 24px 20px;
+  padding: 14px 22px 16px;
 }
 body.login-page:not(.signup-page):not(.invite-page) #loginSection .auth-section__head + .auth-section__body{
   border-radius: 0 0 18px 18px;
 }
 
 body.login-page:not(.signup-page):not(.invite-page) .container > .app-footer{
-  margin-top: clamp(6px, 1.2vh, 14px);
+  margin-top: auto;
+  flex-shrink: 0;
 }
 body.login-page:not(.signup-page):not(.invite-page) .app-footer{
-  padding: 6px 0 max(8px, env(safe-area-inset-bottom, 0px));
-  color: rgba(55, 65, 81, 0.5);
-  font-size: 11.75px;
+  padding: 4px 0 max(6px, env(safe-area-inset-bottom, 0px));
+  background: color-mix(in srgb, #f7f6f4 82%, var(--bg));
+  border-top-color: rgba(17, 24, 39, 0.04);
+  color: rgba(100, 116, 139, 0.42);
+  font-size: 11px;
+  opacity: 0.92;
+}
+body.login-page:not(.signup-page):not(.invite-page) .app-footer .app-footer__inner{
+  padding-top: 2px;
+  padding-bottom: 2px;
 }
 body.login-page:not(.signup-page):not(.invite-page) .app-footer .app-footer__logo-img{
-  height: 24px;
+  height: 21px;
+  opacity: 0.72;
 }
 body.login-page:not(.signup-page):not(.invite-page) .app-footer .app-footer__tagline{
-  font-size: 11px;
-  color: rgba(55, 65, 81, 0.42);
+  font-size: 10.25px;
+  color: rgba(100, 116, 139, 0.38);
 }
 body.login-page:not(.signup-page):not(.invite-page) .app-footer .app-footer__copyright{
-  font-size: 10.75px;
-  color: rgba(55, 65, 81, 0.36);
+  font-size: 10px;
+  color: rgba(100, 116, 139, 0.32);
 }
 body.login-page:not(.signup-page):not(.invite-page) .app-footer .app-footer__heading{
-  font-size: 10px;
-  color: rgba(55, 65, 81, 0.36);
-  margin-bottom: 6px;
+  font-size: 9px;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  color: rgba(100, 116, 139, 0.34);
+  margin-bottom: 5px;
 }
 body.login-page:not(.signup-page):not(.invite-page) .app-footer .app-footer__list{
-  gap: 4px;
+  gap: 3px;
 }
 body.login-page:not(.signup-page):not(.invite-page) .app-footer .app-footer__link,
 body.login-page:not(.signup-page):not(.invite-page) .app-footer .app-footer__text{
-  font-size: 11px;
-  color: rgba(55, 65, 81, 0.46);
+  font-size: 10.25px;
+  color: rgba(100, 116, 139, 0.4);
+}
+body.login-page:not(.signup-page):not(.invite-page) .app-footer .app-footer__link:hover{
+  color: rgba(71, 85, 105, 0.52);
 }
 body.login-page:not(.signup-page):not(.invite-page) .app-footer .app-footer__text{
-  color: rgba(55, 65, 81, 0.4);
+  color: rgba(100, 116, 139, 0.34);
 }
 
 /* Signup page: field row — smaller type than login (login-page alone bumps .auth-section) */
@@ -14617,32 +14743,37 @@ body.account-setup-page .account-setup-survey__otherInput{
   padding: 10px 11px;
   font-size: 0.92rem;
 }
-/* Step 4: smallest onboarding step — compact preference picker */
+/* Step 4: completion screen — centered in viewport, grouped title + card */
 body.account-setup-page #accountSetupWizard[data-step="4"]{
-  max-width: min(532px, 92vw);
+  max-width: min(520px, 92vw);
   margin-top: 0;
   margin-bottom: 0;
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__stepHead{
-  margin-bottom: 0.12rem;
+  margin-bottom: 0.08rem;
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__stepLabel{
-  margin-bottom: 0.1rem;
+  margin-bottom: 0.08rem;
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__eyebrow{
-  margin: 0 0 0.1rem;
-  font-size: clamp(0.92rem, 2.2vw, 1.08rem);
-  font-weight: 700;
-  letter-spacing: 0.012em;
-  line-height: 1.22;
-  color: color-mix(in srgb, var(--accent) 88%, #0d2818);
+  margin: 0 auto 0.08rem;
+  max-width: 20ch;
+  font-size: clamp(1.18rem, 2.6vw, 1.42rem);
+  font-weight: 760;
+  letter-spacing: -0.018em;
+  line-height: 1.12;
+  white-space: normal;
+  text-wrap: balance;
+  color: color-mix(in srgb, var(--accent) 92%, #0d2818);
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__subeyebrow{
-  margin: 0 0 0.35rem;
-  font-size: calc(var(--as-wizard-subeyebrow-size) * 0.86);
-  font-weight: 450;
-  line-height: 1.32;
-  color: rgba(71, 85, 105, 0.72);
+  margin: 0 auto 0.14rem;
+  max-width: 26ch;
+  font-size: clamp(0.8125rem, 1.2vw, 0.875rem);
+  font-weight: 500;
+  line-height: 1.28;
+  letter-spacing: 0;
+  color: rgba(51, 65, 85, 0.68);
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__roadmap{
   margin: 0 0 6px;
@@ -14666,13 +14797,16 @@ body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPane
 body.account-setup-page #accountSetupWizardPanel4.account-setup-wizard__panel--active{
   min-height: 0;
   flex: 0 0 auto;
-  padding: 14px var(--as-card-pad-x) 6px;
+  padding: 11px var(--as-card-pad-x) 4px;
+}
+body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__shell.auth-section.card{
+  margin-top: 0;
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey{
   width: 100%;
   max-width: 100%;
   margin-inline: 0;
-  gap: 8px;
+  gap: 6px;
   align-self: stretch;
   text-align: left;
 }
@@ -14693,12 +14827,12 @@ body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey
   color: var(--as-helper-color);
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey__grid{
-  gap: 8px 10px;
+  gap: 6px 8px;
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey__opt{
-  min-height: 44px;
-  padding: 8px 12px;
-  gap: 8px;
+  min-height: 40px;
+  padding: 6px 10px;
+  gap: 7px;
   border-color: rgba(17, 24, 39, 0.12);
   border-radius: 10px;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
@@ -14745,11 +14879,11 @@ body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey
   stroke-width: 1.9;
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey__finish-note{
-  margin: 2px 0 0;
-  font-size: var(--as-helper-size);
-  line-height: var(--as-helper-line);
-  font-weight: 400;
-  color: var(--as-helper-color);
+  margin: 1px 0 0;
+  font-size: 0.75rem;
+  line-height: 1.28;
+  font-weight: 500;
+  color: rgba(100, 116, 139, 0.68);
   text-align: center;
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey__other{
@@ -14759,7 +14893,7 @@ body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard
   width: 100%;
   max-width: none;
   box-sizing: border-box;
-  padding: 10px var(--as-card-pad-x) 12px;
+  padding: 8px var(--as-card-pad-x) 10px;
   margin-top: 0;
   min-height: 0;
   display: flex;
@@ -14833,18 +14967,49 @@ body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard
   justify-content: center;
   flex: 0 0 auto;
   order: 2;
-  min-height: 40px;
-  height: 40px;
-  padding: 0 18px;
+  min-height: 42px;
+  height: 42px;
+  min-width: 9.5rem;
+  padding: 0 22px;
   max-width: none;
-  font-size: 0.875rem;
-  font-weight: 700;
+  font-size: 0.9rem;
+  font-weight: 720;
   line-height: 1.2;
+  letter-spacing: 0.01em;
   white-space: nowrap;
   border-radius: 10px;
   box-shadow:
-    0 1px 2px rgba(11, 61, 46, 0.12),
-    0 4px 12px rgba(11, 61, 46, 0.16);
+    0 1px 2px rgba(11, 61, 46, 0.14),
+    0 6px 16px rgba(11, 61, 46, 0.2);
+}
+body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__shell .account-setup-actions--shell #signupBtn:hover:not(:disabled){
+  box-shadow:
+    0 2px 4px rgba(11, 61, 46, 0.16),
+    0 8px 20px rgba(11, 61, 46, 0.24);
+}
+@media (max-height: 780px){
+  body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__stepHead{
+    margin-bottom: 0.05rem;
+  }
+  body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__eyebrow{
+    font-size: clamp(1.1rem, 2.4vw, 1.32rem);
+    margin-bottom: 0.06rem;
+  }
+  body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__subeyebrow{
+    margin-bottom: 0.1rem;
+    font-size: 0.8rem;
+    line-height: 1.26;
+  }
+  body.account-setup-page #accountSetupWizardPanel4.account-setup-wizard__panel--active{
+    padding-top: 9px;
+  }
+  body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey__opt{
+    min-height: 38px;
+    padding: 5px 9px;
+  }
+  body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey__grid{
+    gap: 5px 7px;
+  }
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] + .account-setup-trust-strip-spacer{
   height: 0;
@@ -14888,8 +15053,13 @@ body.account-setup-page #accountSetupWizard[data-step="4"] ~ .account-setup-trus
     gap: 8px;
   }
   body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__eyebrow{
-    font-size: clamp(0.88rem, 3.8vw, 1.02rem);
-    line-height: 1.2;
+    font-size: clamp(1.05rem, 4.2vw, 1.28rem);
+    line-height: 1.14;
+    max-width: 18ch;
+  }
+  body.account-setup-page .container > .grid:has(#accountSetupWizard[data-step="4"]){
+    justify-content: flex-start;
+    padding-top: 10px;
   }
 }
 body.account-setup-page .account-setup-step3-form{

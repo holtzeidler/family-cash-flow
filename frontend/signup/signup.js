@@ -873,7 +873,7 @@ function getAccountSetupStepCopy(step, ctx) {
     case 4:
       return {
         title: "What matters most to you?",
-        subtitle: "Pick what you want help with first—your forecast is ready when you are.",
+        subtitle: "Your forecast is ready—pick what you want help with first.",
       };
     default:
       return { title: "Let’s build your forecast", subtitle: "Start simple. You can refine everything later." };
