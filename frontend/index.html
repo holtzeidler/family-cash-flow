@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=487" />
+    <link rel="stylesheet" href="./styles.css?v=494" />
   </head>
   <body class="landing-page">
     <div class="container">
@@ -58,7 +58,8 @@
                   <span class="landing-hero-viz__title">Projected balance</span>
                   <span class="landing-hero-viz__sub">Next 7 days</span>
                 </div>
-                <div class="landing-hero-viz__week" role="presentation">
+                <div class="landing-hero-viz__timeline">
+                  <div class="landing-hero-viz__week" role="presentation">
                   <div class="landing-hero-viz__cell"><span class="landing-hero-viz__d">17</span><span class="landing-hero-viz__b">$4,280</span></div>
                   <div class="landing-hero-viz__cell"><span class="landing-hero-viz__d">18</span><span class="landing-hero-viz__b">$3,847</span></div>
                   <div class="landing-hero-viz__cell"><span class="landing-hero-viz__d">19</span><span class="landing-hero-viz__b">$2,156</span></div>
@@ -67,25 +68,49 @@
                   <div class="landing-hero-viz__cell"><span class="landing-hero-viz__d">22</span><span class="landing-hero-viz__b">$2,684</span></div>
                   <div class="landing-hero-viz__cell"><span class="landing-hero-viz__d">23</span><span class="landing-hero-viz__b">$2,291</span></div>
                 </div>
-                <svg class="landing-hero-viz__spark" viewBox="0 0 280 48" preserveAspectRatio="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
-                  <defs>
-                    <linearGradient id="landingHeroSparkFill" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stop-color="rgba(4, 120, 87, 0.12)" />
-                      <stop offset="100%" stop-color="rgba(4, 120, 87, 0)" />
-                    </linearGradient>
-                  </defs>
-                  <path d="M4,12 L44,14 L84,20 L124,24 L164,16 L204,17 L244,18 L276,18 L276,44 L4,44 Z" fill="url(#landingHeroSparkFill)" />
-                  <path
-                    class="landing-hero-viz__sparkLine"
-                    d="M4,12 L44,14 L84,20 L124,24 L164,16 L204,17 L244,18 L276,18"
-                    fill="none"
-                    stroke="rgba(11, 61, 46, 0.92)"
-                    stroke-width="2.75"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                  <line x1="4" y1="20" x2="276" y2="20" stroke="rgba(180, 83, 9, 0.35)" stroke-dasharray="4 4" stroke-width="1" />
-                </svg>
+                  <div class="landing-hero-viz__chartWrap">
+                    <svg class="landing-hero-viz__spark" viewBox="0 0 300 48" preserveAspectRatio="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+                      <defs>
+                        <linearGradient id="landingHeroSparkFill" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stop-color="rgba(4, 120, 87, 0.12)" />
+                          <stop offset="100%" stop-color="rgba(4, 120, 87, 0)" />
+                        </linearGradient>
+                        <linearGradient id="landingHeroSparkFade" x1="0" y1="0" x2="1" y2="0">
+                          <stop offset="0%" stop-color="rgba(11, 61, 46, 0.3)" />
+                          <stop offset="100%" stop-color="rgba(11, 61, 46, 0)" />
+                        </linearGradient>
+                      </defs>
+                      <path d="M4,12 L44,14 L84,20 L124,24 L164,16 L204,17 L244,18 L276,18 L276,44 L4,44 Z" fill="url(#landingHeroSparkFill)" />
+                      <path
+                        class="landing-hero-viz__sparkLine"
+                        d="M4,12 L44,14 L84,20 L124,24 L164,16 L204,17 L244,18 L276,18"
+                        fill="none"
+                        stroke="rgba(11, 61, 46, 0.92)"
+                        stroke-width="2.75"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                      <path
+                        class="landing-hero-viz__sparkFuture"
+                        d="M276,18 L288,17.5 L300,17"
+                        fill="none"
+                        stroke="url(#landingHeroSparkFade)"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-dasharray="3 4"
+                      />
+                      <line x1="4" y1="20" x2="276" y2="20" stroke="rgba(180, 83, 9, 0.35)" stroke-dasharray="4 4" stroke-width="1" />
+                      <line x1="276" y1="20" x2="300" y2="20" stroke="rgba(180, 83, 9, 0.14)" stroke-dasharray="3 5" stroke-width="1" />
+                    </svg>
+                    <div class="landing-hero-viz__future" aria-hidden="true">
+                      <span class="landing-hero-viz__futureMo">Jun</span>
+                      <span class="landing-hero-viz__futureMo">Jul</span>
+                      <span class="landing-hero-viz__futureMo">Aug</span>
+                      <span class="landing-hero-viz__futureMo">Sep</span>
+                    </div>
+                  </div>
+                  <p class="landing-hero-viz__horizon">Forecast continues months ahead</p>
+                </div>
                 <p class="landing-hero-viz__foot">Projected balance updates as your forecast changes.</p>
               </div>
             </div>
@@ -119,7 +144,7 @@
         <section id="features" class="landing-preview landing-section landing-section--tint-safe landing-reveal" aria-label="Product preview">
           <div class="landing-preview__intro">
             <h3 class="landing-preview__title">See what’s safe to move.</h3>
-            <p class="landing-preview__lede">BalanceWhiz looks ahead at income, bills, and your minimum balance before showing what can leave checking.</p>
+            <p class="landing-preview__lede">BalanceWhiz looks ahead at income, bills, and your minimum balance before identifying extra cash you can move with confidence.</p>
           </div>
           <div class="landing-preview__demo">
             <div class="landing-preview__main">
@@ -309,7 +334,8 @@
           </div>
         </section>
 
-        <section id="how" class="landing-how landing-section landing-section--tint-neutral landing-reveal" aria-label="How it works">
+        <div class="landing-conversion-flow landing-reveal" aria-label="How it works and get started">
+        <section id="how" class="landing-how landing-section landing-section--tint-neutral" aria-label="How it works">
           <div class="landing-how__copy">
             <h2 class="landing-how__title">How it works</h2>
             <div class="landing-how__grid" role="list">
@@ -355,9 +381,9 @@
           </div>
         </section>
 
-        <section class="landing-offer landing-offer--calm landing-reveal" aria-label="Start forecasting">
+        <section class="landing-offer landing-offer--calm" aria-label="Start forecasting">
           <div class="landing-offer__panel">
-            <div class="landing-offer__copy">
+            <div class="landing-offer__content">
               <h3 class="landing-offer__heading">Start forecasting</h3>
               <p class="landing-offer__support">14-day free trial. No bank connection required.</p>
               <ul class="landing-offer__bullets" aria-label="Offer details">
@@ -365,6 +391,8 @@
                 <li>Live in minutes</li>
                 <li>Cancel anytime</li>
               </ul>
+            </div>
+            <div class="landing-offer__action">
               <a class="landing-offer__cta" href="https://balancewhiz.com/account-setup/?fresh=1">Start forecasting</a>
               <p class="landing-offer__footnote">Takes just a few minutes to set up.</p>
             </div>

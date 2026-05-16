@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=440" />
+    <link rel="stylesheet" href="./styles.css?v=495" />
   </head>
   <body class="login-page">
     <div class="container">
@@ -40,38 +40,45 @@
             <p class="login-page__brand-sub">See what stays covered after income and bills land.</p>
             <figure class="login-page__brand-chart-wrap">
               <div class="login-page__brand-chart" aria-hidden="true">
-                <svg viewBox="0 0 336 120" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
+                <svg viewBox="0 0 372 120" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
                   <defs>
                     <linearGradient id="loginBrandChartFill" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stop-color="rgba(11, 61, 46, 0.34)" />
-                      <stop offset="55%" stop-color="rgba(11, 61, 46, 0.12)" />
-                      <stop offset="100%" stop-color="rgba(11, 61, 46, 0.04)" />
+                      <stop offset="0%" stop-color="rgba(11, 61, 46, 0.4)" />
+                      <stop offset="55%" stop-color="rgba(11, 61, 46, 0.16)" />
+                      <stop offset="100%" stop-color="rgba(11, 61, 46, 0.05)" />
                     </linearGradient>
                     <linearGradient id="loginBrandChartFade" x1="0" y1="0" x2="1" y2="0">
-                      <stop offset="0%" stop-color="rgba(255,255,255,0.22)" />
-                      <stop offset="18%" stop-color="rgba(255,255,255,0)" />
-                      <stop offset="82%" stop-color="rgba(255,255,255,0)" />
-                      <stop offset="100%" stop-color="rgba(255,255,255,0.18)" />
+                      <stop offset="0%" stop-color="rgba(255,255,255,0.06)" />
+                      <stop offset="14%" stop-color="rgba(255,255,255,0)" />
+                      <stop offset="78%" stop-color="rgba(255,255,255,0)" />
+                      <stop offset="100%" stop-color="rgba(255,255,255,0.1)" />
+                    </linearGradient>
+                    <linearGradient id="loginBrandChartLineFade" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stop-color="rgba(6, 31, 24, 0.55)" />
+                      <stop offset="100%" stop-color="rgba(6, 31, 24, 0)" />
                     </linearGradient>
                   </defs>
-                  <g class="login-page__brand-chart-graph" opacity="0.94">
-                    <rect x="8" y="12" width="304" height="72" rx="10" fill="rgba(4, 120, 87, 0.14)" />
-                    <rect x="8" y="58" width="304" height="26" rx="10" fill="rgba(180, 83, 9, 0.045)" />
-                    <g opacity="0.72" stroke="rgba(11, 61, 46, 0.2)" stroke-width="1">
+                  <g class="login-page__brand-chart-graph">
+                    <rect x="8" y="12" width="304" height="72" rx="10" fill="rgba(4, 120, 87, 0.18)" />
+                    <rect x="8" y="58" width="304" height="26" rx="10" fill="rgba(180, 83, 9, 0.065)" />
+                    <g class="login-page__chart-grid" stroke="rgba(11, 61, 46, 0.28)" stroke-width="1">
                       <line x1="12" y1="36" x2="308" y2="36" />
                       <line x1="12" y1="52" x2="308" y2="52" />
                       <line x1="12" y1="68" x2="308" y2="68" />
                       <line x1="12" y1="84" x2="308" y2="84" />
+                      <line x1="308" y1="36" x2="360" y2="36" stroke-dasharray="3 4" opacity="0.45" />
+                      <line x1="308" y1="52" x2="360" y2="52" stroke-dasharray="3 4" opacity="0.38" />
+                      <line x1="308" y1="68" x2="360" y2="68" stroke-dasharray="3 4" opacity="0.32" />
                     </g>
-                    <line x1="20" y1="20" x2="20" y2="100" stroke="rgba(11, 61, 46, 0.2)" stroke-width="1" />
-                    <g fill="rgba(71, 85, 105, 0.78)" font-size="6.8" font-family="Inter, system-ui, sans-serif" font-weight="600">
+                    <line x1="20" y1="20" x2="20" y2="100" stroke="rgba(11, 61, 46, 0.28)" stroke-width="1" />
+                    <g class="login-page__chart-axis" fill="rgba(51, 65, 85, 0.82)" font-size="7.1" font-family="Inter, system-ui, sans-serif" font-weight="600">
                       <text x="24" y="106">May 17</text>
                       <text x="88" y="106">18</text>
                       <text x="152" y="106">20</text>
                       <text x="216" y="106">21</text>
                       <text x="280" y="106">23</text>
                     </g>
-                    <g fill="rgba(71, 85, 105, 0.56)" font-size="6.5" font-family="Inter, system-ui, sans-serif" font-weight="600" text-anchor="end">
+                    <g class="login-page__chart-axis-y" fill="rgba(51, 65, 85, 0.72)" font-size="6.9" font-family="Inter, system-ui, sans-serif" font-weight="600" text-anchor="end">
                       <text x="18" y="38">$4k</text>
                       <text x="18" y="54">$3k</text>
                       <text x="18" y="70">$2k</text>
@@ -82,15 +89,33 @@
                     />
                     <rect x="8" y="12" width="304" height="72" rx="10" fill="url(#loginBrandChartFade)" />
                     <path
+                      class="login-page__chart-line"
                       d="M12,62 L92,68 L152,82 L216,52 L308,58"
                       fill="none"
-                      stroke="rgba(6, 31, 24, 0.84)"
-                      stroke-width="3.1"
+                      stroke="rgba(6, 31, 24, 0.92)"
+                      stroke-width="3.45"
                       stroke-linecap="round"
                       stroke-linejoin="round"
                     />
+                    <path
+                      class="login-page__chart-line-future"
+                      d="M308,58 L324,57.2 L342,56.8 L360,56.2"
+                      fill="none"
+                      stroke="url(#loginBrandChartLineFade)"
+                      stroke-width="2.6"
+                      stroke-linecap="round"
+                      stroke-dasharray="3 4"
+                    />
+                    <line x1="12" y1="70" x2="308" y2="70" stroke="rgba(180, 83, 9, 0.42)" stroke-dasharray="4 4" stroke-width="1" />
+                    <line x1="308" y1="70" x2="360" y2="70" stroke="rgba(180, 83, 9, 0.16)" stroke-dasharray="3 5" stroke-width="1" />
+                    <g class="login-page__chart-future-mo" fill="rgba(71, 85, 105, 0.42)" font-size="6.6" font-family="Inter, system-ui, sans-serif" font-weight="600">
+                      <text x="316" y="106" opacity="0.55">Jun</text>
+                      <text x="334" y="106" opacity="0.4">Jul</text>
+                      <text x="352" y="106" opacity="0.28">Aug</text>
+                      <text x="368" y="106" opacity="0.18">Sep</text>
+                    </g>
                     <!-- Outflow at low point: subtle marker, label below so it does not sit on the line -->
-                    <circle class="login-page__chart-dot login-page__chart-dot--out" cx="152" cy="82" r="2.8" />
+                    <circle class="login-page__chart-dot login-page__chart-dot--out" cx="152" cy="82" r="3.1" />
                     <text
                       class="login-page__chart-label login-page__chart-label--out"
                       x="152"
@@ -101,7 +126,7 @@
                       Credit card payment
                     </text>
                     <!-- Income as balance recovers: label above the line -->
-                    <circle class="login-page__chart-dot login-page__chart-dot--in" cx="216" cy="52" r="2.8" />
+                    <circle class="login-page__chart-dot login-page__chart-dot--in" cx="216" cy="52" r="3.1" />
                     <text
                       class="login-page__chart-label login-page__chart-label--in"
                       x="216"
@@ -140,9 +165,7 @@
                   <p class="login-page__reassure" role="note" aria-label="What to expect">
                     <span class="login-page__reassure-text">
                       <span class="login-page__reassure-item">No bank connection required</span>
-                      <span class="login-page__reassure-dot" aria-hidden="true">•</span>
                       <span class="login-page__reassure-item login-page__reassure-item--primary">14-day free trial</span>
-                      <span class="login-page__reassure-dot" aria-hidden="true">•</span>
                       <span class="login-page__reassure-item">Cancel anytime</span>
                     </span>
                   </p>

@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=489" />
+    <link rel="stylesheet" href="../styles.css?v=497" />
   </head>
   <body class="login-page signup-page account-setup-page">
     <div class="container">
@@ -79,7 +79,7 @@
                       <div class="form-row-h__field"><input id="email" type="email" autocomplete="email" /></div>
                     </div>
                   </div>
-                  <div style="height: 9px;"></div>
+                  <div class="account-setup-field-spacer" aria-hidden="true"></div>
                   <div class="row">
                     <div class="form-row-h">
                       <div class="form-row-h__label"><label for="password">Password</label></div>
@@ -89,7 +89,7 @@
                       </div>
                     </div>
                   </div>
-                  <div style="height: 9px;"></div>
+                  <div class="account-setup-field-spacer" aria-hidden="true"></div>
                   <div class="row">
                     <div class="form-row-h">
                       <div class="form-row-h__label"><label for="password2">Confirm Password</label></div>
@@ -105,7 +105,10 @@
                   aria-hidden="true"
                   inert
                 >
-                  <p class="meta account-setup-step2-lede">Name the account and enter today&rsquo;s available balance.</p>
+                  <div class="account-setup-step2-groups">
+                    <section class="account-setup-field-group" aria-labelledby="accountSetupGroupAccount">
+                      <h3 class="account-setup-field-group__title" id="accountSetupGroupAccount">Account setup</h3>
+                      <div class="account-setup-field-group__fields">
                   <div class="row">
                     <div class="form-row-h">
                       <div class="form-row-h__label"><label for="accountName">Account name</label></div>
@@ -118,14 +121,14 @@
                           autocomplete="off"
                           title="Click to edit this account name"
                         />
-                        <p class="account-setup-field-hint">You can rename this anytime.</p>
+                        <p class="account-setup-field-hint account-setup-field-hint--micro">Rename anytime in settings.</p>
                       </div>
                     </div>
                   </div>
-                  <div style="height:10px;"></div>
+                  <div class="account-setup-field-spacer" aria-hidden="true"></div>
                   <div class="row">
                     <div class="form-row-h">
-                      <div class="form-row-h__label"><label for="accountStartingBalance">Starting Balance</label></div>
+                      <div class="form-row-h__label"><label for="accountStartingBalance">Starting balance</label></div>
                       <div class="form-row-h__field">
                         <div class="money-input">
                           <span class="money-input__prefix" aria-hidden="true">$</span>
@@ -134,23 +137,25 @@
                       </div>
                     </div>
                   </div>
-                  <div style="height:10px;"></div>
+                  <div class="account-setup-field-spacer" aria-hidden="true"></div>
                   <div class="row">
                     <div class="form-row-h">
                       <div class="form-row-h__label"><label for="accountStartingBalanceDate">Balance as of</label></div>
                       <div class="form-row-h__field">
                         <input id="accountStartingBalanceDate" type="date" />
-                        <p class="account-setup-field-hint">Usually today.</p>
                       </div>
                     </div>
                   </div>
-                  <div style="height:10px;"></div>
-                  <div class="row">
-                    <div class="form-row-h">
-                      <div class="form-row-h__label">
-                        <label for="accountSetupKeepInChecking">What balance helps you feel comfortable?</label>
                       </div>
-                      <div class="form-row-h__field">
+                    </section>
+                    <section class="account-setup-field-group account-setup-field-group--buffer" aria-labelledby="accountSetupGroupBuffer">
+                      <h3 class="account-setup-field-group__title" id="accountSetupGroupBuffer">Safety buffer</h3>
+                      <div class="row">
+                        <div class="form-row-h">
+                          <div class="form-row-h__label">
+                            <label for="accountSetupKeepInChecking">Comfortable minimum balance</label>
+                          </div>
+                          <div class="form-row-h__field">
                         <div class="money-input">
                           <span class="money-input__prefix" aria-hidden="true">$</span>
                           <input
@@ -159,17 +164,17 @@
                             inputmode="decimal"
                             autocomplete="off"
                             value="1000"
-                            placeholder="Example: 2500"
-                            aria-describedby="accountSetupKeepInCheckingHints"
+                            placeholder="Example: 1000"
+                            aria-describedby="accountSetupKeepInCheckingHint"
                           />
                         </div>
-                        <div id="accountSetupKeepInCheckingHints">
-                          <p class="account-setup-field-hint">
-                            Most people keep $500–$3,000 as a safety buffer.
-                          </p>
+                        <p id="accountSetupKeepInCheckingHint" class="account-setup-field-hint account-setup-field-hint--micro">
+                          Typical range: $500–$3,000.
+                        </p>
+                      </div>
                         </div>
                       </div>
-                    </div>
+                    </section>
                   </div>
                 </div>
                 <div
