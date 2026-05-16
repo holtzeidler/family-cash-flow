@@ -7267,6 +7267,14 @@ function refreshOpenCategoriesFloatingMenus() {
   );
 }
 
+function closeAllCategoriesMenus() {
+  document.querySelectorAll("details.cats-cat__menu[open], details.cats-group__menu[open]").forEach((det) => {
+    try {
+      det.open = false;
+    } catch (_) {}
+  });
+}
+
 function bindCategoriesFloatingMenusGlobally() {
   if (_catsMenuFloatingBound) return;
   _catsMenuFloatingBound = true;
@@ -7293,6 +7301,30 @@ function bindCategoriesFloatingMenusGlobally() {
     },
     true
   );
+
+  document.addEventListener(
+    "pointerdown",
+    (e) => {
+      const openMenus = document.querySelectorAll("details.cats-cat__menu[open], details.cats-group__menu[open]");
+      if (!openMenus.length) return;
+      const target = e.target;
+      if (!(target instanceof Node)) return;
+      openMenus.forEach((det) => {
+        if (det.contains(target)) return;
+        try {
+          det.open = false;
+        } catch (_) {}
+      });
+    },
+    true
+  );
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    if (!document.querySelector("details.cats-cat__menu[open], details.cats-group__menu[open]")) return;
+    e.preventDefault();
+    closeAllCategoriesMenus();
+  });
 
   window.addEventListener("resize", refreshOpenCategoriesFloatingMenus);
   window.addEventListener("scroll", refreshOpenCategoriesFloatingMenus, true);
