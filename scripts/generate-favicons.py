@@ -7,12 +7,12 @@ from pathlib import Path
 from PIL import Image, ImageDraw
 
 ROOT = Path(__file__).resolve().parents[1] / "frontend"
-GREEN = (11, 61, 46, 255)
-SAGE = (159, 212, 184, 255)
-SAGE_SOFT = (159, 212, 184, 100)
-WHITE = (255, 255, 255, 255)
+# Bright mint / off-white for tab readability on dark browser chrome
+STROKE = (232, 247, 238, 255)
+NODE = (200, 240, 216, 255)
 BG_DARK = (11, 61, 46, 255)
-PTS = [(0.14, 0.74), (0.36, 0.52), (0.54, 0.58), (0.82, 0.26)]
+# Simplified 3-point trend (fewer bends, bolder at small sizes)
+PTS = [(0.17, 0.76), (0.42, 0.56), (0.8, 0.24)]
 
 
 def to_xy(size: float, pad: float, pt: tuple[float, float]) -> tuple[float, float]:
@@ -22,48 +22,33 @@ def to_xy(size: float, pad: float, pt: tuple[float, float]) -> tuple[float, floa
     return (m + span * x, m + span * y)
 
 
-def draw_trend(
+def draw_favicon_mark(
     size: int,
     *,
-    pad: float = 0.14,
-    stroke=GREEN,
-    accent_outer=SAGE,
-    accent_inner=GREEN,
-    baseline: bool = False,
+    pad: float = 0.1,
+    stroke=STROKE,
+    node=NODE,
     bg=None,
 ) -> Image.Image:
     img = Image.new("RGBA", (size, size), bg or (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
     xy = [to_xy(size, pad, p) for p in PTS]
-    sw = max(2, round(size * 0.09))
-    if baseline:
-        d.line(
-            [to_xy(size, pad, (0.12, 0.78)), to_xy(size, pad, (0.88, 0.78))],
-            fill=SAGE_SOFT,
-            width=max(1, sw // 2),
-        )
+    # Thick stroke scales with canvas — stays legible at 16px
+    sw = max(3, round(size * 0.16))
     d.line(xy, fill=stroke, width=sw, joint="curve")
     ax, ay = xy[-1]
-    r = max(2, round(size * 0.115))
-    d.ellipse([ax - r, ay - r, ax + r, ay + r], fill=accent_outer)
-    ir = max(1, round(r * 0.52))
-    d.ellipse([ax - ir, ay - ir, ax + ir, ay + ir], fill=accent_inner)
+    nr = max(3, round(size * 0.14))
+    d.ellipse([ax - nr, ay - nr, ax + nr, ay + nr], fill=node)
     return img
 
 
 def main() -> None:
     for sz in (16, 32):
-        draw_trend(sz, baseline=(sz >= 32)).save(ROOT / f"favicon-{sz}.png")
-    draw_trend(32, baseline=True).save(ROOT / "favicon.png")
+        draw_favicon_mark(sz).save(ROOT / f"favicon-{sz}.png")
+    draw_favicon_mark(32).save(ROOT / "favicon.png")
 
     touch = Image.new("RGBA", (180, 180), BG_DARK)
-    mark = draw_trend(
-        108,
-        pad=0.16,
-        stroke=(168, 224, 191, 255),
-        accent_outer=(168, 224, 191, 255),
-        accent_inner=WHITE,
-    )
+    mark = draw_favicon_mark(108, pad=0.14)
     touch.paste(mark, (36, 36), mark)
     touch.save(ROOT / "apple-touch-icon.png")
 

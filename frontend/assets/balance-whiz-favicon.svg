@@ -1,11 +1,11 @@
 <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="BalanceWhiz">
+  <!-- Dedicated favicon mark: bold trend + peak node (not the navbar wordmark) -->
   <path
-    d="M5 23.5L12.5 16.5 18.5 18.5 26.5 9"
-    stroke="#0B3D2E"
-    stroke-width="3"
+    d="M6 23 L13 17 L22 9"
+    stroke="#E8F7EE"
+    stroke-width="4.5"
     stroke-linecap="round"
     stroke-linejoin="round"
   />
-  <circle cx="26.5" cy="9" r="3.25" fill="#9FD4B8"/>
-  <circle cx="26.5" cy="9" r="1.75" fill="#0B3D2E"/>
+  <circle cx="22" cy="9" r="4" fill="#C8F0D8"/>
 </svg>
