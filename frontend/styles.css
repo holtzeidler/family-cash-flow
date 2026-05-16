@@ -614,27 +614,21 @@ body.landing-page .landing-hero-viz__cell--watch .landing-hero-viz__b{
 }
 body.landing-page .landing-hero-viz__timeline{
   position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
 }
-body.landing-page .landing-hero-viz__timeline::after{
-  content: "";
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 16%;
-  height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(250, 252, 251, 0.18) 55%,
-    rgba(255, 255, 255, 0.42) 100%
-  );
-  pointer-events: none;
-  z-index: 2;
+body.landing-page .landing-hero-viz__nearBand{
+  width: 82%;
+  max-width: 100%;
+}
+body.landing-page .landing-hero-viz__nearBand .landing-hero-viz__week{
+  width: 100%;
 }
 body.landing-page .landing-hero-viz__chartWrap{
   position: relative;
-  margin-top: 8px;
-  padding-bottom: 2px;
+  margin-top: 6px;
+  width: 100%;
 }
 body.landing-page .landing-hero-viz__timeline .landing-hero-viz__spark{
   margin-top: 0;
@@ -643,89 +637,45 @@ body.landing-page .landing-hero-viz__spark{
   display: block;
   width: 100%;
   height: 54px;
-  margin-top: 8px;
+  margin-top: 0;
   border-radius: 10px;
-  background: linear-gradient(180deg, rgba(4, 120, 87, 0.04) 0%, rgba(4, 120, 87, 0.09) 100%);
+  background: linear-gradient(
+    90deg,
+    rgba(4, 120, 87, 0.05) 0%,
+    rgba(4, 120, 87, 0.04) 78%,
+    rgba(248, 250, 249, 0.35) 100%
+  );
   box-shadow: inset 0 0 0 1px rgba(11, 61, 46, 0.06);
 }
-body.landing-page .landing-hero-viz__futureLane{
+body.landing-page .landing-hero-viz__chartFade{
   position: absolute;
-  left: 72%;
-  right: 4px;
-  bottom: 3px;
-  z-index: 3;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 3px;
+  top: 0;
+  right: 0;
+  width: 30%;
+  height: 100%;
+  border-radius: 0 10px 10px 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.35) 55%,
+    rgba(255, 255, 255, 0.72) 100%
+  );
   pointer-events: none;
 }
-body.landing-page .landing-hero-viz__future{
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 0.42rem;
-  padding: 0 1px;
-}
-body.landing-page .landing-hero-viz__futureStop{
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  min-width: 0;
-  flex: 1 1 0;
-}
-body.landing-page .landing-hero-viz__futureDot{
-  display: block;
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: rgba(11, 61, 46, 0.3);
-  flex-shrink: 0;
-}
-body.landing-page .landing-hero-viz__futureStop:nth-child(2) .landing-hero-viz__futureDot{
-  background: rgba(11, 61, 46, 0.24);
-}
-body.landing-page .landing-hero-viz__futureStop:nth-child(3) .landing-hero-viz__futureDot{
-  background: rgba(71, 85, 105, 0.22);
-}
-body.landing-page .landing-hero-viz__futureStop:nth-child(4) .landing-hero-viz__futureDot{
-  background: rgba(100, 116, 139, 0.18);
-}
-body.landing-page .landing-hero-viz__futureMo{
-  font-size: 0.68rem;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  line-height: 1;
-  white-space: nowrap;
-}
-body.landing-page .landing-hero-viz__futureStop:nth-child(1) .landing-hero-viz__futureMo{
-  color: rgba(71, 85, 105, 0.72);
-}
-body.landing-page .landing-hero-viz__futureStop:nth-child(2) .landing-hero-viz__futureMo{
-  color: rgba(100, 116, 139, 0.66);
-}
-body.landing-page .landing-hero-viz__futureStop:nth-child(3) .landing-hero-viz__futureMo{
-  color: rgba(100, 116, 139, 0.58);
-}
-body.landing-page .landing-hero-viz__futureStop:nth-child(4) .landing-hero-viz__futureMo{
-  color: rgba(148, 163, 184, 0.52);
-}
 body.landing-page .landing-hero-viz__horizon{
-  margin: 0;
-  padding: 0 2px 0 0;
-  font-size: 0.6rem;
-  line-height: 1.25;
+  margin: 5px 0 0;
+  padding: 0 4px;
+  font-size: 0.62rem;
+  line-height: 1.3;
   font-weight: 500;
-  font-style: normal;
-  letter-spacing: 0.02em;
-  color: rgba(100, 116, 139, 0.58);
+  letter-spacing: 0.015em;
+  color: rgba(100, 116, 139, 0.62);
   text-align: right;
 }
 body.landing-page .landing-hero-viz__sparkFuture{
   opacity: 1;
 }
-body.landing-page .landing-hero-viz__sparkMilestone{
+body.landing-page .landing-hero-viz__sparkDot{
   opacity: 1;
 }
 body.landing-page .landing-hero-viz__foot{
@@ -23683,20 +23633,15 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   body.landing-page .landing-hero-viz__timeline .landing-hero-viz__spark{
     margin-top: 0;
   }
-  body.landing-page .landing-hero-viz__futureLane{
-    left: 68%;
-    right: 3px;
-    bottom: 2px;
-    gap: 2px;
-  }
-  body.landing-page .landing-hero-viz__future{
-    gap: 0.32rem;
-  }
-  body.landing-page .landing-hero-viz__futureMo{
-    font-size: 0.62rem;
+  body.landing-page .landing-hero-viz__nearBand{
+    width: 100%;
   }
   body.landing-page .landing-hero-viz__horizon{
-    font-size: 0.56rem;
+    font-size: 0.58rem;
+    text-align: center;
+  }
+  body.landing-page .landing-hero-viz__chartFade{
+    width: 26%;
   }
 
   body.landing-page .landing-preview__demo{

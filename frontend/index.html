@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=507" />
+    <link rel="stylesheet" href="./styles.css?v=508" />
   </head>
   <body class="landing-page">
     <div class="container">
@@ -59,15 +59,17 @@
                   <span class="landing-hero-viz__sub">Next 7 days</span>
                 </div>
                 <div class="landing-hero-viz__timeline">
-                  <div class="landing-hero-viz__week" role="presentation">
-                  <div class="landing-hero-viz__cell"><span class="landing-hero-viz__d">17</span><span class="landing-hero-viz__b">$4,280</span></div>
-                  <div class="landing-hero-viz__cell"><span class="landing-hero-viz__d">18</span><span class="landing-hero-viz__b">$3,847</span></div>
-                  <div class="landing-hero-viz__cell"><span class="landing-hero-viz__d">19</span><span class="landing-hero-viz__b">$2,156</span></div>
-                  <div class="landing-hero-viz__cell landing-hero-viz__cell--watch"><span class="landing-hero-viz__d">20</span><span class="landing-hero-viz__b">$1,020</span></div>
-                  <div class="landing-hero-viz__cell"><span class="landing-hero-viz__d">21</span><span class="landing-hero-viz__b">$3,095</span></div>
-                  <div class="landing-hero-viz__cell"><span class="landing-hero-viz__d">22</span><span class="landing-hero-viz__b">$2,684</span></div>
-                  <div class="landing-hero-viz__cell"><span class="landing-hero-viz__d">23</span><span class="landing-hero-viz__b">$2,291</span></div>
-                </div>
+                  <div class="landing-hero-viz__nearBand">
+                    <div class="landing-hero-viz__week" role="presentation">
+                      <div class="landing-hero-viz__cell"><span class="landing-hero-viz__d">17</span><span class="landing-hero-viz__b">$4,280</span></div>
+                      <div class="landing-hero-viz__cell"><span class="landing-hero-viz__d">18</span><span class="landing-hero-viz__b">$3,847</span></div>
+                      <div class="landing-hero-viz__cell"><span class="landing-hero-viz__d">19</span><span class="landing-hero-viz__b">$2,156</span></div>
+                      <div class="landing-hero-viz__cell landing-hero-viz__cell--watch"><span class="landing-hero-viz__d">20</span><span class="landing-hero-viz__b">$1,020</span></div>
+                      <div class="landing-hero-viz__cell"><span class="landing-hero-viz__d">21</span><span class="landing-hero-viz__b">$3,095</span></div>
+                      <div class="landing-hero-viz__cell"><span class="landing-hero-viz__d">22</span><span class="landing-hero-viz__b">$2,684</span></div>
+                      <div class="landing-hero-viz__cell"><span class="landing-hero-viz__d">23</span><span class="landing-hero-viz__b">$2,291</span></div>
+                    </div>
+                  </div>
                   <div class="landing-hero-viz__chartWrap">
                     <svg class="landing-hero-viz__spark" viewBox="0 0 300 48" preserveAspectRatio="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
                       <defs>
@@ -76,15 +78,20 @@
                           <stop offset="100%" stop-color="rgba(4, 120, 87, 0)" />
                         </linearGradient>
                         <linearGradient id="landingHeroSparkFade" x1="0" y1="0" x2="1" y2="0">
-                          <stop offset="0%" stop-color="rgba(11, 61, 46, 0.58)" />
-                          <stop offset="55%" stop-color="rgba(11, 61, 46, 0.32)" />
-                          <stop offset="100%" stop-color="rgba(11, 61, 46, 0.14)" />
+                          <stop offset="0%" stop-color="rgba(11, 61, 46, 0.48)" />
+                          <stop offset="100%" stop-color="rgba(11, 61, 46, 0)" />
+                        </linearGradient>
+                        <linearGradient id="landingHeroSparkZone" x1="0" y1="0" x2="1" y2="0">
+                          <stop offset="0%" stop-color="rgba(4, 120, 87, 0.07)" />
+                          <stop offset="78%" stop-color="rgba(4, 120, 87, 0.04)" />
+                          <stop offset="100%" stop-color="rgba(4, 120, 87, 0)" />
                         </linearGradient>
                       </defs>
-                      <path d="M4,12 L44,14 L84,20 L124,24 L164,16 L204,17 L244,18 L276,18 L276,44 L4,44 Z" fill="url(#landingHeroSparkFill)" />
+                      <rect x="0" y="0" width="300" height="48" fill="url(#landingHeroSparkZone)" />
+                      <path d="M20,11 L54,13 L88,19 L122,23 L156,15 L190,16 L224,17 L248,17 L248,44 L20,44 Z" fill="url(#landingHeroSparkFill)" />
                       <path
                         class="landing-hero-viz__sparkLine"
-                        d="M4,12 L44,14 L84,20 L124,24 L164,16 L204,17 L244,18 L276,18"
+                        d="M20,11 L54,13 L88,19 L122,23 L156,15 L190,16 L224,17 L248,17"
                         fill="none"
                         stroke="rgba(11, 61, 46, 0.92)"
                         stroke-width="2.75"
@@ -93,30 +100,23 @@
                       />
                       <path
                         class="landing-hero-viz__sparkFuture"
-                        d="M276,18 L286,17.6 L296,17.2 L300,17"
+                        d="M248,17 L272,16.2 L288,15.8 L300,15.5"
                         fill="none"
                         stroke="url(#landingHeroSparkFade)"
-                        stroke-width="2.25"
+                        stroke-width="2"
                         stroke-linecap="round"
                         stroke-linejoin="round"
                       />
-                      <circle class="landing-hero-viz__sparkMilestone" cx="286" cy="17.6" r="2.25" fill="rgba(11, 61, 46, 0.22)" />
-                      <circle class="landing-hero-viz__sparkMilestone" cx="296" cy="17.2" r="2" fill="rgba(11, 61, 46, 0.16)" />
-                      <circle class="landing-hero-viz__sparkMilestone" cx="300" cy="17" r="1.75" fill="rgba(11, 61, 46, 0.12)" />
-                      <line x1="4" y1="20" x2="276" y2="20" stroke="rgba(180, 83, 9, 0.35)" stroke-dasharray="4 4" stroke-width="1" />
-                      <line x1="276" y1="20" x2="300" y2="20" stroke="rgba(180, 83, 9, 0.22)" stroke-dasharray="3 5" stroke-width="1" />
+                      <circle class="landing-hero-viz__sparkDot" cx="276" cy="16.1" r="1.75" fill="rgba(11, 61, 46, 0.2)" />
+                      <circle class="landing-hero-viz__sparkDot" cx="292" cy="15.7" r="1.35" fill="rgba(11, 61, 46, 0.1)" />
+                      <line x1="20" y1="20" x2="248" y2="20" stroke="rgba(180, 83, 9, 0.35)" stroke-dasharray="4 4" stroke-width="1" />
+                      <line x1="248" y1="20" x2="300" y2="20" stroke="rgba(180, 83, 9, 0.16)" stroke-dasharray="3 5" stroke-width="1" opacity="0.85" />
                     </svg>
-                    <div class="landing-hero-viz__futureLane" aria-hidden="true">
-                      <div class="landing-hero-viz__future">
-                        <span class="landing-hero-viz__futureStop"><i class="landing-hero-viz__futureDot"></i><span class="landing-hero-viz__futureMo">Jun</span></span>
-                        <span class="landing-hero-viz__futureStop"><i class="landing-hero-viz__futureDot"></i><span class="landing-hero-viz__futureMo">Jul</span></span>
-                        <span class="landing-hero-viz__futureStop"><i class="landing-hero-viz__futureDot"></i><span class="landing-hero-viz__futureMo">Aug</span></span>
-                        <span class="landing-hero-viz__futureStop"><i class="landing-hero-viz__futureDot"></i><span class="landing-hero-viz__futureMo">Sep</span></span>
-                      </div>
-                      <p class="landing-hero-viz__horizon">Forecast extends months ahead</p>
-                    </div>
+                    <div class="landing-hero-viz__chartFade" aria-hidden="true"></div>
                   </div>
+                  <p class="landing-hero-viz__horizon">See projected balances months ahead</p>
                 </div>
+
                 <p class="landing-hero-viz__foot">Projected balance updates as your forecast changes.</p>
               </div>
             </div>
