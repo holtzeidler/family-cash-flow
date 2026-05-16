@@ -11,7 +11,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=533" />
+    <link rel="stylesheet" href="../styles.css?v=540" />
   </head>
   <body class="login-page signup-page account-setup-page">
     <div class="container">
@@ -359,10 +359,26 @@
                     <button type="button" class="cat-color-row__clear secondary" id="asTxColorClear">Clear</button>
                     <input type="hidden" id="asTxBgColor" value="" />
                   </div>
-                  <div class="form-row-h account-setup-tx-notes-row">
-                    <div class="form-row-h__label"><label for="asTxNotes">Notes</label></div>
-                    <div class="form-row-h__field">
-                      <input id="asTxNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
+                  <div class="tx-add-advanced account-setup-tx-advanced">
+                    <button
+                      type="button"
+                      id="asTxAdvancedToggle"
+                      class="tx-add-advanced__expander"
+                      aria-expanded="false"
+                      aria-controls="asTxAdvancedPanel"
+                    >
+                      <span class="tx-add-advanced__expander-chev" aria-hidden="true">
+                        <svg viewBox="0 0 12 12" width="9" height="9" focusable="false"><path d="M3.5 2.5 L8 6 L3.5 9.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                      </span>
+                      <span class="tx-add-advanced__expander-label">Advanced options</span>
+                    </button>
+                    <div id="asTxAdvancedPanel" class="account-setup-tx-advanced__panel" hidden>
+                      <div class="form-row-h account-setup-tx-notes-row">
+                        <div class="form-row-h__label"><label for="asTxNotes">Notes <span class="tx-add-optional-mark">optional</span></label></div>
+                        <div class="form-row-h__field">
+                          <input id="asTxNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
+                        </div>
+                      </div>
                     </div>
                   </div>
                   </div>
@@ -522,10 +538,26 @@
                       <button type="button" class="cat-color-row__clear secondary" id="asExpTxColorClear">Clear</button>
                       <input type="hidden" id="asExpTxBgColor" value="" />
                     </div>
-                    <div class="form-row-h account-setup-tx-notes-row">
-                      <div class="form-row-h__label"><label for="asExpTxNotes">Notes</label></div>
-                      <div class="form-row-h__field">
-                        <input id="asExpTxNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
+                    <div class="tx-add-advanced account-setup-tx-advanced">
+                      <button
+                        type="button"
+                        id="asExpAdvancedToggle"
+                        class="tx-add-advanced__expander"
+                        aria-expanded="false"
+                        aria-controls="asExpAdvancedPanel"
+                      >
+                        <span class="tx-add-advanced__expander-chev" aria-hidden="true">
+                          <svg viewBox="0 0 12 12" width="9" height="9" focusable="false"><path d="M3.5 2.5 L8 6 L3.5 9.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        </span>
+                        <span class="tx-add-advanced__expander-label">Advanced options</span>
+                      </button>
+                      <div id="asExpAdvancedPanel" class="account-setup-tx-advanced__panel" hidden>
+                        <div class="form-row-h account-setup-tx-notes-row">
+                          <div class="form-row-h__label"><label for="asExpTxNotes">Notes <span class="tx-add-optional-mark">optional</span></label></div>
+                          <div class="form-row-h__field">
+                            <input id="asExpTxNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
+                          </div>
+                        </div>
                       </div>
                     </div>
                     </div>
@@ -640,12 +672,12 @@
               </button>
               </div>
               <div class="account-setup-actions__forward">
-                <button type="button" id="signupBtn" class="top-nav__logout" onclick="window.__bwSignup && window.__bwSignup()">
-                  Next
-                </button>
                 <p id="accountSetupContinueGateHint" class="account-setup-continue-gateHint" hidden>
                   Add at least one item to continue.
                 </p>
+                <button type="button" id="signupBtn" class="top-nav__logout" onclick="window.__bwSignup && window.__bwSignup()">
+                  Continue
+                </button>
               </div>
             </div>
           </div>
@@ -711,6 +743,6 @@
       </div>
     </div>
 
-    <script src="../signup/signup.js?v=100"></script>
+    <script src="../signup/signup.js?v=101"></script>
   </body>
 </html>

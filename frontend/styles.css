@@ -250,33 +250,51 @@ body.account-setup-page .container > .grid{
   padding: clamp(4px, 0.8vh, 10px) 0 14px;
 }
 body.account-setup-page .container > .grid:has(#accountSetupWizard[data-step="4"]){
-  width: var(--as-wizard-column);
-  max-width: 520px;
-  padding: 0 0 clamp(10px, 2vh, 16px);
+  width: min(580px, 92vw);
+  max-width: 580px;
+  padding: clamp(10px, 2.5vh, 22px) 0 clamp(28px, 5vh, 48px);
   margin-top: 0;
   margin-bottom: 0;
   flex: 1 1 auto;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: stretch;
+}
+body.account-setup-page:has(#accountSetupWizard[data-step="4"]){
+  background:
+    radial-gradient(ellipse 88% 52% at 50% 22%, rgba(255, 255, 255, 0.55) 0%, transparent 58%),
+    radial-gradient(120% 70% at 50% -8%, rgba(11, 61, 46, 0.06), transparent 58%),
+    linear-gradient(180deg, #e8e9e5 0%, #e6e7e7 48%, #e2e4e8 100%);
 }
 body.account-setup-page:has(#accountSetupWizard[data-step="4"]) .container{
   min-height: 100dvh;
   min-height: 100svh;
+  justify-content: flex-start;
+  padding-top: clamp(6px, 1.2vh, 14px);
 }
 body.account-setup-page:has(#accountSetupWizard[data-step="4"]) .account-setup-wizard{
-  margin-top: 0;
+  margin-top: clamp(4px, 1vh, 12px);
   margin-bottom: 0;
   flex-shrink: 0;
+  max-width: 580px;
 }
 body.account-setup-page .container > .grid:has(#accountSetupWizardPanel2[data-step3-phase="intro"].account-setup-wizard__panel--active){
-  width: min(520px, 90vw);
-  max-width: 520px;
+  width: min(400px, 92vw);
+  max-width: 400px;
 }
 body.account-setup-page:has(#accountSetupWizardPanel2[data-step3-phase="intro"].account-setup-wizard__panel--active) .account-setup-wizard{
-  max-width: 520px;
+  max-width: 400px;
+}
+body.account-setup-page:has(#accountSetupWizardPanel2[data-step3-phase="intro"].account-setup-wizard__panel--active) .account-setup-wizard__eyebrow{
+  font-size: clamp(1.22rem, 2.2vw, 1.46rem);
+  margin-bottom: 0.08rem;
+}
+body.account-setup-page:has(#accountSetupWizardPanel2[data-step3-phase="intro"].account-setup-wizard__panel--active) .account-setup-wizard__subeyebrow{
+  margin-bottom: clamp(0.12rem, 0.35vw, 0.2rem);
+  font-size: clamp(0.84rem, 1.2vw, 0.9rem);
+  max-width: 26ch;
 }
 body.account-setup-page .container > .grid:has(#accountSetupWizardPanel2[data-step3-phase="form"].account-setup-wizard__panel--active),
 body.account-setup-page:has(#accountSetupWizardPanel3[data-expense-phase="form"]) .container > .grid:has(#accountSetupWizard){
@@ -290,6 +308,17 @@ body.account-setup-page:has(#accountSetupWizardPanel3[data-expense-phase="form"]
 body.account-setup-page:has(#accountSetupWizardPanel2[data-step3-phase="form"]),
 body.account-setup-page:has(#accountSetupWizardPanel3[data-expense-phase="form"]){
   --as-card-pad-x: 28px;
+}
+/* Transaction form: headline breathing room; card biased slightly above center */
+body.account-setup-page .container > .grid:has(#accountSetupWizardPanel2[data-step3-phase="form"].account-setup-wizard__panel--active),
+body.account-setup-page:has(#accountSetupWizardPanel3[data-expense-phase="form"]) .container > .grid:has(#accountSetupWizard){
+  margin-top: clamp(10px, 2vh, 20px);
+  padding-top: 0;
+  padding-bottom: clamp(56px, 10vh, 88px);
+}
+body.account-setup-page:has(#accountSetupWizardPanel2[data-step3-phase="form"]) .account-setup-wizard,
+body.account-setup-page:has(#accountSetupWizardPanel3[data-expense-phase="form"]) .account-setup-wizard{
+  margin-top: clamp(4px, 0.8vh, 10px);
 }
 body.account-setup-page input[type="number"]::-webkit-outer-spin-button,
 body.account-setup-page input[type="number"]::-webkit-inner-spin-button{
@@ -8548,173 +8577,230 @@ body[data-bw-view="calendar"] .app-layout{
   gap: 14px;
 }
 body[data-bw-view="calendar"] .sidebar{
-  gap: 15px;
+  gap: 12px;
   padding-right: 0;
   width: 100%;
   min-width: 0;
-}
-body[data-bw-view="calendar"] .sidebar{
-  gap: 10px;
-  background: #E1DFDA;
+  background: #f3f4f6;
   border-radius: 0;
-  padding: 2px 8px 6px 2px;
-  box-shadow: inset -1px 0 0 rgba(17, 24, 39, 0.05);
+  padding: 4px 8px 10px 4px;
+  box-shadow: none;
 }
 body[data-bw-view="calendar"] .sidebar-sticky-head{
-  padding-bottom: 7px;
+  gap: 12px;
+  padding-top: 8px;
+  padding-bottom: 0;
   margin-bottom: 0;
-  border-bottom: 1px solid rgba(17, 24, 39, 0.06);
+  border-bottom: none;
+  background: transparent;
 }
-body[data-bw-view="calendar"] .sidebar .card,
-body[data-bw-view="calendar"] .sidebar-balance-threshold-alerts{
+body[data-bw-view="calendar"] .sidebar-balance-threshold-alerts,
+body[data-bw-view="transactions"] .sidebar-balance-threshold-alerts{
+  margin-bottom: 0;
+  gap: 6px;
   border: none;
-  background: rgba(255, 255, 255, 0.38);
+  background: transparent;
   border-radius: 0;
   box-shadow: none;
-  padding: 5px 7px;
+  padding: 0;
+}
+body[data-bw-view="calendar"] .sidebar .card,
+body[data-bw-view="transactions"] .sidebar .card{
+  border: none;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 0 0 1px rgba(15, 23, 42, 0.03);
+  padding: 10px 11px;
 }
 body[data-bw-view="calendar"] .sidebar .card + .card,
 body[data-bw-view="calendar"] .sidebar-balance-threshold-alerts + .card,
-body[data-bw-view="calendar"] .card + .sidebar-balance-threshold-alerts{
-  border-top: 1px solid rgba(17, 24, 39, 0.055);
+body[data-bw-view="calendar"] .card + .sidebar-balance-threshold-alerts,
+body[data-bw-view="transactions"] .sidebar .card + .card,
+body[data-bw-view="transactions"] .sidebar-balance-threshold-alerts + .card,
+body[data-bw-view="transactions"] .card + .sidebar-balance-threshold-alerts{
+  border-top: none;
   margin-top: 0;
-  padding-top: 7px;
+  padding-top: 10px;
+}
+body[data-bw-view="calendar"] #sidebarPendingTxCard,
+body[data-bw-view="transactions"] #sidebarPendingTxCard{
+  margin-top: 0;
 }
 body[data-bw-view="calendar"] #sidebarPendingTxCard:not(.sidebar-pending--empty):hover,
-body[data-bw-view="calendar"] .sidebar .card[data-sidebar-key="month"]:hover{
-  background: rgba(255, 255, 255, 0.88);
+body[data-bw-view="calendar"] .sidebar .card[data-sidebar-key="month"]:hover,
+body[data-bw-view="transactions"] #sidebarPendingTxCard:not(.sidebar-pending--empty):hover,
+body[data-bw-view="transactions"] .sidebar .card[data-sidebar-key="month"]:hover{
+  background: #fff;
+  box-shadow:
+    0 2px 8px rgba(15, 23, 42, 0.06),
+    0 0 0 1px rgba(15, 23, 42, 0.04);
 }
-body[data-bw-view="calendar"] #sidebarPendingTxCard.sidebar-pending--empty{
-  padding: 8px 10px;
+body[data-bw-view="calendar"] #sidebarPendingTxCard.sidebar-pending--empty,
+body[data-bw-view="transactions"] #sidebarPendingTxCard.sidebar-pending--empty{
+  padding: 10px 11px;
 }
 body[data-bw-view="calendar"] #sidebarPendingTxCard .sidebar-section-head,
-body[data-bw-view="calendar"] .sidebar-section:not(.sidebar-section--collapsed) .sidebar-section-head{
-  margin-bottom: 4px;
+body[data-bw-view="calendar"] .sidebar-section:not(.sidebar-section--collapsed) .sidebar-section-head,
+body[data-bw-view="transactions"] #sidebarPendingTxCard .sidebar-section-head,
+body[data-bw-view="transactions"] .sidebar-section:not(.sidebar-section--collapsed) .sidebar-section-head{
+  margin-bottom: 6px;
 }
 body[data-bw-view="calendar"] #sidebarPendingTitle,
-body[data-bw-view="calendar"] .sidebar-section-head h2{
-  font-size: 12px;
+body[data-bw-view="calendar"] .sidebar-section-head h2,
+body[data-bw-view="transactions"] #sidebarPendingTitle,
+body[data-bw-view="transactions"] .sidebar-section-head h2{
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.01em;
-  color: rgba(30, 41, 59, 0.84);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(71, 85, 105, 0.68);
 }
-body[data-bw-view="calendar"] .sidebar-collapse-btn{
-  width: 28px;
-  height: 28px;
+body[data-bw-view="calendar"] .cash-outlook-title,
+body[data-bw-view="transactions"] .cash-outlook-title{
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(71, 85, 105, 0.68);
+  margin-top: 0;
+}
+body[data-bw-view="calendar"] .sidebar-collapse-btn,
+body[data-bw-view="transactions"] .sidebar-collapse-btn{
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  border: 1px solid rgba(17, 24, 39, 0.06);
+  background: rgba(255, 255, 255, 0.7);
+  color: rgba(71, 85, 105, 0.65);
+}
+body[data-bw-view="calendar"] .pending-attn-item,
+body[data-bw-view="transactions"] .pending-attn-item{
+  padding: 7px 8px 7px 9px;
+  gap: 8px;
   border-radius: 8px;
-  border: 1px solid rgba(17, 24, 39, 0.07);
-}
-body[data-bw-view="calendar"] .sidebar-balance-threshold-alerts{
-  margin-bottom: 0;
-  gap: 4px;
-}
-body[data-bw-view="calendar"] .pending-attn-item{
-  padding: 4px 7px 4px 8px;
-  gap: 6px;
-  border-radius: 8px;
-  border-color: rgba(17, 24, 39, 0.055);
-  background: rgba(255, 255, 255, 0.52);
+  border: 1px solid rgba(17, 24, 39, 0.06);
+  background: #fff;
   box-shadow: none;
   cursor: pointer;
 }
-body[data-bw-view="calendar"] .pending-attn-name{
-  font-size: 12.15px;
-  font-weight: 660;
-  color: rgba(15, 23, 42, 0.9);
+body[data-bw-view="calendar"] .pending-attn-name,
+body[data-bw-view="transactions"] .pending-attn-name{
+  font-size: 12px;
+  font-weight: 650;
+  color: rgba(15, 23, 42, 0.92);
 }
-body[data-bw-view="calendar"] .pending-attn-meta{
-  font-size: 10.2px;
-  letter-spacing: -0.005em;
-  color: rgba(100, 116, 139, 0.55);
+body[data-bw-view="calendar"] .pending-attn-meta,
+body[data-bw-view="transactions"] .pending-attn-meta{
+  font-size: 10.5px;
+  letter-spacing: 0;
+  color: rgba(100, 116, 139, 0.62);
 }
-body[data-bw-view="calendar"] .pending-attn-item:hover{
-  background: rgba(255, 255, 255, 0.98);
-  border-color: rgba(11, 61, 46, 0.14);
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.07);
+body[data-bw-view="calendar"] .pending-attn-indicator,
+body[data-bw-view="transactions"] .pending-attn-indicator{
+  color: rgba(148, 163, 184, 0.55);
 }
-body[data-bw-view="calendar"] .pending-attn-item:hover .pending-attn-indicator{
-  color: rgba(51, 65, 85, 0.76);
+body[data-bw-view="calendar"] .pending-attn-item:hover,
+body[data-bw-view="transactions"] .pending-attn-item:hover{
+  background: #fff;
+  border-color: rgba(11, 61, 46, 0.12);
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.06);
+  transform: translateY(-1px);
 }
-body[data-bw-view="calendar"] .pending-attn-item.is-critical{
+body[data-bw-view="calendar"] .pending-attn-item:hover .pending-attn-indicator,
+body[data-bw-view="transactions"] .pending-attn-item:hover .pending-attn-indicator{
+  color: rgba(71, 85, 105, 0.82);
+}
+body[data-bw-view="calendar"] .pending-attn-item.is-critical,
+body[data-bw-view="transactions"] .pending-attn-item.is-critical{
   border-color: rgba(167, 55, 68, 0.1);
-  background: rgba(254, 242, 242, 0.35);
+  background: #fff;
 }
-body[data-bw-view="calendar"] .pending-attn-item.is-soon{
-  border-color: rgba(180, 83, 9, 0.08);
-  background: rgba(255, 251, 235, 0.38);
+body[data-bw-view="calendar"] .pending-attn-item.is-soon,
+body[data-bw-view="transactions"] .pending-attn-item.is-soon{
+  border-color: rgba(180, 83, 9, 0.1);
+  background: #fff;
 }
-body[data-bw-view="calendar"] .pending-attn-item::before{
+body[data-bw-view="calendar"] .pending-attn-item::before,
+body[data-bw-view="transactions"] .pending-attn-item::before{
   display: none;
 }
-body[data-bw-view="calendar"] .cash-outlook-icon{
+body[data-bw-view="calendar"] .cash-outlook-icon,
+body[data-bw-view="transactions"] .cash-outlook-icon{
   width: 15px;
   height: 15px;
 }
-body[data-bw-view="calendar"] .cash-outlook-icon svg{
+body[data-bw-view="calendar"] .cash-outlook-icon svg,
+body[data-bw-view="transactions"] .cash-outlook-icon svg{
   width: 15px;
   height: 15px;
   stroke-width: 2.1;
 }
-body[data-bw-view="calendar"] .cash-outlook-title{
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-  margin-top: 0;
-  color: rgba(30, 41, 59, 0.84);
-}
-body[data-bw-view="calendar"] .cash-outlook-hero{
+body[data-bw-view="calendar"] .cash-outlook-hero,
+body[data-bw-view="transactions"] .cash-outlook-hero{
   margin: 2px 0 3px;
   font-size: 11.1px;
   line-height: 1.26;
   font-weight: 600;
-  color: rgba(68, 48, 18, 0.88);
+  color: rgba(51, 65, 85, 0.82);
 }
-body[data-bw-view="calendar"] .cash-outlook-kv{
+body[data-bw-view="calendar"] .cash-outlook-kv,
+body[data-bw-view="transactions"] .cash-outlook-kv{
   font-size: 10.35px;
   line-height: 1.22;
   gap: 8px;
 }
-body[data-bw-view="calendar"] .cash-outlook-k{
+body[data-bw-view="calendar"] .cash-outlook-k,
+body[data-bw-view="transactions"] .cash-outlook-k{
   color: rgba(71, 85, 105, 0.74);
   font-weight: 500;
 }
-body[data-bw-view="calendar"] .cash-outlook-v{
+body[data-bw-view="calendar"] .cash-outlook-v,
+body[data-bw-view="transactions"] .cash-outlook-v{
   font-weight: 660;
   font-size: 12.25px;
   color: rgba(15, 23, 42, 0.9);
 }
-body[data-bw-view="calendar"] .cash-outlook-secondary{
+body[data-bw-view="calendar"] .cash-outlook-secondary,
+body[data-bw-view="transactions"] .cash-outlook-secondary{
   margin-top: 3px;
   font-size: 10.25px;
   line-height: 1.3;
   font-weight: 500;
   color: rgba(71, 85, 105, 0.66);
 }
-body[data-bw-view="calendar"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger{
+body[data-bw-view="calendar"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger,
+body[data-bw-view="transactions"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger{
   border-radius: 9px;
-  border: 1px solid rgba(180, 83, 9, 0.16);
+  border: 1px solid rgba(180, 140, 70, 0.14);
   background: linear-gradient(
     180deg,
-    rgba(255, 251, 235, 0.82) 0%,
-    rgba(255, 247, 224, 0.58) 100%
+    #fdfbf8 0%,
+    #f8f6f2 100%
   );
-  padding: 6px 8px 7px;
+  padding: 8px 10px;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.72),
-    0 1px 3px rgba(120, 53, 15, 0.05);
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 1px 2px rgba(15, 23, 42, 0.04);
 }
-body[data-bw-view="calendar"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger .cash-outlook-icon--warn{
-  color: #92400e;
+body[data-bw-view="calendar"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger .cash-outlook-icon--warn,
+body[data-bw-view="transactions"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger .cash-outlook-icon--warn{
+  color: #b8860b;
 }
-body[data-bw-view="calendar"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger .cash-outlook-icon svg{
-  stroke-width: 2.35;
+body[data-bw-view="calendar"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger .cash-outlook-icon svg,
+body[data-bw-view="transactions"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger .cash-outlook-icon svg{
+  stroke-width: 2.15;
 }
 body[data-bw-view="calendar"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger strong,
-body[data-bw-view="calendar"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger .cash-outlook-hero{
-  font-weight: 700;
-  color: rgba(92, 48, 9, 0.94);
+body[data-bw-view="calendar"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger .cash-outlook-hero,
+body[data-bw-view="transactions"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger strong,
+body[data-bw-view="transactions"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger .cash-outlook-hero{
+  font-weight: 650;
+  color: rgba(55, 48, 42, 0.88);
 }
-body[data-bw-view="calendar"] .calendar-low-balance--sidebar strong{
+body[data-bw-view="calendar"] .calendar-low-balance--sidebar strong,
+body[data-bw-view="transactions"] .calendar-low-balance--sidebar strong{
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.006em;
@@ -8723,24 +8809,27 @@ body[data-bw-view="calendar"] .calendar-low-balance--sidebar strong{
 body[data-bw-view="calendar"] #sidebarBodyMonth .totals{
   flex-direction: column;
   flex-wrap: nowrap;
-  gap: 2px;
+  gap: 4px;
+  padding-top: 2px;
 }
-body[data-bw-view="calendar"] #sidebarBalanceThresholdAlerts{
-  margin-bottom: 0;
-}
-body[data-bw-view="calendar"] .calendar-low-balance--sidebar{
+body[data-bw-view="calendar"] .calendar-low-balance--sidebar,
+body[data-bw-view="transactions"] .calendar-low-balance--sidebar{
   padding: 0;
   gap: 0;
 }
-body[data-bw-view="calendar"] .calendar-low-balance--sidebar .cash-outlook-hero{
+body[data-bw-view="calendar"] .calendar-low-balance--sidebar .cash-outlook-hero,
+body[data-bw-view="transactions"] .calendar-low-balance--sidebar .cash-outlook-hero{
   margin: 0 0 2px;
 }
-body[data-bw-view="calendar"] #sidebarPendingTxList.list{
-  gap: 3px;
-  margin-top: 2px;
+body[data-bw-view="calendar"] #sidebarPendingTxList.list,
+body[data-bw-view="transactions"] #sidebarPendingTxList.list{
+  gap: 6px;
+  margin-top: 4px;
 }
-body[data-bw-view="calendar"] .sidebar .card[data-sidebar-key="month"]{
-  transition: border-color 0.14s ease, box-shadow 0.14s ease;
+body[data-bw-view="calendar"] .sidebar .card[data-sidebar-key="month"],
+body[data-bw-view="transactions"] .sidebar .card[data-sidebar-key="month"]{
+  padding: 12px 11px 11px;
+  transition: box-shadow 0.14s ease;
 }
 body[data-bw-view="calendar"] #sidebarBodyMonth .total{
   flex: 0 0 auto;
@@ -8749,7 +8838,7 @@ body[data-bw-view="calendar"] #sidebarBodyMonth .total{
   align-items: baseline;
   justify-content: space-between;
   gap: 10px;
-  padding: 4px 2px;
+  padding: 6px 2px;
   border-radius: 0;
   border: none;
   background: transparent;
@@ -8757,12 +8846,12 @@ body[data-bw-view="calendar"] #sidebarBodyMonth .total{
 }
 body[data-bw-view="calendar"] #sidebarBodyMonth .total--income,
 body[data-bw-view="calendar"] #sidebarBodyMonth .total--expense{
-  border-bottom: 1px solid rgba(17, 24, 39, 0.04);
+  border-bottom: 1px solid rgba(17, 24, 39, 0.05);
 }
 body[data-bw-view="calendar"] #sidebarBodyMonth .total--net{
-  margin-top: 3px;
-  padding-top: 6px;
-  border-top: 1px solid rgba(17, 24, 39, 0.09);
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(17, 24, 39, 0.06);
   border-bottom: none;
 }
 body[data-bw-view="calendar"] #sidebarBodyMonth .total .k{
@@ -8811,15 +8900,18 @@ body[data-bw-view="calendar"] #sidebarBodyMonth > div:nth-child(2){
 }
 body[data-bw-view="calendar"] #sidebarBodyMonth label{
   font-size: 10.5px;
-  font-weight: 520;
-  color: rgba(100, 116, 139, 0.72);
+  font-weight: 500;
+  color: rgba(100, 116, 139, 0.65);
+  margin-bottom: 4px;
 }
 body[data-bw-view="calendar"] #sidebarBodyMonth input[type="month"]{
   font-size: 12px;
-  padding: 2px 6px;
-  min-height: 28px;
-  border-radius: 7px;
-  border: 1px solid rgba(17, 24, 39, 0.09);
+  padding: 4px 8px;
+  min-height: 30px;
+  border-radius: 8px;
+  border: 1px solid rgba(17, 24, 39, 0.07);
+  background: #fafafa;
+  box-shadow: none;
 }
 body[data-bw-view="calendar"] .card.calendar-panel{
   padding-left: 10px;
@@ -9019,43 +9111,69 @@ body[data-bw-view="calendar"] .cash-insights__eyebrow{
   height: 4px;
 }
 
-body[data-bw-view="transactions"] .sidebar .card[data-sidebar-key="month"]{
-  padding: 4px 7px;
-}
 body[data-bw-view="transactions"] #sidebarBodyMonth .sidebar-section-head{
-  margin-bottom: 2px;
+  margin-bottom: 6px;
 }
 body[data-bw-view="transactions"] #sidebarBodyMonth .sidebar-section-body > div:first-child{
   margin-bottom: 0;
 }
 body[data-bw-view="transactions"] .sidebar-month-spacer{
-  height: 4px;
+  height: 5px;
 }
 body[data-bw-view="transactions"] .totals-compact{
-  gap: 1px;
-  padding: 0;
+  gap: 4px;
+  padding: 2px 0 0;
 }
 body[data-bw-view="transactions"] .totals-compact__row{
-  gap: 8px;
-  font-size: 11px;
-  line-height: 1.16;
+  gap: 10px;
+  padding: 6px 2px;
+  line-height: 1.28;
+  border-bottom: 1px solid rgba(17, 24, 39, 0.05);
 }
 body[data-bw-view="transactions"] .totals-compact__row--net{
-  margin-top: 1px;
-  padding-top: 5px;
-  border-top-color: rgba(17, 24, 39, 0.08);
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(17, 24, 39, 0.06);
+  border-bottom: none;
+}
+body[data-bw-view="transactions"] .totals-compact__k{
+  font-size: 9.35px;
+  font-weight: 520;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+  color: rgba(100, 116, 139, 0.66);
+}
+body[data-bw-view="transactions"] .totals-compact__row--net .totals-compact__k{
+  font-weight: 600;
+  letter-spacing: 0.035em;
+  color: rgba(71, 85, 105, 0.72);
 }
 body[data-bw-view="transactions"] .totals-compact__v{
-  min-width: 6ch;
+  min-width: 7.25ch;
   text-align: right;
-  font-size: 12.5px;
+  font-size: 13px;
+  font-weight: 680;
+  letter-spacing: -0.015em;
+}
+body[data-bw-view="transactions"] .totals-compact__row--net .totals-compact__v{
+  font-size: 15.5px;
+  font-weight: 780;
+  letter-spacing: -0.022em;
 }
 body[data-bw-view="transactions"] #sidebarBodyMonth label{
   font-size: 10.5px;
+  font-weight: 500;
+  color: rgba(100, 116, 139, 0.65);
+  margin-bottom: 4px;
 }
 body[data-bw-view="transactions"] #sidebarBodyMonth input[type="month"]{
-  padding: 2px 5px;
   font-size: 12px;
+  padding: 4px 8px;
+  min-height: 30px;
+  border-radius: 8px;
+  border: 1px solid rgba(17, 24, 39, 0.07);
+  background: #fafafa;
+  box-shadow: none;
 }
 body[data-bw-view="transactions"] #sidebarBodyMonth .sidebar-forecast-hints{
   margin-top: 6px;
@@ -14109,7 +14227,7 @@ body.account-setup-page .account-setup-step3-form .tx-add-schedule-toolbar selec
   line-height: 1.3;
 }
 body.account-setup-page .account-setup-step3-form .tx-add-schedule-toolbar__left .tx-add-schedule-field--end-mode .tx-add-recurrence-select{
-  max-width: none;
+  max-width: 9.5rem;
   width: 100%;
 }
 body.account-setup-page .form-row-h__field > .category-search{
@@ -14307,7 +14425,7 @@ body.account-setup-page #accountSetupWizardPanel3 .account-setup-step3-form__bod
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 4px;
+  gap: 2px;
 }
 body.account-setup-page #accountSetupWizardPanel2 .account-setup-step3-form__body .form-row-h__label,
 body.account-setup-page #accountSetupWizardPanel3 .account-setup-step3-form__body .form-row-h__label{
@@ -14533,12 +14651,13 @@ body.account-setup-page .account-setup-tx-choice-row > .top-nav__logout:disabled
   filter: none;
   box-shadow: none;
 }
-body.account-setup-page .account-setup-actions .top-nav__logout:disabled{
+body.account-setup-page .account-setup-actions .top-nav__logout:disabled:not(#signupBtn){
   background: #fff;
   color: rgba(75, 85, 99, 0.55);
   border-color: rgba(75, 85, 99, 0.35);
   cursor: not-allowed;
   filter: none;
+  opacity: 1;
 }
 body.account-setup-page .account-setup-tx-choice-row > .top-nav__logout:focus-visible{
   outline: none;
@@ -14743,47 +14862,51 @@ body.account-setup-page .account-setup-survey__otherInput{
   padding: 10px 11px;
   font-size: 0.92rem;
 }
-/* Step 4: completion screen — centered in viewport, grouped title + card */
+/* Step 4: final onboarding moment — upper-middle anchor, confident scale */
 body.account-setup-page #accountSetupWizard[data-step="4"]{
-  max-width: min(520px, 92vw);
+  max-width: min(580px, 92vw);
   margin-top: 0;
   margin-bottom: 0;
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__stepHead{
-  margin-bottom: 0.08rem;
+  margin-bottom: 0.35rem;
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__stepLabel{
-  margin-bottom: 0.08rem;
+  margin-bottom: 0.28rem;
+  font-size: 0.65rem;
+  letter-spacing: 0.11em;
+  color: rgba(11, 61, 46, 0.68);
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__eyebrow{
-  margin: 0 auto 0.08rem;
-  max-width: 20ch;
-  font-size: clamp(1.18rem, 2.6vw, 1.42rem);
-  font-weight: 760;
-  letter-spacing: -0.018em;
-  line-height: 1.12;
+  margin: 0 auto 0.22rem;
+  max-width: 22ch;
+  font-size: clamp(1.34rem, 3vw, 1.62rem);
+  font-weight: 800;
+  letter-spacing: -0.022em;
+  line-height: 1.14;
   white-space: normal;
   text-wrap: balance;
-  color: color-mix(in srgb, var(--accent) 92%, #0d2818);
+  color: color-mix(in srgb, var(--accent) 94%, #0a2418);
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__subeyebrow{
-  margin: 0 auto 0.14rem;
-  max-width: 26ch;
-  font-size: clamp(0.8125rem, 1.2vw, 0.875rem);
+  margin: 0 auto 0.42rem;
+  max-width: 34ch;
+  font-size: clamp(0.875rem, 1.4vw, 0.9375rem);
   font-weight: 500;
-  line-height: 1.28;
-  letter-spacing: 0;
-  color: rgba(51, 65, 85, 0.68);
+  line-height: 1.38;
+  letter-spacing: 0.002em;
+  color: rgba(51, 65, 85, 0.7);
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__roadmap{
   margin: 0 0 6px;
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__shell.auth-section.card{
   min-height: 0;
+  border-color: rgba(11, 61, 46, 0.2);
   box-shadow:
-    0 2px 10px rgba(0, 0, 0, 0.03),
-    0 8px 24px rgba(11, 61, 46, 0.05),
-    0 1px 0 rgba(255, 255, 255, 0.65) inset;
+    0 2px 6px rgba(15, 23, 42, 0.04),
+    0 12px 36px rgba(11, 61, 46, 0.09),
+    0 1px 0 rgba(255, 255, 255, 0.75) inset;
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__track,
 body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPanel4.account-setup-wizard__panel--active) .account-setup-wizard__track{
@@ -14797,7 +14920,7 @@ body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPane
 body.account-setup-page #accountSetupWizardPanel4.account-setup-wizard__panel--active{
   min-height: 0;
   flex: 0 0 auto;
-  padding: 11px var(--as-card-pad-x) 4px;
+  padding: 16px 32px 10px;
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__shell.auth-section.card{
   margin-top: 0;
@@ -14806,7 +14929,7 @@ body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey
   width: 100%;
   max-width: 100%;
   margin-inline: 0;
-  gap: 6px;
+  gap: 10px;
   align-self: stretch;
   text-align: left;
 }
@@ -14814,33 +14937,34 @@ body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey
   width: 100%;
   max-width: 100%;
   margin-inline: 0;
-  gap: 6px;
+  gap: 10px;
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey__hint{
-  margin: 0 0 2px;
+  margin: 0 0 4px;
   max-width: 100%;
   text-align: left;
-  font-size: var(--as-helper-size);
-  font-weight: 400;
-  line-height: var(--as-helper-line);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.35;
   letter-spacing: 0.01em;
-  color: var(--as-helper-color);
+  color: rgba(100, 116, 139, 0.72);
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey__grid{
-  gap: 6px 8px;
+  gap: 9px 12px;
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey__opt{
-  min-height: 40px;
-  padding: 6px 10px;
-  gap: 7px;
-  border-color: rgba(17, 24, 39, 0.12);
-  border-radius: 10px;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  min-height: 48px;
+  padding: 9px 12px;
+  gap: 9px;
+  border-color: rgba(17, 24, 39, 0.16);
+  border-radius: 11px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey__opt:hover{
-  border-color: rgba(11, 61, 46, 0.22);
+  border-color: rgba(11, 61, 46, 0.28);
   background: #fff;
-  box-shadow: 0 3px 10px rgba(11, 61, 46, 0.08);
+  box-shadow: 0 4px 14px rgba(11, 61, 46, 0.1);
+  transform: translateY(-1px);
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey__opt.is-active{
   border-color: rgba(11, 61, 46, 0.32);
@@ -14863,27 +14987,27 @@ body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey
   color: rgba(11, 61, 46, 0.62);
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey__label{
-  font-size: 0.8125rem;
-  font-weight: 500;
-  line-height: 1.3;
-  color: rgba(30, 41, 59, 0.88);
+  font-size: 0.875rem;
+  font-weight: 550;
+  line-height: 1.32;
+  color: rgba(30, 41, 59, 0.9);
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey__icon{
-  width: 16px;
-  height: 16px;
-  color: rgba(100, 116, 139, 0.62);
+  width: 20px;
+  height: 20px;
+  color: rgba(71, 85, 105, 0.72);
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey__icon svg{
-  width: 16px;
-  height: 16px;
-  stroke-width: 1.9;
+  width: 20px;
+  height: 20px;
+  stroke-width: 2;
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey__finish-note{
-  margin: 1px 0 0;
-  font-size: 0.75rem;
-  line-height: 1.28;
+  margin: 4px 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.35;
   font-weight: 500;
-  color: rgba(100, 116, 139, 0.68);
+  color: rgba(100, 116, 139, 0.7);
   text-align: center;
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey__other{
@@ -14893,17 +15017,17 @@ body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard
   width: 100%;
   max-width: none;
   box-sizing: border-box;
-  padding: 8px var(--as-card-pad-x) 10px;
-  margin-top: 0;
-  min-height: 0;
+  padding: 12px 32px 14px;
+  margin-top: 2px;
+  min-height: 60px;
   display: flex;
   flex-direction: row;
   flex-wrap: nowrap;
   align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-  border-top: 1px solid rgba(11, 61, 46, 0.08);
-  background: transparent;
+  justify-content: space-between;
+  gap: 16px;
+  border-top: 1px solid rgba(11, 61, 46, 0.09);
+  background: linear-gradient(180deg, rgba(248, 250, 249, 0.5) 0%, rgba(252, 253, 252, 0.95) 100%);
   box-shadow: none;
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-actions__cluster{
@@ -14911,17 +15035,18 @@ body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-action
   flex-direction: row;
   flex-wrap: nowrap;
   align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
+  justify-content: flex-start;
+  gap: 12px;
   width: auto;
   min-height: 0;
-  flex: 0 0 auto;
+  flex: 1 1 auto;
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-actions__forward{
   display: flex;
   flex-direction: row;
   align-items: center;
-  margin-left: 0;
+  justify-content: flex-end;
+  margin-left: auto;
   flex: 0 0 auto;
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-actions--shell #accountSetupBackBtn.secondary{
@@ -14932,19 +15057,19 @@ body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-action
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 40px;
-  height: 40px;
-  padding: 0 14px;
+  min-height: 44px;
+  height: 44px;
+  padding: 0 16px;
   appearance: none;
   -webkit-appearance: none;
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   font-weight: 600;
   line-height: 1.2;
-  color: rgba(11, 61, 46, 0.76);
-  background: rgba(255, 255, 255, 0.82);
-  border: 1px solid rgba(11, 61, 46, 0.12);
+  color: rgba(11, 61, 46, 0.82);
+  background: #fff;
+  border: 1px solid rgba(11, 61, 46, 0.18);
   border-radius: 10px;
-  box-shadow: 0 1px 1px rgba(11, 61, 46, 0.04);
+  box-shadow: 0 1px 2px rgba(11, 61, 46, 0.06);
   transition:
     background 0.15s ease,
     border-color 0.15s ease,
@@ -14967,48 +15092,49 @@ body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard
   justify-content: center;
   flex: 0 0 auto;
   order: 2;
-  min-height: 42px;
-  height: 42px;
-  min-width: 9.5rem;
-  padding: 0 22px;
+  min-height: 46px;
+  height: 46px;
+  min-width: 10.75rem;
+  padding: 0 26px;
   max-width: none;
-  font-size: 0.9rem;
-  font-weight: 720;
+  font-size: 0.9375rem;
+  font-weight: 750;
   line-height: 1.2;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.012em;
   white-space: nowrap;
-  border-radius: 10px;
+  border-radius: 11px;
   box-shadow:
-    0 1px 2px rgba(11, 61, 46, 0.14),
-    0 6px 16px rgba(11, 61, 46, 0.2);
+    0 1px 2px rgba(11, 61, 46, 0.16),
+    0 8px 22px rgba(11, 61, 46, 0.22);
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__shell .account-setup-actions--shell #signupBtn:hover:not(:disabled){
   box-shadow:
-    0 2px 4px rgba(11, 61, 46, 0.16),
-    0 8px 20px rgba(11, 61, 46, 0.24);
+    0 2px 5px rgba(11, 61, 46, 0.18),
+    0 10px 26px rgba(11, 61, 46, 0.28);
+  transform: translateY(-1px);
 }
 @media (max-height: 780px){
   body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__stepHead{
-    margin-bottom: 0.05rem;
+    margin-bottom: 0.22rem;
   }
   body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__eyebrow{
-    font-size: clamp(1.1rem, 2.4vw, 1.32rem);
-    margin-bottom: 0.06rem;
+    font-size: clamp(1.22rem, 2.6vw, 1.44rem);
+    margin-bottom: 0.14rem;
   }
   body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__subeyebrow{
-    margin-bottom: 0.1rem;
-    font-size: 0.8rem;
-    line-height: 1.26;
+    margin-bottom: 0.28rem;
+    font-size: 0.84rem;
+    line-height: 1.32;
   }
   body.account-setup-page #accountSetupWizardPanel4.account-setup-wizard__panel--active{
-    padding-top: 9px;
+    padding-top: 12px;
   }
   body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey__opt{
-    min-height: 38px;
-    padding: 5px 9px;
+    min-height: 44px;
+    padding: 7px 10px;
   }
   body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey__grid{
-    gap: 5px 7px;
+    gap: 7px 9px;
   }
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] + .account-setup-trust-strip-spacer{
@@ -15042,24 +15168,31 @@ body.account-setup-page #accountSetupWizard[data-step="4"] ~ .account-setup-trus
   body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey__hint{
     text-align: center;
   }
-  body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__shell .account-setup-actions--shell{
-    padding: 10px 14px 12px;
-    justify-content: flex-end;
-    flex-wrap: nowrap;
-    gap: 8px;
-  }
   body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey__grid{
     grid-template-columns: 1fr;
     gap: 8px;
   }
-  body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__eyebrow{
-    font-size: clamp(1.05rem, 4.2vw, 1.28rem);
-    line-height: 1.14;
-    max-width: 18ch;
-  }
   body.account-setup-page .container > .grid:has(#accountSetupWizard[data-step="4"]){
     justify-content: flex-start;
-    padding-top: 10px;
+    padding-top: 8px;
+    max-width: min(580px, 94vw);
+  }
+  body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__eyebrow{
+    font-size: clamp(1.22rem, 4.5vw, 1.48rem);
+    line-height: 1.16;
+    max-width: 20ch;
+  }
+  body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__subeyebrow{
+    max-width: 32ch;
+  }
+  body.account-setup-page #accountSetupWizardPanel4.account-setup-wizard__panel--active{
+    padding: 14px 22px 8px;
+  }
+  body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__shell .account-setup-actions--shell{
+    padding: 10px 22px 12px;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+    gap: 12px;
   }
 }
 body.account-setup-page .account-setup-step3-form{
@@ -15215,7 +15348,7 @@ body.account-setup-page #accountSetupWizardPanel2[data-step3-phase="intro"].acco
 body.account-setup-page #accountSetupWizardPanel2[data-step3-phase="intro"].account-setup-wizard__panel--active{
   min-height: 0;
   flex: 0 0 auto;
-  padding: 12px 24px 4px;
+  padding: 8px 18px 2px;
 }
 body.account-setup-page .account-setup-step3-intro{
   display: flex;
@@ -15223,7 +15356,7 @@ body.account-setup-page .account-setup-step3-intro{
   align-items: stretch;
   justify-content: flex-start;
   flex: 0 0 auto;
-  gap: 0.5rem;
+  gap: 0.35rem;
   min-height: 0;
   width: 100%;
   max-width: 100%;
@@ -15238,20 +15371,21 @@ body.account-setup-page .account-setup-step3-section--guidance{
 body.account-setup-page .account-setup-step3-section--actions{
   padding: 0;
   border-top: none;
-  margin-top: 0.125rem;
+  margin-top: 0;
   display: flex;
   justify-content: center;
 }
 body.account-setup-page .account-setup-step3-section--actions .account-setup-tx-choice-wrap{
   width: 100%;
-  max-width: 100%;
+  max-width: 17.5rem;
+  margin: 0 auto;
 }
 body.account-setup-page .account-setup-step3-recommend{
-  padding: 5px 8px 6px 9px;
+  padding: 4px 7px 5px 8px;
   border: none;
-  border-left: 2px solid rgba(11, 61, 46, 0.14);
-  border-radius: 0 5px 5px 0;
-  background: rgba(248, 250, 249, 0.88);
+  border-left: 2px solid rgba(11, 61, 46, 0.12);
+  border-radius: 0 4px 4px 0;
+  background: rgba(248, 250, 249, 0.72);
 }
 body.account-setup-page .account-setup-step3-recommend__eyebrow{
   margin: 0 0 3px;
@@ -15310,7 +15444,7 @@ body.account-setup-page .account-setup-step3-intro .account-setup-tx-choice-wrap
   align-items: stretch;
   width: 100%;
   margin: 0 auto;
-  gap: 8px;
+  gap: 6px;
 }
 body.account-setup-page .account-setup-step3-actionBtn{
   width: 100%;
@@ -15324,9 +15458,9 @@ body.account-setup-page .account-setup-step3-actionBtn{
 }
 body.account-setup-page #asTxHubAddIncomeBtn.account-setup-step3-actionBtn,
 body.account-setup-page #asTxHubAddExpenseBtn.account-setup-step3-actionBtn{
-  min-height: 40px;
-  padding: 0 12px;
-  border-radius: 9px;
+  min-height: 34px;
+  padding: 0 10px;
+  border-radius: 8px;
   border-width: 1px;
   border-style: solid;
   box-shadow: none;
@@ -15390,20 +15524,20 @@ body.account-setup-page .account-setup-step3-actionBtn__content{
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 5px;
 }
 body.account-setup-page .account-setup-step3-actionBtn__plus{
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 0.9rem;
-  font-size: 0.95rem;
+  width: 0.8rem;
+  font-size: 0.85rem;
   font-weight: 700;
   line-height: 1;
   color: rgba(11, 61, 46, 0.55);
 }
 body.account-setup-page .account-setup-step3-actionBtn__label{
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   font-weight: 600;
   letter-spacing: 0.01em;
 }
@@ -15435,54 +15569,63 @@ body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPane
   flex-shrink: 0;
   min-height: 0;
   margin-top: 0;
-  padding: 8px 24px 10px;
+  padding: 6px 18px 8px;
   border-top: 1px solid rgba(11, 61, 46, 0.06);
-  align-items: center;
+  align-items: flex-end;
+  column-gap: 12px;
 }
 body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPanel2[data-step3-phase="intro"].account-setup-wizard__panel--active) .account-setup-actions__cluster{
   gap: 8px;
+  align-self: center;
 }
 body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPanel2[data-step3-phase="intro"].account-setup-wizard__panel--active) #accountSetupBackBtn.secondary{
-  min-height: 40px;
-  height: 40px;
-  padding: 0 14px;
-  font-size: 0.875rem;
+  min-height: 36px;
+  height: 36px;
+  padding: 0 12px;
+  font-size: 0.8125rem;
   font-weight: 600;
 }
 body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPanel2[data-step3-phase="intro"].account-setup-wizard__panel--active) .account-setup-actions__forward{
   display: flex;
-  flex-direction: column-reverse;
+  flex-direction: column;
   align-items: flex-end;
-  justify-content: center;
-  gap: 3px;
+  justify-content: flex-end;
+  gap: 4px;
   flex: 0 0 auto;
   margin-left: auto;
+  min-width: 8.5rem;
 }
 body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPanel2[data-step3-phase="intro"].account-setup-wizard__panel--active) .account-setup-actions__forward #signupBtn{
-  min-height: 44px;
-  height: 44px;
-  padding: 0 20px;
-  font-size: 0.9375rem;
+  min-height: 38px;
+  height: 38px;
+  padding: 0 18px;
+  font-size: 0.875rem;
   font-weight: 700;
   box-shadow:
-    0 1px 2px rgba(11, 61, 46, 0.12),
-    0 4px 12px rgba(11, 61, 46, 0.16);
+    0 1px 2px rgba(11, 61, 46, 0.1),
+    0 3px 10px rgba(11, 61, 46, 0.14);
 }
 body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPanel2[data-step3-phase="intro"].account-setup-wizard__panel--active) .account-setup-actions__forward #signupBtn:disabled{
-  box-shadow: none;
+  background: color-mix(in srgb, var(--accent) 12%, #f4f7f5) !important;
+  color: rgba(11, 61, 46, 0.52) !important;
+  border: 1px solid rgba(11, 61, 46, 0.22) !important;
+  opacity: 1 !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
   font-weight: 650;
+  cursor: not-allowed;
+  filter: none;
 }
 body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPanel2[data-step3-phase="intro"].account-setup-wizard__panel--active) .account-setup-continue-gateHint{
   margin: 0;
   padding: 0;
   font-size: 0.6875rem;
-  line-height: 1.28;
+  line-height: 1.25;
   font-weight: 450;
   letter-spacing: 0.01em;
-  color: rgba(100, 116, 139, 0.58);
+  color: rgba(100, 116, 139, 0.62);
   text-align: right;
-  width: auto;
-  max-width: 14rem;
+  width: 100%;
+  max-width: none;
   box-sizing: border-box;
 }
 body.account-setup-page .account-setup-actions__forward{
@@ -15508,15 +15651,14 @@ body.account-setup-page .account-setup-continue-gateHint{
   box-sizing: border-box;
 }
 body.account-setup-page .account-setup-wizard__shell .account-setup-actions--shell #signupBtn:disabled{
-  background: color-mix(in srgb, var(--accent) 14%, #fff);
-  color: rgba(11, 61, 46, 0.55);
-  border: 1px solid rgba(11, 61, 46, 0.2);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.92),
-    0 1px 2px rgba(11, 61, 46, 0.06);
+  background: color-mix(in srgb, var(--accent) 12%, #f4f7f5);
+  color: rgba(11, 61, 46, 0.52);
+  border: 1px solid rgba(11, 61, 46, 0.22);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
   opacity: 1;
   font-weight: 650;
   cursor: not-allowed;
+  filter: none;
 }
 @media (max-width: 560px){
   body.account-setup-page .account-setup-tx-choice-wrap{
@@ -15547,8 +15689,11 @@ body.account-setup-page .account-setup-wizard__shell .account-setup-actions--she
     gap: 0.5rem;
   }
   body.account-setup-page .container > .grid:has(#accountSetupWizardPanel2[data-step3-phase="intro"].account-setup-wizard__panel--active){
-    width: min(520px, 94vw);
+    width: min(400px, 94vw);
     max-width: 94vw;
+  }
+  body.account-setup-page .account-setup-step3-section--actions .account-setup-tx-choice-wrap{
+    max-width: 100%;
   }
 }
 body.account-setup-page .account-setup-card{
@@ -18417,52 +18562,24 @@ body[data-bw-view="transactions"] .main-column{
   align-items: center;
 }
 
-/* Sidebar on the transactions view: flat support panel, not a competing card. */
+/* Transactions sidebar: match Forecast palette — calm support panel */
 body[data-bw-view="transactions"] .sidebar{
-  gap: 8px;
+  gap: 12px;
+  background: #f3f4f6;
+  padding: 4px 8px 10px 4px;
+  box-shadow: none;
 }
-body[data-bw-view="transactions"] #sidebarPendingTxCard{
-  margin-top: 0;
-  padding: 8px 10px;
-  border: 1px solid rgba(17, 24, 39, 0.042);
-  background: rgba(255, 253, 250, 0.94);
-  border-radius: 10px;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.018);
-}
-body[data-bw-view="transactions"] #sidebarPendingTxCard .sidebar-section-head{
-  margin-bottom: 4px;
-}
-body[data-bw-view="transactions"] .sidebar .card[data-sidebar-key="month"]{
-  border: 1px solid rgba(17, 24, 39, 0.042);
-  background: rgba(255, 253, 250, 0.94);
-  border-radius: 10px;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.018);
-  padding: 8px 10px;
-}
-body[data-bw-view="transactions"] .sidebar .card[data-sidebar-key="month"] .sidebar-section-head h2{
-  font-size: 12px;
-  font-weight: 650;
-  letter-spacing: 0.02em;
-  text-transform: none;
-  color: rgba(75, 85, 99, 0.76);
+body[data-bw-view="transactions"] .sidebar-sticky-head{
+  gap: 12px;
+  padding-top: 8px;
+  padding-bottom: 0;
+  border-bottom: none;
+  background: transparent;
 }
 body[data-bw-view="transactions"] #sidebarBodyMonth .sidebar-forecast-hints{
-  margin-top: 5px;
-  padding-top: 5px;
-  border-top-color: rgba(17, 24, 39, 0.05);
-}
-body[data-bw-view="transactions"] .totals-compact{
-  gap: 0;
-  padding: 0;
-}
-body[data-bw-view="transactions"] .totals-compact__row{
-  font-size: 10.5px;
-  line-height: 1.12;
-  padding: 1px 0;
-}
-body[data-bw-view="transactions"] .totals-compact__row--net{
-  padding-top: 4px;
-  margin-top: 0;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(17, 24, 39, 0.05);
 }
 body[data-bw-view="transactions"] .sidebar-fqh__row{
   font-size: 9.35px;
@@ -18470,71 +18587,6 @@ body[data-bw-view="transactions"] .sidebar-fqh__row{
 }
 body[data-bw-view="transactions"] .sidebar-fqh__d{
   font-size: 9px;
-}
-body[data-bw-view="transactions"] .sidebar-balance-threshold-alerts{
-  gap: 2px;
-  margin-bottom: 3px;
-}
-body[data-bw-view="transactions"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar,
-body[data-bw-view="transactions"] #sidebarHighBalanceBanner.calendar-low-balance--sidebar{
-  margin-top: 4px;
-  padding: 6px 8px;
-  background: rgba(255, 255, 255, 0.76);
-  border: 1px solid rgba(17, 24, 39, 0.035);
-  box-shadow: none;
-  border-radius: 10px;
-}
-body[data-bw-view="transactions"] .cash-outlook-title{
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.035em;
-  color: rgba(75, 85, 99, 0.76);
-}
-body[data-bw-view="transactions"] .cash-outlook-icon{
-  width: 14px;
-  height: 14px;
-}
-body[data-bw-view="transactions"] .cash-outlook-icon svg{
-  width: 14px;
-  height: 14px;
-  stroke-width: 2.1;
-}
-body[data-bw-view="transactions"] .calendar-low-balance--sidebar strong{
-  gap: 6px;
-  font-size: clamp(10px, 1.8vw, 13.5px);
-}
-body[data-bw-view="transactions"] .pending-attn-item{
-  padding: 4px 8px 4px 9px;
-  gap: 8px;
-  border-color: rgba(17, 24, 39, 0.035);
-  background: rgba(255, 255, 255, 0.55);
-  border-radius: 7px;
-  transition:
-    background 0.14s ease,
-    border-color 0.14s ease,
-    box-shadow 0.14s ease;
-}
-body[data-bw-view="transactions"] .pending-attn-item:hover,
-body[data-bw-view="transactions"] .pending-attn-item:focus-visible{
-  background: rgba(255, 255, 255, 0.92);
-  border-color: rgba(17, 24, 39, 0.055);
-  box-shadow: none;
-  outline: none;
-}
-body[data-bw-view="transactions"] .pending-attn-name{
-  color: rgba(15, 23, 42, 0.92);
-  font-weight: 650;
-  font-size: 12.25px;
-  line-height: 1.24;
-}
-body[data-bw-view="transactions"] .pending-attn-meta{
-  font-size: 10.25px;
-  font-weight: 450;
-  color: rgba(100, 116, 139, 0.58);
-}
-body[data-bw-view="transactions"] .pending-attn-item:hover,
-body[data-bw-view="transactions"] .pending-attn-item:focus-visible{
-  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.05);
 }
 
 /* Transactions: insight cards use base hierarchy; scoped spacing only. */
@@ -20360,7 +20412,7 @@ body.account-setup-page .tx-add-schedule-toolbar__left{
   gap: 10px 14px;
 }
 body.account-setup-page .tx-add-schedule-toolbar__left .tx-add-schedule-field--end-mode .tx-add-recurrence-select{
-  max-width: 13rem;
+  max-width: 9.5rem;
 }
 body.account-setup-page .tx-add-schedule-toolbar__right{
   display: flex;
@@ -20382,13 +20434,30 @@ body.account-setup-page .tx-add-schedule-toolbar{
 
 /* Divider above "Repeats" (was below the schedule toolbar); keep toolbar flush with no extra rule under it */
 body.account-setup-page .account-setup-step3-form .account-setup-repeat-row-h{
-  border-top: 1px solid rgba(0, 0, 0, 0.1);
-  padding-top: 12px;
+  border-top: none;
+  padding-top: 0;
   margin-top: 0;
 }
 body.account-setup-page .account-setup-step3-form .tx-add-schedule-toolbar{
   border-bottom: none;
-  padding-bottom: 4px;
+  padding-bottom: 2px;
+  padding-top: 0;
+}
+body.account-setup-page .account-setup-tx-advanced{
+  margin-top: 2px;
+}
+body.account-setup-page .account-setup-tx-advanced__panel{
+  margin-top: 2px;
+  padding-top: 2px;
+}
+body.account-setup-page .account-setup-tx-advanced__panel .account-setup-tx-notes-row{
+  margin-top: 0;
+  gap: 2px;
+}
+body.account-setup-page .account-setup-tx-advanced__panel .account-setup-tx-notes-row .form-row-h__field input{
+  min-height: 38px;
+  padding: 6px 10px;
+  font-size: 0.875rem;
 }
 
 /* Account setup wizard: Notes — secondary field */
@@ -20471,7 +20540,8 @@ body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPane
 }
 body.account-setup-page:has(#accountSetupWizardPanel2[data-step3-phase="form"]) .account-setup-wizard__stepHead,
 body.account-setup-page:has(#accountSetupWizardPanel3[data-expense-phase="form"]) .account-setup-wizard__stepHead{
-  margin-bottom: 0.16rem;
+  margin-bottom: 0.18rem;
+  padding-top: 2px;
 }
 body.account-setup-page:has(#accountSetupWizardPanel2[data-step3-phase="form"]) .account-setup-wizard__eyebrow,
 body.account-setup-page:has(#accountSetupWizardPanel3[data-expense-phase="form"]) .account-setup-wizard__eyebrow{
@@ -20499,7 +20569,7 @@ body.account-setup-page .account-setup-step3-form__body > .tx-add-vspace--lg{
   margin: 0;
 }
 body.account-setup-page .account-setup-step3-form__body > .form-row-h{
-  gap: 3px;
+  gap: 2px;
   margin: 0 0 1px;
 }
 body.account-setup-page .account-setup-step3-form .form-row-h__field input:not([type="checkbox"]):not([type="radio"]),
@@ -20566,8 +20636,10 @@ body.account-setup-page .account-setup-step3-form .form-row-h__field .category-s
 body.account-setup-page .account-setup-tx-schedule-block{
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  margin-top: 0;
+  gap: 2px;
+  margin-top: 5px;
+  padding-top: 5px;
+  border-top: 1px solid rgba(17, 24, 39, 0.055);
 }
 body.account-setup-page .account-setup-step3-form .account-setup-repeat-row-h{
   border-top: none;
@@ -20575,7 +20647,10 @@ body.account-setup-page .account-setup-step3-form .account-setup-repeat-row-h{
   margin-top: 0;
 }
 body.account-setup-page .account-setup-step3-form .account-setup-repeat-duo__stack{
-  gap: 3px;
+  gap: 2px;
+}
+body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid{
+  gap: 4px 10px;
 }
 body.account-setup-page .account-setup-step3-form .account-setup-repeat-duo .tx-add-recurrence-select{
   max-width: none;
@@ -20629,14 +20704,14 @@ body.account-setup-page .account-setup-tx-variable-inline .reimbursable-field__h
   display: block;
   flex: none;
   width: 100%;
-  max-width: none;
-  margin: 0;
+  max-width: 22rem;
+  margin: 1px 0 0;
   padding-left: calc(1rem + 6px);
   box-sizing: border-box;
-  font-size: 0.6875rem;
-  line-height: 1.28;
+  font-size: 0.625rem;
+  line-height: 1.22;
   font-weight: 400;
-  color: rgba(100, 116, 139, 0.56);
+  color: rgba(100, 116, 139, 0.58);
   opacity: 1;
 }
 body.account-setup-page .account-setup-step3-form .account-setup-tx-variable-inline .reimbursable-field__label{
@@ -20650,8 +20725,8 @@ body.account-setup-page .account-setup-tx-notes-row{
 }
 body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPanel2[data-step3-phase="form"]) .account-setup-actions--shell,
 body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPanel3[data-expense-phase="form"]) .account-setup-actions--shell{
-  min-height: 52px;
-  padding: 7px var(--as-card-pad-x) 9px;
+  min-height: 48px;
+  padding: 5px var(--as-card-pad-x) 7px;
   --as-tx-form-footer-btn-h: 44px;
   align-items: center;
 }
@@ -20730,12 +20805,12 @@ body.account-setup-page
   height: var(--as-tx-form-footer-btn-h);
   padding: 0 12px;
   border-radius: var(--as-tx-form-footer-radius);
-  font-size: 0.8125rem;
-  font-weight: 500;
+  font-size: 0.875rem;
+  font-weight: 600;
   line-height: 1.2;
-  background: transparent;
-  border: 1px solid rgba(11, 61, 46, 0.08);
-  color: rgba(100, 116, 139, 0.72);
+  background: #fff;
+  border: 1px solid rgba(11, 61, 46, 0.2);
+  color: rgba(51, 65, 85, 0.84);
   box-shadow: none;
   cursor: pointer;
   transition:
@@ -20751,9 +20826,9 @@ body.account-setup-page
   .account-setup-wizard__shell:has(#accountSetupWizardPanel3[data-expense-phase="form"])
   .account-setup-actions--shell
   #asExpCancelBtn.secondary:hover{
-  background: rgba(248, 250, 252, 0.9);
-  border-color: rgba(11, 61, 46, 0.12);
-  color: rgba(71, 85, 105, 0.82);
+  background: rgba(248, 250, 252, 0.98);
+  border-color: rgba(11, 61, 46, 0.28);
+  color: rgba(30, 41, 59, 0.92);
   filter: none;
 }
 body.account-setup-page
@@ -24688,3 +24763,4 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
     padding-bottom: 12px;
   }
 }
+ 
