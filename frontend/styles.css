@@ -14975,9 +14975,9 @@ body.account-setup-page
     grid-template-columns: 1fr;
   }
   body.account-setup-page .account-setup-wizard{
-    margin-top: 4px;
-    margin-bottom: 12px;
-    --as-compact-card-minh: 164px;
+    margin-top: 2px;
+    margin-bottom: 8px;
+    --as-compact-card-minh: 196px;
   }
   body.account-setup-page .account-setup-wizard__eyebrow{
     font-size: clamp(0.98rem, 4vw, 1.18rem);
@@ -15102,9 +15102,9 @@ body.account-setup-page .account-setup-actions #accountSetupBackBtn{
   margin-right: 0;
 }
 body.account-setup-page .account-setup-wizard__shell .account-setup-actions--shell #signupBtn{
-  min-height: 42px;
-  padding: 8px 20px;
-  font-size: 0.94rem;
+  min-height: 48px;
+  padding: 10px 22px;
+  font-size: 0.96rem;
   font-weight: 700;
   border-radius: 10px;
   box-shadow:
