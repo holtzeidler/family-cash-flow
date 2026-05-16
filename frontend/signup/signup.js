@@ -175,6 +175,29 @@ const accountSetupBackBtn = document.getElementById("accountSetupBackBtn");
 const accountSetupSkipBtn = document.getElementById("accountSetupSkipBtn");
 
 const BW_ACCOUNT_SETUP_DRAFT_KEY = "bw_account_setup_draft";
+
+function writeAccountSetupDraftStorage(json) {
+  try {
+    sessionStorage.setItem(BW_ACCOUNT_SETUP_DRAFT_KEY, json);
+  } catch (_) {}
+  try {
+    localStorage.setItem(BW_ACCOUNT_SETUP_DRAFT_KEY, json);
+  } catch (_) {}
+}
+
+function persistAccountSetupDraftObject(obj) {
+  writeAccountSetupDraftStorage(JSON.stringify(obj));
+}
+
+function removeAccountSetupDraftStorage() {
+  try {
+    sessionStorage.removeItem(BW_ACCOUNT_SETUP_DRAFT_KEY);
+  } catch (_) {}
+  try {
+    localStorage.removeItem(BW_ACCOUNT_SETUP_DRAFT_KEY);
+  } catch (_) {}
+}
+
 /** Bumped when step order changes; used to migrate persisted `wizardStep`. */
 const ACCOUNT_SETUP_WIZARD_FLOW_VERSION = 3;
 /** Logical wizard step (0–4) → `accountSetupWizardPanel{N}` — email, checking, income, expense, survey (last). */
@@ -709,7 +732,7 @@ function persistDraftStep3Phase(phase) {
   try {
     const raw = readAccountSetupDraftRaw() || {};
     raw.step3Phase = phase;
-    sessionStorage.setItem(BW_ACCOUNT_SETUP_DRAFT_KEY, JSON.stringify(raw));
+    persistAccountSetupDraftObject(raw);
   } catch (_) {}
 }
 
@@ -845,7 +868,7 @@ function persistDraftExpensePhase(phase) {
   try {
     const raw = readAccountSetupDraftRaw() || {};
     raw.expensePhase = phase;
-    sessionStorage.setItem(BW_ACCOUNT_SETUP_DRAFT_KEY, JSON.stringify(raw));
+    persistAccountSetupDraftObject(raw);
   } catch (_) {}
 }
 
@@ -1181,7 +1204,7 @@ function persistAccountSetupWizardMeta(stepIndex) {
     const raw = prev && typeof prev === "object" && !Array.isArray(prev) ? { ...prev } : {};
     raw.wizardStep = stepIndex;
     raw.wizardFlowVersion = ACCOUNT_SETUP_WIZARD_FLOW_VERSION;
-    sessionStorage.setItem(BW_ACCOUNT_SETUP_DRAFT_KEY, JSON.stringify(raw));
+    persistAccountSetupDraftObject(raw);
   } catch (_) {}
 }
 
@@ -1470,9 +1493,7 @@ function goToSignupFromAccountSetup() {
         return;
       }
     }
-    sessionStorage.setItem(
-      BW_ACCOUNT_SETUP_DRAFT_KEY,
-      JSON.stringify({
+    persistAccountSetupDraftObject({
         ...(gate.anyAccount
           ? {
               account: {
@@ -1490,8 +1511,7 @@ function goToSignupFromAccountSetup() {
             }
           : { transactions: existingTransactions }),
         step: "transactions",
-      })
-    );
+    });
   } catch (e) {
     setCallout(signupCalloutEl, (e && e.message) || "Could not continue.", "error");
     return;
@@ -1505,6 +1525,11 @@ function readAccountSetupDraftRaw() {
   try {
     raw = sessionStorage.getItem(BW_ACCOUNT_SETUP_DRAFT_KEY) || "";
   } catch (_) {}
+  if (!raw) {
+    try {
+      raw = localStorage.getItem(BW_ACCOUNT_SETUP_DRAFT_KEY) || "";
+    } catch (_) {}
+  }
   if (!raw) return null;
   try {
     return JSON.parse(raw);
@@ -1969,9 +1994,7 @@ function addMoreTransactionsFromAccountSetup() {
   }
 
   const existing = Array.isArray(rawDraft.transactions) ? rawDraft.transactions : [];
-  sessionStorage.setItem(
-    BW_ACCOUNT_SETUP_DRAFT_KEY,
-    JSON.stringify({
+  persistAccountSetupDraftObject({
       ...rawDraft,
       wizardFlowVersion: ACCOUNT_SETUP_WIZARD_FLOW_VERSION,
       wizardStep: 2,
@@ -1989,8 +2012,7 @@ function addMoreTransactionsFromAccountSetup() {
         : {}),
       transactions: [...existing, parsed.tx],
       step: "transactions",
-    })
-  );
+  });
 
   resetAccountSetupTransactionForm();
 }
@@ -2002,16 +2024,14 @@ function accountSetupCancelIncomeClick() {
     // Continue setup: advance to the survey (primary goal) step.
     try {
       const rawDraft = readAccountSetupDraftRaw() || {};
-      sessionStorage.setItem(
-        BW_ACCOUNT_SETUP_DRAFT_KEY,
-        JSON.stringify({
+      persistAccountSetupDraftObject({
           ...rawDraft,
           wizardFlowVersion: ACCOUNT_SETUP_WIZARD_FLOW_VERSION,
           wizardStep: 4,
           step3Phase: "form",
           expensePhase: "intro",
-        })
-      );
+        });
+
     } catch (_) {}
     lockAccountSetupWizardStepTransition();
     setAccountSetupWizardStep(4, { skipPersist: true });
@@ -2061,9 +2081,7 @@ async function accountSetupSaveIncomeClick() {
   }
   const txs = [...existing, parsed.tx];
   try {
-    sessionStorage.setItem(
-      BW_ACCOUNT_SETUP_DRAFT_KEY,
-      JSON.stringify({
+    persistAccountSetupDraftObject({
         ...rawDraft,
         wizardFlowVersion: ACCOUNT_SETUP_WIZARD_FLOW_VERSION,
         wizardStep: 2,
@@ -2080,8 +2098,8 @@ async function accountSetupSaveIncomeClick() {
             }
           : {}),
         transactions: txs,
-      })
-    );
+      });
+
   } catch (_) {}
   // Return to the stable Step 3 hub with updated progress state.
   lockAccountSetupWizardStepTransition();
@@ -2095,15 +2113,13 @@ async function accountSetupSaveIncomeClick() {
 function advanceAccountSetupWizardToExpenseForm() {
   const rawDraft = readAccountSetupDraftRaw() || {};
   try {
-    sessionStorage.setItem(
-      BW_ACCOUNT_SETUP_DRAFT_KEY,
-      JSON.stringify({
+    persistAccountSetupDraftObject({
         ...rawDraft,
         wizardFlowVersion: ACCOUNT_SETUP_WIZARD_FLOW_VERSION,
         wizardStep: 3,
         expensePhase: "form",
-      })
-    );
+      });
+
   } catch (_) {}
   lockAccountSetupWizardStepTransition();
   setAccountSetupWizardStep(3, { skipPersist: true });
@@ -2119,15 +2135,13 @@ function advanceAccountSetupWizardToIncomeFormFromSuccess() {
   setCallout(signupCalloutEl, "", "");
   try {
     const rawDraft = readAccountSetupDraftRaw() || {};
-    sessionStorage.setItem(
-      BW_ACCOUNT_SETUP_DRAFT_KEY,
-      JSON.stringify({
+    persistAccountSetupDraftObject({
         ...rawDraft,
         wizardFlowVersion: ACCOUNT_SETUP_WIZARD_FLOW_VERSION,
         wizardStep: 2,
         step3Phase: "form",
-      })
-    );
+      });
+
   } catch (_) {}
   setAccountSetupWizardStep(2, { skipPersist: true });
   setAccountSetupStep3AfterSave(false);
@@ -2143,15 +2157,13 @@ function accountSetupTxHubAddIncomeClick() {
   setCallout(signupCalloutEl, "", "");
   try {
     const rawDraft = readAccountSetupDraftRaw() || {};
-    sessionStorage.setItem(
-      BW_ACCOUNT_SETUP_DRAFT_KEY,
-      JSON.stringify({
+    persistAccountSetupDraftObject({
         ...rawDraft,
         wizardFlowVersion: ACCOUNT_SETUP_WIZARD_FLOW_VERSION,
         wizardStep: 2,
         step3Phase: "form",
-      })
-    );
+      });
+
   } catch (_) {}
   setAccountSetupStep3Phase("form");
   resetAccountSetupTransactionForm("income");
@@ -2165,16 +2177,14 @@ function accountSetupTxHubAddExpenseClick() {
   setCallout(signupCalloutEl, "", "");
   try {
     const rawDraft = readAccountSetupDraftRaw() || {};
-    sessionStorage.setItem(
-      BW_ACCOUNT_SETUP_DRAFT_KEY,
-      JSON.stringify({
+    persistAccountSetupDraftObject({
         ...rawDraft,
         wizardFlowVersion: ACCOUNT_SETUP_WIZARD_FLOW_VERSION,
         wizardStep: 2,
         step3Phase: "form",
         expensePhase: "intro",
-      })
-    );
+      });
+
   } catch (_) {}
   setAccountSetupStep3Phase("form");
   resetAccountSetupTransactionForm("expense");
@@ -2295,9 +2305,7 @@ function addMoreExpensesFromAccountSetup() {
     return;
   }
   const existing = Array.isArray(rawDraft.transactions) ? rawDraft.transactions : [];
-  sessionStorage.setItem(
-    BW_ACCOUNT_SETUP_DRAFT_KEY,
-    JSON.stringify({
+  persistAccountSetupDraftObject({
       ...rawDraft,
       wizardFlowVersion: ACCOUNT_SETUP_WIZARD_FLOW_VERSION,
       wizardStep: 3,
@@ -2315,8 +2323,7 @@ function addMoreExpensesFromAccountSetup() {
         : {}),
       transactions: [...existing, parsed.tx],
       step: "transactions",
-    })
-  );
+  });
   resetAccountSetupExpenseForm();
 }
 
@@ -2328,16 +2335,14 @@ function accountSetupCancelExpenseClick() {
     resetAccountSetupExpenseForm();
     try {
       const rawDraft = readAccountSetupDraftRaw() || {};
-      sessionStorage.setItem(
-        BW_ACCOUNT_SETUP_DRAFT_KEY,
-        JSON.stringify({
+      persistAccountSetupDraftObject({
           ...rawDraft,
           wizardFlowVersion: ACCOUNT_SETUP_WIZARD_FLOW_VERSION,
           wizardStep: 2,
           step3Phase: "intro",
           expensePhase: "intro",
-        })
-      );
+        });
+
     } catch (_) {}
     lockAccountSetupWizardStepTransition();
     setAccountSetupWizardStep(2, { skipPersist: true });
@@ -2350,16 +2355,14 @@ function accountSetupCancelExpenseClick() {
   resetAccountSetupExpenseForm();
   try {
     const rawDraft = readAccountSetupDraftRaw() || {};
-    sessionStorage.setItem(
-      BW_ACCOUNT_SETUP_DRAFT_KEY,
-      JSON.stringify({
+    persistAccountSetupDraftObject({
         ...rawDraft,
         wizardFlowVersion: ACCOUNT_SETUP_WIZARD_FLOW_VERSION,
         wizardStep: 2,
         step3Phase: "intro",
         expensePhase: "intro",
-      })
-    );
+      });
+
   } catch (_) {}
   lockAccountSetupWizardStepTransition();
   setAccountSetupWizardStep(2, { skipPersist: true });
@@ -2404,9 +2407,7 @@ async function accountSetupSaveExpenseClick() {
   }
   const txs = [...existing, parsed.tx];
   try {
-    sessionStorage.setItem(
-      BW_ACCOUNT_SETUP_DRAFT_KEY,
-      JSON.stringify({
+    persistAccountSetupDraftObject({
         ...rawDraft,
         wizardFlowVersion: ACCOUNT_SETUP_WIZARD_FLOW_VERSION,
         wizardStep: 2,
@@ -2424,8 +2425,8 @@ async function accountSetupSaveExpenseClick() {
             }
           : {}),
         transactions: txs,
-      })
-    );
+      });
+
   } catch (_) {}
   lockAccountSetupWizardStepTransition();
   // Return to the stable Step 3 hub with updated progress state.
@@ -2968,7 +2969,7 @@ async function doSignup() {
     const txStepOk = txResult && txResult.ok;
     if (accountStepOk && txStepOk) {
       try {
-        sessionStorage.removeItem(BW_ACCOUNT_SETUP_DRAFT_KEY);
+        removeAccountSetupDraftStorage();
       } catch (_) {}
     } else {
       try {
@@ -3142,7 +3143,7 @@ void (async () => {
   if (isAccountSetupPath()) {
     try {
       const params = new URLSearchParams(String(window.location.search || ""));
-      if (params.get("fresh") === "1") sessionStorage.removeItem(BW_ACCOUNT_SETUP_DRAFT_KEY);
+      if (params.get("fresh") === "1") removeAccountSetupDraftStorage();
     } catch (_) {}
     scheduleAuthApiWarmup();
   }
@@ -3256,9 +3257,7 @@ function onSignupPrimaryClick() {
         }
         try {
           const rawDraft = readAccountSetupDraftRaw() || {};
-          sessionStorage.setItem(
-            BW_ACCOUNT_SETUP_DRAFT_KEY,
-            JSON.stringify({
+          persistAccountSetupDraftObject({
               ...rawDraft,
               wizardFlowVersion: ACCOUNT_SETUP_WIZARD_FLOW_VERSION,
               wizardStep: 2,
@@ -3275,8 +3274,8 @@ function onSignupPrimaryClick() {
                     },
                   }
                 : {}),
-            })
-          );
+            });
+
         } catch (_) {}
         lockAccountSetupWizardStepTransition();
         setAccountSetupWizardStep(2, { skipPersist: true });
@@ -3308,16 +3307,14 @@ function onSignupPrimaryClick() {
             return;
           }
           const rawDraft = readAccountSetupDraftRaw() || {};
-          sessionStorage.setItem(
-            BW_ACCOUNT_SETUP_DRAFT_KEY,
-            JSON.stringify({
+          persistAccountSetupDraftObject({
               ...rawDraft,
               wizardFlowVersion: ACCOUNT_SETUP_WIZARD_FLOW_VERSION,
               wizardStep: 4,
               surveyHelpWith: selected,
               surveyOther: selected.includes("other") ? otherVal : "",
-            })
-          );
+            });
+
         } catch (_) {}
         void doSignup();
         return;
@@ -3342,9 +3339,7 @@ function onSignupPrimaryClick() {
           setAccountSetupStep("account");
           return;
         }
-        sessionStorage.setItem(
-          BW_ACCOUNT_SETUP_DRAFT_KEY,
-          JSON.stringify({
+        persistAccountSetupDraftObject({
             ...(gate.anyAccount
               ? {
                   account: {
@@ -3357,8 +3352,8 @@ function onSignupPrimaryClick() {
                 }
               : {}),
             step: "transactions",
-          })
-        );
+          });
+
       } catch (_) {}
       setAccountSetupStep("transactions");
       return;
@@ -3386,7 +3381,7 @@ function onAccountSetupSkipAccountClick() {
         expensePhase: "intro",
       };
       delete next.account;
-      sessionStorage.setItem(BW_ACCOUNT_SETUP_DRAFT_KEY, JSON.stringify(next));
+      persistAccountSetupDraftObject(next);
     } catch (_) {}
     lockAccountSetupWizardStepTransition();
     setAccountSetupWizardStep(2, { skipPersist: true });
@@ -3493,16 +3488,14 @@ function handleAccountSetupBack(e) {
     if (!isAccountSetupStep3AfterSave()) {
       try {
         const rawDraft = readAccountSetupDraftRaw() || {};
-        sessionStorage.setItem(
-          BW_ACCOUNT_SETUP_DRAFT_KEY,
-          JSON.stringify({
+        persistAccountSetupDraftObject({
             ...rawDraft,
             wizardFlowVersion: ACCOUNT_SETUP_WIZARD_FLOW_VERSION,
             wizardStep: 2,
             step3Phase: "intro",
             expensePhase: "intro",
-          })
-        );
+          });
+
       } catch (_) {}
       setAccountSetupStep3Phase("intro");
       try {
@@ -3516,16 +3509,14 @@ function handleAccountSetupBack(e) {
     setAccountSetupWizardStep(1, { skipPersist: true });
     try {
       const rawDraft = readAccountSetupDraftRaw() || {};
-      sessionStorage.setItem(
-        BW_ACCOUNT_SETUP_DRAFT_KEY,
-        JSON.stringify({
+      persistAccountSetupDraftObject({
           ...rawDraft,
           wizardFlowVersion: ACCOUNT_SETUP_WIZARD_FLOW_VERSION,
           wizardStep: 1,
           step3Phase: "form",
           expensePhase: "intro",
-        })
-      );
+        });
+
     } catch (_) {}
     focusAccountSetupAccountNameInput();
     return;
@@ -3539,16 +3530,14 @@ function handleAccountSetupBack(e) {
     setAccountSetupExpensePhase("intro");
     try {
       const rawDraft = readAccountSetupDraftRaw() || {};
-      sessionStorage.setItem(
-        BW_ACCOUNT_SETUP_DRAFT_KEY,
-        JSON.stringify({
+      persistAccountSetupDraftObject({
           ...rawDraft,
           wizardFlowVersion: ACCOUNT_SETUP_WIZARD_FLOW_VERSION,
           wizardStep: 2,
           step3Phase: "form",
           expensePhase: "intro",
-        })
-      );
+        });
+
     } catch (_) {}
     return;
   }

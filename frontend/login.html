@@ -50,7 +50,7 @@
               <div class="auth-section__body" id="loginSectionBody">
                 <div id="loginCallout" class="callout" style="display:none" role="status"></div>
 
-                <div id="loginFlowLogin" class="login-flow login-flow--polished">
+                <form id="loginFlowLogin" class="login-flow login-flow--polished" novalidate>
                   <div class="row two">
                     <div>
                       <label for="email">Email</label>
@@ -61,7 +61,7 @@
                       <input id="password" type="password" autocomplete="current-password" />
                     </div>
                   </div>
-                  <button type="button" id="loginBtn" class="top-nav__logout" onclick="window.__bwLogin && window.__bwLogin()">Login</button>
+                  <button type="submit" id="loginBtn" class="top-nav__logout">Login</button>
                   <p class="login-page__reassure" role="note" aria-label="What to expect">
                     <span class="login-page__reassure-text">
                       <span class="login-page__reassure-item">No bank connection required</span>
@@ -69,11 +69,11 @@
                       <span class="login-page__reassure-item">Cancel anytime</span>
                     </span>
                   </p>
-                  <button type="button" class="login-page__forgot-btn" id="loginForgotBtn">Forgot password?</button>
-                  <div class="login-page__signup-prompt">
-                    <span>Don't have an account?</span>
-                    <a href="https://balancewhiz.com/account-setup/?fresh=1" class="login-page__signup-cta">Start your forecast</a>
-                  </div>
+                </form>
+                <button type="button" class="login-page__forgot-btn" id="loginForgotBtn">Forgot password?</button>
+                <div class="login-page__signup-prompt">
+                  <span>Don't have an account?</span>
+                  <a href="https://balancewhiz.com/account-setup/?fresh=1" class="login-page__signup-cta">Start your forecast</a>
                 </div>
 
                 <div id="forgot" class="login-flow" hidden>
@@ -202,7 +202,7 @@
       </footer>
     </div>
 
-    <script src="./login.js?v=9"></script>
+    <script src="./login.js?v=10"></script>
   </body>
 </html>
 

@@ -553,6 +553,13 @@ if (location.hostname.endsWith("github.io") && !getApiBase()) {
 }
 
 window.__bwLogin = () => void doLogin();
+if (flows.login) {
+  flows.login.addEventListener("submit", (e) => {
+    e.preventDefault();
+    if (loginBtn?.disabled) return;
+    void doLogin();
+  });
+}
 if (loginBtn) loginBtn.addEventListener("click", () => void doLogin());
 
 wirePasswordResetUi();

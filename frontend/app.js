@@ -14245,13 +14245,39 @@ function setDefaultAccountStartDate() {
  *
  * Returns true if recovery ran AND succeeded enough to require refreshing accounts.
  */
-async function tryRecoverAccountSetupDraft() {
-  let draftRaw = "";
+function readAccountSetupDraftJsonRaw() {
   try {
-    draftRaw = sessionStorage.getItem("bw_account_setup_draft") || "";
-  } catch (_) {
-    return false;
+    const s = sessionStorage.getItem("bw_account_setup_draft") || "";
+    if (s) return s;
+  } catch (_) {}
+  try {
+    return localStorage.getItem("bw_account_setup_draft") || "";
+  } catch (_) {}
+  return "";
+}
+
+function clearAccountSetupDraftJsonStorage() {
+  try {
+    sessionStorage.removeItem("bw_account_setup_draft");
+  } catch (_) {}
+  try {
+    localStorage.removeItem("bw_account_setup_draft");
+  } catch (_) {}
+}
+
+function resolveRecoveryAccountIdFromDraft(draft) {
+  const accounts = Array.isArray(state.accounts) ? state.accounts : [];
+  if (!accounts.length) return null;
+  const draftName = draft?.account?.name ? String(draft.account.name).trim() : "";
+  if (draftName) {
+    const match = accounts.find((a) => String(a?.name || "").trim() === draftName);
+    if (match && match.id != null) return Number(match.id);
   }
+  return Number(accounts[0].id);
+}
+
+async function tryRecoverAccountSetupDraft() {
+  const draftRaw = readAccountSetupDraftJsonRaw();
   if (!draftRaw) return false;
 
   let draft = null;
@@ -14261,21 +14287,50 @@ async function tryRecoverAccountSetupDraft() {
     draft = null;
   }
   if (!draft || typeof draft !== "object") {
-    try { sessionStorage.removeItem("bw_account_setup_draft"); } catch (_) {}
+    clearAccountSetupDraftJsonStorage();
     return false;
   }
 
-  // Only run if the user really has a fresh, empty family. If they already have
-  // accounts, the draft is stale and we should just discard it.
   if (!state.activeFamilyId) return false;
-  if (Array.isArray(state.accounts) && state.accounts.length > 0) {
-    try { sessionStorage.removeItem("bw_account_setup_draft"); } catch (_) {}
+
+  const txs = Array.isArray(draft.transactions) ? draft.transactions : [];
+  const pendingTxCount = txs.filter((t) => Number(t?.amount) > 0).length;
+  const hasAccounts = Array.isArray(state.accounts) && state.accounts.length > 0;
+  const draftNeedsAccount =
+    draft.account &&
+    draft.account.name &&
+    Number.isFinite(Number(draft.account.starting_balance));
+
+  if (hasAccounts && pendingTxCount === 0) {
+    clearAccountSetupDraftJsonStorage();
     return false;
   }
 
-  let createdAccountId = null;
+  let createdAccountId = resolveRecoveryAccountIdFromDraft(draft);
   let anyAccountWork = false;
-  if (draft.account && draft.account.name && Number.isFinite(Number(draft.account.starting_balance))) {
+  if (hasAccounts && draftNeedsAccount && createdAccountId) {
+    const acct = (state.accounts || []).find((a) => Number(a.id) === Number(createdAccountId));
+    const curBal = Number(acct?.starting_balance ?? 0);
+    const wantBal = Number(draft.account.starting_balance);
+    if (acct && Number.isFinite(wantBal) && wantBal !== 0 && (!Number.isFinite(curBal) || curBal === 0)) {
+      anyAccountWork = true;
+      try {
+        await api(`/api/families/${state.activeFamilyId}/accounts/${encodeURIComponent(String(createdAccountId))}`, "PUT", {
+          name: draft.account.name || acct.name,
+          type: draft.account.type || acct.type || "checking",
+          starting_balance: wantBal,
+          starting_balance_date: draft.account.starting_balance_date || acct.starting_balance_date,
+        });
+      } catch (e) {
+        try {
+          if (window.console && console.warn) {
+            console.warn("[onboarding] account balance recovery failed", e && e.message);
+          }
+        } catch (_) {}
+      }
+    }
+  }
+  if (!hasAccounts && draftNeedsAccount) {
     anyAccountWork = true;
     try {
       const created = await api(`/api/families/${state.activeFamilyId}/accounts`, "POST", {
@@ -14286,8 +14341,6 @@ async function tryRecoverAccountSetupDraft() {
       });
       if (created && created.id) createdAccountId = Number(created.id);
     } catch (e) {
-      // If even the account-create fails here, abort recovery and leave the draft
-      // for the next reload to try again.
       try {
         if (window.console && console.warn) {
           console.warn("[onboarding] account recovery failed", e && e.message);
@@ -14297,7 +14350,6 @@ async function tryRecoverAccountSetupDraft() {
     }
   }
 
-  const txs = Array.isArray(draft.transactions) ? draft.transactions : [];
   let txTotal = 0;
   let txCreated = 0;
   for (const t of txs) {
@@ -14349,14 +14401,17 @@ async function tryRecoverAccountSetupDraft() {
     }
   }
 
-  // We did at least one piece of recovery work. Clear the draft so we don't replay it.
-  // If some transactions failed, the user can re-add them manually — but at minimum
-  // the account itself is in place.
-  if (anyAccountWork || txCreated > 0) {
-    try { sessionStorage.removeItem("bw_account_setup_draft"); } catch (_) {}
-    return true;
+  const accountReady = hasAccounts || (anyAccountWork && createdAccountId);
+  const txsReady = pendingTxCount === 0 || txCreated >= pendingTxCount;
+  if (accountReady && txsReady && (anyAccountWork || txCreated > 0 || (hasAccounts && pendingTxCount > 0))) {
+    clearAccountSetupDraftJsonStorage();
+    return anyAccountWork || txCreated > 0;
   }
-  return false;
+  if (accountReady && pendingTxCount === 0 && !anyAccountWork) {
+    clearAccountSetupDraftJsonStorage();
+    return false;
+  }
+  return anyAccountWork || txCreated > 0;
 }
 
 async function main() {
@@ -14386,6 +14441,7 @@ async function main() {
       const recovered = await tryRecoverAccountSetupDraft();
       if (recovered) {
         await loadAccounts();
+        await loadExpectedTransactions();
       }
     } catch (e) {
       try {
