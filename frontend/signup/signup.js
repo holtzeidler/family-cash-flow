@@ -544,6 +544,37 @@ function initAccountSetupCategoryCombobox(hiddenId, inputId, listId) {
 // Prefetch check-email during Step 0 so Enter→Next feels instant.
 const BW_EMAIL_CHECK_CACHE_MS = 5 * 60 * 1000;
 let bwEmailCheckCache = { email: "", checkedAt: 0, exists: null, pending: null };
+/** Bumped when final signup starts so a slow Step-0 precheck cannot modal after register succeeds. */
+let bwEmailPrecheckStep0Generation = 0;
+let bwSignupInFlight = false;
+
+function hasSignupAccessToken() {
+  try {
+    const t = sessionStorage.getItem(BW_API_ACCESS_TOKEN_KEY);
+    return !!(t && String(t).trim());
+  } catch (_) {
+    return false;
+  }
+}
+
+function shouldShowDuplicateEmailModalFromPrecheck() {
+  if (bwSignupInFlight) return false;
+  if (hasSignupAccessToken()) return false;
+  return true;
+}
+
+function clearEmailCheckCache() {
+  bwEmailCheckCache = { email: "", checkedAt: 0, exists: null, pending: null };
+}
+
+/** Always hits the API (no stale "available" cache) before register. */
+async function precheckEmailExistsFresh(email) {
+  const e = String(email || "").trim().toLowerCase();
+  if (!e) return null;
+  if (bwEmailCheckCache.email === e) clearEmailCheckCache();
+  return precheckEmailExists(email);
+}
+
 async function precheckEmailExists(email) {
   const e = String(email || "").trim().toLowerCase();
   if (!e) return null;
@@ -617,10 +648,16 @@ function speculativePrecheckEmailIfStep0Ready() {
 function openAccountSetupDuplicateEmailModal() {
   const el = document.getElementById("accountSetupDuplicateEmailModal");
   if (!el) return;
+  if (!shouldShowDuplicateEmailModalFromPrecheck()) return;
   try {
-    lockAccountSetupWizardStepTransition();
-    setAccountSetupWizardStep(0);
-    document.getElementById("email")?.focus();
+    if (getAccountSetupWizardStep() === 0) {
+      lockAccountSetupWizardStepTransition();
+      document.getElementById("email")?.focus();
+    } else {
+      lockAccountSetupWizardStepTransition();
+      setAccountSetupWizardStep(0);
+      document.getElementById("email")?.focus();
+    }
   } catch (_) {}
   el.classList.add("modal-overlay--open");
   el.setAttribute("aria-hidden", "false");
@@ -2804,6 +2841,8 @@ async function maybePatchForecastThresholdsFromDraft(draft) {
 
 async function doSignup() {
   if (!signupBtn) return;
+  bwSignupInFlight = true;
+  bwEmailPrecheckStep0Generation += 1;
   setBusy(true);
   const isAccountSetup = isAccountSetupPath();
   const startedAt = Date.now();
@@ -2847,7 +2886,7 @@ async function doSignup() {
       return cleaned || "User";
     })();
 
-    const dupCheck = await precheckEmailExists(email);
+    const dupCheck = await precheckEmailExistsFresh(email);
     if (dupCheck && dupCheck.ok && dupCheck.exists === true) {
       if (isAccountSetup) {
         const remaining = Math.max(0, minOverlayMs - (Date.now() - startedAt));
@@ -2880,6 +2919,10 @@ async function doSignup() {
     try {
       const tok = reg.data && reg.data.access_token != null ? String(reg.data.access_token).trim() : "";
       if (tok) sessionStorage.setItem(BW_API_ACCESS_TOKEN_KEY, tok);
+    } catch (_) {}
+    try {
+      bwEmailPrecheckStep0Generation += 1;
+      bwEmailCheckCache = { email, checkedAt: Date.now(), exists: true, pending: null };
     } catch (_) {}
 
     const check = await verifySessionWithProgress(signupCalloutEl);
@@ -2957,6 +3000,7 @@ async function doSignup() {
     }
     setCallout(signupCalloutEl, (e && e.message) || "Signup failed.", "error");
   } finally {
+    bwSignupInFlight = false;
     setBusy(false);
   }
 }
@@ -3166,12 +3210,18 @@ function onSignupPrimaryClick() {
         // Run the email check in the background; don't let a "Checking email…" banner
         // persist into the next step.
         setCallout(signupCalloutEl, "", "");
+        const step0PrecheckGen = bwEmailPrecheckStep0Generation;
+        const emailChecked = String(email || "").trim().toLowerCase();
         const p = precheckEmailExists(email);
         lockAccountSetupWizardStepTransition();
         setAccountSetupWizardStep(1);
         focusAccountSetupAccountNameInput();
         Promise.resolve(p)
           .then((cached) => {
+            if (step0PrecheckGen !== bwEmailPrecheckStep0Generation) return;
+            if (!shouldShowDuplicateEmailModalFromPrecheck()) return;
+            const emNow = String(document.getElementById("email")?.value || "").trim().toLowerCase();
+            if (emNow !== emailChecked) return;
             if (!cached || !cached.ok) {
               // Non-blocking: user can continue; register will still enforce uniqueness.
               setCallout(signupCalloutEl, "", "");
