@@ -2577,20 +2577,25 @@ def _ensure_expected_variable_column() -> None:
             conn.execute(text("UPDATE expected_transactions SET variable = COALESCE(variable, FALSE)"))
 
 
+def _email_lookup_key(email: str) -> str:
+    return str(email).strip().lower()
+
+
 @app.post("/api/auth/check-email", response_model=EmailExistsOut)
 def check_email_registered(payload: CheckEmailIn, db=Depends(get_db)):
     """Return whether an account already uses this email (case-insensitive). Used before signup."""
-    key = str(payload.email).strip().lower()
+    key = _email_lookup_key(payload.email)
     existing = db.execute(select(User).where(func.lower(User.email) == key)).scalar_one_or_none()
     return EmailExistsOut(exists=existing is not None)
 
 
 @app.post("/api/auth/register", status_code=status.HTTP_201_CREATED, response_model=RegisterOut)
 def register(payload: RegisterIn, response: Response, db=Depends(get_db)):
-    existing = db.execute(select(User).where(User.email == payload.email)).scalar_one_or_none()
+    key = _email_lookup_key(payload.email)
+    existing = db.execute(select(User).where(func.lower(User.email) == key)).scalar_one_or_none()
     if existing:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
-    user = User(email=str(payload.email), name=payload.name, password_hash=hash_password(payload.password))
+    user = User(email=key, name=payload.name, password_hash=hash_password(payload.password))
     db.add(user)
     db.commit()
     db.refresh(user)
@@ -2638,7 +2643,8 @@ def register(payload: RegisterIn, response: Response, db=Depends(get_db)):
 
 @app.post("/api/auth/login")
 def login(payload: LoginIn, db=Depends(get_db)):
-    user = db.execute(select(User).where(User.email == payload.email)).scalar_one_or_none()
+    key = _email_lookup_key(payload.email)
+    user = db.execute(select(User).where(func.lower(User.email) == key)).scalar_one_or_none()
     if not user or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
     token = create_access_token(user_id=user.id)

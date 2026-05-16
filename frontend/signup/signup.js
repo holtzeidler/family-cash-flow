@@ -2833,7 +2833,7 @@ async function doSignup() {
       window.location.assign("/account-setup" + q);
       return;
     }
-    const email = (document.getElementById("email")?.value || "").trim();
+    const email = (document.getElementById("email")?.value || "").trim().toLowerCase();
     const password = document.getElementById("password")?.value || "";
     const password2 = document.getElementById("password2")?.value || "";
 
@@ -2847,12 +2847,32 @@ async function doSignup() {
       return cleaned || "User";
     })();
 
+    const dupCheck = await precheckEmailExists(email);
+    if (dupCheck && dupCheck.ok && dupCheck.exists === true) {
+      if (isAccountSetup) {
+        const remaining = Math.max(0, minOverlayMs - (Date.now() - startedAt));
+        if (remaining) await new Promise((r) => setTimeout(r, remaining));
+        hideForecastBuildOverlay(overlay);
+      }
+      setCallout(signupCalloutEl, "", "");
+      openAccountSetupDuplicateEmailModal();
+      return;
+    }
+
     const reg = await requestWithRetry("/api/auth/register", "POST", { name, email, password }, { maxMs: 14000 });
     if (!reg.ok) {
       if (isAccountSetup) {
         const remaining = Math.max(0, minOverlayMs - (Date.now() - startedAt));
         if (remaining) await new Promise((r) => setTimeout(r, remaining));
         hideForecastBuildOverlay(overlay);
+      }
+      if (reg.status === 409 && isAccountSetup) {
+        try {
+          bwEmailCheckCache = { email, checkedAt: Date.now(), exists: true, pending: null };
+        } catch (_) {}
+        setCallout(signupCalloutEl, "", "");
+        openAccountSetupDuplicateEmailModal();
+        return;
       }
       setCallout(signupCalloutEl, messageFromFailure(reg, "Signup failed."), "error");
       return;
