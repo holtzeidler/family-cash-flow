@@ -256,22 +256,28 @@ body.account-setup-page .account-setup-trust-strip-spacer{
   display: none !important;
 }
 /* Onboarding/auth nav: compact wordmark — no pill badge */
-body.login-page.signup-page .app-title--logo > a,
-body.account-setup-page .app-title--logo > a{
+/* Dark nav: compact wordmark + icon (no capsule) */
+body.login-page.signup-page .top-nav .app-title--logo > a,
+body.account-setup-page .top-nav .app-title--logo > a,
+body.invite-page .top-nav .app-title--logo > a,
+body.plans-page .top-nav .app-title--logo > a,
+body.admin-page .top-nav .app-title--logo > a,
+body[data-bw-view] .top-nav .app-title--logo > a,
+body.landing-page .top-nav .app-title--logo > a{
   padding: 0;
-  border-radius: 0;
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
-body.login-page.signup-page .app-title--logo .app-logo,
-body.account-setup-page .app-title--logo .app-logo{
-  width: min(132px, 36vw);
-  height: 26px;
-  object-fit: contain;
-  object-position: 0 50%;
+body.login-page.signup-page .top-nav .app-title--logo .app-logo,
+body.account-setup-page .top-nav .app-title--logo .app-logo,
+body.invite-page .top-nav .app-title--logo .app-logo,
+body.plans-page .top-nav .app-title--logo .app-logo,
+body.admin-page .top-nav .app-title--logo .app-logo,
+body[data-bw-view] .top-nav .app-title--logo .app-logo,
+body.landing-page .top-nav .app-title--logo .app-logo{
+  width: min(148px, 40vw);
+  height: 24px;
 }
 
 /* Login only: align logo to far-left like the app. */
@@ -303,23 +309,18 @@ body.login-page:not(.signup-page):not(.invite-page) .top-nav__inner--simple .top
 body.login-page:not(.signup-page):not(.invite-page) .top-nav__inner--simple .app-title{
   text-align: left;
 }
-body.login-page:not(.signup-page):not(.invite-page) .app-title--logo > a{
-  padding: 4.5px 10px 4.5px 11px;
-  border-radius: 20px;
+body.login-page:not(.signup-page):not(.invite-page) .top-nav .app-title--logo > a{
+  padding: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
-body.login-page:not(.signup-page):not(.invite-page) .app-title--logo .app-logo{
+body.login-page:not(.signup-page):not(.invite-page) .top-nav .app-title--logo .app-logo{
   display: block;
-  width: min(200px, 44vw);
-  height: 36px;
+  width: min(148px, 40vw);
+  height: 24px;
   object-fit: contain;
   object-position: 0 50%;
-  border-radius: 0;
-}
-@media (max-width: 860px){
-  body.login-page:not(.signup-page):not(.invite-page) .app-title--logo .app-logo{
-    width: min(188px, 50vw);
-    height: 34px;
-  }
 }
 
 /* Invite page: keep title where it is, push Home to the far right */
@@ -2419,23 +2420,20 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
 .app-title--logo > a{
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  padding: 5px 11px 5px 12px;
-  border-radius: 20px;
-  background: rgba(247, 248, 246, 0.94);
-  border: 0.85px solid rgba(255, 255, 255, 0.22);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.38) inset,
-    0 8px 18px -16px rgba(0, 0, 0, 0.28),
-    0 4px 10px -12px rgba(11, 61, 46, 0.2);
-  backdrop-filter: blur(8px) saturate(1.04);
-  -webkit-backdrop-filter: blur(8px) saturate(1.04);
+  justify-content: flex-start;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   text-decoration: none;
 }
 .app-title--logo .app-logo{
   display: block;
-  width: min(220px, 52vw);
-  height: 40px;
+  width: min(156px, 42vw);
+  height: 24px;
   object-fit: contain;
   object-position: 0 50%;
   border-radius: 0;
@@ -2460,8 +2458,8 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
     text-align: center;
   }
   .app-title--logo .app-logo{
-    width: min(200px, 48vw);
-    height: 36px;
+    width: min(140px, 44vw);
+    height: 22px;
   }
   /* Plans / admin / signup: keep title left + actions right on narrow screens (overrides generic centered nav). */
   body.plans-page .top-nav .top-nav__inner.top-nav__inner--simple,
@@ -14927,59 +14925,25 @@ body.account-setup-page .account-setup-wizard__shell .account-setup-actions--she
   body.account-setup-page{
     --as-card-pad-x: 22px;
     --as-card-pad-y: 22px;
+    --as-shell-min-height: 400px;
+    --as-shell-actions-minh: 72px;
   }
   body.account-setup-page .container > .grid{
-    padding: 12px 0 16px;
+    padding: 10px 0 12px;
   }
   body.account-setup-page .account-setup-wizard{
-    margin-bottom: 8px;
+    margin-bottom: 6px;
   }
   body.account-setup-page .account-setup-wizard__eyebrow{
     font-size: clamp(1.28rem, 5vw, 1.5rem);
     line-height: 1.15;
   }
   body.account-setup-page .account-setup-wizard__subeyebrow{
-    font-size: clamp(0.8rem, 3.2vw, 0.9rem);
-    line-height: 1.32;
+    font-size: clamp(0.86rem, 3.2vw, 0.95rem);
+    line-height: 1.35;
   }
-  body.account-setup-page .account-setup-wizard__roadmap{
-    margin-bottom: 10px;
-  }
-  body.account-setup-page #accountSetupWizardPanel2[data-step3-phase="intro"].account-setup-wizard__panel{
-    padding: 7px 10px 3px;
-  }
-  body.account-setup-page
-    #accountSetupWizard[data-step="2"]:has(#accountSetupWizardPanel2[data-step3-phase="intro"])
-    .account-setup-wizard__shell
-    .account-setup-actions--shell{
-    padding: 4px 10px 5px;
-    gap: 4px;
-  }
-  body.account-setup-page
-    #accountSetupWizard[data-step="2"]:has(#accountSetupWizardPanel2[data-step3-phase="intro"])
-    .account-setup-actions--shell
-    .account-setup-actions__cluster{
-    flex-direction: column;
-    align-items: stretch;
-  }
-  body.account-setup-page
-    #accountSetupWizard[data-step="2"]:has(#accountSetupWizardPanel2[data-step3-phase="intro"])
-    .account-setup-actions--shell
-    .account-setup-actions__cluster
-    > .top-nav__logout,
-  body.account-setup-page
-    #accountSetupWizard[data-step="2"]:has(#accountSetupWizardPanel2[data-step3-phase="intro"])
-    .account-setup-actions--shell
-    .account-setup-actions__cluster
-    > .secondary{
-    width: 100%;
-    max-width: none;
-  }
-  body.account-setup-page
-    #accountSetupWizard[data-step="2"]:has(#accountSetupWizardPanel2[data-step3-phase="intro"])
-    .account-setup-actions--shell
-    > .account-setup-continue-gateHint{
-    text-align: center;
+  body.account-setup-page .account-setup-step3-intro{
+    min-height: calc(var(--as-shell-min-height) - var(--as-shell-actions-minh) - var(--as-card-pad-y) * 2);
   }
 }
 body.account-setup-page .account-setup-card{
@@ -23101,14 +23065,17 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
     border-radius: 12px;
   }
 
-  .app-title--logo > a{
-    padding: 4px 9px 4px 10px;
-    border-radius: 18px;
+  .top-nav .app-title--logo > a{
+    padding: 0;
+    border-radius: 0;
+    background: transparent;
+    border: none;
+    box-shadow: none;
   }
 
-  .app-title--logo .app-logo{
-    width: min(184px, 52vw);
-    height: 32px;
+  .top-nav .app-title--logo .app-logo{
+    width: min(140px, 44vw);
+    height: 22px;
   }
 
   .top-nav__tabs{
@@ -23163,15 +23130,15 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
     justify-self: end;
   }
 
-  body.login-page:not(.signup-page):not(.invite-page) .app-title--logo > a,
-  body.landing-page .app-title--logo > a{
-    padding: 4px 8px;
+  body.login-page:not(.signup-page):not(.invite-page) .top-nav .app-title--logo > a,
+  body.landing-page .top-nav .app-title--logo > a{
+    padding: 0;
   }
 
-  body.login-page:not(.signup-page):not(.invite-page) .app-title--logo .app-logo,
-  body.landing-page .app-title--logo .app-logo{
-    width: min(178px, 54vw);
-    height: 32px;
+  body.login-page:not(.signup-page):not(.invite-page) .top-nav .app-title--logo .app-logo,
+  body.landing-page .top-nav .app-title--logo .app-logo{
+    width: min(136px, 42vw);
+    height: 22px;
   }
 
   .app-layout,

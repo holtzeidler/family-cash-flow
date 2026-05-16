@@ -1,21 +1,24 @@
-<svg width="720" height="128" viewBox="0 0 720 128" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="bwLogoTitle">
+<svg width="340" height="52" viewBox="0 0 340 52" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="bwLogoTitle">
   <title id="bwLogoTitle">BalanceWhiz</title>
+  <g aria-hidden="true">
+    <!-- Minimal safe-zone + projected balance accent -->
+    <rect x="1" y="30" width="30" height="1.5" rx="0.75" fill="#0B3D2E" opacity="0.14"/>
+    <rect x="3" y="24.5" width="26" height="1.5" rx="0.75" fill="#0B3D2E" opacity="0.22"/>
+    <path
+      d="M2 32h30M5.5 29.5L11 23.5l6.5 1.5L21 18.5l8.5-9"
+      stroke="#1A5C45"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+  </g>
   <text
-    x="0"
-    y="96"
+    x="40"
+    y="36.5"
     font-family="Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif"
-    font-size="96"
-    font-weight="500"
-    letter-spacing="-0.02em"
-    fill="#5A6572"
-  >Balance</text>
-  <text
-    x="376"
-    y="96"
-    font-family="Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif"
-    font-size="96"
-    font-weight="600"
-    letter-spacing="-0.01em"
-    fill="#1A5C45"
-  >Whiz</text>
+    font-size="34"
+    letter-spacing="-0.045em"
+  >
+    <tspan font-weight="500" fill="#4B5563">Balance</tspan><tspan font-weight="700" fill="#0F5B43">Whiz</tspan>
+  </text>
 </svg>
