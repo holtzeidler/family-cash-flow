@@ -207,6 +207,11 @@ body.account-setup-page{
   --as-card-pad-y: 24px;
   --as-shell-min-height: 440px;
   --as-shell-actions-minh: 76px;
+  --as-helper-size: 0.8125rem;
+  --as-helper-line: 1.35;
+  --as-helper-color: rgba(100, 116, 139, 0.78);
+  --as-label-primary-color: rgba(51, 65, 85, 0.9);
+  --as-label-secondary-color: rgba(100, 116, 139, 0.82);
   --as-ultra-soft-card-shadow:
     0 1px 3px rgba(15, 23, 42, 0.04),
     0 10px 32px rgba(15, 23, 42, 0.07),
@@ -242,8 +247,9 @@ body.account-setup-page .container > .grid{
 }
 body.account-setup-page .container > .grid:has(#accountSetupWizard[data-step="4"]){
   width: var(--as-wizard-column);
-  max-width: 640px;
-  padding: 12px 0 14px;
+  max-width: 532px;
+  padding: 8px 0 12px;
+  margin-top: clamp(-52px, calc(3vh - 48px), -36px);
 }
 body.account-setup-page .top-nav{
   flex-shrink: 0;
@@ -14077,14 +14083,22 @@ body.account-setup-page #accountSetupWizardPanel3 .account-setup-step3-form__bod
   max-width: none;
 }
 body.account-setup-page #accountSetupWizardPanel2 .account-setup-step3-form__body .form-row-h__label label,
-body.account-setup-page #accountSetupWizardPanel3 .account-setup-step3-form__body .form-row-h__label label,
-body.account-setup-page .account-setup-step3-form .account-setup-repeat-duo__label{
-  font-size: calc(11px * 1.12);
-  font-weight: 400;
-  letter-spacing: 0.04em;
+body.account-setup-page #accountSetupWizardPanel3 .account-setup-step3-form__body .form-row-h__label label{
+  font-size: var(--as-helper-size);
+  font-weight: 500;
+  letter-spacing: 0.01em;
   text-transform: none;
-  color: #556173;
-  line-height: 1.3;
+  color: var(--as-label-primary-color);
+  line-height: 1.35;
+  text-align: left;
+}
+body.account-setup-page .account-setup-step3-form .account-setup-repeat-duo__label{
+  font-size: var(--as-helper-size);
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  color: var(--as-label-secondary-color);
+  line-height: 1.35;
   text-align: left;
 }
 body.account-setup-page #accountSetupWizardPanel2 .account-setup-step3-form__body .form-row-h__field,
@@ -14099,10 +14113,10 @@ body.account-setup-page #accountSetupWizardPanel1 .form-row-h__field input#accou
 }
 body.account-setup-page .account-setup-field-hint{
   margin: 4px 0 0;
-  font-size: 0.8rem;
-  line-height: 1.4;
-  font-weight: 450;
-  color: rgba(71, 85, 105, 0.8);
+  font-size: var(--as-helper-size);
+  line-height: var(--as-helper-line);
+  font-weight: 400;
+  color: var(--as-helper-color);
 }
 body.account-setup-page #accountSetupWizardPanel0 .account-setup-field-hint{
   font-size: 0.74rem;
@@ -14494,94 +14508,190 @@ body.account-setup-page .account-setup-survey__otherInput{
   padding: 10px 11px;
   font-size: 0.92rem;
 }
-/* Step 4: calmer header hierarchy, cohesive card, subtle footer separation */
+/* Step 4: smallest onboarding step — compact preference picker */
 body.account-setup-page #accountSetupWizard[data-step="4"]{
   max-width: min(532px, 92vw);
   margin-top: 0;
   margin-bottom: 0;
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__stepHead{
-  margin-bottom: 0.18rem;
+  margin-bottom: 0.12rem;
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__stepLabel{
-  margin-bottom: 0.15rem;
+  margin-bottom: 0.1rem;
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__eyebrow{
-  margin: 0 0 0.12rem;
-  font-size: clamp(0.9rem, 2.05vw, 1.05rem);
+  margin: 0 0 0.1rem;
+  font-size: clamp(0.92rem, 2.2vw, 1.08rem);
   font-weight: 700;
-  letter-spacing: 0.015em;
-  line-height: 1.2;
+  letter-spacing: 0.012em;
+  line-height: 1.22;
   color: color-mix(in srgb, var(--accent) 88%, #0d2818);
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__subeyebrow{
-  margin: 0 0 0.45rem;
-  font-size: calc(var(--as-wizard-subeyebrow-size) * 0.87);
-  font-weight: 480;
+  margin: 0 0 0.35rem;
+  font-size: calc(var(--as-wizard-subeyebrow-size) * 0.86);
+  font-weight: 450;
   line-height: 1.32;
-  color: rgba(17, 24, 39, 0.48);
+  color: rgba(71, 85, 105, 0.72);
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__roadmap{
-  margin: 0 0 8px;
+  margin: 0 0 6px;
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__shell.auth-section.card{
+  min-height: 0;
   box-shadow:
-    0 4px 18px rgba(0, 0, 0, 0.03),
-    0 10px 30px rgba(11, 61, 46, 0.042),
+    0 2px 10px rgba(0, 0, 0, 0.03),
+    0 8px 24px rgba(11, 61, 46, 0.05),
     0 1px 0 rgba(255, 255, 255, 0.65) inset;
+}
+body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__track,
+body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPanel4.account-setup-wizard__panel--active) .account-setup-wizard__track{
+  min-height: 0;
+}
+body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__viewport,
+body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPanel4.account-setup-wizard__panel--active) .account-setup-wizard__viewport{
+  flex: 0 0 auto;
+  min-height: 0;
+}
+body.account-setup-page #accountSetupWizardPanel4.account-setup-wizard__panel--active{
+  min-height: 0;
+  flex: 0 0 auto;
+  padding: 14px var(--as-card-pad-x) 6px;
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey{
   width: 100%;
   max-width: 100%;
   margin-inline: 0;
-  gap: 12px;
+  gap: 8px;
   align-self: stretch;
+  text-align: left;
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey__options{
   width: 100%;
-  max-width: 26.5rem;
-  margin-inline: auto;
-  gap: 5px;
+  max-width: 100%;
+  margin-inline: 0;
+  gap: 6px;
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey__hint{
-  margin: 0;
+  margin: 0 0 2px;
   max-width: 100%;
   text-align: left;
-  font-size: 0.56rem;
-  font-weight: 440;
-  letter-spacing: 0.035em;
-  color: rgba(100, 116, 139, 0.44);
+  font-size: var(--as-helper-size);
+  font-weight: 400;
+  line-height: var(--as-helper-line);
+  letter-spacing: 0.01em;
+  color: var(--as-helper-color);
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey__grid{
-  gap: 5px 8px;
+  gap: 8px 10px;
+}
+body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey__opt{
+  min-height: 44px;
+  padding: 8px 12px;
+  gap: 8px;
+  border-color: rgba(17, 24, 39, 0.12);
+  border-radius: 10px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey__opt:hover{
+  border-color: rgba(11, 61, 46, 0.22);
+  background: #fff;
+  box-shadow: 0 3px 10px rgba(11, 61, 46, 0.08);
+}
+body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey__opt.is-active{
+  border-color: rgba(11, 61, 46, 0.32);
+  background: color-mix(in srgb, var(--accent) 9%, #fff);
+  color: rgba(11, 61, 46, 0.94);
+  box-shadow:
+    0 0 0 1px rgba(11, 61, 46, 0.08),
+    0 2px 8px rgba(11, 61, 46, 0.1);
+  padding-right: 28px;
+}
+body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey__opt.is-active::after{
+  background: linear-gradient(145deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 82%, #000) 100%);
+  box-shadow: 0 1px 2px rgba(11, 61, 46, 0.2);
+}
+body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey__opt.is-active .account-setup-survey__label{
+  color: rgba(11, 61, 46, 0.92);
+  font-weight: 600;
+}
+body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey__opt.is-active .account-setup-survey__icon{
+  color: rgba(11, 61, 46, 0.62);
+}
+body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey__label{
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.3;
+  color: rgba(30, 41, 59, 0.88);
+}
+body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey__icon{
+  width: 16px;
+  height: 16px;
+  color: rgba(100, 116, 139, 0.62);
+}
+body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey__icon svg{
+  width: 16px;
+  height: 16px;
+  stroke-width: 1.9;
+}
+body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey__finish-note{
+  margin: 2px 0 0;
+  font-size: var(--as-helper-size);
+  line-height: var(--as-helper-line);
+  font-weight: 400;
+  color: var(--as-helper-color);
+  text-align: center;
+}
+body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey__other{
+  margin-top: 4px;
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__shell .account-setup-actions--shell{
   width: 100%;
   max-width: none;
   box-sizing: border-box;
-  padding: 9px 16px 7px;
+  padding: 10px var(--as-card-pad-x) 12px;
   margin-top: 0;
   min-height: 0;
   display: flex;
   flex-direction: row;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
-  justify-content: center;
-  gap: 10px 14px;
-  border-top: 1px solid rgba(11, 61, 46, 0.042);
+  justify-content: flex-end;
+  gap: 8px;
+  border-top: 1px solid rgba(11, 61, 46, 0.08);
   background: transparent;
   box-shadow: none;
+}
+body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-actions__cluster{
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  width: auto;
+  min-height: 0;
+  flex: 0 0 auto;
+}
+body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-actions__forward{
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  margin-left: 0;
+  flex: 0 0 auto;
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-actions--shell #accountSetupBackBtn.secondary{
   flex: 0 0 auto;
   margin-right: 0;
+  order: 1;
   box-sizing: border-box;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 36px;
-  height: 36px;
-  padding: 0 12px;
+  min-height: 40px;
+  height: 40px;
+  padding: 0 14px;
   appearance: none;
   -webkit-appearance: none;
   font-size: 0.8125rem;
@@ -14613,14 +14723,19 @@ body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  min-height: 36px;
-  height: 36px;
-  padding: 0 15px;
-  max-width: min(188px, 78vw);
-  font-size: 0.83rem;
-  font-weight: 650;
+  order: 2;
+  min-height: 40px;
+  height: 40px;
+  padding: 0 18px;
+  max-width: none;
+  font-size: 0.875rem;
+  font-weight: 700;
   line-height: 1.2;
   white-space: nowrap;
+  border-radius: 10px;
+  box-shadow:
+    0 1px 2px rgba(11, 61, 46, 0.12),
+    0 4px 12px rgba(11, 61, 46, 0.16);
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] + .account-setup-trust-strip-spacer{
   height: 0;
@@ -14654,12 +14769,14 @@ body.account-setup-page #accountSetupWizard[data-step="4"] ~ .account-setup-trus
     text-align: center;
   }
   body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__shell .account-setup-actions--shell{
-    padding: 9px 12px 7px;
-    justify-content: center;
-    row-gap: 8px;
+    padding: 10px 14px 12px;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
+    gap: 8px;
   }
-  body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__shell .account-setup-actions--shell #signupBtn{
-    max-width: min(188px, 100%);
+  body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey__grid{
+    grid-template-columns: 1fr;
+    gap: 8px;
   }
   body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__eyebrow{
     font-size: clamp(0.88rem, 3.8vw, 1.02rem);
@@ -19736,25 +19853,28 @@ body.account-setup-page .tx-add-vspace--lg{
   height: calc(18px * 0.92);
 }
 
-/* Account setup wizard: space above "Amount varies" */
+/* Account setup wizard: variable-amount control + unified helper copy */
 body.account-setup-page .account-setup-step3-form .reimbursable-field{
-  margin-top: 4px;
+  margin-top: 2px;
 }
 body.account-setup-page .account-setup-step3-form .reimbursable-field__lead{
-  gap: calc(0.22 * 3 * 11px * 1.12);
+  gap: 8px;
 }
 body.account-setup-page .account-setup-step3-form .reimbursable-field__label{
-  font-size: calc(11px * 1.12);
-  font-weight: 400;
-  letter-spacing: 0.04em;
+  font-size: var(--as-helper-size);
+  font-weight: 450;
+  letter-spacing: 0.01em;
   text-transform: none;
-  color: #556173;
-  line-height: 1.3;
+  color: var(--as-label-secondary-color);
+  line-height: var(--as-helper-line);
   text-align: left;
 }
 body.account-setup-page .account-setup-step3-form .reimbursable-field__hint{
-  font-size: calc(10px * 1.12);
-  opacity: 0.84;
+  font-size: var(--as-helper-size);
+  line-height: var(--as-helper-line);
+  font-weight: 400;
+  color: var(--as-helper-color);
+  opacity: 1;
 }
 
 /* Account setup: Repeats + Ends on — labels on one row, controls stacked below */
@@ -19839,24 +19959,30 @@ body.account-setup-page .account-setup-step3-form .tx-add-schedule-toolbar{
   padding-bottom: 4px;
 }
 
-/* Account setup wizard: Notes label matches Repeats / other Step 3–4 stacked labels */
+/* Account setup wizard: Notes — secondary field */
 body.account-setup-page .account-setup-step3-form label[for="asTxNotes"],
 body.account-setup-page .account-setup-step3-form label[for="asExpTxNotes"]{
   display: block;
   margin-bottom: 0;
-  font-size: calc(11px * 1.12);
+  font-size: var(--as-helper-size);
   font-weight: 400;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.01em;
   text-transform: none;
-  color: #556173;
-  line-height: 1.3;
+  color: var(--as-label-secondary-color);
+  line-height: 1.35;
   text-align: left;
 }
 body.account-setup-page #asTxNotes.input-notes-flex,
 body.account-setup-page #asExpTxNotes.input-notes-flex{
-  font-size: calc(14px * 0.92);
+  font-size: 0.95rem;
+  font-weight: 450;
   padding-top: 8px;
   padding-bottom: 8px;
+}
+body.account-setup-page #asTxNotes.input-notes-flex::placeholder,
+body.account-setup-page #asExpTxNotes.input-notes-flex::placeholder{
+  color: rgba(148, 163, 184, 0.62);
+  font-weight: 400;
 }
 
 /* Account setup wizard: align color label with other field labels */
@@ -19961,19 +20087,21 @@ body.account-setup-page .account-setup-step3-form .account-setup-category-picker
   border-color: rgba(17, 24, 39, 0.1);
 }
 body.account-setup-page .account-setup-step3-form .account-setup-field-hint--tight{
-  font-size: 0.72rem;
-  line-height: 1.3;
-  margin: 0 0 3px;
-  color: rgba(71, 85, 105, 0.76);
+  font-size: var(--as-helper-size);
+  line-height: var(--as-helper-line);
+  font-weight: 400;
+  margin: 0 0 7px;
+  color: var(--as-helper-color);
 }
 body.account-setup-page .account-setup-step3-form .as-quick-chips{
-  gap: 4px;
+  gap: 5px;
   margin: 0;
 }
 body.account-setup-page .account-setup-step3-form .as-quick-chip{
-  padding: 5px 9px;
-  font-size: 0.78rem;
-  line-height: 1.2;
+  padding: 4px 9px;
+  font-size: 0.75rem;
+  line-height: 1.25;
+  font-weight: 500;
 }
 body.account-setup-page .account-setup-step3-form .category-search__input,
 body.account-setup-page .account-setup-step3-form .form-row-h__field .category-search input[type="text"]{
@@ -19984,7 +20112,7 @@ body.account-setup-page .account-setup-step3-form .form-row-h__field .category-s
 body.account-setup-page .account-setup-tx-schedule-block{
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
   margin-top: 0;
 }
 body.account-setup-page .account-setup-step3-form .account-setup-repeat-row-h{
@@ -20000,8 +20128,11 @@ body.account-setup-page .account-setup-step3-form .account-setup-repeat-duo .tx-
   width: 100%;
 }
 body.account-setup-page .account-setup-step3-form .account-setup-schedule-summary{
-  margin: 4px 0 0;
-  font-size: 0.78rem;
+  margin: 3px 0 0;
+  font-size: var(--as-helper-size);
+  line-height: var(--as-helper-line);
+  font-weight: 400;
+  color: var(--as-helper-color);
 }
 body.account-setup-page .account-setup-step3-form .tx-add-schedule-toolbar{
   padding-top: 0;
@@ -20010,33 +20141,62 @@ body.account-setup-page .account-setup-step3-form .tx-add-schedule-toolbar{
 }
 body.account-setup-page .account-setup-tx-variable-inline{
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  column-gap: 8px;
-  row-gap: 2px;
-  margin: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  margin: 1px 0 0;
   padding: 0;
+  width: 100%;
+  cursor: pointer;
 }
 body.account-setup-page .account-setup-tx-variable-inline .reimbursable-field__lead{
-  margin: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
   gap: 8px;
+  margin: 0;
+  width: 100%;
+  flex-wrap: nowrap;
+}
+body.account-setup-page .account-setup-tx-variable-inline .reimbursable-field__label{
+  flex: 1 1 auto;
+  min-width: 0;
+}
+body.account-setup-page .account-setup-tx-variable-inline input[type="checkbox"]{
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  flex-shrink: 0;
 }
 body.account-setup-page .account-setup-tx-variable-inline .reimbursable-field__hint{
-  flex: 1 1 100%;
+  display: block;
+  flex: none;
+  width: 100%;
+  max-width: 26rem;
   margin: 0;
-  font-size: 0.7rem;
-  line-height: 1.28;
-  opacity: 0.88;
+  padding-left: calc(1rem + 8px);
+  box-sizing: border-box;
+  font-size: var(--as-helper-size);
+  line-height: var(--as-helper-line);
+  font-weight: 400;
+  color: var(--as-helper-color);
+  opacity: 1;
 }
 body.account-setup-page .account-setup-tx-notes-row{
-  margin-top: 2px;
-  gap: 4px;
+  margin-top: 0;
+  gap: 3px;
 }
 body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPanel2[data-step3-phase="form"]) .account-setup-actions--shell,
 body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPanel3[data-expense-phase="form"]) .account-setup-actions--shell{
   min-height: 56px;
   padding: 8px var(--as-card-pad-x) 10px;
   --as-tx-form-footer-btn-h: 46px;
+  align-items: center;
+}
+body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPanel2[data-step3-phase="form"]) .account-setup-actions__cluster,
+body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPanel3[data-expense-phase="form"]) .account-setup-actions__cluster{
+  gap: 8px;
+  align-items: center;
 }
 @media (min-width: 620px){
   body.account-setup-page .account-setup-tx-schedule-grid{
@@ -20050,10 +20210,6 @@ body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPane
   }
   body.account-setup-page .account-setup-tx-schedule-grid__repeat:has(.tx-add-schedule-field--second-day:not([hidden])) .account-setup-repeat-duo{
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  body.account-setup-page .account-setup-tx-variable-inline .reimbursable-field__hint{
-    flex: 1 1 auto;
-    max-width: none;
   }
 }
 @media (max-width: 619px){
