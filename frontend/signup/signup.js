@@ -859,7 +859,7 @@ function syncAccountSetupBackButtonVisibility() {
     accountSetupBackBtn.style.display = "none";
     return;
   }
-  accountSetupBackBtn.style.display = "inline-flex";
+  accountSetupBackBtn.style.removeProperty("display");
 }
 
 /**

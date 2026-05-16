@@ -13669,8 +13669,11 @@ body.account-setup-page .account-setup-wizard__shell .account-setup-actions--she
 body.account-setup-page .account-setup-wizard__shell .account-setup-actions--shell.account-setup-actions--step3-success{
   display: none;
 }
-/* Account setup: Back = quiet ghost secondary (CTA stays dominant) */
-body.account-setup-page #accountSetupBackBtn.secondary{
+/* Account setup wizard footers: canonical secondary + flex centering (colors from button.secondary) */
+body.account-setup-page .account-setup-actions--shell #accountSetupBackBtn.secondary,
+body.account-setup-page .account-setup-actions--shell #asTxCancelIncomeBtn.secondary,
+body.account-setup-page .account-setup-actions--shell #asExpCancelBtn.secondary,
+body.account-setup-page .account-setup-actions--shell #accountSetupSkipBtn.secondary{
   appearance: none;
   -webkit-appearance: none;
   box-sizing: border-box;
@@ -13679,39 +13682,25 @@ body.account-setup-page #accountSetupBackBtn.secondary{
   justify-content: center;
   margin: 0;
   flex-shrink: 0;
-  background: rgba(248, 250, 249, 0.95);
-  border: 1px solid rgba(11, 61, 46, 0.1);
-  box-shadow: none;
-  border-radius: 12px;
-  padding: 0 22px;
   min-height: 44px;
-  height: 44px;
-  min-width: 5.75rem;
-  font: inherit;
+  padding: 10px 22px;
+  border-radius: 12px;
+  font-family: inherit;
   font-size: 0.9375rem;
-  font-weight: 500;
-  color: rgba(11, 61, 46, 0.66);
-  text-decoration: none;
-  line-height: 1;
+  font-weight: 600;
+  line-height: 1.25;
   white-space: nowrap;
   cursor: pointer;
   filter: none;
-  transition:
-    background 0.15s ease,
-    border-color 0.15s ease,
-    color 0.15s ease;
 }
-body.account-setup-page #accountSetupBackBtn.secondary:hover{
-  background: rgba(241, 245, 243, 1);
-  border-color: rgba(11, 61, 46, 0.15);
-  color: rgba(11, 61, 46, 0.8);
+body.account-setup-page .account-setup-actions--shell #accountSetupBackBtn.secondary{
+  min-width: 5.75rem;
+}
+body.account-setup-page .account-setup-actions--shell #accountSetupBackBtn.secondary:hover,
+body.account-setup-page .account-setup-actions--shell #asTxCancelIncomeBtn.secondary:hover,
+body.account-setup-page .account-setup-actions--shell #asExpCancelBtn.secondary:hover,
+body.account-setup-page .account-setup-actions--shell #accountSetupSkipBtn.secondary:hover{
   filter: none;
-  box-shadow: none;
-}
-body.account-setup-page #accountSetupBackBtn.secondary:focus-visible{
-  outline: 2px solid rgba(11, 61, 46, 0.16);
-  outline-offset: 2px;
-  box-shadow: none;
 }
 body.account-setup-page .account-setup-trust-note{
   margin: 0 0 12px;
@@ -15073,39 +15062,10 @@ body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-action
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-actions--shell #accountSetupBackBtn.secondary{
   flex: 0 0 auto;
-  margin-right: 0;
   order: 1;
-  box-sizing: border-box;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 44px;
-  height: 44px;
-  padding: 0 16px;
-  appearance: none;
-  -webkit-appearance: none;
   font-size: 0.875rem;
-  font-weight: 600;
-  line-height: 1.2;
-  color: rgba(11, 61, 46, 0.82);
-  background: #fff;
-  border: 1px solid rgba(11, 61, 46, 0.18);
+  padding: 10px 16px;
   border-radius: 10px;
-  box-shadow: 0 1px 2px rgba(11, 61, 46, 0.06);
-  transition:
-    background 0.15s ease,
-    border-color 0.15s ease,
-    color 0.15s ease;
-}
-body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-actions--shell #accountSetupBackBtn.secondary:hover{
-  background: color-mix(in srgb, var(--accent) 7%, #fff);
-  border-color: rgba(11, 61, 46, 0.2);
-  color: rgba(11, 61, 46, 0.92);
-  filter: none;
-}
-body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-actions--shell #accountSetupBackBtn.secondary:focus-visible{
-  outline: 3px solid rgba(11, 61, 46, 0.18);
-  outline-offset: 2px;
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__shell .account-setup-actions--shell #signupBtn{
   box-sizing: border-box;
@@ -15626,18 +15586,14 @@ body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPane
   margin-top: 0;
   padding: clamp(10px, 1.6vw, 14px) clamp(28px, 3.5vw, 40px) clamp(16px, 2.2vw, 22px);
   border-top: 1px solid rgba(11, 61, 46, 0.08);
-  align-items: flex-end;
+  align-items: center;
   column-gap: clamp(16px, 3vw, 28px);
 }
 body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPanel2[data-step3-phase="intro"].account-setup-wizard__panel--active) .account-setup-actions__cluster{
   gap: 10px;
-  align-self: flex-end;
   flex: 0 0 auto;
   display: flex;
   align-items: center;
-}
-body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPanel2[data-step3-phase="intro"].account-setup-wizard__panel--active) #accountSetupBackBtn.secondary{
-  align-self: auto;
 }
 body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPanel2[data-step3-phase="intro"].account-setup-wizard__panel--active) .account-setup-actions__forward{
   display: flex;
@@ -20878,64 +20834,9 @@ body.account-setup-page
   .account-setup-wizard__shell:has(#accountSetupWizardPanel3[data-expense-phase="form"])
   .account-setup-actions--shell
   #asExpCancelBtn.secondary{
-  box-sizing: border-box;
-  appearance: none;
-  -webkit-appearance: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   min-height: var(--as-tx-form-footer-btn-h);
-  height: var(--as-tx-form-footer-btn-h);
   min-width: 5.25rem;
-  padding: 0 20px;
-  border-radius: 12px;
-  font-size: 0.9375rem;
-  font-weight: 550;
-  line-height: 1.2;
-  background: rgba(248, 250, 249, 0.95);
-  border: 1px solid rgba(11, 61, 46, 0.1);
-  color: rgba(11, 61, 46, 0.66);
-  box-shadow: none;
-  cursor: pointer;
-  transition:
-    background 0.16s ease,
-    border-color 0.16s ease,
-    color 0.16s ease;
-}
-body.account-setup-page
-  .account-setup-wizard__shell:has(#accountSetupWizardPanel2[data-step3-phase="form"])
-  .account-setup-actions--shell
-  #asTxCancelIncomeBtn.secondary:hover,
-body.account-setup-page
-  .account-setup-wizard__shell:has(#accountSetupWizardPanel3[data-expense-phase="form"])
-  .account-setup-actions--shell
-  #asExpCancelBtn.secondary:hover{
-  background: rgba(241, 245, 243, 1);
-  border-color: rgba(11, 61, 46, 0.15);
-  color: rgba(11, 61, 46, 0.8);
-  filter: none;
-}
-body.account-setup-page
-  .account-setup-wizard__shell:has(#accountSetupWizardPanel2[data-step3-phase="form"])
-  .account-setup-actions--shell
-  #asTxCancelIncomeBtn.secondary:active,
-body.account-setup-page
-  .account-setup-wizard__shell:has(#accountSetupWizardPanel3[data-expense-phase="form"])
-  .account-setup-actions--shell
-  #asExpCancelBtn.secondary:active{
-  background: rgba(241, 245, 249, 0.95);
-  border-color: rgba(11, 61, 46, 0.14);
-}
-body.account-setup-page
-  .account-setup-wizard__shell:has(#accountSetupWizardPanel2[data-step3-phase="form"])
-  .account-setup-actions--shell
-  #asTxCancelIncomeBtn.secondary:focus-visible,
-body.account-setup-page
-  .account-setup-wizard__shell:has(#accountSetupWizardPanel3[data-expense-phase="form"])
-  .account-setup-actions--shell
-  #asExpCancelBtn.secondary:focus-visible{
-  outline: 2px solid color-mix(in srgb, var(--accent) 38%, transparent);
-  outline-offset: 2px;
+  padding: 10px 20px;
 }
 
 /* Less air between the repeat toolbar rule and Notes */
