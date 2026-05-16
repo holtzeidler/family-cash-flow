@@ -11,7 +11,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=520" />
+    <link rel="stylesheet" href="../styles.css?v=521" />
   </head>
   <body class="login-page signup-page account-setup-page">
     <div class="container">
@@ -201,18 +201,18 @@
                       </div>
                     </section>
                     <p id="accountSetupStep3Summary" class="account-setup-step3-summary" aria-live="polite" hidden></p>
-                    <section class="account-setup-step3-section account-setup-step3-section--actions" aria-label="Add income or expense">
+                    <section class="account-setup-step3-section account-setup-step3-section--actions" aria-label="Add income or bill">
                       <div class="account-setup-tx-choice-wrap">
                         <button type="button" class="top-nav__logout account-setup-step3-actionBtn account-setup-step3-actionBtn--income" id="asTxHubAddIncomeBtn">
                           <span class="account-setup-step3-actionBtn__content">
                             <span class="account-setup-step3-actionBtn__plus" aria-hidden="true">+</span>
-                            <span class="account-setup-step3-actionBtn__label">Add Income</span>
+                            <span class="account-setup-step3-actionBtn__label">Add income</span>
                           </span>
                         </button>
                         <button type="button" class="top-nav__logout account-setup-step3-actionBtn account-setup-step3-actionBtn--expense" id="asTxHubAddExpenseBtn">
                           <span class="account-setup-step3-actionBtn__content">
                             <span class="account-setup-step3-actionBtn__plus" aria-hidden="true">+</span>
-                            <span class="account-setup-step3-actionBtn__label">Add Expense</span>
+                            <span class="account-setup-step3-actionBtn__label">Add bill</span>
                           </span>
                         </button>
                       </div>
@@ -617,13 +617,15 @@
               <button type="button" id="asExpCancelBtn" class="secondary" style="display: none">
                 Cancel
               </button>
-              <button type="button" id="signupBtn" class="top-nav__logout" onclick="window.__bwSignup && window.__bwSignup()">
-                Next
-              </button>
               </div>
-              <p id="accountSetupContinueGateHint" class="account-setup-continue-gateHint" hidden>
-                Add at least one item to continue.
-              </p>
+              <div class="account-setup-actions__forward">
+                <button type="button" id="signupBtn" class="top-nav__logout" onclick="window.__bwSignup && window.__bwSignup()">
+                  Next
+                </button>
+                <p id="accountSetupContinueGateHint" class="account-setup-continue-gateHint" hidden>
+                  Add at least one item to continue.
+                </p>
+              </div>
             </div>
           </div>
         </div>
