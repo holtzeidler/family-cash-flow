@@ -1,13 +1,13 @@
-<svg width="720" height="128" viewBox="0 0 720 128" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="bwLogoTitle">
-  <title id="bwLogoTitle">BalanceWhiz</title>
+<svg width="700" height="128" viewBox="0 0 700 128" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="bwLogoAccentTitle">
+  <title id="bwLogoAccentTitle">BalanceWhiz</title>
   <text
     x="0"
     y="96"
     font-family="Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif"
     font-size="96"
     font-weight="500"
-    letter-spacing="-0.02em"
-    fill="#5A6572"
+    letter-spacing="-0.03em"
+    fill="#D4DCE4"
   >Balance</text>
   <text
     x="388"
@@ -15,7 +15,7 @@
     font-family="Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif"
     font-size="96"
     font-weight="600"
-    letter-spacing="-0.01em"
-    fill="#1A5C45"
+    letter-spacing="-0.02em"
+    fill="#9FD4B8"
   >Whiz</text>
 </svg>

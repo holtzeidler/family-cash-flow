@@ -202,7 +202,7 @@ body.login-page.signup-page:not(.account-setup-page):not(.invite-page) .containe
 
 /* Account setup: ultra-soft elevation (wizard shell + in-flow card tiles) */
 body.account-setup-page{
-  --as-wizard-column: min(440px, 92%);
+  --as-wizard-column: min(600px, 94%);
   --as-ultra-soft-card-shadow:
     0 1px 3px rgba(0, 0, 0, 0.044),
     0 10px 28px rgba(0, 0, 0, 0.058),
@@ -222,17 +222,37 @@ body.account-setup-page .container{
 }
 body.account-setup-page .container > .grid{
   width: var(--as-wizard-column);
-  max-width: 760px;
+  max-width: 640px;
   margin-left: auto;
   margin-right: auto;
-  margin-top: max(10px, calc(22px - 8vh));
+  margin-top: max(6px, calc(36px - 11vh));
+  margin-bottom: 0;
 }
 body.account-setup-page .container > .grid:has(#accountSetupWizard[data-step="4"]){
-  width: min(420px, 92%);
-  margin-top: max(8px, calc(16px - 6vh));
+  width: min(600px, 94%);
+  max-width: 640px;
+  margin-top: max(6px, calc(28px - 9vh));
 }
 body.account-setup-page .top-nav{
   padding: 4px 0 3px;
+}
+/* Onboarding/auth nav: wordmark only — no pill badge */
+body.login-page.signup-page .app-title--logo > a,
+body.account-setup-page .app-title--logo > a{
+  padding: 4px 0;
+  border-radius: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+body.login-page.signup-page .app-title--logo .app-logo,
+body.account-setup-page .app-title--logo .app-logo{
+  width: min(168px, 42vw);
+  height: 34px;
+  object-fit: contain;
+  object-position: 0 50%;
 }
 
 /* Login only: align logo to far-left like the app. */
@@ -13160,27 +13180,27 @@ body.account-setup-page .account-setup-wizard{
   max-width: var(--as-wizard-column);
   margin-left: auto;
   margin-right: auto;
-  margin-top: 4px;
-  margin-bottom: 12px;
+  margin-top: 2px;
+  margin-bottom: 8px;
   /* Baseline card height: Step 2 is ~75% of prior size */
-  --as-compact-card-minh: 172px;
+  --as-compact-card-minh: 208px;
   /* Subeyebrow size; eyebrow is 5% larger (see __eyebrow) */
-  --as-wizard-subeyebrow-size: clamp(0.82rem, 1.45vw, 0.94rem);
+  --as-wizard-subeyebrow-size: clamp(0.86rem, 1.5vw, 0.98rem);
   --as-wizard-progress-pct: 25%;
 }
 body.account-setup-page .account-setup-wizard__stepHead{
-  margin: 0 0 clamp(0.22rem, 0.65vw, 0.34rem);
+  margin: 0 0 clamp(0.38rem, 0.75vw, 0.5rem);
   padding: 0 min(6%, 16px);
   box-sizing: border-box;
 }
 body.account-setup-page .account-setup-wizard__stepLabel{
-  margin: 0 0 0.22rem;
+  margin: 0 0 0.28rem;
   text-align: center;
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.09em;
+  font-size: 0.625rem;
+  font-weight: 650;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: rgba(11, 61, 46, 0.58);
+  color: rgba(11, 61, 46, 0.72);
 }
 body.account-setup-page .account-setup-wizard__progress{
   box-sizing: border-box;
@@ -13208,22 +13228,23 @@ body.account-setup-page .account-setup-wizard__progressFill{
   transition: width 260ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 body.account-setup-page .account-setup-wizard__eyebrow{
-  margin: 0 0 clamp(0.16rem, 0.45vw, 0.24rem);
+  margin: 0 0 clamp(0.28rem, 0.55vw, 0.38rem);
   text-align: center;
-  font-size: calc(var(--as-wizard-subeyebrow-size) * 1.06);
-  font-weight: 760;
+  font-size: clamp(1.28rem, 2.35vw, 1.5rem);
+  font-weight: 750;
   color: var(--accent);
-  letter-spacing: 0.15px;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
 }
 body.account-setup-page .account-setup-wizard__subeyebrow{
-  margin: 0 0 clamp(0.22rem, 0.55vw, 0.32rem);
+  margin: 0 0 clamp(0.55rem, 1vw, 0.72rem);
   text-align: center;
-  font-size: calc(var(--as-wizard-subeyebrow-size) * 0.86);
+  font-size: calc(var(--as-wizard-subeyebrow-size) * 0.96);
   font-weight: 500;
-  color: rgba(17, 24, 39, 0.48);
-  line-height: 1.32;
-  letter-spacing: 0.01em;
-  max-width: 26ch;
+  color: rgba(17, 24, 39, 0.62);
+  line-height: 1.4;
+  letter-spacing: 0.005em;
+  max-width: 32ch;
   margin-left: auto;
   margin-right: auto;
 }
@@ -13301,12 +13322,12 @@ body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard
 }
 body.account-setup-page .account-setup-wizard__shell .account-setup-actions--shell{
   flex-shrink: 0;
-  padding: 4px 10px 5px;
+  padding: 12px 20px 14px;
   margin: 0;
-  border-top: 1px solid rgba(11, 61, 46, 0.08);
-  background: linear-gradient(180deg, rgba(248, 250, 249, 0.94) 0%, rgba(252, 253, 252, 0.98) 100%);
+  border-top: 1px solid rgba(11, 61, 46, 0.09);
+  background: linear-gradient(180deg, rgba(248, 250, 249, 0.96) 0%, rgba(252, 253, 252, 0.99) 100%);
   /* Keep the wizard card height consistent even when only "Back" is visible. */
-  min-height: 46px;
+  min-height: 52px;
   flex-wrap: wrap;
   justify-content: flex-end;
   align-items: center;
@@ -13374,13 +13395,13 @@ body.account-setup-page .account-setup-trust-strip{
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin: clamp(0.08rem, 0.5vw, 0.22rem) auto 6px;
+  margin: 4px auto 2px;
   padding: 3px 9px;
   border-radius: 999px;
   background: transparent;
   border: none;
-  color: rgba(30, 41, 59, 0.72);
-  font-size: 0.74rem;
+  color: rgba(51, 65, 85, 0.78);
+  font-size: 0.78rem;
   font-weight: 550;
   letter-spacing: 0.012em;
   line-height: 1.35;
@@ -13528,37 +13549,38 @@ body.account-setup-page .account-setup-success-summary__empty{
 
 /* --- Slim onboarding footer --- */
 .onboarding-footer{
-  margin: 28px auto 18px;
-  padding: 18px 16px 12px;
+  margin: 12px auto 10px;
+  padding: 10px 16px 8px;
   text-align: center;
-  border-top: 1px solid rgba(0,0,0,0.06);
-  color: rgba(17, 24, 39, 0.50);
-  font-size: 0.80rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.07);
+  color: rgba(51, 65, 85, 0.72);
+  font-size: 0.84rem;
 }
 .onboarding-footer__brand{
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
   text-decoration: none;
-  opacity: 0.72;
+  opacity: 0.88;
 }
 .onboarding-footer__logo{
-  height: 28px;
+  height: 30px;
   width: auto;
   display: block;
 }
 .onboarding-footer__line{
-  margin: 0 0 4px;
+  margin: 0 0 3px;
   font-weight: 500;
-  color: rgba(17, 24, 39, 0.62);
+  color: rgba(51, 65, 85, 0.76);
+  font-size: 0.84rem;
 }
 .onboarding-footer__legal{
   margin: 0;
-  font-size: 0.76rem;
+  font-size: 0.8rem;
 }
 .onboarding-footer__legal a{
-  color: rgba(17, 24, 39, 0.55);
+  color: rgba(51, 65, 85, 0.68);
   text-decoration: none;
   margin: 0 2px;
 }
@@ -13572,10 +13594,10 @@ body.account-setup-page .account-setup-success-summary__empty{
 
 /* --- Subtle polish: tighten form spacing + soften labels in onboarding only --- */
 body.account-setup-page .account-setup-wizard__panel .form-row-h__label label{
-  font-size: 0.77rem;
-  font-weight: 560;
-  color: rgba(17, 24, 39, 0.62);
-  letter-spacing: 0.006em;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: rgba(17, 24, 39, 0.72);
+  letter-spacing: 0.004em;
 }
 body.account-setup-page .account-setup-wizard__panel .form-row-h__field input::placeholder{
   color: rgba(17, 24, 39, 0.38);
@@ -13627,7 +13649,7 @@ body.account-setup-page .account-setup-wizard__panel{
   width: 100%;
   box-sizing: border-box;
   min-width: 0;
-  padding: 9px 12px 8px;
+  padding: 16px 20px 14px;
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
@@ -13640,7 +13662,7 @@ body.account-setup-page .account-setup-wizard__panel > *{
   max-width: 100%;
 }
 body.account-setup-page .account-setup-wizard__panel.auth-section__body{
-  padding: 9px 12px 8px;
+  padding: 16px 20px 14px;
 }
 body.account-setup-page #accountSetupWizardPanel4.account-setup-wizard__panel.auth-section__body{
   padding: 12px 18px 6px;
@@ -13692,14 +13714,15 @@ body.account-setup-page .auth-section__body.account-setup-card__body{
 }
 body.account-setup-page .form-row-h__field input:not([type="checkbox"]):not([type="radio"]),
 body.account-setup-page .form-row-h__field select{
-  padding: 8px 11px;
-  font-size: 0.9rem;
+  padding: 14px 12px;
+  min-height: 52px;
+  font-size: 0.95rem;
   font-weight: 500;
   color: rgba(17, 24, 39, 0.92);
-  line-height: 1.3;
+  line-height: 1.35;
   background: #fff;
-  border: 1px solid rgba(17, 24, 39, 0.2);
-  border-radius: 9px;
+  border: 1px solid rgba(17, 24, 39, 0.24);
+  border-radius: 10px;
   transition:
     border-color 160ms ease,
     box-shadow 160ms ease,
@@ -13720,8 +13743,9 @@ body.account-setup-page .form-row-h__field select:focus{
 body.account-setup-page #accountSetupWizardPanel0 #email,
 body.account-setup-page #accountSetupWizardPanel0 #password,
 body.account-setup-page #accountSetupWizardPanel0 #password2{
-  font-size: 0.9rem;
-  line-height: 1.32;
+  font-size: 0.95rem;
+  line-height: 1.35;
+  min-height: 54px;
 }
 body.account-setup-page .form-row-h__field .money-input{
   background: #fff;
@@ -13843,10 +13867,10 @@ body.account-setup-page #accountSetupWizardPanel0 .form-row-h{
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 4px;
+  gap: 6px;
 }
 body.account-setup-page .account-setup-field-spacer{
-  height: 3px;
+  height: 8px;
   flex-shrink: 0;
 }
 body.account-setup-page .account-setup-step2-groups{
@@ -13887,9 +13911,9 @@ body.account-setup-page #accountSetupWizardPanel0 .form-row-h__label{
 }
 body.account-setup-page #accountSetupWizardPanel0 .form-row-h__label label{
   text-align: left;
-  font-size: 0.77rem;
-  font-weight: 560;
-  color: rgba(17, 24, 39, 0.64);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: rgba(17, 24, 39, 0.72);
 }
 /* Step 2: full-width rows + wider label column so uppercase labels stay on one line */
 body.account-setup-page #accountSetupWizardPanel1 .form-row-h{
@@ -13970,11 +13994,11 @@ body.account-setup-page #accountSetupWizardPanel1 .form-row-h__field input#accou
   cursor: text;
 }
 body.account-setup-page .account-setup-field-hint{
-  margin: 2px 0 0;
-  font-size: 0.72rem;
-  line-height: 1.32;
+  margin: 4px 0 0;
+  font-size: 0.75rem;
+  line-height: 1.35;
   font-weight: 450;
-  color: rgba(100, 116, 139, 0.58);
+  color: rgba(100, 116, 139, 0.68);
 }
 body.account-setup-page .account-setup-field-hint--tight{
   margin: 0;
