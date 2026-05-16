@@ -9297,15 +9297,16 @@ function renderTotals(totals) {
   const income = totals?.income ?? 0;
   const expense = totals?.expense ?? 0;
   const net = totals?.net ?? 0;
+  const netTone = net >= 0 ? "ok" : "danger";
 
   if (totalsEl.classList.contains("totals--compact")) {
     totalsEl.innerHTML = `
       <div class="totals-compact">
-        <div class="totals-compact__row">
+        <div class="totals-compact__row totals-compact__row--income">
           <span class="totals-compact__k">Income</span>
           <span class="totals-compact__v ok">$${fmtMoney(income)}</span>
         </div>
-        <div class="totals-compact__row">
+        <div class="totals-compact__row totals-compact__row--expense">
           <span class="totals-compact__k">Expenses</span>
           <span class="totals-compact__v danger">$${fmtMoney(expense)}</span>
         </div>
@@ -9318,16 +9319,16 @@ function renderTotals(totals) {
   }
 
   const incomeEl = document.createElement("div");
-  incomeEl.className = "total";
+  incomeEl.className = "total total--income";
   incomeEl.innerHTML = `<div class="k">Income</div><div class="v ok">$${fmtMoney(income)}</div>`;
 
   const expenseEl = document.createElement("div");
-  expenseEl.className = "total";
+  expenseEl.className = "total total--expense";
   expenseEl.innerHTML = `<div class="k">Expense</div><div class="v danger">$${fmtMoney(expense)}</div>`;
 
   const netEl = document.createElement("div");
-  netEl.className = "total";
-  netEl.innerHTML = `<div class="k">Net</div><div class="v ${net >= 0 ? "ok" : "danger"}">$${fmtMoney(net)}</div>`;
+  netEl.className = "total total--net";
+  netEl.innerHTML = `<div class="k">Net</div><div class="v ${netTone}">$${fmtMoney(net)}</div>`;
 
   totalsEl.appendChild(incomeEl);
   totalsEl.appendChild(expenseEl);
@@ -9761,11 +9762,11 @@ function renderSidebarPendingTransactionsForMonth() {
     const cta = document.createElement("span");
     cta.className = "pending-attn-cta";
     cta.setAttribute("aria-hidden", "true");
-    cta.textContent = "Review \u2192";
+    cta.textContent = "Review estimate";
 
     el.setAttribute(
       "aria-label",
-      `${descFull || catLabel}, ${sign}$${fmtMoney0(amt)}, ${it?.date ? fmtMonthDay(it.date) : "date unknown"}, review`
+      `${descFull || catLabel}, ${sign}$${fmtMoney0(amt)}, ${it?.date ? fmtMonthDay(it.date) : "date unknown"}, review estimate`
     );
     el.title = name.title;
     el.appendChild(textCol);

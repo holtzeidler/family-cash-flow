@@ -862,7 +862,7 @@ function getAccountSetupStepCopy(step, ctx) {
       }
       return {
         title: "Add your first income & expenses",
-        subtitle: "A paycheck and a couple of bills are enough to see your forecast. You can add more later.",
+        subtitle: "You’re almost done — a paycheck and a bill are enough to see your forecast take shape.",
       };
     }
     case 3:

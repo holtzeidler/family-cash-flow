@@ -2536,41 +2536,47 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
 .top-nav__tab{
   font: inherit;
   position: relative;
-  border-radius: 10px;
-  padding: 10px 12px;
+  border-radius: 8px;
+  padding: 7px 11px;
   border: 1px solid transparent;
   background: transparent;
-  color: rgba(255,255,255,0.86);
+  color: rgba(255, 255, 255, 0.82);
   font-weight: 600;
   text-decoration: none;
   cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
 .top-nav__tab:visited{
-  color: rgba(255,255,255,0.86);
+  color: rgba(255, 255, 255, 0.82);
 }
 .top-nav__tab.is-active:visited{
-  color: #fff;
+  color: rgba(255, 255, 255, 0.98);
 }
 .top-nav__tab:hover{
-  background: rgba(255,255,255,0.10);
-  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.96);
 }
 .top-nav__tab.is-active{
-  background: rgba(255,255,255,0.11);
-  border-color: rgba(255,255,255,0.18);
-  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.98);
+  font-weight: 650;
 }
 .top-nav__tab.is-active::after{
-  content:"";
-  position:absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  bottom: -8px;
-  width: 0;
-  height: 0;
-  border-left: 9px solid transparent;
-  border-right: 9px solid transparent;
-  border-top: 9px solid rgba(255,255,255,0.11);
+  content: "";
+  position: absolute;
+  left: 9px;
+  right: 9px;
+  bottom: 5px;
+  height: 2px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.48);
+  transform: none;
+  width: auto;
+  border: none;
 }
 
 /* Light SaaS footer — full-bleed like legacy bar, but airy / trust-forward */
@@ -4898,12 +4904,12 @@ button.secondary[aria-disabled="true"]{
   background: rgba(0, 0, 0, 0.016);
 }
 .pending-attn-item.is-critical{
-  border-color: rgba(167, 55, 68, 0.22);
-  background: rgba(167, 55, 68, 0.045);
+  border-color: rgba(167, 55, 68, 0.14);
+  background: rgba(167, 55, 68, 0.028);
 }
 .pending-attn-item.is-soon{
-  border-color: rgba(180, 83, 9, 0.16);
-  background: rgba(253, 230, 138, 0.06);
+  border-color: rgba(180, 83, 9, 0.11);
+  background: rgba(253, 230, 138, 0.04);
 }
 .pending-attn-item.is-critical .pending-attn-name{
   font-weight: 700;
@@ -4957,21 +4963,23 @@ button.secondary[aria-disabled="true"]{
 .pending-attn-cta{
   flex-shrink: 0;
   margin: 0;
-  padding: 0;
-  border: none;
-  background: transparent;
-  color: rgba(100, 116, 139, 0.62);
-  font-size: 11px;
+  padding: 2px 7px;
+  border: 1px solid rgba(17, 24, 39, 0.07);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  color: rgba(71, 85, 105, 0.72);
+  font-size: 10px;
   font-weight: 600;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.012em;
   line-height: 1.2;
   white-space: nowrap;
   pointer-events: none;
 }
 .pending-attn-item:hover .pending-attn-cta{
-  color: rgba(71, 85, 105, 0.78);
-  text-decoration: underline;
-  text-underline-offset: 2px;
+  color: rgba(11, 61, 46, 0.82);
+  border-color: rgba(11, 61, 46, 0.14);
+  background: rgba(255, 255, 255, 0.95);
+  text-decoration: none;
 }
 button.pending-attn-item{
   font: inherit;
@@ -6111,12 +6119,12 @@ body[data-bw-view="calendar"] .calendar-panel-sticky-zone{
   background: linear-gradient(180deg, rgba(240, 249, 255, 0.76) 0%, rgba(255, 255, 255, 0.98) 100%);
 }
 .cash-insights__card--watch{
-  border-color: rgba(180, 83, 9, 0.14);
-  background: linear-gradient(180deg, rgba(255, 251, 235, 0.82) 0%, rgba(255, 255, 255, 0.98) 100%);
+  border-color: rgba(180, 83, 9, 0.1);
+  background: linear-gradient(180deg, rgba(255, 251, 235, 0.55) 0%, rgba(255, 255, 255, 0.98) 100%);
 }
 .cash-insights__card--urgent{
-  border-color: rgba(185, 28, 28, 0.14);
-  background: linear-gradient(180deg, rgba(254, 242, 242, 0.86) 0%, rgba(255, 255, 255, 0.98) 100%);
+  border-color: rgba(185, 28, 28, 0.09);
+  background: linear-gradient(180deg, rgba(254, 242, 242, 0.48) 0%, rgba(255, 255, 255, 0.98) 100%);
 }
 .cash-insights__eyebrow{
   font-size: 0.64rem;
@@ -8427,46 +8435,40 @@ body[data-bw-view="calendar"] .sidebar{
   width: 100%;
   min-width: 0;
 }
+body[data-bw-view="calendar"] .sidebar{
+  gap: 11px;
+}
 body[data-bw-view="calendar"] .sidebar-sticky-head{
-  padding-bottom: 10px;
+  padding-bottom: 9px;
   margin-bottom: 0;
-  border-bottom: 1px solid rgba(17, 24, 39, 0.055);
+  border-bottom: 1px solid rgba(17, 24, 39, 0.045);
 }
-body[data-bw-view="calendar"] .sidebar .card{
-  border: 1px solid rgba(17, 24, 39, 0.055);
-  background: rgba(255, 255, 255, 0.9);
-  border-radius: 9px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
-  padding: 5px 8px;
+body[data-bw-view="calendar"] .sidebar .card,
+body[data-bw-view="calendar"] .sidebar-balance-threshold-alerts{
+  border: 1px solid rgba(17, 24, 39, 0.042);
+  background: rgba(255, 253, 250, 0.94);
+  border-radius: 10px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.018);
+  padding: 8px 10px;
 }
-body[data-bw-view="calendar"] #sidebarPendingTxCard:not(.sidebar-pending--empty){
-  padding: 6px 8px 7px;
-  border-color: rgba(11, 61, 46, 0.065);
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 1px 2px rgba(11, 61, 46, 0.03);
-}
-body[data-bw-view="calendar"] #sidebarPendingTxCard:not(.sidebar-pending--empty):hover{
-  border-color: rgba(11, 61, 46, 0.09);
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+body[data-bw-view="calendar"] #sidebarPendingTxCard:not(.sidebar-pending--empty):hover,
+body[data-bw-view="calendar"] .sidebar .card[data-sidebar-key="month"]:hover{
+  border-color: rgba(17, 24, 39, 0.06);
+  box-shadow: 0 2px 7px rgba(15, 23, 42, 0.03);
 }
 body[data-bw-view="calendar"] #sidebarPendingTxCard.sidebar-pending--empty{
-  padding: 8px 9px;
+  padding: 8px 10px;
 }
-body[data-bw-view="calendar"] #sidebarPendingTxCard .sidebar-section-head{
-  margin-bottom: 5px;
-}
-body[data-bw-view="calendar"] #sidebarPendingTitle{
-  font-size: 12.75px;
-  font-weight: 620;
-  letter-spacing: 0.022em;
-  color: rgba(17, 24, 39, 0.78);
-}
+body[data-bw-view="calendar"] #sidebarPendingTxCard .sidebar-section-head,
 body[data-bw-view="calendar"] .sidebar-section:not(.sidebar-section--collapsed) .sidebar-section-head{
-  margin-bottom: 5px;
+  margin-bottom: 6px;
 }
+body[data-bw-view="calendar"] #sidebarPendingTitle,
 body[data-bw-view="calendar"] .sidebar-section-head h2{
-  font-size: 0.76rem;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 620;
+  letter-spacing: 0.02em;
+  color: rgba(55, 65, 81, 0.72);
 }
 body[data-bw-view="calendar"] .sidebar-collapse-btn{
   width: 28px;
@@ -8497,12 +8499,12 @@ body[data-bw-view="calendar"] .pending-attn-item:hover{
   box-shadow: 0 1px 4px rgba(15, 23, 42, 0.03);
 }
 body[data-bw-view="calendar"] .pending-attn-item.is-critical{
-  border-color: rgba(167, 55, 68, 0.14);
-  background: rgba(167, 55, 68, 0.03);
+  border-color: rgba(167, 55, 68, 0.1);
+  background: rgba(254, 242, 242, 0.35);
 }
 body[data-bw-view="calendar"] .pending-attn-item.is-soon{
-  border-color: rgba(180, 83, 9, 0.1);
-  background: rgba(253, 230, 138, 0.038);
+  border-color: rgba(180, 83, 9, 0.08);
+  background: rgba(255, 251, 235, 0.38);
 }
 body[data-bw-view="calendar"] .pending-attn-item::before{
   display: none;
@@ -8517,11 +8519,11 @@ body[data-bw-view="calendar"] .cash-outlook-icon svg{
   stroke-width: 2.1;
 }
 body[data-bw-view="calendar"] .cash-outlook-title{
-  font-size: 11.25px;
-  font-weight: 630;
-  letter-spacing: 0.03em;
+  font-size: 12px;
+  font-weight: 620;
+  letter-spacing: 0.02em;
   margin-top: 0;
-  color: rgba(55, 65, 75, 0.68);
+  color: rgba(55, 65, 81, 0.72);
 }
 body[data-bw-view="calendar"] .cash-outlook-hero{
   margin: 3px 0 4px;
@@ -8553,8 +8555,8 @@ body[data-bw-view="calendar"] .cash-outlook-secondary{
 }
 body[data-bw-view="calendar"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger{
   border-radius: 9px;
-  border: 1px solid rgba(180, 83, 9, 0.13);
-  background: rgba(255, 251, 235, 0.55);
+  border: 1px solid rgba(180, 83, 9, 0.09);
+  background: rgba(255, 251, 235, 0.42);
   padding: 5px 7px 6px;
 }
 body[data-bw-view="calendar"] .calendar-low-balance--sidebar strong{
@@ -8566,15 +8568,10 @@ body[data-bw-view="calendar"] .calendar-low-balance--sidebar strong{
 body[data-bw-view="calendar"] #sidebarBodyMonth .totals{
   flex-direction: column;
   flex-wrap: nowrap;
-  gap: 7px;
+  gap: 2px;
 }
 body[data-bw-view="calendar"] #sidebarBalanceThresholdAlerts{
-  padding: 2px 6px 4px;
   margin-bottom: 0;
-  border-radius: 9px;
-  border: 1px solid rgba(11, 61, 46, 0.06);
-  background: rgba(255, 255, 255, 0.72);
-  box-shadow: 0 1px 2px rgba(11, 61, 46, 0.025);
 }
 body[data-bw-view="calendar"] .calendar-low-balance--sidebar{
   padding: 0;
@@ -8584,20 +8581,7 @@ body[data-bw-view="calendar"] .calendar-low-balance--sidebar .cash-outlook-hero{
   margin: 1px 0 2px;
 }
 body[data-bw-view="calendar"] .sidebar .card[data-sidebar-key="month"]{
-  padding: 5px 8px;
-  border-radius: 9px;
-  border-color: rgba(17, 24, 39, 0.055);
-  background: rgba(255, 255, 255, 0.9);
   transition: border-color 0.14s ease, box-shadow 0.14s ease;
-}
-body[data-bw-view="calendar"] .sidebar .card[data-sidebar-key="month"]:hover{
-  border-color: rgba(17, 24, 39, 0.07);
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.035);
-}
-body[data-bw-view="calendar"] .sidebar .card[data-sidebar-key="month"] .sidebar-section-head h2{
-  font-size: 0.72rem;
-  font-weight: 580;
-  color: rgba(100, 116, 139, 0.82);
 }
 body[data-bw-view="calendar"] #sidebarBodyMonth .total{
   flex: 0 0 auto;
@@ -8606,20 +8590,21 @@ body[data-bw-view="calendar"] #sidebarBodyMonth .total{
   align-items: baseline;
   justify-content: space-between;
   gap: 10px;
-  padding: 5px 6px;
-  border-radius: 7px;
-  border: 1px solid transparent;
+  padding: 6px 2px;
+  border-radius: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
 }
-body[data-bw-view="calendar"] #sidebarBodyMonth .total:last-child{
-  border-color: rgba(11, 61, 46, 0.085);
-  background: rgba(11, 61, 46, 0.038);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+body[data-bw-view="calendar"] #sidebarBodyMonth .total--income,
+body[data-bw-view="calendar"] #sidebarBodyMonth .total--expense{
+  border-bottom: 1px solid rgba(17, 24, 39, 0.04);
+}
+body[data-bw-view="calendar"] #sidebarBodyMonth .total--net{
+  margin-top: 5px;
+  padding-top: 9px;
+  border-top: 1px solid rgba(17, 24, 39, 0.09);
   border-bottom: none;
-  margin-top: 4px;
-  padding: 6px 7px;
-}
-body[data-bw-view="calendar"] #sidebarBodyMonth .total:not(:last-child){
-  border-bottom: 1px solid rgba(17, 24, 39, 0.032);
 }
 body[data-bw-view="calendar"] #sidebarBodyMonth .total .k{
   flex: 1;
@@ -8628,29 +8613,39 @@ body[data-bw-view="calendar"] #sidebarBodyMonth .total .k{
   font-weight: 520;
   letter-spacing: 0.045em;
   text-transform: uppercase;
-  color: rgba(100, 116, 139, 0.68);
+  color: rgba(100, 116, 139, 0.66);
 }
-body[data-bw-view="calendar"] #sidebarBodyMonth .total:last-child .k{
-  color: rgba(11, 61, 46, 0.72);
-  font-weight: 640;
-  letter-spacing: 0.03em;
+body[data-bw-view="calendar"] #sidebarBodyMonth .total--net .k{
+  font-weight: 600;
+  letter-spacing: 0.035em;
+  color: rgba(71, 85, 105, 0.72);
 }
 body[data-bw-view="calendar"] #sidebarBodyMonth .total .v{
   flex: 0 0 auto;
   min-width: 7.25ch;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 680;
   margin-top: 0;
   text-align: right;
   letter-spacing: -0.015em;
   font-variant-numeric: tabular-nums;
-  color: rgba(30, 41, 59, 0.88);
 }
-body[data-bw-view="calendar"] #sidebarBodyMonth .total:last-child .v{
-  font-size: 15px;
-  font-weight: 760;
-  color: rgba(11, 61, 46, 0.94);
+body[data-bw-view="calendar"] #sidebarBodyMonth .total--income .v.ok{
+  color: color-mix(in srgb, var(--ok) 78%, #64748b);
+}
+body[data-bw-view="calendar"] #sidebarBodyMonth .total--expense .v.danger{
+  color: color-mix(in srgb, var(--danger) 72%, #78716c);
+}
+body[data-bw-view="calendar"] #sidebarBodyMonth .total--net .v{
+  font-size: 15.5px;
+  font-weight: 780;
   letter-spacing: -0.022em;
+}
+body[data-bw-view="calendar"] #sidebarBodyMonth .total--net .v.ok{
+  color: color-mix(in srgb, var(--ok) 90%, #1e293b);
+}
+body[data-bw-view="calendar"] #sidebarBodyMonth .total--net .v.danger{
+  color: color-mix(in srgb, var(--danger) 82%, #57534e);
 }
 body[data-bw-view="calendar"] #sidebarBodyMonth > div:nth-child(2){
   height: 8px !important;
@@ -10732,7 +10727,7 @@ textarea::placeholder{
 .totals-compact{
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   padding: 2px 0 1px;
 }
 .totals-compact__row{
@@ -10742,14 +10737,15 @@ textarea::placeholder{
   gap: 12px;
   font-size: 12px;
   line-height: 1.28;
+  padding: 1px 0;
 }
 .totals-compact__row--net{
-  margin-top: 2px;
-  padding-top: 6px;
-  border-top: 1px solid rgba(17, 24, 39, 0.06);
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(17, 24, 39, 0.08);
 }
 .totals-compact__k{
-  color: rgba(100, 116, 139, 0.55);
+  color: rgba(100, 116, 139, 0.58);
   font-weight: 500;
   font-size: 11px;
   letter-spacing: 0.01em;
@@ -10762,10 +10758,21 @@ textarea::placeholder{
   color: rgba(17, 24, 39, 0.95);
 }
 .totals-compact__v.ok{
-  color: var(--ok);
+  color: color-mix(in srgb, var(--ok) 78%, #64748b);
 }
 .totals-compact__v.danger{
-  color: var(--danger);
+  color: color-mix(in srgb, var(--danger) 72%, #78716c);
+}
+.totals-compact__row--net .totals-compact__v{
+  font-size: 16px;
+  font-weight: 780;
+  letter-spacing: -0.018em;
+}
+.totals-compact__row--net .totals-compact__v.ok{
+  color: color-mix(in srgb, var(--ok) 90%, #1e293b);
+}
+.totals-compact__row--net .totals-compact__v.danger{
+  color: color-mix(in srgb, var(--danger) 82%, #57534e);
 }
 .total{
   flex: 1 1 160px;
@@ -10776,8 +10783,12 @@ textarea::placeholder{
 }
 .total .k{ color: var(--muted); font-size: 12px; }
 .total .v{ font-size: 18px; margin-top: 4px; }
-.v.ok{ color: var(--ok); }
-.v.danger{ color: var(--danger); }
+.v.ok{
+  color: color-mix(in srgb, var(--ok) 78%, #64748b);
+}
+.v.danger{
+  color: color-mix(in srgb, var(--danger) 72%, #78716c);
+}
 
 .list{
   margin-top: 10px;
@@ -13119,11 +13130,33 @@ body.account-setup-page .account-setup-wizard__subeyebrow{
   margin-left: auto;
   margin-right: auto;
 }
+body.account-setup-page #accountSetupWizard[data-step="2"] .account-setup-wizard__stepHead{
+  margin-bottom: clamp(0.22rem, 0.55vw, 0.34rem);
+}
 body.account-setup-page #accountSetupWizard[data-step="2"] .account-setup-wizard__eyebrow{
-  margin-bottom: clamp(0.28rem, 0.75vw, 0.42rem);
+  margin-bottom: clamp(0.14rem, 0.4vw, 0.22rem);
 }
 body.account-setup-page #accountSetupWizard[data-step="2"] .account-setup-wizard__subeyebrow{
-  margin-bottom: clamp(0.42rem, 1vw, 0.58rem);
+  margin-bottom: clamp(0.26rem, 0.6vw, 0.36rem);
+  color: rgba(17, 24, 39, 0.5);
+}
+body.account-setup-page #accountSetupWizard[data-step="2"] .account-setup-wizard__progressTrack{
+  height: 5px;
+  background: rgba(11, 61, 46, 0.1);
+}
+body.account-setup-page #accountSetupWizard[data-step="2"] .account-setup-wizard__progressFill{
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--accent) 78%, #1a4736),
+    color-mix(in srgb, var(--accent) 92%, #2d7a54)
+  );
+  box-shadow: 0 0 12px rgba(4, 120, 87, 0.18);
+}
+body.account-setup-page #accountSetupWizard[data-step="2"] .account-setup-wizard__shell.auth-section.card{
+  box-shadow:
+    0 6px 18px rgba(0, 0, 0, 0.03),
+    0 12px 32px rgba(11, 61, 46, 0.07),
+    0 1px 0 rgba(255, 255, 255, 0.7) inset;
 }
 body.account-setup-page .account-setup-wizard__roadmap{
   margin: 0 0 14px;
@@ -14513,7 +14546,7 @@ body.account-setup-page .account-setup-kind-toggle--expense-only .kind-opt:has(i
 }
 body.account-setup-page #accountSetupWizardPanel2[data-step3-phase="intro"].account-setup-wizard__panel{
   min-height: 0;
-  padding: 8px 12px 4px;
+  padding: 7px 11px 3px;
 }
 body.account-setup-page .account-setup-step3-intro{
   display: flex;
@@ -14526,51 +14559,51 @@ body.account-setup-page .account-setup-step3-section{
   padding: 0;
 }
 body.account-setup-page .account-setup-step3-section--guidance{
-  padding-bottom: 4px;
+  padding-bottom: 2px;
 }
 body.account-setup-page .account-setup-step3-section--actions{
-  padding: 8px 0 4px;
+  padding: 6px 0 2px;
   border-top: none;
 }
 body.account-setup-page .account-setup-step3-recommend{
-  padding: 5px 8px 6px;
-  border: 1px solid rgba(148, 163, 184, 0.07);
-  border-radius: 9px;
-  background: rgba(248, 250, 252, 0.65);
+  padding: 4px 7px 5px;
+  border: none;
+  border-radius: 8px;
+  background: rgba(248, 250, 252, 0.42);
 }
 body.account-setup-page .account-setup-step3-recommend__eyebrow{
-  margin: 0 0 4px;
-  font-size: 0.76rem;
-  font-weight: 600;
-  letter-spacing: 0.01em;
+  margin: 0 0 3px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.008em;
   text-transform: none;
-  color: rgba(100, 116, 139, 0.68);
+  color: rgba(100, 116, 139, 0.52);
 }
 body.account-setup-page .account-setup-step3-checklist{
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 3px;
+  gap: 2px;
 }
 body.account-setup-page .account-setup-step3-checklist li{
   display: flex;
   align-items: flex-start;
-  gap: 6px;
+  gap: 5px;
   margin: 0;
-  font-size: 0.76rem;
-  line-height: 1.3;
-  font-weight: 500;
-  color: rgba(71, 85, 105, 0.75);
+  font-size: 0.71rem;
+  line-height: 1.28;
+  font-weight: 450;
+  color: rgba(71, 85, 105, 0.62);
 }
 body.account-setup-page .account-setup-step3-checklist li::before{
   content: "";
-  width: 4px;
-  height: 4px;
+  width: 3px;
+  height: 3px;
   border-radius: 999px;
-  margin-top: 0.38em;
+  margin-top: 0.42em;
   flex-shrink: 0;
-  background: rgba(100, 116, 139, 0.35);
+  background: rgba(100, 116, 139, 0.28);
 }
 body.account-setup-page .account-setup-step3-summary{
   display: inline-flex;
@@ -14596,7 +14629,7 @@ body.account-setup-page .account-setup-tx-choice-wrap{
   width: 100%;
   max-width: none;
   margin: 0;
-  gap: 8px;
+  gap: 7px;
 }
 body.account-setup-page .account-setup-step3-actionBtn{
   width: 100%;
@@ -14610,55 +14643,55 @@ body.account-setup-page .account-setup-step3-actionBtn{
 }
 body.account-setup-page #asTxHubAddIncomeBtn.account-setup-step3-actionBtn,
 body.account-setup-page #asTxHubAddExpenseBtn.account-setup-step3-actionBtn{
-  min-height: 40px;
-  padding: 0 12px;
-  border-radius: 10px;
+  min-height: 36px;
+  padding: 0 11px;
+  border-radius: 9px;
   border-width: 1px;
   border-style: solid;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.92);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.94);
 }
 body.account-setup-page #asTxHubAddIncomeBtn.account-setup-step3-actionBtn--income{
-  border-color: rgba(11, 61, 46, 0.18);
-  background: #fff;
+  border-color: rgba(4, 120, 87, 0.22);
+  background: color-mix(in srgb, var(--accent) 5%, #fff);
   color: rgba(11, 61, 46, 0.9);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.95),
-    0 1px 2px rgba(11, 61, 46, 0.05);
+    inset 0 1px 0 rgba(255, 255, 255, 0.96),
+    0 1px 2px rgba(4, 120, 87, 0.08);
 }
 body.account-setup-page #asTxHubAddExpenseBtn.account-setup-step3-actionBtn--expense{
-  border-color: rgba(148, 163, 184, 0.28);
-  background: #fff;
-  color: rgba(51, 65, 85, 0.88);
+  border-color: rgba(180, 134, 88, 0.22);
+  background: rgba(255, 252, 248, 0.95);
+  color: rgba(87, 68, 48, 0.86);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.95),
-    0 1px 2px rgba(15, 23, 42, 0.04);
+    inset 0 1px 0 rgba(255, 255, 255, 0.96),
+    0 1px 2px rgba(120, 90, 60, 0.06);
 }
 body.account-setup-page #asTxHubAddIncomeBtn.account-setup-step3-actionBtn--income .account-setup-step3-actionBtn__plus,
 body.account-setup-page #asTxHubAddIncomeBtn.account-setup-step3-actionBtn--income .account-setup-step3-actionBtn__label{
-  color: rgba(11, 61, 46, 0.88);
+  color: rgba(11, 61, 46, 0.86);
 }
 body.account-setup-page #asTxHubAddExpenseBtn.account-setup-step3-actionBtn--expense .account-setup-step3-actionBtn__plus,
 body.account-setup-page #asTxHubAddExpenseBtn.account-setup-step3-actionBtn--expense .account-setup-step3-actionBtn__label{
-  color: rgba(51, 65, 85, 0.86);
+  color: rgba(87, 68, 48, 0.84);
 }
 body.account-setup-page #asTxHubAddIncomeBtn.account-setup-step3-actionBtn:hover:not(:disabled),
 body.account-setup-page #asTxHubAddExpenseBtn.account-setup-step3-actionBtn:hover:not(:disabled){
   filter: none;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  transform: translateY(-1px);
 }
 body.account-setup-page #asTxHubAddIncomeBtn.account-setup-step3-actionBtn--income:hover:not(:disabled){
-  background: color-mix(in srgb, var(--accent) 5%, #fff);
-  border-color: rgba(11, 61, 46, 0.24);
+  background: color-mix(in srgb, var(--accent) 11%, #fff);
+  border-color: rgba(4, 120, 87, 0.34);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.92),
-    0 2px 6px rgba(11, 61, 46, 0.07);
+    inset 0 1px 0 rgba(255, 255, 255, 0.94),
+    0 3px 10px rgba(4, 120, 87, 0.12);
 }
 body.account-setup-page #asTxHubAddExpenseBtn.account-setup-step3-actionBtn--expense:hover:not(:disabled){
-  background: rgba(248, 250, 252, 0.95);
-  border-color: rgba(100, 116, 139, 0.28);
+  background: rgba(255, 249, 243, 0.98);
+  border-color: rgba(180, 134, 88, 0.32);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.92),
-    0 2px 6px rgba(15, 23, 42, 0.06);
+    inset 0 1px 0 rgba(255, 255, 255, 0.94),
+    0 3px 10px rgba(120, 90, 60, 0.1);
 }
 body.account-setup-page #asTxHubAddIncomeBtn.account-setup-step3-actionBtn:active:not(:disabled),
 body.account-setup-page #asTxHubAddExpenseBtn.account-setup-step3-actionBtn:active:not(:disabled){
@@ -14693,20 +14726,29 @@ body.account-setup-page .account-setup-step3-actionBtn__content{
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
+  gap: 4px;
 }
 body.account-setup-page .account-setup-step3-actionBtn__plus{
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.95rem;
+  width: 0.9rem;
+  font-size: 0.92rem;
   font-weight: 700;
   line-height: 1;
 }
 body.account-setup-page .account-setup-step3-actionBtn__label{
-  font-size: 0.875rem;
-  font-weight: 650;
-  letter-spacing: 0.01em;
+  font-size: 0.84rem;
+  font-weight: 640;
+  letter-spacing: 0.008em;
+}
+body.account-setup-page .account-setup-actions__cluster{
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  width: 100%;
 }
 body.account-setup-page .account-setup-step3-forecast-ready{
   flex-shrink: 0;
@@ -14721,101 +14763,55 @@ body.account-setup-page .account-setup-step3-forecast-ready{
   background: linear-gradient(180deg, rgba(248, 250, 249, 0.96) 0%, rgba(252, 252, 252, 0.72) 100%);
   border-top: 1px solid rgba(11, 61, 46, 0.07);
 }
-/* Step 3 intro: tighter footer, gate hint, ghost Back, clearer disabled Continue */
+/* Step 3 intro: paired footer actions, hint below, lighter disabled Continue */
 body.account-setup-page #accountSetupWizard[data-step="2"]:has(#accountSetupWizardPanel2[data-step3-phase="intro"])
   .account-setup-wizard__shell
   .account-setup-actions--shell{
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-rows: auto auto;
-  align-items: start;
-  column-gap: 10px;
-  row-gap: 1px;
-  padding: 5px 12px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 3px;
+  padding: 4px 10px 5px;
   min-height: 0;
-  border-top: 1px solid rgba(11, 61, 46, 0.055);
-  background: linear-gradient(180deg, rgba(248, 250, 249, 0.55) 0%, rgba(252, 252, 252, 0.98) 100%);
+  border-top: 1px solid rgba(11, 61, 46, 0.04);
+  background: linear-gradient(180deg, rgba(252, 253, 252, 0.72) 0%, rgba(255, 255, 255, 0.98) 100%);
 }
 body.account-setup-page
   #accountSetupWizard[data-step="2"]:has(#accountSetupWizardPanel2[data-step3-phase="intro"])
   .account-setup-actions--shell
-  > #accountSetupBackBtn.secondary{
-  grid-column: 1;
-  grid-row: 1 / span 2;
-  align-self: center;
-  justify-self: start;
-  margin-right: 0;
-  appearance: none;
-  -webkit-appearance: none;
-  min-height: 38px;
-  padding: 7px 14px;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: rgba(11, 61, 46, 0.78);
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px solid rgba(11, 61, 46, 0.14);
-  border-radius: 10px;
-  box-shadow: 0 1px 2px rgba(11, 61, 46, 0.05);
-  text-decoration: none;
-  transition:
-    background 0.15s ease,
-    border-color 0.15s ease,
-    color 0.15s ease,
-    box-shadow 0.15s ease;
-}
-body.account-setup-page
-  #accountSetupWizard[data-step="2"]:has(#accountSetupWizardPanel2[data-step3-phase="intro"])
-  .account-setup-actions--shell
-  > #accountSetupBackBtn.secondary:hover{
-  background: color-mix(in srgb, var(--accent) 7%, #fff);
-  border-color: rgba(11, 61, 46, 0.22);
-  color: rgba(11, 61, 46, 0.92);
-  filter: none;
-}
-body.account-setup-page
-  #accountSetupWizard[data-step="2"]:has(#accountSetupWizardPanel2[data-step3-phase="intro"])
-  .account-setup-actions--shell
-  > #accountSetupBackBtn.secondary:focus-visible{
-  outline: 3px solid rgba(11, 61, 46, 0.18);
-  outline-offset: 2px;
-}
-body.account-setup-page
-  #accountSetupWizard[data-step="2"]:has(#accountSetupWizardPanel2[data-step3-phase="intro"])
-  .account-setup-actions--shell
-  > #signupBtn{
-  grid-column: 2;
-  grid-row: 1;
-  justify-self: end;
-  align-self: center;
-}
-body.account-setup-page
-  #accountSetupWizard[data-step="2"]:has(#accountSetupWizardPanel2[data-step3-phase="intro"])
-  .account-setup-actions--shell
-  > .account-setup-continue-gateHint{
-  grid-column: 2;
-  grid-row: 2;
-  justify-self: end;
-  max-width: min(220px, 52vw);
+  .account-setup-actions__cluster{
+  justify-content: flex-end;
 }
 body.account-setup-page .account-setup-continue-gateHint{
   margin: 0;
-  padding: 0;
-  font-size: 0.68rem;
-  line-height: 1.28;
-  font-weight: 550;
-  letter-spacing: 0.01em;
-  color: rgba(71, 85, 105, 0.82);
+  padding: 0 2px 0 0;
+  font-size: 0.65rem;
+  line-height: 1.3;
+  font-weight: 450;
+  letter-spacing: 0.012em;
+  color: rgba(100, 116, 139, 0.5);
   text-align: right;
+  width: 100%;
+  box-sizing: border-box;
 }
 body.account-setup-page #accountSetupWizard[data-step="2"] .account-setup-wizard__shell .account-setup-actions--shell #signupBtn:disabled{
-  background: linear-gradient(180deg, #fbfdfc 0%, #f3f5f4 100%);
-  color: rgba(71, 85, 105, 0.78);
-  border-color: rgba(11, 61, 46, 0.12);
+  background: rgba(255, 255, 255, 0.92);
+  color: rgba(11, 61, 46, 0.38);
+  border-color: rgba(11, 61, 46, 0.14);
   border-width: 1px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
-  opacity: 1;
-  font-weight: 650;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  opacity: 0.94;
+  font-weight: 600;
   cursor: not-allowed;
+}
+body.account-setup-page
+  #accountSetupWizard[data-step="2"]:has(#accountSetupWizardPanel2[data-step3-phase="intro"])
+  .account-setup-wizard__shell
+  .account-setup-actions--shell
+  #signupBtn:not(:disabled){
+  box-shadow:
+    0 1px 2px rgba(11, 61, 46, 0.1),
+    0 4px 12px rgba(4, 120, 87, 0.14);
 }
 body.account-setup-page
   #accountSetupWizard[data-step="2"]:has(#accountSetupWizardPanel2[data-step3-phase="intro"])
@@ -14855,39 +14851,34 @@ body.account-setup-page
     #accountSetupWizard[data-step="2"]:has(#accountSetupWizardPanel2[data-step3-phase="intro"])
     .account-setup-wizard__shell
     .account-setup-actions--shell{
-    grid-template-columns: 1fr;
-    grid-template-rows: auto auto auto;
-    row-gap: 4px;
-    padding: 6px 12px 8px;
+    padding: 4px 10px 5px;
+    gap: 4px;
   }
   body.account-setup-page
     #accountSetupWizard[data-step="2"]:has(#accountSetupWizardPanel2[data-step3-phase="intro"])
     .account-setup-actions--shell
-    > #accountSetupBackBtn.secondary{
-    grid-column: 1;
-    grid-row: 1;
-    align-self: start;
+    .account-setup-actions__cluster{
+    flex-direction: column;
+    align-items: stretch;
   }
   body.account-setup-page
     #accountSetupWizard[data-step="2"]:has(#accountSetupWizardPanel2[data-step3-phase="intro"])
     .account-setup-actions--shell
-    > #signupBtn{
-    grid-column: 1;
-    grid-row: 2;
-    justify-self: stretch;
+    .account-setup-actions__cluster
+    > .top-nav__logout,
+  body.account-setup-page
+    #accountSetupWizard[data-step="2"]:has(#accountSetupWizardPanel2[data-step3-phase="intro"])
+    .account-setup-actions--shell
+    .account-setup-actions__cluster
+    > .secondary{
     width: 100%;
-    max-width: 280px;
-    margin-left: auto;
-    margin-right: 0;
+    max-width: none;
   }
   body.account-setup-page
     #accountSetupWizard[data-step="2"]:has(#accountSetupWizardPanel2[data-step3-phase="intro"])
     .account-setup-actions--shell
     > .account-setup-continue-gateHint{
-    grid-column: 1;
-    grid-row: 3;
-    justify-self: end;
-    max-width: 100%;
+    text-align: center;
   }
 }
 body.account-setup-page .account-setup-card{
@@ -14964,7 +14955,7 @@ body.account-setup-page .account-setup-actions{
 body.account-setup-page .account-setup-actions #accountSetupBackBtn{
   margin-right: 0;
 }
-body.account-setup-page .account-setup-wizard__shell .account-setup-actions--shell > #signupBtn{
+body.account-setup-page .account-setup-wizard__shell .account-setup-actions--shell #signupBtn{
   min-height: 38px;
   padding: 6px 16px;
   font-size: 0.9rem;
@@ -16441,11 +16432,11 @@ body.plans-page--polished .plans-wrap{
 /* Forecast risk: calm awareness — keep the cell mostly neutral; status reads
    from the left accent, optional soft footer band, and balance pill (below). */
 .cal-cell.cal-cell--bal-watch{
-  background: #fff;
-  border-color: rgba(17, 24, 39, 0.06);
+  background: color-mix(in srgb, #fffbeb 12%, #fff);
+  border-color: rgba(17, 24, 39, 0.055);
   box-shadow:
-    inset 2px 0 0 rgba(217, 119, 6, 0.2),
-    0 1px 2px rgba(17, 24, 39, 0.03);
+    inset 2px 0 0 rgba(217, 119, 6, 0.14),
+    0 1px 2px rgba(17, 24, 39, 0.025);
 }
 .cal-cell.cal-cell--bal-watch:not(.cal-cell--out):not(.cal-cell--before-start)::after{
   content: "";
@@ -16453,24 +16444,24 @@ body.plans-page--polished .plans-wrap{
   left: 0;
   right: 0;
   bottom: 0;
-  height: 3px;
+  height: 2px;
   border-radius: 0 0 9px 9px;
-  background: linear-gradient(90deg, rgba(251, 191, 36, 0.22), rgba(253, 224, 71, 0.14));
+  background: linear-gradient(90deg, rgba(251, 191, 36, 0.14), rgba(253, 224, 71, 0.08));
   pointer-events: none;
 }
 .cal-cell.cal-cell--bal-warn{
-  background: #fff;
-  border-color: rgba(17, 24, 39, 0.065);
+  background: color-mix(in srgb, #fff7ed 14%, #fff);
+  border-color: rgba(17, 24, 39, 0.058);
   box-shadow:
-    inset 2px 0 0 rgba(225, 29, 72, 0.22),
-    0 1px 2px rgba(17, 24, 39, 0.03);
+    inset 2px 0 0 rgba(225, 29, 72, 0.14),
+    0 1px 2px rgba(17, 24, 39, 0.025);
 }
 .cal-cell.cal-cell--bal-risk{
-  background: #fff;
-  border-color: rgba(17, 24, 39, 0.07);
+  background: color-mix(in srgb, #fef2f2 16%, #fff);
+  border-color: rgba(17, 24, 39, 0.06);
   box-shadow:
-    inset 2px 0 0 rgba(185, 28, 28, 0.24),
-    0 1px 2px rgba(17, 24, 39, 0.035);
+    inset 2px 0 0 rgba(185, 28, 28, 0.16),
+    0 1px 2px rgba(17, 24, 39, 0.028);
 }
 .cal-cell.cal-cell--bal-risk:not(.cal-cell--out):not(.cal-cell--before-start)::after{
   content: "";
@@ -16480,7 +16471,7 @@ body.plans-page--polished .plans-wrap{
   bottom: 0;
   height: 2px;
   border-radius: 0 0 9px 9px;
-  background: rgba(252, 165, 165, 0.2);
+  background: rgba(252, 165, 165, 0.12);
   pointer-events: none;
 }
 .cal-cell.cal-cell--has-collapsed-rows:not(.cal-cell--out){
@@ -16510,24 +16501,27 @@ body.plans-page--polished .plans-wrap{
 }
 
 .cal-cell.cal-cell--bal-watch:not(.cal-cell--out):not(.cal-cell--before-start):hover{
-  border-color: rgba(17, 24, 39, 0.1);
+  border-color: rgba(17, 24, 39, 0.09);
+  background: color-mix(in srgb, #fffbeb 16%, #fff);
   box-shadow:
-    inset 2px 0 0 rgba(217, 119, 6, 0.26),
-    0 5px 16px rgba(120, 53, 15, 0.06);
+    inset 2px 0 0 rgba(217, 119, 6, 0.18),
+    0 4px 14px rgba(120, 53, 15, 0.04);
 }
 
 .cal-cell.cal-cell--bal-warn:not(.cal-cell--out):not(.cal-cell--before-start):hover{
-  border-color: rgba(17, 24, 39, 0.1);
+  border-color: rgba(17, 24, 39, 0.09);
+  background: color-mix(in srgb, #fff7ed 18%, #fff);
   box-shadow:
-    inset 2px 0 0 rgba(225, 29, 72, 0.28),
-    0 5px 16px rgba(127, 29, 29, 0.06);
+    inset 2px 0 0 rgba(225, 29, 72, 0.18),
+    0 4px 14px rgba(127, 29, 29, 0.035);
 }
 
 .cal-cell.cal-cell--bal-risk:not(.cal-cell--out):not(.cal-cell--before-start):hover{
-  border-color: rgba(17, 24, 39, 0.11);
+  border-color: rgba(17, 24, 39, 0.095);
+  background: color-mix(in srgb, #fef2f2 20%, #fff);
   box-shadow:
-    inset 2px 0 0 rgba(185, 28, 28, 0.32),
-    0 5px 16px rgba(127, 29, 29, 0.07);
+    inset 2px 0 0 rgba(185, 28, 28, 0.2),
+    0 4px 14px rgba(127, 29, 29, 0.04);
 }
 
 @media (prefers-reduced-motion: reduce){
@@ -17702,21 +17696,21 @@ body[data-bw-view="transactions"] .sidebar{
 }
 body[data-bw-view="transactions"] #sidebarPendingTxCard{
   margin-top: 0;
-  padding: 6px 8px;
-  border: 1px solid rgba(11, 61, 46, 0.07);
-  background: rgba(255, 255, 255, 0.9);
-  border-radius: 11px;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.025);
+  padding: 8px 10px;
+  border: 1px solid rgba(17, 24, 39, 0.042);
+  background: rgba(255, 253, 250, 0.94);
+  border-radius: 10px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.018);
 }
 body[data-bw-view="transactions"] #sidebarPendingTxCard .sidebar-section-head{
   margin-bottom: 4px;
 }
 body[data-bw-view="transactions"] .sidebar .card[data-sidebar-key="month"]{
-  border: 1px solid rgba(17, 24, 39, 0.05);
-  background: rgba(255, 255, 255, 0.86);
-  border-radius: 11px;
-  box-shadow: none;
-  padding: 7px 9px;
+  border: 1px solid rgba(17, 24, 39, 0.042);
+  background: rgba(255, 253, 250, 0.94);
+  border-radius: 10px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.018);
+  padding: 8px 10px;
 }
 body[data-bw-view="transactions"] .sidebar .card[data-sidebar-key="month"] .sidebar-section-head h2{
   font-size: 12px;
@@ -18319,27 +18313,27 @@ body[data-bw-view="transactions"] .tm__field label{
   color: rgba(90, 100, 120, 0.58);
 }
 .cal-stat.cal-balance.cal-balance--watch-zone{
-  font-weight: 630;
-  color: rgba(146, 64, 14, 0.9);
+  font-weight: 620;
+  color: rgba(146, 64, 14, 0.78);
   padding: 2px 7px;
   border-radius: 7px;
-  background: rgba(254, 252, 232, 0.92);
-  border: 1px solid rgba(253, 224, 71, 0.32);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset;
+  background: rgba(254, 252, 232, 0.72);
+  border: 1px solid rgba(253, 224, 71, 0.2);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.75) inset;
 }
 .cal-stat.cal-balance.cal-balance--below-floor{
   font-size: clamp(10.9px, 1.75vw, 11.9px);
-  font-weight: 640;
-  color: rgba(180, 62, 22, 0.92);
+  font-weight: 630;
+  color: rgba(154, 52, 18, 0.8);
   padding: 3px 8px;
   border-radius: 7px;
-  background: rgba(255, 247, 237, 0.96);
-  border: 1px solid rgba(253, 186, 116, 0.38);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.75) inset;
+  background: rgba(255, 247, 237, 0.78);
+  border: 1px solid rgba(253, 186, 116, 0.24);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset;
 }
 .cal-stat.cal-balance.cal-balance--repeated:not(.cal-balance--risk):not(.is-negative){
-  font-weight: 640;
-  color: rgba(120, 53, 15, 0.82);
+  font-weight: 630;
+  color: rgba(120, 53, 15, 0.72);
 }
 .cal-stat.cal-balance.cal-balance--month-low-mark{
   font-weight: 540;
@@ -18347,19 +18341,19 @@ body[data-bw-view="transactions"] .tm__field label{
 }
 .cal-stat.cal-balance.cal-balance--risk,
 .cal-stat.cal-balance.is-negative{
-  font-weight: 700;
+  font-weight: 680;
   font-size: clamp(11.1px, 1.88vw, 12.35px);
-  color: rgba(127, 29, 29, 0.96);
+  color: rgba(127, 29, 29, 0.82);
   padding: 3px 8px;
   border-radius: 7px;
-  background: rgba(254, 242, 242, 0.95);
-  border: 1px solid rgba(252, 165, 165, 0.42);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.78) inset;
+  background: rgba(254, 242, 242, 0.72);
+  border: 1px solid rgba(252, 165, 165, 0.26);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.82) inset;
 }
 .cal-stat.cal-balance.cal-balance--risk.cal-balance--repeated,
 .cal-stat.cal-balance.is-negative.cal-balance--repeated{
-  font-weight: 710;
-  color: rgba(127, 29, 29, 0.9);
+  font-weight: 690;
+  color: rgba(127, 29, 29, 0.78);
 }
 .cal-stat.cal-balance.cal-balance--recovery-milestone{
   font-weight: 550;
@@ -18387,8 +18381,8 @@ body[data-bw-view="transactions"] .tm__field label{
   justify-content: center;
   flex-shrink: 0;
   margin-right: 4px;
-  color: rgba(185, 28, 28, 0.72);
-  opacity: 0.92;
+  color: rgba(185, 28, 28, 0.58);
+  opacity: 0.88;
 }
 .cal-balance-risk-icon svg{
   display: block;
@@ -18399,8 +18393,8 @@ body[data-bw-view="transactions"] .tm__field label{
   justify-content: center;
   flex-shrink: 0;
   margin-right: 3px;
-  color: rgba(194, 65, 12, 0.65);
-  opacity: 0.95;
+  color: rgba(194, 65, 12, 0.52);
+  opacity: 0.9;
 }
 .cal-balance-warn-icon svg{
   display: block;
@@ -18416,7 +18410,7 @@ body[data-bw-view="transactions"] .tm__field label{
   color: rgba(75, 85, 99, 0.72);
 }
 .cal-forecast-note.is-danger{
-  color: rgba(167, 55, 68, 0.86);
+  color: rgba(167, 55, 68, 0.72);
 }
 .cal-forecast-note.is-ok{
   color: rgba(4, 120, 87, 0.82);
@@ -22923,10 +22917,10 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   }
 
   .top-nav__tab.is-active::after{
-    bottom: -6px;
-    border-left-width: 7px;
-    border-right-width: 7px;
-    border-top-width: 7px;
+    left: 8px;
+    right: 8px;
+    bottom: 4px;
+    height: 2px;
   }
 
   .top-nav__inner--simple{
