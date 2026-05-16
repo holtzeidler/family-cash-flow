@@ -1,16 +1,21 @@
-<svg width="1024" height="220" viewBox="0 0 1024 220" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
-  <title id="title">BalanceWhiz</title>
-  <desc id="desc">BalanceWhiz logo with abstract green icon and tagline.</desc>
-  <rect width="1024" height="220" rx="20" fill="white"/>
-  <g transform="translate(18 20)">
-    <ellipse cx="66" cy="15" rx="31" ry="15" fill="#A7B39A"/>
-    <path d="M66 44C35.6243 44 16 61.9452 16 90.5C16 102.503 19.9358 112.379 26.7217 120.189H105.278C112.064 112.379 116 102.503 116 90.5C116 61.9452 96.3757 44 66 44Z" fill="#7B9688"/>
-    <path d="M66 96C28.9969 96 5 117.49 5 151.5C5 169.65 11.8369 184.915 23.6099 196H108.39C120.163 184.915 127 169.65 127 151.5C127 117.49 103.003 96 66 96Z" fill="#12523D"/>
-    <rect x="0" y="205" width="132" height="10" rx="5" fill="#0B3D2E"/>
-  </g>
-  <g font-family="Inter, Arial, sans-serif">
-    <text x="234" y="118" font-size="112" font-weight="500" fill="#0E1116">Balance</text>
-    <text x="689" y="118" font-size="112" font-weight="700" fill="#0F5B43">Whiz</text>
-    <text x="237" y="182" font-size="38" font-weight="500" fill="#647774">See your cash flow before it happens.</text>
-  </g>
+<svg width="720" height="128" viewBox="0 0 720 128" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="bwLogoTitle">
+  <title id="bwLogoTitle">BalanceWhiz</title>
+  <text
+    x="0"
+    y="96"
+    font-family="Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif"
+    font-size="96"
+    font-weight="500"
+    letter-spacing="-0.02em"
+    fill="#5A6572"
+  >Balance</text>
+  <text
+    x="404"
+    y="96"
+    font-family="Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif"
+    font-size="96"
+    font-weight="600"
+    letter-spacing="-0.01em"
+    fill="#1A5C45"
+  >Whiz</text>
 </svg>

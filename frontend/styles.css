@@ -270,16 +270,16 @@ body.login-page:not(.signup-page):not(.invite-page) .app-title--logo > a{
 }
 body.login-page:not(.signup-page):not(.invite-page) .app-title--logo .app-logo{
   display: block;
-  width: min(176px, 39vw);
-  height: 40px;
+  width: min(200px, 44vw);
+  height: 36px;
   object-fit: contain;
-  object-position: 50% 50%;
-  border-radius: 10px;
+  object-position: 0 50%;
+  border-radius: 0;
 }
 @media (max-width: 860px){
   body.login-page:not(.signup-page):not(.invite-page) .app-title--logo .app-logo{
-    width: min(166px, 47vw);
-    height: 38px;
+    width: min(188px, 50vw);
+    height: 34px;
   }
 }
 
@@ -2395,11 +2395,11 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
 }
 .app-title--logo .app-logo{
   display: block;
-  width: min(188px, 45.5vw);
-  height: 46px;
+  width: min(220px, 52vw);
+  height: 40px;
   object-fit: contain;
-  object-position: 50% 50%;
-  border-radius: 12px;
+  object-position: 0 50%;
+  border-radius: 0;
 }
 
 @media (max-width: 860px){
@@ -2421,8 +2421,8 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
     text-align: center;
   }
   .app-title--logo .app-logo{
-    width: min(172px, 42vw);
-    height: 42px;
+    width: min(200px, 48vw);
+    height: 36px;
   }
   /* Plans / admin / signup: keep title left + actions right on narrow screens (overrides generic centered nav). */
   body.plans-page .top-nav .top-nav__inner.top-nav__inner--simple,
@@ -2586,7 +2586,7 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
 }
 .app-footer__logo-img{
   display: block;
-  height: 29px;
+  height: 32px;
   width: auto;
 }
 .app-footer__tagline{
@@ -13517,7 +13517,7 @@ body.account-setup-page .account-setup-success-summary__empty{
   opacity: 0.72;
 }
 .onboarding-footer__logo{
-  height: 24px;
+  height: 28px;
   width: auto;
   display: block;
 }
@@ -15978,8 +15978,8 @@ body.plans-page--polished .top-nav{
   padding: 8px 0 6px;
 }
 body.plans-page--polished .top-nav .app-logo{
-  width: min(188px, 46vw);
-  height: auto;
+  width: min(220px, 52vw);
+  height: 40px;
 }
 
 /* Public nav (Features / Pricing / Login) */
@@ -23116,8 +23116,8 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   }
 
   .app-title--logo .app-logo{
-    width: min(154px, 46vw);
-    height: 35px;
+    width: min(184px, 52vw);
+    height: 32px;
   }
 
   .top-nav__tabs{
@@ -23179,8 +23179,8 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
 
   body.login-page:not(.signup-page):not(.invite-page) .app-title--logo .app-logo,
   body.landing-page .app-title--logo .app-logo{
-    width: min(150px, 48vw);
-    height: 34px;
+    width: min(178px, 54vw);
+    height: 32px;
   }
 
   .app-layout,
@@ -23768,8 +23768,8 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   }
 
   .app-title--logo .app-logo{
-    width: min(142px, 46vw);
-    height: 32px;
+    width: min(168px, 50vw);
+    height: 30px;
   }
 
   .top-nav__logout,
