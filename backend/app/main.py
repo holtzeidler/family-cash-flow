@@ -335,6 +335,9 @@ class User(Base):
     name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     password_hash: Mapped[str] = mapped_column(String(255))
     created_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
+    # Platform console access: none | support | admin (family roles are separate on FamilyMember).
+    platform_role: Mapped[str] = mapped_column(String(20), nullable=False, default="none")
+    last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     memberships: Mapped[list[FamilyMember]] = relationship(back_populates="user")
 
@@ -369,6 +372,21 @@ class FamilyMember(Base):
 
     family: Mapped[Family] = relationship(back_populates="memberships")
     user: Mapped[User] = relationship(back_populates="memberships")
+
+
+class PlatformAdminAuditLog(Base):
+    """Operator actions on user accounts (platform admin console)."""
+
+    __tablename__ = "platform_admin_audit_log"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+    actor_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    target_user_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    action: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    detail: Mapped[str] = mapped_column(Text, nullable=False, default="")
 
 
 class PasswordResetToken(Base):
@@ -678,16 +696,104 @@ def _platform_admin_email_set() -> set[str]:
     return {x.strip() for x in raw.split(",") if x.strip()}
 
 
-def is_platform_admin(*, db, user_id: int) -> bool:
+def _stored_platform_role(user: User) -> str:
+    raw = (getattr(user, "platform_role", None) or "none").strip().lower()
+    if raw in ("support", "admin"):
+        return raw
+    return "none"
+
+
+def effective_platform_role(*, user: User) -> str:
+    """Resolved platform console role (legacy allowlist emails count as admin)."""
+    stored = _stored_platform_role(user)
+    if stored in ("support", "admin"):
+        return stored
+    if str(user.email).lower().strip() in _platform_admin_email_set():
+        return "admin"
+    return "none"
+
+
+def has_platform_console_access(*, db, user_id: int) -> bool:
     user = db.execute(select(User).where(User.id == user_id)).scalar_one_or_none()
     if user is None:
         return False
-    return str(user.email).lower().strip() in _platform_admin_email_set()
+    return effective_platform_role(user=user) in ("support", "admin")
+
+
+def is_platform_super_admin(*, db, user_id: int) -> bool:
+    """Full platform admin (destructive ops, grant admin role)."""
+    user = db.execute(select(User).where(User.id == user_id)).scalar_one_or_none()
+    if user is None:
+        return False
+    return effective_platform_role(user=user) == "admin"
+
+
+def is_platform_admin(*, db, user_id: int) -> bool:
+    """Can access the platform operator console (support or admin)."""
+    return has_platform_console_access(db=db, user_id=user_id)
 
 
 def require_platform_admin(*, db, user_id: int) -> None:
     if not is_platform_admin(db=db, user_id=user_id):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Platform admin required")
+
+
+def require_platform_super_admin(*, db, user_id: int) -> None:
+    if not is_platform_super_admin(db=db, user_id=user_id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Platform super admin required")
+
+
+def _platform_audit_log(
+    *,
+    db,
+    actor_user_id: int,
+    target_user_id: Optional[int],
+    action: str,
+    detail: str,
+) -> None:
+    db.add(
+        PlatformAdminAuditLog(
+            actor_user_id=int(actor_user_id),
+            target_user_id=int(target_user_id) if target_user_id is not None else None,
+            action=str(action)[:64],
+            detail=str(detail or "")[:4000],
+        )
+    )
+
+
+def _family_role_label(*, is_family_owner: bool, access_mode: str) -> str:
+    if is_family_owner:
+        return "Owner"
+    if (access_mode or "edit").strip().lower() == "view":
+        return "View only"
+    return "Can edit"
+
+
+def _user_account_status(*, memberships: Sequence) -> str:
+    return "no_family" if not memberships else "active"
+
+
+def _platform_user_row_out(*, u: User, memberships: list[PlatformAdminFamilyMembershipOut]) -> "PlatformAdminUserOut":
+    primary_name: Optional[str] = None
+    primary_role: Optional[str] = None
+    if memberships:
+        primary_name = memberships[0].family_name
+        primary_role = _family_role_label(
+            is_family_owner=memberships[0].is_family_owner,
+            access_mode=memberships[0].access_mode,
+        )
+    return PlatformAdminUserOut(
+        id=int(u.id),
+        email=u.email,
+        name=u.name,
+        created_at=u.created_at,
+        last_login_at=getattr(u, "last_login_at", None),
+        platform_role=effective_platform_role(user=u),
+        status=_user_account_status(memberships=memberships),
+        primary_family_name=primary_name,
+        primary_family_role=primary_role,
+        memberships=memberships,
+    )
 
 
 def require_family_member(*, db, family_id: int, user_id: int, write: bool = False) -> None:
@@ -730,6 +836,25 @@ def require_family_admin(*, db, family_id: int, user_id: int) -> None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a family member")
     if str(getattr(membership, "role", "") or "").lower() != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+
+
+def require_family_household_manager(*, db, family_id: int, user_id: int) -> None:
+    """Household settings: family owner or member with role `admin` (edit access)."""
+    membership = db.execute(
+        select(FamilyMember).where(FamilyMember.family_id == family_id, FamilyMember.user_id == user_id)
+    ).scalar_one_or_none()
+    if membership is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a family member")
+    if str(getattr(membership, "access_mode", None) or "edit").strip().lower() == "view":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="View-only access for this family. Ask the family owner to grant edit access.",
+        )
+    if bool(getattr(membership, "is_family_owner", False)):
+        return
+    if str(getattr(membership, "role", "") or "").lower() == "admin":
+        return
+    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
 
 
 def _family_member_row_to_out(*, db, row: FamilyMember) -> FamilyMemberOut:
@@ -1037,7 +1162,40 @@ class PlatformAdminUserOut(BaseModel):
     email: EmailStr
     name: Optional[str] = None
     created_at: datetime
+    last_login_at: Optional[datetime] = None
+    platform_role: Literal["none", "support", "admin"]
+    status: Literal["active", "no_family"]
+    primary_family_name: Optional[str] = None
+    primary_family_role: Optional[str] = None
     memberships: list[PlatformAdminFamilyMembershipOut]
+
+
+class PlatformAdminAuditEntryOut(BaseModel):
+    id: int
+    created_at: datetime
+    actor_user_id: int
+    actor_email: Optional[str] = None
+    target_user_id: Optional[int] = None
+    action: str
+    detail: str
+
+
+class PlatformAdminUserDetailOut(PlatformAdminUserOut):
+    recent_audit: list[PlatformAdminAuditEntryOut] = Field(default_factory=list)
+
+
+class PlatformUserPlatformRoleIn(BaseModel):
+    platform_role: Literal["none", "support", "admin"]
+
+
+class PlatformFamilyMembershipRoleIn(BaseModel):
+    family_role: Literal["owner", "edit", "view"]
+
+
+class PlatformUserInviteIn(BaseModel):
+    email: EmailStr
+    family_id: int
+    family_role: Literal["owner", "edit", "view"] = "view"
 
 
 class PlatformFamilySummaryOut(BaseModel):
@@ -2002,6 +2160,9 @@ def startup_populate_schema():
     _ensure_family_member_rbac_columns()
     _backfill_family_member_owners()
     _ensure_family_invites_table()
+    _ensure_user_platform_columns()
+    _ensure_platform_admin_audit_table()
+    _sync_legacy_platform_admin_roles()
 
 
 def _ensure_transaction_color_columns() -> None:
@@ -2369,6 +2530,145 @@ def _ensure_family_invites_table() -> None:
             )
 
 
+def _ensure_user_platform_columns() -> None:
+    """Platform console role + last login timestamp on users."""
+    with engine.begin() as conn:
+        if settings.DATABASE_URL.startswith("sqlite"):
+            cols = conn.execute(text("PRAGMA table_info(users)")).fetchall()
+            names = {str(row[1]) for row in cols}
+            if "platform_role" not in names:
+                conn.execute(text("ALTER TABLE users ADD COLUMN platform_role VARCHAR(20) NOT NULL DEFAULT 'none'"))
+            if "last_login_at" not in names:
+                conn.execute(text("ALTER TABLE users ADD COLUMN last_login_at DATETIME"))
+            conn.execute(text("UPDATE users SET platform_role = COALESCE(NULLIF(TRIM(platform_role), ''), 'none')"))
+        else:
+            conn.execute(
+                text("ALTER TABLE users ADD COLUMN IF NOT EXISTS platform_role VARCHAR(20) NOT NULL DEFAULT 'none'")
+            )
+            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ"))
+            conn.execute(text("UPDATE users SET platform_role = COALESCE(NULLIF(TRIM(platform_role), ''), 'none')"))
+
+
+def _ensure_platform_admin_audit_table() -> None:
+    with engine.begin() as conn:
+        if settings.DATABASE_URL.startswith("sqlite"):
+            conn.execute(
+                text(
+                    "CREATE TABLE IF NOT EXISTS platform_admin_audit_log ("
+                    "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                    "created_at DATETIME DEFAULT CURRENT_TIMESTAMP, "
+                    "actor_user_id INTEGER NOT NULL, "
+                    "target_user_id INTEGER, "
+                    "action VARCHAR(64) NOT NULL, "
+                    "detail TEXT NOT NULL DEFAULT '', "
+                    "FOREIGN KEY (actor_user_id) REFERENCES users(id), "
+                    "FOREIGN KEY (target_user_id) REFERENCES users(id)"
+                    ")"
+                )
+            )
+            conn.execute(
+                text("CREATE INDEX IF NOT EXISTS ix_platform_admin_audit_target ON platform_admin_audit_log (target_user_id)")
+            )
+            conn.execute(
+                text("CREATE INDEX IF NOT EXISTS ix_platform_admin_audit_created ON platform_admin_audit_log (created_at)")
+            )
+        else:
+            conn.execute(
+                text(
+                    "CREATE TABLE IF NOT EXISTS platform_admin_audit_log ("
+                    "id SERIAL PRIMARY KEY, "
+                    "created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), "
+                    "actor_user_id INTEGER NOT NULL REFERENCES users(id), "
+                    "target_user_id INTEGER REFERENCES users(id), "
+                    "action VARCHAR(64) NOT NULL, "
+                    "detail TEXT NOT NULL DEFAULT ''"
+                    ")"
+                )
+            )
+            conn.execute(
+                text("CREATE INDEX IF NOT EXISTS ix_platform_admin_audit_target ON platform_admin_audit_log (target_user_id)")
+            )
+            conn.execute(
+                text("CREATE INDEX IF NOT EXISTS ix_platform_admin_audit_created ON platform_admin_audit_log (created_at)")
+            )
+
+
+def _sync_legacy_platform_admin_roles() -> None:
+    """Persist admin role for env allowlist emails (backward compatible)."""
+    allow = _platform_admin_email_set()
+    if not allow:
+        return
+    with SessionLocal() as db:
+        users = db.execute(select(User)).scalars().all()
+        changed = False
+        for u in users:
+            if str(u.email).lower().strip() not in allow:
+                continue
+            if _stored_platform_role(u) != "admin":
+                u.platform_role = "admin"
+                changed = True
+        if changed:
+            db.commit()
+
+
+def _platform_memberships_for_user(*, db, user_id: int) -> list[PlatformAdminFamilyMembershipOut]:
+    mships = db.execute(
+        select(FamilyMember, Family)
+        .join(Family, Family.id == FamilyMember.family_id)
+        .where(FamilyMember.user_id == user_id)
+        .order_by(Family.id.asc())
+    ).all()
+    return [
+        PlatformAdminFamilyMembershipOut(
+            family_id=int(fam.id),
+            family_name=str(fam.name),
+            role=str(m.role or "member"),
+            is_family_owner=bool(getattr(m, "is_family_owner", False)),
+            access_mode=str(getattr(m, "access_mode", None) or "edit"),
+        )
+        for m, fam in mships
+    ]
+
+
+def _family_role_to_member_update(role: str) -> FamilyMemberUpdateIn:
+    r = (role or "").strip().lower()
+    if r == "owner":
+        return FamilyMemberUpdateIn(is_family_owner=True)
+    if r == "view":
+        return FamilyMemberUpdateIn(access_mode="view", is_family_owner=False)
+    return FamilyMemberUpdateIn(access_mode="edit", is_family_owner=False)
+
+
+def _audit_entries_for_user(*, db, user_id: int, limit: int = 40) -> list[PlatformAdminAuditEntryOut]:
+    rows = (
+        db.execute(
+            select(PlatformAdminAuditLog)
+            .where(PlatformAdminAuditLog.target_user_id == int(user_id))
+            .order_by(PlatformAdminAuditLog.created_at.desc(), PlatformAdminAuditLog.id.desc())
+            .limit(max(1, min(int(limit), 100)))
+        )
+        .scalars()
+        .all()
+    )
+    actor_ids = {int(r.actor_user_id) for r in rows}
+    actor_emails: dict[int, str] = {}
+    if actor_ids:
+        for au in db.execute(select(User).where(User.id.in_(list(actor_ids)))).scalars().all():
+            actor_emails[int(au.id)] = str(au.email)
+    return [
+        PlatformAdminAuditEntryOut(
+            id=int(r.id),
+            created_at=r.created_at,
+            actor_user_id=int(r.actor_user_id),
+            actor_email=actor_emails.get(int(r.actor_user_id)),
+            target_user_id=int(r.target_user_id) if r.target_user_id is not None else None,
+            action=str(r.action),
+            detail=str(r.detail or ""),
+        )
+        for r in rows
+    ]
+
+
 def _ensure_family_balance_threshold_columns() -> None:
     """Persist low-balance / ceiling forecast thresholds per family (server-side)."""
     with engine.begin() as conn:
@@ -2609,7 +2909,7 @@ def register(payload: RegisterIn, response: Response, db=Depends(get_db)):
             FamilyMember(
                 family_id=int(fam.id),
                 user_id=int(user.id),
-                role="admin",
+                role="member",
                 is_family_owner=True,
                 access_mode="edit",
             )
@@ -2647,6 +2947,8 @@ def login(payload: LoginIn, db=Depends(get_db)):
     user = db.execute(select(User).where(func.lower(User.email) == key)).scalar_one_or_none()
     if not user or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+    user.last_login_at = datetime.utcnow()
+    db.commit()
     token = create_access_token(user_id=user.id)
     resp = JSONResponse(content={"ok": True, "access_token": token}, status_code=status.HTTP_200_OK)
     resp.set_cookie(
@@ -2855,7 +3157,7 @@ def list_family_members(
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
-    require_family_member(db=db, family_id=family_id, user_id=user_id)
+    require_family_household_manager(db=db, family_id=family_id, user_id=user_id)
     rows = (
         db.execute(
             select(FamilyMember)
@@ -3141,33 +3443,154 @@ def platform_list_users(
     user_id = get_current_user_id(access_token)
     require_platform_admin(db=db, user_id=user_id)
     users = db.execute(select(User).order_by(User.id.asc())).scalars().all()
-    out: list[PlatformAdminUserOut] = []
-    for u in users:
-        mships = db.execute(
-            select(FamilyMember, Family)
-            .join(Family, Family.id == FamilyMember.family_id)
-            .where(FamilyMember.user_id == u.id)
-        ).all()
-        mems = [
-            PlatformAdminFamilyMembershipOut(
-                family_id=int(fam.id),
-                family_name=str(fam.name),
-                role=str(m.role or "member"),
-                is_family_owner=bool(getattr(m, "is_family_owner", False)),
-                access_mode=str(getattr(m, "access_mode", None) or "edit"),
-            )
-            for m, fam in mships
-        ]
-        out.append(
-            PlatformAdminUserOut(
-                id=int(u.id),
-                email=u.email,
-                name=u.name,
-                created_at=u.created_at,
-                memberships=mems,
-            )
+    return [
+        _platform_user_row_out(u=u, memberships=_platform_memberships_for_user(db=db, user_id=int(u.id)))
+        for u in users
+    ]
+
+
+@app.get("/api/platform/users/{target_user_id}", response_model=PlatformAdminUserDetailOut)
+def platform_get_user(
+    target_user_id: int,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    require_platform_admin(db=db, user_id=user_id)
+    u = db.execute(select(User).where(User.id == target_user_id)).scalar_one_or_none()
+    if u is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    mems = _platform_memberships_for_user(db=db, user_id=int(u.id))
+    base = _platform_user_row_out(u=u, memberships=mems)
+    return PlatformAdminUserDetailOut(
+        **base.model_dump(),
+        recent_audit=_audit_entries_for_user(db=db, user_id=int(u.id)),
+    )
+
+
+@app.patch("/api/platform/users/{target_user_id}", response_model=PlatformAdminUserOut)
+def platform_patch_user(
+    target_user_id: int,
+    payload: PlatformUserPlatformRoleIn,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
+    db=Depends(get_db),
+):
+    actor_id = get_current_user_id(access_token)
+    require_platform_admin(db=db, user_id=actor_id)
+    u = db.execute(select(User).where(User.id == target_user_id)).scalar_one_or_none()
+    if u is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    new_role = payload.platform_role
+    if new_role in ("support", "admin") and not is_platform_super_admin(db=db, user_id=actor_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only platform admins can grant support or admin access",
         )
-    return out
+
+    prev = effective_platform_role(user=u)
+    if prev == "admin" and new_role != "admin":
+        if int(u.id) == int(actor_id):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot remove your own admin access")
+        require_platform_super_admin(db=db, user_id=actor_id)
+
+    u.platform_role = new_role
+    _platform_audit_log(
+        db=db,
+        actor_user_id=actor_id,
+        target_user_id=int(u.id),
+        action="platform_role_changed",
+        detail=f"{prev} → {new_role}",
+    )
+    db.commit()
+    db.refresh(u)
+    return _platform_user_row_out(u=u, memberships=_platform_memberships_for_user(db=db, user_id=int(u.id)))
+
+
+@app.patch(
+    "/api/platform/families/{family_id}/members/{member_user_id}/family-role",
+    response_model=FamilyMemberOut,
+)
+def platform_set_family_member_role(
+    family_id: int,
+    member_user_id: int,
+    payload: PlatformFamilyMembershipRoleIn,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
+    db=Depends(get_db),
+):
+    actor_id = get_current_user_id(access_token)
+    require_platform_admin(db=db, user_id=actor_id)
+    fam = db.execute(select(Family).where(Family.id == family_id)).scalar_one_or_none()
+    if fam is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Family not found")
+    target = db.execute(select(User).where(User.id == member_user_id)).scalar_one_or_none()
+    if target is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    before = db.execute(
+        select(FamilyMember).where(FamilyMember.family_id == family_id, FamilyMember.user_id == member_user_id)
+    ).scalar_one_or_none()
+    prev_label = (
+        _family_role_label(
+            is_family_owner=bool(getattr(before, "is_family_owner", False)),
+            access_mode=str(getattr(before, "access_mode", None) or "edit"),
+        )
+        if before is not None
+        else "—"
+    )
+
+    m = _apply_family_membership_update(
+        db=db,
+        family_id=family_id,
+        member_user_id=member_user_id,
+        payload=_family_role_to_member_update(payload.family_role),
+    )
+    new_label = _family_role_label(
+        is_family_owner=bool(getattr(m, "is_family_owner", False)),
+        access_mode=str(getattr(m, "access_mode", None) or "edit"),
+    )
+    _platform_audit_log(
+        db=db,
+        actor_user_id=actor_id,
+        target_user_id=int(member_user_id),
+        action="family_role_changed",
+        detail=f'{fam.name} (#{family_id}): {prev_label} → {new_label}',
+    )
+    db.commit()
+    return _family_member_row_to_out(db=db, row=m)
+
+
+@app.post("/api/platform/users/invite", response_model=FamilyMemberOut, status_code=status.HTTP_201_CREATED)
+def platform_invite_user_to_family(
+    payload: PlatformUserInviteIn,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
+    db=Depends(get_db),
+):
+    actor_id = get_current_user_id(access_token)
+    require_platform_admin(db=db, user_id=actor_id)
+    fam = db.execute(select(Family).where(Family.id == payload.family_id)).scalar_one_or_none()
+    if fam is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Family not found")
+
+    access_mode = "view" if payload.family_role == "view" else "edit"
+    m = _add_family_member_for_email(db=db, family_id=int(payload.family_id), email=str(payload.email), access_mode=access_mode)
+    if payload.family_role == "owner":
+        m = _apply_family_membership_update(
+            db=db,
+            family_id=int(payload.family_id),
+            member_user_id=int(m.user_id),
+            payload=_family_role_to_member_update("owner"),
+        )
+
+    _platform_audit_log(
+        db=db,
+        actor_user_id=actor_id,
+        target_user_id=int(m.user_id),
+        action="user_invited_to_family",
+        detail=f'{payload.email} → {fam.name} (#{payload.family_id}) as {_family_role_label(is_family_owner=bool(m.is_family_owner), access_mode=str(m.access_mode))}',
+    )
+    db.commit()
+    return _family_member_row_to_out(db=db, row=m)
 
 
 @app.post("/api/platform/users/{target_user_id}/password")
@@ -3177,12 +3600,19 @@ def platform_set_user_password(
     access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
-    user_id = get_current_user_id(access_token)
-    require_platform_admin(db=db, user_id=user_id)
+    actor_id = get_current_user_id(access_token)
+    require_platform_admin(db=db, user_id=actor_id)
     u = db.execute(select(User).where(User.id == target_user_id)).scalar_one_or_none()
     if u is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     u.password_hash = hash_password(payload.new_password)
+    _platform_audit_log(
+        db=db,
+        actor_user_id=actor_id,
+        target_user_id=int(u.id),
+        action="password_reset",
+        detail=f"Password reset by platform admin for {u.email}",
+    )
     db.commit()
     return {"ok": True}
 
@@ -3193,18 +3623,28 @@ def platform_delete_user(
     access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
-    user_id = get_current_user_id(access_token)
-    require_platform_admin(db=db, user_id=user_id)
-    if int(target_user_id) == int(user_id):
+    actor_id = get_current_user_id(access_token)
+    require_platform_admin(db=db, user_id=actor_id)
+    if int(target_user_id) == int(actor_id):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot delete your own account")
 
     target = db.execute(select(User).where(User.id == target_user_id)).scalar_one_or_none()
     if target is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    # Prevent removing the operator/admin allowlisted accounts (avoid locking out admin access).
-    if str(target.email).lower().strip() in _platform_admin_email_set():
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot delete a platform admin account")
+    if effective_platform_role(user=target) == "admin":
+        require_platform_super_admin(db=db, user_id=actor_id)
+        if int(target.id) == int(actor_id):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot delete your own account")
 
+    deleted_email = str(target.email)
+    _platform_audit_log(
+        db=db,
+        actor_user_id=actor_id,
+        target_user_id=int(target.id),
+        action="user_deleted",
+        detail=f"Deleted user {deleted_email}",
+    )
+    db.commit()
     out = _platform_purge_user(db=db, target_user_id=int(target_user_id))
     return out.model_dump()
 
@@ -3273,9 +3713,18 @@ def platform_purge_user_by_email(
     if int(target.id) == int(user_id):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot delete your own account")
     # Prevent removing the operator/admin allowlisted accounts (avoid locking out admin access).
-    if str(target.email).lower().strip() in _platform_admin_email_set():
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot delete a platform admin account")
+    if effective_platform_role(user=target) == "admin":
+        require_platform_super_admin(db=db, user_id=user_id)
 
+    deleted_email = str(target.email)
+    _platform_audit_log(
+        db=db,
+        actor_user_id=user_id,
+        target_user_id=int(target.id),
+        action="user_deleted",
+        detail=f"Deleted user {deleted_email}",
+    )
+    db.commit()
     return _platform_purge_user(db=db, target_user_id=int(target.id))
 
 
@@ -3312,7 +3761,42 @@ def platform_patch_family_member(
     fam = db.execute(select(Family).where(Family.id == family_id)).scalar_one_or_none()
     if fam is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Family not found")
+    before = db.execute(
+        select(FamilyMember).where(FamilyMember.family_id == family_id, FamilyMember.user_id == member_user_id)
+    ).scalar_one_or_none()
+    prev_label = (
+        _family_role_label(
+            is_family_owner=bool(getattr(before, "is_family_owner", False)),
+            access_mode=str(getattr(before, "access_mode", None) or "edit"),
+        )
+        if before is not None
+        else "—"
+    )
     m = _apply_family_membership_update(db=db, family_id=family_id, member_user_id=member_user_id, payload=payload)
+    fam = db.execute(select(Family).where(Family.id == family_id)).scalar_one_or_none()
+    fam_name = str(fam.name) if fam else f"#{family_id}"
+    new_label = _family_role_label(
+        is_family_owner=bool(getattr(m, "is_family_owner", False)),
+        access_mode=str(getattr(m, "access_mode", None) or "edit"),
+    )
+    parts = []
+    if payload.access_mode is not None:
+        parts.append(f"access_mode={payload.access_mode}")
+    if payload.is_family_owner is not None:
+        parts.append(f"is_family_owner={payload.is_family_owner}")
+    if payload.role is not None:
+        parts.append(f"role={payload.role}")
+    detail = f"{fam_name} (#{family_id}): {prev_label} → {new_label}"
+    if parts:
+        detail += f" ({', '.join(parts)})"
+    _platform_audit_log(
+        db=db,
+        actor_user_id=user_id,
+        target_user_id=int(member_user_id),
+        action="family_role_changed",
+        detail=detail,
+    )
+    db.commit()
     return _family_member_row_to_out(db=db, row=m)
 
 

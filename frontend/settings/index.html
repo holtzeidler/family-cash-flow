@@ -14,7 +14,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=552" />
+    <link rel="stylesheet" href="../styles.css?v=560" />
   </head>
   <body>
     <div class="container">
@@ -122,7 +122,11 @@
               <div class="tx-add-vspace tx-add-vspace--xs" aria-hidden="true"></div>
               <div class="form-row-h">
                 <div class="form-row-h__label"><label for="txAddCategoryId">Category</label></div>
-                <div class="form-row-h__field"><select id="txAddCategoryId"></select></div>
+                <div class="form-row-h__field tx-add-category-field">
+                  <p class="tx-add-category-hint">Quick picks, or search below.</p>
+                  <div id="txAddQuickChips" class="tx-quick-chips" role="group" aria-label="Suggested categories" hidden></div>
+                  <select id="txAddCategoryId"></select>
+                </div>
               </div>
               <div class="tx-add-vspace tx-add-vspace--xs" aria-hidden="true"></div>
               <div class="form-row-h">
@@ -1015,7 +1019,7 @@
               <a class="app-footer__logo" href="/" aria-label="BalanceWhiz home">
                 <img
                   class="app-footer__logo-img"
-                  src="../assets/balance-whiz-logo.svg?v=20260518"
+                  src="/assets/balance-whiz-logo.svg?v=20260518"
                   width="160"
                   height="41"
                   alt="BalanceWhiz"
@@ -1024,19 +1028,21 @@
               </a>
               <p class="app-footer__tagline">See your cash flow before it happens.</p>
               <p class="app-footer__copyright">© 2026 BalanceWhiz</p>
+              <p class="app-footer__madein">Built in Chicago</p>
             </div>
             <nav class="app-footer__col" aria-label="Product">
               <h2 class="app-footer__heading">Product</h2>
               <ul class="app-footer__list">
                 <li><a class="app-footer__link" href="/#how">How It Works</a></li>
                 <li><a class="app-footer__link" href="/plans/">Pricing</a></li>
-                <li><span class="app-footer__text">Security (coming soon)</span></li>
                 <li><a class="app-footer__link" href="/help.html">FAQ</a></li>
+                <li><span class="app-footer__text">Security (coming soon)</span></li>
               </ul>
             </nav>
             <nav class="app-footer__col" aria-label="Company">
               <h2 class="app-footer__heading">Company</h2>
               <ul class="app-footer__list">
+                <li><a class="app-footer__link" href="/about.html">About</a></li>
                 <li><a class="app-footer__link" href="/contactus/">Contact</a></li>
                 <li><a class="app-footer__link" href="/privacy.html">Privacy Policy</a></li>
                 <li><a class="app-footer__link" href="/terms.html">Terms of Service</a></li>
@@ -1221,8 +1227,8 @@
             <p class="modal--apply-scope__helper">Choose whether to update just this occurrence or future ones too.</p>
           </div>
           <div id="txEditApplyScopeErr" class="error"></div>
-          <div class="apply-scope-actions" role="group" aria-label="How to apply changes">
-            <button type="button" id="txEditApplyScopeSeriesBtn" class="apply-scope-option apply-scope-option--recommended">
+          <div class="apply-scope-actions" role="radiogroup" aria-label="How to apply changes">
+            <button type="button" id="txEditApplyScopeSeriesBtn" class="apply-scope-option apply-scope-option--recommended" role="radio" aria-pressed="false" data-apply-scope="series">
               <span class="apply-scope-option__row">
                 <span class="apply-scope-option__icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24" focusable="false">
@@ -1241,7 +1247,7 @@
                 </span>
               </span>
             </button>
-            <button type="button" id="txEditApplyScopeInstanceBtn" class="apply-scope-option">
+            <button type="button" id="txEditApplyScopeInstanceBtn" class="apply-scope-option" role="radio" aria-pressed="false" data-apply-scope="instance">
               <span class="apply-scope-option__row">
                 <span class="apply-scope-option__icon apply-scope-option__icon--single" aria-hidden="true">
                   <svg viewBox="0 0 24 24" focusable="false">
@@ -1259,8 +1265,9 @@
             </button>
           </div>
           <div class="modal-actions modal-actions--apply-scope-foot">
-            <button type="button" id="txEditApplyScopeCancelBtn" class="secondary">Cancel</button>
-          </div>
+            <button type="button" id="txEditApplyScopeCancelBtn" class="secondary apply-scope-foot__cancel">Cancel</button>
+            <button type="button" id="txEditApplyScopeSaveBtn" class="apply-scope-foot__save" disabled>Save Changes</button>
+          </motion>
         </div>
       </div>
     </div>
@@ -1417,7 +1424,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="../app.js?v=321"></script>
+    <script src="../app.js?v=326"></script>
     <script src="../feedback.js?v=3" defer></script>
     <script src="../tour.js?v=9" defer></script>
   </body>

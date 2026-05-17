@@ -177,6 +177,13 @@ function showPwFlowErr(el, msg) {
   }
 }
 
+function setLoginCardChromeVisible(visible) {
+  const forgotBtn = document.getElementById("loginForgotBtn");
+  const signup = document.querySelector(".login-page__signup-prompt");
+  if (forgotBtn) forgotBtn.hidden = !visible;
+  if (signup) signup.hidden = !visible;
+}
+
 function showFlow(name) {
   const titles = {
     login: "Welcome back",
@@ -190,6 +197,15 @@ function showFlow(name) {
     const el = flows[k];
     if (!el) continue;
     el.hidden = k !== name;
+  }
+  setLoginCardChromeVisible(name === "login");
+  if (document.body) document.body.setAttribute("data-auth-flow", name);
+  const loginSection = document.getElementById("loginSection");
+  if (loginSection) {
+    const isPwAlt =
+      name === "forgotRequest" || name === "forgotSent" || name === "reset" || name === "resetSuccess";
+    loginSection.classList.toggle("auth-section--pw-alt", isPwAlt);
+    loginSection.classList.toggle("auth-section--pw-confirm", name === "forgotSent" || name === "resetSuccess");
   }
   setCallout(loginCalloutEl, "", "");
   // Leaving the forgot-request flow should always wipe any leftover error

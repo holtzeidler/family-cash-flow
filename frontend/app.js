@@ -823,6 +823,7 @@ async function migrateLegacyDeviceBalanceThresholdsToAccount() {
 
 function invalidateLowBalanceAlertCache() {
   lowBalanceLastQuery = { familyId: null, min: null, max: null, mode: null };
+  invalidateCashOutlookProjectionCache();
 }
 
 /** @param {"off"|"danger"|"muted"} style */
@@ -1070,6 +1071,19 @@ function closeAccountModal() {
   if (!accountModal) return;
   accountModal.classList.remove("modal-overlay--open");
   accountModal.setAttribute("aria-hidden", "true");
+}
+
+function openAccountEditModalForAccount(account) {
+  if (!account || !accountEditId) return;
+  accountEditId.value = String(account.id);
+  if (accountName) accountName.value = account.name || "";
+  if (accountType) accountType.value = account.type || "checking";
+  if (accountStartingBalance) accountStartingBalance.value = account.starting_balance ?? "";
+  if (accountStartingBalanceDate) accountStartingBalanceDate.value = account.starting_balance_date || "";
+  if (accountName) accountName.disabled = true;
+  if (accountType) accountType.disabled = true;
+  show(accErr, "");
+  openAccountModal("edit");
 }
 
 // Transaction View: upcoming filters
@@ -1439,6 +1453,223 @@ function setLowBalanceResult(contentHtml, isEmpty = false) {
   lowBalanceResult.style.display = contentHtml ? "block" : "none";
 }
 
+const CASH_OUTLOOK_MIN_RECURRING_EXPENSES = 2;
+
+function collectRecurringExpenseSeries() {
+  const out = [];
+  for (const tx of state.expectedTransactions || []) {
+    if (!tx || String(tx.kind || "") !== "expense") continue;
+    const recurrence = String(tx.recurrence || "").toLowerCase();
+    if (!recurrence || recurrence === "once") continue;
+    const amount = Math.abs(Number(tx.amount || 0));
+    if (!Number.isFinite(amount) || amount <= 0) continue;
+    out.push({
+      amount,
+      monthly: estimatedMonthlyFromRecurrence(amount, recurrence),
+      recurrence,
+      description: String(tx.description || "Recurring").trim() || "Recurring",
+    });
+  }
+  return out;
+}
+
+function roundSuggestedBalanceThreshold(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  if (n < 200) return Math.ceil(n / 25) * 25;
+  if (n < 2000) return Math.ceil(n / 50) * 50;
+  if (n < 10000) return Math.ceil(n / 100) * 100;
+  return Math.ceil(n / 250) * 250;
+}
+
+function computeSuggestedMinBalanceThreshold() {
+  const series = collectRecurringExpenseSeries();
+  if (!series.length) {
+    return { ok: false, reason: "none", recurringCount: 0 };
+  }
+  const monthlyAmounts = series.map((s) => s.monthly).filter((n) => Number.isFinite(n) && n > 0);
+  if (!monthlyAmounts.length) {
+    return { ok: false, reason: "none", recurringCount: series.length };
+  }
+  const totalMonthly = monthlyAmounts.reduce((sum, n) => sum + n, 0);
+  const largestMonthly = Math.max(...monthlyAmounts);
+  if (series.length < CASH_OUTLOOK_MIN_RECURRING_EXPENSES && totalMonthly < 75) {
+    return { ok: false, reason: "sparse", recurringCount: series.length, totalMonthly };
+  }
+
+  const fromLargest = largestMonthly * 1.75;
+  const fromWeekly = (totalMonthly / 4.345) * 2;
+  const fromMonthlyBlend = totalMonthly * 0.35;
+  const raw = Math.max(fromLargest, fromWeekly, fromMonthlyBlend);
+  const value = roundSuggestedBalanceThreshold(raw);
+  if (!value) {
+    return { ok: false, reason: "sparse", recurringCount: series.length, totalMonthly };
+  }
+
+  let basis = "your recurring expenses";
+  if (fromLargest >= fromWeekly && fromLargest >= fromMonthlyBlend) {
+    basis = "about 1.75× your largest monthly bill";
+  } else if (fromWeekly >= fromMonthlyBlend) {
+    basis = "about two weeks of typical spending";
+  }
+
+  return {
+    ok: true,
+    value,
+    basis,
+    recurringCount: series.length,
+    totalMonthly,
+    largestMonthly,
+  };
+}
+
+function hasUserConfiguredMinBalanceThreshold(fid = activeFamilyIdForBalanceThresholds()) {
+  const fam = findFamilyForBalanceThresholds(fid);
+  if (fam) {
+    const raw = fam.balance_threshold_min;
+    if (raw != null && raw !== "") {
+      const parsed = parseBalanceThresholdFieldRaw(String(raw));
+      if (parsed.ok && !parsed.empty && Number.isFinite(parsed.num) && parsed.num > 0) return true;
+    }
+  }
+  if (readFamilyBalanceThresholdCanonical("min", fid)) return true;
+  if (readLegacyDeviceBalanceThresholdCanonical("min", fid)) return true;
+  const edited = readEditedBalanceThresholdNumber("min");
+  return edited != null && edited > 0;
+}
+
+function cashOutlookLowDataMessage(suggestionMeta = {}) {
+  const count = Number(suggestionMeta.recurringCount || 0);
+  if (count <= 0) {
+    return "Add a few recurring bills to unlock cash alerts and transfer guidance.";
+  }
+  if (count === 1) {
+    return "Add another recurring transaction to improve your forecast.";
+  }
+  return "We'll start generating cash outlook insights once more recurring expenses are added.";
+}
+
+let lastOutlookProjectionCache = { familyId: null, fetchedAt: 0, daily: [] };
+
+function invalidateCashOutlookProjectionCache() {
+  lastOutlookProjectionCache = { familyId: null, fetchedAt: 0, daily: [] };
+}
+
+async function getProjectionDailyForCashOutlook() {
+  if (lastProjectionDailyForReports?.length > 1) return lastProjectionDailyForReports;
+  const fid = state.activeFamilyId;
+  if (!fid) return [];
+  const now = Date.now();
+  if (
+    Number(lastOutlookProjectionCache.familyId) === Number(fid) &&
+    now - lastOutlookProjectionCache.fetchedAt < 90_000 &&
+    Array.isArray(lastOutlookProjectionCache.daily) &&
+    lastOutlookProjectionCache.daily.length > 1
+  ) {
+    return lastOutlookProjectionCache.daily;
+  }
+  const startIso = toISODate(new Date());
+  try {
+    const summary = await api(
+      `/api/families/${fid}/projection?start=${encodeURIComponent(startIso)}&days=150&include_accounts=false`,
+      "GET"
+    );
+    const daily = summary?.daily || [];
+    lastOutlookProjectionCache = { familyId: Number(fid), fetchedAt: now, daily };
+    return daily;
+  } catch (_) {
+    return [];
+  }
+}
+
+async function refreshCashOutlookGuidance() {
+  const activeFid = activeFamilyIdForBalanceThresholds();
+  if (cashOutlookHead) cashOutlookHead.hidden = false;
+  setSidebarLowBalanceBanner("", "off");
+  setSidebarHighBalanceBanner("", "off");
+  setLowBalanceResult("", true);
+
+  const suggestion = computeSuggestedMinBalanceThreshold();
+  if (!suggestion.ok) {
+    const msg = cashOutlookLowDataMessage(suggestion);
+    setSidebarBalanceThresholdHint("Cash outlook");
+    setSidebarLowBalanceBanner(`Getting started\nSECONDARY:${msg}`, "muted");
+    if (sidebarLowBalanceBanner) sidebarLowBalanceBanner.classList.add("is-suggestion");
+    lowBalanceLastQuery = {
+      familyId: activeFid,
+      min: null,
+      max: null,
+      mode: calendarMode?.value || "both",
+    };
+    return;
+  }
+
+  const floor = suggestion.value;
+  setSidebarBalanceThresholdHint("Personalized suggestion · adjust in Settings");
+
+  const daily = await getProjectionDailyForCashOutlook();
+  const todayIso = toISODate(new Date());
+  let bannerText = `Suggested safety buffer: $${fmtMoney0(floor)}\nSECONDARY:Based on ${suggestion.basis}`;
+  let bannerStyle = "muted";
+
+  if (daily.length > 1) {
+    const rows = getProjectedBalancesByDate(daily);
+    const rangeEnd = rows[rows.length - 1]?.date || todayIso;
+    const nextLow = getNextBelowFloorDate(rows, floor, todayIso);
+    const series = computeSafeToTransferSeries(daily, floor);
+    const todayIdx = rows.findIndex((row) => row.date >= todayIso);
+    const safeToday = todayIdx >= 0 ? Number(series[todayIdx] || 0) : 0;
+
+    if (nextLow) {
+      const bal = Number(nextLow.amount);
+      const urgent = bal <= 0 || bal < floor * 0.85;
+      bannerStyle = urgent ? "danger" : "muted";
+      if (urgent) {
+        bannerText = `Transfer cash before ${fmtMonthDay(nextLow.date)}\nSECONDARY:Projected to dip to ${fmtMoney0SignedDollar(
+          bal
+        )} (suggested buffer $${fmtMoney0(floor)})`;
+      } else {
+        bannerText = `Watch ${fmtMonthDay(nextLow.date)}\nSECONDARY:Balance may dip near your suggested $${fmtMoney0(
+          floor
+        )} buffer`;
+      }
+    } else if (safeToday >= 75) {
+      bannerText = `Forecast looks healthy\nHERO:Safe to transfer up to $${fmtMoney0(safeToday)}\nSECONDARY:Using a suggested buffer of $${fmtMoney0(
+        floor
+      )}`;
+    } else {
+      const low = getLowestBalanceInRange(rows, todayIso, rangeEnd);
+      if (low && low.amount >= floor) {
+        bannerText = `Forecast looks steady\nSECONDARY:Lowest projected balance ${fmtMoney0SignedDollar(
+          low.amount
+        )} on ${fmtMonthDay(low.date)} · suggested buffer $${fmtMoney0(floor)}`;
+      }
+    }
+
+    const transfer = compareSafeToTransferTodayVsFuture(rows, floor, {
+      startIso: todayIso,
+      endIso: rangeEnd,
+      fromIso: todayIso,
+    });
+    if (transfer && !nextLow) {
+      bannerText = `Safe to transfer more after ${fmtMonthDay(transfer.date)}\nSECONDARY:About $${fmtMoney0(
+        transfer.gain
+      )} more headroom · suggested buffer $${fmtMoney0(floor)}`;
+    }
+  }
+
+  setSidebarLowBalanceBanner(bannerText, bannerStyle);
+  if (sidebarLowBalanceBanner) {
+    sidebarLowBalanceBanner.classList.toggle("is-suggestion", bannerStyle !== "danger");
+  }
+  lowBalanceLastQuery = {
+    familyId: activeFid,
+    min: floor,
+    max: null,
+    mode: `suggested:${calendarMode?.value || "both"}`,
+  };
+}
+
 async function refreshLowBalanceAlert() {
   const { min: btMinEl, max: btMaxEl, err: btErr } = balanceThresholdFieldEls();
   try {
@@ -1461,18 +1692,11 @@ async function refreshLowBalanceAlert() {
     const SHOW_PEAK_BALANCE = false;
 
     if (!minOk && !maxOk) {
-      if (cashOutlookHead) cashOutlookHead.hidden = false;
-      setSidebarLowBalanceBanner("", "off");
-      setSidebarHighBalanceBanner("", "off");
-      setLowBalanceResult(
-        '<div class="k">Balance thresholds</div><div class="v">Add a minimum (optional maximum) in Settings to enable outlook.</div>',
-        true
-      );
-      lowBalanceLastQuery = { familyId: null, min: null, max: null, mode: null };
-      setSidebarBalanceThresholdHint("Configure in Settings.");
+      await refreshCashOutlookGuidance();
       return;
     }
     if (cashOutlookHead) cashOutlookHead.hidden = false;
+    if (sidebarLowBalanceBanner) sidebarLowBalanceBanner.classList.remove("is-suggestion");
 
     const startIso = toISODate(new Date());
     const lowDays = 1825;
@@ -2930,6 +3154,184 @@ function categoryKindForComboboxField(fieldId) {
   return "expense";
 }
 
+const TX_ADD_CATEGORY_CHIP_MAX = 6;
+const TX_ADD_INCOME_CHIP_HINTS = ["Paycheck", "Transfer In", "Bonus", "Reimbursement", "Other Income"];
+const TX_ADD_EXPENSE_CHIP_HINTS = ["Groceries", "Mortgage", "Utilities", "Credit Card", "Gas", "Subscription"];
+let txAddCategoryChipsBound = false;
+
+function categoryMatchesTransactionKind(cat, kind) {
+  if (!cat) return false;
+  const k = String(kind || "expense").toLowerCase();
+  const g = normalizeNameForCompare(cat.group_name || "");
+  const n = normalizeNameForCompare(cat.name || "");
+  const incomeGroup =
+    g === "income" ||
+    g.includes("income") ||
+    g.includes("reimburse") ||
+    (g.includes("transfer") && (g.includes("in") || !g.includes("out")));
+  const incomeName =
+    n.includes("paycheck") ||
+    n.includes("payroll") ||
+    n.includes("salary") ||
+    n.includes("bonus") ||
+    (n.includes("transfer") && n.includes("in"));
+  const isIncome = incomeGroup || incomeName;
+  if (k === "income") return isIncome;
+  return !isIncome;
+}
+
+function collectRecentCategoryIdsForKind(kind) {
+  const rows = [
+    ...(state.monthActualItems || []),
+    ...(state.calendarExtraActualItems || []),
+    ...(state.monthExpectedItems || []),
+    ...(state.calendarExtraExpectedItems || []),
+  ];
+  const scored = [];
+  for (const row of rows) {
+    const rowKind = String(row.kind || "").toLowerCase();
+    if (rowKind !== String(kind).toLowerCase()) continue;
+    const cid = row.category_id;
+    if (cid == null || cid === "") continue;
+    const iso = normalizeIsoDate(row.date) || row.date || "";
+    scored.push({ cid: Number(cid), iso });
+  }
+  scored.sort((a, b) => String(b.iso).localeCompare(String(a.iso)));
+  const seen = new Set();
+  const out = [];
+  for (const { cid } of scored) {
+    if (!Number.isFinite(cid) || seen.has(cid)) continue;
+    seen.add(cid);
+    const cat = (state.categories || []).find((c) => Number(c.id) === cid);
+    if (cat && categoryMatchesTransactionKind(cat, kind)) out.push(cid);
+  }
+  return out;
+}
+
+function findCategoryForChipHint(hint, kind) {
+  const cats = (state.categories || []).filter((c) => categoryMatchesTransactionKind(c, kind));
+  const h = normalizeNameForCompare(hint);
+  if (!h) return null;
+  let c = cats.find((x) => normalizeNameForCompare(x.name) === h);
+  if (c) return c;
+  return (
+    cats.find((x) => {
+      const n = normalizeNameForCompare(x.name);
+      return n.includes(h) || h.includes(n);
+    }) || null
+  );
+}
+
+function computeTxAddCategoryChipSuggestions(kind) {
+  const k = String(kind || "expense").toLowerCase();
+  const hints = k === "income" ? TX_ADD_INCOME_CHIP_HINTS : TX_ADD_EXPENSE_CHIP_HINTS;
+  const picked = [];
+  const pickedIds = new Set();
+
+  function pushCat(cat) {
+    if (!cat || cat.id == null) return;
+    const id = Number(cat.id);
+    if (!Number.isFinite(id) || pickedIds.has(id)) return;
+    if (!categoryMatchesTransactionKind(cat, k)) return;
+    pickedIds.add(id);
+    picked.push(cat);
+  }
+
+  for (const cid of collectRecentCategoryIdsForKind(k)) {
+    if (picked.length >= TX_ADD_CATEGORY_CHIP_MAX) break;
+    pushCat((state.categories || []).find((c) => Number(c.id) === cid));
+  }
+
+  const freqSorted = (state.categories || [])
+    .filter((c) => categoryMatchesTransactionKind(c, k))
+    .map((c) => ({ cat: c, n: categoryAssignmentsForCategoryId(c.id) }))
+    .filter((x) => x.n > 0)
+    .sort((a, b) => b.n - a.n || String(a.cat.name).localeCompare(String(b.cat.name)));
+
+  for (const { cat } of freqSorted) {
+    if (picked.length >= TX_ADD_CATEGORY_CHIP_MAX) break;
+    pushCat(cat);
+  }
+
+  for (const hint of hints) {
+    if (picked.length >= TX_ADD_CATEGORY_CHIP_MAX) break;
+    pushCat(findCategoryForChipHint(hint, k));
+  }
+
+  return picked.slice(0, TX_ADD_CATEGORY_CHIP_MAX);
+}
+
+function refreshTxAddCategoryChipActiveState() {
+  const container = document.getElementById("txAddQuickChips");
+  if (!container) return;
+  const cur = categoryIdFromCategoryField("txAddCategoryId");
+  for (const btn of container.querySelectorAll(".tx-quick-chip")) {
+    btn.classList.toggle("is-active", cur != null && Number(btn.dataset.catId) === Number(cur));
+  }
+}
+
+function renderTxAddCategoryChips() {
+  const container = document.getElementById("txAddQuickChips");
+  if (!container) return;
+  const kind = getRadioValue("txAddKind", "expense");
+  const suggestions = computeTxAddCategoryChipSuggestions(kind);
+  const sig = suggestions.map((c) => c.id).join(",");
+  if (container.dataset.kind === kind && container.dataset.sig === sig) {
+    refreshTxAddCategoryChipActiveState();
+    container.hidden = suggestions.length === 0;
+    return;
+  }
+  container.dataset.kind = kind;
+  container.dataset.sig = sig;
+  container.innerHTML = "";
+  container.hidden = suggestions.length === 0;
+  const cur = categoryIdFromCategoryField("txAddCategoryId");
+  for (const cat of suggestions) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "tx-quick-chip";
+    btn.textContent = String(cat.name || "").trim() || "Category";
+    btn.dataset.catId = String(cat.id);
+    if (cur != null && Number(cur) === Number(cat.id)) btn.classList.add("is-active");
+    btn.addEventListener("click", () => {
+      for (const other of container.querySelectorAll(".tx-quick-chip")) other.classList.remove("is-active");
+      btn.classList.add("is-active");
+      selectCategoryComboboxChoice("txAddCategoryId", cat.id, categoryDisplayLabel(cat));
+      const st = categoryComboboxRegistry.get("txAddCategoryId");
+      if (st?.input) {
+        try {
+          st.input.classList.add("category-combobox__input--prefilled");
+          window.setTimeout(() => st.input.classList.remove("category-combobox__input--prefilled"), 600);
+        } catch (_) {}
+      }
+      refreshTxCategoryColorPickers();
+      if (txAddAmount) {
+        try {
+          txAddAmount.focus({ preventScroll: true });
+        } catch (_) {
+          txAddAmount.focus();
+        }
+      }
+    });
+    container.appendChild(btn);
+  }
+}
+
+function ensureTxAddCategoryChipsUi() {
+  if (txAddCategoryChipsBound) return;
+  const container = document.getElementById("txAddQuickChips");
+  if (!container) return;
+  txAddCategoryChipsBound = true;
+  for (const r of document.querySelectorAll('input[name="txAddKind"]')) {
+    r.addEventListener("change", () => {
+      setCategoryFieldValue("txAddCategoryId", null);
+      renderTxAddCategoryChips();
+      const st = categoryComboboxRegistry.get("txAddCategoryId");
+      if (st) hideCategoryComboboxList(st);
+    });
+  }
+}
+
 function normalizeNameForCompare(s) {
   return String(s || "")
     .trim()
@@ -3502,12 +3904,46 @@ function openTxEditModal(tx) {
   resetTxEditAdvancedPanel();
 }
 
+let txEditApplyScopeChoice = null;
+
+function resetTxEditApplyScopeSelection() {
+  txEditApplyScopeChoice = null;
+  const seriesBtn = document.getElementById("txEditApplyScopeSeriesBtn");
+  const instanceBtn = document.getElementById("txEditApplyScopeInstanceBtn");
+  const saveBtn = document.getElementById("txEditApplyScopeSaveBtn");
+  for (const btn of [seriesBtn, instanceBtn]) {
+    if (!btn) continue;
+    btn.classList.remove("apply-scope-option--selected");
+    btn.setAttribute("aria-pressed", "false");
+  }
+  if (saveBtn) saveBtn.disabled = true;
+}
+
+function setTxEditApplyScopeChoice(choice) {
+  txEditApplyScopeChoice = choice;
+  const seriesBtn = document.getElementById("txEditApplyScopeSeriesBtn");
+  const instanceBtn = document.getElementById("txEditApplyScopeInstanceBtn");
+  const saveBtn = document.getElementById("txEditApplyScopeSaveBtn");
+  if (seriesBtn) {
+    const on = choice === "series";
+    seriesBtn.classList.toggle("apply-scope-option--selected", on);
+    seriesBtn.setAttribute("aria-pressed", on ? "true" : "false");
+  }
+  if (instanceBtn) {
+    const on = choice === "instance";
+    instanceBtn.classList.toggle("apply-scope-option--selected", on);
+    instanceBtn.setAttribute("aria-pressed", on ? "true" : "false");
+  }
+  if (saveBtn) saveBtn.disabled = false;
+}
+
 function closeTxEditApplyScopeModal() {
   const m = document.getElementById("txEditApplyScopeModal");
   if (!m) return;
   m.classList.remove("modal-overlay--open");
   m.setAttribute("aria-hidden", "true");
   show(document.getElementById("txEditApplyScopeErr"), "");
+  resetTxEditApplyScopeSelection();
 }
 
 function closeTxEditDeleteScopeModal() {
@@ -3523,6 +3959,7 @@ function openTxEditApplyScopeModal() {
   const m = document.getElementById("txEditApplyScopeModal");
   if (!m) return;
   show(document.getElementById("txEditApplyScopeErr"), "");
+  resetTxEditApplyScopeSelection();
   m.classList.add("modal-overlay--open");
   m.setAttribute("aria-hidden", "false");
 }
@@ -3591,10 +4028,10 @@ function activateSettingsSection(key) {
     btn.classList.toggle("is-active", on);
     btn.setAttribute("aria-pressed", on ? "true" : "false");
   });
-  const isFamilyAdmin = isActiveFamilyAdmin();
+  const canHousehold = canViewHouseholdSettings();
   document.querySelectorAll("#settingsViewPanel .settings-pane").forEach((pane) => {
     const paneKey = String(pane.dataset.settingsPane || "");
-    if (paneKey === "familySharing" && !isFamilyAdmin) {
+    if (paneKey === "familySharing" && !canHousehold) {
       pane.classList.remove("is-active");
       pane.hidden = true;
       return;
@@ -3659,6 +4096,7 @@ function openTxAddModal(opts = {}) {
   const radio = document.querySelector(`input[type="radio"][name="txAddKind"][value="${kind}"]`);
   if (radio) radio.checked = true;
   show(txAddErr, "");
+  renderTxAddCategoryChips();
   txAddModal.classList.add("modal-overlay--open");
   txAddModal.setAttribute("aria-hidden", "false");
   requestAnimationFrame(() => (txAddAmount ? txAddAmount.focus() : txAddDate.focus()));
@@ -6129,26 +6567,31 @@ async function saveExpectedSeriesFromInstance() {
   await navigateCalendarToIsoMonthIfNeeded(dateMoved ? editedIso : null);
 }
 
-const txEditApplyScopeInstanceBtn = document.getElementById("txEditApplyScopeInstanceBtn");
-if (txEditApplyScopeInstanceBtn) {
-  txEditApplyScopeInstanceBtn.addEventListener("click", async () => {
-    try {
-      await saveExpectedInstanceOverride();
-      closeTxEditApplyScopeModal();
-    } catch (e) {
-      show(document.getElementById("txEditApplyScopeErr"), e.message || "Failed to save override");
-    }
+function bindTxEditApplyScopeOption(btn) {
+  if (!btn) return;
+  btn.addEventListener("click", () => {
+    const scope = btn.dataset.applyScope;
+    if (scope === "series" || scope === "instance") setTxEditApplyScopeChoice(scope);
   });
 }
+bindTxEditApplyScopeOption(document.getElementById("txEditApplyScopeSeriesBtn"));
+bindTxEditApplyScopeOption(document.getElementById("txEditApplyScopeInstanceBtn"));
 
-const txEditApplyScopeSeriesBtn = document.getElementById("txEditApplyScopeSeriesBtn");
-if (txEditApplyScopeSeriesBtn) {
-  txEditApplyScopeSeriesBtn.addEventListener("click", async () => {
+const txEditApplyScopeSaveBtn = document.getElementById("txEditApplyScopeSaveBtn");
+if (txEditApplyScopeSaveBtn) {
+  txEditApplyScopeSaveBtn.addEventListener("click", async () => {
+    if (!txEditApplyScopeChoice) return;
     try {
-      await saveExpectedSeriesFromInstance();
+      show(document.getElementById("txEditApplyScopeErr"), "");
+      if (txEditApplyScopeChoice === "instance") await saveExpectedInstanceOverride();
+      else await saveExpectedSeriesFromInstance();
       closeTxEditApplyScopeModal();
     } catch (e) {
-      show(document.getElementById("txEditApplyScopeErr"), e.message || "Failed to save");
+      const msg =
+        txEditApplyScopeChoice === "instance"
+          ? e.message || "Failed to save override"
+          : e.message || "Failed to save";
+      show(document.getElementById("txEditApplyScopeErr"), msg);
     }
   });
 }
@@ -6236,25 +6679,48 @@ function syncActiveFamilyFlags() {
   syncSettingsFamilySharingNav();
 }
 
-function isActiveFamilyAdmin() {
-  const fam = (state.families || []).find((x) => Number(x.id) === Number(state.activeFamilyId));
-  return !!(fam && String(fam.role || "").toLowerCase() === "admin");
+function activeFamilyMembership() {
+  if (!state.activeFamilyId) return null;
+  return (state.families || []).find((x) => Number(x.id) === Number(state.activeFamilyId)) || null;
+}
+
+/** Household settings: family owner or family role `admin` (not the top-nav platform Admin). */
+function canViewHouseholdSettings() {
+  const fam = activeFamilyMembership();
+  if (!fam) return false;
+  if (String(fam.access_mode || "edit").toLowerCase() === "view") return false;
+  if (fam.is_family_owner) return true;
+  return String(fam.role || "").trim().toLowerCase() === "admin";
+}
+
+function getActiveSettingsSectionKey() {
+  const pane = document.querySelector("#settingsViewPanel .settings-pane.is-active");
+  return pane ? String(pane.dataset.settingsPane || "accounts") : "accounts";
 }
 
 /** Family “sharing” settings are limited to members whose family role is `admin` (see API FamilyOut.role). */
 function syncSettingsFamilySharingNav() {
-  const isFamilyAdmin = isActiveFamilyAdmin();
+  const canHousehold = canViewHouseholdSettings();
   // Household lives inside Accounts (`data-settings-subsection`) on the Settings
   // hub, and still exists as a legacy pane (`data-settings-pane`) in embedded
   // settings on Forecast / Transactions / Reports. Hide all of it from
   // non-admins. For admins, subsection visibility is toggled here; pane
   // visibility is left to activateSettingsSection so we don't unhide a stale pane.
   document.querySelectorAll('[data-settings-subsection="familySharing"]').forEach((el) => {
-    el.hidden = !isFamilyAdmin;
+    el.hidden = !canHousehold;
+    el.classList.toggle("bw-household-settings-visible", canHousehold);
+    el.setAttribute("aria-hidden", canHousehold ? "false" : "true");
   });
   document.querySelectorAll('[data-settings-pane="familySharing"]').forEach((el) => {
-    if (!isFamilyAdmin) el.hidden = true;
+    if (!canHousehold) {
+      el.hidden = true;
+      el.classList.remove("is-active");
+    }
   });
+  const accountsHeading = document.getElementById("settingsAccountsHeading");
+  if (accountsHeading) {
+    accountsHeading.textContent = canHousehold ? "Accounts & Household" : "Accounts";
+  }
 }
 
 async function loadFamilyMembersPanel() {
@@ -6265,7 +6731,8 @@ async function loadFamilyMembersPanel() {
   show(errEl, "");
   if (!listEl) return;
   syncActiveFamilyFlags();
-  if (!isActiveFamilyAdmin()) {
+  if (!canViewHouseholdSettings()) {
+    syncSettingsFamilySharingNav();
     listEl.innerHTML = "";
     if (pendingEl) pendingEl.innerHTML = "";
     if (inviteWrap) inviteWrap.hidden = true;
@@ -6419,6 +6886,9 @@ async function loadFamilies() {
     state.activeFamilyId = null;
   }
   syncActiveFamilyFlags();
+  if (settingsViewPanel && !settingsViewPanel.hidden && getActiveSettingsSectionKey() === "accounts") {
+    void loadFamilyMembersPanel();
+  }
   await migrateLegacyDeviceBalanceThresholdsToAccount();
   hydrateBalanceThresholdInputsFromStorage();
 }
@@ -6484,6 +6954,7 @@ function selectCategoryComboboxChoice(fieldId, catId, name) {
   st.hidden.value = String(catId);
   st.input.value = name;
   hideCategoryComboboxList(st);
+  if (fieldId === "txAddCategoryId") refreshTxAddCategoryChipActiveState();
 }
 
 function normalizeCategoryComboboxInput(fieldId) {
@@ -6745,6 +7216,11 @@ function mountCategoryComboboxFromSelect(selectEl) {
     }, 180);
   });
   input.addEventListener("keydown", (e) => onCategoryComboboxKeydown(e, fieldId));
+
+  if (fieldId === "txAddCategoryId") {
+    ensureTxAddCategoryChipsUi();
+    renderTxAddCategoryChips();
+  }
 }
 
 function syncCategoryComboboxCategories(fieldId, categories) {
@@ -6765,6 +7241,7 @@ function syncCategoryComboboxCategories(fieldId, categories) {
   }
   if (!st.list.hidden) filterCategoryCombobox(fieldId);
   refreshTxCategoryColorPickers();
+  if (fieldId === "txAddCategoryId") renderTxAddCategoryChips();
 }
 
 function syncAllCategoryComboboxes(categories) {
@@ -6882,12 +7359,14 @@ function setCategoryFieldValue(fieldId, categoryIdOrNull) {
       st.input.value = cat ? categoryDisplayLabel(cat) : "";
     }
     refreshTxCategoryColorPickers();
+    if (fieldId === "txAddCategoryId") refreshTxAddCategoryChipActiveState();
     return;
   }
   if (el instanceof HTMLSelectElement) {
     el.value = categoryIdOrNull != null && categoryIdOrNull !== "" ? String(categoryIdOrNull) : "";
   }
   refreshTxCategoryColorPickers();
+  if (fieldId === "txAddCategoryId") refreshTxAddCategoryChipActiveState();
 }
 
 function ensureCategoryComboDocClick() {
@@ -8071,6 +8550,9 @@ async function loadCategories() {
   await loadCategoryUsageSummary();
   refreshCategoriesManagerChrome();
   renderCategoriesGrid(state.categoryTree);
+  try {
+    renderTxAddCategoryChips();
+  } catch (_) {}
 }
 
 function categoryStyleFromId(categoryId) {
@@ -8284,15 +8766,7 @@ function renderAccountsList(accounts) {
       const accountId = Number(btn.dataset.accountId);
       const account = state.accounts.find((a) => Number(a.id) === accountId);
       if (!account) return;
-      accountEditId.value = String(account.id);
-      accountName.value = account.name || "";
-      accountType.value = account.type || "checking";
-      accountStartingBalance.value = account.starting_balance ?? "";
-      accountStartingBalanceDate.value = account.starting_balance_date || "";
-      accountName.disabled = true;
-      accountType.disabled = true;
-      show(accErr, "");
-      openAccountModal("edit");
+      openAccountEditModalForAccount(account);
     });
   }
 }
@@ -9328,6 +9802,8 @@ async function loadExpectedTransactions() {
   const items = await api(`/api/families/${state.activeFamilyId}/expected-transactions`, "GET");
   state.expectedTransactions = items || [];
   renderUpcomingTransactionsFiltered();
+  invalidateLowBalanceAlertCache();
+  void refreshLowBalanceAlert();
 }
 
 function renderProjectionSummary(summary) {
@@ -10486,6 +10962,8 @@ function renderCalendar() {
     if (!startDate) continue;
     const row = {
       _type: "start_balance",
+      account_id: account.id,
+      account_name: account.name || "",
       kind: "income",
       amount: Math.abs(startBal),
       description: "Starting Balance",
@@ -10783,14 +11261,26 @@ function renderCalendar() {
         const labelWrap = document.createElement("span");
         labelWrap.className = "cal-tx-label-wrap";
         if (isStartBalance) {
-          line.title = "Starting balance — trusted anchor your forecast builds from";
-          const lock = document.createElement("span");
-          lock.className = "cal-tx-start-lock";
-          lock.setAttribute("role", "img");
-          lock.setAttribute("aria-label", "Locked forecast anchor");
-          lock.innerHTML =
-            '<svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>';
-          labelWrap.appendChild(lock);
+          line.setAttribute("role", "button");
+          line.setAttribute("tabindex", "0");
+          line.title = "Edit account starting balance";
+          const acctLabel = row.account_name ? String(row.account_name).trim() : "account";
+          line.setAttribute("aria-label", `Edit starting balance for ${acctLabel}`);
+          const anchor = document.createElement("span");
+          anchor.className = "cal-tx-start-anchor";
+          anchor.setAttribute("aria-hidden", "true");
+          anchor.innerHTML =
+            '<svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 18h14M7 13h10M9 8h6"/></svg>';
+          labelWrap.appendChild(anchor);
+          const openStartBalEdit = (e) => {
+            if (e.type === "keydown" && e.key !== "Enter" && e.key !== " ") return;
+            if (e.type === "keydown") e.preventDefault();
+            e.stopPropagation();
+            const account = (state.accounts || []).find((a) => Number(a.id) === Number(row.account_id));
+            if (account) openAccountEditModalForAccount(account);
+          };
+          line.addEventListener("click", openStartBalEdit);
+          line.addEventListener("keydown", openStartBalEdit);
         }
         labelWrap.appendChild(labelSpan);
 
@@ -11017,7 +11507,9 @@ function readStoredMinBalanceThresholdForReports() {
   const edited = readEditedBalanceThresholdNumber("min");
   if (edited != null && edited > 0) return edited;
   const persisted = readFamilyBalanceThresholdNumber("min");
-  return persisted != null && persisted > 0 ? persisted : null;
+  if (persisted != null && persisted > 0) return persisted;
+  const suggested = computeSuggestedMinBalanceThreshold();
+  return suggested.ok ? suggested.value : null;
 }
 
 function weekKeyMondayFromIso(iso) {

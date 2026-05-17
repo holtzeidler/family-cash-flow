@@ -8,7 +8,7 @@
     <link rel="icon" href="../favicon-32.png" type="image/png" sizes="32x32" />
     <link rel="apple-touch-icon" href="../apple-touch-icon.png" />
 <script>window.API_BASE = "__API_BASE__";</script>
-    <link rel="stylesheet" href="../styles.css?v=518" />
+    <link rel="stylesheet" href="../styles.css?v=559" />
   </head>
   <body class="admin-page">
     <div class="container">
@@ -41,19 +41,72 @@
           </section>
           <section id="adminSectionUsers" class="admin-section" hidden>
             <h2>Users</h2>
-            <p class="meta">Reset passwords and adjust family roles. Changes apply immediately.</p>
+            <p class="meta">Search accounts, adjust family and platform roles, and reset passwords. Open a user to edit details.</p>
             <div class="platform-admin-users-toolbar">
-              <label for="adminUsersSearch" class="sr-only">Search users</label>
-              <input
-                type="search"
-                id="adminUsersSearch"
-                class="platform-admin-users-search"
-                placeholder="Search by email, name, or family…"
-                autocomplete="off"
-                spellcheck="false"
-              />
+              <div class="platform-admin-users-toolbar__filters">
+                <label class="admin-feedback-filter admin-feedback-filter--grow">
+                  <span class="admin-feedback-filter__label">Search</span>
+                  <input
+                    type="search"
+                    id="adminUsersSearch"
+                    placeholder="Email, name, or family…"
+                    autocomplete="off"
+                    spellcheck="false"
+                  />
+                </label>
+                <label class="admin-feedback-filter">
+                  <span class="admin-feedback-filter__label">Family role</span>
+                  <select id="adminUsersFilterRole">
+                    <option value="">All</option>
+                    <option value="Owner">Owner</option>
+                    <option value="Can edit">Can edit</option>
+                    <option value="View only">View only</option>
+                  </select>
+                </label>
+                <label class="admin-feedback-filter">
+                  <span class="admin-feedback-filter__label">Family</span>
+                  <select id="adminUsersFilterFamily">
+                    <option value="">All</option>
+                  </select>
+                </label>
+                <label class="admin-feedback-filter">
+                  <span class="admin-feedback-filter__label">Status</span>
+                  <select id="adminUsersFilterStatus">
+                    <option value="">All</option>
+                    <option value="active">Active</option>
+                    <option value="no_family">No family</option>
+                  </select>
+                </label>
+                <label class="admin-feedback-filter">
+                  <span class="admin-feedback-filter__label">Platform role</span>
+                  <select id="adminUsersFilterPlatformRole">
+                    <option value="">All</option>
+                    <option value="none">None</option>
+                    <option value="support">Support</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </label>
+                <button type="button" id="adminUsersInviteBtn" class="platform-admin-users-invite">Add / invite user</button>
+              </div>
             </div>
-            <div id="adminUsersMount"></div>
+            <p id="adminUsersMeta" class="meta platform-admin-users-meta"></p>
+            <div class="platform-admin-users-table-wrap" id="adminUsersTableWrap">
+              <table class="platform-admin-users-table" id="adminUsersTable">
+                <thead>
+                  <tr>
+                    <th scope="col">User</th>
+                    <th scope="col">Family</th>
+                    <th scope="col">Family role</th>
+                    <th scope="col">Platform role</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Last login</th>
+                    <th scope="col">Created</th>
+                    <th scope="col"><span class="sr-only">Actions</span></th>
+                  </tr>
+                </thead>
+                <tbody id="adminUsersTableBody"></tbody>
+              </table>
+            </div>
           </section>
           <section id="adminSectionFamilies" class="admin-section" hidden>
             <h2>Families</h2>
@@ -107,6 +160,50 @@
           </section>
         </main>
       </div>
+
+      <div id="adminUserDrawer" class="platform-admin-drawer" hidden aria-hidden="true">
+        <button type="button" class="platform-admin-drawer__backdrop" id="adminUserDrawerBackdrop" aria-label="Close user panel"></button>
+        <aside class="platform-admin-drawer__panel" role="dialog" aria-modal="true" aria-labelledby="adminUserDrawerTitle">
+          <header class="platform-admin-drawer__head">
+            <div>
+              <h3 id="adminUserDrawerTitle" class="platform-admin-drawer__title">User</h3>
+              <p id="adminUserDrawerSub" class="meta"></p>
+            </div>
+            <button type="button" class="platform-admin-drawer__close" id="adminUserDrawerClose" aria-label="Close">×</button>
+          </header>
+          <div class="platform-admin-drawer__body" id="adminUserDrawerBody"></div>
+        </aside>
+      </div>
+
+      <div id="adminInviteModal" class="platform-admin-modal" hidden aria-hidden="true">
+        <button type="button" class="platform-admin-modal__backdrop" id="adminInviteModalBackdrop" aria-label="Close"></button>
+        <div class="platform-admin-modal__panel" role="dialog" aria-modal="true" aria-labelledby="adminInviteModalTitle">
+          <h3 id="adminInviteModalTitle">Add user to family</h3>
+          <p class="meta">User must already have a BalanceWhiz account (registered email).</p>
+          <form id="adminInviteForm" class="platform-admin-modal__form">
+            <label>
+              <span class="admin-feedback-filter__label">Email</span>
+              <input type="email" id="adminInviteEmail" required autocomplete="off" />
+            </label>
+            <label>
+              <span class="admin-feedback-filter__label">Family</span>
+              <select id="adminInviteFamily" required></select>
+            </label>
+            <label>
+              <span class="admin-feedback-filter__label">Family role</span>
+              <select id="adminInviteFamilyRole">
+                <option value="view">View only</option>
+                <option value="edit">Can edit</option>
+                <option value="owner">Owner</option>
+              </select>
+            </label>
+            <div class="platform-admin-modal__actions">
+              <button type="button" id="adminInviteCancel">Cancel</button>
+              <button type="submit" class="platform-admin-modal__primary">Add to family</button>
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
     <style>
       .platform-admin-layout {
@@ -151,62 +248,288 @@
         margin: 0 0 8px;
         font-size: 1.15rem;
       }
-      .admin-user-card {
-        border: 1px solid var(--border);
-        border-radius: 10px;
-        padding: 12px;
-        margin-bottom: 12px;
-        background: var(--cal-surface);
-        position: relative;
+      .platform-admin-users-toolbar {
+        margin: 12px 0 10px;
       }
-      .admin-user-card h3 {
-        margin: 0 0 6px;
-        font-size: 1rem;
-      }
-      .admin-user-card__delete {
-        position: absolute;
-        top: 12px;
-        right: 12px;
-        padding: 8px 10px;
-      }
-      .admin-membership {
-        font-size: 13px;
-        margin: 6px 0;
-        padding: 6px 8px;
-        border-radius: 8px;
-        background: rgba(0, 0, 0, 0.04);
-      }
-      .admin-inline-actions {
+      .platform-admin-users-toolbar__filters {
         display: flex;
         flex-wrap: wrap;
-        gap: 8px;
-        align-items: center;
-        margin-top: 8px;
+        gap: 10px;
+        align-items: flex-end;
       }
-      .admin-inline-actions input[type="password"] {
-        min-width: 160px;
-      }
-      .platform-admin-users-toolbar {
-        margin: 12px 0 14px;
-      }
-      .platform-admin-users-search {
-        width: 100%;
-        max-width: 28rem;
-        box-sizing: border-box;
-        padding: 10px 12px;
+      .platform-admin-users-invite {
+        padding: 8px 14px;
         border-radius: 8px;
-        border: 1px solid var(--border);
-        background: var(--panel, #fff);
+        border: 1px solid var(--accent);
+        background: var(--accent);
+        color: #fff;
+        font-weight: 600;
+        cursor: pointer;
         font: inherit;
-        font-size: 0.9375rem;
+        font-size: 0.9rem;
+        white-space: nowrap;
       }
-      .platform-admin-users-search::placeholder {
+      .platform-admin-users-meta {
+        margin: 0 0 10px;
+      }
+      .platform-admin-users-table-wrap {
+        overflow-x: auto;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: var(--cal-surface);
+      }
+      .platform-admin-users-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.875rem;
+      }
+      .platform-admin-users-table th,
+      .platform-admin-users-table td {
+        padding: 10px 12px;
+        text-align: left;
+        border-bottom: 1px solid rgba(17, 24, 39, 0.06);
+        vertical-align: middle;
+      }
+      .platform-admin-users-table th {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--muted);
+        background: rgba(0, 0, 0, 0.02);
+      }
+      .platform-admin-users-table tr:last-child td {
+        border-bottom: none;
+      }
+      .platform-admin-users-table__user {
+        font-weight: 600;
+      }
+      .platform-admin-users-table__email {
+        display: block;
+        font-weight: 500;
+      }
+      .platform-admin-users-table__sub {
+        font-size: 12px;
+        color: var(--muted);
+        font-weight: 400;
+      }
+      .platform-admin-users-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .platform-admin-users-actions button {
+        padding: 5px 8px;
+        border-radius: 6px;
+        border: 1px solid var(--border);
+        background: #fff;
+        font: inherit;
+        font-size: 12px;
+        cursor: pointer;
+      }
+      .platform-admin-users-actions button.danger {
+        border-color: #fecaca;
+        color: #b91c1c;
+      }
+      .platform-admin-drawer {
+        position: fixed;
+        inset: 0;
+        z-index: 1200;
+        display: flex;
+        justify-content: flex-end;
+      }
+      .platform-admin-drawer[hidden] {
+        display: none !important;
+      }
+      .platform-admin-drawer__backdrop {
+        position: absolute;
+        inset: 0;
+        border: none;
+        background: rgba(15, 23, 42, 0.35);
+        cursor: pointer;
+      }
+      .platform-admin-drawer__panel {
+        position: relative;
+        width: min(420px, 100vw);
+        max-height: 100vh;
+        overflow-y: auto;
+        background: var(--panel, #fff);
+        box-shadow: -8px 0 24px rgba(15, 23, 42, 0.12);
+        padding: 0 0 24px;
+      }
+      .platform-admin-drawer__head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 16px 18px;
+        border-bottom: 1px solid var(--border);
+        position: sticky;
+        top: 0;
+        background: var(--panel, #fff);
+        z-index: 1;
+      }
+      .platform-admin-drawer__title {
+        margin: 0;
+        font-size: 1.05rem;
+      }
+      .platform-admin-drawer__close {
+        border: none;
+        background: transparent;
+        font-size: 1.5rem;
+        line-height: 1;
+        cursor: pointer;
+        color: var(--muted);
+        padding: 4px 8px;
+      }
+      .platform-admin-drawer__body {
+        padding: 16px 18px;
+      }
+      .platform-admin-drawer__section {
+        margin-bottom: 20px;
+      }
+      .platform-admin-drawer__section h4 {
+        margin: 0 0 8px;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
         color: var(--muted);
       }
-      .platform-admin-users-search:focus {
-        outline: none;
-        border-color: var(--accent);
-        box-shadow: 0 0 0 2px rgba(11, 61, 46, 0.12);
+      .platform-admin-drawer__dl {
+        margin: 0;
+        font-size: 0.9rem;
+      }
+      .platform-admin-drawer__dl dt {
+        font-weight: 600;
+        margin-top: 8px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .platform-admin-drawer__dl dd {
+        margin: 2px 0 0;
+      }
+      .platform-admin-membership-row {
+        padding: 10px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        margin-bottom: 8px;
+        background: rgba(0, 0, 0, 0.02);
+      }
+      .platform-admin-membership-row__head {
+        font-weight: 600;
+        margin-bottom: 8px;
+      }
+      .platform-admin-drawer__field {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin-bottom: 10px;
+      }
+      .platform-admin-drawer__field select,
+      .platform-admin-drawer__field input {
+        padding: 8px 10px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        font: inherit;
+      }
+      .platform-admin-drawer__save {
+        padding: 8px 12px;
+        border-radius: 8px;
+        border: 1px solid var(--accent);
+        background: var(--accent);
+        color: #fff;
+        font-weight: 600;
+        cursor: pointer;
+        font: inherit;
+      }
+      .platform-admin-drawer__danger {
+        margin-top: 24px;
+        padding-top: 16px;
+        border-top: 1px solid #fecaca;
+      }
+      .platform-admin-drawer__danger h4 {
+        color: #b91c1c;
+      }
+      .platform-admin-drawer__danger button {
+        padding: 8px 12px;
+        border-radius: 8px;
+        border: 1px solid #fecaca;
+        background: #fff;
+        color: #b91c1c;
+        cursor: pointer;
+        font: inherit;
+      }
+      .platform-admin-audit {
+        font-size: 12px;
+        color: var(--muted);
+        max-height: 160px;
+        overflow-y: auto;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 8px;
+      }
+      .platform-admin-audit li {
+        margin-bottom: 6px;
+      }
+      .platform-admin-modal {
+        position: fixed;
+        inset: 0;
+        z-index: 1300;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+      }
+      .platform-admin-modal[hidden] {
+        display: none !important;
+      }
+      .platform-admin-modal__backdrop {
+        position: absolute;
+        inset: 0;
+        border: none;
+        background: rgba(15, 23, 42, 0.4);
+        cursor: pointer;
+      }
+      .platform-admin-modal__panel {
+        position: relative;
+        width: min(400px, 100%);
+        background: var(--panel, #fff);
+        border-radius: 12px;
+        padding: 18px 20px;
+        box-shadow: 0 12px 40px rgba(15, 23, 42, 0.18);
+      }
+      .platform-admin-modal__panel h3 {
+        margin: 0 0 6px;
+      }
+      .platform-admin-modal__form label {
+        display: block;
+        margin-bottom: 12px;
+      }
+      .platform-admin-modal__form input,
+      .platform-admin-modal__form select {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 8px 10px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        font: inherit;
+        margin-top: 4px;
+      }
+      .platform-admin-modal__actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        margin-top: 8px;
+      }
+      .platform-admin-modal__primary {
+        padding: 8px 14px;
+        border-radius: 8px;
+        border: 1px solid var(--accent);
+        background: var(--accent);
+        color: #fff;
+        font-weight: 600;
+        cursor: pointer;
+        font: inherit;
       }
 
       /* Feedback review */
@@ -374,6 +697,6 @@
         padding: 24px;
       }
     </style>
-    <script src="./admin.js?v=7"></script>
+    <script src="./admin.js?v=8"></script>
   </body>
 </html>

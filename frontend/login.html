@@ -11,9 +11,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=535" />
+    <link rel="stylesheet" href="./styles.css?v=562" />
   </head>
-  <body class="login-page">
+  <body class="login-page" data-auth-flow="login">
     <div class="container">
       <div class="top-nav" role="banner" aria-label="App header">
         <div class="top-nav__inner top-nav__inner--simple">
@@ -76,15 +76,15 @@
                   <a href="https://balancewhiz.com/account-setup/?fresh=1" class="login-page__signup-cta">Start your forecast</a>
                 </div>
 
-                <div id="forgot" class="login-flow" hidden>
-                  <p class="login-flow__helper">
-                    Enter your email and we’ll send a secure link to reset your password.
+                <div id="forgot" class="login-flow login-flow--forgot" hidden>
+                  <p class="login-flow__helper login-flow__helper--intro">
+                    We&rsquo;ll email you a secure link to reset your password.
                   </p>
                   <div class="login-flow__field">
                     <label for="pwForgotEmail">Email</label>
                     <input id="pwForgotEmail" type="email" autocomplete="email" />
                   </div>
-                  <button type="button" id="pwForgotSendBtn" class="top-nav__logout">Send reset link</button>
+                  <button type="button" id="pwForgotSendBtn" class="top-nav__logout login-flow__primary-btn">Send reset link</button>
 
                   <div id="pwForgotRequestErr" class="login-flow__alert" role="alert" hidden></div>
 
@@ -112,17 +112,16 @@
                   <button type="button" class="login-page__forgot-btn login-page__forgot-btn--quiet" id="pwForgotBackLogin1">Back to login</button>
                 </div>
 
-                <div id="loginFlowForgotSent" class="login-flow" hidden>
-                  <p class="login-flow__lede">Check your email</p>
-                  <p class="login-flow__helper">
-                    If an account exists for that email, we’ll send a password reset link shortly.
-                    It usually arrives within a few minutes.
+                <div id="loginFlowForgotSent" class="login-flow login-flow--confirm" hidden>
+                  <p class="login-flow__confirm-msg">
+                    If an account exists for that email, we&rsquo;ll send a password reset link shortly. It usually
+                    arrives within a few minutes.
                   </p>
-                  <p class="login-flow__helper login-flow__helper--muted">
-                    Didn’t see it? Make sure you used the email you signed up with, or
+                  <p class="login-flow__helper login-flow__helper--muted login-flow__confirm-note">
+                    Didn&rsquo;t see it? Make sure you used the email you signed up with, or
                     <a href="https://balancewhiz.com/account-setup/?fresh=1" class="login-page__signup-cta login-page__signup-cta--inline">create a new BalanceWhiz account</a>.
                   </p>
-                  <button type="button" id="pwForgotSentBackBtn" class="top-nav__logout">Back to login</button>
+                  <button type="button" id="pwForgotSentBackBtn" class="top-nav__logout login-flow__primary-btn login-flow__confirm-btn">Back to login</button>
                 </div>
 
                 <div id="loginFlowReset" class="login-flow" hidden>
@@ -152,10 +151,9 @@
                   </div>
                 </div>
 
-                <div id="loginFlowResetSuccess" class="login-flow" hidden>
-                  <p class="login-flow__lede">Password updated</p>
-                  <p class="login-flow__helper">You can now log in with your new password.</p>
-                  <button type="button" id="pwResetSuccessBtn" class="top-nav__logout">Back to login</button>
+                <div id="loginFlowResetSuccess" class="login-flow login-flow--confirm" hidden>
+                  <p class="login-flow__confirm-msg">You can now log in with your new password.</p>
+                  <button type="button" id="pwResetSuccessBtn" class="top-nav__logout login-flow__primary-btn login-flow__confirm-btn">Back to login</button>
                 </div>
               </div>
             </section>
@@ -170,7 +168,7 @@
               <a class="app-footer__logo" href="/" aria-label="BalanceWhiz home">
                 <img
                   class="app-footer__logo-img"
-                  src="./assets/balance-whiz-logo.svg?v=20260518"
+                  src="/assets/balance-whiz-logo.svg?v=20260518"
                   width="160"
                   height="41"
                   alt="BalanceWhiz"
@@ -179,22 +177,24 @@
               </a>
               <p class="app-footer__tagline">See your cash flow before it happens.</p>
               <p class="app-footer__copyright">© 2026 BalanceWhiz</p>
+              <p class="app-footer__madein">Built in Chicago</p>
             </div>
             <nav class="app-footer__col" aria-label="Product">
               <h2 class="app-footer__heading">Product</h2>
               <ul class="app-footer__list">
                 <li><a class="app-footer__link" href="/#how">How It Works</a></li>
-                <li><a class="app-footer__link" href="./plans/">Pricing</a></li>
+                <li><a class="app-footer__link" href="/plans/">Pricing</a></li>
+                <li><a class="app-footer__link" href="/help.html">FAQ</a></li>
                 <li><span class="app-footer__text">Security (coming soon)</span></li>
-                <li><a class="app-footer__link" href="./help.html">FAQ</a></li>
               </ul>
             </nav>
             <nav class="app-footer__col" aria-label="Company">
               <h2 class="app-footer__heading">Company</h2>
               <ul class="app-footer__list">
-                <li><a class="app-footer__link" href="./contactus/">Contact</a></li>
-                <li><a class="app-footer__link" href="./privacy.html">Privacy Policy</a></li>
-                <li><a class="app-footer__link" href="./terms.html">Terms of Service</a></li>
+                <li><a class="app-footer__link" href="/about.html">About</a></li>
+                <li><a class="app-footer__link" href="/contactus/">Contact</a></li>
+                <li><a class="app-footer__link" href="/privacy.html">Privacy Policy</a></li>
+                <li><a class="app-footer__link" href="/terms.html">Terms of Service</a></li>
               </ul>
             </nav>
           </div>
@@ -202,7 +202,7 @@
       </footer>
     </div>
 
-    <script src="./login.js?v=10"></script>
+    <script src="./login.js?v=12"></script>
   </body>
 </html>
 
