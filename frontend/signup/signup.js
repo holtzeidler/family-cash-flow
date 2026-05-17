@@ -1646,13 +1646,14 @@ function readAccountSetupDraftRaw() {
 }
 
 const ACCOUNT_SETUP_REPEAT_RECURRENCES = new Set([
-  "weekly",
-  "biweekly",
-  "twice_monthly",
   "monthly",
-  "quarterly",
+  "twice_monthly",
+  "bimonthly",
+  "biweekly",
+  "weekly",
   "semiannual",
   "yearly",
+  "quarterly",
 ]);
 
 const ACCOUNT_SETUP_LONG_DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {

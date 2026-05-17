@@ -11406,10 +11406,22 @@ textarea::placeholder{
   color: rgba(75, 85, 99, 0.78);
   line-height: 1.28;
 }
-.expected-second-day-row input[type="number"]{
+.expected-second-day-row input[type="date"]{
   width: 100%;
-  max-width: 7.5rem;
+  max-width: 100%;
   box-sizing: border-box;
+  padding: 8px 10px;
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px solid rgba(0, 0, 0, 0.16);
+  border-radius: 8px;
+  background: var(--panel, #fff);
+  color: var(--text);
+}
+.expected-second-day-row input[type="date"]:focus{
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 22%, transparent);
 }
 .expected-second-day-row > p,
 .expected-second-day-row__hint{
@@ -19871,7 +19883,8 @@ body[data-bw-view="transactions"] .tm__field label{
 }
 
 /* Recurring transaction edit: apply-scope — guided choice dialog */
-#txEditApplyScopeModal.modal-overlay{
+#txEditApplyScopeModal.modal-overlay,
+#txEditDeleteScopeModal.modal-overlay{
   background: rgba(15, 23, 42, 0.36);
 }
 .modal.modal--apply-scope{
@@ -20102,6 +20115,31 @@ body[data-bw-view="transactions"] .tm__field label{
   outline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
   outline-offset: 2px;
 }
+.modal.modal--apply-scope .modal-actions--apply-scope-foot .apply-scope-foot__delete{
+  min-height: 40px;
+  padding: 8px 14px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  border-radius: 10px;
+  border: 1px solid rgba(185, 28, 28, 0.35);
+  color: #fff;
+  background: #b91c1c;
+  box-shadow: 0 1px 3px rgba(185, 28, 28, 0.18);
+  cursor: pointer;
+}
+.modal.modal--apply-scope .modal-actions--apply-scope-foot .apply-scope-foot__delete:hover:not(:disabled){
+  background: #991b1b;
+  border-color: rgba(153, 27, 27, 0.45);
+}
+.modal.modal--apply-scope .modal-actions--apply-scope-foot .apply-scope-foot__delete:disabled{
+  opacity: 0.42;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+.modal.modal--apply-scope .modal-actions--apply-scope-foot .apply-scope-foot__delete:focus-visible{
+  outline: 2px solid color-mix(in srgb, #b91c1c 45%, transparent);
+  outline-offset: 2px;
+}
 
 .choice-subtitle{
   margin-top: -6px;
@@ -20288,21 +20326,21 @@ body[data-bw-view="transactions"] .tm__field label{
   white-space: nowrap;
   opacity: 0.9;
 }
-.tx-add-second-monthly__row input[type="number"]{
-  flex: 0 1 5.25rem;
-  width: 5.25rem;
+.tx-add-second-monthly__row input[type="date"]{
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 9.5rem;
   max-width: 100%;
-  min-width: 0;
   box-sizing: border-box;
-  padding: 5px 8px;
-  font-size: 13px;
+  padding: 8px 10px;
+  font-size: 14px;
   font-weight: 500;
-  border: 1px solid rgba(0, 0, 0, 0.14);
+  border: 1px solid rgba(0, 0, 0, 0.16);
   border-radius: 8px;
   background: var(--panel, #fff);
   color: var(--text);
 }
-.tx-add-second-monthly__row input[type="number"]:focus{
+.tx-add-second-monthly__row input[type="date"]:focus{
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 20%, transparent);
@@ -20746,15 +20784,20 @@ body[data-bw-view="transactions"] .tm__field label{
   font-size: 10px;
   opacity: 0.78;
 }
-/* Compact inline "Variable amount" toggle (replaces the old labelled checkbox block). */
+/* Compact "Variable amount" toggle: label + checkbox on one line, hint below. */
 .tx-add-variable-toggle{
-  display: inline-flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 4px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
   cursor: pointer;
   user-select: none;
   padding: 2px 0;
+}
+.tx-add-variable-toggle__head{
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
 }
 .tx-add-variable-toggle input[type="checkbox"]{
   margin: 0;
@@ -20769,10 +20812,13 @@ body[data-bw-view="transactions"] .tm__field label{
   text-transform: none;
 }
 .tx-add-variable-toggle__hint{
+  display: block;
   font-size: 10px;
   font-weight: 400;
+  line-height: 1.35;
   color: rgba(100, 116, 139, 0.7);
   letter-spacing: 0.005em;
+  max-width: 28rem;
 }
 /* Recurring sub-cluster: lighter background to mark it as secondary configuration. */
 .modal--tx-add #txAddRecurringBlock{
@@ -22222,27 +22268,25 @@ body.account-setup-page
 }
 .modal--expected-edit .tx-edit-variable-row{
   display: flex;
+  flex-direction: column;
   align-items: flex-start;
-  gap: 9px;
+  gap: 3px;
   margin: 0;
   padding: 1px 0 0;
   cursor: pointer;
   user-select: none;
 }
+.modal--expected-edit .tx-edit-variable-row__head{
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
 .modal--expected-edit .tx-edit-variable-row__input{
   flex-shrink: 0;
   width: 14px;
   height: 14px;
-  margin: 0.15em 0 0;
+  margin: 0;
   accent-color: var(--accent);
-}
-.modal--expected-edit .tx-edit-variable-row__text{
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-  flex: 1;
-  max-width: 22rem;
 }
 .modal--expected-edit .tx-edit-variable-row__title{
   font-size: 12px;
@@ -22256,7 +22300,7 @@ body.account-setup-page
   font-weight: 450;
   line-height: 1.32;
   color: rgba(100, 116, 139, 0.6);
-  max-width: 100%;
+  max-width: 28rem;
 }
 .tx-edit-variable-hint{
   display: block;

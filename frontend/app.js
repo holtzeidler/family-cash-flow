@@ -1437,7 +1437,10 @@ function bindTxAddFormValidation() {
     updateTxAddFormValidity();
   };
   txAddAmount?.addEventListener("input", markTouched);
-  txAddDate?.addEventListener("change", markTouched);
+  txAddDate?.addEventListener("change", () => {
+    markTouched();
+    syncTxAddSecondMonthlyDateDefault();
+  });
   txAddAccountId?.addEventListener("change", markTouched);
 }
 
@@ -1449,6 +1452,18 @@ function updateTxAddTwiceMonthlyVisibility() {
   if (!txAddTwiceMonthlyFields || !txAddRecurrence) return;
   const on = txAddRecurrence.value === "twice_monthly";
   txAddTwiceMonthlyFields.style.display = on ? "block" : "none";
+  if (on) syncTxAddSecondMonthlyDateDefault();
+}
+
+function syncTxAddSecondMonthlyDateDefault() {
+  if (!txAddSecondDayOfMonth || !txAddDate || txAddRecurrence?.value !== "twice_monthly") return;
+  const start = normalizeIsoDate(txAddDate.value);
+  if (!start) return;
+  const startDom = Number(start.slice(8, 10));
+  const currentDom = readSecondDayOfMonthFromInput(txAddSecondDayOfMonth);
+  if (Number.isFinite(currentDom) && currentDom !== startDom) return;
+  const inferred = inferSecondMonthlyIsoFromStart(start);
+  if (inferred) txAddSecondDayOfMonth.value = inferred;
 }
 
 function updateTxAddEndsDetailUi() {
@@ -3856,14 +3871,13 @@ if (txAddSave) {
 
         let secondDayOfMonth = null;
         if (recurrenceVal === "twice_monthly") {
-          const raw = txAddSecondDayOfMonth && txAddSecondDayOfMonth.value;
-          const n = raw !== "" && raw != null ? Number(raw) : NaN;
+          const n = readSecondDayOfMonthFromInput(txAddSecondDayOfMonth);
           if (!Number.isFinite(n) || n < 1 || n > 31) {
-            throw new Error("2nd day of month (1–31) is required for twice monthly");
+            throw new Error("Second monthly date is required for twice monthly");
           }
           const startDay = Number(dateVal.slice(8, 10));
           if (n === startDay) {
-            throw new Error("2nd day of month must differ from the start date’s day of month");
+            throw new Error("Second monthly date must be on a different day of the month than the start date");
           }
           secondDayOfMonth = n;
         }
@@ -4155,6 +4169,7 @@ function openTxEditModal(tx) {
 }
 
 let txEditApplyScopeChoice = null;
+let txEditDeleteScopeChoice = null;
 
 function resetTxEditApplyScopeSelection() {
   txEditApplyScopeChoice = null;
@@ -4187,6 +4202,37 @@ function setTxEditApplyScopeChoice(choice) {
   if (saveBtn) saveBtn.disabled = false;
 }
 
+function resetTxEditDeleteScopeSelection() {
+  txEditDeleteScopeChoice = null;
+  const futureBtn = document.getElementById("txEditDeleteScopeFutureBtn");
+  const instanceBtn = document.getElementById("txEditDeleteScopeInstanceBtn");
+  const confirmBtn = document.getElementById("txEditDeleteScopeConfirmBtn");
+  for (const btn of [futureBtn, instanceBtn]) {
+    if (!btn) continue;
+    btn.classList.remove("apply-scope-option--selected");
+    btn.setAttribute("aria-pressed", "false");
+  }
+  if (confirmBtn) confirmBtn.disabled = true;
+}
+
+function setTxEditDeleteScopeChoice(choice) {
+  txEditDeleteScopeChoice = choice;
+  const futureBtn = document.getElementById("txEditDeleteScopeFutureBtn");
+  const instanceBtn = document.getElementById("txEditDeleteScopeInstanceBtn");
+  const confirmBtn = document.getElementById("txEditDeleteScopeConfirmBtn");
+  if (futureBtn) {
+    const on = choice === "future";
+    futureBtn.classList.toggle("apply-scope-option--selected", on);
+    futureBtn.setAttribute("aria-pressed", on ? "true" : "false");
+  }
+  if (instanceBtn) {
+    const on = choice === "instance";
+    instanceBtn.classList.toggle("apply-scope-option--selected", on);
+    instanceBtn.setAttribute("aria-pressed", on ? "true" : "false");
+  }
+  if (confirmBtn) confirmBtn.disabled = false;
+}
+
 function closeTxEditApplyScopeModal() {
   const m = document.getElementById("txEditApplyScopeModal");
   if (!m) return;
@@ -4202,6 +4248,7 @@ function closeTxEditDeleteScopeModal() {
   m.classList.remove("modal-overlay--open");
   m.setAttribute("aria-hidden", "true");
   show(document.getElementById("txEditDeleteScopeErr"), "");
+  resetTxEditDeleteScopeSelection();
 }
 
 function openTxEditApplyScopeModal() {
@@ -4224,11 +4271,14 @@ function openTxEditDeleteScopeModal() {
   const m = document.getElementById("txEditDeleteScopeModal");
   if (!m) return;
   show(document.getElementById("txEditDeleteScopeErr"), "");
+  resetTxEditDeleteScopeSelection();
   try {
     m.style.display = "";
   } catch (_) {}
   m.classList.add("modal-overlay--open");
   m.setAttribute("aria-hidden", "false");
+  const firstOpt = document.getElementById("txEditDeleteScopeFutureBtn");
+  requestAnimationFrame(() => firstOpt?.focus?.());
 }
 
 function closeTxEditModal() {
@@ -6920,9 +6970,8 @@ async function saveExpectedSeriesFromInstance() {
   }
   let secondDayVal = meta.second_day_of_month != null ? Number(meta.second_day_of_month) : null;
   if (recurrenceVal === "twice_monthly") {
-    const raw = instanceSecondDayOfMonth?.value;
-    const n = raw ? Number(raw) : NaN;
-    if (!Number.isFinite(n) || n < 1 || n > 31) throw new Error("Second day of month must be between 1 and 31");
+    const n = readSecondDayOfMonthFromInput(instanceSecondDayOfMonth);
+    if (!Number.isFinite(n) || n < 1 || n > 31) throw new Error("Second monthly date is required");
     const startIso = normalizeIsoDate(meta.start_date || "") || meta.start_date || "";
     const startDom = startIso && String(startIso).length >= 10 ? Number(String(startIso).slice(8, 10)) : NaN;
     // When applying from a specific occurrence, the backend treats that occurrence date as the
@@ -7040,24 +7089,30 @@ if (txEditDeleteScopeModal) {
   });
 }
 
-const txEditDeleteScopeInstanceBtn = document.getElementById("txEditDeleteScopeInstanceBtn");
-if (txEditDeleteScopeInstanceBtn) {
-  txEditDeleteScopeInstanceBtn.addEventListener("click", async () => {
-    try {
-      await deleteExpectedThisOccurrenceOnlyFromModal();
-    } catch (e) {
-      show(document.getElementById("txEditDeleteScopeErr"), e.message || "Failed to remove occurrence");
-    }
+function bindTxEditDeleteScopeOption(btn) {
+  if (!btn) return;
+  btn.addEventListener("click", () => {
+    const scope = btn.dataset.deleteScope;
+    if (scope === "future" || scope === "instance") setTxEditDeleteScopeChoice(scope);
   });
 }
+bindTxEditDeleteScopeOption(document.getElementById("txEditDeleteScopeFutureBtn"));
+bindTxEditDeleteScopeOption(document.getElementById("txEditDeleteScopeInstanceBtn"));
 
-const txEditDeleteScopeFutureBtn = document.getElementById("txEditDeleteScopeFutureBtn");
-if (txEditDeleteScopeFutureBtn) {
-  txEditDeleteScopeFutureBtn.addEventListener("click", async () => {
+const txEditDeleteScopeConfirmBtn = document.getElementById("txEditDeleteScopeConfirmBtn");
+if (txEditDeleteScopeConfirmBtn) {
+  txEditDeleteScopeConfirmBtn.addEventListener("click", async () => {
+    if (!txEditDeleteScopeChoice) return;
     try {
-      await deleteExpectedThisAndFutureFromModal();
+      show(document.getElementById("txEditDeleteScopeErr"), "");
+      if (txEditDeleteScopeChoice === "instance") await deleteExpectedThisOccurrenceOnlyFromModal();
+      else await deleteExpectedThisAndFutureFromModal();
     } catch (e) {
-      show(document.getElementById("txEditDeleteScopeErr"), e.message || "Failed to delete future occurrences");
+      const msg =
+        txEditDeleteScopeChoice === "instance"
+          ? e.message || "Failed to remove occurrence"
+          : e.message || "Failed to delete future occurrences";
+      show(document.getElementById("txEditDeleteScopeErr"), msg);
     }
   });
 }
@@ -9403,8 +9458,14 @@ function openExpectedEditModal(tx, opts = {}) {
 
   if (instanceRecurrence) instanceRecurrence.value = String((selectedExpectedSeriesTx && selectedExpectedSeriesTx.recurrence) || tx.recurrence || "monthly");
   if (instanceSecondDayOfMonth) {
-    const v = (selectedExpectedSeriesTx && selectedExpectedSeriesTx.second_day_of_month) != null ? selectedExpectedSeriesTx.second_day_of_month : tx.second_day_of_month;
-    instanceSecondDayOfMonth.value = v != null ? String(v) : "";
+    const v =
+      (selectedExpectedSeriesTx && selectedExpectedSeriesTx.second_day_of_month) != null
+        ? selectedExpectedSeriesTx.second_day_of_month
+        : tx.second_day_of_month;
+    const anchor =
+      normalizeIsoDate(tx.date || tx.occurrence_date || "") ||
+      normalizeIsoDate((selectedExpectedSeriesTx && selectedExpectedSeriesTx.start_date) || tx.start_date || "");
+    setSecondDayOfMonthInput(instanceSecondDayOfMonth, v, anchor);
   }
   if (instanceEndCount) {
     const v = (selectedExpectedSeriesTx && selectedExpectedSeriesTx.end_count) != null ? selectedExpectedSeriesTx.end_count : tx.end_count;
@@ -9574,17 +9635,23 @@ function endOfMonthDay(year, monthIndex0) {
   return new Date(year, monthIndex0 + 1, 0).getDate();
 }
 
+/** Canonical recurrence labels (match Repeat dropdown in Add transaction). */
+const RECURRENCE_OPTION_LABELS = {
+  once: "Does not repeat",
+  monthly: "Every month",
+  twice_monthly: "Twice monthly",
+  bimonthly: "Every 2 months",
+  biweekly: "Every 2 weeks",
+  weekly: "Every week",
+  semiannual: "Every 6 months",
+  yearly: "Every year",
+  quarterly: "Every 3 months",
+};
+
 function recurrenceLabel(value) {
-  const v = String(value || "");
-  if (v === "yearly") return "Annual";
-  if (v === "semiannual") return "Twice yearly";
-  if (v === "quarterly") return "Every 3 months";
-  if (v === "twice_monthly") return "Twice monthly";
-  if (v === "bimonthly") return "Bi-monthly";
-  if (v === "biweekly") return "Every 2 weeks";
-  if (v === "monthly") return "Monthly";
-  if (v === "once") return "Once";
-  return v || "—";
+  const v = String(value || "").toLowerCase();
+  if (!v || v === "once") return RECURRENCE_OPTION_LABELS.once;
+  return RECURRENCE_OPTION_LABELS[v] || v || "—";
 }
 
 function dateFromYMDClamped(year, monthIndex0, day) {
@@ -10617,6 +10684,55 @@ function normalizeIsoDate(raw) {
   return `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}`;
 }
 
+/** Map day-of-month (1–31) to a calendar date using the anchor month/year. */
+function dayOfMonthToIsoDate(day, anchorIso) {
+  const dom = Number(day);
+  if (!Number.isFinite(dom) || dom < 1 || dom > 31) return "";
+  const anchor = normalizeIsoDate(anchorIso) || normalizeIsoDate(new Date().toISOString().slice(0, 10));
+  if (!anchor) return "";
+  const y = Number(anchor.slice(0, 4));
+  const m0 = Number(anchor.slice(5, 7)) - 1;
+  const last = new Date(y, m0 + 1, 0).getDate();
+  const clamped = Math.min(dom, last);
+  return `${anchor.slice(0, 7)}-${String(clamped).padStart(2, "0")}`;
+}
+
+function isoDateToDayOfMonth(iso) {
+  const n = normalizeIsoDate(iso);
+  if (!n || n.length < 10) return NaN;
+  return Number(n.slice(8, 10));
+}
+
+function readSecondDayOfMonthFromInput(el) {
+  if (!el) return NaN;
+  const raw = String(el.value || "").trim();
+  if (!raw) return NaN;
+  if (/^\d{1,2}$/.test(raw)) {
+    const legacy = Number(raw);
+    return legacy >= 1 && legacy <= 31 ? legacy : NaN;
+  }
+  return isoDateToDayOfMonth(raw);
+}
+
+function setSecondDayOfMonthInput(el, day, anchorIso) {
+  if (!el) return;
+  const n = Number(day);
+  if (!Number.isFinite(n) || n < 1 || n > 31) {
+    el.value = "";
+    return;
+  }
+  el.value = dayOfMonthToIsoDate(n, anchorIso);
+}
+
+function inferSecondMonthlyIsoFromStart(startIso) {
+  const start = normalizeIsoDate(startIso);
+  if (!start) return "";
+  const dom = Number(start.slice(8, 10));
+  if (!Number.isFinite(dom)) return "";
+  const other = dom <= 15 ? 31 : 15;
+  return dayOfMonthToIsoDate(other, start);
+}
+
 /** Earliest account starting-balance date (YYYY-MM-DD); null if no accounts. */
 function getFamilyEarliestStartingBalanceIso() {
   const accounts = state.accounts || [];
@@ -11381,7 +11497,13 @@ function selectExpectedInstance(item) {
     const meta = selectedExpectedSeriesTx || getExpectedSeriesMeta(item.expected_transaction_id);
     if (meta) {
       if (instanceRecurrence) instanceRecurrence.value = String(meta.recurrence || "monthly");
-      if (instanceSecondDayOfMonth) instanceSecondDayOfMonth.value = meta.second_day_of_month != null ? String(meta.second_day_of_month) : "";
+      if (instanceSecondDayOfMonth) {
+        setSecondDayOfMonthInput(
+          instanceSecondDayOfMonth,
+          meta.second_day_of_month,
+          meta.start_date || instanceExpectedTxId?.value || ""
+        );
+      }
       updateInstanceTwiceMonthlyVisibility();
     }
   }
@@ -12128,18 +12250,8 @@ function mapObligationGroup(description, category) {
   return "Other obligations";
 }
 
-/** Conversational recurrence copy for the obligations report (does not replace `recurrenceLabel` elsewhere). */
+/** Conversational recurrence copy for the obligations report. */
 function obligationRecurrenceLabel(raw) {
-  const v = String(raw || "").toLowerCase();
-  if (v === "yearly" || v === "annual") return "Yearly";
-  if (v === "semiannual") return "Every 6 months";
-  if (v === "quarterly") return "Every 3 months";
-  if (v === "twice_monthly") return "Twice monthly";
-  if (v === "bimonthly") return "Every 2 months";
-  if (v === "biweekly") return "Every 2 weeks";
-  if (v === "weekly") return "Weekly";
-  if (v === "monthly") return "Monthly";
-  if (v === "once") return "Once";
   return recurrenceLabel(raw);
 }
 
