@@ -4910,9 +4910,10 @@ button.secondary[aria-disabled="true"]{
 
 /* Compact "Needs review" when empty — single calm summary line. */
 #sidebarPendingTxCard.sidebar-pending--empty{
-  padding: 7px 10px;
-  background: rgba(250, 250, 249, 0.92);
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+  padding: 6px 10px 5px;
+  background: rgba(252, 252, 251, 0.88);
+  box-shadow: none;
+  border: none;
 }
 #sidebarPendingTxCard.sidebar-pending--empty .sidebar-section-head{
   display: none;
@@ -4924,12 +4925,30 @@ button.secondary[aria-disabled="true"]{
   margin: 0;
   gap: 0;
 }
+.sidebar-pending-empty{
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 1px 0 0;
+}
 .sidebar-pending-empty-msg{
   margin: 0;
   font-size: 11.5px;
   font-weight: 500;
   line-height: 1.35;
   color: rgba(100, 116, 139, 0.62);
+}
+.sidebar-pending-empty-msg--lead{
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: rgba(71, 85, 105, 0.58);
+}
+.sidebar-pending-empty-msg--sub{
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.32;
+  color: rgba(148, 163, 184, 0.72);
 }
 #sidebarPendingTxCard.sidebar-pending--empty #sidebarPendingTxList .pill{
   padding: 0;
@@ -5521,38 +5540,40 @@ button.nav-link:hover{
   font-weight: 500;
 }
 .calendar-low-balance--sidebar.is-suggestion{
-  border-color: rgba(11, 61, 46, 0.06);
-  background: rgba(240, 253, 248, 0.55);
-  color: rgba(15, 23, 42, 0.88);
-  border-radius: 10px;
-  padding: 8px 14px 7px;
+  border: 1px solid rgba(11, 61, 46, 0.045);
+  background: rgba(236, 253, 245, 0.38);
+  color: rgba(30, 41, 59, 0.82);
+  border-radius: 12px;
+  padding: 12px 14px 11px;
   box-shadow: none;
   cursor: default;
   pointer-events: none;
 }
 .calendar-low-balance--sidebar.is-suggestion strong{
   display: block;
-  font-size: 13px;
-  font-weight: 650;
-  line-height: 1.22;
-  letter-spacing: -0.01em;
-  color: rgba(11, 61, 46, 0.9);
+  font-size: 13.5px;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.015em;
+  color: rgba(11, 61, 46, 0.82);
   white-space: normal;
   margin: 0;
 }
 .calendar-low-balance--sidebar.is-suggestion .cash-outlook-hero{
-  font-size: 13px;
-  font-weight: 650;
-  line-height: 1.22;
-  color: rgba(11, 61, 46, 0.9);
-  margin: 0 0 2px;
+  font-size: 13.5px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: rgba(11, 61, 46, 0.82);
+  margin: 0 0 4px;
+  text-align: left;
 }
 .calendar-low-balance--sidebar.is-suggestion .cash-outlook-secondary{
-  margin-top: 2px;
-  font-size: 10px;
-  line-height: 1.28;
+  margin-top: 4px;
+  font-size: 10.5px;
+  line-height: 1.35;
   font-weight: 500;
-  color: rgba(71, 85, 105, 0.52);
+  color: rgba(100, 116, 139, 0.5);
+  text-align: left;
 }
 .sidebar-balance-threshold-hint-inline{
   margin: 0;
@@ -6098,6 +6119,12 @@ body[data-bw-view="calendar"] .calendar-panel-sticky-zone{
   font: inherit;
   font-size: 0.74rem;
   background: transparent;
+}
+.reports-chart-end{
+  margin-left: 0;
+}
+.reports-chart-toolbar:has(.reports-horizon__btn[data-report-days="custom"].is-active) .reports-range-meta{
+  display: none;
 }
 .reports-range-meta{
   margin: 0;
@@ -8633,9 +8660,24 @@ body[data-bw-view="calendar"] #sidebarPendingTxCard.sidebar-pending--empty,
 body[data-bw-view="transactions"] #sidebarPendingTxCard.sidebar-pending--empty,
 body[data-bw-view="settings"] #sidebarPendingTxCard.sidebar-pending--empty,
 body[data-bw-view="reports"] #sidebarPendingTxCard.sidebar-pending--empty{
-  padding: 7px 10px;
-  background: rgba(250, 250, 249, 0.95);
-  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.022);
+  padding: 5px 10px 4px;
+  background: rgba(252, 252, 251, 0.86);
+  box-shadow: none;
+}
+body[data-bw-view="calendar"] #sidebarPendingTxCard.sidebar-pending--empty .sidebar-pending-empty-msg--lead,
+body[data-bw-view="transactions"] #sidebarPendingTxCard.sidebar-pending--empty .sidebar-pending-empty-msg--lead,
+body[data-bw-view="settings"] #sidebarPendingTxCard.sidebar-pending--empty .sidebar-pending-empty-msg--lead,
+body[data-bw-view="reports"] #sidebarPendingTxCard.sidebar-pending--empty .sidebar-pending-empty-msg--lead{
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(100, 116, 139, 0.52);
+}
+body[data-bw-view="calendar"] #sidebarPendingTxCard.sidebar-pending--empty .sidebar-pending-empty-msg--sub,
+body[data-bw-view="transactions"] #sidebarPendingTxCard.sidebar-pending--empty .sidebar-pending-empty-msg--sub,
+body[data-bw-view="settings"] #sidebarPendingTxCard.sidebar-pending--empty .sidebar-pending-empty-msg--sub,
+body[data-bw-view="reports"] #sidebarPendingTxCard.sidebar-pending--empty .sidebar-pending-empty-msg--sub{
+  font-size: 9.5px;
+  color: rgba(148, 163, 184, 0.68);
 }
 body[data-bw-view="calendar"] #sidebarPendingTxCard .sidebar-section-head,
 body[data-bw-view="calendar"] .sidebar-section:not(.sidebar-section--collapsed) .sidebar-section-head,
@@ -8676,11 +8718,11 @@ body[data-bw-view="calendar"] .sidebar-balance-threshold-hint-inline,
 body[data-bw-view="transactions"] .sidebar-balance-threshold-hint-inline,
 body[data-bw-view="settings"] .sidebar-balance-threshold-hint-inline,
 body[data-bw-view="reports"] .sidebar-balance-threshold-hint-inline{
-  font-size: 10.5px;
+  font-size: 10px;
   font-weight: 500;
-  line-height: 1.3;
-  color: rgba(100, 116, 139, 0.52);
-  margin-top: 1px;
+  line-height: 1.32;
+  color: rgba(148, 163, 184, 0.72);
+  margin-top: 2px;
 }
 body[data-bw-view="calendar"] .sidebar-collapse-btn,
 body[data-bw-view="transactions"] .sidebar-collapse-btn{
@@ -8797,27 +8839,38 @@ body[data-bw-view="calendar"] #sidebarLowBalanceBanner.calendar-low-balance--sid
 body[data-bw-view="transactions"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-suggestion{
   text-align: left;
   align-items: stretch;
-  padding: 7px 12px 6px;
-  margin-top: 4px;
-  border-radius: 10px;
-  border: 1px solid rgba(11, 61, 46, 0.06);
-  background: rgba(240, 253, 248, 0.5);
+  padding: 13px 15px 12px;
+  margin-top: 5px;
+  border-radius: 12px;
+  border: 1px solid rgba(11, 61, 46, 0.04);
+  background: rgba(236, 253, 245, 0.34);
   box-shadow: none;
 }
 body[data-bw-view="calendar"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-suggestion strong,
 body[data-bw-view="transactions"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-suggestion strong{
   justify-content: flex-start;
-  font-size: 13px;
-  font-weight: 650;
-  line-height: 1.22;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.32;
+  letter-spacing: -0.015em;
   white-space: normal;
-  color: rgba(11, 61, 46, 0.9);
+  color: rgba(11, 61, 46, 0.8);
+}
+body[data-bw-view="calendar"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-suggestion .cash-outlook-hero,
+body[data-bw-view="transactions"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-suggestion .cash-outlook-hero{
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.32;
+  color: rgba(11, 61, 46, 0.8);
+  text-align: left;
 }
 body[data-bw-view="calendar"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-suggestion .cash-outlook-secondary,
 body[data-bw-view="transactions"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-suggestion .cash-outlook-secondary{
   text-align: left;
-  font-size: 10px;
-  color: rgba(100, 116, 139, 0.5);
+  margin-top: 5px;
+  font-size: 10.5px;
+  line-height: 1.36;
+  color: rgba(100, 116, 139, 0.48);
 }
 body[data-bw-view="calendar"] .cash-outlook-head,
 body[data-bw-view="transactions"] .cash-outlook-head{
@@ -8917,11 +8970,6 @@ body[data-bw-view="transactions"] #sidebarBodyMonth .total .k{
   text-transform: uppercase;
   color: rgba(100, 116, 139, 0.58);
 }
-body[data-bw-view="calendar"] #sidebarBodyMonth .total--net .k,
-body[data-bw-view="transactions"] #sidebarBodyMonth .total--net .k{
-  font-weight: 600;
-  color: rgba(71, 85, 105, 0.65);
-}
 body[data-bw-view="calendar"] #sidebarBodyMonth .total .v,
 body[data-bw-view="transactions"] #sidebarBodyMonth .total .v{
   flex: 0 0 auto;
@@ -8940,12 +8988,6 @@ body[data-bw-view="transactions"] #sidebarBodyMonth .total--income .v.ok{
 body[data-bw-view="calendar"] #sidebarBodyMonth .total--expense .v.danger,
 body[data-bw-view="transactions"] #sidebarBodyMonth .total--expense .v.danger{
   color: color-mix(in srgb, var(--danger) 68%, #78716c);
-}
-body[data-bw-view="calendar"] #sidebarBodyMonth .total--net .v,
-body[data-bw-view="transactions"] #sidebarBodyMonth .total--net .v{
-  font-size: 16px;
-  font-weight: 750;
-  letter-spacing: -0.02em;
 }
 body[data-bw-view="calendar"] #sidebarBodyMonth .total--net .v.danger,
 body[data-bw-view="transactions"] #sidebarBodyMonth .total--net .v.danger{
@@ -9150,6 +9192,8 @@ body[data-bw-view="calendar"] .cal-detail-btn.is-active{
   body[data-bw-view="transactions"] #sidebarPendingTxCard.sidebar-pending--empty{
     text-align: center;
   }
+  body[data-bw-view="calendar"] #sidebarPendingTxCard.sidebar-pending--empty .sidebar-pending-empty,
+  body[data-bw-view="transactions"] #sidebarPendingTxCard.sidebar-pending--empty .sidebar-pending-empty,
   body[data-bw-view="calendar"] #sidebarPendingTxCard.sidebar-pending--empty .sidebar-pending-empty-msg,
   body[data-bw-view="transactions"] #sidebarPendingTxCard.sidebar-pending--empty .sidebar-pending-empty-msg{
     text-align: center;
@@ -17951,7 +17995,7 @@ body.plans-page--polished .plans-wrap{
     background-color 0.14s ease;
 }
 .cal-cell:not(.cal-cell--out):not(.cal-cell--before-start):hover .cal-day-reconcile-btn,
-.cal-cell:not(.cal-cell--out):not(.cal-cell--before-start):focus-within .cal-day-reconcile-btn,
+.cal-day-reconcile-btn:hover,
 .cal-day-reconcile-btn:focus-visible{
   opacity: 1;
   pointer-events: auto;
@@ -17968,6 +18012,7 @@ body.plans-page--polished .plans-wrap{
   cursor: pointer;
   user-select: none;
   -webkit-user-select: none;
+  touch-action: manipulation;
 }
 .cal-cell.cal-cell--before-start,
 .cal-cell.cal-cell--out{
@@ -19746,8 +19791,9 @@ body[data-bw-view="transactions"] .tm__field label{
   justify-content: center;
   padding: 16px;
 }
+/* Stacked on top of #txEditModal (1400), not beneath it */
 .modal-overlay--nested{
-  z-index: 1100;
+  z-index: 1500;
 }
 
 .modal-overlay--open{
@@ -19809,8 +19855,9 @@ body[data-bw-view="transactions"] .tm__field label{
 }
 
 .modal.modal--account{
-  max-width: 372px;
-  padding: 18px 16px 16px;
+  width: min(96vw, 432px);
+  max-width: 432px;
+  padding: 16px 18px 14px;
 }
 
 .modal-actions{
@@ -20094,7 +20141,23 @@ body[data-bw-view="transactions"] .tm__field label{
 }
 
 .modal--tx-add #txAddModalFormMount{
-  min-height: 1px;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.modal--tx-add .tx-add-form{
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.modal--tx-add .tx-add-form__body{
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-right: 2px;
 }
 
 .sidebar-add-tx-form{
@@ -20114,10 +20177,12 @@ body[data-bw-view="transactions"] .tm__field label{
 }
 
 .modal--tx-add{
-  width: min(92vw, 500px);
-  max-width: 500px;
-  max-height: min(92vh, 720px);
-  overflow-y: auto;
+  width: min(96vw, 1100px);
+  max-width: none;
+  max-height: min(92vh, calc(100vh - 48px));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   padding: 14px;
 }
 .modal--tx-add > h3{
@@ -20410,9 +20475,14 @@ body[data-bw-view="transactions"] .tm__field label{
 }
 
 .modal--tx-add .tx-add-form .modal-actions.modal-actions--tx-add-foot{
-  margin-top: 16px;
-  padding-top: 16px;
+  flex-shrink: 0;
+  margin-top: 12px;
+  padding-top: 12px;
   border-top-color: rgba(17, 24, 39, 0.07);
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  background: var(--cal-surface);
 }
 .tx-add-actions-row.row.two{
   gap: 8px;
@@ -20507,13 +20577,6 @@ body[data-bw-view="transactions"] .tm__field label{
 }
 
 /* Add-transaction modal: calmer density + amount emphasis */
-.modal--tx-add .tx-add-form .form-row-h{
-  gap: 6px 8px;
-}
-.modal--tx-add .tx-add-form .form-row-h__label{
-  flex: 0 0 5.65rem;
-  max-width: 28%;
-}
 .modal--tx-add .tx-add-form .form-row-h__label label{
   font-size: 10px;
   opacity: 0.92;
@@ -20533,9 +20596,9 @@ body[data-bw-view="transactions"] .tm__field label{
   background: rgba(15, 23, 42, 0.022);
 }
 .modal--tx-add .kind-toggle .kind-opt{
-  padding: 7px 10px;
-  min-height: 34px;
-  font-size: 12.5px;
+  padding: 5px 10px;
+  min-height: 30px;
+  font-size: 12.25px;
   color: rgba(71, 85, 105, 0.58);
 }
 .modal--tx-add .kind-toggle .kind-opt::after{
@@ -20656,7 +20719,24 @@ body[data-bw-view="transactions"] .tm__field label{
 }
 /* Slight nudge: a touch less label/field gap inside the modal form. */
 .modal--tx-add .tx-add-form .form-row-h{
-  gap: 6px 10px;
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+  align-items: start;
+  gap: 4px 14px;
+}
+.modal--tx-add .tx-add-form .form-row-h__label{
+  flex: none;
+  max-width: none;
+  padding-top: 7px;
+}
+.modal--tx-add .tx-add-form .form-row-h__field{
+  min-width: 0;
+}
+.modal--tx-add .tx-add-schedule-compact .form-row-h,
+.modal--tx-add .tx-add-end-detail__row,
+.modal--tx-add .tx-add-advanced__panel .form-row-h{
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
 }
 .modal--tx-add .tx-add-form .tx-add-variable-field{
   gap: 2px;
@@ -21314,8 +21394,9 @@ body.account-setup-page
 .tx-add-form .tx-quick-chips{
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin: 0 0 8px;
+  align-items: center;
+  gap: 5px;
+  margin: 0 0 6px;
 }
 .tx-add-form .tx-quick-chip{
   appearance: none;
@@ -21323,12 +21404,66 @@ body.account-setup-page
   background: #fff;
   color: rgba(17, 24, 39, 0.78);
   font: inherit;
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   font-weight: 500;
-  padding: 5px 11px;
+  padding: 3px 9px;
   border-radius: 999px;
   cursor: pointer;
+  line-height: 1.25;
+  white-space: nowrap;
   transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+.tx-add-form .tx-quick-chip--browse{
+  border-style: dashed;
+  color: rgba(71, 85, 105, 0.88);
+  background: rgba(15, 23, 42, 0.02);
+}
+/* Modal: one stable chip row so Income/Expense toggle does not resize the dialog */
+.modal--tx-add .tx-quick-chips{
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  min-height: 30px;
+  align-content: center;
+  box-sizing: border-box;
+}
+.modal--tx-add .tx-quick-chips.is-empty{
+  visibility: hidden;
+  pointer-events: none;
+}
+.modal--tx-add .tx-add-category-field{
+  min-height: 5.75rem;
+}
+@media (min-width: 769px){
+  .modal--tx-add .tx-quick-chips{
+    padding-bottom: 1px;
+  }
+}
+.tx-add-field-validation{
+  margin: 4px 0 0;
+  min-height: 0;
+  font-size: 10.5px;
+  line-height: 1.35;
+  color: #b42318;
+  font-weight: 500;
+}
+.tx-add-field-validation:empty{
+  display: none;
+}
+.tx-add-advanced__panel{
+  margin-top: 4px;
+  padding-left: 14px;
+  border-left: 1px solid rgba(148, 163, 184, 0.22);
+}
+.tx-add-advanced__panel .tx-add-notes-row{
+  margin-top: 6px;
+}
+.tx-add-btn-primary:disabled,
+.modal--tx-add .tx-add-btn-primary:disabled{
+  opacity: 0.42;
+  cursor: not-allowed;
+  box-shadow: none !important;
 }
 .tx-add-form .tx-quick-chip:hover{
   background: rgba(0, 0, 0, 0.025);
@@ -22301,41 +22436,58 @@ body.account-setup-page
 }
 
 .modal.modal--account > h3{
-  width: calc(100% + 32px);
-  margin: -18px -16px 12px;
-  padding: 14px 18px 13px;
+  width: calc(100% + 36px);
+  margin: -16px -18px 10px;
+  padding: 12px 18px 11px;
+  font-size: 0.95rem;
 }
 
 .modal.modal--account .account-modal__info{
-  margin: 0 0 14px;
-  padding: 8px 11px;
-  border-radius: 10px;
-  border: 1px solid rgba(180, 83, 9, 0.12);
-  background: linear-gradient(180deg, rgba(255, 252, 245, 0.88) 0%, rgba(255, 250, 242, 0.72) 100%);
-  color: rgba(92, 68, 38, 0.88);
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 0 10px;
+  padding: 6px 9px;
+  border-radius: 8px;
+  border: 1px solid rgba(17, 24, 39, 0.07);
+  background: rgba(15, 23, 42, 0.025);
+  color: rgba(71, 85, 105, 0.82);
 }
-.modal.modal--account .account-modal__infoTitle{
+.modal.modal--account .account-modal__info-icon{
+  flex: 0 0 auto;
+  display: inline-flex;
+  margin-top: 1px;
+  color: rgba(100, 116, 139, 0.72);
+}
+.modal.modal--account .account-modal__info-icon svg{
+  display: block;
+}
+.modal.modal--account .account-modal__info-copy{
+  min-width: 0;
+}
+.modal.modal--account .account-modal__info-copy p{
   margin: 0;
-  font-size: 0.875rem;
-  line-height: 1.32;
-  font-weight: 550;
-  color: rgba(87, 62, 32, 0.9);
+  font-size: 0.72rem;
+  line-height: 1.38;
+  font-weight: 450;
+  color: rgba(71, 85, 105, 0.78);
 }
-.modal.modal--account .account-modal__infoSub{
-  margin: 3px 0 0;
-  font-size: 0.79rem;
-  line-height: 1.34;
-  color: rgba(100, 78, 48, 0.72);
+.modal.modal--account .account-modal__info-copy p + p{
+  margin-top: 2px;
+  color: rgba(100, 116, 139, 0.68);
 }
 .modal.modal--account #accErr.error{
   margin-top: 0;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 .modal.modal--account .account-modal__row{
-  gap: 16px 14px;
+  gap: 10px 16px;
+  margin-bottom: 10px;
+}
+.modal.modal--account .account-modal__row:last-of-type{
+  margin-bottom: 0;
 }
 .modal.modal--account .account-modal__row--balance{
-  margin-top: 2px;
   align-items: start;
 }
 .modal.modal--account .account-modal__row > div,
@@ -22346,66 +22498,86 @@ body.account-setup-page
 }
 .modal.modal--account label{
   display: block;
-  margin: 0 0 6px;
-  font-size: 0.8125rem;
-  font-weight: 560;
-  color: rgba(51, 65, 85, 0.88);
+  margin: 0 0 4px;
+  font-size: 0.74rem;
+  font-weight: 520;
+  letter-spacing: 0.01em;
+  color: rgba(71, 85, 105, 0.78);
 }
 .modal.modal--account input[type="text"],
-.modal.modal--account input[type="number"],
 .modal.modal--account input[type="date"],
 .modal.modal--account select{
-  min-height: 40px;
+  min-height: 36px;
+  padding: 6px 10px;
+  font-size: 0.84rem;
+  border-radius: 8px;
   box-sizing: border-box;
 }
 .modal.modal--account .money-input{
-  min-height: 40px;
+  min-height: 36px;
   align-items: stretch;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.02);
+}
+.modal.modal--account .money-input__prefix{
+  padding: 0 0 0 10px;
+  font-size: 0.84rem;
+  font-weight: 500;
+  color: rgba(100, 116, 139, 0.72);
+  background: transparent;
+  border-right: none;
 }
 .modal.modal--account .money-input input{
-  min-height: 38px;
-  padding-top: 8px;
-  padding-bottom: 8px;
+  min-height: 34px;
+  padding: 6px 10px 6px 4px;
+  font-size: 0.84rem;
+  font-weight: 500;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+.modal.modal--account .money-input input::-webkit-outer-spin-button,
+.modal.modal--account .money-input input::-webkit-inner-spin-button{
+  -webkit-appearance: none;
+  margin: 0;
 }
 .modal.modal--account .account-modal__fieldHelp{
-  margin: 4px 0 0;
-  max-width: 26ch;
-  font-size: 0.75rem;
-  line-height: 1.34;
-  color: rgba(100, 116, 139, 0.62);
+  margin: 3px 0 0;
+  max-width: none;
+  font-size: 0.68rem;
+  line-height: 1.32;
+  color: rgba(100, 116, 139, 0.52);
 }
 .modal.modal--account .modal-actions.account-modal__actions{
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-areas: "cancel primary";
-  align-items: center;
-  gap: 10px 12px;
-  margin-top: 14px;
-  padding-top: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 10px;
   border-top: 1px solid rgba(17, 24, 39, 0.06);
 }
-.modal.modal--account .modal-actions.account-modal__actions:has(.account-modal__footnote:not([hidden])){
-  grid-template-areas:
-    "note note"
-    "cancel primary";
-  row-gap: 8px;
-}
 .modal.modal--account .account-modal__footnote{
-  grid-area: note;
-  margin: 0 0 2px;
-  font-size: 0.76rem;
-  line-height: 1.34;
-  color: rgba(100, 116, 139, 0.68);
+  margin: 0;
+  font-size: 0.68rem;
+  line-height: 1.32;
+  color: rgba(100, 116, 139, 0.55);
 }
-.modal.modal--account #cancelAccountEditBtn{
-  grid-area: cancel;
-  justify-self: start;
-  min-height: 40px;
-  padding: 9px 14px;
-  font-size: 0.86rem;
-  font-weight: 560;
-  border-color: rgba(17, 24, 39, 0.1);
-  background: rgba(255, 255, 255, 0.92);
+.modal.modal--account .account-modal__actions-buttons{
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.modal.modal--account #cancelAccountEditBtn,
+.modal.modal--account .account-modal__secondary{
+  min-height: 34px;
+  padding: 6px 14px;
+  font-size: 0.82rem;
+  font-weight: 540;
+  border-radius: 8px;
+  border: 1px solid rgba(17, 24, 39, 0.12);
+  background: rgba(255, 255, 255, 0.96);
   color: rgba(71, 85, 105, 0.82);
   box-shadow: none;
 }
@@ -22414,22 +22586,18 @@ body.account-setup-page
   background: rgba(248, 250, 252, 0.98);
   color: rgba(30, 41, 59, 0.9);
 }
-.modal.modal--account #saveAccountEditBtn,
-.modal.modal--account #addAccountBtn{
-  grid-area: primary;
-  justify-self: end;
-}
 .modal.modal--account .account-modal__primary{
-  min-height: 40px;
-  padding: 10px 18px;
+  min-height: 34px;
+  padding: 6px 16px;
+  border-radius: 8px;
   background: var(--accent);
   border: 1px solid rgba(11, 61, 46, 0.28);
   color: #fff;
-  font-size: 0.9rem;
-  font-weight: 680;
+  font-size: 0.84rem;
+  font-weight: 620;
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.14) inset,
-    0 6px 14px -12px rgba(11, 61, 46, 0.4);
+    0 1px 0 rgba(255, 255, 255, 0.12) inset,
+    0 4px 10px -8px rgba(11, 61, 46, 0.35);
 }
 .modal.modal--account .account-modal__primary:hover{
   background: color-mix(in srgb, var(--accent) 92%, #000);
@@ -24774,6 +24942,13 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
     opacity: 1;
     width: 26px;
     height: 26px;
+    /* Stay visually visible on mobile but only capture clicks on the icon itself. */
+    pointer-events: none;
+  }
+
+  .calendar--mobile .cal-day-reconcile-btn:hover,
+  .calendar--mobile .cal-day-reconcile-btn:focus-visible{
+    pointer-events: auto;
   }
 
   .calendar--mobile .cal-reconciled-mark{
@@ -24921,10 +25096,11 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   .modal--tx-add,
   #txEditInner.modal,
   .modal--expected-edit{
-    width: min(100%, calc(100vw - 20px));
+    width: calc(100vw - 24px);
     max-width: none;
-    max-height: min(88vh, calc(100dvh - 24px));
+    max-height: calc(100vh - 24px);
     margin: 6px auto;
+    overflow-y: auto;
   }
 
   .modal--tx-add{
@@ -24954,6 +25130,49 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
     flex-direction: column;
     align-items: stretch;
     gap: 6px;
+  }
+
+  .modal--tx-add .tx-add-form .form-row-h,
+  .modal--tx-add .tx-add-schedule-compact .form-row-h,
+  .modal--tx-add .tx-add-end-detail__row,
+  .modal--tx-add .tx-add-advanced__panel .form-row-h{
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 5px;
+  }
+  .modal--tx-add .tx-add-form .form-row-h__label{
+    padding-top: 0;
+  }
+  .modal--tx-add .tx-quick-chips{
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+
+  .modal.modal--account{
+    width: calc(100vw - 24px);
+    max-width: none;
+    padding: 14px 14px 12px;
+  }
+  .modal.modal--account > h3{
+    width: calc(100% + 28px);
+    margin: -14px -14px 10px;
+    padding: 11px 14px 10px;
+  }
+  .modal.modal--account .account-modal__row.row.two{
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .modal.modal--account .account-modal__info{
+    width: 100%;
+  }
+  .modal.modal--account .account-modal__actions-buttons{
+    width: 100%;
+    justify-content: stretch;
+  }
+  .modal.modal--account .account-modal__actions-buttons .account-modal__primary,
+  .modal.modal--account .account-modal__actions-buttons #cancelAccountEditBtn{
+    flex: 1 1 auto;
+    min-width: 0;
   }
 
   .expected-second-day-row{

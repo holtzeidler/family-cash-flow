@@ -14,7 +14,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=560" />
+    <link rel="stylesheet" href="../styles.css?v=573" />
   </head>
   <body>
     <div class="container">
@@ -100,6 +100,7 @@
           <div id="txAddFormHome" class="sidebar-add-tx-form" style="display:none;">
             <div id="txAddFormRoot" class="tx-add-form">
               <div id="txAddErr" class="error"></div>
+              <div class="tx-add-form__body">
               <div class="form-row-h">
                 <div class="form-row-h__label"><label>Type</label></div>
                 <div class="form-row-h__field">
@@ -115,28 +116,36 @@
                 <div class="form-row-h__field">
                   <div class="money-input">
                     <span class="money-input__prefix" aria-hidden="true">$</span>
-                    <input id="txAddAmount" type="number" min="0" step="0.01" placeholder="0.00" />
+                    <input id="txAddAmount" type="number" min="0" step="0.01" placeholder="0.00" autofocus />
                   </div>
+                  <p id="txAddAmountValidation" class="tx-add-field-validation" aria-live="polite"></p>
                 </div>
               </div>
               <div class="tx-add-vspace tx-add-vspace--xs" aria-hidden="true"></div>
               <div class="form-row-h">
                 <div class="form-row-h__label"><label for="txAddCategoryId">Category</label></div>
                 <div class="form-row-h__field tx-add-category-field">
-                  <p class="tx-add-category-hint">Quick picks, or search below.</p>
-                  <div id="txAddQuickChips" class="tx-quick-chips" role="group" aria-label="Suggested categories" hidden></div>
+                  <p class="tx-add-category-hint">Common categories</p>
+                  <div id="txAddQuickChips" class="tx-quick-chips is-empty" role="group" aria-label="Suggested categories" aria-hidden="true"></div>
                   <select id="txAddCategoryId"></select>
+                  <p id="txAddCategoryValidation" class="tx-add-field-validation" aria-live="polite"></p>
                 </div>
               </div>
               <div class="tx-add-vspace tx-add-vspace--xs" aria-hidden="true"></div>
               <div class="form-row-h">
                 <div class="form-row-h__label"><label for="txAddAccountId">Account</label></div>
-                <div class="form-row-h__field"><select id="txAddAccountId"></select></div>
+                <div class="form-row-h__field">
+                  <select id="txAddAccountId"></select>
+                  <p id="txAddAccountValidation" class="tx-add-field-validation" aria-live="polite"></p>
+                </div>
               </div>
               <div class="tx-add-vspace tx-add-vspace--xs" aria-hidden="true"></div>
               <div class="form-row-h">
                 <div class="form-row-h__label"><label for="txAddDate" id="txAddDateLabel">Date</label></div>
-                <div class="form-row-h__field"><input id="txAddDate" type="date" /></div>
+                <div class="form-row-h__field">
+                  <input id="txAddDate" type="date" />
+                  <p id="txAddDateValidation" class="tx-add-field-validation" aria-live="polite"></p>
+                </div>
               </div>
               <div class="tx-add-vspace tx-add-vspace--sm" aria-hidden="true"></div>
               <div id="txAddScheduleCompact" class="tx-add-schedule-compact" aria-label="Repeat and schedule">
@@ -206,31 +215,31 @@
                 </label>
               </div>
               <div class="tx-add-advanced">
-                <button type="button" id="txAddColorToggle" class="tx-add-advanced__expander" aria-expanded="false" aria-controls="txAddCategoryColorRow">
+                <button type="button" id="txAddColorToggle" class="tx-add-advanced__expander" aria-expanded="false" aria-controls="txAddAdvancedPanel">
                   <span class="tx-add-advanced__expander-chev" aria-hidden="true">
                     <svg viewBox="0 0 12 12" width="9" height="9" focusable="false"><path d="M3.5 2.5 L8 6 L3.5 9.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
                   </span>
                   <span class="tx-add-advanced__expander-label">Advanced options</span>
                   <span class="tx-add-advanced__chip-dot" id="txAddColorChipDot" aria-hidden="true"></span>
                 </button>
-                <div id="txAddCategoryColorRow" class="cat-color-row tx-add-cat-color-panel" hidden>
-                  <div class="cat-color-row__label">Color</div>
-                  <div class="cat-color-row__swatches" id="txAddCategoryColorSwatches"></div>
-                  <button type="button" class="cat-color-row__clear secondary" id="txAddCategoryColorClear" hidden>Clear color</button>
+                <div id="txAddAdvancedPanel" class="tx-add-advanced__panel" hidden>
+                  <div id="txAddCategoryColorRow" class="cat-color-row tx-add-cat-color-panel">
+                    <div class="cat-color-row__label">Color</div>
+                    <div class="cat-color-row__swatches" id="txAddCategoryColorSwatches"></div>
+                    <button type="button" class="cat-color-row__clear secondary" id="txAddCategoryColorClear" hidden>Clear color</button>
+                  </div>
+                  <div class="form-row-h tx-add-notes-row">
+                    <div class="form-row-h__label"><label for="txAddNotes">Notes</label></div>
+                    <div class="form-row-h__field">
+                      <input id="txAddNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div class="tx-add-vspace tx-add-vspace--sm" aria-hidden="true"></div>
-              <div class="form-row-h">
-                <div class="form-row-h__label">
-                  <label for="txAddNotes">Notes <span class="tx-add-optional-mark">optional</span></label>
-                </div>
-                <div class="form-row-h__field">
-                  <input id="txAddNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
-                </div>
               </div>
               <div class="modal-actions modal-actions--tx-add-foot">
                 <div class="row two tx-add-actions-row">
-                  <button type="button" id="txAddSave" class="tx-add-btn-primary">Add</button>
+                  <button type="button" id="txAddSave" class="tx-add-btn-primary" disabled>Add transaction</button>
                   <button type="button" id="txAddCancel" class="secondary tx-add-btn-secondary">Cancel</button>
                 </div>
               </div>
@@ -809,15 +818,20 @@
                       <button type="button" class="reports-horizon__btn is-active" data-report-days="30">30 days</button>
                       <button type="button" class="reports-horizon__btn" data-report-days="60">60 days</button>
                       <button type="button" class="reports-horizon__btn" data-report-days="90">90 days</button>
+                      <button type="button" class="reports-horizon__btn" data-report-days="custom">Custom</button>
                     </div>
                     <label class="reports-chart-start">
                       <span class="reports-chart-start__lbl">From</span>
                       <input id="chartStart" type="date" />
                     </label>
+                    <label class="reports-chart-start reports-chart-end" id="chartEndWrap" hidden>
+                      <span class="reports-chart-start__lbl">To</span>
+                      <input id="chartEnd" type="date" />
+                    </label>
                     <input id="chartDaysRange" type="hidden" value="30" />
                     <span id="chartDaysLabel" class="reports-chart-daysmeta" hidden>30 days</span>
                   </div>
-                  <p class="reports-range-meta"><span id="chartRangeDisplayText">—</span></p>
+                  <p class="reports-range-meta"><span id="chartRangeDisplayText" data-reports-range-display>—</span></p>
                   <div class="reports-card__takeaway" id="reportsBalanceTakeaway" hidden aria-live="polite"></div>
                   <div id="reportsBalanceLegend" class="reports-legend" aria-live="polite"></div>
                   <p class="reports-chart-explainer">
@@ -838,7 +852,6 @@
                     <h2 class="reports-card__title">Income vs. expense timing</h2>
                     <p class="reports-card__desc">See which weeks are cash-heavy and where timing gets tight.</p>
                     <p class="reports-cash-timing-hint">Compare when income and expenses occur throughout the month.</p>
-                    <div class="meta reports-cash-timing-meta" id="incomeExpenseSubtitle">—</div>
                   </div>
                   <div class="reports-ie-chart-toolbar" role="group" aria-label="Chart options">
                     <div class="reports-ie-seg" role="group" aria-label="Bar layout">
@@ -869,6 +882,25 @@
                       <span class="reports-ie-download__txt">Export</span>
                     </button>
                   </div>
+                </div>
+                <div class="reports-chart-shell">
+                  <div class="reports-chart-toolbar">
+                    <div class="reports-horizon" role="tablist" aria-label="Forecast horizon">
+                      <button type="button" class="reports-horizon__btn is-active" data-report-days="30">30 days</button>
+                      <button type="button" class="reports-horizon__btn" data-report-days="60">60 days</button>
+                      <button type="button" class="reports-horizon__btn" data-report-days="90">90 days</button>
+                      <button type="button" class="reports-horizon__btn" data-report-days="custom">Custom</button>
+                    </div>
+                    <label class="reports-chart-start">
+                      <span class="reports-chart-start__lbl">From</span>
+                      <input id="ieChartStart" type="date" />
+                    </label>
+                    <label class="reports-chart-start reports-chart-end" id="ieChartEndWrap" hidden>
+                      <span class="reports-chart-start__lbl">To</span>
+                      <input id="ieChartEnd" type="date" />
+                    </label>
+                  </div>
+                  <p class="reports-range-meta"><span id="incomeExpenseRangeDisplayText" data-reports-range-display>—</span></p>
                 </div>
                 <div id="incomeExpenseInsights" class="reports-ie-insights" hidden aria-live="polite"></div>
                 <div id="incomeExpenseErr" class="error"></div>
@@ -1347,8 +1379,17 @@
       <div class="modal modal--account" role="dialog" aria-labelledby="accountModalTitle" aria-modal="true">
         <h3 id="accountModalTitle">Add New Account</h3>
         <div id="accountEditInfo" class="account-modal__info" hidden>
-          <p class="account-modal__infoTitle">Changing the starting balance or date will recalculate future forecast balances.</p>
-          <p class="account-modal__infoSub">This does not delete transactions.</p>
+          <span class="account-modal__info-icon" aria-hidden="true">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="9"/>
+              <path d="M12 8v4"/>
+              <circle cx="12" cy="16" r="0.85" fill="currentColor" stroke="none"/>
+            </svg>
+          </span>
+          <div class="account-modal__info-copy">
+            <p>Changing the starting balance or date will recalculate future forecast balances.</p>
+            <p>Your existing transactions will not be deleted.</p>
+          </div>
         </div>
         <div id="accErr" class="error"></div>
         <input id="accountEditId" type="hidden" />
@@ -1386,10 +1427,12 @@
         </div>
 
         <div class="modal-actions account-modal__actions">
-          <p id="accountEditFootnote" class="account-modal__footnote" hidden>Forecast updates immediately after saving.</p>
-          <button type="button" id="addAccountBtn" class="account-modal__primary">Add account</button>
-          <button type="button" id="cancelAccountEditBtn" class="secondary">Cancel</button>
-          <button type="button" id="saveAccountEditBtn" class="account-modal__primary">Save changes</button>
+          <p id="accountEditFootnote" class="account-modal__footnote" hidden>Forecast will update after saving.</p>
+          <div class="account-modal__actions-buttons">
+            <button type="button" id="cancelAccountEditBtn" class="secondary account-modal__secondary">Cancel</button>
+            <button type="button" id="addAccountBtn" class="account-modal__primary">Add account</button>
+            <button type="button" id="saveAccountEditBtn" class="account-modal__primary">Save changes</button>
+          </div>
         </div>
       </div>
     </div>
@@ -1424,7 +1467,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="../app.js?v=334"></script>
+    <script src="../app.js?v=341"></script>
     <script src="../feedback.js?v=3" defer></script>
     <script src="../tour.js?v=9" defer></script>
   </body>

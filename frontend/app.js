@@ -1226,6 +1226,8 @@ if (projectionCollapseBtn) {
 
 // Chart
 const chartStart = document.getElementById("chartStart");
+const chartEnd = document.getElementById("chartEnd");
+const chartEndWrap = document.getElementById("chartEndWrap");
 const chartDaysRange = document.getElementById("chartDaysRange");
 const chartDaysLabel = document.getElementById("chartDaysLabel");
 const runProjectionChartBtn = document.getElementById("runProjectionChartBtn");
@@ -1247,7 +1249,6 @@ let projectionChartDefaultsApplied = false;
 const incomeExpenseChartCanvas = document.getElementById("incomeExpenseChartCanvas");
 const incomeExpenseEmpty = document.getElementById("incomeExpenseEmpty");
 const incomeExpenseErr = document.getElementById("incomeExpenseErr");
-const incomeExpenseSubtitle = document.getElementById("incomeExpenseSubtitle");
 const incomeExpenseGroupedBtn = document.getElementById("incomeExpenseGroupedBtn");
 const incomeExpenseStackedBtn = document.getElementById("incomeExpenseStackedBtn");
 const incomeExpenseNetToggle = document.getElementById("incomeExpenseNetToggle");
@@ -1375,6 +1376,62 @@ const txAddAccountId = document.getElementById("txAddAccountId");
 const txAddVariable = document.getElementById("txAddVariable");
 const txAddSave = document.getElementById("txAddSave");
 const txAddCancel = document.getElementById("txAddCancel");
+const txAddAmountValidation = document.getElementById("txAddAmountValidation");
+const txAddCategoryValidation = document.getElementById("txAddCategoryValidation");
+const txAddAccountValidation = document.getElementById("txAddAccountValidation");
+const txAddDateValidation = document.getElementById("txAddDateValidation");
+const txAddAdvancedPanel = document.getElementById("txAddAdvancedPanel");
+let txAddValidationTouched = false;
+let txAddValidationBound = false;
+
+function countCategoriesForTxAddKind(kind) {
+  return (state.categories || []).filter((c) => categoryMatchesTransactionKind(c, kind)).length;
+}
+
+function txAddFormValidationState() {
+  const amountVal = txAddAmount?.value || "";
+  const amountOk = amountVal !== "" && Number(amountVal) > 0;
+  const categoryId = categoryIdFromCategoryField("txAddCategoryId");
+  const categoryOk = categoryId != null && Number.isFinite(Number(categoryId));
+  const accountOk = !!(txAddAccountId?.value);
+  const dateOk = !!(txAddDate?.value);
+  return { amountOk, categoryOk, accountOk, dateOk, valid: amountOk && categoryOk && accountOk && dateOk };
+}
+
+function setTxAddFieldValidation(el, message) {
+  if (!el) return;
+  el.textContent = message || "";
+}
+
+function updateTxAddFormValidity(opts = {}) {
+  const showHints = !!opts.forceShow || txAddValidationTouched;
+  const st = txAddFormValidationState();
+  if (txAddSave) txAddSave.disabled = !st.valid;
+  if (showHints) {
+    setTxAddFieldValidation(txAddAmountValidation, !st.amountOk ? "Enter an amount greater than zero." : "");
+    setTxAddFieldValidation(txAddCategoryValidation, !st.categoryOk ? "Choose a category." : "");
+    setTxAddFieldValidation(txAddAccountValidation, !st.accountOk ? "Choose an account." : "");
+    setTxAddFieldValidation(txAddDateValidation, !st.dateOk ? "Choose a date." : "");
+  } else {
+    setTxAddFieldValidation(txAddAmountValidation, "");
+    setTxAddFieldValidation(txAddCategoryValidation, "");
+    setTxAddFieldValidation(txAddAccountValidation, "");
+    setTxAddFieldValidation(txAddDateValidation, "");
+  }
+}
+
+function bindTxAddFormValidation() {
+  if (txAddValidationBound) return;
+  txAddValidationBound = true;
+  const markTouched = () => {
+    txAddValidationTouched = true;
+    updateTxAddFormValidity();
+  };
+  txAddAmount?.addEventListener("input", markTouched);
+  txAddAmount?.addEventListener("blur", markTouched);
+  txAddDate?.addEventListener("change", markTouched);
+  txAddAccountId?.addEventListener("change", markTouched);
+}
 
 function txAddRepeatsActive() {
   return !!(txAddRecurrence && String(txAddRecurrence.value || "").trim() !== "");
@@ -1460,15 +1517,16 @@ if (txAddEndCount && txAddEndDate) {
 }
 {
   const txAddColorToggle = document.getElementById("txAddColorToggle");
-  if (txAddColorToggle && txAddCategoryColorRow) {
+  if (txAddColorToggle && txAddAdvancedPanel) {
     txAddColorToggle.addEventListener("click", () => {
-      txAddCategoryColorRow.hidden = !txAddCategoryColorRow.hidden;
-      const open = !txAddCategoryColorRow.hidden;
+      txAddAdvancedPanel.hidden = !txAddAdvancedPanel.hidden;
+      const open = !txAddAdvancedPanel.hidden;
       txAddColorToggle.setAttribute("aria-expanded", open ? "true" : "false");
       txAddColorToggle.classList.toggle("is-open", open);
     });
   }
 }
+bindTxAddFormValidation();
 updateTxAddRepeatingUi();
 
 {
@@ -1643,11 +1701,11 @@ async function refreshCashOutlookGuidance() {
   }
 
   const floor = suggestion.value;
-  setSidebarBalanceThresholdHint("Personalized suggestion · adjust in Settings");
+  setSidebarBalanceThresholdHint("From your forecast · change in Settings");
 
   const daily = await getProjectionDailyForCashOutlook();
   const todayIso = toISODate(new Date());
-  let bannerText = `Suggested safety buffer: $${fmtMoney0(floor)}\nSECONDARY:Based on ${suggestion.basis}`;
+  let bannerText = `Your target buffer: $${fmtMoney0(floor)}\nSECONDARY:Based on ${suggestion.basis}`;
   let bannerStyle = "muted";
 
   if (daily.length > 1) {
@@ -1663,24 +1721,24 @@ async function refreshCashOutlookGuidance() {
       const urgent = bal <= 0 || bal < floor * 0.85;
       bannerStyle = urgent ? "danger" : "muted";
       if (urgent) {
-        bannerText = `Transfer cash before ${fmtMonthDay(nextLow.date)}\nSECONDARY:Projected to dip to ${fmtMoney0SignedDollar(
+        bannerText = `Consider adding cash before ${fmtMonthDay(nextLow.date)}\nSECONDARY:Projected balance ${fmtMoney0SignedDollar(
           bal
-        )} (suggested buffer $${fmtMoney0(floor)})`;
+        )} — target buffer $${fmtMoney0(floor)}`;
       } else {
-        bannerText = `Watch ${fmtMonthDay(nextLow.date)}\nSECONDARY:Balance may dip near your suggested $${fmtMoney0(
+        bannerText = `Balance may be tight on ${fmtMonthDay(nextLow.date)}\nSECONDARY:Could dip near your $${fmtMoney0(
           floor
-        )} buffer`;
+        )} target buffer`;
       }
     } else if (safeToday >= 75) {
-      bannerText = `Forecast looks healthy\nHERO:Safe to transfer up to $${fmtMoney0(safeToday)}\nSECONDARY:Using a suggested buffer of $${fmtMoney0(
+      bannerText = `You could move up to $${fmtMoney0(safeToday)} today\nSECONDARY:With your $${fmtMoney0(
         floor
-      )}`;
+      )} target buffer held aside`;
     } else {
       const low = getLowestBalanceInRange(rows, todayIso, rangeEnd);
       if (low && low.amount >= floor) {
-        bannerText = `Forecast looks steady\nSECONDARY:Lowest projected balance ${fmtMoney0SignedDollar(
+        bannerText = `Steady through the month\nSECONDARY:Lowest balance ${fmtMoney0SignedDollar(
           low.amount
-        )} on ${fmtMonthDay(low.date)} · suggested buffer $${fmtMoney0(floor)}`;
+        )} on ${fmtMonthDay(low.date)} — above your $${fmtMoney0(floor)} target buffer`;
       }
     }
 
@@ -1690,9 +1748,9 @@ async function refreshCashOutlookGuidance() {
       fromIso: todayIso,
     });
     if (transfer && !nextLow) {
-      bannerText = `Safe to transfer more after ${fmtMonthDay(transfer.date)}\nSECONDARY:About $${fmtMoney0(
+      bannerText = `You'll have extra cash available after ${fmtMonthDay(transfer.date)}\nSECONDARY:About $${fmtMoney0(
         transfer.gain
-      )} more headroom · suggested buffer $${fmtMoney0(floor)}`;
+      )} available beyond your target buffer`;
     }
   }
 
@@ -2316,25 +2374,135 @@ const calendarViewPanel = document.getElementById("calendarViewPanel");
 const transactionViewPanel = document.getElementById("transactionViewPanel");
 const settingsViewPanel = document.getElementById("settingsViewPanel");
 const reportsViewPanel = document.getElementById("reportsViewPanel");
-if (reportsViewPanel && reportsViewPanel.dataset.bwReportsHorizonInit !== "1") {
-  reportsViewPanel.dataset.bwReportsHorizonInit = "1";
-  reportsViewPanel.addEventListener("click", async (e) => {
-    const btn = e.target.closest(".reports-horizon__btn[data-report-days]");
-    if (!btn || !reportsViewPanel.contains(btn)) return;
-    const d = Number(btn.dataset.reportDays);
-    if (!Number.isFinite(d) || d < 1) return;
-    if (chartDaysRange) chartDaysRange.value = String(d);
-    if (chartDaysLabel) chartDaysLabel.textContent = `${d} days`;
-    reportsViewPanel.querySelectorAll(".reports-horizon__btn").forEach((b) => {
-      b.classList.toggle("is-active", b === btn);
-    });
-    try {
-      await refreshProjectionChart();
-    } catch (err) {
-      show(chartErr, err.message || "Failed to update chart");
-    }
+function isChartCustomRangeActive() {
+  return !!document.querySelector('.reports-horizon__btn[data-report-days="custom"].is-active');
+}
+
+function setReportsChartHorizonActive(btn) {
+  document.querySelectorAll(".reports-horizon__btn[data-report-days]").forEach((b) => {
+    b.classList.toggle("is-active", btn ? b === btn : false);
   });
 }
+
+function ensureChartEndForCustom() {
+  if (!chartEnd || !chartStart?.value) return;
+  const days = Number(chartDaysRange?.value);
+  if (Number.isFinite(days) && days >= 1) {
+    chartEnd.value = chartRangeEndIso(chartStart.value, days);
+    return;
+  }
+  if (!chartEnd.value) chartEnd.value = chartRangeEndIso(chartStart.value, 30);
+}
+
+function syncReportsChartCustomUi() {
+  const custom = isChartCustomRangeActive();
+  for (const el of [chartEndWrap, document.getElementById("ieChartEndWrap")]) {
+    if (el) el.hidden = !custom;
+  }
+}
+
+function syncReportsChartDateMirrors() {
+  const ieStart = document.getElementById("ieChartStart");
+  const ieEnd = document.getElementById("ieChartEnd");
+  if (ieStart && chartStart && ieStart !== chartStart) ieStart.value = chartStart.value;
+  if (ieEnd && chartEnd && ieEnd !== chartEnd) ieEnd.value = chartEnd.value;
+}
+
+function readReportsDateRange() {
+  const start = chartStart?.value || "";
+  let endIso = "";
+  let days = Number(chartDaysRange?.value);
+  if (!Number.isFinite(days) || days < 1) days = 30;
+  if (isChartCustomRangeActive() && chartEnd?.value) {
+    endIso = chartEnd.value;
+    if (start) days = daysInclusiveBetween(start, endIso);
+  } else if (start) {
+    endIso = chartRangeEndIso(start, days);
+  }
+  return { start, endIso, days };
+}
+
+async function applyReportsChartRange({ refreshBalance = true, refreshIncomeExpense = true } = {}) {
+  show(chartErr, "");
+  show(incomeExpenseErr, "");
+  if (isChartCustomRangeActive()) {
+    const cs = chartStart?.value;
+    const ce = chartEnd?.value;
+    if (!cs || !ce) throw new Error("Select start and end dates.");
+    if (ce < cs) throw new Error("End date must be on or after start date.");
+    const days = daysInclusiveBetween(cs, ce);
+    if (days > 4000) throw new Error("Range cannot exceed 4000 days.");
+    if (chartDaysRange) chartDaysRange.value = String(days);
+    if (chartDaysLabel) chartDaysLabel.textContent = `${days} days`;
+  } else if (!chartStart?.value) {
+    throw new Error("Start date is required.");
+  }
+  syncReportsChartDateMirrors();
+  syncReportsChartCustomUi();
+  syncChartRangeDisplay();
+  const tasks = [];
+  if (refreshBalance) tasks.push(refreshProjectionChart());
+  if (refreshIncomeExpense && incomeExpenseChartCanvas) tasks.push(refreshIncomeExpenseReport());
+  await Promise.all(tasks);
+}
+
+function onReportsChartDateInputChanged(changedEl) {
+  const ieStart = document.getElementById("ieChartStart");
+  const ieEnd = document.getElementById("ieChartEnd");
+  if (changedEl === ieStart && ieStart && chartStart) chartStart.value = ieStart.value;
+  else if (changedEl === chartStart && chartStart && ieStart) ieStart.value = chartStart.value;
+  if (changedEl === ieEnd && ieEnd && chartEnd) chartEnd.value = ieEnd.value;
+  else if (changedEl === chartEnd && chartEnd && ieEnd) ieEnd.value = chartEnd.value;
+  if (isChartCustomRangeActive() && chartStart?.value && chartEnd?.value && chartEnd.value < chartStart.value) {
+    chartEnd.value = chartStart.value;
+    if (ieEnd) ieEnd.value = chartEnd.value;
+  }
+  applyReportsChartRange({ refreshBalance: true, refreshIncomeExpense: true }).catch((err) => {
+    const msg = err.message || "Failed to update reports";
+    show(chartErr, msg);
+    show(incomeExpenseErr, msg);
+  });
+}
+
+function wireReportsChartHorizon() {
+  const toolbars = document.querySelectorAll(".reports-hub .reports-chart-toolbar");
+  for (const toolbar of toolbars) {
+    if (toolbar.dataset.bwHorizonBound === "1") continue;
+    toolbar.dataset.bwHorizonBound = "1";
+    toolbar.addEventListener("click", async (e) => {
+      const btn = e.target.closest(".reports-horizon__btn[data-report-days]");
+      if (!btn || !toolbar.contains(btn)) return;
+      const raw = String(btn.dataset.reportDays || "");
+      if (raw === "custom") {
+        setReportsChartHorizonActive(btn);
+        syncReportsChartCustomUi();
+        ensureChartEndForCustom();
+        try {
+          await applyReportsChartRange({ refreshBalance: true, refreshIncomeExpense: true });
+        } catch (err) {
+          const msg = err.message || "Failed to update chart";
+          show(chartErr, msg);
+          show(incomeExpenseErr, msg);
+        }
+        return;
+      }
+      const d = Number(raw);
+      if (!Number.isFinite(d) || d < 1) return;
+      if (chartDaysRange) chartDaysRange.value = String(d);
+      if (chartDaysLabel) chartDaysLabel.textContent = `${d} days`;
+      setReportsChartHorizonActive(btn);
+      syncReportsChartCustomUi();
+      try {
+        await applyReportsChartRange({ refreshBalance: true, refreshIncomeExpense: true });
+      } catch (err) {
+        const msg = err.message || "Failed to update chart";
+        show(chartErr, msg);
+        show(incomeExpenseErr, msg);
+      }
+    });
+  }
+}
+wireReportsChartHorizon();
 const settingsSidebarNav = document.getElementById("settingsSidebarNav");
 const sidebarPendingTxCard = document.getElementById("sidebarPendingTxCard");
 const sidebarPendingTxList = document.getElementById("sidebarPendingTxList");
@@ -3305,9 +3473,35 @@ function refreshTxAddCategoryChipActiveState() {
   const container = document.getElementById("txAddQuickChips");
   if (!container) return;
   const cur = categoryIdFromCategoryField("txAddCategoryId");
-  for (const btn of container.querySelectorAll(".tx-quick-chip")) {
+  for (const btn of container.querySelectorAll(".tx-quick-chip:not(.tx-quick-chip--browse)")) {
     btn.classList.toggle("is-active", cur != null && Number(btn.dataset.catId) === Number(cur));
   }
+}
+
+function syncTxAddQuickChipsEmptyState(container, isEmpty) {
+  if (!container) return;
+  container.hidden = false;
+  container.classList.toggle("is-empty", !!isEmpty);
+  container.setAttribute("aria-hidden", isEmpty ? "true" : "false");
+}
+
+function appendTxAddBrowseAllChip(container) {
+  const kind = getRadioValue("txAddKind", "expense");
+  container.querySelector(".tx-quick-chip--browse")?.remove();
+  if (countCategoriesForTxAddKind(kind) <= TX_ADD_CATEGORY_CHIP_MAX) return;
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "tx-quick-chip tx-quick-chip--browse";
+  btn.textContent = "Browse all";
+  btn.addEventListener("click", () => {
+    const st = categoryComboboxRegistry.get("txAddCategoryId");
+    if (st?.input) {
+      st.input.focus();
+      showCategoryComboboxList(st);
+      filterCategoryCombobox("txAddCategoryId");
+    }
+  });
+  container.appendChild(btn);
 }
 
 function renderTxAddCategoryChips() {
@@ -3316,15 +3510,18 @@ function renderTxAddCategoryChips() {
   const kind = getRadioValue("txAddKind", "expense");
   const suggestions = computeTxAddCategoryChipSuggestions(kind);
   const sig = suggestions.map((c) => c.id).join(",");
+  const chipsEmpty =
+    suggestions.length === 0 && countCategoriesForTxAddKind(kind) <= TX_ADD_CATEGORY_CHIP_MAX;
   if (container.dataset.kind === kind && container.dataset.sig === sig) {
     refreshTxAddCategoryChipActiveState();
-    container.hidden = suggestions.length === 0;
+    appendTxAddBrowseAllChip(container);
+    syncTxAddQuickChipsEmptyState(container, chipsEmpty);
     return;
   }
   container.dataset.kind = kind;
   container.dataset.sig = sig;
   container.innerHTML = "";
-  container.hidden = suggestions.length === 0;
+  syncTxAddQuickChipsEmptyState(container, chipsEmpty);
   const cur = categoryIdFromCategoryField("txAddCategoryId");
   for (const cat of suggestions) {
     const btn = document.createElement("button");
@@ -3334,7 +3531,9 @@ function renderTxAddCategoryChips() {
     btn.dataset.catId = String(cat.id);
     if (cur != null && Number(cur) === Number(cat.id)) btn.classList.add("is-active");
     btn.addEventListener("click", () => {
-      for (const other of container.querySelectorAll(".tx-quick-chip")) other.classList.remove("is-active");
+      for (const other of container.querySelectorAll(".tx-quick-chip:not(.tx-quick-chip--browse)")) {
+        other.classList.remove("is-active");
+      }
       btn.classList.add("is-active");
       selectCategoryComboboxChoice("txAddCategoryId", cat.id, categoryDisplayLabel(cat));
       const st = categoryComboboxRegistry.get("txAddCategoryId");
@@ -3345,16 +3544,11 @@ function renderTxAddCategoryChips() {
         } catch (_) {}
       }
       refreshTxCategoryColorPickers();
-      if (txAddAmount) {
-        try {
-          txAddAmount.focus({ preventScroll: true });
-        } catch (_) {
-          txAddAmount.focus();
-        }
-      }
+      updateTxAddFormValidity();
     });
     container.appendChild(btn);
   }
+  appendTxAddBrowseAllChip(container);
 }
 
 function ensureTxAddCategoryChipsUi() {
@@ -3368,6 +3562,7 @@ function ensureTxAddCategoryChipsUi() {
       renderTxAddCategoryChips();
       const st = categoryComboboxRegistry.get("txAddCategoryId");
       if (st) hideCategoryComboboxList(st);
+      updateTxAddFormValidity();
     });
   }
 }
@@ -3607,6 +3802,12 @@ if (txAddSave) {
     try {
       show(txAddErr, "");
       if (!state.activeFamilyId) throw new Error("Choose a family first");
+      txAddValidationTouched = true;
+      updateTxAddFormValidity({ forceShow: true });
+      if (!txAddFormValidationState().valid) {
+        show(txAddErr, "Complete the required fields below.");
+        return;
+      }
 
       const dateVal = txAddDate?.value || "";
       const notesRaw = txAddNotes?.value?.trim() || "";
@@ -3617,7 +3818,8 @@ if (txAddSave) {
       const desc = descriptionForNewTransaction(categoryId, { recurring: repeats });
 
       if (!dateVal) throw new Error(repeats ? "Start date is required" : "Date is required");
-      if (!amountVal || Number(amountVal) <= 0) throw new Error("Amount must be > 0");
+      if (!amountVal || Number(amountVal) <= 0) throw new Error("Amount must be greater than zero");
+      if (categoryId == null || !Number.isFinite(Number(categoryId))) throw new Error("Category is required");
       if (isDateBeforeEarliestStartingBalance(normalizeIsoDate(dateVal) || dateVal)) {
         throw new Error("That date is before your starting balance.");
       }
@@ -4000,8 +4202,13 @@ function openTxEditApplyScopeModal() {
   if (!m) return;
   show(document.getElementById("txEditApplyScopeErr"), "");
   resetTxEditApplyScopeSelection();
+  try {
+    m.style.display = "";
+  } catch (_) {}
   m.classList.add("modal-overlay--open");
   m.setAttribute("aria-hidden", "false");
+  const firstOpt = document.getElementById("txEditApplyScopeSeriesBtn");
+  requestAnimationFrame(() => firstOpt?.focus?.());
 }
 
 function openTxEditDeleteScopeModal() {
@@ -4009,6 +4216,9 @@ function openTxEditDeleteScopeModal() {
   const m = document.getElementById("txEditDeleteScopeModal");
   if (!m) return;
   show(document.getElementById("txEditDeleteScopeErr"), "");
+  try {
+    m.style.display = "";
+  } catch (_) {}
   m.classList.add("modal-overlay--open");
   m.setAttribute("aria-hidden", "false");
 }
@@ -4118,7 +4328,7 @@ function openTxAddModal(opts = {}) {
   modalEl.classList.add("modal-overlay--open");
   modalEl.setAttribute("aria-hidden", "false");
   applyMinDateToTxAddDateInput();
-  dateEl.value = dateVal;
+  dateEl.value = dateVal || toISODate(new Date());
   if (txAddAmount) txAddAmount.value = "";
   if (txAddNotes) txAddNotes.value = "";
   setCategoryFieldValue("txAddCategoryId", null);
@@ -4136,12 +4346,14 @@ function openTxAddModal(opts = {}) {
   }
   updateTxAddRepeatingUi();
   refreshTxCategoryColorPickers();
-  if (txAddCategoryColorRow) txAddCategoryColorRow.hidden = true;
+  if (txAddAdvancedPanel) txAddAdvancedPanel.hidden = true;
   const txAddColorToggleEl = document.getElementById("txAddColorToggle");
   if (txAddColorToggleEl) {
     txAddColorToggleEl.setAttribute("aria-expanded", "false");
     txAddColorToggleEl.classList.remove("is-open");
   }
+  txAddValidationTouched = false;
+  updateTxAddFormValidity();
   const kind = opts.kind || "expense";
   const radio = document.querySelector(`input[type="radio"][name="txAddKind"][value="${kind}"]`);
   if (radio) radio.checked = true;
@@ -4470,6 +4682,12 @@ function shouldOpenAddTxFromCalendarClick(target, cell) {
 
 function openCalendarDayAddTransaction(iso, e) {
   if (!iso) return;
+  if (state.activeFamilyAccessMode === "view") {
+    window.alert(
+      "You have view-only access to this family. Ask the owner to grant edit access if you need to add transactions."
+    );
+    return;
+  }
   if (e) {
     e.preventDefault();
     e.stopPropagation();
@@ -4487,14 +4705,13 @@ function bindCalendarCellAddTxClick(cell, iso) {
     const label = fmtDateMDY(iso);
     cell.setAttribute("aria-label", label ? `Add transaction on ${label}` : "Add transaction on this day");
   }
-  const onActivate = (e) => {
-    if (e.type === "keydown" && e.key !== "Enter" && e.key !== " ") return;
-    if (e.type === "keydown") e.preventDefault();
+  const onKeyActivate = (e) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    e.preventDefault();
     if (!shouldOpenAddTxFromCalendarClick(e.target, cell)) return;
     openCalendarDayAddTransaction(iso, e);
   };
-  cell.addEventListener("click", onActivate);
-  cell.addEventListener("keydown", onActivate);
+  cell.addEventListener("keydown", onKeyActivate);
 }
 
 function handleCalendarPanelClick(e) {
@@ -4541,12 +4758,11 @@ function handleCalendarPanelClick(e) {
 
 function bindCalendarPanelClickRouting() {
   const handler = handleCalendarPanelClick;
-  const grid = document.getElementById("calendarGrid");
   const panel = document.getElementById("calendarPanel");
-  const host = grid || panel;
-  if (!host || host.dataset.bwCalClickBound === "1") return;
-  host.dataset.bwCalClickBound = "1";
-  host.addEventListener("click", handler);
+  if (!panel || panel.dataset.bwCalClickBound === "1") return;
+  panel.dataset.bwCalClickBound = "1";
+  // Capture phase so day clicks still work when a child stops bubble propagation.
+  panel.addEventListener("click", handler, true);
 }
 bindCalendarPanelClickRouting();
 
@@ -5292,8 +5508,17 @@ if (chartDaysRange && chartDaysLabel) {
     syncChartRangeDisplay();
   });
 }
-chartStart?.addEventListener("change", () => {
-  syncChartRangeDisplay();
+chartStart?.addEventListener("change", () => onReportsChartDateInputChanged(chartStart));
+chartEnd?.addEventListener("change", () => {
+  if (!isChartCustomRangeActive()) return;
+  onReportsChartDateInputChanged(chartEnd);
+});
+const ieChartStartEl = document.getElementById("ieChartStart");
+const ieChartEndEl = document.getElementById("ieChartEnd");
+ieChartStartEl?.addEventListener("change", () => onReportsChartDateInputChanged(ieChartStartEl));
+ieChartEndEl?.addEventListener("change", () => {
+  if (!isChartCustomRangeActive()) return;
+  onReportsChartDateInputChanged(ieChartEndEl);
 });
 
 function getYtdDaysFromChartStart() {
@@ -5439,18 +5664,16 @@ let chartRangeDraft = { start: "", days: 365 };
 let chartRangeOutsideAbort = null;
 
 function syncChartRangeDisplay() {
-  const disp = document.getElementById("chartRangeDisplayText");
-  if (!disp || !chartStart?.value) {
-    if (disp) disp.textContent = "—";
-    return;
+  let text = "—";
+  if (chartStart?.value) {
+    const { start, endIso } = readReportsDateRange();
+    if (start && endIso && endIso >= start) {
+      text = `${formatChartRangeLongLabel(start)} – ${formatChartRangeLongLabel(endIso)}`;
+    }
   }
-  const days = Number(chartDaysRange?.value);
-  if (!Number.isFinite(days) || days < 1) {
-    disp.textContent = "—";
-    return;
-  }
-  const end = chartRangeEndIso(chartStart.value, days);
-  disp.textContent = `${formatChartRangeLongLabel(chartStart.value)} – ${formatChartRangeLongLabel(end)}`;
+  document.querySelectorAll("[data-reports-range-display]").forEach((el) => {
+    el.textContent = text;
+  });
 }
 
 function presetMatchesDraft(rangeId) {
@@ -6314,12 +6537,10 @@ async function refreshIncomeExpenseReport() {
     }
   };
   try {
-    const end = toISODate(new Date());
-    const startD = new Date();
-    startD.setDate(startD.getDate() - 119);
-    const start = toISODate(startD);
+    const { start, endIso } = readReportsDateRange();
+    if (!start || !endIso) throw new Error("Select a valid date range.");
     const r = await api(
-      `/api/families/${state.activeFamilyId}/transactions?start_date=${encodeURIComponent(start)}&end_date=${encodeURIComponent(end)}`,
+      `/api/families/${state.activeFamilyId}/transactions?start_date=${encodeURIComponent(start)}&end_date=${encodeURIComponent(endIso)}`,
       "GET"
     );
     const items = r && r.items ? r.items : [];
@@ -6327,7 +6548,6 @@ async function refreshIncomeExpenseReport() {
       destroyIncomeExpenseChart();
       lastIncomeExpenseAggForChart = null;
       setIncomeExpenseEmpty("No data for this range.");
-      if (incomeExpenseSubtitle) incomeExpenseSubtitle.textContent = "Last 17 weeks · weekly totals";
       clearInsights();
       return;
     }
@@ -6336,7 +6556,6 @@ async function refreshIncomeExpenseReport() {
       destroyIncomeExpenseChart();
       lastIncomeExpenseAggForChart = null;
       setIncomeExpenseEmpty("No data for this range.");
-      if (incomeExpenseSubtitle) incomeExpenseSubtitle.textContent = "Last 17 weeks · weekly totals";
       clearInsights();
       return;
     }
@@ -6345,11 +6564,9 @@ async function refreshIncomeExpenseReport() {
       destroyIncomeExpenseChart();
       lastIncomeExpenseAggForChart = null;
       setIncomeExpenseEmpty("No income or expense activity in weekly buckets for this range.");
-      if (incomeExpenseSubtitle) incomeExpenseSubtitle.textContent = "Last 17 weeks · weekly totals";
       clearInsights();
       return;
     }
-    if (incomeExpenseSubtitle) incomeExpenseSubtitle.textContent = "Last 17 weeks · weekly totals";
     lastIncomeExpenseAggForChart = agg;
     renderIncomeExpenseInsights(agg);
     drawIncomeExpenseChart(agg);
@@ -7170,7 +7387,10 @@ function selectCategoryComboboxChoice(fieldId, catId, name) {
   st.hidden.value = String(catId);
   st.input.value = name;
   hideCategoryComboboxList(st);
-  if (fieldId === "txAddCategoryId") refreshTxAddCategoryChipActiveState();
+  if (fieldId === "txAddCategoryId") {
+    refreshTxAddCategoryChipActiveState();
+    updateTxAddFormValidity();
+  }
 }
 
 function normalizeCategoryComboboxInput(fieldId) {
@@ -10499,10 +10719,16 @@ function renderSidebarPendingTransactionsForMonth() {
   if (!rows.length) {
     setTitle(0);
     if (sidebarPendingTxCard) sidebarPendingTxCard.classList.add("sidebar-pending--empty");
-    const empty = document.createElement("p");
-    empty.className = "sidebar-pending-empty-msg";
-    empty.textContent = "No transactions need review";
-    sidebarPendingTxList.appendChild(empty);
+    const emptyWrap = document.createElement("div");
+    emptyWrap.className = "sidebar-pending-empty";
+    const lead = document.createElement("p");
+    lead.className = "sidebar-pending-empty-msg sidebar-pending-empty-msg--lead";
+    lead.textContent = "You're all caught up";
+    const sub = document.createElement("p");
+    sub.className = "sidebar-pending-empty-msg sidebar-pending-empty-msg--sub";
+    sub.textContent = "Everything looks categorized · No pending transaction reviews";
+    emptyWrap.append(lead, sub);
+    sidebarPendingTxList.appendChild(emptyWrap);
     return;
   }
 
@@ -11686,6 +11912,7 @@ function renderCalendar() {
   }
 
   calendarGrid.appendChild(wrapper);
+  bindCalendarPanelClickRouting();
 
   // Expand each week row to fit all transactions, keeping all 7 days the same height.
   try {
@@ -15020,6 +15247,11 @@ function setDefaultProjectionStart() {
 
 function setDefaultChartStart() {
   if (chartStart) chartStart.value = toISODate(new Date());
+  if (chartEnd && chartStart?.value) {
+    const days = Number(chartDaysRange?.value);
+    chartEnd.value = chartRangeEndIso(chartStart.value, Number.isFinite(days) && days >= 1 ? days : 30);
+  }
+  syncReportsChartDateMirrors();
 }
 
 function setDefaultAccountStartDate() {
