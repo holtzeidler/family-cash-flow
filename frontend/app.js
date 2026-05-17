@@ -1054,36 +1054,73 @@ const accountEditInfo = document.getElementById("accountEditInfo");
 const accountEditFootnote = document.getElementById("accountEditFootnote");
 
 function openAccountModal(mode = "add") {
-  if (!accountModal) return;
-  if (accountModalTitle) accountModalTitle.textContent = mode === "edit" ? "Edit Account" : "Add New Account";
-  if (addAccountBtn) addAccountBtn.style.display = mode === "edit" ? "none" : "";
-  if (saveAccountEditBtn) saveAccountEditBtn.style.display = mode === "edit" ? "" : "none";
-  if (accountEditInfo) accountEditInfo.hidden = mode !== "edit";
-  if (accountEditFootnote) accountEditFootnote.hidden = mode !== "edit";
-  accountModal.classList.add("modal-overlay--open");
-  accountModal.setAttribute("aria-hidden", "false");
+  const modalEl = accountModal || document.getElementById("accountModal");
+  if (!modalEl) return;
+  const titleEl = accountModalTitle || document.getElementById("accountModalTitle");
+  const addBtnEl = addAccountBtn || document.getElementById("addAccountBtn");
+  const saveBtnEl = saveAccountEditBtn || document.getElementById("saveAccountEditBtn");
+  const editInfoEl = accountEditInfo || document.getElementById("accountEditInfo");
+  const footnoteEl = accountEditFootnote || document.getElementById("accountEditFootnote");
+  if (titleEl) titleEl.textContent = mode === "edit" ? "Edit Account" : "Add New Account";
+  if (addBtnEl) addBtnEl.style.display = mode === "edit" ? "none" : "";
+  if (saveBtnEl) saveBtnEl.style.display = mode === "edit" ? "" : "none";
+  if (editInfoEl) editInfoEl.hidden = mode !== "edit";
+  if (footnoteEl) footnoteEl.hidden = mode !== "edit";
+  modalEl.classList.add("modal-overlay--open");
+  modalEl.setAttribute("aria-hidden", "false");
   try {
     (mode === "edit" ? accountStartingBalance : accountName)?.focus?.();
   } catch (_) {}
 }
 
 function closeAccountModal() {
-  if (!accountModal) return;
-  accountModal.classList.remove("modal-overlay--open");
-  accountModal.setAttribute("aria-hidden", "true");
+  const modalEl = accountModal || document.getElementById("accountModal");
+  if (!modalEl) return;
+  modalEl.classList.remove("modal-overlay--open");
+  modalEl.setAttribute("aria-hidden", "true");
+}
+
+function findAccountById(accountId) {
+  const id = Number(accountId);
+  if (!Number.isFinite(id)) return null;
+  return (state.accounts || []).find((a) => Number(a.id) === id) || null;
 }
 
 function openAccountEditModalForAccount(account) {
-  if (!account || !accountEditId) return;
-  accountEditId.value = String(account.id);
-  if (accountName) accountName.value = account.name || "";
-  if (accountType) accountType.value = account.type || "checking";
-  if (accountStartingBalance) accountStartingBalance.value = account.starting_balance ?? "";
-  if (accountStartingBalanceDate) accountStartingBalanceDate.value = account.starting_balance_date || "";
-  if (accountName) accountName.disabled = true;
-  if (accountType) accountType.disabled = true;
-  show(accErr, "");
+  if (!account) return;
+  const editIdEl = accountEditId || document.getElementById("accountEditId");
+  const modalEl = accountModal || document.getElementById("accountModal");
+  if (!editIdEl || !modalEl) {
+    window.alert("Account editor is not available on this page. Open Settings → Accounts to edit.");
+    return;
+  }
+  editIdEl.value = String(account.id);
+  const nameEl = accountName || document.getElementById("accountName");
+  const typeEl = accountType || document.getElementById("accountType");
+  const balEl = accountStartingBalance || document.getElementById("accountStartingBalance");
+  const balDateEl = accountStartingBalanceDate || document.getElementById("accountStartingBalanceDate");
+  if (nameEl) {
+    nameEl.value = account.name || "";
+    nameEl.disabled = true;
+  }
+  if (typeEl) {
+    typeEl.value = account.type || "checking";
+    typeEl.disabled = true;
+  }
+  if (balEl) balEl.value = account.starting_balance ?? "";
+  if (balDateEl) balDateEl.value = account.starting_balance_date || "";
+  const errEl = accErr || document.getElementById("accErr");
+  show(errEl, "");
   openAccountModal("edit");
+}
+
+function openAccountEditModalForAccountId(accountId) {
+  const account = findAccountById(accountId);
+  if (account) {
+    openAccountEditModalForAccount(account);
+    return true;
+  }
+  return false;
 }
 
 // Transaction View: upcoming filters
@@ -4059,7 +4096,9 @@ function activateSettingsSection(key) {
 }
 
 function openTxAddModal(opts = {}) {
-  if (!txAddModal || !txAddDate) return;
+  const modalEl = txAddModal || document.getElementById("txAddModal");
+  const dateEl = txAddDate || document.getElementById("txAddDate");
+  if (!modalEl || !dateEl) return;
   mountTxAddFormInModal();
   const dateVal = opts.date || "";
   const dateNorm = dateVal ? normalizeIsoDate(dateVal) || dateVal : "";
@@ -4097,9 +4136,9 @@ function openTxAddModal(opts = {}) {
   if (radio) radio.checked = true;
   show(txAddErr, "");
   renderTxAddCategoryChips();
-  txAddModal.classList.add("modal-overlay--open");
-  txAddModal.setAttribute("aria-hidden", "false");
-  requestAnimationFrame(() => (txAddAmount ? txAddAmount.focus() : txAddDate.focus()));
+  modalEl.classList.add("modal-overlay--open");
+  modalEl.setAttribute("aria-hidden", "false");
+  requestAnimationFrame(() => (txAddAmount ? txAddAmount.focus() : dateEl.focus()));
 }
 
 function closeTxAddModal() {
@@ -4320,6 +4359,17 @@ if (reconcileModal) {
 
 if (calendarGrid) {
   calendarGrid.addEventListener("click", (e) => {
+    const startBalLine = e.target.closest(".cal-day-tx-line--start-balance");
+    if (startBalLine && calendarGrid.contains(startBalLine)) {
+      e.preventDefault();
+      e.stopPropagation();
+      const aid = startBalLine.dataset.accountId;
+      if (!openAccountEditModalForAccountId(aid)) {
+        window.alert("Could not open this account. Try refreshing the page.");
+      }
+      return;
+    }
+
     // Click on an actual transaction line opens the edit modal.
     const part = e.target.closest(".cal-tx-part");
     if (part && calendarGrid.contains(part)) {
@@ -4335,10 +4385,16 @@ if (calendarGrid) {
     const iso = cell.dataset.iso;
     if (!iso) return;
 
-    // Busy days: first click anywhere outside interactive rows expands the list
-    // (matches "+N more" behavior; the "+N more" button still works on its own).
+    if (e.target.closest(".cal-day-reconcile-btn")) return;
+
+    const isExpanded = !!(state.calendarExpandedDays && state.calendarExpandedDays.has(iso));
+    // Busy days: first click on the transaction list (not the balance) expands hidden rows.
+    // Clicking the balance or empty margin still opens Add transaction.
     if (
       cell.classList.contains("cal-cell--has-collapsed-rows") &&
+      !isExpanded &&
+      e.target.closest(".cal-day-txns") &&
+      !e.target.closest(".cal-ledger-metrics") &&
       !e.target.closest(".cal-day-tx-line--expected") &&
       !e.target.closest(".cal-day-tx-line--start-balance") &&
       !e.target.closest(".cal-day-more")
@@ -6328,6 +6384,15 @@ function txEditEditedOccurrenceIso() {
   return normalizeIsoDate(txEditDate?.value || "") || null;
 }
 
+/** Keep series end_date valid when rescheduling start_date earlier. */
+function safeSeriesEndDateForReschedule(endDate, startDateIso) {
+  if (!endDate || !startDateIso) return endDate || null;
+  const end = normalizeIsoDate(endDate);
+  const start = normalizeIsoDate(startDateIso);
+  if (end && start && end < start) return null;
+  return endDate || null;
+}
+
 function buildExpectedSeriesPutPayload({
   accountId,
   amount,
@@ -6339,10 +6404,20 @@ function buildExpectedSeriesPutPayload({
   meta,
   startDateIso,
 }) {
+  const startIso = normalizeIsoDate(startDateIso) || startDateIso;
+  let endDate = meta.end_date || null;
+  if (recurrenceVal === "once" && meta.start_date) {
+    const metaStart = normalizeIsoDate(meta.start_date);
+    const metaEnd = normalizeIsoDate(endDate);
+    if (metaStart && metaEnd && metaStart === metaEnd) {
+      endDate = startIso;
+    }
+  }
+  endDate = safeSeriesEndDateForReschedule(endDate, startIso);
   return {
     account_id: Number(accountId),
-    start_date: startDateIso,
-    end_date: meta.end_date || null,
+    start_date: startIso,
+    end_date: endDate,
     end_count: endCountVal,
     recurrence: recurrenceVal,
     second_day_of_month: recurrenceVal === "twice_monthly" ? secondDayVal : null,
@@ -6504,7 +6579,6 @@ async function saveExpectedSeriesFromInstance() {
     startDateIso: editedIso || meta.start_date || occRaw,
   });
 
-  let applyResult = null;
   if (String(meta.recurrence || "") === "once") {
     await api(`/api/families/${state.activeFamilyId}/expected-transactions/${seriesId}`, "PUT", putPayload);
   } else {
@@ -6527,40 +6601,12 @@ async function saveExpectedSeriesFromInstance() {
         : {}),
     };
     if (recurrenceVal === "twice_monthly") applyBody.second_day_of_month = secondDayVal;
-    applyResult = await api(
+    if (dateMoved && editedIso) applyBody.effective_start_date = editedIso;
+    await api(
       `/api/families/${state.activeFamilyId}/expected-transactions/${seriesId}/apply-from-occurrence/${encodeURIComponent(occRaw)}`,
       "POST",
       applyBody
     );
-  }
-
-  if (dateMoved && editedIso && String(meta.recurrence || "") !== "once") {
-    const futureId =
-      applyResult && applyResult.future_series_id != null
-        ? Number(applyResult.future_series_id)
-        : applyResult && applyResult.mode === "updated_in_place"
-          ? seriesId
-          : null;
-    if (futureId) {
-      await api(
-        `/api/families/${state.activeFamilyId}/expected-transactions/${encodeURIComponent(String(futureId))}`,
-        "PUT",
-        buildExpectedSeriesPutPayload({
-          accountId,
-          amount,
-          recurrenceVal,
-          secondDayVal,
-          endCountVal,
-          notesVal,
-          categoryId,
-          meta: {
-            ...meta,
-            end_date: meta.end_date || null,
-          },
-          startDateIso: editedIso,
-        })
-      );
-    }
   }
 
   closeTxEditModal();
@@ -10282,6 +10328,10 @@ function renderSidebarPendingTransactionsForMonth() {
   if (!rows.length) {
     setTitle(0);
     if (sidebarPendingTxCard) sidebarPendingTxCard.classList.add("sidebar-pending--empty");
+    const empty = document.createElement("p");
+    empty.className = "sidebar-pending-empty-msg";
+    empty.textContent = "No transactions need review";
+    sidebarPendingTxList.appendChild(empty);
     return;
   }
 
@@ -11171,11 +11221,21 @@ function renderCalendar() {
         month: "short",
         day: "numeric",
       });
-      dayNumEl.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        openReconcileModal(iso);
-      });
+      if (!isBeforeStart && !isOutOfMonth) {
+        const reconcileBtn = document.createElement("button");
+        reconcileBtn.type = "button";
+        reconcileBtn.className = "cal-day-reconcile-btn";
+        reconcileBtn.title = "Reconcile this day";
+        reconcileBtn.setAttribute("aria-label", `Reconcile forecast for ${fmtDateMDY(iso)}`);
+        reconcileBtn.innerHTML =
+          '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.25"></circle><path d="M8.5 12.2l2.2 2.2 4.8-5.1"></path></svg>';
+        reconcileBtn.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          openReconcileModal(iso);
+        });
+        dayNumEl.insertBefore(reconcileBtn, dayNumEl.firstChild);
+      }
     }
 
     const actualTxs = !isBeforeStart && showActual ? actualTxsByDate.get(iso) || [] : [];
@@ -11261,6 +11321,7 @@ function renderCalendar() {
         const labelWrap = document.createElement("span");
         labelWrap.className = "cal-tx-label-wrap";
         if (isStartBalance) {
+          line.dataset.accountId = String(row.account_id);
           line.setAttribute("role", "button");
           line.setAttribute("tabindex", "0");
           line.title = "Edit account starting balance";
@@ -11275,9 +11336,11 @@ function renderCalendar() {
           const openStartBalEdit = (e) => {
             if (e.type === "keydown" && e.key !== "Enter" && e.key !== " ") return;
             if (e.type === "keydown") e.preventDefault();
+            e.preventDefault();
             e.stopPropagation();
-            const account = (state.accounts || []).find((a) => Number(a.id) === Number(row.account_id));
-            if (account) openAccountEditModalForAccount(account);
+            if (!openAccountEditModalForAccountId(row.account_id)) {
+              window.alert("Could not open this account. Try refreshing the page.");
+            }
           };
           line.addEventListener("click", openStartBalEdit);
           line.addEventListener("keydown", openStartBalEdit);

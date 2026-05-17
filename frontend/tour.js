@@ -114,7 +114,7 @@
       findTarget: findExpectedCalendarConfirmAnchor,
       title: "Keep your forecast accurate",
       body: "Update your forecast occasionally so it stays aligned with your real checking balance.",
-      instruction: "Click any calendar day to mark your balance as reconciled.",
+      instruction: "Use the checkmark on a day header to mark your balance as reconciled.",
       reconcilePreview: {
         dayNum: "17",
         dayLabel: "Thu",
@@ -228,9 +228,18 @@
   }
 
   function findExpectedCalendarConfirmAnchor() {
+    const todayIso = new Date().toISOString().slice(0, 10);
+    const btn =
+      document.querySelector(
+        `.cal-cell[data-iso="${todayIso}"]:not(.cal-cell--out):not(.cal-cell--before-start) .cal-day-reconcile-btn`
+      ) ||
+      document.querySelector(
+        ".cal-cell[data-iso]:not(.cal-cell--out):not(.cal-cell--before-start) .cal-day-reconcile-btn"
+      );
+    if (btn && isVisible(btn)) return btn;
     const row = findExpectedCalendarRowTarget();
     if (!row) return null;
-    return row.closest(".cal-cell")?.querySelector(".cal-daynum") || null;
+    return row.closest(".cal-cell")?.querySelector(".cal-day-reconcile-btn") || null;
   }
 
   function findNeedsReviewTarget() {

@@ -2666,7 +2666,7 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
 .app-footer{
   flex-shrink: 0;
   margin-top: auto;
-  padding: 18px 0 max(12px, env(safe-area-inset-bottom, 0px));
+  padding: 22px 0 max(32px, env(safe-area-inset-bottom, 0px));
   background: #f7f6f4;
   border-top: 1px solid rgba(17, 24, 39, 0.07);
   width: 100vw;
@@ -2685,15 +2685,23 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
 }
 .app-footer__grid{
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.82fr) minmax(0, 0.82fr);
-  gap: clamp(12px, 1.6vw, 18px);
+  grid-template-columns: minmax(0, 1.55fr) auto;
+  gap: clamp(20px, 3.5vw, 36px);
   align-items: start;
+}
+.app-footer__nav{
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: clamp(28px, 3.2vw, 40px);
+  align-items: start;
+  padding-top: 2px;
 }
 .app-footer__col{
   min-width: 0;
 }
 .app-footer__col--brand{
   min-width: 0;
+  max-width: 22rem;
 }
 .app-footer__logo{
   display: inline-block;
@@ -2706,32 +2714,32 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
   width: auto;
 }
 .app-footer__tagline{
-  margin: 0 0 5px;
-  max-width: 16rem;
+  margin: 0 0 6px;
+  max-width: 18rem;
   font-size: 12px;
   font-weight: 500;
-  line-height: 1.38;
-  color: rgba(55, 65, 81, 0.72);
+  line-height: 1.4;
+  color: rgba(55, 65, 81, 0.68);
 }
 .app-footer__copyright{
   margin: 0;
-  font-size: 10.9px;
-  color: rgba(55, 65, 81, 0.56);
+  font-size: 10.5px;
+  color: rgba(55, 65, 81, 0.48);
 }
 .app-footer__madein{
-  margin: 0.35rem 0 0;
+  margin: 0.3rem 0 0;
   font-size: 10.5px;
   font-weight: 600;
   letter-spacing: 0.04em;
-  color: rgba(55, 65, 81, 0.52);
+  color: rgba(55, 65, 81, 0.44);
 }
 .app-footer__heading{
-  margin: 0 0 6px;
-  font-size: 10px;
+  margin: 0 0 7px;
+  font-size: 9px;
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: rgba(31, 41, 55, 0.58);
+  color: rgba(31, 41, 55, 0.52);
 }
 .app-footer__list{
   list-style: none;
@@ -2739,24 +2747,28 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
 }
 .app-footer__link,
 .app-footer__text{
   display: inline-block;
-  padding: 1px 0;
-  color: rgba(55, 65, 81, 0.72);
+  padding: 2px 0;
+  color: rgba(55, 65, 81, 0.7);
   font-weight: 450;
   font-size: 12px;
-  line-height: 1.35;
+  line-height: 1.32;
   text-decoration: none;
   border-radius: 4px;
+  transition: color 0.15s ease;
 }
 .app-footer__text{
-  color: rgba(55, 65, 81, 0.52);
+  color: rgba(55, 65, 81, 0.45);
 }
 .app-footer__link:hover{
   color: var(--accent);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--accent) 35%, transparent);
+  text-underline-offset: 2px;
 }
 .app-footer__link:focus-visible{
   outline: 2px solid color-mix(in srgb, var(--accent) 42%, transparent);
@@ -2785,22 +2797,41 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
   font-size: 0.75em;
   color: color-mix(in srgb, var(--accent) 55%, rgba(55, 65, 81, 0.35));
 }
-@media (max-width: 900px){
+@media (max-width: 720px){
   .app-footer__grid{
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 18px 24px;
+    grid-template-columns: 1fr;
+    gap: 22px;
+    justify-items: center;
+    text-align: center;
   }
   .app-footer__col--brand{
-    grid-column: 1 / -1;
+    max-width: none;
+  }
+  .app-footer__tagline{
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .app-footer__nav{
+    width: 100%;
+    max-width: 18rem;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px 32px;
+    justify-content: center;
+    padding-top: 0;
+  }
+  .app-footer__col{
+    text-align: center;
   }
 }
 @media (max-width: 520px){
   .app-footer{
-    padding-top: 16px;
+    padding-top: 18px;
+    padding-bottom: max(28px, env(safe-area-inset-bottom, 0px));
   }
-  .app-footer__grid{
+  .app-footer__nav{
     grid-template-columns: 1fr;
-    gap: 16px;
+    gap: 18px;
+    max-width: 12rem;
   }
 }
 
@@ -4877,21 +4908,37 @@ button.secondary[aria-disabled="true"]{
   color: rgba(30, 41, 59, 0.8);
 }
 
-/* Compact "This month pending" when empty. */
+/* Compact "Needs review" when empty — single calm summary line. */
 #sidebarPendingTxCard.sidebar-pending--empty{
-  padding: 10px 12px;
+  padding: 7px 10px;
+  background: rgba(250, 250, 249, 0.92);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
 }
 #sidebarPendingTxCard.sidebar-pending--empty .sidebar-section-head{
-  margin-bottom: 6px;
+  display: none;
 }
-#sidebarPendingTxCard.sidebar-pending--empty h2{
-  margin-bottom: 0;
+#sidebarPendingTxCard.sidebar-pending--empty .sidebar-section-body{
+  margin: 0;
+}
+#sidebarPendingTxCard.sidebar-pending--empty #sidebarPendingTxList.list{
+  margin: 0;
+  gap: 0;
+}
+.sidebar-pending-empty-msg{
+  margin: 0;
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1.35;
+  color: rgba(100, 116, 139, 0.62);
 }
 #sidebarPendingTxCard.sidebar-pending--empty #sidebarPendingTxList .pill{
-  padding: 8px 10px;
+  padding: 0;
   min-height: 0;
   width: 100%;
   justify-content: flex-start;
+  border: none;
+  background: transparent;
+  color: rgba(100, 116, 139, 0.62);
 }
 
 /* "Needs review" pending checklist — compact queue row */
@@ -5060,6 +5107,9 @@ button.pending-attn-item:focus-visible{
 }
 .sidebar-section--collapsed .sidebar-section-body{
   display: none;
+}
+.sidebar-section-body{
+  transition: opacity 0.16s ease;
 }
 .sidebar-section--flash{
   outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
@@ -5307,7 +5357,7 @@ button.nav-link:hover{
   margin-bottom: 10px;
 }
 #sidebarLowBalanceBanner.calendar-low-balance--sidebar{
-  margin-top: 12px;
+  margin-top: 6px;
 }
 .cash-outlook-head{
   display: flex;
@@ -5471,12 +5521,38 @@ button.nav-link:hover{
   font-weight: 500;
 }
 .calendar-low-balance--sidebar.is-suggestion{
-  border-color: rgba(11, 61, 46, 0.12);
-  background: rgba(236, 253, 245, 0.45);
+  border-color: rgba(11, 61, 46, 0.06);
+  background: rgba(240, 253, 248, 0.55);
   color: rgba(15, 23, 42, 0.88);
+  border-radius: 10px;
+  padding: 8px 14px 7px;
+  box-shadow: none;
+  cursor: default;
+  pointer-events: none;
+}
+.calendar-low-balance--sidebar.is-suggestion strong{
+  display: block;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.22;
+  letter-spacing: -0.01em;
+  color: rgba(11, 61, 46, 0.9);
+  white-space: normal;
+  margin: 0;
 }
 .calendar-low-balance--sidebar.is-suggestion .cash-outlook-hero{
-  color: rgba(11, 61, 46, 0.92);
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.22;
+  color: rgba(11, 61, 46, 0.9);
+  margin: 0 0 2px;
+}
+.calendar-low-balance--sidebar.is-suggestion .cash-outlook-secondary{
+  margin-top: 2px;
+  font-size: 10px;
+  line-height: 1.28;
+  font-weight: 500;
+  color: rgba(71, 85, 105, 0.52);
 }
 .sidebar-balance-threshold-hint-inline{
   margin: 0;
@@ -8491,7 +8567,7 @@ body[data-bw-view="calendar"] .app-layout{
   gap: 14px;
 }
 body[data-bw-view="calendar"] .sidebar{
-  gap: 12px;
+  gap: 10px;
   padding-right: 0;
   width: 100%;
   min-width: 0;
@@ -8519,14 +8595,17 @@ body[data-bw-view="transactions"] .sidebar-balance-threshold-alerts{
   padding: 0;
 }
 body[data-bw-view="calendar"] .sidebar .card,
-body[data-bw-view="transactions"] .sidebar .card{
+body[data-bw-view="transactions"] .sidebar .card,
+body[data-bw-view="settings"] .sidebar .card,
+body[data-bw-view="reports"] .sidebar .card{
   border: none;
-  background: #fff;
-  border-radius: 10px;
+  background: #fafaf9;
+  border-radius: 12px;
   box-shadow:
-    0 1px 2px rgba(15, 23, 42, 0.04),
-    0 0 0 1px rgba(15, 23, 42, 0.03);
-  padding: 10px 11px;
+    0 1px 2px rgba(15, 23, 42, 0.035),
+    0 0 0 1px rgba(15, 23, 42, 0.025);
+  padding: 9px 10px;
+  transition: box-shadow 0.16s ease, background 0.16s ease;
 }
 body[data-bw-view="calendar"] .sidebar .card + .card,
 body[data-bw-view="calendar"] .sidebar-balance-threshold-alerts + .card,
@@ -8552,33 +8631,57 @@ body[data-bw-view="transactions"] .sidebar .card[data-sidebar-key="month"]:hover
     0 0 0 1px rgba(15, 23, 42, 0.04);
 }
 body[data-bw-view="calendar"] #sidebarPendingTxCard.sidebar-pending--empty,
-body[data-bw-view="transactions"] #sidebarPendingTxCard.sidebar-pending--empty{
-  padding: 10px 11px;
+body[data-bw-view="transactions"] #sidebarPendingTxCard.sidebar-pending--empty,
+body[data-bw-view="settings"] #sidebarPendingTxCard.sidebar-pending--empty,
+body[data-bw-view="reports"] #sidebarPendingTxCard.sidebar-pending--empty{
+  padding: 7px 10px;
+  background: rgba(250, 250, 249, 0.95);
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.022);
 }
 body[data-bw-view="calendar"] #sidebarPendingTxCard .sidebar-section-head,
 body[data-bw-view="calendar"] .sidebar-section:not(.sidebar-section--collapsed) .sidebar-section-head,
 body[data-bw-view="transactions"] #sidebarPendingTxCard .sidebar-section-head,
-body[data-bw-view="transactions"] .sidebar-section:not(.sidebar-section--collapsed) .sidebar-section-head{
-  margin-bottom: 6px;
+body[data-bw-view="transactions"] .sidebar-section:not(.sidebar-section--collapsed) .sidebar-section-head,
+body[data-bw-view="settings"] #sidebarPendingTxCard .sidebar-section-head,
+body[data-bw-view="settings"] .sidebar-section:not(.sidebar-section--collapsed) .sidebar-section-head,
+body[data-bw-view="reports"] #sidebarPendingTxCard .sidebar-section-head,
+body[data-bw-view="reports"] .sidebar-section:not(.sidebar-section--collapsed) .sidebar-section-head{
+  margin-bottom: 5px;
 }
 body[data-bw-view="calendar"] #sidebarPendingTitle,
 body[data-bw-view="calendar"] .sidebar-section-head h2,
 body[data-bw-view="transactions"] #sidebarPendingTitle,
-body[data-bw-view="transactions"] .sidebar-section-head h2{
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
+body[data-bw-view="transactions"] .sidebar-section-head h2,
+body[data-bw-view="settings"] #sidebarPendingTitle,
+body[data-bw-view="settings"] .sidebar-section-head h2,
+body[data-bw-view="reports"] #sidebarPendingTitle,
+body[data-bw-view="reports"] .sidebar-section-head h2{
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: rgba(71, 85, 105, 0.68);
+  color: rgba(100, 116, 139, 0.58);
 }
 body[data-bw-view="calendar"] .cash-outlook-title,
-body[data-bw-view="transactions"] .cash-outlook-title{
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
+body[data-bw-view="transactions"] .cash-outlook-title,
+body[data-bw-view="settings"] .cash-outlook-title,
+body[data-bw-view="reports"] .cash-outlook-title{
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: rgba(71, 85, 105, 0.68);
+  color: rgba(100, 116, 139, 0.58);
   margin-top: 0;
+}
+body[data-bw-view="calendar"] .sidebar-balance-threshold-hint-inline,
+body[data-bw-view="transactions"] .sidebar-balance-threshold-hint-inline,
+body[data-bw-view="settings"] .sidebar-balance-threshold-hint-inline,
+body[data-bw-view="reports"] .sidebar-balance-threshold-hint-inline{
+  font-size: 10.5px;
+  font-weight: 500;
+  line-height: 1.3;
+  color: rgba(100, 116, 139, 0.52);
+  margin-top: 1px;
 }
 body[data-bw-view="calendar"] .sidebar-collapse-btn,
 body[data-bw-view="transactions"] .sidebar-collapse-btn{
@@ -8588,6 +8691,13 @@ body[data-bw-view="transactions"] .sidebar-collapse-btn{
   border: 1px solid rgba(17, 24, 39, 0.06);
   background: rgba(255, 255, 255, 0.7);
   color: rgba(71, 85, 105, 0.65);
+  transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease;
+}
+body[data-bw-view="calendar"] .sidebar-collapse-btn:hover,
+body[data-bw-view="transactions"] .sidebar-collapse-btn:hover{
+  background: #fff;
+  border-color: rgba(17, 24, 39, 0.1);
+  color: rgba(51, 65, 85, 0.85);
 }
 body[data-bw-view="calendar"] .pending-attn-item,
 body[data-bw-view="transactions"] .pending-attn-item{
@@ -8653,11 +8763,11 @@ body[data-bw-view="transactions"] .cash-outlook-icon svg{
 }
 body[data-bw-view="calendar"] .cash-outlook-hero,
 body[data-bw-view="transactions"] .cash-outlook-hero{
-  margin: 2px 0 3px;
-  font-size: 11.1px;
-  line-height: 1.26;
-  font-weight: 600;
-  color: rgba(51, 65, 85, 0.82);
+  margin: 1px 0 2px;
+  font-size: 12.5px;
+  line-height: 1.22;
+  font-weight: 650;
+  color: rgba(30, 41, 59, 0.88);
 }
 body[data-bw-view="calendar"] .cash-outlook-kv,
 body[data-bw-view="transactions"] .cash-outlook-kv{
@@ -8678,11 +8788,42 @@ body[data-bw-view="transactions"] .cash-outlook-v{
 }
 body[data-bw-view="calendar"] .cash-outlook-secondary,
 body[data-bw-view="transactions"] .cash-outlook-secondary{
-  margin-top: 3px;
-  font-size: 10.25px;
-  line-height: 1.3;
+  margin-top: 2px;
+  font-size: 10px;
+  line-height: 1.28;
   font-weight: 500;
-  color: rgba(71, 85, 105, 0.66);
+  color: rgba(100, 116, 139, 0.52);
+}
+body[data-bw-view="calendar"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-suggestion,
+body[data-bw-view="transactions"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-suggestion{
+  text-align: left;
+  align-items: stretch;
+  padding: 7px 12px 6px;
+  margin-top: 4px;
+  border-radius: 10px;
+  border: 1px solid rgba(11, 61, 46, 0.06);
+  background: rgba(240, 253, 248, 0.5);
+  box-shadow: none;
+}
+body[data-bw-view="calendar"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-suggestion strong,
+body[data-bw-view="transactions"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-suggestion strong{
+  justify-content: flex-start;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.22;
+  white-space: normal;
+  color: rgba(11, 61, 46, 0.9);
+}
+body[data-bw-view="calendar"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-suggestion .cash-outlook-secondary,
+body[data-bw-view="transactions"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-suggestion .cash-outlook-secondary{
+  text-align: left;
+  font-size: 10px;
+  color: rgba(100, 116, 139, 0.5);
+}
+body[data-bw-view="calendar"] .cash-outlook-head,
+body[data-bw-view="transactions"] .cash-outlook-head{
+  gap: 1px;
+  margin-bottom: 2px;
 }
 body[data-bw-view="calendar"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger,
 body[data-bw-view="transactions"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger{
@@ -8715,16 +8856,10 @@ body[data-bw-view="transactions"] #sidebarLowBalanceBanner.calendar-low-balance-
 }
 body[data-bw-view="calendar"] .calendar-low-balance--sidebar strong,
 body[data-bw-view="transactions"] .calendar-low-balance--sidebar strong{
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.006em;
-  line-height: 1.2;
-}
-body[data-bw-view="calendar"] #sidebarBodyMonth .totals{
-  flex-direction: column;
-  flex-wrap: nowrap;
-  gap: 4px;
-  padding-top: 2px;
+  font-size: 12.5px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  line-height: 1.22;
 }
 body[data-bw-view="calendar"] .calendar-low-balance--sidebar,
 body[data-bw-view="transactions"] .calendar-low-balance--sidebar{
@@ -8742,90 +8877,128 @@ body[data-bw-view="transactions"] #sidebarPendingTxList.list{
 }
 body[data-bw-view="calendar"] .sidebar .card[data-sidebar-key="month"],
 body[data-bw-view="transactions"] .sidebar .card[data-sidebar-key="month"]{
-  padding: 12px 11px 11px;
-  transition: box-shadow 0.14s ease;
+  padding: 9px 10px 8px;
+  transition: box-shadow 0.16s ease, background 0.16s ease;
 }
-body[data-bw-view="calendar"] #sidebarBodyMonth .total{
+body[data-bw-view="calendar"] #sidebarBodyMonth .total,
+body[data-bw-view="transactions"] #sidebarBodyMonth .total{
   flex: 0 0 auto;
   display: flex;
   flex-direction: row;
   align-items: baseline;
   justify-content: space-between;
   gap: 10px;
-  padding: 6px 2px;
+  padding: 4px 2px;
   border-radius: 0;
   border: none;
   background: transparent;
   box-shadow: none;
 }
 body[data-bw-view="calendar"] #sidebarBodyMonth .total--income,
-body[data-bw-view="calendar"] #sidebarBodyMonth .total--expense{
-  border-bottom: 1px solid rgba(17, 24, 39, 0.05);
+body[data-bw-view="calendar"] #sidebarBodyMonth .total--expense,
+body[data-bw-view="transactions"] #sidebarBodyMonth .total--income,
+body[data-bw-view="transactions"] #sidebarBodyMonth .total--expense{
+  border-bottom: 1px solid rgba(17, 24, 39, 0.04);
 }
-body[data-bw-view="calendar"] #sidebarBodyMonth .total--net{
-  margin-top: 4px;
-  padding-top: 8px;
-  border-top: 1px solid rgba(17, 24, 39, 0.06);
-  border-bottom: none;
+body[data-bw-view="calendar"] #sidebarBodyMonth .total--net,
+body[data-bw-view="transactions"] #sidebarBodyMonth .total--net{
+  margin-top: 2px;
+  padding: 7px 8px;
+  border: none;
+  border-radius: 8px;
+  background: rgba(236, 253, 245, 0.35);
 }
-body[data-bw-view="calendar"] #sidebarBodyMonth .total .k{
+body[data-bw-view="calendar"] #sidebarBodyMonth .total .k,
+body[data-bw-view="transactions"] #sidebarBodyMonth .total .k{
   flex: 1;
   min-width: 0;
-  font-size: 9.35px;
-  font-weight: 520;
-  letter-spacing: 0.045em;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: rgba(100, 116, 139, 0.66);
+  color: rgba(100, 116, 139, 0.58);
 }
-body[data-bw-view="calendar"] #sidebarBodyMonth .total--net .k{
+body[data-bw-view="calendar"] #sidebarBodyMonth .total--net .k,
+body[data-bw-view="transactions"] #sidebarBodyMonth .total--net .k{
   font-weight: 600;
-  letter-spacing: 0.035em;
-  color: rgba(71, 85, 105, 0.72);
+  color: rgba(71, 85, 105, 0.65);
 }
-body[data-bw-view="calendar"] #sidebarBodyMonth .total .v{
+body[data-bw-view="calendar"] #sidebarBodyMonth .total .v,
+body[data-bw-view="transactions"] #sidebarBodyMonth .total .v{
   flex: 0 0 auto;
   min-width: 7.25ch;
-  font-size: 13px;
-  font-weight: 680;
+  font-size: 12px;
+  font-weight: 620;
   margin-top: 0;
   text-align: right;
-  letter-spacing: -0.015em;
+  letter-spacing: -0.012em;
   font-variant-numeric: tabular-nums;
 }
-body[data-bw-view="calendar"] #sidebarBodyMonth .total--income .v.ok{
-  color: color-mix(in srgb, var(--ok) 78%, #64748b);
+body[data-bw-view="calendar"] #sidebarBodyMonth .total--income .v.ok,
+body[data-bw-view="transactions"] #sidebarBodyMonth .total--income .v.ok{
+  color: color-mix(in srgb, var(--ok) 72%, #64748b);
 }
-body[data-bw-view="calendar"] #sidebarBodyMonth .total--expense .v.danger{
-  color: color-mix(in srgb, var(--danger) 72%, #78716c);
+body[data-bw-view="calendar"] #sidebarBodyMonth .total--expense .v.danger,
+body[data-bw-view="transactions"] #sidebarBodyMonth .total--expense .v.danger{
+  color: color-mix(in srgb, var(--danger) 68%, #78716c);
 }
-body[data-bw-view="calendar"] #sidebarBodyMonth .total--net .v{
-  font-size: 15.5px;
-  font-weight: 780;
-  letter-spacing: -0.022em;
+body[data-bw-view="calendar"] #sidebarBodyMonth .total--net .v,
+body[data-bw-view="transactions"] #sidebarBodyMonth .total--net .v{
+  font-size: 16px;
+  font-weight: 750;
+  letter-spacing: -0.02em;
 }
-body[data-bw-view="calendar"] #sidebarBodyMonth .total--net .v.ok{
-  color: color-mix(in srgb, var(--ok) 90%, #1e293b);
-}
-body[data-bw-view="calendar"] #sidebarBodyMonth .total--net .v.danger{
+body[data-bw-view="calendar"] #sidebarBodyMonth .total--net .v.danger,
+body[data-bw-view="transactions"] #sidebarBodyMonth .total--net .v.danger{
   color: color-mix(in srgb, var(--danger) 82%, #57534e);
 }
-body[data-bw-view="calendar"] #sidebarBodyMonth > div:nth-child(2){
-  height: 5px !important;
+body[data-bw-view="calendar"] #sidebarBodyMonth .total--net:has(.v.danger),
+body[data-bw-view="transactions"] #sidebarBodyMonth .total--net:has(.v.danger){
+  background: rgba(254, 242, 242, 0.4);
 }
-body[data-bw-view="calendar"] #sidebarBodyMonth label{
-  font-size: 10.5px;
+body[data-bw-view="calendar"] #sidebarBodyMonth .total--net .v.ok,
+body[data-bw-view="transactions"] #sidebarBodyMonth .total--net .v.ok{
+  color: color-mix(in srgb, var(--ok) 90%, #1e293b);
+}
+body[data-bw-view="calendar"] #sidebarBodyMonth .totals,
+body[data-bw-view="transactions"] #sidebarBodyMonth .totals{
+  flex-direction: column;
+  flex-wrap: nowrap;
+  gap: 0;
+  padding-top: 0;
+}
+body[data-bw-view="calendar"] #sidebarBodyMonth > div:nth-child(2),
+body[data-bw-view="transactions"] #sidebarBodyMonth > div:nth-child(2){
+  height: 3px !important;
+}
+body[data-bw-view="calendar"] #sidebarBodyMonth label,
+body[data-bw-view="transactions"] #sidebarBodyMonth label{
+  font-size: 10px;
   font-weight: 500;
-  color: rgba(100, 116, 139, 0.65);
-  margin-bottom: 4px;
+  color: rgba(100, 116, 139, 0.55);
+  margin-bottom: 3px;
 }
-body[data-bw-view="calendar"] #sidebarBodyMonth input[type="month"]{
-  font-size: 12px;
-  padding: 4px 8px;
-  min-height: 30px;
+body[data-bw-view="calendar"] #sidebarBodyMonth input[type="month"],
+body[data-bw-view="transactions"] #sidebarBodyMonth input[type="month"]{
+  font-size: 11.5px;
+  padding: 3px 8px;
+  min-height: 28px;
   border-radius: 8px;
-  border: 1px solid rgba(17, 24, 39, 0.07);
-  background: #fafafa;
+  border: 1px solid rgba(17, 24, 39, 0.06);
+  background: rgba(255, 255, 255, 0.85);
   box-shadow: none;
+  transition: border-color 0.14s ease, background 0.14s ease;
+}
+body[data-bw-view="calendar"] #sidebarBodyMonth input[type="month"]:hover,
+body[data-bw-view="transactions"] #sidebarBodyMonth input[type="month"]:hover{
+  border-color: rgba(17, 24, 39, 0.1);
+  background: #fff;
+}
+body[data-bw-view="calendar"] #sidebarBodyMonth input[type="month"]:focus-visible,
+body[data-bw-view="transactions"] #sidebarBodyMonth input[type="month"]:focus-visible{
+  outline: 2px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  outline-offset: 1px;
+  border-color: rgba(11, 61, 46, 0.18);
 }
 body[data-bw-view="calendar"] .card.calendar-panel{
   padding-left: 10px;
@@ -8962,8 +9135,50 @@ body[data-bw-view="calendar"] .cal-detail-btn.is-active{
   }
 }
 @media (max-width: 720px){
-  body[data-bw-view="calendar"] .app-layout{
+  body[data-bw-view="calendar"] .app-layout,
+  body[data-bw-view="transactions"] .app-layout{
     grid-template-columns: 1fr;
+  }
+  body[data-bw-view="calendar"] .sidebar,
+  body[data-bw-view="transactions"] .sidebar{
+    position: static;
+    max-height: none;
+    align-items: stretch;
+  }
+  body[data-bw-view="calendar"] .sidebar .card,
+  body[data-bw-view="transactions"] .sidebar .card,
+  body[data-bw-view="calendar"] #sidebarPendingTxCard.sidebar-pending--empty,
+  body[data-bw-view="transactions"] #sidebarPendingTxCard.sidebar-pending--empty{
+    text-align: center;
+  }
+  body[data-bw-view="calendar"] #sidebarPendingTxCard.sidebar-pending--empty .sidebar-pending-empty-msg,
+  body[data-bw-view="transactions"] #sidebarPendingTxCard.sidebar-pending--empty .sidebar-pending-empty-msg{
+    text-align: center;
+  }
+  body[data-bw-view="calendar"] .cash-outlook-head,
+  body[data-bw-view="transactions"] .cash-outlook-head{
+    align-items: center;
+    text-align: center;
+  }
+  body[data-bw-view="calendar"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-suggestion,
+  body[data-bw-view="transactions"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-suggestion{
+    text-align: center;
+  }
+  body[data-bw-view="calendar"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-suggestion strong,
+  body[data-bw-view="transactions"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-suggestion strong{
+    justify-content: center;
+  }
+  body[data-bw-view="calendar"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-suggestion .cash-outlook-secondary,
+  body[data-bw-view="transactions"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-suggestion .cash-outlook-secondary{
+    text-align: center;
+  }
+  body[data-bw-view="calendar"] .sidebar-section-head,
+  body[data-bw-view="transactions"] .sidebar-section-head{
+    justify-content: center;
+  }
+  body[data-bw-view="calendar"] #sidebarBodyMonth .total,
+  body[data-bw-view="transactions"] #sidebarBodyMonth .total{
+    text-align: left;
   }
 }
 
@@ -17713,6 +17928,47 @@ body.plans-page--polished .plans-wrap{
   gap: 4px;
   color: rgba(75, 85, 99, 0.66);
 }
+.cal-day-reconcile-btn{
+  flex: 0 0 auto;
+  order: -1;
+  margin-right: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  color: rgba(71, 85, 105, 0.62);
+  background: transparent;
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity 0.14s ease,
+    color 0.14s ease,
+    background-color 0.14s ease;
+}
+.cal-cell:not(.cal-cell--out):not(.cal-cell--before-start):hover .cal-day-reconcile-btn,
+.cal-cell:not(.cal-cell--out):not(.cal-cell--before-start):focus-within .cal-day-reconcile-btn,
+.cal-day-reconcile-btn:focus-visible{
+  opacity: 1;
+}
+.cal-day-reconcile-btn:hover{
+  color: rgba(11, 61, 46, 0.92);
+  background: rgba(11, 61, 46, 0.08);
+}
+.cal-day-reconcile-btn:focus-visible{
+  outline: 2px solid rgba(11, 61, 46, 0.22);
+  outline-offset: 1px;
+}
+.cal-cell:not(.cal-cell--out):not(.cal-cell--before-start){
+  cursor: pointer;
+}
+.cal-cell.cal-cell--before-start,
+.cal-cell.cal-cell--out{
+  cursor: default;
+}
 .cal-daynum::after{
   content: "";
   position: absolute;
@@ -18087,7 +18343,8 @@ body.plans-page--polished .plans-wrap{
   text-decoration: none;
 }
 .cal-day-tx-line--start-balance .cal-tx-label,
-.cal-day-tx-line--start-balance .cal-amt{
+.cal-day-tx-line--start-balance .cal-amt,
+.cal-day-tx-line--start-balance .cal-tx-start-anchor{
   text-decoration: none;
   pointer-events: none;
 }
@@ -22841,17 +23098,16 @@ body[data-bw-view="calendar"] .cal-cell.bw-tour-target--calendar-add .cal-daynum
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.72) inset;
 }
 
-body[data-bw-view="calendar"] .cal-daynum.bw-tour-target--reconcile-head{
+body[data-bw-view="calendar"] .cal-day-reconcile-btn.bw-tour-target--reconcile-head{
+  opacity: 1;
   position: relative;
-  padding: 6px 8px 10px;
-  margin: -4px -4px 4px;
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--accent) 6%, #ffffff);
+  color: rgba(11, 61, 46, 0.92);
+  background: color-mix(in srgb, var(--accent) 8%, #ffffff);
   box-shadow:
     0 0 0 2px color-mix(in srgb, var(--accent) 32%, transparent),
     0 0 0 6px color-mix(in srgb, var(--accent) 10%, transparent) !important;
 }
-body[data-bw-view="calendar"] .cal-daynum.bw-tour-target--reconcile-head::after{
+body[data-bw-view="calendar"] .cal-day-reconcile-btn.bw-tour-target--reconcile-head::after{
   content: "Reconcile this day";
   position: absolute;
   right: 8px;
@@ -22867,9 +23123,8 @@ body[data-bw-view="calendar"] .cal-daynum.bw-tour-target--reconcile-head::after{
   border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent);
   box-shadow: 0 4px 14px -10px rgba(11, 61, 46, 0.32);
 }
-body[data-bw-view="calendar"] .cal-daynum.bw-tour-target--reconcile-head .cal-daynum-num{
-  background: color-mix(in srgb, var(--accent) 12%, #ffffff);
-  color: rgba(11, 61, 46, 0.94);
+body[data-bw-view="calendar"] .cal-day-reconcile-btn.bw-tour-target--reconcile-head svg{
+  stroke-width: 2.1;
 }
 
 body[data-bw-view="calendar"] #sidebarPendingTxCard.bw-tour-support-highlight--sidebar-soft{
@@ -24500,6 +24755,12 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
     height: 24px;
     padding: 0 8px;
     font-size: 0.82rem;
+  }
+
+  .calendar--mobile .cal-day-reconcile-btn{
+    opacity: 1;
+    width: 26px;
+    height: 26px;
   }
 
   .calendar--mobile .cal-reconciled-mark{

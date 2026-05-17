@@ -1519,6 +1519,9 @@ class ApplyFromOccurrenceIn(BaseModel):
     variable: bool = False
     fg_color: Optional[str] = Field(default=None, max_length=20)
     bg_color: Optional[str] = Field(default=None, max_length=20)
+    # When rescheduling "this and future", set the future series start to this date (may be
+    # before occurrence_date when moving occurrences earlier).
+    effective_start_date: Optional[date] = None
 
 
 class ApplyFromOccurrenceOut(BaseModel):
@@ -4995,6 +4998,9 @@ def apply_expected_from_occurrence(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid account for this family")
 
     _require_expected_start_on_or_after_account(account, occurrence_date)
+    eff_start = payload.effective_start_date
+    if eff_start is not None:
+        _require_expected_start_on_or_after_account(account, eff_start)
 
     category_id = payload.category_id
     if category_id is not None:
@@ -5048,9 +5054,10 @@ def apply_expected_from_occurrence(
     eff_reimb = bool(payload.reimbursable) if "reimbursable" in payload.model_fields_set else bool(getattr(tx, "reimbursable", False))
     eff_variable = bool(payload.variable)
 
+    validate_start = eff_start if eff_start is not None else occurrence_date
     validate_payload = ExpectedTransactionIn(
         account_id=payload.account_id,
-        start_date=occurrence_date,
+        start_date=validate_start,
         end_date=tx.end_date,
         end_count=getattr(tx, "end_count", None),
         recurrence=eff_rec,
@@ -5087,6 +5094,10 @@ def apply_expected_from_occurrence(
         tx.variable = validate_payload.variable
         tx.fg_color = validate_payload.fg_color
         tx.bg_color = validate_payload.bg_color
+        if eff_start is not None:
+            if tx.end_date is not None and tx.end_date < eff_start:
+                tx.end_date = None
+            tx.start_date = eff_start
         db.commit()
         db.refresh(tx)
         return ApplyFromOccurrenceOut(mode="updated_in_place", future_series_id=tx.id, ended_series_id=None)
@@ -5104,12 +5115,18 @@ def apply_expected_from_occurrence(
     old_end = tx.end_date
     tx.end_date = prev_occ
 
+    new_start = eff_start if eff_start is not None else occurrence_date
+    future_end = old_end
+    if future_end is not None and future_end < new_start:
+        future_end = None
+
     new_tx = ExpectedTransaction(
         family_id=family_id,
         account_id=validate_payload.account_id,
         created_by_user_id=user_id,
-        start_date=occurrence_date,
-        end_date=old_end,
+        start_date=new_start,
+        end_date=future_end,
+        end_count=getattr(tx, "end_count", None),
         recurrence=validate_payload.recurrence,
         second_day_of_month=validate_payload.second_day_of_month,
         description=validate_payload.description,
