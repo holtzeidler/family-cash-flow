@@ -5730,8 +5730,7 @@ body[data-bw-view="settings"] .settings-pane[data-settings-pane="preferences"] .
 
 .calendar-panel--loading .calendar-scroll,
 .calendar-panel--loading .calendar-dow-row{
-  opacity: 0.4;
-  pointer-events: none;
+  opacity: 0.55;
   transition: opacity 0.14s ease;
 }
 .calendar-panel--loading .calendar-sticky-header .cal-month-year,
@@ -17967,6 +17966,8 @@ body.plans-page--polished .plans-wrap{
 }
 .cal-cell:not(.cal-cell--out):not(.cal-cell--before-start){
   cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
 }
 .cal-cell.cal-cell--before-start,
 .cal-cell.cal-cell--out{

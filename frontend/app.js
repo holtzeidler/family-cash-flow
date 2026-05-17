@@ -4110,6 +4110,9 @@ function openTxAddModal(opts = {}) {
     return;
   }
   mountTxAddFormInModal();
+  try {
+    modalEl.style.display = "";
+  } catch (_) {}
   modalEl.classList.add("modal-overlay--open");
   modalEl.setAttribute("aria-hidden", "false");
   applyMinDateToTxAddDateInput();
@@ -4457,11 +4460,39 @@ function shouldOpenAddTxFromCalendarClick(target, cell) {
   if (cell.classList.contains("cal-cell--out")) return false;
   if (target.closest(".cal-day-reconcile-btn")) return false;
   if (target.closest(".cal-day-tx-line--expected")) return false;
-  if (target.closest(".cal-day-start-balance")) return false;
+  if (target.closest(".cal-day-start-balance .cal-day-tx-line--start-balance")) return false;
   if (target.closest(".cal-tx-part")) return false;
   if (target.closest(".cal-day-more")) return false;
-  if (target.closest(".cal-day-tx-line")) return false;
   return true;
+}
+
+function openCalendarDayAddTransaction(iso, e) {
+  if (!iso) return;
+  if (e) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+  if (alertIfDateBeforeStartingBalance(iso)) return;
+  openTxAddModal({ date: iso });
+}
+
+function bindCalendarCellAddTxClick(cell, iso) {
+  if (!cell || !iso || cell.dataset.bwAddTxBound === "1") return;
+  cell.dataset.bwAddTxBound = "1";
+  if (!cell.classList.contains("cal-cell--out") && !cell.classList.contains("cal-cell--before-start")) {
+    cell.setAttribute("role", "button");
+    cell.setAttribute("tabindex", "0");
+    const label = fmtDateMDY(iso);
+    cell.setAttribute("aria-label", label ? `Add transaction on ${label}` : "Add transaction on this day");
+  }
+  const onActivate = (e) => {
+    if (e.type === "keydown" && e.key !== "Enter" && e.key !== " ") return;
+    if (e.type === "keydown") e.preventDefault();
+    if (!shouldOpenAddTxFromCalendarClick(e.target, cell)) return;
+    openCalendarDayAddTransaction(iso, e);
+  };
+  cell.addEventListener("click", onActivate);
+  cell.addEventListener("keydown", onActivate);
 }
 
 function handleCalendarPanelClick(e) {
@@ -4503,11 +4534,7 @@ function handleCalendarPanelClick(e) {
   if (!cell || !cell.closest("#calendarGrid")) return;
   const iso = cell.dataset.iso;
   if (!iso || !shouldOpenAddTxFromCalendarClick(e.target, cell)) return;
-
-  e.preventDefault();
-  e.stopPropagation();
-  if (alertIfDateBeforeStartingBalance(iso)) return;
-  openTxAddModal({ date: iso });
+  openCalendarDayAddTransaction(iso, e);
 }
 
 function bindCalendarPanelClickRouting() {
@@ -10611,7 +10638,6 @@ function setCalendarLoadingUi(on) {
 
 async function loadMonthAndCalendar() {
   try {
-    setCalendarLoadingUi(!!state.activeFamilyId);
     state.monthActualItems = [];
     state.monthExpectedItems = [];
     state.calendarExtraActualItems = [];
@@ -10626,6 +10652,7 @@ async function loadMonthAndCalendar() {
       return;
     }
 
+    setCalendarLoadingUi(true);
     await loadTransactions();
     await loadUpcomingTransactionsPanel();
     await loadExpectedCalendar();
@@ -11619,6 +11646,7 @@ function renderCalendar() {
       noteEl.classList.remove("is-danger", "is-ok");
     }
 
+    bindCalendarCellAddTxClick(cell, iso);
     wrapper.appendChild(cell);
     cells.push(cell);
   }
