@@ -20177,7 +20177,7 @@ body[data-bw-view="transactions"] .tm__field label{
 }
 
 .modal--tx-add{
-  width: min(96vw, 1100px);
+  width: min(77vw, 880px);
   max-width: none;
   max-height: min(92vh, calc(100vh - 48px));
   display: flex;

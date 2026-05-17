@@ -1403,6 +1403,15 @@ function setTxAddFieldValidation(el, message) {
   el.textContent = message || "";
 }
 
+function resetTxAddFormValidation() {
+  txAddValidationTouched = false;
+  setTxAddFieldValidation(txAddAmountValidation, "");
+  setTxAddFieldValidation(txAddCategoryValidation, "");
+  setTxAddFieldValidation(txAddAccountValidation, "");
+  setTxAddFieldValidation(txAddDateValidation, "");
+  if (txAddSave) txAddSave.disabled = true;
+}
+
 function updateTxAddFormValidity(opts = {}) {
   const showHints = !!opts.forceShow || txAddValidationTouched;
   const st = txAddFormValidationState();
@@ -1428,7 +1437,6 @@ function bindTxAddFormValidation() {
     updateTxAddFormValidity();
   };
   txAddAmount?.addEventListener("input", markTouched);
-  txAddAmount?.addEventListener("blur", markTouched);
   txAddDate?.addEventListener("change", markTouched);
   txAddAccountId?.addEventListener("change", markTouched);
 }
@@ -4352,8 +4360,7 @@ function openTxAddModal(opts = {}) {
     txAddColorToggleEl.setAttribute("aria-expanded", "false");
     txAddColorToggleEl.classList.remove("is-open");
   }
-  txAddValidationTouched = false;
-  updateTxAddFormValidity();
+  resetTxAddFormValidation();
   const kind = opts.kind || "expense";
   const radio = document.querySelector(`input[type="radio"][name="txAddKind"][value="${kind}"]`);
   if (radio) radio.checked = true;
@@ -4363,11 +4370,14 @@ function openTxAddModal(opts = {}) {
   } catch (err) {
     if (typeof console !== "undefined" && console.warn) console.warn("txAdd chips render failed:", err);
   }
+  updateTxAddFormValidity();
   requestAnimationFrame(() => (txAddAmount ? txAddAmount.focus() : dateEl.focus()));
 }
 
 function closeTxAddModal() {
   if (!txAddModal) return;
+  resetTxAddFormValidation();
+  show(txAddErr, "");
   txAddModal.classList.remove("modal-overlay--open");
   txAddModal.setAttribute("aria-hidden", "true");
   mountTxAddFormInSidebar();
@@ -4375,6 +4385,23 @@ function closeTxAddModal() {
   txAddSelectedBgColor = null;
   txAddColorTouched = false;
 }
+
+function bindTxAddModalDismiss() {
+  const modal = txAddModal || document.getElementById("txAddModal");
+  if (!modal || modal.dataset.txAddDismissBound === "1") return;
+  modal.dataset.txAddDismissBound = "1";
+  modal.addEventListener(
+    "pointerdown",
+    (e) => {
+      if (e.target.closest("#txAddCancel")) {
+        e.preventDefault();
+        closeTxAddModal();
+      }
+    },
+    true
+  );
+}
+bindTxAddModalDismiss();
 
 function openReconcileModal(iso) {
   if (!reconcileModal) return;
@@ -4564,9 +4591,6 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && reconcileModal?.classList.contains("modal-overlay--open")) closeReconcileModal();
 });
 
-if (txAddCancel) {
-  txAddCancel.addEventListener("click", () => closeTxAddModal());
-}
 if (txAddModal) {
   txAddModal.addEventListener("click", (e) => {
     if (e.target === txAddModal) closeTxAddModal();
