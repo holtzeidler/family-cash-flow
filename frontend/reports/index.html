@@ -507,7 +507,7 @@
                     <h2 class="settings-section-title">Household</h2>
                     <p class="settings-section-lede">Invite someone to shared forecasting, or manage who’s already in.</p>
                   </header>
-                  <div id="familyInviteWrap" class="family-invite-wrap" hidden>
+                  <div id="familyInviteWrap" class="family-invite-wrap" data-household-invites-only hidden>
                     <div class="settings-subsection">
                       <h3 class="settings-subhead">Invite someone</h3>
                       <div class="form-row-h">
@@ -533,7 +533,7 @@
                       <button type="button" id="familyInviteBtn" class="secondary">Add to household</button>
                     </div>
                   </div>
-                  <div class="settings-house-section">
+                  <div class="settings-house-section" data-household-invites-only hidden>
                     <h3 class="settings-subhead">Pending invites</h3>
                     <div id="familyPendingInvites" class="family-pending-invites"></div>
                   </div>
@@ -1302,7 +1302,7 @@
           <div class="modal-actions modal-actions--apply-scope-foot">
             <button type="button" id="txEditApplyScopeCancelBtn" class="secondary apply-scope-foot__cancel">Cancel</button>
             <button type="button" id="txEditApplyScopeSaveBtn" class="apply-scope-foot__save" disabled>Save Changes</button>
-          </motion>
+          </div>
         </div>
       </div>
     </div>
@@ -1459,7 +1459,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="../app.js?v=333"></script>
+    <script src="../app.js?v=334"></script>
     <script src="../feedback.js?v=4" defer></script>
     <script src="../tour.js?v=9" defer></script>
   </body>

@@ -3081,6 +3081,7 @@ familySelect.addEventListener("change", async () => {
 const familyInviteBtn = document.getElementById("familyInviteBtn");
 if (familyInviteBtn) {
   familyInviteBtn.addEventListener("click", async () => {
+    if (!canManageHouseholdInvites()) return;
     const emailEl = document.getElementById("familyInviteEmail");
     const accessEl = document.getElementById("familyInviteAccess");
     const errEl = document.getElementById("familyMembersErr");
@@ -3108,6 +3109,7 @@ if (familyInviteBtn) {
 const familySendInviteBtn = document.getElementById("familySendInviteBtn");
 if (familySendInviteBtn) {
   familySendInviteBtn.addEventListener("click", async () => {
+    if (!canManageHouseholdInvites()) return;
     const emailEl = document.getElementById("familyInviteEmail");
     const accessEl = document.getElementById("familyInviteAccess");
     const errEl = document.getElementById("familyMembersErr");
@@ -4078,7 +4080,7 @@ function activateSettingsSection(key) {
     pane.classList.toggle("is-active", on);
     pane.hidden = !on;
   });
-  syncSettingsFamilySharingNav();
+  syncHouseholdSettingsUi();
   // Household lives inside the Accounts pane now. Load membership data as soon
   // as that pane becomes active so the subsection isn't empty when a user
   // scrolls down to it.
@@ -6858,7 +6860,7 @@ function syncActiveFamilyFlags() {
       ? "You have view-only access to this family. Ask the owner to grant edit access if you need to make changes."
       : "";
   }
-  syncSettingsFamilySharingNav();
+  syncHouseholdSettingsUi();
 }
 
 function activeFamilyMembership() {
@@ -6875,14 +6877,20 @@ function canViewHouseholdSettings() {
   return String(fam.role || "").trim().toLowerCase() === "admin";
 }
 
+/** Invite / add-member controls: household managers only (owner or family role `admin`). */
+function canManageHouseholdInvites() {
+  return canViewHouseholdSettings();
+}
+
 function getActiveSettingsSectionKey() {
   const pane = document.querySelector("#settingsViewPanel .settings-pane.is-active");
   return pane ? String(pane.dataset.settingsPane || "accounts") : "accounts";
 }
 
 /** Family “sharing” settings are limited to members whose family role is `admin` (see API FamilyOut.role). */
-function syncSettingsFamilySharingNav() {
+function syncHouseholdSettingsUi() {
   const canHousehold = canViewHouseholdSettings();
+  const canInvite = canManageHouseholdInvites();
   // Household lives inside Accounts (`data-settings-subsection`) on the Settings
   // hub, and still exists as a legacy pane (`data-settings-pane`) in embedded
   // settings on Forecast / Transactions / Reports. Hide all of it from
@@ -6892,11 +6900,36 @@ function syncSettingsFamilySharingNav() {
     el.hidden = !canHousehold;
     el.classList.toggle("bw-household-settings-visible", canHousehold);
     el.setAttribute("aria-hidden", canHousehold ? "false" : "true");
+    if (!canHousehold) {
+      try {
+        el.style.display = "none";
+      } catch (_) {}
+    } else {
+      try {
+        el.style.removeProperty("display");
+      } catch (_) {}
+    }
   });
   document.querySelectorAll('[data-settings-pane="familySharing"]').forEach((el) => {
     if (!canHousehold) {
       el.hidden = true;
       el.classList.remove("is-active");
+      try {
+        el.style.display = "none";
+      } catch (_) {}
+    }
+  });
+  document.querySelectorAll(".family-invite-wrap, [data-household-invites-only]").forEach((el) => {
+    el.hidden = !canInvite;
+    el.setAttribute("aria-hidden", canInvite ? "false" : "true");
+    if (!canInvite) {
+      try {
+        el.style.display = "none";
+      } catch (_) {}
+    } else {
+      try {
+        el.style.removeProperty("display");
+      } catch (_) {}
     }
   });
   const accountsHeading = document.getElementById("settingsAccountsHeading");
@@ -6905,31 +6938,32 @@ function syncSettingsFamilySharingNav() {
   }
 }
 
+function syncSettingsFamilySharingNav() {
+  syncHouseholdSettingsUi();
+}
+
 async function loadFamilyMembersPanel() {
   const errEl = document.getElementById("familyMembersErr");
   const listEl = document.getElementById("familyMembersList");
-  const inviteWrap = document.getElementById("familyInviteWrap");
   const pendingEl = document.getElementById("familyPendingInvites");
   show(errEl, "");
   if (!listEl) return;
   syncActiveFamilyFlags();
+  syncHouseholdSettingsUi();
   if (!canViewHouseholdSettings()) {
-    syncSettingsFamilySharingNav();
     listEl.innerHTML = "";
     if (pendingEl) pendingEl.innerHTML = "";
-    if (inviteWrap) inviteWrap.hidden = true;
     return;
   }
   if (!state.activeFamilyId) {
     listEl.innerHTML = '<p class="meta">Select a family from the app first.</p>';
-    if (inviteWrap) inviteWrap.hidden = true;
     if (pendingEl) pendingEl.innerHTML = "";
     return;
   }
-  if (inviteWrap) inviteWrap.hidden = !state.activeFamilyIsOwner;
+  const canInvite = canManageHouseholdInvites();
   if (pendingEl) {
     pendingEl.innerHTML = "";
-    if (state.activeFamilyIsOwner) {
+    if (canInvite && state.activeFamilyIsOwner) {
       try {
         const pend = await api(`/api/families/${state.activeFamilyId}/invites`, "GET");
         if (!pend || pend.length === 0) {
@@ -15258,6 +15292,12 @@ async function main() {
   await loadMe();
   bwDispatchMilestone("first-login");
   await loadFamilies();
+  syncHouseholdSettingsUi();
+  if (window.__BW_FORCE_VIEW === "settings") {
+    try {
+      activateSettingsSection("accounts");
+    } catch (_) {}
+  }
   if (state.activeFamilyId) {
     await loadCategories();
     await loadAccounts();
