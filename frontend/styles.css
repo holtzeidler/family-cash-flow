@@ -18349,7 +18349,11 @@ body.plans-page--polished .plans-wrap{
 .cal-day-tx-line--start-balance .cal-amt,
 .cal-day-tx-line--start-balance .cal-tx-start-anchor{
   text-decoration: none;
-  pointer-events: none;
+}
+
+.cal-day-start-balance{
+  flex: 0 0 auto;
+  margin-bottom: 2px;
 }
 
 .cal-day-tx-line--expected.cal-expected-variable .cal-tx-label,

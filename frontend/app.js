@@ -1117,6 +1117,7 @@ function openAccountEditModalForAccount(account) {
 function openAccountEditModalForAccountId(accountId) {
   const account = findAccountById(accountId);
   if (account) {
+    closeTxAddModal();
     openAccountEditModalForAccount(account);
     return true;
   }
@@ -4364,11 +4365,106 @@ if (reconcileModal) {
   });
 }
 
+function findExpectedCalendarItem(expectedId, occurrenceIso) {
+  const id = Number(expectedId);
+  const occ = normalizeIsoDate(occurrenceIso) || occurrenceIso;
+  const pools = [...(state.monthExpectedItems || []), ...(state.calendarExtraExpectedItems || [])];
+  return (
+    pools.find(
+      (it) =>
+        Number(it.expected_transaction_id) === id &&
+        normalizeIsoDate(it.occurrence_date || it.date) === occ,
+    ) ||
+    pools.find(
+      (it) => Number(it.expected_transaction_id) === id && normalizeIsoDate(it.date) === occ,
+    ) ||
+    null
+  );
+}
+
+function openCalendarExpectedFromLine(expectedLine) {
+  const cell = expectedLine.closest(".cal-cell");
+  const iso = cell?.dataset?.iso || "";
+  if (iso && alertIfDateBeforeStartingBalance(iso)) return;
+  const eid = Number(expectedLine.dataset.expectedId || 0);
+  if (!eid) return;
+  const meta = getExpectedSeriesMeta(eid);
+  if (!meta) return;
+  closeTxAddModal();
+  const occ =
+    normalizeIsoDate(expectedLine.dataset.occurrenceDate) ||
+    normalizeIsoDate(iso) ||
+    iso;
+  const calendarItem =
+    findExpectedCalendarItem(eid, occ) ||
+    ({
+      ...meta,
+      expected_transaction_id: eid,
+      _type: "expected",
+      date: occ,
+      occurrence_date: occ,
+    });
+  openExpectedEditModal(meta, { calendarItem });
+}
+
+function appendCalendarDayStartBalanceLine(row, parentEl, iso) {
+  const line = document.createElement("div");
+  line.className = "cal-day-tx-line cal-day-tx-line--start-balance";
+  line.dataset.accountId = String(row.account_id);
+  line.setAttribute("role", "button");
+  line.setAttribute("tabindex", "0");
+  line.title = "Edit account starting balance";
+  const acctLabel = row.account_name ? String(row.account_name).trim() : "account";
+  line.setAttribute("aria-label", `Edit starting balance for ${acctLabel}`);
+
+  const labelSpan = document.createElement("span");
+  labelSpan.className = "cal-tx-label";
+  labelSpan.textContent = "Starting Balance ";
+
+  const labelWrap = document.createElement("span");
+  labelWrap.className = "cal-tx-label-wrap";
+  const anchor = document.createElement("span");
+  anchor.className = "cal-tx-start-anchor";
+  anchor.setAttribute("aria-hidden", "true");
+  anchor.innerHTML =
+    '<svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 18h14M7 13h10M9 8h6"/></svg>';
+  labelWrap.appendChild(anchor);
+  labelWrap.appendChild(labelSpan);
+
+  const amtSpan = document.createElement("span");
+  amtSpan.className = "cal-amt";
+  amtSpan.textContent = `$${fmtMoney(row.amount)}`;
+
+  line.appendChild(labelWrap);
+  line.appendChild(amtSpan);
+
+  const openStartBalEdit = (e) => {
+    if (e.type === "keydown" && e.key !== "Enter" && e.key !== " ") return;
+    if (e.type === "keydown") e.preventDefault();
+    e.preventDefault();
+    e.stopPropagation();
+    if (!openAccountEditModalForAccountId(row.account_id)) {
+      window.alert("Could not open this account. Try refreshing the page.");
+    }
+  };
+  line.addEventListener("click", openStartBalEdit);
+  line.addEventListener("keydown", openStartBalEdit);
+  parentEl.appendChild(line);
+}
+
 function handleCalendarPanelClick(e) {
   const grid = document.getElementById("calendarGrid");
   if (!grid || !grid.contains(e.target)) return;
 
-  const startBalLine = e.target.closest(".cal-day-tx-line--start-balance");
+  const expectedLine = e.target.closest(".cal-day-tx-line--expected");
+  if (expectedLine && grid.contains(expectedLine)) {
+    e.preventDefault();
+    e.stopPropagation();
+    openCalendarExpectedFromLine(expectedLine);
+    return;
+  }
+
+  const startBalLine = e.target.closest(".cal-day-start-balance .cal-day-tx-line--start-balance");
   if (startBalLine && grid.contains(startBalLine)) {
     e.preventDefault();
     e.stopPropagation();
@@ -4403,7 +4499,7 @@ function handleCalendarPanelClick(e) {
     e.target.closest(".cal-day-txns") &&
     !e.target.closest(".cal-ledger-metrics") &&
     !e.target.closest(".cal-day-tx-line--expected") &&
-    !e.target.closest(".cal-day-tx-line--start-balance") &&
+    !e.target.closest(".cal-day-start-balance") &&
     !e.target.closest(".cal-day-more")
   ) {
     if (!state.calendarExpandedDays) state.calendarExpandedDays = new Set();
@@ -4412,8 +4508,10 @@ function handleCalendarPanelClick(e) {
     return;
   }
 
+  // Clicks on transaction rows are handled above; do not open Add from row chrome.
+  if (e.target.closest(".cal-day-tx-line") || e.target.closest(".cal-day-start-balance")) return;
+
   // Click on an empty part of a day cell opens the add transaction modal.
-  // (Expected tx lines stopPropagation in their own handler.)
   if (alertIfDateBeforeStartingBalance(iso)) return;
   openTxAddModal({ date: iso });
 }
@@ -9033,6 +9131,7 @@ function openExpectedEditModal(tx, opts = {}) {
 
   setExpectedModalMode();
   show(txEditErr, "");
+  closeTxAddModal();
   try { txEditModal.style.display = ""; } catch (_) {}
   txEditModal.classList.add("modal-overlay--open");
   txEditModal.setAttribute("aria-hidden", "false");
@@ -11214,6 +11313,7 @@ function renderCalendar() {
       <div class="cal-cell-fill"></div>
       <div class="cal-cell-stack">
         <div class="cal-forecast-note" hidden></div>
+        <div class="cal-day-start-balance" hidden></div>
         <div class="cal-day-txns"></div>
         <div class="cal-ledger-metrics"></div>
       </div>
@@ -11224,6 +11324,7 @@ function renderCalendar() {
     // cal-cell--before-start tints days before the anchor (days on/after stay white).
     if (!isOutOfMonth && isPast && !earliestStartIso) cell.classList.add("cal-cell--past");
     const txnsEl = cell.querySelector(".cal-day-txns");
+    const startBalEl = cell.querySelector(".cal-day-start-balance");
     const metricsEl = cell.querySelector(".cal-ledger-metrics");
     const noteEl = cell.querySelector(".cal-forecast-note");
 
@@ -11265,13 +11366,7 @@ function renderCalendar() {
     if (showDetails) {
       for (const item of expectedItems) combined.push({ ...item, _type: "expected" });
       for (const tx of actualTxs) combined.push({ ...tx, _type: "actual" });
-      if (!isBeforeStart) {
-        for (const sb of startBalancesByDate.get(iso) || []) combined.push(sb);
-      }
       combined.sort((a, b) => {
-        const aSb = a && a._type === "start_balance" ? 1 : 0;
-        const bSb = b && b._type === "start_balance" ? 1 : 0;
-        if (aSb !== bSb) return bSb - aSb;
         const pa = calendarTxnPriority(a);
         const pb = calendarTxnPriority(b);
         if (pb !== pa) return pb - pa;
@@ -11280,6 +11375,12 @@ function renderCalendar() {
     }
 
     if (showDetails) {
+      const startBalRows = !isBeforeStart ? startBalancesByDate.get(iso) || [] : [];
+      if (startBalEl) {
+        startBalEl.hidden = startBalRows.length === 0;
+        for (const sbRow of startBalRows) appendCalendarDayStartBalanceLine(sbRow, startBalEl, iso);
+      }
+
       const isExpanded = !!(state.calendarExpandedDays && state.calendarExpandedDays.has(iso));
       const visibleRows = isExpanded ? combined : combined.slice(0, MAX_VISIBLE_TXNS);
       const hiddenCount = Math.max(0, combined.length - visibleRows.length);
@@ -11288,13 +11389,10 @@ function renderCalendar() {
       for (let vri = 0; vri < visibleRows.length; vri++) {
         const row = visibleRows[vri];
         const isExpected = row._type === "expected";
-        const isStartBalance = row._type === "start_balance";
         const line = document.createElement("div");
         line.className = isExpected
           ? "cal-day-tx-line cal-day-tx-line--expected"
-          : isStartBalance
-            ? "cal-day-tx-line cal-day-tx-line--start-balance"
-            : "cal-day-tx-line cal-tx-part";
+          : "cal-day-tx-line cal-tx-part";
         if (isExpanded) {
           if (vri === 0) line.classList.add("cal-day-tx-line--primary");
           else if (vri === 1) line.classList.add("cal-day-tx-line--secondary");
@@ -11306,12 +11404,17 @@ function renderCalendar() {
         for (const p of calendarDayTxLineToneParts(row)) line.classList.add(p);
         for (const p of calendarDayTxSemanticParts(row)) line.classList.add(p);
         if (isExpected && row.variable) line.classList.add("cal-expected-variable");
-        if (!isExpected && !isStartBalance) line.dataset.txId = String(row.id);
+        if (!isExpected) line.dataset.txId = String(row.id);
+        if (isExpected) {
+          line.dataset.expectedId = String(row.expected_transaction_id);
+          line.dataset.occurrenceDate =
+            normalizeIsoDate(row.occurrence_date || row.date) || normalizeIsoDate(iso) || iso;
+        }
         // Apply an explicit per-transaction color to the row's left stripe.
         // We only honor explicit overrides (not the category-inherited color),
         // otherwise large categories would paint stripes for every row and
         // make the calendar feel busy.
-        if (!isStartBalance) {
+        {
           const rawBg = row && row.bg_color ? String(row.bg_color).trim() : "";
           if (rawBg && rawBg.toLowerCase() !== "none") {
             line.classList.add("cal-day-tx-line--has-color");
@@ -11321,8 +11424,8 @@ function renderCalendar() {
 
         // Match list UIs: prefer category (from API string or category_id → state.categories).
         // Forecast rows used to always show description (e.g. "ComEd") even when category was "Gas".
-        const categoryName = isStartBalance ? "" : effectiveTransactionCategoryName(row);
-        const descRaw = isExpected || isStartBalance ? row.description || "(expected)" : (row.description || "Uncategorized").trim();
+        const categoryName = effectiveTransactionCategoryName(row);
+        const descRaw = isExpected ? row.description || "(expected)" : (row.description || "Uncategorized").trim();
         const labelRaw = categoryName || descRaw;
         // Keep labels short so they don't wrap into the amount column.
         const label = truncate(labelRaw, 52);
@@ -11333,36 +11436,11 @@ function renderCalendar() {
 
         const labelWrap = document.createElement("span");
         labelWrap.className = "cal-tx-label-wrap";
-        if (isStartBalance) {
-          line.dataset.accountId = String(row.account_id);
-          line.setAttribute("role", "button");
-          line.setAttribute("tabindex", "0");
-          line.title = "Edit account starting balance";
-          const acctLabel = row.account_name ? String(row.account_name).trim() : "account";
-          line.setAttribute("aria-label", `Edit starting balance for ${acctLabel}`);
-          const anchor = document.createElement("span");
-          anchor.className = "cal-tx-start-anchor";
-          anchor.setAttribute("aria-hidden", "true");
-          anchor.innerHTML =
-            '<svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 18h14M7 13h10M9 8h6"/></svg>';
-          labelWrap.appendChild(anchor);
-          const openStartBalEdit = (e) => {
-            if (e.type === "keydown" && e.key !== "Enter" && e.key !== " ") return;
-            if (e.type === "keydown") e.preventDefault();
-            e.preventDefault();
-            e.stopPropagation();
-            if (!openAccountEditModalForAccountId(row.account_id)) {
-              window.alert("Could not open this account. Try refreshing the page.");
-            }
-          };
-          line.addEventListener("click", openStartBalEdit);
-          line.addEventListener("keydown", openStartBalEdit);
-        }
         labelWrap.appendChild(labelSpan);
 
         const amtSpan = document.createElement("span");
         amtSpan.className = "cal-amt";
-        if (!isStartBalance) {
+        {
           const k = String(row.kind || "").toLowerCase();
           if (k === "income") amtSpan.classList.add("income");
           else if (k === "expense") amtSpan.classList.add("expense");
@@ -11371,7 +11449,7 @@ function renderCalendar() {
 
         line.appendChild(labelWrap);
         line.appendChild(amtSpan);
-        if (!isStartBalance) line.title = String(labelRaw || "").trim();
+        line.title = String(labelRaw || "").trim();
 
         {
           const noteStr = row.notes && String(row.notes).trim() ? String(row.notes).trim() : "";
@@ -11381,9 +11459,7 @@ function renderCalendar() {
         if (isExpected) {
           line.addEventListener("click", (e) => {
             e.stopPropagation();
-            if (alertIfDateBeforeStartingBalance(iso)) return;
-            const meta = getExpectedSeriesMeta(row.expected_transaction_id);
-            if (meta) openExpectedEditModal(meta, { calendarItem: row });
+            openCalendarExpectedFromLine(line);
           });
         }
 
