@@ -4098,16 +4098,21 @@ function activateSettingsSection(key) {
 function openTxAddModal(opts = {}) {
   const modalEl = txAddModal || document.getElementById("txAddModal");
   const dateEl = txAddDate || document.getElementById("txAddDate");
-  if (!modalEl || !dateEl) return;
-  mountTxAddFormInModal();
+  if (!modalEl || !dateEl) {
+    window.alert("Add transaction form is not available on this page. Try refreshing.");
+    return;
+  }
   const dateVal = opts.date || "";
   const dateNorm = dateVal ? normalizeIsoDate(dateVal) || dateVal : "";
   if (dateNorm && isDateBeforeEarliestStartingBalance(dateNorm)) {
     window.alert("That date is before your starting balance.");
     return;
   }
+  mountTxAddFormInModal();
+  modalEl.classList.add("modal-overlay--open");
+  modalEl.setAttribute("aria-hidden", "false");
   applyMinDateToTxAddDateInput();
-  txAddDate.value = dateVal;
+  dateEl.value = dateVal;
   if (txAddAmount) txAddAmount.value = "";
   if (txAddNotes) txAddNotes.value = "";
   setCategoryFieldValue("txAddCategoryId", null);
@@ -4135,9 +4140,11 @@ function openTxAddModal(opts = {}) {
   const radio = document.querySelector(`input[type="radio"][name="txAddKind"][value="${kind}"]`);
   if (radio) radio.checked = true;
   show(txAddErr, "");
-  renderTxAddCategoryChips();
-  modalEl.classList.add("modal-overlay--open");
-  modalEl.setAttribute("aria-hidden", "false");
+  try {
+    renderTxAddCategoryChips();
+  } catch (err) {
+    if (typeof console !== "undefined" && console.warn) console.warn("txAdd chips render failed:", err);
+  }
   requestAnimationFrame(() => (txAddAmount ? txAddAmount.focus() : dateEl.focus()));
 }
 
@@ -4357,59 +4364,65 @@ if (reconcileModal) {
   });
 }
 
-if (calendarGrid) {
-  calendarGrid.addEventListener("click", (e) => {
-    const startBalLine = e.target.closest(".cal-day-tx-line--start-balance");
-    if (startBalLine && calendarGrid.contains(startBalLine)) {
-      e.preventDefault();
-      e.stopPropagation();
-      const aid = startBalLine.dataset.accountId;
-      if (!openAccountEditModalForAccountId(aid)) {
-        window.alert("Could not open this account. Try refreshing the page.");
-      }
-      return;
+function handleCalendarPanelClick(e) {
+  const grid = document.getElementById("calendarGrid");
+  if (!grid || !grid.contains(e.target)) return;
+
+  const startBalLine = e.target.closest(".cal-day-tx-line--start-balance");
+  if (startBalLine && grid.contains(startBalLine)) {
+    e.preventDefault();
+    e.stopPropagation();
+    const aid = startBalLine.dataset.accountId;
+    if (!openAccountEditModalForAccountId(aid)) {
+      window.alert("Could not open this account. Try refreshing the page.");
     }
+    return;
+  }
 
-    // Click on an actual transaction line opens the edit modal.
-    const part = e.target.closest(".cal-tx-part");
-    if (part && calendarGrid.contains(part)) {
-      const id = Number(part.dataset.txId);
-      if (!id) return;
-      const tx = [...(state.monthActualItems || []), ...(state.calendarExtraActualItems || [])].find((t) => Number(t.id) === id);
-      if (tx) openTxEditModal(tx);
-      return;
-    }
+  // Click on an actual transaction line opens the edit modal.
+  const part = e.target.closest(".cal-tx-part");
+  if (part && grid.contains(part)) {
+    const id = Number(part.dataset.txId);
+    if (!id) return;
+    const tx = [...(state.monthActualItems || []), ...(state.calendarExtraActualItems || [])].find((t) => Number(t.id) === id);
+    if (tx) openTxEditModal(tx);
+    return;
+  }
 
-    const cell = e.target.closest(".cal-cell");
-    if (!cell || !calendarGrid.contains(cell)) return;
-    const iso = cell.dataset.iso;
-    if (!iso) return;
+  const cell = e.target.closest(".cal-cell");
+  if (!cell || !cell.closest("#calendarGrid")) return;
+  const iso = cell.dataset.iso;
+  if (!iso) return;
 
-    if (e.target.closest(".cal-day-reconcile-btn")) return;
+  const isExpanded = !!(state.calendarExpandedDays && state.calendarExpandedDays.has(iso));
+  // Busy days: first click on the transaction list (not the balance) expands hidden rows.
+  // Clicking the balance or empty margin still opens Add transaction.
+  if (
+    cell.classList.contains("cal-cell--has-collapsed-rows") &&
+    !isExpanded &&
+    e.target.closest(".cal-day-txns") &&
+    !e.target.closest(".cal-ledger-metrics") &&
+    !e.target.closest(".cal-day-tx-line--expected") &&
+    !e.target.closest(".cal-day-tx-line--start-balance") &&
+    !e.target.closest(".cal-day-more")
+  ) {
+    if (!state.calendarExpandedDays) state.calendarExpandedDays = new Set();
+    state.calendarExpandedDays.add(iso);
+    renderCalendar();
+    return;
+  }
 
-    const isExpanded = !!(state.calendarExpandedDays && state.calendarExpandedDays.has(iso));
-    // Busy days: first click on the transaction list (not the balance) expands hidden rows.
-    // Clicking the balance or empty margin still opens Add transaction.
-    if (
-      cell.classList.contains("cal-cell--has-collapsed-rows") &&
-      !isExpanded &&
-      e.target.closest(".cal-day-txns") &&
-      !e.target.closest(".cal-ledger-metrics") &&
-      !e.target.closest(".cal-day-tx-line--expected") &&
-      !e.target.closest(".cal-day-tx-line--start-balance") &&
-      !e.target.closest(".cal-day-more")
-    ) {
-      if (!state.calendarExpandedDays) state.calendarExpandedDays = new Set();
-      state.calendarExpandedDays.add(iso);
-      renderCalendar();
-      return;
-    }
+  // Click on an empty part of a day cell opens the add transaction modal.
+  // (Expected tx lines stopPropagation in their own handler.)
+  if (alertIfDateBeforeStartingBalance(iso)) return;
+  openTxAddModal({ date: iso });
+}
 
-    // Click on an empty part of a day cell opens the add transaction modal.
-    // (Expected tx lines stopPropagation in their own handler.)
-    if (alertIfDateBeforeStartingBalance(iso)) return;
-    openTxAddModal({ date: iso });
-  });
+const calendarPanelEl = document.getElementById("calendarPanel");
+if (calendarPanelEl) {
+  calendarPanelEl.addEventListener("click", handleCalendarPanelClick);
+} else if (calendarGrid) {
+  calendarGrid.addEventListener("click", handleCalendarPanelClick);
 }
 
 // (Transaction View) recurring filter panel removed; upcoming filters replace it.

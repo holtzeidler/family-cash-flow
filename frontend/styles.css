@@ -17944,6 +17944,8 @@ body.plans-page--polished .plans-wrap{
   background: transparent;
   cursor: pointer;
   opacity: 0;
+  /* Hidden reconcile control must not steal clicks meant for “add on this day”. */
+  pointer-events: none;
   transition:
     opacity 0.14s ease,
     color 0.14s ease,
@@ -17953,6 +17955,7 @@ body.plans-page--polished .plans-wrap{
 .cal-cell:not(.cal-cell--out):not(.cal-cell--before-start):focus-within .cal-day-reconcile-btn,
 .cal-day-reconcile-btn:focus-visible{
   opacity: 1;
+  pointer-events: auto;
 }
 .cal-day-reconcile-btn:hover{
   color: rgba(11, 61, 46, 0.92);
@@ -19731,7 +19734,7 @@ body[data-bw-view="transactions"] .tm__field label{
 .modal-overlay{
   position: fixed;
   inset: 0;
-  z-index: 1000;
+  z-index: 1400;
   background: rgba(0, 0, 0, 0.55);
   display: none;
   align-items: center;
@@ -23100,6 +23103,7 @@ body[data-bw-view="calendar"] .cal-cell.bw-tour-target--calendar-add .cal-daynum
 
 body[data-bw-view="calendar"] .cal-day-reconcile-btn.bw-tour-target--reconcile-head{
   opacity: 1;
+  pointer-events: auto;
   position: relative;
   color: rgba(11, 61, 46, 0.92);
   background: color-mix(in srgb, var(--accent) 8%, #ffffff);
