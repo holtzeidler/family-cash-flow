@@ -1283,13 +1283,15 @@ if (txEditDate) {
       if (typeof txEditDate.showPicker === "function") txEditDate.showPicker();
     } catch (_) {}
   });
-  txEditDate.addEventListener("change", () => {
+  const syncTxEditMovedOccurrenceDate = () => {
     if (transactionEditMode !== "recurring" || !selectedExpectedInstance) return;
     const iso = normalizeIsoDate(txEditDate.value);
     if (!iso) return;
     selectedExpectedMovedToDate = iso;
     show(txEditErr, "");
-  });
+  };
+  txEditDate.addEventListener("change", syncTxEditMovedOccurrenceDate);
+  txEditDate.addEventListener("input", syncTxEditMovedOccurrenceDate);
 }
 
 // Reconcile day modal
@@ -3421,8 +3423,8 @@ function applyTransactionEditMode(mode, opts = {}) {
 
   const saveRow = document.getElementById("txEditSaveRow");
   if (saveRow) saveRow.style.display = "";
-  if (txEditSave) txEditSave.style.display = recurring ? "none" : "";
-  if (txEditRecurringUpdateBtn) txEditRecurringUpdateBtn.style.display = recurring ? "" : "none";
+  if (txEditSave) txEditSave.style.display = "";
+  if (txEditRecurringUpdateBtn) txEditRecurringUpdateBtn.style.display = "none";
   const txEditDel = document.getElementById("txEditDelete");
   if (txEditDel) txEditDel.style.display = "";
 
@@ -3708,10 +3710,19 @@ function closeReconcileModal() {
 
 if (txEditSave) {
   txEditSave.addEventListener("click", async () => {
+    if (transactionEditMode === "recurring") {
+      show(txEditErr, "");
+      const pre = validateTxEditBeforeRecurringApply();
+      if (pre) {
+        show(txEditErr, pre);
+        return;
+      }
+      openTxEditApplyScopeModal();
+      return;
+    }
     let savedOk = false;
     let savedDateIso = "";
     try {
-      if (transactionEditMode === "recurring") return;
       show(txEditErr, "");
       if (!state.activeFamilyId) throw new Error("Choose a family first");
       const id = txEditId.value;
@@ -5875,6 +5886,56 @@ async function deleteExpectedThisAndFutureFromModal() {
   await refreshExpectedCalendarAndMonth();
 }
 
+function txEditEditedOccurrenceIso() {
+  return normalizeIsoDate(txEditDate?.value || "") || null;
+}
+
+function buildExpectedSeriesPutPayload({
+  accountId,
+  amount,
+  recurrenceVal,
+  secondDayVal,
+  endCountVal,
+  notesVal,
+  categoryId,
+  meta,
+  startDateIso,
+}) {
+  return {
+    account_id: Number(accountId),
+    start_date: startDateIso,
+    end_date: meta.end_date || null,
+    end_count: endCountVal,
+    recurrence: recurrenceVal,
+    second_day_of_month: recurrenceVal === "twice_monthly" ? secondDayVal : null,
+    description: expectedSaveDescription(),
+    notes: notesVal,
+    kind: getRadioValue("txEditKind", "expense"),
+    amount: Number(amount),
+    variable: !!(seriesVariable && seriesVariable.checked),
+    category_id: categoryId,
+    ...(txEditColorTouched
+      ? {
+          bg_color: normalizeBgColorForSave(txEditSelectedBgColor),
+          fg_color: normalizeFgColorForSave(txEditSelectedBgColor),
+        }
+      : {}),
+  };
+}
+
+async function navigateCalendarToIsoMonthIfNeeded(iso) {
+  if (!iso) return;
+  const ym = String(iso).slice(0, 7);
+  const curYm = (calendarMonth?.value || monthInput?.value || "").slice(0, 7);
+  if (ym && curYm && ym !== curYm) {
+    if (monthInput) monthInput.value = ym;
+    applyCalendarMonthToPickers(ym);
+    await loadMonthAndCalendar();
+    return;
+  }
+  await refreshExpectedCalendarAndMonth();
+}
+
 async function saveExpectedInstanceOverride() {
   show(txEditErr, "");
   if (!state.activeFamilyId) throw new Error("Choose a family first");
@@ -5893,7 +5954,7 @@ async function saveExpectedInstanceOverride() {
   if (!occ) throw new Error("Invalid occurrence date");
   // If the user moves the occurrence back onto its original occurrence_date,
   // clear moved_to_date so it shows only once on that day.
-  let movedTo = normalizeIsoDate(selectedExpectedMovedToDate || "") || null;
+  let movedTo = normalizeIsoDate(selectedExpectedMovedToDate || txEditEditedOccurrenceIso() || "") || null;
   if (movedTo && movedTo === occ) movedTo = null;
   if (movedTo && isDateBeforeEarliestStartingBalance(movedTo)) {
     throw new Error("That date is before your starting balance.");
@@ -5922,18 +5983,7 @@ async function saveExpectedInstanceOverride() {
   );
 
   closeTxEditModal();
-  // If moved to a different month, jump the UI so it doesn't look like the item "disappeared".
-  {
-    const movedYm = movedTo ? String(movedTo).slice(0, 7) : "";
-    const curYm = (calendarMonth?.value || monthInput?.value || "").slice(0, 7);
-    if (movedYm && curYm && movedYm !== curYm) {
-      if (monthInput) monthInput.value = movedYm;
-      applyCalendarMonthToPickers(movedYm);
-      await loadMonthAndCalendar();
-      return;
-    }
-  }
-  await refreshExpectedCalendarAndMonth();
+  await navigateCalendarToIsoMonthIfNeeded(movedTo);
 }
 
 async function saveExpectedSeriesFromInstance() {
@@ -5964,6 +6014,11 @@ async function saveExpectedSeriesFromInstance() {
   if (!occRaw) {
     throw new Error("Pick an occurrence from the calendar or recurring list to update this date and all future ones.");
   }
+  const editedIso = txEditEditedOccurrenceIso();
+  if (editedIso && isDateBeforeEarliestStartingBalance(editedIso)) {
+    throw new Error("That date is before your starting balance.");
+  }
+  const dateMoved = !!(editedIso && editedIso !== occRaw);
   const endCountRaw = instanceEndCount?.value != null ? String(instanceEndCount.value).trim() : "";
   const endCountVal = endCountRaw === "" ? null : Number(endCountRaw);
   if (endCountVal != null) {
@@ -5982,7 +6037,8 @@ async function saveExpectedSeriesFromInstance() {
     // new series start. For twice-monthly series, the "second day" must differ from the *apply*
     // occurrence day. If we're applying from the existing second day, automatically swap days
     // so the schedule stays the same (just flips which day is considered "start" vs "second").
-    const occDom = occRaw ? Number(String(occRaw).slice(8, 10)) : NaN;
+    const anchorDom = dateMoved && editedIso ? Number(String(editedIso).slice(8, 10)) : Number(String(occRaw).slice(8, 10));
+    const occDom = Number.isFinite(anchorDom) ? anchorDom : NaN;
     if (Number.isFinite(occDom) && n === occDom) {
       if (Number.isFinite(startDom) && startDom !== occDom) {
         secondDayVal = startDom;
@@ -5998,27 +6054,21 @@ async function saveExpectedSeriesFromInstance() {
     secondDayVal = null;
   }
 
+  const putPayload = buildExpectedSeriesPutPayload({
+    accountId,
+    amount,
+    recurrenceVal,
+    secondDayVal,
+    endCountVal,
+    notesVal,
+    categoryId,
+    meta,
+    startDateIso: editedIso || meta.start_date || occRaw,
+  });
+
+  let applyResult = null;
   if (String(meta.recurrence || "") === "once") {
-    await api(`/api/families/${state.activeFamilyId}/expected-transactions/${seriesId}`, "PUT", {
-      account_id: Number(accountId),
-      start_date: meta.start_date || "",
-      end_date: meta.end_date || null,
-      end_count: endCountVal,
-      recurrence: recurrenceVal,
-      second_day_of_month: recurrenceVal === "twice_monthly" ? secondDayVal : null,
-      description: expectedSaveDescription(),
-      notes: notesVal,
-      kind: getRadioValue("txEditKind", "expense"),
-      amount: Number(amount),
-      variable: !!(seriesVariable && seriesVariable.checked),
-      category_id: categoryId,
-      ...(txEditColorTouched
-        ? {
-            bg_color: normalizeBgColorForSave(txEditSelectedBgColor),
-            fg_color: normalizeFgColorForSave(txEditSelectedBgColor),
-          }
-        : {}),
-    });
+    await api(`/api/families/${state.activeFamilyId}/expected-transactions/${seriesId}`, "PUT", putPayload);
   } else {
     const applyBody = {
       account_id: Number(accountId),
@@ -6039,27 +6089,44 @@ async function saveExpectedSeriesFromInstance() {
         : {}),
     };
     if (recurrenceVal === "twice_monthly") applyBody.second_day_of_month = secondDayVal;
-    await api(
+    applyResult = await api(
       `/api/families/${state.activeFamilyId}/expected-transactions/${seriesId}/apply-from-occurrence/${encodeURIComponent(occRaw)}`,
       "POST",
       applyBody
     );
   }
 
-  closeTxEditModal();
-  await refreshExpectedCalendarAndMonth();
-}
-
-if (txEditRecurringUpdateBtn) {
-  txEditRecurringUpdateBtn.addEventListener("click", () => {
-    show(txEditErr, "");
-    const pre = validateTxEditBeforeRecurringApply();
-    if (pre) {
-      show(txEditErr, pre);
-      return;
+  if (dateMoved && editedIso && String(meta.recurrence || "") !== "once") {
+    const futureId =
+      applyResult && applyResult.future_series_id != null
+        ? Number(applyResult.future_series_id)
+        : applyResult && applyResult.mode === "updated_in_place"
+          ? seriesId
+          : null;
+    if (futureId) {
+      await api(
+        `/api/families/${state.activeFamilyId}/expected-transactions/${encodeURIComponent(String(futureId))}`,
+        "PUT",
+        buildExpectedSeriesPutPayload({
+          accountId,
+          amount,
+          recurrenceVal,
+          secondDayVal,
+          endCountVal,
+          notesVal,
+          categoryId,
+          meta: {
+            ...meta,
+            end_date: meta.end_date || null,
+          },
+          startDateIso: editedIso,
+        })
+      );
     }
-    openTxEditApplyScopeModal();
-  });
+  }
+
+  closeTxEditModal();
+  await navigateCalendarToIsoMonthIfNeeded(dateMoved ? editedIso : null);
 }
 
 const txEditApplyScopeInstanceBtn = document.getElementById("txEditApplyScopeInstanceBtn");
@@ -6067,6 +6134,7 @@ if (txEditApplyScopeInstanceBtn) {
   txEditApplyScopeInstanceBtn.addEventListener("click", async () => {
     try {
       await saveExpectedInstanceOverride();
+      closeTxEditApplyScopeModal();
     } catch (e) {
       show(document.getElementById("txEditApplyScopeErr"), e.message || "Failed to save override");
     }
@@ -6078,6 +6146,7 @@ if (txEditApplyScopeSeriesBtn) {
   txEditApplyScopeSeriesBtn.addEventListener("click", async () => {
     try {
       await saveExpectedSeriesFromInstance();
+      closeTxEditApplyScopeModal();
     } catch (e) {
       show(document.getElementById("txEditApplyScopeErr"), e.message || "Failed to save");
     }

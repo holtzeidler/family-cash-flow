@@ -15338,10 +15338,13 @@ body.account-setup-page .account-setup-step3-intro{
   align-items: stretch;
   justify-content: flex-start;
   flex: 0 0 auto;
-  gap: clamp(1.1rem, 2.2vw, 1.5rem);
+  gap: clamp(0.7rem, 1.35vw, 0.95rem);
   min-height: 0;
   width: 100%;
   max-width: 100%;
+}
+body.account-setup-page .account-setup-step3-intro:has(.account-setup-step3-summary:not([hidden])){
+  gap: clamp(0.55rem, 1.1vw, 0.78rem);
 }
 body.account-setup-page .account-setup-step3-section{
   margin: 0;
@@ -15353,9 +15356,12 @@ body.account-setup-page .account-setup-step3-section--guidance{
 body.account-setup-page .account-setup-step3-section--actions{
   padding: 0;
   border-top: none;
-  margin-top: -0.15rem;
+  margin-top: 0;
   display: flex;
   justify-content: stretch;
+}
+body.account-setup-page .account-setup-step3-intro:has(.account-setup-step3-summary:not([hidden])) .account-setup-step3-section--actions{
+  margin-top: -0.05rem;
 }
 body.account-setup-page .account-setup-step3-section--actions .account-setup-tx-choice-wrap{
   width: 93%;
@@ -15407,29 +15413,36 @@ body.account-setup-page .account-setup-step3-summary{
   display: inline-flex;
   align-items: center;
   align-self: center;
-  margin: 0.1rem auto -0.55rem;
-  padding: 4px 11px 4px 9px;
+  margin: -0.1rem auto 0;
+  padding: 3px 10px 3px 8px;
   max-width: 100%;
   box-sizing: border-box;
-  font-size: 0.72rem;
-  line-height: 1.28;
+  font-size: 0.7rem;
+  line-height: 1.26;
   font-weight: 600;
-  letter-spacing: 0.01em;
-  color: rgba(51, 65, 85, 0.78);
-  background: rgba(241, 245, 249, 0.85);
-  border: 1px solid rgba(148, 163, 184, 0.14);
+  letter-spacing: 0.008em;
+  color: rgba(71, 85, 105, 0.72);
+  background: rgba(241, 245, 249, 0.82);
+  border: 1px solid rgba(148, 163, 184, 0.12);
   border-radius: 999px;
+}
+body.account-setup-page .account-setup-step3-summary:not([hidden]){
+  margin: -0.2rem auto 0.02rem;
 }
 body.account-setup-page .account-setup-step3-intro .account-setup-tx-choice-wrap{
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: stretch;
   margin-top: 0;
-  gap: clamp(12px, 2vw, 16px);
+  gap: clamp(10px, 1.6vw, 14px);
 }
 body.account-setup-page .account-setup-step3-actionBtn{
-  width: 100%;
+  display: inline-flex;
+  align-items: center;
   justify-content: center;
+  width: 100%;
+  min-height: 52px;
+  height: 100%;
   box-sizing: border-box;
   transition:
     transform 0.12s ease,
@@ -15440,6 +15453,7 @@ body.account-setup-page .account-setup-step3-actionBtn{
 body.account-setup-page #asTxHubAddIncomeBtn.account-setup-step3-actionBtn,
 body.account-setup-page #asTxHubAddExpenseBtn.account-setup-step3-actionBtn{
   min-height: 52px;
+  height: auto;
   padding: 0 clamp(18px, 2.5vw, 24px);
   border-radius: 12px;
   border-style: solid;
@@ -15451,15 +15465,15 @@ body.account-setup-page #asTxHubAddIncomeBtn.account-setup-step3-actionBtn--inco
   border-color: color-mix(in srgb, var(--accent) 80%, #000);
   color: #fff;
   box-shadow:
-    0 2px 4px rgba(15, 23, 42, 0.06),
-    0 6px 18px rgba(11, 61, 46, 0.14);
+    0 1px 2px rgba(15, 23, 42, 0.05),
+    0 3px 10px rgba(11, 61, 46, 0.1);
 }
 body.account-setup-page #asTxHubAddExpenseBtn.account-setup-step3-actionBtn--expense{
   background: #fff;
   border-width: 1.5px;
   border-color: rgba(11, 61, 46, 0.26);
   color: rgba(11, 61, 46, 0.78);
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
 }
 body.account-setup-page #asTxHubAddIncomeBtn.account-setup-step3-actionBtn--income .account-setup-step3-actionBtn__plus,
 body.account-setup-page #asTxHubAddIncomeBtn.account-setup-step3-actionBtn--income .account-setup-step3-actionBtn__label{
@@ -15477,14 +15491,14 @@ body.account-setup-page #asTxHubAddIncomeBtn.account-setup-step3-actionBtn--inco
   background: color-mix(in srgb, var(--accent) 92%, #000);
   border-color: color-mix(in srgb, var(--accent) 68%, #000);
   box-shadow:
-    0 2px 4px rgba(15, 23, 42, 0.06),
-    0 6px 18px rgba(11, 61, 46, 0.14);
+    0 1px 2px rgba(15, 23, 42, 0.05),
+    0 4px 12px rgba(11, 61, 46, 0.11);
   transform: translateY(-1px);
 }
 body.account-setup-page #asTxHubAddExpenseBtn.account-setup-step3-actionBtn--expense:hover:not(:disabled){
   background: color-mix(in srgb, var(--accent) 5%, #fff);
   border-color: rgba(11, 61, 46, 0.34);
-  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.05);
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.04);
   transform: translateY(-1px);
 }
 body.account-setup-page #asTxHubAddIncomeBtn.account-setup-step3-actionBtn:active:not(:disabled),
@@ -15497,16 +15511,25 @@ body.account-setup-page #asTxHubAddExpenseBtn.account-setup-step3-actionBtn:focu
   outline-offset: 2px;
   box-shadow: none;
 }
-body.account-setup-page .account-setup-step3-actionBtn.is-complete{
-  border-color: rgba(11, 61, 46, 0.28);
-  background: color-mix(in srgb, var(--accent) 10%, #fff);
-  color: rgba(11, 61, 46, 0.94);
+body.account-setup-page #asTxHubAddIncomeBtn.account-setup-step3-actionBtn.is-complete{
+  border-width: 2px;
+  border-color: color-mix(in srgb, var(--accent) 42%, transparent);
+  background: color-mix(in srgb, var(--accent) 12%, #fff);
+  color: rgba(11, 61, 46, 0.9);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.72),
-    0 1px 2px rgba(11, 61, 46, 0.08);
+    inset 0 1px 0 rgba(255, 255, 255, 0.78),
+    0 1px 3px rgba(11, 61, 46, 0.07);
 }
-body.account-setup-page .account-setup-step3-actionBtn.is-complete .account-setup-step3-actionBtn__plus{
-  color: rgba(11, 61, 46, 0.86);
+body.account-setup-page #asTxHubAddExpenseBtn.account-setup-step3-actionBtn.is-complete{
+  border-width: 1.5px;
+  border-color: rgba(11, 61, 46, 0.24);
+  background: #fff;
+  color: rgba(11, 61, 46, 0.82);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+body.account-setup-page .account-setup-step3-actionBtn.is-complete .account-setup-step3-actionBtn__plus,
+body.account-setup-page .account-setup-step3-actionBtn.is-complete .account-setup-step3-actionBtn__label{
+  color: inherit;
 }
 body.account-setup-page #asTxHubAddIncomeBtn.account-setup-step3-actionBtn.is-complete:focus-visible:not(:disabled),
 body.account-setup-page #asTxHubAddExpenseBtn.account-setup-step3-actionBtn.is-complete:focus-visible:not(:disabled){
@@ -15549,25 +15572,28 @@ body.account-setup-page .account-setup-actions__cluster{
 body.account-setup-page .account-setup-step3-forecast-ready{
   flex-shrink: 0;
   margin: 0;
-  padding: 10px var(--as-card-pad-x) 0;
+  padding: 6px var(--as-card-pad-x) 0;
   text-align: center;
-  font-size: 0.875rem;
-  line-height: 1.4;
-  font-weight: 600;
-  letter-spacing: 0.005em;
-  color: rgba(11, 61, 46, 0.78);
+  font-size: 0.75rem;
+  line-height: 1.36;
+  font-weight: 450;
+  letter-spacing: 0.004em;
+  color: rgba(100, 116, 139, 0.58);
   background: transparent;
   border-top: none;
 }
 body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPanel2[data-step3-phase="intro"].account-setup-wizard__panel--active) .account-setup-step3-forecast-ready:not([hidden]){
-  margin: 0 auto;
-  padding: 2px clamp(28px, 3.5vw, 40px) 0;
-  max-width: 26rem;
-  font-size: 0.8125rem;
-  line-height: 1.42;
-  font-weight: 500;
-  letter-spacing: 0.002em;
-  color: rgba(11, 61, 46, 0.66);
+  margin: -0.35rem auto 0;
+  padding: 0 clamp(28px, 3.5vw, 40px);
+  max-width: 24rem;
+  font-size: 0.75rem;
+  line-height: 1.36;
+  font-weight: 450;
+  letter-spacing: 0.004em;
+  color: rgba(100, 116, 139, 0.58);
+}
+body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPanel2[data-step3-phase="intro"].account-setup-wizard__panel--active):has(.account-setup-step3-forecast-ready:not([hidden])) #accountSetupWizardPanel2[data-step3-phase="intro"]{
+  padding-bottom: clamp(2px, 0.4vw, 4px);
 }
 body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPanel2[data-step3-phase="intro"].account-setup-wizard__panel--active){
   border-color: rgba(11, 61, 46, 0.26);
@@ -15589,6 +15615,16 @@ body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPane
   align-items: center;
   column-gap: clamp(16px, 3vw, 28px);
 }
+body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPanel2[data-step3-phase="intro"].account-setup-wizard__panel--active):has(.account-setup-step3-forecast-ready:not([hidden])) .account-setup-actions--shell{
+  padding-top: clamp(8px, 1.2vw, 11px);
+  border-top-color: rgba(11, 61, 46, 0.06);
+}
+body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPanel2[data-step3-phase="intro"].account-setup-wizard__panel--active) .account-setup-actions--shell #accountSetupBackBtn.secondary{
+  font-weight: 550;
+  color: rgba(11, 61, 46, 0.58);
+  border-color: rgba(11, 61, 46, 0.14);
+  box-shadow: none;
+}
 body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPanel2[data-step3-phase="intro"].account-setup-wizard__panel--active) .account-setup-actions__cluster{
   gap: 10px;
   flex: 0 0 auto;
@@ -15599,11 +15635,14 @@ body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPane
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  justify-content: flex-end;
-  gap: 6px;
+  justify-content: center;
+  gap: 4px;
   flex: 0 0 auto;
   margin-left: auto;
   min-width: 10.5rem;
+}
+body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPanel2[data-step3-phase="intro"].account-setup-wizard__panel--active):has(.account-setup-step3-forecast-ready:not([hidden])) .account-setup-actions__forward{
+  gap: 3px;
 }
 body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPanel2[data-step3-phase="intro"].account-setup-wizard__panel--active) .account-setup-actions__forward #signupBtn{
   min-height: 44px;
@@ -15613,8 +15652,8 @@ body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPane
   font-weight: 700;
   border-radius: 12px;
   box-shadow:
-    0 1px 2px rgba(11, 61, 46, 0.1),
-    0 4px 14px rgba(11, 61, 46, 0.16);
+    0 1px 2px rgba(11, 61, 46, 0.08),
+    0 3px 11px rgba(11, 61, 46, 0.13);
 }
 body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPanel2[data-step3-phase="intro"].account-setup-wizard__panel--active) .account-setup-actions__forward #signupBtn:disabled{
   background: color-mix(in srgb, var(--accent) 12%, #f4f7f5) !important;
@@ -15629,11 +15668,11 @@ body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPane
 body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPanel2[data-step3-phase="intro"].account-setup-wizard__panel--active) .account-setup-continue-gateHint{
   margin: 0;
   padding: 0;
-  font-size: 0.75rem;
-  line-height: 1.3;
-  font-weight: 500;
-  letter-spacing: 0.01em;
-  color: rgba(100, 116, 139, 0.68);
+  font-size: 0.72rem;
+  line-height: 1.28;
+  font-weight: 450;
+  letter-spacing: 0.008em;
+  color: rgba(100, 116, 139, 0.6);
   text-align: right;
   width: 100%;
   max-width: none;
@@ -15698,7 +15737,10 @@ body.account-setup-page .account-setup-wizard__shell .account-setup-actions--she
   }
   body.account-setup-page .account-setup-step3-intro{
     min-height: 0;
-    gap: 1rem;
+    gap: 0.72rem;
+  }
+  body.account-setup-page .account-setup-step3-intro:has(.account-setup-step3-summary:not([hidden])){
+    gap: 0.62rem;
   }
   body.account-setup-page .container > .grid:has(#accountSetupWizardPanel2[data-step3-phase="intro"].account-setup-wizard__panel--active){
     width: min(760px, 94vw);
@@ -19483,56 +19525,57 @@ body[data-bw-view="transactions"] .tm__field label{
   box-sizing: border-box;
   width: 100%;
   margin: 0;
-  padding: 14px 16px 10px;
-  font-size: 1.02rem;
-  font-weight: 720;
-  letter-spacing: -0.018em;
-  line-height: 1.22;
-  color: rgba(11, 61, 46, 0.94);
+  padding: 16px 18px 12px;
+  font-size: 0.98rem;
+  font-weight: 650;
+  letter-spacing: -0.014em;
+  line-height: 1.28;
+  color: rgba(11, 61, 46, 0.9);
   background: rgba(248, 250, 249, 0.98);
   border-radius: 14px 14px 0 0;
-  border-bottom: 1px solid rgba(11, 61, 46, 0.07);
+  border-bottom: 1px solid rgba(11, 61, 46, 0.06);
   text-transform: none;
 }
 .modal.modal--apply-scope .modal--apply-scope__body{
-  padding: 12px 16px 14px;
+  padding: 14px 18px 16px;
 }
 .modal.modal--apply-scope .modal--apply-scope__intro{
-  margin: 0 0 10px;
+  margin: 0 0 14px;
+  max-width: 26rem;
 }
 .modal.modal--apply-scope .modal--apply-scope__lede{
-  margin: 0 0 4px;
+  margin: 0 0 5px;
   padding: 0;
-  font-size: 0.8125rem;
-  line-height: 1.38;
-  font-weight: 550;
-  color: rgba(30, 41, 59, 0.88);
+  font-size: 0.78rem;
+  line-height: 1.4;
+  font-weight: 500;
+  color: rgba(51, 65, 85, 0.72);
 }
 .modal.modal--apply-scope .modal--apply-scope__helper{
   margin: 0;
   padding: 0;
-  font-size: 0.8125rem;
-  line-height: 1.38;
+  font-size: 0.75rem;
+  line-height: 1.42;
   font-weight: 450;
-  color: rgba(71, 85, 105, 0.78);
+  color: rgba(100, 116, 139, 0.62);
 }
 .modal.modal--apply-scope #txEditApplyScopeErr{
-  margin: 0 0 8px;
+  margin: 0 0 10px;
 }
 .apply-scope-actions{
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 8px;
+  gap: 11px;
 }
 .apply-scope-option{
   appearance: none;
   display: block;
   width: 100%;
   margin: 0;
-  padding: 10px 12px;
+  padding: 13px 14px;
   border-radius: 10px;
-  border: 1px solid rgba(11, 61, 46, 0.12);
+  border: 1px solid rgba(11, 61, 46, 0.09);
   background: rgba(255, 255, 255, 0.98);
   text-align: left;
   font: inherit;
@@ -19544,32 +19587,32 @@ body[data-bw-view="transactions"] .tm__field label{
     transform 0.12s ease;
 }
 .apply-scope-option--recommended{
-  border-color: rgba(11, 61, 46, 0.28);
+  border-color: rgba(11, 61, 46, 0.18);
   background: linear-gradient(
     180deg,
-    color-mix(in srgb, var(--accent) 7%, #fff) 0%,
+    color-mix(in srgb, var(--accent) 4%, #fff) 0%,
     rgba(255, 255, 255, 0.98) 100%
   );
   box-shadow:
-    0 1px 2px rgba(11, 61, 46, 0.06),
-    0 4px 14px rgba(11, 61, 46, 0.08);
+    0 1px 2px rgba(11, 61, 46, 0.04),
+    0 3px 10px rgba(11, 61, 46, 0.05);
 }
 .apply-scope-option:hover{
-  border-color: rgba(11, 61, 46, 0.22);
-  background: color-mix(in srgb, var(--accent) 5%, #fff);
-  box-shadow: 0 2px 8px rgba(11, 61, 46, 0.08);
+  border-color: rgba(11, 61, 46, 0.16);
+  background: color-mix(in srgb, var(--accent) 4%, #fff);
+  box-shadow: 0 2px 6px rgba(11, 61, 46, 0.06);
   transform: translateY(-1px);
 }
 .apply-scope-option--recommended:hover{
-  border-color: rgba(11, 61, 46, 0.34);
+  border-color: rgba(11, 61, 46, 0.22);
   background: linear-gradient(
     180deg,
-    color-mix(in srgb, var(--accent) 10%, #fff) 0%,
+    color-mix(in srgb, var(--accent) 6%, #fff) 0%,
     rgba(255, 255, 255, 0.99) 100%
   );
   box-shadow:
-    0 2px 4px rgba(11, 61, 46, 0.08),
-    0 6px 18px rgba(11, 61, 46, 0.1);
+    0 1px 3px rgba(11, 61, 46, 0.05),
+    0 4px 12px rgba(11, 61, 46, 0.07);
 }
 .apply-scope-option:focus-visible{
   outline: 2px solid color-mix(in srgb, var(--accent) 40%, transparent);
@@ -19581,8 +19624,8 @@ body[data-bw-view="transactions"] .tm__field label{
 }
 .apply-scope-option__row{
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
+  align-items: center;
+  gap: 12px;
   width: 100%;
 }
 .apply-scope-option__icon{
@@ -19590,20 +19633,20 @@ body[data-bw-view="transactions"] .tm__field label{
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  margin-top: 1px;
-  border-radius: 8px;
-  background: rgba(11, 61, 46, 0.06);
-  color: rgba(11, 61, 46, 0.62);
+  width: 26px;
+  height: 26px;
+  margin-top: 0;
+  border-radius: 7px;
+  background: rgba(11, 61, 46, 0.04);
+  color: rgba(11, 61, 46, 0.52);
 }
 .apply-scope-option--recommended .apply-scope-option__icon{
-  background: color-mix(in srgb, var(--accent) 14%, #fff);
-  color: rgba(11, 61, 46, 0.78);
+  background: color-mix(in srgb, var(--accent) 8%, #fff);
+  color: rgba(11, 61, 46, 0.66);
 }
 .apply-scope-option__icon--single{
-  background: rgba(100, 116, 139, 0.08);
-  color: rgba(71, 85, 105, 0.62);
+  background: rgba(100, 116, 139, 0.05);
+  color: rgba(71, 85, 105, 0.52);
 }
 .apply-scope-option__icon svg{
   width: 16px;
@@ -19621,66 +19664,67 @@ body[data-bw-view="transactions"] .tm__field label{
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 3px;
+  justify-content: center;
+  gap: 4px;
 }
 .apply-scope-option__title-row{
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px 8px;
+  gap: 5px 7px;
   width: 100%;
 }
 .apply-scope-option__title{
-  font-size: 0.8125rem;
-  font-weight: 650;
-  line-height: 1.28;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.3;
   letter-spacing: 0;
-  color: rgba(11, 61, 46, 0.92);
+  color: rgba(11, 61, 46, 0.88);
 }
 .apply-scope-option__badge{
   display: inline-flex;
   align-items: center;
-  padding: 2px 7px;
+  padding: 1px 6px;
   border-radius: 999px;
-  font-size: 0.625rem;
-  font-weight: 650;
-  letter-spacing: 0.04em;
+  font-size: 0.5625rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
   text-transform: uppercase;
-  color: rgba(11, 61, 46, 0.88);
-  background: color-mix(in srgb, var(--accent) 12%, #fff);
-  border: 1px solid rgba(11, 61, 46, 0.14);
+  color: rgba(11, 61, 46, 0.62);
+  background: color-mix(in srgb, var(--accent) 7%, #fff);
+  border: 1px solid rgba(11, 61, 46, 0.09);
 }
 .apply-scope-option__hint{
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 450;
-  line-height: 1.35;
-  color: rgba(71, 85, 105, 0.74);
-}
-.apply-scope-cancel{
-  appearance: none;
-  align-self: center;
-  margin: 6px 0 0;
-  padding: 6px 10px;
-  border: none;
-  background: transparent;
-  font: inherit;
-  font-size: 0.75rem;
-  font-weight: 450;
-  line-height: 1.25;
+  line-height: 1.38;
   color: rgba(100, 116, 139, 0.58);
-  cursor: pointer;
-  text-decoration: none;
-  transition: color 0.14s ease;
 }
-.apply-scope-cancel:hover{
-  color: rgba(71, 85, 105, 0.72);
-  text-decoration: underline;
-  text-underline-offset: 2px;
+.modal.modal--apply-scope .modal-actions--apply-scope-foot{
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 14px 0 0;
+  padding: 12px 0 0;
+  border-top: 1px solid rgba(11, 61, 46, 0.06);
+  gap: 0;
 }
-.apply-scope-cancel:focus-visible{
-  outline: 2px solid rgba(11, 61, 46, 0.16);
-  outline-offset: 2px;
-  border-radius: 6px;
+.modal.modal--apply-scope .modal-actions--apply-scope-foot .secondary{
+  min-height: 40px;
+  min-width: 7.5rem;
+  padding: 8px 20px;
+  font-size: 0.8125rem;
+  font-weight: 550;
+  border-radius: 10px;
+  border-color: rgba(11, 61, 46, 0.14);
+  color: rgba(11, 61, 46, 0.62);
+  background: #fff;
+  box-shadow: none;
+}
+.modal.modal--apply-scope .modal-actions--apply-scope-foot .secondary:hover{
+  border-color: rgba(11, 61, 46, 0.2);
+  color: rgba(11, 61, 46, 0.72);
+  background: rgba(248, 250, 249, 0.98);
 }
 @media (prefers-reduced-motion: reduce){
   .apply-scope-option:hover,
@@ -21207,15 +21251,17 @@ body.account-setup-page
   box-sizing: border-box;
 }
 
-/* Footer: [ Save ] [ Close ] then Delete link below. */
+/* Footer: [ Save ] [ Close ] grouped left · [ Delete ] right. */
 #txEditInner > .modal-actions.modal-actions--tx-edit-foot{
   display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 5px;
-  margin-top: 2px;
-  padding: 5px 0 2px;
-  border-top: 1px solid rgba(17, 24, 39, 0.06);
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
+  margin-top: 6px;
+  padding: 14px 0 6px;
+  border-top: 1px solid rgba(17, 24, 39, 0.07);
 }
 #txEditInner > .modal-actions #txEditFooterSecondary.tx-edit-actions-row,
 #txEditInner > .modal-actions #txEditFooterSecondary.tx-edit-actions-row--main{
@@ -21225,7 +21271,9 @@ body.account-setup-page
   align-items: center;
   justify-content: flex-start;
   gap: 8px;
-  width: 100%;
+  width: auto;
+  flex: 0 1 auto;
+  min-width: 0;
 }
 #txEditInner > .modal-actions #txEditSaveRow.tx-edit-save-cell{
   display: flex;
@@ -21271,7 +21319,7 @@ body.account-setup-page
   flex: 0 0 auto;
   width: auto !important;
   min-width: 0;
-  min-height: 32px;
+  min-height: 34px;
   padding: 0 12px !important;
   background: transparent !important;
   border: 1px solid rgba(17, 24, 39, 0.1) !important;
@@ -21291,42 +21339,47 @@ body.account-setup-page
 }
 #txEditInner > .modal-actions > #txEditDelete.danger,
 #txEditDelete.danger.tx-edit-delete-link{
-  align-self: flex-start;
-  margin: 1px 0 0 1px;
+  align-self: center;
+  flex: 0 0 auto;
+  margin: 0 0 0 auto;
   width: auto;
-  min-height: 0;
-  padding: 3px 2px;
-  background: transparent !important;
-  border: none !important;
-  color: rgba(167, 55, 68, 0.68) !important;
-  font-weight: 500 !important;
-  font-size: 11.75px !important;
+  min-height: 32px;
+  padding: 0 12px;
+  background: #fff !important;
+  border: 1px solid rgba(167, 55, 68, 0.26) !important;
+  color: rgba(167, 55, 68, 0.72) !important;
+  font-weight: 550 !important;
+  font-size: 12px !important;
   text-decoration: none;
   box-shadow: none !important;
-  border-radius: 4px;
-  transition: color 0.14s ease, text-decoration 0.14s ease, background 0.14s ease;
+  border-radius: 8px;
+  transition:
+    background 0.14s ease,
+    border-color 0.14s ease,
+    color 0.14s ease,
+    box-shadow 0.14s ease;
 }
 #txEditInner > .modal-actions > #txEditDelete.danger:hover,
 #txEditInner > .modal-actions > #txEditDelete.danger:focus-visible,
 #txEditDelete.danger.tx-edit-delete-link:hover,
 #txEditDelete.danger.tx-edit-delete-link:focus-visible{
-  background: transparent !important;
-  border-color: transparent !important;
-  color: rgba(167, 55, 68, 0.9) !important;
-  text-decoration: underline;
-  text-underline-offset: 2px;
+  background: rgba(167, 55, 68, 0.04) !important;
+  border-color: rgba(167, 55, 68, 0.38) !important;
+  color: rgba(167, 55, 68, 0.86) !important;
+  text-decoration: none;
   filter: none !important;
   box-shadow: none !important;
 }
 #txEditInner > .modal-actions > #txEditDelete.danger:active,
 #txEditDelete.danger.tx-edit-delete-link:active{
-  background: rgba(167, 55, 68, 0.06) !important;
-  color: rgba(167, 55, 68, 0.95) !important;
+  background: rgba(167, 55, 68, 0.08) !important;
+  border-color: rgba(167, 55, 68, 0.42) !important;
+  color: rgba(167, 55, 68, 0.9) !important;
   filter: none !important;
 }
 #txEditInner > .modal-actions > #txEditDelete.danger:focus-visible,
 #txEditDelete.danger.tx-edit-delete-link:focus-visible{
-  outline: 2px solid color-mix(in srgb, var(--danger) 28%, transparent) !important;
+  outline: 2px solid color-mix(in srgb, var(--danger) 24%, transparent) !important;
   outline-offset: 2px !important;
 }
 #txEditInner #txEditRecurringPrimaryActions.tx-edit-recurring-update-row{
@@ -21404,7 +21457,7 @@ body.account-setup-page
   display: none;
 }
 .modal--expected-edit #expectedEditInstancePanel{
-  padding: 8px 12px 6px;
+  padding: 8px 12px 8px;
 }
 .modal--expected-edit #txEditAccountCol{
   margin-top: 5px;
@@ -21413,6 +21466,7 @@ body.account-setup-page
 }
 .modal--expected-edit .tx-edit-notes-row--in-panel{
   margin-top: 0;
+  margin-bottom: 12px;
   padding-top: 0;
   border-top: none;
 }
@@ -21441,15 +21495,15 @@ body.account-setup-page
   max-width: none;
 }
 .modal--expected-edit .kind-toggle .kind-opt{
-  min-height: 34px;
-  padding: 7px 12px;
-  font-size: 13px;
+  min-height: 30px;
+  padding: 5px 10px;
+  font-size: 12.5px;
   color: rgba(71, 85, 105, 0.62);
 }
 .modal--expected-edit .kind-toggle .kind-opt::after{
-  left: 12px;
-  right: 12px;
-  bottom: 5px;
+  left: 10px;
+  right: 10px;
+  bottom: 4px;
 }
 .modal--expected-edit .kind-toggle .kind-opt + .kind-opt{
   border-left-color: rgba(17, 24, 39, 0.06);
@@ -21479,10 +21533,13 @@ body.account-setup-page
 
 /* Advanced options: subtle expandable row (not a faux input). */
 #expectedEditInstancePanel .tx-edit-advanced{
-  margin: 1px 0 0;
+  margin: 0 0 -1px;
   border: none;
   border-radius: 0;
   background: transparent;
+}
+#expectedEditInstancePanel .tx-edit-advanced + .tx-add-vspace{
+  height: 2px;
 }
 #expectedEditInstancePanel .tx-edit-advanced__summary{
   display: flex;
@@ -21631,8 +21688,8 @@ body.account-setup-page
 /* Recurring schedule: soft cluster for recurrence + variable amount. */
 .modal--expected-edit .tx-edit-recurring-group{
   position: relative;
-  margin: 2px 0 0;
-  padding: 5px 8px 4px;
+  margin: 1px 0 0;
+  padding: 4px 8px 3px;
   border-radius: 9px;
   background: rgba(248, 250, 252, 0.55);
   border: 1px solid rgba(17, 24, 39, 0.035);
@@ -21646,22 +21703,22 @@ body.account-setup-page
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: rgba(100, 116, 139, 0.62);
-  margin: 0 0 5px;
+  margin: 0 0 3px;
 }
 .modal--expected-edit .tx-edit-recurring-group .tx-add-vspace{
-  height: 3px;
+  height: 2px;
 }
 .modal--expected-edit .tx-edit-recurring-group #txEditRecurringVariableWrap{
-  margin-top: 5px;
-  padding-top: 5px;
+  margin-top: 4px;
+  padding-top: 4px;
   border-top: 1px solid rgba(17, 24, 39, 0.04);
 }
 .modal--expected-edit .tx-edit-variable-row{
   display: flex;
   align-items: flex-start;
-  gap: 8px;
+  gap: 9px;
   margin: 0;
-  padding: 2px 0 0;
+  padding: 1px 0 0;
   cursor: pointer;
   user-select: none;
 }
@@ -21669,7 +21726,7 @@ body.account-setup-page
   flex-shrink: 0;
   width: 14px;
   height: 14px;
-  margin: 2px 0 0;
+  margin: 0.15em 0 0;
   accent-color: var(--accent);
 }
 .modal--expected-edit .tx-edit-variable-row__text{
@@ -21678,7 +21735,7 @@ body.account-setup-page
   gap: 2px;
   min-width: 0;
   flex: 1;
-  max-width: calc(100% - 22px);
+  max-width: 22rem;
 }
 .modal--expected-edit .tx-edit-variable-row__title{
   font-size: 12px;
@@ -21739,9 +21796,9 @@ body.account-setup-page
 
 /* Recurring edit sheet: inherit footer hierarchy from #txEditInner rules. */
 .modal--expected-edit #txEditInner > .modal-actions.modal-actions--tx-edit-foot{
-  margin-top: 2px;
-  padding-top: 4px;
-  padding-bottom: 1px;
+  margin-top: 4px;
+  padding-top: 14px;
+  padding-bottom: 4px;
 }
 .expected-modal-mode-row{
   display: flex;
@@ -24499,17 +24556,26 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   }
 
   .modal--tx-add .tx-add-form .modal-actions.modal-actions--tx-add-foot .row.two.tx-add-actions-row,
+  #txEditInner > .modal-actions.modal-actions--tx-edit-foot{
+    flex-wrap: wrap;
+    row-gap: 10px;
+  }
+
   #txEditInner > .modal-actions #txEditFooterSecondary.tx-edit-actions-row,
   #txEditInner > .modal-actions #txEditFooterSecondary.tx-edit-actions-row--main,
   .modal--expected-edit > .modal-actions #txEditFooterSecondary.tx-edit-actions-row{
     display: flex;
-    flex-direction: column;
-    align-items: stretch;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
     gap: 8px;
+    width: auto;
+    flex: 1 1 auto;
   }
 
   #txEditInner > .modal-actions #txEditSaveRow.tx-edit-save-cell{
     max-width: none;
+    flex: 1 1 8rem;
   }
 
   .tx-add-btn-primary,
@@ -24522,12 +24588,14 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   #txEditInner > .modal-actions #txEditCancel,
   #txEditInner #txEditCancel.tx-edit-dismiss--close{
     width: auto !important;
-    align-self: flex-start;
+    align-self: center;
     min-height: 36px !important;
   }
 
-  #txEditInner > .modal-actions > #txEditDelete.danger{
-    align-self: flex-start;
+  #txEditInner > .modal-actions > #txEditDelete.danger,
+  #txEditDelete.danger.tx-edit-delete-link{
+    align-self: center;
+    margin-left: auto;
     margin-top: 0;
   }
 
