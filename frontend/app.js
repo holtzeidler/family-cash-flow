@@ -4099,33 +4099,16 @@ function applyTransactionEditMode(mode, opts = {}) {
     txEditCancel.classList.toggle("tx-edit-dismiss--close", recurring);
   }
 
-  const notesRowEl = document.getElementById("txEditNotesRow");
   const varWrapEl = document.getElementById("txEditRecurringVariableWrap");
   const schWrap = document.getElementById("txEditRecurringScheduleWrap");
   const panel = document.getElementById("expectedEditInstancePanel");
-  // Recurring layout order:
-  //   Type → Amount → Category → Color → Date
-  //   Recurring group { Recurrence, Ends, Variable amount }
-  //   Account
-  //   Notes
   if (recurring) {
     if (varWrapEl && schWrap && varWrapEl.parentNode !== schWrap) {
       schWrap.appendChild(varWrapEl);
     }
-    if (notesRowEl && acctCol && acctCol.parentNode) {
-      acctCol.parentNode.insertBefore(notesRowEl, acctCol.nextSibling);
-      notesRowEl.classList.add("tx-edit-notes-row--in-panel");
-    }
-  } else {
-    if (varWrapEl && panel && varWrapEl.parentNode === schWrap) {
-      panel.appendChild(varWrapEl);
-    }
-    if (notesRowEl && varWrapEl && varWrapEl.parentNode) {
-      varWrapEl.parentNode.insertBefore(notesRowEl, varWrapEl);
-      notesRowEl.classList.add("tx-edit-notes-row--in-panel");
-    }
+  } else if (varWrapEl && panel && schWrap && varWrapEl.parentNode === schWrap) {
+    panel.appendChild(varWrapEl);
   }
-  // Label the recurring schedule wrap so we can group it visually via CSS.
   if (schWrap) {
     schWrap.classList.toggle("tx-edit-recurring-group", recurring);
   }

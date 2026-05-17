@@ -14,7 +14,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=577" />
+    <link rel="stylesheet" href="../styles.css?v=579" />
   </head>
   <body>
     <div class="container">
@@ -1103,14 +1103,6 @@
 
         <div class="tx-edit-top">
           <div id="txEditModeBanner" class="tx-edit-mode-banner" style="display: none" role="presentation"></div>
-          <div id="txEditNotesRow">
-            <div class="form-row-h">
-              <div class="form-row-h__label"><label for="txEditNotes" id="txEditNotesLabel">Notes</label></div>
-              <div class="form-row-h__field">
-                <input id="txEditNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
-              </div>
-            </div>
-          </div>
         </div>
 
         <div id="expectedEditInstancePanel" class="expected-edit-panel">
@@ -1151,6 +1143,12 @@
                 <div class="cat-color-row__swatches" id="txEditCategoryColorSwatches"></div>
                 <button type="button" class="cat-color-row__clear tx-edit-cat-color-clear" id="txEditCategoryColorClear" hidden>Clear</button>
               </div>
+              <div id="txEditNotesRow" class="form-row-h tx-edit-notes-in-advanced">
+                <div class="form-row-h__label"><label for="txEditNotes" id="txEditNotesLabel">Notes</label></div>
+                <div class="form-row-h__field">
+                  <input id="txEditNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
+                </div>
+              </div>
             </div>
           </details>
           <div class="tx-add-vspace" aria-hidden="true"></div>
@@ -1160,7 +1158,6 @@
           </div>
 
           <div id="txEditRecurringScheduleWrap" style="display: none">
-            <div class="tx-add-vspace" aria-hidden="true"></div>
             <div class="tx-edit-recurrence-ends-row">
               <div class="form-row-h tx-edit-recurrence-field">
                 <div class="form-row-h__label"><label for="instanceRecurrence">Repeat</label></div>
@@ -1191,12 +1188,12 @@
             </div>
             <div id="instanceTwiceMonthlyFields" class="expected-second-day-row" style="display: none">
               <label for="instanceSecondDayOfMonth">Second monthly date</label>
-                            <input
+              <input
                 id="instanceSecondDayOfMonth"
                 type="date"
                 title="Other day each month for twice-monthly schedules."
               />
-              <p class="expected-second-day-row__hint">Pick a date on a different day of the month than the start date.</p>
+              <p class="expected-second-day-row__hint">Choose a different day of the month than the start date.</p>
             </div>
             <div class="form-row-h tx-edit-ends-detail" id="txEditEndCountRow" hidden>
               <div class="form-row-h__label">
@@ -1223,31 +1220,30 @@
           <div id="txEditRecurringVariableWrap" style="display: none">
             <label class="tx-edit-variable-row" for="seriesVariable">
               <span class="tx-edit-variable-row__head">
-                <span class="tx-edit-variable-row__title">Amount varies month to month</span>
                 <input
                   id="seriesVariable"
                   type="checkbox"
                   class="tx-edit-variable-row__input"
                   title="Amount is an estimate that may change month to month"
                 />
+                <span class="tx-edit-variable-row__title">Amount varies month to month</span>
               </span>
               <span class="tx-edit-variable-row__hint">Helpful for utilities and fluctuating bills.</span>
             </label>
           </div>
 
-          <div style="height: 3px" aria-hidden="true"></div>
           <div id="txEditRecurringPrimaryActions" class="tx-edit-recurring-update-row" style="display: none"></div>
         </div>
 
         <div class="modal-actions modal-actions--tx-edit-foot">
+          <button type="button" id="txEditDelete" class="danger tx-edit-delete-link">Delete</button>
           <div id="txEditFooterSecondary" class="tx-edit-actions-row tx-edit-actions-row--main">
+            <button type="button" id="txEditCancel" class="tx-edit-cancel-btn secondary">Cancel</button>
             <div id="txEditSaveRow" class="tx-edit-save-cell">
               <button type="button" id="txEditSave">Save</button>
               <button type="button" id="txEditRecurringUpdateBtn" style="display:none;">Save</button>
             </div>
-            <button type="button" id="txEditCancel" class="tx-edit-cancel-btn secondary">Cancel</button>
           </div>
-          <button type="button" id="txEditDelete" class="danger tx-edit-delete-link">Delete</button>
         </div>
       </div>
     </div>
@@ -1503,7 +1499,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="../app.js?v=345"></script>
+    <script src="../app.js?v=346"></script>
     <script src="../feedback.js?v=3" defer></script>
     <script src="../tour.js?v=10" defer></script>
   </body>

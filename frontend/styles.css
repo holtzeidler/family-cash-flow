@@ -11392,19 +11392,23 @@ textarea::placeholder{
   margin-top: 4px;
   display: grid;
   grid-template-columns: minmax(5.5rem, 6.75rem) minmax(0, 1fr);
-  gap: 4px 10px;
+  gap: 2px 8px;
   align-items: start;
+}
+.modal--expected-edit .expected-second-day-row{
+  grid-template-columns: minmax(4.75rem, 5.5rem) minmax(0, 1fr);
+  gap: 1px 8px;
 }
 .expected-second-day-row label{
   display: block;
   margin-bottom: 0;
-  padding-top: 8px;
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  padding-top: 7px;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
   text-transform: none;
-  color: rgba(75, 85, 99, 0.78);
-  line-height: 1.28;
+  color: rgba(100, 116, 139, 0.68);
+  line-height: 1.26;
 }
 .expected-second-day-row input[type="date"]{
   width: 100%;
@@ -11427,11 +11431,14 @@ textarea::placeholder{
 .expected-second-day-row__hint{
   grid-column: 2;
   margin: 0;
-  max-width: 28ch;
-  font-size: 10px;
-  line-height: 1.32;
-  font-weight: 450;
-  color: rgba(100, 116, 139, 0.68);
+  max-width: 22rem;
+  font-size: 9.5px;
+  line-height: 1.28;
+  font-weight: 400;
+  color: rgba(100, 116, 139, 0.52);
+}
+.modal--expected-edit .expected-second-day-row__hint{
+  max-width: 18rem;
 }
 
 .totals{
@@ -20215,7 +20222,7 @@ body[data-bw-view="transactions"] .tm__field label{
 }
 
 .modal--tx-add{
-  width: min(77vw, 880px);
+  width: min(69.3vw, 792px);
   max-width: none;
   max-height: min(92vh, calc(100vh - 48px));
   display: flex;
@@ -21803,18 +21810,22 @@ body.account-setup-page
   padding: 10px 12px 8px;
   box-sizing: border-box;
 }
+#txEditInner.modal.modal--expected-edit{
+  width: min(92vw, 440px);
+  max-width: 440px;
+}
 
-/* Footer: [ Save ] [ Close ] grouped left · [ Delete ] right. */
+/* Footer: Delete left · Close | Save right. */
 #txEditInner > .modal-actions.modal-actions--tx-edit-foot{
   display: flex;
   flex-direction: row;
   flex-wrap: nowrap;
   align-items: center;
   justify-content: space-between;
-  gap: 12px 16px;
-  margin-top: 6px;
-  padding: 14px 0 6px;
-  border-top: 1px solid rgba(17, 24, 39, 0.07);
+  gap: 10px 12px;
+  margin-top: 4px;
+  padding: 10px 0 4px;
+  border-top: 1px solid rgba(17, 24, 39, 0.05);
 }
 #txEditInner > .modal-actions #txEditFooterSecondary.tx-edit-actions-row,
 #txEditInner > .modal-actions #txEditFooterSecondary.tx-edit-actions-row--main{
@@ -21822,11 +21833,12 @@ body.account-setup-page
   flex-direction: row;
   flex-wrap: nowrap;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: flex-end;
   gap: 8px;
   width: auto;
   flex: 0 1 auto;
   min-width: 0;
+  margin-left: auto;
 }
 #txEditInner > .modal-actions #txEditSaveRow.tx-edit-save-cell{
   display: flex;
@@ -21837,12 +21849,12 @@ body.account-setup-page
 }
 #txEditInner > .modal-actions #txEditFooterSecondary.tx-edit-actions-row #txEditSave,
 #txEditInner > .modal-actions #txEditFooterSecondary.tx-edit-actions-row #txEditRecurringUpdateBtn{
-  width: 100%;
-  min-width: 6.5rem;
+  width: auto;
+  min-width: 5.75rem;
   max-width: none;
   box-sizing: border-box;
-  padding: 0 18px;
-  min-height: 34px;
+  padding: 0 16px;
+  min-height: 32px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -21872,7 +21884,7 @@ body.account-setup-page
   flex: 0 0 auto;
   width: auto !important;
   min-width: 0;
-  min-height: 34px;
+  min-height: 32px;
   padding: 0 12px !important;
   background: transparent !important;
   border: 1px solid rgba(17, 24, 39, 0.1) !important;
@@ -21894,9 +21906,9 @@ body.account-setup-page
 #txEditDelete.danger.tx-edit-delete-link{
   align-self: center;
   flex: 0 0 auto;
-  margin: 0 0 0 auto;
+  margin: 0;
   width: auto;
-  min-height: 32px;
+  min-height: 30px;
   padding: 0 12px;
   background: #fff !important;
   border: 1px solid rgba(167, 55, 68, 0.26) !important;
@@ -21940,8 +21952,8 @@ body.account-setup-page
 }
 
 .tx-edit-divider{
-  margin: 0 -14px 10px;
-  border-bottom: 1px solid rgba(0,0,0,0.10);
+  margin: 0 -14px 8px;
+  border-bottom: 1px solid rgba(17, 24, 39, 0.06);
 }
 
 .tx-edit-account-category-row{
@@ -21960,8 +21972,8 @@ body.account-setup-page
 }
 
 .modal--expected-edit{
-  max-width: 480px;
-  max-height: min(90vh, 760px);
+  max-width: 440px;
+  max-height: min(90vh, 720px);
   overflow-y: auto;
   padding: 0;
 }
@@ -21982,13 +21994,13 @@ body.account-setup-page
 
 /* Tighter form rhythm inside the transaction sheet (calmer, less form-driven). */
 #expectedEditInstancePanel .tx-add-vspace{
-  height: 5px;
+  height: 3px;
 }
 #expectedEditInstancePanel .tx-add-vspace--lg{
-  height: 8px;
+  height: 5px;
 }
 #expectedEditInstancePanel .tx-add-vspace--sm{
-  height: 4px;
+  height: 3px;
 }
 .modal--expected-edit > .modal-actions{
   margin: 0 12px 6px;
@@ -22010,18 +22022,22 @@ body.account-setup-page
   display: none;
 }
 .modal--expected-edit #expectedEditInstancePanel{
-  padding: 8px 12px 8px;
+  padding: 6px 12px 6px;
 }
 .modal--expected-edit #txEditAccountCol{
-  margin-top: 5px;
-  padding-top: 6px;
-  border-top: 1px solid rgba(17, 24, 39, 0.045);
+  margin-top: 2px;
+  padding-top: 5px;
+  border-top: 1px solid rgba(17, 24, 39, 0.04);
 }
-.modal--expected-edit .tx-edit-notes-row--in-panel{
-  margin-top: 0;
-  margin-bottom: 12px;
-  padding-top: 0;
-  border-top: none;
+.modal--expected-edit .tx-edit-notes-in-advanced{
+  margin-top: 6px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(17, 24, 39, 0.04);
+}
+.modal--expected-edit .tx-edit-notes-in-advanced .form-row-h__label label{
+  font-size: 10px;
+  font-weight: 500;
+  color: rgba(100, 116, 139, 0.68);
 }
 .modal--expected-edit #expectedEditInstancePanel > .tx-edit-divider{
   display: none;
@@ -22029,59 +22045,88 @@ body.account-setup-page
 
 /* Tighter, less spreadsheet-feeling label column. */
 .modal--expected-edit .form-row-h{
-  gap: 5px 8px;
+  gap: 4px 8px;
 }
 .modal--expected-edit .form-row-h__label{
-  flex: 0 0 6.5rem;
-  max-width: 32%;
+  flex: 0 0 5.75rem;
+  max-width: 30%;
 }
 .modal--expected-edit .form-row-h__label label{
-  font-size: 11px;
-  color: rgba(75, 85, 99, 0.78);
-  font-weight: 600;
+  font-size: 10.5px;
+  color: rgba(100, 116, 139, 0.72);
+  font-weight: 500;
+}
+
+/* Consistent compact field heights in recurring edit. */
+.modal--expected-edit #expectedEditInstancePanel .form-row-h__field > input:not([type="checkbox"]):not([type="radio"]),
+.modal--expected-edit #expectedEditInstancePanel .form-row-h__field > select,
+.modal--expected-edit #expectedEditInstancePanel .money-input input{
+  min-height: 34px;
+  padding: 6px 9px;
+  font-size: 13px;
+  border-radius: 8px;
+  border-color: rgba(17, 24, 39, 0.1);
+}
+.modal--expected-edit #expectedEditInstancePanel .form-row-h__field > input[type="date"]{
+  padding-right: 8px;
+}
+.modal--expected-edit #expectedEditInstancePanel .form-row-h__field > input[type="date"]::-webkit-calendar-picker-indicator{
+  margin: 0;
+  opacity: 0.55;
+  cursor: pointer;
+}
+.modal--expected-edit #expectedEditInstancePanel .money-input{
+  min-height: 34px;
 }
 
 /* Type toggle: calm selected state with subtle accent only. */
 .modal--expected-edit .kind-toggle{
-  border-color: rgba(17, 24, 39, 0.08);
-  background: rgba(15, 23, 42, 0.025);
+  border-color: rgba(17, 24, 39, 0.07);
+  background: rgba(15, 23, 42, 0.02);
   max-width: none;
 }
 .modal--expected-edit .kind-toggle .kind-opt{
-  min-height: 30px;
-  padding: 5px 10px;
-  font-size: 12.5px;
-  color: rgba(71, 85, 105, 0.62);
+  min-height: 28px;
+  padding: 4px 9px;
+  font-size: 12px;
+  color: rgba(71, 85, 105, 0.58);
+  transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
 }
 .modal--expected-edit .kind-toggle .kind-opt::after{
-  left: 10px;
-  right: 10px;
-  bottom: 4px;
+  left: 12px;
+  right: 12px;
+  bottom: 3px;
+  height: 1.5px;
+  transition: opacity 0.2s ease, background 0.2s ease;
 }
 .modal--expected-edit .kind-toggle .kind-opt + .kind-opt{
-  border-left-color: rgba(17, 24, 39, 0.06);
+  border-left-color: rgba(17, 24, 39, 0.05);
 }
 .modal--expected-edit .kind-toggle .kind-opt:has(input[value="expense"]:checked){
-  background: rgba(255, 255, 255, 0.95);
-  color: rgba(17, 24, 39, 0.9);
-  font-weight: 650;
-  box-shadow:
-    inset 0 0 0 1px rgba(17, 24, 39, 0.05),
-    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.96);
+  color: rgba(17, 24, 39, 0.88);
+  font-weight: 600;
+  box-shadow: inset 0 0 0 1px rgba(17, 24, 39, 0.04);
+}
+.modal--expected-edit .kind-toggle .kind-opt:has(input[value="expense"]:checked)::after{
+  opacity: 1;
+  background: rgba(167, 55, 68, 0.32);
 }
 .modal--expected-edit .kind-toggle .kind-opt:has(input[value="expense"]:checked):hover{
-  background: rgba(255, 255, 255, 0.98);
+  background: rgba(255, 255, 255, 0.99);
 }
 .modal--expected-edit .kind-toggle .kind-opt:has(input[value="income"]:checked){
-  background: rgba(255, 255, 255, 0.95);
-  color: rgba(17, 24, 39, 0.9);
-  font-weight: 650;
-  box-shadow:
-    inset 0 0 0 1px rgba(17, 24, 39, 0.05),
-    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.96);
+  color: rgba(17, 24, 39, 0.88);
+  font-weight: 600;
+  box-shadow: inset 0 0 0 1px rgba(17, 24, 39, 0.04);
+}
+.modal--expected-edit .kind-toggle .kind-opt:has(input[value="income"]:checked)::after{
+  opacity: 1;
+  background: rgba(4, 120, 87, 0.32);
 }
 .modal--expected-edit .kind-toggle .kind-opt:has(input[value="income"]:checked):hover{
-  background: rgba(255, 255, 255, 0.98);
+  background: rgba(255, 255, 255, 0.99);
 }
 
 /* Advanced options: subtle expandable row (not a faux input). */
@@ -22138,27 +22183,28 @@ body.account-setup-page
 @media (min-width: 560px){
   #expectedEditInstancePanel .tx-edit-recurrence-ends-row{
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 6px 10px;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 4px 10px;
     align-items: start;
   }
   #expectedEditInstancePanel .tx-edit-recurrence-ends-row > .form-row-h{
     margin: 0;
+    min-width: 0;
   }
   #expectedEditInstancePanel .tx-edit-recurrence-ends-row .form-row-h__label{
-    flex: 0 0 5.25rem;
-    max-width: 42%;
+    flex: 0 0 3.5rem;
+    max-width: 38%;
   }
 }
 @media (max-width: 559px){
   #expectedEditInstancePanel .tx-edit-recurrence-ends-row{
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 0;
   }
 }
 #expectedEditInstancePanel .tx-edit-recurrence-ends-row + .expected-second-day-row{
-  margin-top: 6px;
+  margin-top: 4px;
 }
 #expectedEditInstancePanel #txEditEndCountRow{
   margin-top: 4px;
@@ -22241,66 +22287,68 @@ body.account-setup-page
 /* Recurring schedule: soft cluster for recurrence + variable amount. */
 .modal--expected-edit .tx-edit-recurring-group{
   position: relative;
-  margin: 1px 0 0;
-  padding: 4px 8px 3px;
-  border-radius: 9px;
-  background: rgba(248, 250, 252, 0.55);
-  border: 1px solid rgba(17, 24, 39, 0.035);
+  margin: 2px 0 0;
+  padding: 5px 7px 4px;
+  border-radius: 8px;
+  background: rgba(248, 250, 252, 0.42);
+  border: 1px solid rgba(17, 24, 39, 0.05);
   box-shadow: none;
 }
 .modal--expected-edit .tx-edit-recurring-group::before{
   content: "Schedule";
   display: block;
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 0.05em;
+  font-size: 8px;
+  font-weight: 550;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: rgba(100, 116, 139, 0.62);
-  margin: 0 0 3px;
+  color: rgba(100, 116, 139, 0.48);
+  margin: 0 0 2px;
 }
 .modal--expected-edit .tx-edit-recurring-group .tx-add-vspace{
-  height: 2px;
+  height: 0;
+  display: none;
 }
 .modal--expected-edit .tx-edit-recurring-group #txEditRecurringVariableWrap{
-  margin-top: 4px;
-  padding-top: 4px;
-  border-top: 1px solid rgba(17, 24, 39, 0.04);
+  margin-top: 2px;
+  padding-top: 0;
+  border-top: none;
 }
 .modal--expected-edit .tx-edit-variable-row{
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 3px;
+  gap: 1px;
   margin: 0;
-  padding: 1px 0 0;
+  padding: 2px 0 0;
   cursor: pointer;
   user-select: none;
 }
 .modal--expected-edit .tx-edit-variable-row__head{
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.4rem;
 }
 .modal--expected-edit .tx-edit-variable-row__input{
   flex-shrink: 0;
-  width: 14px;
-  height: 14px;
+  width: 13px;
+  height: 13px;
   margin: 0;
   accent-color: var(--accent);
 }
 .modal--expected-edit .tx-edit-variable-row__title{
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1.26;
-  color: rgba(55, 65, 81, 0.9);
+  font-size: 11.5px;
+  font-weight: 550;
+  line-height: 1.24;
+  color: rgba(55, 65, 81, 0.86);
 }
 .modal--expected-edit .tx-edit-variable-row__hint{
   display: block;
-  font-size: 10.5px;
-  font-weight: 450;
-  line-height: 1.32;
-  color: rgba(100, 116, 139, 0.6);
-  max-width: 28rem;
+  padding-left: 1.15rem;
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 1.3;
+  color: rgba(100, 116, 139, 0.52);
+  max-width: 20rem;
 }
 .tx-edit-variable-hint{
   display: block;
@@ -22329,26 +22377,24 @@ body.account-setup-page
   color: rgba(100, 116, 139, 0.78);
 }
 
-/* Notes: shorter resting state, recedes until focused. */
+/* Notes in Advanced: low visual weight until focused. */
 .modal--expected-edit #txEditNotes.input-notes-flex{
   padding: 5px 9px;
-  font-size: 12.5px;
+  font-size: 12px;
   line-height: 1.25;
-  background: rgba(15, 23, 42, 0.015);
+  background: rgba(15, 23, 42, 0.012);
   border-color: rgba(17, 24, 39, 0.06);
-  min-height: 0;
+  min-height: 32px;
 }
 .modal--expected-edit #txEditNotes.input-notes-flex:focus{
-  padding-top: 6px;
-  padding-bottom: 6px;
   background: var(--panel, #fff);
-  border-color: rgba(17, 24, 39, 0.2);
+  border-color: rgba(17, 24, 39, 0.16);
 }
 
 /* Recurring edit sheet: inherit footer hierarchy from #txEditInner rules. */
-.modal--expected-edit #txEditInner > .modal-actions.modal-actions--tx-edit-foot{
-  margin-top: 4px;
-  padding-top: 14px;
+.modal--expected-edit > .modal-actions.modal-actions--tx-edit-foot{
+  margin-top: 2px;
+  padding-top: 10px;
   padding-bottom: 4px;
 }
 .expected-modal-mode-row{
@@ -25300,11 +25346,24 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
     min-height: 36px !important;
   }
 
+  #txEditInner > .modal-actions.modal-actions--tx-edit-foot{
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
   #txEditInner > .modal-actions > #txEditDelete.danger,
   #txEditDelete.danger.tx-edit-delete-link{
     align-self: center;
+    margin: 0;
+    order: 1;
+  }
+  #txEditInner > .modal-actions #txEditFooterSecondary.tx-edit-actions-row,
+  #txEditInner > .modal-actions #txEditFooterSecondary.tx-edit-actions-row--main,
+  .modal--expected-edit > .modal-actions #txEditFooterSecondary.tx-edit-actions-row{
+    order: 2;
     margin-left: auto;
-    margin-top: 0;
+    width: auto;
+    flex: 1 1 auto;
+    justify-content: flex-end;
   }
 
   .modal--tx-add .tx-add-actions-row .tx-add-btn-secondary.secondary{
