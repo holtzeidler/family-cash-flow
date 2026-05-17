@@ -3442,7 +3442,7 @@ function categoryKindForComboboxField(fieldId) {
   return "expense";
 }
 
-const TX_ADD_CATEGORY_CHIP_MAX = 6;
+const TX_ADD_CATEGORY_CHIP_MAX = 3;
 const TX_ADD_INCOME_CHIP_HINTS = ["Paycheck", "Transfer In", "Bonus", "Reimbursement", "Other Income"];
 const TX_ADD_EXPENSE_CHIP_HINTS = ["Groceries", "Mortgage", "Utilities", "Credit Card", "Gas", "Subscription"];
 let txAddCategoryChipsBound = false;
