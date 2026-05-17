@@ -1382,6 +1382,8 @@ const txAddAccountValidation = document.getElementById("txAddAccountValidation")
 const txAddDateValidation = document.getElementById("txAddDateValidation");
 const txAddAdvancedPanel = document.getElementById("txAddAdvancedPanel");
 let txAddValidationTouched = false;
+/** Category hint only after Add is clicked without a category (not when other fields are edited). */
+let txAddCategoryValidationShown = false;
 let txAddValidationBound = false;
 
 function countCategoriesForTxAddKind(kind) {
@@ -1405,28 +1407,32 @@ function setTxAddFieldValidation(el, message) {
 
 function resetTxAddFormValidation() {
   txAddValidationTouched = false;
+  txAddCategoryValidationShown = false;
   setTxAddFieldValidation(txAddAmountValidation, "");
   setTxAddFieldValidation(txAddCategoryValidation, "");
   setTxAddFieldValidation(txAddAccountValidation, "");
   setTxAddFieldValidation(txAddDateValidation, "");
-  if (txAddSave) txAddSave.disabled = true;
+  if (txAddSave) txAddSave.disabled = false;
 }
 
 function updateTxAddFormValidity(opts = {}) {
-  const showHints = !!opts.forceShow || txAddValidationTouched;
+  const forceShow = !!opts.forceShow;
+  const showHints = forceShow || txAddValidationTouched;
   const st = txAddFormValidationState();
-  if (txAddSave) txAddSave.disabled = !st.valid;
+  if (forceShow && !st.categoryOk) txAddCategoryValidationShown = true;
   if (showHints) {
     setTxAddFieldValidation(txAddAmountValidation, !st.amountOk ? "Enter an amount greater than zero." : "");
-    setTxAddFieldValidation(txAddCategoryValidation, !st.categoryOk ? "Choose a category." : "");
     setTxAddFieldValidation(txAddAccountValidation, !st.accountOk ? "Choose an account." : "");
     setTxAddFieldValidation(txAddDateValidation, !st.dateOk ? "Choose a date." : "");
   } else {
     setTxAddFieldValidation(txAddAmountValidation, "");
-    setTxAddFieldValidation(txAddCategoryValidation, "");
     setTxAddFieldValidation(txAddAccountValidation, "");
     setTxAddFieldValidation(txAddDateValidation, "");
   }
+  setTxAddFieldValidation(
+    txAddCategoryValidation,
+    txAddCategoryValidationShown && !st.categoryOk ? "Choose a category." : ""
+  );
 }
 
 function bindTxAddFormValidation() {
@@ -1469,22 +1475,41 @@ function categoryImpliesMonthlyRecurrence(cat) {
   return false;
 }
 
+/** Paycheck income usually repeats twice per month. */
+function categoryImpliesTwiceMonthlyRecurrence(cat) {
+  if (!cat) return false;
+  const n = normalizeNameForCompare(cat.name || "");
+  const d = normalizeNameForCompare(categoryDisplayLabel(cat));
+  return n === "paycheck" || n.includes("paycheck") || d.includes("paycheck");
+}
+
 function resolveCategoryById(categoryId) {
   const id = Number(categoryId);
   if (!Number.isFinite(id)) return null;
   return (state.categories || []).find((c) => Number(c.id) === id) || null;
 }
 
-function applyTxAddCategoryRecurrenceDefaults(categoryId) {
-  if (!txAddRecurrence || getRadioValue("txAddKind", "expense") !== "expense") return;
-  const cat = resolveCategoryById(categoryId);
-  if (!categoryImpliesMonthlyRecurrence(cat)) return;
-  if (txAddRecurrence.value === "monthly") {
+function applyTxAddRecurrenceValue(value) {
+  if (!txAddRecurrence) return;
+  if (txAddRecurrence.value === value) {
     updateTxAddRepeatingUi();
     return;
   }
-  txAddRecurrence.value = "monthly";
+  txAddRecurrence.value = value;
   txAddRecurrence.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
+function applyTxAddCategoryRecurrenceDefaults(categoryId) {
+  if (!txAddRecurrence) return;
+  const kind = getRadioValue("txAddKind", "income");
+  const cat = resolveCategoryById(categoryId);
+  if (kind === "expense" && categoryImpliesMonthlyRecurrence(cat)) {
+    applyTxAddRecurrenceValue("monthly");
+    return;
+  }
+  if (kind === "income" && categoryImpliesTwiceMonthlyRecurrence(cat)) {
+    applyTxAddRecurrenceValue("twice_monthly");
+  }
 }
 
 function syncTxAddSecondMonthlyDateDefault() {
@@ -4426,7 +4451,7 @@ function openTxAddModal(opts = {}) {
     txAddColorToggleEl.classList.remove("is-open");
   }
   resetTxAddFormValidation();
-  const kind = opts.kind || "expense";
+  const kind = opts.kind || "income";
   const radio = document.querySelector(`input[type="radio"][name="txAddKind"][value="${kind}"]`);
   if (radio) radio.checked = true;
   show(txAddErr, "");
@@ -7799,11 +7824,13 @@ function refreshTxAddColorChipDot() {
     }
   }
   if (bg) {
+    dot.hidden = false;
     dot.style.background = bg;
     dot.style.boxShadow = "inset 0 0 0 1px rgba(15, 23, 42, 0.18)";
   } else {
-    dot.style.background = "rgba(148, 163, 184, 0.45)";
-    dot.style.boxShadow = "inset 0 0 0 1px rgba(15, 23, 42, 0.12)";
+    dot.hidden = true;
+    dot.style.background = "";
+    dot.style.boxShadow = "";
   }
 }
 

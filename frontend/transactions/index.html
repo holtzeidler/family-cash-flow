@@ -14,7 +14,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=583" />
+    <link rel="stylesheet" href="../styles.css?v=585" />
   </head>
   <body>
     <div class="container">
@@ -109,8 +109,8 @@
                 <div class="form-row-h__label"><label>Type</label></div>
                 <div class="form-row-h__field">
                   <div class="kind-toggle" role="radiogroup" aria-label="Transaction type">
-                    <label class="kind-opt"><input type="radio" name="txAddKind" value="income" /> Income</label>
-                    <label class="kind-opt"><input type="radio" name="txAddKind" value="expense" checked /> Expense</label>
+                    <label class="kind-opt"><input type="radio" name="txAddKind" value="income" checked /> Income</label>
+                    <label class="kind-opt"><input type="radio" name="txAddKind" value="expense" /> Expense</label>
                   </div>
                 </div>
               </div>
@@ -211,8 +211,8 @@
                 <div class="tx-add-vspace tx-add-vspace--2xs" aria-hidden="true"></div>
                 <label class="tx-add-variable-toggle" for="txAddVariable">
                   <span class="tx-add-variable-toggle__head">
-                    <span class="tx-add-variable-toggle__label">Amount varies month to month</span>
                     <input id="txAddVariable" type="checkbox" title="Amount is an estimate that may change month to month" />
+                    <span class="tx-add-variable-toggle__label">Amount varies month to month</span>
                   </span>
                   <span class="tx-add-variable-toggle__hint">Helpful for utilities, credit cards, and fluctuating bills.</span>
                 </label>
@@ -223,7 +223,7 @@
                     <svg viewBox="0 0 12 12" width="9" height="9" focusable="false"><path d="M3.5 2.5 L8 6 L3.5 9.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
                   </span>
                   <span class="tx-add-advanced__expander-label">Advanced options</span>
-                  <span class="tx-add-advanced__chip-dot" id="txAddColorChipDot" aria-hidden="true"></span>
+                  <span class="tx-add-advanced__chip-dot" id="txAddColorChipDot" aria-hidden="true" hidden></span>
                 </button>
                 <div id="txAddAdvancedPanel" class="tx-add-advanced__panel" hidden>
                   <div id="txAddCategoryColorRow" class="cat-color-row tx-add-cat-color-panel">
@@ -1603,7 +1603,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="../app.js?v=347"></script>
+    <script src="../app.js?v=351"></script>
     <script src="../feedback.js?v=3" defer></script>
     <script src="../tour.js?v=9" defer></script>
   </body>
