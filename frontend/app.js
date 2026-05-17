@@ -1455,6 +1455,38 @@ function updateTxAddTwiceMonthlyVisibility() {
   if (on) syncTxAddSecondMonthlyDateDefault();
 }
 
+/** Mortgage/rent and credit card categories usually repeat monthly. */
+function categoryImpliesMonthlyRecurrence(cat) {
+  if (!cat) return false;
+  const n = normalizeNameForCompare(cat.name || "");
+  const g = normalizeNameForCompare(cat.group_name || "");
+  const d = normalizeNameForCompare(categoryDisplayLabel(cat));
+  if (n === "mortgage/rent" || n === "mortgage rent") return true;
+  if ((n.includes("mortgage") && n.includes("rent")) || (d.includes("mortgage") && d.includes("rent"))) return true;
+  if (g.includes("mortgage") && g.includes("rent")) return true;
+  if (n === "credit card payment" || n.includes("credit card")) return true;
+  if (d.includes("credit card")) return true;
+  return false;
+}
+
+function resolveCategoryById(categoryId) {
+  const id = Number(categoryId);
+  if (!Number.isFinite(id)) return null;
+  return (state.categories || []).find((c) => Number(c.id) === id) || null;
+}
+
+function applyTxAddCategoryRecurrenceDefaults(categoryId) {
+  if (!txAddRecurrence || getRadioValue("txAddKind", "expense") !== "expense") return;
+  const cat = resolveCategoryById(categoryId);
+  if (!categoryImpliesMonthlyRecurrence(cat)) return;
+  if (txAddRecurrence.value === "monthly") {
+    updateTxAddRepeatingUi();
+    return;
+  }
+  txAddRecurrence.value = "monthly";
+  txAddRecurrence.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
 function syncTxAddSecondMonthlyDateDefault() {
   if (!txAddSecondDayOfMonth || !txAddDate || txAddRecurrence?.value !== "twice_monthly") return;
   const start = normalizeIsoDate(txAddDate.value);
@@ -7450,6 +7482,7 @@ function selectCategoryComboboxChoice(fieldId, catId, name) {
   st.input.value = name;
   hideCategoryComboboxList(st);
   if (fieldId === "txAddCategoryId") {
+    applyTxAddCategoryRecurrenceDefaults(catId);
     refreshTxAddCategoryChipActiveState();
     updateTxAddFormValidity();
   }
@@ -7477,6 +7510,7 @@ function normalizeCategoryComboboxInput(fieldId) {
   if (exact.length === 1) {
     st.hidden.value = String(exact[0].id);
     st.input.value = categoryDisplayLabel(exact[0]);
+    if (fieldId === "txAddCategoryId") applyTxAddCategoryRecurrenceDefaults(exact[0].id);
     return;
   }
   const subs = (st.categories || []).filter((c) => {
@@ -7488,6 +7522,7 @@ function normalizeCategoryComboboxInput(fieldId) {
   if (subs.length === 1) {
     st.hidden.value = String(subs[0].id);
     st.input.value = categoryDisplayLabel(subs[0]);
+    if (fieldId === "txAddCategoryId") applyTxAddCategoryRecurrenceDefaults(subs[0].id);
     return;
   }
   st.input.value = "";
@@ -7857,14 +7892,20 @@ function setCategoryFieldValue(fieldId, categoryIdOrNull) {
       st.input.value = cat ? categoryDisplayLabel(cat) : "";
     }
     refreshTxCategoryColorPickers();
-    if (fieldId === "txAddCategoryId") refreshTxAddCategoryChipActiveState();
+    if (fieldId === "txAddCategoryId") {
+      if (categoryIdOrNull != null && categoryIdOrNull !== "") applyTxAddCategoryRecurrenceDefaults(categoryIdOrNull);
+      refreshTxAddCategoryChipActiveState();
+    }
     return;
   }
   if (el instanceof HTMLSelectElement) {
     el.value = categoryIdOrNull != null && categoryIdOrNull !== "" ? String(categoryIdOrNull) : "";
   }
   refreshTxCategoryColorPickers();
-  if (fieldId === "txAddCategoryId") refreshTxAddCategoryChipActiveState();
+  if (fieldId === "txAddCategoryId") {
+    if (categoryIdOrNull != null && categoryIdOrNull !== "") applyTxAddCategoryRecurrenceDefaults(categoryIdOrNull);
+    refreshTxAddCategoryChipActiveState();
+  }
 }
 
 function ensureCategoryComboDocClick() {
