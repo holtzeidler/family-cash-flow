@@ -4452,6 +4452,18 @@ function appendCalendarDayStartBalanceLine(row, parentEl, iso) {
   parentEl.appendChild(line);
 }
 
+function shouldOpenAddTxFromCalendarClick(target, cell) {
+  if (!target || !cell) return false;
+  if (cell.classList.contains("cal-cell--out")) return false;
+  if (target.closest(".cal-day-reconcile-btn")) return false;
+  if (target.closest(".cal-day-tx-line--expected")) return false;
+  if (target.closest(".cal-day-start-balance")) return false;
+  if (target.closest(".cal-tx-part")) return false;
+  if (target.closest(".cal-day-more")) return false;
+  if (target.closest(".cal-day-tx-line")) return false;
+  return true;
+}
+
 function handleCalendarPanelClick(e) {
   const grid = document.getElementById("calendarGrid");
   if (!grid || !grid.contains(e.target)) return;
@@ -4478,6 +4490,8 @@ function handleCalendarPanelClick(e) {
   // Click on an actual transaction line opens the edit modal.
   const part = e.target.closest(".cal-tx-part");
   if (part && grid.contains(part)) {
+    e.preventDefault();
+    e.stopPropagation();
     const id = Number(part.dataset.txId);
     if (!id) return;
     const tx = [...(state.monthActualItems || []), ...(state.calendarExtraActualItems || [])].find((t) => Number(t.id) === id);
@@ -4488,40 +4502,24 @@ function handleCalendarPanelClick(e) {
   const cell = e.target.closest(".cal-cell");
   if (!cell || !cell.closest("#calendarGrid")) return;
   const iso = cell.dataset.iso;
-  if (!iso) return;
+  if (!iso || !shouldOpenAddTxFromCalendarClick(e.target, cell)) return;
 
-  const isExpanded = !!(state.calendarExpandedDays && state.calendarExpandedDays.has(iso));
-  // Busy days: first click on the transaction list (not the balance) expands hidden rows.
-  // Clicking the balance or empty margin still opens Add transaction.
-  if (
-    cell.classList.contains("cal-cell--has-collapsed-rows") &&
-    !isExpanded &&
-    e.target.closest(".cal-day-txns") &&
-    !e.target.closest(".cal-ledger-metrics") &&
-    !e.target.closest(".cal-day-tx-line--expected") &&
-    !e.target.closest(".cal-day-start-balance") &&
-    !e.target.closest(".cal-day-more")
-  ) {
-    if (!state.calendarExpandedDays) state.calendarExpandedDays = new Set();
-    state.calendarExpandedDays.add(iso);
-    renderCalendar();
-    return;
-  }
-
-  // Clicks on transaction rows are handled above; do not open Add from row chrome.
-  if (e.target.closest(".cal-day-tx-line") || e.target.closest(".cal-day-start-balance")) return;
-
-  // Click on an empty part of a day cell opens the add transaction modal.
+  e.preventDefault();
+  e.stopPropagation();
   if (alertIfDateBeforeStartingBalance(iso)) return;
   openTxAddModal({ date: iso });
 }
 
-const calendarPanelEl = document.getElementById("calendarPanel");
-if (calendarPanelEl) {
-  calendarPanelEl.addEventListener("click", handleCalendarPanelClick);
-} else if (calendarGrid) {
-  calendarGrid.addEventListener("click", handleCalendarPanelClick);
+function bindCalendarPanelClickRouting() {
+  const handler = handleCalendarPanelClick;
+  const grid = document.getElementById("calendarGrid");
+  const panel = document.getElementById("calendarPanel");
+  const host = grid || panel;
+  if (!host || host.dataset.bwCalClickBound === "1") return;
+  host.dataset.bwCalClickBound = "1";
+  host.addEventListener("click", handler);
 }
+bindCalendarPanelClickRouting();
 
 // (Transaction View) recurring filter panel removed; upcoming filters replace it.
 function syncUpcomingRecurrenceVisibility() {
@@ -10588,6 +10586,8 @@ async function loadCalendarMonthDaily() {
   computeMonthDailyBalancesLegacy();
 }
 
+let calendarLoadingGuardTimer = null;
+
 function setCalendarLoadingUi(on) {
   const panel = document.getElementById("calendarPanel");
   if (panel) {
@@ -10596,6 +10596,16 @@ function setCalendarLoadingUi(on) {
   }
   for (const el of [calendarPrevMonth, calendarNextMonth, calendarGoToday, calendarMonthNum, calendarYear, calendarMode]) {
     if (el) el.disabled = !!on;
+  }
+  if (calendarLoadingGuardTimer) {
+    clearTimeout(calendarLoadingGuardTimer);
+    calendarLoadingGuardTimer = null;
+  }
+  if (on) {
+    calendarLoadingGuardTimer = setTimeout(() => {
+      calendarLoadingGuardTimer = null;
+      setCalendarLoadingUi(false);
+    }, 60000);
   }
 }
 

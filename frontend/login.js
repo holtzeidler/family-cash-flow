@@ -251,11 +251,20 @@ async function doLogin() {
       setCallout(loginCalloutEl, messageFromFailure(loginResp, "Login failed"), "error");
       return;
     }
+    let tok = "";
     try {
-      const tok =
+      tok =
         loginResp.data && loginResp.data.access_token != null ? String(loginResp.data.access_token).trim() : "";
       if (tok) sessionStorage.setItem(BW_API_ACCESS_TOKEN_KEY, tok);
     } catch (_) {}
+
+    // Login already proved credentials; bearer token is enough to open the app without
+    // polling /api/auth/me (the old retry loop added up to ~6s of artificial delay).
+    if (tok) {
+      setCallout(loginCalloutEl, "Opening app...", "ok");
+      await goApp();
+      return;
+    }
 
     const check = await verifySessionWithProgress(loginCalloutEl);
     if (!check.ok) {
@@ -310,8 +319,17 @@ function networkHint() {
   );
 }
 
+function hasStoredBearerToken() {
+  try {
+    return !!(sessionStorage.getItem(BW_API_ACCESS_TOKEN_KEY) || "").trim();
+  } catch (_) {
+    return false;
+  }
+}
+
+/** Cookie propagation on cross-site hosts can lag; retry only when we lack a bearer token. */
 async function verifySessionWithProgress() {
-  const attempts = [0, 800, 1800, 3200];
+  const attempts = hasStoredBearerToken() ? [0] : [0, 800, 1800, 3200];
   for (let i = 0; i < attempts.length; i++) {
     if (attempts[i] > 0) {
       await new Promise((resolve) => setTimeout(resolve, attempts[i]));
