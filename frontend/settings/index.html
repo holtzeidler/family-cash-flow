@@ -14,7 +14,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=629" />
+    <link rel="stylesheet" href="../styles.css?v=633" />
   </head>
   <body>
     <div class="container">
@@ -500,10 +500,11 @@
                   <div class="categories-manager__shell">
                     <header class="settings-section-head cats-pane__head categories-manager__head">
                       <h2 class="settings-section-title cats-pane__title">Categories</h2>
-                      <p class="settings-section-lede cats-pane__helper">
-                        Categories help organize your transactions. Groups are just headings; categories are what you assign to bills, income, and transfers.
-                      </p>
-                      <p class="cats-pane__note categories-manager__note">You can rename, reorder, add, or delete categories anytime.</p>
+                      <div class="cats-pane__intro cats-pane__helper">
+                        <p>Categories organize transactions.</p>
+                        <p>Groups are optional headings used for organization only.</p>
+                        <p>Rename, reorder, collapse, or add categories anytime.</p>
+                      </div>
                     </header>
 
                     <div id="categoriesUncategorizedCallout" class="categories-callout" hidden role="region" aria-label="Uncategorized transactions">
@@ -1514,7 +1515,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="../app.js?v=368"></script>
+    <script src="../app.js?v=372"></script>
     <script src="../feedback.js?v=3" defer></script>
     <script src="../tour.js?v=9" defer></script>
   </body>

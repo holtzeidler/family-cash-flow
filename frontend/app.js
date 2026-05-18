@@ -5676,7 +5676,7 @@ function refreshTmInsights() {
 
   /* One primary insight at a time — variable amounts first when actionable */
   if (varsInRange > 0) {
-    const lead = `${varsInRange} recurring ${varsInRange === 1 ? "item still uses" : "items still use"} placeholder amounts.`;
+    const lead = `${varsInRange} recurring ${varsInRange === 1 ? "bill still needs" : "bills still need"} real amounts.`;
     const tail = `Update ${varsInRange === 1 ? "it" : "them"} before ${varsInRange === 1 ? "it affects" : "they affect"} your forecast.`;
     cards.push(
       tmInsightCard(
@@ -8264,23 +8264,24 @@ function setCategoryGroupCollapsed(groupId, collapsed) {
 
 function ensureCategoriesScanTips() {
   const pane = document.querySelector("[data-cats-pane]");
-  if (!pane || pane.querySelector(".cats-pane__scan-tips")) return;
-  const tips = document.createElement("p");
-  tips.className = "cats-pane__scan-tips";
-  tips.setAttribute("role", "note");
-  tips.innerHTML =
-    "<span>Drag rows to reorder</span>" +
-    '<span class="cats-pane__scan-tips-sep" aria-hidden="true">·</span>' +
-    "<span>Click a name to rename</span>" +
-    '<span class="cats-pane__scan-tips-sep" aria-hidden="true">·</span>' +
-    "<span>Collapse groups you use less often</span>";
-  const summary = pane.querySelector(".categories-manager__summary");
-  if (summary) summary.insertAdjacentElement("beforebegin", tips);
-  else {
+  if (!pane) return;
+  let tips = pane.querySelector(".cats-pane__scan-tips");
+  if (!tips) {
+    tips = document.createElement("p");
+    tips.className = "cats-pane__scan-tips";
+    tips.setAttribute("role", "note");
+  }
+  const head = pane.querySelector(".categories-manager__head");
+  if (head) head.insertAdjacentElement("afterend", tips);
+  else if (!tips.parentElement) {
     const toolbar = pane.querySelector(".cats-pane__toolbar");
     if (toolbar) toolbar.insertAdjacentElement("beforebegin", tips);
     else pane.querySelector(".categories-manager__shell")?.prepend(tips);
   }
+  tips.innerHTML =
+    "<span>Drag to reorder</span>" +
+    '<span class="cats-pane__scan-tips-sep" aria-hidden="true">•</span>' +
+    "<span>Click to rename</span>";
 }
 
 function refreshCategoriesManagerChrome() {
@@ -10825,7 +10826,7 @@ function renderTotals(totals) {
 
   const expenseEl = document.createElement("div");
   expenseEl.className = "total total--expense";
-  expenseEl.innerHTML = `<div class="k">Expense</div><div class="v danger">$${fmtMoneySidebarSummary(expense)}</div>`;
+  expenseEl.innerHTML = `<div class="k">Expenses</div><div class="v danger">$${fmtMoneySidebarSummary(expense)}</div>`;
 
   const netEl = document.createElement("div");
   netEl.className = "total total--net";
