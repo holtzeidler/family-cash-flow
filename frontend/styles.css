@@ -9091,8 +9091,8 @@ body[data-bw-view="transactions"] #sidebarPendingTxList.list{
 body[data-bw-view="calendar"]{
   --month-summary-amount-font-size: 12px;
   --cal-tx-font-size: calc(var(--month-summary-amount-font-size) * 0.97 * 0.97);
-  --cal-tx-in-color: var(--ok);
-  --cal-tx-out-color: var(--danger);
+  --cal-tx-in-color: rgba(5, 118, 84, 0.74);
+  --cal-tx-out-color: rgba(168, 62, 62, 0.72);
 }
 body[data-bw-view="calendar"] .sidebar .card[data-sidebar-key="month"],
 body[data-bw-view="transactions"] .sidebar .card[data-sidebar-key="month"]{
@@ -10938,9 +10938,11 @@ body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .c
   box-shadow: var(--cats-card-shadow);
 }
 body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .categories-manager__shell{
-  max-width: none;
+  max-width: min(1120px, 100%);
   width: 100%;
-  padding: 0 0 4px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 0 clamp(4px, 1.5vw, 20px) 4px;
 }
 body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .cats-pane__head,
 body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .categories-manager__head{
@@ -10982,23 +10984,28 @@ body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .c
   gap: 5px;
 }
 body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .cats-pane{
-  --cats-row-pad-y: 5px;
-  --cats-row-pad-x: 9px;
+  --cats-row-pad-y: 3px;
+  --cats-row-pad-x: 8px;
+  --cats-row-min-h: 44px;
+  --cats-head-min-h: 52px;
 }
 body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .cats-cat{
-  min-height: 30px;
+  min-height: var(--cats-row-min-h);
+  max-height: 48px;
 }
 body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .cats-group__head{
-  padding: 7px 11px 6px;
+  min-height: var(--cats-head-min-h);
+  padding: 6px 11px 5px;
 }
 body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .cats-tree{
-  gap: 11px;
+  gap: 8px;
 }
 body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .cats-group__add-row{
-  padding: 3px 8px;
+  padding: 2px 8px 3px;
+  min-height: 32px;
 }
 body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .cats-group__add-trigger{
-  padding: 4px 7px;
+  padding: 2px 4px;
   font-size: 11.5px;
 }
 body[data-bw-view="settings"] .settings-section-head{
@@ -12116,8 +12123,10 @@ textarea::placeholder{
   --cats-radius-card: 10px;
   --cats-radius-row: 7px;
   --cats-radius-menu: 10px;
-  --cats-row-pad-y: 6px;
-  --cats-row-pad-x: 10px;
+  --cats-row-pad-y: 3px;
+  --cats-row-pad-x: 8px;
+  --cats-row-min-h: 44px;
+  --cats-head-min-h: 52px;
 }
 
 /* Header / IA */
@@ -12152,9 +12161,9 @@ textarea::placeholder{
 
 /* Categories manager (Settings + embedded settings shells) */
 .categories-manager__shell{
-  max-width: min(920px, 100%);
-  margin: 0;
-  padding: 0 2px 6px 0;
+  max-width: min(1120px, 100%);
+  margin: 0 auto;
+  padding: 0 clamp(4px, 1.5vw, 20px) 6px;
 }
 .categories-manager__head{
   margin-top: 0;
@@ -12181,11 +12190,19 @@ body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .c
   margin-bottom: 7px;
 }
 .categories-manager__summary{
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 5px;
-  margin: 0 0 4px;
+  display: none !important;
+}
+.cats-pane__scan-tips{
+  margin: 0 0 8px;
+  padding: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: rgba(71, 85, 105, 0.72);
+  max-width: 42rem;
+}
+.cats-pane__scan-tips-sep{
+  margin: 0 0.35em;
+  color: rgba(148, 163, 184, 0.55);
 }
 @media (max-width: 720px){
   .categories-manager__summary{
@@ -12502,7 +12519,7 @@ body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .c
 .cats-tree{
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 8px;
   margin: 0;
   padding: 0;
 }
@@ -12524,7 +12541,8 @@ body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .c
   border-color: color-mix(in srgb, var(--accent) 38%, var(--cats-card-border));
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 18%, transparent), var(--cats-card-shadow);
 }
-.cats-group.is-collapsed .cats-group__body{
+.cats-group.is-collapsed .cats-group__body,
+.cats-group.is-collapsed .cats-group__add-row{
   display: none;
 }
 
@@ -12532,12 +12550,16 @@ body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .c
   display: grid;
   grid-template-columns: auto auto 1fr auto;
   align-items: center;
-  gap: 8px;
-  padding: 9px 12px 8px;
-  border-bottom: 1px solid rgba(17, 24, 39, 0.065);
-  background: linear-gradient(180deg, rgba(230, 241, 234, 0.48), rgba(255, 255, 255, 0.98));
+  gap: 6px;
+  min-height: var(--cats-head-min-h, 52px);
+  padding: 6px 11px 5px;
+  border-bottom: 1px solid rgba(17, 24, 39, 0.08);
+  background: linear-gradient(180deg, rgba(224, 236, 229, 0.62), rgba(248, 250, 249, 0.98));
   cursor: default;
   border-radius: var(--cats-radius-card) var(--cats-radius-card) 0 0;
+}
+.cats-group.is-empty-group .cats-group__head{
+  background: linear-gradient(180deg, rgba(254, 243, 199, 0.35), rgba(255, 255, 255, 0.98));
 }
 .cats-group__collapse{
   appearance: none;
@@ -12604,10 +12626,10 @@ body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .c
 
 .cats-group__name{
   margin: 0;
-  font-size: 14.75px;
-  font-weight: 700;
-  letter-spacing: -0.005em;
-  color: var(--cats-fg);
+  font-size: 14.5px;
+  font-weight: 750;
+  letter-spacing: -0.01em;
+  color: rgba(15, 23, 42, 0.96);
   min-width: 0;
   display: flex;
   align-items: center;
@@ -12633,10 +12655,10 @@ body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .c
   background: #fff;
 }
 .cats-group__count{
-  font-size: 10.75px;
+  font-size: 10px;
   font-weight: 500;
-  color: rgba(100, 116, 139, 0.62);
-  letter-spacing: 0.02em;
+  color: rgba(100, 116, 139, 0.52);
+  letter-spacing: 0.01em;
   text-transform: none;
 }
 .cats-group[data-system-group="1"] .cats-group__name::after{
@@ -12864,8 +12886,8 @@ body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .c
 }
 
 .cats-group__empty-row{
-  padding: 11px 16px 13px;
-  font-size: 12.5px;
+  padding: 7px 12px 8px;
+  font-size: 12px;
   color: var(--cats-muted);
   font-style: normal;
 }
@@ -12875,18 +12897,31 @@ body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .c
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 5px 8px;
-  padding: var(--cats-row-pad-y) var(--cats-row-pad-x) var(--cats-row-pad-y) 8px;
+  gap: 4px 6px;
+  padding: var(--cats-row-pad-y) var(--cats-row-pad-x) var(--cats-row-pad-y) 6px;
   border-radius: 0;
-  cursor: default;
+  cursor: pointer;
   position: relative;
-  min-height: 34px;
+  min-height: var(--cats-row-min-h, 44px);
+  max-height: 48px;
+  transition: background 0.12s ease, opacity 0.12s ease;
 }
 .cats-cat + .cats-cat{
   border-top: 1px solid var(--cats-row-divider);
 }
-.cats-cat:hover{
-  background: color-mix(in srgb, var(--accent) 5.5%, rgba(248, 250, 252, 0.9));
+.cats-cat:hover,
+.cats-cat:focus-within{
+  background: color-mix(in srgb, var(--accent) 7%, rgba(248, 250, 252, 0.96));
+}
+.cats-cat.is-unused{
+  opacity: 0.72;
+}
+.cats-cat.is-unused .cats-cat__name{
+  color: rgba(71, 85, 105, 0.78);
+}
+.cats-cat.is-frequent .cats-cat__name{
+  font-weight: 600;
+  color: var(--cats-fg);
 }
 .cats-cat.is-dragging{
   opacity: 0.7;
@@ -12902,21 +12937,22 @@ body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .c
   border-radius: 2px;
 }
 .cats-cat__handle{
-  width: 16px;
-  height: 18px;
+  width: 14px;
+  height: 16px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: rgba(71, 85, 105, 0.74);
+  color: rgba(71, 85, 105, 0.82);
   cursor: grab;
-  opacity: 0.38;
-  transition: opacity 0.12s ease;
+  opacity: 0;
+  transition: opacity 0.12s ease, color 0.12s ease;
   user-select: none;
   flex: 0 0 auto;
 }
 .cats-cat:hover .cats-cat__handle,
-.cats-cat:focus-within .cats-cat__handle{
-  opacity: 0.95;
+.cats-cat:focus-within .cats-cat__handle,
+.cats-cat.is-dragging .cats-cat__handle{
+  opacity: 1;
 }
 .cats-cat__handle::before{
   content: "";
@@ -12959,21 +12995,72 @@ body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .c
 }
 
 .cats-cat__meta{
-  font-size: 9.75px;
-  font-weight: 450;
-  color: rgba(100, 116, 139, 0.46);
-  flex: 0 1 auto;
+  font-size: 9px;
+  font-weight: 500;
+  color: rgba(100, 116, 139, 0.55);
+  flex: 0 0 auto;
   margin-left: auto;
-  margin-right: 2px;
+  margin-right: 0;
   min-width: 0;
-  max-width: min(220px, 38%);
+  max-width: none;
   text-align: right;
   align-self: center;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  letter-spacing: 0.008em;
-  line-height: 1.25;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: rgba(241, 245, 249, 0.85);
+  border: 1px solid rgba(17, 24, 39, 0.05);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.12s ease, visibility 0.12s ease;
+}
+.cats-cat__meta:empty{
+  display: none;
+}
+.cats-cat:hover .cats-cat__meta:not(:empty),
+.cats-cat:focus-within .cats-cat__meta:not(:empty){
+  opacity: 1;
+  visibility: visible;
+}
+.cats-cat__edit-hint{
+  appearance: none;
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  margin: 0 0 0 2px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: rgba(71, 85, 105, 0.5);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s ease, background 0.12s ease, color 0.12s ease;
+}
+.cats-cat__edit-hint svg{
+  width: 13px;
+  height: 13px;
+  display: block;
+  margin: auto;
+}
+.cats-cat:hover .cats-cat__edit-hint,
+.cats-cat:focus-within .cats-cat__edit-hint{
+  opacity: 1;
+}
+.cats-cat__edit-hint:hover{
+  background: rgba(11, 61, 46, 0.06);
+  border-color: rgba(11, 61, 46, 0.12);
+  color: rgba(11, 61, 46, 0.88);
+}
+.cats-cat__edit-hint:focus-visible{
+  opacity: 1;
+  outline: 2px solid color-mix(in srgb, var(--accent) 38%, transparent);
+  outline-offset: 1px;
 }
 .cats-cat__menu{
   position: relative;
@@ -13094,10 +13181,14 @@ body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .c
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 10px 4px;
-  border-top: 1px solid rgba(17, 24, 39, 0.045);
-  background: rgba(248, 250, 252, 0.5);
+  padding: 2px 8px 3px;
+  min-height: 32px;
+  border-top: 1px solid rgba(17, 24, 39, 0.04);
+  background: transparent;
   border-radius: 0 0 var(--cats-radius-card) var(--cats-radius-card);
+}
+.cats-group:not(:hover):not(:focus-within) .cats-group__add-trigger{
+  opacity: 0.55;
 }
 .cats-group__add-form{
   flex: 1 1 auto;
@@ -13122,41 +13213,37 @@ body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .c
 .cats-group__add-trigger{
   appearance: none;
   background: transparent;
-  border: 1px dashed rgba(17, 24, 39, 0.1);
-  color: rgba(71, 85, 105, 0.62);
+  border: none;
+  color: rgba(11, 61, 46, 0.72);
   font: inherit;
-  font-size: 12px;
-  font-weight: 550;
-  padding: 5px 8px;
-  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 2px 4px;
+  border-radius: 4px;
   cursor: pointer;
-  transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease;
-  width: 100%;
+  transition: background 0.14s ease, color 0.14s ease, opacity 0.14s ease;
+  width: auto;
+  max-width: 100%;
   text-align: left;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
 }
 .cats-group__add-trigger:hover{
-  background: rgba(11, 61, 46, 0.04);
-  border-color: rgba(11, 61, 46, 0.22);
-  color: rgba(11, 61, 46, 0.9);
+  background: rgba(11, 61, 46, 0.06);
+  color: rgba(11, 61, 46, 0.95);
+  opacity: 1;
 }
 .cats-group__add-trigger:focus-visible{
   outline: 2px solid color-mix(in srgb, var(--accent) 40%, transparent);
   outline-offset: 1px;
 }
 .cats-group__add-plus{
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  border-radius: 999px;
-  font-size: 15px;
+  display: inline;
+  font-size: 13px;
   line-height: 1;
   font-weight: 700;
-  background: rgba(11, 61, 46, 0.08);
+  color: rgba(11, 61, 46, 0.78);
 }
 .cats-group__add-submit{
   appearance: none;
@@ -17803,10 +17890,10 @@ body.plans-page--polished .plans-wrap{
   pointer-events: none;
 }
 .cal-cell.cal-cell--bal-warn{
-  background: color-mix(in srgb, #fff7ed 10%, #fff);
-  border-color: rgba(17, 24, 39, 0.052);
+  background: color-mix(in srgb, #fffbf7 5%, #fff);
+  border-color: rgba(17, 24, 39, 0.05);
   box-shadow:
-    inset 2px 0 0 rgba(225, 29, 72, 0.11),
+    inset 2px 0 0 rgba(180, 130, 70, 0.07),
     0 1px 2px rgba(17, 24, 39, 0.02);
 }
 .cal-cell.cal-cell--bal-risk{
@@ -17865,11 +17952,11 @@ body.plans-page--polished .plans-wrap{
 }
 
 .cal-cell.cal-cell--bal-warn:not(.cal-cell--out):not(.cal-cell--before-start):hover{
-  border-color: rgba(17, 24, 39, 0.085);
-  background: color-mix(in srgb, #fff7ed 12%, #fff);
+  border-color: rgba(17, 24, 39, 0.08);
+  background: color-mix(in srgb, #fffbf7 8%, #fff);
   box-shadow:
-    inset 2px 0 0 rgba(225, 29, 72, 0.14),
-    0 4px 14px rgba(127, 29, 29, 0.028);
+    inset 2px 0 0 rgba(180, 130, 70, 0.1),
+    0 4px 14px rgba(15, 23, 42, 0.04);
 }
 
 .cal-cell.cal-cell--bal-risk:not(.cal-cell--out):not(.cal-cell--before-start):hover{
@@ -18379,8 +18466,10 @@ body.plans-page--polished .plans-wrap{
 }
 
 /* === Transaction row: flat, ledger-like typography ===
-   One size, one weight, two colors (green in / red out) for every row. */
+   Medium weight by default; bold reserved for high-impact amounts. */
 .cal-day-tx-line{
+  --cal-tx-in-color: rgba(5, 118, 84, 0.74);
+  --cal-tx-out-color: rgba(168, 62, 62, 0.72);
   font-size: var(--cal-tx-font-size, var(--month-summary-amount-font-size, 12px));
   line-height: 1.28;
   min-height: 16px;
@@ -18392,8 +18481,12 @@ body.plans-page--polished .plans-wrap{
   gap: 4px;
   padding: 0 1px 0 4px;
   position: relative;
+  font-weight: 500;
+  color: var(--cal-tx-out-color, rgba(168, 62, 62, 0.72));
+}
+.cal-day-tx-line--impact-lg,
+.cal-day-tx-line--impact-xxl{
   font-weight: 600;
-  color: var(--cal-tx-out-color, var(--danger));
 }
 .cal-day-tx-line--start-balance{
   padding-left: 0;
@@ -18534,13 +18627,13 @@ body.plans-page--polished .plans-wrap{
   align-items: center;
 }
 .cal-day-tx-line--start-balance .cal-tx-label{
-  font-weight: 600;
+  font-weight: 550;
   letter-spacing: 0.01em;
-  color: rgba(30, 41, 59, 0.9);
+  color: rgba(30, 41, 59, 0.88);
 }
 .cal-day-tx-line--start-balance .cal-amt{
-  font-weight: 630;
-  color: rgba(51, 65, 85, 0.88);
+  font-weight: 550;
+  color: rgba(51, 65, 85, 0.84);
 }
 
 .cal-day-tx-line--impact-lg,
@@ -19725,12 +19818,12 @@ body[data-bw-view="transactions"] .tm__field label{
 .cal-stat.expense{ color: var(--text); }
 .cal-stat.cal-balance{
   /* End-of-day balance: readable anchor, secondary to transaction rows. */
-  font-size: clamp(12.5px, 1.36vw, 14px);
+  font-size: clamp(12.25px, 1.32vw, 13.75px);
   line-height: 1.24;
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: -0.01em;
   font-variant-numeric: tabular-nums;
-  color: rgba(30, 41, 59, 0.86);
+  color: rgba(30, 41, 59, 0.82);
 }
 .cal-cell--density-sparse .cal-stat.cal-balance:not(.is-negative):not(.cal-balance--below-floor):not(.cal-balance--watch-zone){
   font-size: clamp(12.75px, 1.38vw, 14.25px);
@@ -19746,27 +19839,27 @@ body[data-bw-view="transactions"] .tm__field label{
   color: rgba(100, 116, 139, 0.58);
 }
 .cal-stat.cal-balance.cal-balance--watch-zone{
-  font-weight: 620;
-  color: rgba(146, 64, 14, 0.8);
-  padding: 1px 5px;
-  border-radius: 5px;
-  background: rgba(254, 252, 232, 0.55);
-  border: 1px solid rgba(253, 224, 71, 0.14);
+  font-weight: 520;
+  color: rgba(120, 98, 62, 0.72);
+  padding: 0 4px;
+  border-radius: 4px;
+  background: rgba(254, 252, 248, 0.42);
+  border: none;
   box-shadow: none;
 }
 .cal-stat.cal-balance.cal-balance--below-floor{
-  font-size: clamp(12.75px, 1.38vw, 14.25px);
-  font-weight: 620;
-  color: rgba(154, 52, 18, 0.82);
-  padding: 1px 6px;
-  border-radius: 5px;
-  background: rgba(255, 247, 237, 0.55);
-  border: 1px solid rgba(253, 186, 116, 0.16);
+  font-size: clamp(12.35px, 1.32vw, 13.85px);
+  font-weight: 540;
+  color: rgba(130, 92, 52, 0.76);
+  padding: 0 4px;
+  border-radius: 4px;
+  background: rgba(255, 251, 246, 0.5);
+  border: none;
   box-shadow: none;
 }
 .cal-stat.cal-balance.cal-balance--repeated:not(.cal-balance--risk):not(.is-negative){
-  font-weight: 630;
-  color: rgba(120, 53, 15, 0.72);
+  font-weight: 540;
+  color: rgba(120, 88, 52, 0.68);
 }
 .cal-stat.cal-balance.cal-balance--month-low-mark{
   font-weight: 620;
@@ -19778,13 +19871,13 @@ body[data-bw-view="transactions"] .tm__field label{
 }
 .cal-stat.cal-balance.cal-balance--risk,
 .cal-stat.cal-balance.is-negative{
-  font-weight: 650;
-  font-size: clamp(13px, 1.4vw, 14.5px);
-  color: rgba(127, 29, 29, 0.9);
-  padding: 2px 7px;
-  border-radius: 6px;
-  background: rgba(254, 242, 242, 0.62);
-  border: 1px solid rgba(252, 165, 165, 0.2);
+  font-weight: 560;
+  font-size: clamp(12.5px, 1.34vw, 14px);
+  color: rgba(127, 45, 45, 0.82);
+  padding: 0 5px;
+  border-radius: 4px;
+  background: rgba(254, 246, 246, 0.45);
+  border: none;
   box-shadow: none;
 }
 .cal-stat.cal-balance.cal-balance--risk.cal-balance--repeated,
@@ -19829,14 +19922,14 @@ body[data-bw-view="transactions"] .tm__field label{
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  margin-right: 3px;
-  color: rgba(194, 65, 12, 0.52);
-  opacity: 0.9;
+  margin-right: 2px;
+  color: rgba(168, 118, 62, 0.42);
+  opacity: 0.85;
 }
 .cal-balance-warn-icon svg{
   display: block;
-  width: 12px;
-  height: 12px;
+  width: 9px;
+  height: 9px;
 }
 
 .cal-forecast-note{
@@ -21064,9 +21157,12 @@ body[data-bw-view="transactions"] .tm__field label{
   max-width: none;
 }
 /* Recurring sub-cluster: lighter background to mark it as secondary configuration. */
+.modal--tx-add #txAddScheduleCompact + .tx-add-vspace{
+  height: 8px;
+}
 .modal--tx-add #txAddRecurringBlock{
-  margin-top: 2px;
-  padding: 5px 0 4px;
+  margin-top: 6px;
+  padding: 8px 0 5px;
   border-radius: 6px;
   background: rgba(15, 23, 42, 0.011);
   border: 1px solid rgba(17, 24, 39, 0.03);
@@ -21147,7 +21243,7 @@ body[data-bw-view="transactions"] .tm__field label{
   cursor: pointer;
 }
 .modal--tx-add .tx-add-advanced{
-  margin-top: 0;
+  margin-top: 5px;
 }
 .modal--tx-add .tx-add-advanced__expander{
   display: inline-flex;
@@ -25527,7 +25623,8 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   }
 
   .calendar--mobile .cal-stat.cal-balance.cal-balance--below-floor{
-    font-size: 13.75px;
+    font-size: 13px;
+    font-weight: 540;
   }
 
   body[data-bw-view="transactions"] .tm{

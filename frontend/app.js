@@ -8225,7 +8225,56 @@ function categoryAssignmentsForCategoryId(catId) {
   return Number(v) || 0;
 }
 
+const CATS_GROUP_COLLAPSED_KEY = "familyCashFlow:catsGroupCollapsed";
+
+function readCollapsedCategoryGroupIds() {
+  try {
+    const raw = localStorage.getItem(CATS_GROUP_COLLAPSED_KEY);
+    if (!raw) return new Set();
+    const arr = JSON.parse(raw);
+    return new Set(Array.isArray(arr) ? arr.map(String) : []);
+  } catch (_) {
+    return new Set();
+  }
+}
+
+function writeCollapsedCategoryGroupIds(ids) {
+  try {
+    localStorage.setItem(CATS_GROUP_COLLAPSED_KEY, JSON.stringify([...ids]));
+  } catch (_) {}
+}
+
+function setCategoryGroupCollapsed(groupId, collapsed) {
+  const ids = readCollapsedCategoryGroupIds();
+  const id = String(groupId);
+  if (collapsed) ids.add(id);
+  else ids.delete(id);
+  writeCollapsedCategoryGroupIds(ids);
+}
+
+function ensureCategoriesScanTips() {
+  const pane = document.querySelector("[data-cats-pane]");
+  if (!pane || pane.querySelector(".cats-pane__scan-tips")) return;
+  const tips = document.createElement("p");
+  tips.className = "cats-pane__scan-tips";
+  tips.setAttribute("role", "note");
+  tips.innerHTML =
+    "<span>Drag rows to reorder</span>" +
+    '<span class="cats-pane__scan-tips-sep" aria-hidden="true">·</span>' +
+    "<span>Click a name to rename</span>" +
+    '<span class="cats-pane__scan-tips-sep" aria-hidden="true">·</span>' +
+    "<span>Collapse groups you use less often</span>";
+  const summary = pane.querySelector(".categories-manager__summary");
+  if (summary) summary.insertAdjacentElement("beforebegin", tips);
+  else {
+    const toolbar = pane.querySelector(".cats-pane__toolbar");
+    if (toolbar) toolbar.insertAdjacentElement("beforebegin", tips);
+    else pane.querySelector(".categories-manager__shell")?.prepend(tips);
+  }
+}
+
 function refreshCategoriesManagerChrome() {
+  ensureCategoriesScanTips();
   const tree = state.categoryTree;
   const groups = (tree?.groups || []).filter(Boolean);
   const elG = document.getElementById("categoriesStatGroups");
@@ -8713,6 +8762,16 @@ function renderCategoriesGrid(tree) {
   if (emptyEl) emptyEl.hidden = true;
   categoriesTree.hidden = false;
 
+  const collapsedGroupIds = readCollapsedCategoryGroupIds();
+  let maxCategoryUsage = 0;
+  for (const g of groups) {
+    for (const c of g.categories || []) {
+      maxCategoryUsage = Math.max(maxCategoryUsage, categoryAssignmentsForCategoryId(c.id));
+    }
+  }
+  const frequentUsageThreshold =
+    maxCategoryUsage > 0 ? Math.max(3, Math.ceil(maxCategoryUsage * 0.55)) : Infinity;
+
   function clearDragUi() {
     categoriesTree
       .querySelectorAll(
@@ -8869,14 +8928,44 @@ function renderCategoriesGrid(tree) {
     handle.draggable = true;
 
     const nUse = categoryAssignmentsForCategoryId(c.id);
+    if (nUse === 0) row.classList.add("is-unused");
+    else if (nUse >= frequentUsageThreshold) row.classList.add("is-frequent");
+
     const meta = document.createElement("span");
     meta.className = "cats-cat__meta";
-    meta.textContent = nUse > 0 ? `Used by ${nUse} ${nUse === 1 ? "entry" : "entries"}` : "";
+    meta.textContent = nUse > 0 ? `${nUse} ${nUse === 1 ? "entry" : "entries"}` : "";
+
+    const editHint = document.createElement("button");
+    editHint.type = "button";
+    editHint.className = "cats-cat__edit-hint";
+    editHint.setAttribute("aria-label", `Rename ${c.name}`);
+    editHint.innerHTML =
+      '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M10.5 2.5 13.5 5.5 5.5 13.5H2.5v-3L10.5 2.5Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>';
+    editHint.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      selectEditableText(nameEl);
+    });
 
     row.appendChild(handle);
     row.appendChild(nameEl);
     row.appendChild(meta);
+    row.appendChild(editHint);
     row.appendChild(menu);
+
+    row.addEventListener("click", (ev) => {
+      const t = ev.target;
+      if (!(t instanceof Element)) return;
+      if (
+        t.closest(".cats-cat__menu") ||
+        t.closest(".cats-cat__handle") ||
+        t.closest(".cats-cat__edit-hint") ||
+        t.closest(".cats-cat__name")
+      ) {
+        return;
+      }
+      selectEditableText(nameEl);
+    });
 
     handle.addEventListener("dragstart", (e) => {
       try {
@@ -8962,6 +9051,7 @@ function renderCategoriesGrid(tree) {
     count.className = "cats-group__count";
     const n = (g.categories || []).length;
     count.textContent = n === 0 ? "empty" : `${n} ${n === 1 ? "category" : "categories"}`;
+    if (n === 0 && !isSystemGroup) card.classList.add("is-empty-group");
 
     nameWrap.appendChild(nameText);
     nameWrap.appendChild(count);
@@ -9079,13 +9169,20 @@ function renderCategoriesGrid(tree) {
     head.appendChild(nameWrap);
     head.appendChild(menu);
 
+    if (collapsedGroupIds.has(String(g.id))) {
+      card.classList.add("is-collapsed");
+      collapseBtn.setAttribute("aria-label", `Expand ${g.name}`);
+    }
+
     collapseBtn.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
       card.classList.toggle("is-collapsed");
+      const collapsed = card.classList.contains("is-collapsed");
+      setCategoryGroupCollapsed(g.id, collapsed);
       collapseBtn.setAttribute(
         "aria-label",
-        `${card.classList.contains("is-collapsed") ? "Expand" : "Collapse"} ${g.name}`
+        `${collapsed ? "Expand" : "Collapse"} ${g.name}`
       );
     });
 
@@ -9184,8 +9281,7 @@ function renderCategoriesGrid(tree) {
     const trigger = document.createElement("button");
     trigger.type = "button";
     trigger.className = "cats-group__add-trigger";
-    const gnm = String(g.name || "").trim() || "this group";
-    trigger.innerHTML = `<span class="cats-group__add-plus" aria-hidden="true">+</span><span>Add category to ${escapeHtml(gnm)}</span>`;
+    trigger.innerHTML = '<span class="cats-group__add-plus" aria-hidden="true">+</span><span>Add category</span>';
 
     const form = document.createElement("form");
     form.className = "cats-group__add-form";
@@ -12328,7 +12424,7 @@ function renderCalendar() {
           : "";
       const warnIcon =
         belowFloor && !negativeBal
-          ? `<span class="cal-balance-warn-icon" aria-hidden="true" title="Below your minimum balance"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 2.25L14 13.75H2L8 2.25z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round" fill="none"/><path d="M8 6.25v3M8 11.1v.01" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></span>`
+          ? `<span class="cal-balance-warn-icon" aria-hidden="true" title="Below your minimum balance"><svg viewBox="0 0 16 16" width="9" height="9" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 2.25L14 13.75H2L8 2.25z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" fill="none"/><path d="M8 6.25v3M8 11.1v.01" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg></span>`
           : "";
       metricsEl.innerHTML = `<div class="cal-balance-strip${stripCue ? ` ${stripCue}` : ""}"><div class="cal-balance-strip__row"><span class="cal-balance-strip__amt">${riskIcon}${warnIcon}<span class="${balanceClass}" title="Projected end-of-day balance">$${fmtMoneyParens(
         endNum
