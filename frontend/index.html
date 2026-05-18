@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=559" />
+    <link rel="stylesheet" href="./styles.css?v=562" />
   </head>
   <body class="landing-page">
     <div class="container">
@@ -51,47 +51,22 @@
                 <p class="landing-hero__microtrust" aria-label="What to expect">
                   <span class="landing-hero__reassurance">No bank connection required.</span>
                   <span class="landing-hero__microtrust__sep" aria-hidden="true">·</span>
-                  <span class="landing-hero__proof">Everyday cash flow planning — no traditional budgeting required.</span>
+                  <span class="landing-hero__proof">Designed to help you avoid cash surprises — without complicated budgeting.</span>
                 </p>
               </div>
             </div>
           </div>
 
-          <section class="landing-insight" aria-label="Example forecast insight">
-            <div class="landing-insight__card">
-              <div class="landing-insight__iconCol" aria-hidden="true">
-                <span class="landing-insight__icon" title="Heads up">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12 9v4M12 17h.01" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
-                    <path
-                      d="M10.3 3.2h3.4L21 17.5a1 1 0 01-.9 1.5H3.9a1 1 0 01-.9-1.5L10.3 3.2z"
-                      stroke="currentColor"
-                      stroke-width="1.5"
-                      stroke-linejoin="round"
-                    />
-                  </svg>
-                </span>
-              </div>
-              <div class="landing-insight__main">
-                <p class="landing-insight__label">Forecast Alert</p>
-                <p class="landing-insight__copy">
-                  May 20 gets close to your $1,000 minimum balance after a large card payment.
-                </p>
-              </div>
-            </div>
-          </section>
-        </div>
-
-        <div id="features" class="landing-features landing-reveal" aria-label="Product features">
-          <section class="landing-cal-peek landing-cal-peek--primary landing-section landing-section--surface-white" aria-label="Forecast calendar preview">
-          <div class="landing-cal-peek__inner">
-            <div class="landing-cal-peek__copy">
+          <div id="landingHeroForecast" class="landing-hero-forecast" aria-label="Example forecast preview">
+            <div class="landing-hero-forecast__story">
+            <div class="landing-cal-peek__copy landing-hero-forecast__copy">
               <h3 class="landing-cal-peek__title">See timing, not just totals</h3>
               <p class="landing-cal-peek__lede">
-                See upcoming bills and paychecks before cash pressure builds.
+                Money problems are often timing problems.
               </p>
             </div>
-            <div class="landing-cal-peek__frame" aria-hidden="true">
+            <div class="landing-hero-forecast__demo">
+            <div class="landing-cal-peek__frame landing-hero-forecast__cal" aria-hidden="true">
               <div class="landing-cal-peek__chrome">
                 <span class="landing-cal-peek__month">May 2026</span>
                 <span class="landing-cal-peek__hint">Projected balance by day</span>
@@ -124,32 +99,46 @@
                 <text x="472" y="34" fill="rgba(55,65,75,0.62)" font-size="11" font-family="Inter, system-ui, sans-serif" font-weight="600">
                   S
                 </text>
-                <g font-family="Inter, system-ui, sans-serif">
-                  <rect x="8" y="48" width="68" height="60" rx="8" fill="url(#landingCalCell)" stroke="rgba(11,61,46,0.11)" />
-                  <text x="14" y="68" fill="rgba(55,65,60,0.58)" font-size="10" font-weight="600">17</text>
-                  <text x="14" y="92" fill="rgba(11,61,46,0.94)" font-size="11" font-weight="700">$4,280</text>
-                  <rect x="84" y="48" width="68" height="60" rx="8" fill="url(#landingCalCell)" stroke="rgba(11,61,46,0.11)" />
-                  <text x="90" y="68" fill="rgba(55,65,60,0.58)" font-size="10" font-weight="600">18</text>
-                  <text x="90" y="92" fill="rgba(11,61,46,0.94)" font-size="11" font-weight="700">$3,910</text>
-                  <rect x="160" y="48" width="68" height="60" rx="8" fill="url(#landingCalCell)" stroke="rgba(11,61,46,0.11)" />
-                  <text x="166" y="68" fill="rgba(55,65,60,0.58)" font-size="10" font-weight="600">19</text>
-                  <text x="166" y="92" fill="rgba(11,61,46,0.94)" font-size="11" font-weight="700">$2,240</text>
-                  <rect x="236" y="48" width="68" height="60" rx="8" fill="rgba(255,250,232,0.78)" stroke="rgba(180,83,9,0.42)" stroke-width="1.25" />
-                  <text x="242" y="68" fill="rgba(55,65,60,0.62)" font-size="10" font-weight="600">20</text>
-                  <text x="242" y="92" fill="rgba(11,61,46,0.94)" font-size="11" font-weight="700">$1,020</text>
-                  <text x="242" y="104" fill="rgba(146,72,18,0.72)" font-size="6.5" font-weight="600">Watch</text>
-                  <rect x="312" y="48" width="68" height="60" rx="8" fill="url(#landingCalCell)" stroke="rgba(11,61,46,0.11)" />
-                  <text x="318" y="68" fill="rgba(55,65,60,0.58)" font-size="10" font-weight="600">21</text>
-                  <text x="318" y="92" fill="rgba(11,61,46,0.94)" font-size="11" font-weight="700">$3,050</text>
-                  <text x="318" y="104" fill="rgba(4,120,87,0.82)" font-size="6.5" font-weight="700">↑ Paycheck</text>
-                  <rect x="388" y="48" width="68" height="60" rx="8" fill="url(#landingCalCell)" stroke="rgba(11,61,46,0.11)" />
-                  <text x="394" y="68" fill="rgba(55,65,60,0.58)" font-size="10" font-weight="600">22</text>
-                  <text x="394" y="92" fill="rgba(11,61,46,0.94)" font-size="11" font-weight="700">$2,680</text>
-                  <rect x="464" y="48" width="68" height="60" rx="8" fill="url(#landingCalCell)" stroke="rgba(11,61,46,0.11)" />
-                  <text x="470" y="68" fill="rgba(55,65,60,0.58)" font-size="10" font-weight="600">23</text>
-                  <text x="470" y="92" fill="rgba(11,61,46,0.94)" font-size="11" font-weight="700">$2,310</text>
+                <g class="landing-hero-forecast__days" font-family="Inter, system-ui, sans-serif">
+                  <g class="landing-hero-forecast__day">
+                    <rect x="8" y="48" width="68" height="60" rx="8" fill="url(#landingCalCell)" stroke="rgba(11,61,46,0.11)" />
+                    <text x="14" y="68" fill="rgba(55,65,60,0.58)" font-size="10" font-weight="600">17</text>
+                    <text x="14" y="92" fill="rgba(11,61,46,0.94)" font-size="11" font-weight="700">$4,280</text>
+                  </g>
+                  <g class="landing-hero-forecast__day">
+                    <rect x="84" y="48" width="68" height="60" rx="8" fill="url(#landingCalCell)" stroke="rgba(11,61,46,0.11)" />
+                    <text x="90" y="68" fill="rgba(55,65,60,0.58)" font-size="10" font-weight="600">18</text>
+                    <text x="90" y="92" fill="rgba(11,61,46,0.94)" font-size="11" font-weight="700">$3,910</text>
+                  </g>
+                  <g class="landing-hero-forecast__day">
+                    <rect x="160" y="48" width="68" height="60" rx="8" fill="url(#landingCalCell)" stroke="rgba(11,61,46,0.11)" />
+                    <text x="166" y="68" fill="rgba(55,65,60,0.58)" font-size="10" font-weight="600">19</text>
+                    <text x="166" y="92" fill="rgba(11,61,46,0.94)" font-size="11" font-weight="700">$2,240</text>
+                  </g>
+                  <g class="landing-hero-forecast__day landing-hero-forecast__day--watch" data-landing-day="20">
+                    <rect x="236" y="48" width="68" height="60" rx="8" fill="url(#landingCalCell)" stroke="rgba(11,61,46,0.11)" />
+                    <text x="242" y="68" fill="rgba(55,65,60,0.58)" font-size="10" font-weight="600">20</text>
+                    <text x="242" y="92" fill="rgba(11,61,46,0.94)" font-size="11" font-weight="700">$1,020</text>
+                    <text class="landing-hero-forecast__dayTag" x="242" y="104" fill="rgba(146,72,18,0.72)" font-size="6.5" font-weight="600">Watch</text>
+                  </g>
+                  <g class="landing-hero-forecast__day landing-hero-forecast__day--paycheck" data-landing-day="21">
+                    <rect x="312" y="48" width="68" height="60" rx="8" fill="url(#landingCalCell)" stroke="rgba(11,61,46,0.11)" />
+                    <text x="318" y="68" fill="rgba(55,65,60,0.58)" font-size="10" font-weight="600">21</text>
+                    <text x="318" y="92" fill="rgba(11,61,46,0.94)" font-size="11" font-weight="700">$3,050</text>
+                    <text class="landing-hero-forecast__dayTag landing-hero-forecast__dayTag--pay" x="318" y="104" fill="rgba(4,120,87,0.82)" font-size="6.5" font-weight="700">↑ Paycheck</text>
+                  </g>
+                  <g class="landing-hero-forecast__day">
+                    <rect x="388" y="48" width="68" height="60" rx="8" fill="url(#landingCalCell)" stroke="rgba(11,61,46,0.11)" />
+                    <text x="394" y="68" fill="rgba(55,65,60,0.58)" font-size="10" font-weight="600">22</text>
+                    <text x="394" y="92" fill="rgba(11,61,46,0.94)" font-size="11" font-weight="700">$2,680</text>
+                  </g>
+                  <g class="landing-hero-forecast__day">
+                    <rect x="464" y="48" width="68" height="60" rx="8" fill="url(#landingCalCell)" stroke="rgba(11,61,46,0.11)" />
+                    <text x="470" y="68" fill="rgba(55,65,60,0.58)" font-size="10" font-weight="600">23</text>
+                    <text x="470" y="92" fill="rgba(11,61,46,0.94)" font-size="11" font-weight="700">$2,310</text>
+                  </g>
                 </g>
-                <g opacity="1">
+                <g class="landing-hero-forecast__txn landing-hero-forecast__txn--card">
                   <rect x="8" y="118" width="524" height="30" rx="8" fill="rgba(180,83,9,0.05)" stroke="rgba(180,83,9,0.18)" />
                   <circle cx="22" cy="133" r="4" fill="rgba(180,83,9,0.55)" />
                   <text x="34" y="137" fill="rgba(31,41,55,0.88)" font-size="10" font-family="Inter, system-ui, sans-serif" font-weight="600">
@@ -159,7 +148,7 @@
                     −$1,220
                   </text>
                 </g>
-                <g opacity="1">
+                <g class="landing-hero-forecast__txn landing-hero-forecast__txn--paycheck">
                   <rect x="8" y="154" width="524" height="30" rx="8" fill="rgba(4,120,87,0.08)" stroke="rgba(4,120,87,0.22)" />
                   <circle cx="22" cy="169" r="4" fill="rgba(4,120,87,0.72)" />
                   <text x="34" y="173" fill="rgba(31,41,55,0.88)" font-size="10" font-family="Inter, system-ui, sans-serif" font-weight="600">
@@ -174,8 +163,36 @@
                 </text>
               </svg>
             </div>
-          </div>
+          <section class="landing-insight landing-hero-forecast__alert" aria-label="Example forecast insight">
+            <div class="landing-insight__card">
+              <div class="landing-insight__iconCol" aria-hidden="true">
+                <span class="landing-insight__icon" title="Heads up">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 9v4M12 17h.01" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
+                    <path
+                      d="M10.3 3.2h3.4L21 17.5a1 1 0 01-.9 1.5H3.9a1 1 0 01-.9-1.5L10.3 3.2z"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </span>
+              </div>
+              <div class="landing-insight__main">
+                <p class="landing-insight__label">Forecast Alert</p>
+                <p class="landing-insight__copy">
+                  Your balance drops near $1,000 after a large card payment on May 20.
+                </p>
+              </div>
+            </div>
           </section>
+            </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="features" class="landing-features landing-reveal" aria-label="Product features">
+
           <section class="landing-preview landing-preview--secondary landing-section landing-section--tint-safe" aria-label="Product preview">
           <div class="landing-preview__intro">
             <h3 class="landing-preview__title">See what’s safe to move.</h3>
@@ -212,8 +229,8 @@
               <div class="landing-preview__chart" aria-hidden="true">
                 <svg
                   class="landing-preview__chartSvg"
-                  viewBox="0 0 640 172"
-                  preserveAspectRatio="xMidYMid meet"
+                  viewBox="8 6 624 158"
+                  preserveAspectRatio="xMidYMin meet"
                   xmlns="http://www.w3.org/2000/svg"
                 >
                   <defs>
@@ -222,37 +239,37 @@
                       <stop offset="100%" stop-color="rgba(11, 61, 46, 0)" />
                     </linearGradient>
                   </defs>
-                  <rect x="24" y="14" width="592" height="122" rx="12" fill="rgba(4, 120, 87, 0.07)" />
-                  <rect x="24" y="112" width="592" height="20" rx="8" fill="rgba(180, 83, 9, 0.07)" />
-                  <line x1="24" y1="120" x2="616" y2="120" stroke="rgba(180, 83, 9, 0.48)" stroke-dasharray="5 5" stroke-width="1.45" />
-                  <text x="612" y="116" text-anchor="end" fill="rgba(120, 53, 15, 0.95)" font-size="11" font-family="Inter, system-ui, sans-serif" font-weight="700">$1k minimum balance</text>
+                  <rect x="20" y="10" width="600" height="118" rx="11" fill="rgba(4, 120, 87, 0.08)" />
+                  <rect x="20" y="106" width="600" height="20" rx="8" fill="rgba(180, 83, 9, 0.08)" />
+                  <line x1="20" y1="114" x2="620" y2="114" stroke="rgba(180, 83, 9, 0.48)" stroke-dasharray="5 5" stroke-width="1.45" />
+                  <text x="616" y="108" text-anchor="end" fill="rgba(120, 53, 15, 0.95)" font-size="10.5" font-family="Inter, system-ui, sans-serif" font-weight="700">$1k minimum balance</text>
                   <path
-                    d="M48,36 L140,45 L232,87 L324,118 L416,67 L508,76 L600,86 L600,162 L48,162 Z"
+                    d="M44,32 L136,41 L228,83 L320,114 L412,63 L504,72 L596,82 L596,156 L44,156 Z"
                     fill="url(#landingPreviewBalanceFill)"
                   />
                   <path
                     class="landing-preview__curve"
-                    d="M48,36 L140,45 L232,87 L324,118 L416,67 L508,76 L600,86"
+                    d="M44,32 L136,41 L228,83 L320,114 L412,63 L504,72 L596,82"
                     fill="none"
                     stroke="#0B3D2E"
                     stroke-width="4.25"
                     stroke-linecap="round"
                     stroke-linejoin="round"
                   />
-                  <circle class="landing-preview__markerDot landing-preview__markerDot--out" cx="324" cy="118" r="4.5" />
+                  <circle class="landing-preview__markerDot landing-preview__markerDot--out" cx="320" cy="114" r="4.5" />
                   <text
-                    x="336"
-                    y="112"
+                    x="332"
+                    y="106"
                     class="landing-preview__markerLabel landing-preview__markerLabel--out"
                     text-anchor="start"
                     dominant-baseline="middle"
                   >
                     Credit card
                   </text>
-                  <circle class="landing-preview__markerDot landing-preview__markerDot--in" cx="416" cy="67" r="4.5" />
+                  <circle class="landing-preview__markerDot landing-preview__markerDot--in" cx="412" cy="63" r="4.5" />
                   <text
-                    x="428"
-                    y="61"
+                    x="424"
+                    y="56"
                     class="landing-preview__markerLabel landing-preview__markerLabel--in"
                     text-anchor="start"
                     dominant-baseline="middle"
@@ -315,7 +332,7 @@
                   </span>
                   <div class="landing-how__stepMark landing-how__stepMark--featured" aria-hidden="true">3</div>
                 </div>
-                <h3 class="landing-how__cardTitle">Know when extra cash can safely leave checking</h3>
+                <h3 class="landing-how__cardTitle">Know what’s safe to move</h3>
                 <p class="landing-how__cardBody">Shift money when your calendar shows real room.</p>
               </article>
             </div>
@@ -384,6 +401,7 @@
         </div>
       </footer>
     </div>
+    <script src="./landing-hero-demo.js" defer></script>
     <script>
       (function () {
         if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
