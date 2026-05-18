@@ -186,6 +186,13 @@ function fmtMoney0(n) {
   return num.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 }
 
+/** Month summary in left nav: round up to whole dollars (no cents). */
+function fmtMoneySidebarSummary(n) {
+  const num = typeof n === "string" ? Number(n) : n;
+  if (Number.isNaN(num)) return String(n ?? "");
+  return fmtMoney0(Math.ceil(num));
+}
+
 function fmtMonthYearShort(yyyyMm) {
   try {
     const s = String(yyyyMm || "");
@@ -9610,7 +9617,7 @@ function applyCalendarCellDensity(cell, itemCount) {
   if (!cell) return;
   cell.classList.remove("cal-cell--density-sparse", "cal-cell--density-normal", "cal-cell--density-dense");
   const n = Number(itemCount) || 0;
-  if (n <= 1) cell.classList.add("cal-cell--density-sparse");
+  if (n <= 2) cell.classList.add("cal-cell--density-sparse");
   else if (n >= 4) cell.classList.add("cal-cell--density-dense");
   else cell.classList.add("cal-cell--density-normal");
 }
@@ -10798,15 +10805,15 @@ function renderTotals(totals) {
       <div class="totals-compact">
         <div class="totals-compact__row totals-compact__row--income">
           <span class="totals-compact__k">Income</span>
-          <span class="totals-compact__v ok">$${fmtMoney(income)}</span>
+          <span class="totals-compact__v ok">$${fmtMoneySidebarSummary(income)}</span>
         </div>
         <div class="totals-compact__row totals-compact__row--expense">
           <span class="totals-compact__k">Expenses</span>
-          <span class="totals-compact__v danger">$${fmtMoney(expense)}</span>
+          <span class="totals-compact__v danger">$${fmtMoneySidebarSummary(expense)}</span>
         </div>
         <div class="totals-compact__row totals-compact__row--net">
           <span class="totals-compact__k">Net</span>
-          <span class="totals-compact__v ${net >= 0 ? "ok" : "danger"}">$${fmtMoney(net)}</span>
+          <span class="totals-compact__v ${net >= 0 ? "ok" : "danger"}">$${fmtMoneySidebarSummary(net)}</span>
         </div>
       </div>`;
     return;
@@ -10814,15 +10821,15 @@ function renderTotals(totals) {
 
   const incomeEl = document.createElement("div");
   incomeEl.className = "total total--income";
-  incomeEl.innerHTML = `<div class="k">Income</div><div class="v ok">$${fmtMoney(income)}</div>`;
+  incomeEl.innerHTML = `<div class="k">Income</div><div class="v ok">$${fmtMoneySidebarSummary(income)}</div>`;
 
   const expenseEl = document.createElement("div");
   expenseEl.className = "total total--expense";
-  expenseEl.innerHTML = `<div class="k">Expense</div><div class="v danger">$${fmtMoney(expense)}</div>`;
+  expenseEl.innerHTML = `<div class="k">Expense</div><div class="v danger">$${fmtMoneySidebarSummary(expense)}</div>`;
 
   const netEl = document.createElement("div");
   netEl.className = "total total--net";
-  netEl.innerHTML = `<div class="k">Net</div><div class="v ${netTone}">$${fmtMoney(net)}</div>`;
+  netEl.innerHTML = `<div class="k">Net</div><div class="v ${netTone}">$${fmtMoneySidebarSummary(net)}</div>`;
 
   totalsEl.appendChild(incomeEl);
   totalsEl.appendChild(expenseEl);
