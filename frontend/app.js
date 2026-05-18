@@ -7043,9 +7043,9 @@ async function saveExpectedSeriesFromInstance() {
       } else {
         throw new Error("Second day of month must be different than the selected occurrence day");
       }
-    } else if (Number.isFinite(startDom) && n === startDom) {
-      throw new Error("Second day of month must be different than the start date’s day");
     } else {
+      // Apply-from-occurrence validates second day against the occurrence date (e.g. 29),
+      // not the original series start_date day (e.g. 31) — both days can appear in one series.
       secondDayVal = n;
     }
   } else {
