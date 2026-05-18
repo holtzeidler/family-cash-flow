@@ -1433,6 +1433,26 @@ function initAccountSetupMoneyFields() {
   }
 }
 
+/** Default minimum balance saved on signup when the user does not enter their own. */
+const DEFAULT_SIGNUP_MIN_BALANCE_THRESHOLD = 1000;
+
+/** User-entered cushion amount, or the signup default when the field is blank. */
+function resolveSignupMinBalanceThreshold(cushionP) {
+  if (cushionP && cushionP.ok && !cushionP.empty && Number.isFinite(cushionP.num) && cushionP.num > 0) {
+    return cushionP.num;
+  }
+  return DEFAULT_SIGNUP_MIN_BALANCE_THRESHOLD;
+}
+
+function resolveMinBalanceThresholdFromSignupDraft(draft) {
+  const raw = draft?.account?.balance_threshold_min;
+  if (raw !== undefined && raw !== null && raw !== "") {
+    const n = Number(raw);
+    if (Number.isFinite(n) && n > 0) return n;
+  }
+  return DEFAULT_SIGNUP_MIN_BALANCE_THRESHOLD;
+}
+
 /** Same rules as app balance-threshold inputs: optional, allows $/commas. */
 function parseAccountSetupCushionRaw(raw) {
   const trimmed = String(raw ?? "").trim();
@@ -1544,12 +1564,12 @@ function canAdvanceAccountSetupAccountStep({
     if (!cushionP.ok) {
       return {
         ok: false,
-        message: "Use a number for how much you like to keep in checking, or clear the field to skip.",
+        message: "Use a number for your comfortable minimum balance, or clear the field to use the $1,000 default.",
         focusFieldId: "accountSetupKeepInChecking",
       };
     }
   }
-  const cushionThresholdMin = cushionP.empty || (cushionP.ok && cushionP.num === 0) ? null : cushionP.num;
+  const cushionThresholdMin = anyAccount ? resolveSignupMinBalanceThreshold(cushionP) : null;
   return { ok: true, anyAccount, cushionThresholdMin };
 }
 
@@ -2919,9 +2939,7 @@ async function maybeCreateFirstTransactionFromDraft(draft, createdAccountId) {
 }
 
 async function maybePatchForecastThresholdsFromDraft(draft) {
-  const raw = draft?.account?.balance_threshold_min;
-  const minNum = Number(raw);
-  if (raw === undefined || !Number.isFinite(minNum) || minNum <= 0) return { ok: true, skipped: true };
+  const minNum = resolveMinBalanceThresholdFromSignupDraft(draft);
   let familyId = null;
   try {
     const fams = await requestWithRetry("/api/families", "GET", null, { maxMs: 12000 });

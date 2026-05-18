@@ -342,6 +342,10 @@ class User(Base):
     memberships: Mapped[list[FamilyMember]] = relationship(back_populates="user")
 
 
+# Default minimum balance cushion for new families (signup); users may override in Settings.
+DEFAULT_FAMILY_BALANCE_THRESHOLD_MIN = Decimal("1000")
+
+
 class Family(Base):
     __tablename__ = "families"
 
@@ -2905,7 +2909,7 @@ def register(payload: RegisterIn, response: Response, db=Depends(get_db)):
 
     # Create a starter family for new users so the app can be used immediately.
     try:
-        fam = Family(name="My Family")
+        fam = Family(name="My Family", balance_threshold_min=DEFAULT_FAMILY_BALANCE_THRESHOLD_MIN)
         db.add(fam)
         db.flush()
         db.add(
@@ -3123,7 +3127,7 @@ def patch_family_forecast_thresholds(
 @app.post("/api/families", response_model=FamilyOut)
 def create_family(payload: FamilyCreateIn, access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization), db=Depends(get_db)):
     user_id = get_current_user_id(access_token)
-    family = Family(name=payload.name)
+    family = Family(name=payload.name, balance_threshold_min=DEFAULT_FAMILY_BALANCE_THRESHOLD_MIN)
     db.add(family)
     db.flush()
     member = FamilyMember(
@@ -3148,7 +3152,7 @@ def create_family(payload: FamilyCreateIn, access_token: Optional[str] = Depends
         role=member.role,
         is_family_owner=bool(member.is_family_owner),
         access_mode=str(member.access_mode or "edit"),
-        balance_threshold_min=None,
+        balance_threshold_min=float(DEFAULT_FAMILY_BALANCE_THRESHOLD_MIN),
         balance_threshold_max=None,
     )
 
