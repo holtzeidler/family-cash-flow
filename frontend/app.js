@@ -1457,7 +1457,7 @@ function txAddRepeatsActive() {
 function updateTxAddTwiceMonthlyVisibility() {
   if (!txAddTwiceMonthlyFields || !txAddRecurrence) return;
   const on = txAddRecurrence.value === "twice_monthly";
-  txAddTwiceMonthlyFields.style.display = on ? "block" : "none";
+  txAddTwiceMonthlyFields.style.display = on ? "grid" : "none";
   if (on) syncTxAddSecondMonthlyDateDefault();
 }
 
@@ -9302,14 +9302,6 @@ function calendarDayTxSemanticParts(row) {
 
   const cat = String(effectiveTransactionCategoryName(row) || "").toLowerCase();
   const desc = String(row.description || "").trim().toLowerCase();
-  const isUncatActual =
-    row._type === "actual" &&
-    (!row.category_id || cat === "uncategorized" || desc === "uncategorized");
-  if (isUncatActual) {
-    parts.push("cal-day-tx-line--flow-neutral");
-    return parts;
-  }
-
   const kind = String(row.kind || "").toLowerCase();
   if (kind === "income") parts.push("cal-day-tx-line--flow-in");
   else if (kind === "expense") parts.push("cal-day-tx-line--flow-out");

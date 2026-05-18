@@ -14,7 +14,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=610" />
+    <link rel="stylesheet" href="../styles.css?v=615" />
   </head>
   <body>
     <div class="container">
@@ -196,16 +196,16 @@
               </div>
               <div class="tx-add-vspace tx-add-vspace--xs" aria-hidden="true"></div>
               <div id="txAddRecurringBlock" style="display: none">
-                <div id="txAddTwiceMonthlyFields" class="tx-add-second-monthly" style="display: none">
-                  <div class="tx-add-second-monthly__row">
-                    <label for="txAddSecondDayOfMonth">Second monthly date</label>
-                                        <input
+                <div id="txAddTwiceMonthlyFields" class="form-row-h tx-add-second-monthly-row" style="display: none">
+                  <div class="form-row-h__label"><label for="txAddSecondDayOfMonth">Second monthly date</label></div>
+                  <div class="form-row-h__field tx-add-second-monthly-field">
+                    <input
                       id="txAddSecondDayOfMonth"
                       type="date"
                       title="Other day each month for twice-monthly schedules."
                     />
+                    <p class="tx-add-twice-monthly-hint">Pick a date on a different day of the month than the start date.</p>
                   </div>
-                  <p class="tx-add-twice-monthly-hint">Pick a date on a different day of the month than the start date.</p>
                 </div>
                 <div class="tx-add-vspace tx-add-vspace--2xs" aria-hidden="true"></div>
                 <div class="form-row-h tx-add-variable-form-row">
@@ -1607,7 +1607,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="../app.js?v=357"></script>
+    <script src="../app.js?v=359"></script>
     <script src="../feedback.js?v=3" defer></script>
     <script src="../tour.js?v=9" defer></script>
   </body>
