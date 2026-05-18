@@ -91,6 +91,43 @@ async function request(path, method, body) {
   }
 }
 
+/** Retry only transient fetch failures (cold API wake-up, brief offline blips). */
+async function requestWithRetry(path, method, body, { maxMs = 10000, minDelayMs = 400, onRetry } = {}) {
+  const started = Date.now();
+  let attempt = 0;
+  while (true) {
+    attempt += 1;
+    const r = await request(path, method, body);
+    if (r.ok) return r;
+    if (!r.networkError) return r;
+    const elapsed = Date.now() - started;
+    if (elapsed >= maxMs) return r;
+    if (typeof onRetry === "function") onRetry(attempt, elapsed);
+    const delay = Math.min(1500, minDelayMs * attempt);
+    await new Promise((res) => window.setTimeout(res, delay));
+  }
+}
+
+function isTransientNetworkMessage(raw) {
+  const norm = String(raw || "")
+    .trim()
+    .toLowerCase();
+  return (
+    norm.includes("failed to fetch") ||
+    norm.includes("networkerror") ||
+    norm.includes("network error") ||
+    norm.includes("load failed") ||
+    norm.includes("the internet connection appears to be offline")
+  );
+}
+
+function friendlyNetworkMessage(raw) {
+  if (isTransientNetworkMessage(raw)) {
+    return "We're having trouble connecting. This often clears up in a moment—please try again.";
+  }
+  return "We hit a network issue. Please try again in a moment.";
+}
+
 function setCallout(el, msg, mode = "pending") {
   if (!el) return;
   el.textContent = msg || "";
@@ -246,7 +283,13 @@ async function doLogin() {
     } catch (_) {}
     const email = document.getElementById("email").value.trim();
     const password = document.getElementById("password").value;
-    const loginResp = await request("/api/auth/login", "POST", { email, password });
+    const loginResp = await requestWithRetry("/api/auth/login", "POST", { email, password }, {
+      maxMs: 12000,
+      onRetry() {
+        setCallout(loginCalloutEl, "Still connecting…", "pending");
+        if (loginBtn) loginBtn.textContent = "Connecting…";
+      },
+    });
     if (!loginResp.ok) {
       setCallout(loginCalloutEl, messageFromFailure(loginResp, "Login failed"), "error");
       return;
@@ -277,7 +320,12 @@ async function doLogin() {
     setCallout(loginCalloutEl, "Session ready. Opening app...", "ok");
     await goApp();
   } catch (e) {
-    setCallout(loginCalloutEl, (e && e.message) || "Login failed", "error");
+    const raw = (e && e.message) || "";
+    setCallout(
+      loginCalloutEl,
+      raw && isTransientNetworkMessage(raw) ? friendlyNetworkMessage(raw) : raw || "Login failed",
+      "error"
+    );
   } finally {
     setBusy(false);
   }
@@ -308,15 +356,18 @@ function setBusy(isBusy) {
   loginBtn.textContent = isBusy ? "Logging in..." : "Login";
 }
 
-function networkHint() {
+function logNetworkHintForDevs(networkError) {
+  if (!location.hostname.endsWith("github.io")) return;
   const apiBase = getApiBase() || "(empty)";
   const origin = getClientOrigin();
-  if (!location.hostname.endsWith("github.io")) return "";
-  return (
-    ` Could not reach API. Current API_BASE=${apiBase}. Browser Origin=${origin}. ` +
-    `Check API_BASE secret points to your Render URL (https://...onrender.com, no trailing slash), ` +
-    `and Render CORS_ORIGINS includes ${origin}`
-  );
+  try {
+    console.warn(
+      "[BalanceWhiz login] Network request failed:",
+      networkError || "(unknown)",
+      `API_BASE=${apiBase}`,
+      `Origin=${origin}`
+    );
+  } catch (_) {}
 }
 
 function hasStoredBearerToken() {
@@ -344,7 +395,8 @@ async function verifySessionWithProgress() {
 
 function messageFromFailure(resp, fallback) {
   if (resp.networkError) {
-    return `${resp.networkError}.${networkHint()}`;
+    logNetworkHintForDevs(resp.networkError);
+    return friendlyNetworkMessage(resp.networkError);
   }
   if (resp.status === 401) return "Invalid email or password.";
   if (resp.status === 409 && resp.data && resp.data.detail) return resp.data.detail;
@@ -406,7 +458,7 @@ async function sendPasswordResetRequest() {
     btn.textContent = "Sending…";
   }
   try {
-    const r = await request("/api/public/password-reset/request", "POST", { email });
+    const r = await requestWithRetry("/api/public/password-reset/request", "POST", { email }, { maxMs: 10000 });
 
     // Happy path — the backend always returns 200 OK regardless of whether
     // the email exists, so the success screen is neutral by design.

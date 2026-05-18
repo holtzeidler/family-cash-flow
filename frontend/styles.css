@@ -21270,7 +21270,7 @@ body[data-bw-view="transactions"] .tm__field label{
 .modal--tx-add .tx-add-schedule-compact .form-row-h__label,
 .modal--tx-add .tx-add-end-detail__row .form-row-h__label,
 .modal--tx-add #txAddRecurringBlock .tx-add-second-monthly-row .form-row-h__label,
-.modal--tx-add #txAddRecurringBlock .tx-add-variable-form-row .form-row-h__label,
+.modal--tx-add .tx-add-form .tx-add-variable-form-row .form-row-h__label,
 .modal--tx-add .tx-add-advanced__panel .tx-add-cat-color-row .form-row-h__label,
 .modal--tx-add .tx-add-advanced__panel .form-row-h__label{
   flex: none;
@@ -21280,8 +21280,8 @@ body[data-bw-view="transactions"] .tm__field label{
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  align-self: stretch;
-  min-height: 30px;
+  align-self: center;
+  min-height: 0;
   text-align: right;
 }
 .modal--tx-add .tx-add-form .form-row-h:has(.tx-add-category-field) .form-row-h__label{
@@ -21293,7 +21293,7 @@ body[data-bw-view="transactions"] .tm__field label{
 .modal--tx-add .tx-add-schedule-compact .form-row-h__label label,
 .modal--tx-add .tx-add-end-detail__row .form-row-h__label label,
 .modal--tx-add #txAddRecurringBlock .tx-add-second-monthly-row .form-row-h__label label,
-.modal--tx-add #txAddRecurringBlock .tx-add-variable-form-row .form-row-h__label label,
+.modal--tx-add .tx-add-form .tx-add-variable-form-row .form-row-h__label label,
 .modal--tx-add .tx-add-advanced__panel .form-row-h__label label{
   width: 100%;
   text-align: right;
@@ -21304,13 +21304,23 @@ body[data-bw-view="transactions"] .tm__field label{
 .modal--tx-add .tx-add-schedule-compact .form-row-h,
 .modal--tx-add .tx-add-end-detail__row,
 .modal--tx-add #txAddRecurringBlock .tx-add-second-monthly-row,
-.modal--tx-add #txAddRecurringBlock .tx-add-variable-form-row,
-.modal--tx-add .tx-add-advanced__panel .tx-add-cat-color-row,
-.modal--tx-add .tx-add-advanced__panel .form-row-h{
+.modal--tx-add .tx-add-form .tx-add-variable-form-row{
   display: grid;
   grid-template-columns: var(--tx-add-label-col, 11.25rem) minmax(0, 1fr);
   align-items: center;
   gap: var(--tx-add-row-gap-y, 4px) var(--tx-add-row-gap-x, 14px);
+}
+/* Advanced panel: one shared label column so Color + Notes align with each other. */
+.modal--tx-add .tx-add-advanced__panel{
+  display: grid;
+  grid-template-columns: var(--tx-add-label-col, 11.25rem) minmax(0, 1fr);
+  align-items: center;
+  column-gap: var(--tx-add-row-gap-x, 14px);
+  row-gap: var(--tx-add-row-gap-y, 6px);
+}
+.modal--tx-add .tx-add-advanced__panel .tx-add-cat-color-row,
+.modal--tx-add .tx-add-advanced__panel .tx-add-notes-row{
+  display: contents;
 }
 .modal--tx-add .tx-add-form .tx-add-variable-field{
   gap: 2px;
@@ -21384,7 +21394,7 @@ body[data-bw-view="transactions"] .tm__field label{
   border: 1px solid rgba(17, 24, 39, 0.03);
 }
 .modal--tx-add #txAddRecurringBlock .tx-add-second-monthly-row,
-.modal--tx-add #txAddRecurringBlock .tx-add-variable-form-row{
+.modal--tx-add .tx-add-form .tx-add-variable-form-row{
   width: 100%;
   margin: 3px 0 0;
   padding: 0;
@@ -21395,7 +21405,7 @@ body[data-bw-view="transactions"] .tm__field label{
   align-items: center;
 }
 .modal--tx-add #txAddRecurringBlock .tx-add-second-monthly-row .form-row-h__label,
-.modal--tx-add #txAddRecurringBlock .tx-add-variable-form-row .form-row-h__label{
+.modal--tx-add .tx-add-form .tx-add-variable-form-row .form-row-h__label{
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -21408,7 +21418,7 @@ body[data-bw-view="transactions"] .tm__field label{
   text-align: right;
 }
 .modal--tx-add #txAddRecurringBlock .tx-add-second-monthly-row .form-row-h__label label,
-.modal--tx-add #txAddRecurringBlock .tx-add-variable-form-row .form-row-h__label label{
+.modal--tx-add .tx-add-form .tx-add-variable-form-row .form-row-h__label label{
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -21444,7 +21454,7 @@ body[data-bw-view="transactions"] .tm__field label{
   white-space: nowrap;
   max-width: none;
 }
-.modal--tx-add #txAddRecurringBlock .tx-add-variable-form-row .tx-add-variable-toggle__hint{
+.modal--tx-add .tx-add-form .tx-add-variable-form-row .tx-add-variable-toggle__hint{
   margin: 0;
   padding: 0;
   width: 100%;
@@ -21456,7 +21466,7 @@ body[data-bw-view="transactions"] .tm__field label{
   text-align: right;
   white-space: normal;
 }
-.modal--tx-add #txAddRecurringBlock .tx-add-variable-field-wrap{
+.modal--tx-add .tx-add-form .tx-add-variable-field-wrap{
   display: flex;
   align-items: center;
   justify-content: flex-start;
@@ -21464,7 +21474,7 @@ body[data-bw-view="transactions"] .tm__field label{
   min-width: 0;
   padding-top: 0;
 }
-.modal--tx-add #txAddRecurringBlock .tx-add-variable-field-wrap input[type="checkbox"]{
+.modal--tx-add .tx-add-form .tx-add-variable-field-wrap input[type="checkbox"]{
   margin: 0;
   flex-shrink: 0;
   accent-color: var(--accent);
@@ -21503,21 +21513,10 @@ body[data-bw-view="transactions"] .tm__field label{
   width: 100%;
   box-sizing: border-box;
 }
-.modal--tx-add .tx-add-advanced__panel .tx-add-cat-color-row,
-.modal--tx-add .tx-add-advanced__panel .form-row-h{
-  width: 100%;
-  box-sizing: border-box;
-}
-.modal--tx-add .tx-add-advanced__panel .tx-add-cat-color-row{
-  margin: 0 0 2px;
-  align-items: center;
-}
-.modal--tx-add .tx-add-advanced__panel .tx-add-cat-color-row .form-row-h__label,
-.modal--tx-add .tx-add-advanced__panel .tx-add-cat-color-row .form-row-h__label label{
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  color: var(--muted);
+.modal--tx-add .tx-add-advanced__panel .tx-add-cat-color-field,
+.modal--tx-add .tx-add-advanced__panel .tx-add-notes-row .form-row-h__field{
+  align-self: center;
+  min-width: 0;
 }
 .modal--tx-add .kind-toggle{
   max-width: 100%;
@@ -26202,9 +26201,13 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   .modal--tx-add .tx-add-schedule-compact .form-row-h,
   .modal--tx-add .tx-add-end-detail__row,
   .modal--tx-add #txAddRecurringBlock .tx-add-second-monthly-row,
-  .modal--tx-add #txAddRecurringBlock .tx-add-variable-form-row,
+  .modal--tx-add .tx-add-form .tx-add-variable-form-row,
+  .modal--tx-add .tx-add-advanced__panel{
+    grid-template-columns: 1fr;
+    row-gap: 8px;
+  }
   .modal--tx-add .tx-add-advanced__panel .tx-add-cat-color-row,
-  .modal--tx-add .tx-add-advanced__panel .form-row-h{
+  .modal--tx-add .tx-add-advanced__panel .tx-add-notes-row{
     display: grid;
     grid-template-columns: 1fr;
     gap: 5px;

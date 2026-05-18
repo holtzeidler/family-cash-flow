@@ -1665,7 +1665,10 @@ function updateTxAddEndsDetailUi() {
 
 function updateTxAddRepeatingUi() {
   const repeats = txAddRepeatsActive();
-  if (txAddRecurringBlock) txAddRecurringBlock.style.display = repeats ? "block" : "none";
+  const twiceMonthly = txAddRecurrence?.value === "twice_monthly";
+  if (txAddRecurringBlock) {
+    txAddRecurringBlock.style.display = repeats && twiceMonthly ? "block" : "none";
+  }
   if (txAddDateLabel) txAddDateLabel.textContent = repeats ? "Start date" : "Date";
   if (txAddRecurrence) txAddRecurrence.disabled = false;
   updateTxAddEndsDetailUi();
