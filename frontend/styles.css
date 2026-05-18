@@ -8930,6 +8930,7 @@ body[data-bw-view="transactions"] #sidebarPendingTxList.list{
 /* Month summary amounts (Income / Expense / Net) — calendar tx rows match this size. */
 body[data-bw-view="calendar"]{
   --month-summary-amount-font-size: 12px;
+  --cal-tx-font-size: calc(var(--month-summary-amount-font-size) * 0.97);
 }
 body[data-bw-view="calendar"] .sidebar .card[data-sidebar-key="month"],
 body[data-bw-view="transactions"] .sidebar .card[data-sidebar-key="month"]{
@@ -18214,7 +18215,7 @@ body.plans-page--polished .plans-wrap{
    between rows comes from color/opacity, never from size or weight, so
    adjacent rows of the same kind always render at the same scale. */
 .cal-day-tx-line{
-  font-size: var(--month-summary-amount-font-size, 12px);
+  font-size: var(--cal-tx-font-size, var(--month-summary-amount-font-size, 12px));
   line-height: 1.28;
   min-height: 16px;
   max-width: 100%;
@@ -20492,22 +20493,16 @@ body[data-bw-view="transactions"] .tm__field label{
   flex-shrink: 0;
   margin-left: 1px;
 }
-.tx-add-cat-color-panel.cat-color-row{
-  width: 100%;
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+.tx-add-cat-color-field.tx-add-cat-color-panel{
+  display: flex;
   align-items: center;
+  flex-wrap: nowrap;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
   padding: 0;
   margin: 0;
-  gap: 7px;
   border-left: none;
-}
-.tx-add-cat-color-panel .cat-color-row__label{
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  color: var(--muted);
-  text-align: left;
 }
 .tx-add-cat-color-panel .cat-color-row__swatches{
   gap: 5px;
@@ -20805,6 +20800,7 @@ body[data-bw-view="transactions"] .tm__field label{
 .modal--tx-add .tx-add-end-detail__row .form-row-h__label,
 .modal--tx-add #txAddRecurringBlock .tx-add-second-monthly-row .form-row-h__label,
 .modal--tx-add #txAddRecurringBlock .tx-add-variable-form-row .form-row-h__label,
+.modal--tx-add .tx-add-advanced__panel .tx-add-cat-color-row .form-row-h__label,
 .modal--tx-add .tx-add-advanced__panel .form-row-h__label{
   flex: none;
   max-width: none;
@@ -20835,6 +20831,7 @@ body[data-bw-view="transactions"] .tm__field label{
 .modal--tx-add .tx-add-end-detail__row,
 .modal--tx-add #txAddRecurringBlock .tx-add-second-monthly-row,
 .modal--tx-add #txAddRecurringBlock .tx-add-variable-form-row,
+.modal--tx-add .tx-add-advanced__panel .tx-add-cat-color-row,
 .modal--tx-add .tx-add-advanced__panel .form-row-h{
   display: grid;
   grid-template-columns: var(--tx-add-label-col, 11.25rem) minmax(0, 1fr);
@@ -21008,23 +21005,15 @@ body[data-bw-view="transactions"] .tm__field label{
   padding-left: 0;
   border-left: none;
 }
-.modal--tx-add .tx-add-cat-color-panel.cat-color-row{
-  grid-template-columns: var(--tx-add-label-col, 11.25rem) minmax(0, 1fr) auto;
-  gap: var(--tx-add-row-gap-y, 4px) var(--tx-add-row-gap-x, 14px);
-  align-items: center;
+.modal--tx-add .tx-add-advanced__panel .tx-add-cat-color-row{
   margin: 0 0 2px;
-}
-.modal--tx-add .tx-add-cat-color-panel .cat-color-row__label{
-  padding: 0 0 0 var(--tx-add-label-inset, 3ch);
-  min-height: 30px;
-  display: flex;
   align-items: center;
-  box-sizing: border-box;
+}
+.modal--tx-add .tx-add-advanced__panel .tx-add-cat-color-row .form-row-h__label{
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.04em;
   color: var(--muted);
-  text-align: left;
 }
 .modal--tx-add .kind-toggle{
   max-width: 100%;
@@ -25426,6 +25415,7 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   .modal--tx-add .tx-add-end-detail__row,
   .modal--tx-add #txAddRecurringBlock .tx-add-second-monthly-row,
   .modal--tx-add #txAddRecurringBlock .tx-add-variable-form-row,
+  .modal--tx-add .tx-add-advanced__panel .tx-add-cat-color-row,
   .modal--tx-add .tx-add-advanced__panel .form-row-h{
     display: grid;
     grid-template-columns: 1fr;
