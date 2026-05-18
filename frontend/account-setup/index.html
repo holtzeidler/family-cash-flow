@@ -11,7 +11,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=596" />
+    <link rel="stylesheet" href="../styles.css?v=600" />
   </head>
   <body class="login-page signup-page account-setup-page">
     <div class="container">
@@ -308,6 +308,7 @@
                     </div>
                     <p id="asTxScheduleSummary" class="account-setup-schedule-summary" hidden></p>
                   </div>
+                  <div class="account-setup-tx-ends-column">
                   <div class="tx-add-schedule-toolbar" id="asTxEndsRow" aria-label="Repeat and schedule" hidden>
                     <div class="tx-add-schedule-toolbar__left">
                       <div class="account-setup-repeat-duo__stack tx-add-schedule-field tx-add-schedule-field--end-mode">
@@ -340,6 +341,7 @@
                   </label>
                   </div>
                   </div>
+                  </div>
                   <div class="cat-color-row" aria-label="Select color (optional)">
                     <div class="cat-color-row__label">Select color <span class="cat-color-row__optional">(optional)</span></div>
                     <div class="cat-color-row__swatches" id="asTxColorSwatches">
@@ -358,26 +360,10 @@
                     <button type="button" class="cat-color-row__clear secondary" id="asTxColorClear">Clear</button>
                     <input type="hidden" id="asTxBgColor" value="" />
                   </div>
-                  <div class="tx-add-advanced account-setup-tx-advanced">
-                    <button
-                      type="button"
-                      id="asTxAdvancedToggle"
-                      class="tx-add-advanced__expander"
-                      aria-expanded="false"
-                      aria-controls="asTxAdvancedPanel"
-                    >
-                      <span class="tx-add-advanced__expander-chev" aria-hidden="true">
-                        <svg viewBox="0 0 12 12" width="9" height="9" focusable="false"><path d="M3.5 2.5 L8 6 L3.5 9.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                      </span>
-                      <span class="tx-add-advanced__expander-label">Advanced options</span>
-                    </button>
-                    <div id="asTxAdvancedPanel" class="account-setup-tx-advanced__panel" hidden>
-                      <div class="form-row-h account-setup-tx-notes-row">
-                        <div class="form-row-h__label"><label for="asTxNotes">Notes <span class="tx-add-optional-mark">optional</span></label></div>
-                        <div class="form-row-h__field">
-                          <input id="asTxNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
-                        </div>
-                      </div>
+                  <div class="form-row-h account-setup-tx-notes-row">
+                    <div class="form-row-h__label"><label for="asTxNotes">Notes <span class="tx-add-optional-mark">(optional)</span></label></div>
+                    <div class="form-row-h__field">
+                      <input id="asTxNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
                     </div>
                   </div>
                   </div>
@@ -486,6 +472,7 @@
                       </div>
                       <p id="asExpScheduleSummary" class="account-setup-schedule-summary" hidden></p>
                     </div>
+                    <div class="account-setup-tx-ends-column">
                     <div class="tx-add-schedule-toolbar" id="asExpEndsRow" aria-label="Repeat and schedule" hidden>
                       <div class="tx-add-schedule-toolbar__left">
                         <div class="account-setup-repeat-duo__stack tx-add-schedule-field tx-add-schedule-field--end-mode">
@@ -518,6 +505,7 @@
                     </label>
                     </div>
                     </div>
+                    </div>
                     <div class="cat-color-row" aria-label="Select color (optional)">
                       <div class="cat-color-row__label">Select color <span class="cat-color-row__optional">(optional)</span></div>
                       <div class="cat-color-row__swatches" id="asExpTxColorSwatches">
@@ -536,26 +524,10 @@
                       <button type="button" class="cat-color-row__clear secondary" id="asExpTxColorClear">Clear</button>
                       <input type="hidden" id="asExpTxBgColor" value="" />
                     </div>
-                    <div class="tx-add-advanced account-setup-tx-advanced">
-                      <button
-                        type="button"
-                        id="asExpAdvancedToggle"
-                        class="tx-add-advanced__expander"
-                        aria-expanded="false"
-                        aria-controls="asExpAdvancedPanel"
-                      >
-                        <span class="tx-add-advanced__expander-chev" aria-hidden="true">
-                          <svg viewBox="0 0 12 12" width="9" height="9" focusable="false"><path d="M3.5 2.5 L8 6 L3.5 9.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                        </span>
-                        <span class="tx-add-advanced__expander-label">Advanced options</span>
-                      </button>
-                      <div id="asExpAdvancedPanel" class="account-setup-tx-advanced__panel" hidden>
-                        <div class="form-row-h account-setup-tx-notes-row">
-                          <div class="form-row-h__label"><label for="asExpTxNotes">Notes <span class="tx-add-optional-mark">optional</span></label></div>
-                          <div class="form-row-h__field">
-                            <input id="asExpTxNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
-                          </div>
-                        </div>
+                    <div class="form-row-h account-setup-tx-notes-row">
+                      <div class="form-row-h__label"><label for="asExpTxNotes">Notes <span class="tx-add-optional-mark">(optional)</span></label></div>
+                      <div class="form-row-h__field">
+                        <input id="asExpTxNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
                       </div>
                     </div>
                     </div>
@@ -739,6 +711,6 @@
       </div>
     </div>
 
-    <script src="../signup/signup.js?v=108"></script>
+    <script src="../signup/signup.js?v=110"></script>
   </body>
 </html>

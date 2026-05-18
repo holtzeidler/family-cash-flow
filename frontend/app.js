@@ -685,6 +685,49 @@ function parseBalanceThresholdMaxFieldRaw(raw) {
   return p;
 }
 
+function balanceThresholdAmountsEqual(a, b) {
+  if (a == null && b == null) return true;
+  if (a == null || b == null) return false;
+  return Math.abs(Number(a) - Number(b)) < 0.005;
+}
+
+function formatBalanceThresholdInputValue(num, rawInput) {
+  if (!Number.isFinite(num)) return "";
+  return fmtMoneyThreshold(String(rawInput ?? ""), num);
+}
+
+function showBalanceThresholdNoOpFeedback({ errEl, saveBtn, savedMsg, minVal }) {
+  show(errEl, "");
+  if (savedMsg) {
+    savedMsg.textContent =
+      minVal != null
+        ? `Minimum balance $${formatBalanceThresholdInputValue(minVal, String(minVal))} is already saved.`
+        : "Enter a minimum balance amount, then click Save.";
+    savedMsg.hidden = false;
+    if (balanceThresholdSavedHideTimer) clearTimeout(balanceThresholdSavedHideTimer);
+    balanceThresholdSavedHideTimer = window.setTimeout(() => {
+      balanceThresholdSavedHideTimer = null;
+      savedMsg.textContent = "";
+      savedMsg.hidden = true;
+    }, 5000);
+  }
+  if (saveBtn) {
+    const prev =
+      saveBtn.dataset.origLabel && saveBtn.dataset.origLabel.length
+        ? saveBtn.dataset.origLabel
+        : saveBtn.textContent.trim();
+    saveBtn.dataset.origLabel = prev;
+    saveBtn.textContent = minVal != null ? "Saved" : "Save";
+    saveBtn.disabled = !!minVal;
+    saveBtn.classList.toggle("is-saved", !!minVal);
+    window.setTimeout(() => {
+      saveBtn.textContent = saveBtn.dataset.origLabel || prev;
+      saveBtn.disabled = false;
+      saveBtn.classList.remove("is-saved");
+    }, 2200);
+  }
+}
+
 function parseMoneyRangeField(raw) {
   const p = parseBalanceThresholdFieldRaw(raw);
   if (!p.ok || p.empty) return null;
@@ -2056,13 +2099,21 @@ function hydrateBalanceThresholdInputsFromStorage() {
 
     if (minEl) {
       // Never wipe a non-empty field due to a storage/family mismatch.
-      if (!(next === "" && String(minEl.value || "").trim())) minEl.value = next;
+      if (!(next === "" && String(minEl.value || "").trim())) {
+        const p = parseBalanceThresholdFieldRaw(next);
+        minEl.value =
+          p.ok && !p.empty ? formatBalanceThresholdInputValue(p.num, next) : next;
+      }
     } else if (minEl) {
       minEl.value = "";
     }
 
     if (maxEl) {
-      if (!(next2 === "" && String(maxEl.value || "").trim())) maxEl.value = next2;
+      if (!(next2 === "" && String(maxEl.value || "").trim())) {
+        const p2 = parseBalanceThresholdMaxFieldRaw(next2);
+        maxEl.value =
+          p2.ok && !p2.empty ? formatBalanceThresholdInputValue(p2.num, next2) : next2;
+      }
     } else if (maxEl) {
       maxEl.value = "";
     }
@@ -2097,8 +2148,12 @@ function finishBalanceThresholdSave({
     }
   }
   clearLegacyDeviceBalanceThresholds(fidNum);
-  if (minEl) minEl.value = minParsed.empty ? "" : minParsed.canonical;
-  if (maxEl) maxEl.value = maxParsed.empty ? "" : maxParsed.canonical;
+  if (minEl) {
+    minEl.value = minParsed.empty ? "" : formatBalanceThresholdInputValue(minParsed.num, minEl.value);
+  }
+  if (maxEl) {
+    maxEl.value = maxParsed.empty ? "" : formatBalanceThresholdInputValue(maxParsed.num, maxEl.value);
+  }
   state.activeFamilyId = fidNum;
   if (familySelect && Number(fidNum) > 0) {
     try {
@@ -2207,8 +2262,19 @@ async function saveBalanceThresholds(opts = {}) {
   const currentMax = readFamilyBalanceThresholdNumber("max", fidNum);
   const nextMin = minParsed.empty ? null : minParsed.num;
   const nextMax = maxParsed.empty ? null : maxParsed.num;
-  if (currentMin === nextMin && currentMax === nextMax) {
-    if (!silent) show(errEl, "");
+  if (!silent && minParsed.empty && currentMin == null) {
+    hideThresholdSavedFeedback();
+    show(errEl, "Enter a minimum balance amount to save.");
+    try {
+      errEl?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
+    } catch (_) {}
+    return;
+  }
+  if (
+    balanceThresholdAmountsEqual(currentMin, nextMin) &&
+    balanceThresholdAmountsEqual(currentMax, nextMax)
+  ) {
+    if (!silent) showBalanceThresholdNoOpFeedback({ errEl, saveBtn, savedMsg, minVal: currentMin });
     invalidateLowBalanceAlertCache();
     if (lowBalanceDebounceTimer) clearTimeout(lowBalanceDebounceTimer);
     lowBalanceDebounceTimer = null;
@@ -2240,6 +2306,9 @@ async function saveBalanceThresholds(opts = {}) {
     if (silent) return;
     hideThresholdSavedFeedback();
     show(errEl, e.message || "Could not save thresholds.");
+    try {
+      errEl?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
+    } catch (_) {}
     return;
   }
 }
@@ -15803,8 +15872,19 @@ async function main() {
       bt.max.addEventListener("input", onBalanceThresholdFieldEdited);
       bt.max.addEventListener("change", onBalanceThresholdFieldEdited);
     }
-    if (bt.saveBtn) {
-      bt.saveBtn.addEventListener("click", () => void saveBalanceThresholds());
+    if (bt.saveBtn && bt.saveBtn.dataset.balanceThresholdBound !== "1") {
+      bt.saveBtn.dataset.balanceThresholdBound = "1";
+      bt.saveBtn.addEventListener("click", async () => {
+        try {
+          await saveBalanceThresholds();
+        } catch (e) {
+          const els = balanceThresholdFieldEls();
+          show(els.err, e.message || "Could not save thresholds.");
+          try {
+            els.err?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
+          } catch (_) {}
+        }
+      });
     }
     await refreshLowBalanceAlert();
   }

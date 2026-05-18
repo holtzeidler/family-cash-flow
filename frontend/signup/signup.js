@@ -853,35 +853,6 @@ function persistDraftStep3Phase(phase) {
   } catch (_) {}
 }
 
-function closeAccountSetupAdvancedPanel(toggleId, panelId) {
-  const toggle = document.getElementById(toggleId);
-  const panel = document.getElementById(panelId);
-  if (!panel) return;
-  panel.hidden = true;
-  if (toggle) {
-    toggle.setAttribute("aria-expanded", "false");
-    toggle.classList.remove("is-open");
-  }
-}
-
-function closeAllAccountSetupAdvancedPanels() {
-  closeAccountSetupAdvancedPanel("asTxAdvancedToggle", "asTxAdvancedPanel");
-  closeAccountSetupAdvancedPanel("asExpAdvancedToggle", "asExpAdvancedPanel");
-}
-
-function bindAccountSetupAdvancedToggle(toggleId, panelId) {
-  const toggle = document.getElementById(toggleId);
-  const panel = document.getElementById(panelId);
-  if (!toggle || !panel) return;
-  toggle.addEventListener("click", () => {
-    panel.hidden = !panel.hidden;
-    const open = !panel.hidden;
-    toggle.setAttribute("aria-expanded", open ? "true" : "false");
-    toggle.classList.toggle("is-open", open);
-    if (open) panel.querySelector("input, textarea")?.focus({ preventScroll: true });
-  });
-}
-
 function setAccountSetupStep3Phase(phase) {
   const p2 = document.getElementById("accountSetupWizardPanel2");
   const intro = document.getElementById("accountSetupWizardStep3Intro");
@@ -891,7 +862,6 @@ function setAccountSetupStep3Phase(phase) {
   p2.setAttribute("data-step3-phase", isForm ? "form" : "intro");
   if (!isForm) {
     p2.dataset.afterSave = "";
-    closeAllAccountSetupAdvancedPanels();
   }
   intro.hidden = isForm;
   form.hidden = !isForm;
@@ -998,7 +968,6 @@ function setAccountSetupExpensePhase(phase) {
   p3.setAttribute("data-expense-phase", isForm ? "form" : "intro");
   if (!isForm) {
     p3.dataset.afterSave = "";
-    closeAllAccountSetupAdvancedPanels();
   }
   if (intro) intro.hidden = isForm;
   form.hidden = !isForm;
@@ -2075,7 +2044,6 @@ function resetAccountSetupTransactionForm(forKind) {
   if (endCountEl) endCountEl.value = "";
   if (endDateEl) endDateEl.value = "";
   if (bgEl) bgEl.value = "";
-  closeAllAccountSetupAdvancedPanels();
   const swatches = document.getElementById("asTxColorSwatches");
   if (swatches) for (const b of swatches.querySelectorAll("button.cat-swatch")) b.classList.remove("is-active");
   let resolved =
@@ -2397,7 +2365,6 @@ function resetAccountSetupExpenseForm() {
   if (endCountEl) endCountEl.value = "";
   if (endDateEl) endDateEl.value = "";
   if (bgEl) bgEl.value = "";
-  closeAllAccountSetupAdvancedPanels();
   const swatches = document.getElementById("asExpTxColorSwatches");
   if (swatches) for (const b of swatches.querySelectorAll("button.cat-swatch")) b.classList.remove("is-active");
   setAccountSetupKindRadioValue("asExpTxKind", "expense");
@@ -3596,8 +3563,6 @@ document.getElementById("asStep3ContinueBtn")?.addEventListener("click", () => a
 document.getElementById("asExpSaveBtn")?.addEventListener("click", () => void accountSetupSaveExpenseClick());
 document.getElementById("asExpCancelBtn")?.addEventListener("pointerdown", accountSetupCancelExpenseClick, { capture: true });
 document.getElementById("asExpCancelBtn")?.addEventListener("click", () => accountSetupCancelExpenseClick());
-bindAccountSetupAdvancedToggle("asTxAdvancedToggle", "asTxAdvancedPanel");
-bindAccountSetupAdvancedToggle("asExpAdvancedToggle", "asExpAdvancedPanel");
 try {
   const p4 = document.getElementById("accountSetupWizardPanel4");
   if (p4) {

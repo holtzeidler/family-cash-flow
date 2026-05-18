@@ -286,7 +286,6 @@ body.account-setup-page:has(#accountSetupWizardPanel2[data-step3-phase="intro"].
 }
 body.account-setup-page:has(#accountSetupWizardPanel2[data-step3-phase="intro"].account-setup-wizard__panel--active) .account-setup-wizard__eyebrow{
   font-size: clamp(1.34rem, 2.4vw, 1.58rem);
-  margin-bottom: clamp(0.35rem, 0.8vw, 0.5rem);
   white-space: normal;
 }
 body.account-setup-page:has(#accountSetupWizardPanel2[data-step3-phase="intro"].account-setup-wizard__panel--active) .account-setup-wizard__subeyebrow{
@@ -295,8 +294,8 @@ body.account-setup-page:has(#accountSetupWizardPanel2[data-step3-phase="intro"].
   line-height: 1.45;
   max-width: 44ch;
 }
-body.account-setup-page:has(#accountSetupWizardPanel2[data-step3-phase="intro"].account-setup-wizard__panel--active) .account-setup-wizard__reassurance{
-  margin-bottom: 0.2rem;
+body.account-setup-page:has(#accountSetupWizardPanel2[data-step3-phase="intro"].account-setup-wizard__panel--active) .account-setup-wizard__reassurance:not([hidden]){
+  margin-top: calc(var(--as-wizard-title-subtitle-gap) * 0.72);
 }
 body.account-setup-page .container > .grid:has(#accountSetupWizardPanel2[data-step3-phase="form"].account-setup-wizard__panel--active),
 body.account-setup-page:has(#accountSetupWizardPanel3[data-expense-phase="form"]) .container > .grid:has(#accountSetupWizard){
@@ -8931,6 +8930,8 @@ body[data-bw-view="transactions"] #sidebarPendingTxList.list{
 body[data-bw-view="calendar"]{
   --month-summary-amount-font-size: 12px;
   --cal-tx-font-size: calc(var(--month-summary-amount-font-size) * 0.97);
+  --cal-tx-in-color: var(--ok);
+  --cal-tx-out-color: var(--danger);
 }
 body[data-bw-view="calendar"] .sidebar .card[data-sidebar-key="month"],
 body[data-bw-view="transactions"] .sidebar .card[data-sidebar-key="month"]{
@@ -13827,6 +13828,7 @@ body.account-setup-page .account-setup-wizard{
   margin-top: clamp(0px, 1.5vh, 8px);
   margin-bottom: 8px;
   --as-wizard-subeyebrow-size: clamp(0.92rem, 1.55vw, 1.05rem);
+  --as-wizard-title-subtitle-gap: clamp(0.34rem, 0.65vw, 0.48rem);
   --as-wizard-progress-pct: 25%;
 }
 body.account-setup-page .account-setup-wizard__stepHead{
@@ -13869,7 +13871,7 @@ body.account-setup-page .account-setup-wizard__progressFill{
   transition: width 260ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 body.account-setup-page .account-setup-wizard__eyebrow{
-  margin: 0 0 0.14rem;
+  margin: 0;
   text-align: center;
   font-size: clamp(1.42rem, 2.65vw, 1.72rem);
   font-weight: 780;
@@ -13884,7 +13886,7 @@ body.account-setup-page .account-setup-wizard__eyebrow{
   }
 }
 body.account-setup-page .account-setup-wizard__reassurance{
-  margin: 0 0 0.1rem;
+  margin: 0;
   text-align: center;
   font-size: 0.72rem;
   font-weight: 500;
@@ -13892,8 +13894,11 @@ body.account-setup-page .account-setup-wizard__reassurance{
   line-height: 1.25;
   color: rgba(11, 61, 46, 0.46);
 }
+body.account-setup-page .account-setup-wizard__reassurance:not([hidden]){
+  margin-top: calc(var(--as-wizard-title-subtitle-gap) * 0.72);
+}
 body.account-setup-page .account-setup-wizard__subeyebrow{
-  margin: 0 0 clamp(0.22rem, 0.45vw, 0.3rem);
+  margin: var(--as-wizard-title-subtitle-gap) 0 clamp(0.22rem, 0.45vw, 0.3rem);
   text-align: center;
   font-size: clamp(0.88rem, 1.35vw, 0.94rem);
   font-weight: 500;
@@ -15181,7 +15186,7 @@ body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard
   color: rgba(11, 61, 46, 0.68);
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__eyebrow{
-  margin: 0 auto 0.22rem;
+  margin: 0 auto;
   max-width: 22ch;
   font-size: clamp(1.34rem, 3vw, 1.62rem);
   font-weight: 800;
@@ -15192,7 +15197,7 @@ body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard
   color: color-mix(in srgb, var(--accent) 94%, #0a2418);
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__subeyebrow{
-  margin: 0 auto 0.42rem;
+  margin: var(--as-wizard-title-subtitle-gap) auto 0.42rem;
   max-width: 34ch;
   font-size: clamp(0.875rem, 1.4vw, 0.9375rem);
   font-weight: 500;
@@ -15393,7 +15398,6 @@ body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard
   }
   body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__eyebrow{
     font-size: clamp(1.22rem, 2.6vw, 1.44rem);
-    margin-bottom: 0.14rem;
   }
   body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__subeyebrow{
     margin-bottom: 0.28rem;
@@ -18211,9 +18215,7 @@ body.plans-page--polished .plans-wrap{
 }
 
 /* === Transaction row: flat, ledger-like typography ===
-   One font-size and two weights govern the entire list. Differentiation
-   between rows comes from color/opacity, never from size or weight, so
-   adjacent rows of the same kind always render at the same scale. */
+   One size, one weight, two colors (green in / red out) for every row. */
 .cal-day-tx-line{
   font-size: var(--cal-tx-font-size, var(--month-summary-amount-font-size, 12px));
   line-height: 1.28;
@@ -18226,8 +18228,8 @@ body.plans-page--polished .plans-wrap{
   gap: 4px;
   padding: 0 1px 0 4px;
   position: relative;
-  /* base color tone for everything inside; modifiers tweak opacity only */
-  color: rgba(17, 24, 39, 0.9);
+  font-weight: 600;
+  color: var(--cal-tx-out-color, var(--danger));
 }
 .cal-day-tx-line--start-balance{
   padding-left: 0;
@@ -18254,7 +18256,13 @@ body.plans-page--polished .plans-wrap{
   display: block;
 }
 
-/* Label and amount: identical size, two stable weights. */
+/* Label and amount: same size, weight, and color on every row. */
+.cal-day-tx-line .cal-tx-label,
+.cal-day-tx-line .cal-amt{
+  font-size: inherit;
+  font-weight: inherit;
+  color: inherit;
+}
 .cal-day-tx-line .cal-tx-label{
   display: block;
   min-width: 0;
@@ -18262,18 +18270,12 @@ body.plans-page--polished .plans-wrap{
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: inherit;
-  font-weight: 520;
-  color: inherit;
 }
 .cal-day-tx-line .cal-amt{
   flex: 0 0 auto;
   text-align: right;
   white-space: nowrap;
-  font-size: inherit;
   font-variant-numeric: tabular-nums;
-  font-weight: 650;
-  color: inherit;
   min-width: max-content;
   padding-left: 2px;
 }
@@ -18306,10 +18308,12 @@ body.plans-page--polished .plans-wrap{
   padding-left: 1px;
 }
 
-/* Hierarchy via opacity only — never size, never weight. */
-.cal-day-tx-line--primary{ opacity: 1; }
-.cal-day-tx-line--secondary{ opacity: 0.82; }
-.cal-day-tx-line--deemph{ opacity: 0.62; }
+/* Row order classes only — no opacity wash (keeps one green / one red). */
+.cal-day-tx-line--primary,
+.cal-day-tx-line--secondary,
+.cal-day-tx-line--deemph{
+  opacity: 1;
+}
 
 .cal-day-tx-line--kind-transfer .cal-tx-label{
   font-style: normal;
@@ -18320,26 +18324,21 @@ body.plans-page--polished .plans-wrap{
   border-bottom: 1px dotted rgba(100, 116, 139, 0.35);
 }
 
-/* Flow direction: one green, one red — label and amount inherit the same token. */
-.cal-day-tx-line--flow-in{
-  color: var(--ok);
+/* Flow direction: exactly two colors — full strength on label + amount. */
+.cal-day-tx-line--flow-in,
+.cal-day-tx-line--flow-in .cal-tx-label,
+.cal-day-tx-line--flow-in .cal-amt{
+  color: var(--cal-tx-in-color, var(--ok));
 }
-.cal-day-tx-line--flow-out{
-  color: var(--danger);
+.cal-day-tx-line--flow-out,
+.cal-day-tx-line--flow-out .cal-tx-label,
+.cal-day-tx-line--flow-out .cal-amt{
+  color: var(--cal-tx-out-color, var(--danger));
 }
-.cal-day-tx-line--flow-neutral{
-  color: rgba(71, 85, 105, 0.78);
-}
-/* Row hierarchy uses opacity on neutral rows only; flow colors stay full strength. */
-.cal-day-tx-line--flow-in.cal-day-tx-line--primary,
-.cal-day-tx-line--flow-in.cal-day-tx-line--secondary,
-.cal-day-tx-line--flow-in.cal-day-tx-line--deemph,
-.cal-day-tx-line--flow-out.cal-day-tx-line--primary,
-.cal-day-tx-line--flow-out.cal-day-tx-line--secondary,
-.cal-day-tx-line--flow-out.cal-day-tx-line--deemph,
-.cal-day-tx-line--expected.cal-day-tx-line--flow-in,
-.cal-day-tx-line--expected.cal-day-tx-line--flow-out{
-  opacity: 1;
+.cal-day-tx-line--flow-neutral,
+.cal-day-tx-line--flow-neutral .cal-tx-label,
+.cal-day-tx-line--flow-neutral .cal-amt{
+  color: var(--cal-tx-out-color, var(--danger));
 }
 
 /* Starting balance: anchored forecast reference (distinct from reconciled ✓). */
@@ -18411,18 +18410,22 @@ body.plans-page--polished .plans-wrap{
   pointer-events: none;
 }
 .cal-day-tx-line--flow-in:not(.cal-day-tx-line--has-color):not(.cal-day-tx-line--impact-lg):not(.cal-day-tx-line--impact-xxl):not(.cal-day-tx-line--start-balance)::before{
-  background: color-mix(in srgb, var(--ok) 32%, transparent);
+  background: color-mix(in srgb, var(--cal-tx-in-color, var(--ok)) 32%, transparent);
 }
-.cal-day-tx-line--flow-out:not(.cal-day-tx-line--has-color):not(.cal-day-tx-line--impact-lg):not(.cal-day-tx-line--impact-xxl):not(.cal-day-tx-line--start-balance)::before{
-  background: color-mix(in srgb, var(--danger) 28%, transparent);
+.cal-day-tx-line--flow-out:not(.cal-day-tx-line--has-color):not(.cal-day-tx-line--impact-lg):not(.cal-day-tx-line--impact-xxl):not(.cal-day-tx-line--start-balance)::before,
+.cal-day-tx-line--flow-neutral:not(.cal-day-tx-line--has-color):not(.cal-day-tx-line--impact-lg):not(.cal-day-tx-line--impact-xxl):not(.cal-day-tx-line--start-balance)::before{
+  background: color-mix(in srgb, var(--cal-tx-out-color, var(--danger)) 28%, transparent);
 }
 .cal-day-tx-line--impact-lg.cal-day-tx-line--flow-in::before,
-.cal-day-tx-line--impact-xxl.cal-day-tx-line--flow-in::before{
-  background: var(--cal-tx-stripe, color-mix(in srgb, var(--ok) 58%, transparent));
+.cal-day-tx-line--impact-xxl.cal-day-tx-line--flow-in::before,
+.cal-day-tx-line--flow-in.cal-day-tx-line--has-color::before{
+  background: color-mix(in srgb, var(--cal-tx-in-color, var(--ok)) 58%, transparent);
 }
 .cal-day-tx-line--impact-lg.cal-day-tx-line--flow-out::before,
-.cal-day-tx-line--impact-xxl.cal-day-tx-line--flow-out::before{
-  background: var(--cal-tx-stripe, color-mix(in srgb, var(--danger) 48%, transparent));
+.cal-day-tx-line--impact-xxl.cal-day-tx-line--flow-out::before,
+.cal-day-tx-line--flow-out.cal-day-tx-line--has-color::before,
+.cal-day-tx-line--flow-neutral.cal-day-tx-line--has-color::before{
+  background: color-mix(in srgb, var(--cal-tx-out-color, var(--danger)) 48%, transparent);
 }
 .cal-day-tx-line--has-color{
   padding-left: 5px;
@@ -18444,7 +18447,7 @@ body.plans-page--polished .plans-wrap{
 .cal-day-tx-line--expected{
   cursor: pointer;
   text-decoration: none;
-  opacity: 0.96;
+  opacity: 1;
 }
 .cal-day-tx-line--start-balance{
   text-decoration: none;
@@ -21133,22 +21136,9 @@ body.account-setup-page .account-setup-step3-form .tx-add-schedule-toolbar{
   padding-bottom: 2px;
   padding-top: 0;
 }
-body.account-setup-page .account-setup-step3-form .account-setup-tx-advanced{
+body.account-setup-page .account-setup-step3-form .account-setup-tx-notes-row{
   margin-top: 10px;
-  margin-bottom: 2px;
-}
-body.account-setup-page .account-setup-tx-advanced__panel{
-  margin-top: 0;
-  padding-top: 0;
-}
-body.account-setup-page .account-setup-tx-advanced__panel .account-setup-tx-notes-row{
-  margin-top: 0;
   gap: 2px;
-}
-body.account-setup-page .account-setup-tx-advanced__panel .account-setup-tx-notes-row .form-row-h__field input{
-  min-height: 38px;
-  padding: 6px 10px;
-  font-size: 0.875rem;
 }
 
 /* Account setup wizard: Notes — secondary field */
@@ -21243,12 +21233,9 @@ body.account-setup-page:has(#accountSetupWizardPanel2[data-step3-phase="form"]) 
 body.account-setup-page:has(#accountSetupWizardPanel3[data-expense-phase="form"]) .account-setup-wizard__stepLabel{
   margin-bottom: 0.22rem;
 }
-body.account-setup-page:has(#accountSetupWizardPanel2[data-step3-phase="form"]) .account-setup-wizard__eyebrow,
-body.account-setup-page:has(#accountSetupWizardPanel3[data-expense-phase="form"]) .account-setup-wizard__eyebrow{
-  margin-bottom: 0.2rem;
-}
 body.account-setup-page:has(#accountSetupWizardPanel2[data-step3-phase="form"]) .account-setup-wizard__subeyebrow,
 body.account-setup-page:has(#accountSetupWizardPanel3[data-expense-phase="form"]) .account-setup-wizard__subeyebrow{
+  margin-top: var(--as-wizard-title-subtitle-gap);
   margin-bottom: clamp(0.28rem, 0.55vw, 0.38rem);
   line-height: 1.36;
 }
@@ -21365,6 +21352,67 @@ body.account-setup-page .account-setup-step3-form .account-setup-repeat-duo .tx-
   max-width: none;
   width: 100%;
 }
+/* Schedule row: Next Date + Repeat — matched labels and control chrome */
+body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid .form-row-h__label label,
+body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid .account-setup-repeat-duo__label{
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--as-label-primary-color);
+  line-height: 1.3;
+}
+body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid input[type="date"],
+body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid .tx-add-recurrence-select{
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 38px;
+  height: 38px;
+  margin: 0;
+  padding: 6px 11px;
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.3;
+  color: rgba(17, 24, 39, 0.94);
+  background: #fff;
+  border: 1px solid rgba(17, 24, 39, 0.34);
+  border-radius: 10px;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    background-color 160ms ease;
+}
+body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid .tx-add-recurrence-select{
+  padding-right: 2rem;
+  cursor: pointer;
+}
+body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid input[type="date"]:hover,
+body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid .tx-add-recurrence-select:hover{
+  border-color: rgba(11, 61, 46, 0.36);
+  box-shadow: 0 0 0 1px rgba(11, 61, 46, 0.1);
+}
+body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid input[type="date"]:focus,
+body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid .tx-add-recurrence-select:focus{
+  outline: none;
+  border-color: color-mix(in srgb, var(--accent) 52%, rgba(17, 24, 39, 0.22));
+  box-shadow: 0 0 0 3px rgba(11, 61, 46, 0.1);
+  background: #fff;
+}
+body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid input[type="date"]::-webkit-datetime-edit,
+body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid input[type="date"]::-webkit-datetime-edit-fields-wrapper{
+  padding: 0;
+}
+body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid input[type="date"]::-webkit-datetime-edit{
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: rgba(17, 24, 39, 0.94);
+}
+body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid input[type="date"]::-webkit-calendar-picker-indicator{
+  margin: 0 0 0 4px;
+  opacity: 0.55;
+  cursor: pointer;
+}
 body.account-setup-page .account-setup-step3-form .account-setup-schedule-summary{
   margin: 2px 0 0;
   font-size: 0.6875rem;
@@ -21377,8 +21425,18 @@ body.account-setup-page .account-setup-step3-form .tx-add-schedule-toolbar{
   padding-bottom: 0;
   margin: 0;
 }
+body.account-setup-page .account-setup-tx-ends-column{
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  min-width: 0;
+}
+body.account-setup-page .account-setup-tx-ends-column .tx-add-schedule-toolbar{
+  padding-bottom: 0;
+}
 body.account-setup-page .account-setup-step3-form .account-setup-tx-variable-inline{
-  margin-top: 8px;
+  margin-top: 0;
   margin-bottom: 4px;
   gap: 3px;
 }
@@ -21459,6 +21517,9 @@ body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPane
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 5px 12px;
     align-items: start;
+  }
+  body.account-setup-page .account-setup-tx-schedule-grid > .account-setup-tx-ends-column{
+    grid-column: 1;
   }
   body.account-setup-page .account-setup-tx-schedule-grid__repeat:has(.tx-add-schedule-field--second-day:not([hidden])){
     grid-column: 1 / -1;
@@ -25233,15 +25294,15 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   }
 
   .calendar--mobile .cal-day-tx-line{
-    font-size: 11.96px;
+    font-size: var(--cal-tx-font-size, 11.64px);
     min-height: 17px;
   }
   .calendar--mobile .cal-cell--density-sparse .cal-day-tx-line{
-    font-size: 13.34px;
+    font-size: var(--cal-tx-font-size, 11.64px);
     min-height: 20px;
   }
   .calendar--mobile .cal-cell--density-dense .cal-day-tx-line{
-    font-size: 11.04px;
+    font-size: var(--cal-tx-font-size, 11.64px);
     min-height: 15px;
   }
 
