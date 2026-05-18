@@ -20222,7 +20222,7 @@ body[data-bw-view="transactions"] .tm__field label{
 }
 
 .modal--tx-add{
-  width: min(58.7vw, 670px);
+  width: min(55.8vw, 637px);
   max-width: none;
   max-height: min(92vh, calc(100vh - 48px));
   display: flex;
@@ -20779,6 +20779,7 @@ body[data-bw-view="transactions"] .tm__field label{
 }
 .modal--tx-add .tx-add-schedule-compact .form-row-h,
 .modal--tx-add .tx-add-end-detail__row,
+.modal--tx-add #txAddRecurringBlock .tx-add-variable-form-row,
 .modal--tx-add .tx-add-advanced__panel .form-row-h{
   display: grid;
   grid-template-columns: 180px minmax(0, 1fr);
@@ -20848,51 +20849,41 @@ body[data-bw-view="transactions"] .tm__field label{
   background: rgba(15, 23, 42, 0.011);
   border: 1px solid rgba(17, 24, 39, 0.03);
 }
-.modal--tx-add #txAddRecurringBlock > label.tx-add-variable-toggle{
-  display: grid;
-  grid-template-columns: 180px minmax(0, 1fr);
-  column-gap: 14px;
-  row-gap: 1px;
-  align-items: start;
-  justify-items: start;
-  text-align: left;
+.modal--tx-add #txAddRecurringBlock .tx-add-variable-form-row{
   width: calc(100% + 14px);
   margin: 3px -7px 0;
   padding: 0 7px;
   box-sizing: border-box;
-  font-size: inherit;
-  font-weight: inherit;
-  letter-spacing: normal;
+}
+.modal--tx-add #txAddRecurringBlock .tx-add-variable-form-row .form-row-h__label label{
+  font-size: 10px;
+  font-weight: 500;
+  color: rgba(100, 116, 139, 0.78);
+  letter-spacing: 0.01em;
   text-transform: none;
-  color: inherit;
-  opacity: 1;
-}
-.modal--tx-add #txAddRecurringBlock > label.tx-add-variable-toggle .tx-add-variable-toggle__head{
-  grid-column: 2;
-  display: flex;
-  flex-direction: row;
-  flex-wrap: nowrap;
-  align-items: flex-start;
-  justify-content: flex-start;
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-}
-.modal--tx-add #txAddRecurringBlock > label.tx-add-variable-toggle .tx-add-variable-toggle__label{
-  text-align: left;
   white-space: normal;
-  overflow-wrap: anywhere;
-  word-break: normal;
-  min-width: 0;
-  flex: 1 1 auto;
+  line-height: 1.25;
 }
-.modal--tx-add #txAddRecurringBlock > label.tx-add-variable-toggle .tx-add-variable-toggle__hint{
-  grid-column: 2;
-  justify-self: start;
+.modal--tx-add #txAddRecurringBlock .tx-add-variable-field-wrap{
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+}
+.modal--tx-add #txAddRecurringBlock .tx-add-variable-field-wrap input[type="checkbox"]{
+  margin: 4px 0 0;
+  flex-shrink: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.modal--tx-add #txAddRecurringBlock .tx-add-variable-toggle__hint{
+  margin: 0;
+  padding-left: 0;
+  font-size: 9px;
+  line-height: 1.28;
+  color: rgba(100, 116, 139, 0.54);
   text-align: left;
-  width: 100%;
-  max-width: 100%;
-  box-sizing: border-box;
 }
 .modal--tx-add #txAddRecurringBlock .tx-add-second-monthly{
   margin: 0;
@@ -21912,8 +21903,8 @@ body.account-setup-page
   box-sizing: border-box;
 }
 #txEditInner.modal.modal--expected-edit{
-  width: min(92vw, 462px);
-  max-width: 462px;
+  width: min(92vw, 476px);
+  max-width: 476px;
 }
 
 /* Footer: Delete left · Close | Save right. */
@@ -22073,7 +22064,7 @@ body.account-setup-page
 }
 
 .modal--expected-edit{
-  max-width: 462px;
+  max-width: 476px;
   max-height: min(90vh, 720px);
   overflow-y: auto;
   padding: 0;
@@ -25337,6 +25328,7 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   .modal--tx-add .tx-add-form .form-row-h,
   .modal--tx-add .tx-add-schedule-compact .form-row-h,
   .modal--tx-add .tx-add-end-detail__row,
+  .modal--tx-add #txAddRecurringBlock .tx-add-variable-form-row,
   .modal--tx-add .tx-add-advanced__panel .form-row-h{
     display: grid;
     grid-template-columns: 1fr;
