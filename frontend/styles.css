@@ -9957,24 +9957,7 @@ label{
   vertical-align: middle;
 }
 
-/* Recurring edit: keep "Variable amount (estimate)" on one line */
-#txEditRecurringVariableWrap .form-row-h{
-  justify-content: space-between;
-}
-#txEditRecurringVariableWrap .form-row-h__label{
-  flex: 1 1 auto;
-  max-width: none;
-}
-#txEditRecurringVariableWrap .form-row-h__label label{
-  white-space: nowrap;
-}
-#txEditRecurringVariableWrap .form-row-h__field{
-  flex: 0 0 auto;
-  display: flex;
-  /* Align checkbox under the field area (not flush right) */
-  justify-content: flex-start;
-  padding-left: 12px;
-}
+/* Recurring edit: variable amount uses .tx-edit-variable-form-row in expected-edit panel. */
 .form-row-h__field .pill{
   width: 100%;
   justify-content: flex-start;
@@ -9988,7 +9971,7 @@ label{
   margin-top: 6px;
 }
 .settings-pane[data-settings-pane="billing"]{
-  max-width: min(100%, 820px);
+  max-width: min(100%, 900px);
 }
 .billing-page{
   --billing-space-1: 12px;
@@ -10026,8 +10009,11 @@ label{
 }
 @media (min-width: 900px){
   .billing-page__shell{
-    grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
+    grid-template-columns: minmax(0, 1.28fr) minmax(0, 0.72fr);
     gap: var(--billing-space-3) 28px;
+  }
+  .billing-side{
+    margin-left: 8ch;
   }
 }
 .billing-primary{
@@ -17610,7 +17596,7 @@ body.plans-page--polished .plans-wrap{
 .cal-cell{
   position: relative;
   border: 1px solid rgba(17, 24, 39, 0.055);
-  background: rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.78);
   border-radius: 10px;
   box-shadow: 0 1px 2px rgba(17, 24, 39, 0.028);
   /* Base height; JS will expand week rows when needed. */
@@ -17696,6 +17682,9 @@ body.plans-page--polished .plans-wrap{
   box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
   transform: translateY(-1px);
 }
+.cal-cell.cal-cell--out:not(.cal-cell--before-start):hover{
+  transform: none;
+}
 
 .cal-cell.cal-cell--bal-watch:not(.cal-cell--out):not(.cal-cell--before-start):hover{
   border-color: rgba(17, 24, 39, 0.09);
@@ -17722,7 +17711,7 @@ body.plans-page--polished .plans-wrap{
 }
 
 @media (prefers-reduced-motion: reduce){
-  .cal-cell:not(.cal-cell--out):not(.cal-cell--before-start):hover{
+  .cal-cell:not(.cal-cell--before-start):hover{
     transform: none;
   }
 }
@@ -18012,15 +18001,19 @@ body.plans-page--polished .plans-wrap{
   outline: 2px solid rgba(11, 61, 46, 0.22);
   outline-offset: 1px;
 }
-.cal-cell:not(.cal-cell--out):not(.cal-cell--before-start){
+.cal-cell:not(.cal-cell--before-start){
   cursor: pointer;
   user-select: none;
   -webkit-user-select: none;
   touch-action: manipulation;
 }
-.cal-cell.cal-cell--before-start,
-.cal-cell.cal-cell--out{
+.cal-cell.cal-cell--before-start{
   cursor: default;
+}
+.cal-cell.cal-cell--out:not(.cal-cell--before-start):hover{
+  border-color: rgba(17, 24, 39, 0.08);
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
 }
 .cal-daynum::after{
   content: "";
@@ -18125,6 +18118,15 @@ body.plans-page--polished .plans-wrap{
   padding-bottom: 3px;
   border-top: 1px solid rgba(11, 61, 46, 0.08);
   min-height: 17px;
+  align-self: stretch;
+}
+.cal-cell--density-sparse .cal-cell-stack > .cal-ledger-metrics{
+  padding-top: 6px;
+  padding-bottom: 4px;
+  min-height: 20px;
+}
+.cal-cell--no-tx .cal-stat.cal-balance:not(.is-negative):not(.cal-balance--below-floor):not(.cal-balance--watch-zone){
+  font-size: clamp(17px, 1.9vw, 19px);
 }
 
 .cal-cell.cal-cell--no-tx:not(.cal-cell--out):not(.cal-cell--before-start):not(.cal-cell--bal-watch):not(.cal-cell--bal-warn):not(.cal-cell--bal-risk):hover{
@@ -18134,12 +18136,12 @@ body.plans-page--polished .plans-wrap{
     0 1px 2px rgba(17, 24, 39, 0.04);
 }
 .cal-cell.cal-cell--no-tx:not(.cal-cell--out):not(.cal-cell--bal-risk):not(.cal-cell--bal-warn):not(.cal-cell--bal-watch){
-  background: rgba(252, 253, 254, 0.55);
-  border-color: rgba(17, 24, 39, 0.03);
+  background: rgba(248, 250, 252, 0.42);
+  border-color: rgba(17, 24, 39, 0.022);
   box-shadow: none;
 }
 .cal-cell.cal-cell--no-tx:not(.cal-cell--out):not(.cal-cell--before-start):not(.cal-cell--bal-risk):not(.cal-cell--bal-warn):not(.cal-cell--bal-watch){
-  border-color: rgba(17, 24, 39, 0.028);
+  border-color: rgba(17, 24, 39, 0.02);
 }
 .cal-cell.cal-cell--no-tx .cal-ledger-metrics{
   padding-top: 0;
@@ -18150,24 +18152,49 @@ body.plans-page--polished .plans-wrap{
 }
 
 .cal-cell.cal-cell--no-tx .cal-cell-stack{
-  gap: 4px;
+  gap: 2px;
 }
 .cal-cell.cal-cell--no-tx:not(.cal-cell--out):not(.cal-cell--before-start) .cal-daynum-num:not(.is-today){
-  color: rgba(31, 41, 55, 0.84);
-  font-weight: 620;
+  color: rgba(100, 116, 139, 0.52);
+  font-weight: 520;
 }
 .cal-cell.cal-cell--no-tx .cal-day-txns{
   border-top-color: transparent;
   padding-top: 0;
   margin-top: 0;
   min-height: 0;
+  flex: 0 0 auto;
+  opacity: 0.35;
+}
+
+/* Active days with transactions read louder than empty neutral days. */
+.cal-cell.cal-cell--has-activity:not(.cal-cell--out):not(.cal-cell--before-start):not(.cal-cell--bal-risk):not(.cal-cell--bal-warn):not(.cal-cell--bal-watch){
+  background: rgba(255, 255, 255, 0.94);
+  border-color: rgba(17, 24, 39, 0.068);
+  box-shadow: 0 1px 3px rgba(17, 24, 39, 0.038);
+}
+.cal-cell.cal-cell--today:not(.cal-cell--out):not(.cal-cell--before-start){
+  background: color-mix(in srgb, var(--accent) 7%, #fff);
+  border-color: rgba(11, 61, 46, 0.16);
+  box-shadow:
+    0 1px 3px rgba(11, 61, 46, 0.07),
+    inset 0 0 0 1px rgba(4, 120, 87, 0.06);
+}
+.cal-cell.cal-cell--payday:not(.cal-cell--out):not(.cal-cell--before-start):not(.cal-cell--bal-risk):not(.cal-cell--bal-warn){
+  background: color-mix(in srgb, #ecfdf5 28%, #fff);
+  border-color: rgba(4, 120, 87, 0.14);
+}
+.cal-cell.cal-cell--density-sparse:not(.cal-cell--no-tx) .cal-day-txns:empty{
+  opacity: 0.28;
+  min-height: 0;
+  flex: 0 0 auto;
 }
 
 .cal-day-txns{
   display: flex;
   flex-direction: column;
-  /* Uniform row gap so busy days stay legible without crowding. */
-  gap: 2px;
+  /* Gap tuned per density tier below. */
+  gap: 3px;
   padding-top: 0;
   margin-top: 0;
   border-top: none;
@@ -18185,18 +18212,16 @@ body.plans-page--polished .plans-wrap{
    between rows comes from color/opacity, never from size or weight, so
    adjacent rows of the same kind always render at the same scale. */
 .cal-day-tx-line{
-  font-size: 9.5px;
-  line-height: 1.28;
-  /* Lock row height so plain rows, impact rows, expected rows and
-     coloured rows all share the same vertical footprint. */
-  min-height: 16px;
+  font-size: 14px;
+  line-height: 1.26;
+  min-height: 17px;
   max-width: 100%;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   justify-content: stretch;
-  gap: 4px;
-  padding: 0 0 0 5px;
+  gap: 3px;
+  padding: 0 1px 0 4px;
   position: relative;
   /* base color tone for everything inside; modifiers tweak opacity only */
   color: rgba(17, 24, 39, 0.9);
@@ -18247,7 +18272,40 @@ body.plans-page--polished .plans-wrap{
   font-weight: 650;
   color: inherit;
   min-width: max-content;
-  padding-left: 4px;
+  padding-left: 2px;
+}
+
+/* Density-aware calendar typography (set in app.js from visible item count). */
+.cal-cell--density-sparse .cal-day-txns{
+  gap: 5px;
+}
+.cal-cell--density-sparse .cal-day-tx-line{
+  font-size: 15.5px;
+  line-height: 1.32;
+  min-height: 20px;
+  gap: 4px;
+  padding: 0 1px 0 4px;
+}
+.cal-cell--density-normal .cal-day-txns{
+  gap: 3px;
+}
+.cal-cell--density-normal .cal-day-tx-line{
+  font-size: 14px;
+  line-height: 1.26;
+  min-height: 17px;
+}
+.cal-cell--density-dense .cal-day-txns{
+  gap: 1px;
+}
+.cal-cell--density-dense .cal-day-tx-line{
+  font-size: 13px;
+  line-height: 1.22;
+  min-height: 15px;
+  gap: 2px;
+  padding: 0 0 0 3px;
+}
+.cal-cell--density-dense .cal-day-tx-line .cal-amt{
+  padding-left: 1px;
 }
 
 /* Hierarchy via opacity only — never size, never weight. */
@@ -19504,24 +19562,31 @@ body[data-bw-view="transactions"] .tm__field label{
 .cal-stat.expense{ color: var(--text); }
 .cal-stat.cal-balance{
   /* End-of-day balance: primary scan target in the cell. */
-  font-size: clamp(11.25px, 1.9vw, 12.5px);
-  line-height: 1.22;
-  font-weight: 680;
-  letter-spacing: -0.014em;
+  font-size: clamp(16px, 1.65vw, 18px);
+  line-height: 1.18;
+  font-weight: 600;
+  letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  color: rgba(15, 23, 42, 0.94);
+  color: rgba(11, 18, 32, 0.98);
+}
+.cal-cell--density-sparse .cal-stat.cal-balance:not(.is-negative):not(.cal-balance--below-floor):not(.cal-balance--watch-zone){
+  font-size: clamp(17px, 1.85vw, 19px);
+  font-weight: 600;
+}
+.cal-cell--density-dense .cal-stat.cal-balance:not(.is-negative):not(.cal-balance--below-floor){
+  font-size: clamp(15px, 1.5vw, 16.5px);
 }
 .cal-stat.cal-balance.cal-balance--quiet{
-  font-weight: 580;
-  color: rgba(55, 65, 81, 0.78);
+  font-weight: 600;
+  color: rgba(30, 41, 59, 0.9);
 }
 .cal-stat.cal-balance.cal-balance--past-day{
-  color: rgba(90, 100, 120, 0.58);
+  color: rgba(71, 85, 105, 0.62);
 }
 .cal-stat.cal-balance.cal-balance--watch-zone{
-  font-weight: 640;
-  color: rgba(146, 64, 14, 0.72);
+  font-weight: 650;
+  color: rgba(146, 64, 14, 0.86);
   padding: 1px 5px;
   border-radius: 5px;
   background: rgba(254, 252, 232, 0.55);
@@ -19529,9 +19594,9 @@ body[data-bw-view="transactions"] .tm__field label{
   box-shadow: none;
 }
 .cal-stat.cal-balance.cal-balance--below-floor{
-  font-size: clamp(11px, 1.82vw, 12.1px);
+  font-size: clamp(16px, 1.62vw, 18px);
   font-weight: 650;
-  color: rgba(154, 52, 18, 0.72);
+  color: rgba(154, 52, 18, 0.88);
   padding: 1px 6px;
   border-radius: 5px;
   background: rgba(255, 247, 237, 0.55);
@@ -19553,8 +19618,8 @@ body[data-bw-view="transactions"] .tm__field label{
 .cal-stat.cal-balance.cal-balance--risk,
 .cal-stat.cal-balance.is-negative{
   font-weight: 700;
-  font-size: clamp(11.35px, 1.92vw, 12.55px);
-  color: rgba(127, 29, 29, 0.88);
+  font-size: clamp(16px, 1.7vw, 18.5px);
+  color: rgba(127, 29, 29, 0.96);
   padding: 2px 7px;
   border-radius: 6px;
   background: rgba(254, 242, 242, 0.62);
@@ -20262,7 +20327,7 @@ body[data-bw-view="transactions"] .tm__field label{
   margin: 0;
 }
 .tx-add-schedule-compact .form-row-h + .form-row-h{
-  margin-top: 2px;
+  margin-top: 6px;
 }
 .tx-add-ends-field{
   display: flex;
@@ -20709,7 +20774,7 @@ body[data-bw-view="transactions"] .tm__field label{
   height: 3px;
 }
 .modal--tx-add .tx-add-form .tx-add-vspace--sm{
-  height: 6px;
+  height: 12px;
 }
 .modal--tx-add .tx-add-form .tx-add-vspace--2xs{
   height: 3px;
@@ -22101,6 +22166,12 @@ body.account-setup-page
 .modal--expected-edit #txEditRecurringScheduleWrap + .tx-add-vspace{
   height: 8px;
 }
+.modal--expected-edit #expectedEditInstancePanel #txEditRecurringScheduleWrap{
+  margin-top: 10px;
+}
+.modal--tx-add #txAddScheduleCompact{
+  margin-top: 4px;
+}
 .modal--expected-edit #txEditAccountCol{
   margin-top: 10px;
   padding-top: 8px;
@@ -22187,15 +22258,24 @@ body.account-setup-page
 }
 #expectedEditInstancePanel .tx-edit-advanced__summary{
   display: flex;
+  flex-direction: row;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
   cursor: pointer;
   list-style: none;
   min-height: 28px;
-  padding: 4px 2px;
+  padding: 4px 0;
   user-select: none;
   border-radius: 6px;
   transition: background 0.14s ease, color 0.14s ease;
+}
+#expectedEditInstancePanel .tx-edit-advanced__label-col{
+  position: relative;
+  flex: 0 0 5.75rem;
+  max-width: 30%;
+  min-width: 0;
 }
 #expectedEditInstancePanel .tx-edit-advanced__summary:hover{
   background: rgba(17, 24, 39, 0.03);
@@ -22204,53 +22284,42 @@ body.account-setup-page
   display: none;
 }
 #expectedEditInstancePanel .tx-edit-advanced__chev{
-  flex-shrink: 0;
+  position: absolute;
+  left: -10px;
+  top: 50%;
   width: 5px;
   height: 5px;
-  margin-top: -1px;
+  margin: 0;
   border-right: 1.5px solid rgba(100, 116, 139, 0.55);
   border-bottom: 1.5px solid rgba(100, 116, 139, 0.55);
-  transform: rotate(-45deg);
+  transform: translateY(-58%) rotate(-45deg);
   transition: transform 0.15s ease;
 }
 #expectedEditInstancePanel .tx-edit-advanced[open] .tx-edit-advanced__chev{
-  transform: rotate(45deg);
-  margin-top: 1px;
+  transform: translateY(-42%) rotate(45deg);
 }
 #expectedEditInstancePanel .tx-edit-advanced__label{
-  font-size: 11px;
+  display: block;
+  font-size: 10.5px;
   font-weight: 500;
   letter-spacing: 0.01em;
-  color: rgba(100, 116, 139, 0.78);
+  line-height: 1.3;
+  color: rgba(100, 116, 139, 0.72);
 }
 #expectedEditInstancePanel .tx-edit-advanced__body{
   padding: 2px 2px 6px 14px;
 }
-@media (min-width: 560px){
-  #expectedEditInstancePanel .tx-edit-recurrence-ends-row{
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 4px 10px;
-    align-items: start;
-  }
-  #expectedEditInstancePanel .tx-edit-recurrence-ends-row > .form-row-h{
-    margin: 0;
-    min-width: 0;
-  }
-  #expectedEditInstancePanel .tx-edit-recurrence-ends-row .form-row-h__label{
-    flex: 0 0 3.5rem;
-    max-width: 38%;
-  }
+#expectedEditInstancePanel .tx-edit-recurrence-ends-row{
+  display: flex;
+  flex-direction: column;
+  gap: 0;
 }
-@media (max-width: 559px){
-  #expectedEditInstancePanel .tx-edit-recurrence-ends-row{
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-  }
+#expectedEditInstancePanel .tx-edit-recurrence-ends-row > .form-row-h{
+  margin: 0;
+  min-width: 0;
 }
 #expectedEditInstancePanel .tx-edit-recurrence-ends-row + .expected-second-day-row{
-  margin-top: 4px;
+  margin-top: 6px;
 }
 #expectedEditInstancePanel #txEditEndCountRow{
   margin-top: 4px;
@@ -22333,8 +22402,8 @@ body.account-setup-page
 /* Recurring schedule: soft cluster for recurrence + variable amount. */
 .modal--expected-edit .tx-edit-recurring-group{
   position: relative;
-  margin: 2px 0 0;
-  padding: 5px 7px 4px;
+  margin: 8px 0 0;
+  padding: 6px 0 4px;
   border-radius: 8px;
   background: rgba(248, 250, 252, 0.42);
   border: 1px solid rgba(17, 24, 39, 0.05);
@@ -22355,57 +22424,67 @@ body.account-setup-page
   display: none;
 }
 .modal--expected-edit .tx-edit-recurring-group #txEditRecurringVariableWrap{
-  margin-top: 10px;
-  padding-top: 4px;
+  margin-top: 6px;
+  padding-top: 0;
   border-top: none;
   width: 100%;
   max-width: 100%;
 }
-.modal--expected-edit label.tx-edit-variable-row{
+.modal--expected-edit #expectedEditInstancePanel .expected-second-day-row.form-row-h{
+  display: flex;
+  margin-top: 6px;
+}
+.modal--expected-edit #expectedEditInstancePanel .expected-second-day-row.form-row-h .form-row-h__label label{
+  font-size: 10.5px;
+  font-weight: 500;
+  padding-top: 7px;
+  color: rgba(100, 116, 139, 0.72);
+}
+.modal--expected-edit #expectedEditInstancePanel .expected-second-day-row .expected-second-day-row__hint{
+  grid-column: auto;
+  margin: 2px 0 0;
+  max-width: none;
+  font-size: 9.5px;
+  line-height: 1.32;
+  color: rgba(100, 116, 139, 0.52);
+}
+.modal--expected-edit #expectedEditInstancePanel .tx-edit-variable-form-row{
+  margin-top: 6px;
+}
+.modal--expected-edit #expectedEditInstancePanel .tx-edit-variable-form-row .form-row-h__label{
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 1px;
-  width: 100%;
-  max-width: 100%;
-  margin: 0 0 0;
-  padding: 2px 0 0;
-  cursor: pointer;
-  user-select: none;
+  gap: 2px;
 }
-.modal--expected-edit .tx-edit-variable-row__head{
+.modal--expected-edit #expectedEditInstancePanel .tx-edit-variable-form-row .form-row-h__label label{
+  font-size: 10.5px;
+  font-weight: 500;
+  padding-top: 7px;
+  color: rgba(100, 116, 139, 0.72);
+  cursor: pointer;
+}
+.modal--expected-edit #expectedEditInstancePanel .tx-edit-variable-form-row .tx-edit-variable-row__hint{
+  margin: 0;
+  padding: 0;
+  font-size: 9.5px;
+  line-height: 1.32;
+  color: rgba(100, 116, 139, 0.52);
+  max-width: none;
+}
+.modal--expected-edit #expectedEditInstancePanel .tx-edit-variable-field-wrap{
   display: flex;
-  flex-direction: row;
-  flex-wrap: nowrap;
-  align-items: center;
-  gap: 0.45rem;
-  width: auto;
-  max-width: 100%;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding-top: 2px;
 }
 .modal--expected-edit .tx-edit-variable-row__input{
   flex: 0 0 auto;
-  flex-shrink: 0;
   width: 13px;
   height: 13px;
   margin: 0;
   accent-color: var(--accent);
-}
-.modal--expected-edit .tx-edit-variable-row__title{
-  font-size: 11.5px;
-  font-weight: 550;
-  line-height: 1.24;
-  color: rgba(55, 65, 81, 0.86);
-  white-space: nowrap;
-  flex: 0 0 auto;
-}
-.modal--expected-edit .tx-edit-variable-row__hint{
-  display: block;
-  padding-left: 1.15rem;
-  font-size: 10px;
-  font-weight: 400;
-  line-height: 1.3;
-  color: rgba(100, 116, 139, 0.52);
-  max-width: 20rem;
+  cursor: pointer;
 }
 .tx-edit-variable-hint{
   display: block;
@@ -25118,8 +25197,16 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   }
 
   .calendar--mobile .cal-day-tx-line{
-    font-size: 11.25px;
-    min-height: 18px;
+    font-size: 13px;
+    min-height: 17px;
+  }
+  .calendar--mobile .cal-cell--density-sparse .cal-day-tx-line{
+    font-size: 14.5px;
+    min-height: 20px;
+  }
+  .calendar--mobile .cal-cell--density-dense .cal-day-tx-line{
+    font-size: 12px;
+    min-height: 15px;
   }
 
   .calendar--mobile .cal-day-more{
@@ -25153,11 +25240,17 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   }
 
   .calendar--mobile .cal-stat.cal-balance{
-    font-size: 12.5px;
+    font-size: 15px;
+  }
+  .calendar--mobile .cal-cell--density-sparse .cal-stat.cal-balance{
+    font-size: 16px;
+  }
+  .calendar--mobile .cal-cell--no-tx .cal-stat.cal-balance{
+    font-size: 16px;
   }
 
   .calendar--mobile .cal-stat.cal-balance.cal-balance--below-floor{
-    font-size: 11.5px;
+    font-size: 15px;
   }
 
   body[data-bw-view="transactions"] .tm{
@@ -25331,9 +25424,6 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
     white-space: normal;
     padding-top: 0;
   }
-  .modal--expected-edit .tx-edit-variable-row__title{
-    white-space: normal;
-  }
 
   .form-row-h__label,
   .tx-add-form .form-row-h__label,
@@ -25344,13 +25434,9 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   }
 
   .form-row-h__field,
-  #txEditRecurringVariableWrap .form-row-h__field{
-    width: 100%;
-    padding-left: 0;
-  }
-
-  #txEditRecurringVariableWrap .form-row-h{
-    align-items: flex-start;
+  .modal--expected-edit #expectedEditInstancePanel .tx-edit-variable-field-wrap{
+    justify-content: flex-start;
+    padding-top: 0;
   }
 
   .tx-add-second-monthly__row,

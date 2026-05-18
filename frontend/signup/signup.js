@@ -1648,7 +1648,6 @@ function readAccountSetupDraftRaw() {
 const ACCOUNT_SETUP_REPEAT_RECURRENCES = new Set([
   "monthly",
   "twice_monthly",
-  "bimonthly",
   "biweekly",
   "weekly",
   "semiannual",

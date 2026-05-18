@@ -1714,6 +1714,20 @@ function hasUserConfiguredMinBalanceThreshold(fid = activeFamilyIdForBalanceThre
   return edited != null && edited > 0;
 }
 
+/** Saved minimum only — no auto-suggested buffer (calendar warning colors). */
+function readUserConfiguredMinBalanceThreshold(fid = activeFamilyIdForBalanceThresholds()) {
+  const edited = readEditedBalanceThresholdNumber("min");
+  if (edited != null && edited > 0) return edited;
+  const persisted = readFamilyBalanceThresholdNumber("min", fid);
+  if (persisted != null && persisted > 0) return persisted;
+  const legacy = readLegacyDeviceBalanceThresholdCanonical("min", fid);
+  if (legacy) {
+    const parsed = parseBalanceThresholdFieldRaw(legacy);
+    if (parsed.ok && !parsed.empty && Number.isFinite(parsed.num) && parsed.num > 0) return parsed.num;
+  }
+  return null;
+}
+
 function cashOutlookLowDataMessage(suggestionMeta = {}) {
   const count = Number(suggestionMeta.recurringCount || 0);
   if (count <= 0) {
@@ -4785,7 +4799,7 @@ function appendCalendarDayStartBalanceLine(row, parentEl, iso) {
 
 function shouldOpenAddTxFromCalendarClick(target, cell) {
   if (!target || !cell) return false;
-  if (cell.classList.contains("cal-cell--out")) return false;
+  if (cell.classList.contains("cal-cell--before-start")) return false;
   if (target.closest(".cal-day-reconcile-btn")) return false;
   if (target.closest(".cal-day-tx-line--expected")) return false;
   if (target.closest(".cal-day-start-balance .cal-day-tx-line--start-balance")) return false;
@@ -4813,7 +4827,7 @@ function openCalendarDayAddTransaction(iso, e) {
 function bindCalendarCellAddTxClick(cell, iso) {
   if (!cell || !iso || cell.dataset.bwAddTxBound === "1") return;
   cell.dataset.bwAddTxBound = "1";
-  if (!cell.classList.contains("cal-cell--out") && !cell.classList.contains("cal-cell--before-start")) {
+  if (!cell.classList.contains("cal-cell--before-start")) {
     cell.setAttribute("role", "button");
     cell.setAttribute("tabindex", "0");
     const label = fmtDateMDY(iso);
@@ -6905,17 +6919,20 @@ function buildExpectedSeriesPutPayload({
   };
 }
 
-async function navigateCalendarToIsoMonthIfNeeded(iso) {
-  if (!iso) return;
-  const ym = String(iso).slice(0, 7);
+/** Reload forecast calendar data after any transaction edit (amount, date, recurrence, etc.). */
+async function refreshForecastAfterTransactionEdit(iso) {
+  const ym = iso ? String(iso).slice(0, 7) : "";
   const curYm = (calendarMonth?.value || monthInput?.value || "").slice(0, 7);
   if (ym && curYm && ym !== curYm) {
     if (monthInput) monthInput.value = ym;
     applyCalendarMonthToPickers(ym);
-    await loadMonthAndCalendar();
-    return;
   }
-  await refreshExpectedCalendarAndMonth();
+  invalidateLowBalanceAlertCache();
+  await loadMonthAndCalendar();
+}
+
+async function navigateCalendarToIsoMonthIfNeeded(iso) {
+  await refreshForecastAfterTransactionEdit(iso);
 }
 
 async function saveExpectedInstanceOverride() {
@@ -7169,6 +7186,7 @@ async function loadMe() {
   state.isPlatformAdmin = !!data.is_platform_admin;
   const adminLink = document.getElementById("platformAdminLink");
   if (adminLink) adminLink.hidden = !state.isPlatformAdmin;
+  syncPlatformAdminOnlyUi();
 
   // Transaction View and Reports are available to every signed-in user.
   // Older builds restricted them behind isPlatformAdmin; we leave the elements
@@ -7202,6 +7220,24 @@ function syncActiveFamilyFlags() {
 function activeFamilyMembership() {
   if (!state.activeFamilyId) return null;
   return (state.families || []).find((x) => Number(x.id) === Number(state.activeFamilyId)) || null;
+}
+
+/** Experimental / internal controls (Starting screen, Balance display, etc.). */
+function syncPlatformAdminOnlyUi() {
+  const show = !!state.isPlatformAdmin;
+  document.querySelectorAll("[data-platform-admin-only]").forEach((el) => {
+    el.hidden = !show;
+    el.setAttribute("aria-hidden", show ? "false" : "true");
+    if (!show) {
+      try {
+        el.style.display = "none";
+      } catch (_) {}
+    } else {
+      try {
+        el.style.removeProperty("display");
+      } catch (_) {}
+    }
+  });
 }
 
 /** Household settings: family owner or family role `admin` (not the top-nav platform Admin). */
@@ -9281,6 +9317,16 @@ function calendarDayTxSemanticParts(row) {
   return parts;
 }
 
+/** Calendar cell density from visible ledger lines (transactions + start-balance rows). */
+function applyCalendarCellDensity(cell, itemCount) {
+  if (!cell) return;
+  cell.classList.remove("cal-cell--density-sparse", "cal-cell--density-normal", "cal-cell--density-dense");
+  const n = Number(itemCount) || 0;
+  if (n <= 1) cell.classList.add("cal-cell--density-sparse");
+  else if (n >= 4) cell.classList.add("cal-cell--density-dense");
+  else cell.classList.add("cal-cell--density-normal");
+}
+
 /** True if this day has a paycheck-like income (actual or expected). */
 function dayHasPaycheckLikeIncome(rows) {
   if (!rows || !rows.length) return false;
@@ -9436,12 +9482,7 @@ function setExpectedModalMode() {
 }
 
 async function refreshExpectedCalendarAndMonth() {
-  await loadExpectedTransactions();
-  await loadExpectedCalendar();
-  renderSidebarPendingTransactionsForMonth();
-  renderMonthSummaryTotalsFromState();
-  await loadCalendarMonthDaily();
-  renderCalendar();
+  await refreshForecastAfterTransactionEdit(null);
 }
 
 function openExpectedEditModal(tx, opts = {}) {
@@ -11775,7 +11816,7 @@ function renderCalendar() {
   }
   const MIN_CELL_H = isMobileCalendarLayout ? 0 : 162;
   const MAX_VISIBLE_TXNS = 3;
-  const minBalFloor = readStoredMinBalanceThresholdForReports();
+  const minBalFloor = readUserConfiguredMinBalanceThreshold();
   /** @type {HTMLElement[]} */
   const cells = [];
   for (let i = 0; i < totalCells; i++) {
@@ -11868,8 +11909,11 @@ function renderCalendar() {
       });
     }
 
+    let visibleItemCount = 0;
     if (showDetails) {
       const startBalRows = !isBeforeStart ? startBalancesByDate.get(iso) || [] : [];
+      visibleItemCount = combined.length + startBalRows.length;
+      const labelMaxLen = visibleItemCount <= 1 ? 68 : visibleItemCount >= 4 ? 50 : 58;
       if (startBalEl) {
         startBalEl.hidden = startBalRows.length === 0;
         for (const sbRow of startBalRows) appendCalendarDayStartBalanceLine(sbRow, startBalEl, iso);
@@ -11922,7 +11966,7 @@ function renderCalendar() {
         const descRaw = isExpected ? row.description || "(expected)" : (row.description || "Uncategorized").trim();
         const labelRaw = categoryName || descRaw;
         // Keep labels short so they don't wrap into the amount column.
-        const label = truncate(labelRaw, 52);
+        const label = truncate(labelRaw, labelMaxLen);
 
         const labelSpan = document.createElement("span");
         labelSpan.className = "cal-tx-label";
@@ -11988,6 +12032,13 @@ function renderCalendar() {
     if (isBeforeStart || !showDetails || combined.length === 0) {
       cell.classList.add("cal-cell--no-tx");
     }
+
+    if (isToday && !isOutOfMonth && !isBeforeStart) cell.classList.add("cal-cell--today");
+    if (!isBeforeStart && !isOutOfMonth && dayHasPaycheckLikeIncome(combined)) {
+      cell.classList.add("cal-cell--payday");
+    }
+    if (visibleItemCount > 0) cell.classList.add("cal-cell--has-activity");
+    applyCalendarCellDensity(cell, visibleItemCount);
 
     if (iso === monthRecoveryIso && !isOutOfMonth && !cell.classList.contains("cal-cell--before-start")) {
       cell.classList.add("cal-cell--recovery-milestone");
@@ -12152,10 +12203,8 @@ function renderCalendar() {
 }
 
 function readStoredMinBalanceThresholdForReports() {
-  const edited = readEditedBalanceThresholdNumber("min");
-  if (edited != null && edited > 0) return edited;
-  const persisted = readFamilyBalanceThresholdNumber("min");
-  if (persisted != null && persisted > 0) return persisted;
+  const userFloor = readUserConfiguredMinBalanceThreshold();
+  if (userFloor != null) return userFloor;
   const suggested = computeSuggestedMinBalanceThreshold();
   return suggested.ok ? suggested.value : null;
 }

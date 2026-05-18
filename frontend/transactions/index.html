@@ -14,7 +14,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=598" />
+    <link rel="stylesheet" href="../styles.css?v=604" />
   </head>
   <body>
     <div class="container">
@@ -160,7 +160,6 @@
                       <option value="" selected>Does not repeat</option>
                       <option value="monthly">Every month</option>
                       <option value="twice_monthly">Twice monthly</option>
-                      <option value="bimonthly">Every 2 months</option>
                       <option value="biweekly">Every 2 weeks</option>
                       <option value="weekly">Every week</option>
                       <option value="semiannual">Every 6 months</option>
@@ -480,7 +479,6 @@
                       
                       <option value="monthly">Every month</option>
                       <option value="twice_monthly">Twice monthly</option>
-                      <option value="bimonthly">Every 2 months</option>
                       <option value="biweekly">Every 2 weeks</option>
                       <option value="weekly">Every week</option>
                       <option value="semiannual">Every 6 months</option>
@@ -523,7 +521,6 @@
                   
                       <option value="monthly">Every month</option>
                       <option value="twice_monthly">Twice monthly</option>
-                      <option value="bimonthly">Every 2 months</option>
                       <option value="biweekly">Every 2 weeks</option>
                       <option value="weekly">Every week</option>
                       <option value="semiannual">Every 6 months</option>
@@ -698,7 +695,7 @@
                         </div>
                       </div>
 
-                      <div class="prefs-field-group">
+                      <div class="prefs-field-group" data-platform-admin-only hidden>
                         <div class="prefs-field">
                           <label class="prefs-field__label" for="prefDefaultLanding">Starting screen</label>
                           <div class="prefs-field__control">
@@ -1240,8 +1237,10 @@
           </div>
           <details class="tx-edit-advanced" id="txEditAdvancedDetails">
             <summary class="tx-edit-advanced__summary">
-              <span class="tx-edit-advanced__chev" aria-hidden="true"></span>
-              <span class="tx-edit-advanced__label">Advanced options</span>
+              <span class="tx-edit-advanced__label-col">
+                <span class="tx-edit-advanced__chev" aria-hidden="true"></span>
+                <span class="tx-edit-advanced__label">Advanced options</span>
+              </span>
             </summary>
             <div class="tx-edit-advanced__body">
               <div id="txEditCategoryColorRow" class="cat-color-row tx-edit-cat-color-panel">
@@ -1272,7 +1271,6 @@
                     <option value="once">Does not repeat</option>
                     <option value="monthly">Every month</option>
                     <option value="twice_monthly">Twice monthly</option>
-                    <option value="bimonthly">Every 2 months</option>
                     <option value="biweekly">Every 2 weeks</option>
                     <option value="weekly">Every week</option>
                     <option value="semiannual">Every 6 months</option>
@@ -1292,14 +1290,18 @@
                 </div>
               </div>
             </div>
-            <div id="instanceTwiceMonthlyFields" class="expected-second-day-row" style="display: none">
-              <label for="instanceSecondDayOfMonth">Second monthly date</label>
-              <input
-                id="instanceSecondDayOfMonth"
-                type="date"
-                title="Other day each month for twice-monthly schedules."
-              />
-              <p class="expected-second-day-row__hint">Choose a different day of the month than the start date.</p>
+            <div id="instanceTwiceMonthlyFields" class="form-row-h expected-second-day-row" style="display: none">
+              <div class="form-row-h__label">
+                <label for="instanceSecondDayOfMonth">Second monthly date</label>
+              </div>
+              <div class="form-row-h__field">
+                <input
+                  id="instanceSecondDayOfMonth"
+                  type="date"
+                  title="Other day each month for twice-monthly schedules."
+                />
+                <p class="expected-second-day-row__hint">Choose a different day of the month than the start date.</p>
+              </div>
             </div>
             <div class="form-row-h tx-edit-ends-detail" id="txEditEndCountRow" hidden>
               <div class="form-row-h__label">
@@ -1323,19 +1325,19 @@
             <div class="tx-add-vspace" aria-hidden="true"></div>
           </div>
 
-          <div id="txEditRecurringVariableWrap" style="display: none">
-            <label class="tx-edit-variable-row" for="seriesVariable">
-              <span class="tx-edit-variable-row__head">
-                <input
-                  id="seriesVariable"
-                  type="checkbox"
-                  class="tx-edit-variable-row__input"
-                  title="Amount is an estimate that may change month to month"
-                />
-                <span class="tx-edit-variable-row__title">Amount varies month to month</span>
-              </span>
-              <span class="tx-edit-variable-row__hint">Helpful for utilities and fluctuating bills.</span>
-            </label>
+          <div id="txEditRecurringVariableWrap" class="form-row-h tx-edit-variable-form-row" style="display: none">
+            <div class="form-row-h__label">
+              <label for="seriesVariable">Amount varies month to month</label>
+              <p class="tx-edit-variable-row__hint">Helpful for utilities and fluctuating bills.</p>
+            </div>
+            <div class="form-row-h__field tx-edit-variable-field-wrap">
+              <input
+                id="seriesVariable"
+                type="checkbox"
+                class="tx-edit-variable-row__input"
+                title="Amount is an estimate that may change month to month"
+              />
+            </div>
           </div>
 
           <div id="txEditRecurringPrimaryActions" class="tx-edit-recurring-update-row" style="display: none"></div>
@@ -1605,7 +1607,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="../app.js?v=352"></script>
+    <script src="../app.js?v=357"></script>
     <script src="../feedback.js?v=3" defer></script>
     <script src="../tour.js?v=9" defer></script>
   </body>
