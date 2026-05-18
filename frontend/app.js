@@ -4504,7 +4504,7 @@ function activateSettingsSection(key) {
   let k = String(key || "accounts");
   const LEGACY_KEY_MAP = {
     accountDetails: "accounts",
-    familySharing: "accounts",
+    familySharing: "collaborators",
     forecastRules: "preferences",
     // Legacy “Forecast setup” routes to Preferences (thresholds, defaults).
     forecastSetup: "preferences",
@@ -4513,15 +4513,18 @@ function activateSettingsSection(key) {
   };
   if (LEGACY_KEY_MAP[k]) k = LEGACY_KEY_MAP[k];
 
+  const canCollaborators = canViewHouseholdSettings();
+  if (k === "collaborators" && !canCollaborators) k = "accounts";
+
   document.querySelectorAll("#settingsViewPanel .settings-nav-item, #settingsSidebarNav .settings-nav-item").forEach((btn) => {
     const on = btn.dataset.settingsKey === k;
     btn.classList.toggle("is-active", on);
     btn.setAttribute("aria-pressed", on ? "true" : "false");
   });
-  const canHousehold = canViewHouseholdSettings();
+  const canHousehold = canCollaborators;
   document.querySelectorAll("#settingsViewPanel .settings-pane").forEach((pane) => {
     const paneKey = String(pane.dataset.settingsPane || "");
-    if (paneKey === "familySharing" && !canHousehold) {
+    if ((paneKey === "collaborators" || paneKey === "familySharing") && !canHousehold) {
       pane.classList.remove("is-active");
       pane.hidden = true;
       return;
@@ -4531,10 +4534,7 @@ function activateSettingsSection(key) {
     pane.hidden = !on;
   });
   syncHouseholdSettingsUi();
-  // Household lives inside the Accounts pane now. Load membership data as soon
-  // as that pane becomes active so the subsection isn't empty when a user
-  // scrolls down to it.
-  if (k === "accounts") {
+  if (k === "collaborators") {
     loadFamilyMembersPanel().catch((e) => {
       const el = document.getElementById("familyMembersErr");
       show(el, e.message || String(e));
@@ -7460,7 +7460,7 @@ function syncPlatformAdminOnlyUi() {
   });
 }
 
-/** Household settings: family owner or family role `admin` (not the top-nav platform Admin). */
+/** Collaborators settings: family owner or family role `admin` (not platform Admin). */
 function canViewHouseholdSettings() {
   const fam = activeFamilyMembership();
   if (!fam) return false;
@@ -7479,38 +7479,19 @@ function getActiveSettingsSectionKey() {
   return pane ? String(pane.dataset.settingsPane || "accounts") : "accounts";
 }
 
-/** Family “sharing” settings are limited to members whose family role is `admin` (see API FamilyOut.role). */
+/** Collaborators nav + invite UI: family owners and family role `admin` only. */
 function syncHouseholdSettingsUi() {
   const canHousehold = canViewHouseholdSettings();
   const canInvite = canManageHouseholdInvites();
-  // Household lives inside Accounts (`data-settings-subsection`) on the Settings
-  // hub, and still exists as a legacy pane (`data-settings-pane`) in embedded
-  // settings on Forecast / Transactions / Reports. Hide all of it from
-  // non-admins. For admins, subsection visibility is toggled here; pane
-  // visibility is left to activateSettingsSection so we don't unhide a stale pane.
-  document.querySelectorAll('[data-settings-subsection="familySharing"]').forEach((el) => {
-    el.hidden = !canHousehold;
-    el.classList.toggle("bw-household-settings-visible", canHousehold);
-    el.setAttribute("aria-hidden", canHousehold ? "false" : "true");
-    if (!canHousehold) {
-      try {
-        el.style.display = "none";
-      } catch (_) {}
-    } else {
-      try {
-        el.style.removeProperty("display");
-      } catch (_) {}
-    }
+  document.querySelectorAll("[data-settings-nav-collaborators]").forEach((btn) => {
+    btn.hidden = !canHousehold;
+    btn.setAttribute("aria-hidden", canHousehold ? "false" : "true");
   });
-  document.querySelectorAll('[data-settings-pane="familySharing"]').forEach((el) => {
-    if (!canHousehold) {
-      el.hidden = true;
-      el.classList.remove("is-active");
-      try {
-        el.style.display = "none";
-      } catch (_) {}
-    }
-  });
+  if (!canHousehold && getActiveSettingsSectionKey() === "collaborators") {
+    try {
+      activateSettingsSection("accounts");
+    } catch (_) {}
+  }
   document.querySelectorAll(".family-invite-wrap, [data-household-invites-only]").forEach((el) => {
     el.hidden = !canInvite;
     el.setAttribute("aria-hidden", canInvite ? "false" : "true");
@@ -7524,10 +7505,6 @@ function syncHouseholdSettingsUi() {
       } catch (_) {}
     }
   });
-  const accountsHeading = document.getElementById("settingsAccountsHeading");
-  if (accountsHeading) {
-    accountsHeading.textContent = canHousehold ? "Accounts & Household" : "Accounts";
-  }
 }
 
 function syncSettingsFamilySharingNav() {

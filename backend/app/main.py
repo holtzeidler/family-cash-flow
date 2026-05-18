@@ -335,8 +335,8 @@ class User(Base):
     name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     password_hash: Mapped[str] = mapped_column(String(255))
     created_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
-    # Platform console access: none | support | admin (family roles are separate on FamilyMember).
-    platform_role: Mapped[str] = mapped_column(String(20), nullable=False, default="none")
+    # Platform user type: subscriber (app) | admin (operator console). Family roles are on FamilyMember.
+    platform_role: Mapped[str] = mapped_column(String(20), nullable=False, default="subscriber")
     last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     memberships: Mapped[list[FamilyMember]] = relationship(back_populates="user")
@@ -700,40 +700,44 @@ def _platform_admin_email_set() -> set[str]:
     return {x.strip() for x in raw.split(",") if x.strip()}
 
 
+def _normalize_platform_role_value(raw: str) -> str:
+    """Map stored/legacy values to subscriber | admin."""
+    r = (raw or "subscriber").strip().lower()
+    if r in ("admin", "support"):
+        return "admin"
+    if r in ("subscriber", "none", ""):
+        return "subscriber"
+    return "subscriber"
+
+
 def _stored_platform_role(user: User) -> str:
-    raw = (getattr(user, "platform_role", None) or "none").strip().lower()
-    if raw in ("support", "admin"):
-        return raw
-    return "none"
+    return _normalize_platform_role_value(getattr(user, "platform_role", None) or "subscriber")
 
 
 def effective_platform_role(*, user: User) -> str:
-    """Resolved platform console role (legacy allowlist emails count as admin)."""
+    """Resolved platform user type (legacy allowlist emails count as admin)."""
     stored = _stored_platform_role(user)
-    if stored in ("support", "admin"):
-        return stored
+    if stored == "admin":
+        return "admin"
     if str(user.email).lower().strip() in _platform_admin_email_set():
         return "admin"
-    return "none"
+    return "subscriber"
 
 
 def has_platform_console_access(*, db, user_id: int) -> bool:
     user = db.execute(select(User).where(User.id == user_id)).scalar_one_or_none()
     if user is None:
         return False
-    return effective_platform_role(user=user) in ("support", "admin")
+    return effective_platform_role(user=user) == "admin"
 
 
 def is_platform_super_admin(*, db, user_id: int) -> bool:
     """Full platform admin (destructive ops, grant admin role)."""
-    user = db.execute(select(User).where(User.id == user_id)).scalar_one_or_none()
-    if user is None:
-        return False
-    return effective_platform_role(user=user) == "admin"
+    return has_platform_console_access(db=db, user_id=user_id)
 
 
 def is_platform_admin(*, db, user_id: int) -> bool:
-    """Can access the platform operator console (support or admin)."""
+    """Can access the platform operator console."""
     return has_platform_console_access(db=db, user_id=user_id)
 
 
@@ -1057,6 +1061,7 @@ class UserOut(BaseModel):
 class AuthMeOut(BaseModel):
     user: UserOut
     is_platform_admin: bool = False
+    platform_role: Literal["subscriber", "admin"] = "subscriber"
 
 
 class MaintenanceUserOut(BaseModel):
@@ -1167,7 +1172,7 @@ class PlatformAdminUserOut(BaseModel):
     name: Optional[str] = None
     created_at: datetime
     last_login_at: Optional[datetime] = None
-    platform_role: Literal["none", "support", "admin"]
+    platform_role: Literal["subscriber", "admin"]
     status: Literal["active", "no_family"]
     primary_family_name: Optional[str] = None
     primary_family_role: Optional[str] = None
@@ -1189,7 +1194,7 @@ class PlatformAdminUserDetailOut(PlatformAdminUserOut):
 
 
 class PlatformUserPlatformRoleIn(BaseModel):
-    platform_role: Literal["none", "support", "admin"]
+    platform_role: Literal["subscriber", "admin"]
 
 
 class PlatformFamilyMembershipRoleIn(BaseModel):
@@ -2168,6 +2173,7 @@ def startup_populate_schema():
     _backfill_family_member_owners()
     _ensure_family_invites_table()
     _ensure_user_platform_columns()
+    _migrate_platform_roles_subscriber_admin()
     _ensure_platform_admin_audit_table()
     _sync_legacy_platform_admin_roles()
 
@@ -2544,16 +2550,28 @@ def _ensure_user_platform_columns() -> None:
             cols = conn.execute(text("PRAGMA table_info(users)")).fetchall()
             names = {str(row[1]) for row in cols}
             if "platform_role" not in names:
-                conn.execute(text("ALTER TABLE users ADD COLUMN platform_role VARCHAR(20) NOT NULL DEFAULT 'none'"))
+                conn.execute(text("ALTER TABLE users ADD COLUMN platform_role VARCHAR(20) NOT NULL DEFAULT 'subscriber'"))
             if "last_login_at" not in names:
                 conn.execute(text("ALTER TABLE users ADD COLUMN last_login_at DATETIME"))
-            conn.execute(text("UPDATE users SET platform_role = COALESCE(NULLIF(TRIM(platform_role), ''), 'none')"))
+            conn.execute(text("UPDATE users SET platform_role = COALESCE(NULLIF(TRIM(platform_role), ''), 'subscriber')"))
         else:
             conn.execute(
-                text("ALTER TABLE users ADD COLUMN IF NOT EXISTS platform_role VARCHAR(20) NOT NULL DEFAULT 'none'")
+                text("ALTER TABLE users ADD COLUMN IF NOT EXISTS platform_role VARCHAR(20) NOT NULL DEFAULT 'subscriber'")
             )
             conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ"))
-            conn.execute(text("UPDATE users SET platform_role = COALESCE(NULLIF(TRIM(platform_role), ''), 'none')"))
+            conn.execute(text("UPDATE users SET platform_role = COALESCE(NULLIF(TRIM(platform_role), ''), 'subscriber')"))
+
+
+def _migrate_platform_roles_subscriber_admin() -> None:
+    """none → subscriber; support → admin; keep admin."""
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "UPDATE users SET platform_role = 'subscriber' "
+                "WHERE LOWER(TRIM(platform_role)) IN ('none', '') OR platform_role IS NULL"
+            )
+        )
+        conn.execute(text("UPDATE users SET platform_role = 'admin' WHERE LOWER(TRIM(platform_role)) = 'support'"))
 
 
 def _ensure_platform_admin_audit_table() -> None:
@@ -2902,7 +2920,12 @@ def register(payload: RegisterIn, response: Response, db=Depends(get_db)):
     existing = db.execute(select(User).where(func.lower(User.email) == key)).scalar_one_or_none()
     if existing:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
-    user = User(email=key, name=payload.name, password_hash=hash_password(payload.password))
+    user = User(
+        email=key,
+        name=payload.name,
+        password_hash=hash_password(payload.password),
+        platform_role="subscriber",
+    )
     db.add(user)
     db.commit()
     db.refresh(user)
@@ -3053,9 +3076,11 @@ def me(access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_a
     user = db.execute(select(User).where(User.id == user_id)).scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+    role = effective_platform_role(user=user)
     return AuthMeOut(
         user=UserOut(id=user.id, email=user.email, name=user.name),
-        is_platform_admin=is_platform_admin(db=db, user_id=user_id),
+        is_platform_admin=role == "admin",
+        platform_role=role,
     )
 
 
@@ -3489,10 +3514,10 @@ def platform_patch_user(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
     new_role = payload.platform_role
-    if new_role in ("support", "admin") and not is_platform_super_admin(db=db, user_id=actor_id):
+    if new_role == "admin" and not is_platform_super_admin(db=db, user_id=actor_id):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only platform admins can grant support or admin access",
+            detail="Only platform admins can grant admin access",
         )
 
     prev = effective_platform_role(user=u)

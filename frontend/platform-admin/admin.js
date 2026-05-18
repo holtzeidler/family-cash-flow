@@ -170,10 +170,10 @@
   }
 
   function platformRoleLabel(role) {
-    const r = String(role || "none").toLowerCase();
-    if (r === "admin") return "Admin";
-    if (r === "support") return "Support";
-    return "None";
+    const r = String(role || "subscriber").toLowerCase();
+    if (r === "admin" || r === "support") return "Admin";
+    if (r === "none") return "Subscriber";
+    return "Subscriber";
   }
 
   function statusLabel(status) {
@@ -225,7 +225,7 @@
     return users.filter((u) => {
       if (!platformUserMatchesQuery(u, q)) return false;
       if (statusF && String(u.status) !== statusF) return false;
-      if (platF && String(u.platform_role || "none") !== platF) return false;
+      if (platF && String(u.platform_role || "subscriber") !== platF) return false;
       if (famF) {
         const fid = parseInt(famF, 10);
         if (!Number.isFinite(fid) || !(u.memberships || []).some((m) => m.family_id === fid)) return false;
@@ -391,7 +391,8 @@
         .join("");
     }
 
-    const platRole = String(u.platform_role || "none").toLowerCase();
+    const platRole = String(u.platform_role || "subscriber").toLowerCase();
+    const platRoleNorm = platRole === "admin" || platRole === "support" ? "admin" : "subscriber";
     const audit = (u.recent_audit || [])
       .map(
         (a) =>
@@ -418,13 +419,12 @@
         </section>
         <section class="platform-admin-drawer__section">
           <h4>Platform role</h4>
-          <p class="meta" style="margin:0 0 10px">Grants access to this BalanceWhiz operator console (separate from family roles).</p>
+          <p class="meta" style="margin:0 0 10px">Subscriber = standard app access. Admin = operator console (separate from family roles).</p>
           <label class="platform-admin-drawer__field">
             <span>Platform role</span>
             <select id="adminDrawerPlatformRole">
-              <option value="none"${platRole === "none" ? " selected" : ""}>None</option>
-              <option value="support"${platRole === "support" ? " selected" : ""}>Support</option>
-              <option value="admin"${platRole === "admin" ? " selected" : ""}>Admin</option>
+              <option value="subscriber"${platRoleNorm === "subscriber" ? " selected" : ""}>Subscriber</option>
+              <option value="admin"${platRoleNorm === "admin" ? " selected" : ""}>Admin</option>
             </select>
           </label>
           <button type="button" class="platform-admin-drawer__save" id="adminDrawerSavePlatformRole">Save platform role</button>
@@ -471,10 +471,10 @@
     if (savePlat) {
       savePlat.addEventListener("click", async () => {
         const sel = document.getElementById("adminDrawerPlatformRole");
-        const next = sel ? sel.value : "none";
+        const next = sel ? sel.value : "subscriber";
         const callout = document.getElementById("adminCallout");
         if (
-          next !== String(u.platform_role || "none") &&
+          next !== platRoleNorm &&
           !window.confirm(`Change platform role to ${platformRoleLabel(next)} for ${u.email}?`)
         )
           return;

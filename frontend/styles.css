@@ -23998,6 +23998,9 @@ body[data-bw-view="calendar"] .pending-attn-item.bw-tour-support-highlight--pend
 [data-settings-subsection="familySharing"]:not(.bw-household-settings-visible){
   display: none !important;
 }
+[data-settings-nav-collaborators][hidden]{
+  display: none !important;
+}
 .family-invite-wrap[hidden],
 [data-household-invites-only][hidden]{
   display: none !important;

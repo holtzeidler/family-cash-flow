@@ -76,6 +76,9 @@
                 <span class="settings-nav-item__label">Accounts</span>
                 <span class="settings-nav-item__chev" aria-hidden="true">▸</span>
               </button>
+              <button type="button" class="settings-nav-item" data-settings-key="collaborators" data-settings-nav-collaborators hidden>
+                <span class="settings-nav-item__label">Collaborators</span>
+              </button>
               <button type="button" class="settings-nav-item" data-settings-key="categories">
                 <span class="settings-nav-item__label">Categories</span>
                 <span class="settings-nav-item__chev" aria-hidden="true">▸</span>
@@ -513,9 +516,9 @@
                   </div>
                 </div>
 
-                <div class="settings-pane" data-settings-pane="familySharing" hidden>
+                <div class="settings-pane" data-settings-pane="collaborators" hidden>
                   <header class="settings-section-head">
-                    <h2 class="settings-section-title">Household</h2>
+                    <h2 class="settings-section-title">Collaborators</h2>
                     <p class="settings-section-lede">Invite someone to shared forecasting, or manage who’s already in.</p>
                   </header>
                   <div id="familyInviteWrap" class="family-invite-wrap" data-household-invites-only hidden>
@@ -1545,7 +1548,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="../app.js?v=366"></script>
+    <script src="../app.js?v=367"></script>
     <script src="../feedback.js?v=4" defer></script>
     <script src="../tour.js?v=9" defer></script>
   </body>

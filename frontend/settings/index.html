@@ -75,6 +75,9 @@
               <button type="button" class="settings-nav-item is-active" data-settings-key="accounts">
                 <span class="settings-nav-item__label">Accounts</span>
               </button>
+              <button type="button" class="settings-nav-item" data-settings-key="collaborators" data-settings-nav-collaborators hidden>
+                <span class="settings-nav-item__label">Collaborators</span>
+              </button>
               <button type="button" class="settings-nav-item" data-settings-key="categories">
                 <span class="settings-nav-item__label">Categories</span>
               </button>
@@ -442,52 +445,54 @@
               <div class="settings-content settings-content--hub card">
                 <div class="settings-pane is-active" data-settings-pane="accounts" id="settingsAccountsPane">
                   <header class="settings-section-head">
-                    <h2 class="settings-section-title" id="settingsAccountsHeading">Accounts &amp; Household</h2>
-                    <p class="settings-section-lede">Who and what belongs in your forecast.</p>
+                    <h2 class="settings-section-title" id="settingsAccountsHeading">Accounts</h2>
+                    <p class="settings-section-lede">Accounts included in your forecast.</p>
                   </header>
                   <div class="settings-section-body">
-                    <div class="settings-subsection">
-                      <h3 class="settings-subhead">Accounts</h3>
-                      <div class="list settings-account-list" id="accountsList"></div>
+                    <div class="list settings-account-list" id="accountsList"></div>
+                  </div>
+                </div>
+
+                <div class="settings-pane" data-settings-pane="collaborators" hidden>
+                  <header class="settings-section-head">
+                    <h2 class="settings-section-title">Collaborators</h2>
+                    <p class="settings-section-lede">Invite someone to shared forecasting, or manage who’s already in.</p>
+                  </header>
+                  <div class="settings-section-body">
+                    <div id="familyInviteWrap" class="family-invite-wrap" data-household-invites-only hidden>
+                      <div class="settings-subsection">
+                        <h3 class="settings-subhead">Invite someone</h3>
+                        <div class="form-row-h">
+                          <div class="form-row-h__label"><label for="familyInviteEmail">Email</label></div>
+                          <div class="form-row-h__field">
+                            <input id="familyInviteEmail" type="email" autocomplete="off" placeholder="name@example.com" />
+                          </div>
+                        </div>
+                        <div class="form-row-h">
+                          <div class="form-row-h__label"><label for="familyInviteAccess">Access</label></div>
+                          <div class="form-row-h__field">
+                            <select id="familyInviteAccess">
+                              <option value="view">View only</option>
+                              <option value="edit">Can edit</option>
+                            </select>
+                          </div>
+                        </div>
+                        <button type="button" id="familySendInviteBtn" class="settings-house-primary-btn">Send invite</button>
+                      </div>
+                      <div class="settings-subsection settings-subsection--spaced">
+                        <h3 class="settings-subhead">Already on BalanceWhiz?</h3>
+                        <p class="settings-subsection-hint">Add them to this household without email.</p>
+                        <button type="button" id="familyInviteBtn" class="secondary">Add to household</button>
+                      </div>
                     </div>
-                    <div class="settings-subsection settings-subsection--spaced" data-settings-subsection="familySharing" hidden>
-                      <h3 class="settings-subhead">Household</h3>
-                      <p class="settings-subsection-hint">Invite someone to shared forecasting, or manage who’s already in.</p>
-                      <div id="familyInviteWrap" class="family-invite-wrap" data-household-invites-only hidden>
-                        <div class="settings-subsection">
-                          <h4 class="settings-subhead">Invite someone</h4>
-                          <div class="form-row-h">
-                            <div class="form-row-h__label"><label for="familyInviteEmail">Email</label></div>
-                            <div class="form-row-h__field">
-                              <input id="familyInviteEmail" type="email" autocomplete="off" placeholder="name@example.com" />
-                            </div>
-                          </div>
-                          <div class="form-row-h">
-                            <div class="form-row-h__label"><label for="familyInviteAccess">Access</label></div>
-                            <div class="form-row-h__field">
-                              <select id="familyInviteAccess">
-                                <option value="view">View only</option>
-                                <option value="edit">Can edit</option>
-                              </select>
-                            </div>
-                          </div>
-                          <button type="button" id="familySendInviteBtn" class="settings-house-primary-btn">Send invite</button>
-                        </div>
-                        <div class="settings-subsection settings-subsection--spaced">
-                          <h4 class="settings-subhead">Already on BalanceWhiz?</h4>
-                          <p class="settings-subsection-hint">Add them to this household without email.</p>
-                          <button type="button" id="familyInviteBtn" class="secondary">Add to household</button>
-                        </div>
-                      </div>
-                      <div class="settings-house-section" data-household-invites-only hidden>
-                        <h4 class="settings-subhead">Pending invites</h4>
-                        <div id="familyPendingInvites" class="family-pending-invites"></div>
-                      </div>
-                      <div class="settings-house-section">
-                        <h4 class="settings-subhead">Household members</h4>
-                        <div id="familyMembersList" class="family-members-list"></div>
-                        <div id="familyMembersErr" class="error"></div>
-                      </div>
+                    <div class="settings-house-section" data-household-invites-only hidden>
+                      <h3 class="settings-subhead">Pending invites</h3>
+                      <div id="familyPendingInvites" class="family-pending-invites"></div>
+                    </div>
+                    <div class="settings-house-section">
+                      <h3 class="settings-subhead">Household members</h3>
+                      <div id="familyMembersList" class="family-members-list"></div>
+                      <div id="familyMembersErr" class="error"></div>
                     </div>
                   </div>
                 </div>
@@ -1510,7 +1515,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="../app.js?v=366"></script>
+    <script src="../app.js?v=367"></script>
     <script src="../feedback.js?v=3" defer></script>
     <script src="../tour.js?v=9" defer></script>
   </body>
