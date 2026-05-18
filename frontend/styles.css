@@ -1005,7 +1005,7 @@ body.landing-page .landing-preview__billList li span:last-child{
 body.landing-page .landing-preview__chart{
   margin: 0;
   align-self: stretch;
-  padding: 0.48rem 0.5rem 0.44rem;
+  padding: 0.38rem 0.46rem 0.34rem;
   border-radius: 12px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(252, 253, 252, 0.86) 100%);
@@ -1016,8 +1016,8 @@ body.landing-page .landing-preview__chartSvg{
   display: block;
   width: 100%;
   height: auto;
-  min-height: 132px;
-  max-height: 176px;
+  min-height: 108px;
+  max-height: 144px;
 }
 body.landing-page .landing-preview__markerDot{
   stroke: rgba(255, 255, 255, 0.9);
@@ -2200,7 +2200,7 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
   body.landing-page .landing-hero__emotion{
     max-width: 26rem;
     margin-top: 0.78rem;
-    font-size: 0.94rem;
+    font-size: 0.91rem;
     line-height: 1.44;
   }
 
@@ -2271,8 +2271,8 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
   }
 
   body.landing-page .landing-preview__chart{
-    min-height: clamp(204px, 30vw, 268px);
-    padding: 10px 12px 8px;
+    min-height: clamp(167px, 24.5vw, 220px);
+    padding: 8px 10px 6px;
     border-radius: 16px;
   }
 
@@ -3115,7 +3115,7 @@ body.landing-page .landing-hero__emotion{
   margin: 0.72rem 0 0;
   max-width: min(30rem, 100%);
   padding: 0;
-  font-size: clamp(0.8rem, 1.12vw, 0.9rem);
+  font-size: clamp(0.76rem, 1.05vw, 0.86rem);
   line-height: 1.44;
   font-weight: 450;
   color: rgba(71, 85, 105, 0.66);
@@ -3525,8 +3525,8 @@ body.landing-page .landing-preview__chart{
   justify-content: center;
   margin: 0;
   align-self: stretch;
-  min-height: clamp(188px, 28vw, 258px);
-  padding: 0.4rem 0.48rem 0.26rem;
+  min-height: clamp(154px, 23vw, 212px);
+  padding: 0.32rem 0.44rem 0.2rem;
   border-radius: 15px;
   border: 1px solid rgba(11, 61, 46, 0.11);
   background:
@@ -3755,10 +3755,10 @@ body.landing-page .landing-offer{
   align-items: center;
 }
 body.landing-page .landing-offer__panel{
-  width: 100%;
-  max-width: min(50rem, 100%);
+  width: fit-content;
+  max-width: min(44rem, 100%);
   margin-inline: auto;
-  padding: 0.78rem 0.88rem 0.8rem 1rem;
+  padding: 0.76rem 0.82rem 0.78rem 0.95rem;
   border-radius: 14px;
   border: 1px solid rgba(11, 61, 46, 0.11);
   background: linear-gradient(180deg, #fff 0%, rgba(249, 253, 251, 0.96) 100%);
@@ -3767,9 +3767,10 @@ body.landing-page .landing-offer__panel{
     0 10px 34px -28px rgba(11, 61, 46, 0.18),
     0 1px 2px rgba(11, 61, 46, 0.05);
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  column-gap: clamp(0.75rem, 1.65vw, 1.05rem);
+  grid-template-columns: minmax(0, max-content) auto;
+  align-items: start;
+  justify-content: center;
+  column-gap: clamp(0.5rem, 1.1vw, 0.78rem);
   row-gap: 0.5rem;
   box-sizing: border-box;
 }
@@ -3785,12 +3786,14 @@ body.landing-page .landing-offer__action{
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  justify-content: center;
-  gap: 0.14rem;
-  justify-self: end;
+  justify-content: flex-start;
+  gap: 0.12rem;
+  justify-self: start;
+  align-self: start;
+  margin-top: 0.06rem;
   width: max-content;
   max-width: 100%;
-  padding-left: clamp(0.7rem, 1.35vw, 0.9rem);
+  padding-left: clamp(0.55rem, 1vw, 0.72rem);
   border-left: 1px solid rgba(11, 61, 46, 0.055);
 }
 body.landing-page .landing-offer__heading{
@@ -3904,6 +3907,8 @@ body.landing-page .landing-offer__cta:focus-visible{
   body.landing-page .landing-offer__action{
     justify-self: stretch;
     align-items: stretch;
+    align-self: stretch;
+    margin-top: 0;
     width: 100%;
     max-width: none;
     padding: 0.4rem 0 0;
@@ -4078,7 +4083,7 @@ body.landing-page .landing-preview__demo:hover{
     font-size: 0.98rem;
   }
   body.landing-page .landing-hero__emotion{
-    font-size: 0.9rem;
+    font-size: 0.87rem;
     margin-top: 0.68rem;
   }
   body.landing-page .landing-hero__ctaGroup{
@@ -4126,8 +4131,8 @@ body.landing-page .landing-preview__demo:hover{
     margin-top: calc(-2lh - 0.12rem);
   }
   body.landing-page .landing-preview__chart{
-    min-height: clamp(172px, 44vw, 212px);
-    padding: 0.38rem 0.44rem 0.22rem;
+    min-height: clamp(141px, 36vw, 174px);
+    padding: 0.32rem 0.4rem 0.18rem;
   }
   body.landing-page .landing-preview__chartSvg{
     min-height: 0;
@@ -4188,8 +4193,8 @@ body.landing-page .landing-preview__demo:hover{
     font-size: 0.78rem;
   }
   body.landing-page .landing-preview__chart{
-    min-height: clamp(160px, 50vw, 200px);
-    padding: 0.36rem 0.42rem 0.2rem;
+    min-height: clamp(131px, 41vw, 164px);
+    padding: 0.3rem 0.38rem 0.16rem;
   }
   body.landing-page .landing-preview__chartSvg{
     min-height: 0;
