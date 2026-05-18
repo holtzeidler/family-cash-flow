@@ -21971,7 +21971,7 @@ body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-gri
   grid-column: 1;
   grid-row: 2;
   align-self: start;
-  margin-top: -6px;
+  margin-top: -12px;
 }
 /* Schedule row: Next Date + Repeat — matched labels and control chrome */
 body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid .account-setup-tx-schedule-grid__label{

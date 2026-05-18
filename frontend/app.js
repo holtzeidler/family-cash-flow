@@ -15912,7 +15912,7 @@ function ensureForecastReadyModal() {
       <div class="modal-actions bw-forecast-ready__actions">
         <button type="button" class="bw-forecast-ready__cta" id="bwForecastReadyStartTourBtn">Take the Tour</button>
         <button type="button" class="bw-forecast-ready__skip" id="bwForecastReadySkipBtn">Go to Forecast</button>
-        <p class="bw-forecast-ready__reassure">About 60 seconds. Reopen the tour anytime from Help.</p>
+        <p class="bw-forecast-ready__reassure">Takes about 60 seconds. Reopen the tour anytime from Help.</p>
       </div>
       <p class="bw-forecast-ready__finePrint" aria-label="Trial and pricing">
         14-day free trial <span aria-hidden="true">•</span> <span id="bwForecastReadyPricingLine">Cancel anytime.</span>
