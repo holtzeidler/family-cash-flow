@@ -14424,18 +14424,7 @@ body.account-setup-page .account-setup-success-summary__empty{
   from { background-position: 200% 0; }
   to   { background-position: 0 0; }
 }
-.bw-build-overlay__barFill--indeterminate{
-  width: 38% !important;
-  transition: none !important;
-  animation:
-    bw-build-indeterminate 1300ms ease-in-out infinite,
-    bw-build-shimmer 1600ms linear infinite;
-}
-@keyframes bw-build-indeterminate{
-  0% { transform: translateX(0); }
-  50% { transform: translateX(162%); }
-  100% { transform: translateX(0); }
-}
+/* Steady fill uses inline width from signup.js (no sliding indeterminate bar). */
 
 /* --- Slim onboarding footer --- */
 .onboarding-footer{
@@ -21641,9 +21630,9 @@ body.account-setup-page .account-setup-step3-form .account-setup-repeat-duo__sta
 body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid{
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  grid-template-rows: auto auto auto;
+  grid-template-rows: auto auto auto auto;
   gap: 4px 12px;
-  align-items: stretch;
+  align-items: start;
 }
 body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid__date.form-row-h{
   display: contents;
@@ -21651,7 +21640,7 @@ body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-gri
 body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid__date .form-row-h__label{
   grid-column: 1;
   grid-row: 1;
-  align-self: end;
+  align-self: start;
 }
 body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid__date .form-row-h__field{
   grid-column: 1;
@@ -21670,47 +21659,48 @@ body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-gri
 body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid__repeat .account-setup-repeat-duo__stack:first-child > .account-setup-repeat-duo__label{
   grid-column: 2;
   grid-row: 1;
-  align-self: end;
+  align-self: start;
 }
 body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid__repeat .account-setup-repeat-duo__stack:first-child > .tx-add-recurrence-select{
   grid-column: 2;
   grid-row: 2;
   min-width: 0;
   justify-self: stretch;
+  align-self: start;
 }
+/* Helper under Repeat only — own row so Ends stays directly under Next Date */
 body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid__repeat > .account-setup-schedule-summary{
   grid-column: 2;
-  grid-row: 3;
-  margin-top: 2px;
+  grid-row: 4;
+  margin: 0;
 }
 body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid > .account-setup-tx-ends-column{
   grid-column: 1;
   grid-row: 3;
   align-self: start;
-  margin-top: -2px;
+  margin-top: -6px;
 }
-body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid__repeat:has(.tx-add-schedule-field--second-day:not([hidden])){
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  grid-column: 1 / -1;
+/* Twice monthly: third column for "Also occurs on"; Repeat stays in column 2 beside Next Date */
+body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid:has(.tx-add-schedule-field--second-day:not([hidden])){
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+}
+body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid:has(.tx-add-schedule-field--second-day:not([hidden])) .account-setup-repeat-duo__stack.tx-add-schedule-field--second-day{
+  display: contents;
+}
+body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid:has(.tx-add-schedule-field--second-day:not([hidden])) .account-setup-repeat-duo__stack.tx-add-schedule-field--second-day > .account-setup-repeat-duo__label{
+  grid-column: 3;
+  grid-row: 1;
+  align-self: start;
+}
+body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid:has(.tx-add-schedule-field--second-day:not([hidden])) .account-setup-repeat-duo__stack.tx-add-schedule-field--second-day > .tx-add-recurrence-select{
+  grid-column: 3;
   grid-row: 2;
+  min-width: 0;
+  justify-self: stretch;
+  align-self: start;
 }
-body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid__repeat:has(.tx-add-schedule-field--second-day:not([hidden])) > .account-setup-repeat-duo{
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px 12px;
-  width: 100%;
-}
-body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid__repeat:has(.tx-add-schedule-field--second-day:not([hidden])) .account-setup-repeat-duo__stack{
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid__repeat:has(.tx-add-schedule-field--second-day:not([hidden])) .account-setup-repeat-duo__stack > .account-setup-repeat-duo__label,
-body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid__repeat:has(.tx-add-schedule-field--second-day:not([hidden])) .account-setup-repeat-duo__stack > .tx-add-recurrence-select{
-  grid-column: auto;
-  grid-row: auto;
+body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid:has(.tx-add-schedule-field--second-day:not([hidden])) .account-setup-tx-schedule-grid__repeat > .account-setup-schedule-summary{
+  grid-column: 2 / -1;
 }
 body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid .form-row-h__label,
 body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid .form-row-h__field{
@@ -21721,7 +21711,8 @@ body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-gri
 }
 /* Schedule row: Next Date + Repeat — matched labels and control chrome */
 body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid .form-row-h__label label,
-body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid .account-setup-repeat-duo__stack:first-child > .account-setup-repeat-duo__label{
+body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid .account-setup-repeat-duo__stack:first-child > .account-setup-repeat-duo__label,
+body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid .account-setup-repeat-duo__stack.tx-add-schedule-field--second-day > .account-setup-repeat-duo__label{
   display: block;
   margin: 0;
   padding: 0;
@@ -21833,7 +21824,7 @@ body.account-setup-page .account-setup-step3-form .account-setup-tx-ends-column 
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 2px;
+  gap: 1px;
   width: 100%;
   min-width: 0;
 }
@@ -21937,9 +21928,12 @@ body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPane
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
+  body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid:has(.tx-add-schedule-field--second-day:not([hidden])){
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+  }
 }
 body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid__repeat + .account-setup-tx-ends-column{
-  margin-top: -2px;
+  margin-top: -6px;
 }
 body.account-setup-page #accountSetupWizardPanel2 .account-setup-step3-form__body > .form-row-h:last-child,
 body.account-setup-page #accountSetupWizardPanel3 .account-setup-step3-form__body > .form-row-h:last-child{
@@ -23765,31 +23759,55 @@ body.account-setup-page
   line-height: 1.34;
   color: rgba(11, 61, 46, 0.82);
 }
-/* Reconcile tour (step 4): calmer hierarchy and rhythm */
+/* Reconcile tour (step 4): calm hierarchy, shared left edge, CTA > preview weight */
 .bw-tour-tooltip:has(.bw-tour-tooltip__helper--reconcile-preview){
-  padding: 17px 20px 14px;
+  --bw-tour-rx-gap-1: 4px;
+  --bw-tour-rx-gap-2: 7px;
+  --bw-tour-rx-gap-3: 10px;
+  --bw-tour-rx-gap-4: 16px;
+  padding: 14px 18px 12px;
+}
+.bw-tour-tooltip:has(.bw-tour-tooltip__helper--reconcile-preview) .bw-tour-tooltip__head{
+  margin-bottom: var(--bw-tour-rx-gap-1);
+}
+.bw-tour-tooltip:has(.bw-tour-tooltip__helper--reconcile-preview) .bw-tour-tooltip__counter{
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  color: rgba(100, 116, 139, 0.62);
+}
+.bw-tour-tooltip:has(.bw-tour-tooltip__helper--reconcile-preview) .bw-tour-tooltip__close{
+  width: 24px;
+  height: 24px;
+  margin: -1px -2px 0 0;
+  font-size: 17px;
+  color: rgba(100, 116, 139, 0.55);
 }
 .bw-tour-tooltip:has(.bw-tour-tooltip__helper--reconcile-preview) .bw-tour-tooltip__title{
-  margin: 2px 0 8px;
-  font-size: 1.04rem;
-  font-weight: 700;
-  line-height: 1.28;
+  margin: 0 0 var(--bw-tour-rx-gap-2);
+  font-size: 0.98rem;
+  font-weight: 650;
+  line-height: 1.3;
+  color: color-mix(in srgb, var(--accent) 72%, #1f2937);
 }
 .bw-tour-tooltip:has(.bw-tour-tooltip__helper--reconcile-preview) .bw-tour-tooltip__body{
-  margin: 0 0 8px;
-  font-size: 0.9rem;
+  margin: 0 0 var(--bw-tour-rx-gap-2);
+  font-size: 0.86rem;
   font-weight: 400;
-  line-height: 1.48;
-  color: rgba(55, 65, 81, 0.82);
+  line-height: 1.44;
+  color: rgba(55, 65, 81, 0.78);
 }
 .bw-tour-tooltip:has(.bw-tour-tooltip__helper--reconcile-preview) .bw-tour-tooltip__instruction{
-  margin: 0 0 10px;
-  font-size: 0.8rem;
+  margin: 0 0 var(--bw-tour-rx-gap-3);
+  font-size: 0.78rem;
   font-weight: 450;
-  line-height: 1.42;
-  color: rgba(71, 85, 105, 0.68);
+  line-height: 1.4;
+  color: rgba(71, 85, 105, 0.62);
 }
-/* Mini reconcile preview — product-like, not a form field */
+/* Mini reconcile preview — supporting reassurance, not primary CTA weight */
 .bw-tour-tooltip__helper.bw-tour-tooltip__helper--reconcile-preview{
   margin: 0;
   padding: 0;
@@ -23800,109 +23818,120 @@ body.account-setup-page
 .bw-tour-tooltip__reconcile-preview{
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  background: rgba(248, 250, 252, 0.98);
+  gap: var(--bw-tour-rx-gap-1);
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 9px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: rgba(248, 250, 252, 0.72);
   text-align: left;
+  box-shadow: none;
 }
 .bw-tour-tooltip__reconcile-preview-dayrow{
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  min-height: 1.25rem;
+  min-height: 0;
 }
 .bw-tour-tooltip__reconcile-preview-day{
   display: flex;
   align-items: baseline;
-  gap: 5px;
+  gap: 4px;
   min-width: 0;
 }
 .bw-tour-tooltip__reconcile-preview-daynum{
-  font-size: 0.88rem;
-  font-weight: 700;
-  line-height: 1.1;
-  color: rgba(17, 24, 39, 0.88);
+  font-size: 0.82rem;
+  font-weight: 650;
+  line-height: 1.15;
+  color: rgba(17, 24, 39, 0.82);
 }
 .bw-tour-tooltip__reconcile-preview-daymeta{
-  font-size: 0.66rem;
-  font-weight: 550;
+  font-size: 0.64rem;
+  font-weight: 500;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: rgba(100, 116, 139, 0.62);
+  color: rgba(100, 116, 139, 0.58);
 }
 .bw-tour-tooltip__reconcile-preview-check{
   flex: 0 0 auto;
-  width: 15px;
-  height: 15px;
+  align-self: center;
+  width: 14px;
+  height: 14px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--accent) 22%, rgba(148, 163, 184, 0.35));
-  background: color-mix(in srgb, var(--accent) 6%, #fff);
-  color: color-mix(in srgb, var(--accent) 58%, #64748b);
-  font-size: 0.58rem;
-  font-weight: 700;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  background: rgba(255, 255, 255, 0.9);
+  color: rgba(71, 85, 105, 0.55);
+  font-size: 0.56rem;
+  font-weight: 600;
   line-height: 1;
 }
 .bw-tour-tooltip__reconcile-preview-status{
-  font-size: 0.74rem;
-  font-weight: 500;
-  line-height: 1.35;
-  color: rgba(55, 65, 81, 0.78);
+  font-size: 0.72rem;
+  font-weight: 450;
+  line-height: 1.32;
+  color: rgba(55, 65, 81, 0.68);
 }
 .bw-tour-tooltip__reconcile-preview-balance{
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 10px 12px;
-  margin-top: 2px;
-  padding-top: 6px;
-  border-top: 1px solid rgba(148, 163, 184, 0.14);
+  gap: 8px 10px;
+  margin: 0;
+  padding: 5px 0 0;
+  border-top: 1px solid rgba(148, 163, 184, 0.12);
 }
 .bw-tour-tooltip__reconcile-preview-balance-k{
-  font-size: 0.7rem;
-  font-weight: 450;
-  line-height: 1.3;
-  color: rgba(100, 116, 139, 0.68);
+  font-size: 0.68rem;
+  font-weight: 400;
+  line-height: 1.25;
+  color: rgba(100, 116, 139, 0.62);
 }
 .bw-tour-tooltip__reconcile-preview-balance-v{
-  font-size: 0.86rem;
-  font-weight: 650;
-  letter-spacing: -0.015em;
-  line-height: 1.2;
-  color: rgba(17, 24, 39, 0.86);
+  font-size: 0.8rem;
+  font-weight: 550;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+  color: rgba(17, 24, 39, 0.78);
   white-space: nowrap;
   text-align: right;
 }
 .bw-tour-tooltip:has(.bw-tour-tooltip__helper--reconcile-preview) .bw-tour-tooltip__note{
-  margin: 12px 0 0;
-  font-size: 0.72rem;
+  margin: var(--bw-tour-rx-gap-3) 0 0;
+  font-size: 0.7rem;
   font-weight: 400;
-  line-height: 1.42;
-  color: rgba(100, 116, 139, 0.5);
+  line-height: 1.38;
+  color: rgba(100, 116, 139, 0.48);
 }
 .bw-tour-tooltip:has(.bw-tour-tooltip__helper--reconcile-preview) .bw-tour-tooltip__actions{
-  margin-top: 14px;
+  margin-top: var(--bw-tour-rx-gap-4);
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 .bw-tour-tooltip:has(.bw-tour-tooltip__helper--reconcile-preview) .bw-tour-tooltip__skip{
-  font-size: 0.78rem;
+  display: inline-flex;
+  align-items: center;
+  align-self: center;
+  min-height: 30px;
+  padding: 0;
+  font-size: 0.76rem;
   font-weight: 450;
-  line-height: 1.2;
-  color: rgba(100, 116, 139, 0.55);
-  padding: 6px 0;
+  line-height: 1;
+  color: rgba(100, 116, 139, 0.52);
 }
 .bw-tour-tooltip:has(.bw-tour-tooltip__helper--reconcile-preview) .bw-tour-tooltip__cta{
-  font-size: 0.86rem;
-  font-weight: 650;
-  line-height: 1.2;
-  padding: 7px 15px;
-  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.84rem;
+  font-weight: 600;
+  line-height: 1;
+  padding: 6px 13px;
+  min-height: 30px;
+  box-shadow: 0 1px 2px rgba(11, 61, 46, 0.08);
 }
 /* “Good for” example list (tour step 4 — variable amounts) */
 .bw-tour-tooltip__helper.bw-tour-tooltip__helper--list{

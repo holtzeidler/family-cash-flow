@@ -2995,7 +2995,7 @@ async function doSignup() {
     overlay = ensureForecastBuildOverlay();
     if (isAccountSetup) {
       setCallout(signupCalloutEl, "", "");
-      showForecastBuildOverlay(overlay, { indeterminate: true, rotateMessages: false });
+      showForecastBuildOverlay(overlay, { steadyProgress: true, rotateMessages: false });
       setForecastBuildOverlayMessage(overlay, "Preparing your forecast…");
       prefetchCalendarPage();
     } else {
@@ -3032,6 +3032,7 @@ async function doSignup() {
 
     if (isAccountSetup && overlay) {
       setForecastBuildOverlayMessage(overlay, "Creating your account…");
+      bumpForecastBuildOverlayProgress(overlay, 28);
     }
 
     const dupCheck = await precheckEmailExistsFresh(email);
@@ -3067,6 +3068,7 @@ async function doSignup() {
 
     if (isAccountSetup && overlay) {
       setForecastBuildOverlayMessage(overlay, "Saving your income and bills…");
+      bumpForecastBuildOverlayProgress(overlay, 52);
     }
 
     const check = await verifySessionWithProgress(signupCalloutEl, {
@@ -3134,13 +3136,9 @@ async function doSignup() {
 
     if (isAccountSetup && overlay) {
       await ensureMinOverlayDuration(startedAt, minOverlayMs);
+      bumpForecastBuildOverlayProgress(overlay, 78);
       setForecastBuildOverlayMessage(overlay, "Opening your forecast…");
-      const fill = overlay.querySelector(".bw-build-overlay__barFill");
-      if (fill) {
-        fill.classList.remove("bw-build-overlay__barFill--indeterminate");
-        fill.style.transition = "width 350ms ease-out";
-        fill.style.width = "100%";
-      }
+      finishForecastBuildOverlayProgress(overlay);
     }
     setCallout(signupCalloutEl, "", "");
     try {
@@ -3170,12 +3168,71 @@ const FORECAST_BUILD_MESSAGES = [
   "Almost ready…",
 ];
 
+const FORECAST_BUILD_PROGRESS_CAP = 92;
+const FORECAST_BUILD_PROGRESS_TICK_MS = 110;
+
 function stopForecastBuildOverlayRotation(overlayEl) {
   if (!overlayEl || !overlayEl._bwMsgInterval) return;
   try {
     clearInterval(overlayEl._bwMsgInterval);
   } catch (_) {}
   overlayEl._bwMsgInterval = null;
+}
+
+function stopForecastBuildOverlayProgress(overlayEl) {
+  if (!overlayEl || !overlayEl._bwProgressInterval) return;
+  try {
+    clearInterval(overlayEl._bwProgressInterval);
+  } catch (_) {}
+  overlayEl._bwProgressInterval = null;
+}
+
+function forecastBuildOverlayFillPct(overlayEl) {
+  const fill = overlayEl?.querySelector(".bw-build-overlay__barFill");
+  if (!fill) return 0;
+  const inline = parseFloat(String(fill.style.width || "").replace("%", ""));
+  if (Number.isFinite(inline) && inline > 0) return inline;
+  return 0;
+}
+
+function startForecastBuildOverlayProgress(overlayEl) {
+  const fill = overlayEl?.querySelector(".bw-build-overlay__barFill");
+  if (!fill) return;
+  stopForecastBuildOverlayProgress(overlayEl);
+  fill.classList.remove("bw-build-overlay__barFill--indeterminate");
+  fill.style.transform = "";
+  fill.style.animation = "";
+  fill.style.transition = `width ${FORECAST_BUILD_PROGRESS_TICK_MS}ms linear`;
+  fill.style.width = "0%";
+  let pct = 0;
+  overlayEl._bwProgressInterval = window.setInterval(() => {
+    if (pct >= FORECAST_BUILD_PROGRESS_CAP) return;
+    const remaining = FORECAST_BUILD_PROGRESS_CAP - pct;
+    const step = Math.max(0.3, remaining * 0.05);
+    pct = Math.min(FORECAST_BUILD_PROGRESS_CAP, pct + step);
+    fill.style.width = `${pct}%`;
+  }, FORECAST_BUILD_PROGRESS_TICK_MS);
+}
+
+function bumpForecastBuildOverlayProgress(overlayEl, floorPct) {
+  const fill = overlayEl?.querySelector(".bw-build-overlay__barFill");
+  if (!fill) return;
+  const current = forecastBuildOverlayFillPct(overlayEl);
+  const next = Math.max(current, Math.min(FORECAST_BUILD_PROGRESS_CAP, floorPct));
+  if (next <= current) return;
+  fill.style.transition = "width 320ms linear";
+  fill.style.width = `${next}%`;
+}
+
+function finishForecastBuildOverlayProgress(overlayEl) {
+  const fill = overlayEl?.querySelector(".bw-build-overlay__barFill");
+  stopForecastBuildOverlayProgress(overlayEl);
+  if (!fill) return;
+  fill.classList.remove("bw-build-overlay__barFill--indeterminate");
+  fill.style.transform = "";
+  fill.style.animation = "";
+  fill.style.transition = "width 420ms ease-out";
+  fill.style.width = "100%";
 }
 
 function setForecastBuildOverlayMessage(overlayEl, text) {
@@ -3207,17 +3264,21 @@ function ensureForecastBuildOverlay() {
   return wrap;
 }
 
-function showForecastBuildOverlay(overlayEl, { durationMs = 5000, rotateMessages = true, indeterminate = false } = {}) {
+function showForecastBuildOverlay(
+  overlayEl,
+  { durationMs = 5000, rotateMessages = true, indeterminate = false, steadyProgress = false } = {}
+) {
   if (!overlayEl) return;
   overlayEl.hidden = false;
   overlayEl.classList.add("bw-build-overlay--open");
   const fill = overlayEl.querySelector(".bw-build-overlay__barFill");
+  const useSteadyProgress = steadyProgress || indeterminate;
   if (fill) {
-    fill.classList.toggle("bw-build-overlay__barFill--indeterminate", !!indeterminate);
-    if (indeterminate) {
-      fill.style.transition = "none";
-      fill.style.width = "";
+    fill.classList.remove("bw-build-overlay__barFill--indeterminate");
+    if (useSteadyProgress) {
+      startForecastBuildOverlayProgress(overlayEl);
     } else {
+      stopForecastBuildOverlayProgress(overlayEl);
       fill.style.transition = "none";
       fill.style.width = "0%";
       requestAnimationFrame(() => {
@@ -3250,11 +3311,14 @@ function showForecastBuildOverlay(overlayEl, { durationMs = 5000, rotateMessages
 function hideForecastBuildOverlay(overlayEl) {
   if (!overlayEl) return;
   stopForecastBuildOverlayRotation(overlayEl);
+  stopForecastBuildOverlayProgress(overlayEl);
   overlayEl.classList.remove("bw-build-overlay--open");
   overlayEl.hidden = true;
   const fill = overlayEl.querySelector(".bw-build-overlay__barFill");
   if (fill) {
     fill.classList.remove("bw-build-overlay__barFill--indeterminate");
+    fill.style.transform = "";
+    fill.style.animation = "";
     fill.style.transition = "none";
     fill.style.width = "0%";
   }
@@ -3263,11 +3327,7 @@ function hideForecastBuildOverlay(overlayEl) {
 async function finishForecastBuildOverlay(overlayEl, { message = "Opening your forecast…" } = {}) {
   if (!overlayEl) return;
   setForecastBuildOverlayMessage(overlayEl, message);
-  const fill = overlayEl.querySelector(".bw-build-overlay__barFill");
-  if (fill) {
-    fill.style.transition = "width 400ms ease-out";
-    fill.style.width = "100%";
-  }
+  finishForecastBuildOverlayProgress(overlayEl);
   await new Promise((r) => setTimeout(r, 440));
   hideForecastBuildOverlay(overlayEl);
 }
