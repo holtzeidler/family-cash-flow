@@ -522,8 +522,8 @@ body.landing-page .landing-shell{
   max-width: var(--landing-content-max);
   margin-left: auto;
   margin-right: auto;
-  padding-left: max(1rem, env(safe-area-inset-left));
-  padding-right: max(1rem, env(safe-area-inset-right));
+  padding-left: max(0.85rem, env(safe-area-inset-left));
+  padding-right: max(0.85rem, env(safe-area-inset-right));
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -562,6 +562,9 @@ body.landing-page .landing-shell > .landing-below-preview{
 }
 body.landing-page .landing-hero{
   position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.32rem, 0.72vw, 0.52rem);
   width: 100%;
   max-width: none;
   margin: 0;
@@ -604,8 +607,14 @@ body.landing-page .landing-hero__copy{
 }
 @media (min-width: 821px){
   body.landing-page .landing-hero__copy{
+    margin-left: 0;
+    margin-right: auto;
     text-align: left;
     justify-self: start;
+  }
+  body.landing-page .landing-hero-forecast{
+    margin-left: 0;
+    margin-right: auto;
   }
   body.landing-page .landing-hero__text,
   body.landing-page .landing-hero__sub,
@@ -913,11 +922,11 @@ body.landing-page .landing-preview__transferAmt{
      headline savings number. Keep the range on one line; smaller and
      tighter than before so supporting copy reads alongside the amount
      instead of being drowned out by it. */
-  font-size: clamp(1.5rem, 2.55vw, 1.86rem);
-  font-weight: 700;
+  font-size: clamp(1.42rem, 2.35vw, 1.72rem);
+  font-weight: 650;
   line-height: 0.98;
-  letter-spacing: -0.014em;
-  color: var(--accent);
+  letter-spacing: -0.012em;
+  color: rgba(11, 61, 46, 0.86);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -1005,7 +1014,7 @@ body.landing-page .landing-preview__billList li span:last-child{
 body.landing-page .landing-preview__chart{
   margin: 0;
   align-self: stretch;
-  padding: 0.38rem 0.46rem 0.34rem;
+  padding: 0.28rem 0.44rem 0.18rem;
   border-radius: 12px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(252, 253, 252, 0.86) 100%);
@@ -1016,8 +1025,8 @@ body.landing-page .landing-preview__chartSvg{
   display: block;
   width: 100%;
   height: auto;
-  min-height: 108px;
-  max-height: 144px;
+  min-height: 118px;
+  max-height: 158px;
 }
 body.landing-page .landing-preview__markerDot{
   stroke: rgba(255, 255, 255, 0.9);
@@ -1040,6 +1049,13 @@ body.landing-page .landing-preview__markerLabel--in{
 }
 body.landing-page .landing-preview__markerLabel--out{
   fill: rgba(146, 45, 55, 0.84);
+}
+body.landing-page .landing-preview__minBalanceLabel{
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.006em;
+  fill: rgba(120, 53, 15, 0.78);
 }
 body.landing-page .landing-preview__curve{
   stroke-opacity: 0.94;
@@ -1134,19 +1150,19 @@ body.landing-page .landing-insight__copy{
 /* Hero forecast story: explanatory copy + demo card as one unit */
 body.landing-page .landing-hero-forecast{
   width: 100%;
-  margin-top: clamp(0.48rem, 1.1vw, 0.78rem);
+  margin: 0;
   box-sizing: border-box;
 }
 body.landing-page .landing-hero-forecast__story{
   display: grid;
-  grid-template-columns: minmax(0, 0.38fr) minmax(0, 0.62fr);
-  column-gap: clamp(0.48rem, 0.92vw, 0.72rem);
+  grid-template-columns: minmax(0, 0.36fr) minmax(0, 0.64fr);
+  column-gap: clamp(0.34rem, 0.78vw, 0.55rem);
   row-gap: 0.4rem;
   align-items: start;
 }
 body.landing-page .landing-hero-forecast__copy{
   min-width: 0;
-  margin: -0.12rem 0 0;
+  margin: -0.32rem 0 0;
   padding: 0;
   max-width: min(12.5rem, 100%);
   display: flex;
@@ -1201,13 +1217,13 @@ body.landing-page .landing-hero-forecast__alert .landing-insight__card{
 }
 @media (min-width: 821px){
   body.landing-page .landing-hero-forecast__story{
-    grid-template-columns: minmax(0, 0.34fr) minmax(0, 0.66fr);
-    column-gap: clamp(0.52rem, 1vw, 0.8rem);
+    grid-template-columns: minmax(0, 0.32fr) minmax(0, 0.68fr);
+    column-gap: clamp(0.38rem, 0.82vw, 0.62rem);
     align-items: start;
   }
   body.landing-page .landing-hero-forecast__copy{
-    margin-top: -0.18rem;
-    padding-right: 0.08rem;
+    margin-top: -0.52rem;
+    padding-right: 0;
   }
 }
 @media (max-width: 820px){
@@ -2160,8 +2176,8 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
 
   body.landing-page .landing-shell{
     gap: var(--landing-section-gap);
-    padding-left: max(24px, env(safe-area-inset-left));
-    padding-right: max(24px, env(safe-area-inset-right));
+    padding-left: max(18px, env(safe-area-inset-left));
+    padding-right: max(18px, env(safe-area-inset-right));
   }
 
   body.landing-page .landing-shell > .landing-preview,
@@ -2214,8 +2230,8 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
     margin-top: 0.78rem;
   }
 
-  body.landing-page .landing-hero-forecast{
-    margin-top: clamp(0.38rem, 0.85vw, 0.62rem);
+  body.landing-page .landing-hero{
+    gap: clamp(0.28rem, 0.62vw, 0.46rem);
   }
 
   body.landing-page .landing-hero-viz{
@@ -2243,7 +2259,7 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
   body.landing-page .landing-preview__main{
     grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.32fr);
     gap: 16px 20px;
-    align-items: stretch;
+    align-items: start;
   }
 
   body.landing-page .landing-preview__leftCol{
@@ -2262,7 +2278,7 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
   }
 
   body.landing-page .landing-preview__transferAmt{
-    font-size: clamp(2rem, 3.3vw, 2.65rem);
+    font-size: clamp(1.85rem, 3.05vw, 2.38rem);
   }
 
   body.landing-page .landing-preview__transferFoot{
@@ -2277,8 +2293,8 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
   }
 
   body.landing-page .landing-preview__chart{
-    min-height: clamp(167px, 24.5vw, 220px);
-    padding: 8px 10px 6px;
+    min-height: clamp(150px, 22vw, 198px);
+    padding: 6px 10px 4px;
     border-radius: 16px;
   }
 
@@ -3417,7 +3433,7 @@ body.landing-page .landing-preview__tagline{
 body.landing-page .landing-preview__main{
   grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.34fr);
   gap: 0.52rem 0.68rem;
-  align-items: stretch;
+  align-items: start;
 }
 body.landing-page .landing-preview__leftCol{
   gap: 0;
@@ -3439,9 +3455,11 @@ body.landing-page .landing-preview__transferLine{
   color: rgba(55, 65, 81, 0.84);
 }
 body.landing-page .landing-preview__transferAmt{
-  font-size: clamp(1.78rem, 3.15vw, 2.45rem);
-  line-height: 0.94;
-  letter-spacing: -0.018em;
+  font-size: clamp(1.64rem, 2.9vw, 2.2rem);
+  font-weight: 650;
+  line-height: 0.96;
+  letter-spacing: -0.015em;
+  color: rgba(11, 61, 46, 0.86);
 }
 body.landing-page .landing-preview__transferFoot{
   margin-top: 0.28rem;
@@ -3528,11 +3546,11 @@ body.landing-page .landing-preview__chart{
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  justify-content: center;
+  justify-content: flex-start;
   margin: 0;
-  align-self: stretch;
-  min-height: clamp(154px, 23vw, 212px);
-  padding: 0.32rem 0.44rem 0.2rem;
+  align-self: start;
+  min-height: clamp(138px, 21vw, 190px);
+  padding: 0.2rem 0.42rem 0.14rem;
   border-radius: 15px;
   border: 1px solid rgba(11, 61, 46, 0.11);
   background:
@@ -3547,7 +3565,7 @@ body.landing-page .landing-preview__chartSvg{
   height: 100%;
   min-height: 0;
   max-height: none;
-  aspect-ratio: 604 / 124;
+  aspect-ratio: 604 / 108;
 }
 body.landing-page .landing-preview__markerLabel{
   font-size: 10.5px;
@@ -3564,6 +3582,11 @@ body.landing-page .landing-preview__markerLabel--in{
 }
 body.landing-page .landing-preview__markerLabel--out{
   fill: rgba(146, 45, 55, 0.9);
+}
+body.landing-page .landing-preview__minBalanceLabel{
+  font-size: 10px;
+  font-weight: 600;
+  fill: rgba(120, 53, 15, 0.78);
 }
 body.landing-page .landing-cal-peek{
   padding: clamp(0.18rem, 0.52vw, 0.42rem) 0;
@@ -3785,7 +3808,7 @@ body.landing-page .landing-offer__content{
   flex-direction: column;
   align-items: flex-start;
   text-align: left;
-  gap: 0.12rem;
+  gap: 0.08rem;
   min-width: 0;
 }
 body.landing-page .landing-offer__action{
@@ -3794,14 +3817,14 @@ body.landing-page .landing-offer__action{
   justify-content: center;
   justify-self: start;
   align-self: center;
-  margin: 0;
+  margin: 0.22rem 0 0;
   width: auto;
   max-width: 100%;
   padding: 0;
   border: none;
 }
 body.landing-page .landing-offer__heading{
-  margin: 0 0 0.18rem;
+  margin: 0 0 0.1rem;
   min-height: 0;
   font-size: clamp(1.08rem, 1.65vw, 1.38rem);
   line-height: 1.12;
@@ -3811,7 +3834,7 @@ body.landing-page .landing-offer__heading{
   color: rgba(30, 41, 59, 0.94);
 }
 body.landing-page .landing-offer__support{
-  margin: 0 0 0.3rem;
+  margin: 0 0 0.18rem;
   font-size: 0.9rem;
   line-height: 1.38;
   font-weight: 500;
@@ -4022,8 +4045,14 @@ body.landing-page .landing-preview__demo:hover{
   }
   body.landing-page .landing-hero__copy{
     max-width: 32rem;
+    margin-left: 0;
+    margin-right: auto;
     text-align: left;
     justify-self: start;
+  }
+  body.landing-page .landing-hero-forecast{
+    margin-left: 0;
+    margin-right: auto;
   }
   body.landing-page .landing-hero__text,
   body.landing-page .landing-hero__sub,
@@ -4119,7 +4148,7 @@ body.landing-page .landing-preview__demo:hover{
     padding: 0.72rem 0.78rem 0.76rem;
   }
   body.landing-page .landing-preview__transferAmt{
-    font-size: clamp(1.55rem, 7vw, 2rem);
+    font-size: clamp(1.45rem, 6.5vw, 1.88rem);
   }
   body.landing-page .landing-preview__transferFoot,
   body.landing-page .landing-how__cardBody,
@@ -4133,8 +4162,8 @@ body.landing-page .landing-preview__demo:hover{
     margin-top: calc(-2lh - 0.12rem);
   }
   body.landing-page .landing-preview__chart{
-    min-height: clamp(141px, 36vw, 174px);
-    padding: 0.32rem 0.4rem 0.18rem;
+    min-height: clamp(126px, 33vw, 156px);
+    padding: 0.22rem 0.38rem 0.12rem;
   }
   body.landing-page .landing-preview__chartSvg{
     min-height: 0;
@@ -4195,8 +4224,8 @@ body.landing-page .landing-preview__demo:hover{
     font-size: 0.78rem;
   }
   body.landing-page .landing-preview__chart{
-    min-height: clamp(131px, 41vw, 164px);
-    padding: 0.3rem 0.38rem 0.16rem;
+    min-height: clamp(116px, 37vw, 146px);
+    padding: 0.2rem 0.36rem 0.1rem;
   }
   body.landing-page .landing-preview__chartSvg{
     min-height: 0;
@@ -21900,89 +21929,42 @@ body.account-setup-page .account-setup-step3-form .account-setup-repeat-duo__sta
 body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid{
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  grid-template-rows: auto auto auto auto;
+  grid-template-rows: auto auto;
   gap: 4px 12px;
   align-items: start;
 }
-body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid__date.form-row-h{
-  display: contents;
-}
-body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid__date .form-row-h__label{
-  grid-column: 1;
-  grid-row: 1;
-  align-self: start;
-}
-body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid__date .form-row-h__field{
-  grid-column: 1;
-  grid-row: 2;
+body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid__cell{
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   min-width: 0;
 }
-body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid__repeat{
-  display: contents;
+body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid__cell--date{
+  grid-column: 1;
+  grid-row: 1;
 }
-body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid__repeat > .account-setup-repeat-duo{
-  display: contents;
-}
-body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid__repeat .account-setup-repeat-duo__stack:first-child{
-  display: contents;
-}
-body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid__repeat .account-setup-repeat-duo__stack:first-child > .account-setup-repeat-duo__label{
+body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid__cell--repeat{
   grid-column: 2;
   grid-row: 1;
-  align-self: start;
 }
-body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid__repeat .account-setup-repeat-duo__stack:first-child > .tx-add-recurrence-select{
-  grid-column: 2;
-  grid-row: 2;
-  min-width: 0;
-  justify-self: stretch;
-  align-self: start;
+body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid__cell--second{
+  grid-column: 3;
+  grid-row: 1;
 }
-/* Helper under Repeat only — own row so Ends stays directly under Next Date */
-body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid__repeat > .account-setup-schedule-summary{
-  grid-column: 2;
-  grid-row: 4;
-  margin: 0;
+body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid:has(.account-setup-tx-schedule-grid__cell--second:not([hidden])){
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+}
+body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid__cell--repeat .account-setup-tx-schedule-grid__summary{
+  margin: 2px 0 0;
 }
 body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid > .account-setup-tx-ends-column{
   grid-column: 1;
-  grid-row: 3;
+  grid-row: 2;
   align-self: start;
   margin-top: -6px;
 }
-/* Twice monthly: third column for "Also occurs on"; Repeat stays in column 2 beside Next Date */
-body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid:has(.tx-add-schedule-field--second-day:not([hidden])){
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
-}
-body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid:has(.tx-add-schedule-field--second-day:not([hidden])) .account-setup-repeat-duo__stack.tx-add-schedule-field--second-day{
-  display: contents;
-}
-body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid:has(.tx-add-schedule-field--second-day:not([hidden])) .account-setup-repeat-duo__stack.tx-add-schedule-field--second-day > .account-setup-repeat-duo__label{
-  grid-column: 3;
-  grid-row: 1;
-  align-self: start;
-}
-body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid:has(.tx-add-schedule-field--second-day:not([hidden])) .account-setup-repeat-duo__stack.tx-add-schedule-field--second-day > .tx-add-recurrence-select{
-  grid-column: 3;
-  grid-row: 2;
-  min-width: 0;
-  justify-self: stretch;
-  align-self: start;
-}
-body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid:has(.tx-add-schedule-field--second-day:not([hidden])) .account-setup-tx-schedule-grid__repeat > .account-setup-schedule-summary{
-  grid-column: 2 / -1;
-}
-body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid .form-row-h__label,
-body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid .form-row-h__field{
-  width: 100%;
-  max-width: none;
-  margin: 0;
-  padding: 0;
-}
 /* Schedule row: Next Date + Repeat — matched labels and control chrome */
-body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid .form-row-h__label label,
-body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid .account-setup-repeat-duo__stack:first-child > .account-setup-repeat-duo__label,
-body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid .account-setup-repeat-duo__stack.tx-add-schedule-field--second-day > .account-setup-repeat-duo__label{
+body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid .account-setup-tx-schedule-grid__label{
   display: block;
   margin: 0;
   padding: 0;
@@ -21995,6 +21977,7 @@ body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-gri
   line-height: 1.3;
 }
 body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid input[type="date"],
+body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid .account-setup-tx-schedule-grid__control,
 body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid .tx-add-recurrence-select{
   box-sizing: border-box;
   display: block;
@@ -22198,12 +22181,9 @@ body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPane
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
-  body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid:has(.tx-add-schedule-field--second-day:not([hidden])){
+  body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid:has(.account-setup-tx-schedule-grid__cell--second:not([hidden])){
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
   }
-}
-body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid__repeat + .account-setup-tx-ends-column{
-  margin-top: -6px;
 }
 body.account-setup-page #accountSetupWizardPanel2 .account-setup-step3-form__body > .form-row-h:last-child,
 body.account-setup-page #accountSetupWizardPanel3 .account-setup-step3-form__body > .form-row-h:last-child{
@@ -26508,7 +26488,7 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   }
 
   body.landing-page .landing-preview__transferAmt{
-    font-size: clamp(1.18rem, 7vw, 1.5rem);
+    font-size: clamp(1.12rem, 6.8vw, 1.42rem);
   }
 
   body.landing-page .landing-preview__transferFoot{
