@@ -68,11 +68,51 @@ async function requestWithRetry(path, method, body, { maxMs = 9000, minDelayMs =
   }
 }
 
+/** FastAPI may return `detail` as a string, object, or list of validation errors. */
+function formatApiDetail(detail) {
+  if (detail == null) return "";
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    const parts = [];
+    for (const item of detail) {
+      if (typeof item === "string") {
+        parts.push(item);
+        continue;
+      }
+      if (item && typeof item === "object") {
+        const loc = Array.isArray(item.loc) ? item.loc.filter((x) => x !== "body").join(".") : "";
+        const m = item.msg != null ? String(item.msg) : "";
+        if (loc && m) parts.push(`${loc}: ${m}`);
+        else if (m) parts.push(m);
+      }
+    }
+    return parts.filter(Boolean).join(" ");
+  }
+  if (typeof detail === "object") {
+    if (detail.msg != null) return String(detail.msg);
+    if (detail.message != null) return String(detail.message);
+    try {
+      return JSON.stringify(detail);
+    } catch (_) {
+      return String(detail);
+    }
+  }
+  return String(detail);
+}
+
+function calloutText(msg, fallback = "Something went wrong. Please try again.") {
+  if (msg == null || msg === "") return "";
+  if (typeof msg === "string") return msg;
+  const formatted = formatApiDetail(msg);
+  return formatted || fallback;
+}
+
 function setCallout(el, msg, mode = "pending") {
   if (!el) return;
-  el.textContent = msg || "";
+  const text = calloutText(msg);
+  el.textContent = text;
   el.className = mode ? `callout callout--${mode}` : "callout";
-  el.style.display = msg ? "block" : "none";
+  el.style.display = text ? "block" : "none";
 }
 
 async function goApp() {
@@ -128,9 +168,18 @@ function messageFromFailure(resp, fallback) {
     return "We hit a network issue. Please try again.";
   }
   if (resp.status === 409) return "Email already registered.";
-  if (resp.status === 400 && resp.data && resp.data.detail) return resp.data.detail;
+  if (resp.status === 400 && resp.data && resp.data.detail) {
+    const msg = formatApiDetail(resp.data.detail);
+    if (msg) return msg;
+  }
   if (resp.status >= 500) return `Server error (${resp.status}). Try again in 30–60s.`;
-  if (resp.data && resp.data.detail) return resp.data.detail;
+  if (resp.data && resp.data.detail) {
+    const msg = formatApiDetail(resp.data.detail);
+    if (msg) return msg;
+  }
+  if (resp.data && typeof resp.data.message === "string" && resp.data.message.trim()) {
+    return resp.data.message.trim();
+  }
   return fallback;
 }
 
@@ -3093,7 +3142,7 @@ async function doSignup() {
     await goApp();
   } catch (e) {
     if (isAccountSetup && overlay) hideForecastBuildOverlay(overlay);
-    setCallout(signupCalloutEl, (e && e.message) || "Signup failed.", "error");
+    setCallout(signupCalloutEl, calloutText(e && e.message ? e.message : e, "Signup failed."), "error");
   } finally {
     bwSignupInFlight = false;
     setBusy(false);
