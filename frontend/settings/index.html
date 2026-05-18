@@ -14,7 +14,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=618" />
+    <link rel="stylesheet" href="../styles.css?v=624" />
   </head>
   <body>
     <div class="container">
@@ -933,6 +933,16 @@
                 </div>
                 <div id="reportsRiskHeatmapInsight" class="reports-risk-insight" aria-live="polite"></div>
                 <div class="reports-risk-cal-wrap">
+                    <div class="reports-risk-nav" role="toolbar" aria-label="Risk calendar month">
+                      <button type="button" class="reports-risk-nav__btn" id="reportsRiskCalPrev" aria-label="Previous month" title="Previous month">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+                      </button>
+                      <div class="reports-risk-nav__label" id="reportsRiskCalMonthLabel" aria-live="polite">—</div>
+                      <button type="button" class="reports-risk-nav__btn" id="reportsRiskCalNext" aria-label="Next month" title="Next month">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+                      </button>
+                      <button type="button" class="reports-risk-nav__today" id="reportsRiskCalToday">Today</button>
+                    </div>
                   <div class="reports-risk-dow-row" aria-hidden="true">
                     <span>Mon</span>
                     <span>Tue</span>
@@ -1500,7 +1510,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="../app.js?v=361"></script>
+    <script src="../app.js?v=366"></script>
     <script src="../feedback.js?v=3" defer></script>
     <script src="../tour.js?v=9" defer></script>
   </body>

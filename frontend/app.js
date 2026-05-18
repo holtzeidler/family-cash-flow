@@ -869,40 +869,59 @@ function invalidateLowBalanceAlertCache() {
   invalidateCashOutlookProjectionCache();
 }
 
-/** @param {"off"|"danger"|"muted"} style */
-function setSidebarLowBalanceBanner(text, style = "off") {
-  if (!sidebarLowBalanceBanner) return;
-  if (!text || style === "off") {
-    sidebarLowBalanceBanner.style.display = "none";
-    sidebarLowBalanceBanner.textContent = "";
-    sidebarLowBalanceBanner.classList.remove("is-danger", "is-muted");
-    return;
-  }
-  {
-    const raw = String(text);
-    const parts = raw.split("\n");
-    const headRaw = parts[0] ? String(parts[0]) : "";
-    let headText = escapeHtml(headRaw);
-    if (headRaw.trim().startsWith("⚠")) {
-      const rest = headRaw.trim().replace(/^⚠\s*/, "");
-      headText = `<span class="cash-outlook-icon cash-outlook-icon--warn" aria-hidden="true">
+function cashOutlookWarnIconHtml() {
+  return `<span class="cash-outlook-icon cash-outlook-icon--warn" aria-hidden="true">
         <svg viewBox="0 0 24 24" focusable="false">
           <path d="M12 3L2 21h20L12 3z"></path>
           <path d="M12 9v5"></path>
           <path d="M12 17h.01"></path>
         </svg>
-      </span>${escapeHtml(rest)}`;
-    }
-    const bodyRaw = parts.slice(1).join("\n");
-    let bodyHtml = "";
-    if (bodyRaw) {
-      const b = String(bodyRaw).trim();
-      const lines = b
-        .split("\n")
-        .map((s) => String(s || "").trim())
-        .filter(Boolean);
-      // Special layout: hero amount + optional details.
-      if (lines.length >= 1 && lines[0].startsWith("HERO:")) {
+      </span>`;
+}
+
+function renderCashOutlookInsightLines(insightLines) {
+  const secondary = String(insightLines[0] || "").trim();
+  const tertiary = String(insightLines[1] || "").trim();
+  let tertiaryHtml = escapeHtml(tertiary);
+  const sep = " • ";
+  const sepIdx = tertiary.indexOf(sep);
+  if (sepIdx !== -1) {
+    const before = tertiary.slice(0, sepIdx).trim();
+    const after = tertiary.slice(sepIdx + sep.length).trim();
+    tertiaryHtml = `${escapeHtml(before)}<span class="cash-outlook-card__sep" aria-hidden="true"> • </span><span class="cash-outlook-card__shortfall">${escapeHtml(
+      after
+    )}</span>`;
+  }
+  const rows = [];
+  if (secondary) {
+    rows.push(
+      `<p class="cash-outlook-card__line cash-outlook-card__line--secondary">${escapeHtml(secondary)}</p>`
+    );
+  }
+  if (tertiary) {
+    rows.push(
+      `<p class="cash-outlook-card__line cash-outlook-card__line--tertiary">${tertiaryHtml}</p>`
+    );
+  }
+  return rows.join("");
+}
+
+function buildCashOutlookBannerBodyHtml(bodyRaw) {
+  if (!bodyRaw) return "";
+  const b = String(bodyRaw).trim();
+  const lines = b
+    .split("\n")
+    .map((s) => String(s || "").trim())
+    .filter(Boolean);
+  if (!lines.length) return "";
+
+  if (lines[0] === "INSIGHT:") {
+    return renderCashOutlookInsightLines(lines.slice(1));
+  }
+
+  let bodyHtml = "";
+  // Special layout: hero amount + optional details.
+  if (lines.length >= 1 && lines[0].startsWith("HERO:")) {
         const hero = lines[0].slice("HERO:".length).trim();
         const heroHtml = `<div class="cash-outlook-hero">${escapeHtml(hero)}</div>`;
         const rest = lines.slice(1);
@@ -953,11 +972,48 @@ function setSidebarLowBalanceBanner(text, style = "off") {
         const [l, r] = b.split("|", 2);
         bodyHtml = `<div class="cash-outlook-line"><span class="cash-outlook-date">${escapeHtml(String(l || "").trim())}</span><span class="cash-outlook-amt">${escapeHtml(String(r || "").trim())}</span></div>`;
       } else {
-        bodyHtml = `<div class="cash-outlook-line cash-outlook-line--single">${escapeHtml(b)}</div>`;
-      }
-    }
-    sidebarLowBalanceBanner.innerHTML = [`<strong>${headText}</strong>`, bodyHtml].filter(Boolean).join("");
+    bodyHtml = `<div class="cash-outlook-line cash-outlook-line--single">${escapeHtml(b)}</div>`;
   }
+  return bodyHtml;
+}
+
+function buildCashOutlookBannerHtml(raw) {
+  const parts = String(raw).split("\n");
+  const headRaw = parts[0] ? String(parts[0]) : "";
+  const bodyRaw = parts.slice(1).join("\n");
+  const bodyHtml = buildCashOutlookBannerBodyHtml(bodyRaw);
+  const warnHead = headRaw.trim().startsWith("⚠");
+  const headline = warnHead ? headRaw.trim().replace(/^⚠\s*/, "") : headRaw;
+
+  if (warnHead && bodyRaw.trim().startsWith("INSIGHT:")) {
+    return `<div class="cash-outlook-card">
+      <div class="cash-outlook-card__row">
+        ${cashOutlookWarnIconHtml()}
+        <div class="cash-outlook-card__body">
+          <p class="cash-outlook-card__headline">${escapeHtml(headline)}</p>
+          ${bodyHtml}
+        </div>
+      </div>
+    </div>`;
+  }
+
+  let headText = escapeHtml(headRaw);
+  if (warnHead) {
+    headText = `${cashOutlookWarnIconHtml()}${escapeHtml(headline)}`;
+  }
+  return [`<strong>${headText}</strong>`, bodyHtml].filter(Boolean).join("");
+}
+
+/** @param {"off"|"danger"|"muted"} style */
+function setSidebarLowBalanceBanner(text, style = "off") {
+  if (!sidebarLowBalanceBanner) return;
+  if (!text || style === "off") {
+    sidebarLowBalanceBanner.style.display = "none";
+    sidebarLowBalanceBanner.textContent = "";
+    sidebarLowBalanceBanner.classList.remove("is-danger", "is-muted");
+    return;
+  }
+  sidebarLowBalanceBanner.innerHTML = buildCashOutlookBannerHtml(text);
   sidebarLowBalanceBanner.style.display = "flex";
   sidebarLowBalanceBanner.classList.remove("is-danger", "is-muted");
   sidebarLowBalanceBanner.classList.toggle("is-danger", style === "danger");
@@ -1306,6 +1362,10 @@ let lastIncomeExpenseAggForChart = null;
 /** Last projection series used by Reports operational panels (safe transfer, risk map, pressure). */
 let lastProjectionDailyForReports = [];
 let lastCashInsightsForReports = [];
+/** Risk Calendar month view (YYYY-MM) and pooled daily balances for that grid. */
+let riskCalendarViewYm = "";
+let lastRiskCalendarDaily = [];
+let reportsRiskCalendarNavWired = false;
 let reportsSafeTransferChartInstance = null;
 
 // Billing (Settings)
@@ -2016,11 +2076,8 @@ async function refreshLowBalanceAlert() {
           );
         } else {
           const shortfall = Math.max(0, target - bal);
-          const shortfallDisp = `–$${fmtMoney0(shortfall)}`;
           setSidebarLowBalanceBanner(
-            `⚠ Below target on ${fmtMonthDay(lowHit.date)}\nHERO:$${fmtMoney0(Math.abs(bal))} · minimum balance $${fmtMoney0(
-              Math.abs(target)
-            )} (${shortfallDisp})`,
+            `⚠ Below target on ${fmtMonthDay(lowHit.date)}\nINSIGHT:\nMinimum balance: $${fmtMoney0(Math.abs(bal))}\nTarget: $${fmtMoney0(target)} • Short by $${fmtMoney0(shortfall)}`,
             "danger"
           );
         }
@@ -2979,7 +3036,7 @@ function reflowReportChartFor(reportId) {
     return;
   }
   if (reportId === "reportRiskHeatmap") {
-    try { renderReportsRiskHeatmap(lastProjectionDailyForReports || []); } catch (_) {}
+    void refreshRiskCalendarMonth().catch(() => {});
     return;
   }
   if (reportId === "reportObligations") {
@@ -3033,7 +3090,7 @@ function setActiveTopView(view) {
     // every page load.
     void loadUpcomingTransactionsPanel().then(() => {
       if (v === "reports") {
-        try { renderReportsRiskHeatmap(lastProjectionDailyForReports || []); } catch (_) {}
+        void refreshRiskCalendarMonth().catch(() => {});
       }
       if (v === "transactions") {
         try {
@@ -3392,6 +3449,8 @@ if (calendarMode) {
 
 familySelect.addEventListener("change", async () => {
   state.activeFamilyId = Number(familySelect.value);
+  riskCalendarViewYm = "";
+  lastRiskCalendarDaily = [];
   syncActiveFamilyFlags();
   await migrateLegacyDeviceBalanceThresholdsToAccount();
   hydrateBalanceThresholdInputsFromStorage();
@@ -4796,14 +4855,81 @@ function findExpectedCalendarItem(expectedId, occurrenceIso) {
   );
 }
 
-function openCalendarExpectedFromLine(expectedLine) {
+function findActualTransactionById(id) {
+  const txId = Number(id);
+  if (!Number.isFinite(txId) || txId <= 0) return null;
+  return (
+    [...(state.monthActualItems || []), ...(state.calendarExtraActualItems || [])].find(
+      (t) => Number(t.id) === txId
+    ) || null
+  );
+}
+
+function expectedSeriesMetaStubFromCalendarItem(expectedId, calendarItem) {
+  if (!calendarItem) return null;
+  const eid = Number(expectedId);
+  if (!Number.isFinite(eid) || eid <= 0) return null;
+  const occ =
+    normalizeIsoDate(calendarItem.occurrence_date || calendarItem.date) ||
+    normalizeIsoDate(calendarItem.date) ||
+    "";
+  return {
+    id: eid,
+    account_id: calendarItem.account_id,
+    kind: calendarItem.kind || "expense",
+    amount: calendarItem.amount,
+    description: calendarItem.description || "",
+    notes: calendarItem.notes ?? null,
+    category_id: calendarItem.category_id ?? null,
+    reimbursable: !!calendarItem.reimbursable,
+    variable: !!calendarItem.variable,
+    bg_color: calendarItem.bg_color ?? null,
+    fg_color: calendarItem.fg_color ?? null,
+    recurrence: "monthly",
+    start_date: occ || calendarItem.date,
+  };
+}
+
+async function resolveExpectedSeriesMeta(expectedId, calendarItem) {
+  const eid = Number(expectedId);
+  if (!Number.isFinite(eid) || eid <= 0) return null;
+  let meta = getExpectedSeriesMeta(eid);
+  if (meta) return meta;
+  if (state.activeFamilyId) {
+    try {
+      await loadExpectedTransactions();
+    } catch (_) {}
+    meta = getExpectedSeriesMeta(eid);
+    if (meta) return meta;
+  }
+  return expectedSeriesMetaStubFromCalendarItem(eid, calendarItem);
+}
+
+async function openCalendarActualTransactionById(id) {
+  const txId = Number(id);
+  if (!Number.isFinite(txId) || txId <= 0) return false;
+  let tx = findActualTransactionById(txId);
+  if (!tx && state.activeFamilyId) {
+    try {
+      await loadTransactions();
+      await loadCalendarExtras();
+      tx = findActualTransactionById(txId);
+    } catch (_) {}
+  }
+  if (tx) {
+    openTxEditModal(tx);
+    return true;
+  }
+  window.alert("Could not open this transaction. Try refreshing the page.");
+  return false;
+}
+
+async function openCalendarExpectedFromLine(expectedLine) {
   const cell = expectedLine.closest(".cal-cell");
   const iso = cell?.dataset?.iso || "";
-  if (iso && alertIfDateBeforeStartingBalance(iso)) return;
+  if (iso && alertIfDateBeforeStartingBalance(iso)) return false;
   const eid = Number(expectedLine.dataset.expectedId || 0);
-  if (!eid) return;
-  const meta = getExpectedSeriesMeta(eid);
-  if (!meta) return;
+  if (!Number.isFinite(eid) || eid <= 0) return false;
   closeTxAddModal();
   const occ =
     normalizeIsoDate(expectedLine.dataset.occurrenceDate) ||
@@ -4812,13 +4938,18 @@ function openCalendarExpectedFromLine(expectedLine) {
   const calendarItem =
     findExpectedCalendarItem(eid, occ) ||
     ({
-      ...meta,
       expected_transaction_id: eid,
       _type: "expected",
       date: occ,
       occurrence_date: occ,
     });
+  const meta = await resolveExpectedSeriesMeta(eid, calendarItem);
+  if (!meta) {
+    window.alert("Could not open this recurring item. Try refreshing the page.");
+    return false;
+  }
   openExpectedEditModal(meta, { calendarItem });
+  return true;
 }
 
 function appendCalendarDayStartBalanceLine(row, parentEl, iso) {
@@ -4927,7 +5058,7 @@ function handleCalendarPanelClick(e) {
   if (expectedLine && grid.contains(expectedLine)) {
     e.preventDefault();
     e.stopPropagation();
-    openCalendarExpectedFromLine(expectedLine);
+    void openCalendarExpectedFromLine(expectedLine);
     return;
   }
 
@@ -4945,12 +5076,14 @@ function handleCalendarPanelClick(e) {
   // Click on an actual transaction line opens the edit modal.
   const part = e.target.closest(".cal-tx-part");
   if (part && grid.contains(part)) {
-    e.preventDefault();
-    e.stopPropagation();
     const id = Number(part.dataset.txId);
-    if (!id) return;
-    const tx = [...(state.monthActualItems || []), ...(state.calendarExtraActualItems || [])].find((t) => Number(t.id) === id);
-    if (tx) openTxEditModal(tx);
+    if (Number.isFinite(id) && id > 0) {
+      e.preventDefault();
+      e.stopPropagation();
+      const tx = findActualTransactionById(id);
+      if (tx) openTxEditModal(tx);
+      else void openCalendarActualTransactionById(id);
+    }
     return;
   }
 
@@ -6753,15 +6886,16 @@ async function refreshIncomeExpenseReport() {
   try {
     const { start, endIso } = readReportsDateRange();
     if (!start || !endIso) throw new Error("Select a valid date range.");
-    const r = await api(
-      `/api/families/${state.activeFamilyId}/transactions?start_date=${encodeURIComponent(start)}&end_date=${encodeURIComponent(endIso)}`,
-      "GET"
-    );
-    const items = r && r.items ? r.items : [];
+    const items = await fetchIncomeExpenseReportItems(start, endIso);
     if (!Array.isArray(items) || items.length === 0) {
       destroyIncomeExpenseChart();
       lastIncomeExpenseAggForChart = null;
-      setIncomeExpenseEmpty("No data for this range.");
+      const mode = calendarMode?.value || "both";
+      const hint =
+        mode === "actual"
+          ? "No posted transactions in this range. Switch Forecast to “Both” or “Expected” to include scheduled items."
+          : "No income or expense activity in this range.";
+      setIncomeExpenseEmpty(hint);
       clearInsights();
       return;
     }
@@ -12020,9 +12154,13 @@ function renderCalendar() {
         for (const p of calendarDayTxLineToneParts(row)) line.classList.add(p);
         for (const p of calendarDayTxSemanticParts(row)) line.classList.add(p);
         if (isExpected && row.variable) line.classList.add("cal-expected-variable");
-        if (!isExpected) line.dataset.txId = String(row.id);
+        if (!isExpected) {
+          const txId = Number(row.id);
+          if (Number.isFinite(txId) && txId > 0) line.dataset.txId = String(txId);
+        }
         if (isExpected) {
-          line.dataset.expectedId = String(row.expected_transaction_id);
+          const eid = Number(row.expected_transaction_id);
+          if (Number.isFinite(eid) && eid > 0) line.dataset.expectedId = String(eid);
           line.dataset.occurrenceDate =
             normalizeIsoDate(row.occurrence_date || row.date) || normalizeIsoDate(iso) || iso;
         }
@@ -12075,8 +12213,18 @@ function renderCalendar() {
         if (isExpected) {
           line.addEventListener("click", (e) => {
             e.stopPropagation();
-            openCalendarExpectedFromLine(line);
+            void openCalendarExpectedFromLine(line);
           });
+        } else {
+          const txId = Number(row.id);
+          if (Number.isFinite(txId) && txId > 0) {
+            line.addEventListener("click", (e) => {
+              e.stopPropagation();
+              const tx = findActualTransactionById(txId);
+              if (tx) openTxEditModal(tx);
+              else void openCalendarActualTransactionById(txId);
+            });
+          }
         }
 
         txnsEl.appendChild(line);
@@ -12375,6 +12523,76 @@ function ensureIncomeExpenseChartPlugins() {
   });
 }
 
+/** YYYY-MM strings for each calendar month touched by an inclusive ISO date range. */
+function monthsOverlappingIsoRange(startIso, endIso) {
+  const out = [];
+  if (!startIso || !endIso || endIso < startIso) return out;
+  const sp = String(startIso).split("-").map(Number);
+  const ep = String(endIso).split("-").map(Number);
+  let y = sp[0];
+  let m = sp[1];
+  const endY = ep[0];
+  const endM = ep[1];
+  if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(endY) || !Number.isFinite(endM)) return out;
+  for (let guard = 0; guard < 500; guard++) {
+    out.push(`${y}-${String(m).padStart(2, "0")}`);
+    if (y === endY && m === endM) break;
+    m += 1;
+    if (m > 12) {
+      m = 1;
+      y += 1;
+    }
+  }
+  return out;
+}
+
+/** Posted + forecast rows for the income vs expense report (respects calendar Show mode). */
+async function fetchIncomeExpenseReportItems(startIso, endIso) {
+  const mode = calendarMode?.value || "both";
+  const includeActual = mode === "both" || mode === "actual";
+  const includeExpected = mode === "both" || mode === "expected";
+  /** @type {Array<{date:string,kind:string,amount:number}>} */
+  const items = [];
+
+  if (includeActual) {
+    const r = await api(
+      `/api/families/${state.activeFamilyId}/transactions?start_date=${encodeURIComponent(startIso)}&end_date=${encodeURIComponent(endIso)}`,
+      "GET"
+    );
+    for (const it of r?.items || []) {
+      const iso = normalizeIsoDate(it?.date) || (it?.date ? String(it.date).slice(0, 10) : "");
+      if (!iso || iso < startIso || iso > endIso) continue;
+      items.push({
+        date: iso,
+        kind: String(it.kind || ""),
+        amount: Number(it.amount || 0),
+      });
+    }
+  }
+
+  if (includeExpected) {
+    const months = monthsOverlappingIsoRange(startIso, endIso);
+    const results = await Promise.all(
+      months.map((month) =>
+        api(`/api/families/${state.activeFamilyId}/expected-calendar?month=${encodeURIComponent(month)}`, "GET")
+      )
+    );
+    for (const data of results) {
+      for (const it of data?.items || []) {
+        const iso = normalizeIsoDate(it?.date) || "";
+        if (!iso || iso < startIso || iso > endIso) continue;
+        items.push({
+          date: iso,
+          kind: String(it.kind || ""),
+          amount: Number(it.amount || 0),
+        });
+      }
+    }
+  }
+
+  return items;
+}
+
 function aggregateIncomeExpenseByWeek(items) {
   /** @type {Map<string,{income:number,expense:number}>} */
   const byWeek = new Map();
@@ -12383,7 +12601,7 @@ function aggregateIncomeExpenseByWeek(items) {
     if (!iso || iso.length < 10) continue;
     const wk = weekKeyMondayFromIso(iso);
     if (!wk) continue;
-    const kind = String(it.kind || "");
+    const kind = String(it.kind || "").toLowerCase();
     const amt = Number(it.amount || 0);
     if (!Number.isFinite(amt)) continue;
     const row = byWeek.get(wk) || { income: 0, expense: 0 };
@@ -13816,6 +14034,155 @@ function riskActionGuidance(payload, primaryExpense) {
   return "Keep upcoming large payments and inflows in sync so this day stays comfortable.";
 }
 
+function defaultRiskCalendarViewYm() {
+  return getCalendarViewYm() || toISODate(new Date()).slice(0, 7);
+}
+
+function fmtMonthYearLabel(ym) {
+  const d = new Date(`${String(ym || "").slice(0, 7)}-01T12:00:00`);
+  if (Number.isNaN(d.getTime())) return String(ym || "");
+  return d.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+}
+
+/** Monday-first calendar grid dates shown for a month (includes leading/trailing pad days). */
+function riskCalendarGridIsosForMonth(ym) {
+  const parts = String(ym || "").split("-").map(Number);
+  const year = parts[0];
+  const monthIndex = (parts[1] || 1) - 1;
+  if (!Number.isFinite(year) || monthIndex < 0 || monthIndex > 11) return [];
+  const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+  const first = new Date(year, monthIndex, 1);
+  const lead = (first.getDay() + 6) % 7;
+  const totalCells = Math.ceil((lead + daysInMonth) / 7) * 7;
+  const rangeStart = new Date(year, monthIndex, 1 - lead);
+  const isos = [];
+  for (let i = 0; i < totalCells; i++) {
+    const d = new Date(rangeStart);
+    d.setDate(rangeStart.getDate() + i);
+    isos.push(toISODate(d));
+  }
+  return isos;
+}
+
+function syncRiskCalendarMonthLabel() {
+  const label = document.getElementById("reportsRiskCalMonthLabel");
+  if (!label) return;
+  const ym = riskCalendarViewYm || defaultRiskCalendarViewYm();
+  label.textContent = fmtMonthYearLabel(ym);
+}
+
+function setRiskCalendarNavBusy(busy) {
+  for (const id of ["reportsRiskCalPrev", "reportsRiskCalNext", "reportsRiskCalToday"]) {
+    const btn = document.getElementById(id);
+    if (btn) btn.disabled = !!busy;
+  }
+  const wrap = document.querySelector("#reportRiskHeatmap .reports-risk-cal-wrap");
+  if (wrap) wrap.classList.toggle("reports-risk-cal-wrap--loading", !!busy);
+}
+
+async function loadRiskCalendarDailyForMonth(ym) {
+  const gridIsos = riskCalendarGridIsosForMonth(ym);
+  if (!gridIsos.length) return [];
+  if (!state.activeFamilyId) return gridIsos.map((iso) => ({ date: iso, total_balance: 0 }));
+
+  const mode = calendarMode?.value || "both";
+  const prev = shiftMonthStr(ym, -1);
+  const next = shiftMonthStr(ym, 1);
+  const balanceByIso = new Map();
+
+  try {
+    const payloads = await Promise.all(
+      [ym, prev, next].map((month) =>
+        api(
+          `/api/families/${state.activeFamilyId}/calendar-month-daily?month=${encodeURIComponent(month)}&mode=${encodeURIComponent(mode)}`,
+          "GET",
+        ),
+      ),
+    );
+    for (const data of payloads) {
+      for (const row of data?.days || []) {
+        const iso = normalizeIsoDate(row.date);
+        if (!iso) continue;
+        const end = Number(row.end);
+        balanceByIso.set(iso, Number.isFinite(end) ? end : 0);
+      }
+    }
+  } catch (_) {
+    /* fall through to projection */
+  }
+
+  if (!balanceByIso.size) {
+    const startIso = gridIsos[0];
+    const summary = await api(
+      `/api/families/${state.activeFamilyId}/projection?start=${encodeURIComponent(startIso)}&days=${gridIsos.length}&include_accounts=false`,
+      "GET",
+    );
+    for (const row of summary?.daily || []) {
+      const iso = normalizeIsoDate(row.date);
+      if (!iso) continue;
+      balanceByIso.set(iso, Number(row.total_balance ?? 0));
+    }
+  }
+
+  return gridIsos.map((iso) => ({
+    date: iso,
+    total_balance: balanceByIso.has(iso) ? balanceByIso.get(iso) : 0,
+  }));
+}
+
+async function refreshRiskCalendarMonth() {
+  if (!document.getElementById("reportsRiskHeatmapGrid")) return;
+  wireReportsRiskCalendarNavOnce();
+  if (!riskCalendarViewYm) riskCalendarViewYm = defaultRiskCalendarViewYm();
+  syncRiskCalendarMonthLabel();
+  if (!state.activeFamilyId) {
+    lastRiskCalendarDaily = [];
+    renderReportsRiskHeatmap([]);
+    return;
+  }
+  setRiskCalendarNavBusy(true);
+  try {
+    lastRiskCalendarDaily = await loadRiskCalendarDailyForMonth(riskCalendarViewYm);
+    renderReportsRiskHeatmap(lastRiskCalendarDaily, riskCalendarViewYm);
+  } catch (e) {
+    lastRiskCalendarDaily = [];
+    const insightEl = document.getElementById("reportsRiskHeatmapInsight");
+    if (insightEl) {
+      insightEl.textContent = e.message || "Could not load risk calendar for this month.";
+      insightEl.hidden = false;
+    }
+    renderReportsRiskHeatmap([], riskCalendarViewYm);
+  } finally {
+    setRiskCalendarNavBusy(false);
+  }
+}
+
+function shiftRiskCalendarMonth(delta) {
+  if (!riskCalendarViewYm) riskCalendarViewYm = defaultRiskCalendarViewYm();
+  const next = shiftMonthStr(riskCalendarViewYm, delta);
+  if (!next) return;
+  riskCalendarViewYm = next;
+  void refreshRiskCalendarMonth();
+}
+
+function wireReportsRiskCalendarNavOnce() {
+  if (reportsRiskCalendarNavWired) return;
+  const prev = document.getElementById("reportsRiskCalPrev");
+  const next = document.getElementById("reportsRiskCalNext");
+  const today = document.getElementById("reportsRiskCalToday");
+  if (!prev && !next && !today) return;
+  reportsRiskCalendarNavWired = true;
+  prev?.addEventListener("click", () => shiftRiskCalendarMonth(-1));
+  next?.addEventListener("click", () => shiftRiskCalendarMonth(1));
+  today?.addEventListener("click", () => {
+    riskCalendarViewYm = toISODate(new Date()).slice(0, 7);
+    void refreshRiskCalendarMonth();
+  });
+  calendarMode?.addEventListener("change", () => {
+    if (document.getElementById("reportsRiskHeatmapGrid")) void refreshRiskCalendarMonth();
+  });
+}
+
 function renderRiskHeatmapDetail(payload) {
   const host = document.getElementById("reportsRiskHeatmapDetail");
   if (!host) return;
@@ -14021,14 +14388,15 @@ function renderRiskHeatmapActionPanel(items, occByIso, thr, todayIso, worstIso) 
   host.hidden = false;
 }
 
-function renderReportsRiskHeatmap(daily) {
+function renderReportsRiskHeatmap(daily, viewYm = riskCalendarViewYm || defaultRiskCalendarViewYm()) {
   const host = document.getElementById("reportsRiskHeatmapGrid");
   const insightEl = document.getElementById("reportsRiskHeatmapInsight");
   if (!host) return;
   host.innerHTML = "";
   hideRiskPressureTipNow();
-  const items = (daily || []).slice(0, 60);
+  const items = Array.isArray(daily) ? daily : [];
   const thr = readStoredMinBalanceThresholdForReports();
+  const monthLabel = fmtMonthYearLabel(viewYm);
 
   const setInsight = (text, hidden) => {
     if (!insightEl) return;
@@ -14102,13 +14470,13 @@ function renderReportsRiskHeatmap(daily) {
       false,
     );
   } else if (thr != null) {
-    setInsight(`Stays above your $${fmtMoney(thr)} minimum balance across the next 60 days.`, false);
+    setInsight(`Stays above your $${fmtMoney(thr)} minimum balance in ${monthLabel}.`, false);
   } else {
     const anyNeg = items.some((row) => Number(row.total_balance ?? 0) < 0);
     setInsight(
       anyNeg
         ? "Set a minimum balance in Settings to flag cushion risk and below-target streaks."
-        : "No projected negative days in this window. Set a minimum balance in Settings to tune cushion bands.",
+        : `No projected negative days in ${monthLabel}. Set a minimum balance in Settings to tune cushion bands.`,
       false
     );
   }
@@ -14150,14 +14518,24 @@ function renderReportsRiskHeatmap(daily) {
   const cellByIso = new Map();
   const detailPayloadByIso = new Map();
   let selectedIso = "";
+  const viewYmKey = String(viewYm || "").slice(0, 7);
+  const expectedGrid = riskCalendarGridIsosForMonth(viewYmKey);
+  const isPrebuiltGrid =
+    expectedGrid.length > 0 &&
+    items.length === expectedGrid.length &&
+    String(items[0]?.date || "") === expectedGrid[0] &&
+    String(items[items.length - 1]?.date || "") === expectedGrid[expectedGrid.length - 1];
+  let lead = 0;
 
-  const firstDt = new Date(`${startIso}T12:00:00`);
-  const lead = Number.isNaN(firstDt.getTime()) ? 0 : (firstDt.getDay() + 6) % 7;
-  for (let p = 0; p < lead; p++) {
+  if (!isPrebuiltGrid) {
+    const firstDt = new Date(`${startIso}T12:00:00`);
+    lead = Number.isNaN(firstDt.getTime()) ? 0 : (firstDt.getDay() + 6) % 7;
+    for (let p = 0; p < lead; p++) {
     const ph = document.createElement("div");
     ph.className = "reports-risk-pad";
     ph.setAttribute("aria-hidden", "true");
     host.appendChild(ph);
+    }
   }
 
   let prevMonth = -1;
@@ -14173,6 +14551,9 @@ function renderReportsRiskHeatmap(daily) {
     const cell = document.createElement("button");
     cell.type = "button";
     cell.className = `reports-risk-cell ${sevCls}`;
+    if (isPrebuiltGrid && viewYmKey && iso.slice(0, 7) !== viewYmKey) {
+      cell.classList.add("reports-risk-cell--outside");
+    }
     if (m0 !== prevMonth) {
       cell.classList.add("reports-risk-cell--month-start");
       cell.dataset.month = Number.isNaN(dt.getTime()) ? "" : dt.toLocaleDateString("en-US", { month: "short" });
@@ -14244,13 +14625,15 @@ function renderReportsRiskHeatmap(daily) {
     host.appendChild(cell);
   }
 
-  const used = lead + items.length;
-  const trail = (7 - (used % 7)) % 7;
-  for (let p = 0; p < trail; p++) {
-    const ph = document.createElement("div");
-    ph.className = "reports-risk-pad";
-    ph.setAttribute("aria-hidden", "true");
-    host.appendChild(ph);
+  if (!isPrebuiltGrid) {
+    const used = lead + items.length;
+    const trail = (7 - (used % 7)) % 7;
+    for (let p = 0; p < trail; p++) {
+      const ph = document.createElement("div");
+      ph.className = "reports-risk-pad";
+      ph.setAttribute("aria-hidden", "true");
+      host.appendChild(ph);
+    }
   }
 
   // Show a sensible default in the detail panel — pick the worst day if there's
@@ -15099,7 +15482,7 @@ function renderReportsCashPressure(daily) {
 function renderReportsOperationalPanels() {
   const daily = lastProjectionDailyForReports || [];
   drawReportsSafeTransferChart(daily);
-  renderReportsRiskHeatmap(daily);
+  void refreshRiskCalendarMonth();
   renderReportsObligations();
   renderReportsCashPressure(daily);
   requestAnimationFrame(() => {
