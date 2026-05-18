@@ -11111,16 +11111,7 @@ textarea::placeholder{
   border-left: 1px solid var(--border);
 }
 .kind-toggle .kind-opt::after{
-  content: "";
-  position: absolute;
-  left: 14px;
-  right: 14px;
-  bottom: 6px;
-  height: 2px;
-  border-radius: 999px;
-  background: transparent;
-  opacity: 0;
-  transition: opacity 0.15s ease, background 0.15s ease;
+  display: none;
 }
 .kind-toggle .kind-opt input[type="radio"]{
   position: absolute;
@@ -11134,31 +11125,25 @@ textarea::placeholder{
 .kind-toggle .kind-opt:hover{
   background: rgba(0, 0, 0, 0.045);
 }
-.kind-toggle .kind-opt:has(input[value="expense"]:checked):hover{
-  background: rgba(255, 255, 255, 0.95);
-}
-.kind-toggle .kind-opt:has(input[value="income"]:checked):hover{
-  background: rgba(255, 255, 255, 0.95);
-}
 .kind-toggle .kind-opt:has(input[value="expense"]:checked){
-  background: rgba(255, 255, 255, 0.92);
-  color: rgba(17, 24, 39, 0.88);
+  background: color-mix(in srgb, #dc2626 22%, #fff);
+  color: #991b1b;
   font-weight: 600;
-  box-shadow: inset 0 0 0 1px rgba(17, 24, 39, 0.06);
+  box-shadow: inset 0 0 0 1px rgba(185, 28, 28, 0.2);
+}
+.kind-toggle .kind-opt:has(input[value="expense"]:checked):hover{
+  background: color-mix(in srgb, #dc2626 28%, #fff);
+  color: #7f1d1d;
 }
 .kind-toggle .kind-opt:has(input[value="income"]:checked){
-  background: rgba(255, 255, 255, 0.92);
-  color: rgba(17, 24, 39, 0.88);
+  background: color-mix(in srgb, var(--accent) 24%, #fff);
+  color: color-mix(in srgb, var(--accent) 82%, #0a1f18);
   font-weight: 600;
-  box-shadow: inset 0 0 0 1px rgba(17, 24, 39, 0.06);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 32%, transparent);
 }
-.kind-toggle .kind-opt:has(input[value="expense"]:checked)::after{
-  opacity: 1;
-  background: rgba(167, 55, 68, 0.42);
-}
-.kind-toggle .kind-opt:has(input[value="income"]:checked)::after{
-  opacity: 1;
-  background: rgba(4, 120, 87, 0.42);
+.kind-toggle .kind-opt:has(input[value="income"]:checked):hover{
+  background: color-mix(in srgb, var(--accent) 30%, #fff);
+  color: color-mix(in srgb, var(--accent) 88%, #000);
 }
 .kind-toggle .kind-opt:has(input:focus-visible){
   outline: 2px solid var(--accent);
@@ -19874,9 +19859,9 @@ body[data-bw-view="transactions"] .tm__field label{
 }
 
 .modal.modal--account{
-  width: min(96vw, 432px);
-  max-width: 432px;
-  padding: 16px 18px 14px;
+  width: min(96vw, 454px);
+  max-width: 454px;
+  padding: 17px 19px 15px;
 }
 
 .modal-actions{
@@ -20649,31 +20634,8 @@ body[data-bw-view="transactions"] .tm__field label{
   font-size: 12.25px;
   color: rgba(71, 85, 105, 0.58);
 }
-.modal--tx-add .kind-toggle .kind-opt::after{
-  display: none;
-}
 .modal--tx-add .kind-toggle .kind-opt + .kind-opt{
   border-left-color: rgba(17, 24, 39, 0.06);
-}
-.modal--tx-add .kind-toggle .kind-opt:has(input[value="expense"]:checked){
-  background: color-mix(in srgb, #dc2626 22%, #fff);
-  color: #991b1b;
-  font-weight: 600;
-  box-shadow: inset 0 0 0 1px rgba(185, 28, 28, 0.2);
-}
-.modal--tx-add .kind-toggle .kind-opt:has(input[value="expense"]:checked):hover{
-  background: color-mix(in srgb, #dc2626 28%, #fff);
-  color: #7f1d1d;
-}
-.modal--tx-add .kind-toggle .kind-opt:has(input[value="income"]:checked){
-  background: color-mix(in srgb, var(--accent) 24%, #fff);
-  color: color-mix(in srgb, var(--accent) 82%, #0a1f18);
-  font-weight: 600;
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 32%, transparent);
-}
-.modal--tx-add .kind-toggle .kind-opt:has(input[value="income"]:checked):hover{
-  background: color-mix(in srgb, var(--accent) 30%, #fff);
-  color: color-mix(in srgb, var(--accent) 88%, #000);
 }
 .modal--tx-add .tx-add-form .form-row-h__field > input:not([type="checkbox"]):not([type="radio"]),
 .modal--tx-add .tx-add-form .form-row-h__field > select,
@@ -20769,10 +20731,16 @@ body[data-bw-view="transactions"] .tm__field label{
   align-items: start;
   gap: 4px 14px;
 }
-.modal--tx-add .tx-add-form .form-row-h__label{
+.modal--tx-add .tx-add-form .form-row-h__label,
+.modal--tx-add .tx-add-schedule-compact .form-row-h__label,
+.modal--tx-add .tx-add-end-detail__row .form-row-h__label,
+.modal--tx-add #txAddRecurringBlock .tx-add-variable-form-row .form-row-h__label,
+.modal--tx-add .tx-add-advanced__panel .form-row-h__label{
   flex: none;
   max-width: none;
   padding-top: 7px;
+  padding-left: 3ch;
+  box-sizing: border-box;
 }
 .modal--tx-add .tx-add-form .form-row-h__field{
   min-width: 0;
@@ -20854,12 +20822,15 @@ body[data-bw-view="transactions"] .tm__field label{
   margin: 3px -7px 0;
   padding: 0 7px;
   box-sizing: border-box;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 10px;
 }
 .modal--tx-add #txAddRecurringBlock .tx-add-variable-form-row .form-row-h__label{
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 2px;
+  min-width: 0;
 }
 .modal--tx-add #txAddRecurringBlock .tx-add-variable-form-row .form-row-h__label label{
   font-size: 10px;
@@ -20867,7 +20838,7 @@ body[data-bw-view="transactions"] .tm__field label{
   color: rgba(100, 116, 139, 0.78);
   letter-spacing: 0.01em;
   text-transform: none;
-  white-space: normal;
+  white-space: nowrap;
   line-height: 1.25;
 }
 .modal--tx-add #txAddRecurringBlock .tx-add-variable-form-row .tx-add-variable-toggle__hint{
@@ -20877,14 +20848,20 @@ body[data-bw-view="transactions"] .tm__field label{
   line-height: 1.28;
   color: rgba(100, 116, 139, 0.54);
   text-align: left;
+  white-space: normal;
+  max-width: 100%;
 }
 .modal--tx-add #txAddRecurringBlock .tx-add-variable-field-wrap{
   display: flex;
   align-items: flex-start;
-  min-width: 0;
+  justify-content: flex-end;
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 1.1rem;
+  padding-top: 2px;
 }
 .modal--tx-add #txAddRecurringBlock .tx-add-variable-field-wrap input[type="checkbox"]{
-  margin: 7px 0 0;
+  margin: 0;
   flex-shrink: 0;
   accent-color: var(--accent);
   cursor: pointer;
@@ -21907,8 +21884,9 @@ body.account-setup-page
   box-sizing: border-box;
 }
 #txEditInner.modal.modal--expected-edit{
-  width: min(92vw, 476px);
-  max-width: 476px;
+  width: min(92vw, 500px);
+  max-width: 500px;
+  padding: 0;
 }
 
 /* Footer: Delete left · Close | Save right. */
@@ -22068,17 +22046,17 @@ body.account-setup-page
 }
 
 .modal--expected-edit{
-  max-width: 476px;
-  max-height: min(90vh, 720px);
+  max-width: 500px;
+  max-height: min(90vh, 756px);
   overflow-y: auto;
   padding: 0;
 }
-/* Recurring uses padding:0 on the modal; pull the tinted notes strip flush without negative margins. */
+/* Recurring: green header flush with modal top (same bleed as .modal h3 on Add transaction). */
 .modal--expected-edit .tx-edit-top{
   margin: 0;
-  padding: 7px 12px 8px;
-  border-radius: 12px 12px 0 0;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  padding: 11px 14px 10px;
+  border-radius: 14px 14px 0 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.18);
 }
 .modal--expected-edit #txEditIntro{
   /* Remove top whitespace above the green header; keep side padding for errors/hidden fields. */
@@ -22120,9 +22098,12 @@ body.account-setup-page
 .modal--expected-edit #expectedEditInstancePanel{
   padding: 6px 12px 6px;
 }
+.modal--expected-edit #txEditRecurringScheduleWrap + .tx-add-vspace{
+  height: 8px;
+}
 .modal--expected-edit #txEditAccountCol{
-  margin-top: 2px;
-  padding-top: 5px;
+  margin-top: 10px;
+  padding-top: 8px;
   border-top: 1px solid rgba(17, 24, 39, 0.04);
 }
 .modal--expected-edit .tx-edit-notes-in-advanced{
@@ -22175,54 +22156,23 @@ body.account-setup-page
   min-height: 34px;
 }
 
-/* Type toggle: calm selected state with subtle accent only. */
-.modal--expected-edit .kind-toggle{
-  border-color: rgba(17, 24, 39, 0.07);
-  background: rgba(15, 23, 42, 0.02);
+/* Type toggle: same filled Income/Expense treatment as Add transaction. */
+.modal--expected-edit .kind-toggle,
+#txEditInner .kind-toggle{
+  border-color: rgba(17, 24, 39, 0.075);
+  background: rgba(15, 23, 42, 0.022);
   max-width: none;
 }
-.modal--expected-edit .kind-toggle .kind-opt{
+.modal--expected-edit .kind-toggle .kind-opt,
+#txEditInner .kind-toggle .kind-opt{
   min-height: 28px;
   padding: 4px 9px;
   font-size: 12px;
   color: rgba(71, 85, 105, 0.58);
-  transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
 }
-.modal--expected-edit .kind-toggle .kind-opt::after{
-  left: 12px;
-  right: 12px;
-  bottom: 3px;
-  height: 1.5px;
-  transition: opacity 0.2s ease, background 0.2s ease;
-}
-.modal--expected-edit .kind-toggle .kind-opt + .kind-opt{
-  border-left-color: rgba(17, 24, 39, 0.05);
-}
-.modal--expected-edit .kind-toggle .kind-opt:has(input[value="expense"]:checked){
-  background: rgba(255, 255, 255, 0.96);
-  color: rgba(17, 24, 39, 0.88);
-  font-weight: 600;
-  box-shadow: inset 0 0 0 1px rgba(17, 24, 39, 0.04);
-}
-.modal--expected-edit .kind-toggle .kind-opt:has(input[value="expense"]:checked)::after{
-  opacity: 1;
-  background: rgba(167, 55, 68, 0.32);
-}
-.modal--expected-edit .kind-toggle .kind-opt:has(input[value="expense"]:checked):hover{
-  background: rgba(255, 255, 255, 0.99);
-}
-.modal--expected-edit .kind-toggle .kind-opt:has(input[value="income"]:checked){
-  background: rgba(255, 255, 255, 0.96);
-  color: rgba(17, 24, 39, 0.88);
-  font-weight: 600;
-  box-shadow: inset 0 0 0 1px rgba(17, 24, 39, 0.04);
-}
-.modal--expected-edit .kind-toggle .kind-opt:has(input[value="income"]:checked)::after{
-  opacity: 1;
-  background: rgba(4, 120, 87, 0.32);
-}
-.modal--expected-edit .kind-toggle .kind-opt:has(input[value="income"]:checked):hover{
-  background: rgba(255, 255, 255, 0.99);
+.modal--expected-edit .kind-toggle .kind-opt + .kind-opt,
+#txEditInner .kind-toggle .kind-opt + .kind-opt{
+  border-left-color: rgba(17, 24, 39, 0.06);
 }
 
 /* Advanced options: subtle expandable row (not a faux input). */
@@ -22405,8 +22355,8 @@ body.account-setup-page
   display: none;
 }
 .modal--expected-edit .tx-edit-recurring-group #txEditRecurringVariableWrap{
-  margin-top: 2px;
-  padding-top: 0;
+  margin-top: 10px;
+  padding-top: 4px;
   border-top: none;
   width: 100%;
   max-width: 100%;
@@ -22633,17 +22583,17 @@ body.account-setup-page
 }
 
 .modal.modal--account > h3{
-  width: calc(100% + 36px);
-  margin: -16px -18px 10px;
-  padding: 12px 18px 11px;
-  font-size: 0.95rem;
+  width: calc(100% + 38px);
+  margin: -17px -19px 11px;
+  padding: 13px 19px 12px;
+  font-size: 1rem;
 }
 
 .modal.modal--account .account-modal__info{
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  margin: 0 0 10px;
+  margin: 0 0 11px;
   padding: 6px 9px;
   border-radius: 8px;
   border: 1px solid rgba(17, 24, 39, 0.07);
@@ -22678,8 +22628,8 @@ body.account-setup-page
   margin-bottom: 6px;
 }
 .modal.modal--account .account-modal__row{
-  gap: 10px 16px;
-  margin-bottom: 10px;
+  gap: 11px 17px;
+  margin-bottom: 11px;
 }
 .modal.modal--account .account-modal__row:last-of-type{
   margin-bottom: 0;
@@ -22704,14 +22654,14 @@ body.account-setup-page
 .modal.modal--account input[type="text"],
 .modal.modal--account input[type="date"],
 .modal.modal--account select{
-  min-height: 36px;
-  padding: 6px 10px;
-  font-size: 0.84rem;
+  min-height: 38px;
+  padding: 6px 11px;
+  font-size: 0.88rem;
   border-radius: 8px;
   box-sizing: border-box;
 }
 .modal.modal--account .money-input{
-  min-height: 36px;
+  min-height: 38px;
   align-items: stretch;
   border-radius: 8px;
   background: rgba(0, 0, 0, 0.02);
@@ -22725,9 +22675,9 @@ body.account-setup-page
   border-right: none;
 }
 .modal.modal--account .money-input input{
-  min-height: 34px;
-  padding: 6px 10px 6px 4px;
-  font-size: 0.84rem;
+  min-height: 36px;
+  padding: 6px 11px 6px 4px;
+  font-size: 0.88rem;
   font-weight: 500;
   -moz-appearance: textfield;
   appearance: textfield;
@@ -22749,8 +22699,8 @@ body.account-setup-page
   flex-direction: column;
   align-items: stretch;
   gap: 8px;
-  margin-top: 12px;
-  padding-top: 10px;
+  margin-top: 13px;
+  padding-top: 11px;
   border-top: 1px solid rgba(17, 24, 39, 0.06);
 }
 .modal.modal--account .account-modal__footnote{
@@ -22768,9 +22718,9 @@ body.account-setup-page
 }
 .modal.modal--account #cancelAccountEditBtn,
 .modal.modal--account .account-modal__secondary{
-  min-height: 34px;
-  padding: 6px 14px;
-  font-size: 0.82rem;
+  min-height: 36px;
+  padding: 6px 15px;
+  font-size: 0.86rem;
   font-weight: 540;
   border-radius: 8px;
   border: 1px solid rgba(17, 24, 39, 0.12);
@@ -22784,13 +22734,13 @@ body.account-setup-page
   color: rgba(30, 41, 59, 0.9);
 }
 .modal.modal--account .account-modal__primary{
-  min-height: 34px;
-  padding: 6px 16px;
+  min-height: 36px;
+  padding: 6px 17px;
   border-radius: 8px;
   background: var(--accent);
   border: 1px solid rgba(11, 61, 46, 0.28);
   color: #fff;
-  font-size: 0.84rem;
+  font-size: 0.88rem;
   font-weight: 620;
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.12) inset,
