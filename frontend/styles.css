@@ -18214,7 +18214,7 @@ body.plans-page--polished .plans-wrap{
    between rows comes from color/opacity, never from size or weight, so
    adjacent rows of the same kind always render at the same scale. */
 .cal-day-tx-line{
-  font-size: 15px;
+  font-size: 13.8px;
   line-height: 1.28;
   min-height: 18px;
   max-width: 100%;
@@ -18282,7 +18282,7 @@ body.plans-page--polished .plans-wrap{
   gap: 4px;
 }
 .cal-cell--density-sparse .cal-day-tx-line{
-  font-size: 15px;
+  font-size: 13.8px;
   line-height: 1.3;
   min-height: 19px;
 }
@@ -18290,7 +18290,7 @@ body.plans-page--polished .plans-wrap{
   gap: 3px;
 }
 .cal-cell--density-normal .cal-day-tx-line{
-  font-size: 15px;
+  font-size: 13.8px;
   line-height: 1.28;
   min-height: 18px;
 }
@@ -18298,7 +18298,7 @@ body.plans-page--polished .plans-wrap{
   gap: 2px;
 }
 .cal-cell--density-dense .cal-day-tx-line{
-  font-size: 14.5px;
+  font-size: 13.34px;
   line-height: 1.26;
   min-height: 17px;
   gap: 3px;
@@ -25261,15 +25261,15 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   }
 
   .calendar--mobile .cal-day-tx-line{
-    font-size: 13px;
+    font-size: 11.96px;
     min-height: 17px;
   }
   .calendar--mobile .cal-cell--density-sparse .cal-day-tx-line{
-    font-size: 14.5px;
+    font-size: 13.34px;
     min-height: 20px;
   }
   .calendar--mobile .cal-cell--density-dense .cal-day-tx-line{
-    font-size: 12px;
+    font-size: 11.04px;
     min-height: 15px;
   }
 
