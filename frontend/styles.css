@@ -20251,6 +20251,10 @@ body[data-bw-view="transactions"] .tm__field label{
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   padding-right: 2px;
+  --tx-add-label-col: calc(180px - 5ch);
+  --tx-add-label-inset: 3ch;
+  --tx-add-row-gap-x: 14px;
+  --tx-add-row-gap-y: 4px;
 }
 
 .sidebar-add-tx-form{
@@ -20440,18 +20444,19 @@ body[data-bw-view="transactions"] .tm__field label{
   appearance: none;
   background: transparent;
   border: none;
-  padding: 1px 2px;
+  padding: 0 2px;
   margin: 0;
   font: inherit;
   font-size: 10.5px;
-  font-weight: 500;
-  color: rgba(100, 116, 139, 0.72);
+  font-weight: 600;
+  color: var(--muted);
   display: inline-flex;
   align-items: center;
   gap: 4px;
   cursor: pointer;
   border-radius: 6px;
   transition: color 0.12s ease, background 0.12s ease;
+  text-align: left;
 }
 .tx-add-advanced__expander:hover{
   color: rgba(17, 24, 39, 0.86);
@@ -20478,7 +20483,8 @@ body[data-bw-view="transactions"] .tm__field label{
   color: rgba(17, 24, 39, 0.8);
 }
 .tx-add-advanced__expander-label{
-  line-height: 1.1;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 .tx-add-advanced__chip-dot{
   width: 8px;
@@ -20495,16 +20501,17 @@ body[data-bw-view="transactions"] .tm__field label{
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  padding: 4px 0 0 14px;
-  margin: 1px 0 0 7px;
+  padding: 0;
+  margin: 0;
   gap: 7px;
-  border-left: 1px solid rgba(148, 163, 184, 0.22);
+  border-left: none;
 }
 .tx-add-cat-color-panel .cat-color-row__label{
   font-size: 10px;
   font-weight: 600;
-  letter-spacing: 0.03em;
-  color: rgba(100, 116, 139, 0.72);
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  text-align: left;
 }
 .tx-add-cat-color-panel .cat-color-row__swatches{
   gap: 5px;
@@ -20787,12 +20794,15 @@ body[data-bw-view="transactions"] .tm__field label{
   display: none;
   height: 0;
 }
-/* Slight nudge: a touch less label/field gap inside the modal form. */
+/* Label column + fields share one grid; labels left-aligned on a common axis. */
 .modal--tx-add .tx-add-form .form-row-h{
   display: grid;
-  grid-template-columns: calc(180px - 5ch) minmax(0, 1fr);
+  grid-template-columns: var(--tx-add-label-col, calc(180px - 5ch)) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--tx-add-row-gap-y, 4px) var(--tx-add-row-gap-x, 14px);
+}
+.modal--tx-add .tx-add-form .form-row-h:has(.tx-add-category-field){
   align-items: start;
-  gap: 4px 14px;
 }
 .modal--tx-add .tx-add-form .form-row-h__label,
 .modal--tx-add .tx-add-schedule-compact .form-row-h__label,
@@ -20801,9 +20811,25 @@ body[data-bw-view="transactions"] .tm__field label{
 .modal--tx-add .tx-add-advanced__panel .form-row-h__label{
   flex: none;
   max-width: none;
-  padding-top: 7px;
-  padding-left: 3ch;
+  padding: 0 0 0 var(--tx-add-label-inset, 3ch);
   box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  align-self: stretch;
+  min-height: 30px;
+  text-align: left;
+}
+.modal--tx-add .tx-add-form .form-row-h:has(.tx-add-category-field) .form-row-h__label{
+  align-items: flex-start;
+  padding-top: 8px;
+  min-height: 0;
+}
+.modal--tx-add .tx-add-form .form-row-h__label label,
+.modal--tx-add .tx-add-schedule-compact .form-row-h__label label,
+.modal--tx-add .tx-add-end-detail__row .form-row-h__label label,
+.modal--tx-add .tx-add-advanced__panel .form-row-h__label label{
+  width: 100%;
+  text-align: left;
 }
 .modal--tx-add .tx-add-form .form-row-h__field{
   min-width: 0;
@@ -20813,7 +20839,9 @@ body[data-bw-view="transactions"] .tm__field label{
 .modal--tx-add #txAddRecurringBlock .tx-add-variable-form-row,
 .modal--tx-add .tx-add-advanced__panel .form-row-h{
   display: grid;
-  grid-template-columns: calc(180px - 5ch) minmax(0, 1fr);
+  grid-template-columns: var(--tx-add-label-col, calc(180px - 5ch)) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--tx-add-row-gap-y, 4px) var(--tx-add-row-gap-x, 14px);
 }
 .modal--tx-add .tx-add-form .tx-add-variable-field{
   gap: 2px;
@@ -20857,20 +20885,21 @@ body[data-bw-view="transactions"] .tm__field label{
   color: rgba(55, 65, 81, 0.86);
   letter-spacing: 0;
   text-transform: none;
-  white-space: normal;
+  white-space: nowrap;
   flex: 0 1 auto;
   line-height: 1.25;
 }
 .tx-add-variable-toggle__hint{
   display: block;
   margin: 0;
-  padding-left: 1.28rem;
+  padding-left: 0;
   font-size: 9px;
   font-weight: 400;
   line-height: 1.3;
   color: rgba(100, 116, 139, 0.56);
   letter-spacing: 0.005em;
-  max-width: 28rem;
+  white-space: nowrap;
+  max-width: none;
 }
 /* Recurring sub-cluster: lighter background to mark it as secondary configuration. */
 .modal--tx-add #txAddRecurringBlock{
@@ -20881,19 +20910,23 @@ body[data-bw-view="transactions"] .tm__field label{
   border: 1px solid rgba(17, 24, 39, 0.03);
 }
 .modal--tx-add #txAddRecurringBlock .tx-add-variable-form-row{
-  width: calc(100% + 14px);
-  margin: 3px -7px 0;
-  padding: 0 7px;
+  width: 100%;
+  margin: 3px 0 0;
+  padding: 0;
   box-sizing: border-box;
-  grid-template-columns: minmax(0, 1fr) auto;
-  column-gap: 10px;
+  grid-template-columns: minmax(min-content, 1fr) auto;
+  column-gap: var(--tx-add-row-gap-x, 14px);
+  align-items: start;
 }
 .modal--tx-add #txAddRecurringBlock .tx-add-variable-form-row .form-row-h__label{
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+  justify-content: center;
   gap: 2px;
-  min-width: 0;
+  min-width: min-content;
+  min-height: 0;
+  align-self: stretch;
 }
 .modal--tx-add #txAddRecurringBlock .tx-add-variable-form-row .form-row-h__label label{
   font-size: 10px;
@@ -20903,6 +20936,9 @@ body[data-bw-view="transactions"] .tm__field label{
   text-transform: none;
   white-space: nowrap;
   line-height: 1.25;
+  flex-shrink: 0;
+  width: auto;
+  max-width: none;
 }
 .modal--tx-add #txAddRecurringBlock .tx-add-variable-form-row .tx-add-variable-toggle__hint{
   margin: 0;
@@ -20911,8 +20947,8 @@ body[data-bw-view="transactions"] .tm__field label{
   line-height: 1.28;
   color: rgba(100, 116, 139, 0.54);
   text-align: left;
-  white-space: normal;
-  max-width: 100%;
+  white-space: nowrap;
+  max-width: none;
 }
 .modal--tx-add #txAddRecurringBlock .tx-add-variable-field-wrap{
   display: flex;
@@ -20969,18 +21005,43 @@ body[data-bw-view="transactions"] .tm__field label{
   opacity: 1;
 }
 .modal--tx-add .tx-add-advanced{
-  margin-top: 1px;
+  margin-top: 0;
+}
+.modal--tx-add .tx-add-advanced__expander{
+  display: inline-flex;
+  align-items: center;
+  width: auto;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 0 2px 0 var(--tx-add-label-inset, 3ch);
+  min-height: 30px;
+  margin: 0;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  white-space: nowrap;
 }
 .modal--tx-add .tx-add-advanced__chip-dot[hidden]{
   display: none !important;
 }
 .modal--tx-add .tx-add-advanced__panel{
-  margin-top: 3px;
-  padding-left: 12px;
-  border-left-color: rgba(148, 163, 184, 0.14);
+  margin-top: 0;
+  padding-left: 0;
+  border-left: none;
 }
 .modal--tx-add .tx-add-cat-color-panel.cat-color-row{
-  border-left-color: rgba(148, 163, 184, 0.14);
+  grid-template-columns: var(--tx-add-label-col, calc(180px - 5ch)) minmax(0, 1fr) auto;
+  gap: var(--tx-add-row-gap-y, 4px) var(--tx-add-row-gap-x, 14px);
+  align-items: center;
+  margin: 0 0 2px;
+}
+.modal--tx-add .tx-add-cat-color-panel .cat-color-row__label{
+  padding-left: var(--tx-add-label-inset, 3ch);
+  min-height: 30px;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
 }
 .modal--tx-add .kind-toggle{
   max-width: 100%;
@@ -21622,7 +21683,7 @@ body.account-setup-page
   pointer-events: none;
 }
 .modal--tx-add .tx-add-category-field{
-  min-height: 5.75rem;
+  min-height: 0;
 }
 @media (min-width: 769px){
   .modal--tx-add .tx-quick-chips{
@@ -21641,12 +21702,12 @@ body.account-setup-page
   display: none;
 }
 .tx-add-advanced__panel{
-  margin-top: 4px;
-  padding-left: 14px;
-  border-left: 1px solid rgba(148, 163, 184, 0.22);
+  margin-top: 2px;
+  padding-left: 0;
+  border-left: none;
 }
 .tx-add-advanced__panel .tx-add-notes-row{
-  margin-top: 6px;
+  margin-top: 2px;
 }
 .tx-add-btn-primary:disabled,
 .modal--tx-add .tx-add-btn-primary:disabled{
@@ -22461,6 +22522,10 @@ body.account-setup-page
   padding-top: 7px;
   color: rgba(100, 116, 139, 0.72);
   cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  width: auto;
+  max-width: none;
 }
 .modal--expected-edit #expectedEditInstancePanel .tx-edit-variable-form-row .tx-edit-variable-row__hint{
   margin: 0;
@@ -22468,6 +22533,7 @@ body.account-setup-page
   font-size: 9.5px;
   line-height: 1.32;
   color: rgba(100, 116, 139, 0.52);
+  white-space: nowrap;
   max-width: none;
 }
 .modal--expected-edit #expectedEditInstancePanel .tx-edit-variable-field-wrap{
