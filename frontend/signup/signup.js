@@ -119,7 +119,7 @@ async function goApp() {
   try {
     const t = sessionStorage.getItem("bw_invite_token");
     if (!t || !String(t).trim()) {
-      window.location.href = "/calendar";
+      window.location.replace("/calendar");
       return;
     }
     const enc = encodeURIComponent(String(t).trim());
@@ -131,7 +131,7 @@ async function goApp() {
       try {
         sessionStorage.removeItem("bw_invite_token");
       } catch (_) {}
-      window.location.href = "/calendar";
+      window.location.replace("/calendar");
       return;
     }
     const invited = String(inv.data.invitee_email || "")
@@ -144,12 +144,12 @@ async function goApp() {
             .toLowerCase()
         : "";
     if (logged && invited && logged !== invited) {
-      window.location.href = "/invite/?token=" + enc;
+      window.location.replace("/invite/?token=" + enc);
       return;
     }
-    window.location.href = "/invite/?token=" + enc;
+    window.location.replace("/invite/?token=" + enc);
   } catch (_) {
-    window.location.href = "/calendar";
+    window.location.replace("/calendar");
   }
 }
 
@@ -2983,19 +2983,19 @@ async function maybePatchForecastThresholdsFromDraft(draft) {
 
 async function doSignup() {
   if (!signupBtn) return;
+  if (bwSignupInFlight) return;
   bwSignupInFlight = true;
   bwEmailPrecheckStep0Generation += 1;
   setBusy(true);
   const isAccountSetup = isAccountSetupPath();
   const startedAt = Date.now();
   const minOverlayMs = 3200;
-  const maxOverlayMs = 14000;
   let overlay = null;
   try {
     overlay = ensureForecastBuildOverlay();
     if (isAccountSetup) {
       setCallout(signupCalloutEl, "", "");
-      showForecastBuildOverlay(overlay, { durationMs: maxOverlayMs, rotateMessages: false });
+      showForecastBuildOverlay(overlay, { indeterminate: true, rotateMessages: false });
       setForecastBuildOverlayMessage(overlay, "Preparing your forecast…");
       prefetchCalendarPage();
     } else {
@@ -3010,6 +3010,7 @@ async function doSignup() {
     } catch (_) {}
     const draft = readAccountSetupDraft();
     if (!draft) {
+      if (isAccountSetup && overlay) hideForecastBuildOverlay(overlay);
       setCallout(signupCalloutEl, "Please complete account setup first.", "error");
       const q = window.location.search || "";
       window.location.assign("/account-setup" + q);
@@ -3133,12 +3134,19 @@ async function doSignup() {
 
     if (isAccountSetup && overlay) {
       await ensureMinOverlayDuration(startedAt, minOverlayMs);
-      await finishForecastBuildOverlay(overlay, { message: "Opening your forecast…" });
+      setForecastBuildOverlayMessage(overlay, "Opening your forecast…");
+      const fill = overlay.querySelector(".bw-build-overlay__barFill");
+      if (fill) {
+        fill.classList.remove("bw-build-overlay__barFill--indeterminate");
+        fill.style.transition = "width 350ms ease-out";
+        fill.style.width = "100%";
+      }
     }
     setCallout(signupCalloutEl, "", "");
     try {
       sessionStorage.setItem(BW_FORECAST_READY_POPUP_KEY, "1");
     } catch (_) {}
+    // Keep the overlay visible until navigation — hiding early left users on the survey step.
     await goApp();
   } catch (e) {
     if (isAccountSetup && overlay) hideForecastBuildOverlay(overlay);
@@ -3199,18 +3207,24 @@ function ensureForecastBuildOverlay() {
   return wrap;
 }
 
-function showForecastBuildOverlay(overlayEl, { durationMs = 5000, rotateMessages = true } = {}) {
+function showForecastBuildOverlay(overlayEl, { durationMs = 5000, rotateMessages = true, indeterminate = false } = {}) {
   if (!overlayEl) return;
   overlayEl.hidden = false;
   overlayEl.classList.add("bw-build-overlay--open");
   const fill = overlayEl.querySelector(".bw-build-overlay__barFill");
   if (fill) {
-    fill.style.transition = "none";
-    fill.style.width = "0%";
-    requestAnimationFrame(() => {
-      fill.style.transition = `width ${Math.max(0, durationMs)}ms linear`;
-      fill.style.width = "100%";
-    });
+    fill.classList.toggle("bw-build-overlay__barFill--indeterminate", !!indeterminate);
+    if (indeterminate) {
+      fill.style.transition = "none";
+      fill.style.width = "";
+    } else {
+      fill.style.transition = "none";
+      fill.style.width = "0%";
+      requestAnimationFrame(() => {
+        fill.style.transition = `width ${Math.max(0, durationMs)}ms linear`;
+        fill.style.width = "100%";
+      });
+    }
   }
   const msgEl = overlayEl.querySelector("#bwForecastBuildMessage");
   if (!msgEl) return;
@@ -3240,6 +3254,7 @@ function hideForecastBuildOverlay(overlayEl) {
   overlayEl.hidden = true;
   const fill = overlayEl.querySelector(".bw-build-overlay__barFill");
   if (fill) {
+    fill.classList.remove("bw-build-overlay__barFill--indeterminate");
     fill.style.transition = "none";
     fill.style.width = "0%";
   }
@@ -3478,6 +3493,7 @@ function onSignupPrimaryClick() {
             });
 
         } catch (_) {}
+        if (bwSignupInFlight) return;
         void doSignup();
         return;
       }

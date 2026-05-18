@@ -262,17 +262,20 @@
 
     const dayRow = document.createElement("div");
     dayRow.className = "bw-tour-tooltip__reconcile-preview-dayrow";
+    const dayGroup = document.createElement("div");
+    dayGroup.className = "bw-tour-tooltip__reconcile-preview-day";
     const dayNum = document.createElement("span");
     dayNum.className = "bw-tour-tooltip__reconcile-preview-daynum";
     dayNum.textContent = String(preview.dayNum || "17");
     const dayMeta = document.createElement("span");
     dayMeta.className = "bw-tour-tooltip__reconcile-preview-daymeta";
     dayMeta.textContent = String(preview.dayLabel || "");
+    dayGroup.append(dayNum, dayMeta);
     const check = document.createElement("span");
     check.className = "bw-tour-tooltip__reconcile-preview-check";
     check.setAttribute("aria-hidden", "true");
     check.textContent = "✓";
-    dayRow.append(dayNum, dayMeta, check);
+    dayRow.append(dayGroup, check);
 
     const status = document.createElement("div");
     status.className = "bw-tour-tooltip__reconcile-preview-status";
