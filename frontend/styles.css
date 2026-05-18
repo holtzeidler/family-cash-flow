@@ -1204,6 +1204,9 @@ body.landing-page .landing-hero-forecast__demo{
     0 14px 32px -14px rgba(11, 61, 46, 0.14);
   box-sizing: border-box;
 }
+body.landing-page .landing-hero-forecast__demo .landing-cal-peek__chrome{
+  padding: 12px 14px 8px;
+}
 body.landing-page .landing-hero-forecast__alert{
   width: 100%;
   margin: 0;
