@@ -800,6 +800,9 @@ body.landing-page .landing-hero__sub{
   font-weight: 500;
   color: rgba(71, 85, 105, 0.9);
 }
+body.landing-page .landing-hero__sub + .landing-hero__sub{
+  margin-top: 0.45rem;
+}
 body.landing-page .landing-hero__cta{
   display: inline-flex;
   align-items: center;
@@ -21086,6 +21089,8 @@ body[data-bw-view="transactions"] .tm__field label{
 .modal--tx-add .tx-add-form .form-row-h__label label,
 .modal--tx-add .tx-add-schedule-compact .form-row-h__label label,
 .modal--tx-add .tx-add-end-detail__row .form-row-h__label label,
+.modal--tx-add #txAddRecurringBlock .tx-add-second-monthly-row .form-row-h__label label,
+.modal--tx-add #txAddRecurringBlock .tx-add-variable-form-row .form-row-h__label label,
 .modal--tx-add .tx-add-advanced__panel .form-row-h__label label{
   width: 100%;
   text-align: right;
@@ -21167,6 +21172,8 @@ body[data-bw-view="transactions"] .tm__field label{
   height: 8px;
 }
 .modal--tx-add #txAddRecurringBlock{
+  box-sizing: border-box;
+  width: 100%;
   margin-top: 6px;
   padding: 8px 0 5px;
   border-radius: 6px;
@@ -21182,17 +21189,17 @@ body[data-bw-view="transactions"] .tm__field label{
   grid-template-columns: var(--tx-add-label-col, 11.25rem) minmax(0, 1fr);
   column-gap: var(--tx-add-row-gap-x, 14px);
   row-gap: var(--tx-add-row-gap-y, 4px);
-  align-items: start;
+  align-items: center;
 }
 .modal--tx-add #txAddRecurringBlock .tx-add-second-monthly-row .form-row-h__label,
 .modal--tx-add #txAddRecurringBlock .tx-add-variable-form-row .form-row-h__label{
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
+  align-items: stretch;
   justify-content: center;
   gap: 2px;
   min-width: 0;
-  min-height: 0;
+  min-height: 30px;
   align-self: stretch;
   padding: 0 var(--tx-add-label-inset, 3ch) 0 0;
   text-align: right;
@@ -21204,12 +21211,11 @@ body[data-bw-view="transactions"] .tm__field label{
   letter-spacing: 0.04em;
   color: var(--muted);
   text-transform: none;
-  white-space: nowrap;
   line-height: 1.25;
-  flex-shrink: 0;
-  width: auto;
+  width: 100%;
+  max-width: 100%;
   text-align: right;
-  max-width: none;
+  white-space: nowrap;
 }
 .modal--tx-add #txAddRecurringBlock .tx-add-second-monthly-field{
   display: flex;
@@ -21225,8 +21231,7 @@ body[data-bw-view="transactions"] .tm__field label{
   font-size: 13px;
   border-color: rgba(17, 24, 39, 0.12);
 }
-.modal--tx-add #txAddRecurringBlock .tx-add-twice-monthly-hint,
-.modal--tx-add #txAddRecurringBlock .tx-add-variable-form-row .tx-add-variable-toggle__hint{
+.modal--tx-add #txAddRecurringBlock .tx-add-twice-monthly-hint{
   margin: 0;
   padding: 0;
   font-size: 9px;
@@ -21235,6 +21240,18 @@ body[data-bw-view="transactions"] .tm__field label{
   text-align: left;
   white-space: nowrap;
   max-width: none;
+}
+.modal--tx-add #txAddRecurringBlock .tx-add-variable-form-row .tx-add-variable-toggle__hint{
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  font-size: 9px;
+  line-height: 1.32;
+  color: rgba(100, 116, 139, 0.54);
+  text-align: right;
+  white-space: normal;
 }
 .modal--tx-add #txAddRecurringBlock .tx-add-variable-field-wrap{
   display: flex;
