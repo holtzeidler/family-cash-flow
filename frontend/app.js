@@ -4866,9 +4866,17 @@ function appendCalendarDayStartBalanceLine(row, parentEl, iso) {
   parentEl.appendChild(line);
 }
 
+function shouldOpenReconcileFromCalendarClick(target, cell) {
+  if (!target || !cell) return false;
+  if (cell.classList.contains("cal-cell--before-start")) return false;
+  if (cell.classList.contains("cal-cell--out")) return false;
+  return !!target.closest(".cal-daynum");
+}
+
 function shouldOpenAddTxFromCalendarClick(target, cell) {
   if (!target || !cell) return false;
   if (cell.classList.contains("cal-cell--before-start")) return false;
+  if (shouldOpenReconcileFromCalendarClick(target, cell)) return false;
   if (target.closest(".cal-day-reconcile-btn")) return false;
   if (target.closest(".cal-day-tx-line--expected")) return false;
   if (target.closest(".cal-day-start-balance .cal-day-tx-line--start-balance")) return false;
@@ -4949,7 +4957,16 @@ function handleCalendarPanelClick(e) {
   const cell = e.target.closest(".cal-cell");
   if (!cell || !cell.closest("#calendarGrid")) return;
   const iso = cell.dataset.iso;
-  if (!iso || !shouldOpenAddTxFromCalendarClick(e.target, cell)) return;
+  if (!iso) return;
+
+  if (shouldOpenReconcileFromCalendarClick(e.target, cell)) {
+    e.preventDefault();
+    e.stopPropagation();
+    openReconcileModal(iso);
+    return;
+  }
+
+  if (!shouldOpenAddTxFromCalendarClick(e.target, cell)) return;
   openCalendarDayAddTransaction(iso, e);
 }
 

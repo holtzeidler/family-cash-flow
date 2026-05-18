@@ -17973,6 +17973,9 @@ body.plans-page--polished .plans-wrap{
   gap: 4px;
   color: rgba(75, 85, 99, 0.66);
 }
+.cal-cell:not(.cal-cell--out):not(.cal-cell--before-start) .cal-daynum{
+  cursor: pointer;
+}
 .cal-day-reconcile-btn{
   flex: 0 0 auto;
   order: -1;
