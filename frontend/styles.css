@@ -20797,8 +20797,8 @@ body[data-bw-view="transactions"] .tm__field label{
   -webkit-overflow-scrolling: touch;
   padding-right: 2px;
   --tx-add-label-col: 11.25rem;
-  --tx-add-label-inset: 3ch;
-  --tx-add-row-gap-x: 14px;
+  --tx-add-label-inset: 2.1ch;
+  --tx-add-row-gap-x: 9.8px;
   --tx-add-row-gap-y: 4px;
 }
 
@@ -20826,7 +20826,8 @@ body[data-bw-view="transactions"] .tm__field label{
   flex-direction: column;
   overflow: hidden;
   padding: 14px;
-  --tx-add-label-inset: 3ch;
+  --tx-add-label-inset: 2.1ch;
+  --tx-add-row-gap-x: 9.8px;
 }
 .modal--tx-add > h3{
   box-sizing: border-box;
