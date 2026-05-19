@@ -18654,12 +18654,7 @@ body.plans-page--polished .plans-wrap{
   min-height: 16px;
   align-self: stretch;
 }
-/* 1–2 visible rows: group txns + balance at the cell bottom with a
-   tight gap — avoids a large dead zone between sparse txns and balance. */
-.cal-cell--density-sparse:not(.cal-cell--no-tx) .cal-cell-stack{
-  justify-content: flex-end;
-  gap: 0;
-}
+/* 1–2 visible rows: transactions at the top; projected balance stays anchored below. */
 .cal-cell--density-sparse:not(.cal-cell--no-tx) .cal-cell-stack > .cal-day-txns{
   flex: 0 0 auto;
   margin-top: 0;
@@ -18668,12 +18663,6 @@ body.plans-page--polished .plans-wrap{
 .cal-cell--density-sparse:not(.cal-cell--no-tx) .cal-cell-stack > .cal-day-start-balance{
   flex: 0 0 auto;
   margin-bottom: 1px;
-}
-.cal-cell--density-sparse:not(.cal-cell--no-tx) .cal-cell-stack > .cal-ledger-metrics{
-  margin-top: 0;
-  padding-top: 5px;
-  padding-bottom: 3px;
-  min-height: 16px;
 }
 .cal-cell--no-tx .cal-stat.cal-balance:not(.is-negative):not(.cal-balance--below-floor):not(.cal-balance--watch-zone):not(.cal-balance--risk){
   font-size: clamp(11.75px, 1.28vw, 12.75px);
@@ -26080,14 +26069,6 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
     border-top: 1px solid rgba(17, 24, 39, 0.06);
     align-items: stretch;
     text-align: left;
-  }
-  .calendar--mobile .cal-cell--density-sparse:not(.cal-cell--no-tx) .cal-cell-stack{
-    justify-content: flex-end;
-    gap: 0;
-  }
-  .calendar--mobile .cal-cell--density-sparse:not(.cal-cell--no-tx) .cal-cell-stack > .cal-ledger-metrics{
-    margin-top: 0;
-    padding-top: 6px;
   }
 
   .calendar--mobile .cal-ledger-metrics .cal-stat{
