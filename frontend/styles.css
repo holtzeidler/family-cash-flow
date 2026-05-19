@@ -7493,6 +7493,15 @@ body[data-bw-view="reports"] .reports-card--hero .projection-chart-wrap--reports
 .reports-risk-cell--outside .reports-risk-cell__d{
   color: rgba(100, 116, 139, 0.62);
 }
+.reports-risk-cell--no-data{
+  background: rgba(248, 250, 252, 0.55);
+  border-color: rgba(148, 163, 184, 0.12);
+  cursor: default;
+  pointer-events: none;
+}
+.reports-risk-cell--no-data .reports-risk-cell__d{
+  color: rgba(100, 116, 139, 0.38);
+}
 .reports-risk-cell--safe{
   background: color-mix(in srgb, #22c55e 11%, #f7fafb);
   border-color: rgba(22, 163, 74, 0.1);
@@ -21718,7 +21727,7 @@ body.account-setup-page .account-setup-step3-form .tx-add-schedule-toolbar{
   padding-top: 0;
 }
 body.account-setup-page .account-setup-step3-form .account-setup-tx-notes-row{
-  margin-top: 12px;
+  margin-top: 16px;
   gap: 2px;
 }
 
@@ -22055,7 +22064,7 @@ body.account-setup-page .account-setup-step3-form .account-setup-tx-ends-wrap{
   gap: 4px;
   width: 100%;
   min-width: 0;
-  margin: 0;
+  margin: -4px 0 0;
 }
 body.account-setup-page .account-setup-step3-form .account-setup-tx-ends-wrap:has(.tx-add-schedule-toolbar[hidden]){
   display: none;

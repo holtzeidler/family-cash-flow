@@ -847,7 +847,8 @@ def require_family_admin(*, db, family_id: int, user_id: int) -> None:
 
 
 def require_family_household_manager(*, db, family_id: int, user_id: int) -> None:
-    """Household settings: family owner or member with role `admin` (edit access)."""
+    """Household settings (e.g. collaborators list): member with family role `admin` and edit access."""
+    require_family_admin(db=db, family_id=family_id, user_id=user_id)
     membership = db.execute(
         select(FamilyMember).where(FamilyMember.family_id == family_id, FamilyMember.user_id == user_id)
     ).scalar_one_or_none()
@@ -858,11 +859,6 @@ def require_family_household_manager(*, db, family_id: int, user_id: int) -> Non
             status_code=status.HTTP_403_FORBIDDEN,
             detail="View-only access for this family. Ask the family owner to grant edit access.",
         )
-    if bool(getattr(membership, "is_family_owner", False)):
-        return
-    if str(getattr(membership, "role", "") or "").lower() == "admin":
-        return
-    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
 
 
 def _family_member_row_to_out(*, db, row: FamilyMember) -> FamilyMemberOut:
@@ -1610,9 +1606,9 @@ class ProjectionOut(BaseModel):
 
 class CalendarDayBalanceOut(BaseModel):
     date: date
-    start: str
-    tx_net: str
-    end: str
+    start: Optional[str] = None
+    tx_net: Optional[str] = None
+    end: Optional[str] = None
 
 
 class CalendarMonthDailyOut(BaseModel):
@@ -5883,7 +5879,8 @@ def _calendar_month_daily_balances(
 ) -> list[CalendarDayBalanceOut]:
     """
     One pooled running balance: starting balances apply on their day, then each day's end balance
-    feeds the next day. Simulates from the earliest relevant date through the end of `month`.
+    feeds the next day. Simulates from the earliest account starting-balance date through the end of `month`.
+    Days before that date in the requested month have null balances (no forecast data).
     """
     month_start, month_end_excl = _month_range(month)
     last_day = month_end_excl - timedelta(days=1)
@@ -5892,21 +5889,14 @@ def _calendar_month_daily_balances(
     if not account_rows:
         return []
 
-    min_acc = min((a.starting_balance_date or a.created_at.date()) for a in account_rows)
-    first_tx = db.execute(select(func.min(Transaction.date)).where(Transaction.family_id == family_id)).scalar_one_or_none()
-    first_expected = db.execute(select(func.min(ExpectedTransaction.start_date)).where(ExpectedTransaction.family_id == family_id)).scalar_one_or_none()
-    global_start = min_acc
-    if first_tx is not None:
-        global_start = min(global_start, first_tx)
-    if first_expected is not None:
-        global_start = min(global_start, first_expected)
+    balance_start = min((a.starting_balance_date or a.created_at.date()) for a in account_rows)
 
     actual_by_date: dict[date, Decimal] = defaultdict(lambda: Decimal("0"))
     if mode in ("both", "actual"):
         tx_rows = db.execute(
             select(Transaction).where(
                 Transaction.family_id == family_id,
-                Transaction.date >= global_start,
+                Transaction.date >= balance_start,
                 Transaction.date <= last_day,
             )
         ).scalars().all()
@@ -5925,10 +5915,10 @@ def _calendar_month_daily_balances(
             ).where(
                 ExpectedTransaction.family_id == family_id,
                 or_(
-                    (ExpectedTransactionOverride.occurrence_date >= global_start)
+                    (ExpectedTransactionOverride.occurrence_date >= balance_start)
                     & (ExpectedTransactionOverride.occurrence_date < month_end_excl),
                     (ExpectedTransactionOverride.moved_to_date.is_not(None))
-                    & (ExpectedTransactionOverride.moved_to_date >= global_start)
+                    & (ExpectedTransactionOverride.moved_to_date >= balance_start)
                     & (ExpectedTransactionOverride.moved_to_date < month_end_excl),
                 ),
             )
@@ -5941,7 +5931,7 @@ def _calendar_month_daily_balances(
                 start_date=tx.start_date,
                 end_date=tx.end_date,
                 recurrence=tx.recurrence,
-                range_start=global_start,
+                range_start=balance_start,
                 range_end_exclusive=month_end_excl,
                 second_day_of_month=tx.second_day_of_month,
             )
@@ -5958,42 +5948,44 @@ def _calendar_month_daily_balances(
                     continue
                 signed = eff_amount if eff_kind == TransactionKind.income else -eff_amount
                 eff_date = ovr.moved_to_date if (ovr is not None and getattr(ovr, "moved_to_date", None) is not None) else occ
-                if eff_date < global_start or eff_date > last_day:
+                if eff_date < balance_start or eff_date > last_day:
                     continue
                 expected_by_date[eff_date] += signed
 
-    carry = Decimal("0")
     start_adds: dict[date, Decimal] = defaultdict(lambda: Decimal("0"))
     for a in account_rows:
         sd = a.starting_balance_date or a.created_at.date()
-        bal = a.starting_balance
-        if sd < global_start:
-            carry += bal
-        elif global_start <= sd <= last_day:
-            start_adds[sd] += bal
+        if balance_start <= sd <= last_day:
+            start_adds[sd] += a.starting_balance
 
     out: list[CalendarDayBalanceOut] = []
-    d = global_start
-    while d <= last_day:
-        day_start = carry + start_adds.get(d, Decimal("0"))
+    d = month_start
+    while d < balance_start and d <= last_day:
+        out.append(CalendarDayBalanceOut(date=d))
+        d += timedelta(days=1)
+
+    carry = Decimal("0")
+    sim = balance_start
+    while sim <= last_day:
+        day_start = carry + start_adds.get(sim, Decimal("0"))
         if mode == "both":
-            tx_net = actual_by_date.get(d, Decimal("0")) + expected_by_date.get(d, Decimal("0"))
+            tx_net = actual_by_date.get(sim, Decimal("0")) + expected_by_date.get(sim, Decimal("0"))
         elif mode == "actual":
-            tx_net = actual_by_date.get(d, Decimal("0"))
+            tx_net = actual_by_date.get(sim, Decimal("0"))
         else:
-            tx_net = expected_by_date.get(d, Decimal("0"))
+            tx_net = expected_by_date.get(sim, Decimal("0"))
         day_end = day_start + tx_net
-        if d >= month_start:
+        if sim >= month_start:
             out.append(
                 CalendarDayBalanceOut(
-                    date=d,
+                    date=sim,
                     start=str(day_start),
                     tx_net=str(tx_net),
                     end=str(day_end),
                 )
             )
         carry = day_end
-        d += timedelta(days=1)
+        sim += timedelta(days=1)
 
     return out
 

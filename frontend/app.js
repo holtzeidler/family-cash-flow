@@ -7470,8 +7470,16 @@ function syncPlatformAdminOnlyUi() {
   });
 }
 
-/** Collaborators settings: family owner or family role `admin` (not platform Admin). */
+/** Collaborators settings: family role `admin` only (not platform admin, not owner alone). */
 function canViewHouseholdSettings() {
+  const fam = activeFamilyMembership();
+  if (!fam) return false;
+  if (String(fam.access_mode || "edit").toLowerCase() === "view") return false;
+  return String(fam.role || "").trim().toLowerCase() === "admin";
+}
+
+/** Invite / add-member controls: family owner or family role `admin`. */
+function canManageHouseholdInvites() {
   const fam = activeFamilyMembership();
   if (!fam) return false;
   if (String(fam.access_mode || "edit").toLowerCase() === "view") return false;
@@ -7479,23 +7487,24 @@ function canViewHouseholdSettings() {
   return String(fam.role || "").trim().toLowerCase() === "admin";
 }
 
-/** Invite / add-member controls: household managers only (owner or family role `admin`). */
-function canManageHouseholdInvites() {
-  return canViewHouseholdSettings();
-}
-
 function getActiveSettingsSectionKey() {
   const pane = document.querySelector("#settingsViewPanel .settings-pane.is-active");
   return pane ? String(pane.dataset.settingsPane || "accounts") : "accounts";
 }
 
-/** Collaborators nav + invite UI: family owners and family role `admin` only. */
+/** Collaborators nav + pane: family role `admin` only. */
 function syncHouseholdSettingsUi() {
   const canHousehold = canViewHouseholdSettings();
   const canInvite = canManageHouseholdInvites();
   document.querySelectorAll("[data-settings-nav-collaborators]").forEach((btn) => {
     btn.hidden = !canHousehold;
     btn.setAttribute("aria-hidden", canHousehold ? "false" : "true");
+  });
+  document.querySelectorAll('[data-settings-pane="collaborators"], [data-settings-pane="familySharing"]').forEach((pane) => {
+    if (!canHousehold) {
+      pane.hidden = true;
+      pane.classList.remove("is-active");
+    }
   });
   if (!canHousehold && getActiveSettingsSectionKey() === "collaborators") {
     try {
@@ -11352,7 +11361,7 @@ async function loadCalendarMonthDaily() {
     if (Array.isArray(days) && days.length > 0) {
       for (const row of days) {
         const iso = normalizeIsoDate(row.date);
-        if (!iso) continue;
+        if (!iso || row.end == null) continue;
         const start = Number(row.start);
         const txNet = Number(row.tx_net);
         const end = Number(row.end);
@@ -11376,7 +11385,7 @@ async function loadCalendarMonthDaily() {
         if (!Array.isArray(more) || more.length === 0) continue;
         for (const row of more) {
           const iso = normalizeIsoDate(row.date);
-          if (!iso || state.monthDailyBalances.has(iso)) continue;
+          if (!iso || state.monthDailyBalances.has(iso) || row.end == null) continue;
           const start = Number(row.start);
           const txNet = Number(row.tx_net);
           const end = Number(row.end);
@@ -14164,10 +14173,16 @@ function setRiskCalendarNavBusy(busy) {
   if (wrap) wrap.classList.toggle("reports-risk-cal-wrap--loading", !!busy);
 }
 
+function riskHeatmapDayBalance(row) {
+  if (!row || row.total_balance == null) return null;
+  const bal = Number(row.total_balance);
+  return Number.isFinite(bal) ? bal : null;
+}
+
 async function loadRiskCalendarDailyForMonth(ym) {
   const gridIsos = riskCalendarGridIsosForMonth(ym);
   if (!gridIsos.length) return [];
-  if (!state.activeFamilyId) return gridIsos.map((iso) => ({ date: iso, total_balance: 0 }));
+  if (!state.activeFamilyId) return gridIsos.map((iso) => ({ date: iso, total_balance: null }));
 
   const mode = calendarMode?.value || "both";
   const prev = shiftMonthStr(ym, -1);
@@ -14187,8 +14202,12 @@ async function loadRiskCalendarDailyForMonth(ym) {
       for (const row of data?.days || []) {
         const iso = normalizeIsoDate(row.date);
         if (!iso) continue;
+        if (row.end == null) {
+          balanceByIso.set(iso, null);
+          continue;
+        }
         const end = Number(row.end);
-        balanceByIso.set(iso, Number.isFinite(end) ? end : 0);
+        balanceByIso.set(iso, Number.isFinite(end) ? end : null);
       }
     }
   } catch (_) {
@@ -14196,21 +14215,26 @@ async function loadRiskCalendarDailyForMonth(ym) {
   }
 
   if (!balanceByIso.size) {
-    const startIso = gridIsos[0];
+    const earliest = getFamilyEarliestStartingBalanceIso();
+    const startIso = earliest && gridIsos[0] < earliest ? earliest : gridIsos[0];
     const summary = await api(
       `/api/families/${state.activeFamilyId}/projection?start=${encodeURIComponent(startIso)}&days=${gridIsos.length}&include_accounts=false`,
       "GET",
     );
     for (const row of summary?.daily || []) {
       const iso = normalizeIsoDate(row.date);
-      if (!iso) continue;
+      if (!iso || isDateBeforeEarliestStartingBalance(iso)) continue;
       balanceByIso.set(iso, Number(row.total_balance ?? 0));
     }
   }
 
   return gridIsos.map((iso) => ({
     date: iso,
-    total_balance: balanceByIso.has(iso) ? balanceByIso.get(iso) : 0,
+    total_balance: isDateBeforeEarliestStartingBalance(iso)
+      ? null
+      : balanceByIso.has(iso)
+        ? balanceByIso.get(iso)
+        : null,
   }));
 }
 
@@ -14496,14 +14520,27 @@ function renderReportsRiskHeatmap(daily, viewYm = riskCalendarViewYm || defaultR
     return;
   }
 
-  const dayTight = (bal) => (thr != null ? bal < thr : bal < 0);
+  const dayTight = (bal) => bal != null && (thr != null ? bal < thr : bal < 0);
+  const hasAnyBalance = items.some((row) => riskHeatmapDayBalance(row) != null);
+
+  if (!hasAnyBalance) {
+    setInsight(`No forecast data before your starting balance date in ${monthLabel}.`, false);
+  }
 
   let run = 0;
   let runStart = -1;
   let bestLen = 0;
   let bestStartIso = "";
   for (let i = 0; i < items.length; i++) {
-    const bal = Number(items[i].total_balance ?? 0);
+    const bal = riskHeatmapDayBalance(items[i]);
+    if (bal == null) {
+      if (run > bestLen) {
+        bestLen = run;
+        bestStartIso = String(items[runStart].date || "");
+      }
+      run = 0;
+      continue;
+    }
     if (dayTight(bal)) {
       if (run === 0) runStart = i;
       run++;
@@ -14520,7 +14557,10 @@ function renderReportsRiskHeatmap(daily, viewYm = riskCalendarViewYm || defaultR
     bestStartIso = String(items[runStart]?.date || "");
   }
 
-  const firstStressIdx = items.findIndex((row) => dayTight(Number(row.total_balance ?? 0)));
+  const firstStressIdx = items.findIndex((row) => {
+    const bal = riskHeatmapDayBalance(row);
+    return bal != null && dayTight(bal);
+  });
   const firstStressIso = firstStressIdx >= 0 ? String(items[firstStressIdx]?.date || "") : "";
   const eveBeforeStressIso =
     firstStressIdx > 0 ? String(items[firstStressIdx - 1]?.date || "") : "";
@@ -14528,8 +14568,9 @@ function renderReportsRiskHeatmap(daily, viewYm = riskCalendarViewYm || defaultR
   let recoveryIso = "";
   let seenStress = false;
   for (const row of items) {
-    const bal = Number(row.total_balance ?? 0);
+    const bal = riskHeatmapDayBalance(row);
     const iso = String(row.date || "");
+    if (bal == null) continue;
     if (dayTight(bal)) {
       seenStress = true;
     } else if (seenStress && !recoveryIso) {
@@ -14553,10 +14594,15 @@ function renderReportsRiskHeatmap(daily, viewYm = riskCalendarViewYm || defaultR
         : `Projected negative balance on ${fmtMonthDay(bestStartIso)}.`) + recoverySuffix,
       false,
     );
+  } else if (!hasAnyBalance) {
+    /* insight already set above */
   } else if (thr != null) {
     setInsight(`Stays above your $${fmtMoney(thr)} minimum balance in ${monthLabel}.`, false);
   } else {
-    const anyNeg = items.some((row) => Number(row.total_balance ?? 0) < 0);
+    const anyNeg = items.some((row) => {
+      const bal = riskHeatmapDayBalance(row);
+      return bal != null && bal < 0;
+    });
     setInsight(
       anyNeg
         ? "Set a minimum balance in Settings to flag cushion risk and below-target streaks."
@@ -14570,7 +14616,8 @@ function renderReportsRiskHeatmap(daily, viewYm = riskCalendarViewYm || defaultR
   let worstNeg = 0;
   let worstIso = "";
   for (const row of items) {
-    const bal = Number(row.total_balance ?? 0);
+    const bal = riskHeatmapDayBalance(row);
+    if (bal == null) continue;
     if (bal < worstNeg) {
       worstNeg = bal;
       worstIso = String(row.date || "");
@@ -14625,8 +14672,8 @@ function renderReportsRiskHeatmap(daily, viewYm = riskCalendarViewYm || defaultR
   let prevMonth = -1;
   for (const row of items) {
     const iso = String(row.date || "");
-    const bal = Number(row.total_balance ?? 0);
-    const sevCls = riskSeverityClass(bal, thr, worstNeg);
+    const bal = riskHeatmapDayBalance(row);
+    const isNoData = bal == null;
 
     const dt = new Date(`${iso}T12:00:00`);
     const dom = Number.isNaN(dt.getTime()) ? 0 : dt.getDate();
@@ -14634,6 +14681,28 @@ function renderReportsRiskHeatmap(daily, viewYm = riskCalendarViewYm || defaultR
 
     const cell = document.createElement("button");
     cell.type = "button";
+    if (isNoData) {
+      cell.className = "reports-risk-cell reports-risk-cell--no-data";
+      if (isPrebuiltGrid && viewYmKey && iso.slice(0, 7) !== viewYmKey) {
+        cell.classList.add("reports-risk-cell--outside");
+      }
+      if (m0 !== prevMonth) {
+        cell.classList.add("reports-risk-cell--month-start");
+        cell.dataset.month = Number.isNaN(dt.getTime()) ? "" : dt.toLocaleDateString("en-US", { month: "short" });
+        prevMonth = m0;
+      }
+      cell.disabled = true;
+      cell.setAttribute("tabindex", "-1");
+      cell.setAttribute("aria-label", `${fmtDateMedDisplay(iso)}. Before starting balance.`);
+      const dEl = document.createElement("span");
+      dEl.className = "reports-risk-cell__d";
+      dEl.textContent = String(dom || "");
+      cell.appendChild(dEl);
+      host.appendChild(cell);
+      continue;
+    }
+
+    const sevCls = riskSeverityClass(bal, thr, worstNeg);
     cell.className = `reports-risk-cell ${sevCls}`;
     if (isPrebuiltGrid && viewYmKey && iso.slice(0, 7) !== viewYmKey) {
       cell.classList.add("reports-risk-cell--outside");
@@ -14728,8 +14797,9 @@ function renderReportsRiskHeatmap(daily, viewYm = riskCalendarViewYm || defaultR
     defaultIso = worstIso;
   } else if (cellByIso.has(todayIso)) {
     defaultIso = todayIso;
-  } else if (items.length) {
-    defaultIso = String(items[0].date || "");
+  } else {
+    const firstWithBalance = items.find((row) => riskHeatmapDayBalance(row) != null);
+    if (firstWithBalance) defaultIso = String(firstWithBalance.date || "");
   }
   if (defaultIso && detailPayloadByIso.has(defaultIso)) {
     selectedIso = defaultIso;
