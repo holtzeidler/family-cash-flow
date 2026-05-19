@@ -14,7 +14,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=642" />
+    <link rel="stylesheet" href="../styles.css?v=643" />
   </head>
   <body>
     <div class="container">
@@ -211,14 +211,16 @@
                   </div>
                 </div>
               </div>
-              <div class="form-row-h tx-add-variable-form-row">
-                <div class="form-row-h__label">
-                  <label for="txAddVariable">Amount varies</label>
+              <div class="tx-add-variable-block">
+                <div class="form-row-h tx-add-variable-form-row">
+                  <div class="form-row-h__label">
+                    <label for="txAddVariable">Amount varies</label>
+                  </div>
+                  <div class="form-row-h__field tx-add-variable-field-wrap">
+                    <input id="txAddVariable" type="checkbox" title="Amount is an estimate that may change month to month" />
+                  </div>
                 </div>
-                <div class="form-row-h__field tx-add-variable-field-wrap">
-                  <input id="txAddVariable" type="checkbox" title="Amount is an estimate that may change month to month" />
-                  <p class="tx-add-variable-toggle__hint">Helpful for utilities, credit cards, and fluctuating bills.</p>
-                </div>
+                <p class="tx-add-variable-block__caption">Helpful for utilities, credit cards, and fluctuating bills.</p>
               </div>
               <div class="tx-add-advanced">
                 <button type="button" id="txAddColorToggle" class="tx-add-advanced__expander" aria-expanded="false" aria-controls="txAddAdvancedPanel">
