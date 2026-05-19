@@ -916,6 +916,7 @@ function setAccountSetupStep3Phase(phase) {
   form.hidden = !isForm;
   persistDraftStep3Phase(isForm ? "form" : "intro");
   syncAccountSetupWizardShellButtons();
+  if (isForm) refreshAccountSetupScheduleLayout();
 }
 
 function isAccountSetupStep3AfterSave() {
@@ -1022,6 +1023,7 @@ function setAccountSetupExpensePhase(phase) {
   form.hidden = !isForm;
   persistDraftExpensePhase(isForm ? "form" : "intro");
   syncAccountSetupWizardShellButtons();
+  if (isForm) refreshAccountSetupScheduleLayout();
 }
 
 function isAccountSetupExpenseAfterSave() {
@@ -1847,6 +1849,18 @@ function accountSetupScheduleSummaryText(recurrence, startIso, secondDayValue) {
     return `Repeats every year on ${ACCOUNT_SETUP_MONTH_DAY_FORMATTER.format(start)}.`;
   }
   return "";
+}
+
+function refreshAccountSetupScheduleLayout() {
+  syncAccountSetupScheduleUi("asTx");
+  syncAccountSetupScheduleUi("asExp");
+  try {
+    requestAnimationFrame(() => {
+      document.querySelectorAll(".account-setup-tx-schedule-block").forEach((el) => {
+        void el.offsetHeight;
+      });
+    });
+  } catch (_) {}
 }
 
 function syncAccountSetupScheduleUi(prefix) {
