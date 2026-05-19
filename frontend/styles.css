@@ -20864,7 +20864,7 @@ body[data-bw-view="transactions"] .tm__field label{
   max-width: 30%;
 }
 .tx-add-form .form-row-h__label label{
-  font-size: 10.5px;
+  font-size: 12px;
 }
 
 .tx-add-schedule-compact{
@@ -21221,7 +21221,7 @@ body[data-bw-view="transactions"] .tm__field label{
 
 /* Add-transaction modal: calmer density + amount emphasis */
 .modal--tx-add .tx-add-form .form-row-h__label label{
-  font-size: 10px;
+  font-size: 12px;
   opacity: 0.92;
 }
 .modal--tx-add .tx-add-optional-mark{
@@ -21375,6 +21375,7 @@ body[data-bw-view="transactions"] .tm__field label{
 .modal--tx-add .tx-add-advanced__panel .form-row-h__label label{
   width: 100%;
   text-align: right;
+  font-size: 12px;
 }
 .modal--tx-add .tx-add-form .form-row-h__field{
   min-width: 0;
@@ -21495,7 +21496,7 @@ body[data-bw-view="transactions"] .tm__field label{
   text-align: right;
 }
 .modal--tx-add #txAddRecurringBlock .tx-add-second-monthly-row .form-row-h__label label{
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.04em;
   color: var(--muted);
