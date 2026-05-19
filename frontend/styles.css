@@ -21718,7 +21718,7 @@ body.account-setup-page .account-setup-step3-form .tx-add-schedule-toolbar{
   padding-top: 0;
 }
 body.account-setup-page .account-setup-step3-form .account-setup-tx-notes-row{
-  margin-top: 14px;
+  margin-top: 12px;
   gap: 2px;
 }
 
@@ -21909,7 +21909,7 @@ body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-blo
 body.account-setup-page .account-setup-tx-schedule-block{
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 10px;
   margin-top: 5px;
   padding-top: 5px;
   border-top: 1px solid rgba(17, 24, 39, 0.055);
@@ -21926,7 +21926,7 @@ body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-gri
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   grid-template-rows: auto auto;
-  gap: 4px 12px;
+  gap: 10px 12px;
   align-items: start;
 }
 body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid__cell{
@@ -21954,10 +21954,21 @@ body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-gri
   margin: 2px 0 0;
 }
 body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid > .account-setup-tx-ends-column{
-  grid-column: 1;
+  grid-column: 1 / -1;
   grid-row: 2;
   align-self: start;
-  margin-top: 6px;
+  margin-top: 0;
+}
+body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid > .account-setup-tx-ends-column:has(.tx-add-schedule-toolbar[hidden]){
+  display: none;
+}
+body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-block > .account-setup-tx-variable-inline{
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin: 2px 0 0;
+  padding: 0;
+  width: 100%;
 }
 /* Schedule row: Next Date + Repeat — matched labels and control chrome */
 body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid .account-setup-tx-schedule-grid__label{
@@ -22090,9 +22101,9 @@ body.account-setup-page .account-setup-tx-ends-column .tx-add-schedule-toolbar{
   padding-bottom: 0;
 }
 body.account-setup-page .account-setup-step3-form .account-setup-tx-variable-inline{
-  margin-top: 4px;
-  margin-bottom: 4px;
-  gap: 3px;
+  margin-top: 0;
+  margin-bottom: 0;
+  gap: 4px;
 }
 body.account-setup-page .account-setup-step3-form .account-setup-tx-variable-inline .reimbursable-field__hint{
   margin-top: 4px;
