@@ -12381,7 +12381,9 @@ function renderCalendar() {
         Number.isFinite(txNetNum) &&
         Math.abs(txNetNum) < 0.005;
       if (Number.isFinite(endNum)) {
-        if (endNum < 0) {
+        if (isPast && !isOutOfMonth) {
+          balParts.push("cal-balance--quiet", "cal-balance--past-day");
+        } else if (endNum < 0) {
           balParts.push("is-negative", "cal-balance--risk");
           if (repeatedNegativeRun) balParts.push("cal-balance--repeated");
         } else if (isOutOfMonth) {
@@ -12393,17 +12395,23 @@ function renderCalendar() {
             balParts.push("cal-balance--watch-zone");
           } else if (monthLowPointIso === iso) {
             balParts.push("cal-balance--month-low-mark");
-          } else if (isPast) {
-            balParts.push("cal-balance--quiet", "cal-balance--past-day");
           } else {
             balParts.push("cal-balance--quiet");
           }
         }
       }
-      const belowFloor = hasFloor && Number.isFinite(endNum) && endNum >= 0 && endNum < minBalFloor;
-      const negativeBal = Number.isFinite(endNum) && endNum < 0;
-      const watchOnly = hasFloor && Number.isFinite(endNum) && endNum >= minBalFloor && endNum < minBalFloor * 1.25;
+      const pastBalTone = isPast && !isOutOfMonth;
+      const belowFloor =
+        !pastBalTone && hasFloor && Number.isFinite(endNum) && endNum >= 0 && endNum < minBalFloor;
+      const negativeBal = !pastBalTone && Number.isFinite(endNum) && endNum < 0;
+      const watchOnly =
+        !pastBalTone &&
+        hasFloor &&
+        Number.isFinite(endNum) &&
+        endNum >= minBalFloor &&
+        endNum < minBalFloor * 1.25;
       if (
+        !pastBalTone &&
         iso === monthRecoveryIso &&
         !isOutOfMonth &&
         Number.isFinite(endNum) &&
@@ -12413,6 +12421,7 @@ function renderCalendar() {
       ) {
         balParts.push("cal-balance--recovery-milestone");
       } else if (
+        !pastBalTone &&
         stabilizingDay &&
         !isOutOfMonth &&
         Number.isFinite(endNum) &&
@@ -12422,6 +12431,7 @@ function renderCalendar() {
       ) {
         balParts.push("cal-balance--stabilizing");
       } else if (
+        !pastBalTone &&
         !isOutOfMonth &&
         !negativeBal &&
         !belowFloor &&
@@ -12456,6 +12466,7 @@ function renderCalendar() {
       Number.isFinite(minBalFloor) &&
       minBalFloor > 0 &&
       dayBal &&
+      !isPast &&
       !isOutOfMonth &&
       !cell.classList.contains("cal-cell--before-start")
     ) {

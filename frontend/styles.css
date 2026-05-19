@@ -20127,7 +20127,30 @@ body[data-bw-view="transactions"] .tm__field label{
   color: rgba(51, 65, 85, 0.74);
 }
 .cal-stat.cal-balance.cal-balance--past-day{
-  color: rgba(100, 116, 139, 0.58);
+  font-weight: 520;
+  color: rgba(148, 163, 184, 0.72);
+  padding: 0;
+  background: none;
+  border: none;
+  box-shadow: none;
+  text-decoration: none;
+}
+.cal-stat.cal-balance.cal-balance--past-day.is-negative,
+.cal-stat.cal-balance.cal-balance--past-day.cal-balance--risk,
+.cal-stat.cal-balance.cal-balance--past-day.cal-balance--below-floor,
+.cal-stat.cal-balance.cal-balance--past-day.cal-balance--watch-zone,
+.cal-stat.cal-balance.cal-balance--past-day.cal-balance--month-low-mark,
+.cal-stat.cal-balance.cal-balance--past-day.cal-balance--recovery-milestone,
+.cal-stat.cal-balance.cal-balance--past-day.cal-balance--stabilizing,
+.cal-stat.cal-balance.cal-balance--past-day.cal-balance--strong-inflow{
+  font-weight: 520;
+  font-size: clamp(12.25px, 1.32vw, 13.75px);
+  color: rgba(148, 163, 184, 0.72);
+  padding: 0;
+  background: none;
+  border: none;
+  box-shadow: none;
+  text-decoration: none;
 }
 .cal-stat.cal-balance.cal-balance--watch-zone{
   font-weight: 520;
