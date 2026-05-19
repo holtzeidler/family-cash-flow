@@ -21718,7 +21718,7 @@ body.account-setup-page .account-setup-step3-form .tx-add-schedule-toolbar{
   padding-top: 0;
 }
 body.account-setup-page .account-setup-step3-form .account-setup-tx-notes-row{
-  margin-top: 10px;
+  margin-top: 14px;
   gap: 2px;
 }
 
@@ -21957,7 +21957,7 @@ body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-gri
   grid-column: 1;
   grid-row: 2;
   align-self: start;
-  margin-top: -12px;
+  margin-top: 6px;
 }
 /* Schedule row: Next Date + Repeat — matched labels and control chrome */
 body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid .account-setup-tx-schedule-grid__label{
@@ -22090,7 +22090,7 @@ body.account-setup-page .account-setup-tx-ends-column .tx-add-schedule-toolbar{
   padding-bottom: 0;
 }
 body.account-setup-page .account-setup-step3-form .account-setup-tx-variable-inline{
-  margin-top: 0;
+  margin-top: 4px;
   margin-bottom: 4px;
   gap: 3px;
 }
