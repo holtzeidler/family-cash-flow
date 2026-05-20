@@ -9689,14 +9689,28 @@ body[data-bw-view="calendar"] .cal-detail-btn.is-active{
   background: rgba(11, 61, 46, 0.07);
   color: rgba(11, 61, 46, 0.82);
 }
-@media (max-width: 900px){
+@media (max-width: 900px) and (min-width: 769px){
   body[data-bw-view="calendar"] .calendar-nav-bar{
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+    gap: 6px 8px;
+    align-items: center;
+  }
+  body[data-bw-view="calendar"] .cal-today-btn{
+    grid-column: 1;
+    grid-row: 1;
+    justify-self: start;
+  }
+  body[data-bw-view="calendar"] .cal-detail-toggle{
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+    width: auto;
   }
   body[data-bw-view="calendar"] .cal-month-year{
-    order: 2;
+    grid-column: 1 / -1;
+    grid-row: 2;
     width: 100%;
   }
 }
@@ -26108,31 +26122,46 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
 
   body[data-bw-view="calendar"] .calendar-nav-bar{
     display: grid;
-    grid-template-columns: 1fr;
-    gap: 8px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+    gap: 6px 8px;
     padding: 8px;
     border-radius: 14px;
+    align-items: center;
   }
 
   body[data-bw-view="calendar"] .calendar-nav-bar > *{
     min-width: 0;
   }
 
+  body[data-bw-view="calendar"] .cal-today-btn{
+    grid-column: 1;
+    grid-row: 1;
+    margin-left: 0;
+    justify-self: start;
+  }
+
+  body[data-bw-view="calendar"] .cal-detail-toggle{
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+    width: auto;
+    max-width: none;
+    margin-right: 0;
+    flex-shrink: 0;
+    overflow: visible;
+  }
+
   body[data-bw-view="calendar"] .cal-month-year{
+    grid-column: 1 / -1;
+    grid-row: 2;
     justify-content: space-between;
     gap: 8px;
     width: 100%;
   }
 
-  body[data-bw-view="calendar"] .cal-detail-toggle{
-    width: 100%;
-    justify-content: flex-start;
-    overflow-x: auto;
-  }
-
-  body[data-bw-view="calendar"] .cal-today-btn{
-    margin-left: 0;
-    justify-self: start;
+  body[data-bw-view="calendar"] .cal-mode-wrap{
+    display: none;
   }
 
   .calendar--mobile{
@@ -26174,29 +26203,51 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   }
 
   .calendar--mobile .cal-daynum-num{
-    min-width: 28px;
-    height: 24px;
-    padding: 0 8px;
-    font-size: 0.82rem;
+    display: none;
+  }
+
+  .calendar--mobile .cal-cell.cal-cell--today:not(.cal-cell--out):not(.cal-cell--before-start) .cal-daynum::before{
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--accent) 14%, #fff);
+    color: rgba(11, 61, 46, 0.96);
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 255, 255, 0.72),
+      0 0 0 1px rgba(11, 61, 46, 0.16),
+      0 3px 8px rgba(11, 61, 46, 0.12),
+      0 0 0 4px rgba(4, 120, 87, 0.08);
   }
 
   .calendar--mobile .cal-day-reconcile-btn{
-    opacity: 1;
+    opacity: 0;
     width: 26px;
     height: 26px;
-    /* Stay visually visible on mobile but only capture clicks on the icon itself. */
     pointer-events: none;
   }
 
+  .calendar--mobile .cal-cell:not(.cal-cell--out):not(.cal-cell--before-start):focus-within .cal-day-reconcile-btn,
+  .calendar--mobile .cal-cell:not(.cal-cell--out):not(.cal-cell--before-start):hover .cal-day-reconcile-btn,
+  .calendar--mobile .cal-cell:not(.cal-cell--out):not(.cal-cell--before-start):active .cal-day-reconcile-btn,
   .calendar--mobile .cal-day-reconcile-btn:hover,
   .calendar--mobile .cal-day-reconcile-btn:focus-visible{
+    opacity: 1;
     pointer-events: auto;
   }
 
   .calendar--mobile .cal-reconciled-mark{
+    opacity: 0;
+    pointer-events: none;
     width: 16px;
     height: 16px;
     transform: translate(1px, -1px);
+    transition: opacity 0.14s ease;
+  }
+
+  .calendar--mobile .cal-cell.cal-cell--reconciled:focus-within .cal-reconciled-mark,
+  .calendar--mobile .cal-cell.cal-cell--reconciled:hover .cal-reconciled-mark,
+  .calendar--mobile .cal-cell.cal-cell--reconciled:active .cal-reconciled-mark{
+    opacity: 1;
   }
 
   .calendar--mobile .cal-reconciled-mark svg{
