@@ -10365,10 +10365,66 @@ label{
   flex: 1 1 auto;
   min-width: 0;
 }
+.password-field{
+  position: relative;
+  display: block;
+  width: 100%;
+}
+.password-field > input[type="password"],
+.password-field > input[type="text"]{
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
+  padding-right: 2.85rem;
+}
+.password-field__toggle{
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(100, 116, 139, 0.78);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.password-field__toggle:hover{
+  color: rgba(51, 65, 85, 0.92);
+  background: rgba(15, 23, 42, 0.05);
+}
+.password-field__toggle:focus-visible{
+  outline: 2px solid color-mix(in srgb, var(--accent) 48%, transparent);
+  outline-offset: 2px;
+}
+.password-field__icon{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+}
+.password-field__toggle[aria-pressed="true"] .password-field__icon--show{
+  display: none;
+}
+.password-field__toggle:not([aria-pressed="true"]) .password-field__icon--hide{
+  display: none;
+}
 .form-row-h__field > input:not([type="checkbox"]):not([type="radio"]),
 .form-row-h__field > select,
 .form-row-h__field > .money-input,
-.form-row-h__field > .kind-toggle{
+.form-row-h__field > .kind-toggle,
+.form-row-h__field > .password-field{
+  width: 100%;
+  max-width: none;
+}
+.form-row-h__field > .password-field > input:not([type="checkbox"]):not([type="radio"]){
   width: 100%;
   max-width: none;
 }
@@ -14948,6 +15004,15 @@ body.account-setup-page #accountSetupWizardPanel0 #password2{
   min-height: 48px;
   padding-top: 12px;
   padding-bottom: 12px;
+}
+body.account-setup-page #accountSetupWizardPanel0 .password-field > #password,
+body.account-setup-page #accountSetupWizardPanel0 .password-field > #password2{
+  padding-right: 2.85rem;
+}
+body.login-page.signup-page .auth-section__body .password-field > input{
+  width: 100%;
+  box-sizing: border-box;
+  padding-right: 2.85rem;
 }
 /* Integrated currency field: $ inset inside input, single border */
 body.account-setup-page .form-row-h__field .money-input.money-input--currency{

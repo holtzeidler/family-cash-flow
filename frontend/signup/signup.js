@@ -3,6 +3,27 @@ function getApiBase() {
   return b.replace(/\/$/, "");
 }
 
+/** Show/hide password fields (account setup + signup). */
+function initPasswordVisibilityToggles() {
+  document.querySelectorAll("[data-password-toggle]").forEach((btn) => {
+    if (btn.dataset.bwPwToggleInit === "1") return;
+    btn.dataset.bwPwToggleInit = "1";
+    const inputId = btn.getAttribute("aria-controls");
+    const input = inputId ? document.getElementById(inputId) : null;
+    if (!input) return;
+    const showLabel = "Show password";
+    const hideLabel = "Hide password";
+    btn.addEventListener("click", () => {
+      const visible = input.type === "text";
+      input.type = visible ? "password" : "text";
+      btn.setAttribute("aria-pressed", visible ? "false" : "true");
+      btn.setAttribute("aria-label", visible ? showLabel : hideLabel);
+      btn.title = visible ? showLabel : hideLabel;
+    });
+  });
+}
+initPasswordVisibilityToggles();
+
 /** Cross-site cookie fallback (GitHub Pages → API); cleared on logout / 401. */
 const BW_API_ACCESS_TOKEN_KEY = "bw_api_access_token";
 const BW_FORECAST_READY_POPUP_KEY = "bw_forecast_ready_popup";
