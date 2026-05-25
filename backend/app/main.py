@@ -501,8 +501,9 @@ class ExpectedTransaction(Base):
     # When set, the series ends after N scheduled occurrences (start_date occurrence counts as 1).
     end_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     recurrence: Mapped[Recurrence] = mapped_column(SAEnum(Recurrence), nullable=False, default=Recurrence.once)
-    # For recurrence=twice_monthly: second calendar day-of-month (1–31); first day is start_date.day.
+    # twice_monthly: second day-of-month (1–31); semiannual (twice yearly): second day with second_occurrence_month.
     second_day_of_month: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    second_occurrence_month: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
     description: Mapped[str] = mapped_column(String(500), nullable=False, default="")
     notes: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
@@ -1421,8 +1422,9 @@ class ExpectedTransactionIn(BaseModel):
     end_date: Optional[date] = None
     end_count: Optional[int] = Field(default=None, ge=1, le=10000)
     recurrence: Recurrence = Recurrence.monthly
-    # Required when recurrence is twice_monthly: second day of month (1–31), must differ from start_date.day.
+    # twice_monthly: second day of month (1–31). semiannual: second calendar month (1–12) + day.
     second_day_of_month: Optional[int] = Field(default=None, ge=1, le=31)
+    second_occurrence_month: Optional[int] = Field(default=None, ge=1, le=12)
 
     description: str = Field(default="", max_length=500)
     notes: Optional[str] = Field(default=None, max_length=500)
@@ -1445,6 +1447,7 @@ class ExpectedTransactionOut(BaseModel):
     end_count: Optional[int] = None
     recurrence: Recurrence
     second_day_of_month: Optional[int] = None
+    second_occurrence_month: Optional[int] = None
     description: str
     notes: Optional[str] = None
     kind: TransactionKind
@@ -1481,17 +1484,36 @@ def _validate_expected_transaction_recurrence(payload: ExpectedTransactionIn) ->
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Second day of month must differ from the start date's day of month",
             )
-    elif payload.recurrence == Recurrence.bimonthly:
-        # Fixed schedule (15th + last day); no extra parameters allowed.
-        if payload.second_day_of_month is not None:
+        if payload.second_occurrence_month is not None:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="second_day_of_month is not valid when recurrence is bimonthly",
+                detail="second_occurrence_month is not valid when recurrence is twice monthly",
             )
-    elif payload.second_day_of_month is not None:
+    elif payload.recurrence == Recurrence.semiannual:
+        if payload.second_day_of_month is None or payload.second_occurrence_month is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="second_occurrence_month and second_day_of_month are required for twice yearly recurrence",
+            )
+        if (
+            payload.second_occurrence_month == payload.start_date.month
+            and payload.second_day_of_month == payload.start_date.day
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Second yearly date must differ from the start date",
+            )
+    elif payload.recurrence == Recurrence.bimonthly:
+        # Fixed schedule (15th + last day); no extra parameters allowed.
+        if payload.second_day_of_month is not None or payload.second_occurrence_month is not None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="second occurrence fields are not valid when recurrence is bimonthly",
+            )
+    elif payload.second_day_of_month is not None or payload.second_occurrence_month is not None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="second_day_of_month is only valid when recurrence is twice monthly",
+            detail="second occurrence fields are only valid for twice monthly or twice yearly recurrence",
         )
 
 
@@ -1521,6 +1543,7 @@ class ApplyFromOccurrenceIn(BaseModel):
     notes: Optional[str] = Field(default=None, max_length=500)
     recurrence: Optional[Recurrence] = None
     second_day_of_month: Optional[int] = Field(default=None, ge=1, le=31)
+    second_occurrence_month: Optional[int] = Field(default=None, ge=1, le=12)
     variable: bool = False
     fg_color: Optional[str] = Field(default=None, max_length=20)
     bg_color: Optional[str] = Field(default=None, max_length=20)
@@ -2148,6 +2171,7 @@ def startup_populate_schema():
     _ensure_account_starting_balance_date_column()
     _ensure_notes_columns()
     _ensure_expected_second_day_column()
+    _ensure_expected_second_occurrence_month_column()
     _ensure_recurrence_enum_extensions_postgres()
     _ensure_category_color_columns()
     _ensure_transaction_color_columns()
@@ -2750,6 +2774,18 @@ def _ensure_expected_second_day_column() -> None:
                 conn.execute(text("ALTER TABLE expected_transactions ADD COLUMN second_day_of_month INTEGER"))
         else:
             conn.execute(text("ALTER TABLE expected_transactions ADD COLUMN IF NOT EXISTS second_day_of_month INTEGER"))
+
+
+def _ensure_expected_second_occurrence_month_column() -> None:
+    """Add second_occurrence_month for twice yearly (semiannual) recurrence."""
+    with engine.begin() as conn:
+        if settings.DATABASE_URL.startswith("sqlite"):
+            cols = conn.execute(text("PRAGMA table_info(expected_transactions)")).fetchall()
+            has_col = any(str(row[1]) == "second_occurrence_month" for row in cols)
+            if not has_col:
+                conn.execute(text("ALTER TABLE expected_transactions ADD COLUMN second_occurrence_month INTEGER"))
+        else:
+            conn.execute(text("ALTER TABLE expected_transactions ADD COLUMN IF NOT EXISTS second_occurrence_month INTEGER"))
 
 
 def _ensure_recurrence_enum_extensions_postgres() -> None:
@@ -4655,6 +4691,7 @@ def list_expected_transactions(
                 end_count=getattr(tx, "end_count", None),
                 recurrence=tx.recurrence,
                 second_day_of_month=tx.second_day_of_month,
+                second_occurrence_month=getattr(tx, "second_occurrence_month", None),
                 description=tx.description,
                 notes=tx.notes,
                 kind=tx.kind,
@@ -4702,6 +4739,11 @@ def create_expected_transaction(
 
     _validate_expected_transaction_recurrence(payload)
 
+    eff_second_day, eff_second_month = _second_occurrence_fields_for_recurrence(
+        payload.recurrence,
+        second_day_of_month=payload.second_day_of_month,
+        second_occurrence_month=payload.second_occurrence_month,
+    )
     tx = ExpectedTransaction(
         family_id=family_id,
         account_id=payload.account_id,
@@ -4710,7 +4752,8 @@ def create_expected_transaction(
         end_date=payload.end_date,
         end_count=payload.end_count,
         recurrence=payload.recurrence,
-        second_day_of_month=payload.second_day_of_month if payload.recurrence == Recurrence.twice_monthly else None,
+        second_day_of_month=eff_second_day,
+        second_occurrence_month=eff_second_month,
         description=payload.description,
         notes=payload.notes.strip() if payload.notes and payload.notes.strip() else None,
         kind=payload.kind,
@@ -4737,6 +4780,7 @@ def create_expected_transaction(
         end_count=getattr(tx, "end_count", None),
         recurrence=tx.recurrence,
         second_day_of_month=tx.second_day_of_month,
+        second_occurrence_month=getattr(tx, "second_occurrence_month", None),
         description=tx.description,
         notes=tx.notes,
         kind=tx.kind,
@@ -4799,7 +4843,13 @@ def update_expected_transaction(
     tx.end_date = payload.end_date
     tx.end_count = payload.end_count
     tx.recurrence = payload.recurrence
-    tx.second_day_of_month = payload.second_day_of_month if payload.recurrence == Recurrence.twice_monthly else None
+    eff_second_day, eff_second_month = _second_occurrence_fields_for_recurrence(
+        payload.recurrence,
+        second_day_of_month=payload.second_day_of_month,
+        second_occurrence_month=payload.second_occurrence_month,
+    )
+    tx.second_day_of_month = eff_second_day
+    tx.second_occurrence_month = eff_second_month
     tx.description = payload.description
     tx.notes = payload.notes.strip() if payload.notes and payload.notes.strip() else None
     tx.kind = payload.kind
@@ -4825,6 +4875,7 @@ def update_expected_transaction(
         end_count=getattr(tx, "end_count", None),
         recurrence=tx.recurrence,
         second_day_of_month=tx.second_day_of_month,
+        second_occurrence_month=getattr(tx, "second_occurrence_month", None),
         description=tx.description,
         notes=tx.notes,
         kind=tx.kind,
@@ -5046,6 +5097,7 @@ def apply_expected_from_occurrence(
         range_start=occurrence_date,
         range_end_exclusive=occurrence_date + timedelta(days=1),
         second_day_of_month=tx.second_day_of_month,
+        second_occurrence_month=getattr(tx, "second_occurrence_month", None),
     )
     if occurrence_date not in hits:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Date is not a scheduled occurrence for this series")
@@ -5059,8 +5111,17 @@ def apply_expected_from_occurrence(
 
     if eff_rec == Recurrence.twice_monthly:
         eff_second = payload.second_day_of_month if payload.second_day_of_month is not None else tx.second_day_of_month
+        eff_second_month = None
+    elif eff_rec == Recurrence.semiannual:
+        eff_second = payload.second_day_of_month if payload.second_day_of_month is not None else tx.second_day_of_month
+        eff_second_month = (
+            payload.second_occurrence_month
+            if payload.second_occurrence_month is not None
+            else getattr(tx, "second_occurrence_month", None)
+        )
     else:
         eff_second = None
+        eff_second_month = None
 
     if "fg_color" in payload.model_fields_set:
         eff_fg = payload.fg_color.strip() if payload.fg_color and payload.fg_color.strip() else None
@@ -5087,6 +5148,7 @@ def apply_expected_from_occurrence(
         end_count=getattr(tx, "end_count", None),
         recurrence=eff_rec,
         second_day_of_month=eff_second,
+        second_occurrence_month=eff_second_month,
         description=payload.description,
         notes=eff_notes,
         kind=payload.kind,
@@ -5115,6 +5177,7 @@ def apply_expected_from_occurrence(
         tx.category_id = validate_payload.category_id
         tx.recurrence = validate_payload.recurrence
         tx.second_day_of_month = validate_payload.second_day_of_month
+        tx.second_occurrence_month = validate_payload.second_occurrence_month
         tx.notes = validate_payload.notes
         tx.variable = validate_payload.variable
         tx.fg_color = validate_payload.fg_color
@@ -5133,6 +5196,7 @@ def apply_expected_from_occurrence(
         recurrence=tx.recurrence,
         occurrence_date=occurrence_date,
         second_day_of_month=tx.second_day_of_month,
+        second_occurrence_month=getattr(tx, "second_occurrence_month", None),
     )
     if prev_occ is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Could not resolve previous occurrence for split")
@@ -5154,6 +5218,7 @@ def apply_expected_from_occurrence(
         end_count=getattr(tx, "end_count", None),
         recurrence=validate_payload.recurrence,
         second_day_of_month=validate_payload.second_day_of_month,
+        second_occurrence_month=validate_payload.second_occurrence_month,
         description=validate_payload.description,
         notes=validate_payload.notes,
         kind=validate_payload.kind,
@@ -5213,6 +5278,7 @@ def end_expected_from_occurrence(
         range_start=occurrence_date,
         range_end_exclusive=occurrence_date + timedelta(days=1),
         second_day_of_month=tx.second_day_of_month,
+        second_occurrence_month=getattr(tx, "second_occurrence_month", None),
     )
     if occurrence_date not in hits:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Date is not a scheduled occurrence for this series")
@@ -5223,6 +5289,7 @@ def end_expected_from_occurrence(
         recurrence=tx.recurrence,
         occurrence_date=occurrence_date,
         second_day_of_month=tx.second_day_of_month,
+        second_occurrence_month=getattr(tx, "second_occurrence_month", None),
     )
 
     # Delete overrides at/after occurrence_date: they are irrelevant once we end the series.
@@ -5264,6 +5331,7 @@ def _build_expected_calendar_items(
             range_start=range_start,
             range_end_exclusive=range_end_exclusive,
             second_day_of_month=tx.second_day_of_month,
+            second_occurrence_month=getattr(tx, "second_occurrence_month", None),
         )
 
         for occ in occ_dates:
@@ -5636,6 +5704,54 @@ def _iter_twice_monthly_occurrences(
             m += 1
 
 
+def _semiannual_anchor_pair(
+    start_date: date,
+    second_day_of_month: Optional[int],
+    second_occurrence_month: Optional[int],
+) -> tuple[int, int, int, int]:
+    """Return (month1, day1, month2, day2) for twice-yearly schedules."""
+    m1, d1 = start_date.month, start_date.day
+    if second_occurrence_month is not None and second_day_of_month is not None:
+        return m1, d1, int(second_occurrence_month), int(second_day_of_month)
+    legacy = _add_months(start_date, 6)
+    return m1, d1, legacy.month, legacy.day
+
+
+def _iter_twice_yearly_occurrences(
+    start_date: date,
+    series_end_date: Optional[date],
+    month1: int,
+    day1: int,
+    month2: int,
+    day2: int,
+):
+    """Chronological occurrences on two fixed (month, day) anchors each calendar year."""
+    y = start_date.year
+    for _ in range(400):
+        for d in sorted(
+            {_date_on_day_in_month(y, month1, day1), _date_on_day_in_month(y, month2, day2)}
+        ):
+            if d < start_date:
+                continue
+            if series_end_date is not None and d > series_end_date:
+                return
+            yield d
+        y += 1
+
+
+def _second_occurrence_fields_for_recurrence(
+    recurrence: Recurrence,
+    *,
+    second_day_of_month: Optional[int],
+    second_occurrence_month: Optional[int],
+) -> tuple[Optional[int], Optional[int]]:
+    if recurrence == Recurrence.twice_monthly:
+        return second_day_of_month, None
+    if recurrence == Recurrence.semiannual:
+        return second_day_of_month, second_occurrence_month
+    return None, None
+
+
 def _expected_occurrences_in_range(
     *,
     start_date: date,
@@ -5645,6 +5761,7 @@ def _expected_occurrences_in_range(
     range_start: date,
     range_end_exclusive: date,
     second_day_of_month: Optional[int] = None,
+    second_occurrence_month: Optional[int] = None,
 ) -> list[date]:
     if end_count is not None and end_count < 1:
         return []
@@ -5700,12 +5817,19 @@ def _expected_occurrences_in_range(
                 yield d
             return
 
+        if recurrence == Recurrence.semiannual:
+            m1, d1, m2, d2 = _semiannual_anchor_pair(start_date, second_day_of_month, second_occurrence_month)
+            for d in _iter_twice_yearly_occurrences(start_date, end_date, m1, d1, m2, d2):
+                n += 1
+                if end_count is not None and n > end_count:
+                    return
+                yield d
+            return
+
         if recurrence == Recurrence.monthly:
             step_months = 1
         elif recurrence == Recurrence.quarterly:
             step_months = 3
-        elif recurrence == Recurrence.semiannual:
-            step_months = 6
         elif recurrence == Recurrence.yearly:
             step_months = 12
         else:
@@ -5759,6 +5883,7 @@ def _next_occurrence_snapshot_on_or_after(
         range_start=tx.start_date,
         range_end_exclusive=horizon_end,
         second_day_of_month=tx.second_day_of_month,
+        second_occurrence_month=getattr(tx, "second_occurrence_month", None),
     )
     for occ in occ_dates:
         ovr = override_by_key.get((tx.id, occ))
@@ -5806,6 +5931,7 @@ def _occurrence_immediately_before(
     recurrence: Recurrence,
     occurrence_date: date,
     second_day_of_month: Optional[int] = None,
+    second_occurrence_month: Optional[int] = None,
 ) -> Optional[date]:
     """
     Last scheduled occurrence strictly before `occurrence_date` in the same series.
@@ -5847,12 +5973,19 @@ def _occurrence_immediately_before(
             prev_tm = d
         return prev_tm
 
+    if recurrence == Recurrence.semiannual:
+        m1, d1, m2, d2 = _semiannual_anchor_pair(start_date, second_day_of_month, second_occurrence_month)
+        prev_ty: Optional[date] = None
+        for d in _iter_twice_yearly_occurrences(start_date, series_end_date, m1, d1, m2, d2):
+            if d >= occurrence_date:
+                return prev_ty
+            prev_ty = d
+        return prev_ty
+
     if recurrence == Recurrence.monthly:
         step_months = 1
     elif recurrence == Recurrence.quarterly:
         step_months = 3
-    elif recurrence == Recurrence.semiannual:
-        step_months = 6
     elif recurrence == Recurrence.yearly:
         step_months = 12
     else:
@@ -5934,6 +6067,7 @@ def _calendar_month_daily_balances(
                 range_start=balance_start,
                 range_end_exclusive=month_end_excl,
                 second_day_of_month=tx.second_day_of_month,
+                second_occurrence_month=getattr(tx, "second_occurrence_month", None),
             )
             for occ in occ_dates:
                 if occ > last_day:
@@ -6060,6 +6194,7 @@ def _pooled_daily_balance_first_hit_impl(
                 range_start=global_start,
                 range_end_exclusive=range_end_excl,
                 second_day_of_month=tx.second_day_of_month,
+                second_occurrence_month=getattr(tx, "second_occurrence_month", None),
             )
             for occ in occ_dates:
                 if occ > last_day:
@@ -6224,6 +6359,7 @@ def projection(
             range_start=range_start,
             range_end_exclusive=range_end,
             second_day_of_month=tx.second_day_of_month,
+            second_occurrence_month=getattr(tx, "second_occurrence_month", None),
         )
         if not occ_dates:
             continue

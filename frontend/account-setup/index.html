@@ -334,14 +334,15 @@
                       <option value="biweekly">Every 2 weeks</option>
                       <option value="weekly">Every week</option>
                       <option value="quarterly">Every 3 months</option>
-                      <option value="semiannual">Every 6 months</option>
+                      <option value="semiannual">Twice Yearly</option>
                       <option value="yearly">Every year</option>
                     </select>
                     <p id="asTxScheduleSummary" class="account-setup-schedule-summary account-setup-tx-schedule-grid__summary" hidden></p>
                   </div>
                   <div id="asTxSecondDayWrap" class="account-setup-tx-schedule-grid__cell account-setup-tx-schedule-grid__cell--second tx-add-schedule-field tx-add-schedule-field--second-day" hidden>
-                    <label for="asTxSecondDayOfMonth" class="account-setup-tx-schedule-grid__label">Also occurs on</label>
+                    <label for="asTxSecondDayOfMonth" class="account-setup-tx-schedule-grid__label" id="asTxSecondOccurrenceLabel">Also occurs on</label>
                     <select id="asTxSecondDayOfMonth" class="tx-add-recurrence-select account-setup-tx-schedule-grid__control" title="Second monthly date for twice-monthly schedules"></select>
+                    <input id="asTxSecondYearlyDate" type="date" class="account-setup-tx-schedule-grid__control" hidden title="Second yearly date for twice-yearly schedules" />
                   </div>
                   </div>
                   <div class="account-setup-tx-ends-wrap">
@@ -495,14 +496,15 @@
                         <option value="biweekly">Every 2 weeks</option>
                         <option value="weekly">Every week</option>
                         <option value="quarterly">Every 3 months</option>
-                        <option value="semiannual">Every 6 months</option>
+                        <option value="semiannual">Twice Yearly</option>
                         <option value="yearly">Every year</option>
                       </select>
                       <p id="asExpScheduleSummary" class="account-setup-schedule-summary account-setup-tx-schedule-grid__summary" hidden></p>
                     </div>
                     <div id="asExpSecondDayWrap" class="account-setup-tx-schedule-grid__cell account-setup-tx-schedule-grid__cell--second tx-add-schedule-field tx-add-schedule-field--second-day" hidden>
-                      <label for="asExpSecondDayOfMonth" class="account-setup-tx-schedule-grid__label">Also occurs on</label>
+                      <label for="asExpSecondDayOfMonth" class="account-setup-tx-schedule-grid__label" id="asExpSecondOccurrenceLabel">Also occurs on</label>
                       <select id="asExpSecondDayOfMonth" class="tx-add-recurrence-select account-setup-tx-schedule-grid__control" title="Second monthly date for twice-monthly schedules"></select>
+                      <input id="asExpSecondYearlyDate" type="date" class="account-setup-tx-schedule-grid__control" hidden title="Second yearly date for twice-yearly schedules" />
                     </div>
                     </div>
                     <div class="account-setup-tx-ends-wrap">

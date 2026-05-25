@@ -1792,6 +1792,8 @@ function getAccountSetupScheduleFields(prefix) {
       dateEl: document.getElementById("asExpTxDate"),
       secondDayWrap: document.getElementById("asExpSecondDayWrap"),
       secondDayEl: document.getElementById("asExpSecondDayOfMonth"),
+      secondYearlyEl: document.getElementById("asExpSecondYearlyDate"),
+      secondLabelEl: document.getElementById("asExpSecondOccurrenceLabel"),
       summaryEl: document.getElementById("asExpScheduleSummary"),
       endsRow: document.getElementById("asExpEndsRow"),
       endsModeEl: document.getElementById("asExpEndsMode"),
@@ -1806,6 +1808,8 @@ function getAccountSetupScheduleFields(prefix) {
     dateEl: document.getElementById("asTxDate"),
     secondDayWrap: document.getElementById("asTxSecondDayWrap"),
     secondDayEl: document.getElementById("asTxSecondDayOfMonth"),
+    secondYearlyEl: document.getElementById("asTxSecondYearlyDate"),
+    secondLabelEl: document.getElementById("asTxSecondOccurrenceLabel"),
     summaryEl: document.getElementById("asTxScheduleSummary"),
     endsRow: document.getElementById("asTxEndsRow"),
     endsModeEl: document.getElementById("asTxEndsMode"),
@@ -1864,7 +1868,12 @@ function accountSetupScheduleSummaryText(recurrence, startIso, secondDayValue) {
     return `Repeats every 3 months on the ${formatAccountSetupOrdinalDay(start.getDate())}.`;
   }
   if (recurrence === "semiannual") {
-    return `Repeats every 6 months on the ${formatAccountSetupOrdinalDay(start.getDate())}.`;
+    const secondIso = String(secondDayValue || "").trim();
+    const second = secondIso && /^\d{4}-\d{2}-\d{2}$/.test(secondIso) ? parseAccountSetupIsoDate(secondIso) : null;
+    if (!second) {
+      return `Next date sets the first yearly date (${ACCOUNT_SETUP_MONTH_DAY_FORMATTER.format(start)}). Choose the second date.`;
+    }
+    return `Repeats twice yearly on ${ACCOUNT_SETUP_MONTH_DAY_FORMATTER.format(start)} and ${ACCOUNT_SETUP_MONTH_DAY_FORMATTER.format(second)}.`;
   }
   if (recurrence === "yearly") {
     return `Repeats every year on ${ACCOUNT_SETUP_MONTH_DAY_FORMATTER.format(start)}.`;
@@ -1895,8 +1904,13 @@ function syncAccountSetupScheduleUi(prefix) {
   const startIso = String(fields.dateEl?.value || "").trim();
   if (fields.secondDayEl) populateAccountSetupSecondDayOptions(fields.secondDayEl);
 
-  if (fields.secondDayWrap) fields.secondDayWrap.hidden = recurrence !== "twice_monthly";
+  const usesSecond = recurrence === "twice_monthly" || recurrence === "semiannual";
+  if (fields.secondDayWrap) fields.secondDayWrap.hidden = !usesSecond;
+  if (fields.secondLabelEl) {
+    fields.secondLabelEl.textContent = recurrence === "semiannual" ? "Second yearly date" : "Also occurs on";
+  }
   if (fields.secondDayEl) {
+    fields.secondDayEl.hidden = recurrence !== "twice_monthly";
     const needsSuggestedDefault =
       recurrence === "twice_monthly" &&
       startIso &&
@@ -1904,6 +1918,26 @@ function syncAccountSetupScheduleUi(prefix) {
     if (needsSuggestedDefault) fields.secondDayEl.value = inferAccountSetupSecondDayValue(startIso);
     if (recurrence !== "twice_monthly") fields.secondDayEl.value = "";
     fields.secondDayEl.disabled = recurrence !== "twice_monthly";
+  }
+  if (fields.secondYearlyEl) {
+    fields.secondYearlyEl.hidden = recurrence !== "semiannual";
+    if (recurrence === "semiannual" && startIso) {
+      const cur = String(fields.secondYearlyEl.value || "").trim();
+      const sm = Number(startIso.slice(5, 7));
+      const sd = Number(startIso.slice(8, 10));
+      const needsDefault =
+        !cur ||
+        (cur.length >= 10 && Number(cur.slice(5, 7)) === sm && Number(cur.slice(8, 10)) === sd);
+      if (needsDefault) {
+        const start = parseAccountSetupIsoDate(startIso);
+        if (start) {
+          const shifted = new Date(start.getFullYear(), start.getMonth() + 6, start.getDate(), 12, 0, 0, 0);
+          fields.secondYearlyEl.value = `${shifted.getFullYear()}-${String(shifted.getMonth() + 1).padStart(2, "0")}-${String(shifted.getDate()).padStart(2, "0")}`;
+        }
+      }
+    }
+    if (recurrence !== "semiannual") fields.secondYearlyEl.value = "";
+    fields.secondYearlyEl.disabled = recurrence !== "semiannual";
   }
 
   if (fields.endsRow) fields.endsRow.hidden = !repeats;
@@ -1934,11 +1968,11 @@ function syncAccountSetupScheduleUi(prefix) {
   }
 
   if (fields.summaryEl) {
-    const summary = accountSetupScheduleSummaryText(
-      recurrence,
-      startIso,
-      String(fields.secondDayEl?.value || "").trim()
-    );
+    const secondVal =
+      recurrence === "semiannual"
+        ? String(fields.secondYearlyEl?.value || "").trim()
+        : String(fields.secondDayEl?.value || "").trim();
+    const summary = accountSetupScheduleSummaryText(recurrence, startIso, secondVal);
     fields.summaryEl.textContent = summary;
     fields.summaryEl.hidden = !summary;
   }
@@ -1984,6 +2018,38 @@ function readAccountSetupScheduleFromInputs(prefix, startDateIso) {
       };
     }
     secondDayOfMonth = n;
+  }
+  let secondOccurrenceMonth = null;
+  if (recurrence === "semiannual") {
+    const secondIso = String(fields.secondYearlyEl?.value || "").trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(secondIso)) {
+      return {
+        recurring: false,
+        recurrence: null,
+        second_day_of_month: null,
+        second_occurrence_month: null,
+        end_date: null,
+        end_count: null,
+        message: "Choose the second yearly date.",
+      };
+    }
+    const sm = Number(secondIso.slice(5, 7));
+    const sd = Number(secondIso.slice(8, 10));
+    const startSm = /^\d{4}-\d{2}-\d{2}$/.test(String(startDateIso || "")) ? Number(String(startDateIso).slice(5, 7)) : NaN;
+    const startSd = /^\d{4}-\d{2}-\d{2}$/.test(String(startDateIso || "")) ? Number(String(startDateIso).slice(8, 10)) : NaN;
+    if (sm === startSm && sd === startSd) {
+      return {
+        recurring: false,
+        recurrence: null,
+        second_day_of_month: null,
+        second_occurrence_month: null,
+        end_date: null,
+        end_count: null,
+        message: "The second yearly date must differ from the next date.",
+      };
+    }
+    secondDayOfMonth = sd;
+    secondOccurrenceMonth = sm;
   }
 
   const endsMode = String(fields.endsModeEl?.value || "never").trim().toLowerCase();
@@ -2041,6 +2107,7 @@ function readAccountSetupScheduleFromInputs(prefix, startDateIso) {
     recurring: true,
     recurrence,
     second_day_of_month: secondDayOfMonth,
+    second_occurrence_month: secondOccurrenceMonth,
     end_date: endDate,
     end_count: endCount,
     message: "",
@@ -2085,6 +2152,7 @@ function readAccountSetupTransactionFromInputs() {
       recurring: schedule.recurring,
       recurrence: schedule.recurrence,
       second_day_of_month: schedule.second_day_of_month,
+      second_occurrence_month: schedule.second_occurrence_month,
       end_date: schedule.end_date,
       end_count: schedule.end_count,
       bg_color: txBgColor || null,
@@ -2419,6 +2487,7 @@ function readAccountSetupExpenseTransactionFromInputs() {
       recurring: schedule.recurring,
       recurrence: schedule.recurrence,
       second_day_of_month: schedule.second_day_of_month,
+      second_occurrence_month: schedule.second_occurrence_month,
       end_date: schedule.end_date,
       end_count: schedule.end_count,
       bg_color: txBgColor || null,
@@ -2709,7 +2778,13 @@ function hydrateAccountSetupDraft() {
         const eHydratedRecurrence =
           String(lastTx.recurrence || "") === "bimonthly" ? "twice_monthly" : String(lastTx.recurrence || "");
         if (eRecSel) eRecSel.value = eRecurring ? eHydratedRecurrence : "once";
-        if (eSecondDay && lastTx.second_day_of_month != null) eSecondDay.value = String(lastTx.second_day_of_month);
+        const eSecondYearly = document.getElementById("asExpSecondYearlyDate");
+        if (eHydratedRecurrence === "semiannual" && eSecondYearly && lastTx.second_day_of_month != null && lastTx.second_occurrence_month != null) {
+          const y = String(lastTx.date || "").slice(0, 4) || String(new Date().getFullYear());
+          eSecondYearly.value = `${y}-${String(lastTx.second_occurrence_month).padStart(2, "0")}-${String(lastTx.second_day_of_month).padStart(2, "0")}`;
+        } else if (eSecondDay && lastTx.second_day_of_month != null) {
+          eSecondDay.value = String(lastTx.second_day_of_month);
+        }
         if (eEndsMode) eEndsMode.value = lastTx.end_date ? "on_date" : lastTx.end_count != null ? "after_count" : "never";
         if (eEndDate && lastTx.end_date) eEndDate.value = String(lastTx.end_date);
         if (eEndCount && lastTx.end_count != null) eEndCount.value = String(lastTx.end_count);
@@ -2735,7 +2810,13 @@ function hydrateAccountSetupDraft() {
         const hydratedRecurrence =
           String(lastTx.recurrence || "") === "bimonthly" ? "twice_monthly" : String(lastTx.recurrence || "");
         if (txRecSelEl) txRecSelEl.value = on ? hydratedRecurrence : "once";
-        if (txSecondDayEl && lastTx.second_day_of_month != null) txSecondDayEl.value = String(lastTx.second_day_of_month);
+        const txSecondYearlyEl = document.getElementById("asTxSecondYearlyDate");
+        if (hydratedRecurrence === "semiannual" && txSecondYearlyEl && lastTx.second_day_of_month != null && lastTx.second_occurrence_month != null) {
+          const y = String(lastTx.date || "").slice(0, 4) || String(new Date().getFullYear());
+          txSecondYearlyEl.value = `${y}-${String(lastTx.second_occurrence_month).padStart(2, "0")}-${String(lastTx.second_day_of_month).padStart(2, "0")}`;
+        } else if (txSecondDayEl && lastTx.second_day_of_month != null) {
+          txSecondDayEl.value = String(lastTx.second_day_of_month);
+        }
         if (txEndsModeEl) txEndsModeEl.value = lastTx.end_date ? "on_date" : lastTx.end_count != null ? "after_count" : "never";
         if (txEndDateEl && lastTx.end_date) txEndDateEl.value = String(lastTx.end_date);
         if (txEndCountEl && lastTx.end_count != null) txEndCountEl.value = String(lastTx.end_count);
@@ -2834,6 +2915,10 @@ function readAccountSetupDraft() {
         second_day_of_month:
           t?.second_day_of_month != null && Number.isFinite(Number(t.second_day_of_month))
             ? Number(t.second_day_of_month)
+            : null,
+        second_occurrence_month:
+          t?.second_occurrence_month != null && Number.isFinite(Number(t.second_occurrence_month))
+            ? Number(t.second_occurrence_month)
             : null,
         end_date: t?.end_date != null && String(t.end_date).trim() !== "" ? String(t.end_date) : null,
         end_count:
@@ -2941,7 +3026,9 @@ async function maybeCreateFirstTransactionFromDraft(draft, createdAccountId) {
             end_date: t.end_date || null,
             end_count: t.end_date ? null : t.end_count ?? null,
             recurrence: t.recurrence || "monthly",
-            second_day_of_month: t.recurrence === "twice_monthly" ? t.second_day_of_month ?? null : null,
+            second_day_of_month:
+              t.recurrence === "twice_monthly" || t.recurrence === "semiannual" ? t.second_day_of_month ?? null : null,
+            second_occurrence_month: t.recurrence === "semiannual" ? t.second_occurrence_month ?? null : null,
             description,
             notes: t.notes ? t.notes : null,
             kind: t.kind,

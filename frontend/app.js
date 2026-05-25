@@ -1402,8 +1402,12 @@ const txEditRecurringUpdateBtn = document.getElementById("txEditRecurringUpdateB
 
 function updateInstanceTwiceMonthlyVisibility() {
   if (!instanceTwiceMonthlyFields || !instanceRecurrence) return;
-  const on = instanceRecurrence.value === "twice_monthly";
+  const r = instanceRecurrence.value;
+  const on = recurrenceUsesSecondOccurrenceDate(r);
   instanceTwiceMonthlyFields.style.display = on ? "block" : "none";
+  updateSecondOccurrenceFieldCopy(instanceTwiceMonthlyFields, r);
+  if (on && r === "semiannual") syncInstanceSecondYearlyDateDefault();
+  else if (on && r === "twice_monthly") syncInstanceSecondMonthlyDateDefault();
 }
 
 const instanceEndsMode = document.getElementById("instanceEndsMode");
@@ -1421,7 +1425,10 @@ function updateInstanceEndsDetailUi() {
 }
 
 if (instanceRecurrence) {
-  instanceRecurrence.addEventListener("change", updateInstanceTwiceMonthlyVisibility);
+  instanceRecurrence.addEventListener("change", () => {
+    updateInstanceTwiceMonthlyVisibility();
+    updateTxEditActualScheduleUi();
+  });
 }
 if (instanceEndsMode) {
   instanceEndsMode.addEventListener("change", updateInstanceEndsDetailUi);
@@ -1455,6 +1462,10 @@ if (txEditDate) {
   };
   txEditDate.addEventListener("change", syncTxEditMovedOccurrenceDate);
   txEditDate.addEventListener("input", syncTxEditMovedOccurrenceDate);
+  txEditDate.addEventListener("change", () => {
+    syncInstanceSecondMonthlyDateDefault();
+    syncInstanceSecondYearlyDateDefault();
+  });
 }
 
 // Reconcile day modal
@@ -1556,6 +1567,7 @@ function bindTxAddFormValidation() {
   txAddDate?.addEventListener("change", () => {
     markTouched();
     syncTxAddSecondMonthlyDateDefault();
+    syncTxAddSecondYearlyDateDefault();
   });
   txAddAccountId?.addEventListener("change", markTouched);
 }
@@ -1566,12 +1578,58 @@ function txAddRepeatsActive() {
 
 function updateTxAddTwiceMonthlyVisibility() {
   if (!txAddTwiceMonthlyFields || !txAddRecurrence) return;
-  const on = txAddRecurrence.value === "twice_monthly";
+  const r = txAddRecurrence.value;
+  const on = recurrenceUsesSecondOccurrenceDate(r);
   txAddTwiceMonthlyFields.style.display = on ? "grid" : "none";
-  if (on) syncTxAddSecondMonthlyDateDefault();
+  updateSecondOccurrenceFieldCopy(txAddTwiceMonthlyFields, r);
+  if (on && r === "twice_monthly") syncTxAddSecondMonthlyDateDefault();
+  else if (on && r === "semiannual") syncTxAddSecondYearlyDateDefault();
 }
 
-/** Mortgage/rent and credit card categories usually repeat monthly. */
+function syncTxAddSecondYearlyDateDefault() {
+  if (!txAddSecondDayOfMonth || !txAddDate || txAddRecurrence?.value !== "semiannual") return;
+  const start = normalizeIsoDate(txAddDate.value);
+  if (!start) return;
+  const cur = normalizeIsoDate(txAddSecondDayOfMonth.value);
+  if (cur) {
+    const sm = Number(start.slice(5, 7));
+    const sd = Number(start.slice(8, 10));
+    const cm = Number(cur.slice(5, 7));
+    const cd = Number(cur.slice(8, 10));
+    if (cm !== sm || cd !== sd) return;
+  }
+  const inferred = inferSecondYearlyIsoFromStart(start);
+  if (inferred) txAddSecondDayOfMonth.value = inferred;
+}
+
+function syncInstanceSecondMonthlyDateDefault() {
+  if (!instanceSecondDayOfMonth || !txEditDate || instanceRecurrence?.value !== "twice_monthly") return;
+  const start = normalizeIsoDate(txEditDate.value);
+  if (!start) return;
+  const startDom = Number(start.slice(8, 10));
+  const currentDom = readSecondDayOfMonthFromInput(instanceSecondDayOfMonth);
+  if (Number.isFinite(currentDom) && currentDom !== startDom) return;
+  const inferred = inferSecondMonthlyIsoFromStart(start);
+  if (inferred) instanceSecondDayOfMonth.value = inferred;
+}
+
+function syncInstanceSecondYearlyDateDefault() {
+  if (!instanceSecondDayOfMonth || !txEditDate || instanceRecurrence?.value !== "semiannual") return;
+  const start = normalizeIsoDate(txEditDate.value);
+  if (!start) return;
+  const cur = normalizeIsoDate(instanceSecondDayOfMonth.value);
+  if (cur) {
+    const sm = Number(start.slice(5, 7));
+    const sd = Number(start.slice(8, 10));
+    const cm = Number(cur.slice(5, 7));
+    const cd = Number(cur.slice(8, 10));
+    if (cm !== sm || cd !== sd) return;
+  }
+  const inferred = inferSecondYearlyIsoFromStart(start);
+  if (inferred) instanceSecondDayOfMonth.value = inferred;
+}
+
+/** Mortgage/rent, utilities, and credit card categories usually repeat monthly. */
 function categoryImpliesMonthlyRecurrence(cat) {
   if (!cat) return false;
   const n = normalizeNameForCompare(cat.name || "");
@@ -1582,6 +1640,9 @@ function categoryImpliesMonthlyRecurrence(cat) {
   if (g.includes("mortgage") && g.includes("rent")) return true;
   if (n === "credit card payment" || n.includes("credit card")) return true;
   if (d.includes("credit card")) return true;
+  if (n === "utility" || n.includes("utility")) return true;
+  if (d.includes("utility")) return true;
+  if (g.includes("utility") || g.includes("utilities")) return true;
   return false;
 }
 
@@ -1620,6 +1681,59 @@ function applyTxAddCategoryRecurrenceDefaults(categoryId) {
   if (kind === "income" && categoryImpliesTwiceMonthlyRecurrence(cat)) {
     applyTxAddRecurrenceValue("twice_monthly");
   }
+}
+
+function txEditScheduleRecurrenceActive() {
+  const v = String(instanceRecurrence?.value || "once").trim().toLowerCase();
+  return !!v && v !== "once";
+}
+
+function applyTxEditRecurrenceValue(value) {
+  if (!instanceRecurrence) return;
+  if (instanceRecurrence.value === value) {
+    updateTxEditActualScheduleUi();
+    updateInstanceTwiceMonthlyVisibility();
+    return;
+  }
+  instanceRecurrence.value = value;
+  instanceRecurrence.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
+function applyTxEditCategoryRecurrenceDefaults(categoryId) {
+  if (!instanceRecurrence || transactionEditMode !== "actual") return;
+  if (txEditScheduleRecurrenceActive()) return;
+  const kind = getRadioValue("txEditKind", "expense");
+  const cat = resolveCategoryById(categoryId);
+  if (kind === "expense" && categoryImpliesMonthlyRecurrence(cat)) {
+    applyTxEditRecurrenceValue("monthly");
+    return;
+  }
+  if (kind === "income" && categoryImpliesTwiceMonthlyRecurrence(cat)) {
+    applyTxEditRecurrenceValue("twice_monthly");
+  }
+}
+
+function updateTxEditActualScheduleUi() {
+  if (transactionEditMode !== "actual") return;
+  const on = txEditScheduleRecurrenceActive();
+  const dateLabel = document.getElementById("txEditDateLabel");
+  if (dateLabel) dateLabel.textContent = on ? "Start date" : "Date";
+  if (instanceEndsMode) instanceEndsMode.disabled = !on;
+  if (instanceEndCount) instanceEndCount.disabled = !on;
+  if (instanceSecondDayOfMonth) instanceSecondDayOfMonth.disabled = !on;
+  if (!on && instanceEndsMode) instanceEndsMode.value = "never";
+  if (instanceAccountId) {
+    instanceAccountId.disabled = !on;
+    instanceAccountId.title = on ? "" : "Choose an account when you set this transaction to repeat.";
+  }
+  const varWrap = document.getElementById("txEditRecurringVariableWrap");
+  if (varWrap) varWrap.style.display = on ? "block" : "none";
+  const wrapSch = document.getElementById("txEditRecurringScheduleWrap");
+  if (wrapSch) wrapSch.classList.remove("tx-edit-schedule--locked");
+  try {
+    updateInstanceEndsDetailUi();
+  } catch (_) {}
+  updateInstanceTwiceMonthlyVisibility();
 }
 
 function syncTxAddSecondMonthlyDateDefault() {
@@ -4079,16 +4193,13 @@ if (txAddSave) {
         }
 
         let secondDayOfMonth = null;
-        if (recurrenceVal === "twice_monthly") {
-          const n = readSecondDayOfMonthFromInput(txAddSecondDayOfMonth);
-          if (!Number.isFinite(n) || n < 1 || n > 31) {
-            throw new Error("Second monthly date is required for twice monthly");
-          }
-          const startDay = Number(dateVal.slice(8, 10));
-          if (n === startDay) {
-            throw new Error("Second monthly date must be on a different day of the month than the start date");
-          }
-          secondDayOfMonth = n;
+        let secondOccurrenceMonth = null;
+        if (recurrenceUsesSecondOccurrenceDate(recurrenceVal)) {
+          const secondErr = validateSecondOccurrenceForSave(recurrenceVal, dateVal, txAddSecondDayOfMonth);
+          if (secondErr) throw new Error(secondErr);
+          const second = secondOccurrencePayloadFromForm(recurrenceVal, txAddSecondDayOfMonth);
+          secondDayOfMonth = second.second_day_of_month;
+          secondOccurrenceMonth = second.second_occurrence_month;
         }
 
         await api(`/api/families/${state.activeFamilyId}/expected-transactions`, "POST", {
@@ -4098,6 +4209,7 @@ if (txAddSave) {
           end_count: endDateVal != null ? null : endCountVal,
           recurrence: recurrenceVal,
           second_day_of_month: secondDayOfMonth,
+          second_occurrence_month: secondOccurrenceMonth,
           description: desc,
           notes: notesRaw || null,
           kind,
@@ -4236,7 +4348,10 @@ function applyTransactionEditMode(mode, opts = {}) {
 
   transactionEditMode = mode;
   const recurring = mode === "recurring";
-  if (txEditInner) txEditInner.classList.add("modal--expected-edit");
+  if (txEditInner) {
+    if (recurring) txEditInner.classList.add("modal--expected-edit");
+    else txEditInner.classList.remove("modal--expected-edit");
+  }
 
   const title = document.getElementById("txEditTitle");
   if (title) {
@@ -4259,39 +4374,32 @@ function applyTransactionEditMode(mode, opts = {}) {
   const wrapSch = document.getElementById("txEditRecurringScheduleWrap");
   if (wrapSch) {
     wrapSch.style.display = "block";
-    wrapSch.classList.toggle("tx-edit-schedule--locked", !recurring);
+    wrapSch.classList.remove("tx-edit-schedule--locked");
   }
   if (instanceRecurrence) {
-    if (!recurring) {
-      instanceRecurrence.value = "once";
-      instanceRecurrence.disabled = true;
-      instanceRecurrence.title = "Bank transactions do not repeat. Stored as a single dated entry.";
-    } else {
-      instanceRecurrence.disabled = false;
-      instanceRecurrence.title = "How often this repeats";
-    }
+    if (!recurring) instanceRecurrence.value = "once";
+    instanceRecurrence.disabled = false;
+    instanceRecurrence.title = "How often this repeats";
   }
-  if (instanceSecondDayOfMonth) instanceSecondDayOfMonth.disabled = !recurring;
-  if (instanceEndCount) instanceEndCount.disabled = !recurring;
-  if (instanceEndsMode) {
-    instanceEndsMode.disabled = !recurring;
-    if (!recurring) instanceEndsMode.value = "never";
-  }
-  try { updateInstanceEndsDetailUi(); } catch (_) {}
-
   const acctCol = document.getElementById("txEditAccountCol");
   if (acctCol) acctCol.style.display = "block";
-  if (instanceAccountId) {
-    instanceAccountId.disabled = !recurring;
-    instanceAccountId.title = recurring
-      ? ""
-      : "Actual transactions are not tied to an account in the ledger; this is display-only.";
+  if (recurring) {
+    if (instanceSecondDayOfMonth) instanceSecondDayOfMonth.disabled = false;
+    if (instanceEndCount) instanceEndCount.disabled = false;
+    if (instanceEndsMode) instanceEndsMode.disabled = false;
+    try {
+      updateInstanceEndsDetailUi();
+    } catch (_) {}
+    if (instanceAccountId) {
+      instanceAccountId.disabled = false;
+      instanceAccountId.title = "";
+    }
+    updateInstanceTwiceMonthlyVisibility();
+    const varWrap = document.getElementById("txEditRecurringVariableWrap");
+    if (varWrap) varWrap.style.display = "block";
+  } else {
+    updateTxEditActualScheduleUi();
   }
-
-  updateInstanceTwiceMonthlyVisibility();
-
-  const varWrap = document.getElementById("txEditRecurringVariableWrap");
-  if (varWrap) varWrap.style.display = recurring ? "block" : "none";
 
   const prim = document.getElementById("txEditRecurringPrimaryActions");
   if (prim) prim.style.display = "none";
@@ -4321,6 +4429,81 @@ function applyTransactionEditMode(mode, opts = {}) {
   if (schWrap) {
     schWrap.classList.toggle("tx-edit-recurring-group", recurring);
   }
+}
+
+function actualTxEditRecurringValidationError() {
+  const dateVal = txEditDate?.value || "";
+  if (!dateVal) return "Start date is required";
+  const amountVal = txEditAmount?.value;
+  if (!amountVal || Number(amountVal) <= 0) return "Amount must be greater than zero";
+  const categoryId = categoryIdFromCategoryField("txEditCategoryId");
+  if (categoryId == null || !Number.isFinite(Number(categoryId))) return "Category is required";
+  const editDateIso = normalizeIsoDate(dateVal) || dateVal;
+  if (isDateBeforeEarliestStartingBalance(editDateIso)) return "That date is before your starting balance.";
+  const accountIdVal = instanceAccountId?.value || "";
+  if (!accountIdVal) return "Account is required";
+
+  const recurrenceVal = instanceRecurrence?.value || "monthly";
+  const endCountRaw = instanceEndCount?.value != null ? String(instanceEndCount.value).trim() : "";
+  const endCountVal = endCountRaw === "" ? null : Number(endCountRaw);
+  if (endCountVal != null) {
+    if (!Number.isFinite(endCountVal) || endCountVal < 1 || Math.floor(endCountVal) !== endCountVal) {
+      return "Ends after must be a whole number ≥ 1";
+    }
+  }
+  if (recurrenceUsesSecondOccurrenceDate(recurrenceVal)) {
+    const secondErr = validateSecondOccurrenceForSave(recurrenceVal, dateVal, instanceSecondDayOfMonth);
+    if (secondErr) return secondErr;
+  }
+  return null;
+}
+
+async function convertActualTransactionToRecurring(actualId) {
+  const validationErr = actualTxEditRecurringValidationError();
+  if (validationErr) throw new Error(validationErr);
+
+  const dateVal = txEditDate.value;
+  const amountVal = txEditAmount.value;
+  const categoryId = categoryIdFromCategoryField("txEditCategoryId");
+  const recurrenceVal = instanceRecurrence?.value || "monthly";
+  const accountIdVal = instanceAccountId.value;
+  const endCountRaw = instanceEndCount?.value != null ? String(instanceEndCount.value).trim() : "";
+  const endCountVal = endCountRaw === "" ? null : Number(endCountRaw);
+  const notesRaw = txEditNotes?.value?.trim() || "";
+  const desc =
+    (txEditDescriptionSnapshot && String(txEditDescriptionSnapshot).trim()) ||
+    descriptionForNewTransaction(categoryId, { recurring: true });
+
+  let secondDayOfMonth = null;
+  let secondOccurrenceMonth = null;
+  if (recurrenceUsesSecondOccurrenceDate(recurrenceVal)) {
+    const second = secondOccurrencePayloadFromForm(recurrenceVal, instanceSecondDayOfMonth);
+    secondDayOfMonth = second.second_day_of_month;
+    secondOccurrenceMonth = second.second_occurrence_month;
+  }
+
+  await api(`/api/families/${state.activeFamilyId}/expected-transactions`, "POST", {
+    account_id: Number(accountIdVal),
+    start_date: dateVal,
+    end_date: null,
+    end_count: endCountVal,
+    recurrence: recurrenceVal,
+    second_day_of_month: secondDayOfMonth,
+    second_occurrence_month: secondOccurrenceMonth,
+    description: desc,
+    notes: notesRaw || null,
+    kind: getRadioValue("txEditKind", "expense"),
+    amount: Number(amountVal),
+    variable: !!(seriesVariable && seriesVariable.checked),
+    category_id: categoryId,
+    ...(txEditColorTouched
+      ? {
+          bg_color: normalizeBgColorForSave(txEditSelectedBgColor),
+          fg_color: normalizeFgColorForSave(txEditSelectedBgColor),
+        }
+      : {}),
+  });
+  await api(`/api/families/${state.activeFamilyId}/transactions/${actualId}`, "DELETE");
 }
 
 function openTxEditModal(tx) {
@@ -4357,6 +4540,7 @@ function openTxEditModal(tx) {
   txEditModal.classList.add("modal-overlay--open");
   txEditModal.setAttribute("aria-hidden", "false");
   applyTransactionEditMode("actual");
+  applyTxEditCategoryRecurrenceDefaults(tx.category_id);
   resetTxEditAdvancedPanel();
 }
 
@@ -4693,6 +4877,7 @@ if (txEditSave) {
     }
     let savedOk = false;
     let savedDateIso = "";
+    let convertedToRecurring = false;
     try {
       show(txEditErr, "");
       if (!state.activeFamilyId) throw new Error("Choose a family first");
@@ -4705,23 +4890,30 @@ if (txEditSave) {
       if (isDateBeforeEarliestStartingBalance(editDateIso)) {
         throw new Error("That date is before your starting balance.");
       }
-      await api(`/api/families/${state.activeFamilyId}/transactions/${id}`, "PUT", {
-        date: rawDate,
-        kind: getRadioValue("txEditKind", "expense"),
-        amount: Number(amountVal),
-        description: txEditDescriptionSnapshot,
-        notes: txEditNotes && txEditNotes.value.trim() ? txEditNotes.value.trim() : null,
-        category_id: categoryIdFromCategoryField("txEditCategoryId"),
-        ...(txEditColorTouched
-          ? {
-              bg_color: normalizeBgColorForSave(txEditSelectedBgColor),
-              fg_color: normalizeFgColorForSave(txEditSelectedBgColor),
-            }
-          : {}),
-        reimbursable: txEditReimbursableValue,
-      });
-      savedOk = true;
-      savedDateIso = editDateIso || "";
+      if (txEditScheduleRecurrenceActive()) {
+        await convertActualTransactionToRecurring(id);
+        convertedToRecurring = true;
+        savedOk = true;
+        savedDateIso = editDateIso || "";
+      } else {
+        await api(`/api/families/${state.activeFamilyId}/transactions/${id}`, "PUT", {
+          date: rawDate,
+          kind: getRadioValue("txEditKind", "expense"),
+          amount: Number(amountVal),
+          description: txEditDescriptionSnapshot,
+          notes: txEditNotes && txEditNotes.value.trim() ? txEditNotes.value.trim() : null,
+          category_id: categoryIdFromCategoryField("txEditCategoryId"),
+          ...(txEditColorTouched
+            ? {
+                bg_color: normalizeBgColorForSave(txEditSelectedBgColor),
+                fg_color: normalizeFgColorForSave(txEditSelectedBgColor),
+              }
+            : {}),
+          reimbursable: txEditReimbursableValue,
+        });
+        savedOk = true;
+        savedDateIso = editDateIso || "";
+      }
     } catch (e) {
       show(txEditErr, e.message || "Failed to save");
       return;
@@ -4741,7 +4933,12 @@ if (txEditSave) {
         if (monthInput) monthInput.value = movedYm;
         applyCalendarMonthToPickers(movedYm);
       }
-      await loadMonthAndCalendar();
+      if (convertedToRecurring) {
+        await refreshExpectedCalendarAndMonth();
+        bwDispatchMilestone("first-recurring");
+      } else {
+        await loadMonthAndCalendar();
+      }
     } catch (e) {
       if (typeof console !== "undefined" && console && console.warn) {
         console.warn("Post-save refresh failed:", e);
@@ -7111,6 +7308,7 @@ function buildExpectedSeriesPutPayload({
   amount,
   recurrenceVal,
   secondDayVal,
+  secondMonthVal,
   endCountVal,
   notesVal,
   categoryId,
@@ -7133,7 +7331,9 @@ function buildExpectedSeriesPutPayload({
     end_date: endDate,
     end_count: endCountVal,
     recurrence: recurrenceVal,
-    second_day_of_month: recurrenceVal === "twice_monthly" ? secondDayVal : null,
+    second_day_of_month:
+      recurrenceVal === "twice_monthly" || recurrenceVal === "semiannual" ? secondDayVal : null,
+    second_occurrence_month: recurrenceVal === "semiannual" ? secondMonthVal : null,
     description: expectedSaveDescription(),
     notes: notesVal,
     kind: getRadioValue("txEditKind", "expense"),
@@ -7256,6 +7456,7 @@ async function saveExpectedSeriesFromInstance() {
     }
   }
   let secondDayVal = meta.second_day_of_month != null ? Number(meta.second_day_of_month) : null;
+  let secondMonthVal = meta.second_occurrence_month != null ? Number(meta.second_occurrence_month) : null;
   if (recurrenceVal === "twice_monthly") {
     const n = readSecondDayOfMonthFromInput(instanceSecondDayOfMonth);
     if (!Number.isFinite(n) || n < 1 || n > 31) throw new Error("Second monthly date is required");
@@ -7278,8 +7479,16 @@ async function saveExpectedSeriesFromInstance() {
       // not the original series start_date day (e.g. 31) — both days can appear in one series.
       secondDayVal = n;
     }
+    secondMonthVal = null;
+  } else if (recurrenceVal === "semiannual") {
+    const secondErr = validateSecondOccurrenceForSave(recurrenceVal, editedIso || meta.start_date || occRaw, instanceSecondDayOfMonth);
+    if (secondErr) throw new Error(secondErr);
+    const second = secondOccurrencePayloadFromForm(recurrenceVal, instanceSecondDayOfMonth);
+    secondDayVal = second.second_day_of_month;
+    secondMonthVal = second.second_occurrence_month;
   } else {
     secondDayVal = null;
+    secondMonthVal = null;
   }
 
   const putPayload = buildExpectedSeriesPutPayload({
@@ -7287,6 +7496,7 @@ async function saveExpectedSeriesFromInstance() {
     amount,
     recurrenceVal,
     secondDayVal,
+    secondMonthVal,
     endCountVal,
     notesVal,
     categoryId,
@@ -7315,7 +7525,10 @@ async function saveExpectedSeriesFromInstance() {
           }
         : {}),
     };
-    if (recurrenceVal === "twice_monthly") applyBody.second_day_of_month = secondDayVal;
+    if (recurrenceVal === "twice_monthly" || recurrenceVal === "semiannual") {
+      applyBody.second_day_of_month = secondDayVal;
+    }
+    if (recurrenceVal === "semiannual") applyBody.second_occurrence_month = secondMonthVal;
     if (dateMoved && editedIso) applyBody.effective_start_date = editedIso;
     await api(
       `/api/families/${state.activeFamilyId}/expected-transactions/${seriesId}/apply-from-occurrence/${encodeURIComponent(occRaw)}`,
@@ -7762,6 +7975,8 @@ function selectCategoryComboboxChoice(fieldId, catId, name) {
     applyTxAddCategoryRecurrenceDefaults(catId);
     refreshTxAddCategoryChipActiveState();
     updateTxAddFormValidity();
+  } else if (fieldId === "txEditCategoryId") {
+    applyTxEditCategoryRecurrenceDefaults(catId);
   }
 }
 
@@ -7788,6 +8003,7 @@ function normalizeCategoryComboboxInput(fieldId) {
     st.hidden.value = String(exact[0].id);
     st.input.value = categoryDisplayLabel(exact[0]);
     if (fieldId === "txAddCategoryId") applyTxAddCategoryRecurrenceDefaults(exact[0].id);
+    else if (fieldId === "txEditCategoryId") applyTxEditCategoryRecurrenceDefaults(exact[0].id);
     return;
   }
   const subs = (st.categories || []).filter((c) => {
@@ -7800,6 +8016,7 @@ function normalizeCategoryComboboxInput(fieldId) {
     st.hidden.value = String(subs[0].id);
     st.input.value = categoryDisplayLabel(subs[0]);
     if (fieldId === "txAddCategoryId") applyTxAddCategoryRecurrenceDefaults(subs[0].id);
+    else if (fieldId === "txEditCategoryId") applyTxEditCategoryRecurrenceDefaults(subs[0].id);
     return;
   }
   st.input.value = "";
@@ -9855,14 +10072,23 @@ function openExpectedEditModal(tx, opts = {}) {
 
   if (instanceRecurrence) instanceRecurrence.value = String((selectedExpectedSeriesTx && selectedExpectedSeriesTx.recurrence) || tx.recurrence || "monthly");
   if (instanceSecondDayOfMonth) {
+    const meta = selectedExpectedSeriesTx || tx;
+    const rec = String((meta && meta.recurrence) || tx.recurrence || "monthly");
     const v =
-      (selectedExpectedSeriesTx && selectedExpectedSeriesTx.second_day_of_month) != null
-        ? selectedExpectedSeriesTx.second_day_of_month
-        : tx.second_day_of_month;
+      (meta && meta.second_day_of_month) != null ? meta.second_day_of_month : tx.second_day_of_month;
     const anchor =
       normalizeIsoDate(tx.date || tx.occurrence_date || "") ||
-      normalizeIsoDate((selectedExpectedSeriesTx && selectedExpectedSeriesTx.start_date) || tx.start_date || "");
-    setSecondDayOfMonthInput(instanceSecondDayOfMonth, v, anchor);
+      normalizeIsoDate((meta && meta.start_date) || tx.start_date || "");
+    if (rec === "semiannual") {
+      setSecondOccurrenceInput(
+        instanceSecondDayOfMonth,
+        meta.second_occurrence_month,
+        v,
+        anchor
+      );
+    } else {
+      setSecondDayOfMonthInput(instanceSecondDayOfMonth, v, anchor);
+    }
   }
   if (instanceEndCount) {
     const v = (selectedExpectedSeriesTx && selectedExpectedSeriesTx.end_count) != null ? selectedExpectedSeriesTx.end_count : tx.end_count;
@@ -10040,7 +10266,7 @@ const RECURRENCE_OPTION_LABELS = {
   bimonthly: "Every 2 months",
   biweekly: "Every 2 weeks",
   weekly: "Every week",
-  semiannual: "Every 6 months",
+  semiannual: "Twice Yearly",
   yearly: "Every year",
   quarterly: "Every 3 months",
 };
@@ -10150,17 +10376,36 @@ function nextExpectedOccurrenceIso(tx, fromIso) {
       cand = cur;
     }
   } else if (recurrence === "semiannual") {
-    // Every 6 months from start.
+    const secondMonth = Number(tx.second_occurrence_month);
+    const secondDay = Number(tx.second_day_of_month);
+    const anchors = [];
+    if (Number.isFinite(startMonth) && Number.isFinite(startDom)) {
+      anchors.push({ m: startMonth, d: startDom });
+    }
+    if (Number.isFinite(secondMonth) && Number.isFinite(secondDay)) {
+      anchors.push({ m: secondMonth, d: secondDay });
+    } else if (Number.isFinite(startMonth) && Number.isFinite(startDom)) {
+      const legacy = addMonthsClamped(start, 6, startDom);
+      anchors.push({ m: legacy.getMonth(), d: legacy.getDate() });
+    }
+    const uniq = anchors.filter(
+      (a, i, arr) => arr.findIndex((b) => b.m === a.m && b.d === a.d) === i
+    );
+    if (!uniq.length) return null;
     if (from <= start) {
       cand = start;
     } else {
-      let cur = start;
-      // Jump close using month difference, then step by 6.
-      const monthsDiff = (from.getFullYear() - start.getFullYear()) * 12 + (from.getMonth() - start.getMonth());
-      const steps = Math.max(0, Math.floor(monthsDiff / 6) * 6);
-      cur = addMonthsClamped(start, steps, startDom);
-      while (cur < from) cur = addMonthsClamped(cur, 6, startDom);
-      cand = cur;
+      const y = from.getFullYear();
+      const today = { m: from.getMonth(), d: from.getDate() };
+      let pick = null;
+      for (const a of uniq) {
+        if (a.m > today.m || (a.m === today.m && a.d >= today.d)) {
+          pick = dateFromYMDClamped(y, a.m, a.d);
+          break;
+        }
+      }
+      if (!pick) pick = dateFromYMDClamped(y + 1, uniq[0].m, uniq[0].d);
+      cand = pick;
     }
   } else {
     // monthly (default)
@@ -10684,10 +10929,20 @@ function renderRecurringFilteredList() {
       tx.start_date != null && String(tx.start_date).length >= 10
         ? Number(String(tx.start_date).slice(8, 10))
         : null;
-    const twiceMeta =
-      tx.recurrence === "twice_monthly" && tx.second_day_of_month != null && startDom != null && !Number.isNaN(startDom)
-        ? `days ${startDom} & ${tx.second_day_of_month}`
-        : "";
+    let twiceMeta = "";
+    if (tx.recurrence === "twice_monthly" && tx.second_day_of_month != null && startDom != null && !Number.isNaN(startDom)) {
+      twiceMeta = `days ${startDom} & ${tx.second_day_of_month}`;
+    } else if (
+      tx.recurrence === "semiannual" &&
+      tx.second_day_of_month != null &&
+      tx.second_occurrence_month != null &&
+      tx.start_date
+    ) {
+      const s = normalizeIsoDate(tx.start_date) || "";
+      if (s.length >= 10) {
+        twiceMeta = `${s.slice(5, 7)}/${s.slice(8, 10)} & ${String(tx.second_occurrence_month).padStart(2, "0")}/${tx.second_day_of_month}`;
+      }
+    }
 
     const left = document.createElement("div");
     left.className = "left";
@@ -11111,6 +11366,16 @@ function readSecondDayOfMonthFromInput(el) {
   return isoDateToDayOfMonth(raw);
 }
 
+function readSecondOccurrenceFromInput(el) {
+  const iso = normalizeIsoDate(el?.value || "");
+  if (!iso || iso.length < 10) return null;
+  const month = Number(iso.slice(5, 7));
+  const day = Number(iso.slice(8, 10));
+  if (!Number.isFinite(month) || month < 1 || month > 12) return null;
+  if (!Number.isFinite(day) || day < 1 || day > 31) return null;
+  return { month, day };
+}
+
 function setSecondDayOfMonthInput(el, day, anchorIso) {
   if (!el) return;
   const n = Number(day);
@@ -11121,6 +11386,20 @@ function setSecondDayOfMonthInput(el, day, anchorIso) {
   el.value = dayOfMonthToIsoDate(n, anchorIso);
 }
 
+function setSecondOccurrenceInput(el, month, day, anchorIso) {
+  if (!el) return;
+  const m = Number(month);
+  const d = Number(day);
+  if (!Number.isFinite(m) || m < 1 || m > 12 || !Number.isFinite(d) || d < 1 || d > 31) {
+    el.value = "";
+    return;
+  }
+  const anchor = normalizeIsoDate(anchorIso) || "";
+  const y =
+    anchor.length >= 4 && /^\d{4}$/.test(anchor.slice(0, 4)) ? anchor.slice(0, 4) : String(new Date().getFullYear());
+  el.value = `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+}
+
 function inferSecondMonthlyIsoFromStart(startIso) {
   const start = normalizeIsoDate(startIso);
   if (!start) return "";
@@ -11128,6 +11407,63 @@ function inferSecondMonthlyIsoFromStart(startIso) {
   if (!Number.isFinite(dom)) return "";
   const other = dom <= 15 ? 31 : 15;
   return dayOfMonthToIsoDate(other, start);
+}
+
+function inferSecondYearlyIsoFromStart(startIso) {
+  const start = parseIsoDateLocal(normalizeIsoDate(startIso) || startIso);
+  if (!start) return "";
+  const shifted = addMonthsClamped(start, 6, start.getDate());
+  return toISODate(shifted);
+}
+
+function recurrenceUsesSecondOccurrenceDate(recurrence) {
+  const r = String(recurrence || "").trim().toLowerCase();
+  return r === "twice_monthly" || r === "semiannual";
+}
+
+function secondOccurrenceFieldMode(recurrence) {
+  return String(recurrence || "").trim().toLowerCase() === "semiannual" ? "yearly" : "monthly";
+}
+
+function updateSecondOccurrenceFieldCopy(container, recurrence) {
+  if (!container) return;
+  const yearly = secondOccurrenceFieldMode(recurrence) === "yearly";
+  const label = container.querySelector("label[for], .form-row-h__label label, .account-setup-tx-schedule-grid__label");
+  const hint = container.querySelector(".tx-add-twice-monthly-hint, .expected-second-day-row__hint");
+  if (label) label.textContent = yearly ? "Second yearly date" : "Second monthly date";
+  if (hint) {
+    hint.textContent = yearly
+      ? "Pick a different date than the start date (often about six months apart)."
+      : "Pick a date on a different day of the month than the start date.";
+  }
+}
+
+function validateSecondOccurrenceForSave(recurrence, startIso, secondEl) {
+  const start = normalizeIsoDate(startIso) || "";
+  if (!start) return "Start date is required";
+  if (secondOccurrenceFieldMode(recurrence) === "monthly") {
+    const n = readSecondDayOfMonthFromInput(secondEl);
+    if (!Number.isFinite(n) || n < 1 || n > 31) return "Second monthly date is required for twice monthly";
+    const startDay = Number(start.slice(8, 10));
+    if (n === startDay) return "Second monthly date must be on a different day of the month than the start date";
+    return null;
+  }
+  const occ = readSecondOccurrenceFromInput(secondEl);
+  if (!occ) return "Second yearly date is required for twice yearly";
+  const sm = Number(start.slice(5, 7));
+  const sd = Number(start.slice(8, 10));
+  if (occ.month === sm && occ.day === sd) return "Second yearly date must differ from the start date";
+  return null;
+}
+
+function secondOccurrencePayloadFromForm(recurrence, secondEl) {
+  if (secondOccurrenceFieldMode(recurrence) === "monthly") {
+    return { second_day_of_month: readSecondDayOfMonthFromInput(secondEl), second_occurrence_month: null };
+  }
+  const occ = readSecondOccurrenceFromInput(secondEl);
+  return occ
+    ? { second_day_of_month: occ.day, second_occurrence_month: occ.month }
+    : { second_day_of_month: null, second_occurrence_month: null };
 }
 
 /** Earliest account starting-balance date (YYYY-MM-DD); null if no accounts. */
@@ -11895,11 +12231,21 @@ function selectExpectedInstance(item) {
     if (meta) {
       if (instanceRecurrence) instanceRecurrence.value = String(meta.recurrence || "monthly");
       if (instanceSecondDayOfMonth) {
-        setSecondDayOfMonthInput(
-          instanceSecondDayOfMonth,
-          meta.second_day_of_month,
-          meta.start_date || instanceExpectedTxId?.value || ""
-        );
+        const rec = String(meta.recurrence || "monthly");
+        if (rec === "semiannual") {
+          setSecondOccurrenceInput(
+            instanceSecondDayOfMonth,
+            meta.second_occurrence_month,
+            meta.second_day_of_month,
+            meta.start_date || instanceExpectedTxId?.value || ""
+          );
+        } else {
+          setSecondDayOfMonthInput(
+            instanceSecondDayOfMonth,
+            meta.second_day_of_month,
+            meta.start_date || instanceExpectedTxId?.value || ""
+          );
+        }
       }
       updateInstanceTwiceMonthlyVisibility();
     }
@@ -16321,7 +16667,8 @@ async function tryRecoverAccountSetupDraft() {
           end_count: t.end_date ? null : t.end_count ?? null,
           recurrence: t.recurrence || "monthly",
           second_day_of_month:
-            t.recurrence === "twice_monthly" ? t.second_day_of_month ?? null : null,
+            t.recurrence === "twice_monthly" || t.recurrence === "semiannual" ? t.second_day_of_month ?? null : null,
+          second_occurrence_month: t.recurrence === "semiannual" ? t.second_occurrence_month ?? null : null,
           description,
           notes: t.notes ? t.notes : null,
           kind: t.kind,
