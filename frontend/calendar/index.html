@@ -14,7 +14,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=649" />
+    <link rel="stylesheet" href="../styles.css?v=650" />
   </head>
   <body>
     <div class="container">
@@ -1241,19 +1241,19 @@
             <div class="tx-add-vspace" aria-hidden="true"></div>
           </div>
 
-          <div id="txEditRecurringVariableWrap" class="form-row-h tx-edit-variable-form-row" style="display: none">
-            <div class="form-row-h__label">
-              <label for="seriesVariable">Amount varies month to month</label>
-              <p class="tx-edit-variable-row__hint">Helpful for utilities and fluctuating bills.</p>
-            </div>
-            <div class="form-row-h__field tx-edit-variable-field-wrap">
-              <input
-                id="seriesVariable"
-                type="checkbox"
-                class="tx-edit-variable-row__input"
-                title="Amount is an estimate that may change month to month"
-              />
-            </div>
+          <div id="txEditRecurringVariableWrap" class="tx-edit-variable-form-row" style="display: none">
+            <label class="tx-edit-variable-toggle" for="seriesVariable">
+              <span class="tx-edit-variable-toggle__head">
+                <input
+                  id="seriesVariable"
+                  type="checkbox"
+                  class="tx-edit-variable-row__input"
+                  title="Amount is an estimate that may change month to month"
+                />
+                <span class="tx-edit-variable-toggle__label">Amount varies month to month</span>
+              </span>
+              <span class="tx-edit-variable-row__hint">Helpful for utilities and fluctuating bills.</span>
+            </label>
           </div>
 
           <div id="txEditRecurringPrimaryActions" class="tx-edit-recurring-update-row" style="display: none"></div>
