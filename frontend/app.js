@@ -1506,6 +1506,25 @@ let txAddValidationTouched = false;
 /** Category hint only after Add is clicked without a category (not when other fields are edited). */
 let txAddCategoryValidationShown = false;
 let txAddValidationBound = false;
+let txAddSaveInFlight = false;
+const TX_ADD_SAVE_LABEL = "Add transaction";
+
+function setTxAddSaveBusy(busy) {
+  txAddSaveInFlight = !!busy;
+  const btn = txAddSave || document.getElementById("txAddSave");
+  if (!btn) return;
+  if (busy) {
+    if (!btn.dataset.origLabel) btn.dataset.origLabel = btn.textContent.trim() || TX_ADD_SAVE_LABEL;
+    btn.textContent = "Adding…";
+    btn.disabled = true;
+    btn.setAttribute("aria-busy", "true");
+  } else {
+    btn.textContent = btn.dataset.origLabel || TX_ADD_SAVE_LABEL;
+    btn.disabled = false;
+    btn.removeAttribute("aria-busy");
+  }
+  if (txAddCancel) txAddCancel.disabled = !!busy;
+}
 
 function countCategoriesForTxAddKind(kind) {
   return (state.categories || []).filter((c) => categoryMatchesTransactionKind(c, kind)).length;
@@ -1533,7 +1552,6 @@ function resetTxAddFormValidation() {
   setTxAddFieldValidation(txAddCategoryValidation, "");
   setTxAddFieldValidation(txAddAccountValidation, "");
   setTxAddFieldValidation(txAddDateValidation, "");
-  if (txAddSave) txAddSave.disabled = false;
 }
 
 function updateTxAddFormValidity(opts = {}) {
@@ -4145,6 +4163,7 @@ if (addCategoryGroupBtn) {
 
 if (txAddSave) {
   txAddSave.addEventListener("click", async () => {
+    if (txAddSaveInFlight) return;
     try {
       show(txAddErr, "");
       if (!state.activeFamilyId) throw new Error("Choose a family first");
@@ -4154,6 +4173,8 @@ if (txAddSave) {
         show(txAddErr, "Complete the required fields below.");
         return;
       }
+
+      setTxAddSaveBusy(true);
 
       const dateVal = txAddDate?.value || "";
       const notesRaw = txAddNotes?.value?.trim() || "";
@@ -4252,6 +4273,8 @@ if (txAddSave) {
       await loadMonthAndCalendar();
     } catch (e) {
       show(txAddErr, e.message || "Failed to add");
+    } finally {
+      setTxAddSaveBusy(false);
     }
   });
 }
@@ -4743,6 +4766,7 @@ function activateSettingsSection(key) {
 }
 
 function openTxAddModal(opts = {}) {
+  if (txAddSaveInFlight) return;
   const modalEl = txAddModal || document.getElementById("txAddModal");
   const dateEl = txAddDate || document.getElementById("txAddDate");
   if (!modalEl || !dateEl) {
@@ -4787,6 +4811,7 @@ function openTxAddModal(opts = {}) {
     txAddColorToggleEl.classList.remove("is-open");
   }
   resetTxAddFormValidation();
+  setTxAddSaveBusy(false);
   const kind = opts.kind || "income";
   const radio = document.querySelector(`input[type="radio"][name="txAddKind"][value="${kind}"]`);
   if (radio) radio.checked = true;
@@ -4803,6 +4828,7 @@ function openTxAddModal(opts = {}) {
 function closeTxAddModal() {
   if (!txAddModal) return;
   resetTxAddFormValidation();
+  if (!txAddSaveInFlight) setTxAddSaveBusy(false);
   show(txAddErr, "");
   txAddModal.classList.remove("modal-overlay--open");
   txAddModal.setAttribute("aria-hidden", "true");
