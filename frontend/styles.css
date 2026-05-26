@@ -19035,18 +19035,16 @@ body.plans-page--polished .plans-wrap{
   color: rgba(51, 65, 85, 0.84);
 }
 
-/* Category-colored row: contrast text on fill (white on dark category colors). */
-.cal-day-tx-line--category-fill{
+/* Category color on label column only; amount stays red/green. */
+.cal-tx-label-wrap--category-fill{
   background: var(--cal-tx-fill-bg);
   color: var(--cal-tx-fill-fg);
   border-radius: 3px;
-  padding: 1px 4px;
+  padding: 0 2px;
   box-sizing: border-box;
+  max-width: 100%;
 }
-.cal-day-tx-line--category-fill .cal-tx-label,
-.cal-day-tx-line--category-fill .cal-amt,
-.cal-day-tx-line--category-fill .cal-amt.income,
-.cal-day-tx-line--category-fill .cal-amt.expense{
+.cal-tx-label-wrap--category-fill .cal-tx-label{
   color: inherit;
 }
 /* Impact rows: weight only (no stripe). */
@@ -20061,11 +20059,8 @@ body[data-bw-view="transactions"] .tm__field label{
   background: rgba(11, 61, 46, 0.035);
   box-shadow: none;
 }
-.cal-day-tx-line--category-fill.cal-tx-part:hover:not(:active),
-.cal-day-tx-line--category-fill.cal-day-tx-line--expected:hover:not(:active){
-  background: var(--cal-tx-fill-bg);
+.cal-day-tx-line:hover .cal-tx-label-wrap--category-fill{
   filter: brightness(0.94);
-  box-shadow: none;
 }
 .cal-day-tx-line:hover .cal-tx-label{
   text-decoration: none;

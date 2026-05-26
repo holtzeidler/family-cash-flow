@@ -9791,15 +9791,15 @@ function pillStyleForTransaction(txOrItem) {
   return null;
 }
 
-/** Calendar row background from category; label + amount use contrast text on the fill. */
-function applyCalendarDayTxCategoryFill(line, row) {
-  if (!line || !row || row._type === "start_balance") return;
+/** Category background on the label column only; amounts keep income/expense colors. */
+function applyCalendarDayTxCategoryFill(labelWrap, row) {
+  if (!labelWrap || !row || row._type === "start_balance") return;
   const pill = pillStyleForTransaction(row);
   if (!pill || !pill.bg) return;
   const fg = pill.fg || accessibleTextOnBackground(pill.bg);
-  line.classList.add("cal-day-tx-line--category-fill");
-  line.style.setProperty("--cal-tx-fill-bg", pill.bg);
-  line.style.setProperty("--cal-tx-fill-fg", fg);
+  labelWrap.classList.add("cal-tx-label-wrap--category-fill");
+  labelWrap.style.setProperty("--cal-tx-fill-bg", pill.bg);
+  labelWrap.style.setProperty("--cal-tx-fill-fg", fg);
 }
 
 /** Default label text color: green income / red expense (lists + pills). Calendar uses row flow modifiers + `.cal-amt.income|expense`. */
@@ -12651,10 +12651,10 @@ function renderCalendar() {
         }
         amtSpan.textContent = `$${fmtMoney(row.amount)}`;
 
+        applyCalendarDayTxCategoryFill(labelWrap, row);
         line.appendChild(labelWrap);
         line.appendChild(amtSpan);
         line.title = String(labelRaw || "").trim();
-        applyCalendarDayTxCategoryFill(line, row);
 
         {
           const noteStr = row.notes && String(row.notes).trim() ? String(row.notes).trim() : "";
