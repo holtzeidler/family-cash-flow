@@ -11640,14 +11640,18 @@ function renderSidebarPendingTransactionsForMonth() {
     });
 
     const catLabel = effectiveTransactionCategoryName(it) || "Uncategorized";
+    const primaryLabel = forecastTransactionPrimaryLabel(it);
     const descFull = String(it?.description || "").trim();
     const notesFull = String(it?.notes || "").trim();
-    const hintParts = [descFull, notesFull].filter(Boolean);
+    const hintParts = [
+      descFull && descFull !== primaryLabel ? descFull : "",
+      notesFull,
+    ].filter(Boolean);
 
     const name = document.createElement("div");
     name.className = "pending-attn-name";
-    name.textContent = descFull || catLabel;
-    name.title = hintParts.length ? `${descFull || catLabel} — ${catLabel}${notesFull ? ` · ${notesFull}` : ""}` : (descFull || catLabel);
+    name.textContent = primaryLabel;
+    name.title = hintParts.length ? `${primaryLabel} — ${hintParts.join(" · ")}` : primaryLabel;
 
     const amt = Math.abs(toNum(it?.amount));
     const sign = String(kind) === "income" ? "+" : "–";
@@ -11673,7 +11677,7 @@ function renderSidebarPendingTransactionsForMonth() {
 
     el.setAttribute(
       "aria-label",
-      `${descFull || catLabel}, ${sign}$${fmtMoney0(amt)}, ${it?.date ? fmtMonthDay(it.date) : "date unknown"}`
+      `${primaryLabel}, ${sign}$${fmtMoney0(amt)}, ${it?.date ? fmtMonthDay(it.date) : "date unknown"}`
     );
     el.title = name.title;
     el.appendChild(textCol);
@@ -12117,6 +12121,15 @@ function actualTransactionPrimaryLabel(tx) {
   const n = tx?.notes != null ? String(tx.notes).trim() : "";
   if (n) return truncate(n, 72);
   return "(no description)";
+}
+
+/** Forecast / expected row label (calendar + Needs review): category when set, else description. */
+function forecastTransactionPrimaryLabel(tx) {
+  const cat = effectiveTransactionCategoryName(tx || {});
+  if (cat) return cat;
+  const desc = String(tx?.description ?? "").trim();
+  if (desc) return desc;
+  return "Uncategorized";
 }
 
 function renderVariableTodosForMonth() {
@@ -12617,9 +12630,8 @@ function renderCalendar() {
 
         // Match list UIs: prefer category (from API string or category_id → state.categories).
         // Forecast rows used to always show description (e.g. "ComEd") even when category was "Gas".
-        const categoryName = effectiveTransactionCategoryName(row);
         const descRaw = isExpected ? row.description || "(expected)" : (row.description || "Uncategorized").trim();
-        const labelRaw = categoryName || descRaw;
+        const labelRaw = isExpected ? forecastTransactionPrimaryLabel(row) : effectiveTransactionCategoryName(row) || descRaw;
         // Keep labels short so they don't wrap into the amount column.
         const label = truncate(labelRaw, labelMaxLen);
 
