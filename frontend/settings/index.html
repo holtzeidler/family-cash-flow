@@ -1147,27 +1147,6 @@
             <div class="form-row-h__label"><label for="txEditCategoryId">Category</label></div>
             <div class="form-row-h__field"><select id="txEditCategoryId"></select></div>
           </div>
-          <details class="tx-edit-advanced" id="txEditAdvancedDetails">
-            <summary class="tx-edit-advanced__summary">
-              <span class="tx-edit-advanced__label-col">
-                <span class="tx-edit-advanced__chev" aria-hidden="true"></span>
-                <span class="tx-edit-advanced__label">Advanced options</span>
-              </span>
-            </summary>
-            <div class="tx-edit-advanced__body">
-              <div id="txEditCategoryColorRow" class="cat-color-row tx-edit-cat-color-panel">
-                <div class="cat-color-row__label">Color</div>
-                <div class="cat-color-row__swatches" id="txEditCategoryColorSwatches"></div>
-                <button type="button" class="cat-color-row__clear tx-edit-cat-color-clear" id="txEditCategoryColorClear" hidden>Clear</button>
-              </div>
-              <div id="txEditNotesRow" class="form-row-h tx-edit-notes-in-advanced">
-                <div class="form-row-h__label"><label for="txEditNotes" id="txEditNotesLabel">Notes</label></div>
-                <div class="form-row-h__field">
-                  <input id="txEditNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
-                </div>
-              </div>
-            </div>
-          </details>
           <div class="tx-add-vspace" aria-hidden="true"></div>
           <div class="form-row-h">
             <div class="form-row-h__label"><label for="txEditDate" id="txEditDateLabel">Date</label></div>
@@ -1237,6 +1216,27 @@
             </div>
             <div class="tx-add-vspace" aria-hidden="true"></div>
           </div>
+          <details class="tx-edit-advanced" id="txEditAdvancedDetails">
+            <summary class="tx-edit-advanced__summary">
+              <span class="tx-edit-advanced__label-col">
+                <span class="tx-edit-advanced__chev" aria-hidden="true"></span>
+                <span class="tx-edit-advanced__label">Advanced options</span>
+              </span>
+            </summary>
+            <div class="tx-edit-advanced__body">
+              <div id="txEditCategoryColorRow" class="cat-color-row tx-edit-cat-color-panel">
+                <div class="cat-color-row__label">Color</div>
+                <div class="cat-color-row__swatches" id="txEditCategoryColorSwatches"></div>
+                <button type="button" class="cat-color-row__clear tx-edit-cat-color-clear" id="txEditCategoryColorClear" hidden>Clear</button>
+              </div>
+              <div id="txEditNotesRow" class="form-row-h tx-edit-notes-in-advanced">
+                <div class="form-row-h__label"><label for="txEditNotes" id="txEditNotesLabel">Notes</label></div>
+                <div class="form-row-h__field">
+                  <input id="txEditNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
+                </div>
+              </div>
+            </div>
+          </details>
 
           <div id="txEditRecurringVariableWrap" class="tx-edit-variable-form-row" style="display: none">
             <label class="tx-edit-variable-toggle" for="seriesVariable">
@@ -1520,7 +1520,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="../app.js?v=385"></script>
+    <script src="../app.js?v=386"></script>
     <script src="../feedback.js?v=3" defer></script>
     <script src="../tour.js?v=9" defer></script>
   </body>

@@ -397,18 +397,18 @@ function normalizeFgColorForSave(bg) {
 }
 
 const CATEGORY_COLOR_PALETTE = [
-  "#40E0FF", // cyan
-  "#F2C14E", // gold
-  "#FF9800", // orange
-  "#9C27B0", // purple
-  "#F44336", // red
-  "#FFEB3B", // yellow
-  "#00BCD4", // aqua
-  "#9E9E9E", // gray
-  "#8FB3C8", // slate
-  "#C39BE3", // lavender
-  "#000000", // black
-  "#4CAF50", // green
+  "#9ECFE0", // cyan
+  "#DCC99A", // gold
+  "#E0BF94", // orange
+  "#C4AED4", // purple
+  "#D9A5A5", // red
+  "#E6DCA0", // yellow
+  "#94C9CF", // aqua
+  "#B5BAC2", // gray
+  "#A8BECD", // slate
+  "#CDBDE0", // lavender
+  "#8A919C", // charcoal
+  "#9EC4A8", // green
 ];
 
 function renderCategoryColorPicker({ rowEl, swatchesEl, clearBtn, getCategoryId, getBg, setBg, unhideRow = true }) {
