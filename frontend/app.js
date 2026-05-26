@@ -9791,6 +9791,17 @@ function pillStyleForTransaction(txOrItem) {
   return null;
 }
 
+/** Calendar row background from category; label + amount use contrast text on the fill. */
+function applyCalendarDayTxCategoryFill(line, row) {
+  if (!line || !row || row._type === "start_balance") return;
+  const pill = pillStyleForTransaction(row);
+  if (!pill || !pill.bg) return;
+  const fg = pill.fg || accessibleTextOnBackground(pill.bg);
+  line.classList.add("cal-day-tx-line--category-fill");
+  line.style.setProperty("--cal-tx-fill-bg", pill.bg);
+  line.style.setProperty("--cal-tx-fill-fg", fg);
+}
+
 /** Default label text color: green income / red expense (lists + pills). Calendar uses row flow modifiers + `.cal-amt.income|expense`. */
 function kindFgClass(kind) {
   return String(kind) === "income" ? "tx-kind-fg--income" : "tx-kind-fg--expense";
@@ -12616,18 +12627,6 @@ function renderCalendar() {
           line.dataset.occurrenceDate =
             normalizeIsoDate(row.occurrence_date || row.date) || normalizeIsoDate(iso) || iso;
         }
-        // Apply an explicit per-transaction color to the row's left stripe.
-        // We only honor explicit overrides (not the category-inherited color),
-        // otherwise large categories would paint stripes for every row and
-        // make the calendar feel busy.
-        {
-          const rawBg = row && row.bg_color ? String(row.bg_color).trim() : "";
-          if (rawBg && rawBg.toLowerCase() !== "none") {
-            line.classList.add("cal-day-tx-line--has-color");
-            line.style.setProperty("--cal-tx-stripe", rawBg);
-          }
-        }
-
         // Match list UIs: prefer category (from API string or category_id → state.categories).
         // Forecast rows used to always show description (e.g. "ComEd") even when category was "Gas".
         const descRaw = isExpected ? row.description || "(expected)" : (row.description || "Uncategorized").trim();
@@ -12655,6 +12654,7 @@ function renderCalendar() {
         line.appendChild(labelWrap);
         line.appendChild(amtSpan);
         line.title = String(labelRaw || "").trim();
+        applyCalendarDayTxCategoryFill(line, row);
 
         {
           const noteStr = row.notes && String(row.notes).trim() ? String(row.notes).trim() : "";

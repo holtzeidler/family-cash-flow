@@ -18889,7 +18889,8 @@ body.plans-page--polished .plans-wrap{
   padding: 0 1px 0 4px;
   position: relative;
   font-weight: 500;
-  color: var(--cal-tx-out-color, rgba(168, 62, 62, 0.72));
+  --cal-tx-label-color: rgb(17, 24, 39);
+  color: var(--cal-tx-label-color);
 }
 .cal-day-tx-line--impact-lg,
 .cal-day-tx-line--impact-xxl{
@@ -18920,14 +18921,14 @@ body.plans-page--polished .plans-wrap{
   display: block;
 }
 
-/* Label and amount: same size, weight, and color on every row. */
+/* Label: always black. Amount: income/expense colors via .income / .expense. */
 .cal-day-tx-line .cal-tx-label,
 .cal-day-tx-line .cal-amt{
   font-size: inherit;
   font-weight: inherit;
-  color: inherit;
 }
 .cal-day-tx-line .cal-tx-label{
+  color: var(--cal-tx-label-color, rgb(17, 24, 39));
   display: block;
   min-width: 0;
   max-width: 100%;
@@ -18942,6 +18943,12 @@ body.plans-page--polished .plans-wrap{
   font-variant-numeric: tabular-nums;
   min-width: max-content;
   padding-left: 2px;
+}
+.cal-day-tx-line .cal-amt.income{
+  color: var(--cal-tx-in-color, var(--ok));
+}
+.cal-day-tx-line .cal-amt.expense{
+  color: var(--cal-tx-out-color, var(--danger));
 }
 
 /* Subtle density tweaks only — one layout system; app.js sets sparse|normal|dense. */
@@ -18988,22 +18995,7 @@ body.plans-page--polished .plans-wrap{
   border-bottom: 1px dotted rgba(100, 116, 139, 0.35);
 }
 
-/* Flow direction: exactly two colors — full strength on label + amount. */
-.cal-day-tx-line--flow-in,
-.cal-day-tx-line--flow-in .cal-tx-label,
-.cal-day-tx-line--flow-in .cal-amt{
-  color: var(--cal-tx-in-color, var(--ok));
-}
-.cal-day-tx-line--flow-out,
-.cal-day-tx-line--flow-out .cal-tx-label,
-.cal-day-tx-line--flow-out .cal-amt{
-  color: var(--cal-tx-out-color, var(--danger));
-}
-.cal-day-tx-line--flow-neutral,
-.cal-day-tx-line--flow-neutral .cal-tx-label,
-.cal-day-tx-line--flow-neutral .cal-amt{
-  color: var(--cal-tx-out-color, var(--danger));
-}
+/* Flow modifiers kept for semantics; amount color comes from .cal-amt.income / .expense. */
 
 /* Starting balance: anchored forecast reference (distinct from reconciled ✓). */
 .cal-day-tx-line--start-balance,
@@ -19043,70 +19035,21 @@ body.plans-page--polished .plans-wrap{
   color: rgba(51, 65, 85, 0.84);
 }
 
-.cal-day-tx-line--impact-lg,
-.cal-day-tx-line--impact-xxl{
-  padding-left: 5px;
-  border-radius: 0;
+/* Category-colored row: contrast text on fill (white on dark category colors). */
+.cal-day-tx-line--category-fill{
+  background: var(--cal-tx-fill-bg);
+  color: var(--cal-tx-fill-fg);
+  border-radius: 3px;
+  padding: 1px 4px;
+  box-sizing: border-box;
 }
-.cal-day-tx-line--impact-lg::before,
-.cal-day-tx-line--impact-xxl::before,
-.cal-day-tx-line--has-color::before{
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 2px;
-  bottom: 2px;
-  width: 2px;
-  border-radius: 2px;
-  background: var(--cal-tx-stripe, rgba(100, 116, 139, 0.42));
-  pointer-events: none;
+.cal-day-tx-line--category-fill .cal-tx-label,
+.cal-day-tx-line--category-fill .cal-amt,
+.cal-day-tx-line--category-fill .cal-amt.income,
+.cal-day-tx-line--category-fill .cal-amt.expense{
+  color: inherit;
 }
-/* Thin flow markers when no category stripe is present */
-.cal-day-tx-line--flow-in:not(.cal-day-tx-line--has-color):not(.cal-day-tx-line--impact-lg):not(.cal-day-tx-line--impact-xxl):not(.cal-day-tx-line--start-balance)::before,
-.cal-day-tx-line--flow-out:not(.cal-day-tx-line--has-color):not(.cal-day-tx-line--impact-lg):not(.cal-day-tx-line--impact-xxl):not(.cal-day-tx-line--start-balance)::before{
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 2px;
-  bottom: 2px;
-  width: 2px;
-  border-radius: 2px;
-  pointer-events: none;
-}
-.cal-day-tx-line--flow-in:not(.cal-day-tx-line--has-color):not(.cal-day-tx-line--impact-lg):not(.cal-day-tx-line--impact-xxl):not(.cal-day-tx-line--start-balance)::before{
-  background: color-mix(in srgb, var(--cal-tx-in-color, var(--ok)) 32%, transparent);
-}
-.cal-day-tx-line--flow-out:not(.cal-day-tx-line--has-color):not(.cal-day-tx-line--impact-lg):not(.cal-day-tx-line--impact-xxl):not(.cal-day-tx-line--start-balance)::before,
-.cal-day-tx-line--flow-neutral:not(.cal-day-tx-line--has-color):not(.cal-day-tx-line--impact-lg):not(.cal-day-tx-line--impact-xxl):not(.cal-day-tx-line--start-balance)::before{
-  background: color-mix(in srgb, var(--cal-tx-out-color, var(--danger)) 28%, transparent);
-}
-.cal-day-tx-line--impact-lg.cal-day-tx-line--flow-in::before,
-.cal-day-tx-line--impact-xxl.cal-day-tx-line--flow-in::before,
-.cal-day-tx-line--flow-in.cal-day-tx-line--has-color::before{
-  background: color-mix(in srgb, var(--cal-tx-in-color, var(--ok)) 58%, transparent);
-}
-.cal-day-tx-line--impact-lg.cal-day-tx-line--flow-out::before,
-.cal-day-tx-line--impact-xxl.cal-day-tx-line--flow-out::before,
-.cal-day-tx-line--flow-out.cal-day-tx-line--has-color::before,
-.cal-day-tx-line--flow-neutral.cal-day-tx-line--has-color::before{
-  background: color-mix(in srgb, var(--cal-tx-out-color, var(--danger)) 48%, transparent);
-}
-.cal-day-tx-line--has-color{
-  padding-left: 5px;
-  border-radius: 0;
-  background: transparent;
-}
-.cal-day-tx-line--impact-lg,
-.cal-day-tx-line--impact-xxl,
-.cal-day-tx-line--impact-xxl.cal-day-tx-line--flow-out{
-  background: transparent;
-  box-shadow: none;
-}
-/* Impact rows used to amplify the amount typography (800 weight,
-   tightened tracking). That made an impactful expense visually heavier
-   than an identical-category expense one row above. Keep the subtle
-   stripe + background as the impact signal, but inherit the standard
-   amount weight/tracking so adjacent rows always read as the same scale. */
+/* Impact rows: weight only (no stripe). */
 
 .cal-day-tx-line--expected{
   cursor: pointer;
@@ -20116,6 +20059,12 @@ body[data-bw-view="transactions"] .tm__field label{
 .cal-day-tx-line.cal-day-tx-line--expected:hover:not(:active){
   border-radius: 3px;
   background: rgba(11, 61, 46, 0.035);
+  box-shadow: none;
+}
+.cal-day-tx-line--category-fill.cal-tx-part:hover:not(:active),
+.cal-day-tx-line--category-fill.cal-day-tx-line--expected:hover:not(:active){
+  background: var(--cal-tx-fill-bg);
+  filter: brightness(0.94);
   box-shadow: none;
 }
 .cal-day-tx-line:hover .cal-tx-label{
