@@ -9802,6 +9802,38 @@ function applyCalendarDayTxCategoryFill(labelWrap, row) {
   labelWrap.style.setProperty("--cal-tx-fill-fg", fg);
 }
 
+/** Align label category fills in one day to the width available beside the widest amount. */
+function syncCalendarDayLabelFillWidths(txnsEl) {
+  if (!txnsEl) return;
+  const lines = [...txnsEl.querySelectorAll(":scope > .cal-day-tx-line")];
+  const hasFill = lines.some((l) => l.querySelector(".cal-tx-label-wrap--category-fill"));
+  if (!hasFill || !lines.length) {
+    txnsEl.style.removeProperty("--cal-day-label-fill-w");
+    return;
+  }
+  let maxAmtW = 0;
+  for (const line of lines) {
+    const amt = line.querySelector(".cal-amt");
+    if (!amt) continue;
+    maxAmtW = Math.max(maxAmtW, amt.offsetWidth);
+  }
+  const lineW = lines[0].offsetWidth;
+  const gap = 4;
+  const fillW = Math.max(0, Math.floor(lineW - maxAmtW - gap));
+  if (fillW > 0) txnsEl.style.setProperty("--cal-day-label-fill-w", `${fillW}px`);
+  else txnsEl.style.removeProperty("--cal-day-label-fill-w");
+}
+
+function scheduleSyncAllCalendarLabelFillWidths() {
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      for (const txnsEl of document.querySelectorAll(".cal-day-txns")) {
+        syncCalendarDayLabelFillWidths(txnsEl);
+      }
+    });
+  });
+}
+
 /** Default label text color: green income / red expense (lists + pills). Calendar uses row flow modifiers + `.cal-amt.income|expense`. */
 function kindFgClass(kind) {
   return String(kind) === "income" ? "tx-kind-fg--income" : "tx-kind-fg--expense";
@@ -12888,6 +12920,8 @@ function renderCalendar() {
     const h = `${MIN_CELL_H}px`;
     calendarPanel.style.setProperty("--cal-day-min-h", h);
   }
+
+  scheduleSyncAllCalendarLabelFillWidths();
 }
 
 function readStoredMinBalanceThresholdForReports() {
