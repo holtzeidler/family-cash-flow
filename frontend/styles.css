@@ -19043,7 +19043,8 @@ body.plans-page--polished .plans-wrap{
   padding: 0 2px;
   box-sizing: border-box;
   width: var(--cal-day-label-fill-w, auto);
-  max-width: min(100%, var(--cal-day-label-fill-w, 100%));
+  min-width: var(--cal-day-label-fill-w, 0);
+  max-width: var(--cal-day-label-fill-w, 100%);
 }
 .cal-tx-label-wrap--category-fill .cal-tx-label{
   color: inherit;

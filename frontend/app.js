@@ -9802,36 +9802,33 @@ function applyCalendarDayTxCategoryFill(labelWrap, row) {
   labelWrap.style.setProperty("--cal-tx-fill-fg", fg);
 }
 
-/** Align label category fills in one day to the width available beside the widest amount. */
-function syncCalendarDayLabelFillWidths(txnsEl) {
-  if (!txnsEl) return;
+/** Label fill width for one day: space beside the widest amount column (matches grid gap). */
+function measureCalendarDayLabelFillWidth(txnsEl) {
+  if (!txnsEl) return 0;
   const lines = [...txnsEl.querySelectorAll(":scope > .cal-day-tx-line")];
-  const hasFill = lines.some((l) => l.querySelector(".cal-tx-label-wrap--category-fill"));
-  if (!hasFill || !lines.length) {
-    txnsEl.style.removeProperty("--cal-day-label-fill-w");
-    return;
-  }
-  let maxAmtW = 0;
+  if (!lines.length) return 0;
+  const gap = 4;
+  let widestAmt = 0;
+  let lineWForWidest = 0;
   for (const line of lines) {
     const amt = line.querySelector(".cal-amt");
     if (!amt) continue;
-    maxAmtW = Math.max(maxAmtW, amt.offsetWidth);
+    const amtW = amt.getBoundingClientRect().width;
+    if (amtW > widestAmt) {
+      widestAmt = amtW;
+      lineWForWidest = line.getBoundingClientRect().width;
+    }
   }
-  const lineW = lines[0].offsetWidth;
-  const gap = 4;
-  const fillW = Math.max(0, Math.floor(lineW - maxAmtW - gap));
-  if (fillW > 0) txnsEl.style.setProperty("--cal-day-label-fill-w", `${fillW}px`);
-  else txnsEl.style.removeProperty("--cal-day-label-fill-w");
+  if (widestAmt <= 0 || lineWForWidest <= 0) return 0;
+  return Math.max(0, Math.ceil(lineWForWidest - widestAmt - gap));
 }
 
-function scheduleSyncAllCalendarLabelFillWidths() {
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      for (const txnsEl of document.querySelectorAll(".cal-day-txns")) {
-        syncCalendarDayLabelFillWidths(txnsEl);
-      }
-    });
-  });
+/** Set per-day label fill width on the container before category backgrounds are painted. */
+function prepareCalendarDayLabelFillWidth(txnsEl) {
+  if (!txnsEl) return;
+  txnsEl.style.removeProperty("--cal-day-label-fill-w");
+  const fillW = measureCalendarDayLabelFillWidth(txnsEl);
+  if (fillW > 0) txnsEl.style.setProperty("--cal-day-label-fill-w", `${fillW}px`);
 }
 
 /** Default label text color: green income / red expense (lists + pills). Calendar uses row flow modifiers + `.cal-amt.income|expense`. */
@@ -12631,6 +12628,7 @@ function renderCalendar() {
       const hiddenCount = Math.max(0, combined.length - visibleRows.length);
 
       // Render a compact, forecast-first list. Expand only on demand.
+      const dayLineEntries = [];
       for (let vri = 0; vri < visibleRows.length; vri++) {
         const row = visibleRows[vri];
         const isExpected = row._type === "expected";
@@ -12683,7 +12681,6 @@ function renderCalendar() {
         }
         amtSpan.textContent = `$${fmtMoney(row.amount)}`;
 
-        applyCalendarDayTxCategoryFill(labelWrap, row);
         line.appendChild(labelWrap);
         line.appendChild(amtSpan);
         line.title = String(labelRaw || "").trim();
@@ -12710,7 +12707,12 @@ function renderCalendar() {
           }
         }
 
-        txnsEl.appendChild(line);
+        dayLineEntries.push({ line, labelWrap, row });
+      }
+      for (const { line } of dayLineEntries) txnsEl.appendChild(line);
+      prepareCalendarDayLabelFillWidth(txnsEl);
+      for (const { labelWrap, row } of dayLineEntries) {
+        applyCalendarDayTxCategoryFill(labelWrap, row);
       }
 
       if (combined.length > MAX_VISIBLE_TXNS && txnsEl) {
@@ -12921,7 +12923,6 @@ function renderCalendar() {
     calendarPanel.style.setProperty("--cal-day-min-h", h);
   }
 
-  scheduleSyncAllCalendarLabelFillWidths();
 }
 
 function readStoredMinBalanceThresholdForReports() {
