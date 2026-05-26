@@ -22829,8 +22829,8 @@ body.account-setup-page
   align-items: center;
   justify-content: space-between;
   gap: 10px 12px;
-  margin-top: 4px;
-  padding: 10px 0 4px;
+  margin-top: 6px;
+  padding: 12px 0 8px;
   border-top: 1px solid rgba(17, 24, 39, 0.05);
 }
 #txEditInner > .modal-actions #txEditFooterSecondary.tx-edit-actions-row,
@@ -22979,7 +22979,7 @@ body.account-setup-page
 
 .modal--expected-edit{
   max-width: 500px;
-  max-height: min(90vh, 756px);
+  max-height: min(92vh, 820px);
   overflow-y: auto;
   padding: 0;
 }
@@ -22998,19 +22998,19 @@ body.account-setup-page
   margin: 0 0 10px;
 }
 
-/* Tighter form rhythm inside the transaction sheet (calmer, less form-driven). */
+/* Form rhythm inside the transaction sheet: light breathing room between rows. */
 #expectedEditInstancePanel .tx-add-vspace{
-  height: 3px;
+  height: 9px;
 }
 #expectedEditInstancePanel .tx-add-vspace--lg{
-  height: 5px;
+  height: 12px;
 }
 #expectedEditInstancePanel .tx-add-vspace--sm{
-  height: 3px;
+  height: 7px;
 }
 .modal--expected-edit > .modal-actions{
-  margin: 0 12px 6px;
-  padding-top: 3px;
+  margin: 0 14px 8px;
+  padding-top: 6px;
 }
 
 /* === Recurring/transaction edit modal: density + hierarchy polish === */
@@ -23028,21 +23028,26 @@ body.account-setup-page
   display: none;
 }
 .modal--expected-edit #expectedEditInstancePanel{
-  padding: 6px 12px 6px;
+  padding: 12px 14px 10px;
 }
 .modal--expected-edit #txEditRecurringScheduleWrap + .tx-add-vspace{
-  height: 8px;
+  height: 10px;
 }
 .modal--expected-edit #expectedEditInstancePanel #txEditRecurringScheduleWrap{
-  margin-top: 10px;
+  margin-top: 4px;
 }
 .modal--tx-add #txAddScheduleCompact{
   margin-top: 4px;
 }
 .modal--expected-edit #txEditAccountCol{
-  margin-top: 10px;
-  padding-top: 8px;
+  margin-top: 6px;
+  padding-top: 10px;
   border-top: 1px solid rgba(17, 24, 39, 0.04);
+}
+.modal--expected-edit .tx-edit-notes-row{
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
 }
 .modal--expected-edit .tx-edit-notes-in-advanced{
   margin-top: 6px;
@@ -23058,9 +23063,18 @@ body.account-setup-page
   display: none;
 }
 
-/* Tighter, less spreadsheet-feeling label column. */
+/* Label column + vertical padding so fields are not stacked tight. */
 .modal--expected-edit .form-row-h{
   gap: 4px 8px;
+}
+.modal--expected-edit #expectedEditInstancePanel > .form-row-h,
+.modal--expected-edit #expectedEditInstancePanel .tx-edit-recurrence-ends-row > .form-row-h,
+.modal--expected-edit #expectedEditInstancePanel #txEditAccountCol .form-row-h,
+.modal--expected-edit #expectedEditInstancePanel .tx-edit-notes-row.form-row-h,
+.modal--expected-edit #expectedEditInstancePanel .tx-edit-notes-in-advanced.form-row-h,
+.modal--expected-edit #expectedEditInstancePanel .expected-second-day-row.form-row-h,
+.modal--expected-edit #expectedEditInstancePanel .tx-edit-ends-detail.form-row-h{
+  padding-block: 6px;
 }
 .modal--expected-edit .form-row-h__label{
   flex: 0 0 5.75rem;
@@ -23076,8 +23090,8 @@ body.account-setup-page
 .modal--expected-edit #expectedEditInstancePanel .form-row-h__field > input:not([type="checkbox"]):not([type="radio"]),
 .modal--expected-edit #expectedEditInstancePanel .form-row-h__field > select,
 .modal--expected-edit #expectedEditInstancePanel .money-input input{
-  min-height: 34px;
-  padding: 6px 9px;
+  min-height: 36px;
+  padding: 7px 10px;
   font-size: 13px;
   border-radius: 8px;
   border-color: rgba(17, 24, 39, 0.1);
@@ -23091,7 +23105,7 @@ body.account-setup-page
   cursor: pointer;
 }
 .modal--expected-edit #expectedEditInstancePanel .money-input{
-  min-height: 34px;
+  min-height: 36px;
 }
 
 /* Type toggle: same filled Income/Expense treatment as Add transaction. */
@@ -23103,8 +23117,8 @@ body.account-setup-page
 }
 .modal--expected-edit .kind-toggle .kind-opt,
 #txEditInner .kind-toggle .kind-opt{
-  min-height: 28px;
-  padding: 4px 9px;
+  min-height: 32px;
+  padding: 5px 10px;
   font-size: 12px;
   color: rgba(71, 85, 105, 0.58);
 }
@@ -23115,13 +23129,13 @@ body.account-setup-page
 
 /* Advanced options: subtle expandable row (not a faux input). */
 #expectedEditInstancePanel .tx-edit-advanced{
-  margin: 0 0 -1px;
+  margin: 4px 0 0;
   border: none;
   border-radius: 0;
   background: transparent;
 }
 #expectedEditInstancePanel .tx-edit-advanced + .tx-add-vspace{
-  height: 2px;
+  height: 6px;
 }
 #expectedEditInstancePanel .tx-edit-advanced__summary{
   display: flex;
@@ -23133,8 +23147,8 @@ body.account-setup-page
   min-width: 0;
   cursor: pointer;
   list-style: none;
-  min-height: 28px;
-  padding: 4px 0;
+  min-height: 32px;
+  padding: 6px 0;
   user-select: none;
   border-radius: 6px;
   transition: background 0.14s ease, color 0.14s ease;
@@ -23410,9 +23424,9 @@ body.account-setup-page
 
 /* Recurring edit sheet: inherit footer hierarchy from #txEditInner rules. */
 .modal--expected-edit > .modal-actions.modal-actions--tx-edit-foot{
-  margin-top: 2px;
-  padding-top: 10px;
-  padding-bottom: 4px;
+  margin-top: 6px;
+  padding-top: 14px;
+  padding-bottom: 8px;
 }
 .expected-modal-mode-row{
   display: flex;

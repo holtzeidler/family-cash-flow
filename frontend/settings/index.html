@@ -1216,6 +1216,13 @@
             </div>
             <div class="tx-add-vspace" aria-hidden="true"></div>
           </div>
+          <div id="txEditNotesRow" class="form-row-h tx-edit-notes-row">
+            <div class="form-row-h__label"><label for="txEditNotes" id="txEditNotesLabel">Notes</label></div>
+            <div class="form-row-h__field">
+              <input id="txEditNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
+            </div>
+          </div>
+          <div class="tx-add-vspace" aria-hidden="true"></div>
           <details class="tx-edit-advanced" id="txEditAdvancedDetails">
             <summary class="tx-edit-advanced__summary">
               <span class="tx-edit-advanced__label-col">
@@ -1228,12 +1235,6 @@
                 <div class="cat-color-row__label">Color</div>
                 <div class="cat-color-row__swatches" id="txEditCategoryColorSwatches"></div>
                 <button type="button" class="cat-color-row__clear tx-edit-cat-color-clear" id="txEditCategoryColorClear" hidden>Clear</button>
-              </div>
-              <div id="txEditNotesRow" class="form-row-h tx-edit-notes-in-advanced">
-                <div class="form-row-h__label"><label for="txEditNotes" id="txEditNotesLabel">Notes</label></div>
-                <div class="form-row-h__field">
-                  <input id="txEditNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
-                </div>
               </div>
             </div>
           </details>
