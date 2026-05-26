@@ -18874,6 +18874,9 @@ body.plans-page--polished .plans-wrap{
 
 /* === Transaction row: flat, ledger-like typography ===
    Medium weight by default; bold reserved for high-impact amounts. */
+.cal-day-txns--uniform-label-col .cal-day-tx-line{
+  grid-template-columns: minmax(0, var(--cal-day-label-col-w)) auto;
+}
 .cal-day-tx-line{
   --cal-tx-in-color: rgba(5, 118, 84, 0.74);
   --cal-tx-out-color: rgba(168, 62, 62, 0.72);
@@ -19042,9 +19045,8 @@ body.plans-page--polished .plans-wrap{
   border-radius: 3px;
   padding: 0 2px;
   box-sizing: border-box;
-  width: var(--cal-day-label-fill-w, auto);
-  min-width: var(--cal-day-label-fill-w, 0);
-  max-width: var(--cal-day-label-fill-w, 100%);
+  width: 100%;
+  max-width: 100%;
 }
 .cal-tx-label-wrap--category-fill .cal-tx-label{
   color: inherit;

@@ -9802,33 +9802,42 @@ function applyCalendarDayTxCategoryFill(labelWrap, row) {
   labelWrap.style.setProperty("--cal-tx-fill-fg", fg);
 }
 
-/** Label fill width for one day: space beside the widest amount column (matches grid gap). */
-function measureCalendarDayLabelFillWidth(txnsEl) {
+/** Label column width for one day: space beside the widest amount (must run in-layout). */
+function measureCalendarDayLabelColumnWidth(txnsEl) {
   if (!txnsEl) return 0;
   const lines = [...txnsEl.querySelectorAll(":scope > .cal-day-tx-line")];
   if (!lines.length) return 0;
+  const containerW = txnsEl.clientWidth;
+  if (containerW <= 0) return 0;
   const gap = 4;
-  let widestAmt = 0;
-  let lineWForWidest = 0;
+  const linePadL = 4;
+  const linePadR = 1;
+  let maxAmtW = 0;
   for (const line of lines) {
     const amt = line.querySelector(".cal-amt");
-    if (!amt) continue;
-    const amtW = amt.getBoundingClientRect().width;
-    if (amtW > widestAmt) {
-      widestAmt = amtW;
-      lineWForWidest = line.getBoundingClientRect().width;
-    }
+    if (amt) maxAmtW = Math.max(maxAmtW, amt.offsetWidth);
   }
-  if (widestAmt <= 0 || lineWForWidest <= 0) return 0;
-  return Math.max(0, Math.ceil(lineWForWidest - widestAmt - gap));
+  if (maxAmtW <= 0) return 0;
+  return Math.max(0, Math.ceil(containerW - maxAmtW - gap - linePadL - linePadR));
 }
 
-/** Set per-day label fill width on the container before category backgrounds are painted. */
-function prepareCalendarDayLabelFillWidth(txnsEl) {
+/** Pin every row in the day to one label column width so category fills align. */
+function applyCalendarDayLabelColumnWidth(txnsEl) {
   if (!txnsEl) return;
-  txnsEl.style.removeProperty("--cal-day-label-fill-w");
-  const fillW = measureCalendarDayLabelFillWidth(txnsEl);
-  if (fillW > 0) txnsEl.style.setProperty("--cal-day-label-fill-w", `${fillW}px`);
+  txnsEl.classList.remove("cal-day-txns--uniform-label-col");
+  txnsEl.style.removeProperty("--cal-day-label-col-w");
+  if (!txnsEl.querySelector(".cal-tx-label-wrap--category-fill")) return;
+  const colW = measureCalendarDayLabelColumnWidth(txnsEl);
+  if (colW > 0) {
+    txnsEl.classList.add("cal-day-txns--uniform-label-col");
+    txnsEl.style.setProperty("--cal-day-label-col-w", `${colW}px`);
+  }
+}
+
+function finalizeAllCalendarDayLabelColumnWidths() {
+  for (const txnsEl of document.querySelectorAll(".cal-day-txns")) {
+    applyCalendarDayLabelColumnWidth(txnsEl);
+  }
 }
 
 /** Default label text color: green income / red expense (lists + pills). Calendar uses row flow modifiers + `.cal-amt.income|expense`. */
@@ -12710,7 +12719,6 @@ function renderCalendar() {
         dayLineEntries.push({ line, labelWrap, row });
       }
       for (const { line } of dayLineEntries) txnsEl.appendChild(line);
-      prepareCalendarDayLabelFillWidth(txnsEl);
       for (const { labelWrap, row } of dayLineEntries) {
         applyCalendarDayTxCategoryFill(labelWrap, row);
       }
@@ -12923,6 +12931,7 @@ function renderCalendar() {
     calendarPanel.style.setProperty("--cal-day-min-h", h);
   }
 
+  finalizeAllCalendarDayLabelColumnWidths();
 }
 
 function readStoredMinBalanceThresholdForReports() {
