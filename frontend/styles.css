@@ -600,7 +600,7 @@ body.landing-page .landing-hero__inner{
   max-width: min(58rem, 100%);
   margin: 0 auto;
   padding: clamp(0.2rem, 0.8vw, 0.55rem) 0 0;
-  gap: clamp(0.85rem, 2vw, 1.35rem);
+  gap: clamp(0.72rem, 1.65vw, 1.1rem);
   box-sizing: border-box;
 }
 body.landing-page .landing-hero__copy{
@@ -1144,7 +1144,7 @@ body.landing-page .landing-hero__demo-caption-title{
 }
 body.landing-page .landing-hero-forecast{
   width: 100%;
-  max-width: min(58rem, 100%);
+  max-width: min(48rem, 86%);
   margin: 0;
   box-sizing: border-box;
 }
@@ -1158,21 +1158,38 @@ body.landing-page .landing-hero-forecast__demo{
   gap: 0;
   min-width: 0;
   width: 100%;
-  border-radius: 18px;
-  border: 1px solid rgba(11, 61, 46, 0.12);
+  border-radius: 14px;
+  border: 1px solid rgba(11, 61, 46, 0.11);
   overflow: hidden;
   background: rgba(255, 255, 255, 0.99);
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.92) inset,
-    0 22px 48px -18px rgba(11, 61, 46, 0.18),
-    0 8px 24px -12px rgba(11, 61, 46, 0.1);
+    0 14px 36px -16px rgba(11, 61, 46, 0.14),
+    0 6px 18px -10px rgba(11, 61, 46, 0.08);
   box-sizing: border-box;
 }
 body.landing-page .landing-hero-forecast__demo .landing-cal-peek__chrome{
-  padding: 14px 18px 10px;
+  padding: 10px 14px 7px;
+}
+body.landing-page .landing-hero-forecast__demo .landing-cal-peek__month{
+  font-size: 0.74rem;
+}
+body.landing-page .landing-hero-forecast__demo .landing-cal-peek__hint{
+  font-size: 0.66rem;
 }
 body.landing-page .landing-hero-forecast__cal .landing-cal-peek__svg{
-  min-height: 220px;
+  min-height: 0;
+  max-height: 188px;
+}
+body.landing-page .landing-hero-forecast__alert .landing-insight__iconCol{
+  padding: 0.32rem 0.48rem;
+}
+body.landing-page .landing-hero-forecast__alert .landing-insight__main{
+  padding: 0.34rem 0.72rem 0.36rem;
+}
+body.landing-page .landing-hero-forecast__alert .landing-insight__icon{
+  width: 30px;
+  height: 30px;
 }
 body.landing-page .landing-hero-forecast__alert{
   width: 100%;
@@ -2183,11 +2200,11 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
   }
 
   body.landing-page .landing-hero-forecast{
-    max-width: min(62rem, 100%);
+    max-width: min(50rem, 88%);
   }
 
   body.landing-page .landing-hero-forecast__cal .landing-cal-peek__svg{
-    min-height: 248px;
+    max-height: 196px;
   }
 
   body.landing-page .landing-hero-viz{

@@ -69,10 +69,19 @@ function apiBearerAuthHeaders() {
   return {};
 }
 
-async function request(path, method, body) {
+async function request(path, method, body, { timeoutMs = 25000 } = {}) {
   const apiBase = getApiBase();
   const fullPath = `${apiBase}${path}`;
   const startedAt = Date.now();
+  const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+  let timeoutId = null;
+  if (controller && timeoutMs > 0) {
+    timeoutId = window.setTimeout(() => {
+      try {
+        controller.abort();
+      } catch (_) {}
+    }, timeoutMs);
+  }
   try {
     const res = await fetch(fullPath, {
       method,
@@ -82,6 +91,7 @@ async function request(path, method, body) {
       },
       credentials: "include",
       body: body ? JSON.stringify(body) : undefined,
+      signal: controller ? controller.signal : undefined,
     });
     let data = null;
     try {
@@ -95,13 +105,18 @@ async function request(path, method, body) {
       networkError: null,
     };
   } catch (e) {
+    const aborted = e && (e.name === "AbortError" || String(e.message || "").toLowerCase().includes("abort"));
     return {
       ok: false,
       status: null,
       data: null,
       elapsedMs: Date.now() - startedAt,
-      networkError: (e && e.message) || "Network error",
+      networkError: aborted
+        ? "The server is taking too long to respond. If this is your first visit in a while, wait a moment and try again."
+        : (e && e.message) || "Network error",
     };
+  } finally {
+    if (timeoutId != null) window.clearTimeout(timeoutId);
   }
 }
 
@@ -170,10 +185,19 @@ async function goApp() {
       return;
     }
     const enc = encodeURIComponent(String(t).trim());
-    const [me, inv] = await Promise.all([
-      request("/api/auth/me", "GET"),
-      request(`/api/public/invites/by-token/${enc}`, "GET"),
+    const inviteCheck = Promise.all([
+      request("/api/auth/me", "GET", null, { timeoutMs: 12000 }),
+      request(`/api/public/invites/by-token/${enc}`, "GET", null, { timeoutMs: 12000 }),
     ]);
+    const timedOut = new Promise((resolve) => {
+      window.setTimeout(() => resolve("timeout"), 12000);
+    });
+    const raced = await Promise.race([inviteCheck, timedOut]);
+    if (raced === "timeout") {
+      window.location.href = "/calendar";
+      return;
+    }
+    const [me, inv] = raced;
     if (!inv.ok || !inv.data || !inv.data.ok) {
       try {
         sessionStorage.removeItem("bw_invite_token");
@@ -287,10 +311,16 @@ function backToLogin() {
   showFlow("login");
 }
 
+function showSlowConnectHint() {
+  setCallout(loginCalloutEl, "Still connecting…", "pending");
+  if (loginBtn) loginBtn.textContent = "Connecting…";
+}
+
 async function doLogin() {
   if (!loginBtn) return;
   setBusy(true);
   setCallout(loginCalloutEl, "", "");
+  const slowHintTimer = window.setTimeout(showSlowConnectHint, 2200);
   try {
     try {
       sessionStorage.removeItem(BW_API_ACCESS_TOKEN_KEY);
@@ -299,10 +329,9 @@ async function doLogin() {
     const email = document.getElementById("email").value.trim();
     const password = document.getElementById("password").value;
     const loginResp = await requestWithRetry("/api/auth/login", "POST", { email, password }, {
-      maxMs: 12000,
+      maxMs: 28000,
       onRetry() {
-        setCallout(loginCalloutEl, "Still connecting…", "pending");
-        if (loginBtn) loginBtn.textContent = "Connecting…";
+        showSlowConnectHint();
       },
     });
     if (!loginResp.ok) {
@@ -342,6 +371,7 @@ async function doLogin() {
       "error"
     );
   } finally {
+    window.clearTimeout(slowHintTimer);
     setBusy(false);
   }
 }
@@ -679,6 +709,11 @@ try {
     void runResetTokenValidate();
   }
 } catch (_) {}
+
+/** Wake the API on idle Render instances so login is faster when the user submits. */
+if (getApiBase()) {
+  request("/api/health", "GET", null, { timeoutMs: 15000 }).catch(() => {});
+}
 
 try {
   const resetTok = new URLSearchParams(location.search).get("reset");

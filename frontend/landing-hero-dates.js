@@ -6,7 +6,9 @@
   var hub = document.getElementById("landingHeroForecast");
   if (!hub) return;
 
-  var COL_X = [8, 84, 160, 236, 312, 388, 464];
+  var COL_X = [10, 74, 138, 202, 266, 330, 394];
+  var CELL_W = 58;
+  var CELL_H = 48;
   var TEXT_DX = 6;
   var BALANCES = [4280, 3910, 2240, 1020, 3050, 2680, 2310];
   var SVG_NS = "http://www.w3.org/2000/svg";
@@ -74,31 +76,31 @@
       g.appendChild(
         svgEl("rect", {
           x: String(x),
-          y: "48",
-          width: "68",
-          height: "60",
-          rx: "8",
+          y: "40",
+          width: String(CELL_W),
+          height: String(CELL_H),
+          rx: "7",
           fill: "url(#landingCalCell)",
           stroke: "rgba(11,61,46,0.11)",
         })
       );
       g.appendChild(
-        svgText(x + TEXT_DX, 68, String(d.getDate()), {
+        svgText(x + TEXT_DX, 56, String(d.getDate()), {
           fill: "rgba(55,65,60,0.58)",
-          "font-size": "10",
+          "font-size": "9.5",
           "font-weight": "600",
         })
       );
       g.appendChild(
-        svgText(x + TEXT_DX, 92, fmtMoney(BALANCES[i]), {
+        svgText(x + TEXT_DX, 74, fmtMoney(BALANCES[i]), {
           fill: "rgba(11,61,46,0.94)",
-          "font-size": "11",
+          "font-size": "10.5",
           "font-weight": "700",
         })
       );
       if (isWatch) {
         g.appendChild(
-          svgText(x + TEXT_DX, 104, "Watch", {
+          svgText(x + TEXT_DX, 86, "Watch", {
             class: "landing-hero-forecast__dayTag",
             fill: "rgba(146,72,18,0.72)",
             "font-size": "6.5",
@@ -108,7 +110,7 @@
       }
       if (isPay) {
         g.appendChild(
-          svgText(x + TEXT_DX, 104, "\u2191 Paycheck", {
+          svgText(x + TEXT_DX, 86, "\u2191 Paycheck", {
             class: "landing-hero-forecast__dayTag landing-hero-forecast__dayTag--pay",
             fill: "rgba(4,120,87,0.82)",
             "font-size": "6.5",

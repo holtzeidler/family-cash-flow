@@ -1668,6 +1668,12 @@ if settings.CORS_ORIGINS:
         )
 
 
+@app.get("/api/health", include_in_schema=False)
+def health():
+    """Lightweight liveness probe (no DB) — used to wake Render before login."""
+    return {"ok": True}
+
+
 @app.get("/api/debug/public-config", include_in_schema=False)
 def public_debug_config():
     """
