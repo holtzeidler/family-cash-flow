@@ -1848,6 +1848,7 @@ updateTxAddRepeatingUi();
       try {
         sessionStorage.removeItem(BW_API_ACCESS_TOKEN_KEY);
       } catch (_) {}
+      clearAccountSetupDraftJsonStorage();
       window.location.href = "/";
     });
   }
@@ -8828,15 +8829,15 @@ function ensureCategoryDeleteReassignModal() {
     '<div class="modal category-delete-modal__panel" role="dialog" aria-modal="true" aria-labelledby="categoryDeleteReassignTitle">' +
     '<h3 id="categoryDeleteReassignTitle">Delete category in use?</h3>' +
     '<p id="categoryDeleteReassignMsg" class="category-delete-modal__msg"></p>' +
-    '<fieldset class="category-delete-modal__fieldset">' +
-    '<legend class="category-delete-modal__legend">What should happen to existing uses?</legend>' +
+    '<div class="category-delete-modal__choices" role="radiogroup" aria-labelledby="categoryDeleteReassignChoicesLabel">' +
+    '<p id="categoryDeleteReassignChoicesLabel" class="category-delete-modal__legend">What should happen to existing uses?</p>' +
     '<label class="category-delete-modal__radio">' +
     '<input type="radio" name="catdelmode" value="move" checked />' +
-    "<span>Move entries to another category</span></label>" +
+    '<span class="category-delete-modal__radio-label">Move entries to another category</span></label>' +
     '<label class="category-delete-modal__radio">' +
     '<input type="radio" name="catdelmode" value="uncategorize" />' +
-    "<span>Remove category from entries (uncategorize)</span></label>" +
-    "</fieldset>" +
+    '<span class="category-delete-modal__radio-label">Remove category from entries (uncategorize)</span></label>' +
+    "</div>" +
     '<div id="categoryDeleteReassignMoveBlock">' +
     '<label class="category-delete-modal__label" for="categoryDeleteReassignSelect">Category</label>' +
     '<select id="categoryDeleteReassignSelect" class="category-delete-modal__select"></select>' +
@@ -17204,23 +17205,16 @@ function mergeAccountSetupDraftObjects(sessionObj, localObj) {
   };
 }
 
+const BW_ONBOARDING_RECOVERY_PENDING_KEY = "bw_onboarding_recovery_pending";
+
 function readAccountSetupDraftJsonRaw() {
-  let sessionRaw = "";
-  let localRaw = "";
   try {
-    sessionRaw = sessionStorage.getItem("bw_account_setup_draft") || "";
+    localStorage.removeItem("bw_account_setup_draft");
   } catch (_) {}
   try {
-    localRaw = localStorage.getItem("bw_account_setup_draft") || "";
-  } catch (_) {}
-  if (!sessionRaw && !localRaw) return "";
-  if (!sessionRaw) return localRaw;
-  if (!localRaw) return sessionRaw;
-  if (sessionRaw === localRaw) return sessionRaw;
-  try {
-    return JSON.stringify(mergeAccountSetupDraftObjects(JSON.parse(sessionRaw), JSON.parse(localRaw)));
+    return sessionStorage.getItem("bw_account_setup_draft") || "";
   } catch (_) {
-    return sessionRaw || localRaw;
+    return "";
   }
 }
 
@@ -17231,6 +17225,20 @@ function clearAccountSetupDraftJsonStorage() {
   try {
     localStorage.removeItem("bw_account_setup_draft");
   } catch (_) {}
+  try {
+    sessionStorage.removeItem(BW_ONBOARDING_RECOVERY_PENDING_KEY);
+  } catch (_) {}
+}
+
+function onboardingRecoveryIsAllowedForDraft(draft) {
+  let recoveryPending = false;
+  try {
+    recoveryPending = sessionStorage.getItem(BW_ONBOARDING_RECOVERY_PENDING_KEY) === "1";
+  } catch (_) {}
+  const meEmail = state.user?.email ? String(state.user.email).trim().toLowerCase() : "";
+  const draftEmail = draft?.signupEmail ? String(draft.signupEmail).trim().toLowerCase() : "";
+  if (draftEmail && meEmail && draftEmail !== meEmail) return false;
+  return recoveryPending;
 }
 
 function resolveRecoveryAccountIdFromDraft(draft) {
@@ -17255,6 +17263,11 @@ async function tryRecoverAccountSetupDraft() {
     draft = null;
   }
   if (!draft || typeof draft !== "object") {
+    clearAccountSetupDraftJsonStorage();
+    return false;
+  }
+
+  if (!onboardingRecoveryIsAllowedForDraft(draft)) {
     clearAccountSetupDraftJsonStorage();
     return false;
   }

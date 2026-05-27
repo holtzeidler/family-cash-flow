@@ -12877,6 +12877,7 @@ body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .c
 }
 .category-delete-modal .modal{
   max-width: 420px;
+  color: var(--text);
 }
 .category-delete-modal__msg{
   margin: 0 0 12px;
@@ -12931,13 +12932,14 @@ body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .c
   border-color: rgba(185, 28, 28, 0.5);
   color: rgba(127, 29, 29, 0.96);
 }
-.category-delete-modal__fieldset{
+.category-delete-modal__choices{
   margin: 0 0 12px;
   padding: 0;
   border: none;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  min-width: 0;
 }
 .category-delete-modal__legend{
   float: none;
@@ -12954,6 +12956,8 @@ body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .c
   display: flex;
   align-items: flex-start;
   gap: 8px;
+  width: 100%;
+  margin: 0;
   font-size: 13px;
   line-height: 1.4;
   color: rgba(51, 65, 85, 0.92);
@@ -12962,6 +12966,15 @@ body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .c
 .category-delete-modal__radio input{
   margin-top: 3px;
   flex-shrink: 0;
+}
+.category-delete-modal__radio-label{
+  display: block;
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.4;
+  font-weight: 450;
+  color: rgba(51, 65, 85, 0.92);
 }
 .category-delete-modal__note{
   margin: 0 0 12px;

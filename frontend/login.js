@@ -46,6 +46,20 @@ function _isGenericHttpDetail(detail) {
 }
 
 const BW_API_ACCESS_TOKEN_KEY = "bw_api_access_token";
+const BW_ACCOUNT_SETUP_DRAFT_KEY = "bw_account_setup_draft";
+const BW_ONBOARDING_RECOVERY_PENDING_KEY = "bw_onboarding_recovery_pending";
+
+function clearOnboardingDraftStorage() {
+  try {
+    sessionStorage.removeItem(BW_ACCOUNT_SETUP_DRAFT_KEY);
+  } catch (_) {}
+  try {
+    localStorage.removeItem(BW_ACCOUNT_SETUP_DRAFT_KEY);
+  } catch (_) {}
+  try {
+    sessionStorage.removeItem(BW_ONBOARDING_RECOVERY_PENDING_KEY);
+  } catch (_) {}
+}
 
 function apiBearerAuthHeaders() {
   try {
@@ -281,6 +295,7 @@ async function doLogin() {
     try {
       sessionStorage.removeItem(BW_API_ACCESS_TOKEN_KEY);
     } catch (_) {}
+    clearOnboardingDraftStorage();
     const email = document.getElementById("email").value.trim();
     const password = document.getElementById("password").value;
     const loginResp = await requestWithRetry("/api/auth/login", "POST", { email, password }, {

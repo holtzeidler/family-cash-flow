@@ -307,26 +307,49 @@ const accountSetupBackBtn = document.getElementById("accountSetupBackBtn");
 const accountSetupSkipBtn = document.getElementById("accountSetupSkipBtn");
 
 const BW_ACCOUNT_SETUP_DRAFT_KEY = "bw_account_setup_draft";
+/** Set only after signup when calendar may need to finish draft POSTs for this session. */
+const BW_ONBOARDING_RECOVERY_PENDING_KEY = "bw_onboarding_recovery_pending";
+
+function purgeLegacyAccountSetupDraftLocalStorage() {
+  try {
+    localStorage.removeItem(BW_ACCOUNT_SETUP_DRAFT_KEY);
+  } catch (_) {}
+}
 
 function writeAccountSetupDraftStorage(json) {
   try {
     sessionStorage.setItem(BW_ACCOUNT_SETUP_DRAFT_KEY, json);
   } catch (_) {}
-  try {
-    localStorage.setItem(BW_ACCOUNT_SETUP_DRAFT_KEY, json);
-  } catch (_) {}
+  purgeLegacyAccountSetupDraftLocalStorage();
+}
+
+function accountSetupSignupEmailFromDom() {
+  if (!isAccountSetupPath()) return "";
+  return String(document.getElementById("email")?.value || "")
+    .trim()
+    .toLowerCase();
 }
 
 function persistAccountSetupDraftObject(obj) {
-  writeAccountSetupDraftStorage(JSON.stringify(obj));
+  const next = obj && typeof obj === "object" && !Array.isArray(obj) ? { ...obj } : {};
+  const signupEmail = accountSetupSignupEmailFromDom();
+  if (signupEmail) next.signupEmail = signupEmail;
+  writeAccountSetupDraftStorage(JSON.stringify(next));
 }
 
 function removeAccountSetupDraftStorage() {
   try {
     sessionStorage.removeItem(BW_ACCOUNT_SETUP_DRAFT_KEY);
   } catch (_) {}
+  purgeLegacyAccountSetupDraftLocalStorage();
   try {
-    localStorage.removeItem(BW_ACCOUNT_SETUP_DRAFT_KEY);
+    sessionStorage.removeItem(BW_ONBOARDING_RECOVERY_PENDING_KEY);
+  } catch (_) {}
+}
+
+function markOnboardingRecoveryPending() {
+  try {
+    sessionStorage.setItem(BW_ONBOARDING_RECOVERY_PENDING_KEY, "1");
   } catch (_) {}
 }
 
@@ -406,24 +429,11 @@ function accountSetupEffectiveTxDate(txDate, draft) {
 }
 
 function readAccountSetupDraftJsonFromStorage() {
-  let sessionRaw = "";
-  let localRaw = "";
+  purgeLegacyAccountSetupDraftLocalStorage();
   try {
-    sessionRaw = sessionStorage.getItem(BW_ACCOUNT_SETUP_DRAFT_KEY) || "";
-  } catch (_) {}
-  try {
-    localRaw = localStorage.getItem(BW_ACCOUNT_SETUP_DRAFT_KEY) || "";
-  } catch (_) {}
-  if (!sessionRaw && !localRaw) return "";
-  if (!sessionRaw) return localRaw;
-  if (!localRaw) return sessionRaw;
-  if (sessionRaw === localRaw) return sessionRaw;
-  try {
-    const sessionObj = JSON.parse(sessionRaw);
-    const localObj = JSON.parse(localRaw);
-    return JSON.stringify(mergeAccountSetupDraftObjects(sessionObj, localObj));
+    return sessionStorage.getItem(BW_ACCOUNT_SETUP_DRAFT_KEY) || "";
   } catch (_) {
-    return sessionRaw || localRaw;
+    return "";
   }
 }
 
@@ -3303,6 +3313,11 @@ async function doSignup() {
       } catch (_) {}
     } else {
       try {
+        markOnboardingRecoveryPending();
+        const raw = readAccountSetupDraftRaw() || {};
+        persistAccountSetupDraftObject({ ...raw, signupEmail: email });
+      } catch (_) {}
+      try {
         if (window.console && console.warn) {
           console.warn("[signup] partial setup; leaving draft for /calendar recovery", {
             accountResult,
@@ -3560,6 +3575,14 @@ void (async () => {
       const params = new URLSearchParams(String(window.location.search || ""));
       if (params.get("fresh") === "1") removeAccountSetupDraftStorage();
     } catch (_) {}
+    const accountSetupLoginBtn = document.querySelector(
+      "body.account-setup-page .top-nav__actions .top-nav__logout"
+    );
+    if (accountSetupLoginBtn && accountSetupLoginBtn.id !== "signupBtn") {
+      accountSetupLoginBtn.addEventListener("click", () => {
+        removeAccountSetupDraftStorage();
+      });
+    }
     scheduleAuthApiWarmup();
   }
   hydrateAccountSetupDraft();
