@@ -21130,7 +21130,7 @@ body[data-bw-view="transactions"] .tm__field label{
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   padding-right: 2px;
-  --tx-add-label-col: 11.25rem;
+  --tx-add-label-col: calc(11.25rem - 2ch);
   --tx-add-label-inset: 2.1ch;
   --tx-add-row-gap-x: 9.8px;
   --tx-add-row-gap-y: 4px;
@@ -21585,8 +21585,8 @@ body[data-bw-view="transactions"] .tm__field label{
   border-radius: 10px;
 }
 .modal--tx-add .tx-add-form #txAddCategoryId{
-  width: 98%;
-  max-width: 98%;
+  width: 100%;
+  max-width: 100%;
   box-sizing: border-box;
   padding: 6px 9px;
   font-size: 13px;
@@ -21648,7 +21648,7 @@ body[data-bw-view="transactions"] .tm__field label{
 /* Label column + fields share one grid; labels right-aligned on a common axis. */
 .modal--tx-add .tx-add-form .form-row-h{
   display: grid;
-  grid-template-columns: var(--tx-add-label-col, 11.25rem) minmax(0, 1fr);
+  grid-template-columns: var(--tx-add-label-col, calc(11.25rem - 2ch)) minmax(0, 1fr);
   align-items: center;
   gap: var(--tx-add-row-gap-y, 4px) var(--tx-add-row-gap-x, 14px);
 }
@@ -21703,7 +21703,7 @@ body[data-bw-view="transactions"] .tm__field label{
 .modal--tx-add .tx-add-end-detail__row,
 .modal--tx-add #txAddRecurringBlock .tx-add-second-monthly-row{
   display: grid;
-  grid-template-columns: var(--tx-add-label-col, 11.25rem) minmax(0, 1fr);
+  grid-template-columns: var(--tx-add-label-col, calc(11.25rem - 2ch)) minmax(0, 1fr);
   align-items: center;
   gap: var(--tx-add-row-gap-y, 4px) var(--tx-add-row-gap-x, 14px);
 }
@@ -21796,14 +21796,14 @@ body[data-bw-view="transactions"] .tm__field label{
   margin: 3px 0 0;
   padding: 0;
   box-sizing: border-box;
-  grid-template-columns: var(--tx-add-label-col, 11.25rem) minmax(0, 1fr);
+  grid-template-columns: var(--tx-add-label-col, calc(11.25rem - 2ch)) minmax(0, 1fr);
   column-gap: var(--tx-add-row-gap-x, 14px);
   row-gap: var(--tx-add-row-gap-y, 4px);
   align-items: center;
 }
 .modal--tx-add .tx-add-variable-block{
   display: grid;
-  grid-template-columns: var(--tx-add-label-col, 11.25rem) minmax(0, 1fr);
+  grid-template-columns: var(--tx-add-label-col, calc(11.25rem - 2ch)) minmax(0, 1fr);
   column-gap: var(--tx-add-row-gap-x, 9.8px);
   row-gap: 2px;
   align-items: center;
@@ -21845,7 +21845,7 @@ body[data-bw-view="transactions"] .tm__field label{
   padding-left: max(
     0px,
     calc(
-      var(--tx-add-label-col, 11.25rem) - var(--tx-add-label-inset, 2.1ch) - var(--tx-add-variable-label-text-width, 6.5rem) + 0.6em
+      var(--tx-add-label-col, calc(11.25rem - 2ch)) - var(--tx-add-label-inset, 2.1ch) - var(--tx-add-variable-label-text-width, 6.5rem) + 0.6em
     )
   );
   max-width: none;
@@ -23043,8 +23043,8 @@ body.account-setup-page
   box-sizing: border-box;
 }
 #txEditInner.modal.modal--expected-edit{
-  width: min(92vw, 500px);
-  max-width: 500px;
+  width: min(92vw, 620px);
+  max-width: 620px;
   padding: 0;
 }
 
@@ -23207,7 +23207,7 @@ body.account-setup-page
 }
 
 .modal--expected-edit{
-  max-width: 500px;
+  max-width: 620px;
   max-height: min(92vh, 820px);
   overflow-y: auto;
   padding: 0;
@@ -23357,9 +23357,16 @@ body.account-setup-page
 .modal--tx-add .tx-add-form .form-row-h__field > input:not([type="checkbox"]):not([type="radio"]),
 .modal--tx-add .tx-add-form .form-row-h__field > select,
 .modal--tx-add .tx-add-form .form-row-h__field > .money-input,
-.modal--tx-add .tx-add-form .form-row-h__field > .kind-toggle{
+.modal--tx-add .tx-add-form .form-row-h__field > .kind-toggle,
+.modal--tx-add .tx-add-form .form-row-h__field > .tx-add-category-field{
   width: 98%;
   max-width: 98%;
+  box-sizing: border-box;
+}
+.modal--tx-add .tx-add-form .tx-add-category-field .category-combobox,
+.modal--tx-add .tx-add-form .tx-add-category-field .category-combobox__input{
+  width: 100%;
+  max-width: 100%;
   box-sizing: border-box;
 }
 
@@ -23489,19 +23496,25 @@ body.account-setup-page
   border-radius: 0;
   background: transparent;
   border: none;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   display: flex;
   align-items: center;
 }
 #expectedEditInstancePanel .tx-edit-cat-color-field .cat-color-row.tx-edit-cat-color-panel .cat-color-row__swatches{
   gap: 5px;
   overflow: visible;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   min-width: 0;
+  flex: 0 1 auto;
+}
+#expectedEditInstancePanel .tx-edit-cat-color-field .cat-color-row.tx-edit-cat-color-panel .tx-edit-cat-color-clear{
+  flex: 0 0 auto;
 }
 #expectedEditInstancePanel .tx-edit-cat-color-field .cat-color-row.tx-edit-cat-color-panel .cat-swatch{
   width: 14px;
   height: 14px;
+  box-sizing: border-box;
+  flex: 0 0 auto;
 }
 #expectedEditInstancePanel .tx-edit-cat-color-field .cat-color-row.tx-edit-cat-color-panel .cat-swatch.is-active{
   outline-width: 2px;
