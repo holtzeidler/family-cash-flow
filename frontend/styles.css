@@ -12675,7 +12675,19 @@ body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .c
   line-height: 1.5;
   color: rgba(51, 65, 85, 0.88);
 }
-.category-delete-modal .modal-dialog{
+.category-delete-modal .modal,
+.category-simple-delete-modal .modal,
+.category-move-modal .modal{
+  width: 100%;
+  max-width: 440px;
+  border: 1px solid var(--border);
+  background: var(--cal-surface);
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45);
+  box-sizing: border-box;
+}
+.category-delete-modal .modal{
   max-width: 420px;
 }
 .category-delete-modal__msg{
@@ -12700,11 +12712,16 @@ body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .c
   border-radius: 8px;
   border: 1px solid rgba(0, 0, 0, 0.14);
 }
-.category-delete-modal__actions{
+.category-delete-modal__actions,
+.category-simple-delete-modal__actions,
+.category-move-modal__actions{
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   justify-content: flex-end;
+  margin-top: 11px;
+  padding-top: 11px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
 }
 .btn-category-delete{
   appearance: none;
@@ -12763,22 +12780,11 @@ body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .c
   line-height: 1.45;
   color: rgba(71, 85, 105, 0.82);
 }
-.category-simple-delete-modal__dialog,
-.category-move-modal__dialog{
-  max-width: 440px;
-}
 .category-simple-delete-modal__body{
-  margin: 0 0 16px;
+  margin: 0 0 4px;
   font-size: 13.5px;
   line-height: 1.5;
   color: rgba(51, 65, 85, 0.9);
-}
-.category-simple-delete-modal__actions,
-.category-move-modal__actions{
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  justify-content: flex-end;
 }
 .category-move-modal__hint{
   margin: 0 0 10px;
@@ -21069,7 +21075,7 @@ body[data-bw-view="transactions"] .tm__field label{
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
-/* "Advanced options" expander: a quiet single-line trigger, NOT a framed block. */
+/* "Advanced Option" expander: a quiet single-line trigger, NOT a framed block. */
 .tx-add-advanced{
   margin-top: 0;
   padding: 0;
@@ -21439,6 +21445,7 @@ body[data-bw-view="transactions"] .tm__field label{
 .modal--tx-add .tx-add-end-detail__row .form-row-h__label,
 .modal--tx-add #txAddRecurringBlock .tx-add-second-monthly-row .form-row-h__label,
 .modal--tx-add .tx-add-variable-block .form-row-h__label,
+.modal--tx-add .tx-add-notes-row .form-row-h__label,
 .modal--tx-add .tx-add-advanced__panel .tx-add-cat-color-row .form-row-h__label,
 .modal--tx-add .tx-add-advanced__panel .form-row-h__label{
   flex: none;
@@ -21462,6 +21469,7 @@ body[data-bw-view="transactions"] .tm__field label{
 .modal--tx-add .tx-add-end-detail__row .form-row-h__label label,
 .modal--tx-add #txAddRecurringBlock .tx-add-second-monthly-row .form-row-h__label label,
 .modal--tx-add .tx-add-variable-block .form-row-h__label label,
+.modal--tx-add .tx-add-notes-row .form-row-h__label label,
 .modal--tx-add .tx-add-advanced__panel .form-row-h__label label{
   width: 100%;
   text-align: right;
@@ -21489,9 +21497,11 @@ body[data-bw-view="transactions"] .tm__field label{
   column-gap: var(--tx-add-row-gap-x, 14px);
   row-gap: var(--tx-add-row-gap-y, 6px);
 }
-.modal--tx-add .tx-add-advanced__panel .tx-add-cat-color-row,
-.modal--tx-add .tx-add-advanced__panel .tx-add-notes-row{
+.modal--tx-add .tx-add-advanced__panel .tx-add-cat-color-row{
   display: contents;
+}
+.modal--tx-add .tx-add-notes-row{
+  margin-top: 2px;
 }
 .modal--tx-add .tx-add-form .tx-add-variable-field{
   gap: 2px;
@@ -21720,7 +21730,7 @@ body[data-bw-view="transactions"] .tm__field label{
   box-sizing: border-box;
 }
 .modal--tx-add .tx-add-advanced__panel .tx-add-cat-color-field,
-.modal--tx-add .tx-add-advanced__panel .tx-add-notes-row .form-row-h__field{
+.modal--tx-add .tx-add-notes-row .form-row-h__field{
   align-self: center;
   min-width: 0;
 }
@@ -23108,6 +23118,22 @@ body.account-setup-page
 .modal--expected-edit #expectedEditInstancePanel .money-input{
   min-height: 36px;
 }
+#txEditInner #expectedEditInstancePanel .form-row-h__field > input:not([type="checkbox"]):not([type="radio"]),
+#txEditInner #expectedEditInstancePanel .form-row-h__field > select,
+#txEditInner #expectedEditInstancePanel .form-row-h__field > .money-input,
+#txEditInner #expectedEditInstancePanel .form-row-h__field > .kind-toggle{
+  width: 98%;
+  max-width: 98%;
+  box-sizing: border-box;
+}
+.modal--tx-add .tx-add-form .form-row-h__field > input:not([type="checkbox"]):not([type="radio"]),
+.modal--tx-add .tx-add-form .form-row-h__field > select,
+.modal--tx-add .tx-add-form .form-row-h__field > .money-input,
+.modal--tx-add .tx-add-form .form-row-h__field > .kind-toggle{
+  width: 98%;
+  max-width: 98%;
+  box-sizing: border-box;
+}
 
 /* Type toggle: same filled Income/Expense treatment as Add transaction. */
 .modal--expected-edit .kind-toggle,
@@ -23128,7 +23154,7 @@ body.account-setup-page
   border-left-color: rgba(17, 24, 39, 0.06);
 }
 
-/* Advanced options: subtle expandable row (not a faux input). */
+/* Advanced Option: subtle expandable row (not a faux input). */
 #expectedEditInstancePanel .tx-edit-advanced{
   margin: 4px 0 0;
   border: none;
@@ -26445,7 +26471,7 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
     grid-row: 3;
   }
   .modal--tx-add .tx-add-advanced__panel .tx-add-cat-color-row,
-  .modal--tx-add .tx-add-advanced__panel .tx-add-notes-row{
+  .modal--tx-add .tx-add-notes-row{
     display: grid;
     grid-template-columns: 1fr;
     gap: 5px;

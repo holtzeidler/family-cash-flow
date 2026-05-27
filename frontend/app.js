@@ -8372,7 +8372,7 @@ function resetTxEditAdvancedPanel() {
 }
 
 function updateTxEditAddColorButtonState() {
-  /* Color UI is under "Advanced options"; collapsed by default when the edit sheet opens. */
+  /* Color UI is under "Advanced Option"; collapsed by default when the edit sheet opens. */
 }
 
 function refreshTxCategoryColorPickers() {
@@ -8599,10 +8599,10 @@ function ensureCategorySimpleDeleteModal() {
   wrap.className = "modal-overlay category-simple-delete-modal";
   wrap.setAttribute("aria-hidden", "true");
   wrap.innerHTML =
-    '<div class="modal-dialog category-simple-delete-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="categorySimpleDeleteTitle">' +
-    '<h3 id="categorySimpleDeleteTitle" class="modal-title category-simple-delete-modal__title"></h3>' +
+    '<div class="modal category-simple-delete-modal__panel" role="dialog" aria-modal="true" aria-labelledby="categorySimpleDeleteTitle">' +
+    '<h3 id="categorySimpleDeleteTitle"></h3>' +
     '<p id="categorySimpleDeleteBody" class="category-simple-delete-modal__body"></p>' +
-    '<div class="category-simple-delete-modal__actions">' +
+    '<div class="modal-actions category-simple-delete-modal__actions">' +
     '<button type="button" class="secondary" id="categorySimpleDeleteCancel">Cancel</button>' +
     '<button type="button" class="btn-category-delete" id="categorySimpleDeleteConfirm">Delete category</button>' +
     "</div></div>";
@@ -8664,12 +8664,12 @@ function ensureCategoryMoveModal() {
   wrap.className = "modal-overlay category-move-modal";
   wrap.setAttribute("aria-hidden", "true");
   wrap.innerHTML =
-    '<div class="modal-dialog category-move-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="categoryMoveTitle">' +
-    '<h3 id="categoryMoveTitle" class="modal-title">Move to group</h3>' +
+    '<div class="modal category-move-modal__panel" role="dialog" aria-modal="true" aria-labelledby="categoryMoveTitle">' +
+    '<h3 id="categoryMoveTitle">Move to group</h3>' +
     '<p id="categoryMoveHint" class="category-move-modal__hint"></p>' +
     '<label class="category-move-modal__label" for="categoryMoveGroupSelect">Group</label>' +
     '<select id="categoryMoveGroupSelect" class="category-move-modal__select"></select>' +
-    '<div class="category-move-modal__actions">' +
+    '<div class="modal-actions category-move-modal__actions">' +
     '<button type="button" class="secondary" id="categoryMoveCancel">Cancel</button>' +
     '<button type="button" class="settings-house-primary-btn" id="categoryMoveConfirm">Move</button>' +
     "</div></div>";
@@ -8749,8 +8749,8 @@ function ensureCategoryDeleteReassignModal() {
   wrap.className = "modal-overlay category-delete-modal";
   wrap.setAttribute("aria-hidden", "true");
   wrap.innerHTML =
-    '<div class="modal-dialog category-delete-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="categoryDeleteReassignTitle">' +
-    '<h3 id="categoryDeleteReassignTitle" class="modal-title">Delete category in use?</h3>' +
+    '<div class="modal category-delete-modal__panel" role="dialog" aria-modal="true" aria-labelledby="categoryDeleteReassignTitle">' +
+    '<h3 id="categoryDeleteReassignTitle">Delete category in use?</h3>' +
     '<p id="categoryDeleteReassignMsg" class="category-delete-modal__msg"></p>' +
     '<fieldset class="category-delete-modal__fieldset">' +
     '<legend class="category-delete-modal__legend">What should happen to existing uses?</legend>' +
@@ -8768,7 +8768,7 @@ function ensureCategoryDeleteReassignModal() {
     '<p id="categoryDeleteUncatNote" class="category-delete-modal__note" hidden>' +
     "Transactions and scheduled items will have no category until you assign one." +
     "</p>" +
-    '<div class="category-delete-modal__actions">' +
+    '<div class="modal-actions category-delete-modal__actions">' +
     '<button type="button" id="categoryDeleteReassignCancel" class="secondary">Cancel</button>' +
     '<button type="button" id="categoryDeleteReassignConfirm" class="btn-category-delete">Delete category</button>' +
     "</div></div>";
