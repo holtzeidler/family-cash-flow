@@ -8790,7 +8790,9 @@ function openCategoryMoveModal({ categoryId, currentGroupId, name }) {
   if (hint) hint.textContent = `Move “${name}” into another group. Drag-and-drop still works if you prefer.`;
   if (sel) {
     sel.innerHTML = "";
-    const groups = state.categoryTree?.groups || [];
+    const groups = [...(state.categoryTree?.groups || [])].sort((a, b) =>
+      String(a?.name || "").localeCompare(String(b?.name || ""))
+    );
     for (const g of groups) {
       if (Number(g.id) === Number(currentGroupId)) continue;
       const o = document.createElement("option");

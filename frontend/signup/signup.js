@@ -3,6 +3,25 @@ function getApiBase() {
   return b.replace(/\/$/, "");
 }
 
+function getDocumentFocusables() {
+  const selector =
+    'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+  return Array.from(document.querySelectorAll(selector)).filter((el) => {
+    if (el.closest("[inert]")) return false;
+    if (el.getAttribute("aria-hidden") === "true") return false;
+    const st = window.getComputedStyle(el);
+    if (st.display === "none" || st.visibility === "hidden") return false;
+    return true;
+  });
+}
+
+function focusFocusableOffset(from, delta) {
+  const list = getDocumentFocusables();
+  const idx = list.indexOf(from);
+  if (idx < 0) return;
+  list[idx + delta]?.focus({ preventScroll: true });
+}
+
 /** Show/hide password fields (account setup + signup). */
 function initPasswordVisibilityToggles() {
   document.querySelectorAll("[data-password-toggle]").forEach((btn) => {
@@ -11,6 +30,7 @@ function initPasswordVisibilityToggles() {
     const inputId = btn.getAttribute("aria-controls");
     const input = inputId ? document.getElementById(inputId) : null;
     if (!input) return;
+    if (!btn.hasAttribute("tabindex")) btn.tabIndex = 0;
     const showLabel = "Show password";
     const hideLabel = "Hide password";
     btn.addEventListener("click", () => {
@@ -19,6 +39,28 @@ function initPasswordVisibilityToggles() {
       btn.setAttribute("aria-pressed", visible ? "false" : "true");
       btn.setAttribute("aria-label", visible ? showLabel : hideLabel);
       btn.title = visible ? showLabel : hideLabel;
+    });
+    input.addEventListener("keydown", (e) => {
+      if (e.key !== "Tab") return;
+      if (!e.shiftKey) {
+        e.preventDefault();
+        btn.focus({ preventScroll: true });
+        return;
+      }
+      const fields = Array.from(document.querySelectorAll(".password-field"));
+      const field = input.closest(".password-field");
+      const fieldIdx = field ? fields.indexOf(field) : -1;
+      if (fieldIdx <= 0) return;
+      const prevToggle = fields[fieldIdx - 1]?.querySelector("[data-password-toggle]");
+      if (!prevToggle) return;
+      e.preventDefault();
+      prevToggle.focus({ preventScroll: true });
+    });
+    btn.addEventListener("keydown", (e) => {
+      if (e.key !== "Tab") return;
+      e.preventDefault();
+      if (e.shiftKey) input.focus({ preventScroll: true });
+      else focusFocusableOffset(btn, 1);
     });
   });
 }
