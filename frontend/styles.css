@@ -18712,19 +18712,18 @@ body.plans-page--polished .plans-wrap{
   color: rgba(31, 41, 55, 0.82);
 }
 .cal-daynum-num.is-today{
-  background: color-mix(in srgb, var(--accent) 14%, #fff);
-  color: rgba(11, 61, 46, 0.96);
+  /* Filled rounded-rect — visually distinct from circular reconcile marks */
+  background: color-mix(in srgb, var(--accent) 24%, #fff);
+  color: rgba(11, 61, 46, 0.98);
   font-weight: 700;
-  /* Less "pill", more rounded-rect like the app chrome */
   height: 24px;
   min-width: 28px;
   padding: 0 9px;
   border-radius: 10px;
+  border: 1.5px solid rgba(11, 61, 46, 0.32);
   box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.72),
-    0 0 0 1px rgba(11, 61, 46, 0.16),
-    0 3px 8px rgba(11, 61, 46, 0.12),
-    0 0 0 4px rgba(4, 120, 87, 0.08);
+    inset 0 1px 0 rgba(255, 255, 255, 0.58),
+    0 1px 3px rgba(11, 61, 46, 0.12);
 }
 
 .cal-reconciled-mark{
@@ -18846,11 +18845,19 @@ body.plans-page--polished .plans-wrap{
   box-shadow: 0 1px 3px rgba(17, 24, 39, 0.038);
 }
 .cal-cell.cal-cell--today:not(.cal-cell--out):not(.cal-cell--before-start){
-  background: color-mix(in srgb, var(--accent) 7%, #fff);
-  border-color: rgba(11, 61, 46, 0.16);
+  background: color-mix(in srgb, var(--accent) 12%, #fff);
+  border-color: rgba(11, 61, 46, 0.24);
   box-shadow:
-    0 1px 3px rgba(11, 61, 46, 0.07),
-    inset 0 0 0 1px rgba(4, 120, 87, 0.06);
+    0 1px 3px rgba(11, 61, 46, 0.09),
+    inset 0 0 0 1.5px rgba(11, 61, 46, 0.11);
+}
+.cal-cell.cal-cell--today:not(.cal-cell--out):not(.cal-cell--before-start):hover,
+.cal-cell.cal-cell--today.cal-cell--reconciled:not(.cal-cell--bal-risk):not(.cal-cell--bal-warn):not(.cal-cell--out):not(.cal-cell--before-start):hover{
+  background: color-mix(in srgb, var(--accent) 15%, #fff);
+  border-color: rgba(11, 61, 46, 0.28);
+  box-shadow:
+    0 4px 14px rgba(11, 61, 46, 0.08),
+    inset 0 0 0 1.5px rgba(11, 61, 46, 0.13);
 }
 .cal-cell.cal-cell--payday:not(.cal-cell--out):not(.cal-cell--before-start):not(.cal-cell--bal-risk):not(.cal-cell--bal-warn){
   background: color-mix(in srgb, #ecfdf5 16%, #fff);
@@ -26205,13 +26212,12 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
     display: inline-block;
     padding: 2px 8px;
     border-radius: 10px;
-    background: color-mix(in srgb, var(--accent) 14%, #fff);
-    color: rgba(11, 61, 46, 0.96);
+    background: color-mix(in srgb, var(--accent) 24%, #fff);
+    color: rgba(11, 61, 46, 0.98);
+    border: 1.5px solid rgba(11, 61, 46, 0.32);
     box-shadow:
-      inset 0 0 0 1px rgba(255, 255, 255, 0.72),
-      0 0 0 1px rgba(11, 61, 46, 0.16),
-      0 3px 8px rgba(11, 61, 46, 0.12),
-      0 0 0 4px rgba(4, 120, 87, 0.08);
+      inset 0 1px 0 rgba(255, 255, 255, 0.58),
+      0 1px 3px rgba(11, 61, 46, 0.12);
   }
 
   .calendar--mobile .cal-day-reconcile-btn{
