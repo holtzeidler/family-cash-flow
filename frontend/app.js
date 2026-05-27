@@ -9703,9 +9703,16 @@ function renderCategoriesGrid(tree) {
       }
     });
 
+    const panel = document.createElement("div");
+    panel.className = "cats-group__panel";
+    const panelInner = document.createElement("div");
+    panelInner.className = "cats-group__panel-inner";
+    panelInner.appendChild(body);
+    panelInner.appendChild(addRow);
+    panel.appendChild(panelInner);
+
     card.appendChild(head);
-    card.appendChild(body);
-    card.appendChild(addRow);
+    card.appendChild(panel);
     return card;
   }
 
