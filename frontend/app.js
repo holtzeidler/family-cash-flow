@@ -631,14 +631,12 @@ if (catEditDelete) {
       }
 
       if (kind === "group") {
-        const ok = window.confirm(
-          "Delete this group? Its categories will be moved to another group."
-        );
-        if (!ok) return;
-        await api(`/api/families/${state.activeFamilyId}/category-groups/${id}`, "DELETE");
-        await loadCategories();
-        await loadMonthAndCalendar();
-        closeCatEditModal();
+        const nm = String(catEditName?.value || "").trim() || "group";
+        openGroupSimpleDeleteModal({
+          id,
+          name: nm,
+          closeCatEditOnSuccess: true,
+        });
         return;
       }
 
@@ -4367,12 +4365,12 @@ function applyTransactionEditMode(mode, opts = {}) {
   const title = document.getElementById("txEditTitle");
   if (title) {
     title.classList.add("sr-only");
-    title.textContent = recurring ? "Recurring transaction" : "Edit transaction";
+    title.textContent = recurring ? "Recurring transaction" : "Edit Transaction";
   }
   const modeBanner = document.getElementById("txEditModeBanner");
   if (modeBanner) {
     modeBanner.style.display = "block";
-    modeBanner.textContent = recurring ? "Recurring transaction" : "Transaction";
+    modeBanner.textContent = recurring ? "Recurring transaction" : "Edit Transaction";
   }
   const txEditTopStrip = document.querySelector("#txEditModal .tx-edit-top");
   if (txEditTopStrip) txEditTopStrip.style.display = "";
@@ -8507,6 +8505,8 @@ let _categoryDeleteReassignModalEl = null;
 let categoryDeleteReassignPending = null;
 let _categorySimpleDeleteModalEl = null;
 let categorySimpleDeletePending = null;
+let _groupSimpleDeleteModalEl = null;
+let groupSimpleDeletePending = null;
 let _categoryMoveModalEl = null;
 let categoryMovePending = null;
 
@@ -8581,6 +8581,103 @@ function openCategorySimpleDeleteModal({ id, name }) {
     b.textContent =
       "This will remove the category from future organization. No entries use it yet, so your ledger stays the same.";
   }
+  wrap.classList.add("modal-overlay--open");
+  wrap.setAttribute("aria-hidden", "false");
+}
+
+function groupDeleteBodyMessage(catsCount, fallbackName) {
+  const n = Number(catsCount) || 0;
+  if (n > 0) {
+    const catWord = n === 1 ? "category" : "categories";
+    return `Its ${n} ${catWord} will move to ${fallbackName || "another group"}.`;
+  }
+  return "This group is empty and will be removed.";
+}
+
+function countCategoriesInGroup(groupId) {
+  const gid = Number(groupId);
+  if (!Number.isFinite(gid)) return 0;
+  for (const g of state.categoryTree?.groups || []) {
+    if (Number(g.id) === gid) return (g.categories || []).length;
+  }
+  return 0;
+}
+
+function fallbackGroupNameForDelete(excludeGroupId) {
+  const exclude = Number(excludeGroupId);
+  const groups = state.categoryTree?.groups || [];
+  const fallback = groups.find((g) => Number(g.id) !== exclude);
+  return fallback ? String(fallback.name || "").trim() || "another group" : "another group";
+}
+
+function ensureGroupSimpleDeleteModal() {
+  if (_groupSimpleDeleteModalEl) return _groupSimpleDeleteModalEl;
+  const wrap = document.createElement("div");
+  wrap.id = "groupSimpleDeleteModal";
+  wrap.className = "modal-overlay category-simple-delete-modal group-simple-delete-modal";
+  wrap.setAttribute("aria-hidden", "true");
+  wrap.innerHTML =
+    '<div class="modal category-simple-delete-modal__panel" role="dialog" aria-modal="true" aria-labelledby="groupSimpleDeleteTitle">' +
+    '<h3 id="groupSimpleDeleteTitle"></h3>' +
+    '<p id="groupSimpleDeleteBody" class="category-simple-delete-modal__body"></p>' +
+    '<div class="modal-actions category-simple-delete-modal__actions">' +
+    '<button type="button" class="secondary" id="groupSimpleDeleteCancel">Cancel</button>' +
+    '<button type="button" class="btn-category-delete" id="groupSimpleDeleteConfirm">Delete group</button>' +
+    "</div></div>";
+  document.body.appendChild(wrap);
+  wrap.querySelector("#groupSimpleDeleteCancel")?.addEventListener("click", () => {
+    wrap.classList.remove("modal-overlay--open");
+    wrap.setAttribute("aria-hidden", "true");
+    groupSimpleDeletePending = null;
+  });
+  wrap.addEventListener("click", (e) => {
+    if (e.target === wrap) {
+      wrap.classList.remove("modal-overlay--open");
+      wrap.setAttribute("aria-hidden", "true");
+      groupSimpleDeletePending = null;
+    }
+  });
+  wrap.querySelector("#groupSimpleDeleteConfirm")?.addEventListener("click", async () => {
+    const pend = groupSimpleDeletePending;
+    if (!pend || !state.activeFamilyId) return;
+    try {
+      show(catErr, "");
+      if (typeof pend.beforeDelete === "function") await pend.beforeDelete();
+      await api(`/api/families/${state.activeFamilyId}/category-groups/${Number(pend.id)}`, "DELETE");
+      wrap.classList.remove("modal-overlay--open");
+      wrap.setAttribute("aria-hidden", "true");
+      groupSimpleDeletePending = null;
+      await loadCategories();
+      await loadMonthAndCalendar();
+      if (pend.closeCatEditOnSuccess) {
+        try {
+          closeCatEditModal();
+        } catch (_) {}
+      }
+    } catch (e) {
+      show(catErr, e.message || "Failed to delete group");
+    }
+  });
+  _groupSimpleDeleteModalEl = wrap;
+  return wrap;
+}
+
+function openGroupSimpleDeleteModal({ id, name, catsCount, fallbackName, beforeDelete, closeCatEditOnSuccess = false }) {
+  const wrap = ensureGroupSimpleDeleteModal();
+  const gid = Number(id);
+  const gname = String(name || "").trim() || "group";
+  const count = Number.isFinite(Number(catsCount)) ? Number(catsCount) : countCategoriesInGroup(gid);
+  const targetName = String(fallbackName || "").trim() || fallbackGroupNameForDelete(gid);
+  groupSimpleDeletePending = {
+    id: gid,
+    name: gname,
+    beforeDelete: beforeDelete || null,
+    closeCatEditOnSuccess: !!closeCatEditOnSuccess,
+  };
+  const t = wrap.querySelector("#groupSimpleDeleteTitle");
+  const b = wrap.querySelector("#groupSimpleDeleteBody");
+  if (t) t.textContent = `Delete group “${gname}”?`;
+  if (b) b.textContent = groupDeleteBodyMessage(count, targetName);
   wrap.classList.add("modal-overlay--open");
   wrap.setAttribute("aria-hidden", "false");
 }
@@ -9315,32 +9412,28 @@ function renderCategoriesGrid(tree) {
       menuPanel.appendChild(
         mkBtn(
           "Delete group",
-          async () => {
+          () => {
             const catsCount = body.querySelectorAll(".cats-cat").length;
             const fallbackCard = categoriesTree.querySelector(
               `.cats-group[data-system-group="1"]:not([data-group-id="${String(g.id)}"])`
             );
             const fallbackName =
-              fallbackCard?.querySelector("[data-group-name]")?.textContent?.trim() || "another group";
-            const msg = catsCount
-              ? `Delete "${g.name}"? Its ${catsCount} ${catsCount === 1 ? "category" : "categories"} will move to ${fallbackName}.`
-              : `Delete "${g.name}"?`;
-            if (!window.confirm(msg)) return;
-            try {
-              show(catErr, "");
-              if (catsCount > 0 && fallbackCard) {
-                const fallbackBody = fallbackCard.querySelector(".cats-group__body");
-                if (fallbackBody) {
-                  [...body.querySelectorAll(".cats-cat")].forEach((rowEl) => fallbackBody.appendChild(rowEl));
-                  await persistCategoryTreeFromDom();
+              fallbackCard?.querySelector("[data-group-name]")?.textContent?.trim() || fallbackGroupNameForDelete(g.id);
+            openGroupSimpleDeleteModal({
+              id: g.id,
+              name: g.name,
+              catsCount,
+              fallbackName,
+              beforeDelete: async () => {
+                if (catsCount > 0 && fallbackCard) {
+                  const fallbackBody = fallbackCard.querySelector(".cats-group__body");
+                  if (fallbackBody) {
+                    [...body.querySelectorAll(".cats-cat")].forEach((rowEl) => fallbackBody.appendChild(rowEl));
+                    await persistCategoryTreeFromDom();
+                  }
                 }
-              }
-              await api(`/api/families/${state.activeFamilyId}/category-groups/${Number(g.id)}`, "DELETE");
-              await loadCategories();
-              await loadMonthAndCalendar();
-            } catch (e) {
-              show(catErr, e?.message || "Failed to delete group");
-            }
+              },
+            });
           },
           { danger: true }
         )

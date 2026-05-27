@@ -14,7 +14,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=656" />
+    <link rel="stylesheet" href="../styles.css?v=657" />
   </head>
   <body>
     <div class="container">
@@ -240,7 +240,7 @@
               <div class="modal-actions modal-actions--tx-add-foot">
                 <div class="row two tx-add-actions-row">
                   <button type="button" id="txAddSave" class="tx-add-btn-primary" disabled>Add transaction</button>
-                  <button type="button" id="txAddCancel" class="secondary tx-add-btn-secondary">Cancel</button>
+                  <button type="button" id="txAddCancel" class="tx-edit-cancel-btn secondary">Cancel</button>
                 </div>
               </div>
             </div>
@@ -1130,7 +1130,7 @@
     <div id="txEditModal" class="modal-overlay" aria-hidden="true">
       <div id="txEditInner" class="modal" role="dialog" aria-labelledby="txEditTitle">
         <div id="txEditIntro">
-          <h3 id="txEditTitle" class="sr-only">Edit transaction</h3>
+          <h3 id="txEditTitle" class="sr-only">Edit Transaction</h3>
           <div id="txEditErr" class="error"></div>
           <input type="hidden" id="txEditId" value="" />
           <input type="hidden" id="expectedEditId" value="" />
@@ -1536,7 +1536,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="../app.js?v=388"></script>
+    <script src="../app.js?v=389"></script>
     <script src="../feedback.js?v=4" defer></script>
     <script src="../tour.js?v=9" defer></script>
   </body>

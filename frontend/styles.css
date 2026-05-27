@@ -12677,6 +12677,7 @@ body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .c
 }
 .category-delete-modal .modal,
 .category-simple-delete-modal .modal,
+.group-simple-delete-modal .modal,
 .category-move-modal .modal{
   width: 100%;
   max-width: 440px;
@@ -12714,6 +12715,7 @@ body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .c
 }
 .category-delete-modal__actions,
 .category-simple-delete-modal__actions,
+.group-simple-delete-modal__actions,
 .category-move-modal__actions{
   display: flex;
   flex-wrap: wrap;
@@ -21233,15 +21235,12 @@ body[data-bw-view="transactions"] .tm__field label{
 .tx-add-actions-row.row.two{
   gap: 8px;
 }
-.tx-add-btn-primary,
-.tx-add-btn-secondary{
+.tx-add-btn-primary{
   padding: 5px 12px !important;
   font-size: 12.5px !important;
   font-weight: 600 !important;
   min-height: 0 !important;
   border-radius: 8px !important;
-}
-.tx-add-btn-primary{
   line-height: 1.2;
   background: var(--accent) !important;
   border: 1px solid color-mix(in srgb, var(--accent) 82%, #0d1f18) !important;
@@ -21254,41 +21253,6 @@ body[data-bw-view="transactions"] .tm__field label{
   background: color-mix(in srgb, var(--accent) 92%, #000) !important;
   border-color: color-mix(in srgb, var(--accent) 72%, #0d1f18) !important;
   color: #fff !important;
-}
-
-/* Modal only: Cancel as quiet text-style control; sidebar keeps canonical secondary. */
-.modal--tx-add .tx-add-btn-secondary.secondary{
-  appearance: none;
-  -webkit-appearance: none;
-  margin: 0;
-  padding: 5px 10px !important;
-  min-height: 0 !important;
-  border: none !important;
-  border-radius: 8px !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  font-size: 12.35px !important;
-  font-weight: 540 !important;
-  color: rgba(71, 85, 105, 0.72) !important;
-  transition:
-    background 0.14s ease,
-    color 0.14s ease,
-    box-shadow 0.14s ease;
-}
-.modal--tx-add .tx-add-btn-secondary.secondary:hover{
-  background: rgba(11, 61, 46, 0.07) !important;
-  border: none !important;
-  border-color: transparent !important;
-  color: rgba(11, 61, 46, 0.9) !important;
-  filter: none !important;
-  box-shadow: none !important;
-}
-.modal--tx-add .tx-add-btn-secondary.secondary:active{
-  background: rgba(11, 61, 46, 0.1) !important;
-}
-.modal--tx-add .tx-add-btn-secondary.secondary:focus-visible{
-  outline: 2px solid color-mix(in srgb, var(--accent) 38%, transparent);
-  outline-offset: 2px;
 }
 
 @media (min-width: 769px){
@@ -21309,8 +21273,7 @@ body[data-bw-view="transactions"] .tm__field label{
     padding: 5px 16px !important;
     box-sizing: border-box;
   }
-  .modal--tx-add .tx-add-actions-row .tx-add-btn-secondary.secondary{
-    padding: 5px 8px !important;
+  .modal--tx-add .tx-add-actions-row #txAddCancel{
     align-self: center;
   }
 }
@@ -22918,6 +22881,7 @@ body.account-setup-page
   color: #fff;
   filter: none;
 }
+#txAddCancel,
 #txEditCancel,
 #txEditInner #txEditCancel.tx-edit-cancel-btn,
 #txEditInner #txEditCancel.tx-edit-dismiss--close{
@@ -22935,6 +22899,7 @@ body.account-setup-page
   box-shadow: none !important;
   transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease;
 }
+#txAddCancel:hover,
 #txEditCancel:hover,
 #txEditInner #txEditCancel.tx-edit-dismiss--close:hover{
   background: rgba(248, 250, 252, 0.95) !important;
@@ -26610,6 +26575,7 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
     min-height: 38px !important;
   }
 
+  #txAddCancel,
   #txEditInner > .modal-actions #txEditCancel,
   #txEditInner #txEditCancel.tx-edit-dismiss--close{
     width: auto !important;
@@ -26637,12 +26603,10 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
     justify-content: flex-end;
   }
 
-  .modal--tx-add .tx-add-actions-row .tx-add-btn-secondary.secondary{
+  .modal--tx-add .tx-add-actions-row #txAddCancel{
     width: auto;
     align-self: center;
-    margin-top: 2px;
-    min-height: 40px !important;
-    padding: 8px 12px !important;
+    min-height: 36px !important;
   }
 
   .modal--expected-edit #expectedEditInstancePanel{
