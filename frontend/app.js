@@ -13426,12 +13426,6 @@ function filterTxnBreakdownTxs(txs, flow) {
 function aggregateTxnBreakdownGroups(txs, flow) {
   /** @type {Map<string,{id:string|number,name:string,amount:number}>} */
   const byGroup = new Map();
-  for (const g of state.categoryTree?.groups || []) {
-    const gid = g.id != null ? Number(g.id) : null;
-    const name = String(g.name || "Group").trim() || "Group";
-    const key = gid != null ? String(gid) : `name:${name}`;
-    byGroup.set(key, { id: gid ?? key, name, amount: 0 });
-  }
   for (const tx of txs) {
     const key = tx.groupId != null ? String(tx.groupId) : `name:${tx.groupName}`;
     const signed = txnBreakdownFlowAmount(tx, flow);
@@ -13439,7 +13433,7 @@ function aggregateTxnBreakdownGroups(txs, flow) {
     row.amount += signed;
     byGroup.set(key, row);
   }
-  return finalizeTxnBreakdownRows([...byGroup.values()], flow, { includeZero: true });
+  return finalizeTxnBreakdownRows([...byGroup.values()], flow);
 }
 
 function aggregateTxnBreakdownCategories(txs, groupId, groupName, flow) {
@@ -13458,8 +13452,7 @@ function aggregateTxnBreakdownCategories(txs, groupId, groupName, flow) {
   return finalizeTxnBreakdownRows([...byCat.values()], flow);
 }
 
-function finalizeTxnBreakdownRows(rows, flow, opts = {}) {
-  const includeZero = !!opts.includeZero;
+function finalizeTxnBreakdownRows(rows, flow) {
   const useAbs = flow === "net";
   const total = rows.reduce((s, r) => s + (useAbs ? Math.abs(r.amount) : Math.max(0, r.amount)), 0);
   return rows
@@ -13469,10 +13462,7 @@ function finalizeTxnBreakdownRows(rows, flow, opts = {}) {
       const pct = total > 0 ? (pctBase / total) * 100 : 0;
       return { ...r, amount: displayAmt, pct };
     })
-    .filter(
-      (r) =>
-        includeZero || (useAbs ? Math.abs(r.amount) > 0.0001 : r.amount > 0.0001)
-    );
+    .filter((r) => (useAbs ? Math.abs(r.amount) > 0.0001 : r.amount > 0.0001));
 }
 
 function sortTxnBreakdownRows(rows) {
@@ -13492,14 +13482,91 @@ function destroyTxnBreakdownChart() {
   }
 }
 
+function txnBreakdownActiveChartRows(rows) {
+  return (rows || []).filter((r) => Math.abs(Number(r.amount || 0)) > 0.0001);
+}
+
+function ensureTxnBreakdownSummaryEl() {
+  const frame = document.querySelector("#txnBreakdownBody .reports-tb-chart__frame");
+  if (!frame) return null;
+  let el = document.getElementById("txnBreakdownChartSummary");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "txnBreakdownChartSummary";
+    el.className = "reports-tb-chart__summary";
+    el.hidden = true;
+    el.innerHTML = `<div class="reports-tb-chart__summary-ring" aria-hidden="true"><span class="reports-tb-chart__summary-swatch"></span></div>
+      <p class="reports-tb-chart__summary-amount"></p>
+      <p class="reports-tb-chart__summary-label"></p>
+      <p class="reports-tb-chart__summary-share"></p>`;
+    frame.insertBefore(el, frame.firstChild);
+  }
+  return el;
+}
+
+function hideTxnBreakdownChartSummary() {
+  const summary = document.getElementById("txnBreakdownChartSummary");
+  if (summary) summary.hidden = true;
+}
+
+function renderTxnBreakdownChartSummary(row, color) {
+  const summary = ensureTxnBreakdownSummaryEl();
+  const canvas = document.getElementById("txnBreakdownChartCanvas");
+  const emptyEl = document.getElementById("txnBreakdownChartEmpty");
+  if (!summary || !canvas) return;
+  destroyTxnBreakdownChart();
+  canvas.style.display = "none";
+  if (emptyEl) emptyEl.style.display = "none";
+  summary.hidden = false;
+  const swatch = summary.querySelector(".reports-tb-chart__summary-swatch");
+  const amt = summary.querySelector(".reports-tb-chart__summary-amount");
+  const lbl = summary.querySelector(".reports-tb-chart__summary-label");
+  const share = summary.querySelector(".reports-tb-chart__summary-share");
+  if (swatch) swatch.style.background = color;
+  if (amt) amt.textContent = `$${fmtMoney(Math.abs(row.amount))}`;
+  if (lbl) lbl.textContent = row.name;
+  if (share) {
+    share.textContent = `${row.pct.toFixed(1)}% of ${txnBreakdownFlowLabel(txnBreakdownUi.flow)} in view`;
+  }
+}
+
+function applyTxnBreakdownLayout(chartRows) {
+  const body = document.getElementById("txnBreakdownBody");
+  if (!body) return;
+  const active = txnBreakdownActiveChartRows(chartRows);
+  const n = active.length;
+  const level = txnBreakdownUi.level;
+  body.classList.remove(
+    "reports-tb-body--chart-full",
+    "reports-tb-body--chart-medium",
+    "reports-tb-body--chart-compact",
+    "reports-tb-body--chart-summary",
+    "reports-tb-body--drill",
+    "reports-tb-body--tx-level"
+  );
+  if (level === "transactions") {
+    body.classList.add("reports-tb-body--tx-level", "reports-tb-body--drill");
+    return;
+  }
+  if (level !== "groups") body.classList.add("reports-tb-body--drill");
+  if (n <= 0) return;
+  if (n === 1) body.classList.add("reports-tb-body--chart-summary");
+  else if (level !== "groups" || n <= 3) body.classList.add("reports-tb-body--chart-compact");
+  else if (n <= 5) body.classList.add("reports-tb-body--chart-medium");
+  else body.classList.add("reports-tb-body--chart-full");
+}
+
 function drawTxnBreakdownChart(rows) {
   const canvas = document.getElementById("txnBreakdownChartCanvas");
   const emptyEl = document.getElementById("txnBreakdownChartEmpty");
   if (!canvas || typeof Chart === "undefined") return;
   ensureProjectionChartDefaults();
   lastTxnBreakdownRowsForChart = rows || [];
+  const active = txnBreakdownActiveChartRows(rows);
+  applyTxnBreakdownLayout(rows);
   destroyTxnBreakdownChart();
-  if (!rows?.length) {
+  hideTxnBreakdownChartSummary();
+  if (!active.length) {
     canvas.style.display = "none";
     if (emptyEl) {
       emptyEl.style.display = "block";
@@ -13507,27 +13574,33 @@ function drawTxnBreakdownChart(rows) {
     }
     return;
   }
+  if (active.length === 1) {
+    renderTxnBreakdownChartSummary(active[0], TXN_BREAKDOWN_COLORS[0]);
+    return;
+  }
   canvas.style.display = "block";
   if (emptyEl) emptyEl.style.display = "none";
-  const labels = rows.map((r) => r.name);
-  const data = rows.map((r) => Math.abs(r.amount));
-  const colors = rows.map((_, i) => TXN_BREAKDOWN_COLORS[i % TXN_BREAKDOWN_COLORS.length]);
+  const labels = active.map((r) => r.name);
+  const data = active.map((r) => Math.abs(r.amount));
+  const colors = active.map((_, i) => TXN_BREAKDOWN_COLORS[i % TXN_BREAKDOWN_COLORS.length]);
+  const cutout = active.length <= 2 ? "72%" : active.length <= 4 ? "62%" : "52%";
   txnBreakdownChartInstance = new Chart(canvas, {
     type: "doughnut",
     data: {
       labels,
-      datasets: [{ data, backgroundColor: colors, borderWidth: 0, hoverOffset: 3 }],
+      datasets: [{ data, backgroundColor: colors, borderWidth: 0, hoverOffset: 2 }],
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
       animation: { duration: 280 },
+      cutout,
       plugins: {
         legend: { display: false },
         tooltip: {
           callbacks: {
             label(ctx) {
-              const row = rows[ctx.dataIndex];
+              const row = active[ctx.dataIndex];
               return `${row.name}: $${fmtMoney(Math.abs(row.amount))} (${row.pct.toFixed(1)}%)`;
             },
           },
@@ -13544,6 +13617,14 @@ function txnBreakdownFlowLabel(flow) {
   return "spending";
 }
 
+function txnBreakdownCrumbSep() {
+  const sep = document.createElement("span");
+  sep.className = "reports-tb-crumb__sep";
+  sep.textContent = "·";
+  sep.setAttribute("aria-hidden", "true");
+  return sep;
+}
+
 function renderTxnBreakdownBreadcrumb() {
   const nav = document.getElementById("txnBreakdownBreadcrumb");
   if (!nav) return;
@@ -13558,22 +13639,33 @@ function renderTxnBreakdownBreadcrumb() {
   const back = document.createElement("button");
   back.type = "button";
   back.className = "reports-tb-crumb__back";
-  back.textContent = level === "categories" ? "← All groups" : "← Categories";
+  back.textContent = level === "categories" ? "All groups" : "Categories";
   back.addEventListener("click", () => {
     if (level === "categories") txnBreakdownNavigate("groups");
     else txnBreakdownNavigate("categories");
   });
   nav.appendChild(back);
-  const sep = document.createElement("span");
-  sep.className = "reports-tb-crumb__sep";
-  sep.textContent = "›";
-  sep.setAttribute("aria-hidden", "true");
-  nav.appendChild(sep);
-  const current = document.createElement("span");
-  current.className = "reports-tb-crumb__current";
-  if (level === "categories") current.textContent = `${groupName} › Categories`;
-  else current.textContent = `${groupName} › ${categoryName}`;
-  nav.appendChild(current);
+  const trail = document.createElement("span");
+  trail.className = "reports-tb-crumb__trail";
+  if (level === "categories") {
+    trail.appendChild(txnBreakdownCrumbSep());
+    const cur = document.createElement("span");
+    cur.className = "reports-tb-crumb__current";
+    cur.textContent = groupName;
+    trail.appendChild(cur);
+  } else {
+    trail.appendChild(txnBreakdownCrumbSep());
+    const group = document.createElement("span");
+    group.className = "reports-tb-crumb__part";
+    group.textContent = groupName;
+    trail.appendChild(group);
+    trail.appendChild(txnBreakdownCrumbSep());
+    const cur = document.createElement("span");
+    cur.className = "reports-tb-crumb__current";
+    cur.textContent = categoryName;
+    trail.appendChild(cur);
+  }
+  nav.appendChild(trail);
 }
 
 function renderTxnBreakdownTable(rows) {
@@ -13712,18 +13804,26 @@ function renderTxnBreakdownFromCache() {
   }
   renderTxnBreakdownBreadcrumb();
   renderTxnBreakdownTable(rows);
-  const chartRows =
-    txnBreakdownUi.level === "groups"
-      ? rows.filter((r) => Math.abs(Number(r.amount || 0)) > 0.0001)
-      : rows;
-  drawTxnBreakdownChart(chartRows);
+  const chartRows = txnBreakdownActiveChartRows(rows);
+  if (txnBreakdownUi.level === "transactions") {
+    applyTxnBreakdownLayout(chartRows);
+    destroyTxnBreakdownChart();
+    hideTxnBreakdownChartSummary();
+    const canvas = document.getElementById("txnBreakdownChartCanvas");
+    const emptyEl = document.getElementById("txnBreakdownChartEmpty");
+    if (canvas) canvas.style.display = "none";
+    if (emptyEl) emptyEl.style.display = "none";
+    lastTxnBreakdownRowsForChart = [];
+  } else {
+    drawTxnBreakdownChart(chartRows);
+  }
   renderTxnBreakdownTxList(lastTxnBreakdownTxCache);
   const caption = document.getElementById("txnBreakdownChartCaption");
   if (caption) {
     const { start, endIso } = readReportsDateRange();
     const rangeTxt = start && endIso ? `${formatChartRangeLongLabel(start)} – ${formatChartRangeLongLabel(endIso)}` : "selected range";
     if (txnBreakdownUi.level === "groups") {
-      caption.textContent = `${txnBreakdownFlowLabel(flow)} by group · ${rangeTxt} · all groups shown (chart omits $0)`;
+      caption.textContent = `${txnBreakdownFlowLabel(flow)} by group · ${rangeTxt}`;
     } else if (txnBreakdownUi.level === "categories") {
       caption.textContent = `${txnBreakdownUi.groupName} categories · ${rangeTxt}`;
     } else {

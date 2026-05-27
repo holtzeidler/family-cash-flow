@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=665" />
+    <link rel="stylesheet" href="./styles.css?v=671" />
   </head>
   <body class="landing-page">
     <div class="container">
@@ -41,8 +41,8 @@
         <div class="landing-shell">
         <div class="landing-hero">
           <div class="landing-hero__ambient" aria-hidden="true"></div>
-          <div class="landing-hero__inner">
-            <div class="landing-hero__copy">
+          <div class="landing-hero__stack">
+            <header class="landing-hero__copy">
               <h2 class="landing-hero__text">Know your future checking balance.</h2>
               <p class="landing-hero__sub">See your projected checking balance before upcoming bills and paychecks land.</p>
               <div class="landing-hero__ctaGroup">
@@ -53,17 +53,14 @@
                   <span class="landing-hero__proof">Designed to help you avoid cash surprises — without complicated budgeting.</span>
                 </p>
               </div>
-            </div>
-          </div>
+            </header>
 
-          <div id="landingHeroForecast" class="landing-hero-forecast" aria-label="Example forecast preview">
-            <div class="landing-hero-forecast__story">
-            <div class="landing-cal-peek__copy landing-hero-forecast__copy">
-              <h3 class="landing-cal-peek__title">See timing, not just totals</h3>
-              <p class="landing-cal-peek__lede">
-                Money problems are often timing problems.
-              </p>
-            </div>
+            <p class="landing-hero__demo-caption">
+              <span class="landing-hero__demo-caption-title">See timing, not just totals.</span>
+              Money problems are often timing problems.
+            </p>
+
+            <div id="landingHeroForecast" class="landing-hero-forecast" aria-label="Example forecast preview">
             <div class="landing-hero-forecast__demo">
             <div class="landing-cal-peek__frame landing-hero-forecast__cal" aria-hidden="true">
               <div class="landing-cal-peek__chrome">
@@ -142,7 +139,7 @@
             </div>
           </section>
             </div>
-            </div>
+          </div>
           </div>
         </div>
 
