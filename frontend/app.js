@@ -2744,7 +2744,7 @@ function ensureChartEndForCustom() {
 
 function syncReportsChartCustomUi() {
   const custom = isChartCustomRangeActive();
-  for (const el of [chartEndWrap, document.getElementById("ieChartEndWrap")]) {
+  for (const el of [chartEndWrap, document.getElementById("ieChartEndWrap"), document.getElementById("tbChartEndWrap")]) {
     if (el) el.hidden = !custom;
   }
 }
@@ -2752,8 +2752,12 @@ function syncReportsChartCustomUi() {
 function syncReportsChartDateMirrors() {
   const ieStart = document.getElementById("ieChartStart");
   const ieEnd = document.getElementById("ieChartEnd");
+  const tbStart = document.getElementById("tbChartStart");
+  const tbEnd = document.getElementById("tbChartEnd");
   if (ieStart && chartStart && ieStart !== chartStart) ieStart.value = chartStart.value;
   if (ieEnd && chartEnd && ieEnd !== chartEnd) ieEnd.value = chartEnd.value;
+  if (tbStart && chartStart && tbStart !== chartStart) tbStart.value = chartStart.value;
+  if (tbEnd && chartEnd && tbEnd !== chartEnd) tbEnd.value = chartEnd.value;
 }
 
 function readReportsDateRange() {
@@ -2770,9 +2774,10 @@ function readReportsDateRange() {
   return { start, endIso, days };
 }
 
-async function applyReportsChartRange({ refreshBalance = true, refreshIncomeExpense = true } = {}) {
+async function applyReportsChartRange({ refreshBalance = true, refreshIncomeExpense = true, refreshTxnBreakdown = true } = {}) {
   show(chartErr, "");
   show(incomeExpenseErr, "");
+  show(document.getElementById("txnBreakdownErr"), "");
   if (isChartCustomRangeActive()) {
     const cs = chartStart?.value;
     const ce = chartEnd?.value;
@@ -2791,24 +2796,39 @@ async function applyReportsChartRange({ refreshBalance = true, refreshIncomeExpe
   const tasks = [];
   if (refreshBalance) tasks.push(refreshProjectionChart());
   if (refreshIncomeExpense && incomeExpenseChartCanvas) tasks.push(refreshIncomeExpenseReport());
+  if (refreshTxnBreakdown && document.getElementById("txnBreakdownChartCanvas")) {
+    tasks.push(refreshTxnBreakdownReport());
+  }
   await Promise.all(tasks);
 }
 
 function onReportsChartDateInputChanged(changedEl) {
   const ieStart = document.getElementById("ieChartStart");
   const ieEnd = document.getElementById("ieChartEnd");
+  const tbStart = document.getElementById("tbChartStart");
+  const tbEnd = document.getElementById("tbChartEnd");
   if (changedEl === ieStart && ieStart && chartStart) chartStart.value = ieStart.value;
-  else if (changedEl === chartStart && chartStart && ieStart) ieStart.value = chartStart.value;
+  else if (changedEl === tbStart && tbStart && chartStart) chartStart.value = tbStart.value;
+  else if (changedEl === chartStart && chartStart) {
+    if (ieStart) ieStart.value = chartStart.value;
+    if (tbStart) tbStart.value = chartStart.value;
+  }
   if (changedEl === ieEnd && ieEnd && chartEnd) chartEnd.value = ieEnd.value;
-  else if (changedEl === chartEnd && chartEnd && ieEnd) ieEnd.value = chartEnd.value;
+  else if (changedEl === tbEnd && tbEnd && chartEnd) chartEnd.value = tbEnd.value;
+  else if (changedEl === chartEnd && chartEnd) {
+    if (ieEnd) ieEnd.value = chartEnd.value;
+    if (tbEnd) tbEnd.value = chartEnd.value;
+  }
   if (isChartCustomRangeActive() && chartStart?.value && chartEnd?.value && chartEnd.value < chartStart.value) {
     chartEnd.value = chartStart.value;
     if (ieEnd) ieEnd.value = chartEnd.value;
+    if (tbEnd) tbEnd.value = chartEnd.value;
   }
-  applyReportsChartRange({ refreshBalance: true, refreshIncomeExpense: true }).catch((err) => {
+  applyReportsChartRange({ refreshBalance: true, refreshIncomeExpense: true, refreshTxnBreakdown: true }).catch((err) => {
     const msg = err.message || "Failed to update reports";
     show(chartErr, msg);
     show(incomeExpenseErr, msg);
+    show(document.getElementById("txnBreakdownErr"), msg);
   });
 }
 
@@ -2826,11 +2846,12 @@ function wireReportsChartHorizon() {
         syncReportsChartCustomUi();
         ensureChartEndForCustom();
         try {
-          await applyReportsChartRange({ refreshBalance: true, refreshIncomeExpense: true });
+          await applyReportsChartRange({ refreshBalance: true, refreshIncomeExpense: true, refreshTxnBreakdown: true });
         } catch (err) {
           const msg = err.message || "Failed to update chart";
           show(chartErr, msg);
           show(incomeExpenseErr, msg);
+          show(document.getElementById("txnBreakdownErr"), msg);
         }
         return;
       }
@@ -2841,11 +2862,12 @@ function wireReportsChartHorizon() {
       setReportsChartHorizonActive(btn);
       syncReportsChartCustomUi();
       try {
-        await applyReportsChartRange({ refreshBalance: true, refreshIncomeExpense: true });
+        await applyReportsChartRange({ refreshBalance: true, refreshIncomeExpense: true, refreshTxnBreakdown: true });
       } catch (err) {
         const msg = err.message || "Failed to update chart";
         show(chartErr, msg);
         show(incomeExpenseErr, msg);
+        show(document.getElementById("txnBreakdownErr"), msg);
       }
     });
   }
@@ -2931,6 +2953,7 @@ function initReportsLeftNav() {
       items: [
         { id: "chartPanel", label: "Balance Trendline" },
         { id: "reportCashTiming", label: "Income vs Expense" },
+        { id: "reportTxnBreakdown", label: "Transaction Breakdown" },
         { id: "reportSafeTransfer", label: "Safe to Move" },
       ],
     },
@@ -3154,6 +3177,17 @@ function reflowReportChartFor(reportId) {
     }
     return;
   }
+  if (reportId === "reportTxnBreakdown") {
+    if (txnBreakdownChartInstance) {
+      try { txnBreakdownChartInstance.resize(); } catch (_) {}
+    }
+    if (lastTxnBreakdownRowsForChart?.length) {
+      try { drawTxnBreakdownChart(lastTxnBreakdownRowsForChart); } catch (_) {}
+    } else if (state.activeFamilyId) {
+      void refreshTxnBreakdownReport().catch(() => {});
+    }
+    return;
+  }
   if (reportId === "reportSafeTransfer") {
     if (reportsSafeTransferChartInstance) {
       try { reportsSafeTransferChartInstance.resize(); } catch (_) {}
@@ -3266,6 +3300,11 @@ function setActiveTopView(view) {
     if (incomeExpenseChartCanvas && state.activeFamilyId) {
       requestAnimationFrame(() => {
         void refreshIncomeExpenseReport().catch(() => {});
+      });
+    }
+    if (document.getElementById("txnBreakdownChartCanvas") && state.activeFamilyId) {
+      requestAnimationFrame(() => {
+        void refreshTxnBreakdownReport().catch(() => {});
       });
     }
     requestAnimationFrame(() => {
@@ -6077,6 +6116,13 @@ ieChartStartEl?.addEventListener("change", () => onReportsChartDateInputChanged(
 ieChartEndEl?.addEventListener("change", () => {
   if (!isChartCustomRangeActive()) return;
   onReportsChartDateInputChanged(ieChartEndEl);
+});
+const tbChartStartEl = document.getElementById("tbChartStart");
+const tbChartEndEl = document.getElementById("tbChartEnd");
+tbChartStartEl?.addEventListener("change", () => onReportsChartDateInputChanged(tbChartStartEl));
+tbChartEndEl?.addEventListener("change", () => {
+  if (!isChartCustomRangeActive()) return;
+  onReportsChartDateInputChanged(tbChartEndEl);
 });
 
 function getYtdDaysFromChartStart() {
@@ -8899,6 +8945,14 @@ async function deleteCategoryWithOptionalReassign(categoryId, categoryName) {
 const CATS_MENU_FLOAT_Z = 14000;
 let _catsMenuFloatingBound = false;
 
+function syncCategoriesMenuOpenState(detailsEl) {
+  if (!(detailsEl instanceof HTMLDetailsElement)) return;
+  const row = detailsEl.closest(".cats-cat");
+  if (row) row.classList.toggle("is-cat-menu-open", detailsEl.open);
+  const head = detailsEl.closest(".cats-group__head");
+  if (head) head.classList.toggle("is-group-menu-open", detailsEl.open);
+}
+
 function resetCategoriesMenuPanelPosition(panelEl) {
   if (!panelEl) return;
   panelEl.classList.remove("cats-menu-panel--floating");
@@ -8911,6 +8965,7 @@ function resetCategoriesMenuPanelPosition(panelEl) {
 }
 
 function positionCategoriesFloatingMenu(detailsEl) {
+  syncCategoriesMenuOpenState(detailsEl);
   const panel = detailsEl.querySelector(".cats-cat__menu-panel, .cats-group__menu-panel");
   const summary = detailsEl.querySelector("summary");
   if (!panel || !summary) return;
@@ -8966,6 +9021,9 @@ function closeAllCategoriesMenus() {
     try {
       det.open = false;
     } catch (_) {}
+    syncCategoriesMenuOpenState(det);
+    const panel = det.querySelector(".cats-cat__menu-panel, .cats-group__menu-panel");
+    resetCategoriesMenuPanelPosition(panel);
   });
 }
 
@@ -9003,11 +9061,16 @@ function bindCategoriesFloatingMenusGlobally() {
       if (!openMenus.length) return;
       const target = e.target;
       if (!(target instanceof Node)) return;
+      if (target.closest(".cats-cat__menu-panel, .cats-group__menu-panel")) return;
+      if (target.closest(".cats-cat__menu-summary, .cats-group__menu-summary")) return;
       openMenus.forEach((det) => {
         if (det.contains(target)) return;
         try {
           det.open = false;
         } catch (_) {}
+        syncCategoriesMenuOpenState(det);
+        const panel = det.querySelector(".cats-cat__menu-panel, .cats-group__menu-panel");
+        resetCategoriesMenuPanelPosition(panel);
       });
     },
     true
@@ -9167,16 +9230,6 @@ function renderCategoriesGrid(tree) {
     menuPanel.appendChild(
       mkItem("Rename", "", () => {
         selectEditableText(nameEl);
-      })
-    );
-    menuPanel.appendChild(
-      mkItem("Reorder", "", () => {
-        const h = row.querySelector(".cats-cat__handle");
-        if (h && typeof h.focus === "function") {
-          h.focus();
-          h.classList.add("cats-cat__handle--pulse");
-          window.setTimeout(() => h.classList.remove("cats-cat__handle--pulse"), 1400);
-        }
       })
     );
     menuPanel.appendChild(
@@ -13167,6 +13220,463 @@ function aggregateIncomeExpenseByWeek(items) {
     income: weeks.map((w) => byWeek.get(w)?.income || 0),
     expense: weeks.map((w) => byWeek.get(w)?.expense || 0),
   };
+}
+
+/* === Transaction Breakdown report === */
+const TXN_BREAKDOWN_COLORS = [
+  "rgba(91, 128, 110, 0.88)",
+  "rgba(107, 142, 159, 0.88)",
+  "rgba(120, 132, 148, 0.86)",
+  "rgba(134, 151, 128, 0.86)",
+  "rgba(96, 125, 139, 0.86)",
+  "rgba(149, 164, 152, 0.86)",
+  "rgba(118, 138, 155, 0.84)",
+  "rgba(140, 154, 142, 0.84)",
+  "rgba(108, 122, 137, 0.82)",
+  "rgba(156, 168, 158, 0.82)",
+];
+let txnBreakdownChartInstance = null;
+/** @type {Array<{id:string|number,name:string,amount:number,pct:number}>|null} */
+let lastTxnBreakdownRowsForChart = null;
+/** @type {Array<object>} */
+let lastTxnBreakdownTxCache = [];
+let txnBreakdownControlsBound = false;
+const txnBreakdownUi = {
+  level: "groups",
+  groupId: null,
+  groupName: "",
+  categoryId: null,
+  categoryName: "",
+  flow: "expense",
+  sortKey: "amount",
+  sortDir: "desc",
+};
+
+function isTxnBreakdownTransfer(tx) {
+  const cat = String(tx?.category || "").toLowerCase();
+  const grp = String(tx?.groupName || "").toLowerCase();
+  const desc = String(tx?.description || "").toLowerCase();
+  return (
+    cat.includes("transfer") ||
+    cat.includes("xfer") ||
+    grp.includes("transfer") ||
+    desc.includes("transfer") ||
+    desc.includes("xfer")
+  );
+}
+
+function txnBreakdownMatchesFlow(tx, flow) {
+  const kind = String(tx?.kind || "").toLowerCase();
+  const xfer = isTxnBreakdownTransfer(tx);
+  if (flow === "transfer") return xfer;
+  if (flow === "expense") return kind === "expense" && !xfer;
+  if (flow === "income") return kind === "income" && !xfer;
+  return !xfer;
+}
+
+function txnBreakdownFlowAmount(tx, flow) {
+  const amt = Math.abs(Number(tx?.amount || 0));
+  if (flow === "net") {
+    const kind = String(tx?.kind || "").toLowerCase();
+    return kind === "income" ? amt : -amt;
+  }
+  return amt;
+}
+
+function buildTxnBreakdownCategoryMap() {
+  /** @type {Map<number,{groupId:number|null,groupName:string,categoryName:string}>} */
+  const map = new Map();
+  for (const g of state.categoryTree?.groups || []) {
+    for (const c of g.categories || []) {
+      map.set(Number(c.id), {
+        groupId: g.id != null ? Number(g.id) : null,
+        groupName: String(g.name || "Other"),
+        categoryName: String(c.name || "Category"),
+      });
+    }
+  }
+  return map;
+}
+
+function enrichTxnBreakdownRow(tx, catMap) {
+  const meta = tx.category_id != null ? catMap.get(Number(tx.category_id)) : null;
+  return {
+    id: tx.id,
+    date: normalizeIsoDate(tx.date) || String(tx.date || "").slice(0, 10),
+    description: String(tx.description || ""),
+    notes: tx.notes ? String(tx.notes) : "",
+    kind: String(tx.kind || ""),
+    amount: Number(tx.amount || 0),
+    category: tx.category ? String(tx.category) : meta?.categoryName || "Uncategorized",
+    category_id: tx.category_id != null ? Number(tx.category_id) : null,
+    groupId: meta?.groupId ?? null,
+    groupName: meta?.groupName || "Uncategorized",
+  };
+}
+
+async function fetchTxnBreakdownTransactions(startIso, endIso) {
+  const r = await api(
+    `/api/families/${state.activeFamilyId}/transactions?start_date=${encodeURIComponent(startIso)}&end_date=${encodeURIComponent(endIso)}`,
+    "GET"
+  );
+  const catMap = buildTxnBreakdownCategoryMap();
+  const out = [];
+  for (const it of r?.items || []) {
+    const iso = normalizeIsoDate(it?.date) || String(it?.date || "").slice(0, 10);
+    if (!iso || iso < startIso || iso > endIso) continue;
+    out.push(enrichTxnBreakdownRow(it, catMap));
+  }
+  return out;
+}
+
+function filterTxnBreakdownTxs(txs, flow) {
+  return (txs || []).filter((tx) => txnBreakdownMatchesFlow(tx, flow));
+}
+
+function aggregateTxnBreakdownGroups(txs, flow) {
+  /** @type {Map<string,{id:string|number,name:string,amount:number}>} */
+  const byGroup = new Map();
+  for (const tx of txs) {
+    const key = tx.groupId != null ? String(tx.groupId) : `name:${tx.groupName}`;
+    const signed = txnBreakdownFlowAmount(tx, flow);
+    const row = byGroup.get(key) || { id: tx.groupId ?? key, name: tx.groupName, amount: 0 };
+    row.amount += signed;
+    byGroup.set(key, row);
+  }
+  return finalizeTxnBreakdownRows([...byGroup.values()], flow);
+}
+
+function aggregateTxnBreakdownCategories(txs, groupId, groupName, flow) {
+  /** @type {Map<string,{id:string|number,name:string,amount:number}>} */
+  const byCat = new Map();
+  for (const tx of txs) {
+    const inGroup =
+      groupId != null ? Number(tx.groupId) === Number(groupId) : String(tx.groupName) === String(groupName);
+    if (!inGroup) continue;
+    const key = tx.category_id != null ? String(tx.category_id) : `name:${tx.category}`;
+    const signed = txnBreakdownFlowAmount(tx, flow);
+    const row = byCat.get(key) || { id: tx.category_id ?? key, name: tx.category, amount: 0 };
+    row.amount += signed;
+    byCat.set(key, row);
+  }
+  return finalizeTxnBreakdownRows([...byCat.values()], flow);
+}
+
+function finalizeTxnBreakdownRows(rows, flow) {
+  const useAbs = flow === "net";
+  const total = rows.reduce((s, r) => s + (useAbs ? Math.abs(r.amount) : Math.max(0, r.amount)), 0);
+  return rows
+    .map((r) => {
+      const displayAmt = flow === "net" ? r.amount : Math.abs(r.amount);
+      const pctBase = useAbs ? Math.abs(r.amount) : Math.max(0, r.amount);
+      const pct = total > 0 ? (pctBase / total) * 100 : 0;
+      return { ...r, amount: displayAmt, pct };
+    })
+    .filter((r) => (useAbs ? Math.abs(r.amount) > 0.0001 : r.amount > 0.0001));
+}
+
+function sortTxnBreakdownRows(rows) {
+  const key = txnBreakdownUi.sortKey;
+  const dir = txnBreakdownUi.sortDir === "asc" ? 1 : -1;
+  return rows.slice().sort((a, b) => {
+    if (key === "name") return dir * String(a.name).localeCompare(String(b.name));
+    if (key === "pct") return dir * (a.pct - b.pct);
+    return dir * (a.amount - b.amount);
+  });
+}
+
+function destroyTxnBreakdownChart() {
+  if (txnBreakdownChartInstance) {
+    try { txnBreakdownChartInstance.destroy(); } catch (_) {}
+    txnBreakdownChartInstance = null;
+  }
+}
+
+function drawTxnBreakdownChart(rows) {
+  const canvas = document.getElementById("txnBreakdownChartCanvas");
+  const emptyEl = document.getElementById("txnBreakdownChartEmpty");
+  if (!canvas || typeof Chart === "undefined") return;
+  ensureProjectionChartDefaults();
+  lastTxnBreakdownRowsForChart = rows || [];
+  destroyTxnBreakdownChart();
+  if (!rows?.length) {
+    canvas.style.display = "none";
+    if (emptyEl) {
+      emptyEl.style.display = "block";
+      emptyEl.textContent = "No activity in this range for the selected view.";
+    }
+    return;
+  }
+  canvas.style.display = "block";
+  if (emptyEl) emptyEl.style.display = "none";
+  const labels = rows.map((r) => r.name);
+  const data = rows.map((r) => Math.abs(r.amount));
+  const colors = rows.map((_, i) => TXN_BREAKDOWN_COLORS[i % TXN_BREAKDOWN_COLORS.length]);
+  txnBreakdownChartInstance = new Chart(canvas, {
+    type: "doughnut",
+    data: {
+      labels,
+      datasets: [{ data, backgroundColor: colors, borderWidth: 0, hoverOffset: 3 }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 280 },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label(ctx) {
+              const row = rows[ctx.dataIndex];
+              return `${row.name}: $${fmtMoney(Math.abs(row.amount))} (${row.pct.toFixed(1)}%)`;
+            },
+          },
+        },
+      },
+    },
+  });
+}
+
+function txnBreakdownFlowLabel(flow) {
+  if (flow === "income") return "income";
+  if (flow === "transfer") return "transfers";
+  if (flow === "net") return "net flow";
+  return "spending";
+}
+
+function renderTxnBreakdownBreadcrumb() {
+  const nav = document.getElementById("txnBreakdownBreadcrumb");
+  if (!nav) return;
+  const { level, groupName, categoryName } = txnBreakdownUi;
+  if (level === "groups") {
+    nav.hidden = true;
+    nav.replaceChildren();
+    return;
+  }
+  nav.hidden = false;
+  nav.replaceChildren();
+  const back = document.createElement("button");
+  back.type = "button";
+  back.className = "reports-tb-crumb__back";
+  back.textContent = level === "categories" ? "← All groups" : "← Categories";
+  back.addEventListener("click", () => {
+    if (level === "categories") txnBreakdownNavigate("groups");
+    else txnBreakdownNavigate("categories");
+  });
+  nav.appendChild(back);
+  const sep = document.createElement("span");
+  sep.className = "reports-tb-crumb__sep";
+  sep.textContent = "›";
+  sep.setAttribute("aria-hidden", "true");
+  nav.appendChild(sep);
+  const current = document.createElement("span");
+  current.className = "reports-tb-crumb__current";
+  if (level === "categories") current.textContent = `${groupName} › Categories`;
+  else current.textContent = `${groupName} › ${categoryName}`;
+  nav.appendChild(current);
+}
+
+function renderTxnBreakdownTable(rows) {
+  const tbody = document.getElementById("txnBreakdownTableBody");
+  const tfoot = document.getElementById("txnBreakdownTableFoot");
+  if (!tbody || !tfoot) return;
+  tbody.replaceChildren();
+  tfoot.replaceChildren();
+  const sorted = sortTxnBreakdownRows(rows);
+  for (const row of sorted) {
+    const tr = document.createElement("tr");
+    tr.className = "reports-tb-row--drill";
+    tr.tabIndex = 0;
+    tr.setAttribute("role", "button");
+    if (
+      (txnBreakdownUi.level === "transactions" || txnBreakdownUi.level === "categories") &&
+      txnBreakdownUi.categoryId != null &&
+      String(row.id) === String(txnBreakdownUi.categoryId)
+    ) {
+      tr.classList.add("is-selected");
+    }
+    const amtClass = txnBreakdownUi.flow === "net" && row.amount < 0 ? "tx-kind-fg--expense" : "";
+    tr.innerHTML = `
+      <td>${escapeHtml(row.name)}</td>
+      <td class="num ${amtClass}">${txnBreakdownUi.flow === "net" && row.amount < 0 ? "-" : ""}$${fmtMoney(Math.abs(row.amount))}</td>
+      <td class="num">${row.pct.toFixed(1)}%</td>
+    `;
+    const activate = () => {
+      if (txnBreakdownUi.level === "groups") {
+        txnBreakdownUi.groupId = row.id;
+        txnBreakdownUi.groupName = row.name;
+        txnBreakdownNavigate("categories");
+      } else {
+        txnBreakdownUi.categoryId = row.id;
+        txnBreakdownUi.categoryName = row.name;
+        if (txnBreakdownUi.level === "categories") txnBreakdownNavigate("transactions");
+        else renderTxnBreakdownFromCache();
+      }
+    };
+    tr.addEventListener("click", activate);
+    tr.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        activate();
+      }
+    });
+    tbody.appendChild(tr);
+  }
+  const total = sorted.reduce((s, r) => s + r.amount, 0);
+  const totalAbs = sorted.reduce((s, r) => s + Math.abs(r.amount), 0);
+  const pctSum = sorted.reduce((s, r) => s + r.pct, 0);
+  const tr = document.createElement("tr");
+  const totalDisplay =
+    txnBreakdownUi.flow === "net"
+      ? `${total < 0 ? "-" : ""}$${fmtMoney(Math.abs(total))}`
+      : `$${fmtMoney(totalAbs)}`;
+  tr.innerHTML = `
+    <td>Total</td>
+    <td class="num">${totalDisplay}</td>
+    <td class="num">${Math.min(100, pctSum).toFixed(1)}%</td>
+  `;
+  tfoot.appendChild(tr);
+
+  document.querySelectorAll("#txnBreakdownTable thead th[data-tb-sort]").forEach((th) => {
+    th.classList.toggle("is-sorted", th.getAttribute("data-tb-sort") === txnBreakdownUi.sortKey);
+  });
+}
+
+function renderTxnBreakdownTxList(txs) {
+  const panel = document.getElementById("txnBreakdownTxPanel");
+  const title = document.getElementById("txnBreakdownTxTitle");
+  const body = document.getElementById("txnBreakdownTxBody");
+  if (!panel || !body) return;
+  if (txnBreakdownUi.level !== "transactions") {
+    panel.hidden = true;
+    body.replaceChildren();
+    return;
+  }
+  const { categoryId, categoryName, groupName, flow } = txnBreakdownUi;
+  const filtered = txs.filter((tx) => {
+    if (categoryId != null && String(tx.category_id) !== String(categoryId)) return false;
+    if (categoryId == null && String(tx.category) !== String(categoryName)) return false;
+    return txnBreakdownMatchesFlow(tx, flow);
+  });
+  filtered.sort((a, b) => String(b.date).localeCompare(String(a.date)));
+  panel.hidden = false;
+  if (title) title.textContent = `${groupName} › ${categoryName} · ${filtered.length} transaction${filtered.length === 1 ? "" : "s"}`;
+  body.replaceChildren();
+  if (!filtered.length) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = '<td colspan="4" class="reports-table__empty">No transactions in this range.</td>';
+    body.appendChild(tr);
+    return;
+  }
+  for (const tx of filtered) {
+    const tr = document.createElement("tr");
+    const kindCls = String(tx.kind) === "income" ? "tx-kind-fg--income" : "tx-kind-fg--expense";
+    const sign = flow === "net" && String(tx.kind) !== "income" ? "-" : "";
+    tr.innerHTML = `
+      <td>${escapeHtml(formatChartRangeLongLabel(tx.date))}</td>
+      <td>${escapeHtml(tx.description)}</td>
+      <td class="num ${kindCls}">${sign}$${fmtMoney(Math.abs(tx.amount))}</td>
+      <td class="reports-tb-tx-notes" title="${escapeHtml(tx.notes || "")}">${escapeHtml(tx.notes || "—")}</td>
+    `;
+    body.appendChild(tr);
+  }
+}
+
+function txnBreakdownNavigate(level) {
+  const body = document.getElementById("txnBreakdownBody");
+  if (body) body.classList.add("is-transitioning");
+  txnBreakdownUi.level = level;
+  if (level === "groups") {
+    txnBreakdownUi.groupId = null;
+    txnBreakdownUi.groupName = "";
+    txnBreakdownUi.categoryId = null;
+    txnBreakdownUi.categoryName = "";
+  } else if (level === "categories") {
+    txnBreakdownUi.categoryId = null;
+    txnBreakdownUi.categoryName = "";
+  }
+  renderTxnBreakdownFromCache();
+  window.setTimeout(() => {
+    if (body) body.classList.remove("is-transitioning");
+  }, 180);
+}
+
+function renderTxnBreakdownFromCache() {
+  const flow = txnBreakdownUi.flow;
+  const txs = filterTxnBreakdownTxs(lastTxnBreakdownTxCache, flow);
+  let rows = [];
+  if (txnBreakdownUi.level === "groups") {
+    rows = aggregateTxnBreakdownGroups(txs, flow);
+  } else {
+    rows = aggregateTxnBreakdownCategories(txs, txnBreakdownUi.groupId, txnBreakdownUi.groupName, flow);
+  }
+  renderTxnBreakdownBreadcrumb();
+  renderTxnBreakdownTable(rows);
+  drawTxnBreakdownChart(rows);
+  renderTxnBreakdownTxList(lastTxnBreakdownTxCache);
+  const caption = document.getElementById("txnBreakdownChartCaption");
+  if (caption) {
+    const { start, endIso } = readReportsDateRange();
+    const rangeTxt = start && endIso ? `${formatChartRangeLongLabel(start)} – ${formatChartRangeLongLabel(endIso)}` : "selected range";
+    if (txnBreakdownUi.level === "groups") {
+      caption.textContent = `${txnBreakdownFlowLabel(flow)} by group · ${rangeTxt}`;
+    } else if (txnBreakdownUi.level === "categories") {
+      caption.textContent = `${txnBreakdownUi.groupName} categories · ${rangeTxt}`;
+    } else {
+      caption.textContent = `${txnBreakdownUi.groupName} · ${txnBreakdownUi.categoryName} · ${rangeTxt}`;
+    }
+  }
+}
+
+function wireTxnBreakdownControls() {
+  if (txnBreakdownControlsBound) return;
+  txnBreakdownControlsBound = true;
+  document.querySelectorAll(".reports-tb-flow__btn[data-tb-flow]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const flow = String(btn.getAttribute("data-tb-flow") || "expense");
+      txnBreakdownUi.flow = flow;
+      document.querySelectorAll(".reports-tb-flow__btn[data-tb-flow]").forEach((b) => {
+        b.classList.toggle("is-active", b === btn);
+      });
+      renderTxnBreakdownFromCache();
+    });
+  });
+  document.querySelectorAll("#txnBreakdownTable thead th[data-tb-sort]").forEach((th) => {
+    th.addEventListener("click", () => {
+      const key = String(th.getAttribute("data-tb-sort") || "amount");
+      if (txnBreakdownUi.sortKey === key) {
+        txnBreakdownUi.sortDir = txnBreakdownUi.sortDir === "asc" ? "desc" : "asc";
+      } else {
+        txnBreakdownUi.sortKey = key;
+        txnBreakdownUi.sortDir = key === "name" ? "asc" : "desc";
+      }
+      renderTxnBreakdownFromCache();
+    });
+  });
+}
+
+async function refreshTxnBreakdownReport() {
+  const errEl = document.getElementById("txnBreakdownErr");
+  show(errEl, "");
+  if (!state.activeFamilyId) return;
+  wireTxnBreakdownControls();
+  if (!state.categoryTree?.groups?.length) {
+    try { await loadCategories(); } catch (_) {}
+  }
+  const { start, endIso } = readReportsDateRange();
+  if (!start || !endIso) return;
+  try {
+    lastTxnBreakdownTxCache = await fetchTxnBreakdownTransactions(start, endIso);
+    renderTxnBreakdownFromCache();
+  } catch (e) {
+    show(errEl, e?.message || "Failed to load transaction breakdown");
+    destroyTxnBreakdownChart();
+    lastTxnBreakdownRowsForChart = null;
+    const tbody = document.getElementById("txnBreakdownTableBody");
+    const tfoot = document.getElementById("txnBreakdownTableFoot");
+    if (tbody) tbody.replaceChildren();
+    if (tfoot) tfoot.replaceChildren();
+  }
 }
 
 function destroyReportsSafeTransferChart() {

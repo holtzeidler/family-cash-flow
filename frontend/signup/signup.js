@@ -1133,6 +1133,27 @@ function getAccountSetupStepCopy(step, ctx) {
   }
 }
 
+function showAccountSetupStep0Error(message, focusFieldId) {
+  setCallout(signupCalloutEl, message, "error");
+  try {
+    signupCalloutEl?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  } catch (_) {}
+  if (focusFieldId) {
+    window.setTimeout(() => {
+      try {
+        document.getElementById(focusFieldId)?.focus({ preventScroll: true });
+      } catch (_) {}
+    }, 0);
+  }
+}
+
+function initAccountSetupWizardShell() {
+  if (!isAccountSetupPath() || !document.getElementById("accountSetupWizard")) return;
+  try {
+    syncAccountSetupWizardShellButtons();
+  } catch (_) {}
+}
+
 function syncAccountSetupWizardShellButtons() {
   const s = getAccountSetupWizardStep();
   const stepLabel = document.getElementById("accountSetupWizardStepLabel");
@@ -1201,6 +1222,7 @@ function syncAccountSetupWizardShellButtons() {
   if (s < 2) {
     if (signupBtn) {
       signupBtn.style.display = "";
+      signupBtn.disabled = false;
       signupBtn.textContent = "Next";
       // Ensure Next is always the primary (green) style.
       signupBtn.classList.remove("secondary");
@@ -3517,6 +3539,7 @@ void (async () => {
     ensureAccountStartingBalanceDateDefault();
     ensureAccountSetupDefaultAccountName();
   } catch (_) {}
+  initAccountSetupWizardShell();
 
   // Warm up the email availability check while the user is still typing Step 0.
   try {
@@ -3540,10 +3563,23 @@ void (async () => {
       if (pref.includes("@")) void precheckEmailExists(pref);
     }
   } catch (_) {}
+  initAccountSetupWizardShell();
 })();
 
-// Expose a global handler so the inline onclick works even if the event binding fails.
+let signupPrimaryHandling = false;
+
+// Expose a global handler so legacy inline onclick still works if present.
 function onSignupPrimaryClick() {
+  if (signupPrimaryHandling) return;
+  signupPrimaryHandling = true;
+  try {
+    onSignupPrimaryClickInner();
+  } finally {
+    signupPrimaryHandling = false;
+  }
+}
+
+function onSignupPrimaryClickInner() {
   if (isAccountSetupPath()) {
     if (document.getElementById("accountSetupWizard")) {
       if (isAccountSetupWizardStepLocked()) return;
@@ -3554,24 +3590,29 @@ function onSignupPrimaryClick() {
         const password = document.getElementById("password")?.value || "";
         const password2 = document.getElementById("password2")?.value || "";
         if (!email) {
-          setCallout(signupCalloutEl, "Email is required.", "error");
+          showAccountSetupStep0Error("Email is required.", "email");
           return;
         }
         if (!password || password.length < 8) {
-          setCallout(signupCalloutEl, "Password must be at least 8 characters.", "error");
+          showAccountSetupStep0Error("Password must be at least 8 characters.", "password");
           return;
         }
         if (password !== password2) {
-          setCallout(signupCalloutEl, "Passwords do not match.", "error");
+          showAccountSetupStep0Error("Passwords do not match.", "password2");
           return;
         }
-        // Don't block Next on network latency. Move forward immediately and let the
-        // email check finish in the background; if it's a duplicate, bounce back.
-        // Run the email check in the background; don't let a "Checking email…" banner
-        // persist into the next step.
+        const emailChecked = email.toLowerCase();
+        if (
+          bwEmailCheckCache.email === emailChecked &&
+          bwEmailCheckCache.exists === true &&
+          Date.now() - bwEmailCheckCache.checkedAt < BW_EMAIL_CHECK_CACHE_MS
+        ) {
+          showAccountSetupStep0Error("That email is already registered. Log in or use a different email.", "email");
+          openAccountSetupDuplicateEmailModal();
+          return;
+        }
         setCallout(signupCalloutEl, "", "");
         const step0PrecheckGen = bwEmailPrecheckStep0Generation;
-        const emailChecked = String(email || "").trim().toLowerCase();
         const p = precheckEmailExists(email);
         lockAccountSetupWizardStepTransition();
         setAccountSetupWizardStep(1);
@@ -3583,12 +3624,12 @@ function onSignupPrimaryClick() {
             const emNow = String(document.getElementById("email")?.value || "").trim().toLowerCase();
             if (emNow !== emailChecked) return;
             if (!cached || !cached.ok) {
-              // Non-blocking: user can continue; register will still enforce uniqueness.
               setCallout(signupCalloutEl, "", "");
               return;
             }
             if (cached.exists === true) {
-              setCallout(signupCalloutEl, "", "");
+              showAccountSetupStep0Error("That email is already registered. Log in or use a different email.", "email");
+              setAccountSetupWizardStep(0, { skipPersist: true });
               openAccountSetupDuplicateEmailModal();
               return;
             }

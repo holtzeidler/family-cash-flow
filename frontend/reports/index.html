@@ -14,7 +14,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=657" />
+    <link rel="stylesheet" href="../styles.css?v=659" />
   </head>
   <body>
     <div class="container">
@@ -916,6 +916,86 @@
                 </div>
               </section>
 
+              <section class="card reports-card reports-card--txn-breakdown" id="reportTxnBreakdown">
+                <header class="reports-card__hero">
+                  <div class="reports-card__head">
+                    <h2 class="reports-card__title">Transaction Breakdown</h2>
+                    <p class="reports-card__desc">See where money goes across groups, categories, and individual transactions — a calm view of cash behavior.</p>
+                  </div>
+                </header>
+                <div class="reports-chart-shell">
+                  <div class="reports-chart-toolbar">
+                    <div class="reports-horizon" role="tablist" aria-label="Report horizon">
+                      <button type="button" class="reports-horizon__btn is-active" data-report-days="30">30 days</button>
+                      <button type="button" class="reports-horizon__btn" data-report-days="60">60 days</button>
+                      <button type="button" class="reports-horizon__btn" data-report-days="90">90 days</button>
+                      <button type="button" class="reports-horizon__btn" data-report-days="custom">Custom</button>
+                    </div>
+                    <label class="reports-chart-start">
+                      <span class="reports-chart-start__lbl">From</span>
+                      <input id="tbChartStart" type="date" />
+                    </label>
+                    <label class="reports-chart-start reports-chart-end" id="tbChartEndWrap" hidden>
+                      <span class="reports-chart-start__lbl">To</span>
+                      <input id="tbChartEnd" type="date" />
+                    </label>
+                  </div>
+                  <p class="reports-range-meta"><span data-reports-range-display>—</span></p>
+                </div>
+                <div class="reports-tb-controls">
+                  <div class="reports-tb-flow" role="group" aria-label="Transaction type">
+                    <button type="button" class="reports-tb-flow__btn is-active" data-tb-flow="expense">Expenses</button>
+                    <button type="button" class="reports-tb-flow__btn" data-tb-flow="income">Income</button>
+                    <button type="button" class="reports-tb-flow__btn" data-tb-flow="transfer">Transfers</button>
+                    <button type="button" class="reports-tb-flow__btn" data-tb-flow="net">Net Flow</button>
+                  </div>
+                  <nav id="txnBreakdownBreadcrumb" class="reports-tb-crumb" aria-label="Breakdown navigation" hidden></nav>
+                </div>
+                <div id="txnBreakdownErr" class="error"></div>
+                <div id="txnBreakdownBody" class="reports-tb-body">
+                  <div class="reports-tb-split">
+                    <div class="reports-tb-chart">
+                      <div class="reports-tb-chart__frame">
+                        <div id="txnBreakdownChartEmpty" class="projection-chart-empty" style="display: none" aria-live="polite"></div>
+                        <canvas id="txnBreakdownChartCanvas" class="reports-tb-chart__canvas" height="260" aria-label="Breakdown chart"></canvas>
+                      </div>
+                      <p id="txnBreakdownChartCaption" class="reports-tb-chart__caption" aria-live="polite"></p>
+                    </div>
+                    <div class="reports-tb-table-wrap reports-table-scroll">
+                      <table class="reports-table reports-table--txn-breakdown" id="txnBreakdownTable">
+                        <thead>
+                          <tr>
+                            <th scope="col" data-tb-sort="name">Name</th>
+                            <th scope="col" class="num" data-tb-sort="amount">Amount</th>
+                            <th scope="col" class="num" data-tb-sort="pct">Share</th>
+                          </tr>
+                        </thead>
+                        <tbody id="txnBreakdownTableBody"></tbody>
+                        <tfoot id="txnBreakdownTableFoot"></tfoot>
+                      </table>
+                    </div>
+                  </div>
+                  <div id="txnBreakdownTxPanel" class="reports-tb-tx-panel" hidden>
+                    <div class="reports-tb-tx-panel__head">
+                      <h3 id="txnBreakdownTxTitle" class="reports-tb-tx-panel__title"></h3>
+                    </div>
+                    <div class="reports-table-scroll reports-table-scroll--txn-breakdown">
+                      <table class="reports-table reports-table--txn-breakdown-tx">
+                        <thead>
+                          <tr>
+                            <th scope="col">Date</th>
+                            <th scope="col">Description</th>
+                            <th scope="col" class="num">Amount</th>
+                            <th scope="col">Notes</th>
+                          </tr>
+                        </thead>
+                        <tbody id="txnBreakdownTxBody"></tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
               <section class="card reports-card" id="reportSafeTransfer">
                 <div class="reports-card__head">
                   <h2 class="reports-card__title">Safe to Move</h2>
@@ -1536,7 +1616,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="../app.js?v=389"></script>
+    <script src="../app.js?v=392"></script>
     <script src="../feedback.js?v=4" defer></script>
     <script src="../tour.js?v=9" defer></script>
   </body>
