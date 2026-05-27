@@ -415,7 +415,7 @@ function renderCategoryColorPicker({ rowEl, swatchesEl, clearBtn, getCategoryId,
   if (!swatchesEl) return;
 
   function refresh() {
-    // Usually show the row in add/edit modals; Add-transaction uses a collapsible panel (unhideRow: false).
+    // Show the color row whenever the picker refreshes (add + edit modals).
     if (rowEl && unhideRow) rowEl.hidden = false;
     const rawBg = getBg && getBg() ? String(getBg()).trim() : "";
     const overrideNone = !!(rawBg && rawBg.toLowerCase() === "none");
@@ -1501,7 +1501,6 @@ const txAddAmountValidation = document.getElementById("txAddAmountValidation");
 const txAddCategoryValidation = document.getElementById("txAddCategoryValidation");
 const txAddAccountValidation = document.getElementById("txAddAccountValidation");
 const txAddDateValidation = document.getElementById("txAddDateValidation");
-const txAddAdvancedPanel = document.getElementById("txAddAdvancedPanel");
 let txAddValidationTouched = false;
 /** Category hint only after Add is clicked without a category (not when other fields are edited). */
 let txAddCategoryValidationShown = false;
@@ -1839,17 +1838,6 @@ if (txAddEndCount && txAddEndDate) {
   txAddEndDate.addEventListener("input", () => {
     if (String(txAddEndDate.value || "").trim()) txAddEndCount.value = "";
   });
-}
-{
-  const txAddColorToggle = document.getElementById("txAddColorToggle");
-  if (txAddColorToggle && txAddAdvancedPanel) {
-    txAddColorToggle.addEventListener("click", () => {
-      txAddAdvancedPanel.hidden = !txAddAdvancedPanel.hidden;
-      const open = !txAddAdvancedPanel.hidden;
-      txAddColorToggle.setAttribute("aria-expanded", open ? "true" : "false");
-      txAddColorToggle.classList.toggle("is-open", open);
-    });
-  }
 }
 bindTxAddFormValidation();
 updateTxAddRepeatingUi();
@@ -4564,7 +4552,6 @@ function openTxEditModal(tx) {
   txEditModal.setAttribute("aria-hidden", "false");
   applyTransactionEditMode("actual");
   applyTxEditCategoryRecurrenceDefaults(tx.category_id);
-  resetTxEditAdvancedPanel();
 }
 
 let txEditApplyScopeChoice = null;
@@ -4701,7 +4688,6 @@ function closeTxEditModal() {
   txEditSelectedBgColor = null;
   txEditColorTouched = false;
   applyTransactionEditMode("actual", { resetting: true });
-  resetTxEditAdvancedPanel();
 }
 
 function mountTxAddFormInModal() {
@@ -4804,12 +4790,6 @@ function openTxAddModal(opts = {}) {
   }
   updateTxAddRepeatingUi();
   refreshTxCategoryColorPickers();
-  if (txAddAdvancedPanel) txAddAdvancedPanel.hidden = true;
-  const txAddColorToggleEl = document.getElementById("txAddColorToggle");
-  if (txAddColorToggleEl) {
-    txAddColorToggleEl.setAttribute("aria-expanded", "false");
-    txAddColorToggleEl.classList.remove("is-open");
-  }
   resetTxAddFormValidation();
   setTxAddSaveBusy(false);
   const kind = opts.kind || "income";
@@ -8303,43 +8283,15 @@ function syncAllCategoryComboboxes(categories) {
   }
 }
 
-function refreshTxAddColorChipDot() {
-  const dot = document.getElementById("txAddColorChipDot");
-  if (!dot) return;
-  let bg = "";
-  const raw = txAddSelectedBgColor;
-  if (raw && String(raw).trim().toLowerCase() !== "none") {
-    bg = String(raw).trim();
-  }
-  if (!bg) {
-    const catId = categoryIdFromCategoryField("txAddCategoryId");
-    if (catId) {
-      const st = categoryStyleFromId(catId);
-      if (st && st.bg) bg = st.bg;
-    }
-  }
-  if (bg) {
-    dot.hidden = false;
-    dot.style.background = bg;
-    dot.style.boxShadow = "inset 0 0 0 1px rgba(15, 23, 42, 0.18)";
-  } else {
-    dot.hidden = true;
-    dot.style.background = "";
-    dot.style.boxShadow = "";
-  }
-}
-
 const txAddCategoryColorPicker = renderCategoryColorPicker({
   rowEl: txAddCategoryColorRow,
   swatchesEl: txAddCategoryColorSwatches,
   clearBtn: txAddCategoryColorClear,
-  unhideRow: false,
   getCategoryId: () => categoryIdFromCategoryField("txAddCategoryId"),
   getBg: () => txAddSelectedBgColor,
   setBg: (v) => {
     txAddColorTouched = true;
     txAddSelectedBgColor = v && String(v).trim() ? String(v).trim() : null;
-    refreshTxAddColorChipDot();
   },
 });
 const txEditCategoryColorPicker = renderCategoryColorPicker({
@@ -8366,35 +8318,11 @@ function txEditEffectiveColor() {
   return null;
 }
 
-function resetTxEditAdvancedPanel() {
-  const det = document.getElementById("txEditAdvancedDetails");
-  if (det) det.open = false;
-}
-
-function updateTxEditAddColorButtonState() {
-  /* Color UI is under "Advanced Option"; collapsed by default when the edit sheet opens. */
-}
-
 function refreshTxCategoryColorPickers() {
   try {
     if (txAddCategoryColorPicker) txAddCategoryColorPicker.refresh();
     if (txEditCategoryColorPicker) txEditCategoryColorPicker.refresh();
   } catch (_) {}
-  try { refreshTxAddColorChipDot(); } catch (_) {}
-  try { updateTxEditAddColorButtonState(); } catch (_) {}
-}
-
-{
-  const adv = document.getElementById("txEditAdvancedDetails");
-  if (adv) {
-    adv.addEventListener("toggle", () => {
-      if (adv.open) {
-        try {
-          txEditCategoryColorPicker.refresh();
-        } catch (_) {}
-      }
-    });
-  }
 }
 
 function setCategoryFieldValue(fieldId, categoryIdOrNull) {
@@ -10199,7 +10127,6 @@ function openExpectedEditModal(tx, opts = {}) {
   txEditModal.setAttribute("aria-hidden", "false");
   applyTransactionEditMode("recurring");
   applyMinDateToTxEditDateInput();
-  resetTxEditAdvancedPanel();
 }
 
 function openExpectedDeleteModal(expectedId, occurrenceDate) {

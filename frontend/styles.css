@@ -21385,8 +21385,20 @@ body[data-bw-view="transactions"] .tm__field label{
 }
 .modal--tx-add .tx-add-form #txAddDate,
 .modal--tx-add .tx-add-form #txAddEndDate{
+  width: 98%;
+  max-width: 98%;
   padding: 6px 9px;
   font-size: 13px;
+  border-radius: 10px;
+}
+.modal--tx-add .tx-add-form #txAddCategoryId{
+  width: 98%;
+  max-width: 98%;
+  box-sizing: border-box;
+  padding: 6px 9px;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 10px;
 }
 .modal--tx-add .tx-add-form #txAddDate::-webkit-calendar-picker-indicator,
 .modal--tx-add .tx-add-form #txAddEndDate::-webkit-calendar-picker-indicator{
@@ -21401,16 +21413,19 @@ body[data-bw-view="transactions"] .tm__field label{
   opacity: 0.75;
 }
 .modal--tx-add .tx-add-form .input-notes-flex{
-  padding: 4px 9px;
-  font-size: 12.5px;
-  line-height: 1.2;
+  width: 98%;
+  max-width: 98%;
+  box-sizing: border-box;
+  padding: 6px 9px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.25;
   min-height: 0;
   background: rgba(15, 23, 42, 0.015);
   border-color: rgba(17, 24, 39, 0.06);
+  border-radius: 10px;
 }
 .modal--tx-add .tx-add-form .input-notes-flex:focus{
-  padding-top: 5px;
-  padding-bottom: 5px;
   background: var(--panel, #fff);
   border-color: rgba(17, 24, 39, 0.18);
 }
@@ -21444,8 +21459,15 @@ body[data-bw-view="transactions"] .tm__field label{
   align-items: center;
   gap: var(--tx-add-row-gap-y, 4px) var(--tx-add-row-gap-x, 14px);
 }
-.modal--tx-add .tx-add-form .form-row-h:has(.tx-add-category-field){
+.modal--tx-add .tx-add-form .form-row-h:has(.tx-add-category-field),
+.modal--tx-add .tx-add-form .form-row-h.tx-add-cat-color-row{
   align-items: start;
+}
+.modal--tx-add .tx-add-form .form-row-h:has(.tx-add-category-field) .form-row-h__label,
+.modal--tx-add .tx-add-form .form-row-h.tx-add-cat-color-row .form-row-h__label{
+  align-items: flex-start;
+  padding-top: 8px;
+  min-height: 0;
 }
 .modal--tx-add .tx-add-form .form-row-h__label,
 .modal--tx-add .tx-add-schedule-compact .form-row-h__label,
@@ -21453,8 +21475,7 @@ body[data-bw-view="transactions"] .tm__field label{
 .modal--tx-add #txAddRecurringBlock .tx-add-second-monthly-row .form-row-h__label,
 .modal--tx-add .tx-add-variable-block .form-row-h__label,
 .modal--tx-add .tx-add-notes-row .form-row-h__label,
-.modal--tx-add .tx-add-advanced__panel .tx-add-cat-color-row .form-row-h__label,
-.modal--tx-add .tx-add-advanced__panel .form-row-h__label{
+.modal--tx-add .tx-add-cat-color-row .form-row-h__label{
   flex: none;
   max-width: none;
   padding: 0 var(--tx-add-label-inset, 3ch) 0 0;
@@ -21477,7 +21498,7 @@ body[data-bw-view="transactions"] .tm__field label{
 .modal--tx-add #txAddRecurringBlock .tx-add-second-monthly-row .form-row-h__label label,
 .modal--tx-add .tx-add-variable-block .form-row-h__label label,
 .modal--tx-add .tx-add-notes-row .form-row-h__label label,
-.modal--tx-add .tx-add-advanced__panel .form-row-h__label label{
+.modal--tx-add .tx-add-cat-color-row .form-row-h__label label{
   width: 100%;
   text-align: right;
   font-size: 12px;
@@ -21496,16 +21517,12 @@ body[data-bw-view="transactions"] .tm__field label{
 .modal--tx-add .tx-add-variable-form-row{
   display: contents;
 }
-/* Advanced panel: one shared label column so Color + Notes align with each other. */
-.modal--tx-add .tx-add-advanced__panel{
-  display: grid;
-  grid-template-columns: var(--tx-add-label-col, 11.25rem) minmax(0, 1fr);
-  align-items: center;
-  column-gap: var(--tx-add-row-gap-x, 14px);
-  row-gap: var(--tx-add-row-gap-y, 6px);
+.modal--tx-add .tx-add-cat-color-row{
+  margin-top: 2px;
 }
-.modal--tx-add .tx-add-advanced__panel .tx-add-cat-color-row{
-  display: contents;
+.modal--tx-add .tx-add-cat-color-row .tx-add-cat-color-field{
+  align-self: center;
+  min-width: 0;
 }
 .modal--tx-add .tx-add-notes-row{
   margin-top: 2px;
@@ -21736,7 +21753,6 @@ body[data-bw-view="transactions"] .tm__field label{
   width: 100%;
   box-sizing: border-box;
 }
-.modal--tx-add .tx-add-advanced__panel .tx-add-cat-color-field,
 .modal--tx-add .tx-add-notes-row .form-row-h__field{
   align-self: center;
   min-width: 0;
@@ -23089,6 +23105,7 @@ body.account-setup-page
 .modal--expected-edit #expectedEditInstancePanel .tx-edit-recurrence-ends-row > .form-row-h,
 .modal--expected-edit #expectedEditInstancePanel #txEditAccountCol .form-row-h,
 .modal--expected-edit #expectedEditInstancePanel .tx-edit-notes-row.form-row-h,
+.modal--expected-edit #expectedEditInstancePanel .tx-edit-cat-color-row.form-row-h,
 .modal--expected-edit #expectedEditInstancePanel .tx-edit-notes-in-advanced.form-row-h,
 .modal--expected-edit #expectedEditInstancePanel .expected-second-day-row.form-row-h,
 .modal--expected-edit #expectedEditInstancePanel .tx-edit-ends-detail.form-row-h{
@@ -23102,6 +23119,15 @@ body.account-setup-page
   font-size: 10.5px;
   color: rgba(100, 116, 139, 0.72);
   font-weight: 500;
+}
+.modal--expected-edit .tx-add-optional-mark{
+  margin-left: 2px;
+  font-weight: 400;
+  font-style: italic;
+  font-size: 0.82em;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  color: rgba(100, 116, 139, 0.72);
 }
 
 /* Consistent compact field heights in recurring edit. */
@@ -23254,40 +23280,39 @@ body.account-setup-page
   line-height: 1.28;
 }
 
-/* Compact color row inside Advanced: swatches + Clear. */
-#expectedEditInstancePanel .cat-color-row.tx-edit-cat-color-panel{
+/* Compact color row in edit modal: swatches + Clear. */
+#expectedEditInstancePanel .tx-edit-cat-color-row.form-row-h{
+  align-items: flex-start;
+}
+#expectedEditInstancePanel .tx-edit-cat-color-row .form-row-h__label{
+  padding-top: 3px;
+}
+#expectedEditInstancePanel .tx-edit-cat-color-field .cat-color-row.tx-edit-cat-color-panel{
   margin: 0;
-  padding: 4px 2px 2px;
+  padding: 0;
   gap: 5px;
-  border-radius: 8px;
+  border-radius: 0;
   background: transparent;
   border: none;
   flex-wrap: wrap;
+  display: flex;
+  align-items: center;
 }
-#expectedEditInstancePanel .cat-color-row.tx-edit-cat-color-panel .cat-color-row__label{
-  flex: 0 0 auto;
-  font-size: 10.5px;
-  font-weight: 500;
-  letter-spacing: 0.02em;
-  text-transform: none;
-  color: rgba(100, 116, 139, 0.78);
-  margin-right: 2px;
-}
-#expectedEditInstancePanel .cat-color-row.tx-edit-cat-color-panel .cat-color-row__swatches{
+#expectedEditInstancePanel .tx-edit-cat-color-field .cat-color-row.tx-edit-cat-color-panel .cat-color-row__swatches{
   gap: 5px;
   overflow: visible;
   flex-wrap: wrap;
   min-width: 0;
 }
-#expectedEditInstancePanel .cat-color-row.tx-edit-cat-color-panel .cat-swatch{
+#expectedEditInstancePanel .tx-edit-cat-color-field .cat-color-row.tx-edit-cat-color-panel .cat-swatch{
   width: 14px;
   height: 14px;
 }
-#expectedEditInstancePanel .cat-color-row.tx-edit-cat-color-panel .cat-swatch.is-active{
+#expectedEditInstancePanel .tx-edit-cat-color-field .cat-color-row.tx-edit-cat-color-panel .cat-swatch.is-active{
   outline-width: 2px;
   outline-offset: 1px;
 }
-#expectedEditInstancePanel .cat-color-row.tx-edit-cat-color-panel .cat-swatch--custom::before{
+#expectedEditInstancePanel .tx-edit-cat-color-field .cat-color-row.tx-edit-cat-color-panel .cat-swatch--custom::before{
   font-size: 12px;
 }
 .modal--expected-edit .tx-edit-cat-color-clear{
@@ -26476,7 +26501,7 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
     grid-column: 1;
     grid-row: 3;
   }
-  .modal--tx-add .tx-add-advanced__panel .tx-add-cat-color-row,
+  .modal--tx-add .tx-add-cat-color-row,
   .modal--tx-add .tx-add-notes-row{
     display: grid;
     grid-template-columns: 1fr;

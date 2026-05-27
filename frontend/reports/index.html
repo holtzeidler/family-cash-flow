@@ -14,7 +14,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=654" />
+    <link rel="stylesheet" href="../styles.css?v=656" />
   </head>
   <body>
     <div class="container">
@@ -212,6 +212,12 @@
                   </div>
                 </div>
               </div>
+              <div class="form-row-h tx-add-notes-row">
+                <div class="form-row-h__label"><label for="txAddNotes">Notes</label></div>
+                <div class="form-row-h__field">
+                  <input id="txAddNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
+                </div>
+              </div>
               <div class="tx-add-variable-block">
                 <div class="form-row-h tx-add-variable-form-row">
                   <div class="form-row-h__label">
@@ -223,28 +229,11 @@
                 </div>
                 <p class="tx-add-variable-block__caption">Helpful for utilities, credit cards, and fluctuating bills.</p>
               </div>
-              <div class="form-row-h tx-add-notes-row">
-                <div class="form-row-h__label"><label for="txAddNotes">Notes</label></div>
-                <div class="form-row-h__field">
-                  <input id="txAddNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
-                </div>
-              </div>
-              <div class="tx-add-advanced">
-                <button type="button" id="txAddColorToggle" class="tx-add-advanced__expander" aria-expanded="false" aria-controls="txAddAdvancedPanel">
-                  <span class="tx-add-advanced__expander-chev" aria-hidden="true">
-                    <svg viewBox="0 0 12 12" width="9" height="9" focusable="false"><path d="M3.5 2.5 L8 6 L3.5 9.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                  </span>
-                  <span class="tx-add-advanced__expander-label">Advanced Option</span>
-                  <span class="tx-add-advanced__chip-dot" id="txAddColorChipDot" aria-hidden="true" hidden></span>
-                </button>
-                <div id="txAddAdvancedPanel" class="tx-add-advanced__panel" hidden>
-                  <div id="txAddCategoryColorRow" class="form-row-h tx-add-cat-color-row">
-                    <div class="form-row-h__label"><label>Color</label></div>
-                    <div class="form-row-h__field tx-add-cat-color-field tx-add-cat-color-panel">
-                      <div class="cat-color-row__swatches" id="txAddCategoryColorSwatches"></div>
-                      <button type="button" class="cat-color-row__clear secondary" id="txAddCategoryColorClear" hidden>Clear color</button>
-                    </div>
-                  </div>
+              <div id="txAddCategoryColorRow" class="form-row-h tx-add-cat-color-row">
+                <div class="form-row-h__label"><label>Select Color <span class="tx-add-optional-mark">(optional)</span></label></div>
+                <div class="form-row-h__field tx-add-cat-color-field tx-add-cat-color-panel">
+                  <div class="cat-color-row__swatches" id="txAddCategoryColorSwatches"></div>
+                  <button type="button" class="cat-color-row__clear secondary" id="txAddCategoryColorClear" hidden>Clear color</button>
                 </div>
               </div>
               </div>
@@ -1255,21 +1244,15 @@
             </div>
           </div>
           <div class="tx-add-vspace" aria-hidden="true"></div>
-          <details class="tx-edit-advanced" id="txEditAdvancedDetails">
-            <summary class="tx-edit-advanced__summary">
-              <span class="tx-edit-advanced__label-col">
-                <span class="tx-edit-advanced__chev" aria-hidden="true"></span>
-                <span class="tx-edit-advanced__label">Advanced Option</span>
-              </span>
-            </summary>
-            <div class="tx-edit-advanced__body">
-              <div id="txEditCategoryColorRow" class="cat-color-row tx-edit-cat-color-panel">
-                <div class="cat-color-row__label">Color</div>
+          <div id="txEditCategoryColorRow" class="form-row-h tx-edit-cat-color-row">
+            <div class="form-row-h__label"><label>Select Color <span class="tx-add-optional-mark">(optional)</span></label></div>
+            <div class="form-row-h__field tx-edit-cat-color-field">
+              <div class="cat-color-row tx-edit-cat-color-panel">
                 <div class="cat-color-row__swatches" id="txEditCategoryColorSwatches"></div>
                 <button type="button" class="cat-color-row__clear tx-edit-cat-color-clear" id="txEditCategoryColorClear" hidden>Clear</button>
               </div>
             </div>
-          </details>
+          </div>
 
           <div id="txEditRecurringVariableWrap" class="tx-edit-variable-form-row" style="display: none">
             <label class="tx-edit-variable-toggle" for="seriesVariable">
