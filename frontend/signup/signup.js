@@ -1069,14 +1069,6 @@ function syncAccountSetupBackButtonVisibility() {
     accountSetupBackBtn.style.display = "none";
     return;
   }
-  if (s === 2 && getAccountSetupStep3Phase() === "form") {
-    accountSetupBackBtn.style.display = "none";
-    return;
-  }
-  if (s === 3 && getAccountSetupExpensePhase() === "form") {
-    accountSetupBackBtn.style.display = "none";
-    return;
-  }
   accountSetupBackBtn.style.removeProperty("display");
 }
 

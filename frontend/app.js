@@ -3611,6 +3611,9 @@ if (calendarMode) {
     renderCalendar();
     renderMonthSummaryTotalsFromState();
     await refreshLowBalanceAlert();
+    if (document.getElementById("txnBreakdownChartCanvas")) {
+      void refreshTxnBreakdownReport().catch(() => {});
+    }
   });
 }
 
@@ -13314,18 +13317,82 @@ function enrichTxnBreakdownRow(tx, catMap) {
   };
 }
 
+function enrichExpectedTxnBreakdownRow(it, catMap) {
+  const iso = normalizeIsoDate(it?.date) || "";
+  const meta = it.category_id != null ? catMap.get(Number(it.category_id)) : null;
+  return {
+    id: `exp-${it.expected_transaction_id}-${iso}`,
+    date: iso,
+    description: String(it.description || ""),
+    notes: it.notes ? String(it.notes) : "",
+    kind: String(it.kind || ""),
+    amount: Number(it.amount || 0),
+    category: it.category ? String(it.category) : meta?.categoryName || "Uncategorized",
+    category_id: it.category_id != null ? Number(it.category_id) : null,
+    groupId: meta?.groupId ?? null,
+    groupName: meta?.groupName || "Uncategorized",
+  };
+}
+
+function isoMinDate(a, b) {
+  if (!a) return b || "";
+  if (!b) return a;
+  return a <= b ? a : b;
+}
+
+function isoMaxDate(a, b) {
+  if (!a) return b || "";
+  if (!b) return a;
+  return a >= b ? a : b;
+}
+
 async function fetchTxnBreakdownTransactions(startIso, endIso) {
-  const r = await api(
-    `/api/families/${state.activeFamilyId}/transactions?start_date=${encodeURIComponent(startIso)}&end_date=${encodeURIComponent(endIso)}`,
-    "GET"
-  );
+  const mode = calendarMode?.value || "both";
+  const includeActual = mode === "both" || mode === "actual";
+  const includeExpected = mode === "both" || mode === "expected";
+  const todayIso = toISODate(new Date());
   const catMap = buildTxnBreakdownCategoryMap();
+  /** @type {Array<object>} */
   const out = [];
-  for (const it of r?.items || []) {
-    const iso = normalizeIsoDate(it?.date) || String(it?.date || "").slice(0, 10);
-    if (!iso || iso < startIso || iso > endIso) continue;
-    out.push(enrichTxnBreakdownRow(it, catMap));
+
+  if (includeActual) {
+    const actualEnd = isoMinDate(endIso, todayIso);
+    if (startIso && actualEnd && startIso <= actualEnd) {
+      const r = await api(
+        `/api/families/${state.activeFamilyId}/transactions?start_date=${encodeURIComponent(startIso)}&end_date=${encodeURIComponent(actualEnd)}`,
+        "GET"
+      );
+      for (const it of r?.items || []) {
+        const iso = normalizeIsoDate(it?.date) || String(it?.date || "").slice(0, 10);
+        if (!iso || iso < startIso || iso > actualEnd) continue;
+        out.push(enrichTxnBreakdownRow(it, catMap));
+      }
+    }
   }
+
+  if (includeExpected) {
+    let estStart = startIso;
+    if (mode === "both") {
+      // Posted actuals through today; scheduled items from tomorrow onward (same split as category totals).
+      estStart = isoMaxDate(startIso, addDaysIso(todayIso, 1));
+    }
+    if (estStart && endIso && estStart <= endIso) {
+      const months = monthsOverlappingIsoRange(estStart, endIso);
+      const results = await Promise.all(
+        months.map((month) =>
+          api(`/api/families/${state.activeFamilyId}/expected-calendar?month=${encodeURIComponent(month)}`, "GET")
+        )
+      );
+      for (const data of results) {
+        for (const it of data?.items || []) {
+          const iso = normalizeIsoDate(it?.date) || "";
+          if (!iso || iso < estStart || iso > endIso) continue;
+          out.push(enrichExpectedTxnBreakdownRow(it, catMap));
+        }
+      }
+    }
+  }
+
   return out;
 }
 

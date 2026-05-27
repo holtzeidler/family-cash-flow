@@ -68,7 +68,7 @@
             <div class="landing-hero-forecast__demo">
             <div class="landing-cal-peek__frame landing-hero-forecast__cal" aria-hidden="true">
               <div class="landing-cal-peek__chrome">
-                <span class="landing-cal-peek__month">May 2026</span>
+                <span class="landing-cal-peek__month"></span>
                 <span class="landing-cal-peek__hint">Projected balance by day</span>
               </div>
               <svg class="landing-cal-peek__svg" viewBox="0 0 560 228" xmlns="http://www.w3.org/2000/svg">
@@ -99,51 +99,11 @@
                 <text x="472" y="34" fill="rgba(55,65,75,0.62)" font-size="11" font-family="Inter, system-ui, sans-serif" font-weight="600">
                   S
                 </text>
-                <g class="landing-hero-forecast__days" font-family="Inter, system-ui, sans-serif">
-                  <g class="landing-hero-forecast__day">
-                    <rect x="8" y="48" width="68" height="60" rx="8" fill="url(#landingCalCell)" stroke="rgba(11,61,46,0.11)" />
-                    <text x="14" y="68" fill="rgba(55,65,60,0.58)" font-size="10" font-weight="600">17</text>
-                    <text x="14" y="92" fill="rgba(11,61,46,0.94)" font-size="11" font-weight="700">$4,280</text>
-                  </g>
-                  <g class="landing-hero-forecast__day">
-                    <rect x="84" y="48" width="68" height="60" rx="8" fill="url(#landingCalCell)" stroke="rgba(11,61,46,0.11)" />
-                    <text x="90" y="68" fill="rgba(55,65,60,0.58)" font-size="10" font-weight="600">18</text>
-                    <text x="90" y="92" fill="rgba(11,61,46,0.94)" font-size="11" font-weight="700">$3,910</text>
-                  </g>
-                  <g class="landing-hero-forecast__day">
-                    <rect x="160" y="48" width="68" height="60" rx="8" fill="url(#landingCalCell)" stroke="rgba(11,61,46,0.11)" />
-                    <text x="166" y="68" fill="rgba(55,65,60,0.58)" font-size="10" font-weight="600">19</text>
-                    <text x="166" y="92" fill="rgba(11,61,46,0.94)" font-size="11" font-weight="700">$2,240</text>
-                  </g>
-                  <g class="landing-hero-forecast__day landing-hero-forecast__day--watch" data-landing-day="20">
-                    <rect x="236" y="48" width="68" height="60" rx="8" fill="url(#landingCalCell)" stroke="rgba(11,61,46,0.11)" />
-                    <text x="242" y="68" fill="rgba(55,65,60,0.58)" font-size="10" font-weight="600">20</text>
-                    <text x="242" y="92" fill="rgba(11,61,46,0.94)" font-size="11" font-weight="700">$1,020</text>
-                    <text class="landing-hero-forecast__dayTag" x="242" y="104" fill="rgba(146,72,18,0.72)" font-size="6.5" font-weight="600">Watch</text>
-                  </g>
-                  <g class="landing-hero-forecast__day landing-hero-forecast__day--paycheck" data-landing-day="21">
-                    <rect x="312" y="48" width="68" height="60" rx="8" fill="url(#landingCalCell)" stroke="rgba(11,61,46,0.11)" />
-                    <text x="318" y="68" fill="rgba(55,65,60,0.58)" font-size="10" font-weight="600">21</text>
-                    <text x="318" y="92" fill="rgba(11,61,46,0.94)" font-size="11" font-weight="700">$3,050</text>
-                    <text class="landing-hero-forecast__dayTag landing-hero-forecast__dayTag--pay" x="318" y="104" fill="rgba(4,120,87,0.82)" font-size="6.5" font-weight="700">↑ Paycheck</text>
-                  </g>
-                  <g class="landing-hero-forecast__day">
-                    <rect x="388" y="48" width="68" height="60" rx="8" fill="url(#landingCalCell)" stroke="rgba(11,61,46,0.11)" />
-                    <text x="394" y="68" fill="rgba(55,65,60,0.58)" font-size="10" font-weight="600">22</text>
-                    <text x="394" y="92" fill="rgba(11,61,46,0.94)" font-size="11" font-weight="700">$2,680</text>
-                  </g>
-                  <g class="landing-hero-forecast__day">
-                    <rect x="464" y="48" width="68" height="60" rx="8" fill="url(#landingCalCell)" stroke="rgba(11,61,46,0.11)" />
-                    <text x="470" y="68" fill="rgba(55,65,60,0.58)" font-size="10" font-weight="600">23</text>
-                    <text x="470" y="92" fill="rgba(11,61,46,0.94)" font-size="11" font-weight="700">$2,310</text>
-                  </g>
-                </g>
+                <g class="landing-hero-forecast__days" font-family="Inter, system-ui, sans-serif"></g>
                 <g class="landing-hero-forecast__txn landing-hero-forecast__txn--card">
                   <rect x="8" y="126" width="524" height="30" rx="8" fill="rgba(180,83,9,0.05)" stroke="rgba(180,83,9,0.18)" />
                   <circle cx="22" cy="141" r="4" fill="rgba(180,83,9,0.55)" />
-                  <text x="34" y="145" fill="rgba(31,41,55,0.88)" font-size="10" font-family="Inter, system-ui, sans-serif" font-weight="600">
-                    Credit card payment · May 20
-                  </text>
+                  <text id="landingHeroTxnCard" x="34" y="145" fill="rgba(31,41,55,0.88)" font-size="10" font-family="Inter, system-ui, sans-serif" font-weight="600"></text>
                   <text x="420" y="145" fill="rgba(146,45,55,0.78)" font-size="10" font-family="Inter, system-ui, sans-serif" font-weight="700">
                     −$1,220
                   </text>
@@ -151,9 +111,7 @@
                 <g class="landing-hero-forecast__txn landing-hero-forecast__txn--paycheck">
                   <rect x="8" y="162" width="524" height="30" rx="8" fill="rgba(4,120,87,0.08)" stroke="rgba(4,120,87,0.22)" />
                   <circle cx="22" cy="177" r="4" fill="rgba(4,120,87,0.72)" />
-                  <text x="34" y="181" fill="rgba(31,41,55,0.88)" font-size="10" font-family="Inter, system-ui, sans-serif" font-weight="600">
-                    Paycheck clears · May 21
-                  </text>
+                  <text id="landingHeroTxnPaycheck" x="34" y="181" fill="rgba(31,41,55,0.88)" font-size="10" font-family="Inter, system-ui, sans-serif" font-weight="600"></text>
                   <text x="420" y="181" fill="rgba(4,120,87,0.88)" font-size="10" font-family="Inter, system-ui, sans-serif" font-weight="700">
                     +$2,030
                   </text>
@@ -180,9 +138,7 @@
               </div>
               <div class="landing-insight__main">
                 <p class="landing-insight__label">Forecast Alert</p>
-                <p class="landing-insight__copy">
-                  Your balance drops near $1,000 after a large card payment on May 20.
-                </p>
+                <p id="landingHeroAlertCopy" class="landing-insight__copy"></p>
               </div>
             </div>
           </section>
@@ -211,7 +167,7 @@
 
                   <div class="landing-preview__trust" aria-label="Forecast status">
                     <span class="landing-preview__trustIcon" aria-hidden="true">✓</span>
-                    <span class="landing-preview__trustText">Forecast reconciled through May 17</span>
+                    <span id="landingPreviewReconciled" class="landing-preview__trustText"></span>
                   </div>
                 </div>
 
@@ -408,7 +364,8 @@
         </div>
       </footer>
     </div>
-    <script src="./landing-hero-demo.js" defer></script>
+    <script src="./landing-hero-dates.js?v=1" defer></script>
+    <script src="./landing-hero-demo.js?v=2" defer></script>
     <script>
       (function () {
         if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;

@@ -1,5 +1,6 @@
 /**
- * Subtle hero forecast micro-demo: May 20 watch → alert → May 21 paycheck → rest.
+ * Subtle hero forecast micro-demo: watch day → alert → paycheck → rest.
+ * Dates are set by landing-hero-dates.js relative to today.
  * Respects prefers-reduced-motion; opacity / fill / stroke only (no layout shift).
  */
 (function () {
