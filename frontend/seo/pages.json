@@ -1,0 +1,124 @@
+{
+  "siteUrl": "https://balancewhiz.com",
+  "siteName": "BalanceWhiz",
+  "ogImage": "/assets/og-image.png",
+  "themeColor": "#0B3D2E",
+  "twitterSite": "",
+  "pages": {
+    "index.html": {
+      "title": "BalanceWhiz — Checking Balance Forecast & Cash Flow Calendar",
+      "description": "See your projected checking balance before bills and paychecks land. No bank connection required—built for families who want cash flow clarity without complicated budgeting.",
+      "canonicalPath": "/",
+      "index": true,
+      "ogType": "website"
+    },
+    "about.html": {
+      "title": "About BalanceWhiz — Cash Flow Forecasting for Families",
+      "description": "Learn why BalanceWhiz focuses on projected checking balances and timing—not traditional budgeting—so you can avoid cash surprises.",
+      "canonicalPath": "/about.html",
+      "index": true
+    },
+    "help.html": {
+      "title": "Help & FAQ — BalanceWhiz",
+      "description": "Answers about BalanceWhiz forecasting, accounts, recurring transactions, reconciliation, and getting started without connecting your bank.",
+      "canonicalPath": "/help.html",
+      "index": true
+    },
+    "privacy.html": {
+      "title": "Privacy Policy — BalanceWhiz",
+      "description": "How BalanceWhiz handles your data: no bank connections required, no sale of personal financial data, and clear policies for family cash flow forecasting.",
+      "canonicalPath": "/privacy.html",
+      "index": true
+    },
+    "terms.html": {
+      "title": "Terms of Service — BalanceWhiz",
+      "description": "Terms of use for BalanceWhiz, the personal finance forecasting service for projected checking balances and family cash flow.",
+      "canonicalPath": "/terms.html",
+      "index": true
+    },
+    "plans/index.html": {
+      "title": "Pricing — BalanceWhiz",
+      "description": "Simple pricing for BalanceWhiz: forecast your checking balance with a free trial. No bank connection required. Cancel anytime.",
+      "canonicalPath": "/plans/",
+      "index": true
+    },
+    "contactus/index.html": {
+      "title": "Contact Us — BalanceWhiz",
+      "description": "Questions about BalanceWhiz forecasting, billing, or your account? Contact our team—we read every message.",
+      "canonicalPath": "/contactus/",
+      "index": true
+    },
+    "login.html": {
+      "title": "Sign In — BalanceWhiz",
+      "description": "Sign in to your BalanceWhiz account to view your forecast calendar, transactions, and cash flow reports.",
+      "canonicalPath": "/login.html",
+      "index": false
+    },
+    "login/index.html": {
+      "title": "Sign In — BalanceWhiz",
+      "description": "Sign in to your BalanceWhiz account.",
+      "canonicalPath": "/login.html",
+      "index": false
+    },
+    "signup/index.html": {
+      "title": "Create Account — BalanceWhiz",
+      "description": "Create your BalanceWhiz account and start forecasting your checking balance in minutes—no bank connection required.",
+      "canonicalPath": "/signup/",
+      "index": false
+    },
+    "account-setup/index.html": {
+      "title": "Account Setup — BalanceWhiz",
+      "description": "Set up your BalanceWhiz forecast: accounts, starting balances, and recurring income and bills.",
+      "canonicalPath": "/account-setup/",
+      "index": false
+    },
+    "invite/index.html": {
+      "title": "Family Invitation — BalanceWhiz",
+      "description": "Accept a BalanceWhiz family invitation to share your household cash flow forecast.",
+      "canonicalPath": "/invite/",
+      "index": false
+    },
+    "calendar/index.html": {
+      "title": "Forecast Calendar — BalanceWhiz",
+      "description": "Your BalanceWhiz forecast calendar—projected checking balance by day.",
+      "canonicalPath": "/calendar/",
+      "index": false
+    },
+    "transactions/index.html": {
+      "title": "Transactions — BalanceWhiz",
+      "description": "Manage income, expenses, and transfers in BalanceWhiz.",
+      "canonicalPath": "/transactions/",
+      "index": false
+    },
+    "reports/index.html": {
+      "title": "Reports — BalanceWhiz",
+      "description": "Cash flow and spending reports in BalanceWhiz.",
+      "canonicalPath": "/reports/",
+      "index": false
+    },
+    "settings/index.html": {
+      "title": "Settings — BalanceWhiz",
+      "description": "BalanceWhiz account, category, and family settings.",
+      "canonicalPath": "/settings/",
+      "index": false
+    },
+    "plan/index.html": {
+      "title": "Pricing — BalanceWhiz",
+      "description": "BalanceWhiz pricing and plans.",
+      "canonicalPath": "/plans/",
+      "index": false
+    },
+    "admin/index.html": {
+      "title": "Admin — BalanceWhiz",
+      "description": "BalanceWhiz family administration.",
+      "canonicalPath": "/admin/",
+      "index": false
+    },
+    "platform-admin/index.html": {
+      "title": "Platform Admin — BalanceWhiz",
+      "description": "BalanceWhiz platform administration.",
+      "canonicalPath": "/platform-admin/",
+      "index": false
+    }
+  }
+}

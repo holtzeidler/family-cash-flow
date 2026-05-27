@@ -600,7 +600,7 @@ body.landing-page .landing-hero__inner{
   max-width: min(58rem, 100%);
   margin: 0 auto;
   padding: clamp(0.2rem, 0.8vw, 0.55rem) 0 0;
-  gap: clamp(0.72rem, 1.65vw, 1.1rem);
+  gap: clamp(0.5rem, 1.2vw, 0.82rem);
   box-sizing: border-box;
 }
 body.landing-page .landing-hero__copy{
@@ -812,7 +812,7 @@ body.landing-page .landing-hero__ctaGroup{
   flex-direction: column;
   align-items: center;
   gap: 0;
-  margin: 0.72rem 0 0;
+  margin: 0.58rem 0 0;
   width: 100%;
   max-width: none;
 }
@@ -1128,7 +1128,7 @@ body.landing-page .landing-insight__copy{
 
 /* Hero: centered copy → caption → forecast demo */
 body.landing-page .landing-hero__demo-caption{
-  margin: 0;
+  margin: 0 0 -0.06rem;
   max-width: min(34rem, 100%);
   padding: 0 0.25rem;
   font-size: clamp(0.82rem, 1.35vw, 0.94rem);
@@ -1145,7 +1145,7 @@ body.landing-page .landing-hero__demo-caption-title{
 body.landing-page .landing-hero-forecast{
   width: 100%;
   max-width: min(48rem, 86%);
-  margin: 0;
+  margin: -0.08rem 0 0;
   box-sizing: border-box;
 }
 body.landing-page .landing-hero-forecast__story,
@@ -1229,9 +1229,21 @@ body.landing-page .landing-hero-forecast__day > rect{
   transition: fill 0.65s ease, stroke 0.65s ease, stroke-width 0.65s ease;
 }
 body.landing-page .landing-hero-forecast__day--watch > rect{
-  fill: rgba(255, 252, 245, 0.9);
-  stroke: rgba(180, 83, 9, 0.34);
-  stroke-width: 1.15;
+  fill: rgba(255, 244, 224, 0.98);
+  stroke: rgba(180, 83, 9, 0.5);
+  stroke-width: 1.4;
+  filter: drop-shadow(0 1px 3px rgba(180, 83, 9, 0.14));
+}
+body.landing-page .landing-hero-forecast__day--watch > text:first-of-type{
+  fill: rgba(120, 53, 15, 0.7);
+}
+body.landing-page .landing-hero-forecast__day--watch > text:nth-of-type(2){
+  fill: rgba(146, 64, 14, 0.94);
+}
+body.landing-page .landing-hero-forecast__day--watch .landing-hero-forecast__dayTag{
+  fill: rgba(154, 52, 18, 0.9);
+  font-weight: 700;
+  opacity: 0.94;
 }
 body.landing-page .landing-hero-forecast__day--paycheck > rect{
   fill: rgba(255, 255, 255, 0.98);
@@ -1244,12 +1256,18 @@ body.landing-page .landing-hero-forecast__dayTag{
 }
 body.landing-page .landing-hero-forecast.is-step-watch .landing-hero-forecast__day--watch > rect,
 body.landing-page .landing-hero-forecast__cal.is-step-watch .landing-hero-forecast__day--watch > rect{
-  fill: rgba(255, 246, 214, 0.96);
-  stroke: rgba(180, 83, 9, 0.58);
-  stroke-width: 1.65;
+  fill: rgba(255, 238, 196, 0.99);
+  stroke: rgba(180, 83, 9, 0.74);
+  stroke-width: 1.85;
+  filter: drop-shadow(0 2px 5px rgba(180, 83, 9, 0.2));
+}
+body.landing-page .landing-hero-forecast.is-step-watch .landing-hero-forecast__day--watch > text:nth-of-type(2),
+body.landing-page .landing-hero-forecast__cal.is-step-watch .landing-hero-forecast__day--watch > text:nth-of-type(2){
+  fill: rgba(146, 45, 18, 0.98);
 }
 body.landing-page .landing-hero-forecast.is-step-watch .landing-hero-forecast__day--watch .landing-hero-forecast__dayTag,
 body.landing-page .landing-hero-forecast__cal.is-step-watch .landing-hero-forecast__day--watch .landing-hero-forecast__dayTag{
+  fill: rgba(154, 45, 18, 0.98);
   opacity: 1;
 }
 body.landing-page .landing-hero-forecast.is-step-paycheck .landing-hero-forecast__day--paycheck > rect,
@@ -2161,7 +2179,7 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
   body.landing-page .landing-hero__stack,
   body.landing-page .landing-hero__inner{
     max-width: min(62rem, 100%);
-    gap: clamp(1rem, 2.2vw, 1.5rem);
+    gap: clamp(0.78rem, 1.7vw, 1.12rem);
   }
 
   body.landing-page .landing-hero__copy{
@@ -2189,12 +2207,12 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
   }
 
   body.landing-page .landing-hero__ctaGroup{
-    margin-top: 0.72rem;
+    margin-top: 0.58rem;
     align-items: center;
   }
 
   body.landing-page .landing-hero__microtrust{
-    margin-top: 0.5rem;
+    margin-top: 0.34rem;
     align-items: center;
     text-align: center;
   }
@@ -3085,6 +3103,7 @@ body.landing-page .landing-hero{
 body.landing-page .landing-hero__stack,
 body.landing-page .landing-hero__inner{
   padding: 0;
+  gap: clamp(0.5rem, 1.2vw, 0.82rem);
 }
 body.landing-page .landing-hero__copy{
   max-width: min(40rem, 100%);
@@ -3115,7 +3134,7 @@ body.landing-page .landing-hero__ctaGroup{
   flex-direction: column;
   align-items: center;
   gap: 0;
-  margin: 0.68rem 0 0;
+  margin: 0.56rem 0 0;
   width: 100%;
   max-width: none;
 }
@@ -3136,8 +3155,8 @@ body.landing-page .landing-hero__microtrust{
   flex-wrap: nowrap;
   align-items: center;
   justify-content: center;
-  gap: 0.12rem;
-  margin: 0.5rem 0 0;
+  gap: 0.1rem;
+  margin: 0.34rem 0 0;
   max-width: min(34rem, 100%);
   width: 100%;
   padding: 0;
@@ -5560,6 +5579,26 @@ body[data-bw-view="calendar"] .calendar-nav-bar{
   border:0;
 }
 
+.skip-link{
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 10000;
+  padding: 0.65rem 1rem;
+  border-radius: 8px;
+  background: var(--accent, #0b3d2e);
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+.skip-link:focus{
+  left: 0.75rem;
+  top: 0.75rem;
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
 .cal-nav-arrows{
   display: inline-flex;
   align-items: center;
@@ -7044,7 +7083,6 @@ body[data-bw-view="reports"] .reports-card--hero .projection-chart-wrap--reports
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
   gap: 10px 14px;
   margin: 2px 0 10px;
 }
@@ -7079,70 +7117,121 @@ body[data-bw-view="reports"] .reports-card--hero .projection-chart-wrap--reports
   background: rgba(91, 128, 110, 0.1);
   color: rgba(11, 61, 46, 0.92);
 }
-.reports-tb-crumb{
-  display: inline-flex;
+.reports-tb-drillbar{
+  margin: 0 0 12px;
+  padding: 11px 13px 10px;
+  border-radius: 11px;
+  border: 1px solid rgba(17, 24, 39, 0.07);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.92));
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset;
+}
+.reports-tb-drillbar--drill{
+  border-color: rgba(91, 128, 110, 0.2);
+  background: linear-gradient(180deg, rgba(255, 252, 247, 0.98), rgba(241, 248, 244, 0.94));
+}
+.reports-tb-nav{
+  display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px 5px;
-  margin: 0;
-  padding: 0;
-  font-size: 0.72rem;
-  line-height: 1.35;
-  color: rgba(100, 116, 139, 0.78);
-}
-.reports-tb-crumb__back{
-  appearance: none;
-  font: inherit;
-  font-size: 0.72rem;
-  font-weight: 500;
-  padding: 0;
-  margin: 0;
-  border: none;
-  border-radius: 0;
-  background: transparent;
-  color: rgba(91, 128, 110, 0.92);
-  cursor: pointer;
-  text-decoration: underline;
-  text-decoration-color: rgba(91, 128, 110, 0.28);
-  text-underline-offset: 2px;
-}
-.reports-tb-crumb__back:hover{
-  color: rgba(11, 61, 46, 0.92);
-  text-decoration-color: rgba(11, 61, 46, 0.35);
-}
-.reports-tb-crumb__back:focus-visible{
-  outline: 2px solid rgba(91, 128, 110, 0.35);
-  outline-offset: 2px;
-  border-radius: 3px;
-}
-.reports-tb-crumb__trail{
-  display: inline-flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px;
+  gap: 10px 14px;
+  margin: 0 0 7px;
   min-width: 0;
 }
-.reports-tb-crumb__sep{
-  opacity: 0.38;
-  font-size: 0.68rem;
+.reports-tb-nav__back{
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+  padding: 7px 13px 7px 11px;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 650;
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+  color: rgba(11, 61, 46, 0.94);
+  background: #fff;
+  border: 1px solid rgba(91, 128, 110, 0.38);
+  border-radius: 9px;
+  cursor: pointer;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.85) inset,
+    0 1px 3px rgba(11, 61, 46, 0.07);
+  transition:
+    background 0.14s ease,
+    border-color 0.14s ease,
+    box-shadow 0.14s ease,
+    transform 0.12s ease,
+    color 0.14s ease;
+}
+.reports-tb-nav__back-icon{
+  font-size: 0.92rem;
+  font-weight: 700;
+  line-height: 1;
+  opacity: 0.88;
+}
+.reports-tb-nav__back:hover{
+  background: rgba(91, 128, 110, 0.1);
+  border-color: rgba(91, 128, 110, 0.52);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.9) inset,
+    0 3px 8px rgba(11, 61, 46, 0.1);
+  transform: translateY(-1px);
+}
+.reports-tb-nav__back:active{
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(11, 61, 46, 0.08);
+}
+.reports-tb-nav__back:focus-visible{
+  outline: 2px solid rgba(91, 128, 110, 0.42);
+  outline-offset: 2px;
+}
+.reports-tb-nav__level{
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 2px;
+  font-size: 0.84rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: rgba(30, 41, 59, 0.9);
+}
+.reports-tb-nav__trail{
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  min-width: 0;
+  font-size: 0.84rem;
+  line-height: 1.35;
+}
+.reports-tb-nav__sep{
+  color: rgba(100, 116, 139, 0.55);
+  font-size: 0.82rem;
+  font-weight: 600;
   user-select: none;
 }
-.reports-tb-crumb__part{
-  color: rgba(100, 116, 139, 0.72);
-  font-weight: 500;
-}
-.reports-tb-crumb__current{
+.reports-tb-nav__ancestor{
   font-weight: 600;
-  color: rgba(30, 41, 59, 0.82);
+  color: rgba(71, 85, 105, 0.82);
 }
-.reports-tb-body--drill .reports-tb-controls{
-  flex-direction: column;
-  align-items: stretch;
-  gap: 5px;
-  margin-bottom: 4px;
+.reports-tb-nav__current{
+  font-weight: 750;
+  color: rgba(11, 61, 46, 0.94);
+  letter-spacing: -0.01em;
 }
-.reports-tb-body--drill .reports-tb-crumb{
-  padding-left: 1px;
+.reports-tb-content-title{
+  margin: 0;
+  padding: 0;
+  font-size: 0.98rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+  color: rgba(11, 61, 46, 0.94);
+  text-wrap: balance;
+}
+.reports-tb-body--drill .reports-tb-drillbar{
+  margin-bottom: 10px;
 }
 .reports-tb-body{
   transition: opacity 0.18s ease;
@@ -21302,6 +21391,18 @@ body[data-bw-view="transactions"] .tm__field label{
   padding: 14px;
   --tx-add-label-inset: 2.1ch;
   --tx-add-row-gap-x: 9.8px;
+  --tx-add-row-gap-y: 6px;
+  /* Unified neutral field chrome (standard inputs only; toggles/chips stay separate). */
+  --tx-field-bg: #ffffff;
+  --tx-field-border: rgba(17, 24, 39, 0.12);
+  --tx-field-border-hover: rgba(17, 24, 39, 0.18);
+  --tx-field-radius: 8px;
+  --tx-field-height: 36px;
+  --tx-field-py: 7px;
+  --tx-field-px: 10px;
+  --tx-field-font: 13px;
+  --tx-field-focus-border: color-mix(in srgb, var(--accent) 50%, rgba(17, 24, 39, 0.14));
+  --tx-field-focus-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 16%, transparent);
 }
 .modal--tx-add > h3{
   box-sizing: border-box;
@@ -21671,35 +21772,117 @@ body[data-bw-view="transactions"] .tm__field label{
   opacity: 1;
 }
 .modal--tx-add .kind-toggle{
-  border-color: rgba(17, 24, 39, 0.075);
-  background: rgba(15, 23, 42, 0.022);
+  border: 1px solid var(--tx-field-border);
+  background: var(--tx-field-bg);
 }
 .modal--tx-add .kind-toggle .kind-opt{
   padding: 5px 10px;
-  min-height: 30px;
-  font-size: 12.25px;
+  min-height: var(--tx-field-height);
+  font-size: var(--tx-field-font);
   color: rgba(71, 85, 105, 0.58);
 }
 .modal--tx-add .kind-toggle .kind-opt + .kind-opt{
-  border-left-color: rgba(17, 24, 39, 0.06);
+  border-left-color: rgba(17, 24, 39, 0.08);
 }
-.modal--tx-add .tx-add-form .form-row-h__field > input:not([type="checkbox"]):not([type="radio"]),
-.modal--tx-add .tx-add-form .form-row-h__field > select,
-.modal--tx-add .tx-add-form .category-combobox__input{
-  padding: 6px 9px;
-  font-size: 13px;
+
+/* Add transaction: one neutral field style for all standard editable controls. */
+.modal--tx-add :is(
+  .tx-add-form .form-row-h__field > input:not([type="checkbox"]):not([type="radio"]),
+  .tx-add-form .form-row-h__field > select,
+  .tx-add-form .category-combobox__input,
+  .tx-add-form .input-notes-flex,
+  .tx-add-form #txAddDate,
+  .tx-add-form #txAddEndDate,
+  .tx-add-form #txAddCategoryId,
+  .tx-add-form .tx-add-end-count-field input[type="number"],
+  .tx-add-schedule-compact .form-row-h__field > select,
+  .tx-add-end-detail__row .form-row-h__field > input,
+  .tx-add-end-detail__row .form-row-h__field > select,
+  #txAddRecurringBlock .tx-add-second-monthly-field input[type="date"]
+){
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-height: var(--tx-field-height);
+  padding: var(--tx-field-py) var(--tx-field-px);
+  font-size: var(--tx-field-font);
+  font-weight: 500;
+  line-height: 1.25;
+  color: var(--text);
+  border: 1px solid var(--tx-field-border);
+  border-radius: var(--tx-field-radius);
+  background: var(--tx-field-bg);
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
 }
-.modal--tx-add .tx-add-form .tx-add-end-count-field input[type="number"]{
-  padding: 6px 9px;
-  font-size: 13px;
+.modal--tx-add :is(
+  .tx-add-form .form-row-h__field > input:not([type="checkbox"]):not([type="radio"]),
+  .tx-add-form .form-row-h__field > select,
+  .tx-add-form .category-combobox__input,
+  .tx-add-form .input-notes-flex,
+  .tx-add-form #txAddDate,
+  .tx-add-form #txAddEndDate,
+  .tx-add-form #txAddCategoryId,
+  .tx-add-form .tx-add-end-count-field input[type="number"],
+  .tx-add-schedule-compact .form-row-h__field > select,
+  .tx-add-end-detail__row .form-row-h__field > input,
+  .tx-add-end-detail__row .form-row-h__field > select,
+  #txAddRecurringBlock .tx-add-second-monthly-field input[type="date"]
+):hover{
+  border-color: var(--tx-field-border-hover);
+}
+.modal--tx-add :is(
+  .tx-add-form .form-row-h__field > input:not([type="checkbox"]):not([type="radio"]):focus,
+  .tx-add-form .form-row-h__field > select:focus,
+  .tx-add-form .category-combobox__input:focus,
+  .tx-add-form .input-notes-flex:focus,
+  .tx-add-form #txAddDate:focus,
+  .tx-add-form #txAddEndDate:focus,
+  .tx-add-form #txAddCategoryId:focus,
+  .tx-add-form .tx-add-end-count-field input[type="number"]:focus,
+  .tx-add-schedule-compact .form-row-h__field > select:focus,
+  .tx-add-end-detail__row .form-row-h__field > input:focus,
+  .tx-add-end-detail__row .form-row-h__field > select:focus,
+  #txAddRecurringBlock .tx-add-second-monthly-field input[type="date"]:focus
+){
+  outline: none;
+  border-color: var(--tx-field-focus-border);
+  box-shadow: var(--tx-field-focus-shadow);
+  background: var(--tx-field-bg);
+}
+.modal--tx-add .tx-add-form .money-input{
+  display: flex;
+  align-items: stretch;
+  min-height: var(--tx-field-height);
+  border: 1px solid var(--tx-field-border);
+  border-radius: var(--tx-field-radius);
+  background: var(--tx-field-bg);
+  overflow: hidden;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+.modal--tx-add .tx-add-form .money-input:hover{
+  border-color: var(--tx-field-border-hover);
+}
+.modal--tx-add .tx-add-form .money-input:focus-within{
+  border-color: var(--tx-field-focus-border);
+  box-shadow: var(--tx-field-focus-shadow);
 }
 .modal--tx-add .tx-add-form .money-input input{
-  padding: 7px 10px 7px 6px;
-  font-size: 13px;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  border: none;
+  background: transparent;
+  border-radius: 0;
+  padding: var(--tx-field-py) var(--tx-field-px) var(--tx-field-py) 4px;
+  font-size: var(--tx-field-font);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   line-height: 1.25;
   -moz-appearance: textfield;
+}
+.modal--tx-add .tx-add-form .money-input input:focus{
+  outline: none;
+  box-shadow: none;
 }
 .modal--tx-add .tx-add-form .money-input input::-webkit-outer-spin-button,
 .modal--tx-add .tx-add-form .money-input input::-webkit-inner-spin-button{
@@ -21712,29 +21895,18 @@ body[data-bw-view="transactions"] .tm__field label{
   opacity: 0.7;
 }
 .modal--tx-add .tx-add-form .money-input__prefix{
-  padding: 7px 4px 7px 11px;
-  font-size: 12.5px;
-  color: rgba(75, 85, 99, 0.85);
-}
-.modal--tx-add .tx-add-form #txAddDate,
-.modal--tx-add .tx-add-form #txAddEndDate{
-  width: 98%;
-  max-width: 98%;
-  padding: 6px 9px;
-  font-size: 13px;
-  border-radius: 10px;
-}
-.modal--tx-add .tx-add-form #txAddCategoryId{
-  width: 100%;
-  max-width: 100%;
-  box-sizing: border-box;
-  padding: 6px 9px;
-  font-size: 13px;
+  display: flex;
+  align-items: center;
+  padding: 0 4px 0 var(--tx-field-px);
+  font-size: var(--tx-field-font);
   font-weight: 500;
-  border-radius: 10px;
+  color: rgba(75, 85, 99, 0.82);
+  background: transparent;
+  border: none;
 }
 .modal--tx-add .tx-add-form #txAddDate::-webkit-calendar-picker-indicator,
-.modal--tx-add .tx-add-form #txAddEndDate::-webkit-calendar-picker-indicator{
+.modal--tx-add .tx-add-form #txAddEndDate::-webkit-calendar-picker-indicator,
+.modal--tx-add #txAddRecurringBlock .tx-add-second-monthly-field input[type="date"]::-webkit-calendar-picker-indicator{
   opacity: 0.45;
   filter: grayscale(1);
   transform: scale(0.92);
@@ -21742,44 +21914,24 @@ body[data-bw-view="transactions"] .tm__field label{
   cursor: pointer;
 }
 .modal--tx-add .tx-add-form #txAddDate:hover::-webkit-calendar-picker-indicator,
-.modal--tx-add .tx-add-form #txAddEndDate:hover::-webkit-calendar-picker-indicator{
+.modal--tx-add .tx-add-form #txAddEndDate:hover::-webkit-calendar-picker-indicator,
+.modal--tx-add #txAddRecurringBlock .tx-add-second-monthly-field input[type="date"]:hover::-webkit-calendar-picker-indicator{
   opacity: 0.75;
 }
-.modal--tx-add .tx-add-form .input-notes-flex{
-  width: 98%;
-  max-width: 98%;
-  box-sizing: border-box;
-  padding: 6px 9px;
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 1.25;
-  min-height: 0;
-  background: rgba(15, 23, 42, 0.015);
-  border-color: rgba(17, 24, 39, 0.06);
-  border-radius: 10px;
-}
-.modal--tx-add .tx-add-form .input-notes-flex:focus{
-  background: var(--panel, #fff);
-  border-color: rgba(17, 24, 39, 0.18);
-}
-.modal--tx-add .tx-add-form .tx-add-recurrence-select{
-  padding: 5px 7px;
-  font-size: 13px;
-}
 .modal--tx-add .tx-add-form .tx-add-vspace--xs{
-  height: 3px;
+  height: 6px;
 }
 .modal--tx-add .tx-add-form .tx-add-vspace--sm{
-  height: 12px;
+  height: 8px;
 }
 .modal--tx-add .tx-add-form .tx-add-vspace--2xs{
-  height: 3px;
+  height: 4px;
 }
 .modal--tx-add .tx-add-form .tx-add-vspace{
-  height: 7px;
+  height: 8px;
 }
 .modal--tx-add .tx-add-form .tx-add-vspace--lg{
-  height: 11px;
+  height: 12px;
 }
 .modal--tx-add #txAddRecurringBlock .tx-add-vspace--2xs{
   display: none;
@@ -21790,7 +21942,7 @@ body[data-bw-view="transactions"] .tm__field label{
   display: grid;
   grid-template-columns: var(--tx-add-label-col, calc(11.25rem - 2ch)) minmax(0, 1fr);
   align-items: center;
-  gap: var(--tx-add-row-gap-y, 4px) var(--tx-add-row-gap-x, 14px);
+  gap: var(--tx-add-row-gap-y, 6px) var(--tx-add-row-gap-x, 14px);
 }
 .modal--tx-add .tx-add-form .form-row-h:has(.tx-add-category-field),
 .modal--tx-add .tx-add-form .form-row-h.tx-add-cat-color-row{
@@ -21845,7 +21997,7 @@ body[data-bw-view="transactions"] .tm__field label{
   display: grid;
   grid-template-columns: var(--tx-add-label-col, calc(11.25rem - 2ch)) minmax(0, 1fr);
   align-items: center;
-  gap: var(--tx-add-row-gap-y, 4px) var(--tx-add-row-gap-x, 14px);
+  gap: var(--tx-add-row-gap-y, 6px) var(--tx-add-row-gap-x, 14px);
 }
 .modal--tx-add .tx-add-variable-form-row{
   display: contents;
@@ -22032,10 +22184,6 @@ body[data-bw-view="transactions"] .tm__field label{
 }
 .modal--tx-add #txAddRecurringBlock .tx-add-second-monthly-field input[type="date"]{
   width: 100%;
-  box-sizing: border-box;
-  padding: 6px 9px;
-  font-size: 13px;
-  border-color: rgba(17, 24, 39, 0.12);
 }
 .modal--tx-add #txAddRecurringBlock .tx-add-twice-monthly-hint{
   margin: 0;
@@ -22926,7 +23074,11 @@ body.account-setup-page
 }
 .tx-add-form .category-combobox__input--prefilled{
   background: color-mix(in srgb, var(--accent) 6%, #fff);
-  transition: background 600ms ease;
+  transition: background 600ms ease, border-color 0.12s ease;
+}
+.modal--tx-add .tx-add-form .category-combobox__input--prefilled:not(:focus){
+  background: color-mix(in srgb, var(--accent) 5%, var(--tx-field-bg));
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--tx-field-border));
 }
 
 .category-combobox{
@@ -23194,18 +23346,18 @@ body.account-setup-page
   opacity: 0.9;
 }
 
-/* Transaction edit sheet: focused width, calm density. */
+/* Transaction edit sheet: wide enough for color swatches + Clear (aligns with Add transaction). */
 #txEditInner.modal{
-  width: min(92vw, 580px);
-  max-width: 580px;
+  width: min(92vw, 640px);
+  max-width: 640px;
   max-height: min(92vh, 720px);
   overflow-y: auto;
   padding: 10px 12px 8px;
   box-sizing: border-box;
 }
 #txEditInner.modal.modal--expected-edit{
-  width: min(92vw, 620px);
-  max-width: 620px;
+  width: min(92vw, 640px);
+  max-width: 640px;
   padding: 0;
 }
 
@@ -23376,7 +23528,7 @@ body.account-setup-page
 /* Recurring: green header flush with modal top (same bleed as .modal h3 on Add transaction). */
 .modal--expected-edit .tx-edit-top{
   margin: 0;
-  padding: 11px 14px 10px;
+  padding: 10px 14px 8px;
   border-radius: 14px 14px 0 0;
   border-bottom: 1px solid rgba(0, 0, 0, 0.18);
 }
@@ -23390,17 +23542,17 @@ body.account-setup-page
 
 /* Form rhythm inside the transaction sheet: light breathing room between rows. */
 #expectedEditInstancePanel .tx-add-vspace{
-  height: 9px;
+  height: 5px;
 }
 #expectedEditInstancePanel .tx-add-vspace--lg{
-  height: 12px;
+  height: 8px;
 }
 #expectedEditInstancePanel .tx-add-vspace--sm{
-  height: 7px;
+  height: 4px;
 }
 .modal--expected-edit > .modal-actions{
   margin: 0 14px 8px;
-  padding-top: 6px;
+  padding-top: 4px;
 }
 
 /* === Recurring/transaction edit modal: density + hierarchy polish === */
@@ -23418,20 +23570,24 @@ body.account-setup-page
   display: none;
 }
 .modal--expected-edit #expectedEditInstancePanel{
-  padding: 12px 14px 10px;
+  padding: 10px 14px 8px;
 }
 .modal--expected-edit #txEditRecurringScheduleWrap + .tx-add-vspace{
-  height: 10px;
+  height: 6px;
 }
 .modal--expected-edit #expectedEditInstancePanel #txEditRecurringScheduleWrap{
-  margin-top: 4px;
+  margin-top: 2px;
+}
+/* Edit Transaction: Date → Repeat had no .tx-add-vspace (unlike other rows). */
+#txEditInner:not(.modal--expected-edit) #expectedEditInstancePanel > #txEditRecurringScheduleWrap{
+  margin-top: 5px;
 }
 .modal--tx-add #txAddScheduleCompact{
   margin-top: 4px;
 }
 .modal--expected-edit #txEditAccountCol{
-  margin-top: 6px;
-  padding-top: 10px;
+  margin-top: 4px;
+  padding-top: 6px;
   border-top: 1px solid rgba(17, 24, 39, 0.04);
 }
 .modal--expected-edit .tx-edit-notes-row{
@@ -23465,7 +23621,7 @@ body.account-setup-page
 .modal--expected-edit #expectedEditInstancePanel .tx-edit-notes-in-advanced.form-row-h,
 .modal--expected-edit #expectedEditInstancePanel .expected-second-day-row.form-row-h,
 .modal--expected-edit #expectedEditInstancePanel .tx-edit-ends-detail.form-row-h{
-  padding-block: 6px;
+  padding-block: 4px;
 }
 .modal--expected-edit .form-row-h__label{
   flex: 0 0 5.75rem;
@@ -23490,8 +23646,8 @@ body.account-setup-page
 .modal--expected-edit #expectedEditInstancePanel .form-row-h__field > input:not([type="checkbox"]):not([type="radio"]),
 .modal--expected-edit #expectedEditInstancePanel .form-row-h__field > select,
 .modal--expected-edit #expectedEditInstancePanel .money-input input{
-  min-height: 36px;
-  padding: 7px 10px;
+  min-height: 32px;
+  padding: 5px 10px;
   font-size: 13px;
   border-radius: 8px;
   border-color: rgba(17, 24, 39, 0.1);
@@ -23505,7 +23661,7 @@ body.account-setup-page
   cursor: pointer;
 }
 .modal--expected-edit #expectedEditInstancePanel .money-input{
-  min-height: 36px;
+  min-height: 32px;
 }
 #txEditInner #expectedEditInstancePanel .form-row-h__field > input:not([type="checkbox"]):not([type="radio"]),
 #txEditInner #expectedEditInstancePanel .form-row-h__field > select,
@@ -23542,7 +23698,12 @@ body.account-setup-page
   background: rgba(15, 23, 42, 0.022);
   max-width: none;
 }
-.modal--expected-edit .kind-toggle .kind-opt,
+.modal--expected-edit .kind-toggle .kind-opt{
+  min-height: 30px;
+  padding: 4px 10px;
+  font-size: 12px;
+  color: rgba(71, 85, 105, 0.58);
+}
 #txEditInner .kind-toggle .kind-opt{
   min-height: 32px;
   padding: 5px 10px;
@@ -23623,20 +23784,20 @@ body.account-setup-page
 #expectedEditInstancePanel .tx-edit-recurrence-ends-row{
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
 }
 #expectedEditInstancePanel .tx-edit-recurrence-ends-row > .form-row-h{
   margin: 0;
   min-width: 0;
 }
 #expectedEditInstancePanel .tx-edit-recurrence-ends-row + .expected-second-day-row{
-  margin-top: 6px;
-}
-#expectedEditInstancePanel #txEditEndCountRow{
   margin-top: 4px;
 }
+#expectedEditInstancePanel #txEditEndCountRow{
+  margin-top: 2px;
+}
 #expectedEditInstancePanel .form-row-h{
-  gap: 6px 8px;
+  gap: 4px 8px;
 }
 #expectedEditInstancePanel .form-row-h__label label{
   font-size: 10.5px;
@@ -23657,23 +23818,24 @@ body.account-setup-page
 #expectedEditInstancePanel .tx-edit-cat-color-field .cat-color-row.tx-edit-cat-color-panel{
   margin: 0;
   padding: 0;
-  gap: 5px;
+  gap: 6px 8px;
   border-radius: 0;
   background: transparent;
   border: none;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   display: flex;
   align-items: center;
 }
 #expectedEditInstancePanel .tx-edit-cat-color-field .cat-color-row.tx-edit-cat-color-panel .cat-color-row__swatches{
   gap: 5px;
   overflow: visible;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   min-width: 0;
-  flex: 0 1 auto;
+  flex: 1 1 auto;
 }
 #expectedEditInstancePanel .tx-edit-cat-color-field .cat-color-row.tx-edit-cat-color-panel .tx-edit-cat-color-clear{
   flex: 0 0 auto;
+  margin-left: auto;
 }
 #expectedEditInstancePanel .tx-edit-cat-color-field .cat-color-row.tx-edit-cat-color-panel .cat-swatch{
   width: 14px;
@@ -23718,8 +23880,8 @@ body.account-setup-page
 /* Recurring schedule: soft cluster for recurrence + variable amount. */
 .modal--expected-edit .tx-edit-recurring-group{
   position: relative;
-  margin: 8px 0 0;
-  padding: 6px 0 4px;
+  margin: 4px 0 0;
+  padding: 4px 0 2px;
   border-radius: 8px;
   background: rgba(248, 250, 252, 0.42);
   border: 1px solid rgba(17, 24, 39, 0.05);
@@ -23733,14 +23895,14 @@ body.account-setup-page
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: rgba(100, 116, 139, 0.48);
-  margin: 0 0 2px;
+  margin: 0 0 1px;
 }
 .modal--expected-edit .tx-edit-recurring-group .tx-add-vspace{
   height: 0;
   display: none;
 }
 .modal--expected-edit .tx-edit-recurring-group #txEditRecurringVariableWrap{
-  margin-top: 6px;
+  margin-top: 4px;
   padding-top: 0;
   border-top: none;
   width: 100%;
@@ -23748,7 +23910,7 @@ body.account-setup-page
 }
 .modal--expected-edit #expectedEditInstancePanel .expected-second-day-row.form-row-h{
   display: flex;
-  margin-top: 6px;
+  margin-top: 4px;
 }
 .modal--expected-edit #expectedEditInstancePanel .expected-second-day-row.form-row-h .form-row-h__label label{
   font-size: 10.5px;
@@ -23765,7 +23927,7 @@ body.account-setup-page
   color: rgba(100, 116, 139, 0.52);
 }
 .modal--expected-edit #expectedEditInstancePanel .tx-edit-variable-form-row{
-  margin-top: 6px;
+  margin-top: 4px;
   width: 100%;
 }
 .modal--expected-edit #expectedEditInstancePanel .tx-edit-variable-toggle{
@@ -23842,12 +24004,12 @@ body.account-setup-page
 
 /* Notes in Advanced: low visual weight until focused. */
 .modal--expected-edit #txEditNotes.input-notes-flex{
-  padding: 5px 9px;
+  padding: 4px 9px;
   font-size: 12px;
   line-height: 1.25;
   background: rgba(15, 23, 42, 0.012);
   border-color: rgba(17, 24, 39, 0.06);
-  min-height: 32px;
+  min-height: 28px;
 }
 .modal--expected-edit #txEditNotes.input-notes-flex:focus{
   background: var(--panel, #fff);
@@ -23856,8 +24018,8 @@ body.account-setup-page
 
 /* Recurring edit sheet: inherit footer hierarchy from #txEditInner rules. */
 .modal--expected-edit > .modal-actions.modal-actions--tx-edit-foot{
-  margin-top: 6px;
-  padding-top: 14px;
+  margin-top: 4px;
+  padding-top: 10px;
   padding-bottom: 8px;
 }
 .expected-modal-mode-row{

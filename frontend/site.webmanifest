@@ -1,0 +1,21 @@
+{
+  "name": "BalanceWhiz",
+  "short_name": "BalanceWhiz",
+  "description": "Checking balance forecast and cash flow calendar for families.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0B3D2E",
+  "theme_color": "#0B3D2E",
+  "icons": [
+    {
+      "src": "/favicon-48.png",
+      "sizes": "48x48",
+      "type": "image/png"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}

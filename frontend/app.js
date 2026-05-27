@@ -13285,14 +13285,28 @@ const txnBreakdownUi = {
   sortDir: "desc",
 };
 
+/** Cash leaving checking to pay bills/debt — not an internal account transfer (even under a "Transfers" group). */
+function isTxnBreakdownCashMovement(tx) {
+  const cat = normalizeNameForCompare(tx?.category || "");
+  const grp = normalizeNameForCompare(tx?.groupName || "");
+  const desc = normalizeNameForCompare(tx?.description || "");
+  const blob = `${cat} ${grp} ${desc}`;
+  if (blob.includes("credit card")) return true;
+  if (blob.includes("student loan") || blob.includes("car loan") || blob.includes("auto loan")) return true;
+  if (blob.includes("mortgage") || blob.includes("rent")) return true;
+  if (cat.endsWith(" payment") && !cat.includes("transfer")) return true;
+  if (grp === "debt" || grp.includes("loans")) return true;
+  return false;
+}
+
 function isTxnBreakdownTransfer(tx) {
+  if (isTxnBreakdownCashMovement(tx)) return false;
   const cat = String(tx?.category || "").toLowerCase();
-  const grp = String(tx?.groupName || "").toLowerCase();
   const desc = String(tx?.description || "").toLowerCase();
+  // Classify by category/description only — group names like "Transfers" also hold card/loan payments.
   return (
     cat.includes("transfer") ||
     cat.includes("xfer") ||
-    grp.includes("transfer") ||
     desc.includes("transfer") ||
     desc.includes("xfer")
   );
@@ -13635,55 +13649,69 @@ function txnBreakdownFlowLabel(flow) {
   return "spending";
 }
 
-function txnBreakdownCrumbSep() {
-  const sep = document.createElement("span");
-  sep.className = "reports-tb-crumb__sep";
-  sep.textContent = "·";
-  sep.setAttribute("aria-hidden", "true");
-  return sep;
-}
-
-function renderTxnBreakdownBreadcrumb() {
-  const nav = document.getElementById("txnBreakdownBreadcrumb");
-  if (!nav) return;
-  const { level, groupName, categoryName } = txnBreakdownUi;
-  if (level === "groups") {
-    nav.hidden = true;
-    nav.replaceChildren();
-    return;
-  }
-  nav.hidden = false;
-  nav.replaceChildren();
+function txnBreakdownNavBackButton(label, onClick) {
   const back = document.createElement("button");
   back.type = "button";
-  back.className = "reports-tb-crumb__back";
-  back.textContent = level === "categories" ? "All groups" : "Categories";
-  back.addEventListener("click", () => {
-    if (level === "categories") txnBreakdownNavigate("groups");
-    else txnBreakdownNavigate("categories");
-  });
-  nav.appendChild(back);
-  const trail = document.createElement("span");
-  trail.className = "reports-tb-crumb__trail";
-  if (level === "categories") {
-    trail.appendChild(txnBreakdownCrumbSep());
-    const cur = document.createElement("span");
-    cur.className = "reports-tb-crumb__current";
-    cur.textContent = groupName;
-    trail.appendChild(cur);
-  } else {
-    trail.appendChild(txnBreakdownCrumbSep());
-    const group = document.createElement("span");
-    group.className = "reports-tb-crumb__part";
-    group.textContent = groupName;
-    trail.appendChild(group);
-    trail.appendChild(txnBreakdownCrumbSep());
-    const cur = document.createElement("span");
-    cur.className = "reports-tb-crumb__current";
-    cur.textContent = categoryName;
-    trail.appendChild(cur);
+  back.className = "reports-tb-nav__back";
+  const icon = document.createElement("span");
+  icon.className = "reports-tb-nav__back-icon";
+  icon.setAttribute("aria-hidden", "true");
+  icon.textContent = "←";
+  back.append(icon, document.createTextNode(` ${label}`));
+  back.addEventListener("click", onClick);
+  return back;
+}
+
+function renderTxnBreakdownDrillNav() {
+  const nav = document.getElementById("txnBreakdownNav");
+  const titleEl = document.getElementById("txnBreakdownContentTitle");
+  const drillbar = document.getElementById("txnBreakdownDrillbar");
+  if (!nav || !titleEl) return;
+
+  const { level, groupName, categoryName } = txnBreakdownUi;
+  nav.replaceChildren();
+
+  if (level === "groups") {
+    if (drillbar) drillbar.classList.remove("reports-tb-drillbar--drill");
+    const levelLabel = document.createElement("span");
+    levelLabel.className = "reports-tb-nav__level";
+    levelLabel.textContent = "All Groups";
+    nav.appendChild(levelLabel);
+    titleEl.textContent = "Transaction Breakdown";
+    return;
   }
+
+  if (drillbar) drillbar.classList.add("reports-tb-drillbar--drill");
+
+  if (level === "categories") {
+    nav.appendChild(txnBreakdownNavBackButton("Back to All Groups", () => txnBreakdownNavigate("groups")));
+    const trail = document.createElement("div");
+    trail.className = "reports-tb-nav__trail";
+    const current = document.createElement("span");
+    current.className = "reports-tb-nav__current";
+    current.textContent = groupName;
+    trail.appendChild(current);
+    nav.appendChild(trail);
+    titleEl.textContent = `Transaction Breakdown — ${groupName}`;
+    return;
+  }
+
+  nav.appendChild(txnBreakdownNavBackButton("Back to Categories", () => txnBreakdownNavigate("categories")));
+  const trail = document.createElement("div");
+  trail.className = "reports-tb-nav__trail";
+  const group = document.createElement("span");
+  group.className = "reports-tb-nav__ancestor";
+  group.textContent = groupName;
+  const sep = document.createElement("span");
+  sep.className = "reports-tb-nav__sep";
+  sep.textContent = "›";
+  sep.setAttribute("aria-hidden", "true");
+  const current = document.createElement("span");
+  current.className = "reports-tb-nav__current";
+  current.textContent = categoryName;
+  trail.append(group, sep, current);
   nav.appendChild(trail);
+  titleEl.textContent = `Transaction Breakdown — ${groupName} › ${categoryName}`;
 }
 
 function renderTxnBreakdownTable(rows) {
@@ -13820,7 +13848,7 @@ function renderTxnBreakdownFromCache() {
   } else {
     rows = aggregateTxnBreakdownCategories(txs, txnBreakdownUi.groupId, txnBreakdownUi.groupName, flow);
   }
-  renderTxnBreakdownBreadcrumb();
+  renderTxnBreakdownDrillNav();
   renderTxnBreakdownTable(rows);
   const chartRows = txnBreakdownActiveChartRows(rows);
   if (txnBreakdownUi.level === "transactions") {

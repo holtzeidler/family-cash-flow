@@ -3,10 +3,31 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>BalanceWhiz</title>
+    <title>Forecast Calendar — BalanceWhiz</title>
+    <!-- bw:seo-head -->
+    <meta name="description" content="Your BalanceWhiz forecast calendar—projected checking balance by day." />
+    <link rel="canonical" href="https://balancewhiz.com/calendar/" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="theme-color" content="#0B3D2E" />
+    <meta property="og:site_name" content="BalanceWhiz" />
+    <meta property="og:title" content="Forecast Calendar — BalanceWhiz" />
+    <meta property="og:description" content="Your BalanceWhiz forecast calendar—projected checking balance by day." />
+    <meta property="og:url" content="https://balancewhiz.com/calendar/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://balancewhiz.com/assets/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:locale" content="en_US" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Forecast Calendar — BalanceWhiz" />
+    <meta name="twitter:description" content="Your BalanceWhiz forecast calendar—projected checking balance by day." />
+    <meta name="twitter:image" content="https://balancewhiz.com/assets/og-image.png" />
     <link rel="icon" href="../favicon.ico" sizes="any" />
     <link rel="icon" href="../favicon-32.png" type="image/png" sizes="32x32" />
+    <link rel="icon" href="../favicon-16.png" type="image/png" sizes="16x16" />
     <link rel="apple-touch-icon" href="../apple-touch-icon.png" />
+    <link rel="manifest" href="../site.webmanifest" />
+    <!-- /bw:seo-head -->
 <script>
       window.API_BASE = "__API_BASE__";
       window.__BW_FORCE_VIEW = "calendar";
@@ -14,28 +35,29 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=670" />
+    <link rel="stylesheet" href="../styles.css?v=681" />
   </head>
   <body>
+    <h1 class="sr-only">Forecast calendar</h1>
     <div class="container">
       <div id="familiesErr" class="error"></div>
 
       <div class="top-nav" role="navigation" aria-label="Primary">
         <div class="top-nav__inner">
           <div class="top-nav__title" aria-label="App title">
-            <h1 class="app-title app-title--logo">
-              <a href="/" aria-label="Balance Whiz home">
+            <div class="app-title app-title--logo">
+              <a href="/" aria-label="BalanceWhiz home">
                 <img
                   class="app-logo"
                   src="../assets/balance-whiz-logo-on-accent.svg?v=20260518"
                   width="293"
                   height="44"
-                  alt="Balance Whiz"
+                  alt="BalanceWhiz"
                   decoding="async"
                   fetchpriority="high"
                 />
               </a>
-            </h1>
+            </div>
           </div>
           <div class="top-nav__tabs" role="tablist" aria-label="Views">
             <a class="top-nav__tab is-active" id="navCalendarView" role="tab" aria-selected="true" href="/calendar">Forecast</a>
@@ -946,10 +968,13 @@
                     <button type="button" class="reports-tb-flow__btn" data-tb-flow="transfer">Transfers</button>
                     <button type="button" class="reports-tb-flow__btn" data-tb-flow="net">Net Flow</button>
                   </div>
-                  <nav id="txnBreakdownBreadcrumb" class="reports-tb-crumb" aria-label="Breakdown navigation" hidden></nav>
                 </div>
                 <div id="txnBreakdownErr" class="error"></div>
                 <div id="txnBreakdownBody" class="reports-tb-body">
+                  <div class="reports-tb-drillbar" id="txnBreakdownDrillbar">
+                    <nav id="txnBreakdownNav" class="reports-tb-nav" aria-label="Breakdown navigation"></nav>
+                    <h3 id="txnBreakdownContentTitle" class="reports-tb-content-title">Transaction Breakdown</h3>
+                  </div>
                   <div class="reports-tb-split">
                     <div class="reports-tb-chart">
                       <div class="reports-tb-chart__frame">
@@ -1587,7 +1612,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="../app.js?v=401"></script>
+    <script src="../app.js?v=403"></script>
     <script src="../feedback.js?v=3" defer></script>
     <script src="../tour.js?v=10" defer></script>
   </body>

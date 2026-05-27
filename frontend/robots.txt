@@ -1,0 +1,23 @@
+# BalanceWhiz — https://balancewhiz.com
+User-agent: *
+Allow: /
+Allow: /about.html
+Allow: /help.html
+Allow: /privacy.html
+Allow: /terms.html
+Allow: /plans/
+Allow: /contactus/
+
+# Authenticated app, admin, and funnel pages (not useful in search)
+Disallow: /calendar/
+Disallow: /transactions/
+Disallow: /reports/
+Disallow: /settings/
+Disallow: /admin/
+Disallow: /platform-admin/
+Disallow: /account-setup/
+Disallow: /invite/
+Disallow: /signup/
+Disallow: /login/
+
+Sitemap: https://balancewhiz.com/sitemap.xml
