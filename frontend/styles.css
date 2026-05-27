@@ -23367,10 +23367,14 @@ body.account-setup-page
 .modal--tx-add .tx-add-form .form-row-h__field > select,
 .modal--tx-add .tx-add-form .form-row-h__field > .money-input,
 .modal--tx-add .tx-add-form .form-row-h__field > .kind-toggle,
-.modal--tx-add .tx-add-form .form-row-h__field > .tx-add-category-field{
+.modal--tx-add .tx-add-form .form-row-h__field.tx-add-category-field{
   width: 98%;
   max-width: 98%;
   box-sizing: border-box;
+}
+.modal--tx-add .tx-add-form .tx-add-category-field .tx-quick-chips{
+  width: 100%;
+  max-width: 100%;
 }
 .modal--tx-add .tx-add-form .tx-add-category-field .category-combobox,
 .modal--tx-add .tx-add-form .tx-add-category-field .category-combobox__input{

@@ -2858,8 +2858,7 @@ function wireReportsChartHorizon() {
       }
       const d = Number(raw);
       if (!Number.isFinite(d) || d < 1) return;
-      if (chartDaysRange) chartDaysRange.value = String(d);
-      if (chartDaysLabel) chartDaysLabel.textContent = `${d} days`;
+      applyReportsHorizonPresetDays(d);
       setReportsChartHorizonActive(btn);
       syncReportsChartCustomUi();
       try {
@@ -6173,6 +6172,27 @@ function daysInclusiveBetween(startIso, endIso) {
 
 function chartRangeEndIso(startIso, days) {
   return isoAddDays(startIso, days - 1);
+}
+
+/** Last N calendar days ending today (inclusive). Used by reports 30/60/90 presets. */
+function chartRangeRollingPast(days) {
+  const n = Number(days);
+  const count = Number.isFinite(n) && n >= 1 ? Math.floor(n) : 30;
+  const todayIso = toISODate(new Date());
+  return {
+    start: isoAddDays(todayIso, -(count - 1)),
+    end: todayIso,
+    days: count,
+  };
+}
+
+function applyReportsHorizonPresetDays(days) {
+  const { start, end, days: n } = chartRangeRollingPast(days);
+  if (chartStart) chartStart.value = start;
+  if (chartEnd) chartEnd.value = end;
+  if (chartDaysRange) chartDaysRange.value = String(n);
+  if (chartDaysLabel) chartDaysLabel.textContent = `${n} days`;
+  syncReportsChartDateMirrors();
 }
 
 function formatChartRangeLongLabel(iso) {
@@ -13406,6 +13426,12 @@ function filterTxnBreakdownTxs(txs, flow) {
 function aggregateTxnBreakdownGroups(txs, flow) {
   /** @type {Map<string,{id:string|number,name:string,amount:number}>} */
   const byGroup = new Map();
+  for (const g of state.categoryTree?.groups || []) {
+    const gid = g.id != null ? Number(g.id) : null;
+    const name = String(g.name || "Group").trim() || "Group";
+    const key = gid != null ? String(gid) : `name:${name}`;
+    byGroup.set(key, { id: gid ?? key, name, amount: 0 });
+  }
   for (const tx of txs) {
     const key = tx.groupId != null ? String(tx.groupId) : `name:${tx.groupName}`;
     const signed = txnBreakdownFlowAmount(tx, flow);
@@ -13413,7 +13439,7 @@ function aggregateTxnBreakdownGroups(txs, flow) {
     row.amount += signed;
     byGroup.set(key, row);
   }
-  return finalizeTxnBreakdownRows([...byGroup.values()], flow);
+  return finalizeTxnBreakdownRows([...byGroup.values()], flow, { includeZero: true });
 }
 
 function aggregateTxnBreakdownCategories(txs, groupId, groupName, flow) {
@@ -13432,7 +13458,8 @@ function aggregateTxnBreakdownCategories(txs, groupId, groupName, flow) {
   return finalizeTxnBreakdownRows([...byCat.values()], flow);
 }
 
-function finalizeTxnBreakdownRows(rows, flow) {
+function finalizeTxnBreakdownRows(rows, flow, opts = {}) {
+  const includeZero = !!opts.includeZero;
   const useAbs = flow === "net";
   const total = rows.reduce((s, r) => s + (useAbs ? Math.abs(r.amount) : Math.max(0, r.amount)), 0);
   return rows
@@ -13442,7 +13469,10 @@ function finalizeTxnBreakdownRows(rows, flow) {
       const pct = total > 0 ? (pctBase / total) * 100 : 0;
       return { ...r, amount: displayAmt, pct };
     })
-    .filter((r) => (useAbs ? Math.abs(r.amount) > 0.0001 : r.amount > 0.0001));
+    .filter(
+      (r) =>
+        includeZero || (useAbs ? Math.abs(r.amount) > 0.0001 : r.amount > 0.0001)
+    );
 }
 
 function sortTxnBreakdownRows(rows) {
@@ -13682,14 +13712,18 @@ function renderTxnBreakdownFromCache() {
   }
   renderTxnBreakdownBreadcrumb();
   renderTxnBreakdownTable(rows);
-  drawTxnBreakdownChart(rows);
+  const chartRows =
+    txnBreakdownUi.level === "groups"
+      ? rows.filter((r) => Math.abs(Number(r.amount || 0)) > 0.0001)
+      : rows;
+  drawTxnBreakdownChart(chartRows);
   renderTxnBreakdownTxList(lastTxnBreakdownTxCache);
   const caption = document.getElementById("txnBreakdownChartCaption");
   if (caption) {
     const { start, endIso } = readReportsDateRange();
     const rangeTxt = start && endIso ? `${formatChartRangeLongLabel(start)} – ${formatChartRangeLongLabel(endIso)}` : "selected range";
     if (txnBreakdownUi.level === "groups") {
-      caption.textContent = `${txnBreakdownFlowLabel(flow)} by group · ${rangeTxt}`;
+      caption.textContent = `${txnBreakdownFlowLabel(flow)} by group · ${rangeTxt} · all groups shown (chart omits $0)`;
     } else if (txnBreakdownUi.level === "categories") {
       caption.textContent = `${txnBreakdownUi.groupName} categories · ${rangeTxt}`;
     } else {
@@ -17136,12 +17170,8 @@ function setDefaultProjectionStart() {
 }
 
 function setDefaultChartStart() {
-  if (chartStart) chartStart.value = toISODate(new Date());
-  if (chartEnd && chartStart?.value) {
-    const days = Number(chartDaysRange?.value);
-    chartEnd.value = chartRangeEndIso(chartStart.value, Number.isFinite(days) && days >= 1 ? days : 30);
-  }
-  syncReportsChartDateMirrors();
+  const days = Number(chartDaysRange?.value);
+  applyReportsHorizonPresetDays(Number.isFinite(days) && days >= 1 ? days : 30);
 }
 
 function setDefaultAccountStartDate() {
