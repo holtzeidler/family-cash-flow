@@ -147,6 +147,8 @@
   let cachedPlatformFamilies = null;
   /** @type {number|null} */
   let openDrawerUserId = null;
+  const adminUsersSort = { key: "created", dir: "desc" };
+  let adminUsersSortWired = false;
 
   function fmtAdminDateTime(iso) {
     if (!iso) return "—";
@@ -214,6 +216,76 @@
     return tokens.every((t) => blob.includes(t));
   }
 
+  function compareAdminUsersSort(a, b, key) {
+    switch (key) {
+      case "user": {
+        const av = String(a.email || a.name || "").trim().toLowerCase();
+        const bv = String(b.email || b.name || "").trim().toLowerCase();
+        return av.localeCompare(bv, undefined, { sensitivity: "base" });
+      }
+      case "family":
+        return familyCellText(a).localeCompare(familyCellText(b), undefined, { sensitivity: "base" });
+      case "family_role":
+        return familyRoleCellText(a).localeCompare(familyRoleCellText(b), undefined, { sensitivity: "base" });
+      case "platform_role":
+        return String(a.platform_role || "subscriber").localeCompare(String(b.platform_role || "subscriber"));
+      case "status":
+        return String(a.status || "active").localeCompare(String(b.status || "active"));
+      case "last_login":
+        return compareAdminIsoNullable(a.last_login_at, b.last_login_at);
+      case "created":
+        return compareAdminIsoNullable(a.created_at, b.created_at);
+      default:
+        return 0;
+    }
+  }
+
+  function compareAdminIsoNullable(aIso, bIso) {
+    const a = aIso ? Date.parse(aIso) : NaN;
+    const b = bIso ? Date.parse(bIso) : NaN;
+    const aMissing = !Number.isFinite(a);
+    const bMissing = !Number.isFinite(b);
+    if (aMissing && bMissing) return 0;
+    if (aMissing) return 1;
+    if (bMissing) return -1;
+    return a - b;
+  }
+
+  function sortPlatformUsers(rows) {
+    const key = adminUsersSort.key;
+    const dir = adminUsersSort.dir === "asc" ? 1 : -1;
+    return rows.slice().sort((a, b) => dir * compareAdminUsersSort(a, b, key));
+  }
+
+  function updateAdminUsersSortHeaders() {
+    document.querySelectorAll("#adminUsersTable thead th[data-user-sort]").forEach((th) => {
+      const key = th.getAttribute("data-user-sort");
+      const on = key === adminUsersSort.key;
+      th.classList.toggle("is-sorted", on);
+      th.classList.toggle("is-sorted--asc", on && adminUsersSort.dir === "asc");
+      th.classList.toggle("is-sorted--desc", on && adminUsersSort.dir === "desc");
+      th.setAttribute("aria-sort", on ? (adminUsersSort.dir === "asc" ? "ascending" : "descending") : "none");
+    });
+  }
+
+  function wireAdminUsersTableSort() {
+    if (adminUsersSortWired) return;
+    adminUsersSortWired = true;
+    document.querySelectorAll("#adminUsersTable thead th[data-user-sort]").forEach((th) => {
+      th.addEventListener("click", () => {
+        const key = String(th.getAttribute("data-user-sort") || "");
+        if (!key) return;
+        if (adminUsersSort.key === key) {
+          adminUsersSort.dir = adminUsersSort.dir === "asc" ? "desc" : "asc";
+        } else {
+          adminUsersSort.key = key;
+          adminUsersSort.dir = key === "user" || key === "family" || key === "family_role" ? "asc" : "desc";
+        }
+        renderPlatformUsersTable();
+      });
+    });
+  }
+
   function getFilteredPlatformUsers() {
     const users = cachedPlatformUsers || [];
     const q = (document.getElementById("adminUsersSearch") || {}).value || "";
@@ -259,8 +331,10 @@
     const wrap = document.getElementById("adminUsersTableWrap");
     if (!tbody) return;
 
+    wireAdminUsersTableSort();
     const users = cachedPlatformUsers || [];
-    const filtered = getFilteredPlatformUsers();
+    const filtered = sortPlatformUsers(getFilteredPlatformUsers());
+    updateAdminUsersSortHeaders();
 
     if (meta) {
       if (!users.length) meta.textContent = "No users.";

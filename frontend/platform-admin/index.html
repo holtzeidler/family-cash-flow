@@ -93,13 +93,13 @@
               <table class="platform-admin-users-table" id="adminUsersTable">
                 <thead>
                   <tr>
-                    <th scope="col">User</th>
-                    <th scope="col">Family</th>
-                    <th scope="col">Family role</th>
-                    <th scope="col">Platform role</th>
-                    <th scope="col">Status</th>
-                    <th scope="col">Last login</th>
-                    <th scope="col">Created</th>
+                    <th scope="col" data-user-sort="user">User</th>
+                    <th scope="col" data-user-sort="family">Family</th>
+                    <th scope="col" data-user-sort="family_role">Family role</th>
+                    <th scope="col" data-user-sort="platform_role">Platform role</th>
+                    <th scope="col" data-user-sort="status">Status</th>
+                    <th scope="col" data-user-sort="last_login">Last login</th>
+                    <th scope="col" data-user-sort="created">Created</th>
                     <th scope="col"><span class="sr-only">Actions</span></th>
                   </tr>
                 </thead>
@@ -296,6 +296,37 @@
         text-transform: uppercase;
         color: var(--muted);
         background: rgba(0, 0, 0, 0.02);
+      }
+      .platform-admin-users-table th[data-user-sort] {
+        cursor: pointer;
+        user-select: none;
+        white-space: nowrap;
+      }
+      .platform-admin-users-table th[data-user-sort]:hover {
+        color: rgba(11, 61, 46, 0.82);
+        background: rgba(11, 61, 46, 0.04);
+      }
+      .platform-admin-users-table th[data-user-sort].is-sorted {
+        color: rgba(11, 61, 46, 0.92);
+      }
+      .platform-admin-users-table th[data-user-sort]::after {
+        content: "";
+        display: inline-block;
+        width: 0;
+        margin-left: 0.35em;
+        opacity: 0.35;
+        font-size: 10px;
+        vertical-align: middle;
+      }
+      .platform-admin-users-table th[data-user-sort].is-sorted::after {
+        opacity: 0.85;
+        width: auto;
+      }
+      .platform-admin-users-table th[data-user-sort].is-sorted.is-sorted--asc::after {
+        content: "▲";
+      }
+      .platform-admin-users-table th[data-user-sort].is-sorted.is-sorted--desc::after {
+        content: "▼";
       }
       .platform-admin-users-table tr:last-child td {
         border-bottom: none;
@@ -696,6 +727,6 @@
         padding: 24px;
       }
     </style>
-    <script src="./admin.js?v=9"></script>
+    <script src="./admin.js?v=10"></script>
   </body>
 </html>

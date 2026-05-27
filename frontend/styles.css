@@ -9058,7 +9058,7 @@ body[data-bw-view="reports"] .bw-fb-launcher{
 
 /* Reports: narrow nav rail + wide chart workspace */
 body[data-bw-view="reports"] .app-layout{
-  grid-template-columns: clamp(168px, 14.8vw, 196px) minmax(0, 1fr);
+  grid-template-columns: clamp(212px, 17vw, 244px) minmax(0, 1fr);
   gap: clamp(18px, 2vw, 26px);
 }
 body[data-bw-view="reports"] .sidebar{
@@ -9191,6 +9191,13 @@ body[data-bw-view="reports"] #sidebarHighBalanceBanner.calendar-low-balance--sid
 body[data-bw-view="reports"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar .cash-outlook-card__line--tertiary,
 body[data-bw-view="reports"] #sidebarHighBalanceBanner.calendar-low-balance--sidebar .cash-outlook-card__line--tertiary{
   font-size: 10px;
+  white-space: nowrap;
+}
+@media (max-width: 720px){
+  body[data-bw-view="reports"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar .cash-outlook-card__line--tertiary,
+  body[data-bw-view="reports"] #sidebarHighBalanceBanner.calendar-low-balance--sidebar .cash-outlook-card__line--tertiary{
+    white-space: normal;
+  }
 }
 body[data-bw-view="reports"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar strong,
 body[data-bw-view="reports"] #sidebarHighBalanceBanner.calendar-low-balance--sidebar strong{
