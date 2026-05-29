@@ -1126,7 +1126,29 @@ body.landing-page .landing-insight__copy{
   color: rgba(51, 65, 85, 0.9);
 }
 
-/* Hero: centered copy → caption → forecast demo */
+/* Hero: centered copy → hook → forecast demo */
+body.landing-page .landing-hero__demo-intro{
+  margin: 0;
+  max-width: min(34rem, 100%);
+  padding: 0 0.25rem;
+  text-align: center;
+  text-wrap: balance;
+}
+body.landing-page .landing-hero__demo-hook{
+  margin: 0 0 0.35rem;
+  font-size: clamp(0.82rem, 1.35vw, 0.94rem);
+  line-height: 1.45;
+  font-weight: 500;
+  color: rgba(100, 116, 139, 0.82);
+}
+body.landing-page .landing-hero__demo-quote{
+  margin: 0;
+  font-size: clamp(0.88rem, 1.45vw, 1rem);
+  line-height: 1.42;
+  font-weight: 650;
+  font-style: italic;
+  color: rgba(51, 65, 85, 0.9);
+}
 body.landing-page .landing-hero__demo-caption{
   margin: 0 0 -0.06rem;
   max-width: min(34rem, 100%);
@@ -1145,7 +1167,7 @@ body.landing-page .landing-hero__demo-caption-title{
 body.landing-page .landing-hero-forecast{
   width: 100%;
   max-width: min(48rem, 86%);
-  margin: -0.08rem 0 0;
+  margin: 5ch 0 0;
   box-sizing: border-box;
 }
 body.landing-page .landing-hero-forecast__story,
@@ -4048,6 +4070,7 @@ body.landing-page .landing-preview__demo:hover{
     text-align: center;
     align-items: center;
   }
+  body.landing-page .landing-hero__demo-intro,
   body.landing-page .landing-hero__demo-caption{
     text-align: center;
   }
