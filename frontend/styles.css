@@ -497,8 +497,8 @@ body.landing-page{
   /* Vertical rhythm: tightened again — the previous gap left noticeable
      "white islands" between sections. The page should feel architected,
      not assembled. */
-  --landing-section-gap: clamp(1.35rem, 2.8vw, 2.35rem);
-  --landing-section-gap-tight: clamp(0.75rem, 1.8vw, 1.15rem);
+  --landing-section-gap: clamp(1.12rem, 2.31vw, 1.94rem);
+  --landing-section-gap-tight: clamp(0.62rem, 1.49vw, 0.95rem);
   --landing-rail: var(--landing-content-max);
   --landing-below-max: var(--landing-content-max);
 }
@@ -534,7 +534,7 @@ body.landing-page .landing-shell{
 body.landing-page .landing-shell > .landing-features{
   display: flex;
   flex-direction: column;
-  gap: clamp(1.1rem, 2.4vw, 1.75rem);
+  gap: clamp(0.92rem, 1.98vw, 1.45rem);
   width: 100%;
   padding: 0;
   margin: 0;
@@ -945,7 +945,7 @@ body.landing-page .landing-preview__trustText{
 }
 body.landing-page .landing-preview__main{
   display: grid;
-  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.4fr);
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.72fr);
   gap: 0.56rem 0.88rem;
   align-items: start;
 }
@@ -1004,18 +1004,18 @@ body.landing-page .landing-preview__chartSvg{
   display: block;
   width: 100%;
   height: auto;
-  min-height: 118px;
-  max-height: 158px;
+  min-height: 83px;
+  max-height: 111px;
 }
 body.landing-page .landing-preview__markerDot{
   stroke: rgba(255, 255, 255, 0.9);
   stroke-width: 0.8;
 }
 body.landing-page .landing-preview__markerDot--in{
-  fill: rgba(4, 120, 87, 0.46);
+  fill: rgba(4, 120, 87, 0.68);
 }
 body.landing-page .landing-preview__markerDot--out{
-  fill: rgba(167, 55, 68, 0.42);
+  fill: rgba(167, 55, 68, 0.62);
 }
 body.landing-page .landing-preview__markerLabel{
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -1037,7 +1037,8 @@ body.landing-page .landing-preview__minBalanceLabel{
   fill: rgba(120, 53, 15, 0.78);
 }
 body.landing-page .landing-preview__curve{
-  stroke-opacity: 0.94;
+  stroke: rgba(11, 61, 46, 0.68);
+  stroke-opacity: 1;
 }
 @media (max-width: 700px){
   body.landing-page .landing-preview__main{
@@ -2214,12 +2215,12 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
 
 @media (min-width: 981px){
   body.landing-page{
-    --landing-section-gap: clamp(1.22rem, 2.55vw, 2.08rem);
-    --landing-section-gap-tight: clamp(0.95rem, 2vw, 1.38rem);
+    --landing-section-gap: clamp(1.01rem, 2.1vw, 1.72rem);
+    --landing-section-gap-tight: clamp(0.78rem, 1.65vw, 1.14rem);
   }
 
   body.landing-page .landing-main{
-    padding: clamp(0.75rem, 1.55vw, 1.08rem) 0 clamp(1.12rem, 2.5vw, 1.92rem);
+    padding: clamp(0.75rem, 1.55vw, 1.08rem) 0 clamp(0.92rem, 2.06vw, 1.58rem);
   }
 
   body.landing-page .landing-shell{
@@ -2233,10 +2234,10 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
     margin-top: 0;
   }
   body.landing-page .landing-shell > .landing-cal-peek{
-    margin-top: calc(var(--landing-section-gap) * -0.28);
+    margin-top: calc(var(--landing-section-gap) * -0.36);
   }
   body.landing-page .landing-shell > .landing-conversion-flow{
-    margin-top: calc(var(--landing-section-gap) * -0.34);
+    margin-top: calc(var(--landing-section-gap) * -0.44);
   }
 
   body.landing-page .landing-hero__stack,
@@ -2307,7 +2308,7 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
   }
 
   body.landing-page .landing-preview__main{
-    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.32fr);
+    grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.74fr);
     gap: 16px 20px;
     align-items: start;
   }
@@ -2343,9 +2344,9 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
   }
 
   body.landing-page .landing-preview__chart{
-    min-height: clamp(150px, 22vw, 198px);
+    min-height: clamp(105px, 15.4vw, 139px);
     padding: 6px 10px 4px;
-    border-radius: 16px;
+    border-radius: 13px;
   }
 
   body.landing-page .landing-preview__chartSvg{
@@ -2609,7 +2610,7 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
   }
 
   body.landing-page .app-footer{
-    margin-top: 24px;
+    margin-top: 20px;
   }
 }
 
@@ -3104,7 +3105,9 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
 }
 
 body.landing-page .app-footer{
-  margin-top: clamp(1.05rem, 2.1vw, 1.65rem);
+  margin-top: clamp(0.88rem, 1.73vw, 1.36rem);
+  padding-top: 18px;
+  padding-bottom: max(26px, env(safe-area-inset-bottom, 0px));
 }
 body.landing-page .app-footer__inner{
   max-width: var(--landing-content-max, 64rem);
@@ -3113,11 +3116,11 @@ body.landing-page .app-footer__inner{
 /* Landing page cleanup: calmer guided homepage story */
 body.landing-page{
   --landing-content-max: min(71rem, calc(100vw - 2.25rem));
-  --landing-section-gap: clamp(0.85rem, 1.85vw, 1.52rem);
-  --landing-section-gap-tight: clamp(0.75rem, 1.65vw, 1.06rem);
+  --landing-section-gap: clamp(0.7rem, 1.53vw, 1.26rem);
+  --landing-section-gap-tight: clamp(0.62rem, 1.36vw, 0.88rem);
 }
 body.landing-page .landing-main{
-  padding: clamp(0.5rem, 1.05vw, 0.82rem) 0 clamp(0.95rem, 2vw, 1.45rem);
+  padding: clamp(0.5rem, 1.05vw, 0.82rem) 0 clamp(0.78rem, 1.65vw, 1.2rem);
   background: #fff;
 }
 body.landing-page .landing-shell{
@@ -3132,20 +3135,20 @@ body.landing-page .landing-shell > .landing-conversion-flow{
   margin-top: 0;
 }
 body.landing-page .landing-shell > .landing-features{
-  margin-top: calc(var(--landing-section-gap) * -0.38);
+  margin-top: calc(var(--landing-section-gap) * -0.5);
 }
 body.landing-page .landing-shell > .landing-cal-peek:not(.landing-cal-peek--primary){
-  margin-top: calc(var(--landing-section-gap) * -0.28);
+  margin-top: calc(var(--landing-section-gap) * -0.36);
 }
 body.landing-page .landing-shell > .landing-conversion-flow{
-  margin-top: calc(var(--landing-section-gap) * -0.34);
+  margin-top: calc(var(--landing-section-gap) * -0.44);
 }
 body.landing-page .landing-conversion-flow{
   display: flex;
   flex-direction: column;
-  gap: clamp(0.48rem, 1.05vw, 0.72rem);
+  gap: clamp(0.4rem, 0.87vw, 0.6rem);
   width: 100%;
-  padding: clamp(0.35rem, 0.85vw, 0.58rem) 0 clamp(0.15rem, 0.45vw, 0.32rem);
+  padding: clamp(0.28rem, 0.7vw, 0.48rem) 0 clamp(0.12rem, 0.38vw, 0.26rem);
   border-radius: 18px;
   background: linear-gradient(180deg, rgba(248, 252, 250, 0.55) 0%, rgba(255, 255, 255, 0) 88%);
 }
@@ -3153,7 +3156,7 @@ body.landing-page .landing-conversion-flow .landing-how{
   margin: 0;
 }
 body.landing-page .landing-conversion-flow .landing-offer{
-  margin: clamp(0.5rem, 1.15vw, 0.8rem) 0 0;
+  margin: clamp(0.42rem, 0.96vw, 0.66rem) 0 0;
 }
 body.landing-page .landing-hero{
   padding-top: clamp(0.4rem, 1.1vw, 0.75rem);
@@ -3397,8 +3400,8 @@ body.landing-page .landing-section--tint-safe > *{
 }
 /* Safe-to-move preview: tint wraps headline, subheading, and demo as one panel */
 body.landing-page .landing-preview.landing-section--tint-safe{
-  margin-top: clamp(1.2rem, 2.95vw, 2.05rem);
-  padding: clamp(1.5rem, 3.2vw, 2.05rem) 0 clamp(0.5rem, 1.15vw, 0.72rem);
+  margin-top: clamp(1rem, 2.42vw, 1.7rem);
+  padding: clamp(1.28rem, 2.7vw, 1.75rem) 0 clamp(0.42rem, 0.95vw, 0.6rem);
 }
 body.landing-page .landing-preview.landing-section--tint-safe::before{
   top: 0;
@@ -3415,7 +3418,7 @@ body.landing-page .landing-preview.landing-section--tint-safe .landing-preview__
   padding-top: 0;
 }
 body.landing-page .landing-section--tint-neutral{
-  padding: clamp(0.38rem, 0.95vw, 0.62rem) 0 clamp(0.35rem, 0.85vw, 0.52rem);
+  padding: clamp(0.32rem, 0.78vw, 0.52rem) 0 clamp(0.29rem, 0.7vw, 0.43rem);
 }
 body.landing-page .landing-section--tint-neutral::before{
   content: "";
@@ -3472,7 +3475,7 @@ body.landing-page .landing-preview__tagline{
   display: none;
 }
 body.landing-page .landing-preview__main{
-  grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.34fr);
+  grid-template-columns: minmax(0, 1.12fr) minmax(0, 0.68fr);
   gap: 0.52rem 0.68rem;
   align-items: start;
 }
@@ -3496,11 +3499,11 @@ body.landing-page .landing-preview__transferLine{
   color: rgba(55, 65, 81, 0.84);
 }
 body.landing-page .landing-preview__transferAmt{
-  font-size: clamp(1.64rem, 2.9vw, 2.2rem);
-  font-weight: 650;
-  line-height: 0.96;
-  letter-spacing: -0.015em;
-  color: rgba(11, 61, 46, 0.86);
+  font-size: clamp(2rem, 3.5vw, 2.65rem);
+  font-weight: 750;
+  line-height: 0.94;
+  letter-spacing: -0.02em;
+  color: rgba(11, 61, 46, 0.98);
 }
 body.landing-page .landing-preview__transferFoot{
   margin-top: 0.28rem;
@@ -3587,17 +3590,15 @@ body.landing-page .landing-preview__chart{
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  justify-content: flex-start;
+  justify-content: center;
   margin: 0;
-  align-self: start;
-  min-height: clamp(138px, 21vw, 190px);
-  padding: 0.2rem 0.42rem 0.14rem;
-  border-radius: 15px;
-  border: 1px solid rgba(11, 61, 46, 0.11);
-  background:
-    radial-gradient(380px 140px at 88% 0%, rgba(4, 120, 87, 0.1) 0%, rgba(4, 120, 87, 0) 68%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.97) 0%, rgba(245, 250, 247, 0.92) 100%);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.6);
+  align-self: center;
+  min-height: clamp(97px, 15vw, 133px);
+  padding: 0.1rem 0.28rem 0.06rem;
+  border-radius: 13px;
+  border: 1px solid rgba(11, 61, 46, 0.06);
+  background: rgba(251, 252, 251, 0.78);
+  box-shadow: none;
 }
 body.landing-page .landing-preview__chartSvg{
   display: block;
@@ -3606,17 +3607,17 @@ body.landing-page .landing-preview__chartSvg{
   height: 100%;
   min-height: 0;
   max-height: none;
-  aspect-ratio: 604 / 108;
+  aspect-ratio: 520 / 75;
 }
 body.landing-page .landing-preview__markerLabel{
   font-size: 10.5px;
   letter-spacing: 0.008em;
 }
 body.landing-page .landing-preview__markerDot--in{
-  fill: rgba(4, 120, 87, 0.55);
+  fill: rgba(4, 120, 87, 0.72);
 }
 body.landing-page .landing-preview__markerDot--out{
-  fill: rgba(180, 60, 70, 0.52);
+  fill: rgba(167, 55, 68, 0.66);
 }
 body.landing-page .landing-preview__markerLabel--in{
   fill: rgba(4, 105, 75, 0.92);
@@ -4079,7 +4080,7 @@ body.landing-page .landing-preview__demo:hover{
 }
 @media (max-width: 820px){
   body.landing-page{
-    --landing-section-gap: 0.96rem;
+    --landing-section-gap: 0.79rem;
   }
   body.landing-page .landing-hero{
     padding-top: 0.55rem;
@@ -4141,7 +4142,7 @@ body.landing-page .landing-preview__demo:hover{
 @media (max-width: 768px){
   body.landing-page{
     --landing-content-max: min(100vw - 1.35rem, 72rem);
-    --landing-section-gap: 0.9rem;
+    --landing-section-gap: 0.74rem;
   }
   body.landing-page .landing-shell{
     padding-left: max(0.7rem, env(safe-area-inset-left));
@@ -4221,7 +4222,7 @@ body.landing-page .landing-preview__demo:hover{
     padding: 0.72rem 0.78rem 0.76rem;
   }
   body.landing-page .landing-preview__transferAmt{
-    font-size: clamp(1.45rem, 6.5vw, 1.88rem);
+    font-size: clamp(1.75rem, 7.5vw, 2.2rem);
   }
   body.landing-page .landing-preview__transferFoot,
   body.landing-page .landing-how__cardBody,
@@ -4229,14 +4230,14 @@ body.landing-page .landing-preview__demo:hover{
     font-size: 0.88rem;
   }
   body.landing-page .landing-preview.landing-section--tint-safe{
-    padding: 1.28rem 0 0.5rem;
+    padding: 1.05rem 0 0.42rem;
   }
   body.landing-page .landing-trust-micro{
     margin-top: calc(-2lh - 0.12rem);
   }
   body.landing-page .landing-preview__chart{
-    min-height: clamp(126px, 33vw, 156px);
-    padding: 0.22rem 0.38rem 0.12rem;
+    min-height: clamp(88px, 23vw, 109px);
+    padding: 0.12rem 0.24rem 0.06rem;
   }
   body.landing-page .landing-preview__chartSvg{
     min-height: 0;
@@ -4257,14 +4258,14 @@ body.landing-page .landing-preview__demo:hover{
     border-radius: 16px;
   }
   body.landing-page .landing-conversion-flow{
-    gap: 0.52rem;
-    padding-bottom: 0.12rem;
+    gap: 0.43rem;
+    padding-bottom: 0.1rem;
   }
 }
 @media (max-width: 560px){
   body.landing-page{
     --landing-content-max: calc(100vw - 0.9rem);
-    --landing-section-gap: 0.74rem;
+    --landing-section-gap: 0.61rem;
   }
   body.landing-page .landing-main{
     padding-top: 0.12rem;
@@ -4297,8 +4298,8 @@ body.landing-page .landing-preview__demo:hover{
     font-size: 0.78rem;
   }
   body.landing-page .landing-preview__chart{
-    min-height: clamp(116px, 37vw, 146px);
-    padding: 0.2rem 0.36rem 0.1rem;
+    min-height: clamp(81px, 26vw, 102px);
+    padding: 0.12rem 0.24rem 0.06rem;
   }
   body.landing-page .landing-preview__chartSvg{
     min-height: 0;
@@ -4317,7 +4318,7 @@ body.landing-page .landing-preview__demo:hover{
     padding: 0.82rem 0.88rem 0.8rem;
   }
   body.landing-page .app-footer{
-    margin-top: clamp(1.35rem, 4vw, 1.85rem);
+    margin-top: clamp(1.12rem, 3.3vw, 1.52rem);
   }
 }
 
