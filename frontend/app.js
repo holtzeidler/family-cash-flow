@@ -2502,7 +2502,8 @@ async function saveBalanceThresholds(opts = {}) {
 function initCalendarYearOptions() {
   if (!calendarYear || calendarYear.dataset.populated === "1") return;
   calendarYear.dataset.populated = "1";
-  for (let y = 2020; y <= 2030; y++) {
+  const maxYear = Math.max(2030, new Date().getFullYear() + 1);
+  for (let y = 2020; y <= maxYear; y++) {
     const opt = document.createElement("option");
     opt.value = String(y);
     opt.textContent = String(y);
@@ -2539,6 +2540,13 @@ function applyCalendarMonthToPickers(ym) {
   }
 }
 
+function calendarYmPartsValid(ym) {
+  const p = String(ym || "").split("-");
+  const y = Number(p[0]);
+  const mi = Number(p[1]);
+  return Number.isFinite(y) && Number.isFinite(mi) && mi >= 1 && mi <= 12;
+}
+
 /** Copy visible month/year selects into hidden fields when they drift (e.g. before first full load). */
 function syncCalendarMonthFromPickers() {
   if (!calendarMonthNum || !calendarYear) return;
@@ -2552,15 +2560,15 @@ function syncCalendarMonthFromPickers() {
 
 /** YYYY-MM for the calendar: hidden field, sidebar month, or visible pickers; falls back to today. */
 function getCalendarViewYm() {
-  syncCalendarMonthFromPickers();
   let month = String((calendarMonth && calendarMonth.value) || (monthInput && monthInput.value) || "").trim();
-  const partsValid = (s) => {
-    const p = String(s).split("-");
-    const y = Number(p[0]);
-    const mi = Number(p[1]);
-    return Number.isFinite(y) && Number.isFinite(mi) && mi >= 1 && mi <= 12;
-  };
-  if (!month || !partsValid(month)) {
+  if (!month || !calendarYmPartsValid(month)) {
+    syncCalendarMonthFromPickers();
+    month = String((calendarMonth && calendarMonth.value) || (monthInput && monthInput.value) || "").trim();
+  } else {
+    // Hidden/sidebar month is authoritative; keep visible pickers aligned (avoids Jan 2020 HTML defaults).
+    applyCalendarMonthToPickers(month);
+  }
+  if (!month || !calendarYmPartsValid(month)) {
     const d = new Date();
     month = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
     applyCalendarMonthToPickers(month);
@@ -17630,6 +17638,7 @@ async function main() {
     }
     await loadExpectedTransactions();
   }
+  setDefaultMonth();
   await loadMonthAndCalendar();
   // Defensive re-render: if any upstream step threw and cleared the grid without
   // refilling it, this guarantees the day cells are visible (even on an empty family).
