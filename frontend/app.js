@@ -663,6 +663,10 @@ const LOW_BALANCE_THRESHOLD_KEY = "familyCashFlow_lowBalanceThreshold";
 let lowBalanceDebounceTimer = null;
 let balanceThresholdPersistTimer = null;
 let balanceThresholdSavedHideTimer = null;
+/** True while the user has edited threshold fields but not saved yet (blocks hydrate clobber). */
+let balanceThresholdFieldsDirty = false;
+/** Prevents overlapping explicit Save clicks. */
+let balanceThresholdSaveInFlight = false;
 /** Used to ignore a pending silent persist that was scheduled before an explicit Save (race on blur/click ordering). */
 let lastExplicitBalanceThresholdSaveMs = 0;
 let lowBalanceLastQuery = { familyId: null, min: null, max: null, mode: null };
@@ -2258,25 +2262,16 @@ function scheduleLowBalanceRefresh() {
   lowBalanceDebounceTimer = setTimeout(() => refreshLowBalanceAlert(), 350);
 }
 
-function schedulePersistBalanceThresholds() {
-  const { min, max } = balanceThresholdFieldEls();
-  if (!min && !max) return;
-  if (balanceThresholdPersistTimer) clearTimeout(balanceThresholdPersistTimer);
-  balanceThresholdPersistTimer = setTimeout(() => {
-    balanceThresholdPersistTimer = null;
-    void saveBalanceThresholds({ silent: true });
-  }, 550);
-}
-
 function onBalanceThresholdFieldEdited() {
+  balanceThresholdFieldsDirty = true;
   scheduleLowBalanceRefresh();
-  schedulePersistBalanceThresholds();
 }
 
 /** Load threshold inputs from the current account-backed family, with legacy device fallback only for migration. */
-function hydrateBalanceThresholdInputsFromStorage() {
+function hydrateBalanceThresholdInputsFromStorage(force = false) {
   const { min: minEl, max: maxEl } = balanceThresholdFieldEls();
   if (!minEl && !maxEl) return;
+  if (!force && balanceThresholdFieldsDirty) return;
   try {
     const fid = activeFamilyIdForBalanceThresholds();
     if (!fid) return;
@@ -2347,6 +2342,7 @@ function finishBalanceThresholdSave({
     } catch (_) {}
   }
   lastExplicitBalanceThresholdSaveMs = Date.now();
+  balanceThresholdFieldsDirty = false;
   show(errEl, "");
   invalidateLowBalanceAlertCache();
   if (lowBalanceDebounceTimer) clearTimeout(lowBalanceDebounceTimer);
@@ -2403,6 +2399,7 @@ function finishBalanceThresholdSave({
 
 async function saveBalanceThresholds(opts = {}) {
   const silent = !!opts.silent;
+  if (!silent && balanceThresholdSaveInFlight) return;
   if (balanceThresholdPersistTimer) {
     clearTimeout(balanceThresholdPersistTimer);
     balanceThresholdPersistTimer = null;
@@ -2460,7 +2457,10 @@ async function saveBalanceThresholds(opts = {}) {
     balanceThresholdAmountsEqual(currentMin, nextMin) &&
     balanceThresholdAmountsEqual(currentMax, nextMax)
   ) {
-    if (!silent) showBalanceThresholdNoOpFeedback({ errEl, saveBtn, savedMsg, minVal: currentMin });
+    if (!silent) {
+      balanceThresholdFieldsDirty = false;
+      showBalanceThresholdNoOpFeedback({ errEl, saveBtn, savedMsg, minVal: currentMin });
+    }
     invalidateLowBalanceAlertCache();
     if (lowBalanceDebounceTimer) clearTimeout(lowBalanceDebounceTimer);
     lowBalanceDebounceTimer = null;
@@ -2468,6 +2468,7 @@ async function saveBalanceThresholds(opts = {}) {
     return;
   }
 
+  if (!silent) balanceThresholdSaveInFlight = true;
   try {
     const updated = await api(`/api/families/${fidNum}/forecast-thresholds`, "PATCH", {
       balance_threshold_min: nextMin,
@@ -2496,6 +2497,8 @@ async function saveBalanceThresholds(opts = {}) {
       errEl?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
     } catch (_) {}
     return;
+  } finally {
+    if (!silent) balanceThresholdSaveInFlight = false;
   }
 }
 
@@ -3630,8 +3633,9 @@ familySelect.addEventListener("change", async () => {
   riskCalendarViewYm = "";
   lastRiskCalendarDaily = [];
   syncActiveFamilyFlags();
+  balanceThresholdFieldsDirty = false;
   await migrateLegacyDeviceBalanceThresholdsToAccount();
-  hydrateBalanceThresholdInputsFromStorage();
+  hydrateBalanceThresholdInputsFromStorage(true);
   await loadCategories();
   await loadAccounts();
   await loadExpectedTransactions();
@@ -17665,6 +17669,14 @@ async function main() {
     }
     if (bt.saveBtn && bt.saveBtn.dataset.balanceThresholdBound !== "1") {
       bt.saveBtn.dataset.balanceThresholdBound = "1";
+      bt.saveBtn.addEventListener("mousedown", (e) => {
+        // Keep focus in the input until click so Save reads the edited value, not a stale blur snapshot.
+        e.preventDefault();
+        if (balanceThresholdPersistTimer) {
+          clearTimeout(balanceThresholdPersistTimer);
+          balanceThresholdPersistTimer = null;
+        }
+      });
       bt.saveBtn.addEventListener("click", async () => {
         try {
           await saveBalanceThresholds();
