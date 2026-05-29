@@ -123,7 +123,7 @@
         balance: "$3,240",
       },
       note: "You're set — reconcile occasionally and update variable bills when they change.",
-      ctaLabel: "Start forecasting",
+      ctaLabel: "See My Future Balance",
       placement: ["below", "above", "right", "left"],
       retryable: true,
       targetExtraClass: "bw-tour-target--reconcile-head",

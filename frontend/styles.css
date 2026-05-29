@@ -1128,7 +1128,7 @@ body.landing-page .landing-insight__copy{
 
 /* Hero: centered copy → hook → forecast demo */
 body.landing-page .landing-hero__demo-intro{
-  margin: 0;
+  margin: 3ch 0 0;
   max-width: min(34rem, 100%);
   padding: 0 0.25rem;
   text-align: center;
@@ -1166,182 +1166,219 @@ body.landing-page .landing-hero__demo-caption-title{
 }
 body.landing-page .landing-hero-forecast{
   width: 100%;
-  max-width: min(48rem, 86%);
+  max-width: min(26rem, 94%);
   margin: 5ch 0 0;
   box-sizing: border-box;
 }
-body.landing-page .landing-hero-forecast__story,
-body.landing-page .landing-hero-forecast__copy{
-  display: none;
-}
-body.landing-page .landing-hero-forecast__demo{
+body.landing-page .landing-hero-forecast__demo.landing-hero-story{
   display: flex;
   flex-direction: column;
   gap: 0;
   min-width: 0;
   width: 100%;
-  border-radius: 14px;
-  border: 1px solid rgba(11, 61, 46, 0.11);
+  padding: clamp(1.35rem, 2.8vw, 1.85rem) clamp(1.25rem, 2.6vw, 1.65rem) clamp(1.15rem, 2.4vw, 1.45rem);
+  border-radius: 18px;
+  border: 1px solid rgba(11, 61, 46, 0.1);
   overflow: hidden;
   background: rgba(255, 255, 255, 0.99);
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.92) inset,
-    0 14px 36px -16px rgba(11, 61, 46, 0.14),
-    0 6px 18px -10px rgba(11, 61, 46, 0.08);
+    0 18px 44px -22px rgba(11, 61, 46, 0.16),
+    0 8px 22px -12px rgba(11, 61, 46, 0.08);
   box-sizing: border-box;
 }
-body.landing-page .landing-hero-forecast__demo .landing-cal-peek__chrome{
-  padding: 10px 14px 7px;
+body.landing-page .landing-hero-story__flow{
+  display: flex;
+  flex-direction: column;
+  gap: clamp(1.05rem, 2.2vw, 1.35rem);
+  padding-bottom: clamp(1.05rem, 2.2vw, 1.3rem);
 }
-body.landing-page .landing-hero-forecast__demo .landing-cal-peek__month{
-  font-size: 0.74rem;
+body.landing-page .landing-hero-story__eyebrow{
+  display: block;
+  margin: 0 0 0.28rem;
+  font-size: 0.68rem;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: rgba(100, 116, 139, 0.72);
 }
-body.landing-page .landing-hero-forecast__demo .landing-cal-peek__hint{
-  font-size: 0.66rem;
-}
-body.landing-page .landing-hero-forecast__cal .landing-cal-peek__svg{
-  min-height: 0;
-  max-height: 188px;
-}
-body.landing-page .landing-hero-forecast__alert .landing-insight__iconCol{
-  padding: 0.32rem 0.48rem;
-}
-body.landing-page .landing-hero-forecast__alert .landing-insight__main{
-  padding: 0.34rem 0.72rem 0.36rem;
-}
-body.landing-page .landing-hero-forecast__alert .landing-insight__icon{
-  width: 30px;
-  height: 30px;
-}
-body.landing-page .landing-hero-forecast__alert{
-  width: 100%;
+body.landing-page .landing-hero-story__hero-amount{
   margin: 0;
+  font-size: clamp(2rem, 4.8vw, 2.65rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.02;
+  color: rgba(11, 61, 46, 0.96);
+  font-variant-numeric: tabular-nums;
 }
-body.landing-page .landing-hero-forecast__alert .landing-insight__card{
-  width: 100%;
-  border-radius: 0;
-  border: none;
-  border-top: 1px solid rgba(11, 61, 46, 0.09);
-  box-shadow: none;
+body.landing-page .landing-hero-story__step{
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
 }
-
-/* Hero forecast micro-demo (dynamic dates → watch → alert → paycheck) */
-body.landing-page .landing-hero-forecast__cal.landing-cal-peek__frame{
-  width: 100%;
+body.landing-page .landing-hero-story__step--dip{
+  padding: clamp(0.72rem, 1.6vw, 0.92rem) clamp(0.82rem, 1.7vw, 1rem);
+  border-radius: 12px;
+  background: rgba(255, 251, 245, 0.92);
+  border: 1px solid rgba(180, 83, 9, 0.12);
+}
+body.landing-page .landing-hero-story__line{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem;
+  padding: 0.55rem 0;
+}
+body.landing-page .landing-hero-story__line-copy{
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  min-width: 0;
+}
+body.landing-page .landing-hero-story__line-title{
+  font-size: clamp(0.92rem, 1.55vw, 1rem);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: rgba(30, 41, 59, 0.92);
+}
+body.landing-page .landing-hero-story__line-meta{
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: rgba(100, 116, 139, 0.78);
+}
+body.landing-page .landing-hero-story__line-delta{
+  flex: 0 0 auto;
+  font-size: clamp(1.05rem, 1.9vw, 1.22rem);
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+body.landing-page .landing-hero-story__line-delta--neg{
+  color: rgba(185, 28, 28, 0.82);
+}
+body.landing-page .landing-hero-story__line-delta--pos{
+  color: rgba(4, 120, 87, 0.88);
+}
+body.landing-page .landing-hero-story__amount{
   margin: 0;
-  box-sizing: border-box;
-  border-radius: 0;
-  border: none;
-  box-shadow: none;
-  background: transparent;
+  font-size: clamp(1.55rem, 3.2vw, 1.95rem);
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
 }
-body.landing-page .landing-cal-peek--primary .landing-cal-peek__inner:has(.landing-cal-peek__copy:only-child),
-body.landing-page .landing-cal-peek--primary .landing-cal-peek__inner:not(:has(.landing-cal-peek__frame)){
-  grid-template-columns: 1fr;
+body.landing-page .landing-hero-story__amount--dip{
+  color: rgba(146, 64, 14, 0.94);
 }
-body.landing-page .landing-hero > .landing-insight,
-body.landing-page .landing-hero-forecast .landing-insight:not(.landing-hero-forecast__alert){
-  margin-top: 0;
-  width: 100%;
+body.landing-page .landing-hero-story__amount--recovery{
+  color: rgba(11, 61, 46, 0.94);
 }
-body.landing-page .landing-hero-forecast .landing-hero-forecast__alert{
-  width: 100%;
+body.landing-page .landing-hero-story__chip{
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0.15rem 0 0;
+  padding: 0.28rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 650;
+  line-height: 1.25;
 }
-body.landing-page .landing-hero-forecast__day > rect{
-  transition: fill 0.65s ease, stroke 0.65s ease, stroke-width 0.65s ease;
+body.landing-page .landing-hero-story__chip--warn{
+  color: rgba(154, 52, 18, 0.92);
+  background: rgba(254, 243, 199, 0.72);
+  border: 1px solid rgba(180, 83, 9, 0.18);
 }
-body.landing-page .landing-hero-forecast__day--watch > rect{
-  fill: rgba(255, 244, 224, 0.98);
-  stroke: rgba(180, 83, 9, 0.5);
-  stroke-width: 1.4;
-  filter: drop-shadow(0 1px 3px rgba(180, 83, 9, 0.14));
+body.landing-page .landing-hero-story__chip-icon{
+  font-size: 0.82rem;
+  line-height: 1;
 }
-body.landing-page .landing-hero-forecast__day--watch > text:first-of-type{
-  fill: rgba(120, 53, 15, 0.7);
+body.landing-page .landing-hero-story__recovery{
+  margin-top: 0.55rem;
+  padding-top: 0.72rem;
+  border-top: 1px dashed rgba(11, 61, 46, 0.1);
 }
-body.landing-page .landing-hero-forecast__day--watch > text:nth-of-type(2){
-  fill: rgba(146, 64, 14, 0.94);
+body.landing-page .landing-hero-story__alert{
+  position: relative;
+  margin: 0 calc(-1 * clamp(1.25rem, 2.6vw, 1.65rem)) calc(-1 * clamp(1.15rem, 2.4vw, 1.45rem));
+  padding: clamp(1.05rem, 2.2vw, 1.35rem) clamp(1.15rem, 2.4vw, 1.45rem);
+  border-top: 2px solid rgba(180, 83, 9, 0.28);
+  background:
+    linear-gradient(180deg, rgba(255, 248, 235, 0.98) 0%, rgba(255, 244, 224, 0.96) 100%);
+  box-shadow:
+    0 -8px 24px -12px rgba(180, 83, 9, 0.22),
+    0 1px 0 rgba(255, 255, 255, 0.65) inset;
+  animation: landing-hero-story-alert-in 0.65s cubic-bezier(0.22, 1, 0.36, 1) 0.35s both;
 }
-body.landing-page .landing-hero-forecast__day--watch .landing-hero-forecast__dayTag{
-  fill: rgba(154, 52, 18, 0.9);
-  font-weight: 700;
-  opacity: 0.94;
+body.landing-page .landing-hero-story__alert-inner{
+  display: flex;
+  align-items: flex-start;
+  gap: clamp(0.75rem, 1.6vw, 1rem);
 }
-body.landing-page .landing-hero-forecast__day--paycheck > rect{
-  fill: rgba(255, 255, 255, 0.98);
-  stroke: rgba(11, 61, 46, 0.11);
-  stroke-width: 1px;
+body.landing-page .landing-hero-story__alert-icon{
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(2.65rem, 5vw, 3rem);
+  height: clamp(2.65rem, 5vw, 3rem);
+  border-radius: 14px;
+  color: rgba(154, 52, 18, 0.92);
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(180, 83, 9, 0.22);
+  box-shadow: 0 2px 8px rgba(180, 83, 9, 0.1);
 }
-body.landing-page .landing-hero-forecast__dayTag{
-  transition: opacity 0.55s ease;
-  opacity: 0.82;
+body.landing-page .landing-hero-story__alert-icon svg{
+  display: block;
+  width: clamp(1.35rem, 2.4vw, 1.55rem);
+  height: clamp(1.35rem, 2.4vw, 1.55rem);
 }
-body.landing-page .landing-hero-forecast.is-step-watch .landing-hero-forecast__day--watch > rect,
-body.landing-page .landing-hero-forecast__cal.is-step-watch .landing-hero-forecast__day--watch > rect{
-  fill: rgba(255, 238, 196, 0.99);
-  stroke: rgba(180, 83, 9, 0.74);
-  stroke-width: 1.85;
-  filter: drop-shadow(0 2px 5px rgba(180, 83, 9, 0.2));
+body.landing-page .landing-hero-story__alert-body{
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding-top: 0.08rem;
 }
-body.landing-page .landing-hero-forecast.is-step-watch .landing-hero-forecast__day--watch > text:nth-of-type(2),
-body.landing-page .landing-hero-forecast__cal.is-step-watch .landing-hero-forecast__day--watch > text:nth-of-type(2){
-  fill: rgba(146, 45, 18, 0.98);
+body.landing-page .landing-hero-story__alert-label{
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 750;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: rgba(154, 52, 18, 0.88);
 }
-body.landing-page .landing-hero-forecast.is-step-watch .landing-hero-forecast__day--watch .landing-hero-forecast__dayTag,
-body.landing-page .landing-hero-forecast__cal.is-step-watch .landing-hero-forecast__day--watch .landing-hero-forecast__dayTag{
-  fill: rgba(154, 45, 18, 0.98);
-  opacity: 1;
+body.landing-page .landing-hero-story__alert-copy{
+  margin: 0;
+  font-size: clamp(1.02rem, 1.85vw, 1.18rem);
+  font-weight: 650;
+  line-height: 1.38;
+  letter-spacing: -0.015em;
+  color: rgba(30, 41, 59, 0.94);
+  text-wrap: pretty;
 }
-body.landing-page .landing-hero-forecast.is-step-paycheck .landing-hero-forecast__day--paycheck > rect,
-body.landing-page .landing-hero-forecast__cal.is-step-paycheck .landing-hero-forecast__day--paycheck > rect{
-  fill: rgba(236, 253, 245, 0.92);
-  stroke: rgba(4, 120, 87, 0.38);
-  stroke-width: 1.35;
-}
-body.landing-page .landing-hero-forecast.is-step-paycheck .landing-hero-forecast__day--paycheck .landing-hero-forecast__dayTag--pay,
-body.landing-page .landing-hero-forecast__cal.is-step-paycheck .landing-hero-forecast__day--paycheck .landing-hero-forecast__dayTag--pay{
-  opacity: 1;
-}
-body.landing-page .landing-hero-forecast__txn{
-  transition: opacity 0.55s ease;
-}
-body.landing-page .landing-hero-forecast__txn--card,
-body.landing-page .landing-hero-forecast__txn--paycheck{
-  opacity: 0.82;
-}
-body.landing-page .landing-hero-forecast.is-step-watch .landing-hero-forecast__txn--card,
-body.landing-page .landing-hero-forecast.is-step-alert .landing-hero-forecast__txn--card,
-body.landing-page .landing-hero-forecast__cal.is-step-watch .landing-hero-forecast__txn--card,
-body.landing-page .landing-hero-forecast__cal.is-step-alert .landing-hero-forecast__txn--card{
-  opacity: 1;
-}
-body.landing-page .landing-hero-forecast.is-step-paycheck .landing-hero-forecast__txn--paycheck,
-body.landing-page .landing-hero-forecast__cal.is-step-paycheck .landing-hero-forecast__txn--paycheck{
-  opacity: 1;
-}
-body.landing-page .landing-hero-forecast .landing-insight__card{
-  transition:
-    opacity 0.7s ease,
-    background 0.7s ease;
-  opacity: 0.96;
-  transform: none;
-}
-body.landing-page .landing-hero-forecast.is-step-alert .landing-insight__card,
-body.landing-page .landing-hero-forecast.is-step-paycheck .landing-insight__card{
-  opacity: 1;
-  background: linear-gradient(180deg, rgba(255, 252, 247, 0.98) 0%, rgba(252, 249, 244, 0.96) 100%);
+@keyframes landing-hero-story-alert-in{
+  from{
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to{
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 @media (prefers-reduced-motion: reduce){
-  body.landing-page .landing-hero-forecast__day > rect,
-  body.landing-page .landing-hero-forecast .landing-insight__card,
-  body.landing-page .landing-hero-forecast__txn,
-  body.landing-page .landing-hero-forecast__dayTag{
-    transition: none;
+  body.landing-page .landing-hero-story__alert{
+    animation: none;
   }
-  body.landing-page .landing-hero-forecast .landing-insight__card{
-    opacity: 1;
-    transform: none;
-  }
+}
+body.landing-page .landing-hero-story__alert.is-emphasized{
+  box-shadow:
+    0 -10px 28px -10px rgba(180, 83, 9, 0.32),
+    0 0 0 2px rgba(180, 83, 9, 0.22),
+    0 1px 0 rgba(255, 255, 255, 0.65) inset;
+  transition: box-shadow 0.45s ease;
 }
 
 /* Landing: forecast calendar peek (cropped-style preview) */
@@ -1370,6 +1407,10 @@ body.landing-page .landing-cal-peek--primary .landing-cal-peek__frame{
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.85) inset,
     0 14px 32px -14px rgba(11, 61, 46, 0.16);
+}
+body.landing-page .landing-cal-peek--primary .landing-cal-peek__inner:has(.landing-cal-peek__copy:only-child),
+body.landing-page .landing-cal-peek--primary .landing-cal-peek__inner:not(:has(.landing-cal-peek__frame)){
+  grid-template-columns: 1fr;
 }
 body.landing-page .landing-preview--secondary .landing-preview__title{
   font-size: clamp(0.98rem, 1.85vw, 1.12rem);
@@ -2240,11 +2281,7 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
   }
 
   body.landing-page .landing-hero-forecast{
-    max-width: min(50rem, 88%);
-  }
-
-  body.landing-page .landing-hero-forecast__cal .landing-cal-peek__svg{
-    max-height: 196px;
+    max-width: min(28rem, 96%);
   }
 
   body.landing-page .landing-hero-viz{
@@ -3801,7 +3838,7 @@ body.landing-page .landing-offer__panel{
     0 1px 2px rgba(11, 61, 46, 0.05);
   display: grid;
   grid-template-columns: minmax(0, max-content) auto;
-  align-items: center;
+  align-items: start;
   justify-content: center;
   column-gap: clamp(0.38rem, 0.82vw, 0.58rem);
   row-gap: 0.5rem;
@@ -3814,14 +3851,17 @@ body.landing-page .landing-offer__content{
   text-align: left;
   gap: 0.08rem;
   min-width: 0;
+  padding-top: 0.06rem;
 }
 body.landing-page .landing-offer__action{
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   justify-self: start;
-  align-self: center;
-  margin: 0.22rem 0 0;
+  align-self: start;
+  gap: 0.32rem;
+  margin: 0;
   width: auto;
   max-width: 100%;
   padding: 0;
@@ -3909,13 +3949,13 @@ body.landing-page .landing-offer__cta:hover{
 }
 body.landing-page .landing-offer__footnote{
   margin: 0;
-  max-width: none;
+  max-width: 12rem;
   font-size: 0.72rem;
   line-height: 1.28;
   font-weight: 500;
   letter-spacing: 0.006em;
   color: rgba(100, 116, 139, 0.62);
-  text-align: left;
+  text-align: center;
 }
 body.landing-page .landing-offer__cta:focus-visible{
   outline: 2px solid var(--accent);
@@ -3944,6 +3984,7 @@ body.landing-page .landing-offer__cta:focus-visible{
     max-width: none;
     padding: 0.12rem 0 0;
     border: none;
+    gap: 0.28rem;
   }
   body.landing-page .landing-offer__bullets{
     justify-content: center;
