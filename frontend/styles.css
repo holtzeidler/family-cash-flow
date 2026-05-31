@@ -1174,249 +1174,106 @@ body.landing-page .landing-hero-forecast{
 body.landing-page .landing-hero-forecast__demo.landing-hero-story{
   display: flex;
   flex-direction: column;
-  gap: 0;
   min-width: 0;
   width: 100%;
-  padding: clamp(0.72rem, 1.5vw, 0.92rem) clamp(0.88rem, 1.8vw, 1.05rem) clamp(0.68rem, 1.4vw, 0.82rem);
+  padding: clamp(0.95rem, 1.85vw, 1.18rem) clamp(0.95rem, 1.85vw, 1.12rem);
   border-radius: 14px;
-  border: 1px solid rgba(11, 61, 46, 0.1);
+  border: 1px solid rgba(11, 61, 46, 0.08);
   overflow: hidden;
   background: rgba(255, 255, 255, 0.99);
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.92) inset,
-    0 12px 32px -20px rgba(11, 61, 46, 0.14),
-    0 4px 14px -8px rgba(11, 61, 46, 0.07);
+    0 10px 28px -18px rgba(11, 61, 46, 0.12);
   box-sizing: border-box;
 }
 body.landing-page .landing-hero-story__flow{
   display: flex;
   flex-direction: column;
-  gap: clamp(0.38rem, 0.85vw, 0.52rem);
-  padding-bottom: 0;
+  gap: clamp(0.88rem, 1.75vw, 1.12rem);
 }
-body.landing-page .landing-hero-story__eyebrow{
+body.landing-page .landing-hero-story__section{
+  display: flex;
+  flex-direction: column;
+  gap: 0.16rem;
+}
+body.landing-page .landing-hero-story__section--today{
+  gap: 0.1rem;
+}
+body.landing-page .landing-hero-story__label{
   display: block;
-  margin: 0 0 0.1rem;
-  font-size: 0.62rem;
-  font-weight: 650;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  color: rgba(100, 116, 139, 0.72);
-}
-body.landing-page .landing-hero-story__hero-amount{
   margin: 0;
-  font-size: clamp(1.68rem, 4vw, 2.15rem);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(100, 116, 139, 0.75);
+}
+body.landing-page .landing-hero-story__balance{
+  margin: 0;
   font-weight: 800;
   letter-spacing: -0.03em;
   line-height: 1;
-  color: rgba(11, 61, 46, 0.96);
   font-variant-numeric: tabular-nums;
 }
-body.landing-page .landing-hero-story__timeline{
-  list-style: none;
-  margin: 0.12rem 0 0;
-  padding: 0 0 0 0.72rem;
-  border-left: 2px solid rgba(11, 61, 46, 0.1);
-  display: flex;
-  flex-direction: column;
-  gap: clamp(0.42rem, 0.9vw, 0.55rem);
+body.landing-page .landing-hero-story__balance--start{
+  font-size: clamp(1.75rem, 4.2vw, 2.25rem);
+  color: rgba(11, 61, 46, 0.96);
 }
-body.landing-page .landing-hero-story__beat{
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-  padding: 0 0 0 0.58rem;
-}
-body.landing-page .landing-hero-story__beat::before{
-  content: "";
-  position: absolute;
-  left: calc(-0.72rem - 1px);
-  top: 0.62rem;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #fff;
-  border: 2px solid rgba(11, 61, 46, 0.22);
-  transform: translateX(-50%);
-  box-sizing: border-box;
-}
-body.landing-page .landing-hero-story__beat:last-child{
-  padding-bottom: 0;
-}
-body.landing-page .landing-hero-story__line{
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.65rem;
-  padding: 0.06rem 0 0;
-}
-body.landing-page .landing-hero-story__line-label{
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 0.22rem;
-  min-width: 0;
-}
-body.landing-page .landing-hero-story__line-title{
-  font-size: clamp(0.84rem, 1.35vw, 0.92rem);
-  font-weight: 650;
-  letter-spacing: -0.01em;
-  color: rgba(30, 41, 59, 0.92);
-}
-body.landing-page .landing-hero-story__line-sep{
-  font-size: 0.72rem;
+body.landing-page .landing-hero-story__txn{
+  margin: 0;
+  font-size: clamp(0.8rem, 1.25vw, 0.88rem);
   font-weight: 500;
-  color: rgba(148, 163, 184, 0.72);
-  line-height: 1;
+  line-height: 1.35;
+  color: rgba(71, 85, 105, 0.82);
 }
-body.landing-page .landing-hero-story__line-meta{
-  font-size: 0.72rem;
+body.landing-page .landing-hero-story__txn-sep{
+  margin: 0 0.18rem;
+  color: rgba(148, 163, 184, 0.62);
+}
+body.landing-page .landing-hero-story__change{
+  margin: 0;
+  font-size: clamp(0.94rem, 1.5vw, 1.05rem);
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+body.landing-page .landing-hero-story__change--neg{
+  color: rgba(185, 28, 28, 0.78);
+}
+body.landing-page .landing-hero-story__change--pos{
+  color: rgba(4, 120, 87, 0.82);
+}
+body.landing-page .landing-hero-story__outcome{
+  margin: 0.1rem 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.32rem;
+  line-height: 1.15;
+}
+body.landing-page .landing-hero-story__outcome-label{
+  font-size: 0.78rem;
   font-weight: 500;
   color: rgba(100, 116, 139, 0.78);
 }
-body.landing-page .landing-hero-story__line-delta{
-  flex: 0 0 auto;
-  font-size: clamp(0.92rem, 1.6vw, 1.02rem);
-  font-weight: 750;
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
+body.landing-page .landing-hero-story__balance--dip{
+  font-size: clamp(1.38rem, 2.8vw, 1.72rem);
+  color: rgba(146, 64, 14, 0.92);
 }
-body.landing-page .landing-hero-story__line-delta--neg{
-  color: rgba(185, 28, 28, 0.82);
-}
-body.landing-page .landing-hero-story__line-delta--pos{
-  color: rgba(4, 120, 87, 0.88);
-}
-body.landing-page .landing-hero-story__result{
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.28rem 0.38rem;
-  padding: 0.02rem 0 0.08rem;
-}
-body.landing-page .landing-hero-story__result-arrow{
-  flex: 0 0 auto;
-  font-size: 0.82rem;
-  font-weight: 600;
-  line-height: 1;
-  color: rgba(100, 116, 139, 0.52);
-}
-body.landing-page .landing-hero-story__amount{
-  margin: 0;
-  font-size: clamp(1.22rem, 2.45vw, 1.52rem);
-  font-weight: 800;
-  letter-spacing: -0.025em;
-  line-height: 1.02;
-  font-variant-numeric: tabular-nums;
-}
-body.landing-page .landing-hero-story__amount--dip{
-  color: rgba(146, 64, 14, 0.94);
-}
-body.landing-page .landing-hero-story__amount--recovery{
+body.landing-page .landing-hero-story__balance--final{
+  font-size: clamp(1.38rem, 2.8vw, 1.72rem);
   color: rgba(11, 61, 46, 0.94);
 }
-body.landing-page .landing-hero-story__chip{
-  display: inline-flex;
-  align-items: center;
-  gap: 0.28rem;
-  margin: 0;
-  padding: 0.14rem 0.38rem;
-  border-radius: 999px;
-  font-size: 0.66rem;
-  font-weight: 650;
-  line-height: 1.2;
-}
-body.landing-page .landing-hero-story__chip--warn{
-  color: rgba(154, 52, 18, 0.92);
-  background: rgba(254, 243, 199, 0.72);
-  border: 1px solid rgba(180, 83, 9, 0.18);
-}
-body.landing-page .landing-hero-story__chip-icon{
+body.landing-page .landing-hero-story__flag{
+  margin: 0.14rem 0 0;
   font-size: 0.72rem;
-  line-height: 1;
+  font-weight: 500;
+  line-height: 1.3;
+  color: rgba(154, 52, 18, 0.82);
 }
-body.landing-page .landing-hero-story__alert{
-  position: relative;
-  margin: 0.42rem 0 0;
-  padding: 0.42rem 0.55rem;
-  border-radius: 8px;
-  border: 1px solid rgba(180, 83, 9, 0.22);
-  background: linear-gradient(180deg, rgba(255, 248, 235, 0.96) 0%, rgba(255, 244, 224, 0.92) 100%);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.55) inset;
-  animation: landing-hero-story-alert-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.25s both;
-}
-body.landing-page .landing-hero-story__alert-inner{
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-}
-body.landing-page .landing-hero-story__alert-icon{
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.55rem;
-  height: 1.55rem;
-  border-radius: 7px;
-  color: rgba(154, 52, 18, 0.92);
-  background: rgba(255, 255, 255, 0.82);
-  border: 1px solid rgba(180, 83, 9, 0.18);
-}
-body.landing-page .landing-hero-story__alert-icon svg{
-  display: block;
-  width: 0.88rem;
-  height: 0.88rem;
-}
-body.landing-page .landing-hero-story__alert-line{
-  margin: 0;
-  min-width: 0;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.2rem 0.35rem;
-  line-height: 1.32;
-}
-body.landing-page .landing-hero-story__alert-label{
-  margin: 0;
-  font-size: 0.62rem;
-  font-weight: 750;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  color: rgba(154, 52, 18, 0.88);
-  white-space: nowrap;
-}
-body.landing-page .landing-hero-story__alert-copy{
-  margin: 0;
-  flex: 1 1 8rem;
-  min-width: 0;
-  font-size: clamp(0.74rem, 1.25vw, 0.82rem);
-  font-weight: 600;
-  line-height: 1.32;
-  letter-spacing: -0.008em;
-  color: rgba(30, 41, 59, 0.9);
-  text-wrap: pretty;
-}
-@keyframes landing-hero-story-alert-in{
-  from{
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to{
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-@media (prefers-reduced-motion: reduce){
-  body.landing-page .landing-hero-story__alert{
-    animation: none;
-  }
-}
-body.landing-page .landing-hero-story__alert.is-emphasized{
-  box-shadow:
-    0 0 0 1px rgba(180, 83, 9, 0.24),
-    0 1px 0 rgba(255, 255, 255, 0.55) inset;
-  transition: box-shadow 0.45s ease;
+body.landing-page .landing-hero-story__flag-icon{
+  margin-right: 0.12rem;
 }
 
 /* Landing: forecast calendar peek (cropped-style preview) */

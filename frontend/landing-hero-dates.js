@@ -27,12 +27,6 @@
   var payEl = hub.querySelector("#landingHeroPayDate");
   if (payEl) payEl.textContent = fmtShort(payDate);
 
-  var alertCopy = hub.querySelector("#landingHeroAlertCopy");
-  if (alertCopy) {
-    alertCopy.textContent =
-      "Your balance drops near $1,000 before your next paycheck arrives.";
-  }
-
   var reconciled = document.querySelector("#landingPreviewReconciled");
   if (reconciled) reconciled.textContent = "Forecast reconciled through " + fmtShort(today);
 
