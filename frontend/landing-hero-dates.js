@@ -94,9 +94,7 @@
   var insight = hub.querySelector("#landingHeroAlertCopy");
   if (insight) {
     insight.textContent =
-      "Your balance drops near $1,000 before your next paycheck. Consider waiting until after your " +
-      fmtShort(payDate) +
-      " deposit before moving extra cash.";
+      "Consider waiting until after your " + fmtShort(payDate) + " paycheck before moving extra cash.";
   }
 
   var reconciled = document.querySelector("#landingPreviewReconciled");
