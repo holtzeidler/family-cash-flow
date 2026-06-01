@@ -94,4 +94,17 @@
     insight.textContent =
       "Consider waiting until after your " + fmtShort(payDate) + " paycheck before moving extra cash.";
   }
+
+  var reconciled = document.querySelector("#landingPreviewReconciled");
+  if (reconciled) reconciled.textContent = "Forecast reconciled through " + fmtShort(today);
+
+  var billList = document.querySelector("#landingPreviewBillList");
+  if (billList) {
+    var billOffsets = [-2, -1, 0, 2, 4];
+    var items = billList.querySelectorAll("li");
+    for (var b = 0; b < items.length && b < billOffsets.length; b += 1) {
+      var dateSpan = items[b].querySelector("span:last-child");
+      if (dateSpan) dateSpan.textContent = fmtShort(addDays(billDate, billOffsets[b]));
+    }
+  }
 })();
