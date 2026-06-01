@@ -48,7 +48,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=692" />
+    <link rel="stylesheet" href="./styles.css?v=693" />
   </head>
   <body class="landing-page">
     <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -102,40 +102,42 @@
             <div id="landingHeroForecast" class="landing-hero-forecast" aria-label="Example forecast preview">
               <div class="landing-hero-forecast__demo landing-hero-story">
                 <div class="landing-hero-story__flow">
-                  <section class="landing-hero-story__section landing-hero-story__section--today">
-                    <span class="landing-hero-story__label">Today&rsquo;s Balance</span>
-                    <p class="landing-hero-story__balance landing-hero-story__balance--start">$4,280</p>
-                  </section>
+                  <header class="landing-hero-story__today">
+                    <span class="landing-hero-story__today-label">Today</span>
+                    <p class="landing-hero-story__today-amount">$4,280</p>
+                  </header>
 
-                  <section class="landing-hero-story__section">
-                    <p class="landing-hero-story__txn">
-                      Credit Card Payment
-                      <span class="landing-hero-story__txn-sep" aria-hidden="true">&bull;</span>
-                      <span id="landingHeroBillDate">Jun 2</span>
-                    </p>
-                    <p class="landing-hero-story__change landing-hero-story__change--neg">&minus;$1,220</p>
-                    <p class="landing-hero-story__outcome">
-                      <span class="landing-hero-story__outcome-label">Resulting Balance:</span>
-                      <span class="landing-hero-story__balance landing-hero-story__balance--dip">$1,020</span>
-                    </p>
-                    <p class="landing-hero-story__flag" role="note">
-                      <span class="landing-hero-story__flag-icon" aria-hidden="true">&#9888;</span>
-                      Below comfort threshold
-                    </p>
-                  </section>
+                  <div class="landing-hero-story__feed" aria-label="Upcoming forecast events">
+                    <article class="landing-hero-story__event">
+                      <p class="landing-hero-story__event-head">
+                        <span id="landingHeroBillDate">Jun 4</span>
+                        <span class="landing-hero-story__event-sep" aria-hidden="true">&bull;</span>
+                        <span>Credit Card Payment</span>
+                      </p>
+                      <p class="landing-hero-story__event-delta landing-hero-story__event-delta--neg">&minus;$1,220</p>
+                      <div class="landing-hero-story__event-balance landing-hero-story__event-balance--tension">
+                        <span class="landing-hero-story__event-balance-label">Balance after payment</span>
+                        <p class="landing-hero-story__event-balance-amount">$1,020</p>
+                        <p class="landing-hero-story__event-flag" role="note">
+                          <span class="landing-hero-story__event-flag-icon" aria-hidden="true">&#9888;</span>
+                          Below comfort threshold
+                        </p>
+                      </div>
+                    </article>
 
-                  <section class="landing-hero-story__section">
-                    <p class="landing-hero-story__txn">
-                      Paycheck
-                      <span class="landing-hero-story__txn-sep" aria-hidden="true">&bull;</span>
-                      <span id="landingHeroPayDate">Jun 3</span>
-                    </p>
-                    <p class="landing-hero-story__change landing-hero-story__change--pos">+$2,030</p>
-                    <p class="landing-hero-story__outcome">
-                      <span class="landing-hero-story__outcome-label">New Balance:</span>
-                      <span class="landing-hero-story__balance landing-hero-story__balance--final">$3,050</span>
-                    </p>
-                  </section>
+                    <article class="landing-hero-story__event">
+                      <p class="landing-hero-story__event-head">
+                        <span id="landingHeroPayDate">Jun 5</span>
+                        <span class="landing-hero-story__event-sep" aria-hidden="true">&bull;</span>
+                        <span>Paycheck</span>
+                      </p>
+                      <p class="landing-hero-story__event-delta landing-hero-story__event-delta--pos">+$2,030</p>
+                      <div class="landing-hero-story__event-balance">
+                        <span class="landing-hero-story__event-balance-label">Balance after paycheck</span>
+                        <p class="landing-hero-story__event-balance-amount landing-hero-story__event-balance-amount--final">$3,050</p>
+                      </div>
+                    </article>
+                  </div>
                 </div>
               </div>
             </div>

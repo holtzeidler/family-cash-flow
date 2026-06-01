@@ -1176,7 +1176,7 @@ body.landing-page .landing-hero-forecast__demo.landing-hero-story{
   flex-direction: column;
   min-width: 0;
   width: 100%;
-  padding: clamp(0.95rem, 1.85vw, 1.18rem) clamp(0.95rem, 1.85vw, 1.12rem);
+  padding: clamp(0.88rem, 1.7vw, 1.08rem) clamp(1rem, 1.85vw, 1.15rem);
   border-radius: 14px;
   border: 1px solid rgba(11, 61, 46, 0.08);
   overflow: hidden;
@@ -1185,95 +1185,125 @@ body.landing-page .landing-hero-forecast__demo.landing-hero-story{
     0 1px 0 rgba(255, 255, 255, 0.92) inset,
     0 10px 28px -18px rgba(11, 61, 46, 0.12);
   box-sizing: border-box;
+  text-align: left;
 }
 body.landing-page .landing-hero-story__flow{
   display: flex;
   flex-direction: column;
-  gap: clamp(0.88rem, 1.75vw, 1.12rem);
+  gap: 0;
 }
-body.landing-page .landing-hero-story__section{
-  display: flex;
-  flex-direction: column;
-  gap: 0.16rem;
-}
-body.landing-page .landing-hero-story__section--today{
-  gap: 0.1rem;
-}
-body.landing-page .landing-hero-story__label{
-  display: block;
+body.landing-page .landing-hero-story__today{
   margin: 0;
+  padding: 0 0 clamp(0.72rem, 1.4vw, 0.88rem);
+  text-align: center;
+  border-bottom: 1px solid rgba(11, 61, 46, 0.08);
+}
+body.landing-page .landing-hero-story__today-label{
+  display: block;
+  margin: 0 0 0.12rem;
   font-size: 0.68rem;
   font-weight: 600;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: rgba(100, 116, 139, 0.75);
 }
-body.landing-page .landing-hero-story__balance{
+body.landing-page .landing-hero-story__today-amount{
   margin: 0;
+  font-size: clamp(1.55rem, 3.6vw, 1.95rem);
   font-weight: 800;
   letter-spacing: -0.03em;
   line-height: 1;
+  color: rgba(11, 61, 46, 0.96);
   font-variant-numeric: tabular-nums;
 }
-body.landing-page .landing-hero-story__balance--start{
-  font-size: clamp(1.75rem, 4.2vw, 2.25rem);
-  color: rgba(11, 61, 46, 0.96);
+body.landing-page .landing-hero-story__feed{
+  display: flex;
+  flex-direction: column;
+  padding-top: clamp(0.62rem, 1.2vw, 0.78rem);
 }
-body.landing-page .landing-hero-story__txn{
+body.landing-page .landing-hero-story__event{
   margin: 0;
-  font-size: clamp(0.8rem, 1.25vw, 0.88rem);
-  font-weight: 500;
+  padding: clamp(0.62rem, 1.15vw, 0.78rem) 0;
+  border-top: 1px solid rgba(11, 61, 46, 0.08);
+}
+body.landing-page .landing-hero-story__event:first-child{
+  padding-top: 0;
+  border-top: none;
+}
+body.landing-page .landing-hero-story__event-head{
+  margin: 0 0 0.2rem;
+  font-size: clamp(0.82rem, 1.3vw, 0.9rem);
+  font-weight: 600;
   line-height: 1.35;
-  color: rgba(71, 85, 105, 0.82);
+  letter-spacing: -0.008em;
+  color: rgba(30, 41, 59, 0.9);
 }
-body.landing-page .landing-hero-story__txn-sep{
-  margin: 0 0.18rem;
-  color: rgba(148, 163, 184, 0.62);
+body.landing-page .landing-hero-story__event-sep{
+  margin: 0 0.28rem;
+  font-weight: 500;
+  color: rgba(148, 163, 184, 0.55);
 }
-body.landing-page .landing-hero-story__change{
-  margin: 0;
-  font-size: clamp(0.94rem, 1.5vw, 1.05rem);
+body.landing-page .landing-hero-story__event-delta{
+  margin: 0 0 0.42rem;
+  font-size: clamp(0.88rem, 1.35vw, 0.96rem);
   font-weight: 700;
-  letter-spacing: -0.015em;
+  letter-spacing: -0.012em;
   line-height: 1.2;
   font-variant-numeric: tabular-nums;
 }
-body.landing-page .landing-hero-story__change--neg{
-  color: rgba(185, 28, 28, 0.78);
+body.landing-page .landing-hero-story__event-delta--neg{
+  color: rgba(185, 28, 28, 0.76);
 }
-body.landing-page .landing-hero-story__change--pos{
-  color: rgba(4, 120, 87, 0.82);
+body.landing-page .landing-hero-story__event-delta--pos{
+  color: rgba(4, 120, 87, 0.8);
 }
-body.landing-page .landing-hero-story__outcome{
-  margin: 0.1rem 0 0;
+body.landing-page .landing-hero-story__event-balance{
   display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.32rem;
-  line-height: 1.15;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.06rem;
 }
-body.landing-page .landing-hero-story__outcome-label{
-  font-size: 0.78rem;
+body.landing-page .landing-hero-story__event-balance--tension{
+  gap: 0.08rem;
+}
+body.landing-page .landing-hero-story__event-balance-label{
+  font-size: 0.76rem;
   font-weight: 500;
+  line-height: 1.3;
   color: rgba(100, 116, 139, 0.78);
 }
-body.landing-page .landing-hero-story__balance--dip{
-  font-size: clamp(1.38rem, 2.8vw, 1.72rem);
-  color: rgba(146, 64, 14, 0.92);
+body.landing-page .landing-hero-story__event-balance--tension .landing-hero-story__event-balance-label{
+  font-weight: 600;
+  color: rgba(120, 53, 15, 0.72);
 }
-body.landing-page .landing-hero-story__balance--final{
-  font-size: clamp(1.38rem, 2.8vw, 1.72rem);
-  color: rgba(11, 61, 46, 0.94);
+body.landing-page .landing-hero-story__event-balance-amount{
+  margin: 0;
+  font-size: clamp(1.05rem, 1.85vw, 1.22rem);
+  font-weight: 750;
+  letter-spacing: -0.022em;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+  color: rgba(51, 65, 85, 0.9);
 }
-body.landing-page .landing-hero-story__flag{
-  margin: 0.14rem 0 0;
+body.landing-page .landing-hero-story__event-balance--tension .landing-hero-story__event-balance-amount{
+  font-size: clamp(1.42rem, 2.65vw, 1.68rem);
+  font-weight: 800;
+  color: rgba(146, 64, 14, 0.94);
+}
+body.landing-page .landing-hero-story__event-balance-amount--final{
+  font-size: clamp(1.12rem, 2vw, 1.28rem);
+  font-weight: 780;
+  color: rgba(11, 61, 46, 0.92);
+}
+body.landing-page .landing-hero-story__event-flag{
+  margin: 0.12rem 0 0;
   font-size: 0.72rem;
   font-weight: 500;
   line-height: 1.3;
-  color: rgba(154, 52, 18, 0.82);
+  color: rgba(154, 52, 18, 0.8);
 }
-body.landing-page .landing-hero-story__flag-icon{
-  margin-right: 0.12rem;
+body.landing-page .landing-hero-story__event-flag-icon{
+  margin-right: 0.1rem;
 }
 
 /* Landing: forecast calendar peek (cropped-style preview) */
