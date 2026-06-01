@@ -989,10 +989,12 @@ body.landing-page .landing-preview__billList li span:last-child{
   font-size: 0.8rem;
   font-variant-numeric: tabular-nums;
   color: rgba(71, 85, 105, 0.78);
+  margin-right: 5ch;
 }
 body.landing-page .landing-preview__chart{
   margin: 0;
   align-self: stretch;
+  transform: translateX(-5ch);
   padding: 0.28rem 0.44rem 0.18rem;
   border-radius: 12px;
   background:
@@ -3492,6 +3494,7 @@ body.landing-page .landing-preview__billList li span:last-child{
   text-align: right;
   flex: 0 0 auto;
   min-width: 3.55rem;
+  margin-right: 5ch;
 }
 body.landing-page .landing-preview__chart{
   display: flex;
@@ -3500,6 +3503,7 @@ body.landing-page .landing-preview__chart{
   justify-content: center;
   margin: 0;
   align-self: stretch;
+  transform: translateX(-5ch);
   min-height: clamp(118px, 19vw, 152px);
   padding: 0.14rem 0.34rem 0.1rem;
   border-radius: 13px;
