@@ -1,23 +1,22 @@
 /**
- * Hero forecast story: subtle alert emphasis when the demo scrolls into view.
- * Static layout carries the story; this only draws attention to the alert once.
+ * Hero forecast calendar: subtle insight emphasis when the demo scrolls into view.
  */
 (function () {
   var hub = document.getElementById("landingHeroForecast");
   if (!hub) return;
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
-  var alertEl = hub.querySelector(".landing-hero-story__alert");
-  if (!alertEl) return;
+  var insightEl = hub.querySelector(".landing-hero-cal__insight");
+  if (!insightEl) return;
 
   var emphasized = false;
 
-  function emphasizeAlert() {
+  function emphasizeInsight() {
     if (emphasized) return;
     emphasized = true;
-    alertEl.classList.add("is-emphasized");
+    insightEl.classList.add("is-emphasized");
     window.setTimeout(function () {
-      alertEl.classList.remove("is-emphasized");
+      insightEl.classList.remove("is-emphasized");
     }, 2200);
   }
 
@@ -26,7 +25,7 @@
       function (entries) {
         entries.forEach(function (e) {
           if (e.isIntersecting) {
-            window.setTimeout(emphasizeAlert, 900);
+            window.setTimeout(emphasizeInsight, 900);
             io.disconnect();
           }
         });
@@ -35,6 +34,6 @@
     );
     io.observe(hub);
   } else {
-    window.setTimeout(emphasizeAlert, 900);
+    window.setTimeout(emphasizeInsight, 900);
   }
 })();
