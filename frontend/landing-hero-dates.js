@@ -1,5 +1,5 @@
 /**
- * Landing hero: 7-day projected balance calendar with bill/pay markers.
+ * Landing hero: 5-day focus forecast around bill, low balance, and paycheck.
  */
 (function () {
   var hub = document.getElementById("landingHeroForecast");
@@ -29,18 +29,16 @@
   }
 
   var today = startOfDay(new Date());
-  var forecastStart = addDays(today, 1);
-  var billDate = addDays(forecastStart, 2);
+  var forecastStart = addDays(today, 2);
+  var billDate = addDays(forecastStart, 1);
   var payDate = addDays(forecastStart, 3);
 
   var dayData = [
     { bal: 4280 },
-    { bal: 4100 },
-    { bal: 3850 },
-    { bal: 1020, watch: true, bill: true },
+    { bal: 3850, bill: true },
+    { bal: 1020, watch: true },
     { bal: 3050, pay: true },
     { bal: 2890 },
-    { bal: 2720 },
   ];
 
   var weekEl = hub.querySelector("#landingHeroCalWeek");

@@ -977,10 +977,10 @@ body.landing-page .landing-preview__billList{
   gap: 0.38rem;
 }
 body.landing-page .landing-preview__billList li{
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  display: flex;
   align-items: baseline;
-  column-gap: 0.75rem;
+  justify-content: space-between;
+  gap: 0.65rem;
   margin: 0;
   padding: 0;
   border: none;
@@ -990,11 +990,10 @@ body.landing-page .landing-preview__billList li{
   color: rgba(15, 23, 42, 0.92);
 }
 body.landing-page .landing-preview__billList li span:last-child{
+  flex-shrink: 0;
   font-size: 0.8rem;
   font-variant-numeric: tabular-nums;
   color: rgba(71, 85, 105, 0.78);
-  text-align: right;
-  white-space: nowrap;
 }
 body.landing-page .landing-preview__chart{
   margin: 0;
@@ -1173,7 +1172,7 @@ body.landing-page .landing-hero__demo-caption-title{
 }
 body.landing-page .landing-hero-forecast{
   width: 100%;
-  max-width: min(30rem, 100%);
+  max-width: min(34rem, 100%);
   margin: 1.75ch 0 0;
   box-sizing: border-box;
 }
@@ -1191,42 +1190,82 @@ body.landing-page .landing-hero-cal .landing-hero-viz__hdr{
   gap: 0.18rem;
 }
 body.landing-page .landing-hero-cal .landing-hero-viz__week{
-  gap: 9px;
-  margin-bottom: 14px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 0 0.55rem;
+  box-sizing: border-box;
 }
 body.landing-page .landing-hero-cal .landing-hero-viz__cell{
-  width: 90%;
-  max-width: 100%;
-  justify-self: center;
-  padding: 6px 3px 7px;
-  min-height: 3.7rem;
+  width: auto;
+  max-width: none;
+  justify-self: stretch;
+  padding: 10px 7px 11px;
+  min-height: 4.35rem;
+  border-color: rgba(17, 24, 39, 0.07);
+  background: rgba(255, 255, 255, 0.76);
 }
 body.landing-page .landing-hero-cal .landing-hero-viz__d{
-  font-size: 9.5px;
-  letter-spacing: -0.01em;
-  line-height: 1.15;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.2;
+  color: rgba(71, 85, 105, 0.62);
+}
+body.landing-page .landing-hero-cal .landing-hero-viz__b{
+  margin-top: 5px;
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(11, 61, 46, 0.58);
+}
+body.landing-page .landing-hero-cal .landing-hero-viz__cell--bill{
+  border-color: rgba(180, 83, 9, 0.16);
+}
+body.landing-page .landing-hero-cal .landing-hero-viz__cell--pay{
+  padding: 10px 7px 11px;
+  border-width: 1.25px;
+  border-color: rgba(4, 120, 87, 0.34);
+  background: rgba(236, 253, 245, 0.58);
+  box-shadow: 0 3px 12px -8px rgba(4, 120, 87, 0.2);
+}
+body.landing-page .landing-hero-cal .landing-hero-viz__cell--pay .landing-hero-viz__d{
+  color: rgba(4, 100, 75, 0.8);
+  font-weight: 700;
+}
+body.landing-page .landing-hero-cal .landing-hero-viz__cell--pay .landing-hero-viz__b{
+  font-size: 13.5px;
+  font-weight: 800;
+  color: rgba(11, 61, 46, 0.84);
+}
+body.landing-page .landing-hero-cal .landing-hero-viz__cell--pay .landing-hero-viz__tag{
+  margin-top: 4px;
+  font-size: 8px;
 }
 body.landing-page .landing-hero-cal .landing-hero-viz__cell--watch{
-  width: 94%;
-  padding: 8px 4px 9px;
+  width: auto;
+  padding: 12px 8px 13px;
   border-width: 1.5px;
-  border-color: rgba(11, 61, 46, 0.4);
+  border-color: rgba(11, 61, 46, 0.42);
   background: #fff;
   box-shadow:
-    0 0 0 1px rgba(11, 61, 46, 0.11),
-    0 6px 16px -8px rgba(11, 61, 46, 0.2);
+    0 0 0 1px rgba(11, 61, 46, 0.12),
+    0 8px 20px -10px rgba(11, 61, 46, 0.24);
 }
 body.landing-page .landing-hero-cal .landing-hero-viz__cell--watch .landing-hero-viz__d{
-  color: rgba(11, 61, 46, 0.88);
+  font-size: 11.5px;
+  color: rgba(11, 61, 46, 0.9);
   font-weight: 800;
 }
 body.landing-page .landing-hero-cal .landing-hero-viz__cell--watch .landing-hero-viz__b{
+  margin-top: 6px;
+  font-size: 14.5px;
   color: rgba(11, 61, 46, 0.96);
   font-weight: 850;
 }
 body.landing-page .landing-hero-cal .landing-hero-viz__cell--watch .landing-hero-viz__tag{
   color: rgba(11, 61, 46, 0.52);
-  margin-top: 3px;
+  margin-top: 5px;
+  font-size: 9px;
 }
 body.landing-page .landing-hero-viz__cell--today{
   border-color: rgba(4, 120, 87, 0.22);
@@ -2206,7 +2245,7 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
   }
 
   body.landing-page .landing-hero-forecast{
-    max-width: min(28rem, 96%);
+    max-width: min(34rem, 96%);
   }
 
   body.landing-page .landing-hero-viz{
@@ -3207,16 +3246,7 @@ body.landing-page .landing-hero-viz{
   filter: saturate(1.02) contrast(1.01);
 }
 body.landing-page .landing-hero-cal.landing-hero-viz{
-  padding: 18px 18px 17px;
-}
-body.landing-page .landing-hero-cal .landing-hero-viz__week{
-  gap: 9px;
-  margin-bottom: 14px;
-}
-body.landing-page .landing-hero-cal .landing-hero-viz__cell{
-  width: 90%;
-  justify-self: center;
-  min-height: 3.7rem;
+  padding: 20px 20px 18px;
 }
 body.landing-page .landing-hero-viz__week{
   gap: 6px;
@@ -3394,7 +3424,7 @@ body.landing-page .landing-preview__tagline{
 }
 body.landing-page .landing-preview__main{
   grid-template-columns: minmax(0, 1.04fr) minmax(0, 0.68fr);
-  gap: 0.52rem 0.5rem;
+  gap: 0.52rem 0.68rem;
   align-items: stretch;
 }
 body.landing-page .landing-preview__leftCol{
@@ -3483,21 +3513,21 @@ body.landing-page .landing-preview__billList{
   width: 100%;
 }
 body.landing-page .landing-preview__billList li{
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: baseline;
-  column-gap: 0.75rem;
   font-size: 0.8rem;
   font-weight: 400;
   color: rgba(30, 41, 55, 0.78);
   padding: 0.18rem 0;
   border-bottom: 1px solid rgba(15, 23, 42, 0.055);
+  justify-content: space-between;
+  gap: 0.65rem;
 }
 body.landing-page .landing-preview__billList li:last-child{
   border-bottom: none;
   padding-bottom: 0;
 }
 body.landing-page .landing-preview__billList li span:first-child{
+  padding-right: 0.65rem;
+  flex: 1 1 auto;
   min-width: 0;
 }
 body.landing-page .landing-preview__billList li span:last-child{
@@ -3507,7 +3537,8 @@ body.landing-page .landing-preview__billList li span:last-child{
   letter-spacing: 0.02em;
   color: rgba(71, 85, 105, 0.7);
   text-align: right;
-  white-space: nowrap;
+  flex: 0 0 auto;
+  min-width: 3.55rem;
 }
 body.landing-page .landing-preview__chart{
   display: flex;
@@ -4128,17 +4159,16 @@ body.landing-page .landing-preview__demo:hover{
     padding: 16px 15px 15px;
   }
   body.landing-page .landing-hero-cal .landing-hero-viz__week{
-    gap: 7px;
-    margin-bottom: 12px;
+    gap: 10px;
+    margin-bottom: 14px;
+    padding: 0 0.4rem;
   }
   body.landing-page .landing-hero-cal .landing-hero-viz__cell{
-    width: 90%;
-    min-height: 3.55rem;
-    padding: 6px 3px 7px;
+    min-height: 4.1rem;
+    padding: 9px 5px 10px;
   }
   body.landing-page .landing-hero-cal .landing-hero-viz__cell--watch{
-    width: 94%;
-    padding: 7px 4px 8px;
+    padding: 10px 6px 11px;
   }
   body.landing-page .landing-hero-cal__insight{
     margin-top: 1rem;
@@ -27289,19 +27319,30 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   }
 
   body.landing-page .landing-hero-cal .landing-hero-viz__week{
-    gap: 6px;
+    gap: 8px;
     margin-bottom: 12px;
+    padding: 0 0.3rem;
   }
 
   body.landing-page .landing-hero-cal .landing-hero-viz__cell{
-    width: 90%;
-    min-height: 3.45rem;
-    padding: 6px 2px 7px;
+    min-height: 3.95rem;
+    padding: 8px 4px 9px;
   }
 
   body.landing-page .landing-hero-cal .landing-hero-viz__cell--watch{
-    width: 94%;
-    padding: 7px 3px 8px;
+    padding: 9px 5px 10px;
+  }
+
+  body.landing-page .landing-hero-cal .landing-hero-viz__d{
+    font-size: 10px;
+  }
+
+  body.landing-page .landing-hero-cal .landing-hero-viz__b{
+    font-size: 12px;
+  }
+
+  body.landing-page .landing-hero-cal .landing-hero-viz__cell--watch .landing-hero-viz__b{
+    font-size: 13.5px;
   }
 
   body.landing-page .landing-hero-cal__insight{
