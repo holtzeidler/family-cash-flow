@@ -950,8 +950,8 @@ body.landing-page .landing-preview__trustText{
 }
 body.landing-page .landing-preview__main{
   display: grid;
-  grid-template-columns: minmax(0, 7fr) minmax(0, 3fr);
-  gap: 0.56rem 0.62rem;
+  grid-template-columns: minmax(0, 1.04fr) minmax(0, 0.68fr);
+  gap: 0.56rem 0.88rem;
   align-items: stretch;
 }
 body.landing-page .landing-preview__leftCol{
@@ -2249,8 +2249,8 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
   }
 
   body.landing-page .landing-preview__main{
-    grid-template-columns: minmax(0, 7fr) minmax(0, 3fr);
-    gap: 16px 14px;
+    grid-template-columns: minmax(0, 1.06fr) minmax(0, 0.71fr);
+    gap: 16px 20px;
     align-items: stretch;
   }
 
@@ -2285,8 +2285,8 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
   }
 
   body.landing-page .landing-preview__chart{
-    min-height: clamp(104px, 10.5vw, 128px);
-    padding: 6px 8px 4px;
+    min-height: clamp(112px, 17vw, 148px);
+    padding: 6px 10px 4px;
     border-radius: 13px;
   }
 
@@ -3401,14 +3401,13 @@ body.landing-page .landing-preview__tagline{
   display: none;
 }
 body.landing-page .landing-preview__main{
-  grid-template-columns: minmax(0, 7fr) minmax(0, 3fr);
-  gap: 0.52rem 0.58rem;
+  grid-template-columns: minmax(0, 1.04fr) minmax(0, 0.68fr);
+  gap: 0.52rem 0.68rem;
   align-items: stretch;
 }
 body.landing-page .landing-preview__leftCol{
   gap: 0;
   min-width: 0;
-  width: 100%;
 }
 body.landing-page .landing-preview__transferBand{
   max-width: none;
@@ -3479,11 +3478,11 @@ body.landing-page .landing-preview__bills{
   margin-top: 0.55rem;
   padding-top: 0.52rem;
   border-top: 1px solid rgba(15, 23, 42, 0.07);
-  width: 100%;
   box-sizing: border-box;
 }
 body.landing-page .landing-preview__billsHead{
   margin: 0 0 0.26rem;
+  max-width: min(19rem, 100%);
   font-size: 0.65rem;
   font-weight: 750;
   letter-spacing: 0.08em;
@@ -3492,10 +3491,11 @@ body.landing-page .landing-preview__billsHead{
 }
 body.landing-page .landing-preview__billList{
   gap: 0.15rem;
-  width: 100%;
+  width: min(19rem, 100%);
+  max-width: 19rem;
 }
 body.landing-page .landing-preview__billList li{
-  font-size: 0.8rem;
+  font-size: 0.72rem;
   font-weight: 400;
   color: rgba(30, 41, 55, 0.78);
   padding: 0.18rem 0;
@@ -3513,14 +3513,14 @@ body.landing-page .landing-preview__billList li span:first-child{
   min-width: 0;
 }
 body.landing-page .landing-preview__billList li span:last-child{
-  font-size: 0.74rem;
+  font-size: 0.67rem;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.02em;
   color: rgba(71, 85, 105, 0.7);
   text-align: right;
   flex: 0 0 auto;
-  min-width: 3.55rem;
+  min-width: 3.2rem;
 }
 body.landing-page .landing-preview__chart{
   display: flex;
@@ -3528,11 +3528,9 @@ body.landing-page .landing-preview__chart{
   align-items: stretch;
   justify-content: center;
   margin: 0;
-  align-self: start;
-  width: 100%;
-  max-width: 100%;
-  min-height: clamp(108px, 11.5vw, 136px);
-  padding: 0.14rem 0.28rem 0.1rem;
+  align-self: stretch;
+  min-height: clamp(118px, 19vw, 152px);
+  padding: 0.14rem 0.34rem 0.1rem;
   border-radius: 13px;
   border: 1px solid rgba(11, 61, 46, 0.06);
   background: rgba(251, 252, 251, 0.78);
@@ -3542,7 +3540,7 @@ body.landing-page .landing-preview__chartSvg{
   display: block;
   width: 100%;
   flex: 1 1 auto;
-  height: auto;
+  height: 100%;
   min-height: 0;
   max-height: none;
   aspect-ratio: 604 / 108;
@@ -4243,10 +4241,10 @@ body.landing-page .landing-preview__demo:hover{
     font-size: 10px;
   }
   body.landing-page .landing-preview__billList li{
-    font-size: 0.84rem;
+    font-size: 0.72rem;
   }
   body.landing-page .landing-preview__billList li span:last-child{
-    font-size: 0.78rem;
+    font-size: 0.67rem;
   }
   body.landing-page .landing-preview__chart{
     min-height: clamp(81px, 26vw, 102px);
