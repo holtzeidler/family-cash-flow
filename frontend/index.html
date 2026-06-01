@@ -147,23 +147,98 @@
           </div>
           <div class="landing-preview__demo">
             <div class="landing-preview__main">
-              <div class="landing-preview__transferBand" role="status" aria-label="Safe to move guidance">
-                <div class="landing-preview__transfer">
-                  <p class="landing-preview__transferLine">You can safely move</p>
-                  <p class="landing-preview__transferAmt">$650 to $900</p>
-                </div>
-                <div class="landing-preview__includes">
-                  <p class="landing-preview__includesHead">Includes:</p>
+              <div class="landing-preview__leftCol">
+                <div class="landing-preview__transferBand" role="status" aria-label="Safe to move guidance">
+                  <div class="landing-preview__transfer">
+                    <p class="landing-preview__transferLine">You can safely move</p>
+                    <p class="landing-preview__transferAmt">$650 to $900</p>
+                  </div>
                   <ul class="landing-preview__includesList" aria-label="What this recommendation includes">
-                    <li><span class="landing-preview__includesCheck" aria-hidden="true">✓</span> Electric &amp; Gas</li>
-                    <li><span class="landing-preview__includesCheck" aria-hidden="true">✓</span> Summer Camp Deposit</li>
-                    <li><span class="landing-preview__includesCheck" aria-hidden="true">✓</span> Credit Card</li>
-                    <li><span class="landing-preview__includesCheck" aria-hidden="true">✓</span> Mortgage</li>
-                    <li><span class="landing-preview__includesCheck" aria-hidden="true">✓</span> Streaming &amp; Phone</li>
-                    <li class="landing-preview__includesListItem--buffer"><span class="landing-preview__includesCheck" aria-hidden="true">✓</span> Your $1,000 safety buffer remains protected</li>
+                    <li><span class="landing-preview__includesCheck" aria-hidden="true">✓</span> Upcoming bills covered</li>
+                    <li class="landing-preview__includesListItem--buffer"><span class="landing-preview__includesCheck" aria-hidden="true">✓</span> $1,000 safety buffer protected</li>
                   </ul>
                 </div>
               </div>
+              <figure
+                class="landing-preview__story"
+                aria-label="Balance dips near your safety buffer after a credit card payment, then recovers with your paycheck"
+              >
+                <svg
+                  class="landing-preview__storySvg"
+                  viewBox="0 0 420 128"
+                  preserveAspectRatio="xMidYMid meet"
+                  xmlns="http://www.w3.org/2000/svg"
+                  role="presentation"
+                >
+                  <defs>
+                    <linearGradient id="landingPreviewStoryFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="rgba(11, 61, 46, 0.14)" />
+                      <stop offset="100%" stop-color="rgba(11, 61, 46, 0)" />
+                    </linearGradient>
+                  </defs>
+                  <line
+                    x1="28"
+                    y1="96"
+                    x2="392"
+                    y2="96"
+                    stroke="rgba(180, 83, 9, 0.46)"
+                    stroke-dasharray="4 4"
+                    stroke-width="1.25"
+                  />
+                  <text
+                    class="landing-preview__minBalanceLabel"
+                    x="388"
+                    y="112"
+                    text-anchor="end"
+                    dominant-baseline="middle"
+                  >
+                    $1k buffer
+                  </text>
+                  <path
+                    d="M44,34 L148,48 L236,88 L292,95 L384,46 L384,112 L44,112 Z"
+                    fill="url(#landingPreviewStoryFill)"
+                  />
+                  <path
+                    class="landing-preview__storyLine"
+                    d="M44,34 L148,48 L236,88 L292,95 L384,46"
+                    fill="none"
+                    stroke="#0B3D2E"
+                    stroke-width="3.75"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                  <circle class="landing-preview__markerDot landing-preview__markerDot--start" cx="44" cy="34" r="4" />
+                  <text
+                    x="44"
+                    y="22"
+                    class="landing-preview__markerLabel landing-preview__markerLabel--start"
+                    text-anchor="middle"
+                    dominant-baseline="middle"
+                  >
+                    Current balance
+                  </text>
+                  <circle class="landing-preview__markerDot landing-preview__markerDot--out" cx="292" cy="95" r="4.5" />
+                  <text
+                    x="304"
+                    y="84"
+                    class="landing-preview__markerLabel landing-preview__markerLabel--out"
+                    text-anchor="start"
+                    dominant-baseline="middle"
+                  >
+                    Credit card
+                  </text>
+                  <circle class="landing-preview__markerDot landing-preview__markerDot--in" cx="384" cy="46" r="4.5" />
+                  <text
+                    x="396"
+                    y="40"
+                    class="landing-preview__markerLabel landing-preview__markerLabel--in"
+                    text-anchor="start"
+                    dominant-baseline="middle"
+                  >
+                    Paycheck
+                  </text>
+                </svg>
+              </figure>
             </div>
           </div>
           </section>
