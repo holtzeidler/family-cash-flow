@@ -173,66 +173,33 @@
                   </ul>
                 </div>
               </div>
-              <div class="landing-preview__chart" aria-hidden="true">
-                <svg
-                  class="landing-preview__chartSvg"
-                  viewBox="10 20 604 108"
-                  preserveAspectRatio="xMidYMid meet"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <defs>
-                    <linearGradient id="landingPreviewBalanceFill" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stop-color="rgba(11, 61, 46, 0.16)" />
-                      <stop offset="100%" stop-color="rgba(11, 61, 46, 0)" />
-                    </linearGradient>
-                  </defs>
-                  <rect x="20" y="10" width="600" height="96" rx="11" fill="rgba(4, 120, 87, 0.08)" />
-                  <rect x="20" y="106" width="600" height="20" rx="8" fill="rgba(180, 83, 9, 0.08)" />
-                  <line x1="20" y1="114" x2="620" y2="114" stroke="rgba(180, 83, 9, 0.48)" stroke-dasharray="5 5" stroke-width="1.45" />
-                  <path
-                    d="M44,32 L136,41 L228,83 L320,114 L412,63 L504,72 L596,82 L596,126 L44,126 Z"
-                    fill="url(#landingPreviewBalanceFill)"
-                  />
-                  <path
-                    class="landing-preview__curve"
-                    d="M44,32 L136,41 L228,83 L320,114 L412,63 L504,72 L596,82"
-                    fill="none"
-                    stroke="#0B3D2E"
-                    stroke-width="4.25"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                  <circle class="landing-preview__markerDot landing-preview__markerDot--out" cx="320" cy="114" r="4.5" />
-                  <text
-                    x="332"
-                    y="101"
-                    class="landing-preview__markerLabel landing-preview__markerLabel--out"
-                    text-anchor="start"
-                    dominant-baseline="middle"
-                  >
-                    Credit card
-                  </text>
-                  <circle class="landing-preview__markerDot landing-preview__markerDot--in" cx="412" cy="63" r="4.5" />
-                  <text
-                    x="424"
-                    y="56"
-                    class="landing-preview__markerLabel landing-preview__markerLabel--in"
-                    text-anchor="start"
-                    dominant-baseline="middle"
-                  >
-                    Paycheck
-                  </text>
-                  <text
-                    class="landing-preview__minBalanceLabel"
-                    x="610"
-                    y="120"
-                    text-anchor="end"
-                    dominant-baseline="middle"
-                  >
-                    $1k minimum balance
-                  </text>
-                </svg>
-              </div>
+              <aside class="landing-preview__why" aria-label="Why this recommendation is safe">
+                <h3 class="landing-preview__whyHead">Why this range?</h3>
+                <p class="landing-preview__whyLead">
+                  BalanceWhiz forecasts your checking balance forward, sets aside upcoming bills, and keeps your safety buffer before suggesting cash to move.
+                </p>
+                <dl class="landing-preview__whyMath">
+                  <div class="landing-preview__whyRow">
+                    <dt>Projected balance</dt>
+                    <dd>$4,280</dd>
+                  </div>
+                  <div class="landing-preview__whyRow">
+                    <dt>Upcoming bills</dt>
+                    <dd class="landing-preview__whyVal--out">−$2,430</dd>
+                  </div>
+                  <div class="landing-preview__whyRow">
+                    <dt>Safety buffer kept</dt>
+                    <dd class="landing-preview__whyVal--out">−$1,000</dd>
+                  </div>
+                  <div class="landing-preview__whyRow landing-preview__whyRow--result">
+                    <dt>Safe to move</dt>
+                    <dd>$650 to $900</dd>
+                  </div>
+                </dl>
+                <p class="landing-preview__whyNote">
+                  Includes the 5 bills listed · lowest balance stays above your $1,000 minimum
+                </p>
+              </aside>
             </div>
           </div>
           </section>
