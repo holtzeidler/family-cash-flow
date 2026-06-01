@@ -1132,29 +1132,7 @@ body.landing-page .landing-insight__copy{
   color: rgba(51, 65, 85, 0.9);
 }
 
-/* Hero: centered copy → hook → forecast demo */
-body.landing-page .landing-hero__demo-intro{
-  margin: 1ch 0 0;
-  max-width: min(34rem, 100%);
-  padding: 0 0.25rem;
-  text-align: center;
-  text-wrap: balance;
-}
-body.landing-page .landing-hero__demo-hook{
-  margin: 0 0 0.2rem;
-  font-size: clamp(0.78rem, 1.2vw, 0.88rem);
-  line-height: 1.38;
-  font-weight: 500;
-  color: rgba(100, 116, 139, 0.82);
-}
-body.landing-page .landing-hero__demo-quote{
-  margin: 0;
-  font-size: clamp(0.82rem, 1.3vw, 0.92rem);
-  line-height: 1.36;
-  font-weight: 650;
-  font-style: italic;
-  color: rgba(51, 65, 85, 0.9);
-}
+/* Hero: centered copy → forecast demo */
 body.landing-page .landing-hero__demo-caption{
   margin: 0 0 -0.06rem;
   max-width: min(34rem, 100%);
@@ -4068,7 +4046,6 @@ body.landing-page .landing-preview__demo:hover{
     text-align: center;
     align-items: center;
   }
-  body.landing-page .landing-hero__demo-intro,
   body.landing-page .landing-hero__demo-caption{
     text-align: center;
   }
