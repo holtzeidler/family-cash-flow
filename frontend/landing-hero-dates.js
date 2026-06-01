@@ -29,11 +29,12 @@
   }
 
   var today = startOfDay(new Date());
-  var billDate = addDays(today, 3);
-  var payDate = addDays(today, 4);
+  var forecastStart = addDays(today, 1);
+  var billDate = addDays(forecastStart, 2);
+  var payDate = addDays(forecastStart, 3);
 
   var dayData = [
-    { bal: 4280, today: true },
+    { bal: 4280 },
     { bal: 4100 },
     { bal: 3850 },
     { bal: 1020, watch: true, bill: true },
@@ -47,18 +48,17 @@
     weekEl.innerHTML = "";
     for (var i = 0; i < dayData.length; i += 1) {
       var row = dayData[i];
-      var date = addDays(today, i);
+      var date = addDays(forecastStart, i);
       var cell = document.createElement("div");
       cell.className = "landing-hero-viz__cell";
       cell.setAttribute("role", "listitem");
-      if (row.today) cell.classList.add("landing-hero-viz__cell--today");
       if (row.watch) cell.classList.add("landing-hero-viz__cell--watch");
       if (row.pay) cell.classList.add("landing-hero-viz__cell--pay");
       if (row.bill) cell.classList.add("landing-hero-viz__cell--bill");
 
       var dayNum = document.createElement("span");
       dayNum.className = "landing-hero-viz__d";
-      dayNum.textContent = String(date.getDate());
+      dayNum.textContent = fmtShort(date);
 
       var bal = document.createElement("span");
       bal.className = "landing-hero-viz__b";
@@ -94,9 +94,9 @@
   var insight = hub.querySelector("#landingHeroAlertCopy");
   if (insight) {
     insight.textContent =
-      "Balance drops near $1,000 on " +
-      fmtShort(billDate) +
-      " before your next paycheck.";
+      "Your balance drops near $1,000 before your next paycheck. Consider waiting until after your " +
+      fmtShort(payDate) +
+      " deposit before moving extra cash.";
   }
 
   var reconciled = document.querySelector("#landingPreviewReconciled");
