@@ -48,7 +48,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=700" />
+    <link rel="stylesheet" href="./styles.css?v=701" />
   </head>
   <body class="landing-page">
     <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -139,124 +139,123 @@
 
         <div id="features" class="landing-features landing-reveal" aria-label="Product features">
 
-          <section class="landing-preview landing-preview--secondary landing-section landing-section--tint-safe" aria-label="Product preview">
-          <div class="landing-preview__intro">
-            <h2 class="landing-preview__title">See what’s safe to move.</h2>
-            <p class="landing-preview__lede">Know you have enough for upcoming bills while putting extra cash to better use.</p>
-          </div>
-          <div class="landing-preview__demo">
-            <div class="landing-preview__main">
-              <div class="landing-preview__leftCol">
-                <div class="landing-preview__recPanel">
-                  <div class="landing-preview__transferBand" role="status" aria-label="Safe to move guidance">
-                    <div class="landing-preview__transfer">
-                      <p class="landing-preview__transferLine">You can safely move</p>
-                      <p class="landing-preview__transferAmt">$650 to $900</p>
-                    </div>
-                    <p class="landing-preview__transferFoot">After upcoming bills clear, your $1,000 safety buffer stays protected.</p>
-                  </div>
-
-                  <div class="landing-preview__bills">
-                    <h3 class="landing-preview__billsHead">Upcoming bills</h3>
-                    <ul id="landingPreviewBillList" class="landing-preview__billList" aria-label="Upcoming bills">
-                      <li><span>Electric &amp; gas</span><span>May 18</span></li>
-                      <li><span>Summer camp deposit</span><span>May 19</span></li>
-                      <li><span>Credit card</span><span>May 20</span></li>
-                      <li><span>Mortgage</span><span>May 22</span></li>
-                      <li><span>Streaming &amp; phone</span><span>May 24</span></li>
-                    </ul>
-                  </div>
-
-                  <div class="landing-preview__trust" aria-label="Forecast status">
-                    <span class="landing-preview__trustIcon" aria-hidden="true">✓</span>
-                    <span id="landingPreviewReconciled" class="landing-preview__trustText"></span>
-                  </div>
-                </div>
-              </div>
-              <figure
-                class="landing-preview__story"
-                aria-label="Balance dips near your safety buffer after a credit card payment, then recovers with your paycheck"
-              >
-                <figcaption class="landing-preview__storyCap">
-                  <p class="landing-preview__storyCapHead">Balance forecast over the next 7 days</p>
-                  <p class="landing-preview__storyCapText">Your balance briefly approaches your safety buffer before your next paycheck arrives.</p>
-                </figcaption>
-                <div class="landing-preview__storyChart">
-                <svg
-                  class="landing-preview__storySvg"
-                  viewBox="0 0 500 128"
-                  preserveAspectRatio="xMidYMid meet"
-                  xmlns="http://www.w3.org/2000/svg"
-                  role="presentation"
-                >
-                  <defs>
-                    <linearGradient id="landingPreviewStoryFill" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stop-color="rgba(11, 61, 46, 0.08)" />
-                      <stop offset="100%" stop-color="rgba(11, 61, 46, 0)" />
-                    </linearGradient>
-                  </defs>
-                  <line
-                    class="landing-preview__bufferLine"
-                    x1="68"
-                    y1="96"
-                    x2="432"
-                    y2="96"
-                  />
-                  <text
-                    class="landing-preview__minBalanceLabel"
-                    x="458"
-                    y="108"
-                    text-anchor="end"
-                    dominant-baseline="middle"
-                  >
-                    $1k buffer
-                  </text>
-                  <path
-                    d="M84,34 L188,48 L276,88 L332,95 L424,46 L424,112 L84,112 Z"
-                    fill="url(#landingPreviewStoryFill)"
-                  />
-                  <path
-                    class="landing-preview__storyLine"
-                    d="M84,34 L188,48 L276,88 L332,95 L424,46"
-                    fill="none"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                  <circle class="landing-preview__markerDot landing-preview__markerDot--start" cx="84" cy="34" r="3" />
-                  <text
-                    x="92"
-                    y="12"
-                    class="landing-preview__markerLabel landing-preview__markerLabel--start"
-                    text-anchor="start"
-                    dominant-baseline="middle"
-                  >
-                    Current balance
-                  </text>
-                  <circle class="landing-preview__markerDot landing-preview__markerDot--out" cx="332" cy="95" r="3.25" />
-                  <text
-                    x="326"
-                    y="72"
-                    class="landing-preview__markerLabel landing-preview__markerLabel--out"
-                    text-anchor="end"
-                    dominant-baseline="middle"
-                  >
-                    Credit card
-                  </text>
-                  <circle class="landing-preview__markerDot landing-preview__markerDot--in" cx="424" cy="46" r="3.25" />
-                  <text
-                    x="458"
-                    y="28"
-                    class="landing-preview__markerLabel landing-preview__markerLabel--in"
-                    text-anchor="end"
-                    dominant-baseline="middle"
-                  >
-                    Paycheck
-                  </text>
-                </svg>
-                </div>
-              </figure>
+          <section
+            id="landingFutureSection"
+            class="landing-future landing-section landing-section--tint-safe"
+            aria-label="Future planning"
+          >
+            <div class="landing-future__intro">
+              <h2 class="landing-future__title">See cash crunches before they happen.</h2>
+              <p class="landing-future__lede">Know today whether next month&rsquo;s bills and future expenses are already covered.</p>
             </div>
-          </div>
+            <div class="landing-future__demo">
+              <div class="landing-future-viz landing-hero-viz" aria-label="Example 90-day balance forecast">
+                <div class="landing-hero-viz__hdr">
+                  <span class="landing-hero-viz__title">90-day outlook</span>
+                  <span class="landing-hero-viz__sub">Projected checking balance by month</span>
+                </div>
+                <div
+                  id="landingFutureMonths"
+                  class="landing-future-viz__months"
+                  role="list"
+                  aria-label="Monthly balance milestones"
+                ></div>
+                <div class="landing-future-viz__chartWrap">
+                  <svg
+                    class="landing-future-viz__svg"
+                    viewBox="0 0 500 140"
+                    preserveAspectRatio="xMidYMid meet"
+                    xmlns="http://www.w3.org/2000/svg"
+                    role="presentation"
+                  >
+                    <defs>
+                      <linearGradient id="landingFutureFill" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="rgba(11, 61, 46, 0.09)" />
+                        <stop offset="100%" stop-color="rgba(11, 61, 46, 0)" />
+                      </linearGradient>
+                    </defs>
+                    <line class="landing-future-viz__bufferLine" x1="68" y1="102" x2="432" y2="102" />
+                    <text class="landing-future-viz__bufferLabel" x="458" y="114" text-anchor="end" dominant-baseline="middle">$1k buffer</text>
+                    <path
+                      d="M84,36 L168,42 L252,76 L336,86 L424,44 L424,118 L84,118 Z"
+                      fill="url(#landingFutureFill)"
+                    />
+                    <path
+                      class="landing-future-viz__line"
+                      d="M84,36 L168,42 L252,76 L336,86 L424,44"
+                      fill="none"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                    <circle class="landing-future-viz__dot landing-future-viz__dot--start" cx="84" cy="36" r="3" />
+                    <circle class="landing-future-viz__dot landing-future-viz__dot--crunch" cx="336" cy="86" r="3.25" />
+                    <circle class="landing-future-viz__dot landing-future-viz__dot--end" cx="424" cy="44" r="3" />
+                    <text class="landing-future-viz__label landing-future-viz__label--start" x="92" y="14" text-anchor="start" dominant-baseline="middle">Today</text>
+                    <text
+                      id="landingFutureCrunchChartLabel"
+                      class="landing-future-viz__label landing-future-viz__label--crunch"
+                      x="328"
+                      y="64"
+                      text-anchor="end"
+                      dominant-baseline="middle"
+                    >
+                      Camp tuition
+                    </text>
+                    <text class="landing-future-viz__label landing-future-viz__label--end" x="458" y="30" text-anchor="end" dominant-baseline="middle">Sep</text>
+                  </svg>
+                </div>
+                <ul class="landing-hero-cal__markers landing-future-viz__markers" aria-label="Upcoming large expenses">
+                  <li class="landing-hero-cal__marker landing-hero-cal__marker--bill">
+                    <span class="landing-hero-cal__marker-dot" aria-hidden="true"></span>
+                    <span id="landingFutureCrunchLabel">Summer camp tuition &middot; Jul</span>
+                  </li>
+                </ul>
+                <p class="landing-hero-cal__insight landing-future-viz__insight" role="note">
+                  <span id="landingFutureInsightCopy">Plan ahead for summer camp tuition before your July balance tightens.</span>
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <section class="landing-reports landing-section landing-section--tint-neutral" aria-label="Reports and insights">
+            <div class="landing-reports__intro">
+              <h2 class="landing-reports__title">Reports &amp; Insights</h2>
+              <p class="landing-reports__lede">Spot patterns and find opportunities in your cash flow.</p>
+            </div>
+            <div class="landing-reports__grid" role="list">
+              <article class="landing-reports__card" role="listitem">
+                <h3 class="landing-reports__cardTitle">Income vs Expenses</h3>
+                <p class="landing-reports__cardBody">See whether you&rsquo;re living within your means each month.</p>
+                <div class="landing-reports__preview landing-reports__preview--income" aria-hidden="true">
+                  <div class="landing-reports__barPair"><span class="landing-reports__bar landing-reports__bar--in"></span><span class="landing-reports__bar landing-reports__bar--out"></span></div>
+                  <div class="landing-reports__barPair"><span class="landing-reports__bar landing-reports__bar--in"></span><span class="landing-reports__bar landing-reports__bar--out"></span></div>
+                  <div class="landing-reports__barPair"><span class="landing-reports__bar landing-reports__bar--in"></span><span class="landing-reports__bar landing-reports__bar--out"></span></div>
+                </div>
+              </article>
+              <article class="landing-reports__card" role="listitem">
+                <h3 class="landing-reports__cardTitle">Spending by Category</h3>
+                <p class="landing-reports__cardBody">Understand where your money goes across everyday categories.</p>
+                <div class="landing-reports__preview landing-reports__preview--categories" aria-hidden="true">
+                  <span class="landing-reports__cat" style="--w: 88%"></span>
+                  <span class="landing-reports__cat" style="--w: 62%"></span>
+                  <span class="landing-reports__cat" style="--w: 44%"></span>
+                  <span class="landing-reports__cat" style="--w: 28%"></span>
+                </div>
+              </article>
+              <article class="landing-reports__card" role="listitem">
+                <h3 class="landing-reports__cardTitle">Cash Flow Insights</h3>
+                <p class="landing-reports__cardBody">Get plain-language takeaways from your forecast and history.</p>
+                <div class="landing-reports__preview landing-reports__preview--insights" aria-hidden="true">
+                  <svg class="landing-reports__spark" viewBox="0 0 120 36" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M4,28 L28,22 L52,24 L76,12 L100,16 L116,8" fill="none" stroke="rgba(11, 61, 46, 0.55)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                  <ul class="landing-reports__insightList">
+                    <li>Paycheck covers 68% of monthly bills</li>
+                    <li>Lowest balance expected in 6 weeks</li>
+                  </ul>
+                </div>
+              </article>
+            </div>
           </section>
         </div>
 
@@ -378,7 +377,8 @@
         </div>
       </footer>
     </div>
-    <script src="./landing-hero-dates.js?v=6" defer></script>
+    <script src="./landing-hero-dates.js?v=7" defer></script>
+    <script src="./landing-future-dates.js?v=1" defer></script>
     <script src="./landing-hero-demo.js?v=4" defer></script>
     <script>
       (function () {
