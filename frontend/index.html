@@ -148,34 +148,41 @@
           <div class="landing-preview__demo">
             <div class="landing-preview__main">
               <div class="landing-preview__leftCol">
-                <div class="landing-preview__transferBand" role="status" aria-label="Safe to move guidance">
-                  <div class="landing-preview__transfer">
-                    <p class="landing-preview__transferLine">You can safely move</p>
-                    <p class="landing-preview__transferAmt">$650 to $900</p>
+                <div class="landing-preview__recPanel">
+                  <div class="landing-preview__transferBand" role="status" aria-label="Safe to move guidance">
+                    <div class="landing-preview__transfer">
+                      <p class="landing-preview__transferLine">You can safely move</p>
+                      <p class="landing-preview__transferAmt">$650 to $900</p>
+                    </div>
+                    <p class="landing-preview__transferFoot">After upcoming bills clear, your $1,000 safety buffer stays protected.</p>
                   </div>
-                  <p class="landing-preview__transferFoot">After upcoming bills clear, your $1,000 safety buffer stays protected.</p>
-                </div>
 
-                <div class="landing-preview__trust" aria-label="Forecast status">
-                  <span class="landing-preview__trustIcon" aria-hidden="true">✓</span>
-                  <span id="landingPreviewReconciled" class="landing-preview__trustText"></span>
-                </div>
+                  <div class="landing-preview__bills">
+                    <h3 class="landing-preview__billsHead">Upcoming bills</h3>
+                    <ul id="landingPreviewBillList" class="landing-preview__billList" aria-label="Upcoming bills">
+                      <li><span>Electric &amp; gas</span><span>May 18</span></li>
+                      <li><span>Summer camp deposit</span><span>May 19</span></li>
+                      <li><span>Credit card</span><span>May 20</span></li>
+                      <li><span>Mortgage</span><span>May 22</span></li>
+                      <li><span>Streaming &amp; phone</span><span>May 24</span></li>
+                    </ul>
+                  </div>
 
-                <div class="landing-preview__bills">
-                  <h3 class="landing-preview__billsHead">Upcoming bills</h3>
-                  <ul id="landingPreviewBillList" class="landing-preview__billList" aria-label="Upcoming bills">
-                    <li><span>Electric &amp; gas</span><span>May 18</span></li>
-                    <li><span>Summer camp deposit</span><span>May 19</span></li>
-                    <li><span>Credit card</span><span>May 20</span></li>
-                    <li><span>Mortgage</span><span>May 22</span></li>
-                    <li><span>Streaming &amp; phone</span><span>May 24</span></li>
-                  </ul>
+                  <div class="landing-preview__trust" aria-label="Forecast status">
+                    <span class="landing-preview__trustIcon" aria-hidden="true">✓</span>
+                    <span id="landingPreviewReconciled" class="landing-preview__trustText"></span>
+                  </div>
                 </div>
               </div>
               <figure
                 class="landing-preview__story"
                 aria-label="Balance dips near your safety buffer after a credit card payment, then recovers with your paycheck"
               >
+                <figcaption class="landing-preview__storyCap">
+                  <p class="landing-preview__storyCapHead">Why this recommendation?</p>
+                  <p class="landing-preview__storyCapText">Your balance approaches your $1,000 safety buffer before recovering after your paycheck.</p>
+                </figcaption>
+                <div class="landing-preview__storyChart">
                 <svg
                   class="landing-preview__storySvg"
                   viewBox="0 0 420 128"
@@ -251,6 +258,7 @@
                     Paycheck
                   </text>
                 </svg>
+                </div>
               </figure>
             </div>
           </div>
