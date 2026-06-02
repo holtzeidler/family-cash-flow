@@ -1157,8 +1157,8 @@ body.landing-page .landing-hero__demo-caption-title{
 }
 body.landing-page .landing-hero-forecast{
   width: 100%;
-  max-width: min(34rem, 100%);
-  margin: 1.75ch 0 0;
+  max-width: min(28rem, 100%);
+  margin: 1.75ch auto 0;
   box-sizing: border-box;
 }
 body.landing-page .landing-hero-forecast__demo{
@@ -1176,7 +1176,7 @@ body.landing-page .landing-hero-cal .landing-hero-viz__hdr{
 }
 body.landing-page .landing-hero-cal .landing-hero-viz__week{
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 12px;
+  gap: 18px;
   margin-bottom: 16px;
   padding: 0 0.55rem;
   box-sizing: border-box;
@@ -2230,7 +2230,9 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
   }
 
   body.landing-page .landing-hero-forecast{
-    max-width: min(34rem, 96%);
+    max-width: min(28rem, 96%);
+    margin-left: auto;
+    margin-right: auto;
   }
 
   body.landing-page .landing-hero-viz{
@@ -2284,7 +2286,7 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
 
   body.landing-page .landing-preview__storySvg{
     transform: scale(1.32);
-    margin-bottom: calc((1 - 1.32) * 128 / 420 * 100%);
+    margin-bottom: calc((1 - 1.32) * 128 / 500 * 100%);
   }
 
   body.landing-page .landing-preview__transferLine{
@@ -3594,17 +3596,19 @@ body.landing-page .landing-preview__storyChart{
   width: 100%;
   min-height: 0;
   margin: 0;
-  overflow: visible;
+  padding: 0 40px;
+  overflow: hidden;
+  box-sizing: border-box;
   line-height: 0;
 }
 body.landing-page .landing-preview__storySvg{
   display: block;
   width: 100%;
   height: auto;
-  aspect-ratio: 420 / 128;
+  aspect-ratio: 500 / 128;
   transform: scale(1.28);
   transform-origin: top center;
-  margin-bottom: calc((1 - 1.28) * 128 / 420 * 100%);
+  margin-bottom: calc((1 - 1.28) * 128 / 500 * 100%);
 }
 body.landing-page .landing-preview__storyLine{
   stroke: rgba(11, 61, 46, 0.92);
@@ -4226,7 +4230,7 @@ body.landing-page .landing-preview__demo:hover{
     padding: 16px 15px 15px;
   }
   body.landing-page .landing-hero-cal .landing-hero-viz__week{
-    gap: 10px;
+    gap: 16px;
     margin-bottom: 14px;
     padding: 0 0.4rem;
   }
@@ -4255,7 +4259,7 @@ body.landing-page .landing-preview__demo:hover{
   }
   body.landing-page .landing-preview__storySvg{
     transform: scale(1.18);
-    margin-bottom: calc((1 - 1.18) * 128 / 420 * 100%);
+    margin-bottom: calc((1 - 1.18) * 128 / 500 * 100%);
   }
   body.landing-page .landing-preview--secondary .landing-preview__recPanel{
     max-width: 100%;
@@ -4342,7 +4346,7 @@ body.landing-page .landing-preview__demo:hover{
   }
   body.landing-page .landing-preview__storySvg{
     transform: scale(1.12);
-    margin-bottom: calc((1 - 1.12) * 128 / 420 * 100%);
+    margin-bottom: calc((1 - 1.12) * 128 / 500 * 100%);
   }
   body.landing-page .landing-cal-peek{
     padding: 0.52rem 0.48rem;
@@ -27391,7 +27395,7 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   }
 
   body.landing-page .landing-hero-cal .landing-hero-viz__week{
-    gap: 8px;
+    gap: 14px;
     margin-bottom: 12px;
     padding: 0 0.3rem;
   }
