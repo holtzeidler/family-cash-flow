@@ -85,7 +85,6 @@
 
   var insight = hub.querySelector("#landingHeroAlertCopy");
   if (insight) {
-    insight.textContent =
-      "Consider waiting until after your " + fmtShort(payDate) + " paycheck before moving extra cash.";
+    insight.textContent = "Safe to move after your " + fmtShort(payDate) + " paycheck";
   }
 })();
