@@ -65,13 +65,7 @@
       cell.appendChild(dayNum);
       cell.appendChild(bal);
 
-      if (row.watch) {
-        var tag = document.createElement("span");
-        tag.className = "landing-hero-viz__tag";
-        tag.setAttribute("aria-hidden", "true");
-        tag.textContent = "\u26A0";
-        cell.appendChild(tag);
-      } else if (row.pay) {
+      if (row.pay) {
         var payTag = document.createElement("span");
         payTag.className = "landing-hero-viz__tag landing-hero-viz__tag--pay";
         payTag.setAttribute("aria-hidden", "true");
