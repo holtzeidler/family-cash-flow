@@ -23779,6 +23779,16 @@ body.account-setup-page
   overflow-y: auto;
   padding: 10px 12px 8px;
   box-sizing: border-box;
+  --tx-field-bg: #ffffff;
+  --tx-field-border: rgba(17, 24, 39, 0.12);
+  --tx-field-border-hover: rgba(17, 24, 39, 0.18);
+  --tx-field-radius: 8px;
+  --tx-field-height: 36px;
+  --tx-field-py: 7px;
+  --tx-field-px: 10px;
+  --tx-field-font: 13px;
+  --tx-field-focus-border: color-mix(in srgb, var(--accent) 50%, rgba(17, 24, 39, 0.14));
+  --tx-field-focus-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 16%, transparent);
 }
 #txEditInner.modal.modal--expected-edit{
   width: min(92vw, 640px);
@@ -24067,26 +24077,142 @@ body.account-setup-page
   color: rgba(100, 116, 139, 0.72);
 }
 
-/* Consistent compact field heights in recurring edit. */
-.modal--expected-edit #expectedEditInstancePanel .form-row-h__field > input:not([type="checkbox"]):not([type="radio"]),
-.modal--expected-edit #expectedEditInstancePanel .form-row-h__field > select,
-.modal--expected-edit #expectedEditInstancePanel .money-input input{
-  min-height: 32px;
-  padding: 5px 10px;
-  font-size: 13px;
-  border-radius: 8px;
-  border-color: rgba(17, 24, 39, 0.1);
+/* Edit transaction: one neutral field style (Amount, Category, Date, Repeat, Ends, Account, Notes). */
+#txEditInner #expectedEditInstancePanel :is(
+  .form-row-h__field > input:not([type="checkbox"]):not([type="radio"]),
+  .form-row-h__field > select,
+  .form-row-h__field .category-combobox__input,
+  #txEditNotes.input-notes-flex,
+  #txEditDate,
+  #instanceRecurrence,
+  #instanceEndsMode,
+  #instanceAccountId,
+  .tx-edit-ends-after-row > input,
+  .expected-second-day-row .form-row-h__field > input[type="date"]
+){
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-height: var(--tx-field-height);
+  padding: var(--tx-field-py) var(--tx-field-px);
+  font-size: var(--tx-field-font);
+  font-weight: 500;
+  line-height: 1.25;
+  color: var(--text);
+  border: 1px solid var(--tx-field-border);
+  border-radius: var(--tx-field-radius);
+  background: var(--tx-field-bg);
+  opacity: 1;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
 }
-.modal--expected-edit #expectedEditInstancePanel .form-row-h__field > input[type="date"]{
+#txEditInner #expectedEditInstancePanel :is(
+  .form-row-h__field > input:not([type="checkbox"]):not([type="radio"]),
+  .form-row-h__field > select,
+  .form-row-h__field .category-combobox__input,
+  #txEditNotes.input-notes-flex,
+  #txEditDate,
+  #instanceRecurrence,
+  #instanceEndsMode,
+  #instanceAccountId,
+  .tx-edit-ends-after-row > input,
+  .expected-second-day-row .form-row-h__field > input[type="date"]
+):hover:not(:disabled){
+  border-color: var(--tx-field-border-hover);
+}
+#txEditInner #expectedEditInstancePanel :is(
+  .form-row-h__field > input:not([type="checkbox"]):not([type="radio"]):focus,
+  .form-row-h__field > select:focus,
+  .form-row-h__field .category-combobox__input:focus,
+  #txEditNotes.input-notes-flex:focus,
+  #txEditDate:focus,
+  #instanceRecurrence:focus,
+  #instanceEndsMode:focus,
+  #instanceAccountId:focus,
+  .tx-edit-ends-after-row > input:focus,
+  .expected-second-day-row .form-row-h__field > input[type="date"]:focus
+){
+  outline: none;
+  border-color: var(--tx-field-focus-border);
+  box-shadow: var(--tx-field-focus-shadow);
+  background: var(--tx-field-bg);
+}
+#txEditInner #expectedEditInstancePanel :is(
+  .form-row-h__field > input:not([type="checkbox"]):not([type="radio"]):disabled,
+  .form-row-h__field > select:disabled,
+  .form-row-h__field .category-combobox__input:disabled
+){
+  opacity: 0.58;
+  cursor: not-allowed;
+  background: rgba(15, 23, 42, 0.04);
+  border-color: rgba(17, 24, 39, 0.08);
+  color: rgba(71, 85, 105, 0.65);
+}
+#txEditInner #expectedEditInstancePanel #instanceEndsMode.tx-field--inactive{
+  opacity: 1;
+  cursor: default;
+  pointer-events: none;
+  background: var(--tx-field-bg);
+  border-color: var(--tx-field-border);
+  color: var(--text);
+}
+#txEditInner #expectedEditInstancePanel .form-row-h__field > input[type="date"]{
   padding-right: 8px;
 }
-.modal--expected-edit #expectedEditInstancePanel .form-row-h__field > input[type="date"]::-webkit-calendar-picker-indicator{
+#txEditInner #expectedEditInstancePanel .form-row-h__field > input[type="date"]::-webkit-calendar-picker-indicator,
+#txEditInner #expectedEditInstancePanel #txEditDate::-webkit-calendar-picker-indicator{
   margin: 0;
-  opacity: 0.55;
+  opacity: 0.5;
   cursor: pointer;
 }
-.modal--expected-edit #expectedEditInstancePanel .money-input{
-  min-height: 32px;
+#txEditInner #expectedEditInstancePanel .form-row-h__field > input[type="date"]:hover:not(:disabled)::-webkit-calendar-picker-indicator,
+#txEditInner #expectedEditInstancePanel #txEditDate:hover:not(:disabled)::-webkit-calendar-picker-indicator{
+  opacity: 0.72;
+}
+#txEditInner #expectedEditInstancePanel .money-input{
+  display: flex;
+  align-items: stretch;
+  min-height: var(--tx-field-height);
+  border: 1px solid var(--tx-field-border);
+  border-radius: var(--tx-field-radius);
+  background: var(--tx-field-bg);
+  overflow: hidden;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+#txEditInner #expectedEditInstancePanel .money-input:hover{
+  border-color: var(--tx-field-border-hover);
+}
+#txEditInner #expectedEditInstancePanel .money-input:focus-within{
+  border-color: var(--tx-field-focus-border);
+  box-shadow: var(--tx-field-focus-shadow);
+}
+#txEditInner #expectedEditInstancePanel .money-input input{
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  border: none;
+  background: transparent;
+  border-radius: 0;
+  padding: var(--tx-field-py) var(--tx-field-px) var(--tx-field-py) 4px;
+  font-size: var(--tx-field-font);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.25;
+  color: var(--text);
+  -moz-appearance: textfield;
+}
+#txEditInner #expectedEditInstancePanel .money-input input:focus{
+  outline: none;
+  box-shadow: none;
+}
+#txEditInner #expectedEditInstancePanel .money-input__prefix{
+  display: flex;
+  align-items: center;
+  padding: 0 4px 0 var(--tx-field-px);
+  font-size: var(--tx-field-font);
+  font-weight: 500;
+  color: rgba(75, 85, 99, 0.82);
+  background: transparent;
+  border: none;
 }
 #txEditInner #expectedEditInstancePanel .form-row-h__field > input:not([type="checkbox"]):not([type="radio"]),
 #txEditInner #expectedEditInstancePanel .form-row-h__field > select,
@@ -24227,12 +24353,6 @@ body.account-setup-page
 #expectedEditInstancePanel .form-row-h__label label{
   font-size: 10.5px;
 }
-#txEditModal #txEditNotes.input-notes-flex{
-  padding: 7px 9px;
-  min-height: 0;
-  line-height: 1.28;
-}
-
 /* Compact color row in edit modal: swatches + Clear. */
 #expectedEditInstancePanel .tx-edit-cat-color-row.form-row-h{
   align-items: flex-start;
@@ -24425,20 +24545,6 @@ body.account-setup-page
 .modal--expected-edit .tx-edit-ends-after-row .tx-add-field-hint{
   font-size: 11px;
   color: rgba(100, 116, 139, 0.78);
-}
-
-/* Notes in Advanced: low visual weight until focused. */
-.modal--expected-edit #txEditNotes.input-notes-flex{
-  padding: 4px 9px;
-  font-size: 12px;
-  line-height: 1.25;
-  background: rgba(15, 23, 42, 0.012);
-  border-color: rgba(17, 24, 39, 0.06);
-  min-height: 28px;
-}
-.modal--expected-edit #txEditNotes.input-notes-flex:focus{
-  background: var(--panel, #fff);
-  border-color: rgba(17, 24, 39, 0.16);
 }
 
 /* Recurring edit sheet: inherit footer hierarchy from #txEditInner rules. */

@@ -1422,6 +1422,21 @@ function updateInstanceTwiceMonthlyVisibility() {
 
 const instanceEndsMode = document.getElementById("instanceEndsMode");
 
+/** Keep Ends chrome identical to Repeat; block interaction without native disabled styling. */
+function setTxEditEndsModeInteractive(interactive) {
+  if (!instanceEndsMode) return;
+  instanceEndsMode.disabled = false;
+  instanceEndsMode.classList.toggle("tx-field--inactive", !interactive);
+  if (interactive) {
+    instanceEndsMode.removeAttribute("aria-disabled");
+    instanceEndsMode.removeAttribute("tabindex");
+  } else {
+    instanceEndsMode.setAttribute("aria-disabled", "true");
+    instanceEndsMode.tabIndex = -1;
+    instanceEndsMode.value = "never";
+  }
+}
+
 function updateInstanceEndsDetailUi() {
   const row = document.getElementById("txEditEndCountRow");
   if (!row) return;
@@ -1442,6 +1457,15 @@ if (instanceRecurrence) {
 }
 if (instanceEndsMode) {
   instanceEndsMode.addEventListener("change", updateInstanceEndsDetailUi);
+  instanceEndsMode.addEventListener("mousedown", (e) => {
+    if (instanceEndsMode.classList.contains("tx-field--inactive")) e.preventDefault();
+  });
+  instanceEndsMode.addEventListener("keydown", (e) => {
+    if (!instanceEndsMode.classList.contains("tx-field--inactive")) return;
+    if (e.key === " " || e.key === "Enter" || e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+    }
+  });
 }
 
 const txEditModal = document.getElementById("txEditModal");
@@ -1745,10 +1769,9 @@ function updateTxEditActualScheduleUi() {
   const on = txEditScheduleRecurrenceActive();
   const dateLabel = document.getElementById("txEditDateLabel");
   if (dateLabel) dateLabel.textContent = on ? "Start date" : "Date";
-  if (instanceEndsMode) instanceEndsMode.disabled = !on;
+  setTxEditEndsModeInteractive(on);
   if (instanceEndCount) instanceEndCount.disabled = !on;
   if (instanceSecondDayOfMonth) instanceSecondDayOfMonth.disabled = !on;
-  if (!on && instanceEndsMode) instanceEndsMode.value = "never";
   if (instanceAccountId) {
     instanceAccountId.disabled = !on;
     instanceAccountId.title = on ? "" : "Choose an account when you set this transaction to repeat.";
@@ -4406,7 +4429,7 @@ function applyTransactionEditMode(mode, opts = {}) {
     if (instanceSecondDayOfMonth) instanceSecondDayOfMonth.disabled = false;
     if (instanceEndCount) instanceEndCount.disabled = false;
     if (instanceEndsMode) {
-      instanceEndsMode.disabled = false;
+      setTxEditEndsModeInteractive(true);
       instanceEndsMode.value = "never";
     }
     try { updateInstanceEndsDetailUi(); } catch (_) {}
@@ -4457,7 +4480,7 @@ function applyTransactionEditMode(mode, opts = {}) {
   if (recurring) {
     if (instanceSecondDayOfMonth) instanceSecondDayOfMonth.disabled = false;
     if (instanceEndCount) instanceEndCount.disabled = false;
-    if (instanceEndsMode) instanceEndsMode.disabled = false;
+    setTxEditEndsModeInteractive(true);
     try {
       updateInstanceEndsDetailUi();
     } catch (_) {}
