@@ -2180,6 +2180,29 @@ async function refreshLowBalanceAlert() {
         "GET"
       );
       lowHit = data?.hit_date ? { date: data.hit_date, balance: toNum(data.hit_balance) } : null;
+      if (lowHit) {
+        const lowIso = normalizeIsoDate(lowHit.date);
+        let calEnd = null;
+        const cached = lowIso && state.monthDailyBalances ? state.monthDailyBalances.get(lowIso) : null;
+        if (cached != null && Number.isFinite(Number(cached.end))) calEnd = Number(cached.end);
+        else if (lowIso && state.activeFamilyId) {
+          try {
+            const calData = await api(
+              `/api/families/${state.activeFamilyId}/calendar-month-daily?month=${encodeURIComponent(
+                lowIso.slice(0, 7)
+              )}&mode=${encodeURIComponent(mode)}`,
+              "GET"
+            );
+            const row = (calData?.days || []).find((d) => normalizeIsoDate(d?.date) === lowIso);
+            if (row?.end != null) calEnd = Number(row.end);
+          } catch (_) {
+            /* keep API hit balance */
+          }
+        }
+        if (calEnd != null && Number.isFinite(calEnd)) {
+          lowHit = { date: lowHit.date, balance: calEnd };
+        }
+      }
     }
 
     // Peak balance is intentionally hidden for now (can re-enable later).
@@ -12047,12 +12070,15 @@ function computeCalendarVisibleDailyBalancesClient() {
   const mode = calendarMode?.value || "both";
   const includeActual = mode === "both" || mode === "actual";
   const includeExpected = mode === "both" || mode === "expected";
+  const asOfIso = toISODate(new Date());
 
-  const dailyTxnTotals = new Map();
+  const actualByDate = new Map();
+  const expectedByDate = new Map();
   const startAdds = new Map();
   for (let d = new Date(rangeStart); d <= rangeEnd; d.setDate(d.getDate() + 1)) {
     const iso = toISODate(d);
-    dailyTxnTotals.set(iso, 0);
+    actualByDate.set(iso, 0);
+    expectedByDate.set(iso, 0);
     startAdds.set(iso, 0);
   }
 
@@ -12061,7 +12087,8 @@ function computeCalendarVisibleDailyBalancesClient() {
       const amt = Number(tx.amount || 0);
       const signed = tx.kind === "income" ? amt : -amt;
       const dk = normalizeIsoDate(tx.date) || tx.date;
-      dailyTxnTotals.set(dk, (dailyTxnTotals.get(dk) || 0) + signed);
+      if (!actualByDate.has(dk)) actualByDate.set(dk, 0);
+      actualByDate.set(dk, (actualByDate.get(dk) || 0) + signed);
     }
   }
   if (includeExpected) {
@@ -12069,7 +12096,8 @@ function computeCalendarVisibleDailyBalancesClient() {
       const amt = Number(tx.amount || 0);
       const signed = tx.kind === "income" ? amt : -amt;
       const dk = normalizeIsoDate(tx.date) || tx.date;
-      dailyTxnTotals.set(dk, (dailyTxnTotals.get(dk) || 0) + signed);
+      if (!expectedByDate.has(dk)) expectedByDate.set(dk, 0);
+      expectedByDate.set(dk, (expectedByDate.get(dk) || 0) + signed);
     }
   }
 
@@ -12088,7 +12116,10 @@ function computeCalendarVisibleDailyBalancesClient() {
   for (let d = new Date(rangeStart); d <= rangeEnd; d.setDate(d.getDate() + 1)) {
     const iso = toISODate(d);
     const dayStart = carry + (startAdds.get(iso) || 0);
-    const txNet = dailyTxnTotals.get(iso) || 0;
+    let txNet = 0;
+    if (mode === "actual") txNet = actualByDate.get(iso) || 0;
+    else if (mode === "expected") txNet = expectedByDate.get(iso) || 0;
+    else txNet = iso <= asOfIso ? actualByDate.get(iso) || 0 : expectedByDate.get(iso) || 0;
     const dayEnd = dayStart + txNet;
     out.set(iso, { start: dayStart, txNet, end: dayEnd });
     carry = dayEnd;

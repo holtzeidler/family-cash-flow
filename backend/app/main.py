@@ -6009,26 +6009,38 @@ def _occurrence_immediately_before(
     return prev
 
 
-def _calendar_month_daily_balances(
+def _forecast_day_tx_net(
+    *,
+    mode: Literal["both", "actual", "expected"],
+    day: date,
+    as_of: date,
+    actual_by_date: dict[date, Decimal],
+    expected_by_date: dict[date, Decimal],
+) -> Decimal:
+    """Pooled net cashflow for one day. In ``both`` mode: posted actuals through ``as_of``, expected after."""
+    if mode == "actual":
+        return actual_by_date.get(day, Decimal("0"))
+    if mode == "expected":
+        return expected_by_date.get(day, Decimal("0"))
+    if day <= as_of:
+        return actual_by_date.get(day, Decimal("0"))
+    return expected_by_date.get(day, Decimal("0"))
+
+
+def _build_pooled_forecast_flow_maps(
     *,
     db,
     family_id: int,
-    month: str,
+    balance_start: date,
+    last_day: date,
+    range_end_exclusive: date,
     mode: Literal["both", "actual", "expected"],
-) -> list[CalendarDayBalanceOut]:
+) -> tuple[dict[date, Decimal], dict[date, Decimal], dict[date, Decimal]]:
     """
-    One pooled running balance: starting balances apply on their day, then each day's end balance
-    feeds the next day. Simulates from the earliest account starting-balance date through the end of `month`.
-    Days before that date in the requested month have null balances (no forecast data).
+    Build pooled actual/expected daily nets and per-day starting-balance injections.
+    Shared by calendar-month-daily and low/high-balance-first.
     """
-    month_start, month_end_excl = _month_range(month)
-    last_day = month_end_excl - timedelta(days=1)
-
     account_rows = list(db.execute(select(Account).where(Account.family_id == family_id)).scalars().all())
-    if not account_rows:
-        return []
-
-    balance_start = min((a.starting_balance_date or a.created_at.date()) for a in account_rows)
 
     actual_by_date: dict[date, Decimal] = defaultdict(lambda: Decimal("0"))
     if mode in ("both", "actual"):
@@ -6055,10 +6067,10 @@ def _calendar_month_daily_balances(
                 ExpectedTransaction.family_id == family_id,
                 or_(
                     (ExpectedTransactionOverride.occurrence_date >= balance_start)
-                    & (ExpectedTransactionOverride.occurrence_date < month_end_excl),
+                    & (ExpectedTransactionOverride.occurrence_date < range_end_exclusive),
                     (ExpectedTransactionOverride.moved_to_date.is_not(None))
                     & (ExpectedTransactionOverride.moved_to_date >= balance_start)
-                    & (ExpectedTransactionOverride.moved_to_date < month_end_excl),
+                    & (ExpectedTransactionOverride.moved_to_date < range_end_exclusive),
                 ),
             )
         ).scalars().all()
@@ -6069,9 +6081,10 @@ def _calendar_month_daily_balances(
             occ_dates = _expected_occurrences_in_range(
                 start_date=tx.start_date,
                 end_date=tx.end_date,
+                end_count=getattr(tx, "end_count", None),
                 recurrence=tx.recurrence,
                 range_start=balance_start,
-                range_end_exclusive=month_end_excl,
+                range_end_exclusive=range_end_exclusive,
                 second_day_of_month=tx.second_day_of_month,
                 second_occurrence_month=getattr(tx, "second_occurrence_month", None),
             )
@@ -6098,6 +6111,39 @@ def _calendar_month_daily_balances(
         if balance_start <= sd <= last_day:
             start_adds[sd] += a.starting_balance
 
+    return actual_by_date, expected_by_date, start_adds
+
+
+def _calendar_month_daily_balances(
+    *,
+    db,
+    family_id: int,
+    month: str,
+    mode: Literal["both", "actual", "expected"],
+) -> list[CalendarDayBalanceOut]:
+    """
+    One pooled running balance: starting balances apply on their day, then each day's end balance
+    feeds the next day. Simulates from the earliest account starting-balance date through the end of `month`.
+    Days before that date in the requested month have null balances (no forecast data).
+    """
+    month_start, month_end_excl = _month_range(month)
+    last_day = month_end_excl - timedelta(days=1)
+
+    account_rows = list(db.execute(select(Account).where(Account.family_id == family_id)).scalars().all())
+    if not account_rows:
+        return []
+
+    balance_start = min((a.starting_balance_date or a.created_at.date()) for a in account_rows)
+    as_of = datetime.utcnow().date()
+    actual_by_date, expected_by_date, start_adds = _build_pooled_forecast_flow_maps(
+        db=db,
+        family_id=family_id,
+        balance_start=balance_start,
+        last_day=last_day,
+        range_end_exclusive=month_end_excl,
+        mode=mode,
+    )
+
     out: list[CalendarDayBalanceOut] = []
     d = month_start
     while d < balance_start and d <= last_day:
@@ -6108,12 +6154,13 @@ def _calendar_month_daily_balances(
     sim = balance_start
     while sim <= last_day:
         day_start = carry + start_adds.get(sim, Decimal("0"))
-        if mode == "both":
-            tx_net = actual_by_date.get(sim, Decimal("0")) + expected_by_date.get(sim, Decimal("0"))
-        elif mode == "actual":
-            tx_net = actual_by_date.get(sim, Decimal("0"))
-        else:
-            tx_net = expected_by_date.get(sim, Decimal("0"))
+        tx_net = _forecast_day_tx_net(
+            mode=mode,
+            day=sim,
+            as_of=as_of,
+            actual_by_date=actual_by_date,
+            expected_by_date=expected_by_date,
+        )
         day_end = day_start + tx_net
         if sim >= month_start:
             out.append(
@@ -6154,87 +6201,29 @@ def _pooled_daily_balance_first_hit_impl(
         return None, None
 
     balance_start = min((a.starting_balance_date or a.created_at.date()) for a in account_rows)
-
-    actual_by_date: dict[date, Decimal] = defaultdict(lambda: Decimal("0"))
-    if mode in ("both", "actual"):
-        tx_rows = db.execute(
-            select(Transaction).where(
-                Transaction.family_id == family_id,
-                Transaction.date >= balance_start,
-                Transaction.date <= last_day,
-            )
-        ).scalars().all()
-        for tx in tx_rows:
-            signed = tx.amount if tx.kind == TransactionKind.income else -tx.amount
-            actual_by_date[tx.date] += signed
-
-    expected_by_date: dict[date, Decimal] = defaultdict(lambda: Decimal("0"))
-    if mode in ("both", "expected"):
-        accounts_by_id: dict[int, Account] = {a.id: a for a in account_rows}
-        expected_rows = db.execute(select(ExpectedTransaction).where(ExpectedTransaction.family_id == family_id)).scalars().all()
-        overrides = db.execute(
-            select(ExpectedTransactionOverride).join(
-                ExpectedTransaction,
-                ExpectedTransaction.id == ExpectedTransactionOverride.expected_transaction_id,
-            ).where(
-                ExpectedTransaction.family_id == family_id,
-                or_(
-                    (ExpectedTransactionOverride.occurrence_date >= balance_start)
-                    & (ExpectedTransactionOverride.occurrence_date < range_end_excl),
-                    (ExpectedTransactionOverride.moved_to_date.is_not(None))
-                    & (ExpectedTransactionOverride.moved_to_date >= balance_start)
-                    & (ExpectedTransactionOverride.moved_to_date < range_end_excl),
-                ),
-            )
-        ).scalars().all()
-        override_map: dict[tuple[int, date], ExpectedTransactionOverride] = {
-            (o.expected_transaction_id, o.occurrence_date): o for o in overrides
-        }
-        for tx in expected_rows:
-            occ_dates = _expected_occurrences_in_range(
-                start_date=tx.start_date,
-                end_date=tx.end_date,
-                recurrence=tx.recurrence,
-                range_start=balance_start,
-                range_end_exclusive=range_end_excl,
-                second_day_of_month=tx.second_day_of_month,
-                second_occurrence_month=getattr(tx, "second_occurrence_month", None),
-            )
-            for occ in occ_dates:
-                if occ > last_day:
-                    continue
-                ovr = override_map.get((tx.id, occ))
-                if ovr is not None and ovr.cancelled:
-                    continue
-                eff_account_id = ovr.account_id if ovr is not None and ovr.account_id is not None else tx.account_id
-                eff_kind = ovr.kind if ovr is not None and ovr.kind is not None else tx.kind
-                eff_amount = ovr.amount if ovr is not None and ovr.amount is not None else tx.amount
-                if accounts_by_id.get(eff_account_id) is None:
-                    continue
-                signed = eff_amount if eff_kind == TransactionKind.income else -eff_amount
-                eff_date = ovr.moved_to_date if (ovr is not None and getattr(ovr, "moved_to_date", None) is not None) else occ
-                if eff_date < balance_start or eff_date > last_day:
-                    continue
-                expected_by_date[eff_date] += signed
+    as_of = datetime.utcnow().date()
+    actual_by_date, expected_by_date, start_adds = _build_pooled_forecast_flow_maps(
+        db=db,
+        family_id=family_id,
+        balance_start=balance_start,
+        last_day=last_day,
+        range_end_exclusive=range_end_excl,
+        mode=mode,
+    )
 
     carry = Decimal("0")
-    start_adds: dict[date, Decimal] = defaultdict(lambda: Decimal("0"))
-    for a in account_rows:
-        sd = a.starting_balance_date or a.created_at.date()
-        if balance_start <= sd <= last_day:
-            start_adds[sd] += a.starting_balance
-
     d = balance_start
     hit_date: Optional[date] = None
     hit_balance: Optional[Decimal] = None
     while d <= last_day:
         day_start = carry + start_adds.get(d, Decimal("0"))
-        if mode == "both":
-            tx_net = actual_by_date.get(d, Decimal("0")) + expected_by_date.get(d, Decimal("0"))
-        elif mode == "actual":
-            tx_net = actual_by_date.get(d, Decimal("0"))
-        else:
-            tx_net = expected_by_date.get(d, Decimal("0"))
+        tx_net = _forecast_day_tx_net(
+            mode=mode,
+            day=d,
+            as_of=as_of,
+            actual_by_date=actual_by_date,
+            expected_by_date=expected_by_date,
+        )
         day_end = day_start + tx_net
         carry = day_end
         crossed = day_end <= level if crossing == "lte" else day_end >= level
