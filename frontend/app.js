@@ -2241,7 +2241,7 @@ async function refreshLowBalanceAlert() {
         } else {
           const shortfall = Math.max(0, target - bal);
           setSidebarLowBalanceBanner(
-            `⚠ Below target on ${fmtMonthDay(lowHit.date)}\nINSIGHT:\nMinimum balance: $${fmtMoney0(Math.abs(bal))}\nTarget: $${fmtMoney0(target)} • Short by $${fmtMoney0(shortfall)}`,
+            `⚠ Below target on ${fmtMonthDay(lowHit.date)}\nINSIGHT:\nProjected balance: $${fmtMoney0(bal)}\nTarget: $${fmtMoney0(target)} • Short by $${fmtMoney0(shortfall)}`,
             "danger"
           );
         }

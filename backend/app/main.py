@@ -6153,21 +6153,14 @@ def _pooled_daily_balance_first_hit_impl(
     if not account_rows:
         return None, None
 
-    min_acc = min((a.starting_balance_date or a.created_at.date()) for a in account_rows)
-    first_tx = db.execute(select(func.min(Transaction.date)).where(Transaction.family_id == family_id)).scalar_one_or_none()
-    first_expected = db.execute(select(func.min(ExpectedTransaction.start_date)).where(ExpectedTransaction.family_id == family_id)).scalar_one_or_none()
-    global_start = min_acc
-    if first_tx is not None:
-        global_start = min(global_start, first_tx)
-    if first_expected is not None:
-        global_start = min(global_start, first_expected)
+    balance_start = min((a.starting_balance_date or a.created_at.date()) for a in account_rows)
 
     actual_by_date: dict[date, Decimal] = defaultdict(lambda: Decimal("0"))
     if mode in ("both", "actual"):
         tx_rows = db.execute(
             select(Transaction).where(
                 Transaction.family_id == family_id,
-                Transaction.date >= global_start,
+                Transaction.date >= balance_start,
                 Transaction.date <= last_day,
             )
         ).scalars().all()
@@ -6185,8 +6178,13 @@ def _pooled_daily_balance_first_hit_impl(
                 ExpectedTransaction.id == ExpectedTransactionOverride.expected_transaction_id,
             ).where(
                 ExpectedTransaction.family_id == family_id,
-                ExpectedTransactionOverride.occurrence_date >= global_start,
-                ExpectedTransactionOverride.occurrence_date < range_end_excl,
+                or_(
+                    (ExpectedTransactionOverride.occurrence_date >= balance_start)
+                    & (ExpectedTransactionOverride.occurrence_date < range_end_excl),
+                    (ExpectedTransactionOverride.moved_to_date.is_not(None))
+                    & (ExpectedTransactionOverride.moved_to_date >= balance_start)
+                    & (ExpectedTransactionOverride.moved_to_date < range_end_excl),
+                ),
             )
         ).scalars().all()
         override_map: dict[tuple[int, date], ExpectedTransactionOverride] = {
@@ -6197,7 +6195,7 @@ def _pooled_daily_balance_first_hit_impl(
                 start_date=tx.start_date,
                 end_date=tx.end_date,
                 recurrence=tx.recurrence,
-                range_start=global_start,
+                range_start=balance_start,
                 range_end_exclusive=range_end_excl,
                 second_day_of_month=tx.second_day_of_month,
                 second_occurrence_month=getattr(tx, "second_occurrence_month", None),
@@ -6215,7 +6213,7 @@ def _pooled_daily_balance_first_hit_impl(
                     continue
                 signed = eff_amount if eff_kind == TransactionKind.income else -eff_amount
                 eff_date = ovr.moved_to_date if (ovr is not None and getattr(ovr, "moved_to_date", None) is not None) else occ
-                if eff_date < global_start or eff_date > last_day:
+                if eff_date < balance_start or eff_date > last_day:
                     continue
                 expected_by_date[eff_date] += signed
 
@@ -6223,13 +6221,10 @@ def _pooled_daily_balance_first_hit_impl(
     start_adds: dict[date, Decimal] = defaultdict(lambda: Decimal("0"))
     for a in account_rows:
         sd = a.starting_balance_date or a.created_at.date()
-        bal = a.starting_balance
-        if sd < global_start:
-            carry += bal
-        elif global_start <= sd <= last_day:
-            start_adds[sd] += bal
+        if balance_start <= sd <= last_day:
+            start_adds[sd] += a.starting_balance
 
-    d = global_start
+    d = balance_start
     hit_date: Optional[date] = None
     hit_balance: Optional[Decimal] = None
     while d <= last_day:
