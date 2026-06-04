@@ -396,6 +396,14 @@ function normalizeFgColorForSave(bg) {
   return accessibleTextOnBackground(t);
 }
 
+/** Always include on save — backend overwrites colors when omitted. */
+function txColorFieldsForSave(bg) {
+  return {
+    bg_color: normalizeBgColorForSave(bg),
+    fg_color: normalizeFgColorForSave(bg),
+  };
+}
+
 const CATEGORY_COLOR_PALETTE = [
   "#9ECFE0", // cyan
   "#DCC99A", // gold
@@ -4559,12 +4567,7 @@ async function convertActualTransactionToRecurring(actualId) {
     amount: Number(amountVal),
     variable: !!(seriesVariable && seriesVariable.checked),
     category_id: categoryId,
-    ...(txEditColorTouched
-      ? {
-          bg_color: normalizeBgColorForSave(txEditSelectedBgColor),
-          fg_color: normalizeFgColorForSave(txEditSelectedBgColor),
-        }
-      : {}),
+    ...txColorFieldsForSave(txEditSelectedBgColor),
   });
   await api(`/api/families/${state.activeFamilyId}/transactions/${actualId}`, "DELETE");
 }
@@ -4961,12 +4964,7 @@ if (txEditSave) {
           description: txEditDescriptionSnapshot,
           notes: txEditNotes && txEditNotes.value.trim() ? txEditNotes.value.trim() : null,
           category_id: categoryIdFromCategoryField("txEditCategoryId"),
-          ...(txEditColorTouched
-            ? {
-                bg_color: normalizeBgColorForSave(txEditSelectedBgColor),
-                fg_color: normalizeFgColorForSave(txEditSelectedBgColor),
-              }
-            : {}),
+          ...txColorFieldsForSave(txEditSelectedBgColor),
           reimbursable: txEditReimbursableValue,
         });
         savedOk = true;
@@ -5553,6 +5551,7 @@ async function saveUncategorizedAssignments() {
         notes: tx.notes && String(tx.notes).trim() ? String(tx.notes).trim() : null,
         category_id: Number(op.catId),
         reimbursable: !!tx.reimbursable,
+        ...txColorFieldsForSave(tx.bg_color),
       });
     }
 
@@ -7426,12 +7425,7 @@ function buildExpectedSeriesPutPayload({
     amount: Number(amount),
     variable: !!(seriesVariable && seriesVariable.checked),
     category_id: categoryId,
-    ...(txEditColorTouched
-      ? {
-          bg_color: normalizeBgColorForSave(txEditSelectedBgColor),
-          fg_color: normalizeFgColorForSave(txEditSelectedBgColor),
-        }
-      : {}),
+    ...txColorFieldsForSave(txEditSelectedBgColor),
   };
 }
 
@@ -7482,12 +7476,7 @@ async function saveExpectedInstanceOverride() {
     amount,
     description: expectedSaveDescription(),
     category_id: categoryId,
-    ...(txEditColorTouched
-      ? {
-          bg_color: normalizeBgColorForSave(txEditSelectedBgColor),
-          fg_color: normalizeFgColorForSave(txEditSelectedBgColor),
-        }
-      : {}),
+    ...txColorFieldsForSave(txEditSelectedBgColor),
     moved_to_date: movedTo,
     variable: !!(seriesVariable && seriesVariable.checked),
   };
@@ -7604,12 +7593,7 @@ async function saveExpectedSeriesFromInstance() {
       recurrence: recurrenceVal,
       variable: !!(seriesVariable && seriesVariable.checked),
       end_count: endCountVal,
-      ...(txEditColorTouched
-        ? {
-            bg_color: normalizeBgColorForSave(txEditSelectedBgColor),
-            fg_color: normalizeFgColorForSave(txEditSelectedBgColor),
-          }
-        : {}),
+      ...txColorFieldsForSave(txEditSelectedBgColor),
     };
     if (recurrenceVal === "twice_monthly" || recurrenceVal === "semiannual") {
       applyBody.second_day_of_month = secondDayVal;
