@@ -6009,22 +6009,30 @@ def _occurrence_immediately_before(
     return prev
 
 
+def _pooled_forecast_dedupe_key(
+    day: date,
+    category_id: Optional[int],
+    kind: TransactionKind,
+    amount: Decimal,
+) -> tuple[date, Optional[int], TransactionKind, int]:
+    """Match frontend txnBreakdownDedupeKey: date, category, kind, amount in cents."""
+    cents = int(round(abs(amount) * 100))
+    return (day, category_id, kind, cents)
+
+
 def _forecast_day_tx_net(
     *,
     mode: Literal["both", "actual", "expected"],
     day: date,
-    as_of: date,
     actual_by_date: dict[date, Decimal],
     expected_by_date: dict[date, Decimal],
 ) -> Decimal:
-    """Pooled net cashflow for one day. In ``both`` mode: posted actuals through ``as_of``, expected after."""
+    """Pooled net cashflow for one day. In ``both`` mode: posted actuals plus scheduled expected (deduped at build)."""
     if mode == "actual":
         return actual_by_date.get(day, Decimal("0"))
     if mode == "expected":
         return expected_by_date.get(day, Decimal("0"))
-    if day <= as_of:
-        return actual_by_date.get(day, Decimal("0"))
-    return expected_by_date.get(day, Decimal("0"))
+    return actual_by_date.get(day, Decimal("0")) + expected_by_date.get(day, Decimal("0"))
 
 
 def _build_pooled_forecast_flow_maps(
@@ -6043,6 +6051,7 @@ def _build_pooled_forecast_flow_maps(
     account_rows = list(db.execute(select(Account).where(Account.family_id == family_id)).scalars().all())
 
     actual_by_date: dict[date, Decimal] = defaultdict(lambda: Decimal("0"))
+    actual_dedupe_keys: dict[date, set[tuple[date, Optional[int], TransactionKind, int]]] = defaultdict(set)
     if mode in ("both", "actual"):
         tx_rows = db.execute(
             select(Transaction).where(
@@ -6054,6 +6063,10 @@ def _build_pooled_forecast_flow_maps(
         for tx in tx_rows:
             signed = tx.amount if tx.kind == TransactionKind.income else -tx.amount
             actual_by_date[tx.date] += signed
+            if mode == "both":
+                actual_dedupe_keys[tx.date].add(
+                    _pooled_forecast_dedupe_key(tx.date, tx.category_id, tx.kind, tx.amount)
+                )
 
     expected_by_date: dict[date, Decimal] = defaultdict(lambda: Decimal("0"))
     if mode in ("both", "expected"):
@@ -6097,12 +6110,19 @@ def _build_pooled_forecast_flow_maps(
                 eff_account_id = ovr.account_id if ovr is not None and ovr.account_id is not None else tx.account_id
                 eff_kind = ovr.kind if ovr is not None and ovr.kind is not None else tx.kind
                 eff_amount = ovr.amount if ovr is not None and ovr.amount is not None else tx.amount
+                eff_category_id = (
+                    ovr.category_id if ovr is not None and ovr.category_id is not None else tx.category_id
+                )
                 if accounts_by_id.get(eff_account_id) is None:
                     continue
                 signed = eff_amount if eff_kind == TransactionKind.income else -eff_amount
                 eff_date = ovr.moved_to_date if (ovr is not None and getattr(ovr, "moved_to_date", None) is not None) else occ
                 if eff_date < balance_start or eff_date > last_day:
                     continue
+                if mode == "both":
+                    dedupe_key = _pooled_forecast_dedupe_key(eff_date, eff_category_id, eff_kind, eff_amount)
+                    if dedupe_key in actual_dedupe_keys.get(eff_date, set()):
+                        continue
                 expected_by_date[eff_date] += signed
 
     start_adds: dict[date, Decimal] = defaultdict(lambda: Decimal("0"))
@@ -6134,7 +6154,6 @@ def _calendar_month_daily_balances(
         return []
 
     balance_start = min((a.starting_balance_date or a.created_at.date()) for a in account_rows)
-    as_of = datetime.utcnow().date()
     actual_by_date, expected_by_date, start_adds = _build_pooled_forecast_flow_maps(
         db=db,
         family_id=family_id,
@@ -6157,7 +6176,6 @@ def _calendar_month_daily_balances(
         tx_net = _forecast_day_tx_net(
             mode=mode,
             day=sim,
-            as_of=as_of,
             actual_by_date=actual_by_date,
             expected_by_date=expected_by_date,
         )
@@ -6201,7 +6219,6 @@ def _pooled_daily_balance_first_hit_impl(
         return None, None
 
     balance_start = min((a.starting_balance_date or a.created_at.date()) for a in account_rows)
-    as_of = datetime.utcnow().date()
     actual_by_date, expected_by_date, start_adds = _build_pooled_forecast_flow_maps(
         db=db,
         family_id=family_id,
@@ -6220,7 +6237,6 @@ def _pooled_daily_balance_first_hit_impl(
         tx_net = _forecast_day_tx_net(
             mode=mode,
             day=d,
-            as_of=as_of,
             actual_by_date=actual_by_date,
             expected_by_date=expected_by_date,
         )

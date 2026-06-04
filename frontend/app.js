@@ -12070,7 +12070,6 @@ function computeCalendarVisibleDailyBalancesClient() {
   const mode = calendarMode?.value || "both";
   const includeActual = mode === "both" || mode === "actual";
   const includeExpected = mode === "both" || mode === "expected";
-  const asOfIso = toISODate(new Date());
 
   const actualByDate = new Map();
   const expectedByDate = new Map();
@@ -12082,17 +12081,22 @@ function computeCalendarVisibleDailyBalancesClient() {
     startAdds.set(iso, 0);
   }
 
+  const actualItems = [...(state.monthActualItems || []), ...(state.calendarExtraActualItems || [])];
+  const expectedItems = [...(state.monthExpectedItems || []), ...(state.calendarExtraExpectedItems || [])];
+  const actualDedupeKeys = new Set();
   if (includeActual) {
-    for (const tx of [...(state.monthActualItems || []), ...(state.calendarExtraActualItems || [])]) {
+    for (const tx of actualItems) {
       const amt = Number(tx.amount || 0);
       const signed = tx.kind === "income" ? amt : -amt;
       const dk = normalizeIsoDate(tx.date) || tx.date;
       if (!actualByDate.has(dk)) actualByDate.set(dk, 0);
       actualByDate.set(dk, (actualByDate.get(dk) || 0) + signed);
+      if (mode === "both") actualDedupeKeys.add(txnBreakdownDedupeKey(tx));
     }
   }
   if (includeExpected) {
-    for (const tx of [...(state.monthExpectedItems || []), ...(state.calendarExtraExpectedItems || [])]) {
+    for (const tx of expectedItems) {
+      if (mode === "both" && actualDedupeKeys.has(txnBreakdownDedupeKey(tx))) continue;
       const amt = Number(tx.amount || 0);
       const signed = tx.kind === "income" ? amt : -amt;
       const dk = normalizeIsoDate(tx.date) || tx.date;
@@ -12119,7 +12123,7 @@ function computeCalendarVisibleDailyBalancesClient() {
     let txNet = 0;
     if (mode === "actual") txNet = actualByDate.get(iso) || 0;
     else if (mode === "expected") txNet = expectedByDate.get(iso) || 0;
-    else txNet = iso <= asOfIso ? actualByDate.get(iso) || 0 : expectedByDate.get(iso) || 0;
+    else txNet = (actualByDate.get(iso) || 0) + (expectedByDate.get(iso) || 0);
     const dayEnd = dayStart + txNet;
     out.set(iso, { start: dayStart, txNet, end: dayEnd });
     carry = dayEnd;
