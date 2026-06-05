@@ -12953,7 +12953,7 @@ function renderCalendar() {
 
     if (!isBeforeStart && dayBal && metricsEl) {
       const endNum = Number(dayBal.end ?? 0);
-      const txNetNum = Number(dayBal.tx_net);
+      const txNetNum = Number(dayBal.txNet ?? dayBal.tx_net);
       const balParts = ["cal-stat", "cal-balance"];
       const hasFloor = minBalFloor != null && Number.isFinite(minBalFloor) && minBalFloor > 0;
       const prevEndNum = Number(state.monthDailyBalances.get(isoAddDays(iso, -1))?.end);
