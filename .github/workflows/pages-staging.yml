@@ -1,0 +1,53 @@
+name: Staging — build and verify frontend
+
+on:
+  push:
+    branches: ["staging"]
+  pull_request:
+    branches: ["staging"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages-staging-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build staging frontend
+        env:
+          API_BASE: ${{ secrets.API_BASE_STAGING }}
+        run: |
+          if [ -z "${API_BASE:-}" ]; then
+            echo "::error::Set secret API_BASE_STAGING in the staging environment (or repo secrets). Use your staging Render API URL with no trailing slash."
+            exit 1
+          fi
+          chmod +x scripts/build-frontend-static.sh
+          ./scripts/build-frontend-static.sh public-staging
+
+      - name: Upload staging artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: staging-frontend
+          path: public-staging
+          retention-days: 14
+
+      - name: Trigger Render staging web deploy (optional)
+        if: github.event_name != 'pull_request'
+        env:
+          DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_STAGING_WEB }}
+        run: |
+          if [ -z "${DEPLOY_HOOK:-}" ]; then
+            echo "RENDER_DEPLOY_HOOK_STAGING_WEB not set — skipping hook."
+            echo "Render still auto-deploys family-cash-flow-web-staging when the staging branch updates (if connected)."
+            exit 0
+          fi
+          curl -fsS -X POST "${DEPLOY_HOOK}"
+          echo "Triggered Render staging static site deploy."

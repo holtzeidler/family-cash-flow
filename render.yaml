@@ -1,8 +1,10 @@
-# Render Blueprint: FastAPI backend (Docker).
+# Render Blueprint: production + staging stacks.
 # https://render.com/docs/blueprint-spec
 #
-# Set these in the Render dashboard (or link a secret group):
-#   DATABASE_URL, JWT_SECRET, CORS_ORIGINS, ENV=production
+# Production API (branch main): set DATABASE_URL, JWT_SECRET, CORS_ORIGINS, ENV=production
+# in the dashboard — do not reuse production DATABASE_URL for staging.
+#
+# Staging (branch staging): separate Postgres + API + static frontend. See docs/STAGING.md.
 
 services:
   - type: web
@@ -11,4 +13,42 @@ services:
     dockerfilePath: ./backend/Dockerfile
     dockerContext: .
     plan: free
+    branch: main
     healthCheckPath: /docs
+
+  - type: web
+    name: family-cash-flow-api-staging
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    plan: free
+    branch: staging
+    healthCheckPath: /docs
+    envVars:
+      - key: ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: family-cash-flow-db-staging
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CORS_ORIGINS
+        sync: false
+      - key: APP_PUBLIC_BASE_URL
+        sync: false
+
+  - type: web
+    name: family-cash-flow-web-staging
+    runtime: static
+    branch: staging
+    buildCommand: chmod +x scripts/build-frontend-static.sh && ./scripts/build-frontend-static.sh public-staging
+    staticPublishPath: public-staging
+    envVars:
+      - key: API_BASE
+        sync: false
+
+databases:
+  - name: family-cash-flow-db-staging
+    databaseName: family_cash_flow_staging
+    plan: free

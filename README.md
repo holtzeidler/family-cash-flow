@@ -81,4 +81,8 @@ It publishes the contents of `frontend/` to GitHub Pages and replaces the `__API
 
 After you push to `main` and set the secret, Pages will update automatically.
 
+### Staging (test before production)
+
+See **[docs/STAGING.md](docs/STAGING.md)** for the `staging` branch, separate Render API/DB/static site, and GitHub workflow. Merge to `staging` first, verify, then merge `staging` → `main` for production.
+
 
