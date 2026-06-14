@@ -166,6 +166,82 @@ function showBwToast(message, { durationMs = 2800 } = {}) {
 
 window.showBwToast = showBwToast;
 
+let _bwConfirmModalEl = null;
+let _bwConfirmResolve = null;
+
+function closeBwConfirm(confirmed) {
+  const wrap = _bwConfirmModalEl;
+  if (!wrap) return;
+  wrap.classList.remove("modal-overlay--open");
+  wrap.setAttribute("aria-hidden", "true");
+  const resolve = _bwConfirmResolve;
+  _bwConfirmResolve = null;
+  if (resolve) resolve(!!confirmed);
+}
+
+function ensureBwConfirmModal() {
+  if (_bwConfirmModalEl) return _bwConfirmModalEl;
+  const wrap = document.createElement("div");
+  wrap.id = "bwConfirmModal";
+  wrap.className = "modal-overlay modal-overlay--nested category-simple-delete-modal bw-confirm-modal";
+  wrap.setAttribute("aria-hidden", "true");
+  wrap.innerHTML =
+    '<div class="modal category-simple-delete-modal__panel" role="dialog" aria-modal="true" aria-labelledby="bwConfirmTitle" aria-describedby="bwConfirmBody">' +
+    '<h3 id="bwConfirmTitle"></h3>' +
+    '<p id="bwConfirmBody" class="category-simple-delete-modal__body"></p>' +
+    '<div class="modal-actions category-simple-delete-modal__actions">' +
+    '<button type="button" class="secondary" id="bwConfirmCancel">Cancel</button>' +
+    '<button type="button" class="btn-category-delete" id="bwConfirmOk">OK</button>' +
+    "</div></div>";
+  document.body.appendChild(wrap);
+  wrap.querySelector("#bwConfirmCancel")?.addEventListener("click", () => closeBwConfirm(false));
+  wrap.querySelector("#bwConfirmOk")?.addEventListener("click", () => closeBwConfirm(true));
+  wrap.addEventListener("click", (e) => {
+    if (e.target === wrap) closeBwConfirm(false);
+  });
+  _bwConfirmModalEl = wrap;
+  return wrap;
+}
+
+/**
+ * App-styled confirm dialog (replaces window.confirm for in-app flows).
+ * @returns {Promise<boolean>}
+ */
+function bwConfirm({
+  title,
+  body = "",
+  confirmLabel = "OK",
+  cancelLabel = "Cancel",
+  danger = false,
+  nested = true,
+} = {}) {
+  return new Promise((resolve) => {
+    const wrap = ensureBwConfirmModal();
+    _bwConfirmResolve = resolve;
+    const titleEl = wrap.querySelector("#bwConfirmTitle");
+    const bodyEl = wrap.querySelector("#bwConfirmBody");
+    const cancelBtn = wrap.querySelector("#bwConfirmCancel");
+    const okBtn = wrap.querySelector("#bwConfirmOk");
+    if (titleEl) titleEl.textContent = String(title || "Are you sure?");
+    if (bodyEl) {
+      const msg = String(body || "").trim();
+      bodyEl.textContent = msg;
+      bodyEl.hidden = !msg;
+    }
+    if (cancelBtn) cancelBtn.textContent = cancelLabel;
+    if (okBtn) {
+      okBtn.textContent = confirmLabel;
+      okBtn.className = danger ? "btn-category-delete" : "secondary";
+    }
+    wrap.classList.toggle("modal-overlay--nested", !!nested);
+    wrap.classList.add("modal-overlay--open");
+    wrap.setAttribute("aria-hidden", "false");
+    (cancelBtn || okBtn)?.focus();
+  });
+}
+
+window.bwConfirm = bwConfirm;
+
 function expandSidebarSection(key) {
   const card = document.querySelector(`.sidebar-section[data-sidebar-key="${key}"]`);
   if (!card) return null;
@@ -5070,7 +5146,13 @@ if (txEditDelete) {
       if (!state.activeFamilyId) throw new Error("Choose a family first");
       const id = txEditId.value;
       if (!id) throw new Error("No transaction selected");
-      if (!confirm("Delete this transaction?")) return;
+      const ok = await bwConfirm({
+        title: "Delete transaction?",
+        body: "This removes the transaction from your ledger. This cannot be undone.",
+        confirmLabel: "Delete",
+        danger: true,
+      });
+      if (!ok) return;
       await api(`/api/families/${state.activeFamilyId}/transactions/${id}`, "DELETE");
       deletedOk = true;
     } catch (e) {
@@ -5107,6 +5189,10 @@ if (txEditModal) {
 
 document.addEventListener("keydown", (e) => {
   if (e.key !== "Escape") return;
+  if (_bwConfirmModalEl?.classList.contains("modal-overlay--open")) {
+    closeBwConfirm(false);
+    return;
+  }
   const deleteScope = document.getElementById("txEditDeleteScopeModal");
   if (deleteScope?.classList.contains("modal-overlay--open")) {
     closeTxEditDeleteScopeModal();
@@ -10391,12 +10477,24 @@ async function runExpectedDeleteAction(mode) {
     if (!expectedId) throw new Error("No series selected");
 
     if (mode === "all") {
-      if (!confirm("Delete ALL transactions in this series (all dates)? This cannot be undone.")) return;
+      const ok = await bwConfirm({
+        title: "Delete entire series?",
+        body: "Delete ALL transactions in this series (all dates). This cannot be undone.",
+        confirmLabel: "Delete all",
+        danger: true,
+      });
+      if (!ok) return;
       await api(`/api/families/${state.activeFamilyId}/expected-transactions/${expectedId}`, "DELETE");
     } else if (mode === "this") {
       const occ = expectedDeleteContext.occurrenceDate;
       if (!occ) throw new Error('Open from a specific calendar date to use "Delete only this transaction".');
-      if (!confirm("Delete ONLY this occurrence? It will no longer appear on the calendar.")) return;
+      const ok = await bwConfirm({
+        title: "Delete this occurrence?",
+        body: "Remove only this date from the schedule. Other occurrences stay.",
+        confirmLabel: "Delete",
+        danger: true,
+      });
+      if (!ok) return;
       await api(
         `/api/families/${state.activeFamilyId}/expected-transactions/${expectedId}/instances/${occ}`,
         "POST",
@@ -10405,7 +10503,13 @@ async function runExpectedDeleteAction(mode) {
     } else if (mode === "future") {
       const occ = expectedDeleteContext.occurrenceDate;
       if (!occ) throw new Error('Open from a specific calendar date to use "Delete all future transactions".');
-      if (!confirm("Delete this date and ALL future occurrences? Past dates stay on the schedule.")) return;
+      const ok = await bwConfirm({
+        title: "Delete this and future occurrences?",
+        body: "End the series from this date forward. Past dates stay on the schedule.",
+        confirmLabel: "Delete future",
+        danger: true,
+      });
+      if (!ok) return;
       await api(
         `/api/families/${state.activeFamilyId}/expected-transactions/${expectedId}/end-from-occurrence/${occ}`,
         "POST"

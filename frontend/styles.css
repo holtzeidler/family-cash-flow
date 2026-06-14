@@ -13526,7 +13526,8 @@ body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .c
 .category-delete-modal .modal,
 .category-simple-delete-modal .modal,
 .group-simple-delete-modal .modal,
-.category-move-modal .modal{
+.category-move-modal .modal,
+.bw-confirm-modal .modal{
   width: 100%;
   max-width: 440px;
   border: 1px solid var(--border);
@@ -13565,7 +13566,8 @@ body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .c
 .category-delete-modal__actions,
 .category-simple-delete-modal__actions,
 .group-simple-delete-modal__actions,
-.category-move-modal__actions{
+.category-move-modal__actions,
+.bw-confirm-modal .category-simple-delete-modal__actions{
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -13648,6 +13650,13 @@ body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .c
   font-size: 13.5px;
   line-height: 1.5;
   color: rgba(51, 65, 85, 0.9);
+}
+.bw-confirm-modal .modal h3{
+  margin: 0 0 8px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.01em;
 }
 .category-move-modal__hint{
   margin: 0 0 10px;
