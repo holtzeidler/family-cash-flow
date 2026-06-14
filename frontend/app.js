@@ -100,7 +100,7 @@ async function api(path, method = "GET", body) {
     try {
       sessionStorage.removeItem(BW_API_ACCESS_TOKEN_KEY);
     } catch (_) {}
-    window.location.href = "./login.html";
+    window.location.href = "/login.html";
     return null;
   }
 
