@@ -2125,7 +2125,7 @@ async function refreshCashOutlookGuidance() {
   const suggestion = computeSuggestedMinBalanceThreshold();
   if (!suggestion.ok) {
     const msg = cashOutlookLowDataMessage(suggestion);
-    setSidebarBalanceThresholdHint("Cash outlook");
+    setSidebarBalanceThresholdHint("Cash view");
     setSidebarLowBalanceBanner(`Getting started\nSECONDARY:${msg}`, "muted");
     if (sidebarLowBalanceBanner) sidebarLowBalanceBanner.classList.add("is-suggestion");
     lowBalanceLastQuery = {
