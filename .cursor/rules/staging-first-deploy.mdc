@@ -1,0 +1,32 @@
+---
+description: Default commits and deploys go to staging unless user says otherwise
+alwaysApply: true
+---
+
+# Staging-first deploy workflow
+
+Unless the user explicitly says otherwise (e.g. "deploy to production", "merge to main", "hotfix to prod"):
+
+## Commits and branches
+
+- Commit and push to the **`staging`** branch (not `main`).
+- If work started on another branch, merge or PR into **`staging`** before deploy.
+- Do **not** merge to `main` or push production deploys without explicit user approval.
+
+## Deploy target
+
+- **Staging**: `staging.balancewhiz.com` via Render (`family-cash-flow-api-staging`, `family-cash-flow-web-staging`).
+- Pushing **`staging`** triggers staging API + static site deploy and GitHub **Staging — build and verify frontend** CI.
+
+## When helping with git/deploy
+
+- Default branch for new commits: **`staging`**
+- Default push remote: **`origin staging`**
+- After deploy, remind user to smoke-test on **https://staging.balancewhiz.com**
+- Production (`main` → balancewhiz.com) only when user explicitly requests it.
+
+## Exceptions (user must say so)
+
+- Urgent production hotfix directly to `main`
+- Documentation-only changes user wants on `main` only
+- Any task where user names a different branch or environment

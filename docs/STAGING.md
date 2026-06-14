@@ -142,6 +142,8 @@ Production `CORS_ORIGINS` should list **production** frontend origins only (e.g.
 
 ## Day-to-day workflow
 
+**Default:** all new commits and deploys go to **`staging`** first. Only promote to production when you explicitly choose to (merge `staging` → `main`).
+
 ```
 feature/my-change  →  PR into staging  →  test on staging URLs  →  PR staging → main  →  production deploy
 ```
