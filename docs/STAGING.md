@@ -44,7 +44,7 @@ On **`family-cash-flow-api-staging`**, set (in addition to blueprint defaults):
 | Variable | Example / notes |
 |----------|-----------------|
 | `ENV` | `production` (needed for cross-origin auth cookies with static hosting) |
-| `CORS_ORIGINS` | Staging frontend origin only, e.g. `https://family-cash-flow-web-staging.onrender.com` (no path). Add a custom subdomain later if you add one. |
+| `CORS_ORIGINS` | Staging frontend origin only, e.g. `https://staging.balancewhiz.com` (no path). Must be **`CORS_ORIGINS`** (plural) — `CORS_ORIGIN` is ignored. |
 | `APP_PUBLIC_BASE_URL` | Same as staging frontend URL (invite/reset links) |
 | `JWT_SECRET` | Generate a new secret (do not reuse production) |
 | `DATABASE_URL` | Neon **staging branch** pooled connection string (not production) |
@@ -109,10 +109,16 @@ On **`family-cash-flow-api-staging`** → **Environment**, set:
 
 Save and wait for redeploy. DNS + Render SSL often take **5–30 minutes**.
 
-Verify:
+Verify DNS:
 
 ```bash
 dig staging.balancewhiz.com CNAME +short
+```
+
+Verify CORS on the staging API (should show `cors_middleware_enabled: true`):
+
+```bash
+curl -s https://family-cash-flow-api-staging.onrender.com/api/debug/public-config
 ```
 
 Then open `https://staging.balancewhiz.com/calendar/` and sign in with a **staging test account**.
@@ -154,11 +160,10 @@ For urgent production fixes: branch from `main`, fix, merge to `staging` for a q
 
 Replace with your Render service names if different:
 
-- Staging app: `https://staging.balancewhiz.com` (or `https://family-cash-flow-web-staging.onrender.com` before DNS)
+- Staging app: `https://staging.balancewhiz.com` (Render default: `https://family-cash-flow-web-staging.onrender.com`)
 - Staging API: `https://family-cash-flow-api-staging.onrender.com`
 - Staging API docs: `https://family-cash-flow-api-staging.onrender.com/docs`
-
-Optional: `staging.balancewhiz.com` — see **§5 Custom domain (GoDaddy DNS)** above.
+- Staging API config check: `https://family-cash-flow-api-staging.onrender.com/api/debug/public-config`
 
 ## Local development
 
@@ -175,6 +180,7 @@ Use staging when you need to validate **deployed** behavior, not every edit.
 
 | Symptom | Check |
 |---------|--------|
+| “We're having trouble connecting” on account setup | Staging API `/api/debug/public-config`: `cors_middleware_enabled` must be `true`. Fix `CORS_ORIGINS` (plural), not `CORS_ORIGIN`; redeploy and recheck. |
 | Login works on prod, not staging | `CORS_ORIGINS` on staging API matches staging frontend origin exactly; `ENV=production` on staging API |
 | `API_BASE` / `__API_BASE__` in browser | Re-deploy staging static site after setting `API_BASE` on Render |
 | Staging shows production data | Staging API `DATABASE_URL` must use **staging** DB only |
