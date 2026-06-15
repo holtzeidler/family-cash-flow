@@ -28366,12 +28366,30 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
 .verified-balance-modal__preview-row{
   display: flex;
   justify-content: space-between;
+  align-items: baseline;
   gap: 12px;
   font-size: 13px;
-  margin-bottom: 6px;
+  line-height: 1.35;
+  margin-bottom: 5px;
+}
+.verified-balance-modal__preview-row:last-of-type{
+  margin-bottom: 0;
+}
+.verified-balance-modal__preview-amt{
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: rgba(15, 23, 42, 0.9);
+  text-align: right;
 }
 .verified-balance-modal__preview-row--diff{
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(17, 24, 39, 0.08);
   font-weight: 650;
+}
+.verified-balance-modal__preview-row--diff .verified-balance-modal__preview-amt{
+  font-weight: 700;
 }
 .verified-balance-modal__gap{
   margin: 8px 0 0;

@@ -1688,6 +1688,8 @@ const verifiedBalanceTitle = document.getElementById("verifiedBalanceTitle");
 const verifiedBalanceDate = document.getElementById("verifiedBalanceDate");
 const verifiedBalanceAmount = document.getElementById("verifiedBalanceAmount");
 const verifiedBalancePreview = document.getElementById("verifiedBalancePreview");
+const verifiedBalanceForecastAmt = document.getElementById("verifiedBalanceForecastAmt");
+const verifiedBalanceVerifiedAmt = document.getElementById("verifiedBalanceVerifiedAmt");
 const verifiedBalanceDifference = document.getElementById("verifiedBalanceDifference");
 const verifiedBalanceGapNote = document.getElementById("verifiedBalanceGapNote");
 const verifiedBalanceSaveBtn = document.getElementById("verifiedBalanceSaveBtn");
@@ -5248,6 +5250,15 @@ async function refreshVerifiedBalancePreview() {
       "GET",
     );
     verifiedBalancePreview.hidden = false;
+    const projected = Number(data?.projected_amount);
+    if (verifiedBalanceForecastAmt) {
+      verifiedBalanceForecastAmt.textContent = Number.isFinite(projected)
+        ? `$${fmtMoney(projected)}`
+        : "—";
+    }
+    if (verifiedBalanceVerifiedAmt) {
+      verifiedBalanceVerifiedAmt.textContent = `$${fmtMoney(amt)}`;
+    }
     if (verifiedBalanceDifference) {
       verifiedBalanceDifference.textContent = fmtSignedMoneyDiff(data?.unexplained_difference);
     }

@@ -1536,9 +1536,17 @@
         </label>
         <p class="verified-balance-modal__help">Future forecasts will continue from this balance. Past balances won't change.</p>
         <div id="verifiedBalancePreview" class="verified-balance-modal__preview" hidden>
+          <div class="verified-balance-modal__preview-row">
+            <span>Forecasted Balance</span>
+            <span id="verifiedBalanceForecastAmt" class="verified-balance-modal__preview-amt">—</span>
+          </div>
+          <div class="verified-balance-modal__preview-row">
+            <span>Verified Balance</span>
+            <span id="verifiedBalanceVerifiedAmt" class="verified-balance-modal__preview-amt">—</span>
+          </div>
           <div class="verified-balance-modal__preview-row verified-balance-modal__preview-row--diff">
-            <span>Unexplained difference</span>
-            <span id="verifiedBalanceDifference">—</span>
+            <span>Difference</span>
+            <span id="verifiedBalanceDifference" class="verified-balance-modal__preview-amt">—</span>
           </div>
           <p id="verifiedBalanceGapNote" class="verified-balance-modal__gap" hidden></p>
         </div>
