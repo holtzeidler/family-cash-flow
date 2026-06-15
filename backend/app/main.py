@@ -6588,12 +6588,12 @@ def _verified_balance_report_warnings(
     ).scalars().all()
     out: list[str] = []
     for cp_date in cp_dates:
-        if start_date < cp_date:
-            label = cp_date.strftime("%B %d, %Y")
+        if start_date <= cp_date <= end_date:
             out.append(
-                "Reporting may be incomplete. A confirmed balance was entered on "
-                f"{label}, which may indicate missing transactions before that date."
+                "This report includes an Adjusted balance. Some transactions may have been "
+                "skipped, so historical totals may not reflect all account activity."
             )
+            break
     return out
 
 

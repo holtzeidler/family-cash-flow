@@ -1656,6 +1656,7 @@
           <input type="text" id="verifiedBalanceAmount" class="verified-balance-modal__input" inputmode="decimal" placeholder="0.00" autocomplete="off" />
         </label>
         <p class="verified-balance-modal__help">Future forecasts will continue from this balance. You can always add missing transactions later.</p>
+        <p id="verifiedBalanceAdjustedNotice" class="verified-balance-modal__adjusted-notice" hidden>This balance differs from your forecast. Saving will create an Adjusted balance. Future forecasts will continue from this amount, but reports may not include skipped transactions until those transactions are added.</p>
         <div id="verifiedBalancePreview" class="verified-balance-modal__preview" hidden>
           <div class="verified-balance-modal__preview-row">
             <span>Forecasted</span>
@@ -1674,7 +1675,7 @@
         <div id="verifiedBalanceErr" class="error"></div>
         <div class="modal-actions verified-balance-modal__actions">
           <button type="button" id="verifiedBalanceCancelBtn" class="verified-balance-modal__cancel">Cancel</button>
-          <button type="button" id="verifiedBalanceSaveBtn" class="verified-balance-modal__primary">Save Confirmed Balance</button>
+          <button type="button" id="verifiedBalanceSaveBtn" class="verified-balance-modal__primary">Confirm Balance</button>
         </div>
       </div>
     </div>

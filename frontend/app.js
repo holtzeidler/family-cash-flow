@@ -1700,6 +1700,7 @@ const verifiedBalanceForecastAmt = document.getElementById("verifiedBalanceForec
 const verifiedBalanceVerifiedAmt = document.getElementById("verifiedBalanceVerifiedAmt");
 const verifiedBalanceDifference = document.getElementById("verifiedBalanceDifference");
 const verifiedBalanceGapNote = document.getElementById("verifiedBalanceGapNote");
+const verifiedBalanceAdjustedNotice = document.getElementById("verifiedBalanceAdjustedNotice");
 const verifiedBalanceSaveBtn = document.getElementById("verifiedBalanceSaveBtn");
 const verifiedBalanceCancelBtn = document.getElementById("verifiedBalanceCancelBtn");
 let verifiedBalancePreviewTimer = null;
@@ -3701,7 +3702,7 @@ function renderCategoryTotalsReport(data) {
     catReportSummary.style.display = "block";
     let summary = `${rangeTxt} · Split at ${asOf} (UTC) for estimates · Mode: ${showEst ? "actual + future estimates" : "actual only"}`;
     if (warnings.length) {
-      summary += ` · ${warnings.length} confirmed-balance notice${warnings.length === 1 ? "" : "s"}`;
+      summary += ` · ${warnings.length} adjusted-balance notice${warnings.length === 1 ? "" : "s"}`;
     }
     catReportSummary.textContent = summary;
   }
@@ -5171,7 +5172,7 @@ function syncReconcileModalActions(iso) {
     reconcileDifferentBtn.hidden = !canWrite;
     if (!reconcileDifferentBtn.hidden) {
       reconcileDifferentBtn.textContent = isVerified
-        ? "Edit confirmed balance →"
+        ? "Edit adjusted balance →"
         : "Enter my actual balance →";
     }
   }
@@ -5190,7 +5191,10 @@ function syncReconcileModalBalance(iso) {
 
   if (reconcileStatus) {
     if (hasConfirmation && d) {
-      reconcileStatus.textContent = `✓ Balance confirmed on ${fmtMonthDayLong(d)}`;
+      const dateLabel = fmtMonthDayLong(d);
+      reconcileStatus.textContent = isVerified
+        ? `↺ Adjusted on ${dateLabel}`
+        : `✓ Reconciled on ${dateLabel}`;
       reconcileStatus.hidden = false;
     } else {
       reconcileStatus.textContent = "";
@@ -5227,12 +5231,13 @@ function syncReconcileModalBalance(iso) {
     if (reconcileBreakdownInsight && projected != null && confirmed != null) {
       const diff = confirmed - projected;
       if (Math.abs(diff) < 0.005) {
-        reconcileBreakdownInsight.textContent = "Your bank balance matched the forecast.";
+        reconcileBreakdownInsight.textContent =
+          "Your bank balance matched the forecast. Reports and forecasts are fully aligned through this date.";
         reconcileBreakdownInsight.hidden = false;
       } else {
-        const note = confirmedBalanceDiffCopy(diff);
-        reconcileBreakdownInsight.textContent = note;
-        reconcileBreakdownInsight.hidden = !note;
+        reconcileBreakdownInsight.textContent =
+          "Future forecasts continue from this balance. Reports may not include skipped transactions.";
+        reconcileBreakdownInsight.hidden = false;
       }
     }
     if (reconcileBalanceBlock) reconcileBalanceBlock.hidden = false;
@@ -5282,6 +5287,12 @@ function fmtSignedMoneyDiff(n) {
   return `${sign}$${fmtMoney(Math.abs(num))}`;
 }
 
+function balanceMatchesForecast(entered, forecast) {
+  const amt = Number(entered);
+  const proj = Number(forecast);
+  return Number.isFinite(amt) && Number.isFinite(proj) && Math.abs(amt - proj) < 0.005;
+}
+
 function confirmedBalanceDiffCopy(diff) {
   const n = Number(diff);
   if (!Number.isFinite(n) || Math.abs(n) < 0.005) return "";
@@ -5290,44 +5301,72 @@ function confirmedBalanceDiffCopy(diff) {
   return `Your balance was $${amt} lower than forecast.`;
 }
 
-function buildConfirmedBalanceTipHtml(dayBal) {
+function buildReconciledBalanceTipHtml(dayBal) {
+  if (!dayBal) return "";
+  const forecast = Number.isFinite(Number(dayBal.projectedEnd))
+    ? Number(dayBal.projectedEnd)
+    : Number.isFinite(Number(dayBal.end))
+      ? Number(dayBal.end)
+      : null;
+  const bank = forecast;
+  if (forecast == null) return "";
+
+  const parts = [
+    '<div class="cal-confirmed-tip">',
+    '<div class="cal-confirmed-tip__head cal-confirmed-tip__head--reconciled">✓ Reconciled</div>',
+    '<dl class="cal-confirmed-tip__rows">',
+    `<div class="cal-confirmed-tip__row"><dt>Forecast</dt><dd>$${escapeHtml(fmtMoney(forecast))}</dd></div>`,
+    `<div class="cal-confirmed-tip__row"><dt>Bank Balance</dt><dd>$${escapeHtml(fmtMoney(bank))}</dd></div>`,
+    "</dl>",
+    '<p class="cal-confirmed-tip__match">Matched forecast exactly.</p>',
+    "</div>",
+  ];
+  return `<div class="reports-risk-tip__inner">${parts.join("")}</div>`;
+}
+
+function buildAdjustedBalanceTipHtml(dayBal) {
   if (!dayBal || !dayBal.verified) return "";
-  const confirmed = Number.isFinite(Number(dayBal.verifiedAmount))
+  const bank = Number.isFinite(Number(dayBal.verifiedAmount))
     ? Number(dayBal.verifiedAmount)
     : Number.isFinite(Number(dayBal.end))
       ? Number(dayBal.end)
       : null;
   const forecast = Number.isFinite(Number(dayBal.projectedEnd)) ? Number(dayBal.projectedEnd) : null;
-  if (confirmed == null) return "";
+  if (bank == null) return "";
 
-  const parts = ['<div class="cal-confirmed-tip">', '<div class="cal-confirmed-tip__head">✓ Confirmed Balance</div>'];
+  const parts = [
+    '<div class="cal-confirmed-tip">',
+    '<div class="cal-confirmed-tip__head cal-confirmed-tip__head--adjusted">↺ Adjusted</div>',
+  ];
   if (forecast != null) {
-    const diff = confirmed - forecast;
-    if (Math.abs(diff) < 0.005) {
-      parts.push('<p class="cal-confirmed-tip__match">Your bank balance matched the forecast.</p>');
-    } else {
-      parts.push('<dl class="cal-confirmed-tip__rows">');
-      parts.push(
-        `<div class="cal-confirmed-tip__row"><dt>Your Balance</dt><dd>$${escapeHtml(fmtMoney(confirmed))}</dd></div>`,
-      );
-      parts.push(
-        `<div class="cal-confirmed-tip__row"><dt>Forecast</dt><dd>$${escapeHtml(fmtMoney(forecast))}</dd></div>`,
-      );
+    const diff = bank - forecast;
+    parts.push('<dl class="cal-confirmed-tip__rows">');
+    parts.push(
+      `<div class="cal-confirmed-tip__row"><dt>Forecast</dt><dd>$${escapeHtml(fmtMoney(forecast))}</dd></div>`,
+    );
+    parts.push(
+      `<div class="cal-confirmed-tip__row"><dt>Bank Balance</dt><dd>$${escapeHtml(fmtMoney(bank))}</dd></div>`,
+    );
+    if (Math.abs(diff) >= 0.005) {
       parts.push(
         `<div class="cal-confirmed-tip__row cal-confirmed-tip__row--diff"><dt>Difference</dt><dd>${escapeHtml(fmtSignedMoneyDiff(diff))}</dd></div>`,
       );
-      parts.push("</dl>");
-      const note = confirmedBalanceDiffCopy(diff);
-      if (note) parts.push(`<p class="cal-confirmed-tip__note">${escapeHtml(note)}</p>`);
     }
-  } else {
-    parts.push('<dl class="cal-confirmed-tip__rows">');
-    parts.push(
-      `<div class="cal-confirmed-tip__row"><dt>Your Balance</dt><dd>$${escapeHtml(fmtMoney(confirmed))}</dd></div>`,
-    );
     parts.push("</dl>");
   }
+  parts.push('<p class="cal-confirmed-tip__note">Future forecasts continue from this balance.</p>');
+  parts.push('<p class="cal-confirmed-tip__note">Reports may not include skipped transactions.</p>');
   parts.push("</div>");
+  return `<div class="reports-risk-tip__inner">${parts.join("")}</div>`;
+}
+
+function buildStartingPointTipHtml() {
+  const parts = [
+    '<div class="cal-confirmed-tip">',
+    '<div class="cal-confirmed-tip__head cal-confirmed-tip__head--starting">🏁 Starting Point</div>',
+    "<p class=\"cal-confirmed-tip__match\">Starting balance entered when this account was created.</p>",
+    "</div>",
+  ];
   return `<div class="reports-risk-tip__inner">${parts.join("")}</div>`;
 }
 
@@ -5370,6 +5409,7 @@ function closeVerifiedBalanceModal() {
   if (verifiedBalanceAmount) verifiedBalanceAmount.value = "";
   if (verifiedBalancePreview) verifiedBalancePreview.hidden = true;
   if (verifiedBalanceGapNote) verifiedBalanceGapNote.hidden = true;
+  if (verifiedBalanceAdjustedNotice) verifiedBalanceAdjustedNotice.hidden = true;
 }
 
 async function scheduleVerifiedBalancePreview() {
@@ -5387,6 +5427,7 @@ async function refreshVerifiedBalancePreview() {
   if (!iso || amt == null) {
     verifiedBalancePreview.hidden = true;
     if (verifiedBalanceGapNote) verifiedBalanceGapNote.hidden = true;
+    if (verifiedBalanceAdjustedNotice) verifiedBalanceAdjustedNotice.hidden = true;
     return;
   }
   try {
@@ -5407,12 +5448,19 @@ async function refreshVerifiedBalancePreview() {
     if (verifiedBalanceDifference) {
       verifiedBalanceDifference.textContent = fmtSignedMoneyDiff(data?.unexplained_difference);
     }
+    const matches = balanceMatchesForecast(amt, projected);
+    if (verifiedBalanceAdjustedNotice) {
+      verifiedBalanceAdjustedNotice.hidden = matches || !Number.isFinite(projected);
+    }
+    if (verifiedBalanceSaveBtn) {
+      verifiedBalanceSaveBtn.textContent = "Confirm Balance";
+    }
     if (verifiedBalanceGapNote) {
       const gs = normalizeIsoDate(data?.gap_start);
       const ge = normalizeIsoDate(data?.gap_end);
-      if (gs && ge) {
+      if (gs && ge && !matches) {
         verifiedBalanceGapNote.hidden = false;
-        verifiedBalanceGapNote.textContent = `Possible missing transaction gap: ${fmtDateMDY(gs)} – ${fmtDateMDY(ge)}. You can add missing transactions or keep using this confirmed balance.`;
+        verifiedBalanceGapNote.textContent = `Possible missing transaction gap: ${fmtDateMDY(gs)} – ${fmtDateMDY(ge)}. You can add missing transactions or keep using this adjusted balance.`;
       } else {
         verifiedBalanceGapNote.hidden = true;
         verifiedBalanceGapNote.textContent = "";
@@ -5443,7 +5491,7 @@ async function saveReconcileMark() {
   closeReconcileModal();
   renderCalendar();
   await refreshForecastConfidence();
-  if (typeof showBwToast === "function") showBwToast("✓ Balance confirmed");
+  if (typeof showBwToast === "function") showBwToast("✓ Reconciled");
   bwDispatchMilestone("first-reconcile");
 }
 
@@ -5493,26 +5541,48 @@ async function saveVerifiedBalance() {
   const amt = toMoneyNumber(verifiedBalanceAmount?.value || "");
   if (!iso) throw new Error("Choose a date");
   if (amt == null) throw new Error("Enter your current bank balance");
-  await api(`/api/families/${state.activeFamilyId}/verified-balances`, "POST", {
-    date: iso,
-    amount: amt,
-  });
-  await api(`/api/families/${state.activeFamilyId}/reconciled-days`, "POST", {
-    date: iso,
-    reconciled: false,
-  });
+
+  const preview = await api(
+    `/api/families/${state.activeFamilyId}/verified-balances/preview?date=${encodeURIComponent(iso)}&amount=${encodeURIComponent(String(amt))}`,
+    "GET",
+  );
+  const projected = Number(preview?.projected_amount);
+  const matches = balanceMatchesForecast(amt, projected);
   const month = (calendarMonth?.value || monthInput?.value) || iso.slice(0, 7);
-  await loadVerifiedBalances(month);
-  invalidateLowBalanceAlertCache();
-  await loadCalendarMonthDaily();
-  await loadReconciledDays(month);
+
+  if (matches) {
+    if (existingVerifiedBalanceOnDate(iso)) {
+      await api(`/api/families/${state.activeFamilyId}/verified-balances/${encodeURIComponent(iso)}`, "DELETE");
+      await loadVerifiedBalances(month);
+      invalidateLowBalanceAlertCache();
+      await loadCalendarMonthDaily();
+    }
+    await api(`/api/families/${state.activeFamilyId}/reconciled-days`, "POST", {
+      date: iso,
+      reconciled: true,
+    });
+    await loadReconciledDays(month);
+    if (typeof showBwToast === "function") showBwToast("✓ Reconciled");
+  } else {
+    await api(`/api/families/${state.activeFamilyId}/verified-balances`, "POST", {
+      date: iso,
+      amount: amt,
+    });
+    await api(`/api/families/${state.activeFamilyId}/reconciled-days`, "POST", {
+      date: iso,
+      reconciled: false,
+    });
+    await loadVerifiedBalances(month);
+    invalidateLowBalanceAlertCache();
+    await loadCalendarMonthDaily();
+    await loadReconciledDays(month);
+    if (typeof showBwToast === "function") showBwToast("↺ Adjusted balance saved");
+  }
+
   closeVerifiedBalanceModal();
   renderCalendar();
   await refreshLowBalanceAlert();
   await refreshForecastConfidence();
-  if (typeof showBwToast === "function") {
-    showBwToast("✓ Confirmed balance saved — forecast updated from this date forward");
-  }
 }
 
 async function loadVerifiedBalances(month) {
@@ -5951,13 +6021,13 @@ function appendCalendarDayStartBalanceLine(row, parentEl, iso) {
   line.dataset.accountId = String(row.account_id);
   line.setAttribute("role", "button");
   line.setAttribute("tabindex", "0");
-  line.title = "Edit account starting balance";
+  line.title = "";
   const acctLabel = row.account_name ? String(row.account_name).trim() : "account";
-  line.setAttribute("aria-label", `Edit starting balance for ${acctLabel}`);
+  line.setAttribute("aria-label", `Starting point for ${acctLabel}`);
 
   const labelSpan = document.createElement("span");
-  labelSpan.className = "cal-tx-label";
-  labelSpan.textContent = "Starting Balance ";
+  labelSpan.className = "cal-tx-label cal-tx-label--starting-point";
+  labelSpan.textContent = "🏁 Starting Point ";
 
   const labelWrap = document.createElement("span");
   labelWrap.className = "cal-tx-label-wrap";
@@ -5987,6 +6057,8 @@ function appendCalendarDayStartBalanceLine(row, parentEl, iso) {
   };
   line.addEventListener("click", openStartBalEdit);
   line.addEventListener("keydown", openStartBalEdit);
+  const tipHtml = buildStartingPointTipHtml();
+  if (tipHtml) bindRiskPressureCellHover(line, line, tipHtml);
   parentEl.appendChild(line);
 }
 
@@ -6042,13 +6114,20 @@ function bindCalendarDayBalanceHit(metricsEl, iso, { isReconciled, dayBalVerifie
 
   if (dayBalVerified && dayBal) {
     const cell = metricsEl.closest(".cal-cell");
-    const html = buildConfirmedBalanceTipHtml(dayBal);
+    const html = buildAdjustedBalanceTipHtml(dayBal);
+    if (cell && html) bindRiskPressureCellHover(cell, metricsEl, html);
+    return;
+  }
+
+  if (isReconciled && dayBal) {
+    const cell = metricsEl.closest(".cal-cell");
+    const html = buildReconciledBalanceTipHtml(dayBal);
     if (cell && html) bindRiskPressureCellHover(cell, metricsEl, html);
     return;
   }
 
   let title = "Confirm Balance";
-  if (isReconciled) title = "Confirmed — click to review";
+  if (isReconciled) title = "Reconciled — click to review";
   metricsEl.title = title;
 }
 
@@ -6639,6 +6718,21 @@ function tmCountDaysBelowFloorInRange(startIso, endIso) {
     if (endNum < floor) n++;
   }
   return n;
+}
+
+function tmLatestBalanceCheckIsoBefore(endIso) {
+  const reconciled = tmLatestReconciledIsoBefore(endIso);
+  const vb = state.verifiedBalances;
+  let verifiedBest = "";
+  if (vb && vb.size && endIso) {
+    for (const iso of vb.keys()) {
+      if (!iso || iso > endIso) continue;
+      if (!verifiedBest || iso > verifiedBest) verifiedBest = iso;
+    }
+  }
+  if (!reconciled) return verifiedBest;
+  if (!verifiedBest) return reconciled;
+  return reconciled > verifiedBest ? reconciled : verifiedBest;
 }
 
 function tmLatestReconciledIsoBefore(endIso) {
@@ -11199,7 +11293,7 @@ if (verifiedBalanceSaveBtn) {
     try {
       await saveVerifiedBalance();
     } catch (e) {
-      show(verifiedBalanceErr, e.message || "Failed to save confirmed balance");
+      show(verifiedBalanceErr, e.message || "Failed to save balance");
     }
   });
 }
@@ -13527,7 +13621,7 @@ function renderCalendar() {
     `;
     if (isOutOfMonth) cell.classList.add("cal-cell--out");
     if (isReconciled && !isOutOfMonth) cell.classList.add("cal-cell--reconciled");
-    if (isVerifiedBalance && !isOutOfMonth) cell.classList.add("cal-cell--verified-balance");
+    if (isVerifiedBalance && !isOutOfMonth) cell.classList.add("cal-cell--adjusted-balance");
     // In-month "past" gray only when we have no starting-balance date; otherwise only
     // cal-cell--before-start tints days before the anchor (days on/after stay white).
     if (!isOutOfMonth && isPast && !earliestStartIso) cell.classList.add("cal-cell--past");
@@ -13789,7 +13883,8 @@ function renderCalendar() {
       }
 
       let stripCue = "";
-      if (dayBalVerified) stripCue = "cal-balance-strip--verified";
+      if (dayBalVerified) stripCue = "cal-balance-strip--adjusted";
+      else if (isReconciled) stripCue = "cal-balance-strip--reconciled";
       else if (negativeBal) stripCue = "cal-balance-strip--cue-risk";
       else if (belowFloor) stripCue = "cal-balance-strip--cue-warn";
       else if (watchOnly) stripCue = "cal-balance-strip--cue-watch";
@@ -13804,24 +13899,28 @@ function renderCalendar() {
         belowFloor && !negativeBal && !dayBalVerified
           ? `<span class="cal-balance-warn-icon" aria-hidden="true" title="Below your minimum balance"><svg viewBox="0 0 16 16" width="9" height="9" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 2.25L14 13.75H2L8 2.25z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" fill="none"/><path d="M8 6.25v3M8 11.1v.01" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg></span>`
           : "";
-      const verifiedIcon = dayBalVerified
-        ? `<span class="cal-balance-verified-icon" aria-hidden="true"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.5"/><path d="M5.2 8.1l1.8 1.8 3.8-4"/></svg></span>`
+      const adjustedIcon = dayBalVerified
+        ? `<span class="cal-balance-adjusted-icon" aria-hidden="true">↺</span>`
         : "";
       const reconciledIcon =
         isReconciled && !dayBalVerified
-          ? `<span class="cal-balance-status cal-balance-status--reconciled" title="Confirmed" aria-hidden="true"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.5"/><path d="M5.2 8.1l1.8 1.8 3.8-4"/></svg></span>`
+          ? `<span class="cal-balance-status cal-balance-status--reconciled" aria-hidden="true"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.5"/><path d="M5.2 8.1l1.8 1.8 3.8-4"/></svg></span>`
           : "";
-      const verifiedLabel = dayBalVerified
-        ? `<span class="cal-balance-verified-label">Confirmed</span>`
+      const adjustedLabel = dayBalVerified
+        ? `<span class="cal-balance-adjusted-label">Adjusted</span>`
         : "";
-      metricsEl.innerHTML = `<div class="cal-balance-strip${stripCue ? ` ${stripCue}` : ""}"><div class="cal-balance-strip__row"><span class="cal-balance-strip__amt">${verifiedIcon}${reconciledIcon}${riskIcon}${warnIcon}<span class="${balanceClass}${dayBalVerified ? " cal-balance--verified" : ""}${isReconciled && !dayBalVerified ? " cal-balance--reconciled" : ""}"${balanceTitle ? ` title="${escapeHtml(balanceTitle)}"` : ""}>$${fmtMoneyParens(
+      const reconciledLabel =
+        isReconciled && !dayBalVerified
+          ? `<span class="cal-balance-reconciled-label">Reconciled</span>`
+          : "";
+      metricsEl.innerHTML = `<div class="cal-balance-strip${stripCue ? ` ${stripCue}` : ""}"><div class="cal-balance-strip__row"><span class="cal-balance-strip__amt">${adjustedIcon}${reconciledIcon}${riskIcon}${warnIcon}<span class="${balanceClass}${dayBalVerified ? " cal-balance--adjusted" : ""}${isReconciled && !dayBalVerified ? " cal-balance--reconciled" : ""}"${balanceTitle ? ` title="${escapeHtml(balanceTitle)}"` : ""}>$${fmtMoneyParens(
         endNum
-      )}</span>${verifiedLabel}</span></div></div>`;
+      )}</span>${adjustedLabel}${reconciledLabel}</span></div></div>`;
       bindCalendarDayBalanceHit(metricsEl, iso, {
         isReconciled,
         dayBalVerified,
         isOutOfMonth,
-        dayBal: dayBalVerified ? dayBal : null,
+        dayBal: dayBalVerified || isReconciled ? dayBal : null,
       });
     }
 
@@ -15086,7 +15185,7 @@ function getNextBelowFloorDate(source, floor, fromIso = "") {
 
 function getDaysSinceReconciled(endIso = toISODate(new Date())) {
   const refIso = normalizeIsoDate(endIso) || toISODate(new Date());
-  const latest = tmLatestReconciledIsoBefore(refIso);
+  const latest = tmLatestBalanceCheckIsoBefore(refIso);
   if (!latest) return null;
   const days = calendarDaysBetweenIso(latest, refIso);
   if (days == null || !Number.isFinite(days)) return null;

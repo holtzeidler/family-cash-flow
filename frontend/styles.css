@@ -19902,7 +19902,8 @@ body.plans-page--polished .plans-wrap{
   color: rgba(11, 61, 46, 0.94);
 }
 .cal-cell:not(.cal-cell--out):not(.cal-cell--before-start) .cal-ledger-metrics.cal-day-balance-hit:hover .cal-balance-status--reconciled,
-.cal-cell:not(.cal-cell--out):not(.cal-cell--before-start) .cal-ledger-metrics.cal-day-balance-hit:hover .cal-balance-verified-icon{
+.cal-cell:not(.cal-cell--out):not(.cal-cell--before-start) .cal-ledger-metrics.cal-day-balance-hit:hover .cal-balance-adjusted-icon,
+.cal-cell:not(.cal-cell--out):not(.cal-cell--before-start) .cal-ledger-metrics.cal-day-balance-hit:hover .cal-balance-status--reconciled{
   color: rgba(22, 101, 52, 0.95);
 }
 /* 1–2 visible rows: transactions at the top; projected balance stays anchored below. */
@@ -28478,26 +28479,40 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   border-color: color-mix(in srgb, var(--accent) 72%, #0d1f18);
   color: #fff;
 }
-.cal-cell--verified-balance .cal-balance-strip--verified{
+.cal-cell--adjusted-balance .cal-balance-strip--adjusted{
+  border: 1px solid rgba(180, 83, 9, 0.28);
+  border-radius: 8px;
+  background: rgba(255, 251, 235, 0.78);
+  padding: 2px 4px;
+}
+.cal-cell--adjusted-balance .cal-ledger-metrics.cal-day-balance-hit:hover,
+.cal-cell--adjusted-balance .cal-ledger-metrics.cal-day-balance-hit:focus-within{
+  background: rgba(255, 251, 235, 0.96);
+  border-top-color: rgba(180, 83, 9, 0.34);
+}
+.cal-cell--adjusted-balance .cal-balance-strip__row,
+.cal-cell--reconciled .cal-balance-strip--reconciled .cal-balance-strip__row{
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+}
+.cal-cell--reconciled .cal-balance-strip--reconciled{
   border: 1px solid rgba(22, 101, 52, 0.28);
   border-radius: 8px;
   background: rgba(240, 253, 244, 0.72);
   padding: 2px 4px;
 }
-.cal-cell--verified-balance .cal-ledger-metrics.cal-day-balance-hit:hover,
-.cal-cell--verified-balance .cal-ledger-metrics.cal-day-balance-hit:focus-within{
+.cal-cell--reconciled .cal-ledger-metrics.cal-day-balance-hit:hover,
+.cal-cell--reconciled .cal-ledger-metrics.cal-day-balance-hit:focus-within{
   background: rgba(240, 253, 244, 0.95);
   border-top-color: rgba(22, 101, 52, 0.34);
 }
-.cal-cell--verified-balance .cal-balance-strip__row{
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 1px;
-}
-.cal-balance-verified-icon{
+.cal-balance-adjusted-icon{
   display: inline-flex;
   margin-right: 3px;
-  color: #166534;
+  color: rgba(180, 83, 9, 0.92);
+  font-size: 11px;
+  font-weight: 700;
   vertical-align: -1px;
 }
 .cal-balance-status{
@@ -28511,11 +28526,20 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
 .cal-balance--reconciled{
   font-weight: 650;
 }
-.cal-balance--verified{
+.cal-balance--adjusted{
   font-weight: 700;
-  color: #14532d;
+  color: rgba(120, 53, 15, 0.95);
 }
-.cal-balance-verified-label{
+.cal-balance-adjusted-label{
+  display: block;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(180, 83, 9, 0.88);
+  line-height: 1.1;
+}
+.cal-balance-reconciled-label{
   display: block;
   font-size: 9px;
   font-weight: 700;
@@ -28523,6 +28547,29 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   text-transform: uppercase;
   color: rgba(22, 101, 52, 0.82);
   line-height: 1.1;
+}
+.verified-balance-modal__adjusted-notice{
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 251, 235, 0.95);
+  border: 1px solid rgba(217, 119, 6, 0.22);
+  font-size: 13px;
+  line-height: 1.45;
+  color: rgba(55, 48, 36, 0.92);
+}
+.cal-tx-label--starting-point{
+  font-weight: 650;
+  letter-spacing: 0.02em;
+}
+.cal-confirmed-tip__head--reconciled{
+  color: rgba(22, 101, 52, 0.95);
+}
+.cal-confirmed-tip__head--adjusted{
+  color: rgba(180, 83, 9, 0.95);
+}
+.cal-confirmed-tip__head--starting{
+  color: rgba(71, 85, 105, 0.95);
 }
 .cal-confirmed-tip{
   display: flex;
