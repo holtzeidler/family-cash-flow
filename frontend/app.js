@@ -1680,6 +1680,7 @@ const reconcileForecastBal = document.getElementById("reconcileForecastBal");
 const reconcileMarkBtn = document.getElementById("reconcileMarkBtn");
 const reconcileDifferentBtn = document.getElementById("reconcileDifferentBtn");
 const reconcileCancelBtn = document.getElementById("reconcileCancelBtn");
+const reconcileDeleteBtn = document.getElementById("reconcileDeleteBtn");
 let reconcileActiveDate = "";
 
 const verifiedBalanceModal = document.getElementById("verifiedBalanceModal");
@@ -5145,6 +5146,32 @@ function forecastBalanceForReconcileModal(iso) {
   return null;
 }
 
+function isReconciledOnDate(iso) {
+  const d = normalizeIsoDate(iso);
+  return !!(d && state.reconciledDates && state.reconciledDates.has(d));
+}
+
+function syncReconcileModalActions(iso) {
+  const d = normalizeIsoDate(iso);
+  const isReconciled = isReconciledOnDate(d);
+  const isVerified = existingVerifiedBalanceOnDate(d);
+  const canWrite = !state.viewOnly && state.activeFamilyAccessMode !== "view";
+
+  if (reconcileMarkBtn) {
+    reconcileMarkBtn.hidden = !canWrite || isReconciled;
+  }
+  if (reconcileDifferentBtn) {
+    reconcileDifferentBtn.hidden = !canWrite;
+  }
+  if (reconcileDeleteBtn) {
+    const showDelete = canWrite && (isReconciled || isVerified);
+    reconcileDeleteBtn.hidden = !showDelete;
+    if (isVerified) reconcileDeleteBtn.textContent = "Remove verified balance";
+    else if (isReconciled) reconcileDeleteBtn.textContent = "Remove reconciliation";
+    else reconcileDeleteBtn.textContent = "Remove confirmation";
+  }
+}
+
 function openReconcileModal(iso) {
   if (!reconcileModal) return;
   const d = normalizeIsoDate(iso) || iso;
@@ -5166,6 +5193,7 @@ function openReconcileModal(iso) {
     }
   }
   show(reconcileErr, "");
+  syncReconcileModalActions(reconcileActiveDate);
   reconcileModal.classList.add("modal-overlay--open");
   reconcileModal.setAttribute("aria-hidden", "false");
 }
@@ -5300,6 +5328,47 @@ async function saveReconcileMark() {
   await refreshForecastConfidence();
   if (typeof showBwToast === "function") showBwToast("✓ Forecast reconciled");
   bwDispatchMilestone("first-reconcile");
+}
+
+async function removeReconcileConfirmation() {
+  show(reconcileErr, "");
+  if (!state.activeFamilyId) throw new Error("Choose a family first");
+  const iso = normalizeIsoDate(reconcileActiveDate);
+  if (!iso) throw new Error("Invalid date");
+  const isVerified = existingVerifiedBalanceOnDate(iso);
+  const isReconciled = isReconciledOnDate(iso);
+  if (!isVerified && !isReconciled) return;
+
+  const ok = await bwConfirm({
+    title: isVerified ? "Remove verified balance?" : "Remove reconciliation?",
+    body: isVerified
+      ? "Future forecasts will use calculated balances from this date forward again."
+      : "This date will no longer be marked as reconciled.",
+    confirmLabel: "Remove",
+    danger: true,
+  });
+  if (!ok) return;
+
+  const month = (calendarMonth?.value || monthInput?.value) || iso.slice(0, 7);
+  if (isVerified) {
+    await api(`/api/families/${state.activeFamilyId}/verified-balances/${encodeURIComponent(iso)}`, "DELETE");
+    await loadVerifiedBalances(month);
+    invalidateLowBalanceAlertCache();
+    await loadCalendarMonthDaily();
+  }
+  if (isReconciled) {
+    await api(`/api/families/${state.activeFamilyId}/reconciled-days`, "POST", {
+      date: iso,
+      reconciled: false,
+    });
+    await loadReconciledDays(month);
+  }
+  closeReconcileModal();
+  renderCalendar();
+  await refreshForecastConfidence();
+  if (typeof showBwToast === "function") {
+    showBwToast(isVerified ? "✓ Verified balance removed" : "✓ Reconciliation removed");
+  }
 }
 
 async function saveVerifiedBalance() {
@@ -10968,6 +11037,15 @@ if (reconcileDifferentBtn) {
 }
 if (reconcileCancelBtn) {
   reconcileCancelBtn.addEventListener("click", () => closeReconcileModal());
+}
+if (reconcileDeleteBtn) {
+  reconcileDeleteBtn.addEventListener("click", async () => {
+    try {
+      await removeReconcileConfirmation();
+    } catch (e) {
+      show(reconcileErr, e.message || "Failed to remove");
+    }
+  });
 }
 
 if (forecastConfidenceVerifyBtn) {
