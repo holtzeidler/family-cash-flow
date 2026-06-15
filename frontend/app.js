@@ -17,6 +17,66 @@ function isLocalhostHost(hostname) {
   return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
 }
 
+function isTransientNetworkError(err) {
+  const norm = String((err && err.message) || err || "")
+    .trim()
+    .toLowerCase();
+  return (
+    norm.includes("failed to fetch") ||
+    norm.includes("networkerror") ||
+    norm.includes("network error") ||
+    norm.includes("load failed") ||
+    norm.includes("the internet connection appears to be offline")
+  );
+}
+
+function friendlyNetworkErrorMessage() {
+  return "We're having trouble connecting. This often clears up in a moment—please try again.";
+}
+
+function logApiNetworkHintForDevs(err, { apiBase, origin, isStaticWebHost }) {
+  if (typeof console === "undefined" || !console.warn) return;
+  const msg = err && err.message ? err.message : String(err);
+  const baseHint = apiBase
+    ? `Trying API_BASE: ${apiBase}`
+    : "API_BASE is empty — requests go to the Pages host (wrong).";
+  const corsHint = isStaticWebHost
+    ? `Render env CORS_ORIGINS must include exactly: ${origin} (scheme + host, no path). Set ENV=production for login cookies.`
+    : "If this is cross-origin, configure CORS on the API for this origin.";
+  console.warn(
+    "[BalanceWhiz API] Network request failed:",
+    msg,
+    "\n",
+    baseHint,
+    "\n",
+    corsHint,
+    "\nIf the API is on Render free tier, wait ~1 minute for a cold start and refresh."
+  );
+}
+
+/** Hide deploy/CORS/cold-start diagnostics from end users on production. */
+function friendlyUserFacingError(msg) {
+  const s =
+    msg == null || msg === ""
+      ? ""
+      : typeof msg === "string"
+        ? msg
+        : formatApiDetail(msg);
+  if (!s) return "";
+  const norm = s.toLowerCase();
+  if (
+    norm.includes("api_base") ||
+    norm.includes("cors_origins") ||
+    norm.includes("render env") ||
+    norm.includes("cold start") ||
+    norm.includes("github pages") ||
+    isTransientNetworkError({ message: s })
+  ) {
+    return friendlyNetworkErrorMessage();
+  }
+  return s;
+}
+
 /** FastAPI may return `detail` as a string, object, or list of validation errors. */
 function formatApiDetail(detail) {
   if (detail == null) return "";
@@ -61,39 +121,61 @@ async function api(path, method = "GET", body) {
   const origin = typeof location !== "undefined" ? location.origin : "(unknown)";
   const isLocalhost = isLocalhostHost(hostname);
   const isStaticWebHost = !isLocalhost && origin !== "(unknown)";
+  const showDevErrors = isLocalhost;
 
   if (!apiBase && isStaticWebHost) {
-    const origin = typeof location !== "undefined" ? location.origin : "(unknown)";
-    throw new Error(
+    const detail =
       "Frontend build is missing API_BASE, so requests are going to the website origin (and will fail).\n\n" +
-        "Fix: In the repo → Settings → Secrets and variables → Actions → set secret API_BASE to your Render API URL " +
-        "(e.g. https://your-app.onrender.com, no trailing slash), then re-run the workflow that deploys GitHub Pages.\n\n" +
-        `Current Origin: ${origin}`
-    );
+      "Fix: In the repo → Settings → Secrets and variables → Actions → set secret API_BASE to your Render API URL " +
+      "(e.g. https://your-app.onrender.com, no trailing slash), then re-run the workflow that deploys GitHub Pages.\n\n" +
+      `Current Origin: ${origin}`;
+    if (showDevErrors) throw new Error(detail);
+    console.error("[BalanceWhiz API] Missing API_BASE", { origin });
+    throw new Error(friendlyNetworkErrorMessage());
   }
+
+  const fetchOptions = {
+    method,
+    headers: {
+      ...apiBearerAuthHeaders(),
+      ...(body ? { "Content-Type": "application/json" } : {}),
+    },
+    credentials: "include",
+    body: body ? JSON.stringify(body) : undefined,
+  };
+
+  const maxRetryMs = 12000;
+  const retryStarted = Date.now();
   let res;
-  try {
-    res = await fetch(fullPath, {
-      method,
-      headers: {
-        ...apiBearerAuthHeaders(),
-        ...(body ? { "Content-Type": "application/json" } : {}),
-      },
-      credentials: "include",
-      body: body ? JSON.stringify(body) : undefined,
-    });
-  } catch (err) {
-    const msg = err && err.message ? err.message : String(err);
-    const origin = typeof location !== "undefined" ? location.origin : "(unknown)";
-    const baseHint = apiBase
-      ? `Trying API_BASE: ${apiBase}`
-      : "API_BASE is empty — requests go to the Pages host (wrong).";
-    const corsHint = isStaticWebHost
-      ? `Render env CORS_ORIGINS must include exactly: ${origin} (scheme + host, no path). Set ENV=production for login cookies.`
-      : "If this is cross-origin, configure CORS on the API for this origin.";
-    throw new Error(
-      `${msg}\n\n${baseHint}\n${corsHint}\nIf the API is on Render free tier, wait ~1 minute for a cold start and refresh.`
-    );
+  let attempt = 0;
+  while (true) {
+    attempt += 1;
+    try {
+      res = await fetch(fullPath, fetchOptions);
+      break;
+    } catch (err) {
+      const elapsed = Date.now() - retryStarted;
+      const canRetry = isTransientNetworkError(err) && elapsed < maxRetryMs;
+      if (canRetry) {
+        const delay = Math.min(2000, 400 * attempt);
+        await new Promise((resolve) => window.setTimeout(resolve, delay));
+        continue;
+      }
+      logApiNetworkHintForDevs(err, { apiBase, origin, isStaticWebHost });
+      if (showDevErrors) {
+        const msg = err && err.message ? err.message : String(err);
+        const baseHint = apiBase
+          ? `Trying API_BASE: ${apiBase}`
+          : "API_BASE is empty — requests go to the Pages host (wrong).";
+        const corsHint = isStaticWebHost
+          ? `Render env CORS_ORIGINS must include exactly: ${origin} (scheme + host, no path). Set ENV=production for login cookies.`
+          : "If this is cross-origin, configure CORS on the API for this origin.";
+        throw new Error(
+          `${msg}\n\n${baseHint}\n${corsHint}\nIf the API is on Render free tier, wait ~1 minute for a cold start and refresh.`
+        );
+      }
+      throw new Error(friendlyNetworkErrorMessage());
+    }
   }
 
   if (res.status === 401) {
@@ -113,6 +195,10 @@ async function api(path, method = "GET", body) {
         if (d) msg = d;
       }
     } catch (_) {}
+    if (!showDevErrors && res.status >= 500) {
+      console.warn("[BalanceWhiz API] Server error:", res.status, path, msg);
+      throw new Error(friendlyNetworkErrorMessage());
+    }
     throw new Error(msg);
   }
 
@@ -131,12 +217,13 @@ window.api = api;
 
 function show(el, msg) {
   if (!el) return;
-  const s =
+  const raw =
     msg == null || msg === ""
       ? ""
       : typeof msg === "string"
         ? msg
         : formatApiDetail(msg);
+  const s = friendlyUserFacingError(raw);
   el.textContent = s;
   el.style.display = s ? "block" : "none";
 }
