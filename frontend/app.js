@@ -17,6 +17,66 @@ function isLocalhostHost(hostname) {
   return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
 }
 
+function isTransientNetworkError(err) {
+  const norm = String((err && err.message) || err || "")
+    .trim()
+    .toLowerCase();
+  return (
+    norm.includes("failed to fetch") ||
+    norm.includes("networkerror") ||
+    norm.includes("network error") ||
+    norm.includes("load failed") ||
+    norm.includes("the internet connection appears to be offline")
+  );
+}
+
+function friendlyNetworkErrorMessage() {
+  return "We're having trouble connecting. This often clears up in a moment—please try again.";
+}
+
+function logApiNetworkHintForDevs(err, { apiBase, origin, isStaticWebHost }) {
+  if (typeof console === "undefined" || !console.warn) return;
+  const msg = err && err.message ? err.message : String(err);
+  const baseHint = apiBase
+    ? `Trying API_BASE: ${apiBase}`
+    : "API_BASE is empty — requests go to the Pages host (wrong).";
+  const corsHint = isStaticWebHost
+    ? `Render env CORS_ORIGINS must include exactly: ${origin} (scheme + host, no path). Set ENV=production for login cookies.`
+    : "If this is cross-origin, configure CORS on the API for this origin.";
+  console.warn(
+    "[BalanceWhiz API] Network request failed:",
+    msg,
+    "\n",
+    baseHint,
+    "\n",
+    corsHint,
+    "\nIf the API is on Render free tier, wait ~1 minute for a cold start and refresh."
+  );
+}
+
+/** Hide deploy/CORS/cold-start diagnostics from end users on production. */
+function friendlyUserFacingError(msg) {
+  const s =
+    msg == null || msg === ""
+      ? ""
+      : typeof msg === "string"
+        ? msg
+        : formatApiDetail(msg);
+  if (!s) return "";
+  const norm = s.toLowerCase();
+  if (
+    norm.includes("api_base") ||
+    norm.includes("cors_origins") ||
+    norm.includes("render env") ||
+    norm.includes("cold start") ||
+    norm.includes("github pages") ||
+    isTransientNetworkError({ message: s })
+  ) {
+    return friendlyNetworkErrorMessage();
+  }
+  return s;
+}
+
 /** FastAPI may return `detail` as a string, object, or list of validation errors. */
 function formatApiDetail(detail) {
   if (detail == null) return "";
@@ -61,39 +121,61 @@ async function api(path, method = "GET", body) {
   const origin = typeof location !== "undefined" ? location.origin : "(unknown)";
   const isLocalhost = isLocalhostHost(hostname);
   const isStaticWebHost = !isLocalhost && origin !== "(unknown)";
+  const showDevErrors = isLocalhost;
 
   if (!apiBase && isStaticWebHost) {
-    const origin = typeof location !== "undefined" ? location.origin : "(unknown)";
-    throw new Error(
+    const detail =
       "Frontend build is missing API_BASE, so requests are going to the website origin (and will fail).\n\n" +
-        "Fix: In the repo → Settings → Secrets and variables → Actions → set secret API_BASE to your Render API URL " +
-        "(e.g. https://your-app.onrender.com, no trailing slash), then re-run the workflow that deploys GitHub Pages.\n\n" +
-        `Current Origin: ${origin}`
-    );
+      "Fix: In the repo → Settings → Secrets and variables → Actions → set secret API_BASE to your Render API URL " +
+      "(e.g. https://your-app.onrender.com, no trailing slash), then re-run the workflow that deploys GitHub Pages.\n\n" +
+      `Current Origin: ${origin}`;
+    if (showDevErrors) throw new Error(detail);
+    console.error("[BalanceWhiz API] Missing API_BASE", { origin });
+    throw new Error(friendlyNetworkErrorMessage());
   }
+
+  const fetchOptions = {
+    method,
+    headers: {
+      ...apiBearerAuthHeaders(),
+      ...(body ? { "Content-Type": "application/json" } : {}),
+    },
+    credentials: "include",
+    body: body ? JSON.stringify(body) : undefined,
+  };
+
+  const maxRetryMs = 12000;
+  const retryStarted = Date.now();
   let res;
-  try {
-    res = await fetch(fullPath, {
-      method,
-      headers: {
-        ...apiBearerAuthHeaders(),
-        ...(body ? { "Content-Type": "application/json" } : {}),
-      },
-      credentials: "include",
-      body: body ? JSON.stringify(body) : undefined,
-    });
-  } catch (err) {
-    const msg = err && err.message ? err.message : String(err);
-    const origin = typeof location !== "undefined" ? location.origin : "(unknown)";
-    const baseHint = apiBase
-      ? `Trying API_BASE: ${apiBase}`
-      : "API_BASE is empty — requests go to the Pages host (wrong).";
-    const corsHint = isStaticWebHost
-      ? `Render env CORS_ORIGINS must include exactly: ${origin} (scheme + host, no path). Set ENV=production for login cookies.`
-      : "If this is cross-origin, configure CORS on the API for this origin.";
-    throw new Error(
-      `${msg}\n\n${baseHint}\n${corsHint}\nIf the API is on Render free tier, wait ~1 minute for a cold start and refresh.`
-    );
+  let attempt = 0;
+  while (true) {
+    attempt += 1;
+    try {
+      res = await fetch(fullPath, fetchOptions);
+      break;
+    } catch (err) {
+      const elapsed = Date.now() - retryStarted;
+      const canRetry = isTransientNetworkError(err) && elapsed < maxRetryMs;
+      if (canRetry) {
+        const delay = Math.min(2000, 400 * attempt);
+        await new Promise((resolve) => window.setTimeout(resolve, delay));
+        continue;
+      }
+      logApiNetworkHintForDevs(err, { apiBase, origin, isStaticWebHost });
+      if (showDevErrors) {
+        const msg = err && err.message ? err.message : String(err);
+        const baseHint = apiBase
+          ? `Trying API_BASE: ${apiBase}`
+          : "API_BASE is empty — requests go to the Pages host (wrong).";
+        const corsHint = isStaticWebHost
+          ? `Render env CORS_ORIGINS must include exactly: ${origin} (scheme + host, no path). Set ENV=production for login cookies.`
+          : "If this is cross-origin, configure CORS on the API for this origin.";
+        throw new Error(
+          `${msg}\n\n${baseHint}\n${corsHint}\nIf the API is on Render free tier, wait ~1 minute for a cold start and refresh.`
+        );
+      }
+      throw new Error(friendlyNetworkErrorMessage());
+    }
   }
 
   if (res.status === 401) {
@@ -113,6 +195,10 @@ async function api(path, method = "GET", body) {
         if (d) msg = d;
       }
     } catch (_) {}
+    if (!showDevErrors && res.status >= 500) {
+      console.warn("[BalanceWhiz API] Server error:", res.status, path, msg);
+      throw new Error(friendlyNetworkErrorMessage());
+    }
     throw new Error(msg);
   }
 
@@ -131,12 +217,13 @@ window.api = api;
 
 function show(el, msg) {
   if (!el) return;
-  const s =
+  const raw =
     msg == null || msg === ""
       ? ""
       : typeof msg === "string"
         ? msg
         : formatApiDetail(msg);
+  const s = friendlyUserFacingError(raw);
   el.textContent = s;
   el.style.display = s ? "block" : "none";
 }
@@ -5661,14 +5748,16 @@ function shouldOpenReconcileFromCalendarClick(target, cell) {
   if (!target || !cell) return false;
   if (cell.classList.contains("cal-cell--before-start")) return false;
   if (cell.classList.contains("cal-cell--out")) return false;
-  return !!target.closest(".cal-daynum");
+  if (state.viewOnly || state.activeFamilyAccessMode === "view") return false;
+  return !!target.closest(".cal-ledger-metrics.cal-day-balance-hit");
 }
 
 function shouldOpenAddTxFromCalendarClick(target, cell) {
   if (!target || !cell) return false;
   if (cell.classList.contains("cal-cell--before-start")) return false;
   if (shouldOpenReconcileFromCalendarClick(target, cell)) return false;
-  if (target.closest(".cal-day-reconcile-btn")) return false;
+  if (target.closest(".cal-daynum")) return false;
+  if (target.closest(".cal-ledger-metrics")) return false;
   if (target.closest(".cal-day-tx-line--expected")) return false;
   if (target.closest(".cal-day-start-balance .cal-day-tx-line--start-balance")) return false;
   if (target.closest(".cal-tx-part")) return false;
@@ -5690,6 +5779,24 @@ function openCalendarDayAddTransaction(iso, e) {
   }
   if (alertIfDateBeforeStartingBalance(iso)) return;
   openTxAddModal({ date: iso });
+}
+
+function bindCalendarDayBalanceHit(metricsEl, iso, { isReconciled, dayBalVerified, isOutOfMonth }) {
+  if (!metricsEl || !iso) return;
+  if (isOutOfMonth || state.viewOnly || state.activeFamilyAccessMode === "view") {
+    metricsEl.classList.remove("cal-day-balance-hit");
+    metricsEl.removeAttribute("aria-label");
+    return;
+  }
+  metricsEl.classList.add("cal-day-balance-hit");
+  const verifiedTooltip =
+    "This balance was manually entered and overrides the forecast from this date forward.";
+  let title = "Check Balance";
+  if (dayBalVerified) title = verifiedTooltip;
+  else if (isReconciled) title = "Reconciled — click to review";
+  metricsEl.title = title;
+  const label = fmtDateMDY(iso);
+  metricsEl.setAttribute("aria-label", label ? `Check balance for ${label}` : "Check balance");
 }
 
 function bindCalendarCellAddTxClick(cell, iso) {
@@ -13156,13 +13263,7 @@ function renderCalendar() {
     const isReconciled = state.reconciledDates && state.reconciledDates.has(iso);
     const isVerifiedBalance = !!(state.verifiedBalances && state.verifiedBalances.has(iso));
     cell.innerHTML = `
-      <div class="cal-daynum">${isReconciled ? `
-        <span class="cal-reconciled-mark" title="Reconciled" aria-label="Reconciled">
-          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-            <circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" stroke-width="1.65"></circle>
-            <path d="M8 12.5l2.6 2.6L16.5 9.2" fill="none" stroke="currentColor" stroke-width="2.35" stroke-linecap="round" stroke-linejoin="round"></path>
-          </svg>
-        </span>` : ""}<span class="cal-daynum-num${isToday ? " is-today" : ""}">${dObj.getDate()}</span></div>
+      <div class="cal-daynum"><span class="cal-daynum-num${isToday ? " is-today" : ""}">${dObj.getDate()}</span></div>
       <div class="cal-cell-fill"></div>
       <div class="cal-cell-stack">
         <div class="cal-forecast-note" hidden></div>
@@ -13189,21 +13290,6 @@ function renderCalendar() {
         month: "short",
         day: "numeric",
       });
-      if (!isBeforeStart && !isOutOfMonth) {
-        const reconcileBtn = document.createElement("button");
-        reconcileBtn.type = "button";
-        reconcileBtn.className = "cal-day-reconcile-btn";
-        reconcileBtn.title = "Check balance for this day";
-        reconcileBtn.setAttribute("aria-label", `Check balance for ${fmtDateMDY(iso)}`);
-        reconcileBtn.innerHTML =
-          '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.25"></circle><path d="M8.5 12.2l2.2 2.2 4.8-5.1"></path></svg>';
-        reconcileBtn.addEventListener("click", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          openReconcileModal(iso);
-        });
-        dayNumEl.insertBefore(reconcileBtn, dayNumEl.firstChild);
-      }
     }
 
     const actualTxs = !isBeforeStart && showActual ? actualTxsByDate.get(iso) || [] : [];
@@ -13470,23 +13556,21 @@ function renderCalendar() {
       const verifiedIcon = dayBalVerified
         ? `<span class="cal-balance-verified-icon" aria-hidden="true"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.5"/><path d="M5.2 8.1l1.8 1.8 3.8-4"/></svg></span>`
         : "";
+      const reconciledIcon =
+        isReconciled && !dayBalVerified
+          ? `<span class="cal-balance-status cal-balance-status--reconciled" title="Reconciled" aria-hidden="true"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.5"/><path d="M5.2 8.1l1.8 1.8 3.8-4"/></svg></span>`
+          : "";
       const verifiedLabel = dayBalVerified
         ? `<span class="cal-balance-verified-label">Verified</span>`
         : "";
-      metricsEl.innerHTML = `<div class="cal-balance-strip${stripCue ? ` ${stripCue}` : ""}"><div class="cal-balance-strip__row"><span class="cal-balance-strip__amt">${verifiedIcon}${riskIcon}${warnIcon}<span class="${balanceClass}${dayBalVerified ? " cal-balance--verified" : ""}" title="${escapeHtml(balanceTitle)}">$${fmtMoneyParens(
+      metricsEl.innerHTML = `<div class="cal-balance-strip${stripCue ? ` ${stripCue}` : ""}"><div class="cal-balance-strip__row"><span class="cal-balance-strip__amt">${verifiedIcon}${reconciledIcon}${riskIcon}${warnIcon}<span class="${balanceClass}${dayBalVerified ? " cal-balance--verified" : ""}${isReconciled && !dayBalVerified ? " cal-balance--reconciled" : ""}" title="${escapeHtml(balanceTitle)}">$${fmtMoneyParens(
         endNum
       )}</span>${verifiedLabel}</span></div></div>`;
-      if (dayBalVerified && !state.viewOnly) {
-        metricsEl.style.cursor = "pointer";
-        metricsEl.title = verifiedTooltip;
-        metricsEl.onclick = (e) => {
-          e.stopPropagation();
-          openVerifiedBalanceModal(iso);
-        };
-      } else {
-        metricsEl.onclick = null;
-        metricsEl.style.cursor = "";
-      }
+      bindCalendarDayBalanceHit(metricsEl, iso, {
+        isReconciled,
+        dayBalVerified,
+        isOutOfMonth,
+      });
     }
 
     if (

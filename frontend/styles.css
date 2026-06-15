@@ -19376,6 +19376,9 @@ body.plans-page--polished .plans-wrap{
   color: rgba(100, 116, 139, 0.74);
   font-weight: 400;
 }
+.modal.modal--check-balance .reconcile-modal__balance{
+  margin: 0 0 10px;
+}
 .reconcile-modal__balance{
   margin: 0 0 14px;
   padding: 12px 14px 14px;
@@ -19408,12 +19411,57 @@ body.plans-page--polished .plans-wrap{
 #reconcileModal .error{
   margin: 6px 0 0;
 }
-.reconcile-modal__simple-actions{
+.modal.modal--check-balance .reconcile-modal__cta{
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 10px;
-  margin-top: 4px;
+  gap: 6px;
+  margin-top: 0;
+}
+.modal.modal--check-balance .reconcile-modal__mark-btn{
+  order: unset;
+  width: 100%;
+  margin: 0;
+  padding: 11px 14px;
+  font-size: 14px;
+  font-weight: 650;
+}
+.modal.modal--check-balance .reconcile-modal__different-link{
+  order: unset;
+  border: none;
+  background: none;
+  padding: 2px 0 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(100, 116, 139, 0.9);
+  text-align: center;
+  cursor: pointer;
+  text-decoration: none;
+}
+.modal.modal--check-balance .reconcile-modal__different-link:hover{
+  color: #166534;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.modal.modal--check-balance .reconcile-modal__footer{
+  display: flex;
+  justify-content: center;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(17, 24, 39, 0.055);
+}
+.modal.modal--check-balance .reconcile-modal__footer .reconcile-modal__cancel{
+  order: unset;
+  margin: 0;
+  min-height: 32px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(100, 116, 139, 0.92);
+}
+.modal.modal--check-balance .reconcile-modal__footer .reconcile-modal__cancel:hover{
+  color: rgba(55, 65, 81, 0.92);
+  background: rgba(17, 24, 39, 0.04);
 }
 .reconcile-modal__mark-btn{
   width: 100%;
@@ -19435,10 +19483,6 @@ body.plans-page--polished .plans-wrap{
 .reconcile-modal__different-link:hover{
   text-decoration: underline;
   text-underline-offset: 2px;
-}
-.reconcile-modal__simple-actions .reconcile-modal__cancel{
-  width: 100%;
-  margin-top: 2px;
 }
 .reconcile-modal__actions-section{
   display: flex;
@@ -19610,9 +19654,11 @@ body.plans-page--polished .plans-wrap{
   padding: 6px 0 0;
   border-top: 1px solid rgba(17, 24, 39, 0.055);
 }
-.reconcile-modal__cancel{
+.modal.modal--reconcile .reconcile-modal__actions.modal-actions .reconcile-modal__cancel{
   order: 0;
   margin-right: auto;
+}
+.reconcile-modal__cancel{
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -19645,7 +19691,6 @@ body.plans-page--polished .plans-wrap{
   outline-offset: 2px;
 }
 .reconcile-modal__primary{
-  order: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -19658,6 +19703,10 @@ body.plans-page--polished .plans-wrap{
   color: #fff;
   background: var(--accent);
   border: 1px solid color-mix(in srgb, var(--accent) 82%, #0d1f18);
+  cursor: pointer;
+}
+.modal.modal--reconcile .reconcile-modal__actions.modal-actions .reconcile-modal__primary{
+  order: 1;
 }
 .reconcile-modal__primary:hover{
   filter: brightness(1.04);
@@ -19683,44 +19732,7 @@ body.plans-page--polished .plans-wrap{
   color: rgba(75, 85, 99, 0.66);
 }
 .cal-cell:not(.cal-cell--out):not(.cal-cell--before-start) .cal-daynum{
-  cursor: pointer;
-}
-.cal-day-reconcile-btn{
-  flex: 0 0 auto;
-  order: -1;
-  margin-right: auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  padding: 0;
-  border: none;
-  border-radius: 999px;
-  color: rgba(71, 85, 105, 0.62);
-  background: transparent;
-  cursor: pointer;
-  opacity: 0;
-  /* Hidden reconcile control must not steal clicks meant for “add on this day”. */
-  pointer-events: none;
-  transition:
-    opacity 0.14s ease,
-    color 0.14s ease,
-    background-color 0.14s ease;
-}
-.cal-cell:not(.cal-cell--out):not(.cal-cell--before-start):hover .cal-day-reconcile-btn,
-.cal-day-reconcile-btn:hover,
-.cal-day-reconcile-btn:focus-visible{
-  opacity: 1;
-  pointer-events: auto;
-}
-.cal-day-reconcile-btn:hover{
-  color: rgba(11, 61, 46, 0.92);
-  background: rgba(11, 61, 46, 0.08);
-}
-.cal-day-reconcile-btn:focus-visible{
-  outline: 2px solid rgba(11, 61, 46, 0.22);
-  outline-offset: 1px;
+  cursor: default;
 }
 .cal-cell:not(.cal-cell--before-start){
   cursor: pointer;
@@ -19778,31 +19790,6 @@ body.plans-page--polished .plans-wrap{
     0 1px 3px rgba(11, 61, 46, 0.12);
 }
 
-.cal-reconciled-mark{
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  flex-shrink: 0;
-  border-radius: 999px;
-  background: rgba(22, 163, 74, 0.1);
-  border: 1px solid rgba(21, 128, 61, 0.24);
-  color: rgba(22, 101, 52, 0.78);
-  line-height: 0;
-  box-shadow: 0 1px 1px rgba(255, 255, 255, 0.6) inset;
-  transform: translate(2px, -2px);
-}
-.cal-reconciled-mark svg{
-  width: 10px;
-  height: 10px;
-  display: block;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.9;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
 .cal-cell-fill{
   /* Previously used to push content to the bottom of the day cell. */
   display: none;
@@ -19836,9 +19823,33 @@ body.plans-page--polished .plans-wrap{
   margin-top: auto;
   padding-top: 5px;
   padding-bottom: 3px;
-  border-top: 1px solid rgba(11, 61, 46, 0.06);
+  border-top: 1px solid rgba(11, 61, 46, 0.1);
   min-height: 16px;
   align-self: stretch;
+}
+.cal-cell:not(.cal-cell--out):not(.cal-cell--before-start) .cal-ledger-metrics.cal-day-balance-hit{
+  cursor: pointer;
+  margin-left: -7px;
+  margin-right: -7px;
+  padding-left: 7px;
+  padding-right: 7px;
+  border-radius: 0 0 9px 9px;
+  transition:
+    background-color 0.14s ease,
+    border-color 0.14s ease;
+}
+.cal-cell:not(.cal-cell--out):not(.cal-cell--before-start) .cal-ledger-metrics.cal-day-balance-hit:hover,
+.cal-cell:not(.cal-cell--out):not(.cal-cell--before-start) .cal-ledger-metrics.cal-day-balance-hit:focus-within{
+  background: rgba(11, 61, 46, 0.055);
+  border-top-color: rgba(11, 61, 46, 0.16);
+}
+.cal-cell:not(.cal-cell--out):not(.cal-cell--before-start) .cal-ledger-metrics.cal-day-balance-hit:hover .cal-stat.cal-balance,
+.cal-cell:not(.cal-cell--out):not(.cal-cell--before-start) .cal-ledger-metrics.cal-day-balance-hit:focus-within .cal-stat.cal-balance{
+  color: rgba(11, 61, 46, 0.94);
+}
+.cal-cell:not(.cal-cell--out):not(.cal-cell--before-start) .cal-ledger-metrics.cal-day-balance-hit:hover .cal-balance-status--reconciled,
+.cal-cell:not(.cal-cell--out):not(.cal-cell--before-start) .cal-ledger-metrics.cal-day-balance-hit:hover .cal-balance-verified-icon{
+  color: rgba(22, 101, 52, 0.95);
 }
 /* 1–2 visible rows: transactions at the top; projected balance stays anchored below. */
 .cal-cell--density-sparse:not(.cal-cell--no-tx) .cal-cell-stack > .cal-day-txns{
@@ -19867,11 +19878,15 @@ body.plans-page--polished .plans-wrap{
   box-shadow: 0 1px 3px rgba(17, 24, 39, 0.038);
 }
 .cal-cell.cal-cell--no-tx .cal-ledger-metrics{
-  padding-top: 0;
+  padding-top: 5px;
   margin-top: auto;
-  border-top: none;
+  border-top: 1px solid rgba(11, 61, 46, 0.08);
   min-height: 18px;
   padding-bottom: 4px;
+}
+.cal-cell.cal-cell--no-tx .cal-ledger-metrics:not(.cal-day-balance-hit){
+  border-top: none;
+  padding-top: 0;
 }
 
 .cal-cell.cal-cell--no-tx .cal-cell-stack{
@@ -25788,18 +25803,16 @@ body[data-bw-view="calendar"] .cal-cell.bw-tour-target--calendar-add .cal-daynum
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.72) inset;
 }
 
-body[data-bw-view="calendar"] .cal-day-reconcile-btn.bw-tour-target--reconcile-head{
-  opacity: 1;
-  pointer-events: auto;
+body[data-bw-view="calendar"] .cal-ledger-metrics.cal-day-balance-hit.bw-tour-target--reconcile-head{
   position: relative;
-  color: rgba(11, 61, 46, 0.92);
   background: color-mix(in srgb, var(--accent) 8%, #ffffff);
+  border-top-color: color-mix(in srgb, var(--accent) 24%, transparent);
   box-shadow:
     0 0 0 2px color-mix(in srgb, var(--accent) 32%, transparent),
     0 0 0 6px color-mix(in srgb, var(--accent) 10%, transparent) !important;
 }
-body[data-bw-view="calendar"] .cal-day-reconcile-btn.bw-tour-target--reconcile-head::after{
-  content: "Reconcile this day";
+body[data-bw-view="calendar"] .cal-ledger-metrics.cal-day-balance-hit.bw-tour-target--reconcile-head::after{
+  content: "Check balance";
   position: absolute;
   right: 8px;
   top: -12px;
@@ -25813,9 +25826,6 @@ body[data-bw-view="calendar"] .cal-day-reconcile-btn.bw-tour-target--reconcile-h
   background: #ffffff;
   border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent);
   box-shadow: 0 4px 14px -10px rgba(11, 61, 46, 0.32);
-}
-body[data-bw-view="calendar"] .cal-day-reconcile-btn.bw-tour-target--reconcile-head svg{
-  stroke-width: 2.1;
 }
 
 body[data-bw-view="calendar"] #sidebarPendingTxCard.bw-tour-support-highlight--sidebar-soft{
@@ -27489,40 +27499,12 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
       0 1px 3px rgba(11, 61, 46, 0.12);
   }
 
-  .calendar--mobile .cal-day-reconcile-btn{
-    opacity: 0;
-    width: 26px;
-    height: 26px;
-    pointer-events: none;
+  .calendar--mobile .cal-ledger-metrics.cal-day-balance-hit{
+    cursor: pointer;
   }
 
-  .calendar--mobile .cal-cell:not(.cal-cell--out):not(.cal-cell--before-start):focus-within .cal-day-reconcile-btn,
-  .calendar--mobile .cal-cell:not(.cal-cell--out):not(.cal-cell--before-start):hover .cal-day-reconcile-btn,
-  .calendar--mobile .cal-cell:not(.cal-cell--out):not(.cal-cell--before-start):active .cal-day-reconcile-btn,
-  .calendar--mobile .cal-day-reconcile-btn:hover,
-  .calendar--mobile .cal-day-reconcile-btn:focus-visible{
-    opacity: 1;
-    pointer-events: auto;
-  }
-
-  .calendar--mobile .cal-reconciled-mark{
-    opacity: 0;
-    pointer-events: none;
-    width: 16px;
-    height: 16px;
-    transform: translate(1px, -1px);
-    transition: opacity 0.14s ease;
-  }
-
-  .calendar--mobile .cal-cell.cal-cell--reconciled:focus-within .cal-reconciled-mark,
-  .calendar--mobile .cal-cell.cal-cell--reconciled:hover .cal-reconciled-mark,
-  .calendar--mobile .cal-cell.cal-cell--reconciled:active .cal-reconciled-mark{
-    opacity: 1;
-  }
-
-  .calendar--mobile .cal-reconciled-mark svg{
-    width: 8px;
-    height: 8px;
+  .calendar--mobile .cal-ledger-metrics.cal-day-balance-hit:active{
+    background: rgba(11, 61, 46, 0.06);
   }
 
   .calendar--mobile .cal-cell-stack{
@@ -27569,11 +27551,16 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   }
 
   .calendar--mobile .cal-balance-strip__row::before{
-    content: "Projected balance";
+    content: "Balance";
     font-size: 10.5px;
     font-weight: 600;
     letter-spacing: 0.01em;
     color: rgba(100, 116, 139, 0.76);
+  }
+
+  .calendar--mobile .cal-ledger-metrics.cal-day-balance-hit .cal-balance-strip__row::before{
+    content: "Check balance";
+    color: rgba(11, 61, 46, 0.72);
   }
 
   .calendar--mobile .cal-stat.cal-balance{
@@ -28333,6 +28320,11 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   background: rgba(240, 253, 244, 0.72);
   padding: 2px 4px;
 }
+.cal-cell--verified-balance .cal-ledger-metrics.cal-day-balance-hit:hover,
+.cal-cell--verified-balance .cal-ledger-metrics.cal-day-balance-hit:focus-within{
+  background: rgba(240, 253, 244, 0.95);
+  border-top-color: rgba(22, 101, 52, 0.34);
+}
 .cal-cell--verified-balance .cal-balance-strip__row{
   flex-direction: column;
   align-items: flex-end;
@@ -28343,6 +28335,17 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   margin-right: 3px;
   color: #166534;
   vertical-align: -1px;
+}
+.cal-balance-status{
+  display: inline-flex;
+  margin-right: 3px;
+  vertical-align: -1px;
+}
+.cal-balance-status--reconciled{
+  color: rgba(22, 101, 52, 0.72);
+}
+.cal-balance--reconciled{
+  font-weight: 650;
 }
 .cal-balance--verified{
   font-weight: 700;
