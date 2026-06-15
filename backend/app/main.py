@@ -4873,7 +4873,7 @@ def delete_verified_balance(
         )
     ).scalar_one_or_none()
     if row is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Verified balance not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Confirmed balance not found")
     db.delete(row)
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -6591,7 +6591,7 @@ def _verified_balance_report_warnings(
         if start_date < cp_date:
             label = cp_date.strftime("%B %d, %Y")
             out.append(
-                "Reporting may be incomplete. A verified balance was entered on "
+                "Reporting may be incomplete. A confirmed balance was entered on "
                 f"{label}, which may indicate missing transactions before that date."
             )
     return out

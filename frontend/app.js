@@ -3695,7 +3695,7 @@ function renderCategoryTotalsReport(data) {
     catReportSummary.style.display = "block";
     let summary = `${rangeTxt} · Split at ${asOf} (UTC) for estimates · Mode: ${showEst ? "actual + future estimates" : "actual only"}`;
     if (warnings.length) {
-      summary += ` · ${warnings.length} verified-balance notice${warnings.length === 1 ? "" : "s"}`;
+      summary += ` · ${warnings.length} confirmed-balance notice${warnings.length === 1 ? "" : "s"}`;
     }
     catReportSummary.textContent = summary;
   }
@@ -5166,7 +5166,7 @@ function syncReconcileModalActions(iso) {
   if (reconcileDeleteBtn) {
     const showDelete = canWrite && (isReconciled || isVerified);
     reconcileDeleteBtn.hidden = !showDelete;
-    if (isVerified) reconcileDeleteBtn.textContent = "Remove verified balance";
+    if (isVerified) reconcileDeleteBtn.textContent = "Remove confirmed balance";
     else if (isReconciled) reconcileDeleteBtn.textContent = "Remove reconciliation";
     else reconcileDeleteBtn.textContent = "Remove confirmation";
   }
@@ -5228,8 +5228,8 @@ function openVerifiedBalanceModal(iso) {
   }
   if (verifiedBalanceTitle) {
     verifiedBalanceTitle.textContent = existingVerifiedBalanceOnDate(d)
-      ? "Update Verified Balance"
-      : "Add Verified Balance";
+      ? "Update Confirmed Balance"
+      : "Add Confirmed Balance";
   }
   show(verifiedBalanceErr, "");
   scheduleVerifiedBalancePreview();
@@ -5295,7 +5295,7 @@ async function refreshVerifiedBalancePreview() {
       const ge = normalizeIsoDate(data?.gap_end);
       if (gs && ge) {
         verifiedBalanceGapNote.hidden = false;
-        verifiedBalanceGapNote.textContent = `Possible missing transaction gap: ${fmtDateMDY(gs)} – ${fmtDateMDY(ge)}. You can add missing transactions or keep using this verified balance.`;
+        verifiedBalanceGapNote.textContent = `Possible missing transaction gap: ${fmtDateMDY(gs)} – ${fmtDateMDY(ge)}. You can add missing transactions or keep using this confirmed balance.`;
       } else {
         verifiedBalanceGapNote.hidden = true;
         verifiedBalanceGapNote.textContent = "";
@@ -5340,7 +5340,7 @@ async function removeReconcileConfirmation() {
   if (!isVerified && !isReconciled) return;
 
   const ok = await bwConfirm({
-    title: isVerified ? "Remove verified balance?" : "Remove reconciliation?",
+    title: isVerified ? "Remove confirmed balance?" : "Remove reconciliation?",
     body: isVerified
       ? "Future forecasts will use calculated balances from this date forward again."
       : "This date will no longer be marked as reconciled.",
@@ -5367,7 +5367,7 @@ async function removeReconcileConfirmation() {
   renderCalendar();
   await refreshForecastConfidence();
   if (typeof showBwToast === "function") {
-    showBwToast(isVerified ? "✓ Verified balance removed" : "✓ Reconciliation removed");
+    showBwToast(isVerified ? "✓ Confirmed balance removed" : "✓ Reconciliation removed");
   }
 }
 
@@ -5396,7 +5396,7 @@ async function saveVerifiedBalance() {
   await refreshLowBalanceAlert();
   await refreshForecastConfidence();
   if (typeof showBwToast === "function") {
-    showBwToast("✓ Verified balance saved — forecast updated from this date forward");
+    showBwToast("✓ Confirmed balance saved — forecast updated from this date forward");
   }
 }
 
@@ -5483,7 +5483,7 @@ function applyForecastConfidenceUi(data) {
       "Your forecast may be less reliable because your balance hasn't been confirmed recently.";
   } else if (level === "very_low") {
     detail =
-      "Your forecast may be out of date. Verify your current balance and keep going—no need to enter every missed transaction.";
+      "Your forecast may be out of date. Confirm your current balance and keep going—no need to enter every missed transaction.";
   }
 
   if (forecastConfidenceDetail) forecastConfidenceDetail.textContent = detail;
@@ -11059,7 +11059,7 @@ if (verifiedBalanceSaveBtn) {
     try {
       await saveVerifiedBalance();
     } catch (e) {
-      show(verifiedBalanceErr, e.message || "Failed to save verified balance");
+      show(verifiedBalanceErr, e.message || "Failed to save confirmed balance");
     }
   });
 }
@@ -13674,7 +13674,7 @@ function renderCalendar() {
           ? `<span class="cal-balance-status cal-balance-status--reconciled" title="Reconciled" aria-hidden="true"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.5"/><path d="M5.2 8.1l1.8 1.8 3.8-4"/></svg></span>`
           : "";
       const verifiedLabel = dayBalVerified
-        ? `<span class="cal-balance-verified-label">Verified</span>`
+        ? `<span class="cal-balance-verified-label">Confirmed</span>`
         : "";
       metricsEl.innerHTML = `<div class="cal-balance-strip${stripCue ? ` ${stripCue}` : ""}"><div class="cal-balance-strip__row"><span class="cal-balance-strip__amt">${verifiedIcon}${reconciledIcon}${riskIcon}${warnIcon}<span class="${balanceClass}${dayBalVerified ? " cal-balance--verified" : ""}${isReconciled && !dayBalVerified ? " cal-balance--reconciled" : ""}" title="${escapeHtml(balanceTitle)}">$${fmtMoneyParens(
         endNum
