@@ -86,12 +86,22 @@
 
             <div class="sidebar-balance-threshold-alerts" id="sidebarBalanceThresholdAlerts" aria-label="Balance threshold alerts">
               <div class="cash-outlook-head" id="cashOutlookHead" hidden>
-                <div class="cash-outlook-title" id="cashOutlookTitle">Cash View</div>
+                <div class="cash-outlook-title" id="cashOutlookTitle">Cash Outlook</div>
                 <button type="button" id="sidebarBalanceThresholdHint" class="sidebar-balance-threshold-hint-inline" hidden></button>
               </div>
               <div id="sidebarLowBalanceBanner" class="calendar-low-balance calendar-low-balance--sidebar" style="display: none" role="status"></div>
               <div id="sidebarHighBalanceBanner" class="calendar-low-balance calendar-low-balance--sidebar calendar-low-balance--high" style="display: none" role="status"></div>
             </div>
+
+            <div id="verifiedBalanceCatchUpBanner" class="verified-balance-catchup" hidden role="status">
+              <p class="verified-balance-catchup__text">Looks like you may be a couple weeks behind. Want to update your account with your current bank balance instead?</p>
+              <div class="verified-balance-catchup__actions">
+                <button type="button" id="verifiedBalanceCatchUpBtn" class="verified-balance-catchup__primary">Add verified balance</button>
+                <button type="button" id="verifiedBalanceCatchUpDismiss" class="verified-balance-catchup__dismiss">Not now</button>
+              </div>
+            </div>
+
+            <button type="button" id="verifiedBalanceOpenBtn" class="verified-balance-open-btn" hidden>Add verified balance</button>
 
             <div id="settingsSidebarNav" class="settings-nav settings-nav--sidebar settings-nav--rail" hidden aria-label="Settings sections">
               <button type="button" class="settings-nav-item is-active" data-settings-key="accounts">
@@ -1545,6 +1555,38 @@
         <div class="modal-actions reconcile-modal__actions">
           <button type="button" id="reconcileCancelBtn" class="reconcile-modal__cancel">Cancel</button>
           <button type="button" id="reconcileSaveBtn" class="reconcile-modal__primary">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="verifiedBalanceModal" class="modal-overlay" aria-hidden="true">
+      <div class="modal modal--verified-balance" role="dialog" aria-labelledby="verifiedBalanceTitle" aria-modal="true">
+        <h3 id="verifiedBalanceTitle" class="verified-balance-modal__title">Add verified balance</h3>
+        <p class="verified-balance-modal__lead">Life got busy. Enter your actual bank balance for a date and keep going—no need to catch up every missed transaction.</p>
+        <label class="verified-balance-modal__field">
+          <span class="verified-balance-modal__label">Date</span>
+          <input type="date" id="verifiedBalanceDate" class="verified-balance-modal__input" />
+        </label>
+        <label class="verified-balance-modal__field">
+          <span class="verified-balance-modal__label">Actual bank balance</span>
+          <input type="text" id="verifiedBalanceAmount" class="verified-balance-modal__input" inputmode="decimal" placeholder="0.00" autocomplete="off" />
+        </label>
+        <div id="verifiedBalancePreview" class="verified-balance-modal__preview" hidden>
+          <div class="verified-balance-modal__preview-row">
+            <span>Projected balance</span>
+            <span id="verifiedBalanceProjected">—</span>
+          </div>
+          <div class="verified-balance-modal__preview-row verified-balance-modal__preview-row--diff">
+            <span>Unexplained difference</span>
+            <span id="verifiedBalanceDifference">—</span>
+          </div>
+          <p id="verifiedBalanceGapNote" class="verified-balance-modal__gap" hidden></p>
+        </div>
+        <p class="verified-balance-modal__help">This balance was manually entered and overrides the calculated balance from this date forward. Prior days stay unchanged.</p>
+        <div id="verifiedBalanceErr" class="error"></div>
+        <div class="modal-actions verified-balance-modal__actions">
+          <button type="button" id="verifiedBalanceCancelBtn" class="verified-balance-modal__cancel">Cancel</button>
+          <button type="button" id="verifiedBalanceSaveBtn" class="verified-balance-modal__primary">Save verified balance</button>
         </div>
       </div>
     </div>

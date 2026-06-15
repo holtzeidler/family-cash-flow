@@ -563,6 +563,22 @@ class ReconciledDay(Base):
     __table_args__ = (UniqueConstraint("family_id", "date", name="uq_reconciled_day"),)
 
 
+class VerifiedBalance(Base):
+    """Manual bank-balance checkpoint: anchors forecast forward without rewriting history."""
+
+    __tablename__ = "verified_balances"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    family_id: Mapped[int] = mapped_column(ForeignKey("families.id", ondelete="CASCADE"), nullable=False, index=True)
+    date: Mapped[date] = mapped_column(SA_Date, nullable=False, index=True)
+    amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    projected_amount: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 2), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
+    created_by_user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+    __table_args__ = (UniqueConstraint("family_id", "date", name="uq_verified_balance_day"),)
+
+
 class Feedback(Base):
     """In-app feedback / bug reports / quick reactions / beta pulse responses.
 
@@ -1332,6 +1348,38 @@ class ReconciledDayUpsertIn(BaseModel):
     reconciled: bool = True
 
 
+class VerifiedBalanceItemOut(BaseModel):
+    date: date
+    amount: Decimal
+    projected_amount: Optional[Decimal] = None
+    unexplained_difference: Optional[Decimal] = None
+
+
+class VerifiedBalancesOut(BaseModel):
+    month: str
+    items: list[VerifiedBalanceItemOut]
+
+
+class VerifiedBalanceUpsertIn(BaseModel):
+    date: date
+    amount: Decimal = Field(..., ge=Decimal("-999999999"), le=Decimal("999999999"))
+
+
+class VerifiedBalancePreviewOut(BaseModel):
+    date: date
+    amount: Decimal
+    projected_amount: Optional[Decimal] = None
+    unexplained_difference: Optional[Decimal] = None
+    gap_start: Optional[date] = None
+    gap_end: Optional[date] = None
+
+
+class VerifiedBalanceCatchUpOut(BaseModel):
+    show_prompt: bool = False
+    days_behind: int = 0
+    last_activity_date: Optional[date] = None
+
+
 class LowBalanceFirstHitOut(BaseModel):
     threshold: Decimal
     start: date
@@ -1608,6 +1656,7 @@ class CategoryTotalsReportOut(BaseModel):
     sum_expense_actual: Decimal = Decimal("0")
     sum_income_estimated: Decimal = Decimal("0")
     sum_expense_estimated: Decimal = Decimal("0")
+    verified_balance_warnings: list[str] = Field(default_factory=list)
 
 
 class ProjectionDailyOut(BaseModel):
@@ -1632,6 +1681,9 @@ class CalendarDayBalanceOut(BaseModel):
     start: Optional[str] = None
     tx_net: Optional[str] = None
     end: Optional[str] = None
+    verified: bool = False
+    verified_amount: Optional[str] = None
+    projected_end: Optional[str] = None
 
 
 class CalendarMonthDailyOut(BaseModel):
@@ -2194,6 +2246,7 @@ def startup_populate_schema():
     _backfill_category_groups_for_existing_families()
     _cleanup_new_group_placeholders()
     _ensure_reconciled_days_table()
+    _ensure_verified_balances_table()
     _ensure_feedback_table()
     _ensure_family_member_rbac_columns()
     _backfill_family_member_owners()
@@ -2355,6 +2408,45 @@ def _ensure_reconciled_days_table() -> None:
             )
             conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reconciled_days_family_id ON reconciled_days (family_id)"))
             conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reconciled_days_date ON reconciled_days (date)"))
+
+
+def _ensure_verified_balances_table() -> None:
+    """Lightweight startup migration: create verified_balances table if missing."""
+    with engine.begin() as conn:
+        if settings.DATABASE_URL.startswith("sqlite"):
+            conn.execute(
+                text(
+                    "CREATE TABLE IF NOT EXISTS verified_balances ("
+                    "id INTEGER PRIMARY KEY, "
+                    "family_id INTEGER NOT NULL, "
+                    "date DATE NOT NULL, "
+                    "amount NUMERIC(12,2) NOT NULL, "
+                    "projected_amount NUMERIC(12,2), "
+                    "created_at DATETIME DEFAULT CURRENT_TIMESTAMP, "
+                    "created_by_user_id INTEGER, "
+                    "CONSTRAINT uq_verified_balance_day UNIQUE (family_id, date)"
+                    ")"
+                )
+            )
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_verified_balances_family_id ON verified_balances (family_id)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_verified_balances_date ON verified_balances (date)"))
+        else:
+            conn.execute(
+                text(
+                    "CREATE TABLE IF NOT EXISTS verified_balances ("
+                    "id SERIAL PRIMARY KEY, "
+                    "family_id INTEGER NOT NULL REFERENCES families(id) ON DELETE CASCADE, "
+                    "date DATE NOT NULL, "
+                    "amount NUMERIC(12,2) NOT NULL, "
+                    "projected_amount NUMERIC(12,2), "
+                    "created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), "
+                    "created_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL, "
+                    "CONSTRAINT uq_verified_balance_day UNIQUE (family_id, date)"
+                    ")"
+                )
+            )
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_verified_balances_family_id ON verified_balances (family_id)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_verified_balances_date ON verified_balances (date)"))
 
 
 def _ensure_feedback_table() -> None:
@@ -4578,6 +4670,170 @@ def upsert_reconciled_day(
     return list_reconciled_days(family_id=family_id, month=month, access_token=access_token, db=db)
 
 
+def _verified_balance_item_out(row: VerifiedBalance) -> VerifiedBalanceItemOut:
+    projected = row.projected_amount
+    diff = None
+    if projected is not None:
+        diff = row.amount - projected
+    return VerifiedBalanceItemOut(
+        date=row.date,
+        amount=row.amount,
+        projected_amount=projected,
+        unexplained_difference=diff,
+    )
+
+
+@app.get("/api/families/{family_id}/verified-balances", response_model=VerifiedBalancesOut)
+def list_verified_balances(
+    family_id: int,
+    month: str,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    require_family_member(db=db, family_id=family_id, user_id=user_id)
+
+    start, end = _month_range(month)
+    rows = (
+        db.execute(
+            select(VerifiedBalance)
+            .where(
+                VerifiedBalance.family_id == family_id,
+                VerifiedBalance.date >= start,
+                VerifiedBalance.date < end,
+            )
+            .order_by(VerifiedBalance.date.asc())
+        )
+        .scalars()
+        .all()
+    )
+    return VerifiedBalancesOut(month=month, items=[_verified_balance_item_out(r) for r in rows])
+
+
+@app.get("/api/families/{family_id}/verified-balances/preview", response_model=VerifiedBalancePreviewOut)
+def preview_verified_balance(
+    family_id: int,
+    date: Annotated[date, Query(alias="date")],
+    amount: Annotated[Decimal, Query()],
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    require_family_member(db=db, family_id=family_id, user_id=user_id)
+
+    balance_start = _family_balance_start_date(db, family_id)
+    if balance_start is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Add an account first")
+    if date < balance_start:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Date is before your account starting balance")
+
+    projected = _projected_balance_on_date(db=db, family_id=family_id, target_date=date, mode="both")
+    diff = amount - projected if projected is not None else None
+    gap_start, gap_end = _verified_balance_gap_bounds(db, family_id, date)
+    return VerifiedBalancePreviewOut(
+        date=date,
+        amount=amount,
+        projected_amount=projected,
+        unexplained_difference=diff,
+        gap_start=gap_start,
+        gap_end=gap_end,
+    )
+
+
+@app.get("/api/families/{family_id}/verified-balances/catch-up-status", response_model=VerifiedBalanceCatchUpOut)
+def verified_balance_catch_up_status(
+    family_id: int,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    require_family_member(db=db, family_id=family_id, user_id=user_id)
+
+    today = datetime.utcnow().date()
+    last_tx = db.execute(
+        select(func.max(Transaction.date)).where(Transaction.family_id == family_id)
+    ).scalar_one_or_none()
+    last_verified = db.execute(
+        select(func.max(VerifiedBalance.date)).where(VerifiedBalance.family_id == family_id)
+    ).scalar_one_or_none()
+    anchors: list[date] = [d for d in (last_tx, last_verified) if d is not None]
+    if not anchors:
+        return VerifiedBalanceCatchUpOut(show_prompt=False, days_behind=0, last_activity_date=None)
+    last_activity = max(anchors)
+    days_behind = max(0, (today - last_activity).days)
+    return VerifiedBalanceCatchUpOut(
+        show_prompt=days_behind >= 14,
+        days_behind=days_behind,
+        last_activity_date=last_activity,
+    )
+
+
+@app.post("/api/families/{family_id}/verified-balances", response_model=VerifiedBalanceItemOut)
+def upsert_verified_balance(
+    family_id: int,
+    payload: VerifiedBalanceUpsertIn,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    require_family_write(db=db, family_id=family_id, user_id=user_id)
+
+    balance_start = _family_balance_start_date(db, family_id)
+    if balance_start is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Add an account first")
+    if payload.date < balance_start:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Date is before your account starting balance")
+
+    projected = _projected_balance_on_date(db=db, family_id=family_id, target_date=payload.date, mode="both")
+
+    existing = db.execute(
+        select(VerifiedBalance).where(
+            VerifiedBalance.family_id == family_id,
+            VerifiedBalance.date == payload.date,
+        )
+    ).scalar_one_or_none()
+    if existing is None:
+        existing = VerifiedBalance(
+            family_id=family_id,
+            date=payload.date,
+            amount=payload.amount,
+            projected_amount=projected,
+            created_by_user_id=user_id,
+        )
+        db.add(existing)
+    else:
+        existing.amount = payload.amount
+        existing.projected_amount = projected
+        existing.created_by_user_id = user_id
+
+    db.commit()
+    db.refresh(existing)
+    return _verified_balance_item_out(existing)
+
+
+@app.delete("/api/families/{family_id}/verified-balances/{checkpoint_date}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_verified_balance(
+    family_id: int,
+    checkpoint_date: date,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    require_family_write(db=db, family_id=family_id, user_id=user_id)
+
+    row = db.execute(
+        select(VerifiedBalance).where(
+            VerifiedBalance.family_id == family_id,
+            VerifiedBalance.date == checkpoint_date,
+        )
+    ).scalar_one_or_none()
+    if row is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Verified balance not found")
+    db.delete(row)
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 @app.get("/api/families/{family_id}/accounts", response_model=list[AccountOut])
 def list_accounts(
     family_id: int,
@@ -5655,6 +5911,8 @@ def category_totals_report(
         reverse=True,
     )
 
+    warnings = _verified_balance_report_warnings(db=db, family_id=family_id, start_date=start_date, end_date=end_date)
+
     return CategoryTotalsReportOut(
         start_date=start_date,
         end_date=end_date,
@@ -5665,6 +5923,7 @@ def category_totals_report(
         sum_expense_actual=sum_expense_actual,
         sum_income_estimated=sum_income_estimated,
         sum_expense_estimated=sum_expense_estimated,
+        verified_balance_warnings=warnings,
     )
 
 
@@ -6134,6 +6393,165 @@ def _build_pooled_forecast_flow_maps(
     return actual_by_date, expected_by_date, start_adds
 
 
+def _verified_balance_amount_map(db, family_id: int, through: date) -> dict[date, Decimal]:
+    rows = (
+        db.execute(
+            select(VerifiedBalance)
+            .where(VerifiedBalance.family_id == family_id, VerifiedBalance.date <= through)
+            .order_by(VerifiedBalance.date.asc())
+        )
+        .scalars()
+        .all()
+    )
+    return {r.date: r.amount for r in rows}
+
+
+def _simulate_pooled_daily_balance_rows(
+    *,
+    balance_start: date,
+    last_day: date,
+    mode: Literal["both", "actual", "expected"],
+    actual_by_date: dict[date, Decimal],
+    expected_by_date: dict[date, Decimal],
+    start_adds: dict[date, Decimal],
+    verified_by_date: dict[date, Decimal],
+) -> dict[date, dict[str, object]]:
+    """Simulate pooled balances; verified checkpoints override end-of-day carry forward."""
+    carry = Decimal("0")
+    out: dict[date, dict[str, object]] = {}
+    d = balance_start
+    while d <= last_day:
+        day_start = carry + start_adds.get(d, Decimal("0"))
+        tx_net = _forecast_day_tx_net(
+            mode=mode,
+            day=d,
+            actual_by_date=actual_by_date,
+            expected_by_date=expected_by_date,
+        )
+        calculated_end = day_start + tx_net
+        verified_amt = verified_by_date.get(d)
+        if verified_amt is not None:
+            day_end = verified_amt
+            out[d] = {
+                "start": day_start,
+                "tx_net": tx_net,
+                "end": day_end,
+                "verified": True,
+                "verified_amount": verified_amt,
+                "projected_end": calculated_end,
+            }
+        else:
+            day_end = calculated_end
+            out[d] = {
+                "start": day_start,
+                "tx_net": tx_net,
+                "end": day_end,
+                "verified": False,
+                "verified_amount": None,
+                "projected_end": None,
+            }
+        carry = day_end
+        d += timedelta(days=1)
+    return out
+
+
+def _family_balance_start_date(db, family_id: int) -> Optional[date]:
+    account_rows = list(db.execute(select(Account).where(Account.family_id == family_id)).scalars().all())
+    if not account_rows:
+        return None
+    return min((a.starting_balance_date or a.created_at.date()) for a in account_rows)
+
+
+def _projected_balance_on_date(
+    *,
+    db,
+    family_id: int,
+    target_date: date,
+    mode: Literal["both", "actual", "expected"] = "both",
+) -> Optional[Decimal]:
+    """Calculated end-of-day balance on target_date (existing checkpoints apply; no new checkpoint)."""
+    balance_start = _family_balance_start_date(db, family_id)
+    if balance_start is None or target_date < balance_start:
+        return None
+    actual_by_date, expected_by_date, start_adds = _build_pooled_forecast_flow_maps(
+        db=db,
+        family_id=family_id,
+        balance_start=balance_start,
+        last_day=target_date,
+        range_end_exclusive=target_date + timedelta(days=1),
+        mode=mode,
+    )
+    verified_by_date = _verified_balance_amount_map(db, family_id, target_date)
+    sim = _simulate_pooled_daily_balance_rows(
+        balance_start=balance_start,
+        last_day=target_date,
+        mode=mode,
+        actual_by_date=actual_by_date,
+        expected_by_date=expected_by_date,
+        start_adds=start_adds,
+        verified_by_date=verified_by_date,
+    )
+    row = sim.get(target_date)
+    if not row:
+        return None
+    if row.get("verified"):
+        projected = row.get("projected_end")
+        return projected if isinstance(projected, Decimal) else None
+    end = row.get("end")
+    return end if isinstance(end, Decimal) else None
+
+
+def _verified_balance_gap_bounds(
+    db,
+    family_id: int,
+    checkpoint_date: date,
+) -> tuple[Optional[date], Optional[date]]:
+    last_tx = db.execute(
+        select(func.max(Transaction.date)).where(
+            Transaction.family_id == family_id,
+            Transaction.date < checkpoint_date,
+        )
+    ).scalar_one_or_none()
+    last_verified = db.execute(
+        select(func.max(VerifiedBalance.date)).where(
+            VerifiedBalance.family_id == family_id,
+            VerifiedBalance.date < checkpoint_date,
+        )
+    ).scalar_one_or_none()
+    anchors: list[date] = [d for d in (last_tx, last_verified) if d is not None]
+    if not anchors:
+        return None, None
+    gap_start = max(anchors) + timedelta(days=1)
+    gap_end = checkpoint_date - timedelta(days=1)
+    if gap_start > gap_end:
+        return None, None
+    return gap_start, gap_end
+
+
+def _verified_balance_report_warnings(
+    db,
+    family_id: int,
+    start_date: date,
+    end_date: date,
+) -> list[str]:
+    if end_date < start_date:
+        return []
+    cp_dates = db.execute(
+        select(VerifiedBalance.date)
+        .where(VerifiedBalance.family_id == family_id)
+        .order_by(VerifiedBalance.date.asc())
+    ).scalars().all()
+    out: list[str] = []
+    for cp_date in cp_dates:
+        if start_date < cp_date:
+            label = cp_date.strftime("%B %d, %Y")
+            out.append(
+                "Reporting may be incomplete. A verified balance was entered on "
+                f"{label}, which may indicate missing transactions before that date."
+            )
+    return out
+
+
 def _calendar_month_daily_balances(
     *,
     db,
@@ -6154,6 +6572,7 @@ def _calendar_month_daily_balances(
         return []
 
     balance_start = min((a.starting_balance_date or a.created_at.date()) for a in account_rows)
+    verified_by_date = _verified_balance_amount_map(db, family_id, last_day)
     actual_by_date, expected_by_date, start_adds = _build_pooled_forecast_flow_maps(
         db=db,
         family_id=family_id,
@@ -6162,6 +6581,15 @@ def _calendar_month_daily_balances(
         range_end_exclusive=month_end_excl,
         mode=mode,
     )
+    sim = _simulate_pooled_daily_balance_rows(
+        balance_start=balance_start,
+        last_day=last_day,
+        mode=mode,
+        actual_by_date=actual_by_date,
+        expected_by_date=expected_by_date,
+        start_adds=start_adds,
+        verified_by_date=verified_by_date,
+    )
 
     out: list[CalendarDayBalanceOut] = []
     d = month_start
@@ -6169,28 +6597,28 @@ def _calendar_month_daily_balances(
         out.append(CalendarDayBalanceOut(date=d))
         d += timedelta(days=1)
 
-    carry = Decimal("0")
-    sim = balance_start
-    while sim <= last_day:
-        day_start = carry + start_adds.get(sim, Decimal("0"))
-        tx_net = _forecast_day_tx_net(
-            mode=mode,
-            day=sim,
-            actual_by_date=actual_by_date,
-            expected_by_date=expected_by_date,
-        )
-        day_end = day_start + tx_net
-        if sim >= month_start:
-            out.append(
-                CalendarDayBalanceOut(
-                    date=sim,
-                    start=str(day_start),
-                    tx_net=str(tx_net),
-                    end=str(day_end),
+    sim_day = balance_start
+    while sim_day <= last_day:
+        if sim_day >= month_start:
+            row = sim.get(sim_day)
+            if row:
+                verified = bool(row.get("verified"))
+                verified_amount = row.get("verified_amount")
+                projected_end = row.get("projected_end")
+                out.append(
+                    CalendarDayBalanceOut(
+                        date=sim_day,
+                        start=str(row["start"]),
+                        tx_net=str(row["tx_net"]),
+                        end=str(row["end"]),
+                        verified=verified,
+                        verified_amount=str(verified_amount) if verified and verified_amount is not None else None,
+                        projected_end=str(projected_end) if verified and projected_end is not None else None,
+                    )
                 )
-            )
-        carry = day_end
-        sim += timedelta(days=1)
+            else:
+                out.append(CalendarDayBalanceOut(date=sim_day))
+        sim_day += timedelta(days=1)
 
     return out
 
@@ -6219,6 +6647,7 @@ def _pooled_daily_balance_first_hit_impl(
         return None, None
 
     balance_start = min((a.starting_balance_date or a.created_at.date()) for a in account_rows)
+    verified_by_date = _verified_balance_amount_map(db, family_id, last_day)
     actual_by_date, expected_by_date, start_adds = _build_pooled_forecast_flow_maps(
         db=db,
         family_id=family_id,
@@ -6227,27 +6656,28 @@ def _pooled_daily_balance_first_hit_impl(
         range_end_exclusive=range_end_excl,
         mode=mode,
     )
+    sim = _simulate_pooled_daily_balance_rows(
+        balance_start=balance_start,
+        last_day=last_day,
+        mode=mode,
+        actual_by_date=actual_by_date,
+        expected_by_date=expected_by_date,
+        start_adds=start_adds,
+        verified_by_date=verified_by_date,
+    )
 
-    carry = Decimal("0")
-    d = balance_start
     hit_date: Optional[date] = None
     hit_balance: Optional[Decimal] = None
-    while d <= last_day:
-        day_start = carry + start_adds.get(d, Decimal("0"))
-        tx_net = _forecast_day_tx_net(
-            mode=mode,
-            day=d,
-            actual_by_date=actual_by_date,
-            expected_by_date=expected_by_date,
-        )
-        day_end = day_start + tx_net
-        carry = day_end
+    for d in sorted(sim.keys()):
+        row = sim[d]
+        day_end = row.get("end")
+        if not isinstance(day_end, Decimal):
+            continue
         crossed = day_end <= level if crossing == "lte" else day_end >= level
         if d > start_date and hit_date is None and crossed:
             hit_date = d
             hit_balance = day_end
             break
-        d += timedelta(days=1)
 
     return hit_date, hit_balance
 
