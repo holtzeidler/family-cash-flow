@@ -478,6 +478,7 @@ let state = {
   calendarExtraExpectedItems: [],
   reconciledDates: new Set(),
   verifiedBalances: new Map(),
+  forecastConfidence: null,
   monthDailyBalances: new Map(),
   calendarExpandedDays: new Set(),
   calendarDetailMode: "detailed",
@@ -1689,11 +1690,11 @@ const verifiedBalanceSaveBtn = document.getElementById("verifiedBalanceSaveBtn")
 const verifiedBalanceCancelBtn = document.getElementById("verifiedBalanceCancelBtn");
 let verifiedBalancePreviewTimer = null;
 
-const verifiedBalanceOpenBtn = document.getElementById("verifiedBalanceOpenBtn");
-const verifiedBalanceCatchUpBanner = document.getElementById("verifiedBalanceCatchUpBanner");
-const verifiedBalanceCatchUpBtn = document.getElementById("verifiedBalanceCatchUpBtn");
-const verifiedBalanceCatchUpDismiss = document.getElementById("verifiedBalanceCatchUpDismiss");
-const VERIFIED_BALANCE_CATCHUP_DISMISS_KEY = "bwVerifiedBalanceCatchUpDismissedUntil";
+const forecastConfidenceCard = document.getElementById("forecastConfidenceCard");
+const forecastConfidenceLevel = document.getElementById("forecastConfidenceLevel");
+const forecastConfidenceDetail = document.getElementById("forecastConfidenceDetail");
+const forecastConfidenceHelper = document.getElementById("forecastConfidenceHelper");
+const forecastConfidenceVerifyBtn = document.getElementById("forecastConfidenceVerifyBtn");
 
 // Add transaction modal (one-time or recurring from calendar)
 const txAddModal = document.getElementById("txAddModal");
@@ -2584,6 +2585,7 @@ function finishBalanceThresholdSave({
   if (lowBalanceDebounceTimer) clearTimeout(lowBalanceDebounceTimer);
   lowBalanceDebounceTimer = null;
   void refreshLowBalanceAlert();
+  void refreshForecastConfidence();
   refreshCalendarCashInsights();
   if (reportsViewPanel && !reportsViewPanel.hidden && lastProjectionDailyForReports?.length > 1 && projectionChartCanvas) {
     lastCashInsightsForReports = buildCashInsightsForSurface({
@@ -3894,6 +3896,7 @@ familySelect.addEventListener("change", async () => {
     }
   }
   void refreshLowBalanceAlert();
+  void refreshForecastConfidence();
 });
 
 const familyInviteBtn = document.getElementById("familyInviteBtn");
@@ -5279,6 +5282,7 @@ async function saveReconcileMark() {
   await loadReconciledDays(month);
   closeReconcileModal();
   renderCalendar();
+  await refreshForecastConfidence();
   if (typeof showBwToast === "function") showBwToast("✓ Forecast reconciled");
   bwDispatchMilestone("first-reconcile");
 }
@@ -5306,7 +5310,7 @@ async function saveVerifiedBalance() {
   closeVerifiedBalanceModal();
   renderCalendar();
   await refreshLowBalanceAlert();
-  dismissVerifiedBalanceCatchUp();
+  await refreshForecastConfidence();
   if (typeof showBwToast === "function") {
     showBwToast("✓ Verified balance saved — forecast updated from this date forward");
   }
@@ -5343,57 +5347,82 @@ async function loadVerifiedBalances(month) {
   } catch (_) {
     state.verifiedBalances = new Map();
   }
-  syncVerifiedBalanceSidebarUi();
 }
 
-function syncVerifiedBalanceSidebarUi() {
+const FORECAST_CONFIDENCE_LABELS = {
+  high: "High",
+  medium: "Medium",
+  low: "Low",
+  very_low: "Very Low",
+};
+
+function lastConfirmedDaysAgoCopy(days) {
+  const n = Number(days);
+  if (!Number.isFinite(n) || n < 0) return "";
+  if (n === 0) return "Last confirmed today.";
+  if (n === 1) return "Last confirmed 1 day ago.";
+  return `Last confirmed ${n} days ago.`;
+}
+
+function applyForecastConfidenceUi(data) {
   const canWrite = !state.viewOnly;
-  if (verifiedBalanceOpenBtn) {
-    verifiedBalanceOpenBtn.hidden = !state.activeFamilyId || !canWrite;
-  }
-}
-
-function verifiedBalanceCatchUpDismissStorageKey() {
-  return `${VERIFIED_BALANCE_CATCHUP_DISMISS_KEY}:${state.activeFamilyId || "none"}`;
-}
-
-function isVerifiedBalanceCatchUpDismissed() {
-  try {
-    const until = localStorage.getItem(verifiedBalanceCatchUpDismissStorageKey());
-    if (!until) return false;
-    return Date.now() < Number(until);
-  } catch (_) {
-    return false;
-  }
-}
-
-function dismissVerifiedBalanceCatchUp(days = 7) {
-  try {
-    localStorage.setItem(
-      verifiedBalanceCatchUpDismissStorageKey(),
-      String(Date.now() + days * 24 * 60 * 60 * 1000),
-    );
-  } catch (_) {}
-  if (verifiedBalanceCatchUpBanner) verifiedBalanceCatchUpBanner.hidden = true;
-}
-
-async function refreshVerifiedBalanceCatchUpPrompt() {
-  if (!verifiedBalanceCatchUpBanner || !state.activeFamilyId || state.viewOnly) {
-    if (verifiedBalanceCatchUpBanner) verifiedBalanceCatchUpBanner.hidden = true;
+  if (!forecastConfidenceCard || !state.activeFamilyId) {
+    if (forecastConfidenceCard) forecastConfidenceCard.hidden = true;
     return;
   }
-  if (isVerifiedBalanceCatchUpDismissed()) {
-    verifiedBalanceCatchUpBanner.hidden = true;
+  const level = String(data?.confidence_level || "unknown");
+  if (level === "unknown") {
+    forecastConfidenceCard.hidden = true;
+    return;
+  }
+
+  forecastConfidenceCard.hidden = false;
+  forecastConfidenceCard.className = `forecast-confidence forecast-confidence--${level}`;
+
+  if (forecastConfidenceLevel) {
+    forecastConfidenceLevel.textContent = FORECAST_CONFIDENCE_LABELS[level] || level;
+  }
+
+  let detail = "";
+  let helper = "";
+  let showCta = !!data?.show_verify_cta && canWrite;
+  const days = data?.days_since_confirmed;
+
+  if (level === "high" || level === "medium") {
+    detail = lastConfirmedDaysAgoCopy(days);
+    if (level === "medium") {
+      helper = "Your forecast is still useful, but confirming your balance keeps it more accurate.";
+    }
+    showCta = false;
+  } else if (level === "low") {
+    detail =
+      "Your forecast may be less reliable because your balance hasn't been confirmed recently.";
+  } else if (level === "very_low") {
+    detail =
+      "Your forecast may be out of date. Verify your current balance and keep going—no need to enter every missed transaction.";
+  }
+
+  if (forecastConfidenceDetail) forecastConfidenceDetail.textContent = detail;
+  if (forecastConfidenceHelper) {
+    forecastConfidenceHelper.textContent = helper;
+    forecastConfidenceHelper.hidden = !helper;
+  }
+  if (forecastConfidenceVerifyBtn) forecastConfidenceVerifyBtn.hidden = !showCta;
+}
+
+async function refreshForecastConfidence() {
+  if (!forecastConfidenceCard || !state.activeFamilyId) {
+    state.forecastConfidence = null;
+    if (forecastConfidenceCard) forecastConfidenceCard.hidden = true;
     return;
   }
   try {
-    const data = await api(
-      `/api/families/${state.activeFamilyId}/verified-balances/catch-up-status`,
-      "GET",
-    );
-    verifiedBalanceCatchUpBanner.hidden = !data?.show_prompt;
+    const data = await api(`/api/families/${state.activeFamilyId}/forecast-confidence`, "GET");
+    state.forecastConfidence = data || null;
+    applyForecastConfidenceUi(data);
   } catch (_) {
-    verifiedBalanceCatchUpBanner.hidden = true;
+    state.forecastConfidence = null;
+    if (forecastConfidenceCard) forecastConfidenceCard.hidden = true;
   }
 }
 
@@ -10926,17 +10955,8 @@ if (reconcileCancelBtn) {
   reconcileCancelBtn.addEventListener("click", () => closeReconcileModal());
 }
 
-if (verifiedBalanceOpenBtn) {
-  verifiedBalanceOpenBtn.addEventListener("click", () => openVerifiedBalanceModal(toISODate(new Date())));
-}
-if (verifiedBalanceCatchUpBtn) {
-  verifiedBalanceCatchUpBtn.addEventListener("click", () => {
-    if (verifiedBalanceCatchUpBanner) verifiedBalanceCatchUpBanner.hidden = true;
-    openVerifiedBalanceModal(toISODate(new Date()));
-  });
-}
-if (verifiedBalanceCatchUpDismiss) {
-  verifiedBalanceCatchUpDismiss.addEventListener("click", () => dismissVerifiedBalanceCatchUp());
+if (forecastConfidenceVerifyBtn) {
+  forecastConfidenceVerifyBtn.addEventListener("click", () => openVerifiedBalanceModal(toISODate(new Date())));
 }
 if (verifiedBalanceCancelBtn) {
   verifiedBalanceCancelBtn.addEventListener("click", () => closeVerifiedBalanceModal());
@@ -12537,7 +12557,7 @@ async function loadMonthAndCalendar() {
     await loadCalendarMonthDaily();
     renderCalendar();
     await refreshLowBalanceAlert();
-    await refreshVerifiedBalanceCatchUpPrompt();
+    await refreshForecastConfidence();
   } catch (e) {
     show(calendarErr, e.message || "Failed to load calendar");
   } finally {
@@ -18258,6 +18278,7 @@ async function main() {
       });
     }
     await refreshLowBalanceAlert();
+    await refreshForecastConfidence();
   }
 
   wireForecastPreferencesUi();

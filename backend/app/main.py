@@ -1380,6 +1380,13 @@ class VerifiedBalanceCatchUpOut(BaseModel):
     last_activity_date: Optional[date] = None
 
 
+class ForecastConfidenceOut(BaseModel):
+    last_confirmed_balance_date: Optional[date] = None
+    days_since_confirmed: Optional[int] = None
+    confidence_level: str = "unknown"  # high | medium | low | very_low | unknown
+    show_verify_cta: bool = False
+
+
 class LowBalanceFirstHitOut(BaseModel):
     threshold: Decimal
     start: date
@@ -4746,26 +4753,64 @@ def verified_balance_catch_up_status(
     access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
+    """Deprecated: use forecast-confidence. Kept for older clients."""
     user_id = get_current_user_id(access_token)
     require_family_member(db=db, family_id=family_id, user_id=user_id)
+    conf = _forecast_confidence_for_family(db, family_id)
+    days = conf.days_since_confirmed or 0
+    return VerifiedBalanceCatchUpOut(
+        show_prompt=conf.show_verify_cta,
+        days_behind=days,
+        last_activity_date=conf.last_confirmed_balance_date,
+    )
 
+
+def _forecast_confidence_for_family(db, family_id: int) -> ForecastConfidenceOut:
     today = datetime.utcnow().date()
-    last_tx = db.execute(
-        select(func.max(Transaction.date)).where(Transaction.family_id == family_id)
+    last_reconciled = db.execute(
+        select(func.max(ReconciledDay.date)).where(
+            ReconciledDay.family_id == family_id,
+            ReconciledDay.reconciled == True,  # noqa: E712
+        )
     ).scalar_one_or_none()
     last_verified = db.execute(
         select(func.max(VerifiedBalance.date)).where(VerifiedBalance.family_id == family_id)
     ).scalar_one_or_none()
-    anchors: list[date] = [d for d in (last_tx, last_verified) if d is not None]
+    anchors: list[date] = [d for d in (last_reconciled, last_verified) if d is not None]
     if not anchors:
-        return VerifiedBalanceCatchUpOut(show_prompt=False, days_behind=0, last_activity_date=None)
-    last_activity = max(anchors)
-    days_behind = max(0, (today - last_activity).days)
-    return VerifiedBalanceCatchUpOut(
-        show_prompt=days_behind >= 14,
-        days_behind=days_behind,
-        last_activity_date=last_activity,
+        return ForecastConfidenceOut(
+            last_confirmed_balance_date=None,
+            days_since_confirmed=None,
+            confidence_level="unknown",
+            show_verify_cta=False,
+        )
+    last_confirmed = max(anchors)
+    days_since = max(0, (today - last_confirmed).days)
+    if days_since <= 7:
+        level = "high"
+    elif days_since <= 14:
+        level = "medium"
+    elif days_since <= 30:
+        level = "low"
+    else:
+        level = "very_low"
+    return ForecastConfidenceOut(
+        last_confirmed_balance_date=last_confirmed,
+        days_since_confirmed=days_since,
+        confidence_level=level,
+        show_verify_cta=level in ("low", "very_low"),
     )
+
+
+@app.get("/api/families/{family_id}/forecast-confidence", response_model=ForecastConfidenceOut)
+def forecast_confidence(
+    family_id: int,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    require_family_member(db=db, family_id=family_id, user_id=user_id)
+    return _forecast_confidence_for_family(db, family_id)
 
 
 @app.post("/api/families/{family_id}/verified-balances", response_model=VerifiedBalanceItemOut)

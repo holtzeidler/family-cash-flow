@@ -93,15 +93,15 @@
               <div id="sidebarHighBalanceBanner" class="calendar-low-balance calendar-low-balance--sidebar calendar-low-balance--high" style="display: none" role="status"></div>
             </div>
 
-            <div id="verifiedBalanceCatchUpBanner" class="verified-balance-catchup" hidden role="status">
-              <p class="verified-balance-catchup__text">Looks like you may be a couple weeks behind. Want to update your account with your current bank balance instead?</p>
-              <div class="verified-balance-catchup__actions">
-                <button type="button" id="verifiedBalanceCatchUpBtn" class="verified-balance-catchup__primary">Add verified balance</button>
-                <button type="button" id="verifiedBalanceCatchUpDismiss" class="verified-balance-catchup__dismiss">Not now</button>
+            <section id="forecastConfidenceCard" class="forecast-confidence" hidden aria-label="Forecast confidence">
+              <div class="forecast-confidence__head">
+                <span class="forecast-confidence__kicker">Forecast confidence</span>
+                <span id="forecastConfidenceLevel" class="forecast-confidence__level">High</span>
               </div>
-            </div>
-
-            <button type="button" id="verifiedBalanceOpenBtn" class="verified-balance-open-btn" hidden>Add verified balance</button>
+              <p id="forecastConfidenceDetail" class="forecast-confidence__detail"></p>
+              <p id="forecastConfidenceHelper" class="forecast-confidence__helper" hidden></p>
+              <button type="button" id="forecastConfidenceVerifyBtn" class="forecast-confidence__cta" hidden>Verify Current Balance</button>
+            </section>
 
             <div id="settingsSidebarNav" class="settings-nav settings-nav--sidebar settings-nav--rail settings-nav--flat" hidden aria-label="Settings sections">
               <button type="button" class="settings-nav-item is-active" data-settings-key="accounts">
