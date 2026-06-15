@@ -6043,18 +6043,8 @@ function appendCalendarDayStartBalanceLine(row, parentEl, iso) {
   line.title = "";
   const acctLabel = row.account_name ? String(row.account_name).trim() : "account";
   line.setAttribute("aria-label", `Starting Point for ${acctLabel}`);
-
-  const badge = document.createElement("span");
-  badge.className = "cal-start-milestone__badge";
-  badge.innerHTML =
-    '<span class="cal-start-milestone__icon" aria-hidden="true">🏁</span><span class="cal-start-milestone__label">Starting Point</span>';
-
-  const amtSpan = document.createElement("span");
-  amtSpan.className = "cal-start-milestone__amt";
-  amtSpan.textContent = `$${fmtMoney(row.amount)}`;
-
-  line.appendChild(badge);
-  line.appendChild(amtSpan);
+  line.innerHTML =
+    '<span class="cal-balance-status-pill cal-balance-status-pill--starting"><span class="cal-balance-status-pill__icon" aria-hidden="true">🏁</span> Starting Point</span>';
 
   const openStartBalEdit = (e) => {
     if (e.type === "keydown" && e.key !== "Enter" && e.key !== " ") return;
@@ -13894,9 +13884,7 @@ function renderCalendar() {
       }
 
       let stripCue = "";
-      if (dayBalVerified) stripCue = "cal-balance-strip--adjusted";
-      else if (isReconciled) stripCue = "cal-balance-strip--reconciled";
-      else if (negativeBal) stripCue = "cal-balance-strip--cue-risk";
+      if (negativeBal) stripCue = "cal-balance-strip--cue-risk";
       else if (belowFloor) stripCue = "cal-balance-strip--cue-warn";
       else if (watchOnly) stripCue = "cal-balance-strip--cue-watch";
 
@@ -13910,16 +13898,15 @@ function renderCalendar() {
         belowFloor && !negativeBal && !dayBalVerified
           ? `<span class="cal-balance-warn-icon" aria-hidden="true" title="Below your minimum balance"><svg viewBox="0 0 16 16" width="9" height="9" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 2.25L14 13.75H2L8 2.25z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" fill="none"/><path d="M8 6.25v3M8 11.1v.01" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg></span>`
           : "";
-      const adjustedStatus = dayBalVerified
-        ? `<span class="cal-balance-status-pill cal-balance-status-pill--adjusted">Adjusted</span>`
-        : "";
-      const reconciledStatus =
-        isReconciled && !dayBalVerified
-          ? `<span class="cal-balance-status-pill cal-balance-status-pill--reconciled">Reconciled</span>`
+      const statusPill = dayBalVerified
+        ? `<span class="cal-balance-status-pill cal-balance-status-pill--adjusted"><span class="cal-balance-status-pill__icon" aria-hidden="true">↺</span> Adjusted</span>`
+        : isReconciled
+          ? `<span class="cal-balance-status-pill cal-balance-status-pill--reconciled"><span class="cal-balance-status-pill__icon" aria-hidden="true">✓</span> Reconciled</span>`
           : "";
-      metricsEl.innerHTML = `<div class="cal-balance-strip${stripCue ? ` ${stripCue}` : ""}"><div class="cal-balance-strip__row"><span class="cal-balance-strip__amt">${riskIcon}${warnIcon}<span class="${balanceClass}${dayBalVerified ? " cal-balance--adjusted" : ""}${isReconciled && !dayBalVerified ? " cal-balance--reconciled" : ""}"${balanceTitle ? ` title="${escapeHtml(balanceTitle)}"` : ""}>$${fmtMoneyParens(
+      const stripStatusClass = statusPill ? " cal-balance-strip--has-status" : "";
+      metricsEl.innerHTML = `<div class="cal-balance-strip${stripStatusClass}${stripCue ? ` ${stripCue}` : ""}"><div class="cal-balance-strip__row"><span class="cal-balance-strip__amt">${riskIcon}${warnIcon}<span class="${balanceClass}"${balanceTitle ? ` title="${escapeHtml(balanceTitle)}"` : ""}>$${fmtMoneyParens(
         endNum
-      )}</span></span>${adjustedStatus}${reconciledStatus}</div></div>`;
+      )}</span></span></div>${statusPill}</div>`;
       bindCalendarDayBalanceHit(metricsEl, iso, {
         isReconciled,
         dayBalVerified,

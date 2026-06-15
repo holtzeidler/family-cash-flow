@@ -19241,33 +19241,7 @@ body.plans-page--polished .plans-wrap{
   cursor: pointer;
 }
 
-/* Reconciled in-month days: quiet “grounded in reality” cue — distinct from
-   forecast-risk tints (which use stronger amber/red washes). */
-.cal-cell.cal-cell--reconciled:not(.cal-cell--bal-risk):not(.cal-cell--bal-warn):not(.cal-cell--before-start){
-  background: linear-gradient(
-    135deg,
-    rgba(241, 250, 244, 0.65) 0%,
-    rgba(255, 255, 255, 0.78) 36%,
-    rgba(255, 255, 255, 0.82) 100%
-  );
-  border-color: rgba(21, 128, 61, 0.18);
-  box-shadow:
-    inset 0 -1px 0 rgba(22, 163, 74, 0.07),
-    0 1px 3px rgba(17, 24, 39, 0.028);
-}
-
-.cal-cell.cal-cell--adjusted-balance:not(.cal-cell--bal-risk):not(.cal-cell--bal-warn):not(.cal-cell--before-start){
-  background: linear-gradient(
-    135deg,
-    rgba(255, 251, 235, 0.72) 0%,
-    rgba(255, 255, 255, 0.78) 36%,
-    rgba(255, 255, 255, 0.82) 100%
-  );
-  border-color: rgba(217, 119, 6, 0.16);
-  box-shadow:
-    inset 0 -1px 0 rgba(245, 158, 11, 0.08),
-    0 1px 3px rgba(17, 24, 39, 0.028);
-}
+/* Reconciled / Adjusted days use compact status pills only — cell surface stays neutral. */
 
 .cal-cell:not(.cal-cell--out):not(.cal-cell--before-start):hover{
   border-color: rgba(17, 24, 39, 0.1);
@@ -19307,16 +19281,6 @@ body.plans-page--polished .plans-wrap{
   .cal-cell:not(.cal-cell--before-start):hover{
     transform: none;
   }
-}
-
-.cal-cell.cal-cell--reconciled:not(.cal-cell--bal-risk):not(.cal-cell--bal-warn):not(.cal-cell--out):not(.cal-cell--before-start):hover{
-  border-color: rgba(21, 128, 61, 0.24);
-  background: linear-gradient(
-    135deg,
-    rgba(240, 251, 244, 0.78) 0%,
-    rgba(255, 255, 255, 0.88) 100%
-  );
-  box-shadow: 0 3px 11px rgba(15, 23, 42, 0.045);
 }
 
 .cal-cell.cal-cell--recovery-milestone:not(.cal-cell--out):not(.cal-cell--before-start){
@@ -19914,14 +19878,6 @@ body.plans-page--polished .plans-wrap{
 .cal-cell:not(.cal-cell--out):not(.cal-cell--before-start) .cal-ledger-metrics.cal-day-balance-hit:focus-within .cal-stat.cal-balance{
   color: rgba(11, 61, 46, 0.94);
 }
-.cal-cell:not(.cal-cell--out):not(.cal-cell--before-start) .cal-ledger-metrics.cal-day-balance-hit:hover .cal-balance-status-pill--reconciled{
-  background: rgba(220, 252, 231, 0.95);
-  border-color: rgba(22, 101, 52, 0.34);
-}
-.cal-cell:not(.cal-cell--out):not(.cal-cell--before-start) .cal-ledger-metrics.cal-day-balance-hit:hover .cal-balance-status-pill--adjusted{
-  background: rgba(254, 243, 199, 0.95);
-  border-color: rgba(180, 83, 9, 0.34);
-}
 /* 1–2 visible rows: transactions at the top; projected balance stays anchored below. */
 .cal-cell--density-sparse:not(.cal-cell--no-tx) .cal-cell-stack > .cal-day-txns{
   flex: 0 0 auto;
@@ -19989,8 +19945,7 @@ body.plans-page--polished .plans-wrap{
     0 1px 3px rgba(11, 61, 46, 0.09),
     inset 0 0 0 1.5px rgba(11, 61, 46, 0.11);
 }
-.cal-cell.cal-cell--today:not(.cal-cell--out):not(.cal-cell--before-start):hover,
-.cal-cell.cal-cell--today.cal-cell--reconciled:not(.cal-cell--bal-risk):not(.cal-cell--bal-warn):not(.cal-cell--out):not(.cal-cell--before-start):hover{
+.cal-cell.cal-cell--today:not(.cal-cell--out):not(.cal-cell--before-start):hover{
   background: color-mix(in srgb, var(--accent) 15%, #fff);
   border-color: rgba(11, 61, 46, 0.28);
   box-shadow:
@@ -20152,71 +20107,40 @@ body.plans-page--polished .plans-wrap{
 
 /* Flow modifiers kept for semantics; amount color comes from .cal-amt.income / .expense. */
 
-/* Starting Point: foundational milestone — gray, never truncated. */
+/* Starting Point: milestone pill only — balance lives in the ledger row below. */
+.cal-day-start-balance{
+  flex: 0 0 auto;
+  margin-bottom: 2px;
+  overflow: visible;
+  min-width: 0;
+}
 .cal-start-milestone{
   display: flex;
+  justify-content: flex-start;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  width: 100%;
-  min-width: 0;
-  margin-bottom: 2px;
-  padding: 4px 6px;
-  border-radius: 6px;
-  border: 1px solid rgba(148, 163, 184, 0.32);
-  border-left: 3px solid rgba(100, 116, 139, 0.55);
-  background: linear-gradient(90deg, rgba(248, 250, 252, 0.98) 0%, rgba(241, 245, 249, 0.92) 100%);
-  color: rgba(51, 65, 85, 0.92);
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  box-shadow: none;
   cursor: pointer;
-  box-sizing: border-box;
-  transition: background 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
-}
-.cal-start-milestone:hover{
-  background: rgba(241, 245, 249, 0.98);
-  border-color: rgba(100, 116, 139, 0.42);
-  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.04);
+  overflow: visible;
 }
 .cal-start-milestone:focus-visible{
   outline: none;
+}
+.cal-start-milestone:focus-visible .cal-balance-status-pill--starting{
   box-shadow: 0 0 0 2px rgba(100, 116, 139, 0.22);
-}
-.cal-start-milestone__badge{
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  min-width: 0;
-  flex: 1 1 auto;
-}
-.cal-start-milestone__icon{
-  flex-shrink: 0;
-  font-size: 11px;
-  line-height: 1;
-}
-.cal-start-milestone__label{
-  flex: 0 1 auto;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: rgba(71, 85, 105, 0.95);
-  white-space: nowrap;
-  overflow: visible;
-  text-overflow: clip;
-}
-.cal-start-milestone__amt{
-  flex: 0 0 auto;
-  font-size: var(--cal-tx-font-size, 12px);
-  font-weight: 550;
-  font-variant-numeric: tabular-nums;
-  color: rgba(100, 116, 139, 0.88);
-  white-space: nowrap;
 }
 
 /* Legacy start-balance row (kept for any cached markup). */
 .cal-day-tx-line--start-balance,
 .cal-day-tx-line--start-balance.cal-day-tx-line--primary,
 .cal-day-tx-line--start-balance.cal-day-tx-line--secondary{
-  align-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 1px;
   color: rgba(71, 85, 105, 0.9);
   background: rgba(248, 250, 252, 0.92);
   border-left: 2px solid rgba(100, 116, 139, 0.4);
@@ -20225,8 +20149,30 @@ body.plans-page--polished .plans-wrap{
   margin-bottom: 0;
   box-sizing: border-box;
   cursor: pointer;
+  overflow: visible;
   transition: background 0.12s ease, box-shadow 0.12s ease;
 }
+.cal-day-tx-line--start-balance .cal-tx-label-wrap{
+  gap: 4px;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  overflow: visible;
+}
+.cal-day-tx-line--start-balance .cal-tx-label{
+  overflow: visible;
+  text-overflow: clip;
+  white-space: nowrap;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  color: rgba(30, 41, 59, 0.88);
+}
+.cal-day-tx-line--start-balance .cal-amt{
+  align-self: flex-end;
+  font-weight: 550;
+  color: rgba(100, 116, 139, 0.88);
+}
+
 .cal-day-tx-line--start-balance:hover{
   background: rgba(241, 245, 249, 0.98);
   box-shadow: 0 1px 0 rgba(15, 23, 42, 0.04);
@@ -20236,21 +20182,6 @@ body.plans-page--polished .plans-wrap{
   background: rgba(241, 245, 249, 0.98);
   box-shadow: 0 0 0 2px rgba(100, 116, 139, 0.22);
 }
-.cal-day-tx-line--start-balance .cal-tx-label-wrap{
-  gap: 8px;
-  align-items: center;
-}
-.cal-day-tx-line--start-balance .cal-tx-label{
-  font-weight: 550;
-  letter-spacing: 0.01em;
-  color: rgba(30, 41, 59, 0.88);
-}
-.cal-day-tx-line--start-balance .cal-amt{
-  font-weight: 550;
-  color: rgba(51, 65, 85, 0.84);
-}
-
-/* Category color on label column only; amount stays red/green. */
 .cal-tx-label-wrap--category-fill{
   background: var(--cal-tx-fill-bg);
   color: var(--cal-tx-fill-fg);
@@ -20273,15 +20204,8 @@ body.plans-page--polished .plans-wrap{
 .cal-day-tx-line--start-balance{
   text-decoration: none;
 }
-.cal-day-tx-line--start-balance .cal-tx-label,
-.cal-day-tx-line--start-balance .cal-amt,
 .cal-day-tx-line--start-balance .cal-tx-start-anchor{
   text-decoration: none;
-}
-
-.cal-day-start-balance{
-  flex: 0 0 auto;
-  margin-bottom: 2px;
 }
 
 .cal-day-tx-line--expected.cal-expected-variable .cal-tx-label,
@@ -21352,8 +21276,17 @@ body[data-bw-view="transactions"] .tm__field label{
 }
 
 .cal-balance-strip{
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
   padding: 0;
-  border-radius: 6px;
+  border-radius: 0;
+  background: transparent;
+}
+.cal-balance-strip--has-status .cal-stat.cal-balance{
+  font-weight: 650;
+  color: rgba(15, 23, 42, 0.9);
 }
 /* Strip container stays visually quiet — risk/watch cues live on the balance
    pill and thin cell accents, not on a second full-width color wash. */
@@ -27676,6 +27609,14 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
     text-align: left;
   }
 
+  .calendar--mobile .cal-balance-strip{
+    align-items: stretch;
+  }
+
+  .calendar--mobile .cal-balance-status-pill{
+    align-self: flex-start;
+  }
+
   .calendar--mobile .cal-balance-strip__row{
     justify-content: space-between;
     gap: 10px;
@@ -28555,63 +28496,47 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   border-color: color-mix(in srgb, var(--accent) 72%, #0d1f18);
   color: #fff;
 }
-.cal-cell--adjusted-balance .cal-balance-strip--adjusted{
-  border: 1px solid rgba(217, 119, 6, 0.22);
-  border-radius: 8px;
-  background: rgba(255, 251, 235, 0.55);
-  padding: 3px 5px;
-}
-.cal-cell--adjusted-balance .cal-ledger-metrics.cal-day-balance-hit:hover,
-.cal-cell--adjusted-balance .cal-ledger-metrics.cal-day-balance-hit:focus-within{
-  background: rgba(255, 251, 235, 0.92);
-  border-top-color: rgba(217, 119, 6, 0.28);
-}
-.cal-cell--adjusted-balance .cal-balance-strip__row,
-.cal-cell--reconciled .cal-balance-strip--reconciled .cal-balance-strip__row{
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 3px;
-}
-.cal-cell--reconciled .cal-balance-strip--reconciled{
-  border: 1px solid rgba(22, 101, 52, 0.22);
-  border-radius: 8px;
-  background: rgba(240, 253, 244, 0.55);
-  padding: 3px 5px;
-}
-.cal-cell--reconciled .cal-ledger-metrics.cal-day-balance-hit:hover,
-.cal-cell--reconciled .cal-ledger-metrics.cal-day-balance-hit:focus-within{
-  background: rgba(240, 253, 244, 0.92);
-  border-top-color: rgba(22, 101, 52, 0.28);
-}
+/* Balance state pills — compact metadata beneath the hero balance amount. */
 .cal-balance-status-pill{
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  align-self: flex-end;
+  width: fit-content;
+  max-width: 100%;
   padding: 1px 6px;
   border-radius: 999px;
   border: 1px solid transparent;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 8.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-transform: none;
   line-height: 1.35;
   white-space: nowrap;
+  flex-shrink: 0;
+}
+.cal-balance-status-pill__icon{
+  margin-right: 3px;
+  flex-shrink: 0;
+}
+.cal-balance-status-pill--starting{
+  color: rgba(71, 85, 105, 0.92);
+  background: rgba(241, 245, 249, 0.96);
+  border-color: rgba(148, 163, 184, 0.32);
+}
+.cal-start-milestone:hover .cal-balance-status-pill--starting{
+  background: rgba(226, 232, 240, 0.98);
+  border-color: rgba(100, 116, 139, 0.38);
 }
 .cal-balance-status-pill--reconciled{
-  color: rgba(22, 101, 52, 0.92);
-  background: rgba(220, 252, 231, 0.82);
-  border-color: rgba(22, 101, 52, 0.18);
+  color: rgba(22, 101, 52, 0.9);
+  background: rgba(220, 252, 231, 0.72);
+  border-color: rgba(22, 101, 52, 0.14);
 }
 .cal-balance-status-pill--adjusted{
-  color: rgba(146, 64, 14, 0.94);
-  background: rgba(254, 243, 199, 0.82);
-  border-color: rgba(217, 119, 6, 0.2);
-}
-.cal-balance--reconciled{
-  font-weight: 650;
-}
-.cal-balance--adjusted{
-  font-weight: 650;
+  color: rgba(146, 64, 14, 0.92);
+  background: rgba(254, 243, 199, 0.72);
+  border-color: rgba(217, 119, 6, 0.16);
 }
 .verified-balance-modal__adjusted-notice{
   margin: 0 0 12px;
