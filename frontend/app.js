@@ -5308,23 +5308,28 @@ function buildReconciledBalanceTipHtml(dayBal) {
     : Number.isFinite(Number(dayBal.end))
       ? Number(dayBal.end)
       : null;
-  const bank = forecast;
-  if (forecast == null) return "";
+  const bank = Number.isFinite(Number(dayBal.verifiedAmount))
+    ? Number(dayBal.verifiedAmount)
+    : forecast;
+  if (forecast == null && bank == null) return "";
 
-  const parts = [
-    '<div class="cal-confirmed-tip">',
-    '<div class="cal-confirmed-tip__head cal-confirmed-tip__head--reconciled">✓ Reconciled</div>',
-    '<p class="cal-confirmed-tip__match">Your bank balance matched the forecast.</p>',
-    '<dl class="cal-confirmed-tip__rows">',
-    `<div class="cal-confirmed-tip__row"><dt>Forecast</dt><dd>$${escapeHtml(fmtMoney(forecast))}</dd></div>`,
-    `<div class="cal-confirmed-tip__row"><dt>Bank Balance</dt><dd>$${escapeHtml(fmtMoney(bank))}</dd></div>`,
-    "</dl>",
-    '<div class="cal-confirmed-tip__report">',
-    '<span class="cal-confirmed-tip__report-k">Reports</span>',
-    "<p>Transaction history is complete through this date. Reports and forecasts are fully aligned—you can trust historical totals through here.</p>",
-    "</div>",
-    "</div>",
-  ];
+  const parts = ['<div class="cal-confirmed-tip">', '<div class="cal-confirmed-tip__head cal-confirmed-tip__head--reconciled">✓ Reconciled</div>'];
+  const matched =
+    forecast != null && bank != null && Math.abs(bank - forecast) < 0.005;
+  if (matched) {
+    parts.push('<p class="cal-confirmed-tip__match">Your bank balance matched the forecast.</p>');
+  } else if (forecast != null && bank != null) {
+    parts.push('<dl class="cal-confirmed-tip__rows">');
+    parts.push(
+      `<div class="cal-confirmed-tip__row"><dt>Forecast</dt><dd>$${escapeHtml(fmtMoney(forecast))}</dd></div>`,
+    );
+    parts.push(
+      `<div class="cal-confirmed-tip__row"><dt>Bank Balance</dt><dd>$${escapeHtml(fmtMoney(bank))}</dd></div>`,
+    );
+    parts.push("</dl>");
+  }
+  parts.push('<p class="cal-confirmed-tip__emph">Reports and forecasts are fully aligned through this date.</p>');
+  parts.push("</div>");
   return `<div class="reports-risk-tip__inner">${parts.join("")}</div>`;
 }
 
@@ -5341,7 +5346,6 @@ function buildAdjustedBalanceTipHtml(dayBal) {
   const parts = [
     '<div class="cal-confirmed-tip">',
     '<div class="cal-confirmed-tip__head cal-confirmed-tip__head--adjusted">↺ Adjusted</div>',
-    '<p class="cal-confirmed-tip__match">Your bank balance differed from the forecast and was manually adjusted.</p>',
   ];
   if (forecast != null) {
     const diff = bank - forecast;
@@ -5359,33 +5363,20 @@ function buildAdjustedBalanceTipHtml(dayBal) {
     }
     parts.push("</dl>");
   }
-  parts.push('<div class="cal-confirmed-tip__report">');
-  parts.push('<span class="cal-confirmed-tip__report-k">Reports</span>');
   parts.push(
-    "<p>Future forecasts continue from this balance. Reports may not include skipped transactions until those transactions are added.</p>",
+    '<p class="cal-confirmed-tip__emph">Future forecasts continue from this balance. Reports may not include skipped transactions.</p>',
   );
-  parts.push("</div>");
   parts.push("</div>");
   return `<div class="reports-risk-tip__inner">${parts.join("")}</div>`;
 }
 
-function buildStartingPointTipHtml(accountName) {
-  const acct = accountName ? String(accountName).trim() : "";
+function buildStartingPointTipHtml(_accountName) {
   const parts = [
     '<div class="cal-confirmed-tip">',
     '<div class="cal-confirmed-tip__head cal-confirmed-tip__head--starting">🏁 Starting Point</div>',
-    "<p class=\"cal-confirmed-tip__match\">Where BalanceWhiz began tracking this account.</p>",
+    '<p class="cal-confirmed-tip__match">This is the initial balance used when the account was created.</p>',
+    "</div>",
   ];
-  if (acct) {
-    parts.push(`<p class="cal-confirmed-tip__note">${escapeHtml(acct)}</p>`);
-  }
-  parts.push('<div class="cal-confirmed-tip__report">');
-  parts.push('<span class="cal-confirmed-tip__report-k">Reports</span>');
-  parts.push(
-    "<p>This establishes the baseline for all reports and forecasts. Activity before this date is not included.</p>",
-  );
-  parts.push("</div>");
-  parts.push("</div>");
   return `<div class="reports-risk-tip__inner">${parts.join("")}</div>`;
 }
 
@@ -6034,6 +6025,23 @@ async function openCalendarExpectedFromLine(expectedLine) {
   return true;
 }
 
+function buildCalBalanceStatusPill(type, opts = {}) {
+  if (type === "adjusted") {
+    return '<span class="cal-balance-status-pill cal-balance-status-pill--adjusted"><span class="cal-balance-status-pill__icon" aria-hidden="true">↺</span> Adjusted</span>';
+  }
+  if (type === "reconciled") {
+    return '<span class="cal-balance-status-pill cal-balance-status-pill--reconciled"><span class="cal-balance-status-pill__icon" aria-hidden="true">✓</span> Reconciled</span>';
+  }
+  if (type === "starting") {
+    const accountId = opts.accountId != null ? String(opts.accountId) : "";
+    const extra = accountId
+      ? ` data-account-id="${escapeHtml(accountId)}" role="button" tabindex="0" aria-label="Edit starting point account"`
+      : "";
+    return `<span class="cal-balance-status-pill cal-balance-status-pill--starting"${extra}><span class="cal-balance-status-pill__icon" aria-hidden="true">🏁</span> Starting Point</span>`;
+  }
+  return "";
+}
+
 function appendCalendarDayStartBalanceLine(row, parentEl, iso) {
   const line = document.createElement("div");
   line.className = "cal-start-milestone";
@@ -6067,6 +6075,7 @@ function shouldOpenReconcileFromCalendarClick(target, cell) {
   if (cell.classList.contains("cal-cell--before-start")) return false;
   if (cell.classList.contains("cal-cell--out")) return false;
   if (state.viewOnly || state.activeFamilyAccessMode === "view") return false;
+  if (target.closest(".cal-balance-status-pill--starting")) return false;
   return !!target.closest(".cal-ledger-metrics.cal-day-balance-hit");
 }
 
@@ -6100,7 +6109,7 @@ function openCalendarDayAddTransaction(iso, e) {
   openTxAddModal({ date: iso });
 }
 
-function bindCalendarDayBalanceHit(metricsEl, iso, { isReconciled, dayBalVerified, isOutOfMonth, dayBal }) {
+function bindCalendarDayBalanceHit(metricsEl, iso, { isReconciled, dayBalVerified, isOutOfMonth, dayBal, hasStartingPoint, startingAccountName }) {
   if (!metricsEl || !iso) return;
   if (isOutOfMonth || state.viewOnly || state.activeFamilyAccessMode === "view") {
     metricsEl.classList.remove("cal-day-balance-hit");
@@ -6127,9 +6136,14 @@ function bindCalendarDayBalanceHit(metricsEl, iso, { isReconciled, dayBalVerifie
     return;
   }
 
-  let title = "Confirm Balance";
-  if (isReconciled) title = "Reconciled — click to review";
-  metricsEl.title = title;
+  if (hasStartingPoint) {
+    const cell = metricsEl.closest(".cal-cell");
+    const html = buildStartingPointTipHtml(startingAccountName);
+    if (cell && html) bindRiskPressureCellHover(cell, metricsEl, html);
+    return;
+  }
+
+  metricsEl.title = "Confirm Balance";
 }
 
 function bindCalendarCellAddTxClick(cell, iso) {
@@ -6159,6 +6173,17 @@ function handleCalendarPanelClick(e) {
     e.preventDefault();
     e.stopPropagation();
     void openCalendarExpectedFromLine(expectedLine);
+    return;
+  }
+
+  const startBalPill = e.target.closest(".cal-ledger-metrics .cal-balance-status-pill--starting");
+  if (startBalPill && grid.contains(startBalPill)) {
+    e.preventDefault();
+    e.stopPropagation();
+    const aid = startBalPill.dataset.accountId;
+    if (!openAccountEditModalForAccountId(aid)) {
+      window.alert("Could not open this account. Try refreshing the page.");
+    }
     return;
   }
 
@@ -13663,14 +13688,16 @@ function renderCalendar() {
     }
 
     let visibleItemCount = 0;
+    const startBalRowsForDay = !isBeforeStart ? startBalancesByDate.get(iso) || [] : [];
+    const hasStartingPoint = startBalRowsForDay.length > 0;
+    const startingAccountRow = hasStartingPoint ? startBalRowsForDay[0] : null;
+    const startingAccountName = startingAccountRow?.account_name
+      ? String(startingAccountRow.account_name).trim()
+      : "";
     if (showDetails) {
-      const startBalRows = !isBeforeStart ? startBalancesByDate.get(iso) || [] : [];
-      visibleItemCount = combined.length + startBalRows.length;
+      visibleItemCount = combined.length;
       const labelMaxLen = visibleItemCount <= 1 ? 68 : visibleItemCount >= 4 ? 50 : 58;
-      if (startBalEl) {
-        startBalEl.hidden = startBalRows.length === 0;
-        for (const sbRow of startBalRows) appendCalendarDayStartBalanceLine(sbRow, startBalEl, iso);
-      }
+      if (startBalEl) startBalEl.hidden = true;
 
       const isExpanded = !!(state.calendarExpandedDays && state.calendarExpandedDays.has(iso));
       const visibleRows = isExpanded ? combined : combined.slice(0, MAX_VISIBLE_TXNS);
@@ -13899,19 +13926,23 @@ function renderCalendar() {
           ? `<span class="cal-balance-warn-icon" aria-hidden="true" title="Below your minimum balance"><svg viewBox="0 0 16 16" width="9" height="9" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 2.25L14 13.75H2L8 2.25z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" fill="none"/><path d="M8 6.25v3M8 11.1v.01" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg></span>`
           : "";
       const statusPill = dayBalVerified
-        ? `<span class="cal-balance-status-pill cal-balance-status-pill--adjusted"><span class="cal-balance-status-pill__icon" aria-hidden="true">↺</span> Adjusted</span>`
+        ? buildCalBalanceStatusPill("adjusted")
         : isReconciled
-          ? `<span class="cal-balance-status-pill cal-balance-status-pill--reconciled"><span class="cal-balance-status-pill__icon" aria-hidden="true">✓</span> Reconciled</span>`
-          : "";
+          ? buildCalBalanceStatusPill("reconciled")
+          : hasStartingPoint
+            ? buildCalBalanceStatusPill("starting", { accountId: startingAccountRow?.account_id })
+            : "";
       const stripStatusClass = statusPill ? " cal-balance-strip--has-status" : "";
       metricsEl.innerHTML = `<div class="cal-balance-strip${stripStatusClass}${stripCue ? ` ${stripCue}` : ""}"><div class="cal-balance-strip__row"><span class="cal-balance-strip__amt">${riskIcon}${warnIcon}<span class="${balanceClass}"${balanceTitle ? ` title="${escapeHtml(balanceTitle)}"` : ""}>$${fmtMoneyParens(
         endNum
-      )}</span></span></div>${statusPill}</div>`;
+      )}</span></span>${statusPill}</div></div>`;
       bindCalendarDayBalanceHit(metricsEl, iso, {
         isReconciled,
         dayBalVerified,
         isOutOfMonth,
         dayBal: dayBalVerified || isReconciled ? dayBal : null,
+        hasStartingPoint: hasStartingPoint && !dayBalVerified && !isReconciled,
+        startingAccountName,
       });
     }
 

@@ -19855,7 +19855,7 @@ body.plans-page--polished .plans-wrap{
   padding-top: 5px;
   padding-bottom: 3px;
   border-top: 1px solid rgba(11, 61, 46, 0.1);
-  min-height: 16px;
+  min-height: 22px;
   align-self: stretch;
 }
 .cal-cell:not(.cal-cell--out):not(.cal-cell--before-start) .cal-ledger-metrics.cal-day-balance-hit{
@@ -21276,10 +21276,7 @@ body[data-bw-view="transactions"] .tm__field label{
 }
 
 .cal-balance-strip{
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 2px;
+  display: block;
   padding: 0;
   border-radius: 0;
   background: transparent;
@@ -21299,15 +21296,14 @@ body[data-bw-view="transactions"] .tm__field label{
   border-radius: 0;
   box-shadow: none;
 }
-/* Final ledger row: amount only, right-aligned at the bottom of the
-   cell. The placement at the bottom communicates "end of day" — no
-   label needed. */
+/* Final ledger row: balance + optional status pill on one line, right-aligned. */
 .cal-balance-strip__row{
   display: flex;
   align-items: baseline;
   justify-content: flex-end;
-  gap: 6px;
-  min-height: 15px;
+  gap: 5px;
+  min-height: 18px;
+  flex-wrap: nowrap;
 }
 .cal-balance-strip__amt{
   flex: 0 0 auto;
@@ -27609,17 +27605,10 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
     text-align: left;
   }
 
-  .calendar--mobile .cal-balance-strip{
-    align-items: stretch;
-  }
-
-  .calendar--mobile .cal-balance-status-pill{
-    align-self: flex-start;
-  }
-
   .calendar--mobile .cal-balance-strip__row{
     justify-content: space-between;
-    gap: 10px;
+    gap: 8px;
+    flex-wrap: nowrap;
   }
 
   .calendar--mobile .cal-balance-strip__row::before{
@@ -28496,15 +28485,14 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   border-color: color-mix(in srgb, var(--accent) 72%, #0d1f18);
   color: #fff;
 }
-/* Balance state pills — compact metadata beneath the hero balance amount. */
+/* Balance state pills — inline annotation beside the hero balance amount. */
 .cal-balance-status-pill{
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  align-self: flex-end;
   width: fit-content;
-  max-width: 100%;
-  padding: 1px 6px;
+  max-width: none;
+  padding: 0 5px;
   border-radius: 999px;
   border: 1px solid transparent;
   font-size: 8.5px;
@@ -28513,20 +28501,24 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   text-transform: none;
   line-height: 1.35;
   white-space: nowrap;
+  flex: 0 0 auto;
   flex-shrink: 0;
 }
 .cal-balance-status-pill__icon{
-  margin-right: 3px;
+  margin-right: 2px;
   flex-shrink: 0;
 }
 .cal-balance-status-pill--starting{
   color: rgba(71, 85, 105, 0.92);
   background: rgba(241, 245, 249, 0.96);
   border-color: rgba(148, 163, 184, 0.32);
+  cursor: pointer;
 }
-.cal-start-milestone:hover .cal-balance-status-pill--starting{
+.cal-balance-status-pill--starting:hover,
+.cal-balance-status-pill--starting:focus-visible{
   background: rgba(226, 232, 240, 0.98);
   border-color: rgba(100, 116, 139, 0.38);
+  outline: none;
 }
 .cal-balance-status-pill--reconciled{
   color: rgba(22, 101, 52, 0.9);
@@ -28585,8 +28577,9 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
 .cal-confirmed-tip{
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  min-width: 210px;
+  gap: 6px;
+  min-width: 190px;
+  max-width: 240px;
 }
 .cal-confirmed-tip__head{
   font-size: 0.82rem;
@@ -28597,8 +28590,15 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
 .cal-confirmed-tip__note{
   margin: 0;
   font-size: 0.76rem;
-  line-height: 1.45;
+  line-height: 1.4;
   color: rgba(51, 65, 85, 0.88);
+}
+.cal-confirmed-tip__emph{
+  margin: 0;
+  font-size: 0.76rem;
+  font-weight: 650;
+  line-height: 1.4;
+  color: rgba(30, 41, 59, 0.92);
 }
 .cal-confirmed-tip__rows{
   margin: 0;
