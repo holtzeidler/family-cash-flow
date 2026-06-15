@@ -1675,8 +1675,14 @@ if (txEditDate) {
 const reconcileModal = document.getElementById("reconcileModal");
 const reconcileErr = document.getElementById("reconcileErr");
 const reconcileTitle = document.getElementById("reconcileTitle");
+const reconcileStatus = document.getElementById("reconcileStatus");
 const reconcileBalanceBlock = document.getElementById("reconcileBalanceBlock");
+const reconcileSimpleForecast = document.getElementById("reconcileSimpleForecast");
 const reconcileForecastBal = document.getElementById("reconcileForecastBal");
+const reconcileBreakdown = document.getElementById("reconcileBreakdown");
+const reconcileBreakdownForecast = document.getElementById("reconcileBreakdownForecast");
+const reconcileBreakdownConfirmed = document.getElementById("reconcileBreakdownConfirmed");
+const reconcileBreakdownDiff = document.getElementById("reconcileBreakdownDiff");
 const reconcileMarkBtn = document.getElementById("reconcileMarkBtn");
 const reconcileDifferentBtn = document.getElementById("reconcileDifferentBtn");
 const reconcileCancelBtn = document.getElementById("reconcileCancelBtn");
@@ -5154,20 +5160,72 @@ function syncReconcileModalActions(iso) {
   const d = normalizeIsoDate(iso);
   const isReconciled = isReconciledOnDate(d);
   const isVerified = existingVerifiedBalanceOnDate(d);
+  const hasConfirmation = isReconciled || isVerified;
   const canWrite = !state.viewOnly && state.activeFamilyAccessMode !== "view";
 
   if (reconcileMarkBtn) {
-    reconcileMarkBtn.hidden = !canWrite || isReconciled;
+    reconcileMarkBtn.hidden = !canWrite || hasConfirmation;
   }
   if (reconcileDifferentBtn) {
     reconcileDifferentBtn.hidden = !canWrite;
   }
   if (reconcileDeleteBtn) {
-    const showDelete = canWrite && (isReconciled || isVerified);
-    reconcileDeleteBtn.hidden = !showDelete;
-    if (isVerified) reconcileDeleteBtn.textContent = "Remove confirmed balance";
-    else if (isReconciled) reconcileDeleteBtn.textContent = "Remove reconciliation";
-    else reconcileDeleteBtn.textContent = "Remove confirmation";
+    reconcileDeleteBtn.hidden = !(canWrite && hasConfirmation);
+    if (!reconcileDeleteBtn.hidden) reconcileDeleteBtn.textContent = "Undo Confirmation";
+  }
+}
+
+function syncReconcileModalBalance(iso) {
+  const d = normalizeIsoDate(iso);
+  const row = d && state.monthDailyBalances ? state.monthDailyBalances.get(d) : null;
+  const isVerified = existingVerifiedBalanceOnDate(d);
+  const isReconciled = isReconciledOnDate(d);
+  const hasConfirmation = isVerified || isReconciled;
+
+  if (reconcileStatus) {
+    if (hasConfirmation && d) {
+      reconcileStatus.textContent = `✓ Confirmed on ${fmtMonthDayLong(d)}`;
+      reconcileStatus.hidden = false;
+    } else {
+      reconcileStatus.textContent = "";
+      reconcileStatus.hidden = true;
+    }
+  }
+
+  const showBreakdown = !!(isVerified && row);
+  if (reconcileSimpleForecast) reconcileSimpleForecast.hidden = showBreakdown;
+  if (reconcileBreakdown) reconcileBreakdown.hidden = !showBreakdown;
+
+  if (showBreakdown) {
+    const projected = Number.isFinite(Number(row.projectedEnd)) ? Number(row.projectedEnd) : null;
+    const confirmed = Number.isFinite(Number(row.verifiedAmount))
+      ? Number(row.verifiedAmount)
+      : Number.isFinite(Number(row.end))
+        ? Number(row.end)
+        : null;
+    if (reconcileBreakdownForecast) {
+      reconcileBreakdownForecast.textContent = projected != null ? `$${fmtMoney(projected)}` : "—";
+    }
+    if (reconcileBreakdownConfirmed) {
+      reconcileBreakdownConfirmed.textContent = confirmed != null ? `$${fmtMoney(confirmed)}` : "—";
+    }
+    if (reconcileBreakdownDiff) {
+      reconcileBreakdownDiff.textContent =
+        projected != null && confirmed != null ? fmtSignedMoneyDiff(confirmed - projected) : "—";
+    }
+    if (reconcileBalanceBlock) reconcileBalanceBlock.hidden = false;
+    return;
+  }
+
+  if (reconcileBalanceBlock && reconcileForecastBal) {
+    const end = forecastBalanceForReconcileModal(d);
+    if (end != null) {
+      reconcileBalanceBlock.hidden = false;
+      reconcileForecastBal.textContent = `$${fmtMoney(end)}`;
+    } else {
+      reconcileBalanceBlock.hidden = true;
+      reconcileForecastBal.textContent = "—";
+    }
   }
 }
 
@@ -5181,16 +5239,7 @@ function openReconcileModal(iso) {
       ? `Confirm Balance · ${fmtDateLongDisplay(reconcileActiveDate)}`
       : "Confirm Balance";
   }
-  if (reconcileBalanceBlock && reconcileForecastBal) {
-    const end = forecastBalanceForReconcileModal(reconcileActiveDate);
-    if (end != null) {
-      reconcileBalanceBlock.hidden = false;
-      reconcileForecastBal.textContent = `$${fmtMoney(end)}`;
-    } else {
-      reconcileBalanceBlock.hidden = true;
-      reconcileForecastBal.textContent = "—";
-    }
-  }
+  syncReconcileModalBalance(reconcileActiveDate);
   show(reconcileErr, "");
   syncReconcileModalActions(reconcileActiveDate);
   reconcileModal.classList.add("modal-overlay--open");
@@ -5325,7 +5374,7 @@ async function saveReconcileMark() {
   closeReconcileModal();
   renderCalendar();
   await refreshForecastConfidence();
-  if (typeof showBwToast === "function") showBwToast("✓ Forecast reconciled");
+  if (typeof showBwToast === "function") showBwToast("✓ Balance confirmed");
   bwDispatchMilestone("first-reconcile");
 }
 
@@ -5339,11 +5388,9 @@ async function removeReconcileConfirmation() {
   if (!isVerified && !isReconciled) return;
 
   const ok = await bwConfirm({
-    title: isVerified ? "Remove confirmed balance?" : "Remove reconciliation?",
-    body: isVerified
-      ? "Future forecasts will use calculated balances from this date forward again."
-      : "This date will no longer be marked as reconciled.",
-    confirmLabel: "Remove",
+    title: "Undo this balance confirmation?",
+    body: "Future forecasts will return to calculated balances based on your transactions. This will not delete any transactions.",
+    confirmLabel: "Undo Confirmation",
     danger: true,
   });
   if (!ok) return;
@@ -5366,7 +5413,7 @@ async function removeReconcileConfirmation() {
   renderCalendar();
   await refreshForecastConfidence();
   if (typeof showBwToast === "function") {
-    showBwToast(isVerified ? "✓ Confirmed balance removed" : "✓ Reconciliation removed");
+    showBwToast("✓ Confirmation undone");
   }
 }
 
@@ -5437,8 +5484,7 @@ function lastBalanceCheckTier(days) {
   const n = Number(days);
   if (!Number.isFinite(n) || n < 0) return "none";
   if (n >= 30) return "stale";
-  if (n >= 15) return "moderate";
-  return "recent";
+  return "fresh";
 }
 
 function fmtMonthDayLong(raw) {
@@ -5452,19 +5498,18 @@ function fmtMonthDayLong(raw) {
   return dt.toLocaleDateString("en-US", { month: "long", day: "numeric" });
 }
 
-function lastBalanceCheckPrimaryLine(days, confirmedDateIso, tier) {
+function lastBalanceCheckPrimaryLine(days, confirmedDateIso) {
   if (days == null) return "";
   const n = Number(days);
   if (!Number.isFinite(n) || n < 0) return "";
-  const mark = tier === "stale" ? "⚠ " : "✓ ";
-  if (n === 0) return `${mark}Last confirmed today.`;
+  if (n === 0) return "✓ Last confirmed today.";
   const dateLabel = fmtMonthDayLong(confirmedDateIso);
   if (dateLabel) {
-    if (n === 1) return `${mark}Last confirmed ${dateLabel} (1 day ago).`;
-    return `${mark}Last confirmed ${dateLabel} (${n} days ago).`;
+    if (n === 1) return `✓ Last confirmed ${dateLabel} (1 day ago).`;
+    return `✓ Last confirmed ${dateLabel} (${n} days ago).`;
   }
-  if (n === 1) return `${mark}Last confirmed 1 day ago.`;
-  return `${mark}Last confirmed ${n} days ago.`;
+  if (n === 1) return "✓ Last confirmed 1 day ago.";
+  return `✓ Last confirmed ${n} days ago.`;
 }
 
 function applyForecastConfidenceUi(data) {
@@ -5489,20 +5534,16 @@ function applyForecastConfidenceUi(data) {
   let detail = "";
   let helper = "";
   let showCta = false;
+  const staleHelper = "Your forecast may be less accurate until you confirm your balance.";
 
   if (tier === "none") {
-    detail =
-      "If life got busy, that's okay—confirm your current balance to keep your forecast accurate.";
+    helper = staleHelper;
     showCta = canWrite;
-  } else if (tier === "recent") {
-    detail = lastBalanceCheckPrimaryLine(days, confirmedDate, tier);
-  } else if (tier === "moderate") {
-    detail = lastBalanceCheckPrimaryLine(days, confirmedDate, tier);
-    helper = "Consider confirming your balance soon to keep your forecast accurate.";
+  } else if (tier === "fresh") {
+    detail = lastBalanceCheckPrimaryLine(days, confirmedDate);
   } else if (tier === "stale") {
-    detail = lastBalanceCheckPrimaryLine(days, confirmedDate, tier);
-    helper =
-      "It's been a while since your balance was confirmed. If life got busy, that's okay—confirm your current balance to keep your forecast accurate.";
+    detail = lastBalanceCheckPrimaryLine(days, confirmedDate);
+    helper = staleHelper;
     showCta = !!data?.show_verify_cta && canWrite;
   }
 
@@ -5511,7 +5552,10 @@ function applyForecastConfidenceUi(data) {
     forecastConfidenceHelper.textContent = helper;
     forecastConfidenceHelper.hidden = !helper;
   }
-  if (forecastConfidenceVerifyBtn) forecastConfidenceVerifyBtn.hidden = !showCta;
+  if (forecastConfidenceVerifyBtn) {
+    forecastConfidenceVerifyBtn.hidden = !showCta;
+    forecastConfidenceVerifyBtn.textContent = "Confirm My Balance";
+  }
 }
 
 async function refreshForecastConfidence() {
@@ -5926,7 +5970,7 @@ function bindCalendarDayBalanceHit(metricsEl, iso, { isReconciled, dayBalVerifie
     "This balance was manually entered and overrides the forecast from this date forward.";
   let title = "Confirm Balance";
   if (dayBalVerified) title = verifiedTooltip;
-  else if (isReconciled) title = "Reconciled — click to review";
+  else if (isReconciled) title = "Confirmed — click to review";
   metricsEl.title = title;
   const label = fmtDateMDY(iso);
   metricsEl.setAttribute("aria-label", label ? `Confirm balance for ${label}` : "Confirm balance");
@@ -13691,7 +13735,7 @@ function renderCalendar() {
         : "";
       const reconciledIcon =
         isReconciled && !dayBalVerified
-          ? `<span class="cal-balance-status cal-balance-status--reconciled" title="Reconciled" aria-hidden="true"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.5"/><path d="M5.2 8.1l1.8 1.8 3.8-4"/></svg></span>`
+          ? `<span class="cal-balance-status cal-balance-status--reconciled" title="Confirmed" aria-hidden="true"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.5"/><path d="M5.2 8.1l1.8 1.8 3.8-4"/></svg></span>`
           : "";
       const verifiedLabel = dayBalVerified
         ? `<span class="cal-balance-verified-label">Confirmed</span>`

@@ -97,7 +97,7 @@
               <h3 class="forecast-confidence__title">Last Balance Check</h3>
               <p id="forecastConfidenceDetail" class="forecast-confidence__detail"></p>
               <p id="forecastConfidenceHelper" class="forecast-confidence__helper" hidden></p>
-              <button type="button" id="forecastConfidenceVerifyBtn" class="forecast-confidence__cta" hidden>Confirm Current Balance</button>
+              <button type="button" id="forecastConfidenceVerifyBtn" class="forecast-confidence__cta" hidden>Confirm My Balance</button>
             </section>
 
             <div id="settingsSidebarNav" class="settings-nav settings-nav--sidebar settings-nav--rail" hidden aria-label="Settings sections">
@@ -1609,20 +1609,35 @@
     <div id="reconcileModal" class="modal-overlay" aria-hidden="true">
       <div class="modal modal--reconcile modal--check-balance" role="dialog" aria-labelledby="reconcileTitle" aria-modal="true">
         <h3 id="reconcileTitle" class="reconcile-modal__title">Confirm Balance</h3>
+        <p id="reconcileStatus" class="reconcile-modal__status" hidden></p>
         <div id="reconcileBalanceBlock" class="reconcile-modal__balance" hidden>
-          <div class="reconcile-modal__forecast">
+          <div id="reconcileSimpleForecast" class="reconcile-modal__forecast">
             <span class="reconcile-modal__forecast-k">Forecasted Balance</span>
             <span class="reconcile-modal__forecast-v" id="reconcileForecastBal">—</span>
+          </div>
+          <div id="reconcileBreakdown" class="reconcile-modal__breakdown" hidden>
+            <div class="reconcile-modal__preview-row">
+              <span>Forecasted Balance</span>
+              <span id="reconcileBreakdownForecast" class="reconcile-modal__preview-amt">—</span>
+            </div>
+            <div class="reconcile-modal__preview-row">
+              <span>Confirmed Balance</span>
+              <span id="reconcileBreakdownConfirmed" class="reconcile-modal__preview-amt">—</span>
+            </div>
+            <div class="reconcile-modal__preview-row reconcile-modal__preview-row--diff">
+              <span>Difference from Forecast</span>
+              <span id="reconcileBreakdownDiff" class="reconcile-modal__preview-amt">—</span>
+            </div>
           </div>
         </div>
         <div id="reconcileErr" class="error"></div>
         <div class="reconcile-modal__cta">
-          <button type="button" id="reconcileMarkBtn" class="reconcile-modal__primary reconcile-modal__mark-btn">Mark as Reconciled</button>
-          <button type="button" id="reconcileDifferentBtn" class="reconcile-modal__different-link">My balance is different →</button>
+          <button type="button" id="reconcileMarkBtn" class="reconcile-modal__primary reconcile-modal__mark-btn">Confirm Balance</button>
+          <button type="button" id="reconcileDifferentBtn" class="reconcile-modal__different-link">Enter my actual balance →</button>
         </div>
         <div class="reconcile-modal__footer">
           <button type="button" id="reconcileCancelBtn" class="reconcile-modal__cancel">Cancel</button>
-          <button type="button" id="reconcileDeleteBtn" class="reconcile-modal__delete" hidden>Remove confirmation</button>
+          <button type="button" id="reconcileDeleteBtn" class="reconcile-modal__delete" hidden>Undo Confirmation</button>
         </div>
       </div>
     </div>
