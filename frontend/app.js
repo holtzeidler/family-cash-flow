@@ -5437,16 +5437,32 @@ function lastBalanceCheckTier(days) {
   const n = Number(days);
   if (!Number.isFinite(n) || n < 0) return "none";
   if (n >= 30) return "stale";
-  if (n >= 14) return "moderate";
+  if (n >= 15) return "moderate";
   return "recent";
 }
 
-function lastBalanceCheckPrimaryLine(days) {
+function fmtMonthDayLong(raw) {
+  const iso = normalizeIsoDate(raw) || "";
+  if (!iso) return "";
+  const y = Number(iso.slice(0, 4));
+  const m = Number(iso.slice(5, 7));
+  const d = Number(iso.slice(8, 10));
+  if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return "";
+  const dt = new Date(y, m - 1, d, 12, 0, 0, 0);
+  return dt.toLocaleDateString("en-US", { month: "long", day: "numeric" });
+}
+
+function lastBalanceCheckPrimaryLine(days, confirmedDateIso, tier) {
   if (days == null) return "";
   const n = Number(days);
   if (!Number.isFinite(n) || n < 0) return "";
-  const mark = n >= 30 ? "⚠ " : "✓ ";
+  const mark = tier === "stale" ? "⚠ " : "✓ ";
   if (n === 0) return `${mark}Last confirmed today.`;
+  const dateLabel = fmtMonthDayLong(confirmedDateIso);
+  if (dateLabel) {
+    if (n === 1) return `${mark}Last confirmed ${dateLabel} (1 day ago).`;
+    return `${mark}Last confirmed ${dateLabel} (${n} days ago).`;
+  }
   if (n === 1) return `${mark}Last confirmed 1 day ago.`;
   return `${mark}Last confirmed ${n} days ago.`;
 }
@@ -5464,6 +5480,7 @@ function applyForecastConfidenceUi(data) {
   }
 
   const days = data?.days_since_confirmed;
+  const confirmedDate = data?.last_confirmed_balance_date;
   const tier = lastBalanceCheckTier(days);
 
   forecastConfidenceCard.hidden = false;
@@ -5471,24 +5488,22 @@ function applyForecastConfidenceUi(data) {
 
   let detail = "";
   let helper = "";
-  let showCta = !!data?.show_verify_cta && canWrite;
+  let showCta = false;
 
   if (tier === "none") {
     detail =
       "If life got busy, that's okay—confirm your current balance to keep your forecast accurate.";
     showCta = canWrite;
   } else if (tier === "recent") {
-    detail = lastBalanceCheckPrimaryLine(days);
-    helper = "Your forecast is based on this confirmed balance.";
-    showCta = false;
+    detail = lastBalanceCheckPrimaryLine(days, confirmedDate, tier);
   } else if (tier === "moderate") {
-    detail = lastBalanceCheckPrimaryLine(days);
-    helper = "Confirming your balance every few weeks helps keep your forecast accurate.";
-    showCta = false;
+    detail = lastBalanceCheckPrimaryLine(days, confirmedDate, tier);
+    helper = "Consider confirming your balance soon to keep your forecast accurate.";
   } else if (tier === "stale") {
-    detail = lastBalanceCheckPrimaryLine(days);
+    detail = lastBalanceCheckPrimaryLine(days, confirmedDate, tier);
     helper =
       "It's been a while since your balance was confirmed. If life got busy, that's okay—confirm your current balance to keep your forecast accurate.";
+    showCta = !!data?.show_verify_cta && canWrite;
   }
 
   if (forecastConfidenceDetail) forecastConfidenceDetail.textContent = detail;

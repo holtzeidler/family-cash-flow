@@ -28257,15 +28257,23 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   filter: brightness(1.04);
 }
 .forecast-confidence--recent{
-  border-color: rgba(22, 101, 52, 0.16);
-  background: rgba(240, 253, 244, 0.55);
+  border-color: rgba(17, 24, 39, 0.05);
+  background: rgba(255, 255, 255, 0.45);
+  padding: 8px 12px;
+}
+.forecast-confidence--recent .forecast-confidence__title{
+  margin-bottom: 4px;
+  font-weight: 600;
+  color: rgba(100, 116, 139, 0.72);
 }
 .forecast-confidence--recent .forecast-confidence__detail{
-  color: rgba(22, 101, 52, 0.92);
+  font-weight: 550;
+  font-size: 12px;
+  color: rgba(71, 85, 105, 0.82);
 }
 .forecast-confidence--moderate{
   border-color: rgba(17, 24, 39, 0.07);
-  background: rgba(248, 250, 252, 0.92);
+  background: rgba(248, 250, 252, 0.85);
 }
 .forecast-confidence--moderate .forecast-confidence__detail{
   color: rgba(30, 41, 59, 0.88);
