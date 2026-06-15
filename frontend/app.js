@@ -5260,6 +5260,55 @@ function fmtSignedMoneyDiff(n) {
   return `${sign}$${fmtMoney(Math.abs(num))}`;
 }
 
+function confirmedBalanceDiffCopy(diff) {
+  const n = Number(diff);
+  if (!Number.isFinite(n) || Math.abs(n) < 0.005) return "";
+  const amt = fmtMoney(Math.abs(n));
+  if (n > 0) return `Your balance was $${amt} higher than forecast.`;
+  return `Your balance was $${amt} lower than forecast.`;
+}
+
+function buildConfirmedBalanceTipHtml(dayBal) {
+  if (!dayBal || !dayBal.verified) return "";
+  const confirmed = Number.isFinite(Number(dayBal.verifiedAmount))
+    ? Number(dayBal.verifiedAmount)
+    : Number.isFinite(Number(dayBal.end))
+      ? Number(dayBal.end)
+      : null;
+  const forecast = Number.isFinite(Number(dayBal.projectedEnd)) ? Number(dayBal.projectedEnd) : null;
+  if (confirmed == null) return "";
+
+  const parts = ['<div class="cal-confirmed-tip">', '<div class="cal-confirmed-tip__head">✓ Confirmed Balance</div>'];
+  if (forecast != null) {
+    const diff = confirmed - forecast;
+    if (Math.abs(diff) < 0.005) {
+      parts.push('<p class="cal-confirmed-tip__match">Your bank balance matched the forecast.</p>');
+    } else {
+      parts.push('<dl class="cal-confirmed-tip__rows">');
+      parts.push(
+        `<div class="cal-confirmed-tip__row"><dt>Your Balance</dt><dd>$${escapeHtml(fmtMoney(confirmed))}</dd></div>`,
+      );
+      parts.push(
+        `<div class="cal-confirmed-tip__row"><dt>Forecast</dt><dd>$${escapeHtml(fmtMoney(forecast))}</dd></div>`,
+      );
+      parts.push(
+        `<div class="cal-confirmed-tip__row cal-confirmed-tip__row--diff"><dt>Difference</dt><dd>${escapeHtml(fmtSignedMoneyDiff(diff))}</dd></div>`,
+      );
+      parts.push("</dl>");
+      const note = confirmedBalanceDiffCopy(diff);
+      if (note) parts.push(`<p class="cal-confirmed-tip__note">${escapeHtml(note)}</p>`);
+    }
+  } else {
+    parts.push('<dl class="cal-confirmed-tip__rows">');
+    parts.push(
+      `<div class="cal-confirmed-tip__row"><dt>Your Balance</dt><dd>$${escapeHtml(fmtMoney(confirmed))}</dd></div>`,
+    );
+    parts.push("</dl>");
+  }
+  parts.push("</div>");
+  return `<div class="reports-risk-tip__inner">${parts.join("")}</div>`;
+}
+
 function openVerifiedBalanceModal(iso) {
   if (!verifiedBalanceModal) return;
   const d = normalizeIsoDate(iso) || toISODate(new Date());
@@ -5956,22 +6005,29 @@ function openCalendarDayAddTransaction(iso, e) {
   openTxAddModal({ date: iso });
 }
 
-function bindCalendarDayBalanceHit(metricsEl, iso, { isReconciled, dayBalVerified, isOutOfMonth }) {
+function bindCalendarDayBalanceHit(metricsEl, iso, { isReconciled, dayBalVerified, isOutOfMonth, dayBal }) {
   if (!metricsEl || !iso) return;
   if (isOutOfMonth || state.viewOnly || state.activeFamilyAccessMode === "view") {
     metricsEl.classList.remove("cal-day-balance-hit");
     metricsEl.removeAttribute("aria-label");
+    metricsEl.removeAttribute("title");
     return;
   }
   metricsEl.classList.add("cal-day-balance-hit");
-  const verifiedTooltip =
-    "This balance was manually entered and overrides the forecast from this date forward.";
-  let title = "Confirm Balance";
-  if (dayBalVerified) title = verifiedTooltip;
-  else if (isReconciled) title = "Confirmed — click to review";
-  metricsEl.title = title;
+  metricsEl.removeAttribute("title");
   const label = fmtDateMDY(iso);
   metricsEl.setAttribute("aria-label", label ? `Confirm balance for ${label}` : "Confirm balance");
+
+  if (dayBalVerified && dayBal) {
+    const cell = metricsEl.closest(".cal-cell");
+    const html = buildConfirmedBalanceTipHtml(dayBal);
+    if (cell && html) bindRiskPressureCellHover(cell, metricsEl, html);
+    return;
+  }
+
+  let title = "Confirm Balance";
+  if (isReconciled) title = "Confirmed — click to review";
+  metricsEl.title = title;
 }
 
 function bindCalendarCellAddTxClick(cell, iso) {
@@ -13717,9 +13773,7 @@ function renderCalendar() {
       else if (watchOnly) stripCue = "cal-balance-strip--cue-watch";
 
       const balanceClass = balParts.join(" ");
-      const verifiedTooltip =
-        "Future forecasts will continue from this balance. You can always add missing transactions later.";
-      const balanceTitle = dayBalVerified ? verifiedTooltip : "Projected end-of-day balance";
+      const balanceTitle = dayBalVerified ? "" : "Projected end-of-day balance";
       const riskIcon =
         negativeBal && !repeatedNegativeRun && !dayBalVerified
           ? `<span class="cal-balance-risk-icon" aria-hidden="true"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M8 2.25L14 13.75H2L8 2.25z" stroke="currentColor" stroke-width="1.35" stroke-linejoin="round" fill="none"/><path d="M8 6.25v3M8 11.1v.01" stroke="currentColor" stroke-width="1.35" stroke-linecap="round"/></svg></span>`
@@ -13738,13 +13792,14 @@ function renderCalendar() {
       const verifiedLabel = dayBalVerified
         ? `<span class="cal-balance-verified-label">Confirmed</span>`
         : "";
-      metricsEl.innerHTML = `<div class="cal-balance-strip${stripCue ? ` ${stripCue}` : ""}"><div class="cal-balance-strip__row"><span class="cal-balance-strip__amt">${verifiedIcon}${reconciledIcon}${riskIcon}${warnIcon}<span class="${balanceClass}${dayBalVerified ? " cal-balance--verified" : ""}${isReconciled && !dayBalVerified ? " cal-balance--reconciled" : ""}" title="${escapeHtml(balanceTitle)}">$${fmtMoneyParens(
+      metricsEl.innerHTML = `<div class="cal-balance-strip${stripCue ? ` ${stripCue}` : ""}"><div class="cal-balance-strip__row"><span class="cal-balance-strip__amt">${verifiedIcon}${reconciledIcon}${riskIcon}${warnIcon}<span class="${balanceClass}${dayBalVerified ? " cal-balance--verified" : ""}${isReconciled && !dayBalVerified ? " cal-balance--reconciled" : ""}"${balanceTitle ? ` title="${escapeHtml(balanceTitle)}"` : ""}>$${fmtMoneyParens(
         endNum
       )}</span>${verifiedLabel}</span></div></div>`;
       bindCalendarDayBalanceHit(metricsEl, iso, {
         isReconciled,
         dayBalVerified,
         isOutOfMonth,
+        dayBal: dayBalVerified ? dayBal : null,
       });
     }
 
