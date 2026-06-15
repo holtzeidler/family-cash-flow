@@ -28238,6 +28238,14 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   text-transform: uppercase;
   color: rgba(11, 61, 46, 0.88);
 }
+.forecast-confidence__level--ago{
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 650;
+  line-height: 1.35;
+  max-width: 58%;
+  text-align: right;
+}
 .forecast-confidence__detail{
   margin: 0;
   font-size: 12.5px;

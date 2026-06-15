@@ -5437,7 +5437,6 @@ const FORECAST_CONFIDENCE_LABELS = {
   high: "High",
   medium: "Medium",
   low: "Low",
-  very_low: "Very Low",
 };
 
 function lastConfirmedDaysAgoCopy(days) {
@@ -5464,7 +5463,16 @@ function applyForecastConfidenceUi(data) {
   forecastConfidenceCard.className = `forecast-confidence forecast-confidence--${level}`;
 
   if (forecastConfidenceLevel) {
-    forecastConfidenceLevel.textContent = FORECAST_CONFIDENCE_LABELS[level] || level;
+    if (level === "very_low") {
+      const ago = lastConfirmedDaysAgoCopy(days);
+      forecastConfidenceLevel.textContent = ago;
+      forecastConfidenceLevel.hidden = !ago;
+      forecastConfidenceLevel.classList.toggle("forecast-confidence__level--ago", !!ago);
+    } else {
+      forecastConfidenceLevel.hidden = false;
+      forecastConfidenceLevel.classList.remove("forecast-confidence__level--ago");
+      forecastConfidenceLevel.textContent = FORECAST_CONFIDENCE_LABELS[level] || level;
+    }
   }
 
   let detail = "";
@@ -5484,7 +5492,7 @@ function applyForecastConfidenceUi(data) {
   } else if (level === "very_low") {
     if (days == null || !Number.isFinite(Number(days))) {
       detail =
-        "Your forecast isn't anchored to your bank balance yet. Confirm your current balance to keep it accurate.";
+        "Life got busy? No problem. Confirm your current bank balance and BalanceWhiz will pick up from there—no need to enter every missed transaction.";
     } else {
       detail =
         "Your forecast may be out of date. Confirm your current balance and keep going—no need to enter every missed transaction.";
