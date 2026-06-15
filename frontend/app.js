@@ -1683,6 +1683,7 @@ const reconcileBreakdown = document.getElementById("reconcileBreakdown");
 const reconcileBreakdownForecast = document.getElementById("reconcileBreakdownForecast");
 const reconcileBreakdownConfirmed = document.getElementById("reconcileBreakdownConfirmed");
 const reconcileBreakdownDiff = document.getElementById("reconcileBreakdownDiff");
+const reconcileBreakdownInsight = document.getElementById("reconcileBreakdownInsight");
 const reconcileMarkBtn = document.getElementById("reconcileMarkBtn");
 const reconcileDifferentBtn = document.getElementById("reconcileDifferentBtn");
 const reconcileCancelBtn = document.getElementById("reconcileCancelBtn");
@@ -5168,6 +5169,11 @@ function syncReconcileModalActions(iso) {
   }
   if (reconcileDifferentBtn) {
     reconcileDifferentBtn.hidden = !canWrite;
+    if (!reconcileDifferentBtn.hidden) {
+      reconcileDifferentBtn.textContent = isVerified
+        ? "Edit confirmed balance →"
+        : "Enter my actual balance →";
+    }
   }
   if (reconcileDeleteBtn) {
     reconcileDeleteBtn.hidden = !(canWrite && hasConfirmation);
@@ -5184,12 +5190,17 @@ function syncReconcileModalBalance(iso) {
 
   if (reconcileStatus) {
     if (hasConfirmation && d) {
-      reconcileStatus.textContent = `✓ Confirmed on ${fmtMonthDayLong(d)}`;
+      reconcileStatus.textContent = `✓ Balance confirmed on ${fmtMonthDayLong(d)}`;
       reconcileStatus.hidden = false;
     } else {
       reconcileStatus.textContent = "";
       reconcileStatus.hidden = true;
     }
+  }
+
+  if (reconcileBreakdownInsight) {
+    reconcileBreakdownInsight.hidden = true;
+    reconcileBreakdownInsight.textContent = "";
   }
 
   const showBreakdown = !!(isVerified && row);
@@ -5212,6 +5223,17 @@ function syncReconcileModalBalance(iso) {
     if (reconcileBreakdownDiff) {
       reconcileBreakdownDiff.textContent =
         projected != null && confirmed != null ? fmtSignedMoneyDiff(confirmed - projected) : "—";
+    }
+    if (reconcileBreakdownInsight && projected != null && confirmed != null) {
+      const diff = confirmed - projected;
+      if (Math.abs(diff) < 0.005) {
+        reconcileBreakdownInsight.textContent = "Your bank balance matched the forecast.";
+        reconcileBreakdownInsight.hidden = false;
+      } else {
+        const note = confirmedBalanceDiffCopy(diff);
+        reconcileBreakdownInsight.textContent = note;
+        reconcileBreakdownInsight.hidden = !note;
+      }
     }
     if (reconcileBalanceBlock) reconcileBalanceBlock.hidden = false;
     return;
