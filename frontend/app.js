@@ -917,6 +917,10 @@ function parseMoneyRangeField(raw) {
   return Number.isFinite(n) ? n : null;
 }
 
+function toMoneyNumber(raw) {
+  return parseMoneyRangeField(raw);
+}
+
 /** Always read fresh nodes — IDs are unique; use getElementById so inputs are found even if markup moves. */
 function balanceThresholdFieldEls() {
   return {
