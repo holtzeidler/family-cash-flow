@@ -4781,8 +4781,8 @@ def _forecast_confidence_for_family(db, family_id: int) -> ForecastConfidenceOut
         return ForecastConfidenceOut(
             last_confirmed_balance_date=None,
             days_since_confirmed=None,
-            confidence_level="unknown",
-            show_verify_cta=False,
+            confidence_level="very_low",
+            show_verify_cta=True,
         )
     last_confirmed = max(anchors)
     days_since = max(0, (today - last_confirmed).days)

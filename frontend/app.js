@@ -5482,8 +5482,13 @@ function applyForecastConfidenceUi(data) {
     detail =
       "Your forecast may be less reliable because your balance hasn't been confirmed recently.";
   } else if (level === "very_low") {
-    detail =
-      "Your forecast may be out of date. Confirm your current balance and keep going—no need to enter every missed transaction.";
+    if (days == null || !Number.isFinite(Number(days))) {
+      detail =
+        "Your forecast isn't anchored to your bank balance yet. Confirm your current balance to keep it accurate.";
+    } else {
+      detail =
+        "Your forecast may be out of date. Confirm your current balance and keep going—no need to enter every missed transaction.";
+    }
   }
 
   if (forecastConfidenceDetail) forecastConfidenceDetail.textContent = detail;
