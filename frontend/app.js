@@ -5275,9 +5275,7 @@ function openVerifiedBalanceModal(iso) {
       existing && Number.isFinite(Number(existing.amount)) ? fmtMoney(Number(existing.amount)) : "";
   }
   if (verifiedBalanceTitle) {
-    verifiedBalanceTitle.textContent = existingVerifiedBalanceOnDate(d)
-      ? "Update Confirmed Balance"
-      : "Add Confirmed Balance";
+    verifiedBalanceTitle.textContent = "Confirm Current Balance";
   }
   show(verifiedBalanceErr, "");
   scheduleVerifiedBalancePreview();
@@ -5502,7 +5500,7 @@ function lastBalanceCheckPrimaryLine(days, confirmedDateIso) {
   if (days == null) return "";
   const n = Number(days);
   if (!Number.isFinite(n) || n < 0) return "";
-  if (n === 0) return "✓ Last confirmed today.";
+  if (n === 0) return "✓ Balance confirmed today.";
   const dateLabel = fmtMonthDayLong(confirmedDateIso);
   if (dateLabel) {
     if (n === 1) return `✓ Last confirmed ${dateLabel} (1 day ago).`;
@@ -13720,7 +13718,7 @@ function renderCalendar() {
 
       const balanceClass = balParts.join(" ");
       const verifiedTooltip =
-        "Future forecasts will continue from this balance. Past balances won't change.";
+        "Future forecasts will continue from this balance. You can always add missing transactions later.";
       const balanceTitle = dayBalVerified ? verifiedTooltip : "Projected end-of-day balance";
       const riskIcon =
         negativeBal && !repeatedNegativeRun && !dayBalVerified

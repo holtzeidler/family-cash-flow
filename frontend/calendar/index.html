@@ -1513,15 +1513,15 @@
           </div>
           <div id="reconcileBreakdown" class="reconcile-modal__breakdown" hidden>
             <div class="reconcile-modal__preview-row">
-              <span>Forecasted Balance</span>
+              <span>Forecasted</span>
               <span id="reconcileBreakdownForecast" class="reconcile-modal__preview-amt">—</span>
             </div>
             <div class="reconcile-modal__preview-row">
-              <span>Confirmed Balance</span>
+              <span>Your Balance</span>
               <span id="reconcileBreakdownConfirmed" class="reconcile-modal__preview-amt">—</span>
             </div>
             <div class="reconcile-modal__preview-row reconcile-modal__preview-row--diff">
-              <span>Difference from Forecast</span>
+              <span>Difference</span>
               <span id="reconcileBreakdownDiff" class="reconcile-modal__preview-amt">—</span>
             </div>
           </div>
@@ -1540,7 +1540,7 @@
 
     <div id="verifiedBalanceModal" class="modal-overlay" aria-hidden="true">
       <div class="modal modal--verified-balance" role="dialog" aria-labelledby="verifiedBalanceTitle" aria-modal="true">
-        <h3 id="verifiedBalanceTitle" class="verified-balance-modal__title">Add Confirmed Balance</h3>
+        <h3 id="verifiedBalanceTitle" class="verified-balance-modal__title">Confirm Current Balance</h3>
         <p class="verified-balance-modal__lead">Life got busy? Just enter your bank balance and keep going—no need to catch up on every missed transaction.</p>
         <label class="verified-balance-modal__field">
           <span class="verified-balance-modal__label">Date</span>
@@ -1550,14 +1550,14 @@
           <span class="verified-balance-modal__label">Bank Balance</span>
           <input type="text" id="verifiedBalanceAmount" class="verified-balance-modal__input" inputmode="decimal" placeholder="0.00" autocomplete="off" />
         </label>
-        <p class="verified-balance-modal__help">Future forecasts will continue from this balance. Past balances won't change.</p>
+        <p class="verified-balance-modal__help">Future forecasts will continue from this balance. You can always add missing transactions later.</p>
         <div id="verifiedBalancePreview" class="verified-balance-modal__preview" hidden>
           <div class="verified-balance-modal__preview-row">
-            <span>Forecasted Balance</span>
+            <span>Forecasted</span>
             <span id="verifiedBalanceForecastAmt" class="verified-balance-modal__preview-amt">—</span>
           </div>
           <div class="verified-balance-modal__preview-row">
-            <span>Confirmed Balance</span>
+            <span>Your Balance</span>
             <span id="verifiedBalanceVerifiedAmt" class="verified-balance-modal__preview-amt">—</span>
           </div>
           <div class="verified-balance-modal__preview-row verified-balance-modal__preview-row--diff">
