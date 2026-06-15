@@ -1579,29 +1579,28 @@ if (txEditDate) {
   });
 }
 
-// Check balance modal (reconcile + verified balance)
+// Check balance modal (reconcile) + separate verified balance modal
 const reconcileModal = document.getElementById("reconcileModal");
 const reconcileErr = document.getElementById("reconcileErr");
 const reconcileTitle = document.getElementById("reconcileTitle");
-const reconcileLead = document.getElementById("reconcileLead");
 const reconcileBalanceBlock = document.getElementById("reconcileBalanceBlock");
 const reconcileForecastBal = document.getElementById("reconcileForecastBal");
-const reconcileChoiceMatch = document.getElementById("reconcileChoiceMatch");
-const reconcileExpandVerifiedBtn = document.getElementById("reconcileExpandVerifiedBtn");
-const reconcileVerifiedPanel = document.getElementById("reconcileVerifiedPanel");
-const reconcileActualAmount = document.getElementById("reconcileActualAmount");
-const reconcileVerifiedPreview = document.getElementById("reconcileVerifiedPreview");
-const reconcileVerifiedDifference = document.getElementById("reconcileVerifiedDifference");
-const reconcileVerifiedGapNote = document.getElementById("reconcileVerifiedGapNote");
-const reconcileSaveBtn = document.getElementById("reconcileSaveBtn");
+const reconcileMarkBtn = document.getElementById("reconcileMarkBtn");
+const reconcileDifferentBtn = document.getElementById("reconcileDifferentBtn");
 const reconcileCancelBtn = document.getElementById("reconcileCancelBtn");
 let reconcileActiveDate = "";
-let reconcileModalVerifiedMode = false;
-let reconcileVerifiedPreviewTimer = null;
-const RECONCILE_MODAL_LEAD_MATCH =
-  "Compare your forecast to your actual bank balance.";
-const RECONCILE_MODAL_LEAD_VERIFIED =
-  "Life got busy? Just enter your bank balance and keep going—no need to catch up on every missed transaction.";
+
+const verifiedBalanceModal = document.getElementById("verifiedBalanceModal");
+const verifiedBalanceErr = document.getElementById("verifiedBalanceErr");
+const verifiedBalanceTitle = document.getElementById("verifiedBalanceTitle");
+const verifiedBalanceDate = document.getElementById("verifiedBalanceDate");
+const verifiedBalanceAmount = document.getElementById("verifiedBalanceAmount");
+const verifiedBalancePreview = document.getElementById("verifiedBalancePreview");
+const verifiedBalanceDifference = document.getElementById("verifiedBalanceDifference");
+const verifiedBalanceGapNote = document.getElementById("verifiedBalanceGapNote");
+const verifiedBalanceSaveBtn = document.getElementById("verifiedBalanceSaveBtn");
+const verifiedBalanceCancelBtn = document.getElementById("verifiedBalanceCancelBtn");
+let verifiedBalancePreviewTimer = null;
 
 const verifiedBalanceOpenBtn = document.getElementById("verifiedBalanceOpenBtn");
 const verifiedBalanceCatchUpBanner = document.getElementById("verifiedBalanceCatchUpBanner");
@@ -5042,7 +5041,15 @@ function bindTxAddModalDismiss() {
 }
 bindTxAddModalDismiss();
 
-function openReconcileModal(iso, opts = {}) {
+function forecastBalanceForReconcileModal(iso) {
+  const row = iso && state.monthDailyBalances ? state.monthDailyBalances.get(iso) : null;
+  if (!row) return null;
+  if (row.verified && Number.isFinite(Number(row.projectedEnd))) return Number(row.projectedEnd);
+  if (Number.isFinite(Number(row.end))) return Number(row.end);
+  return null;
+}
+
+function openReconcileModal(iso) {
   if (!reconcileModal) return;
   const d = normalizeIsoDate(iso) || iso;
   if (alertIfDateBeforeStartingBalance(d)) return;
@@ -5053,12 +5060,7 @@ function openReconcileModal(iso, opts = {}) {
       : "Check Balance";
   }
   if (reconcileBalanceBlock && reconcileForecastBal) {
-    const row = reconcileActiveDate && state.monthDailyBalances ? state.monthDailyBalances.get(reconcileActiveDate) : null;
-    let end = null;
-    if (row) {
-      if (row.verified && Number.isFinite(Number(row.projectedEnd))) end = Number(row.projectedEnd);
-      else if (Number.isFinite(Number(row.end))) end = Number(row.end);
-    }
+    const end = forecastBalanceForReconcileModal(reconcileActiveDate);
     if (end != null) {
       reconcileBalanceBlock.hidden = false;
       reconcileForecastBal.textContent = `$${fmtMoney(end)}`;
@@ -5067,45 +5069,9 @@ function openReconcileModal(iso, opts = {}) {
       reconcileForecastBal.textContent = "—";
     }
   }
-  const existingVerified = state.verifiedBalances?.get(reconcileActiveDate);
-  const expandVerified = !!opts.expandVerified || !!existingVerified;
-  setReconcileModalVerifiedMode(expandVerified);
-  if (reconcileActualAmount) {
-    reconcileActualAmount.value =
-      existingVerified && Number.isFinite(Number(existingVerified.amount))
-        ? fmtMoney(Number(existingVerified.amount))
-        : "";
-  }
   show(reconcileErr, "");
   reconcileModal.classList.add("modal-overlay--open");
   reconcileModal.setAttribute("aria-hidden", "false");
-  if (expandVerified) reconcileActualAmount?.focus();
-}
-
-function updateReconcileModalLead() {
-  if (!reconcileLead) return;
-  reconcileLead.textContent = reconcileModalVerifiedMode
-    ? RECONCILE_MODAL_LEAD_VERIFIED
-    : RECONCILE_MODAL_LEAD_MATCH;
-}
-
-function setReconcileModalVerifiedMode(verifiedMode) {
-  reconcileModalVerifiedMode = !!verifiedMode;
-  updateReconcileModalLead();
-  if (reconcileVerifiedPanel) reconcileVerifiedPanel.hidden = !reconcileModalVerifiedMode;
-  if (reconcileChoiceMatch) {
-    reconcileChoiceMatch.classList.toggle("is-selected", !reconcileModalVerifiedMode);
-    reconcileChoiceMatch.setAttribute("aria-pressed", reconcileModalVerifiedMode ? "false" : "true");
-  }
-  if (reconcileExpandVerifiedBtn) {
-    reconcileExpandVerifiedBtn.hidden = reconcileModalVerifiedMode;
-  }
-  if (reconcileModalVerifiedMode) {
-    scheduleReconcileVerifiedPreview();
-  } else if (reconcileVerifiedPreview) {
-    reconcileVerifiedPreview.hidden = true;
-    if (reconcileVerifiedGapNote) reconcileVerifiedGapNote.hidden = true;
-  }
 }
 
 function closeReconcileModal() {
@@ -5113,13 +5079,6 @@ function closeReconcileModal() {
   reconcileModal.classList.remove("modal-overlay--open");
   reconcileModal.setAttribute("aria-hidden", "true");
   reconcileActiveDate = "";
-  reconcileModalVerifiedMode = false;
-  if (reconcileVerifiedPreviewTimer) {
-    clearTimeout(reconcileVerifiedPreviewTimer);
-    reconcileVerifiedPreviewTimer = null;
-  }
-  if (reconcileActualAmount) reconcileActualAmount.value = "";
-  setReconcileModalVerifiedMode(false);
 }
 
 function fmtSignedMoneyDiff(n) {
@@ -5130,28 +5089,63 @@ function fmtSignedMoneyDiff(n) {
 }
 
 function openVerifiedBalanceModal(iso) {
-  openReconcileModal(iso || toISODate(new Date()), { expandVerified: true });
+  if (!verifiedBalanceModal) return;
+  const d = normalizeIsoDate(iso) || toISODate(new Date());
+  if (alertIfDateBeforeStartingBalance(d)) return;
+  if (verifiedBalanceDate) {
+    verifiedBalanceDate.value = d;
+    const minD = getFamilyEarliestStartingBalanceIso();
+    if (minD) verifiedBalanceDate.min = minD;
+  }
+  const existing = state.verifiedBalances?.get(d);
+  if (verifiedBalanceAmount) {
+    verifiedBalanceAmount.value =
+      existing && Number.isFinite(Number(existing.amount)) ? fmtMoney(Number(existing.amount)) : "";
+  }
+  if (verifiedBalanceTitle) {
+    verifiedBalanceTitle.textContent = existingVerifiedBalanceOnDate(d)
+      ? "Update Verified Balance"
+      : "Add Verified Balance";
+  }
+  show(verifiedBalanceErr, "");
+  scheduleVerifiedBalancePreview();
+  verifiedBalanceModal.classList.add("modal-overlay--open");
+  verifiedBalanceModal.setAttribute("aria-hidden", "false");
+  verifiedBalanceAmount?.focus();
 }
 
 function existingVerifiedBalanceOnDate(iso) {
   return !!(state.verifiedBalances && state.verifiedBalances.has(iso));
 }
 
-async function scheduleReconcileVerifiedPreview() {
-  if (reconcileVerifiedPreviewTimer) clearTimeout(reconcileVerifiedPreviewTimer);
-  reconcileVerifiedPreviewTimer = setTimeout(() => {
-    reconcileVerifiedPreviewTimer = null;
-    void refreshReconcileVerifiedPreview();
+function closeVerifiedBalanceModal() {
+  if (!verifiedBalanceModal) return;
+  verifiedBalanceModal.classList.remove("modal-overlay--open");
+  verifiedBalanceModal.setAttribute("aria-hidden", "true");
+  if (verifiedBalancePreviewTimer) {
+    clearTimeout(verifiedBalancePreviewTimer);
+    verifiedBalancePreviewTimer = null;
+  }
+  if (verifiedBalanceAmount) verifiedBalanceAmount.value = "";
+  if (verifiedBalancePreview) verifiedBalancePreview.hidden = true;
+  if (verifiedBalanceGapNote) verifiedBalanceGapNote.hidden = true;
+}
+
+async function scheduleVerifiedBalancePreview() {
+  if (verifiedBalancePreviewTimer) clearTimeout(verifiedBalancePreviewTimer);
+  verifiedBalancePreviewTimer = setTimeout(() => {
+    verifiedBalancePreviewTimer = null;
+    void refreshVerifiedBalancePreview();
   }, 280);
 }
 
-async function refreshReconcileVerifiedPreview() {
-  if (!reconcileVerifiedPreview || !state.activeFamilyId || !reconcileModalVerifiedMode) return;
-  const iso = normalizeIsoDate(reconcileActiveDate || "");
-  const amt = toMoneyNumber(reconcileActualAmount?.value || "");
+async function refreshVerifiedBalancePreview() {
+  if (!verifiedBalancePreview || !state.activeFamilyId) return;
+  const iso = normalizeIsoDate(verifiedBalanceDate?.value || "");
+  const amt = toMoneyNumber(verifiedBalanceAmount?.value || "");
   if (!iso || amt == null) {
-    reconcileVerifiedPreview.hidden = true;
-    if (reconcileVerifiedGapNote) reconcileVerifiedGapNote.hidden = true;
+    verifiedBalancePreview.hidden = true;
+    if (verifiedBalanceGapNote) verifiedBalanceGapNote.hidden = true;
     return;
   }
   try {
@@ -5159,23 +5153,75 @@ async function refreshReconcileVerifiedPreview() {
       `/api/families/${state.activeFamilyId}/verified-balances/preview?date=${encodeURIComponent(iso)}&amount=${encodeURIComponent(String(amt))}`,
       "GET",
     );
-    reconcileVerifiedPreview.hidden = false;
-    if (reconcileVerifiedDifference) {
-      reconcileVerifiedDifference.textContent = fmtSignedMoneyDiff(data?.unexplained_difference);
+    verifiedBalancePreview.hidden = false;
+    if (verifiedBalanceDifference) {
+      verifiedBalanceDifference.textContent = fmtSignedMoneyDiff(data?.unexplained_difference);
     }
-    if (reconcileVerifiedGapNote) {
+    if (verifiedBalanceGapNote) {
       const gs = normalizeIsoDate(data?.gap_start);
       const ge = normalizeIsoDate(data?.gap_end);
       if (gs && ge) {
-        reconcileVerifiedGapNote.hidden = false;
-        reconcileVerifiedGapNote.textContent = `Possible missing transaction gap: ${fmtDateMDY(gs)} – ${fmtDateMDY(ge)}. You can add missing transactions or keep using this verified balance.`;
+        verifiedBalanceGapNote.hidden = false;
+        verifiedBalanceGapNote.textContent = `Possible missing transaction gap: ${fmtDateMDY(gs)} – ${fmtDateMDY(ge)}. You can add missing transactions or keep using this verified balance.`;
       } else {
-        reconcileVerifiedGapNote.hidden = true;
-        reconcileVerifiedGapNote.textContent = "";
+        verifiedBalanceGapNote.hidden = true;
+        verifiedBalanceGapNote.textContent = "";
       }
     }
   } catch (_) {
-    reconcileVerifiedPreview.hidden = true;
+    verifiedBalancePreview.hidden = true;
+  }
+}
+
+async function saveReconcileMark() {
+  show(reconcileErr, "");
+  if (!state.activeFamilyId) throw new Error("Choose a family first");
+  const iso = normalizeIsoDate(reconcileActiveDate);
+  if (!iso) throw new Error("Invalid date");
+  const month = (calendarMonth?.value || monthInput?.value) || iso.slice(0, 7);
+  await api(`/api/families/${state.activeFamilyId}/reconciled-days`, "POST", {
+    date: iso,
+    reconciled: true,
+  });
+  if (existingVerifiedBalanceOnDate(iso)) {
+    await api(`/api/families/${state.activeFamilyId}/verified-balances/${encodeURIComponent(iso)}`, "DELETE");
+    await loadVerifiedBalances(month);
+    invalidateLowBalanceAlertCache();
+    await loadCalendarMonthDaily();
+  }
+  await loadReconciledDays(month);
+  closeReconcileModal();
+  renderCalendar();
+  if (typeof showBwToast === "function") showBwToast("✓ Forecast reconciled");
+  bwDispatchMilestone("first-reconcile");
+}
+
+async function saveVerifiedBalance() {
+  show(verifiedBalanceErr, "");
+  if (!state.activeFamilyId) throw new Error("Choose a family first");
+  const iso = normalizeIsoDate(verifiedBalanceDate?.value || "");
+  const amt = toMoneyNumber(verifiedBalanceAmount?.value || "");
+  if (!iso) throw new Error("Choose a date");
+  if (amt == null) throw new Error("Enter your current bank balance");
+  await api(`/api/families/${state.activeFamilyId}/verified-balances`, "POST", {
+    date: iso,
+    amount: amt,
+  });
+  await api(`/api/families/${state.activeFamilyId}/reconciled-days`, "POST", {
+    date: iso,
+    reconciled: false,
+  });
+  const month = (calendarMonth?.value || monthInput?.value) || iso.slice(0, 7);
+  await loadVerifiedBalances(month);
+  invalidateLowBalanceAlertCache();
+  await loadCalendarMonthDaily();
+  await loadReconciledDays(month);
+  closeVerifiedBalanceModal();
+  renderCalendar();
+  await refreshLowBalanceAlert();
+  dismissVerifiedBalanceCatchUp();
+  if (typeof showBwToast === "function") {
+    showBwToast("✓ Verified balance saved — forecast updated from this date forward");
   }
 }
 
@@ -5433,6 +5479,7 @@ document.addEventListener("keydown", (e) => {
 });
 
 document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && verifiedBalanceModal?.classList.contains("modal-overlay--open")) closeVerifiedBalanceModal();
   if (e.key === "Escape" && reconcileModal?.classList.contains("modal-overlay--open")) closeReconcileModal();
 });
 
@@ -10752,77 +10799,24 @@ if (expectedDeleteFutureBtn) {
   expectedDeleteFutureBtn.addEventListener("click", () => runExpectedDeleteAction("future"));
 }
 
-if (reconcileSaveBtn) {
-  reconcileSaveBtn.addEventListener("click", async () => {
+if (reconcileMarkBtn) {
+  reconcileMarkBtn.addEventListener("click", async () => {
     try {
-      show(reconcileErr, "");
-      if (!state.activeFamilyId) throw new Error("Choose a family first");
-      const iso = normalizeIsoDate(reconcileActiveDate);
-      if (!iso) throw new Error("Invalid date");
-      const month = (calendarMonth?.value || monthInput?.value) || iso.slice(0, 7);
-
-      if (reconcileModalVerifiedMode) {
-        const amt = toMoneyNumber(reconcileActualAmount?.value || "");
-        if (amt == null) throw new Error("Enter your actual bank balance");
-        await api(`/api/families/${state.activeFamilyId}/verified-balances`, "POST", {
-          date: iso,
-          amount: amt,
-        });
-        await api(`/api/families/${state.activeFamilyId}/reconciled-days`, "POST", {
-          date: iso,
-          reconciled: false,
-        });
-        await loadVerifiedBalances(month);
-        invalidateLowBalanceAlertCache();
-        await loadCalendarMonthDaily();
-        await loadReconciledDays(month);
-        closeReconcileModal();
-        renderCalendar();
-        await refreshLowBalanceAlert();
-        dismissVerifiedBalanceCatchUp();
-        if (typeof showBwToast === "function") {
-          showBwToast("✓ Verified balance saved — forecast updated from this date forward");
-        }
-        return;
-      }
-
-      await api(`/api/families/${state.activeFamilyId}/reconciled-days`, "POST", {
-        date: iso,
-        reconciled: true,
-      });
-      if (existingVerifiedBalanceOnDate(iso)) {
-        await api(`/api/families/${state.activeFamilyId}/verified-balances/${encodeURIComponent(iso)}`, "DELETE");
-        await loadVerifiedBalances(month);
-        invalidateLowBalanceAlertCache();
-        await loadCalendarMonthDaily();
-      }
-      await loadReconciledDays(month);
-      closeReconcileModal();
-      renderCalendar();
-      if (typeof showBwToast === "function") {
-        showBwToast("✓ Forecast reconciled");
-      }
-      bwDispatchMilestone("first-reconcile");
+      await saveReconcileMark();
     } catch (e) {
       show(reconcileErr, e.message || "Failed to save");
     }
   });
 }
-
-if (reconcileChoiceMatch) {
-  reconcileChoiceMatch.addEventListener("click", () => {
-    setReconcileModalVerifiedMode(false);
-    if (reconcileActualAmount) reconcileActualAmount.value = "";
+if (reconcileDifferentBtn) {
+  reconcileDifferentBtn.addEventListener("click", () => {
+    const iso = normalizeIsoDate(reconcileActiveDate) || reconcileActiveDate;
+    closeReconcileModal();
+    openVerifiedBalanceModal(iso);
   });
 }
-if (reconcileExpandVerifiedBtn) {
-  reconcileExpandVerifiedBtn.addEventListener("click", () => {
-    setReconcileModalVerifiedMode(true);
-    reconcileActualAmount?.focus();
-  });
-}
-if (reconcileActualAmount) {
-  reconcileActualAmount.addEventListener("input", () => scheduleReconcileVerifiedPreview());
+if (reconcileCancelBtn) {
+  reconcileCancelBtn.addEventListener("click", () => closeReconcileModal());
 }
 
 if (verifiedBalanceOpenBtn) {
@@ -10836,6 +10830,29 @@ if (verifiedBalanceCatchUpBtn) {
 }
 if (verifiedBalanceCatchUpDismiss) {
   verifiedBalanceCatchUpDismiss.addEventListener("click", () => dismissVerifiedBalanceCatchUp());
+}
+if (verifiedBalanceCancelBtn) {
+  verifiedBalanceCancelBtn.addEventListener("click", () => closeVerifiedBalanceModal());
+}
+if (verifiedBalanceSaveBtn) {
+  verifiedBalanceSaveBtn.addEventListener("click", async () => {
+    try {
+      await saveVerifiedBalance();
+    } catch (e) {
+      show(verifiedBalanceErr, e.message || "Failed to save verified balance");
+    }
+  });
+}
+if (verifiedBalanceDate) {
+  verifiedBalanceDate.addEventListener("change", () => scheduleVerifiedBalancePreview());
+}
+if (verifiedBalanceAmount) {
+  verifiedBalanceAmount.addEventListener("input", () => scheduleVerifiedBalancePreview());
+}
+if (verifiedBalanceModal) {
+  verifiedBalanceModal.addEventListener("click", (e) => {
+    if (e.target === verifiedBalanceModal) closeVerifiedBalanceModal();
+  });
 }
 
 // Series panel save removed (replaced with "Update all series" in instance editor).
@@ -13440,7 +13457,7 @@ function renderCalendar() {
 
       const balanceClass = balParts.join(" ");
       const verifiedTooltip =
-        "This verified balance becomes your new starting point for future forecasts. Past balances won't change.";
+        "This Verified Balance becomes your new starting point for future forecasts. Past balances won't change.";
       const balanceTitle = dayBalVerified ? verifiedTooltip : "Projected end-of-day balance";
       const riskIcon =
         negativeBal && !repeatedNegativeRun && !dayBalVerified
@@ -13464,7 +13481,7 @@ function renderCalendar() {
         metricsEl.title = verifiedTooltip;
         metricsEl.onclick = (e) => {
           e.stopPropagation();
-          openReconcileModal(iso, { expandVerified: true });
+          openVerifiedBalanceModal(iso);
         };
       } else {
         metricsEl.onclick = null;
