@@ -5440,6 +5440,7 @@ const FORECAST_CONFIDENCE_LABELS = {
 };
 
 function lastConfirmedDaysAgoCopy(days) {
+  if (days == null) return "";
   const n = Number(days);
   if (!Number.isFinite(n) || n < 0) return "";
   if (n === 0) return "Last confirmed today.";
