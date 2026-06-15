@@ -28310,7 +28310,21 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   color: rgba(17, 24, 39, 0.58);
 }
 .verified-balance-modal__primary{
-  background: #166534;
+  padding: 5px 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  border-radius: 8px;
+  line-height: 1.2;
+  background: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 82%, #0d1f18);
+  color: #fff;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.14) inset,
+    0 1px 2px rgba(11, 61, 46, 0.1);
+}
+.verified-balance-modal__primary:hover{
+  background: color-mix(in srgb, var(--accent) 92%, #000);
+  border-color: color-mix(in srgb, var(--accent) 72%, #0d1f18);
   color: #fff;
 }
 .cal-cell--verified-balance .cal-balance-strip--verified{
