@@ -1583,6 +1583,7 @@ if (txEditDate) {
 const reconcileModal = document.getElementById("reconcileModal");
 const reconcileErr = document.getElementById("reconcileErr");
 const reconcileTitle = document.getElementById("reconcileTitle");
+const reconcileLead = document.getElementById("reconcileLead");
 const reconcileBalanceBlock = document.getElementById("reconcileBalanceBlock");
 const reconcileForecastBal = document.getElementById("reconcileForecastBal");
 const reconcileChoiceMatch = document.getElementById("reconcileChoiceMatch");
@@ -1597,6 +1598,10 @@ const reconcileCancelBtn = document.getElementById("reconcileCancelBtn");
 let reconcileActiveDate = "";
 let reconcileModalVerifiedMode = false;
 let reconcileVerifiedPreviewTimer = null;
+const RECONCILE_MODAL_LEAD_MATCH =
+  "Compare your forecast to your actual bank balance.";
+const RECONCILE_MODAL_LEAD_VERIFIED =
+  "Life got busy? Just enter your bank balance and keep going—no need to catch up on every missed transaction.";
 
 const verifiedBalanceOpenBtn = document.getElementById("verifiedBalanceOpenBtn");
 const verifiedBalanceCatchUpBanner = document.getElementById("verifiedBalanceCatchUpBanner");
@@ -5077,8 +5082,16 @@ function openReconcileModal(iso, opts = {}) {
   if (expandVerified) reconcileActualAmount?.focus();
 }
 
+function updateReconcileModalLead() {
+  if (!reconcileLead) return;
+  reconcileLead.textContent = reconcileModalVerifiedMode
+    ? RECONCILE_MODAL_LEAD_VERIFIED
+    : RECONCILE_MODAL_LEAD_MATCH;
+}
+
 function setReconcileModalVerifiedMode(verifiedMode) {
   reconcileModalVerifiedMode = !!verifiedMode;
+  updateReconcileModalLead();
   if (reconcileVerifiedPanel) reconcileVerifiedPanel.hidden = !reconcileModalVerifiedMode;
   if (reconcileChoiceMatch) {
     reconcileChoiceMatch.classList.toggle("is-selected", !reconcileModalVerifiedMode);
