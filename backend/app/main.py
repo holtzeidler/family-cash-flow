@@ -4798,7 +4798,7 @@ def _forecast_confidence_for_family(db, family_id: int) -> ForecastConfidenceOut
         last_confirmed_balance_date=last_confirmed,
         days_since_confirmed=days_since,
         confidence_level=level,
-        show_verify_cta=level in ("low", "very_low"),
+        show_verify_cta=days_since >= 30,
     )
 
 

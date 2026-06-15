@@ -1698,7 +1698,6 @@ const verifiedBalanceCancelBtn = document.getElementById("verifiedBalanceCancelB
 let verifiedBalancePreviewTimer = null;
 
 const forecastConfidenceCard = document.getElementById("forecastConfidenceCard");
-const forecastConfidenceLevel = document.getElementById("forecastConfidenceLevel");
 const forecastConfidenceDetail = document.getElementById("forecastConfidenceDetail");
 const forecastConfidenceHelper = document.getElementById("forecastConfidenceHelper");
 const forecastConfidenceVerifyBtn = document.getElementById("forecastConfidenceVerifyBtn");
@@ -5433,19 +5432,23 @@ async function loadVerifiedBalances(month) {
   }
 }
 
-const FORECAST_CONFIDENCE_LABELS = {
-  high: "High",
-  medium: "Medium",
-  low: "Low",
-};
+function lastBalanceCheckTier(days) {
+  if (days == null) return "none";
+  const n = Number(days);
+  if (!Number.isFinite(n) || n < 0) return "none";
+  if (n >= 30) return "stale";
+  if (n >= 14) return "moderate";
+  return "recent";
+}
 
-function lastConfirmedDaysAgoCopy(days) {
+function lastBalanceCheckPrimaryLine(days) {
   if (days == null) return "";
   const n = Number(days);
   if (!Number.isFinite(n) || n < 0) return "";
-  if (n === 0) return "Last confirmed today.";
-  if (n === 1) return "Last confirmed 1 day ago.";
-  return `Last confirmed ${n} days ago.`;
+  const mark = n >= 30 ? "⚠ " : "✓ ";
+  if (n === 0) return `${mark}Last confirmed today.`;
+  if (n === 1) return `${mark}Last confirmed 1 day ago.`;
+  return `${mark}Last confirmed ${n} days ago.`;
 }
 
 function applyForecastConfidenceUi(data) {
@@ -5461,44 +5464,31 @@ function applyForecastConfidenceUi(data) {
   }
 
   const days = data?.days_since_confirmed;
+  const tier = lastBalanceCheckTier(days);
 
   forecastConfidenceCard.hidden = false;
-  forecastConfidenceCard.className = `forecast-confidence forecast-confidence--${level}`;
-
-  if (forecastConfidenceLevel) {
-    if (level === "very_low") {
-      const ago = lastConfirmedDaysAgoCopy(days);
-      forecastConfidenceLevel.textContent = ago;
-      forecastConfidenceLevel.hidden = !ago;
-      forecastConfidenceLevel.classList.toggle("forecast-confidence__level--ago", !!ago);
-    } else {
-      forecastConfidenceLevel.hidden = false;
-      forecastConfidenceLevel.classList.remove("forecast-confidence__level--ago");
-      forecastConfidenceLevel.textContent = FORECAST_CONFIDENCE_LABELS[level] || level;
-    }
-  }
+  forecastConfidenceCard.className = `forecast-confidence forecast-confidence--${tier}`;
 
   let detail = "";
   let helper = "";
   let showCta = !!data?.show_verify_cta && canWrite;
 
-  if (level === "high" || level === "medium") {
-    detail = lastConfirmedDaysAgoCopy(days);
-    if (level === "medium") {
-      helper = "Your forecast is still useful, but confirming your balance keeps it more accurate.";
-    }
-    showCta = false;
-  } else if (level === "low") {
+  if (tier === "none") {
     detail =
-      "Your forecast may be less reliable because your balance hasn't been confirmed recently.";
-  } else if (level === "very_low") {
-    if (days == null || !Number.isFinite(Number(days))) {
-      detail =
-        "Life got busy? No problem. Confirm your current bank balance and BalanceWhiz will pick up from there—no need to enter every missed transaction.";
-    } else {
-      detail =
-        "Your forecast may be out of date. Confirm your current balance and keep going—no need to enter every missed transaction.";
-    }
+      "If life got busy, that's okay—confirm your current balance to keep your forecast accurate.";
+    showCta = canWrite;
+  } else if (tier === "recent") {
+    detail = lastBalanceCheckPrimaryLine(days);
+    helper = "Your forecast is based on this confirmed balance.";
+    showCta = false;
+  } else if (tier === "moderate") {
+    detail = lastBalanceCheckPrimaryLine(days);
+    helper = "Confirming your balance every few weeks helps keep your forecast accurate.";
+    showCta = false;
+  } else if (tier === "stale") {
+    detail = lastBalanceCheckPrimaryLine(days);
+    helper =
+      "It's been a while since your balance was confirmed. If life got busy, that's okay—confirm your current balance to keep your forecast accurate.";
   }
 
   if (forecastConfidenceDetail) forecastConfidenceDetail.textContent = detail;

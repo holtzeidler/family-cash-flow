@@ -28210,7 +28210,7 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   }
 }
 
-/* Forecast confidence (reconciliation freshness) */
+/* Last balance check (reconciliation freshness) */
 .forecast-confidence{
   margin: 0 0 10px;
   padding: 10px 12px;
@@ -28218,39 +28218,19 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   border: 1px solid rgba(17, 24, 39, 0.08);
   background: rgba(255, 255, 255, 0.92);
 }
-.forecast-confidence__head{
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 4px;
-}
-.forecast-confidence__kicker{
+.forecast-confidence__title{
+  margin: 0 0 6px;
   font-size: 11px;
   font-weight: 650;
   letter-spacing: 0.02em;
   color: rgba(71, 85, 105, 0.82);
 }
-.forecast-confidence__level{
-  font-size: 11px;
-  font-weight: 750;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  color: rgba(11, 61, 46, 0.88);
-}
-.forecast-confidence__level--ago{
-  text-transform: none;
-  letter-spacing: 0;
-  font-weight: 650;
-  line-height: 1.35;
-  max-width: 58%;
-  text-align: right;
-}
 .forecast-confidence__detail{
   margin: 0;
   font-size: 12.5px;
   line-height: 1.45;
-  color: rgba(30, 41, 59, 0.82);
+  font-weight: 600;
+  color: rgba(30, 41, 59, 0.9);
 }
 .forecast-confidence__helper{
   margin: 6px 0 0;
@@ -28276,32 +28256,26 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
 .forecast-confidence__cta:hover{
   filter: brightness(1.04);
 }
-.forecast-confidence--high{
+.forecast-confidence--recent{
   border-color: rgba(22, 101, 52, 0.16);
   background: rgba(240, 253, 244, 0.55);
 }
-.forecast-confidence--high .forecast-confidence__level{
-  color: rgba(22, 101, 52, 0.9);
+.forecast-confidence--recent .forecast-confidence__detail{
+  color: rgba(22, 101, 52, 0.92);
 }
-.forecast-confidence--medium{
+.forecast-confidence--moderate{
   border-color: rgba(17, 24, 39, 0.07);
   background: rgba(248, 250, 252, 0.92);
 }
-.forecast-confidence--medium .forecast-confidence__level{
-  color: rgba(71, 85, 105, 0.88);
+.forecast-confidence--moderate .forecast-confidence__detail{
+  color: rgba(30, 41, 59, 0.88);
 }
-.forecast-confidence--low{
-  border-color: rgba(217, 119, 6, 0.2);
-  background: rgba(255, 251, 235, 0.72);
-}
-.forecast-confidence--low .forecast-confidence__level{
-  color: rgba(180, 83, 9, 0.92);
-}
-.forecast-confidence--very_low{
+.forecast-confidence--stale,
+.forecast-confidence--none{
   border-color: rgba(217, 119, 6, 0.28);
   background: rgba(255, 247, 237, 0.88);
 }
-.forecast-confidence--very_low .forecast-confidence__level{
+.forecast-confidence--stale .forecast-confidence__detail{
   color: rgba(154, 52, 18, 0.92);
 }
 
