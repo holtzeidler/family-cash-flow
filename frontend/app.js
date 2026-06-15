@@ -5146,8 +5146,8 @@ function openReconcileModal(iso) {
   reconcileActiveDate = d;
   if (reconcileTitle) {
     reconcileTitle.textContent = reconcileActiveDate
-      ? `Check Balance · ${fmtDateLongDisplay(reconcileActiveDate)}`
-      : "Check Balance";
+      ? `Confirm Balance · ${fmtDateLongDisplay(reconcileActiveDate)}`
+      : "Confirm Balance";
   }
   if (reconcileBalanceBlock && reconcileForecastBal) {
     const end = forecastBalanceForReconcileModal(reconcileActiveDate);
@@ -5820,12 +5820,12 @@ function bindCalendarDayBalanceHit(metricsEl, iso, { isReconciled, dayBalVerifie
   metricsEl.classList.add("cal-day-balance-hit");
   const verifiedTooltip =
     "This balance was manually entered and overrides the forecast from this date forward.";
-  let title = "Check Balance";
+  let title = "Confirm Balance";
   if (dayBalVerified) title = verifiedTooltip;
   else if (isReconciled) title = "Reconciled — click to review";
   metricsEl.title = title;
   const label = fmtDateMDY(iso);
-  metricsEl.setAttribute("aria-label", label ? `Check balance for ${label}` : "Check balance");
+  metricsEl.setAttribute("aria-label", label ? `Confirm balance for ${label}` : "Confirm balance");
 }
 
 function bindCalendarCellAddTxClick(cell, iso) {
@@ -12348,7 +12348,7 @@ function renderSidebarPendingTransactionsForMonth() {
     lead.textContent = "You're all caught up";
     const sub = document.createElement("p");
     sub.className = "sidebar-pending-empty-msg sidebar-pending-empty-msg--sub";
-    sub.textContent = "Everything looks categorized · No pending transaction reviews";
+    sub.textContent = "Everything looks categorized · no pending transaction to review.";
     emptyWrap.append(lead, sub);
     sidebarPendingTxList.appendChild(emptyWrap);
     return;

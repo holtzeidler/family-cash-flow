@@ -114,7 +114,7 @@
       findTarget: findExpectedCalendarConfirmAnchor,
       title: "Keep your forecast accurate",
       body: "Update your forecast occasionally so it stays aligned with your real checking balance.",
-      instruction: "Click the balance at the bottom of a day to check or reconcile it.",
+      instruction: "Click the balance at the bottom of a day to confirm or reconcile it.",
       reconcilePreview: {
         dayNum: "17",
         dayLabel: "Thu",
