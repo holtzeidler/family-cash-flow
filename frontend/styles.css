@@ -19256,6 +19256,19 @@ body.plans-page--polished .plans-wrap{
     0 1px 3px rgba(17, 24, 39, 0.028);
 }
 
+.cal-cell.cal-cell--adjusted-balance:not(.cal-cell--bal-risk):not(.cal-cell--bal-warn):not(.cal-cell--before-start){
+  background: linear-gradient(
+    135deg,
+    rgba(255, 251, 235, 0.72) 0%,
+    rgba(255, 255, 255, 0.78) 36%,
+    rgba(255, 255, 255, 0.82) 100%
+  );
+  border-color: rgba(217, 119, 6, 0.16);
+  box-shadow:
+    inset 0 -1px 0 rgba(245, 158, 11, 0.08),
+    0 1px 3px rgba(17, 24, 39, 0.028);
+}
+
 .cal-cell:not(.cal-cell--out):not(.cal-cell--before-start):hover{
   border-color: rgba(17, 24, 39, 0.1);
   background: #fff;
@@ -19901,10 +19914,13 @@ body.plans-page--polished .plans-wrap{
 .cal-cell:not(.cal-cell--out):not(.cal-cell--before-start) .cal-ledger-metrics.cal-day-balance-hit:focus-within .cal-stat.cal-balance{
   color: rgba(11, 61, 46, 0.94);
 }
-.cal-cell:not(.cal-cell--out):not(.cal-cell--before-start) .cal-ledger-metrics.cal-day-balance-hit:hover .cal-balance-status--reconciled,
-.cal-cell:not(.cal-cell--out):not(.cal-cell--before-start) .cal-ledger-metrics.cal-day-balance-hit:hover .cal-balance-adjusted-icon,
-.cal-cell:not(.cal-cell--out):not(.cal-cell--before-start) .cal-ledger-metrics.cal-day-balance-hit:hover .cal-balance-status--reconciled{
-  color: rgba(22, 101, 52, 0.95);
+.cal-cell:not(.cal-cell--out):not(.cal-cell--before-start) .cal-ledger-metrics.cal-day-balance-hit:hover .cal-balance-status-pill--reconciled{
+  background: rgba(220, 252, 231, 0.95);
+  border-color: rgba(22, 101, 52, 0.34);
+}
+.cal-cell:not(.cal-cell--out):not(.cal-cell--before-start) .cal-ledger-metrics.cal-day-balance-hit:hover .cal-balance-status-pill--adjusted{
+  background: rgba(254, 243, 199, 0.95);
+  border-color: rgba(180, 83, 9, 0.34);
 }
 /* 1–2 visible rows: transactions at the top; projected balance stays anchored below. */
 .cal-cell--density-sparse:not(.cal-cell--no-tx) .cal-cell-stack > .cal-day-txns{
@@ -20136,14 +20152,74 @@ body.plans-page--polished .plans-wrap{
 
 /* Flow modifiers kept for semantics; amount color comes from .cal-amt.income / .expense. */
 
-/* Starting balance: anchored forecast reference (distinct from reconciled ✓). */
+/* Starting Point: foundational milestone — gray, never truncated. */
+.cal-start-milestone{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  margin-bottom: 2px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  border: 1px solid rgba(148, 163, 184, 0.32);
+  border-left: 3px solid rgba(100, 116, 139, 0.55);
+  background: linear-gradient(90deg, rgba(248, 250, 252, 0.98) 0%, rgba(241, 245, 249, 0.92) 100%);
+  color: rgba(51, 65, 85, 0.92);
+  cursor: pointer;
+  box-sizing: border-box;
+  transition: background 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
+}
+.cal-start-milestone:hover{
+  background: rgba(241, 245, 249, 0.98);
+  border-color: rgba(100, 116, 139, 0.42);
+  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.04);
+}
+.cal-start-milestone:focus-visible{
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(100, 116, 139, 0.22);
+}
+.cal-start-milestone__badge{
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.cal-start-milestone__icon{
+  flex-shrink: 0;
+  font-size: 11px;
+  line-height: 1;
+}
+.cal-start-milestone__label{
+  flex: 0 1 auto;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(71, 85, 105, 0.95);
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
+}
+.cal-start-milestone__amt{
+  flex: 0 0 auto;
+  font-size: var(--cal-tx-font-size, 12px);
+  font-weight: 550;
+  font-variant-numeric: tabular-nums;
+  color: rgba(100, 116, 139, 0.88);
+  white-space: nowrap;
+}
+
+/* Legacy start-balance row (kept for any cached markup). */
 .cal-day-tx-line--start-balance,
 .cal-day-tx-line--start-balance.cal-day-tx-line--primary,
 .cal-day-tx-line--start-balance.cal-day-tx-line--secondary{
   align-items: center;
-  color: rgba(51, 65, 85, 0.9);
-  background: rgba(11, 61, 46, 0.03);
-  border-left: 2px solid rgba(11, 61, 46, 0.12);
+  color: rgba(71, 85, 105, 0.9);
+  background: rgba(248, 250, 252, 0.92);
+  border-left: 2px solid rgba(100, 116, 139, 0.4);
   border-radius: 4px;
   padding: 2px 4px 2px 5px;
   margin-bottom: 0;
@@ -20152,13 +20228,13 @@ body.plans-page--polished .plans-wrap{
   transition: background 0.12s ease, box-shadow 0.12s ease;
 }
 .cal-day-tx-line--start-balance:hover{
-  background: rgba(11, 61, 46, 0.07);
+  background: rgba(241, 245, 249, 0.98);
   box-shadow: 0 1px 0 rgba(15, 23, 42, 0.04);
 }
 .cal-day-tx-line--start-balance:focus-visible{
   outline: none;
-  background: rgba(11, 61, 46, 0.07);
-  box-shadow: 0 0 0 2px rgba(11, 61, 46, 0.18);
+  background: rgba(241, 245, 249, 0.98);
+  box-shadow: 0 0 0 2px rgba(100, 116, 139, 0.22);
 }
 .cal-day-tx-line--start-balance .cal-tx-label-wrap{
   gap: 8px;
@@ -28480,73 +28556,62 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   color: #fff;
 }
 .cal-cell--adjusted-balance .cal-balance-strip--adjusted{
-  border: 1px solid rgba(180, 83, 9, 0.28);
+  border: 1px solid rgba(217, 119, 6, 0.22);
   border-radius: 8px;
-  background: rgba(255, 251, 235, 0.78);
-  padding: 2px 4px;
+  background: rgba(255, 251, 235, 0.55);
+  padding: 3px 5px;
 }
 .cal-cell--adjusted-balance .cal-ledger-metrics.cal-day-balance-hit:hover,
 .cal-cell--adjusted-balance .cal-ledger-metrics.cal-day-balance-hit:focus-within{
-  background: rgba(255, 251, 235, 0.96);
-  border-top-color: rgba(180, 83, 9, 0.34);
+  background: rgba(255, 251, 235, 0.92);
+  border-top-color: rgba(217, 119, 6, 0.28);
 }
 .cal-cell--adjusted-balance .cal-balance-strip__row,
 .cal-cell--reconciled .cal-balance-strip--reconciled .cal-balance-strip__row{
   flex-direction: column;
   align-items: flex-end;
-  gap: 1px;
+  gap: 3px;
 }
 .cal-cell--reconciled .cal-balance-strip--reconciled{
-  border: 1px solid rgba(22, 101, 52, 0.28);
+  border: 1px solid rgba(22, 101, 52, 0.22);
   border-radius: 8px;
-  background: rgba(240, 253, 244, 0.72);
-  padding: 2px 4px;
+  background: rgba(240, 253, 244, 0.55);
+  padding: 3px 5px;
 }
 .cal-cell--reconciled .cal-ledger-metrics.cal-day-balance-hit:hover,
 .cal-cell--reconciled .cal-ledger-metrics.cal-day-balance-hit:focus-within{
-  background: rgba(240, 253, 244, 0.95);
-  border-top-color: rgba(22, 101, 52, 0.34);
+  background: rgba(240, 253, 244, 0.92);
+  border-top-color: rgba(22, 101, 52, 0.28);
 }
-.cal-balance-adjusted-icon{
+.cal-balance-status-pill{
   display: inline-flex;
-  margin-right: 3px;
-  color: rgba(180, 83, 9, 0.92);
-  font-size: 11px;
+  align-items: center;
+  justify-content: center;
+  padding: 1px 6px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 9px;
   font-weight: 700;
-  vertical-align: -1px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1.35;
+  white-space: nowrap;
 }
-.cal-balance-status{
-  display: inline-flex;
-  margin-right: 3px;
-  vertical-align: -1px;
+.cal-balance-status-pill--reconciled{
+  color: rgba(22, 101, 52, 0.92);
+  background: rgba(220, 252, 231, 0.82);
+  border-color: rgba(22, 101, 52, 0.18);
 }
-.cal-balance-status--reconciled{
-  color: rgba(22, 101, 52, 0.72);
+.cal-balance-status-pill--adjusted{
+  color: rgba(146, 64, 14, 0.94);
+  background: rgba(254, 243, 199, 0.82);
+  border-color: rgba(217, 119, 6, 0.2);
 }
 .cal-balance--reconciled{
   font-weight: 650;
 }
 .cal-balance--adjusted{
-  font-weight: 700;
-  color: rgba(120, 53, 15, 0.95);
-}
-.cal-balance-adjusted-label{
-  display: block;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: rgba(180, 83, 9, 0.88);
-  line-height: 1.1;
-}
-.cal-balance-reconciled-label{
-  display: block;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: rgba(22, 101, 52, 0.82);
-  line-height: 1.1;
+  font-weight: 650;
 }
 .verified-balance-modal__adjusted-notice{
   margin: 0 0 12px;
@@ -28570,6 +28635,27 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
 }
 .cal-confirmed-tip__head--starting{
   color: rgba(71, 85, 105, 0.95);
+}
+.cal-confirmed-tip__report{
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 2px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(148, 163, 184, 0.2);
+}
+.cal-confirmed-tip__report-k{
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(100, 116, 139, 0.88);
+}
+.cal-confirmed-tip__report p{
+  margin: 0;
+  font-size: 0.76rem;
+  line-height: 1.45;
+  color: rgba(51, 65, 85, 0.9);
 }
 .cal-confirmed-tip{
   display: flex;
