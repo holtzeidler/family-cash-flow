@@ -5459,6 +5459,8 @@ function applyForecastConfidenceUi(data) {
     return;
   }
 
+  const days = data?.days_since_confirmed;
+
   forecastConfidenceCard.hidden = false;
   forecastConfidenceCard.className = `forecast-confidence forecast-confidence--${level}`;
 
@@ -5478,7 +5480,6 @@ function applyForecastConfidenceUi(data) {
   let detail = "";
   let helper = "";
   let showCta = !!data?.show_verify_cta && canWrite;
-  const days = data?.days_since_confirmed;
 
   if (level === "high" || level === "medium") {
     detail = lastConfirmedDaysAgoCopy(days);
