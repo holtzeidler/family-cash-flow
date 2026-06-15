@@ -65,7 +65,14 @@ After the staging API is live, set:
 **Publish directory:** `public-staging`  
 **Branch:** `staging`
 
-Render runs `scripts/build-frontend-static.sh` on each `staging` push.
+Render runs `scripts/build-frontend-static.sh` on each `staging` push. Staging builds use a **chart-line favicon** (not the production **Bw** logo) so browser tabs are easy to tell apart.
+
+Regenerate staging favicons after editing `frontend/assets/staging-favicon.svg`:
+
+```bash
+.venv-favicon/bin/python scripts/generate-staging-favicons.py
+# or: python3 scripts/generate-staging-favicons.py  (requires Pillow)
+```
 
 ### 5. Custom domain: `staging.balancewhiz.com` (GoDaddy DNS)
 
