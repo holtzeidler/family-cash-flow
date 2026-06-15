@@ -13543,7 +13543,7 @@ function renderCalendar() {
 
       const balanceClass = balParts.join(" ");
       const verifiedTooltip =
-        "This Verified Balance becomes your new starting point for future forecasts. Past balances won't change.";
+        "Future forecasts will continue from this balance. Past balances won't change.";
       const balanceTitle = dayBalVerified ? verifiedTooltip : "Projected end-of-day balance";
       const riskIcon =
         negativeBal && !repeatedNegativeRun && !dayBalVerified

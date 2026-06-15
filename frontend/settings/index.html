@@ -1505,6 +1505,7 @@
     <div id="reconcileModal" class="modal-overlay" aria-hidden="true">
       <div class="modal modal--reconcile modal--check-balance" role="dialog" aria-labelledby="reconcileTitle" aria-modal="true">
         <h3 id="reconcileTitle" class="reconcile-modal__title">Check Balance</h3>
+        <p class="reconcile-modal__subtitle">Does this match your bank balance?</p>
         <div id="reconcileBalanceBlock" class="reconcile-modal__balance" hidden>
           <div class="reconcile-modal__forecast">
             <span class="reconcile-modal__forecast-k">Forecasted Balance</span>
@@ -1512,9 +1513,13 @@
           </div>
         </div>
         <div id="reconcileErr" class="error"></div>
+        <p class="reconcile-modal__match-hint">If it matches, mark this date as reconciled.</p>
         <div class="reconcile-modal__cta">
           <button type="button" id="reconcileMarkBtn" class="reconcile-modal__primary reconcile-modal__mark-btn">Mark as Reconciled</button>
-          <button type="button" id="reconcileDifferentBtn" class="reconcile-modal__different-link">My balance is different →</button>
+          <div class="reconcile-modal__secondary">
+            <button type="button" id="reconcileDifferentBtn" class="reconcile-modal__different-link">My balance is different →</button>
+            <p class="reconcile-modal__secondary-hint">Enter a Verified Balance instead.</p>
+          </div>
         </div>
         <div class="reconcile-modal__footer">
           <button type="button" id="reconcileCancelBtn" class="reconcile-modal__cancel">Cancel</button>
@@ -1531,10 +1536,10 @@
           <input type="date" id="verifiedBalanceDate" class="verified-balance-modal__input" />
         </label>
         <label class="verified-balance-modal__field">
-          <span class="verified-balance-modal__label">Current Bank Balance</span>
+          <span class="verified-balance-modal__label">Bank Balance</span>
           <input type="text" id="verifiedBalanceAmount" class="verified-balance-modal__input" inputmode="decimal" placeholder="0.00" autocomplete="off" />
         </label>
-        <p class="verified-balance-modal__help">This Verified Balance becomes your new starting point for future forecasts. Past balances won't change.</p>
+        <p class="verified-balance-modal__help">Future forecasts will continue from this balance. Past balances won't change.</p>
         <div id="verifiedBalancePreview" class="verified-balance-modal__preview" hidden>
           <div class="verified-balance-modal__preview-row verified-balance-modal__preview-row--diff">
             <span>Unexplained difference</span>
