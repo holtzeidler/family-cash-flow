@@ -13427,7 +13427,7 @@ function renderCalendar() {
 
       const balanceClass = balParts.join(" ");
       const verifiedTooltip =
-        "This balance was manually entered and overrides the calculated balance from this date forward.";
+        "This verified balance becomes your new starting point for future forecasts. Past balances won't change.";
       const balanceTitle = dayBalVerified ? verifiedTooltip : "Projected end-of-day balance";
       const riskIcon =
         negativeBal && !repeatedNegativeRun && !dayBalVerified
