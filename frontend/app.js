@@ -5650,14 +5650,11 @@ function lastBalanceCheckPrimaryLine(days, confirmedDateIso) {
   if (days == null) return "";
   const n = Number(days);
   if (!Number.isFinite(n) || n < 0) return "";
-  if (n === 0) return "✓ Balance confirmed today.";
+  if (n === 0) return "✓ Today";
+  const ago = n === 1 ? "1 day ago" : `${n} days ago`;
   const dateLabel = fmtMonthDayLong(confirmedDateIso);
-  if (dateLabel) {
-    if (n === 1) return `✓ Last confirmed ${dateLabel} (1 day ago).`;
-    return `✓ Last confirmed ${dateLabel} (${n} days ago).`;
-  }
-  if (n === 1) return "✓ Last confirmed 1 day ago.";
-  return `✓ Last confirmed ${n} days ago.`;
+  if (dateLabel) return `✓ ${dateLabel} · ${ago}`;
+  return `✓ ${ago}`;
 }
 
 function applyForecastConfidenceUi(data) {
@@ -12703,7 +12700,7 @@ function renderSidebarPendingTransactionsForMonth() {
     lead.textContent = "You're all caught up";
     const sub = document.createElement("p");
     sub.className = "sidebar-pending-empty-msg sidebar-pending-empty-msg--sub";
-    sub.textContent = "Everything looks categorized · no pending transactions to review.";
+    sub.textContent = "✓ Everything is up to date";
     emptyWrap.append(lead, sub);
     sidebarPendingTxList.appendChild(emptyWrap);
     return;
