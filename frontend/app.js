@@ -5232,7 +5232,7 @@ function syncReconcileModalBalance(iso) {
       const diff = confirmed - projected;
       if (Math.abs(diff) < 0.005) {
         reconcileBreakdownInsight.textContent =
-          "Your bank balance matched the forecast. Reports and forecasts are fully aligned through this date.";
+          "Your bank balance matched the forecast. Historical reports are complete through this date.";
         reconcileBreakdownInsight.hidden = false;
       } else {
         reconcileBreakdownInsight.textContent =
@@ -5328,7 +5328,7 @@ function buildReconciledBalanceTipHtml(dayBal) {
     );
     parts.push("</dl>");
   }
-  parts.push('<p class="cal-confirmed-tip__emph">Reports and forecasts are fully aligned through this date.</p>');
+  parts.push('<p class="cal-confirmed-tip__note">Historical reports are complete through this date.</p>');
   parts.push("</div>");
   return `<div class="reports-risk-tip__inner">${parts.join("")}</div>`;
 }
@@ -5348,24 +5348,23 @@ function buildAdjustedBalanceTipHtml(dayBal) {
     '<div class="cal-confirmed-tip__head cal-confirmed-tip__head--adjusted">↺ Adjusted</div>',
   ];
   if (forecast != null) {
-    parts.push('<p class="cal-confirmed-tip__match">Your bank balance differed from the forecast.</p>');
     const diff = bank - forecast;
     parts.push('<dl class="cal-confirmed-tip__rows">');
     parts.push(
-      `<div class="cal-confirmed-tip__row"><dt>Forecast</dt><dd>$${escapeHtml(fmtMoney(forecast))}</dd></div>`,
+      `<div class="cal-confirmed-tip__row"><dt>Expected</dt><dd>$${escapeHtml(fmtMoney(forecast))}</dd></div>`,
     );
     parts.push(
-      `<div class="cal-confirmed-tip__row"><dt>Bank Balance</dt><dd>$${escapeHtml(fmtMoney(bank))}</dd></div>`,
+      `<div class="cal-confirmed-tip__row"><dt>Actual</dt><dd>$${escapeHtml(fmtMoney(bank))}</dd></div>`,
     );
+    parts.push("</dl>");
     if (Math.abs(diff) >= 0.005) {
       parts.push(
-        `<div class="cal-confirmed-tip__row cal-confirmed-tip__row--diff"><dt>Difference</dt><dd>${escapeHtml(fmtSignedMoneyDiff(diff))}</dd></div>`,
+        `<p class="cal-confirmed-tip__diff-line">${escapeHtml(fmtSignedMoneyDiff(diff))} difference</p>`,
       );
     }
-    parts.push("</dl>");
   }
-  parts.push('<p class="cal-confirmed-tip__note">Future forecasts continue from this balance.</p>');
-  parts.push('<p class="cal-confirmed-tip__note">Reports may not include skipped transactions.</p>');
+  parts.push('<p class="cal-confirmed-tip__note">Future forecasts use this balance.</p>');
+  parts.push('<p class="cal-confirmed-tip__note">Historical reports may be incomplete.</p>');
   parts.push("</div>");
   return `<div class="reports-risk-tip__inner">${parts.join("")}</div>`;
 }

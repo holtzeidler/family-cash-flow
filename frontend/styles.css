@@ -28652,6 +28652,15 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
 .cal-confirmed-tip__row--diff dd{
   font-weight: 700;
 }
+.cal-confirmed-tip__diff-line{
+  margin: 0;
+  padding-top: 7px;
+  border-top: 1px solid rgba(148, 163, 184, 0.18);
+  font-size: 0.78rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: rgba(15, 23, 42, 0.92);
+}
 .cat-report-verified-warning{
   margin: 0 0 12px;
   padding: 10px 12px;
