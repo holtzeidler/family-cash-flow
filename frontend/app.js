@@ -5363,8 +5363,8 @@ function buildAdjustedBalanceTipHtml(dayBal) {
     }
     parts.push("</dl>");
   }
-  parts.push('<p class="cal-confirmed-tip__note">Future forecasts use this balance.</p>');
-  parts.push('<p class="cal-confirmed-tip__note">Historical reports may be incomplete.</p>');
+  parts.push('<p class="cal-confirmed-tip__note">Future forecasts continue from this balance.</p>');
+  parts.push('<p class="cal-confirmed-tip__note">Reports before this point may be incomplete.</p>');
   parts.push("</div>");
   return `<div class="reports-risk-tip__inner">${parts.join("")}</div>`;
 }

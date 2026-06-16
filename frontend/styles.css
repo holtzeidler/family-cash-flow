@@ -28670,8 +28670,8 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
 }
 .cal-confirmed-tip--adjusted .cal-confirmed-tip__row--diff{
   margin-top: 2px;
-  padding-top: 6px;
-  border-top: 1px solid rgba(15, 23, 42, 0.82);
+  padding-top: 0;
+  border-top: none;
 }
 .cal-confirmed-tip--adjusted .cal-confirmed-tip__row--diff dt,
 .cal-confirmed-tip--adjusted .cal-confirmed-tip__row--diff dd{
