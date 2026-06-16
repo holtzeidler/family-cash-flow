@@ -5344,24 +5344,24 @@ function buildAdjustedBalanceTipHtml(dayBal) {
   if (bank == null) return "";
 
   const parts = [
-    '<div class="cal-confirmed-tip">',
+    '<div class="cal-confirmed-tip cal-confirmed-tip--adjusted">',
     '<div class="cal-confirmed-tip__head cal-confirmed-tip__head--adjusted">↺ Adjusted</div>',
   ];
   if (forecast != null) {
     const diff = bank - forecast;
     parts.push('<dl class="cal-confirmed-tip__rows">');
     parts.push(
-      `<div class="cal-confirmed-tip__row"><dt>Expected</dt><dd>$${escapeHtml(fmtMoney(forecast))}</dd></div>`,
+      `<div class="cal-confirmed-tip__row"><dt>Forecast</dt><dd>$${escapeHtml(fmtMoney(forecast))}</dd></div>`,
     );
     parts.push(
-      `<div class="cal-confirmed-tip__row"><dt>Actual</dt><dd>$${escapeHtml(fmtMoney(bank))}</dd></div>`,
+      `<div class="cal-confirmed-tip__row"><dt>Bank Balance</dt><dd>$${escapeHtml(fmtMoney(bank))}</dd></div>`,
     );
-    parts.push("</dl>");
     if (Math.abs(diff) >= 0.005) {
       parts.push(
-        `<p class="cal-confirmed-tip__diff-line">${escapeHtml(fmtSignedMoneyDiff(diff))}</p>`,
+        `<div class="cal-confirmed-tip__row cal-confirmed-tip__row--diff"><dt>Difference</dt><dd>${escapeHtml(fmtSignedMoneyDiff(diff))}</dd></div>`,
       );
     }
+    parts.push("</dl>");
   }
   parts.push('<p class="cal-confirmed-tip__note">Future forecasts use this balance.</p>');
   parts.push('<p class="cal-confirmed-tip__note">Historical reports may be incomplete.</p>');
@@ -5373,7 +5373,7 @@ function buildStartingPointTipHtml(_accountName) {
   const parts = [
     '<div class="cal-confirmed-tip">',
     `<div class="cal-confirmed-tip__head cal-confirmed-tip__head--starting">${CAL_STARTING_POINT_FLAG_SVG} Starting Point</div>`,
-    '<p class="cal-confirmed-tip__match">This is the initial balance used when the account was created.</p>',
+    '<p class="cal-confirmed-tip__match">This is the balance your forecast started from.</p>',
     "</div>",
   ];
   return `<div class="reports-risk-tip__inner">${parts.join("")}</div>`;
