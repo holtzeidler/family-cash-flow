@@ -5232,7 +5232,7 @@ function syncReconcileModalBalance(iso) {
       const diff = confirmed - projected;
       if (Math.abs(diff) < 0.005) {
         reconcileBreakdownInsight.textContent =
-          "Your bank balance matched the forecast. Historical reports are complete through this date.";
+          "Forecast matched your bank balance. Reports are complete through this date.";
         reconcileBreakdownInsight.hidden = false;
       } else {
         reconcileBreakdownInsight.textContent =
@@ -5317,7 +5317,7 @@ function buildReconciledBalanceTipHtml(dayBal) {
   const matched =
     forecast != null && bank != null && Math.abs(bank - forecast) < 0.005;
   if (matched) {
-    parts.push('<p class="cal-confirmed-tip__match">Your bank balance matched the forecast.</p>');
+    parts.push('<p class="cal-confirmed-tip__match">Forecast matched your bank balance.</p>');
   } else if (forecast != null && bank != null) {
     parts.push('<dl class="cal-confirmed-tip__rows">');
     parts.push(
@@ -5328,7 +5328,7 @@ function buildReconciledBalanceTipHtml(dayBal) {
     );
     parts.push("</dl>");
   }
-  parts.push('<p class="cal-confirmed-tip__note">Historical reports are complete through this date.</p>');
+  parts.push('<p class="cal-confirmed-tip__note">Reports are complete through this date.</p>');
   parts.push("</div>");
   return `<div class="reports-risk-tip__inner">${parts.join("")}</div>`;
 }
@@ -5359,7 +5359,7 @@ function buildAdjustedBalanceTipHtml(dayBal) {
     parts.push("</dl>");
     if (Math.abs(diff) >= 0.005) {
       parts.push(
-        `<p class="cal-confirmed-tip__diff-line">${escapeHtml(fmtSignedMoneyDiff(diff))} difference</p>`,
+        `<p class="cal-confirmed-tip__diff-line">${escapeHtml(fmtSignedMoneyDiff(diff))}</p>`,
       );
     }
   }
