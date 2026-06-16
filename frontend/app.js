@@ -182,7 +182,7 @@ async function api(path, method = "GET", body) {
     try {
       sessionStorage.removeItem(BW_API_ACCESS_TOKEN_KEY);
     } catch (_) {}
-    window.location.href = "./login.html";
+    window.location.href = "/login.html";
     return null;
   }
 
@@ -477,6 +477,8 @@ let state = {
   calendarExtraActualItems: [],
   calendarExtraExpectedItems: [],
   reconciledDates: new Set(),
+  verifiedBalances: new Map(),
+  forecastConfidence: null,
   monthDailyBalances: new Map(),
   calendarExpandedDays: new Set(),
   calendarDetailMode: "detailed",
@@ -913,6 +915,10 @@ function parseMoneyRangeField(raw) {
   if (!p.ok || p.empty) return null;
   const n = Number(p.num);
   return Number.isFinite(n) ? n : null;
+}
+
+function toMoneyNumber(raw) {
+  return parseMoneyRangeField(raw);
 }
 
 /** Always read fresh nodes — IDs are unique; use getElementById so inputs are found even if markup moves. */
@@ -1665,16 +1671,44 @@ if (txEditDate) {
   });
 }
 
-// Reconcile day modal
+// Check balance modal (reconcile) + separate verified balance modal
 const reconcileModal = document.getElementById("reconcileModal");
 const reconcileErr = document.getElementById("reconcileErr");
 const reconcileTitle = document.getElementById("reconcileTitle");
+const reconcileStatus = document.getElementById("reconcileStatus");
 const reconcileBalanceBlock = document.getElementById("reconcileBalanceBlock");
+const reconcileSimpleForecast = document.getElementById("reconcileSimpleForecast");
 const reconcileForecastBal = document.getElementById("reconcileForecastBal");
-const reconcileChecked = document.getElementById("reconcileChecked");
-const reconcileSaveBtn = document.getElementById("reconcileSaveBtn");
+const reconcileBreakdown = document.getElementById("reconcileBreakdown");
+const reconcileBreakdownForecast = document.getElementById("reconcileBreakdownForecast");
+const reconcileBreakdownConfirmed = document.getElementById("reconcileBreakdownConfirmed");
+const reconcileBreakdownDiff = document.getElementById("reconcileBreakdownDiff");
+const reconcileBreakdownInsight = document.getElementById("reconcileBreakdownInsight");
+const reconcileMarkBtn = document.getElementById("reconcileMarkBtn");
+const reconcileDifferentBtn = document.getElementById("reconcileDifferentBtn");
 const reconcileCancelBtn = document.getElementById("reconcileCancelBtn");
+const reconcileDeleteBtn = document.getElementById("reconcileDeleteBtn");
 let reconcileActiveDate = "";
+
+const verifiedBalanceModal = document.getElementById("verifiedBalanceModal");
+const verifiedBalanceErr = document.getElementById("verifiedBalanceErr");
+const verifiedBalanceTitle = document.getElementById("verifiedBalanceTitle");
+const verifiedBalanceDate = document.getElementById("verifiedBalanceDate");
+const verifiedBalanceAmount = document.getElementById("verifiedBalanceAmount");
+const verifiedBalancePreview = document.getElementById("verifiedBalancePreview");
+const verifiedBalanceForecastAmt = document.getElementById("verifiedBalanceForecastAmt");
+const verifiedBalanceVerifiedAmt = document.getElementById("verifiedBalanceVerifiedAmt");
+const verifiedBalanceDifference = document.getElementById("verifiedBalanceDifference");
+const verifiedBalanceGapNote = document.getElementById("verifiedBalanceGapNote");
+const verifiedBalanceAdjustedNotice = document.getElementById("verifiedBalanceAdjustedNotice");
+const verifiedBalanceSaveBtn = document.getElementById("verifiedBalanceSaveBtn");
+const verifiedBalanceCancelBtn = document.getElementById("verifiedBalanceCancelBtn");
+let verifiedBalancePreviewTimer = null;
+
+const forecastConfidenceCard = document.getElementById("forecastConfidenceCard");
+const forecastConfidenceDetail = document.getElementById("forecastConfidenceDetail");
+const forecastConfidenceHelper = document.getElementById("forecastConfidenceHelper");
+const forecastConfidenceVerifyBtn = document.getElementById("forecastConfidenceVerifyBtn");
 
 // Add transaction modal (one-time or recurring from calendar)
 const txAddModal = document.getElementById("txAddModal");
@@ -2565,6 +2599,7 @@ function finishBalanceThresholdSave({
   if (lowBalanceDebounceTimer) clearTimeout(lowBalanceDebounceTimer);
   lowBalanceDebounceTimer = null;
   void refreshLowBalanceAlert();
+  void refreshForecastConfidence();
   refreshCalendarCashInsights();
   if (reportsViewPanel && !reportsViewPanel.hidden && lastProjectionDailyForReports?.length > 1 && projectionChartCanvas) {
     lastCashInsightsForReports = buildCashInsightsForSurface({
@@ -3661,15 +3696,25 @@ function renderCategoryTotalsReport(data) {
   const mode = data.mode || "actual";
   const showEst = mode === "actual_plus_estimated";
   const asOf = data.as_of ? fmtDateMDY(data.as_of) : "—";
+  const warnings = Array.isArray(data.verified_balance_warnings) ? data.verified_balance_warnings : [];
   if (catReportSummary) {
     const rangeTxt = `${fmtDateMDY(data.start_date)} – ${fmtDateMDY(data.end_date)}`;
     catReportSummary.style.display = "block";
-    catReportSummary.textContent = `${rangeTxt} · Split at ${asOf} (UTC) for estimates · Mode: ${showEst ? "actual + future estimates" : "actual only"}`;
+    let summary = `${rangeTxt} · Split at ${asOf} (UTC) for estimates · Mode: ${showEst ? "actual + future estimates" : "actual only"}`;
+    if (warnings.length) {
+      summary += ` · ${warnings.length} adjusted-balance notice${warnings.length === 1 ? "" : "s"}`;
+    }
+    catReportSummary.textContent = summary;
   }
+
+  const warningHtml =
+    warnings.length > 0
+      ? `<div class="cat-report-verified-warning" role="status">${warnings.map((w) => `<p>${escapeHtml(w)}</p>`).join("")}</div>`
+      : "";
 
   const lines = data.lines || [];
   if (lines.length === 0) {
-    catReportTableWrap.innerHTML = '<p class="meta">No category activity in this range.</p>';
+    catReportTableWrap.innerHTML = `${warningHtml}<p class="meta">No category activity in this range.</p>`;
     return;
   }
 
@@ -3690,7 +3735,7 @@ function renderCategoryTotalsReport(data) {
     ? `<td class="num cat-report-est">${fmtMoney(nMoney(data.sum_income_estimated))}</td><td class="num cat-report-est">${fmtMoney(nMoney(data.sum_expense_estimated))}</td>`
     : "";
 
-  catReportTableWrap.innerHTML = `
+  catReportTableWrap.innerHTML = `${warningHtml}
     <table class="category-report-table">
       <thead><tr>
         <th>Category</th>
@@ -3865,6 +3910,7 @@ familySelect.addEventListener("change", async () => {
     }
   }
   void refreshLowBalanceAlert();
+  void refreshForecastConfidence();
 });
 
 const familyInviteBtn = document.getElementById("familyInviteBtn");
@@ -5099,20 +5145,107 @@ function bindTxAddModalDismiss() {
 }
 bindTxAddModalDismiss();
 
-function openReconcileModal(iso) {
-  if (!reconcileModal) return;
-  const d = normalizeIsoDate(iso) || iso;
-  if (alertIfDateBeforeStartingBalance(d)) return;
-  reconcileActiveDate = d;
-  if (reconcileTitle) {
-    reconcileTitle.textContent = reconcileActiveDate
-      ? `Reconcile forecast · ${fmtDateLongDisplay(reconcileActiveDate)}`
-      : "Reconcile forecast";
+function forecastBalanceForReconcileModal(iso) {
+  const row = iso && state.monthDailyBalances ? state.monthDailyBalances.get(iso) : null;
+  if (!row) return null;
+  if (row.verified && Number.isFinite(Number(row.projectedEnd))) return Number(row.projectedEnd);
+  if (Number.isFinite(Number(row.end))) return Number(row.end);
+  return null;
+}
+
+function isReconciledOnDate(iso) {
+  const d = normalizeIsoDate(iso);
+  return !!(d && state.reconciledDates && state.reconciledDates.has(d));
+}
+
+function syncReconcileModalActions(iso) {
+  const d = normalizeIsoDate(iso);
+  const isReconciled = isReconciledOnDate(d);
+  const isVerified = existingVerifiedBalanceOnDate(d);
+  const hasConfirmation = isReconciled || isVerified;
+  const canWrite = !state.viewOnly && state.activeFamilyAccessMode !== "view";
+
+  if (reconcileMarkBtn) {
+    reconcileMarkBtn.hidden = !canWrite || hasConfirmation;
   }
-  if (reconcileChecked) reconcileChecked.checked = state.reconciledDates?.has(reconcileActiveDate) || false;
+  if (reconcileDifferentBtn) {
+    reconcileDifferentBtn.hidden = !canWrite;
+    if (!reconcileDifferentBtn.hidden) {
+      reconcileDifferentBtn.textContent = isVerified
+        ? "Edit adjusted balance →"
+        : "Enter my actual balance →";
+    }
+  }
+  if (reconcileDeleteBtn) {
+    reconcileDeleteBtn.hidden = !(canWrite && hasConfirmation);
+    if (!reconcileDeleteBtn.hidden) reconcileDeleteBtn.textContent = "Undo Confirmation";
+  }
+}
+
+function syncReconcileModalBalance(iso) {
+  const d = normalizeIsoDate(iso);
+  const row = d && state.monthDailyBalances ? state.monthDailyBalances.get(d) : null;
+  const isVerified = existingVerifiedBalanceOnDate(d);
+  const isReconciled = isReconciledOnDate(d);
+  const hasConfirmation = isVerified || isReconciled;
+
+  if (reconcileStatus) {
+    if (hasConfirmation && d) {
+      const dateLabel = fmtMonthDayLong(d);
+      reconcileStatus.textContent = isVerified
+        ? `↺ Adjusted on ${dateLabel}`
+        : `✓ Reconciled on ${dateLabel}`;
+      reconcileStatus.hidden = false;
+    } else {
+      reconcileStatus.textContent = "";
+      reconcileStatus.hidden = true;
+    }
+  }
+
+  if (reconcileBreakdownInsight) {
+    reconcileBreakdownInsight.hidden = true;
+    reconcileBreakdownInsight.textContent = "";
+  }
+
+  const showBreakdown = !!(isVerified && row);
+  if (reconcileSimpleForecast) reconcileSimpleForecast.hidden = showBreakdown;
+  if (reconcileBreakdown) reconcileBreakdown.hidden = !showBreakdown;
+
+  if (showBreakdown) {
+    const projected = Number.isFinite(Number(row.projectedEnd)) ? Number(row.projectedEnd) : null;
+    const confirmed = Number.isFinite(Number(row.verifiedAmount))
+      ? Number(row.verifiedAmount)
+      : Number.isFinite(Number(row.end))
+        ? Number(row.end)
+        : null;
+    if (reconcileBreakdownForecast) {
+      reconcileBreakdownForecast.textContent = projected != null ? `$${fmtMoney(projected)}` : "—";
+    }
+    if (reconcileBreakdownConfirmed) {
+      reconcileBreakdownConfirmed.textContent = confirmed != null ? `$${fmtMoney(confirmed)}` : "—";
+    }
+    if (reconcileBreakdownDiff) {
+      reconcileBreakdownDiff.textContent =
+        projected != null && confirmed != null ? fmtSignedMoneyDiff(confirmed - projected) : "—";
+    }
+    if (reconcileBreakdownInsight && projected != null && confirmed != null) {
+      const diff = confirmed - projected;
+      if (Math.abs(diff) < 0.005) {
+        reconcileBreakdownInsight.textContent =
+          "Forecast matched your bank balance. Reports are complete through this date.";
+        reconcileBreakdownInsight.hidden = false;
+      } else {
+        reconcileBreakdownInsight.textContent =
+          "Future forecasts continue from this balance. Reports may not include skipped transactions.";
+        reconcileBreakdownInsight.hidden = false;
+      }
+    }
+    if (reconcileBalanceBlock) reconcileBalanceBlock.hidden = false;
+    return;
+  }
+
   if (reconcileBalanceBlock && reconcileForecastBal) {
-    const row = reconcileActiveDate && state.monthDailyBalances ? state.monthDailyBalances.get(reconcileActiveDate) : null;
-    const end = row && Number.isFinite(Number(row.end)) ? Number(row.end) : null;
+    const end = forecastBalanceForReconcileModal(d);
     if (end != null) {
       reconcileBalanceBlock.hidden = false;
       reconcileForecastBal.textContent = `$${fmtMoney(end)}`;
@@ -5121,7 +5254,21 @@ function openReconcileModal(iso) {
       reconcileForecastBal.textContent = "—";
     }
   }
+}
+
+function openReconcileModal(iso) {
+  if (!reconcileModal) return;
+  const d = normalizeIsoDate(iso) || iso;
+  if (alertIfDateBeforeStartingBalance(d)) return;
+  reconcileActiveDate = d;
+  if (reconcileTitle) {
+    reconcileTitle.textContent = reconcileActiveDate
+      ? `Confirm Balance · ${fmtDateLongDisplay(reconcileActiveDate)}`
+      : "Confirm Balance";
+  }
+  syncReconcileModalBalance(reconcileActiveDate);
   show(reconcileErr, "");
+  syncReconcileModalActions(reconcileActiveDate);
   reconcileModal.classList.add("modal-overlay--open");
   reconcileModal.setAttribute("aria-hidden", "false");
 }
@@ -5131,6 +5278,445 @@ function closeReconcileModal() {
   reconcileModal.classList.remove("modal-overlay--open");
   reconcileModal.setAttribute("aria-hidden", "true");
   reconcileActiveDate = "";
+}
+
+function fmtSignedMoneyDiff(n) {
+  const num = Number(n);
+  if (!Number.isFinite(num)) return "—";
+  const sign = num > 0 ? "+" : num < 0 ? "−" : "";
+  return `${sign}$${fmtMoney(Math.abs(num))}`;
+}
+
+function balanceMatchesForecast(entered, forecast) {
+  const amt = Number(entered);
+  const proj = Number(forecast);
+  return Number.isFinite(amt) && Number.isFinite(proj) && Math.abs(amt - proj) < 0.005;
+}
+
+function confirmedBalanceDiffCopy(diff) {
+  const n = Number(diff);
+  if (!Number.isFinite(n) || Math.abs(n) < 0.005) return "";
+  const amt = fmtMoney(Math.abs(n));
+  if (n > 0) return `Your balance was $${amt} higher than forecast.`;
+  return `Your balance was $${amt} lower than forecast.`;
+}
+
+function buildReconciledBalanceTipHtml(dayBal) {
+  if (!dayBal) return "";
+  const forecast = Number.isFinite(Number(dayBal.projectedEnd))
+    ? Number(dayBal.projectedEnd)
+    : Number.isFinite(Number(dayBal.end))
+      ? Number(dayBal.end)
+      : null;
+  const bank = Number.isFinite(Number(dayBal.verifiedAmount))
+    ? Number(dayBal.verifiedAmount)
+    : forecast;
+  if (forecast == null && bank == null) return "";
+
+  const parts = ['<div class="cal-confirmed-tip">', '<div class="cal-confirmed-tip__head cal-confirmed-tip__head--reconciled">✓ Reconciled</div>'];
+  const matched =
+    forecast != null && bank != null && Math.abs(bank - forecast) < 0.005;
+  if (matched) {
+    parts.push('<p class="cal-confirmed-tip__match">Forecast matched your bank balance.</p>');
+  } else if (forecast != null && bank != null) {
+    parts.push('<dl class="cal-confirmed-tip__rows">');
+    parts.push(
+      `<div class="cal-confirmed-tip__row"><dt>Forecast</dt><dd>$${escapeHtml(fmtMoney(forecast))}</dd></div>`,
+    );
+    parts.push(
+      `<div class="cal-confirmed-tip__row"><dt>Bank Balance</dt><dd>$${escapeHtml(fmtMoney(bank))}</dd></div>`,
+    );
+    parts.push("</dl>");
+  }
+  parts.push('<p class="cal-confirmed-tip__note">Reports are complete through this date.</p>');
+  parts.push("</div>");
+  return `<div class="reports-risk-tip__inner">${parts.join("")}</div>`;
+}
+
+function buildAdjustedBalanceTipHtml(dayBal) {
+  if (!dayBal || !dayBal.verified) return "";
+  const bank = Number.isFinite(Number(dayBal.verifiedAmount))
+    ? Number(dayBal.verifiedAmount)
+    : Number.isFinite(Number(dayBal.end))
+      ? Number(dayBal.end)
+      : null;
+  const forecast = Number.isFinite(Number(dayBal.projectedEnd)) ? Number(dayBal.projectedEnd) : null;
+  if (bank == null) return "";
+
+  const parts = [
+    '<div class="cal-confirmed-tip cal-confirmed-tip--adjusted">',
+    '<div class="cal-confirmed-tip__head cal-confirmed-tip__head--adjusted">↺ Adjusted</div>',
+  ];
+  if (forecast != null) {
+    const diff = bank - forecast;
+    parts.push('<dl class="cal-confirmed-tip__rows">');
+    parts.push(
+      `<div class="cal-confirmed-tip__row"><dt>Forecast</dt><dd>$${escapeHtml(fmtMoney(forecast))}</dd></div>`,
+    );
+    parts.push(
+      `<div class="cal-confirmed-tip__row"><dt>Bank Balance</dt><dd>$${escapeHtml(fmtMoney(bank))}</dd></div>`,
+    );
+    if (Math.abs(diff) >= 0.005) {
+      parts.push(
+        `<div class="cal-confirmed-tip__row cal-confirmed-tip__row--diff"><dt>Difference</dt><dd>${escapeHtml(fmtSignedMoneyDiff(diff))}</dd></div>`,
+      );
+    }
+    parts.push("</dl>");
+  }
+  parts.push('<p class="cal-confirmed-tip__note">Future forecasts continue from this balance.</p>');
+  parts.push('<p class="cal-confirmed-tip__note">Reports before this point may be incomplete.</p>');
+  parts.push("</div>");
+  return `<div class="reports-risk-tip__inner">${parts.join("")}</div>`;
+}
+
+function buildStartingPointTipHtml(_accountName) {
+  const parts = [
+    '<div class="cal-confirmed-tip">',
+    `<div class="cal-confirmed-tip__head cal-confirmed-tip__head--starting">${CAL_STARTING_POINT_FLAG_SVG} Starting Point</div>`,
+    '<p class="cal-confirmed-tip__match">This is the balance your forecast started from.</p>',
+    "</div>",
+  ];
+  return `<div class="reports-risk-tip__inner">${parts.join("")}</div>`;
+}
+
+function openVerifiedBalanceModal(iso) {
+  if (!verifiedBalanceModal) return;
+  const d = normalizeIsoDate(iso) || toISODate(new Date());
+  if (alertIfDateBeforeStartingBalance(d)) return;
+  if (verifiedBalanceDate) {
+    verifiedBalanceDate.value = d;
+    const minD = getFamilyEarliestStartingBalanceIso();
+    if (minD) verifiedBalanceDate.min = minD;
+  }
+  const existing = state.verifiedBalances?.get(d);
+  if (verifiedBalanceAmount) {
+    verifiedBalanceAmount.value =
+      existing && Number.isFinite(Number(existing.amount)) ? fmtMoney(Number(existing.amount)) : "";
+  }
+  if (verifiedBalanceTitle) {
+    verifiedBalanceTitle.textContent = "Confirm Current Balance";
+  }
+  show(verifiedBalanceErr, "");
+  scheduleVerifiedBalancePreview();
+  verifiedBalanceModal.classList.add("modal-overlay--open");
+  verifiedBalanceModal.setAttribute("aria-hidden", "false");
+  verifiedBalanceAmount?.focus();
+}
+
+function existingVerifiedBalanceOnDate(iso) {
+  return !!(state.verifiedBalances && state.verifiedBalances.has(iso));
+}
+
+function closeVerifiedBalanceModal() {
+  if (!verifiedBalanceModal) return;
+  verifiedBalanceModal.classList.remove("modal-overlay--open");
+  verifiedBalanceModal.setAttribute("aria-hidden", "true");
+  if (verifiedBalancePreviewTimer) {
+    clearTimeout(verifiedBalancePreviewTimer);
+    verifiedBalancePreviewTimer = null;
+  }
+  if (verifiedBalanceAmount) verifiedBalanceAmount.value = "";
+  if (verifiedBalancePreview) verifiedBalancePreview.hidden = true;
+  if (verifiedBalanceGapNote) verifiedBalanceGapNote.hidden = true;
+  if (verifiedBalanceAdjustedNotice) verifiedBalanceAdjustedNotice.hidden = true;
+}
+
+async function scheduleVerifiedBalancePreview() {
+  if (verifiedBalancePreviewTimer) clearTimeout(verifiedBalancePreviewTimer);
+  verifiedBalancePreviewTimer = setTimeout(() => {
+    verifiedBalancePreviewTimer = null;
+    void refreshVerifiedBalancePreview();
+  }, 280);
+}
+
+async function refreshVerifiedBalancePreview() {
+  if (!verifiedBalancePreview || !state.activeFamilyId) return;
+  const iso = normalizeIsoDate(verifiedBalanceDate?.value || "");
+  const amt = toMoneyNumber(verifiedBalanceAmount?.value || "");
+  if (!iso || amt == null) {
+    verifiedBalancePreview.hidden = true;
+    if (verifiedBalanceGapNote) verifiedBalanceGapNote.hidden = true;
+    if (verifiedBalanceAdjustedNotice) verifiedBalanceAdjustedNotice.hidden = true;
+    return;
+  }
+  try {
+    const data = await api(
+      `/api/families/${state.activeFamilyId}/verified-balances/preview?date=${encodeURIComponent(iso)}&amount=${encodeURIComponent(String(amt))}`,
+      "GET",
+    );
+    verifiedBalancePreview.hidden = false;
+    const projected = Number(data?.projected_amount);
+    if (verifiedBalanceForecastAmt) {
+      verifiedBalanceForecastAmt.textContent = Number.isFinite(projected)
+        ? `$${fmtMoney(projected)}`
+        : "—";
+    }
+    if (verifiedBalanceVerifiedAmt) {
+      verifiedBalanceVerifiedAmt.textContent = `$${fmtMoney(amt)}`;
+    }
+    if (verifiedBalanceDifference) {
+      verifiedBalanceDifference.textContent = fmtSignedMoneyDiff(data?.unexplained_difference);
+    }
+    const matches = balanceMatchesForecast(amt, projected);
+    if (verifiedBalanceAdjustedNotice) {
+      verifiedBalanceAdjustedNotice.hidden = matches || !Number.isFinite(projected);
+    }
+    if (verifiedBalanceSaveBtn) {
+      verifiedBalanceSaveBtn.textContent = "Confirm Balance";
+    }
+    if (verifiedBalanceGapNote) {
+      const gs = normalizeIsoDate(data?.gap_start);
+      const ge = normalizeIsoDate(data?.gap_end);
+      if (gs && ge && !matches) {
+        verifiedBalanceGapNote.hidden = false;
+        verifiedBalanceGapNote.textContent = `Possible missing transaction gap: ${fmtDateMDY(gs)} – ${fmtDateMDY(ge)}. You can add missing transactions or keep using this adjusted balance.`;
+      } else {
+        verifiedBalanceGapNote.hidden = true;
+        verifiedBalanceGapNote.textContent = "";
+      }
+    }
+  } catch (_) {
+    verifiedBalancePreview.hidden = true;
+  }
+}
+
+async function saveReconcileMark() {
+  show(reconcileErr, "");
+  if (!state.activeFamilyId) throw new Error("Choose a family first");
+  const iso = normalizeIsoDate(reconcileActiveDate);
+  if (!iso) throw new Error("Invalid date");
+  const month = (calendarMonth?.value || monthInput?.value) || iso.slice(0, 7);
+  await api(`/api/families/${state.activeFamilyId}/reconciled-days`, "POST", {
+    date: iso,
+    reconciled: true,
+  });
+  if (existingVerifiedBalanceOnDate(iso)) {
+    await api(`/api/families/${state.activeFamilyId}/verified-balances/${encodeURIComponent(iso)}`, "DELETE");
+    await loadVerifiedBalances(month);
+    invalidateLowBalanceAlertCache();
+    await loadCalendarMonthDaily();
+  }
+  await loadReconciledDays(month);
+  closeReconcileModal();
+  renderCalendar();
+  await refreshForecastConfidence();
+  if (typeof showBwToast === "function") showBwToast("✓ Reconciled");
+  bwDispatchMilestone("first-reconcile");
+}
+
+async function removeReconcileConfirmation() {
+  show(reconcileErr, "");
+  if (!state.activeFamilyId) throw new Error("Choose a family first");
+  const iso = normalizeIsoDate(reconcileActiveDate);
+  if (!iso) throw new Error("Invalid date");
+  const isVerified = existingVerifiedBalanceOnDate(iso);
+  const isReconciled = isReconciledOnDate(iso);
+  if (!isVerified && !isReconciled) return;
+
+  const ok = await bwConfirm({
+    title: "Undo this balance confirmation?",
+    body: "Future forecasts will return to calculated balances based on your transactions. This will not delete any transactions.",
+    confirmLabel: "Undo Confirmation",
+    danger: true,
+  });
+  if (!ok) return;
+
+  const month = (calendarMonth?.value || monthInput?.value) || iso.slice(0, 7);
+  if (isVerified) {
+    await api(`/api/families/${state.activeFamilyId}/verified-balances/${encodeURIComponent(iso)}`, "DELETE");
+    await loadVerifiedBalances(month);
+    invalidateLowBalanceAlertCache();
+    await loadCalendarMonthDaily();
+  }
+  if (isReconciled) {
+    await api(`/api/families/${state.activeFamilyId}/reconciled-days`, "POST", {
+      date: iso,
+      reconciled: false,
+    });
+    await loadReconciledDays(month);
+  }
+  closeReconcileModal();
+  renderCalendar();
+  await refreshForecastConfidence();
+  if (typeof showBwToast === "function") {
+    showBwToast("✓ Confirmation undone");
+  }
+}
+
+async function saveVerifiedBalance() {
+  show(verifiedBalanceErr, "");
+  if (!state.activeFamilyId) throw new Error("Choose a family first");
+  const iso = normalizeIsoDate(verifiedBalanceDate?.value || "");
+  const amt = toMoneyNumber(verifiedBalanceAmount?.value || "");
+  if (!iso) throw new Error("Choose a date");
+  if (amt == null) throw new Error("Enter your current bank balance");
+
+  const preview = await api(
+    `/api/families/${state.activeFamilyId}/verified-balances/preview?date=${encodeURIComponent(iso)}&amount=${encodeURIComponent(String(amt))}`,
+    "GET",
+  );
+  const projected = Number(preview?.projected_amount);
+  const matches = balanceMatchesForecast(amt, projected);
+  const month = (calendarMonth?.value || monthInput?.value) || iso.slice(0, 7);
+
+  if (matches) {
+    if (existingVerifiedBalanceOnDate(iso)) {
+      await api(`/api/families/${state.activeFamilyId}/verified-balances/${encodeURIComponent(iso)}`, "DELETE");
+      await loadVerifiedBalances(month);
+      invalidateLowBalanceAlertCache();
+      await loadCalendarMonthDaily();
+    }
+    await api(`/api/families/${state.activeFamilyId}/reconciled-days`, "POST", {
+      date: iso,
+      reconciled: true,
+    });
+    await loadReconciledDays(month);
+    if (typeof showBwToast === "function") showBwToast("✓ Reconciled");
+  } else {
+    await api(`/api/families/${state.activeFamilyId}/verified-balances`, "POST", {
+      date: iso,
+      amount: amt,
+    });
+    await api(`/api/families/${state.activeFamilyId}/reconciled-days`, "POST", {
+      date: iso,
+      reconciled: false,
+    });
+    await loadVerifiedBalances(month);
+    invalidateLowBalanceAlertCache();
+    await loadCalendarMonthDaily();
+    await loadReconciledDays(month);
+    if (typeof showBwToast === "function") showBwToast("↺ Adjusted balance saved");
+  }
+
+  closeVerifiedBalanceModal();
+  renderCalendar();
+  await refreshLowBalanceAlert();
+  await refreshForecastConfidence();
+}
+
+async function loadVerifiedBalances(month) {
+  if (!state.activeFamilyId) return;
+  if (!month) return;
+  const cur = String(month).trim();
+  const prev = shiftMonthStr(cur, -1);
+  const next = shiftMonthStr(cur, 1);
+  const months = [cur, prev, next].filter(Boolean);
+  const merged = new Map();
+  try {
+    const results = await Promise.all(
+      months.map((m) =>
+        api(`/api/families/${state.activeFamilyId}/verified-balances?month=${encodeURIComponent(m)}`, "GET"),
+      ),
+    );
+    for (const data of results) {
+      const items = data?.items || [];
+      for (const it of items) {
+        const iso = normalizeIsoDate(it.date);
+        if (!iso) continue;
+        merged.set(iso, {
+          amount: Number(it.amount),
+          projected_amount: it.projected_amount != null ? Number(it.projected_amount) : null,
+          unexplained_difference:
+            it.unexplained_difference != null ? Number(it.unexplained_difference) : null,
+        });
+      }
+    }
+    state.verifiedBalances = merged;
+  } catch (_) {
+    state.verifiedBalances = new Map();
+  }
+}
+
+function lastBalanceCheckTier(days) {
+  if (days == null) return "none";
+  const n = Number(days);
+  if (!Number.isFinite(n) || n < 0) return "none";
+  if (n >= 30) return "stale";
+  return "fresh";
+}
+
+function fmtMonthDayLong(raw) {
+  const iso = normalizeIsoDate(raw) || "";
+  if (!iso) return "";
+  const y = Number(iso.slice(0, 4));
+  const m = Number(iso.slice(5, 7));
+  const d = Number(iso.slice(8, 10));
+  if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return "";
+  const dt = new Date(y, m - 1, d, 12, 0, 0, 0);
+  return dt.toLocaleDateString("en-US", { month: "long", day: "numeric" });
+}
+
+function lastBalanceCheckPrimaryLine(days, confirmedDateIso) {
+  if (days == null) return "";
+  const n = Number(days);
+  if (!Number.isFinite(n) || n < 0) return "";
+  if (n === 0) return "✓ Today";
+  const ago = n === 1 ? "1 day ago" : `${n} days ago`;
+  const dateLabel = fmtMonthDayLong(confirmedDateIso);
+  if (dateLabel) return `✓ ${dateLabel} · ${ago}`;
+  return `✓ ${ago}`;
+}
+
+function applyForecastConfidenceUi(data) {
+  const canWrite = !state.viewOnly;
+  if (!forecastConfidenceCard || !state.activeFamilyId) {
+    if (forecastConfidenceCard) forecastConfidenceCard.hidden = true;
+    return;
+  }
+  const level = String(data?.confidence_level || "unknown");
+  if (level === "unknown") {
+    forecastConfidenceCard.hidden = true;
+    return;
+  }
+
+  const days = data?.days_since_confirmed;
+  const confirmedDate = data?.last_confirmed_balance_date;
+  const tier = lastBalanceCheckTier(days);
+
+  forecastConfidenceCard.hidden = false;
+  forecastConfidenceCard.className = `forecast-confidence forecast-confidence--${tier}`;
+
+  let detail = "";
+  let helper = "";
+  let showCta = false;
+  const staleHelper = "Your forecast may be less accurate until you confirm your balance.";
+
+  if (tier === "none") {
+    helper = staleHelper;
+    showCta = canWrite;
+  } else if (tier === "fresh") {
+    detail = lastBalanceCheckPrimaryLine(days, confirmedDate);
+  } else if (tier === "stale") {
+    detail = lastBalanceCheckPrimaryLine(days, confirmedDate);
+    helper = staleHelper;
+    showCta = !!data?.show_verify_cta && canWrite;
+  }
+
+  if (forecastConfidenceDetail) forecastConfidenceDetail.textContent = detail;
+  if (forecastConfidenceHelper) {
+    forecastConfidenceHelper.textContent = helper;
+    forecastConfidenceHelper.hidden = !helper;
+  }
+  if (forecastConfidenceVerifyBtn) {
+    forecastConfidenceVerifyBtn.hidden = !showCta;
+    forecastConfidenceVerifyBtn.textContent = "Confirm My Balance";
+  }
+}
+
+async function refreshForecastConfidence() {
+  if (!forecastConfidenceCard || !state.activeFamilyId) {
+    state.forecastConfidence = null;
+    if (forecastConfidenceCard) forecastConfidenceCard.hidden = true;
+    return;
+  }
+  try {
+    const data = await api(`/api/families/${state.activeFamilyId}/forecast-confidence`, "GET");
+    state.forecastConfidence = data || null;
+    applyForecastConfidenceUi(data);
+  } catch (_) {
+    state.forecastConfidence = null;
+    if (forecastConfidenceCard) forecastConfidenceCard.hidden = true;
+  }
 }
 
 if (txEditSave) {
@@ -5302,6 +5888,7 @@ document.addEventListener("keydown", (e) => {
 });
 
 document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && verifiedBalanceModal?.classList.contains("modal-overlay--open")) closeVerifiedBalanceModal();
   if (e.key === "Escape" && reconcileModal?.classList.contains("modal-overlay--open")) closeReconcileModal();
 });
 
@@ -5434,36 +6021,37 @@ async function openCalendarExpectedFromLine(expectedLine) {
   return true;
 }
 
+const CAL_STARTING_POINT_FLAG_SVG =
+  '<svg class="cal-starting-point-flag" viewBox="0 0 12 14" width="10" height="12" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M2 1.25v11.5" stroke="currentColor" stroke-width="1.35" stroke-linecap="round"/><path d="M2 2.75 9.5 6.25 2 9.75V2.75Z" fill="currentColor"/></svg>';
+
+function buildCalBalanceStatusPill(type, opts = {}) {
+  if (type === "adjusted") {
+    return '<span class="cal-balance-status-pill cal-balance-status-pill--adjusted"><span class="cal-balance-status-pill__icon" aria-hidden="true">↺</span> Adjusted</span>';
+  }
+  if (type === "reconciled") {
+    return '<span class="cal-balance-status-pill cal-balance-status-pill--reconciled"><span class="cal-balance-status-pill__icon" aria-hidden="true">✓</span> Reconciled</span>';
+  }
+  if (type === "starting") {
+    const accountId = opts.accountId != null ? String(opts.accountId) : "";
+    const extra = accountId
+      ? ` data-account-id="${escapeHtml(accountId)}" role="button" tabindex="0" aria-label="Edit starting point account"`
+      : "";
+    return `<span class="cal-balance-status-pill cal-balance-status-pill--starting"${extra}><span class="cal-balance-status-pill__icon" aria-hidden="true">${CAL_STARTING_POINT_FLAG_SVG}</span> Starting Point</span>`;
+  }
+  return "";
+}
+
 function appendCalendarDayStartBalanceLine(row, parentEl, iso) {
   const line = document.createElement("div");
-  line.className = "cal-day-tx-line cal-day-tx-line--start-balance";
+  line.className = "cal-start-milestone";
   line.dataset.accountId = String(row.account_id);
   line.setAttribute("role", "button");
   line.setAttribute("tabindex", "0");
-  line.title = "Edit account starting balance";
+  line.title = "";
   const acctLabel = row.account_name ? String(row.account_name).trim() : "account";
-  line.setAttribute("aria-label", `Edit starting balance for ${acctLabel}`);
-
-  const labelSpan = document.createElement("span");
-  labelSpan.className = "cal-tx-label";
-  labelSpan.textContent = "Starting Balance ";
-
-  const labelWrap = document.createElement("span");
-  labelWrap.className = "cal-tx-label-wrap";
-  const anchor = document.createElement("span");
-  anchor.className = "cal-tx-start-anchor";
-  anchor.setAttribute("aria-hidden", "true");
-  anchor.innerHTML =
-    '<svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 18h14M7 13h10M9 8h6"/></svg>';
-  labelWrap.appendChild(anchor);
-  labelWrap.appendChild(labelSpan);
-
-  const amtSpan = document.createElement("span");
-  amtSpan.className = "cal-amt";
-  amtSpan.textContent = `$${fmtMoney(row.amount)}`;
-
-  line.appendChild(labelWrap);
-  line.appendChild(amtSpan);
+  line.setAttribute("aria-label", `Starting Point for ${acctLabel}`);
+  line.innerHTML =
+    `<span class="cal-balance-status-pill cal-balance-status-pill--starting"><span class="cal-balance-status-pill__icon" aria-hidden="true">${CAL_STARTING_POINT_FLAG_SVG}</span> Starting Point</span>`;
 
   const openStartBalEdit = (e) => {
     if (e.type === "keydown" && e.key !== "Enter" && e.key !== " ") return;
@@ -5476,6 +6064,8 @@ function appendCalendarDayStartBalanceLine(row, parentEl, iso) {
   };
   line.addEventListener("click", openStartBalEdit);
   line.addEventListener("keydown", openStartBalEdit);
+  const tipHtml = buildStartingPointTipHtml(acctLabel);
+  if (tipHtml) bindRiskPressureCellHover(line, line, tipHtml);
   parentEl.appendChild(line);
 }
 
@@ -5483,15 +6073,19 @@ function shouldOpenReconcileFromCalendarClick(target, cell) {
   if (!target || !cell) return false;
   if (cell.classList.contains("cal-cell--before-start")) return false;
   if (cell.classList.contains("cal-cell--out")) return false;
-  return !!target.closest(".cal-daynum");
+  if (state.viewOnly || state.activeFamilyAccessMode === "view") return false;
+  if (target.closest(".cal-balance-status-pill--starting")) return false;
+  return !!target.closest(".cal-ledger-metrics.cal-day-balance-hit");
 }
 
 function shouldOpenAddTxFromCalendarClick(target, cell) {
   if (!target || !cell) return false;
   if (cell.classList.contains("cal-cell--before-start")) return false;
   if (shouldOpenReconcileFromCalendarClick(target, cell)) return false;
-  if (target.closest(".cal-day-reconcile-btn")) return false;
+  if (target.closest(".cal-daynum")) return false;
+  if (target.closest(".cal-ledger-metrics")) return false;
   if (target.closest(".cal-day-tx-line--expected")) return false;
+  if (target.closest(".cal-day-start-balance .cal-start-milestone")) return false;
   if (target.closest(".cal-day-start-balance .cal-day-tx-line--start-balance")) return false;
   if (target.closest(".cal-tx-part")) return false;
   if (target.closest(".cal-day-more")) return false;
@@ -5512,6 +6106,43 @@ function openCalendarDayAddTransaction(iso, e) {
   }
   if (alertIfDateBeforeStartingBalance(iso)) return;
   openTxAddModal({ date: iso });
+}
+
+function bindCalendarDayBalanceHit(metricsEl, iso, { isReconciled, dayBalVerified, isOutOfMonth, dayBal, hasStartingPoint, startingAccountName }) {
+  if (!metricsEl || !iso) return;
+  if (isOutOfMonth || state.viewOnly || state.activeFamilyAccessMode === "view") {
+    metricsEl.classList.remove("cal-day-balance-hit");
+    metricsEl.removeAttribute("aria-label");
+    metricsEl.removeAttribute("title");
+    return;
+  }
+  metricsEl.classList.add("cal-day-balance-hit");
+  metricsEl.removeAttribute("title");
+  const label = fmtDateMDY(iso);
+  metricsEl.setAttribute("aria-label", label ? `Confirm balance for ${label}` : "Confirm balance");
+
+  if (dayBalVerified && dayBal) {
+    const cell = metricsEl.closest(".cal-cell");
+    const html = buildAdjustedBalanceTipHtml(dayBal);
+    if (cell && html) bindRiskPressureCellHover(cell, metricsEl, html);
+    return;
+  }
+
+  if (isReconciled && dayBal) {
+    const cell = metricsEl.closest(".cal-cell");
+    const html = buildReconciledBalanceTipHtml(dayBal);
+    if (cell && html) bindRiskPressureCellHover(cell, metricsEl, html);
+    return;
+  }
+
+  if (hasStartingPoint) {
+    const cell = metricsEl.closest(".cal-cell");
+    const html = buildStartingPointTipHtml(startingAccountName);
+    if (cell && html) bindRiskPressureCellHover(cell, metricsEl, html);
+    return;
+  }
+
+  metricsEl.title = "Confirm Balance";
 }
 
 function bindCalendarCellAddTxClick(cell, iso) {
@@ -5544,7 +6175,18 @@ function handleCalendarPanelClick(e) {
     return;
   }
 
-  const startBalLine = e.target.closest(".cal-day-start-balance .cal-day-tx-line--start-balance");
+  const startBalPill = e.target.closest(".cal-ledger-metrics .cal-balance-status-pill--starting");
+  if (startBalPill && grid.contains(startBalPill)) {
+    e.preventDefault();
+    e.stopPropagation();
+    const aid = startBalPill.dataset.accountId;
+    if (!openAccountEditModalForAccountId(aid)) {
+      window.alert("Could not open this account. Try refreshing the page.");
+    }
+    return;
+  }
+
+  const startBalLine = e.target.closest(".cal-day-start-balance .cal-start-milestone, .cal-day-start-balance .cal-day-tx-line--start-balance");
   if (startBalLine && grid.contains(startBalLine)) {
     e.preventDefault();
     e.stopPropagation();
@@ -6101,6 +6743,21 @@ function tmCountDaysBelowFloorInRange(startIso, endIso) {
     if (endNum < floor) n++;
   }
   return n;
+}
+
+function tmLatestBalanceCheckIsoBefore(endIso) {
+  const reconciled = tmLatestReconciledIsoBefore(endIso);
+  const vb = state.verifiedBalances;
+  let verifiedBest = "";
+  if (vb && vb.size && endIso) {
+    for (const iso of vb.keys()) {
+      if (!iso || iso > endIso) continue;
+      if (!verifiedBest || iso > verifiedBest) verifiedBest = iso;
+    }
+  }
+  if (!reconciled) return verifiedBest;
+  if (!verifiedBest) return reconciled;
+  return reconciled > verifiedBest ? reconciled : verifiedBest;
 }
 
 function tmLatestReconciledIsoBefore(endIso) {
@@ -10621,29 +11278,59 @@ if (expectedDeleteFutureBtn) {
   expectedDeleteFutureBtn.addEventListener("click", () => runExpectedDeleteAction("future"));
 }
 
-if (reconcileSaveBtn) {
-  reconcileSaveBtn.addEventListener("click", async () => {
+if (reconcileMarkBtn) {
+  reconcileMarkBtn.addEventListener("click", async () => {
     try {
-      show(reconcileErr, "");
-      if (!state.activeFamilyId) throw new Error("Choose a family first");
-      const iso = normalizeIsoDate(reconcileActiveDate);
-      if (!iso) throw new Error("Invalid date");
-      const month = (calendarMonth?.value || monthInput?.value) || iso.slice(0, 7);
-      const nowReconciled = !!reconcileChecked?.checked;
-      await api(`/api/families/${state.activeFamilyId}/reconciled-days`, "POST", {
-        date: iso,
-        reconciled: nowReconciled,
-      });
-      await loadReconciledDays(month);
-      closeReconcileModal();
-      renderCalendar();
-      if (typeof showBwToast === "function") {
-        showBwToast(nowReconciled ? "✓ Forecast reconciled" : "Forecast reconciliation cleared");
-      }
-      if (nowReconciled) bwDispatchMilestone("first-reconcile");
+      await saveReconcileMark();
     } catch (e) {
       show(reconcileErr, e.message || "Failed to save");
     }
+  });
+}
+if (reconcileDifferentBtn) {
+  reconcileDifferentBtn.addEventListener("click", () => {
+    const iso = normalizeIsoDate(reconcileActiveDate) || reconcileActiveDate;
+    closeReconcileModal();
+    openVerifiedBalanceModal(iso);
+  });
+}
+if (reconcileCancelBtn) {
+  reconcileCancelBtn.addEventListener("click", () => closeReconcileModal());
+}
+if (reconcileDeleteBtn) {
+  reconcileDeleteBtn.addEventListener("click", async () => {
+    try {
+      await removeReconcileConfirmation();
+    } catch (e) {
+      show(reconcileErr, e.message || "Failed to remove");
+    }
+  });
+}
+
+if (forecastConfidenceVerifyBtn) {
+  forecastConfidenceVerifyBtn.addEventListener("click", () => openVerifiedBalanceModal(toISODate(new Date())));
+}
+if (verifiedBalanceCancelBtn) {
+  verifiedBalanceCancelBtn.addEventListener("click", () => closeVerifiedBalanceModal());
+}
+if (verifiedBalanceSaveBtn) {
+  verifiedBalanceSaveBtn.addEventListener("click", async () => {
+    try {
+      await saveVerifiedBalance();
+    } catch (e) {
+      show(verifiedBalanceErr, e.message || "Failed to save balance");
+    }
+  });
+}
+if (verifiedBalanceDate) {
+  verifiedBalanceDate.addEventListener("change", () => scheduleVerifiedBalancePreview());
+}
+if (verifiedBalanceAmount) {
+  verifiedBalanceAmount.addEventListener("input", () => scheduleVerifiedBalancePreview());
+}
+if (verifiedBalanceModal) {
+  verifiedBalanceModal.addEventListener("click", (e) => {
+    if (e.target === verifiedBalanceModal) closeVerifiedBalanceModal();
   });
 }
 
@@ -12013,7 +12700,7 @@ function renderSidebarPendingTransactionsForMonth() {
     lead.textContent = "You're all caught up";
     const sub = document.createElement("p");
     sub.className = "sidebar-pending-empty-msg sidebar-pending-empty-msg--sub";
-    sub.textContent = "Everything looks categorized · No pending transaction reviews";
+    sub.textContent = "✓ Everything is up to date";
     emptyWrap.append(lead, sub);
     sidebarPendingTxList.appendChild(emptyWrap);
     return;
@@ -12123,6 +12810,9 @@ async function loadCalendarMonthDaily() {
           start: Number.isFinite(start) ? start : 0,
           txNet: Number.isFinite(txNet) ? txNet : 0,
           end: Number.isFinite(end) ? end : 0,
+          verified: !!row.verified,
+          verifiedAmount: row.verified_amount != null ? Number(row.verified_amount) : null,
+          projectedEnd: row.projected_end != null ? Number(row.projected_end) : null,
         });
       }
       // Fill visible "wrap" days using the same authoritative API (prev/next month),
@@ -12147,6 +12837,9 @@ async function loadCalendarMonthDaily() {
             start: Number.isFinite(start) ? start : 0,
             txNet: Number.isFinite(txNet) ? txNet : 0,
             end: Number.isFinite(end) ? end : 0,
+            verified: !!row.verified,
+            verifiedAmount: row.verified_amount != null ? Number(row.verified_amount) : null,
+            projectedEnd: row.projected_end != null ? Number(row.projected_end) : null,
           });
         }
       }
@@ -12195,6 +12888,7 @@ async function loadMonthAndCalendar() {
     state.calendarExtraExpectedItems = [];
     state.monthDailyBalances = new Map();
     state.reconciledDates = new Set();
+    state.verifiedBalances = new Map();
     renderCalendar();
 
     if (!state.activeFamilyId) {
@@ -12211,9 +12905,11 @@ async function loadMonthAndCalendar() {
     renderMonthSummaryTotalsFromState();
     await loadCalendarExtras();
     await loadReconciledDays(getCalendarViewYm());
+    await loadVerifiedBalances(getCalendarViewYm());
     await loadCalendarMonthDaily();
     renderCalendar();
     await refreshLowBalanceAlert();
+    await refreshForecastConfidence();
   } catch (e) {
     show(calendarErr, e.message || "Failed to load calendar");
   } finally {
@@ -12315,8 +13011,18 @@ function computeCalendarVisibleDailyBalancesClient() {
     if (mode === "actual") txNet = actualByDate.get(iso) || 0;
     else if (mode === "expected") txNet = expectedByDate.get(iso) || 0;
     else txNet = (actualByDate.get(iso) || 0) + (expectedByDate.get(iso) || 0);
-    const dayEnd = dayStart + txNet;
-    out.set(iso, { start: dayStart, txNet, end: dayEnd });
+    const calculatedEnd = dayStart + txNet;
+    const vb = state.verifiedBalances?.get(iso);
+    const verified = vb && Number.isFinite(Number(vb.amount));
+    const dayEnd = verified ? Number(vb.amount) : calculatedEnd;
+    out.set(iso, {
+      start: dayStart,
+      txNet,
+      end: dayEnd,
+      verified: !!verified,
+      verifiedAmount: verified ? dayEnd : null,
+      projectedEnd: verified ? calculatedEnd : null,
+    });
     carry = dayEnd;
   }
 
@@ -12927,14 +13633,9 @@ function renderCalendar() {
     const isToday = iso === todayIso;
     const isPast = iso < todayIso;
     const isReconciled = state.reconciledDates && state.reconciledDates.has(iso);
+    const isVerifiedBalance = !!(state.verifiedBalances && state.verifiedBalances.has(iso));
     cell.innerHTML = `
-      <div class="cal-daynum">${isReconciled ? `
-        <span class="cal-reconciled-mark" title="Reconciled" aria-label="Reconciled">
-          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-            <circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" stroke-width="1.65"></circle>
-            <path d="M8 12.5l2.6 2.6L16.5 9.2" fill="none" stroke="currentColor" stroke-width="2.35" stroke-linecap="round" stroke-linejoin="round"></path>
-          </svg>
-        </span>` : ""}<span class="cal-daynum-num${isToday ? " is-today" : ""}">${dObj.getDate()}</span></div>
+      <div class="cal-daynum"><span class="cal-daynum-num${isToday ? " is-today" : ""}">${dObj.getDate()}</span></div>
       <div class="cal-cell-fill"></div>
       <div class="cal-cell-stack">
         <div class="cal-forecast-note" hidden></div>
@@ -12945,6 +13646,7 @@ function renderCalendar() {
     `;
     if (isOutOfMonth) cell.classList.add("cal-cell--out");
     if (isReconciled && !isOutOfMonth) cell.classList.add("cal-cell--reconciled");
+    if (isVerifiedBalance && !isOutOfMonth) cell.classList.add("cal-cell--adjusted-balance");
     // In-month "past" gray only when we have no starting-balance date; otherwise only
     // cal-cell--before-start tints days before the anchor (days on/after stay white).
     if (!isOutOfMonth && isPast && !earliestStartIso) cell.classList.add("cal-cell--past");
@@ -12960,21 +13662,6 @@ function renderCalendar() {
         month: "short",
         day: "numeric",
       });
-      if (!isBeforeStart && !isOutOfMonth) {
-        const reconcileBtn = document.createElement("button");
-        reconcileBtn.type = "button";
-        reconcileBtn.className = "cal-day-reconcile-btn";
-        reconcileBtn.title = "Reconcile this day";
-        reconcileBtn.setAttribute("aria-label", `Reconcile forecast for ${fmtDateMDY(iso)}`);
-        reconcileBtn.innerHTML =
-          '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.25"></circle><path d="M8.5 12.2l2.2 2.2 4.8-5.1"></path></svg>';
-        reconcileBtn.addEventListener("click", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          openReconcileModal(iso);
-        });
-        dayNumEl.insertBefore(reconcileBtn, dayNumEl.firstChild);
-      }
     }
 
     const actualTxs = !isBeforeStart && showActual ? actualTxsByDate.get(iso) || [] : [];
@@ -13000,14 +13687,16 @@ function renderCalendar() {
     }
 
     let visibleItemCount = 0;
+    const startBalRowsForDay = !isBeforeStart ? startBalancesByDate.get(iso) || [] : [];
+    const hasStartingPoint = startBalRowsForDay.length > 0;
+    const startingAccountRow = hasStartingPoint ? startBalRowsForDay[0] : null;
+    const startingAccountName = startingAccountRow?.account_name
+      ? String(startingAccountRow.account_name).trim()
+      : "";
     if (showDetails) {
-      const startBalRows = !isBeforeStart ? startBalancesByDate.get(iso) || [] : [];
-      visibleItemCount = combined.length + startBalRows.length;
+      visibleItemCount = combined.length;
       const labelMaxLen = visibleItemCount <= 1 ? 68 : visibleItemCount >= 4 ? 50 : 58;
-      if (startBalEl) {
-        startBalEl.hidden = startBalRows.length === 0;
-        for (const sbRow of startBalRows) appendCalendarDayStartBalanceLine(sbRow, startBalEl, iso);
-      }
+      if (startBalEl) startBalEl.hidden = true;
 
       const isExpanded = !!(state.calendarExpandedDays && state.calendarExpandedDays.has(iso));
       const visibleRows = isExpanded ? combined : combined.slice(0, MAX_VISIBLE_TXNS);
@@ -13141,6 +13830,7 @@ function renderCalendar() {
     }
 
     const dayBal = state.monthDailyBalances.get(iso);
+    const dayBalVerified = !!(dayBal && dayBal.verified);
 
     if (!isBeforeStart && dayBal && metricsEl) {
       const endNum = Number(dayBal.end ?? 0);
@@ -13225,17 +13915,34 @@ function renderCalendar() {
       else if (watchOnly) stripCue = "cal-balance-strip--cue-watch";
 
       const balanceClass = balParts.join(" ");
+      const balanceTitle = dayBalVerified ? "" : "Projected end-of-day balance";
       const riskIcon =
-        negativeBal && !repeatedNegativeRun
+        negativeBal && !repeatedNegativeRun && !dayBalVerified
           ? `<span class="cal-balance-risk-icon" aria-hidden="true"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M8 2.25L14 13.75H2L8 2.25z" stroke="currentColor" stroke-width="1.35" stroke-linejoin="round" fill="none"/><path d="M8 6.25v3M8 11.1v.01" stroke="currentColor" stroke-width="1.35" stroke-linecap="round"/></svg></span>`
           : "";
       const warnIcon =
-        belowFloor && !negativeBal
+        belowFloor && !negativeBal && !dayBalVerified
           ? `<span class="cal-balance-warn-icon" aria-hidden="true" title="Below your minimum balance"><svg viewBox="0 0 16 16" width="9" height="9" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 2.25L14 13.75H2L8 2.25z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" fill="none"/><path d="M8 6.25v3M8 11.1v.01" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg></span>`
           : "";
-      metricsEl.innerHTML = `<div class="cal-balance-strip${stripCue ? ` ${stripCue}` : ""}"><div class="cal-balance-strip__row"><span class="cal-balance-strip__amt">${riskIcon}${warnIcon}<span class="${balanceClass}" title="Projected end-of-day balance">$${fmtMoneyParens(
+      const statusPill = dayBalVerified
+        ? buildCalBalanceStatusPill("adjusted")
+        : isReconciled
+          ? buildCalBalanceStatusPill("reconciled")
+          : hasStartingPoint
+            ? buildCalBalanceStatusPill("starting", { accountId: startingAccountRow?.account_id })
+            : "";
+      const stripStatusClass = statusPill ? " cal-balance-strip--has-status" : "";
+      metricsEl.innerHTML = `<div class="cal-balance-strip${stripStatusClass}${stripCue ? ` ${stripCue}` : ""}"><div class="cal-balance-strip__row"><span class="cal-balance-strip__amt">${riskIcon}${warnIcon}<span class="${balanceClass}"${balanceTitle ? ` title="${escapeHtml(balanceTitle)}"` : ""}>$${fmtMoneyParens(
         endNum
-      )}</span></span></div></div>`;
+      )}</span></span>${statusPill}</div></div>`;
+      bindCalendarDayBalanceHit(metricsEl, iso, {
+        isReconciled,
+        dayBalVerified,
+        isOutOfMonth,
+        dayBal: dayBalVerified || isReconciled ? dayBal : null,
+        hasStartingPoint: hasStartingPoint && !dayBalVerified && !isReconciled,
+        startingAccountName,
+      });
     }
 
     if (
@@ -14499,7 +15206,7 @@ function getNextBelowFloorDate(source, floor, fromIso = "") {
 
 function getDaysSinceReconciled(endIso = toISODate(new Date())) {
   const refIso = normalizeIsoDate(endIso) || toISODate(new Date());
-  const latest = tmLatestReconciledIsoBefore(refIso);
+  const latest = tmLatestBalanceCheckIsoBefore(refIso);
   if (!latest) return null;
   const days = calendarDaysBetweenIso(latest, refIso);
   if (days == null || !Number.isFinite(days)) return null;
@@ -17923,6 +18630,7 @@ async function main() {
       });
     }
     await refreshLowBalanceAlert();
+    await refreshForecastConfidence();
   }
 
   wireForecastPreferencesUi();

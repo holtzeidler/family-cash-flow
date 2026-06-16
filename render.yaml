@@ -37,6 +37,8 @@ services:
         sync: false
       - key: APP_PUBLIC_BASE_URL
         sync: false
+      - key: STAGING_AUTH_EMAIL_ALLOWLIST
+        sync: false
 
   - type: web
     name: family-cash-flow-web-staging

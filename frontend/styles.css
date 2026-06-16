@@ -19241,20 +19241,7 @@ body.plans-page--polished .plans-wrap{
   cursor: pointer;
 }
 
-/* Reconciled in-month days: quiet “grounded in reality” cue — distinct from
-   forecast-risk tints (which use stronger amber/red washes). */
-.cal-cell.cal-cell--reconciled:not(.cal-cell--bal-risk):not(.cal-cell--bal-warn):not(.cal-cell--before-start){
-  background: linear-gradient(
-    135deg,
-    rgba(241, 250, 244, 0.65) 0%,
-    rgba(255, 255, 255, 0.78) 36%,
-    rgba(255, 255, 255, 0.82) 100%
-  );
-  border-color: rgba(21, 128, 61, 0.18);
-  box-shadow:
-    inset 0 -1px 0 rgba(22, 163, 74, 0.07),
-    0 1px 3px rgba(17, 24, 39, 0.028);
-}
+/* Reconciled / Adjusted days use compact status pills only — cell surface stays neutral. */
 
 .cal-cell:not(.cal-cell--out):not(.cal-cell--before-start):hover{
   border-color: rgba(17, 24, 39, 0.1);
@@ -19294,16 +19281,6 @@ body.plans-page--polished .plans-wrap{
   .cal-cell:not(.cal-cell--before-start):hover{
     transform: none;
   }
-}
-
-.cal-cell.cal-cell--reconciled:not(.cal-cell--bal-risk):not(.cal-cell--bal-warn):not(.cal-cell--out):not(.cal-cell--before-start):hover{
-  border-color: rgba(21, 128, 61, 0.24);
-  background: linear-gradient(
-    135deg,
-    rgba(240, 251, 244, 0.78) 0%,
-    rgba(255, 255, 255, 0.88) 100%
-  );
-  box-shadow: 0 3px 11px rgba(15, 23, 42, 0.045);
 }
 
 .cal-cell.cal-cell--recovery-milestone:not(.cal-cell--out):not(.cal-cell--before-start){
@@ -19350,14 +19327,14 @@ body.plans-page--polished .plans-wrap{
 
 /* Reconcile day modal — minimal “quick grounding” */
 .modal.modal--reconcile{
-  max-width: 324px;
-  width: min(90vw, 324px);
-  padding: 12px 16px 10px;
+  max-width: 340px;
+  width: min(92vw, 340px);
+  padding: 14px 16px 12px;
   box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12);
 }
 .modal.modal--reconcile > h3.reconcile-modal__title{
   width: 100%;
-  margin: 0 0 4px;
+  margin: 0 0 12px;
   padding: 0;
   font-size: 1.05rem;
   font-weight: 800;
@@ -19376,10 +19353,13 @@ body.plans-page--polished .plans-wrap{
   color: rgba(100, 116, 139, 0.74);
   font-weight: 400;
 }
+.modal.modal--check-balance .reconcile-modal__balance{
+  margin: 0 0 12px;
+}
 .reconcile-modal__balance{
-  margin: 0 0 10px;
-  padding: 7px 10px 8px;
-  border-radius: 10px;
+  margin: 0 0 14px;
+  padding: 12px 14px 14px;
+  border-radius: 12px;
   background: rgba(249, 250, 251, 0.95);
   border: 1px solid rgba(17, 24, 39, 0.06);
   box-shadow: none;
@@ -19398,18 +19378,251 @@ body.plans-page--polished .plans-wrap{
   color: rgba(71, 85, 105, 0.92);
 }
 .reconcile-modal__forecast-v{
-  font-size: 1.28rem;
+  font-size: 1.45rem;
   font-weight: 800;
   line-height: 1.15;
   letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
   color: rgba(11, 61, 46, 0.95);
 }
+.modal.modal--check-balance .reconcile-modal__cta{
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  margin-top: 0;
+}
+.modal.modal--check-balance .reconcile-modal__mark-btn{
+  order: unset;
+  width: 100%;
+  margin: 0;
+  padding: 11px 14px;
+  font-size: 14px;
+  font-weight: 650;
+}
+.modal.modal--check-balance .reconcile-modal__different-link{
+  order: unset;
+  border: none;
+  background: none;
+  padding: 4px 0 0;
+  font-size: 12.5px;
+  font-weight: 550;
+  color: rgba(71, 85, 105, 0.9);
+  text-align: center;
+  cursor: pointer;
+  text-decoration: none;
+}
+.modal.modal--check-balance .reconcile-modal__different-link:hover{
+  color: #166534;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
 #reconcileModal .error{
-  margin: 6px 0 0;
+  margin: 0 0 8px;
+}
+.modal.modal--check-balance .reconcile-modal__footer{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+  margin-left: -4px;
+  margin-right: -4px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(17, 24, 39, 0.055);
+}
+.modal.modal--check-balance .reconcile-modal__footer .reconcile-modal__cancel{
+  order: unset;
+  margin: 0;
+  margin-right: auto;
+  min-height: 28px;
+  padding: 2px 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(100, 116, 139, 0.92);
+}
+.modal.modal--check-balance .reconcile-modal__footer .reconcile-modal__delete{
+  margin: 0;
+  margin-left: auto;
+  min-height: 28px;
+  padding: 2px 6px;
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 550;
+  color: rgba(148, 163, 184, 0.98);
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.modal.modal--check-balance .reconcile-modal__footer .reconcile-modal__delete:hover{
+  color: rgba(185, 28, 28, 0.78);
+  background: rgba(254, 242, 242, 0.35);
+  filter: none;
+}
+.modal.modal--check-balance .reconcile-modal__footer .reconcile-modal__cancel:hover{
+  color: rgba(55, 65, 81, 0.92);
+  background: rgba(17, 24, 39, 0.04);
+}
+.reconcile-modal__mark-btn{
+  width: 100%;
+  padding: 11px 14px;
+  font-size: 14px;
+  font-weight: 650;
+}
+.reconcile-modal__different-link{
+  border: none;
+  background: none;
+  padding: 4px 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #166534;
+  text-align: center;
+  cursor: pointer;
+  text-decoration: none;
+}
+.reconcile-modal__different-link:hover{
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.reconcile-modal__actions-section{
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 2px 0 0;
+}
+.reconcile-modal__choice{
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  width: 100%;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(17, 24, 39, 0.1);
+  border-radius: 10px;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+.reconcile-modal__choice.is-selected{
+  border-color: color-mix(in srgb, var(--accent) 42%, transparent);
+  background: rgba(240, 253, 244, 0.72);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+.reconcile-modal__choice-title{
+  font-size: 13px;
+  font-weight: 650;
+  color: rgba(15, 23, 42, 0.92);
+}
+.reconcile-modal__choice-help{
+  font-size: 12px;
+  line-height: 1.4;
+  color: rgba(100, 116, 139, 0.88);
+}
+.reconcile-modal__different{
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  padding: 0 2px;
+}
+.reconcile-modal__different-lead{
+  font-size: 12px;
+  color: rgba(100, 116, 139, 0.9);
+}
+.reconcile-modal__expand-link{
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 12px;
+  font-weight: 650;
+  color: #166534;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.reconcile-modal__expand-link:hover{
+  color: #14532d;
+}
+.reconcile-modal__verified-panel{
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(248, 250, 252, 0.95);
+  border: 1px solid rgba(17, 24, 39, 0.08);
+}
+.reconcile-modal__verified-field{
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.reconcile-modal__verified-label{
+  font-size: 12px;
+  font-weight: 650;
+  color: rgba(17, 24, 39, 0.68);
+}
+.reconcile-modal__verified-input{
+  width: 100%;
+}
+.reconcile-modal__verified-help{
+  margin: 0 0 8px;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: rgba(17, 24, 39, 0.58);
+}
+.reconcile-modal__preview{
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(17, 24, 39, 0.08);
+}
+.reconcile-modal__preview-row{
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12.5px;
+  font-weight: 650;
+  margin-bottom: 6px;
+}
+.reconcile-modal__gap{
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: rgba(180, 83, 9, 0.95);
 }
 .modal.modal--reconcile .reconcile-modal__status{
-  margin: 2px 0 0;
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.35;
+  color: rgba(22, 101, 52, 0.92);
+}
+.reconcile-modal__breakdown{
+  margin-top: 2px;
+}
+.reconcile-modal__preview-amt{
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: rgba(15, 23, 42, 0.9);
+  text-align: right;
+}
+.reconcile-modal__preview-row--diff{
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(17, 24, 39, 0.08);
+  font-weight: 650;
+}
+.reconcile-modal__preview-row--diff .reconcile-modal__preview-amt{
+  font-weight: 700;
+}
+.reconcile-modal__insight{
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  font-weight: 550;
+  color: rgba(71, 85, 105, 0.88);
 }
 .reconcile-switch{
   display: inline-flex;
@@ -19472,9 +19685,11 @@ body.plans-page--polished .plans-wrap{
   padding: 6px 0 0;
   border-top: 1px solid rgba(17, 24, 39, 0.055);
 }
-.reconcile-modal__cancel{
+.modal.modal--reconcile .reconcile-modal__actions.modal-actions .reconcile-modal__cancel{
   order: 0;
   margin-right: auto;
+}
+.reconcile-modal__cancel{
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -19507,7 +19722,6 @@ body.plans-page--polished .plans-wrap{
   outline-offset: 2px;
 }
 .reconcile-modal__primary{
-  order: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -19520,6 +19734,10 @@ body.plans-page--polished .plans-wrap{
   color: #fff;
   background: var(--accent);
   border: 1px solid color-mix(in srgb, var(--accent) 82%, #0d1f18);
+  cursor: pointer;
+}
+.modal.modal--reconcile .reconcile-modal__actions.modal-actions .reconcile-modal__primary{
+  order: 1;
 }
 .reconcile-modal__primary:hover{
   filter: brightness(1.04);
@@ -19545,44 +19763,7 @@ body.plans-page--polished .plans-wrap{
   color: rgba(75, 85, 99, 0.66);
 }
 .cal-cell:not(.cal-cell--out):not(.cal-cell--before-start) .cal-daynum{
-  cursor: pointer;
-}
-.cal-day-reconcile-btn{
-  flex: 0 0 auto;
-  order: -1;
-  margin-right: auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  padding: 0;
-  border: none;
-  border-radius: 999px;
-  color: rgba(71, 85, 105, 0.62);
-  background: transparent;
-  cursor: pointer;
-  opacity: 0;
-  /* Hidden reconcile control must not steal clicks meant for “add on this day”. */
-  pointer-events: none;
-  transition:
-    opacity 0.14s ease,
-    color 0.14s ease,
-    background-color 0.14s ease;
-}
-.cal-cell:not(.cal-cell--out):not(.cal-cell--before-start):hover .cal-day-reconcile-btn,
-.cal-day-reconcile-btn:hover,
-.cal-day-reconcile-btn:focus-visible{
-  opacity: 1;
-  pointer-events: auto;
-}
-.cal-day-reconcile-btn:hover{
-  color: rgba(11, 61, 46, 0.92);
-  background: rgba(11, 61, 46, 0.08);
-}
-.cal-day-reconcile-btn:focus-visible{
-  outline: 2px solid rgba(11, 61, 46, 0.22);
-  outline-offset: 1px;
+  cursor: default;
 }
 .cal-cell:not(.cal-cell--before-start){
   cursor: pointer;
@@ -19640,31 +19821,6 @@ body.plans-page--polished .plans-wrap{
     0 1px 3px rgba(11, 61, 46, 0.12);
 }
 
-.cal-reconciled-mark{
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  flex-shrink: 0;
-  border-radius: 999px;
-  background: rgba(22, 163, 74, 0.1);
-  border: 1px solid rgba(21, 128, 61, 0.24);
-  color: rgba(22, 101, 52, 0.78);
-  line-height: 0;
-  box-shadow: 0 1px 1px rgba(255, 255, 255, 0.6) inset;
-  transform: translate(2px, -2px);
-}
-.cal-reconciled-mark svg{
-  width: 10px;
-  height: 10px;
-  display: block;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.9;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
 .cal-cell-fill{
   /* Previously used to push content to the bottom of the day cell. */
   display: none;
@@ -19698,9 +19854,29 @@ body.plans-page--polished .plans-wrap{
   margin-top: auto;
   padding-top: 5px;
   padding-bottom: 3px;
-  border-top: 1px solid rgba(11, 61, 46, 0.06);
-  min-height: 16px;
+  border-top: 1px solid rgba(11, 61, 46, 0.1);
+  min-height: 22px;
   align-self: stretch;
+}
+.cal-cell:not(.cal-cell--out):not(.cal-cell--before-start) .cal-ledger-metrics.cal-day-balance-hit{
+  cursor: pointer;
+  margin-left: -7px;
+  margin-right: -7px;
+  padding-left: 7px;
+  padding-right: 7px;
+  border-radius: 0 0 9px 9px;
+  transition:
+    background-color 0.14s ease,
+    border-color 0.14s ease;
+}
+.cal-cell:not(.cal-cell--out):not(.cal-cell--before-start) .cal-ledger-metrics.cal-day-balance-hit:hover,
+.cal-cell:not(.cal-cell--out):not(.cal-cell--before-start) .cal-ledger-metrics.cal-day-balance-hit:focus-within{
+  background: rgba(11, 61, 46, 0.055);
+  border-top-color: rgba(11, 61, 46, 0.16);
+}
+.cal-cell:not(.cal-cell--out):not(.cal-cell--before-start) .cal-ledger-metrics.cal-day-balance-hit:hover .cal-stat.cal-balance,
+.cal-cell:not(.cal-cell--out):not(.cal-cell--before-start) .cal-ledger-metrics.cal-day-balance-hit:focus-within .cal-stat.cal-balance{
+  color: rgba(11, 61, 46, 0.94);
 }
 /* 1–2 visible rows: transactions at the top; projected balance stays anchored below. */
 .cal-cell--density-sparse:not(.cal-cell--no-tx) .cal-cell-stack > .cal-day-txns{
@@ -19729,11 +19905,15 @@ body.plans-page--polished .plans-wrap{
   box-shadow: 0 1px 3px rgba(17, 24, 39, 0.038);
 }
 .cal-cell.cal-cell--no-tx .cal-ledger-metrics{
-  padding-top: 0;
+  padding-top: 5px;
   margin-top: auto;
-  border-top: none;
+  border-top: 1px solid rgba(11, 61, 46, 0.08);
   min-height: 18px;
   padding-bottom: 4px;
+}
+.cal-cell.cal-cell--no-tx .cal-ledger-metrics:not(.cal-day-balance-hit){
+  border-top: none;
+  padding-top: 0;
 }
 
 .cal-cell.cal-cell--no-tx .cal-cell-stack{
@@ -19765,8 +19945,7 @@ body.plans-page--polished .plans-wrap{
     0 1px 3px rgba(11, 61, 46, 0.09),
     inset 0 0 0 1.5px rgba(11, 61, 46, 0.11);
 }
-.cal-cell.cal-cell--today:not(.cal-cell--out):not(.cal-cell--before-start):hover,
-.cal-cell.cal-cell--today.cal-cell--reconciled:not(.cal-cell--bal-risk):not(.cal-cell--bal-warn):not(.cal-cell--out):not(.cal-cell--before-start):hover{
+.cal-cell.cal-cell--today:not(.cal-cell--out):not(.cal-cell--before-start):hover{
   background: color-mix(in srgb, var(--accent) 15%, #fff);
   border-color: rgba(11, 61, 46, 0.28);
   box-shadow:
@@ -19928,45 +20107,81 @@ body.plans-page--polished .plans-wrap{
 
 /* Flow modifiers kept for semantics; amount color comes from .cal-amt.income / .expense. */
 
-/* Starting balance: anchored forecast reference (distinct from reconciled ✓). */
+/* Starting Point: milestone pill only — balance lives in the ledger row below. */
+.cal-day-start-balance{
+  flex: 0 0 auto;
+  margin-bottom: 2px;
+  overflow: visible;
+  min-width: 0;
+}
+.cal-start-milestone{
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  box-shadow: none;
+  cursor: pointer;
+  overflow: visible;
+}
+.cal-start-milestone:focus-visible{
+  outline: none;
+}
+.cal-start-milestone:focus-visible .cal-balance-status-pill--starting{
+  box-shadow: 0 0 0 2px rgba(100, 116, 139, 0.22);
+}
+
+/* Legacy start-balance row (kept for any cached markup). */
 .cal-day-tx-line--start-balance,
 .cal-day-tx-line--start-balance.cal-day-tx-line--primary,
 .cal-day-tx-line--start-balance.cal-day-tx-line--secondary{
-  align-items: center;
-  color: rgba(51, 65, 85, 0.9);
-  background: rgba(11, 61, 46, 0.03);
-  border-left: 2px solid rgba(11, 61, 46, 0.12);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 1px;
+  color: rgba(71, 85, 105, 0.9);
+  background: rgba(248, 250, 252, 0.92);
+  border-left: 2px solid rgba(100, 116, 139, 0.4);
   border-radius: 4px;
   padding: 2px 4px 2px 5px;
   margin-bottom: 0;
   box-sizing: border-box;
   cursor: pointer;
+  overflow: visible;
   transition: background 0.12s ease, box-shadow 0.12s ease;
 }
-.cal-day-tx-line--start-balance:hover{
-  background: rgba(11, 61, 46, 0.07);
-  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.04);
-}
-.cal-day-tx-line--start-balance:focus-visible{
-  outline: none;
-  background: rgba(11, 61, 46, 0.07);
-  box-shadow: 0 0 0 2px rgba(11, 61, 46, 0.18);
-}
 .cal-day-tx-line--start-balance .cal-tx-label-wrap{
-  gap: 8px;
+  gap: 4px;
   align-items: center;
+  width: 100%;
+  min-width: 0;
+  overflow: visible;
 }
 .cal-day-tx-line--start-balance .cal-tx-label{
-  font-weight: 550;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: nowrap;
+  font-weight: 650;
   letter-spacing: 0.01em;
   color: rgba(30, 41, 59, 0.88);
 }
 .cal-day-tx-line--start-balance .cal-amt{
+  align-self: flex-end;
   font-weight: 550;
-  color: rgba(51, 65, 85, 0.84);
+  color: rgba(100, 116, 139, 0.88);
 }
 
-/* Category color on label column only; amount stays red/green. */
+.cal-day-tx-line--start-balance:hover{
+  background: rgba(241, 245, 249, 0.98);
+  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.04);
+}
+.cal-day-tx-line--start-balance:focus-visible{
+  outline: none;
+  background: rgba(241, 245, 249, 0.98);
+  box-shadow: 0 0 0 2px rgba(100, 116, 139, 0.22);
+}
 .cal-tx-label-wrap--category-fill{
   background: var(--cal-tx-fill-bg);
   color: var(--cal-tx-fill-fg);
@@ -19989,15 +20204,8 @@ body.plans-page--polished .plans-wrap{
 .cal-day-tx-line--start-balance{
   text-decoration: none;
 }
-.cal-day-tx-line--start-balance .cal-tx-label,
-.cal-day-tx-line--start-balance .cal-amt,
 .cal-day-tx-line--start-balance .cal-tx-start-anchor{
   text-decoration: none;
-}
-
-.cal-day-start-balance{
-  flex: 0 0 auto;
-  margin-bottom: 2px;
 }
 
 .cal-day-tx-line--expected.cal-expected-variable .cal-tx-label,
@@ -21068,8 +21276,14 @@ body[data-bw-view="transactions"] .tm__field label{
 }
 
 .cal-balance-strip{
+  display: block;
   padding: 0;
-  border-radius: 6px;
+  border-radius: 0;
+  background: transparent;
+}
+.cal-balance-strip--has-status .cal-stat.cal-balance{
+  font-weight: 650;
+  color: rgba(15, 23, 42, 0.9);
 }
 /* Strip container stays visually quiet — risk/watch cues live on the balance
    pill and thin cell accents, not on a second full-width color wash. */
@@ -21082,15 +21296,14 @@ body[data-bw-view="transactions"] .tm__field label{
   border-radius: 0;
   box-shadow: none;
 }
-/* Final ledger row: amount only, right-aligned at the bottom of the
-   cell. The placement at the bottom communicates "end of day" — no
-   label needed. */
+/* Final ledger row: balance + optional status pill on one line, right-aligned. */
 .cal-balance-strip__row{
   display: flex;
   align-items: baseline;
   justify-content: flex-end;
-  gap: 6px;
-  min-height: 15px;
+  gap: 5px;
+  min-height: 18px;
+  flex-wrap: nowrap;
 }
 .cal-balance-strip__amt{
   flex: 0 0 auto;
@@ -25650,18 +25863,16 @@ body[data-bw-view="calendar"] .cal-cell.bw-tour-target--calendar-add .cal-daynum
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.72) inset;
 }
 
-body[data-bw-view="calendar"] .cal-day-reconcile-btn.bw-tour-target--reconcile-head{
-  opacity: 1;
-  pointer-events: auto;
+body[data-bw-view="calendar"] .cal-ledger-metrics.cal-day-balance-hit.bw-tour-target--reconcile-head{
   position: relative;
-  color: rgba(11, 61, 46, 0.92);
   background: color-mix(in srgb, var(--accent) 8%, #ffffff);
+  border-top-color: color-mix(in srgb, var(--accent) 24%, transparent);
   box-shadow:
     0 0 0 2px color-mix(in srgb, var(--accent) 32%, transparent),
     0 0 0 6px color-mix(in srgb, var(--accent) 10%, transparent) !important;
 }
-body[data-bw-view="calendar"] .cal-day-reconcile-btn.bw-tour-target--reconcile-head::after{
-  content: "Reconcile this day";
+body[data-bw-view="calendar"] .cal-ledger-metrics.cal-day-balance-hit.bw-tour-target--reconcile-head::after{
+  content: "Confirm balance";
   position: absolute;
   right: 8px;
   top: -12px;
@@ -25675,9 +25886,6 @@ body[data-bw-view="calendar"] .cal-day-reconcile-btn.bw-tour-target--reconcile-h
   background: #ffffff;
   border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent);
   box-shadow: 0 4px 14px -10px rgba(11, 61, 46, 0.32);
-}
-body[data-bw-view="calendar"] .cal-day-reconcile-btn.bw-tour-target--reconcile-head svg{
-  stroke-width: 2.1;
 }
 
 body[data-bw-view="calendar"] #sidebarPendingTxCard.bw-tour-support-highlight--sidebar-soft{
@@ -27351,40 +27559,12 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
       0 1px 3px rgba(11, 61, 46, 0.12);
   }
 
-  .calendar--mobile .cal-day-reconcile-btn{
-    opacity: 0;
-    width: 26px;
-    height: 26px;
-    pointer-events: none;
+  .calendar--mobile .cal-ledger-metrics.cal-day-balance-hit{
+    cursor: pointer;
   }
 
-  .calendar--mobile .cal-cell:not(.cal-cell--out):not(.cal-cell--before-start):focus-within .cal-day-reconcile-btn,
-  .calendar--mobile .cal-cell:not(.cal-cell--out):not(.cal-cell--before-start):hover .cal-day-reconcile-btn,
-  .calendar--mobile .cal-cell:not(.cal-cell--out):not(.cal-cell--before-start):active .cal-day-reconcile-btn,
-  .calendar--mobile .cal-day-reconcile-btn:hover,
-  .calendar--mobile .cal-day-reconcile-btn:focus-visible{
-    opacity: 1;
-    pointer-events: auto;
-  }
-
-  .calendar--mobile .cal-reconciled-mark{
-    opacity: 0;
-    pointer-events: none;
-    width: 16px;
-    height: 16px;
-    transform: translate(1px, -1px);
-    transition: opacity 0.14s ease;
-  }
-
-  .calendar--mobile .cal-cell.cal-cell--reconciled:focus-within .cal-reconciled-mark,
-  .calendar--mobile .cal-cell.cal-cell--reconciled:hover .cal-reconciled-mark,
-  .calendar--mobile .cal-cell.cal-cell--reconciled:active .cal-reconciled-mark{
-    opacity: 1;
-  }
-
-  .calendar--mobile .cal-reconciled-mark svg{
-    width: 8px;
-    height: 8px;
+  .calendar--mobile .cal-ledger-metrics.cal-day-balance-hit:active{
+    background: rgba(11, 61, 46, 0.06);
   }
 
   .calendar--mobile .cal-cell-stack{
@@ -27427,15 +27607,21 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
 
   .calendar--mobile .cal-balance-strip__row{
     justify-content: space-between;
-    gap: 10px;
+    gap: 8px;
+    flex-wrap: nowrap;
   }
 
   .calendar--mobile .cal-balance-strip__row::before{
-    content: "Projected balance";
+    content: "Balance";
     font-size: 10.5px;
     font-weight: 600;
     letter-spacing: 0.01em;
     color: rgba(100, 116, 139, 0.76);
+  }
+
+  .calendar--mobile .cal-ledger-metrics.cal-day-balance-hit .cal-balance-strip__row::before{
+    content: "Confirm balance";
+    color: rgba(11, 61, 46, 0.72);
   }
 
   .calendar--mobile .cal-stat.cal-balance{
@@ -28059,5 +28245,453 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
     padding-top: 12px;
     padding-bottom: 12px;
   }
+}
+
+/* Last balance check (reconciliation freshness) */
+.forecast-confidence{
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(17, 24, 39, 0.06);
+  background: rgba(248, 250, 252, 0.96);
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, monospace;
+  font-size: 0.72rem;
+  letter-spacing: -0.01em;
+}
+.forecast-confidence__title{
+  margin: 0 0 4px;
+  font: inherit;
+  font-size: inherit;
+  font-weight: 500;
+  letter-spacing: inherit;
+  color: rgba(15, 23, 42, 0.94);
+}
+.forecast-confidence__detail{
+  margin: 0;
+  font: inherit;
+  font-size: inherit;
+  line-height: 1.45;
+  font-weight: 600;
+  color: rgba(15, 23, 42, 0.94);
+}
+.forecast-confidence__helper{
+  margin: 8px 0 0;
+  font-family: var(--font, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif);
+  font-size: 11.5px;
+  line-height: 1.42;
+  color: rgba(100, 116, 139, 0.82);
+}
+.forecast-confidence__cta{
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 9px;
+  background: var(--accent);
+  color: #fff;
+  font-family: var(--font, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif);
+  font-size: 12.5px;
+  font-weight: 650;
+  cursor: pointer;
+  text-align: center;
+  box-shadow: 0 1px 3px rgba(11, 61, 46, 0.14);
+}
+.forecast-confidence__cta:hover{
+  filter: brightness(1.04);
+}
+.forecast-confidence--fresh{
+  border-color: rgba(17, 24, 39, 0.05);
+  background: rgba(248, 250, 252, 0.96);
+  padding: 10px 12px;
+}
+.forecast-confidence--fresh .forecast-confidence__title,
+.forecast-confidence--fresh .forecast-confidence__detail{
+  color: rgba(15, 23, 42, 0.94);
+}
+
+/* Verified balance (balance checkpoint) — legacy catch-up styles kept for reference */
+.verified-balance-open-btn{
+  display: block;
+  width: 100%;
+  margin: 0 0 10px;
+  padding: 8px 12px;
+  border: 1px dashed rgba(22, 101, 52, 0.35);
+  border-radius: 10px;
+  background: rgba(240, 253, 244, 0.65);
+  color: #166534;
+  font-size: 12.5px;
+  font-weight: 650;
+  cursor: pointer;
+  text-align: center;
+}
+.verified-balance-open-btn:hover{
+  background: rgba(220, 252, 231, 0.95);
+  border-color: rgba(22, 101, 52, 0.5);
+}
+.verified-balance-catchup{
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 251, 235, 0.95);
+  border: 1px solid rgba(217, 119, 6, 0.22);
+}
+.verified-balance-catchup__text{
+  margin: 0 0 8px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: rgba(55, 48, 36, 0.92);
+}
+.verified-balance-catchup__actions{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.verified-balance-catchup__primary,
+.verified-balance-catchup__dismiss{
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.verified-balance-catchup__primary{
+  border: none;
+  background: #166534;
+  color: #fff;
+}
+.verified-balance-catchup__dismiss{
+  border: 1px solid rgba(17, 24, 39, 0.12);
+  background: #fff;
+  color: rgba(17, 24, 39, 0.72);
+}
+.modal--verified-balance{
+  max-width: 440px;
+}
+.verified-balance-modal__title{
+  margin: 0 0 6px;
+}
+.verified-balance-modal__lead{
+  margin: 0 0 14px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: rgba(17, 24, 39, 0.72);
+}
+.verified-balance-modal__field{
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+.verified-balance-modal__label{
+  font-size: 12px;
+  font-weight: 650;
+  color: rgba(17, 24, 39, 0.68);
+}
+.verified-balance-modal__input{
+  width: 100%;
+}
+.verified-balance-modal__preview{
+  margin: 4px 0 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(248, 250, 252, 0.95);
+  border: 1px solid rgba(17, 24, 39, 0.08);
+}
+.verified-balance-modal__preview-row{
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  font-size: 13px;
+  line-height: 1.35;
+  margin-bottom: 5px;
+}
+.verified-balance-modal__preview-row:last-of-type{
+  margin-bottom: 0;
+}
+.verified-balance-modal__preview-amt{
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: rgba(15, 23, 42, 0.9);
+  text-align: right;
+}
+.verified-balance-modal__preview-row--diff{
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(17, 24, 39, 0.08);
+  font-weight: 650;
+}
+.verified-balance-modal__preview-row--diff .verified-balance-modal__preview-amt{
+  font-weight: 700;
+}
+.verified-balance-modal__gap{
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: rgba(180, 83, 9, 0.95);
+}
+.verified-balance-modal__help{
+  margin: 0 0 18px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: rgba(71, 85, 105, 0.72);
+}
+.modal.modal--verified-balance .verified-balance-modal__actions{
+  display: grid;
+  grid-template-columns: minmax(0, 0.88fr) minmax(0, 1.12fr);
+  align-items: stretch;
+  gap: 10px;
+  margin-top: 0;
+  padding-top: 14px;
+  border-top: 1px solid rgba(11, 61, 46, 0.06);
+}
+.modal.modal--verified-balance .verified-balance-modal__cancel,
+.modal.modal--verified-balance .verified-balance-modal__primary{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 8px 14px;
+  font-size: 0.8125rem;
+  line-height: 1.2;
+  border-radius: 10px;
+  cursor: pointer;
+  box-sizing: border-box;
+  width: 100%;
+}
+.modal.modal--verified-balance .verified-balance-modal__cancel{
+  font-weight: 550;
+  background: #fff;
+  border: 1px solid rgba(11, 61, 46, 0.14);
+  color: rgba(11, 61, 46, 0.62);
+  box-shadow: none;
+}
+.modal.modal--verified-balance .verified-balance-modal__cancel:hover{
+  filter: none;
+  border-color: rgba(11, 61, 46, 0.2);
+  color: rgba(11, 61, 46, 0.72);
+  background: rgba(248, 250, 249, 0.98);
+}
+.verified-balance-modal__primary{
+  font-weight: 600;
+  background: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 82%, #0d1f18);
+  color: #fff;
+  box-shadow: 0 1px 3px rgba(11, 61, 46, 0.12);
+}
+.verified-balance-modal__primary:hover{
+  background: color-mix(in srgb, var(--accent) 92%, #000);
+  border-color: color-mix(in srgb, var(--accent) 72%, #0d1f18);
+  color: #fff;
+}
+/* Balance state pills — inline annotation beside the hero balance amount. */
+.cal-balance-status-pill{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  max-width: none;
+  padding: 0 5px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 8.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  line-height: 1.35;
+  white-space: nowrap;
+  flex: 0 0 auto;
+  flex-shrink: 0;
+}
+.cal-balance-status-pill__icon{
+  margin-right: 2px;
+  flex-shrink: 0;
+}
+.cal-balance-status-pill--starting .cal-balance-status-pill__icon{
+  display: inline-flex;
+  align-items: center;
+  color: var(--accent);
+}
+.cal-balance-status-pill--starting .cal-balance-status-pill__icon svg{
+  display: block;
+}
+.cal-starting-point-flag{
+  color: var(--accent);
+  flex-shrink: 0;
+}
+.cal-confirmed-tip__head--starting .cal-starting-point-flag{
+  display: inline-block;
+  vertical-align: -1px;
+  margin-right: 3px;
+}
+.cal-balance-status-pill--starting{
+  color: rgba(71, 85, 105, 0.92);
+  background: rgba(241, 245, 249, 0.96);
+  border-color: rgba(148, 163, 184, 0.32);
+  cursor: pointer;
+}
+.cal-balance-status-pill--starting:hover,
+.cal-balance-status-pill--starting:focus-visible{
+  background: rgba(226, 232, 240, 0.98);
+  border-color: rgba(100, 116, 139, 0.38);
+  outline: none;
+}
+.cal-balance-status-pill--reconciled{
+  color: rgba(22, 101, 52, 0.9);
+  background: rgba(220, 252, 231, 0.72);
+  border-color: rgba(22, 101, 52, 0.14);
+}
+.cal-balance-status-pill--adjusted{
+  color: rgba(130, 112, 94, 0.88);
+  background: rgba(248, 245, 240, 0.9);
+  border-color: rgba(175, 162, 148, 0.22);
+}
+.verified-balance-modal__adjusted-notice{
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 251, 235, 0.95);
+  border: 1px solid rgba(217, 119, 6, 0.22);
+  font-size: 13px;
+  line-height: 1.45;
+  color: rgba(55, 48, 36, 0.92);
+}
+.cal-tx-label--starting-point{
+  font-weight: 650;
+  letter-spacing: 0.02em;
+}
+.cal-confirmed-tip__head--reconciled{
+  color: rgba(22, 101, 52, 0.95);
+}
+.cal-confirmed-tip__head--adjusted{
+  color: rgba(130, 112, 94, 0.92);
+}
+.cal-confirmed-tip__head--starting{
+  color: rgba(71, 85, 105, 0.95);
+}
+.cal-confirmed-tip__report{
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 2px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(148, 163, 184, 0.2);
+}
+.cal-confirmed-tip__report-k{
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(100, 116, 139, 0.88);
+}
+.cal-confirmed-tip__report p{
+  margin: 0;
+  font-size: 0.76rem;
+  line-height: 1.45;
+  color: rgba(51, 65, 85, 0.9);
+}
+.cal-confirmed-tip{
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 190px;
+  max-width: 240px;
+}
+.cal-confirmed-tip__head{
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: rgba(22, 101, 52, 0.95);
+}
+.cal-confirmed-tip__match,
+.cal-confirmed-tip__note{
+  margin: 0;
+  font-size: 0.76rem;
+  line-height: 1.4;
+  color: rgba(51, 65, 85, 0.88);
+}
+.cal-confirmed-tip__emph{
+  margin: 0;
+  font-size: 0.76rem;
+  font-weight: 650;
+  line-height: 1.4;
+  color: rgba(30, 41, 59, 0.92);
+}
+.cal-confirmed-tip__rows{
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.cal-confirmed-tip__row{
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin: 0;
+}
+.cal-confirmed-tip__row dt{
+  margin: 0;
+  font-size: 0.74rem;
+  font-weight: 550;
+  color: rgba(100, 116, 139, 0.92);
+}
+.cal-confirmed-tip__row dd{
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  color: rgba(15, 23, 42, 0.92);
+}
+.cal-confirmed-tip__row--diff{
+  margin-top: 4px;
+  padding-top: 7px;
+  border-top: 1px solid rgba(148, 163, 184, 0.18);
+}
+.cal-confirmed-tip__row--diff dt,
+.cal-confirmed-tip__row--diff dd{
+  font-weight: 700;
+}
+.cal-confirmed-tip--adjusted .cal-confirmed-tip__rows{
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, monospace;
+  font-size: 0.72rem;
+  letter-spacing: -0.01em;
+  gap: 4px;
+}
+.cal-confirmed-tip--adjusted .cal-confirmed-tip__row dt,
+.cal-confirmed-tip--adjusted .cal-confirmed-tip__row dd{
+  font-weight: 500;
+  font-size: inherit;
+  color: rgba(15, 23, 42, 0.94);
+}
+.cal-confirmed-tip--adjusted .cal-confirmed-tip__row dd{
+  text-align: right;
+  min-width: 5.75rem;
+}
+.cal-confirmed-tip--adjusted .cal-confirmed-tip__row--diff{
+  margin-top: 2px;
+  padding-top: 0;
+  border-top: none;
+}
+.cal-confirmed-tip--adjusted .cal-confirmed-tip__row--diff dt,
+.cal-confirmed-tip--adjusted .cal-confirmed-tip__row--diff dd{
+  font-weight: 600;
+}
+.cat-report-verified-warning{
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 251, 235, 0.95);
+  border: 1px solid rgba(217, 119, 6, 0.22);
+}
+.cat-report-verified-warning p{
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: rgba(55, 48, 36, 0.92);
+}
+.cat-report-verified-warning p + p{
+  margin-top: 6px;
 }
  
