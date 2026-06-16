@@ -28508,6 +28508,23 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   margin-right: 2px;
   flex-shrink: 0;
 }
+.cal-balance-status-pill--starting .cal-balance-status-pill__icon{
+  display: inline-flex;
+  align-items: center;
+  color: var(--accent);
+}
+.cal-balance-status-pill--starting .cal-balance-status-pill__icon svg{
+  display: block;
+}
+.cal-starting-point-flag{
+  color: var(--accent);
+  flex-shrink: 0;
+}
+.cal-confirmed-tip__head--starting .cal-starting-point-flag{
+  display: inline-block;
+  vertical-align: -1px;
+  margin-right: 3px;
+}
 .cal-balance-status-pill--starting{
   color: rgba(71, 85, 105, 0.92);
   background: rgba(241, 245, 249, 0.96);
@@ -28526,9 +28543,9 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   border-color: rgba(22, 101, 52, 0.14);
 }
 .cal-balance-status-pill--adjusted{
-  color: rgba(146, 64, 14, 0.92);
-  background: rgba(254, 243, 199, 0.72);
-  border-color: rgba(217, 119, 6, 0.16);
+  color: rgba(130, 112, 94, 0.88);
+  background: rgba(248, 245, 240, 0.9);
+  border-color: rgba(175, 162, 148, 0.22);
 }
 .verified-balance-modal__adjusted-notice{
   margin: 0 0 12px;
@@ -28548,7 +28565,7 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   color: rgba(22, 101, 52, 0.95);
 }
 .cal-confirmed-tip__head--adjusted{
-  color: rgba(180, 83, 9, 0.95);
+  color: rgba(130, 112, 94, 0.92);
 }
 .cal-confirmed-tip__head--starting{
   color: rgba(71, 85, 105, 0.95);

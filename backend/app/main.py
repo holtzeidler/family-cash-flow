@@ -58,6 +58,9 @@ class Settings(BaseSettings):
     CORS_ORIGINS: str = ""
     # Comma-separated emails with platform-wide admin access (user admin console, cross-family).
     PLATFORM_ADMIN_EMAILS: str = "tracy.zeidler@gmail.com,holt.zeidler@gmail.com"
+    # Staging only: when set, only these emails may register, log in, or request password reset.
+    # Leave empty on production. Use test addresses (e.g. you+staging@gmail.com), not production accounts.
+    STAGING_AUTH_EMAIL_ALLOWLIST: str = ""
     # Public URL of the web app (no trailing slash), e.g. https://app.example.com or https://user.github.io/repo
     # Used in family invite emails. If unset, the API uses the Origin header from the browser when the owner sends an invite.
     APP_PUBLIC_BASE_URL: str = ""
@@ -715,6 +718,30 @@ def get_current_user_id(access_token: Optional[str]) -> int:
 def _platform_admin_email_set() -> set[str]:
     raw = (settings.PLATFORM_ADMIN_EMAILS or "").lower()
     return {x.strip() for x in raw.split(",") if x.strip()}
+
+
+def _staging_auth_email_allowlist() -> set[str]:
+    raw = (settings.STAGING_AUTH_EMAIL_ALLOWLIST or "").lower()
+    return {x.strip() for x in raw.split(",") if x.strip()}
+
+
+def _staging_auth_allowlist_enforced() -> bool:
+    return bool(_staging_auth_email_allowlist())
+
+
+_STAGING_AUTH_DENIED_DETAIL = (
+    "This account cannot sign in on the staging site. "
+    "Use balancewhiz.com for your main account, or register a dedicated staging test address."
+)
+
+
+def _require_staging_auth_email_allowed(email: str) -> None:
+    allow = _staging_auth_email_allowlist()
+    if not allow:
+        return
+    key = _email_lookup_key(email)
+    if key not in allow:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=_STAGING_AUTH_DENIED_DETAIL)
 
 
 def _normalize_platform_role_value(raw: str) -> str:
@@ -1778,6 +1805,7 @@ def public_debug_config():
         "family_invite_email_configured": _invite_email_delivery_configured(),
         "password_reset_email_configured": _invite_email_delivery_configured(),
         "app_public_base_url_configured": bool((settings.APP_PUBLIC_BASE_URL or "").strip()),
+        "staging_auth_restricted": _staging_auth_allowlist_enforced(),
         "note": "GitHub Pages -> Render: ENV=production for SameSite=None; Secure cookies. Register/login also return access_token for Authorization: Bearer when cookies are blocked.",
     }
 
@@ -3053,6 +3081,7 @@ def check_email_registered(payload: CheckEmailIn, db=Depends(get_db)):
 
 @app.post("/api/auth/register", status_code=status.HTTP_201_CREATED, response_model=RegisterOut)
 def register(payload: RegisterIn, response: Response, db=Depends(get_db)):
+    _require_staging_auth_email_allowed(payload.email)
     key = _email_lookup_key(payload.email)
     existing = db.execute(select(User).where(func.lower(User.email) == key)).scalar_one_or_none()
     if existing:
@@ -3110,6 +3139,7 @@ def register(payload: RegisterIn, response: Response, db=Depends(get_db)):
 
 @app.post("/api/auth/login")
 def login(payload: LoginIn, db=Depends(get_db)):
+    _require_staging_auth_email_allowed(payload.email)
     key = _email_lookup_key(payload.email)
     user = db.execute(select(User).where(func.lower(User.email) == key)).scalar_one_or_none()
     if not user or not verify_password(payload.password, user.password_hash):
@@ -3150,6 +3180,9 @@ def password_reset_request(payload: PasswordResetRequestIn, request: Request, db
         )
     user = db.execute(select(User).where(func.lower(User.email) == email_key)).scalar_one_or_none()
     if user is None:
+        verify_password("not-the-password", _pw_reset_dummy_hash())
+        return {"ok": True}
+    if _staging_auth_allowlist_enforced() and email_key not in _staging_auth_email_allowlist():
         verify_password("not-the-password", _pw_reset_dummy_hash())
         return {"ok": True}
     db.execute(delete(PasswordResetToken).where(PasswordResetToken.user_id == int(user.id)))

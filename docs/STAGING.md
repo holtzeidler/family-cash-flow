@@ -48,6 +48,7 @@ On **`family-cash-flow-api-staging`**, set (in addition to blueprint defaults):
 | `APP_PUBLIC_BASE_URL` | Same as staging frontend URL (invite/reset links) |
 | `JWT_SECRET` | Generate a new secret (do not reuse production) |
 | `DATABASE_URL` | Neon **staging branch** pooled connection string (not production) |
+| `STAGING_AUTH_EMAIL_ALLOWLIST` | Comma-separated **test-only** emails allowed to register/login on staging (e.g. `you+staging@gmail.com`). Production accounts are rejected even if the staging DB was copied from prod. |
 
 Copy optional mail/contact vars from production only if you want staging to send real email (usually skip for staging).
 
@@ -185,6 +186,22 @@ cd backend && uvicorn app.main:app --reload --port 8000
 
 Use staging when you need to validate **deployed** behavior, not every edit.
 
+## Auth and data isolation
+
+Staging and production do **not** share login sessions:
+
+- `staging.balancewhiz.com` and `balancewhiz.com` are different origins — `sessionStorage` and cookies do not sync.
+- You must type email and password separately on each site.
+- A production login on staging only works if that **user row exists in the staging database** (usually because `DATABASE_URL` points at production, or the staging DB was cloned from prod).
+
+To keep environments separate:
+
+1. **`DATABASE_URL`** on `family-cash-flow-api-staging` must use the staging database only (see troubleshooting below).
+2. **`STAGING_AUTH_EMAIL_ALLOWLIST`** on the staging API — list only test addresses (e.g. `you+staging@gmail.com`). When set, production emails cannot register or sign in on staging, even on a copied database.
+3. **`JWT_SECRET`** must differ from production (tokens are not interchangeable across APIs).
+
+Sign in on staging with a **dedicated test account**, not your main production email.
+
 ## Troubleshooting
 
 | Symptom | Check |
@@ -193,6 +210,7 @@ Use staging when you need to validate **deployed** behavior, not every edit.
 | Login works on prod, not staging | `CORS_ORIGINS` on staging API matches staging frontend origin exactly; `ENV=production` on staging API |
 | `API_BASE` / `__API_BASE__` in browser | Re-deploy staging static site after setting `API_BASE` on Render |
 | Staging shows production data | Staging API `DATABASE_URL` must use **staging** DB only |
+| Production login works on staging | Set `STAGING_AUTH_EMAIL_ALLOWLIST` to test emails only; fix `DATABASE_URL` if prod data still appears |
 | CI fails on `staging` push | GitHub secret `API_BASE_STAGING` set in `staging` environment |
 | Login/signup sends you to production | Signup links must be relative (`/account-setup/`), not `https://balancewhiz.com/...` |
 | Production broke after staging merge | Re-test on staging before `staging` → `main`; consider branch protection on `main` |

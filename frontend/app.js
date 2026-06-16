@@ -5348,6 +5348,7 @@ function buildAdjustedBalanceTipHtml(dayBal) {
     '<div class="cal-confirmed-tip__head cal-confirmed-tip__head--adjusted">↺ Adjusted</div>',
   ];
   if (forecast != null) {
+    parts.push('<p class="cal-confirmed-tip__match">Your bank balance differed from the forecast.</p>');
     const diff = bank - forecast;
     parts.push('<dl class="cal-confirmed-tip__rows">');
     parts.push(
@@ -5363,9 +5364,8 @@ function buildAdjustedBalanceTipHtml(dayBal) {
     }
     parts.push("</dl>");
   }
-  parts.push(
-    '<p class="cal-confirmed-tip__emph">Future forecasts continue from this balance. Reports may not include skipped transactions.</p>',
-  );
+  parts.push('<p class="cal-confirmed-tip__note">Future forecasts continue from this balance.</p>');
+  parts.push('<p class="cal-confirmed-tip__note">Reports may not include skipped transactions.</p>');
   parts.push("</div>");
   return `<div class="reports-risk-tip__inner">${parts.join("")}</div>`;
 }
@@ -5373,7 +5373,7 @@ function buildAdjustedBalanceTipHtml(dayBal) {
 function buildStartingPointTipHtml(_accountName) {
   const parts = [
     '<div class="cal-confirmed-tip">',
-    '<div class="cal-confirmed-tip__head cal-confirmed-tip__head--starting">🏁 Starting Point</div>',
+    `<div class="cal-confirmed-tip__head cal-confirmed-tip__head--starting">${CAL_STARTING_POINT_FLAG_SVG} Starting Point</div>`,
     '<p class="cal-confirmed-tip__match">This is the initial balance used when the account was created.</p>',
     "</div>",
   ];
@@ -6025,6 +6025,9 @@ async function openCalendarExpectedFromLine(expectedLine) {
   return true;
 }
 
+const CAL_STARTING_POINT_FLAG_SVG =
+  '<svg class="cal-starting-point-flag" viewBox="0 0 12 14" width="10" height="12" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M2 1.25v11.5" stroke="currentColor" stroke-width="1.35" stroke-linecap="round"/><path d="M2 2.75 9.5 6.25 2 9.75V2.75Z" fill="currentColor"/></svg>';
+
 function buildCalBalanceStatusPill(type, opts = {}) {
   if (type === "adjusted") {
     return '<span class="cal-balance-status-pill cal-balance-status-pill--adjusted"><span class="cal-balance-status-pill__icon" aria-hidden="true">↺</span> Adjusted</span>';
@@ -6037,7 +6040,7 @@ function buildCalBalanceStatusPill(type, opts = {}) {
     const extra = accountId
       ? ` data-account-id="${escapeHtml(accountId)}" role="button" tabindex="0" aria-label="Edit starting point account"`
       : "";
-    return `<span class="cal-balance-status-pill cal-balance-status-pill--starting"${extra}><span class="cal-balance-status-pill__icon" aria-hidden="true">🏁</span> Starting Point</span>`;
+    return `<span class="cal-balance-status-pill cal-balance-status-pill--starting"${extra}><span class="cal-balance-status-pill__icon" aria-hidden="true">${CAL_STARTING_POINT_FLAG_SVG}</span> Starting Point</span>`;
   }
   return "";
 }
@@ -6052,7 +6055,7 @@ function appendCalendarDayStartBalanceLine(row, parentEl, iso) {
   const acctLabel = row.account_name ? String(row.account_name).trim() : "account";
   line.setAttribute("aria-label", `Starting Point for ${acctLabel}`);
   line.innerHTML =
-    '<span class="cal-balance-status-pill cal-balance-status-pill--starting"><span class="cal-balance-status-pill__icon" aria-hidden="true">🏁</span> Starting Point</span>';
+    `<span class="cal-balance-status-pill cal-balance-status-pill--starting"><span class="cal-balance-status-pill__icon" aria-hidden="true">${CAL_STARTING_POINT_FLAG_SVG}</span> Starting Point</span>`;
 
   const openStartBalEdit = (e) => {
     if (e.type === "keydown" && e.key !== "Enter" && e.key !== " ") return;
@@ -12701,7 +12704,7 @@ function renderSidebarPendingTransactionsForMonth() {
     lead.textContent = "You're all caught up";
     const sub = document.createElement("p");
     sub.className = "sidebar-pending-empty-msg sidebar-pending-empty-msg--sub";
-    sub.textContent = "Everything looks categorized · no pending transaction to review.";
+    sub.textContent = "Everything looks categorized · no pending transactions to review.";
     emptyWrap.append(lead, sub);
     sidebarPendingTxList.appendChild(emptyWrap);
     return;
