@@ -13,7 +13,7 @@ import threading
 import time
 from collections import defaultdict
 from email.message import EmailMessage
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from enum import Enum
 from pathlib import Path
@@ -761,8 +761,17 @@ def _touch_last_seen_async(user_id: int) -> None:
     threading.Thread(target=_write, daemon=True).start()
 
 
+def _as_utc_naive(dt: Optional[datetime]) -> Optional[datetime]:
+    """Normalize DB timestamps (often TZ-aware on Postgres) for naive-UTC comparisons."""
+    if dt is None:
+        return None
+    if dt.tzinfo is not None:
+        return dt.astimezone(timezone.utc).replace(tzinfo=None)
+    return dt
+
+
 def _max_optional_datetime(*values: Optional[datetime]) -> Optional[datetime]:
-    present = [v for v in values if v is not None]
+    present = [_as_utc_naive(v) for v in values if v is not None]
     return max(present) if present else None
 
 
@@ -968,10 +977,13 @@ def _platform_engagement_by_user_id(*, db, user_ids: list[int]) -> dict[int, _Pl
             acct_cnt, acct_max = acct_by_family.get(fid, (0, None))
             acct_total += acct_cnt
             if acct_max is not None:
-                data_times.append(acct_max)
+                acct_dt = _as_utc_naive(acct_max)
+                if acct_dt is not None:
+                    data_times.append(acct_dt)
         for src in (user_max_et.get(uid), user_max_vb.get(uid), user_max_fb.get(uid)):
-            if src is not None:
-                data_times.append(src)
+            src_dt = _as_utc_naive(src)
+            if src_dt is not None:
+                data_times.append(src_dt)
         out[uid] = _PlatformUserEngagementStats(
             transaction_count=tx_total,
             account_count=acct_total,
@@ -995,9 +1007,9 @@ def _platform_user_row_out(
             access_mode=memberships[0].access_mode,
         )
     eng = engagement or _PlatformUserEngagementStats()
-    last_login_at = getattr(u, "last_login_at", None)
-    last_seen_at = getattr(u, "last_seen_at", None)
-    last_data_at = eng.last_data_at
+    last_login_at = _as_utc_naive(getattr(u, "last_login_at", None))
+    last_seen_at = _as_utc_naive(getattr(u, "last_seen_at", None))
+    last_data_at = _as_utc_naive(eng.last_data_at)
     return PlatformAdminUserOut(
         id=int(u.id),
         email=u.email,
