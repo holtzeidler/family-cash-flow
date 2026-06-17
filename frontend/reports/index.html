@@ -97,7 +97,7 @@
 
                 <div id="forecastConfidenceCard" class="cash-health-status cash-health-status--balance" hidden aria-label="Last balance check">
                   <div class="cash-health-status__row">
-                    <span class="cash-health-status__label">Last Balance Check</span>
+                    <span class="cash-health-status__label cash-health-status__label--subtle">Confirmed</span>
                     <span id="forecastConfidenceDetail" class="cash-health-status__value"></span>
                   </div>
                   <p id="forecastConfidenceHelper" class="cash-health-status__note" hidden></p>
@@ -281,26 +281,25 @@
           </div>
 
           <div class="card sidebar-section" data-sidebar-key="month">
-            <div class="sidebar-section-head">
-              <h2>Month summary</h2>
-              <button
-                type="button"
-                class="sidebar-collapse-btn"
-                aria-expanded="true"
-                aria-controls="sidebarBodyMonth"
-                title="Collapse Month summary"
-              >
-                <svg class="sidebar-collapse-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M6 9l6 6 6-6" />
-                </svg>
-              </button>
+            <div class="sidebar-section-head sidebar-forecast-head">
+              <h2>Forecast snapshot</h2>
+              <div class="sidebar-forecast-head__actions">
+                <label class="sr-only" for="monthInput">Month</label>
+                <input id="monthInput" class="sidebar-month-input" type="month" />
+                <button
+                  type="button"
+                  class="sidebar-collapse-btn"
+                  aria-expanded="true"
+                  aria-controls="sidebarBodyMonth"
+                  title="Collapse Forecast snapshot"
+                >
+                  <svg class="sidebar-collapse-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M6 9l6 6 6-6" />
+                  </svg>
+                </button>
+              </div>
             </div>
             <div id="sidebarBodyMonth" class="sidebar-section-body">
-              <div>
-                <label for="monthInput">Month</label>
-                <input id="monthInput" type="month" />
-              </div>
-              <div class="sidebar-month-spacer" aria-hidden="true"></div>
               <div class="totals totals--compact" id="totals"></div>
               <div id="txErr" class="error"></div>
             </div>
