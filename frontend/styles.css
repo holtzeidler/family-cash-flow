@@ -5643,7 +5643,7 @@ button.secondary[aria-disabled="true"]{
   /* Status row label — detailed sizing from .cash-health-status__label + view rules */
 }
 
-.sidebar-top{
+/* "Needs review" pending checklist — compact queue row */
 #sidebarPendingTxList.list{
   gap: 4px;
   margin-top: 3px;
