@@ -341,6 +341,7 @@ class User(Base):
     # Platform user type: subscriber (app) | admin (operator console). Family roles are on FamilyMember.
     platform_role: Mapped[str] = mapped_column(String(20), nullable=False, default="subscriber")
     last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    last_seen_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     memberships: Mapped[list[FamilyMember]] = relationship(back_populates="user")
 
@@ -703,16 +704,72 @@ def _read_access_token_from_cookie_or_authorization(
 def get_current_user_id(access_token: Optional[str]) -> int:
     if not access_token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+    user_id = _decode_user_id_from_token_optional(access_token)
+    if user_id is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid session")
+    return user_id
+
+
+def _decode_user_id_from_token_optional(access_token: Optional[str]) -> Optional[int]:
+    if not access_token:
+        return None
     try:
         payload = jwt.decode(access_token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
         sub = payload.get("sub")
         if sub is None:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+            return None
         return int(sub)
-    except HTTPException:
-        raise
     except Exception:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid session")
+        return None
+
+
+def _read_access_token_from_request(request: Request) -> Optional[str]:
+    cookie_token = request.cookies.get("access_token")
+    if cookie_token and str(cookie_token).strip():
+        return str(cookie_token).strip()
+    authorization = request.headers.get("authorization")
+    if not authorization:
+        return None
+    parts = authorization.split()
+    if len(parts) == 2 and parts[0].lower() == "bearer" and parts[1].strip():
+        return parts[1].strip()
+    return None
+
+
+_LAST_SEEN_TOUCHED: dict[int, float] = {}
+_LAST_SEEN_LOCK = threading.Lock()
+_LAST_SEEN_MIN_INTERVAL_SEC = 300
+
+
+def _touch_last_seen_async(user_id: int) -> None:
+    """Update last_seen_at at most once per user every few minutes (background thread)."""
+    now = time.time()
+    with _LAST_SEEN_LOCK:
+        prev = _LAST_SEEN_TOUCHED.get(user_id, 0.0)
+        if now - prev < _LAST_SEEN_MIN_INTERVAL_SEC:
+            return
+        _LAST_SEEN_TOUCHED[user_id] = now
+
+    def _write() -> None:
+        try:
+            with SessionLocal() as db:
+                db.execute(update(User).where(User.id == user_id).values(last_seen_at=datetime.utcnow()))
+                db.commit()
+        except Exception:
+            pass
+
+    threading.Thread(target=_write, daemon=True).start()
+
+
+def _max_optional_datetime(*values: Optional[datetime]) -> Optional[datetime]:
+    present = [v for v in values if v is not None]
+    return max(present) if present else None
+
+
+def _date_to_utc_datetime(d: Optional[date]) -> Optional[datetime]:
+    if d is None:
+        return None
+    return datetime.combine(d, datetime.min.time())
 
 
 def _platform_admin_email_set() -> set[str]:
@@ -825,7 +882,110 @@ def _user_account_status(*, memberships: Sequence) -> str:
     return "no_family" if not memberships else "active"
 
 
-def _platform_user_row_out(*, u: User, memberships: list[PlatformAdminFamilyMembershipOut]) -> "PlatformAdminUserOut":
+class _PlatformUserEngagementStats:
+    __slots__ = ("transaction_count", "account_count", "last_data_at")
+
+    def __init__(
+        self,
+        *,
+        transaction_count: int = 0,
+        account_count: int = 0,
+        last_data_at: Optional[datetime] = None,
+    ) -> None:
+        self.transaction_count = transaction_count
+        self.account_count = account_count
+        self.last_data_at = last_data_at
+
+
+def _platform_engagement_by_user_id(*, db, user_ids: list[int]) -> dict[int, _PlatformUserEngagementStats]:
+    if not user_ids:
+        return {}
+    uid_set = {int(x) for x in user_ids}
+    member_rows = db.execute(
+        select(FamilyMember.user_id, FamilyMember.family_id).where(FamilyMember.user_id.in_(uid_set))
+    ).all()
+    user_family_ids: dict[int, set[int]] = defaultdict(set)
+    all_family_ids: set[int] = set()
+    for uid, fid in member_rows:
+        user_family_ids[int(uid)].add(int(fid))
+        all_family_ids.add(int(fid))
+
+    tx_by_family: dict[int, tuple[int, Optional[date]]] = {}
+    acct_by_family: dict[int, tuple[int, Optional[datetime]]] = {}
+    if all_family_ids:
+        for fid, cnt, max_date in db.execute(
+            select(Transaction.family_id, func.count(), func.max(Transaction.date))
+            .where(Transaction.family_id.in_(all_family_ids))
+            .group_by(Transaction.family_id)
+        ).all():
+            tx_by_family[int(fid)] = (int(cnt or 0), max_date)
+        for fid, cnt, max_created in db.execute(
+            select(Account.family_id, func.count(), func.max(Account.created_at))
+            .where(Account.family_id.in_(all_family_ids))
+            .group_by(Account.family_id)
+        ).all():
+            acct_by_family[int(fid)] = (int(cnt or 0), max_created)
+
+    user_max_et: dict[int, datetime] = {
+        int(uid): ts
+        for uid, ts in db.execute(
+            select(ExpectedTransaction.created_by_user_id, func.max(ExpectedTransaction.created_at))
+            .where(ExpectedTransaction.created_by_user_id.in_(uid_set))
+            .group_by(ExpectedTransaction.created_by_user_id)
+        ).all()
+        if ts is not None
+    }
+    user_max_vb: dict[int, datetime] = {
+        int(uid): ts
+        for uid, ts in db.execute(
+            select(VerifiedBalance.created_by_user_id, func.max(VerifiedBalance.created_at))
+            .where(VerifiedBalance.created_by_user_id.in_(uid_set))
+            .group_by(VerifiedBalance.created_by_user_id)
+        ).all()
+        if uid is not None and ts is not None
+    }
+    user_max_fb: dict[int, datetime] = {
+        int(uid): ts
+        for uid, ts in db.execute(
+            select(Feedback.user_id, func.max(Feedback.created_at))
+            .where(Feedback.user_id.in_(uid_set))
+            .group_by(Feedback.user_id)
+        ).all()
+        if uid is not None and ts is not None
+    }
+
+    out: dict[int, _PlatformUserEngagementStats] = {}
+    for uid in uid_set:
+        tx_total = 0
+        acct_total = 0
+        data_times: list[datetime] = []
+        for fid in user_family_ids.get(uid, set()):
+            tx_cnt, tx_max = tx_by_family.get(fid, (0, None))
+            tx_total += tx_cnt
+            tx_dt = _date_to_utc_datetime(tx_max)
+            if tx_dt is not None:
+                data_times.append(tx_dt)
+            acct_cnt, acct_max = acct_by_family.get(fid, (0, None))
+            acct_total += acct_cnt
+            if acct_max is not None:
+                data_times.append(acct_max)
+        for src in (user_max_et.get(uid), user_max_vb.get(uid), user_max_fb.get(uid)):
+            if src is not None:
+                data_times.append(src)
+        out[uid] = _PlatformUserEngagementStats(
+            transaction_count=tx_total,
+            account_count=acct_total,
+            last_data_at=max(data_times) if data_times else None,
+        )
+    return out
+
+
+def _platform_user_row_out(
+    *,
+    u: User,
+    memberships: list[PlatformAdminFamilyMembershipOut],
+    engagement: Optional[_PlatformUserEngagementStats] = None,
+) -> "PlatformAdminUserOut":
     primary_name: Optional[str] = None
     primary_role: Optional[str] = None
     if memberships:
@@ -834,12 +994,21 @@ def _platform_user_row_out(*, u: User, memberships: list[PlatformAdminFamilyMemb
             is_family_owner=memberships[0].is_family_owner,
             access_mode=memberships[0].access_mode,
         )
+    eng = engagement or _PlatformUserEngagementStats()
+    last_login_at = getattr(u, "last_login_at", None)
+    last_seen_at = getattr(u, "last_seen_at", None)
+    last_data_at = eng.last_data_at
     return PlatformAdminUserOut(
         id=int(u.id),
         email=u.email,
         name=u.name,
         created_at=u.created_at,
-        last_login_at=getattr(u, "last_login_at", None),
+        last_login_at=last_login_at,
+        last_seen_at=last_seen_at,
+        last_data_at=last_data_at,
+        last_active_at=_max_optional_datetime(last_login_at, last_seen_at, last_data_at),
+        transaction_count=int(eng.transaction_count),
+        account_count=int(eng.account_count),
         platform_role=effective_platform_role(user=u),
         status=_user_account_status(memberships=memberships),
         primary_family_name=primary_name,
@@ -1212,6 +1381,11 @@ class PlatformAdminUserOut(BaseModel):
     name: Optional[str] = None
     created_at: datetime
     last_login_at: Optional[datetime] = None
+    last_seen_at: Optional[datetime] = None
+    last_data_at: Optional[datetime] = None
+    last_active_at: Optional[datetime] = None
+    transaction_count: int = 0
+    account_count: int = 0
     platform_role: Literal["subscriber", "admin"]
     status: Literal["active", "no_family"]
     primary_family_name: Optional[str] = None
@@ -1752,6 +1926,18 @@ if settings.CORS_ORIGINS:
             allow_methods=["*"],
             allow_headers=["*"],
         )
+
+
+@app.middleware("http")
+async def touch_user_last_seen(request: Request, call_next):
+    path = request.url.path
+    if path.startswith("/api/") and path not in ("/api/health", "/api/debug/public-config"):
+        if not path.startswith("/api/auth/login") and not path.startswith("/api/auth/register"):
+            token = _read_access_token_from_request(request)
+            user_id = _decode_user_id_from_token_optional(token)
+            if user_id is not None:
+                _touch_last_seen_async(user_id)
+    return await call_next(request)
 
 
 @app.get("/api/health", include_in_schema=False)
@@ -2706,12 +2892,15 @@ def _ensure_user_platform_columns() -> None:
                 conn.execute(text("ALTER TABLE users ADD COLUMN platform_role VARCHAR(20) NOT NULL DEFAULT 'subscriber'"))
             if "last_login_at" not in names:
                 conn.execute(text("ALTER TABLE users ADD COLUMN last_login_at DATETIME"))
+            if "last_seen_at" not in names:
+                conn.execute(text("ALTER TABLE users ADD COLUMN last_seen_at DATETIME"))
             conn.execute(text("UPDATE users SET platform_role = COALESCE(NULLIF(TRIM(platform_role), ''), 'subscriber')"))
         else:
             conn.execute(
                 text("ALTER TABLE users ADD COLUMN IF NOT EXISTS platform_role VARCHAR(20) NOT NULL DEFAULT 'subscriber'")
             )
             conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ"))
+            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ"))
             conn.execute(text("UPDATE users SET platform_role = COALESCE(NULLIF(TRIM(platform_role), ''), 'subscriber')"))
 
 
@@ -3092,6 +3281,9 @@ def register(payload: RegisterIn, response: Response, db=Depends(get_db)):
         password_hash=hash_password(payload.password),
         platform_role="subscriber",
     )
+    now = datetime.utcnow()
+    user.last_login_at = now
+    user.last_seen_at = now
     db.add(user)
     db.commit()
     db.refresh(user)
@@ -3144,7 +3336,9 @@ def login(payload: LoginIn, db=Depends(get_db)):
     user = db.execute(select(User).where(func.lower(User.email) == key)).scalar_one_or_none()
     if not user or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
-    user.last_login_at = datetime.utcnow()
+    now = datetime.utcnow()
+    user.last_login_at = now
+    user.last_seen_at = now
     db.commit()
     token = create_access_token(user_id=user.id)
     resp = JSONResponse(content={"ok": True, "access_token": token}, status_code=status.HTTP_200_OK)
@@ -3645,8 +3839,14 @@ def platform_list_users(
     user_id = get_current_user_id(access_token)
     require_platform_admin(db=db, user_id=user_id)
     users = db.execute(select(User).order_by(User.id.asc())).scalars().all()
+    user_ids = [int(u.id) for u in users]
+    engagement_by_id = _platform_engagement_by_user_id(db=db, user_ids=user_ids)
     return [
-        _platform_user_row_out(u=u, memberships=_platform_memberships_for_user(db=db, user_id=int(u.id)))
+        _platform_user_row_out(
+            u=u,
+            memberships=_platform_memberships_for_user(db=db, user_id=int(u.id)),
+            engagement=engagement_by_id.get(int(u.id)),
+        )
         for u in users
     ]
 
@@ -3663,7 +3863,8 @@ def platform_get_user(
     if u is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     mems = _platform_memberships_for_user(db=db, user_id=int(u.id))
-    base = _platform_user_row_out(u=u, memberships=mems)
+    engagement = _platform_engagement_by_user_id(db=db, user_ids=[int(u.id)]).get(int(u.id))
+    base = _platform_user_row_out(u=u, memberships=mems, engagement=engagement)
     return PlatformAdminUserDetailOut(
         **base.model_dump(),
         recent_audit=_audit_entries_for_user(db=db, user_id=int(u.id)),
@@ -3706,7 +3907,12 @@ def platform_patch_user(
     )
     db.commit()
     db.refresh(u)
-    return _platform_user_row_out(u=u, memberships=_platform_memberships_for_user(db=db, user_id=int(u.id)))
+    engagement = _platform_engagement_by_user_id(db=db, user_ids=[int(u.id)]).get(int(u.id))
+    return _platform_user_row_out(
+        u=u,
+        memberships=_platform_memberships_for_user(db=db, user_id=int(u.id)),
+        engagement=engagement,
+    )
 
 
 @app.patch(

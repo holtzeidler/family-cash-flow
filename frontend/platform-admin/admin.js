@@ -159,6 +159,30 @@
     }
   }
 
+  function fmtAdminRelativeDays(iso) {
+    if (!iso) return "—";
+    try {
+      const then = Date.parse(iso);
+      if (!Number.isFinite(then)) return "—";
+      const days = Math.floor((Date.now() - then) / 86400000);
+      if (days <= 0) return "Today";
+      if (days === 1) return "1 day ago";
+      return `${days} days ago`;
+    } catch (_) {
+      return "—";
+    }
+  }
+
+  function engagementDataCellText(u) {
+    const tx = Number(u.transaction_count) || 0;
+    const acct = Number(u.account_count) || 0;
+    if (!tx && !acct) return "No data";
+    const parts = [];
+    if (tx) parts.push(`${tx} tx`);
+    if (acct) parts.push(`${acct} acct${acct === 1 ? "" : "s"}`);
+    return parts.join(" · ");
+  }
+
   function membershipFamilyRoleLabel(m) {
     if (m.is_family_owner) return "Owner";
     if (String(m.access_mode || "edit").toLowerCase() === "view") return "View only";
@@ -233,6 +257,15 @@
         return String(a.status || "active").localeCompare(String(b.status || "active"));
       case "last_login":
         return compareAdminIsoNullable(a.last_login_at, b.last_login_at);
+      case "last_seen":
+        return compareAdminIsoNullable(a.last_seen_at, b.last_seen_at);
+      case "last_active":
+        return compareAdminIsoNullable(a.last_active_at, b.last_active_at);
+      case "data": {
+        const av = (Number(a.transaction_count) || 0) + (Number(a.account_count) || 0);
+        const bv = (Number(b.transaction_count) || 0) + (Number(b.account_count) || 0);
+        return av - bv;
+      }
       case "created":
         return compareAdminIsoNullable(a.created_at, b.created_at);
       default:
@@ -371,6 +404,9 @@
           <td>${escapeHtml(platformRoleLabel(u.platform_role))}</td>
           <td>${escapeHtml(statusLabel(u.status))}</td>
           <td>${escapeHtml(fmtAdminDateTime(u.last_login_at))}</td>
+          <td>${escapeHtml(fmtAdminDateTime(u.last_seen_at))}</td>
+          <td title="${escapeHtml(fmtAdminDateTime(u.last_active_at))}">${escapeHtml(fmtAdminRelativeDays(u.last_active_at))}</td>
+          <td>${escapeHtml(engagementDataCellText(u))}</td>
           <td>${escapeHtml(fmtAdminDateTime(u.created_at))}</td>
           <td>
             <div class="platform-admin-users-actions">
@@ -484,6 +520,9 @@
             <dt>Status</dt><dd>${escapeHtml(statusLabel(u.status))}</dd>
             <dt>Created</dt><dd>${escapeHtml(fmtAdminDateTime(u.created_at))}</dd>
             <dt>Last login</dt><dd>${escapeHtml(fmtAdminDateTime(u.last_login_at))}</dd>
+            <dt>Last seen</dt><dd>${escapeHtml(fmtAdminDateTime(u.last_seen_at))}</dd>
+            <dt>Last active</dt><dd>${escapeHtml(fmtAdminDateTime(u.last_active_at))} <span class="meta">(${escapeHtml(fmtAdminRelativeDays(u.last_active_at))})</span></dd>
+            <dt>Data in app</dt><dd>${escapeHtml(engagementDataCellText(u))}${u.last_data_at ? ` <span class="meta">· last change ${escapeHtml(fmtAdminDateTime(u.last_data_at))}</span>` : ""}</dd>
           </dl>
         </section>
         <section class="platform-admin-drawer__section">
