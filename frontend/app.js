@@ -5661,11 +5661,11 @@ function lastBalanceCheckPrimaryLine(days, confirmedDateIso) {
   if (days == null) return "";
   const n = Number(days);
   if (!Number.isFinite(n) || n < 0) return "";
-  if (n === 0) return "Confirmed today";
+  if (n === 0) return "✓ Confirmed today";
   const ago = n === 1 ? "1 day ago" : `${n} days ago`;
-  const dateLabel = fmtMonthDayLong(confirmedDateIso);
-  if (dateLabel) return `Confirmed ${dateLabel} · ${ago}`;
-  return `Confirmed · ${ago}`;
+  const dateLabel = fmtMonthDay(confirmedDateIso) || fmtMonthDayLong(confirmedDateIso);
+  if (dateLabel) return `✓ Confirmed ${dateLabel} • ${ago}`;
+  return `✓ Confirmed • ${ago}`;
 }
 
 function applyForecastConfidenceUi(data) {
@@ -12678,7 +12678,7 @@ function renderSidebarPendingTransactionsForMonth() {
   if (!range) {
     setTitle();
     if (sidebarPendingTxCard) sidebarPendingTxCard.classList.add("sidebar-pending--empty");
-    setPendingStatus("Choose month");
+    setPendingStatus("");
     return;
   }
 
@@ -12711,12 +12711,12 @@ function renderSidebarPendingTransactionsForMonth() {
   if (!rows.length) {
     setTitle();
     if (sidebarPendingTxCard) sidebarPendingTxCard.classList.add("sidebar-pending--empty");
-    setPendingStatus("✓ Nothing to review");
+    setPendingStatus("0");
     return;
   }
 
   setTitle();
-  setPendingStatus(`${rows.length} to review`);
+  setPendingStatus(`(${rows.length})`);
   for (let idx = 0; idx < rows.length; idx++) {
     const r = rows[idx];
     const it = r.tx;

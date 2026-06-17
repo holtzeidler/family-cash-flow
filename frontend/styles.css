@@ -28752,7 +28752,7 @@ body[data-bw-view="calendar"] .sidebar-cash-health__alerts + .cash-health-status
 body[data-bw-view="transactions"] .sidebar-cash-health__alerts + .cash-health-status--balance,
 body[data-bw-view="settings"] .sidebar-cash-health__alerts + .cash-health-status--balance,
 body[data-bw-view="reports"] .sidebar-cash-health__alerts + .cash-health-status--balance{
-  margin-top: -2px;
+  margin-top: 0;
 }
 body[data-bw-view="calendar"] .cash-health-status,
 body[data-bw-view="transactions"] .cash-health-status,
@@ -28765,42 +28765,16 @@ body[data-bw-view="calendar"] .cash-health-status--review,
 body[data-bw-view="transactions"] .cash-health-status--review,
 body[data-bw-view="settings"] .cash-health-status--review,
 body[data-bw-view="reports"] .cash-health-status--review{
-  margin-top: 4px;
-  padding-top: 5px;
+  margin-top: 12px;
+  padding-top: 7px;
   border-top: 1px solid rgba(17, 24, 39, 0.07);
 }
 body[data-bw-view="calendar"] .cash-health-status--balance .cash-health-status__row,
 body[data-bw-view="transactions"] .cash-health-status--balance .cash-health-status__row,
 body[data-bw-view="settings"] .cash-health-status--balance .cash-health-status__row,
 body[data-bw-view="reports"] .cash-health-status--balance .cash-health-status__row{
-  width: 100%;
-  box-sizing: border-box;
-  min-height: 26px;
-  padding: 3px 9px;
-  border-radius: 999px;
-  border: 1px solid rgba(17, 24, 39, 0.08);
-  background: rgba(255, 255, 255, 0.58);
   justify-content: flex-start;
   align-items: center;
-}
-body[data-bw-view="calendar"] .cash-health-status--balance .cash-health-status__row::before,
-body[data-bw-view="transactions"] .cash-health-status--balance .cash-health-status__row::before,
-body[data-bw-view="settings"] .cash-health-status--balance .cash-health-status__row::before,
-body[data-bw-view="reports"] .cash-health-status--balance .cash-health-status__row::before{
-  content: "✓";
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  width: 16px;
-  height: 16px;
-  border-radius: 999px;
-  background: rgba(11, 61, 46, 0.08);
-  color: rgba(11, 61, 46, 0.88);
-  font-family: var(--font, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif);
-  font-size: 10px;
-  font-weight: 800;
-  line-height: 1;
 }
 body[data-bw-view="calendar"] .cash-health-status__row,
 body[data-bw-view="transactions"] .cash-health-status__row,
@@ -28839,33 +28813,29 @@ body[data-bw-view="transactions"] .cash-health-status--balance .cash-health-stat
 body[data-bw-view="settings"] .cash-health-status--balance .cash-health-status__value,
 body[data-bw-view="reports"] .cash-health-status--balance .cash-health-status__value{
   text-align: left;
-  color: rgba(51, 65, 85, 0.82);
+  color: rgba(71, 85, 105, 0.82);
+  font-size: 11px;
+  font-weight: 560;
 }
 body[data-bw-view="calendar"] .cash-health-status--review .cash-health-status__row,
 body[data-bw-view="transactions"] .cash-health-status--review .cash-health-status__row,
 body[data-bw-view="settings"] .cash-health-status--review .cash-health-status__row,
 body[data-bw-view="reports"] .cash-health-status--review .cash-health-status__row{
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: flex-start;
-  gap: 2px;
+  flex-direction: row;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
 }
 body[data-bw-view="calendar"] .cash-health-status--review .cash-health-status__value,
 body[data-bw-view="transactions"] .cash-health-status--review .cash-health-status__value,
 body[data-bw-view="settings"] .cash-health-status--review .cash-health-status__value,
 body[data-bw-view="reports"] .cash-health-status--review .cash-health-status__value{
-  display: inline-flex;
-  align-items: center;
-  width: fit-content;
-  padding: 2px 7px;
-  border-radius: 999px;
-  background: rgba(15, 23, 42, 0.045);
-  color: rgba(51, 65, 85, 0.78);
-  font-size: 10px;
-  font-weight: 650;
-  line-height: 1.1;
-  text-align: left;
+  color: rgba(15, 23, 42, 0.88);
+  font-size: 10.5px;
+  font-weight: 680;
+  line-height: 1.2;
+  text-align: right;
   white-space: nowrap;
 }
 body[data-bw-view="calendar"] .cash-health-status__note,
