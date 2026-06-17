@@ -9976,13 +9976,19 @@ body[data-bw-view="calendar"] .app-layout{
   gap: 14px;
 }
 body[data-bw-view="calendar"] .sidebar{
-  gap: 10px;
+  gap: 22px;
   padding-right: 0;
   width: 100%;
   min-width: 0;
   background: #f3f4f6;
   border-radius: 0;
-  padding: 4px 8px 10px 4px;
+  box-sizing: border-box;
+  height: calc(100vh - var(--app-top-nav-offset) - 20px);
+  max-height: calc(100vh - var(--app-top-nav-offset) - 20px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 4px 8px 28px 4px;
+  scrollbar-gutter: stable;
   box-shadow: none;
 }
 body[data-bw-view="calendar"] .sidebar-sticky-head{
@@ -10587,6 +10593,7 @@ body[data-bw-view="calendar"] .cal-detail-btn.is-active{
   body[data-bw-view="calendar"] .sidebar,
   body[data-bw-view="transactions"] .sidebar{
     position: static;
+    height: auto;
     max-height: none;
     align-items: stretch;
   }
