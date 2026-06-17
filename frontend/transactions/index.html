@@ -84,20 +84,34 @@
 
             <div id="viewOnlyBanner" class="view-only-banner" hidden role="status"></div>
 
-            <div class="sidebar-balance-threshold-alerts" id="sidebarBalanceThresholdAlerts" aria-label="Balance threshold alerts">
-              <div class="cash-outlook-head" id="cashOutlookHead" hidden>
-                <div class="cash-outlook-title" id="cashOutlookTitle">Cash Health</div>
+            <section id="sidebarCashHealthCard" class="card sidebar-section sidebar-cash-health" hidden aria-label="Cash Health">
+              <div class="sidebar-section-head sidebar-cash-health__head">
+                <h2 id="cashOutlookTitle">Cash Health</h2>
                 <button type="button" id="sidebarBalanceThresholdHint" class="sidebar-balance-threshold-hint-inline" hidden></button>
               </div>
-              <div id="sidebarLowBalanceBanner" class="calendar-low-balance calendar-low-balance--sidebar" style="display: none" role="status"></div>
-              <div id="sidebarHighBalanceBanner" class="calendar-low-balance calendar-low-balance--sidebar calendar-low-balance--high" style="display: none" role="status"></div>
-            </div>
+              <div class="sidebar-section-body sidebar-cash-health__body">
+                <div class="sidebar-balance-threshold-alerts sidebar-cash-health__alerts" id="sidebarBalanceThresholdAlerts" aria-label="Balance threshold alerts">
+                  <div id="sidebarLowBalanceBanner" class="calendar-low-balance calendar-low-balance--sidebar calendar-low-balance--inset" style="display: none" role="status"></div>
+                  <div id="sidebarHighBalanceBanner" class="calendar-low-balance calendar-low-balance--sidebar calendar-low-balance--high calendar-low-balance--inset" style="display: none" role="status"></div>
+                </div>
 
-            <section id="forecastConfidenceCard" class="forecast-confidence" hidden aria-label="Last balance check">
-              <h3 class="forecast-confidence__title">Last Balance Check</h3>
-              <p id="forecastConfidenceDetail" class="forecast-confidence__detail"></p>
-              <p id="forecastConfidenceHelper" class="forecast-confidence__helper" hidden></p>
-              <button type="button" id="forecastConfidenceVerifyBtn" class="forecast-confidence__cta" hidden>Confirm My Balance</button>
+                <div id="forecastConfidenceCard" class="cash-health-status cash-health-status--balance" hidden aria-label="Last balance check">
+                  <div class="cash-health-status__row">
+                    <span class="cash-health-status__label">Last Balance Check</span>
+                    <span id="forecastConfidenceDetail" class="cash-health-status__value"></span>
+                  </div>
+                  <p id="forecastConfidenceHelper" class="cash-health-status__note" hidden></p>
+                  <button type="button" id="forecastConfidenceVerifyBtn" class="cash-health-status__cta" hidden>Confirm My Balance</button>
+                </div>
+
+                <div id="sidebarPendingTxCard" class="cash-health-status cash-health-status--review" aria-label="Needs review">
+                  <div class="cash-health-status__row">
+                    <span class="cash-health-status__label" id="sidebarPendingTitle">Needs review</span>
+                    <span id="sidebarPendingStatus" class="cash-health-status__value" hidden></span>
+                  </div>
+                  <div class="cash-health-status__detail list" id="sidebarPendingTxList"></div>
+                </div>
+              </div>
             </section>
 
             <div id="settingsSidebarNav" class="settings-nav settings-nav--sidebar settings-nav--rail" hidden aria-label="Settings sections">
@@ -120,15 +134,6 @@
                 <span class="settings-nav-item__label">Billing</span>
                 <span class="settings-nav-item__chev" aria-hidden="true">▸</span>
               </button>
-            </div>
-          </div>
-
-          <div id="sidebarPendingTxCard" class="card sidebar-section" aria-label="Pending transactions for this month">
-            <div class="sidebar-section-head">
-              <h2 id="sidebarPendingTitle">Needs review</h2>
-            </div>
-            <div class="sidebar-section-body">
-              <div class="list" id="sidebarPendingTxList"></div>
             </div>
           </div>
 
