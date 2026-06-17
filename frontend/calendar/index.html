@@ -284,10 +284,8 @@
 
           <div class="card sidebar-section" data-sidebar-key="month">
             <div class="sidebar-section-head sidebar-forecast-head">
-              <h2>Forecast snapshot</h2>
+              <h2>FORECAST SNAPSHOT</h2>
               <div class="sidebar-forecast-head__actions">
-                <label class="sr-only" for="monthInput">Month</label>
-                <input id="monthInput" class="sidebar-month-input" type="month" />
                 <button
                   type="button"
                   class="sidebar-collapse-btn"
@@ -302,6 +300,10 @@
               </div>
             </div>
             <div id="sidebarBodyMonth" class="sidebar-section-body">
+              <div class="sidebar-month-row">
+                <label class="sr-only" for="monthInput">Month</label>
+                <input id="monthInput" class="sidebar-month-input" type="month" />
+              </div>
               <div class="totals" id="totals"></div>
               <div id="txErr" class="error"></div>
             </div>
