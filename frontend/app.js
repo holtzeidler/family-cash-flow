@@ -5661,11 +5661,11 @@ function lastBalanceCheckPrimaryLine(days, confirmedDateIso) {
   if (days == null) return "";
   const n = Number(days);
   if (!Number.isFinite(n) || n < 0) return "";
-  if (n === 0) return "✓ Today";
+  if (n === 0) return "✓ Confirmed today";
   const ago = n === 1 ? "1 day ago" : `${n} days ago`;
   const dateLabel = fmtMonthDayLong(confirmedDateIso);
-  if (dateLabel) return `✓ ${dateLabel} · ${ago}`;
-  return `✓ ${ago}`;
+  if (dateLabel) return `✓ Confirmed ${dateLabel} · ${ago}`;
+  return `✓ Confirmed · ${ago}`;
 }
 
 function applyForecastConfidenceUi(data) {
@@ -12666,18 +12666,19 @@ function renderSidebarPendingTransactionsForMonth() {
     sidebarPendingStatus.hidden = true;
   }
   const checked = loadPendingAttentionChecked();
-  const setTitle = (n, empty = false) => {
+  const setTitle = () => {
     if (!sidebarPendingTitle) return;
-    sidebarPendingTitle.textContent =
-      empty || !Number(n) ? "Needs review" : `Needs review (${Number(n) || 0})`;
+    sidebarPendingTitle.textContent = "Next up";
+  };
+  const setPendingStatus = (text) => {
+    if (!sidebarPendingStatus) return;
+    sidebarPendingStatus.textContent = text || "";
+    sidebarPendingStatus.hidden = !text;
   };
   if (!range) {
-    setTitle(0, true);
+    setTitle();
     if (sidebarPendingTxCard) sidebarPendingTxCard.classList.add("sidebar-pending--empty");
-    if (sidebarPendingStatus) {
-      sidebarPendingStatus.textContent = "Choose a month to see pending.";
-      sidebarPendingStatus.hidden = false;
-    }
+    setPendingStatus("Choose month");
     return;
   }
 
@@ -12708,16 +12709,14 @@ function renderSidebarPendingTransactionsForMonth() {
   });
 
   if (!rows.length) {
-    setTitle(0, true);
+    setTitle();
     if (sidebarPendingTxCard) sidebarPendingTxCard.classList.add("sidebar-pending--empty");
-    if (sidebarPendingStatus) {
-      sidebarPendingStatus.textContent = "✓ Everything is up to date";
-      sidebarPendingStatus.hidden = false;
-    }
+    setPendingStatus("✓ Nothing to review");
     return;
   }
 
-  setTitle(rows.length);
+  setTitle();
+  setPendingStatus(`${rows.length} to review`);
   for (let idx = 0; idx < rows.length; idx++) {
     const r = rows[idx];
     const it = r.tx;

@@ -28740,7 +28740,7 @@ body[data-bw-view="calendar"] .sidebar-cash-health__body,
 body[data-bw-view="transactions"] .sidebar-cash-health__body,
 body[data-bw-view="settings"] .sidebar-cash-health__body,
 body[data-bw-view="reports"] .sidebar-cash-health__body{
-  gap: 5px;
+  gap: 4px;
 }
 body[data-bw-view="calendar"] .sidebar-cash-health__alerts,
 body[data-bw-view="transactions"] .sidebar-cash-health__alerts,
@@ -28759,9 +28759,15 @@ body[data-bw-view="calendar"] .cash-health-status--review,
 body[data-bw-view="transactions"] .cash-health-status--review,
 body[data-bw-view="settings"] .cash-health-status--review,
 body[data-bw-view="reports"] .cash-health-status--review{
-  margin-top: 7px;
-  padding-top: 8px;
+  margin-top: 6px;
+  padding-top: 7px;
   border-top: 1px solid rgba(17, 24, 39, 0.07);
+}
+body[data-bw-view="calendar"] .cash-health-status--balance .cash-health-status__row,
+body[data-bw-view="transactions"] .cash-health-status--balance .cash-health-status__row,
+body[data-bw-view="settings"] .cash-health-status--balance .cash-health-status__row,
+body[data-bw-view="reports"] .cash-health-status--balance .cash-health-status__row{
+  justify-content: flex-start;
 }
 body[data-bw-view="calendar"] .cash-health-status__row,
 body[data-bw-view="transactions"] .cash-health-status__row,
@@ -28795,6 +28801,13 @@ body[data-bw-view="reports"] .cash-health-status__value{
   font-size: 11.5px;
   line-height: 1.25;
 }
+body[data-bw-view="calendar"] .cash-health-status--balance .cash-health-status__value,
+body[data-bw-view="transactions"] .cash-health-status--balance .cash-health-status__value,
+body[data-bw-view="settings"] .cash-health-status--balance .cash-health-status__value,
+body[data-bw-view="reports"] .cash-health-status--balance .cash-health-status__value{
+  text-align: left;
+  color: rgba(51, 65, 85, 0.82);
+}
 body[data-bw-view="calendar"] .cash-health-status__note,
 body[data-bw-view="transactions"] .cash-health-status__note,
 body[data-bw-view="settings"] .cash-health-status__note,
@@ -28806,45 +28819,57 @@ body[data-bw-view="calendar"] #sidebarPendingTxList.list,
 body[data-bw-view="transactions"] #sidebarPendingTxList.list,
 body[data-bw-view="settings"] #sidebarPendingTxList.list,
 body[data-bw-view="reports"] #sidebarPendingTxList.list{
-  gap: 4px;
-  margin-top: 5px;
+  gap: 3px;
+  margin-top: 4px;
 }
 body[data-bw-view="calendar"] .pending-attn-item,
 body[data-bw-view="transactions"] .pending-attn-item,
 body[data-bw-view="settings"] .pending-attn-item,
 body[data-bw-view="reports"] .pending-attn-item{
   min-height: 0;
-  padding: 5px 6px 5px 8px;
-  gap: 6px;
-  border-radius: 8px;
+  padding: 4px 5px 4px 7px;
+  gap: 5px;
+  border-radius: 7px;
 }
 body[data-bw-view="calendar"] .pending-attn-text,
 body[data-bw-view="transactions"] .pending-attn-text,
 body[data-bw-view="settings"] .pending-attn-text,
 body[data-bw-view="reports"] .pending-attn-text{
-  gap: 0;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 5px;
 }
 body[data-bw-view="calendar"] .pending-attn-name,
 body[data-bw-view="transactions"] .pending-attn-name,
 body[data-bw-view="settings"] .pending-attn-name,
 body[data-bw-view="reports"] .pending-attn-name{
-  font-size: 11.25px;
-  line-height: 1.16;
+  flex: 1 1 auto;
+  font-size: 10.85px;
+  line-height: 1.12;
   -webkit-line-clamp: 1;
 }
 body[data-bw-view="calendar"] .pending-attn-meta,
 body[data-bw-view="transactions"] .pending-attn-meta,
 body[data-bw-view="settings"] .pending-attn-meta,
 body[data-bw-view="reports"] .pending-attn-meta{
-  font-size: 9.75px;
-  line-height: 1.15;
+  flex: 0 0 auto;
+  font-size: 9.45px;
+  line-height: 1.1;
+  white-space: nowrap;
 }
 body[data-bw-view="calendar"] .pending-attn-indicator,
 body[data-bw-view="transactions"] .pending-attn-indicator,
 body[data-bw-view="settings"] .pending-attn-indicator,
 body[data-bw-view="reports"] .pending-attn-indicator{
-  width: 13px;
-  height: 13px;
+  width: 11px;
+  height: 11px;
+}
+body[data-bw-view="calendar"] .pending-attn-chevron,
+body[data-bw-view="transactions"] .pending-attn-chevron,
+body[data-bw-view="settings"] .pending-attn-chevron,
+body[data-bw-view="reports"] .pending-attn-chevron{
+  width: 11px;
+  height: 11px;
 }
 body[data-bw-view="calendar"] .sidebar .card[data-sidebar-key="month"],
 body[data-bw-view="transactions"] .sidebar .card[data-sidebar-key="month"],
@@ -28860,7 +28885,11 @@ body[data-bw-view="reports"] .sidebar .card[data-sidebar-key="month"]{
 .sidebar-forecast-head h2{
   flex: 1 1 6.25rem;
   min-width: 0;
-  font-size: 13.5px;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(71, 85, 105, 0.72);
   line-height: 1.2;
 }
 .sidebar-forecast-head__actions{
