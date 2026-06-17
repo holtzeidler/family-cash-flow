@@ -5663,7 +5663,7 @@ function lastBalanceCheckPrimaryLine(days, confirmedDateIso) {
   if (!Number.isFinite(n) || n < 0) return "";
   if (n === 0) return "✓ Confirmed today";
   const ago = n === 1 ? "1 day ago" : `${n} days ago`;
-  const dateLabel = fmtMonthDay(confirmedDateIso) || fmtMonthDayLong(confirmedDateIso);
+  const dateLabel = fmtMonthDayLong(confirmedDateIso);
   if (dateLabel) return `✓ Confirmed ${dateLabel} • ${ago}`;
   return `✓ Confirmed • ${ago}`;
 }

@@ -28969,4 +28969,106 @@ body[data-bw-view="settings"] #sidebarBodyMonth .totals,
 body[data-bw-view="reports"] #sidebarBodyMonth .totals{
   margin-top: 0;
 }
+
+/* Final left-rail rhythm: tighter card spacing, compact Forecast Snapshot hierarchy. */
+body[data-bw-view="calendar"] .sidebar{
+  gap: 20px;
+}
+body[data-bw-view="calendar"] #sidebarCashHealthCard + .card[data-sidebar-key="month"],
+body[data-bw-view="transactions"] #sidebarCashHealthCard + .card[data-sidebar-key="month"],
+body[data-bw-view="settings"] #sidebarCashHealthCard + .card[data-sidebar-key="month"],
+body[data-bw-view="reports"] #sidebarCashHealthCard + .card[data-sidebar-key="month"]{
+  margin-top: 0;
+}
+body[data-bw-view="calendar"] .sidebar .card[data-sidebar-key="month"],
+body[data-bw-view="transactions"] .sidebar .card[data-sidebar-key="month"],
+body[data-bw-view="settings"] .sidebar .card[data-sidebar-key="month"],
+body[data-bw-view="reports"] .sidebar .card[data-sidebar-key="month"]{
+  padding-top: 10px;
+}
+body[data-bw-view="calendar"] .sidebar-forecast-head,
+body[data-bw-view="transactions"] .sidebar-forecast-head,
+body[data-bw-view="settings"] .sidebar-forecast-head,
+body[data-bw-view="reports"] .sidebar-forecast-head{
+  margin-bottom: 0;
+}
+body[data-bw-view="calendar"] .sidebar-month-row,
+body[data-bw-view="transactions"] .sidebar-month-row,
+body[data-bw-view="settings"] .sidebar-month-row,
+body[data-bw-view="reports"] .sidebar-month-row{
+  margin: 4px 0 5px;
+}
+body[data-bw-view="calendar"] #sidebarBodyMonth .total,
+body[data-bw-view="transactions"] #sidebarBodyMonth .total,
+body[data-bw-view="settings"] #sidebarBodyMonth .total,
+body[data-bw-view="reports"] #sidebarBodyMonth .total{
+  padding-top: 3px;
+  padding-bottom: 3px;
+}
+body[data-bw-view="calendar"] #sidebarBodyMonth .total .k,
+body[data-bw-view="transactions"] #sidebarBodyMonth .total .k,
+body[data-bw-view="settings"] #sidebarBodyMonth .total .k,
+body[data-bw-view="reports"] #sidebarBodyMonth .total .k{
+  font-weight: 620;
+  color: rgba(71, 85, 105, 0.8);
+}
+body[data-bw-view="calendar"] #sidebarBodyMonth .total .v,
+body[data-bw-view="transactions"] #sidebarBodyMonth .total .v,
+body[data-bw-view="settings"] #sidebarBodyMonth .total .v,
+body[data-bw-view="reports"] #sidebarBodyMonth .total .v{
+  font-weight: 700;
+}
+body[data-bw-view="calendar"] #sidebarBodyMonth .total--net,
+body[data-bw-view="transactions"] #sidebarBodyMonth .total--net,
+body[data-bw-view="settings"] #sidebarBodyMonth .total--net,
+body[data-bw-view="reports"] #sidebarBodyMonth .total--net{
+  margin-top: 1px;
+  padding: 5px 4px;
+  background: rgba(236, 253, 245, 0.42);
+}
+body[data-bw-view="calendar"] #sidebarBodyMonth .total--net:has(.v.danger),
+body[data-bw-view="transactions"] #sidebarBodyMonth .total--net:has(.v.danger),
+body[data-bw-view="settings"] #sidebarBodyMonth .total--net:has(.v.danger),
+body[data-bw-view="reports"] #sidebarBodyMonth .total--net:has(.v.danger){
+  background: rgba(254, 242, 242, 0.46);
+}
+body[data-bw-view="calendar"] #sidebarBodyMonth .total--net .v,
+body[data-bw-view="transactions"] #sidebarBodyMonth .total--net .v,
+body[data-bw-view="settings"] #sidebarBodyMonth .total--net .v,
+body[data-bw-view="reports"] #sidebarBodyMonth .total--net .v{
+  font-weight: 780;
+}
+body[data-bw-view="calendar"] .cash-health-status--review .cash-health-status__label,
+body[data-bw-view="transactions"] .cash-health-status--review .cash-health-status__label,
+body[data-bw-view="settings"] .cash-health-status--review .cash-health-status__label,
+body[data-bw-view="reports"] .cash-health-status--review .cash-health-status__label{
+  font-size: 9.5px;
+  font-weight: 620;
+  color: rgba(100, 116, 139, 0.74);
+}
+body[data-bw-view="calendar"] .cash-health-status--review .cash-health-status__value,
+body[data-bw-view="transactions"] .cash-health-status--review .cash-health-status__value,
+body[data-bw-view="settings"] .cash-health-status--review .cash-health-status__value,
+body[data-bw-view="reports"] .cash-health-status--review .cash-health-status__value{
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.045);
+  font-size: 9.75px;
+}
+body[data-bw-view="calendar"] #sidebarPendingTxList.list,
+body[data-bw-view="transactions"] #sidebarPendingTxList.list,
+body[data-bw-view="settings"] #sidebarPendingTxList.list,
+body[data-bw-view="reports"] #sidebarPendingTxList.list{
+  margin-top: 2px;
+}
+body[data-bw-view="calendar"] .cash-health-status--balance .cash-health-status__value,
+body[data-bw-view="transactions"] .cash-health-status--balance .cash-health-status__value,
+body[data-bw-view="settings"] .cash-health-status--balance .cash-health-status__value,
+body[data-bw-view="reports"] .cash-health-status--balance .cash-health-status__value{
+  font-family: var(--font, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif);
+  font-size: 10.75px;
+  font-weight: 520;
+}
  
