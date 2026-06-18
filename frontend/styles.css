@@ -29063,7 +29063,13 @@ body[data-bw-view="calendar"] #sidebarBodyMonth .total--net .v,
 body[data-bw-view="transactions"] #sidebarBodyMonth .total--net .v,
 body[data-bw-view="settings"] #sidebarBodyMonth .total--net .v,
 body[data-bw-view="reports"] #sidebarBodyMonth .total--net .v{
-  font-weight: 780;
+  font-weight: 700;
+}
+body[data-bw-view="calendar"] #sidebarBodyMonth .total--net .v.danger,
+body[data-bw-view="transactions"] #sidebarBodyMonth .total--net .v.danger,
+body[data-bw-view="settings"] #sidebarBodyMonth .total--net .v.danger,
+body[data-bw-view="reports"] #sidebarBodyMonth .total--net .v.danger{
+  color: color-mix(in srgb, var(--danger) 68%, #78716c);
 }
 body[data-bw-view="calendar"] .cash-health-status--review .cash-health-status__label,
 body[data-bw-view="transactions"] .cash-health-status--review .cash-health-status__label,
