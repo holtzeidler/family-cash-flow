@@ -29071,6 +29071,13 @@ body[data-bw-view="settings"] #sidebarBodyMonth .total--net .v.danger,
 body[data-bw-view="reports"] #sidebarBodyMonth .total--net .v.danger{
   color: color-mix(in srgb, var(--danger) 68%, #78716c);
 }
+body[data-bw-view="calendar"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger:has(.cash-outlook-card),
+body[data-bw-view="transactions"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger:has(.cash-outlook-card),
+body[data-bw-view="settings"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger:has(.cash-outlook-card),
+body[data-bw-view="reports"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger:has(.cash-outlook-card){
+  padding-top: 8px;
+  padding-bottom: 7px;
+}
 body[data-bw-view="calendar"] .cash-outlook-card__line--tertiary,
 body[data-bw-view="transactions"] .cash-outlook-card__line--tertiary,
 body[data-bw-view="settings"] .cash-outlook-card__line--tertiary,
@@ -29373,7 +29380,8 @@ body[data-bw-view="calendar"] .sidebar-month-row,
 body[data-bw-view="transactions"] .sidebar-month-row,
 body[data-bw-view="settings"] .sidebar-month-row,
 body[data-bw-view="reports"] .sidebar-month-row{
-  margin-bottom: 8px;
+  margin-top: 2px;
+  margin-bottom: -6px;
 }
 body[data-bw-view="calendar"] #sidebarBodyMonth .total,
 body[data-bw-view="transactions"] #sidebarBodyMonth .total,
