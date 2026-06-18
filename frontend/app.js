@@ -12660,7 +12660,9 @@ function renderSidebarPendingTransactionsForMonth() {
   const month = calendarMonth?.value || monthInput?.value;
   const range = monthStartEndIso(month);
   sidebarPendingTxList.innerHTML = "";
-  if (sidebarPendingTxCard) sidebarPendingTxCard.classList.remove("sidebar-pending--empty");
+  if (sidebarPendingTxCard) {
+    sidebarPendingTxCard.classList.remove("sidebar-pending--empty", "sidebar-pending--success");
+  }
   if (sidebarPendingStatus) {
     sidebarPendingStatus.textContent = "";
     sidebarPendingStatus.hidden = true;
@@ -12709,9 +12711,9 @@ function renderSidebarPendingTransactionsForMonth() {
   });
 
   if (!rows.length) {
-    setTitle();
-    if (sidebarPendingTxCard) sidebarPendingTxCard.classList.add("sidebar-pending--empty");
-    setPendingStatus("0");
+    if (sidebarPendingTxCard) sidebarPendingTxCard.classList.add("sidebar-pending--empty", "sidebar-pending--success");
+    if (sidebarPendingTitle) sidebarPendingTitle.textContent = "✓ No transactions need review";
+    setPendingStatus("");
     return;
   }
 
