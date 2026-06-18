@@ -5479,9 +5479,9 @@ body.support-doc-page .support-doc__quicklinks span{
   padding-bottom: 2px;
 }
 
-/* Add a touch more breathing room below the sticky head block */
-#sidebarPendingTxCard{
-  margin-top: 8px;
+/* Compact "Needs review" when empty — status row summary. */
+#sidebarPendingTxCard.sidebar-pending--empty{
+  padding-bottom: 2px;
 }
 
 .sidebar-top{
@@ -5640,63 +5640,7 @@ button.secondary[aria-disabled="true"]{
   min-width: 0;
 }
 #sidebarPendingTitle{
-  font-size: 13.5px;
-  font-weight: 700;
-  letter-spacing: 0.015em;
-  text-transform: none;
-  color: rgba(30, 41, 59, 0.8);
-}
-
-/* Compact "Needs review" when empty — single calm summary line. */
-#sidebarPendingTxCard.sidebar-pending--empty{
-  padding: 6px 10px 5px;
-  background: rgba(252, 252, 251, 0.88);
-  box-shadow: none;
-  border: none;
-}
-#sidebarPendingTxCard.sidebar-pending--empty .sidebar-section-head{
-  display: none;
-}
-#sidebarPendingTxCard.sidebar-pending--empty .sidebar-section-body{
-  margin: 0;
-}
-#sidebarPendingTxCard.sidebar-pending--empty #sidebarPendingTxList.list{
-  margin: 0;
-  gap: 0;
-}
-.sidebar-pending-empty{
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 1px 0 0;
-}
-.sidebar-pending-empty-msg{
-  margin: 0;
-  font-size: 11.5px;
-  font-weight: 500;
-  line-height: 1.35;
-  color: rgba(100, 116, 139, 0.62);
-}
-.sidebar-pending-empty-msg--lead{
-  font-size: 11.5px;
-  font-weight: 600;
-  line-height: 1.3;
-  color: rgba(71, 85, 105, 0.58);
-}
-.sidebar-pending-empty-msg--sub{
-  font-size: 10px;
-  font-weight: 500;
-  line-height: 1.32;
-  color: rgba(148, 163, 184, 0.72);
-}
-#sidebarPendingTxCard.sidebar-pending--empty #sidebarPendingTxList .pill{
-  padding: 0;
-  min-height: 0;
-  width: 100%;
-  justify-content: flex-start;
-  border: none;
-  background: transparent;
-  color: rgba(100, 116, 139, 0.62);
+  /* Status row label — detailed sizing from .cash-health-status__label + view rules */
 }
 
 /* "Needs review" pending checklist — compact queue row */
@@ -5859,9 +5803,6 @@ button.pending-attn-item:focus-visible{
 }
 .sidebar-section:not(.sidebar-section--collapsed) .sidebar-section-head{
   margin-bottom: 8px;
-}
-#sidebarPendingTxCard:not(.sidebar-section--collapsed) .sidebar-section-head{
-  margin-bottom: 5px;
 }
 .sidebar-section--collapsed .sidebar-section-body{
   display: none;
@@ -6128,6 +6069,110 @@ button.nav-link:hover{
 .calendar-low-balance--sidebar.is-danger{
   font-size: 1.05em;
 }
+
+/* Cash Health — unified sidebar status panel */
+.sidebar-cash-health{
+  margin-bottom: 0;
+}
+.sidebar-cash-health__body{
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.sidebar-cash-health__alerts{
+  margin-bottom: 0;
+}
+.sidebar-cash-health__alerts:empty{
+  display: none;
+}
+.calendar-low-balance--inset{
+  border-radius: 9px;
+  margin-top: 0;
+}
+.calendar-low-balance--inset.is-danger{
+  border: 1px solid rgba(180, 140, 70, 0.14);
+  background: linear-gradient(180deg, #fdfbf8 0%, #f8f6f2 100%);
+  padding: 10px 12px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 1px 2px rgba(15, 23, 42, 0.04);
+}
+.cash-health-status{
+  padding: 9px 0 8px;
+  border-top: 1px solid rgba(17, 24, 39, 0.06);
+}
+.cash-health-status:first-child{
+  border-top: none;
+  padding-top: 2px;
+}
+.cash-health-status__row{
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+.cash-health-status__label{
+  flex: 0 1 auto;
+  min-width: 0;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(71, 85, 105, 0.72);
+}
+.cash-health-status__value{
+  flex: 0 1 auto;
+  min-width: 0;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, monospace;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  color: rgba(15, 23, 42, 0.9);
+  text-align: right;
+  white-space: nowrap;
+}
+.cash-health-status__note{
+  margin: 6px 0 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: rgba(100, 116, 139, 0.78);
+}
+.cash-health-status__cta{
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 7px 10px;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+  text-align: center;
+  box-shadow: 0 1px 3px rgba(11, 61, 46, 0.14);
+}
+.cash-health-status__cta:hover{
+  filter: brightness(1.04);
+}
+.cash-health-status__detail{
+  margin-top: 6px;
+}
+.cash-health-status--balance.cash-health-status--fresh .cash-health-status__value{
+  color: rgba(15, 23, 42, 0.94);
+}
+.cash-health-status--review.sidebar-pending--empty .cash-health-status__detail{
+  display: none;
+}
+.cash-health-status--review.sidebar-pending--empty .cash-health-status__value{
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: rgba(100, 116, 139, 0.78);
+  white-space: normal;
+}
+
 .sidebar-balance-threshold-alerts{
   display: flex;
   flex-direction: column;
@@ -9831,13 +9876,13 @@ body[data-bw-view="reports"] .calendar-low-balance--sidebar.is-danger .cash-outl
 body[data-bw-view="reports"] .calendar-low-balance--sidebar.is-danger .cash-outlook-line{
   font-size: 11px;
 }
-body[data-bw-view="reports"] .sidebar-balance-threshold-alerts .cash-outlook-title{
+body[data-bw-view="reports"] #cashOutlookTitle{
   font-size: 10.5px;
   font-weight: 650;
   letter-spacing: 0.06em;
   color: rgba(100, 116, 139, 0.68);
 }
-body[data-bw-view="reports"] .sidebar-balance-threshold-alerts .cash-outlook-head{
+body[data-bw-view="reports"] .sidebar-cash-health__head{
   gap: 1px;
   margin-bottom: 2px;
 }
@@ -9931,13 +9976,19 @@ body[data-bw-view="calendar"] .app-layout{
   gap: 14px;
 }
 body[data-bw-view="calendar"] .sidebar{
-  gap: 10px;
+  gap: 22px;
   padding-right: 0;
   width: 100%;
   min-width: 0;
   background: #f3f4f6;
   border-radius: 0;
-  padding: 4px 8px 10px 4px;
+  box-sizing: border-box;
+  height: calc(100vh - var(--app-top-nav-offset) - 20px);
+  max-height: calc(100vh - var(--app-top-nav-offset) - 20px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 4px 8px 28px 4px;
+  scrollbar-gutter: stable;
   box-shadow: none;
 }
 body[data-bw-view="calendar"] .sidebar-sticky-head{
@@ -9971,10 +10022,12 @@ body[data-bw-view="reports"] .sidebar .card{
   padding: 9px 10px;
   transition: box-shadow 0.16s ease, background 0.16s ease;
 }
+body[data-bw-view="calendar"] #sidebarCashHealthCard + .card,
+body[data-bw-view="transactions"] #sidebarCashHealthCard + .card,
 body[data-bw-view="calendar"] .sidebar .card + .card,
+body[data-bw-view="transactions"] .sidebar .card + .card,
 body[data-bw-view="calendar"] .sidebar-balance-threshold-alerts + .card,
 body[data-bw-view="calendar"] .card + .sidebar-balance-threshold-alerts,
-body[data-bw-view="transactions"] .sidebar .card + .card,
 body[data-bw-view="transactions"] .sidebar-balance-threshold-alerts + .card,
 body[data-bw-view="transactions"] .card + .sidebar-balance-threshold-alerts{
   border-top: none;
@@ -9987,64 +10040,45 @@ body[data-bw-view="transactions"] #sidebarPendingTxCard{
 }
 body[data-bw-view="calendar"] #sidebarPendingTxCard:not(.sidebar-pending--empty):hover,
 body[data-bw-view="calendar"] .sidebar .card[data-sidebar-key="month"]:hover,
+body[data-bw-view="calendar"] #sidebarCashHealthCard:hover,
 body[data-bw-view="transactions"] #sidebarPendingTxCard:not(.sidebar-pending--empty):hover,
-body[data-bw-view="transactions"] .sidebar .card[data-sidebar-key="month"]:hover{
+body[data-bw-view="transactions"] .sidebar .card[data-sidebar-key="month"]:hover,
+body[data-bw-view="transactions"] #sidebarCashHealthCard:hover{
   background: #fff;
   box-shadow:
     0 2px 8px rgba(15, 23, 42, 0.06),
     0 0 0 1px rgba(15, 23, 42, 0.04);
 }
 body[data-bw-view="calendar"] #sidebarPendingTxCard.sidebar-pending--empty,
-body[data-bw-view="transactions"] #sidebarPendingTxCard.sidebar-pending--empty,
-body[data-bw-view="settings"] #sidebarPendingTxCard.sidebar-pending--empty,
-body[data-bw-view="reports"] #sidebarPendingTxCard.sidebar-pending--empty{
-  padding: 5px 10px 4px;
-  background: rgba(252, 252, 251, 0.86);
+body[data-bw-view="transactions"] #sidebarPendingTxCard.sidebar-pending--empty{
+  padding: 0;
+  background: transparent;
   box-shadow: none;
 }
-body[data-bw-view="calendar"] #sidebarPendingTxCard.sidebar-pending--empty .sidebar-pending-empty-msg--lead,
-body[data-bw-view="transactions"] #sidebarPendingTxCard.sidebar-pending--empty .sidebar-pending-empty-msg--lead,
-body[data-bw-view="settings"] #sidebarPendingTxCard.sidebar-pending--empty .sidebar-pending-empty-msg--lead,
-body[data-bw-view="reports"] #sidebarPendingTxCard.sidebar-pending--empty .sidebar-pending-empty-msg--lead{
-  font-size: 11px;
-  font-weight: 600;
-  color: rgba(71, 85, 105, 0.72);
-}
-body[data-bw-view="calendar"] #sidebarPendingTxCard.sidebar-pending--empty .sidebar-pending-empty-msg--sub,
-body[data-bw-view="transactions"] #sidebarPendingTxCard.sidebar-pending--empty .sidebar-pending-empty-msg--sub,
-body[data-bw-view="settings"] #sidebarPendingTxCard.sidebar-pending--empty .sidebar-pending-empty-msg--sub,
-body[data-bw-view="reports"] #sidebarPendingTxCard.sidebar-pending--empty .sidebar-pending-empty-msg--sub{
-  font-size: 9.5px;
-  color: rgba(100, 116, 139, 0.78);
-}
-body[data-bw-view="calendar"] #sidebarPendingTxCard .sidebar-section-head,
 body[data-bw-view="calendar"] .sidebar-section:not(.sidebar-section--collapsed) .sidebar-section-head,
-body[data-bw-view="transactions"] #sidebarPendingTxCard .sidebar-section-head,
 body[data-bw-view="transactions"] .sidebar-section:not(.sidebar-section--collapsed) .sidebar-section-head,
-body[data-bw-view="settings"] #sidebarPendingTxCard .sidebar-section-head,
 body[data-bw-view="settings"] .sidebar-section:not(.sidebar-section--collapsed) .sidebar-section-head,
-body[data-bw-view="reports"] #sidebarPendingTxCard .sidebar-section-head,
 body[data-bw-view="reports"] .sidebar-section:not(.sidebar-section--collapsed) .sidebar-section-head{
   margin-bottom: 5px;
 }
 body[data-bw-view="calendar"] #sidebarPendingTitle,
-body[data-bw-view="calendar"] .sidebar-section-head h2,
+body[data-bw-view="calendar"] .sidebar-cash-health__head h2,
+body[data-bw-view="calendar"] .cash-health-status__label,
 body[data-bw-view="transactions"] #sidebarPendingTitle,
-body[data-bw-view="transactions"] .sidebar-section-head h2,
-body[data-bw-view="settings"] #sidebarPendingTitle,
-body[data-bw-view="settings"] .sidebar-section-head h2,
-body[data-bw-view="reports"] #sidebarPendingTitle,
-body[data-bw-view="reports"] .sidebar-section-head h2{
+body[data-bw-view="transactions"] .sidebar-cash-health__head h2,
+body[data-bw-view="transactions"] .cash-health-status__label,
+body[data-bw-view="settings"] .sidebar-cash-health__head h2,
+body[data-bw-view="reports"] .sidebar-cash-health__head h2{
   font-size: 10px;
   font-weight: 650;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: rgba(71, 85, 105, 0.72);
 }
-body[data-bw-view="calendar"] .cash-outlook-title,
-body[data-bw-view="transactions"] .cash-outlook-title,
-body[data-bw-view="settings"] .cash-outlook-title,
-body[data-bw-view="reports"] .cash-outlook-title{
+body[data-bw-view="calendar"] #cashOutlookTitle,
+body[data-bw-view="transactions"] #cashOutlookTitle,
+body[data-bw-view="settings"] #cashOutlookTitle,
+body[data-bw-view="reports"] #cashOutlookTitle{
   font-size: 10px;
   font-weight: 650;
   letter-spacing: 0.08em;
@@ -10370,8 +10404,8 @@ body[data-bw-view="transactions"] #sidebarBodyMonth .totals{
   gap: 0;
   padding-top: 0;
 }
-body[data-bw-view="calendar"] #sidebarBodyMonth > div:nth-child(2),
-body[data-bw-view="transactions"] #sidebarBodyMonth > div:nth-child(2){
+body[data-bw-view="calendar"] #sidebarBodyMonth > .sidebar-month-spacer,
+body[data-bw-view="transactions"] #sidebarBodyMonth > .sidebar-month-spacer{
   height: 3px !important;
 }
 body[data-bw-view="calendar"] #sidebarBodyMonth label,
@@ -10559,6 +10593,7 @@ body[data-bw-view="calendar"] .cal-detail-btn.is-active{
   body[data-bw-view="calendar"] .sidebar,
   body[data-bw-view="transactions"] .sidebar{
     position: static;
+    height: auto;
     max-height: none;
     align-items: stretch;
   }
@@ -10568,14 +10603,13 @@ body[data-bw-view="calendar"] .cal-detail-btn.is-active{
   body[data-bw-view="transactions"] #sidebarPendingTxCard.sidebar-pending--empty{
     text-align: center;
   }
-  body[data-bw-view="calendar"] #sidebarPendingTxCard.sidebar-pending--empty .sidebar-pending-empty,
-  body[data-bw-view="transactions"] #sidebarPendingTxCard.sidebar-pending--empty .sidebar-pending-empty,
-  body[data-bw-view="calendar"] #sidebarPendingTxCard.sidebar-pending--empty .sidebar-pending-empty-msg,
-  body[data-bw-view="transactions"] #sidebarPendingTxCard.sidebar-pending--empty .sidebar-pending-empty-msg{
-    text-align: center;
+  body[data-bw-view="calendar"] #sidebarPendingTxCard.sidebar-pending--empty .cash-health-status__row,
+  body[data-bw-view="transactions"] #sidebarPendingTxCard.sidebar-pending--empty .cash-health-status__row{
+    justify-content: space-between;
+    text-align: inherit;
   }
-  body[data-bw-view="calendar"] .cash-outlook-head,
-  body[data-bw-view="transactions"] .cash-outlook-head{
+  body[data-bw-view="calendar"] .sidebar-cash-health__head,
+  body[data-bw-view="transactions"] .sidebar-cash-health__head{
     align-items: center;
     text-align: center;
   }
@@ -25888,6 +25922,7 @@ body[data-bw-view="calendar"] .cal-ledger-metrics.cal-day-balance-hit.bw-tour-ta
   box-shadow: 0 4px 14px -10px rgba(11, 61, 46, 0.32);
 }
 
+body[data-bw-view="calendar"] #sidebarCashHealthCard.bw-tour-support-highlight--sidebar-soft,
 body[data-bw-view="calendar"] #sidebarPendingTxCard.bw-tour-support-highlight--sidebar-soft{
   background: color-mix(in srgb, var(--accent) 3%, #ffffff);
   border-color: color-mix(in srgb, var(--accent) 14%, rgba(17, 24, 39, 0.08));
@@ -25896,7 +25931,7 @@ body[data-bw-view="calendar"] #sidebarPendingTxCard.bw-tour-target--needs-review
   background: color-mix(in srgb, var(--accent) 5%, #ffffff);
   border-color: color-mix(in srgb, var(--accent) 20%, rgba(17, 24, 39, 0.08));
 }
-body[data-bw-view="calendar"] #sidebarPendingTxCard.bw-tour-target--needs-review .sidebar-section-head{
+body[data-bw-view="calendar"] #sidebarPendingTxCard.bw-tour-target--needs-review .cash-health-status__row{
   color: rgba(11, 61, 46, 0.94);
 }
 body[data-bw-view="calendar"] .pending-attn-item.bw-tour-support-highlight--pending-item{
@@ -28247,7 +28282,7 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   }
 }
 
-/* Last balance check (reconciliation freshness) */
+/* Last balance check — legacy standalone card (kept for reference; now .cash-health-status) */
 .forecast-confidence{
   margin: 0 0 10px;
   padding: 10px 12px;
@@ -28694,4 +28729,584 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
 .cat-report-verified-warning p + p{
   margin-top: 6px;
 }
- 
+
+/* Cash Health sidebar refinement: status-first, compact, one internal divider. */
+body[data-bw-view="calendar"] #sidebarCashHealthCard,
+body[data-bw-view="transactions"] #sidebarCashHealthCard,
+body[data-bw-view="settings"] #sidebarCashHealthCard,
+body[data-bw-view="reports"] #sidebarCashHealthCard{
+  padding: 11px 12px 10px;
+}
+body[data-bw-view="calendar"] .sidebar-cash-health__head,
+body[data-bw-view="transactions"] .sidebar-cash-health__head,
+body[data-bw-view="settings"] .sidebar-cash-health__head,
+body[data-bw-view="reports"] .sidebar-cash-health__head{
+  margin-bottom: 7px;
+}
+body[data-bw-view="calendar"] .sidebar-cash-health__body,
+body[data-bw-view="transactions"] .sidebar-cash-health__body,
+body[data-bw-view="settings"] .sidebar-cash-health__body,
+body[data-bw-view="reports"] .sidebar-cash-health__body{
+  gap: 3px;
+}
+body[data-bw-view="calendar"] .sidebar-cash-health__alerts,
+body[data-bw-view="transactions"] .sidebar-cash-health__alerts,
+body[data-bw-view="settings"] .sidebar-cash-health__alerts,
+body[data-bw-view="reports"] .sidebar-cash-health__alerts{
+  margin-bottom: 0;
+}
+body[data-bw-view="calendar"] .sidebar-cash-health__alerts + .cash-health-status--balance,
+body[data-bw-view="transactions"] .sidebar-cash-health__alerts + .cash-health-status--balance,
+body[data-bw-view="settings"] .sidebar-cash-health__alerts + .cash-health-status--balance,
+body[data-bw-view="reports"] .sidebar-cash-health__alerts + .cash-health-status--balance{
+  margin-top: 0;
+}
+body[data-bw-view="calendar"] .cash-health-status,
+body[data-bw-view="transactions"] .cash-health-status,
+body[data-bw-view="settings"] .cash-health-status,
+body[data-bw-view="reports"] .cash-health-status{
+  border-top: none;
+  padding: 1px 0;
+}
+body[data-bw-view="calendar"] .cash-health-status.cash-health-status--balance,
+body[data-bw-view="transactions"] .cash-health-status.cash-health-status--balance,
+body[data-bw-view="settings"] .cash-health-status.cash-health-status--balance,
+body[data-bw-view="reports"] .cash-health-status.cash-health-status--balance{
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+body[data-bw-view="calendar"] .cash-health-status--review,
+body[data-bw-view="transactions"] .cash-health-status--review,
+body[data-bw-view="settings"] .cash-health-status--review,
+body[data-bw-view="reports"] .cash-health-status--review{
+  margin-top: 12px;
+  padding-top: 7px;
+  border-top: 1px solid rgba(17, 24, 39, 0.07);
+}
+body[data-bw-view="calendar"] .cash-health-status--balance .cash-health-status__row,
+body[data-bw-view="transactions"] .cash-health-status--balance .cash-health-status__row,
+body[data-bw-view="settings"] .cash-health-status--balance .cash-health-status__row,
+body[data-bw-view="reports"] .cash-health-status--balance .cash-health-status__row{
+  justify-content: flex-start;
+  align-items: center;
+}
+body[data-bw-view="calendar"] .cash-health-status__row,
+body[data-bw-view="transactions"] .cash-health-status__row,
+body[data-bw-view="settings"] .cash-health-status__row,
+body[data-bw-view="reports"] .cash-health-status__row{
+  gap: 6px;
+}
+body[data-bw-view="calendar"] .cash-health-status__label,
+body[data-bw-view="transactions"] .cash-health-status__label,
+body[data-bw-view="settings"] .cash-health-status__label,
+body[data-bw-view="reports"] .cash-health-status__label{
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+  color: rgba(100, 116, 139, 0.76);
+}
+body[data-bw-view="calendar"] .cash-health-status__label--subtle,
+body[data-bw-view="transactions"] .cash-health-status__label--subtle,
+body[data-bw-view="settings"] .cash-health-status__label--subtle,
+body[data-bw-view="reports"] .cash-health-status__label--subtle{
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 11px;
+  color: rgba(100, 116, 139, 0.68);
+}
+body[data-bw-view="calendar"] .cash-health-status__value,
+body[data-bw-view="transactions"] .cash-health-status__value,
+body[data-bw-view="settings"] .cash-health-status__value,
+body[data-bw-view="reports"] .cash-health-status__value{
+  font-size: 11.5px;
+  line-height: 1.25;
+}
+body[data-bw-view="calendar"] .cash-health-status--balance .cash-health-status__value,
+body[data-bw-view="transactions"] .cash-health-status--balance .cash-health-status__value,
+body[data-bw-view="settings"] .cash-health-status--balance .cash-health-status__value,
+body[data-bw-view="reports"] .cash-health-status--balance .cash-health-status__value{
+  text-align: left;
+  color: rgba(71, 85, 105, 0.82);
+  font-size: 11px;
+  font-weight: 560;
+}
+body[data-bw-view="calendar"] .cash-health-status--review .cash-health-status__row,
+body[data-bw-view="transactions"] .cash-health-status--review .cash-health-status__row,
+body[data-bw-view="settings"] .cash-health-status--review .cash-health-status__row,
+body[data-bw-view="reports"] .cash-health-status--review .cash-health-status__row{
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+body[data-bw-view="calendar"] .cash-health-status--review .cash-health-status__value,
+body[data-bw-view="transactions"] .cash-health-status--review .cash-health-status__value,
+body[data-bw-view="settings"] .cash-health-status--review .cash-health-status__value,
+body[data-bw-view="reports"] .cash-health-status--review .cash-health-status__value{
+  color: rgba(15, 23, 42, 0.88);
+  font-size: 10.5px;
+  font-weight: 680;
+  line-height: 1.2;
+  text-align: right;
+  white-space: nowrap;
+}
+body[data-bw-view="calendar"] .cash-health-status__note,
+body[data-bw-view="transactions"] .cash-health-status__note,
+body[data-bw-view="settings"] .cash-health-status__note,
+body[data-bw-view="reports"] .cash-health-status__note{
+  margin-top: 4px;
+  font-size: 10.5px;
+}
+body[data-bw-view="calendar"] #sidebarPendingTxList.list,
+body[data-bw-view="transactions"] #sidebarPendingTxList.list,
+body[data-bw-view="settings"] #sidebarPendingTxList.list,
+body[data-bw-view="reports"] #sidebarPendingTxList.list{
+  gap: 3px;
+  margin-top: 3px;
+}
+body[data-bw-view="calendar"] .pending-attn-item,
+body[data-bw-view="transactions"] .pending-attn-item,
+body[data-bw-view="settings"] .pending-attn-item,
+body[data-bw-view="reports"] .pending-attn-item{
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(4.4rem, auto) 11px;
+  align-items: center;
+  min-height: 0;
+  padding: 4px 5px 4px 7px;
+  gap: 5px;
+  border-radius: 7px;
+}
+body[data-bw-view="calendar"] .pending-attn-text,
+body[data-bw-view="transactions"] .pending-attn-text,
+body[data-bw-view="settings"] .pending-attn-text,
+body[data-bw-view="reports"] .pending-attn-text{
+  display: contents;
+}
+body[data-bw-view="calendar"] .pending-attn-name,
+body[data-bw-view="transactions"] .pending-attn-name,
+body[data-bw-view="settings"] .pending-attn-name,
+body[data-bw-view="reports"] .pending-attn-name{
+  grid-column: 1;
+  min-width: 0;
+  font-size: 10.85px;
+  line-height: 1.12;
+  -webkit-line-clamp: 1;
+}
+body[data-bw-view="calendar"] .pending-attn-meta,
+body[data-bw-view="transactions"] .pending-attn-meta,
+body[data-bw-view="settings"] .pending-attn-meta,
+body[data-bw-view="reports"] .pending-attn-meta{
+  grid-column: 2;
+  justify-self: end;
+  min-width: 4.4rem;
+  font-size: 9.45px;
+  line-height: 1.1;
+  text-align: right;
+  white-space: nowrap;
+}
+body[data-bw-view="calendar"] .pending-attn-indicator,
+body[data-bw-view="transactions"] .pending-attn-indicator,
+body[data-bw-view="settings"] .pending-attn-indicator,
+body[data-bw-view="reports"] .pending-attn-indicator{
+  grid-column: 3;
+  justify-self: end;
+  width: 11px;
+  height: 11px;
+  margin: 0;
+}
+body[data-bw-view="calendar"] .pending-attn-chevron,
+body[data-bw-view="transactions"] .pending-attn-chevron,
+body[data-bw-view="settings"] .pending-attn-chevron,
+body[data-bw-view="reports"] .pending-attn-chevron{
+  width: 11px;
+  height: 11px;
+}
+body[data-bw-view="calendar"] .sidebar .card[data-sidebar-key="month"],
+body[data-bw-view="transactions"] .sidebar .card[data-sidebar-key="month"],
+body[data-bw-view="settings"] .sidebar .card[data-sidebar-key="month"],
+body[data-bw-view="reports"] .sidebar .card[data-sidebar-key="month"]{
+  padding: 10px 12px 11px;
+}
+.sidebar-forecast-head{
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+.sidebar-forecast-head h2{
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(71, 85, 105, 0.72);
+  line-height: 1.2;
+}
+.sidebar-forecast-head__actions{
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+.sidebar-month-row{
+  margin: 5px 0 6px;
+}
+.sidebar-month-input{
+  width: 100%;
+  min-width: 0;
+  height: 27px;
+  padding: 3px 6px;
+  border-radius: 8px;
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  background: rgba(255, 255, 255, 0.86);
+  color: rgba(15, 23, 42, 0.9);
+  font: 600 11.5px/1.2 ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, monospace;
+}
+body[data-bw-view="calendar"] #sidebarBodyMonth,
+body[data-bw-view="transactions"] #sidebarBodyMonth,
+body[data-bw-view="settings"] #sidebarBodyMonth,
+body[data-bw-view="reports"] #sidebarBodyMonth{
+  margin-top: 0;
+}
+body[data-bw-view="calendar"] #sidebarBodyMonth .totals,
+body[data-bw-view="transactions"] #sidebarBodyMonth .totals,
+body[data-bw-view="settings"] #sidebarBodyMonth .totals,
+body[data-bw-view="reports"] #sidebarBodyMonth .totals{
+  margin-top: 0;
+}
+
+/* Final left-rail rhythm: tighter card spacing, compact Forecast Snapshot hierarchy. */
+body[data-bw-view="calendar"] .sidebar{
+  gap: 20px;
+}
+body[data-bw-view="calendar"] #sidebarCashHealthCard + .card[data-sidebar-key="month"],
+body[data-bw-view="transactions"] #sidebarCashHealthCard + .card[data-sidebar-key="month"],
+body[data-bw-view="settings"] #sidebarCashHealthCard + .card[data-sidebar-key="month"],
+body[data-bw-view="reports"] #sidebarCashHealthCard + .card[data-sidebar-key="month"]{
+  margin-top: 0;
+}
+body[data-bw-view="calendar"] .sidebar .card[data-sidebar-key="month"],
+body[data-bw-view="transactions"] .sidebar .card[data-sidebar-key="month"],
+body[data-bw-view="settings"] .sidebar .card[data-sidebar-key="month"],
+body[data-bw-view="reports"] .sidebar .card[data-sidebar-key="month"]{
+  padding-top: 10px;
+  padding-bottom: 22px;
+  overflow: visible;
+}
+body[data-bw-view="calendar"] #sidebarBodyMonth,
+body[data-bw-view="transactions"] #sidebarBodyMonth,
+body[data-bw-view="settings"] #sidebarBodyMonth,
+body[data-bw-view="reports"] #sidebarBodyMonth{
+  display: flex;
+  flex-direction: column;
+}
+body[data-bw-view="calendar"] #sidebarBodyMonth > .totals,
+body[data-bw-view="transactions"] #sidebarBodyMonth > .totals,
+body[data-bw-view="settings"] #sidebarBodyMonth > .totals,
+body[data-bw-view="reports"] #sidebarBodyMonth > .totals{
+  height: auto !important;
+  min-height: 0;
+  margin-bottom: 0;
+  padding-bottom: 0;
+  overflow: visible;
+}
+body[data-bw-view="calendar"] .sidebar-forecast-head,
+body[data-bw-view="transactions"] .sidebar-forecast-head,
+body[data-bw-view="settings"] .sidebar-forecast-head,
+body[data-bw-view="reports"] .sidebar-forecast-head{
+  margin-bottom: 0;
+}
+body[data-bw-view="calendar"] .sidebar-month-row,
+body[data-bw-view="transactions"] .sidebar-month-row,
+body[data-bw-view="settings"] .sidebar-month-row,
+body[data-bw-view="reports"] .sidebar-month-row{
+  margin: 4px 0 5px;
+}
+body[data-bw-view="calendar"] #sidebarBodyMonth .total,
+body[data-bw-view="transactions"] #sidebarBodyMonth .total,
+body[data-bw-view="settings"] #sidebarBodyMonth .total,
+body[data-bw-view="reports"] #sidebarBodyMonth .total{
+  padding-top: 3px;
+  padding-bottom: 3px;
+}
+body[data-bw-view="calendar"] #sidebarBodyMonth .total .k,
+body[data-bw-view="transactions"] #sidebarBodyMonth .total .k,
+body[data-bw-view="settings"] #sidebarBodyMonth .total .k,
+body[data-bw-view="reports"] #sidebarBodyMonth .total .k{
+  font-weight: 620;
+  color: rgba(71, 85, 105, 0.8);
+}
+body[data-bw-view="calendar"] #sidebarBodyMonth .total .v,
+body[data-bw-view="transactions"] #sidebarBodyMonth .total .v,
+body[data-bw-view="settings"] #sidebarBodyMonth .total .v,
+body[data-bw-view="reports"] #sidebarBodyMonth .total .v{
+  font-weight: 700;
+}
+body[data-bw-view="calendar"] #sidebarBodyMonth .total--net,
+body[data-bw-view="transactions"] #sidebarBodyMonth .total--net,
+body[data-bw-view="settings"] #sidebarBodyMonth .total--net,
+body[data-bw-view="reports"] #sidebarBodyMonth .total--net{
+  margin-top: 1px;
+  margin-bottom: 0;
+  padding: 5px 4px;
+  background: rgba(236, 253, 245, 0.42);
+}
+body[data-bw-view="calendar"] #sidebarBodyMonth .total--net:has(.v.danger),
+body[data-bw-view="transactions"] #sidebarBodyMonth .total--net:has(.v.danger),
+body[data-bw-view="settings"] #sidebarBodyMonth .total--net:has(.v.danger),
+body[data-bw-view="reports"] #sidebarBodyMonth .total--net:has(.v.danger){
+  background: rgba(254, 242, 242, 0.46);
+}
+body[data-bw-view="calendar"] #sidebarBodyMonth .total--net .v,
+body[data-bw-view="transactions"] #sidebarBodyMonth .total--net .v,
+body[data-bw-view="settings"] #sidebarBodyMonth .total--net .v,
+body[data-bw-view="reports"] #sidebarBodyMonth .total--net .v{
+  font-weight: 700;
+}
+body[data-bw-view="calendar"] #sidebarBodyMonth .total--net .v.danger,
+body[data-bw-view="transactions"] #sidebarBodyMonth .total--net .v.danger,
+body[data-bw-view="settings"] #sidebarBodyMonth .total--net .v.danger,
+body[data-bw-view="reports"] #sidebarBodyMonth .total--net .v.danger{
+  color: color-mix(in srgb, var(--danger) 68%, #78716c);
+}
+body[data-bw-view="calendar"] .cash-health-status--review .cash-health-status__label,
+body[data-bw-view="transactions"] .cash-health-status--review .cash-health-status__label,
+body[data-bw-view="settings"] .cash-health-status--review .cash-health-status__label,
+body[data-bw-view="reports"] .cash-health-status--review .cash-health-status__label{
+  font-size: 9.5px;
+  font-weight: 620;
+  color: rgba(100, 116, 139, 0.74);
+}
+body[data-bw-view="calendar"] .cash-health-status--review .cash-health-status__value,
+body[data-bw-view="transactions"] .cash-health-status--review .cash-health-status__value,
+body[data-bw-view="settings"] .cash-health-status--review .cash-health-status__value,
+body[data-bw-view="reports"] .cash-health-status--review .cash-health-status__value{
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.045);
+  font-size: 9.75px;
+}
+body[data-bw-view="calendar"] #sidebarPendingTxList.list,
+body[data-bw-view="transactions"] #sidebarPendingTxList.list,
+body[data-bw-view="settings"] #sidebarPendingTxList.list,
+body[data-bw-view="reports"] #sidebarPendingTxList.list{
+  margin-top: 2px;
+}
+body[data-bw-view="calendar"] .cash-health-status--balance .cash-health-status__value,
+body[data-bw-view="transactions"] .cash-health-status--balance .cash-health-status__value,
+body[data-bw-view="settings"] .cash-health-status--balance .cash-health-status__value,
+body[data-bw-view="reports"] .cash-health-status--balance .cash-health-status__value{
+  font-family: var(--font, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif);
+  font-size: 10.75px;
+  font-weight: 520;
+}
+
+/* Sidebar polish: compact warning + month control without shrinking content. */
+body[data-bw-view="calendar"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger,
+body[data-bw-view="transactions"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger,
+body[data-bw-view="settings"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger,
+body[data-bw-view="reports"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger{
+  padding: 10px 11px;
+}
+body[data-bw-view="calendar"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger:has(.cash-outlook-card),
+body[data-bw-view="transactions"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger:has(.cash-outlook-card),
+body[data-bw-view="settings"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger:has(.cash-outlook-card),
+body[data-bw-view="reports"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger:has(.cash-outlook-card){
+  padding: 10px 11px 9px;
+}
+body[data-bw-view="calendar"] .sidebar-forecast-head,
+body[data-bw-view="transactions"] .sidebar-forecast-head,
+body[data-bw-view="settings"] .sidebar-forecast-head,
+body[data-bw-view="reports"] .sidebar-forecast-head{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+body[data-bw-view="calendar"] .sidebar-forecast-head__actions,
+body[data-bw-view="transactions"] .sidebar-forecast-head__actions,
+body[data-bw-view="settings"] .sidebar-forecast-head__actions,
+body[data-bw-view="reports"] .sidebar-forecast-head__actions{
+  align-self: center;
+}
+body[data-bw-view="calendar"] .sidebar-forecast-head .sidebar-collapse-btn,
+body[data-bw-view="transactions"] .sidebar-forecast-head .sidebar-collapse-btn,
+body[data-bw-view="settings"] .sidebar-forecast-head .sidebar-collapse-btn,
+body[data-bw-view="reports"] .sidebar-forecast-head .sidebar-collapse-btn{
+  align-self: center;
+}
+body[data-bw-view="calendar"] .sidebar-month-row,
+body[data-bw-view="transactions"] .sidebar-month-row,
+body[data-bw-view="settings"] .sidebar-month-row,
+body[data-bw-view="reports"] .sidebar-month-row{
+  margin: 2px 0 3px;
+}
+body[data-bw-view="calendar"] .sidebar-month-input,
+body[data-bw-view="transactions"] .sidebar-month-input,
+body[data-bw-view="settings"] .sidebar-month-input,
+body[data-bw-view="reports"] .sidebar-month-input{
+  height: 24px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+
+/* Cash Health rhythm tokens: title -> alert -> balance check -> divider -> review. */
+body[data-bw-view="calendar"] #sidebarCashHealthCard,
+body[data-bw-view="transactions"] #sidebarCashHealthCard,
+body[data-bw-view="settings"] #sidebarCashHealthCard,
+body[data-bw-view="reports"] #sidebarCashHealthCard{
+  --section-gap-large: 24px;
+  --status-to-divider-gap: 12px;
+  --divider-to-review-gap: 14px;
+  --section-gap-small: 8px;
+  --review-row-gap: 6px;
+}
+body[data-bw-view="calendar"] .sidebar-cash-health__head,
+body[data-bw-view="transactions"] .sidebar-cash-health__head,
+body[data-bw-view="settings"] .sidebar-cash-health__head,
+body[data-bw-view="reports"] .sidebar-cash-health__head{
+  margin-bottom: var(--section-gap-large);
+}
+body[data-bw-view="calendar"] .sidebar-cash-health__body,
+body[data-bw-view="transactions"] .sidebar-cash-health__body,
+body[data-bw-view="settings"] .sidebar-cash-health__body,
+body[data-bw-view="reports"] .sidebar-cash-health__body{
+  gap: 0;
+}
+body[data-bw-view="calendar"] .sidebar-cash-health__alerts,
+body[data-bw-view="transactions"] .sidebar-cash-health__alerts,
+body[data-bw-view="settings"] .sidebar-cash-health__alerts,
+body[data-bw-view="reports"] .sidebar-cash-health__alerts{
+  margin-bottom: 18px;
+}
+body[data-bw-view="calendar"] .cash-health-status.cash-health-status--balance,
+body[data-bw-view="transactions"] .cash-health-status.cash-health-status--balance,
+body[data-bw-view="settings"] .cash-health-status.cash-health-status--balance,
+body[data-bw-view="reports"] .cash-health-status.cash-health-status--balance{
+  padding: 0;
+  margin-bottom: var(--status-to-divider-gap);
+}
+body[data-bw-view="calendar"] .cash-health-status--review,
+body[data-bw-view="transactions"] .cash-health-status--review,
+body[data-bw-view="settings"] .cash-health-status--review,
+body[data-bw-view="reports"] .cash-health-status--review{
+  margin-top: 0;
+  padding-top: var(--divider-to-review-gap);
+  border-top: 1px solid rgba(17, 24, 39, 0.07);
+}
+body[data-bw-view="calendar"] .cash-health-status--review .cash-health-status__row,
+body[data-bw-view="transactions"] .cash-health-status--review .cash-health-status__row,
+body[data-bw-view="settings"] .cash-health-status--review .cash-health-status__row,
+body[data-bw-view="reports"] .cash-health-status--review .cash-health-status__row{
+  gap: var(--section-gap-small);
+}
+body[data-bw-view="calendar"] #sidebarPendingTxList.list,
+body[data-bw-view="transactions"] #sidebarPendingTxList.list,
+body[data-bw-view="settings"] #sidebarPendingTxList.list,
+body[data-bw-view="reports"] #sidebarPendingTxList.list{
+  gap: var(--review-row-gap);
+  margin-top: var(--section-gap-small);
+}
+
+/* Sidebar restore: preserve the refined card structure without horizontal compression. */
+body[data-bw-view="calendar"] .sidebar-cash-health__alerts,
+body[data-bw-view="transactions"] .sidebar-cash-health__alerts,
+body[data-bw-view="settings"] .sidebar-cash-health__alerts,
+body[data-bw-view="reports"] .sidebar-cash-health__alerts,
+body[data-bw-view="calendar"] .sidebar-balance-threshold-alerts,
+body[data-bw-view="transactions"] .sidebar-balance-threshold-alerts,
+body[data-bw-view="settings"] .sidebar-balance-threshold-alerts,
+body[data-bw-view="reports"] .sidebar-balance-threshold-alerts,
+body[data-bw-view="calendar"] .calendar-low-balance--sidebar,
+body[data-bw-view="transactions"] .calendar-low-balance--sidebar,
+body[data-bw-view="settings"] .calendar-low-balance--sidebar,
+body[data-bw-view="reports"] .calendar-low-balance--sidebar,
+body[data-bw-view="calendar"] .cash-outlook-card,
+body[data-bw-view="transactions"] .cash-outlook-card,
+body[data-bw-view="settings"] .cash-outlook-card,
+body[data-bw-view="reports"] .cash-outlook-card{
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
+}
+body[data-bw-view="calendar"] .cash-outlook-card__body,
+body[data-bw-view="transactions"] .cash-outlook-card__body,
+body[data-bw-view="settings"] .cash-outlook-card__body,
+body[data-bw-view="reports"] .cash-outlook-card__body{
+  max-width: none;
+}
+body[data-bw-view="calendar"] .cash-health-status--balance .cash-health-status__value,
+body[data-bw-view="transactions"] .cash-health-status--balance .cash-health-status__value,
+body[data-bw-view="settings"] .cash-health-status--balance .cash-health-status__value,
+body[data-bw-view="reports"] .cash-health-status--balance .cash-health-status__value{
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+body[data-bw-view="calendar"] .pending-attn-item,
+body[data-bw-view="transactions"] .pending-attn-item,
+body[data-bw-view="settings"] .pending-attn-item,
+body[data-bw-view="reports"] .pending-attn-item{
+  display: flex;
+  width: 100%;
+  min-height: 36px;
+  padding: 6px 8px 6px 10px;
+  gap: 8px;
+  box-sizing: border-box;
+}
+body[data-bw-view="calendar"] .pending-attn-text,
+body[data-bw-view="transactions"] .pending-attn-text,
+body[data-bw-view="settings"] .pending-attn-text,
+body[data-bw-view="reports"] .pending-attn-text{
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+body[data-bw-view="calendar"] .pending-attn-name,
+body[data-bw-view="transactions"] .pending-attn-name,
+body[data-bw-view="settings"] .pending-attn-name,
+body[data-bw-view="reports"] .pending-attn-name{
+  display: block;
+  min-width: 0;
+  overflow: visible;
+  -webkit-line-clamp: unset;
+  font-size: 12.25px;
+  line-height: 1.2;
+}
+body[data-bw-view="calendar"] .pending-attn-meta,
+body[data-bw-view="transactions"] .pending-attn-meta,
+body[data-bw-view="settings"] .pending-attn-meta,
+body[data-bw-view="reports"] .pending-attn-meta{
+  flex: 0 0 auto;
+  min-width: auto;
+  white-space: nowrap;
+}
+body[data-bw-view="calendar"] .pending-attn-indicator,
+body[data-bw-view="transactions"] .pending-attn-indicator,
+body[data-bw-view="settings"] .pending-attn-indicator,
+body[data-bw-view="reports"] .pending-attn-indicator{
+  flex: 0 0 auto;
+}
+body[data-bw-view="calendar"] .sidebar-forecast-head h2,
+body[data-bw-view="transactions"] .sidebar-forecast-head h2,
+body[data-bw-view="settings"] .sidebar-forecast-head h2,
+body[data-bw-view="reports"] .sidebar-forecast-head h2{
+  white-space: nowrap;
+  overflow: visible;
+}
+body[data-bw-view="calendar"] .cash-health-status--review .cash-health-status__row,
+body[data-bw-view="transactions"] .cash-health-status--review .cash-health-status__row,
+body[data-bw-view="settings"] .cash-health-status--review .cash-health-status__row,
+body[data-bw-view="reports"] .cash-health-status--review .cash-health-status__row{
+  justify-content: flex-start;
+  gap: 10px;
+}
+body[data-bw-view="calendar"] .cash-health-status--review .cash-health-status__value,
+body[data-bw-view="transactions"] .cash-health-status--review .cash-health-status__value,
+body[data-bw-view="settings"] .cash-health-status--review .cash-health-status__value,
+body[data-bw-view="reports"] .cash-health-status--review .cash-health-status__value{
+  margin-left: 0;
+}

@@ -825,7 +825,7 @@ const lowBalanceResult = document.getElementById("lowBalanceResult");
 const sidebarLowBalanceBanner = document.getElementById("sidebarLowBalanceBanner");
 const sidebarHighBalanceBanner = document.getElementById("sidebarHighBalanceBanner");
 const sidebarBalanceThresholdHint = document.getElementById("sidebarBalanceThresholdHint");
-const cashOutlookHead = document.getElementById("cashOutlookHead");
+const sidebarCashHealthCard = document.getElementById("sidebarCashHealthCard");
 // Legacy browser-local keys kept only long enough to migrate older sessions to
 // the server-backed family threshold fields.
 const BALANCE_THRESHOLD_MIN_KEY = "familyCashFlow_balanceThresholdMin";
@@ -2236,9 +2236,17 @@ async function getProjectionDailyForCashOutlook() {
   }
 }
 
+function syncSidebarCashHealthCardVisibility() {
+  if (!sidebarCashHealthCard) return;
+  const v = document.body?.dataset?.bwView;
+  const showOnView = v === "calendar" || v === "transactions" || v === "reports" || v === "settings";
+  sidebarCashHealthCard.hidden = !showOnView || !state.activeFamilyId;
+}
+
 async function refreshCashOutlookGuidance() {
   const activeFid = activeFamilyIdForBalanceThresholds();
-  if (cashOutlookHead) cashOutlookHead.hidden = false;
+  syncSidebarCashHealthCardVisibility();
+  if (sidebarCashHealthCard && state.activeFamilyId) sidebarCashHealthCard.hidden = false;
   setSidebarLowBalanceBanner("", "off");
   setSidebarHighBalanceBanner("", "off");
   setLowBalanceResult("", true);
@@ -2334,6 +2342,7 @@ async function refreshLowBalanceAlert() {
       setSidebarHighBalanceBanner("", "off");
       setSidebarBalanceThresholdHint("");
       setLowBalanceResult("", true);
+      syncSidebarCashHealthCardVisibility();
       return;
     }
 
@@ -2349,7 +2358,7 @@ async function refreshLowBalanceAlert() {
       await refreshCashOutlookGuidance();
       return;
     }
-    if (cashOutlookHead) cashOutlookHead.hidden = false;
+    if (sidebarCashHealthCard && state.activeFamilyId) sidebarCashHealthCard.hidden = false;
     if (sidebarLowBalanceBanner) sidebarLowBalanceBanner.classList.remove("is-suggestion");
 
     const startIso = toISODate(new Date());
@@ -3140,6 +3149,7 @@ const settingsSidebarNav = document.getElementById("settingsSidebarNav");
 const sidebarPendingTxCard = document.getElementById("sidebarPendingTxCard");
 const sidebarPendingTxList = document.getElementById("sidebarPendingTxList");
 const sidebarPendingTitle = document.getElementById("sidebarPendingTitle");
+const sidebarPendingStatus = document.getElementById("sidebarPendingStatus");
 const catReportStart = document.getElementById("catReportStart");
 const catReportEnd = document.getElementById("catReportEnd");
 
@@ -3241,8 +3251,8 @@ function initReportsLeftNav() {
   // Render the report menu inside the existing app sidebar, below the
   // threshold notification pillbox.
   const sidebar = document.querySelector(".app-layout .sidebar");
-  const thresholdBox = document.getElementById("sidebarBalanceThresholdAlerts");
-  if (!sidebar || !thresholdBox) return;
+  const cashHealthCard = document.getElementById("sidebarCashHealthCard");
+  if (!sidebar || !cashHealthCard) return;
 
   const existingNav = document.getElementById("reportsLeftNav");
   if (existingNav) existingNav.remove();
@@ -3256,7 +3266,7 @@ function initReportsLeftNav() {
   list.className = "reports-left-nav__list";
   nav.appendChild(list);
 
-  thresholdBox.insertAdjacentElement("afterend", nav);
+  cashHealthCard.insertAdjacentElement("afterend", nav);
 
   const hub = reportsViewPanel.querySelector(".reports-hub");
   /** @type {HTMLSelectElement | null} */
@@ -3508,6 +3518,7 @@ function setActiveTopView(view) {
   if (settingsViewPanel) settingsViewPanel.hidden = v !== "settings";
   if (reportsViewPanel) reportsViewPanel.hidden = v !== "reports";
   if (settingsSidebarNav) settingsSidebarNav.hidden = v !== "settings";
+  syncSidebarCashHealthCardVisibility();
   if (sidebarPendingTxCard) sidebarPendingTxCard.hidden = !(v === "calendar" || v === "transactions");
   if (v === "transactions" || v === "reports") {
     // Reports use the same upcoming actuals list to power the risk heatmap's
@@ -5650,11 +5661,11 @@ function lastBalanceCheckPrimaryLine(days, confirmedDateIso) {
   if (days == null) return "";
   const n = Number(days);
   if (!Number.isFinite(n) || n < 0) return "";
-  if (n === 0) return "✓ Today";
+  if (n === 0) return "✓ Confirmed today";
   const ago = n === 1 ? "1 day ago" : `${n} days ago`;
   const dateLabel = fmtMonthDayLong(confirmedDateIso);
-  if (dateLabel) return `✓ ${dateLabel} · ${ago}`;
-  return `✓ ${ago}`;
+  if (dateLabel) return `✓ Confirmed ${dateLabel} • ${ago}`;
+  return `✓ Confirmed • ${ago}`;
 }
 
 function applyForecastConfidenceUi(data) {
@@ -5674,7 +5685,8 @@ function applyForecastConfidenceUi(data) {
   const tier = lastBalanceCheckTier(days);
 
   forecastConfidenceCard.hidden = false;
-  forecastConfidenceCard.className = `forecast-confidence forecast-confidence--${tier}`;
+  forecastConfidenceCard.className = `cash-health-status cash-health-status--balance cash-health-status--${tier}`;
+  if (sidebarCashHealthCard && state.activeFamilyId) sidebarCashHealthCard.hidden = false;
 
   let detail = "";
   let helper = "";
@@ -12649,18 +12661,24 @@ function renderSidebarPendingTransactionsForMonth() {
   const range = monthStartEndIso(month);
   sidebarPendingTxList.innerHTML = "";
   if (sidebarPendingTxCard) sidebarPendingTxCard.classList.remove("sidebar-pending--empty");
+  if (sidebarPendingStatus) {
+    sidebarPendingStatus.textContent = "";
+    sidebarPendingStatus.hidden = true;
+  }
   const checked = loadPendingAttentionChecked();
-  const setTitle = (n) => {
+  const setTitle = () => {
     if (!sidebarPendingTitle) return;
-    sidebarPendingTitle.textContent = `Needs review (${Number(n) || 0})`;
+    sidebarPendingTitle.textContent = "Needs Review";
+  };
+  const setPendingStatus = (text) => {
+    if (!sidebarPendingStatus) return;
+    sidebarPendingStatus.textContent = text || "";
+    sidebarPendingStatus.hidden = !text;
   };
   if (!range) {
-    setTitle(0);
-    const empty = document.createElement("div");
-    empty.className = "pill";
-    empty.textContent = "Choose a month to see pending transactions.";
-    sidebarPendingTxList.appendChild(empty);
+    setTitle();
     if (sidebarPendingTxCard) sidebarPendingTxCard.classList.add("sidebar-pending--empty");
+    setPendingStatus("");
     return;
   }
 
@@ -12691,22 +12709,14 @@ function renderSidebarPendingTransactionsForMonth() {
   });
 
   if (!rows.length) {
-    setTitle(0);
+    setTitle();
     if (sidebarPendingTxCard) sidebarPendingTxCard.classList.add("sidebar-pending--empty");
-    const emptyWrap = document.createElement("div");
-    emptyWrap.className = "sidebar-pending-empty";
-    const lead = document.createElement("p");
-    lead.className = "sidebar-pending-empty-msg sidebar-pending-empty-msg--lead";
-    lead.textContent = "You're all caught up";
-    const sub = document.createElement("p");
-    sub.className = "sidebar-pending-empty-msg sidebar-pending-empty-msg--sub";
-    sub.textContent = "✓ Everything is up to date";
-    emptyWrap.append(lead, sub);
-    sidebarPendingTxList.appendChild(emptyWrap);
+    setPendingStatus("0");
     return;
   }
 
-  setTitle(rows.length);
+  setTitle();
+  setPendingStatus(`(${rows.length})`);
   for (let idx = 0; idx < rows.length; idx++) {
     const r = rows[idx];
     const it = r.tx;
