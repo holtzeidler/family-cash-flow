@@ -310,6 +310,16 @@ class TransactionKind(str, Enum):
     expense = "expense"
 
 
+REIMBURSEMENT_STATUSES = {
+    "Needs Review",
+    "Ready to Submit",
+    "Submitted",
+    "Partially Reimbursed",
+    "Fully Reimbursed",
+    "Not Reimbursable",
+}
+
+
 class AccountType(str, Enum):
     checking = "checking"
     savings = "savings"
@@ -473,6 +483,24 @@ class Transaction(Base):
     bg_color: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
 
     family: Mapped[Family] = relationship(back_populates="transactions")
+
+
+class Reimbursement(Base):
+    __tablename__ = "reimbursements"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    date: Mapped[date] = mapped_column(SA_Date, nullable=False, index=True)
+    vendor: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    category: Mapped[str] = mapped_column(String(120), nullable=False, index=True)
+    status: Mapped[str] = mapped_column(String(40), nullable=False, default="Needs Review", index=True)
+    notes: Mapped[Optional[str]] = mapped_column(String(1000), nullable=True)
+    source_type: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
+    linked_transaction_id: Mapped[Optional[int]] = mapped_column(ForeignKey("transactions.id"), nullable=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now(), onupdate=func.now())
 
 
 class Account(Base):
@@ -1655,6 +1683,51 @@ class TransactionsPurgeImportedOut(BaseModel):
     deleted: int
     used_markers: list[str] = Field(default_factory=list, description="Which columns were used to identify imported rows.")
 
+class ReimbursementIn(BaseModel):
+    date: date
+    vendor: str = Field(min_length=1, max_length=255)
+    description: Optional[str] = Field(default=None, max_length=500)
+    amount: Decimal = Field(gt=0)
+    category: str = Field(min_length=1, max_length=120)
+    status: Literal[
+        "Needs Review",
+        "Ready to Submit",
+        "Submitted",
+        "Partially Reimbursed",
+        "Fully Reimbursed",
+        "Not Reimbursable",
+    ] = "Needs Review"
+    notes: Optional[str] = Field(default=None, max_length=1000)
+    source_type: Optional[str] = Field(default=None, max_length=80)
+    linked_transaction_id: Optional[int] = None
+
+
+class ReimbursementStatusIn(BaseModel):
+    status: Literal[
+        "Needs Review",
+        "Ready to Submit",
+        "Submitted",
+        "Partially Reimbursed",
+        "Fully Reimbursed",
+        "Not Reimbursable",
+    ]
+
+
+class ReimbursementOut(BaseModel):
+    id: int
+    user_id: int
+    date: date
+    vendor: str
+    description: Optional[str] = None
+    amount: Decimal
+    category: str
+    status: str
+    notes: Optional[str] = None
+    source_type: Optional[str] = None
+    linked_transaction_id: Optional[int] = None
+    created_at: datetime
+    updated_at: datetime
+
 class MaintenanceSqlIn(BaseModel):
     sql: str = Field(min_length=1, description="Single SQL statement to execute.")
 
@@ -2487,6 +2560,7 @@ def startup_populate_schema():
     _ensure_user_platform_columns()
     _migrate_platform_roles_subscriber_admin()
     _ensure_platform_admin_audit_table()
+    _ensure_reimbursements_table()
     _sync_legacy_platform_admin_roles()
 
 
@@ -3252,6 +3326,62 @@ def _ensure_reimbursable_columns() -> None:
         conn.execute(text("ALTER TABLE expected_transaction_overrides ADD COLUMN IF NOT EXISTS reimbursable BOOLEAN"))
         conn.execute(text("UPDATE transactions SET reimbursable = COALESCE(reimbursable, FALSE)"))
         conn.execute(text("UPDATE expected_transactions SET reimbursable = COALESCE(reimbursable, FALSE)"))
+
+
+def _ensure_reimbursements_table() -> None:
+    """Lightweight startup migration: user-owned reimbursement tracking records."""
+    with engine.begin() as conn:
+        if settings.DATABASE_URL.startswith("sqlite"):
+            conn.execute(
+                text(
+                    "CREATE TABLE IF NOT EXISTS reimbursements ("
+                    "id INTEGER PRIMARY KEY, "
+                    "user_id INTEGER NOT NULL, "
+                    "date DATE NOT NULL, "
+                    "vendor VARCHAR(255) NOT NULL, "
+                    "description VARCHAR(500), "
+                    "amount NUMERIC(12, 2) NOT NULL, "
+                    "category VARCHAR(120) NOT NULL, "
+                    "status VARCHAR(40) NOT NULL DEFAULT 'Needs Review', "
+                    "notes VARCHAR(1000), "
+                    "source_type VARCHAR(80), "
+                    "linked_transaction_id INTEGER, "
+                    "created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL, "
+                    "updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL, "
+                    "FOREIGN KEY (user_id) REFERENCES users(id), "
+                    "FOREIGN KEY (linked_transaction_id) REFERENCES transactions(id)"
+                    ")"
+                )
+            )
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reimbursements_user_id ON reimbursements (user_id)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reimbursements_date ON reimbursements (date)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reimbursements_status ON reimbursements (status)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reimbursements_category ON reimbursements (category)"))
+            return
+
+        conn.execute(
+            text(
+                "CREATE TABLE IF NOT EXISTS reimbursements ("
+                "id SERIAL PRIMARY KEY, "
+                "user_id INTEGER NOT NULL REFERENCES users(id), "
+                "date DATE NOT NULL, "
+                "vendor VARCHAR(255) NOT NULL, "
+                "description VARCHAR(500), "
+                "amount NUMERIC(12, 2) NOT NULL, "
+                "category VARCHAR(120) NOT NULL, "
+                "status VARCHAR(40) NOT NULL DEFAULT 'Needs Review', "
+                "notes VARCHAR(1000), "
+                "source_type VARCHAR(80), "
+                "linked_transaction_id INTEGER REFERENCES transactions(id), "
+                "created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), "
+                "updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()"
+                ")"
+            )
+        )
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reimbursements_user_id ON reimbursements (user_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reimbursements_date ON reimbursements (date)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reimbursements_status ON reimbursements (status)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reimbursements_category ON reimbursements (category)"))
 
 
 def _ensure_expected_variable_column() -> None:
@@ -7335,6 +7465,150 @@ def _table_columns(db, table: str) -> set[str]:
         return {str(r[0]) for r in rows if r and r[0]}
     except Exception:
         return set()
+
+
+def _clean_optional_text(value: Optional[str]) -> Optional[str]:
+    if value is None:
+        return None
+    s = str(value).strip()
+    return s or None
+
+
+def _clean_required_text(value: str, field_name: str) -> str:
+    s = str(value or "").strip()
+    if not s:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"{field_name} is required")
+    return s
+
+
+def _reimbursement_out(row: Reimbursement) -> ReimbursementOut:
+    return ReimbursementOut(
+        id=int(row.id),
+        user_id=int(row.user_id),
+        date=row.date,
+        vendor=row.vendor,
+        description=row.description,
+        amount=row.amount,
+        category=row.category,
+        status=row.status,
+        notes=row.notes,
+        source_type=row.source_type,
+        linked_transaction_id=row.linked_transaction_id,
+        created_at=row.created_at,
+        updated_at=row.updated_at,
+    )
+
+
+def _validate_reimbursement_linked_transaction(db, user_id: int, linked_transaction_id: Optional[int]) -> None:
+    if linked_transaction_id is None:
+        return
+    row = (
+        db.execute(
+            select(Transaction.id)
+            .join(FamilyMember, FamilyMember.family_id == Transaction.family_id)
+            .where(Transaction.id == linked_transaction_id, FamilyMember.user_id == user_id)
+        )
+        .first()
+    )
+    if row is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Linked transaction is not available")
+
+
+@app.get("/api/reimbursements", response_model=list[ReimbursementOut])
+def list_reimbursements(
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    rows = (
+        db.execute(
+            select(Reimbursement)
+            .where(Reimbursement.user_id == user_id)
+            .order_by(Reimbursement.date.desc(), Reimbursement.id.desc())
+        )
+        .scalars()
+        .all()
+    )
+    return [_reimbursement_out(row) for row in rows]
+
+
+@app.post("/api/reimbursements", response_model=ReimbursementOut)
+def create_reimbursement(
+    payload: ReimbursementIn,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    _validate_reimbursement_linked_transaction(db, user_id, payload.linked_transaction_id)
+    now = datetime.utcnow()
+    row = Reimbursement(
+        user_id=user_id,
+        date=payload.date,
+        vendor=_clean_required_text(payload.vendor, "Vendor"),
+        description=_clean_optional_text(payload.description),
+        amount=payload.amount,
+        category=_clean_required_text(payload.category, "Category"),
+        status=payload.status,
+        notes=_clean_optional_text(payload.notes),
+        source_type=_clean_optional_text(payload.source_type),
+        linked_transaction_id=payload.linked_transaction_id,
+        updated_at=now,
+    )
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return _reimbursement_out(row)
+
+
+@app.put("/api/reimbursements/{reimbursement_id}", response_model=ReimbursementOut)
+def update_reimbursement(
+    reimbursement_id: int,
+    payload: ReimbursementIn,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    row = (
+        db.execute(select(Reimbursement).where(Reimbursement.id == reimbursement_id, Reimbursement.user_id == user_id))
+        .scalar_one_or_none()
+    )
+    if row is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reimbursement not found")
+    _validate_reimbursement_linked_transaction(db, user_id, payload.linked_transaction_id)
+    row.date = payload.date
+    row.vendor = _clean_required_text(payload.vendor, "Vendor")
+    row.description = _clean_optional_text(payload.description)
+    row.amount = payload.amount
+    row.category = _clean_required_text(payload.category, "Category")
+    row.status = payload.status
+    row.notes = _clean_optional_text(payload.notes)
+    row.source_type = _clean_optional_text(payload.source_type)
+    row.linked_transaction_id = payload.linked_transaction_id
+    row.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(row)
+    return _reimbursement_out(row)
+
+
+@app.patch("/api/reimbursements/{reimbursement_id}/status", response_model=ReimbursementOut)
+def update_reimbursement_status(
+    reimbursement_id: int,
+    payload: ReimbursementStatusIn,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    row = (
+        db.execute(select(Reimbursement).where(Reimbursement.id == reimbursement_id, Reimbursement.user_id == user_id))
+        .scalar_one_or_none()
+    )
+    if row is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reimbursement not found")
+    row.status = payload.status
+    row.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(row)
+    return _reimbursement_out(row)
 
 
 @app.post("/api/families/{family_id}/transactions/purge-imported", response_model=TransactionsPurgeImportedOut)

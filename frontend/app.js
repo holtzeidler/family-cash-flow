@@ -2239,7 +2239,7 @@ async function getProjectionDailyForCashOutlook() {
 function syncSidebarCashHealthCardVisibility() {
   if (!sidebarCashHealthCard) return;
   const v = document.body?.dataset?.bwView;
-  const showOnView = v === "calendar" || v === "transactions" || v === "reports" || v === "settings";
+  const showOnView = v === "calendar" || v === "transactions" || v === "reports" || v === "settings" || v === "reimbursements";
   sidebarCashHealthCard.hidden = !showOnView || !state.activeFamilyId;
 }
 
@@ -2991,10 +2991,12 @@ const navCalendarView = document.getElementById("navCalendarView");
 const navTransactionView = document.getElementById("navTransactionView");
 const navSettingsView = document.getElementById("navSettingsView");
 const navReportsView = document.getElementById("navReportsView");
+const navReimbursementsView = document.getElementById("navReimbursementsView");
 const calendarViewPanel = document.getElementById("calendarViewPanel");
 const transactionViewPanel = document.getElementById("transactionViewPanel");
 const settingsViewPanel = document.getElementById("settingsViewPanel");
 const reportsViewPanel = document.getElementById("reportsViewPanel");
+const reimbursementsViewPanel = document.getElementById("reimbursementsViewPanel");
 function isChartCustomRangeActive() {
   return !!document.querySelector('.reports-horizon__btn[data-report-days="custom"].is-active');
 }
@@ -3512,11 +3514,14 @@ function setActiveTopView(view) {
         ? "settings"
         : view === "reports"
           ? "reports"
-          : "calendar";
+          : view === "reimbursements"
+            ? "reimbursements"
+            : "calendar";
   if (calendarViewPanel) calendarViewPanel.hidden = v !== "calendar";
   if (transactionViewPanel) transactionViewPanel.hidden = v !== "transactions";
   if (settingsViewPanel) settingsViewPanel.hidden = v !== "settings";
   if (reportsViewPanel) reportsViewPanel.hidden = v !== "reports";
+  if (reimbursementsViewPanel) reimbursementsViewPanel.hidden = v !== "reimbursements";
   if (settingsSidebarNav) settingsSidebarNav.hidden = v !== "settings";
   syncSidebarCashHealthCardVisibility();
   if (sidebarPendingTxCard) sidebarPendingTxCard.hidden = !(v === "calendar" || v === "transactions");
@@ -3554,6 +3559,10 @@ function setActiveTopView(view) {
   if (navReportsView) {
     navReportsView.classList.toggle("is-active", v === "reports");
     navReportsView.setAttribute("aria-selected", v === "reports" ? "true" : "false");
+  }
+  if (navReimbursementsView) {
+    navReimbursementsView.classList.toggle("is-active", v === "reimbursements");
+    navReimbursementsView.setAttribute("aria-selected", v === "reimbursements" ? "true" : "false");
   }
   if (v === "reports") {
     initReportsLeftNav();
@@ -3594,6 +3603,9 @@ function setActiveTopView(view) {
     renderAccountDetailsPanel();
     activateSettingsSection("accounts");
   }
+  if (v === "reimbursements") {
+    void refreshReimbursements().catch(() => {});
+  }
   try {
     localStorage.setItem(ACTIVE_VIEW_KEY, v);
   } catch (_) {}
@@ -3629,6 +3641,13 @@ if (navReportsView) {
     if (e.currentTarget instanceof HTMLAnchorElement && String(e.currentTarget.getAttribute("href") || "").startsWith("/")) return;
     e.preventDefault();
     setActiveTopView("reports");
+  });
+}
+if (navReimbursementsView) {
+  navReimbursementsView.addEventListener("click", (e) => {
+    if (e.currentTarget instanceof HTMLAnchorElement && String(e.currentTarget.getAttribute("href") || "").startsWith("/")) return;
+    e.preventDefault();
+    setActiveTopView("reimbursements");
   });
 }
 
@@ -3820,24 +3839,348 @@ if (catReportRunBtn) {
   });
 }
 
+const REIMBURSEMENT_STATUSES = [
+  "Needs Review",
+  "Ready to Submit",
+  "Submitted",
+  "Partially Reimbursed",
+  "Fully Reimbursed",
+  "Not Reimbursable",
+];
+const REIMBURSEMENT_CATEGORIES = [
+  "Airfare",
+  "Hotel",
+  "Rental Car",
+  "Meals",
+  "Mileage",
+  "Software",
+  "Supplies",
+  "Parking",
+  "Tolls",
+  "Other",
+];
+const reimbState = {
+  items: [],
+  loaded: false,
+  sortKey: "date",
+  sortDir: "desc",
+  status: "All",
+};
+const reimbSummaryOutstanding = document.getElementById("reimbSummaryOutstanding");
+const reimbSummaryNeedsReview = document.getElementById("reimbSummaryNeedsReview");
+const reimbSummarySubmitted = document.getElementById("reimbSummarySubmitted");
+const reimbSummaryReimbursed = document.getElementById("reimbSummaryReimbursed");
+const reimbStatusTabs = document.getElementById("reimbStatusTabs");
+const reimbStartDate = document.getElementById("reimbStartDate");
+const reimbEndDate = document.getElementById("reimbEndDate");
+const reimbCategoryFilter = document.getElementById("reimbCategoryFilter");
+const reimbSearch = document.getElementById("reimbSearch");
+const reimbRegisterBody = document.getElementById("reimbRegisterBody");
+const reimbTableWrap = document.getElementById("reimbTableWrap");
+const reimbEmpty = document.getElementById("reimbEmpty");
+const reimbErr = document.getElementById("reimbErr");
+const reimbAddBtn = document.getElementById("reimbAddBtn");
+const reimbEmptyAddBtn = document.getElementById("reimbEmptyAddBtn");
+const reimbModal = document.getElementById("reimbModal");
+const reimbModalTitle = document.getElementById("reimbModalTitle");
+const reimbModalErr = document.getElementById("reimbModalErr");
+const reimbEditId = document.getElementById("reimbEditId");
+const reimbDate = document.getElementById("reimbDate");
+const reimbVendor = document.getElementById("reimbVendor");
+const reimbDescription = document.getElementById("reimbDescription");
+const reimbAmount = document.getElementById("reimbAmount");
+const reimbCategory = document.getElementById("reimbCategory");
+const reimbStatus = document.getElementById("reimbStatus");
+const reimbNotes = document.getElementById("reimbNotes");
+const reimbSaveBtn = document.getElementById("reimbSaveBtn");
+const reimbCancelBtn = document.getElementById("reimbCancelBtn");
+
+function formatReimbursementMoney(value) {
+  const n = Number(value || 0);
+  if (!Number.isFinite(n)) return "$0";
+  return `$${fmtMoney0(Math.abs(n))}`;
+}
+
+function reimbursementStatusClass(status) {
+  return `reimb-status--${String(status || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`;
+}
+
+function populateReimbursementSelects() {
+  for (const select of [reimbCategory, reimbCategoryFilter]) {
+    if (!select || select.dataset.reimbPopulated === "1") continue;
+    const keepAll = select === reimbCategoryFilter;
+    select.innerHTML = keepAll ? `<option value="">All categories</option>` : "";
+    for (const cat of REIMBURSEMENT_CATEGORIES) {
+      const opt = document.createElement("option");
+      opt.value = cat;
+      opt.textContent = cat;
+      select.appendChild(opt);
+    }
+    select.dataset.reimbPopulated = "1";
+  }
+  if (reimbStatus && reimbStatus.dataset.reimbPopulated !== "1") {
+    reimbStatus.innerHTML = "";
+    for (const st of REIMBURSEMENT_STATUSES) {
+      const opt = document.createElement("option");
+      opt.value = st;
+      opt.textContent = st;
+      reimbStatus.appendChild(opt);
+    }
+    reimbStatus.dataset.reimbPopulated = "1";
+  }
+}
+
+function reimbursementSummary(items) {
+  const out = { outstanding: 0, needsReview: 0, submitted: 0, reimbursed: 0 };
+  for (const it of items || []) {
+    const amount = Number(it.amount || 0);
+    if (it.status === "Needs Review") out.needsReview += 1;
+    if (it.status === "Ready to Submit" || it.status === "Submitted" || it.status === "Partially Reimbursed") {
+      out.outstanding += amount;
+    }
+    if (it.status === "Submitted") out.submitted += amount;
+    if (it.status === "Fully Reimbursed") out.reimbursed += amount;
+  }
+  return out;
+}
+
+function renderReimbursementSummary() {
+  const s = reimbursementSummary(reimbState.items);
+  if (reimbSummaryOutstanding) reimbSummaryOutstanding.textContent = formatReimbursementMoney(s.outstanding);
+  if (reimbSummaryNeedsReview) reimbSummaryNeedsReview.textContent = `${s.needsReview} item${s.needsReview === 1 ? "" : "s"}`;
+  if (reimbSummarySubmitted) reimbSummarySubmitted.textContent = formatReimbursementMoney(s.submitted);
+  if (reimbSummaryReimbursed) reimbSummaryReimbursed.textContent = formatReimbursementMoney(s.reimbursed);
+}
+
+function filteredReimbursements() {
+  const q = String(reimbSearch?.value || "").trim().toLowerCase();
+  const start = reimbStartDate?.value || "";
+  const end = reimbEndDate?.value || "";
+  const cat = reimbCategoryFilter?.value || "";
+  return (reimbState.items || []).filter((it) => {
+    if (reimbState.status !== "All" && it.status !== reimbState.status) return false;
+    if (start && String(it.date || "") < start) return false;
+    if (end && String(it.date || "") > end) return false;
+    if (cat && it.category !== cat) return false;
+    if (q) {
+      const hay = `${it.vendor || ""} ${it.description || ""} ${it.notes || ""}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+}
+
+function sortReimbursements(items) {
+  const dir = reimbState.sortDir === "asc" ? 1 : -1;
+  const key = reimbState.sortKey;
+  return [...items].sort((a, b) => {
+    let av = a[key];
+    let bv = b[key];
+    if (key === "amount") {
+      av = Number(av || 0);
+      bv = Number(bv || 0);
+      return (av - bv) * dir;
+    }
+    return String(av || "").localeCompare(String(bv || "")) * dir;
+  });
+}
+
+function reimbursementQuickActions(status) {
+  if (status === "Needs Review") return [["Ready to Submit", "Mark Ready"], ["Not Reimbursable", "Not Reimbursable"]];
+  if (status === "Ready to Submit") return [["Submitted", "Mark Submitted"], ["Not Reimbursable", "Not Reimbursable"]];
+  if (status === "Submitted") return [["Fully Reimbursed", "Mark Reimbursed"], ["Partially Reimbursed", "Mark Partially Reimbursed"]];
+  if (status === "Partially Reimbursed") return [["Fully Reimbursed", "Mark Reimbursed"]];
+  if (status === "Fully Reimbursed" || status === "Not Reimbursable") return [["Needs Review", "Reopen"]];
+  return [];
+}
+
+function renderReimbursements() {
+  if (!reimbursementsViewPanel) return;
+  renderReimbursementSummary();
+  const filtered = sortReimbursements(filteredReimbursements());
+  const hasAny = reimbState.items.length > 0;
+  if (reimbEmpty) reimbEmpty.hidden = hasAny;
+  if (reimbTableWrap) reimbTableWrap.hidden = !hasAny;
+  if (!reimbRegisterBody) return;
+  reimbRegisterBody.innerHTML = "";
+  if (!hasAny) return;
+  if (!filtered.length) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td colspan="7" class="reimbursements-none">No reimbursements match these filters.</td>`;
+    reimbRegisterBody.appendChild(tr);
+    return;
+  }
+  for (const it of filtered) {
+    const tr = document.createElement("tr");
+    const actions = reimbursementQuickActions(it.status)
+      .map(([next, label]) => `<button type="button" class="reimb-quick-btn" data-reimb-id="${it.id}" data-reimb-next="${escapeHtml(next)}">${escapeHtml(label)}</button>`)
+      .join("");
+    tr.innerHTML = `
+      <td>${escapeHtml(String(it.date || ""))}</td>
+      <td><strong>${escapeHtml(it.vendor || "")}</strong>${it.description ? `<span class="reimb-row-desc">${escapeHtml(it.description)}</span>` : ""}</td>
+      <td>${escapeHtml(it.category || "")}</td>
+      <td class="reimbursements-amount-col">${escapeHtml(formatReimbursementMoney(it.amount))}</td>
+      <td><span class="reimb-status ${reimbursementStatusClass(it.status)}">${escapeHtml(it.status || "")}</span></td>
+      <td>${it.notes ? escapeHtml(it.notes) : '<span class="muted">-</span>'}</td>
+      <td><div class="reimb-row-actions"><button type="button" class="secondary reimb-edit-btn" data-reimb-id="${it.id}">Edit</button>${actions}</div></td>
+    `;
+    reimbRegisterBody.appendChild(tr);
+  }
+}
+
+async function refreshReimbursements({ force = false } = {}) {
+  if (!reimbursementsViewPanel) return;
+  if (reimbState.loaded && !force) {
+    renderReimbursements();
+    return;
+  }
+  try {
+    show(reimbErr, "");
+    populateReimbursementSelects();
+    const items = await api("/api/reimbursements", "GET");
+    reimbState.items = Array.isArray(items) ? items : [];
+    reimbState.loaded = true;
+    renderReimbursements();
+  } catch (e) {
+    show(reimbErr, e.message || "Failed to load reimbursements");
+  }
+}
+
+function openReimbursementModal(item = null) {
+  if (!reimbModal) return;
+  populateReimbursementSelects();
+  show(reimbModalErr, "");
+  if (reimbModalTitle) reimbModalTitle.textContent = item ? "Edit Expense" : "Add Expense";
+  if (reimbEditId) reimbEditId.value = item ? String(item.id) : "";
+  if (reimbDate) reimbDate.value = item?.date || toISODate(new Date());
+  if (reimbVendor) reimbVendor.value = item?.vendor || "";
+  if (reimbDescription) reimbDescription.value = item?.description || "";
+  if (reimbAmount) reimbAmount.value = item ? String(Number(item.amount || 0)) : "";
+  if (reimbCategory) reimbCategory.value = item?.category || "Other";
+  if (reimbStatus) reimbStatus.value = item?.status || "Needs Review";
+  if (reimbNotes) reimbNotes.value = item?.notes || "";
+  reimbModal.classList.add("modal-overlay--open");
+  reimbModal.setAttribute("aria-hidden", "false");
+  window.setTimeout(() => reimbVendor?.focus?.(), 0);
+}
+
+function closeReimbursementModal() {
+  if (!reimbModal) return;
+  reimbModal.classList.remove("modal-overlay--open");
+  reimbModal.setAttribute("aria-hidden", "true");
+}
+
+function reimbursementPayloadFromForm() {
+  const vendor = String(reimbVendor?.value || "").trim();
+  const amount = Number(reimbAmount?.value || "");
+  const category = String(reimbCategory?.value || "").trim();
+  const status = String(reimbStatus?.value || "Needs Review").trim();
+  const dt = String(reimbDate?.value || "").trim();
+  if (!dt) throw new Error("Date is required");
+  if (!vendor) throw new Error("Vendor is required");
+  if (!Number.isFinite(amount) || amount <= 0) throw new Error("Amount must be greater than zero");
+  if (!category) throw new Error("Category is required");
+  return {
+    date: dt,
+    vendor,
+    description: String(reimbDescription?.value || "").trim() || null,
+    amount,
+    category,
+    status,
+    notes: String(reimbNotes?.value || "").trim() || null,
+    source_type: "manual",
+    linked_transaction_id: null,
+  };
+}
+
+async function saveReimbursementFromModal() {
+  try {
+    show(reimbModalErr, "");
+    const payload = reimbursementPayloadFromForm();
+    const id = String(reimbEditId?.value || "").trim();
+    if (id) await api(`/api/reimbursements/${encodeURIComponent(id)}`, "PUT", payload);
+    else await api("/api/reimbursements", "POST", payload);
+    closeReimbursementModal();
+    reimbState.loaded = false;
+    await refreshReimbursements({ force: true });
+  } catch (e) {
+    show(reimbModalErr, e.message || "Could not save reimbursement");
+  }
+}
+
+async function updateReimbursementStatus(id, nextStatus) {
+  try {
+    show(reimbErr, "");
+    await api(`/api/reimbursements/${encodeURIComponent(String(id))}/status`, "PATCH", { status: nextStatus });
+    reimbState.loaded = false;
+    await refreshReimbursements({ force: true });
+  } catch (e) {
+    show(reimbErr, e.message || "Could not update status");
+  }
+}
+
+function initReimbursementsUi() {
+  if (!reimbursementsViewPanel || reimbursementsViewPanel.dataset.reimbInit === "1") return;
+  reimbursementsViewPanel.dataset.reimbInit = "1";
+  populateReimbursementSelects();
+  reimbAddBtn?.addEventListener("click", () => openReimbursementModal());
+  reimbEmptyAddBtn?.addEventListener("click", () => openReimbursementModal());
+  reimbCancelBtn?.addEventListener("click", closeReimbursementModal);
+  reimbSaveBtn?.addEventListener("click", () => void saveReimbursementFromModal());
+  reimbStatusTabs?.addEventListener("click", (e) => {
+    const btn = e.target?.closest?.("[data-reimb-status]");
+    if (!btn) return;
+    reimbState.status = btn.dataset.reimbStatus || "All";
+    reimbStatusTabs.querySelectorAll("[data-reimb-status]").forEach((b) => b.classList.toggle("is-active", b === btn));
+    renderReimbursements();
+  });
+  for (const el of [reimbStartDate, reimbEndDate, reimbCategoryFilter, reimbSearch]) {
+    el?.addEventListener("input", renderReimbursements);
+    el?.addEventListener("change", renderReimbursements);
+  }
+  reimbursementsViewPanel.querySelectorAll("[data-reimb-sort]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const key = btn.dataset.reimbSort || "date";
+      if (reimbState.sortKey === key) reimbState.sortDir = reimbState.sortDir === "asc" ? "desc" : "asc";
+      else {
+        reimbState.sortKey = key;
+        reimbState.sortDir = key === "date" ? "desc" : "asc";
+      }
+      renderReimbursements();
+    });
+  });
+  reimbRegisterBody?.addEventListener("click", (e) => {
+    const edit = e.target?.closest?.(".reimb-edit-btn");
+    if (edit) {
+      const item = reimbState.items.find((it) => String(it.id) === String(edit.dataset.reimbId));
+      if (item) openReimbursementModal(item);
+      return;
+    }
+    const quick = e.target?.closest?.(".reimb-quick-btn");
+    if (quick) void updateReimbursementStatus(quick.dataset.reimbId, quick.dataset.reimbNext);
+  });
+}
+
+initReimbursementsUi();
+
 function getInitialTopViewFromUrlOrStorage() {
   try {
     const forced = window.__BW_FORCE_VIEW ? String(window.__BW_FORCE_VIEW).trim().toLowerCase() : "";
-    if (forced === "calendar" || forced === "transactions" || forced === "reports" || forced === "settings") {
+    if (forced === "calendar" || forced === "transactions" || forced === "reports" || forced === "settings" || forced === "reimbursements") {
       return forced;
     }
   } catch (_) {}
   try {
     const q = new URLSearchParams(window.location.search);
     const urlView = String(q.get("view") || "").trim().toLowerCase();
-    if (urlView === "calendar" || urlView === "transactions" || urlView === "reports" || urlView === "settings") {
+    if (urlView === "calendar" || urlView === "transactions" || urlView === "reports" || urlView === "settings" || urlView === "reimbursements") {
       return urlView;
     }
   } catch (_) {}
   try {
     const storedView = localStorage.getItem(ACTIVE_VIEW_KEY);
     const v = storedView ? String(storedView) : "";
-    if (v === "calendar" || v === "transactions" || v === "reports" || v === "settings") {
+    if (v === "calendar" || v === "transactions" || v === "reports" || v === "settings" || v === "reimbursements") {
       return v;
     }
   } catch (_) {}
@@ -8599,8 +8942,10 @@ async function loadMe() {
   }
   const tv = document.getElementById("navTransactionView");
   const rv = document.getElementById("navReportsView");
+  const reimbv = document.getElementById("navReimbursementsView");
   if (tv) tv.hidden = false;
   if (rv) rv.hidden = false;
+  if (reimbv) reimbv.hidden = false;
 }
 
 function syncActiveFamilyFlags() {

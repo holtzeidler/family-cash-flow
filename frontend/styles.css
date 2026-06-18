@@ -29071,6 +29071,253 @@ body[data-bw-view="settings"] #sidebarBodyMonth .total--net .v.danger,
 body[data-bw-view="reports"] #sidebarBodyMonth .total--net .v.danger{
   color: color-mix(in srgb, var(--danger) 68%, #78716c);
 }
+/* Reimbursements register */
+.reimbursements-panel{
+  padding: 18px;
+}
+.reimbursements-head{
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+.reimbursements-title{
+  margin: 0;
+  font-size: 1.35rem;
+  letter-spacing: -0.03em;
+}
+.reimbursements-lede{
+  margin: 4px 0 0;
+  max-width: 46rem;
+  color: rgba(71, 85, 105, 0.82);
+  line-height: 1.45;
+}
+.reimbursements-head__actions{
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.reimbursements-primary-btn{
+  white-space: nowrap;
+}
+.reimbursements-coming-soon{
+  opacity: 0.56;
+  cursor: not-allowed;
+}
+.reimbursements-summary{
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0 0 14px;
+}
+.reimbursements-summary-card{
+  padding: 12px 13px;
+  border: 1px solid rgba(17, 24, 39, 0.07);
+  border-radius: 13px;
+  background: rgba(248, 250, 252, 0.72);
+}
+.reimbursements-summary-card__label{
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(100, 116, 139, 0.88);
+}
+.reimbursements-summary-card strong{
+  font-size: 1.35rem;
+  letter-spacing: -0.03em;
+  color: rgba(15, 23, 42, 0.95);
+}
+.reimbursements-filters{
+  padding: 10px;
+  border: 1px solid rgba(17, 24, 39, 0.07);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.74);
+  margin-bottom: 12px;
+}
+.reimbursements-status-tabs{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.reimbursements-status-tab{
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  border-radius: 999px;
+  padding: 5px 9px;
+  background: #fff;
+  color: rgba(71, 85, 105, 0.9);
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+.reimbursements-status-tab.is-active{
+  border-color: rgba(11, 61, 46, 0.18);
+  background: rgba(236, 253, 245, 0.7);
+  color: rgba(11, 61, 46, 0.92);
+}
+.reimbursements-filter-grid{
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+.reimbursements-filter-grid label{
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: rgba(71, 85, 105, 0.82);
+}
+.reimbursements-filter-grid input,
+.reimbursements-filter-grid select{
+  width: 100%;
+  margin-top: 4px;
+}
+.reimbursements-empty{
+  padding: 28px 18px;
+  text-align: center;
+  border: 1px dashed rgba(100, 116, 139, 0.28);
+  border-radius: 14px;
+  background: rgba(248, 250, 252, 0.72);
+}
+.reimbursements-empty h3{
+  margin: 0 0 6px;
+}
+.reimbursements-empty p{
+  max-width: 34rem;
+  margin: 0 auto 10px;
+  color: rgba(71, 85, 105, 0.82);
+}
+.reimbursements-empty__soon{
+  font-size: 0.84rem;
+  color: rgba(100, 116, 139, 0.78);
+}
+.reimbursements-table-wrap{
+  overflow-x: auto;
+  border: 1px solid rgba(17, 24, 39, 0.07);
+  border-radius: 14px;
+  background: #fff;
+}
+.reimbursements-table{
+  width: 100%;
+  min-width: 840px;
+  border-collapse: collapse;
+}
+.reimbursements-table th,
+.reimbursements-table td{
+  padding: 10px 11px;
+  border-bottom: 1px solid rgba(17, 24, 39, 0.06);
+  text-align: left;
+  vertical-align: top;
+}
+.reimbursements-table th{
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(100, 116, 139, 0.86);
+  background: rgba(248, 250, 252, 0.8);
+}
+.reimbursements-table th button{
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+}
+.reimbursements-amount-col{
+  text-align: right !important;
+  white-space: nowrap;
+}
+.reimb-row-desc{
+  display: block;
+  margin-top: 2px;
+  color: rgba(100, 116, 139, 0.78);
+  font-size: 0.82rem;
+}
+.reimb-status{
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 0.76rem;
+  font-weight: 750;
+  white-space: nowrap;
+  background: rgba(226, 232, 240, 0.75);
+  color: rgba(51, 65, 85, 0.92);
+}
+.reimb-status--needs-review{
+  background: rgba(254, 243, 199, 0.82);
+  color: rgba(146, 64, 14, 0.94);
+}
+.reimb-status--ready-to-submit,
+.reimb-status--submitted,
+.reimb-status--partially-reimbursed{
+  background: rgba(219, 234, 254, 0.72);
+  color: rgba(30, 64, 175, 0.92);
+}
+.reimb-status--fully-reimbursed{
+  background: rgba(220, 252, 231, 0.78);
+  color: rgba(22, 101, 52, 0.92);
+}
+.reimb-status--not-reimbursable{
+  background: rgba(241, 245, 249, 0.9);
+  color: rgba(71, 85, 105, 0.86);
+}
+.reimb-row-actions{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.reimb-quick-btn,
+.reimb-edit-btn{
+  min-height: 28px;
+  padding: 4px 8px;
+  font-size: 0.76rem;
+}
+.reimbursements-none{
+  text-align: center !important;
+  color: rgba(100, 116, 139, 0.78);
+}
+.modal--reimbursement{
+  max-width: 640px;
+}
+.modal--reimbursement textarea{
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+}
+.reimbursements-modal-note{
+  margin: 8px 0 0;
+  color: rgba(100, 116, 139, 0.82);
+  font-size: 0.84rem;
+}
+.reimbursements-modal-actions{
+  justify-content: flex-end;
+}
+@media (max-width: 900px){
+  .reimbursements-head{
+    flex-direction: column;
+  }
+  .reimbursements-head__actions{
+    justify-content: flex-start;
+  }
+  .reimbursements-summary,
+  .reimbursements-filter-grid{
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+body[data-bw-view="calendar"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger:has(.cash-outlook-card),
+body[data-bw-view="transactions"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger:has(.cash-outlook-card),
+body[data-bw-view="settings"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger:has(.cash-outlook-card),
+body[data-bw-view="reports"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger:has(.cash-outlook-card){
+  padding-top: 8px;
+  padding-bottom: 7px;
+}
 body[data-bw-view="calendar"] .cash-outlook-card__line--tertiary,
 body[data-bw-view="transactions"] .cash-outlook-card__line--tertiary,
 body[data-bw-view="settings"] .cash-outlook-card__line--tertiary,

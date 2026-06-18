@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Forecast Calendar — BalanceWhiz</title>
+    <title>Reimbursements — BalanceWhiz</title>
     <!-- bw:seo-head -->
     <meta name="description" content="Your BalanceWhiz forecast calendar—projected checking balance by day." />
     <link rel="canonical" href="https://balancewhiz.com/calendar/" />
@@ -30,7 +30,7 @@
     <!-- /bw:seo-head -->
 <script>
       window.API_BASE = "__API_BASE__";
-      window.__BW_FORCE_VIEW = "calendar";
+      window.__BW_FORCE_VIEW = "reimbursements";
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -38,7 +38,7 @@
     <link rel="stylesheet" href="../styles.css?v=682" />
   </head>
   <body>
-    <h1 class="sr-only">Forecast calendar</h1>
+    <h1 class="sr-only">Reimbursements</h1>
     <div class="container">
       <div id="familiesErr" class="error"></div>
 
@@ -60,10 +60,10 @@
             </div>
           </div>
           <div class="top-nav__tabs" role="tablist" aria-label="Views">
-            <a class="top-nav__tab is-active" id="navCalendarView" role="tab" aria-selected="true" href="/calendar">Forecast</a>
+            <a class="top-nav__tab" id="navCalendarView" role="tab" aria-selected="false" href="/calendar">Forecast</a>
             <a class="top-nav__tab" id="navTransactionView" role="tab" aria-selected="false" href="/transactions">Transactions</a>
             <a class="top-nav__tab" id="navReportsView" role="tab" aria-selected="false" href="/reports">Reports</a>
-            <a class="top-nav__tab" id="navReimbursementsView" role="tab" aria-selected="false" href="/reimbursements">Reimbursements</a>
+            <a class="top-nav__tab is-active" id="navReimbursementsView" role="tab" aria-selected="true" href="/reimbursements">Reimbursements</a>
             <a class="top-nav__tab" id="navSettingsView" role="tab" aria-selected="false" href="/settings">Settings</a>
           </div>
           <div class="top-nav__actions" aria-label="Account actions">

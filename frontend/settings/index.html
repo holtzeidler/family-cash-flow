@@ -63,7 +63,8 @@
             <a class="top-nav__tab" id="navCalendarView" role="tab" aria-selected="true" href="/calendar">Forecast</a>
             <a class="top-nav__tab" id="navTransactionView" role="tab" aria-selected="false" href="/transactions">Transactions</a>
             <a class="top-nav__tab" id="navReportsView" role="tab" aria-selected="false" href="/reports">Reports</a>
-            <a class="top-nav__tab is-active" id="navSettingsView" role="tab" aria-selected="false" href="/settings">Settings</a>
+                        <a class="top-nav__tab" id="navReimbursementsView" role="tab" aria-selected="false" href="/reimbursements">Reimbursements</a>
+<a class="top-nav__tab is-active" id="navSettingsView" role="tab" aria-selected="false" href="/settings">Settings</a>
           </div>
           <div class="top-nav__actions" aria-label="Account actions">
             <a id="platformAdminLink" class="top-nav__admin" href="/platform-admin" hidden>Admin</a>
@@ -464,6 +465,72 @@
               </div>
             </div>
 
+          </div>
+
+          <div id="reimbursementsViewPanel" class="app-view reimbursements-view" hidden>
+            <section class="card reimbursements-panel" aria-labelledby="reimbursementsTitle">
+              <header class="reimbursements-head">
+                <div>
+                  <h2 id="reimbursementsTitle" class="reimbursements-title">Reimbursements</h2>
+                  <p class="reimbursements-lede">Track work expenses paid personally, from review through reimbursement. These items do not affect your cash flow forecast.</p>
+                </div>
+                <div class="reimbursements-head__actions">
+                  <button type="button" class="secondary reimbursements-coming-soon" disabled title="Coming later">Import from Screenshot</button>
+                  <button type="button" class="secondary reimbursements-coming-soon" disabled title="Coming later">Import from CSV</button>
+                  <button type="button" id="reimbAddBtn" class="reimbursements-primary-btn">Add Expense</button>
+                </div>
+              </header>
+
+              <div class="reimbursements-summary" aria-label="Reimbursement summary">
+                <article class="reimbursements-summary-card"><span class="reimbursements-summary-card__label">Outstanding</span><strong id="reimbSummaryOutstanding">$0</strong></article>
+                <article class="reimbursements-summary-card"><span class="reimbursements-summary-card__label">Needs Review</span><strong id="reimbSummaryNeedsReview">0 items</strong></article>
+                <article class="reimbursements-summary-card"><span class="reimbursements-summary-card__label">Submitted</span><strong id="reimbSummarySubmitted">$0</strong></article>
+                <article class="reimbursements-summary-card"><span class="reimbursements-summary-card__label">Reimbursed</span><strong id="reimbSummaryReimbursed">$0</strong></article>
+              </div>
+
+              <div class="reimbursements-filters" aria-label="Reimbursement filters">
+                <div class="reimbursements-status-tabs" id="reimbStatusTabs" role="tablist" aria-label="Status filter">
+                  <button type="button" class="reimbursements-status-tab is-active" data-reimb-status="All">All</button>
+                  <button type="button" class="reimbursements-status-tab" data-reimb-status="Needs Review">Needs Review</button>
+                  <button type="button" class="reimbursements-status-tab" data-reimb-status="Ready to Submit">Ready to Submit</button>
+                  <button type="button" class="reimbursements-status-tab" data-reimb-status="Submitted">Submitted</button>
+                  <button type="button" class="reimbursements-status-tab" data-reimb-status="Partially Reimbursed">Partially Reimbursed</button>
+                  <button type="button" class="reimbursements-status-tab" data-reimb-status="Fully Reimbursed">Fully Reimbursed</button>
+                  <button type="button" class="reimbursements-status-tab" data-reimb-status="Not Reimbursable">Not Reimbursable</button>
+                </div>
+                <div class="reimbursements-filter-grid">
+                  <label>Start <input id="reimbStartDate" type="date" /></label>
+                  <label>End <input id="reimbEndDate" type="date" /></label>
+                  <label>Category <select id="reimbCategoryFilter"><option value="">All categories</option></select></label>
+                  <label>Search <input id="reimbSearch" type="search" placeholder="Vendor or description" autocomplete="off" /></label>
+                </div>
+              </div>
+
+              <div id="reimbErr" class="error"></div>
+              <div id="reimbEmpty" class="reimbursements-empty" hidden>
+                <h3>Track reimbursable work expenses</h3>
+                <p>Add airline tickets, hotels, meals, software, and other work expenses so you can make sure nothing slips through the cracks.</p>
+                <p class="reimbursements-empty__soon">Screenshot and credit card import coming later.</p>
+                <button type="button" id="reimbEmptyAddBtn">Add Expense</button>
+              </div>
+
+              <div class="reimbursements-table-wrap" id="reimbTableWrap">
+                <table class="reimbursements-table">
+                  <thead>
+                    <tr>
+                      <th><button type="button" data-reimb-sort="date">Date</button></th>
+                      <th>Vendor</th>
+                      <th><button type="button" data-reimb-sort="category">Category</button></th>
+                      <th class="reimbursements-amount-col"><button type="button" data-reimb-sort="amount">Amount</button></th>
+                      <th><button type="button" data-reimb-sort="status">Status</button></th>
+                      <th>Notes</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="reimbRegisterBody"></tbody>
+                </table>
+              </div>
+            </section>
           </div>
 
           <div id="settingsViewPanel" class="app-view" hidden>
@@ -1474,6 +1541,33 @@
             <button type="button" id="txEditDeleteScopeCancelBtn" class="secondary apply-scope-foot__cancel">Cancel</button>
             <button type="button" id="txEditDeleteScopeConfirmBtn" class="apply-scope-foot__delete" disabled>Delete</button>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="reimbModal" class="modal-overlay" aria-hidden="true">
+      <div class="modal modal--reimbursement" role="dialog" aria-labelledby="reimbModalTitle" aria-modal="true">
+        <h3 id="reimbModalTitle">Add Expense</h3>
+        <div id="reimbModalErr" class="error"></div>
+        <input id="reimbEditId" type="hidden" />
+        <div class="row two">
+          <div><label for="reimbDate">Date</label><input id="reimbDate" type="date" /></div>
+          <div><label for="reimbVendor">Vendor</label><input id="reimbVendor" type="text" maxlength="255" placeholder="Airline, hotel, client lunch" /></div>
+        </div>
+        <div class="row two">
+          <div><label for="reimbAmount">Amount</label><div class="money-input"><span class="money-input__prefix" aria-hidden="true">$</span><input id="reimbAmount" type="number" min="0" step="0.01" placeholder="0.00" /></div></div>
+          <div><label for="reimbCategory">Category</label><select id="reimbCategory"></select></div>
+        </div>
+        <div class="row two">
+          <div><label for="reimbStatus">Status</label><select id="reimbStatus"></select></div>
+          <div><label for="reimbDescription">Description</label><input id="reimbDescription" type="text" maxlength="500" placeholder="Optional" /></div>
+        </div>
+        <label for="reimbNotes">Notes</label>
+        <textarea id="reimbNotes" maxlength="1000" rows="3" placeholder="Submission details, receipt notes, or reminder"></textarea>
+        <p class="reimbursements-modal-note">This tracker does not create forecast transactions or reimbursement deposits.</p>
+        <div class="modal-actions reimbursements-modal-actions">
+          <button type="button" id="reimbCancelBtn" class="secondary">Cancel</button>
+          <button type="button" id="reimbSaveBtn">Save Expense</button>
         </div>
       </div>
     </div>
