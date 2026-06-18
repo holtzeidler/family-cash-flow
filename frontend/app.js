@@ -3845,7 +3845,6 @@ const REIMBURSEMENT_STATUSES = [
   "Submitted",
   "Partially Reimbursed",
   "Fully Reimbursed",
-  "Not Reimbursable",
 ];
 const REIMBURSEMENT_CATEGORIES = [
   "Airfare",
@@ -4041,11 +4040,11 @@ function sortReimbursements(items) {
 }
 
 function reimbursementQuickActions(status) {
-  if (status === "Needs Review") return [["Ready to Submit", "Mark Ready"], ["Not Reimbursable", "Not Reimbursable"]];
-  if (status === "Ready to Submit") return [["Submitted", "Mark Submitted"], ["Not Reimbursable", "Not Reimbursable"]];
+  if (status === "Needs Review") return [["Ready to Submit", "Mark Ready"]];
+  if (status === "Ready to Submit") return [["Submitted", "Mark Submitted"]];
   if (status === "Submitted") return [["Fully Reimbursed", "Mark Reimbursed"], ["Partially Reimbursed", "Mark Partially Reimbursed"]];
   if (status === "Partially Reimbursed") return [["Fully Reimbursed", "Mark Reimbursed"]];
-  if (status === "Fully Reimbursed" || status === "Not Reimbursable") return [["Needs Review", "Reopen"]];
+  if (status === "Fully Reimbursed") return [["Needs Review", "Reopen"]];
   return [];
 }
 
