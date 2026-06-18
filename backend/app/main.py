@@ -510,6 +510,28 @@ class Reimbursement(Base):
     updated_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now(), onupdate=func.now())
 
 
+class ReimbursementBatch(Base):
+    __tablename__ = "reimbursement_batches"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    batch_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    received_date: Mapped[date] = mapped_column(SA_Date, nullable=False, index=True)
+    amount_received: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    notes: Mapped[Optional[str]] = mapped_column(String(1000), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now(), onupdate=func.now())
+
+
+class ReimbursementBatchItem(Base):
+    __tablename__ = "reimbursement_batch_items"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    batch_id: Mapped[int] = mapped_column(ForeignKey("reimbursement_batches.id", ondelete="CASCADE"), nullable=False, index=True)
+    expense_id: Mapped[int] = mapped_column(ForeignKey("reimbursements.id", ondelete="CASCADE"), nullable=False, index=True)
+    amount_allocated: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+
+
 class Account(Base):
     __tablename__ = "accounts"
 
@@ -1744,6 +1766,44 @@ class ReimbursementOut(BaseModel):
     series_id: Optional[str] = None
     start_date: Optional[date] = None
     end_date: Optional[date] = None
+    reimbursed_amount: Decimal = Decimal("0")
+    outstanding_amount: Decimal = Decimal("0")
+    batch_names: list[str] = Field(default_factory=list)
+    created_at: datetime
+    updated_at: datetime
+
+
+class ReimbursementBatchAllocationIn(BaseModel):
+    expense_id: int
+    amount_allocated: Decimal = Field(ge=0)
+
+
+class ReimbursementBatchIn(BaseModel):
+    batch_name: str = Field(min_length=1, max_length=255)
+    received_date: date
+    amount_received: Decimal = Field(gt=0)
+    notes: Optional[str] = Field(default=None, max_length=1000)
+    allocations: list[ReimbursementBatchAllocationIn] = Field(default_factory=list)
+
+
+class ReimbursementBatchItemOut(BaseModel):
+    id: int
+    expense_id: int
+    vendor: str
+    expense_date: date
+    amount: Decimal
+    amount_allocated: Decimal
+
+
+class ReimbursementBatchOut(BaseModel):
+    id: int
+    user_id: int
+    batch_name: str
+    received_date: date
+    amount_received: Decimal
+    notes: Optional[str] = None
+    expenses_covered: int = 0
+    items: list[ReimbursementBatchItemOut] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
 
@@ -2580,6 +2640,7 @@ def startup_populate_schema():
     _migrate_platform_roles_subscriber_admin()
     _ensure_platform_admin_audit_table()
     _ensure_reimbursements_table()
+    _ensure_reimbursement_batches_tables()
     _sync_legacy_platform_admin_roles()
 
 
@@ -3438,6 +3499,68 @@ def _ensure_reimbursements_table() -> None:
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reimbursements_series_id ON reimbursements (series_id)"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reimbursements_start_date ON reimbursements (start_date)"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reimbursements_end_date ON reimbursements (end_date)"))
+
+
+def _ensure_reimbursement_batches_tables() -> None:
+    """Lightweight startup migration: reimbursement batch headers + expense allocations."""
+    with engine.begin() as conn:
+        if settings.DATABASE_URL.startswith("sqlite"):
+            conn.execute(
+                text(
+                    "CREATE TABLE IF NOT EXISTS reimbursement_batches ("
+                    "id INTEGER PRIMARY KEY, "
+                    "user_id INTEGER NOT NULL, "
+                    "batch_name VARCHAR(255) NOT NULL, "
+                    "received_date DATE NOT NULL, "
+                    "amount_received NUMERIC(12, 2) NOT NULL, "
+                    "notes VARCHAR(1000), "
+                    "created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL, "
+                    "updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL, "
+                    "FOREIGN KEY (user_id) REFERENCES users(id)"
+                    ")"
+                )
+            )
+            conn.execute(
+                text(
+                    "CREATE TABLE IF NOT EXISTS reimbursement_batch_items ("
+                    "id INTEGER PRIMARY KEY, "
+                    "batch_id INTEGER NOT NULL, "
+                    "expense_id INTEGER NOT NULL, "
+                    "amount_allocated NUMERIC(12, 2) NOT NULL, "
+                    "FOREIGN KEY (batch_id) REFERENCES reimbursement_batches(id) ON DELETE CASCADE, "
+                    "FOREIGN KEY (expense_id) REFERENCES reimbursements(id) ON DELETE CASCADE"
+                    ")"
+                )
+            )
+        else:
+            conn.execute(
+                text(
+                    "CREATE TABLE IF NOT EXISTS reimbursement_batches ("
+                    "id SERIAL PRIMARY KEY, "
+                    "user_id INTEGER NOT NULL REFERENCES users(id), "
+                    "batch_name VARCHAR(255) NOT NULL, "
+                    "received_date DATE NOT NULL, "
+                    "amount_received NUMERIC(12, 2) NOT NULL, "
+                    "notes VARCHAR(1000), "
+                    "created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), "
+                    "updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()"
+                    ")"
+                )
+            )
+            conn.execute(
+                text(
+                    "CREATE TABLE IF NOT EXISTS reimbursement_batch_items ("
+                    "id SERIAL PRIMARY KEY, "
+                    "batch_id INTEGER NOT NULL REFERENCES reimbursement_batches(id) ON DELETE CASCADE, "
+                    "expense_id INTEGER NOT NULL REFERENCES reimbursements(id) ON DELETE CASCADE, "
+                    "amount_allocated NUMERIC(12, 2) NOT NULL"
+                    ")"
+                )
+            )
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reimbursement_batches_user_id ON reimbursement_batches (user_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reimbursement_batches_received_date ON reimbursement_batches (received_date)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reimbursement_batch_items_batch_id ON reimbursement_batch_items (batch_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reimbursement_batch_items_expense_id ON reimbursement_batch_items (expense_id)"))
 
 
 def _ensure_expected_variable_column() -> None:
@@ -7537,7 +7660,14 @@ def _clean_required_text(value: str, field_name: str) -> str:
     return s
 
 
-def _reimbursement_out(row: Reimbursement) -> ReimbursementOut:
+def _reimbursement_out(
+    row: Reimbursement,
+    *,
+    reimbursed_amount: Decimal | int | str = Decimal("0"),
+    batch_names: Optional[list[str]] = None,
+) -> ReimbursementOut:
+    reimbursed_dec = Decimal(str(reimbursed_amount or 0))
+    amount_dec = Decimal(str(row.amount or 0))
     return ReimbursementOut(
         id=int(row.id),
         user_id=int(row.user_id),
@@ -7555,6 +7685,9 @@ def _reimbursement_out(row: Reimbursement) -> ReimbursementOut:
         series_id=getattr(row, "series_id", None),
         start_date=getattr(row, "start_date", None),
         end_date=getattr(row, "end_date", None),
+        reimbursed_amount=reimbursed_dec,
+        outstanding_amount=max(Decimal("0"), amount_dec - reimbursed_dec),
+        batch_names=batch_names or [],
         created_at=row.created_at,
         updated_at=row.updated_at,
     )
@@ -7573,6 +7706,35 @@ def _validate_reimbursement_linked_transaction(db, user_id: int, linked_transact
     )
     if row is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Linked transaction is not available")
+
+
+def _reimbursement_allocation_summary_portable(db, user_id: int, expense_ids: Sequence[int]) -> dict[int, tuple[Decimal, list[str]]]:
+    ids = [int(x) for x in expense_ids if x is not None]
+    if not ids:
+        return {}
+    rows = (
+        db.execute(
+            select(ReimbursementBatchItem.expense_id, ReimbursementBatchItem.amount_allocated, ReimbursementBatch.batch_name)
+            .join(ReimbursementBatch, ReimbursementBatch.id == ReimbursementBatchItem.batch_id)
+            .where(ReimbursementBatch.user_id == user_id, ReimbursementBatchItem.expense_id.in_(ids))
+        )
+        .all()
+    )
+    out: dict[int, tuple[Decimal, list[str]]] = {}
+    for expense_id, allocated, batch_name in rows:
+        eid = int(expense_id)
+        total, names = out.get(eid, (Decimal("0"), []))
+        total += Decimal(str(allocated or 0))
+        if batch_name and str(batch_name) not in names:
+            names.append(str(batch_name))
+        out[eid] = (total, names)
+    return out
+
+
+def _reimbursement_single_out(db, user_id: int, row: Reimbursement) -> ReimbursementOut:
+    summary = _reimbursement_allocation_summary_portable(db, user_id, [int(row.id)])
+    allocated, batch_names = summary.get(int(row.id), (Decimal("0"), []))
+    return _reimbursement_out(row, reimbursed_amount=allocated, batch_names=batch_names)
 
 
 def _month_end_day(year: int, month: int) -> int:
@@ -7688,7 +7850,15 @@ def list_reimbursements(
         .scalars()
         .all()
     )
-    return [_reimbursement_out(row) for row in rows]
+    summary = _reimbursement_allocation_summary_portable(db, user_id, [int(row.id) for row in rows])
+    return [
+        _reimbursement_out(
+            row,
+            reimbursed_amount=summary.get(int(row.id), (Decimal("0"), []))[0],
+            batch_names=summary.get(int(row.id), (Decimal("0"), []))[1],
+        )
+        for row in rows
+    ]
 
 
 @app.post("/api/reimbursements", response_model=ReimbursementOut)
@@ -7707,7 +7877,7 @@ def create_reimbursement(
         _create_future_reimbursement_occurrences(db, user_id=user_id, payload=payload, series_id=str(fields["series_id"]))
     db.commit()
     db.refresh(row)
-    return _reimbursement_out(row)
+    return _reimbursement_single_out(db, user_id, row)
 
 
 @app.put("/api/reimbursements/{reimbursement_id}", response_model=ReimbursementOut)
@@ -7755,7 +7925,7 @@ def update_reimbursement(
             future.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(row)
-    return _reimbursement_out(row)
+    return _reimbursement_single_out(db, user_id, row)
 
 
 @app.patch("/api/reimbursements/{reimbursement_id}/status", response_model=ReimbursementOut)
@@ -7776,7 +7946,157 @@ def update_reimbursement_status(
     row.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(row)
-    return _reimbursement_out(row)
+    return _reimbursement_single_out(db, user_id, row)
+
+
+def _batch_out(db, batch: ReimbursementBatch, *, include_items: bool = False) -> ReimbursementBatchOut:
+    item_rows = (
+        db.execute(
+            select(ReimbursementBatchItem, Reimbursement)
+            .join(Reimbursement, Reimbursement.id == ReimbursementBatchItem.expense_id)
+            .where(ReimbursementBatchItem.batch_id == batch.id)
+            .order_by(Reimbursement.date.asc(), Reimbursement.id.asc())
+        )
+        .all()
+    )
+    items = [
+        ReimbursementBatchItemOut(
+            id=int(item.id),
+            expense_id=int(expense.id),
+            vendor=expense.vendor,
+            expense_date=expense.date,
+            amount=expense.amount,
+            amount_allocated=item.amount_allocated,
+        )
+        for item, expense in item_rows
+    ]
+    return ReimbursementBatchOut(
+        id=int(batch.id),
+        user_id=int(batch.user_id),
+        batch_name=batch.batch_name,
+        received_date=batch.received_date,
+        amount_received=batch.amount_received,
+        notes=batch.notes,
+        expenses_covered=len(items),
+        items=items if include_items else [],
+        created_at=batch.created_at,
+        updated_at=batch.updated_at,
+    )
+
+
+@app.get("/api/reimbursement-batches", response_model=list[ReimbursementBatchOut])
+def list_reimbursement_batches(
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    batches = (
+        db.execute(
+            select(ReimbursementBatch)
+            .where(ReimbursementBatch.user_id == user_id)
+            .order_by(ReimbursementBatch.received_date.desc(), ReimbursementBatch.id.desc())
+        )
+        .scalars()
+        .all()
+    )
+    return [_batch_out(db, batch) for batch in batches]
+
+
+@app.get("/api/reimbursement-batches/{batch_id}", response_model=ReimbursementBatchOut)
+def get_reimbursement_batch(
+    batch_id: int,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    batch = (
+        db.execute(select(ReimbursementBatch).where(ReimbursementBatch.id == batch_id, ReimbursementBatch.user_id == user_id))
+        .scalar_one_or_none()
+    )
+    if batch is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reimbursement batch not found")
+    return _batch_out(db, batch, include_items=True)
+
+
+@app.post("/api/reimbursement-batches", response_model=ReimbursementBatchOut)
+def create_reimbursement_batch(
+    payload: ReimbursementBatchIn,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    clean_name = _clean_required_text(payload.batch_name, "Batch name")
+    allocations = [a for a in payload.allocations if Decimal(str(a.amount_allocated or 0)) > 0]
+    if not allocations:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="At least one expense allocation is required")
+    total_allocated = sum((Decimal(str(a.amount_allocated or 0)) for a in allocations), Decimal("0"))
+    if total_allocated > payload.amount_received:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Allocated amount cannot exceed amount received")
+
+    expense_ids = [int(a.expense_id) for a in allocations]
+    if len(expense_ids) != len(set(expense_ids)):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Each expense can only be allocated once per batch")
+    expenses = []
+    if expense_ids:
+        expenses = (
+            db.execute(select(Reimbursement).where(Reimbursement.user_id == user_id, Reimbursement.id.in_(expense_ids)))
+            .scalars()
+            .all()
+        )
+    by_id = {int(e.id): e for e in expenses}
+    if len(by_id) != len(set(expense_ids)):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="One or more selected expenses are not available")
+
+    existing_summary = _reimbursement_allocation_summary_portable(db, user_id, expense_ids)
+    eligible_statuses = {"Ready to Submit", "Submitted", "Partially Reimbursed"}
+    for allocation in allocations:
+        expense = by_id[int(allocation.expense_id)]
+        if expense.status not in eligible_statuses:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"{expense.vendor} is not eligible for batch reimbursement")
+        amount_allocated = Decimal(str(allocation.amount_allocated or 0))
+        already_allocated = existing_summary.get(int(expense.id), (Decimal("0"), []))[0]
+        if already_allocated + amount_allocated > Decimal(str(expense.amount)):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Allocation exceeds {expense.vendor} amount")
+
+    now = datetime.utcnow()
+    batch = ReimbursementBatch(
+        user_id=user_id,
+        batch_name=clean_name,
+        received_date=payload.received_date,
+        amount_received=payload.amount_received,
+        notes=_clean_optional_text(payload.notes),
+        updated_at=now,
+    )
+    db.add(batch)
+    db.flush()
+
+    touched: set[int] = set()
+    for allocation in allocations:
+        expense = by_id[int(allocation.expense_id)]
+        amount_allocated = Decimal(str(allocation.amount_allocated or 0))
+        db.add(
+            ReimbursementBatchItem(
+                batch_id=int(batch.id),
+                expense_id=int(expense.id),
+                amount_allocated=amount_allocated,
+            )
+        )
+        touched.add(int(expense.id))
+
+    db.flush()
+    final_summary = _reimbursement_allocation_summary_portable(db, user_id, list(touched))
+    for expense_id in touched:
+        expense = by_id[expense_id]
+        allocated = final_summary.get(expense_id, (Decimal("0"), []))[0]
+        if allocated >= Decimal(str(expense.amount)):
+            expense.status = "Fully Reimbursed"
+        elif allocated > 0:
+            expense.status = "Partially Reimbursed"
+        expense.updated_at = now
+
+    db.commit()
+    db.refresh(batch)
+    return _batch_out(db, batch, include_items=True)
 
 
 @app.post("/api/families/{family_id}/transactions/purge-imported", response_model=TransactionsPurgeImportedOut)

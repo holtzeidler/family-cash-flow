@@ -3866,6 +3866,7 @@ const REIMBURSEMENT_FREQUENCY_LABELS = {
 };
 const reimbState = {
   items: [],
+  batches: [],
   loaded: false,
   sortKey: "date",
   sortDir: "desc",
@@ -3887,6 +3888,26 @@ const reimbEmpty = document.getElementById("reimbEmpty");
 const reimbErr = document.getElementById("reimbErr");
 const reimbAddBtn = document.getElementById("reimbAddBtn");
 const reimbEmptyAddBtn = document.getElementById("reimbEmptyAddBtn");
+const reimbBatchCreateBtn = document.getElementById("reimbBatchCreateBtn");
+const reimbBatchBody = document.getElementById("reimbBatchBody");
+const reimbBatchEmpty = document.getElementById("reimbBatchEmpty");
+const reimbBatchTableWrap = document.getElementById("reimbBatchTableWrap");
+const reimbBatchModal = document.getElementById("reimbBatchModal");
+const reimbBatchErr = document.getElementById("reimbBatchErr");
+const reimbBatchStepMeta = document.getElementById("reimbBatchStepMeta");
+const reimbBatchStepAlloc = document.getElementById("reimbBatchStepAlloc");
+const reimbBatchName = document.getElementById("reimbBatchName");
+const reimbBatchReceivedDate = document.getElementById("reimbBatchReceivedDate");
+const reimbBatchAmount = document.getElementById("reimbBatchAmount");
+const reimbBatchNotes = document.getElementById("reimbBatchNotes");
+const reimbBatchCancelBtn = document.getElementById("reimbBatchCancelBtn");
+const reimbBatchNextBtn = document.getElementById("reimbBatchNextBtn");
+const reimbBatchBackBtn = document.getElementById("reimbBatchBackBtn");
+const reimbBatchSaveBtn = document.getElementById("reimbBatchSaveBtn");
+const reimbBatchEligibleFilter = document.getElementById("reimbBatchEligibleFilter");
+const reimbBatchAutoAllocateBtn = document.getElementById("reimbBatchAutoAllocateBtn");
+const reimbBatchRemaining = document.getElementById("reimbBatchRemaining");
+const reimbBatchEligibleList = document.getElementById("reimbBatchEligibleList");
 const reimbModal = document.getElementById("reimbModal");
 const reimbModalTitle = document.getElementById("reimbModalTitle");
 const reimbModalErr = document.getElementById("reimbModalErr");
@@ -3983,12 +4004,14 @@ function reimbursementSummary(items) {
   const todayIso = toISODate(new Date());
   for (const it of items || []) {
     const amount = Number(it.amount || 0);
+    const allocated = Number(it.reimbursed_amount || 0);
+    const outstanding = Math.max(0, Number(it.outstanding_amount ?? (amount - allocated)));
     if (it.status === "Needs Review") out.needsReview += 1;
     if (it.status === "Ready to Submit" || it.status === "Submitted" || it.status === "Partially Reimbursed") {
-      out.outstanding += amount;
+      out.outstanding += outstanding;
     }
     if (it.status === "Submitted") out.submitted += amount;
-    if (it.status === "Fully Reimbursed") out.reimbursed += amount;
+    out.reimbursed += allocated;
     if (it.is_recurring && (!it.end_date || String(it.end_date) >= todayIso)) {
       activeSeries.add(it.series_id || `item:${it.id}`);
     }
@@ -4070,12 +4093,18 @@ function renderReimbursements() {
     const recurringHtml = recurringLabel
       ? `<span class="reimb-recurring-indicator" title="Recurring reimbursement"><span aria-hidden="true">↻</span> ${escapeHtml(recurringLabel)}</span>`
       : "";
+    const reimbursed = Number(it.reimbursed_amount || 0);
+    const outstanding = Math.max(0, Number(it.outstanding_amount ?? (Number(it.amount || 0) - reimbursed)));
+    const detailHtml =
+      reimbursed > 0 || (Array.isArray(it.batch_names) && it.batch_names.length)
+        ? `<span class="reimb-row-desc">Reimbursed: ${escapeHtml(formatReimbursementMoney(reimbursed))} · Outstanding: ${escapeHtml(formatReimbursementMoney(outstanding))}${it.batch_names?.length ? ` · Batch: ${escapeHtml(it.batch_names.join(", "))}` : ""}</span>`
+        : "";
     const actions = reimbursementQuickActions(it.status)
       .map(([next, label]) => `<button type="button" class="reimb-quick-btn" data-reimb-id="${it.id}" data-reimb-next="${escapeHtml(next)}">${escapeHtml(label)}</button>`)
       .join("");
     tr.innerHTML = `
       <td>${escapeHtml(String(it.date || ""))}</td>
-      <td><strong>${escapeHtml(it.vendor || "")}</strong>${it.description ? `<span class="reimb-row-desc">${escapeHtml(it.description)}</span>` : ""}${recurringHtml}</td>
+      <td><strong>${escapeHtml(it.vendor || "")}</strong>${it.description ? `<span class="reimb-row-desc">${escapeHtml(it.description)}</span>` : ""}${detailHtml}${recurringHtml}</td>
       <td>${escapeHtml(it.category || "")}</td>
       <td class="reimbursements-amount-col">${escapeHtml(formatReimbursementMoney(it.amount))}</td>
       <td><span class="reimb-status ${reimbursementStatusClass(it.status)}">${escapeHtml(it.status || "")}</span></td>
@@ -4086,19 +4115,116 @@ function renderReimbursements() {
   }
 }
 
+function eligibleBatchExpenses() {
+  const allowed = new Set(["Ready to Submit", "Submitted", "Partially Reimbursed"]);
+  const show = String(reimbBatchEligibleFilter?.value || "Submitted");
+  return (reimbState.items || [])
+    .filter((it) => allowed.has(it.status))
+    .filter((it) => show === "all" || it.status === show)
+    .filter((it) => Number(it.outstanding_amount ?? it.amount) > 0)
+    .sort((a, b) => String(a.date || "").localeCompare(String(b.date || "")) || Number(a.id || 0) - Number(b.id || 0));
+}
+
+function batchAmountReceivedNumber() {
+  const n = Number(reimbBatchAmount?.value || 0);
+  return Number.isFinite(n) ? Math.max(0, n) : 0;
+}
+
+function currentBatchAllocations() {
+  const rows = [];
+  reimbBatchEligibleList?.querySelectorAll("[data-batch-expense-id]").forEach((row) => {
+    const input = row.querySelector(".reimb-batch-allocation-input");
+    const amount = Number(input?.value || 0);
+    rows.push({
+      expense_id: Number(row.dataset.batchExpenseId),
+      amount_allocated: Number.isFinite(amount) ? Math.max(0, amount) : 0,
+    });
+  });
+  return rows;
+}
+
+function updateBatchRemaining() {
+  const allocated = currentBatchAllocations().reduce((sum, a) => sum + Number(a.amount_allocated || 0), 0);
+  const remaining = batchAmountReceivedNumber() - allocated;
+  if (reimbBatchRemaining) {
+    reimbBatchRemaining.textContent = `Remaining: ${remaining < 0 ? "-" : ""}${formatReimbursementMoney(Math.abs(remaining))}`;
+    reimbBatchRemaining.classList.toggle("is-over", remaining < -0.009);
+  }
+}
+
+function renderBatchEligibleExpenses() {
+  if (!reimbBatchEligibleList) return;
+  const expenses = eligibleBatchExpenses();
+  if (!expenses.length) {
+    reimbBatchEligibleList.innerHTML = `<p class="reimb-batch-empty">No eligible expenses match this filter.</p>`;
+    updateBatchRemaining();
+    return;
+  }
+  reimbBatchEligibleList.innerHTML = expenses
+    .map((it) => {
+      const outstanding = Math.max(0, Number(it.outstanding_amount ?? it.amount));
+      return `<label class="reimb-batch-expense-row" data-batch-expense-id="${it.id}" data-batch-outstanding="${outstanding}">
+        <input type="checkbox" class="reimb-batch-check" />
+        <span class="reimb-batch-expense-main"><strong>${escapeHtml(it.vendor || "")}</strong><span>${escapeHtml(it.category || "")} · ${escapeHtml(String(it.date || ""))}</span></span>
+        <span class="reimb-batch-expense-amount">${escapeHtml(formatReimbursementMoney(outstanding))}</span>
+        <input class="reimb-batch-allocation-input" type="number" min="0" max="${outstanding}" step="0.01" value="0" aria-label="Amount allocated to ${escapeHtml(it.vendor || "expense")}" />
+      </label>`;
+    })
+    .join("");
+  updateBatchRemaining();
+}
+
+function autoAllocateBatchExpenses() {
+  let remaining = batchAmountReceivedNumber();
+  reimbBatchEligibleList?.querySelectorAll("[data-batch-expense-id]").forEach((row) => {
+    const outstanding = Math.max(0, Number(row.dataset.batchOutstanding || 0));
+    const allocation = Math.min(outstanding, Math.max(0, remaining));
+    const input = row.querySelector(".reimb-batch-allocation-input");
+    const checkbox = row.querySelector(".reimb-batch-check");
+    if (input) input.value = allocation > 0 ? allocation.toFixed(2) : "0";
+    if (checkbox) checkbox.checked = allocation > 0;
+    remaining -= allocation;
+  });
+  updateBatchRemaining();
+}
+
+function renderReimbursementBatches() {
+  if (!reimbBatchBody) return;
+  const batches = Array.isArray(reimbState.batches) ? reimbState.batches : [];
+  if (reimbBatchEmpty) reimbBatchEmpty.hidden = batches.length > 0;
+  if (reimbBatchTableWrap) reimbBatchTableWrap.hidden = batches.length === 0;
+  reimbBatchBody.innerHTML = batches
+    .map(
+      (batch) => `<tr>
+        <td>${escapeHtml(String(batch.received_date || ""))}</td>
+        <td><strong>${escapeHtml(batch.batch_name || "")}</strong></td>
+        <td class="reimbursements-amount-col">${escapeHtml(formatReimbursementMoney(batch.amount_received))}</td>
+        <td>${Number(batch.expenses_covered || 0)} expense${Number(batch.expenses_covered || 0) === 1 ? "" : "s"}</td>
+        <td><button type="button" class="secondary reimb-batch-view-btn" data-reimb-batch-id="${batch.id}">View</button></td>
+      </tr>`
+    )
+    .join("");
+}
+
 async function refreshReimbursements({ force = false } = {}) {
   if (!reimbursementsViewPanel) return;
   if (reimbState.loaded && !force) {
     renderReimbursements();
+    renderReimbursementBatches();
     return;
   }
   try {
     show(reimbErr, "");
     populateReimbursementSelects();
-    const items = await api("/api/reimbursements", "GET");
+    const [items, batches] = await Promise.all([
+      api("/api/reimbursements", "GET"),
+      api("/api/reimbursement-batches", "GET"),
+    ]);
     reimbState.items = Array.isArray(items) ? items : [];
+    reimbState.batches = Array.isArray(batches) ? batches : [];
     reimbState.loaded = true;
     renderReimbursements();
+    renderReimbursementBatches();
   } catch (e) {
     show(reimbErr, e.message || "Failed to load reimbursements");
   }
@@ -4134,6 +4260,74 @@ function closeReimbursementModal() {
   if (!reimbModal) return;
   reimbModal.classList.remove("modal-overlay--open");
   reimbModal.setAttribute("aria-hidden", "true");
+}
+
+function openReimbursementBatchModal() {
+  if (!reimbBatchModal) return;
+  show(reimbBatchErr, "");
+  if (reimbBatchName) reimbBatchName.value = "";
+  if (reimbBatchReceivedDate) reimbBatchReceivedDate.value = toISODate(new Date());
+  if (reimbBatchAmount) reimbBatchAmount.value = "";
+  if (reimbBatchNotes) reimbBatchNotes.value = "";
+  if (reimbBatchEligibleFilter) reimbBatchEligibleFilter.value = "Submitted";
+  if (reimbBatchStepMeta) reimbBatchStepMeta.hidden = false;
+  if (reimbBatchStepAlloc) reimbBatchStepAlloc.hidden = true;
+  reimbBatchModal.classList.add("modal-overlay--open");
+  reimbBatchModal.setAttribute("aria-hidden", "false");
+  window.setTimeout(() => reimbBatchName?.focus?.(), 0);
+}
+
+function closeReimbursementBatchModal() {
+  if (!reimbBatchModal) return;
+  reimbBatchModal.classList.remove("modal-overlay--open");
+  reimbBatchModal.setAttribute("aria-hidden", "true");
+}
+
+function showBatchAllocationStep() {
+  show(reimbBatchErr, "");
+  const name = String(reimbBatchName?.value || "").trim();
+  const received = String(reimbBatchReceivedDate?.value || "").trim();
+  const amount = batchAmountReceivedNumber();
+  if (!name) throw new Error("Batch name is required");
+  if (!received) throw new Error("Received date is required");
+  if (amount <= 0) throw new Error("Amount received must be greater than zero");
+  if (reimbBatchStepMeta) reimbBatchStepMeta.hidden = true;
+  if (reimbBatchStepAlloc) reimbBatchStepAlloc.hidden = false;
+  renderBatchEligibleExpenses();
+}
+
+async function saveReimbursementBatchFromModal() {
+  try {
+    show(reimbBatchErr, "");
+    const allocations = currentBatchAllocations().filter((a) => Number(a.amount_allocated || 0) > 0);
+    const total = allocations.reduce((sum, a) => sum + Number(a.amount_allocated || 0), 0);
+    if (!allocations.length) throw new Error("Allocate at least one expense.");
+    if (total > batchAmountReceivedNumber() + 0.009) throw new Error("Allocated amount cannot exceed amount received.");
+    await api("/api/reimbursement-batches", "POST", {
+      batch_name: String(reimbBatchName?.value || "").trim(),
+      received_date: String(reimbBatchReceivedDate?.value || "").trim(),
+      amount_received: batchAmountReceivedNumber(),
+      notes: String(reimbBatchNotes?.value || "").trim() || null,
+      allocations,
+    });
+    closeReimbursementBatchModal();
+    reimbState.loaded = false;
+    await refreshReimbursements({ force: true });
+  } catch (e) {
+    show(reimbBatchErr, e.message || "Could not save reimbursement batch");
+  }
+}
+
+async function viewReimbursementBatch(batchId) {
+  try {
+    const batch = await api(`/api/reimbursement-batches/${encodeURIComponent(String(batchId))}`, "GET");
+    const lines = (batch.items || [])
+      .map((it) => `${it.vendor}: ${formatReimbursementMoney(it.amount_allocated)} of ${formatReimbursementMoney(it.amount)}`)
+      .join("\\n");
+    window.alert(`${batch.batch_name}\\nReceived ${formatReimbursementMoney(batch.amount_received)} on ${batch.received_date}\\n\\n${lines || "No expenses linked."}`);
+  } catch (e) {
+    show(reimbErr, e.message || "Could not load reimbursement batch");
+  }
 }
 
 function reimbursementPayloadFromForm() {
@@ -4208,6 +4402,41 @@ function initReimbursementsUi() {
   populateReimbursementSelects();
   reimbAddBtn?.addEventListener("click", () => openReimbursementModal());
   reimbEmptyAddBtn?.addEventListener("click", () => openReimbursementModal());
+  reimbBatchCreateBtn?.addEventListener("click", openReimbursementBatchModal);
+  reimbBatchCancelBtn?.addEventListener("click", closeReimbursementBatchModal);
+  reimbBatchNextBtn?.addEventListener("click", () => {
+    try {
+      showBatchAllocationStep();
+    } catch (e) {
+      show(reimbBatchErr, e.message || "Could not continue");
+    }
+  });
+  reimbBatchBackBtn?.addEventListener("click", () => {
+    show(reimbBatchErr, "");
+    if (reimbBatchStepMeta) reimbBatchStepMeta.hidden = false;
+    if (reimbBatchStepAlloc) reimbBatchStepAlloc.hidden = true;
+  });
+  reimbBatchSaveBtn?.addEventListener("click", () => void saveReimbursementBatchFromModal());
+  reimbBatchEligibleFilter?.addEventListener("change", renderBatchEligibleExpenses);
+  reimbBatchAutoAllocateBtn?.addEventListener("click", autoAllocateBatchExpenses);
+  reimbBatchAmount?.addEventListener("input", updateBatchRemaining);
+  reimbBatchEligibleList?.addEventListener("input", (e) => {
+    if (!e.target?.classList?.contains("reimb-batch-allocation-input")) return;
+    const row = e.target.closest("[data-batch-expense-id]");
+    const checkbox = row?.querySelector(".reimb-batch-check");
+    if (checkbox) checkbox.checked = Number(e.target.value || 0) > 0;
+    updateBatchRemaining();
+  });
+  reimbBatchEligibleList?.addEventListener("change", (e) => {
+    const check = e.target?.closest?.(".reimb-batch-check");
+    if (!check) return;
+    const row = check.closest("[data-batch-expense-id]");
+    const input = row?.querySelector(".reimb-batch-allocation-input");
+    if (!input) return;
+    if (!check.checked) input.value = "0";
+    else if (Number(input.value || 0) <= 0) input.value = Number(row.dataset.batchOutstanding || 0).toFixed(2);
+    updateBatchRemaining();
+  });
   reimbCancelBtn?.addEventListener("click", closeReimbursementModal);
   reimbSaveBtn?.addEventListener("click", () => void saveReimbursementFromModal());
   document.querySelectorAll('input[name="reimbType"]').forEach((r) => {
@@ -4249,6 +4478,10 @@ function initReimbursementsUi() {
     }
     const quick = e.target?.closest?.(".reimb-quick-btn");
     if (quick) void updateReimbursementStatus(quick.dataset.reimbId, quick.dataset.reimbNext);
+  });
+  reimbBatchBody?.addEventListener("click", (e) => {
+    const view = e.target?.closest?.(".reimb-batch-view-btn");
+    if (view) void viewReimbursementBatch(view.dataset.reimbBatchId);
   });
 }
 
@@ -13148,7 +13381,7 @@ function renderSidebarPendingTransactionsForMonth() {
 
   if (!rows.length) {
     if (sidebarPendingTxCard) sidebarPendingTxCard.classList.add("sidebar-pending--empty", "sidebar-pending--success");
-    if (sidebarPendingTitle) sidebarPendingTitle.textContent = "✓ No transactions need review";
+    if (sidebarPendingTitle) sidebarPendingTitle.textContent = "✓ Nothing to Review";
     setPendingStatus("");
     return;
   }
