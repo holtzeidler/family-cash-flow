@@ -28775,17 +28775,6 @@ body[data-bw-view="reports"] .cash-health-status.cash-health-status--balance{
   padding-top: 4px;
   padding-bottom: 4px;
 }
-body[data-bw-view="calendar"] .cash-health-status__label--balance,
-body[data-bw-view="transactions"] .cash-health-status__label--balance,
-body[data-bw-view="settings"] .cash-health-status__label--balance,
-body[data-bw-view="reports"] .cash-health-status__label--balance{
-  margin-bottom: 2px;
-  font-size: 9.5px;
-  font-weight: 620;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: rgba(100, 116, 139, 0.74);
-}
 body[data-bw-view="calendar"] .cash-health-status--review,
 body[data-bw-view="transactions"] .cash-health-status--review,
 body[data-bw-view="settings"] .cash-health-status--review,
@@ -29164,9 +29153,10 @@ body[data-bw-view="transactions"] #sidebarCashHealthCard,
 body[data-bw-view="settings"] #sidebarCashHealthCard,
 body[data-bw-view="reports"] #sidebarCashHealthCard{
   --section-gap-large: 24px;
-  --section-gap-medium: 16px;
+  --status-to-divider-gap: 12px;
+  --divider-to-review-gap: 14px;
   --section-gap-small: 8px;
-  --label-to-content-gap: 6px;
+  --review-row-gap: 6px;
 }
 body[data-bw-view="calendar"] .sidebar-cash-health__head,
 body[data-bw-view="transactions"] .sidebar-cash-health__head,
@@ -29191,19 +29181,14 @@ body[data-bw-view="transactions"] .cash-health-status.cash-health-status--balanc
 body[data-bw-view="settings"] .cash-health-status.cash-health-status--balance,
 body[data-bw-view="reports"] .cash-health-status.cash-health-status--balance{
   padding: 0;
-}
-body[data-bw-view="calendar"] .cash-health-status__label--balance,
-body[data-bw-view="transactions"] .cash-health-status__label--balance,
-body[data-bw-view="settings"] .cash-health-status__label--balance,
-body[data-bw-view="reports"] .cash-health-status__label--balance{
-  margin-bottom: var(--label-to-content-gap);
+  margin-bottom: var(--status-to-divider-gap);
 }
 body[data-bw-view="calendar"] .cash-health-status--review,
 body[data-bw-view="transactions"] .cash-health-status--review,
 body[data-bw-view="settings"] .cash-health-status--review,
 body[data-bw-view="reports"] .cash-health-status--review{
-  margin-top: var(--section-gap-medium);
-  padding-top: var(--section-gap-medium);
+  margin-top: 0;
+  padding-top: var(--divider-to-review-gap);
   border-top: 1px solid rgba(17, 24, 39, 0.07);
 }
 body[data-bw-view="calendar"] .cash-health-status--review .cash-health-status__row,
@@ -29216,7 +29201,7 @@ body[data-bw-view="calendar"] #sidebarPendingTxList.list,
 body[data-bw-view="transactions"] #sidebarPendingTxList.list,
 body[data-bw-view="settings"] #sidebarPendingTxList.list,
 body[data-bw-view="reports"] #sidebarPendingTxList.list{
-  gap: 6px;
+  gap: var(--review-row-gap);
   margin-top: var(--section-gap-small);
 }
  
