@@ -28775,6 +28775,17 @@ body[data-bw-view="reports"] .cash-health-status.cash-health-status--balance{
   padding-top: 4px;
   padding-bottom: 4px;
 }
+body[data-bw-view="calendar"] .cash-health-status__label--balance,
+body[data-bw-view="transactions"] .cash-health-status__label--balance,
+body[data-bw-view="settings"] .cash-health-status__label--balance,
+body[data-bw-view="reports"] .cash-health-status__label--balance{
+  margin-bottom: 2px;
+  font-size: 9.5px;
+  font-weight: 620;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(100, 116, 139, 0.74);
+}
 body[data-bw-view="calendar"] .cash-health-status--review,
 body[data-bw-view="transactions"] .cash-health-status--review,
 body[data-bw-view="settings"] .cash-health-status--review,

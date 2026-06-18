@@ -12668,7 +12668,7 @@ function renderSidebarPendingTransactionsForMonth() {
   const checked = loadPendingAttentionChecked();
   const setTitle = () => {
     if (!sidebarPendingTitle) return;
-    sidebarPendingTitle.textContent = "Next Up";
+    sidebarPendingTitle.textContent = "Needs Review";
   };
   const setPendingStatus = (text) => {
     if (!sidebarPendingStatus) return;
