@@ -5661,11 +5661,11 @@ function lastBalanceCheckPrimaryLine(days, confirmedDateIso) {
   if (days == null) return "";
   const n = Number(days);
   if (!Number.isFinite(n) || n < 0) return "";
-  if (n === 0) return "✓ Balance confirmed today";
+  if (n === 0) return "✓ Confirmed today";
   const ago = n === 1 ? "1 day ago" : `${n} days ago`;
   const dateLabel = fmtMonthDayLong(confirmedDateIso);
-  if (dateLabel) return `✓ Balance confirmed ${dateLabel} • ${ago}`;
-  return `✓ Balance confirmed • ${ago}`;
+  if (dateLabel) return `✓ Confirmed ${dateLabel} • ${ago}`;
+  return `✓ Confirmed • ${ago}`;
 }
 
 function applyForecastConfidenceUi(data) {
