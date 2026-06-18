@@ -29331,6 +29331,7 @@ body[data-bw-view="settings"] .cash-health-status--review.sidebar-pending--succe
 body[data-bw-view="reports"] .cash-health-status--review.sidebar-pending--success .cash-health-status__row{
   justify-content: flex-start;
   min-height: 0;
+  margin-top: 4px;
 }
 body[data-bw-view="calendar"] .cash-health-status--review.sidebar-pending--success,
 body[data-bw-view="transactions"] .cash-health-status--review.sidebar-pending--success,
@@ -29405,12 +29406,40 @@ body[data-bw-view="reports"] #sidebarBodyMonth .total .v{
   font-size: 14px;
   font-weight: 760;
 }
+body[data-bw-view="calendar"] #sidebarBodyMonth .total--income .k,
+body[data-bw-view="calendar"] #sidebarBodyMonth .total--expense .k,
+body[data-bw-view="transactions"] #sidebarBodyMonth .total--income .k,
+body[data-bw-view="transactions"] #sidebarBodyMonth .total--expense .k,
+body[data-bw-view="settings"] #sidebarBodyMonth .total--income .k,
+body[data-bw-view="settings"] #sidebarBodyMonth .total--expense .k,
+body[data-bw-view="reports"] #sidebarBodyMonth .total--income .k,
+body[data-bw-view="reports"] #sidebarBodyMonth .total--expense .k{
+  font-size: 10px;
+}
+body[data-bw-view="calendar"] #sidebarBodyMonth .total--income .v,
+body[data-bw-view="calendar"] #sidebarBodyMonth .total--expense .v,
+body[data-bw-view="transactions"] #sidebarBodyMonth .total--income .v,
+body[data-bw-view="transactions"] #sidebarBodyMonth .total--expense .v,
+body[data-bw-view="settings"] #sidebarBodyMonth .total--income .v,
+body[data-bw-view="settings"] #sidebarBodyMonth .total--expense .v,
+body[data-bw-view="reports"] #sidebarBodyMonth .total--income .v,
+body[data-bw-view="reports"] #sidebarBodyMonth .total--expense .v{
+  font-size: 13.3px;
+  font-weight: 740;
+}
+body[data-bw-view="calendar"] #sidebarBodyMonth .total--net .k,
+body[data-bw-view="transactions"] #sidebarBodyMonth .total--net .k,
+body[data-bw-view="settings"] #sidebarBodyMonth .total--net .k,
+body[data-bw-view="reports"] #sidebarBodyMonth .total--net .k{
+  font-size: 11px;
+  font-weight: 800;
+}
 body[data-bw-view="calendar"] #sidebarBodyMonth .total--net .v,
 body[data-bw-view="transactions"] #sidebarBodyMonth .total--net .v,
 body[data-bw-view="settings"] #sidebarBodyMonth .total--net .v,
 body[data-bw-view="reports"] #sidebarBodyMonth .total--net .v{
-  font-size: 14px;
-  font-weight: 760;
+  font-size: 15px;
+  font-weight: 820;
 }
 body[data-bw-view="calendar"] #sidebarBodyMonth .total--net .v.danger,
 body[data-bw-view="transactions"] #sidebarBodyMonth .total--net .v.danger,
