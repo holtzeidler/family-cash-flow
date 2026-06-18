@@ -28768,6 +28768,13 @@ body[data-bw-view="reports"] .cash-health-status{
   border-top: none;
   padding: 1px 0;
 }
+body[data-bw-view="calendar"] .cash-health-status.cash-health-status--balance,
+body[data-bw-view="transactions"] .cash-health-status.cash-health-status--balance,
+body[data-bw-view="settings"] .cash-health-status.cash-health-status--balance,
+body[data-bw-view="reports"] .cash-health-status.cash-health-status--balance{
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
 body[data-bw-view="calendar"] .cash-health-status--review,
 body[data-bw-view="transactions"] .cash-health-status--review,
 body[data-bw-view="settings"] .cash-health-status--review,
