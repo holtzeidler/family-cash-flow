@@ -7,6 +7,7 @@ import secrets
 import io
 import json
 import logging
+import re
 import smtplib
 import ssl
 import threading
@@ -22,7 +23,7 @@ from urllib.parse import quote, urlparse
 import urllib.error
 import urllib.request
 
-from fastapi import Cookie, Depends, FastAPI, Header, HTTPException, Query, Request, Response, status
+from fastapi import Cookie, Depends, FastAPI, File, Header, HTTPException, Query, Request, Response, UploadFile, status
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -510,26 +511,18 @@ class Reimbursement(Base):
     updated_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now(), onupdate=func.now())
 
 
-class ReimbursementBatch(Base):
-    __tablename__ = "reimbursement_batches"
+class VendorCategoryMapping(Base):
+    __tablename__ = "vendor_category_mappings"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
-    batch_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    received_date: Mapped[date] = mapped_column(SA_Date, nullable=False, index=True)
-    amount_received: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
-    notes: Mapped[Optional[str]] = mapped_column(String(1000), nullable=True)
+    normalized_vendor: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    display_vendor: Mapped[str] = mapped_column(String(255), nullable=False)
+    category: Mapped[str] = mapped_column(String(120), nullable=False, index=True)
     created_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now(), onupdate=func.now())
-
-
-class ReimbursementBatchItem(Base):
-    __tablename__ = "reimbursement_batch_items"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    batch_id: Mapped[int] = mapped_column(ForeignKey("reimbursement_batches.id", ondelete="CASCADE"), nullable=False, index=True)
-    expense_id: Mapped[int] = mapped_column(ForeignKey("reimbursements.id", ondelete="CASCADE"), nullable=False, index=True)
-    amount_allocated: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    last_used_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
+    usage_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
 
 class Account(Base):
@@ -1766,46 +1759,51 @@ class ReimbursementOut(BaseModel):
     series_id: Optional[str] = None
     start_date: Optional[date] = None
     end_date: Optional[date] = None
-    reimbursed_amount: Decimal = Decimal("0")
-    outstanding_amount: Decimal = Decimal("0")
-    batch_names: list[str] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
 
 
-class ReimbursementBatchAllocationIn(BaseModel):
-    expense_id: int
-    amount_allocated: Decimal = Field(ge=0)
-
-
-class ReimbursementBatchIn(BaseModel):
-    batch_name: str = Field(min_length=1, max_length=255)
-    received_date: date
-    amount_received: Decimal = Field(gt=0)
+class ReimbursementImportRowIn(BaseModel):
+    date: date
+    vendor: str = Field(min_length=1, max_length=255)
+    amount: Decimal = Field(gt=0)
+    category: str = Field(default="Other", min_length=1, max_length=120)
+    status: Literal[
+        "Needs Review",
+        "Ready to Submit",
+        "Submitted",
+        "Partially Reimbursed",
+        "Fully Reimbursed",
+        "Not Reimbursable",
+    ] = "Needs Review"
     notes: Optional[str] = Field(default=None, max_length=1000)
-    allocations: list[ReimbursementBatchAllocationIn] = Field(default_factory=list)
 
 
-class ReimbursementBatchItemOut(BaseModel):
-    id: int
-    expense_id: int
+class ReimbursementImportSaveIn(BaseModel):
+    rows: list[ReimbursementImportRowIn] = Field(default_factory=list)
+
+
+class ReimbursementImportDraftRowOut(BaseModel):
+    include: bool = True
+    date: date
     vendor: str
-    expense_date: date
+    normalized_vendor: str
     amount: Decimal
-    amount_allocated: Decimal
-
-
-class ReimbursementBatchOut(BaseModel):
-    id: int
-    user_id: int
-    batch_name: str
-    received_date: date
-    amount_received: Decimal
+    suggested_category: str = "Other"
+    status: str = "Needs Review"
     notes: Optional[str] = None
-    expenses_covered: int = 0
-    items: list[ReimbursementBatchItemOut] = Field(default_factory=list)
-    created_at: datetime
-    updated_at: datetime
+    possible_duplicate: bool = False
+
+
+class ReimbursementImportDraftOut(BaseModel):
+    rows: list[ReimbursementImportDraftRowOut] = Field(default_factory=list)
+    found: int = 0
+    message: Optional[str] = None
+
+
+class ReimbursementImportSaveOut(BaseModel):
+    created: int
+    items: list[ReimbursementOut] = Field(default_factory=list)
 
 class MaintenanceSqlIn(BaseModel):
     sql: str = Field(min_length=1, description="Single SQL statement to execute.")
@@ -2640,7 +2638,7 @@ def startup_populate_schema():
     _migrate_platform_roles_subscriber_admin()
     _ensure_platform_admin_audit_table()
     _ensure_reimbursements_table()
-    _ensure_reimbursement_batches_tables()
+    _ensure_vendor_category_mappings_table()
     _sync_legacy_platform_admin_roles()
 
 
@@ -3501,66 +3499,45 @@ def _ensure_reimbursements_table() -> None:
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reimbursements_end_date ON reimbursements (end_date)"))
 
 
-def _ensure_reimbursement_batches_tables() -> None:
-    """Lightweight startup migration: reimbursement batch headers + expense allocations."""
+def _ensure_vendor_category_mappings_table() -> None:
+    """Lightweight startup migration: remember selected reimbursement categories by vendor."""
     with engine.begin() as conn:
         if settings.DATABASE_URL.startswith("sqlite"):
             conn.execute(
                 text(
-                    "CREATE TABLE IF NOT EXISTS reimbursement_batches ("
+                    "CREATE TABLE IF NOT EXISTS vendor_category_mappings ("
                     "id INTEGER PRIMARY KEY, "
                     "user_id INTEGER NOT NULL, "
-                    "batch_name VARCHAR(255) NOT NULL, "
-                    "received_date DATE NOT NULL, "
-                    "amount_received NUMERIC(12, 2) NOT NULL, "
-                    "notes VARCHAR(1000), "
+                    "normalized_vendor VARCHAR(255) NOT NULL, "
+                    "display_vendor VARCHAR(255) NOT NULL, "
+                    "category VARCHAR(120) NOT NULL, "
                     "created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL, "
                     "updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL, "
+                    "last_used_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL, "
+                    "usage_count INTEGER NOT NULL DEFAULT 0, "
                     "FOREIGN KEY (user_id) REFERENCES users(id)"
-                    ")"
-                )
-            )
-            conn.execute(
-                text(
-                    "CREATE TABLE IF NOT EXISTS reimbursement_batch_items ("
-                    "id INTEGER PRIMARY KEY, "
-                    "batch_id INTEGER NOT NULL, "
-                    "expense_id INTEGER NOT NULL, "
-                    "amount_allocated NUMERIC(12, 2) NOT NULL, "
-                    "FOREIGN KEY (batch_id) REFERENCES reimbursement_batches(id) ON DELETE CASCADE, "
-                    "FOREIGN KEY (expense_id) REFERENCES reimbursements(id) ON DELETE CASCADE"
                     ")"
                 )
             )
         else:
             conn.execute(
                 text(
-                    "CREATE TABLE IF NOT EXISTS reimbursement_batches ("
+                    "CREATE TABLE IF NOT EXISTS vendor_category_mappings ("
                     "id SERIAL PRIMARY KEY, "
                     "user_id INTEGER NOT NULL REFERENCES users(id), "
-                    "batch_name VARCHAR(255) NOT NULL, "
-                    "received_date DATE NOT NULL, "
-                    "amount_received NUMERIC(12, 2) NOT NULL, "
-                    "notes VARCHAR(1000), "
+                    "normalized_vendor VARCHAR(255) NOT NULL, "
+                    "display_vendor VARCHAR(255) NOT NULL, "
+                    "category VARCHAR(120) NOT NULL, "
                     "created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), "
-                    "updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()"
+                    "updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), "
+                    "last_used_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), "
+                    "usage_count INTEGER NOT NULL DEFAULT 0"
                     ")"
                 )
             )
-            conn.execute(
-                text(
-                    "CREATE TABLE IF NOT EXISTS reimbursement_batch_items ("
-                    "id SERIAL PRIMARY KEY, "
-                    "batch_id INTEGER NOT NULL REFERENCES reimbursement_batches(id) ON DELETE CASCADE, "
-                    "expense_id INTEGER NOT NULL REFERENCES reimbursements(id) ON DELETE CASCADE, "
-                    "amount_allocated NUMERIC(12, 2) NOT NULL"
-                    ")"
-                )
-            )
-        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reimbursement_batches_user_id ON reimbursement_batches (user_id)"))
-        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reimbursement_batches_received_date ON reimbursement_batches (received_date)"))
-        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reimbursement_batch_items_batch_id ON reimbursement_batch_items (batch_id)"))
-        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reimbursement_batch_items_expense_id ON reimbursement_batch_items (expense_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_vendor_category_mappings_user_id ON vendor_category_mappings (user_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_vendor_category_mappings_normalized_vendor ON vendor_category_mappings (normalized_vendor)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_vendor_category_mappings_category ON vendor_category_mappings (category)"))
 
 
 def _ensure_expected_variable_column() -> None:
@@ -7660,14 +7637,7 @@ def _clean_required_text(value: str, field_name: str) -> str:
     return s
 
 
-def _reimbursement_out(
-    row: Reimbursement,
-    *,
-    reimbursed_amount: Decimal | int | str = Decimal("0"),
-    batch_names: Optional[list[str]] = None,
-) -> ReimbursementOut:
-    reimbursed_dec = Decimal(str(reimbursed_amount or 0))
-    amount_dec = Decimal(str(row.amount or 0))
+def _reimbursement_out(row: Reimbursement) -> ReimbursementOut:
     return ReimbursementOut(
         id=int(row.id),
         user_id=int(row.user_id),
@@ -7685,9 +7655,6 @@ def _reimbursement_out(
         series_id=getattr(row, "series_id", None),
         start_date=getattr(row, "start_date", None),
         end_date=getattr(row, "end_date", None),
-        reimbursed_amount=reimbursed_dec,
-        outstanding_amount=max(Decimal("0"), amount_dec - reimbursed_dec),
-        batch_names=batch_names or [],
         created_at=row.created_at,
         updated_at=row.updated_at,
     )
@@ -7708,34 +7675,154 @@ def _validate_reimbursement_linked_transaction(db, user_id: int, linked_transact
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Linked transaction is not available")
 
 
-def _reimbursement_allocation_summary_portable(db, user_id: int, expense_ids: Sequence[int]) -> dict[int, tuple[Decimal, list[str]]]:
-    ids = [int(x) for x in expense_ids if x is not None]
-    if not ids:
-        return {}
-    rows = (
+
+
+def _normalize_reimbursement_vendor(vendor: str) -> str:
+    s = str(vendor or "").upper().strip()
+    s = re.sub(r"\b(ORDER|ORD|AUTH|ID|INV|INVOICE|REF|REFERENCE|TRANS|TXN|TICKET|RECEIPT)[\s:#-]*[A-Z0-9-]+\b", " ", s)
+    s = re.sub(r"\b[A-Z]*\d[A-Z0-9-]{4,}\b", " ", s)
+    s = re.sub(r"[^A-Z0-9& ]+", " ", s)
+    s = re.sub(r"\s+", " ", s).strip()
+    return s[:255] or str(vendor or "").upper().strip()[:255]
+
+
+def _reimbursement_keyword_category(normalized_vendor: str) -> str:
+    v = str(normalized_vendor or "").upper()
+    rules = [
+        ("Airfare", ("AIRLINE", "DELTA", "UNITED", "AMERICAN", "SOUTHWEST")),
+        ("Hotel", ("HOTEL", "MARRIOTT", "HILTON", "HYATT", "IHG")),
+        ("Rental Car", ("HERTZ", "AVIS", "ENTERPRISE", "NATIONAL")),
+        ("Meals", ("RESTAURANT", "CAFE", "GRILL", "LUNCH", "DINING")),
+        ("Software & Subscriptions", ("ADOBE", "ZOOM", "MICROSOFT", "GOOGLE", "OPENAI", "SLACK", "CANVA")),
+        ("Parking", ("PARKING",)),
+        ("Tolls", ("TOLL",)),
+    ]
+    for category, keywords in rules:
+        if any(k in v for k in keywords):
+            return category
+    return "Other"
+
+
+def _remember_vendor_category_mapping(db, user_id: int, vendor: str, category: str) -> None:
+    display_vendor = _clean_required_text(vendor, "Vendor")[:255]
+    clean_category = _clean_required_text(category, "Category")
+    normalized = _normalize_reimbursement_vendor(display_vendor)
+    now = datetime.utcnow()
+    row = (
         db.execute(
-            select(ReimbursementBatchItem.expense_id, ReimbursementBatchItem.amount_allocated, ReimbursementBatch.batch_name)
-            .join(ReimbursementBatch, ReimbursementBatch.id == ReimbursementBatchItem.batch_id)
-            .where(ReimbursementBatch.user_id == user_id, ReimbursementBatchItem.expense_id.in_(ids))
+            select(VendorCategoryMapping).where(
+                VendorCategoryMapping.user_id == user_id,
+                VendorCategoryMapping.normalized_vendor == normalized,
+            )
         )
+        .scalar_one_or_none()
+    )
+    if row is None:
+        db.add(
+            VendorCategoryMapping(
+                user_id=user_id,
+                normalized_vendor=normalized,
+                display_vendor=display_vendor,
+                category=clean_category,
+                usage_count=1,
+                last_used_at=now,
+                updated_at=now,
+            )
+        )
+        return
+    row.display_vendor = display_vendor
+    row.category = clean_category
+    row.usage_count = int(row.usage_count or 0) + 1
+    row.last_used_at = now
+    row.updated_at = now
+
+
+def _vendor_category_mapping_lookup(db, user_id: int) -> dict[str, str]:
+    rows = (
+        db.execute(select(VendorCategoryMapping).where(VendorCategoryMapping.user_id == user_id))
+        .scalars()
         .all()
     )
-    out: dict[int, tuple[Decimal, list[str]]] = {}
-    for expense_id, allocated, batch_name in rows:
-        eid = int(expense_id)
-        total, names = out.get(eid, (Decimal("0"), []))
-        total += Decimal(str(allocated or 0))
-        if batch_name and str(batch_name) not in names:
-            names.append(str(batch_name))
-        out[eid] = (total, names)
-    return out
+    return {str(row.normalized_vendor): str(row.category) for row in rows}
 
 
-def _reimbursement_single_out(db, user_id: int, row: Reimbursement) -> ReimbursementOut:
-    summary = _reimbursement_allocation_summary_portable(db, user_id, [int(row.id)])
-    allocated, batch_names = summary.get(int(row.id), (Decimal("0"), []))
-    return _reimbursement_out(row, reimbursed_amount=allocated, batch_names=batch_names)
+def _reimbursement_possible_duplicate(db, user_id: int, dt: date, normalized_vendor: str, amount: Decimal) -> bool:
+    candidates = (
+        db.execute(
+            select(Reimbursement).where(
+                Reimbursement.user_id == user_id,
+                Reimbursement.date == dt,
+                Reimbursement.amount == amount,
+            )
+        )
+        .scalars()
+        .all()
+    )
+    return any(_normalize_reimbursement_vendor(row.vendor) == normalized_vendor for row in candidates)
 
+
+def _ocr_text_from_image_bytes(data: bytes) -> str:
+    try:
+        from PIL import Image
+        import pytesseract
+    except Exception:
+        return ""
+    try:
+        image = Image.open(io.BytesIO(data))
+        return str(pytesseract.image_to_string(image) or "")
+    except Exception:
+        return ""
+
+
+def _parse_reimbursement_import_date(raw: str) -> Optional[date]:
+    s = str(raw or "").strip()
+    for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%m/%d/%y", "%m-%d-%Y", "%m-%d-%y"):
+        try:
+            return datetime.strptime(s, fmt).date()
+        except ValueError:
+            pass
+    m = re.match(r"^(\d{1,2})[/-](\d{1,2})$", s)
+    if m:
+        try:
+            return date(date.today().year, int(m.group(1)), int(m.group(2)))
+        except ValueError:
+            return None
+    return None
+
+
+def _parse_reimbursement_amount(raw: str) -> Optional[Decimal]:
+    s = str(raw or "").strip().replace(",", "")
+    s = re.sub(r"^\((.*)\)$", r"\1", s).replace("$", "")
+    try:
+        amount = Decimal(s).copy_abs()
+    except Exception:
+        return None
+    return amount if amount > 0 else None
+
+
+def _extract_reimbursement_rows_from_text(text_value: str) -> list[tuple[date, str, Decimal]]:
+    rows: list[tuple[date, str, Decimal]] = []
+    date_re = r"(\d{4}-\d{1,2}-\d{1,2}|\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?)"
+    amount_re = r"(-?\$?\(?\d[\d,]*\.\d{2}\)?)"
+    for raw_line in str(text_value or "").splitlines():
+        line = re.sub(r"\s+", " ", raw_line).strip()
+        if not line:
+            continue
+        date_match = re.search(date_re, line)
+        amount_matches = list(re.finditer(amount_re, line))
+        if not date_match or not amount_matches:
+            continue
+        amount_match = amount_matches[-1]
+        dt = _parse_reimbursement_import_date(date_match.group(1))
+        amount = _parse_reimbursement_amount(amount_match.group(1))
+        if dt is None or amount is None:
+            continue
+        vendor_part = (line[: date_match.start()] + " " + line[date_match.end() : amount_match.start()]).strip(" -•|")
+        vendor_part = re.sub(r"\s{2,}", " ", vendor_part).strip()
+        if len(vendor_part) < 2:
+            continue
+        rows.append((dt, vendor_part[:255], amount))
+    return rows
 
 def _month_end_day(year: int, month: int) -> int:
     if month == 12:
@@ -7850,15 +7937,97 @@ def list_reimbursements(
         .scalars()
         .all()
     )
-    summary = _reimbursement_allocation_summary_portable(db, user_id, [int(row.id) for row in rows])
-    return [
-        _reimbursement_out(
-            row,
-            reimbursed_amount=summary.get(int(row.id), (Decimal("0"), []))[0],
-            batch_names=summary.get(int(row.id), (Decimal("0"), []))[1],
+    return [_reimbursement_out(row) for row in rows]
+
+
+@app.post("/api/reimbursements/import-screenshot", response_model=ReimbursementImportDraftOut)
+async def import_reimbursements_screenshot(
+    file: UploadFile = File(...),
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    content_type = str(file.content_type or "")
+    if content_type and not content_type.startswith("image/"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Please upload an image file")
+    data = await file.read()
+    if not data:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Screenshot file is empty")
+    if len(data) > 8 * 1024 * 1024:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Screenshot must be smaller than 8 MB")
+
+    text_value = _ocr_text_from_image_bytes(data)
+    parsed = _extract_reimbursement_rows_from_text(text_value)
+    if not parsed:
+        return ReimbursementImportDraftOut(
+            rows=[],
+            found=0,
+            message="We couldn't find any transactions in this screenshot. Try cropping to show the transaction list clearly.",
         )
-        for row in rows
-    ]
+
+    mapping = _vendor_category_mapping_lookup(db, user_id)
+    draft_rows: list[ReimbursementImportDraftRowOut] = []
+    seen: set[tuple[str, str, str]] = set()
+    for dt, vendor, amount in parsed:
+        normalized = _normalize_reimbursement_vendor(vendor)
+        key = (dt.isoformat(), normalized, str(amount))
+        if key in seen:
+            continue
+        seen.add(key)
+        category = mapping.get(normalized) or _reimbursement_keyword_category(normalized)
+        draft_rows.append(
+            ReimbursementImportDraftRowOut(
+                include=True,
+                date=dt,
+                vendor=vendor,
+                normalized_vendor=normalized,
+                amount=amount,
+                suggested_category=category,
+                status="Needs Review",
+                notes=None,
+                possible_duplicate=_reimbursement_possible_duplicate(db, user_id, dt, normalized, amount),
+            )
+        )
+    return ReimbursementImportDraftOut(rows=draft_rows, found=len(draft_rows))
+
+
+@app.post("/api/reimbursements/import-screenshot/save", response_model=ReimbursementImportSaveOut)
+def save_reimbursements_screenshot_import(
+    payload: ReimbursementImportSaveIn,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    if not payload.rows:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Select at least one expense to save")
+    now = datetime.utcnow()
+    created: list[Reimbursement] = []
+    for item in payload.rows:
+        row = Reimbursement(
+            user_id=user_id,
+            date=item.date,
+            vendor=_clean_required_text(item.vendor, "Vendor"),
+            description=_clean_optional_text(item.notes),
+            amount=item.amount,
+            category=_clean_required_text(item.category, "Category"),
+            status=item.status or "Needs Review",
+            notes=_clean_optional_text(item.notes),
+            source_type="screenshot_import",
+            linked_transaction_id=None,
+            is_recurring=False,
+            frequency=None,
+            series_id=None,
+            start_date=None,
+            end_date=None,
+            updated_at=now,
+        )
+        db.add(row)
+        created.append(row)
+        _remember_vendor_category_mapping(db, user_id, item.vendor, item.category)
+    db.commit()
+    for row in created:
+        db.refresh(row)
+    return ReimbursementImportSaveOut(created=len(created), items=[_reimbursement_out(row) for row in created])
 
 
 @app.post("/api/reimbursements", response_model=ReimbursementOut)
@@ -7873,11 +8042,12 @@ def create_reimbursement(
     fields = _reimbursement_common_fields(payload)
     row = Reimbursement(user_id=user_id, **fields, updated_at=now)
     db.add(row)
+    _remember_vendor_category_mapping(db, user_id, row.vendor, row.category)
     if fields["is_recurring"] and fields["series_id"]:
         _create_future_reimbursement_occurrences(db, user_id=user_id, payload=payload, series_id=str(fields["series_id"]))
     db.commit()
     db.refresh(row)
-    return _reimbursement_single_out(db, user_id, row)
+    return _reimbursement_out(row)
 
 
 @app.put("/api/reimbursements/{reimbursement_id}", response_model=ReimbursementOut)
@@ -7903,6 +8073,7 @@ def update_reimbursement(
     for key, val in fields.items():
         setattr(row, key, val)
     row.updated_at = datetime.utcnow()
+    _remember_vendor_category_mapping(db, user_id, row.vendor, row.category)
 
     if payload.apply_scope == "future" and existing_series_id:
         future_rows = (
@@ -7925,7 +8096,7 @@ def update_reimbursement(
             future.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(row)
-    return _reimbursement_single_out(db, user_id, row)
+    return _reimbursement_out(row)
 
 
 @app.patch("/api/reimbursements/{reimbursement_id}/status", response_model=ReimbursementOut)
@@ -7946,157 +8117,8 @@ def update_reimbursement_status(
     row.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(row)
-    return _reimbursement_single_out(db, user_id, row)
+    return _reimbursement_out(row)
 
-
-def _batch_out(db, batch: ReimbursementBatch, *, include_items: bool = False) -> ReimbursementBatchOut:
-    item_rows = (
-        db.execute(
-            select(ReimbursementBatchItem, Reimbursement)
-            .join(Reimbursement, Reimbursement.id == ReimbursementBatchItem.expense_id)
-            .where(ReimbursementBatchItem.batch_id == batch.id)
-            .order_by(Reimbursement.date.asc(), Reimbursement.id.asc())
-        )
-        .all()
-    )
-    items = [
-        ReimbursementBatchItemOut(
-            id=int(item.id),
-            expense_id=int(expense.id),
-            vendor=expense.vendor,
-            expense_date=expense.date,
-            amount=expense.amount,
-            amount_allocated=item.amount_allocated,
-        )
-        for item, expense in item_rows
-    ]
-    return ReimbursementBatchOut(
-        id=int(batch.id),
-        user_id=int(batch.user_id),
-        batch_name=batch.batch_name,
-        received_date=batch.received_date,
-        amount_received=batch.amount_received,
-        notes=batch.notes,
-        expenses_covered=len(items),
-        items=items if include_items else [],
-        created_at=batch.created_at,
-        updated_at=batch.updated_at,
-    )
-
-
-@app.get("/api/reimbursement-batches", response_model=list[ReimbursementBatchOut])
-def list_reimbursement_batches(
-    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
-    db=Depends(get_db),
-):
-    user_id = get_current_user_id(access_token)
-    batches = (
-        db.execute(
-            select(ReimbursementBatch)
-            .where(ReimbursementBatch.user_id == user_id)
-            .order_by(ReimbursementBatch.received_date.desc(), ReimbursementBatch.id.desc())
-        )
-        .scalars()
-        .all()
-    )
-    return [_batch_out(db, batch) for batch in batches]
-
-
-@app.get("/api/reimbursement-batches/{batch_id}", response_model=ReimbursementBatchOut)
-def get_reimbursement_batch(
-    batch_id: int,
-    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
-    db=Depends(get_db),
-):
-    user_id = get_current_user_id(access_token)
-    batch = (
-        db.execute(select(ReimbursementBatch).where(ReimbursementBatch.id == batch_id, ReimbursementBatch.user_id == user_id))
-        .scalar_one_or_none()
-    )
-    if batch is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reimbursement batch not found")
-    return _batch_out(db, batch, include_items=True)
-
-
-@app.post("/api/reimbursement-batches", response_model=ReimbursementBatchOut)
-def create_reimbursement_batch(
-    payload: ReimbursementBatchIn,
-    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
-    db=Depends(get_db),
-):
-    user_id = get_current_user_id(access_token)
-    clean_name = _clean_required_text(payload.batch_name, "Batch name")
-    allocations = [a for a in payload.allocations if Decimal(str(a.amount_allocated or 0)) > 0]
-    if not allocations:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="At least one expense allocation is required")
-    total_allocated = sum((Decimal(str(a.amount_allocated or 0)) for a in allocations), Decimal("0"))
-    if total_allocated > payload.amount_received:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Allocated amount cannot exceed amount received")
-
-    expense_ids = [int(a.expense_id) for a in allocations]
-    if len(expense_ids) != len(set(expense_ids)):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Each expense can only be allocated once per batch")
-    expenses = []
-    if expense_ids:
-        expenses = (
-            db.execute(select(Reimbursement).where(Reimbursement.user_id == user_id, Reimbursement.id.in_(expense_ids)))
-            .scalars()
-            .all()
-        )
-    by_id = {int(e.id): e for e in expenses}
-    if len(by_id) != len(set(expense_ids)):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="One or more selected expenses are not available")
-
-    existing_summary = _reimbursement_allocation_summary_portable(db, user_id, expense_ids)
-    eligible_statuses = {"Ready to Submit", "Submitted", "Partially Reimbursed"}
-    for allocation in allocations:
-        expense = by_id[int(allocation.expense_id)]
-        if expense.status not in eligible_statuses:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"{expense.vendor} is not eligible for batch reimbursement")
-        amount_allocated = Decimal(str(allocation.amount_allocated or 0))
-        already_allocated = existing_summary.get(int(expense.id), (Decimal("0"), []))[0]
-        if already_allocated + amount_allocated > Decimal(str(expense.amount)):
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Allocation exceeds {expense.vendor} amount")
-
-    now = datetime.utcnow()
-    batch = ReimbursementBatch(
-        user_id=user_id,
-        batch_name=clean_name,
-        received_date=payload.received_date,
-        amount_received=payload.amount_received,
-        notes=_clean_optional_text(payload.notes),
-        updated_at=now,
-    )
-    db.add(batch)
-    db.flush()
-
-    touched: set[int] = set()
-    for allocation in allocations:
-        expense = by_id[int(allocation.expense_id)]
-        amount_allocated = Decimal(str(allocation.amount_allocated or 0))
-        db.add(
-            ReimbursementBatchItem(
-                batch_id=int(batch.id),
-                expense_id=int(expense.id),
-                amount_allocated=amount_allocated,
-            )
-        )
-        touched.add(int(expense.id))
-
-    db.flush()
-    final_summary = _reimbursement_allocation_summary_portable(db, user_id, list(touched))
-    for expense_id in touched:
-        expense = by_id[expense_id]
-        allocated = final_summary.get(expense_id, (Decimal("0"), []))[0]
-        if allocated >= Decimal(str(expense.amount)):
-            expense.status = "Fully Reimbursed"
-        elif allocated > 0:
-            expense.status = "Partially Reimbursed"
-        expense.updated_at = now
-
-    db.commit()
-    db.refresh(batch)
-    return _batch_out(db, batch, include_items=True)
 
 
 @app.post("/api/families/{family_id}/transactions/purge-imported", response_model=TransactionsPurgeImportedOut)

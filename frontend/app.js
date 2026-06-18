@@ -211,6 +211,42 @@ async function api(path, method = "GET", body) {
   }
 }
 
+async function apiForm(path, formData, method = "POST") {
+  const apiBase = apiBaseUrl();
+  const fullPath = `${apiBase}${path}`;
+  const res = await fetch(fullPath, {
+    method,
+    headers: {
+      ...apiBearerAuthHeaders(),
+    },
+    credentials: "include",
+    body: formData,
+  });
+  if (res.status === 401) {
+    try {
+      sessionStorage.removeItem(BW_API_ACCESS_TOKEN_KEY);
+    } catch (_) {}
+    window.location.href = "/login.html";
+    return null;
+  }
+  if (!res.ok) {
+    let msg = `Request failed (${res.status})`;
+    try {
+      const data = await res.json();
+      if (data && data.detail != null) {
+        const d = formatApiDetail(data.detail);
+        if (d) msg = d;
+      }
+    } catch (_) {}
+    throw new Error(msg);
+  }
+  try {
+    return await res.json();
+  } catch (_) {
+    return null;
+  }
+}
+
 // Expose shared helpers for peripheral modules loaded after app.js
 // (for example feedback.js) so they use the exact same auth/session logic.
 window.api = api;
@@ -3853,6 +3889,7 @@ const REIMBURSEMENT_CATEGORIES = [
   "Meals",
   "Mileage",
   "Software",
+  "Software & Subscriptions",
   "Supplies",
   "Parking",
   "Tolls",
@@ -3864,9 +3901,9 @@ const REIMBURSEMENT_FREQUENCY_LABELS = {
   semiannual: "Semi-Annual",
   annual: "Annual",
 };
+const REIMBURSEMENT_BULK_INITIAL_ROWS = 5;
 const reimbState = {
   items: [],
-  batches: [],
   loaded: false,
   sortKey: "date",
   sortDir: "desc",
@@ -3888,26 +3925,32 @@ const reimbEmpty = document.getElementById("reimbEmpty");
 const reimbErr = document.getElementById("reimbErr");
 const reimbAddBtn = document.getElementById("reimbAddBtn");
 const reimbEmptyAddBtn = document.getElementById("reimbEmptyAddBtn");
-const reimbBatchCreateBtn = document.getElementById("reimbBatchCreateBtn");
-const reimbBatchBody = document.getElementById("reimbBatchBody");
-const reimbBatchEmpty = document.getElementById("reimbBatchEmpty");
-const reimbBatchTableWrap = document.getElementById("reimbBatchTableWrap");
-const reimbBatchModal = document.getElementById("reimbBatchModal");
-const reimbBatchErr = document.getElementById("reimbBatchErr");
-const reimbBatchStepMeta = document.getElementById("reimbBatchStepMeta");
-const reimbBatchStepAlloc = document.getElementById("reimbBatchStepAlloc");
-const reimbBatchName = document.getElementById("reimbBatchName");
-const reimbBatchReceivedDate = document.getElementById("reimbBatchReceivedDate");
-const reimbBatchAmount = document.getElementById("reimbBatchAmount");
-const reimbBatchNotes = document.getElementById("reimbBatchNotes");
-const reimbBatchCancelBtn = document.getElementById("reimbBatchCancelBtn");
-const reimbBatchNextBtn = document.getElementById("reimbBatchNextBtn");
-const reimbBatchBackBtn = document.getElementById("reimbBatchBackBtn");
-const reimbBatchSaveBtn = document.getElementById("reimbBatchSaveBtn");
-const reimbBatchEligibleFilter = document.getElementById("reimbBatchEligibleFilter");
-const reimbBatchAutoAllocateBtn = document.getElementById("reimbBatchAutoAllocateBtn");
-const reimbBatchRemaining = document.getElementById("reimbBatchRemaining");
-const reimbBatchEligibleList = document.getElementById("reimbBatchEligibleList");
+const reimbScreenshotImportBtn = document.getElementById("reimbScreenshotImportBtn");
+const reimbScreenshotModal = document.getElementById("reimbScreenshotModal");
+const reimbScreenshotErr = document.getElementById("reimbScreenshotErr");
+const reimbScreenshotFile = document.getElementById("reimbScreenshotFile");
+const reimbScreenshotUploadBtn = document.getElementById("reimbScreenshotUploadBtn");
+const reimbScreenshotSummary = document.getElementById("reimbScreenshotSummary");
+const reimbScreenshotEmpty = document.getElementById("reimbScreenshotEmpty");
+const reimbScreenshotTableWrap = document.getElementById("reimbScreenshotTableWrap");
+const reimbScreenshotRows = document.getElementById("reimbScreenshotRows");
+const reimbScreenshotCancelBtn = document.getElementById("reimbScreenshotCancelBtn");
+const reimbScreenshotSaveBtn = document.getElementById("reimbScreenshotSaveBtn");
+const reimbBulkAddBtn = document.getElementById("reimbBulkAddBtn");
+const reimbBulkModal = document.getElementById("reimbBulkModal");
+const reimbBulkErr = document.getElementById("reimbBulkErr");
+const reimbBulkRows = document.getElementById("reimbBulkRows");
+const reimbBulkCount = document.getElementById("reimbBulkCount");
+const reimbBulkTotal = document.getElementById("reimbBulkTotal");
+const reimbBulkSameDate = document.getElementById("reimbBulkSameDate");
+const reimbBulkApplyDateBtn = document.getElementById("reimbBulkApplyDateBtn");
+const reimbBulkSameCategory = document.getElementById("reimbBulkSameCategory");
+const reimbBulkApplyCategoryBtn = document.getElementById("reimbBulkApplyCategoryBtn");
+const reimbBulkPasteText = document.getElementById("reimbBulkPasteText");
+const reimbBulkPasteBtn = document.getElementById("reimbBulkPasteBtn");
+const reimbBulkAddRowBtn = document.getElementById("reimbBulkAddRowBtn");
+const reimbBulkCancelBtn = document.getElementById("reimbBulkCancelBtn");
+const reimbBulkSaveBtn = document.getElementById("reimbBulkSaveBtn");
 const reimbModal = document.getElementById("reimbModal");
 const reimbModalTitle = document.getElementById("reimbModalTitle");
 const reimbModalErr = document.getElementById("reimbModalErr");
@@ -3974,10 +4017,10 @@ function reimbursementFrequencyLabel(frequency) {
 }
 
 function populateReimbursementSelects() {
-  for (const select of [reimbCategory, reimbCategoryFilter]) {
+  for (const select of [reimbCategory, reimbCategoryFilter, reimbBulkSameCategory]) {
     if (!select || select.dataset.reimbPopulated === "1") continue;
-    const keepAll = select === reimbCategoryFilter;
-    select.innerHTML = keepAll ? `<option value="">All categories</option>` : "";
+    const keepBlank = select === reimbCategoryFilter || select === reimbBulkSameCategory;
+    select.innerHTML = select === reimbCategoryFilter ? `<option value="">All categories</option>` : (keepBlank ? `<option value="">Choose category</option>` : "");
     for (const cat of REIMBURSEMENT_CATEGORIES) {
       const opt = document.createElement("option");
       opt.value = cat;
@@ -4004,14 +4047,12 @@ function reimbursementSummary(items) {
   const todayIso = toISODate(new Date());
   for (const it of items || []) {
     const amount = Number(it.amount || 0);
-    const allocated = Number(it.reimbursed_amount || 0);
-    const outstanding = Math.max(0, Number(it.outstanding_amount ?? (amount - allocated)));
     if (it.status === "Needs Review") out.needsReview += 1;
     if (it.status === "Ready to Submit" || it.status === "Submitted" || it.status === "Partially Reimbursed") {
-      out.outstanding += outstanding;
+      out.outstanding += amount;
     }
     if (it.status === "Submitted") out.submitted += amount;
-    out.reimbursed += allocated;
+    if (it.status === "Fully Reimbursed") out.reimbursed += amount;
     if (it.is_recurring && (!it.end_date || String(it.end_date) >= todayIso)) {
       activeSeries.add(it.series_id || `item:${it.id}`);
     }
@@ -4093,18 +4134,12 @@ function renderReimbursements() {
     const recurringHtml = recurringLabel
       ? `<span class="reimb-recurring-indicator" title="Recurring reimbursement"><span aria-hidden="true">↻</span> ${escapeHtml(recurringLabel)}</span>`
       : "";
-    const reimbursed = Number(it.reimbursed_amount || 0);
-    const outstanding = Math.max(0, Number(it.outstanding_amount ?? (Number(it.amount || 0) - reimbursed)));
-    const detailHtml =
-      reimbursed > 0 || (Array.isArray(it.batch_names) && it.batch_names.length)
-        ? `<span class="reimb-row-desc">Reimbursed: ${escapeHtml(formatReimbursementMoney(reimbursed))} · Outstanding: ${escapeHtml(formatReimbursementMoney(outstanding))}${it.batch_names?.length ? ` · Batch: ${escapeHtml(it.batch_names.join(", "))}` : ""}</span>`
-        : "";
     const actions = reimbursementQuickActions(it.status)
       .map(([next, label]) => `<button type="button" class="reimb-quick-btn" data-reimb-id="${it.id}" data-reimb-next="${escapeHtml(next)}">${escapeHtml(label)}</button>`)
       .join("");
     tr.innerHTML = `
       <td>${escapeHtml(String(it.date || ""))}</td>
-      <td><strong>${escapeHtml(it.vendor || "")}</strong>${it.description ? `<span class="reimb-row-desc">${escapeHtml(it.description)}</span>` : ""}${detailHtml}${recurringHtml}</td>
+      <td><strong>${escapeHtml(it.vendor || "")}</strong>${it.description ? `<span class="reimb-row-desc">${escapeHtml(it.description)}</span>` : ""}${recurringHtml}</td>
       <td>${escapeHtml(it.category || "")}</td>
       <td class="reimbursements-amount-col">${escapeHtml(formatReimbursementMoney(it.amount))}</td>
       <td><span class="reimb-status ${reimbursementStatusClass(it.status)}">${escapeHtml(it.status || "")}</span></td>
@@ -4115,116 +4150,304 @@ function renderReimbursements() {
   }
 }
 
-function eligibleBatchExpenses() {
-  const allowed = new Set(["Ready to Submit", "Submitted", "Partially Reimbursed"]);
-  const show = String(reimbBatchEligibleFilter?.value || "Submitted");
-  return (reimbState.items || [])
-    .filter((it) => allowed.has(it.status))
-    .filter((it) => show === "all" || it.status === show)
-    .filter((it) => Number(it.outstanding_amount ?? it.amount) > 0)
-    .sort((a, b) => String(a.date || "").localeCompare(String(b.date || "")) || Number(a.id || 0) - Number(b.id || 0));
+
+function openReimbursementScreenshotModal() {
+  if (!reimbScreenshotModal) return;
+  populateReimbursementSelects();
+  show(reimbScreenshotErr, "");
+  if (reimbScreenshotFile) reimbScreenshotFile.value = "";
+  if (reimbScreenshotRows) reimbScreenshotRows.innerHTML = "";
+  if (reimbScreenshotSummary) reimbScreenshotSummary.hidden = true;
+  if (reimbScreenshotEmpty) reimbScreenshotEmpty.hidden = true;
+  if (reimbScreenshotTableWrap) reimbScreenshotTableWrap.hidden = true;
+  reimbScreenshotModal.classList.add("modal-overlay--open");
+  reimbScreenshotModal.setAttribute("aria-hidden", "false");
+  window.setTimeout(() => reimbScreenshotFile?.focus?.(), 0);
 }
 
-function batchAmountReceivedNumber() {
-  const n = Number(reimbBatchAmount?.value || 0);
-  return Number.isFinite(n) ? Math.max(0, n) : 0;
+function closeReimbursementScreenshotModal() {
+  if (!reimbScreenshotModal) return;
+  reimbScreenshotModal.classList.remove("modal-overlay--open");
+  reimbScreenshotModal.setAttribute("aria-hidden", "true");
 }
 
-function currentBatchAllocations() {
+function reimbursementImportCategoryOptions(selected = "Other") {
+  return REIMBURSEMENT_CATEGORIES.map((cat) => `<option value="${escapeHtml(cat)}"${cat === selected ? " selected" : ""}>${escapeHtml(cat)}</option>`).join("");
+}
+
+function reimbursementImportStatusOptions(selected = "Needs Review") {
+  return REIMBURSEMENT_STATUSES.map((st) => `<option value="${escapeHtml(st)}"${st === selected ? " selected" : ""}>${escapeHtml(st)}</option>`).join("");
+}
+
+function renderReimbursementScreenshotDraft(rows) {
+  if (!reimbScreenshotRows) return;
+  const items = Array.isArray(rows) ? rows : [];
+  reimbScreenshotRows.innerHTML = "";
+  if (reimbScreenshotSummary) {
+    reimbScreenshotSummary.textContent = `Found ${items.length} possible expense${items.length === 1 ? "" : "s"}`;
+    reimbScreenshotSummary.hidden = items.length === 0;
+  }
+  if (reimbScreenshotEmpty) reimbScreenshotEmpty.hidden = items.length !== 0;
+  if (reimbScreenshotTableWrap) reimbScreenshotTableWrap.hidden = items.length === 0;
+  for (const row of items) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td><input class="reimb-import-include" type="checkbox"${row.include !== false ? " checked" : ""} /></td>
+      <td><input class="reimb-import-date" type="date" value="${escapeHtml(row.date || "")}" /></td>
+      <td><input class="reimb-import-vendor" type="text" maxlength="255" value="${escapeHtml(row.vendor || "")}" /></td>
+      <td><input class="reimb-import-amount" type="number" min="0" step="0.01" value="${escapeHtml(row.amount || "")}" /></td>
+      <td><select class="reimb-import-category">${reimbursementImportCategoryOptions(row.suggested_category || "Other")}</select></td>
+      <td><select class="reimb-import-status">${reimbursementImportStatusOptions(row.status || "Needs Review")}</select></td>
+      <td><input class="reimb-import-notes" type="text" maxlength="1000" value="${escapeHtml(row.notes || "")}" /></td>
+      <td>${row.possible_duplicate ? '<span class="reimb-import-warning">Possible duplicate</span>' : '<span class="muted">-</span>'}</td>
+    `;
+    reimbScreenshotRows.appendChild(tr);
+  }
+}
+
+async function extractReimbursementScreenshotRows() {
+  try {
+    show(reimbScreenshotErr, "");
+    const file = reimbScreenshotFile?.files?.[0];
+    if (!file) throw new Error("Choose a screenshot to import.");
+    if (!/^image\//.test(file.type || "")) throw new Error("Please choose an image file.");
+    const form = new FormData();
+    form.append("file", file);
+    if (reimbScreenshotUploadBtn) reimbScreenshotUploadBtn.disabled = true;
+    const draft = await apiForm("/api/reimbursements/import-screenshot", form);
+    renderReimbursementScreenshotDraft(draft?.rows || []);
+    if ((!draft?.rows || draft.rows.length === 0) && draft?.message) show(reimbScreenshotErr, "");
+  } catch (e) {
+    show(reimbScreenshotErr, e.message || "Could not extract rows from screenshot");
+  } finally {
+    if (reimbScreenshotUploadBtn) reimbScreenshotUploadBtn.disabled = false;
+  }
+}
+
+function reimbursementScreenshotSelectedRows() {
   const rows = [];
-  reimbBatchEligibleList?.querySelectorAll("[data-batch-expense-id]").forEach((row) => {
-    const input = row.querySelector(".reimb-batch-allocation-input");
-    const amount = Number(input?.value || 0);
-    rows.push({
-      expense_id: Number(row.dataset.batchExpenseId),
-      amount_allocated: Number.isFinite(amount) ? Math.max(0, amount) : 0,
-    });
+  const errors = [];
+  reimbScreenshotRows?.querySelectorAll("tr").forEach((tr, idx) => {
+    if (!tr.querySelector(".reimb-import-include")?.checked) return;
+    const dateValue = String(tr.querySelector(".reimb-import-date")?.value || "").trim();
+    const vendor = String(tr.querySelector(".reimb-import-vendor")?.value || "").trim();
+    const amount = Number(tr.querySelector(".reimb-import-amount")?.value || "");
+    const category = String(tr.querySelector(".reimb-import-category")?.value || "Other").trim();
+    const statusValue = String(tr.querySelector(".reimb-import-status")?.value || "Needs Review").trim();
+    const notes = String(tr.querySelector(".reimb-import-notes")?.value || "").trim();
+    const label = `Row ${idx + 1}`;
+    if (!dateValue) errors.push(`${label}: Date is required`);
+    if (!vendor) errors.push(`${label}: Vendor is required`);
+    if (!Number.isFinite(amount) || amount <= 0) errors.push(`${label}: Amount must be greater than zero`);
+    if (!category) errors.push(`${label}: Category is required`);
+    rows.push({ date: dateValue, vendor, amount, category, status: statusValue || "Needs Review", notes: notes || null });
   });
+  if (!rows.length) errors.push("Select at least one expense to save.");
+  if (errors.length) throw new Error(errors.join("\n"));
   return rows;
 }
 
-function updateBatchRemaining() {
-  const allocated = currentBatchAllocations().reduce((sum, a) => sum + Number(a.amount_allocated || 0), 0);
-  const remaining = batchAmountReceivedNumber() - allocated;
-  if (reimbBatchRemaining) {
-    reimbBatchRemaining.textContent = `Remaining: ${remaining < 0 ? "-" : ""}${formatReimbursementMoney(Math.abs(remaining))}`;
-    reimbBatchRemaining.classList.toggle("is-over", remaining < -0.009);
+async function saveReimbursementScreenshotImport() {
+  try {
+    show(reimbScreenshotErr, "");
+    const rows = reimbursementScreenshotSelectedRows();
+    if (reimbScreenshotSaveBtn) reimbScreenshotSaveBtn.disabled = true;
+    await api("/api/reimbursements/import-screenshot/save", "POST", { rows });
+    closeReimbursementScreenshotModal();
+    reimbState.loaded = false;
+    await refreshReimbursements({ force: true });
+  } catch (e) {
+    show(reimbScreenshotErr, e.message || "Could not save selected expenses");
+  } finally {
+    if (reimbScreenshotSaveBtn) reimbScreenshotSaveBtn.disabled = false;
   }
 }
 
-function renderBatchEligibleExpenses() {
-  if (!reimbBatchEligibleList) return;
-  const expenses = eligibleBatchExpenses();
-  if (!expenses.length) {
-    reimbBatchEligibleList.innerHTML = `<p class="reimb-batch-empty">No eligible expenses match this filter.</p>`;
-    updateBatchRemaining();
-    return;
-  }
-  reimbBatchEligibleList.innerHTML = expenses
-    .map((it) => {
-      const outstanding = Math.max(0, Number(it.outstanding_amount ?? it.amount));
-      return `<label class="reimb-batch-expense-row" data-batch-expense-id="${it.id}" data-batch-outstanding="${outstanding}">
-        <input type="checkbox" class="reimb-batch-check" />
-        <span class="reimb-batch-expense-main"><strong>${escapeHtml(it.vendor || "")}</strong><span>${escapeHtml(it.category || "")} · ${escapeHtml(String(it.date || ""))}</span></span>
-        <span class="reimb-batch-expense-amount">${escapeHtml(formatReimbursementMoney(outstanding))}</span>
-        <input class="reimb-batch-allocation-input" type="number" min="0" max="${outstanding}" step="0.01" value="0" aria-label="Amount allocated to ${escapeHtml(it.vendor || "expense")}" />
-      </label>`;
-    })
-    .join("");
-  updateBatchRemaining();
+
+function reimbursementBulkCategoryOptions(selected = "Other") {
+  return REIMBURSEMENT_CATEGORIES.map((cat) => `<option value="${escapeHtml(cat)}"${cat === selected ? " selected" : ""}>${escapeHtml(cat)}</option>`).join("");
 }
 
-function autoAllocateBatchExpenses() {
-  let remaining = batchAmountReceivedNumber();
-  reimbBatchEligibleList?.querySelectorAll("[data-batch-expense-id]").forEach((row) => {
-    const outstanding = Math.max(0, Number(row.dataset.batchOutstanding || 0));
-    const allocation = Math.min(outstanding, Math.max(0, remaining));
-    const input = row.querySelector(".reimb-batch-allocation-input");
-    const checkbox = row.querySelector(".reimb-batch-check");
-    if (input) input.value = allocation > 0 ? allocation.toFixed(2) : "0";
-    if (checkbox) checkbox.checked = allocation > 0;
-    remaining -= allocation;
+function reimbursementBulkStatusOptions(selected = "Needs Review") {
+  return REIMBURSEMENT_STATUSES.map((st) => `<option value="${escapeHtml(st)}"${st === selected ? " selected" : ""}>${escapeHtml(st)}</option>`).join("");
+}
+
+function addReimbursementBulkRow(values = {}, { focus = false } = {}) {
+  if (!reimbBulkRows) return;
+  const tr = document.createElement("tr");
+  tr.innerHTML = `
+    <td><input class="reimb-bulk-date" type="date" value="${escapeHtml(values.date || toISODate(new Date()))}" /></td>
+    <td><input class="reimb-bulk-vendor" type="text" maxlength="255" value="${escapeHtml(values.vendor || "")}" /></td>
+    <td><input class="reimb-bulk-amount" type="number" min="0" step="0.01" value="${escapeHtml(values.amount || "")}" /></td>
+    <td><select class="reimb-bulk-category">${reimbursementBulkCategoryOptions(values.category || "Other")}</select></td>
+    <td><select class="reimb-bulk-status">${reimbursementBulkStatusOptions(values.status || "Needs Review")}</select></td>
+    <td><input class="reimb-bulk-notes" type="text" maxlength="1000" value="${escapeHtml(values.notes || values.description || "")}" /></td>
+    <td><div class="reimb-bulk-row-actions"><button type="button" class="secondary reimb-bulk-duplicate-row">Duplicate</button><button type="button" class="secondary reimb-bulk-remove-row">Remove</button></div></td>
+  `;
+  reimbBulkRows.appendChild(tr);
+  updateReimbursementBulkSummary();
+  if (focus) tr.querySelector("input, select")?.focus?.();
+}
+
+function reimbursementBulkRowValues(row) {
+  return {
+    date: String(row.querySelector(".reimb-bulk-date")?.value || "").trim(),
+    vendor: String(row.querySelector(".reimb-bulk-vendor")?.value || "").trim(),
+    amount: String(row.querySelector(".reimb-bulk-amount")?.value || "").trim(),
+    category: String(row.querySelector(".reimb-bulk-category")?.value || "Other").trim(),
+    status: String(row.querySelector(".reimb-bulk-status")?.value || "Needs Review").trim(),
+    notes: String(row.querySelector(".reimb-bulk-notes")?.value || "").trim(),
+  };
+}
+
+function reimbursementBulkRowHasAnyValue(values) {
+  return Boolean(values.vendor || values.amount || values.notes);
+}
+
+function reimbursementBulkPayloads() {
+  const payloads = [];
+  const errors = [];
+  reimbBulkRows?.querySelectorAll("tr").forEach((row, idx) => {
+    const values = reimbursementBulkRowValues(row);
+    if (!reimbursementBulkRowHasAnyValue(values)) return;
+    const amount = Number(values.amount || "");
+    const label = `Row ${idx + 1}`;
+    if (!values.date) errors.push(`${label}: Date is required`);
+    if (!values.vendor) errors.push(`${label}: Vendor is required`);
+    if (!Number.isFinite(amount) || amount <= 0) errors.push(`${label}: Amount must be greater than zero`);
+    if (!values.category) errors.push(`${label}: Category is required`);
+    if (!values.status) errors.push(`${label}: Status is required`);
+    payloads.push({
+      date: values.date,
+      vendor: values.vendor,
+      description: values.notes || null,
+      amount,
+      category: values.category || "Other",
+      status: values.status || "Needs Review",
+      notes: values.notes || null,
+      source_type: "bulk_manual",
+      linked_transaction_id: null,
+      is_recurring: false,
+      frequency: null,
+      series_id: null,
+      start_date: null,
+      end_date: null,
+      auto_create_future: false,
+      apply_scope: "this",
+    });
   });
-  updateBatchRemaining();
+  if (!payloads.length) errors.push("Add at least one expense before saving.");
+  if (errors.length) throw new Error(errors.join("\n"));
+  return payloads;
 }
 
-function renderReimbursementBatches() {
-  if (!reimbBatchBody) return;
-  const batches = Array.isArray(reimbState.batches) ? reimbState.batches : [];
-  if (reimbBatchEmpty) reimbBatchEmpty.hidden = batches.length > 0;
-  if (reimbBatchTableWrap) reimbBatchTableWrap.hidden = batches.length === 0;
-  reimbBatchBody.innerHTML = batches
-    .map(
-      (batch) => `<tr>
-        <td>${escapeHtml(String(batch.received_date || ""))}</td>
-        <td><strong>${escapeHtml(batch.batch_name || "")}</strong></td>
-        <td class="reimbursements-amount-col">${escapeHtml(formatReimbursementMoney(batch.amount_received))}</td>
-        <td>${Number(batch.expenses_covered || 0)} expense${Number(batch.expenses_covered || 0) === 1 ? "" : "s"}</td>
-        <td><button type="button" class="secondary reimb-batch-view-btn" data-reimb-batch-id="${batch.id}">View</button></td>
-      </tr>`
-    )
-    .join("");
+function updateReimbursementBulkSummary() {
+  let count = 0;
+  let total = 0;
+  reimbBulkRows?.querySelectorAll("tr").forEach((row) => {
+    const values = reimbursementBulkRowValues(row);
+    if (!reimbursementBulkRowHasAnyValue(values)) return;
+    count += 1;
+    const amount = Number(values.amount || 0);
+    if (Number.isFinite(amount) && amount > 0) total += amount;
+  });
+  if (reimbBulkCount) reimbBulkCount.textContent = `${count} expense${count === 1 ? "" : "s"}`;
+  if (reimbBulkTotal) reimbBulkTotal.textContent = `Total: ${formatReimbursementMoney(total)}`;
+}
+
+function resetReimbursementBulkRows() {
+  if (!reimbBulkRows) return;
+  reimbBulkRows.innerHTML = "";
+  for (let i = 0; i < REIMBURSEMENT_BULK_INITIAL_ROWS; i++) addReimbursementBulkRow();
+  updateReimbursementBulkSummary();
+}
+
+function openReimbursementBulkModal() {
+  if (!reimbBulkModal) return;
+  populateReimbursementSelects();
+  show(reimbBulkErr, "");
+  if (reimbBulkSameDate) reimbBulkSameDate.value = toISODate(new Date());
+  if (reimbBulkSameCategory) reimbBulkSameCategory.value = "";
+  if (reimbBulkPasteText) reimbBulkPasteText.value = "";
+  resetReimbursementBulkRows();
+  reimbBulkModal.classList.add("modal-overlay--open");
+  reimbBulkModal.setAttribute("aria-hidden", "false");
+  window.setTimeout(() => reimbBulkRows?.querySelector("input")?.focus?.(), 0);
+}
+
+function closeReimbursementBulkModal() {
+  if (!reimbBulkModal) return;
+  reimbBulkModal.classList.remove("modal-overlay--open");
+  reimbBulkModal.setAttribute("aria-hidden", "true");
+}
+
+function applyReimbursementBulkDate() {
+  const dt = String(reimbBulkSameDate?.value || "").trim();
+  if (!dt) return;
+  reimbBulkRows?.querySelectorAll(".reimb-bulk-date").forEach((input) => { input.value = dt; });
+  updateReimbursementBulkSummary();
+}
+
+function applyReimbursementBulkCategory() {
+  const category = String(reimbBulkSameCategory?.value || "").trim();
+  if (!category) return;
+  reimbBulkRows?.querySelectorAll(".reimb-bulk-category").forEach((select) => { select.value = category; });
+  updateReimbursementBulkSummary();
+}
+
+function parseReimbursementBulkPasteLine(line) {
+  const parts = String(line || "").split(/\t|,/).map((part) => part.trim());
+  if (!parts.some(Boolean)) return null;
+  const [dateValue, vendor, amount, category, status, ...rest] = parts;
+  return {
+    date: dateValue || toISODate(new Date()),
+    vendor: vendor || "",
+    amount: amount ? amount.replace(/^\$/, "") : "",
+    category: REIMBURSEMENT_CATEGORIES.includes(category) ? category : "Other",
+    status: REIMBURSEMENT_STATUSES.includes(status) ? status : "Needs Review",
+    notes: rest.join(" "),
+  };
+}
+
+function usePastedReimbursementBulkRows() {
+  const rows = String(reimbBulkPasteText?.value || "")
+    .split(/\r?\n/)
+    .map(parseReimbursementBulkPasteLine)
+    .filter(Boolean);
+  if (!rows.length) return;
+  if (reimbBulkRows) reimbBulkRows.innerHTML = "";
+  rows.forEach((row) => addReimbursementBulkRow(row));
+  updateReimbursementBulkSummary();
+}
+
+async function saveReimbursementBulkFromModal() {
+  try {
+    show(reimbBulkErr, "");
+    const payloads = reimbursementBulkPayloads();
+    for (const payload of payloads) {
+      await api("/api/reimbursements", "POST", payload);
+    }
+    closeReimbursementBulkModal();
+    reimbState.loaded = false;
+    await refreshReimbursements({ force: true });
+  } catch (e) {
+    show(reimbBulkErr, e.message || "Could not save bulk expenses");
+  }
 }
 
 async function refreshReimbursements({ force = false } = {}) {
   if (!reimbursementsViewPanel) return;
   if (reimbState.loaded && !force) {
     renderReimbursements();
-    renderReimbursementBatches();
     return;
   }
   try {
     show(reimbErr, "");
     populateReimbursementSelects();
-    const [items, batches] = await Promise.all([
-      api("/api/reimbursements", "GET"),
-      api("/api/reimbursement-batches", "GET"),
-    ]);
+    const items = await api("/api/reimbursements", "GET");
     reimbState.items = Array.isArray(items) ? items : [];
-    reimbState.batches = Array.isArray(batches) ? batches : [];
     reimbState.loaded = true;
     renderReimbursements();
-    renderReimbursementBatches();
   } catch (e) {
     show(reimbErr, e.message || "Failed to load reimbursements");
   }
@@ -4262,73 +4485,6 @@ function closeReimbursementModal() {
   reimbModal.setAttribute("aria-hidden", "true");
 }
 
-function openReimbursementBatchModal() {
-  if (!reimbBatchModal) return;
-  show(reimbBatchErr, "");
-  if (reimbBatchName) reimbBatchName.value = "";
-  if (reimbBatchReceivedDate) reimbBatchReceivedDate.value = toISODate(new Date());
-  if (reimbBatchAmount) reimbBatchAmount.value = "";
-  if (reimbBatchNotes) reimbBatchNotes.value = "";
-  if (reimbBatchEligibleFilter) reimbBatchEligibleFilter.value = "Submitted";
-  if (reimbBatchStepMeta) reimbBatchStepMeta.hidden = false;
-  if (reimbBatchStepAlloc) reimbBatchStepAlloc.hidden = true;
-  reimbBatchModal.classList.add("modal-overlay--open");
-  reimbBatchModal.setAttribute("aria-hidden", "false");
-  window.setTimeout(() => reimbBatchName?.focus?.(), 0);
-}
-
-function closeReimbursementBatchModal() {
-  if (!reimbBatchModal) return;
-  reimbBatchModal.classList.remove("modal-overlay--open");
-  reimbBatchModal.setAttribute("aria-hidden", "true");
-}
-
-function showBatchAllocationStep() {
-  show(reimbBatchErr, "");
-  const name = String(reimbBatchName?.value || "").trim();
-  const received = String(reimbBatchReceivedDate?.value || "").trim();
-  const amount = batchAmountReceivedNumber();
-  if (!name) throw new Error("Batch name is required");
-  if (!received) throw new Error("Received date is required");
-  if (amount <= 0) throw new Error("Amount received must be greater than zero");
-  if (reimbBatchStepMeta) reimbBatchStepMeta.hidden = true;
-  if (reimbBatchStepAlloc) reimbBatchStepAlloc.hidden = false;
-  renderBatchEligibleExpenses();
-}
-
-async function saveReimbursementBatchFromModal() {
-  try {
-    show(reimbBatchErr, "");
-    const allocations = currentBatchAllocations().filter((a) => Number(a.amount_allocated || 0) > 0);
-    const total = allocations.reduce((sum, a) => sum + Number(a.amount_allocated || 0), 0);
-    if (!allocations.length) throw new Error("Allocate at least one expense.");
-    if (total > batchAmountReceivedNumber() + 0.009) throw new Error("Allocated amount cannot exceed amount received.");
-    await api("/api/reimbursement-batches", "POST", {
-      batch_name: String(reimbBatchName?.value || "").trim(),
-      received_date: String(reimbBatchReceivedDate?.value || "").trim(),
-      amount_received: batchAmountReceivedNumber(),
-      notes: String(reimbBatchNotes?.value || "").trim() || null,
-      allocations,
-    });
-    closeReimbursementBatchModal();
-    reimbState.loaded = false;
-    await refreshReimbursements({ force: true });
-  } catch (e) {
-    show(reimbBatchErr, e.message || "Could not save reimbursement batch");
-  }
-}
-
-async function viewReimbursementBatch(batchId) {
-  try {
-    const batch = await api(`/api/reimbursement-batches/${encodeURIComponent(String(batchId))}`, "GET");
-    const lines = (batch.items || [])
-      .map((it) => `${it.vendor}: ${formatReimbursementMoney(it.amount_allocated)} of ${formatReimbursementMoney(it.amount)}`)
-      .join("\\n");
-    window.alert(`${batch.batch_name}\\nReceived ${formatReimbursementMoney(batch.amount_received)} on ${batch.received_date}\\n\\n${lines || "No expenses linked."}`);
-  } catch (e) {
-    show(reimbErr, e.message || "Could not load reimbursement batch");
-  }
-}
 
 function reimbursementPayloadFromForm() {
   const vendor = String(reimbVendor?.value || "").trim();
@@ -4402,40 +4558,34 @@ function initReimbursementsUi() {
   populateReimbursementSelects();
   reimbAddBtn?.addEventListener("click", () => openReimbursementModal());
   reimbEmptyAddBtn?.addEventListener("click", () => openReimbursementModal());
-  reimbBatchCreateBtn?.addEventListener("click", openReimbursementBatchModal);
-  reimbBatchCancelBtn?.addEventListener("click", closeReimbursementBatchModal);
-  reimbBatchNextBtn?.addEventListener("click", () => {
-    try {
-      showBatchAllocationStep();
-    } catch (e) {
-      show(reimbBatchErr, e.message || "Could not continue");
+  reimbScreenshotImportBtn?.addEventListener("click", openReimbursementScreenshotModal);
+  reimbScreenshotCancelBtn?.addEventListener("click", closeReimbursementScreenshotModal);
+  reimbScreenshotUploadBtn?.addEventListener("click", () => void extractReimbursementScreenshotRows());
+  reimbScreenshotFile?.addEventListener("change", () => {
+    if (reimbScreenshotFile.files?.[0]) void extractReimbursementScreenshotRows();
+  });
+  reimbScreenshotSaveBtn?.addEventListener("click", () => void saveReimbursementScreenshotImport());
+  reimbBulkAddBtn?.addEventListener("click", openReimbursementBulkModal);
+  reimbBulkCancelBtn?.addEventListener("click", closeReimbursementBulkModal);
+  reimbBulkAddRowBtn?.addEventListener("click", () => addReimbursementBulkRow({}, { focus: true }));
+  reimbBulkSaveBtn?.addEventListener("click", () => void saveReimbursementBulkFromModal());
+  reimbBulkApplyDateBtn?.addEventListener("click", applyReimbursementBulkDate);
+  reimbBulkApplyCategoryBtn?.addEventListener("click", applyReimbursementBulkCategory);
+  reimbBulkPasteBtn?.addEventListener("click", usePastedReimbursementBulkRows);
+  reimbBulkRows?.addEventListener("input", updateReimbursementBulkSummary);
+  reimbBulkRows?.addEventListener("change", updateReimbursementBulkSummary);
+  reimbBulkRows?.addEventListener("click", (e) => {
+    const row = e.target?.closest?.("tr");
+    if (!row) return;
+    if (e.target?.closest?.(".reimb-bulk-duplicate-row")) {
+      addReimbursementBulkRow(reimbursementBulkRowValues(row));
+      return;
     }
-  });
-  reimbBatchBackBtn?.addEventListener("click", () => {
-    show(reimbBatchErr, "");
-    if (reimbBatchStepMeta) reimbBatchStepMeta.hidden = false;
-    if (reimbBatchStepAlloc) reimbBatchStepAlloc.hidden = true;
-  });
-  reimbBatchSaveBtn?.addEventListener("click", () => void saveReimbursementBatchFromModal());
-  reimbBatchEligibleFilter?.addEventListener("change", renderBatchEligibleExpenses);
-  reimbBatchAutoAllocateBtn?.addEventListener("click", autoAllocateBatchExpenses);
-  reimbBatchAmount?.addEventListener("input", updateBatchRemaining);
-  reimbBatchEligibleList?.addEventListener("input", (e) => {
-    if (!e.target?.classList?.contains("reimb-batch-allocation-input")) return;
-    const row = e.target.closest("[data-batch-expense-id]");
-    const checkbox = row?.querySelector(".reimb-batch-check");
-    if (checkbox) checkbox.checked = Number(e.target.value || 0) > 0;
-    updateBatchRemaining();
-  });
-  reimbBatchEligibleList?.addEventListener("change", (e) => {
-    const check = e.target?.closest?.(".reimb-batch-check");
-    if (!check) return;
-    const row = check.closest("[data-batch-expense-id]");
-    const input = row?.querySelector(".reimb-batch-allocation-input");
-    if (!input) return;
-    if (!check.checked) input.value = "0";
-    else if (Number(input.value || 0) <= 0) input.value = Number(row.dataset.batchOutstanding || 0).toFixed(2);
-    updateBatchRemaining();
+    if (e.target?.closest?.(".reimb-bulk-remove-row")) {
+      row.remove();
+      if (!reimbBulkRows.querySelector("tr")) addReimbursementBulkRow();
+      updateReimbursementBulkSummary();
+    }
   });
   reimbCancelBtn?.addEventListener("click", closeReimbursementModal);
   reimbSaveBtn?.addEventListener("click", () => void saveReimbursementFromModal());
@@ -4478,10 +4628,6 @@ function initReimbursementsUi() {
     }
     const quick = e.target?.closest?.(".reimb-quick-btn");
     if (quick) void updateReimbursementStatus(quick.dataset.reimbId, quick.dataset.reimbNext);
-  });
-  reimbBatchBody?.addEventListener("click", (e) => {
-    const view = e.target?.closest?.(".reimb-batch-view-btn");
-    if (view) void viewReimbursementBatch(view.dataset.reimbBatchId);
   });
 }
 

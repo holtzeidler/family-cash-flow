@@ -29454,7 +29454,7 @@ body[data-bw-view="reimbursements"] #sidebarBodyMonth input[type="month"]:focus-
   outline-offset: 1px;
   border-color: rgba(11, 61, 46, 0.18);
 }
-one internal divider. */
+/* Cash Health sidebar refinement: status-first, compact, one internal divider. */
 body[data-bw-view="reimbursements"] #sidebarCashHealthCard{
   padding: 11px 12px 10px;
 }
@@ -29584,7 +29584,7 @@ body[data-bw-view="reimbursements"] #sidebarBodyMonth{
 body[data-bw-view="reimbursements"] #sidebarBodyMonth .totals{
   margin-top: 0;
 }
-compact Forecast Snapshot hierarchy. */
+/* Final left-rail rhythm: tighter card spacing, compact Forecast Snapshot hierarchy. */
 body[data-bw-view="reimbursements"] .sidebar{
   gap: 20px;
 }
@@ -29671,7 +29671,10 @@ body[data-bw-view="reimbursements"] #sidebarBodyMonth .total--net .v.danger{
 .reimbursements-primary-btn{
   white-space: nowrap;
 }
-.reimbursements-batch-btn{
+.reimbursements-bulk-btn{
+  white-space: nowrap;
+}
+.reimbursements-screenshot-btn{
   white-space: nowrap;
 }
 .reimbursements-coming-soon{
@@ -29863,44 +29866,14 @@ body[data-bw-view="reimbursements"] #sidebarBodyMonth .total--net .v.danger{
   text-align: center !important;
   color: rgba(100, 116, 139, 0.78);
 }
-.reimbursement-batches-section{
-  margin-top: 16px;
-  padding-top: 14px;
-  border-top: 1px solid rgba(17, 24, 39, 0.07);
-}
-.reimbursement-batches-head{
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 12px;
-  margin-bottom: 10px;
-}
-.reimbursement-batches-head h3{
-  margin: 0;
-  font-size: 1rem;
-  letter-spacing: -0.02em;
-}
-.reimbursement-batches-head p{
-  margin: 0;
-  color: rgba(100, 116, 139, 0.78);
-  font-size: 0.84rem;
-}
-.reimbursement-batches-empty{
-  padding: 14px;
-  border: 1px dashed rgba(100, 116, 139, 0.24);
-  border-radius: 12px;
-  background: rgba(248, 250, 252, 0.66);
-  color: rgba(100, 116, 139, 0.82);
-  text-align: center;
-}
-.reimbursements-table--batches{
-  min-width: 680px;
-}
 .modal--reimbursement{
   max-width: 640px;
 }
-.modal--reimbursement-batch{
-  max-width: 760px;
+.modal--reimbursement-bulk{
+  max-width: min(1040px, calc(100vw - 28px));
+}
+.modal--reimbursement-import{
+  max-width: min(1120px, calc(100vw - 28px));
 }
 .modal--reimbursement textarea{
   width: 100%;
@@ -29957,77 +29930,170 @@ body[data-bw-view="reimbursements"] #sidebarBodyMonth .total--net .v.danger{
   color: rgba(100, 116, 139, 0.82);
   font-size: 0.84rem;
 }
-.reimb-batch-toolbar{
+.reimb-import-upload{
   display: flex;
-  justify-content: space-between;
-  align-items: end;
-  gap: 10px;
-  margin: 4px 0 10px;
-}
-.reimb-batch-toolbar label{
-  color: rgba(71, 85, 105, 0.84);
-  font-size: 0.78rem;
-  font-weight: 720;
-}
-.reimb-batch-toolbar select{
-  margin-left: 6px;
-}
-.reimb-batch-remaining{
-  margin-bottom: 10px;
-  padding: 8px 10px;
-  border-radius: 11px;
-  background: rgba(236, 253, 245, 0.72);
-  color: rgba(11, 61, 46, 0.92);
-  font-weight: 760;
-}
-.reimb-batch-remaining.is-over{
-  background: rgba(254, 226, 226, 0.82);
-  color: rgba(153, 27, 27, 0.95);
-}
-.reimb-batch-expenses{
-  display: grid;
-  gap: 7px;
-  max-height: 360px;
-  overflow: auto;
-  padding-right: 2px;
-}
-.reimb-batch-expense-row{
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto 118px;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
-  padding: 9px 10px;
+  gap: 8px;
+  margin: 12px 0 10px;
+  padding: 10px;
   border: 1px solid rgba(17, 24, 39, 0.07);
   border-radius: 12px;
-  background: rgba(248, 250, 252, 0.68);
+  background: rgba(248, 250, 252, 0.72);
 }
-.reimb-batch-expense-main{
-  min-width: 0;
+.reimb-import-summary{
+  margin: 8px 0;
+  color: rgba(15, 23, 42, 0.88);
+  font-weight: 760;
 }
-.reimb-batch-expense-main strong,
-.reimb-batch-expense-main span{
-  display: block;
-}
-.reimb-batch-expense-main span{
-  color: rgba(100, 116, 139, 0.78);
-  font-size: 0.78rem;
-}
-.reimb-batch-expense-amount{
-  color: rgba(15, 23, 42, 0.9);
-  font-weight: 750;
-  white-space: nowrap;
-}
-.reimb-batch-allocation-input{
-  width: 100%;
-}
-.reimb-batch-empty{
-  margin: 0;
-  padding: 18px;
-  border: 1px dashed rgba(100, 116, 139, 0.24);
+.reimb-import-empty{
+  margin: 10px 0;
+  padding: 16px;
+  border: 1px dashed rgba(100, 116, 139, 0.28);
   border-radius: 12px;
-  color: rgba(100, 116, 139, 0.82);
+  background: rgba(248, 250, 252, 0.72);
+  color: rgba(100, 116, 139, 0.86);
   text-align: center;
 }
+.reimb-import-table-wrap{
+  max-height: 430px;
+  overflow: auto;
+  border: 1px solid rgba(17, 24, 39, 0.07);
+  border-radius: 14px;
+  background: #fff;
+}
+.reimb-import-table{
+  width: 100%;
+  min-width: 1040px;
+  border-collapse: collapse;
+}
+.reimb-import-table th,
+.reimb-import-table td{
+  padding: 8px;
+  border-bottom: 1px solid rgba(17, 24, 39, 0.06);
+  text-align: left;
+  vertical-align: top;
+}
+.reimb-import-table th{
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: rgba(248, 250, 252, 0.96);
+  color: rgba(100, 116, 139, 0.86);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.reimb-import-table input:not([type="checkbox"]),
+.reimb-import-table select{
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+.reimb-import-warning{
+  display: inline-flex;
+  border-radius: 999px;
+  padding: 3px 7px;
+  background: rgba(254, 243, 199, 0.82);
+  color: rgba(146, 64, 14, 0.95);
+  font-size: 0.74rem;
+  font-weight: 760;
+  white-space: nowrap;
+}
+.reimb-bulk-shortcuts{
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 8px;
+  margin: 12px 0 10px;
+  padding: 10px;
+  border: 1px solid rgba(17, 24, 39, 0.07);
+  border-radius: 12px;
+  background: rgba(248, 250, 252, 0.72);
+}
+.reimb-bulk-shortcuts label{
+  display: grid;
+  gap: 4px;
+  color: rgba(71, 85, 105, 0.84);
+  font-size: 0.76rem;
+  font-weight: 720;
+}
+.reimb-bulk-paste{
+  margin: 0 0 10px;
+  color: rgba(71, 85, 105, 0.9);
+  font-size: 0.84rem;
+}
+.reimb-bulk-paste summary{
+  cursor: pointer;
+  font-weight: 720;
+}
+.reimb-bulk-paste textarea{
+  width: 100%;
+  margin: 8px 0;
+  box-sizing: border-box;
+  resize: vertical;
+}
+.reimb-bulk-table-wrap{
+  max-height: 430px;
+  overflow: auto;
+  border: 1px solid rgba(17, 24, 39, 0.07);
+  border-radius: 14px;
+  background: #fff;
+}
+.reimb-bulk-table{
+  width: 100%;
+  min-width: 920px;
+  border-collapse: collapse;
+}
+.reimb-bulk-table th,
+.reimb-bulk-table td{
+  padding: 8px;
+  border-bottom: 1px solid rgba(17, 24, 39, 0.06);
+  text-align: left;
+  vertical-align: top;
+}
+.reimb-bulk-table th{
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: rgba(248, 250, 252, 0.96);
+  color: rgba(100, 116, 139, 0.86);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.reimb-bulk-table input,
+.reimb-bulk-table select{
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+.reimb-bulk-row-actions{
+  display: flex;
+  gap: 5px;
+}
+.reimb-bulk-row-actions button{
+  min-height: 28px;
+  padding: 4px 7px;
+  font-size: 0.74rem;
+}
+.reimb-bulk-footer{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+}
+.reimb-bulk-footer > div:first-child{
+  display: grid;
+  gap: 2px;
+  color: rgba(15, 23, 42, 0.9);
+}
+.reimb-bulk-footer span{
+  color: rgba(100, 116, 139, 0.82);
+  font-size: 0.86rem;
+}
+
 .reimbursements-modal-actions{
   justify-content: flex-end;
 }
@@ -30042,12 +30108,9 @@ body[data-bw-view="reimbursements"] #sidebarBodyMonth .total--net .v.danger{
   .reimbursements-filter-grid{
     grid-template-columns: 1fr 1fr;
   }
-  .reimb-batch-expense-row{
-    grid-template-columns: auto minmax(0, 1fr);
-  }
-  .reimb-batch-expense-amount,
-  .reimb-batch-allocation-input{
-    grid-column: 2;
+  .reimb-bulk-footer{
+    align-items: stretch;
+    flex-direction: column;
   }
 }
 

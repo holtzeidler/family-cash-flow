@@ -475,10 +475,10 @@
                   <p class="reimbursements-lede">Track work expenses paid personally, from review through reimbursement. These items do not affect your cash flow forecast.</p>
                 </div>
                 <div class="reimbursements-head__actions">
-                  <button type="button" class="secondary reimbursements-coming-soon" disabled title="Coming later">Import from Screenshot</button>
+                  <button type="button" id="reimbScreenshotImportBtn" class="secondary reimbursements-screenshot-btn">Import from Screenshot</button>
                   <button type="button" class="secondary reimbursements-coming-soon" disabled title="Coming later">Import from CSV</button>
                   <button type="button" class="secondary reimbursements-coming-soon" disabled title="Coming later">Detect Recurring Charges</button>
-                  <button type="button" id="reimbBatchCreateBtn" class="secondary reimbursements-batch-btn">Create Reimbursement Batch</button>
+                  <button type="button" id="reimbBulkAddBtn" class="secondary reimbursements-bulk-btn">Bulk Add Expenses</button>
                   <button type="button" id="reimbAddBtn" class="reimbursements-primary-btn">Add Expense</button>
                 </div>
               </header>
@@ -533,27 +533,6 @@
                 </table>
               </div>
 
-              <section class="reimbursement-batches-section" aria-labelledby="reimbBatchesTitle">
-                <div class="reimbursement-batches-head">
-                  <h3 id="reimbBatchesTitle">Reimbursement Batches</h3>
-                  <p>Deposits linked to covered reimbursable expenses.</p>
-                </div>
-                <div id="reimbBatchEmpty" class="reimbursement-batches-empty">No reimbursement batches yet.</div>
-                <div class="reimbursements-table-wrap" id="reimbBatchTableWrap" hidden>
-                  <table class="reimbursements-table reimbursements-table--batches">
-                    <thead>
-                      <tr>
-                        <th>Received Date</th>
-                        <th>Batch Name</th>
-                        <th class="reimbursements-amount-col">Amount Received</th>
-                        <th>Expenses Covered</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody id="reimbBatchBody"></tbody>
-                  </table>
-                </div>
-              </section>
             </section>
           </div>
 
@@ -1570,35 +1549,79 @@
     </div>
 
 
-    <div id="reimbBatchModal" class="modal-overlay" aria-hidden="true">
-      <div class="modal modal--reimbursement modal--reimbursement-batch" role="dialog" aria-labelledby="reimbBatchModalTitle" aria-modal="true">
-        <h3 id="reimbBatchModalTitle">Create Reimbursement Batch</h3>
-        <div id="reimbBatchErr" class="error"></div>
-        <div id="reimbBatchStepMeta" class="reimb-batch-step">
-          <div class="row two">
-            <div><label for="reimbBatchName">Batch Name</label><input id="reimbBatchName" type="text" maxlength="255" placeholder="June Expense Report" /></div>
-            <div><label for="reimbBatchReceivedDate">Received Date</label><input id="reimbBatchReceivedDate" type="date" /></div>
-          </div>
-          <div class="row two">
-            <div><label for="reimbBatchAmount">Amount Received</label><div class="money-input"><span class="money-input__prefix" aria-hidden="true">$</span><input id="reimbBatchAmount" type="number" min="0" step="0.01" placeholder="0.00" /></div></div>
-            <div><label for="reimbBatchNotes">Notes</label><input id="reimbBatchNotes" type="text" maxlength="1000" placeholder="Optional" /></div>
-          </div>
-          <p class="reimbursements-modal-note">This records the reimbursement deposit for tracking only. It does not create a cash-flow transaction.</p>
-          <div class="modal-actions reimbursements-modal-actions">
-            <button type="button" id="reimbBatchCancelBtn" class="secondary">Cancel</button>
-            <button type="button" id="reimbBatchNextBtn">Choose Expenses</button>
-          </div>
+    <div id="reimbScreenshotModal" class="modal-overlay" aria-hidden="true">
+      <div class="modal modal--reimbursement modal--reimbursement-import" role="dialog" aria-labelledby="reimbScreenshotModalTitle" aria-modal="true">
+        <h3 id="reimbScreenshotModalTitle">Import from Screenshot</h3>
+        <p class="reimbursements-modal-note">Upload a screenshot of credit card transactions. Review and edit detected rows before saving them as reimbursement expenses.</p>
+        <div id="reimbScreenshotErr" class="error"></div>
+        <div class="reimb-import-upload">
+          <input id="reimbScreenshotFile" type="file" accept="image/*" />
+          <button type="button" id="reimbScreenshotUploadBtn" class="secondary">Extract Rows</button>
         </div>
-        <div id="reimbBatchStepAlloc" class="reimb-batch-step" hidden>
-          <div class="reimb-batch-toolbar">
-            <label>Show <select id="reimbBatchEligibleFilter"><option value="Submitted" selected>Submitted</option><option value="all">All eligible</option></select></label>
-            <button type="button" id="reimbBatchAutoAllocateBtn" class="secondary">Auto Allocate</button>
-          </div>
-          <div id="reimbBatchRemaining" class="reimb-batch-remaining">Remaining: $0</div>
-          <div id="reimbBatchEligibleList" class="reimb-batch-expenses"></div>
+        <div id="reimbScreenshotSummary" class="reimb-import-summary" hidden>Found 0 possible expenses</div>
+        <div id="reimbScreenshotEmpty" class="reimb-import-empty" hidden>We couldn't find any transactions in this screenshot. Try cropping to show the transaction list clearly.</div>
+        <div id="reimbScreenshotTableWrap" class="reimb-import-table-wrap" hidden>
+          <table class="reimb-import-table">
+            <thead>
+              <tr>
+                <th>Include</th>
+                <th>Date</th>
+                <th>Vendor</th>
+                <th>Amount</th>
+                <th>Suggested Category</th>
+                <th>Status</th>
+                <th>Description / Notes</th>
+                <th>Warning</th>
+              </tr>
+            </thead>
+            <tbody id="reimbScreenshotRows"></tbody>
+          </table>
+        </div>
+        <div class="modal-actions reimbursements-modal-actions">
+          <button type="button" id="reimbScreenshotCancelBtn" class="secondary">Cancel</button>
+          <button type="button" id="reimbScreenshotSaveBtn">Save Selected Expenses</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="reimbBulkModal" class="modal-overlay" aria-hidden="true">
+      <div class="modal modal--reimbursement modal--reimbursement-bulk" role="dialog" aria-labelledby="reimbBulkModalTitle" aria-modal="true">
+        <h3 id="reimbBulkModalTitle">Bulk Add Expenses</h3>
+        <p class="reimbursements-modal-note">Enter multiple reimbursable expenses at once. Blank rows are ignored; partially filled rows are validated before saving.</p>
+        <div id="reimbBulkErr" class="error"></div>
+        <div class="reimb-bulk-shortcuts" aria-label="Bulk add shortcuts">
+          <label>Same date for all <input id="reimbBulkSameDate" type="date" /></label>
+          <button type="button" id="reimbBulkApplyDateBtn" class="secondary">Apply Date</button>
+          <label>Same category <select id="reimbBulkSameCategory"><option value="">Choose category</option></select></label>
+          <button type="button" id="reimbBulkApplyCategoryBtn" class="secondary">Apply Category</button>
+        </div>
+        <details class="reimb-bulk-paste">
+          <summary>Paste from spreadsheet/CSV</summary>
+          <textarea id="reimbBulkPasteText" rows="4" placeholder="Date, Vendor, Amount, Category, Status, Description/Notes"></textarea>
+          <button type="button" id="reimbBulkPasteBtn" class="secondary">Use pasted rows</button>
+        </details>
+        <div class="reimb-bulk-table-wrap">
+          <table class="reimb-bulk-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Vendor</th>
+                <th>Amount</th>
+                <th>Category</th>
+                <th>Status</th>
+                <th>Description / Notes</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="reimbBulkRows"></tbody>
+          </table>
+        </div>
+        <div class="reimb-bulk-footer">
+          <div><strong id="reimbBulkCount">0 expenses</strong><span id="reimbBulkTotal">Total: $0</span></div>
           <div class="modal-actions reimbursements-modal-actions">
-            <button type="button" id="reimbBatchBackBtn" class="secondary">Back</button>
-            <button type="button" id="reimbBatchSaveBtn">Save Batch</button>
+            <button type="button" id="reimbBulkAddRowBtn" class="secondary">Add Row</button>
+            <button type="button" id="reimbBulkCancelBtn" class="secondary">Cancel</button>
+            <button type="button" id="reimbBulkSaveBtn">Save All Expenses</button>
           </div>
         </div>
       </div>
