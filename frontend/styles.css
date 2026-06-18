@@ -29204,4 +29204,90 @@ body[data-bw-view="reports"] #sidebarPendingTxList.list{
   gap: var(--review-row-gap);
   margin-top: var(--section-gap-small);
 }
- 
+
+/* Sidebar restore: preserve the refined card structure without horizontal compression. */
+body[data-bw-view="calendar"] .sidebar-cash-health__alerts,
+body[data-bw-view="transactions"] .sidebar-cash-health__alerts,
+body[data-bw-view="settings"] .sidebar-cash-health__alerts,
+body[data-bw-view="reports"] .sidebar-cash-health__alerts,
+body[data-bw-view="calendar"] .sidebar-balance-threshold-alerts,
+body[data-bw-view="transactions"] .sidebar-balance-threshold-alerts,
+body[data-bw-view="settings"] .sidebar-balance-threshold-alerts,
+body[data-bw-view="reports"] .sidebar-balance-threshold-alerts,
+body[data-bw-view="calendar"] .calendar-low-balance--sidebar,
+body[data-bw-view="transactions"] .calendar-low-balance--sidebar,
+body[data-bw-view="settings"] .calendar-low-balance--sidebar,
+body[data-bw-view="reports"] .calendar-low-balance--sidebar,
+body[data-bw-view="calendar"] .cash-outlook-card,
+body[data-bw-view="transactions"] .cash-outlook-card,
+body[data-bw-view="settings"] .cash-outlook-card,
+body[data-bw-view="reports"] .cash-outlook-card{
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
+}
+body[data-bw-view="calendar"] .cash-outlook-card__body,
+body[data-bw-view="transactions"] .cash-outlook-card__body,
+body[data-bw-view="settings"] .cash-outlook-card__body,
+body[data-bw-view="reports"] .cash-outlook-card__body{
+  max-width: none;
+}
+body[data-bw-view="calendar"] .cash-health-status--balance .cash-health-status__value,
+body[data-bw-view="transactions"] .cash-health-status--balance .cash-health-status__value,
+body[data-bw-view="settings"] .cash-health-status--balance .cash-health-status__value,
+body[data-bw-view="reports"] .cash-health-status--balance .cash-health-status__value{
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+body[data-bw-view="calendar"] .pending-attn-item,
+body[data-bw-view="transactions"] .pending-attn-item,
+body[data-bw-view="settings"] .pending-attn-item,
+body[data-bw-view="reports"] .pending-attn-item{
+  display: flex;
+  width: 100%;
+  min-height: 36px;
+  padding: 6px 8px 6px 10px;
+  gap: 8px;
+  box-sizing: border-box;
+}
+body[data-bw-view="calendar"] .pending-attn-text,
+body[data-bw-view="transactions"] .pending-attn-text,
+body[data-bw-view="settings"] .pending-attn-text,
+body[data-bw-view="reports"] .pending-attn-text{
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+body[data-bw-view="calendar"] .pending-attn-name,
+body[data-bw-view="transactions"] .pending-attn-name,
+body[data-bw-view="settings"] .pending-attn-name,
+body[data-bw-view="reports"] .pending-attn-name{
+  display: block;
+  min-width: 0;
+  overflow: visible;
+  -webkit-line-clamp: unset;
+  font-size: 12.25px;
+  line-height: 1.2;
+}
+body[data-bw-view="calendar"] .pending-attn-meta,
+body[data-bw-view="transactions"] .pending-attn-meta,
+body[data-bw-view="settings"] .pending-attn-meta,
+body[data-bw-view="reports"] .pending-attn-meta{
+  flex: 0 0 auto;
+  min-width: auto;
+  white-space: nowrap;
+}
+body[data-bw-view="calendar"] .pending-attn-indicator,
+body[data-bw-view="transactions"] .pending-attn-indicator,
+body[data-bw-view="settings"] .pending-attn-indicator,
+body[data-bw-view="reports"] .pending-attn-indicator{
+  flex: 0 0 auto;
+}
+body[data-bw-view="calendar"] .sidebar-forecast-head h2,
+body[data-bw-view="transactions"] .sidebar-forecast-head h2,
+body[data-bw-view="settings"] .sidebar-forecast-head h2,
+body[data-bw-view="reports"] .sidebar-forecast-head h2{
+  white-space: nowrap;
+  overflow: visible;
+}
