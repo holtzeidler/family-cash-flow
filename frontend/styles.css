@@ -10404,8 +10404,8 @@ body[data-bw-view="transactions"] #sidebarBodyMonth .totals{
   gap: 0;
   padding-top: 0;
 }
-body[data-bw-view="calendar"] #sidebarBodyMonth > div:nth-child(2),
-body[data-bw-view="transactions"] #sidebarBodyMonth > div:nth-child(2){
+body[data-bw-view="calendar"] #sidebarBodyMonth > .sidebar-month-spacer,
+body[data-bw-view="transactions"] #sidebarBodyMonth > .sidebar-month-spacer{
   height: 3px !important;
 }
 body[data-bw-view="calendar"] #sidebarBodyMonth label,
