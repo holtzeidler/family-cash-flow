@@ -29291,3 +29291,16 @@ body[data-bw-view="reports"] .sidebar-forecast-head h2{
   white-space: nowrap;
   overflow: visible;
 }
+body[data-bw-view="calendar"] .cash-health-status--review .cash-health-status__row,
+body[data-bw-view="transactions"] .cash-health-status--review .cash-health-status__row,
+body[data-bw-view="settings"] .cash-health-status--review .cash-health-status__row,
+body[data-bw-view="reports"] .cash-health-status--review .cash-health-status__row{
+  justify-content: flex-start;
+  gap: 10px;
+}
+body[data-bw-view="calendar"] .cash-health-status--review .cash-health-status__value,
+body[data-bw-view="transactions"] .cash-health-status--review .cash-health-status__value,
+body[data-bw-view="settings"] .cash-health-status--review .cash-health-status__value,
+body[data-bw-view="reports"] .cash-health-status--review .cash-health-status__value{
+  margin-left: 0;
+}
