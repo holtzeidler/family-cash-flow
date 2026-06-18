@@ -3524,7 +3524,7 @@ function setActiveTopView(view) {
   if (reimbursementsViewPanel) reimbursementsViewPanel.hidden = v !== "reimbursements";
   if (settingsSidebarNav) settingsSidebarNav.hidden = v !== "settings";
   syncSidebarCashHealthCardVisibility();
-  if (sidebarPendingTxCard) sidebarPendingTxCard.hidden = !(v === "calendar" || v === "transactions");
+  if (sidebarPendingTxCard) sidebarPendingTxCard.hidden = !(v === "calendar" || v === "transactions" || v === "reimbursements");
   if (v === "transactions" || v === "reports") {
     // Reports use the same upcoming actuals list to power the risk heatmap's
     // "triggered by" detail; load lazily on view entry so we don't fetch on
@@ -3859,6 +3859,12 @@ const REIMBURSEMENT_CATEGORIES = [
   "Tolls",
   "Other",
 ];
+const REIMBURSEMENT_FREQUENCY_LABELS = {
+  monthly: "Monthly",
+  quarterly: "Quarterly",
+  semiannual: "Semi-Annual",
+  annual: "Annual",
+};
 const reimbState = {
   items: [],
   loaded: false,
@@ -3870,6 +3876,7 @@ const reimbSummaryOutstanding = document.getElementById("reimbSummaryOutstanding
 const reimbSummaryNeedsReview = document.getElementById("reimbSummaryNeedsReview");
 const reimbSummarySubmitted = document.getElementById("reimbSummarySubmitted");
 const reimbSummaryReimbursed = document.getElementById("reimbSummaryReimbursed");
+const reimbSummaryRecurring = document.getElementById("reimbSummaryRecurring");
 const reimbStatusTabs = document.getElementById("reimbStatusTabs");
 const reimbStartDate = document.getElementById("reimbStartDate");
 const reimbEndDate = document.getElementById("reimbEndDate");
@@ -3892,6 +3899,12 @@ const reimbAmount = document.getElementById("reimbAmount");
 const reimbCategory = document.getElementById("reimbCategory");
 const reimbStatus = document.getElementById("reimbStatus");
 const reimbNotes = document.getElementById("reimbNotes");
+const reimbRecurringFields = document.getElementById("reimbRecurringFields");
+const reimbFrequency = document.getElementById("reimbFrequency");
+const reimbStartDateSeries = document.getElementById("reimbStartDateSeries");
+const reimbEndDateSeries = document.getElementById("reimbEndDateSeries");
+const reimbAutoCreateFuture = document.getElementById("reimbAutoCreateFuture");
+const reimbApplyScope = document.getElementById("reimbApplyScope");
 const reimbSaveBtn = document.getElementById("reimbSaveBtn");
 const reimbCancelBtn = document.getElementById("reimbCancelBtn");
 
@@ -3903,6 +3916,41 @@ function formatReimbursementMoney(value) {
 
 function reimbursementStatusClass(status) {
   return `reimb-status--${String(status || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`;
+}
+
+function selectedReimbursementType() {
+  return getRadioValue("reimbType", "one_time");
+}
+
+function selectedReimbursementApplyScope() {
+  return getRadioValue("reimbApplyScope", "future");
+}
+
+function setReimbursementType(type) {
+  const t = type === "recurring" ? "recurring" : "one_time";
+  document.querySelectorAll('input[name="reimbType"]').forEach((r) => {
+    r.checked = String(r.value) === t;
+  });
+  syncReimbursementRecurringUi();
+}
+
+function setReimbursementApplyScope(scope) {
+  const s = scope === "this" ? "this" : "future";
+  document.querySelectorAll('input[name="reimbApplyScope"]').forEach((r) => {
+    r.checked = String(r.value) === s;
+  });
+}
+
+function syncReimbursementRecurringUi() {
+  const isRecurring = selectedReimbursementType() === "recurring";
+  if (reimbRecurringFields) reimbRecurringFields.hidden = !isRecurring;
+  if (isRecurring && reimbStartDateSeries && !reimbStartDateSeries.value) {
+    reimbStartDateSeries.value = reimbDate?.value || toISODate(new Date());
+  }
+}
+
+function reimbursementFrequencyLabel(frequency) {
+  return REIMBURSEMENT_FREQUENCY_LABELS[String(frequency || "").trim().toLowerCase()] || "";
 }
 
 function populateReimbursementSelects() {
@@ -3931,7 +3979,9 @@ function populateReimbursementSelects() {
 }
 
 function reimbursementSummary(items) {
-  const out = { outstanding: 0, needsReview: 0, submitted: 0, reimbursed: 0 };
+  const out = { outstanding: 0, needsReview: 0, submitted: 0, reimbursed: 0, recurringActive: 0 };
+  const activeSeries = new Set();
+  const todayIso = toISODate(new Date());
   for (const it of items || []) {
     const amount = Number(it.amount || 0);
     if (it.status === "Needs Review") out.needsReview += 1;
@@ -3940,7 +3990,11 @@ function reimbursementSummary(items) {
     }
     if (it.status === "Submitted") out.submitted += amount;
     if (it.status === "Fully Reimbursed") out.reimbursed += amount;
+    if (it.is_recurring && (!it.end_date || String(it.end_date) >= todayIso)) {
+      activeSeries.add(it.series_id || `item:${it.id}`);
+    }
   }
+  out.recurringActive = activeSeries.size;
   return out;
 }
 
@@ -3950,6 +4004,7 @@ function renderReimbursementSummary() {
   if (reimbSummaryNeedsReview) reimbSummaryNeedsReview.textContent = `${s.needsReview} item${s.needsReview === 1 ? "" : "s"}`;
   if (reimbSummarySubmitted) reimbSummarySubmitted.textContent = formatReimbursementMoney(s.submitted);
   if (reimbSummaryReimbursed) reimbSummaryReimbursed.textContent = formatReimbursementMoney(s.reimbursed);
+  if (reimbSummaryRecurring) reimbSummaryRecurring.textContent = `${s.recurringActive} active`;
 }
 
 function filteredReimbursements() {
@@ -4012,12 +4067,16 @@ function renderReimbursements() {
   }
   for (const it of filtered) {
     const tr = document.createElement("tr");
+    const recurringLabel = it.is_recurring ? reimbursementFrequencyLabel(it.frequency) : "";
+    const recurringHtml = recurringLabel
+      ? `<span class="reimb-recurring-indicator" title="Recurring reimbursement"><span aria-hidden="true">↻</span> ${escapeHtml(recurringLabel)}</span>`
+      : "";
     const actions = reimbursementQuickActions(it.status)
       .map(([next, label]) => `<button type="button" class="reimb-quick-btn" data-reimb-id="${it.id}" data-reimb-next="${escapeHtml(next)}">${escapeHtml(label)}</button>`)
       .join("");
     tr.innerHTML = `
       <td>${escapeHtml(String(it.date || ""))}</td>
-      <td><strong>${escapeHtml(it.vendor || "")}</strong>${it.description ? `<span class="reimb-row-desc">${escapeHtml(it.description)}</span>` : ""}</td>
+      <td><strong>${escapeHtml(it.vendor || "")}</strong>${it.description ? `<span class="reimb-row-desc">${escapeHtml(it.description)}</span>` : ""}${recurringHtml}</td>
       <td>${escapeHtml(it.category || "")}</td>
       <td class="reimbursements-amount-col">${escapeHtml(formatReimbursementMoney(it.amount))}</td>
       <td><span class="reimb-status ${reimbursementStatusClass(it.status)}">${escapeHtml(it.status || "")}</span></td>
@@ -4059,6 +4118,14 @@ function openReimbursementModal(item = null) {
   if (reimbCategory) reimbCategory.value = item?.category || "Other";
   if (reimbStatus) reimbStatus.value = item?.status || "Needs Review";
   if (reimbNotes) reimbNotes.value = item?.notes || "";
+  setReimbursementType(item?.is_recurring ? "recurring" : "one_time");
+  if (reimbFrequency) reimbFrequency.value = item?.frequency || "monthly";
+  if (reimbStartDateSeries) reimbStartDateSeries.value = item?.start_date || item?.date || reimbDate?.value || toISODate(new Date());
+  if (reimbEndDateSeries) reimbEndDateSeries.value = item?.end_date || "";
+  if (reimbAutoCreateFuture) reimbAutoCreateFuture.checked = !item;
+  if (reimbApplyScope) reimbApplyScope.hidden = !(item?.is_recurring && item?.series_id);
+  setReimbursementApplyScope(item?.is_recurring && item?.series_id ? "future" : "this");
+  syncReimbursementRecurringUi();
   reimbModal.classList.add("modal-overlay--open");
   reimbModal.setAttribute("aria-hidden", "false");
   window.setTimeout(() => reimbVendor?.focus?.(), 0);
@@ -4076,10 +4143,16 @@ function reimbursementPayloadFromForm() {
   const category = String(reimbCategory?.value || "").trim();
   const status = String(reimbStatus?.value || "Needs Review").trim();
   const dt = String(reimbDate?.value || "").trim();
+  const isRecurring = selectedReimbursementType() === "recurring";
+  const frequency = String(reimbFrequency?.value || "monthly").trim();
+  const seriesStart = String(reimbStartDateSeries?.value || dt).trim();
+  const seriesEnd = String(reimbEndDateSeries?.value || "").trim();
   if (!dt) throw new Error("Date is required");
   if (!vendor) throw new Error("Vendor is required");
   if (!Number.isFinite(amount) || amount <= 0) throw new Error("Amount must be greater than zero");
   if (!category) throw new Error("Category is required");
+  if (isRecurring && !seriesStart) throw new Error("Start date is required for recurring expenses");
+  if (isRecurring && seriesEnd && seriesEnd < seriesStart) throw new Error("End date cannot be before start date");
   return {
     date: dt,
     vendor,
@@ -4090,6 +4163,13 @@ function reimbursementPayloadFromForm() {
     notes: String(reimbNotes?.value || "").trim() || null,
     source_type: "manual",
     linked_transaction_id: null,
+    is_recurring: isRecurring,
+    frequency: isRecurring ? frequency : null,
+    series_id: null,
+    start_date: isRecurring ? seriesStart : null,
+    end_date: isRecurring && seriesEnd ? seriesEnd : null,
+    auto_create_future: isRecurring ? !!(reimbAutoCreateFuture && reimbAutoCreateFuture.checked) : false,
+    apply_scope: isRecurring ? selectedReimbursementApplyScope() : "this",
   };
 }
 
@@ -4098,7 +4178,11 @@ async function saveReimbursementFromModal() {
     show(reimbModalErr, "");
     const payload = reimbursementPayloadFromForm();
     const id = String(reimbEditId?.value || "").trim();
-    if (id) await api(`/api/reimbursements/${encodeURIComponent(id)}`, "PUT", payload);
+    if (id) {
+      const current = reimbState.items.find((it) => String(it.id) === id);
+      if (current?.series_id) payload.series_id = current.series_id;
+      await api(`/api/reimbursements/${encodeURIComponent(id)}`, "PUT", payload);
+    }
     else await api("/api/reimbursements", "POST", payload);
     closeReimbursementModal();
     reimbState.loaded = false;
@@ -4127,6 +4211,14 @@ function initReimbursementsUi() {
   reimbEmptyAddBtn?.addEventListener("click", () => openReimbursementModal());
   reimbCancelBtn?.addEventListener("click", closeReimbursementModal);
   reimbSaveBtn?.addEventListener("click", () => void saveReimbursementFromModal());
+  document.querySelectorAll('input[name="reimbType"]').forEach((r) => {
+    r.addEventListener("change", syncReimbursementRecurringUi);
+  });
+  reimbDate?.addEventListener("change", () => {
+    if (selectedReimbursementType() === "recurring" && reimbStartDateSeries && !reimbStartDateSeries.value) {
+      reimbStartDateSeries.value = reimbDate.value || toISODate(new Date());
+    }
+  });
   reimbStatusTabs?.addEventListener("click", (e) => {
     const btn = e.target?.closest?.("[data-reimb-status]");
     if (!btn) return;

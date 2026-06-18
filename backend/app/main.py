@@ -319,6 +319,8 @@ REIMBURSEMENT_STATUSES = {
     "Not Reimbursable",
 }
 
+REIMBURSEMENT_FREQUENCIES = {"monthly", "quarterly", "semiannual", "annual"}
+
 
 class AccountType(str, Enum):
     checking = "checking"
@@ -499,6 +501,11 @@ class Reimbursement(Base):
     notes: Mapped[Optional[str]] = mapped_column(String(1000), nullable=True)
     source_type: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
     linked_transaction_id: Mapped[Optional[int]] = mapped_column(ForeignKey("transactions.id"), nullable=True, index=True)
+    is_recurring: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    frequency: Mapped[Optional[str]] = mapped_column(String(20), nullable=True, index=True)
+    series_id: Mapped[Optional[str]] = mapped_column(String(40), nullable=True, index=True)
+    start_date: Mapped[Optional[date]] = mapped_column(SA_Date, nullable=True, index=True)
+    end_date: Mapped[Optional[date]] = mapped_column(SA_Date, nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now(), onupdate=func.now())
 
@@ -1700,6 +1707,13 @@ class ReimbursementIn(BaseModel):
     notes: Optional[str] = Field(default=None, max_length=1000)
     source_type: Optional[str] = Field(default=None, max_length=80)
     linked_transaction_id: Optional[int] = None
+    is_recurring: bool = False
+    frequency: Optional[Literal["monthly", "quarterly", "semiannual", "annual"]] = None
+    series_id: Optional[str] = Field(default=None, max_length=40)
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+    auto_create_future: bool = True
+    apply_scope: Literal["this", "future"] = "future"
 
 
 class ReimbursementStatusIn(BaseModel):
@@ -1725,6 +1739,11 @@ class ReimbursementOut(BaseModel):
     notes: Optional[str] = None
     source_type: Optional[str] = None
     linked_transaction_id: Optional[int] = None
+    is_recurring: bool = False
+    frequency: Optional[str] = None
+    series_id: Optional[str] = None
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
     created_at: datetime
     updated_at: datetime
 
@@ -3346,6 +3365,11 @@ def _ensure_reimbursements_table() -> None:
                     "notes VARCHAR(1000), "
                     "source_type VARCHAR(80), "
                     "linked_transaction_id INTEGER, "
+                    "is_recurring BOOLEAN NOT NULL DEFAULT 0, "
+                    "frequency VARCHAR(20), "
+                    "series_id VARCHAR(40), "
+                    "start_date DATE, "
+                    "end_date DATE, "
                     "created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL, "
                     "updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL, "
                     "FOREIGN KEY (user_id) REFERENCES users(id), "
@@ -3353,10 +3377,27 @@ def _ensure_reimbursements_table() -> None:
                     ")"
                 )
             )
+            cols = conn.execute(text("PRAGMA table_info(reimbursements)")).fetchall()
+            names = {str(row[1]) for row in cols}
+            sqlite_additions = {
+                "is_recurring": "BOOLEAN NOT NULL DEFAULT 0",
+                "frequency": "VARCHAR(20)",
+                "series_id": "VARCHAR(40)",
+                "start_date": "DATE",
+                "end_date": "DATE",
+            }
+            for name, ddl in sqlite_additions.items():
+                if name not in names:
+                    conn.execute(text(f"ALTER TABLE reimbursements ADD COLUMN {name} {ddl}"))
+            conn.execute(text("UPDATE reimbursements SET is_recurring = COALESCE(is_recurring, 0)"))
             conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reimbursements_user_id ON reimbursements (user_id)"))
             conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reimbursements_date ON reimbursements (date)"))
             conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reimbursements_status ON reimbursements (status)"))
             conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reimbursements_category ON reimbursements (category)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reimbursements_frequency ON reimbursements (frequency)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reimbursements_series_id ON reimbursements (series_id)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reimbursements_start_date ON reimbursements (start_date)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reimbursements_end_date ON reimbursements (end_date)"))
             return
 
         conn.execute(
@@ -3373,15 +3414,30 @@ def _ensure_reimbursements_table() -> None:
                 "notes VARCHAR(1000), "
                 "source_type VARCHAR(80), "
                 "linked_transaction_id INTEGER REFERENCES transactions(id), "
+                "is_recurring BOOLEAN NOT NULL DEFAULT FALSE, "
+                "frequency VARCHAR(20), "
+                "series_id VARCHAR(40), "
+                "start_date DATE, "
+                "end_date DATE, "
                 "created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), "
                 "updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()"
                 ")"
             )
         )
+        conn.execute(text("ALTER TABLE reimbursements ADD COLUMN IF NOT EXISTS is_recurring BOOLEAN NOT NULL DEFAULT FALSE"))
+        conn.execute(text("ALTER TABLE reimbursements ADD COLUMN IF NOT EXISTS frequency VARCHAR(20)"))
+        conn.execute(text("ALTER TABLE reimbursements ADD COLUMN IF NOT EXISTS series_id VARCHAR(40)"))
+        conn.execute(text("ALTER TABLE reimbursements ADD COLUMN IF NOT EXISTS start_date DATE"))
+        conn.execute(text("ALTER TABLE reimbursements ADD COLUMN IF NOT EXISTS end_date DATE"))
+        conn.execute(text("UPDATE reimbursements SET is_recurring = COALESCE(is_recurring, FALSE)"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reimbursements_user_id ON reimbursements (user_id)"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reimbursements_date ON reimbursements (date)"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reimbursements_status ON reimbursements (status)"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reimbursements_category ON reimbursements (category)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reimbursements_frequency ON reimbursements (frequency)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reimbursements_series_id ON reimbursements (series_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reimbursements_start_date ON reimbursements (start_date)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reimbursements_end_date ON reimbursements (end_date)"))
 
 
 def _ensure_expected_variable_column() -> None:
@@ -7494,6 +7550,11 @@ def _reimbursement_out(row: Reimbursement) -> ReimbursementOut:
         notes=row.notes,
         source_type=row.source_type,
         linked_transaction_id=row.linked_transaction_id,
+        is_recurring=bool(getattr(row, "is_recurring", False)),
+        frequency=getattr(row, "frequency", None),
+        series_id=getattr(row, "series_id", None),
+        start_date=getattr(row, "start_date", None),
+        end_date=getattr(row, "end_date", None),
         created_at=row.created_at,
         updated_at=row.updated_at,
     )
@@ -7512,6 +7573,104 @@ def _validate_reimbursement_linked_transaction(db, user_id: int, linked_transact
     )
     if row is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Linked transaction is not available")
+
+
+def _month_end_day(year: int, month: int) -> int:
+    if month == 12:
+        return (date(year + 1, 1, 1) - timedelta(days=1)).day
+    return (date(year, month + 1, 1) - timedelta(days=1)).day
+
+
+def _add_months_clamped(d: date, months: int) -> date:
+    month_index = (d.month - 1) + int(months)
+    year = d.year + month_index // 12
+    month = month_index % 12 + 1
+    return date(year, month, min(d.day, _month_end_day(year, month)))
+
+
+def _reimbursement_frequency_months(frequency: Optional[str]) -> int:
+    f = str(frequency or "").strip().lower()
+    if f == "monthly":
+        return 1
+    if f == "quarterly":
+        return 3
+    if f == "semiannual":
+        return 6
+    if f == "annual":
+        return 12
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid recurrence frequency")
+
+
+def _reimbursement_future_count(frequency: str) -> int:
+    return {"monthly": 12, "quarterly": 4, "semiannual": 2, "annual": 1}.get(frequency, 0)
+
+
+def _normalized_reimbursement_recurrence(payload: ReimbursementIn) -> tuple[bool, Optional[str], Optional[str], Optional[date], Optional[date]]:
+    if not payload.is_recurring:
+        return False, None, None, None, None
+    frequency = str(payload.frequency or "").strip().lower()
+    if frequency not in REIMBURSEMENT_FREQUENCIES:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Frequency is required for recurring reimbursements")
+    start = payload.start_date or payload.date
+    end = payload.end_date
+    if end is not None and end < start:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="End date cannot be before start date")
+    series_id = _clean_optional_text(payload.series_id) or f"reimb_{secrets.token_hex(10)}"
+    return True, frequency, series_id, start, end
+
+
+def _reimbursement_common_fields(payload: ReimbursementIn, *, status_value: Optional[str] = None) -> dict:
+    is_recurring, frequency, series_id, start, end = _normalized_reimbursement_recurrence(payload)
+    return {
+        "date": payload.date,
+        "vendor": _clean_required_text(payload.vendor, "Vendor"),
+        "description": _clean_optional_text(payload.description),
+        "amount": payload.amount,
+        "category": _clean_required_text(payload.category, "Category"),
+        "status": status_value or payload.status,
+        "notes": _clean_optional_text(payload.notes),
+        "source_type": _clean_optional_text(payload.source_type),
+        "linked_transaction_id": payload.linked_transaction_id,
+        "is_recurring": is_recurring,
+        "frequency": frequency,
+        "series_id": series_id,
+        "start_date": start,
+        "end_date": end,
+    }
+
+
+def _create_future_reimbursement_occurrences(db, *, user_id: int, payload: ReimbursementIn, series_id: str) -> None:
+    if not payload.is_recurring or not payload.auto_create_future:
+        return
+    frequency = str(payload.frequency or "").strip().lower()
+    step_months = _reimbursement_frequency_months(frequency)
+    count = _reimbursement_future_count(frequency)
+    start = payload.start_date or payload.date
+    end = payload.end_date
+    now = datetime.utcnow()
+    for i in range(1, count + 1):
+        occurrence_date = _add_months_clamped(start, step_months * i)
+        if end is not None and occurrence_date > end:
+            break
+        row = Reimbursement(
+            user_id=user_id,
+            date=occurrence_date,
+            vendor=_clean_required_text(payload.vendor, "Vendor"),
+            description=_clean_optional_text(payload.description),
+            amount=payload.amount,
+            category=_clean_required_text(payload.category, "Category"),
+            status="Needs Review",
+            notes=_clean_optional_text(payload.notes),
+            source_type=_clean_optional_text(payload.source_type),
+            linked_transaction_id=None,
+            is_recurring=True,
+            frequency=frequency,
+            series_id=series_id,
+            start_date=start,
+            end_date=end,
+            updated_at=now,
+        )
+        db.add(row)
 
 
 @app.get("/api/reimbursements", response_model=list[ReimbursementOut])
@@ -7541,20 +7700,11 @@ def create_reimbursement(
     user_id = get_current_user_id(access_token)
     _validate_reimbursement_linked_transaction(db, user_id, payload.linked_transaction_id)
     now = datetime.utcnow()
-    row = Reimbursement(
-        user_id=user_id,
-        date=payload.date,
-        vendor=_clean_required_text(payload.vendor, "Vendor"),
-        description=_clean_optional_text(payload.description),
-        amount=payload.amount,
-        category=_clean_required_text(payload.category, "Category"),
-        status=payload.status,
-        notes=_clean_optional_text(payload.notes),
-        source_type=_clean_optional_text(payload.source_type),
-        linked_transaction_id=payload.linked_transaction_id,
-        updated_at=now,
-    )
+    fields = _reimbursement_common_fields(payload)
+    row = Reimbursement(user_id=user_id, **fields, updated_at=now)
     db.add(row)
+    if fields["is_recurring"] and fields["series_id"]:
+        _create_future_reimbursement_occurrences(db, user_id=user_id, payload=payload, series_id=str(fields["series_id"]))
     db.commit()
     db.refresh(row)
     return _reimbursement_out(row)
@@ -7575,16 +7725,34 @@ def update_reimbursement(
     if row is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reimbursement not found")
     _validate_reimbursement_linked_transaction(db, user_id, payload.linked_transaction_id)
-    row.date = payload.date
-    row.vendor = _clean_required_text(payload.vendor, "Vendor")
-    row.description = _clean_optional_text(payload.description)
-    row.amount = payload.amount
-    row.category = _clean_required_text(payload.category, "Category")
-    row.status = payload.status
-    row.notes = _clean_optional_text(payload.notes)
-    row.source_type = _clean_optional_text(payload.source_type)
-    row.linked_transaction_id = payload.linked_transaction_id
+    existing_series_id = getattr(row, "series_id", None)
+    existing_date = row.date
+    fields = _reimbursement_common_fields(payload)
+    if payload.is_recurring and existing_series_id and payload.apply_scope == "future":
+        fields["series_id"] = existing_series_id
+    for key, val in fields.items():
+        setattr(row, key, val)
     row.updated_at = datetime.utcnow()
+
+    if payload.apply_scope == "future" and existing_series_id:
+        future_rows = (
+            db.execute(
+                select(Reimbursement).where(
+                    Reimbursement.user_id == user_id,
+                    Reimbursement.series_id == existing_series_id,
+                    Reimbursement.id != reimbursement_id,
+                    Reimbursement.date >= existing_date,
+                )
+            )
+            .scalars()
+            .all()
+        )
+        future_fields = {k: v for k, v in fields.items() if k not in {"date", "linked_transaction_id"}}
+        future_fields["series_id"] = existing_series_id if fields["is_recurring"] else None
+        for future in future_rows:
+            for key, val in future_fields.items():
+                setattr(future, key, val)
+            future.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(row)
     return _reimbursement_out(row)

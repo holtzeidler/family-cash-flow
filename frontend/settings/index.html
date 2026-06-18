@@ -477,6 +477,7 @@
                 <div class="reimbursements-head__actions">
                   <button type="button" class="secondary reimbursements-coming-soon" disabled title="Coming later">Import from Screenshot</button>
                   <button type="button" class="secondary reimbursements-coming-soon" disabled title="Coming later">Import from CSV</button>
+                  <button type="button" class="secondary reimbursements-coming-soon" disabled title="Coming later">Detect Recurring Charges</button>
                   <button type="button" id="reimbAddBtn" class="reimbursements-primary-btn">Add Expense</button>
                 </div>
               </header>
@@ -486,6 +487,7 @@
                 <article class="reimbursements-summary-card"><span class="reimbursements-summary-card__label">Needs Review</span><strong id="reimbSummaryNeedsReview">0 items</strong></article>
                 <article class="reimbursements-summary-card"><span class="reimbursements-summary-card__label">Submitted</span><strong id="reimbSummarySubmitted">$0</strong></article>
                 <article class="reimbursements-summary-card"><span class="reimbursements-summary-card__label">Reimbursed</span><strong id="reimbSummaryReimbursed">$0</strong></article>
+                <article class="reimbursements-summary-card"><span class="reimbursements-summary-card__label">Recurring Expenses</span><strong id="reimbSummaryRecurring">0 active</strong></article>
               </div>
 
               <div class="reimbursements-filters" aria-label="Reimbursement filters">
@@ -1557,6 +1559,38 @@
         <div class="row two">
           <div><label for="reimbAmount">Amount</label><div class="money-input"><span class="money-input__prefix" aria-hidden="true">$</span><input id="reimbAmount" type="number" min="0" step="0.01" placeholder="0.00" /></div></div>
           <div><label for="reimbCategory">Category</label><select id="reimbCategory"></select></div>
+        </div>
+        <div class="reimb-recurring-section" id="reimbRecurringSection">
+          <label class="reimb-recurring-section__label">Reimbursement Type</label>
+          <div class="reimb-type-options" role="radiogroup" aria-label="Reimbursement type">
+            <label><input type="radio" name="reimbType" value="one_time" checked /> One-Time</label>
+            <label><input type="radio" name="reimbType" value="recurring" /> Recurring</label>
+          </div>
+          <div id="reimbRecurringFields" class="reimb-recurring-fields" hidden>
+            <div class="row two">
+              <div>
+                <label for="reimbFrequency">Frequency</label>
+                <select id="reimbFrequency">
+                  <option value="monthly">Monthly</option>
+                  <option value="quarterly">Quarterly</option>
+                  <option value="semiannual">Semi-Annual</option>
+                  <option value="annual">Annual</option>
+                </select>
+              </div>
+              <div><label for="reimbStartDateSeries">Start Date</label><input id="reimbStartDateSeries" type="date" /></div>
+            </div>
+            <div class="row two">
+              <div><label for="reimbEndDateSeries">End Date <span class="muted">(optional)</span></label><input id="reimbEndDateSeries" type="date" /></div>
+              <label class="reimb-auto-create"><input id="reimbAutoCreateFuture" type="checkbox" checked /> Automatically create future reimbursement items</label>
+            </div>
+          </div>
+          <div id="reimbApplyScope" class="reimb-apply-scope" hidden>
+            <label class="reimb-recurring-section__label">Apply changes to:</label>
+            <div class="reimb-type-options" role="radiogroup" aria-label="Recurring edit scope">
+              <label><input type="radio" name="reimbApplyScope" value="this" /> This expense only</label>
+              <label><input type="radio" name="reimbApplyScope" value="future" checked /> All future expenses in this series</label>
+            </div>
+          </div>
         </div>
         <div class="row two">
           <div><label for="reimbStatus">Status</label><select id="reimbStatus"></select></div>

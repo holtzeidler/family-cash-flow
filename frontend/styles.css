@@ -29071,6 +29071,235 @@ body[data-bw-view="settings"] #sidebarBodyMonth .total--net .v.danger,
 body[data-bw-view="reports"] #sidebarBodyMonth .total--net .v.danger{
   color: color-mix(in srgb, var(--danger) 68%, #78716c);
 }
+
+/* Reimbursements uses the same left-rail treatment as Forecast. */
+body[data-bw-view="reimbursements"] .sidebar{
+  gap: 20px;
+}
+body[data-bw-view="reimbursements"] #sidebarCashHealthCard{
+  padding: 11px 12px 10px;
+  --section-gap-large: 24px;
+  --status-to-divider-gap: 12px;
+  --divider-to-review-gap: 14px;
+  --section-gap-small: 8px;
+  --review-row-gap: 6px;
+}
+body[data-bw-view="reimbursements"] .sidebar-cash-health__head{
+  margin-bottom: var(--section-gap-large);
+}
+body[data-bw-view="reimbursements"] .sidebar-cash-health__body{
+  gap: 0;
+}
+body[data-bw-view="reimbursements"] .sidebar-cash-health__alerts{
+  margin-bottom: 18px;
+}
+body[data-bw-view="reimbursements"] .sidebar-cash-health__alerts,
+body[data-bw-view="reimbursements"] .sidebar-balance-threshold-alerts,
+body[data-bw-view="reimbursements"] .calendar-low-balance--sidebar,
+body[data-bw-view="reimbursements"] .cash-outlook-card{
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
+}
+body[data-bw-view="reimbursements"] .cash-outlook-card__body{
+  max-width: none;
+}
+body[data-bw-view="reimbursements"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger{
+  padding: 10px 11px;
+}
+body[data-bw-view="reimbursements"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger:has(.cash-outlook-card){
+  padding: 10px 11px 9px;
+}
+body[data-bw-view="reimbursements"] .cash-outlook-card__line--tertiary{
+  font-size: 10.25px;
+  letter-spacing: -0.015em;
+  white-space: nowrap;
+}
+body[data-bw-view="reimbursements"] .cash-health-status{
+  border-top: none;
+  padding: 1px 0;
+}
+body[data-bw-view="reimbursements"] .cash-health-status.cash-health-status--balance{
+  padding: 0;
+  margin-bottom: var(--status-to-divider-gap);
+}
+body[data-bw-view="reimbursements"] .cash-health-status--balance .cash-health-status__row{
+  justify-content: flex-start;
+  align-items: center;
+}
+body[data-bw-view="reimbursements"] .cash-health-status--balance .cash-health-status__value{
+  text-align: left;
+  color: rgba(71, 85, 105, 0.82);
+  font-family: var(--font, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif);
+  font-size: 10.75px;
+  font-weight: 520;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+body[data-bw-view="reimbursements"] .cash-health-status--review{
+  margin-top: 0;
+  padding-top: var(--divider-to-review-gap);
+  border-top: 1px solid rgba(17, 24, 39, 0.07);
+}
+body[data-bw-view="reimbursements"] .cash-health-status--review .cash-health-status__row{
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  justify-content: flex-start;
+  gap: 10px;
+}
+body[data-bw-view="reimbursements"] .cash-health-status--review .cash-health-status__label{
+  font-size: 9.5px;
+  font-weight: 620;
+  color: rgba(100, 116, 139, 0.74);
+}
+body[data-bw-view="reimbursements"] .cash-health-status--review .cash-health-status__value{
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.045);
+  color: rgba(15, 23, 42, 0.88);
+  font-size: 9.75px;
+  font-weight: 680;
+  line-height: 1.2;
+  text-align: right;
+  white-space: nowrap;
+}
+body[data-bw-view="reimbursements"] #sidebarPendingTxList.list{
+  gap: var(--review-row-gap);
+  margin-top: var(--section-gap-small);
+}
+body[data-bw-view="reimbursements"] .pending-attn-item{
+  display: flex;
+  width: 100%;
+  min-height: 36px;
+  padding: 6px 8px 6px 10px;
+  gap: 8px;
+  box-sizing: border-box;
+}
+body[data-bw-view="reimbursements"] .pending-attn-text{
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+body[data-bw-view="reimbursements"] .pending-attn-name{
+  display: block;
+  min-width: 0;
+  overflow: visible;
+  -webkit-line-clamp: unset;
+  font-size: 12.25px;
+  line-height: 1.2;
+}
+body[data-bw-view="reimbursements"] .pending-attn-meta{
+  flex: 0 0 auto;
+  min-width: auto;
+  white-space: nowrap;
+}
+body[data-bw-view="reimbursements"] .pending-attn-indicator{
+  flex: 0 0 auto;
+}
+body[data-bw-view="reimbursements"] .cash-health-status--review.sidebar-pending--success .cash-health-status__row{
+  justify-content: flex-start;
+  min-height: 0;
+}
+body[data-bw-view="reimbursements"] .cash-health-status--review.sidebar-pending--success{
+  min-height: 0;
+  padding-bottom: 0;
+}
+body[data-bw-view="reimbursements"] #sidebarPendingTxCard.sidebar-pending--empty.sidebar-pending--success{
+  padding-bottom: 0;
+}
+body[data-bw-view="reimbursements"] #sidebarCashHealthCard:has(.sidebar-pending--success){
+  height: auto;
+  min-height: 0;
+}
+body[data-bw-view="reimbursements"] .cash-health-status--review.sidebar-pending--success .cash-health-status__label{
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 11px;
+  font-weight: 620;
+  color: color-mix(in srgb, var(--ok) 68%, #64748b);
+}
+body[data-bw-view="reimbursements"] .cash-health-status--review.sidebar-pending--success #sidebarPendingTxList{
+  display: none;
+}
+body[data-bw-view="reimbursements"] .sidebar .card[data-sidebar-key="month"]{
+  padding: 10px 12px 22px;
+  overflow: visible;
+}
+body[data-bw-view="reimbursements"] #sidebarCashHealthCard + .card[data-sidebar-key="month"]{
+  margin-top: 0;
+}
+body[data-bw-view="reimbursements"] .sidebar-forecast-head{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0;
+}
+body[data-bw-view="reimbursements"] .sidebar-forecast-head__actions,
+body[data-bw-view="reimbursements"] .sidebar-forecast-head .sidebar-collapse-btn{
+  align-self: center;
+}
+body[data-bw-view="reimbursements"] .sidebar-forecast-head h2{
+  white-space: nowrap;
+  overflow: visible;
+}
+body[data-bw-view="reimbursements"] .sidebar-month-row{
+  margin: 2px 0 8px;
+}
+body[data-bw-view="reimbursements"] .sidebar-month-input{
+  width: 100%;
+  min-width: 0;
+  height: 21px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  background: rgba(255, 255, 255, 0.86);
+  color: rgba(15, 23, 42, 0.9);
+  font: 600 11.5px/1.2 ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, monospace;
+}
+body[data-bw-view="reimbursements"] #sidebarBodyMonth{
+  display: flex;
+  flex-direction: column;
+  margin-top: 0;
+}
+body[data-bw-view="reimbursements"] #sidebarBodyMonth > .totals{
+  height: auto !important;
+  min-height: 0;
+  margin-top: 0;
+  margin-bottom: 0;
+  padding-bottom: 0;
+  overflow: visible;
+}
+body[data-bw-view="reimbursements"] #sidebarBodyMonth .total{
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+body[data-bw-view="reimbursements"] #sidebarBodyMonth .total .k{
+  font-size: 10.5px;
+  font-weight: 760;
+  color: rgba(71, 85, 105, 0.9);
+}
+body[data-bw-view="reimbursements"] #sidebarBodyMonth .total .v,
+body[data-bw-view="reimbursements"] #sidebarBodyMonth .total--net .v{
+  font-size: 14px;
+  font-weight: 760;
+}
+body[data-bw-view="reimbursements"] #sidebarBodyMonth .total--net{
+  margin-top: 1px;
+  margin-bottom: 0;
+  padding: 5px 4px;
+  background: rgba(236, 253, 245, 0.42);
+}
+body[data-bw-view="reimbursements"] #sidebarBodyMonth .total--net:has(.v.danger){
+  background: rgba(254, 242, 242, 0.46);
+}
+body[data-bw-view="reimbursements"] #sidebarBodyMonth .total--net .v.danger{
+  color: color-mix(in srgb, var(--danger) 68%, #78716c);
+}
 /* Reimbursements register */
 .reimbursements-panel{
   padding: 18px;
@@ -29108,7 +29337,7 @@ body[data-bw-view="reports"] #sidebarBodyMonth .total--net .v.danger{
 }
 .reimbursements-summary{
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 10px;
   margin: 0 0 14px;
 }
@@ -29238,6 +29467,15 @@ body[data-bw-view="reports"] #sidebarBodyMonth .total--net .v.danger{
   color: rgba(100, 116, 139, 0.78);
   font-size: 0.82rem;
 }
+.reimb-recurring-indicator{
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  color: rgba(71, 85, 105, 0.72);
+  font-size: 0.76rem;
+  font-weight: 650;
+}
 .reimb-status{
   display: inline-flex;
   align-items: center;
@@ -29289,6 +29527,49 @@ body[data-bw-view="reports"] #sidebarBodyMonth .total--net .v.danger{
   width: 100%;
   box-sizing: border-box;
   resize: vertical;
+}
+.reimb-recurring-section{
+  margin: 9px 0 10px;
+  padding: 10px 11px;
+  border: 1px solid rgba(17, 24, 39, 0.07);
+  border-radius: 12px;
+  background: rgba(248, 250, 252, 0.72);
+}
+.reimb-recurring-section__label{
+  display: block;
+  margin: 0 0 6px;
+  font-size: 0.74rem;
+  font-weight: 760;
+  color: rgba(71, 85, 105, 0.84);
+}
+.reimb-type-options{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+}
+.reimb-type-options label,
+.reimb-auto-create{
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: rgba(30, 41, 59, 0.9);
+}
+.reimb-recurring-fields{
+  margin-top: 10px;
+}
+.reimb-recurring-fields .row{
+  margin-top: 8px;
+}
+.reimb-auto-create{
+  align-self: end;
+  min-height: 36px;
+}
+.reimb-apply-scope{
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(17, 24, 39, 0.07);
 }
 .reimbursements-modal-note{
   margin: 8px 0 0;
