@@ -4256,7 +4256,10 @@ async function extractReimbursementScreenshotRows(fileOverride = null) {
     const form = new FormData();
     form.append("file", file, file.name || "pasted-screenshot.png");
     setReimbursementScreenshotImporting(true);
-    const draft = await apiForm("/api/reimbursements/import-screenshot", form);
+    const timeout = new Promise((_, reject) => {
+      window.setTimeout(() => reject(new Error("Screenshot import is taking too long. Try cropping to just the transaction list, or use Bulk Add Expenses for now.")), 25000);
+    });
+    const draft = await Promise.race([apiForm("/api/reimbursements/import-screenshot", form), timeout]);
     renderReimbursementScreenshotDraft(draft?.rows || []);
     if ((!draft?.rows || draft.rows.length === 0) && draft?.message) show(reimbScreenshotErr, "");
   } catch (e) {

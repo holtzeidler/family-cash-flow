@@ -7770,18 +7770,18 @@ def _ocr_text_from_image_bytes(data: bytes) -> str:
     try:
         image = Image.open(io.BytesIO(data))
         image = ImageOps.exif_transpose(image)
-        variants = [image]
         gray = ImageOps.grayscale(image)
         w, h = gray.size
+        variants = [gray]
         if w and h:
             resample = getattr(Image, "Resampling", Image).LANCZOS
             variants.append(gray.resize((w * 2, h * 2), resample))
-        variants.append(ImageEnhance.Contrast(gray).enhance(1.8))
+        variants.append(ImageEnhance.Contrast(variants[-1]).enhance(1.8))
         chunks: list[str] = []
         seen: set[str] = set()
         for variant in variants:
-            for config in ("--psm 6", "--psm 4", "--psm 11"):
-                text_value = str(pytesseract.image_to_string(variant, config=config) or "").strip()
+            for config in ("--psm 6", "--psm 11"):
+                text_value = str(pytesseract.image_to_string(variant, config=config, timeout=6) or "").strip()
                 if text_value and text_value not in seen:
                     seen.add(text_value)
                     chunks.append(text_value)

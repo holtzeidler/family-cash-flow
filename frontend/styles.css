@@ -29975,21 +29975,26 @@ body[data-bw-view="reimbursements"] #sidebarBodyMonth .total--net .v.danger{
 .reimb-import-loading{
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  margin: 10px 0;
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: rgba(236, 253, 245, 0.75);
-  color: rgba(11, 61, 46, 0.95);
-  font-weight: 760;
+  width: 100%;
+  gap: 12px;
+  margin: 12px 0;
+  padding: 15px 16px;
+  border: 1px solid rgba(11, 61, 46, 0.18);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(209, 250, 229, 0.95), rgba(236, 253, 245, 0.82));
+  box-shadow: 0 8px 22px rgba(11, 61, 46, 0.08);
+  color: rgba(11, 61, 46, 0.98);
+  font-size: 1rem;
+  font-weight: 800;
+  box-sizing: border-box;
 }
 .reimb-import-loading[hidden]{
   display: none !important;
 }
 .reimb-import-loading span{
-  width: 14px;
-  height: 14px;
-  border: 2px solid rgba(11, 61, 46, 0.22);
+  width: 18px;
+  height: 18px;
+  border: 3px solid rgba(11, 61, 46, 0.22);
   border-top-color: rgba(11, 61, 46, 0.95);
   border-radius: 999px;
   animation: reimbImportSpin 0.75s linear infinite;
