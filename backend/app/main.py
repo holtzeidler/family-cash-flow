@@ -7896,7 +7896,7 @@ def _extract_reimbursement_rows_from_image_layout(data: bytes) -> list[tuple[dat
             conf = float(ocr.get("conf", ["-1"])[i])
         except Exception:
             conf = -1
-        if conf < 20:
+        if conf < 10:
             continue
         left = int(ocr["left"][i])
         top = int(ocr["top"][i])
@@ -7910,16 +7910,30 @@ def _extract_reimbursement_rows_from_image_layout(data: bytes) -> list[tuple[dat
                 "top": top,
                 "center_y": top + (height / 2),
                 "height": height,
+                "line_key": (
+                    int(ocr.get("block_num", [0])[i] or 0),
+                    int(ocr.get("par_num", [0])[i] or 0),
+                    int(ocr.get("line_num", [0])[i] or 0),
+                ),
             }
         )
 
-    amount_re = re.compile(r"^-?\$?\(?\d[\d,]*\.\d{2}\)?$")
+    amount_re = re.compile(r"-?\$?\(?\d[\d,]*\.\d{2}\)?")
     rows: list[tuple[date, str, Decimal]] = []
+    line_groups: dict[tuple[int, int, int], list[dict[str, object]]] = {}
+    for word in words:
+        line_groups.setdefault(word["line_key"], []).append(word)
+    for line_words in line_groups.values():
+        line_words.sort(key=lambda w: int(w["left"]))
+        line_text = " ".join(str(w["text"]) for w in line_words)
+        rows.extend(_extract_reimbursement_rows_from_text(line_text))
+
     for word in words:
         raw_amount = str(word["text"])
-        if not amount_re.match(raw_amount):
+        amount_match = amount_re.search(raw_amount)
+        if not amount_match:
             continue
-        amount = _parse_reimbursement_amount(raw_amount)
+        amount = _parse_reimbursement_amount(amount_match.group(0))
         if amount is None:
             continue
         center_y = float(word["center_y"])
@@ -7930,7 +7944,7 @@ def _extract_reimbursement_rows_from_image_layout(data: bytes) -> list[tuple[dat
             for w in words
             if int(w["right"]) < amount_left - 6
             and abs(float(w["center_y"]) - center_y) <= band
-            and not amount_re.match(str(w["text"]))
+            and not amount_re.search(str(w["text"]))
         ]
         if not row_words:
             # Some mobile screenshots put the merchant slightly above the amount.
@@ -7939,7 +7953,7 @@ def _extract_reimbursement_rows_from_image_layout(data: bytes) -> list[tuple[dat
                 for w in words
                 if int(w["right"]) < amount_left - 6
                 and 0 < center_y - float(w["center_y"]) <= band * 2.2
-                and not amount_re.match(str(w["text"]))
+                and not amount_re.search(str(w["text"]))
             ]
         row_words.sort(key=lambda w: int(w["left"]))
         vendor = _clean_reimbursement_ocr_vendor(" ".join(str(w["text"]) for w in row_words))
