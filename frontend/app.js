@@ -4250,7 +4250,8 @@ function renderReimbursementScreenshotDraft(rows) {
 async function extractReimbursementScreenshotRows(fileOverride = null) {
   try {
     show(reimbScreenshotErr, "");
-    const file = fileOverride || reimbScreenshotFile?.files?.[0];
+    const sourceFile = fileOverride || reimbScreenshotFile?.files?.[0];
+    const file = fileOverride ? await normalizedPastedScreenshotFile(sourceFile) : sourceFile;
     if (!file) throw new Error("Choose a screenshot to import.");
     if (!/^image\//.test(file.type || "")) throw new Error("Please choose an image file.");
     const form = new FormData();
@@ -4269,16 +4270,58 @@ async function extractReimbursementScreenshotRows(fileOverride = null) {
   }
 }
 
+function preferredClipboardImageType(types = []) {
+  const imageTypes = Array.from(types || []).filter((type) => /^image\//.test(type || ""));
+  return (
+    imageTypes.find((type) => type === "image/png")
+    || imageTypes.find((type) => type === "image/jpeg" || type === "image/jpg")
+    || imageTypes.find((type) => type === "image/webp")
+    || imageTypes[0]
+    || ""
+  );
+}
+
+function canvasBlob(canvas, type = "image/png", quality = 0.92) {
+  return new Promise((resolve) => {
+    canvas.toBlob((blob) => resolve(blob), type, quality);
+  });
+}
+
+async function normalizedPastedScreenshotFile(file) {
+  if (!file || !/^image\//.test(file.type || "")) return file;
+  if (typeof createImageBitmap !== "function" || typeof document === "undefined") return file;
+  let bitmap = null;
+  try {
+    bitmap = await createImageBitmap(file);
+    const canvas = document.createElement("canvas");
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return file;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, bitmap.width, bitmap.height);
+    ctx.drawImage(bitmap, 0, 0);
+    const blob = await canvasBlob(canvas, "image/png");
+    if (!blob) return file;
+    return new File([blob], "pasted-screenshot.png", { type: "image/png" });
+  } catch (_) {
+    return file;
+  } finally {
+    if (bitmap && typeof bitmap.close === "function") bitmap.close();
+  }
+}
+
 function pastedScreenshotFileFromEvent(e) {
   const files = Array.from(e?.clipboardData?.files || []);
-  const file = files.find((f) => f && /^image\//.test(f.type || ""));
+  const file = files.find((f) => f && /^(image\/png|image\/jpe?g|image\/webp)$/i.test(f.type || ""))
+    || files.find((f) => f && /^image\//.test(f.type || ""));
   if (file) return file;
   const items = Array.from(e?.clipboardData?.items || []);
-  for (const item of items) {
-    if (item.type && /^image\//.test(item.type)) {
-      const blob = item.getAsFile();
-      if (blob) return new File([blob], "pasted-screenshot.png", { type: blob.type || "image/png" });
-    }
+  const imageType = preferredClipboardImageType(items.map((item) => item.type));
+  const item = items.find((candidate) => candidate.type === imageType);
+  if (item) {
+    const blob = item.getAsFile();
+    if (blob) return new File([blob], "pasted-screenshot.png", { type: blob.type || imageType || "image/png" });
   }
   return null;
 }
@@ -4300,7 +4343,7 @@ async function importReimbursementScreenshotFromClipboard() {
     }
     const items = await navigator.clipboard.read();
     for (const item of items || []) {
-      const imageType = (item.types || []).find((type) => /^image\//.test(type));
+      const imageType = preferredClipboardImageType(item.types || []);
       if (!imageType) continue;
       const blob = await item.getType(imageType);
       const file = new File([blob], "clipboard-screenshot.png", { type: imageType });
