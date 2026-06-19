@@ -7832,6 +7832,8 @@ def _clean_reimbursement_ocr_vendor(raw: str) -> str:
     s = re.sub(r"^(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|SEPT|OCT|NOV|DEC)\s+\d{1,2},?\s+\d{2,4}\s+", "", s, flags=re.I)
     s = re.sub(r"^\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?\s+", "", s)
     s = re.sub(r"^(?:[Iil1|\\[\\]{}(),.]+\\s+)+", "", s).strip()
+    # Tesseract can read merchant icons as repeated leading text, e.g. "YE Claude".
+    s = re.sub(r"^(?:YE\s+){1,3}(?=[A-Za-z][A-Za-z])", "", s, flags=re.I).strip()
     s = re.sub(r"\s{2,}", " ", s).strip(" -•|,")
     return s
 
