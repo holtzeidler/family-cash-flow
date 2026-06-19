@@ -4255,13 +4255,22 @@ async function extractReimbursementScreenshotRows(fileOverride = null, options =
     const file = options.normalizeClipboardImage ? await normalizedPastedScreenshotFile(sourceFile) : sourceFile;
     if (!file) throw new Error("Choose a screenshot to import.");
     if (!/^image\//.test(file.type || "")) throw new Error("Please choose an image file.");
-    const form = new FormData();
-    form.append("file", file, file.name || "pasted-screenshot.png");
     setReimbursementScreenshotImporting(true);
-    const timeout = new Promise((_, reject) => {
-      window.setTimeout(() => reject(new Error("Screenshot import is taking too long. Try cropping to just the transaction list, or use Bulk Add Expenses for now.")), 25000);
-    });
-    const draft = await Promise.race([apiForm("/api/reimbursements/import-screenshot", form), timeout]);
+    const importFile = (imageFile) => {
+      const form = new FormData();
+      form.append("file", imageFile, imageFile.name || "screenshot.png");
+      const timeout = new Promise((_, reject) => {
+        window.setTimeout(() => reject(new Error("Screenshot import is taking too long. Try cropping to just the transaction list, or use Bulk Add Expenses for now.")), 25000);
+      });
+      return Promise.race([apiForm("/api/reimbursements/import-screenshot", form), timeout]);
+    };
+    let draft = await importFile(file);
+    if ((!draft?.rows || draft.rows.length === 0) && !options.normalizeClipboardImage) {
+      const normalizedFile = await normalizedPastedScreenshotFile(sourceFile);
+      if (normalizedFile && normalizedFile !== sourceFile) {
+        draft = await importFile(normalizedFile);
+      }
+    }
     renderReimbursementScreenshotDraft(draft?.rows || []);
     if ((!draft?.rows || draft.rows.length === 0) && draft?.message) show(reimbScreenshotErr, "");
   } catch (e) {

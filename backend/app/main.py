@@ -7777,8 +7777,12 @@ def _ocr_text_from_image_bytes(data: bytes, *, max_seconds: float = 7.0) -> str:
             return ""
         resample = getattr(Image, "Resampling", Image).LANCZOS
         scaled = gray.resize((w * 2, h * 2), resample)
-        contrast = ImageEnhance.Contrast(scaled).enhance(1.8)
-        jobs = ((scaled, "--psm 6"), (contrast, "--psm 6"), (contrast, "--psm 11"))
+        contrast = ImageEnhance.Contrast(ImageOps.autocontrast(scaled)).enhance(2.0)
+        jobs = [(scaled, "--psm 6"), (contrast, "--psm 6"), (contrast, "--psm 11")]
+        if w > h * 3:
+            wide_scaled = gray.resize((w * 3, h * 3), resample)
+            wide_contrast = ImageEnhance.Contrast(ImageOps.autocontrast(wide_scaled)).enhance(2.4)
+            jobs.extend([(wide_contrast, "--psm 6"), (wide_contrast, "--psm 11")])
         chunks: list[str] = []
         seen: set[str] = set()
         for variant, config in jobs:
@@ -7820,8 +7824,12 @@ def _ocr_text_with_image_layout(data: bytes, *, max_seconds: float = 9.0) -> tup
             return "", []
         resample = getattr(Image, "Resampling", Image).LANCZOS
         scaled = gray.resize((w * 2, h * 2), resample)
-        contrast = ImageEnhance.Contrast(scaled).enhance(1.8)
-        jobs = ((scaled, "--psm 6"), (contrast, "--psm 6"), (contrast, "--psm 11"))
+        contrast = ImageEnhance.Contrast(ImageOps.autocontrast(scaled)).enhance(2.0)
+        jobs = [(scaled, "--psm 6"), (contrast, "--psm 6"), (contrast, "--psm 11")]
+        if w > h * 3:
+            wide_scaled = gray.resize((w * 3, h * 3), resample)
+            wide_contrast = ImageEnhance.Contrast(ImageOps.autocontrast(wide_scaled)).enhance(2.4)
+            jobs.extend([(wide_contrast, "--psm 6"), (wide_contrast, "--psm 11")])
         chunks: list[str] = []
         words: list[dict[str, object]] = []
         seen_chunks: set[str] = set()
@@ -7850,7 +7858,7 @@ def _ocr_text_with_image_layout(data: bytes, *, max_seconds: float = 9.0) -> tup
                     conf = float(ocr.get("conf", ["-1"])[i])
                 except Exception:
                     conf = -1
-                if conf < 10 and not amount_re.search(text_value):
+                if conf < 0 and not amount_re.search(text_value):
                     continue
                 left = int(ocr["left"][i])
                 top = int(ocr["top"][i])
@@ -7919,6 +7927,7 @@ def _clean_reimbursement_ocr_vendor(raw: str) -> str:
     s = re.sub(r"^(?:19|20)\d{2}\s+(?=[A-Za-z])", "", s).strip()
     s = re.sub(r"^\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?\s+", "", s)
     s = re.sub(r"^(?:[Iil1|\\[\\]{}(),.]+\\s+)+", "", s).strip()
+    s = re.sub(r"^[a-z]\s+(?=[A-Z][a-z])", "", s).strip()
     # Tesseract can read merchant icons as repeated leading text, e.g. "YE Claude".
     s = re.sub(r"^(?:YE\s+){1,3}(?=[A-Za-z][A-Za-z])", "", s, flags=re.I).strip()
     s = re.sub(r"\s{2,}", " ", s).strip(" -•|,")
@@ -7937,6 +7946,17 @@ def _same_reimbursement_import_vendor(left: str, right: str) -> bool:
     if len(compact_a) < 6 or len(compact_b) < 6:
         return False
     return compact_a.startswith(compact_b) or compact_b.startswith(compact_a)
+
+
+def _same_reimbursement_import_row(existing: ReimbursementImportDraftRowOut, dt: date, vendor: str, amount: Decimal) -> bool:
+    if existing.amount != amount:
+        return False
+    if not _same_reimbursement_import_vendor(existing.vendor, vendor):
+        return False
+    if existing.date == dt:
+        return True
+    today = date.today()
+    return existing.date == today or dt == today
 
 
 def _extract_reimbursement_rows_from_text(text_value: str) -> list[tuple[date, str, Decimal]]:
@@ -8171,12 +8191,7 @@ async def import_reimbursements_screenshot(
         key = (dt.isoformat(), normalized, str(amount))
         if key in seen:
             continue
-        if any(
-            row.date == dt
-            and row.amount == amount
-            and _same_reimbursement_import_vendor(row.vendor, vendor)
-            for row in draft_rows
-        ):
+        if any(_same_reimbursement_import_row(row, dt, vendor, amount) for row in draft_rows):
             continue
         seen.add(key)
         category = mapping.get(normalized) or _reimbursement_keyword_category(normalized)
