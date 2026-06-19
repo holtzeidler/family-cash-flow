@@ -7875,52 +7875,67 @@ def _extract_reimbursement_rows_from_image_layout(data: bytes) -> list[tuple[dat
         if not w or not h:
             return []
         resample = getattr(Image, "Resampling", Image).LANCZOS
-        variant = gray.resize((w * 2, h * 2), resample)
-        variant = ImageEnhance.Contrast(variant).enhance(1.8)
-        ocr = pytesseract.image_to_data(
-            variant,
-            config="--psm 6",
-            output_type=pytesseract.Output.DICT,
-            timeout=8,
-        )
+        scaled = gray.resize((w * 2, h * 2), resample)
+        variants = [scaled, ImageEnhance.Contrast(scaled).enhance(1.8)]
+        ocr_results = []
+        for variant in variants:
+            for config in ("--psm 6", "--psm 11"):
+                try:
+                    ocr_results.append(
+                        pytesseract.image_to_data(
+                            variant,
+                            config=config,
+                            output_type=pytesseract.Output.DICT,
+                            timeout=6,
+                        )
+                    )
+                except Exception:
+                    continue
     except Exception:
         return []
 
     words: list[dict[str, object]] = []
-    count = len(ocr.get("text", []))
-    for i in range(count):
-        text_value = str(ocr["text"][i] or "").strip()
-        if not text_value:
-            continue
-        try:
-            conf = float(ocr.get("conf", ["-1"])[i])
-        except Exception:
-            conf = -1
-        if conf < 10:
-            continue
-        left = int(ocr["left"][i])
-        top = int(ocr["top"][i])
-        width = int(ocr["width"][i])
-        height = int(ocr["height"][i])
-        words.append(
-            {
-                "text": text_value,
-                "left": left,
-                "right": left + width,
-                "top": top,
-                "center_y": top + (height / 2),
-                "height": height,
-                "line_key": (
-                    int(ocr.get("block_num", [0])[i] or 0),
-                    int(ocr.get("par_num", [0])[i] or 0),
-                    int(ocr.get("line_num", [0])[i] or 0),
-                ),
-            }
-        )
-
     amount_re = re.compile(r"-?\$?\(?\d[\d,]*\.\d{2}\)?")
+    seen_words: set[tuple[str, int, int, int, int]] = set()
+    for source_idx, ocr in enumerate(ocr_results):
+        count = len(ocr.get("text", []))
+        for i in range(count):
+            text_value = str(ocr["text"][i] or "").strip()
+            if not text_value:
+                continue
+            try:
+                conf = float(ocr.get("conf", ["-1"])[i])
+            except Exception:
+                conf = -1
+            if conf < 10 and not amount_re.search(text_value):
+                continue
+            left = int(ocr["left"][i])
+            top = int(ocr["top"][i])
+            width = int(ocr["width"][i])
+            height = int(ocr["height"][i])
+            word_key = (text_value, left, top, width, height)
+            if word_key in seen_words:
+                continue
+            seen_words.add(word_key)
+            words.append(
+                {
+                    "text": text_value,
+                    "left": left,
+                    "right": left + width,
+                    "top": top,
+                    "center_y": top + (height / 2),
+                    "height": height,
+                    "line_key": (
+                        source_idx,
+                        int(ocr.get("block_num", [0])[i] or 0),
+                        int(ocr.get("par_num", [0])[i] or 0),
+                        int(ocr.get("line_num", [0])[i] or 0),
+                    ),
+                }
+            )
+
     rows: list[tuple[date, str, Decimal]] = []
-    line_groups: dict[tuple[int, int, int], list[dict[str, object]]] = {}
+    line_groups: dict[tuple[int, int, int, int], list[dict[str, object]]] = {}
     for word in words:
         line_groups.setdefault(word["line_key"], []).append(word)
     for line_words in line_groups.values():
