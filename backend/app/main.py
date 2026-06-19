@@ -7840,7 +7840,7 @@ def _ocr_text_with_image_layout(data: bytes, *, max_seconds: float = 9.0) -> tup
                 )
             except Exception:
                 continue
-            line_groups: dict[tuple[int, int, int], list[str]] = {}
+            line_groups: dict[tuple[int, int, int], list[tuple[int, str]]] = {}
             count = len(ocr.get("text", []))
             for i in range(count):
                 text_value = str(ocr["text"][i] or "").strip()
@@ -7861,7 +7861,7 @@ def _ocr_text_with_image_layout(data: bytes, *, max_seconds: float = 9.0) -> tup
                     int(ocr.get("par_num", [0])[i] or 0),
                     int(ocr.get("line_num", [0])[i] or 0),
                 )
-                line_groups.setdefault(line_key, []).append(text_value)
+                line_groups.setdefault(line_key, []).append((left, text_value))
                 word_key = (text_value, left, top, width, height)
                 if word_key in seen_words:
                     continue
@@ -7878,7 +7878,7 @@ def _ocr_text_with_image_layout(data: bytes, *, max_seconds: float = 9.0) -> tup
                     }
                 )
             for line_words in line_groups.values():
-                chunk = " ".join(line_words).strip()
+                chunk = " ".join(text for _, text in sorted(line_words, key=lambda item: item[0])).strip()
                 if chunk and chunk not in seen_chunks:
                     seen_chunks.add(chunk)
                     chunks.append(chunk)
@@ -7916,12 +7916,27 @@ def _parse_reimbursement_amount(raw: str) -> Optional[Decimal]:
 def _clean_reimbursement_ocr_vendor(raw: str) -> str:
     s = re.sub(r"[^A-Za-z0-9& .'-]+", " ", str(raw or "")).strip()
     s = re.sub(r"^(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|SEPT|OCT|NOV|DEC)\s+\d{1,2},?\s+\d{2,4}\s+", "", s, flags=re.I)
+    s = re.sub(r"^(?:19|20)\d{2}\s+(?=[A-Za-z])", "", s).strip()
     s = re.sub(r"^\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?\s+", "", s)
     s = re.sub(r"^(?:[Iil1|\\[\\]{}(),.]+\\s+)+", "", s).strip()
     # Tesseract can read merchant icons as repeated leading text, e.g. "YE Claude".
     s = re.sub(r"^(?:YE\s+){1,3}(?=[A-Za-z][A-Za-z])", "", s, flags=re.I).strip()
     s = re.sub(r"\s{2,}", " ", s).strip(" -•|,")
     return s
+
+
+def _same_reimbursement_import_vendor(left: str, right: str) -> bool:
+    a = _normalize_reimbursement_vendor(left)
+    b = _normalize_reimbursement_vendor(right)
+    if not a or not b:
+        return False
+    if a == b:
+        return True
+    compact_a = a.replace(" ", "")
+    compact_b = b.replace(" ", "")
+    if len(compact_a) < 6 or len(compact_b) < 6:
+        return False
+    return compact_a.startswith(compact_b) or compact_b.startswith(compact_a)
 
 
 def _extract_reimbursement_rows_from_text(text_value: str) -> list[tuple[date, str, Decimal]]:
@@ -7933,7 +7948,7 @@ def _extract_reimbursement_rows_from_text(text_value: str) -> list[tuple[date, s
         line = re.sub(r"\s+", " ", raw_line).strip()
         if not line:
             continue
-        date_match = re.search(date_re, line)
+        date_match = re.search(date_re, line, flags=re.I)
         amount_matches = list(re.finditer(amount_re, line))
         if not amount_matches:
             # Mobile card screenshots often OCR the merchant and amount onto separate lines.
@@ -8155,6 +8170,13 @@ async def import_reimbursements_screenshot(
         normalized = _normalize_reimbursement_vendor(vendor)
         key = (dt.isoformat(), normalized, str(amount))
         if key in seen:
+            continue
+        if any(
+            row.date == dt
+            and row.amount == amount
+            and _same_reimbursement_import_vendor(row.vendor, vendor)
+            for row in draft_rows
+        ):
             continue
         seen.add(key)
         category = mapping.get(normalized) or _reimbursement_keyword_category(normalized)

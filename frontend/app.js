@@ -4247,11 +4247,11 @@ function renderReimbursementScreenshotDraft(rows) {
   }
 }
 
-async function extractReimbursementScreenshotRows(fileOverride = null) {
+async function extractReimbursementScreenshotRows(fileOverride = null, options = {}) {
   try {
     show(reimbScreenshotErr, "");
     const sourceFile = fileOverride || reimbScreenshotFile?.files?.[0];
-    const file = fileOverride ? await normalizedPastedScreenshotFile(sourceFile) : sourceFile;
+    const file = options.normalizeClipboardImage ? await normalizedPastedScreenshotFile(sourceFile) : sourceFile;
     if (!file) throw new Error("Choose a screenshot to import.");
     if (!/^image\//.test(file.type || "")) throw new Error("Please choose an image file.");
     const form = new FormData();
@@ -4332,7 +4332,7 @@ function handleReimbursementScreenshotPaste(e) {
   const file = pastedScreenshotFileFromEvent(e);
   if (!file) return;
   e.preventDefault();
-  void extractReimbursementScreenshotRows(file);
+  void extractReimbursementScreenshotRows(file, { normalizeClipboardImage: true });
 }
 
 async function importReimbursementScreenshotFromClipboard() {
@@ -4347,7 +4347,7 @@ async function importReimbursementScreenshotFromClipboard() {
       if (!imageType) continue;
       const blob = await item.getType(imageType);
       const file = new File([blob], "clipboard-screenshot.png", { type: imageType });
-      await extractReimbursementScreenshotRows(file);
+      await extractReimbursementScreenshotRows(file, { normalizeClipboardImage: true });
       return;
     }
     throw new Error("No image found on the clipboard.");
