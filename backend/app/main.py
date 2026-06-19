@@ -7818,6 +7818,8 @@ def _parse_reimbursement_amount(raw: str) -> Optional[Decimal]:
 
 def _clean_reimbursement_ocr_vendor(raw: str) -> str:
     s = re.sub(r"[^A-Za-z0-9& .'-]+", " ", str(raw or "")).strip()
+    s = re.sub(r"^(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|SEPT|OCT|NOV|DEC)\s+\d{1,2},?\s+\d{2,4}\s+", "", s, flags=re.I)
+    s = re.sub(r"^\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?\s+", "", s)
     s = re.sub(r"^(?:[Iil1|\\[\\]{}(),.]+\\s+)+", "", s).strip()
     s = re.sub(r"\s{2,}", " ", s).strip(" -•|,")
     return s
@@ -7857,6 +7859,96 @@ def _extract_reimbursement_rows_from_text(text_value: str) -> list[tuple[date, s
                 pending_vendor = None
             previous_amount_end = amount_match.end()
     return rows
+
+
+def _extract_reimbursement_rows_from_image_layout(data: bytes) -> list[tuple[date, str, Decimal]]:
+    try:
+        from PIL import Image, ImageEnhance, ImageOps
+        import pytesseract
+    except Exception:
+        return []
+    try:
+        image = Image.open(io.BytesIO(data))
+        image = ImageOps.exif_transpose(image)
+        gray = ImageOps.grayscale(image)
+        w, h = gray.size
+        if not w or not h:
+            return []
+        resample = getattr(Image, "Resampling", Image).LANCZOS
+        variant = gray.resize((w * 2, h * 2), resample)
+        variant = ImageEnhance.Contrast(variant).enhance(1.8)
+        ocr = pytesseract.image_to_data(
+            variant,
+            config="--psm 6",
+            output_type=pytesseract.Output.DICT,
+            timeout=8,
+        )
+    except Exception:
+        return []
+
+    words: list[dict[str, object]] = []
+    count = len(ocr.get("text", []))
+    for i in range(count):
+        text_value = str(ocr["text"][i] or "").strip()
+        if not text_value:
+            continue
+        try:
+            conf = float(ocr.get("conf", ["-1"])[i])
+        except Exception:
+            conf = -1
+        if conf < 20:
+            continue
+        left = int(ocr["left"][i])
+        top = int(ocr["top"][i])
+        width = int(ocr["width"][i])
+        height = int(ocr["height"][i])
+        words.append(
+            {
+                "text": text_value,
+                "left": left,
+                "right": left + width,
+                "top": top,
+                "center_y": top + (height / 2),
+                "height": height,
+            }
+        )
+
+    amount_re = re.compile(r"^-?\$?\(?\d[\d,]*\.\d{2}\)?$")
+    rows: list[tuple[date, str, Decimal]] = []
+    for word in words:
+        raw_amount = str(word["text"])
+        if not amount_re.match(raw_amount):
+            continue
+        amount = _parse_reimbursement_amount(raw_amount)
+        if amount is None:
+            continue
+        center_y = float(word["center_y"])
+        amount_left = int(word["left"])
+        band = max(18, int(word["height"]) * 1.3)
+        row_words = [
+            w
+            for w in words
+            if int(w["right"]) < amount_left - 6
+            and abs(float(w["center_y"]) - center_y) <= band
+            and not amount_re.match(str(w["text"]))
+        ]
+        if not row_words:
+            # Some mobile screenshots put the merchant slightly above the amount.
+            row_words = [
+                w
+                for w in words
+                if int(w["right"]) < amount_left - 6
+                and 0 < center_y - float(w["center_y"]) <= band * 2.2
+                and not amount_re.match(str(w["text"]))
+            ]
+        row_words.sort(key=lambda w: int(w["left"]))
+        vendor = _clean_reimbursement_ocr_vendor(" ".join(str(w["text"]) for w in row_words))
+        vendor = re.sub(r"^(?:JUN|JAN|FEB|MAR|APR|MAY|JUL|AUG|SEP|SEPT|OCT|NOV|DEC)\b.*?\d{2,4}\s*", "", vendor, flags=re.I).strip()
+        if len(vendor) < 2:
+            continue
+        rows.append((date.today(), vendor[:255], amount))
+    return rows
+
 
 def _month_end_day(year: int, month: int) -> int:
     if month == 12:
@@ -7992,6 +8084,7 @@ async def import_reimbursements_screenshot(
 
     text_value = _ocr_text_from_image_bytes(data)
     parsed = _extract_reimbursement_rows_from_text(text_value)
+    parsed.extend(_extract_reimbursement_rows_from_image_layout(data))
     if not parsed:
         return ReimbursementImportDraftOut(
             rows=[],
