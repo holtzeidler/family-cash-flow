@@ -8325,6 +8325,24 @@ def update_reimbursement_status(
     return _reimbursement_out(row)
 
 
+@app.delete("/api/reimbursements/{reimbursement_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_reimbursement(
+    reimbursement_id: int,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    row = (
+        db.execute(select(Reimbursement).where(Reimbursement.id == reimbursement_id, Reimbursement.user_id == user_id))
+        .scalar_one_or_none()
+    )
+    if row is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reimbursement not found")
+    db.delete(row)
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 
 @app.post("/api/families/{family_id}/transactions/purge-imported", response_model=TransactionsPurgeImportedOut)
 def purge_imported_transactions(

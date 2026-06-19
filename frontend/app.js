@@ -3973,6 +3973,7 @@ const reimbAutoCreateFuture = document.getElementById("reimbAutoCreateFuture");
 const reimbApplyScope = document.getElementById("reimbApplyScope");
 const reimbSaveBtn = document.getElementById("reimbSaveBtn");
 const reimbCancelBtn = document.getElementById("reimbCancelBtn");
+const reimbDeleteBtn = document.getElementById("reimbDeleteBtn");
 
 function formatReimbursementMoney(value) {
   const n = Number(value || 0);
@@ -4637,6 +4638,7 @@ function openReimbursementModal(item = null) {
   if (reimbEndDateSeries) reimbEndDateSeries.value = item?.end_date || "";
   if (reimbAutoCreateFuture) reimbAutoCreateFuture.checked = !item;
   if (reimbApplyScope) reimbApplyScope.hidden = !(item?.is_recurring && item?.series_id);
+  if (reimbDeleteBtn) reimbDeleteBtn.hidden = !item;
   setReimbursementApplyScope(item?.is_recurring && item?.series_id ? "future" : "this");
   syncReimbursementRecurringUi();
   reimbModal.classList.add("modal-overlay--open");
@@ -4706,6 +4708,25 @@ async function saveReimbursementFromModal() {
   }
 }
 
+async function deleteReimbursementFromModal() {
+  try {
+    show(reimbModalErr, "");
+    const id = String(reimbEditId?.value || "").trim();
+    if (!id) return;
+    const vendor = String(reimbVendor?.value || "this expense").trim() || "this expense";
+    if (!window.confirm(`Delete ${vendor} from reimbursements? This cannot be undone.`)) return;
+    if (reimbDeleteBtn) reimbDeleteBtn.disabled = true;
+    await api(`/api/reimbursements/${encodeURIComponent(id)}`, "DELETE");
+    closeReimbursementModal();
+    reimbState.loaded = false;
+    await refreshReimbursements({ force: true });
+  } catch (e) {
+    show(reimbModalErr, e.message || "Could not delete reimbursement");
+  } finally {
+    if (reimbDeleteBtn) reimbDeleteBtn.disabled = false;
+  }
+}
+
 async function updateReimbursementStatus(id, nextStatus) {
   try {
     show(reimbErr, "");
@@ -4767,6 +4788,7 @@ function initReimbursementsUi() {
     }
   });
   reimbCancelBtn?.addEventListener("click", closeReimbursementModal);
+  reimbDeleteBtn?.addEventListener("click", () => void deleteReimbursementFromModal());
   reimbSaveBtn?.addEventListener("click", () => void saveReimbursementFromModal());
   document.querySelectorAll('input[name="reimbType"]').forEach((r) => {
     r.addEventListener("change", syncReimbursementRecurringUi);
