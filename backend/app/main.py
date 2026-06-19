@@ -7785,14 +7785,17 @@ def _ocr_text_from_image_bytes(data: bytes, *, max_seconds: float = 7.0) -> str:
             remaining = max_seconds - (time.monotonic() - started)
             if remaining <= 0:
                 break
-            text_value = str(
-                pytesseract.image_to_string(
-                    variant,
-                    config=config,
-                    timeout=max(1, min(3, int(remaining))),
-                )
-                or ""
-            ).strip()
+            try:
+                text_value = str(
+                    pytesseract.image_to_string(
+                        variant,
+                        config=config,
+                        timeout=max(1, min(4, int(remaining))),
+                    )
+                    or ""
+                ).strip()
+            except Exception:
+                continue
             if text_value and text_value not in seen:
                 seen.add(text_value)
                 chunks.append(text_value)
@@ -7801,9 +7804,92 @@ def _ocr_text_from_image_bytes(data: bytes, *, max_seconds: float = 7.0) -> str:
         return ""
 
 
+def _ocr_text_with_image_layout(data: bytes, *, max_seconds: float = 9.0) -> tuple[str, list[dict[str, object]]]:
+    try:
+        from PIL import Image, ImageEnhance, ImageOps
+        import pytesseract
+    except Exception:
+        return "", []
+    try:
+        started = time.monotonic()
+        image = Image.open(io.BytesIO(data))
+        image = ImageOps.exif_transpose(image)
+        gray = ImageOps.grayscale(image)
+        w, h = gray.size
+        if not w or not h:
+            return "", []
+        resample = getattr(Image, "Resampling", Image).LANCZOS
+        scaled = gray.resize((w * 2, h * 2), resample)
+        contrast = ImageEnhance.Contrast(scaled).enhance(1.8)
+        jobs = ((scaled, "--psm 6"), (contrast, "--psm 6"), (contrast, "--psm 11"))
+        chunks: list[str] = []
+        words: list[dict[str, object]] = []
+        seen_chunks: set[str] = set()
+        amount_re = re.compile(r"-?\$?\(?\d[\d,]*\.\d{2}\)?")
+        seen_words: set[tuple[str, int, int, int, int]] = set()
+        for source_idx, (variant, config) in enumerate(jobs):
+            remaining = max_seconds - (time.monotonic() - started)
+            if remaining <= 0:
+                break
+            try:
+                ocr = pytesseract.image_to_data(
+                    variant,
+                    config=config,
+                    output_type=pytesseract.Output.DICT,
+                    timeout=max(1, min(4, int(remaining))),
+                )
+            except Exception:
+                continue
+            line_groups: dict[tuple[int, int, int], list[str]] = {}
+            count = len(ocr.get("text", []))
+            for i in range(count):
+                text_value = str(ocr["text"][i] or "").strip()
+                if not text_value:
+                    continue
+                try:
+                    conf = float(ocr.get("conf", ["-1"])[i])
+                except Exception:
+                    conf = -1
+                if conf < 10 and not amount_re.search(text_value):
+                    continue
+                left = int(ocr["left"][i])
+                top = int(ocr["top"][i])
+                width = int(ocr["width"][i])
+                height = int(ocr["height"][i])
+                line_key = (
+                    int(ocr.get("block_num", [0])[i] or 0),
+                    int(ocr.get("par_num", [0])[i] or 0),
+                    int(ocr.get("line_num", [0])[i] or 0),
+                )
+                line_groups.setdefault(line_key, []).append(text_value)
+                word_key = (text_value, left, top, width, height)
+                if word_key in seen_words:
+                    continue
+                seen_words.add(word_key)
+                words.append(
+                    {
+                        "text": text_value,
+                        "left": left,
+                        "right": left + width,
+                        "top": top,
+                        "center_y": top + (height / 2),
+                        "height": height,
+                        "line_key": (source_idx, *line_key),
+                    }
+                )
+            for line_words in line_groups.values():
+                chunk = " ".join(line_words).strip()
+                if chunk and chunk not in seen_chunks:
+                    seen_chunks.add(chunk)
+                    chunks.append(chunk)
+        return "\n".join(chunks), words
+    except Exception:
+        return "", []
+
+
 def _parse_reimbursement_import_date(raw: str) -> Optional[date]:
     s = str(raw or "").strip()
-    for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%m/%d/%y", "%m-%d-%Y", "%m-%d-%y"):
+    for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%m/%d/%y", "%m-%d-%Y", "%m-%d-%y", "%b %d, %Y", "%B %d, %Y", "%b %d %Y", "%B %d %Y"):
         try:
             return datetime.strptime(s, fmt).date()
         except ValueError:
@@ -7840,7 +7926,7 @@ def _clean_reimbursement_ocr_vendor(raw: str) -> str:
 
 def _extract_reimbursement_rows_from_text(text_value: str) -> list[tuple[date, str, Decimal]]:
     rows: list[tuple[date, str, Decimal]] = []
-    date_re = r"(\d{4}-\d{1,2}-\d{1,2}|\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?)"
+    date_re = r"(\d{4}-\d{1,2}-\d{1,2}|\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?|(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|SEPT|OCT|NOV|DEC)[A-Z]*\s+\d{1,2},?\s+\d{4})"
     amount_re = r"(-?\$?\(?\d[\d,]*\.\d{2}\)?)"
     pending_vendor: Optional[str] = None
     for raw_line in str(text_value or "").splitlines():
@@ -7879,90 +7965,9 @@ def _extract_reimbursement_rows_from_image_layout(
     *,
     max_seconds: float = 9.0,
 ) -> list[tuple[date, str, Decimal]]:
-    try:
-        from PIL import Image, ImageEnhance, ImageOps
-        import pytesseract
-    except Exception:
-        return []
-    try:
-        started = time.monotonic()
-        image = Image.open(io.BytesIO(data))
-        image = ImageOps.exif_transpose(image)
-        gray = ImageOps.grayscale(image)
-        w, h = gray.size
-        if not w or not h:
-            return []
-        resample = getattr(Image, "Resampling", Image).LANCZOS
-        scaled = gray.resize((w * 2, h * 2), resample)
-        contrast = ImageEnhance.Contrast(scaled).enhance(1.8)
-        jobs = ((scaled, "--psm 6"), (contrast, "--psm 6"), (contrast, "--psm 11"))
-        ocr_results = []
-        for variant, config in jobs:
-            remaining = max_seconds - (time.monotonic() - started)
-            if remaining <= 0:
-                break
-            try:
-                ocr_results.append(
-                    pytesseract.image_to_data(
-                        variant,
-                        config=config,
-                        output_type=pytesseract.Output.DICT,
-                        timeout=max(1, min(3, int(remaining))),
-                    )
-                )
-            except Exception:
-                continue
-    except Exception:
-        return []
-
-    words: list[dict[str, object]] = []
+    layout_text, words = _ocr_text_with_image_layout(data, max_seconds=max_seconds)
+    rows = _extract_reimbursement_rows_from_text(layout_text)
     amount_re = re.compile(r"-?\$?\(?\d[\d,]*\.\d{2}\)?")
-    seen_words: set[tuple[str, int, int, int, int]] = set()
-    for source_idx, ocr in enumerate(ocr_results):
-        count = len(ocr.get("text", []))
-        for i in range(count):
-            text_value = str(ocr["text"][i] or "").strip()
-            if not text_value:
-                continue
-            try:
-                conf = float(ocr.get("conf", ["-1"])[i])
-            except Exception:
-                conf = -1
-            if conf < 10 and not amount_re.search(text_value):
-                continue
-            left = int(ocr["left"][i])
-            top = int(ocr["top"][i])
-            width = int(ocr["width"][i])
-            height = int(ocr["height"][i])
-            word_key = (text_value, left, top, width, height)
-            if word_key in seen_words:
-                continue
-            seen_words.add(word_key)
-            words.append(
-                {
-                    "text": text_value,
-                    "left": left,
-                    "right": left + width,
-                    "top": top,
-                    "center_y": top + (height / 2),
-                    "height": height,
-                    "line_key": (
-                        source_idx,
-                        int(ocr.get("block_num", [0])[i] or 0),
-                        int(ocr.get("par_num", [0])[i] or 0),
-                        int(ocr.get("line_num", [0])[i] or 0),
-                    ),
-                }
-            )
-
-    rows: list[tuple[date, str, Decimal]] = []
-    line_groups: dict[tuple[int, int, int, int], list[dict[str, object]]] = {}
-    for word in words:
-        line_groups.setdefault(word["line_key"], []).append(word)
-    for line_words in line_groups.values():
-        line_words.sort(key=lambda w: int(w["left"]))
-        line_text = " ".join(str(w["text"]) for w in line_words)
-        rows.extend(_extract_reimbursement_rows_from_text(line_text))
 
     for word in words:
         raw_amount = str(word["text"])
