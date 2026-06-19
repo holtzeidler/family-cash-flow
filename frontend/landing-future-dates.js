@@ -60,13 +60,13 @@
   var crunchMonth = addMonths(today, 1);
   var crunchLabel = section.querySelector("#landingFutureCrunchLabel");
   if (crunchLabel) {
-    crunchLabel.textContent = "Summer camp tuition \u00B7 " + fmtMonth(crunchMonth);
+    crunchLabel.textContent = "Camp tuition \u00B7 " + fmtMonth(crunchMonth);
   }
 
   var insight = section.querySelector("#landingFutureInsightCopy");
   if (insight) {
     insight.textContent =
-      "Plan ahead for summer camp tuition before your " +
+      "Plan ahead for camp tuition before your " +
       fmtMonth(crunchMonth) +
       " balance tightens.";
   }
