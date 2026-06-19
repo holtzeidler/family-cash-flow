@@ -7763,13 +7763,29 @@ def _reimbursement_possible_duplicate(db, user_id: int, dt: date, normalized_ven
 
 def _ocr_text_from_image_bytes(data: bytes) -> str:
     try:
-        from PIL import Image
+        from PIL import Image, ImageEnhance, ImageOps
         import pytesseract
     except Exception:
         return ""
     try:
         image = Image.open(io.BytesIO(data))
-        return str(pytesseract.image_to_string(image) or "")
+        image = ImageOps.exif_transpose(image)
+        variants = [image]
+        gray = ImageOps.grayscale(image)
+        w, h = gray.size
+        if w and h:
+            resample = getattr(Image, "Resampling", Image).LANCZOS
+            variants.append(gray.resize((w * 2, h * 2), resample))
+        variants.append(ImageEnhance.Contrast(gray).enhance(1.8))
+        chunks: list[str] = []
+        seen: set[str] = set()
+        for variant in variants:
+            for config in ("--psm 6", "--psm 4", "--psm 11"):
+                text_value = str(pytesseract.image_to_string(variant, config=config) or "").strip()
+                if text_value and text_value not in seen:
+                    seen.add(text_value)
+                    chunks.append(text_value)
+        return "\n".join(chunks)
     except Exception:
         return ""
 
@@ -7800,6 +7816,13 @@ def _parse_reimbursement_amount(raw: str) -> Optional[Decimal]:
     return amount if amount > 0 else None
 
 
+def _clean_reimbursement_ocr_vendor(raw: str) -> str:
+    s = re.sub(r"[^A-Za-z0-9& .'-]+", " ", str(raw or "")).strip()
+    s = re.sub(r"^(?:[Iil1|\\[\\]{}(),.]+\\s+)+", "", s).strip()
+    s = re.sub(r"\s{2,}", " ", s).strip(" -•|,")
+    return s
+
+
 def _extract_reimbursement_rows_from_text(text_value: str) -> list[tuple[date, str, Decimal]]:
     rows: list[tuple[date, str, Decimal]] = []
     date_re = r"(\d{4}-\d{1,2}-\d{1,2}|\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?)"
@@ -7813,26 +7836,26 @@ def _extract_reimbursement_rows_from_text(text_value: str) -> list[tuple[date, s
         amount_matches = list(re.finditer(amount_re, line))
         if not amount_matches:
             # Mobile card screenshots often OCR the merchant and amount onto separate lines.
-            candidate = re.sub(r"[^A-Za-z0-9& .'-]+", " ", line).strip()
+            candidate = _clean_reimbursement_ocr_vendor(line)
             if re.search(r"[A-Za-z]", candidate) and len(candidate) >= 2:
                 pending_vendor = candidate[:255]
             continue
-        amount_match = amount_matches[-1]
-        dt = _parse_reimbursement_import_date(date_match.group(1)) if date_match else date.today()
-        amount = _parse_reimbursement_amount(amount_match.group(1))
-        if dt is None or amount is None:
-            continue
-        if date_match:
-            vendor_part = (line[: date_match.start()] + " " + line[date_match.end() : amount_match.start()]).strip(" -•|")
-        else:
-            vendor_part = line[: amount_match.start()].strip(" -•|")
-        vendor_part = re.sub(r"\s{2,}", " ", vendor_part).strip()
-        if len(vendor_part) < 2 and pending_vendor:
-            vendor_part = pending_vendor
-        if len(vendor_part) < 2:
-            continue
-        rows.append((dt, vendor_part[:255], amount))
-        pending_vendor = None
+        previous_amount_end = 0
+        for amount_match in amount_matches:
+            dt = _parse_reimbursement_import_date(date_match.group(1)) if date_match else date.today()
+            amount = _parse_reimbursement_amount(amount_match.group(1))
+            if dt is None or amount is None:
+                continue
+            vendor_source = line[previous_amount_end : amount_match.start()]
+            if date_match and previous_amount_end <= date_match.start() < amount_match.start():
+                vendor_source = (vendor_source[: date_match.start() - previous_amount_end] + " " + vendor_source[date_match.end() - previous_amount_end :])
+            vendor_part = _clean_reimbursement_ocr_vendor(vendor_source)
+            if len(vendor_part) < 2 and pending_vendor:
+                vendor_part = pending_vendor
+            if len(vendor_part) >= 2:
+                rows.append((dt, vendor_part[:255], amount))
+                pending_vendor = None
+            previous_amount_end = amount_match.end()
     return rows
 
 def _month_end_day(year: int, month: int) -> int:

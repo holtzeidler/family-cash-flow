@@ -3932,6 +3932,7 @@ const reimbScreenshotPasteZone = document.getElementById("reimbScreenshotPasteZo
 const reimbScreenshotFile = document.getElementById("reimbScreenshotFile");
 const reimbScreenshotClipboardBtn = document.getElementById("reimbScreenshotClipboardBtn");
 const reimbScreenshotUploadBtn = document.getElementById("reimbScreenshotUploadBtn");
+const reimbScreenshotLoading = document.getElementById("reimbScreenshotLoading");
 const reimbScreenshotSummary = document.getElementById("reimbScreenshotSummary");
 const reimbScreenshotEmpty = document.getElementById("reimbScreenshotEmpty");
 const reimbScreenshotTableWrap = document.getElementById("reimbScreenshotTableWrap");
@@ -4186,6 +4187,7 @@ function openReimbursementScreenshotModal() {
   if (reimbScreenshotSummary) reimbScreenshotSummary.hidden = true;
   if (reimbScreenshotEmpty) reimbScreenshotEmpty.hidden = true;
   if (reimbScreenshotTableWrap) reimbScreenshotTableWrap.hidden = true;
+  setReimbursementScreenshotImporting(false);
   reimbScreenshotModal.classList.add("modal-overlay--open");
   reimbScreenshotModal.setAttribute("aria-hidden", "false");
   window.setTimeout(() => reimbScreenshotPasteZone?.focus?.(), 0);
@@ -4193,8 +4195,22 @@ function openReimbursementScreenshotModal() {
 
 function closeReimbursementScreenshotModal() {
   if (!reimbScreenshotModal) return;
+  setReimbursementScreenshotImporting(false);
   reimbScreenshotModal.classList.remove("modal-overlay--open");
   reimbScreenshotModal.setAttribute("aria-hidden", "true");
+}
+
+function setReimbursementScreenshotImporting(isImporting) {
+  if (reimbScreenshotLoading) reimbScreenshotLoading.hidden = !isImporting;
+  if (reimbScreenshotPasteZone) reimbScreenshotPasteZone.classList.toggle("is-importing", !!isImporting);
+  for (const btn of [reimbScreenshotUploadBtn, reimbScreenshotClipboardBtn, reimbScreenshotSaveBtn]) {
+    if (btn) btn.disabled = !!isImporting;
+  }
+  if (reimbScreenshotFile) reimbScreenshotFile.disabled = !!isImporting;
+  if (isImporting) {
+    if (reimbScreenshotSummary) reimbScreenshotSummary.hidden = true;
+    if (reimbScreenshotEmpty) reimbScreenshotEmpty.hidden = true;
+  }
 }
 
 function reimbursementImportCategoryOptions(selected = "Other") {
@@ -4239,14 +4255,14 @@ async function extractReimbursementScreenshotRows(fileOverride = null) {
     if (!/^image\//.test(file.type || "")) throw new Error("Please choose an image file.");
     const form = new FormData();
     form.append("file", file, file.name || "pasted-screenshot.png");
-    if (reimbScreenshotUploadBtn) reimbScreenshotUploadBtn.disabled = true;
+    setReimbursementScreenshotImporting(true);
     const draft = await apiForm("/api/reimbursements/import-screenshot", form);
     renderReimbursementScreenshotDraft(draft?.rows || []);
     if ((!draft?.rows || draft.rows.length === 0) && draft?.message) show(reimbScreenshotErr, "");
   } catch (e) {
     show(reimbScreenshotErr, e.message || "Could not extract rows from screenshot");
   } finally {
-    if (reimbScreenshotUploadBtn) reimbScreenshotUploadBtn.disabled = false;
+    setReimbursementScreenshotImporting(false);
   }
 }
 
