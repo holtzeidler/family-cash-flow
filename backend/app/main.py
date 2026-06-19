@@ -1783,12 +1783,16 @@ class ReimbursementImportSaveIn(BaseModel):
     rows: list[ReimbursementImportRowIn] = Field(default_factory=list)
 
 
+class ReimbursementPasteImportIn(BaseModel):
+    text: str = Field(min_length=1, max_length=50000)
+
+
 class ReimbursementImportDraftRowOut(BaseModel):
     include: bool = True
-    date: date
-    vendor: str
+    date: Optional[date] = None
+    vendor: str = ""
     normalized_vendor: str
-    amount: Decimal
+    amount: Optional[Decimal] = None
     suggested_category: str = "Other"
     status: str = "Needs Review"
     notes: Optional[str] = None
@@ -7761,6 +7765,21 @@ def _reimbursement_possible_duplicate(db, user_id: int, dt: date, normalized_ven
     return any(_normalize_reimbursement_vendor(row.vendor) == normalized_vendor for row in candidates)
 
 
+def _reimbursement_possible_duplicate_similar(db, user_id: int, dt: date, vendor: str, amount: Decimal) -> bool:
+    candidates = (
+        db.execute(
+            select(Reimbursement).where(
+                Reimbursement.user_id == user_id,
+                Reimbursement.date == dt,
+                Reimbursement.amount == amount,
+            )
+        )
+        .scalars()
+        .all()
+    )
+    return any(_same_reimbursement_import_vendor(row.vendor, vendor) for row in candidates)
+
+
 def _ocr_text_from_image_bytes(data: bytes, *, max_seconds: float = 7.0) -> str:
     try:
         from PIL import Image, ImageEnhance, ImageOps
@@ -7948,8 +7967,8 @@ def _same_reimbursement_import_vendor(left: str, right: str) -> bool:
     return compact_a.startswith(compact_b) or compact_b.startswith(compact_a)
 
 
-def _same_reimbursement_import_row(existing: ReimbursementImportDraftRowOut, dt: date, vendor: str, amount: Decimal) -> bool:
-    if existing.amount != amount:
+def _same_reimbursement_import_row(existing: ReimbursementImportDraftRowOut, dt: Optional[date], vendor: str, amount: Optional[Decimal]) -> bool:
+    if existing.amount is None or amount is None or existing.amount != amount:
         return False
     if not _same_reimbursement_import_vendor(existing.vendor, vendor):
         return False
@@ -7995,6 +8014,137 @@ def _extract_reimbursement_rows_from_text(text_value: str) -> list[tuple[date, s
     return rows
 
 
+def _extract_reimbursement_draft_candidates_from_text(text_value: str) -> list[tuple[Optional[date], str, Optional[Decimal]]]:
+    rows: list[tuple[Optional[date], str, Optional[Decimal]]] = []
+    date_re = r"(\d{4}-\d{1,2}-\d{1,2}|\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?|(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|SEPT|OCT|NOV|DEC)[A-Z]*\s+\d{1,2},?\s+\d{4})"
+    amount_re = r"(-?\$?\(?\d[\d,]*\.\d{2}\)?)"
+    pending_vendor: Optional[str] = None
+    current_date: Optional[date] = None
+    for raw_line in str(text_value or "").splitlines():
+        line = re.sub(r"\s+", " ", raw_line).strip()
+        if not line:
+            continue
+        date_match = re.search(date_re, line, flags=re.I)
+        line_date = _parse_reimbursement_import_date(date_match.group(1)) if date_match else None
+        if line_date is not None:
+            current_date = line_date
+        amount_matches = list(re.finditer(amount_re, line))
+        if not amount_matches:
+            candidate = _clean_reimbursement_ocr_vendor(line)
+            if re.search(r"[A-Za-z]", candidate) and len(candidate) >= 2:
+                pending_vendor = candidate[:255]
+            continue
+        previous_amount_end = 0
+        for amount_match in amount_matches:
+            amount = _parse_reimbursement_amount(amount_match.group(1))
+            vendor_source = line[previous_amount_end : amount_match.start()]
+            if date_match and previous_amount_end <= date_match.start() < amount_match.start():
+                vendor_source = (
+                    vendor_source[: date_match.start() - previous_amount_end]
+                    + " "
+                    + vendor_source[date_match.end() - previous_amount_end :]
+                )
+            vendor_part = _clean_reimbursement_ocr_vendor(vendor_source)
+            if len(vendor_part) < 2 and pending_vendor:
+                vendor_part = pending_vendor
+            if len(vendor_part) >= 2 or amount is not None or line_date is not None or current_date is not None:
+                rows.append((line_date or current_date, vendor_part[:255], amount))
+                if len(vendor_part) >= 2:
+                    pending_vendor = None
+            previous_amount_end = amount_match.end()
+    return rows
+
+
+def _looks_like_reimbursement_import_noise(line: str) -> bool:
+    s = re.sub(r"\s+", " ", str(line or "")).strip().lower()
+    if not s:
+        return True
+    if s in {"date vendor amount", "date, vendor, amount", "date|vendor|amount"}:
+        return True
+    if re.search(r"\b(date|vendor|merchant|description|amount|category|status)\b", s) and not re.search(r"\d", s):
+        return True
+    return bool(
+        re.search(
+            r"\b(total|subtotal|balance|available credit|credit limit|statement|summary|payment due|minimum payment|previous balance|new balance)\b",
+            s,
+        )
+    )
+
+
+def _split_reimbursement_pasted_row(line: str) -> list[str]:
+    raw = str(line or "").strip()
+    if "|" in raw:
+        return [part.strip() for part in raw.split("|")]
+    if "\t" in raw:
+        return [part.strip() for part in raw.split("\t")]
+    try:
+        parsed = next(csv.reader([raw]))
+        if len(parsed) > 1:
+            return [part.strip() for part in parsed]
+    except Exception:
+        pass
+    return [raw]
+
+
+def _extract_reimbursement_candidates_from_pasted_text(text_value: str) -> list[tuple[Optional[date], str, Optional[Decimal]]]:
+    candidates: list[tuple[Optional[date], str, Optional[Decimal]]] = []
+    date_re = re.compile(
+        r"(\d{4}-\d{1,2}-\d{1,2}|\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?|(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|SEPT|OCT|NOV|DEC)[A-Z]*\s+\d{1,2},?\s+\d{4})",
+        flags=re.I,
+    )
+    amount_re = re.compile(r"(-?\$?\(?\d[\d,]*\.\d{2}\)?)")
+    for raw_line in str(text_value or "").splitlines():
+        line = re.sub(r"\s+", " ", raw_line).strip()
+        if _looks_like_reimbursement_import_noise(line):
+            continue
+        parts = [part for part in _split_reimbursement_pasted_row(line) if part]
+        date_value: Optional[date] = None
+        amount: Optional[Decimal] = None
+        amount_part_index: Optional[int] = None
+        date_part_index: Optional[int] = None
+
+        for idx, part in enumerate(parts):
+            if date_value is None:
+                m = date_re.search(part)
+                if m:
+                    parsed_date = _parse_reimbursement_import_date(m.group(1))
+                    if parsed_date is not None:
+                        date_value = parsed_date
+                        date_part_index = idx
+            if amount is None:
+                amount_matches = list(amount_re.finditer(part))
+                if amount_matches:
+                    # In transaction rows, the rightmost money-like value is usually the charge amount.
+                    amount = _parse_reimbursement_amount(amount_matches[-1].group(1))
+                    amount_part_index = idx
+
+        if len(parts) >= 3 and date_part_index is not None and amount_part_index is not None:
+            vendor_parts = [
+                part
+                for idx, part in enumerate(parts)
+                if idx not in {date_part_index, amount_part_index}
+            ]
+            vendor = _clean_reimbursement_ocr_vendor(" ".join(vendor_parts))
+        else:
+            date_match = date_re.search(line)
+            amount_matches = list(amount_re.finditer(line))
+            amount_match = amount_matches[-1] if amount_matches else None
+            if date_value is None and date_match:
+                date_value = _parse_reimbursement_import_date(date_match.group(1))
+            if amount is None and amount_match:
+                amount = _parse_reimbursement_amount(amount_match.group(1))
+            vendor_source = line
+            if date_match:
+                vendor_source = vendor_source.replace(date_match.group(1), " ", 1)
+            if amount_match:
+                vendor_source = vendor_source[: amount_match.start()] + " " + vendor_source[amount_match.end() :]
+            vendor = _clean_reimbursement_ocr_vendor(vendor_source)
+
+        if vendor or date_value is not None or amount is not None:
+            candidates.append((date_value, vendor[:255], amount))
+    return candidates
+
+
 def _extract_reimbursement_rows_from_image_layout(
     data: bytes,
     *,
@@ -8038,6 +8188,81 @@ def _extract_reimbursement_rows_from_image_layout(
             continue
         rows.append((date.today(), vendor[:255], amount))
     return rows
+
+
+def _extract_reimbursement_draft_candidates_from_image_layout(data: bytes) -> list[tuple[Optional[date], str, Optional[Decimal]]]:
+    layout_text, words = _ocr_text_with_image_layout(data)
+    rows = _extract_reimbursement_draft_candidates_from_text(layout_text)
+    amount_re = re.compile(r"-?\$?\(?\d[\d,]*\.\d{2}\)?")
+    for word in words:
+        raw_amount = str(word["text"])
+        amount_match = amount_re.search(raw_amount)
+        if not amount_match:
+            continue
+        amount = _parse_reimbursement_amount(amount_match.group(0))
+        center_y = float(word["center_y"])
+        amount_left = int(word["left"])
+        band = max(18, int(word["height"]) * 1.3)
+        row_words = [
+            w
+            for w in words
+            if int(w["right"]) < amount_left - 6
+            and abs(float(w["center_y"]) - center_y) <= band
+            and not amount_re.search(str(w["text"]))
+        ]
+        if not row_words:
+            row_words = [
+                w
+                for w in words
+                if int(w["right"]) < amount_left - 6
+                and 0 < center_y - float(w["center_y"]) <= band * 2.2
+                and not amount_re.search(str(w["text"]))
+            ]
+        row_words.sort(key=lambda w: int(w["left"]))
+        vendor = _clean_reimbursement_ocr_vendor(" ".join(str(w["text"]) for w in row_words))
+        vendor = re.sub(r"^(?:JUN|JAN|FEB|MAR|APR|MAY|JUL|AUG|SEP|SEPT|OCT|NOV|DEC)\b.*?\d{2,4}\s*", "", vendor, flags=re.I).strip()
+        if vendor or amount is not None:
+            rows.append((None, vendor[:255], amount))
+    return rows
+
+
+def _reimbursement_import_draft_from_candidates(
+    db,
+    user_id: int,
+    candidates: list[tuple[Optional[date], str, Optional[Decimal]]],
+) -> ReimbursementImportDraftOut:
+    mapping = _vendor_category_mapping_lookup(db, user_id)
+    draft_rows: list[ReimbursementImportDraftRowOut] = []
+    seen: set[tuple[str, str, str]] = set()
+    for dt, vendor, amount in candidates:
+        vendor = _clean_reimbursement_ocr_vendor(vendor)
+        normalized = _normalize_reimbursement_vendor(vendor)
+        key = (dt.isoformat() if dt else "", normalized, str(amount) if amount is not None else "")
+        if key in seen:
+            continue
+        if any(_same_reimbursement_import_row(row, dt, vendor, amount) for row in draft_rows):
+            continue
+        seen.add(key)
+        category = (mapping.get(normalized) or _reimbursement_keyword_category(normalized)) if normalized else "Other"
+        draft_rows.append(
+            ReimbursementImportDraftRowOut(
+                include=True,
+                date=dt,
+                vendor=vendor,
+                normalized_vendor=normalized,
+                amount=amount,
+                suggested_category=category,
+                status="Needs Review",
+                notes=None,
+                possible_duplicate=bool(
+                    dt
+                    and amount is not None
+                    and vendor
+                    and _reimbursement_possible_duplicate_similar(db, user_id, dt, vendor, amount)
+                ),
+            )
+        )
+    return ReimbursementImportDraftOut(rows=draft_rows, found=len(draft_rows))
 
 
 def _month_end_day(year: int, month: int) -> int:
@@ -8174,41 +8399,48 @@ async def import_reimbursements_screenshot(
 
     text_value = _ocr_text_from_image_bytes(data)
     parsed = _extract_reimbursement_rows_from_text(text_value)
-    if len(parsed) < 2:
-        parsed.extend(_extract_reimbursement_rows_from_image_layout(data))
-    if not parsed:
+    candidates: list[tuple[Optional[date], str, Optional[Decimal]]] = [(dt, vendor, amount) for dt, vendor, amount in parsed]
+    candidates.extend(_extract_reimbursement_draft_candidates_from_text(text_value))
+    if len(candidates) < 2:
+        candidates.extend((dt, vendor, amount) for dt, vendor, amount in _extract_reimbursement_rows_from_image_layout(data))
+        candidates.extend(_extract_reimbursement_draft_candidates_from_image_layout(data))
+    if not candidates and text_value.strip():
+        amount_re = re.compile(r"-?\$?\(?\d[\d,]*\.\d{2}\)?")
+        for raw_line in str(text_value).splitlines()[:20]:
+            line = re.sub(r"\s+", " ", raw_line).strip()
+            if not line:
+                continue
+            amount_match = amount_re.search(line)
+            amount = _parse_reimbursement_amount(amount_match.group(0)) if amount_match else None
+            vendor_source = line[: amount_match.start()] if amount_match else line
+            vendor = _clean_reimbursement_ocr_vendor(vendor_source)
+            if vendor or amount is not None:
+                candidates.append((None, vendor[:255], amount))
+    if not candidates:
         return ReimbursementImportDraftOut(
             rows=[],
             found=0,
-            message="We couldn't find any transactions in this screenshot. Try cropping to show the transaction list clearly.",
+            message="We couldn't find any possible rows in this screenshot. Try cropping to show the transaction list clearly.",
         )
 
-    mapping = _vendor_category_mapping_lookup(db, user_id)
-    draft_rows: list[ReimbursementImportDraftRowOut] = []
-    seen: set[tuple[str, str, str]] = set()
-    for dt, vendor, amount in parsed:
-        normalized = _normalize_reimbursement_vendor(vendor)
-        key = (dt.isoformat(), normalized, str(amount))
-        if key in seen:
-            continue
-        if any(_same_reimbursement_import_row(row, dt, vendor, amount) for row in draft_rows):
-            continue
-        seen.add(key)
-        category = mapping.get(normalized) or _reimbursement_keyword_category(normalized)
-        draft_rows.append(
-            ReimbursementImportDraftRowOut(
-                include=True,
-                date=dt,
-                vendor=vendor,
-                normalized_vendor=normalized,
-                amount=amount,
-                suggested_category=category,
-                status="Needs Review",
-                notes=None,
-                possible_duplicate=_reimbursement_possible_duplicate(db, user_id, dt, normalized, amount),
-            )
+    return _reimbursement_import_draft_from_candidates(db, user_id, candidates)
+
+
+@app.post("/api/reimbursements/import-paste", response_model=ReimbursementImportDraftOut)
+def import_reimbursements_paste(
+    payload: ReimbursementPasteImportIn,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    candidates = _extract_reimbursement_candidates_from_pasted_text(payload.text)
+    if not candidates:
+        return ReimbursementImportDraftOut(
+            rows=[],
+            found=0,
+            message="We couldn't find any transaction rows in the pasted text. Try pasting date, vendor, and amount rows.",
         )
-    return ReimbursementImportDraftOut(rows=draft_rows, found=len(draft_rows))
+    return _reimbursement_import_draft_from_candidates(db, user_id, candidates)
 
 
 @app.post("/api/reimbursements/import-screenshot/save", response_model=ReimbursementImportSaveOut)

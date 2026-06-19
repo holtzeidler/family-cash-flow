@@ -30016,6 +30016,31 @@ body[data-bw-view="reimbursements"] #sidebarBodyMonth .total--net .v.danger{
   color: rgba(100, 116, 139, 0.86);
   text-align: center;
 }
+.reimb-paste-examples{
+  display: grid;
+  gap: 6px;
+  margin: 10px 0 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  border-radius: 12px;
+  background: rgba(248, 250, 252, 0.82);
+  color: rgba(51, 65, 85, 0.9);
+}
+.reimb-paste-examples strong{
+  color: rgba(15, 23, 42, 0.86);
+}
+.reimb-paste-examples pre{
+  margin: 0;
+  white-space: pre-wrap;
+  font: 0.82rem/1.45 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  color: rgba(71, 85, 105, 0.92);
+}
+.reimb-paste-textarea{
+  width: 100%;
+  box-sizing: border-box;
+  margin: 4px 0 10px;
+  resize: vertical;
+}
 .reimb-import-table-wrap{
   max-height: 430px;
   overflow: auto;

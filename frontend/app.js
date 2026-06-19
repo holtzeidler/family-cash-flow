@@ -3906,7 +3906,7 @@ const reimbState = {
   items: [],
   loaded: false,
   sortKey: "date",
-  sortDir: "desc",
+  sortDir: "asc",
   status: "All",
 };
 const reimbSummaryOutstanding = document.getElementById("reimbSummaryOutstanding");
@@ -3926,6 +3926,7 @@ const reimbErr = document.getElementById("reimbErr");
 const reimbAddBtn = document.getElementById("reimbAddBtn");
 const reimbEmptyAddBtn = document.getElementById("reimbEmptyAddBtn");
 const reimbScreenshotImportBtn = document.getElementById("reimbScreenshotImportBtn");
+const reimbPasteImportBtn = document.getElementById("reimbPasteImportBtn");
 const reimbScreenshotModal = document.getElementById("reimbScreenshotModal");
 const reimbScreenshotErr = document.getElementById("reimbScreenshotErr");
 const reimbScreenshotPasteZone = document.getElementById("reimbScreenshotPasteZone");
@@ -3939,6 +3940,16 @@ const reimbScreenshotTableWrap = document.getElementById("reimbScreenshotTableWr
 const reimbScreenshotRows = document.getElementById("reimbScreenshotRows");
 const reimbScreenshotCancelBtn = document.getElementById("reimbScreenshotCancelBtn");
 const reimbScreenshotSaveBtn = document.getElementById("reimbScreenshotSaveBtn");
+const reimbPasteModal = document.getElementById("reimbPasteModal");
+const reimbPasteErr = document.getElementById("reimbPasteErr");
+const reimbPasteText = document.getElementById("reimbPasteText");
+const reimbPasteParseBtn = document.getElementById("reimbPasteParseBtn");
+const reimbPasteSummary = document.getElementById("reimbPasteSummary");
+const reimbPasteEmpty = document.getElementById("reimbPasteEmpty");
+const reimbPasteTableWrap = document.getElementById("reimbPasteTableWrap");
+const reimbPasteRows = document.getElementById("reimbPasteRows");
+const reimbPasteCancelBtn = document.getElementById("reimbPasteCancelBtn");
+const reimbPasteSaveBtn = document.getElementById("reimbPasteSaveBtn");
 const reimbBulkAddBtn = document.getElementById("reimbBulkAddBtn");
 const reimbBulkModal = document.getElementById("reimbBulkModal");
 const reimbBulkErr = document.getElementById("reimbBulkErr");
@@ -4235,17 +4246,26 @@ function renderReimbursementScreenshotDraft(rows) {
   for (const row of items) {
     const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td><input class="reimb-import-include" type="checkbox"${row.include !== false ? " checked" : ""} /></td>
       <td><input class="reimb-import-date" type="date" value="${escapeHtml(row.date || "")}" /></td>
       <td><input class="reimb-import-vendor" type="text" maxlength="255" value="${escapeHtml(row.vendor || "")}" /></td>
-      <td><input class="reimb-import-amount" type="number" min="0" step="0.01" value="${escapeHtml(row.amount || "")}" /></td>
+      <td><input class="reimb-import-amount" type="number" min="0" step="0.01" value="${escapeHtml(row.amount ?? "")}" /></td>
       <td><select class="reimb-import-category">${reimbursementImportCategoryOptions(row.suggested_category || "Other")}</select></td>
       <td><select class="reimb-import-status">${reimbursementImportStatusOptions(row.status || "Needs Review")}</select></td>
-      <td><input class="reimb-import-notes" type="text" maxlength="1000" value="${escapeHtml(row.notes || "")}" /></td>
-      <td>${row.possible_duplicate ? '<span class="reimb-import-warning">Possible duplicate</span>' : '<span class="muted">-</span>'}</td>
+      <td><button type="button" class="secondary reimb-import-remove-row">Delete</button></td>
     `;
     reimbScreenshotRows.appendChild(tr);
   }
+  updateReimbursementScreenshotDraftSummary();
+}
+
+function updateReimbursementScreenshotDraftSummary() {
+  const count = reimbScreenshotRows?.querySelectorAll("tr").length || 0;
+  if (reimbScreenshotSummary) {
+    reimbScreenshotSummary.textContent = `Review ${count} OCR row${count === 1 ? "" : "s"}`;
+    reimbScreenshotSummary.hidden = count === 0;
+  }
+  if (reimbScreenshotEmpty) reimbScreenshotEmpty.hidden = count !== 0;
+  if (reimbScreenshotTableWrap) reimbScreenshotTableWrap.hidden = count === 0;
 }
 
 async function extractReimbursementScreenshotRows(fileOverride = null, options = {}) {
@@ -4403,21 +4423,19 @@ function reimbursementScreenshotSelectedRows() {
   const rows = [];
   const errors = [];
   reimbScreenshotRows?.querySelectorAll("tr").forEach((tr, idx) => {
-    if (!tr.querySelector(".reimb-import-include")?.checked) return;
     const dateValue = String(tr.querySelector(".reimb-import-date")?.value || "").trim();
     const vendor = String(tr.querySelector(".reimb-import-vendor")?.value || "").trim();
     const amount = Number(tr.querySelector(".reimb-import-amount")?.value || "");
     const category = String(tr.querySelector(".reimb-import-category")?.value || "Other").trim();
     const statusValue = String(tr.querySelector(".reimb-import-status")?.value || "Needs Review").trim();
-    const notes = String(tr.querySelector(".reimb-import-notes")?.value || "").trim();
     const label = `Row ${idx + 1}`;
     if (!dateValue) errors.push(`${label}: Date is required`);
     if (!vendor) errors.push(`${label}: Vendor is required`);
     if (!Number.isFinite(amount) || amount <= 0) errors.push(`${label}: Amount must be greater than zero`);
     if (!category) errors.push(`${label}: Category is required`);
-    rows.push({ date: dateValue, vendor, amount, category, status: statusValue || "Needs Review", notes: notes || null });
+    rows.push({ date: dateValue, vendor, amount, category, status: statusValue || "Needs Review", notes: null });
   });
-  if (!rows.length) errors.push("Select at least one expense to save.");
+  if (!rows.length) errors.push("Keep at least one reviewed row before saving.");
   if (errors.length) throw new Error(errors.join("\n"));
   return rows;
 }
@@ -4435,6 +4453,108 @@ async function saveReimbursementScreenshotImport() {
     show(reimbScreenshotErr, e.message || "Could not save selected expenses");
   } finally {
     if (reimbScreenshotSaveBtn) reimbScreenshotSaveBtn.disabled = false;
+  }
+}
+
+
+function openReimbursementPasteModal() {
+  if (!reimbPasteModal) return;
+  populateReimbursementSelects();
+  show(reimbPasteErr, "");
+  if (reimbPasteText) reimbPasteText.value = "";
+  if (reimbPasteRows) reimbPasteRows.innerHTML = "";
+  if (reimbPasteSummary) reimbPasteSummary.hidden = true;
+  if (reimbPasteEmpty) reimbPasteEmpty.hidden = true;
+  if (reimbPasteTableWrap) reimbPasteTableWrap.hidden = true;
+  reimbPasteModal.classList.add("modal-overlay--open");
+  reimbPasteModal.setAttribute("aria-hidden", "false");
+  window.setTimeout(() => reimbPasteText?.focus?.(), 0);
+}
+
+function closeReimbursementPasteModal() {
+  if (!reimbPasteModal) return;
+  reimbPasteModal.classList.remove("modal-overlay--open");
+  reimbPasteModal.setAttribute("aria-hidden", "true");
+}
+
+function renderReimbursementPasteDraft(rows) {
+  if (!reimbPasteRows) return;
+  const items = Array.isArray(rows) ? rows : [];
+  reimbPasteRows.innerHTML = "";
+  if (reimbPasteSummary) {
+    reimbPasteSummary.textContent = `Found ${items.length} possible transaction${items.length === 1 ? "" : "s"}`;
+    reimbPasteSummary.hidden = items.length === 0;
+  }
+  if (reimbPasteEmpty) reimbPasteEmpty.hidden = items.length !== 0;
+  if (reimbPasteTableWrap) reimbPasteTableWrap.hidden = items.length === 0;
+  for (const row of items) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td><input class="reimb-paste-include" type="checkbox"${row.include !== false ? " checked" : ""} /></td>
+      <td><input class="reimb-paste-date" type="date" value="${escapeHtml(row.date || "")}" /></td>
+      <td><input class="reimb-paste-vendor" type="text" maxlength="255" value="${escapeHtml(row.vendor || "")}" /></td>
+      <td><input class="reimb-paste-amount" type="number" min="0" step="0.01" value="${escapeHtml(row.amount ?? "")}" /></td>
+      <td><select class="reimb-paste-category">${reimbursementImportCategoryOptions(row.suggested_category || "Other")}</select></td>
+      <td><select class="reimb-paste-status">${reimbursementImportStatusOptions(row.status || "Needs Review")}</select></td>
+      <td><input class="reimb-paste-notes" type="text" maxlength="1000" value="${escapeHtml(row.notes || "")}" /></td>
+      <td>${row.possible_duplicate ? '<span class="reimb-import-warning">Possible duplicate reimbursement expense already exists.</span>' : '<span class="muted">-</span>'}</td>
+    `;
+    reimbPasteRows.appendChild(tr);
+  }
+}
+
+async function parseReimbursementPastedTransactions() {
+  try {
+    show(reimbPasteErr, "");
+    const text = String(reimbPasteText?.value || "").trim();
+    if (!text) throw new Error("Paste transaction rows before parsing.");
+    if (reimbPasteParseBtn) reimbPasteParseBtn.disabled = true;
+    const draft = await api("/api/reimbursements/import-paste", "POST", { text });
+    renderReimbursementPasteDraft(draft?.rows || []);
+    if ((!draft?.rows || draft.rows.length === 0) && draft?.message) show(reimbPasteErr, draft.message);
+  } catch (e) {
+    show(reimbPasteErr, e.message || "Could not parse pasted transactions");
+  } finally {
+    if (reimbPasteParseBtn) reimbPasteParseBtn.disabled = false;
+  }
+}
+
+function reimbursementPasteSelectedRows() {
+  const rows = [];
+  const errors = [];
+  reimbPasteRows?.querySelectorAll("tr").forEach((tr, idx) => {
+    if (!tr.querySelector(".reimb-paste-include")?.checked) return;
+    const dateValue = String(tr.querySelector(".reimb-paste-date")?.value || "").trim();
+    const vendor = String(tr.querySelector(".reimb-paste-vendor")?.value || "").trim();
+    const amount = Number(tr.querySelector(".reimb-paste-amount")?.value || "");
+    const category = String(tr.querySelector(".reimb-paste-category")?.value || "Other").trim();
+    const statusValue = String(tr.querySelector(".reimb-paste-status")?.value || "Needs Review").trim();
+    const notes = String(tr.querySelector(".reimb-paste-notes")?.value || "").trim();
+    const label = `Row ${idx + 1}`;
+    if (!dateValue) errors.push(`${label}: Date is required`);
+    if (!vendor) errors.push(`${label}: Vendor is required`);
+    if (!Number.isFinite(amount) || amount <= 0) errors.push(`${label}: Amount must be greater than zero`);
+    if (!category) errors.push(`${label}: Category is required`);
+    rows.push({ date: dateValue, vendor, amount, category, status: statusValue || "Needs Review", notes: notes || null });
+  });
+  if (!rows.length) errors.push("Select at least one transaction to save.");
+  if (errors.length) throw new Error(errors.join("\n"));
+  return rows;
+}
+
+async function saveReimbursementPasteImport() {
+  try {
+    show(reimbPasteErr, "");
+    const rows = reimbursementPasteSelectedRows();
+    if (reimbPasteSaveBtn) reimbPasteSaveBtn.disabled = true;
+    await api("/api/reimbursements/import-screenshot/save", "POST", { rows });
+    closeReimbursementPasteModal();
+    reimbState.loaded = false;
+    await refreshReimbursements({ force: true });
+  } catch (e) {
+    show(reimbPasteErr, e.message || "Could not save selected transactions");
+  } finally {
+    if (reimbPasteSaveBtn) reimbPasteSaveBtn.disabled = false;
   }
 }
 
@@ -4754,7 +4874,11 @@ function initReimbursementsUi() {
   reimbAddBtn?.addEventListener("click", () => openReimbursementModal());
   reimbEmptyAddBtn?.addEventListener("click", () => openReimbursementModal());
   reimbScreenshotImportBtn?.addEventListener("click", openReimbursementScreenshotModal);
+  reimbPasteImportBtn?.addEventListener("click", openReimbursementPasteModal);
   reimbScreenshotCancelBtn?.addEventListener("click", closeReimbursementScreenshotModal);
+  reimbPasteCancelBtn?.addEventListener("click", closeReimbursementPasteModal);
+  reimbPasteParseBtn?.addEventListener("click", () => void parseReimbursementPastedTransactions());
+  reimbPasteSaveBtn?.addEventListener("click", () => void saveReimbursementPasteImport());
   reimbScreenshotPasteZone?.addEventListener("click", () => reimbScreenshotPasteZone.focus?.());
   reimbScreenshotPasteZone?.addEventListener("paste", handleReimbursementScreenshotPaste);
   reimbScreenshotPasteZone?.addEventListener("dragenter", handleReimbursementScreenshotDrag);
@@ -4772,6 +4896,12 @@ function initReimbursementsUi() {
   reimbScreenshotUploadBtn?.addEventListener("click", () => void extractReimbursementScreenshotRows());
   reimbScreenshotFile?.addEventListener("change", () => {
     if (reimbScreenshotFile.files?.[0]) void extractReimbursementScreenshotRows();
+  });
+  reimbScreenshotRows?.addEventListener("click", (e) => {
+    const remove = e.target?.closest?.(".reimb-import-remove-row");
+    if (!remove) return;
+    remove.closest("tr")?.remove();
+    updateReimbursementScreenshotDraftSummary();
   });
   reimbScreenshotSaveBtn?.addEventListener("click", () => void saveReimbursementScreenshotImport());
   reimbBulkAddBtn?.addEventListener("click", openReimbursementBulkModal);

@@ -476,6 +476,7 @@
                 </div>
                 <div class="reimbursements-head__actions">
                   <button type="button" id="reimbScreenshotImportBtn" class="secondary reimbursements-screenshot-btn">Import from Screenshot</button>
+                  <button type="button" id="reimbPasteImportBtn" class="secondary reimbursements-paste-btn">Paste Transactions</button>
                   <button type="button" class="secondary reimbursements-coming-soon" disabled title="Coming later">Import from CSV</button>
                   <button type="button" class="secondary reimbursements-coming-soon" disabled title="Coming later">Detect Recurring Charges</button>
                   <button type="button" id="reimbBulkAddBtn" class="secondary reimbursements-bulk-btn">Bulk Add Expenses</button>
@@ -1570,14 +1571,12 @@
           <table class="reimb-import-table">
             <thead>
               <tr>
-                <th>Include</th>
                 <th>Date</th>
                 <th>Vendor</th>
                 <th>Amount</th>
-                <th>Suggested Category</th>
+                <th>Category</th>
                 <th>Status</th>
-                <th>Description / Notes</th>
-                <th>Warning</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody id="reimbScreenshotRows"></tbody>
@@ -1585,7 +1584,48 @@
         </div>
         <div class="modal-actions reimbursements-modal-actions">
           <button type="button" id="reimbScreenshotCancelBtn" class="secondary">Cancel</button>
-          <button type="button" id="reimbScreenshotSaveBtn">Save Selected Expenses</button>
+          <button type="button" id="reimbScreenshotSaveBtn">Save Expenses</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="reimbPasteModal" class="modal-overlay" aria-hidden="true">
+      <div class="modal modal--reimbursement modal--reimbursement-paste" role="dialog" aria-labelledby="reimbPasteModalTitle" aria-modal="true">
+        <h3 id="reimbPasteModalTitle">Paste Transactions</h3>
+        <p class="reimbursements-modal-note">Paste transaction rows from a credit card website, statement, spreadsheet, or PDF.</p>
+        <div class="reimb-paste-examples">
+          <strong>Examples</strong>
+          <pre>06/12/2026 DELTA AIRLINES $1,240.00
+06/14/2026 | MARRIOTT HOTEL | 689.22
+Date,Vendor,Amount
+06/15/2026,ADOBE,64.99</pre>
+        </div>
+        <div id="reimbPasteErr" class="error"></div>
+        <label for="reimbPasteText">Transactions</label>
+        <textarea id="reimbPasteText" class="reimb-paste-textarea" rows="8" placeholder="Paste transaction rows here"></textarea>
+        <button type="button" id="reimbPasteParseBtn" class="secondary">Parse Transactions</button>
+        <div id="reimbPasteSummary" class="reimb-import-summary" hidden>Found 0 possible transactions</div>
+        <div id="reimbPasteEmpty" class="reimb-import-empty" hidden>No transaction rows found. Try pasting rows with date, vendor, and amount.</div>
+        <div id="reimbPasteTableWrap" class="reimb-import-table-wrap" hidden>
+          <table class="reimb-import-table">
+            <thead>
+              <tr>
+                <th>Include</th>
+                <th>Date</th>
+                <th>Vendor</th>
+                <th>Amount</th>
+                <th>Category</th>
+                <th>Status</th>
+                <th>Notes</th>
+                <th>Warning</th>
+              </tr>
+            </thead>
+            <tbody id="reimbPasteRows"></tbody>
+          </table>
+        </div>
+        <div class="modal-actions reimbursements-modal-actions">
+          <button type="button" id="reimbPasteCancelBtn" class="secondary">Cancel</button>
+          <button type="button" id="reimbPasteSaveBtn">Save Checked Expenses</button>
         </div>
       </div>
     </div>
