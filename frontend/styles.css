@@ -30563,8 +30563,16 @@ body[data-bw-view="reimbursements"] .cash-health-status.cash-health-status--bala
   padding: 0;
   margin-bottom: var(--status-to-divider-gap);
 }
+body[data-bw-view="reimbursements"] .cash-health-status--balance .cash-health-status__row{
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  min-width: 0;
+}
 body[data-bw-view="reimbursements"] .cash-health-status--balance .cash-health-status__value{
-  white-space: normal;
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
   overflow: visible;
   text-overflow: clip;
 }
