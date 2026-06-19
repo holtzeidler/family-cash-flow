@@ -3975,7 +3975,7 @@ const reimbCancelBtn = document.getElementById("reimbCancelBtn");
 function formatReimbursementMoney(value) {
   const n = Number(value || 0);
   if (!Number.isFinite(n)) return "$0";
-  return `$${fmtMoney0(Math.abs(n))}`;
+  return `$${fmtMoney(Math.abs(n))}`;
 }
 
 function reimbursementStatusClass(status) {
@@ -4063,7 +4063,7 @@ function reimbursementSummary(items) {
 }
 
 function renderReimbursementSummary() {
-  const s = reimbursementSummary(reimbState.items);
+  const s = reimbursementSummary(visibleReimbursements());
   if (reimbSummaryOutstanding) reimbSummaryOutstanding.textContent = formatReimbursementMoney(s.outstanding);
   if (reimbSummaryNeedsReview) reimbSummaryNeedsReview.textContent = `${s.needsReview} item${s.needsReview === 1 ? "" : "s"}`;
   if (reimbSummarySubmitted) reimbSummarySubmitted.textContent = formatReimbursementMoney(s.submitted);
@@ -4071,12 +4071,36 @@ function renderReimbursementSummary() {
   if (reimbSummaryRecurring) reimbSummaryRecurring.textContent = `${s.recurringActive} active`;
 }
 
+function visibleReimbursements() {
+  const items = Array.isArray(reimbState.items) ? reimbState.items : [];
+  const todayIso = toISODate(new Date());
+  const nextBySeries = new Map();
+  for (const it of items) {
+    if (!it?.is_recurring) continue;
+    const seriesKey = it.series_id || `item:${it.id}`;
+    const iso = String(it.date || "");
+    if (!iso || iso < todayIso) continue;
+    const current = nextBySeries.get(seriesKey);
+    if (!current || String(it.date || "").localeCompare(String(current.date || "")) < 0 || (it.date === current.date && Number(it.id || 0) < Number(current.id || 0))) {
+      nextBySeries.set(seriesKey, it);
+    }
+  }
+  return items.filter((it) => {
+    if (!it?.is_recurring) return true;
+    const iso = String(it.date || "");
+    if (!iso || iso < todayIso) return true;
+    const seriesKey = it.series_id || `item:${it.id}`;
+    const next = nextBySeries.get(seriesKey);
+    return !next || String(next.id) === String(it.id);
+  });
+}
+
 function filteredReimbursements() {
   const q = String(reimbSearch?.value || "").trim().toLowerCase();
   const start = reimbStartDate?.value || "";
   const end = reimbEndDate?.value || "";
   const cat = reimbCategoryFilter?.value || "";
-  return (reimbState.items || []).filter((it) => {
+  return visibleReimbursements().filter((it) => {
     if (reimbState.status !== "All" && it.status !== reimbState.status) return false;
     if (start && String(it.date || "") < start) return false;
     if (end && String(it.date || "") > end) return false;
