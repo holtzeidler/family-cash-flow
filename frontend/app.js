@@ -3930,6 +3930,7 @@ const reimbScreenshotModal = document.getElementById("reimbScreenshotModal");
 const reimbScreenshotErr = document.getElementById("reimbScreenshotErr");
 const reimbScreenshotPasteZone = document.getElementById("reimbScreenshotPasteZone");
 const reimbScreenshotFile = document.getElementById("reimbScreenshotFile");
+const reimbScreenshotClipboardBtn = document.getElementById("reimbScreenshotClipboardBtn");
 const reimbScreenshotUploadBtn = document.getElementById("reimbScreenshotUploadBtn");
 const reimbScreenshotSummary = document.getElementById("reimbScreenshotSummary");
 const reimbScreenshotEmpty = document.getElementById("reimbScreenshotEmpty");
@@ -4187,7 +4188,7 @@ function openReimbursementScreenshotModal() {
   if (reimbScreenshotTableWrap) reimbScreenshotTableWrap.hidden = true;
   reimbScreenshotModal.classList.add("modal-overlay--open");
   reimbScreenshotModal.setAttribute("aria-hidden", "false");
-  window.setTimeout(() => reimbScreenshotFile?.focus?.(), 0);
+  window.setTimeout(() => reimbScreenshotPasteZone?.focus?.(), 0);
 }
 
 function closeReimbursementScreenshotModal() {
@@ -4250,6 +4251,9 @@ async function extractReimbursementScreenshotRows(fileOverride = null) {
 }
 
 function pastedScreenshotFileFromEvent(e) {
+  const files = Array.from(e?.clipboardData?.files || []);
+  const file = files.find((f) => f && /^image\//.test(f.type || ""));
+  if (file) return file;
   const items = Array.from(e?.clipboardData?.items || []);
   for (const item of items) {
     if (item.type && /^image\//.test(item.type)) {
@@ -4261,9 +4265,60 @@ function pastedScreenshotFileFromEvent(e) {
 }
 
 function handleReimbursementScreenshotPaste(e) {
+  if (e.defaultPrevented) return;
+  if (!reimbScreenshotModal?.classList?.contains("modal-overlay--open")) return;
   const file = pastedScreenshotFileFromEvent(e);
   if (!file) return;
   e.preventDefault();
+  void extractReimbursementScreenshotRows(file);
+}
+
+async function importReimbursementScreenshotFromClipboard() {
+  try {
+    show(reimbScreenshotErr, "");
+    if (!navigator.clipboard?.read) {
+      throw new Error("Clipboard image paste is not available in this browser. Try Cmd+V / Ctrl+V in the paste box or choose a file.");
+    }
+    const items = await navigator.clipboard.read();
+    for (const item of items || []) {
+      const imageType = (item.types || []).find((type) => /^image\//.test(type));
+      if (!imageType) continue;
+      const blob = await item.getType(imageType);
+      const file = new File([blob], "clipboard-screenshot.png", { type: imageType });
+      await extractReimbursementScreenshotRows(file);
+      return;
+    }
+    throw new Error("No image found on the clipboard.");
+  } catch (e) {
+    show(reimbScreenshotErr, e.message || "Could not read an image from the clipboard");
+  }
+}
+
+function droppedScreenshotFileFromEvent(e) {
+  const files = Array.from(e?.dataTransfer?.files || []);
+  return files.find((file) => file && /^image\//.test(file.type || "")) || null;
+}
+
+function handleReimbursementScreenshotDrag(e) {
+  if (!reimbScreenshotPasteZone) return;
+  e.preventDefault();
+  reimbScreenshotPasteZone.classList.add("is-dragover");
+}
+
+function handleReimbursementScreenshotDragLeave(e) {
+  if (!reimbScreenshotPasteZone) return;
+  if (e.currentTarget && e.relatedTarget && e.currentTarget.contains(e.relatedTarget)) return;
+  reimbScreenshotPasteZone.classList.remove("is-dragover");
+}
+
+function handleReimbursementScreenshotDrop(e) {
+  e.preventDefault();
+  reimbScreenshotPasteZone?.classList.remove("is-dragover");
+  const file = droppedScreenshotFileFromEvent(e);
+  if (!file) {
+    show(reimbScreenshotErr, "Drop an image file to import.");
+    return;
+  }
   void extractReimbursementScreenshotRows(file);
 }
 
@@ -4605,7 +4660,13 @@ function initReimbursementsUi() {
   reimbScreenshotCancelBtn?.addEventListener("click", closeReimbursementScreenshotModal);
   reimbScreenshotPasteZone?.addEventListener("click", () => reimbScreenshotPasteZone.focus?.());
   reimbScreenshotPasteZone?.addEventListener("paste", handleReimbursementScreenshotPaste);
+  reimbScreenshotPasteZone?.addEventListener("dragenter", handleReimbursementScreenshotDrag);
+  reimbScreenshotPasteZone?.addEventListener("dragover", handleReimbursementScreenshotDrag);
+  reimbScreenshotPasteZone?.addEventListener("dragleave", handleReimbursementScreenshotDragLeave);
+  reimbScreenshotPasteZone?.addEventListener("drop", handleReimbursementScreenshotDrop);
+  reimbScreenshotClipboardBtn?.addEventListener("click", () => void importReimbursementScreenshotFromClipboard());
   reimbScreenshotModal?.addEventListener("paste", handleReimbursementScreenshotPaste);
+  document.addEventListener("paste", handleReimbursementScreenshotPaste);
   reimbScreenshotUploadBtn?.addEventListener("click", () => void extractReimbursementScreenshotRows());
   reimbScreenshotFile?.addEventListener("change", () => {
     if (reimbScreenshotFile.files?.[0]) void extractReimbursementScreenshotRows();
