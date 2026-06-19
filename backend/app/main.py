@@ -7761,30 +7761,41 @@ def _reimbursement_possible_duplicate(db, user_id: int, dt: date, normalized_ven
     return any(_normalize_reimbursement_vendor(row.vendor) == normalized_vendor for row in candidates)
 
 
-def _ocr_text_from_image_bytes(data: bytes) -> str:
+def _ocr_text_from_image_bytes(data: bytes, *, max_seconds: float = 7.0) -> str:
     try:
         from PIL import Image, ImageEnhance, ImageOps
         import pytesseract
     except Exception:
         return ""
     try:
+        started = time.monotonic()
         image = Image.open(io.BytesIO(data))
         image = ImageOps.exif_transpose(image)
         gray = ImageOps.grayscale(image)
         w, h = gray.size
-        variants = [gray]
-        if w and h:
-            resample = getattr(Image, "Resampling", Image).LANCZOS
-            variants.append(gray.resize((w * 2, h * 2), resample))
-        variants.append(ImageEnhance.Contrast(variants[-1]).enhance(1.8))
+        if not w or not h:
+            return ""
+        resample = getattr(Image, "Resampling", Image).LANCZOS
+        scaled = gray.resize((w * 2, h * 2), resample)
+        contrast = ImageEnhance.Contrast(scaled).enhance(1.8)
+        jobs = ((scaled, "--psm 6"), (contrast, "--psm 6"), (contrast, "--psm 11"))
         chunks: list[str] = []
         seen: set[str] = set()
-        for variant in variants:
-            for config in ("--psm 6", "--psm 11"):
-                text_value = str(pytesseract.image_to_string(variant, config=config, timeout=6) or "").strip()
-                if text_value and text_value not in seen:
-                    seen.add(text_value)
-                    chunks.append(text_value)
+        for variant, config in jobs:
+            remaining = max_seconds - (time.monotonic() - started)
+            if remaining <= 0:
+                break
+            text_value = str(
+                pytesseract.image_to_string(
+                    variant,
+                    config=config,
+                    timeout=max(1, min(3, int(remaining))),
+                )
+                or ""
+            ).strip()
+            if text_value and text_value not in seen:
+                seen.add(text_value)
+                chunks.append(text_value)
         return "\n".join(chunks)
     except Exception:
         return ""
@@ -7861,13 +7872,18 @@ def _extract_reimbursement_rows_from_text(text_value: str) -> list[tuple[date, s
     return rows
 
 
-def _extract_reimbursement_rows_from_image_layout(data: bytes) -> list[tuple[date, str, Decimal]]:
+def _extract_reimbursement_rows_from_image_layout(
+    data: bytes,
+    *,
+    max_seconds: float = 9.0,
+) -> list[tuple[date, str, Decimal]]:
     try:
         from PIL import Image, ImageEnhance, ImageOps
         import pytesseract
     except Exception:
         return []
     try:
+        started = time.monotonic()
         image = Image.open(io.BytesIO(data))
         image = ImageOps.exif_transpose(image)
         gray = ImageOps.grayscale(image)
@@ -7876,21 +7892,24 @@ def _extract_reimbursement_rows_from_image_layout(data: bytes) -> list[tuple[dat
             return []
         resample = getattr(Image, "Resampling", Image).LANCZOS
         scaled = gray.resize((w * 2, h * 2), resample)
-        variants = [scaled, ImageEnhance.Contrast(scaled).enhance(1.8)]
+        contrast = ImageEnhance.Contrast(scaled).enhance(1.8)
+        jobs = ((scaled, "--psm 6"), (contrast, "--psm 6"), (contrast, "--psm 11"))
         ocr_results = []
-        for variant in variants:
-            for config in ("--psm 6", "--psm 11"):
-                try:
-                    ocr_results.append(
-                        pytesseract.image_to_data(
-                            variant,
-                            config=config,
-                            output_type=pytesseract.Output.DICT,
-                            timeout=6,
-                        )
+        for variant, config in jobs:
+            remaining = max_seconds - (time.monotonic() - started)
+            if remaining <= 0:
+                break
+            try:
+                ocr_results.append(
+                    pytesseract.image_to_data(
+                        variant,
+                        config=config,
+                        output_type=pytesseract.Output.DICT,
+                        timeout=max(1, min(3, int(remaining))),
                     )
-                except Exception:
-                    continue
+                )
+            except Exception:
+                continue
     except Exception:
         return []
 
@@ -8113,7 +8132,8 @@ async def import_reimbursements_screenshot(
 
     text_value = _ocr_text_from_image_bytes(data)
     parsed = _extract_reimbursement_rows_from_text(text_value)
-    parsed.extend(_extract_reimbursement_rows_from_image_layout(data))
+    if len(parsed) < 2:
+        parsed.extend(_extract_reimbursement_rows_from_image_layout(data))
     if not parsed:
         return ReimbursementImportDraftOut(
             rows=[],
