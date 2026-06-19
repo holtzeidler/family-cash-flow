@@ -12712,7 +12712,7 @@ function renderSidebarPendingTransactionsForMonth() {
 
   if (!rows.length) {
     if (sidebarPendingTxCard) sidebarPendingTxCard.classList.add("sidebar-pending--empty", "sidebar-pending--success");
-    if (sidebarPendingTitle) sidebarPendingTitle.textContent = "✓ Everything categorized";
+    if (sidebarPendingTitle) sidebarPendingTitle.textContent = "✓ Nothing to Review";
     setPendingStatus("");
     return;
   }
