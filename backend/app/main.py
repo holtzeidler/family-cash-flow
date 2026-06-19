@@ -7804,24 +7804,35 @@ def _extract_reimbursement_rows_from_text(text_value: str) -> list[tuple[date, s
     rows: list[tuple[date, str, Decimal]] = []
     date_re = r"(\d{4}-\d{1,2}-\d{1,2}|\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?)"
     amount_re = r"(-?\$?\(?\d[\d,]*\.\d{2}\)?)"
+    pending_vendor: Optional[str] = None
     for raw_line in str(text_value or "").splitlines():
         line = re.sub(r"\s+", " ", raw_line).strip()
         if not line:
             continue
         date_match = re.search(date_re, line)
         amount_matches = list(re.finditer(amount_re, line))
-        if not date_match or not amount_matches:
+        if not amount_matches:
+            # Mobile card screenshots often OCR the merchant and amount onto separate lines.
+            candidate = re.sub(r"[^A-Za-z0-9& .'-]+", " ", line).strip()
+            if re.search(r"[A-Za-z]", candidate) and len(candidate) >= 2:
+                pending_vendor = candidate[:255]
             continue
         amount_match = amount_matches[-1]
-        dt = _parse_reimbursement_import_date(date_match.group(1))
+        dt = _parse_reimbursement_import_date(date_match.group(1)) if date_match else date.today()
         amount = _parse_reimbursement_amount(amount_match.group(1))
         if dt is None or amount is None:
             continue
-        vendor_part = (line[: date_match.start()] + " " + line[date_match.end() : amount_match.start()]).strip(" -•|")
+        if date_match:
+            vendor_part = (line[: date_match.start()] + " " + line[date_match.end() : amount_match.start()]).strip(" -•|")
+        else:
+            vendor_part = line[: amount_match.start()].strip(" -•|")
         vendor_part = re.sub(r"\s{2,}", " ", vendor_part).strip()
+        if len(vendor_part) < 2 and pending_vendor:
+            vendor_part = pending_vendor
         if len(vendor_part) < 2:
             continue
         rows.append((dt, vendor_part[:255], amount))
+        pending_vendor = None
     return rows
 
 def _month_end_day(year: int, month: int) -> int:

@@ -29941,6 +29941,29 @@ body[data-bw-view="reimbursements"] #sidebarBodyMonth .total--net .v.danger{
   border-radius: 12px;
   background: rgba(248, 250, 252, 0.72);
 }
+.reimb-import-paste-zone{
+  display: grid;
+  gap: 4px;
+  margin: 12px 0 10px;
+  padding: 16px;
+  border: 1px dashed rgba(11, 61, 46, 0.24);
+  border-radius: 13px;
+  background: rgba(236, 253, 245, 0.38);
+  color: rgba(30, 41, 59, 0.88);
+  cursor: text;
+}
+.reimb-import-paste-zone strong{
+  color: rgba(11, 61, 46, 0.92);
+  font-size: 0.95rem;
+}
+.reimb-import-paste-zone span{
+  color: rgba(100, 116, 139, 0.82);
+  font-size: 0.84rem;
+}
+.reimb-import-paste-zone:focus-visible{
+  outline: 2px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  outline-offset: 2px;
+}
 .reimb-import-summary{
   margin: 8px 0;
   color: rgba(15, 23, 42, 0.88);
@@ -30001,10 +30024,10 @@ body[data-bw-view="reimbursements"] #sidebarBodyMonth .total--net .v.danger{
   white-space: nowrap;
 }
 .reimb-bulk-shortcuts{
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(190px, 1fr) auto minmax(260px, 1.35fr) auto;
   align-items: end;
-  gap: 8px;
+  gap: 10px 12px;
   margin: 12px 0 10px;
   padding: 10px;
   border: 1px solid rgba(17, 24, 39, 0.07);
@@ -30017,6 +30040,15 @@ body[data-bw-view="reimbursements"] #sidebarBodyMonth .total--net .v.danger{
   color: rgba(71, 85, 105, 0.84);
   font-size: 0.76rem;
   font-weight: 720;
+}
+.reimb-bulk-shortcuts input,
+.reimb-bulk-shortcuts select,
+.reimb-bulk-shortcuts button{
+  min-height: 36px;
+}
+.reimb-bulk-shortcuts button{
+  align-self: end;
+  white-space: nowrap;
 }
 .reimb-bulk-paste{
   margin: 0 0 10px;
@@ -30107,6 +30139,9 @@ body[data-bw-view="reimbursements"] #sidebarBodyMonth .total--net .v.danger{
   .reimbursements-summary,
   .reimbursements-filter-grid{
     grid-template-columns: 1fr 1fr;
+  }
+  .reimb-bulk-shortcuts{
+    grid-template-columns: minmax(0, 1fr) auto;
   }
   .reimb-bulk-footer{
     align-items: stretch;

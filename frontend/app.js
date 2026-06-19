@@ -3928,6 +3928,7 @@ const reimbEmptyAddBtn = document.getElementById("reimbEmptyAddBtn");
 const reimbScreenshotImportBtn = document.getElementById("reimbScreenshotImportBtn");
 const reimbScreenshotModal = document.getElementById("reimbScreenshotModal");
 const reimbScreenshotErr = document.getElementById("reimbScreenshotErr");
+const reimbScreenshotPasteZone = document.getElementById("reimbScreenshotPasteZone");
 const reimbScreenshotFile = document.getElementById("reimbScreenshotFile");
 const reimbScreenshotUploadBtn = document.getElementById("reimbScreenshotUploadBtn");
 const reimbScreenshotSummary = document.getElementById("reimbScreenshotSummary");
@@ -4205,14 +4206,14 @@ function renderReimbursementScreenshotDraft(rows) {
   }
 }
 
-async function extractReimbursementScreenshotRows() {
+async function extractReimbursementScreenshotRows(fileOverride = null) {
   try {
     show(reimbScreenshotErr, "");
-    const file = reimbScreenshotFile?.files?.[0];
+    const file = fileOverride || reimbScreenshotFile?.files?.[0];
     if (!file) throw new Error("Choose a screenshot to import.");
     if (!/^image\//.test(file.type || "")) throw new Error("Please choose an image file.");
     const form = new FormData();
-    form.append("file", file);
+    form.append("file", file, file.name || "pasted-screenshot.png");
     if (reimbScreenshotUploadBtn) reimbScreenshotUploadBtn.disabled = true;
     const draft = await apiForm("/api/reimbursements/import-screenshot", form);
     renderReimbursementScreenshotDraft(draft?.rows || []);
@@ -4222,6 +4223,24 @@ async function extractReimbursementScreenshotRows() {
   } finally {
     if (reimbScreenshotUploadBtn) reimbScreenshotUploadBtn.disabled = false;
   }
+}
+
+function pastedScreenshotFileFromEvent(e) {
+  const items = Array.from(e?.clipboardData?.items || []);
+  for (const item of items) {
+    if (item.type && /^image\//.test(item.type)) {
+      const blob = item.getAsFile();
+      if (blob) return new File([blob], "pasted-screenshot.png", { type: blob.type || "image/png" });
+    }
+  }
+  return null;
+}
+
+function handleReimbursementScreenshotPaste(e) {
+  const file = pastedScreenshotFileFromEvent(e);
+  if (!file) return;
+  e.preventDefault();
+  void extractReimbursementScreenshotRows(file);
 }
 
 function reimbursementScreenshotSelectedRows() {
@@ -4560,6 +4579,9 @@ function initReimbursementsUi() {
   reimbEmptyAddBtn?.addEventListener("click", () => openReimbursementModal());
   reimbScreenshotImportBtn?.addEventListener("click", openReimbursementScreenshotModal);
   reimbScreenshotCancelBtn?.addEventListener("click", closeReimbursementScreenshotModal);
+  reimbScreenshotPasteZone?.addEventListener("click", () => reimbScreenshotPasteZone.focus?.());
+  reimbScreenshotPasteZone?.addEventListener("paste", handleReimbursementScreenshotPaste);
+  reimbScreenshotModal?.addEventListener("paste", handleReimbursementScreenshotPaste);
   reimbScreenshotUploadBtn?.addEventListener("click", () => void extractReimbursementScreenshotRows());
   reimbScreenshotFile?.addEventListener("change", () => {
     if (reimbScreenshotFile.files?.[0]) void extractReimbursementScreenshotRows();
