@@ -1326,6 +1326,57 @@ body.landing-page .landing-hero-cal__insight.is-emphasized{
   transition: background 0.45s ease, border-color 0.45s ease;
 }
 
+body.landing-page .landing-setup-callout{
+  display: grid;
+  gap: 0.56rem;
+  width: min(46rem, 100%);
+  margin: calc(var(--landing-section-gap) * -0.22) auto 0;
+  padding: clamp(0.78rem, 1.55vw, 1rem);
+  border: 1px solid rgba(11, 61, 46, 0.1);
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(248, 252, 250, 0.92) 0%, rgba(255, 255, 255, 0.98) 100%);
+  box-shadow: 0 10px 26px -20px rgba(11, 61, 46, 0.34);
+  box-sizing: border-box;
+  text-align: center;
+}
+body.landing-page .landing-setup-callout__title{
+  margin: 0;
+  color: rgba(11, 61, 46, 0.92);
+  font-size: clamp(0.92rem, 1.55vw, 1.08rem);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+body.landing-page .landing-setup-callout__items{
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+body.landing-page .landing-setup-callout__item{
+  padding: 0.54rem 0.64rem;
+  border: 1px solid rgba(17, 24, 39, 0.07);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.86);
+  color: rgba(30, 41, 59, 0.88);
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+body.landing-page .landing-setup-callout__note{
+  margin: 0;
+  color: rgba(71, 85, 105, 0.82);
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.36;
+}
+@media (max-width: 640px){
+  body.landing-page .landing-setup-callout__items{
+    grid-template-columns: 1fr;
+  }
+  body.landing-page .landing-setup-callout__item{
+    border-radius: 12px;
+  }
+}
+
 /* Landing: future planning (60–90 day outlook) */
 body.landing-page .landing-future{
   display: grid;
