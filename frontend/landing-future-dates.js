@@ -57,22 +57,18 @@
     }
   }
 
-  var crunchMonth = addMonths(today, 1);
   var crunchLabel = section.querySelector("#landingFutureCrunchLabel");
   if (crunchLabel) {
-    crunchLabel.textContent = "Camp tuition \u00B7 " + fmtMonth(crunchMonth);
+    crunchLabel.textContent = "Property tax payment due Jul 15";
   }
 
   var insight = section.querySelector("#landingFutureInsightCopy");
   if (insight) {
-    insight.textContent =
-      "Plan ahead for camp tuition before your " +
-      fmtMonth(crunchMonth) +
-      " balance tightens.";
+    insight.textContent = "Without planning ahead, your balance drops close to your $1,000 safety buffer.";
   }
 
   var chartLabel = section.querySelector("#landingFutureCrunchChartLabel");
-  if (chartLabel) chartLabel.textContent = "Camp tuition";
+  if (chartLabel) chartLabel.textContent = "Property tax";
 
   var endLabel = section.querySelector(".landing-future-viz__label--end");
   if (endLabel) endLabel.textContent = fmtMonth(addMonths(today, 3));
