@@ -29431,7 +29431,7 @@ body[data-bw-view="transactions"] .sidebar-month-row,
 body[data-bw-view="settings"] .sidebar-month-row,
 body[data-bw-view="reports"] .sidebar-month-row{
   margin-top: 2px;
-  margin-bottom: -6px;
+  margin-bottom: 12px;
 }
 body[data-bw-view="calendar"] #sidebarBodyMonth .total,
 body[data-bw-view="transactions"] #sidebarBodyMonth .total,
