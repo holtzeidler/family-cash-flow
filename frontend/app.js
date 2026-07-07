@@ -11944,22 +11944,12 @@ function resolvedPillForeground(bgCss, fgUserOpt) {
   return fg;
 }
 
-/** fg/bg for category chips: keep custom colors but fix low-contrast pairs (e.g. white on yellow). */
-function categoryPillStyleFromId(categoryId) {
-  const st = categoryStyleFromId(categoryId);
-  if (!st) return null;
-  const { fg: fgUser, bg } = st;
-  if (!bg) return st;
-  return { ...st, fg: resolvedPillForeground(bg, fgUser) };
-}
-
 function pillStyleForTransaction(txOrItem) {
   const bg = txOrItem && txOrItem.bg_color ? String(txOrItem.bg_color).trim() : "";
   const fg = txOrItem && txOrItem.fg_color ? String(txOrItem.fg_color).trim() : "";
   // Sentinel meaning: explicitly no color, even if the category has one.
   if (bg && bg.toLowerCase() === "none") return null;
   if (bg) return { bg, fg: resolvedPillForeground(bg, fg) };
-  if (txOrItem && txOrItem.category_id) return categoryPillStyleFromId(txOrItem.category_id);
   return null;
 }
 
