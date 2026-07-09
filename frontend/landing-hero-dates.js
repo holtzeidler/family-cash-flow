@@ -1,145 +1,172 @@
 /**
- * Landing hero: simplified crop of the Forecast calendar (5-day strip).
+ * Landing hero: 5-day forecast using production cal-cell markup (see renderCalendar in app.js).
  */
 (function () {
   var hub = document.getElementById("landingHeroForecast");
   if (!hub) return;
 
-  var EXPENSE_PILL_BG = "#fde8e8";
-  var EXPENSE_PILL_FG = "#7f1d1d";
-  var INCOME_PILL_BG = "#dcfce7";
-  var INCOME_PILL_FG = "#14532d";
-
-  function startOfDay(d) {
-    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  function fmtMoney0(n) {
+    return Number(n).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
   }
 
-  function addDays(d, n) {
-    return startOfDay(new Date(d.getFullYear(), d.getMonth(), d.getDate() + n));
+  function fmtMoneyParens(n) {
+    var num = Number(n);
+    if (!Number.isFinite(num)) return String(n);
+    var abs = Math.abs(num);
+    var s = abs.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return num < 0 ? "(" + s + ")" : s;
   }
 
-  function fmtShort(d) {
-    return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  /** Mirrors applyCalendarDayTxCategoryFill — category fill on label column only. */
+  function applyTxCategoryFill(labelWrap, tx) {
+    if (!labelWrap || !tx || !tx.bg) return;
+    labelWrap.classList.add("cal-tx-label-wrap--category-fill");
+    labelWrap.style.setProperty("--cal-tx-fill-bg", tx.bg);
+    labelWrap.style.setProperty("--cal-tx-fill-fg", tx.fg || "#1f2937");
   }
 
-  function fmtBalCell(n, full) {
-    if (full || n < 1000) {
-      return "$" + n.toLocaleString("en-US");
-    }
-    if (n >= 10000) {
-      return "$" + Math.round(n / 1000) + "k";
-    }
-    var k = Math.round(n / 100) / 10;
-    return "$" + (k % 1 === 0 ? k.toFixed(0) : k.toFixed(1)) + "k";
+  function buildTxLine(tx) {
+    var line = document.createElement("div");
+    line.className = tx.expected
+      ? "cal-day-tx-line cal-day-tx-line--expected cal-day-tx-line--primary"
+      : "cal-day-tx-line cal-tx-part cal-day-tx-line--primary";
+    if (tx.kind === "income") line.classList.add("cal-day-tx-line--flow-in");
+    else if (tx.kind === "expense") line.classList.add("cal-day-tx-line--flow-out");
+
+    var labelWrap = document.createElement("span");
+    labelWrap.className = "cal-tx-label-wrap";
+    var labelSpan = document.createElement("span");
+    labelSpan.className = "cal-tx-label";
+    labelSpan.textContent = tx.label + " ";
+    labelWrap.appendChild(labelSpan);
+
+    var amtSpan = document.createElement("span");
+    amtSpan.className = "cal-amt";
+    if (tx.kind === "income") amtSpan.classList.add("income");
+    else if (tx.kind === "expense") amtSpan.classList.add("expense");
+    amtSpan.textContent = "$" + fmtMoney0(tx.amount);
+
+    line.appendChild(labelWrap);
+    line.appendChild(amtSpan);
+    applyTxCategoryFill(labelWrap, tx);
+    return line;
   }
 
-  function makeTxPill(label, kind) {
-    var wrap = document.createElement("span");
-    wrap.className = "cal-tx-label-wrap cal-tx-label-wrap--category-fill";
-    if (kind === "income") {
-      wrap.style.setProperty("--cal-tx-fill-bg", INCOME_PILL_BG);
-      wrap.style.setProperty("--cal-tx-fill-fg", INCOME_PILL_FG);
+  function buildBalanceStrip(bal, opts) {
+    opts = opts || {};
+    var balParts = ["cal-stat", "cal-balance"];
+    var stripCue = "";
+
+    if (opts.watch) {
+      balParts.push("cal-balance--watch-zone");
+      stripCue = "cal-balance-strip--cue-watch";
     } else {
-      wrap.style.setProperty("--cal-tx-fill-bg", EXPENSE_PILL_BG);
-      wrap.style.setProperty("--cal-tx-fill-fg", EXPENSE_PILL_FG);
+      balParts.push("cal-balance--quiet");
     }
-    var lbl = document.createElement("span");
-    lbl.className = "cal-tx-label";
-    lbl.textContent = label;
-    wrap.appendChild(lbl);
-    return wrap;
+
+    var strip = document.createElement("div");
+    strip.className = "cal-balance-strip" + (stripCue ? " " + stripCue : "");
+    strip.innerHTML =
+      '<div class="cal-balance-strip__row">' +
+      '<span class="cal-balance-strip__amt">' +
+      '<span class="' +
+      balParts.join(" ") +
+      '" title="Projected end-of-day balance">$' +
+      fmtMoneyParens(bal) +
+      "</span></span></div>";
+    return strip;
   }
 
-  function makeLegendRow(label, dateText, kind) {
-    var row = document.createElement("div");
-    row.className = "cal-day-tx-line landing-hero-cal__txLegendRow";
-    row.appendChild(makeTxPill(label, kind));
-    var date = document.createElement("span");
-    date.className = "landing-hero-cal__txDate";
-    date.textContent = dateText;
-    row.appendChild(date);
-    return row;
-  }
+  /**
+   * Build a production cal-cell (same inner structure as renderCalendar).
+   */
+  function buildCalCell(day) {
+    var cell = document.createElement("div");
+    cell.className = "cal-cell";
 
-  var today = startOfDay(new Date());
-  var forecastStart = addDays(today, 2);
-  var billDate = addDays(forecastStart, 1);
-  var payDate = addDays(forecastStart, 3);
+    if (day.today) cell.classList.add("cal-cell--today");
+    if (day.watch) cell.classList.add("cal-cell--bal-watch");
+    if (day.payday) cell.classList.add("cal-cell--payday");
+
+    var txs = day.txs || [];
+    if (txs.length) {
+      cell.classList.add("cal-cell--has-activity", "cal-cell--density-sparse");
+    } else {
+      cell.classList.add("cal-cell--no-tx");
+    }
+
+    var dayNumClass = "cal-daynum-num" + (day.today ? " is-today" : "");
+    cell.innerHTML =
+      '<div class="cal-daynum"><span class="' +
+      dayNumClass +
+      '">' +
+      day.label +
+      "</span></div>" +
+      '<div class="cal-cell-fill"></div>' +
+      '<div class="cal-cell-stack">' +
+      '<div class="cal-forecast-note" hidden></div>' +
+      '<div class="cal-day-start-balance" hidden></div>' +
+      '<div class="cal-day-txns"></div>' +
+      '<div class="cal-ledger-metrics"></div>' +
+      "</div>";
+
+    var txnsEl = cell.querySelector(".cal-day-txns");
+    for (var i = 0; i < txs.length; i += 1) {
+      txnsEl.appendChild(buildTxLine(txs[i]));
+    }
+
+    var metricsEl = cell.querySelector(".cal-ledger-metrics");
+    metricsEl.appendChild(buildBalanceStrip(day.bal, { watch: day.watch }));
+
+    return cell;
+  }
 
   var dayData = [
-    { bal: 4280, tone: "muted" },
-    { bal: 3850, bill: true, tone: "bill" },
-    { bal: 1020, watch: true, tone: "today" },
-    { bal: 3050, pay: true, tone: "pay" },
-    { bal: 2890, tone: "muted" },
+    { label: "Yesterday", bal: 4280 },
+    {
+      label: "Today",
+      bal: 3850,
+      today: true,
+      txs: [
+        {
+          label: "Credit card",
+          amount: 325,
+          kind: "expense",
+          expected: true,
+          bg: "#fde8e8",
+          fg: "#7f1d1d",
+        },
+      ],
+    },
+    { label: "Tomorrow", bal: 1020, watch: true },
+    {
+      label: "Fri",
+      bal: 3050,
+      payday: true,
+      txs: [
+        {
+          label: "Paycheck",
+          amount: 2850,
+          kind: "income",
+          expected: true,
+          bg: "#d1fae5",
+          fg: "#065f46",
+        },
+      ],
+    },
+    { label: "Sat", bal: 2890 },
   ];
 
-  var weekEl = hub.querySelector("#landingHeroCalWeek");
-  if (weekEl) {
-    weekEl.innerHTML = "";
-    for (var i = 0; i < dayData.length; i += 1) {
-      var row = dayData[i];
-      var date = addDays(forecastStart, i);
-
-      var cell = document.createElement("div");
-      cell.className = "cal-cell landing-hero-cal__day landing-hero-cal__day--" + row.tone;
-      cell.setAttribute("role", "listitem");
-
-      var dayNum = document.createElement("div");
-      dayNum.className = "cal-daynum";
-
-      if (row.watch) {
-        var todayBadge = document.createElement("span");
-        todayBadge.className = "landing-hero-cal__todayBadge";
-        todayBadge.textContent = "Today";
-        dayNum.appendChild(todayBadge);
-      }
-
-      var dayLabel = document.createElement("span");
-      dayLabel.className = "cal-daynum-num" + (row.watch ? " is-today" : "");
-      dayLabel.textContent = String(date.getDate());
-      dayNum.appendChild(dayLabel);
-      cell.appendChild(dayNum);
-
-      var stack = document.createElement("div");
-      stack.className = "cal-cell-stack";
-
-      var txns = document.createElement("div");
-      txns.className = "cal-day-txns";
-      if (row.bill || row.pay) {
-        var marker = document.createElement("span");
-        marker.className =
-          "landing-hero-cal__txMarker landing-hero-cal__txMarker--" + (row.bill ? "bill" : "pay");
-        marker.setAttribute("aria-hidden", "true");
-        txns.appendChild(marker);
-      }
-      stack.appendChild(txns);
-
-      var metrics = document.createElement("div");
-      metrics.className = "cal-ledger-metrics cal-day-balance-hit";
-
-      var bal = document.createElement("span");
-      bal.className = "cal-stat cal-balance";
-      if (row.watch) bal.classList.add("cal-balance--watch-zone");
-      if (row.tone === "muted") bal.classList.add("cal-balance--quiet");
-      bal.textContent = fmtBalCell(row.bal, row.watch);
-      metrics.appendChild(bal);
-      stack.appendChild(metrics);
-
-      cell.appendChild(stack);
-      weekEl.appendChild(cell);
+  var gridEl = hub.querySelector("#landingHeroCalWeek");
+  if (gridEl) {
+    gridEl.innerHTML = "";
+    for (var d = 0; d < dayData.length; d += 1) {
+      gridEl.appendChild(buildCalCell(dayData[d]));
     }
-  }
-
-  var legendEl = hub.querySelector("#landingHeroTxLegend");
-  if (legendEl) {
-    legendEl.innerHTML = "";
-    legendEl.appendChild(makeLegendRow("Credit Card", fmtShort(billDate), "expense"));
-    legendEl.appendChild(makeLegendRow("Paycheck", fmtShort(payDate), "income"));
   }
 
   var insight = hub.querySelector("#landingHeroAlertCopy");
   if (insight) {
-    insight.textContent = "You\u2019re safe after your " + fmtShort(payDate) + " paycheck.";
+    insight.textContent = "You\u2019re safe after your Fri paycheck.";
   }
 })();

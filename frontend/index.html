@@ -41,14 +41,14 @@
           "@type": "Offer",
           "price": "0",
           "priceCurrency": "USD",
-          "description": "14-day free trial"
+          "description": "Free for your first month"
         }
       }
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=706" />
+    <link rel="stylesheet" href="./styles.css?v=709" />
   </head>
   <body class="landing-page">
     <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -107,25 +107,19 @@
 
             <div id="landingHeroForecast" class="landing-hero-forecast" aria-label="Example forecast preview">
               <div class="landing-hero-forecast__demo">
-                <div class="landing-hero-viz landing-hero-cal landing-hero-product">
+                <div class="landing-hero-viz landing-hero-cal">
                   <div class="landing-hero-viz__hdr">
                     <span class="landing-hero-viz__title">Balance outlook</span>
                     <span class="landing-hero-viz__sub">Projected checking balance by day</span>
                   </div>
                   <div
                     id="landingHeroCalWeek"
-                    class="landing-hero-cal__week"
+                    class="calendar landing-hero-cal__grid"
                     role="list"
                     aria-label="Projected balances for key forecast days"
                   ></div>
-                  <div
-                    id="landingHeroTxLegend"
-                    class="landing-hero-cal__txLegend"
-                    aria-label="Upcoming transactions"
-                  ></div>
-                  <p class="landing-hero-cal__insight landing-hero-cal__insight--advice" role="note">
-                    <span class="landing-hero-cal__insightIcon" aria-hidden="true">✓</span>
-                    <span id="landingHeroAlertCopy">You&rsquo;re safe after your next paycheck.</span>
+                  <p class="landing-hero-cal__insight" role="note">
+                    <span id="landingHeroAlertCopy">You&rsquo;re safe after your Fri paycheck.</span>
                   </p>
                 </div>
               </div>
@@ -384,9 +378,9 @@
             <div class="landing-offer__content">
               <h2 class="landing-offer__heading">Start your forecast in about 10 minutes</h2>
               <p class="landing-offer__subhead">All you need is your checking balance, paychecks, and recurring bills.</p>
-              <p class="landing-offer__support">14-day free trial.</p>
+              <p class="landing-offer__support">Free for your first month.</p>
               <ul class="landing-offer__bullets" aria-label="Offer details">
-                <li>Billing starts after trial</li>
+                <li>Billing starts after your free month</li>
                 <li>Live in minutes</li>
                 <li>Cancel anytime</li>
               </ul>
@@ -440,7 +434,7 @@
         </div>
       </footer>
     </div>
-    <script src="./landing-hero-dates.js?v=9" defer></script>
+    <script src="./landing-hero-dates.js?v=11" defer></script>
     <script src="./landing-future-dates.js?v=1" defer></script>
     <script src="./landing-hero-demo.js?v=4" defer></script>
     <script>
