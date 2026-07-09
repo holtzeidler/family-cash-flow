@@ -48,7 +48,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=703" />
+    <link rel="stylesheet" href="./styles.css?v=704" />
   </head>
   <body class="landing-page">
     <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -107,19 +107,29 @@
 
             <div id="landingHeroForecast" class="landing-hero-forecast" aria-label="Example forecast preview">
               <div class="landing-hero-forecast__demo">
-                <div class="landing-hero-viz landing-hero-cal landing-hero-focus">
+                <div class="landing-hero-viz landing-hero-cal">
                   <div class="landing-hero-viz__hdr">
                     <span class="landing-hero-viz__title">Balance outlook</span>
+                    <span class="landing-hero-viz__sub">Projected checking balance by day</span>
                   </div>
                   <div
-                    id="landingHeroTimeline"
-                    class="landing-hero-focus__timeline"
+                    id="landingHeroCalWeek"
+                    class="landing-hero-viz__week"
                     role="list"
-                    aria-label="Projected checking balance around today"
+                    aria-label="Projected balances for key forecast days"
                   ></div>
-                  <p class="landing-hero-cal__insight landing-hero-focus__insight" role="note">
-                    <span class="landing-hero-focus__insightCheck" aria-hidden="true">✓</span>
-                    <span id="landingHeroAlertCopy">You&rsquo;re safe after your next paycheck.</span>
+                  <ul class="landing-hero-cal__markers" aria-label="Upcoming transactions">
+                    <li class="landing-hero-cal__marker landing-hero-cal__marker--bill">
+                      <span class="landing-hero-cal__marker-dot" aria-hidden="true"></span>
+                      <span id="landingHeroBillLabel">Credit card &middot; Jun 4</span>
+                    </li>
+                    <li class="landing-hero-cal__marker landing-hero-cal__marker--pay">
+                      <span class="landing-hero-cal__marker-dot" aria-hidden="true"></span>
+                      <span id="landingHeroPayLabel">Paycheck &middot; Jun 5</span>
+                    </li>
+                  </ul>
+                  <p class="landing-hero-cal__insight" role="note">
+                    <span id="landingHeroAlertCopy">Safe to move after your next paycheck</span>
                   </p>
                 </div>
               </div>
@@ -421,7 +431,7 @@
         </div>
       </footer>
     </div>
-    <script src="./landing-hero-dates.js?v=8" defer></script>
+    <script src="./landing-hero-dates.js?v=7" defer></script>
     <script src="./landing-future-dates.js?v=1" defer></script>
     <script src="./landing-hero-demo.js?v=4" defer></script>
     <script>

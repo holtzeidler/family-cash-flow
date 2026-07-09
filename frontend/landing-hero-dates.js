@@ -1,5 +1,5 @@
 /**
- * Landing hero: vertical focus forecast — one clear "today" moment with bill before and paycheck after.
+ * Landing hero: 5-day focus forecast around bill, low balance, and paycheck.
  */
 (function () {
   var hub = document.getElementById("landingHeroForecast");
@@ -17,97 +17,74 @@
     return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
   }
 
-  function fmtBal(n) {
-    return "$" + n.toLocaleString("en-US");
+  function fmtBalCell(n, full) {
+    if (full || n < 1000) {
+      return "$" + n.toLocaleString("en-US");
+    }
+    if (n >= 10000) {
+      return "$" + Math.round(n / 1000) + "k";
+    }
+    var k = Math.round(n / 100) / 10;
+    return "$" + (k % 1 === 0 ? k.toFixed(0) : k.toFixed(1)) + "k";
   }
 
   var today = startOfDay(new Date());
-  var contextDate = addDays(today, -2);
-  var billDate = addDays(today, -1);
-  var payDate = addDays(today, 1);
+  var forecastStart = addDays(today, 2);
+  var billDate = addDays(forecastStart, 1);
+  var payDate = addDays(forecastStart, 3);
 
-  var timelineEl = hub.querySelector("#landingHeroTimeline");
-  if (timelineEl) {
-    var rows = [
-      { type: "context", date: contextDate, balance: 4300 },
-      { type: "bill", date: billDate, label: "Credit Card Payment" },
-      { type: "today", date: today, balance: 1020 },
-      { type: "pay", date: payDate, balance: 3120, label: "Paycheck" },
-    ];
+  var dayData = [
+    { bal: 4280 },
+    { bal: 3850, bill: true },
+    { bal: 1020, watch: true },
+    { bal: 3050, pay: true },
+    { bal: 2890 },
+  ];
 
-    timelineEl.innerHTML = "";
-    for (var i = 0; i < rows.length; i += 1) {
-      var row = rows[i];
-      var el = document.createElement("div");
-      el.className = "landing-hero-focus__row landing-hero-focus__row--" + row.type;
-      el.setAttribute("role", "listitem");
+  var weekEl = hub.querySelector("#landingHeroCalWeek");
+  if (weekEl) {
+    weekEl.innerHTML = "";
+    for (var i = 0; i < dayData.length; i += 1) {
+      var row = dayData[i];
+      var date = addDays(forecastStart, i);
+      var cell = document.createElement("div");
+      cell.className = "landing-hero-viz__cell";
+      cell.setAttribute("role", "listitem");
+      if (row.watch) cell.classList.add("landing-hero-viz__cell--watch");
+      if (row.pay) cell.classList.add("landing-hero-viz__cell--pay");
+      if (row.bill) cell.classList.add("landing-hero-viz__cell--bill");
 
-      var dateCol = document.createElement("div");
-      dateCol.className = "landing-hero-focus__dateCol";
+      var dayNum = document.createElement("span");
+      dayNum.className = "landing-hero-viz__d";
+      dayNum.textContent = fmtShort(date);
 
-      if (row.type === "today") {
-        var star = document.createElement("span");
-        star.className = "landing-hero-focus__star";
-        star.setAttribute("aria-hidden", "true");
-        star.textContent = "\u2605";
-        dateCol.appendChild(star);
+      var bal = document.createElement("span");
+      bal.className = "landing-hero-viz__b";
+      bal.textContent = fmtBalCell(row.bal, row.watch);
 
-        var todayLbl = document.createElement("span");
-        todayLbl.className = "landing-hero-focus__date landing-hero-focus__date--today";
-        todayLbl.textContent = "TODAY";
-        dateCol.appendChild(todayLbl);
-      } else {
-        var dateLbl = document.createElement("span");
-        dateLbl.className = "landing-hero-focus__date";
-        dateLbl.textContent = fmtShort(row.date);
-        dateCol.appendChild(dateLbl);
+      cell.appendChild(dayNum);
+      cell.appendChild(bal);
+
+      if (row.pay) {
+        var payTag = document.createElement("span");
+        payTag.className = "landing-hero-viz__tag landing-hero-viz__tag--pay";
+        payTag.setAttribute("aria-hidden", "true");
+        payTag.textContent = "Pay";
+        cell.appendChild(payTag);
       }
 
-      var body = document.createElement("div");
-      body.className = "landing-hero-focus__body";
-
-      if (row.type === "context" || row.type === "pay") {
-        var bal = document.createElement("span");
-        bal.className = "landing-hero-focus__balance";
-        if (row.type === "pay") bal.classList.add("landing-hero-focus__balance--pay");
-        bal.textContent = fmtBal(row.balance);
-        body.appendChild(bal);
-      }
-
-      if (row.type === "bill") {
-        var event = document.createElement("span");
-        event.className = "landing-hero-focus__event";
-        event.textContent = row.label;
-        body.appendChild(event);
-      }
-
-      if (row.type === "today") {
-        var checkLbl = document.createElement("span");
-        checkLbl.className = "landing-hero-focus__todayLabel";
-        checkLbl.textContent = "Checking Balance";
-        body.appendChild(checkLbl);
-
-        var todayBal = document.createElement("span");
-        todayBal.className = "landing-hero-focus__balance landing-hero-focus__balance--hero";
-        todayBal.textContent = fmtBal(row.balance);
-        body.appendChild(todayBal);
-      }
-
-      if (row.type === "pay") {
-        var payLbl = document.createElement("span");
-        payLbl.className = "landing-hero-focus__event landing-hero-focus__event--pay";
-        payLbl.textContent = row.label;
-        body.insertBefore(payLbl, body.firstChild);
-      }
-
-      el.appendChild(dateCol);
-      el.appendChild(body);
-      timelineEl.appendChild(el);
+      weekEl.appendChild(cell);
     }
   }
 
+  var billLabel = hub.querySelector("#landingHeroBillLabel");
+  if (billLabel) billLabel.textContent = "Credit card \u00B7 " + fmtShort(billDate);
+
+  var payLabel = hub.querySelector("#landingHeroPayLabel");
+  if (payLabel) payLabel.textContent = "Paycheck \u00B7 " + fmtShort(payDate);
+
   var insight = hub.querySelector("#landingHeroAlertCopy");
   if (insight) {
-    insight.textContent = "You\u2019re safe after your " + fmtShort(payDate) + " paycheck.";
+    insight.textContent = "Safe to move after your " + fmtShort(payDate) + " paycheck";
   }
 })();
