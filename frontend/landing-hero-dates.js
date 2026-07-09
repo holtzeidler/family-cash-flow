@@ -9,12 +9,11 @@
     return Number(n).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
   }
 
-  function fmtMoneyParens(n) {
-    var num = Number(n);
-    if (!Number.isFinite(num)) return String(n);
-    var abs = Math.abs(num);
-    var s = abs.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    return num < 0 ? "(" + s + ")" : s;
+  function fmtSignedTxAmount(tx) {
+    var amt = fmtMoney0(tx.amount);
+    if (tx.kind === "income") return "+$" + amt;
+    if (tx.kind === "expense") return "-$" + amt;
+    return "$" + amt;
   }
 
   /** Mirrors applyCalendarDayTxCategoryFill — category fill on label column only. */
@@ -44,7 +43,7 @@
     amtSpan.className = "cal-amt";
     if (tx.kind === "income") amtSpan.classList.add("income");
     else if (tx.kind === "expense") amtSpan.classList.add("expense");
-    amtSpan.textContent = "$" + fmtMoney0(tx.amount);
+    amtSpan.textContent = fmtSignedTxAmount(tx);
 
     line.appendChild(labelWrap);
     line.appendChild(amtSpan);
@@ -72,7 +71,7 @@
       '<span class="' +
       balParts.join(" ") +
       '" title="Projected end-of-day balance">$' +
-      fmtMoneyParens(bal) +
+      fmtMoney0(bal) +
       "</span></span></div>";
     return strip;
   }
@@ -129,7 +128,7 @@
       today: true,
       txs: [
         {
-          label: "Credit card",
+          label: "Credit Card",
           amount: 325,
           kind: "expense",
           expected: true,
@@ -167,6 +166,7 @@
 
   var insight = hub.querySelector("#landingHeroAlertCopy");
   if (insight) {
-    insight.textContent = "You\u2019re safe after your Fri paycheck.";
+    insight.textContent =
+      "Your lowest balance is tomorrow. Friday\u2019s paycheck brings you back above your target.";
   }
 })();
