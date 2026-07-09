@@ -85,6 +85,6 @@
 
   var insight = hub.querySelector("#landingHeroAlertCopy");
   if (insight) {
-    insight.textContent = "Safe to move after your " + fmtShort(payDate) + " paycheck";
+    insight.textContent = "Safe to spend or move after your " + fmtShort(payDate) + " paycheck";
   }
 })();
