@@ -3904,10 +3904,10 @@ body.landing-page .landing-trust-micro{
   font-weight: 500;
   line-height: 1.42;
   letter-spacing: 0.016em;
-  color: rgba(71, 85, 105, 0.48);
+  color: rgba(71, 85, 105, 0.64);
 }
 body.landing-page .landing-trust-micro__dot{
-  opacity: 0.42;
+  opacity: 0.55;
   user-select: none;
 }
 body.landing-page .landing-preview{
