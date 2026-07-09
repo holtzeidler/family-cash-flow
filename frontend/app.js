@@ -9128,6 +9128,25 @@ function onCategoryComboboxKeydown(e, fieldId) {
   }
 }
 
+function onCategoryComboboxInput(fieldId) {
+  const st = categoryComboboxRegistry.get(fieldId);
+  if (!st) return;
+  const raw = st.input.value.trim();
+  if (!raw) {
+    st.hidden.value = "";
+  } else if (st.hidden.value.trim()) {
+    const cat = (st.categories || []).find((c) => String(c.id) === String(st.hidden.value));
+    const display = cat ? categoryDisplayLabel(cat).trim().toLowerCase() : "";
+    if (display !== raw.toLowerCase()) {
+      st.hidden.value = "";
+    }
+  }
+  filterCategoryCombobox(fieldId);
+  if (document.activeElement === st.input) {
+    showCategoryComboboxList(st);
+  }
+}
+
 function mountCategoryComboboxFromSelect(selectEl) {
   const fieldId = selectEl.id;
   if (!fieldId || categoryComboboxRegistry.has(fieldId)) return;
@@ -9187,7 +9206,7 @@ function mountCategoryComboboxFromSelect(selectEl) {
     applyCategoryComboboxPickFromLi(fieldId, li);
   });
 
-  input.addEventListener("input", () => filterCategoryCombobox(fieldId));
+  input.addEventListener("input", () => onCategoryComboboxInput(fieldId));
   input.addEventListener("focus", () => {
     showCategoryComboboxList(st);
     filterCategoryCombobox(fieldId);
