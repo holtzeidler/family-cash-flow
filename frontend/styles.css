@@ -3730,6 +3730,18 @@ body.landing-page .landing-hero__microtrust__sep{
   opacity: 0.34;
   user-select: none;
 }
+body.landing-page .landing-hero__bridge{
+  margin: clamp(0.9rem, 2.1vw, 1.2rem) auto 0;
+  max-width: min(32rem, 100%);
+  width: 100%;
+  padding: 0;
+  font-size: clamp(0.82rem, 1.15vw, 0.95rem);
+  line-height: 1.45;
+  font-weight: 500;
+  color: rgba(51, 65, 85, 0.78);
+  text-align: center;
+  text-wrap: balance;
+}
 body.landing-page .landing-hero__viz{
   justify-self: end;
   max-width: 100%;
