@@ -1179,101 +1179,169 @@ body.landing-page .landing-hero-cal .landing-hero-viz__hdr{
   margin-bottom: 0.38rem;
   gap: 0.14rem;
 }
-body.landing-page .landing-hero-cal .landing-hero-viz__week{
+body.landing-page .landing-hero-product .landing-hero-cal__week{
+  display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 14px;
-  margin-bottom: 4px;
-  padding: 0 0.2rem;
+  gap: 5px;
+  margin-bottom: 6px;
+  padding: 5px;
+  border-radius: 11px;
+  background: rgba(248, 250, 252, 0.55);
+  box-shadow: inset 0 0 0 1px rgba(11, 61, 46, 0.05);
   box-sizing: border-box;
+  align-items: end;
 }
-body.landing-page .landing-hero-cal .landing-hero-viz__cell{
-  width: auto;
-  max-width: none;
-  justify-self: stretch;
-  padding: 7px 9px 8px;
-  min-height: 3.5rem;
-  border-color: rgba(17, 24, 39, 0.07);
-  background: rgba(255, 255, 255, 0.76);
+body.landing-page .landing-hero-product .cal-cell.landing-hero-cal__day{
+  min-height: 4.1rem;
+  height: auto;
+  padding: 4px 5px 3px;
+  margin: 0;
+  cursor: default;
+  user-select: none;
+  pointer-events: none;
+  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
 }
-body.landing-page .landing-hero-cal .landing-hero-viz__d{
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0;
-  line-height: 1.2;
-  color: rgba(71, 85, 105, 0.62);
+body.landing-page .landing-hero-product .landing-hero-cal__day--muted{
+  border-color: rgba(17, 24, 39, 0.045);
+  background: rgba(255, 255, 255, 0.84);
+  box-shadow: none;
 }
-body.landing-page .landing-hero-cal .landing-hero-viz__b{
-  margin-top: 3px;
-  font-size: 13px;
-  font-weight: 700;
-  color: rgba(11, 61, 46, 0.58);
+body.landing-page .landing-hero-product .landing-hero-cal__day--muted .cal-daynum-num{
+  font-weight: 550;
+  color: rgba(100, 116, 139, 0.58);
 }
-body.landing-page .landing-hero-cal .landing-hero-viz__cell--bill{
-  border-color: rgba(180, 83, 9, 0.16);
+body.landing-page .landing-hero-product .landing-hero-cal__day--muted .cal-stat.cal-balance{
+  font-weight: 500;
+  color: rgba(100, 116, 139, 0.58);
 }
-body.landing-page .landing-hero-cal .landing-hero-viz__cell--pay{
-  padding: 7px 9px 8px;
-  border-width: 1.25px;
-  border-color: rgba(4, 120, 87, 0.34);
-  background: rgba(236, 253, 245, 0.58);
-  box-shadow: 0 3px 12px -8px rgba(4, 120, 87, 0.2);
+body.landing-page .landing-hero-product .landing-hero-cal__day--bill{
+  border-color: rgba(180, 83, 9, 0.1);
+  background: rgba(255, 251, 245, 0.88);
 }
-body.landing-page .landing-hero-cal .landing-hero-viz__cell--pay .landing-hero-viz__d{
-  color: rgba(4, 100, 75, 0.8);
-  font-weight: 700;
+body.landing-page .landing-hero-product .landing-hero-cal__day--pay{
+  border-color: rgba(4, 120, 87, 0.12);
+  background: rgba(255, 255, 255, 0.92);
 }
-body.landing-page .landing-hero-cal .landing-hero-viz__cell--pay .landing-hero-viz__b{
-  font-size: 13.5px;
-  font-weight: 800;
-  color: rgba(11, 61, 46, 0.84);
-}
-body.landing-page .landing-hero-cal .landing-hero-viz__cell--pay .landing-hero-viz__tag{
-  margin-top: 2px;
-  font-size: 7.5px;
-}
-body.landing-page .landing-hero-cal .landing-hero-viz__cell--watch{
-  width: auto;
-  padding: 8px 9px 8px;
-  border-width: 2px;
-  border-color: rgba(11, 61, 46, 0.58);
-  background: rgba(236, 253, 245, 0.78);
+body.landing-page .landing-hero-product .landing-hero-cal__day--today{
+  transform: scale(1.1);
+  transform-origin: center bottom;
+  z-index: 1;
+  border-width: 1.5px;
+  border-color: rgba(11, 61, 46, 0.36);
+  background: rgba(255, 255, 255, 0.98);
   box-shadow:
-    0 0 0 1px rgba(11, 61, 46, 0.1),
-    0 10px 22px -10px rgba(11, 61, 46, 0.28);
+    0 0 0 1px rgba(11, 61, 46, 0.06),
+    0 10px 24px -12px rgba(11, 61, 46, 0.26);
 }
-body.landing-page .landing-hero-cal .landing-hero-viz__cell--watch .landing-hero-viz__d{
-  font-size: 11px;
-  color: rgba(11, 61, 46, 0.9);
-  font-weight: 800;
+body.landing-page .landing-hero-product .cal-daynum{
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  padding-bottom: 3px;
+  margin-bottom: 1px;
 }
-body.landing-page .landing-hero-cal .landing-hero-viz__cell--watch .landing-hero-viz__b{
-  margin-top: 4px;
-  font-size: 14px;
-  color: rgba(11, 61, 46, 0.98);
-  font-weight: 850;
-}
-body.landing-page .landing-hero-viz__cell--today{
-  border-color: rgba(4, 120, 87, 0.22);
-  background: rgba(236, 253, 245, 0.42);
-}
-body.landing-page .landing-hero-viz__cell--bill{
-  border-color: rgba(180, 83, 9, 0.2);
-}
-body.landing-page .landing-hero-viz__cell--pay{
-  border-color: rgba(4, 120, 87, 0.18);
-}
-body.landing-page .landing-hero-viz__tag{
-  display: block;
-  margin-top: 2px;
-  font-size: 7.5px;
+body.landing-page .landing-hero-product .landing-hero-cal__todayBadge{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1px 5px;
+  border-radius: 999px;
+  font-size: 6.5px;
   font-weight: 750;
-  line-height: 1;
-  letter-spacing: 0.02em;
-  color: rgba(146, 64, 14, 0.92);
-}
-body.landing-page .landing-hero-viz__tag--pay{
-  color: rgba(4, 120, 87, 0.88);
+  letter-spacing: 0.07em;
   text-transform: uppercase;
+  line-height: 1.2;
+  color: rgba(11, 61, 46, 0.86);
+  background: rgba(4, 120, 87, 0.1);
+  border: 1px solid rgba(11, 61, 46, 0.1);
+}
+body.landing-page .landing-hero-product .cal-daynum-num{
+  font-size: 10px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+}
+body.landing-page .landing-hero-product .cal-daynum-num.is-today{
+  height: 22px;
+  min-width: 24px;
+  font-size: 10.5px;
+}
+body.landing-page .landing-hero-product .cal-cell-stack > .cal-day-txns{
+  min-height: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-top: 1px;
+}
+body.landing-page .landing-hero-product .landing-hero-cal__txMarker{
+  display: block;
+  width: 14px;
+  height: 3px;
+  border-radius: 999px;
+  opacity: 0.85;
+}
+body.landing-page .landing-hero-product .landing-hero-cal__txMarker--bill{
+  background: rgba(180, 83, 9, 0.42);
+}
+body.landing-page .landing-hero-product .landing-hero-cal__txMarker--pay{
+  background: rgba(4, 120, 87, 0.48);
+}
+body.landing-page .landing-hero-product .cal-cell-stack > .cal-ledger-metrics{
+  padding-top: 4px;
+  padding-bottom: 2px;
+  min-height: 18px;
+  margin-top: auto;
+  pointer-events: none;
+}
+body.landing-page .landing-hero-product .cal-stat.cal-balance{
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+body.landing-page .landing-hero-product .landing-hero-cal__day--today .cal-stat.cal-balance{
+  font-size: 12.5px;
+  font-weight: 700;
+}
+body.landing-page .landing-hero-product .cal-stat.cal-balance.cal-balance--watch-zone{
+  font-weight: 650;
+}
+body.landing-page .landing-hero-cal__txLegend{
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 2px;
+  padding-top: 2px;
+}
+body.landing-page .landing-hero-cal__txLegendRow{
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 0;
+  padding: 0 1px 0 4px;
+  font-size: 11px;
+  line-height: 1.28;
+  font-weight: 500;
+  pointer-events: none;
+}
+body.landing-page .landing-hero-cal__txLegendRow .cal-tx-label-wrap{
+  width: auto;
+  max-width: 100%;
+  border-radius: 3px;
+  padding: 1px 4px;
+}
+body.landing-page .landing-hero-cal__txLegendRow .cal-tx-label{
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+body.landing-page .landing-hero-cal__txDate{
+  flex: 0 0 auto;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: rgba(100, 116, 139, 0.72);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 body.landing-page .landing-hero-cal__markers{
   list-style: none;
@@ -1317,13 +1385,49 @@ body.landing-page .landing-hero-cal__insight{
   text-align: left;
   box-sizing: border-box;
 }
+body.landing-page .landing-hero-cal__insight--advice{
+  display: flex;
+  align-items: flex-start;
+  gap: 0.42rem;
+  margin-top: 0.72rem;
+  padding: 0.52rem 0.64rem;
+  max-width: none;
+  border-radius: 11px;
+  border: 1px solid rgba(4, 120, 87, 0.22);
+  background: linear-gradient(180deg, rgba(220, 248, 232, 0.92) 0%, rgba(236, 253, 245, 0.78) 100%);
+  box-shadow: 0 6px 18px -14px rgba(11, 61, 46, 0.28);
+  font-size: 0.74rem;
+  font-weight: 650;
+  line-height: 1.35;
+  color: rgba(11, 61, 46, 0.9);
+}
+body.landing-page .landing-hero-cal__insightIcon{
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.05rem;
+  height: 1.05rem;
+  margin-top: 0.02rem;
+  border-radius: 50%;
+  background: rgba(4, 120, 87, 0.14);
+  color: rgba(4, 120, 87, 0.95);
+  font-size: 0.62rem;
+  font-weight: 800;
+  line-height: 1;
+}
 body.landing-page #landingHeroForecast .landing-hero-cal__insight{
   max-width: 78%;
 }
-body.landing-page .landing-hero-cal__insight.is-emphasized{
-  background: rgba(220, 248, 232, 0.82);
-  border-color: rgba(4, 120, 87, 0.2);
-  transition: background 0.45s ease, border-color 0.45s ease;
+body.landing-page #landingHeroForecast .landing-hero-cal__insight--advice{
+  max-width: none;
+}
+body.landing-page .landing-hero-cal__insight.is-emphasized,
+body.landing-page .landing-hero-cal__insight--advice.is-emphasized{
+  background: linear-gradient(180deg, rgba(204, 245, 222, 0.98) 0%, rgba(220, 248, 232, 0.92) 100%);
+  border-color: rgba(4, 120, 87, 0.32);
+  box-shadow: 0 8px 22px -12px rgba(11, 61, 46, 0.34);
+  transition: background 0.45s ease, border-color 0.45s ease, box-shadow 0.45s ease;
 }
 
 body.landing-page .landing-setup-callout{
@@ -1439,9 +1543,9 @@ body.landing-page .landing-bank-compare__grid{
 body.landing-page .landing-bank-compare__card{
   display: flex;
   flex-direction: column;
-  gap: 0.62rem;
+  gap: 0.5rem;
   margin: 0;
-  padding: clamp(0.82rem, 1.6vw, 1rem) clamp(0.88rem, 1.7vw, 1.06rem) clamp(0.78rem, 1.5vw, 0.94rem);
+  padding: clamp(0.78rem, 1.5vw, 0.94rem) clamp(0.82rem, 1.55vw, 0.98rem);
   border-radius: 14px;
   border: 1px solid rgba(15, 23, 42, 0.081);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.99) 0%, rgba(251, 252, 253, 0.94) 100%);
@@ -1451,14 +1555,18 @@ body.landing-page .landing-bank-compare__card{
   box-sizing: border-box;
 }
 body.landing-page .landing-bank-compare__card--bank{
-  color: rgba(51, 65, 85, 0.92);
+  border-color: rgba(15, 23, 42, 0.055);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.92) inset;
+  color: rgba(71, 85, 105, 0.88);
 }
 body.landing-page .landing-bank-compare__card--bw{
-  border-color: rgba(11, 61, 46, 0.14);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 1) 0%, rgba(240, 253, 247, 0.72) 100%);
+  border-width: 1.5px;
+  border-color: rgba(11, 61, 46, 0.2);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 1) 0%, rgba(236, 253, 245, 0.78) 100%);
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.92) inset,
-    0 12px 32px -24px rgba(11, 61, 46, 0.2);
+    0 1px 0 rgba(255, 255, 255, 0.94) inset,
+    0 14px 36px -22px rgba(11, 61, 46, 0.28);
 }
 body.landing-page .landing-bank-compare__cardTitle{
   margin: 0;
@@ -1468,77 +1576,110 @@ body.landing-page .landing-bank-compare__cardTitle{
   line-height: 1.2;
   color: rgba(30, 41, 59, 0.9);
 }
+body.landing-page .landing-bank-compare__card--bank .landing-bank-compare__cardTitle{
+  color: rgba(100, 116, 139, 0.82);
+  font-weight: 700;
+}
 body.landing-page .landing-bank-compare__card--bw .landing-bank-compare__cardTitle{
   color: rgba(11, 61, 46, 0.92);
 }
-body.landing-page .landing-bank-compare__balanceBlock{
-  display: grid;
-  gap: 0.18rem;
-  padding: 0.58rem 0.62rem;
-  border-radius: 11px;
-  border: 1px solid rgba(15, 23, 42, 0.06);
-  background: rgba(248, 250, 252, 0.72);
-}
-body.landing-page .landing-bank-compare__balanceLabel,
-body.landing-page .landing-bank-compare__forecastDay{
-  font-size: 0.72rem;
+body.landing-page .landing-bank-compare__flowLabel{
+  display: block;
+  font-size: 0.7rem;
   font-weight: 600;
   line-height: 1.2;
-  color: rgba(100, 116, 139, 0.82);
+  color: rgba(100, 116, 139, 0.78);
 }
-body.landing-page .landing-bank-compare__balanceAmount,
-body.landing-page .landing-bank-compare__forecastAmount{
-  font-size: clamp(1.28rem, 2.2vw, 1.48rem);
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  line-height: 1.05;
-  color: rgba(15, 23, 42, 0.96);
-  font-variant-numeric: tabular-nums;
-}
-body.landing-page .landing-bank-compare__forecast{
+body.landing-page .landing-bank-compare__bankOnly{
   display: grid;
-  gap: 0.34rem;
-  padding: 0.58rem 0.62rem;
+  gap: 0.2rem;
+  padding: 0.2rem 0 0.12rem;
+}
+body.landing-page .landing-bank-compare__balance.cal-stat.cal-balance{
+  font-size: clamp(1.22rem, 2.05vw, 1.42rem);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  color: rgba(30, 41, 59, 0.82);
+  padding: 0;
+  background: none;
+  border: none;
+  box-shadow: none;
+}
+body.landing-page .landing-bank-compare__card--bank .landing-bank-compare__balance{
+  font-weight: 650;
+  color: rgba(51, 65, 85, 0.78);
+}
+body.landing-page .landing-bank-compare__flow{
+  display: grid;
+  gap: 0.28rem;
+  padding: 0.5rem 0.56rem;
   border-radius: 11px;
   border: 1px solid rgba(11, 61, 46, 0.1);
-  background: rgba(255, 255, 255, 0.82);
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
 }
-body.landing-page .landing-bank-compare__forecastRow{
+body.landing-page .landing-bank-compare__flowStep{
+  display: grid;
+  gap: 0.12rem;
+}
+body.landing-page .landing-bank-compare__flowStep--future .landing-bank-compare__balance--future{
+  color: rgba(120, 98, 62, 0.88);
+  font-weight: 700;
+}
+body.landing-page .landing-bank-compare__flowContext{
+  font-size: 0.64rem;
+  font-weight: 600;
+  line-height: 1.25;
+  color: rgba(100, 116, 139, 0.68);
+}
+body.landing-page .landing-bank-compare__flowArrow{
+  display: block;
+  text-align: center;
+  font-size: 0.72rem;
+  line-height: 1;
+  color: rgba(11, 61, 46, 0.28);
+  user-select: none;
+}
+body.landing-page .landing-bank-compare__flowTx{
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.5rem;
+  justify-content: center;
+  padding: 0.06rem 0;
 }
-body.landing-page .landing-bank-compare__forecastRow--drop{
-  padding-top: 0.34rem;
-  border-top: 1px solid rgba(11, 61, 46, 0.08);
+body.landing-page .landing-bank-compare__txPill{
+  border-radius: 3px;
+  padding: 1px 5px;
+  width: auto;
+  max-width: 100%;
 }
-body.landing-page .landing-bank-compare__forecastAmount--low{
-  color: rgba(180, 83, 9, 0.92);
-}
-body.landing-page .landing-bank-compare__eventLabel{
-  display: inline-flex;
-  align-self: flex-start;
-  margin-top: 0.08rem;
-  padding: 0.18rem 0.44rem;
-  border-radius: 999px;
-  font-size: 0.66rem;
-  font-weight: 650;
-  line-height: 1.2;
-  color: rgba(11, 61, 46, 0.86);
-  background: rgba(4, 120, 87, 0.08);
-  border: 1px solid rgba(11, 61, 46, 0.08);
+body.landing-page .landing-bank-compare__txPill .cal-tx-label{
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1.25;
 }
 body.landing-page .landing-bank-compare__note{
   margin: 0;
   margin-top: auto;
-  font-size: 0.76rem;
+  font-size: 0.74rem;
   font-weight: 600;
   line-height: 1.32;
-  color: rgba(100, 116, 139, 0.78);
+  color: rgba(100, 116, 139, 0.72);
+}
+body.landing-page .landing-bank-compare__note--ok{
+  display: flex;
+  align-items: center;
+  gap: 0.28rem;
+  color: rgba(100, 116, 139, 0.68);
+  font-weight: 550;
+}
+body.landing-page .landing-bank-compare__noteIcon{
+  font-size: 0.68rem;
+  line-height: 1;
+  color: rgba(4, 120, 87, 0.55);
 }
 body.landing-page .landing-bank-compare__note--highlight{
-  color: rgba(11, 61, 46, 0.82);
+  color: rgba(11, 61, 46, 0.86);
+  font-weight: 650;
 }
 @media (max-width: 640px){
   body.landing-page .landing-bank-compare__grid{
@@ -4764,17 +4905,22 @@ body.landing-page .landing-preview__demo:hover{
   body.landing-page .landing-hero-cal.landing-hero-viz{
     padding: 13px 15px 12px;
   }
-  body.landing-page .landing-hero-cal .landing-hero-viz__week{
-    gap: 12px;
-    margin-bottom: 3px;
-    padding: 0 0.15rem;
+  body.landing-page .landing-hero-product .landing-hero-cal__day--today{
+    transform: scale(1.08);
   }
-  body.landing-page .landing-hero-cal .landing-hero-viz__cell{
-    min-height: 3.35rem;
-    padding: 6px 8px 7px;
+  body.landing-page .landing-hero-product .cal-stat.cal-balance{
+    font-size: 10.75px;
   }
-  body.landing-page .landing-hero-cal .landing-hero-viz__cell--watch{
-    padding: 7px 8px 7px;
+  body.landing-page .landing-hero-product .landing-hero-cal__day--today .cal-stat.cal-balance{
+    font-size: 11.75px;
+  }
+  body.landing-page .landing-hero-cal__insight--advice{
+    margin-top: 0.68rem;
+    padding: 0.46rem 0.56rem;
+    font-size: 0.7rem;
+  }
+  body.landing-page #landingHeroForecast .landing-hero-cal__insight--advice{
+    max-width: none;
   }
   body.landing-page #landingHeroForecast .landing-hero-cal__insight{
     margin-top: 0.75rem;
@@ -28268,23 +28414,22 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
     padding: 12px 14px 11px;
   }
 
-  body.landing-page .landing-hero-cal .landing-hero-viz__week{
-    gap: 10px;
-    margin-bottom: 2px;
-    padding: 0 0.1rem;
+  body.landing-page .landing-hero-product .landing-hero-cal__day--today{
+    transform: scale(1.06);
   }
 
-  body.landing-page .landing-hero-cal .landing-hero-viz__cell{
-    min-height: 3.2rem;
-    padding: 6px 7px 7px;
+  body.landing-page .landing-hero-product .cal-cell.landing-hero-cal__day{
+    min-height: 3.85rem;
   }
 
-  body.landing-page .landing-hero-cal .landing-hero-viz__cell--watch{
-    padding: 7px 7px 7px;
+  body.landing-page .landing-hero-cal__insight--advice{
+    margin-top: 0.62rem;
+    padding: 0.42rem 0.5rem;
+    font-size: 0.68rem;
   }
 
-  body.landing-page .landing-hero-cal .landing-hero-viz__cell--watch .landing-hero-viz__b{
-    font-size: 13px;
+  body.landing-page #landingHeroForecast .landing-hero-cal__insight--advice{
+    max-width: none;
   }
 
   body.landing-page #landingHeroForecast .landing-hero-cal__insight{

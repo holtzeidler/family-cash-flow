@@ -48,7 +48,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=704" />
+    <link rel="stylesheet" href="./styles.css?v=706" />
   </head>
   <body class="landing-page">
     <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -107,29 +107,25 @@
 
             <div id="landingHeroForecast" class="landing-hero-forecast" aria-label="Example forecast preview">
               <div class="landing-hero-forecast__demo">
-                <div class="landing-hero-viz landing-hero-cal">
+                <div class="landing-hero-viz landing-hero-cal landing-hero-product">
                   <div class="landing-hero-viz__hdr">
                     <span class="landing-hero-viz__title">Balance outlook</span>
                     <span class="landing-hero-viz__sub">Projected checking balance by day</span>
                   </div>
                   <div
                     id="landingHeroCalWeek"
-                    class="landing-hero-viz__week"
+                    class="landing-hero-cal__week"
                     role="list"
                     aria-label="Projected balances for key forecast days"
                   ></div>
-                  <ul class="landing-hero-cal__markers" aria-label="Upcoming transactions">
-                    <li class="landing-hero-cal__marker landing-hero-cal__marker--bill">
-                      <span class="landing-hero-cal__marker-dot" aria-hidden="true"></span>
-                      <span id="landingHeroBillLabel">Credit card &middot; Jun 4</span>
-                    </li>
-                    <li class="landing-hero-cal__marker landing-hero-cal__marker--pay">
-                      <span class="landing-hero-cal__marker-dot" aria-hidden="true"></span>
-                      <span id="landingHeroPayLabel">Paycheck &middot; Jun 5</span>
-                    </li>
-                  </ul>
-                  <p class="landing-hero-cal__insight" role="note">
-                    <span id="landingHeroAlertCopy">Safe to move after your next paycheck</span>
+                  <div
+                    id="landingHeroTxLegend"
+                    class="landing-hero-cal__txLegend"
+                    aria-label="Upcoming transactions"
+                  ></div>
+                  <p class="landing-hero-cal__insight landing-hero-cal__insight--advice" role="note">
+                    <span class="landing-hero-cal__insightIcon" aria-hidden="true">✓</span>
+                    <span id="landingHeroAlertCopy">You&rsquo;re safe after your next paycheck.</span>
                   </p>
                 </div>
               </div>
@@ -140,31 +136,44 @@
         <section class="landing-bank-compare landing-section landing-section--tint-neutral landing-reveal" aria-labelledby="landingBankCompareTitle">
           <div class="landing-bank-compare__intro">
             <h2 id="landingBankCompareTitle" class="landing-bank-compare__title">Your bank shows today. BalanceWhiz shows what&rsquo;s coming.</h2>
-            <p class="landing-bank-compare__lede">Your current balance can look fine right now — even when bills, taxes, camps, or credit card payments are about to create a crunch.</p>
+            <p class="landing-bank-compare__lede">Today&rsquo;s balance doesn&rsquo;t tell the whole story.</p>
           </div>
           <div class="landing-bank-compare__grid" role="group" aria-label="Bank app vs BalanceWhiz comparison">
             <article class="landing-bank-compare__card landing-bank-compare__card--bank">
               <h3 class="landing-bank-compare__cardTitle">Your bank app</h3>
-              <div class="landing-bank-compare__balanceBlock">
-                <span class="landing-bank-compare__balanceLabel">Today&rsquo;s balance</span>
-                <span class="landing-bank-compare__balanceAmount">$4,862</span>
+              <div class="landing-bank-compare__bankOnly">
+                <span class="landing-bank-compare__flowLabel">Today&rsquo;s Balance</span>
+                <span class="cal-stat cal-balance landing-bank-compare__balance">$4,862</span>
               </div>
-              <p class="landing-bank-compare__note">Looks fine today.</p>
+              <p class="landing-bank-compare__note landing-bank-compare__note--ok">
+                <span class="landing-bank-compare__noteIcon" aria-hidden="true">✓</span>
+                Looks fine.
+              </p>
             </article>
             <article class="landing-bank-compare__card landing-bank-compare__card--bw">
               <h3 class="landing-bank-compare__cardTitle">BalanceWhiz</h3>
-              <div class="landing-bank-compare__forecast">
-                <div class="landing-bank-compare__forecastRow">
-                  <span class="landing-bank-compare__forecastDay">Today</span>
-                  <span class="landing-bank-compare__forecastAmount">$4,862</span>
+              <div class="landing-bank-compare__flow">
+                <div class="landing-bank-compare__flowStep">
+                  <span class="landing-bank-compare__flowLabel">Today</span>
+                  <span class="cal-stat cal-balance landing-bank-compare__balance">$4,862</span>
                 </div>
-                <div class="landing-bank-compare__forecastRow landing-bank-compare__forecastRow--drop">
-                  <span class="landing-bank-compare__forecastDay">Next Friday</span>
-                  <span class="landing-bank-compare__forecastAmount landing-bank-compare__forecastAmount--low">$731</span>
+                <span class="landing-bank-compare__flowArrow" aria-hidden="true">↓</span>
+                <div class="landing-bank-compare__flowTx">
+                  <span
+                    class="cal-tx-label-wrap cal-tx-label-wrap--category-fill landing-bank-compare__txPill"
+                    style="--cal-tx-fill-bg: #fde8e8; --cal-tx-fill-fg: #7f1d1d"
+                  >
+                    <span class="cal-tx-label">Property Tax</span>
+                  </span>
                 </div>
-                <span class="landing-bank-compare__eventLabel">Property tax due</span>
+                <span class="landing-bank-compare__flowArrow" aria-hidden="true">↓</span>
+                <div class="landing-bank-compare__flowStep landing-bank-compare__flowStep--future">
+                  <span class="landing-bank-compare__flowLabel">Next Friday</span>
+                  <span class="cal-stat cal-balance cal-balance--watch-zone landing-bank-compare__balance landing-bank-compare__balance--future">$731</span>
+                  <span class="landing-bank-compare__flowContext">After property tax</span>
+                </div>
               </div>
-              <p class="landing-bank-compare__note landing-bank-compare__note--highlight">See the problem before it hits.</p>
+              <p class="landing-bank-compare__note landing-bank-compare__note--highlight">Make confident spending decisions.</p>
             </article>
           </div>
         </section>
@@ -431,7 +440,7 @@
         </div>
       </footer>
     </div>
-    <script src="./landing-hero-dates.js?v=7" defer></script>
+    <script src="./landing-hero-dates.js?v=9" defer></script>
     <script src="./landing-future-dates.js?v=1" defer></script>
     <script src="./landing-hero-demo.js?v=4" defer></script>
     <script>
