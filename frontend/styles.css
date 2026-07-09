@@ -1320,10 +1320,183 @@ body.landing-page .landing-hero-cal__insight{
 body.landing-page #landingHeroForecast .landing-hero-cal__insight{
   max-width: 78%;
 }
+body.landing-page #landingHeroForecast .landing-hero-focus__insight{
+  max-width: none;
+}
 body.landing-page .landing-hero-cal__insight.is-emphasized{
   background: rgba(220, 248, 232, 0.82);
   border-color: rgba(4, 120, 87, 0.2);
   transition: background 0.45s ease, border-color 0.45s ease;
+}
+
+/* Hero: vertical focus timeline — one dominant "today" card */
+body.landing-page .landing-hero-focus .landing-hero-viz__hdr{
+  margin-bottom: 0.52rem;
+}
+body.landing-page .landing-hero-focus__timeline{
+  display: flex;
+  flex-direction: column;
+  gap: 0.34rem;
+  margin: 0;
+  padding: 0;
+}
+body.landing-page .landing-hero-focus__row{
+  display: grid;
+  grid-template-columns: 4.25rem minmax(0, 1fr);
+  gap: 0.55rem;
+  align-items: center;
+  margin: 0;
+  padding: 0.34rem 0.48rem;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  box-sizing: border-box;
+}
+body.landing-page .landing-hero-focus__row--context{
+  padding: 0.14rem 0.48rem;
+  opacity: 0.52;
+}
+body.landing-page .landing-hero-focus__row--bill{
+  padding: 0.3rem 0.48rem;
+  border-color: rgba(180, 83, 9, 0.1);
+  background: rgba(255, 251, 245, 0.55);
+}
+body.landing-page .landing-hero-focus__row--today{
+  grid-template-columns: 4.5rem minmax(0, 1fr);
+  align-items: start;
+  padding: 0.78rem 0.68rem 0.72rem;
+  margin: 0.18rem 0 0.14rem;
+  border-width: 2px;
+  border-color: rgba(11, 61, 46, 0.38);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 1) 0%, rgba(236, 253, 245, 0.88) 100%);
+  box-shadow:
+    0 0 0 1px rgba(11, 61, 46, 0.06),
+    0 10px 28px -14px rgba(11, 61, 46, 0.3);
+  transform: scale(1.06);
+  transform-origin: center center;
+}
+body.landing-page .landing-hero-focus__row--pay{
+  padding: 0.38rem 0.48rem;
+  border-color: rgba(4, 120, 87, 0.14);
+  background: rgba(236, 253, 245, 0.42);
+}
+body.landing-page .landing-hero-focus__dateCol{
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.04rem;
+  min-width: 0;
+}
+body.landing-page .landing-hero-focus__star{
+  font-size: 0.62rem;
+  line-height: 1;
+  color: rgba(4, 120, 87, 0.78);
+}
+body.landing-page .landing-hero-focus__date{
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: rgba(100, 116, 139, 0.72);
+  white-space: nowrap;
+}
+body.landing-page .landing-hero-focus__date--today{
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: rgba(11, 61, 46, 0.92);
+}
+body.landing-page .landing-hero-focus__body{
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.08rem;
+  min-width: 0;
+}
+body.landing-page .landing-hero-focus__row--context .landing-hero-focus__body{
+  flex-direction: row;
+  align-items: baseline;
+  justify-content: flex-start;
+}
+body.landing-page .landing-hero-focus__row--pay .landing-hero-focus__body{
+  gap: 0.12rem;
+}
+body.landing-page .landing-hero-focus__todayLabel{
+  font-size: 0.62rem;
+  font-weight: 650;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  line-height: 1.2;
+  color: rgba(11, 61, 46, 0.62);
+}
+body.landing-page .landing-hero-focus__balance{
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  color: rgba(51, 65, 85, 0.72);
+}
+body.landing-page .landing-hero-focus__row--context .landing-hero-focus__balance{
+  font-size: 0.76rem;
+  font-weight: 650;
+}
+body.landing-page .landing-hero-focus__balance--hero{
+  font-size: 1.42rem;
+  font-weight: 850;
+  color: rgba(11, 61, 46, 0.96);
+}
+body.landing-page .landing-hero-focus__balance--pay{
+  font-size: 0.88rem;
+  font-weight: 780;
+  color: rgba(11, 61, 46, 0.82);
+}
+body.landing-page .landing-hero-focus__event{
+  font-size: 0.72rem;
+  font-weight: 650;
+  line-height: 1.25;
+  color: rgba(146, 64, 14, 0.82);
+}
+body.landing-page .landing-hero-focus__event--pay{
+  font-size: 0.64rem;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(4, 120, 87, 0.78);
+}
+body.landing-page .landing-hero-focus__insight{
+  display: flex;
+  align-items: flex-start;
+  gap: 0.42rem;
+  margin: 0.92rem 0 0;
+  padding: 0.58rem 0.72rem;
+  max-width: none;
+  border-radius: 11px;
+  border: 1px solid rgba(4, 120, 87, 0.22);
+  background: linear-gradient(180deg, rgba(220, 248, 232, 0.92) 0%, rgba(236, 253, 245, 0.78) 100%);
+  box-shadow: 0 6px 18px -14px rgba(11, 61, 46, 0.28);
+  font-size: 0.76rem;
+  font-weight: 650;
+  line-height: 1.35;
+  color: rgba(11, 61, 46, 0.9);
+}
+body.landing-page .landing-hero-focus__insightCheck{
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.05rem;
+  height: 1.05rem;
+  margin-top: 0.04rem;
+  border-radius: 50%;
+  background: rgba(4, 120, 87, 0.14);
+  color: rgba(4, 120, 87, 0.95);
+  font-size: 0.62rem;
+  font-weight: 800;
+  line-height: 1;
+}
+body.landing-page .landing-hero-focus__insight.is-emphasized{
+  background: linear-gradient(180deg, rgba(204, 245, 222, 0.98) 0%, rgba(220, 248, 232, 0.92) 100%);
+  border-color: rgba(4, 120, 87, 0.32);
+  box-shadow: 0 8px 22px -12px rgba(11, 61, 46, 0.34);
 }
 
 body.landing-page .landing-setup-callout{
@@ -1397,6 +1570,152 @@ body.landing-page .landing-setup-callout__note{
   body.landing-page .landing-setup-callout__arrow{
     transform: rotate(90deg);
     justify-self: center;
+  }
+}
+
+/* Landing: bank app vs BalanceWhiz comparison */
+body.landing-page .landing-bank-compare{
+  display: grid;
+  gap: clamp(0.62rem, 1.35vw, 0.92rem);
+  padding: clamp(0.18rem, 0.45vw, 0.32rem) 0;
+}
+body.landing-page .landing-bank-compare__intro{
+  max-width: 40rem;
+  margin: 0 auto;
+  text-align: center;
+}
+body.landing-page .landing-bank-compare__title{
+  margin: 0 0 0.22rem;
+  font-size: clamp(1.28rem, 2.45vw, 1.72rem);
+  line-height: 1.1;
+  font-weight: 800;
+  letter-spacing: -0.024em;
+  color: rgba(15, 23, 42, 0.99);
+}
+body.landing-page .landing-bank-compare__lede{
+  margin: 0 auto;
+  max-width: 36rem;
+  font-size: clamp(0.88rem, 1.32vw, 0.98rem);
+  line-height: 1.42;
+  font-weight: 500;
+  color: rgba(51, 65, 85, 0.9);
+}
+body.landing-page .landing-bank-compare__grid{
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(0.5rem, 1.1vw, 0.72rem);
+  width: 100%;
+  max-width: 42rem;
+  margin: 0 auto;
+  align-items: stretch;
+}
+body.landing-page .landing-bank-compare__card{
+  display: flex;
+  flex-direction: column;
+  gap: 0.62rem;
+  margin: 0;
+  padding: clamp(0.82rem, 1.6vw, 1rem) clamp(0.88rem, 1.7vw, 1.06rem) clamp(0.78rem, 1.5vw, 0.94rem);
+  border-radius: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.081);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.99) 0%, rgba(251, 252, 253, 0.94) 100%);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.88) inset,
+    0 8px 26px -22px rgba(15, 23, 42, 0.14);
+  box-sizing: border-box;
+}
+body.landing-page .landing-bank-compare__card--bank{
+  color: rgba(51, 65, 85, 0.92);
+}
+body.landing-page .landing-bank-compare__card--bw{
+  border-color: rgba(11, 61, 46, 0.14);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 1) 0%, rgba(240, 253, 247, 0.72) 100%);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.92) inset,
+    0 12px 32px -24px rgba(11, 61, 46, 0.2);
+}
+body.landing-page .landing-bank-compare__cardTitle{
+  margin: 0;
+  font-size: clamp(0.82rem, 1.2vw, 0.9rem);
+  font-weight: 750;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  color: rgba(30, 41, 59, 0.9);
+}
+body.landing-page .landing-bank-compare__card--bw .landing-bank-compare__cardTitle{
+  color: rgba(11, 61, 46, 0.92);
+}
+body.landing-page .landing-bank-compare__balanceBlock{
+  display: grid;
+  gap: 0.18rem;
+  padding: 0.58rem 0.62rem;
+  border-radius: 11px;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  background: rgba(248, 250, 252, 0.72);
+}
+body.landing-page .landing-bank-compare__balanceLabel,
+body.landing-page .landing-bank-compare__forecastDay{
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: rgba(100, 116, 139, 0.82);
+}
+body.landing-page .landing-bank-compare__balanceAmount,
+body.landing-page .landing-bank-compare__forecastAmount{
+  font-size: clamp(1.28rem, 2.2vw, 1.48rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  color: rgba(15, 23, 42, 0.96);
+  font-variant-numeric: tabular-nums;
+}
+body.landing-page .landing-bank-compare__forecast{
+  display: grid;
+  gap: 0.34rem;
+  padding: 0.58rem 0.62rem;
+  border-radius: 11px;
+  border: 1px solid rgba(11, 61, 46, 0.1);
+  background: rgba(255, 255, 255, 0.82);
+}
+body.landing-page .landing-bank-compare__forecastRow{
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+body.landing-page .landing-bank-compare__forecastRow--drop{
+  padding-top: 0.34rem;
+  border-top: 1px solid rgba(11, 61, 46, 0.08);
+}
+body.landing-page .landing-bank-compare__forecastAmount--low{
+  color: rgba(180, 83, 9, 0.92);
+}
+body.landing-page .landing-bank-compare__eventLabel{
+  display: inline-flex;
+  align-self: flex-start;
+  margin-top: 0.08rem;
+  padding: 0.18rem 0.44rem;
+  border-radius: 999px;
+  font-size: 0.66rem;
+  font-weight: 650;
+  line-height: 1.2;
+  color: rgba(11, 61, 46, 0.86);
+  background: rgba(4, 120, 87, 0.08);
+  border: 1px solid rgba(11, 61, 46, 0.08);
+}
+body.landing-page .landing-bank-compare__note{
+  margin: 0;
+  margin-top: auto;
+  font-size: 0.76rem;
+  font-weight: 600;
+  line-height: 1.32;
+  color: rgba(100, 116, 139, 0.78);
+}
+body.landing-page .landing-bank-compare__note--highlight{
+  color: rgba(11, 61, 46, 0.82);
+}
+@media (max-width: 640px){
+  body.landing-page .landing-bank-compare__grid{
+    grid-template-columns: 1fr;
   }
 }
 
@@ -4618,17 +4937,20 @@ body.landing-page .landing-preview__demo:hover{
   body.landing-page .landing-hero-cal.landing-hero-viz{
     padding: 13px 15px 12px;
   }
-  body.landing-page .landing-hero-cal .landing-hero-viz__week{
-    gap: 12px;
-    margin-bottom: 3px;
-    padding: 0 0.15rem;
+  body.landing-page .landing-hero-focus__row--today{
+    transform: scale(1.04);
+    padding: 0.68rem 0.58rem 0.62rem;
   }
-  body.landing-page .landing-hero-cal .landing-hero-viz__cell{
-    min-height: 3.35rem;
-    padding: 6px 8px 7px;
+  body.landing-page .landing-hero-focus__balance--hero{
+    font-size: 1.28rem;
   }
-  body.landing-page .landing-hero-cal .landing-hero-viz__cell--watch{
-    padding: 7px 8px 7px;
+  body.landing-page .landing-hero-focus__insight{
+    margin-top: 0.82rem;
+    padding: 0.5rem 0.62rem;
+    font-size: 0.72rem;
+  }
+  body.landing-page #landingHeroForecast .landing-hero-focus__insight{
+    max-width: none;
   }
   body.landing-page #landingHeroForecast .landing-hero-cal__insight{
     margin-top: 0.75rem;
@@ -28122,25 +28444,24 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
     padding: 12px 14px 11px;
   }
 
-  body.landing-page .landing-hero-cal .landing-hero-viz__week{
-    gap: 10px;
-    margin-bottom: 2px;
-    padding: 0 0.1rem;
+  body.landing-page .landing-hero-focus__row--today{
+    transform: scale(1.03);
+    padding: 0.62rem 0.52rem 0.58rem;
   }
 
-  body.landing-page .landing-hero-cal .landing-hero-viz__cell{
-    min-height: 3.2rem;
-    padding: 6px 7px 7px;
+  body.landing-page .landing-hero-focus__balance--hero{
+    font-size: 1.22rem;
   }
 
-  body.landing-page .landing-hero-cal .landing-hero-viz__cell--watch{
-    padding: 7px 7px 7px;
+  body.landing-page .landing-hero-focus__insight{
+    margin-top: 0.76rem;
+    padding: 0.46rem 0.54rem;
+    font-size: 0.7rem;
   }
 
-  body.landing-page .landing-hero-cal .landing-hero-viz__cell--watch .landing-hero-viz__b{
-    font-size: 13px;
+  body.landing-page #landingHeroForecast .landing-hero-focus__insight{
+    max-width: none;
   }
-
   body.landing-page #landingHeroForecast .landing-hero-cal__insight{
     margin-top: 0.72rem;
     padding: 0.32rem 0.46rem;
@@ -30570,7 +30891,7 @@ body[data-bw-view="calendar"] .sidebar-month-row,
 body[data-bw-view="transactions"] .sidebar-month-row,
 body[data-bw-view="settings"] .sidebar-month-row,
 body[data-bw-view="reports"] .sidebar-month-row{
-  margin-bottom: 8px;
+  margin-bottom: 12px;
 }
 body[data-bw-view="calendar"] #sidebarBodyMonth .total,
 body[data-bw-view="transactions"] #sidebarBodyMonth .total,
