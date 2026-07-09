@@ -27,7 +27,7 @@
   var today = startOfDay(new Date());
   var monthData = [
     { bal: 4800 },
-    { bal: 1400, watch: true },
+    { bal: 1140, watch: true },
     { bal: 3200 },
     { bal: 4600 },
   ];
@@ -64,7 +64,7 @@
 
   var insight = section.querySelector("#landingFutureInsightCopy");
   if (insight) {
-    insight.textContent = "Without planning ahead, your balance drops close to your $1,000 safety buffer.";
+    insight.textContent = "Property taxes bring your balance within $140 of your safety buffer.";
   }
 
   var chartLabel = section.querySelector("#landingFutureCrunchChartLabel");

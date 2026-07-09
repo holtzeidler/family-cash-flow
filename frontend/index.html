@@ -48,7 +48,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=701" />
+    <link rel="stylesheet" href="./styles.css?v=722" />
   </head>
   <body class="landing-page">
     <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -82,10 +82,10 @@
           <div class="landing-hero__ambient" aria-hidden="true"></div>
           <div class="landing-hero__stack">
             <header class="landing-hero__copy">
-              <h1 class="landing-hero__text">See your checking account weeks before life happens.</h1>
-              <p class="landing-hero__sub">Start with your checking balance, paychecks, and recurring bills. Most people can build a useful forecast in under 10 minutes.</p>
+              <h1 class="landing-hero__text">Never get surprised by your checking account again.</h1>
+              <p class="landing-hero__sub">Start with your checking balance, paychecks, and recurring bills. Most people can see their future checking balance in under 10 minutes.</p>
               <div class="landing-hero__ctaGroup">
-                <a href="/account-setup/?fresh=1" class="landing-hero__cta">Start my forecast</a>
+                <a href="/account-setup/?fresh=1" class="landing-hero__cta">See my future balance</a>
                 <p class="landing-hero__microtrust" aria-label="What to expect">
                   <span class="landing-hero__microtrust-item">
                     <span class="landing-hero__microtrust-check" aria-hidden="true">✓</span>
@@ -96,14 +96,11 @@
                     <span class="landing-hero__microtrust-check" aria-hidden="true">✓</span>
                     Useful with just a few recurring transactions
                   </span>
-                  <span class="landing-hero__microtrust__sep" aria-hidden="true">·</span>
-                  <span class="landing-hero__microtrust-item">
-                    <span class="landing-hero__microtrust-check" aria-hidden="true">✓</span>
-                    Setup in about 10 minutes
-                  </span>
                 </p>
               </div>
             </header>
+
+            <p class="landing-hero__bridge">Built for anyone who&rsquo;s ever wondered, &ldquo;Can I afford this now &mdash; and still cover what&rsquo;s coming?&rdquo;</p>
 
             <div id="landingHeroForecast" class="landing-hero-forecast" aria-label="Example forecast preview">
               <div class="landing-hero-forecast__demo">
@@ -129,7 +126,7 @@
                     </li>
                   </ul>
                   <p class="landing-hero-cal__insight" role="note">
-                    <span id="landingHeroAlertCopy">Safe to move after your next paycheck</span>
+                    <span id="landingHeroAlertCopy">Safe to spend or move after your next paycheck</span>
                   </p>
                 </div>
               </div>
@@ -137,25 +134,76 @@
           </div>
         </div>
 
+        <section class="landing-bank-compare landing-section landing-section--tint-neutral landing-reveal" aria-labelledby="landingBankCompareTitle">
+          <div class="landing-bank-compare__intro">
+            <h2 id="landingBankCompareTitle" class="landing-bank-compare__title">Your bank shows today. BalanceWhiz shows what&rsquo;s coming.</h2>
+            <p class="landing-bank-compare__lede">Today&rsquo;s balance doesn&rsquo;t tell the whole story.</p>
+          </div>
+          <div class="landing-bank-compare__grid" role="group" aria-label="Bank app vs BalanceWhiz comparison">
+            <article class="landing-bank-compare__card landing-bank-compare__card--bank">
+              <h3 class="landing-bank-compare__cardTitle">Your bank app</h3>
+              <div class="landing-bank-compare__bankOnly">
+                <span class="landing-bank-compare__flowLabel">Today&rsquo;s Balance</span>
+                <span class="cal-stat cal-balance landing-bank-compare__balance">$4,862</span>
+                <span class="landing-bank-compare__bankHint">That&rsquo;s all your bank can tell you.</span>
+              </div>
+            </article>
+            <article class="landing-bank-compare__card landing-bank-compare__card--bw">
+              <h3 class="landing-bank-compare__cardTitle">BalanceWhiz</h3>
+              <div class="landing-bank-compare__forecast">
+                <div class="landing-bank-compare__flowStep">
+                  <span class="landing-bank-compare__flowLabel">Today</span>
+                  <span class="cal-stat cal-balance landing-bank-compare__balance">$4,862</span>
+                </div>
+                <div class="cal-day-txns landing-bank-compare__txns" aria-label="Upcoming expenses">
+                  <div class="cal-day-tx-line cal-day-tx-line--expected cal-day-tx-line--primary cal-day-tx-line--flow-out">
+                    <span
+                      class="cal-tx-label-wrap cal-tx-label-wrap--category-fill"
+                      style="--cal-tx-fill-bg: #fde8e8; --cal-tx-fill-fg: #7f1d1d"
+                    >
+                      <span class="cal-tx-label">Property Tax </span>
+                    </span>
+                    <span class="cal-amt expense">-$2,100</span>
+                  </div>
+                  <div class="cal-day-tx-line cal-day-tx-line--expected cal-day-tx-line--secondary cal-day-tx-line--flow-out">
+                    <span
+                      class="cal-tx-label-wrap cal-tx-label-wrap--category-fill"
+                      style="--cal-tx-fill-bg: #ffedd5; --cal-tx-fill-fg: #9a3412"
+                    >
+                      <span class="cal-tx-label">Vacation Deposit </span>
+                    </span>
+                    <span class="cal-amt expense">-$2,000</span>
+                  </div>
+                </div>
+                <div class="landing-bank-compare__flowStep landing-bank-compare__flowStep--future">
+                  <span class="landing-bank-compare__flowLabel">Next Friday</span>
+                  <span class="cal-stat cal-balance cal-balance--watch-zone landing-bank-compare__balance landing-bank-compare__balance--future">$731</span>
+                </div>
+              </div>
+              <p class="landing-bank-compare__note landing-bank-compare__note--highlight">Plan ahead instead of reacting.</p>
+            </article>
+          </div>
+        </section>
+
         <section class="landing-setup-callout landing-reveal" aria-labelledby="landingSetupCalloutTitle">
           <h2 id="landingSetupCalloutTitle" class="landing-setup-callout__title">Get started in three quick steps</h2>
           <div class="landing-setup-callout__items" role="list">
             <div class="landing-setup-callout__item" role="listitem">
               <span class="landing-setup-callout__num">1</span>
-              <span>Current checking balance</span>
+              <span>Enter today&rsquo;s balance</span>
             </div>
             <span class="landing-setup-callout__arrow" aria-hidden="true">→</span>
             <div class="landing-setup-callout__item" role="listitem">
               <span class="landing-setup-callout__num">2</span>
-              <span>Paychecks</span>
+              <span>Add your paychecks</span>
             </div>
             <span class="landing-setup-callout__arrow" aria-hidden="true">→</span>
             <div class="landing-setup-callout__item" role="listitem">
               <span class="landing-setup-callout__num">3</span>
-              <span>Recurring bills</span>
+              <span>Add recurring bills</span>
             </div>
           </div>
-          <p class="landing-setup-callout__note">That&rsquo;s enough to create a useful forecast for most households.</p>
+          <p class="landing-setup-callout__note">That&rsquo;s enough to start seeing what&rsquo;s ahead.</p>
         </section>
 
         <div id="features" class="landing-features landing-reveal" aria-label="90-day outlook">
@@ -166,11 +214,11 @@
             aria-label="Future planning"
           >
             <div class="landing-future__intro">
-              <h2 class="landing-future__title">See cash crunches before they happen.</h2>
-              <p class="landing-future__lede">Even a simple forecast can uncover expensive surprises weeks before they hit.</p>
+              <h2 class="landing-future__title">See cash pressure before it becomes a problem.</h2>
+              <p class="landing-future__lede">See upcoming cash pressure weeks before expensive surprises hit.</p>
             </div>
             <div class="landing-future__demo">
-              <div class="landing-future-viz landing-hero-viz" aria-label="Example 90-day balance forecast">
+              <div class="landing-future-viz landing-hero-viz" aria-label="Example 90-day balance outlook">
                 <div class="landing-hero-viz__hdr">
                   <span class="landing-hero-viz__title">90-day outlook</span>
                   <span class="landing-hero-viz__sub">Projected checking balance by month</span>
@@ -196,7 +244,7 @@
                       </linearGradient>
                     </defs>
                     <line class="landing-future-viz__bufferLine" x1="68" y1="102" x2="432" y2="102" />
-                    <text class="landing-future-viz__bufferLabel" x="458" y="114" text-anchor="end" dominant-baseline="middle">$1k buffer</text>
+                    <text class="landing-future-viz__bufferLabel" x="458" y="114" text-anchor="end" dominant-baseline="middle">Your safety buffer</text>
                     <path
                       d="M84,36 L168,42 L252,76 L336,86 L424,44 L424,118 L84,118 Z"
                       fill="url(#landingFutureFill)"
@@ -209,7 +257,7 @@
                       stroke-linejoin="round"
                     />
                     <circle class="landing-future-viz__dot landing-future-viz__dot--start" cx="84" cy="36" r="3" />
-                    <circle class="landing-future-viz__dot landing-future-viz__dot--crunch" cx="336" cy="86" r="3.25" />
+                    <circle class="landing-future-viz__dot landing-future-viz__dot--crunch" cx="336" cy="86" r="3.75" />
                     <circle class="landing-future-viz__dot landing-future-viz__dot--end" cx="424" cy="44" r="3" />
                     <text class="landing-future-viz__label landing-future-viz__label--start" x="92" y="14" text-anchor="start" dominant-baseline="middle">Today</text>
                     <text
@@ -232,63 +280,17 @@
                   </li>
                 </ul>
                 <p class="landing-hero-cal__insight landing-future-viz__insight" role="note">
-                  <span id="landingFutureInsightCopy">Without planning ahead, your balance drops close to your $1,000 safety buffer.</span>
+                  <span id="landingFutureInsightCopy">Property taxes bring your balance within $140 of your safety buffer.</span>
                 </p>
               </div>
             </div>
           </section>
         </div>
 
-        <section id="how" class="landing-how landing-section landing-section--tint-neutral landing-reveal" aria-label="How it works">
-          <div class="landing-how__copy">
-            <h2 class="landing-how__title">How it works</h2>
-            <div class="landing-how__grid" role="list">
-              <article class="landing-how__card" role="listitem">
-                <div class="landing-how__stepTop">
-                  <span class="landing-how__stepIcon" aria-hidden="true">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M8 2v4M16 2v4M4 8h16M6 4h12a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
-                    </svg>
-                  </span>
-                  <div class="landing-how__stepMark" aria-hidden="true">1</div>
-                </div>
-                <h3 class="landing-how__cardTitle">Start with the basics</h3>
-                <p class="landing-how__cardBody">Enter your checking balance, paychecks, and recurring bills.</p>
-              </article>
-              <article class="landing-how__card" role="listitem">
-                <div class="landing-how__stepTop">
-                  <span class="landing-how__stepIcon" aria-hidden="true">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M4 12a8 8 0 1116 0 8 8 0 01-16 0z" stroke="currentColor" stroke-width="1.6" />
-                      <path d="M12 8v4l2.5 2.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
-                    </svg>
-                  </span>
-                  <div class="landing-how__stepMark" aria-hidden="true">2</div>
-                </div>
-                <h3 class="landing-how__cardTitle">Catch problems before they happen</h3>
-                <p class="landing-how__cardBody">See exactly when upcoming bills, camps, vacations, or large expenses create pressure.</p>
-              </article>
-              <article class="landing-how__card landing-how__card--featured" role="listitem">
-                <div class="landing-how__stepTop">
-                  <span class="landing-how__stepIcon landing-how__stepIcon--featured" aria-hidden="true">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M7 10h8l-2.5-2.5M15 10l-2.5 2.5" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" />
-                      <path d="M17 14H9l2.5 2.5M9 14l2.5-2.5" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" />
-                    </svg>
-                  </span>
-                  <div class="landing-how__stepMark landing-how__stepMark--featured" aria-hidden="true">3</div>
-                </div>
-                <h3 class="landing-how__cardTitle">Make better cash decisions</h3>
-                <p class="landing-how__cardBody">Know when money is truly safe to spend, save, or transfer.</p>
-              </article>
-            </div>
-          </div>
-        </section>
-
         <section class="landing-reports landing-section landing-section--tint-neutral landing-reveal" aria-labelledby="landingReportsTitle">
           <div class="landing-reports__intro">
             <h2 id="landingReportsTitle" class="landing-reports__title">Common cash surprises</h2>
-            <p class="landing-reports__lede">Most cash flow problems aren&rsquo;t caused by everyday spending. They&rsquo;re caused by large expenses you forgot were coming.</p>
+            <p class="landing-reports__lede">Cash flow surprises often come from large expenses you forgot were coming.</p>
           </div>
           <div class="landing-reports__grid" role="list">
             <article class="landing-reports__card" role="listitem">
@@ -318,12 +320,58 @@
           </div>
           <div class="landing-reports__callout">
             <div class="landing-reports__calloutCopy">
-              <h3 class="landing-reports__calloutTitle">See these before they&rsquo;re due</h3>
-              <p class="landing-reports__calloutBody">BalanceWhiz helps you forecast upcoming cash needs so you can plan ahead instead of reacting at the last minute.</p>
+              <h3 class="landing-reports__calloutTitle">See them coming before they create a cash crunch.</h3>
+              <p class="landing-reports__calloutBody">BalanceWhiz shows what&rsquo;s ahead so you can adjust before these expenses squeeze your checking account.</p>
             </div>
-            <div class="landing-reports__example" aria-label="Example planned expense">
-              <span>Property Taxes &bull; Sept 15 &bull; $4,200</span>
-              <span class="landing-reports__badge">✓ Planned For</span>
+            <div class="landing-reports__example" aria-label="Example expense impact">
+              <span class="landing-reports__examplePrimary">Property Taxes &bull; Sept 15 &bull; $4,200</span>
+              <span class="landing-reports__exampleSecondary">Projected balance after: <span class="landing-reports__exampleAmt">$1,340</span></span>
+            </div>
+          </div>
+        </section>
+
+        <section id="how" class="landing-how landing-section landing-section--tint-neutral landing-reveal" aria-label="How it works">
+          <div class="landing-how__copy">
+            <h2 class="landing-how__title">How it works</h2>
+            <div class="landing-how__grid" role="list">
+              <article class="landing-how__card" role="listitem">
+                <div class="landing-how__stepTop">
+                  <span class="landing-how__stepIcon" aria-hidden="true">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M8 2v4M16 2v4M4 8h16M6 4h12a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+                    </svg>
+                  </span>
+                  <div class="landing-how__stepMark" aria-hidden="true">1</div>
+                </div>
+                <h3 class="landing-how__cardTitle">Start with the basics</h3>
+                <p class="landing-how__cardBody">Enter your checking balance, paychecks, and recurring bills.</p>
+              </article>
+              <article class="landing-how__card" role="listitem">
+                <div class="landing-how__stepTop">
+                  <span class="landing-how__stepIcon" aria-hidden="true">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M4 12a8 8 0 1116 0 8 8 0 01-16 0z" stroke="currentColor" stroke-width="1.6" />
+                      <path d="M12 8v4l2.5 2.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+                    </svg>
+                  </span>
+                  <div class="landing-how__stepMark" aria-hidden="true">2</div>
+                </div>
+                <h3 class="landing-how__cardTitle">Never wonder if your bills will clear.</h3>
+                <p class="landing-how__cardBody">See when upcoming bills and large expenses create cash pressure.</p>
+              </article>
+              <article class="landing-how__card landing-how__card--featured" role="listitem">
+                <div class="landing-how__stepTop">
+                  <span class="landing-how__stepIcon landing-how__stepIcon--featured" aria-hidden="true">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M7 10h8l-2.5-2.5M15 10l-2.5 2.5" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" />
+                      <path d="M17 14H9l2.5 2.5M9 14l2.5-2.5" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                  </span>
+                  <div class="landing-how__stepMark landing-how__stepMark--featured" aria-hidden="true">3</div>
+                </div>
+                <h3 class="landing-how__cardTitle">Know exactly when money is safe to spend.</h3>
+                <p class="landing-how__cardBody">Spend, save, or transfer money with confidence.</p>
+              </article>
             </div>
           </div>
         </section>
@@ -333,26 +381,30 @@
           <span class="landing-trust-micro__dot" aria-hidden="true">·</span>
           <span>Set up in minutes</span>
           <span class="landing-trust-micro__dot" aria-hidden="true">·</span>
-          <span>Edit everything anytime</span>
+          <span>Edit anytime</span>
           <span class="landing-trust-micro__dot" aria-hidden="true">·</span>
           <span>Built for real-life cash flow</span>
         </p>
 
-        <section class="landing-offer landing-offer--calm landing-reveal" aria-label="Start forecasting">
+        <section class="landing-offer landing-offer--calm landing-reveal" aria-label="Get started">
           <div class="landing-offer__panel">
-            <div class="landing-offer__content">
-              <h2 class="landing-offer__heading">Start your forecast in about 10 minutes</h2>
-              <p class="landing-offer__subhead">All you need is your checking balance, paychecks, and recurring bills.</p>
-              <p class="landing-offer__support">Free for your first month.</p>
+            <div class="landing-offer__main">
+              <div class="landing-offer__content">
+                <h2 class="landing-offer__heading">Start planning ahead in about 10 minutes.</h2>
+                <p class="landing-offer__subhead">Today&rsquo;s checking balance, your paychecks, and your recurring bills are all you need to get started.</p>
+                <p class="landing-offer__support">Free for your first month.</p>
+              </div>
+              <div class="landing-offer__action">
+                <a class="landing-offer__cta" href="/account-setup/?fresh=1">See my future balance</a>
+                <p class="landing-offer__footnote">No bank connection required to get started.</p>
+              </div>
+            </div>
+            <div class="landing-offer__trust">
               <ul class="landing-offer__bullets" aria-label="Offer details">
+                <li>Live in about 10 minutes</li>
                 <li>Billing starts after your free month</li>
-                <li>Live in minutes</li>
                 <li>Cancel anytime</li>
               </ul>
-            </div>
-            <div class="landing-offer__action">
-              <a class="landing-offer__cta" href="/account-setup/?fresh=1">Start My Forecast</a>
-              <p class="landing-offer__footnote">No bank connection required.</p>
             </div>
           </div>
         </section>
@@ -399,8 +451,8 @@
         </div>
       </footer>
     </div>
-    <script src="./landing-hero-dates.js?v=7" defer></script>
-    <script src="./landing-future-dates.js?v=1" defer></script>
+    <script src="./landing-hero-dates.js?v=17" defer></script>
+    <script src="./landing-future-dates.js?v=2" defer></script>
     <script src="./landing-hero-demo.js?v=4" defer></script>
     <script>
       (function () {
