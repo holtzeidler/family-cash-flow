@@ -2749,7 +2749,7 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
   }
 
   body.landing-page .landing-hero__microtrust{
-    margin-top: 0.34rem;
+    margin-top: 0.48rem;
     align-items: center;
     text-align: center;
   }
@@ -3701,7 +3701,7 @@ body.landing-page .landing-hero__microtrust{
   align-items: baseline;
   justify-content: center;
   gap: 0.16rem 0.36rem;
-  margin: 0.34rem 0 0;
+  margin: 0.48rem 0 0;
   max-width: min(40rem, 100%);
   width: 100%;
   padding: 0;
@@ -3709,7 +3709,7 @@ body.landing-page .landing-hero__microtrust{
   line-height: 1.42;
   font-weight: 400;
   letter-spacing: 0.01em;
-  color: rgba(71, 85, 105, 0.58);
+  color: rgba(71, 85, 105, 0.7);
   text-align: center;
 }
 body.landing-page .landing-hero__microtrust-item{
@@ -3723,7 +3723,7 @@ body.landing-page .landing-hero__microtrust-check{
   font-size: 0.72em;
   font-weight: 500;
   line-height: 1;
-  color: rgba(71, 85, 105, 0.42);
+  color: rgba(71, 85, 105, 0.54);
 }
 body.landing-page .landing-hero__microtrust__sep{
   display: inline;
