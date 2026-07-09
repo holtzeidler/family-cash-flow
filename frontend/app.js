@@ -1568,6 +1568,8 @@ let billingActionsWired = false;
 const BILLING_PLAN_KEY = "bw_billing_plan";
 const BILLING_START_KEY = "bw_billing_start";
 const BILLING_FREQUENCY_KEY = "bw_billing_frequency";
+/** Free period length; keep marketing copy in sync (e.g. "Free for your first month"). */
+const BILLING_TRIAL_DAYS = 30;
 
 // Expected instance editing (fields live inside unified #txEditModal)
 const instanceExpectedTxId = document.getElementById("instanceExpectedTxId");
@@ -7359,7 +7361,7 @@ function computeNextBillingDate(startIso, frequency) {
   const freq = String(frequency || "monthly");
   const todayIso = toISODate(new Date());
   if (freq !== "monthly") return "";
-  const trialEnd = addDaysIso(startIso, 14);
+  const trialEnd = addDaysIso(startIso, BILLING_TRIAL_DAYS);
   let next = trialEnd || addMonthsIso(startIso, 1);
   let guard = 0;
   while (next && next < todayIso && guard < 60) {
@@ -7423,14 +7425,14 @@ function renderBillingPanel() {
   const planLabel = getBillingPlanLabel(plan);
   const frequencyLabel = String(freq || "monthly").toLowerCase() === "monthly" ? "Monthly" : String(freq || "—");
   const todayIso = toISODate(new Date());
-  const trialEnd = start ? addDaysIso(start, 14) : "";
+  const trialEnd = start ? addDaysIso(start, BILLING_TRIAL_DAYS) : "";
   const next = computeNextBillingDate(start, freq);
   const inTrial = !!(trialEnd && trialEnd >= todayIso);
   if (billingPlanHeadlineEl) billingPlanHeadlineEl.textContent = planLabel === "—" ? "Cash Forecast" : planLabel;
   billingPlanEl.textContent = planLabel;
   billingFrequencyEl.textContent = frequencyLabel;
   if (billingPlanContextEl) billingPlanContextEl.textContent = getBillingPlanContext(plan);
-  if (billingNextDateLabelEl) billingNextDateLabelEl.textContent = inTrial ? "Trial ends" : "Next renewal";
+  if (billingNextDateLabelEl) billingNextDateLabelEl.textContent = inTrial ? "Free month ends" : "Next renewal";
   billingNextDateEl.textContent = inTrial
     ? formatShortDateLong(trialEnd)
     : next
@@ -7438,7 +7440,7 @@ function renderBillingPanel() {
       : "—";
   if (billingRenewalMessageEl) {
     billingRenewalMessageEl.textContent = inTrial
-      ? `Your 14-day trial ends ${formatShortDateLong(trialEnd)}.`
+      ? `Your free month ends ${formatShortDateLong(trialEnd)}.`
       : next
         ? `Your next renewal is ${formatShortDateLong(next)}.`
         : "Renewal dates appear here once billing is active.";
@@ -18185,7 +18187,7 @@ function ensureForecastReadyModal() {
         <p class="bw-forecast-ready__reassure">Takes about 60 seconds. Reopen the tour anytime from Help.</p>
       </div>
       <p class="bw-forecast-ready__finePrint" aria-label="Trial and pricing">
-        14-day free trial <span aria-hidden="true">•</span> <span id="bwForecastReadyPricingLine">Cancel anytime.</span>
+        Free for your first month <span aria-hidden="true">•</span> <span id="bwForecastReadyPricingLine">Cancel anytime.</span>
       </p>
     </div>
   `;
