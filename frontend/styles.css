@@ -1180,13 +1180,13 @@ body.landing-page .landing-hero-cal .landing-hero-viz__hdr{
   gap: 0.14rem;
 }
 body.landing-page .landing-hero-cal__grid{
-  --cal-day-min-h: 0;
-  --cal-gap: 0px;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  column-gap: 14px;
+  --cal-gap: 5px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  column-gap: var(--cal-gap);
   row-gap: 0;
+  align-items: stretch;
   margin-bottom: 4px;
-  padding: 0 0.2rem;
+  padding: 0 0.1rem;
   box-sizing: border-box;
 }
 body.landing-page .landing-hero-cal__grid .cal-cell{
@@ -1194,25 +1194,17 @@ body.landing-page .landing-hero-cal__grid .cal-cell{
   pointer-events: none;
   user-select: none;
   -webkit-user-select: none;
-  overflow: visible;
-  min-height: 0;
-  height: auto;
-  padding-bottom: 6px;
-}
-body.landing-page .landing-hero-cal__grid .cal-cell--no-tx{
-  min-height: 76px;
-}
-body.landing-page .landing-hero-cal__grid .cal-cell--has-activity{
-  min-height: 112px;
-}
-body.landing-page .landing-hero-cal__grid .cal-cell.cal-cell--bal-watch.cal-cell--no-tx{
-  min-height: 80px;
+  overflow: hidden;
+  min-height: 86px;
+  height: 100%;
+  padding: 5px 7px 4px;
+  box-shadow: 0 1px 2px rgba(17, 24, 39, 0.028);
 }
 body.landing-page .landing-hero-cal__grid .cal-cell-stack{
-  height: auto;
+  height: 100%;
   flex: 1 1 auto;
   justify-content: flex-start;
-  gap: 0;
+  gap: 2px;
 }
 body.landing-page .landing-hero-cal__grid .cal-cell--no-tx .cal-day-txns{
   display: none;
@@ -1221,58 +1213,82 @@ body.landing-page .landing-hero-cal__grid .cal-cell--no-tx .cal-day-txns{
 }
 body.landing-page .landing-hero-cal__grid .cal-cell-stack > .cal-ledger-metrics{
   margin-top: auto;
-  padding-top: 4px;
-  padding-bottom: 4px;
-  min-height: 20px;
+  padding-top: 5px;
+  padding-bottom: 3px;
+  min-height: 22px;
+  border-top: 1px solid rgba(11, 61, 46, 0.1);
+}
+body.landing-page .landing-hero-cal__grid .cal-cell--no-tx .cal-ledger-metrics{
+  border-top: 1px solid rgba(11, 61, 46, 0.08);
 }
 body.landing-page .landing-hero-cal__grid .cal-cell--has-activity .cal-cell-stack > .cal-day-txns{
   flex: 0 0 auto;
-  margin-top: 0;
+  margin-top: 2px;
   padding-top: 0;
+  gap: 0;
 }
-body.landing-page .landing-hero-cal__grid .cal-cell--today .cal-daynum{
-  padding-bottom: 2px;
+body.landing-page .landing-hero-cal__grid .cal-daynum{
+  cursor: default;
+  padding-bottom: 3px;
   margin-bottom: 0;
 }
-body.landing-page .landing-hero-cal__grid .cal-cell--today .cal-cell-stack > .cal-day-txns{
-  margin-top: 1px;
+body.landing-page .landing-hero-cal__grid .cal-daynum-num{
+  font-size: 8.5px;
+  min-width: 0;
+  height: auto;
+  min-height: 20px;
+  padding: 0 6px;
+  letter-spacing: -0.01em;
+  font-weight: 600;
+  color: rgba(71, 85, 105, 0.62);
+}
+body.landing-page .landing-hero-cal__grid .cal-daynum-num.is-today{
+  font-size: 8.75px;
+  min-height: 22px;
+  padding: 0 8px;
+}
+body.landing-page .landing-hero-cal__grid .cal-cell--no-tx .cal-daynum-num:not(.is-today){
+  color: rgba(100, 116, 139, 0.52);
+  font-weight: 520;
 }
 body.landing-page .landing-hero-cal__grid .cal-day-tx-line{
   cursor: default;
   pointer-events: none;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 2px;
-  min-height: 0;
-  padding: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-height: 16px;
+  padding: 0 1px 0 4px;
 }
-body.landing-page .landing-hero-cal__grid .cal-tx-label-wrap{
-  align-self: stretch;
-  width: 100%;
-  min-width: 0;
-}
-body.landing-page .landing-hero-cal__grid .cal-tx-label-wrap--category-fill{
+body.landing-page .landing-hero-cal__grid .cal-day-tx-line--pillOnly .cal-tx-label-wrap{
   width: fit-content;
   max-width: 100%;
-  padding: 1px 5px;
-  border-radius: 4px;
 }
-body.landing-page .landing-hero-cal__grid .cal-tx-label{
-  overflow: visible;
-  text-overflow: clip;
-  white-space: nowrap;
-  font-size: 10px;
-  font-weight: 600;
-}
-body.landing-page .landing-hero-cal__grid .cal-amt{
-  font-size: 10.5px;
-  font-weight: 600;
-  padding-left: 0;
+body.landing-page .landing-hero-cal__grid .cal-day-tx-line .cal-tx-label{
+  font-size: inherit;
+  font-weight: inherit;
 }
 body.landing-page .landing-hero-cal__grid .cal-stat.cal-balance{
-  font-size: 11.5px;
-  line-height: 1.22;
+  font-size: clamp(12.25px, 1.22vw, 13.75px);
+  font-weight: 700;
+  line-height: 1.2;
+  color: rgba(11, 61, 46, 0.94);
+}
+body.landing-page .landing-hero-cal__grid .cal-cell--no-tx .cal-stat.cal-balance{
+  font-size: clamp(11.75px, 1.14vw, 12.5px);
+  font-weight: 560;
+  color: rgba(100, 116, 139, 0.5);
+}
+body.landing-page .landing-hero-cal__grid .cal-stat.cal-balance.cal-balance--watch-zone{
+  font-size: clamp(12.5px, 1.26vw, 14px);
+  font-weight: 750;
+}
+body.landing-page .landing-hero-cal__grid .cal-cell.cal-cell--bal-watch:not(.cal-cell--out){
+  background: rgba(255, 255, 255, 0.94);
+  border-color: rgba(17, 24, 39, 0.068);
+  box-shadow: 0 1px 2px rgba(17, 24, 39, 0.028);
+}
+body.landing-page .landing-hero-cal__grid .cal-cell.cal-cell--bal-watch:not(.cal-cell--out)::after{
+  display: none;
 }
 body.landing-page .landing-hero-cal__grid .cal-ledger-metrics{
   cursor: default;
@@ -1295,32 +1311,6 @@ body.landing-page .landing-hero-cal__grid .cal-cell.cal-cell--bal-watch:hover{
 body.landing-page .landing-hero-cal__grid .cal-cell.cal-cell--today:hover{
   border-color: rgba(11, 61, 46, 0.14);
   background: color-mix(in srgb, var(--accent) 6%, #fff);
-}
-body.landing-page .landing-hero-cal__grid .cal-daynum{
-  cursor: default;
-}
-body.landing-page .landing-hero-cal__grid .cal-daynum-num{
-  font-size: 8.25px;
-  min-width: 0;
-  height: auto;
-  min-height: 22px;
-  padding: 0 5px;
-  letter-spacing: -0.01em;
-}
-body.landing-page .landing-hero-cal__grid .cal-daynum-num.is-today{
-  font-size: 8.5px;
-  min-width: 0;
-  height: auto;
-  min-height: 24px;
-  padding: 0 7px;
-}
-body.landing-page .landing-hero-cal__grid .cal-day-tx-line{
-  cursor: default;
-  pointer-events: none;
-}
-body.landing-page .landing-hero-cal__grid .cal-ledger-metrics{
-  cursor: default;
-  pointer-events: none;
 }
 body.landing-page .landing-hero-viz__cell--today{
   border-color: rgba(4, 120, 87, 0.22);
@@ -4868,15 +4858,12 @@ body.landing-page .landing-preview__demo:hover{
     padding: 13px 15px 12px;
   }
   body.landing-page .landing-hero-cal__grid{
-    column-gap: 12px;
+    column-gap: 5px;
     margin-bottom: 3px;
-    padding: 0 0.15rem;
+    padding: 0 0.08rem;
   }
-  body.landing-page .landing-hero-cal__grid .cal-cell--no-tx{
-    min-height: 72px;
-  }
-  body.landing-page .landing-hero-cal__grid .cal-cell--has-activity{
-    min-height: 106px;
+  body.landing-page .landing-hero-cal__grid .cal-cell{
+    min-height: 82px;
   }
   body.landing-page #landingHeroForecast .landing-hero-cal__insight{
     margin-top: 0.75rem;
@@ -28371,17 +28358,14 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   }
 
   body.landing-page .landing-hero-cal__grid{
-    column-gap: 10px;
+    column-gap: 4px;
     margin-bottom: 2px;
-    padding: 0 0.1rem;
+    padding: 0 0.05rem;
   }
 
-  body.landing-page .landing-hero-cal__grid .cal-cell--no-tx{
-    min-height: 68px;
-  }
-
-  body.landing-page .landing-hero-cal__grid .cal-cell--has-activity{
-    min-height: 100px;
+  body.landing-page .landing-hero-cal__grid .cal-cell{
+    min-height: 78px;
+    padding: 5px 5px 4px;
   }
 
   body.landing-page .landing-hero-cal__grid .cal-daynum-num{
