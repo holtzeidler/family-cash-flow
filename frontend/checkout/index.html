@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Checkout — BalanceWhiz</title>
+    <!-- bw:seo-head -->
+    <meta name="description" content="Subscribe to BalanceWhiz Cash Forecast." />
+    <link rel="canonical" href="https://balancewhiz.com/checkout/" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="theme-color" content="#0B3D2E" />
+    <meta property="og:site_name" content="BalanceWhiz" />
+    <meta property="og:title" content="Checkout — BalanceWhiz" />
+    <meta property="og:description" content="Subscribe to BalanceWhiz Cash Forecast." />
+    <meta property="og:url" content="https://balancewhiz.com/checkout/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://balancewhiz.com/assets/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:locale" content="en_US" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Checkout — BalanceWhiz" />
+    <meta name="twitter:description" content="Subscribe to BalanceWhiz Cash Forecast." />
+    <meta name="twitter:image" content="https://balancewhiz.com/assets/og-image.png" />
+    <link rel="icon" href="../favicon.ico" sizes="any" />
+    <link rel="icon" href="../favicon-32.png" type="image/png" sizes="32x32" />
+    <link rel="icon" href="../favicon-16.png" type="image/png" sizes="16x16" />
+    <link rel="apple-touch-icon" href="../apple-touch-icon.png" />
+    <link rel="manifest" href="../site.webmanifest" />
+    <!-- /bw:seo-head -->
+    <script>window.API_BASE = "__API_BASE__";</script>
+    <script src="https://js.stripe.com/dahlia/stripe.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="../styles.css?v=680" />
+  </head>
+  <body class="checkout-page plans-page plans-page--polished">
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+    <div class="container">
+      <div class="top-nav" role="navigation" aria-label="Primary">
+        <div class="top-nav__inner top-nav__inner--simple">
+          <div class="top-nav__title" aria-label="App title">
+            <div class="app-title app-title--logo">
+              <a href="/" aria-label="BalanceWhiz home">
+                <img
+                  class="app-logo"
+                  src="../assets/balance-whiz-logo-on-accent.svg?v=20260518"
+                  width="293"
+                  height="44"
+                  alt="BalanceWhiz"
+                  decoding="async"
+                  fetchpriority="high"
+                />
+              </a>
+            </div>
+          </div>
+          <nav class="plans-public-nav" aria-label="Site">
+            <a href="../plans/" class="plans-public-nav__link">Pricing</a>
+            <a href="../login.html" class="plans-public-nav__link plans-public-nav__link--cta">Login</a>
+          </nav>
+        </div>
+      </div>
+
+      <main id="main-content" class="grid">
+        <section class="checkout-wrap" aria-labelledby="checkoutTitle">
+          <header class="checkout-hero">
+            <p class="checkout-hero__eyebrow">Checkout</p>
+            <h1 id="checkoutTitle" class="checkout-hero__title">Subscribe to Cash Forecast</h1>
+            <p class="checkout-hero__subtitle">
+              Forecast your checking balance before bills and paychecks land. Cancel anytime.
+            </p>
+          </header>
+
+          <section class="checkout-card" aria-label="Plan">
+            <div class="checkout-product">
+              <div class="checkout-product__icon" aria-hidden="true">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M4 19V5" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+                  <path d="M4 19h16" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+                  <path d="M7 15l3.2-3.5 2.6 2.2L17 9" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
+              <div class="checkout-product__description">
+                <h2 class="checkout-product__name">Cash Forecast</h2>
+                <p class="checkout-product__price" id="checkoutSelectedPrice">$5.99 / month</p>
+                <p class="checkout-product__caption">Free for your first month · Cancel anytime</p>
+              </div>
+            </div>
+
+            <form id="checkoutForm" class="checkout-form" action="/create-checkout-session" method="POST">
+              <fieldset class="checkout-billing">
+                <legend class="checkout-billing__legend">Billing</legend>
+                <div class="checkout-billing__options" role="radiogroup" aria-label="Billing cycle">
+                  <label class="checkout-billing__option">
+                    <input
+                      type="radio"
+                      name="billing_cycle"
+                      value="monthly"
+                      data-lookup-key="cash_forecast_monthly"
+                      data-price-label="$5.99 / month"
+                      checked
+                    />
+                    <span class="checkout-billing__option-body">
+                      <span class="checkout-billing__option-title">Monthly</span>
+                      <span class="checkout-billing__option-price">$5.99 / month</span>
+                    </span>
+                  </label>
+                  <label class="checkout-billing__option">
+                    <input
+                      type="radio"
+                      name="billing_cycle"
+                      value="annual"
+                      data-lookup-key="cash_forecast_annual"
+                      data-price-label="$59.99 / year"
+                    />
+                    <span class="checkout-billing__option-body">
+                      <span class="checkout-billing__option-title">
+                        Annual
+                        <span class="checkout-billing__badge">Save ~17%</span>
+                      </span>
+                      <span class="checkout-billing__option-price">$59.99 / year</span>
+                    </span>
+                  </label>
+                </div>
+              </fieldset>
+
+              <!-- Stripe Price lookup_key — must match Prices in your Stripe Dashboard -->
+              <input type="hidden" id="lookupKey" name="lookup_key" value="cash_forecast_monthly" />
+              <button id="checkout-and-portal-button" class="plan-cta plan-cta--primary checkout-form__submit" type="submit">
+                Checkout
+              </button>
+              <p class="checkout-form__reassurance">You’ll complete payment securely on Stripe.</p>
+            </form>
+          </section>
+        </section>
+      </main>
+
+      <footer class="app-footer" role="contentinfo">
+        <div class="app-footer__inner">
+          <div class="app-footer__grid">
+            <div class="app-footer__col app-footer__col--brand">
+              <a class="app-footer__logo" href="/" aria-label="BalanceWhiz home">
+                <img
+                  class="app-footer__logo-img"
+                  src="/assets/balance-whiz-logo.svg?v=20260518"
+                  width="160"
+                  height="41"
+                  alt="BalanceWhiz"
+                  decoding="async"
+                />
+              </a>
+              <p class="app-footer__tagline">See your cash flow before it happens.</p>
+              <p class="app-footer__copyright">© 2026 BalanceWhiz</p>
+            </div>
+            <div class="app-footer__nav">
+              <nav class="app-footer__col" aria-label="Company">
+                <h2 class="app-footer__heading">Company</h2>
+                <ul class="app-footer__list">
+                  <li><a class="app-footer__link" href="/plans/">Pricing</a></li>
+                  <li><a class="app-footer__link" href="/privacy.html">Privacy Policy</a></li>
+                  <li><a class="app-footer__link" href="/terms.html">Terms of Service</a></li>
+                </ul>
+              </nav>
+            </div>
+          </div>
+        </div>
+      </footer>
+    </div>
+    <script>
+      (function () {
+        var form = document.getElementById("checkoutForm");
+        if (!form) return;
+        var api = String(window.API_BASE || "").replace(/\/$/, "");
+        if (api && api.indexOf("__API_BASE__") === -1) {
+          form.action = api + "/create-checkout-session";
+        }
+
+        var lookupInput = document.getElementById("lookupKey");
+        var priceEl = document.getElementById("checkoutSelectedPrice");
+        var radios = form.querySelectorAll('input[name="billing_cycle"]');
+
+        function syncBilling() {
+          var selected = form.querySelector('input[name="billing_cycle"]:checked');
+          if (!selected) return;
+          if (lookupInput) lookupInput.value = selected.getAttribute("data-lookup-key") || "";
+          if (priceEl) priceEl.textContent = selected.getAttribute("data-price-label") || "";
+        }
+
+        radios.forEach(function (radio) {
+          radio.addEventListener("change", syncBilling);
+        });
+        syncBilling();
+      })();
+    </script>
+  </body>
+</html>

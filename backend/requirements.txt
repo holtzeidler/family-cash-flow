@@ -10,4 +10,5 @@ psycopg[binary]
 python-multipart==0.0.20
 Pillow==11.0.0
 pytesseract==0.3.13
+stripe>=11.0.0
 

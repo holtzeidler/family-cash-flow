@@ -30928,3 +30928,196 @@ body[data-bw-view="reimbursements"] .pending-attn-indicator{
   flex: 0 0 auto;
 }
 
+
+/* ——— Checkout (Stripe-hosted redirect) ——— */
+body.checkout-page .container > .grid{
+  margin: 24px auto 56px;
+  width: min(94%, 520px);
+  padding: 0;
+  display: block;
+}
+.checkout-wrap{
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.checkout-hero__eyebrow{
+  margin: 0 0 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--accent) 78%, #6b7280);
+}
+.checkout-hero__title{
+  margin: 0 0 8px;
+  font-size: clamp(1.55rem, 2.4vw, 1.85rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #111827;
+  line-height: 1.2;
+}
+.checkout-hero__subtitle{
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.checkout-card{
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 16px;
+  padding: 22px 22px 20px;
+  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.03), 0 12px 28px -18px rgba(15, 23, 42, 0.22);
+}
+.checkout-product{
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding-bottom: 18px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+}
+.checkout-product__icon{
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent) 10%, #fff);
+  color: var(--accent);
+}
+.checkout-product__name{
+  margin: 0 0 4px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #111827;
+}
+.checkout-product__price{
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #1f2937;
+}
+.checkout-product__caption{
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+.checkout-billing{
+  margin: 0 0 16px;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.checkout-billing__legend{
+  margin: 0 0 10px;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+}
+.checkout-billing__options{
+  display: grid;
+  gap: 10px;
+}
+.checkout-billing__option{
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 12px;
+  background: #fafafa;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+.checkout-billing__option:hover{
+  border-color: color-mix(in srgb, var(--accent) 40%, rgba(15, 23, 42, 0.12));
+  background: #fff;
+}
+.checkout-billing__option:has(input:checked){
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 6%, #fff);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.checkout-billing__option input{
+  margin: 3px 0 0;
+  accent-color: var(--accent);
+}
+.checkout-billing__option-body{
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.checkout-billing__option-title{
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+}
+.checkout-billing__option-price{
+  font-size: 13px;
+  color: var(--muted);
+}
+.checkout-billing__badge{
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, #fff);
+}
+.checkout-form__submit{
+  width: 100%;
+  display: inline-flex;
+  justify-content: center;
+  text-align: center;
+  border: 0;
+  cursor: pointer;
+}
+.checkout-form__reassurance{
+  margin: 12px 0 0;
+  text-align: center;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* ——— Checkout success ——— */
+.checkout-product__icon--success{
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, #fff);
+}
+.checkout-success__calendar-link{
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+.checkout-success__calendar-link:hover{
+  text-decoration: underline;
+}
+.checkout-form__submit:disabled{
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ——— Checkout cancel ——— */
+.checkout-cancel__actions{
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+}
+.checkout-cancel__actions .checkout-form__submit{
+  text-decoration: none;
+  box-sizing: border-box;
+}
