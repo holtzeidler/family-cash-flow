@@ -50,10 +50,13 @@ def register_stripe_routes(app: FastAPI, settings: Any, logger: logging.Logger) 
         return base
 
     @app.post("/create-checkout-session", include_in_schema=False)
-    async def create_checkout_session(lookup_key: str = Form(...)):
+    async def create_checkout_session(request: Request, lookup_key: str = Form(...)):
         """
         Create a Stripe Checkout Session (subscription) and redirect to Stripe-hosted Checkout.
         Form field: lookup_key (must match a Price lookup_key in Stripe).
+
+        Prefer Accept: application/json → {"url": "..."} so the staging SPA can
+        surface errors; otherwise 303 redirect (classic form POST).
         """
         _require_stripe()
         domain = _require_public_base()
@@ -81,8 +84,13 @@ def register_stripe_routes(app: FastAPI, settings: Any, logger: logging.Logger) 
                         "price": prices.data[0].id,
                     }
                 ],
-                success_url=domain + "/checkout/success/?session_id={CHECKOUT_SESSION_ID}",
-                cancel_url=domain + "/checkout/cancel/",
+                # Land on Billing settings after payment so status can flip to Active Billing.
+                success_url=(
+                    domain
+                    + "/settings/?section=billing&checkout=success"
+                    + "&session_id={CHECKOUT_SESSION_ID}"
+                ),
+                cancel_url=domain + "/settings/?section=billing&checkout=canceled",
             )
         except HTTPException:
             raise
@@ -105,6 +113,9 @@ def register_stripe_routes(app: FastAPI, settings: Any, logger: logging.Logger) 
                 status_code=status.HTTP_502_BAD_GATEWAY,
                 detail="Stripe did not return a Checkout URL.",
             )
+        accept = (request.headers.get("accept") or "").lower()
+        if "application/json" in accept:
+            return JSONResponse({"url": session.url})
         return RedirectResponse(url=session.url, status_code=303)
 
     @app.post("/create-portal-session", include_in_schema=False)

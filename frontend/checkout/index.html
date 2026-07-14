@@ -29,11 +29,10 @@
     <link rel="manifest" href="../site.webmanifest" />
     <!-- /bw:seo-head -->
     <script>window.API_BASE = "__API_BASE__";</script>
-    <script src="https://js.stripe.com/dahlia/stripe.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=680" />
+    <link rel="stylesheet" href="../styles.css?v=683" />
   </head>
   <body class="checkout-page plans-page plans-page--polished">
     <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -56,8 +55,8 @@
             </div>
           </div>
           <nav class="plans-public-nav" aria-label="Site">
-            <a href="../plans/" class="plans-public-nav__link">Pricing</a>
-            <a href="../login.html" class="plans-public-nav__link plans-public-nav__link--cta">Login</a>
+            <a href="/settings/?section=billing" class="plans-public-nav__link" id="checkoutNavBilling">Billing</a>
+            <a href="/calendar/" class="plans-public-nav__link plans-public-nav__link--cta" id="checkoutNavCta">Open calendar</a>
           </nav>
         </div>
       </div>
@@ -84,7 +83,7 @@
               <div class="checkout-product__description">
                 <h2 class="checkout-product__name">Cash Forecast</h2>
                 <p class="checkout-product__price" id="checkoutSelectedPrice">$5.99 / month</p>
-                <p class="checkout-product__caption">Free for your first month · Cancel anytime</p>
+                <p class="checkout-product__caption">Cancel anytime · Secure checkout via Stripe</p>
               </div>
             </div>
 
@@ -127,6 +126,7 @@
 
               <!-- Stripe Price lookup_key — must match Prices in your Stripe Dashboard -->
               <input type="hidden" id="lookupKey" name="lookup_key" value="cash_forecast_monthly" />
+              <p id="checkoutErr" class="error" hidden role="alert"></p>
               <button id="checkout-and-portal-button" class="plan-cta plan-cta--primary checkout-form__submit" type="submit">
                 Checkout
               </button>
@@ -169,12 +169,47 @@
     </div>
     <script>
       (function () {
+        var TOKEN_KEY = "bw_api_access_token";
+        var FREQ_KEY = "bw_billing_frequency";
         var form = document.getElementById("checkoutForm");
+        var errEl = document.getElementById("checkoutErr");
+        var btn = document.getElementById("checkout-and-portal-button");
+        var cta = document.getElementById("checkoutNavCta");
+        var billingLink = document.getElementById("checkoutNavBilling");
+
+        function hasSession() {
+          try {
+            return !!(sessionStorage.getItem(TOKEN_KEY) || "").trim();
+          } catch (_) {
+            return false;
+          }
+        }
+
+        if (!hasSession()) {
+          if (cta) {
+            cta.textContent = "Login";
+            cta.href = "/login.html";
+          }
+          if (billingLink) billingLink.hidden = true;
+        } else {
+          if (cta) {
+            cta.textContent = "Open calendar";
+            cta.href = "/calendar/";
+          }
+          if (billingLink) billingLink.hidden = false;
+        }
+
         if (!form) return;
         var api = String(window.API_BASE || "").replace(/\/$/, "");
-        if (api && api.indexOf("__API_BASE__") === -1) {
-          form.action = api + "/create-checkout-session";
+        if (!api || api.indexOf("__API_BASE__") !== -1) {
+          if (errEl) {
+            errEl.hidden = false;
+            errEl.textContent = "Checkout is not configured (missing API_BASE).";
+          }
+          if (btn) btn.disabled = true;
+          return;
         }
+        form.action = api + "/create-checkout-session";
 
         var lookupInput = document.getElementById("lookupKey");
         var priceEl = document.getElementById("checkoutSelectedPrice");
@@ -185,12 +220,64 @@
           if (!selected) return;
           if (lookupInput) lookupInput.value = selected.getAttribute("data-lookup-key") || "";
           if (priceEl) priceEl.textContent = selected.getAttribute("data-price-label") || "";
+          try {
+            localStorage.setItem(
+              FREQ_KEY,
+              selected.value === "annual" ? "yearly" : "monthly"
+            );
+          } catch (_) {}
         }
 
         radios.forEach(function (radio) {
           radio.addEventListener("change", syncBilling);
         });
         syncBilling();
+
+        form.addEventListener("submit", function (e) {
+          e.preventDefault();
+          if (!btn || btn.disabled) return;
+          syncBilling();
+          if (errEl) {
+            errEl.hidden = true;
+            errEl.textContent = "";
+          }
+          btn.disabled = true;
+          var prev = btn.textContent;
+          btn.textContent = "Redirecting to Stripe…";
+
+          var body = new FormData(form);
+          fetch(form.action, {
+            method: "POST",
+            body: body,
+            credentials: "include",
+            headers: { Accept: "application/json" },
+          })
+            .then(function (res) {
+              return res.json().then(function (data) {
+                return { ok: res.ok, status: res.status, data: data };
+              });
+            })
+            .then(function (result) {
+              var url = result.data && result.data.url;
+              if (result.ok && url) {
+                window.location.assign(url);
+                return;
+              }
+              var msg =
+                (result.data && result.data.error && result.data.error.message) ||
+                (result.data && result.data.detail) ||
+                "Checkout failed (" + result.status + ").";
+              throw new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
+            })
+            .catch(function (err) {
+              if (errEl) {
+                errEl.hidden = false;
+                errEl.textContent = err && err.message ? err.message : String(err);
+              }
+              btn.disabled = false;
+              btn.textContent = prev;
+            });
+        });
       })();
     </script>
   </body>

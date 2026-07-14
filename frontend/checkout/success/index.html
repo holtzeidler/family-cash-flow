@@ -129,30 +129,24 @@
       </footer>
     </div>
     <script>
-      // Stripe sample: read session_id from the success_url query string.
-      // In production, prefer CSRF protection and resolve the portal customer
-      // from the authenticated user on the server — do not rely on session_id.
-      document.addEventListener("DOMContentLoaded", async () => {
-        const form = document.getElementById("portalForm");
-        const sessionInput = document.getElementById("session-id");
-        if (!form || !sessionInput) return;
-
-        const api = String(window.API_BASE || "").replace(/\/$/, "");
-        if (api && !api.includes("__API_BASE__")) {
-          form.action = api + "/create-portal-session";
-        }
-
+      document.addEventListener("DOMContentLoaded", () => {
         const searchParams = new URLSearchParams(window.location.search);
-        if (searchParams.has("session_id")) {
-          const session_id = searchParams.get("session_id");
-          sessionInput.setAttribute("value", session_id);
-        }
-
-        const portalBtn = document.getElementById("checkout-and-portal-button");
-        if (portalBtn && !sessionInput.value) {
-          portalBtn.disabled = true;
-          portalBtn.title = "Missing checkout session. Open this page from Stripe after payment.";
-        }
+        const sessionId = searchParams.get("session_id") || "";
+        try {
+          localStorage.setItem("bw_billing_paid", "1");
+          if (!localStorage.getItem("bw_billing_plan")) localStorage.setItem("bw_billing_plan", "base");
+          if (!localStorage.getItem("bw_billing_start")) {
+            const d = new Date();
+            const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+            localStorage.setItem("bw_billing_start", iso);
+          }
+          if (sessionId) localStorage.setItem("bw_billing_stripe_session", sessionId);
+        } catch (_) {}
+        const q = new URLSearchParams();
+        q.set("section", "billing");
+        q.set("checkout", "success");
+        if (sessionId) q.set("session_id", sessionId);
+        window.location.replace("/settings/?" + q.toString());
       });
     </script>
   </body>

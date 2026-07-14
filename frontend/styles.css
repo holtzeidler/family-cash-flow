@@ -11805,6 +11805,44 @@ label{
   line-height: 1.36;
   color: rgba(21, 65, 48, 0.8);
 }
+.billing-hero__pills{
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+}
+.billing-hero__pills .billing-hero__renewal{
+  margin-top: 0;
+}
+.billing-hero__activate{
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0;
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(11, 61, 46, 0.28);
+  background: rgba(11, 61, 46, 0.94);
+  font-size: 0.77rem;
+  font-weight: 650;
+  line-height: 1.36;
+  color: #fff;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.billing-hero__activate:hover{
+  background: rgba(11, 61, 46, 1);
+  border-color: rgba(11, 61, 46, 0.4);
+  color: #fff;
+}
+.billing-hero__activate:focus-visible{
+  outline: 2px solid rgba(11, 61, 46, 0.45);
+  outline-offset: 2px;
+}
 .billing-hero__renewal--trial{
   margin-top: 16px;
   margin-bottom: 0;
@@ -11813,6 +11851,14 @@ label{
   background: rgba(220, 252, 231, 0.82);
   font-weight: 650;
   color: rgba(20, 83, 45, 0.88);
+}
+.billing-hero__pills .billing-hero__renewal--trial{
+  margin-top: 0;
+}
+.billing-hero__renewal--paid{
+  border-color: rgba(11, 61, 46, 0.18);
+  background: rgba(236, 253, 245, 0.9);
+  color: rgba(11, 61, 46, 0.9);
 }
 .billing-hero__renewal::before{
   content: "✓";
@@ -11890,6 +11936,16 @@ label{
   color: rgba(21, 99, 55, 0.92);
   background: rgba(240, 253, 244, 0.95);
   border: 1px solid rgba(34, 197, 94, 0.22);
+}
+.billing-status-pill--trial{
+  color: rgba(21, 99, 55, 0.92);
+  background: rgba(240, 253, 244, 0.95);
+  border: 1px solid rgba(34, 197, 94, 0.22);
+}
+.billing-status-pill--paid{
+  color: rgba(11, 61, 46, 0.95);
+  background: rgba(236, 253, 245, 0.98);
+  border: 1px solid rgba(11, 61, 46, 0.22);
 }
 
 .billing-status-pill__icon{
