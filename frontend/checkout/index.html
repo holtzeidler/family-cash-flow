@@ -32,7 +32,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=683" />
+    <link rel="stylesheet" href="../styles.css?v=684" />
   </head>
   <body class="checkout-page plans-page plans-page--polished">
     <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -200,8 +200,10 @@
         }
 
         if (!form) return;
+        // Do not check for the literal "__API_BASE__" here — the static build
+        // replaces that token everywhere in HTML, including this script.
         var api = String(window.API_BASE || "").replace(/\/$/, "");
-        if (!api || api.indexOf("__API_BASE__") !== -1) {
+        if (!api || api.indexOf("://") === -1) {
           if (errEl) {
             errEl.hidden = false;
             errEl.textContent = "Checkout is not configured (missing API_BASE).";

@@ -31080,7 +31080,7 @@ body.checkout-page .container > .grid{
 }
 .checkout-billing__option{
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 10px;
   margin: 0;
   padding: 12px 14px;
@@ -31100,20 +31100,27 @@ body.checkout-page .container > .grid{
   box-shadow: 0 0 0 1px var(--accent);
 }
 .checkout-billing__option input{
-  margin: 3px 0 0;
+  margin: 0;
+  flex: 0 0 auto;
   accent-color: var(--accent);
 }
 .checkout-billing__option-body{
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
   min-width: 0;
+  width: 100%;
+  text-align: left;
 }
 .checkout-billing__option-title{
   display: inline-flex;
   align-items: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 8px;
+  white-space: nowrap;
   font-size: 14px;
   font-weight: 600;
   color: #111827;
@@ -31121,6 +31128,8 @@ body.checkout-page .container > .grid{
 .checkout-billing__option-price{
   font-size: 13px;
   color: var(--muted);
+  white-space: nowrap;
+  text-align: left;
 }
 .checkout-billing__badge{
   display: inline-flex;

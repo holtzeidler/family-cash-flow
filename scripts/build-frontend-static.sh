@@ -39,17 +39,23 @@ export API_BASE OUT_DIR
 python3 - <<'PY'
 import os
 import pathlib
+import re
 
 api_base = (os.environ.get("API_BASE") or "").strip().rstrip("/")
 root = pathlib.Path(os.environ["OUT_DIR"])
+# Only replace the window.API_BASE assignment. A global replace of __API_BASE__
+# also rewrites guards inside inline HTML scripts (e.g. checkout) and breaks them.
+assign_re = re.compile(
+    r'(window\.API_BASE\s*=\s*)([\'"])__API_BASE__\2'
+)
 for path in root.rglob("*.html"):
     try:
         txt = path.read_text(encoding="utf-8")
     except OSError:
         continue
-    if "__API_BASE__" not in txt:
-        continue
-    path.write_text(txt.replace("__API_BASE__", api_base), encoding="utf-8")
+    new_txt, n = assign_re.subn(rf'\1\2{api_base}\2', txt)
+    if n:
+        path.write_text(new_txt, encoding="utf-8")
 PY
 
 test -f "${OUT_DIR}/index.html" || (echo "::error::${OUT_DIR}/index.html missing — check frontend/ is committed" >&2 && exit 1)
