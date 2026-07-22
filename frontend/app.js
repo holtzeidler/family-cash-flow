@@ -12696,7 +12696,8 @@ function renderSidebarPendingTransactionsForMonth() {
   }
 
   const todayIso = toISODate(new Date());
-  const startIso = todayIso > range.start ? todayIso : range.start;
+  // Include past-dated variable items until the user updates them (still italic on calendar).
+  const startIso = range.start;
   const endIso = range.end;
 
   /** @type {{sortIso:string, type:"actual"|"expected", tx:any}[]} */
