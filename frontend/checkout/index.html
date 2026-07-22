@@ -32,7 +32,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=684" />
+    <link rel="stylesheet" href="../styles.css?v=685" />
   </head>
   <body class="checkout-page plans-page plans-page--polished">
     <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -101,8 +101,11 @@
                       checked
                     />
                     <span class="checkout-billing__option-body">
-                      <span class="checkout-billing__option-title">Monthly</span>
-                      <span class="checkout-billing__option-price">$5.99 / month</span>
+                      <span class="checkout-billing__option-line">
+                        <span class="checkout-billing__option-title">Monthly</span>
+                        <span class="checkout-billing__option-sep" aria-hidden="true">·</span>
+                        <span class="checkout-billing__option-price">$5.99 / month</span>
+                      </span>
                     </span>
                   </label>
                   <label class="checkout-billing__option">
@@ -114,11 +117,14 @@
                       data-price-label="$59.99 / year"
                     />
                     <span class="checkout-billing__option-body">
-                      <span class="checkout-billing__option-title">
-                        Annual
-                        <span class="checkout-billing__badge">Save ~17%</span>
+                      <span class="checkout-billing__option-line">
+                        <span class="checkout-billing__option-title">
+                          Annual
+                          <span class="checkout-billing__badge">Save ~17%</span>
+                        </span>
+                        <span class="checkout-billing__option-sep" aria-hidden="true">·</span>
+                        <span class="checkout-billing__option-price">$59.99 / year</span>
                       </span>
-                      <span class="checkout-billing__option-price">$59.99 / year</span>
                     </span>
                   </label>
                 </div>

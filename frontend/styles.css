@@ -31025,6 +31025,11 @@ body.checkout-page .container > .grid{
   border-radius: 16px;
   padding: 22px 22px 20px;
   box-shadow: 0 1px 0 rgba(15, 23, 42, 0.03), 0 12px 28px -18px rgba(15, 23, 42, 0.22);
+  min-width: 0;
+  overflow: hidden;
+}
+.checkout-form{
+  min-width: 0;
 }
 .checkout-product{
   display: flex;
@@ -31066,6 +31071,7 @@ body.checkout-page .container > .grid{
   padding: 0;
   border: 0;
   min-width: 0;
+  width: 100%;
 }
 .checkout-billing__legend{
   margin: 0 0 10px;
@@ -31077,9 +31083,12 @@ body.checkout-page .container > .grid{
 .checkout-billing__options{
   display: grid;
   gap: 10px;
+  min-width: 0;
+  width: 100%;
 }
 .checkout-billing__option{
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: 10px;
   margin: 0;
@@ -31088,6 +31097,11 @@ body.checkout-page .container > .grid{
   border-radius: 12px;
   background: #fafafa;
   cursor: pointer;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  font-size: 14px;
+  color: #111827;
   transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
 }
 .checkout-billing__option:hover{
@@ -31101,16 +31115,22 @@ body.checkout-page .container > .grid{
 }
 .checkout-billing__option input{
   margin: 0;
-  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
   accent-color: var(--accent);
 }
 .checkout-billing__option-body{
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-align: left;
+}
+.checkout-billing__option-line{
   display: flex;
-  flex-direction: row;
   flex-wrap: nowrap;
   align-items: center;
   justify-content: flex-start;
-  gap: 10px;
+  gap: 8px;
   min-width: 0;
   width: 100%;
   text-align: left;
@@ -31118,6 +31138,7 @@ body.checkout-page .container > .grid{
 .checkout-billing__option-title{
   display: inline-flex;
   align-items: center;
+  flex: 0 0 auto;
   flex-wrap: nowrap;
   gap: 8px;
   white-space: nowrap;
@@ -31125,8 +31146,16 @@ body.checkout-page .container > .grid{
   font-weight: 600;
   color: #111827;
 }
+.checkout-billing__option-sep{
+  flex: 0 0 auto;
+  color: rgba(100, 116, 139, 0.72);
+  font-weight: 500;
+}
 .checkout-billing__option-price{
+  flex: 0 1 auto;
+  min-width: 0;
   font-size: 13px;
+  font-weight: 500;
   color: var(--muted);
   white-space: nowrap;
   text-align: left;
