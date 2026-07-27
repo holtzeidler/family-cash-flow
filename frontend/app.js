@@ -5418,13 +5418,21 @@ async function addCategoryToGroup(gid, name) {
   if (!nm) throw new Error("Category name is required");
   const targetGid = Number.isFinite(Number(gid)) ? Number(gid) : defaultNewCategoryGroupId();
   if (hasDuplicateCategoryNameInGroup(nm, targetGid)) {
+    const existing = (state.categories || []).find(
+      (c) =>
+        Number(c?.group_id) === targetGid &&
+        normalizeNameForCompare(c?.name) === normalizeNameForCompare(nm),
+    );
+    if (existing) return existing;
     const ok = window.confirm(`A category named "${nm}" already exists in this group. Create a duplicate anyway?`);
-    if (!ok) return false;
+    if (!ok) return null;
   }
-  await api(`/api/families/${state.activeFamilyId}/categories`, "POST", { name: nm, group_id: targetGid });
+  const created = await api(`/api/families/${state.activeFamilyId}/categories`, "POST", {
+    name: nm,
+    group_id: targetGid,
+  });
   await loadCategories();
-  await loadMonthAndCalendar();
-  return true;
+  return created;
 }
 
 // Legacy bottom-of-pane "Add category" form is no longer rendered, but
@@ -9962,6 +9970,7 @@ const CATEGORY_COMBOBOX_FIELD_IDS = ["txAddCategoryId", "txEditCategoryId"];
 
 /** @type {Map<string, { wrap: HTMLElement, input: HTMLInputElement, hidden: HTMLInputElement, list: HTMLUListElement, categories: { id: number | string; name: string }[], blurTimer: ReturnType<typeof setTimeout> | null }>} */
 const categoryComboboxRegistry = new Map();
+const categoryComboboxCreateInFlight = new Set();
 
 let categoryComboOutsideClickBound = false;
 
@@ -10106,7 +10115,7 @@ function filterCategoryCombobox(fieldId) {
       return n === qExact || d === qExact;
     });
   }
-  if (rawQ && !hasExactNameMatch) {
+  if (rawQ && !hasExactNameMatch && !categoryComboboxCreateInFlight.has(fieldId)) {
     const addLi = document.createElement("li");
     addLi.className = "category-combobox__option category-combobox__option--create";
     addLi.setAttribute("role", "option");
@@ -10132,19 +10141,35 @@ function applyCategoryComboboxPickFromLi(fieldId, li) {
 async function createCategoryFromCombobox(fieldId, rawName) {
   const name = String(rawName || "").trim();
   if (!name) return;
+  if (categoryComboboxCreateInFlight.has(fieldId)) return;
+
+  const existingAnywhere = (state.categories || []).find(
+    (c) => normalizeNameForCompare(c?.name) === normalizeNameForCompare(name),
+  );
+  if (existingAnywhere) {
+    selectCategoryComboboxChoice(fieldId, existingAnywhere.id, categoryDisplayLabel(existingAnywhere));
+    return;
+  }
+
   const st = categoryComboboxRegistry.get(fieldId);
   if (st) hideCategoryComboboxList(st);
+  categoryComboboxCreateInFlight.add(fieldId);
   try {
     if (!state.activeFamilyId) throw new Error("Choose a family first");
     const kind = categoryKindForComboboxField(fieldId);
     const gid = categoryGroupIdForNewCategory(kind);
     if (gid == null || !Number.isFinite(Number(gid))) throw new Error("No category group available yet.");
-    const ok = await addCategoryToGroup(gid, name);
-    if (!ok) return;
-    const newCat = (state.categories || []).find((c) => normalizeNameForCompare(c?.name) === normalizeNameForCompare(name));
-    if (newCat) selectCategoryComboboxChoice(fieldId, newCat.id, categoryDisplayLabel(newCat));
+    const created = await addCategoryToGroup(gid, name);
+    if (!created) return;
+    const pick =
+      created && created.id != null
+        ? created
+        : (state.categories || []).find((c) => normalizeNameForCompare(c?.name) === normalizeNameForCompare(name));
+    if (pick) selectCategoryComboboxChoice(fieldId, pick.id, categoryDisplayLabel(pick));
   } catch (err) {
     window.alert(err.message || "Failed to add category");
+  } finally {
+    categoryComboboxCreateInFlight.delete(fieldId);
   }
 }
 
