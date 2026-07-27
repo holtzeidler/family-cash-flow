@@ -4506,10 +4506,21 @@ def create_category(
     if grp is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid group_id")
 
+    name = payload.name.strip()
+    existing = db.execute(
+        select(Category).where(
+            Category.family_id == family_id,
+            Category.group_id == gid,
+            func.lower(Category.name) == name.lower(),
+        )
+    ).scalar_one_or_none()
+    if existing is not None and not bool(getattr(existing, "archived", False)):
+        return _category_out_from_model(cat=existing, group_name=str(grp.name))
+
     max_sort = db.execute(
         select(func.coalesce(func.max(Category.sort_order), 0)).where(Category.family_id == family_id, Category.group_id == gid)
     ).scalar_one()
-    category = Category(family_id=family_id, name=payload.name.strip(), group_id=gid, sort_order=int(max_sort) + 1)
+    category = Category(family_id=family_id, name=name, group_id=gid, sort_order=int(max_sort) + 1)
     db.add(category)
     db.commit()
     db.refresh(category)
