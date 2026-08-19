@@ -28242,7 +28242,35 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   }
 
   .modal--expected-edit #expectedEditInstancePanel{
-    padding: 12px 12px 14px;
+    padding: 10px 12px 12px;
+  }
+
+  /* Recurring edit: desktop label column width must not become row height on mobile. */
+  .modal--expected-edit .form-row-h__label{
+    flex: 0 0 auto;
+    max-width: none;
+    width: 100%;
+  }
+
+  .modal--expected-edit #expectedEditInstancePanel > .form-row-h,
+  .modal--expected-edit #expectedEditInstancePanel .tx-edit-recurrence-ends-row > .form-row-h,
+  .modal--expected-edit #expectedEditInstancePanel #txEditAccountCol .form-row-h,
+  .modal--expected-edit #expectedEditInstancePanel .tx-edit-notes-row.form-row-h,
+  .modal--expected-edit #expectedEditInstancePanel .tx-edit-cat-color-row.form-row-h,
+  .modal--expected-edit #expectedEditInstancePanel .tx-edit-notes-in-advanced.form-row-h,
+  .modal--expected-edit #expectedEditInstancePanel .expected-second-day-row.form-row-h,
+  .modal--expected-edit #expectedEditInstancePanel .tx-edit-ends-detail.form-row-h{
+    padding-block: 0;
+    gap: 4px;
+  }
+
+  #txEditInner .form-row-h,
+  .modal--expected-edit #expectedEditInstancePanel .form-row-h{
+    gap: 4px;
+  }
+
+  .modal--expected-edit #expectedEditInstancePanel .tx-add-vspace{
+    height: 2px;
   }
 
   .modal--expected-edit > .modal-actions{
