@@ -28460,6 +28460,41 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
     height: 2px;
   }
 
+  /* Date: left-align iOS value and shrink field to content (not full-row centered). */
+  #txEditInner #expectedEditInstancePanel .form-row-h:has(#txEditDate) .form-row-h__field{
+    justify-content: flex-start;
+  }
+  #txEditInner #expectedEditInstancePanel #txEditDate,
+  #txEditInner #expectedEditInstancePanel .form-row-h__field > input[type="date"]{
+    width: auto;
+    min-width: 9.25rem;
+    max-width: 100%;
+    text-align: left;
+  }
+  #txEditInner #expectedEditInstancePanel #txEditDate::-webkit-date-and-time-value,
+  #txEditInner #expectedEditInstancePanel .form-row-h__field > input[type="date"]::-webkit-date-and-time-value{
+    text-align: left;
+  }
+  #txEditInner #expectedEditInstancePanel #txEditDate::-webkit-datetime-edit,
+  #txEditInner #expectedEditInstancePanel #txEditDate::-webkit-datetime-edit-fields-wrapper,
+  #txEditInner #expectedEditInstancePanel .form-row-h__field > input[type="date"]::-webkit-datetime-edit,
+  #txEditInner #expectedEditInstancePanel .form-row-h__field > input[type="date"]::-webkit-datetime-edit-fields-wrapper{
+    text-align: left;
+    padding: 0;
+  }
+
+  /* Color row: hide 2nd yellow (#E6DCA0) and 2nd purple (#CDBDE0) so swatches stay on one line. */
+  #expectedEditInstancePanel .tx-edit-cat-color-field .cat-color-row.tx-edit-cat-color-panel .cat-color-row__swatches,
+  .modal--tx-add .tx-add-cat-color-panel .cat-color-row__swatches{
+    flex-wrap: nowrap;
+  }
+  #expectedEditInstancePanel .tx-edit-cat-color-field .cat-color-row.tx-edit-cat-color-panel .cat-color-row__swatches > .cat-swatch:nth-child(6),
+  #expectedEditInstancePanel .tx-edit-cat-color-field .cat-color-row.tx-edit-cat-color-panel .cat-color-row__swatches > .cat-swatch:nth-child(10),
+  .modal--tx-add .tx-add-cat-color-panel .cat-color-row__swatches > .cat-swatch:nth-child(6),
+  .modal--tx-add .tx-add-cat-color-panel .cat-color-row__swatches > .cat-swatch:nth-child(10){
+    display: none;
+  }
+
   .modal--expected-edit > .modal-actions{
     margin: 0 12px 12px;
   }
