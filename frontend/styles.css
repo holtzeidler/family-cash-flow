@@ -27922,19 +27922,20 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
     --cal-tx-out-color: rgba(168, 62, 62, 0.82);
     position: relative;
     min-height: 0;
-    padding: 5px 8px 5px 11px;
+    padding: 5px 8px 5px 13px;
     border-radius: 8px;
     font-weight: 600;
+    font-style: normal;
     line-height: 1.3;
     background: rgba(15, 23, 42, 0.028);
   }
   .calendar--mobile .cal-day-tx-line:not(.cal-day-tx-line--start-balance)::before{
     content: "";
     position: absolute;
-    left: 4px;
+    left: 3px;
     top: 50%;
     transform: translateY(-50%);
-    width: 3px;
+    width: 5px;
     height: calc(100% - 10px);
     min-height: 12px;
     max-height: 18px;
@@ -27943,11 +27944,11 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   }
   .calendar--mobile .cal-day-tx-line--flow-in:not(.cal-day-tx-line--start-balance),
   .calendar--mobile .cal-day-tx-line:has(.cal-amt.income):not(.cal-day-tx-line--start-balance){
-    background: color-mix(in srgb, var(--ok) 5.5%, transparent);
+    background: color-mix(in srgb, var(--ok) 9.5%, transparent);
   }
   .calendar--mobile .cal-day-tx-line--flow-out:not(.cal-day-tx-line--start-balance),
   .calendar--mobile .cal-day-tx-line:has(.cal-amt.expense):not(.cal-day-tx-line--start-balance){
-    background: color-mix(in srgb, var(--danger) 4.5%, transparent);
+    background: color-mix(in srgb, var(--danger) 8%, transparent);
   }
   .calendar--mobile .cal-day-tx-line--flow-in:not(.cal-day-tx-line--start-balance)::before,
   .calendar--mobile .cal-day-tx-line:has(.cal-amt.income):not(.cal-day-tx-line--start-balance)::before{
@@ -27959,10 +27960,12 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   }
   .calendar--mobile .cal-day-tx-line:not(.cal-day-tx-line--start-balance) .cal-tx-label{
     font-weight: 600;
+    font-style: normal;
     color: rgba(17, 24, 39, 0.9);
   }
   .calendar--mobile .cal-day-tx-line:not(.cal-day-tx-line--start-balance) .cal-amt{
     font-weight: 650;
+    font-style: normal;
   }
   .calendar--mobile .cal-day-tx-line:not(.cal-day-tx-line--start-balance) .cal-amt.income{
     color: var(--cal-tx-in-color);
@@ -27970,9 +27973,12 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   .calendar--mobile .cal-day-tx-line:not(.cal-day-tx-line--start-balance) .cal-amt.expense{
     color: var(--cal-tx-out-color);
   }
+  /* Mobile: no italics on transaction rows — semibold normal text scans better. */
   .calendar--mobile .cal-day-tx-line--expected:not(.cal-day-tx-line--start-balance) .cal-tx-label,
-  .calendar--mobile .cal-day-tx-line--expected:not(.cal-day-tx-line--start-balance) .cal-amt{
-    font-style: italic;
+  .calendar--mobile .cal-day-tx-line--expected:not(.cal-day-tx-line--start-balance) .cal-amt,
+  .calendar--mobile .cal-day-tx-line--expected.cal-expected-variable:not(.cal-day-tx-line--start-balance) .cal-tx-label,
+  .calendar--mobile .cal-day-tx-line--expected.cal-expected-variable:not(.cal-day-tx-line--start-balance) .cal-amt{
+    font-style: normal;
   }
 
   .calendar--mobile .cal-cell--density-sparse .cal-day-tx-line:not(.cal-day-tx-line--start-balance){
