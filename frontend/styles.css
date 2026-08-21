@@ -487,7 +487,7 @@ body.landing-page .top-nav__actions a.top-nav__logout{
 }
 
 body.landing-page{
-  overflow-x: hidden;
+  overflow-x: clip;
   color: rgba(15, 23, 42, 0.98);
   /* Single source of truth for the entire page's horizontal alignment.
      Hero, insight, demo, calendar peek, below-preview, emotional band,
@@ -501,6 +501,27 @@ body.landing-page{
   --landing-section-gap-tight: clamp(0.62rem, 1.49vw, 0.95rem);
   --landing-rail: var(--landing-content-max);
   --landing-below-max: var(--landing-content-max);
+  /* Frozen header: logo + Log in. Keep in sync with .top-nav padding + logo height. */
+  --landing-top-nav-space: calc(4.5rem + env(safe-area-inset-top, 0px));
+}
+
+/* Frozen homepage header: logo + Log in always visible while scrolling. */
+body.landing-page .top-nav{
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  margin-left: 0;
+  z-index: 200;
+  padding-top: max(12px, env(safe-area-inset-top, 0px));
+  padding-bottom: 8px;
+  background: var(--accent);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.18);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06);
+}
+body.landing-page .container{
+  padding-top: var(--landing-top-nav-space);
 }
 body.landing-page .landing-main{
   flex: 1;
@@ -27904,6 +27925,10 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   body.landing-page .top-nav .app-title--logo .app-logo{
     height: 40px;
     max-width: min(272px, 58vw);
+  }
+
+  body.landing-page{
+    --landing-top-nav-space: calc(4rem + env(safe-area-inset-top, 0px));
   }
 
   .app-layout,
