@@ -17,8 +17,17 @@
     return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
   }
 
+  function preferFullWatchAmount() {
+    try {
+      return !window.matchMedia("(max-width: 768px)").matches;
+    } catch (_) {
+      return true;
+    }
+  }
+
   function fmtBalCell(n, full) {
-    if (full || n < 1000) {
+    // On narrow screens, keep compact "$1.0k" so values fit the day tiles.
+    if ((full && preferFullWatchAmount()) || n < 1000) {
       return "$" + n.toLocaleString("en-US");
     }
     if (n >= 10000) {

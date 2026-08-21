@@ -4835,16 +4835,27 @@ body.landing-page .landing-preview__demo:hover{
     padding: 13px 15px 12px;
   }
   body.landing-page .landing-hero-cal .landing-hero-viz__week{
-    gap: 12px;
+    gap: 8px;
     margin-bottom: 3px;
-    padding: 0 0.15rem;
+    padding: 0;
   }
   body.landing-page .landing-hero-cal .landing-hero-viz__cell{
     min-height: 3.35rem;
-    padding: 6px 8px 7px;
+    min-width: 0;
+    padding: 6px 5px 7px;
+    overflow: hidden;
   }
   body.landing-page .landing-hero-cal .landing-hero-viz__cell--watch{
-    padding: 7px 8px 7px;
+    padding: 6px 5px 7px;
+  }
+  body.landing-page .landing-hero-cal .landing-hero-viz__b{
+    max-width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+    letter-spacing: -0.03em;
+  }
+  body.landing-page .landing-hero-cal .landing-hero-viz__cell--watch .landing-hero-viz__b{
+    font-size: 12.5px;
   }
   body.landing-page #landingHeroForecast .landing-hero-cal__insight{
     margin-top: 0.75rem;
@@ -28064,20 +28075,80 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   }
 
   .calendar--mobile .cal-day-txns{
-    gap: 6px;
+    gap: 5px;
   }
 
+  /* Mobile hierarchy: date → transactions (events) → update balance (result). */
+  .calendar--mobile .cal-day-tx-line:not(.cal-day-tx-line--start-balance){
+    --cal-tx-in-color: color-mix(in srgb, var(--ok) 88%, #003d34);
+    --cal-tx-out-color: rgba(168, 62, 62, 0.82);
+    position: relative;
+    min-height: 0;
+    padding: 5px 8px 5px 11px;
+    border-radius: 8px;
+    font-weight: 600;
+    line-height: 1.3;
+    background: rgba(15, 23, 42, 0.028);
+  }
+  .calendar--mobile .cal-day-tx-line:not(.cal-day-tx-line--start-balance)::before{
+    content: "";
+    position: absolute;
+    left: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: calc(100% - 10px);
+    min-height: 12px;
+    max-height: 18px;
+    border-radius: 999px;
+    background: rgba(100, 116, 139, 0.35);
+  }
+  .calendar--mobile .cal-day-tx-line--flow-in:not(.cal-day-tx-line--start-balance),
+  .calendar--mobile .cal-day-tx-line:has(.cal-amt.income):not(.cal-day-tx-line--start-balance){
+    background: color-mix(in srgb, var(--ok) 5.5%, transparent);
+  }
+  .calendar--mobile .cal-day-tx-line--flow-out:not(.cal-day-tx-line--start-balance),
+  .calendar--mobile .cal-day-tx-line:has(.cal-amt.expense):not(.cal-day-tx-line--start-balance){
+    background: color-mix(in srgb, var(--danger) 4.5%, transparent);
+  }
+  .calendar--mobile .cal-day-tx-line--flow-in:not(.cal-day-tx-line--start-balance)::before,
+  .calendar--mobile .cal-day-tx-line:has(.cal-amt.income):not(.cal-day-tx-line--start-balance)::before{
+    background: var(--cal-tx-in-color);
+  }
+  .calendar--mobile .cal-day-tx-line--flow-out:not(.cal-day-tx-line--start-balance)::before,
+  .calendar--mobile .cal-day-tx-line:has(.cal-amt.expense):not(.cal-day-tx-line--start-balance)::before{
+    background: var(--cal-tx-out-color);
+  }
+  .calendar--mobile .cal-day-tx-line:not(.cal-day-tx-line--start-balance) .cal-tx-label{
+    font-weight: 600;
+    color: rgba(17, 24, 39, 0.9);
+  }
+  .calendar--mobile .cal-day-tx-line:not(.cal-day-tx-line--start-balance) .cal-amt{
+    font-weight: 650;
+  }
+  .calendar--mobile .cal-day-tx-line:not(.cal-day-tx-line--start-balance) .cal-amt.income{
+    color: var(--cal-tx-in-color);
+  }
+  .calendar--mobile .cal-day-tx-line:not(.cal-day-tx-line--start-balance) .cal-amt.expense{
+    color: var(--cal-tx-out-color);
+  }
+  .calendar--mobile .cal-day-tx-line--expected:not(.cal-day-tx-line--start-balance) .cal-tx-label,
+  .calendar--mobile .cal-day-tx-line--expected:not(.cal-day-tx-line--start-balance) .cal-amt{
+    font-style: italic;
+  }
+
+  .calendar--mobile .cal-cell--density-sparse .cal-day-tx-line:not(.cal-day-tx-line--start-balance){
+    font-size: var(--cal-tx-font-size, 11.5px);
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+  .calendar--mobile .cal-cell--density-dense .cal-day-tx-line:not(.cal-day-tx-line--start-balance){
+    font-size: var(--cal-tx-font-size, 11.29px);
+    padding-top: 4px;
+    padding-bottom: 4px;
+  }
   .calendar--mobile .cal-day-tx-line{
-    font-size: var(--cal-tx-font-size, 11.29px);
-    min-height: 17px;
-  }
-  .calendar--mobile .cal-cell--density-sparse .cal-day-tx-line{
-    font-size: var(--cal-tx-font-size, 11.29px);
-    min-height: 20px;
-  }
-  .calendar--mobile .cal-cell--density-dense .cal-day-tx-line{
-    font-size: var(--cal-tx-font-size, 11.29px);
-    min-height: 15px;
+    font-size: var(--cal-tx-font-size, 11.4px);
   }
 
   .calendar--mobile .cal-day-more{
@@ -28086,7 +28157,7 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   }
 
   .calendar--mobile .cal-ledger-metrics{
-    margin-top: 2px;
+    margin-top: 4px;
     padding-top: 8px;
     border-top: 1px solid rgba(17, 24, 39, 0.06);
     align-items: stretch;
@@ -28106,31 +28177,50 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   .calendar--mobile .cal-balance-strip__row::before{
     content: "Balance";
     font-size: 10.5px;
-    font-weight: 600;
+    font-weight: 500;
     letter-spacing: 0.01em;
-    color: rgba(100, 116, 139, 0.76);
+    color: rgba(100, 116, 139, 0.62);
   }
 
   .calendar--mobile .cal-ledger-metrics.cal-day-balance-hit .cal-balance-strip__row::before{
     content: "Update balance";
-    color: rgba(11, 61, 46, 0.72);
+    font-weight: 500;
+    color: rgba(100, 116, 139, 0.58);
   }
 
   .calendar--mobile .cal-stat.cal-balance{
-    font-size: 13.5px;
+    font-size: 12.75px;
+    font-weight: 550;
+    color: rgba(100, 116, 139, 0.72);
   }
   .calendar--mobile .cal-cell--density-sparse .cal-stat.cal-balance{
-    font-size: 14px;
+    font-size: 13px;
   }
   .calendar--mobile .cal-cell--no-tx .cal-stat.cal-balance{
     font-size: 12.5px;
-    font-weight: 560;
-    color: rgba(100, 116, 139, 0.5);
+    font-weight: 540;
+    color: rgba(100, 116, 139, 0.48);
+  }
+
+  /* Keep today / status / risk treatments readable above the quieter default balance. */
+  .calendar--mobile .cal-cell.cal-cell--today:not(.cal-cell--out):not(.cal-cell--before-start) .cal-stat.cal-balance,
+  .calendar--mobile .cal-balance-strip--has-status .cal-stat.cal-balance,
+  .calendar--mobile .cal-stat.cal-balance.cal-balance--watch-zone,
+  .calendar--mobile .cal-stat.cal-balance.cal-balance--risk,
+  .calendar--mobile .cal-stat.cal-balance.is-negative{
+    font-weight: 650;
+  }
+  .calendar--mobile .cal-cell.cal-cell--today:not(.cal-cell--out):not(.cal-cell--before-start) .cal-ledger-metrics.cal-day-balance-hit .cal-balance-strip__row::before{
+    color: rgba(11, 61, 46, 0.72);
+    font-weight: 600;
+  }
+  .calendar--mobile .cal-cell.cal-cell--today:not(.cal-cell--out):not(.cal-cell--before-start) .cal-stat.cal-balance:not(.is-negative):not(.cal-balance--below-floor):not(.cal-balance--risk){
+    color: rgba(11, 61, 46, 0.88);
   }
 
   .calendar--mobile .cal-stat.cal-balance.cal-balance--below-floor{
     font-size: 13px;
-    font-weight: 540;
+    font-weight: 600;
   }
 
   body[data-bw-view="transactions"] .tm{
@@ -28594,22 +28684,41 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   }
 
   body.landing-page .landing-hero-cal .landing-hero-viz__week{
-    gap: 10px;
+    gap: 6px;
     margin-bottom: 2px;
-    padding: 0 0.1rem;
+    padding: 0;
   }
 
   body.landing-page .landing-hero-cal .landing-hero-viz__cell{
     min-height: 3.2rem;
-    padding: 6px 7px 7px;
+    min-width: 0;
+    padding: 6px 4px 7px;
+    overflow: hidden;
   }
 
   body.landing-page .landing-hero-cal .landing-hero-viz__cell--watch{
-    padding: 7px 7px 7px;
+    padding: 6px 4px 7px;
+  }
+
+  body.landing-page .landing-hero-cal .landing-hero-viz__d,
+  body.landing-page .landing-hero-cal .landing-hero-viz__b{
+    max-width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: clip;
+  }
+
+  body.landing-page .landing-hero-cal .landing-hero-viz__b{
+    font-size: 11px;
+    letter-spacing: -0.04em;
   }
 
   body.landing-page .landing-hero-cal .landing-hero-viz__cell--watch .landing-hero-viz__b{
-    font-size: 13px;
+    font-size: 11.5px;
+  }
+
+  body.landing-page .landing-hero-cal .landing-hero-viz__cell--pay .landing-hero-viz__b{
+    font-size: 11.5px;
   }
 
   body.landing-page #landingHeroForecast .landing-hero-cal__insight{
