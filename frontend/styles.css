@@ -27589,13 +27589,43 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
    of compressing desktop assumptions into 390px widths. */
 @media (max-width: 768px){
   :root{
-    --app-top-nav-offset: 116px;
+    /* Includes safe-area so fixed .top-nav + sticky strips stay aligned. */
+    --app-top-nav-offset: calc(116px + env(safe-area-inset-top, 0px));
+    --simple-top-nav-space: calc(4.25rem + env(safe-area-inset-top, 0px));
   }
 
   html,
   body{
     max-width: 100vw;
-    overflow-x: hidden;
+    /* clip avoids the sticky/fixed scroll bugs that overflow-x: hidden causes */
+    overflow-x: clip;
+  }
+
+  /* Freeze primary header on all mobile pages while scrolling. */
+  .top-nav{
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    margin-left: 0;
+    z-index: 200;
+    padding-top: max(12px, env(safe-area-inset-top, 0px));
+  }
+
+  /* Reserve space for fixed nav: tabbed app chrome vs single-row chrome. */
+  .container:has(> .top-nav .top-nav__tabs){
+    padding-top: var(--app-top-nav-offset);
+  }
+  .container:has(> .top-nav .top-nav__inner--simple){
+    padding-top: var(--simple-top-nav-space);
+  }
+  body.landing-page .container{
+    padding-top: var(--landing-top-nav-space);
+  }
+  body.login-page:not(.signup-page):not(.invite-page) .top-nav{
+    padding-top: max(5px, env(safe-area-inset-top, 0px));
+    padding-bottom: 4px;
   }
 
   .container,
@@ -28707,7 +28737,8 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
 
 @media (max-width: 560px){
   :root{
-    --app-top-nav-offset: 110px;
+    --app-top-nav-offset: calc(110px + env(safe-area-inset-top, 0px));
+    --simple-top-nav-space: calc(4rem + env(safe-area-inset-top, 0px));
   }
 
   .container{
