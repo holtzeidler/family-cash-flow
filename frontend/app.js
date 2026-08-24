@@ -11964,6 +11964,65 @@ function finalizeAllCalendarDayLabelColumnWidths() {
   }
 }
 
+/**
+ * Shrink end-of-day balance font when a status pill (e.g. Starting Point) would
+ * otherwise overflow the day cell. Pill stays full size; amount scales down.
+ */
+function fitCalendarBalanceStripFonts(root = document) {
+  const rows = root.querySelectorAll(".cal-balance-strip--has-status .cal-balance-strip__row");
+  for (const row of rows) {
+    const bal = row.querySelector(".cal-stat.cal-balance");
+    if (!bal) continue;
+    bal.style.fontSize = "";
+    const avail = row.clientWidth;
+    if (avail <= 0) continue;
+    const base = parseFloat(getComputedStyle(bal).fontSize);
+    if (!Number.isFinite(base) || base <= 0) continue;
+    const minPx = 8.5;
+    const gap = parseFloat(getComputedStyle(row).columnGap || getComputedStyle(row).gap) || 0;
+    const usedWidth = () => {
+      let used = 0;
+      const kids = row.children;
+      for (let i = 0; i < kids.length; i++) used += kids[i].getBoundingClientRect().width;
+      used += Math.max(0, kids.length - 1) * gap;
+      return used;
+    };
+    if (usedWidth() <= avail + 0.5) continue;
+    let lo = minPx;
+    let hi = base;
+    let best = minPx;
+    for (let i = 0; i < 14; i++) {
+      const mid = (lo + hi) / 2;
+      bal.style.fontSize = `${mid}px`;
+      if (usedWidth() <= avail + 0.5) {
+        best = mid;
+        lo = mid;
+      } else {
+        hi = mid;
+      }
+    }
+    bal.style.fontSize = `${Math.max(minPx, best)}px`;
+  }
+}
+
+function scheduleFitCalendarBalanceStripFonts() {
+  requestAnimationFrame(() => {
+    fitCalendarBalanceStripFonts();
+    requestAnimationFrame(() => fitCalendarBalanceStripFonts());
+  });
+}
+
+let _calBalanceStripFitResizeBound = false;
+function ensureCalendarBalanceStripFitOnResize() {
+  if (_calBalanceStripFitResizeBound || typeof window === "undefined") return;
+  _calBalanceStripFitResizeBound = true;
+  let t = 0;
+  window.addEventListener("resize", () => {
+    window.clearTimeout(t);
+    t = window.setTimeout(() => fitCalendarBalanceStripFonts(), 120);
+  });
+}
+
 /** Default label text color: green income / red expense (lists + pills). Calendar uses row flow modifiers + `.cal-amt.income|expense`. */
 function kindFgClass(kind) {
   return String(kind) === "income" ? "tx-kind-fg--income" : "tx-kind-fg--expense";
@@ -15081,6 +15140,8 @@ function renderCalendar() {
   }
 
   finalizeAllCalendarDayLabelColumnWidths();
+  ensureCalendarBalanceStripFitOnResize();
+  scheduleFitCalendarBalanceStripFonts();
 }
 
 function readStoredMinBalanceThresholdForReports() {

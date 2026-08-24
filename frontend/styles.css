@@ -21827,13 +21827,25 @@ body[data-bw-view="transactions"] .tm__field label{
   gap: 5px;
   min-height: 18px;
   flex-wrap: nowrap;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 .cal-balance-strip__amt{
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  min-width: 0;
   display: inline-flex;
   align-items: baseline;
+  justify-content: flex-end;
   gap: 3px;
   white-space: nowrap;
+}
+.cal-balance-strip--has-status .cal-balance-strip__amt{
+  flex: 1 1 auto;
+}
+.cal-balance-strip--has-status .cal-stat.cal-balance{
+  min-width: 0;
 }
 .cal-stat{
   font-size: 12px;
