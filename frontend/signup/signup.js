@@ -78,10 +78,19 @@ function apiBearerAuthHeaders() {
   return {};
 }
 
-async function request(path, method, body) {
+async function request(path, method, body, { timeoutMs = 20000 } = {}) {
   const apiBase = getApiBase();
   const fullPath = `${apiBase}${path}`;
   const startedAt = Date.now();
+  const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+  let timeoutId = 0;
+  if (ctrl && timeoutMs > 0) {
+    timeoutId = window.setTimeout(() => {
+      try {
+        ctrl.abort();
+      } catch (_) {}
+    }, timeoutMs);
+  }
   try {
     const res = await fetch(fullPath, {
       method,
@@ -91,6 +100,7 @@ async function request(path, method, body) {
       },
       credentials: "include",
       body: body ? JSON.stringify(body) : undefined,
+      ...(ctrl ? { signal: ctrl.signal } : {}),
     });
     let data = null;
     try {
@@ -104,13 +114,20 @@ async function request(path, method, body) {
       networkError: null,
     };
   } catch (e) {
+    const aborted =
+      (e && e.name === "AbortError") ||
+      (typeof DOMException !== "undefined" && e instanceof DOMException && e.name === "AbortError");
     return {
       ok: false,
       status: null,
       data: null,
       elapsedMs: Date.now() - startedAt,
-      networkError: (e && e.message) || "Network error",
+      networkError: aborted
+        ? "That took too long — the server may be waking up. Please try again."
+        : (e && e.message) || "Network error",
     };
+  } finally {
+    if (timeoutId) window.clearTimeout(timeoutId);
   }
 }
 
@@ -2465,7 +2482,8 @@ function advanceAccountSetupWizardToIncomeFormFromSuccess() {
 
 function accountSetupTxHubAddIncomeClick() {
   if (!isAccountSetupPath() || !document.getElementById("accountSetupWizard")) return;
-  if (isAccountSetupWizardStepLocked()) return;
+  // Do not gate on the wizard step lock — users often tap Income immediately after
+  // landing on this hub, and a silent no-op feels like the site is stuck.
   if (getAccountSetupWizardStep() !== 2 || getAccountSetupStep3Phase() !== "intro") return;
   setCallout(signupCalloutEl, "", "");
   try {
@@ -2485,7 +2503,7 @@ function accountSetupTxHubAddIncomeClick() {
 
 function accountSetupTxHubAddExpenseClick() {
   if (!isAccountSetupPath() || !document.getElementById("accountSetupWizard")) return;
-  if (isAccountSetupWizardStepLocked()) return;
+  // Same as Income: hub option clicks must respond even during the brief Next lock.
   if (getAccountSetupWizardStep() !== 2 || getAccountSetupStep3Phase() !== "intro") return;
   setCallout(signupCalloutEl, "", "");
   try {
@@ -2506,7 +2524,7 @@ function accountSetupTxHubAddExpenseClick() {
 
 function accountSetupTxHubContinueClick() {
   if (!isAccountSetupPath() || !document.getElementById("accountSetupWizard")) return;
-  if (isAccountSetupWizardStepLocked()) return;
+  // Hub Continue should work even if the prior step's Next lock is still active.
   if (getAccountSetupWizardStep() !== 2 || getAccountSetupStep3Phase() !== "intro") return;
   if (getAccountSetupTransactionCounts().totalCount < 1) return;
   setCallout(signupCalloutEl, "", "");
@@ -3008,18 +3026,35 @@ function readAccountSetupDraft() {
  * extra seconds than lose the user's onboarding data. The calendar page has a fallback that
  * retries from the draft if anything was missed.
  */
+async function ensureFamilyIdForSignupDraft() {
+  const fams = await requestWithRetry("/api/families", "GET", null, { maxMs: 12000 });
+  if (fams.ok && Array.isArray(fams.data) && fams.data.length > 0 && fams.data[0]?.id) {
+    return { ok: true, familyId: fams.data[0].id };
+  }
+  // Register usually creates "My Family"; if that failed, create one so setup can finish.
+  const created = await requestWithRetry(
+    "/api/families",
+    "POST",
+    { name: "My Family" },
+    { maxMs: 12000 }
+  );
+  if (created && created.ok && created.data && created.data.id) {
+    return { ok: true, familyId: Number(created.data.id) };
+  }
+  return { ok: false, familyId: null, error: "no_family" };
+}
+
 async function maybeCreateFirstAccountFromDraft(draft) {
   if (!draft || !draft.account) {
     return { ok: true, accountId: null, skipped: true };
   }
   let familyId = null;
   try {
-    const fams = await requestWithRetry("/api/families", "GET", null, { maxMs: 12000 });
-    if (!fams.ok || !Array.isArray(fams.data) || fams.data.length === 0) {
-      return { ok: false, accountId: null, error: "no_family" };
+    const fam = await ensureFamilyIdForSignupDraft();
+    if (!fam.ok || !fam.familyId) {
+      return { ok: false, accountId: null, error: fam.error || "no_family" };
     }
-    familyId = fams.data[0]?.id;
-    if (!familyId) return { ok: false, accountId: null, error: "no_family" };
+    familyId = fam.familyId;
   } catch (e) {
     return { ok: false, accountId: null, error: (e && e.message) || "families_fetch_failed" };
   }
@@ -3055,12 +3090,11 @@ async function maybeCreateFirstTransactionFromDraft(draft, createdAccountId) {
   if (!draft) return { ok: true, createdCount: 0, totalCount: 0 };
   let familyId = null;
   try {
-    const fams = await requestWithRetry("/api/families", "GET", null, { maxMs: 12000 });
-    if (!fams.ok || !Array.isArray(fams.data) || fams.data.length === 0) {
-      return { ok: false, createdCount: 0, totalCount: 0, error: "no_family" };
+    const fam = await ensureFamilyIdForSignupDraft();
+    if (!fam.ok || !fam.familyId) {
+      return { ok: false, createdCount: 0, totalCount: 0, error: fam.error || "no_family" };
     }
-    familyId = fams.data[0]?.id;
-    if (!familyId) return { ok: false, createdCount: 0, totalCount: 0, error: "no_family" };
+    familyId = fam.familyId;
   } catch (e) {
     return { ok: false, createdCount: 0, totalCount: 0, error: (e && e.message) || "families_fetch_failed" };
   }
@@ -3252,6 +3286,13 @@ async function doSignup() {
     try {
       bwEmailPrecheckStep0Generation += 1;
       bwEmailCheckCache = { email, checkedAt: Date.now(), exists: true, pending: null };
+    } catch (_) {}
+    // Mark recovery ASAP after register so a mid-setup close/cold-start still finishes
+    // on /calendar even if account/tx POSTs never complete.
+    try {
+      markOnboardingRecoveryPending();
+      const raw = readAccountSetupDraftRaw() || {};
+      persistAccountSetupDraftObject({ ...raw, signupEmail: email });
     } catch (_) {}
 
     if (isAccountSetup && overlay) {
