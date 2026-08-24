@@ -145,17 +145,32 @@ async function api(path, method = "GET", body) {
   };
 
   const maxRetryMs = 12000;
+  const perAttemptTimeoutMs = 20000;
   const retryStarted = Date.now();
   let res;
   let attempt = 0;
   while (true) {
     attempt += 1;
+    const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+    let timeoutId = 0;
+    if (ctrl) {
+      timeoutId = window.setTimeout(() => {
+        try {
+          ctrl.abort();
+        } catch (_) {}
+      }, perAttemptTimeoutMs);
+    }
     try {
-      res = await fetch(fullPath, fetchOptions);
+      res = await fetch(fullPath, ctrl ? { ...fetchOptions, signal: ctrl.signal } : fetchOptions);
+      if (timeoutId) window.clearTimeout(timeoutId);
       break;
     } catch (err) {
+      if (timeoutId) window.clearTimeout(timeoutId);
+      const aborted =
+        (err && err.name === "AbortError") ||
+        (typeof DOMException !== "undefined" && err instanceof DOMException && err.name === "AbortError");
       const elapsed = Date.now() - retryStarted;
-      const canRetry = isTransientNetworkError(err) && elapsed < maxRetryMs;
+      const canRetry = (aborted || isTransientNetworkError(err)) && elapsed < maxRetryMs;
       if (canRetry) {
         const delay = Math.min(2000, 400 * attempt);
         await new Promise((resolve) => window.setTimeout(resolve, delay));
@@ -163,7 +178,11 @@ async function api(path, method = "GET", body) {
       }
       logApiNetworkHintForDevs(err, { apiBase, origin, isStaticWebHost });
       if (showDevErrors) {
-        const msg = err && err.message ? err.message : String(err);
+        const msg = aborted
+          ? "Request timed out (API may be cold-starting)."
+          : err && err.message
+            ? err.message
+            : String(err);
         const baseHint = apiBase
           ? `Trying API_BASE: ${apiBase}`
           : "API_BASE is empty — requests go to the Pages host (wrong).";
@@ -174,7 +193,11 @@ async function api(path, method = "GET", body) {
           `${msg}\n\n${baseHint}\n${corsHint}\nIf the API is on Render free tier, wait ~1 minute for a cold start and refresh.`
         );
       }
-      throw new Error(friendlyNetworkErrorMessage());
+      throw new Error(
+        aborted
+          ? "That took too long — the server may be waking up. Please refresh and try again."
+          : friendlyNetworkErrorMessage()
+      );
     }
   }
 
@@ -19491,8 +19514,17 @@ function onboardingRecoveryIsAllowedForDraft(draft) {
   } catch (_) {}
   const meEmail = state.user?.email ? String(state.user.email).trim().toLowerCase() : "";
   const draftEmail = draft?.signupEmail ? String(draft.signupEmail).trim().toLowerCase() : "";
+  // Never apply another user's leftover draft.
   if (draftEmail && meEmail && draftEmail !== meEmail) return false;
-  return recoveryPending;
+  if (recoveryPending) return true;
+  // Same-user unfinished setup: allow finishing even if the pending flag was lost
+  // (tab crash after register, before markOnboardingRecoveryPending in older builds).
+  if (draftEmail && meEmail && draftEmail === meEmail) {
+    const hasAccount = !!(draft.account && draft.account.name);
+    const hasTxs = Array.isArray(draft.transactions) && draft.transactions.length > 0;
+    return hasAccount || hasTxs;
+  }
+  return false;
 }
 
 function resolveRecoveryAccountIdFromDraft(draft) {
@@ -19526,7 +19558,19 @@ async function tryRecoverAccountSetupDraft() {
     return false;
   }
 
-  if (!state.activeFamilyId) return false;
+  if (!state.activeFamilyId) {
+    try {
+      await api("/api/families", "POST", { name: "My Family" });
+      await loadFamilies();
+    } catch (e) {
+      try {
+        if (window.console && console.warn) {
+          console.warn("[onboarding] could not create family for recovery", e && e.message);
+        }
+      } catch (_) {}
+    }
+    if (!state.activeFamilyId) return false;
+  }
 
   const txs = Array.isArray(draft.transactions) ? draft.transactions : [];
   const pendingTxCount = txs.filter((t) => Number(t?.amount) > 0).length;
@@ -19723,6 +19767,17 @@ async function main() {
   // refilling it, this guarantees the day cells are visible (even on an empty family).
   try {
     renderCalendar();
+  } catch (_) {}
+  try {
+    const hasAccounts = Array.isArray(state.accounts) && state.accounts.length > 0;
+    if (!state.activeFamilyId || !hasAccounts) {
+      show(
+        familiesErr,
+        !state.activeFamilyId
+          ? "Your forecast isn't ready yet — setup may have been interrupted. Refresh this page, or open Settings → Accounts to finish adding your checking account."
+          : "No checking account yet, so the forecast has nothing to project. Add one in Settings → Accounts (or reopen Account Setup)."
+      );
+    }
   } catch (_) {}
   if (state.activeFamilyId) {
     try {
