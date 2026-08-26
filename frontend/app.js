@@ -14052,10 +14052,15 @@ async function loadCalendarMonthDaily() {
       });
     }
   };
-  const fillMissingFromClient = () => {
+  const fillInMonthGapsFromClient = () => {
+    // Only backfill days inside the requested month. Adjacent-month cells must wait
+    // for their own API response — client approx has no prior-month carry and no txs yet,
+    // so it was painting wrong flat starting-balance totals (e.g. 9/1 cliff after Aug).
     try {
       const wrap = computeCalendarVisibleDailyBalancesClient();
+      const prefix = `${month}-`;
       for (const [iso, row] of wrap.entries()) {
+        if (!iso.startsWith(prefix)) continue;
         if (!state.monthDailyBalances.has(iso)) state.monthDailyBalances.set(iso, row);
       }
     } catch (_) {}
@@ -14070,7 +14075,7 @@ async function loadCalendarMonthDaily() {
       applyDayRows(days);
       // Never block the visible month on adjacent-month fetches — those used to hang
       // forever after balances were already in memory, leaving an empty calendar on screen.
-      fillMissingFromClient();
+      fillInMonthGapsFromClient();
       const prev = shiftMonthStr(month, -1);
       const next = shiftMonthStr(month, 1);
       void Promise.allSettled([
@@ -14083,14 +14088,16 @@ async function loadCalendarMonthDaily() {
           "GET"
         ),
       ]).then((extras) => {
-        let added = false;
+        let changed = false;
         for (const res of extras) {
           if (res.status !== "fulfilled") continue;
+          // Always prefer server balances for adjacent months (overwrite any stale seed).
           const before = state.monthDailyBalances.size;
-          applyDayRows(res.value?.days, { onlyMissing: true });
-          if (state.monthDailyBalances.size > before) added = true;
+          applyDayRows(res.value?.days, { onlyMissing: false });
+          if (state.monthDailyBalances.size !== before) changed = true;
+          else if (Array.isArray(res.value?.days) && res.value.days.length) changed = true;
         }
-        if (added) {
+        if (changed) {
           try {
             renderCalendar();
           } catch (_) {}
