@@ -144,9 +144,9 @@ async function api(path, method = "GET", body) {
     body: body ? JSON.stringify(body) : undefined,
   };
 
-  // Bound hung fetches so bootstrap cannot stall forever (cold starts still get retries).
-  const maxRetryMs = 50000;
-  const perAttemptTimeoutMs = 22000;
+  // Bound hung fetches so bootstrap cannot stall forever (cold starts still get a retry).
+  const maxRetryMs = 28000;
+  const perAttemptTimeoutMs = 14000;
   const retryStarted = Date.now();
   let res;
   let attempt = 0;
@@ -12234,36 +12234,77 @@ function updateCalendarEmptyStateBanner() {
   if (!calendarErr) return;
   const hasAccounts = Array.isArray(state.accounts) && state.accounts.length > 0;
   const hasBalances = !!(state.monthDailyBalances && state.monthDailyBalances.size > 0);
+  const earliest = getFamilyEarliestStartingBalanceIso();
+  const month = getCalendarViewYm();
+  if (earliest && month && calendarYmPartsValid(month)) {
+    const [y, m] = month.split("-").map(Number);
+    const monthEnd = `${y}-${String(m).padStart(2, "0")}-${String(new Date(y, m, 0).getDate()).padStart(2, "0")}`;
+    if (earliest > monthEnd) {
+      const msg = `Your starting balance date is ${earliest}. Open that month (or later) to see your forecast.`;
+      show(calendarErr, msg);
+      ensureForecastStatusRibbon(msg, { isError: true });
+      return;
+    }
+  }
   if (!state.activeFamilyId) {
-    show(
-      calendarErr,
-      "Your forecast isn't ready yet — no household is linked to this login. Refresh, or open Settings → Accounts."
-    );
+    const msg =
+      "Your forecast isn't ready yet — no household is linked to this login. Refresh, or open Settings → Accounts.";
+    show(calendarErr, msg);
+    ensureForecastStatusRibbon(msg, { isError: true });
     return;
   }
   if (!hasAccounts) {
-    show(
-      calendarErr,
-      "No checking account yet, so there is nothing to forecast. Add one in Settings → Accounts."
-    );
+    const msg = "No checking account yet, so there is nothing to forecast. Add one in Settings → Accounts.";
+    show(calendarErr, msg);
+    ensureForecastStatusRibbon(msg, { isError: true });
     return;
   }
   if (!hasBalances) {
-    show(
-      calendarErr,
-      "Balances did not load. Check your connection and refresh — if this keeps happening, try logging out and back in."
-    );
+    const msg =
+      "Balances did not load. Check your connection and refresh — if this keeps happening, try logging out and back in.";
+    show(calendarErr, msg);
+    ensureForecastStatusRibbon(msg, { isError: true });
     return;
   }
+  ensureForecastStatusRibbon("");
   // Leave existing non-empty-state errors alone when balances are present.
   const cur = String(calendarErr.textContent || "");
   if (
     cur.includes("forecast isn't ready") ||
     cur.includes("No checking account") ||
-    cur.includes("Balances did not load")
+    cur.includes("Balances did not load") ||
+    cur.includes("starting balance date") ||
+    cur === "Loading forecast…"
   ) {
     show(calendarErr, "");
   }
+}
+
+function ensureForecastStatusRibbon(msg, { isError = false } = {}) {
+  const text = String(msg || "").trim();
+  let el = document.getElementById("bwForecastStatusRibbon");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "bwForecastStatusRibbon";
+    el.setAttribute("role", "status");
+    el.style.cssText =
+      "display:none;margin:0 0 10px;padding:12px 14px;border-radius:12px;font:600 13px/1.35 Inter,system-ui,sans-serif;border:1px solid transparent";
+    const panel = document.getElementById("calendarPanel");
+    const sticky = document.getElementById("calendarStickyHeader");
+    if (sticky && sticky.parentElement) sticky.parentElement.insertBefore(el, sticky);
+    else if (panel) panel.insertBefore(el, panel.firstChild);
+    else return;
+  }
+  if (!text) {
+    el.style.display = "none";
+    el.textContent = "";
+    return;
+  }
+  el.style.display = "block";
+  el.textContent = text;
+  el.style.background = isError ? "rgba(254, 226, 226, 0.95)" : "rgba(209, 250, 229, 0.95)";
+  el.style.borderColor = isError ? "rgba(248, 113, 113, 0.45)" : "rgba(16, 185, 129, 0.35)";
+  el.style.color = isError ? "#7f1d1d" : "#065f46";
 }
 
 function renderProjectionSummary(summary) {
@@ -12553,9 +12594,9 @@ async function loadUpcomingTransactionsPanel() {
 
 async function loadExpectedCalendar() {
   try {
-    // Do not clear a bootstrap / empty-state banner mid-load.
-    const cur = String(calendarErr?.textContent || "");
-    if (!cur || cur === "Loading forecast…") show(calendarErr, "");
+    // Keep bootstrap banners visible; only clear a blank slot.
+    const cur = String(calendarErr?.textContent || "").trim();
+    if (!cur) show(calendarErr, "");
     state.monthExpectedItems = [];
     if (!state.activeFamilyId) return;
 
@@ -13075,9 +13116,16 @@ async function loadMonthAndCalendar() {
     state.monthExpectedItems = [];
     state.calendarExtraActualItems = [];
     state.calendarExtraExpectedItems = [];
-    state.monthDailyBalances = new Map();
     state.reconciledDates = new Set();
     state.verifiedBalances = new Map();
+    // Do not blank the grid while waiting on the network: seed from accounts so
+    // balances stay visible if a later request hangs.
+    state.monthDailyBalances = new Map();
+    try {
+      if (Array.isArray(state.accounts) && state.accounts.length > 0) {
+        computeMonthDailyBalancesLegacy();
+      }
+    } catch (_) {}
     show(calendarErr, "Loading forecast…");
     renderCalendar();
 
@@ -13102,20 +13150,26 @@ async function loadMonthAndCalendar() {
         } catch (_) {}
       }
     };
-    await runStep("transactions", () => loadTransactions());
-    await runStep("upcoming", () => loadUpcomingTransactionsPanel());
-    await runStep("expected", () => loadExpectedCalendar());
-    renderSidebarPendingTransactionsForMonth();
-    renderMonthSummaryTotalsFromState();
-    await runStep("extras", () => loadCalendarExtras());
-    await runStep("reconciled", () => loadReconciledDays(getCalendarViewYm()));
-    await runStep("verified", () => loadVerifiedBalances(getCalendarViewYm()));
+
+    // Forecast numbers first — everything else is secondary chrome.
     await runStep("daily-balances", () => loadCalendarMonthDaily());
     if (!state.monthDailyBalances || state.monthDailyBalances.size === 0) {
       try {
         computeMonthDailyBalancesLegacy();
       } catch (_) {}
     }
+    renderCalendar();
+
+    await Promise.all([
+      runStep("transactions", () => loadTransactions()),
+      runStep("upcoming", () => loadUpcomingTransactionsPanel()),
+      runStep("expected", () => loadExpectedCalendar()),
+      runStep("extras", () => loadCalendarExtras()),
+      runStep("reconciled", () => loadReconciledDays(getCalendarViewYm())),
+      runStep("verified", () => loadVerifiedBalances(getCalendarViewYm())),
+    ]);
+    renderSidebarPendingTransactionsForMonth();
+    renderMonthSummaryTotalsFromState();
     renderCalendar();
     updateCalendarEmptyStateBanner();
     await runStep("low-balance", () => refreshLowBalanceAlert());
