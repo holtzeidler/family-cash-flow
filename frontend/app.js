@@ -144,28 +144,46 @@ async function api(path, method = "GET", body) {
     body: body ? JSON.stringify(body) : undefined,
   };
 
-  // Cold Render wakes can exceed 20s — do not AbortSignal the shared app api() path
-  // (that blanked the live forecast). Signup keeps its own shorter timeouts.
-  const maxRetryMs = 45000;
+  // Bound hung fetches so bootstrap cannot stall forever (cold starts still get retries).
+  const maxRetryMs = 50000;
+  const perAttemptTimeoutMs = 22000;
   const retryStarted = Date.now();
   let res;
   let attempt = 0;
   while (true) {
     attempt += 1;
+    const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+    let timeoutId = 0;
+    if (ctrl) {
+      timeoutId = window.setTimeout(() => {
+        try {
+          ctrl.abort();
+        } catch (_) {}
+      }, perAttemptTimeoutMs);
+    }
     try {
-      res = await fetch(fullPath, fetchOptions);
+      res = await fetch(fullPath, ctrl ? { ...fetchOptions, signal: ctrl.signal } : fetchOptions);
+      if (timeoutId) window.clearTimeout(timeoutId);
       break;
     } catch (err) {
+      if (timeoutId) window.clearTimeout(timeoutId);
+      const aborted =
+        (err && err.name === "AbortError") ||
+        (typeof DOMException !== "undefined" && err instanceof DOMException && err.name === "AbortError");
       const elapsed = Date.now() - retryStarted;
-      const canRetry = isTransientNetworkError(err) && elapsed < maxRetryMs;
+      const canRetry = (aborted || isTransientNetworkError(err)) && elapsed < maxRetryMs;
       if (canRetry) {
-        const delay = Math.min(2000, 400 * attempt);
+        const delay = Math.min(2500, 400 * attempt);
         await new Promise((resolve) => window.setTimeout(resolve, delay));
         continue;
       }
       logApiNetworkHintForDevs(err, { apiBase, origin, isStaticWebHost });
       if (showDevErrors) {
-        const msg = err && err.message ? err.message : String(err);
+        const msg = aborted
+          ? "Request timed out (API may be cold-starting)."
+          : err && err.message
+            ? err.message
+            : String(err);
         const baseHint = apiBase
           ? `Trying API_BASE: ${apiBase}`
           : "API_BASE is empty — requests go to the Pages host (wrong).";
@@ -176,7 +194,11 @@ async function api(path, method = "GET", body) {
           `${msg}\n\n${baseHint}\n${corsHint}\nIf the API is on Render free tier, wait ~1 minute for a cold start and refresh.`
         );
       }
-      throw new Error(friendlyNetworkErrorMessage());
+      throw new Error(
+        aborted
+          ? "That took too long — the server may be waking up. Please refresh and try again."
+          : friendlyNetworkErrorMessage()
+      );
     }
   }
 
@@ -13966,6 +13988,33 @@ async function loadCalendarMonthDaily() {
   const month = calendarMonth?.value || monthInput?.value;
   if (!month) return;
   const mode = calendarMode?.value || "both";
+  const applyDayRows = (days, { onlyMissing = false } = {}) => {
+    if (!Array.isArray(days) || days.length === 0) return;
+    for (const row of days) {
+      const iso = normalizeIsoDate(row.date);
+      if (!iso || row.end == null) continue;
+      if (onlyMissing && state.monthDailyBalances.has(iso)) continue;
+      const start = Number(row.start);
+      const txNet = Number(row.tx_net);
+      const end = Number(row.end);
+      state.monthDailyBalances.set(iso, {
+        start: Number.isFinite(start) ? start : 0,
+        txNet: Number.isFinite(txNet) ? txNet : 0,
+        end: Number.isFinite(end) ? end : 0,
+        verified: !!row.verified,
+        verifiedAmount: row.verified_amount != null ? Number(row.verified_amount) : null,
+        projectedEnd: row.projected_end != null ? Number(row.projected_end) : null,
+      });
+    }
+  };
+  const fillMissingFromClient = () => {
+    try {
+      const wrap = computeCalendarVisibleDailyBalancesClient();
+      for (const [iso, row] of wrap.entries()) {
+        if (!state.monthDailyBalances.has(iso)) state.monthDailyBalances.set(iso, row);
+      }
+    } catch (_) {}
+  };
   try {
     const data = await api(
       `/api/families/${state.activeFamilyId}/calendar-month-daily?month=${encodeURIComponent(month)}&mode=${encodeURIComponent(mode)}`,
@@ -13973,55 +14022,35 @@ async function loadCalendarMonthDaily() {
     );
     const days = data?.days;
     if (Array.isArray(days) && days.length > 0) {
-      for (const row of days) {
-        const iso = normalizeIsoDate(row.date);
-        if (!iso || row.end == null) continue;
-        const start = Number(row.start);
-        const txNet = Number(row.tx_net);
-        const end = Number(row.end);
-        state.monthDailyBalances.set(iso, {
-          start: Number.isFinite(start) ? start : 0,
-          txNet: Number.isFinite(txNet) ? txNet : 0,
-          end: Number.isFinite(end) ? end : 0,
-          verified: !!row.verified,
-          verifiedAmount: row.verified_amount != null ? Number(row.verified_amount) : null,
-          projectedEnd: row.projected_end != null ? Number(row.projected_end) : null,
-        });
-      }
-      // Fill visible "wrap" days using the same authoritative API (prev/next month),
-      // so balances for gray cells match when you scroll between months.
+      applyDayRows(days);
+      // Never block the visible month on adjacent-month fetches — those used to hang
+      // forever after balances were already in memory, leaving an empty calendar on screen.
+      fillMissingFromClient();
       const prev = shiftMonthStr(month, -1);
       const next = shiftMonthStr(month, 1);
-      const extras = await Promise.allSettled([
-        api(`/api/families/${state.activeFamilyId}/calendar-month-daily?month=${encodeURIComponent(prev)}&mode=${encodeURIComponent(mode)}`, "GET"),
-        api(`/api/families/${state.activeFamilyId}/calendar-month-daily?month=${encodeURIComponent(next)}&mode=${encodeURIComponent(mode)}`, "GET"),
-      ]);
-      for (const res of extras) {
-        if (res.status !== "fulfilled") continue;
-        const more = res.value?.days;
-        if (!Array.isArray(more) || more.length === 0) continue;
-        for (const row of more) {
-          const iso = normalizeIsoDate(row.date);
-          if (!iso || state.monthDailyBalances.has(iso) || row.end == null) continue;
-          const start = Number(row.start);
-          const txNet = Number(row.tx_net);
-          const end = Number(row.end);
-          state.monthDailyBalances.set(iso, {
-            start: Number.isFinite(start) ? start : 0,
-            txNet: Number.isFinite(txNet) ? txNet : 0,
-            end: Number.isFinite(end) ? end : 0,
-            verified: !!row.verified,
-            verifiedAmount: row.verified_amount != null ? Number(row.verified_amount) : null,
-            projectedEnd: row.projected_end != null ? Number(row.projected_end) : null,
-          });
+      void Promise.allSettled([
+        api(
+          `/api/families/${state.activeFamilyId}/calendar-month-daily?month=${encodeURIComponent(prev)}&mode=${encodeURIComponent(mode)}`,
+          "GET"
+        ),
+        api(
+          `/api/families/${state.activeFamilyId}/calendar-month-daily?month=${encodeURIComponent(next)}&mode=${encodeURIComponent(mode)}`,
+          "GET"
+        ),
+      ]).then((extras) => {
+        let added = false;
+        for (const res of extras) {
+          if (res.status !== "fulfilled") continue;
+          const before = state.monthDailyBalances.size;
+          applyDayRows(res.value?.days, { onlyMissing: true });
+          if (state.monthDailyBalances.size > before) added = true;
         }
-      }
-
-      // As a last-resort fallback (offline / partial API), compute any still-missing days client-side.
-      const wrap = computeCalendarVisibleDailyBalancesClient();
-      for (const [iso, row] of wrap.entries()) {
-        if (!state.monthDailyBalances.has(iso)) state.monthDailyBalances.set(iso, row);
-      }
+        if (added) {
+          try {
+            renderCalendar();
+          } catch (_) {}
+        }
+      });
       return;
     }
   } catch (_) {
@@ -14062,11 +14091,13 @@ async function loadMonthAndCalendar() {
     state.monthDailyBalances = new Map();
     state.reconciledDates = new Set();
     state.verifiedBalances = new Map();
+    show(calendarErr, "Loading forecast…");
     renderCalendar();
 
     if (!state.activeFamilyId) {
       renderSidebarPendingTransactionsForMonth();
       renderMonthSummaryTotalsFromState();
+      updateCalendarEmptyStateBanner();
       return;
     }
 
@@ -14099,6 +14130,7 @@ async function loadMonthAndCalendar() {
       } catch (_) {}
     }
     renderCalendar();
+    updateCalendarEmptyStateBanner();
     await runStep("low-balance", () => refreshLowBalanceAlert());
     await runStep("forecast-confidence", () => refreshForecastConfidence());
     if (loadErrors.length && (!state.monthDailyBalances || state.monthDailyBalances.size === 0)) {
@@ -14112,6 +14144,7 @@ async function loadMonthAndCalendar() {
         computeMonthDailyBalancesLegacy();
         renderCalendar();
       }
+      updateCalendarEmptyStateBanner();
     } catch (_) {}
   } finally {
     setCalendarLoadingUi(false);
