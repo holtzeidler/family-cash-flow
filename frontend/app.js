@@ -144,33 +144,20 @@ async function api(path, method = "GET", body) {
     body: body ? JSON.stringify(body) : undefined,
   };
 
-  const maxRetryMs = 12000;
-  const perAttemptTimeoutMs = 20000;
+  // Cold Render wakes can exceed 20s — do not AbortSignal the shared app api() path
+  // (that blanked the live forecast). Signup keeps its own shorter timeouts.
+  const maxRetryMs = 45000;
   const retryStarted = Date.now();
   let res;
   let attempt = 0;
   while (true) {
     attempt += 1;
-    const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
-    let timeoutId = 0;
-    if (ctrl) {
-      timeoutId = window.setTimeout(() => {
-        try {
-          ctrl.abort();
-        } catch (_) {}
-      }, perAttemptTimeoutMs);
-    }
     try {
-      res = await fetch(fullPath, ctrl ? { ...fetchOptions, signal: ctrl.signal } : fetchOptions);
-      if (timeoutId) window.clearTimeout(timeoutId);
+      res = await fetch(fullPath, fetchOptions);
       break;
     } catch (err) {
-      if (timeoutId) window.clearTimeout(timeoutId);
-      const aborted =
-        (err && err.name === "AbortError") ||
-        (typeof DOMException !== "undefined" && err instanceof DOMException && err.name === "AbortError");
       const elapsed = Date.now() - retryStarted;
-      const canRetry = (aborted || isTransientNetworkError(err)) && elapsed < maxRetryMs;
+      const canRetry = isTransientNetworkError(err) && elapsed < maxRetryMs;
       if (canRetry) {
         const delay = Math.min(2000, 400 * attempt);
         await new Promise((resolve) => window.setTimeout(resolve, delay));
@@ -178,11 +165,7 @@ async function api(path, method = "GET", body) {
       }
       logApiNetworkHintForDevs(err, { apiBase, origin, isStaticWebHost });
       if (showDevErrors) {
-        const msg = aborted
-          ? "Request timed out (API may be cold-starting)."
-          : err && err.message
-            ? err.message
-            : String(err);
+        const msg = err && err.message ? err.message : String(err);
         const baseHint = apiBase
           ? `Trying API_BASE: ${apiBase}`
           : "API_BASE is empty — requests go to the Pages host (wrong).";
@@ -193,11 +176,7 @@ async function api(path, method = "GET", body) {
           `${msg}\n\n${baseHint}\n${corsHint}\nIf the API is on Render free tier, wait ~1 minute for a cold start and refresh.`
         );
       }
-      throw new Error(
-        aborted
-          ? "That took too long — the server may be waking up. Please refresh and try again."
-          : friendlyNetworkErrorMessage()
-      );
+      throw new Error(friendlyNetworkErrorMessage());
     }
   }
 
@@ -13029,20 +13008,48 @@ async function loadMonthAndCalendar() {
     }
 
     setCalendarLoadingUi(true);
-    await loadTransactions();
-    await loadUpcomingTransactionsPanel();
-    await loadExpectedCalendar();
+    const loadErrors = [];
+    const runStep = async (label, fn) => {
+      try {
+        await fn();
+      } catch (e) {
+        loadErrors.push(e);
+        try {
+          if (window.console && console.warn) {
+            console.warn(`[calendar] ${label} failed`, e && e.message ? e.message : e);
+          }
+        } catch (_) {}
+      }
+    };
+    await runStep("transactions", () => loadTransactions());
+    await runStep("upcoming", () => loadUpcomingTransactionsPanel());
+    await runStep("expected", () => loadExpectedCalendar());
     renderSidebarPendingTransactionsForMonth();
     renderMonthSummaryTotalsFromState();
-    await loadCalendarExtras();
-    await loadReconciledDays(getCalendarViewYm());
-    await loadVerifiedBalances(getCalendarViewYm());
-    await loadCalendarMonthDaily();
+    await runStep("extras", () => loadCalendarExtras());
+    await runStep("reconciled", () => loadReconciledDays(getCalendarViewYm()));
+    await runStep("verified", () => loadVerifiedBalances(getCalendarViewYm()));
+    await runStep("daily-balances", () => loadCalendarMonthDaily());
+    if (!state.monthDailyBalances || state.monthDailyBalances.size === 0) {
+      try {
+        computeMonthDailyBalancesLegacy();
+      } catch (_) {}
+    }
     renderCalendar();
-    await refreshLowBalanceAlert();
-    await refreshForecastConfidence();
+    await runStep("low-balance", () => refreshLowBalanceAlert());
+    await runStep("forecast-confidence", () => refreshForecastConfidence());
+    if (loadErrors.length && (!state.monthDailyBalances || state.monthDailyBalances.size === 0)) {
+      const last = loadErrors[loadErrors.length - 1];
+      show(calendarErr, (last && last.message) || "Failed to load calendar");
+    }
   } catch (e) {
     show(calendarErr, e.message || "Failed to load calendar");
+    try {
+      if (!state.monthDailyBalances || state.monthDailyBalances.size === 0) {
+        computeMonthDailyBalancesLegacy();
+        renderCalendar();
+      }
+    } catch (_) {}
   } finally {
     setCalendarLoadingUi(false);
   }
