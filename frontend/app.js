@@ -544,6 +544,9 @@ let state = {
   calendarDetailMode: "detailed",
 };
 
+/** Guard for one-time resize listener on balance-strip font fitting. */
+let _calBalanceStripFitResizeBound = false;
+
 // Expose state on window so peripheral modules (e.g. feedback.js) can read
 // non-sensitive context like the active family id and signed-in user.
 window.state = state;
@@ -12036,7 +12039,6 @@ function scheduleFitCalendarBalanceStripFonts() {
   });
 }
 
-let _calBalanceStripFitResizeBound = false;
 function ensureCalendarBalanceStripFitOnResize() {
   if (_calBalanceStripFitResizeBound || typeof window === "undefined") return;
   _calBalanceStripFitResizeBound = true;
