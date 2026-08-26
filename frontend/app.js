@@ -13568,7 +13568,9 @@ async function loadUpcomingTransactionsPanel() {
 
 async function loadExpectedCalendar() {
   try {
-    show(calendarErr, "");
+    // Do not clear a bootstrap / empty-state banner mid-load.
+    const cur = String(calendarErr?.textContent || "");
+    if (!cur || cur === "Loading forecast…") show(calendarErr, "");
     state.monthExpectedItems = [];
     if (!state.activeFamilyId) return;
 
