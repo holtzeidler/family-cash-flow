@@ -12189,9 +12189,13 @@ async function loadAccounts() {
   if (expectedAccountIdEl && state.accounts.length > 0 && !expectedAccountIdEl.value) {
     expectedAccountIdEl.value = String(state.accounts[0].id);
   }
-  try {
-    renderCalendar();
-  } catch (_) {}
+  // Only re-paint when balances are already loaded. Calling renderCalendar() here
+  // during bootstrap left an empty grid on screen; if a later step hung, it stayed empty.
+  if (state.monthDailyBalances && state.monthDailyBalances.size > 0) {
+    try {
+      renderCalendar();
+    } catch (_) {}
+  }
 }
 
 if (accountDetailsAccountId) {
@@ -13204,11 +13208,55 @@ function renderRecurringFilteredList() {
 
 async function loadExpectedTransactions() {
   if (!state.activeFamilyId) return;
-  const items = await api(`/api/families/${state.activeFamilyId}/expected-transactions`, "GET");
-  state.expectedTransactions = items || [];
-  renderUpcomingTransactionsFiltered();
-  invalidateLowBalanceAlertCache();
-  void refreshLowBalanceAlert();
+  try {
+    const items = await api(`/api/families/${state.activeFamilyId}/expected-transactions`, "GET");
+    state.expectedTransactions = items || [];
+    renderUpcomingTransactionsFiltered();
+    invalidateLowBalanceAlertCache();
+    void refreshLowBalanceAlert();
+  } catch (e) {
+    try {
+      if (window.console && console.warn) {
+        console.warn("[expected-transactions]", e && e.message ? e.message : e);
+      }
+    } catch (_) {}
+  }
+}
+
+function updateCalendarEmptyStateBanner() {
+  if (!calendarErr) return;
+  const hasAccounts = Array.isArray(state.accounts) && state.accounts.length > 0;
+  const hasBalances = !!(state.monthDailyBalances && state.monthDailyBalances.size > 0);
+  if (!state.activeFamilyId) {
+    show(
+      calendarErr,
+      "Your forecast isn't ready yet — no household is linked to this login. Refresh, or open Settings → Accounts."
+    );
+    return;
+  }
+  if (!hasAccounts) {
+    show(
+      calendarErr,
+      "No checking account yet, so there is nothing to forecast. Add one in Settings → Accounts."
+    );
+    return;
+  }
+  if (!hasBalances) {
+    show(
+      calendarErr,
+      "Balances did not load. Check your connection and refresh — if this keeps happening, try logging out and back in."
+    );
+    return;
+  }
+  // Leave existing non-empty-state errors alone when balances are present.
+  const cur = String(calendarErr.textContent || "");
+  if (
+    cur.includes("forecast isn't ready") ||
+    cur.includes("No checking account") ||
+    cur.includes("Balances did not load")
+  ) {
+    show(calendarErr, "");
+  }
 }
 
 function renderProjectionSummary(summary) {
@@ -19747,17 +19795,37 @@ async function main() {
   try {
     applyCheckoutReturnFromUrl();
   } catch (_) {}
+  setDefaultMonth();
+  // Load accounts first, then paint the forecast. Do not await categories / expected
+  // series / onboarding recovery before the calendar — those can hang and leave an
+  // empty day grid on screen (loadAccounts used to paint early).
   if (state.activeFamilyId) {
-    await loadCategories();
-    await loadAccounts();
-    // If the signup wizard's account/transaction POSTs didn't complete (cold start,
-    // dropped connection, slow tab), finish that work now using the draft still in
-    // sessionStorage. This is what keeps a new user from landing on an empty calendar.
+    try {
+      await loadAccounts();
+    } catch (e) {
+      show(familiesErr, (e && e.message) || "Failed to load accounts");
+    }
+  }
+  await loadMonthAndCalendar();
+  try {
+    updateCalendarEmptyStateBanner();
+  } catch (_) {}
+  if (state.activeFamilyId) {
+    try {
+      await loadCategories();
+    } catch (e) {
+      try {
+        if (window.console && console.warn) console.warn("[categories]", e && e.message);
+      } catch (_) {}
+    }
     try {
       const recovered = await tryRecoverAccountSetupDraft();
       if (recovered) {
         await loadAccounts();
-        await loadExpectedTransactions();
+        await loadMonthAndCalendar();
+        try {
+          updateCalendarEmptyStateBanner();
+        } catch (_) {}
       }
     } catch (e) {
       try {
@@ -19768,23 +19836,12 @@ async function main() {
     }
     await loadExpectedTransactions();
   }
-  setDefaultMonth();
-  await loadMonthAndCalendar();
-  // Defensive re-render: if any upstream step threw and cleared the grid without
-  // refilling it, this guarantees the day cells are visible (even on an empty family).
+  // Defensive re-render after secondary loads.
   try {
     renderCalendar();
   } catch (_) {}
   try {
-    const hasAccounts = Array.isArray(state.accounts) && state.accounts.length > 0;
-    if (!state.activeFamilyId || !hasAccounts) {
-      show(
-        familiesErr,
-        !state.activeFamilyId
-          ? "Your forecast isn't ready yet — setup may have been interrupted. Refresh this page, or open Settings → Accounts to finish adding your checking account."
-          : "No checking account yet, so the forecast has nothing to project. Add one in Settings → Accounts (or reopen Account Setup)."
-      );
-    }
+    updateCalendarEmptyStateBanner();
   } catch (_) {}
   if (state.activeFamilyId) {
     try {
