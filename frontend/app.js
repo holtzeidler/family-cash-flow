@@ -19869,6 +19869,16 @@ async function main() {
   await loadMe();
   bwDispatchMilestone("first-login");
   await loadFamilies();
+  if (!state.activeFamilyId) {
+    try {
+      await api("/api/families", "POST", { name: "My Family" });
+      await loadFamilies();
+    } catch (e) {
+      try {
+        if (window.console && console.warn) console.warn("[bootstrap] family create", e && e.message);
+      } catch (_) {}
+    }
+  }
   syncHouseholdSettingsUi();
   if (window.__BW_FORCE_VIEW === "settings") {
     try {
@@ -19891,6 +19901,13 @@ async function main() {
   if (state.activeFamilyId) {
     try {
       await loadAccounts();
+      if (Array.isArray(state.accounts) && state.accounts.length > 0) {
+        try {
+          computeMonthDailyBalancesLegacy();
+          renderCalendar();
+          ensureForecastStatusRibbon("Loading forecast…");
+        } catch (_) {}
+      }
     } catch (e) {
       show(familiesErr, (e && e.message) || "Failed to load accounts");
     }
