@@ -11837,6 +11837,15 @@ label{
   line-height: 1.36;
   color: rgba(21, 65, 48, 0.8);
 }
+.billing-hero__renewal--trial{
+  margin-top: 16px;
+  margin-bottom: 0;
+  padding: 7px 14px;
+  border-color: rgba(22, 163, 74, 0.22);
+  background: rgba(220, 252, 231, 0.82);
+  font-weight: 650;
+  color: rgba(20, 83, 45, 0.88);
+}
 .billing-hero__renewal::before{
   content: "✓";
   font-size: 0.78em;
