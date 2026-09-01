@@ -2517,7 +2517,7 @@ async function refreshLowBalanceAlert() {
         } else {
           const shortfall = Math.max(0, target - bal);
           setSidebarLowBalanceBanner(
-            `⚠ Below target on ${fmtMonthDay(lowHit.date)}\nINSIGHT:\nProjected balance: $${fmtMoney0(bal)}\nTarget: $${fmtMoney0(target)} • Short by $${fmtMoney0(shortfall)}`,
+            `⚠ Below target ${fmtMonthDay(lowHit.date)}\nINSIGHT:\n$${fmtMoney0(shortfall)} short of your $${fmtMoney0(target)} target`,
             "danger"
           );
         }
@@ -8479,7 +8479,7 @@ function renderBillingPanel() {
     freqNorm === "yearly" || freqNorm === "annual" || freqNorm === "year" ? "Yearly" : "Monthly";
   const todayIso = toISODate(new Date());
   const trialEnd = start ? addDaysIso(start, BILLING_TRIAL_DAYS) : "";
-  const next = computeNextBillingDate(start, "monthly");
+  const next = computeNextBillingDate(start, freq);
   const inTrial = !paid && (!start || !!(trialEnd && trialEnd >= todayIso));
   if (billingPlanHeadlineEl) billingPlanHeadlineEl.textContent = planLabel === "—" ? "Cash Forecast" : planLabel;
   billingPlanEl.textContent = planLabel === "—" && paid ? "Cash Forecast" : planLabel;
@@ -8498,11 +8498,9 @@ function renderBillingPanel() {
       ? trialEnd
         ? `Your free month ends ${formatShortDateLong(trialEnd)}.`
         : "Your free month is active."
-      : paid && next
+      : next
         ? `Your next renewal is ${formatShortDateLong(next)}.`
-        : next
-          ? `Your next renewal is ${formatShortDateLong(next)}.`
-          : "Renewal dates appear here once billing is active.";
+        : "Renewal dates appear here once billing is active.";
     billingRenewalMessageEl.classList.toggle("billing-hero__renewal--trial", inTrial);
     billingRenewalMessageEl.classList.toggle("billing-hero__renewal--paid", paid);
   }

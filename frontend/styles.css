@@ -31361,7 +31361,6 @@ body[data-bw-view="reimbursements"] .pending-attn-indicator{
   flex: 0 0 auto;
 }
 
-
 /* ——— Checkout (Stripe-hosted redirect) ——— */
 body.checkout-page .container > .grid{
   margin: 24px auto 56px;
