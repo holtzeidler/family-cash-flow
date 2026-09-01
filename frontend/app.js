@@ -14051,9 +14051,8 @@ async function loadCalendarMonthDaily() {
     }
   };
   const fillInMonthGapsFromClient = () => {
-    // Only backfill days inside the requested month. Adjacent-month cells must wait
-    // for their own API response — client approx has no prior-month carry and no txs yet,
-    // so it was painting wrong flat starting-balance totals (e.g. 9/1 cliff after Aug).
+    // Only backfill days inside the requested month — never adjacent/out-of-month
+    // wrap days (client approx has no reliable prior-month carry).
     try {
       const wrap = computeCalendarVisibleDailyBalancesClient();
       const prefix = `${month}-`;
@@ -14063,50 +14062,43 @@ async function loadCalendarMonthDaily() {
       }
     } catch (_) {}
   };
+  const prev = shiftMonthStr(month, -1);
+  const next = shiftMonthStr(month, 1);
+  // Fetch visible month + wrap months together. Awaiting adjacent is safe now that
+  // api() has per-attempt timeouts; fire-and-forget left gray cells stuck on stale seeds.
   try {
-    const data = await api(
-      `/api/families/${state.activeFamilyId}/calendar-month-daily?month=${encodeURIComponent(month)}&mode=${encodeURIComponent(mode)}`,
-      "GET",
-    );
-    const days = data?.days;
-    if (Array.isArray(days) && days.length > 0) {
-      applyDayRows(days);
-      // Never block the visible month on adjacent-month fetches — those used to hang
-      // forever after balances were already in memory, leaving an empty calendar on screen.
+    const results = await Promise.allSettled([
+      api(
+        `/api/families/${state.activeFamilyId}/calendar-month-daily?month=${encodeURIComponent(month)}&mode=${encodeURIComponent(mode)}`,
+        "GET",
+      ),
+      api(
+        `/api/families/${state.activeFamilyId}/calendar-month-daily?month=${encodeURIComponent(prev)}&mode=${encodeURIComponent(mode)}`,
+        "GET",
+      ),
+      api(
+        `/api/families/${state.activeFamilyId}/calendar-month-daily?month=${encodeURIComponent(next)}&mode=${encodeURIComponent(mode)}`,
+        "GET",
+      ),
+    ]);
+    const primary = results[0].status === "fulfilled" ? results[0].value : null;
+    const primaryDays = primary?.days;
+    if (Array.isArray(primaryDays) && primaryDays.length > 0) {
+      applyDayRows(primaryDays);
+      for (let i = 1; i < results.length; i++) {
+        const res = results[i];
+        if (res.status !== "fulfilled") continue;
+        applyDayRows(res.value?.days, { onlyMissing: false });
+      }
       fillInMonthGapsFromClient();
-      const prev = shiftMonthStr(month, -1);
-      const next = shiftMonthStr(month, 1);
-      void Promise.allSettled([
-        api(
-          `/api/families/${state.activeFamilyId}/calendar-month-daily?month=${encodeURIComponent(prev)}&mode=${encodeURIComponent(mode)}`,
-          "GET"
-        ),
-        api(
-          `/api/families/${state.activeFamilyId}/calendar-month-daily?month=${encodeURIComponent(next)}&mode=${encodeURIComponent(mode)}`,
-          "GET"
-        ),
-      ]).then((extras) => {
-        let changed = false;
-        for (const res of extras) {
-          if (res.status !== "fulfilled") continue;
-          // Always prefer server balances for adjacent months (overwrite any stale seed).
-          const before = state.monthDailyBalances.size;
-          applyDayRows(res.value?.days, { onlyMissing: false });
-          if (state.monthDailyBalances.size !== before) changed = true;
-          else if (Array.isArray(res.value?.days) && res.value.days.length) changed = true;
-        }
-        if (changed) {
-          try {
-            renderCalendar();
-          } catch (_) {}
-        }
-      });
+      repairOutOfMonthBalanceContinuity();
       return;
     }
   } catch (_) {
     /* offline or old API — fall back */
   }
   computeMonthDailyBalancesLegacy();
+  repairOutOfMonthBalanceContinuity();
 }
 
 let calendarLoadingGuardTimer = null;
@@ -14190,6 +14182,9 @@ async function loadMonthAndCalendar() {
       runStep("reconciled", () => loadReconciledDays(getCalendarViewYm())),
       runStep("verified", () => loadVerifiedBalances(getCalendarViewYm())),
     ]);
+    try {
+      repairOutOfMonthBalanceContinuity();
+    } catch (_) {}
     renderSidebarPendingTransactionsForMonth();
     renderMonthSummaryTotalsFromState();
     renderCalendar();
@@ -14219,20 +14214,20 @@ function computeMonthDailyBalancesLegacy() {
   state.monthDailyBalances = computeCalendarVisibleDailyBalancesClient();
 }
 
-function computeCalendarVisibleDailyBalancesClient() {
-  const out = new Map();
-  const month = getCalendarViewYm();
-  if (!month) return out;
+/**
+ * Visible calendar grid range for a YYYY-MM month (includes leading/trailing wrap days).
+ * @returns {{ year: number, monthIndex: number, daysInMonth: number, monthStartIso: string, monthEndIso: string, rangeStart: Date, rangeEnd: Date } | null}
+ */
+function calendarVisibleRangeForMonth(month) {
+  if (!month) return null;
   const [yearPart, monthPart] = String(month).split("-");
   const year = Number(yearPart);
   const monthIndex = Number(monthPart) - 1;
+  if (!Number.isFinite(year) || !Number.isFinite(monthIndex)) return null;
   const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
-  const monthStartIso = dateISOFromParts(year, monthIndex, 1);
-
-  // Determine the visible calendar grid range (includes wrap days).
   const first = new Date(year, monthIndex, 1);
-  const offset = first.getDay(); // Sunday=0
-  let weekRows = Math.ceil((offset + daysInMonth) / 7); // 4–6
+  const offset = first.getDay();
+  let weekRows = Math.ceil((offset + daysInMonth) / 7);
   let totalCells = weekRows * 7;
   if (totalCells === 42) {
     let lastRowHasInMonth = false;
@@ -14250,6 +14245,123 @@ function computeCalendarVisibleDailyBalancesClient() {
   }
   const rangeStart = new Date(year, monthIndex, 1 - offset);
   const rangeEnd = new Date(year, monthIndex, 1 - offset + (totalCells - 1));
+  const monthStartIso = dateISOFromParts(year, monthIndex, 1);
+  const monthEndIso = dateISOFromParts(year, monthIndex, daysInMonth);
+  return { year, monthIndex, daysInMonth, monthStartIso, monthEndIso, rangeStart, rangeEnd };
+}
+
+function clientDayTxNetForIso(iso, mode) {
+  const includeActual = mode === "both" || mode === "actual";
+  const includeExpected = mode === "both" || mode === "expected";
+  const actualItems = [...(state.monthActualItems || []), ...(state.calendarExtraActualItems || [])];
+  const expectedItems = [...(state.monthExpectedItems || []), ...(state.calendarExtraExpectedItems || [])];
+  let actual = 0;
+  let expected = 0;
+  const actualDedupeKeys = new Set();
+  if (includeActual) {
+    for (const tx of actualItems) {
+      const dk = normalizeIsoDate(tx.date) || tx.date;
+      if (dk !== iso) continue;
+      const amt = Number(tx.amount || 0);
+      actual += tx.kind === "income" ? amt : -amt;
+      if (mode === "both") actualDedupeKeys.add(txnBreakdownDedupeKey(tx));
+    }
+  }
+  if (includeExpected) {
+    for (const tx of expectedItems) {
+      const dk = normalizeIsoDate(tx.date) || tx.date;
+      if (dk !== iso) continue;
+      if (mode === "both" && actualDedupeKeys.has(txnBreakdownDedupeKey(tx))) continue;
+      const amt = Number(tx.amount || 0);
+      expected += tx.kind === "income" ? amt : -amt;
+    }
+  }
+  if (mode === "actual") return actual;
+  if (mode === "expected") return expected;
+  return actual + expected;
+}
+
+function clientStartAddForIso(iso) {
+  let add = 0;
+  for (const account of state.accounts || []) {
+    const startDate =
+      normalizeIsoDate(account.starting_balance_date) || account.starting_balance_date || "";
+    if (startDate === iso) add += Number(account.starting_balance || 0);
+  }
+  return add;
+}
+
+/**
+ * Keep gray (out-of-month) wrap-day balances continuous with the in-month API series.
+ * Replaces missing or discontinuous adjacent-day seeds that ignore August→September carry.
+ */
+function repairOutOfMonthBalanceContinuity() {
+  const month = getCalendarViewYm();
+  const range = calendarVisibleRangeForMonth(month);
+  if (!range || !state.monthDailyBalances || !state.monthDailyBalances.size) return false;
+  const mode = calendarMode?.value || "both";
+  const { monthStartIso, monthEndIso, rangeStart, rangeEnd } = range;
+  let changed = false;
+
+  const patchRun = (fromIso, toIso, direction) => {
+    let carryIso = direction > 0 ? isoAddDays(fromIso, -1) : isoAddDays(fromIso, 1);
+    let guard = 0;
+    let iso = fromIso;
+    while (guard++ < 42) {
+      if (direction > 0 ? iso > toIso : iso < toIso) break;
+      const prev = state.monthDailyBalances.get(carryIso);
+      const prevEnd = Number(prev?.end);
+      if (!Number.isFinite(prevEnd)) break;
+      const startAdd = clientStartAddForIso(iso);
+      const txNet = clientDayTxNetForIso(iso, mode);
+      const dayStart = prevEnd + startAdd;
+      const vb = state.verifiedBalances?.get(iso);
+      const verified = !!(vb && Number.isFinite(Number(vb.amount)));
+      const calculatedEnd = dayStart + txNet;
+      const dayEnd = verified ? Number(vb.amount) : calculatedEnd;
+      const existing = state.monthDailyBalances.get(iso);
+      const existingStart = Number(existing?.start);
+      const existingEnd = Number(existing?.end);
+      const discontinuous =
+        !existing ||
+        !Number.isFinite(existingStart) ||
+        !Number.isFinite(existingEnd) ||
+        Math.abs(existingStart - dayStart) > 0.045;
+      if (discontinuous) {
+        state.monthDailyBalances.set(iso, {
+          start: dayStart,
+          txNet,
+          end: dayEnd,
+          verified,
+          verifiedAmount: verified ? dayEnd : null,
+          projectedEnd: verified ? calculatedEnd : null,
+        });
+        changed = true;
+      }
+      carryIso = iso;
+      iso = isoAddDays(iso, direction);
+    }
+  };
+
+  const rangeStartIso = toISODate(rangeStart);
+  const rangeEndIso = toISODate(rangeEnd);
+  if (rangeStartIso < monthStartIso) {
+    // Leading wrap days: walk backward from the 1st.
+    patchRun(isoAddDays(monthStartIso, -1), rangeStartIso, -1);
+  }
+  if (rangeEndIso > monthEndIso) {
+    // Trailing wrap days: walk forward from month end.
+    patchRun(isoAddDays(monthEndIso, 1), rangeEndIso, 1);
+  }
+  return changed;
+}
+
+function computeCalendarVisibleDailyBalancesClient() {
+  const out = new Map();
+  const month = getCalendarViewYm();
+  const range = calendarVisibleRangeForMonth(month);
+  if (!range) return out;
+  const { year, monthIndex, daysInMonth, monthStartIso, rangeStart, rangeEnd } = range;
 
   const mode = calendarMode?.value || "both";
   const includeActual = mode === "both" || mode === "actual";
@@ -14301,6 +14413,7 @@ function computeCalendarVisibleDailyBalancesClient() {
     }
   }
 
+  const monthPrefix = `${String(year)}-${String(monthIndex + 1).padStart(2, "0")}-`;
   for (let d = new Date(rangeStart); d <= rangeEnd; d.setDate(d.getDate() + 1)) {
     const iso = toISODate(d);
     const dayStart = carry + (startAdds.get(iso) || 0);
@@ -14312,14 +14425,18 @@ function computeCalendarVisibleDailyBalancesClient() {
     const vb = state.verifiedBalances?.get(iso);
     const verified = vb && Number.isFinite(Number(vb.amount));
     const dayEnd = verified ? Number(vb.amount) : calculatedEnd;
-    out.set(iso, {
-      start: dayStart,
-      txNet,
-      end: dayEnd,
-      verified: !!verified,
-      verifiedAmount: verified ? dayEnd : null,
-      projectedEnd: verified ? calculatedEnd : null,
-    });
+    // Only seed in-month days. Out-of-month (gray) cells must come from the adjacent
+    // month API or repairOutOfMonthBalanceContinuity — never a flat starting-balance approx.
+    if (iso.startsWith(monthPrefix)) {
+      out.set(iso, {
+        start: dayStart,
+        txNet,
+        end: dayEnd,
+        verified: !!verified,
+        verifiedAmount: verified ? dayEnd : null,
+        projectedEnd: verified ? calculatedEnd : null,
+      });
+    }
     carry = dayEnd;
   }
 
