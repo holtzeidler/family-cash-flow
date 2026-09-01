@@ -30,6 +30,9 @@
   if (window.BW_FEEDBACK_LOADED) return;
   window.BW_FEEDBACK_LOADED = true;
 
+  /** User-facing feedback prompts (floating button + milestone pulses) are off. */
+  const FEEDBACK_PROMPTS_ENABLED = false;
+
   const PULSE_STORAGE_PREFIX = "bw:pulse:";
   const PULSE_DEFINITIONS = {
     "first-login": {
@@ -438,6 +441,7 @@
   // ---------------------------------------------------------------------
 
   function attachReactions(container, opts) {
+    if (!FEEDBACK_PROMPTS_ENABLED) return null;
     if (!container || !opts || !opts.contextKey) return null;
     if (container.querySelector(":scope > .bw-fb-reactions")) return null;
 
@@ -633,6 +637,7 @@
   }
 
   function showPulse(id) {
+    if (!FEEDBACK_PROMPTS_ENABLED) return;
     if (!id || !PULSE_DEFINITIONS[id]) return;
     if (pulseSeen(id)) return;
     // Don't compete with the bug modal.
@@ -678,6 +683,7 @@
   // ---------------------------------------------------------------------
 
   function init() {
+    if (!FEEDBACK_PROMPTS_ENABLED) return;
     ensureFloatingButton();
     document.addEventListener("bw:milestone", onMilestone);
   }
