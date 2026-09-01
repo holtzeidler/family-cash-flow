@@ -1631,9 +1631,6 @@ let billingActionsWired = false;
 const BILLING_PLAN_KEY = "bw_billing_plan";
 const BILLING_START_KEY = "bw_billing_start";
 const BILLING_FREQUENCY_KEY = "bw_billing_frequency";
-/** Set after Stripe Checkout succeeds (staging paid-plan smoke test). */
-const BILLING_PAID_KEY = "bw_billing_paid";
-const BILLING_STRIPE_SESSION_KEY = "bw_billing_stripe_session";
 /** Free period length; keep marketing copy in sync (e.g. "Free for your first month"). */
 const BILLING_TRIAL_DAYS = 30;
 
@@ -8367,71 +8364,9 @@ function getBillingPlanContext(plan) {
 
 function billingStatusPillHtml(status) {
   const s = String(status || "Active").trim() || "Active";
-  const paid = String(s).toLowerCase().includes("billing");
-  const trial = String(s).toLowerCase().includes("trial");
-  const mod = paid ? "billing-status-pill--paid" : trial ? "billing-status-pill--trial" : "billing-status-pill--active";
-  return `<span class="billing-status-pill ${mod}"><span class="billing-status-pill__icon" aria-hidden="true">✓</span>${escapeHtml(
+  return `<span class="billing-status-pill billing-status-pill--active"><span class="billing-status-pill__icon" aria-hidden="true">✓</span>${escapeHtml(
     s
   )}</span>`;
-}
-
-function isStagingBillingHost() {
-  try {
-    const h = String(location.hostname || "").toLowerCase();
-    return (
-      h === "staging.balancewhiz.com" ||
-      h.includes("web-staging") ||
-      h === "localhost" ||
-      h === "127.0.0.1"
-    );
-  } catch (_) {
-    return false;
-  }
-}
-
-function isBillingPaid() {
-  try {
-    return localStorage.getItem(BILLING_PAID_KEY) === "1";
-  } catch (_) {
-    return false;
-  }
-}
-
-function markBillingPaidFromCheckout(sessionId, frequency) {
-  try {
-    localStorage.setItem(BILLING_PAID_KEY, "1");
-    if (!localStorage.getItem(BILLING_PLAN_KEY)) localStorage.setItem(BILLING_PLAN_KEY, "base");
-    if (!localStorage.getItem(BILLING_START_KEY)) {
-      localStorage.setItem(BILLING_START_KEY, toISODate(new Date()));
-    }
-    const freq = String(frequency || localStorage.getItem(BILLING_FREQUENCY_KEY) || "monthly").toLowerCase();
-    localStorage.setItem(BILLING_FREQUENCY_KEY, freq === "annual" || freq === "yearly" ? "yearly" : "monthly");
-    if (sessionId) localStorage.setItem(BILLING_STRIPE_SESSION_KEY, String(sessionId));
-  } catch (_) {}
-}
-
-function ensureBillingHeroPills() {
-  if (!billingRenewalMessageEl) return null;
-  let row = document.getElementById("billingHeroPills");
-  if (!row) {
-    row = document.createElement("div");
-    row.id = "billingHeroPills";
-    row.className = "billing-hero__pills";
-    const parent = billingRenewalMessageEl.parentElement;
-    if (!parent) return null;
-    parent.insertBefore(row, billingRenewalMessageEl);
-    row.appendChild(billingRenewalMessageEl);
-  }
-  let activate = document.getElementById("billingActivatePaidPlan");
-  if (!activate) {
-    activate = document.createElement("a");
-    activate.id = "billingActivatePaidPlan";
-    activate.className = "billing-hero__activate";
-    activate.href = "/checkout/";
-    activate.textContent = "Activate Paid Plan";
-    row.appendChild(activate);
-  }
-  return activate;
 }
 
 function wireBillingActionsOnce() {
@@ -8439,15 +8374,6 @@ function wireBillingActionsOnce() {
   document.querySelectorAll("[data-billing-action]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const action = String(btn.getAttribute("data-billing-action") || "");
-      if (action === "payment" && isStagingBillingHost() && isBillingPaid()) {
-        // Staging: card updates still go through support until Customer Portal is wired here.
-        showBwToast("Updating your card isn’t available here yet—use Contact support or Manage on the checkout success page.");
-        return;
-      }
-      if (action === "payment" && isStagingBillingHost() && !isBillingPaid()) {
-        window.location.assign("/checkout/");
-        return;
-      }
       const messages = {
         payment:
           "Updating your card isn’t available here yet—for payment changes, use Contact support.",
@@ -8472,85 +8398,33 @@ function renderBillingPanel() {
     start = localStorage.getItem(BILLING_START_KEY) || "";
   } catch (_) {}
   wireBillingActionsOnce();
-  const paid = isBillingPaid();
-  const planLabel = getBillingPlanLabel(plan || (paid ? "base" : ""));
-  const freqNorm = String(freq || "monthly").toLowerCase();
-  const frequencyLabel =
-    freqNorm === "yearly" || freqNorm === "annual" || freqNorm === "year" ? "Yearly" : "Monthly";
+  const planLabel = getBillingPlanLabel(plan);
+  const frequencyLabel = String(freq || "monthly").toLowerCase() === "monthly" ? "Monthly" : String(freq || "—");
   const todayIso = toISODate(new Date());
   const trialEnd = start ? addDaysIso(start, BILLING_TRIAL_DAYS) : "";
   const next = computeNextBillingDate(start, freq);
-  const inTrial = !paid && (!start || !!(trialEnd && trialEnd >= todayIso));
+  const inTrial = !!(trialEnd && trialEnd >= todayIso);
   if (billingPlanHeadlineEl) billingPlanHeadlineEl.textContent = planLabel === "—" ? "Cash Forecast" : planLabel;
-  billingPlanEl.textContent = planLabel === "—" && paid ? "Cash Forecast" : planLabel;
+  billingPlanEl.textContent = planLabel;
   billingFrequencyEl.textContent = frequencyLabel;
-  if (billingPlanContextEl) billingPlanContextEl.textContent = getBillingPlanContext(plan || (paid ? "base" : ""));
+  if (billingPlanContextEl) billingPlanContextEl.textContent = getBillingPlanContext(plan);
   if (billingNextDateLabelEl) billingNextDateLabelEl.textContent = inTrial ? "Free month ends" : "Next renewal";
   billingNextDateEl.textContent = inTrial
-    ? trialEnd
-      ? formatShortDateLong(trialEnd)
-      : "—"
+    ? formatShortDateLong(trialEnd)
     : next
       ? formatShortDateLong(next)
       : "—";
   if (billingRenewalMessageEl) {
     billingRenewalMessageEl.textContent = inTrial
-      ? trialEnd
-        ? `Your free month ends ${formatShortDateLong(trialEnd)}.`
-        : "Your free month is active."
+      ? `Your free month ends ${formatShortDateLong(trialEnd)}.`
       : next
         ? `Your next renewal is ${formatShortDateLong(next)}.`
         : "Renewal dates appear here once billing is active.";
     billingRenewalMessageEl.classList.toggle("billing-hero__renewal--trial", inTrial);
-    billingRenewalMessageEl.classList.toggle("billing-hero__renewal--paid", paid);
-  }
-  const activate = ensureBillingHeroPills();
-  if (activate) {
-    // Staging smoke-test CTA — hidden once paid, and not shown on production hosts.
-    const showActivate = isStagingBillingHost() && !paid;
-    activate.hidden = !showActivate;
-    activate.setAttribute("aria-hidden", showActivate ? "false" : "true");
   }
   if (billingAccountStatusEl) {
-    const statusLabel = paid ? "Active Billing" : inTrial ? "Active Trial" : "Active";
-    billingAccountStatusEl.innerHTML = billingStatusPillHtml(statusLabel);
+    billingAccountStatusEl.innerHTML = billingStatusPillHtml(planLabel === "—" ? "Active" : "Active");
   }
-}
-
-function applyCheckoutReturnFromUrl() {
-  try {
-    const u = new URL(window.location.href);
-    const checkout = String(u.searchParams.get("checkout") || "").trim().toLowerCase();
-    const section = String(u.searchParams.get("section") || "").trim().toLowerCase();
-    const sessionId = String(u.searchParams.get("session_id") || "").trim();
-    if (!checkout && !section) return;
-
-    if (checkout === "success") {
-      markBillingPaidFromCheckout(sessionId);
-      try {
-        showBwToast("Payment received — your plan is Active Billing.");
-      } catch (_) {}
-    } else if (checkout === "canceled") {
-      try {
-        showBwToast("Checkout canceled — you can activate a paid plan anytime.");
-      } catch (_) {}
-    }
-
-    if (section === "billing" || checkout) {
-      try {
-        setActiveTopView("settings");
-      } catch (_) {}
-      try {
-        activateSettingsSection("billing");
-      } catch (_) {}
-    }
-
-    u.searchParams.delete("checkout");
-    u.searchParams.delete("session_id");
-    u.searchParams.delete("section");
-    const qs = u.searchParams.toString();
-    window.history.replaceState({}, "", `${u.pathname}${qs ? `?${qs}` : ""}${u.hash}`);
-  } catch (_) {}
 }
 
 function ensureProjectionChartDefaults() {
@@ -20015,9 +19889,6 @@ async function main() {
       activateSettingsSection(section);
     } catch (_) {}
   }
-  try {
-    applyCheckoutReturnFromUrl();
-  } catch (_) {}
   setDefaultMonth();
   // Load accounts first, then paint the forecast. Do not await categories / expected
   // series / onboarding recovery before the calendar — those can hang and leave an
