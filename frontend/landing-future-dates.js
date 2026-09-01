@@ -24,6 +24,14 @@
     return "$" + (k % 1 === 0 ? k.toFixed(0) : k.toFixed(1)) + "k";
   }
 
+  function fmtMonthDay(d) {
+    return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  }
+
+  /** Matches SVG crunch dot (~month 3 on the 90-day chart). */
+  var CRUNCH_MONTH_OFFSET = 2;
+  var CRUNCH_DAY = 15;
+
   var today = startOfDay(new Date());
   var monthData = [
     { bal: 4800 },
@@ -59,7 +67,8 @@
 
   var crunchLabel = section.querySelector("#landingFutureCrunchLabel");
   if (crunchLabel) {
-    crunchLabel.textContent = "Property tax payment due Jul 15";
+    var crunchDate = new Date(today.getFullYear(), today.getMonth() + CRUNCH_MONTH_OFFSET, CRUNCH_DAY);
+    crunchLabel.textContent = "Property tax payment due " + fmtMonthDay(crunchDate);
   }
 
   var insight = section.querySelector("#landingFutureInsightCopy");
