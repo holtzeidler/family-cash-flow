@@ -1720,6 +1720,29 @@ let reconcileActiveDate = "";
 let reconcileCheckInMode = "confirm"; // "confirm" | "edit"
 let reconcileCheckInBusy = false;
 
+const editAdjustmentModal = document.getElementById("editAdjustmentModal");
+const editAdjustmentTitle = document.getElementById("editAdjustmentTitle");
+const editAdjustmentDateDisplay = document.getElementById("editAdjustmentDateDisplay");
+const editAdjustmentForecastBlock = document.getElementById("editAdjustmentForecastBlock");
+const editAdjustmentOriginalForecast = document.getElementById("editAdjustmentOriginalForecast");
+const editAdjustmentAmount = document.getElementById("editAdjustmentAmount");
+const editAdjustmentErr = document.getElementById("editAdjustmentErr");
+const editAdjustmentCancelBtn = document.getElementById("editAdjustmentCancelBtn");
+const editAdjustmentSaveBtn = document.getElementById("editAdjustmentSaveBtn");
+const editAdjustmentRemoveBtn = document.getElementById("editAdjustmentRemoveBtn");
+let editAdjustmentActiveDate = "";
+let editAdjustmentMode = "edit"; // "edit" | "convert-reconcile"
+let editAdjustmentOriginalForecastNum = null;
+let editAdjustmentSavedAmount = null;
+let editAdjustmentBusy = false;
+
+const removeAdjustmentModal = document.getElementById("removeAdjustmentModal");
+const removeAdjustmentErr = document.getElementById("removeAdjustmentErr");
+const removeAdjustmentCancelBtn = document.getElementById("removeAdjustmentCancelBtn");
+const removeAdjustmentConfirmBtn = document.getElementById("removeAdjustmentConfirmBtn");
+let removeAdjustmentActiveDate = "";
+let removeAdjustmentBusy = false;
+
 const forecastConfidenceCard = document.getElementById("forecastConfidenceCard");
 const forecastConfidenceLabel = document.getElementById("forecastConfidenceLabel");
 const forecastConfidenceDetail = document.getElementById("forecastConfidenceDetail");
@@ -5386,6 +5409,207 @@ async function saveBalanceCheckIn() {
   await afterBalanceCheckInSaved();
 }
 
+async function refreshAfterBalanceRecordChange(iso) {
+  const month = (calendarMonth?.value || monthInput?.value) || String(iso || "").slice(0, 7);
+  await loadVerifiedBalances(month);
+  invalidateLowBalanceAlertCache();
+  await loadCalendarMonthDaily();
+  await loadReconciledDays(month);
+  renderCalendar();
+  await refreshLowBalanceAlert();
+  await refreshForecastConfidence();
+}
+
+function originalForecastForAdjustment(iso) {
+  const d = normalizeIsoDate(iso);
+  const stored = d && state.verifiedBalances ? state.verifiedBalances.get(d) : null;
+  if (stored && Number.isFinite(Number(stored.projected_amount))) return Number(stored.projected_amount);
+  const dayBal = d && state.monthDailyBalances ? state.monthDailyBalances.get(d) : null;
+  if (dayBal && Number.isFinite(Number(dayBal.projectedEnd))) return Number(dayBal.projectedEnd);
+  return forecastBalanceForReconcileModal(d);
+}
+
+function syncEditAdjustmentSaveBtn() {
+  if (!editAdjustmentSaveBtn || !editAdjustmentAmount) return;
+  const canWrite = !state.viewOnly && state.activeFamilyAccessMode !== "view";
+  const parsed = parseBalanceThresholdFieldRaw(editAdjustmentAmount.value || "");
+  const valid = parsed.ok && !parsed.empty;
+  const unchanged =
+    valid &&
+    editAdjustmentSavedAmount != null &&
+    Math.abs(parsed.num - Number(editAdjustmentSavedAmount)) < 0.005;
+  const matchesOriginal =
+    valid &&
+    Number.isFinite(Number(editAdjustmentOriginalForecastNum)) &&
+    Math.abs(parsed.num - Number(editAdjustmentOriginalForecastNum)) < 0.005;
+  // convert-reconcile: require a different amount than the matched forecast
+  const blockedConvert =
+    editAdjustmentMode === "convert-reconcile" && matchesOriginal;
+  editAdjustmentSaveBtn.disabled =
+    editAdjustmentBusy || !canWrite || !valid || unchanged || blockedConvert;
+}
+
+function openEditAdjustmentModal(iso, { mode = "edit" } = {}) {
+  if (!editAdjustmentModal) return;
+  const d = normalizeIsoDate(iso) || iso;
+  if (!d) return;
+  if (alertIfDateBeforeStartingBalance(d)) return;
+  hidePinnedBalanceRecordTip();
+  editAdjustmentActiveDate = d;
+  editAdjustmentMode = mode === "convert-reconcile" ? "convert-reconcile" : "edit";
+  editAdjustmentBusy = false;
+
+  const original =
+    editAdjustmentMode === "convert-reconcile"
+      ? forecastBalanceForReconcileModal(d)
+      : originalForecastForAdjustment(d);
+  editAdjustmentOriginalForecastNum = Number.isFinite(Number(original)) ? Number(original) : null;
+
+  const stored = state.verifiedBalances?.get(d);
+  if (editAdjustmentMode === "edit" && stored && Number.isFinite(Number(stored.amount))) {
+    editAdjustmentSavedAmount = Number(stored.amount);
+  } else if (editAdjustmentMode === "convert-reconcile" && Number.isFinite(Number(original))) {
+    editAdjustmentSavedAmount = Number(original);
+  } else {
+    editAdjustmentSavedAmount = null;
+  }
+
+  if (editAdjustmentTitle) {
+    editAdjustmentTitle.textContent =
+      editAdjustmentMode === "convert-reconcile" ? "Enter different balance" : "Edit balance adjustment";
+  }
+  if (editAdjustmentDateDisplay) {
+    editAdjustmentDateDisplay.textContent = fmtDateLongDisplay(d);
+  }
+  if (editAdjustmentOriginalForecast) {
+    editAdjustmentOriginalForecast.textContent = Number.isFinite(Number(editAdjustmentOriginalForecastNum))
+      ? `$${fmtMoney(editAdjustmentOriginalForecastNum)}`
+      : "—";
+  }
+  if (editAdjustmentForecastBlock) {
+    editAdjustmentForecastBlock.hidden = !Number.isFinite(Number(editAdjustmentOriginalForecastNum));
+  }
+  if (editAdjustmentAmount) {
+    editAdjustmentAmount.value =
+      editAdjustmentSavedAmount != null ? fmtMoney(editAdjustmentSavedAmount) : "";
+  }
+  if (editAdjustmentRemoveBtn) {
+    editAdjustmentRemoveBtn.hidden = editAdjustmentMode !== "edit";
+  }
+  show(editAdjustmentErr, "");
+  syncEditAdjustmentSaveBtn();
+  editAdjustmentModal.classList.add("modal-overlay--open");
+  editAdjustmentModal.setAttribute("aria-hidden", "false");
+  requestAnimationFrame(() => {
+    if (!editAdjustmentAmount) return;
+    editAdjustmentAmount.focus();
+    try {
+      editAdjustmentAmount.select();
+    } catch (_) {}
+  });
+}
+
+function closeEditAdjustmentModal() {
+  if (!editAdjustmentModal) return;
+  editAdjustmentModal.classList.remove("modal-overlay--open");
+  editAdjustmentModal.setAttribute("aria-hidden", "true");
+  editAdjustmentActiveDate = "";
+  editAdjustmentMode = "edit";
+  editAdjustmentOriginalForecastNum = null;
+  editAdjustmentSavedAmount = null;
+  editAdjustmentBusy = false;
+  if (editAdjustmentAmount) editAdjustmentAmount.value = "";
+  show(editAdjustmentErr, "");
+}
+
+function openRemoveAdjustmentConfirm(iso) {
+  if (!removeAdjustmentModal) return;
+  const d = normalizeIsoDate(iso) || iso;
+  if (!d) return;
+  hidePinnedBalanceRecordTip();
+  closeEditAdjustmentModal();
+  removeAdjustmentActiveDate = d;
+  removeAdjustmentBusy = false;
+  show(removeAdjustmentErr, "");
+  if (removeAdjustmentConfirmBtn) removeAdjustmentConfirmBtn.disabled = false;
+  removeAdjustmentModal.classList.add("modal-overlay--open");
+  removeAdjustmentModal.setAttribute("aria-hidden", "false");
+  requestAnimationFrame(() => removeAdjustmentConfirmBtn?.focus());
+}
+
+function closeRemoveAdjustmentModal() {
+  if (!removeAdjustmentModal) return;
+  removeAdjustmentModal.classList.remove("modal-overlay--open");
+  removeAdjustmentModal.setAttribute("aria-hidden", "true");
+  removeAdjustmentActiveDate = "";
+  removeAdjustmentBusy = false;
+  show(removeAdjustmentErr, "");
+}
+
+async function saveEditAdjustment() {
+  show(editAdjustmentErr, "");
+  if (!state.activeFamilyId) throw new Error("Choose a family first");
+  const iso = normalizeIsoDate(editAdjustmentActiveDate);
+  const parsed = parseBalanceThresholdFieldRaw(editAdjustmentAmount?.value || "");
+  if (!iso) throw new Error("Invalid date");
+  if (!parsed.ok || parsed.empty) throw new Error("Enter a valid bank balance");
+  const amt = parsed.num;
+  const original = Number(editAdjustmentOriginalForecastNum);
+  const matchesOriginal = Number.isFinite(original) && Math.abs(amt - original) < 0.005;
+  const month = (calendarMonth?.value || monthInput?.value) || iso.slice(0, 7);
+
+  if (matchesOriginal) {
+    // $0 difference: keep a Reconciled check, not an Adjusted record.
+    if (existingVerifiedBalanceOnDate(iso)) {
+      await api(`/api/families/${state.activeFamilyId}/verified-balances/${encodeURIComponent(iso)}`, "DELETE");
+    }
+    await api(`/api/families/${state.activeFamilyId}/reconciled-days`, "POST", {
+      date: iso,
+      reconciled: true,
+    });
+    closeEditAdjustmentModal();
+    await refreshAfterBalanceRecordChange(iso);
+    if (typeof showBwToast === "function") showBwToast("✓ Reconciled");
+    return;
+  }
+
+  await api(`/api/families/${state.activeFamilyId}/verified-balances`, "POST", {
+    date: iso,
+    amount: amt,
+  });
+  await api(`/api/families/${state.activeFamilyId}/reconciled-days`, "POST", {
+    date: iso,
+    reconciled: false,
+  });
+  closeEditAdjustmentModal();
+  await refreshAfterBalanceRecordChange(iso);
+  if (typeof showBwToast === "function") showBwToast("↺ Adjusted");
+}
+
+async function confirmRemoveAdjustment() {
+  show(removeAdjustmentErr, "");
+  if (!state.activeFamilyId) throw new Error("Choose a family first");
+  const iso = normalizeIsoDate(removeAdjustmentActiveDate);
+  if (!iso) throw new Error("Invalid date");
+  await api(`/api/families/${state.activeFamilyId}/verified-balances/${encodeURIComponent(iso)}`, "DELETE");
+  closeRemoveAdjustmentModal();
+  await refreshAfterBalanceRecordChange(iso);
+  if (typeof showBwToast === "function") showBwToast("Adjustment removed");
+}
+
+async function removeReconciliationForDate(iso) {
+  if (!state.activeFamilyId) throw new Error("Choose a family first");
+  const d = normalizeIsoDate(iso);
+  if (!d) throw new Error("Invalid date");
+  hidePinnedBalanceRecordTip();
+  await api(`/api/families/${state.activeFamilyId}/reconciled-days`, "POST", {
+    date: d,
+    reconciled: false,
+  });
+  await refreshAfterBalanceRecordChange(d);
+  if (typeof showBwToast === "function") showBwToast("Reconciliation removed");
+}
+
 function fmtSignedMoneyDiff(n) {
   const num = Number(n);
   if (!Number.isFinite(num)) return "—";
@@ -5407,8 +5631,9 @@ function confirmedBalanceDiffCopy(diff) {
   return `Your balance was $${amt} lower than forecast.`;
 }
 
-function buildReconciledBalanceTipHtml(dayBal) {
+function buildReconciledBalanceTipHtml(dayBal, iso) {
   if (!dayBal) return "";
+  const d = normalizeIsoDate(iso) || "";
   const forecast = Number.isFinite(Number(dayBal.projectedEnd))
     ? Number(dayBal.projectedEnd)
     : Number.isFinite(Number(dayBal.end))
@@ -5418,39 +5643,55 @@ function buildReconciledBalanceTipHtml(dayBal) {
     ? Number(dayBal.verifiedAmount)
     : forecast;
   if (forecast == null && bank == null) return "";
+  const balance = Number.isFinite(Number(bank)) ? bank : forecast;
 
-  const parts = ['<div class="cal-confirmed-tip">', '<div class="cal-confirmed-tip__head cal-confirmed-tip__head--reconciled">✓ Reconciled</div>'];
-  const matched =
-    forecast != null && bank != null && Math.abs(bank - forecast) < 0.005;
-  if (matched) {
-    parts.push('<p class="cal-confirmed-tip__match">Forecast matched your bank balance.</p>');
-  } else if (forecast != null && bank != null) {
+  const parts = [
+    '<div class="cal-confirmed-tip" data-bw-balance-record="reconciled">',
+    '<div class="cal-confirmed-tip__head cal-confirmed-tip__head--reconciled">✓ Reconciled</div>',
+  ];
+  if (d) {
+    parts.push(`<p class="cal-confirmed-tip__date">${escapeHtml(fmtDateLongDisplay(d))}</p>`);
+  }
+  parts.push('<p class="cal-confirmed-tip__match">Bank balance matched forecast</p>');
+  if (Number.isFinite(Number(balance))) {
     parts.push('<dl class="cal-confirmed-tip__rows">');
     parts.push(
-      `<div class="cal-confirmed-tip__row"><dt>Forecast</dt><dd>$${escapeHtml(fmtMoney(forecast))}</dd></div>`,
-    );
-    parts.push(
-      `<div class="cal-confirmed-tip__row"><dt>Bank Balance</dt><dd>$${escapeHtml(fmtMoney(bank))}</dd></div>`,
+      `<div class="cal-confirmed-tip__row"><dt>Reconciled balance</dt><dd>$${escapeHtml(fmtMoney(balance))}</dd></div>`,
     );
     parts.push("</dl>");
   }
-  parts.push('<p class="cal-confirmed-tip__note">Reports are complete through this date.</p>');
+  if (d && !state.viewOnly && state.activeFamilyAccessMode !== "view") {
+    parts.push('<div class="cal-confirmed-tip__actions">');
+    parts.push(
+      `<button type="button" class="cal-confirmed-tip__action" data-bw-bal-action="enter-different-balance" data-iso="${escapeHtml(d)}">Enter different balance</button>`,
+    );
+    parts.push(
+      `<button type="button" class="cal-confirmed-tip__action cal-confirmed-tip__action--danger" data-bw-bal-action="remove-reconciliation" data-iso="${escapeHtml(d)}">Remove reconciliation</button>`,
+    );
+    parts.push("</div>");
+  }
   parts.push("</div>");
   return `<div class="reports-risk-tip__inner">${parts.join("")}</div>`;
 }
 
-function buildAdjustedBalanceTipHtml(dayBal) {
+function buildAdjustedBalanceTipHtml(dayBal, iso) {
   if (!dayBal || !dayBal.verified) return "";
+  const d = normalizeIsoDate(iso) || "";
   const bank = Number.isFinite(Number(dayBal.verifiedAmount))
     ? Number(dayBal.verifiedAmount)
     : Number.isFinite(Number(dayBal.end))
       ? Number(dayBal.end)
       : null;
-  const forecast = Number.isFinite(Number(dayBal.projectedEnd)) ? Number(dayBal.projectedEnd) : null;
+  const stored = d && state.verifiedBalances ? state.verifiedBalances.get(d) : null;
+  const forecast = Number.isFinite(Number(stored?.projected_amount))
+    ? Number(stored.projected_amount)
+    : Number.isFinite(Number(dayBal.projectedEnd))
+      ? Number(dayBal.projectedEnd)
+      : null;
   if (bank == null) return "";
 
   const parts = [
-    '<div class="cal-confirmed-tip cal-confirmed-tip--adjusted">',
+    '<div class="cal-confirmed-tip cal-confirmed-tip--adjusted" data-bw-balance-record="adjusted">',
     '<div class="cal-confirmed-tip__head cal-confirmed-tip__head--adjusted">↺ Adjusted</div>',
   ];
   if (forecast != null) {
@@ -5472,6 +5713,13 @@ function buildAdjustedBalanceTipHtml(dayBal) {
   parts.push(
     '<p class="cal-confirmed-tip__note">Future forecasts continue from this bank balance. Transactions before this date aren\'t changed.</p>',
   );
+  if (d && !state.viewOnly && state.activeFamilyAccessMode !== "view") {
+    parts.push('<div class="cal-confirmed-tip__actions">');
+    parts.push(
+      `<button type="button" class="cal-confirmed-tip__action" data-bw-bal-action="edit-adjustment" data-iso="${escapeHtml(d)}">Edit</button>`,
+    );
+    parts.push("</div>");
+  }
   parts.push("</div>");
   return `<div class="reports-risk-tip__inner">${parts.join("")}</div>`;
 }
@@ -5791,6 +6039,19 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && reconcileModal?.classList.contains("modal-overlay--open")) closeReconcileModal();
 });
 
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape") return;
+  if (removeAdjustmentModal?.classList.contains("modal-overlay--open")) {
+    closeRemoveAdjustmentModal();
+    return;
+  }
+  if (editAdjustmentModal?.classList.contains("modal-overlay--open")) {
+    closeEditAdjustmentModal();
+    return;
+  }
+  if (riskPressureTipPinned) hidePinnedBalanceRecordTip();
+});
+
 if (txAddModal) {
   txAddModal.addEventListener("click", (e) => {
     if (e.target === txAddModal) closeTxAddModal();
@@ -5845,6 +6106,64 @@ if (reconcileActualAmount) {
 if (reconcileModal) {
   reconcileModal.addEventListener("click", (e) => {
     if (e.target === reconcileModal) closeReconcileModal();
+  });
+}
+if (editAdjustmentCancelBtn) {
+  editAdjustmentCancelBtn.addEventListener("click", () => closeEditAdjustmentModal());
+}
+if (editAdjustmentRemoveBtn) {
+  editAdjustmentRemoveBtn.addEventListener("click", () => {
+    if (!editAdjustmentActiveDate) return;
+    openRemoveAdjustmentConfirm(editAdjustmentActiveDate);
+  });
+}
+if (editAdjustmentSaveBtn) {
+  editAdjustmentSaveBtn.addEventListener("click", async () => {
+    if (editAdjustmentBusy) return;
+    editAdjustmentBusy = true;
+    syncEditAdjustmentSaveBtn();
+    try {
+      await saveEditAdjustment();
+    } catch (e) {
+      show(editAdjustmentErr, e.message || "Failed to save adjustment");
+      editAdjustmentBusy = false;
+      syncEditAdjustmentSaveBtn();
+    }
+  });
+}
+if (editAdjustmentAmount) {
+  editAdjustmentAmount.addEventListener("input", () => syncEditAdjustmentSaveBtn());
+  editAdjustmentAmount.addEventListener("focus", () => {
+    try {
+      editAdjustmentAmount.select();
+    } catch (_) {}
+  });
+}
+if (editAdjustmentModal) {
+  editAdjustmentModal.addEventListener("click", (e) => {
+    if (e.target === editAdjustmentModal) closeEditAdjustmentModal();
+  });
+}
+if (removeAdjustmentCancelBtn) {
+  removeAdjustmentCancelBtn.addEventListener("click", () => closeRemoveAdjustmentModal());
+}
+if (removeAdjustmentConfirmBtn) {
+  removeAdjustmentConfirmBtn.addEventListener("click", async () => {
+    if (removeAdjustmentBusy) return;
+    removeAdjustmentBusy = true;
+    if (removeAdjustmentConfirmBtn) removeAdjustmentConfirmBtn.disabled = true;
+    try {
+      await confirmRemoveAdjustment();
+    } catch (e) {
+      show(removeAdjustmentErr, e.message || "Failed to remove adjustment");
+      removeAdjustmentBusy = false;
+      if (removeAdjustmentConfirmBtn) removeAdjustmentConfirmBtn.disabled = false;
+    }
+  });
+}
+if (removeAdjustmentModal) {
+  removeAdjustmentModal.addEventListener("click", (e) => {
+    if (e.target === removeAdjustmentModal) closeRemoveAdjustmentModal();
   });
 }
 
@@ -6020,7 +6339,23 @@ function shouldOpenReconcileFromCalendarClick(target, cell) {
   if (cell.classList.contains("cal-cell--out")) return false;
   if (state.viewOnly || state.activeFamilyAccessMode === "view") return false;
   if (target.closest(".cal-balance-status-pill--starting")) return false;
+  const iso = cell.dataset.iso;
+  const todayIso = toISODate(new Date());
+  if (!iso || iso > todayIso) return false;
+  // Existing Adjusted / Reconciled records use their own detail tip + edit flows.
+  if (existingVerifiedBalanceOnDate(iso) || isReconciledOnDate(iso)) return false;
   return !!target.closest(".cal-ledger-metrics.cal-day-balance-hit");
+}
+
+function shouldShowBalanceRecordTipFromCalendarClick(target, cell) {
+  if (!target || !cell) return false;
+  if (cell.classList.contains("cal-cell--before-start")) return false;
+  if (cell.classList.contains("cal-cell--out")) return false;
+  const iso = cell.dataset.iso;
+  const todayIso = toISODate(new Date());
+  if (!iso || iso > todayIso) return false;
+  if (!target.closest(".cal-ledger-metrics.cal-day-balance-hit")) return false;
+  return existingVerifiedBalanceOnDate(iso) || isReconciledOnDate(iso);
 }
 
 function shouldOpenAddTxFromCalendarClick(target, cell) {
@@ -6068,15 +6403,17 @@ function bindCalendarDayBalanceHit(metricsEl, iso, { isReconciled, dayBalVerifie
 
   if (dayBalVerified && dayBal) {
     const cell = metricsEl.closest(".cal-cell");
-    const html = buildAdjustedBalanceTipHtml(dayBal);
-    if (cell && html) bindRiskPressureCellHover(cell, metricsEl, html);
+    const html = buildAdjustedBalanceTipHtml(dayBal, iso);
+    if (cell && html) bindRiskPressureCellHover(cell, metricsEl, html, { interactive: true });
+    metricsEl.setAttribute("aria-label", label ? `Adjusted balance details for ${label}` : "Adjusted balance details");
     return;
   }
 
   if (isReconciled && dayBal) {
     const cell = metricsEl.closest(".cal-cell");
-    const html = buildReconciledBalanceTipHtml(dayBal);
-    if (cell && html) bindRiskPressureCellHover(cell, metricsEl, html);
+    const html = buildReconciledBalanceTipHtml(dayBal, iso);
+    if (cell && html) bindRiskPressureCellHover(cell, metricsEl, html, { interactive: true });
+    metricsEl.setAttribute("aria-label", label ? `Reconciled balance details for ${label}` : "Reconciled balance details");
     return;
   }
 
@@ -6160,6 +6497,19 @@ function handleCalendarPanelClick(e) {
   if (!cell || !cell.closest("#calendarGrid")) return;
   const iso = cell.dataset.iso;
   if (!iso) return;
+
+  if (shouldShowBalanceRecordTipFromCalendarClick(e.target, cell)) {
+    e.preventDefault();
+    e.stopPropagation();
+    const iso = cell.dataset.iso;
+    const dayBal = state.monthDailyBalances?.get(iso);
+    const metricsEl = e.target.closest(".cal-ledger-metrics.cal-day-balance-hit") || cell.querySelector(".cal-ledger-metrics");
+    const html = existingVerifiedBalanceOnDate(iso)
+      ? buildAdjustedBalanceTipHtml(dayBal, iso)
+      : buildReconciledBalanceTipHtml(dayBal, iso);
+    if (metricsEl && html) showPinnedBalanceRecordTip(metricsEl, html);
+    return;
+  }
 
   if (shouldOpenReconcileFromCalendarClick(e.target, cell)) {
     e.preventDefault();
@@ -13281,8 +13631,12 @@ let riskPressureTipEl = null;
 let riskPressureTipShowTimer = null;
 let riskPressureTipHideTimer = null;
 let riskPressureTipScrollBound = false;
+let riskPressureTipPinned = false;
+let riskPressureTipInteractiveBound = false;
+let riskPressureTipOutsideBound = false;
 
-function hideRiskPressureTipNow() {
+function hideRiskPressureTipNow(force = false) {
+  if (riskPressureTipPinned && !force) return;
   if (riskPressureTipShowTimer) {
     clearTimeout(riskPressureTipShowTimer);
     riskPressureTipShowTimer = null;
@@ -13291,11 +13645,18 @@ function hideRiskPressureTipNow() {
     clearTimeout(riskPressureTipHideTimer);
     riskPressureTipHideTimer = null;
   }
+  riskPressureTipPinned = false;
   if (riskPressureTipEl) {
     riskPressureTipEl.classList.remove("reports-risk-tip--visible");
+    riskPressureTipEl.classList.remove("reports-risk-tip--pinned");
+    riskPressureTipEl.classList.remove("reports-risk-tip--interactive");
     riskPressureTipEl.hidden = true;
     riskPressureTipEl.innerHTML = "";
   }
+}
+
+function hidePinnedBalanceRecordTip() {
+  hideRiskPressureTipNow(true);
 }
 
 function ensureRiskPressureTipEl() {
@@ -13307,8 +13668,47 @@ function ensureRiskPressureTipEl() {
   document.body.appendChild(riskPressureTipEl);
   if (!riskPressureTipScrollBound) {
     riskPressureTipScrollBound = true;
-    window.addEventListener("scroll", hideRiskPressureTipNow, true);
-    window.addEventListener("resize", hideRiskPressureTipNow);
+    window.addEventListener("scroll", () => hideRiskPressureTipNow(true), true);
+    window.addEventListener("resize", () => hideRiskPressureTipNow(true));
+  }
+  if (!riskPressureTipInteractiveBound) {
+    riskPressureTipInteractiveBound = true;
+    riskPressureTipEl.addEventListener("mouseenter", () => {
+      if (riskPressureTipHideTimer) {
+        clearTimeout(riskPressureTipHideTimer);
+        riskPressureTipHideTimer = null;
+      }
+    });
+    riskPressureTipEl.addEventListener("mouseleave", () => {
+      if (riskPressureTipPinned) return;
+      riskPressureTipHideTimer = window.setTimeout(() => {
+        riskPressureTipHideTimer = null;
+        hideRiskPressureTipNow();
+      }, 80);
+    });
+    riskPressureTipEl.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-bw-bal-action]");
+      if (!btn || !riskPressureTipEl.contains(btn)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const action = btn.getAttribute("data-bw-bal-action");
+      const iso = normalizeIsoDate(btn.getAttribute("data-iso") || "");
+      if (!action || !iso) return;
+      void handleBalanceRecordTipAction(action, iso);
+    });
+  }
+  if (!riskPressureTipOutsideBound) {
+    riskPressureTipOutsideBound = true;
+    document.addEventListener(
+      "pointerdown",
+      (e) => {
+        if (!riskPressureTipPinned || !riskPressureTipEl) return;
+        if (riskPressureTipEl.contains(e.target)) return;
+        if (e.target.closest?.(".cal-ledger-metrics.cal-day-balance-hit")) return;
+        hidePinnedBalanceRecordTip();
+      },
+      true,
+    );
   }
   return riskPressureTipEl;
 }
@@ -13331,12 +13731,64 @@ function positionRiskPressureTip(anchorEl) {
   });
 }
 
+function paintRiskPressureTip(anchorEl, html, { interactive = false, pinned = false } = {}) {
+  const tip = ensureRiskPressureTipEl();
+  tip.innerHTML = html;
+  tip.hidden = false;
+  tip.classList.toggle("reports-risk-tip--interactive", !!interactive || !!pinned);
+  tip.classList.toggle("reports-risk-tip--pinned", !!pinned);
+  tip.classList.remove("reports-risk-tip--visible");
+  riskPressureTipPinned = !!pinned;
+  tip.setAttribute("role", pinned || interactive ? "dialog" : "tooltip");
+  positionRiskPressureTip(anchorEl);
+  requestAnimationFrame(() => {
+    positionRiskPressureTip(anchorEl);
+    tip.classList.add("reports-risk-tip--visible");
+  });
+}
+
+function showPinnedBalanceRecordTip(anchorEl, html) {
+  if (!anchorEl || !html) return;
+  if (riskPressureTipShowTimer) {
+    clearTimeout(riskPressureTipShowTimer);
+    riskPressureTipShowTimer = null;
+  }
+  if (riskPressureTipHideTimer) {
+    clearTimeout(riskPressureTipHideTimer);
+    riskPressureTipHideTimer = null;
+  }
+  paintRiskPressureTip(anchorEl, html, { interactive: true, pinned: true });
+}
+
+async function handleBalanceRecordTipAction(action, iso) {
+  hidePinnedBalanceRecordTip();
+  try {
+    if (action === "edit-adjustment") {
+      openEditAdjustmentModal(iso, { mode: "edit" });
+      return;
+    }
+    if (action === "enter-different-balance") {
+      openEditAdjustmentModal(iso, { mode: "convert-reconcile" });
+      return;
+    }
+    if (action === "remove-reconciliation") {
+      await removeReconciliationForDate(iso);
+      return;
+    }
+  } catch (e) {
+    if (typeof showBwToast === "function") showBwToast(e.message || "Something went wrong");
+    else window.alert(e.message || "Something went wrong");
+  }
+}
+
 /** Rich hover detail for projected-balance tiles (risk / cash pressure calendar). */
-function bindRiskPressureCellHover(cell, anchorEl, html) {
+function bindRiskPressureCellHover(cell, anchorEl, html, opts = {}) {
   const h = String(html ?? "").trim();
   if (!cell || !anchorEl || !h) return;
+  const interactive = !!opts.interactive;
 
   const onEnter = () => {
+    if (riskPressureTipPinned) return;
     hideRiskPressureTipNow();
     if (riskPressureTipHideTimer) {
       clearTimeout(riskPressureTipHideTimer);
@@ -13344,18 +13796,11 @@ function bindRiskPressureCellHover(cell, anchorEl, html) {
     }
     riskPressureTipShowTimer = window.setTimeout(() => {
       riskPressureTipShowTimer = null;
-      const tip = ensureRiskPressureTipEl();
-      tip.innerHTML = h;
-      tip.hidden = false;
-      tip.classList.remove("reports-risk-tip--visible");
-      positionRiskPressureTip(anchorEl);
-      requestAnimationFrame(() => {
-        positionRiskPressureTip(anchorEl);
-        tip.classList.add("reports-risk-tip--visible");
-      });
+      paintRiskPressureTip(anchorEl, h, { interactive, pinned: false });
     }, RISK_PRESSURE_TIP_SHOW_MS);
   };
   const onLeave = () => {
+    if (riskPressureTipPinned) return;
     if (riskPressureTipShowTimer) {
       clearTimeout(riskPressureTipShowTimer);
       riskPressureTipShowTimer = null;
@@ -13363,11 +13808,13 @@ function bindRiskPressureCellHover(cell, anchorEl, html) {
     riskPressureTipHideTimer = window.setTimeout(() => {
       riskPressureTipHideTimer = null;
       hideRiskPressureTipNow();
-    }, 55);
+    }, interactive ? 120 : 55);
   };
   cell.addEventListener("mouseenter", onEnter);
   cell.addEventListener("mouseleave", onLeave);
-  cell.addEventListener("blur", hideRiskPressureTipNow);
+  cell.addEventListener("blur", () => {
+    if (!riskPressureTipPinned) hideRiskPressureTipNow();
+  });
 }
 
 /** Faster than native `title` tooltips (browser delay is ~500ms+). */
