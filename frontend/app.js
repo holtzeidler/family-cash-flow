@@ -5714,9 +5714,9 @@ function buildAdjustedBalanceTipHtml(dayBal, iso) {
     '<p class="cal-confirmed-tip__note">Future forecasts continue from this bank balance. Transactions before this date aren\'t changed.</p>',
   );
   if (d && !state.viewOnly && state.activeFamilyAccessMode !== "view") {
-    parts.push('<div class="cal-confirmed-tip__actions">');
+    parts.push('<div class="cal-confirmed-tip__actions cal-confirmed-tip__actions--edit">');
     parts.push(
-      `<button type="button" class="cal-confirmed-tip__action" data-bw-bal-action="edit-adjustment" data-iso="${escapeHtml(d)}">Edit</button>`,
+      `<button type="button" class="cal-confirmed-tip__edit-btn" data-bw-bal-action="edit-adjustment" data-iso="${escapeHtml(d)}"><span class="cal-confirmed-tip__edit-btn-icon" aria-hidden="true">${TM_ROW_EDIT_SVG}</span><span>Edit adjustment</span></button>`,
     );
     parts.push("</div>");
   }

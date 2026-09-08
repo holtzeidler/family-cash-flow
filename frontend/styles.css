@@ -29435,6 +29435,10 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   gap: 2px;
   margin-top: 4px;
 }
+.cal-confirmed-tip__actions--edit{
+  margin-top: 18px;
+  gap: 0;
+}
 .cal-confirmed-tip__action{
   border: none;
   background: transparent;
@@ -29459,6 +29463,64 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
 }
 .cal-confirmed-tip__action--danger:hover{
   color: rgba(127, 29, 29, 0.95);
+}
+.cal-confirmed-tip__edit-btn{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: auto;
+  max-width: 100%;
+  min-height: 40px;
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.16);
+  background: #fff;
+  color: rgba(30, 41, 59, 0.92);
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+  cursor: pointer;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.85) inset;
+  transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+}
+.cal-confirmed-tip__edit-btn:hover{
+  background: rgba(248, 250, 252, 0.98);
+  border-color: rgba(15, 23, 42, 0.28);
+  color: rgba(15, 23, 42, 0.98);
+}
+.cal-confirmed-tip__edit-btn:active{
+  background: rgba(241, 245, 249, 0.98);
+  border-color: rgba(15, 23, 42, 0.34);
+}
+.cal-confirmed-tip__edit-btn:focus-visible{
+  outline: 2px solid rgba(100, 116, 139, 0.45);
+  outline-offset: 2px;
+}
+.cal-confirmed-tip__edit-btn-icon{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  color: rgba(71, 85, 105, 0.92);
+}
+.cal-confirmed-tip__edit-btn-icon svg{
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+.cal-confirmed-tip__edit-btn:hover .cal-confirmed-tip__edit-btn-icon{
+  color: rgba(51, 65, 85, 0.98);
+}
+@media (max-width: 640px){
+  .cal-confirmed-tip__edit-btn{
+    min-height: 42px;
+    padding: 9px 13px;
+  }
 }
 .reports-risk-tip.reports-risk-tip--interactive{
   pointer-events: auto;
