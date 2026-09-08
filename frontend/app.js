@@ -6354,7 +6354,12 @@ function isBalanceCheckInAmountValid(raw) {
 function syncBalanceCheckInSaveBtn() {
   if (!reconcileSaveBtn || !reconcileActualAmount) return;
   const canWrite = !state.viewOnly && state.activeFamilyAccessMode !== "view";
-  reconcileSaveBtn.disabled = reconcileCheckInBusy || !canWrite || !isBalanceCheckInAmountValid(reconcileActualAmount.value);
+  const parsed = parseBalanceThresholdFieldRaw(reconcileActualAmount.value || "");
+  const valid = parsed.ok && !parsed.empty;
+  const forecast = forecastBalanceForReconcileModal(reconcileActiveDate);
+  // Never allow a $0-difference "adjustment" — matching amounts belong on Yes, it matches.
+  const matchesForecast = valid && balanceMatchesForecast(parsed.num, forecast);
+  reconcileSaveBtn.disabled = reconcileCheckInBusy || !canWrite || !valid || matchesForecast;
 }
 
 function syncBalanceCheckInConfirmBtns(forecast) {
@@ -6484,10 +6489,11 @@ async function confirmBalanceMatchesForecast() {
   if (!iso) throw new Error("Invalid date");
   const forecast = forecastBalanceForReconcileModal(iso);
   if (!Number.isFinite(Number(forecast))) {
-    throw new Error("Forecast balance unavailable. Choose “No, update balance” to enter your bank balance.");
+    throw new Error("Forecast balance unavailable. Choose “No, enter a different balance” to enter your bank balance.");
   }
   const month = (calendarMonth?.value || monthInput?.value) || iso.slice(0, 7);
 
+  // Only touch this date — older Reconciled / Adjusted badges stay intact.
   if (existingVerifiedBalanceOnDate(iso)) {
     await api(`/api/families/${state.activeFamilyId}/verified-balances/${encodeURIComponent(iso)}`, "DELETE");
     await loadVerifiedBalances(month);
@@ -6504,7 +6510,7 @@ async function confirmBalanceMatchesForecast() {
   await afterBalanceCheckInSaved();
 }
 
-/** Edit path: reuse match→reconcile / mismatch→adjust logic from the entered amount. */
+/** Edit path: Adjusted only when bank balance differs from forecast. */
 async function saveBalanceCheckIn() {
   show(reconcileErr, "");
   if (!state.activeFamilyId) throw new Error("Choose a family first");
@@ -6515,38 +6521,25 @@ async function saveBalanceCheckIn() {
   const amt = parsed.num;
 
   const forecast = forecastBalanceForReconcileModal(iso);
-  const matches = balanceMatchesForecast(amt, forecast);
+  if (balanceMatchesForecast(amt, forecast)) {
+    throw new Error("This matches your forecast. Go back and choose “Yes, it matches” instead.");
+  }
   const month = (calendarMonth?.value || monthInput?.value) || iso.slice(0, 7);
 
-  if (matches) {
-    if (existingVerifiedBalanceOnDate(iso)) {
-      await api(`/api/families/${state.activeFamilyId}/verified-balances/${encodeURIComponent(iso)}`, "DELETE");
-      await loadVerifiedBalances(month);
-      invalidateLowBalanceAlertCache();
-      await loadCalendarMonthDaily();
-    }
-    await api(`/api/families/${state.activeFamilyId}/reconciled-days`, "POST", {
-      date: iso,
-      reconciled: true,
-    });
-    await loadReconciledDays(month);
-    if (typeof showBwToast === "function") showBwToast("✓ Reconciled");
-    bwDispatchMilestone("first-reconcile");
-  } else {
-    await api(`/api/families/${state.activeFamilyId}/verified-balances`, "POST", {
-      date: iso,
-      amount: amt,
-    });
-    await api(`/api/families/${state.activeFamilyId}/reconciled-days`, "POST", {
-      date: iso,
-      reconciled: false,
-    });
-    await loadVerifiedBalances(month);
-    invalidateLowBalanceAlertCache();
-    await loadCalendarMonthDaily();
-    await loadReconciledDays(month);
-    if (typeof showBwToast === "function") showBwToast("↺ Adjusted");
-  }
+  // Adjustment for this date only — does not clear older reconciliations/adjustments.
+  await api(`/api/families/${state.activeFamilyId}/verified-balances`, "POST", {
+    date: iso,
+    amount: amt,
+  });
+  await api(`/api/families/${state.activeFamilyId}/reconciled-days`, "POST", {
+    date: iso,
+    reconciled: false,
+  });
+  await loadVerifiedBalances(month);
+  invalidateLowBalanceAlertCache();
+  await loadCalendarMonthDaily();
+  await loadReconciledDays(month);
+  if (typeof showBwToast === "function") showBwToast("↺ Adjusted");
 
   await afterBalanceCheckInSaved();
 }
@@ -6634,8 +6627,9 @@ function buildAdjustedBalanceTipHtml(dayBal) {
     }
     parts.push("</dl>");
   }
-  parts.push('<p class="cal-confirmed-tip__note">Future forecasts continue from this balance.</p>');
-  parts.push('<p class="cal-confirmed-tip__note">Reports before this point may be incomplete.</p>');
+  parts.push(
+    '<p class="cal-confirmed-tip__note">Future forecasts continue from this bank balance. Transactions before this date aren\'t changed.</p>',
+  );
   parts.push("</div>");
   return `<div class="reports-risk-tip__inner">${parts.join("")}</div>`;
 }
