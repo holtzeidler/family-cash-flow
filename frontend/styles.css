@@ -19800,6 +19800,197 @@ body.plans-page--polished .plans-wrap{
   color: rgba(55, 65, 81, 0.92);
   background: rgba(17, 24, 39, 0.04);
 }
+
+/* Unified balance check-in modal */
+.modal.modal--balance-check-in{
+  max-width: 420px;
+  width: min(92vw, 420px);
+  padding: 18px 20px 16px;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12);
+}
+.balance-check-in__header{
+  margin-bottom: 14px;
+}
+.balance-check-in__title{
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: -0.022em;
+  line-height: 1.2;
+  color: rgba(15, 23, 42, 0.96);
+}
+.balance-check-in__date{
+  margin: 4px 0 0;
+  font-size: 0.875rem;
+  line-height: 1.35;
+  color: rgba(71, 85, 105, 0.88);
+  font-weight: 500;
+}
+.balance-check-in__forecast-card{
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(249, 250, 251, 0.95);
+  border: 1px solid rgba(17, 24, 39, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.balance-check-in__forecast-k{
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(71, 85, 105, 0.92);
+}
+.balance-check-in__forecast-v{
+  font-size: 1.25rem;
+  font-weight: 750;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: rgba(11, 61, 46, 0.88);
+}
+.balance-check-in__confirm{
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.balance-check-in__match-prompt{
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: rgba(15, 23, 42, 0.92);
+}
+.balance-check-in__confirm-actions{
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  margin-top: 2px;
+}
+.balance-check-in__primary--full{
+  width: 100%;
+  justify-content: center;
+  padding: 13px 16px;
+  font-size: 15px;
+  font-weight: 700;
+}
+.balance-check-in__text-btn{
+  border: none;
+  background: transparent;
+  color: rgba(55, 65, 81, 0.88);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 11px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  text-align: center;
+}
+.balance-check-in__text-btn:hover:not(:disabled){
+  background: rgba(17, 24, 39, 0.04);
+  color: rgba(15, 23, 42, 0.96);
+}
+.balance-check-in__text-btn:disabled{
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.balance-check-in__edit[hidden],
+.balance-check-in__confirm[hidden]{
+  display: none !important;
+}
+.balance-check-in__actual{
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.balance-check-in__actual-label{
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: rgba(15, 23, 42, 0.92);
+}
+.balance-check-in__actual-input{
+  width: 100%;
+}
+.balance-check-in__actual-input input{
+  font-size: 1.35rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+.balance-check-in__help{
+  margin: 0 0 12px;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: rgba(100, 116, 139, 0.88);
+}
+.modal.modal--balance-check-in .error{
+  margin-bottom: 10px;
+}
+.modal.modal--balance-check-in .error:empty{
+  display: none;
+  margin: 0;
+}
+.balance-check-in__footer{
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 4px;
+}
+.balance-check-in__cancel{
+  border: none;
+  background: transparent;
+  color: rgba(55, 65, 81, 0.88);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 10px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.balance-check-in__cancel:hover{
+  background: rgba(17, 24, 39, 0.04);
+}
+.balance-check-in__primary{
+  border: none;
+  background: #166534;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 650;
+  padding: 11px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.balance-check-in__primary:hover:not(:disabled){
+  background: #14532d;
+}
+.balance-check-in__primary:disabled{
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+@media (max-width: 640px){
+  .modal.modal--balance-check-in{
+    width: min(96vw, 420px);
+    padding: 16px 16px 14px;
+  }
+  .balance-check-in__primary--full{
+    min-height: 48px;
+  }
+  .balance-check-in__text-btn{
+    min-height: 44px;
+  }
+  .balance-check-in__footer{
+    flex-wrap: wrap;
+  }
+  .balance-check-in__footer .balance-check-in__primary{
+    flex: 1 1 auto;
+    min-height: 44px;
+  }
+}
 .reconcile-modal__mark-btn{
   width: 100%;
   padding: 11px 14px;
@@ -29205,18 +29396,19 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   font-weight: 700;
 }
 .cal-confirmed-tip--adjusted .cal-confirmed-tip__rows{
-  font-family: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, monospace;
-  font-size: 0.72rem;
-  letter-spacing: -0.01em;
+  font-family: inherit;
   gap: 4px;
 }
-.cal-confirmed-tip--adjusted .cal-confirmed-tip__row dt,
-.cal-confirmed-tip--adjusted .cal-confirmed-tip__row dd{
-  font-weight: 500;
-  font-size: inherit;
-  color: rgba(15, 23, 42, 0.94);
+.cal-confirmed-tip--adjusted .cal-confirmed-tip__row dt{
+  font-weight: 550;
+  font-size: 0.74rem;
+  color: rgba(100, 116, 139, 0.92);
 }
 .cal-confirmed-tip--adjusted .cal-confirmed-tip__row dd{
+  font-weight: 650;
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  color: rgba(15, 23, 42, 0.92);
   text-align: right;
   min-width: 5.75rem;
 }
@@ -29227,7 +29419,7 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
 }
 .cal-confirmed-tip--adjusted .cal-confirmed-tip__row--diff dt,
 .cal-confirmed-tip--adjusted .cal-confirmed-tip__row--diff dd{
-  font-weight: 600;
+  font-weight: 700;
 }
 .cat-report-verified-warning{
   margin: 0 0 12px;

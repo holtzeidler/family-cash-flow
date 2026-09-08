@@ -114,7 +114,7 @@
       findTarget: findExpectedCalendarConfirmAnchor,
       title: "Keep your forecast accurate",
       body: "Update your forecast occasionally so it stays aligned with your real checking balance.",
-      instruction: "Click the balance at the bottom of a day to confirm or reconcile it.",
+      instruction: "Click the balance at the bottom of a day to update it.",
       reconcilePreview: {
         dayNum: "17",
         dayLabel: "Thu",
@@ -122,7 +122,7 @@
         balanceLabel: "Actual checking balance",
         balance: "$3,240",
       },
-      note: "You're set — reconcile occasionally and update variable bills when they change.",
+      note: "You're set — update your balance occasionally and update variable bills when they change.",
       ctaLabel: "See My Future Balance",
       placement: ["below", "above", "right", "left"],
       retryable: true,
