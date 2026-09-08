@@ -35,7 +35,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=725" />
+    <link rel="stylesheet" href="../styles.css?v=726" />
   </head>
   <body>
     <h1 class="sr-only">Settings</h1>
@@ -1763,27 +1763,39 @@ Date,Vendor,Amount
     </div>
 
     <div id="reconcileModal" class="modal-overlay" aria-hidden="true">
-      <div class="modal modal--reconcile modal--balance-check-in" role="dialog" aria-labelledby="reconcileTitle" aria-modal="true">
+      <div class="modal modal--reconcile modal--balance-check-in" role="dialog" aria-labelledby="reconcileTitle" aria-modal="true" data-balance-check-in-mode="confirm">
         <div class="balance-check-in__header">
-          <h3 id="reconcileTitle" class="balance-check-in__title">Update Balance</h3>
+          <h3 id="reconcileTitle" class="balance-check-in__title">Check your balance</h3>
           <p id="reconcileDateDisplay" class="balance-check-in__date"></p>
         </div>
         <div id="reconcileBalanceBlock" class="balance-check-in__forecast-card">
-          <span class="balance-check-in__forecast-k">Forecasted balance</span>
+          <span class="balance-check-in__forecast-k">BalanceWhiz forecast</span>
           <span id="reconcileForecastBal" class="balance-check-in__forecast-v">—</span>
         </div>
-        <label class="balance-check-in__actual">
-          <span class="balance-check-in__actual-label">Actual bank balance</span>
-          <div class="money-input balance-check-in__actual-input">
-            <span class="money-input__prefix" aria-hidden="true">$</span>
-            <input type="text" id="reconcileActualAmount" inputmode="decimal" autocomplete="off" aria-describedby="reconcileHelp" />
+
+        <div id="reconcileConfirmState" class="balance-check-in__confirm">
+          <p id="reconcileMatchPrompt" class="balance-check-in__match-prompt">Does this match your current bank balance?</p>
+          <div id="reconcileConfirmErr" class="error"></div>
+          <div class="balance-check-in__confirm-actions">
+            <button type="button" id="reconcileMatchYesBtn" class="balance-check-in__primary balance-check-in__primary--full">Yes, it matches</button>
+            <button type="button" id="reconcileMatchNoBtn" class="balance-check-in__text-btn">No, update balance</button>
           </div>
-        </label>
-        <p id="reconcileHelp" class="balance-check-in__help">Saving this balance creates a new starting point for future forecasts. Your existing transactions will not be changed, and you can still add missing transactions later.</p>
-        <div id="reconcileErr" class="error"></div>
-        <div class="balance-check-in__footer">
-          <button type="button" id="reconcileCancelBtn" class="balance-check-in__cancel">Cancel</button>
-          <button type="button" id="reconcileSaveBtn" class="balance-check-in__primary">Save Balance</button>
+        </div>
+
+        <div id="reconcileEditState" class="balance-check-in__edit" hidden>
+          <label class="balance-check-in__actual" for="reconcileActualAmount">
+            <span class="balance-check-in__actual-label">Actual bank balance</span>
+            <div class="money-input balance-check-in__actual-input">
+              <span class="money-input__prefix" aria-hidden="true">$</span>
+              <input type="text" id="reconcileActualAmount" inputmode="decimal" autocomplete="off" aria-describedby="reconcileHelp" />
+            </div>
+          </label>
+          <p id="reconcileHelp" class="balance-check-in__help">Updating your balance creates a new starting point for future forecasts. Your existing transactions won't be changed.</p>
+          <div id="reconcileErr" class="error"></div>
+          <div class="balance-check-in__footer">
+            <button type="button" id="reconcileCancelBtn" class="balance-check-in__cancel">Cancel</button>
+            <button type="button" id="reconcileSaveBtn" class="balance-check-in__primary">Update Balance</button>
+          </div>
         </div>
       </div>
     </div>
@@ -1880,7 +1892,7 @@ Date,Vendor,Amount
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="../app.js?v=416"></script>
+    <script src="../app.js?v=417"></script>
     <script src="../feedback.js?v=5" defer></script>
     <script src="../tour.js?v=9" defer></script>
   </body>

@@ -19851,6 +19851,55 @@ body.plans-page--polished .plans-wrap{
   font-variant-numeric: tabular-nums;
   color: rgba(11, 61, 46, 0.88);
 }
+.balance-check-in__confirm{
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.balance-check-in__match-prompt{
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: rgba(15, 23, 42, 0.92);
+}
+.balance-check-in__confirm-actions{
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  margin-top: 2px;
+}
+.balance-check-in__primary--full{
+  width: 100%;
+  justify-content: center;
+  padding: 13px 16px;
+  font-size: 15px;
+  font-weight: 700;
+}
+.balance-check-in__text-btn{
+  border: none;
+  background: transparent;
+  color: rgba(55, 65, 81, 0.88);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 11px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  text-align: center;
+}
+.balance-check-in__text-btn:hover:not(:disabled){
+  background: rgba(17, 24, 39, 0.04);
+  color: rgba(15, 23, 42, 0.96);
+}
+.balance-check-in__text-btn:disabled{
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.balance-check-in__edit[hidden],
+.balance-check-in__confirm[hidden]{
+  display: none !important;
+}
 .balance-check-in__actual{
   display: flex;
   flex-direction: column;
@@ -19881,6 +19930,10 @@ body.plans-page--polished .plans-wrap{
 }
 .modal.modal--balance-check-in .error{
   margin-bottom: 10px;
+}
+.modal.modal--balance-check-in .error:empty{
+  display: none;
+  margin: 0;
 }
 .balance-check-in__footer{
   display: flex;
@@ -19918,6 +19971,25 @@ body.plans-page--polished .plans-wrap{
 .balance-check-in__primary:disabled{
   opacity: 0.45;
   cursor: not-allowed;
+}
+@media (max-width: 640px){
+  .modal.modal--balance-check-in{
+    width: min(96vw, 420px);
+    padding: 16px 16px 14px;
+  }
+  .balance-check-in__primary--full{
+    min-height: 48px;
+  }
+  .balance-check-in__text-btn{
+    min-height: 44px;
+  }
+  .balance-check-in__footer{
+    flex-wrap: wrap;
+  }
+  .balance-check-in__footer .balance-check-in__primary{
+    flex: 1 1 auto;
+    min-height: 44px;
+  }
 }
 body[data-bw-view="calendar"] .cash-health-status--balance .cash-health-status__label,
 body[data-bw-view="transactions"] .cash-health-status--balance .cash-health-status__label,
