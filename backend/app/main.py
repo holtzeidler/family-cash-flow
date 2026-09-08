@@ -5399,8 +5399,10 @@ def upsert_verified_balance(
         )
         db.add(existing)
     else:
+        # Update the same-date adjustment; keep the original forecast snapshot.
         existing.amount = payload.amount
-        existing.projected_amount = projected
+        if existing.projected_amount is None:
+            existing.projected_amount = projected
         existing.created_by_user_id = user_id
 
     db.commit()

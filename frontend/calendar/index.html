@@ -35,7 +35,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=727" />
+    <link rel="stylesheet" href="../styles.css?v=728" />
   </head>
   <body>
     <h1 class="sr-only">Forecast calendar</h1>
@@ -1804,6 +1804,47 @@ Date,Vendor,Amount
       </div>
     </div>
 
+
+    <div id="editAdjustmentModal" class="modal-overlay" aria-hidden="true">
+      <div class="modal modal--reconcile modal--balance-check-in modal--edit-adjustment" role="dialog" aria-labelledby="editAdjustmentTitle" aria-modal="true">
+        <div class="balance-check-in__header">
+          <h3 id="editAdjustmentTitle" class="balance-check-in__title">Edit balance adjustment</h3>
+          <p id="editAdjustmentDateDisplay" class="balance-check-in__date"></p>
+        </div>
+        <div id="editAdjustmentForecastBlock" class="balance-check-in__forecast-card">
+          <span class="balance-check-in__forecast-k">Original forecast</span>
+          <span id="editAdjustmentOriginalForecast" class="balance-check-in__forecast-v">—</span>
+        </div>
+        <label class="balance-check-in__actual" for="editAdjustmentAmount">
+          <span class="balance-check-in__actual-label">Bank balance</span>
+          <div class="money-input balance-check-in__actual-input">
+            <span class="money-input__prefix" aria-hidden="true">$</span>
+            <input type="text" id="editAdjustmentAmount" inputmode="decimal" autocomplete="off" />
+          </div>
+        </label>
+        <div id="editAdjustmentErr" class="error"></div>
+        <div class="balance-check-in__footer">
+          <button type="button" id="editAdjustmentCancelBtn" class="balance-check-in__cancel">Cancel</button>
+          <button type="button" id="editAdjustmentSaveBtn" class="balance-check-in__primary">Save Changes</button>
+        </div>
+        <button type="button" id="editAdjustmentRemoveBtn" class="balance-check-in__danger-link">Remove adjustment</button>
+      </div>
+    </div>
+
+    <div id="removeAdjustmentModal" class="modal-overlay" aria-hidden="true">
+      <div class="modal modal--reconcile modal--balance-check-in modal--remove-adjustment" role="dialog" aria-labelledby="removeAdjustmentTitle" aria-modal="true">
+        <div class="balance-check-in__header">
+          <h3 id="removeAdjustmentTitle" class="balance-check-in__title">Remove this adjustment?</h3>
+        </div>
+        <p class="balance-check-in__help balance-check-in__help--confirm">Future forecasts will be recalculated as though this balance adjustment was never made.</p>
+        <div id="removeAdjustmentErr" class="error"></div>
+        <div class="balance-check-in__footer">
+          <button type="button" id="removeAdjustmentCancelBtn" class="balance-check-in__cancel">Cancel</button>
+          <button type="button" id="removeAdjustmentConfirmBtn" class="balance-check-in__danger">Remove Adjustment</button>
+        </div>
+      </div>
+    </div>
+
     <div id="accountModal" class="modal-overlay" aria-hidden="true">
       <div class="modal modal--account" role="dialog" aria-labelledby="accountModalTitle" aria-modal="true">
         <h3 id="accountModalTitle">Add New Account</h3>
@@ -1896,7 +1937,7 @@ Date,Vendor,Amount
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="../app.js?v=418"></script>
+    <script src="../app.js?v=419"></script>
     <script src="../feedback.js?v=5" defer></script>
     <script src="../tour.js?v=10" defer></script>
   </body>

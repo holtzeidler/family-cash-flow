@@ -29433,6 +29433,98 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
 .cal-confirmed-tip--adjusted .cal-confirmed-tip__row--diff dd{
   font-weight: 700;
 }
+.cal-confirmed-tip__date{
+  margin: 0;
+  font-size: 0.76rem;
+  line-height: 1.35;
+  color: rgba(71, 85, 105, 0.9);
+  font-weight: 500;
+}
+.cal-confirmed-tip__actions{
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  margin-top: 4px;
+}
+.cal-confirmed-tip__action{
+  border: none;
+  background: transparent;
+  padding: 4px 0;
+  margin: 0;
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: rgba(71, 85, 105, 0.88);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-color: rgba(148, 163, 184, 0.55);
+}
+.cal-confirmed-tip__action:hover{
+  color: rgba(15, 23, 42, 0.92);
+  text-decoration-color: rgba(100, 116, 139, 0.7);
+}
+.cal-confirmed-tip__action--danger{
+  color: rgba(127, 29, 29, 0.78);
+  text-decoration-color: rgba(185, 28, 28, 0.35);
+}
+.cal-confirmed-tip__action--danger:hover{
+  color: rgba(127, 29, 29, 0.95);
+}
+.reports-risk-tip.reports-risk-tip--interactive{
+  pointer-events: auto;
+}
+.reports-risk-tip.reports-risk-tip--pinned{
+  pointer-events: auto;
+}
+.balance-check-in__danger-link{
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  border: none;
+  background: transparent;
+  color: rgba(127, 29, 29, 0.78);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  padding: 8px 4px;
+  text-align: center;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-color: rgba(185, 28, 28, 0.35);
+}
+.balance-check-in__danger-link:hover{
+  color: rgba(127, 29, 29, 0.95);
+}
+.balance-check-in__danger-link[hidden]{
+  display: none !important;
+}
+.balance-check-in__danger{
+  border: none;
+  background: #991b1b;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 650;
+  padding: 11px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.balance-check-in__danger:hover:not(:disabled){
+  background: #7f1d1d;
+}
+.balance-check-in__danger:disabled{
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.balance-check-in__help--confirm{
+  margin-bottom: 16px;
+  font-size: 0.875rem;
+  color: rgba(71, 85, 105, 0.92);
+}
+.modal.modal--remove-adjustment{
+  max-width: 380px;
+}
 .cat-report-verified-warning{
   margin: 0 0 12px;
   padding: 10px 12px;
