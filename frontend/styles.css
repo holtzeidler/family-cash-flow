@@ -29408,18 +29408,19 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   font-weight: 700;
 }
 .cal-confirmed-tip--adjusted .cal-confirmed-tip__rows{
-  font-family: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, monospace;
-  font-size: 0.72rem;
-  letter-spacing: -0.01em;
+  font-family: inherit;
   gap: 4px;
 }
-.cal-confirmed-tip--adjusted .cal-confirmed-tip__row dt,
-.cal-confirmed-tip--adjusted .cal-confirmed-tip__row dd{
-  font-weight: 500;
-  font-size: inherit;
-  color: rgba(15, 23, 42, 0.94);
+.cal-confirmed-tip--adjusted .cal-confirmed-tip__row dt{
+  font-weight: 550;
+  font-size: 0.74rem;
+  color: rgba(100, 116, 139, 0.92);
 }
 .cal-confirmed-tip--adjusted .cal-confirmed-tip__row dd{
+  font-weight: 650;
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  color: rgba(15, 23, 42, 0.92);
   text-align: right;
   min-width: 5.75rem;
 }
@@ -29430,7 +29431,7 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
 }
 .cal-confirmed-tip--adjusted .cal-confirmed-tip__row--diff dt,
 .cal-confirmed-tip--adjusted .cal-confirmed-tip__row--diff dd{
-  font-weight: 600;
+  font-weight: 700;
 }
 .cat-report-verified-warning{
   margin: 0 0 12px;
