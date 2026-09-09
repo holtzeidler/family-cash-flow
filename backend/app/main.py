@@ -65,6 +65,11 @@ class Settings(BaseSettings):
     # Public URL of the web app (no trailing slash), e.g. https://app.example.com or https://user.github.io/repo
     # Used in family invite emails. If unset, the API uses the Origin header from the browser when the owner sends an invite.
     APP_PUBLIC_BASE_URL: str = ""
+    # Stripe Billing (Checkout + Customer Portal + webhooks). Leave empty to disable billing routes.
+    # Use a restricted key (rk_…) when possible; never commit secrets. Staging and production need separate keys.
+    STRIPE_SECRET_KEY: str = ""
+    # Webhook signing secret from Dashboard Workbench or `stripe listen` (whsec_…).
+    STRIPE_WEBHOOK_SECRET: str = ""
     # Password reset links expire this many minutes after issue (single-use tokens).
     PASSWORD_RESET_TOKEN_MINUTES: int = 45
 
@@ -2082,6 +2087,11 @@ def _parse_cors_origins(raw: str) -> list[str]:
 
 
 app = FastAPI(title="BalanceWhiz")
+
+from .stripe_billing import register_stripe_routes  # noqa: E402
+
+register_stripe_routes(app, settings, logger)
+
 if settings.CORS_ORIGINS:
     origins = _parse_cors_origins(settings.CORS_ORIGINS)
     if origins:
@@ -2157,6 +2167,8 @@ def public_debug_config():
         "family_invite_email_configured": _invite_email_delivery_configured(),
         "password_reset_email_configured": _invite_email_delivery_configured(),
         "app_public_base_url_configured": bool((settings.APP_PUBLIC_BASE_URL or "").strip()),
+        "stripe_billing_configured": bool((settings.STRIPE_SECRET_KEY or "").strip()),
+        "stripe_webhook_configured": bool((settings.STRIPE_WEBHOOK_SECRET or "").strip()),
         "staging_auth_restricted": _staging_auth_allowlist_enforced(),
         "note": "GitHub Pages -> Render: ENV=production for SameSite=None; Secure cookies. Register/login also return access_token for Authorization: Bearer when cookies are blocked.",
     }

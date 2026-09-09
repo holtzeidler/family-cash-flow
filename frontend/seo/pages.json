@@ -42,6 +42,24 @@
       "canonicalPath": "/plans/",
       "index": true
     },
+    "checkout/index.html": {
+      "title": "Checkout — BalanceWhiz",
+      "description": "Subscribe to BalanceWhiz Cash Forecast.",
+      "canonicalPath": "/checkout/",
+      "index": false
+    },
+    "checkout/success/index.html": {
+      "title": "Thanks for your order! — BalanceWhiz",
+      "description": "Your BalanceWhiz Cash Forecast subscription is active.",
+      "canonicalPath": "/checkout/success/",
+      "index": false
+    },
+    "checkout/cancel/index.html": {
+      "title": "Checkout canceled — BalanceWhiz",
+      "description": "Checkout was canceled. You can return to BalanceWhiz pricing anytime.",
+      "canonicalPath": "/checkout/cancel/",
+      "index": false
+    },
     "contactus/index.html": {
       "title": "Contact Us — BalanceWhiz",
       "description": "Questions about BalanceWhiz forecasting, billing, or your account? Contact our team—we read every message.",
