@@ -7,7 +7,8 @@ Known gaps vs production-ready billing:
 - Checkout is not yet tied to authenticated BalanceWhiz users/families.
 - No tax/registrations wiring yet.
 
-Secrets come from env only — never hardcode API keys.
+Product model (COMPLETE) lives in billing_catalog.py — Cash Forecast monthly/annual
+with app-side 30-day trial. Secrets come from env only — never hardcode API keys.
 """
 
 from __future__ import annotations
@@ -19,12 +20,13 @@ import stripe
 from fastapi import FastAPI, Form, HTTPException, Request, status
 from fastapi.responses import JSONResponse, RedirectResponse
 
-# Lookup keys must match Prices in the Stripe Dashboard (and the checkout page).
-ALLOWED_PRICE_LOOKUP_KEYS = frozenset(
-    {
-        "cash_forecast_monthly",
-        "cash_forecast_annual",
-    }
+from .billing_catalog import (
+    ALLOWED_PRICE_LOOKUP_KEYS,
+    PRODUCT_CODE,
+    PRODUCT_NAME,
+    catalog_public,
+    frequency_storage_value,
+    price_for_lookup,
 )
 
 
@@ -55,6 +57,11 @@ def register_stripe_routes(app: FastAPI, settings: Any, logger: logging.Logger) 
             )
         return base
 
+    @app.get("/api/billing/catalog", include_in_schema=False)
+    def billing_catalog():
+        """Public product model — Cash Forecast prices + trial policy."""
+        return catalog_public()
+
     @app.post("/create-checkout-session", include_in_schema=False)
     async def create_checkout_session(request: Request, lookup_key: str = Form(...)):
         """
@@ -68,7 +75,8 @@ def register_stripe_routes(app: FastAPI, settings: Any, logger: logging.Logger) 
         domain = _require_public_base()
 
         key = (lookup_key or "").strip()
-        if key not in ALLOWED_PRICE_LOOKUP_KEYS:
+        price_info = price_for_lookup(key)
+        if not price_info or key not in ALLOWED_PRICE_LOOKUP_KEYS:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid price lookup_key.",
@@ -79,9 +87,14 @@ def register_stripe_routes(app: FastAPI, settings: Any, logger: logging.Logger) 
             if not prices.data:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"No Stripe Price found for lookup_key={key!r}.",
+                    detail=(
+                        f"No Stripe Price found for lookup_key={key!r}. "
+                        f"Create the Cash Forecast {price_info['frequency_label'].lower()} "
+                        f"price (${price_info['amount_usd']}) with that lookup_key in the Dashboard."
+                    ),
                 )
 
+            # Product model: app-side trial only — do not set subscription_data.trial_period_days.
             session = stripe.checkout.Session.create(
                 mode="subscription",
                 line_items=[
@@ -90,11 +103,25 @@ def register_stripe_routes(app: FastAPI, settings: Any, logger: logging.Logger) 
                         "price": prices.data[0].id,
                     }
                 ],
+                metadata={
+                    "bw_product_code": PRODUCT_CODE,
+                    "bw_product_name": PRODUCT_NAME,
+                    "bw_lookup_key": key,
+                    "bw_billing_frequency": frequency_storage_value(key),
+                },
+                subscription_data={
+                    "metadata": {
+                        "bw_product_code": PRODUCT_CODE,
+                        "bw_lookup_key": key,
+                        "bw_billing_frequency": frequency_storage_value(key),
+                    }
+                },
                 # Land on Billing settings after payment so status can flip to Active Billing.
                 success_url=(
                     domain
                     + "/settings/?section=billing&checkout=success"
                     + "&session_id={CHECKOUT_SESSION_ID}"
+                    + f"&frequency={frequency_storage_value(key)}"
                 ),
                 cancel_url=domain + "/settings/?section=billing&checkout=canceled",
             )
@@ -121,7 +148,14 @@ def register_stripe_routes(app: FastAPI, settings: Any, logger: logging.Logger) 
             )
         accept = (request.headers.get("accept") or "").lower()
         if "application/json" in accept:
-            return JSONResponse({"url": session.url})
+            return JSONResponse(
+                {
+                    "url": session.url,
+                    "product_code": PRODUCT_CODE,
+                    "lookup_key": key,
+                    "frequency": frequency_storage_value(key),
+                }
+            )
         return RedirectResponse(url=session.url, status_code=303)
 
     @app.post("/create-portal-session", include_in_schema=False)

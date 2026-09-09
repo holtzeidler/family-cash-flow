@@ -2169,6 +2169,8 @@ def public_debug_config():
         "app_public_base_url_configured": bool((settings.APP_PUBLIC_BASE_URL or "").strip()),
         "stripe_billing_configured": bool((settings.STRIPE_SECRET_KEY or "").strip()),
         "stripe_webhook_configured": bool((settings.STRIPE_WEBHOOK_SECRET or "").strip()),
+        "billing_product_code": "cash_forecast",
+        "billing_trial_days": 30,
         "staging_auth_restricted": _staging_auth_allowlist_enforced(),
         "note": "GitHub Pages -> Render: ENV=production for SameSite=None; Secure cookies. Register/login also return access_token for Authorization: Bearer when cookies are blocked.",
     }

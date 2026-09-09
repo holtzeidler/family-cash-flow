@@ -1634,8 +1634,13 @@ const BILLING_FREQUENCY_KEY = "bw_billing_frequency";
 /** Set after Stripe Checkout succeeds (staging paid-plan smoke test). */
 const BILLING_PAID_KEY = "bw_billing_paid";
 const BILLING_STRIPE_SESSION_KEY = "bw_billing_stripe_session";
-/** Free period length; keep marketing copy in sync (e.g. "Free for your first month"). */
+/** Free period length — matches backend billing_catalog.TRIAL_DAYS (app-side trial). */
 const BILLING_TRIAL_DAYS = 30;
+/** Cash Forecast display amounts — matches backend billing_catalog. */
+const BILLING_MONTHLY_AMOUNT_USD = "5.99";
+const BILLING_ANNUAL_AMOUNT_USD = "59.99";
+const BILLING_LOOKUP_MONTHLY = "cash_forecast_monthly";
+const BILLING_LOOKUP_ANNUAL = "cash_forecast_annual";
 
 // Expected instance editing (fields live inside unified #txEditModal)
 const instanceExpectedTxId = document.getElementById("instanceExpectedTxId");
@@ -8987,10 +8992,11 @@ function applyCheckoutReturnFromUrl() {
     const checkout = String(u.searchParams.get("checkout") || "").trim().toLowerCase();
     const section = String(u.searchParams.get("section") || "").trim().toLowerCase();
     const sessionId = String(u.searchParams.get("session_id") || "").trim();
+    const frequency = String(u.searchParams.get("frequency") || "").trim();
     if (!checkout && !section) return;
 
     if (checkout === "success") {
-      markBillingPaidFromCheckout(sessionId);
+      markBillingPaidFromCheckout(sessionId, frequency);
       try {
         showBwToast("Payment received — your plan is Active Billing.");
       } catch (_) {}
@@ -9012,6 +9018,7 @@ function applyCheckoutReturnFromUrl() {
     u.searchParams.delete("checkout");
     u.searchParams.delete("session_id");
     u.searchParams.delete("section");
+    u.searchParams.delete("frequency");
     const qs = u.searchParams.toString();
     window.history.replaceState({}, "", `${u.pathname}${qs ? `?${qs}` : ""}${u.hash}`);
   } catch (_) {}
@@ -20110,7 +20117,7 @@ function drawProjectionChart(daily) {
 }
 /** Shown in forecast-ready modal; keep in sync with marketing/plans pages. */
 function getTrialContinueMonthlyPriceDisplay() {
-  return "5.99";
+  return BILLING_MONTHLY_AMOUNT_USD;
 }
 
 function setForecastReadyTrialPricing() {
