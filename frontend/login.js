@@ -178,10 +178,20 @@ function formatServerDiag(resp) {
 }
 
 async function goApp() {
+  function postLoginDestination() {
+    try {
+      const next = new URLSearchParams(window.location.search || "").get("next") || "";
+      const raw = String(next).trim();
+      if (raw.startsWith("/") && !raw.startsWith("//") && !raw.includes("://")) {
+        return raw;
+      }
+    } catch (_) {}
+    return "/calendar";
+  }
   try {
     const t = sessionStorage.getItem("bw_invite_token");
     if (!t || !String(t).trim()) {
-      window.location.href = "/calendar";
+      window.location.href = postLoginDestination();
       return;
     }
     const enc = encodeURIComponent(String(t).trim());
@@ -194,7 +204,7 @@ async function goApp() {
     });
     const raced = await Promise.race([inviteCheck, timedOut]);
     if (raced === "timeout") {
-      window.location.href = "/calendar";
+      window.location.href = postLoginDestination();
       return;
     }
     const [me, inv] = raced;

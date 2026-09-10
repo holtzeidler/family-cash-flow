@@ -1,14 +1,13 @@
 """Stripe Checkout + Customer Portal + webhook (subscription billing).
 
-PROTOTYPE BASELINE restored onto feature/stripe-billing for a proper rebuild.
-Known gaps vs production-ready billing:
-- Subscription/customer state is not persisted in our DB (frontend used localStorage).
-- Uses module-level stripe.api_key (prefer StripeClient in rebuild).
-- Checkout is not yet tied to authenticated BalanceWhiz users/families.
-- No tax/registrations wiring yet.
+Rebuild status:
+- Product model: billing_catalog.py (Cash Forecast monthly/annual, app-side trial)
+- Entitlement DB + webhooks: billing_entitlement.py
+- Authenticated Checkout: requires login + family owner; Stripe Customer + metadata
+- Portal: prefers DB customer for the family; optional legacy session_id fallback
+- Remaining: Billing UI off localStorage; Stripe Tax/registrations when ready
 
-Product model (COMPLETE) lives in billing_catalog.py — Cash Forecast monthly/annual
-with app-side 30-day trial. Secrets come from env only — never hardcode API keys.
+Secrets come from env only — never hardcode API keys.
 """
 
 from __future__ import annotations
@@ -28,6 +27,7 @@ from .billing_catalog import (
     frequency_storage_value,
     price_for_lookup,
 )
+from .billing_entitlement import ENTITLED_STATUSES
 
 
 def register_stripe_routes(
@@ -67,17 +67,36 @@ def register_stripe_routes(
         """Public product model — Cash Forecast prices + trial policy."""
         return catalog_public()
 
-    @app.post("/create-checkout-session", include_in_schema=False)
-    async def create_checkout_session(request: Request, lookup_key: str = Form(...)):
-        """
-        Create a Stripe Checkout Session (subscription) and redirect to Stripe-hosted Checkout.
-        Form field: lookup_key (must match a Price lookup_key in Stripe).
+    def _wants_json(request: Request) -> bool:
+        return "application/json" in (request.headers.get("accept") or "").lower()
 
-        Prefer Accept: application/json → {"url": "..."} so the staging SPA can
-        surface errors; otherwise 303 redirect (classic form POST).
+    def _auth_user_id(request: Request) -> int:
+        from .main import _read_access_token_from_request, get_current_user_id
+
+        return get_current_user_id(_read_access_token_from_request(request))
+
+    @app.post("/create-checkout-session", include_in_schema=False)
+    async def create_checkout_session(
+        request: Request,
+        lookup_key: str = Form(...),
+        family_id: int = Form(...),
+    ):
+        """
+        Authenticated Checkout Session for Cash Forecast.
+
+        Form fields:
+        - lookup_key: Stripe Price lookup_key (cash_forecast_monthly | cash_forecast_annual)
+        - family_id: BalanceWhiz family to entitle (caller must be family owner)
+
+        Accept: application/json → {"url": "..."}; otherwise 303 redirect.
         """
         _require_stripe()
         domain = _require_public_base()
+        if session_factory is None:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Billing database session is not configured.",
+            )
 
         key = (lookup_key or "").strip()
         price_info = price_for_lookup(key)
@@ -87,7 +106,42 @@ def register_stripe_routes(
                 detail="Invalid price lookup_key.",
             )
 
+        user_id = _auth_user_id(request)
+
+        from sqlalchemy import select
+
+        from .billing_entitlement import get_or_create_stripe_customer_for_user
+        from .main import BillingSubscription, User, require_family_owner
+
         try:
+            with session_factory() as db:
+                require_family_owner(db=db, family_id=int(family_id), user_id=int(user_id))
+                user = db.get(User, int(user_id))
+                if user is None:
+                    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+
+                existing = db.execute(
+                    select(BillingSubscription).where(BillingSubscription.family_id == int(family_id))
+                ).scalar_one_or_none()
+                if existing is not None:
+                    st = (existing.status or "").strip().lower()
+                    if st in ENTITLED_STATUSES:
+                        raise HTTPException(
+                            status_code=status.HTTP_409_CONFLICT,
+                            detail="This family already has an active Cash Forecast subscription.",
+                        )
+
+                billing_customer = get_or_create_stripe_customer_for_user(
+                    db, user=user, stripe_mod=stripe, family_id=int(family_id)
+                )
+                db.commit()
+                stripe_customer_id = (billing_customer.stripe_customer_id or "").strip()
+                if not stripe_customer_id:
+                    raise HTTPException(
+                        status_code=status.HTTP_502_BAD_GATEWAY,
+                        detail="Could not create or load a Stripe customer.",
+                    )
+
             prices = stripe.Price.list(lookup_keys=[key], expand=["data.product"])
             if not prices.data:
                 raise HTTPException(
@@ -99,36 +153,44 @@ def register_stripe_routes(
                     ),
                 )
 
+            bw_meta = {
+                "bw_product_code": PRODUCT_CODE,
+                "bw_product_name": PRODUCT_NAME,
+                "bw_lookup_key": key,
+                "bw_billing_frequency": frequency_storage_value(key),
+                "bw_user_id": str(int(user_id)),
+                "bw_family_id": str(int(family_id)),
+            }
+
             # Product model: app-side trial only — do not set subscription_data.trial_period_days.
             session = stripe.checkout.Session.create(
                 mode="subscription",
+                customer=stripe_customer_id,
+                client_reference_id=str(int(family_id)),
                 line_items=[
                     {
                         "quantity": 1,
                         "price": prices.data[0].id,
                     }
                 ],
-                metadata={
-                    "bw_product_code": PRODUCT_CODE,
-                    "bw_product_name": PRODUCT_NAME,
-                    "bw_lookup_key": key,
-                    "bw_billing_frequency": frequency_storage_value(key),
-                },
+                metadata=bw_meta,
                 subscription_data={
                     "metadata": {
                         "bw_product_code": PRODUCT_CODE,
                         "bw_lookup_key": key,
                         "bw_billing_frequency": frequency_storage_value(key),
+                        "bw_user_id": str(int(user_id)),
+                        "bw_family_id": str(int(family_id)),
                     }
                 },
-                # Land on Billing settings after payment so status can flip to Active Billing.
                 success_url=(
                     domain
                     + "/settings/?section=billing&checkout=success"
                     + "&session_id={CHECKOUT_SESSION_ID}"
                     + f"&frequency={frequency_storage_value(key)}"
+                    + f"&family_id={int(family_id)}"
                 ),
-                cancel_url=domain + "/settings/?section=billing&checkout=canceled",
+                cancel_url=domain + f"/settings/?section=billing&checkout=canceled&family_id={int(family_id)}",
             )
         except HTTPException:
             raise
@@ -151,55 +213,85 @@ def register_stripe_routes(
                 status_code=status.HTTP_502_BAD_GATEWAY,
                 detail="Stripe did not return a Checkout URL.",
             )
-        accept = (request.headers.get("accept") or "").lower()
-        if "application/json" in accept:
+        if _wants_json(request):
             return JSONResponse(
                 {
                     "url": session.url,
                     "product_code": PRODUCT_CODE,
                     "lookup_key": key,
                     "frequency": frequency_storage_value(key),
+                    "family_id": int(family_id),
                 }
             )
         return RedirectResponse(url=session.url, status_code=303)
 
     @app.post("/create-portal-session", include_in_schema=False)
-    async def create_portal_session(session_id: str = Form(...)):
+    async def create_portal_session(
+        request: Request,
+        family_id: Optional[int] = Form(None),
+        session_id: Optional[str] = Form(None),
+    ):
         """
-        Open the Stripe Customer Portal using the Checkout Session's customer.
+        Open the Stripe Customer Portal.
 
-        Demo path: session_id from the success page query string.
-        Production: resolve customer from the authenticated user instead.
+        Preferred: authenticated request + family_id (owner) → customer from billing_customers.
+        Legacy: session_id from Checkout success query string.
         """
         _require_stripe()
         domain = _require_public_base()
 
-        checkout_session_id = (session_id or "").strip()
-        if not checkout_session_id:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="session_id is required.",
-            )
+        customer: Optional[str] = None
+        customer_account: Optional[str] = None
+        return_url = domain + "/settings/?section=billing"
 
         try:
-            checkout_session = stripe.checkout.Session.retrieve(checkout_session_id)
-            return_url = domain
+            if family_id is not None:
+                if session_factory is None:
+                    raise HTTPException(
+                        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                        detail="Billing database session is not configured.",
+                    )
+                user_id = _auth_user_id(request)
+                from .billing_entitlement import stripe_customer_id_for_family
+                from .main import BillingCustomer, require_family_owner
+                from sqlalchemy import select
 
-            # Prefer classic Customer objects; fall back to Accounts v2 customer_account
-            # if the Checkout Session was created that way (newer Stripe samples).
-            customer = getattr(checkout_session, "customer", None)
-            customer_account = getattr(checkout_session, "customer_account", None)
+                with session_factory() as db:
+                    require_family_owner(db=db, family_id=int(family_id), user_id=int(user_id))
+                    customer = stripe_customer_id_for_family(db, family_id=int(family_id))
+                    if not customer:
+                        # Fall back to the owner's billing customer even before a sub row links
+                        row = db.execute(
+                            select(BillingCustomer).where(BillingCustomer.user_id == int(user_id))
+                        ).scalar_one_or_none()
+                        customer = (row.stripe_customer_id or "").strip() if row else None
+                if not customer:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="No Stripe customer on file for this family yet. Complete checkout first.",
+                    )
+                return_url = domain + f"/settings/?section=billing&family_id={int(family_id)}"
+            else:
+                checkout_session_id = (session_id or "").strip()
+                if not checkout_session_id:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="family_id or session_id is required.",
+                    )
+                checkout_session = stripe.checkout.Session.retrieve(checkout_session_id)
+                customer = getattr(checkout_session, "customer", None)
+                customer_account = getattr(checkout_session, "customer_account", None)
+                if not customer and not customer_account:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Checkout session has no customer yet. Complete payment first.",
+                    )
 
             portal_params: dict[str, Any] = {"return_url": return_url}
             if customer:
                 portal_params["customer"] = customer
             elif customer_account:
                 portal_params["customer_account"] = customer_account
-            else:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Checkout session has no customer yet. Complete payment first.",
-                )
 
             portal_session = stripe.billing_portal.Session.create(**portal_params)
         except HTTPException:
@@ -223,6 +315,8 @@ def register_stripe_routes(
                 status_code=status.HTTP_502_BAD_GATEWAY,
                 detail="Stripe did not return a Customer Portal URL.",
             )
+        if _wants_json(request):
+            return JSONResponse({"url": portal_session.url})
         return RedirectResponse(url=portal_session.url, status_code=303)
 
     @app.post("/webhook", include_in_schema=False)

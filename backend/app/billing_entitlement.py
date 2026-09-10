@@ -215,6 +215,57 @@ def upsert_billing_customer(db, *, user_id: int, stripe_customer_id: str):
     return row
 
 
+def get_or_create_stripe_customer_for_user(db, *, user, stripe_mod, family_id: Optional[int] = None):
+    """Return BillingCustomer row, creating a Stripe Customer when the user has none."""
+    from sqlalchemy import select
+
+    from .main import BillingCustomer
+
+    uid = int(user.id)
+    row = db.execute(select(BillingCustomer).where(BillingCustomer.user_id == uid)).scalar_one_or_none()
+    if row is not None and (row.stripe_customer_id or "").strip():
+        return row
+
+    email = (getattr(user, "email", None) or "").strip() or None
+    name = (getattr(user, "name", None) or "").strip() or None
+    meta = {
+        "bw_user_id": str(uid),
+        "bw_product_code": PRODUCT_CODE,
+    }
+    if family_id is not None:
+        meta["bw_family_id"] = str(int(family_id))
+
+    create_kwargs: dict[str, Any] = {"metadata": meta}
+    if email:
+        create_kwargs["email"] = email
+    if name:
+        create_kwargs["name"] = name
+
+    customer = stripe_mod.Customer.create(**create_kwargs)
+    cid = (getattr(customer, "id", None) or "").strip()
+    if not cid:
+        raise RuntimeError("Stripe Customer.create returned no id")
+    return upsert_billing_customer(db, user_id=uid, stripe_customer_id=cid)
+
+
+def stripe_customer_id_for_family(db, *, family_id: int) -> Optional[str]:
+    """Resolve Stripe customer id for portal (via family's subscription → billing customer)."""
+    from sqlalchemy import select
+
+    from .main import BillingCustomer, BillingSubscription
+
+    sub = db.execute(
+        select(BillingSubscription).where(BillingSubscription.family_id == int(family_id))
+    ).scalar_one_or_none()
+    if sub is None or not sub.billing_customer_id:
+        return None
+    cust = db.get(BillingCustomer, int(sub.billing_customer_id))
+    if cust is None:
+        return None
+    cid = (cust.stripe_customer_id or "").strip()
+    return cid or None
+
+
 def _resolve_family_id_from_metadata(meta: Any) -> Optional[int]:
     if not meta:
         return None

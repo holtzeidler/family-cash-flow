@@ -32,7 +32,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=724" />
+    <link rel="stylesheet" href="../styles.css?v=730" />
   </head>
   <body class="checkout-page plans-page plans-page--polished">
     <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -132,11 +132,13 @@
 
               <!-- Stripe Price lookup_key — must match Prices in your Stripe Dashboard -->
               <input type="hidden" id="lookupKey" name="lookup_key" value="cash_forecast_monthly" />
+              <input type="hidden" id="familyId" name="family_id" value="" />
+              <p id="checkoutFamilyHint" class="checkout-form__family-hint" hidden></p>
               <p id="checkoutErr" class="error" hidden role="alert"></p>
               <button id="checkout-and-portal-button" class="plan-cta plan-cta--primary checkout-form__submit" type="submit">
                 Checkout
               </button>
-              <p class="checkout-form__reassurance">You’ll complete payment securely on Stripe.</p>
+              <p class="checkout-form__reassurance">You’ll complete payment securely on Stripe. Sign in as the family owner to subscribe.</p>
             </form>
           </section>
         </section>
@@ -179,22 +181,40 @@
         var FREQ_KEY = "bw_billing_frequency";
         var form = document.getElementById("checkoutForm");
         var errEl = document.getElementById("checkoutErr");
+        var familyHint = document.getElementById("checkoutFamilyHint");
+        var familyInput = document.getElementById("familyId");
         var btn = document.getElementById("checkout-and-portal-button");
         var cta = document.getElementById("checkoutNavCta");
         var billingLink = document.getElementById("checkoutNavBilling");
 
-        function hasSession() {
+        function accessToken() {
           try {
-            return !!(sessionStorage.getItem(TOKEN_KEY) || "").trim();
+            return (sessionStorage.getItem(TOKEN_KEY) || "").trim();
           } catch (_) {
-            return false;
+            return "";
           }
+        }
+
+        function hasSession() {
+          return !!accessToken();
+        }
+
+        function authHeaders() {
+          var h = { Accept: "application/json" };
+          var t = accessToken();
+          if (t) h.Authorization = "Bearer " + t;
+          return h;
+        }
+
+        function loginUrl() {
+          var next = "/checkout/" + (window.location.search || "");
+          return "/login.html?next=" + encodeURIComponent(next);
         }
 
         if (!hasSession()) {
           if (cta) {
             cta.textContent = "Login";
-            cta.href = "/login.html";
+            cta.href = loginUrl();
           }
           if (billingLink) billingLink.hidden = true;
         } else {
@@ -219,6 +239,21 @@
         }
         form.action = api + "/create-checkout-session";
 
+        if (!hasSession()) {
+          if (errEl) {
+            errEl.hidden = false;
+            errEl.textContent = "Sign in as the family owner to start checkout.";
+          }
+          if (btn) {
+            btn.textContent = "Sign in to checkout";
+            btn.addEventListener("click", function (e) {
+              e.preventDefault();
+              window.location.assign(loginUrl());
+            });
+          }
+          return;
+        }
+
         var lookupInput = document.getElementById("lookupKey");
         var priceEl = document.getElementById("checkoutSelectedPrice");
         var radios = form.querySelectorAll('input[name="billing_cycle"]');
@@ -241,10 +276,85 @@
         });
         syncBilling();
 
+        function pickOwnedFamily(families) {
+          var params = new URLSearchParams(window.location.search || "");
+          var want = Number(params.get("family_id") || 0);
+          var list = Array.isArray(families) ? families : [];
+          if (want) {
+            for (var i = 0; i < list.length; i++) {
+              if (Number(list[i].id) === want) return list[i];
+            }
+          }
+          var owned = list.filter(function (f) {
+            return !!f.is_family_owner;
+          });
+          if (owned.length === 1) return owned[0];
+          if (owned.length > 1) return owned[0];
+          return list[0] || null;
+        }
+
+        function setFamilyReady(fam) {
+          if (!fam || !familyInput) return false;
+          familyInput.value = String(fam.id);
+          if (familyHint) {
+            familyHint.hidden = false;
+            familyHint.textContent = "Subscribing for: " + (fam.name || "Family #" + fam.id);
+          }
+          return true;
+        }
+
+        if (btn) btn.disabled = true;
+        fetch(api + "/api/families", {
+          method: "GET",
+          credentials: "include",
+          headers: authHeaders(),
+        })
+          .then(function (res) {
+            if (res.status === 401) {
+              window.location.assign(loginUrl());
+              return null;
+            }
+            return res.json().then(function (data) {
+              return { ok: res.ok, status: res.status, data: data };
+            });
+          })
+          .then(function (result) {
+            if (!result) return;
+            if (!result.ok) {
+              throw new Error(
+                (result.data && result.data.detail) ||
+                  "Could not load your families (" + result.status + ")."
+              );
+            }
+            var fam = pickOwnedFamily(result.data);
+            if (!fam) {
+              throw new Error("Create a family before checking out.");
+            }
+            if (!fam.is_family_owner) {
+              throw new Error("Only the family owner can start a Cash Forecast subscription.");
+            }
+            setFamilyReady(fam);
+            if (btn) btn.disabled = false;
+          })
+          .catch(function (err) {
+            if (errEl) {
+              errEl.hidden = false;
+              errEl.textContent = err && err.message ? err.message : String(err);
+            }
+            if (btn) btn.disabled = true;
+          });
+
         form.addEventListener("submit", function (e) {
           e.preventDefault();
           if (!btn || btn.disabled) return;
           syncBilling();
+          if (!familyInput || !String(familyInput.value || "").trim()) {
+            if (errEl) {
+              errEl.hidden = false;
+              errEl.textContent = "Missing family for checkout.";
+            }
+            return;
+          }
           if (errEl) {
             errEl.hidden = true;
             errEl.textContent = "";
@@ -258,17 +368,23 @@
             method: "POST",
             body: body,
             credentials: "include",
-            headers: { Accept: "application/json" },
+            headers: authHeaders(),
           })
             .then(function (res) {
               return res.json().then(function (data) {
                 return { ok: res.ok, status: res.status, data: data };
+              }).catch(function () {
+                return { ok: res.ok, status: res.status, data: {} };
               });
             })
             .then(function (result) {
               var url = result.data && result.data.url;
               if (result.ok && url) {
                 window.location.assign(url);
+                return;
+              }
+              if (result.status === 401) {
+                window.location.assign(loginUrl());
                 return;
               }
               var msg =

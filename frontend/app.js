@@ -8896,9 +8896,13 @@ function ensureBillingHeroPills() {
     activate = document.createElement("a");
     activate.id = "billingActivatePaidPlan";
     activate.className = "billing-hero__activate";
-    activate.href = "/checkout/";
+    activate.href = state.activeFamilyId
+      ? `/checkout/?family_id=${encodeURIComponent(String(state.activeFamilyId))}`
+      : "/checkout/";
     activate.textContent = "Activate Paid Plan";
     row.appendChild(activate);
+  } else if (state.activeFamilyId) {
+    activate.href = `/checkout/?family_id=${encodeURIComponent(String(state.activeFamilyId))}`;
   }
   return activate;
 }
@@ -8908,13 +8912,40 @@ function wireBillingActionsOnce() {
   document.querySelectorAll("[data-billing-action]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const action = String(btn.getAttribute("data-billing-action") || "");
-      if (action === "payment" && isStagingBillingHost() && isBillingPaid()) {
-        // Staging: card updates still go through support until Customer Portal is wired here.
-        showBwToast("Updating your card isn’t available here yet—use Contact support or Manage on the checkout success page.");
+      if (action === "payment" && state.activeFamilyId && isBillingPaid()) {
+        const apiBase = apiBaseUrl();
+        if (!apiBase) {
+          showBwToast("Billing portal isn’t configured on this build.");
+          return;
+        }
+        const body = new FormData();
+        body.set("family_id", String(state.activeFamilyId));
+        fetch(`${apiBase}/create-portal-session`, {
+          method: "POST",
+          body,
+          credentials: "include",
+          headers: { ...apiBearerAuthHeaders(), Accept: "application/json" },
+        })
+          .then(async (res) => {
+            const data = await res.json().catch(() => ({}));
+            if (res.ok && data && data.url) {
+              window.location.assign(data.url);
+              return;
+            }
+            const msg =
+              (data && data.error && data.error.message) ||
+              data.detail ||
+              `Portal failed (${res.status}).`;
+            throw new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
+          })
+          .catch((err) => {
+            showBwToast(err && err.message ? err.message : "Could not open billing portal.");
+          });
         return;
       }
-      if (action === "payment" && isStagingBillingHost() && !isBillingPaid()) {
-        window.location.assign("/checkout/");
+      if (action === "payment" && !isBillingPaid()) {
+        const fid = state.activeFamilyId ? `?family_id=${encodeURIComponent(String(state.activeFamilyId))}` : "";
+        window.location.assign("/checkout/" + fid);
         return;
       }
       const messages = {

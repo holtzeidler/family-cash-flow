@@ -31811,6 +31811,13 @@ body.checkout-page .container > .grid{
   font-size: 13px;
   color: var(--muted);
 }
+.checkout-form__family-hint{
+  margin: 10px 0 0;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text);
+  font-weight: 500;
+}
 
 /* ——— Checkout success ——— */
 .checkout-product__icon--success{
