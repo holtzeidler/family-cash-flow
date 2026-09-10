@@ -10583,6 +10583,7 @@ async function loadFamilies() {
   } else {
     state.activeFamilyId = null;
   }
+  invalidateBillingStatusCache();
   syncActiveFamilyFlags();
   if (settingsViewPanel && !settingsViewPanel.hidden && getActiveSettingsSectionKey() === "accounts") {
     void loadFamilyMembersPanel();
