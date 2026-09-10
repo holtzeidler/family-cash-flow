@@ -1628,12 +1628,6 @@ const billingRenewalMessageEl = document.getElementById("billingRenewalMessage")
 const billingAccountStatusEl = document.getElementById("billingAccountStatus");
 let billingActionsWired = false;
 
-const BILLING_PLAN_KEY = "bw_billing_plan";
-const BILLING_START_KEY = "bw_billing_start";
-const BILLING_FREQUENCY_KEY = "bw_billing_frequency";
-/** Set after Stripe Checkout succeeds (staging paid-plan smoke test). */
-const BILLING_PAID_KEY = "bw_billing_paid";
-const BILLING_STRIPE_SESSION_KEY = "bw_billing_stripe_session";
 /** Free period length — matches backend billing_catalog.TRIAL_DAYS (app-side trial). */
 const BILLING_TRIAL_DAYS = 30;
 /** Cash Forecast display amounts — matches backend billing_catalog. */
@@ -1641,6 +1635,8 @@ const BILLING_MONTHLY_AMOUNT_USD = "5.99";
 const BILLING_ANNUAL_AMOUNT_USD = "59.99";
 const BILLING_LOOKUP_MONTHLY = "cash_forecast_monthly";
 const BILLING_LOOKUP_ANNUAL = "cash_forecast_annual";
+/** In-memory cache for GET /api/families/{id}/billing-status (server is source of truth). */
+let billingStatusCache = { familyId: null, data: null, fetchedAt: 0, inflPromise: null };
 
 // Expected instance editing (fields live inside unified #txEditModal)
 const instanceExpectedTxId = document.getElementById("instanceExpectedTxId");
@@ -2679,6 +2675,7 @@ function finishBalanceThresholdSave({
     maxEl.value = maxParsed.empty ? "" : formatBalanceThresholdInputValue(maxParsed.num, maxEl.value);
   }
   state.activeFamilyId = fidNum;
+  invalidateBillingStatusCache();
   if (familySelect && Number(fidNum) > 0) {
     try {
       familySelect.value = String(fidNum);
@@ -5103,6 +5100,7 @@ if (calendarMode) {
 
 familySelect.addEventListener("change", async () => {
   state.activeFamilyId = Number(familySelect.value);
+  invalidateBillingStatusCache();
   riskCalendarViewYm = "";
   lastRiskCalendarDaily = [];
   syncActiveFamilyFlags();
@@ -8822,7 +8820,7 @@ function computeNextBillingDate(startIso, frequency) {
 function getBillingPlanLabel(plan) {
   const p = String(plan || "").toLowerCase();
   if (p === "pro") return "Add Budgeting";
-  if (p === "base") return "Cash Forecast";
+  if (p === "base" || p === "cash_forecast") return "Cash Forecast";
   return "—";
 }
 
@@ -8836,47 +8834,96 @@ function getBillingPlanContext(plan) {
 
 function billingStatusPillHtml(status) {
   const s = String(status || "Active").trim() || "Active";
-  const paid = String(s).toLowerCase().includes("billing");
-  const trial = String(s).toLowerCase().includes("trial");
-  const mod = paid ? "billing-status-pill--paid" : trial ? "billing-status-pill--trial" : "billing-status-pill--active";
+  const lower = String(s).toLowerCase();
+  const paid = lower.includes("billing") || lower.includes("past due");
+  const trial = lower.includes("trial");
+  const expired = lower.includes("expired") || lower.includes("ended");
+  const mod = expired
+    ? "billing-status-pill--active"
+    : paid
+      ? "billing-status-pill--paid"
+      : trial
+        ? "billing-status-pill--trial"
+        : "billing-status-pill--active";
   return `<span class="billing-status-pill ${mod}"><span class="billing-status-pill__icon" aria-hidden="true">✓</span>${escapeHtml(
     s
   )}</span>`;
 }
 
-function isStagingBillingHost() {
-  try {
-    const h = String(location.hostname || "").toLowerCase();
-    return (
-      h === "staging.balancewhiz.com" ||
-      h.includes("web-staging") ||
-      h === "localhost" ||
-      h === "127.0.0.1"
-    );
-  } catch (_) {
-    return false;
-  }
+function invalidateBillingStatusCache() {
+  billingStatusCache = { familyId: null, data: null, fetchedAt: 0, inflPromise: null };
+}
+
+function isoDateFromApiTimestamp(value) {
+  if (!value) return "";
+  const s = String(value).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return s.slice(0, 10);
+  return toISODate(d);
+}
+
+function frequencyLabelFromLookupKey(lookupKey) {
+  const key = String(lookupKey || "").trim();
+  if (key === BILLING_LOOKUP_ANNUAL) return "Yearly";
+  if (key === BILLING_LOOKUP_MONTHLY) return "Monthly";
+  return "—";
+}
+
+function cachedBillingStatusForActiveFamily() {
+  const fid = Number(state.activeFamilyId || 0);
+  if (!fid || Number(billingStatusCache.familyId) !== fid) return null;
+  return billingStatusCache.data || null;
+}
+
+function isBillingSubscribed(status = cachedBillingStatusForActiveFamily()) {
+  if (!status) return false;
+  const phase = String(status.phase || "").toLowerCase();
+  if (phase === "active" || phase === "past_due") return true;
+  const st = String(status.status || "").toLowerCase();
+  return !!status.stripe_subscription_id && (st === "active" || st === "past_due" || st === "trialing");
 }
 
 function isBillingPaid() {
-  try {
-    return localStorage.getItem(BILLING_PAID_KEY) === "1";
-  } catch (_) {
-    return false;
-  }
+  return isBillingSubscribed();
 }
 
-function markBillingPaidFromCheckout(sessionId, frequency) {
-  try {
-    localStorage.setItem(BILLING_PAID_KEY, "1");
-    if (!localStorage.getItem(BILLING_PLAN_KEY)) localStorage.setItem(BILLING_PLAN_KEY, "base");
-    if (!localStorage.getItem(BILLING_START_KEY)) {
-      localStorage.setItem(BILLING_START_KEY, toISODate(new Date()));
-    }
-    const freq = String(frequency || localStorage.getItem(BILLING_FREQUENCY_KEY) || "monthly").toLowerCase();
-    localStorage.setItem(BILLING_FREQUENCY_KEY, freq === "annual" || freq === "yearly" ? "yearly" : "monthly");
-    if (sessionId) localStorage.setItem(BILLING_STRIPE_SESSION_KEY, String(sessionId));
-  } catch (_) {}
+function isBillingPortalAvailable(status = cachedBillingStatusForActiveFamily()) {
+  if (!status) return false;
+  return !!status.portal_available || isBillingSubscribed(status);
+}
+
+async function fetchBillingStatus({ force = false } = {}) {
+  const fid = Number(state.activeFamilyId || 0);
+  if (!fid) return null;
+  const now = Date.now();
+  if (
+    !force &&
+    Number(billingStatusCache.familyId) === fid &&
+    billingStatusCache.data &&
+    now - billingStatusCache.fetchedAt < 20000
+  ) {
+    return billingStatusCache.data;
+  }
+  if (!force && billingStatusCache.inFlight && Number(billingStatusCache.familyId) === fid) {
+    return billingStatusCache.inFlight;
+  }
+  const promise = api(`/api/families/${fid}/billing-status`, "GET")
+    .then((data) => {
+      billingStatusCache = { familyId: fid, data, fetchedAt: Date.now(), inFlight: null };
+      return data;
+    })
+    .catch((err) => {
+      if (Number(billingStatusCache.familyId) === fid) billingStatusCache.inFlight = null;
+      throw err;
+    });
+  billingStatusCache = {
+    familyId: fid,
+    data: billingStatusCache.data && Number(billingStatusCache.familyId) === fid ? billingStatusCache.data : null,
+    fetchedAt: billingStatusCache.fetchedAt || 0,
+    inFlight: promise,
+  };
+  return promise;
 }
 
 function ensureBillingHeroPills() {
@@ -8907,45 +8954,63 @@ function ensureBillingHeroPills() {
   return activate;
 }
 
+function openBillingPortalForActiveFamily() {
+  const apiBase = apiBaseUrl();
+  if (!apiBase) {
+    showBwToast("Billing portal isn’t configured on this build.");
+    return;
+  }
+  if (!state.activeFamilyId) {
+    showBwToast("Choose a family first.");
+    return;
+  }
+  const body = new FormData();
+  body.set("family_id", String(state.activeFamilyId));
+  fetch(`${apiBase}/create-portal-session`, {
+    method: "POST",
+    body,
+    credentials: "include",
+    headers: { ...apiBearerAuthHeaders(), Accept: "application/json" },
+  })
+    .then(async (res) => {
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data && data.url) {
+        window.location.assign(data.url);
+        return;
+      }
+      const msg =
+        (data && data.error && data.error.message) || data.detail || `Portal failed (${res.status}).`;
+      throw new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
+    })
+    .catch((err) => {
+      showBwToast(err && err.message ? err.message : "Could not open billing portal.");
+    });
+}
+
 function wireBillingActionsOnce() {
   if (billingActionsWired) return;
   document.querySelectorAll("[data-billing-action]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const action = String(btn.getAttribute("data-billing-action") || "");
-      if (action === "payment" && state.activeFamilyId && isBillingPaid()) {
-        const apiBase = apiBaseUrl();
-        if (!apiBase) {
-          showBwToast("Billing portal isn’t configured on this build.");
+      if (action === "payment") {
+        if (isBillingPortalAvailable()) {
+          openBillingPortalForActiveFamily();
           return;
         }
-        const body = new FormData();
-        body.set("family_id", String(state.activeFamilyId));
-        fetch(`${apiBase}/create-portal-session`, {
-          method: "POST",
-          body,
-          credentials: "include",
-          headers: { ...apiBearerAuthHeaders(), Accept: "application/json" },
-        })
-          .then(async (res) => {
-            const data = await res.json().catch(() => ({}));
-            if (res.ok && data && data.url) {
-              window.location.assign(data.url);
-              return;
-            }
-            const msg =
-              (data && data.error && data.error.message) ||
-              data.detail ||
-              `Portal failed (${res.status}).`;
-            throw new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
-          })
-          .catch((err) => {
-            showBwToast(err && err.message ? err.message : "Could not open billing portal.");
-          });
-        return;
-      }
-      if (action === "payment" && !isBillingPaid()) {
         const fid = state.activeFamilyId ? `?family_id=${encodeURIComponent(String(state.activeFamilyId))}` : "";
         window.location.assign("/checkout/" + fid);
+        return;
+      }
+      if (action === "cycle" && isBillingPortalAvailable()) {
+        openBillingPortalForActiveFamily();
+        return;
+      }
+      if (action === "cancel" && isBillingPortalAvailable()) {
+        openBillingPortalForActiveFamily();
+        return;
+      }
+      if (action === "invoices" && isBillingPortalAvailable()) {
+        openBillingPortalForActiveFamily();
         return;
       }
       const messages = {
@@ -8961,59 +9026,103 @@ function wireBillingActionsOnce() {
   billingActionsWired = true;
 }
 
-function renderBillingPanel() {
+function applyBillingStatusToPanel(status) {
   if (!billingPlanEl || !billingFrequencyEl || !billingNextDateEl) return;
-  let plan = "";
-  let freq = "monthly";
-  let start = "";
-  try {
-    plan = localStorage.getItem(BILLING_PLAN_KEY) || "";
-    freq = localStorage.getItem(BILLING_FREQUENCY_KEY) || "monthly";
-    start = localStorage.getItem(BILLING_START_KEY) || "";
-  } catch (_) {}
-  wireBillingActionsOnce();
-  const paid = isBillingPaid();
-  const planLabel = getBillingPlanLabel(plan || (paid ? "base" : ""));
-  const freqNorm = String(freq || "monthly").toLowerCase();
-  const frequencyLabel =
-    freqNorm === "yearly" || freqNorm === "annual" || freqNorm === "year" ? "Yearly" : "Monthly";
-  const todayIso = toISODate(new Date());
-  const trialEnd = start ? addDaysIso(start, BILLING_TRIAL_DAYS) : "";
-  const next = computeNextBillingDate(start, freq);
-  const inTrial = !paid && (!start || !!(trialEnd && trialEnd >= todayIso));
-  if (billingPlanHeadlineEl) billingPlanHeadlineEl.textContent = planLabel === "—" ? "Cash Forecast" : planLabel;
-  billingPlanEl.textContent = planLabel === "—" && paid ? "Cash Forecast" : planLabel;
-  billingFrequencyEl.textContent = frequencyLabel;
-  if (billingPlanContextEl) billingPlanContextEl.textContent = getBillingPlanContext(plan || (paid ? "base" : ""));
-  if (billingNextDateLabelEl) billingNextDateLabelEl.textContent = inTrial ? "Free month ends" : "Next renewal";
+  const phase = String((status && status.phase) || "").toLowerCase();
+  const productName = String((status && status.product_name) || "Cash Forecast");
+  const inTrial = phase === "trial" || !!(status && status.in_app_trial && phase !== "active" && phase !== "past_due");
+  const paid = isBillingSubscribed(status);
+  const expired = phase === "expired";
+  const pastDue = phase === "past_due";
+  const frequencyLabel = frequencyLabelFromLookupKey(status && status.lookup_key);
+  const trialEnd = status && status.trial_ends_on ? String(status.trial_ends_on) : "";
+  const periodEnd = isoDateFromApiTimestamp(status && status.current_period_end);
+  const cancelAtEnd = !!(status && status.cancel_at_period_end);
+
+  if (billingPlanHeadlineEl) billingPlanHeadlineEl.textContent = productName;
+  billingPlanEl.textContent = productName;
+  billingFrequencyEl.textContent = paid || pastDue ? frequencyLabel : inTrial ? "Trial" : frequencyLabel;
+  if (billingPlanContextEl) billingPlanContextEl.textContent = getBillingPlanContext("base");
+
+  if (billingNextDateLabelEl) {
+    billingNextDateLabelEl.textContent = inTrial
+      ? "Free trial ends"
+      : cancelAtEnd
+        ? "Access through"
+        : "Next renewal";
+  }
   billingNextDateEl.textContent = inTrial
     ? trialEnd
       ? formatShortDateLong(trialEnd)
       : "—"
-    : next
-      ? formatShortDateLong(next)
+    : periodEnd
+      ? formatShortDateLong(periodEnd)
       : "—";
+
   if (billingRenewalMessageEl) {
-    billingRenewalMessageEl.textContent = inTrial
-      ? trialEnd
-        ? `Your free month ends ${formatShortDateLong(trialEnd)}.`
-        : "Your free month is active."
-      : next
-        ? `Your next renewal is ${formatShortDateLong(next)}.`
-        : "Renewal dates appear here once billing is active.";
+    if (inTrial) {
+      billingRenewalMessageEl.textContent = trialEnd
+        ? `Your free trial ends ${formatShortDateLong(trialEnd)}.`
+        : "Your free trial is active.";
+    } else if (pastDue) {
+      billingRenewalMessageEl.textContent = "Payment is past due — update your card to keep Cash Forecast.";
+    } else if (expired) {
+      billingRenewalMessageEl.textContent = "Your free trial has ended. Activate a paid plan to continue.";
+    } else if (cancelAtEnd && periodEnd) {
+      billingRenewalMessageEl.textContent = `Your plan stays active through ${formatShortDateLong(periodEnd)}.`;
+    } else if (periodEnd) {
+      billingRenewalMessageEl.textContent = `Your next renewal is ${formatShortDateLong(periodEnd)}.`;
+    } else {
+      billingRenewalMessageEl.textContent = "Renewal dates appear here once billing is active.";
+    }
     billingRenewalMessageEl.classList.toggle("billing-hero__renewal--trial", inTrial);
-    billingRenewalMessageEl.classList.toggle("billing-hero__renewal--paid", paid);
+    billingRenewalMessageEl.classList.toggle("billing-hero__renewal--paid", paid && !pastDue);
   }
+
   const activate = ensureBillingHeroPills();
   if (activate) {
-    // Staging smoke-test CTA — hidden once paid, and not shown on production hosts.
-    const showActivate = isStagingBillingHost() && !paid;
+    const showActivate = !paid;
     activate.hidden = !showActivate;
     activate.setAttribute("aria-hidden", showActivate ? "false" : "true");
   }
+
   if (billingAccountStatusEl) {
-    const statusLabel = paid ? "Active Billing" : inTrial ? "Active Trial" : "Active";
+    let statusLabel = "Active";
+    if (pastDue) statusLabel = "Past due";
+    else if (paid) statusLabel = "Active Billing";
+    else if (inTrial) statusLabel = "Active Trial";
+    else if (expired) statusLabel = "Trial ended";
     billingAccountStatusEl.innerHTML = billingStatusPillHtml(statusLabel);
+  }
+}
+
+async function renderBillingPanel({ force = false } = {}) {
+  if (!billingPlanEl || !billingFrequencyEl || !billingNextDateEl) return;
+  wireBillingActionsOnce();
+  if (!state.activeFamilyId) {
+    applyBillingStatusToPanel(null);
+    if (billingRenewalMessageEl) {
+      billingRenewalMessageEl.textContent = "Choose a family to see plan & billing status.";
+    }
+    return;
+  }
+
+  const cached = cachedBillingStatusForActiveFamily();
+  if (cached) applyBillingStatusToPanel(cached);
+
+  try {
+    const status = await fetchBillingStatus({ force });
+    applyBillingStatusToPanel(status);
+  } catch (err) {
+    if (!cached) {
+      if (billingRenewalMessageEl) {
+        billingRenewalMessageEl.textContent = "Couldn’t load billing status. Try again in a moment.";
+      }
+      if (billingAccountStatusEl) billingAccountStatusEl.textContent = "—";
+    }
+    try {
+      console.warn("[billing-status]", err && err.message ? err.message : err);
+    } catch (_) {}
   }
 }
 
@@ -9022,15 +9131,20 @@ function applyCheckoutReturnFromUrl() {
     const u = new URL(window.location.href);
     const checkout = String(u.searchParams.get("checkout") || "").trim().toLowerCase();
     const section = String(u.searchParams.get("section") || "").trim().toLowerCase();
-    const sessionId = String(u.searchParams.get("session_id") || "").trim();
-    const frequency = String(u.searchParams.get("frequency") || "").trim();
     if (!checkout && !section) return;
 
     if (checkout === "success") {
-      markBillingPaidFromCheckout(sessionId, frequency);
+      invalidateBillingStatusCache();
       try {
-        showBwToast("Payment received — your plan is Active Billing.");
+        showBwToast("Payment received — refreshing your billing status.");
       } catch (_) {}
+      void renderBillingPanel({ force: true }).then(() => {
+        // Webhooks can lag a few seconds; one follow-up refresh.
+        window.setTimeout(() => {
+          invalidateBillingStatusCache();
+          void renderBillingPanel({ force: true });
+        }, 2500);
+      });
     } else if (checkout === "canceled") {
       try {
         showBwToast("Checkout canceled — you can activate a paid plan anytime.");
@@ -9050,6 +9164,7 @@ function applyCheckoutReturnFromUrl() {
     u.searchParams.delete("session_id");
     u.searchParams.delete("section");
     u.searchParams.delete("frequency");
+    u.searchParams.delete("family_id");
     const qs = u.searchParams.toString();
     window.history.replaceState({}, "", `${u.pathname}${qs ? `?${qs}` : ""}${u.hash}`);
   } catch (_) {}

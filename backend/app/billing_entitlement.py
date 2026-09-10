@@ -114,7 +114,13 @@ def price_id_from_subscription(sub: Any) -> Optional[str]:
     return str(pid) if pid else None
 
 
-def build_billing_status(*, family, subscription=None, now: Optional[datetime] = None) -> dict[str, Any]:
+def build_billing_status(
+    *,
+    family,
+    subscription=None,
+    has_stripe_customer: bool = False,
+    now: Optional[datetime] = None,
+) -> dict[str, Any]:
     """Compute entitlement payload for the Billing UI / future paywall."""
     n = now or _utc_now()
     created = getattr(family, "created_at", None)
@@ -140,7 +146,8 @@ def build_billing_status(*, family, subscription=None, now: Optional[datetime] =
     period_end = getattr(subscription, "current_period_end", None) if subscription else None
     cancel_at_period_end = bool(getattr(subscription, "cancel_at_period_end", False)) if subscription else False
     lookup_key = getattr(subscription, "lookup_key", None) if subscription else None
-    portal_available = bool(subscription and getattr(subscription, "billing_customer_id", None))
+    linked_customer = bool(subscription and getattr(subscription, "billing_customer_id", None))
+    portal_available = bool(linked_customer or (has_stripe_customer and sub_entitled))
 
     return {
         "product_code": PRODUCT_CODE,

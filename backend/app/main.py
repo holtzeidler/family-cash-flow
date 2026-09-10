@@ -4017,7 +4017,14 @@ def family_billing_status(
     sub = db.execute(
         select(BillingSubscription).where(BillingSubscription.family_id == family_id)
     ).scalar_one_or_none()
-    payload = build_billing_status(family=fam, subscription=sub)
+    has_customer = db.execute(
+        select(BillingCustomer.id).where(BillingCustomer.user_id == user_id)
+    ).scalar_one_or_none() is not None
+    payload = build_billing_status(
+        family=fam,
+        subscription=sub,
+        has_stripe_customer=bool(has_customer),
+    )
     return BillingStatusOut(**payload)
 
 
