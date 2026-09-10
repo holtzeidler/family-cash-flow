@@ -400,6 +400,50 @@ class FamilyMember(Base):
     user: Mapped[User] = relationship(back_populates="memberships")
 
 
+class BillingCustomer(Base):
+    """Stripe Customer linked to a BalanceWhiz user (usually the family owner)."""
+
+    __tablename__ = "billing_customers"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
+    stripe_customer_id: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
+
+
+class BillingSubscription(Base):
+    """Cash Forecast subscription entitlement for a family (server source of truth)."""
+
+    __tablename__ = "billing_subscriptions"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    family_id: Mapped[int] = mapped_column(ForeignKey("families.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
+    billing_customer_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("billing_customers.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    stripe_subscription_id: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
+    status: Mapped[str] = mapped_column(String(40), nullable=False, default="incomplete", index=True)
+    lookup_key: Mapped[Optional[str]] = mapped_column(String(80), nullable=True, index=True)
+    stripe_price_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    current_period_end: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    cancel_at_period_end: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    trial_end: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
+
+
+class StripeWebhookEvent(Base):
+    """Idempotency log for processed Stripe webhook events."""
+
+    __tablename__ = "stripe_webhook_events"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    event_id: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
+    event_type: Mapped[str] = mapped_column(String(120), nullable=False, index=True)
+    processed_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+
+
 class PlatformAdminAuditLog(Base):
     """Operator actions on user accounts (platform admin console)."""
 
@@ -1374,6 +1418,22 @@ class FamilyForecastThresholdsPatch(BaseModel):
     balance_threshold_max: Optional[float] = None
 
 
+class BillingStatusOut(BaseModel):
+    product_code: str
+    product_name: str
+    entitled: bool
+    phase: str
+    trial_days: int
+    trial_ends_on: Optional[str] = None
+    in_app_trial: bool = False
+    status: str
+    lookup_key: Optional[str] = None
+    current_period_end: Optional[str] = None
+    cancel_at_period_end: bool = False
+    portal_available: bool = False
+    stripe_subscription_id: Optional[str] = None
+
+
 class FamilyMemberOut(BaseModel):
     user_id: int
     email: EmailStr
@@ -2091,7 +2151,7 @@ app = FastAPI(title="BalanceWhiz")
 from .stripe_billing import register_stripe_routes  # noqa: E402
 from .billing_catalog import PRODUCT_CODE, TRIAL_DAYS  # noqa: E402
 
-register_stripe_routes(app, settings, logger)
+register_stripe_routes(app, settings, logger, session_factory=SessionLocal)
 
 if settings.CORS_ORIGINS:
     origins = _parse_cors_origins(settings.CORS_ORIGINS)
@@ -2658,7 +2718,154 @@ def startup_populate_schema():
     _ensure_platform_admin_audit_table()
     _ensure_reimbursements_table()
     _ensure_vendor_category_mappings_table()
+    _ensure_billing_tables()
     _sync_legacy_platform_admin_roles()
+
+
+def _ensure_billing_tables() -> None:
+    """Create billing_customers, billing_subscriptions, stripe_webhook_events if missing."""
+    with engine.begin() as conn:
+        if settings.DATABASE_URL.startswith("sqlite"):
+            conn.execute(
+                text(
+                    "CREATE TABLE IF NOT EXISTS billing_customers ("
+                    "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                    "user_id INTEGER NOT NULL UNIQUE, "
+                    "stripe_customer_id VARCHAR(255) NOT NULL UNIQUE, "
+                    "created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "
+                    "updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "
+                    "FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE"
+                    ")"
+                )
+            )
+            conn.execute(
+                text("CREATE INDEX IF NOT EXISTS ix_billing_customers_user_id ON billing_customers (user_id)")
+            )
+            conn.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS ix_billing_customers_stripe_customer_id "
+                    "ON billing_customers (stripe_customer_id)"
+                )
+            )
+            conn.execute(
+                text(
+                    "CREATE TABLE IF NOT EXISTS billing_subscriptions ("
+                    "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                    "family_id INTEGER NOT NULL UNIQUE, "
+                    "billing_customer_id INTEGER, "
+                    "stripe_subscription_id VARCHAR(255) NOT NULL UNIQUE, "
+                    "status VARCHAR(40) NOT NULL DEFAULT 'incomplete', "
+                    "lookup_key VARCHAR(80), "
+                    "stripe_price_id VARCHAR(255), "
+                    "current_period_end DATETIME, "
+                    "cancel_at_period_end BOOLEAN NOT NULL DEFAULT 0, "
+                    "trial_end DATETIME, "
+                    "created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "
+                    "updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "
+                    "FOREIGN KEY(family_id) REFERENCES families(id) ON DELETE CASCADE, "
+                    "FOREIGN KEY(billing_customer_id) REFERENCES billing_customers(id) ON DELETE SET NULL"
+                    ")"
+                )
+            )
+            conn.execute(
+                text("CREATE INDEX IF NOT EXISTS ix_billing_subscriptions_family_id ON billing_subscriptions (family_id)")
+            )
+            conn.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS ix_billing_subscriptions_stripe_subscription_id "
+                    "ON billing_subscriptions (stripe_subscription_id)"
+                )
+            )
+            conn.execute(
+                text("CREATE INDEX IF NOT EXISTS ix_billing_subscriptions_status ON billing_subscriptions (status)")
+            )
+            conn.execute(
+                text(
+                    "CREATE TABLE IF NOT EXISTS stripe_webhook_events ("
+                    "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                    "event_id VARCHAR(255) NOT NULL UNIQUE, "
+                    "event_type VARCHAR(120) NOT NULL, "
+                    "processed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP"
+                    ")"
+                )
+            )
+            conn.execute(
+                text("CREATE INDEX IF NOT EXISTS ix_stripe_webhook_events_event_id ON stripe_webhook_events (event_id)")
+            )
+            conn.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS ix_stripe_webhook_events_event_type ON stripe_webhook_events (event_type)"
+                )
+            )
+        else:
+            conn.execute(
+                text(
+                    "CREATE TABLE IF NOT EXISTS billing_customers ("
+                    "id SERIAL PRIMARY KEY, "
+                    "user_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE, "
+                    "stripe_customer_id VARCHAR(255) NOT NULL UNIQUE, "
+                    "created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW(), "
+                    "updated_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW()"
+                    ")"
+                )
+            )
+            conn.execute(
+                text("CREATE INDEX IF NOT EXISTS ix_billing_customers_user_id ON billing_customers (user_id)")
+            )
+            conn.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS ix_billing_customers_stripe_customer_id "
+                    "ON billing_customers (stripe_customer_id)"
+                )
+            )
+            conn.execute(
+                text(
+                    "CREATE TABLE IF NOT EXISTS billing_subscriptions ("
+                    "id SERIAL PRIMARY KEY, "
+                    "family_id INTEGER NOT NULL UNIQUE REFERENCES families(id) ON DELETE CASCADE, "
+                    "billing_customer_id INTEGER REFERENCES billing_customers(id) ON DELETE SET NULL, "
+                    "stripe_subscription_id VARCHAR(255) NOT NULL UNIQUE, "
+                    "status VARCHAR(40) NOT NULL DEFAULT 'incomplete', "
+                    "lookup_key VARCHAR(80), "
+                    "stripe_price_id VARCHAR(255), "
+                    "current_period_end TIMESTAMP WITHOUT TIME ZONE, "
+                    "cancel_at_period_end BOOLEAN NOT NULL DEFAULT FALSE, "
+                    "trial_end TIMESTAMP WITHOUT TIME ZONE, "
+                    "created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW(), "
+                    "updated_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW()"
+                    ")"
+                )
+            )
+            conn.execute(
+                text("CREATE INDEX IF NOT EXISTS ix_billing_subscriptions_family_id ON billing_subscriptions (family_id)")
+            )
+            conn.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS ix_billing_subscriptions_stripe_subscription_id "
+                    "ON billing_subscriptions (stripe_subscription_id)"
+                )
+            )
+            conn.execute(
+                text("CREATE INDEX IF NOT EXISTS ix_billing_subscriptions_status ON billing_subscriptions (status)")
+            )
+            conn.execute(
+                text(
+                    "CREATE TABLE IF NOT EXISTS stripe_webhook_events ("
+                    "id SERIAL PRIMARY KEY, "
+                    "event_id VARCHAR(255) NOT NULL UNIQUE, "
+                    "event_type VARCHAR(120) NOT NULL, "
+                    "processed_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW()"
+                    ")"
+                )
+            )
+            conn.execute(
+                text("CREATE INDEX IF NOT EXISTS ix_stripe_webhook_events_event_id ON stripe_webhook_events (event_id)")
+            )
+            conn.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS ix_stripe_webhook_events_event_type ON stripe_webhook_events (event_type)"
+                )
+            )
 
 
 def _ensure_transaction_color_columns() -> None:
@@ -3791,6 +3998,27 @@ def list_families(access_token: Optional[str] = Depends(_read_access_token_from_
         )
         for row in rows
     ]
+
+
+@app.get("/api/families/{family_id}/billing-status", response_model=BillingStatusOut)
+def family_billing_status(
+    family_id: int,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
+    db=Depends(get_db),
+):
+    """Server entitlement for Cash Forecast (app trial + Stripe subscription)."""
+    from .billing_entitlement import build_billing_status
+
+    user_id = get_current_user_id(access_token)
+    require_family_member(db=db, family_id=family_id, user_id=user_id)
+    fam = db.get(Family, family_id)
+    if fam is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Family not found")
+    sub = db.execute(
+        select(BillingSubscription).where(BillingSubscription.family_id == family_id)
+    ).scalar_one_or_none()
+    payload = build_billing_status(family=fam, subscription=sub)
+    return BillingStatusOut(**payload)
 
 
 @app.patch("/api/families/{family_id}/forecast-thresholds", response_model=FamilyOut)

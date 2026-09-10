@@ -30,7 +30,12 @@ from .billing_catalog import (
 )
 
 
-def register_stripe_routes(app: FastAPI, settings: Any, logger: logging.Logger) -> None:
+def register_stripe_routes(
+    app: FastAPI,
+    settings: Any,
+    logger: logging.Logger,
+    session_factory: Any = None,
+) -> None:
     def _stripe_secret() -> str:
         return (getattr(settings, "STRIPE_SECRET_KEY", None) or "").strip()
 
@@ -225,6 +230,7 @@ def register_stripe_routes(app: FastAPI, settings: Any, logger: logging.Logger) 
         """
         Stripe webhook endpoint. Set STRIPE_WEBHOOK_SECRET from the Dashboard or
         `stripe listen --forward-to .../webhook`.
+        Persists entitlement into billing_* tables (idempotent by event id).
         """
         _require_stripe()
         payload = await request.body()
@@ -256,20 +262,21 @@ def register_stripe_routes(app: FastAPI, settings: Any, logger: logging.Logger) 
 
         event_type = event["type"] if isinstance(event, dict) else getattr(event, "type", None)
         event_id = event.get("id") if isinstance(event, dict) else getattr(event, "id", None)
+        logger.info("Stripe webhook received: %s (%s)", event_type, event_id)
 
-        if event_type == "customer.subscription.deleted":
-            logger.info("Subscription canceled: %s", event_id)
-        elif event_type == "customer.subscription.updated":
-            logger.info("Subscription updated: %s", event_id)
-        elif event_type == "customer.subscription.created":
-            logger.info("Subscription created: %s", event_id)
-        elif event_type == "customer.subscription.trial_will_end":
-            logger.info("Subscription trial will end: %s", event_id)
-        elif event_type == "checkout.session.completed":
-            logger.info("Checkout session completed: %s", event_id)
-        elif event_type == "entitlements.active_entitlement_summary.updated":
-            logger.info("Active entitlement summary updated: %s", event_id)
-        else:
-            logger.info("Unhandled Stripe event type: %s (%s)", event_type, event_id)
+        if session_factory is None:
+            logger.error("Stripe webhook: session_factory not configured; skipping DB persistence")
+            return JSONResponse({"status": "success", "persisted": False})
 
-        return JSONResponse({"status": "success"})
+        from .billing_entitlement import handle_stripe_event
+
+        try:
+            with session_factory() as db:
+                handle_stripe_event(db, event, logger)
+                db.commit()
+        except Exception:
+            logger.exception("Stripe webhook DB persistence failed for %s", event_id)
+            # Return 500 so Stripe retries; signature was valid.
+            return JSONResponse(status_code=500, content={"error": "Webhook persistence failed"})
+
+        return JSONResponse({"status": "success", "persisted": True})
