@@ -11840,7 +11840,7 @@ label{
   width: 100%;
   box-sizing: border-box;
   margin: 0;
-  padding: 8px 10px;
+  padding: 10px 12px;
   border-radius: 8px;
   border: 1px solid rgba(17, 24, 39, 0.06);
   background: rgba(248, 250, 252, 0.9);
@@ -11848,6 +11848,30 @@ label{
   font-weight: 500;
   line-height: 1.45;
   color: rgba(71, 85, 105, 0.88);
+}
+.billing-callout__content{
+  min-width: 0;
+  flex: 1;
+}
+.billing-callout__title{
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  line-height: 1.35;
+  color: rgba(15, 23, 42, 0.92);
+}
+.billing-callout__title[hidden]{
+  display: none !important;
+}
+.billing-callout__text{
+  margin: 4px 0 0;
+  font-size: 0.78rem;
+  font-weight: 500;
+  line-height: 1.45;
+  color: rgba(71, 85, 105, 0.88);
+}
+.billing-callout__text[hidden]{
+  display: none !important;
 }
 .billing-callout::before{
   content: "i";
@@ -11857,7 +11881,7 @@ label{
   justify-content: center;
   width: 1.05em;
   height: 1.05em;
-  margin-top: 1px;
+  margin-top: 2px;
   border-radius: 999px;
   border: 1px solid rgba(100, 116, 139, 0.35);
   font-size: 0.68em;
@@ -11874,14 +11898,42 @@ label{
   background: rgba(254, 242, 242, 0.5);
   color: rgba(127, 45, 52, 0.9);
 }
+.billing-callout--alert .billing-callout__title{
+  color: rgba(127, 29, 40, 0.95);
+}
+.billing-callout--alert .billing-callout__text{
+  color: rgba(127, 45, 52, 0.88);
+}
 .billing-callout--alert::before{
   content: "!";
   border-color: rgba(185, 75, 85, 0.35);
   color: rgba(153, 50, 58, 0.85);
 }
+.billing-callout--warning{
+  border-color: rgba(234, 88, 12, 0.22);
+  background: rgba(255, 247, 237, 0.72);
+  color: rgba(146, 64, 14, 0.9);
+}
+.billing-callout--warning .billing-callout__title{
+  color: rgba(146, 64, 14, 0.96);
+}
+.billing-callout--warning .billing-callout__text{
+  color: rgba(154, 78, 28, 0.9);
+}
+.billing-callout--warning::before{
+  content: "!";
+  border-color: rgba(234, 88, 12, 0.35);
+  color: rgba(194, 65, 12, 0.9);
+}
 .billing-callout--trial{
   border-color: rgba(34, 197, 94, 0.12);
   background: rgba(240, 253, 244, 0.45);
+  color: rgba(21, 65, 48, 0.82);
+}
+.billing-callout--trial .billing-callout__title{
+  color: rgba(21, 65, 48, 0.95);
+}
+.billing-callout--trial .billing-callout__text{
   color: rgba(21, 65, 48, 0.82);
 }
 .billing-callout[hidden]{
@@ -12014,8 +12066,10 @@ label{
   background: rgba(255, 247, 237, 0.95);
   border: 1px solid rgba(234, 88, 12, 0.28);
 }
-.billing-status-pill--warning .billing-status-pill__icon{
-  content: "";
+.billing-status-pill--muted{
+  color: rgba(71, 85, 105, 0.92);
+  background: rgba(248, 250, 252, 0.98);
+  border: 1px solid rgba(148, 163, 184, 0.35);
 }
 .billing-status-pill__icon{
   font-size: 0.82em;

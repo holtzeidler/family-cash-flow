@@ -35,7 +35,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=734" />
+    <link rel="stylesheet" href="../styles.css?v=735" />
   </head>
   <body>
     <h1 class="sr-only">Forecast calendar</h1>
@@ -827,32 +827,35 @@
                             <div class="billing-hero__eyebrow">Current access</div>
                             <div class="billing-hero__title" id="billingPlanHeadline">Cash Forecast</div>
                             <p class="billing-hero__copy" id="billingPlanContext">Forecast, reports, and recurring cash planning.</p>
-                            <div class="billing-summary">
-                              <p
+                            <div class="billing-summary" id="billingLifecycleBlock">
+                              <div
                                 class="billing-callout"
                                 id="billingRenewalMessage"
-                                data-billing-dev-callout
+                                hidden
                                 role="status"
                               >
-                                Renewal dates appear here once billing is active.
-                              </p>
+                                <div class="billing-callout__content">
+                                  <p class="billing-callout__title" id="billingCalloutTitle"></p>
+                                  <p class="billing-callout__text" id="billingCalloutText"></p>
+                                </div>
+                              </div>
                               <a
-                                id="billingActivatePaidPlan"
+                                id="billingPrimaryCta"
                                 class="billing-hero__activate"
                                 href="/checkout/"
                                 hidden
                                 aria-hidden="true"
-                              >Activate Paid Plan</a>
+                              >Subscribe for $5.99/month</a>
                             </div>
                           </div>
 
-                          <dl class="billing-meta" aria-label="Subscription details">
+                          <dl class="billing-meta" id="billingMeta" aria-label="Subscription details" hidden>
                             <div class="billing-meta__pair">
                               <dt class="billing-meta__term">Plan</dt>
                               <dd class="billing-meta__def" id="billingPlan">—</dd>
                             </div>
                             <div class="billing-meta__pair">
-                              <dt class="billing-meta__term">Price</dt>
+                              <dt class="billing-meta__term" id="billingPriceLabel">Price</dt>
                               <dd class="billing-meta__def" id="billingFrequency">—</dd>
                             </div>
                             <div class="billing-meta__pair">
@@ -865,9 +868,9 @@
                             </div>
                           </dl>
 
-                          <div class="billing-actions" aria-labelledby="billingManageHeading">
+                          <div class="billing-actions" id="billingManageSection" aria-labelledby="billingManageHeading" hidden>
                             <h3 class="billing-actions__title" id="billingManageHeading">Manage subscription</h3>
-                            <p class="billing-actions__hint">
+                            <p class="billing-actions__hint" id="billingManageHint">
                               Update your payment method, view invoices, or manage your subscription through Stripe.
                             </p>
                             <div class="billing-actions__primary">
@@ -880,9 +883,9 @@
                               <span class="billing-actions__sep" aria-hidden="true">·</span>
                               <button type="button" class="billing-action-link" data-billing-action="invoices">View invoices</button>
                             </div>
-                            <div class="billing-cancel" aria-labelledby="billingCancelTitle">
+                            <div class="billing-cancel" id="billingCancelSection" aria-labelledby="billingCancelTitle">
                               <h4 class="billing-cancel__title" id="billingCancelTitle">Cancellation</h4>
-                              <p class="billing-cancel__lede">You can cancel your subscription at any time.</p>
+                              <p class="billing-cancel__lede" id="billingCancelLede">You can cancel your subscription at any time.</p>
                               <button type="button" class="billing-cancel__request" data-billing-action="cancel">
                                 Cancel subscription
                               </button>
@@ -1950,7 +1953,7 @@ Date,Vendor,Amount
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="../app.js?v=424"></script>
+    <script src="../app.js?v=425"></script>
     <script src="../feedback.js?v=5" defer></script>
     <script src="../tour.js?v=10" defer></script>
   </body>
