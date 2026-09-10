@@ -4814,7 +4814,7 @@ body.landing-page .landing-preview__demo:hover{
     margin-left: 0;
     margin-right: 0;
     white-space: normal;
-    text-wrap: balance;
+    text-wrap: pretty;
     overflow-wrap: anywhere;
     text-align: center;
   }
@@ -28796,14 +28796,14 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
     margin-left: 0;
     margin-right: 0;
     white-space: normal;
-    text-wrap: balance;
+    text-wrap: pretty;
     overflow-wrap: anywhere;
     text-align: center;
   }
 
   body.landing-page .landing-hero__text{
-    font-size: calc(clamp(1.52rem, 6.8vw, 1.72rem) * var(--hero-text-scale, 0.95));
-    line-height: 1.08;
+    font-size: calc(clamp(1.32rem, 6.1vw, 1.5rem) * var(--hero-text-scale, 0.95));
+    line-height: 1.12;
   }
 
   body.landing-page .landing-hero__sub{
@@ -29082,6 +29082,7 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   body.login-page:not(.signup-page):not(.invite-page) .login-page__brand-sub,
   body.login-page:not(.signup-page) .login-page__signup-prompt,
   body.login-page:not(.signup-page) .login-page__reassure-item,
+  body.login-page:not(.signup-page) .login-page__signup-cta,
   .plans-hero__title,
   .plans-hero__subtitle,
   .help-center__lede,
@@ -29099,6 +29100,22 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
 
   .help-center__meta{
     text-align: left;
+  }
+
+  .plans-hero__title{
+    font-size: clamp(1.32rem, 5.6vw, 1.6rem);
+    text-wrap: pretty;
+    padding: 0 0.15rem;
+  }
+
+  body.login-page:not(.signup-page) .login-page__signup-prompt{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.15rem;
+  }
+  body.login-page:not(.signup-page) .login-page__signup-cta{
+    margin-left: 0;
   }
 
   /* iOS Safari zooms the page when a focused field is under 16px. */
@@ -29165,6 +29182,10 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   .top-nav__tab{
     padding: 7px 10px;
     font-size: 0.84rem;
+  }
+
+  body.landing-page .landing-hero__text{
+    font-size: calc(clamp(1.28rem, 6vw, 1.42rem) * var(--hero-text-scale, 0.95));
   }
 
   body.landing-page .landing-main{
