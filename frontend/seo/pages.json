@@ -7,7 +7,7 @@
   "pages": {
     "index.html": {
       "title": "BalanceWhiz — Checking Balance Forecast & Cash Flow Calendar",
-      "description": "See your projected checking balance before bills and paychecks land. No bank connection required—built for families who want cash flow clarity without complicated budgeting.",
+      "description": "See your projected checking balance before bills and paychecks land. No bank connection required—cash flow clarity without complicated budgeting.",
       "canonicalPath": "/",
       "index": true,
       "ogType": "website"
