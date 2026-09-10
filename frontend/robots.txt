@@ -19,5 +19,7 @@ Disallow: /account-setup/
 Disallow: /invite/
 Disallow: /signup/
 Disallow: /login/
+Disallow: /login.html
+Disallow: /checkout/
 
 Sitemap: https://balancewhiz.com/sitemap.xml
