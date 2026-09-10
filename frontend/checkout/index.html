@@ -32,7 +32,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=730" />
+    <link rel="stylesheet" href="../styles.css?v=732" />
   </head>
   <body class="checkout-page plans-page plans-page--polished">
     <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -134,11 +134,14 @@
               <input type="hidden" id="lookupKey" name="lookup_key" value="cash_forecast_monthly" />
               <input type="hidden" id="familyId" name="family_id" value="" />
               <p id="checkoutFamilyHint" class="checkout-form__family-hint" hidden></p>
-              <p id="checkoutErr" class="error" hidden role="alert"></p>
-              <button id="checkout-and-portal-button" class="plan-cta plan-cta--primary checkout-form__submit" type="submit">
+              <p id="checkoutStatus" class="checkout-form__status" role="status" aria-live="polite">Preparing checkout…</p>
+              <p id="checkoutErr" class="error checkout-form__error" hidden role="alert"></p>
+              <button id="checkout-and-portal-button" class="plan-cta plan-cta--primary checkout-form__submit" type="button" aria-disabled="true">
                 Checkout
               </button>
-              <p class="checkout-form__reassurance">You’ll complete payment securely on Stripe. Sign in as the family owner to subscribe.</p>
+              <p class="checkout-form__reassurance" id="checkoutReassure">
+                You’ll complete payment securely on Stripe. Family owners can subscribe for their household.
+              </p>
             </form>
           </section>
         </section>
@@ -179,13 +182,20 @@
       (function () {
         var TOKEN_KEY = "bw_api_access_token";
         var FREQ_KEY = "bw_billing_frequency";
+        var FETCH_MS = 14000;
         var form = document.getElementById("checkoutForm");
         var errEl = document.getElementById("checkoutErr");
+        var statusEl = document.getElementById("checkoutStatus");
         var familyHint = document.getElementById("checkoutFamilyHint");
         var familyInput = document.getElementById("familyId");
         var btn = document.getElementById("checkout-and-portal-button");
+        var reassureEl = document.getElementById("checkoutReassure");
         var cta = document.getElementById("checkoutNavCta");
         var billingLink = document.getElementById("checkoutNavBilling");
+        var checkoutReady = false;
+        var blockReason = "Preparing checkout…";
+        var submitting = false;
+        var defaultBtnLabel = btn ? btn.textContent : "Checkout";
 
         function accessToken() {
           try {
@@ -193,10 +203,6 @@
           } catch (_) {
             return "";
           }
-        }
-
-        function hasSession() {
-          return !!accessToken();
         }
 
         function authHeaders() {
@@ -211,48 +217,145 @@
           return "/login.html?next=" + encodeURIComponent(next);
         }
 
-        if (!hasSession()) {
-          if (cta) {
-            cta.textContent = "Login";
-            cta.href = loginUrl();
+        function formatDetail(detail) {
+          if (detail == null || detail === "") return "";
+          if (typeof detail === "string") return detail;
+          if (Array.isArray(detail)) {
+            return detail
+              .map(function (item) {
+                if (!item) return "";
+                if (typeof item === "string") return item;
+                return item.msg || item.message || JSON.stringify(item);
+              })
+              .filter(Boolean)
+              .join(" ");
           }
-          if (billingLink) billingLink.hidden = true;
-        } else {
+          if (typeof detail === "object" && detail.message) return String(detail.message);
+          try {
+            return JSON.stringify(detail);
+          } catch (_) {
+            return String(detail);
+          }
+        }
+
+        function setStatus(msg, isError) {
+          if (statusEl) {
+            if (isError || !msg) {
+              statusEl.hidden = true;
+              statusEl.textContent = "";
+            } else {
+              statusEl.hidden = false;
+              statusEl.textContent = msg;
+            }
+          }
+          if (errEl) {
+            if (isError && msg) {
+              errEl.hidden = false;
+              errEl.textContent = msg;
+            } else {
+              errEl.hidden = true;
+              errEl.textContent = "";
+            }
+          }
+        }
+
+        function setBlocked(reason, opts) {
+          opts = opts || {};
+          checkoutReady = false;
+          blockReason = reason || "Checkout isn’t ready yet.";
+          if (btn) {
+            btn.disabled = false; // keep clickable so we can explain why
+            btn.setAttribute("aria-disabled", "true");
+            btn.classList.add("checkout-form__submit--blocked");
+            if (opts.buttonLabel) btn.textContent = opts.buttonLabel;
+            else if (!submitting) btn.textContent = defaultBtnLabel;
+          }
+          setStatus(blockReason, !!opts.asError);
+        }
+
+        function setReady(familyLabel) {
+          checkoutReady = true;
+          blockReason = "";
+          if (btn) {
+            btn.disabled = false;
+            btn.removeAttribute("aria-disabled");
+            btn.classList.remove("checkout-form__submit--blocked");
+            btn.textContent = defaultBtnLabel;
+          }
+          setStatus(familyLabel ? "Ready to checkout for " + familyLabel + "." : "Ready to checkout.", false);
+          if (reassureEl) {
+            reassureEl.textContent = "You’ll complete payment securely on Stripe.";
+          }
+        }
+
+        function fetchJson(url, options) {
+          options = options || {};
+          var ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+          var timer = 0;
+          if (ctrl) {
+            timer = window.setTimeout(function () {
+              try {
+                ctrl.abort();
+              } catch (_) {}
+            }, FETCH_MS);
+          }
+          return fetch(url, ctrl ? Object.assign({}, options, { signal: ctrl.signal }) : options)
+            .then(function (res) {
+              return res
+                .json()
+                .then(function (data) {
+                  return { ok: res.ok, status: res.status, data: data };
+                })
+                .catch(function () {
+                  return { ok: res.ok, status: res.status, data: {} };
+                });
+            })
+            .finally(function () {
+              if (timer) window.clearTimeout(timer);
+            })
+            .catch(function (err) {
+              var aborted = err && (err.name === "AbortError" || /abort/i.test(String(err)));
+              throw new Error(
+                aborted
+                  ? "Checkout timed out talking to the API. Wait a few seconds and refresh — the staging API may be waking up."
+                  : err && err.message
+                    ? err.message
+                    : "Network error talking to the API."
+              );
+            });
+        }
+
+        if (accessToken()) {
           if (cta) {
             cta.textContent = "Open calendar";
             cta.href = "/calendar/";
           }
           if (billingLink) billingLink.hidden = false;
+        } else {
+          if (cta) {
+            cta.textContent = "Login";
+            cta.href = loginUrl();
+          }
+          if (billingLink) billingLink.hidden = true;
         }
 
-        if (!form) return;
+        if (!form || !btn) return;
+
         // Do not check for the literal "__API_BASE__" here — the static build
         // replaces that token everywhere in HTML, including this script.
         var api = String(window.API_BASE || "").replace(/\/$/, "");
         if (!api || api.indexOf("://") === -1) {
-          if (errEl) {
-            errEl.hidden = false;
-            errEl.textContent = "Checkout is not configured (missing API_BASE).";
-          }
-          if (btn) btn.disabled = true;
+          setBlocked("Checkout is not configured (missing API_BASE on this site build).", {
+            asError: true,
+            buttonLabel: "Checkout unavailable",
+          });
+          btn.addEventListener("click", function (e) {
+            e.preventDefault();
+            setBlocked(blockReason, { asError: true, buttonLabel: "Checkout unavailable" });
+          });
           return;
         }
         form.action = api + "/create-checkout-session";
-
-        if (!hasSession()) {
-          if (errEl) {
-            errEl.hidden = false;
-            errEl.textContent = "Sign in as the family owner to start checkout.";
-          }
-          if (btn) {
-            btn.textContent = "Sign in to checkout";
-            btn.addEventListener("click", function (e) {
-              e.preventDefault();
-              window.location.assign(loginUrl());
-            });
-          }
-          return;
-        }
 
         var lookupInput = document.getElementById("lookupKey");
         var priceEl = document.getElementById("checkoutSelectedPrice");
@@ -288,95 +391,43 @@
           var owned = list.filter(function (f) {
             return !!f.is_family_owner;
           });
-          if (owned.length === 1) return owned[0];
-          if (owned.length > 1) return owned[0];
+          if (owned.length) return owned[0];
           return list[0] || null;
         }
 
         function setFamilyReady(fam) {
           if (!fam || !familyInput) return false;
           familyInput.value = String(fam.id);
+          var label = fam.name || "Family #" + fam.id;
           if (familyHint) {
             familyHint.hidden = false;
-            familyHint.textContent = "Subscribing for: " + (fam.name || "Family #" + fam.id);
+            familyHint.textContent = "Subscribing for: " + label;
           }
-          return true;
+          return label;
         }
 
-        if (btn) btn.disabled = true;
-        fetch(api + "/api/families", {
-          method: "GET",
-          credentials: "include",
-          headers: authHeaders(),
-        })
-          .then(function (res) {
-            if (res.status === 401) {
-              window.location.assign(loginUrl());
-              return null;
-            }
-            return res.json().then(function (data) {
-              return { ok: res.ok, status: res.status, data: data };
-            });
-          })
-          .then(function (result) {
-            if (!result) return;
-            if (!result.ok) {
-              throw new Error(
-                (result.data && result.data.detail) ||
-                  "Could not load your families (" + result.status + ")."
-              );
-            }
-            var fam = pickOwnedFamily(result.data);
-            if (!fam) {
-              throw new Error("Create a family before checking out.");
-            }
-            if (!fam.is_family_owner) {
-              throw new Error("Only the family owner can start a Cash Forecast subscription.");
-            }
-            setFamilyReady(fam);
-            if (btn) btn.disabled = false;
-          })
-          .catch(function (err) {
-            if (errEl) {
-              errEl.hidden = false;
-              errEl.textContent = err && err.message ? err.message : String(err);
-            }
-            if (btn) btn.disabled = true;
-          });
-
-        form.addEventListener("submit", function (e) {
-          e.preventDefault();
-          if (!btn || btn.disabled) return;
+        function startCheckout() {
+          if (submitting) return;
           syncBilling();
           if (!familyInput || !String(familyInput.value || "").trim()) {
-            if (errEl) {
-              errEl.hidden = false;
-              errEl.textContent = "Missing family for checkout.";
-            }
+            setBlocked("Missing family for checkout. Refresh the page or open Checkout from Settings → Billing.", {
+              asError: true,
+            });
             return;
           }
-          if (errEl) {
-            errEl.hidden = true;
-            errEl.textContent = "";
-          }
-          btn.disabled = true;
-          var prev = btn.textContent;
+          submitting = true;
+          btn.classList.remove("checkout-form__submit--blocked");
+          btn.setAttribute("aria-disabled", "true");
           btn.textContent = "Redirecting to Stripe…";
+          setStatus("Creating your secure Stripe Checkout session…", false);
 
           var body = new FormData(form);
-          fetch(form.action, {
+          fetchJson(form.action, {
             method: "POST",
             body: body,
             credentials: "include",
             headers: authHeaders(),
           })
-            .then(function (res) {
-              return res.json().then(function (data) {
-                return { ok: res.ok, status: res.status, data: data };
-              }).catch(function () {
-                return { ok: res.ok, status: res.status, data: {} };
-              });
-            })
             .then(function (result) {
               var url = result.data && result.data.url;
               if (result.ok && url) {
@@ -384,24 +435,102 @@
                 return;
               }
               if (result.status === 401) {
-                window.location.assign(loginUrl());
+                setBlocked("Your session expired. Sign in as the family owner, then try Checkout again.", {
+                  asError: true,
+                  buttonLabel: "Sign in to checkout",
+                });
+                submitting = false;
                 return;
+              }
+              if (result.status === 503) {
+                var detail503 = formatDetail(result.data && result.data.detail);
+                throw new Error(
+                  detail503 ||
+                    "Billing isn’t fully configured on the server yet (Stripe keys or public URL)."
+                );
               }
               var msg =
                 (result.data && result.data.error && result.data.error.message) ||
-                (result.data && result.data.detail) ||
+                formatDetail(result.data && result.data.detail) ||
                 "Checkout failed (" + result.status + ").";
               throw new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
             })
             .catch(function (err) {
-              if (errEl) {
-                errEl.hidden = false;
-                errEl.textContent = err && err.message ? err.message : String(err);
+              submitting = false;
+              checkoutReady = true;
+              if (btn) {
+                btn.removeAttribute("aria-disabled");
+                btn.classList.remove("checkout-form__submit--blocked");
+                btn.textContent = defaultBtnLabel;
               }
-              btn.disabled = false;
-              btn.textContent = prev;
+              setStatus(err && err.message ? err.message : String(err), true);
             });
-        });
+        }
+
+        function onCheckoutClick(e) {
+          e.preventDefault();
+          if (submitting) return;
+          if (btn.getAttribute("data-checkout-action") === "login") {
+            window.location.assign(loginUrl());
+            return;
+          }
+          if (!checkoutReady) {
+            setBlocked(blockReason || "Checkout isn’t ready yet.", { asError: true });
+            return;
+          }
+          startCheckout();
+        }
+
+        btn.addEventListener("click", onCheckoutClick);
+        form.addEventListener("submit", onCheckoutClick);
+
+        setBlocked("Loading your family for checkout…", { buttonLabel: "Preparing…" });
+
+        fetchJson(api + "/api/families", {
+          method: "GET",
+          credentials: "include",
+          headers: authHeaders(),
+        })
+          .then(function (result) {
+            if (result.status === 401) {
+              btn.setAttribute("data-checkout-action", "login");
+              setBlocked("Sign in as the family owner to start checkout.", {
+                asError: true,
+                buttonLabel: "Sign in to checkout",
+              });
+              return;
+            }
+            if (!result.ok) {
+              throw new Error(
+                formatDetail(result.data && result.data.detail) ||
+                  "Could not load your families (" + result.status + ")."
+              );
+            }
+            var fam = pickOwnedFamily(result.data);
+            if (!fam) {
+              btn.removeAttribute("data-checkout-action");
+              setBlocked("Create a family before checking out, then return here.", { asError: true });
+              return;
+            }
+            if (!fam.is_family_owner) {
+              btn.removeAttribute("data-checkout-action");
+              setBlocked(
+                "Only the family owner can start a Cash Forecast subscription. Ask the owner, or switch to an owned family.",
+                { asError: true }
+              );
+              return;
+            }
+            btn.removeAttribute("data-checkout-action");
+            var label = setFamilyReady(fam);
+            setReady(label);
+          })
+          .catch(function (err) {
+            btn.removeAttribute("data-checkout-action");
+            setBlocked(err && err.message ? err.message : String(err), {
+              asError: true,
+              buttonLabel: defaultBtnLabel,
+            });
+          });
       })();
     </script>
   </body>

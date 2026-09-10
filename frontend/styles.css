@@ -31818,6 +31818,24 @@ body.checkout-page .container > .grid{
   color: var(--text);
   font-weight: 500;
 }
+.checkout-form__status{
+  margin: 10px 0 0;
+  text-align: center;
+  font-size: 13px;
+  color: var(--muted);
+}
+.checkout-form__status[hidden],
+.checkout-form__error[hidden]{
+  display: none !important;
+}
+.checkout-form__error{
+  margin: 10px 0 0;
+  text-align: center;
+}
+.checkout-form__submit--blocked{
+  opacity: 0.55;
+  cursor: not-allowed;
+}
 
 /* ——— Checkout success ——— */
 .checkout-product__icon--success{
