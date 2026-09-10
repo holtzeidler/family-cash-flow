@@ -452,6 +452,7 @@ body.admin-page .top-nav .top-nav__inner.top-nav__inner--simple .top-nav__title,
 body.signup-page .top-nav .top-nav__inner.top-nav__inner--simple .top-nav__title{
   justify-content: flex-start;
   width: auto;
+  min-width: 0;
   padding-left: 10px;
 }
 body.plans-page .top-nav .top-nav__inner.top-nav__inner--simple .app-title,
@@ -3692,7 +3693,7 @@ body.landing-page .landing-hero__text{
 body.landing-page .landing-hero__sub{
   margin: 0;
   max-width: min(36rem, 100%);
-  width: max-content;
+  width: min(36rem, 100%);
   padding: 0;
   font-size: clamp(0.94rem, 1.45vw, 1.18rem);
   line-height: 1.34;
@@ -4813,7 +4814,7 @@ body.landing-page .landing-preview__demo:hover{
     margin-left: 0;
     margin-right: 0;
     white-space: normal;
-    text-wrap: balance;
+    text-wrap: pretty;
     overflow-wrap: anywhere;
     text-align: center;
   }
@@ -18133,6 +18134,7 @@ body.contact-page .top-nav .top-nav__inner.top-nav__inner--simple{
 body.contact-page .top-nav__inner--simple .top-nav__title{
   justify-content: flex-start;
   width: auto;
+  min-width: 0;
   padding-left: 10px;
 }
 body.contact-page .top-nav__inner--simple .app-title{
@@ -18141,32 +18143,36 @@ body.contact-page .top-nav__inner--simple .app-title{
 .contact-public-nav{
   display: inline-flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 22px;
   justify-self: end;
+  min-width: 0;
+  max-width: 100%;
 }
 .contact-public-nav__link{
   font-size: 14px;
   font-weight: 500;
-  color: rgba(31, 41, 55, 0.78);
+  color: rgba(255, 255, 255, 0.9);
   text-decoration: none;
   letter-spacing: 0.005em;
-  transition: color 0.15s ease;
+  transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
 }
 .contact-public-nav__link:hover{
-  color: var(--accent);
+  color: #fff;
 }
 .contact-public-nav__link--cta{
-  background: var(--accent);
+  background: rgba(255, 255, 255, 0.12);
   color: #fff;
   padding: 8px 16px;
   border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
   font-weight: 600;
-  box-shadow: 0 1px 0 rgba(0,0,0,0.04), 0 4px 14px -8px rgba(11, 61, 46, 0.45);
+  box-shadow: none;
   transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
 }
 .contact-public-nav__link--cta:hover{
   color: #fff;
-  background: color-mix(in srgb, var(--accent) 92%, #000 8%);
+  background: rgba(255, 255, 255, 0.18);
   box-shadow: 0 1px 0 rgba(0,0,0,0.05), 0 8px 20px -10px rgba(11, 61, 46, 0.55);
   transform: translateY(-1px);
 }
@@ -18987,33 +18993,36 @@ body.plans-page--polished .top-nav .top-nav__inner.top-nav__inner--simple{
   justify-content: flex-end;
   gap: 12px 16px;
   justify-self: end;
+  min-width: 0;
+  max-width: 100%;
 }
 .plans-public-nav__link{
   font-size: 13.5px;
   font-weight: 500;
-  color: rgba(31, 41, 55, 0.78);
+  color: rgba(255, 255, 255, 0.9);
   text-decoration: none;
   letter-spacing: 0.005em;
-  transition: color 0.15s ease;
+  transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
 }
-.plans-public-nav__link:hover{ color: var(--accent); }
+.plans-public-nav__link:hover{ color: #fff; }
 .plans-public-nav__link--active{
-  color: var(--accent);
+  color: #fff;
   font-weight: 600;
 }
 .plans-public-nav__link--cta{
-  background: var(--accent);
+  background: rgba(255, 255, 255, 0.12);
   color: #fff;
   padding: 6px 13px;
   border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
   font-size: 13px;
   font-weight: 600;
-  box-shadow: 0 1px 0 rgba(0,0,0,0.04), 0 3px 12px -6px rgba(11, 61, 46, 0.4);
+  box-shadow: none;
   transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
 }
 .plans-public-nav__link--cta:hover{
   color: #fff;
-  background: color-mix(in srgb, var(--accent) 92%, #000 8%);
+  background: rgba(255, 255, 255, 0.18);
   box-shadow: 0 1px 0 rgba(0,0,0,0.05), 0 6px 16px -8px rgba(11, 61, 46, 0.5);
   transform: translateY(-1px);
 }
@@ -28695,14 +28704,14 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
     margin-left: 0;
     margin-right: 0;
     white-space: normal;
-    text-wrap: balance;
+    text-wrap: pretty;
     overflow-wrap: anywhere;
     text-align: center;
   }
 
   body.landing-page .landing-hero__text{
-    font-size: calc(clamp(1.52rem, 6.8vw, 1.72rem) * var(--hero-text-scale, 0.95));
-    line-height: 1.08;
+    font-size: calc(clamp(1.32rem, 6.1vw, 1.5rem) * var(--hero-text-scale, 0.95));
+    line-height: 1.12;
   }
 
   body.landing-page .landing-hero__sub{
@@ -28936,6 +28945,100 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
     max-width: none;
     gap: 3px;
   }
+
+  /* Beat the desktop wordmark rule (62vw / 44px) so Login stays on-screen. */
+  body.login-page.signup-page .top-nav .app-title--logo .app-logo,
+  body.account-setup-page .top-nav .app-title--logo .app-logo,
+  body.invite-page .top-nav .app-title--logo .app-logo,
+  body.plans-page .top-nav .app-title--logo .app-logo,
+  body.admin-page .top-nav .app-title--logo .app-logo,
+  body[data-bw-view] .top-nav .app-title--logo .app-logo,
+  body.landing-page .top-nav .app-title--logo .app-logo,
+  body.login-page:not(.signup-page):not(.invite-page) .top-nav .app-title--logo .app-logo,
+  body.contact-page .top-nav .app-title--logo .app-logo{
+    width: auto;
+    max-width: min(168px, 46vw);
+    height: 32px;
+  }
+
+  .plans-public-nav,
+  .contact-public-nav{
+    gap: 6px 10px;
+    justify-content: flex-end;
+  }
+  .plans-public-nav__link,
+  .contact-public-nav__link{
+    font-size: 13px;
+  }
+  .plans-public-nav__link--cta,
+  .contact-public-nav__link--cta{
+    padding: 6px 11px;
+  }
+
+  body.signup-page .auth-section #signupBtn.top-nav__logout{
+    width: 100%;
+    display: inline-flex;
+    justify-content: center;
+  }
+
+  body.landing-page .landing-hero__text,
+  body.landing-page .landing-hero__sub,
+  body.landing-page .landing-hero__bridge,
+  body.landing-page .landing-hero__microtrust,
+  body.landing-page .landing-hero__microtrust-item,
+  body.login-page:not(.signup-page):not(.invite-page) .login-page__brand-head,
+  body.login-page:not(.signup-page):not(.invite-page) .login-page__brand-sub,
+  body.login-page:not(.signup-page) .login-page__signup-prompt,
+  body.login-page:not(.signup-page) .login-page__reassure-item,
+  body.login-page:not(.signup-page) .login-page__signup-cta,
+  .plans-hero__title,
+  .plans-hero__subtitle,
+  .help-center__lede,
+  .help-center__meta,
+  .contact-card__subtitle,
+  .onboarding-footer__line,
+  body.signup-page .meta{
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .help-center__meta{
+    text-align: left;
+  }
+
+  .plans-hero__title{
+    font-size: clamp(1.32rem, 5.6vw, 1.6rem);
+    text-wrap: pretty;
+    padding: 0 0.15rem;
+  }
+
+  body.login-page:not(.signup-page) .login-page__signup-prompt{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.15rem;
+  }
+  body.login-page:not(.signup-page) .login-page__signup-cta{
+    margin-left: 0;
+  }
+
+  /* iOS Safari zooms the page when a focused field is under 16px. */
+  input:not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"]):not([type="range"]):not([type="color"]):not([type="image"]),
+  select,
+  textarea,
+  body.contact-page .contact-form__input,
+  body.contact-page .contact-form__select,
+  body.contact-page .contact-form__textarea,
+  .money-input input,
+  .password-field input,
+  .cal-select-wrap select,
+  .cal-mode-select{
+    font-size: 16px;
+  }
 }
 
 @media (max-width: 560px){
@@ -28960,6 +29063,24 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
     max-width: min(252px, 56vw);
   }
 
+  body.login-page.signup-page .top-nav .app-title--logo .app-logo,
+  body.account-setup-page .top-nav .app-title--logo .app-logo,
+  body.invite-page .top-nav .app-title--logo .app-logo,
+  body.plans-page .top-nav .app-title--logo .app-logo,
+  body.admin-page .top-nav .app-title--logo .app-logo,
+  body[data-bw-view] .top-nav .app-title--logo .app-logo,
+  body.landing-page .top-nav .app-title--logo .app-logo,
+  body.login-page:not(.signup-page):not(.invite-page) .top-nav .app-title--logo .app-logo,
+  body.contact-page .top-nav .app-title--logo .app-logo{
+    max-width: min(148px, 42vw);
+    height: 30px;
+  }
+
+  .plans-public-nav__link:not(.plans-public-nav__link--cta),
+  .contact-public-nav__link:not(.contact-public-nav__link--cta){
+    display: none;
+  }
+
   .top-nav__logout,
   .top-nav__actions .top-nav__admin{
     font-size: 0.8rem;
@@ -28969,6 +29090,10 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   .top-nav__tab{
     padding: 7px 10px;
     font-size: 0.84rem;
+  }
+
+  body.landing-page .landing-hero__text{
+    font-size: calc(clamp(1.28rem, 6vw, 1.42rem) * var(--hero-text-scale, 0.95));
   }
 
   body.landing-page .landing-main{
