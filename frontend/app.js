@@ -9374,13 +9374,30 @@ function applyCheckoutReturnFromUrl() {
     const u = new URL(window.location.href);
     const checkout = String(u.searchParams.get("checkout") || "").trim().toLowerCase();
     const section = String(u.searchParams.get("section") || "").trim().toLowerCase();
-    if (!checkout && !section) return;
+    const portal = String(u.searchParams.get("portal") || "").trim().toLowerCase();
+    const familyIdRaw = String(u.searchParams.get("family_id") || "").trim();
+    const fromPortal = portal === "return" || portal === "1";
+    if (!checkout && !section && !fromPortal) return;
 
-    if (checkout === "success") {
+    if (familyIdRaw && familySelect) {
+      const fid = Number(familyIdRaw);
+      if (
+        Number.isFinite(fid) &&
+        fid > 0 &&
+        Array.isArray(state.families) &&
+        state.families.some((f) => Number(f.id) === fid)
+      ) {
+        familySelect.value = String(fid);
+        state.activeFamilyId = fid;
+        try {
+          syncActiveFamilyFlags();
+        } catch (_) {}
+        invalidateBillingStatusCache();
+      }
+    }
+
+    const refreshBillingAfterPortalOrCheckout = () => {
       invalidateBillingStatusCache();
-      try {
-        showBwToast("Payment received — refreshing your billing status.");
-      } catch (_) {}
       void renderBillingPanel({ force: true }).then(() => {
         // Webhooks can lag a few seconds; one follow-up refresh.
         window.setTimeout(() => {
@@ -9388,13 +9405,25 @@ function applyCheckoutReturnFromUrl() {
           void renderBillingPanel({ force: true });
         }, 2500);
       });
+    };
+
+    if (checkout === "success") {
+      try {
+        showBwToast("Payment received — refreshing your billing status.");
+      } catch (_) {}
+      refreshBillingAfterPortalOrCheckout();
     } else if (checkout === "canceled") {
       try {
         showBwToast("Checkout canceled — you can subscribe anytime.");
       } catch (_) {}
+    } else if (fromPortal) {
+      try {
+        showBwToast("Refreshing your billing status…");
+      } catch (_) {}
+      refreshBillingAfterPortalOrCheckout();
     }
 
-    if (section === "billing" || checkout) {
+    if (section === "billing" || checkout || fromPortal) {
       try {
         setActiveTopView("settings");
       } catch (_) {}
@@ -9408,6 +9437,7 @@ function applyCheckoutReturnFromUrl() {
     u.searchParams.delete("section");
     u.searchParams.delete("frequency");
     u.searchParams.delete("family_id");
+    u.searchParams.delete("portal");
     const qs = u.searchParams.toString();
     window.history.replaceState({}, "", `${u.pathname}${qs ? `?${qs}` : ""}${u.hash}`);
   } catch (_) {}

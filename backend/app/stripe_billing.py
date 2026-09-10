@@ -58,9 +58,32 @@ def register_stripe_routes(
         if not base:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="APP_PUBLIC_BASE_URL is required for Stripe Checkout redirects.",
+                detail="APP_PUBLIC_BASE_URL is required for Stripe Checkout and Customer Portal redirects.",
             )
         return base
+
+    def _billing_page_url(
+        domain: str,
+        *,
+        family_id: Optional[int] = None,
+        checkout: Optional[str] = None,
+        portal_return: bool = False,
+        session_id_placeholder: bool = False,
+        frequency: Optional[str] = None,
+    ) -> str:
+        """Build Billing settings URL from APP_PUBLIC_BASE_URL only (never from client input)."""
+        params: list[str] = ["section=billing"]
+        if checkout:
+            params.append(f"checkout={checkout}")
+        if portal_return:
+            params.append("portal=return")
+        if session_id_placeholder:
+            params.append("session_id={CHECKOUT_SESSION_ID}")
+        if frequency:
+            params.append(f"frequency={frequency}")
+        if family_id is not None:
+            params.append(f"family_id={int(family_id)}")
+        return f"{domain}/settings/?{'&'.join(params)}"
 
     @app.get("/api/billing/catalog", include_in_schema=False)
     def billing_catalog():
@@ -183,14 +206,18 @@ def register_stripe_routes(
                         "bw_family_id": str(int(family_id)),
                     }
                 },
-                success_url=(
-                    domain
-                    + "/settings/?section=billing&checkout=success"
-                    + "&session_id={CHECKOUT_SESSION_ID}"
-                    + f"&frequency={frequency_storage_value(key)}"
-                    + f"&family_id={int(family_id)}"
+                success_url=_billing_page_url(
+                    domain,
+                    family_id=int(family_id),
+                    checkout="success",
+                    session_id_placeholder=True,
+                    frequency=frequency_storage_value(key),
                 ),
-                cancel_url=domain + f"/settings/?section=billing&checkout=canceled&family_id={int(family_id)}",
+                cancel_url=_billing_page_url(
+                    domain,
+                    family_id=int(family_id),
+                    checkout="canceled",
+                ),
             )
         except HTTPException:
             raise
@@ -242,7 +269,8 @@ def register_stripe_routes(
 
         customer: Optional[str] = None
         customer_account: Optional[str] = None
-        return_url = domain + "/settings/?section=billing"
+        # Server-built from APP_PUBLIC_BASE_URL — never accept a client-supplied return URL.
+        return_url = _billing_page_url(domain, portal_return=True)
 
         try:
             if family_id is not None:
@@ -270,7 +298,11 @@ def register_stripe_routes(
                         status_code=status.HTTP_400_BAD_REQUEST,
                         detail="No Stripe customer on file for this family yet. Complete checkout first.",
                     )
-                return_url = domain + f"/settings/?section=billing&family_id={int(family_id)}"
+                return_url = _billing_page_url(
+                    domain,
+                    family_id=int(family_id),
+                    portal_return=True,
+                )
             else:
                 checkout_session_id = (session_id or "").strip()
                 if not checkout_session_id:
