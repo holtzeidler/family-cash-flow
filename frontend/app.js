@@ -8832,23 +8832,21 @@ function getBillingPlanContext(plan) {
   return "Forecast, reports, and recurring cash planning.";
 }
 
-function billingStatusPillHtml(status) {
+function billingStatusPillHtml(status, tone = "") {
   const s = String(status || "Active").trim() || "Active";
   const lower = String(s).toLowerCase();
-  const paid = lower.includes("billing") || lower === "active";
-  const trial = lower.includes("trial");
-  const expired = lower.includes("ended") || lower.includes("expired");
-  const pastDue = lower.includes("past");
-  const mod = pastDue || expired
-    ? "billing-status-pill--active"
-    : paid && !trial
-      ? "billing-status-pill--paid"
-      : trial
-        ? "billing-status-pill--trial"
-        : "billing-status-pill--active";
-  return `<span class="billing-status-pill ${mod}"><span class="billing-status-pill__icon" aria-hidden="true">✓</span>${escapeHtml(
-    s
-  )}</span>`;
+  const t = String(tone || "").toLowerCase();
+  let mod = "billing-status-pill--active";
+  if (t === "warning" || lower.includes("payment") || lower.includes("past")) {
+    mod = "billing-status-pill--warning";
+  } else if (t === "paid" || lower === "active") {
+    mod = "billing-status-pill--paid";
+  } else if (t === "trial" || lower.includes("trial")) {
+    mod = "billing-status-pill--trial";
+  }
+  return `<span class="billing-status-pill ${mod}"><span class="billing-status-pill__icon" aria-hidden="true">${
+    t === "warning" ? "!" : "✓"
+  }</span>${escapeHtml(s)}</span>`;
 }
 
 function invalidateBillingStatusCache() {
@@ -8869,6 +8867,48 @@ function frequencyLabelFromLookupKey(lookupKey) {
   if (key === BILLING_LOOKUP_ANNUAL) return "Yearly";
   if (key === BILLING_LOOKUP_MONTHLY) return "Monthly";
   return "—";
+}
+
+function priceLabelFromLookupKey(lookupKey) {
+  const key = String(lookupKey || "").trim();
+  if (key === BILLING_LOOKUP_ANNUAL) return `$${BILLING_ANNUAL_AMOUNT_USD}/year`;
+  if (key === BILLING_LOOKUP_MONTHLY) return `$${BILLING_MONTHLY_AMOUNT_USD}/month`;
+  return "—";
+}
+
+function billingFriendlyStatusLabel(status) {
+  if (!status) return { label: "—", tone: "neutral" };
+  const phase = String(status.phase || "").toLowerCase();
+  const raw = String(status.status || "").toLowerCase();
+  const periodEnd = isoDateFromApiTimestamp(status.current_period_end);
+  const trialEnd = status.trial_ends_on ? String(status.trial_ends_on) : "";
+  const cancelAtEnd = !!status.cancel_at_period_end;
+  const inTrial =
+    phase === "trial" || (!!status.in_app_trial && phase !== "active" && phase !== "past_due");
+
+  if (raw === "incomplete" || raw === "incomplete_expired" || phase === "past_due" || raw === "past_due" || raw === "unpaid") {
+    return { label: "Payment issue", tone: "warning" };
+  }
+  if (raw === "canceled" || raw === "cancelled" || phase === "canceled") {
+    return { label: "Canceled", tone: "neutral" };
+  }
+  if (cancelAtEnd && (isBillingSubscribed(status) || raw === "active" || raw === "trialing")) {
+    return {
+      label: periodEnd ? `Cancels ${formatShortDateLong(periodEnd)}` : "Cancels soon",
+      tone: "neutral",
+    };
+  }
+  if (isBillingSubscribed(status) && (phase === "active" || raw === "active")) {
+    return { label: "Active", tone: "paid" };
+  }
+  if (inTrial || raw === "trialing") {
+    return { label: "Free trial", tone: "trial" };
+  }
+  if (phase === "expired") {
+    return { label: "Trial ended", tone: "neutral" };
+  }
+  if (raw === "trialing") return { label: "Free trial", tone: "trial" };
+  return { label: "Active", tone: "neutral" };
 }
 
 function cachedBillingStatusForActiveFamily() {
@@ -8998,35 +9038,25 @@ function wireBillingActionsOnce() {
   document.querySelectorAll("[data-billing-action]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const action = String(btn.getAttribute("data-billing-action") || "");
-      if (action === "payment") {
+      const portalActions = new Set(["payment", "cycle", "cancel", "invoices"]);
+      if (portalActions.has(action)) {
         if (isBillingPortalAvailable()) {
           openBillingPortalForActiveFamily();
           return;
         }
-        const fid = state.activeFamilyId ? `?family_id=${encodeURIComponent(String(state.activeFamilyId))}` : "";
-        window.location.assign("/checkout/" + fid);
+        if (action === "payment" && !isBillingPaid()) {
+          const fid = state.activeFamilyId ? `?family_id=${encodeURIComponent(String(state.activeFamilyId))}` : "";
+          window.location.assign("/checkout/" + fid);
+          return;
+        }
+        showBwToast(
+          action === "payment"
+            ? "Complete checkout first, then you can manage payment in Stripe."
+            : "Stripe customer portal isn’t available yet for this family."
+        );
         return;
       }
-      if (action === "cycle" && isBillingPortalAvailable()) {
-        openBillingPortalForActiveFamily();
-        return;
-      }
-      if (action === "cancel" && isBillingPortalAvailable()) {
-        openBillingPortalForActiveFamily();
-        return;
-      }
-      if (action === "invoices" && isBillingPortalAvailable()) {
-        openBillingPortalForActiveFamily();
-        return;
-      }
-      const messages = {
-        payment:
-          "Updating your card isn’t available here yet—for payment changes, use Contact support.",
-        cycle: "Billing cycle changes go through support for now.",
-        cancel: "Send this request via support—we’ll help with cancellation.",
-        invoices: "Invoices aren’t linked here yet; support can help with receipts or history.",
-      };
-      showBwToast(messages[action] || "Billing tools are still being connected.");
+      showBwToast("Billing tools are still being connected.");
     });
   });
   billingActionsWired = true;
@@ -9036,54 +9066,44 @@ function applyBillingStatusToPanel(status) {
   if (!billingPlanEl || !billingFrequencyEl || !billingNextDateEl) return;
   const phase = String((status && status.phase) || "").toLowerCase();
   const productName = String((status && status.product_name) || "Cash Forecast");
+  const rawStatus = String((status && status.status) || "").toLowerCase();
   const inTrial = phase === "trial" || !!(status && status.in_app_trial && phase !== "active" && phase !== "past_due");
   const paid = isBillingSubscribed(status);
   const expired = phase === "expired";
-  const pastDue = phase === "past_due";
-  const frequencyLabel = frequencyLabelFromLookupKey(status && status.lookup_key);
+  const pastDue = phase === "past_due" || rawStatus === "past_due" || rawStatus === "unpaid";
+  const incomplete = rawStatus === "incomplete" || rawStatus === "incomplete_expired";
+  const lookupKey = status && status.lookup_key;
   const trialEnd = status && status.trial_ends_on ? String(status.trial_ends_on) : "";
   const periodEnd = isoDateFromApiTimestamp(status && status.current_period_end);
-  const cancelAtEnd = !!(status && status.cancel_at_period_end);
+  const billingDateIso = periodEnd || (inTrial ? trialEnd : "");
 
   if (billingPlanHeadlineEl) billingPlanHeadlineEl.textContent = productName;
   billingPlanEl.textContent = productName;
-  billingFrequencyEl.textContent = paid || pastDue ? frequencyLabel : inTrial ? "Trial" : frequencyLabel;
+  // Price comes from catalog lookup_key when known; otherwise stay as placeholder.
+  billingFrequencyEl.textContent = priceLabelFromLookupKey(lookupKey);
   if (billingPlanContextEl) billingPlanContextEl.textContent = getBillingPlanContext("base");
 
-  if (billingNextDateLabelEl) {
-    billingNextDateLabelEl.textContent = inTrial
-      ? "Free trial ends"
-      : cancelAtEnd
-        ? "Access through"
-        : "Next renewal";
-  }
-  billingNextDateEl.textContent = inTrial
-    ? trialEnd
-      ? formatShortDateLong(trialEnd)
-      : "—"
-    : periodEnd
-      ? formatShortDateLong(periodEnd)
-      : "—";
+  if (billingNextDateLabelEl) billingNextDateLabelEl.textContent = "Next billing date";
+  billingNextDateEl.textContent = billingDateIso ? formatShortDateLong(billingDateIso) : "—";
 
+  // Callout only when action is needed, or when we still lack a billing date (temporary/test).
   if (billingRenewalMessageEl) {
-    if (inTrial) {
-      setBillingCallout(
-        trialEnd ? `Your free trial ends ${formatShortDateLong(trialEnd)}.` : "Your free trial is active.",
-        { kind: "trial" }
-      );
-    } else if (pastDue) {
-      setBillingCallout("Payment is past due — update your card to keep Cash Forecast.", { kind: "alert" });
+    if (pastDue || incomplete) {
+      setBillingCallout("There’s a payment issue — update your card to keep Cash Forecast.", { kind: "alert" });
     } else if (expired) {
       setBillingCallout("Your free trial has ended. Activate a paid plan to continue.", { kind: "info" });
-    } else if (cancelAtEnd && periodEnd) {
-      setBillingCallout(`Your plan stays active through ${formatShortDateLong(periodEnd)}.`, { kind: "paid" });
-    } else if (periodEnd) {
-      setBillingCallout(`Your next renewal is ${formatShortDateLong(periodEnd)}.`, { kind: "paid" });
-    } else {
+    } else if (!billingDateIso && !paid) {
       setBillingCallout("Renewal dates appear here once billing is active.", {
         kind: "info",
         isDevPlaceholder: true,
       });
+    } else if (!billingDateIso && paid) {
+      setBillingCallout("Renewal dates appear here once billing is active.", {
+        kind: "info",
+        isDevPlaceholder: true,
+      });
+    } else {
+      setBillingCallout("", { kind: "info" });
     }
   }
 
@@ -9095,12 +9115,8 @@ function applyBillingStatusToPanel(status) {
   }
 
   if (billingAccountStatusEl) {
-    let statusLabel = "Active";
-    if (pastDue) statusLabel = "Past due";
-    else if (paid) statusLabel = "Billing active";
-    else if (inTrial) statusLabel = "Trial";
-    else if (expired) statusLabel = "Trial ended";
-    billingAccountStatusEl.innerHTML = billingStatusPillHtml(statusLabel);
+    const friendly = billingFriendlyStatusLabel(status);
+    billingAccountStatusEl.innerHTML = billingStatusPillHtml(friendly.label, friendly.tone);
   }
 }
 
