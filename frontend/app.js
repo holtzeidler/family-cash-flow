@@ -8835,12 +8835,13 @@ function getBillingPlanContext(plan) {
 function billingStatusPillHtml(status) {
   const s = String(status || "Active").trim() || "Active";
   const lower = String(s).toLowerCase();
-  const paid = lower.includes("billing") || lower.includes("past due");
+  const paid = lower.includes("billing") || lower === "active";
   const trial = lower.includes("trial");
-  const expired = lower.includes("expired") || lower.includes("ended");
-  const mod = expired
+  const expired = lower.includes("ended") || lower.includes("expired");
+  const pastDue = lower.includes("past");
+  const mod = pastDue || expired
     ? "billing-status-pill--active"
-    : paid
+    : paid && !trial
       ? "billing-status-pill--paid"
       : trial
         ? "billing-status-pill--trial"
@@ -8927,31 +8928,36 @@ async function fetchBillingStatus({ force = false } = {}) {
 }
 
 function ensureBillingHeroPills() {
-  if (!billingRenewalMessageEl) return null;
-  let row = document.getElementById("billingHeroPills");
-  if (!row) {
-    row = document.createElement("div");
-    row.id = "billingHeroPills";
-    row.className = "billing-hero__pills";
-    const parent = billingRenewalMessageEl.parentElement;
-    if (!parent) return null;
-    parent.insertBefore(row, billingRenewalMessageEl);
-    row.appendChild(billingRenewalMessageEl);
-  }
   let activate = document.getElementById("billingActivatePaidPlan");
-  if (!activate) {
+  if (!activate && billingRenewalMessageEl) {
     activate = document.createElement("a");
     activate.id = "billingActivatePaidPlan";
     activate.className = "billing-hero__activate";
+    activate.textContent = "Activate Paid Plan";
+    const wrap =
+      billingRenewalMessageEl.closest(".billing-summary") || billingRenewalMessageEl.parentElement;
+    if (wrap) wrap.appendChild(activate);
+  }
+  if (activate) {
     activate.href = state.activeFamilyId
       ? `/checkout/?family_id=${encodeURIComponent(String(state.activeFamilyId))}`
       : "/checkout/";
-    activate.textContent = "Activate Paid Plan";
-    row.appendChild(activate);
-  } else if (state.activeFamilyId) {
-    activate.href = `/checkout/?family_id=${encodeURIComponent(String(state.activeFamilyId))}`;
   }
   return activate;
+}
+
+function setBillingCallout(message, { kind = "info", isDevPlaceholder = false } = {}) {
+  if (!billingRenewalMessageEl) return;
+  billingRenewalMessageEl.textContent = message || "";
+  billingRenewalMessageEl.classList.add("billing-callout");
+  billingRenewalMessageEl.classList.toggle("billing-callout--info", kind === "info");
+  billingRenewalMessageEl.classList.toggle("billing-callout--alert", kind === "alert");
+  billingRenewalMessageEl.classList.toggle("billing-callout--trial", kind === "trial");
+  billingRenewalMessageEl.classList.toggle("billing-hero__renewal--trial", kind === "trial");
+  billingRenewalMessageEl.classList.toggle("billing-hero__renewal--paid", kind === "paid");
+  if (isDevPlaceholder) billingRenewalMessageEl.setAttribute("data-billing-dev-callout", "");
+  else billingRenewalMessageEl.removeAttribute("data-billing-dev-callout");
+  billingRenewalMessageEl.hidden = !message;
 }
 
 function openBillingPortalForActiveFamily() {
@@ -9061,22 +9067,24 @@ function applyBillingStatusToPanel(status) {
 
   if (billingRenewalMessageEl) {
     if (inTrial) {
-      billingRenewalMessageEl.textContent = trialEnd
-        ? `Your free trial ends ${formatShortDateLong(trialEnd)}.`
-        : "Your free trial is active.";
+      setBillingCallout(
+        trialEnd ? `Your free trial ends ${formatShortDateLong(trialEnd)}.` : "Your free trial is active.",
+        { kind: "trial" }
+      );
     } else if (pastDue) {
-      billingRenewalMessageEl.textContent = "Payment is past due — update your card to keep Cash Forecast.";
+      setBillingCallout("Payment is past due — update your card to keep Cash Forecast.", { kind: "alert" });
     } else if (expired) {
-      billingRenewalMessageEl.textContent = "Your free trial has ended. Activate a paid plan to continue.";
+      setBillingCallout("Your free trial has ended. Activate a paid plan to continue.", { kind: "info" });
     } else if (cancelAtEnd && periodEnd) {
-      billingRenewalMessageEl.textContent = `Your plan stays active through ${formatShortDateLong(periodEnd)}.`;
+      setBillingCallout(`Your plan stays active through ${formatShortDateLong(periodEnd)}.`, { kind: "paid" });
     } else if (periodEnd) {
-      billingRenewalMessageEl.textContent = `Your next renewal is ${formatShortDateLong(periodEnd)}.`;
+      setBillingCallout(`Your next renewal is ${formatShortDateLong(periodEnd)}.`, { kind: "paid" });
     } else {
-      billingRenewalMessageEl.textContent = "Renewal dates appear here once billing is active.";
+      setBillingCallout("Renewal dates appear here once billing is active.", {
+        kind: "info",
+        isDevPlaceholder: true,
+      });
     }
-    billingRenewalMessageEl.classList.toggle("billing-hero__renewal--trial", inTrial);
-    billingRenewalMessageEl.classList.toggle("billing-hero__renewal--paid", paid && !pastDue);
   }
 
   const activate = ensureBillingHeroPills();
@@ -9089,8 +9097,8 @@ function applyBillingStatusToPanel(status) {
   if (billingAccountStatusEl) {
     let statusLabel = "Active";
     if (pastDue) statusLabel = "Past due";
-    else if (paid) statusLabel = "Active Billing";
-    else if (inTrial) statusLabel = "Active Trial";
+    else if (paid) statusLabel = "Billing active";
+    else if (inTrial) statusLabel = "Trial";
     else if (expired) statusLabel = "Trial ended";
     billingAccountStatusEl.innerHTML = billingStatusPillHtml(statusLabel);
   }
@@ -9101,9 +9109,7 @@ async function renderBillingPanel({ force = false } = {}) {
   wireBillingActionsOnce();
   if (!state.activeFamilyId) {
     applyBillingStatusToPanel(null);
-    if (billingRenewalMessageEl) {
-      billingRenewalMessageEl.textContent = "Choose a family to see plan & billing status.";
-    }
+    setBillingCallout("Choose a family to see plan & billing status.", { kind: "info" });
     return;
   }
 
@@ -9115,9 +9121,7 @@ async function renderBillingPanel({ force = false } = {}) {
     applyBillingStatusToPanel(status);
   } catch (err) {
     if (!cached) {
-      if (billingRenewalMessageEl) {
-        billingRenewalMessageEl.textContent = "Couldn’t load billing status. Try again in a moment.";
-      }
+      setBillingCallout("Couldn’t load billing status. Try again in a moment.", { kind: "alert" });
       if (billingAccountStatusEl) billingAccountStatusEl.textContent = "—";
     }
     try {
