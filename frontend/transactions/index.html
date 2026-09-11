@@ -35,7 +35,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=738" />
+    <link rel="stylesheet" href="../styles.css?v=739" />
   </head>
   <body>
     <h1 class="sr-only">Transactions</h1>
@@ -986,13 +986,13 @@
                               <button type="button" class="billing-action-btn billing-action-btn--secondary" data-billing-action="cycle">Change billing cycle</button>
                               <button type="button" class="billing-action-btn billing-action-btn--secondary" data-billing-action="invoices">View invoices</button>
                             </div>
-                            <div class="billing-cancel" id="billingCancelSection" aria-labelledby="billingCancelTitle">
+                          </div>
+                          <div class="billing-cancel" id="billingCancelSection" aria-labelledby="billingCancelTitle" hidden>
                               <h4 class="billing-cancel__title" id="billingCancelTitle">Cancellation</h4>
                               <p class="billing-cancel__lede" id="billingCancelLede">You can cancel your subscription at any time.</p>
                               <button type="button" id="billingCancelBtn" class="billing-cancel__request billing-cancel__request--danger" data-billing-action="cancel">
                                 Cancel subscription
                               </button>
-                            </div>
                           </div>
                         </section>
                       </div>
@@ -2056,7 +2056,7 @@ Date,Vendor,Amount
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="../app.js?v=429"></script>
+    <script src="../app.js?v=430"></script>
     <script src="../feedback.js?v=5" defer></script>
     <script src="../tour.js?v=9" defer></script>
   </body>

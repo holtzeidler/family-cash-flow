@@ -9420,7 +9420,16 @@ async function renderBillingPanel({ force = false } = {}) {
   }
 
   const cached = cachedBillingStatusForActiveFamily();
-  if (cached) applyBillingStatusToPanel(cached);
+  if (cached) {
+    applyBillingStatusToPanel(cached);
+  } else {
+    // Avoid a blank Billing pane while Stripe/status loads.
+    setBillingLifecycleCallout({
+      kind: "info",
+      title: "Loading billing status…",
+      text: "Fetching your subscription details.",
+    });
+  }
 
   try {
     const status = await fetchBillingStatus({ force });

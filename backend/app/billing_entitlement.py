@@ -61,26 +61,18 @@ def _obj_get(obj: Any, key: str, default: Any = None) -> Any:
         return default
     if isinstance(obj, dict):
         return obj.get(key, default)
-    # StripeObject supports dict-like access; prefer that over getattr.
-    try:
-        if hasattr(obj, "__getitem__"):
-            try:
-                if key in obj:  # type: ignore[operator]
-                    return obj[key]  # type: ignore[index]
-            except Exception:
-                pass
-            try:
-                return obj[key]  # type: ignore[index]
-            except Exception:
-                pass
-    except Exception:
-        pass
+    # Prefer StripeObject.to_dict() so field access is predictable across SDK shapes.
     try:
         to_dict = getattr(obj, "to_dict", None)
         if callable(to_dict):
             as_dict = to_dict()
-            if isinstance(as_dict, dict) and key in as_dict:
+            if isinstance(as_dict, dict):
                 return as_dict.get(key, default)
+    except Exception:
+        pass
+    try:
+        if hasattr(obj, "__contains__") and key in obj:  # type: ignore[operator]
+            return obj[key]  # type: ignore[index]
     except Exception:
         pass
     return getattr(obj, key, default)
@@ -482,25 +474,43 @@ def refresh_subscription_row_from_stripe(
     *,
     stripe_subscription_id: str,
     api_key: str,
+    timeout_seconds: float = 4.0,
 ) -> tuple[Any, Any]:
     """Pull the latest Stripe Subscription and upsert local billing_subscriptions.
 
     Returns (orm_row, stripe_subscription_object).
     Used by billing-status so portal changes (cancel at period end, period dates)
     appear even when webhooks are delayed or missing.
+
+    Stripe calls are time-boxed so billing-status never hangs the Settings page.
     """
     import stripe
+    from concurrent.futures import ThreadPoolExecutor
+    from concurrent.futures import TimeoutError as FuturesTimeout
 
     sid = (stripe_subscription_id or "").strip()
     key = (api_key or "").strip()
     if not sid or not key:
         return None, None
-    stripe.api_key = key
-    # Expand items so period ends are available on newer Stripe API shapes.
+
+    def _retrieve():
+        stripe.api_key = key
+        # Expand items so period ends are available on newer Stripe API shapes.
+        try:
+            return stripe.Subscription.retrieve(sid, expand=["items.data.price"])
+        except Exception:
+            return stripe.Subscription.retrieve(sid)
+
     try:
-        sub_obj = stripe.Subscription.retrieve(sid, expand=["items.data.price"])
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            sub_obj = pool.submit(_retrieve).result(timeout=max(1.0, float(timeout_seconds)))
+    except FuturesTimeout:
+        logger.warning("Stripe subscription refresh timed out for %s after %.1fs", sid, timeout_seconds)
+        return None, None
     except Exception:
-        sub_obj = stripe.Subscription.retrieve(sid)
+        logger.exception("Stripe subscription refresh failed for %s", sid)
+        return None, None
+
     logger.info(
         "Stripe subscription refresh %s status=%s cancel_at_period_end=%s cancel_at=%s current_period_end=%s scheduled_cancel=%s",
         sid,
