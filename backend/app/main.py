@@ -4007,7 +4007,12 @@ def family_billing_status(
     db=Depends(get_db),
 ):
     """Server entitlement for Cash Forecast (app trial + Stripe subscription)."""
-    from .billing_entitlement import build_billing_status, refresh_subscription_row_from_stripe
+    from .billing_entitlement import (
+        apply_live_stripe_subscription_fields,
+        build_billing_status,
+        refresh_subscription_row_from_stripe,
+        stripe_customer_id_for_family,
+    )
 
     user_id = get_current_user_id(access_token)
     require_family_member(db=db, family_id=family_id, user_id=user_id)
@@ -4021,11 +4026,35 @@ def family_billing_status(
     # Refresh from Stripe when we have a subscription id so portal cancel-at-period-end
     # and period dates show up without waiting on webhooks.
     stripe_key = (settings.STRIPE_SECRET_KEY or "").strip()
-    if sub is not None and (sub.stripe_subscription_id or "").strip() and stripe_key:
+    live_stripe_sub = None
+    sub_id = (getattr(sub, "stripe_subscription_id", None) or "").strip() if sub is not None else ""
+    if not sub_id and stripe_key:
+        # Recover subscription id from the family's Stripe customer when the DB row is incomplete.
         try:
-            refreshed = refresh_subscription_row_from_stripe(
+            import stripe as stripe_mod
+
+            cust = stripe_customer_id_for_family(db, family_id=int(family_id))
+            if cust:
+                stripe_mod.api_key = stripe_key
+                listed = stripe_mod.Subscription.list(customer=cust, status="all", limit=5)
+                data = getattr(listed, "data", None) or []
+                for candidate in data:
+                    st = (getattr(candidate, "status", None) or "").strip().lower()
+                    if st in ("active", "past_due", "trialing", "unpaid"):
+                        sub_id = (getattr(candidate, "id", None) or "").strip()
+                        live_stripe_sub = candidate
+                        break
+                if not sub_id and data:
+                    live_stripe_sub = data[0]
+                    sub_id = (getattr(live_stripe_sub, "id", None) or "").strip()
+        except Exception:
+            logger.exception("billing-status could not list Stripe subscriptions for family_id=%s", family_id)
+
+    if sub_id and stripe_key:
+        try:
+            refreshed, live_stripe_sub = refresh_subscription_row_from_stripe(
                 db,
-                stripe_subscription_id=str(sub.stripe_subscription_id),
+                stripe_subscription_id=str(sub_id),
                 api_key=stripe_key,
             )
             if refreshed is not None:
@@ -4036,7 +4065,7 @@ def family_billing_status(
             logger.exception(
                 "billing-status Stripe refresh failed for family_id=%s sub=%s",
                 family_id,
-                getattr(sub, "stripe_subscription_id", None),
+                sub_id,
             )
             try:
                 db.rollback()
@@ -4055,6 +4084,10 @@ def family_billing_status(
         subscription=sub,
         has_stripe_customer=bool(has_customer),
     )
+    # Always prefer live Stripe cancel/period fields for the response so portal state wins
+    # even if the local boolean column was stale.
+    if live_stripe_sub is not None:
+        payload = apply_live_stripe_subscription_fields(payload, live_stripe_sub)
     return BillingStatusOut(**payload)
 
 

@@ -61,6 +61,28 @@ def _obj_get(obj: Any, key: str, default: Any = None) -> Any:
         return default
     if isinstance(obj, dict):
         return obj.get(key, default)
+    # StripeObject supports dict-like access; prefer that over getattr.
+    try:
+        if hasattr(obj, "__getitem__"):
+            try:
+                if key in obj:  # type: ignore[operator]
+                    return obj[key]  # type: ignore[index]
+            except Exception:
+                pass
+            try:
+                return obj[key]  # type: ignore[index]
+            except Exception:
+                pass
+    except Exception:
+        pass
+    try:
+        to_dict = getattr(obj, "to_dict", None)
+        if callable(to_dict):
+            as_dict = to_dict()
+            if isinstance(as_dict, dict) and key in as_dict:
+                return as_dict.get(key, default)
+    except Exception:
+        pass
     return getattr(obj, key, default)
 
 
@@ -460,9 +482,10 @@ def refresh_subscription_row_from_stripe(
     *,
     stripe_subscription_id: str,
     api_key: str,
-) -> Any:
+) -> tuple[Any, Any]:
     """Pull the latest Stripe Subscription and upsert local billing_subscriptions.
 
+    Returns (orm_row, stripe_subscription_object).
     Used by billing-status so portal changes (cancel at period end, period dates)
     appear even when webhooks are delayed or missing.
     """
@@ -471,19 +494,42 @@ def refresh_subscription_row_from_stripe(
     sid = (stripe_subscription_id or "").strip()
     key = (api_key or "").strip()
     if not sid or not key:
-        return None
+        return None, None
     stripe.api_key = key
     # Expand items so period ends are available on newer Stripe API shapes.
-    sub_obj = stripe.Subscription.retrieve(sid, expand=["items.data.price"])
+    try:
+        sub_obj = stripe.Subscription.retrieve(sid, expand=["items.data.price"])
+    except Exception:
+        sub_obj = stripe.Subscription.retrieve(sid)
     logger.info(
-        "Stripe subscription refresh %s status=%s cancel_at_period_end=%s cancel_at=%s current_period_end=%s",
+        "Stripe subscription refresh %s status=%s cancel_at_period_end=%s cancel_at=%s current_period_end=%s scheduled_cancel=%s",
         sid,
         _obj_get(sub_obj, "status"),
         _obj_get(sub_obj, "cancel_at_period_end"),
         _obj_get(sub_obj, "cancel_at"),
         _obj_get(sub_obj, "current_period_end"),
+        _scheduled_cancel_from_stripe_sub(sub_obj),
     )
-    return upsert_subscription_from_stripe(db, sub=sub_obj)
+    row = upsert_subscription_from_stripe(db, sub=sub_obj)
+    return row, sub_obj
+
+
+def apply_live_stripe_subscription_fields(payload: dict[str, Any], stripe_sub: Any) -> dict[str, Any]:
+    """Overlay billing-status fields from the live Stripe Subscription object."""
+    if not payload or stripe_sub is None:
+        return payload
+    out = dict(payload)
+    out["cancel_at_period_end"] = _scheduled_cancel_from_stripe_sub(stripe_sub)
+    pe = _period_end_from_stripe_sub(stripe_sub)
+    if pe is not None:
+        out["current_period_end"] = pe.isoformat() + "Z"
+    st = (_obj_get(stripe_sub, "status") or "").strip().lower()
+    if st:
+        out["status"] = st
+    sid = (_obj_get(stripe_sub, "id") or "").strip()
+    if sid:
+        out["stripe_subscription_id"] = sid
+    return out
 
 
 def handle_stripe_event(db, event: Any, logger_: logging.Logger) -> None:
