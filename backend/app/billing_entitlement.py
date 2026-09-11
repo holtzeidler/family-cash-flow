@@ -38,6 +38,21 @@ def _as_naive_utc(value: Any) -> Optional[datetime]:
         return value
     if isinstance(value, (int, float)):
         return datetime.utcfromtimestamp(int(value))
+    if isinstance(value, str):
+        s = value.strip()
+        if not s:
+            return None
+        if s.isdigit():
+            return datetime.utcfromtimestamp(int(s))
+        # ISO-ish timestamps
+        try:
+            iso = s.replace("Z", "+00:00")
+            dt = datetime.fromisoformat(iso)
+            if dt.tzinfo is not None:
+                return dt.astimezone(timezone.utc).replace(tzinfo=None)
+            return dt
+        except ValueError:
+            return None
     return None
 
 
@@ -359,6 +374,9 @@ def upsert_subscription_from_stripe(
     lookup_key = lookup_key_from_subscription(sub)
     price_id = price_id_from_subscription(sub)
     period_end = _as_naive_utc(_obj_get(sub, "current_period_end"))
+    if period_end is None:
+        # When cancel_at_period_end is set, Stripe also exposes cancel_at (unix).
+        period_end = _as_naive_utc(_obj_get(sub, "cancel_at"))
     trial_end = _as_naive_utc(_obj_get(sub, "trial_end"))
     cancel_at_period_end = bool(_obj_get(sub, "cancel_at_period_end") or False)
 
@@ -406,6 +424,28 @@ def upsert_subscription_from_stripe(
     db.add(row)
     db.flush()
     return row
+
+
+def refresh_subscription_row_from_stripe(
+    db,
+    *,
+    stripe_subscription_id: str,
+    api_key: str,
+) -> Any:
+    """Pull the latest Stripe Subscription and upsert local billing_subscriptions.
+
+    Used by billing-status so portal changes (cancel at period end, period dates)
+    appear even when webhooks are delayed or missing.
+    """
+    import stripe
+
+    sid = (stripe_subscription_id or "").strip()
+    key = (api_key or "").strip()
+    if not sid or not key:
+        return None
+    stripe.api_key = key
+    sub_obj = stripe.Subscription.retrieve(sid)
+    return upsert_subscription_from_stripe(db, sub=sub_obj)
 
 
 def handle_stripe_event(db, event: Any, logger_: logging.Logger) -> None:

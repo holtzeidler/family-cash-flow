@@ -4007,7 +4007,7 @@ def family_billing_status(
     db=Depends(get_db),
 ):
     """Server entitlement for Cash Forecast (app trial + Stripe subscription)."""
-    from .billing_entitlement import build_billing_status
+    from .billing_entitlement import build_billing_status, refresh_subscription_row_from_stripe
 
     user_id = get_current_user_id(access_token)
     require_family_member(db=db, family_id=family_id, user_id=user_id)
@@ -4017,6 +4017,36 @@ def family_billing_status(
     sub = db.execute(
         select(BillingSubscription).where(BillingSubscription.family_id == family_id)
     ).scalar_one_or_none()
+
+    # Refresh from Stripe when we have a subscription id so portal cancel-at-period-end
+    # and period dates show up without waiting on webhooks.
+    stripe_key = (settings.STRIPE_SECRET_KEY or "").strip()
+    if sub is not None and (sub.stripe_subscription_id or "").strip() and stripe_key:
+        try:
+            refreshed = refresh_subscription_row_from_stripe(
+                db,
+                stripe_subscription_id=str(sub.stripe_subscription_id),
+                api_key=stripe_key,
+            )
+            if refreshed is not None:
+                db.commit()
+                db.refresh(refreshed)
+                sub = refreshed
+        except Exception:
+            logger.exception(
+                "billing-status Stripe refresh failed for family_id=%s sub=%s",
+                family_id,
+                getattr(sub, "stripe_subscription_id", None),
+            )
+            try:
+                db.rollback()
+            except Exception:
+                pass
+            fam = db.get(Family, family_id) or fam
+            sub = db.execute(
+                select(BillingSubscription).where(BillingSubscription.family_id == family_id)
+            ).scalar_one_or_none()
+
     has_customer = db.execute(
         select(BillingCustomer.id).where(BillingCustomer.user_id == user_id)
     ).scalar_one_or_none() is not None
