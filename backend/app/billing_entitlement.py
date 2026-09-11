@@ -64,7 +64,39 @@ def _obj_get(obj: Any, key: str, default: Any = None) -> Any:
     return getattr(obj, key, default)
 
 
-def trial_ends_at(family_created_at: Optional[datetime]) -> Optional[datetime]:
+def _period_end_from_stripe_sub(sub: Any) -> Optional[datetime]:
+    """Resolve access/period end from a Stripe Subscription object."""
+    pe = _as_naive_utc(_obj_get(sub, "current_period_end"))
+    if pe is not None:
+        return pe
+    # Newer Stripe API versions may only expose period ends on subscription items.
+    items = _obj_get(sub, "items")
+    data = _obj_get(items, "data") if items is not None else None
+    if isinstance(data, list) and data:
+        ends = [_as_naive_utc(_obj_get(item, "current_period_end")) for item in data]
+        ends = [e for e in ends if e is not None]
+        if ends:
+            return max(ends)
+    return _as_naive_utc(_obj_get(sub, "cancel_at"))
+
+
+def _scheduled_cancel_from_stripe_sub(sub: Any, *, now: Optional[datetime] = None) -> bool:
+    """True when Stripe has a pending cancel (portal “Cancels [date]” state).
+
+    Prefer cancel_at_period_end; also treat a future cancel_at as scheduled cancel
+    (some portal / API versions set cancel_at without the boolean flag).
+    """
+    if bool(_obj_get(sub, "cancel_at_period_end") or False):
+        return True
+    cancel_at = _as_naive_utc(_obj_get(sub, "cancel_at"))
+    if cancel_at is None:
+        return False
+    status = (_obj_get(sub, "status") or "").strip().lower()
+    if status in ("canceled", "cancelled", "incomplete_expired", "unpaid"):
+        return False
+    n = now or _utc_now()
+    return cancel_at > n
+
     if family_created_at is None:
         return None
     start = family_created_at
@@ -373,12 +405,9 @@ def upsert_subscription_from_stripe(
     status = (_obj_get(sub, "status") or "incomplete").strip().lower()
     lookup_key = lookup_key_from_subscription(sub)
     price_id = price_id_from_subscription(sub)
-    period_end = _as_naive_utc(_obj_get(sub, "current_period_end"))
-    if period_end is None:
-        # When cancel_at_period_end is set, Stripe also exposes cancel_at (unix).
-        period_end = _as_naive_utc(_obj_get(sub, "cancel_at"))
+    period_end = _period_end_from_stripe_sub(sub)
     trial_end = _as_naive_utc(_obj_get(sub, "trial_end"))
-    cancel_at_period_end = bool(_obj_get(sub, "cancel_at_period_end") or False)
+    cancel_at_period_end = _scheduled_cancel_from_stripe_sub(sub)
 
     meta = _obj_get(sub, "metadata")
     fam_id = family_id or _resolve_family_id_from_metadata(meta)
@@ -444,7 +473,16 @@ def refresh_subscription_row_from_stripe(
     if not sid or not key:
         return None
     stripe.api_key = key
-    sub_obj = stripe.Subscription.retrieve(sid)
+    # Expand items so period ends are available on newer Stripe API shapes.
+    sub_obj = stripe.Subscription.retrieve(sid, expand=["items.data.price"])
+    logger.info(
+        "Stripe subscription refresh %s status=%s cancel_at_period_end=%s cancel_at=%s current_period_end=%s",
+        sid,
+        _obj_get(sub_obj, "status"),
+        _obj_get(sub_obj, "cancel_at_period_end"),
+        _obj_get(sub_obj, "cancel_at"),
+        _obj_get(sub_obj, "current_period_end"),
+    )
     return upsert_subscription_from_stripe(db, sub=sub_obj)
 
 
