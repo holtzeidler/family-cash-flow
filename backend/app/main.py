@@ -4041,8 +4041,7 @@ def family_billing_status(
         # Recover subscription id from the family's Stripe customer when the DB row is incomplete.
         try:
             import stripe as stripe_mod
-            from concurrent.futures import ThreadPoolExecutor
-            from concurrent.futures import TimeoutError as FuturesTimeout
+            from .billing_entitlement import _run_with_timeout
 
             cust = stripe_customer_id_for_family(db, family_id=int(family_id))
             if not cust:
@@ -4057,9 +4056,12 @@ def family_billing_status(
                 def _list_subs():
                     return stripe_mod.Subscription.list(customer=cust, status="all", limit=5)
 
-                with ThreadPoolExecutor(max_workers=1) as pool:
-                    listed = pool.submit(_list_subs).result(timeout=4.0)
-                data = getattr(listed, "data", None) or []
+                listed = _run_with_timeout(
+                    _list_subs,
+                    timeout_seconds=3.0,
+                    label=f"Stripe subscription list family_id={family_id}",
+                )
+                data = (getattr(listed, "data", None) or []) if listed is not None else []
                 for candidate in data:
                     st = (getattr(candidate, "status", None) or "").strip().lower()
                     if st in ("active", "past_due", "trialing", "unpaid"):
@@ -4070,7 +4072,6 @@ def family_billing_status(
                     live_stripe_sub = data[0]
                     sub_id = (getattr(live_stripe_sub, "id", None) or "").strip()
         except Exception as list_err:
-            # Include timeout in the generic path (FuturesTimeout is a subclass of Exception).
             logger.warning(
                 "billing-status could not list Stripe subscriptions for family_id=%s: %s",
                 family_id,
@@ -4083,7 +4084,7 @@ def family_billing_status(
                 db,
                 stripe_subscription_id=str(sub_id),
                 api_key=stripe_key,
-                timeout_seconds=4.0,
+                timeout_seconds=3.0,
             )
             if live_from_refresh is not None:
                 live_stripe_sub = live_from_refresh

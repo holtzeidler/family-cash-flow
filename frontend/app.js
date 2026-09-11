@@ -9205,15 +9205,48 @@ async function fetchBillingStatus({ force = false } = {}) {
   if (!force && billingStatusCache.inFlight && Number(billingStatusCache.familyId) === fid) {
     return billingStatusCache.inFlight;
   }
-  const promise = api(`/api/families/${fid}/billing-status`, "GET")
-    .then((data) => {
+
+  const apiBase = apiBaseUrl();
+  if (!apiBase) {
+    throw new Error("Billing API isn’t configured on this build.");
+  }
+
+  // Dedicated short fetch: avoid the generic api() 14s×2 retry storm when Stripe/API is slow.
+  const promise = (async () => {
+    const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+    const timeoutId = ctrl
+      ? window.setTimeout(() => {
+          try {
+            ctrl.abort();
+          } catch (_) {}
+        }, 10000)
+      : 0;
+    try {
+      const qs = force ? "?sync=1" : "";
+      const res = await fetch(`${apiBase}/api/families/${fid}/billing-status${qs}`, {
+        method: "GET",
+        credentials: "include",
+        headers: { ...apiBearerAuthHeaders(), Accept: "application/json" },
+        signal: ctrl ? ctrl.signal : undefined,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const msg =
+          (data && data.detail) ||
+          (data && data.error && data.error.message) ||
+          `Billing status failed (${res.status}).`;
+        throw new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
+      }
       billingStatusCache = { familyId: fid, data, fetchedAt: Date.now(), inFlight: null };
       return data;
-    })
-    .catch((err) => {
-      if (Number(billingStatusCache.familyId) === fid) billingStatusCache.inFlight = null;
-      throw err;
-    });
+    } finally {
+      if (timeoutId) window.clearTimeout(timeoutId);
+    }
+  })().catch((err) => {
+    if (Number(billingStatusCache.familyId) === fid) billingStatusCache.inFlight = null;
+    throw err;
+  });
+
   billingStatusCache = {
     familyId: fid,
     data: billingStatusCache.data && Number(billingStatusCache.familyId) === fid ? billingStatusCache.data : null,

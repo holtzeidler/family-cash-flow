@@ -469,12 +469,40 @@ def upsert_subscription_from_stripe(
     return row
 
 
+def _run_with_timeout(fn, *, timeout_seconds: float = 4.0, label: str = "stripe"):
+    """Run fn in a daemon thread; return result or None on timeout/error.
+
+    Important: do not use ThreadPoolExecutor as a context manager here — on timeout its
+    __exit__ calls shutdown(wait=True) and blocks until the hung Stripe call finishes.
+    """
+    from concurrent.futures import ThreadPoolExecutor
+    from concurrent.futures import TimeoutError as FuturesTimeout
+
+    pool = ThreadPoolExecutor(max_workers=1)
+    try:
+        fut = pool.submit(fn)
+        return fut.result(timeout=max(1.0, float(timeout_seconds)))
+    except FuturesTimeout:
+        logger.warning("%s timed out after %.1fs", label, timeout_seconds)
+        return None
+    except Exception:
+        logger.exception("%s failed", label)
+        return None
+    finally:
+        # Don't wait for the possibly-hung Stripe HTTP call.
+        try:
+            pool.shutdown(wait=False, cancel_futures=True)
+        except TypeError:
+            # Python < 3.9 may not accept cancel_futures
+            pool.shutdown(wait=False)
+
+
 def refresh_subscription_row_from_stripe(
     db,
     *,
     stripe_subscription_id: str,
     api_key: str,
-    timeout_seconds: float = 4.0,
+    timeout_seconds: float = 3.0,
 ) -> tuple[Any, Any]:
     """Pull the latest Stripe Subscription and upsert local billing_subscriptions.
 
@@ -485,8 +513,6 @@ def refresh_subscription_row_from_stripe(
     Stripe calls are time-boxed so billing-status never hangs the Settings page.
     """
     import stripe
-    from concurrent.futures import ThreadPoolExecutor
-    from concurrent.futures import TimeoutError as FuturesTimeout
 
     sid = (stripe_subscription_id or "").strip()
     key = (api_key or "").strip()
@@ -501,14 +527,12 @@ def refresh_subscription_row_from_stripe(
         except Exception:
             return stripe.Subscription.retrieve(sid)
 
-    try:
-        with ThreadPoolExecutor(max_workers=1) as pool:
-            sub_obj = pool.submit(_retrieve).result(timeout=max(1.0, float(timeout_seconds)))
-    except FuturesTimeout:
-        logger.warning("Stripe subscription refresh timed out for %s after %.1fs", sid, timeout_seconds)
-        return None, None
-    except Exception:
-        logger.exception("Stripe subscription refresh failed for %s", sid)
+    sub_obj = _run_with_timeout(
+        _retrieve,
+        timeout_seconds=timeout_seconds,
+        label=f"Stripe subscription refresh {sid}",
+    )
+    if sub_obj is None:
         return None, None
 
     logger.info(
