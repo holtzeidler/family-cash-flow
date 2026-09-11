@@ -8926,6 +8926,46 @@ function cachedBillingStatusForActiveFamily() {
   return billingStatusCache.data || null;
 }
 
+/** Resolve the family Billing should use — never prompt if we can pick a valid household. */
+function ensureActiveFamilyIdForBilling() {
+  let fid = Number(state.activeFamilyId || 0);
+  if (Number.isFinite(fid) && fid > 0) {
+    if (
+      !Array.isArray(state.families) ||
+      state.families.length === 0 ||
+      state.families.some((f) => Number(f.id) === fid)
+    ) {
+      return fid;
+    }
+  }
+  if (familySelect && familySelect.value) {
+    const fromSelect = Number(familySelect.value);
+    if (Number.isFinite(fromSelect) && fromSelect > 0) {
+      state.activeFamilyId = fromSelect;
+      try {
+        syncActiveFamilyFlags();
+      } catch (_) {}
+      return fromSelect;
+    }
+  }
+  if (Array.isArray(state.families) && state.families.length > 0) {
+    const first = Number(state.families[0].id);
+    if (Number.isFinite(first) && first > 0) {
+      state.activeFamilyId = first;
+      if (familySelect) {
+        try {
+          familySelect.value = String(first);
+        } catch (_) {}
+      }
+      try {
+        syncActiveFamilyFlags();
+      } catch (_) {}
+      return first;
+    }
+  }
+  return 0;
+}
+
 function isBillingSubscribed(status = cachedBillingStatusForActiveFamily()) {
   if (!status) return false;
   const phase = String(status.phase || "").toLowerCase();
@@ -9439,7 +9479,7 @@ function applyBillingLifecycleModel(model) {
 }
 
 function applyBillingStatusToPanel(status) {
-  const hasFamily = !!Number(state.activeFamilyId || 0);
+  const hasFamily = ensureActiveFamilyIdForBilling() > 0;
   const model = resolveBillingLifecycleModel(status, { hasFamily });
   applyBillingLifecycleModel(model);
 }
@@ -9447,7 +9487,19 @@ function applyBillingStatusToPanel(status) {
 async function renderBillingPanel({ force = false } = {}) {
   if (!billingPlanEl || !billingFrequencyEl || !billingNextDateEl) return;
   wireBillingActionsOnce();
-  if (!state.activeFamilyId) {
+
+  let fid = ensureActiveFamilyIdForBilling();
+  if (!fid) {
+    // Families may not be loaded yet (e.g. Settings → Billing opened early).
+    try {
+      if (!Array.isArray(state.families) || state.families.length === 0) {
+        await loadFamilies();
+      }
+    } catch (_) {}
+    fid = ensureActiveFamilyIdForBilling();
+  }
+
+  if (!fid) {
     applyBillingStatusToPanel(null);
     return;
   }
