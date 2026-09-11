@@ -1633,7 +1633,11 @@ const billingMetaEl = document.getElementById("billingMeta");
 const billingManageSectionEl = document.getElementById("billingManageSection");
 const billingManageHintEl = document.getElementById("billingManageHint");
 const billingCancelSectionEl = document.getElementById("billingCancelSection");
+const billingCancelTitleEl = document.getElementById("billingCancelTitle");
 const billingCancelLedeEl = document.getElementById("billingCancelLede");
+const billingCancelBtnEl =
+  document.querySelector("#billingCancelSection [data-billing-action]") ||
+  document.getElementById("billingCancelBtn");
 const billingPrimaryCtaEl = document.getElementById("billingPrimaryCta");
 let billingActionsWired = false;
 
@@ -8802,6 +8806,22 @@ function formatShortDateLong(iso) {
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
+/** Stripe-style short badge date: "Oct 10" */
+function formatBillingMonthDay(iso) {
+  if (!iso) return "";
+  const d = new Date(`${iso}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return String(iso);
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+/** Full access-through date: "October 10, 2026" */
+function formatBillingLongDate(iso) {
+  if (!iso) return "—";
+  const d = new Date(`${iso}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return String(iso);
+  return d.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
+}
+
 function addMonthsIso(startIso, deltaMonths) {
   const d = new Date(`${startIso}T12:00:00`);
   if (Number.isNaN(d.getTime())) return "";
@@ -8996,37 +9016,53 @@ function resolveBillingLifecycleModel(status, { hasFamily = true } = {}) {
         statusTone: "warning",
       },
       manageHint: "Update your payment method in Stripe to restore billing.",
-      cancelLede: "You can still manage or cancel your subscription in Stripe.",
+      cancelSection: {
+        title: "Cancellation",
+        lede: "You can still manage or cancel your subscription in Stripe.",
+        buttonLabel: "Cancel subscription",
+        action: "cancel",
+        tone: "danger",
+      },
     };
   }
 
   if (subscribed && cancelAtEnd) {
+    const accessLong = periodEnd ? formatBillingLongDate(periodEnd) : "";
+    const cancelsShort = periodEnd ? formatBillingMonthDay(periodEnd) : "";
     return {
       mode: "canceling",
       productName,
       productCopy,
       showMeta: true,
       showManage: true,
-      showCancel: false,
+      showCancel: true,
       callout: {
         kind: "info",
-        title: periodEnd ? `Access through ${formatShortDateLong(periodEnd)}` : "Cancellation scheduled",
-        text: periodEnd
-          ? `Cash Forecast stays available through ${formatShortDateLong(periodEnd)}. You can reopen the Stripe portal if you want to keep your subscription.`
+        title: accessLong ? `Access through ${accessLong}` : "Cancellation scheduled",
+        text: accessLong
+          ? `Your Cash Forecast access will remain active through ${accessLong}.`
           : "Your subscription is set to end after the current billing period.",
       },
-      primaryCta: { label: "Keep my subscription", action: "portal" },
+      primaryCta: null,
       meta: {
         plan: productName,
         priceLabel: "Price",
         price: priceLabel,
         dateLabel: "Access through",
-        date: periodEnd ? formatShortDateLong(periodEnd) : "—",
-        statusLabel: periodEnd ? `Cancels ${formatShortDateLong(periodEnd)}` : "Canceled",
+        date: accessLong || "—",
+        statusLabel: cancelsShort ? `Cancels ${cancelsShort}` : "Canceled",
         statusTone: "muted",
       },
-      manageHint: "Payment method, invoices, and reactivation are managed in the Stripe customer portal.",
-      cancelLede: "",
+      manageHint: "Payment method, invoices, and plan changes are managed in the Stripe customer portal.",
+      cancelSection: {
+        title: "Scheduled cancellation",
+        lede: accessLong
+          ? `Your Cash Forecast access will remain active through ${accessLong}.`
+          : "Your subscription is scheduled to cancel at the end of the current billing period.",
+        buttonLabel: "Keep subscription",
+        action: "keep",
+        tone: "keep",
+      },
     };
   }
 
@@ -9045,12 +9081,18 @@ function resolveBillingLifecycleModel(status, { hasFamily = true } = {}) {
         priceLabel: "Price",
         price: priceLabel,
         dateLabel: "Next billing date",
-        date: periodEnd ? formatShortDateLong(periodEnd) : "—",
+        date: periodEnd ? formatBillingLongDate(periodEnd) : "—",
         statusLabel: "Active",
         statusTone: "paid",
       },
       manageHint: "Update your payment method, view invoices, or manage your subscription through Stripe.",
-      cancelLede: "You can cancel your subscription at any time.",
+      cancelSection: {
+        title: "Cancellation",
+        lede: "You can cancel your subscription at any time.",
+        buttonLabel: "Cancel subscription",
+        action: "cancel",
+        tone: "danger",
+      },
     };
   }
 
@@ -9223,13 +9265,15 @@ function setBillingPrimaryCta(cta) {
   if (cta.action === "portal") {
     el.href = "#";
     el.setAttribute("role", "button");
+    el.dataset.billingFlow = cta.flow || "payment";
   } else {
     el.href = checkoutUrlForActiveFamily();
     el.removeAttribute("role");
+    el.removeAttribute("data-billing-flow");
   }
 }
 
-function openBillingPortalForActiveFamily() {
+function openBillingPortalForActiveFamily(flow = "") {
   const apiBase = apiBaseUrl();
   if (!apiBase) {
     showBwToast("Billing portal isn’t configured on this build.");
@@ -9239,8 +9283,20 @@ function openBillingPortalForActiveFamily() {
     showBwToast("Choose a family first.");
     return;
   }
+  const flowKey = String(flow || "").trim().toLowerCase();
+  const toastByFlow = {
+    payment: "Opening Stripe to update your payment method…",
+    cycle: "Opening Stripe to change your billing cycle…",
+    invoices: "Opening Stripe to view invoices…",
+    cancel: "Opening Stripe to cancel your subscription…",
+    keep: "Opening Stripe so you can keep your subscription…",
+  };
+  try {
+    showBwToast(toastByFlow[flowKey] || "Opening Stripe billing…");
+  } catch (_) {}
   const body = new FormData();
   body.set("family_id", String(state.activeFamilyId));
+  if (flowKey) body.set("flow", flowKey);
   fetch(`${apiBase}/create-portal-session`, {
     method: "POST",
     body,
@@ -9267,10 +9323,10 @@ function wireBillingActionsOnce() {
   document.querySelectorAll("[data-billing-action]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const action = String(btn.getAttribute("data-billing-action") || "");
-      const portalActions = new Set(["payment", "cycle", "cancel", "invoices"]);
+      const portalActions = new Set(["payment", "cycle", "cancel", "invoices", "keep"]);
       if (portalActions.has(action)) {
         if (isBillingPortalAvailable()) {
-          openBillingPortalForActiveFamily();
+          openBillingPortalForActiveFamily(action);
           return;
         }
         showBwToast("Stripe customer portal isn’t available yet for this family.");
@@ -9283,11 +9339,38 @@ function wireBillingActionsOnce() {
     cta.addEventListener("click", (e) => {
       if (String(cta.dataset.billingCta || "") === "portal") {
         e.preventDefault();
-        openBillingPortalForActiveFamily();
+        openBillingPortalForActiveFamily(String(cta.dataset.billingFlow || "payment"));
       }
     });
   }
   billingActionsWired = true;
+}
+
+function applyBillingCancelSection(model) {
+  if (!billingCancelSectionEl) return;
+  const show = !!model.showCancel;
+  billingCancelSectionEl.hidden = !show;
+  if (!show) return;
+
+  const section = model.cancelSection || {
+    title: "Cancellation",
+    lede: model.cancelLede || "You can cancel your subscription at any time.",
+    buttonLabel: "Cancel subscription",
+    action: "cancel",
+    tone: "danger",
+  };
+  if (billingCancelTitleEl) billingCancelTitleEl.textContent = section.title || "Cancellation";
+  if (billingCancelLedeEl) billingCancelLedeEl.textContent = section.lede || "";
+  const btn =
+    billingCancelBtnEl ||
+    billingCancelSectionEl.querySelector("[data-billing-action]") ||
+    document.getElementById("billingCancelBtn");
+  if (btn) {
+    btn.textContent = section.buttonLabel || "Cancel subscription";
+    btn.setAttribute("data-billing-action", section.action || "cancel");
+    btn.classList.toggle("billing-cancel__request--keep", section.tone === "keep");
+    btn.classList.toggle("billing-cancel__request--danger", section.tone !== "keep");
+  }
 }
 
 function applyBillingLifecycleModel(model) {
@@ -9301,7 +9384,7 @@ function applyBillingLifecycleModel(model) {
 
   if (billingMetaEl) billingMetaEl.hidden = !model.showMeta;
   if (billingManageSectionEl) billingManageSectionEl.hidden = !model.showManage;
-  if (billingCancelSectionEl) billingCancelSectionEl.hidden = !model.showCancel;
+  applyBillingCancelSection(model);
 
   if (model.showMeta && model.meta) {
     billingPlanEl.textContent = model.meta.plan;
@@ -9320,7 +9403,6 @@ function applyBillingLifecycleModel(model) {
   }
 
   if (billingManageHintEl && model.manageHint) billingManageHintEl.textContent = model.manageHint;
-  if (billingCancelLedeEl && model.cancelLede) billingCancelLedeEl.textContent = model.cancelLede;
 }
 
 function applyBillingStatusToPanel(status) {

@@ -12289,17 +12289,34 @@ label{
   cursor: pointer;
   transition: background-color 0.14s ease, border-color 0.14s ease, color 0.14s ease;
 }
+.billing-cancel__request--danger,
+.billing-cancel__request:not(.billing-cancel__request--keep){
+  border-color: rgba(185, 75, 85, 0.28);
+  color: rgba(153, 50, 58, 0.92);
+  background: transparent;
+}
+.billing-cancel__request--keep{
+  border-color: rgba(11, 61, 46, 0.28);
+  color: rgba(11, 61, 46, 0.94);
+  background: rgba(11, 61, 46, 0.04);
+  font-weight: 650;
+}
 .billing-cancel__request:hover{
   color: rgba(127, 29, 40, 0.96);
   border-color: rgba(185, 75, 85, 0.42);
   background: rgba(254, 242, 242, 0.55);
 }
+.billing-cancel__request--keep:hover{
+  color: rgba(11, 61, 46, 1);
+  border-color: rgba(11, 61, 46, 0.4);
+  background: rgba(11, 61, 46, 0.08);
+}
 .billing-cancel__request:focus-visible{
-  color: rgba(127, 29, 40, 0.96);
-  border-color: rgba(185, 75, 85, 0.42);
-  background: rgba(254, 242, 242, 0.55);
   outline: 2px solid rgba(185, 75, 85, 0.35);
   outline-offset: 2px;
+}
+.billing-cancel__request--keep:focus-visible{
+  outline-color: rgba(11, 61, 46, 0.4);
 }
 
 @media (max-width: 759px){

@@ -221,3 +221,19 @@ Sign in on staging with a **dedicated test account**, not your main production e
 - `.github/workflows/pages.yml` — production frontend (`main`)
 - `.github/workflows/pages-staging.yml` — staging build verification + optional deploy hook
 - `scripts/build-frontend-static.sh` — shared static frontend build (bakes `API_BASE`)
+
+## Stripe Customer Portal (staging)
+
+Portal sessions always return to `APP_PUBLIC_BASE_URL/settings/?section=billing&portal=return` (server-built; not client-supplied).
+
+Deep links from BalanceWhiz (when Customer Portal features are enabled in the Stripe Dashboard):
+
+| BalanceWhiz action | Stripe `flow_data` |
+|---|---|
+| Update payment method | `payment_method_update` |
+| Change billing cycle | `subscription_update` |
+| Cancel subscription | `subscription_cancel` |
+| View invoices / Keep subscription | standard portal (no invoice deep link; uncancel is on Stripe’s homepage) |
+
+**Branding** (Dashboard → Settings → Billing → Customer portal): set BalanceWhiz name, logo, brand color, and support email. The “sandbox” badge is Stripe test-mode only and disappears in live mode. Hosted copy such as “Don’t cancel subscription” and the sidebar “Return to …” link prominence are **not** customizable via API — improve clarity in BalanceWhiz before/after the redirect instead.
+

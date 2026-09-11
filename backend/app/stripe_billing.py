@@ -257,20 +257,32 @@ def register_stripe_routes(
         request: Request,
         family_id: Optional[int] = Form(None),
         session_id: Optional[str] = Form(None),
+        flow: Optional[str] = Form(None),
     ):
         """
         Open the Stripe Customer Portal.
 
         Preferred: authenticated request + family_id (owner) → customer from billing_customers.
         Legacy: session_id from Checkout success query string.
+
+        Optional flow (BalanceWhiz action → Stripe portal deep link when supported):
+        - payment → payment_method_update
+        - cycle → subscription_update
+        - cancel → subscription_cancel
+        - invoices / keep / (empty) → standard portal homepage
+
+        return_url is always built server-side from APP_PUBLIC_BASE_URL → Settings Billing.
+        Hosted portal link prominence / button copy (e.g. “Don’t cancel”) are Stripe-controlled.
         """
         _require_stripe()
         domain = _require_public_base()
 
         customer: Optional[str] = None
         customer_account: Optional[str] = None
+        stripe_subscription_id: Optional[str] = None
         # Server-built from APP_PUBLIC_BASE_URL — never accept a client-supplied return URL.
         return_url = _billing_page_url(domain, portal_return=True)
+        flow_key = (flow or "").strip().lower()
 
         try:
             if family_id is not None:
@@ -281,7 +293,7 @@ def register_stripe_routes(
                     )
                 user_id = _auth_user_id(request)
                 from .billing_entitlement import stripe_customer_id_for_family
-                from .main import BillingCustomer, require_family_owner
+                from .main import BillingCustomer, BillingSubscription, require_family_owner
                 from sqlalchemy import select
 
                 with session_factory() as db:
@@ -293,6 +305,11 @@ def register_stripe_routes(
                             select(BillingCustomer).where(BillingCustomer.user_id == int(user_id))
                         ).scalar_one_or_none()
                         customer = (row.stripe_customer_id or "").strip() if row else None
+                    sub_row = db.execute(
+                        select(BillingSubscription).where(BillingSubscription.family_id == int(family_id))
+                    ).scalar_one_or_none()
+                    if sub_row is not None:
+                        stripe_subscription_id = (sub_row.stripe_subscription_id or "").strip() or None
                 if not customer:
                     raise HTTPException(
                         status_code=status.HTTP_400_BAD_REQUEST,
@@ -318,6 +335,35 @@ def register_stripe_routes(
                         status_code=status.HTTP_400_BAD_REQUEST,
                         detail="Checkout session has no customer yet. Complete payment first.",
                     )
+                sub_ref = getattr(checkout_session, "subscription", None)
+                if isinstance(sub_ref, str) and sub_ref.strip():
+                    stripe_subscription_id = sub_ref.strip()
+                elif sub_ref is not None:
+                    stripe_subscription_id = (getattr(sub_ref, "id", None) or "").strip() or None
+
+            def _after_completion() -> dict[str, Any]:
+                return {
+                    "type": "redirect",
+                    "redirect": {"return_url": return_url},
+                }
+
+            def _flow_data_for_action() -> Optional[dict[str, Any]]:
+                # Stripe has no invoice-history deep link; keep/open portal homepage.
+                if flow_key == "payment":
+                    return {"type": "payment_method_update", "after_completion": _after_completion()}
+                if flow_key == "cycle" and stripe_subscription_id:
+                    return {
+                        "type": "subscription_update",
+                        "subscription_update": {"subscription": stripe_subscription_id},
+                        "after_completion": _after_completion(),
+                    }
+                if flow_key == "cancel" and stripe_subscription_id:
+                    return {
+                        "type": "subscription_cancel",
+                        "subscription_cancel": {"subscription": stripe_subscription_id},
+                        "after_completion": _after_completion(),
+                    }
+                return None
 
             portal_params: dict[str, Any] = {"return_url": return_url}
             if customer:
@@ -325,7 +371,24 @@ def register_stripe_routes(
             elif customer_account:
                 portal_params["customer_account"] = customer_account
 
-            portal_session = stripe.billing_portal.Session.create(**portal_params)
+            flow_data = _flow_data_for_action()
+            if flow_data:
+                portal_params["flow_data"] = flow_data
+
+            try:
+                portal_session = stripe.billing_portal.Session.create(**portal_params)
+            except stripe.error.StripeError as flow_err:
+                # Deep link can fail if portal config disables that feature — fall back to homepage.
+                if flow_data:
+                    logger.warning(
+                        "Portal deep-link flow=%s failed (%s); falling back to standard portal",
+                        flow_key,
+                        getattr(getattr(flow_err, "error", None), "message", None) or flow_err,
+                    )
+                    portal_params.pop("flow_data", None)
+                    portal_session = stripe.billing_portal.Session.create(**portal_params)
+                else:
+                    raise
         except HTTPException:
             raise
         except stripe.error.StripeError as e:
