@@ -9296,34 +9296,62 @@ async function fetchBillingStatus({ force = false } = {}) {
   return promise;
 }
 
+function billingDom() {
+  return {
+    planHeadline: document.getElementById("billingPlanHeadline"),
+    planContext: document.getElementById("billingPlanContext"),
+    plan: document.getElementById("billingPlan"),
+    frequency: document.getElementById("billingFrequency"),
+    priceLabel: document.getElementById("billingPriceLabel"),
+    nextDateLabel: document.getElementById("billingNextDateLabel"),
+    nextDate: document.getElementById("billingNextDate"),
+    renewal: document.getElementById("billingRenewalMessage"),
+    calloutTitle: document.getElementById("billingCalloutTitle"),
+    calloutText: document.getElementById("billingCalloutText"),
+    accountStatus: document.getElementById("billingAccountStatus"),
+    meta: document.getElementById("billingMeta"),
+    manage: document.getElementById("billingManageSection"),
+    manageHint: document.getElementById("billingManageHint"),
+    cancel: document.getElementById("billingCancelSection"),
+    cancelTitle: document.getElementById("billingCancelTitle"),
+    cancelLede: document.getElementById("billingCancelLede"),
+    cancelBtn:
+      document.getElementById("billingCancelBtn") ||
+      document.querySelector("#billingCancelSection [data-billing-action]"),
+    primaryCta: document.getElementById("billingPrimaryCta"),
+  };
+}
+
 function setBillingLifecycleCallout(callout) {
-  if (!billingRenewalMessageEl) return;
+  const dom = billingDom();
+  const el = dom.renewal || billingRenewalMessageEl;
+  if (!el) return;
   if (!callout || (!callout.title && !callout.text)) {
-    billingRenewalMessageEl.hidden = true;
-    if (billingCalloutTitleEl) billingCalloutTitleEl.textContent = "";
-    if (billingCalloutTextEl) billingCalloutTextEl.textContent = "";
+    el.hidden = true;
+    if (dom.calloutTitle) dom.calloutTitle.textContent = "";
+    if (dom.calloutText) dom.calloutText.textContent = "";
     return;
   }
   const kind = callout.kind || "info";
-  billingRenewalMessageEl.hidden = false;
-  billingRenewalMessageEl.classList.add("billing-callout");
-  billingRenewalMessageEl.classList.toggle("billing-callout--info", kind === "info");
-  billingRenewalMessageEl.classList.toggle("billing-callout--alert", kind === "alert");
-  billingRenewalMessageEl.classList.toggle("billing-callout--warning", kind === "warning");
-  billingRenewalMessageEl.classList.toggle("billing-callout--trial", kind === "trial");
-  billingRenewalMessageEl.removeAttribute("data-billing-dev-callout");
-  if (billingCalloutTitleEl) {
-    billingCalloutTitleEl.textContent = callout.title || "";
-    billingCalloutTitleEl.hidden = !callout.title;
+  el.hidden = false;
+  el.classList.add("billing-callout");
+  el.classList.toggle("billing-callout--info", kind === "info");
+  el.classList.toggle("billing-callout--alert", kind === "alert");
+  el.classList.toggle("billing-callout--warning", kind === "warning");
+  el.classList.toggle("billing-callout--trial", kind === "trial");
+  el.removeAttribute("data-billing-dev-callout");
+  if (dom.calloutTitle) {
+    dom.calloutTitle.textContent = callout.title || "";
+    dom.calloutTitle.hidden = !callout.title;
   }
-  if (billingCalloutTextEl) {
-    billingCalloutTextEl.textContent = callout.text || "";
-    billingCalloutTextEl.hidden = !callout.text;
+  if (dom.calloutText) {
+    dom.calloutText.textContent = callout.text || "";
+    dom.calloutText.hidden = !callout.text;
   }
 }
 
 function setBillingPrimaryCta(cta) {
-  const el = billingPrimaryCtaEl || document.getElementById("billingPrimaryCta");
+  const el = billingDom().primaryCta || billingPrimaryCtaEl || document.getElementById("billingPrimaryCta");
   if (!el) return;
   if (!cta) {
     el.hidden = true;
@@ -9343,6 +9371,169 @@ function setBillingPrimaryCta(cta) {
     el.href = checkoutUrlForActiveFamily();
     el.removeAttribute("role");
     el.removeAttribute("data-billing-flow");
+  }
+}
+
+function applyBillingCancelSection(model) {
+  const dom = billingDom();
+  const sectionEl = dom.cancel || billingCancelSectionEl;
+  if (!sectionEl) return;
+  const show = !!model.showCancel;
+  sectionEl.hidden = !show;
+  if (!show) return;
+
+  const section = model.cancelSection || {
+    title: "Cancellation",
+    lede: model.cancelLede || "You can cancel your subscription at any time.",
+    buttonLabel: "Cancel subscription",
+    action: "cancel",
+    tone: "danger",
+  };
+  if (dom.cancelTitle) dom.cancelTitle.textContent = section.title || "Cancellation";
+  if (dom.cancelLede) dom.cancelLede.textContent = section.lede || "";
+  const btn = dom.cancelBtn;
+  if (btn) {
+    btn.textContent = section.buttonLabel || "Cancel subscription";
+    btn.setAttribute("data-billing-action", section.action || "cancel");
+    btn.classList.toggle("billing-cancel__request--keep", section.tone === "keep");
+    btn.classList.toggle("billing-cancel__request--danger", section.tone !== "keep");
+  }
+}
+
+function applyBillingLifecycleModel(model) {
+  const dom = billingDom();
+  const planEl = dom.plan || billingPlanEl;
+  const frequencyEl = dom.frequency || billingFrequencyEl;
+  const nextDateEl = dom.nextDate || billingNextDateEl;
+  if (!planEl || !frequencyEl || !nextDateEl) return;
+
+  try {
+    if (dom.planHeadline) dom.planHeadline.textContent = model.productName;
+    if (dom.planContext) dom.planContext.textContent = model.productCopy;
+
+    // Paint structure before clearing the loading callout so the pane never goes blank.
+    if (dom.meta) dom.meta.hidden = !model.showMeta;
+    if (dom.manage) dom.manage.hidden = !model.showManage;
+    applyBillingCancelSection(model);
+
+    if (model.showMeta && model.meta) {
+      planEl.textContent = model.meta.plan;
+      if (dom.priceLabel) dom.priceLabel.textContent = model.meta.priceLabel;
+      frequencyEl.textContent = model.meta.price;
+      if (dom.nextDateLabel) dom.nextDateLabel.textContent = model.meta.dateLabel;
+      nextDateEl.textContent = model.meta.date;
+      if (dom.accountStatus) {
+        dom.accountStatus.innerHTML = billingStatusPillHtml(model.meta.statusLabel, model.meta.statusTone);
+      }
+    } else {
+      planEl.textContent = "";
+      frequencyEl.textContent = "";
+      nextDateEl.textContent = "";
+      if (dom.accountStatus) dom.accountStatus.innerHTML = "";
+    }
+
+    if (dom.manageHint && model.manageHint) dom.manageHint.textContent = model.manageHint;
+
+    setBillingPrimaryCta(model.primaryCta);
+    setBillingLifecycleCallout(model.callout);
+  } catch (err) {
+    try {
+      console.warn("[billing-ui]", err && err.message ? err.message : err);
+    } catch (_) {}
+    setBillingLifecycleCallout({
+      kind: "alert",
+      title: "Couldn’t render billing status",
+      text: "Try refreshing the page. If this keeps happening, contact support.",
+    });
+  }
+}
+
+function applyBillingStatusToPanel(status) {
+  const hasFamily = ensureActiveFamilyIdForBilling() > 0;
+  const model = resolveBillingLifecycleModel(status, { hasFamily });
+  applyBillingLifecycleModel(model);
+}
+
+let billingPanelRenderToken = 0;
+
+async function renderBillingPanel({ force = false } = {}) {
+  const dom = billingDom();
+  if (!(dom.plan || billingPlanEl) || !(dom.frequency || billingFrequencyEl) || !(dom.nextDate || billingNextDateEl)) {
+    return;
+  }
+  wireBillingActionsOnce();
+
+  const token = ++billingPanelRenderToken;
+
+  let fid = ensureActiveFamilyIdForBilling();
+  if (!fid) {
+    try {
+      if (!Array.isArray(state.families) || state.families.length === 0) {
+        await loadFamilies();
+      }
+    } catch (_) {}
+    if (token !== billingPanelRenderToken) return;
+    fid = ensureActiveFamilyIdForBilling();
+  }
+
+  if (!fid) {
+    applyBillingStatusToPanel(null);
+    return;
+  }
+
+  const cached = cachedBillingStatusForActiveFamily();
+  if (cached) {
+    applyBillingStatusToPanel(cached);
+  } else {
+    setBillingLifecycleCallout({
+      kind: "info",
+      title: "Loading billing status…",
+      text: "Fetching your subscription details.",
+    });
+  }
+
+  try {
+    // First paint from DB (fast). Then optional Stripe sync when force/portal return.
+    const status = await fetchBillingStatus({ force: false });
+    if (token !== billingPanelRenderToken) return;
+    applyBillingStatusToPanel(status);
+
+    if (force) {
+      try {
+        const synced = await fetchBillingStatus({ force: true });
+        if (token !== billingPanelRenderToken) return;
+        applyBillingStatusToPanel(synced);
+      } catch (syncErr) {
+        // Keep the DB paint; sync is best-effort.
+        try {
+          console.warn("[billing-sync]", syncErr && syncErr.message ? syncErr.message : syncErr);
+        } catch (_) {}
+      }
+    }
+  } catch (err) {
+    if (token !== billingPanelRenderToken) return;
+    if (!cached) {
+      applyBillingLifecycleModel({
+        mode: "error",
+        productName: "Cash Forecast",
+        productCopy: getBillingPlanContext("base"),
+        showMeta: false,
+        showManage: false,
+        showCancel: false,
+        callout: {
+          kind: "alert",
+          title: "Couldn’t load billing status",
+          text: "Try again in a moment. If this keeps happening, contact support.",
+        },
+        primaryCta: null,
+        meta: null,
+        manageHint: "",
+        cancelLede: "",
+      });
+    }
+    try {
+      console.warn("[billing-status]", err && err.message ? err.message : err);
+    } catch (_) {}
   }
 }
 
@@ -9417,132 +9608,6 @@ function wireBillingActionsOnce() {
     });
   }
   billingActionsWired = true;
-}
-
-function applyBillingCancelSection(model) {
-  if (!billingCancelSectionEl) return;
-  const show = !!model.showCancel;
-  billingCancelSectionEl.hidden = !show;
-  if (!show) return;
-
-  const section = model.cancelSection || {
-    title: "Cancellation",
-    lede: model.cancelLede || "You can cancel your subscription at any time.",
-    buttonLabel: "Cancel subscription",
-    action: "cancel",
-    tone: "danger",
-  };
-  if (billingCancelTitleEl) billingCancelTitleEl.textContent = section.title || "Cancellation";
-  if (billingCancelLedeEl) billingCancelLedeEl.textContent = section.lede || "";
-  const btn =
-    billingCancelBtnEl ||
-    billingCancelSectionEl.querySelector("[data-billing-action]") ||
-    document.getElementById("billingCancelBtn");
-  if (btn) {
-    btn.textContent = section.buttonLabel || "Cancel subscription";
-    btn.setAttribute("data-billing-action", section.action || "cancel");
-    btn.classList.toggle("billing-cancel__request--keep", section.tone === "keep");
-    btn.classList.toggle("billing-cancel__request--danger", section.tone !== "keep");
-  }
-}
-
-function applyBillingLifecycleModel(model) {
-  if (!billingPlanEl || !billingFrequencyEl || !billingNextDateEl) return;
-
-  if (billingPlanHeadlineEl) billingPlanHeadlineEl.textContent = model.productName;
-  if (billingPlanContextEl) billingPlanContextEl.textContent = model.productCopy;
-
-  setBillingLifecycleCallout(model.callout);
-  setBillingPrimaryCta(model.primaryCta);
-
-  if (billingMetaEl) billingMetaEl.hidden = !model.showMeta;
-  if (billingManageSectionEl) billingManageSectionEl.hidden = !model.showManage;
-  applyBillingCancelSection(model);
-
-  if (model.showMeta && model.meta) {
-    billingPlanEl.textContent = model.meta.plan;
-    if (billingPriceLabelEl) billingPriceLabelEl.textContent = model.meta.priceLabel;
-    billingFrequencyEl.textContent = model.meta.price;
-    if (billingNextDateLabelEl) billingNextDateLabelEl.textContent = model.meta.dateLabel;
-    billingNextDateEl.textContent = model.meta.date;
-    if (billingAccountStatusEl) {
-      billingAccountStatusEl.innerHTML = billingStatusPillHtml(model.meta.statusLabel, model.meta.statusTone);
-    }
-  } else {
-    billingPlanEl.textContent = "";
-    billingFrequencyEl.textContent = "";
-    billingNextDateEl.textContent = "";
-    if (billingAccountStatusEl) billingAccountStatusEl.innerHTML = "";
-  }
-
-  if (billingManageHintEl && model.manageHint) billingManageHintEl.textContent = model.manageHint;
-}
-
-function applyBillingStatusToPanel(status) {
-  const hasFamily = ensureActiveFamilyIdForBilling() > 0;
-  const model = resolveBillingLifecycleModel(status, { hasFamily });
-  applyBillingLifecycleModel(model);
-}
-
-async function renderBillingPanel({ force = false } = {}) {
-  if (!billingPlanEl || !billingFrequencyEl || !billingNextDateEl) return;
-  wireBillingActionsOnce();
-
-  let fid = ensureActiveFamilyIdForBilling();
-  if (!fid) {
-    // Families may not be loaded yet (e.g. Settings → Billing opened early).
-    try {
-      if (!Array.isArray(state.families) || state.families.length === 0) {
-        await loadFamilies();
-      }
-    } catch (_) {}
-    fid = ensureActiveFamilyIdForBilling();
-  }
-
-  if (!fid) {
-    applyBillingStatusToPanel(null);
-    return;
-  }
-
-  const cached = cachedBillingStatusForActiveFamily();
-  if (cached) {
-    applyBillingStatusToPanel(cached);
-  } else {
-    // Avoid a blank Billing pane while Stripe/status loads.
-    setBillingLifecycleCallout({
-      kind: "info",
-      title: "Loading billing status…",
-      text: "Fetching your subscription details.",
-    });
-  }
-
-  try {
-    const status = await fetchBillingStatus({ force });
-    applyBillingStatusToPanel(status);
-  } catch (err) {
-    if (!cached) {
-      applyBillingLifecycleModel({
-        mode: "error",
-        productName: "Cash Forecast",
-        productCopy: getBillingPlanContext("base"),
-        showMeta: false,
-        showManage: false,
-        showCancel: false,
-        callout: {
-          kind: "alert",
-          title: "Couldn’t load billing status",
-          text: "Try again in a moment. If this keeps happening, contact support.",
-        },
-        primaryCta: null,
-        meta: null,
-        manageHint: "",
-        cancelLede: "",
-      });
-    }
-    try {
-      console.warn("[billing-status]", err && err.message ? err.message : err);
-    } catch (_) {}
-  }
 }
 
 function applyCheckoutReturnFromUrl() {

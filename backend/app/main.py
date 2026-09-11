@@ -4003,15 +4003,21 @@ def list_families(access_token: Optional[str] = Depends(_read_access_token_from_
 @app.get("/api/families/{family_id}/billing-status", response_model=BillingStatusOut)
 def family_billing_status(
     family_id: int,
+    sync: int = 0,
     access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
-    """Server entitlement for Cash Forecast (app trial + Stripe subscription)."""
+    """Server entitlement for Cash Forecast (app trial + Stripe subscription).
+
+    By default returns DB state only (fast, never blank). Pass sync=1 after portal/checkout
+    return to refresh from Stripe with a hard timeout.
+    """
     from .billing_entitlement import (
         apply_live_stripe_subscription_fields,
         build_billing_status,
         refresh_subscription_row_from_stripe,
         stripe_customer_id_for_family,
+        _run_with_timeout,
     )
 
     user_id = get_current_user_id(access_token)
@@ -4027,93 +4033,76 @@ def family_billing_status(
         select(BillingCustomer.id).where(BillingCustomer.user_id == user_id)
     ).scalar_one_or_none() is not None
 
-    # Always build a DB-backed payload first so the Billing page never goes blank if Stripe is slow.
     payload = build_billing_status(
         family=fam,
         subscription=sub,
         has_stripe_customer=bool(has_customer),
     )
 
+    # Optional Stripe refresh — never required to paint Billing, never allowed to hang the request.
+    want_sync = bool(int(sync or 0))
     stripe_key = (settings.STRIPE_SECRET_KEY or "").strip()
-    live_stripe_sub = None
-    sub_id = (getattr(sub, "stripe_subscription_id", None) or "").strip() if sub is not None else ""
-    if not sub_id and stripe_key:
-        # Recover subscription id from the family's Stripe customer when the DB row is incomplete.
+    if want_sync and stripe_key:
+        live_stripe_sub = None
+        sub_id = (getattr(sub, "stripe_subscription_id", None) or "").strip() if sub is not None else ""
         try:
-            import stripe as stripe_mod
-            from .billing_entitlement import _run_with_timeout
+            if not sub_id:
+                import stripe as stripe_mod
 
-            cust = stripe_customer_id_for_family(db, family_id=int(family_id))
-            if not cust:
-                # Fall back to the signed-in owner's Stripe customer mapping.
-                owner_cust = db.execute(
-                    select(BillingCustomer).where(BillingCustomer.user_id == int(user_id))
-                ).scalar_one_or_none()
-                cust = (owner_cust.stripe_customer_id or "").strip() if owner_cust else None
-            if cust:
-                stripe_mod.api_key = stripe_key
+                cust = stripe_customer_id_for_family(db, family_id=int(family_id))
+                if not cust:
+                    owner_cust = db.execute(
+                        select(BillingCustomer).where(BillingCustomer.user_id == int(user_id))
+                    ).scalar_one_or_none()
+                    cust = (owner_cust.stripe_customer_id or "").strip() if owner_cust else None
+                if cust:
+                    stripe_mod.api_key = stripe_key
 
-                def _list_subs():
-                    return stripe_mod.Subscription.list(customer=cust, status="all", limit=5)
+                    def _list_subs():
+                        return stripe_mod.Subscription.list(customer=cust, status="all", limit=5)
 
-                listed = _run_with_timeout(
-                    _list_subs,
-                    timeout_seconds=3.0,
-                    label=f"Stripe subscription list family_id={family_id}",
+                    listed = _run_with_timeout(
+                        _list_subs,
+                        timeout_seconds=2.5,
+                        label=f"Stripe subscription list family_id={family_id}",
+                    )
+                    data = (getattr(listed, "data", None) or []) if listed is not None else []
+                    for candidate in data:
+                        st = (getattr(candidate, "status", None) or "").strip().lower()
+                        if st in ("active", "past_due", "trialing", "unpaid"):
+                            sub_id = (getattr(candidate, "id", None) or "").strip()
+                            live_stripe_sub = candidate
+                            break
+                    if not sub_id and data:
+                        live_stripe_sub = data[0]
+                        sub_id = (getattr(live_stripe_sub, "id", None) or "").strip()
+
+            if sub_id:
+                refreshed, live_from_refresh = refresh_subscription_row_from_stripe(
+                    db,
+                    stripe_subscription_id=str(sub_id),
+                    api_key=stripe_key,
+                    timeout_seconds=2.5,
                 )
-                data = (getattr(listed, "data", None) or []) if listed is not None else []
-                for candidate in data:
-                    st = (getattr(candidate, "status", None) or "").strip().lower()
-                    if st in ("active", "past_due", "trialing", "unpaid"):
-                        sub_id = (getattr(candidate, "id", None) or "").strip()
-                        live_stripe_sub = candidate
-                        break
-                if not sub_id and data:
-                    live_stripe_sub = data[0]
-                    sub_id = (getattr(live_stripe_sub, "id", None) or "").strip()
-        except Exception as list_err:
-            logger.warning(
-                "billing-status could not list Stripe subscriptions for family_id=%s: %s",
-                family_id,
-                list_err,
-            )
-
-    if sub_id and stripe_key:
-        try:
-            refreshed, live_from_refresh = refresh_subscription_row_from_stripe(
-                db,
-                stripe_subscription_id=str(sub_id),
-                api_key=stripe_key,
-                timeout_seconds=3.0,
-            )
-            if live_from_refresh is not None:
-                live_stripe_sub = live_from_refresh
-            if refreshed is not None:
-                db.commit()
-                db.refresh(refreshed)
-                sub = refreshed
-                payload = build_billing_status(
-                    family=fam,
-                    subscription=sub,
-                    has_stripe_customer=bool(has_customer),
-                )
+                if live_from_refresh is not None:
+                    live_stripe_sub = live_from_refresh
+                if refreshed is not None:
+                    db.commit()
+                    db.refresh(refreshed)
+                    payload = build_billing_status(
+                        family=fam,
+                        subscription=refreshed,
+                        has_stripe_customer=bool(has_customer),
+                    )
+            if live_stripe_sub is not None:
+                payload = apply_live_stripe_subscription_fields(payload, live_stripe_sub)
         except Exception:
-            logger.exception(
-                "billing-status Stripe refresh failed for family_id=%s sub=%s",
-                family_id,
-                sub_id,
-            )
+            logger.exception("billing-status optional Stripe sync failed for family_id=%s", family_id)
             try:
                 db.rollback()
             except Exception:
                 pass
-
-    # Prefer live Stripe cancel/period fields when available.
-    if live_stripe_sub is not None:
-        try:
-            payload = apply_live_stripe_subscription_fields(payload, live_stripe_sub)
-        except Exception:
-            logger.exception("billing-status failed applying live Stripe fields for family_id=%s", family_id)
+            # Keep the DB payload already built above.
 
     return BillingStatusOut(**payload)
 
