@@ -5134,7 +5134,7 @@ familySelect.addEventListener("change", async () => {
   void refreshLowBalanceAlert();
   void refreshForecastConfidence();
   if (settingsViewPanel && !settingsViewPanel.hidden && getActiveSettingsSectionKey() === "billing") {
-    void renderBillingPanel({ force: true });
+    void renderBillingPanel({ force: false });
   }
 });
 
@@ -9251,19 +9251,25 @@ async function fetchBillingStatus({ force = false } = {}) {
     throw new Error("Billing API isn’t configured on this build.");
   }
 
-  // Dedicated short fetch: avoid the generic api() 14s×2 retry storm when Stripe/API is slow.
+  // DB-only loads use the shared api() helper (cold-start retries).
+  // sync=1 is best-effort and uses a single bounded attempt.
   const promise = (async () => {
+    if (!force) {
+      const data = await api(`/api/families/${fid}/billing-status`, "GET");
+      billingStatusCache = { familyId: fid, data, fetchedAt: Date.now(), inFlight: null };
+      return data;
+    }
+
     const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
     const timeoutId = ctrl
       ? window.setTimeout(() => {
           try {
             ctrl.abort();
           } catch (_) {}
-        }, 10000)
+        }, 12000)
       : 0;
     try {
-      const qs = force ? "?sync=1" : "";
-      const res = await fetch(`${apiBase}/api/families/${fid}/billing-status${qs}`, {
+      const res = await fetch(`${apiBase}/api/families/${fid}/billing-status?sync=1`, {
         method: "GET",
         credentials: "include",
         headers: { ...apiBearerAuthHeaders(), Accept: "application/json" },
@@ -9274,7 +9280,7 @@ async function fetchBillingStatus({ force = false } = {}) {
         const msg =
           (data && data.detail) ||
           (data && data.error && data.error.message) ||
-          `Billing status failed (${res.status}).`;
+          `Billing sync failed (${res.status}).`;
         throw new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
       }
       billingStatusCache = { familyId: fid, data, fetchedAt: Date.now(), inFlight: null };
@@ -9291,7 +9297,7 @@ async function fetchBillingStatus({ force = false } = {}) {
     familyId: fid,
     data: billingStatusCache.data && Number(billingStatusCache.familyId) === fid ? billingStatusCache.data : null,
     fetchedAt: billingStatusCache.fetchedAt || 0,
-    inFlight: promise,
+    inFlight: force ? null : promise,
   };
   return promise;
 }
@@ -9512,6 +9518,10 @@ async function renderBillingPanel({ force = false } = {}) {
     }
   } catch (err) {
     if (token !== billingPanelRenderToken) return;
+    const errText =
+      err && err.message
+        ? String(err.message)
+        : "Try again in a moment. If this keeps happening, contact support.";
     if (!cached) {
       applyBillingLifecycleModel({
         mode: "error",
@@ -9523,7 +9533,7 @@ async function renderBillingPanel({ force = false } = {}) {
         callout: {
           kind: "alert",
           title: "Couldn’t load billing status",
-          text: "Try again in a moment. If this keeps happening, contact support.",
+          text: errText.length > 180 ? "Try again in a moment. If this keeps happening, contact support." : errText,
         },
         primaryCta: null,
         meta: null,
@@ -11105,7 +11115,7 @@ async function loadFamilies() {
       void loadFamilyMembersPanel();
     }
     if (settingsSection === "billing") {
-      void renderBillingPanel({ force: true });
+      void renderBillingPanel({ force: false });
     }
   }
   await migrateLegacyDeviceBalanceThresholdsToAccount();
