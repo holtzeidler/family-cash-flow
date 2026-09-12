@@ -1649,7 +1649,7 @@ const BILLING_ANNUAL_AMOUNT_USD = "59.99";
 const BILLING_LOOKUP_MONTHLY = "cash_forecast_monthly";
 const BILLING_LOOKUP_ANNUAL = "cash_forecast_annual";
 /** In-memory cache for GET /api/families/{id}/billing-status (server is source of truth). */
-let billingStatusCache = { familyId: null, data: null, fetchedAt: 0, inflPromise: null };
+let billingStatusCache = { familyId: null, data: null, fetchedAt: 0, inFlight: null };
 
 // Expected instance editing (fields live inside unified #txEditModal)
 const instanceExpectedTxId = document.getElementById("instanceExpectedTxId");
@@ -9256,6 +9256,9 @@ async function fetchBillingStatus({ force = false } = {}) {
   const promise = (async () => {
     if (!force) {
       const data = await api(`/api/families/${fid}/billing-status`, "GET");
+      if (data == null || typeof data !== "object") {
+        throw new Error("Couldn’t load billing status.");
+      }
       billingStatusCache = { familyId: fid, data, fetchedAt: Date.now(), inFlight: null };
       return data;
     }
@@ -9328,18 +9331,30 @@ function billingDom() {
   };
 }
 
+function setBillingElHidden(el, hide) {
+  if (!el) return;
+  if (hide) el.setAttribute("hidden", "");
+  else el.removeAttribute("hidden");
+}
+
 function setBillingLifecycleCallout(callout) {
   const dom = billingDom();
   const el = dom.renewal || billingRenewalMessageEl;
   if (!el) return;
   if (!callout || (!callout.title && !callout.text)) {
-    el.hidden = true;
-    if (dom.calloutTitle) dom.calloutTitle.textContent = "";
-    if (dom.calloutText) dom.calloutText.textContent = "";
+    setBillingElHidden(el, true);
+    if (dom.calloutTitle) {
+      dom.calloutTitle.textContent = "";
+      setBillingElHidden(dom.calloutTitle, true);
+    }
+    if (dom.calloutText) {
+      dom.calloutText.textContent = "";
+      setBillingElHidden(dom.calloutText, true);
+    }
     return;
   }
   const kind = callout.kind || "info";
-  el.hidden = false;
+  setBillingElHidden(el, false);
   el.classList.add("billing-callout");
   el.classList.toggle("billing-callout--info", kind === "info");
   el.classList.toggle("billing-callout--alert", kind === "alert");
@@ -9348,11 +9363,11 @@ function setBillingLifecycleCallout(callout) {
   el.removeAttribute("data-billing-dev-callout");
   if (dom.calloutTitle) {
     dom.calloutTitle.textContent = callout.title || "";
-    dom.calloutTitle.hidden = !callout.title;
+    setBillingElHidden(dom.calloutTitle, !callout.title);
   }
   if (dom.calloutText) {
     dom.calloutText.textContent = callout.text || "";
-    dom.calloutText.hidden = !callout.text;
+    setBillingElHidden(dom.calloutText, !callout.text);
   }
 }
 
@@ -9360,12 +9375,12 @@ function setBillingPrimaryCta(cta) {
   const el = billingDom().primaryCta || billingPrimaryCtaEl || document.getElementById("billingPrimaryCta");
   if (!el) return;
   if (!cta) {
-    el.hidden = true;
+    setBillingElHidden(el, true);
     el.setAttribute("aria-hidden", "true");
     el.removeAttribute("data-billing-cta");
     return;
   }
-  el.hidden = false;
+  setBillingElHidden(el, false);
   el.setAttribute("aria-hidden", "false");
   el.textContent = cta.label;
   el.dataset.billingCta = cta.action || "checkout";
@@ -9385,7 +9400,7 @@ function applyBillingCancelSection(model) {
   const sectionEl = dom.cancel || billingCancelSectionEl;
   if (!sectionEl) return;
   const show = !!model.showCancel;
-  sectionEl.hidden = !show;
+  setBillingElHidden(sectionEl, !show);
   if (!show) return;
 
   const section = model.cancelSection || {
@@ -9411,15 +9426,22 @@ function applyBillingLifecycleModel(model) {
   const planEl = dom.plan || billingPlanEl;
   const frequencyEl = dom.frequency || billingFrequencyEl;
   const nextDateEl = dom.nextDate || billingNextDateEl;
-  if (!planEl || !frequencyEl || !nextDateEl) return;
+  if (!planEl || !frequencyEl || !nextDateEl) {
+    setBillingLifecycleCallout({
+      kind: "alert",
+      title: "Couldn’t render billing status",
+      text: "Try refreshing the page. If this keeps happening, contact support.",
+    });
+    return;
+  }
 
   try {
     if (dom.planHeadline) dom.planHeadline.textContent = model.productName;
     if (dom.planContext) dom.planContext.textContent = model.productCopy;
 
     // Paint structure before clearing the loading callout so the pane never goes blank.
-    if (dom.meta) dom.meta.hidden = !model.showMeta;
-    if (dom.manage) dom.manage.hidden = !model.showManage;
+    setBillingElHidden(dom.meta || billingMetaEl, !model.showMeta);
+    setBillingElHidden(dom.manage || billingManageSectionEl, !model.showManage);
     applyBillingCancelSection(model);
 
     if (model.showMeta && model.meta) {
@@ -9456,11 +9478,45 @@ function applyBillingLifecycleModel(model) {
 
 function applyBillingStatusToPanel(status) {
   const hasFamily = ensureActiveFamilyIdForBilling() > 0;
+  // Null/empty payloads are load failures — not "trial ended".
+  if (hasFamily && (status == null || typeof status !== "object")) {
+    applyBillingLifecycleModel({
+      mode: "error",
+      productName: "Cash Forecast",
+      productCopy: getBillingPlanContext("base"),
+      showMeta: false,
+      showManage: false,
+      showCancel: false,
+      callout: {
+        kind: "alert",
+        title: "Couldn’t load billing status",
+        text: "Try refreshing the page. If this keeps happening, contact support.",
+      },
+      primaryCta: null,
+      meta: null,
+      manageHint: "",
+      cancelLede: "",
+    });
+    return;
+  }
   const model = resolveBillingLifecycleModel(status, { hasFamily });
   applyBillingLifecycleModel(model);
 }
 
 let billingPanelRenderToken = 0;
+
+function billingPanelLooksBlank() {
+  const dom = billingDom();
+  const metaEl = dom.meta || billingMetaEl;
+  const manageEl = dom.manage || billingManageSectionEl;
+  const calloutEl = dom.renewal || billingRenewalMessageEl;
+  const ctaEl = dom.primaryCta || billingPrimaryCtaEl;
+  const metaOn = metaEl && !metaEl.hasAttribute("hidden");
+  const manageOn = manageEl && !manageEl.hasAttribute("hidden");
+  const calloutOn = calloutEl && !calloutEl.hasAttribute("hidden");
+  const ctaOn = ctaEl && !ctaEl.hasAttribute("hidden");
+  return !(metaOn || manageOn || calloutOn || ctaOn);
+}
 
 async function renderBillingPanel({ force = false } = {}) {
   const dom = billingDom();
@@ -9478,19 +9534,21 @@ async function renderBillingPanel({ force = false } = {}) {
         await loadFamilies();
       }
     } catch (_) {}
-    if (token !== billingPanelRenderToken) return;
     fid = ensureActiveFamilyIdForBilling();
   }
 
+  // Stale runs may continue only to fill a still-blank pane (never discard a good paint).
+  const isStale = () => token !== billingPanelRenderToken;
+
   if (!fid) {
-    applyBillingStatusToPanel(null);
+    if (!isStale() || billingPanelLooksBlank()) applyBillingStatusToPanel(null);
     return;
   }
 
   const cached = cachedBillingStatusForActiveFamily();
   if (cached) {
-    applyBillingStatusToPanel(cached);
-  } else {
+    if (!isStale() || billingPanelLooksBlank()) applyBillingStatusToPanel(cached);
+  } else if (!isStale() || billingPanelLooksBlank()) {
     setBillingLifecycleCallout({
       kind: "info",
       title: "Loading billing status…",
@@ -9501,14 +9559,16 @@ async function renderBillingPanel({ force = false } = {}) {
   try {
     // First paint from DB (fast). Then optional Stripe sync when force/portal return.
     const status = await fetchBillingStatus({ force: false });
-    if (token !== billingPanelRenderToken) return;
-    applyBillingStatusToPanel(status);
+    if (!isStale() || billingPanelLooksBlank()) {
+      applyBillingStatusToPanel(status);
+    }
 
     if (force) {
       try {
         const synced = await fetchBillingStatus({ force: true });
-        if (token !== billingPanelRenderToken) return;
-        applyBillingStatusToPanel(synced);
+        if (!isStale() || billingPanelLooksBlank()) {
+          applyBillingStatusToPanel(synced);
+        }
       } catch (syncErr) {
         // Keep the DB paint; sync is best-effort.
         try {
@@ -9517,12 +9577,11 @@ async function renderBillingPanel({ force = false } = {}) {
       }
     }
   } catch (err) {
-    if (token !== billingPanelRenderToken) return;
     const errText =
       err && err.message
         ? String(err.message)
         : "Try again in a moment. If this keeps happening, contact support.";
-    if (!cached) {
+    if ((!cached || billingPanelLooksBlank()) && (!isStale() || billingPanelLooksBlank())) {
       applyBillingLifecycleModel({
         mode: "error",
         productName: "Cash Forecast",
@@ -11079,6 +11138,7 @@ async function loadFamilyMembersPanel() {
 }
 
 async function loadFamilies() {
+  const prevActiveId = Number(state.activeFamilyId || 0);
   const families = await api("/api/families", "GET");
   state.families = families || [];
 
@@ -11107,14 +11167,17 @@ async function loadFamilies() {
   } else {
     state.activeFamilyId = null;
   }
-  invalidateBillingStatusCache();
+  const nextActiveId = Number(state.activeFamilyId || 0);
+  const familyChanged = prevActiveId !== nextActiveId;
+  if (familyChanged) invalidateBillingStatusCache();
   syncActiveFamilyFlags();
   if (settingsViewPanel && !settingsViewPanel.hidden) {
     const settingsSection = getActiveSettingsSectionKey();
     if (settingsSection === "accounts") {
       void loadFamilyMembersPanel();
     }
-    if (settingsSection === "billing") {
+    // Only re-fetch Billing when the active family changed or the pane is still blank.
+    if (settingsSection === "billing" && (familyChanged || billingPanelLooksBlank())) {
       void renderBillingPanel({ force: false });
     }
   }

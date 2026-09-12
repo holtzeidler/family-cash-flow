@@ -11999,6 +11999,11 @@ label{
   padding: var(--billing-space-2) 0 0;
   border-top: var(--billing-rule);
 }
+.billing-meta[hidden],
+.billing-actions[hidden],
+.billing-cancel[hidden]{
+  display: none !important;
+}
 @media (min-width: 760px){
   .billing-meta{
     grid-template-columns: repeat(4, minmax(0, 1fr));
