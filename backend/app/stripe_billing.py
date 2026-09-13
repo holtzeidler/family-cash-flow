@@ -73,8 +73,11 @@ def register_stripe_routes(
         session_id_placeholder: bool = False,
         frequency: Optional[str] = None,
     ) -> str:
-        """Build Billing settings URL from APP_PUBLIC_BASE_URL only (never from client input)."""
-        params: list[str] = ["section=billing"]
+        """Build Billing URL from APP_PUBLIC_BASE_URL only (never from client input).
+
+        Canonical app route: /settings/billing (current environment origin).
+        """
+        params: list[str] = []
         if checkout:
             params.append(f"checkout={checkout}")
         if portal_return:
@@ -85,7 +88,8 @@ def register_stripe_routes(
             params.append(f"frequency={frequency}")
         if family_id is not None:
             params.append(f"family_id={int(family_id)}")
-        return f"{domain}/settings/?{'&'.join(params)}"
+        qs = f"?{'&'.join(params)}" if params else ""
+        return f"{domain}/settings/billing{qs}"
 
     @app.get("/api/billing/catalog", include_in_schema=False)
     def billing_catalog():
@@ -276,7 +280,7 @@ def register_stripe_routes(
         - keep → subscription_update (undo scheduled cancel on the subscription page)
         - invoices / (empty) → standard portal homepage
 
-        return_url is always built server-side from APP_PUBLIC_BASE_URL → Settings Billing.
+        return_url is always built server-side from APP_PUBLIC_BASE_URL → /settings/billing.
         Hosted portal link prominence / button copy (e.g. “Don’t cancel”) are Stripe-controlled.
         """
         _require_stripe()

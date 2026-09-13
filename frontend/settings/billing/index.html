@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Billing — BalanceWhiz</title>
+    <meta name="robots" content="noindex, nofollow" />
+    <script>
+      (function () {
+        var params = new URLSearchParams(window.location.search || "");
+        params.set("section", "billing");
+        window.location.replace("/settings/?" + params.toString());
+      })();
+    </script>
+  </head>
+  <body>
+    <p><a href="/settings/?section=billing">Continue to Billing</a></p>
+  </body>
+</html>

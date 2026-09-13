@@ -9787,7 +9787,8 @@ function applyCheckoutReturnFromUrl() {
     const portal = String(u.searchParams.get("portal") || "").trim().toLowerCase();
     const familyIdRaw = String(u.searchParams.get("family_id") || "").trim();
     const fromPortal = portal === "return" || portal === "1";
-    if (!checkout && !section && !fromPortal) return;
+    const pathIsBilling = /\/settings\/billing\/?$/i.test(u.pathname);
+    if (!checkout && !section && !fromPortal && !pathIsBilling) return;
 
     if (familyIdRaw && familySelect) {
       const fid = Number(familyIdRaw);
@@ -9817,6 +9818,15 @@ function applyCheckoutReturnFromUrl() {
       });
     };
 
+    if (section === "billing" || checkout || fromPortal || pathIsBilling) {
+      try {
+        setActiveTopView("settings");
+      } catch (_) {}
+      try {
+        activateSettingsSection("billing");
+      } catch (_) {}
+    }
+
     if (checkout === "success") {
       try {
         showBwToast("Payment received — refreshing your billing status.");
@@ -9826,20 +9836,11 @@ function applyCheckoutReturnFromUrl() {
       try {
         showBwToast("Checkout canceled — you can subscribe anytime.");
       } catch (_) {}
-    } else if (fromPortal) {
+    } else if (fromPortal || pathIsBilling) {
       try {
         showBwToast("Refreshing your billing status…");
       } catch (_) {}
       refreshBillingAfterPortalOrCheckout();
-    }
-
-    if (section === "billing" || checkout || fromPortal) {
-      try {
-        setActiveTopView("settings");
-      } catch (_) {}
-      try {
-        activateSettingsSection("billing");
-      } catch (_) {}
     }
 
     u.searchParams.delete("checkout");
@@ -9849,7 +9850,8 @@ function applyCheckoutReturnFromUrl() {
     u.searchParams.delete("family_id");
     u.searchParams.delete("portal");
     const qs = u.searchParams.toString();
-    window.history.replaceState({}, "", `${u.pathname}${qs ? `?${qs}` : ""}${u.hash}`);
+    const cleanPath = pathIsBilling || fromPortal || section === "billing" ? "/settings/billing" : u.pathname;
+    window.history.replaceState({}, "", `${cleanPath}${qs ? `?${qs}` : ""}${u.hash}`);
   } catch (_) {}
 }
 
