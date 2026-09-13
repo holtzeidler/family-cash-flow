@@ -12107,6 +12107,25 @@ label{
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.billing-meta__def--stack{
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  white-space: normal;
+  overflow: visible;
+}
+.billing-meta__price-note{
+  margin-top: 2px;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  line-height: 1.3;
+  letter-spacing: 0;
+  color: var(--billing-muted);
+  white-space: normal;
+}
+.billing-meta__price-note[hidden]{
+  display: none !important;
+}
 .billing-meta__def .billing-status-pill{
   margin-top: 0;
   max-width: 100%;

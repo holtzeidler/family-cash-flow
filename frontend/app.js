@@ -8920,13 +8920,39 @@ function cycleSwitchLabel(lookupKey) {
   return billingLookupIsAnnual(lookupKey) ? "Switch to monthly" : "Switch to annual";
 }
 
-function annualSavingsCopy() {
+function annualSavingsPercent() {
   const monthly = Number(BILLING_MONTHLY_AMOUNT_USD);
   const annual = Number(BILLING_ANNUAL_AMOUNT_USD);
-  if (!Number.isFinite(monthly) || !Number.isFinite(annual) || monthly <= 0) return "";
+  if (!Number.isFinite(monthly) || !Number.isFinite(annual) || monthly <= 0) return null;
   const save = monthly * 12 - annual;
-  if (save <= 0.005) return "";
-  const pct = Math.round((save / (monthly * 12)) * 100);
+  if (save <= 0.005) return null;
+  return Math.round((save / (monthly * 12)) * 100);
+}
+
+function annualEquivalentMonthlyLabel() {
+  const annual = Number(BILLING_ANNUAL_AMOUNT_USD);
+  if (!Number.isFinite(annual) || annual <= 0) return "";
+  return `$${(annual / 12).toFixed(2)}/month`;
+}
+
+function billingPriceSupportCopy(lookupKey) {
+  const key = String(lookupKey || "").trim();
+  if (key === BILLING_LOOKUP_ANNUAL) {
+    const equiv = annualEquivalentMonthlyLabel();
+    return equiv ? `Equivalent to ${equiv}` : "";
+  }
+  if (key === BILLING_LOOKUP_MONTHLY) {
+    const pct = annualSavingsPercent();
+    const annual = defaultCashForecastAnnualPriceLabel();
+    if (!annual) return "";
+    return pct != null ? `${annual} available · Save ${pct}%` : `${annual} available`;
+  }
+  return "";
+}
+
+function annualSavingsCopy() {
+  const pct = annualSavingsPercent();
+  if (pct == null) return "";
   return `Save ~${pct}% with annual billing`;
 }
 
@@ -9162,6 +9188,7 @@ function resolveBillingLifecycleModel(status, { hasFamily = true } = {}) {
         plan: productName,
         priceLabel: "Billing",
         price: priceLabel,
+        priceSupport: billingPriceSupportCopy(lookupKey),
         dateLabel: "Next billing date",
         date: periodEnd ? formatBillingLongDate(periodEnd) : "—",
         statusLabel: "Active",
@@ -9357,6 +9384,8 @@ function billingDom() {
     planContext: document.getElementById("billingPlanContext"),
     plan: document.getElementById("billingPlan"),
     frequency: document.getElementById("billingFrequency"),
+    frequencyValue: document.getElementById("billingFrequencyValue"),
+    frequencyNote: document.getElementById("billingFrequencyNote"),
     priceLabel: document.getElementById("billingPriceLabel"),
     nextDateLabel: document.getElementById("billingNextDateLabel"),
     nextDate: document.getElementById("billingNextDate"),
@@ -9534,7 +9563,13 @@ function applyBillingLifecycleModel(model) {
     if (model.showMeta && model.meta) {
       if (planEl) planEl.textContent = model.meta.plan;
       if (dom.priceLabel) dom.priceLabel.textContent = model.meta.priceLabel;
-      frequencyEl.textContent = model.meta.price;
+      const priceEl = dom.frequencyValue || frequencyEl;
+      if (priceEl) priceEl.textContent = model.meta.price;
+      if (dom.frequencyNote) {
+        const note = String(model.meta.priceSupport || "").trim();
+        dom.frequencyNote.textContent = note;
+        setBillingElHidden(dom.frequencyNote, !note);
+      }
       if (dom.nextDateLabel) dom.nextDateLabel.textContent = model.meta.dateLabel;
       nextDateEl.textContent = model.meta.date;
       if (dom.accountStatus) {
@@ -9544,7 +9579,12 @@ function applyBillingLifecycleModel(model) {
       }
     } else {
       if (planEl) planEl.textContent = "";
-      frequencyEl.textContent = "";
+      const priceEl = dom.frequencyValue || frequencyEl;
+      if (priceEl) priceEl.textContent = "";
+      if (dom.frequencyNote) {
+        dom.frequencyNote.textContent = "";
+        setBillingElHidden(dom.frequencyNote, true);
+      }
       nextDateEl.textContent = "";
       if (dom.accountStatus) dom.accountStatus.innerHTML = "";
     }
