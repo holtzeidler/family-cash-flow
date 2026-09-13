@@ -8826,6 +8826,26 @@ function formatBillingLongDate(iso) {
   return d.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
 }
 
+function parseBillingDateTime(value) {
+  const s = String(value || "").trim();
+  if (!s) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    const day = new Date(`${s}T12:00:00`);
+    return Number.isNaN(day.getTime()) ? null : day;
+  }
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+/** Last free-access instant: "September 27, 2026 at 4:34 PM" */
+function formatBillingLongDateTime(value) {
+  const d = parseBillingDateTime(value);
+  if (!d) return "";
+  const date = d.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
+  const time = d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  return `${date} at ${time}`;
+}
+
 function addMonthsIso(startIso, deltaMonths) {
   const d = new Date(`${startIso}T12:00:00`);
   if (Number.isNaN(d.getTime())) return "";
@@ -9061,10 +9081,19 @@ function trialCalloutTitle(daysLeft) {
   return `Free trial · ${daysLeft} days left`;
 }
 
-function firstChargeIsoFromStatus(status) {
-  if (status && status.first_charge_on) return String(status.first_charge_on);
-  if (status && status.trial_ends_on) return String(status.trial_ends_on);
+function stripeFirstChargeIsoFromStatus(status) {
+  if (!status || !status.stripe_subscription_id) return "";
+  if (status.first_charge_at) return String(status.first_charge_at);
+  if (status.first_charge_on) return String(status.first_charge_on);
   return "";
+}
+
+function trialAccessThroughLabel(status) {
+  if (status && status.trial_ends_at) {
+    return formatBillingLongDateTime(status.trial_ends_at);
+  }
+  const day = status && status.trial_ends_on ? String(status.trial_ends_on) : "";
+  return day ? formatBillingLongDate(day) : "";
 }
 
 function isBillingPaid() {
@@ -9126,7 +9155,12 @@ function resolveBillingLifecycleModel(status, { hasFamily = true } = {}) {
   };
   const trialSubscribeChoices = (firstChargeIso) => {
     const pct = annualSavingsPercent();
-    const chargeDate = firstChargeIso ? formatBillingLongDate(firstChargeIso) : "";
+    const chargeAt = parseBillingDateTime(firstChargeIso);
+    const chargeDate = chargeAt
+      ? firstChargeIso && String(firstChargeIso).includes("T")
+        ? formatBillingLongDateTime(firstChargeIso)
+        : formatBillingLongDate(firstChargeIso)
+      : "";
     return {
       title: "Continue after your free trial",
       support: "Choose a billing option now or anytime before your trial ends. You won't be charged today.",
@@ -9136,7 +9170,7 @@ function resolveBillingLifecycleModel(status, { hasFamily = true } = {}) {
       savings: "",
       reassure: chargeDate
         ? `No charge today. Your first payment will be ${chargeDate}.`
-        : "No charge today. Your first payment will be at the end of your trial.",
+        : "No charge today. Your first payment will be after your trial ends.",
       trialLayout: true,
     };
   };
@@ -9265,27 +9299,31 @@ function resolveBillingLifecycleModel(status, { hasFamily = true } = {}) {
 
   if (inAppTrial && !subscribed) {
     const daysLeft = trialDaysRemainingFromStatus(status);
-    const accessLong = trialEnd ? formatBillingLongDate(trialEnd) : "";
-    const firstChargeIso = firstChargeIsoFromStatus(status);
     const planScheduled = isBillingTrialPlanScheduled(status);
+    const accessThrough = planScheduled
+      ? trialEnd
+        ? formatBillingLongDate(trialEnd)
+        : ""
+      : trialAccessThroughLabel(status);
+    const stripeFirstCharge = stripeFirstChargeIsoFromStatus(status);
     const scheduledPrice = priceFromLookup;
     const afterTrial = scheduledPrice
       ? scheduledPrice
       : `${monthlyPrice} or ${defaultCashForecastAnnualPriceLabel()}`;
     const calloutText = planScheduled
-      ? accessLong
-        ? `Full access through ${accessLong}. ${
+      ? accessThrough
+        ? `Full access through ${accessThrough}. ${
             billingLookupIsAnnual(lookupKey) ? "Annual" : "Monthly"
           } billing starts then — no charge today.`
         : "Payment method on file. You won't be charged until your trial ends."
-      : accessLong
-        ? `Full access through ${accessLong}. No payment method required.`
+      : accessThrough
+        ? `Full access through ${accessThrough}. No payment method required.`
         : "No payment method required.";
     return {
       mode: planScheduled ? "trial_scheduled" : "trial",
       productName,
       productCopy,
-      showMeta: true,
+      showMeta: !!planScheduled,
       showManage: false,
       showCancel: false,
       callout: {
@@ -9294,17 +9332,19 @@ function resolveBillingLifecycleModel(status, { hasFamily = true } = {}) {
         text: calloutText,
       },
       primaryCta: null,
-      subscribeChoices: planScheduled ? null : trialSubscribeChoices(firstChargeIso || trialEnd),
+      subscribeChoices: planScheduled ? null : trialSubscribeChoices(stripeFirstCharge),
       notesKind: planScheduled ? "trial_scheduled" : "trial",
-      meta: {
-        plan: productName,
-        priceLabel: "Trial ends",
-        price: trialEnd ? formatBillingLongDate(trialEnd) : "—",
-        dateLabel: "After trial",
-        date: afterTrial,
-        statusLabel: "Free trial",
-        statusTone: "trial",
-      },
+      meta: planScheduled
+        ? {
+            plan: productName,
+            priceLabel: "Trial ends",
+            price: trialEnd ? formatBillingLongDate(trialEnd) : "—",
+            dateLabel: "After trial",
+            date: afterTrial,
+            statusLabel: "Free trial",
+            statusTone: "trial",
+          }
+        : null,
       manageHint: "",
       cancelLede: "",
     };
@@ -9747,6 +9787,10 @@ function applyBillingLifecycleModel(model) {
     // Paint structure before clearing the loading callout so the pane never goes blank.
     setBillingElHidden(dom.meta || billingMetaEl, !model.showMeta);
     setBillingElHidden(dom.manage || billingManageSectionEl, !model.showManage);
+    const overview = document.querySelector(".billing-overview");
+    if (overview) {
+      overview.classList.toggle("billing-overview--trial-prepay", model.mode === "trial");
+    }
     applyBillingCancelSection(model);
 
     if (model.showMeta && model.meta) {

@@ -283,14 +283,20 @@
         function applyTrialReassure(status) {
           if (!reassureEl) return;
           var inTrial = !!(status && status.in_app_trial);
-          var chargeOn = status && (status.first_charge_on || status.trial_ends_on);
-          if (inTrial && chargeOn) {
+          var stripeCharge =
+            status && status.stripe_subscription_id
+              ? status.first_charge_at || status.first_charge_on || ""
+              : "";
+          if (inTrial && stripeCharge) {
+            var chargeLabel = String(stripeCharge).indexOf("T") >= 0
+              ? formatCheckoutLongDate(String(stripeCharge).slice(0, 10))
+              : formatCheckoutLongDate(stripeCharge);
             reassureEl.textContent =
-              "No charge today. Your first payment will be " + formatCheckoutLongDate(chargeOn) + ".";
+              "No charge today. Your first payment will be " + chargeLabel + ".";
             return;
           }
           if (inTrial) {
-            reassureEl.textContent = "No charge today. Your first payment will be at the end of your trial.";
+            reassureEl.textContent = "No charge today. Your first payment will be after your trial ends.";
             return;
           }
           reassureEl.textContent = "You’ll complete payment securely on Stripe.";

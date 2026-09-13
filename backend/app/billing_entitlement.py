@@ -321,8 +321,6 @@ def build_billing_status(
         first_charge = stripe_trial_end
     elif sub_status == "trialing" and isinstance(period_end, datetime) and period_end > n:
         first_charge = period_end
-    elif in_trial and trial_end is not None:
-        first_charge = trial_end
 
     if sub_status == "past_due":
         phase = "past_due"
@@ -354,7 +352,9 @@ def build_billing_status(
         "trial_days": TRIAL_DAYS,
         "trial_days_remaining": days_left,
         "trial_ends_on": trial_end.date().isoformat() if trial_end else None,
+        "trial_ends_at": trial_end.isoformat() + "Z" if trial_end else None,
         "first_charge_on": first_charge.date().isoformat() if first_charge else None,
+        "first_charge_at": first_charge.isoformat() + "Z" if first_charge else None,
         "in_app_trial": in_trial,
         "status": sub_status or ("trialing" if in_trial else "none"),
         "lookup_key": lookup_key,
@@ -703,6 +703,7 @@ def apply_live_stripe_subscription_fields(payload: dict[str, Any], stripe_sub: A
     te = _as_naive_utc(_stripe_field(stripe_sub, "trial_end") or _obj_get(stripe_sub, "trial_end"))
     if te is not None:
         out["first_charge_on"] = te.date().isoformat()
+        out["first_charge_at"] = te.isoformat() + "Z"
     scheduled = _scheduled_cancel_from_stripe_sub(stripe_sub)
     if pe is not None and st in ("canceled", "cancelled") and _paid_access_remaining(pe):
         scheduled = True

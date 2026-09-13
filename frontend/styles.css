@@ -11743,6 +11743,9 @@ label{
   background: rgba(255, 255, 255, 0.96);
   box-shadow: none;
 }
+.billing-overview--trial-prepay{
+  padding-bottom: var(--billing-space-3);
+}
 .billing-side{
   display: flex;
   flex-direction: column;

@@ -1426,7 +1426,9 @@ class BillingStatusOut(BaseModel):
     trial_days: int
     trial_days_remaining: Optional[int] = None
     trial_ends_on: Optional[str] = None
+    trial_ends_at: Optional[str] = None
     first_charge_on: Optional[str] = None
+    first_charge_at: Optional[str] = None
     in_app_trial: bool = False
     status: str
     lookup_key: Optional[str] = None
