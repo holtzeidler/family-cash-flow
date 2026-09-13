@@ -111,6 +111,8 @@ def _scheduled_cancel_from_stripe_sub(sub: Any, *, now: Optional[datetime] = Non
     n = now or _utc_now()
     return cancel_at > n
 
+
+def trial_ends_at(family_created_at: Optional[datetime]) -> Optional[datetime]:
     if family_created_at is None:
         return None
     start = family_created_at
