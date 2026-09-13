@@ -12315,7 +12315,7 @@ label{
 }
 .billing-cancel__lede{
   margin: 0 0 10px;
-  max-width: 40ch;
+  max-width: none;
   font-size: 0.8125rem;
   line-height: 1.45;
   color: var(--billing-muted);
