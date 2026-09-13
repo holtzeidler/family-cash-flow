@@ -9739,6 +9739,76 @@ async function renderBillingPanel({ force = false } = {}) {
   }
 }
 
+function billingIntervalSwitchConfirmMessage(targetLookup) {
+  if (String(targetLookup || "").trim() === BILLING_LOOKUP_ANNUAL) {
+    return (
+      `You'll be charged $${BILLING_ANNUAL_AMOUNT_USD} today for annual Cash Forecast. ` +
+      `Unused time on your current monthly plan will not be credited. ` +
+      `Your next renewal will be one year from today.`
+    );
+  }
+  return (
+    `You'll be charged $${BILLING_MONTHLY_AMOUNT_USD} today for monthly Cash Forecast. ` +
+    `Unused time on your current annual plan will not be credited. ` +
+    `Your next renewal will be one month from today.`
+  );
+}
+
+async function switchBillingIntervalForActiveFamily() {
+  const apiBase = apiBaseUrl();
+  if (!apiBase) {
+    showBwToast("Billing isn’t configured on this build.");
+    return;
+  }
+  if (!state.activeFamilyId) {
+    showBwToast("Choose a family first.");
+    return;
+  }
+  const cycleBtn = billingDom().cycleBtn;
+  const targetLookup = cycleBtn
+    ? String(cycleBtn.getAttribute("data-billing-target-lookup") || "").trim()
+    : "";
+  if (targetLookup !== BILLING_LOOKUP_MONTHLY && targetLookup !== BILLING_LOOKUP_ANNUAL) {
+    showBwToast("Could not determine the billing interval to switch to.");
+    return;
+  }
+  if (!window.confirm(billingIntervalSwitchConfirmMessage(targetLookup))) return;
+
+  const previousLabel = cycleBtn ? cycleBtn.textContent : "";
+  let switched = false;
+  if (cycleBtn) {
+    cycleBtn.disabled = true;
+    cycleBtn.textContent = "Switching…";
+  }
+  try {
+    showBwToast(
+      targetLookup === BILLING_LOOKUP_ANNUAL
+        ? "Switching to annual billing…"
+        : "Switching to monthly billing…"
+    );
+    const body = new FormData();
+    body.set("family_id", String(state.activeFamilyId));
+    body.set("target_lookup", targetLookup);
+    const data = await apiForm("/switch-billing-interval", body);
+    switched = true;
+    const label =
+      (data && data.price_label) ||
+      (targetLookup === BILLING_LOOKUP_ANNUAL
+        ? defaultCashForecastAnnualPriceLabel()
+        : defaultCashForecastPriceLabel());
+    showBwToast(`Switched to ${label}.`);
+    invalidateBillingStatusCache();
+    await renderBillingPanel({ force: true });
+  } catch (err) {
+    showBwToast(err && err.message ? err.message : "Could not switch billing interval.");
+  } finally {
+    if (cycleBtn) {
+      cycleBtn.disabled = false;
+      if (!switched && previousLabel) cycleBtn.textContent = previousLabel;
+    }
+  }
+}
+
 function openBillingPortalForActiveFamily(flow = "") {
   const apiBase = apiBaseUrl();
   if (!apiBase) {
@@ -9750,15 +9820,12 @@ function openBillingPortalForActiveFamily(flow = "") {
     return;
   }
   const flowKey = String(flow || "").trim().toLowerCase();
-  const cycleBtn = billingDom().cycleBtn;
-  const targetLookup = cycleBtn ? String(cycleBtn.getAttribute("data-billing-target-lookup") || "").trim() : "";
-  const cycleToast =
-    targetLookup === BILLING_LOOKUP_MONTHLY
-      ? "Opening Stripe to switch to monthly billing. Confirm the new price and date before you continue."
-      : "Opening Stripe to switch to annual billing. Confirm the new price and date before you continue.";
+  if (flowKey === "cycle") {
+    void switchBillingIntervalForActiveFamily();
+    return;
+  }
   const toastByFlow = {
     payment: "Opening Stripe to update your payment method…",
-    cycle: cycleToast,
     invoices: "Opening Stripe to view invoices…",
     cancel: "Opening Stripe to cancel your subscription…",
     keep: "Opening Stripe so you can keep your subscription…",
@@ -9769,7 +9836,6 @@ function openBillingPortalForActiveFamily(flow = "") {
   const body = new FormData();
   body.set("family_id", String(state.activeFamilyId));
   if (flowKey) body.set("flow", flowKey);
-  if (flowKey === "cycle" && targetLookup) body.set("target_lookup", targetLookup);
   fetch(`${apiBase}/create-portal-session`, {
     method: "POST",
     body,
@@ -9796,7 +9862,11 @@ function wireBillingActionsOnce() {
   document.querySelectorAll("[data-billing-action]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const action = String(btn.getAttribute("data-billing-action") || "");
-      const portalActions = new Set(["payment", "cycle", "cancel", "invoices", "keep"]);
+      if (action === "cycle") {
+        void switchBillingIntervalForActiveFamily();
+        return;
+      }
+      const portalActions = new Set(["payment", "cancel", "invoices", "keep"]);
       if (portalActions.has(action)) {
         if (isBillingPortalAvailable()) {
           openBillingPortalForActiveFamily(action);

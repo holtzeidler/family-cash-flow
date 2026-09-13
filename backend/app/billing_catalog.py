@@ -15,6 +15,8 @@ Dashboard setup (test and live, separately):
 2. Add recurring Price $5.99 USD / month with lookup_key cash_forecast_monthly.
 3. Add recurring Price $59.99 USD / year with lookup_key cash_forecast_annual.
 4. Enable Customer Portal for payment method update, cancel, invoices.
+   Do not let customers switch products/prices in the portal. Monthly vs annual
+   uses POST /switch-billing-interval (full new price, no prorations, cycle resets).
 """
 
 from __future__ import annotations
