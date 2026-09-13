@@ -9505,14 +9505,49 @@ function setBillingSubscribeChoices(choices) {
   }
 }
 
-function applyBillingCycleAction(model) {
-  const btn = billingDom().cycleBtn;
+function setBillingActionTone(btn, tone) {
   if (!btn) return;
+  btn.classList.toggle("billing-action-btn--primary", tone === "primary");
+  btn.classList.toggle("billing-action-btn--secondary", tone !== "primary");
+}
+
+function applyBillingCycleAction(model) {
+  const manage = billingDom().manage || document.getElementById("billingManageSection");
+  const cycleBtn = billingDom().cycleBtn || manage?.querySelector('[data-billing-action="cycle"]');
+  if (!cycleBtn) return;
   const action = model.cycleAction;
-  if (!action) return;
-  btn.textContent = action.label || "Switch to annual";
-  if (action.targetLookup) btn.setAttribute("data-billing-target-lookup", action.targetLookup);
-  else btn.removeAttribute("data-billing-target-lookup");
+  if (action) {
+    cycleBtn.textContent = action.label || "Switch to annual";
+    if (action.targetLookup) cycleBtn.setAttribute("data-billing-target-lookup", action.targetLookup);
+    else cycleBtn.removeAttribute("data-billing-target-lookup");
+  }
+  const promoteAnnual = !!(action && action.targetLookup === BILLING_LOOKUP_ANNUAL);
+  if (manage) {
+    manage.classList.toggle("billing-actions--promote-annual", promoteAnnual);
+    manage.classList.toggle("billing-actions--interval-annual", !promoteAnnual && !!action);
+  }
+  const paymentBtn = manage?.querySelector('[data-billing-action="payment"]');
+  const invoicesBtn = manage?.querySelector('[data-billing-action="invoices"]');
+  const primarySlot = manage?.querySelector(".billing-actions__primary");
+  const secondarySlot = manage?.querySelector(".billing-actions__secondary");
+  if (!primarySlot || !secondarySlot) return;
+  if (promoteAnnual) {
+    setBillingActionTone(cycleBtn, "primary");
+    setBillingActionTone(paymentBtn, "secondary");
+    setBillingActionTone(invoicesBtn, "secondary");
+    primarySlot.appendChild(cycleBtn);
+    if (paymentBtn) secondarySlot.appendChild(paymentBtn);
+    if (invoicesBtn) secondarySlot.appendChild(invoicesBtn);
+    setBillingElHidden(primarySlot, false);
+    return;
+  }
+  setBillingActionTone(cycleBtn, "secondary");
+  setBillingActionTone(paymentBtn, "secondary");
+  setBillingActionTone(invoicesBtn, "secondary");
+  if (paymentBtn) secondarySlot.appendChild(paymentBtn);
+  if (invoicesBtn) secondarySlot.appendChild(invoicesBtn);
+  secondarySlot.appendChild(cycleBtn);
+  setBillingElHidden(primarySlot, true);
 }
 
 function applyBillingCancelSection(model) {
