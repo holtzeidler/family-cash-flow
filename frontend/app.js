@@ -9513,7 +9513,7 @@ function applyBillingLifecycleModel(model) {
   const planEl = dom.plan || billingPlanEl;
   const frequencyEl = dom.frequency || billingFrequencyEl;
   const nextDateEl = dom.nextDate || billingNextDateEl;
-  if (!planEl || !frequencyEl || !nextDateEl) {
+  if (!frequencyEl || !nextDateEl) {
     setBillingLifecycleCallout({
       kind: "alert",
       title: "Couldn’t render billing status",
@@ -9532,7 +9532,7 @@ function applyBillingLifecycleModel(model) {
     applyBillingCancelSection(model);
 
     if (model.showMeta && model.meta) {
-      planEl.textContent = model.meta.plan;
+      if (planEl) planEl.textContent = model.meta.plan;
       if (dom.priceLabel) dom.priceLabel.textContent = model.meta.priceLabel;
       frequencyEl.textContent = model.meta.price;
       if (dom.nextDateLabel) dom.nextDateLabel.textContent = model.meta.dateLabel;
@@ -9543,7 +9543,7 @@ function applyBillingLifecycleModel(model) {
         });
       }
     } else {
-      planEl.textContent = "";
+      if (planEl) planEl.textContent = "";
       frequencyEl.textContent = "";
       nextDateEl.textContent = "";
       if (dom.accountStatus) dom.accountStatus.innerHTML = "";
@@ -9613,7 +9613,7 @@ function billingPanelLooksBlank() {
 
 async function renderBillingPanel({ force = false } = {}) {
   const dom = billingDom();
-  if (!(dom.plan || billingPlanEl) || !(dom.frequency || billingFrequencyEl) || !(dom.nextDate || billingNextDateEl)) {
+  if (!(dom.frequency || billingFrequencyEl) || !(dom.nextDate || billingNextDateEl)) {
     return;
   }
   wireBillingActionsOnce();
