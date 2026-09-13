@@ -7189,6 +7189,10 @@ if (txEditModal) {
 
 document.addEventListener("keydown", (e) => {
   if (e.key !== "Escape") return;
+  if (_billingIntervalConfirmEl?.classList.contains("modal-overlay--open")) {
+    closeBillingIntervalConfirm(false);
+    return;
+  }
   if (_bwConfirmModalEl?.classList.contains("modal-overlay--open")) {
     closeBwConfirm(false);
     return;
@@ -9739,19 +9743,126 @@ async function renderBillingPanel({ force = false } = {}) {
   }
 }
 
-function billingIntervalSwitchConfirmMessage(targetLookup) {
+let _billingIntervalConfirmEl = null;
+let _billingIntervalConfirmResolve = null;
+let _billingIntervalConfirmReturnFocus = null;
+
+function billingIntervalSwitchCopy(targetLookup) {
   if (String(targetLookup || "").trim() === BILLING_LOOKUP_ANNUAL) {
-    return (
-      `You'll be charged $${BILLING_ANNUAL_AMOUNT_USD} today for annual Cash Forecast. ` +
-      `Unused time on your current monthly plan will not be credited. ` +
-      `Your next renewal will be one year from today.`
-    );
+    return {
+      title: "Switch to annual billing?",
+      paragraphs: [
+        `You’ll be charged $${BILLING_ANNUAL_AMOUNT_USD} today for annual Cash Forecast.`,
+        "Your current monthly billing period will end today, and unused time will not be credited.",
+        "Your next renewal will be one year from today.",
+      ],
+      confirmLabel: "Switch to annual",
+    };
   }
-  return (
-    `You'll be charged $${BILLING_MONTHLY_AMOUNT_USD} today for monthly Cash Forecast. ` +
-    `Unused time on your current annual plan will not be credited. ` +
-    `Your next renewal will be one month from today.`
+  return {
+    title: "Switch to monthly billing?",
+    paragraphs: [
+      `You’ll be charged $${BILLING_MONTHLY_AMOUNT_USD} today for monthly Cash Forecast.`,
+      "Your current annual billing period will end today, and unused time will not be credited.",
+      "Your next renewal will be one month from today.",
+    ],
+    confirmLabel: "Switch to monthly",
+  };
+}
+
+function closeBillingIntervalConfirm(confirmed) {
+  const wrap = _billingIntervalConfirmEl;
+  const resolve = _billingIntervalConfirmResolve;
+  const returnFocus = _billingIntervalConfirmReturnFocus;
+  _billingIntervalConfirmResolve = null;
+  _billingIntervalConfirmReturnFocus = null;
+  if (wrap) {
+    wrap.classList.remove("modal-overlay--open");
+    wrap.setAttribute("aria-hidden", "true");
+  }
+  if (resolve) resolve(!!confirmed);
+  if (returnFocus && typeof returnFocus.focus === "function") {
+    try {
+      returnFocus.focus();
+    } catch (_) {}
+  }
+}
+
+function billingIntervalConfirmFocusables(wrap) {
+  return [wrap?.querySelector("#billingIntervalConfirmCancel"), wrap?.querySelector("#billingIntervalConfirmOk")].filter(
+    (el) => el && !el.disabled
   );
+}
+
+function ensureBillingIntervalConfirmModal() {
+  if (_billingIntervalConfirmEl) return _billingIntervalConfirmEl;
+  const wrap = document.createElement("div");
+  wrap.id = "billingIntervalConfirmModal";
+  wrap.className = "modal-overlay";
+  wrap.setAttribute("aria-hidden", "true");
+  wrap.innerHTML =
+    '<div class="modal modal--billing-interval-confirm" role="dialog" aria-modal="true" aria-labelledby="billingIntervalConfirmTitle" aria-describedby="billingIntervalConfirmBody" tabindex="-1">' +
+    '<h3 id="billingIntervalConfirmTitle" class="billing-interval-confirm__title"></h3>' +
+    '<div id="billingIntervalConfirmBody" class="billing-interval-confirm__body"></div>' +
+    '<div class="modal-actions billing-interval-confirm__actions">' +
+    '<button type="button" class="billing-interval-confirm__cancel" id="billingIntervalConfirmCancel">Cancel</button>' +
+    '<button type="button" class="billing-interval-confirm__primary" id="billingIntervalConfirmOk">Switch to annual</button>' +
+    "</div></div>";
+  document.body.appendChild(wrap);
+  wrap.querySelector("#billingIntervalConfirmCancel")?.addEventListener("click", () => closeBillingIntervalConfirm(false));
+  wrap.querySelector("#billingIntervalConfirmOk")?.addEventListener("click", () => closeBillingIntervalConfirm(true));
+  wrap.addEventListener("click", (e) => {
+    if (e.target === wrap) closeBillingIntervalConfirm(false);
+  });
+  wrap.addEventListener("keydown", (e) => {
+    if (e.key !== "Tab") return;
+    const focusables = billingIntervalConfirmFocusables(wrap);
+    if (!focusables.length) return;
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    const active = document.activeElement;
+    if (e.shiftKey && (active === first || !wrap.contains(active))) {
+      e.preventDefault();
+      last.focus();
+      return;
+    }
+    if (!e.shiftKey && (active === last || !wrap.contains(active))) {
+      e.preventDefault();
+      first.focus();
+    }
+  });
+  _billingIntervalConfirmEl = wrap;
+  return wrap;
+}
+
+function confirmBillingIntervalSwitch(targetLookup) {
+  return new Promise((resolve) => {
+    if (_billingIntervalConfirmResolve) closeBillingIntervalConfirm(false);
+    const copy = billingIntervalSwitchCopy(targetLookup);
+    const wrap = ensureBillingIntervalConfirmModal();
+    _billingIntervalConfirmResolve = resolve;
+    _billingIntervalConfirmReturnFocus = document.activeElement;
+    const titleEl = wrap.querySelector("#billingIntervalConfirmTitle");
+    const bodyEl = wrap.querySelector("#billingIntervalConfirmBody");
+    const okBtn = wrap.querySelector("#billingIntervalConfirmOk");
+    if (titleEl) titleEl.textContent = copy.title;
+    if (bodyEl) {
+      bodyEl.replaceChildren();
+      copy.paragraphs.forEach((text) => {
+        const p = document.createElement("p");
+        p.textContent = text;
+        bodyEl.appendChild(p);
+      });
+    }
+    if (okBtn) okBtn.textContent = copy.confirmLabel;
+    wrap.classList.add("modal-overlay--open");
+    wrap.setAttribute("aria-hidden", "false");
+    window.requestAnimationFrame(() => {
+      try {
+        (okBtn || wrap.querySelector("#billingIntervalConfirmCancel"))?.focus();
+      } catch (_) {}
+    });
+  });
 }
 
 async function switchBillingIntervalForActiveFamily() {
@@ -9772,7 +9883,8 @@ async function switchBillingIntervalForActiveFamily() {
     showBwToast("Could not determine the billing interval to switch to.");
     return;
   }
-  if (!window.confirm(billingIntervalSwitchConfirmMessage(targetLookup))) return;
+  const confirmed = await confirmBillingIntervalSwitch(targetLookup);
+  if (!confirmed) return;
 
   const previousLabel = cycleBtn ? cycleBtn.textContent : "";
   let switched = false;
