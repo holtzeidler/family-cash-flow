@@ -129,30 +129,111 @@ def is_in_app_trial(family_created_at: Optional[datetime], *, now: Optional[date
     return n < end
 
 
+def _stripe_field(obj: Any, key: str, default: Any = None) -> Any:
+    """Read a Stripe field from the live object first.
+
+    `_obj_get` prefers `to_dict()`, which often drops `lookup_key` / expanded Price.
+    """
+    if obj is None or isinstance(obj, str):
+        return default
+    try:
+        val = getattr(obj, key, None)
+        if val is not None:
+            return val
+    except Exception:
+        pass
+    if isinstance(obj, dict):
+        return obj.get(key, default)
+    return _obj_get(obj, key, default)
+
+
+def _subscription_items(sub: Any) -> list[Any]:
+    items = _stripe_field(sub, "items") or _obj_get(sub, "items")
+    data = _stripe_field(items, "data") if items is not None else None
+    if data is None:
+        data = _obj_get(items, "data") if items is not None else None
+    if not data and isinstance(items, list):
+        data = items
+    return list(data or [])
+
+
+def _lookup_from_price(price: Any) -> Optional[str]:
+    if price is None or isinstance(price, str):
+        return None
+    lk = (_stripe_field(price, "lookup_key") or _obj_get(price, "lookup_key") or "")
+    lk = str(lk).strip()
+    if lk in ALLOWED_PRICE_LOOKUP_KEYS:
+        return lk
+    recurring = _stripe_field(price, "recurring") or _obj_get(price, "recurring") or {}
+    interval = str(_stripe_field(recurring, "interval") or _obj_get(recurring, "interval") or "").strip().lower()
+    if interval == "year":
+        return LOOKUP_ANNUAL
+    if interval == "month":
+        return LOOKUP_MONTHLY
+    return None
+
+
+def _lookup_from_period_span(sub: Any) -> Optional[str]:
+    pe = _period_end_from_stripe_sub(sub)
+    ps = _as_naive_utc(_stripe_field(sub, "current_period_start") or _obj_get(sub, "current_period_start"))
+    if ps is None:
+        items = _subscription_items(sub)
+        if items:
+            ps = _as_naive_utc(
+                _stripe_field(items[0], "current_period_start") or _obj_get(items[0], "current_period_start")
+            )
+    if pe is None or ps is None:
+        return None
+    days = (pe - ps).days
+    if days >= 180:
+        return LOOKUP_ANNUAL
+    if 1 <= days <= 45:
+        return LOOKUP_MONTHLY
+    return None
+
+
+def reconcile_lookup_key_with_period_end(
+    lookup_key: Optional[str],
+    period_end: Optional[datetime],
+    *,
+    now: Optional[datetime] = None,
+) -> Optional[str]:
+    """If a stored monthly key still has >60 days until renewal, it is annual.
+
+    Monthly periods never have that much time remaining. Do not infer the other
+    way: an annual sub in its last month can have ≤45 days left.
+    """
+    key = (lookup_key or "").strip() or None
+    if period_end is None:
+        return key
+    pe = period_end
+    if pe.tzinfo is not None:
+        pe = pe.astimezone(timezone.utc).replace(tzinfo=None)
+    n = now or _utc_now()
+    if (pe - n).days >= 60:
+        return LOOKUP_ANNUAL
+    return key
+
+
 def lookup_key_from_subscription(sub: Any) -> Optional[str]:
     """Resolve Cash Forecast interval from the live Stripe price, not checkout metadata.
 
     Subscription metadata (bw_lookup_key) is set at Checkout and goes stale after a
     monthly↔annual switch. Prefer the current Price lookup_key / interval.
     """
-    items = _obj_get(sub, "items")
-    data = _obj_get(items, "data") if items is not None else None
-    if not data and isinstance(items, list):
-        data = items
-    first = data[0] if data else None
-    price = _obj_get(first, "price") if first is not None else None
-    if price is not None:
-        lk = (_obj_get(price, "lookup_key") or "").strip()
-        if lk in ALLOWED_PRICE_LOOKUP_KEYS:
-            return lk
-        recurring = _obj_get(price, "recurring") or {}
-        interval = (_obj_get(recurring, "interval") or "").strip().lower()
-        if interval == "year":
-            return LOOKUP_ANNUAL
-        if interval == "month":
-            return LOOKUP_MONTHLY
+    items = _subscription_items(sub)
+    first = items[0] if items else None
+    price = _stripe_field(first, "price") if first is not None else None
+    if price is None and first is not None:
+        price = _obj_get(first, "price")
+    from_price = _lookup_from_price(price)
+    if from_price:
+        return from_price
+    from_span = _lookup_from_period_span(sub)
+    if from_span:
+        return from_span
 
-    meta = _obj_get(sub, "metadata") or {}
+    meta = _stripe_field(sub, "metadata") or _obj_get(sub, "metadata") or {}
     if hasattr(meta, "get"):
         key = (meta.get("bw_lookup_key") or meta.get("lookup_key") or "").strip()
         if key in ALLOWED_PRICE_LOOKUP_KEYS:
@@ -206,7 +287,11 @@ def build_billing_status(
 
     period_end = getattr(subscription, "current_period_end", None) if subscription else None
     cancel_at_period_end = bool(getattr(subscription, "cancel_at_period_end", False)) if subscription else False
-    lookup_key = getattr(subscription, "lookup_key", None) if subscription else None
+    lookup_key = reconcile_lookup_key_with_period_end(
+        getattr(subscription, "lookup_key", None) if subscription else None,
+        period_end if isinstance(period_end, datetime) else None,
+        now=n,
+    )
     linked_customer = bool(subscription and getattr(subscription, "billing_customer_id", None))
     portal_available = bool(linked_customer or (has_stripe_customer and sub_entitled))
 

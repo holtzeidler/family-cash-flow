@@ -9957,12 +9957,15 @@ async function switchBillingIntervalForActiveFamily() {
     body.set("target_lookup", targetLookup);
     const data = await apiForm("/switch-billing-interval", body);
     switched = true;
+    const lookup = (data && data.lookup_key) || targetLookup;
     const label =
       (data && data.price_label) ||
-      (targetLookup === BILLING_LOOKUP_ANNUAL
+      (lookup === BILLING_LOOKUP_ANNUAL
         ? defaultCashForecastAnnualPriceLabel()
         : defaultCashForecastPriceLabel());
-    showBwToast(`Switched to ${label}.`);
+    const cached = cachedBillingStatusForActiveFamily() || {};
+    applyBillingStatusToPanel({ ...cached, lookup_key: lookup });
+    showBwToast(data && data.already ? `You're on ${label}.` : `Switched to ${label}.`);
     invalidateBillingStatusCache();
     await renderBillingPanel({ force: true });
   } catch (err) {

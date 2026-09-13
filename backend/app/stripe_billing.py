@@ -323,12 +323,6 @@ def register_stripe_routes(
                         status_code=status.HTTP_400_BAD_REQUEST,
                         detail="No Stripe subscription is on file to switch monthly and annual billing.",
                     )
-                if current_lookup == target:
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        detail="This subscription is already on that billing interval.",
-                    )
-
                 price_id = _price_id_for_lookup(target)
                 if not price_id:
                     raise HTTPException(
@@ -346,19 +340,37 @@ def register_stripe_routes(
                 item = items[0] if items else None
                 item_id = (getattr(item, "id", None) or "").strip() if item is not None else ""
                 live_price = getattr(item, "price", None) if item is not None else None
-                live_lookup = (
-                    (getattr(live_price, "lookup_key", None) or "").strip() if live_price is not None else ""
-                )
-                live_price_id = (getattr(live_price, "id", None) or "").strip() if live_price is not None else ""
+                if isinstance(live_price, str):
+                    live_lookup = ""
+                    live_price_id = live_price.strip()
+                else:
+                    live_lookup = (
+                        (getattr(live_price, "lookup_key", None) or "").strip() if live_price is not None else ""
+                    )
+                    live_price_id = (getattr(live_price, "id", None) or "").strip() if live_price is not None else ""
                 if not item_id:
                     raise HTTPException(
                         status_code=status.HTTP_400_BAD_REQUEST,
                         detail="Stripe subscription has no item to update.",
                     )
-                if live_lookup == target or live_price_id == price_id:
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        detail="This subscription is already on that billing interval.",
+                already_on_target = (
+                    live_lookup == target
+                    or (bool(live_price_id) and live_price_id == price_id)
+                    or current_lookup == target
+                )
+                if already_on_target:
+                    if sub_row is not None and current_lookup != target:
+                        sub_row.lookup_key = target
+                        db.add(sub_row)
+                    db.commit()
+                    label = (target_info or {}).get("display_label") or target
+                    return JSONResponse(
+                        {
+                            "switched": False,
+                            "already": True,
+                            "lookup_key": target,
+                            "price_label": label,
+                        }
                     )
 
                 # Immediate replacement: charge the full new price only, forfeit unused

@@ -4033,6 +4033,12 @@ def family_billing_status(
             subscription=sub,
             has_stripe_customer=bool(has_customer),
         )
+        healed_lookup = (payload.get("lookup_key") or "").strip()
+        stored_lookup = ((getattr(sub, "lookup_key", None) or "").strip() if sub is not None else "")
+        if sub is not None and healed_lookup and healed_lookup != stored_lookup:
+            sub.lookup_key = healed_lookup
+            db.add(sub)
+            db.commit()
 
         # Optional Stripe refresh — never required to paint Billing.
         want_sync = bool(int(sync or 0))
