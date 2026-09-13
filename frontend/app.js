@@ -1642,7 +1642,7 @@ const billingPrimaryCtaEl = document.getElementById("billingPrimaryCta");
 let billingActionsWired = false;
 
 /** Free period length — matches backend billing_catalog.TRIAL_DAYS (app-side trial). */
-const BILLING_TRIAL_DAYS = 30;
+const BILLING_TRIAL_DAYS = 14;
 /** Cash Forecast display amounts — matches backend billing_catalog. */
 const BILLING_MONTHLY_AMOUNT_USD = "5.99";
 const BILLING_ANNUAL_AMOUNT_USD = "59.99";
@@ -21364,7 +21364,7 @@ function ensureForecastReadyModal() {
         <p class="bw-forecast-ready__reassure">Takes about 60 seconds. Reopen the tour anytime from Help.</p>
       </div>
       <p class="bw-forecast-ready__finePrint" aria-label="Trial and pricing">
-        Free for your first month <span aria-hidden="true">•</span> <span id="bwForecastReadyPricingLine">Cancel anytime.</span>
+        Free for 14 days <span aria-hidden="true">•</span> <span id="bwForecastReadyPricingLine">Cancel anytime.</span>
       </p>
     </div>
   `;
