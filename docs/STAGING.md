@@ -232,8 +232,8 @@ Deep links from BalanceWhiz (when Customer Portal features are enabled in the St
 |---|---|
 | Update payment method | `payment_method_update` |
 | Switch to annual / monthly | **Not the portal.** `POST /switch-billing-interval` updates the Stripe subscription immediately (`proration_behavior=none`, `billing_cycle_anchor=now`) so the customer is charged the full new price today and the billing cycle resets. |
-| Cancel subscription | `subscription_cancel` |
-| Keep my subscription | `subscription_update` (Stripe’s keep / don’t-cancel controls) |
+| Cancel subscription | **Not the portal.** `POST /schedule-subscription-cancel` sets `cancel_at_period_end=true` and re-fetches Stripe. Access continues through the paid period end. |
+| Keep my subscription | **Not the portal.** `POST /resume-subscription` clears the scheduled cancel so renewal resumes. |
 | View invoices | standard portal homepage (Stripe has no invoice-history deep link) |
 
 **Branding** (Dashboard → Settings → Billing → Customer portal): set BalanceWhiz name, logo, brand color, and support email. The “sandbox” badge is Stripe test-mode only and disappears in live mode. Hosted copy such as “Don’t cancel subscription” and the sidebar “Return to …” link prominence are **not** customizable via API — improve clarity in BalanceWhiz before/after the redirect instead. Do **not** enable customers to switch products/prices in the portal — monthly↔annual is handled in BalanceWhiz so Stripe cannot invoice both a prorated year and a full year.

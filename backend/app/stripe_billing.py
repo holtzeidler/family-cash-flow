@@ -430,6 +430,190 @@ def register_stripe_routes(
             }
         )
 
+    def _family_subscription_id(db, *, family_id: int, user_id: int, customer: Optional[str]) -> str:
+        from sqlalchemy import select
+
+        from .main import BillingSubscription
+
+        sub_row = db.execute(
+            select(BillingSubscription).where(BillingSubscription.family_id == int(family_id))
+        ).scalar_one_or_none()
+        sid = (sub_row.stripe_subscription_id or "").strip() if sub_row is not None else ""
+        if not sid and customer:
+            sid = _active_subscription_id_for_customer(str(customer)) or ""
+        return sid
+
+    def _persist_live_subscription(db, stripe_subscription_id: str):
+        from .billing_entitlement import (
+            _period_end_from_stripe_sub,
+            _scheduled_cancel_from_stripe_sub,
+            lookup_key_from_subscription,
+            refresh_subscription_row_from_stripe,
+        )
+
+        live = stripe.Subscription.retrieve(stripe_subscription_id, expand=["items.data.price"])
+        refreshed, live_from_refresh = refresh_subscription_row_from_stripe(
+            db,
+            stripe_subscription_id=stripe_subscription_id,
+            api_key=_stripe_secret(),
+            timeout_seconds=8.0,
+        )
+        sub_obj = live_from_refresh if live_from_refresh is not None else live
+        period_end = _period_end_from_stripe_sub(sub_obj)
+        if refreshed is not None:
+            if period_end is not None:
+                refreshed.current_period_end = period_end
+            refreshed.cancel_at_period_end = _scheduled_cancel_from_stripe_sub(sub_obj)
+            lk = lookup_key_from_subscription(sub_obj)
+            if lk:
+                refreshed.lookup_key = lk
+            db.add(refreshed)
+        db.commit()
+        return sub_obj, refreshed, period_end
+
+    @app.post("/schedule-subscription-cancel", include_in_schema=False)
+    async def schedule_subscription_cancel(request: Request, family_id: int = Form(...)):
+        """Stop renewal at the current paid period end. Never cancel immediately."""
+        _require_stripe()
+        if session_factory is None:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Billing database session is not configured.",
+            )
+        user_id = _auth_user_id(request)
+        from .billing_entitlement import (
+            _period_end_from_stripe_sub,
+            lookup_key_from_subscription,
+            stripe_customer_id_for_family,
+        )
+        from .main import BillingCustomer, require_family_owner
+        from sqlalchemy import select
+
+        try:
+            with session_factory() as db:
+                require_family_owner(db=db, family_id=int(family_id), user_id=int(user_id))
+                customer = stripe_customer_id_for_family(db, family_id=int(family_id))
+                if not customer:
+                    owner_cust = db.execute(
+                        select(BillingCustomer).where(BillingCustomer.user_id == int(user_id))
+                    ).scalar_one_or_none()
+                    customer = (owner_cust.stripe_customer_id or "").strip() if owner_cust else None
+                sid = _family_subscription_id(db, family_id=int(family_id), user_id=int(user_id), customer=customer)
+                if not sid:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="No Stripe subscription is on file to cancel.",
+                    )
+                live = stripe.Subscription.retrieve(sid, expand=["items.data.price"])
+                live_status = (getattr(live, "status", None) or "").strip().lower()
+                if live_status in ("canceled", "cancelled", "incomplete_expired"):
+                    period_end = _period_end_from_stripe_sub(live)
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=(
+                            "This subscription is already canceled."
+                            if period_end is None
+                            else "This subscription is already canceled. Access follows the paid period already on file."
+                        ),
+                    )
+                stripe.Subscription.modify(sid, cancel_at_period_end=True)
+                sub_obj, _refreshed, period_end = _persist_live_subscription(db, sid)
+                logger.info(
+                    "Scheduled period-end cancel family_id=%s subscription %s period_end=%s",
+                    family_id,
+                    sid,
+                    period_end,
+                )
+        except HTTPException:
+            raise
+        except stripe.error.StripeError as e:
+            logger.exception("Stripe schedule-cancel failed")
+            msg = getattr(getattr(e, "error", None), "message", None) or str(e)
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=msg)
+        except Exception:
+            logger.exception("Schedule-cancel failed")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Could not schedule cancellation.",
+            )
+
+        pe_iso = period_end.isoformat() + "Z" if period_end is not None else None
+        return JSONResponse(
+            {
+                "scheduled": True,
+                "cancel_at_period_end": True,
+                "current_period_end": pe_iso,
+                "status": (getattr(sub_obj, "status", None) or "active"),
+                "lookup_key": lookup_key_from_subscription(sub_obj),
+            }
+        )
+
+    @app.post("/resume-subscription", include_in_schema=False)
+    async def resume_subscription(request: Request, family_id: int = Form(...)):
+        """Clear a scheduled period-end cancel and restore automatic renewal."""
+        _require_stripe()
+        if session_factory is None:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Billing database session is not configured.",
+            )
+        user_id = _auth_user_id(request)
+        from .billing_entitlement import lookup_key_from_subscription, stripe_customer_id_for_family
+        from .main import BillingCustomer, require_family_owner
+        from sqlalchemy import select
+
+        try:
+            with session_factory() as db:
+                require_family_owner(db=db, family_id=int(family_id), user_id=int(user_id))
+                customer = stripe_customer_id_for_family(db, family_id=int(family_id))
+                if not customer:
+                    owner_cust = db.execute(
+                        select(BillingCustomer).where(BillingCustomer.user_id == int(user_id))
+                    ).scalar_one_or_none()
+                    customer = (owner_cust.stripe_customer_id or "").strip() if owner_cust else None
+                sid = _family_subscription_id(db, family_id=int(family_id), user_id=int(user_id), customer=customer)
+                if not sid:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="No Stripe subscription is on file to resume.",
+                    )
+                live = stripe.Subscription.retrieve(sid, expand=["items.data.price"])
+                live_status = (getattr(live, "status", None) or "").strip().lower()
+                if live_status in ("canceled", "cancelled", "incomplete_expired"):
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="This subscription has already ended and cannot be kept from here.",
+                    )
+                resume_params: dict[str, Any] = {"cancel_at_period_end": False}
+                if getattr(live, "cancel_at", None):
+                    resume_params["cancel_at"] = ""
+                stripe.Subscription.modify(sid, **resume_params)
+                sub_obj, _refreshed, period_end = _persist_live_subscription(db, sid)
+                logger.info("Resumed subscription family_id=%s subscription %s", family_id, sid)
+        except HTTPException:
+            raise
+        except stripe.error.StripeError as e:
+            logger.exception("Stripe resume-subscription failed")
+            msg = getattr(getattr(e, "error", None), "message", None) or str(e)
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=msg)
+        except Exception:
+            logger.exception("Resume-subscription failed")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Could not keep this subscription.",
+            )
+
+        pe_iso = period_end.isoformat() + "Z" if period_end is not None else None
+        return JSONResponse(
+            {
+                "resumed": True,
+                "cancel_at_period_end": False,
+                "current_period_end": pe_iso,
+                "status": (getattr(sub_obj, "status", None) or "active"),
+                "lookup_key": lookup_key_from_subscription(sub_obj),
+            }
+        )
+
     @app.post("/create-portal-session", include_in_schema=False)
     async def create_portal_session(
         request: Request,
@@ -446,10 +630,9 @@ def register_stripe_routes(
 
         Optional flow (BalanceWhiz action → Stripe portal deep link when supported):
         - payment → payment_method_update
-        - cancel → subscription_cancel
-        - keep → subscription_update (undo scheduled cancel on the subscription page)
         - invoices / (empty) → standard portal homepage
-        Monthly↔annual switches use /switch-billing-interval (not the portal).
+        Cancel / keep use /schedule-subscription-cancel and /resume-subscription
+        (period-end only; not the portal). Monthly↔annual uses /switch-billing-interval.
 
         return_url is always built server-side from APP_PUBLIC_BASE_URL → /settings/billing.
         Hosted portal link prominence / button copy (e.g. “Don’t cancel”) are Stripe-controlled.
@@ -467,6 +650,11 @@ def register_stripe_routes(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Monthly and annual billing are switched in BalanceWhiz, not the Stripe portal.",
+            )
+        if flow_key in ("cancel", "keep"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cancellation is scheduled in BalanceWhiz at the end of the paid period, not in the Stripe portal.",
             )
 
         try:
@@ -538,20 +726,6 @@ def register_stripe_routes(
                 # Stripe has no invoice-history deep link; keep/open portal homepage.
                 if flow_key == "payment":
                     return {"type": "payment_method_update", "after_completion": _after_completion()}
-                if flow_key == "cancel" and stripe_subscription_id:
-                    return {
-                        "type": "subscription_cancel",
-                        "subscription_cancel": {"subscription": stripe_subscription_id},
-                        "after_completion": _after_completion(),
-                    }
-                if flow_key == "keep" and stripe_subscription_id:
-                    # Stripe has no dedicated uncancel deep link; the subscription
-                    # update page is where portal users can keep / renew.
-                    return {
-                        "type": "subscription_update",
-                        "subscription_update": {"subscription": stripe_subscription_id},
-                        "after_completion": _after_completion(),
-                    }
                 return None
 
             portal_params: dict[str, Any] = {"return_url": return_url}

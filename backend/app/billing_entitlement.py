@@ -79,37 +79,54 @@ def _obj_get(obj: Any, key: str, default: Any = None) -> Any:
 
 
 def _period_end_from_stripe_sub(sub: Any) -> Optional[datetime]:
-    """Resolve access/period end from a Stripe Subscription object."""
-    pe = _as_naive_utc(_obj_get(sub, "current_period_end"))
+    """Paid-period end from Stripe — never canceled_at or 'today'.
+
+    Newer API versions put current_period_end on subscription items, not the
+    subscription. A future cancel_at is only a fallback when it is the scheduled
+    period-end cancel time.
+    """
+    item_ends: list[datetime] = []
+    for item in _subscription_items(sub):
+        end = _as_naive_utc(
+            _stripe_field(item, "current_period_end") or _obj_get(item, "current_period_end")
+        )
+        if end is not None:
+            item_ends.append(end)
+    if item_ends:
+        return max(item_ends)
+    pe = _as_naive_utc(
+        _stripe_field(sub, "current_period_end") or _obj_get(sub, "current_period_end")
+    )
     if pe is not None:
         return pe
-    # Newer Stripe API versions may only expose period ends on subscription items.
-    items = _obj_get(sub, "items")
-    data = _obj_get(items, "data") if items is not None else None
-    if isinstance(data, list) and data:
-        ends = [_as_naive_utc(_obj_get(item, "current_period_end")) for item in data]
-        ends = [e for e in ends if e is not None]
-        if ends:
-            return max(ends)
-    return _as_naive_utc(_obj_get(sub, "cancel_at"))
+    cancel_at = _as_naive_utc(_stripe_field(sub, "cancel_at") or _obj_get(sub, "cancel_at"))
+    if cancel_at is not None and cancel_at > _utc_now():
+        return cancel_at
+    return None
+
+
+def _paid_access_remaining(period_end: Optional[datetime], *, now: Optional[datetime] = None) -> bool:
+    if period_end is None:
+        return False
+    pe = period_end
+    if pe.tzinfo is not None:
+        pe = pe.astimezone(timezone.utc).replace(tzinfo=None)
+    n = now or _utc_now()
+    return pe > n
 
 
 def _scheduled_cancel_from_stripe_sub(sub: Any, *, now: Optional[datetime] = None) -> bool:
-    """True when Stripe has a pending cancel (portal “Cancels [date]” state).
-
-    Prefer cancel_at_period_end; also treat a future cancel_at as scheduled cancel
-    (some portal / API versions set cancel_at without the boolean flag).
-    """
-    if bool(_obj_get(sub, "cancel_at_period_end") or False):
-        return True
-    cancel_at = _as_naive_utc(_obj_get(sub, "cancel_at"))
-    if cancel_at is None:
-        return False
-    status = (_obj_get(sub, "status") or "").strip().lower()
-    if status in ("canceled", "cancelled", "incomplete_expired", "unpaid"):
-        return False
+    """True when renewal is stopped but paid access may still be running."""
     n = now or _utc_now()
-    return cancel_at > n
+    if bool(_stripe_field(sub, "cancel_at_period_end") or _obj_get(sub, "cancel_at_period_end") or False):
+        return True
+    cancel_at = _as_naive_utc(_stripe_field(sub, "cancel_at") or _obj_get(sub, "cancel_at"))
+    status = str(_stripe_field(sub, "status") or _obj_get(sub, "status") or "").strip().lower()
+    if cancel_at is not None and cancel_at > n and status not in ("incomplete_expired", "unpaid"):
+        return True
+    if status in ("canceled", "cancelled") and _paid_access_remaining(_period_end_from_stripe_sub(sub), now=n):
+        return True
+    return False
 
 
 def trial_ends_at(family_created_at: Optional[datetime]) -> Optional[datetime]:
@@ -270,23 +287,26 @@ def build_billing_status(
     in_trial = is_in_app_trial(created, now=n)
 
     sub_status = (getattr(subscription, "status", None) or "").strip().lower() if subscription else ""
-    sub_entitled = sub_status in ENTITLED_STATUSES
+    period_end = getattr(subscription, "current_period_end", None) if subscription else None
+    paid_access = _paid_access_remaining(period_end if isinstance(period_end, datetime) else None, now=n)
+    canceled = sub_status in ("canceled", "cancelled")
+    sub_entitled = sub_status in ENTITLED_STATUSES or (canceled and paid_access)
     entitled = bool(sub_entitled or in_trial)
 
-    if sub_entitled:
-        if sub_status == "past_due":
-            phase = "past_due"
-        elif sub_status == "trialing":
-            phase = "trial"  # Stripe trial (unused in product model, but handle if present)
-        else:
-            phase = "active"
+    if sub_status == "past_due":
+        phase = "past_due"
+    elif sub_status == "trialing":
+        phase = "trial"  # Stripe trial (unused in product model, but handle if present)
+    elif sub_status in ENTITLED_STATUSES or (canceled and paid_access):
+        phase = "active"
     elif in_trial:
         phase = "trial"
     else:
         phase = "expired"
 
-    period_end = getattr(subscription, "current_period_end", None) if subscription else None
     cancel_at_period_end = bool(getattr(subscription, "cancel_at_period_end", False)) if subscription else False
+    if canceled and paid_access:
+        cancel_at_period_end = True
     lookup_key = reconcile_lookup_key_with_period_end(
         getattr(subscription, "lookup_key", None) if subscription else None,
         period_end if isinstance(period_end, datetime) else None,
@@ -638,13 +658,18 @@ def apply_live_stripe_subscription_fields(payload: dict[str, Any], stripe_sub: A
     if not payload or stripe_sub is None:
         return payload
     out = dict(payload)
-    out["cancel_at_period_end"] = _scheduled_cancel_from_stripe_sub(stripe_sub)
     pe = _period_end_from_stripe_sub(stripe_sub)
     if pe is not None:
         out["current_period_end"] = pe.isoformat() + "Z"
     st = (_obj_get(stripe_sub, "status") or "").strip().lower()
     if st:
         out["status"] = st
+    scheduled = _scheduled_cancel_from_stripe_sub(stripe_sub)
+    if pe is not None and st in ("canceled", "cancelled") and _paid_access_remaining(pe):
+        scheduled = True
+        out["entitled"] = True
+        out["phase"] = "active"
+    out["cancel_at_period_end"] = scheduled
     sid = (_obj_get(stripe_sub, "id") or "").strip()
     if sid:
         out["stripe_subscription_id"] = sid

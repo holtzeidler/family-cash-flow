@@ -9978,6 +9978,86 @@ async function switchBillingIntervalForActiveFamily() {
   }
 }
 
+async function scheduleBillingCancellationForActiveFamily() {
+  const apiBase = apiBaseUrl();
+  if (!apiBase) {
+    showBwToast("Billing isn’t configured on this build.");
+    return;
+  }
+  if (!state.activeFamilyId) {
+    showBwToast("Choose a family first.");
+    return;
+  }
+  const cached = cachedBillingStatusForActiveFamily() || {};
+  const accessIso = isoDateFromApiTimestamp(cached.current_period_end);
+  const accessLong = accessIso ? formatBillingLongDate(accessIso) : "";
+  const ok = await bwConfirm({
+    title: "Cancel subscription?",
+    body: accessLong && accessLong !== "—"
+      ? `You'll keep access through ${accessLong}. Your subscription will not renew after that date.`
+      : "You'll keep access through the end of your current paid period. Your subscription will not renew after that date.",
+    confirmLabel: "Cancel subscription",
+    cancelLabel: "Keep my subscription",
+    danger: true,
+    nested: false,
+  });
+  if (!ok) return;
+  try {
+    showBwToast("Scheduling cancellation at the end of your paid period…");
+    const body = new FormData();
+    body.set("family_id", String(state.activeFamilyId));
+    const data = await apiForm("/schedule-subscription-cancel", body);
+    const next = {
+      ...cached,
+      cancel_at_period_end: true,
+      current_period_end: (data && data.current_period_end) || cached.current_period_end,
+      status: (data && data.status) || cached.status || "active",
+      lookup_key: (data && data.lookup_key) || cached.lookup_key,
+      phase: "active",
+      entitled: true,
+    };
+    applyBillingStatusToPanel(next);
+    showBwToast("Cancellation scheduled. You'll keep access through the end of your paid period.");
+    invalidateBillingStatusCache();
+    await renderBillingPanel({ force: true });
+  } catch (err) {
+    showBwToast(err && err.message ? err.message : "Could not schedule cancellation.");
+  }
+}
+
+async function resumeBillingSubscriptionForActiveFamily() {
+  const apiBase = apiBaseUrl();
+  if (!apiBase) {
+    showBwToast("Billing isn’t configured on this build.");
+    return;
+  }
+  if (!state.activeFamilyId) {
+    showBwToast("Choose a family first.");
+    return;
+  }
+  try {
+    showBwToast("Keeping your subscription…");
+    const body = new FormData();
+    body.set("family_id", String(state.activeFamilyId));
+    const data = await apiForm("/resume-subscription", body);
+    const cached = cachedBillingStatusForActiveFamily() || {};
+    applyBillingStatusToPanel({
+      ...cached,
+      cancel_at_period_end: false,
+      current_period_end: (data && data.current_period_end) || cached.current_period_end,
+      status: (data && data.status) || cached.status || "active",
+      lookup_key: (data && data.lookup_key) || cached.lookup_key,
+      phase: "active",
+      entitled: true,
+    });
+    showBwToast("Your subscription will renew as usual.");
+    invalidateBillingStatusCache();
+    await renderBillingPanel({ force: true });
+  } catch (err) {
+    showBwToast(err && err.message ? err.message : "Could not keep this subscription.");
+  }
+}
+
 function openBillingPortalForActiveFamily(flow = "") {
   const apiBase = apiBaseUrl();
   if (!apiBase) {
@@ -9993,11 +10073,17 @@ function openBillingPortalForActiveFamily(flow = "") {
     void switchBillingIntervalForActiveFamily();
     return;
   }
+  if (flowKey === "cancel") {
+    void scheduleBillingCancellationForActiveFamily();
+    return;
+  }
+  if (flowKey === "keep") {
+    void resumeBillingSubscriptionForActiveFamily();
+    return;
+  }
   const toastByFlow = {
     payment: "Opening Stripe to update your payment method…",
     invoices: "Opening Stripe to view invoices…",
-    cancel: "Opening Stripe to cancel your subscription…",
-    keep: "Opening Stripe so you can keep your subscription…",
   };
   try {
     showBwToast(toastByFlow[flowKey] || "Opening Stripe billing…");
@@ -10035,7 +10121,15 @@ function wireBillingActionsOnce() {
         void switchBillingIntervalForActiveFamily();
         return;
       }
-      const portalActions = new Set(["payment", "cancel", "invoices", "keep"]);
+      if (action === "cancel") {
+        void scheduleBillingCancellationForActiveFamily();
+        return;
+      }
+      if (action === "keep") {
+        void resumeBillingSubscriptionForActiveFamily();
+        return;
+      }
+      const portalActions = new Set(["payment", "invoices"]);
       if (portalActions.has(action)) {
         if (isBillingPortalAvailable()) {
           openBillingPortalForActiveFamily(action);
