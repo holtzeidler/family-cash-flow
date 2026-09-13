@@ -269,7 +269,8 @@ def register_stripe_routes(
         - payment → payment_method_update
         - cycle → subscription_update
         - cancel → subscription_cancel
-        - invoices / keep / (empty) → standard portal homepage
+        - keep → subscription_update (undo scheduled cancel on the subscription page)
+        - invoices / (empty) → standard portal homepage
 
         return_url is always built server-side from APP_PUBLIC_BASE_URL → Settings Billing.
         Hosted portal link prominence / button copy (e.g. “Don’t cancel”) are Stripe-controlled.
@@ -361,6 +362,14 @@ def register_stripe_routes(
                     return {
                         "type": "subscription_cancel",
                         "subscription_cancel": {"subscription": stripe_subscription_id},
+                        "after_completion": _after_completion(),
+                    }
+                if flow_key == "keep" and stripe_subscription_id:
+                    # Stripe has no dedicated uncancel deep link; the subscription
+                    # update page is where portal users can keep / renew.
+                    return {
+                        "type": "subscription_update",
+                        "subscription_update": {"subscription": stripe_subscription_id},
                         "after_completion": _after_completion(),
                     }
                 return None

@@ -9076,13 +9076,7 @@ function resolveBillingLifecycleModel(status, { hasFamily = true } = {}) {
       showMeta: true,
       showManage: true,
       showCancel: true,
-      callout: {
-        kind: "info",
-        title: accessLong ? `Access through ${accessLong}` : "Cancellation scheduled",
-        text: accessLong
-          ? `Your Cash Forecast access will remain active through ${accessLong}.`
-          : "Your subscription is set to end after the current billing period.",
-      },
+      callout: null,
       primaryCta: null,
       meta: {
         plan: productName,
@@ -9095,11 +9089,11 @@ function resolveBillingLifecycleModel(status, { hasFamily = true } = {}) {
       },
       manageHint: "Payment method, invoices, and plan changes are managed in the Stripe customer portal.",
       cancelSection: {
-        title: "Scheduled cancellation",
+        title: "Cancellation scheduled",
         lede: accessLong
           ? `Your Cash Forecast access will remain active through ${accessLong}.`
           : "Your subscription is scheduled to cancel at the end of the current billing period.",
-        buttonLabel: "Keep subscription",
+        buttonLabel: "Keep my subscription",
         action: "keep",
         tone: "keep",
       },

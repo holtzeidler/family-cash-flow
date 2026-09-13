@@ -12301,9 +12301,16 @@ label{
   background: transparent;
 }
 .billing-cancel__request--keep{
-  border-color: rgba(11, 61, 46, 0.28);
-  color: rgba(11, 61, 46, 0.94);
-  background: rgba(11, 61, 46, 0.04);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 7px 14px;
+  border-radius: 10px;
+  border-color: rgba(11, 61, 46, 0.22);
+  background: rgba(255, 255, 255, 0.72);
+  color: rgba(11, 61, 46, 0.9);
+  font-size: 0.8125rem;
   font-weight: 650;
 }
 .billing-cancel__request:hover{
