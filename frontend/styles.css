@@ -12207,11 +12207,18 @@ label{
   max-width: 320px;
 }
 .billing-actions--interval-annual .billing-actions__secondary{
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  max-width: 580px;
+  gap: 10px;
 }
-.billing-actions--interval-annual .billing-action-btn--secondary[data-billing-action="cycle"]{
-  flex: 1 1 100%;
-  width: auto;
+.billing-actions--interval-annual .billing-action-btn--secondary{
+  flex: 1 1 0;
+  width: 0;
+  min-width: 0;
+  min-height: 40px;
+  padding: 9px 14px;
+  font-size: 0.8125rem;
+  white-space: nowrap;
 }
 .billing-actions__sep{
   display: none;
@@ -12535,6 +12542,7 @@ label{
   }
   .billing-actions--interval-annual .billing-actions__secondary{
     flex-wrap: wrap;
+    max-width: none;
   }
   .billing-action-btn--secondary{
     flex: 1 1 0;
@@ -12544,9 +12552,12 @@ label{
     padding: 7px 8px;
     font-size: 0.75rem;
   }
-  .billing-actions--interval-annual .billing-action-btn--secondary[data-billing-action="cycle"]{
+  .billing-actions--interval-annual .billing-action-btn--secondary{
     flex: 1 1 100%;
     width: auto;
+    min-height: 40px;
+    padding: 9px 14px;
+    font-size: 0.8125rem;
   }
   .billing-meta__def{
     white-space: normal;
