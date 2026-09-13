@@ -9171,7 +9171,7 @@ function resolveBillingLifecycleModel(status, { hasFamily = true } = {}) {
       cycleAction,
       cancelSection: {
         title: "Cancellation",
-        lede: "You can cancel your subscription at any time.",
+        lede: "You'll keep access through the end of your current billing period.",
         buttonLabel: "Cancel subscription",
         action: "cancel",
         tone: "danger",
