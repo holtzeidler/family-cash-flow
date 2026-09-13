@@ -8864,7 +8864,7 @@ function getBillingPlanContext(plan) {
   return "Forecast, reports, and recurring cash planning.";
 }
 
-function billingStatusPillHtml(status, tone = "") {
+function billingStatusPillHtml(status, tone = "", { showIcon = true } = {}) {
   const s = String(status || "").trim();
   if (!s || s === "—") return "";
   const t = String(tone || "").toLowerCase();
@@ -8874,9 +8874,10 @@ function billingStatusPillHtml(status, tone = "") {
   else if (t === "trial") mod = "billing-status-pill--trial";
   else if (t === "muted" || t === "neutral") mod = "billing-status-pill--muted";
   const icon = t === "warning" ? "!" : "✓";
-  return `<span class="billing-status-pill ${mod}"><span class="billing-status-pill__icon" aria-hidden="true">${icon}</span>${escapeHtml(
-    s
-  )}</span>`;
+  const iconHtml = showIcon
+    ? `<span class="billing-status-pill__icon" aria-hidden="true">${icon}</span>`
+    : "";
+  return `<span class="billing-status-pill ${mod}">${iconHtml}${escapeHtml(s)}</span>`;
 }
 
 function invalidateBillingStatusCache() {
@@ -9086,12 +9087,13 @@ function resolveBillingLifecycleModel(status, { hasFamily = true } = {}) {
         date: accessLong || "—",
         statusLabel: cancelsShort ? `Cancels ${cancelsShort}` : "Canceled",
         statusTone: "muted",
+        statusIcon: false,
       },
       manageHint: "Payment method, invoices, and plan changes are managed in the Stripe customer portal.",
       cancelSection: {
         title: "Cancellation scheduled",
         lede: accessLong
-          ? `Your Cash Forecast access will remain active through ${accessLong}.`
+          ? `Your access will remain active through ${accessLong}.`
           : "Your subscription is scheduled to cancel at the end of the current billing period.",
         buttonLabel: "Keep my subscription",
         action: "keep",
@@ -9445,7 +9447,9 @@ function applyBillingLifecycleModel(model) {
       if (dom.nextDateLabel) dom.nextDateLabel.textContent = model.meta.dateLabel;
       nextDateEl.textContent = model.meta.date;
       if (dom.accountStatus) {
-        dom.accountStatus.innerHTML = billingStatusPillHtml(model.meta.statusLabel, model.meta.statusTone);
+        dom.accountStatus.innerHTML = billingStatusPillHtml(model.meta.statusLabel, model.meta.statusTone, {
+          showIcon: model.meta.statusIcon !== false,
+        });
       }
     } else {
       planEl.textContent = "";
