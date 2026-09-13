@@ -231,7 +231,7 @@ Deep links from BalanceWhiz (when Customer Portal features are enabled in the St
 | BalanceWhiz action | Stripe `flow_data` |
 |---|---|
 | Update payment method | `payment_method_update` |
-| Switch to annual / monthly | `subscription_update_confirm` (fallback: `subscription_update`) |
+| Switch to annual / monthly | Dedicated portal configuration (both Cash Forecast prices) + `subscription_update_confirm` (fallback: `subscription_update`). Does not fall back to the generic homepage. |
 | Cancel subscription | `subscription_cancel` |
 | Keep my subscription | `subscription_update` (Stripe’s keep / don’t-cancel controls) |
 | View invoices | standard portal homepage (Stripe has no invoice-history deep link) |

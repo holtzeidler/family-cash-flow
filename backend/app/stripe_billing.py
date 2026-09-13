@@ -258,6 +258,72 @@ def register_stripe_routes(
             )
         return RedirectResponse(url=session.url, status_code=303)
 
+    price_switch_portal_config: dict[str, Optional[str]] = {"id": None, "sig": None}
+
+    def _price_id_and_product(lookup_key: str) -> tuple[Optional[str], Optional[str]]:
+        listed = stripe.Price.list(lookup_keys=[lookup_key], expand=["data.product"], limit=1)
+        if not listed.data:
+            return None, None
+        price = listed.data[0]
+        pid = (getattr(price, "id", None) or "").strip() or None
+        prod = getattr(price, "product", None)
+        if isinstance(prod, str):
+            prod_id = prod.strip() or None
+        else:
+            prod_id = (getattr(prod, "id", None) or "").strip() or None
+        return pid, prod_id
+
+    def _ensure_price_switch_portal_config() -> Optional[str]:
+        """Portal config that allows monthly↔annual switches (default Dashboard config often does not)."""
+        monthly_id, monthly_prod = _price_id_and_product(LOOKUP_MONTHLY)
+        annual_id, annual_prod = _price_id_and_product(LOOKUP_ANNUAL)
+        product_id = monthly_prod or annual_prod
+        price_ids = [p for p in (monthly_id, annual_id) if p]
+        if not product_id or len(price_ids) < 2:
+            logger.warning(
+                "Cannot build portal price-switch config monthly=%s annual=%s product=%s",
+                monthly_id,
+                annual_id,
+                product_id,
+            )
+            return None
+        sig = f"{product_id}:{','.join(sorted(price_ids))}"
+        if price_switch_portal_config["id"] and price_switch_portal_config["sig"] == sig:
+            return price_switch_portal_config["id"]
+        try:
+            cfg = stripe.billing_portal.Configuration.create(
+                business_profile={"headline": PRODUCT_NAME},
+                features={
+                    "invoice_history": {"enabled": True},
+                    "payment_method_update": {"enabled": True},
+                    "subscription_cancel": {"enabled": True},
+                    "subscription_update": {
+                        "enabled": True,
+                        "default_allowed_updates": ["price"],
+                        "proration_behavior": "create_prorations",
+                        "products": [{"product": product_id, "prices": price_ids}],
+                    },
+                },
+            )
+            cfg_id = (getattr(cfg, "id", None) or "").strip() or None
+            price_switch_portal_config["id"] = cfg_id
+            price_switch_portal_config["sig"] = sig
+            return cfg_id
+        except Exception:
+            logger.exception("Failed to create Stripe portal configuration for price switching")
+            return None
+
+    def _active_subscription_id_for_customer(customer_id: str) -> Optional[str]:
+        listed = stripe.Subscription.list(customer=customer_id, status="all", limit=5)
+        data = getattr(listed, "data", None) or []
+        for candidate in data:
+            st = (getattr(candidate, "status", None) or "").strip().lower()
+            if st in ("active", "past_due", "trialing"):
+                sid = (getattr(candidate, "id", None) or "").strip()
+                if sid:
+                    return sid
+        return None
+
     @app.post("/create-portal-session", include_in_schema=False)
     async def create_portal_session(
         request: Request,
@@ -274,8 +340,9 @@ def register_stripe_routes(
 
         Optional flow (BalanceWhiz action → Stripe portal deep link when supported):
         - payment → payment_method_update
-        - cycle → subscription_update_confirm when the alternate price is known,
-          else subscription_update (Stripe shows price, date, and proration)
+        - cycle → subscription_update_confirm on a portal config that includes
+          both Cash Forecast prices (shows price, date, and proration). Does not
+          fall back to the generic homepage.
         - cancel → subscription_cancel
         - keep → subscription_update (undo scheduled cancel on the subscription page)
         - invoices / (empty) → standard portal homepage
@@ -332,6 +399,8 @@ def register_stripe_routes(
                     family_id=int(family_id),
                     portal_return=True,
                 )
+                if not stripe_subscription_id and customer:
+                    stripe_subscription_id = _active_subscription_id_for_customer(str(customer))
             else:
                 checkout_session_id = (session_id or "").strip()
                 if not checkout_session_id:
@@ -437,23 +506,30 @@ def register_stripe_routes(
             flow_data = _flow_data_for_action()
             if flow_data:
                 portal_params["flow_data"] = flow_data
+            if flow_key == "cycle":
+                if not stripe_subscription_id:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="No Stripe subscription is on file to switch monthly and annual billing.",
+                    )
+                cfg_id = _ensure_price_switch_portal_config()
+                if cfg_id:
+                    portal_params["configuration"] = cfg_id
+                else:
+                    logger.warning("Cycle switch requested without a price-switch portal configuration")
 
             try:
                 portal_session = stripe.billing_portal.Session.create(**portal_params)
             except stripe.error.StripeError as flow_err:
-                # Deep link can fail if portal config disables that feature — fall back.
-                if flow_data:
+                err_msg = getattr(getattr(flow_err, "error", None), "message", None) or str(flow_err)
+                # Deep link can fail if portal config disables that feature.
+                if flow_data and flow_key == "cycle":
                     logger.warning(
-                        "Portal deep-link flow=%s type=%s failed (%s); falling back",
-                        flow_key,
+                        "Portal cycle flow type=%s failed (%s); retrying subscription_update",
                         flow_data.get("type"),
-                        getattr(getattr(flow_err, "error", None), "message", None) or flow_err,
+                        err_msg,
                     )
-                    if (
-                        flow_key == "cycle"
-                        and stripe_subscription_id
-                        and flow_data.get("type") == "subscription_update_confirm"
-                    ):
+                    if stripe_subscription_id:
                         portal_params["flow_data"] = {
                             "type": "subscription_update",
                             "subscription_update": {"subscription": stripe_subscription_id},
@@ -461,12 +537,32 @@ def register_stripe_routes(
                         }
                         try:
                             portal_session = stripe.billing_portal.Session.create(**portal_params)
-                        except stripe.error.StripeError:
-                            portal_params.pop("flow_data", None)
-                            portal_session = stripe.billing_portal.Session.create(**portal_params)
+                        except stripe.error.StripeError as update_err:
+                            update_msg = (
+                                getattr(getattr(update_err, "error", None), "message", None) or str(update_err)
+                            )
+                            logger.warning("Portal cycle subscription_update failed (%s)", update_msg)
+                            raise HTTPException(
+                                status_code=status.HTTP_400_BAD_REQUEST,
+                                detail=(
+                                    "Stripe couldn’t open the billing-cycle switch. "
+                                    "Confirm both Cash Forecast prices are in the Customer Portal configuration."
+                                ),
+                            )
                     else:
-                        portal_params.pop("flow_data", None)
-                        portal_session = stripe.billing_portal.Session.create(**portal_params)
+                        raise HTTPException(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="No Stripe subscription is on file to switch monthly and annual billing.",
+                        )
+                elif flow_data:
+                    logger.warning(
+                        "Portal deep-link flow=%s type=%s failed (%s); falling back to homepage",
+                        flow_key,
+                        flow_data.get("type"),
+                        err_msg,
+                    )
+                    portal_params.pop("flow_data", None)
+                    portal_session = stripe.billing_portal.Session.create(**portal_params)
                 else:
                     raise
         except HTTPException:
