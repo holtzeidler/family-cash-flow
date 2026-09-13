@@ -11819,7 +11819,7 @@ label{
   color: rgba(71, 85, 105, 0.72);
 }
 .billing-hero__title{
-  margin-top: 6px;
+  margin-top: 0;
   font-size: clamp(1.3rem, 1.12rem + 0.4vw, 1.5rem);
   font-weight: 820;
   line-height: 1.12;
@@ -11841,6 +11841,10 @@ label{
   gap: 12px;
   margin-top: 12px;
   width: 100%;
+}
+.billing-summary:not(:has(> :not([hidden]))){
+  margin-top: 0;
+  gap: 0;
 }
 .billing-callout{
   display: flex;
