@@ -21,6 +21,8 @@ from fastapi.responses import JSONResponse, RedirectResponse
 
 from .billing_catalog import (
     ALLOWED_PRICE_LOOKUP_KEYS,
+    LOOKUP_ANNUAL,
+    LOOKUP_MONTHLY,
     PRODUCT_CODE,
     PRODUCT_NAME,
     catalog_public,
@@ -258,6 +260,7 @@ def register_stripe_routes(
         family_id: Optional[int] = Form(None),
         session_id: Optional[str] = Form(None),
         flow: Optional[str] = Form(None),
+        target_lookup: Optional[str] = Form(None),
     ):
         """
         Open the Stripe Customer Portal.
@@ -267,7 +270,8 @@ def register_stripe_routes(
 
         Optional flow (BalanceWhiz action → Stripe portal deep link when supported):
         - payment → payment_method_update
-        - cycle → subscription_update
+        - cycle → subscription_update_confirm when the alternate price is known,
+          else subscription_update (Stripe shows price, date, and proration)
         - cancel → subscription_cancel
         - keep → subscription_update (undo scheduled cancel on the subscription page)
         - invoices / (empty) → standard portal homepage
@@ -281,9 +285,11 @@ def register_stripe_routes(
         customer: Optional[str] = None
         customer_account: Optional[str] = None
         stripe_subscription_id: Optional[str] = None
+        current_lookup: Optional[str] = None
         # Server-built from APP_PUBLIC_BASE_URL — never accept a client-supplied return URL.
         return_url = _billing_page_url(domain, portal_return=True)
         flow_key = (flow or "").strip().lower()
+        requested_target = (target_lookup or "").strip()
 
         try:
             if family_id is not None:
@@ -311,6 +317,7 @@ def register_stripe_routes(
                     ).scalar_one_or_none()
                     if sub_row is not None:
                         stripe_subscription_id = (sub_row.stripe_subscription_id or "").strip() or None
+                        current_lookup = (getattr(sub_row, "lookup_key", None) or "").strip() or None
                 if not customer:
                     raise HTTPException(
                         status_code=status.HTTP_400_BAD_REQUEST,
@@ -348,11 +355,54 @@ def register_stripe_routes(
                     "redirect": {"return_url": return_url},
                 }
 
+            def _cycle_target_lookup() -> str:
+                if requested_target in ALLOWED_PRICE_LOOKUP_KEYS:
+                    return requested_target
+                if current_lookup == LOOKUP_ANNUAL:
+                    return LOOKUP_MONTHLY
+                return LOOKUP_ANNUAL
+
+            def _cycle_confirm_flow() -> Optional[dict[str, Any]]:
+                """Prefer a confirm screen for the specific monthly↔annual switch."""
+                if not stripe_subscription_id:
+                    return None
+                target = _cycle_target_lookup()
+                try:
+                    live = stripe.Subscription.retrieve(
+                        stripe_subscription_id,
+                        expand=["items.data.price"],
+                    )
+                    items = getattr(getattr(live, "items", None), "data", None) or []
+                    item = items[0] if items else None
+                    item_id = (getattr(item, "id", None) or "").strip() if item is not None else ""
+                    listed = stripe.Price.list(lookup_keys=[target], limit=1)
+                    price_id = (getattr(listed.data[0], "id", None) or "").strip() if listed.data else ""
+                    if item_id and price_id:
+                        return {
+                            "type": "subscription_update_confirm",
+                            "subscription_update_confirm": {
+                                "subscription": stripe_subscription_id,
+                                "items": [{"id": item_id, "price": price_id}],
+                            },
+                            "after_completion": _after_completion(),
+                        }
+                except Exception:
+                    logger.warning(
+                        "Could not build cycle confirm flow for %s → %s",
+                        stripe_subscription_id,
+                        target,
+                        exc_info=True,
+                    )
+                return None
+
             def _flow_data_for_action() -> Optional[dict[str, Any]]:
                 # Stripe has no invoice-history deep link; keep/open portal homepage.
                 if flow_key == "payment":
                     return {"type": "payment_method_update", "after_completion": _after_completion()}
                 if flow_key == "cycle" and stripe_subscription_id:
+                    confirm = _cycle_confirm_flow()
+                    if confirm:
+                        return confirm
                     return {
                         "type": "subscription_update",
                         "subscription_update": {"subscription": stripe_subscription_id},
@@ -387,15 +437,32 @@ def register_stripe_routes(
             try:
                 portal_session = stripe.billing_portal.Session.create(**portal_params)
             except stripe.error.StripeError as flow_err:
-                # Deep link can fail if portal config disables that feature — fall back to homepage.
+                # Deep link can fail if portal config disables that feature — fall back.
                 if flow_data:
                     logger.warning(
-                        "Portal deep-link flow=%s failed (%s); falling back to standard portal",
+                        "Portal deep-link flow=%s type=%s failed (%s); falling back",
                         flow_key,
+                        flow_data.get("type"),
                         getattr(getattr(flow_err, "error", None), "message", None) or flow_err,
                     )
-                    portal_params.pop("flow_data", None)
-                    portal_session = stripe.billing_portal.Session.create(**portal_params)
+                    if (
+                        flow_key == "cycle"
+                        and stripe_subscription_id
+                        and flow_data.get("type") == "subscription_update_confirm"
+                    ):
+                        portal_params["flow_data"] = {
+                            "type": "subscription_update",
+                            "subscription_update": {"subscription": stripe_subscription_id},
+                            "after_completion": _after_completion(),
+                        }
+                        try:
+                            portal_session = stripe.billing_portal.Session.create(**portal_params)
+                        except stripe.error.StripeError:
+                            portal_params.pop("flow_data", None)
+                            portal_session = stripe.billing_portal.Session.create(**portal_params)
+                    else:
+                        portal_params.pop("flow_data", None)
+                        portal_session = stripe.billing_portal.Session.create(**portal_params)
                 else:
                     raise
         except HTTPException:

@@ -71,7 +71,7 @@
             </p>
           </header>
 
-          <section class="checkout-card" aria-label="Plan">
+          <section class="checkout-card" aria-label="Cash Forecast">
             <div class="checkout-product">
               <div class="checkout-product__icon" aria-hidden="true">
                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -377,6 +377,14 @@
         radios.forEach(function (radio) {
           radio.addEventListener("change", syncBilling);
         });
+        try {
+          var wantLookup = String(new URLSearchParams(window.location.search || "").get("lookup_key") || "").trim();
+          if (wantLookup) {
+            radios.forEach(function (radio) {
+              if (radio.getAttribute("data-lookup-key") === wantLookup) radio.checked = true;
+            });
+          }
+        } catch (_) {}
         syncBilling();
 
         function pickOwnedFamily(families) {

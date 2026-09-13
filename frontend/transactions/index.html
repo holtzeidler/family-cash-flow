@@ -35,7 +35,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=741" />
+    <link rel="stylesheet" href="../styles.css?v=742" />
   </head>
   <body>
     <h1 class="sr-only">Transactions</h1>
@@ -920,7 +920,7 @@
                 <div class="settings-pane" data-settings-pane="billing" hidden>
                   <div class="billing-page">
                     <header class="settings-section-head billing-page__head">
-                      <h2 class="settings-section-title billing-page__title">Plan &amp; billing</h2>
+                      <h2 class="settings-section-title billing-page__title" data-billing-page-title="billing">Plan &amp; billing</h2>
                       <p class="settings-section-lede billing-page__lede">Subscription status and payment actions.</p>
                     </header>
 
@@ -949,17 +949,35 @@
                                 href="/checkout/"
                                 hidden
                                 aria-hidden="true"
-                              >Subscribe for $5.99/month</a>
+                              >Continue with Cash Forecast</a>
+                              <div id="billingSubscribeChoices" class="billing-subscribe" hidden>
+                                <p class="billing-subscribe__lede" id="billingSubscribeTitle">Continue with Cash Forecast</p>
+                                <div class="billing-subscribe__options">
+                                  <a
+                                    class="billing-hero__activate billing-subscribe__option"
+                                    id="billingSubscribeMonthly"
+                                    data-billing-lookup="cash_forecast_monthly"
+                                    href="/checkout/"
+                                  >Monthly — $5.99/month</a>
+                                  <a
+                                    class="billing-action-btn billing-action-btn--secondary billing-subscribe__option"
+                                    id="billingSubscribeAnnual"
+                                    data-billing-lookup="cash_forecast_annual"
+                                    href="/checkout/"
+                                  >Annual — $59.99/year</a>
+                                </div>
+                                <p class="billing-subscribe__save" id="billingSubscribeSave" hidden></p>
+                              </div>
                             </div>
                           </div>
 
                           <dl class="billing-meta" id="billingMeta" aria-label="Subscription details" hidden>
                             <div class="billing-meta__pair">
-                              <dt class="billing-meta__term">Plan</dt>
+                              <dt class="billing-meta__term">Subscription</dt>
                               <dd class="billing-meta__def" id="billingPlan">—</dd>
                             </div>
                             <div class="billing-meta__pair">
-                              <dt class="billing-meta__term" id="billingPriceLabel">Price</dt>
+                              <dt class="billing-meta__term" id="billingPriceLabel">Billing</dt>
                               <dd class="billing-meta__def" id="billingFrequency">—</dd>
                             </div>
                             <div class="billing-meta__pair">
@@ -975,7 +993,7 @@
                           <div class="billing-actions" id="billingManageSection" aria-labelledby="billingManageHeading" hidden>
                             <h3 class="billing-actions__title" id="billingManageHeading">Manage subscription</h3>
                             <p class="billing-actions__hint" id="billingManageHint">
-                              Update your payment method, view invoices, or manage your subscription through Stripe.
+                              Payment method, invoices, and billing changes are managed securely through Stripe.
                             </p>
                             <div class="billing-actions__primary">
                               <button type="button" class="billing-action-btn billing-action-btn--primary" data-billing-action="payment">
@@ -983,7 +1001,7 @@
                               </button>
                             </div>
                             <div class="billing-actions__secondary" aria-label="Additional billing tasks">
-                              <button type="button" class="billing-action-btn billing-action-btn--secondary" data-billing-action="cycle">Change billing cycle</button>
+                              <button type="button" class="billing-action-btn billing-action-btn--secondary" data-billing-action="cycle" data-billing-target-lookup="cash_forecast_annual">Switch to annual</button>
                               <button type="button" class="billing-action-btn billing-action-btn--secondary" data-billing-action="invoices">View invoices</button>
                             </div>
                           </div>
@@ -997,9 +1015,9 @@
                         </section>
                       </div>
 
-                      <aside class="billing-side" aria-label="Plan and billing information">
+                      <aside class="billing-side" aria-label="Cash Forecast billing information">
                         <section class="billing-side__block" aria-labelledby="billingIncludesTitle">
-                          <h3 class="billing-side__title" id="billingIncludesTitle">Plan includes</h3>
+                          <h3 class="billing-side__title" id="billingIncludesTitle">Cash Forecast includes</h3>
                           <ul class="billing-feature-list">
                             <li>Forecast calendar</li>
                             <li>Cash pressure reports</li>
@@ -2056,7 +2074,7 @@ Date,Vendor,Amount
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="../app.js?v=437"></script>
+    <script src="../app.js?v=438"></script>
     <script src="../feedback.js?v=5" defer></script>
     <script src="../tour.js?v=9" defer></script>
   </body>

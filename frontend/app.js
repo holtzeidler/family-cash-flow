@@ -8904,6 +8904,35 @@ function defaultCashForecastPriceLabel() {
   return `$${BILLING_MONTHLY_AMOUNT_USD}/month`;
 }
 
+function defaultCashForecastAnnualPriceLabel() {
+  return `$${BILLING_ANNUAL_AMOUNT_USD}/year`;
+}
+
+function billingLookupIsAnnual(lookupKey) {
+  return String(lookupKey || "").trim() === BILLING_LOOKUP_ANNUAL;
+}
+
+function alternateBillingLookup(lookupKey) {
+  return billingLookupIsAnnual(lookupKey) ? BILLING_LOOKUP_MONTHLY : BILLING_LOOKUP_ANNUAL;
+}
+
+function cycleSwitchLabel(lookupKey) {
+  return billingLookupIsAnnual(lookupKey) ? "Switch to monthly" : "Switch to annual";
+}
+
+function annualSavingsCopy() {
+  const monthly = Number(BILLING_MONTHLY_AMOUNT_USD);
+  const annual = Number(BILLING_ANNUAL_AMOUNT_USD);
+  if (!Number.isFinite(monthly) || !Number.isFinite(annual) || monthly <= 0) return "";
+  const save = monthly * 12 - annual;
+  if (save <= 0.005) return "";
+  const pct = Math.round((save / (monthly * 12)) * 100);
+  return `Save ~${pct}% with annual billing`;
+}
+
+const BILLING_MANAGE_HINT =
+  "Payment method, invoices, and billing changes are managed securely through Stripe.";
+
 function daysRemainingUntilIso(iso) {
   const day = String(iso || "").trim();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return null;
@@ -8915,10 +8944,15 @@ function daysRemainingUntilIso(iso) {
   return Math.max(0, Math.ceil(ms / 86400000));
 }
 
-function checkoutUrlForActiveFamily() {
-  return state.activeFamilyId
-    ? `/checkout/?family_id=${encodeURIComponent(String(state.activeFamilyId))}`
-    : "/checkout/";
+function checkoutUrlForActiveFamily(lookupKey = "") {
+  const params = new URLSearchParams();
+  if (state.activeFamilyId) params.set("family_id", String(state.activeFamilyId));
+  const key = String(lookupKey || "").trim();
+  if (key === BILLING_LOOKUP_MONTHLY || key === BILLING_LOOKUP_ANNUAL) {
+    params.set("lookup_key", key);
+  }
+  const q = params.toString();
+  return q ? `/checkout/?${q}` : "/checkout/";
 }
 
 function cachedBillingStatusForActiveFamily() {
@@ -9018,6 +9052,16 @@ function resolveBillingLifecycleModel(status, { hasFamily = true } = {}) {
   const lookupKey = status && status.lookup_key;
   const priceFromLookup = priceLabelFromLookupKey(lookupKey);
   const priceLabel = priceFromLookup || monthlyPrice;
+  const cycleAction = {
+    label: cycleSwitchLabel(lookupKey),
+    targetLookup: alternateBillingLookup(lookupKey),
+  };
+  const subscribeChoices = {
+    title: "Continue with Cash Forecast",
+    monthlyLabel: `Monthly — ${monthlyPrice}`,
+    annualLabel: `Annual — ${defaultCashForecastAnnualPriceLabel()}`,
+    savings: annualSavingsCopy(),
+  };
   const trialEnd = status && status.trial_ends_on ? String(status.trial_ends_on) : "";
   const periodEnd = isoDateFromApiTimestamp(status && status.current_period_end);
   const cancelAtEnd = !!(status && status.cancel_at_period_end);
@@ -9049,7 +9093,7 @@ function resolveBillingLifecycleModel(status, { hasFamily = true } = {}) {
       primaryCta: { label: "Update payment method", action: "portal" },
       meta: {
         plan: productName,
-        priceLabel: "Price",
+        priceLabel: "Billing",
         price: priceLabel,
         dateLabel: "Next billing date",
         date: periodEnd ? formatShortDateLong(periodEnd) : "—",
@@ -9057,6 +9101,7 @@ function resolveBillingLifecycleModel(status, { hasFamily = true } = {}) {
         statusTone: "warning",
       },
       manageHint: "Update your payment method in Stripe to restore billing.",
+      cycleAction,
       cancelSection: {
         title: "Cancellation",
         lede: "You can still manage or cancel your subscription in Stripe.",
@@ -9081,7 +9126,7 @@ function resolveBillingLifecycleModel(status, { hasFamily = true } = {}) {
       primaryCta: null,
       meta: {
         plan: productName,
-        priceLabel: "Price",
+        priceLabel: "Billing",
         price: priceLabel,
         dateLabel: "Access through",
         date: accessLong || "—",
@@ -9089,7 +9134,8 @@ function resolveBillingLifecycleModel(status, { hasFamily = true } = {}) {
         statusTone: "muted",
         statusIcon: false,
       },
-      manageHint: "Payment method, invoices, and plan changes are managed in the Stripe customer portal.",
+      manageHint: BILLING_MANAGE_HINT,
+      cycleAction,
       cancelSection: {
         title: "Cancellation scheduled",
         lede: accessLong
@@ -9114,14 +9160,15 @@ function resolveBillingLifecycleModel(status, { hasFamily = true } = {}) {
       primaryCta: null,
       meta: {
         plan: productName,
-        priceLabel: "Price",
+        priceLabel: "Billing",
         price: priceLabel,
         dateLabel: "Next billing date",
         date: periodEnd ? formatBillingLongDate(periodEnd) : "—",
         statusLabel: "Active",
         statusTone: "paid",
       },
-      manageHint: "Update your payment method, view invoices, or manage your subscription through Stripe.",
+      manageHint: BILLING_MANAGE_HINT,
+      cycleAction,
       cancelSection: {
         title: "Cancellation",
         lede: "You can cancel your subscription at any time.",
@@ -9156,10 +9203,11 @@ function resolveBillingLifecycleModel(status, { hasFamily = true } = {}) {
         title: "Free trial",
         text: `${daysText}${endText} No payment method required during your trial.`,
       },
-      primaryCta: { label: `Subscribe for ${monthlyPrice}`, action: "checkout" },
+      primaryCta: null,
+      subscribeChoices,
       meta: {
         plan: productName,
-        priceLabel: "Price after trial",
+        priceLabel: "Billing",
         price: monthlyPrice,
         dateLabel: "Trial ends",
         date: trialEnd ? formatShortDateLong(trialEnd) : "—",
@@ -9182,12 +9230,13 @@ function resolveBillingLifecycleModel(status, { hasFamily = true } = {}) {
       callout: {
         kind: "info",
         title: "Subscription ended",
-        text: `Resubscribe to Cash Forecast for ${monthlyPrice}. Your existing data is still here.`,
+        text: "Choose monthly or annual billing to continue using Cash Forecast. Your existing data is still here.",
       },
-      primaryCta: { label: `Subscribe for ${monthlyPrice}`, action: "checkout" },
+      primaryCta: null,
+      subscribeChoices,
       meta: {
         plan: productName,
-        priceLabel: "Price",
+        priceLabel: "Billing",
         price: monthlyPrice,
         dateLabel: "Ended",
         date: periodEnd ? formatShortDateLong(periodEnd) : "—",
@@ -9209,12 +9258,13 @@ function resolveBillingLifecycleModel(status, { hasFamily = true } = {}) {
     callout: {
       kind: "info",
       title: "Your free trial has ended",
-      text: `Continue using BalanceWhiz Cash Forecast for ${monthlyPrice}. Your existing data is still here.`,
+      text: "Choose monthly or annual billing to continue using Cash Forecast.",
     },
-    primaryCta: { label: `Subscribe for ${monthlyPrice}`, action: "checkout" },
+    primaryCta: null,
+    subscribeChoices,
     meta: {
       plan: productName,
-      priceLabel: "Price",
+      priceLabel: "Billing",
       price: monthlyPrice,
       dateLabel: "Trial ended",
       date: trialEnd ? formatShortDateLong(trialEnd) : "—",
@@ -9324,6 +9374,12 @@ function billingDom() {
       document.getElementById("billingCancelBtn") ||
       document.querySelector("#billingCancelSection [data-billing-action]"),
     primaryCta: document.getElementById("billingPrimaryCta"),
+    cycleBtn: document.querySelector("#billingManageSection [data-billing-action=\"cycle\"]"),
+    subscribe: document.getElementById("billingSubscribeChoices"),
+    subscribeTitle: document.getElementById("billingSubscribeTitle"),
+    subscribeMonthly: document.getElementById("billingSubscribeMonthly"),
+    subscribeAnnual: document.getElementById("billingSubscribeAnnual"),
+    subscribeSave: document.getElementById("billingSubscribeSave"),
   };
 }
 
@@ -9385,10 +9441,45 @@ function setBillingPrimaryCta(cta) {
     el.setAttribute("role", "button");
     el.dataset.billingFlow = cta.flow || "payment";
   } else {
-    el.href = checkoutUrlForActiveFamily();
+    el.href = checkoutUrlForActiveFamily(cta.lookupKey);
     el.removeAttribute("role");
     el.removeAttribute("data-billing-flow");
   }
+}
+
+function setBillingSubscribeChoices(choices) {
+  const dom = billingDom();
+  const wrap = dom.subscribe;
+  if (!wrap) return;
+  if (!choices) {
+    setBillingElHidden(wrap, true);
+    return;
+  }
+  setBillingElHidden(wrap, false);
+  if (dom.subscribeTitle) dom.subscribeTitle.textContent = choices.title || "Continue with Cash Forecast";
+  if (dom.subscribeMonthly) {
+    dom.subscribeMonthly.textContent = choices.monthlyLabel || `Monthly — ${defaultCashForecastPriceLabel()}`;
+    dom.subscribeMonthly.href = checkoutUrlForActiveFamily(BILLING_LOOKUP_MONTHLY);
+  }
+  if (dom.subscribeAnnual) {
+    dom.subscribeAnnual.textContent = choices.annualLabel || `Annual — ${defaultCashForecastAnnualPriceLabel()}`;
+    dom.subscribeAnnual.href = checkoutUrlForActiveFamily(BILLING_LOOKUP_ANNUAL);
+  }
+  if (dom.subscribeSave) {
+    const save = choices.savings || "";
+    dom.subscribeSave.textContent = save;
+    setBillingElHidden(dom.subscribeSave, !save);
+  }
+}
+
+function applyBillingCycleAction(model) {
+  const btn = billingDom().cycleBtn;
+  if (!btn) return;
+  const action = model.cycleAction;
+  if (!action) return;
+  btn.textContent = action.label || "Switch to annual";
+  if (action.targetLookup) btn.setAttribute("data-billing-target-lookup", action.targetLookup);
+  else btn.removeAttribute("data-billing-target-lookup");
 }
 
 function applyBillingCancelSection(model) {
@@ -9459,8 +9550,10 @@ function applyBillingLifecycleModel(model) {
     }
 
     if (dom.manageHint && model.manageHint) dom.manageHint.textContent = model.manageHint;
+    applyBillingCycleAction(model);
 
     setBillingPrimaryCta(model.primaryCta);
+    setBillingSubscribeChoices(model.subscribeChoices || null);
     setBillingLifecycleCallout(model.callout);
   } catch (err) {
     try {
@@ -9509,11 +9602,13 @@ function billingPanelLooksBlank() {
   const manageEl = dom.manage || billingManageSectionEl;
   const calloutEl = dom.renewal || billingRenewalMessageEl;
   const ctaEl = dom.primaryCta || billingPrimaryCtaEl;
+  const subscribeEl = dom.subscribe;
   const metaOn = metaEl && !metaEl.hasAttribute("hidden");
   const manageOn = manageEl && !manageEl.hasAttribute("hidden");
   const calloutOn = calloutEl && !calloutEl.hasAttribute("hidden");
   const ctaOn = ctaEl && !ctaEl.hasAttribute("hidden");
-  return !(metaOn || manageOn || calloutOn || ctaOn);
+  const subscribeOn = subscribeEl && !subscribeEl.hasAttribute("hidden");
+  return !(metaOn || manageOn || calloutOn || ctaOn || subscribeOn);
 }
 
 async function renderBillingPanel({ force = false } = {}) {
@@ -9615,9 +9710,15 @@ function openBillingPortalForActiveFamily(flow = "") {
     return;
   }
   const flowKey = String(flow || "").trim().toLowerCase();
+  const cycleBtn = billingDom().cycleBtn;
+  const targetLookup = cycleBtn ? String(cycleBtn.getAttribute("data-billing-target-lookup") || "").trim() : "";
+  const cycleToast =
+    targetLookup === BILLING_LOOKUP_MONTHLY
+      ? "Opening Stripe to switch to monthly billing. Confirm the new price and date before you continue."
+      : "Opening Stripe to switch to annual billing. Confirm the new price and date before you continue.";
   const toastByFlow = {
     payment: "Opening Stripe to update your payment method…",
-    cycle: "Opening Stripe to change your billing cycle…",
+    cycle: cycleToast,
     invoices: "Opening Stripe to view invoices…",
     cancel: "Opening Stripe to cancel your subscription…",
     keep: "Opening Stripe so you can keep your subscription…",
@@ -9628,6 +9729,7 @@ function openBillingPortalForActiveFamily(flow = "") {
   const body = new FormData();
   body.set("family_id", String(state.activeFamilyId));
   if (flowKey) body.set("flow", flowKey);
+  if (flowKey === "cycle" && targetLookup) body.set("target_lookup", targetLookup);
   fetch(`${apiBase}/create-portal-session`, {
     method: "POST",
     body,
