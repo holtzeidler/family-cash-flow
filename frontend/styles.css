@@ -12324,7 +12324,7 @@ label{
 .modal.modal--billing-interval-confirm{
   width: min(92vw, 480px);
   max-width: 480px;
-  padding: 22px 24px 18px;
+  padding: 18px 22px 14px;
   border: 1px solid rgba(17, 24, 39, 0.08);
   border-radius: 14px;
   background: #fff;
@@ -12332,24 +12332,37 @@ label{
     0 4px 6px rgba(17, 24, 39, 0.04),
     0 18px 40px rgba(15, 23, 42, 0.16);
 }
-.billing-interval-confirm__title{
-  margin: 0 0 12px;
-  font-size: 1.15rem;
-  font-weight: 800;
-  letter-spacing: -0.022em;
-  line-height: 1.25;
+.modal.modal--billing-interval-confirm h3.billing-interval-confirm__title{
+  box-sizing: border-box;
+  width: auto;
+  max-width: none;
+  margin: 0 0 8px;
+  padding: 0;
+  font-size: clamp(1.2rem, 1.05rem + 0.45vw, 1.48rem);
+  font-weight: 780;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
   color: rgba(15, 23, 42, 0.96);
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  text-transform: none;
 }
 .billing-interval-confirm__body{
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 .billing-interval-confirm__body p{
   margin: 0;
   font-size: 0.875rem;
-  line-height: 1.5;
-  color: rgba(71, 85, 105, 0.92);
+  line-height: 1.45;
+  font-weight: 450;
+  color: rgba(71, 85, 105, 0.82);
+}
+.billing-interval-confirm__em{
+  font-weight: 700;
+  color: rgba(15, 23, 42, 0.92);
 }
 .modal.modal--billing-interval-confirm .billing-interval-confirm__actions.modal-actions{
   display: flex;
@@ -12357,8 +12370,8 @@ label{
   align-items: center;
   justify-content: flex-end;
   gap: 10px;
-  margin-top: 18px;
-  padding-top: 16px;
+  margin-top: 14px;
+  padding-top: 12px;
   border-top: 1px solid rgba(17, 24, 39, 0.06);
 }
 .billing-interval-confirm__cancel,
@@ -12406,7 +12419,7 @@ label{
 @media (max-width: 520px){
   .modal.modal--billing-interval-confirm{
     width: min(96vw, 480px);
-    padding: 18px 16px 14px;
+    padding: 16px 16px 12px;
   }
   .modal.modal--billing-interval-confirm .billing-interval-confirm__actions.modal-actions{
     flex-direction: column;
@@ -25900,6 +25913,21 @@ body.account-setup-page
   border-radius: 14px 14px 0 0;
   border-bottom: 1px solid rgba(0,0,0,0.18);
   text-transform: none;
+}
+
+/* Billing interval confirm: white card heading, not the global green bar. */
+.modal.modal--billing-interval-confirm h3:not(.sr-only){
+  width: auto;
+  margin: 0 0 8px;
+  padding: 0;
+  font-size: clamp(1.2rem, 1.05rem + 0.45vw, 1.48rem);
+  font-weight: 780;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+  color: rgba(15, 23, 42, 0.96);
+  background: transparent;
+  border: none;
+  border-radius: 0;
 }
 
 /* Zero-padding modals: header must match modal width (no negative-margin bleed). */

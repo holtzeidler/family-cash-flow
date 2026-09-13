@@ -9752,9 +9752,12 @@ function billingIntervalSwitchCopy(targetLookup) {
     return {
       title: "Switch to annual billing?",
       paragraphs: [
-        `You’ll be charged $${BILLING_ANNUAL_AMOUNT_USD} today for annual Cash Forecast.`,
-        "Your current monthly billing period will end today, and unused time will not be credited.",
-        "Your next renewal will be one year from today.",
+        [
+          "You'll be charged ",
+          { em: `$${BILLING_ANNUAL_AMOUNT_USD} today` },
+          " for annual Cash Forecast. Your current monthly billing period will end today, and unused time won't be credited.",
+        ],
+        ["Your next renewal will be ", { em: "one year from today" }, "."],
       ],
       confirmLabel: "Switch to annual",
     };
@@ -9762,12 +9765,30 @@ function billingIntervalSwitchCopy(targetLookup) {
   return {
     title: "Switch to monthly billing?",
     paragraphs: [
-      `You’ll be charged $${BILLING_MONTHLY_AMOUNT_USD} today for monthly Cash Forecast.`,
-      "Your current annual billing period will end today, and unused time will not be credited.",
-      "Your next renewal will be one month from today.",
+      [
+        "You'll be charged ",
+        { em: `$${BILLING_MONTHLY_AMOUNT_USD} today` },
+        " for monthly Cash Forecast. Your current annual billing period will end today, and unused time won't be credited.",
+      ],
+      ["Your next renewal will be ", { em: "one month from today" }, "."],
     ],
     confirmLabel: "Switch to monthly",
   };
+}
+
+function renderBillingIntervalConfirmParagraph(parts) {
+  const p = document.createElement("p");
+  (parts || []).forEach((part) => {
+    if (typeof part === "string") {
+      p.appendChild(document.createTextNode(part));
+      return;
+    }
+    const em = document.createElement("strong");
+    em.className = "billing-interval-confirm__em";
+    em.textContent = part && part.em ? String(part.em) : "";
+    p.appendChild(em);
+  });
+  return p;
 }
 
 function closeBillingIntervalConfirm(confirmed) {
@@ -9848,10 +9869,8 @@ function confirmBillingIntervalSwitch(targetLookup) {
     if (titleEl) titleEl.textContent = copy.title;
     if (bodyEl) {
       bodyEl.replaceChildren();
-      copy.paragraphs.forEach((text) => {
-        const p = document.createElement("p");
-        p.textContent = text;
-        bodyEl.appendChild(p);
+      copy.paragraphs.forEach((parts) => {
+        bodyEl.appendChild(renderBillingIntervalConfirmParagraph(parts));
       });
     }
     if (okBtn) okBtn.textContent = copy.confirmLabel;
