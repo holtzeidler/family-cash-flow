@@ -12163,7 +12163,7 @@ label{
 }
 .billing-actions__hint{
   margin: 0 0 18px;
-  max-width: 54ch;
+  max-width: none;
   font-size: 0.8125rem;
   line-height: 1.45;
   color: var(--billing-muted);
