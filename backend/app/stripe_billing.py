@@ -370,13 +370,21 @@ def register_stripe_routes(
                     billing_cycle_anchor="now",
                     payment_behavior="error_if_incomplete",
                     cancel_at_period_end=False,
+                    metadata={
+                        "bw_lookup_key": target,
+                        "bw_billing_frequency": frequency_storage_value(target),
+                    },
                 )
-                refresh_subscription_row_from_stripe(
+                refreshed, _ = refresh_subscription_row_from_stripe(
                     db,
                     stripe_subscription_id=stripe_subscription_id,
                     api_key=_stripe_secret(),
                     timeout_seconds=8.0,
                 )
+                row_to_fix = refreshed if refreshed is not None else sub_row
+                if row_to_fix is not None:
+                    row_to_fix.lookup_key = target
+                    db.add(row_to_fix)
                 db.commit()
                 logger.info(
                     "Switched family_id=%s subscription %s to %s status=%s",

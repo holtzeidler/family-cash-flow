@@ -130,35 +130,33 @@ def is_in_app_trial(family_created_at: Optional[datetime], *, now: Optional[date
 
 
 def lookup_key_from_subscription(sub: Any) -> Optional[str]:
-    meta = _obj_get(sub, "metadata") or {}
-    if hasattr(meta, "get"):
-        key = (meta.get("bw_lookup_key") or meta.get("lookup_key") or "").strip()
-    else:
-        key = ""
-    if key in ALLOWED_PRICE_LOOKUP_KEYS:
-        return key
+    """Resolve Cash Forecast interval from the live Stripe price, not checkout metadata.
 
+    Subscription metadata (bw_lookup_key) is set at Checkout and goes stale after a
+    monthly↔annual switch. Prefer the current Price lookup_key / interval.
+    """
     items = _obj_get(sub, "items")
     data = _obj_get(items, "data") if items is not None else None
     if not data and isinstance(items, list):
         data = items
-    if not data:
-        return None
     first = data[0] if data else None
-    price = _obj_get(first, "price")
-    if price is None:
-        return None
-    # Expanded Price object
-    lk = (_obj_get(price, "lookup_key") or "").strip()
-    if lk in ALLOWED_PRICE_LOOKUP_KEYS:
-        return lk
-    # Infer from recurring interval when lookup_key missing
-    recurring = _obj_get(price, "recurring") or {}
-    interval = (_obj_get(recurring, "interval") or "").strip().lower()
-    if interval == "year":
-        return LOOKUP_ANNUAL
-    if interval == "month":
-        return LOOKUP_MONTHLY
+    price = _obj_get(first, "price") if first is not None else None
+    if price is not None:
+        lk = (_obj_get(price, "lookup_key") or "").strip()
+        if lk in ALLOWED_PRICE_LOOKUP_KEYS:
+            return lk
+        recurring = _obj_get(price, "recurring") or {}
+        interval = (_obj_get(recurring, "interval") or "").strip().lower()
+        if interval == "year":
+            return LOOKUP_ANNUAL
+        if interval == "month":
+            return LOOKUP_MONTHLY
+
+    meta = _obj_get(sub, "metadata") or {}
+    if hasattr(meta, "get"):
+        key = (meta.get("bw_lookup_key") or meta.get("lookup_key") or "").strip()
+        if key in ALLOWED_PRICE_LOOKUP_KEYS:
+            return key
     return None
 
 
@@ -565,6 +563,9 @@ def apply_live_stripe_subscription_fields(payload: dict[str, Any], stripe_sub: A
     sid = (_obj_get(stripe_sub, "id") or "").strip()
     if sid:
         out["stripe_subscription_id"] = sid
+    lk = lookup_key_from_subscription(stripe_sub)
+    if lk:
+        out["lookup_key"] = lk
     return out
 
 
