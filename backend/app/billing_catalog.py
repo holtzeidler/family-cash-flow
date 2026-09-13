@@ -6,9 +6,10 @@ Product model is COMPLETE for Cash Forecast rebuild:
 - Two Prices (lookup keys must exist in Stripe Dashboard / test mode):
   - cash_forecast_monthly  → $5.99 / month
   - cash_forecast_annual   → $59.99 / year
-- Trial: 14-day app-side free trial from account start (not a Stripe trial on Checkout).
-  First paid Checkout converts the family to Active Billing; do not also attach
-  subscription_data.trial_period_days unless product policy changes.
+- Trial: 14-day free trial from account start. Access does not require a card.
+  Choosing monthly/annual during the trial creates a Stripe subscription with
+  trial_end aligned to the remaining app trial (collects a payment method, $0
+  due today). Checkout after the trial charges immediately.
 
 Dashboard setup (test and live, separately):
 1. Create Product name "Cash Forecast".

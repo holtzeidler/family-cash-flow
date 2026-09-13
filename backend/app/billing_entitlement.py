@@ -146,6 +146,27 @@ def is_in_app_trial(family_created_at: Optional[datetime], *, now: Optional[date
     return n < end
 
 
+def trial_days_remaining(family_created_at: Optional[datetime], *, now: Optional[datetime] = None) -> Optional[int]:
+    """Whole calendar days left until the trial-end date (UTC). 0 if ended."""
+    end = trial_ends_at(family_created_at)
+    if end is None:
+        return None
+    n = now or _utc_now()
+    return max(0, (end.date() - n.date()).days)
+
+
+def trial_end_unix(family_created_at: Optional[datetime], *, now: Optional[datetime] = None) -> Optional[int]:
+    """Unix timestamp for Stripe subscription_data.trial_end, or None if the trial is over."""
+    end = trial_ends_at(family_created_at)
+    if end is None:
+        return None
+    n = now or _utc_now()
+    if end <= n:
+        return None
+    aware = end if end.tzinfo is not None else end.replace(tzinfo=timezone.utc)
+    return int(aware.timestamp())
+
+
 def _stripe_field(obj: Any, key: str, default: Any = None) -> Any:
     """Read a Stripe field from the live object first.
 
@@ -285,13 +306,23 @@ def build_billing_status(
     created = getattr(family, "created_at", None)
     trial_end = trial_ends_at(created)
     in_trial = is_in_app_trial(created, now=n)
+    days_left = trial_days_remaining(created, now=n)
 
     sub_status = (getattr(subscription, "status", None) or "").strip().lower() if subscription else ""
     period_end = getattr(subscription, "current_period_end", None) if subscription else None
+    stripe_trial_end = getattr(subscription, "trial_end", None) if subscription else None
     paid_access = _paid_access_remaining(period_end if isinstance(period_end, datetime) else None, now=n)
     canceled = sub_status in ("canceled", "cancelled")
     sub_entitled = sub_status in ENTITLED_STATUSES or (canceled and paid_access)
     entitled = bool(sub_entitled or in_trial)
+
+    first_charge = None
+    if isinstance(stripe_trial_end, datetime) and stripe_trial_end > n:
+        first_charge = stripe_trial_end
+    elif sub_status == "trialing" and isinstance(period_end, datetime) and period_end > n:
+        first_charge = period_end
+    elif in_trial and trial_end is not None:
+        first_charge = trial_end
 
     if sub_status == "past_due":
         phase = "past_due"
@@ -321,7 +352,9 @@ def build_billing_status(
         "entitled": entitled,
         "phase": phase,
         "trial_days": TRIAL_DAYS,
+        "trial_days_remaining": days_left,
         "trial_ends_on": trial_end.date().isoformat() if trial_end else None,
+        "first_charge_on": first_charge.date().isoformat() if first_charge else None,
         "in_app_trial": in_trial,
         "status": sub_status or ("trialing" if in_trial else "none"),
         "lookup_key": lookup_key,
@@ -664,6 +697,12 @@ def apply_live_stripe_subscription_fields(payload: dict[str, Any], stripe_sub: A
     st = (_obj_get(stripe_sub, "status") or "").strip().lower()
     if st:
         out["status"] = st
+    if st == "trialing":
+        out["phase"] = "trial"
+        out["entitled"] = True
+    te = _as_naive_utc(_stripe_field(stripe_sub, "trial_end") or _obj_get(stripe_sub, "trial_end"))
+    if te is not None:
+        out["first_charge_on"] = te.date().isoformat()
     scheduled = _scheduled_cancel_from_stripe_sub(stripe_sub)
     if pe is not None and st in ("canceled", "cancelled") and _paid_access_remaining(pe):
         scheduled = True
@@ -721,20 +760,42 @@ def handle_stripe_event(db, event: Any, logger_: logging.Logger) -> None:
         sub_ref = _obj_get(obj, "subscription")
         sub_id = sub_ref if isinstance(sub_ref, str) else _obj_get(sub_ref, "id")
         if sub_id:
-            # Minimal stub until subscription.* events arrive with full object
-            stub = {
-                "id": str(sub_id),
-                "status": "active",
-                "customer": customer_id,
-                "metadata": meta,
-                "cancel_at_period_end": False,
-            }
-            upsert_subscription_from_stripe(
-                db,
-                sub=stub,
-                family_id=family_id,
-                billing_customer_id=int(billing_customer.id) if billing_customer else None,
-            )
+            live_sub = None
+            try:
+                import stripe as stripe_mod
+
+                if getattr(stripe_mod, "api_key", None):
+                    live_sub = stripe_mod.Subscription.retrieve(str(sub_id), expand=["items.data.price"])
+            except Exception:
+                logger.exception("Could not retrieve subscription %s after checkout", sub_id)
+            if live_sub is not None:
+                upsert_subscription_from_stripe(
+                    db,
+                    sub=live_sub,
+                    family_id=family_id,
+                    billing_customer_id=int(billing_customer.id) if billing_customer else None,
+                )
+            else:
+                payment_status = str(_obj_get(obj, "payment_status") or "").strip().lower()
+                amount_total = _obj_get(obj, "amount_total")
+                stub_status = (
+                    "trialing"
+                    if payment_status == "no_payment_required" or amount_total == 0
+                    else "active"
+                )
+                stub = {
+                    "id": str(sub_id),
+                    "status": stub_status,
+                    "customer": customer_id,
+                    "metadata": meta,
+                    "cancel_at_period_end": False,
+                }
+                upsert_subscription_from_stripe(
+                    db,
+                    sub=stub,
+                    family_id=family_id,
+                    billing_customer_id=int(billing_customer.id) if billing_customer else None,
+                )
         mark_webhook_event_processed(db, event_id=str(event_id), event_type=str(event_type))
         return
 

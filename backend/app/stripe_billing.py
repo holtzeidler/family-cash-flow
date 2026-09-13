@@ -137,10 +137,11 @@ def register_stripe_routes(
 
         from sqlalchemy import select
 
-        from .billing_entitlement import get_or_create_stripe_customer_for_user
-        from .main import BillingSubscription, User, require_family_owner
+        from .billing_entitlement import get_or_create_stripe_customer_for_user, trial_end_unix
+        from .main import BillingSubscription, Family, User, require_family_owner
 
         try:
+            stripe_trial_end: Optional[int] = None
             with session_factory() as db:
                 require_family_owner(db=db, family_id=int(family_id), user_id=int(user_id))
                 user = db.get(User, int(user_id))
@@ -157,6 +158,9 @@ def register_stripe_routes(
                             status_code=status.HTTP_409_CONFLICT,
                             detail="This family already has an active Cash Forecast subscription.",
                         )
+
+                family = db.get(Family, int(family_id))
+                stripe_trial_end = trial_end_unix(getattr(family, "created_at", None) if family else None)
 
                 billing_customer = get_or_create_stripe_customer_for_user(
                     db, user=user, stripe_mod=stripe, family_id=int(family_id)
@@ -189,40 +193,46 @@ def register_stripe_routes(
                 "bw_family_id": str(int(family_id)),
             }
 
-            # Product model: app-side trial only — do not set subscription_data.trial_period_days.
-            session = stripe.checkout.Session.create(
-                mode="subscription",
-                customer=stripe_customer_id,
-                client_reference_id=str(int(family_id)),
-                line_items=[
+            subscription_data: dict[str, Any] = {
+                "metadata": {
+                    "bw_product_code": PRODUCT_CODE,
+                    "bw_lookup_key": key,
+                    "bw_billing_frequency": frequency_storage_value(key),
+                    "bw_user_id": str(int(user_id)),
+                    "bw_family_id": str(int(family_id)),
+                }
+            }
+            checkout_kwargs: dict[str, Any] = {
+                "mode": "subscription",
+                "customer": stripe_customer_id,
+                "client_reference_id": str(int(family_id)),
+                "line_items": [
                     {
                         "quantity": 1,
                         "price": prices.data[0].id,
                     }
                 ],
-                metadata=bw_meta,
-                subscription_data={
-                    "metadata": {
-                        "bw_product_code": PRODUCT_CODE,
-                        "bw_lookup_key": key,
-                        "bw_billing_frequency": frequency_storage_value(key),
-                        "bw_user_id": str(int(user_id)),
-                        "bw_family_id": str(int(family_id)),
-                    }
-                },
-                success_url=_billing_page_url(
+                "metadata": bw_meta,
+                "subscription_data": subscription_data,
+                "success_url": _billing_page_url(
                     domain,
                     family_id=int(family_id),
                     checkout="success",
                     session_id_placeholder=True,
                     frequency=frequency_storage_value(key),
                 ),
-                cancel_url=_billing_page_url(
+                "cancel_url": _billing_page_url(
                     domain,
                     family_id=int(family_id),
                     checkout="canceled",
                 ),
-            )
+            }
+            # Remaining app trial: collect a card now, first charge at trial_end.
+            if stripe_trial_end:
+                subscription_data["trial_end"] = int(stripe_trial_end)
+                checkout_kwargs["payment_method_collection"] = "always"
+
+            session = stripe.checkout.Session.create(**checkout_kwargs)
         except HTTPException:
             raise
         except stripe.error.StripeError as e:

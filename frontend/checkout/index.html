@@ -273,6 +273,29 @@
           setStatus(blockReason, !!opts.asError);
         }
 
+        function formatCheckoutLongDate(iso) {
+          if (!iso) return "";
+          var d = new Date(String(iso) + "T12:00:00");
+          if (isNaN(d.getTime())) return String(iso);
+          return d.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
+        }
+
+        function applyTrialReassure(status) {
+          if (!reassureEl) return;
+          var inTrial = !!(status && status.in_app_trial);
+          var chargeOn = status && (status.first_charge_on || status.trial_ends_on);
+          if (inTrial && chargeOn) {
+            reassureEl.textContent =
+              "No charge today. Your first payment will be " + formatCheckoutLongDate(chargeOn) + ".";
+            return;
+          }
+          if (inTrial) {
+            reassureEl.textContent = "No charge today. Your first payment will be at the end of your trial.";
+            return;
+          }
+          reassureEl.textContent = "You’ll complete payment securely on Stripe.";
+        }
+
         function setReady(familyLabel) {
           checkoutReady = true;
           blockReason = "";
@@ -531,6 +554,15 @@
             btn.removeAttribute("data-checkout-action");
             var label = setFamilyReady(fam);
             setReady(label);
+            fetchJson(api + "/api/families/" + encodeURIComponent(String(fam.id)) + "/billing-status", {
+              method: "GET",
+              credentials: "include",
+              headers: authHeaders(),
+            })
+              .then(function (billingResult) {
+                if (billingResult && billingResult.ok) applyTrialReassure(billingResult.data);
+              })
+              .catch(function () {});
           })
           .catch(function (err) {
             btn.removeAttribute("data-checkout-action");

@@ -9036,7 +9036,35 @@ function isBillingSubscribed(status = cachedBillingStatusForActiveFamily()) {
   const phase = String(status.phase || "").toLowerCase();
   if (phase === "active" || phase === "past_due") return true;
   const st = String(status.status || "").toLowerCase();
-  return !!status.stripe_subscription_id && (st === "active" || st === "past_due" || st === "trialing");
+  // Stripe `trialing` is card-on-file during the free trial — not a paid subscriber.
+  return !!status.stripe_subscription_id && (st === "active" || st === "past_due");
+}
+
+function isBillingTrialPlanScheduled(status = cachedBillingStatusForActiveFamily()) {
+  if (!status) return false;
+  const st = String(status.status || "").toLowerCase();
+  return !!status.stripe_subscription_id && st === "trialing";
+}
+
+function trialDaysRemainingFromStatus(status) {
+  if (status && Number.isFinite(Number(status.trial_days_remaining))) {
+    return Math.max(0, Math.floor(Number(status.trial_days_remaining)));
+  }
+  const trialEnd = status && status.trial_ends_on ? String(status.trial_ends_on) : "";
+  return daysRemainingUntilIso(trialEnd);
+}
+
+function trialCalloutTitle(daysLeft) {
+  if (daysLeft == null) return "Free trial";
+  if (daysLeft <= 0) return "Free trial · Ends today";
+  if (daysLeft === 1) return "Free trial · 1 day left";
+  return `Free trial · ${daysLeft} days left`;
+}
+
+function firstChargeIsoFromStatus(status) {
+  if (status && status.first_charge_on) return String(status.first_charge_on);
+  if (status && status.trial_ends_on) return String(status.trial_ends_on);
+  return "";
 }
 
 function isBillingPaid() {
@@ -9050,7 +9078,7 @@ function isBillingPortalAvailable(status = cachedBillingStatusForActiveFamily())
 
 /**
  * Centralized Billing UI model — map API entitlement + Stripe fields to one lifecycle state.
- * Modes: no_family | trial | trial_ended | active | canceling | payment_issue | canceled
+ * Modes: no_family | trial | trial_scheduled | trial_ended | active | canceling | payment_issue | canceled
  */
 function resolveBillingLifecycleModel(status, { hasFamily = true } = {}) {
   const monthlyPrice = defaultCashForecastPriceLabel();
@@ -9088,9 +9116,29 @@ function resolveBillingLifecycleModel(status, { hasFamily = true } = {}) {
   };
   const subscribeChoices = {
     title: "Continue with Cash Forecast",
+    support: "",
     monthlyLabel: `Monthly — ${monthlyPrice}`,
     annualLabel: `Annual — ${defaultCashForecastAnnualPriceLabel()}`,
+    annualNote: "",
     savings: annualSavingsCopy(),
+    reassure: "",
+    trialLayout: false,
+  };
+  const trialSubscribeChoices = (firstChargeIso) => {
+    const pct = annualSavingsPercent();
+    const chargeDate = firstChargeIso ? formatBillingLongDate(firstChargeIso) : "";
+    return {
+      title: "Continue after your free trial",
+      support: "Choose a billing option now or anytime before your trial ends. You won't be charged today.",
+      monthlyLabel: `Monthly — ${monthlyPrice}`,
+      annualLabel: `Annual — ${defaultCashForecastAnnualPriceLabel()}`,
+      annualNote: pct != null ? `Save ${pct}%` : "",
+      savings: "",
+      reassure: chargeDate
+        ? `No charge today. Your first payment will be ${chargeDate}.`
+        : "No charge today. Your first payment will be at the end of your trial.",
+      trialLayout: true,
+    };
   };
   const trialEnd = status && status.trial_ends_on ? String(status.trial_ends_on) : "";
   const periodEnd = isoDateFromApiTimestamp(status && status.current_period_end);
@@ -9107,7 +9155,12 @@ function resolveBillingLifecycleModel(status, { hasFamily = true } = {}) {
     phase === "trial" || (!!status?.in_app_trial && phase !== "active" && phase !== "past_due");
   const fullyCanceled = raw === "canceled" || raw === "cancelled";
 
-  if (pastDue && (subscribed || hasStripeSub)) {
+  if (
+    pastDue &&
+    (subscribed || hasStripeSub) &&
+    raw !== "incomplete" &&
+    raw !== "incomplete_expired"
+  ) {
     return {
       mode: "payment_issue",
       productName,
@@ -9211,19 +9264,25 @@ function resolveBillingLifecycleModel(status, { hasFamily = true } = {}) {
   }
 
   if (inAppTrial && !subscribed) {
-    const daysLeft = daysRemainingUntilIso(trialEnd);
-    const daysText =
-      daysLeft == null
-        ? "You have time remaining in your free trial."
-        : daysLeft === 0
-          ? "Your free trial ends today."
-          : daysLeft === 1
-            ? "You have 1 day remaining in your free trial."
-            : `You have ${daysLeft} days remaining in your free trial.`;
-    const endText =
-      daysLeft === 0 || !trialEnd ? "" : ` Your trial ends ${formatShortDateLong(trialEnd)}.`;
+    const daysLeft = trialDaysRemainingFromStatus(status);
+    const accessLong = trialEnd ? formatBillingLongDate(trialEnd) : "";
+    const firstChargeIso = firstChargeIsoFromStatus(status);
+    const planScheduled = isBillingTrialPlanScheduled(status);
+    const scheduledPrice = priceFromLookup;
+    const afterTrial = scheduledPrice
+      ? scheduledPrice
+      : `${monthlyPrice} or ${defaultCashForecastAnnualPriceLabel()}`;
+    const calloutText = planScheduled
+      ? accessLong
+        ? `Full access through ${accessLong}. ${
+            billingLookupIsAnnual(lookupKey) ? "Annual" : "Monthly"
+          } billing starts then — no charge today.`
+        : "Payment method on file. You won't be charged until your trial ends."
+      : accessLong
+        ? `Full access through ${accessLong}. No payment method required.`
+        : "No payment method required.";
     return {
-      mode: "trial",
+      mode: planScheduled ? "trial_scheduled" : "trial",
       productName,
       productCopy,
       showMeta: true,
@@ -9231,17 +9290,18 @@ function resolveBillingLifecycleModel(status, { hasFamily = true } = {}) {
       showCancel: false,
       callout: {
         kind: "trial",
-        title: "Free trial",
-        text: `${daysText}${endText} No payment method required during your trial.`,
+        title: trialCalloutTitle(daysLeft),
+        text: calloutText,
       },
       primaryCta: null,
-      subscribeChoices,
+      subscribeChoices: planScheduled ? null : trialSubscribeChoices(firstChargeIso || trialEnd),
+      notesKind: planScheduled ? "trial_scheduled" : "trial",
       meta: {
         plan: productName,
-        priceLabel: "Billing",
-        price: monthlyPrice,
-        dateLabel: "Trial ends",
-        date: trialEnd ? formatShortDateLong(trialEnd) : "—",
+        priceLabel: "Trial ends",
+        price: trialEnd ? formatBillingLongDate(trialEnd) : "—",
+        dateLabel: "After trial",
+        date: afterTrial,
         statusLabel: "Free trial",
         statusTone: "trial",
       },
@@ -9410,9 +9470,13 @@ function billingDom() {
     cycleBtn: document.querySelector("#billingManageSection [data-billing-action=\"cycle\"]"),
     subscribe: document.getElementById("billingSubscribeChoices"),
     subscribeTitle: document.getElementById("billingSubscribeTitle"),
+    subscribeSupport: document.getElementById("billingSubscribeSupport"),
+    subscribeOptions: document.querySelector("#billingSubscribeChoices .billing-subscribe__options"),
     subscribeMonthly: document.getElementById("billingSubscribeMonthly"),
     subscribeAnnual: document.getElementById("billingSubscribeAnnual"),
     subscribeSave: document.getElementById("billingSubscribeSave"),
+    subscribeReassure: document.getElementById("billingSubscribeReassure"),
+    notesList: document.getElementById("billingNotesList"),
   };
 }
 
@@ -9480,28 +9544,114 @@ function setBillingPrimaryCta(cta) {
   }
 }
 
+function setSubscribeOptionContent(el, label, note) {
+  if (!el) return;
+  const text = String(label || "");
+  const extra = String(note || "").trim();
+  if (extra) {
+    el.innerHTML = `<span class="billing-subscribe__option-main">${escapeHtml(
+      text
+    )}</span><span class="billing-subscribe__option-note">${escapeHtml(extra)}</span>`;
+    return;
+  }
+  el.textContent = text;
+}
+
+function applySubscribeChoiceLayout(choices) {
+  const wrap = document.getElementById("billingSubscribeChoices");
+  const options = wrap?.querySelector(".billing-subscribe__options");
+  const monthly = document.getElementById("billingSubscribeMonthly");
+  const annual = document.getElementById("billingSubscribeAnnual");
+  if (!wrap) return;
+  const trialLayout = !!(choices && choices.trialLayout);
+  wrap.classList.toggle("billing-subscribe--trial", trialLayout);
+  if (!options || !monthly || !annual) return;
+  monthly.removeAttribute("aria-pressed");
+  annual.removeAttribute("aria-pressed");
+  monthly.classList.remove("is-selected", "is-active");
+  annual.classList.remove("is-selected", "is-active");
+  if (trialLayout) {
+    monthly.className = "billing-action-btn billing-action-btn--secondary billing-subscribe__option";
+    annual.className =
+      "billing-hero__activate billing-subscribe__option billing-subscribe__option--recommended";
+    if (annual.nextElementSibling !== monthly) options.insertBefore(annual, monthly);
+    return;
+  }
+  monthly.className = "billing-hero__activate billing-subscribe__option";
+  annual.className = "billing-action-btn billing-action-btn--secondary billing-subscribe__option";
+  if (monthly.nextElementSibling !== annual) options.insertBefore(monthly, annual);
+}
+
+const BILLING_NOTES_DEFAULT = [
+  "No bank connection required",
+  "Cancel anytime",
+  "No hidden fees",
+  "Your BalanceWhiz data stays editable",
+];
+const BILLING_NOTES_TRIAL = [
+  "No payment method required during trial",
+  "No bank connection required",
+  "Cancel anytime",
+  "No hidden fees",
+];
+const BILLING_NOTES_TRIAL_SCHEDULED = [
+  "No charge until your trial ends",
+  "No bank connection required",
+  "Cancel anytime",
+  "No hidden fees",
+];
+
+function applyBillingNotes(kind) {
+  const list = document.getElementById("billingNotesList");
+  if (!list) return;
+  let items = BILLING_NOTES_DEFAULT;
+  if (kind === "trial") items = BILLING_NOTES_TRIAL;
+  else if (kind === "trial_scheduled") items = BILLING_NOTES_TRIAL_SCHEDULED;
+  list.innerHTML = items.map((item) => `<li>${escapeHtml(item)}</li>`).join("");
+}
+
 function setBillingSubscribeChoices(choices) {
   const dom = billingDom();
   const wrap = dom.subscribe;
   if (!wrap) return;
   if (!choices) {
     setBillingElHidden(wrap, true);
+    applySubscribeChoiceLayout(null);
     return;
   }
   setBillingElHidden(wrap, false);
+  applySubscribeChoiceLayout(choices);
   if (dom.subscribeTitle) dom.subscribeTitle.textContent = choices.title || "Continue with Cash Forecast";
+  if (dom.subscribeSupport) {
+    const support = String(choices.support || "").trim();
+    dom.subscribeSupport.textContent = support;
+    setBillingElHidden(dom.subscribeSupport, !support);
+  }
   if (dom.subscribeMonthly) {
-    dom.subscribeMonthly.textContent = choices.monthlyLabel || `Monthly — ${defaultCashForecastPriceLabel()}`;
+    setSubscribeOptionContent(
+      dom.subscribeMonthly,
+      choices.monthlyLabel || `Monthly — ${defaultCashForecastPriceLabel()}`,
+      ""
+    );
     dom.subscribeMonthly.href = checkoutUrlForActiveFamily(BILLING_LOOKUP_MONTHLY);
   }
   if (dom.subscribeAnnual) {
-    dom.subscribeAnnual.textContent = choices.annualLabel || `Annual — ${defaultCashForecastAnnualPriceLabel()}`;
+    setSubscribeOptionContent(
+      dom.subscribeAnnual,
+      choices.annualLabel || `Annual — ${defaultCashForecastAnnualPriceLabel()}`,
+      choices.annualNote || ""
+    );
     dom.subscribeAnnual.href = checkoutUrlForActiveFamily(BILLING_LOOKUP_ANNUAL);
   }
   if (dom.subscribeSave) {
     const save = choices.savings || "";
     dom.subscribeSave.textContent = save;
     setBillingElHidden(dom.subscribeSave, !save);
+  }
+  if (dom.subscribeReassure) {
+    const reassure = String(choices.reassure || "").trim();
+    dom.subscribeReassure.textContent = reassure;
+    setBillingElHidden(dom.subscribeReassure, !reassure);
   }
 }
 
@@ -9633,6 +9783,7 @@ function applyBillingLifecycleModel(model) {
 
     setBillingPrimaryCta(model.primaryCta);
     setBillingSubscribeChoices(model.subscribeChoices || null);
+    applyBillingNotes(model.notesKind || model.mode);
     setBillingLifecycleCallout(model.callout);
   } catch (err) {
     try {

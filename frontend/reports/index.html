@@ -35,7 +35,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=751" />
+    <link rel="stylesheet" href="../styles.css?v=752" />
   </head>
   <body>
     <h1 class="sr-only">Reports</h1>
@@ -840,6 +840,7 @@
                               >Continue with Cash Forecast</a>
                               <div id="billingSubscribeChoices" class="billing-subscribe" hidden>
                                 <p class="billing-subscribe__lede" id="billingSubscribeTitle">Continue with Cash Forecast</p>
+                                <p class="billing-subscribe__support" id="billingSubscribeSupport" hidden></p>
                                 <div class="billing-subscribe__options">
                                   <a
                                     class="billing-hero__activate billing-subscribe__option"
@@ -854,6 +855,7 @@
                                     href="/checkout/"
                                   >Annual — $59.99/year</a>
                                 </div>
+                                <p class="billing-subscribe__reassure" id="billingSubscribeReassure" hidden></p>
                                 <p class="billing-subscribe__save" id="billingSubscribeSave" hidden></p>
                               </div>
                             </div>
@@ -913,7 +915,7 @@
 
                         <section class="billing-side__block" aria-labelledby="billingNotesTitle">
                           <h3 class="billing-side__title" id="billingNotesTitle">Good to know</h3>
-                          <ul class="billing-note-list">
+                          <ul class="billing-note-list" id="billingNotesList">
                             <li>No bank connection required</li>
                             <li>Cancel anytime</li>
                             <li>No hidden fees</li>
@@ -1990,7 +1992,7 @@ Date,Vendor,Amount
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="../app.js?v=450"></script>
+    <script src="../app.js?v=451"></script>
     <script src="../feedback.js?v=5" defer></script>
     <script src="../tour.js?v=9" defer></script>
   </body>

@@ -12009,6 +12009,17 @@ label{
   line-height: 1.35;
   color: rgba(15, 23, 42, 0.92);
 }
+.billing-subscribe__support{
+  margin: 0;
+  max-width: 42ch;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.45;
+  color: var(--billing-muted);
+}
+.billing-subscribe__support[hidden]{
+  display: none !important;
+}
 .billing-subscribe__options{
   display: flex;
   flex-wrap: wrap;
@@ -12025,6 +12036,34 @@ label{
   flex: 0 0 auto;
   width: auto;
 }
+.billing-subscribe__option--recommended{
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 12.5rem;
+  text-align: center;
+}
+.billing-subscribe__option-main,
+.billing-subscribe__option-note{
+  display: block;
+}
+.billing-subscribe__option-note{
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  opacity: 0.92;
+}
+.billing-subscribe--trial .billing-subscribe__option.billing-action-btn--secondary{
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 12.5rem;
+  min-height: 42px;
+  padding: 10px 18px;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  font-weight: 700;
+}
 .billing-subscribe__save{
   margin: 0;
   font-size: 0.75rem;
@@ -12032,6 +12071,15 @@ label{
   color: var(--billing-muted);
 }
 .billing-subscribe__save[hidden]{
+  display: none !important;
+}
+.billing-subscribe__reassure{
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--billing-muted);
+}
+.billing-subscribe__reassure[hidden]{
   display: none !important;
 }
 
