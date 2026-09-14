@@ -9483,7 +9483,8 @@ function resolveBillingLifecycleModel(status, { hasFamily = true } = {}) {
   const endedSubscribeChoices = () => {
     const pct = annualSavingsPercent();
     return {
-      title: "Continue with Cash Forecast",
+      title: "",
+      hideTitle: true,
       support: "",
       monthlyLabel: "Continue monthly",
       annualLabel: "Continue annually",
@@ -9713,9 +9714,10 @@ function resolveBillingLifecycleModel(status, { hasFamily = true } = {}) {
     showManage: false,
     showCancel: false,
     callout: {
-      kind: "info",
-      title: "Your free trial has ended",
-      text: "Choose a billing option to keep your forecast current.",
+      kind: "trial_complete",
+      eyebrow: "14-day free trial complete",
+      title: "Keep your forecast working for you.",
+      text: "Subscribe to continue updating balances, adding transactions, and keeping your future cash forecast current.",
     },
     primaryCta: null,
     subscribeChoices: endedSubscribeChoices(),
@@ -9818,6 +9820,7 @@ function billingDom() {
     renewal: document.getElementById("billingRenewalMessage"),
     calloutTitle: document.getElementById("billingCalloutTitle"),
     calloutText: document.getElementById("billingCalloutText"),
+    calloutEyebrow: document.getElementById("billingCalloutEyebrow"),
     accountStatus: document.getElementById("billingAccountStatus"),
     meta: document.getElementById("billingMeta"),
     manage: document.getElementById("billingManageSection"),
@@ -9852,8 +9855,13 @@ function setBillingLifecycleCallout(callout) {
   const dom = billingDom();
   const el = dom.renewal || billingRenewalMessageEl;
   if (!el) return;
-  if (!callout || (!callout.title && !callout.text)) {
+  const eyebrowEl = dom.calloutEyebrow || document.getElementById("billingCalloutEyebrow");
+  if (!callout || (!callout.title && !callout.text && !callout.eyebrow)) {
     setBillingElHidden(el, true);
+    if (eyebrowEl) {
+      eyebrowEl.textContent = "";
+      setBillingElHidden(eyebrowEl, true);
+    }
     if (dom.calloutTitle) {
       dom.calloutTitle.textContent = "";
       setBillingElHidden(dom.calloutTitle, true);
@@ -9862,6 +9870,13 @@ function setBillingLifecycleCallout(callout) {
       dom.calloutText.textContent = "";
       setBillingElHidden(dom.calloutText, true);
     }
+    el.classList.remove(
+      "billing-callout--info",
+      "billing-callout--alert",
+      "billing-callout--warning",
+      "billing-callout--trial",
+      "billing-callout--trial-complete"
+    );
     return;
   }
   const kind = callout.kind || "info";
@@ -9871,7 +9886,13 @@ function setBillingLifecycleCallout(callout) {
   el.classList.toggle("billing-callout--alert", kind === "alert");
   el.classList.toggle("billing-callout--warning", kind === "warning");
   el.classList.toggle("billing-callout--trial", kind === "trial");
+  el.classList.toggle("billing-callout--trial-complete", kind === "trial_complete");
   el.removeAttribute("data-billing-dev-callout");
+  if (eyebrowEl) {
+    const eyebrow = String(callout.eyebrow || "").trim();
+    eyebrowEl.textContent = eyebrow;
+    setBillingElHidden(eyebrowEl, !eyebrow);
+  }
   if (dom.calloutTitle) {
     dom.calloutTitle.textContent = callout.title || "";
     setBillingElHidden(dom.calloutTitle, !callout.title);
@@ -10067,7 +10088,12 @@ function setBillingSubscribeChoices(choices) {
   }
   setBillingElHidden(wrap, false);
   applySubscribeChoiceLayout(choices);
-  if (dom.subscribeTitle) dom.subscribeTitle.textContent = choices.title || "Continue with Cash Forecast";
+  if (dom.subscribeTitle) {
+    const title = String(choices.title || "").trim();
+    const hideTitle = !!choices.hideTitle || !title;
+    dom.subscribeTitle.textContent = title || "Continue with Cash Forecast";
+    setBillingElHidden(dom.subscribeTitle, hideTitle);
+  }
   if (dom.subscribeSupport) {
     const support = String(choices.support || "").trim();
     dom.subscribeSupport.textContent = support;
