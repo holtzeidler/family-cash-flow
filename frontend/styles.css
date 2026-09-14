@@ -12007,7 +12007,7 @@ label{
 .billing-callout__eyebrow{
   display: inline-flex;
   align-items: center;
-  margin: 0 0 12px;
+  margin: 0 0 11px;
   padding: 4px 10px;
   border-radius: 999px;
   border: 1px solid color-mix(in srgb, var(--accent) 18%, rgba(17, 24, 39, 0.08));
@@ -12028,14 +12028,20 @@ label{
   gap: 0;
   width: 100%;
   margin: 0;
-  padding: 0;
-  border: none;
-  background: transparent;
+  padding: 0 !important;
+  border: none !important;
+  background: transparent !important;
   box-shadow: none;
 }
-.billing-callout--trial-complete::before{
-  content: none;
-  display: none;
+.billing-callout--trial-complete::before,
+.billing-callout--trial-complete.billing-callout--info::before,
+.billing-overview--natural-height .billing-callout--trial-complete::before{
+  content: none !important;
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
 }
 .billing-callout--trial-complete .billing-callout__content{
   width: 100%;
@@ -12049,15 +12055,12 @@ label{
   color: rgba(15, 23, 42, 0.97);
 }
 .billing-callout--trial-complete .billing-callout__text{
-  margin: 10px 0 0;
+  margin: 11px 0 0;
   max-width: 46ch;
   font-size: 0.875rem;
   font-weight: 450;
   line-height: 1.5;
   color: rgba(71, 85, 105, 0.88);
-}
-.billing-overview--ended .billing-summary{
-  gap: 24px;
 }
 .billing-overview--ended .billing-subscribe__lede[hidden]{
   display: none !important;
