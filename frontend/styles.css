@@ -11746,6 +11746,14 @@ label{
 .billing-overview--trial-prepay{
   padding-bottom: var(--billing-space-3);
 }
+.billing-page__shell--natural{
+  align-items: start;
+}
+.billing-page__shell--natural > .billing-primary,
+.billing-overview--natural-height{
+  height: fit-content;
+  align-self: start;
+}
 .billing-side{
   display: flex;
   flex-direction: column;
@@ -12501,9 +12509,9 @@ label{
 }
 
 .modal.modal--billing-upgrade{
-  width: min(92vw, 440px);
-  max-width: 440px;
-  padding: 20px 22px 16px;
+  width: min(94vw, 520px);
+  max-width: 520px;
+  padding: 18px 20px 14px;
   border: 1px solid rgba(17, 24, 39, 0.08);
   border-radius: 14px;
   background: #fff;
@@ -12512,53 +12520,102 @@ label{
     0 18px 40px rgba(15, 23, 42, 0.16);
 }
 .billing-upgrade__title{
+  box-sizing: border-box;
+  width: auto;
+  max-width: none;
   margin: 0 0 8px;
+  padding: 0;
   font-size: clamp(1.2rem, 1.05rem + 0.45vw, 1.48rem);
   font-weight: 780;
   letter-spacing: -0.025em;
   line-height: 1.15;
   color: rgba(15, 23, 42, 0.96);
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  text-transform: none;
 }
 .billing-upgrade__body{
-  margin: 0 0 16px;
-  font-size: 0.875rem;
+  margin: 0 0 14px;
+  font-size: 0.8125rem;
   line-height: 1.45;
   font-weight: 450;
-  color: rgba(71, 85, 105, 0.88);
+  color: rgba(71, 85, 105, 0.82);
 }
 .billing-upgrade__actions{
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 10px;
+  gap: 8px;
 }
 .billing-upgrade__annual,
 .billing-upgrade__monthly{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
   min-width: 0;
-  justify-content: center;
+  min-height: 38px;
+  padding: 8px 16px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  font-size: 0.84375rem;
+  font-weight: 700;
+  line-height: 1.25;
   text-align: center;
   text-decoration: none;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+.billing-upgrade__annual{
+  border-color: rgba(11, 61, 46, 0.92);
+  background: color-mix(in srgb, var(--accent) 92%, #0a1a14 8%);
+  color: rgba(255, 255, 255, 0.98);
+}
+.billing-upgrade__annual:hover{
+  background: color-mix(in srgb, var(--accent) 96%, #000 4%);
+  border-color: rgba(11, 61, 46, 0.98);
+  color: #fff;
+}
+.billing-upgrade__annual:focus-visible,
+.billing-upgrade__monthly:focus-visible{
+  outline: 2px solid rgba(11, 61, 46, 0.45);
+  outline-offset: 2px;
 }
 .billing-upgrade__monthly{
-  min-height: 42px;
-  padding: 10px 18px;
-  border-radius: 10px;
-  font-size: 0.875rem;
-  font-weight: 700;
+  border-color: rgba(11, 61, 46, 0.22);
+  background: rgba(255, 255, 255, 0.96);
+  color: rgba(11, 61, 46, 0.9);
+  font-weight: 650;
+}
+.billing-upgrade__monthly:hover{
+  background: rgba(11, 61, 46, 0.04);
+  border-color: rgba(11, 61, 46, 0.34);
+  color: rgba(11, 61, 46, 0.98);
 }
 .billing-upgrade__dismiss{
-  margin: 2px 0 0;
-  padding: 6px 8px;
+  margin: 0;
+  padding: 4px 8px;
   border: 0;
   background: transparent;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: rgba(71, 85, 105, 0.78);
+  font-size: 0.78125rem;
+  font-weight: 550;
+  color: rgba(100, 116, 139, 0.88);
   cursor: pointer;
 }
 .billing-upgrade__dismiss:hover{
-  color: rgba(15, 23, 42, 0.92);
+  color: rgba(15, 23, 42, 0.88);
+}
+.billing-upgrade__dismiss:focus-visible{
+  outline: 2px solid rgba(11, 61, 46, 0.35);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+@media (max-width: 520px){
+  .modal.modal--billing-upgrade{
+    width: min(96vw, 520px);
+    padding: 16px 16px 12px;
+  }
 }
 
 html.bw-billing-readonly .tm-primary-action,
@@ -26092,6 +26149,25 @@ body.account-setup-page
   background: transparent;
   border: none;
   border-radius: 0;
+}
+
+/* Expired-trial upgrade: same white heading treatment as interval confirm. */
+.modal.modal--billing-upgrade h3:not(.sr-only),
+.modal.modal--billing-upgrade h3.billing-upgrade__title{
+  width: auto;
+  max-width: none;
+  margin: 0 0 8px;
+  padding: 0;
+  font-size: clamp(1.2rem, 1.05rem + 0.45vw, 1.48rem);
+  font-weight: 780;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+  color: rgba(15, 23, 42, 0.96);
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  border-bottom: none;
+  text-transform: none;
 }
 
 /* Zero-padding modals: header must match modal width (no negative-margin bleed). */

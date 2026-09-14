@@ -9173,12 +9173,28 @@ function guardBillingWrite(evt) {
 }
 
 let _billingUpgradeModalEl = null;
+let _billingUpgradeReturnFocus = null;
+
+function billingUpgradeFocusables(wrap) {
+  return [
+    wrap?.querySelector("#billingUpgradeAnnual"),
+    wrap?.querySelector("#billingUpgradeMonthly"),
+    wrap?.querySelector("#billingUpgradeDismiss"),
+  ].filter((el) => el && !el.disabled && el.getAttribute("aria-hidden") !== "true");
+}
 
 function closeBillingUpgradeModal() {
   const wrap = _billingUpgradeModalEl || document.getElementById("billingUpgradeModal");
   if (!wrap) return;
   wrap.classList.remove("modal-overlay--open");
   wrap.setAttribute("aria-hidden", "true");
+  const returnTo = _billingUpgradeReturnFocus;
+  _billingUpgradeReturnFocus = null;
+  if (returnTo && typeof returnTo.focus === "function") {
+    try {
+      returnTo.focus();
+    } catch (_) {}
+  }
 }
 
 function ensureBillingUpgradeModal() {
@@ -9201,8 +9217,8 @@ function ensureBillingUpgradeModal() {
     '<h3 id="billingUpgradeTitle" class="billing-upgrade__title">Your free trial has ended</h3>' +
     '<p id="billingUpgradeBody" class="billing-upgrade__body">Your Cash Forecast is still here. Subscribe to update your balance, add transactions, and keep your forecast current.</p>' +
     '<div class="billing-upgrade__actions">' +
-    `<a class="billing-hero__activate billing-upgrade__annual" id="billingUpgradeAnnual" href="/checkout/">Continue for ${annual}${save}</a>` +
-    `<a class="billing-action-btn billing-action-btn--secondary billing-upgrade__monthly" id="billingUpgradeMonthly" href="/checkout/">Continue for ${monthly}</a>` +
+    `<a class="billing-upgrade__annual" id="billingUpgradeAnnual" href="/checkout/">Continue for ${annual}${save}</a>` +
+    `<a class="billing-upgrade__monthly" id="billingUpgradeMonthly" href="/checkout/">Continue for ${monthly}</a>` +
     '<button type="button" class="billing-upgrade__dismiss" id="billingUpgradeDismiss">Not now</button>' +
     "</div></div>";
   document.body.appendChild(wrap);
@@ -9210,8 +9226,27 @@ function ensureBillingUpgradeModal() {
   wrap.addEventListener("click", (e) => {
     if (e.target === wrap) closeBillingUpgradeModal();
   });
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && wrap.classList.contains("modal-overlay--open")) closeBillingUpgradeModal();
+  wrap.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      closeBillingUpgradeModal();
+      return;
+    }
+    if (e.key !== "Tab") return;
+    const focusables = billingUpgradeFocusables(wrap);
+    if (!focusables.length) return;
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    const active = document.activeElement;
+    if (e.shiftKey && (active === first || !wrap.contains(active))) {
+      e.preventDefault();
+      last.focus();
+      return;
+    }
+    if (!e.shiftKey && (active === last || !wrap.contains(active))) {
+      e.preventDefault();
+      first.focus();
+    }
   });
   _billingUpgradeModalEl = wrap;
   return wrap;
@@ -9223,6 +9258,7 @@ function openBillingUpgradeModal() {
   const monthlyBtn = wrap.querySelector("#billingUpgradeMonthly");
   if (annualBtn) annualBtn.href = checkoutUrlForActiveFamily(BILLING_LOOKUP_ANNUAL);
   if (monthlyBtn) monthlyBtn.href = checkoutUrlForActiveFamily(BILLING_LOOKUP_MONTHLY);
+  _billingUpgradeReturnFocus = document.activeElement;
   wrap.classList.add("modal-overlay--open");
   wrap.setAttribute("aria-hidden", "false");
   window.requestAnimationFrame(() => {
@@ -9622,7 +9658,7 @@ function resolveBillingLifecycleModel(status, { hasFamily = true } = {}) {
     callout: {
       kind: "info",
       title: "Your free trial has ended",
-      text: "Choose a billing option to continue using Cash Forecast.",
+      text: "Choose a billing option to keep your forecast current.",
     },
     primaryCta: null,
     subscribeChoices: endedSubscribeChoices(),
@@ -10017,11 +10053,16 @@ function applyBillingLifecycleModel(model) {
     setBillingElHidden(dom.meta || billingMetaEl, !model.showMeta);
     setBillingElHidden(dom.manage || billingManageSectionEl, !model.showManage);
     const overview = document.querySelector(".billing-overview");
+    const shell = document.querySelector(".billing-page__shell");
     if (overview) {
       overview.classList.toggle(
         "billing-overview--trial-prepay",
         model.mode === "trial" || model.mode === "trial_ended"
       );
+      overview.classList.toggle("billing-overview--natural-height", model.mode === "trial_ended");
+    }
+    if (shell) {
+      shell.classList.toggle("billing-page__shell--natural", model.mode === "trial_ended");
     }
     applyBillingCancelSection(model);
 
