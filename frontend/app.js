@@ -131,6 +131,7 @@ function isBillingWriteRequest(path, method) {
   if (p.includes("resume-subscription")) return false;
   if (p.includes("create-portal-session")) return false;
   if (p.includes("/api/invites")) return false;
+  if (p.includes("/members")) return false;
   if (p.includes("/webhook")) return false;
   if (/^\/api\/families\/?(\?|$)/.test(p) && m === "POST") return false;
   if (p.includes("/api/families/")) return true;
