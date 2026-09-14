@@ -105,6 +105,7 @@ function formatApiDetail(detail) {
     return parts.filter(Boolean).join("\n");
   }
   if (typeof detail === "object") {
+    if (detail.message != null && String(detail.message).trim()) return String(detail.message);
     try {
       return JSON.stringify(detail);
     } catch (_) {
@@ -114,7 +115,55 @@ function formatApiDetail(detail) {
   return String(detail);
 }
 
+function apiDetailCode(detail) {
+  if (!detail || typeof detail !== "object" || Array.isArray(detail)) return "";
+  return String(detail.code || "").trim();
+}
+
+function isBillingWriteRequest(path, method) {
+  const m = String(method || "GET").toUpperCase();
+  if (m === "GET" || m === "HEAD" || m === "OPTIONS") return false;
+  const p = String(path || "");
+  if (p.includes("/billing-status")) return false;
+  if (p.includes("create-checkout-session")) return false;
+  if (p.includes("switch-billing-interval")) return false;
+  if (p.includes("schedule-subscription-cancel")) return false;
+  if (p.includes("resume-subscription")) return false;
+  if (p.includes("create-portal-session")) return false;
+  if (p.includes("/api/invites")) return false;
+  if (p.includes("/webhook")) return false;
+  if (/^\/api\/families\/?(\?|$)/.test(p) && m === "POST") return false;
+  if (p.includes("/api/families/")) return true;
+  if (p.includes("/api/reimbursements")) return true;
+  return false;
+}
+
+function throwIfBillingWriteLocked(path, method) {
+  if (!isBillingWriteRequest(path, method) || !isBillingWriteLocked()) return;
+  openBillingUpgradeModal();
+  const err = new Error("Subscribe to update your Cash Forecast.");
+  err.billingNotEntitled = true;
+  throw err;
+}
+
+async function handleBillingNotEntitledResponse(data) {
+  invalidateBillingStatusCache();
+  try {
+    await fetchBillingStatus({ force: true });
+  } catch (_) {}
+  applyBillingReadOnlyUi();
+  openBillingUpgradeModal();
+  const msg =
+    (data && data.detail && data.detail.message) ||
+    formatApiDetail(data && data.detail) ||
+    "Subscribe to update your Cash Forecast.";
+  const err = new Error(msg);
+  err.billingNotEntitled = true;
+  throw err;
+}
+
 async function api(path, method = "GET", body) {
+  throwIfBillingWriteLocked(path, method);
   const apiBase = apiBaseUrl();
   const fullPath = `${apiBase}${path}`;
   const hostname = typeof location !== "undefined" ? location.hostname : "";
@@ -211,14 +260,20 @@ async function api(path, method = "GET", body) {
   }
 
   if (!res.ok) {
-    let msg = `Request failed (${res.status})`;
+    let data = {};
     try {
-      const data = await res.json();
-      if (data && data.detail != null) {
-        const d = formatApiDetail(data.detail);
-        if (d) msg = d;
-      }
-    } catch (_) {}
+      data = await res.json();
+    } catch (_) {
+      data = {};
+    }
+    if (res.status === 403 && apiDetailCode(data.detail) === "billing_not_entitled") {
+      await handleBillingNotEntitledResponse(data);
+    }
+    let msg = `Request failed (${res.status})`;
+    if (data && data.detail != null) {
+      const d = formatApiDetail(data.detail);
+      if (d) msg = d;
+    }
     if (!showDevErrors && res.status >= 500) {
       console.warn("[BalanceWhiz API] Server error:", res.status, path, msg);
       throw new Error(friendlyNetworkErrorMessage());
@@ -236,6 +291,7 @@ async function api(path, method = "GET", body) {
 }
 
 async function apiForm(path, formData, method = "POST") {
+  throwIfBillingWriteLocked(path, method);
   const apiBase = apiBaseUrl();
   const fullPath = `${apiBase}${path}`;
   const res = await fetch(fullPath, {
@@ -254,14 +310,20 @@ async function apiForm(path, formData, method = "POST") {
     return null;
   }
   if (!res.ok) {
-    let msg = `Request failed (${res.status})`;
+    let data = {};
     try {
-      const data = await res.json();
-      if (data && data.detail != null) {
-        const d = formatApiDetail(data.detail);
-        if (d) msg = d;
-      }
-    } catch (_) {}
+      data = await res.json();
+    } catch (_) {
+      data = {};
+    }
+    if (res.status === 403 && apiDetailCode(data.detail) === "billing_not_entitled") {
+      await handleBillingNotEntitledResponse(data);
+    }
+    let msg = `Request failed (${res.status})`;
+    if (data && data.detail != null) {
+      const d = formatApiDetail(data.detail);
+      if (d) msg = d;
+    }
     throw new Error(msg);
   }
   try {
@@ -1402,6 +1464,7 @@ const accountEditInfo = document.getElementById("accountEditInfo");
 const accountEditFootnote = document.getElementById("accountEditFootnote");
 
 function openAccountModal(mode = "add") {
+  if (guardBillingWrite()) return;
   const modalEl = accountModal || document.getElementById("accountModal");
   if (!modalEl) return;
   const titleEl = accountModalTitle || document.getElementById("accountModalTitle");
@@ -4248,6 +4311,7 @@ function renderReimbursements() {
 
 
 function openReimbursementScreenshotModal() {
+  if (guardBillingWrite()) return;
   if (!reimbScreenshotModal) return;
   populateReimbursementSelects();
   show(reimbScreenshotErr, "");
@@ -4515,6 +4579,7 @@ async function saveReimbursementScreenshotImport() {
 
 
 function openReimbursementPasteModal() {
+  if (guardBillingWrite()) return;
   if (!reimbPasteModal) return;
   populateReimbursementSelects();
   show(reimbPasteErr, "");
@@ -4715,6 +4780,7 @@ function resetReimbursementBulkRows() {
 }
 
 function openReimbursementBulkModal() {
+  if (guardBillingWrite()) return;
   if (!reimbBulkModal) return;
   populateReimbursementSelects();
   show(reimbBulkErr, "");
@@ -4806,6 +4872,7 @@ async function refreshReimbursements({ force = false } = {}) {
 }
 
 function openReimbursementModal(item = null) {
+  if (guardBillingWrite()) return;
   if (!reimbModal) return;
   populateReimbursementSelects();
   show(reimbModalErr, "");
@@ -5117,6 +5184,7 @@ familySelect.addEventListener("change", async () => {
   riskCalendarViewYm = "";
   lastRiskCalendarDaily = [];
   syncActiveFamilyFlags();
+  void refreshBillingWriteLock();
   balanceThresholdFieldsDirty = false;
   await migrateLegacyDeviceBalanceThresholdsToAccount();
   hydrateBalanceThresholdInputsFromStorage(true);
@@ -6061,6 +6129,7 @@ async function convertActualTransactionToRecurring(actualId) {
 }
 
 function openTxEditModal(tx) {
+  if (guardBillingWrite()) return;
   if (!txEditModal || !txEditId || !txEditDate) return;
   selectedExpectedInstance = null;
   selectedExpectedMovedToDate = null;
@@ -6295,6 +6364,7 @@ function activateSettingsSection(key) {
 }
 
 function openTxAddModal(opts = {}) {
+  if (guardBillingWrite()) return;
   if (txAddSaveInFlight) return;
   const modalEl = txAddModal || document.getElementById("txAddModal");
   const dateEl = txAddDate || document.getElementById("txAddDate");
@@ -6398,7 +6468,7 @@ function isBalanceCheckInAmountValid(raw) {
 
 function syncBalanceCheckInSaveBtn() {
   if (!reconcileSaveBtn || !reconcileActualAmount) return;
-  const canWrite = !state.viewOnly && state.activeFamilyAccessMode !== "view";
+  const canWrite = canWriteFamilyData();
   const parsed = parseBalanceThresholdFieldRaw(reconcileActualAmount.value || "");
   const valid = parsed.ok && !parsed.empty;
   const forecast = forecastBalanceForReconcileModal(reconcileActiveDate);
@@ -6408,7 +6478,7 @@ function syncBalanceCheckInSaveBtn() {
 }
 
 function syncBalanceCheckInConfirmBtns(forecast) {
-  const canWrite = !state.viewOnly && state.activeFamilyAccessMode !== "view";
+  const canWrite = canWriteFamilyData();
   const hasForecast = Number.isFinite(Number(forecast));
   if (reconcileMatchYesBtn) {
     reconcileMatchYesBtn.disabled = reconcileCheckInBusy || !canWrite || !hasForecast;
@@ -6452,6 +6522,7 @@ function paintBalanceCheckInForecast(iso) {
 }
 
 function openReconcileModal(iso) {
+  if (guardBillingWrite()) return;
   if (!reconcileModal) return;
   const d = normalizeIsoDate(iso) || iso;
   if (alertIfDateBeforeStartingBalance(d)) return;
@@ -6611,7 +6682,7 @@ function originalForecastForAdjustment(iso) {
 
 function syncEditAdjustmentSaveBtn() {
   if (!editAdjustmentSaveBtn || !editAdjustmentAmount) return;
-  const canWrite = !state.viewOnly && state.activeFamilyAccessMode !== "view";
+  const canWrite = canWriteFamilyData();
   const parsed = parseBalanceThresholdFieldRaw(editAdjustmentAmount.value || "");
   const valid = parsed.ok && !parsed.empty;
   const unchanged =
@@ -6843,10 +6914,10 @@ function buildReconciledBalanceTipHtml(dayBal, iso) {
   if (d && !state.viewOnly && state.activeFamilyAccessMode !== "view") {
     parts.push('<div class="cal-confirmed-tip__actions">');
     parts.push(
-      `<button type="button" class="cal-confirmed-tip__action" data-bw-bal-action="enter-different-balance" data-iso="${escapeHtml(d)}">Enter different balance</button>`,
+      `<button type="button" class="cal-confirmed-tip__action" data-bw-write data-bw-bal-action="enter-different-balance" data-iso="${escapeHtml(d)}">Enter different balance</button>`,
     );
     parts.push(
-      `<button type="button" class="cal-confirmed-tip__action cal-confirmed-tip__action--danger" data-bw-bal-action="remove-reconciliation" data-iso="${escapeHtml(d)}">Remove reconciliation</button>`,
+      `<button type="button" class="cal-confirmed-tip__action cal-confirmed-tip__action--danger" data-bw-write data-bw-bal-action="remove-reconciliation" data-iso="${escapeHtml(d)}">Remove reconciliation</button>`,
     );
     parts.push("</div>");
   }
@@ -6896,7 +6967,7 @@ function buildAdjustedBalanceTipHtml(dayBal, iso) {
   if (d && !state.viewOnly && state.activeFamilyAccessMode !== "view") {
     parts.push('<div class="cal-confirmed-tip__actions cal-confirmed-tip__actions--edit">');
     parts.push(
-      `<button type="button" class="cal-confirmed-tip__edit-btn" data-bw-bal-action="edit-adjustment" data-iso="${escapeHtml(d)}"><span class="cal-confirmed-tip__edit-btn-icon" aria-hidden="true">${TM_ROW_EDIT_SVG}</span><span>Edit adjustment</span></button>`,
+      `<button type="button" class="cal-confirmed-tip__edit-btn" data-bw-write data-bw-bal-action="edit-adjustment" data-iso="${escapeHtml(d)}"><span class="cal-confirmed-tip__edit-btn-icon" aria-hidden="true">${TM_ROW_EDIT_SVG}</span><span>Edit adjustment</span></button>`,
     );
     parts.push("</div>");
   }
@@ -7557,6 +7628,7 @@ function shouldOpenAddTxFromCalendarClick(target, cell) {
 
 function openCalendarDayAddTransaction(iso, e) {
   if (!iso) return;
+  if (guardBillingWrite(e)) return;
   if (state.activeFamilyAccessMode === "view") {
     window.alert(
       "You have view-only access to this family. Ask the owner to grant edit access if you need to add transactions."
@@ -9060,6 +9132,153 @@ function isBillingSubscribed(status = cachedBillingStatusForActiveFamily()) {
   return !!status.stripe_subscription_id && (st === "active" || st === "past_due");
 }
 
+function isBillingWriteLocked(status = cachedBillingStatusForActiveFamily()) {
+  if (!status || typeof status !== "object") return false;
+  return status.entitled === false;
+}
+
+function canWriteFamilyData() {
+  if (state.viewOnly) return false;
+  if (state.activeFamilyAccessMode === "view") return false;
+  if (isBillingWriteLocked()) return false;
+  return true;
+}
+
+function applyBillingReadOnlyUi() {
+  const locked = isBillingWriteLocked();
+  try {
+    document.documentElement.classList.toggle("bw-billing-readonly", locked);
+    document.body.classList.toggle("bw-billing-readonly", locked);
+  } catch (_) {}
+}
+
+async function refreshBillingWriteLock() {
+  try {
+    if (ensureActiveFamilyIdForBilling() > 0) await fetchBillingStatus({ force: false });
+  } catch (_) {}
+  applyBillingReadOnlyUi();
+}
+
+function guardBillingWrite(evt) {
+  if (!isBillingWriteLocked()) return false;
+  if (evt) {
+    try {
+      evt.preventDefault();
+      evt.stopPropagation();
+    } catch (_) {}
+  }
+  openBillingUpgradeModal();
+  return true;
+}
+
+let _billingUpgradeModalEl = null;
+
+function closeBillingUpgradeModal() {
+  const wrap = _billingUpgradeModalEl || document.getElementById("billingUpgradeModal");
+  if (!wrap) return;
+  wrap.classList.remove("modal-overlay--open");
+  wrap.setAttribute("aria-hidden", "true");
+}
+
+function ensureBillingUpgradeModal() {
+  if (_billingUpgradeModalEl) return _billingUpgradeModalEl;
+  const existing = document.getElementById("billingUpgradeModal");
+  if (existing) {
+    _billingUpgradeModalEl = existing;
+    return existing;
+  }
+  const wrap = document.createElement("div");
+  wrap.id = "billingUpgradeModal";
+  wrap.className = "modal-overlay";
+  wrap.setAttribute("aria-hidden", "true");
+  const annual = defaultCashForecastAnnualPriceLabel();
+  const monthly = defaultCashForecastPriceLabel();
+  const pct = annualSavingsPercent();
+  const save = pct != null ? ` · Save ${pct}%` : "";
+  wrap.innerHTML =
+    '<div class="modal modal--billing-upgrade" role="dialog" aria-modal="true" aria-labelledby="billingUpgradeTitle" aria-describedby="billingUpgradeBody" tabindex="-1">' +
+    '<h3 id="billingUpgradeTitle" class="billing-upgrade__title">Your free trial has ended</h3>' +
+    '<p id="billingUpgradeBody" class="billing-upgrade__body">Your Cash Forecast is still here. Subscribe to update your balance, add transactions, and keep your forecast current.</p>' +
+    '<div class="billing-upgrade__actions">' +
+    `<a class="billing-hero__activate billing-upgrade__annual" id="billingUpgradeAnnual" href="/checkout/">Continue for ${annual}${save}</a>` +
+    `<a class="billing-action-btn billing-action-btn--secondary billing-upgrade__monthly" id="billingUpgradeMonthly" href="/checkout/">Continue for ${monthly}</a>` +
+    '<button type="button" class="billing-upgrade__dismiss" id="billingUpgradeDismiss">Not now</button>' +
+    "</div></div>";
+  document.body.appendChild(wrap);
+  wrap.querySelector("#billingUpgradeDismiss")?.addEventListener("click", () => closeBillingUpgradeModal());
+  wrap.addEventListener("click", (e) => {
+    if (e.target === wrap) closeBillingUpgradeModal();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && wrap.classList.contains("modal-overlay--open")) closeBillingUpgradeModal();
+  });
+  _billingUpgradeModalEl = wrap;
+  return wrap;
+}
+
+function openBillingUpgradeModal() {
+  const wrap = ensureBillingUpgradeModal();
+  const annualBtn = wrap.querySelector("#billingUpgradeAnnual");
+  const monthlyBtn = wrap.querySelector("#billingUpgradeMonthly");
+  if (annualBtn) annualBtn.href = checkoutUrlForActiveFamily(BILLING_LOOKUP_ANNUAL);
+  if (monthlyBtn) monthlyBtn.href = checkoutUrlForActiveFamily(BILLING_LOOKUP_MONTHLY);
+  wrap.classList.add("modal-overlay--open");
+  wrap.setAttribute("aria-hidden", "false");
+  window.requestAnimationFrame(() => {
+    try {
+      (annualBtn || wrap.querySelector("#billingUpgradeDismiss"))?.focus();
+    } catch (_) {}
+  });
+}
+
+const BILLING_WRITE_LOCK_SELECTOR = [
+  "#tmPrimaryAction",
+  "#forecastConfidenceVerifyBtn",
+  "#openAccountModalBtn",
+  "#addAccountBtn",
+  "#saveAccountEditBtn",
+  "#balanceThresholdSaveBtn",
+  "#addCategoryGroupBtn",
+  "#addFirstGroupBtn",
+  "#reimbAddBtn",
+  "#reimbEmptyAddBtn",
+  "#reimbBulkAddBtn",
+  "#reimbScreenshotImportBtn",
+  "#reimbPasteImportBtn",
+  "#txAddSave",
+  "#txEditSave",
+  "#txEditDelete",
+  "#txEditRecurringUpdateBtn",
+  ".reimb-edit-btn",
+  ".reimb-quick-btn",
+  ".cats-pane__action",
+  "[data-bw-write]",
+].join(",");
+
+function billingWriteLockHit(target) {
+  if (!target || !target.closest) return null;
+  if (target.closest("#billingUpgradeModal")) return null;
+  if (target.closest("#billingSubscribeChoices")) return null;
+  if (target.closest('[data-settings-pane="billing"]')) return null;
+  return target.closest(BILLING_WRITE_LOCK_SELECTOR);
+}
+
+function wireBillingWriteLockOnce() {
+  if (document.documentElement.dataset.bwBillingWriteLock === "1") return;
+  document.documentElement.dataset.bwBillingWriteLock = "1";
+  document.addEventListener(
+    "click",
+    (e) => {
+      if (!isBillingWriteLocked()) return;
+      if (!billingWriteLockHit(e.target)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      openBillingUpgradeModal();
+    },
+    true
+  );
+}
+
 function isBillingTrialPlanScheduled(status = cachedBillingStatusForActiveFamily()) {
   if (!status) return false;
   const st = String(status.status || "").toLowerCase();
@@ -9423,6 +9642,7 @@ async function fetchBillingStatus({ force = false } = {}) {
     billingStatusCache.data &&
     now - billingStatusCache.fetchedAt < 20000
   ) {
+    applyBillingReadOnlyUi();
     return billingStatusCache.data;
   }
   if (!force && billingStatusCache.inFlight && Number(billingStatusCache.familyId) === fid) {
@@ -9443,6 +9663,7 @@ async function fetchBillingStatus({ force = false } = {}) {
         throw new Error("Couldn’t load billing status.");
       }
       billingStatusCache = { familyId: fid, data, fetchedAt: Date.now(), inFlight: null };
+      applyBillingReadOnlyUi();
       return data;
     }
 
@@ -9470,6 +9691,7 @@ async function fetchBillingStatus({ force = false } = {}) {
         throw new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
       }
       billingStatusCache = { familyId: fid, data, fetchedAt: Date.now(), inFlight: null };
+      applyBillingReadOnlyUi();
       return data;
     } finally {
       if (timeoutId) window.clearTimeout(timeoutId);
@@ -11592,6 +11814,8 @@ function syncActiveFamilyFlags() {
   const f = (state.families || []).find((x) => Number(x.id) === Number(state.activeFamilyId));
   state.activeFamilyAccessMode = f && String(f.access_mode || "").toLowerCase() === "view" ? "view" : "edit";
   state.activeFamilyIsOwner = !!(f && f.is_family_owner);
+  wireBillingWriteLockOnce();
+  applyBillingReadOnlyUi();
   const banner = document.getElementById("viewOnlyBanner");
   if (banner) {
     const ro = state.activeFamilyAccessMode === "view";
@@ -11850,6 +12074,7 @@ async function loadFamilies() {
   const familyChanged = prevActiveId !== nextActiveId;
   if (familyChanged) invalidateBillingStatusCache();
   syncActiveFamilyFlags();
+  void refreshBillingWriteLock();
   if (settingsViewPanel && !settingsViewPanel.hidden) {
     const settingsSection = getActiveSettingsSectionKey();
     if (settingsSection === "accounts") {

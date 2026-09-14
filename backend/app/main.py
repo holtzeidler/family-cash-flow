@@ -1148,6 +1148,9 @@ def require_family_member(*, db, family_id: int, user_id: int, write: bool = Fal
 
 def require_family_write(*, db, family_id: int, user_id: int) -> None:
     require_family_member(db=db, family_id=family_id, user_id=user_id, write=True)
+    from .billing_entitlement import assert_family_entitled
+
+    assert_family_entitled(db, int(family_id))
 
 
 def require_family_owner(*, db, family_id: int, user_id: int) -> None:
@@ -7956,6 +7959,9 @@ def purge_transactions_after(
     """
     user_id = get_current_user_id(access_token)
     require_family_owner(db=db, family_id=family_id, user_id=user_id)
+    from .billing_entitlement import assert_family_entitled
+
+    assert_family_entitled(db, int(family_id))
     cutoff_exclusive = after_date + timedelta(days=1)
     res = db.execute(
         delete(Transaction).where(
@@ -8670,6 +8676,12 @@ def _normalized_reimbursement_recurrence(payload: ReimbursementIn) -> tuple[bool
     return True, frequency, series_id, start, end
 
 
+def _require_reimbursement_write(*, db, user_id: int) -> None:
+    from .billing_entitlement import assert_user_entitled_for_write
+
+    assert_user_entitled_for_write(db, int(user_id))
+
+
 def _reimbursement_common_fields(payload: ReimbursementIn, *, status_value: Optional[str] = None) -> dict:
     is_recurring, frequency, series_id, start, end = _normalized_reimbursement_recurrence(payload)
     return {
@@ -8749,6 +8761,7 @@ async def import_reimbursements_screenshot(
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
+    _require_reimbursement_write(db=db, user_id=user_id)
     content_type = str(file.content_type or "")
     if content_type and not content_type.startswith("image/"):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Please upload an image file")
@@ -8794,6 +8807,7 @@ def import_reimbursements_paste(
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
+    _require_reimbursement_write(db=db, user_id=user_id)
     candidates = _extract_reimbursement_candidates_from_pasted_text(payload.text)
     if not candidates:
         return ReimbursementImportDraftOut(
@@ -8811,6 +8825,7 @@ def save_reimbursements_screenshot_import(
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
+    _require_reimbursement_write(db=db, user_id=user_id)
     if not payload.rows:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Select at least one expense to save")
     now = datetime.utcnow()
@@ -8850,6 +8865,7 @@ def create_reimbursement(
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
+    _require_reimbursement_write(db=db, user_id=user_id)
     _validate_reimbursement_linked_transaction(db, user_id, payload.linked_transaction_id)
     now = datetime.utcnow()
     fields = _reimbursement_common_fields(payload)
@@ -8871,6 +8887,7 @@ def update_reimbursement(
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
+    _require_reimbursement_write(db=db, user_id=user_id)
     row = (
         db.execute(select(Reimbursement).where(Reimbursement.id == reimbursement_id, Reimbursement.user_id == user_id))
         .scalar_one_or_none()
@@ -8920,6 +8937,7 @@ def update_reimbursement_status(
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
+    _require_reimbursement_write(db=db, user_id=user_id)
     row = (
         db.execute(select(Reimbursement).where(Reimbursement.id == reimbursement_id, Reimbursement.user_id == user_id))
         .scalar_one_or_none()
@@ -8940,6 +8958,7 @@ def delete_reimbursement(
     db=Depends(get_db),
 ):
     user_id = get_current_user_id(access_token)
+    _require_reimbursement_write(db=db, user_id=user_id)
     row = (
         db.execute(select(Reimbursement).where(Reimbursement.id == reimbursement_id, Reimbursement.user_id == user_id))
         .scalar_one_or_none()
@@ -8967,6 +8986,9 @@ def purge_imported_transactions(
     """
     user_id = get_current_user_id(access_token)
     require_family_owner(db=db, family_id=family_id, user_id=user_id)
+    from .billing_entitlement import assert_family_entitled
+
+    assert_family_entitled(db, int(family_id))
 
     cols = _table_columns(db, "transactions")
     where_parts: list[str] = []

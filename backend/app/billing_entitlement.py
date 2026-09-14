@@ -365,6 +365,68 @@ def build_billing_status(
     }
 
 
+BILLING_NOT_ENTITLED_CODE = "billing_not_entitled"
+BILLING_NOT_ENTITLED_MESSAGE = (
+    "Your free trial has ended. Subscribe to update your balance, add transactions, and keep your forecast current."
+)
+
+
+def _billing_not_entitled_http(phase: str = "expired"):
+    from fastapi import HTTPException, status
+
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail={
+            "code": BILLING_NOT_ENTITLED_CODE,
+            "message": BILLING_NOT_ENTITLED_MESSAGE,
+            "phase": phase or "expired",
+        },
+    )
+
+
+def family_billing_payload(db, *, family_id: int, now: Optional[datetime] = None) -> dict[str, Any]:
+    from sqlalchemy import select
+
+    from .main import BillingSubscription, Family
+
+    fam = db.get(Family, int(family_id))
+    if fam is None:
+        from fastapi import HTTPException, status
+
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Family not found")
+    sub = db.execute(
+        select(BillingSubscription).where(BillingSubscription.family_id == int(family_id))
+    ).scalar_one_or_none()
+    return build_billing_status(family=fam, subscription=sub, now=now)
+
+
+def assert_family_entitled(db, family_id: int) -> dict[str, Any]:
+    """Raise 403 when the family trial has ended and there is no paid access."""
+    payload = family_billing_payload(db, family_id=int(family_id))
+    if not payload.get("entitled"):
+        _billing_not_entitled_http(str(payload.get("phase") or "expired"))
+    return payload
+
+
+def assert_user_entitled_for_write(db, user_id: int) -> dict[str, Any]:
+    """Reimbursements are user-scoped; require at least one entitled family."""
+    from sqlalchemy import select
+
+    from .main import FamilyMember
+
+    family_ids = (
+        db.execute(select(FamilyMember.family_id).where(FamilyMember.user_id == int(user_id))).scalars().all()
+    )
+    last_payload: dict[str, Any] = {"phase": "expired", "entitled": False}
+    for fid in family_ids:
+        payload = family_billing_payload(db, family_id=int(fid))
+        last_payload = payload
+        if payload.get("entitled"):
+            return payload
+    _billing_not_entitled_http(str(last_payload.get("phase") or "expired"))
+    return last_payload
+
+
 def webhook_event_already_processed(db, event_id: str) -> bool:
     from sqlalchemy import select
 

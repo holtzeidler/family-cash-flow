@@ -12500,6 +12500,91 @@ label{
   }
 }
 
+.modal.modal--billing-upgrade{
+  width: min(92vw, 440px);
+  max-width: 440px;
+  padding: 20px 22px 16px;
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow:
+    0 4px 6px rgba(17, 24, 39, 0.04),
+    0 18px 40px rgba(15, 23, 42, 0.16);
+}
+.billing-upgrade__title{
+  margin: 0 0 8px;
+  font-size: clamp(1.2rem, 1.05rem + 0.45vw, 1.48rem);
+  font-weight: 780;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+  color: rgba(15, 23, 42, 0.96);
+}
+.billing-upgrade__body{
+  margin: 0 0 16px;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  font-weight: 450;
+  color: rgba(71, 85, 105, 0.88);
+}
+.billing-upgrade__actions{
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+}
+.billing-upgrade__annual,
+.billing-upgrade__monthly{
+  width: 100%;
+  min-width: 0;
+  justify-content: center;
+  text-align: center;
+  text-decoration: none;
+}
+.billing-upgrade__monthly{
+  min-height: 42px;
+  padding: 10px 18px;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+.billing-upgrade__dismiss{
+  margin: 2px 0 0;
+  padding: 6px 8px;
+  border: 0;
+  background: transparent;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: rgba(71, 85, 105, 0.78);
+  cursor: pointer;
+}
+.billing-upgrade__dismiss:hover{
+  color: rgba(15, 23, 42, 0.92);
+}
+
+html.bw-billing-readonly .tm-primary-action,
+html.bw-billing-readonly .cash-health-status__cta,
+html.bw-billing-readonly .reimbursements-primary-btn,
+html.bw-billing-readonly .reimbursements-screenshot-btn,
+html.bw-billing-readonly .reimbursements-paste-btn,
+html.bw-billing-readonly .reimbursements-bulk-btn,
+html.bw-billing-readonly .reimb-edit-btn,
+html.bw-billing-readonly .reimb-quick-btn,
+html.bw-billing-readonly #openAccountModalBtn,
+html.bw-billing-readonly #addAccountBtn,
+html.bw-billing-readonly #saveAccountEditBtn,
+html.bw-billing-readonly #balanceThresholdSaveBtn,
+html.bw-billing-readonly .cats-pane__action,
+html.bw-billing-readonly .cal-confirmed-tip__action,
+html.bw-billing-readonly .cal-confirmed-tip__edit-btn{
+  opacity: 0.55;
+  cursor: not-allowed !important;
+}
+html.bw-billing-readonly .cal-day-tx-line,
+html.bw-billing-readonly .cal-tx-part,
+html.bw-billing-readonly .cal-day-balance-hit{
+  cursor: not-allowed;
+}
+
 .billing-cancel{
   margin-top: 28px;
   padding: 28px 0 0;
