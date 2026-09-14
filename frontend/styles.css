@@ -32689,7 +32689,7 @@ body.checkout-page .container > .grid{
   outline-offset: 2px;
 }
 .checkout-form__reassurance{
-  margin: 12px 0 0;
+  margin: 20px 0 0;
   text-align: center;
   font-size: 13px;
   color: var(--muted);
