@@ -9174,6 +9174,19 @@ function resolveBillingLifecycleModel(status, { hasFamily = true } = {}) {
       trialLayout: true,
     };
   };
+  const endedSubscribeChoices = () => {
+    const pct = annualSavingsPercent();
+    return {
+      title: "Continue with Cash Forecast",
+      support: "",
+      monthlyLabel: `Monthly — ${monthlyPrice}`,
+      annualLabel: `Annual — ${defaultCashForecastAnnualPriceLabel()}`,
+      annualNote: pct != null ? `Save ${pct}%` : "",
+      savings: "",
+      reassure: "You'll be charged when you subscribe. Cancel anytime.",
+      trialLayout: true,
+    };
+  };
   const trialEnd = status && status.trial_ends_on ? String(status.trial_ends_on) : "";
   const periodEnd = isoDateFromApiTimestamp(status && status.current_period_end);
   const cancelAtEnd = !!(status && status.cancel_at_period_end);
@@ -9297,7 +9310,7 @@ function resolveBillingLifecycleModel(status, { hasFamily = true } = {}) {
     };
   }
 
-  if (inAppTrial && !subscribed) {
+  if (!subscribed && (inAppTrial || isBillingTrialPlanScheduled(status))) {
     const daysLeft = trialDaysRemainingFromStatus(status);
     const planScheduled = isBillingTrialPlanScheduled(status);
     const accessThrough = planScheduled
@@ -9383,25 +9396,18 @@ function resolveBillingLifecycleModel(status, { hasFamily = true } = {}) {
     mode: "trial_ended",
     productName,
     productCopy,
-    showMeta: true,
+    showMeta: false,
     showManage: false,
     showCancel: false,
     callout: {
       kind: "info",
       title: "Your free trial has ended",
-      text: "Choose monthly or annual billing to continue using Cash Forecast.",
+      text: "Choose a billing option to continue using Cash Forecast.",
     },
     primaryCta: null,
-    subscribeChoices,
-    meta: {
-      plan: productName,
-      priceLabel: "Billing",
-      price: monthlyPrice,
-      dateLabel: "Trial ended",
-      date: trialEnd ? formatShortDateLong(trialEnd) : "—",
-      statusLabel: "Trial ended",
-      statusTone: "muted",
-    },
+    subscribeChoices: endedSubscribeChoices(),
+    notesKind: "trial_ended",
+    meta: null,
     manageHint: "",
     cancelLede: "",
   };
@@ -9789,7 +9795,10 @@ function applyBillingLifecycleModel(model) {
     setBillingElHidden(dom.manage || billingManageSectionEl, !model.showManage);
     const overview = document.querySelector(".billing-overview");
     if (overview) {
-      overview.classList.toggle("billing-overview--trial-prepay", model.mode === "trial");
+      overview.classList.toggle(
+        "billing-overview--trial-prepay",
+        model.mode === "trial" || model.mode === "trial_ended"
+      );
     }
     applyBillingCancelSection(model);
 
