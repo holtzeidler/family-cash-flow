@@ -32,7 +32,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=762" />
+    <link rel="stylesheet" href="../styles.css?v=763" />
   </head>
   <body class="checkout-page plans-page plans-page--polished">
     <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -63,7 +63,6 @@
       <main id="main-content" class="grid">
         <section class="checkout-wrap" aria-labelledby="checkoutTitle">
           <header class="checkout-hero">
-            <p class="checkout-hero__eyebrow">Checkout</p>
             <h1 id="checkoutTitle" class="checkout-hero__title">Subscribe to Cash Forecast</h1>
             <p class="checkout-hero__subtitle">
               Choose your billing option and continue to secure checkout.
@@ -97,7 +96,6 @@
                       name="billing_cycle"
                       value="monthly"
                       data-lookup-key="cash_forecast_monthly"
-                      data-cta-price="$5.99/month"
                       checked
                     />
                     <span class="checkout-billing__option-body">
@@ -114,7 +112,6 @@
                       name="billing_cycle"
                       value="annual"
                       data-lookup-key="cash_forecast_annual"
-                      data-cta-price="$59.99/year"
                     />
                     <span class="checkout-billing__option-body">
                       <span class="checkout-billing__option-line">
@@ -136,7 +133,7 @@
               <p id="checkoutStatus" class="checkout-form__status" role="status" aria-live="polite">Preparing checkout…</p>
               <p id="checkoutErr" class="error checkout-form__error" hidden role="alert"></p>
               <button id="checkout-and-portal-button" class="checkout-form__submit" type="button" aria-disabled="true">
-                Continue to Stripe — $5.99/month
+                Continue to secure checkout
               </button>
               <p class="checkout-form__reassurance" id="checkoutReassure">
                 Payment is completed securely through Stripe.
@@ -268,9 +265,7 @@
         }
 
         function checkoutCtaLabel() {
-          var selected = form && form.querySelector('input[name="billing_cycle"]:checked');
-          var price = selected && selected.getAttribute("data-cta-price");
-          return price ? "Continue to Stripe — " + price : "Continue to Stripe";
+          return "Continue to secure checkout";
         }
 
         function setBlocked(reason, opts) {
