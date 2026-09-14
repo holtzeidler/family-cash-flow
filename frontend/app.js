@@ -9717,7 +9717,7 @@ function resolveBillingLifecycleModel(status, { hasFamily = true } = {}) {
       kind: "trial_complete",
       eyebrow: "14-day free trial complete",
       title: "Keep your forecast working for you.",
-      text: "Subscribe to continue updating balances, adding transactions, and keeping your future cash forecast current.",
+      text: "Your forecast is still here. Subscribe to keep it current and continue adding transactions and updating your balance.",
     },
     primaryCta: null,
     subscribeChoices: endedSubscribeChoices(),
