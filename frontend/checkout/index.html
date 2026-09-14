@@ -538,15 +538,6 @@
             btn.removeAttribute("data-checkout-action");
             setCheckoutContext(fam);
             setReady();
-            fetchJson(api + "/api/families/" + encodeURIComponent(String(fam.id)) + "/billing-status", {
-              method: "GET",
-              credentials: "include",
-              headers: authHeaders(),
-            })
-              .then(function (billingResult) {
-                if (billingResult && billingResult.ok) applyTrialReassure(billingResult.data);
-              })
-              .catch(function () {});
           })
           .catch(function (err) {
             btn.removeAttribute("data-checkout-action");
