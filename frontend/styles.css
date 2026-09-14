@@ -32677,35 +32677,25 @@ body.checkout-page .container > .grid{
 .checkout-form{
   min-width: 0;
 }
-.checkout-product{
-  display: flex;
-  align-items: flex-start;
-  gap: 14px;
-  padding-bottom: 18px;
-  margin-bottom: 18px;
-  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+.checkout-value{
+  margin: 0 0 22px;
+  padding: 0;
+  border: 0;
 }
-.checkout-product__icon{
-  flex: 0 0 auto;
-  width: 44px;
-  height: 44px;
-  display: grid;
-  place-items: center;
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--accent) 10%, #fff);
-  color: var(--accent);
-}
-.checkout-product__name{
-  margin: 0 0 6px;
+.checkout-value__title{
+  margin: 0;
   font-size: 1.05rem;
   font-weight: 700;
-  color: #111827;
+  line-height: 1.35;
+  letter-spacing: -0.015em;
+  color: rgba(15, 23, 42, 0.96);
 }
-.checkout-product__caption{
-  margin: 0;
-  max-width: 36ch;
+.checkout-value__copy{
+  margin: 8px 0 0;
+  max-width: 46ch;
   font-size: 13.5px;
-  line-height: 1.45;
+  line-height: 1.5;
+  font-weight: 450;
   color: var(--muted);
 }
 .checkout-billing{

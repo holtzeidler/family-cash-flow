@@ -32,7 +32,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=767" />
+    <link rel="stylesheet" href="../styles.css?v=768" />
   </head>
   <body class="checkout-page plans-page plans-page--polished">
     <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -69,26 +69,19 @@
             </p>
           </header>
 
-          <section class="checkout-card" aria-label="Cash Forecast">
-            <div class="checkout-product">
-              <div class="checkout-product__icon" aria-hidden="true">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M4 19V5" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
-                  <path d="M4 19h16" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
-                  <path d="M7 15l3.2-3.5 2.6 2.2L17 9" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-              </div>
-              <div class="checkout-product__description">
-                <h2 class="checkout-product__name">Cash Forecast</h2>
-                <p class="checkout-product__caption">
-                  Forecast your checking balance before bills and paychecks land.
-                </p>
-              </div>
-            </div>
+          <section class="checkout-card" aria-label="Cash Forecast checkout">
+            <header class="checkout-value">
+              <h2 class="checkout-value__title">
+                See what your balance looks like before the money moves.
+              </h2>
+              <p class="checkout-value__copy">
+                Forecast bills, paychecks, and transfers together so you can spot tight periods and know what cash is safe to use.
+              </p>
+            </header>
 
             <form id="checkoutForm" class="checkout-form" action="/create-checkout-session" method="POST">
               <fieldset class="checkout-billing">
-                <legend class="checkout-billing__legend">Billing</legend>
+                <legend class="checkout-billing__legend">Choose how you'd like to pay</legend>
                 <div class="checkout-billing__options" role="radiogroup" aria-label="Billing cycle">
                   <label class="checkout-billing__option">
                     <input
