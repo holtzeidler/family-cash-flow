@@ -12108,12 +12108,15 @@ label{
 }
 
 /* Expired-trial pricing choice cards */
+.billing-subscribe--pricing-cards{
+  width: 100%;
+}
 .billing-subscribe--pricing-cards .billing-subscribe__options--cards{
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+  gap: 18px;
   width: 100%;
-  max-width: 34rem;
+  max-width: 75%;
   align-items: stretch;
 }
 .billing-price-card{
@@ -12130,7 +12133,6 @@ label{
 }
 .billing-price-card--recommended{
   border-color: rgba(11, 61, 46, 0.22);
-  box-shadow: 0 1px 0 rgba(11, 61, 46, 0.04);
 }
 .billing-price-card__body{
   display: flex;
@@ -12155,7 +12157,7 @@ label{
 }
 .billing-price-card__badge{
   margin: 8px 0 0;
-  min-height: 1.2em;
+  min-height: 1.35em;
   font-size: 0.75rem;
   font-weight: 550;
   line-height: 1.35;
@@ -12164,28 +12166,11 @@ label{
 .billing-price-card__badge--empty{
   visibility: hidden;
 }
-.billing-price-card__cta{
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  max-width: none;
-  min-width: 0;
-  margin-top: auto;
-  box-sizing: border-box;
-  text-align: center;
-}
-.billing-price-card__cta.billing-action-btn--secondary{
-  min-height: 42px;
-  padding: 10px 14px;
-  border-radius: 10px;
-  font-size: 0.875rem;
-  font-weight: 700;
-}
-@media (max-width: 640px){
+@media (max-width: 720px){
   .billing-subscribe--pricing-cards .billing-subscribe__options--cards{
     grid-template-columns: 1fr;
     max-width: none;
+    gap: 14px;
   }
 }
 
@@ -12472,6 +12457,36 @@ label{
   border-color: rgba(148, 163, 184, 0.35);
   color: rgba(100, 116, 139, 0.75);
 }
+
+/* Pricing-card CTAs must win over manage-row secondary flex sizing (width: 0). */
+.billing-price-card .billing-price-card__cta,
+.billing-price-card a.billing-price-card__cta,
+.billing-price-card .billing-hero__activate.billing-price-card__cta,
+.billing-price-card .billing-action-btn.billing-price-card__cta,
+.billing-price-card .billing-action-btn--secondary.billing-price-card__cta{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  align-self: stretch;
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  min-height: 42px;
+  height: auto;
+  margin-top: auto;
+  padding: 10px 18px;
+  border-radius: 10px;
+  box-sizing: border-box;
+  font-size: 0.875rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* Legacy class kept for any stray markup */
 .billing-action-link{
   appearance: none;
@@ -12854,6 +12869,13 @@ html.bw-billing-readonly .cal-day-balance-hit{
   }
   .billing-meta__def{
     white-space: normal;
+  }
+  .billing-price-card .billing-price-card__cta,
+  .billing-price-card .billing-action-btn--secondary.billing-price-card__cta{
+    flex: 0 0 auto;
+    width: 100%;
+    max-width: none;
+    min-width: 0;
   }
 }
 
