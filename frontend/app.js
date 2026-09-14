@@ -1465,7 +1465,11 @@ const accountEditInfo = document.getElementById("accountEditInfo");
 const accountEditFootnote = document.getElementById("accountEditFootnote");
 
 function openAccountModal(mode = "add") {
-  if (guardBillingWrite()) return;
+  void openAccountModalAsync(mode);
+}
+
+async function openAccountModalAsync(mode = "add") {
+  if (await guardBillingWriteAsync()) return;
   const modalEl = accountModal || document.getElementById("accountModal");
   if (!modalEl) return;
   const titleEl = accountModalTitle || document.getElementById("accountModalTitle");
@@ -6130,7 +6134,11 @@ async function convertActualTransactionToRecurring(actualId) {
 }
 
 function openTxEditModal(tx) {
-  if (guardBillingWrite()) return;
+  void openTxEditModalAsync(tx);
+}
+
+async function openTxEditModalAsync(tx) {
+  if (await guardBillingWriteAsync()) return;
   if (!txEditModal || !txEditId || !txEditDate) return;
   selectedExpectedInstance = null;
   selectedExpectedMovedToDate = null;
@@ -6365,7 +6373,11 @@ function activateSettingsSection(key) {
 }
 
 function openTxAddModal(opts = {}) {
-  if (guardBillingWrite()) return;
+  void openTxAddModalAsync(opts);
+}
+
+async function openTxAddModalAsync(opts = {}) {
+  if (await guardBillingWriteAsync()) return;
   if (txAddSaveInFlight) return;
   const modalEl = txAddModal || document.getElementById("txAddModal");
   const dateEl = txAddDate || document.getElementById("txAddDate");
@@ -6523,7 +6535,11 @@ function paintBalanceCheckInForecast(iso) {
 }
 
 function openReconcileModal(iso) {
-  if (guardBillingWrite()) return;
+  void openReconcileModalAsync(iso);
+}
+
+async function openReconcileModalAsync(iso) {
+  if (await guardBillingWriteAsync()) return;
   if (!reconcileModal) return;
   const d = normalizeIsoDate(iso) || iso;
   if (alertIfDateBeforeStartingBalance(d)) return;
@@ -7494,6 +7510,7 @@ async function resolveExpectedSeriesMeta(expectedId, calendarItem) {
 }
 
 async function openCalendarActualTransactionById(id) {
+  if (await guardBillingWriteAsync()) return false;
   const txId = Number(id);
   if (!Number.isFinite(txId) || txId <= 0) return false;
   let tx = findActualTransactionById(txId);
@@ -7513,6 +7530,7 @@ async function openCalendarActualTransactionById(id) {
 }
 
 async function openCalendarExpectedFromLine(expectedLine) {
+  if (await guardBillingWriteAsync()) return false;
   const cell = expectedLine.closest(".cal-cell");
   const iso = cell?.dataset?.iso || "";
   if (iso && alertIfDateBeforeStartingBalance(iso)) return false;
@@ -7628,8 +7646,12 @@ function shouldOpenAddTxFromCalendarClick(target, cell) {
 }
 
 function openCalendarDayAddTransaction(iso, e) {
+  void openCalendarDayAddTransactionAsync(iso, e);
+}
+
+async function openCalendarDayAddTransactionAsync(iso, e) {
   if (!iso) return;
-  if (guardBillingWrite(e)) return;
+  if (await guardBillingWriteAsync(e)) return;
   if (state.activeFamilyAccessMode === "view") {
     window.alert(
       "You have view-only access to this family. Ask the owner to grant edit access if you need to add transactions."
@@ -9135,7 +9157,9 @@ function isBillingSubscribed(status = cachedBillingStatusForActiveFamily()) {
 
 function isBillingWriteLocked(status = cachedBillingStatusForActiveFamily()) {
   if (!status || typeof status !== "object") return false;
-  return status.entitled === false;
+  if (status.entitled === false) return true;
+  const phase = String(status.phase || "").toLowerCase();
+  return phase === "expired";
 }
 
 function canWriteFamilyData() {
@@ -9151,6 +9175,18 @@ function applyBillingReadOnlyUi() {
     document.documentElement.classList.toggle("bw-billing-readonly", locked);
     document.body.classList.toggle("bw-billing-readonly", locked);
   } catch (_) {}
+}
+
+async function ensureBillingWriteLockReady() {
+  if (cachedBillingStatusForActiveFamily()) {
+    applyBillingReadOnlyUi();
+    return cachedBillingStatusForActiveFamily();
+  }
+  try {
+    if (ensureActiveFamilyIdForBilling() > 0) await fetchBillingStatus({ force: false });
+  } catch (_) {}
+  applyBillingReadOnlyUi();
+  return cachedBillingStatusForActiveFamily();
 }
 
 async function refreshBillingWriteLock() {
@@ -9170,6 +9206,11 @@ function guardBillingWrite(evt) {
   }
   openBillingUpgradeModal();
   return true;
+}
+
+async function guardBillingWriteAsync(evt) {
+  await ensureBillingWriteLockReady();
+  return guardBillingWrite(evt);
 }
 
 let _billingUpgradeModalEl = null;
@@ -9306,8 +9347,11 @@ function wireBillingWriteLockOnce() {
   document.addEventListener(
     "click",
     (e) => {
-      if (!isBillingWriteLocked()) return;
       if (!billingWriteLockHit(e.target)) return;
+      if (!isBillingWriteLocked()) {
+        if (!cachedBillingStatusForActiveFamily()) void refreshBillingWriteLock();
+        return;
+      }
       e.preventDefault();
       e.stopPropagation();
       openBillingUpgradeModal();
@@ -14425,6 +14469,11 @@ async function refreshExpectedCalendarAndMonth() {
 }
 
 function openExpectedEditModal(tx, opts = {}) {
+  void openExpectedEditModalAsync(tx, opts);
+}
+
+async function openExpectedEditModalAsync(tx, opts = {}) {
+  if (await guardBillingWriteAsync()) return;
   if (!txEditModal || !expectedEditId) return;
   const calendarItem = opts.calendarItem ?? null;
 
