@@ -11752,20 +11752,33 @@ label{
 .billing-page__shell--natural > .billing-primary,
 .billing-overview--natural-height{
   height: fit-content;
+  min-height: 0;
   align-self: start;
 }
 .billing-overview--natural-height{
-  padding-bottom: calc(var(--billing-space-4) + 8px);
+  padding-bottom: 32px;
 }
 .billing-overview--natural-height .billing-summary{
-  gap: 18px;
-  margin-top: 16px;
+  gap: 24px;
+  margin-top: 24px;
 }
 .billing-overview--natural-height .billing-callout{
   padding: 14px 16px;
 }
-.billing-overview--natural-height .billing-subscribe{
-  gap: 14px;
+.billing-overview--natural-height .billing-subscribe,
+.billing-overview--natural-height .billing-subscribe--pricing-cards{
+  gap: 0;
+  width: 100%;
+}
+.billing-overview--natural-height .billing-subscribe__lede{
+  margin: 0 0 16px;
+}
+.billing-overview--natural-height .billing-subscribe__options,
+.billing-overview--natural-height .billing-subscribe__options--cards{
+  margin: 0 0 20px;
+}
+.billing-overview--natural-height .billing-subscribe__reassure{
+  margin: 0;
 }
 .billing-side{
   display: flex;
