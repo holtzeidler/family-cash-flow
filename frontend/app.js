@@ -10177,6 +10177,52 @@ function applyBillingCancelSection(model) {
   }
 }
 
+/** Expired-trial only: merge overview + side into one two-column Cash Forecast panel. */
+function applyBillingEndedPanelLayout(enabled) {
+  const shell = document.querySelector(".billing-page__shell");
+  const overview = document.querySelector(".billing-overview");
+  const primary = document.querySelector(".billing-primary");
+  const hero = overview?.querySelector(".billing-hero");
+  const summary =
+    document.getElementById("billingLifecycleBlock") || overview?.querySelector(".billing-summary");
+  const side = document.querySelector(".billing-side");
+  if (!shell || !overview || !primary || !hero || !summary || !side) return;
+
+  shell.classList.toggle("billing-page__shell--ended", !!enabled);
+  shell.classList.toggle("billing-page__shell--natural", !!enabled);
+  overview.classList.toggle("billing-overview--ended", !!enabled);
+  overview.classList.toggle("billing-overview--natural-height", !!enabled);
+
+  let body = overview.querySelector(".billing-ended-body");
+  let main = overview.querySelector(".billing-ended-main");
+
+  if (enabled) {
+    if (!body) {
+      body = document.createElement("div");
+      body.className = "billing-ended-body";
+      const title = hero.querySelector(".billing-hero__title");
+      if (title && title.nextSibling) hero.insertBefore(body, title.nextSibling);
+      else hero.appendChild(body);
+    }
+    if (!main) {
+      main = document.createElement("div");
+      main.className = "billing-ended-main";
+      body.insertBefore(main, body.firstChild);
+    }
+    if (summary.parentElement !== main) main.appendChild(summary);
+    if (side.parentElement !== body) body.appendChild(side);
+    return;
+  }
+
+  if (summary.parentElement && summary.parentElement.classList.contains("billing-ended-main")) {
+    hero.appendChild(summary);
+  }
+  if (side.parentElement !== shell) {
+    shell.appendChild(side);
+  }
+  if (body) body.remove();
+}
+
 function applyBillingLifecycleModel(model) {
   const dom = billingDom();
   const planEl = dom.plan || billingPlanEl;
@@ -10205,11 +10251,8 @@ function applyBillingLifecycleModel(model) {
         "billing-overview--trial-prepay",
         model.mode === "trial" || model.mode === "trial_ended"
       );
-      overview.classList.toggle("billing-overview--natural-height", model.mode === "trial_ended");
     }
-    if (shell) {
-      shell.classList.toggle("billing-page__shell--natural", model.mode === "trial_ended");
-    }
+    applyBillingEndedPanelLayout(model.mode === "trial_ended");
     applyBillingCancelSection(model);
 
     if (model.showMeta && model.meta) {
