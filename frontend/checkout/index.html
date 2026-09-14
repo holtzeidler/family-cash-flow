@@ -32,7 +32,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=734" />
+    <link rel="stylesheet" href="../styles.css?v=761" />
   </head>
   <body class="checkout-page plans-page plans-page--polished">
     <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -55,8 +55,7 @@
             </div>
           </div>
           <nav class="plans-public-nav" aria-label="Site">
-            <a href="/settings/billing" class="plans-public-nav__link" id="checkoutNavBilling">Billing</a>
-            <a href="/calendar/" class="plans-public-nav__link plans-public-nav__link--cta" id="checkoutNavCta">Open calendar</a>
+            <a href="/settings/billing" class="plans-public-nav__link plans-public-nav__link--cta" id="checkoutNavCta">Back to Billing</a>
           </nav>
         </div>
       </div>
@@ -67,7 +66,7 @@
             <p class="checkout-hero__eyebrow">Checkout</p>
             <h1 id="checkoutTitle" class="checkout-hero__title">Subscribe to Cash Forecast</h1>
             <p class="checkout-hero__subtitle">
-              Forecast your checking balance before bills and paychecks land. Cancel anytime.
+              Choose your billing option and continue to secure checkout.
             </p>
           </header>
 
@@ -82,8 +81,9 @@
               </div>
               <div class="checkout-product__description">
                 <h2 class="checkout-product__name">Cash Forecast</h2>
-                <p class="checkout-product__price" id="checkoutSelectedPrice">$5.99 / month</p>
-                <p class="checkout-product__caption">Cancel anytime · Secure checkout via Stripe</p>
+                <p class="checkout-product__caption">
+                  Forecast your checking balance before bills and paychecks land.
+                </p>
               </div>
             </div>
 
@@ -97,14 +97,14 @@
                       name="billing_cycle"
                       value="monthly"
                       data-lookup-key="cash_forecast_monthly"
-                      data-price-label="$5.99 / month"
+                      data-cta-price="$5.99/month"
                       checked
                     />
                     <span class="checkout-billing__option-body">
                       <span class="checkout-billing__option-line">
                         <span class="checkout-billing__option-title">Monthly</span>
                         <span class="checkout-billing__option-sep" aria-hidden="true">·</span>
-                        <span class="checkout-billing__option-price">$5.99 / month</span>
+                        <span class="checkout-billing__option-price">$5.99/month</span>
                       </span>
                     </span>
                   </label>
@@ -114,7 +114,7 @@
                       name="billing_cycle"
                       value="annual"
                       data-lookup-key="cash_forecast_annual"
-                      data-price-label="$59.99 / year"
+                      data-cta-price="$59.99/year"
                     />
                     <span class="checkout-billing__option-body">
                       <span class="checkout-billing__option-line">
@@ -123,7 +123,7 @@
                           <span class="checkout-billing__badge">Save ~17%</span>
                         </span>
                         <span class="checkout-billing__option-sep" aria-hidden="true">·</span>
-                        <span class="checkout-billing__option-price">$59.99 / year</span>
+                        <span class="checkout-billing__option-price">$59.99/year</span>
                       </span>
                     </span>
                   </label>
@@ -133,14 +133,13 @@
               <!-- Stripe Price lookup_key — must match Prices in your Stripe Dashboard -->
               <input type="hidden" id="lookupKey" name="lookup_key" value="cash_forecast_monthly" />
               <input type="hidden" id="familyId" name="family_id" value="" />
-              <p id="checkoutFamilyHint" class="checkout-form__family-hint" hidden></p>
               <p id="checkoutStatus" class="checkout-form__status" role="status" aria-live="polite">Preparing checkout…</p>
               <p id="checkoutErr" class="error checkout-form__error" hidden role="alert"></p>
-              <button id="checkout-and-portal-button" class="plan-cta plan-cta--primary checkout-form__submit" type="button" aria-disabled="true">
-                Checkout
+              <button id="checkout-and-portal-button" class="checkout-form__submit" type="button" aria-disabled="true">
+                Continue to Stripe — $5.99/month
               </button>
               <p class="checkout-form__reassurance" id="checkoutReassure">
-                You’ll complete payment securely on Stripe. Family owners can subscribe for their household.
+                Payment is completed securely through Stripe.
               </p>
             </form>
           </section>
@@ -186,16 +185,14 @@
         var form = document.getElementById("checkoutForm");
         var errEl = document.getElementById("checkoutErr");
         var statusEl = document.getElementById("checkoutStatus");
-        var familyHint = document.getElementById("checkoutFamilyHint");
         var familyInput = document.getElementById("familyId");
         var btn = document.getElementById("checkout-and-portal-button");
         var reassureEl = document.getElementById("checkoutReassure");
         var cta = document.getElementById("checkoutNavCta");
-        var billingLink = document.getElementById("checkoutNavBilling");
         var checkoutReady = false;
         var blockReason = "Preparing checkout…";
         var submitting = false;
-        var defaultBtnLabel = btn ? btn.textContent : "Checkout";
+        var defaultReassure = "Payment is completed securely through Stripe.";
 
         function accessToken() {
           try {
@@ -215,6 +212,17 @@
         function loginUrl() {
           var next = "/checkout/" + (window.location.search || "");
           return "/login.html?next=" + encodeURIComponent(next);
+        }
+
+        function billingReturnUrl() {
+          var params = new URLSearchParams(window.location.search || "");
+          var fid = "";
+          if (familyInput && String(familyInput.value || "").trim()) {
+            fid = String(familyInput.value).trim();
+          } else {
+            fid = String(params.get("family_id") || "").trim();
+          }
+          return fid ? "/settings/billing?family_id=" + encodeURIComponent(fid) : "/settings/billing";
         }
 
         function formatDetail(detail) {
@@ -259,6 +267,12 @@
           }
         }
 
+        function checkoutCtaLabel() {
+          var selected = form && form.querySelector('input[name="billing_cycle"]:checked');
+          var price = selected && selected.getAttribute("data-cta-price");
+          return price ? "Continue to Stripe — " + price : "Continue to Stripe";
+        }
+
         function setBlocked(reason, opts) {
           opts = opts || {};
           checkoutReady = false;
@@ -268,53 +282,22 @@
             btn.setAttribute("aria-disabled", "true");
             btn.classList.add("checkout-form__submit--blocked");
             if (opts.buttonLabel) btn.textContent = opts.buttonLabel;
-            else if (!submitting) btn.textContent = defaultBtnLabel;
+            else if (!submitting) btn.textContent = checkoutCtaLabel();
           }
           setStatus(blockReason, !!opts.asError);
         }
 
-        function formatCheckoutLongDate(iso) {
-          if (!iso) return "";
-          var d = new Date(String(iso) + "T12:00:00");
-          if (isNaN(d.getTime())) return String(iso);
-          return d.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
-        }
-
-        function applyTrialReassure(status) {
-          if (!reassureEl) return;
-          var inTrial = !!(status && status.in_app_trial);
-          var stripeCharge =
-            status && status.stripe_subscription_id
-              ? status.first_charge_at || status.first_charge_on || ""
-              : "";
-          if (inTrial && stripeCharge) {
-            var chargeLabel = String(stripeCharge).indexOf("T") >= 0
-              ? formatCheckoutLongDate(String(stripeCharge).slice(0, 10))
-              : formatCheckoutLongDate(stripeCharge);
-            reassureEl.textContent =
-              "No charge today. Your first payment will be " + chargeLabel + ".";
-            return;
-          }
-          if (inTrial) {
-            reassureEl.textContent = "No charge today. Your first payment will be after your trial ends.";
-            return;
-          }
-          reassureEl.textContent = "You’ll complete payment securely on Stripe.";
-        }
-
-        function setReady(familyLabel) {
+        function setReady() {
           checkoutReady = true;
           blockReason = "";
           if (btn) {
             btn.disabled = false;
             btn.removeAttribute("aria-disabled");
             btn.classList.remove("checkout-form__submit--blocked");
-            btn.textContent = defaultBtnLabel;
+            btn.textContent = checkoutCtaLabel();
           }
-          setStatus(familyLabel ? "Ready to checkout for " + familyLabel + "." : "Ready to checkout.", false);
-          if (reassureEl) {
-            reassureEl.textContent = "You’ll complete payment securely on Stripe.";
-          }
+          setStatus("", false);
+          if (reassureEl) reassureEl.textContent = defaultReassure;
         }
 
         function fetchJson(url, options) {
@@ -354,18 +337,14 @@
             });
         }
 
-        if (accessToken()) {
-          if (cta) {
-            cta.textContent = "Open calendar";
-            cta.href = "/calendar/";
-          }
-          if (billingLink) billingLink.hidden = false;
-        } else {
-          if (cta) {
+        if (cta) {
+          if (accessToken()) {
+            cta.textContent = "Back to Billing";
+            cta.href = billingReturnUrl();
+          } else {
             cta.textContent = "Login";
             cta.href = loginUrl();
           }
-          if (billingLink) billingLink.hidden = true;
         }
 
         if (!form || !btn) return;
@@ -387,30 +366,31 @@
         form.action = api + "/create-checkout-session";
 
         var lookupInput = document.getElementById("lookupKey");
-        var priceEl = document.getElementById("checkoutSelectedPrice");
         var radios = form.querySelectorAll('input[name="billing_cycle"]');
 
         function syncBilling() {
           var selected = form.querySelector('input[name="billing_cycle"]:checked');
           if (!selected) return;
           if (lookupInput) lookupInput.value = selected.getAttribute("data-lookup-key") || "";
-          if (priceEl) priceEl.textContent = selected.getAttribute("data-price-label") || "";
           try {
             localStorage.setItem(
               FREQ_KEY,
               selected.value === "annual" ? "yearly" : "monthly"
             );
           } catch (_) {}
+          if (checkoutReady && !submitting) btn.textContent = checkoutCtaLabel();
         }
 
         radios.forEach(function (radio) {
           radio.addEventListener("change", syncBilling);
         });
         try {
-          var wantLookup = String(new URLSearchParams(window.location.search || "").get("lookup_key") || "").trim();
+          var wantLookup = String(
+            new URLSearchParams(window.location.search || "").get("lookup_key") || ""
+          ).trim();
           if (wantLookup) {
             radios.forEach(function (radio) {
-              if (radio.getAttribute("data-lookup-key") === wantLookup) radio.checked = true;
+              radio.checked = radio.getAttribute("data-lookup-key") === wantLookup;
             });
           }
         } catch (_) {}
@@ -432,22 +412,18 @@
           return list[0] || null;
         }
 
-        function setFamilyReady(fam) {
+        function setCheckoutContext(fam) {
           if (!fam || !familyInput) return false;
           familyInput.value = String(fam.id);
-          var label = fam.name || "Family #" + fam.id;
-          if (familyHint) {
-            familyHint.hidden = false;
-            familyHint.textContent = "Subscribing for: " + label;
-          }
-          return label;
+          if (cta && accessToken()) cta.href = billingReturnUrl();
+          return true;
         }
 
         function startCheckout() {
           if (submitting) return;
           syncBilling();
           if (!familyInput || !String(familyInput.value || "").trim()) {
-            setBlocked("Missing family for checkout. Refresh the page or open Checkout from Settings → Billing.", {
+            setBlocked("Checkout isn’t ready. Refresh the page or return from Settings → Billing.", {
               asError: true,
             });
             return;
@@ -472,7 +448,7 @@
                 return;
               }
               if (result.status === 401) {
-                setBlocked("Your session expired. Sign in as the family owner, then try Checkout again.", {
+                setBlocked("Your session expired. Sign in again, then try checkout.", {
                   asError: true,
                   buttonLabel: "Sign in to checkout",
                 });
@@ -498,7 +474,7 @@
               if (btn) {
                 btn.removeAttribute("aria-disabled");
                 btn.classList.remove("checkout-form__submit--blocked");
-                btn.textContent = defaultBtnLabel;
+                btn.textContent = checkoutCtaLabel();
               }
               setStatus(err && err.message ? err.message : String(err), true);
             });
@@ -521,7 +497,7 @@
         btn.addEventListener("click", onCheckoutClick);
         form.addEventListener("submit", onCheckoutClick);
 
-        setBlocked("Loading your family for checkout…", { buttonLabel: "Preparing…" });
+        setBlocked("Preparing checkout…", { buttonLabel: "Preparing…" });
 
         fetchJson(api + "/api/families", {
           method: "GET",
@@ -531,7 +507,7 @@
           .then(function (result) {
             if (result.status === 401) {
               btn.setAttribute("data-checkout-action", "login");
-              setBlocked("Sign in as the family owner to start checkout.", {
+              setBlocked("Sign in to continue to checkout.", {
                 asError: true,
                 buttonLabel: "Sign in to checkout",
               });
@@ -540,26 +516,28 @@
             if (!result.ok) {
               throw new Error(
                 formatDetail(result.data && result.data.detail) ||
-                  "Could not load your families (" + result.status + ")."
+                  "Could not prepare checkout (" + result.status + ")."
               );
             }
             var fam = pickOwnedFamily(result.data);
             if (!fam) {
               btn.removeAttribute("data-checkout-action");
-              setBlocked("Create a family before checking out, then return here.", { asError: true });
+              setBlocked("Finish setting up your account before checking out, then return here.", {
+                asError: true,
+              });
               return;
             }
             if (!fam.is_family_owner) {
               btn.removeAttribute("data-checkout-action");
               setBlocked(
-                "Only the family owner can start a Cash Forecast subscription. Ask the owner, or switch to an owned family.",
+                "Only the account owner can start a Cash Forecast subscription.",
                 { asError: true }
               );
               return;
             }
             btn.removeAttribute("data-checkout-action");
-            var label = setFamilyReady(fam);
-            setReady(label);
+            setCheckoutContext(fam);
+            setReady();
             fetchJson(api + "/api/families/" + encodeURIComponent(String(fam.id)) + "/billing-status", {
               method: "GET",
               credentials: "include",
@@ -574,7 +552,7 @@
             btn.removeAttribute("data-checkout-action");
             setBlocked(err && err.message ? err.message : String(err), {
               asError: true,
-              buttonLabel: defaultBtnLabel,
+              buttonLabel: checkoutCtaLabel(),
             });
           });
       })();

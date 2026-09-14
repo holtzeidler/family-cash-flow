@@ -9075,6 +9075,12 @@ function annualSavingsCopy() {
   return `Save ~${pct}% with annual billing`;
 }
 
+function monthlyPaidAsAnnualLabel() {
+  const monthly = Number(BILLING_MONTHLY_AMOUNT_USD);
+  if (!Number.isFinite(monthly) || monthly <= 0) return "";
+  return `$${(monthly * 12).toFixed(2)}/year if paid monthly`;
+}
+
 const BILLING_MANAGE_HINT =
   "Payment method, invoices, and billing changes are managed securely through Stripe.";
 
@@ -9479,12 +9485,19 @@ function resolveBillingLifecycleModel(status, { hasFamily = true } = {}) {
     return {
       title: "Continue with Cash Forecast",
       support: "",
-      monthlyLabel: `Monthly — ${monthlyPrice}`,
-      annualLabel: `Annual — ${defaultCashForecastAnnualPriceLabel()}`,
-      annualNote: pct != null ? `Save ${pct}%` : "",
+      monthlyLabel: "Continue monthly",
+      annualLabel: "Continue annually",
+      annualNote: "",
       savings: "",
       reassure: "You'll be charged when you subscribe. Cancel anytime.",
-      trialLayout: true,
+      trialLayout: false,
+      pricingCards: true,
+      annualPlan: "Annual",
+      annualPrice: defaultCashForecastAnnualPriceLabel(),
+      annualBadge: pct != null ? `Save ${pct}%` : "",
+      monthlyPlan: "Monthly",
+      monthlyPrice,
+      monthlyBadge: monthlyPaidAsAnnualLabel(),
     };
   };
   const trialEnd = status && status.trial_ends_on ? String(status.trial_ends_on) : "";
@@ -9906,6 +9919,83 @@ function setSubscribeOptionContent(el, label, note) {
   el.textContent = text;
 }
 
+function restoreSubscribePlainOptions(options, monthly, annual) {
+  if (!options || !monthly || !annual) return;
+  monthly.remove();
+  annual.remove();
+  options.querySelectorAll(".billing-price-card").forEach((card) => card.remove());
+  options.classList.remove("billing-subscribe__options--cards");
+  options.appendChild(monthly);
+  options.appendChild(annual);
+}
+
+function fillSubscribePriceCard(card, { plan, price, badge }) {
+  if (!card) return;
+  const planEl = card.querySelector(".billing-price-card__plan");
+  const priceEl = card.querySelector(".billing-price-card__price");
+  const badgeEl = card.querySelector(".billing-price-card__badge");
+  if (planEl) planEl.textContent = plan || "";
+  if (priceEl) priceEl.textContent = price || "";
+  if (badgeEl) {
+    const text = String(badge || "").trim();
+    badgeEl.textContent = text || "\u00a0";
+    badgeEl.classList.toggle("billing-price-card__badge--empty", !text);
+    if (!text) badgeEl.setAttribute("aria-hidden", "true");
+    else badgeEl.removeAttribute("aria-hidden");
+  }
+}
+
+function applySubscribePricingCardsLayout(options, monthly, annual, choices) {
+  if (!options || !monthly || !annual) return;
+  options.classList.add("billing-subscribe__options--cards");
+
+  let annualCard = options.querySelector(".billing-price-card--annual");
+  let monthlyCard = options.querySelector(".billing-price-card--monthly");
+  if (!annualCard || !monthlyCard) {
+    options.querySelectorAll(".billing-price-card").forEach((card) => card.remove());
+    annual.remove();
+    monthly.remove();
+
+    annualCard = document.createElement("div");
+    annualCard.className = "billing-price-card billing-price-card--annual billing-price-card--recommended";
+    annualCard.innerHTML =
+      '<div class="billing-price-card__body">' +
+      '<p class="billing-price-card__plan"></p>' +
+      '<p class="billing-price-card__price"></p>' +
+      '<p class="billing-price-card__badge"></p>' +
+      "</div>";
+
+    monthlyCard = document.createElement("div");
+    monthlyCard.className = "billing-price-card billing-price-card--monthly";
+    monthlyCard.innerHTML =
+      '<div class="billing-price-card__body">' +
+      '<p class="billing-price-card__plan"></p>' +
+      '<p class="billing-price-card__price"></p>' +
+      '<p class="billing-price-card__badge"></p>' +
+      "</div>";
+
+    options.appendChild(annualCard);
+    options.appendChild(monthlyCard);
+  }
+
+  annual.className = "billing-hero__activate billing-price-card__cta";
+  monthly.className =
+    "billing-action-btn billing-action-btn--secondary billing-price-card__cta";
+  if (!annualCard.contains(annual)) annualCard.appendChild(annual);
+  if (!monthlyCard.contains(monthly)) monthlyCard.appendChild(monthly);
+
+  fillSubscribePriceCard(annualCard, {
+    plan: choices?.annualPlan || "Annual",
+    price: choices?.annualPrice || defaultCashForecastAnnualPriceLabel(),
+    badge: choices?.annualBadge || "",
+  });
+  fillSubscribePriceCard(monthlyCard, {
+    plan: choices?.monthlyPlan || "Monthly",
+    price: choices?.monthlyPrice || defaultCashForecastPriceLabel(),
+    badge: choices?.monthlyBadge || "",
+  });
+}
+
 function applySubscribeChoiceLayout(choices) {
   const wrap = document.getElementById("billingSubscribeChoices");
   const options = wrap?.querySelector(".billing-subscribe__options");
@@ -9913,12 +10003,19 @@ function applySubscribeChoiceLayout(choices) {
   const annual = document.getElementById("billingSubscribeAnnual");
   if (!wrap) return;
   const trialLayout = !!(choices && choices.trialLayout);
+  const pricingCards = !!(choices && choices.pricingCards);
   wrap.classList.toggle("billing-subscribe--trial", trialLayout);
+  wrap.classList.toggle("billing-subscribe--pricing-cards", pricingCards);
   if (!options || !monthly || !annual) return;
   monthly.removeAttribute("aria-pressed");
   annual.removeAttribute("aria-pressed");
   monthly.classList.remove("is-selected", "is-active");
   annual.classList.remove("is-selected", "is-active");
+  if (pricingCards) {
+    applySubscribePricingCardsLayout(options, monthly, annual, choices);
+    return;
+  }
+  restoreSubscribePlainOptions(options, monthly, annual);
   if (trialLayout) {
     monthly.className = "billing-action-btn billing-action-btn--secondary billing-subscribe__option";
     annual.className =
@@ -9977,19 +10074,27 @@ function setBillingSubscribeChoices(choices) {
     setBillingElHidden(dom.subscribeSupport, !support);
   }
   if (dom.subscribeMonthly) {
-    setSubscribeOptionContent(
-      dom.subscribeMonthly,
-      choices.monthlyLabel || `Monthly — ${defaultCashForecastPriceLabel()}`,
-      ""
-    );
+    if (choices.pricingCards) {
+      dom.subscribeMonthly.textContent = choices.monthlyLabel || "Continue monthly";
+    } else {
+      setSubscribeOptionContent(
+        dom.subscribeMonthly,
+        choices.monthlyLabel || `Monthly — ${defaultCashForecastPriceLabel()}`,
+        ""
+      );
+    }
     dom.subscribeMonthly.href = checkoutUrlForActiveFamily(BILLING_LOOKUP_MONTHLY);
   }
   if (dom.subscribeAnnual) {
-    setSubscribeOptionContent(
-      dom.subscribeAnnual,
-      choices.annualLabel || `Annual — ${defaultCashForecastAnnualPriceLabel()}`,
-      choices.annualNote || ""
-    );
+    if (choices.pricingCards) {
+      dom.subscribeAnnual.textContent = choices.annualLabel || "Continue annually";
+    } else {
+      setSubscribeOptionContent(
+        dom.subscribeAnnual,
+        choices.annualLabel || `Annual — ${defaultCashForecastAnnualPriceLabel()}`,
+        choices.annualNote || ""
+      );
+    }
     dom.subscribeAnnual.href = checkoutUrlForActiveFamily(BILLING_LOOKUP_ANNUAL);
   }
   if (dom.subscribeSave) {
@@ -10025,26 +10130,23 @@ function applyBillingCycleAction(model) {
     manage.classList.toggle("billing-actions--promote-annual", promoteAnnual);
     manage.classList.toggle("billing-actions--interval-annual", !promoteAnnual && !!action);
   }
-  const paymentBtn = manage?.querySelector('[data-billing-action="payment"]');
-  const invoicesBtn = manage?.querySelector('[data-billing-action="invoices"]');
+  const portalBtn =
+    manage?.querySelector('[data-billing-action="portal"]') ||
+    manage?.querySelector('[data-billing-action="payment"]');
   const primarySlot = manage?.querySelector(".billing-actions__primary");
   const secondarySlot = manage?.querySelector(".billing-actions__secondary");
   if (!primarySlot || !secondarySlot) return;
   if (promoteAnnual) {
     setBillingActionTone(cycleBtn, "primary");
-    setBillingActionTone(paymentBtn, "secondary");
-    setBillingActionTone(invoicesBtn, "secondary");
+    setBillingActionTone(portalBtn, "secondary");
     primarySlot.appendChild(cycleBtn);
-    if (paymentBtn) secondarySlot.appendChild(paymentBtn);
-    if (invoicesBtn) secondarySlot.appendChild(invoicesBtn);
+    if (portalBtn) secondarySlot.appendChild(portalBtn);
     setBillingElHidden(primarySlot, false);
     return;
   }
   setBillingActionTone(cycleBtn, "secondary");
-  setBillingActionTone(paymentBtn, "secondary");
-  setBillingActionTone(invoicesBtn, "secondary");
-  if (paymentBtn) secondarySlot.appendChild(paymentBtn);
-  if (invoicesBtn) secondarySlot.appendChild(invoicesBtn);
+  setBillingActionTone(portalBtn, "secondary");
+  if (portalBtn) secondarySlot.appendChild(portalBtn);
   secondarySlot.appendChild(cycleBtn);
   setBillingElHidden(primarySlot, true);
 }
@@ -10594,15 +10696,16 @@ function openBillingPortalForActiveFamily(flow = "") {
     return;
   }
   const toastByFlow = {
-    payment: "Opening Stripe to update your payment method…",
-    invoices: "Opening Stripe to view invoices…",
+    payment: "Opening Stripe billing…",
+    invoices: "Opening Stripe billing…",
+    portal: "Opening Stripe billing…",
   };
   try {
     showBwToast(toastByFlow[flowKey] || "Opening Stripe billing…");
   } catch (_) {}
   const body = new FormData();
   body.set("family_id", String(state.activeFamilyId));
-  if (flowKey) body.set("flow", flowKey);
+  if (flowKey && flowKey !== "portal") body.set("flow", flowKey);
   fetch(`${apiBase}/create-portal-session`, {
     method: "POST",
     body,
@@ -10641,7 +10744,7 @@ function wireBillingActionsOnce() {
         void resumeBillingSubscriptionForActiveFamily();
         return;
       }
-      const portalActions = new Set(["payment", "invoices"]);
+      const portalActions = new Set(["portal", "payment", "invoices"]);
       if (portalActions.has(action)) {
         if (isBillingPortalAvailable()) {
           openBillingPortalForActiveFamily(action);
