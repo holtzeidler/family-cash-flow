@@ -12508,9 +12508,10 @@ label{
   }
 }
 
-.modal.modal--billing-upgrade{
-  width: min(94vw, 520px);
-  max-width: 520px;
+.modal.modal--billing-upgrade,
+#billingUpgradeModal .modal.modal--billing-upgrade{
+  width: min(94vw, 720px);
+  max-width: 720px;
   padding: 18px 20px 14px;
   border: 1px solid rgba(17, 24, 39, 0.08);
   border-radius: 14px;
@@ -12518,6 +12519,7 @@ label{
   box-shadow:
     0 4px 6px rgba(17, 24, 39, 0.04),
     0 18px 40px rgba(15, 23, 42, 0.16);
+  box-sizing: border-box;
 }
 .billing-upgrade__title{
   box-sizing: border-box;
@@ -12537,6 +12539,7 @@ label{
 }
 .billing-upgrade__body{
   margin: 0 0 14px;
+  max-width: 100%;
   font-size: 0.8125rem;
   line-height: 1.45;
   font-weight: 450;
@@ -12611,9 +12614,11 @@ label{
   outline-offset: 2px;
   border-radius: 6px;
 }
-@media (max-width: 520px){
-  .modal.modal--billing-upgrade{
-    width: min(96vw, 520px);
+@media (max-width: 760px){
+  .modal.modal--billing-upgrade,
+  #billingUpgradeModal .modal.modal--billing-upgrade{
+    width: min(96vw, 720px);
+    max-width: 720px;
     padding: 16px 16px 12px;
   }
 }
