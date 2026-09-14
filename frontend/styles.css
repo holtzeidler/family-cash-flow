@@ -11780,6 +11780,76 @@ label{
 .billing-overview--natural-height .billing-subscribe__reassure{
   margin: 0;
 }
+
+/* Expired-trial: one cohesive Cash Forecast panel with subscription + reassurance */
+.billing-page__shell--ended{
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+  max-width: 1280px;
+}
+.billing-page__shell--ended > .billing-primary{
+  width: 100%;
+}
+.billing-overview--ended{
+  padding: 30px;
+  height: fit-content;
+  min-height: 0;
+}
+.billing-overview--ended .billing-hero{
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  max-width: none;
+}
+.billing-overview--ended .billing-ended-body{
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 28px;
+  width: 100%;
+  margin-top: 24px;
+  align-items: start;
+}
+.billing-overview--ended .billing-ended-main{
+  min-width: 0;
+}
+.billing-overview--ended .billing-summary{
+  margin-top: 0;
+  width: 100%;
+}
+.billing-overview--ended .billing-subscribe--pricing-cards .billing-subscribe__options--cards{
+  max-width: none;
+  width: 100%;
+  gap: 18px;
+}
+.billing-overview--ended .billing-side{
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  gap: var(--billing-space-2);
+}
+@media (min-width: 900px){
+  .billing-overview--ended .billing-ended-body{
+    grid-template-columns: minmax(0, 2.25fr) minmax(0, 1fr);
+    gap: 0;
+  }
+  .billing-overview--ended .billing-ended-main{
+    padding-right: 28px;
+  }
+  .billing-overview--ended .billing-side{
+    padding-left: 28px;
+    border-left: 1px solid rgba(17, 24, 39, 0.08);
+  }
+}
+@media (max-width: 899px){
+  .billing-overview--ended .billing-side{
+    border-top: 1px solid rgba(17, 24, 39, 0.08);
+    padding-top: 24px;
+  }
+}
 .billing-side{
   display: flex;
   flex-direction: column;
