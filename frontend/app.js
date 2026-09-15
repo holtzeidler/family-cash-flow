@@ -10073,7 +10073,7 @@ function applyBillingNotes(kind) {
   let items = BILLING_NOTES_DEFAULT;
   if (kind === "trial") items = BILLING_NOTES_TRIAL;
   else if (kind === "trial_scheduled") items = BILLING_NOTES_TRIAL_SCHEDULED;
-  else if (kind === "trial_ended" || kind === "active") items = BILLING_NOTES_TRIAL_ENDED;
+  else if (kind === "trial_ended" || kind === "canceled") items = BILLING_NOTES_TRIAL_ENDED;
   list.innerHTML = items.map((item) => `<li>${escapeHtml(item)}</li>`).join("");
 }
 
