@@ -22,7 +22,9 @@ from fastapi.responses import JSONResponse, RedirectResponse
 
 from .billing_catalog import (
     ALLOWED_PRICE_LOOKUP_KEYS,
+    ANNUAL_AMOUNT_USD,
     LOOKUP_ANNUAL,
+    LOOKUP_MONTHLY,
     PRODUCT_CODE,
     PRODUCT_NAME,
     catalog_public,
@@ -30,6 +32,120 @@ from .billing_catalog import (
     price_for_lookup,
 )
 from .billing_entitlement import ENTITLED_STATUSES
+
+
+def _usd_label_from_cents(cents: int) -> str:
+    n = int(cents or 0)
+    sign = "−" if n < 0 else ""
+    return f"{sign}${abs(n) / 100:.2f}"
+
+
+def _iso_date_from_unix(ts: Any) -> Optional[str]:
+    try:
+        n = int(ts)
+    except (TypeError, ValueError):
+        return None
+    if n <= 0:
+        return None
+    return datetime.fromtimestamp(n, tz=timezone.utc).date().isoformat()
+
+
+def _invoice_lines(invoice: Any) -> list[Any]:
+    lines = getattr(invoice, "lines", None)
+    data = getattr(lines, "data", None) if lines is not None else None
+    if data:
+        return list(data)
+    if isinstance(lines, dict):
+        return list(lines.get("data") or [])
+    return []
+
+
+def _line_is_proration(line: Any) -> bool:
+    if bool(getattr(line, "proration", False)):
+        return True
+    parent = getattr(line, "parent", None)
+    if isinstance(parent, dict):
+        details = parent.get("subscription_item_details") or {}
+        return bool(details.get("proration"))
+    details = getattr(parent, "subscription_item_details", None) if parent is not None else None
+    if details is None:
+        return False
+    if isinstance(details, dict):
+        return bool(details.get("proration"))
+    return bool(getattr(details, "proration", False))
+
+
+def _line_amount_cents(line: Any) -> int:
+    try:
+        return int(getattr(line, "amount", None) or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _line_period_end_ts(line: Any) -> Optional[int]:
+    period = getattr(line, "period", None)
+    end = getattr(period, "end", None) if period is not None and not isinstance(period, dict) else None
+    if end is None and isinstance(period, dict):
+        end = period.get("end")
+    try:
+        n = int(end)
+    except (TypeError, ValueError):
+        return None
+    return n if n > 0 else None
+
+
+def summarize_annual_switch_preview(invoice: Any, *, annual_amount_cents: int, proration_date: int) -> dict[str, Any]:
+    """Map a Stripe preview invoice onto the monthly→annual confirm copy.
+
+    Credit and amount due come from Stripe. Annual list price is Stripe's Price.unit_amount
+    (catalog fallback). Next renewal is the new annual line's period end when present.
+    """
+    credit_cents = 0
+    next_end_ts: Optional[int] = None
+    for line in _invoice_lines(invoice):
+        amount = _line_amount_cents(line)
+        if amount < 0:
+            credit_cents += -amount
+        if amount > 0 and not _line_is_proration(line):
+            end_ts = _line_period_end_ts(line)
+            if end_ts and (next_end_ts is None or end_ts > next_end_ts):
+                next_end_ts = end_ts
+    if next_end_ts is None:
+        period = getattr(invoice, "period_end", None)
+        try:
+            next_end_ts = int(period) if period else None
+        except (TypeError, ValueError):
+            next_end_ts = None
+    if not next_end_ts:
+        nxt = getattr(invoice, "next_payment_attempt", None)
+        try:
+            next_end_ts = int(nxt) if nxt else None
+        except (TypeError, ValueError):
+            next_end_ts = None
+    amount_due = getattr(invoice, "amount_due", None)
+    if amount_due is None:
+        amount_due = getattr(invoice, "total", 0)
+    try:
+        amount_due_cents = int(amount_due or 0)
+    except (TypeError, ValueError):
+        amount_due_cents = 0
+    annual_cents = int(annual_amount_cents or 0)
+    if annual_cents <= 0:
+        try:
+            annual_cents = int(round(float(ANNUAL_AMOUNT_USD) * 100))
+        except (TypeError, ValueError):
+            annual_cents = 5999
+    return {
+        "annual_amount_cents": annual_cents,
+        "annual_amount_label": f"{_usd_label_from_cents(annual_cents)}/year",
+        "credit_cents": credit_cents,
+        "credit_label": "−$0.00" if credit_cents == 0 else _usd_label_from_cents(-credit_cents),
+        "amount_due_cents": amount_due_cents,
+        "amount_due_label": _usd_label_from_cents(amount_due_cents),
+        "next_renewal_on": _iso_date_from_unix(next_end_ts),
+        "proration_date": int(proration_date),
+        "currency": str(getattr(invoice, "currency", None) or "usd").lower(),
+    }
 
 
 def _resume_scheduled_cancel(sid: str, live: Any) -> None:
@@ -303,11 +419,199 @@ def register_stripe_routes(
                     return sid
         return None
 
+    def _customer_id_from_sub(live: Any) -> str:
+        cust = getattr(live, "customer", None)
+        if isinstance(cust, str):
+            return cust.strip()
+        return (getattr(cust, "id", None) or "").strip() if cust is not None else ""
+
+    def _preview_monthly_to_annual_invoice(
+        *,
+        customer_id: str,
+        subscription_id: str,
+        item_id: str,
+        annual_price_id: str,
+        proration_date: int,
+    ) -> Any:
+        details = {
+            "items": [{"id": item_id, "price": annual_price_id}],
+            "proration_behavior": "create_prorations",
+            "billing_cycle_anchor": "now",
+            "proration_date": int(proration_date),
+        }
+        if hasattr(stripe.Invoice, "create_preview"):
+            return stripe.Invoice.create_preview(
+                customer=customer_id,
+                subscription=subscription_id,
+                subscription_details=details,
+            )
+        return stripe.Invoice.upcoming(
+            customer=customer_id,
+            subscription=subscription_id,
+            subscription_items=[{"id": item_id, "price": annual_price_id}],
+            subscription_proration_behavior="create_prorations",
+            subscription_billing_cycle_anchor="now",
+            subscription_proration_date=int(proration_date),
+        )
+
+    def _parse_proration_date(raw: Optional[str]) -> Optional[int]:
+        s = str(raw or "").strip()
+        if not s:
+            return None
+        try:
+            ts = int(float(s))
+        except (TypeError, ValueError):
+            return None
+        return ts if ts > 0 else None
+
+    @app.post("/preview-billing-interval", include_in_schema=False)
+    async def preview_billing_interval(
+        request: Request,
+        family_id: int = Form(...),
+        target_lookup: str = Form(...),
+    ):
+        """Preview Stripe's monthly→annual invoice. Does not modify the subscription."""
+        _require_stripe()
+        if session_factory is None:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Billing database session is not configured.",
+            )
+        target = (target_lookup or "").strip()
+        if target != LOOKUP_ANNUAL:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="A charge preview is only available when switching to annual billing.",
+            )
+        user_id = _auth_user_id(request)
+        from sqlalchemy import select
+
+        from .billing_entitlement import stripe_customer_id_for_family
+        from .main import BillingCustomer, BillingSubscription, require_family_owner
+
+        try:
+            with session_factory() as db:
+                require_family_owner(db=db, family_id=int(family_id), user_id=int(user_id))
+                customer = stripe_customer_id_for_family(db, family_id=int(family_id))
+                if not customer:
+                    owner_cust = db.execute(
+                        select(BillingCustomer).where(BillingCustomer.user_id == int(user_id))
+                    ).scalar_one_or_none()
+                    customer = (owner_cust.stripe_customer_id or "").strip() if owner_cust else None
+                sub_row = db.execute(
+                    select(BillingSubscription).where(BillingSubscription.family_id == int(family_id))
+                ).scalar_one_or_none()
+                stripe_subscription_id = (
+                    (sub_row.stripe_subscription_id or "").strip() if sub_row is not None else ""
+                )
+                if not stripe_subscription_id and customer:
+                    stripe_subscription_id = _active_subscription_id_for_customer(str(customer)) or ""
+                if not stripe_subscription_id:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="No Stripe subscription is on file to preview.",
+                    )
+                price_id = _price_id_for_lookup(target)
+                if not price_id:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="The Cash Forecast annual price is not configured in Stripe.",
+                    )
+                live = stripe.Subscription.retrieve(stripe_subscription_id, expand=["items.data.price"])
+                live_status = (getattr(live, "status", None) or "").strip().lower()
+                if live_status == "trialing":
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Trial billing changes are not charged today.",
+                    )
+                if live_status not in ("active", "past_due"):
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="This subscription can’t be switched in its current state.",
+                    )
+                items = getattr(getattr(live, "items", None), "data", None) or []
+                item = items[0] if items else None
+                item_id = (getattr(item, "id", None) or "").strip() if item is not None else ""
+                live_price = getattr(item, "price", None) if item is not None else None
+                if isinstance(live_price, str):
+                    live_lookup = ""
+                    live_price_id = live_price.strip()
+                else:
+                    live_lookup = (
+                        (getattr(live_price, "lookup_key", None) or "").strip() if live_price is not None else ""
+                    )
+                    live_price_id = (getattr(live_price, "id", None) or "").strip() if live_price is not None else ""
+                if not item_id:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Stripe subscription has no item to update.",
+                    )
+                already_on_target = live_lookup == target or (bool(live_price_id) and live_price_id == price_id)
+                if already_on_target:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="This family is already on annual billing.",
+                    )
+                if live_lookup and live_lookup != LOOKUP_MONTHLY:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="A charge preview is only available from monthly billing.",
+                    )
+                customer_id = _customer_id_from_sub(live) or (str(customer).strip() if customer else "")
+                if not customer_id:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="No Stripe customer is on file for this family.",
+                    )
+                annual_price = stripe.Price.retrieve(price_id)
+                try:
+                    annual_cents = int(getattr(annual_price, "unit_amount", None) or 0)
+                except (TypeError, ValueError):
+                    annual_cents = 0
+                proration_date = int(datetime.now(timezone.utc).timestamp())
+                invoice = _preview_monthly_to_annual_invoice(
+                    customer_id=customer_id,
+                    subscription_id=stripe_subscription_id,
+                    item_id=item_id,
+                    annual_price_id=price_id,
+                    proration_date=proration_date,
+                )
+                summary = summarize_annual_switch_preview(
+                    invoice,
+                    annual_amount_cents=annual_cents,
+                    proration_date=proration_date,
+                )
+                summary["lookup_key"] = target
+                summary["current_lookup_key"] = live_lookup or LOOKUP_MONTHLY
+                logger.info(
+                    "Previewed monthly→annual for family_id=%s due_cents=%s credit_cents=%s",
+                    family_id,
+                    summary.get("amount_due_cents"),
+                    summary.get("credit_cents"),
+                )
+                return JSONResponse(summary)
+        except HTTPException:
+            raise
+        except stripe.error.StripeError as e:
+            logger.exception("Stripe billing-interval preview failed")
+            msg = getattr(getattr(e, "error", None), "message", None) or str(e)
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=msg or "Could not calculate today’s charge. Try again.",
+            )
+        except Exception:
+            logger.exception("Billing-interval preview failed")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Could not calculate today’s charge. Try again.",
+            )
+
     @app.post("/switch-billing-interval", include_in_schema=False)
     async def switch_billing_interval(
         request: Request,
         family_id: int = Form(...),
         target_lookup: str = Form(...),
+        proration_date: Optional[str] = Form(None),
     ):
         """Switch monthly↔annual. Annual is immediate with proration; monthly is scheduled at period end."""
         _require_stripe()
@@ -468,20 +772,23 @@ def register_stripe_routes(
                 elif to_annual:
                     if schedule_id:
                         _release_schedule_if_any()
-                    updated = stripe.Subscription.modify(
-                        stripe_subscription_id,
-                        items=[{"id": item_id, "price": price_id}],
-                        proration_behavior="create_prorations",
-                        billing_cycle_anchor="now",
-                        payment_behavior="error_if_incomplete",
-                        cancel_at_period_end=False,
-                        metadata={
+                    annual_kwargs: dict[str, Any] = {
+                        "items": [{"id": item_id, "price": price_id}],
+                        "proration_behavior": "create_prorations",
+                        "billing_cycle_anchor": "now",
+                        "payment_behavior": "error_if_incomplete",
+                        "cancel_at_period_end": False,
+                        "metadata": {
                             "bw_lookup_key": target,
                             "bw_billing_frequency": frequency_storage_value(target),
                             "bw_pending_lookup_key": "",
                             "bw_pending_change_on": "",
                         },
-                    )
+                    }
+                    preview_ts = _parse_proration_date(proration_date)
+                    if preview_ts:
+                        annual_kwargs["proration_date"] = preview_ts
+                    updated = stripe.Subscription.modify(stripe_subscription_id, **annual_kwargs)
                 else:
                     if pending_lookup == target:
                         pending_on = str(live_meta.get("bw_pending_change_on") or "").strip() or None

@@ -127,6 +127,7 @@ function isBillingWriteRequest(path, method) {
   if (p.includes("/billing-status")) return false;
   if (p.includes("create-checkout-session")) return false;
   if (p.includes("switch-billing-interval")) return false;
+  if (p.includes("preview-billing-interval")) return false;
   if (p.includes("schedule-subscription-cancel")) return false;
   if (p.includes("resume-subscription")) return false;
   if (p.includes("create-portal-session")) return false;
@@ -10835,6 +10836,9 @@ async function renderBillingPanel({ force = false } = {}) {
 let _billingIntervalConfirmEl = null;
 let _billingIntervalConfirmResolve = null;
 let _billingIntervalConfirmReturnFocus = null;
+let _billingIntervalConfirmPayHandler = null;
+let _billingIntervalConfirmBusy = false;
+let _billingIntervalSwitchInFlight = false;
 
 function billingIntervalSwitchRenewalCopy(status) {
   const raw = status && (status.interval_switch_renewal_on || status.switch_renewal_on);
@@ -10925,14 +10929,29 @@ function renderBillingIntervalConfirmParagraph(parts) {
 }
 
 function closeBillingIntervalConfirm(confirmed) {
+  if (_billingIntervalConfirmBusy && !confirmed) return;
   const wrap = _billingIntervalConfirmEl;
   const resolve = _billingIntervalConfirmResolve;
   const returnFocus = _billingIntervalConfirmReturnFocus;
   _billingIntervalConfirmResolve = null;
   _billingIntervalConfirmReturnFocus = null;
+  _billingIntervalConfirmPayHandler = null;
+  _billingIntervalConfirmBusy = false;
   if (wrap) {
     wrap.classList.remove("modal-overlay--open");
     wrap.setAttribute("aria-hidden", "true");
+    const okBtn = wrap.querySelector("#billingIntervalConfirmOk");
+    const cancelBtn = wrap.querySelector("#billingIntervalConfirmCancel");
+    const errEl = wrap.querySelector("#billingIntervalConfirmError");
+    if (okBtn) {
+      okBtn.disabled = false;
+      okBtn.removeAttribute("aria-busy");
+    }
+    if (cancelBtn) cancelBtn.disabled = false;
+    if (errEl) {
+      errEl.textContent = "";
+      errEl.hidden = true;
+    }
   }
   if (resolve) resolve(!!confirmed);
   if (returnFocus && typeof returnFocus.focus === "function") {
@@ -10958,13 +10977,21 @@ function ensureBillingIntervalConfirmModal() {
     '<div class="modal modal--billing-interval-confirm" role="dialog" aria-modal="true" aria-labelledby="billingIntervalConfirmTitle" aria-describedby="billingIntervalConfirmBody" tabindex="-1">' +
     '<h3 id="billingIntervalConfirmTitle" class="billing-interval-confirm__title"></h3>' +
     '<div id="billingIntervalConfirmBody" class="billing-interval-confirm__body"></div>' +
+    '<p id="billingIntervalConfirmError" class="billing-interval-confirm__error" hidden></p>' +
     '<div class="modal-actions billing-interval-confirm__actions">' +
     '<button type="button" class="billing-action-btn billing-action-btn--secondary billing-interval-confirm__cancel" id="billingIntervalConfirmCancel">Cancel</button>' +
     '<button type="button" class="billing-action-btn billing-action-btn--primary billing-interval-confirm__primary" id="billingIntervalConfirmOk">Switch to annual</button>' +
     "</div></div>";
   document.body.appendChild(wrap);
   wrap.querySelector("#billingIntervalConfirmCancel")?.addEventListener("click", () => closeBillingIntervalConfirm(false));
-  wrap.querySelector("#billingIntervalConfirmOk")?.addEventListener("click", () => closeBillingIntervalConfirm(true));
+  wrap.querySelector("#billingIntervalConfirmOk")?.addEventListener("click", () => {
+    if (_billingIntervalConfirmBusy) return;
+    if (typeof _billingIntervalConfirmPayHandler === "function") {
+      void _billingIntervalConfirmPayHandler();
+      return;
+    }
+    closeBillingIntervalConfirm(true);
+  });
   wrap.addEventListener("click", (e) => {
     if (e.target === wrap) closeBillingIntervalConfirm(false);
   });
@@ -10994,11 +11021,14 @@ function confirmBillingIntervalSwitch(targetLookup) {
     if (_billingIntervalConfirmResolve) closeBillingIntervalConfirm(false);
     const copy = billingIntervalSwitchCopy(targetLookup, cachedBillingStatusForActiveFamily());
     const wrap = ensureBillingIntervalConfirmModal();
+    _billingIntervalConfirmPayHandler = null;
+    _billingIntervalConfirmBusy = false;
     _billingIntervalConfirmResolve = resolve;
     _billingIntervalConfirmReturnFocus = document.activeElement;
     const titleEl = wrap.querySelector("#billingIntervalConfirmTitle");
     const bodyEl = wrap.querySelector("#billingIntervalConfirmBody");
     const okBtn = wrap.querySelector("#billingIntervalConfirmOk");
+    const errEl = wrap.querySelector("#billingIntervalConfirmError");
     if (titleEl) titleEl.textContent = copy.title;
     if (bodyEl) {
       bodyEl.replaceChildren();
@@ -11006,7 +11036,15 @@ function confirmBillingIntervalSwitch(targetLookup) {
         bodyEl.appendChild(renderBillingIntervalConfirmParagraph(parts));
       });
     }
-    if (okBtn) okBtn.textContent = copy.confirmLabel;
+    if (errEl) {
+      errEl.textContent = "";
+      errEl.hidden = true;
+    }
+    if (okBtn) {
+      okBtn.disabled = false;
+      okBtn.removeAttribute("aria-busy");
+      okBtn.textContent = copy.confirmLabel;
+    }
     wrap.classList.add("modal-overlay--open");
     wrap.setAttribute("aria-hidden", "false");
     window.requestAnimationFrame(() => {
@@ -11017,48 +11055,155 @@ function confirmBillingIntervalSwitch(targetLookup) {
   });
 }
 
-async function switchBillingIntervalForActiveFamily() {
-  const apiBase = apiBaseUrl();
-  if (!apiBase) {
-    showBwToast("Billing isn’t configured on this build.");
-    return;
-  }
-  if (!state.activeFamilyId) {
-    showBwToast("Choose a family first.");
-    return;
-  }
-  const cycleBtn =
-    billingDom().cycleBtn ||
-    document.querySelector('#billingManageSection [data-billing-action="cycle"]');
-  if (cycleBtn && (cycleBtn.disabled || cycleBtn.getAttribute("aria-busy") === "true")) return;
-  const targetLookup = cycleBtn
-    ? String(cycleBtn.getAttribute("data-billing-target-lookup") || "").trim()
-    : "";
-  if (targetLookup !== BILLING_LOOKUP_MONTHLY && targetLookup !== BILLING_LOOKUP_ANNUAL) {
-    showBwToast("Could not determine the billing interval to switch to.");
-    return;
-  }
-  const confirmed = await confirmBillingIntervalSwitch(targetLookup);
-  if (!confirmed) return;
+function renderAnnualSwitchPreviewBody(preview) {
+  const wrap = document.createElement("div");
+  wrap.className = "billing-interval-confirm__preview";
 
-  const previousLabel = cycleBtn ? cycleBtn.textContent : "";
-  let switched = false;
-  if (cycleBtn) {
-    cycleBtn.disabled = true;
-    cycleBtn.setAttribute("aria-busy", "true");
-    cycleBtn.textContent = "Updating…";
+  const breakdown = document.createElement("div");
+  breakdown.className = "billing-interval-confirm__breakdown";
+  const rows = [
+    ["Annual subscription", String(preview.annual_amount_label || `$${BILLING_ANNUAL_AMOUNT_USD}/year`)],
+    ["Credit for unused monthly time", String(preview.credit_label || "−$0.00")],
+    ["Due today", String(preview.amount_due_label || "$0.00"), "due"],
+  ];
+  rows.forEach(([label, value, kind]) => {
+    const row = document.createElement("div");
+    row.className = kind === "due" ? "billing-interval-confirm__row billing-interval-confirm__row--due" : "billing-interval-confirm__row";
+    const k = document.createElement("span");
+    k.textContent = label;
+    const v = document.createElement("span");
+    v.textContent = value;
+    row.appendChild(k);
+    row.appendChild(v);
+    breakdown.appendChild(row);
+  });
+  wrap.appendChild(breakdown);
+
+  const renewalIso = isoDateFromApiTimestamp(preview.next_renewal_on);
+  const renewalLong = renewalIso ? formatBillingLongDate(renewalIso) : "";
+  const annualLabel = String(preview.annual_amount_label || `$${BILLING_ANNUAL_AMOUNT_USD}/year`);
+  const p = document.createElement("p");
+  p.appendChild(document.createTextNode("Your annual plan will start today. Your next renewal will be "));
+  if (renewalLong && renewalLong !== "—") {
+    const em = document.createElement("strong");
+    em.className = "billing-interval-confirm__em";
+    em.textContent = renewalLong;
+    p.appendChild(em);
+  } else {
+    p.appendChild(document.createTextNode("one year from today"));
   }
+  p.appendChild(document.createTextNode(` at ${annualLabel}.`));
+  wrap.appendChild(p);
+  return wrap;
+}
+
+function setBillingIntervalConfirmBusy(busy, processingLabel) {
+  _billingIntervalConfirmBusy = !!busy;
+  const wrap = _billingIntervalConfirmEl;
+  const okBtn = wrap?.querySelector("#billingIntervalConfirmOk");
+  const cancelBtn = wrap?.querySelector("#billingIntervalConfirmCancel");
+  if (okBtn) {
+    okBtn.disabled = !!busy;
+    if (busy) {
+      okBtn.setAttribute("aria-busy", "true");
+      if (processingLabel) okBtn.textContent = processingLabel;
+    } else {
+      okBtn.removeAttribute("aria-busy");
+    }
+  }
+  if (cancelBtn) cancelBtn.disabled = !!busy;
+}
+
+function showBillingIntervalConfirmError(message) {
+  const errEl = _billingIntervalConfirmEl?.querySelector("#billingIntervalConfirmError");
+  if (!errEl) {
+    showBwToast(message);
+    return;
+  }
+  errEl.textContent = message || "Could not update billing. Try again.";
+  errEl.hidden = false;
+}
+
+function confirmAnnualSwitchWithPreview(preview) {
+  return new Promise((resolve) => {
+    if (_billingIntervalConfirmResolve) closeBillingIntervalConfirm(false);
+    const wrap = ensureBillingIntervalConfirmModal();
+    _billingIntervalConfirmPayHandler = async () => {
+      if (_billingIntervalConfirmBusy || _billingIntervalSwitchInFlight) return;
+      const okBtn = wrap.querySelector("#billingIntervalConfirmOk");
+      const payLabel = `Confirm & pay ${preview.amount_due_label || ""}`.trim();
+      const errEl = wrap.querySelector("#billingIntervalConfirmError");
+      if (errEl) {
+        errEl.textContent = "";
+        errEl.hidden = true;
+      }
+      setBillingIntervalConfirmBusy(true, "Processing…");
+      try {
+        await postBillingIntervalSwitch({
+          targetLookup: BILLING_LOOKUP_ANNUAL,
+          prorationDate: preview.proration_date,
+          successToast: `Switched to ${preview.annual_amount_label || defaultCashForecastAnnualPriceLabel()}.`,
+        });
+        closeBillingIntervalConfirm(true);
+      } catch (err) {
+        setBillingIntervalConfirmBusy(false);
+        if (okBtn) okBtn.textContent = payLabel;
+        showBillingIntervalConfirmError(
+          err && err.message ? err.message : "Could not switch to annual billing. Try again."
+        );
+      }
+    };
+    _billingIntervalConfirmResolve = resolve;
+    _billingIntervalConfirmReturnFocus = document.activeElement;
+    const titleEl = wrap.querySelector("#billingIntervalConfirmTitle");
+    const bodyEl = wrap.querySelector("#billingIntervalConfirmBody");
+    const okBtn = wrap.querySelector("#billingIntervalConfirmOk");
+    const errEl = wrap.querySelector("#billingIntervalConfirmError");
+    if (titleEl) titleEl.textContent = "Switch to annual billing?";
+    if (bodyEl) {
+      bodyEl.replaceChildren();
+      bodyEl.appendChild(renderAnnualSwitchPreviewBody(preview));
+    }
+    if (errEl) {
+      errEl.textContent = "";
+      errEl.hidden = true;
+    }
+    if (okBtn) {
+      okBtn.disabled = false;
+      okBtn.removeAttribute("aria-busy");
+      okBtn.textContent = `Confirm & pay ${preview.amount_due_label || ""}`.trim();
+    }
+    wrap.classList.add("modal-overlay--open");
+    wrap.setAttribute("aria-hidden", "false");
+    window.requestAnimationFrame(() => {
+      try {
+        (okBtn || wrap.querySelector("#billingIntervalConfirmCancel"))?.focus();
+      } catch (_) {}
+    });
+  });
+}
+
+async function fetchAnnualSwitchPreview() {
+  const body = new FormData();
+  body.set("family_id", String(state.activeFamilyId));
+  body.set("target_lookup", BILLING_LOOKUP_ANNUAL);
+  return apiForm("/preview-billing-interval", body);
+}
+
+async function postBillingIntervalSwitch({ targetLookup, prorationDate, successToast } = {}) {
+  if (_billingIntervalSwitchInFlight) {
+    const err = new Error("Billing is already updating.");
+    throw err;
+  }
+  _billingIntervalSwitchInFlight = true;
   try {
-    showBwToast(
-      targetLookup === BILLING_LOOKUP_ANNUAL
-        ? "Switching to annual billing…"
-        : "Updating billing…"
-    );
     const body = new FormData();
     body.set("family_id", String(state.activeFamilyId));
     body.set("target_lookup", targetLookup);
+    if (prorationDate != null && String(prorationDate).trim()) {
+      body.set("proration_date", String(prorationDate));
+    }
     const data = await apiForm("/switch-billing-interval", body);
-    switched = true;
     const cached = cachedBillingStatusForActiveFamily() || {};
     if (data && data.scheduled) {
       const when = isoDateFromApiTimestamp(data.pending_change_on);
@@ -11085,17 +11230,91 @@ async function switchBillingIntervalForActiveFamily() {
         pending_lookup_key: null,
         pending_change_on: null,
       });
-      showBwToast(data && data.already ? `You're on ${label}.` : `Switched to ${label}.`);
+      showBwToast(successToast || (data && data.already ? `You're on ${label}.` : `Switched to ${label}.`));
     }
     invalidateBillingStatusCache();
     await renderBillingPanel({ force: true });
+    return data;
+  } finally {
+    _billingIntervalSwitchInFlight = false;
+  }
+}
+
+async function switchBillingIntervalForActiveFamily() {
+  const apiBase = apiBaseUrl();
+  if (!apiBase) {
+    showBwToast("Billing isn’t configured on this build.");
+    return;
+  }
+  if (!state.activeFamilyId) {
+    showBwToast("Choose a family first.");
+    return;
+  }
+  const cycleBtn =
+    billingDom().cycleBtn ||
+    document.querySelector('#billingManageSection [data-billing-action="cycle"]');
+  if (cycleBtn && (cycleBtn.disabled || cycleBtn.getAttribute("aria-busy") === "true")) return;
+  if (_billingIntervalSwitchInFlight || _billingIntervalConfirmBusy) return;
+  if (_billingIntervalConfirmEl?.classList.contains("modal-overlay--open")) return;
+  const targetLookup = cycleBtn
+    ? String(cycleBtn.getAttribute("data-billing-target-lookup") || "").trim()
+    : "";
+  if (targetLookup !== BILLING_LOOKUP_MONTHLY && targetLookup !== BILLING_LOOKUP_ANNUAL) {
+    showBwToast("Could not determine the billing interval to switch to.");
+    return;
+  }
+
+  const previousLabel = cycleBtn ? cycleBtn.textContent : "";
+  const paidAnnualSwitch = targetLookup === BILLING_LOOKUP_ANNUAL && !isBillingTrialPlanScheduled();
+  if (paidAnnualSwitch) {
+    if (cycleBtn) {
+      cycleBtn.disabled = true;
+      cycleBtn.setAttribute("aria-busy", "true");
+      cycleBtn.textContent = "Checking price…";
+    }
+    let preview = null;
+    try {
+      preview = await fetchAnnualSwitchPreview();
+    } catch (err) {
+      showBwToast(err && err.message ? err.message : "Could not calculate today’s charge. Try again.");
+      if (cycleBtn) {
+        cycleBtn.disabled = false;
+        cycleBtn.removeAttribute("aria-busy");
+        if (previousLabel) cycleBtn.textContent = previousLabel;
+      }
+      return;
+    }
+    if (cycleBtn) {
+      cycleBtn.disabled = false;
+      cycleBtn.removeAttribute("aria-busy");
+      if (previousLabel) cycleBtn.textContent = previousLabel;
+    }
+    if (!preview || preview.amount_due_label == null) {
+      showBwToast("Could not calculate today’s charge. Try again.");
+      return;
+    }
+    await confirmAnnualSwitchWithPreview(preview);
+    return;
+  }
+
+  const confirmed = await confirmBillingIntervalSwitch(targetLookup);
+  if (!confirmed) return;
+
+  if (cycleBtn) {
+    cycleBtn.disabled = true;
+    cycleBtn.setAttribute("aria-busy", "true");
+    cycleBtn.textContent = "Updating…";
+  }
+  try {
+    showBwToast("Updating billing…");
+    await postBillingIntervalSwitch({ targetLookup });
   } catch (err) {
     showBwToast(err && err.message ? err.message : "Could not switch billing interval.");
   } finally {
     if (cycleBtn) {
       cycleBtn.disabled = false;
       cycleBtn.removeAttribute("aria-busy");
-      if (!switched && previousLabel) cycleBtn.textContent = previousLabel;
+      if (previousLabel) cycleBtn.textContent = previousLabel;
     }
   }
 }

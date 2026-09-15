@@ -12909,6 +12909,46 @@ label{
   flex-direction: column;
   gap: 14px;
 }
+.billing-interval-confirm__preview{
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.billing-interval-confirm__breakdown{
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+}
+.billing-interval-confirm__row{
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 1rem;
+  line-height: 1.45;
+  font-weight: 400;
+  color: var(--muted);
+}
+.billing-interval-confirm__row > span:last-child{
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+}
+.billing-interval-confirm__row--due{
+  margin-top: 2px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  font-weight: 700;
+  color: var(--text);
+}
+.billing-interval-confirm__error{
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  font-weight: 600;
+  color: rgba(153, 50, 58, 0.92);
+}
 .billing-interval-confirm__body p{
   margin: 0;
   font-size: 1rem;
