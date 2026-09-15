@@ -9605,7 +9605,9 @@ function resolveBillingLifecycleModel(status, { hasFamily = true } = {}) {
       cycleAction,
       cancelSection: {
         title: "Cancellation",
-        lede: "You'll keep access through the end of your current billing period.",
+        lede: periodEnd
+          ? `If you cancel, you'll keep full access through ${formatBillingLongDate(periodEnd)}.`
+          : "If you cancel, you'll keep full access through the end of your current billing period.",
         buttonLabel: "Cancel subscription",
         action: "cancel",
         tone: "danger",
@@ -10071,7 +10073,7 @@ function applyBillingNotes(kind) {
   let items = BILLING_NOTES_DEFAULT;
   if (kind === "trial") items = BILLING_NOTES_TRIAL;
   else if (kind === "trial_scheduled") items = BILLING_NOTES_TRIAL_SCHEDULED;
-  else if (kind === "trial_ended") items = BILLING_NOTES_TRIAL_ENDED;
+  else if (kind === "trial_ended" || kind === "active") items = BILLING_NOTES_TRIAL_ENDED;
   list.innerHTML = items.map((item) => `<li>${escapeHtml(item)}</li>`).join("");
 }
 
@@ -10221,8 +10223,9 @@ function applyBillingCycleAction(model) {
     setBillingActionTone(cycleBtn, "primary");
     setBillingActionTone(portalBtn, "secondary");
     primarySlot.appendChild(cycleBtn);
-    if (portalBtn) secondarySlot.appendChild(portalBtn);
+    if (portalBtn) primarySlot.appendChild(portalBtn);
     setBillingElHidden(primarySlot, false);
+    if (secondarySlot) setBillingElHidden(secondarySlot, true);
     return;
   }
   setBillingActionTone(cycleBtn, "secondary");
