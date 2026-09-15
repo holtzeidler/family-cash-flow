@@ -9567,7 +9567,7 @@ function resolveBillingLifecycleModel(status, { hasFamily = true } = {}) {
         plan: productName,
         priceLabel: "Billing",
         price: priceLabel,
-        dateLabel: "Ends on",
+        dateLabel: "Access Ends",
         date: accessLong || "—",
         statusLabel: "Cancelled",
         statusTone: "muted",

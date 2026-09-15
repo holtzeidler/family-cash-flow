@@ -11718,26 +11718,25 @@ label{
 }
 @media (min-width: 900px){
   .billing-page__shell{
-    grid-template-columns: minmax(0, 2.35fr) minmax(220px, 0.9fr);
-    gap: var(--billing-space-3);
-  }
-}
-@media (min-width: 1100px){
-  .billing-page__shell{
-    grid-template-columns: minmax(0, 2.6fr) minmax(240px, 0.85fr);
+    grid-template-columns: minmax(0, 72fr) minmax(232px, 28fr);
     gap: var(--billing-space-3);
   }
 }
 .billing-primary{
   min-width: 0;
   width: 100%;
+  height: fit-content;
+  align-self: start;
 }
 .billing-overview{
   display: flex;
   flex-direction: column;
   gap: 0;
   min-width: 0;
-  padding: var(--billing-space-3);
+  height: fit-content;
+  min-height: 0;
+  align-self: start;
+  padding: 20px 24px 16px;
   border-radius: 14px;
   border: var(--billing-rule);
   background: rgba(255, 255, 255, 0.96);
@@ -12343,8 +12342,12 @@ label{
 }
 .billing-hero:not(:has(.billing-summary > :not([hidden]))) + .billing-meta:not([hidden]){
   margin-top: 0;
-  padding-top: 0;
+  padding: 2px 0 6px;
   border-top: none;
+}
+.billing-hero:not(:has(.billing-summary > :not([hidden]))) + .billing-meta:not([hidden]) .billing-meta__pair{
+  padding-top: 16px;
+  padding-bottom: 18px;
 }
 .billing-meta[hidden],
 .billing-actions[hidden],
@@ -12361,12 +12364,12 @@ label{
   flex-direction: column;
   justify-content: flex-start;
   margin: 0;
-  padding: 12px 16px;
+  padding: 14px 16px;
   min-width: 0;
 }
 @media (min-width: 760px){
   .billing-meta__pair{
-    padding: 12px 18px;
+    padding: 16px 20px;
   }
   .billing-meta__pair:first-child{
     padding-left: 0;
@@ -12472,9 +12475,9 @@ label{
 }
 
 .billing-actions{
-  margin-top: var(--billing-space-3);
-  padding-top: 28px;
-  border-top: var(--billing-rule);
+  margin-top: 30px;
+  padding-top: 30px;
+  border-top: 1px solid rgba(17, 24, 39, 0.08);
   max-width: 660px;
   width: 100%;
 }
@@ -12486,7 +12489,7 @@ label{
   color: rgba(15, 23, 42, 0.96);
 }
 .billing-actions__hint{
-  margin: 0 0 18px;
+  margin: 0 0 22px;
   max-width: none;
   font-size: 0.875rem;
   line-height: 1.5;
@@ -12507,17 +12510,17 @@ label{
   align-items: stretch;
   gap: 12px;
   margin: 0;
-  width: 100%;
-  max-width: 440px;
+  width: auto;
+  max-width: none;
 }
 .billing-actions--scheduled-cancel .billing-action-btn--primary,
 .billing-actions--scheduled-cancel .billing-action-btn--secondary{
-  flex: 1 1 0;
-  width: 0;
-  min-width: 0;
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 168px;
   max-width: none;
   min-height: 42px;
-  padding: 11px 16px;
+  padding: 11px 18px;
   font-size: 0.875rem;
   white-space: nowrap;
 }
@@ -12545,7 +12548,7 @@ label{
   white-space: nowrap;
 }
 .billing-actions__reassure{
-  margin: 12px 0 0;
+  margin: 16px 0 0;
   max-width: 420px;
   font-size: 0.75rem;
   font-weight: 500;
@@ -13050,6 +13053,12 @@ html.bw-billing-readonly .cal-day-balance-hit{
   .billing-hero__activate{
     max-width: none;
     width: 100%;
+  }
+  .billing-actions--scheduled-cancel .billing-action-btn--primary,
+  .billing-actions--scheduled-cancel .billing-action-btn--secondary{
+    flex: 1 1 auto;
+    width: auto;
+    min-width: 0;
   }
   .billing-actions__secondary{
     max-width: none;
