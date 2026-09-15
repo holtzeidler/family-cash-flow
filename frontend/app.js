@@ -8905,14 +8905,6 @@ function formatShortDateLong(iso) {
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
-/** Stripe-style short badge date: "Oct 10" */
-function formatBillingMonthDay(iso) {
-  if (!iso) return "";
-  const d = new Date(`${iso}T12:00:00`);
-  if (Number.isNaN(d.getTime())) return String(iso);
-  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-}
-
 /** Full access-through date: "October 10, 2026" */
 function formatBillingLongDate(iso) {
   if (!iso) return "—";
@@ -9541,7 +9533,7 @@ function resolveBillingLifecycleModel(status, { hasFamily = true } = {}) {
         priceLabel: "Billing",
         price: priceLabel,
         dateLabel: "Next billing date",
-        date: periodEnd ? formatShortDateLong(periodEnd) : "—",
+        date: periodEnd ? formatBillingLongDate(periodEnd) : "—",
         statusLabel: "Payment issue",
         statusTone: "warning",
       },
@@ -9559,38 +9551,32 @@ function resolveBillingLifecycleModel(status, { hasFamily = true } = {}) {
 
   if (subscribed && cancelAtEnd) {
     const accessLong = periodEnd ? formatBillingLongDate(periodEnd) : "";
-    const cancelsShort = periodEnd ? formatBillingMonthDay(periodEnd) : "";
+    const accessLede = accessLong
+      ? `You'll keep full access through ${accessLong}.`
+      : "You'll keep full access through the end of your current billing period.";
     return {
       mode: "canceling",
       productName,
       productCopy,
       showMeta: true,
       showManage: true,
-      showCancel: true,
+      showCancel: false,
       callout: null,
       primaryCta: null,
       meta: {
         plan: productName,
         priceLabel: "Billing",
         price: priceLabel,
-        dateLabel: "Access through",
+        dateLabel: "Ends on",
         date: accessLong || "—",
-        statusLabel: cancelsShort ? `Cancels ${cancelsShort}` : "Canceled",
-        statusTone: "muted",
+        statusLabel: "Active",
+        statusTone: "paid",
         statusIcon: false,
       },
-      manageTitle: BILLING_MANAGE_TITLE,
-      manageHint: BILLING_MANAGE_HINT,
-      cycleAction,
-      cancelSection: {
-        title: "Your subscription is set to end",
-        lede: accessLong
-          ? `You'll keep full access through ${accessLong}.`
-          : "You'll keep full access through the end of your current billing period.",
-        buttonLabel: "Keep my subscription",
-        action: "keep",
-        tone: "keep",
-      },
+      manageTitle: "Your subscription is set to end",
+      manageHint: `${accessLede} You can still manage your payment details and invoices while your subscription is active.`,
+      cycleAction: null,
+      keepAction: { label: "Keep my subscription", action: "keep" },
     };
   }
 
@@ -9609,7 +9595,7 @@ function resolveBillingLifecycleModel(status, { hasFamily = true } = {}) {
         priceLabel: "Billing",
         price: priceLabel,
         priceSupport: billingPriceSupportCopy(lookupKey),
-        dateLabel: "Next billing date",
+        dateLabel: "Next renewal",
         date: periodEnd ? formatBillingLongDate(periodEnd) : "—",
         statusLabel: "Active",
         statusTone: "paid",
@@ -9699,10 +9685,11 @@ function resolveBillingLifecycleModel(status, { hasFamily = true } = {}) {
         plan: productName,
         priceLabel: "Billing",
         price: monthlyPrice,
-        dateLabel: "Ended",
-        date: periodEnd ? formatShortDateLong(periodEnd) : "—",
-        statusLabel: "Canceled",
+        dateLabel: "Ended on",
+        date: periodEnd ? formatBillingLongDate(periodEnd) : "—",
+        statusLabel: "Ended",
         statusTone: "muted",
+        statusIcon: false,
       },
       manageHint: "",
       cancelLede: "",
@@ -10145,9 +10132,71 @@ function setBillingActionTone(btn, tone) {
   btn.classList.toggle("billing-action-btn--secondary", tone !== "primary");
 }
 
+function billingCancelButtonEl() {
+  return (
+    document.getElementById("billingCancelBtn") ||
+    document.querySelector("#billingCancelSection [data-billing-action]") ||
+    document.querySelector('[data-billing-action="keep"]')
+  );
+}
+
+function restoreBillingCancelButtonHome() {
+  const section = document.getElementById("billingCancelSection");
+  const btn = billingCancelButtonEl();
+  if (!btn) return;
+  btn.classList.remove("billing-action-btn", "billing-action-btn--primary", "billing-action-btn--secondary");
+  if (!btn.classList.contains("billing-cancel__request")) {
+    btn.classList.add("billing-cancel__request");
+  }
+  if (section && btn.parentElement !== section) section.appendChild(btn);
+}
+
 function applyBillingCycleAction(model) {
   const manage = billingDom().manage || document.getElementById("billingManageSection");
   const cycleBtn = billingDom().cycleBtn || manage?.querySelector('[data-billing-action="cycle"]');
+  const portalBtn =
+    manage?.querySelector('[data-billing-action="portal"]') ||
+    manage?.querySelector('[data-billing-action="payment"]');
+  const primarySlot = manage?.querySelector(".billing-actions__primary");
+  const secondarySlot = manage?.querySelector(".billing-actions__secondary");
+  const scheduledCancel = model.mode === "canceling";
+  if (manage) {
+    manage.classList.toggle("billing-actions--scheduled-cancel", scheduledCancel);
+    if (scheduledCancel) {
+      manage.classList.remove("billing-actions--promote-annual", "billing-actions--interval-annual");
+    }
+  }
+
+  if (scheduledCancel) {
+    if (cycleBtn) {
+      setBillingElHidden(cycleBtn, true);
+      if (secondarySlot) secondarySlot.appendChild(cycleBtn);
+    }
+    const keepBtn = billingCancelButtonEl();
+    const keep = model.keepAction || { label: "Keep my subscription", action: "keep" };
+    if (keepBtn) {
+      keepBtn.textContent = keep.label || "Keep my subscription";
+      keepBtn.setAttribute("data-billing-action", keep.action || "keep");
+      keepBtn.classList.remove(
+        "billing-cancel__request",
+        "billing-cancel__request--keep",
+        "billing-cancel__request--danger"
+      );
+      keepBtn.classList.add("billing-action-btn");
+      setBillingActionTone(keepBtn, "primary");
+    }
+    setBillingActionTone(portalBtn, "secondary");
+    if (primarySlot) {
+      if (keepBtn) primarySlot.appendChild(keepBtn);
+      if (portalBtn) primarySlot.appendChild(portalBtn);
+      setBillingElHidden(primarySlot, false);
+    }
+    if (secondarySlot) setBillingElHidden(secondarySlot, true);
+    return;
+  }
+
+  if (cycleBtn) setBillingElHidden(cycleBtn, false);
+  if (secondarySlot) setBillingElHidden(secondarySlot, false);
   if (!cycleBtn) return;
   const action = model.cycleAction;
   if (action) {
@@ -10160,11 +10209,6 @@ function applyBillingCycleAction(model) {
     manage.classList.toggle("billing-actions--promote-annual", promoteAnnual);
     manage.classList.toggle("billing-actions--interval-annual", !promoteAnnual && !!action);
   }
-  const portalBtn =
-    manage?.querySelector('[data-billing-action="portal"]') ||
-    manage?.querySelector('[data-billing-action="payment"]');
-  const primarySlot = manage?.querySelector(".billing-actions__primary");
-  const secondarySlot = manage?.querySelector(".billing-actions__secondary");
   if (!primarySlot || !secondarySlot) return;
   if (promoteAnnual) {
     setBillingActionTone(cycleBtn, "primary");
@@ -10182,6 +10226,7 @@ function applyBillingCycleAction(model) {
 }
 
 function applyBillingCancelSection(model) {
+  restoreBillingCancelButtonHome();
   const dom = billingDom();
   const sectionEl = dom.cancel || billingCancelSectionEl;
   if (!sectionEl) return;

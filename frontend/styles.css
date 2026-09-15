@@ -12492,6 +12492,29 @@ label{
 .billing-actions__primary[hidden]{
   display: none !important;
 }
+.billing-actions__secondary[hidden]{
+  display: none !important;
+}
+.billing-actions--scheduled-cancel .billing-actions__primary{
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 12px;
+  margin: 0;
+  width: 100%;
+  max-width: 440px;
+}
+.billing-actions--scheduled-cancel .billing-action-btn--primary,
+.billing-actions--scheduled-cancel .billing-action-btn--secondary{
+  flex: 1 1 0;
+  width: 0;
+  min-width: 0;
+  max-width: none;
+  min-height: 42px;
+  padding: 11px 16px;
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
 .billing-actions__secondary{
   display: flex;
   flex-wrap: nowrap;
@@ -12543,6 +12566,9 @@ label{
   cursor: pointer;
   text-decoration: none;
   transition: background-color 0.14s ease, border-color 0.14s ease, color 0.14s ease, box-shadow 0.14s ease, opacity 0.14s ease;
+}
+.billing-action-btn[hidden]{
+  display: none !important;
 }
 .billing-action-btn:disabled,
 .billing-action-btn[aria-disabled="true"]{
