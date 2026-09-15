@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>Pricing — BalanceWhiz</title>
     <!-- bw:seo-head -->
-    <meta name="description" content="Simple pricing for BalanceWhiz: forecast your checking balance free for your first month. No bank connection required. Cancel anytime." />
+    <meta name="description" content="Simple pricing for BalanceWhiz: forecast your checking balance free for 14 days. No bank connection required. Cancel anytime." />
     <link rel="canonical" href="https://balancewhiz.com/plans/" />
     <meta name="robots" content="index, follow" />
     <meta name="theme-color" content="#0B3D2E" />
     <meta property="og:site_name" content="BalanceWhiz" />
     <meta property="og:title" content="Pricing — BalanceWhiz" />
-    <meta property="og:description" content="Simple pricing for BalanceWhiz: forecast your checking balance free for your first month. No bank connection required. Cancel anytime." />
+    <meta property="og:description" content="Simple pricing for BalanceWhiz: forecast your checking balance free for 14 days. No bank connection required. Cancel anytime." />
     <meta property="og:url" content="https://balancewhiz.com/plans/" />
     <meta property="og:type" content="website" />
     <meta property="og:image" content="https://balancewhiz.com/assets/og-image.png" />
@@ -20,7 +20,7 @@
     <meta property="og:locale" content="en_US" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Pricing — BalanceWhiz" />
-    <meta name="twitter:description" content="Simple pricing for BalanceWhiz: forecast your checking balance free for your first month. No bank connection required. Cancel anytime." />
+    <meta name="twitter:description" content="Simple pricing for BalanceWhiz: forecast your checking balance free for 14 days. No bank connection required. Cancel anytime." />
     <meta name="twitter:image" content="https://balancewhiz.com/assets/og-image.png" />
     <link rel="icon" href="../favicon.ico" sizes="any" />
     <link rel="icon" href="../favicon-32.png" type="image/png" sizes="32x32" />
@@ -32,7 +32,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=734" />
+    <link rel="stylesheet" href="../styles.css?v=735" />
   </head>
   <body class="plans-page plans-page--polished">
     
@@ -63,7 +63,7 @@
         </div>
       </div>
 
-      <main class="grid">
+      <main id="main-content" class="grid">
         <section class="plans-hero" aria-labelledby="plansHeroTitle">
           <p class="plans-hero__eyebrow">Pricing</p>
           <h1 id="plansHeroTitle" class="plans-hero__title">Know what cash is safe to use.</h1>
@@ -77,16 +77,36 @@
           <div class="plans-grid" role="list">
             <article class="plan-card plan-card--polished" role="listitem">
               <header class="plan-card__head">
-                <p class="plan-card__eyebrow">Cash Forecast</p>
-                <div class="plan-price">
-                  <span class="plan-price__currency" aria-hidden="true">$</span>
-                  <span class="plan-price__main">5.99</span>
-                  <span class="plan-price__sub">per month</span>
+                <div class="plan-cycle" role="radiogroup" aria-label="Billing options">
+                  <label class="plan-cycle__opt">
+                    <input type="radio" name="plan_cycle" value="monthly" checked />
+                    <span class="plan-cycle__label">Monthly</span>
+                  </label>
+                  <label class="plan-cycle__opt">
+                    <input type="radio" name="plan_cycle" value="annual" />
+                    <span class="plan-cycle__label">
+                      Annual
+                      <span class="plan-cycle__badge">Save 17%</span>
+                    </span>
+                  </label>
                 </div>
+
+                <div class="plan-price" id="planPriceDisplay" data-cycle="monthly">
+                  <div class="plan-price__row" data-price-for="monthly">
+                    <span class="plan-price__currency" aria-hidden="true">$</span>
+                    <span class="plan-price__main">5.99</span>
+                    <span class="plan-price__sub">/month</span>
+                  </div>
+                  <div class="plan-price__row" data-price-for="annual" hidden>
+                    <span class="plan-price__currency" aria-hidden="true">$</span>
+                    <span class="plan-price__main">59.99</span>
+                    <span class="plan-price__sub">/year</span>
+                  </div>
+                  <p class="plan-price__equiv" data-price-equiv hidden>Equivalent to $5.00/month</p>
+                </div>
+
                 <p class="plan-price__caption">
-                  <span class="plan-price__free">Free for your first month</span>
-                  <span class="plan-price__dot" aria-hidden="true">·</span>
-                  <span>Cancel anytime</span>
+                  <span class="plan-price__free">Free for 14 days</span>
                 </p>
               </header>
 
@@ -95,60 +115,58 @@
                   class="plan-cta plan-cta--primary"
                   href="../signup/?plan=base"
                   role="button"
-                  aria-label="Get started free for your first month"
+                  aria-label="Get started free for 14 days"
                 >Get Started Free</a>
-                <p class="plan-cta-reassurance">No credit card required during your free month</p>
+                <p class="plan-cta-reassurance">No credit card required during your 14-day trial.</p>
               </div>
 
               <ul class="plan-features plan-features--outcomes" aria-label="What's included">
                 <li><span class="plan-features__icon" aria-hidden="true">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                 </span><span>See upcoming cash pressure before it happens</span></li>
                 <li><span class="plan-features__icon" aria-hidden="true">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                 </span><span>Know what money can safely leave checking</span></li>
                 <li><span class="plan-features__icon" aria-hidden="true">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                 </span><span>Forecast bills, paychecks, and transfers together</span></li>
                 <li><span class="plan-features__icon" aria-hidden="true">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                 </span><span>Catch low-balance periods early</span></li>
                 <li><span class="plan-features__icon" aria-hidden="true">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                 </span><span>Keep extra cash earning interest</span></li>
               </ul>
             </article>
           </div>
 
-          <div class="plans-micro-faq" aria-label="Quick answers">
-            <div class="plans-micro-faq__item">
-              <span class="plans-micro-faq__q">Do I connect my bank?</span>
-              <span class="plans-micro-faq__a">No</span>
-            </div>
-            <div class="plans-micro-faq__item">
-              <span class="plans-micro-faq__q">Can I cancel anytime?</span>
-              <span class="plans-micro-faq__a">Yes</span>
-            </div>
-            <div class="plans-micro-faq__item">
-              <span class="plans-micro-faq__q">How long does setup take?</span>
-              <span class="plans-micro-faq__a">About 5 minutes</span>
-            </div>
-          </div>
-
           <ul class="plans-trust" aria-label="What to expect">
-            <li><span class="plans-trust__check" aria-hidden="true">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-            </span>No bank connection required</li>
-            <li><span class="plans-trust__check" aria-hidden="true">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-            </span>Cancel anytime</li>
-            <li><span class="plans-trust__check" aria-hidden="true">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-            </span>Setup in minutes</li>
-            <li><span class="plans-trust__check" aria-hidden="true">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-            </span>Privacy-first forecasting</li>
+            <li><span class="plans-trust__check" aria-hidden="true">✓</span>No bank connection required</li>
+            <li><span class="plans-trust__check" aria-hidden="true">✓</span>No credit card for your trial</li>
+            <li><span class="plans-trust__check" aria-hidden="true">✓</span>Setup takes about 5 minutes</li>
+            <li><span class="plans-trust__check" aria-hidden="true">✓</span>Cancel anytime</li>
           </ul>
+        </section>
+
+        <section class="plans-how" aria-labelledby="plansHowTitle">
+          <h2 id="plansHowTitle" class="plans-how__title">See your cash flow before it happens</h2>
+          <ol class="plans-how__grid">
+            <li class="plans-how__step">
+              <span class="plans-how__num" aria-hidden="true">1</span>
+              <h3 class="plans-how__step-title">Start with your balance</h3>
+              <p class="plans-how__step-copy">Enter your current checking balance.</p>
+            </li>
+            <li class="plans-how__step">
+              <span class="plans-how__num" aria-hidden="true">2</span>
+              <h3 class="plans-how__step-title">Add what’s coming</h3>
+              <p class="plans-how__step-copy">Add recurring bills, paychecks, transfers, and other transactions.</p>
+            </li>
+            <li class="plans-how__step">
+              <span class="plans-how__num" aria-hidden="true">3</span>
+              <h3 class="plans-how__step-title">See what’s safe</h3>
+              <p class="plans-how__step-copy">BalanceWhiz forecasts your future balance so you can see cash pressure and know what money can safely move.</p>
+            </li>
+          </ol>
         </section>
 
         <section class="plans-audience" aria-labelledby="plansAudienceTitle">
@@ -156,39 +174,30 @@
           <div class="plans-audience__grid">
             <div class="plans-audience__item">
               <span class="plans-audience__icon" aria-hidden="true">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21v-1a4 4 0 0 1 4-4h3"/><circle cx="9" cy="8" r="3"/><path d="M16 11a3 3 0 1 0 0-6"/><path d="M21 21v-1a4 4 0 0 0-3-3.87"/></svg>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21v-1a4 4 0 0 1 4-4h3"/><circle cx="9" cy="8" r="3"/><path d="M16 11a3 3 0 1 0 0-6"/><path d="M21 21v-1a4 4 0 0 0-3-3.87"/></svg>
               </span>
               <p>Families managing large monthly bills</p>
             </div>
             <div class="plans-audience__item">
               <span class="plans-audience__icon" aria-hidden="true">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3l4 4-4 4"/><path d="M3 7h18"/><path d="M7 21l-4-4 4-4"/><path d="M21 17H3"/></svg>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3l4 4-4 4"/><path d="M3 7h18"/><path d="M7 21l-4-4 4-4"/><path d="M21 17H3"/></svg>
               </span>
               <p>People moving money between checking and savings</p>
             </div>
             <div class="plans-audience__item">
               <span class="plans-audience__icon" aria-hidden="true">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 17 9 11 13 15 21 7"/><polyline points="14 7 21 7 21 14"/></svg>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 17 9 11 13 15 21 7"/><polyline points="14 7 21 7 21 14"/></svg>
               </span>
               <p>Variable-income households</p>
             </div>
             <div class="plans-audience__item">
               <span class="plans-audience__icon" aria-hidden="true">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v6l4 2"/></svg>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v6l4 2"/></svg>
               </span>
               <p>Anyone tired of mentally tracking cash flow</p>
             </div>
           </div>
         </section>
-
-        <figure class="plans-quote" aria-label="Customer reassurance">
-          <svg class="plans-quote__mark" width="32" height="28" viewBox="0 0 32 28" aria-hidden="true">
-            <path d="M0 28V14C0 6.27 6.27 0 14 0v6c-4.42 0-8 3.58-8 8h6v14H0zm18 0V14c0-7.73 6.27-14 14-14v6c-4.42 0-8 3.58-8 8h6v14H18z" fill="currentColor"/>
-          </svg>
-          <blockquote class="plans-quote__text">
-            I finally know what money is safe to use.
-          </blockquote>
-        </figure>
       </main>
 
             <footer class="app-footer" role="contentinfo">
@@ -231,5 +240,29 @@
         </div>
       </footer>
     </div>
+    <script>
+      (function () {
+        var root = document.getElementById("planPriceDisplay");
+        if (!root) return;
+        var radios = document.querySelectorAll('input[name="plan_cycle"]');
+        var monthlyRow = root.querySelector('[data-price-for="monthly"]');
+        var annualRow = root.querySelector('[data-price-for="annual"]');
+        var equiv = root.querySelector("[data-price-equiv]");
+
+        function syncCycle() {
+          var selected = document.querySelector('input[name="plan_cycle"]:checked');
+          var cycle = selected && selected.value === "annual" ? "annual" : "monthly";
+          root.setAttribute("data-cycle", cycle);
+          if (monthlyRow) monthlyRow.hidden = cycle !== "monthly";
+          if (annualRow) annualRow.hidden = cycle !== "annual";
+          if (equiv) equiv.hidden = cycle !== "annual";
+        }
+
+        radios.forEach(function (radio) {
+          radio.addEventListener("change", syncCycle);
+        });
+        syncCycle();
+      })();
+    </script>
   </body>
 </html>
