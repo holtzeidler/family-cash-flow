@@ -8913,6 +8913,14 @@ function formatBillingLongDate(iso) {
   return d.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
 }
 
+/** Abbreviated month and day: "Sep 13" */
+function formatBillingShortMonthDay(iso) {
+  if (!iso) return "";
+  const d = new Date(`${iso}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
 function parseBillingDateTime(value) {
   const s = String(value || "").trim();
   if (!s) return null;
@@ -9551,9 +9559,10 @@ function resolveBillingLifecycleModel(status, { hasFamily = true } = {}) {
 
   if (subscribed && cancelAtEnd) {
     const accessLong = periodEnd ? formatBillingLongDate(periodEnd) : "";
+    const accessShort = periodEnd ? formatBillingShortMonthDay(periodEnd) : "";
     const accessLede = accessLong
-      ? `You'll keep full access through ${accessLong}.`
-      : "You'll keep full access through the end of your current billing period.";
+      ? `You'll keep full access through ${accessLong}. You can keep your subscription anytime before then.`
+      : "You'll keep full access through the end of your current billing period. You can keep your subscription anytime before then.";
     return {
       mode: "canceling",
       productName,
@@ -9569,7 +9578,7 @@ function resolveBillingLifecycleModel(status, { hasFamily = true } = {}) {
         price: priceLabel,
         dateLabel: "Access Ends",
         date: accessLong || "—",
-        statusLabel: "Cancelled",
+        statusLabel: accessShort ? `Cancels ${accessShort}` : "Cancels",
         statusTone: "muted",
         statusIcon: false,
       },
