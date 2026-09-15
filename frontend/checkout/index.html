@@ -32,7 +32,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=780" />
+    <link rel="stylesheet" href="../styles.css?v=781" />
   </head>
   <body class="checkout-page plans-page plans-page--polished">
     <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -63,7 +63,7 @@
       <main id="main-content" class="grid">
         <section class="checkout-wrap" aria-labelledby="checkoutTitle">
           <header class="checkout-hero">
-            <h1 id="checkoutTitle" class="checkout-hero__title">Subscribe to Cash Forecast</h1>
+            <h1 id="checkoutTitle" class="checkout-hero__title">Choose your billing option</h1>
             <p class="checkout-hero__subtitle">
               Choose how you'd like to pay.
             </p>
@@ -123,10 +123,11 @@
               <!-- Stripe Price lookup_key — must match Prices in your Stripe Dashboard -->
               <input type="hidden" id="lookupKey" name="lookup_key" value="cash_forecast_annual" />
               <input type="hidden" id="familyId" name="family_id" value="" />
-              <p id="checkoutStatus" class="checkout-form__status" role="status" aria-live="polite">Preparing checkout…</p>
+              <p id="checkoutStatus" class="checkout-form__status" hidden role="status" aria-live="polite"></p>
               <p id="checkoutErr" class="error checkout-form__error" hidden role="alert"></p>
-              <button id="checkout-and-portal-button" class="checkout-form__submit" type="button" aria-disabled="true">
-                Continue with annual
+              <button id="checkout-and-portal-button" class="checkout-form__submit checkout-form__submit--busy" type="button" disabled aria-disabled="true" aria-busy="true">
+                <span class="checkout-form__spinner" aria-hidden="true"></span>
+                <span class="checkout-form__submit-label">Preparing secure checkout…</span>
               </button>
               <p class="checkout-form__reassurance" id="checkoutReassure">
                 Payment is completed securely through Stripe.
@@ -180,7 +181,7 @@
         var reassureEl = document.getElementById("checkoutReassure");
         var cta = document.getElementById("checkoutNavCta");
         var checkoutReady = false;
-        var blockReason = "Preparing checkout…";
+        var blockReason = "Preparing secure checkout…";
         var submitting = false;
         var defaultReassure = "Payment is completed securely through Stripe.";
 
@@ -263,16 +264,44 @@
           return "Continue with annual";
         }
 
+        function setButtonContent(label, opts) {
+          opts = opts || {};
+          if (!btn) return;
+          btn.classList.toggle("checkout-form__submit--busy", !!opts.busy);
+          if (opts.busy) {
+            btn.disabled = true;
+            btn.setAttribute("aria-busy", "true");
+            btn.setAttribute("aria-disabled", "true");
+            btn.innerHTML =
+              '<span class="checkout-form__spinner" aria-hidden="true"></span>' +
+              '<span class="checkout-form__submit-label"></span>';
+            var lab = btn.querySelector(".checkout-form__submit-label");
+            if (lab) lab.textContent = label || "Preparing secure checkout…";
+            return;
+          }
+          btn.removeAttribute("aria-busy");
+          btn.textContent = label || checkoutCtaLabel();
+        }
+
+        function setPreparing() {
+          checkoutReady = false;
+          blockReason = "Preparing secure checkout…";
+          if (btn) {
+            btn.classList.remove("checkout-form__submit--blocked");
+            setButtonContent("Preparing secure checkout…", { busy: true });
+          }
+          setStatus("", false);
+        }
+
         function setBlocked(reason, opts) {
           opts = opts || {};
           checkoutReady = false;
           blockReason = reason || "Checkout isn’t ready yet.";
           if (btn) {
-            btn.disabled = false; // keep clickable so we can explain why
+            btn.disabled = false;
             btn.setAttribute("aria-disabled", "true");
             btn.classList.add("checkout-form__submit--blocked");
-            if (opts.buttonLabel) btn.textContent = opts.buttonLabel;
-            else if (!submitting) btn.textContent = checkoutCtaLabel();
+            setButtonContent(opts.buttonLabel || checkoutCtaLabel());
           }
           setStatus(blockReason, !!opts.asError);
         }
@@ -284,7 +313,7 @@
             btn.disabled = false;
             btn.removeAttribute("aria-disabled");
             btn.classList.remove("checkout-form__submit--blocked");
-            btn.textContent = checkoutCtaLabel();
+            setButtonContent(checkoutCtaLabel());
           }
           setStatus("", false);
           if (reassureEl) reassureEl.textContent = defaultReassure;
@@ -368,7 +397,7 @@
               selected.value === "annual" ? "yearly" : "monthly"
             );
           } catch (_) {}
-          if (checkoutReady && !submitting) btn.textContent = checkoutCtaLabel();
+          if (checkoutReady && !submitting) setButtonContent(checkoutCtaLabel());
         }
 
         radios.forEach(function (radio) {
@@ -377,9 +406,41 @@
         try {
           var params = new URLSearchParams(window.location.search || "");
           var wantLookup = String(params.get("lookup_key") || "").trim();
+          var wantCycle = String(params.get("billing_cycle") || params.get("cycle") || "")
+            .trim()
+            .toLowerCase();
+          var matched = false;
           if (wantLookup) {
             radios.forEach(function (radio) {
-              radio.checked = radio.getAttribute("data-lookup-key") === wantLookup;
+              var on = radio.getAttribute("data-lookup-key") === wantLookup;
+              radio.checked = on;
+              if (on) matched = true;
+            });
+            if (!matched) {
+              var lower = wantLookup.toLowerCase();
+              radios.forEach(function (radio) {
+                var on =
+                  radio.value === "monthly"
+                    ? lower.indexOf("month") !== -1
+                    : lower.indexOf("annual") !== -1 || lower.indexOf("year") !== -1;
+                radio.checked = on;
+                if (on) matched = true;
+              });
+            }
+          } else if (wantCycle === "monthly" || wantCycle === "month") {
+            radios.forEach(function (radio) {
+              radio.checked = radio.value === "monthly";
+            });
+            matched = true;
+          } else if (wantCycle === "annual" || wantCycle === "yearly" || wantCycle === "year") {
+            radios.forEach(function (radio) {
+              radio.checked = radio.value === "annual";
+            });
+            matched = true;
+          }
+          if (wantLookup && !matched) {
+            radios.forEach(function (radio) {
+              radio.checked = radio.value === "annual";
             });
           }
         } catch (_) {}
@@ -419,9 +480,7 @@
           }
           submitting = true;
           btn.classList.remove("checkout-form__submit--blocked");
-          btn.setAttribute("aria-disabled", "true");
-          btn.textContent = "Redirecting to Stripe…";
-          setStatus("Creating your secure Stripe Checkout session…", false);
+          setButtonContent("Redirecting to Stripe…", { busy: true });
 
           var body = new FormData(form);
           fetchJson(form.action, {
@@ -461,9 +520,10 @@
               submitting = false;
               checkoutReady = true;
               if (btn) {
+                btn.disabled = false;
                 btn.removeAttribute("aria-disabled");
                 btn.classList.remove("checkout-form__submit--blocked");
-                btn.textContent = checkoutCtaLabel();
+                setButtonContent(checkoutCtaLabel());
               }
               setStatus(err && err.message ? err.message : String(err), true);
             });
@@ -486,7 +546,7 @@
         btn.addEventListener("click", onCheckoutClick);
         form.addEventListener("submit", onCheckoutClick);
 
-        setBlocked("Preparing checkout…", { buttonLabel: "Preparing…" });
+        setPreparing();
 
         fetchJson(api + "/api/families", {
           method: "GET",

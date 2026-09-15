@@ -32973,7 +32973,7 @@ body.checkout-page .container > .grid{
   min-width: 0;
 }
 .checkout-value{
-  margin: 0 0 32px;
+  margin: 0 0 20px;
   padding: 0;
   border: 0;
 }
@@ -33102,6 +33102,7 @@ body.checkout-page .container > .grid{
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 8px;
   min-height: 46px;
   margin: 0;
   padding: 11px 20px;
@@ -33165,6 +33166,33 @@ body.checkout-page .container > .grid{
 .checkout-form__submit:disabled{
   opacity: 0.55;
   cursor: not-allowed;
+}
+.checkout-form__submit--busy{
+  cursor: wait;
+  pointer-events: none;
+  transform: none;
+  box-shadow: none;
+}
+.checkout-form__submit--busy:disabled{
+  opacity: 0.92;
+  cursor: wait;
+}
+.checkout-form__submit--busy:hover{
+  background: var(--accent);
+  transform: none;
+  box-shadow: none;
+}
+.checkout-form__spinner{
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #fff;
+  animation: bwspin 0.8s linear infinite;
+}
+.checkout-form__submit-label{
+  min-width: 0;
 }
 
 /* ——— Checkout success ——— */
