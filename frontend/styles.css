@@ -11937,6 +11937,7 @@ label{
   color: rgba(71, 85, 105, 0.72);
 }
 .billing-hero__title{
+  display: none !important;
   margin-top: 0;
   font-size: clamp(1.3rem, 1.12rem + 0.4vw, 1.5rem);
   font-weight: 820;
@@ -12339,6 +12340,11 @@ label{
   margin: var(--billing-space-3) 0 0;
   padding: var(--billing-space-3) 0 0;
   border-top: var(--billing-rule);
+}
+.billing-hero:not(:has(.billing-summary > :not([hidden]))) + .billing-meta:not([hidden]){
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
 }
 .billing-meta[hidden],
 .billing-actions[hidden],
