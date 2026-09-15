@@ -9480,10 +9480,10 @@ function resolveBillingLifecycleModel(status, { hasFamily = true } = {}) {
       hideTitle: true,
       support: "",
       monthlyLabel: "Choose monthly",
-      annualLabel: "Choose annually",
+      annualLabel: "Choose annual",
       annualNote: "",
       savings: "",
-      reassure: "You'll be charged when you subscribe. Cancel anytime.",
+      reassure: "You'll be charged when you subscribe · Cancel anytime.",
       trialLayout: false,
       pricingCards: true,
       annualPlan: "Annual",
@@ -9707,7 +9707,7 @@ function resolveBillingLifecycleModel(status, { hasFamily = true } = {}) {
       kind: "trial_complete",
       eyebrow: "14-day free trial complete",
       title: "Keep your forecast working for you.",
-      text: "Your forecast is still here. Subscribe to keep it current and continue adding transactions and updating your balance.",
+      text: "Your forecast is still here. Subscribe to keep it current.",
     },
     primaryCta: null,
     subscribeChoices: endedSubscribeChoices(),
@@ -10104,7 +10104,7 @@ function setBillingSubscribeChoices(choices) {
   }
   if (dom.subscribeAnnual) {
     if (choices.pricingCards) {
-      dom.subscribeAnnual.textContent = choices.annualLabel || "Choose annually";
+      dom.subscribeAnnual.textContent = choices.annualLabel || "Choose annual";
     } else {
       setSubscribeOptionContent(
         dom.subscribeAnnual,
@@ -10253,7 +10253,7 @@ function applyBillingCancelSection(model) {
   }
 }
 
-/** Expired-trial only: merge overview + side into one two-column Cash Forecast panel. */
+/** Expired-trial only: merge overview + side into one two-column Billing panel. */
 function applyBillingEndedPanelLayout(enabled) {
   const shell = document.querySelector(".billing-page__shell");
   const overview = document.querySelector(".billing-overview");
