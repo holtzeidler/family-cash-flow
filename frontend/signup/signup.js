@@ -3566,10 +3566,10 @@ async function finishForecastBuildOverlay(overlayEl, { message = "Opening your f
   hideForecastBuildOverlay(overlayEl);
 }
 
-// Plan note (for future billing wiring).
+// Plan note is only used on account-setup; the create-account card has a static header.
 try {
   const plan = parsePlanFromQuery();
-  if (signupPlanNoteEl && plan) {
+  if (isAccountSetupPath() && signupPlanNoteEl && plan) {
     signupPlanNoteEl.style.display = "block";
     signupPlanNoteEl.classList.toggle("signup-plan-note--pro", plan === "pro");
     signupPlanNoteEl.textContent = plan === "pro" ? "Selected Plan: Add Budgeting" : "Selected Plan: Cash Forecast";

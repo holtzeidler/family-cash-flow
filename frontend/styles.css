@@ -16138,6 +16138,114 @@ body.signup-page #signupPlanNote.callout--muted.signup-plan-note--pro{
   background: #5b67b6;
 }
 
+/* Compact create-account card (not the account-setup wizard) */
+body.login-page.signup-page:not(.account-setup-page):not(.invite-page){
+  background: linear-gradient(180deg, #fafbfc 0%, #f4f6f8 100%);
+}
+body.login-page.signup-page:not(.account-setup-page):not(.invite-page) .container > .grid{
+  width: min(760px, calc(100% - 32px));
+  max-width: 760px;
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: clamp(20px, 4.5vh, 48px);
+}
+body.login-page.signup-page:not(.account-setup-page):not(.invite-page) .auth-section.card.signup-card{
+  background: #ffffff;
+  border: 1px solid #E8EAED;
+  border-radius: 16px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  overflow: hidden;
+}
+body.login-page.signup-page:not(.account-setup-page):not(.invite-page) .signup-card__header{
+  text-align: center;
+  padding: 36px 40px 8px;
+}
+body.login-page.signup-page:not(.account-setup-page):not(.invite-page) .signup-card__title{
+  margin: 0;
+  font-size: clamp(1.35rem, 1.2rem + 0.6vw, 1.6rem);
+  font-weight: 650;
+  letter-spacing: -0.022em;
+  line-height: 1.2;
+  color: #0f172a;
+}
+body.login-page.signup-page:not(.account-setup-page):not(.invite-page) .signup-card__subtitle{
+  margin: 8px 0 0;
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.45;
+  color: rgba(71, 85, 105, 0.88);
+}
+body.login-page.signup-page:not(.account-setup-page):not(.invite-page) .auth-section__head--signup-plan{
+  padding: 0 40px;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+}
+body.login-page.signup-page:not(.account-setup-page):not(.invite-page) #signupPlanNote.callout--muted{
+  margin: 4px 0 0;
+  padding: 8px 12px;
+  text-align: center;
+  color: rgba(71, 85, 105, 0.88);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 1.4;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 10px;
+  background: #F8FAFC;
+  box-shadow: none;
+}
+body.login-page.signup-page:not(.account-setup-page):not(.invite-page) .signup-card > .auth-section__body{
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px 40px 36px;
+  border-radius: 0 0 16px 16px;
+}
+body.login-page.signup-page:not(.account-setup-page):not(.invite-page) .signup-card > .auth-section__body .row{
+  gap: 6px;
+}
+body.login-page.signup-page:not(.account-setup-page):not(.invite-page) .signup-card #signupBtn.top-nav__logout{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 46px;
+  height: auto;
+  margin: 6px 0 0;
+  padding: 11px 20px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: 0.005em;
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+}
+body.login-page.signup-page:not(.account-setup-page):not(.invite-page) .signup-card__trust{
+  margin: 2px 0 0;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.4;
+  color: rgba(100, 116, 139, 0.88);
+}
+@media (max-width: 640px){
+  body.login-page.signup-page:not(.account-setup-page):not(.invite-page) .container > .grid{
+    width: calc(100% - 24px);
+  }
+  body.login-page.signup-page:not(.account-setup-page):not(.invite-page) .signup-card__header{
+    padding: 24px 20px 6px;
+  }
+  body.login-page.signup-page:not(.account-setup-page):not(.invite-page) .auth-section__head--signup-plan{
+    padding: 0 20px;
+  }
+  body.login-page.signup-page:not(.account-setup-page):not(.invite-page) .signup-card > .auth-section__body{
+    padding: 16px 20px 24px;
+    gap: 12px;
+  }
+}
+
 /* Login page accordion */
 .auth-section{
   padding: 0;
