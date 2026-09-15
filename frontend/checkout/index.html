@@ -32,7 +32,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=770" />
+    <link rel="stylesheet" href="../styles.css?v=780" />
   </head>
   <body class="checkout-page plans-page plans-page--polished">
     <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -65,31 +65,49 @@
           <header class="checkout-hero">
             <h1 id="checkoutTitle" class="checkout-hero__title">Subscribe to Cash Forecast</h1>
             <p class="checkout-hero__subtitle">
-              Choose your billing option and continue to secure checkout.
+              Choose how you'd like to pay.
             </p>
           </header>
 
           <section class="checkout-card" aria-label="Cash Forecast checkout">
             <header class="checkout-value">
               <h2 class="checkout-value__title">
-                See what your balance looks like before the money moves.
+                Keep your forecast current.
               </h2>
               <p class="checkout-value__copy">
-                Forecast bills, paychecks, and transfers together so you can spot tight periods and know what cash is safe to use.
+                See upcoming bills and paychecks, spot tight periods early, and know what cash is safe to use.
               </p>
             </header>
 
             <form id="checkoutForm" class="checkout-form" action="/create-checkout-session" method="POST">
               <fieldset class="checkout-billing">
-                <legend class="checkout-billing__legend">Choose how you'd like to pay</legend>
+                <legend class="checkout-billing__legend sr-only">Billing cycle</legend>
                 <div class="checkout-billing__options" role="radiogroup" aria-label="Billing cycle">
+                  <label class="checkout-billing__option">
+                    <input
+                      type="radio"
+                      name="billing_cycle"
+                      value="annual"
+                      data-lookup-key="cash_forecast_annual"
+                      checked
+                    />
+                    <span class="checkout-billing__option-body">
+                      <span class="checkout-billing__option-line">
+                        <span class="checkout-billing__option-title">
+                          Annual
+                          <span class="checkout-billing__badge">Save 17%</span>
+                        </span>
+                        <span class="checkout-billing__option-sep" aria-hidden="true">·</span>
+                        <span class="checkout-billing__option-price">$59.99/year</span>
+                      </span>
+                    </span>
+                  </label>
                   <label class="checkout-billing__option">
                     <input
                       type="radio"
                       name="billing_cycle"
                       value="monthly"
                       data-lookup-key="cash_forecast_monthly"
-                      checked
                     />
                     <span class="checkout-billing__option-body">
                       <span class="checkout-billing__option-line">
@@ -99,34 +117,16 @@
                       </span>
                     </span>
                   </label>
-                  <label class="checkout-billing__option">
-                    <input
-                      type="radio"
-                      name="billing_cycle"
-                      value="annual"
-                      data-lookup-key="cash_forecast_annual"
-                    />
-                    <span class="checkout-billing__option-body">
-                      <span class="checkout-billing__option-line">
-                        <span class="checkout-billing__option-title">
-                          Annual
-                          <span class="checkout-billing__badge">Save ~17%</span>
-                        </span>
-                        <span class="checkout-billing__option-sep" aria-hidden="true">·</span>
-                        <span class="checkout-billing__option-price">$59.99/year</span>
-                      </span>
-                    </span>
-                  </label>
                 </div>
               </fieldset>
 
               <!-- Stripe Price lookup_key — must match Prices in your Stripe Dashboard -->
-              <input type="hidden" id="lookupKey" name="lookup_key" value="cash_forecast_monthly" />
+              <input type="hidden" id="lookupKey" name="lookup_key" value="cash_forecast_annual" />
               <input type="hidden" id="familyId" name="family_id" value="" />
               <p id="checkoutStatus" class="checkout-form__status" role="status" aria-live="polite">Preparing checkout…</p>
               <p id="checkoutErr" class="error checkout-form__error" hidden role="alert"></p>
               <button id="checkout-and-portal-button" class="checkout-form__submit" type="button" aria-disabled="true">
-                Continue to secure checkout
+                Continue with annual
               </button>
               <p class="checkout-form__reassurance" id="checkoutReassure">
                 Payment is completed securely through Stripe.
@@ -258,7 +258,9 @@
         }
 
         function checkoutCtaLabel() {
-          return "Continue to secure checkout";
+          var selected = form && form.querySelector('input[name="billing_cycle"]:checked');
+          if (selected && selected.value === "monthly") return "Continue with monthly";
+          return "Continue with annual";
         }
 
         function setBlocked(reason, opts) {
@@ -373,9 +375,8 @@
           radio.addEventListener("change", syncBilling);
         });
         try {
-          var wantLookup = String(
-            new URLSearchParams(window.location.search || "").get("lookup_key") || ""
-          ).trim();
+          var params = new URLSearchParams(window.location.search || "");
+          var wantLookup = String(params.get("lookup_key") || "").trim();
           if (wantLookup) {
             radios.forEach(function (radio) {
               radio.checked = radio.getAttribute("data-lookup-key") === wantLookup;

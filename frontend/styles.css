@@ -11780,20 +11780,35 @@ label{
   margin: 0;
 }
 
-/* Expired-trial: one Billing card, wider left upgrade group + narrower info sidebar */
+.billing-page:has(.billing-overview--ended),
+.billing-page:has(.billing-overview--ended) .billing-page__shell{
+  flex: 0 0 auto;
+  height: auto;
+  min-height: 0;
+}
 .billing-page__shell--ended{
   grid-template-columns: minmax(0, 1fr);
   gap: 0;
   max-width: 1280px;
+  height: auto;
+  min-height: 0;
+  align-items: start;
+  align-content: start;
 }
 .billing-page__shell--ended > .billing-primary{
   width: 100%;
+  height: auto;
+  min-height: 0;
+  flex: 0 0 auto;
+  align-self: start;
 }
 .billing-overview--ended,
 .billing-overview--natural-height.billing-overview--ended{
-  padding: 20px 24px 44px;
-  height: fit-content;
+  padding: 20px 24px 48px;
+  height: auto;
   min-height: 0;
+  max-height: none;
+  flex: 0 0 auto;
   align-self: start;
 }
 .billing-overview--ended .billing-hero{
@@ -11802,6 +11817,9 @@ label{
   align-items: stretch;
   gap: 0;
   max-width: none;
+  flex: 0 0 auto;
+  height: auto;
+  min-height: 0;
 }
 .billing-overview--ended .billing-hero__title{
   display: none !important;
@@ -11813,6 +11831,8 @@ label{
   width: 100%;
   margin-top: 0;
   align-items: start;
+  height: auto;
+  min-height: 0;
 }
 .billing-overview--ended .billing-ended-main{
   display: flex;
@@ -12065,7 +12085,7 @@ label{
   text-align: left;
 }
 .billing-callout--trial-complete .billing-callout__eyebrow{
-  margin: 0 0 20px;
+  margin: 0 0 10px;
 }
 .billing-callout--trial-complete .billing-callout__title{
   margin: 0 0 12px;
@@ -12304,7 +12324,7 @@ label{
   min-width: 0;
   height: 100%;
   box-sizing: border-box;
-  padding: 12px 22px;
+  padding: 20px 22px;
   border-radius: 12px;
   border: 1px solid rgba(17, 24, 39, 0.1);
   background: #fff;
@@ -12344,6 +12364,20 @@ label{
   font-weight: 550;
   line-height: 1.35;
   color: var(--billing-muted);
+}
+.billing-price-card--annual .billing-price-card__badge:not(.billing-price-card__badge--empty){
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--accent) 12%, rgba(17, 24, 39, 0.06));
+  background: color-mix(in srgb, var(--accent) 7%, #fff);
+  font-size: 0.6875rem;
+  font-weight: 550;
+  letter-spacing: 0.01em;
+  color: color-mix(in srgb, var(--accent) 72%, #334155 28%);
 }
 .billing-price-card__badge--empty{
   visibility: hidden;
@@ -32939,24 +32973,24 @@ body.checkout-page .container > .grid{
   min-width: 0;
 }
 .checkout-value{
-  margin: 0 0 22px;
+  margin: 0 0 32px;
   padding: 0;
   border: 0;
 }
 .checkout-value__title{
   margin: 0;
-  font-size: 1.05rem;
-  font-weight: 700;
+  font-size: 1rem;
+  font-weight: 650;
   line-height: 1.35;
-  letter-spacing: -0.015em;
-  color: rgba(15, 23, 42, 0.96);
+  letter-spacing: -0.012em;
+  color: rgba(15, 23, 42, 0.92);
 }
 .checkout-value__copy{
   margin: 8px 0 0;
   max-width: 46ch;
   font-size: 13.5px;
   line-height: 1.5;
-  font-weight: 450;
+  font-weight: 400;
   color: var(--muted);
 }
 .checkout-billing{
@@ -32967,11 +33001,8 @@ body.checkout-page .container > .grid{
   width: 100%;
 }
 .checkout-billing__legend{
-  margin: 0 0 10px;
+  margin: 0;
   padding: 0;
-  font-size: 13px;
-  font-weight: 600;
-  color: #374151;
 }
 .checkout-billing__options{
   display: grid;
@@ -32985,16 +33016,17 @@ body.checkout-page .container > .grid{
   align-items: center;
   gap: 10px;
   margin: 0;
-  padding: 12px 14px;
+  padding: 11px 14px;
   border: 1px solid rgba(15, 23, 42, 0.12);
   border-radius: 12px;
-  background: #fafafa;
+  background: #fff;
   cursor: pointer;
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
   font-size: 14px;
   color: #111827;
+  opacity: 1;
   transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
 }
 .checkout-billing__option:hover{
@@ -33056,13 +33088,14 @@ body.checkout-page .container > .grid{
 .checkout-billing__badge{
   display: inline-flex;
   align-items: center;
-  padding: 2px 7px;
+  padding: 1px 7px;
   border-radius: 999px;
-  font-size: 11px;
-  font-weight: 600;
+  border: 1px solid color-mix(in srgb, var(--accent) 12%, rgba(17, 24, 39, 0.06));
+  font-size: 10.5px;
+  font-weight: 550;
   letter-spacing: 0.01em;
-  color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 12%, #fff);
+  color: color-mix(in srgb, var(--accent) 72%, #334155 28%);
+  background: color-mix(in srgb, var(--accent) 7%, #fff);
 }
 .checkout-form__submit{
   width: 100%;
