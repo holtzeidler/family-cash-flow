@@ -10113,7 +10113,7 @@ function setBillingSubscribeChoices(choices) {
   }
   if (dom.subscribeAnnual) {
     if (choices.pricingCards) {
-      dom.subscribeAnnual.textContent = choices.annualLabel || "Continue annually";
+      dom.subscribeAnnual.textContent = choices.annualLabel || "Choose annually";
     } else {
       setSubscribeOptionContent(
         dom.subscribeAnnual,
