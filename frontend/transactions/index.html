@@ -35,7 +35,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=786" />
+    <link rel="stylesheet" href="../styles.css?v=787" />
   </head>
   <body>
     <h1 class="sr-only">Transactions</h1>
@@ -996,16 +996,16 @@
                               Manage your billing, payment details, or subscription anytime.
                             </p>
                             <div class="billing-actions__primary">
-                              <button type="button" class="billing-action-btn billing-action-btn--primary" data-billing-action="cycle" data-billing-target-lookup="cash_forecast_annual">Switch to annual</button>
+                              <button type="button" class="billing-action-btn billing-action-btn--primary" data-billing-action="cycle" data-billing-target-lookup="cash_forecast_annual">Switch to Annual</button>
                             </div>
                             <div class="billing-actions__secondary" aria-label="Additional billing tasks">
-                              <button type="button" class="billing-action-btn billing-action-btn--secondary" data-billing-action="portal">Manage billing</button>
+                              <button type="button" class="billing-action-btn billing-action-btn--secondary" data-billing-action="portal">Manage Billing</button>
                             </div>
                             <p class="billing-actions__reassure" id="billingManageReassure">Secure billing powered by Stripe.</p>
                           </div>
                           <div class="billing-cancel" id="billingCancelSection" aria-labelledby="billingCancelTitle" hidden>
-                              <h4 class="billing-cancel__title" id="billingCancelTitle">Cancellation</h4>
-                              <p class="billing-cancel__lede" id="billingCancelLede">You can cancel your subscription at any time.</p>
+                              <h3 class="billing-actions__title billing-cancel__title" id="billingCancelTitle">Cancellation</h3>
+                              <p class="billing-actions__hint billing-cancel__lede" id="billingCancelLede">You can cancel your subscription at any time.</p>
                               <button type="button" id="billingCancelBtn" class="billing-cancel__request billing-cancel__request--danger" data-billing-action="cancel">
                                 Cancel subscription
                               </button>
@@ -2072,7 +2072,7 @@ Date,Vendor,Amount
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="../app.js?v=476"></script>
+    <script src="../app.js?v=477"></script>
     <script src="../feedback.js?v=5" defer></script>
     <script src="../tour.js?v=9" defer></script>
   </body>

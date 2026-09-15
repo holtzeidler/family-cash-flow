@@ -12541,14 +12541,16 @@ label{
   max-width: 660px;
   width: 100%;
 }
-.billing-actions__title{
+.billing-actions__title,
+.billing-cancel__title{
   margin: 0 0 6px;
   font-size: 1rem;
   font-weight: 780;
   letter-spacing: -0.02em;
   color: rgba(15, 23, 42, 0.96);
 }
-.billing-actions__hint{
+.billing-actions__hint,
+.billing-cancel__lede{
   margin: 0 0 22px;
   max-width: none;
   font-size: 0.875rem;
@@ -13072,30 +13074,15 @@ html.bw-billing-readonly .cal-day-balance-hit{
 }
 .billing-cancel__title{
   margin: 0 0 4px;
-  font-size: 0.8125rem;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  text-transform: none;
-  color: rgba(55, 65, 81, 0.92);
 }
 .billing-cancel--keep .billing-cancel__title{
   margin: 0 0 6px;
-  font-size: 1rem;
-  font-weight: 780;
-  letter-spacing: -0.02em;
-  color: rgba(15, 23, 42, 0.96);
 }
 .billing-cancel__lede{
   margin: 0 0 10px;
-  max-width: none;
-  font-size: 0.8125rem;
-  line-height: 1.45;
-  color: var(--billing-muted);
 }
 .billing-cancel--keep .billing-cancel__lede{
   margin: 0 0 16px;
-  font-size: 0.875rem;
-  line-height: 1.5;
 }
 .billing-cancel__request{
   appearance: none;

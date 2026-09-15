@@ -9028,7 +9028,7 @@ function alternateBillingLookup(lookupKey) {
 }
 
 function cycleSwitchLabel(lookupKey) {
-  return billingLookupIsAnnual(lookupKey) ? "Switch to monthly" : "Switch to annual";
+  return billingLookupIsAnnual(lookupKey) ? "Switch to monthly" : "Switch to Annual";
 }
 
 function annualSavingsPercent() {
@@ -10209,7 +10209,7 @@ function applyBillingCycleAction(model) {
   if (!cycleBtn) return;
   const action = model.cycleAction;
   if (action) {
-    cycleBtn.textContent = action.label || "Switch to annual";
+    cycleBtn.textContent = action.label || "Switch to Annual";
     if (action.targetLookup) cycleBtn.setAttribute("data-billing-target-lookup", action.targetLookup);
     else cycleBtn.removeAttribute("data-billing-target-lookup");
   }
@@ -10540,7 +10540,7 @@ function billingIntervalSwitchCopy(targetLookup) {
         ],
         ["Your next renewal will be one year from today."],
       ],
-      confirmLabel: "Switch to annual",
+      confirmLabel: "Switch to Annual",
     };
   }
   return {
@@ -10608,7 +10608,7 @@ function ensureBillingIntervalConfirmModal() {
     '<div id="billingIntervalConfirmBody" class="billing-interval-confirm__body"></div>' +
     '<div class="modal-actions billing-interval-confirm__actions">' +
     '<button type="button" class="billing-action-btn billing-action-btn--secondary billing-interval-confirm__cancel" id="billingIntervalConfirmCancel">Cancel</button>' +
-    '<button type="button" class="billing-action-btn billing-action-btn--primary billing-interval-confirm__primary" id="billingIntervalConfirmOk">Switch to annual</button>' +
+    '<button type="button" class="billing-action-btn billing-action-btn--primary billing-interval-confirm__primary" id="billingIntervalConfirmOk">Switch to Annual</button>' +
     "</div></div>";
   document.body.appendChild(wrap);
   wrap.querySelector("#billingIntervalConfirmCancel")?.addEventListener("click", () => closeBillingIntervalConfirm(false));
