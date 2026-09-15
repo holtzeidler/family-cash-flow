@@ -10058,6 +10058,12 @@ const BILLING_NOTES_TRIAL_SCHEDULED = [
   "Cancel anytime",
   "No hidden fees",
 ];
+const BILLING_NOTES_TRIAL_ENDED = [
+  "No bank connection required",
+  "Cancel anytime",
+  "No hidden fees",
+  "Your BalanceWhiz data stays saved",
+];
 
 function applyBillingNotes(kind) {
   const list = document.getElementById("billingNotesList");
@@ -10065,6 +10071,7 @@ function applyBillingNotes(kind) {
   let items = BILLING_NOTES_DEFAULT;
   if (kind === "trial") items = BILLING_NOTES_TRIAL;
   else if (kind === "trial_scheduled") items = BILLING_NOTES_TRIAL_SCHEDULED;
+  else if (kind === "trial_ended") items = BILLING_NOTES_TRIAL_ENDED;
   list.innerHTML = items.map((item) => `<li>${escapeHtml(item)}</li>`).join("");
 }
 
