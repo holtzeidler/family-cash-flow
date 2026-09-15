@@ -11682,7 +11682,7 @@ label{
   --billing-space-2: 16px;
   --billing-space-3: 24px;
   --billing-space-4: 32px;
-  --billing-rule: 1px solid rgba(17, 24, 39, 0.06);
+  --billing-rule: 1px solid rgba(17, 24, 39, 0.045);
   --billing-muted: rgba(71, 85, 105, 0.82);
   --billing-muted-soft: rgba(71, 85, 105, 0.72);
   display: flex;
@@ -12337,7 +12337,7 @@ label{
   gap: 0;
   align-items: stretch;
   margin: var(--billing-space-3) 0 0;
-  padding: var(--billing-space-2) 0 0;
+  padding: var(--billing-space-3) 0 0;
   border-top: var(--billing-rule);
 }
 .billing-meta[hidden],
@@ -12466,14 +12466,14 @@ label{
 }
 
 .billing-actions{
-  margin-top: var(--billing-space-2);
-  padding-top: 18px;
+  margin-top: var(--billing-space-3);
+  padding-top: 28px;
   border-top: var(--billing-rule);
   max-width: 660px;
   width: 100%;
 }
 .billing-actions__title{
-  margin: 0 0 4px;
+  margin: 0 0 6px;
   font-size: 1rem;
   font-weight: 780;
   letter-spacing: -0.02em;
@@ -12482,8 +12482,8 @@ label{
 .billing-actions__hint{
   margin: 0 0 18px;
   max-width: none;
-  font-size: 0.8125rem;
-  line-height: 1.45;
+  font-size: 0.875rem;
+  line-height: 1.5;
   color: var(--billing-muted);
 }
 .billing-actions__primary{
@@ -12514,6 +12514,15 @@ label{
   padding: 9px 14px;
   font-size: 0.8125rem;
   white-space: nowrap;
+}
+.billing-actions__reassure{
+  margin: 12px 0 0;
+  max-width: 420px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: 0.01em;
+  color: rgba(100, 116, 139, 0.78);
 }
 .billing-actions__sep{
   display: none;
@@ -12914,8 +12923,8 @@ html.bw-billing-readonly .cal-day-balance-hit{
 }
 
 .billing-cancel{
-  margin-top: 28px;
-  padding: 28px 0 0;
+  margin-top: 32px;
+  padding: 28px 0 4px;
   border-top: var(--billing-rule);
   max-width: 660px;
   width: 100%;
@@ -12928,12 +12937,24 @@ html.bw-billing-readonly .cal-day-balance-hit{
   text-transform: none;
   color: rgba(55, 65, 81, 0.92);
 }
+.billing-cancel--keep .billing-cancel__title{
+  margin: 0 0 6px;
+  font-size: 1rem;
+  font-weight: 780;
+  letter-spacing: -0.02em;
+  color: rgba(15, 23, 42, 0.96);
+}
 .billing-cancel__lede{
   margin: 0 0 10px;
   max-width: none;
   font-size: 0.8125rem;
   line-height: 1.45;
   color: var(--billing-muted);
+}
+.billing-cancel--keep .billing-cancel__lede{
+  margin: 0 0 16px;
+  font-size: 0.875rem;
+  line-height: 1.5;
 }
 .billing-cancel__request{
   appearance: none;

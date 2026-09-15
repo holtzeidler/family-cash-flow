@@ -9082,7 +9082,8 @@ function monthlyPaidAsAnnualLabel() {
 }
 
 const BILLING_MANAGE_HINT =
-  "Payment method, invoices, and billing changes are managed securely through Stripe.";
+  "Manage your billing, payment details, or subscription anytime.";
+const BILLING_MANAGE_TITLE = "Your subscription";
 
 function daysRemainingUntilIso(iso) {
   const day = String(iso || "").trim();
@@ -9578,13 +9579,14 @@ function resolveBillingLifecycleModel(status, { hasFamily = true } = {}) {
         statusTone: "muted",
         statusIcon: false,
       },
+      manageTitle: BILLING_MANAGE_TITLE,
       manageHint: BILLING_MANAGE_HINT,
       cycleAction,
       cancelSection: {
-        title: "Cancellation scheduled",
+        title: "Your subscription is set to end",
         lede: accessLong
-          ? `Your access will remain active through ${accessLong}.`
-          : "Your subscription is scheduled to cancel at the end of the current billing period.",
+          ? `You'll keep full access through ${accessLong}.`
+          : "You'll keep full access through the end of your current billing period.",
         buttonLabel: "Keep my subscription",
         action: "keep",
         tone: "keep",
@@ -9612,6 +9614,7 @@ function resolveBillingLifecycleModel(status, { hasFamily = true } = {}) {
         statusLabel: "Active",
         statusTone: "paid",
       },
+      manageTitle: BILLING_MANAGE_TITLE,
       manageHint: BILLING_MANAGE_HINT,
       cycleAction,
       cancelSection: {
@@ -9824,6 +9827,7 @@ function billingDom() {
     accountStatus: document.getElementById("billingAccountStatus"),
     meta: document.getElementById("billingMeta"),
     manage: document.getElementById("billingManageSection"),
+    manageHeading: document.getElementById("billingManageHeading"),
     manageHint: document.getElementById("billingManageHint"),
     cancel: document.getElementById("billingCancelSection"),
     cancelTitle: document.getElementById("billingCancelTitle"),
@@ -10310,6 +10314,9 @@ function applyBillingLifecycleModel(model) {
       if (dom.accountStatus) dom.accountStatus.innerHTML = "";
     }
 
+    if (dom.manageHeading && model.manageTitle) {
+      dom.manageHeading.textContent = model.manageTitle;
+    }
     if (dom.manageHint && model.manageHint) dom.manageHint.textContent = model.manageHint;
     applyBillingCycleAction(model);
 

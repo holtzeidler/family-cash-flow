@@ -35,7 +35,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=770" />
+    <link rel="stylesheet" href="../styles.css?v=771" />
   </head>
   <body>
     <h1 class="sr-only">Settings</h1>
@@ -884,9 +884,9 @@
                           </dl>
 
                           <div class="billing-actions" id="billingManageSection" aria-labelledby="billingManageHeading" hidden>
-                            <h3 class="billing-actions__title" id="billingManageHeading">Manage subscription</h3>
+                            <h3 class="billing-actions__title" id="billingManageHeading">Your subscription</h3>
                             <p class="billing-actions__hint" id="billingManageHint">
-                              Payment method, invoices, and billing changes are managed securely through Stripe.
+                              Manage your billing, payment details, or subscription anytime.
                             </p>
                             <div class="billing-actions__primary">
                               <button type="button" class="billing-action-btn billing-action-btn--primary" data-billing-action="cycle" data-billing-target-lookup="cash_forecast_annual">Switch to annual</button>
@@ -894,6 +894,7 @@
                             <div class="billing-actions__secondary" aria-label="Additional billing tasks">
                               <button type="button" class="billing-action-btn billing-action-btn--secondary" data-billing-action="portal">Manage billing</button>
                             </div>
+                            <p class="billing-actions__reassure" id="billingManageReassure">Secure billing powered by Stripe.</p>
                           </div>
                           <div class="billing-cancel" id="billingCancelSection" aria-labelledby="billingCancelTitle" hidden>
                               <h4 class="billing-cancel__title" id="billingCancelTitle">Cancellation</h4>
@@ -1963,7 +1964,7 @@ Date,Vendor,Amount
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="../app.js?v=462"></script>
+    <script src="../app.js?v=463"></script>
     <script src="../feedback.js?v=5" defer></script>
     <script src="../tour.js?v=9" defer></script>
   </body>
