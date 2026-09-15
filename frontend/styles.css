@@ -11804,8 +11804,8 @@ label{
 }
 .billing-overview--ended,
 .billing-overview--natural-height.billing-overview--ended{
-  padding: 20px 24px 48px;
-  height: auto;
+  padding: 20px 24px 40px;
+  height: fit-content;
   min-height: 0;
   max-height: none;
   flex: 0 0 auto;
@@ -11843,7 +11843,7 @@ label{
 .billing-overview--natural-height.billing-overview--ended .billing-summary{
   margin-top: 0;
   margin-inline: auto;
-  gap: 38px;
+  gap: 30px;
   width: 100%;
   max-width: 46rem;
   text-align: left;

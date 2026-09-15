@@ -9483,7 +9483,7 @@ function resolveBillingLifecycleModel(status, { hasFamily = true } = {}) {
       annualLabel: "Choose annual",
       annualNote: "",
       savings: "",
-      reassure: "You'll be charged when you subscribe · Cancel anytime.",
+      reassure: "Cancel anytime · No hidden fees",
       trialLayout: false,
       pricingCards: true,
       annualPlan: "Annual",
