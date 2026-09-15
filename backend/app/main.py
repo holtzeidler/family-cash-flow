@@ -428,6 +428,8 @@ class BillingSubscription(Base):
     stripe_price_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     current_period_end: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     cancel_at_period_end: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    pending_lookup_key: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
+    pending_change_on: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     trial_end: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
@@ -1437,6 +1439,10 @@ class BillingStatusOut(BaseModel):
     lookup_key: Optional[str] = None
     current_period_end: Optional[str] = None
     cancel_at_period_end: bool = False
+    last_payment_failed_on: Optional[str] = None
+    next_payment_attempt_on: Optional[str] = None
+    pending_lookup_key: Optional[str] = None
+    pending_change_on: Optional[str] = None
     portal_available: bool = False
     stripe_subscription_id: Optional[str] = None
 
@@ -2873,6 +2879,22 @@ def _ensure_billing_tables() -> None:
                     "CREATE INDEX IF NOT EXISTS ix_stripe_webhook_events_event_type ON stripe_webhook_events (event_type)"
                 )
             )
+        _ensure_billing_pending_interval_columns(conn)
+
+
+def _ensure_billing_pending_interval_columns(conn) -> None:
+    """Persist a scheduled monthly/annual switch so Billing can paint it without Stripe sync."""
+    if settings.DATABASE_URL.startswith("sqlite"):
+        cols = {str(row[1]) for row in conn.execute(text("PRAGMA table_info(billing_subscriptions)")).fetchall()}
+        if "pending_lookup_key" not in cols:
+            conn.execute(text("ALTER TABLE billing_subscriptions ADD COLUMN pending_lookup_key VARCHAR(80)"))
+        if "pending_change_on" not in cols:
+            conn.execute(text("ALTER TABLE billing_subscriptions ADD COLUMN pending_change_on DATETIME"))
+        return
+    conn.execute(text("ALTER TABLE billing_subscriptions ADD COLUMN IF NOT EXISTS pending_lookup_key VARCHAR(80)"))
+    conn.execute(
+        text("ALTER TABLE billing_subscriptions ADD COLUMN IF NOT EXISTS pending_change_on TIMESTAMP WITHOUT TIME ZONE")
+    )
 
 
 def _ensure_transaction_color_columns() -> None:

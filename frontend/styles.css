@@ -12541,6 +12541,31 @@ label{
   max-width: 660px;
   width: 100%;
 }
+.billing-actions--payment-issue:has(#billingManageDue:not([hidden])) .billing-actions__hint{
+  margin-bottom: 8px;
+}
+.billing-actions__due{
+  margin: 0 0 22px;
+  max-width: none;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  font-weight: 400;
+  color: var(--billing-muted);
+}
+.billing-sync-status{
+  margin: 10px 0 0;
+  max-width: 660px;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  font-weight: 400;
+  color: var(--billing-muted);
+}
+.billing-sync-status[hidden]{
+  display: none !important;
+}
+.billing-actions__due[hidden]{
+  display: none !important;
+}
 .billing-actions__title,
 .billing-cancel__title{
   margin: 0 0 6px;
@@ -12973,6 +12998,37 @@ label{
   outline: 2px solid rgba(11, 61, 46, 0.35);
   outline-offset: 2px;
   border-radius: 6px;
+}
+.modal.modal--billing-upgrade-payment{
+  width: min(calc(100% - 32px), 520px);
+  max-width: 520px;
+  padding: 28px 30px;
+  height: fit-content;
+}
+.modal.modal--billing-upgrade-payment .billing-upgrade__title{
+  margin: 0 0 18px;
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  color: var(--text);
+}
+.modal.modal--billing-upgrade-payment .billing-upgrade__body{
+  margin: 0 0 24px;
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: 1.45;
+  color: var(--muted);
+}
+.modal.modal--billing-upgrade-payment .billing-upgrade__actions{
+  gap: 10px;
+}
+.modal.modal--billing-upgrade-payment #billingUpgradeAnnual,
+.modal.modal--billing-upgrade-payment #billingUpgradeMonthly{
+  display: none !important;
+}
+#billingUpgradePayment[hidden]{
+  display: none !important;
 }
 @media (max-width: 760px){
   .modal.modal--billing-upgrade,
@@ -13495,8 +13551,8 @@ body[data-bw-view="settings"] #sidebarBalanceThresholdAlerts{
   display: none !important;
 }
 body[data-bw-view="settings"] .app-layout{
-  grid-template-columns: clamp(112px, 10.5vw, 152px) minmax(0, 1fr);
-  gap: 12px 24px;
+  grid-template-columns: clamp(218px, 18vw, 238px) minmax(0, 1fr);
+  gap: 14px;
 }
 body[data-bw-view="settings"] .sidebar{
   gap: 6px;
@@ -26729,6 +26785,15 @@ body.account-setup-page
   border-radius: 0;
   border-bottom: none;
   text-transform: none;
+}
+.modal.modal--billing-upgrade.modal--billing-upgrade-payment h3:not(.sr-only),
+.modal.modal--billing-upgrade.modal--billing-upgrade-payment h3.billing-upgrade__title{
+  margin: 0 0 18px;
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  color: var(--text);
 }
 
 /* Zero-padding modals: header must match modal width (no negative-margin bleed). */

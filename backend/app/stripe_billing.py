@@ -13,6 +13,7 @@ Secrets come from env only — never hardcode API keys.
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
 from typing import Any, Optional
 
 import stripe
@@ -308,7 +309,7 @@ def register_stripe_routes(
         family_id: int = Form(...),
         target_lookup: str = Form(...),
     ):
-        """Switch monthly↔annual immediately and refresh the live Stripe subscription."""
+        """Switch monthly↔annual. Annual is immediate with proration; monthly is scheduled at period end."""
         _require_stripe()
         if session_factory is None:
             raise HTTPException(
@@ -324,11 +325,13 @@ def register_stripe_routes(
         from sqlalchemy import select
 
         from .billing_entitlement import (
+            _period_end_from_stripe_sub,
             refresh_subscription_row_from_stripe,
             stripe_customer_id_for_family,
         )
         from .main import BillingCustomer, BillingSubscription, require_family_owner
 
+        result: dict[str, Any] = {}
         try:
             with session_factory() as db:
                 require_family_owner(db=db, family_id=int(family_id), user_id=int(user_id))
@@ -382,14 +385,48 @@ def register_stripe_routes(
                         status_code=status.HTTP_400_BAD_REQUEST,
                         detail="Stripe subscription has no item to update.",
                     )
-                already_on_target = (
-                    live_lookup == target
-                    or (bool(live_price_id) and live_price_id == price_id)
-                    or current_lookup == target
+                already_on_target = live_lookup == target or (
+                    bool(live_price_id) and live_price_id == price_id
                 )
+                live_meta = getattr(live, "metadata", None) or {}
+                if not isinstance(live_meta, dict):
+                    try:
+                        live_meta = dict(live_meta)
+                    except Exception:
+                        live_meta = {}
+                pending_lookup = str(live_meta.get("bw_pending_lookup_key") or "").strip()
+                live_schedule = getattr(live, "schedule", None)
+                schedule_id = ""
+                if isinstance(live_schedule, str):
+                    schedule_id = live_schedule.strip()
+                elif live_schedule is not None:
+                    schedule_id = (getattr(live_schedule, "id", None) or "").strip()
+
+                def _clear_pending_metadata() -> None:
+                    stripe.Subscription.modify(
+                        stripe_subscription_id,
+                        metadata={
+                            "bw_pending_lookup_key": "",
+                            "bw_pending_change_on": "",
+                        },
+                    )
+
+                def _release_schedule_if_any() -> bool:
+                    if not schedule_id:
+                        return False
+                    stripe.SubscriptionSchedule.release(schedule_id)
+                    return True
+
                 if already_on_target:
-                    if sub_row is not None and current_lookup != target:
-                        sub_row.lookup_key = target
+                    released = False
+                    if schedule_id or (pending_lookup and pending_lookup != target):
+                        released = _release_schedule_if_any()
+                        _clear_pending_metadata()
+                    if sub_row is not None:
+                        if current_lookup != target:
+                            sub_row.lookup_key = target
+                        sub_row.pending_lookup_key = None
+                        sub_row.pending_change_on = None
                         db.add(sub_row)
                     db.commit()
                     label = (target_info or {}).get("display_label") or target
@@ -397,28 +434,120 @@ def register_stripe_routes(
                         {
                             "switched": False,
                             "already": True,
+                            "released": released,
+                            "scheduled": False,
                             "lookup_key": target,
+                            "pending_lookup_key": None,
+                            "pending_change_on": None,
                             "price_label": label,
                         }
                     )
 
-                # Monthly → annual: start a new annual period today and let Stripe
-                # credit unused monthly time against that invoice (one invoice, not
-                # a prorated annual charge plus a second full $59.99 charge).
-                # Annual → monthly: keep the existing no-credit replacement.
+                # Trial: change the future price without charging or ending the trial.
+                # Monthly → annual: start a new annual period today and credit unused monthly time.
+                # Annual → monthly: schedule the switch at the current period end so paid annual access is not shortened.
                 to_annual = target == LOOKUP_ANNUAL
-                updated = stripe.Subscription.modify(
-                    stripe_subscription_id,
-                    items=[{"id": item_id, "price": price_id}],
-                    proration_behavior="create_prorations" if to_annual else "none",
-                    billing_cycle_anchor="now",
-                    payment_behavior="error_if_incomplete",
-                    cancel_at_period_end=False,
-                    metadata={
-                        "bw_lookup_key": target,
-                        "bw_billing_frequency": frequency_storage_value(target),
-                    },
-                )
+                scheduled_change_on = None
+                updated = None
+                if live_status == "trialing":
+                    if schedule_id:
+                        _release_schedule_if_any()
+                    updated = stripe.Subscription.modify(
+                        stripe_subscription_id,
+                        items=[{"id": item_id, "price": price_id}],
+                        proration_behavior="none",
+                        payment_behavior="error_if_incomplete",
+                        cancel_at_period_end=False,
+                        metadata={
+                            "bw_lookup_key": target,
+                            "bw_billing_frequency": frequency_storage_value(target),
+                            "bw_pending_lookup_key": "",
+                            "bw_pending_change_on": "",
+                        },
+                    )
+                elif to_annual:
+                    if schedule_id:
+                        _release_schedule_if_any()
+                    updated = stripe.Subscription.modify(
+                        stripe_subscription_id,
+                        items=[{"id": item_id, "price": price_id}],
+                        proration_behavior="create_prorations",
+                        billing_cycle_anchor="now",
+                        payment_behavior="error_if_incomplete",
+                        cancel_at_period_end=False,
+                        metadata={
+                            "bw_lookup_key": target,
+                            "bw_billing_frequency": frequency_storage_value(target),
+                            "bw_pending_lookup_key": "",
+                            "bw_pending_change_on": "",
+                        },
+                    )
+                else:
+                    if pending_lookup == target:
+                        pending_on = str(live_meta.get("bw_pending_change_on") or "").strip() or None
+                        keep_lookup = live_lookup or current_lookup
+                        keep_info = price_for_lookup(keep_lookup) if keep_lookup else target_info
+                        label = (keep_info or target_info or {}).get("display_label") or keep_lookup or target
+                        db.commit()
+                        return JSONResponse(
+                            {
+                                "switched": False,
+                                "already": True,
+                                "scheduled": True,
+                                "lookup_key": keep_lookup,
+                                "pending_lookup_key": target,
+                                "pending_change_on": pending_on,
+                                "price_label": label,
+                            }
+                        )
+                    pe = _period_end_from_stripe_sub(live)
+                    if pe is None:
+                        raise HTTPException(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Could not determine the current billing period end for a scheduled switch.",
+                        )
+                    pe_aware = pe if pe.tzinfo is not None else pe.replace(tzinfo=timezone.utc)
+                    pe_ts = int(pe_aware.timestamp())
+                    if not live_price_id:
+                        raise HTTPException(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Stripe subscription has no current price to keep through the paid period.",
+                        )
+                    if schedule_id:
+                        schedule = stripe.SubscriptionSchedule.retrieve(schedule_id)
+                    else:
+                        schedule = stripe.SubscriptionSchedule.create(
+                            from_subscription=stripe_subscription_id
+                        )
+                    phases = getattr(schedule, "phases", None) or []
+                    phase0 = phases[0] if phases else None
+                    start_date = getattr(phase0, "start_date", None) if phase0 is not None else None
+                    if start_date is None:
+                        start_date = getattr(live, "start_date", None) or getattr(live, "current_period_start", None)
+                    stripe.SubscriptionSchedule.modify(
+                        schedule.id,
+                        end_behavior="release",
+                        phases=[
+                            {
+                                "start_date": start_date,
+                                "end_date": pe_ts,
+                                "items": [{"price": live_price_id, "quantity": 1}],
+                            },
+                            {
+                                "start_date": pe_ts,
+                                "items": [{"price": price_id, "quantity": 1}],
+                            },
+                        ],
+                    )
+                    scheduled_change_on = datetime.fromtimestamp(pe_ts, tz=timezone.utc).date().isoformat()
+                    stripe.Subscription.modify(
+                        stripe_subscription_id,
+                        metadata={
+                            "bw_pending_lookup_key": target,
+                            "bw_pending_change_on": scheduled_change_on,
+                        },
+                    )
+
                 refreshed, _ = refresh_subscription_row_from_stripe(
                     db,
                     stripe_subscription_id=stripe_subscription_id,
@@ -426,17 +555,37 @@ def register_stripe_routes(
                     timeout_seconds=8.0,
                 )
                 row_to_fix = refreshed if refreshed is not None else sub_row
+                keep_lookup = live_lookup or current_lookup
                 if row_to_fix is not None:
-                    row_to_fix.lookup_key = target
+                    row_to_fix.lookup_key = keep_lookup if scheduled_change_on else target
+                    if scheduled_change_on:
+                        row_to_fix.pending_lookup_key = target
+                        row_to_fix.pending_change_on = datetime.fromisoformat(scheduled_change_on)
+                    else:
+                        row_to_fix.pending_lookup_key = None
+                        row_to_fix.pending_change_on = None
                     db.add(row_to_fix)
                 db.commit()
                 logger.info(
-                    "Switched family_id=%s subscription %s to %s status=%s",
+                    "Switched family_id=%s subscription %s to %s scheduled=%s status=%s",
                     family_id,
                     stripe_subscription_id,
                     target,
-                    getattr(updated, "status", None),
+                    bool(scheduled_change_on),
+                    getattr(updated, "status", None) if updated is not None else live_status,
                 )
+                keep_info = price_for_lookup(keep_lookup) if scheduled_change_on else target_info
+                label = (keep_info or target_info or {}).get("display_label") or (
+                    keep_lookup if scheduled_change_on else target
+                )
+                result = {
+                    "switched": True,
+                    "scheduled": bool(scheduled_change_on),
+                    "lookup_key": keep_lookup if scheduled_change_on else target,
+                    "pending_lookup_key": target if scheduled_change_on else None,
+                    "pending_change_on": scheduled_change_on,
+                    "price_label": label,
+                }
         except HTTPException:
             raise
         except stripe.error.CardError as e:
@@ -453,14 +602,12 @@ def register_stripe_routes(
                 detail="Could not switch billing interval.",
             )
 
-        label = (target_info or {}).get("display_label") or target
-        return JSONResponse(
-            {
-                "switched": True,
-                "lookup_key": target,
-                "price_label": label,
-            }
-        )
+        if not result:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Could not switch billing interval.",
+            )
+        return JSONResponse(result)
 
     def _family_subscription_id(db, *, family_id: int, user_id: int, customer: Optional[str]) -> str:
         from sqlalchemy import select

@@ -324,6 +324,9 @@ def build_billing_status(
 
     if sub_status == "past_due":
         phase = "past_due"
+    elif sub_status == "unpaid":
+        # Collection failed after a paid subscription; not a trial expiry.
+        phase = "past_due"
     elif sub_status == "trialing":
         phase = "trial"  # Stripe trial (unused in product model, but handle if present)
     elif sub_status in ENTITLED_STATUSES or (canceled and paid_access):
@@ -343,6 +346,10 @@ def build_billing_status(
     )
     linked_customer = bool(subscription and getattr(subscription, "billing_customer_id", None))
     portal_available = bool(linked_customer or (has_stripe_customer and sub_entitled))
+    pending_lk = (getattr(subscription, "pending_lookup_key", None) or "").strip() if subscription else ""
+    if pending_lk and pending_lk == (lookup_key or ""):
+        pending_lk = ""
+    pending_on = getattr(subscription, "pending_change_on", None) if subscription else None
 
     return {
         "product_code": PRODUCT_CODE,
@@ -362,6 +369,12 @@ def build_billing_status(
         "cancel_at_period_end": cancel_at_period_end,
         "portal_available": portal_available,
         "stripe_subscription_id": getattr(subscription, "stripe_subscription_id", None) if subscription else None,
+        "last_payment_failed_on": None,
+        "next_payment_attempt_on": None,
+        "pending_lookup_key": pending_lk or None,
+        "pending_change_on": pending_on.date().isoformat()
+        if isinstance(pending_on, datetime)
+        else (str(pending_on) if pending_on else None),
     }
 
 
@@ -369,17 +382,22 @@ BILLING_NOT_ENTITLED_CODE = "billing_not_entitled"
 BILLING_NOT_ENTITLED_MESSAGE = (
     "Your free trial has ended. Subscribe to update your balance, add transactions, and keep your forecast current."
 )
+BILLING_PAYMENT_REQUIRED_MESSAGE = (
+    "We couldn't process your latest payment. Update your payment method to keep your forecast current."
+)
 
 
 def _billing_not_entitled_http(phase: str = "expired"):
     from fastapi import HTTPException, status
 
+    p = str(phase or "expired")
+    message = BILLING_PAYMENT_REQUIRED_MESSAGE if p == "past_due" else BILLING_NOT_ENTITLED_MESSAGE
     raise HTTPException(
         status_code=status.HTTP_403_FORBIDDEN,
         detail={
             "code": BILLING_NOT_ENTITLED_CODE,
-            "message": BILLING_NOT_ENTITLED_MESSAGE,
-            "phase": phase or "expired",
+            "message": message,
+            "phase": p,
         },
     )
 
@@ -664,6 +682,14 @@ def upsert_subscription_from_stripe(
     row.current_period_end = period_end
     row.trial_end = trial_end
     row.cancel_at_period_end = cancel_at_period_end
+    pending_lk, pending_on = _pending_interval_change(sub)
+    current_lk = lookup_key or getattr(row, "lookup_key", None)
+    if pending_lk and pending_lk != current_lk:
+        row.pending_lookup_key = pending_lk
+        row.pending_change_on = pending_on
+    else:
+        row.pending_lookup_key = None
+        row.pending_change_on = None
     db.add(row)
     db.flush()
     return row
@@ -723,9 +749,17 @@ def refresh_subscription_row_from_stripe(
         stripe.api_key = key
         # Expand items so period ends are available on newer Stripe API shapes.
         try:
-            return stripe.Subscription.retrieve(sid, expand=["items.data.price"])
+            return stripe.Subscription.retrieve(
+                sid, expand=["items.data.price", "latest_invoice", "schedule"]
+            )
         except Exception:
-            return stripe.Subscription.retrieve(sid)
+            try:
+                return stripe.Subscription.retrieve(sid, expand=["items.data.price", "latest_invoice"])
+            except Exception:
+                try:
+                    return stripe.Subscription.retrieve(sid, expand=["items.data.price"])
+                except Exception:
+                    return stripe.Subscription.retrieve(sid)
 
     sub_obj = _run_with_timeout(
         _retrieve,
@@ -748,6 +782,70 @@ def refresh_subscription_row_from_stripe(
     return row, sub_obj
 
 
+def _failed_payment_on_from_stripe_sub(stripe_sub: Any) -> Optional[datetime]:
+    """Due/created date of the latest unpaid invoice, if Stripe returned it."""
+    inv = _obj_get(stripe_sub, "latest_invoice")
+    if inv is None or isinstance(inv, str):
+        return None
+    inv_status = str(_obj_get(inv, "status") or "").strip().lower()
+    paid = _obj_get(inv, "paid")
+    if paid is True or inv_status == "paid":
+        return None
+    if inv_status in ("void", "draft"):
+        return None
+    due = _as_naive_utc(_obj_get(inv, "due_date"))
+    created = _as_naive_utc(_obj_get(inv, "created"))
+    return due or created
+
+
+def _next_payment_attempt_from_stripe_sub(stripe_sub: Any) -> Optional[datetime]:
+    """Stripe's next retry timestamp from the expanded latest invoice, if present."""
+    inv = _obj_get(stripe_sub, "latest_invoice")
+    if inv is None or isinstance(inv, str):
+        return None
+    return _as_naive_utc(_obj_get(inv, "next_payment_attempt") or _stripe_field(inv, "next_payment_attempt"))
+
+
+def _pending_interval_change(stripe_sub: Any) -> tuple[Optional[str], Optional[datetime]]:
+    """Next scheduled monthly/annual switch from metadata or a Subscription Schedule."""
+    current_lk = lookup_key_from_subscription(stripe_sub)
+    meta = _obj_get(stripe_sub, "metadata") or {}
+    if not isinstance(meta, dict):
+        meta = {}
+    pending_lk = str(meta.get("bw_pending_lookup_key") or "").strip()
+    pending_on = _as_naive_utc(meta.get("bw_pending_change_on"))
+    if pending_lk in ALLOWED_PRICE_LOOKUP_KEYS and pending_lk != current_lk:
+        return pending_lk, pending_on
+
+    sched = _stripe_field(stripe_sub, "schedule") or _obj_get(stripe_sub, "schedule")
+    if not sched or isinstance(sched, str):
+        return None, None
+    phases = _stripe_field(sched, "phases") or _obj_get(sched, "phases") or []
+    now = _utc_now()
+    current_price_id = ""
+    items = _subscription_items(stripe_sub)
+    if items:
+        price = _stripe_field(items[0], "price") or _obj_get(items[0], "price")
+        if isinstance(price, str):
+            current_price_id = price.strip()
+        else:
+            current_price_id = str(_stripe_field(price, "id") or _obj_get(price, "id") or "").strip()
+    for phase in phases:
+        start = _as_naive_utc(_obj_get(phase, "start_date") or _stripe_field(phase, "start_date"))
+        if start is None or start <= now:
+            continue
+        pitems = _obj_get(phase, "items") or _stripe_field(phase, "items") or []
+        if not pitems:
+            continue
+        price = _obj_get(pitems[0], "price") or _stripe_field(pitems[0], "price")
+        lk = _lookup_from_price(price)
+        if not lk and isinstance(price, str) and current_price_id and price.strip() == current_price_id:
+            lk = current_lk
+        if lk and lk != current_lk:
+            return lk, start
+    return None, None
+
+
 def apply_live_stripe_subscription_fields(payload: dict[str, Any], stripe_sub: Any) -> dict[str, Any]:
     """Overlay billing-status fields from the live Stripe Subscription object."""
     if not payload or stripe_sub is None:
@@ -762,6 +860,12 @@ def apply_live_stripe_subscription_fields(payload: dict[str, Any], stripe_sub: A
     if st == "trialing":
         out["phase"] = "trial"
         out["entitled"] = True
+    elif st == "past_due":
+        out["phase"] = "past_due"
+        out["entitled"] = True
+    elif st == "unpaid":
+        out["phase"] = "past_due"
+        out["entitled"] = False
     te = _as_naive_utc(_stripe_field(stripe_sub, "trial_end") or _obj_get(stripe_sub, "trial_end"))
     if te is not None:
         out["first_charge_on"] = te.date().isoformat()
@@ -778,6 +882,22 @@ def apply_live_stripe_subscription_fields(payload: dict[str, Any], stripe_sub: A
     lk = lookup_key_from_subscription(stripe_sub)
     if lk:
         out["lookup_key"] = lk
+    out["pending_lookup_key"] = None
+    out["pending_change_on"] = None
+    pending_lk, pending_on = _pending_interval_change(stripe_sub)
+    current_lk = out.get("lookup_key")
+    if pending_lk and pending_lk != current_lk:
+        out["pending_lookup_key"] = pending_lk
+        if pending_on is not None:
+            out["pending_change_on"] = pending_on.date().isoformat()
+    out["next_payment_attempt_on"] = None
+    if st in ("past_due", "unpaid"):
+        failed_on = _failed_payment_on_from_stripe_sub(stripe_sub)
+        if failed_on is not None:
+            out["last_payment_failed_on"] = failed_on.date().isoformat()
+        retry_on = _next_payment_attempt_from_stripe_sub(stripe_sub)
+        if retry_on is not None:
+            out["next_payment_attempt_on"] = retry_on.date().isoformat()
     return out
 
 
