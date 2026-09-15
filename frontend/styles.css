@@ -11780,7 +11780,7 @@ label{
   margin: 0;
 }
 
-/* Expired-trial: one Billing card, 72/28 inner split, compact left upgrade group */
+/* Expired-trial: one Billing card, wider left upgrade group + narrower info sidebar */
 .billing-page__shell--ended{
   grid-template-columns: minmax(0, 1fr);
   gap: 0;
@@ -11791,7 +11791,7 @@ label{
 }
 .billing-overview--ended,
 .billing-overview--natural-height.billing-overview--ended{
-  padding: 20px 24px 16px;
+  padding: 20px 24px 44px;
   height: fit-content;
   min-height: 0;
   align-self: start;
@@ -11823,21 +11823,21 @@ label{
 .billing-overview--natural-height.billing-overview--ended .billing-summary{
   margin-top: 0;
   margin-inline: auto;
-  gap: 34px;
+  gap: 38px;
   width: 100%;
-  max-width: 30rem;
+  max-width: 46rem;
   text-align: left;
 }
 .billing-overview--ended .billing-subscribe--pricing-cards .billing-subscribe__options--cards{
   max-width: none;
   width: 100%;
-  gap: 12px;
+  gap: 22px;
 }
 .billing-overview--ended .billing-subscribe__options,
 .billing-overview--ended .billing-subscribe__options--cards,
 .billing-overview--natural-height.billing-overview--ended .billing-subscribe__options,
 .billing-overview--natural-height.billing-overview--ended .billing-subscribe__options--cards{
-  margin: 0 0 18px;
+  margin: 0 0 22px;
 }
 .billing-overview--ended .billing-subscribe__reassure,
 .billing-overview--natural-height.billing-overview--ended .billing-subscribe__reassure{
@@ -11860,7 +11860,7 @@ label{
 }
 @media (min-width: 900px){
   .billing-overview--ended .billing-ended-body{
-    grid-template-columns: minmax(0, 72fr) minmax(232px, 28fr);
+    grid-template-columns: minmax(0, 78fr) minmax(196px, 22fr);
     gap: 0;
   }
   .billing-overview--ended .billing-ended-main{
@@ -12065,11 +12065,11 @@ label{
   text-align: left;
 }
 .billing-callout--trial-complete .billing-callout__eyebrow{
-  margin: 0 0 19px;
+  margin: 0 0 20px;
 }
 .billing-callout--trial-complete .billing-callout__title{
-  margin: 0 0 13px;
-  font-size: clamp(1.2rem, 1.08rem + 0.45vw, 1.4rem);
+  margin: 0 0 12px;
+  font-size: clamp(1.28rem, 1.14rem + 0.5vw, 1.52rem);
   font-weight: 800;
   letter-spacing: -0.025em;
   line-height: 1.2;
@@ -12291,9 +12291,9 @@ label{
 .billing-subscribe--pricing-cards .billing-subscribe__options--cards{
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: 22px;
   width: 100%;
-  max-width: 28.75rem;
+  max-width: 46rem;
   align-items: stretch;
 }
 .billing-price-card{
@@ -12304,7 +12304,7 @@ label{
   min-width: 0;
   height: 100%;
   box-sizing: border-box;
-  padding: 12px 12px 12px;
+  padding: 12px 22px;
   border-radius: 12px;
   border: 1px solid rgba(17, 24, 39, 0.1);
   background: #fff;
