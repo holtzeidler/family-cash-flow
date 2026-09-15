@@ -33006,7 +33006,7 @@ body.checkout-page .container > .grid{
 }
 .checkout-billing__options{
   display: grid;
-  gap: 10px;
+  gap: 16px;
   min-width: 0;
   width: 100%;
 }
