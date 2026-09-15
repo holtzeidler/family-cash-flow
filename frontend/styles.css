@@ -12604,7 +12604,8 @@ label{
   max-width: none;
 }
 .billing-actions--scheduled-cancel .billing-action-btn--primary,
-.billing-actions--scheduled-cancel .billing-action-btn--secondary{
+.billing-actions--scheduled-cancel .billing-action-btn--secondary,
+#billingCancelBtn.billing-action-btn--primary{
   flex: 0 0 auto;
   width: auto;
   min-width: 168px;
@@ -12613,6 +12614,27 @@ label{
   padding: 11px 18px;
   font-size: 0.875rem;
   white-space: nowrap;
+}
+.billing-actions--scheduled-cancel .billing-action-btn--primary,
+#billingCancelBtn.billing-action-btn--primary{
+  background: color-mix(in srgb, var(--accent) 92%, #0a1a14 8%);
+  border-color: rgba(11, 61, 46, 0.92);
+  color: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 1px 2px rgba(11, 61, 46, 0.1);
+  font-weight: 700;
+}
+.billing-actions--scheduled-cancel .billing-action-btn--primary:hover,
+#billingCancelBtn.billing-action-btn--primary:hover{
+  background: color-mix(in srgb, var(--accent) 96%, #000 4%);
+  border-color: rgba(11, 61, 46, 0.98);
+  color: rgba(255, 255, 255, 0.98);
+}
+.billing-actions--scheduled-cancel .billing-action-btn--primary:active,
+#billingCancelBtn.billing-action-btn--primary:active{
+  background: color-mix(in srgb, var(--accent) 88%, #000 12%);
+  border-color: rgba(11, 61, 46, 1);
+  color: rgba(255, 255, 255, 0.98);
+  box-shadow: none;
 }
 .billing-actions--promote-annual .billing-actions__primary{
   display: flex;
@@ -12645,10 +12667,11 @@ label{
 }
 .billing-actions--interval-annual .billing-actions__secondary{
   flex-wrap: nowrap;
-  max-width: 420px;
+  max-width: 500px;
   gap: 10px;
 }
-.billing-actions--interval-annual .billing-action-btn--secondary{
+.billing-actions--interval-annual .billing-action-btn--secondary,
+.billing-actions--interval-annual .billing-action-btn--quiet{
   flex: 1 1 0;
   width: 0;
   min-width: 0;
@@ -12764,6 +12787,43 @@ label{
 .billing-action-btn--secondary:disabled,
 .billing-action-btn--secondary[aria-disabled="true"]{
   background: rgba(248, 250, 252, 0.9);
+  border-color: rgba(148, 163, 184, 0.35);
+  color: rgba(100, 116, 139, 0.75);
+}
+.billing-action-btn--quiet{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1 1 0;
+  width: 0;
+  min-width: 0;
+  max-width: none;
+  min-height: 36px;
+  padding: 7px 10px;
+  border-color: rgba(11, 61, 46, 0.32);
+  background: rgba(236, 253, 245, 0.92);
+  color: rgba(11, 61, 46, 0.96);
+  font-size: 0.78125rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.billing-action-btn--quiet:hover{
+  background: rgba(220, 252, 231, 0.96);
+  border-color: rgba(11, 61, 46, 0.42);
+  color: rgba(11, 61, 46, 1);
+}
+.billing-action-btn--quiet:active{
+  background: rgba(187, 247, 208, 0.9);
+  border-color: rgba(11, 61, 46, 0.5);
+  color: rgba(11, 61, 46, 1);
+}
+.billing-action-btn--quiet:focus-visible{
+  outline: 2px solid rgba(11, 61, 46, 0.4);
+  outline-offset: 2px;
+}
+.billing-action-btn--quiet:disabled,
+.billing-action-btn--quiet[aria-disabled="true"]{
+  background: rgba(236, 253, 245, 0.55);
   border-color: rgba(148, 163, 184, 0.35);
   color: rgba(100, 116, 139, 0.75);
 }
@@ -13173,7 +13233,8 @@ html.bw-billing-readonly .cal-day-balance-hit{
     flex-wrap: nowrap;
     max-width: none;
   }
-  .billing-action-btn--secondary{
+  .billing-action-btn--secondary,
+  .billing-action-btn--quiet{
     flex: 1 1 0;
     width: 0;
     max-width: none;
@@ -13181,7 +13242,8 @@ html.bw-billing-readonly .cal-day-balance-hit{
     padding: 7px 8px;
     font-size: 0.75rem;
   }
-  .billing-actions--interval-annual .billing-action-btn--secondary{
+  .billing-actions--interval-annual .billing-action-btn--secondary,
+  .billing-actions--interval-annual .billing-action-btn--quiet{
     flex: 1 1 0;
     width: 0;
     min-height: 40px;

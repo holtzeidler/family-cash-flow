@@ -9040,7 +9040,7 @@ function alternateBillingLookup(lookupKey) {
 }
 
 function cycleSwitchLabel(lookupKey) {
-  return billingLookupIsAnnual(lookupKey) ? "Switch to monthly" : "Switch to Annual";
+  return billingLookupIsAnnual(lookupKey) ? "Switch to monthly billing" : "Switch to Annual";
 }
 
 function annualSavingsPercent() {
@@ -9062,7 +9062,7 @@ function billingPriceSupportCopy(lookupKey) {
   const key = String(lookupKey || "").trim();
   if (key === BILLING_LOOKUP_ANNUAL) {
     const equiv = annualEquivalentMonthlyLabel();
-    return equiv ? `Equivalent to ${equiv}` : "";
+    return equiv ? `${equiv}, billed annually.` : "";
   }
   if (key === BILLING_LOOKUP_MONTHLY) {
     const pct = annualSavingsPercent();
@@ -9699,9 +9699,11 @@ function resolveBillingLifecycleModel(status, { hasFamily = true } = {}) {
     const changeLong = formatBillingLongDate(pendingInterval.changeOn);
     const pendingMonthly = pendingInterval.lookupKey === BILLING_LOOKUP_MONTHLY;
     const keepLookup = lookupKey || (pendingMonthly ? BILLING_LOOKUP_ANNUAL : BILLING_LOOKUP_MONTHLY);
-    const nextLong = periodEnd ? formatBillingLongDate(periodEnd) : changeLong;
+    const termEndLong = (periodEnd ? formatBillingLongDate(periodEnd) : "") || changeLong;
     const body = pendingMonthly
-      ? `Your annual subscription will remain active through ${changeLong}. You'll switch to ${monthlyPrice} on that date.`
+      ? (termEndLong
+          ? `Your annual subscription will remain active through ${termEndLong}. Starting then, you'll be billed ${monthlyPrice}.`
+          : `Your annual subscription will remain active through the end of your current term. Starting then, you'll be billed ${monthlyPrice}.`)
       : `Your monthly subscription will remain active through ${changeLong}. You'll switch to ${defaultCashForecastAnnualPriceLabel()} on that date.`;
     return {
       mode: "interval_change",
@@ -9716,8 +9718,8 @@ function resolveBillingLifecycleModel(status, { hasFamily = true } = {}) {
         plan: productName,
         priceLabel: "Billing",
         price: priceLabel,
-        dateLabel: "Next renewal",
-        date: nextLong || "—",
+        dateLabel: pendingMonthly ? "Current term ends" : "Next renewal",
+        date: termEndLong || "—",
         statusLabel: "Active",
         statusTone: "paid",
       },
@@ -10300,8 +10302,10 @@ function setBillingSubscribeChoices(choices) {
 
 function setBillingActionTone(btn, tone) {
   if (!btn) return;
-  btn.classList.toggle("billing-action-btn--primary", tone === "primary");
-  btn.classList.toggle("billing-action-btn--secondary", tone !== "primary");
+  const t = String(tone || "secondary");
+  btn.classList.toggle("billing-action-btn--primary", t === "primary");
+  btn.classList.toggle("billing-action-btn--quiet", t === "quiet");
+  btn.classList.toggle("billing-action-btn--secondary", t !== "primary" && t !== "quiet");
 }
 
 function billingCancelButtonEl() {
@@ -10316,7 +10320,12 @@ function restoreBillingCancelButtonHome() {
   const section = document.getElementById("billingCancelSection");
   const btn = billingCancelButtonEl();
   if (!btn) return;
-  btn.classList.remove("billing-action-btn", "billing-action-btn--primary", "billing-action-btn--secondary");
+  btn.classList.remove(
+    "billing-action-btn",
+    "billing-action-btn--primary",
+    "billing-action-btn--quiet",
+    "billing-action-btn--secondary"
+  );
   if (!btn.classList.contains("billing-cancel__request")) {
     btn.classList.add("billing-cancel__request");
   }
@@ -10374,6 +10383,8 @@ function applyBillingCycleAction(model) {
         "billing-cancel__request--danger"
       );
       keepBtn.classList.add("billing-action-btn");
+      keepBtn.removeAttribute("disabled");
+      keepBtn.removeAttribute("aria-disabled");
       setBillingActionTone(keepBtn, "primary");
     }
     setBillingActionTone(portalBtn, "secondary");
@@ -10486,7 +10497,7 @@ function applyBillingCycleAction(model) {
     return;
   }
   setBillingActionTone(cycleBtn, "secondary");
-  setBillingActionTone(portalBtn, "secondary");
+  setBillingActionTone(portalBtn, "quiet");
   if (portalBtn) secondarySlot.appendChild(portalBtn);
   secondarySlot.appendChild(cycleBtn);
   setBillingElHidden(primarySlot, true);
@@ -10886,9 +10897,9 @@ function billingIntervalSwitchCopy(targetLookup, status) {
         ? [
             "Your annual subscription will stay active through ",
             { em: changeLong },
-            ". You'll switch to ",
+            ". Starting then, you'll be billed ",
             { em: `$${BILLING_MONTHLY_AMOUNT_USD}/month` },
-            " on that date.",
+            ".",
           ]
         : [
             "You'll switch to monthly billing at the end of your current annual period. Unused annual time won't be credited.",
