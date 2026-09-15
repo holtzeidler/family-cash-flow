@@ -17,7 +17,9 @@ Dashboard setup (test and live, separately):
 3. Add recurring Price $59.99 USD / year with lookup_key cash_forecast_annual.
 4. Enable Customer Portal for payment method update, cancel, invoices.
    Do not let customers switch products/prices in the portal. Monthly vs annual
-   uses POST /switch-billing-interval (full new price, no prorations, cycle resets).
+   uses POST /switch-billing-interval. Monthly → annual credits unused time
+   via Stripe proration and starts a new annual cycle today. Annual → monthly
+   still replaces immediately with no unused-time credit.
 """
 
 from __future__ import annotations

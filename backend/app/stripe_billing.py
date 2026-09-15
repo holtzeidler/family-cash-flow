@@ -21,6 +21,7 @@ from fastapi.responses import JSONResponse, RedirectResponse
 
 from .billing_catalog import (
     ALLOWED_PRICE_LOOKUP_KEYS,
+    LOOKUP_ANNUAL,
     PRODUCT_CODE,
     PRODUCT_NAME,
     catalog_public,
@@ -307,7 +308,7 @@ def register_stripe_routes(
         family_id: int = Form(...),
         target_lookup: str = Form(...),
     ):
-        """Replace monthly↔annual immediately: full new price, no prorations, cycle starts today."""
+        """Switch monthly↔annual immediately and refresh the live Stripe subscription."""
         _require_stripe()
         if session_factory is None:
             raise HTTPException(
@@ -401,12 +402,15 @@ def register_stripe_routes(
                         }
                     )
 
-                # Immediate replacement: charge the full new price only, forfeit unused
-                # time on the old interval, and start a new cycle today.
+                # Monthly → annual: start a new annual period today and let Stripe
+                # credit unused monthly time against that invoice (one invoice, not
+                # a prorated annual charge plus a second full $59.99 charge).
+                # Annual → monthly: keep the existing no-credit replacement.
+                to_annual = target == LOOKUP_ANNUAL
                 updated = stripe.Subscription.modify(
                     stripe_subscription_id,
                     items=[{"id": item_id, "price": price_id}],
-                    proration_behavior="none",
+                    proration_behavior="create_prorations" if to_annual else "none",
                     billing_cycle_anchor="now",
                     payment_behavior="error_if_incomplete",
                     cancel_at_period_end=False,

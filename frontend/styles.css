@@ -12820,7 +12820,7 @@ label{
 .billing-interval-confirm__body{
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 14px;
 }
 .billing-interval-confirm__body p{
   margin: 0;

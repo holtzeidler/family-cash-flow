@@ -10534,11 +10534,11 @@ function billingIntervalSwitchCopy(targetLookup) {
       title: "Switch to annual billing?",
       paragraphs: [
         [
-          "You'll be charged ",
-          { em: `$${BILLING_ANNUAL_AMOUNT_USD} today` },
-          " for annual Cash Forecast. Your current monthly billing period will end today, and unused time won't be credited.",
+          "You'll switch to annual billing today at ",
+          { em: `$${BILLING_ANNUAL_AMOUNT_USD}/year` },
+          ". Any unused time from your current monthly billing period will be credited toward today's charge.",
         ],
-        ["Your next renewal will be ", { em: "one year from today" }, "."],
+        ["Your next renewal will be one year from today."],
       ],
       confirmLabel: "Switch to annual",
     };
