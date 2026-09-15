@@ -30,6 +30,24 @@ from .billing_catalog import (
 from .billing_entitlement import ENTITLED_STATUSES
 
 
+def _resume_scheduled_cancel(sid: str, live: Any) -> None:
+    """Undo a scheduled cancel without sending cancel_at and cancel_at_period_end together.
+
+    Stripe rejects Subscription.modify when both parameters are present. Setting
+    cancel_at_period_end=True also populates cancel_at, so Keep must clear them
+    in separate updates.
+    """
+    cancel_at_end = bool(getattr(live, "cancel_at_period_end", False))
+    cancel_at = getattr(live, "cancel_at", None)
+    if cancel_at_end:
+        live = stripe.Subscription.modify(sid, cancel_at_period_end=False)
+        cancel_at = getattr(live, "cancel_at", None)
+    if cancel_at:
+        stripe.Subscription.modify(sid, cancel_at="")
+    elif not cancel_at_end:
+        stripe.Subscription.modify(sid, cancel_at_period_end=False)
+
+
 def register_stripe_routes(
     app: FastAPI,
     settings: Any,
@@ -594,10 +612,7 @@ def register_stripe_routes(
                         status_code=status.HTTP_400_BAD_REQUEST,
                         detail="This subscription has already ended and cannot be kept from here.",
                     )
-                resume_params: dict[str, Any] = {"cancel_at_period_end": False}
-                if getattr(live, "cancel_at", None):
-                    resume_params["cancel_at"] = ""
-                stripe.Subscription.modify(sid, **resume_params)
+                _resume_scheduled_cancel(sid, live)
                 sub_obj, _refreshed, period_end = _persist_live_subscription(db, sid)
                 logger.info("Resumed subscription family_id=%s subscription %s", family_id, sid)
         except HTTPException:
