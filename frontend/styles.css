@@ -12504,6 +12504,9 @@ label{
 .billing-actions__secondary[hidden]{
   display: none !important;
 }
+.billing-actions--scheduled-cancel{
+  margin-top: 16px;
+}
 .billing-actions--scheduled-cancel .billing-actions__primary{
   display: flex;
   flex-wrap: nowrap;
