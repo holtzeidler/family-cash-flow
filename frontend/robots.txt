@@ -12,6 +12,7 @@ Allow: /contactus/
 Disallow: /calendar/
 Disallow: /transactions/
 Disallow: /reports/
+Disallow: /reimbursements/
 Disallow: /settings/
 Disallow: /admin/
 Disallow: /platform-admin/

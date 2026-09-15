@@ -114,10 +114,22 @@
       "canonicalPath": "/reports/",
       "index": false
     },
+    "reimbursements/index.html": {
+      "title": "Reimbursements — BalanceWhiz",
+      "description": "Track reimbursable work expenses in BalanceWhiz. These items do not affect your cash flow forecast.",
+      "canonicalPath": "/reimbursements/",
+      "index": false
+    },
     "settings/index.html": {
       "title": "Settings — BalanceWhiz",
       "description": "BalanceWhiz account, category, and family settings.",
       "canonicalPath": "/settings/",
+      "index": false
+    },
+    "settings/billing/index.html": {
+      "title": "Billing — BalanceWhiz",
+      "description": "Manage your BalanceWhiz Cash Forecast subscription and billing.",
+      "canonicalPath": "/settings/billing/",
       "index": false
     },
     "plan/index.html": {
