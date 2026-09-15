@@ -10537,7 +10537,17 @@ let _billingIntervalConfirmEl = null;
 let _billingIntervalConfirmResolve = null;
 let _billingIntervalConfirmReturnFocus = null;
 
-function billingIntervalSwitchCopy(targetLookup) {
+function billingIntervalSwitchRenewalCopy(status) {
+  const raw = status && (status.interval_switch_renewal_on || status.switch_renewal_on);
+  const iso = isoDateFromApiTimestamp(raw);
+  const longDate = iso ? formatBillingLongDate(iso) : "";
+  if (!longDate || longDate === "—") {
+    return ["Your next renewal will be one year from today."];
+  }
+  return ["Your next renewal will be ", { em: longDate }, "."];
+}
+
+function billingIntervalSwitchCopy(targetLookup, status) {
   if (String(targetLookup || "").trim() === BILLING_LOOKUP_ANNUAL) {
     return {
       title: "Switch to annual billing?",
@@ -10545,11 +10555,11 @@ function billingIntervalSwitchCopy(targetLookup) {
         [
           "You'll switch to annual billing today at ",
           { em: `$${BILLING_ANNUAL_AMOUNT_USD}/year` },
-          ". Any unused time from your current monthly billing period will be credited toward today's charge.",
+          ". Any unused time from your current monthly period will be credited toward today's charge.",
         ],
-        ["Your next renewal will be one year from today."],
+        billingIntervalSwitchRenewalCopy(status),
       ],
-      confirmLabel: "Switch to Annual",
+      confirmLabel: "Switch to annual",
     };
   }
   return {
@@ -10617,7 +10627,7 @@ function ensureBillingIntervalConfirmModal() {
     '<div id="billingIntervalConfirmBody" class="billing-interval-confirm__body"></div>' +
     '<div class="modal-actions billing-interval-confirm__actions">' +
     '<button type="button" class="billing-action-btn billing-action-btn--secondary billing-interval-confirm__cancel" id="billingIntervalConfirmCancel">Cancel</button>' +
-    '<button type="button" class="billing-action-btn billing-action-btn--primary billing-interval-confirm__primary" id="billingIntervalConfirmOk">Switch to Annual</button>' +
+    '<button type="button" class="billing-action-btn billing-action-btn--primary billing-interval-confirm__primary" id="billingIntervalConfirmOk">Switch to annual</button>' +
     "</div></div>";
   document.body.appendChild(wrap);
   wrap.querySelector("#billingIntervalConfirmCancel")?.addEventListener("click", () => closeBillingIntervalConfirm(false));
@@ -10649,7 +10659,7 @@ function ensureBillingIntervalConfirmModal() {
 function confirmBillingIntervalSwitch(targetLookup) {
   return new Promise((resolve) => {
     if (_billingIntervalConfirmResolve) closeBillingIntervalConfirm(false);
-    const copy = billingIntervalSwitchCopy(targetLookup);
+    const copy = billingIntervalSwitchCopy(targetLookup, cachedBillingStatusForActiveFamily());
     const wrap = ensureBillingIntervalConfirmModal();
     _billingIntervalConfirmResolve = resolve;
     _billingIntervalConfirmReturnFocus = document.activeElement;
