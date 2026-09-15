@@ -9486,8 +9486,8 @@ function resolveBillingLifecycleModel(status, { hasFamily = true } = {}) {
       title: "",
       hideTitle: true,
       support: "",
-      monthlyLabel: "Continue monthly",
-      annualLabel: "Continue annually",
+      monthlyLabel: "Choose monthly",
+      annualLabel: "Choose annually",
       annualNote: "",
       savings: "",
       reassure: "You'll be charged when you subscribe. Cancel anytime.",
@@ -10101,7 +10101,7 @@ function setBillingSubscribeChoices(choices) {
   }
   if (dom.subscribeMonthly) {
     if (choices.pricingCards) {
-      dom.subscribeMonthly.textContent = choices.monthlyLabel || "Continue monthly";
+      dom.subscribeMonthly.textContent = choices.monthlyLabel || "Choose monthly";
     } else {
       setSubscribeOptionContent(
         dom.subscribeMonthly,
