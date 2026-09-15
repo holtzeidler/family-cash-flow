@@ -32,7 +32,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=781" />
+    <link rel="stylesheet" href="../styles.css?v=782" />
   </head>
   <body class="checkout-page plans-page plans-page--polished">
     <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -65,7 +65,7 @@
           <header class="checkout-hero">
             <h1 id="checkoutTitle" class="checkout-hero__title">Choose your billing option</h1>
             <p class="checkout-hero__subtitle">
-              Choose how you'd like to pay.
+              Select monthly or annual billing to continue.
             </p>
           </header>
 
@@ -259,9 +259,7 @@
         }
 
         function checkoutCtaLabel() {
-          var selected = form && form.querySelector('input[name="billing_cycle"]:checked');
-          if (selected && selected.value === "monthly") return "Continue with monthly";
-          return "Continue with annual";
+          return "Continue to checkout";
         }
 
         function setButtonContent(label, opts) {
