@@ -10198,6 +10198,7 @@ function applyBillingCancelSection(model) {
   };
   if (dom.cancelTitle) dom.cancelTitle.textContent = section.title || "Cancellation";
   if (dom.cancelLede) dom.cancelLede.textContent = section.lede || "";
+  sectionEl.classList.toggle("billing-cancel--keep", section.tone === "keep");
   const btn = dom.cancelBtn;
   if (btn) {
     btn.textContent = section.buttonLabel || "Cancel subscription";
