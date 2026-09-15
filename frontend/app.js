@@ -10607,8 +10607,8 @@ function ensureBillingIntervalConfirmModal() {
     '<h3 id="billingIntervalConfirmTitle" class="billing-interval-confirm__title"></h3>' +
     '<div id="billingIntervalConfirmBody" class="billing-interval-confirm__body"></div>' +
     '<div class="modal-actions billing-interval-confirm__actions">' +
-    '<button type="button" class="billing-interval-confirm__cancel" id="billingIntervalConfirmCancel">Cancel</button>' +
-    '<button type="button" class="billing-interval-confirm__primary" id="billingIntervalConfirmOk">Switch to annual</button>' +
+    '<button type="button" class="billing-action-btn billing-action-btn--secondary billing-interval-confirm__cancel" id="billingIntervalConfirmCancel">Cancel</button>' +
+    '<button type="button" class="billing-action-btn billing-action-btn--primary billing-interval-confirm__primary" id="billingIntervalConfirmOk">Switch to annual</button>' +
     "</div></div>";
   document.body.appendChild(wrap);
   wrap.querySelector("#billingIntervalConfirmCancel")?.addEventListener("click", () => closeBillingIntervalConfirm(false));
