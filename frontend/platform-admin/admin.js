@@ -159,6 +159,25 @@
     }
   }
 
+  function complimentaryExpiresInputValue(iso) {
+    const s = String(iso || "").trim();
+    const m = s.match(/^(\d{4}-\d{2}-\d{2})/);
+    return m ? m[1] : "";
+  }
+
+  function complimentaryPaidWarningHtml(u) {
+    const families = Array.isArray(u && u.paid_families) ? u.paid_families : [];
+    if (!(u && u.paid_subscription_warning) && !families.length) return "";
+    const list = families
+      .map((f) => `${escapeHtml(f.family_name || "Family")} — Stripe ${escapeHtml(f.stripe_status || "active")}`)
+      .join("<br />");
+    return `<div class="platform-admin-warning" role="status">
+      <strong>Paid Stripe subscription is still active.</strong>
+      Complimentary access does not cancel or refund it. Cancel or refund that subscription separately if they should not keep paying.
+      ${list ? `<p class="meta" style="margin:8px 0 0">${list}</p>` : ""}
+    </div>`;
+  }
+
   function fmtAdminRelativeDays(iso) {
     if (!iso) return "—";
     try {
@@ -393,10 +412,16 @@
         const nameLine = u.name ? escapeHtml(u.name) : escapeHtml(u.email);
         const emailSub =
           u.name && u.email ? `<span class="platform-admin-users-table__sub">${escapeHtml(u.email)}</span>` : "";
+        const compSub = u.complimentary_access_active
+          ? `<span class="platform-admin-users-table__sub">Complimentary access</span>`
+          : u.complimentary_access
+            ? `<span class="platform-admin-users-table__sub">Complimentary expired</span>`
+            : "";
         return `<tr data-user-id="${u.id}">
           <td class="platform-admin-users-table__user">
             <span class="platform-admin-users-table__email">${nameLine}</span>
             ${emailSub}
+            ${compSub}
             <span class="platform-admin-users-table__sub">#${u.id}</span>
           </td>
           <td>${escapeHtml(familyCellText(u))}</td>
@@ -543,6 +568,21 @@
           <button type="button" class="platform-admin-drawer__save" id="adminDrawerSavePlatformRole">Save platform role</button>
         </section>
         <section class="platform-admin-drawer__section">
+          <h4>Complimentary access</h4>
+          <p class="meta" style="margin:0 0 10px">Internal full Cash Forecast access. This is not a Stripe plan and does not create or cancel a subscription.</p>
+          ${complimentaryPaidWarningHtml(u)}
+          <label class="platform-admin-drawer__check">
+            <input type="checkbox" id="adminDrawerCompAccess" ${u.complimentary_access ? "checked" : ""} />
+            <span>Grant complimentary access</span>
+          </label>
+          <label class="platform-admin-drawer__field">
+            <span>Expiration date (optional)</span>
+            <input type="date" id="adminDrawerCompExpires" value="${escapeHtml(complimentaryExpiresInputValue(u.complimentary_access_expires_at))}" />
+          </label>
+          <p class="meta" style="margin:0 0 10px">Leave the date blank for access that does not expire.</p>
+          <button type="button" class="platform-admin-drawer__save" id="adminDrawerSaveCompAccess">Save complimentary access</button>
+        </section>
+        <section class="platform-admin-drawer__section">
           <h4>Password reset</h4>
           <label class="platform-admin-drawer__field">
             <span>New password</span>
@@ -595,6 +635,35 @@
           setCallout(callout, "Saving…", "pending");
           await api(`/api/platform/users/${u.id}`, "PATCH", { platform_role: next });
           setCallout(callout, "Platform role updated.", "ok");
+          await loadUsers();
+          await openUserDrawer(u.id);
+        } catch (e) {
+          setCallout(callout, (e && e.message) || String(e), "error");
+        }
+      });
+    }
+
+    const saveComp = document.getElementById("adminDrawerSaveCompAccess");
+    if (saveComp) {
+      saveComp.addEventListener("click", async () => {
+        const enabled = !!document.getElementById("adminDrawerCompAccess")?.checked;
+        const expEl = document.getElementById("adminDrawerCompExpires");
+        const expires = expEl ? String(expEl.value || "").trim() : "";
+        const callout = document.getElementById("adminCallout");
+        const verb = enabled ? "Grant complimentary access" : "Revoke complimentary access";
+        if (!window.confirm(`${verb} for ${u.email}? This does not change any Stripe subscription.`)) return;
+        try {
+          setCallout(callout, "Saving…", "pending");
+          const result = await api(`/api/platform/users/${u.id}/complimentary-access`, "PATCH", {
+            complimentary_access: enabled,
+            complimentary_access_expires_at: enabled && expires ? expires : null,
+          });
+          let msg = enabled ? "Complimentary access saved." : "Complimentary access revoked.";
+          if (result && result.paid_subscription_warning) {
+            msg +=
+              " Warning: this account still has an active paid Stripe subscription. Cancel or refund it separately if they should not keep paying.";
+          }
+          setCallout(callout, msg, result && result.paid_subscription_warning ? "error" : "ok");
           await loadUsers();
           await openUserDrawer(u.id);
         } catch (e) {

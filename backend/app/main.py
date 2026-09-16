@@ -360,6 +360,8 @@ class User(Base):
     platform_role: Mapped[str] = mapped_column(String(20), nullable=False, default="subscriber")
     last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     last_seen_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    complimentary_access: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    complimentary_access_expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     memberships: Mapped[list[FamilyMember]] = relationship(back_populates="user")
 
@@ -1111,6 +1113,9 @@ def _platform_user_row_out(
     last_login_at = _as_utc_naive(getattr(u, "last_login_at", None))
     last_seen_at = _as_utc_naive(getattr(u, "last_seen_at", None))
     last_data_at = _as_utc_naive(eng.last_data_at)
+    from .billing_entitlement import complimentary_access_is_active
+
+    exp = _as_utc_naive(getattr(u, "complimentary_access_expires_at", None))
     return PlatformAdminUserOut(
         id=int(u.id),
         email=u.email,
@@ -1127,7 +1132,56 @@ def _platform_user_row_out(
         primary_family_name=primary_name,
         primary_family_role=primary_role,
         memberships=memberships,
+        complimentary_access=bool(getattr(u, "complimentary_access", False)),
+        complimentary_access_active=complimentary_access_is_active(u),
+        complimentary_access_expires_at=exp,
     )
+
+
+def _parse_complimentary_expiration(raw: Optional[str]) -> Optional[datetime]:
+    s = str(raw or "").strip()
+    if not s:
+        return None
+    if re.match(r"^\d{4}-\d{2}-\d{2}$", s):
+        y, m, d = (int(p) for p in s.split("-"))
+        return datetime(y, m, d, 23, 59, 59)
+    from .billing_entitlement import _as_naive_utc
+
+    parsed = _as_naive_utc(s)
+    if parsed is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid complimentary expiration date.")
+    return parsed
+
+
+def _paid_stripe_families_for_user(db, user_id: int) -> list[PlatformPaidFamilyWarningOut]:
+    owner_ids = db.execute(
+        select(FamilyMember.family_id).where(
+            FamilyMember.user_id == int(user_id),
+            FamilyMember.is_family_owner.is_(True),
+        )
+    ).scalars().all()
+    out: list[PlatformPaidFamilyWarningOut] = []
+    for fid in owner_ids:
+        fam = db.get(Family, int(fid))
+        if fam is None:
+            continue
+        sub = db.execute(
+            select(BillingSubscription).where(BillingSubscription.family_id == int(fid))
+        ).scalar_one_or_none()
+        if sub is None:
+            continue
+        st = str(getattr(sub, "status", None) or "").strip().lower()
+        if st not in ("active", "trialing", "past_due"):
+            continue
+        out.append(
+            PlatformPaidFamilyWarningOut(
+                family_id=int(fid),
+                family_name=str(fam.name),
+                stripe_status=st,
+                lookup_key=(getattr(sub, "lookup_key", None) or None),
+            )
+        )
+    return out
 
 
 def require_family_member(*, db, family_id: int, user_id: int, write: bool = False) -> None:
@@ -1445,6 +1499,9 @@ class BillingStatusOut(BaseModel):
     pending_change_on: Optional[str] = None
     portal_available: bool = False
     stripe_subscription_id: Optional[str] = None
+    complimentary_access: bool = False
+    complimentary_access_active: bool = False
+    complimentary_access_expires_at: Optional[str] = None
 
 
 class FamilyMemberOut(BaseModel):
@@ -1531,6 +1588,9 @@ class PlatformAdminUserOut(BaseModel):
     primary_family_name: Optional[str] = None
     primary_family_role: Optional[str] = None
     memberships: list[PlatformAdminFamilyMembershipOut]
+    complimentary_access: bool = False
+    complimentary_access_active: bool = False
+    complimentary_access_expires_at: Optional[datetime] = None
 
 
 class PlatformAdminAuditEntryOut(BaseModel):
@@ -1545,6 +1605,28 @@ class PlatformAdminAuditEntryOut(BaseModel):
 
 class PlatformAdminUserDetailOut(PlatformAdminUserOut):
     recent_audit: list[PlatformAdminAuditEntryOut] = Field(default_factory=list)
+    paid_subscription_warning: bool = False
+    paid_families: list["PlatformPaidFamilyWarningOut"] = Field(default_factory=list)
+
+
+class PlatformPaidFamilyWarningOut(BaseModel):
+    family_id: int
+    family_name: str
+    stripe_status: str
+    lookup_key: Optional[str] = None
+
+
+class PlatformComplimentaryAccessIn(BaseModel):
+    complimentary_access: bool
+    complimentary_access_expires_at: Optional[str] = None
+
+
+class PlatformComplimentaryAccessOut(BaseModel):
+    complimentary_access: bool
+    complimentary_access_active: bool
+    complimentary_access_expires_at: Optional[datetime] = None
+    paid_subscription_warning: bool = False
+    paid_families: list[PlatformPaidFamilyWarningOut] = Field(default_factory=list)
 
 
 class PlatformUserPlatformRoleIn(BaseModel):
@@ -2728,6 +2810,7 @@ def startup_populate_schema():
     _ensure_family_invites_table()
     _ensure_user_platform_columns()
     _migrate_platform_roles_subscriber_admin()
+    _ensure_user_complimentary_columns()
     _ensure_platform_admin_audit_table()
     _ensure_reimbursements_table()
     _ensure_vendor_category_mappings_table()
@@ -3321,6 +3404,23 @@ def _ensure_user_platform_columns() -> None:
             conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ"))
             conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ"))
             conn.execute(text("UPDATE users SET platform_role = COALESCE(NULLIF(TRIM(platform_role), ''), 'subscriber')"))
+
+
+def _ensure_user_complimentary_columns() -> None:
+    """Internal complimentary Cash Forecast access on users (not a Stripe plan)."""
+    with engine.begin() as conn:
+        if settings.DATABASE_URL.startswith("sqlite"):
+            cols = conn.execute(text("PRAGMA table_info(users)")).fetchall()
+            names = {str(row[1]) for row in cols}
+            if "complimentary_access" not in names:
+                conn.execute(text("ALTER TABLE users ADD COLUMN complimentary_access BOOLEAN NOT NULL DEFAULT 0"))
+            if "complimentary_access_expires_at" not in names:
+                conn.execute(text("ALTER TABLE users ADD COLUMN complimentary_access_expires_at DATETIME"))
+        else:
+            conn.execute(
+                text("ALTER TABLE users ADD COLUMN IF NOT EXISTS complimentary_access BOOLEAN NOT NULL DEFAULT FALSE")
+            )
+            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS complimentary_access_expires_at TIMESTAMPTZ"))
 
 
 def _migrate_platform_roles_subscriber_admin() -> None:
@@ -4041,7 +4141,7 @@ def family_billing_status(
     By default returns DB state only (fast). Pass sync=1 after portal/checkout return
     to refresh from Stripe with a hard timeout.
     """
-    from .billing_entitlement import build_billing_status
+    from .billing_entitlement import apply_complimentary_entitlement, build_billing_status, family_owner_user
 
     try:
         user_id = get_current_user_id(access_token)
@@ -4140,6 +4240,7 @@ def family_billing_status(
                 except Exception:
                     pass
 
+        payload = apply_complimentary_entitlement(payload, family_owner_user(db, int(family_id)))
         return BillingStatusOut(**payload)
     except HTTPException:
         raise
@@ -4540,9 +4641,59 @@ def platform_get_user(
     mems = _platform_memberships_for_user(db=db, user_id=int(u.id))
     engagement = _platform_engagement_by_user_id(db=db, user_ids=[int(u.id)]).get(int(u.id))
     base = _platform_user_row_out(u=u, memberships=mems, engagement=engagement)
+    paid_families = _paid_stripe_families_for_user(db, int(u.id))
     return PlatformAdminUserDetailOut(
         **base.model_dump(),
         recent_audit=_audit_entries_for_user(db=db, user_id=int(u.id)),
+        paid_subscription_warning=bool(paid_families),
+        paid_families=paid_families,
+    )
+
+
+@app.patch("/api/platform/users/{target_user_id}/complimentary-access", response_model=PlatformComplimentaryAccessOut)
+def platform_set_complimentary_access(
+    target_user_id: int,
+    payload: PlatformComplimentaryAccessIn,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
+    db=Depends(get_db),
+):
+    """Grant or revoke internal complimentary access. Never creates or cancels Stripe subscriptions."""
+    from .billing_entitlement import complimentary_access_is_active
+
+    actor_id = get_current_user_id(access_token)
+    require_platform_admin(db=db, user_id=actor_id)
+    u = db.execute(select(User).where(User.id == target_user_id)).scalar_one_or_none()
+    if u is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    enabled = bool(payload.complimentary_access)
+    expires_at = _parse_complimentary_expiration(payload.complimentary_access_expires_at) if enabled else None
+    prev_on = bool(getattr(u, "complimentary_access", False))
+    u.complimentary_access = enabled
+    u.complimentary_access_expires_at = expires_at
+    db.add(u)
+    paid_families = _paid_stripe_families_for_user(db, int(u.id))
+    detail = "revoked"
+    if enabled:
+        detail = "indefinite" if expires_at is None else f"expires {expires_at.date().isoformat()}"
+        if paid_families:
+            names = ", ".join(f"{p.family_name} ({p.stripe_status})" for p in paid_families)
+            detail += f"; paid Stripe still active: {names}"
+    _platform_audit_log(
+        db=db,
+        actor_user_id=actor_id,
+        target_user_id=int(u.id),
+        action="complimentary_access_changed",
+        detail=f"{'on' if prev_on else 'off'} → {'on' if enabled else 'off'} ({detail})",
+    )
+    db.commit()
+    db.refresh(u)
+    return PlatformComplimentaryAccessOut(
+        complimentary_access=bool(u.complimentary_access),
+        complimentary_access_active=complimentary_access_is_active(u),
+        complimentary_access_expires_at=u.complimentary_access_expires_at,
+        paid_subscription_warning=bool(paid_families),
+        paid_families=paid_families,
     )
 
 

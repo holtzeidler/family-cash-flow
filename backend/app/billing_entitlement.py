@@ -375,7 +375,67 @@ def build_billing_status(
         "pending_change_on": pending_on.date().isoformat()
         if isinstance(pending_on, datetime)
         else (str(pending_on) if pending_on else None),
+        "complimentary_access": False,
+        "complimentary_access_active": False,
+        "complimentary_access_expires_at": None,
     }
+
+
+def complimentary_access_is_active(user: Any, *, now: Optional[datetime] = None) -> bool:
+    """True when the account currently has internal complimentary Cash Forecast access."""
+    if user is None:
+        return False
+    if not bool(getattr(user, "complimentary_access", False)):
+        return False
+    exp = _as_naive_utc(getattr(user, "complimentary_access_expires_at", None))
+    if exp is None:
+        return True
+    n = now or _utc_now()
+    return exp > n
+
+
+def _iso_z(dt: Optional[datetime]) -> Optional[str]:
+    naive = _as_naive_utc(dt)
+    if naive is None:
+        return None
+    return naive.isoformat() + "Z"
+
+
+def apply_complimentary_entitlement(
+    payload: dict[str, Any],
+    user: Any,
+    *,
+    now: Optional[datetime] = None,
+) -> dict[str, Any]:
+    """OR complimentary access onto Stripe/trial entitlement. Last step before returning status."""
+    out = dict(payload or {})
+    n = now or _utc_now()
+    flagged = bool(getattr(user, "complimentary_access", False)) if user is not None else False
+    active = complimentary_access_is_active(user, now=n)
+    exp = _as_naive_utc(getattr(user, "complimentary_access_expires_at", None)) if user is not None else None
+    out["complimentary_access"] = flagged
+    out["complimentary_access_active"] = active
+    out["complimentary_access_expires_at"] = _iso_z(exp) if flagged else None
+    if active:
+        out["entitled"] = True
+        out["phase"] = "complimentary"
+    return out
+
+
+def family_owner_user(db, family_id: int):
+    from sqlalchemy import select
+
+    from .main import FamilyMember, User
+
+    owner_id = db.execute(
+        select(FamilyMember.user_id).where(
+            FamilyMember.family_id == int(family_id),
+            FamilyMember.is_family_owner.is_(True),
+        )
+    ).scalar_one_or_none()
+    if owner_id is None:
+        return None
+    return db.get(User, int(owner_id))
 
 
 BILLING_NOT_ENTITLED_CODE = "billing_not_entitled"
@@ -415,7 +475,8 @@ def family_billing_payload(db, *, family_id: int, now: Optional[datetime] = None
     sub = db.execute(
         select(BillingSubscription).where(BillingSubscription.family_id == int(family_id))
     ).scalar_one_or_none()
-    return build_billing_status(family=fam, subscription=sub, now=now)
+    payload = build_billing_status(family=fam, subscription=sub, now=now)
+    return apply_complimentary_entitlement(payload, family_owner_user(db, int(family_id)), now=now)
 
 
 def assert_family_entitled(db, family_id: int) -> dict[str, Any]:
@@ -427,10 +488,14 @@ def assert_family_entitled(db, family_id: int) -> dict[str, Any]:
 
 
 def assert_user_entitled_for_write(db, user_id: int) -> dict[str, Any]:
-    """Reimbursements are user-scoped; require at least one entitled family."""
+    """Reimbursements are user-scoped; require complimentary access or an entitled family."""
     from sqlalchemy import select
 
-    from .main import FamilyMember
+    from .main import FamilyMember, User
+
+    user = db.get(User, int(user_id))
+    if complimentary_access_is_active(user):
+        return apply_complimentary_entitlement({"entitled": True, "phase": "complimentary"}, user)
 
     family_ids = (
         db.execute(select(FamilyMember.family_id).where(FamilyMember.user_id == int(user_id))).scalars().all()

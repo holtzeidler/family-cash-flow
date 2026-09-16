@@ -9198,8 +9198,15 @@ function isBillingSubscribed(status = cachedBillingStatusForActiveFamily()) {
   return !!status.stripe_subscription_id && (st === "active" || st === "past_due");
 }
 
+function isComplimentaryAccessActive(status = cachedBillingStatusForActiveFamily()) {
+  if (!status || typeof status !== "object") return false;
+  if (status.complimentary_access_active === true) return true;
+  return String(status.phase || "").toLowerCase() === "complimentary";
+}
+
 function isBillingWriteLocked(status = cachedBillingStatusForActiveFamily()) {
   if (!status || typeof status !== "object") return false;
+  if (isComplimentaryAccessActive(status)) return false;
   if (status.entitled === false) return true;
   const phase = String(status.phase || "").toLowerCase();
   return phase === "expired";
@@ -9489,7 +9496,7 @@ function isBillingPortalAvailable(status = cachedBillingStatusForActiveFamily())
 
 /**
  * Centralized Billing UI model — map API entitlement + Stripe fields to one lifecycle state.
- * Modes: no_family | trial | trial_scheduled | trial_ended | active | canceling |
+ * Modes: no_family | complimentary | trial | trial_scheduled | trial_ended | active | canceling |
  * interval_change | payment_issue | payment_required | canceled | error
  */
 function resolveBillingLifecycleModel(status, { hasFamily = true } = {}) {
@@ -9514,6 +9521,35 @@ function resolveBillingLifecycleModel(status, { hasFamily = true } = {}) {
       meta: null,
       manageHint: "",
       cancelLede: "",
+    };
+  }
+
+  if (isComplimentaryAccessActive(status)) {
+    const expIso = isoDateFromApiTimestamp(status && status.complimentary_access_expires_at);
+    const expLong = expIso ? formatBillingLongDate(expIso) : "";
+    const hasExp = !!(expLong && expLong !== "—");
+    return {
+      mode: "complimentary",
+      productName,
+      productCopy,
+      showMeta: true,
+      showManage: true,
+      showCancel: false,
+      callout: null,
+      primaryCta: null,
+      meta: {
+        plan: productName,
+        priceLabel: "Billing",
+        price: "Complimentary access",
+        dateLabel: hasExp ? "Access through" : "Access",
+        date: hasExp ? expLong : "No expiration",
+        statusLabel: "Active",
+        statusTone: "paid",
+      },
+      manageTitle: "Complimentary access",
+      manageHint: "You have full access to Cash Forecast. No subscription or payment method is required.",
+      cycleAction: null,
+      notesKind: "active",
     };
   }
 
@@ -10350,13 +10386,26 @@ function applyBillingCycleAction(model) {
   const paymentPrimary = model.mode === "payment_issue" || model.mode === "payment_required";
   const trialReady = model.mode === "trial_scheduled";
   const errorState = model.mode === "error";
+  const complimentary = model.mode === "complimentary";
   if (manage) {
     manage.classList.toggle("billing-actions--scheduled-cancel", scheduledLayout);
     manage.classList.toggle("billing-actions--payment-issue", paymentPrimary);
-    if (scheduledLayout || paymentPrimary || errorState || trialReady) {
+    if (scheduledLayout || paymentPrimary || errorState || trialReady || complimentary) {
       manage.classList.remove("billing-actions--promote-annual", "billing-actions--interval-annual");
     }
   }
+
+  if (complimentary) {
+    if (cycleBtn) setBillingElHidden(cycleBtn, true);
+    if (portalBtn) setBillingElHidden(portalBtn, true);
+    if (primarySlot) setBillingElHidden(primarySlot, true);
+    if (secondarySlot) setBillingElHidden(secondarySlot, true);
+    return;
+  }
+  if (cycleBtn) setBillingElHidden(cycleBtn, false);
+  if (portalBtn) setBillingElHidden(portalBtn, false);
+  if (primarySlot) setBillingElHidden(primarySlot, false);
+  if (secondarySlot) setBillingElHidden(secondarySlot, false);
 
   if (cycleBtn && !paymentPrimary && !errorState && (cycleBtn.getAttribute("data-billing-action") === "payment" || cycleBtn.getAttribute("data-billing-action") === "retry")) {
     cycleBtn.setAttribute("data-billing-action", "cycle");
@@ -10663,7 +10712,7 @@ function applyBillingLifecycleModel(model) {
     }
     applyBillingCycleAction(model);
     const reassure = document.getElementById("billingManageReassure");
-    if (reassure) setBillingElHidden(reassure, model.mode === "error" || !model.showManage);
+    if (reassure) setBillingElHidden(reassure, model.mode === "error" || model.mode === "complimentary" || !model.showManage);
 
     setBillingPrimaryCta(model.primaryCta);
     setBillingSubscribeChoices(model.subscribeChoices || null);
