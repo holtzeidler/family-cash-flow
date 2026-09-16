@@ -124,9 +124,9 @@
   }
 
   async function loadOverview() {
-    const data = await api("/api/platform/overview", "GET");
     const el = document.getElementById("adminOverviewText");
-    if (el && data && data.message) el.textContent = data.message;
+    const data = await api("/api/platform/overview", "GET");
+    if (el) el.textContent = (data && data.message) || "Operator console.";
   }
 
   async function loadFamiliesList() {
