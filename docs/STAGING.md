@@ -101,7 +101,7 @@ Regenerate staging favicons after editing `frontend/assets/staging-favicon.svg`:
 | **TTL** | 1 Hour (default is fine) |
 
 5. **Save**
-
+image.pngimage.pngimage.png
 GoDaddy’s **Name** field is only the subdomain (`staging`), not the full `staging.balancewhiz.com`.
 
 **Do not** use GoDaddy **Forwarding** for this — use a **DNS CNAME record** only.
@@ -209,7 +209,7 @@ Sign in on staging with a **dedicated test account**, not your main production e
 | “We're having trouble connecting” on account setup | Staging API `/api/debug/public-config`: `cors_middleware_enabled` must be `true`. Fix `CORS_ORIGINS` (plural), not `CORS_ORIGIN`; redeploy and recheck. |
 | Login works on prod, not staging | `CORS_ORIGINS` on staging API matches staging frontend origin exactly; `ENV=production` on staging API |
 | `API_BASE` / `__API_BASE__` in browser | Re-deploy staging static site after setting `API_BASE` on Render |
-| Staging shows production data | Staging API `DATABASE_URL` must use **staging** DB only |
+| Staging shows production data | Staging API `DATABASE_URL` must use **staging** DB only. On Render → **family-cash-flow-api-staging** → **Environment**, `DATABASE_URL` must come from **family-cash-flow-db-staging** (name includes `staging`), not production Neon. Platform Admin → Overview shows the connected database name. If that name does not include `staging`, writes are blocked. |
 | Production login works on staging | Set `STAGING_AUTH_EMAIL_ALLOWLIST` to test emails only; fix `DATABASE_URL` if prod data still appears |
 | CI fails on `staging` push | GitHub secret `API_BASE_STAGING` set in `staging` environment |
 | Login/signup sends you to production | Signup links must be relative (`/account-setup/`), not `https://balancewhiz.com/...` |

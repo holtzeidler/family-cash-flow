@@ -140,7 +140,44 @@
   async function loadOverview() {
     const el = document.getElementById("adminOverviewText");
     const data = await api("/api/platform/overview", "GET");
-    if (el) el.textContent = (data && data.message) || "Operator console.";
+    if (!el) return;
+    if (!data) {
+      el.textContent = "Operator console.";
+      return;
+    }
+    const isolated = !!data.isolated_from_production;
+    const staging = data.deployment === "staging";
+    const stripe = String(data.stripe_mode || "none");
+    const host = [data.database_host_kind, data.database_host_hint].filter(Boolean).join(" / ");
+    const boxClass = staging
+      ? isolated
+        ? "platform-admin-isolation platform-admin-isolation--ok"
+        : "platform-admin-isolation platform-admin-isolation--danger"
+      : "platform-admin-isolation";
+    el.innerHTML = `<div class="${boxClass}">
+      <p style="margin:0 0 8px"><strong>${escapeHtml(data.message || "Operator console.")}</strong></p>
+      <dl>
+        <dt>Environment</dt><dd>${escapeHtml(staging ? "Staging (staging.balancewhiz.com)" : String(data.deployment || "unknown"))}</dd>
+        <dt>Database</dt><dd>${escapeHtml(data.database_name || "unknown")}${host ? ` <span class="meta">(${escapeHtml(host)})</span>` : ""}</dd>
+        <dt>Isolated from live site</dt><dd>${isolated ? "Yes — this is not the production database." : "No — writes are blocked until DATABASE_URL points at the staging database."}</dd>
+        <dt>Stripe</dt><dd>${escapeHtml(stripe === "live" ? "Live keys (billing changes blocked on staging)" : stripe === "test" ? "Test mode" : stripe === "none" ? "Not configured" : stripe)}</dd>
+        <dt>Staging login allowlist</dt><dd>${data.staging_auth_restricted ? "On — only listed test emails can sign in." : "Off — any account in this database can sign in."}</dd>
+      </dl>
+    </div>`;
+    const callout = document.getElementById("adminCallout");
+    if (staging && !isolated) {
+      setCallout(
+        callout,
+        "Writes are blocked. On Render, set family-cash-flow-api-staging DATABASE_URL to family-cash-flow-db-staging, not production Neon.",
+        "error"
+      );
+    } else if (staging && stripe === "live") {
+      setCallout(
+        callout,
+        "Staging is using live Stripe keys. Billing changes are blocked. Use a sk_test_ key on family-cash-flow-api-staging.",
+        "error"
+      );
+    }
   }
 
   async function loadFamiliesList() {

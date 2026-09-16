@@ -913,6 +913,94 @@ def _require_staging_auth_email_allowed(email: str) -> None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=_STAGING_AUTH_DENIED_DETAIL)
 
 
+def _is_staging_deployment() -> bool:
+    """True when this API is wired to the staging site (not production)."""
+    blob = f"{settings.APP_PUBLIC_BASE_URL or ''} {settings.CORS_ORIGINS or ''}".lower()
+    return any(
+        token in blob
+        for token in (
+            "staging.balancewhiz.com",
+            "family-cash-flow-web-staging",
+            "family-cash-flow-api-staging",
+        )
+    )
+
+
+def _database_identity() -> dict[str, str]:
+    """Host/name only — never userinfo or the full URL."""
+    raw = (settings.DATABASE_URL or "").strip()
+    if raw.startswith("sqlite"):
+        name = raw.rsplit("/", 1)[-1] or "app.db"
+        return {"engine": "sqlite", "database": name, "host_kind": "sqlite", "host_hint": "local"}
+    normalized = raw.replace("postgresql+psycopg://", "postgresql://", 1)
+    normalized = normalized.replace("postgresql+psycopg2://", "postgresql://", 1)
+    if normalized.startswith("postgres://"):
+        normalized = "postgresql://" + normalized[len("postgres://") :]
+    parsed = urlparse(normalized)
+    dbname = (parsed.path or "").lstrip("/").split("?")[0]
+    host = (parsed.hostname or "").lower()
+    if "neon.tech" in host:
+        host_kind = "neon"
+    elif "render.com" in host:
+        host_kind = "render-postgres"
+    else:
+        host_kind = "postgres"
+    first = host.split(".")[0] if host else ""
+    return {
+        "engine": "postgres",
+        "database": dbname,
+        "host_kind": host_kind,
+        "host_hint": first[:48],
+    }
+
+
+def _database_looks_like_staging() -> bool:
+    ident = _database_identity()
+    blob = f"{ident.get('database', '')} {ident.get('host_hint', '')} {settings.DATABASE_URL or ''}".lower()
+    return "staging" in blob
+
+
+def _stripe_secret_mode() -> str:
+    k = (settings.STRIPE_SECRET_KEY or "").strip()
+    if not k:
+        return "none"
+    if k.startswith(("sk_live", "rk_live")):
+        return "live"
+    if k.startswith(("sk_test", "rk_test")):
+        return "test"
+    return "unknown"
+
+
+def _staging_db_writes_allowed() -> bool:
+    if not _is_staging_deployment():
+        return True
+    return _database_looks_like_staging()
+
+
+_STAGING_SHARED_DB_DETAIL = (
+    "This staging API is not connected to a staging database. Writes are blocked so "
+    "production data cannot be changed. On Render → family-cash-flow-api-staging → Environment, "
+    "set DATABASE_URL to the family-cash-flow-db-staging connection string (the database name "
+    "must include 'staging'), not production Neon."
+)
+_STAGING_LIVE_STRIPE_DETAIL = (
+    "Staging is using a live Stripe key. Billing changes are blocked so live subscriptions "
+    "cannot be changed. Set STRIPE_SECRET_KEY on family-cash-flow-api-staging to a test-mode key (sk_test_…)."
+)
+_STAGING_UNSAFE_DB_ALLOWED_WRITE_PATHS = frozenset({"/api/auth/login", "/api/auth/logout"})
+_STAGING_STRIPE_MUTATION_PATHS = frozenset(
+    {
+        "/create-checkout-session",
+        "/preview-billing-interval",
+        "/switch-billing-interval",
+        "/schedule-subscription-cancel",
+        "/resume-subscription",
+        "/create-portal-session",
+        "/webhook",
+    }
+)
+
+
 def _normalize_platform_role_value(raw: str) -> str:
     """Map stored/legacy values to subscriber | admin."""
     r = (raw or "subscriber").strip().lower()
@@ -1664,6 +1752,14 @@ class PlatformUserPurgeOut(BaseModel):
 
 class PlatformOverviewOut(BaseModel):
     message: str
+    deployment: str = "unknown"
+    database_name: str = ""
+    database_host_kind: str = ""
+    database_host_hint: str = ""
+    isolated_from_production: bool = True
+    stripe_mode: str = "none"
+    writes_enabled: bool = True
+    staging_auth_restricted: bool = False
 
 
 class CategoryIn(BaseModel):
@@ -2272,6 +2368,21 @@ async def touch_user_last_seen(request: Request, call_next):
     return await call_next(request)
 
 
+@app.middleware("http")
+async def protect_staging_from_production_data(request: Request, call_next):
+    """Refuse writes when the staging site is pointed at a non-staging database or live Stripe."""
+    if request.method in ("GET", "HEAD", "OPTIONS"):
+        return await call_next(request)
+    if not _is_staging_deployment():
+        return await call_next(request)
+    path = request.url.path
+    if not _database_looks_like_staging() and path not in _STAGING_UNSAFE_DB_ALLOWED_WRITE_PATHS:
+        return JSONResponse(status_code=409, content={"detail": _STAGING_SHARED_DB_DETAIL})
+    if _stripe_secret_mode() == "live" and path in _STAGING_STRIPE_MUTATION_PATHS:
+        return JSONResponse(status_code=409, content={"detail": _STAGING_LIVE_STRIPE_DETAIL})
+    return await call_next(request)
+
+
 @app.get("/api/health", include_in_schema=False)
 def health():
     """Lightweight liveness probe (no DB) — used to wake Render before login."""
@@ -2328,6 +2439,12 @@ def public_debug_config():
         "billing_product_code": PRODUCT_CODE,
         "billing_trial_days": TRIAL_DAYS,
         "staging_auth_restricted": _staging_auth_allowlist_enforced(),
+        "deployment": "staging" if _is_staging_deployment() else settings.ENV,
+        "database_name": _database_identity().get("database") or "",
+        "database_host_kind": _database_identity().get("host_kind") or "",
+        "isolated_from_production": (not _is_staging_deployment()) or _database_looks_like_staging(),
+        "stripe_mode": _stripe_secret_mode(),
+        "writes_enabled": _staging_db_writes_allowed(),
         "note": "GitHub Pages -> Render: ENV=production for SameSite=None; Secure cookies. Register/login also return access_token for Authorization: Bearer when cookies are blocked.",
     }
 
@@ -4601,9 +4718,36 @@ def platform_overview(
 ):
     user_id = get_current_user_id(access_token)
     require_platform_admin(db=db, user_id=user_id)
+    ident = _database_identity()
+    staging = _is_staging_deployment()
+    isolated = (not staging) or _database_looks_like_staging()
+    if staging and not isolated:
+        message = (
+            "This staging site is connected to a database that does not look like staging. "
+            "Writes are blocked. In Render, point family-cash-flow-api-staging DATABASE_URL at "
+            "family-cash-flow-db-staging — never production Neon."
+        )
+    elif staging:
+        message = (
+            "This is staging. Changes here do not update balancewhiz.com. "
+            "If you recognize production emails, this database was copied from production — "
+            "those rows are copies, not the live accounts. Use test emails only."
+        )
+    else:
+        message = (
+            "Operator console. User and family management is available from the sidebar. "
+            "Billing, add-on features, and per-tenant feature flags will plug in here as the product grows."
+        )
     return PlatformOverviewOut(
-        message="Operator console. User and family management is available from the sidebar. "
-        "Billing, add-on features, and per-tenant feature flags will plug in here as the product grows."
+        message=message,
+        deployment="staging" if staging else "production",
+        database_name=ident.get("database") or "",
+        database_host_kind=ident.get("host_kind") or "",
+        database_host_hint=ident.get("host_hint") or "",
+        isolated_from_production=isolated,
+        stripe_mode=_stripe_secret_mode(),
+        writes_enabled=_staging_db_writes_allowed(),
+        staging_auth_restricted=_staging_auth_allowlist_enforced(),
     )
 
 
