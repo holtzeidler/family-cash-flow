@@ -59,15 +59,29 @@
         "This page needs API_BASE (same as the main app). Configure it in your static deploy, then reload."
       );
     }
-    const res = await fetch(fullPath, {
-      method,
-      headers: {
-        ...apiBearerAuthHeaders(),
-        ...(body ? { "Content-Type": "application/json" } : {}),
-      },
-      credentials: "include",
-      body: body ? JSON.stringify(body) : undefined,
-    });
+    const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+    const timeoutMs = 90000;
+    const timer = ctrl ? setTimeout(() => ctrl.abort(), timeoutMs) : null;
+    let res;
+    try {
+      res = await fetch(fullPath, {
+        method,
+        headers: {
+          ...apiBearerAuthHeaders(),
+          ...(body ? { "Content-Type": "application/json" } : {}),
+        },
+        credentials: "include",
+        body: body ? JSON.stringify(body) : undefined,
+        signal: ctrl ? ctrl.signal : undefined,
+      });
+    } catch (err) {
+      if (err && err.name === "AbortError") {
+        throw new Error("The request timed out. Staging may be waking up — wait a few seconds and try again.");
+      }
+      throw err;
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
     if (res.status === 401) {
       try {
         sessionStorage.removeItem(BW_API_ACCESS_TOKEN_KEY);
@@ -132,6 +146,7 @@
   async function loadFamiliesList() {
     const mount = document.getElementById("adminFamiliesMount");
     if (!mount) return;
+    mount.innerHTML = '<p class="meta">Loading families…</p>';
     const rows = await api("/api/platform/families", "GET");
     if (!rows || !rows.length) {
       mount.innerHTML = '<p class="meta">No families yet.</p>';
@@ -833,15 +848,43 @@
     }
   }
 
+  function showUsersLoading() {
+    const meta = document.getElementById("adminUsersMeta");
+    const tbody = document.getElementById("adminUsersTableBody");
+    const wrap = document.getElementById("adminUsersTableWrap");
+    if (meta) meta.textContent = cachedPlatformUsers ? "Refreshing users…" : "Loading users…";
+    if (wrap) wrap.hidden = false;
+    if (tbody && !cachedPlatformUsers) {
+      tbody.innerHTML =
+        '<tr><td colspan="11" class="meta" style="text-align:center;padding:20px">Loading users…</td></tr>';
+    }
+  }
+
+  let usersLoadPromise = null;
+
   async function loadUsers() {
     wirePlatformUsersFilters();
     wireUserDrawerChrome();
     wireInviteModal();
-    const users = await api("/api/platform/users", "GET");
-    cachedPlatformUsers = Array.isArray(users) ? users : [];
-    await ensurePlatformFamiliesCache();
-    populateUsersFamilyFilter();
-    renderPlatformUsersTable();
+    if (cachedPlatformUsers) {
+      populateUsersFamilyFilter();
+      renderPlatformUsersTable();
+    }
+    showUsersLoading();
+    if (!usersLoadPromise) {
+      usersLoadPromise = (async () => {
+        try {
+          const users = await api("/api/platform/users", "GET");
+          cachedPlatformUsers = Array.isArray(users) ? users : [];
+          await ensurePlatformFamiliesCache();
+          populateUsersFamilyFilter();
+          renderPlatformUsersTable();
+        } finally {
+          usersLoadPromise = null;
+        }
+      })();
+    }
+    await usersLoadPromise;
   }
   const platformAdminBackBtn = document.getElementById("platformAdminBackBtn");
   if (platformAdminBackBtn) {
@@ -1153,6 +1196,8 @@
       }
       await loadOverview();
       setCallout(callout, "", "");
+      loadUsers().catch(() => {});
+      loadFamiliesList().catch(() => {});
     } catch (e) {
       setCallout(callout, (e && e.message) || String(e), "error");
     }

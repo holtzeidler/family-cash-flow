@@ -3497,23 +3497,34 @@ def _sync_legacy_platform_admin_roles() -> None:
             db.commit()
 
 
-def _platform_memberships_for_user(*, db, user_id: int) -> list[PlatformAdminFamilyMembershipOut]:
-    mships = db.execute(
+def _membership_out(m: FamilyMember, fam: Family) -> PlatformAdminFamilyMembershipOut:
+    return PlatformAdminFamilyMembershipOut(
+        family_id=int(fam.id),
+        family_name=str(fam.name),
+        role=str(m.role or "member"),
+        is_family_owner=bool(getattr(m, "is_family_owner", False)),
+        access_mode=str(getattr(m, "access_mode", None) or "edit"),
+    )
+
+
+def _platform_memberships_by_user_ids(*, db, user_ids: Sequence[int]) -> dict[int, list[PlatformAdminFamilyMembershipOut]]:
+    out: dict[int, list[PlatformAdminFamilyMembershipOut]] = defaultdict(list)
+    ids = [int(x) for x in user_ids]
+    if not ids:
+        return out
+    rows = db.execute(
         select(FamilyMember, Family)
         .join(Family, Family.id == FamilyMember.family_id)
-        .where(FamilyMember.user_id == user_id)
+        .where(FamilyMember.user_id.in_(ids))
         .order_by(Family.id.asc())
     ).all()
-    return [
-        PlatformAdminFamilyMembershipOut(
-            family_id=int(fam.id),
-            family_name=str(fam.name),
-            role=str(m.role or "member"),
-            is_family_owner=bool(getattr(m, "is_family_owner", False)),
-            access_mode=str(getattr(m, "access_mode", None) or "edit"),
-        )
-        for m, fam in mships
-    ]
+    for m, fam in rows:
+        out[int(m.user_id)].append(_membership_out(m, fam))
+    return out
+
+
+def _platform_memberships_for_user(*, db, user_id: int) -> list[PlatformAdminFamilyMembershipOut]:
+    return _platform_memberships_by_user_ids(db=db, user_ids=[user_id]).get(int(user_id), [])
 
 
 def _family_role_to_member_update(role: str) -> FamilyMemberUpdateIn:
@@ -4616,12 +4627,14 @@ def platform_list_users(
     require_platform_admin(db=db, user_id=user_id)
     users = db.execute(select(User).order_by(User.id.asc())).scalars().all()
     user_ids = [int(u.id) for u in users]
-    engagement_by_id = _platform_engagement_by_user_id(db=db, user_ids=user_ids)
+    memberships_by_id = _platform_memberships_by_user_ids(db=db, user_ids=user_ids)
+    # Skip transaction/account aggregates on the list — they scan every family's
+    # transactions and make this endpoint feel hung on staging. User detail still
+    # includes them.
     return [
         _platform_user_row_out(
             u=u,
-            memberships=_platform_memberships_for_user(db=db, user_id=int(u.id)),
-            engagement=engagement_by_id.get(int(u.id)),
+            memberships=memberships_by_id.get(int(u.id), []),
         )
         for u in users
     ]
