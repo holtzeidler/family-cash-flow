@@ -9,7 +9,7 @@ Use staging to try changes with real deploy mechanics (static build, API, cookie
 | **Branch** | `main` | `staging` |
 | **Frontend** | GitHub Pages (`balancewhiz.com`) | Render static site `family-cash-flow-web-staging` |
 | **API** | Render `family-cash-flow-api` | Render `family-cash-flow-api-staging` |
-| **Database** | Neon production (`ep-polished-boat-…`) | Neon **staging branch** (`ep-ancient-union-…`) |
+| **Database** | Neon production (`ep-ancient-union-…`) | Neon **staging branch** (`ep-polished-boat-…`) |
 | **Frontend build secret** | `API_BASE` | `API_BASE_STAGING` |
 
 GitHub Pages supports **one** live site per repo, so staging frontend lives on Render. Production stays on GitHub Pages + Render API (unchanged).
@@ -47,9 +47,9 @@ On **`family-cash-flow-api-staging`**, set (in addition to blueprint defaults):
 | `CORS_ORIGINS` | Staging frontend origin only, e.g. `https://staging.balancewhiz.com` (no path). Must be **`CORS_ORIGINS`** (plural) — `CORS_ORIGIN` is ignored. |
 | `APP_PUBLIC_BASE_URL` | Same as staging frontend URL (invite/reset links) |
 | `JWT_SECRET` | Generate a new secret (do not reuse production) |
-| `DATABASE_URL` | Neon **staging branch** pooled URL. Host must be `ep-ancient-union-and21kx9-pooler…`, **not** production `ep-polished-boat-ando6x8y-pooler…`. Both branches use database name `neondb` — the **host** is what separates them. |
-| `PRODUCTION_DATABASE_HOST` | `ep-polished-boat-ando6x8y-pooler` — staging refuses writes if `DATABASE_URL` matches this host. |
-| `STAGING_DATABASE_HOST` | `ep-ancient-union-and21kx9-pooler` — staging allows writes only when `DATABASE_URL` matches this host (or another host whose name includes `staging`). |
+| `DATABASE_URL` | Neon **staging branch** pooled URL. Host must be `ep-polished-boat-ando6x8y-pooler…`, **not** production `ep-ancient-union-and21kx9-pooler…`. Both branches use database name `neondb` — the **host** is what separates them. |
+| `PRODUCTION_DATABASE_HOST` | `ep-ancient-union-and21kx9-pooler` — staging refuses writes if `DATABASE_URL` matches this host. |
+| `STAGING_DATABASE_HOST` | `ep-polished-boat-ando6x8y-pooler` — staging allows writes only when `DATABASE_URL` matches this host (or another host whose name includes `staging`). |
 | `STAGING_AUTH_EMAIL_ALLOWLIST` | Comma-separated **test-only** emails allowed to register/login on staging (e.g. `you+staging@gmail.com`). Production accounts are rejected even if the staging DB was copied from prod. |
 
 Copy optional mail/contact vars from production only if you want staging to send real email (usually skip for staging).
@@ -211,7 +211,7 @@ Sign in on staging with a **dedicated test account**, not your main production e
 | “We're having trouble connecting” on account setup | Staging API `/api/debug/public-config`: `cors_middleware_enabled` must be `true`. Fix `CORS_ORIGINS` (plural), not `CORS_ORIGIN`; redeploy and recheck. |
 | Login works on prod, not staging | `CORS_ORIGINS` on staging API matches staging frontend origin exactly; `ENV=production` on staging API |
 | `API_BASE` / `__API_BASE__` in browser | Re-deploy staging static site after setting `API_BASE` on Render |
-| Staging shows production data | Staging API `DATABASE_URL` host must be **ep-ancient-union-…**, not **ep-polished-boat-…**. Both Neon branches are named `neondb`; the host is the separator. Platform Admin → Overview shows the connected host. Writes are blocked if the host is production. |
+| Staging shows production data | Staging API `DATABASE_URL` host must be **ep-polished-boat-…**, not **ep-ancient-union-…**. Both Neon branches are named `neondb`; the host is the separator. Platform Admin → Overview shows the connected host. Writes are blocked if the host is production. |
 | Production login works on staging | Set `STAGING_AUTH_EMAIL_ALLOWLIST` to test emails only; fix `DATABASE_URL` if prod data still appears |
 | CI fails on `staging` push | GitHub secret `API_BASE_STAGING` set in `staging` environment |
 | Login/signup sends you to production | Signup links must be relative (`/account-setup/`), not `https://balancewhiz.com/...` |

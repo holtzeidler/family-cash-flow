@@ -168,7 +168,7 @@
     if (staging && !isolated) {
       setCallout(
         callout,
-        "Writes are blocked. On Render, set family-cash-flow-api-staging DATABASE_URL to the Neon staging host (ep-ancient-union-…), not production (ep-polished-boat-…).",
+        "Writes are blocked. On Render, set family-cash-flow-api-staging DATABASE_URL to the Neon staging host (ep-polished-boat-…), not production (ep-ancient-union-…).",
         "error"
       );
     } else if (staging && stripe === "live") {

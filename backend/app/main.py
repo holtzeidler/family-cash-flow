@@ -67,8 +67,11 @@ class Settings(BaseSettings):
     APP_PUBLIC_BASE_URL: str = ""
     # Neon (or other) host labels used to keep staging from writing to production.
     # Staging writes are blocked when DATABASE_URL's host matches PRODUCTION_DATABASE_HOST.
-    PRODUCTION_DATABASE_HOST: str = "ep-polished-boat-ando6x8y-pooler"
-    STAGING_DATABASE_HOST: str = "ep-ancient-union-and21kx9-pooler"
+    # These must match the real Neon endpoints wired in Render (do not swap them):
+    #   production API → ep-ancient-union-…
+    #   staging API    → ep-polished-boat-…
+    PRODUCTION_DATABASE_HOST: str = "ep-ancient-union-and21kx9-pooler"
+    STAGING_DATABASE_HOST: str = "ep-polished-boat-ando6x8y-pooler"
     # Stripe Billing (Checkout + Customer Portal + webhooks). Leave empty to disable billing routes.
     # Use a restricted key (rk_…) when possible; never commit secrets. Staging and production need separate keys.
     STRIPE_SECRET_KEY: str = ""
@@ -998,7 +1001,7 @@ def _staging_db_writes_allowed() -> bool:
 _STAGING_SHARED_DB_DETAIL = (
     "This staging API is connected to the production Neon database. Writes are blocked. "
     "On Render → family-cash-flow-api-staging → Environment, set DATABASE_URL to the "
-    "staging Neon host (ep-ancient-union-…), not the production host (ep-polished-boat-…)."
+    "staging Neon host (ep-polished-boat-…), not the production host (ep-ancient-union-…)."
 )
 _STAGING_LIVE_STRIPE_DETAIL = (
     "Staging is using a live Stripe key. Billing changes are blocked so live subscriptions "
@@ -4742,7 +4745,7 @@ def platform_overview(
         message = (
             "This staging site is connected to the production Neon database. "
             "Writes are blocked. In Render, set family-cash-flow-api-staging DATABASE_URL to the "
-            "ep-ancient-union-… host, not ep-polished-boat-…."
+            "ep-polished-boat-… host, not ep-ancient-union-…."
         )
     elif staging:
         message = (
