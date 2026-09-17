@@ -52,7 +52,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="./styles.css?v=734" />
-    <link rel="stylesheet" href="./landing-marketing.css?v=5" />
+    <link rel="stylesheet" href="./landing-marketing.css?v=6" />
   </head>
   <body class="landing-page">
     <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -75,7 +75,11 @@
             </div>
           </div>
           <div class="top-nav__actions" aria-label="Account actions">
-            <a href="/learn/" class="top-nav__learn">Learn more</a>
+            <nav class="top-nav__links" aria-label="Site">
+              <a href="/learn/" class="top-nav__learn">Learn more</a>
+              <span class="top-nav__learn-sep" aria-hidden="true">·</span>
+              <a href="/plans/" class="top-nav__learn">Pricing</a>
+            </nav>
             <a href="./login.html" class="top-nav__logout">Log in</a>
           </div>
         </div>

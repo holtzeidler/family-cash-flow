@@ -32,7 +32,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="../styles.css?v=734" />
-    <link rel="stylesheet" href="../landing-marketing.css?v=3" />
+    <link rel="stylesheet" href="../landing-marketing.css?v=6" />
   </head>
   <body class="landing-page learn-page">
     <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -55,7 +55,11 @@
             </div>
           </div>
           <div class="top-nav__actions" aria-label="Account actions">
-            <a href="/learn/" class="top-nav__learn" aria-current="page">Learn more</a>
+            <nav class="top-nav__links" aria-label="Site">
+              <a href="/" class="top-nav__learn">Home</a>
+              <span class="top-nav__learn-sep" aria-hidden="true">·</span>
+              <a href="/plans/" class="top-nav__learn">Pricing</a>
+            </nav>
             <a href="../login.html" class="top-nav__logout">Log in</a>
           </div>
         </div>
@@ -148,8 +152,8 @@
 
           <section class="learn-split learn-split--flip landing-reveal" aria-labelledby="learnDipTitle">
             <div class="learn-split__copy">
-              <h2 id="learnDipTitle" class="learn-split__title">See what’s causing a future dip</h2>
-              <p class="learn-split__lede">Today’s balance is only the starting point. BalanceWhiz shows the bills and transfers that pull the balance down before the next payday.</p>
+              <h2 id="learnDipTitle" class="learn-split__title">Know what’s already spoken for</h2>
+              <p class="learn-split__lede">Today’s balance can look like plenty. But upcoming bills, transfers, and other expenses can tell a very different story.</p>
             </div>
             <div class="learn-split__visual">
               <div class="landing-bank-compare__grid" role="group" aria-label="Bank app vs BalanceWhiz comparison">
@@ -205,8 +209,8 @@
             aria-labelledby="learnPressureTitle"
           >
             <div class="learn-split__copy landing-future__intro">
-              <h2 id="learnPressureTitle" class="learn-split__title landing-future__title">Spot cash pressure before it arrives</h2>
-              <p class="learn-split__lede landing-future__lede">The 90-day outlook flags expensive months and how close you get to the safety balance you set.</p>
+              <h2 id="learnPressureTitle" class="learn-split__title landing-future__title">Plan for expensive months before they arrive</h2>
+              <p class="learn-split__lede landing-future__lede">See how upcoming expenses affect your checking balance weeks or months ahead — and how close you’ll come to the safety balance you set.</p>
             </div>
             <div class="learn-split__visual landing-future__demo">
               <div class="landing-future-viz landing-hero-viz" aria-label="Example 90-day balance outlook">
@@ -277,29 +281,14 @@
             </div>
           </section>
 
-          <section class="landing-reports landing-section landing-section--tint-neutral landing-reveal" aria-labelledby="learnReportsTitle">
-            <div class="landing-reports__intro">
-              <h2 id="learnReportsTitle" class="landing-reports__title">More ways to understand your cash flow</h2>
-              <p class="landing-reports__lede">These views are extra context. The core of BalanceWhiz is still seeing what’s ahead in checking.</p>
-            </div>
-            <div class="landing-reports__grid">
-              <article class="landing-reports__card">
-                <h3 class="landing-reports__cardTitle">Balance trend</h3>
-                <p class="landing-reports__cardBody">Watch how the projected checking balance moves over time.</p>
-              </article>
-              <article class="landing-reports__card">
-                <h3 class="landing-reports__cardTitle">Income vs. expenses</h3>
-                <p class="landing-reports__cardBody">Compare money coming in with money going out across the forecast.</p>
-              </article>
-              <article class="landing-reports__card">
-                <h3 class="landing-reports__cardTitle">Category totals</h3>
-                <p class="landing-reports__cardBody">See where recurring spending groups add up.</p>
-              </article>
-              <article class="landing-reports__card">
-                <h3 class="landing-reports__cardTitle">Transaction reporting</h3>
-                <p class="landing-reports__cardBody">Review the paychecks, bills, and other items behind the outlook.</p>
-              </article>
-            </div>
+          <section class="learn-value landing-section landing-section--tint-neutral landing-reveal" aria-labelledby="learnValueTitle">
+            <h2 id="learnValueTitle" class="learn-value__title">No budget required. No bank connection required.</h2>
+            <p class="learn-value__lede">BalanceWhiz isn’t about tracking every coffee or categorizing every purchase. Start with the transactions that matter to your cash flow — your paychecks, recurring bills, transfers, and larger upcoming expenses — and add detail only when it’s useful.</p>
+          </section>
+
+          <section class="learn-aside landing-reveal" aria-labelledby="learnAsideTitle">
+            <h2 id="learnAsideTitle" class="learn-aside__title">And when you want more detail…</h2>
+            <p class="learn-aside__lede">BalanceWhiz also includes balance trends, income vs. expenses, category totals, and transaction reports when you want to dig deeper.</p>
           </section>
 
           <section class="landing-offer landing-offer--calm landing-offer--simple learn-close landing-reveal" aria-label="Get started">
