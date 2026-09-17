@@ -20808,12 +20808,6 @@ body.plans-page--polished .plan-card.plan-card--polished:hover{
   body.plans-page--polished .plans-reassure{
     margin-top: 28px;
   }
-  body.plans-page--polished .plans-reassure__items li{
-    white-space: normal;
-  }
-  body.plans-page--polished .plans-reassure__items li:not(:last-child)::after{
-    display: none;
-  }
   .plans-how{
     margin-top: 48px;
   }
@@ -20895,29 +20889,8 @@ body.plans-page--polished .plans-reassure__copy{
   line-height: 1.55;
   color: rgba(100, 116, 139, 0.9);
 }
-body.plans-page--polished .plans-reassure__items{
-  list-style: none;
-  padding: 0;
-  margin: 16px auto 0;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 6px 16px;
-}
-body.plans-page--polished .plans-reassure__items li{
-  font-size: 12px;
-  font-weight: 400;
-  color: rgba(100, 116, 139, 0.78);
-  white-space: nowrap;
-}
-body.plans-page--polished .plans-reassure__items li:not(:last-child)::after{
-  content: "·";
-  margin-left: 16px;
-  color: rgba(100, 116, 139, 0.42);
-  font-weight: 400;
-}
 
-body.plans-page--polished .app-footer{ margin-top: 48px; }
+body.plans-page--polished .app-footer{ margin-top: 56px; }
 
 body.plans-page--polished .plans-headline,
 body.plans-page--polished .plans-wrap > .meta,
