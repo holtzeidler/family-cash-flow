@@ -293,11 +293,13 @@ body.landing-page.learn-page .landing-future + .learn-value{
 }
 
 body.landing-page.learn-page .learn-value + .learn-value{
-  margin-top: -0.45rem;
+  margin-top: calc(var(--landing-section-gap) * -1);
+  padding-top: 0.75rem;
 }
 
 body.landing-page.learn-page .learn-value + .learn-aside{
-  margin-top: -0.4rem;
+  margin-top: calc(var(--landing-section-gap) * -1);
+  padding-top: 0.75rem;
 }
 
 body.landing-page.learn-page .learn-aside + .learn-close{
