@@ -425,6 +425,9 @@ body.landing-page.learn-page .learn-aside__lede{
 body.landing-page:not(.learn-page){
   --landing-content-max: min(74.5rem, calc(100vw - 2rem));
 }
+body.landing-page:not(.learn-page) .top-nav__links{
+  gap: 0.35rem;
+}
 
 @media (min-width: 900px){
   body.landing-page:not(.learn-page){
@@ -518,10 +521,10 @@ body.landing-page:not(.learn-page) .landing-bank-compare__note{
     margin-top: -1.5rem;
   }
   body.landing-page:not(.learn-page) .landing-shell > .landing-bank-compare + .landing-features{
-    margin-top: -5.5rem;
+    margin-top: -6.5rem;
   }
   body.landing-page:not(.learn-page) .landing-shell > .landing-features + .landing-how{
-    margin-top: -2.75rem;
+    margin-top: -3.3rem;
   }
   body.landing-page:not(.learn-page) .landing-shell > .landing-how + .landing-offer{
     margin-top: -1.5rem;
