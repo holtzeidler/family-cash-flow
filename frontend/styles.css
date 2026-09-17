@@ -16867,7 +16867,7 @@ body.login-page:not(.signup-page) .login-flow__pw-row{
 }
 body.login-page:not(.signup-page) .login-page__forgot-btn{
   display: block;
-  margin: 5px auto 0;
+  margin: 12px auto 0;
   width: fit-content;
   max-width: 100%;
   padding: 0;

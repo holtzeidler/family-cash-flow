@@ -408,7 +408,7 @@ function getClientOrigin() {
 function setBusy(isBusy) {
   if (!loginBtn) return;
   loginBtn.disabled = isBusy;
-  loginBtn.textContent = isBusy ? "Logging in..." : "Login";
+  loginBtn.textContent = isBusy ? "Logging in..." : "Log in";
 }
 
 function logNetworkHintForDevs(networkError) {
