@@ -1160,29 +1160,29 @@ function getAccountSetupStepCopy(step, ctx) {
     case 0:
       return {
         title: "Create your login",
-        subtitle: "Start with an email and password.",
+        subtitle: "Then we’ll build your first cash flow forecast.",
       };
     case 1:
       return {
         title: "Start with your current checking balance",
-        subtitle: "Use today’s balance so your forecast starts from reality.",
+        subtitle: "This gives us the starting point for your forecast.",
       };
     case 2: {
       if (phase3 === "form") {
         return {
           title: "Add an upcoming paycheck or bill",
-          subtitle: "A few recurring items are usually enough to see what stays covered.",
+          subtitle: "Your paychecks help us show when your balance rises.",
         };
       }
       return {
         title: "Add your first income & expenses",
-        subtitle: "You’re almost done — a paycheck and a bill are enough to see your forecast take shape.",
+        subtitle: "Your paychecks help us show when your balance rises.",
       };
     }
     case 3:
       return {
         title: "Add another recurring item",
-        subtitle: "Utilities, card payments, and transfers all help make your projected balance more accurate.",
+        subtitle: "Start with the recurring expenses that have the biggest impact on checking.",
       };
     case 4:
       return {

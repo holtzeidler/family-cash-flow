@@ -17092,13 +17092,14 @@ body.account-setup-page .account-setup-wizard__eyebrow{
   }
 }
 body.account-setup-page .account-setup-wizard__reassurance{
-  margin: 0;
+  margin: 0 auto;
   text-align: center;
   font-size: 0.72rem;
   font-weight: 500;
   letter-spacing: 0.03em;
-  line-height: 1.25;
+  line-height: 1.35;
   color: rgba(11, 61, 46, 0.46);
+  max-width: 42ch;
 }
 body.account-setup-page .account-setup-wizard__reassurance:not([hidden]){
   margin-top: calc(var(--as-wizard-title-subtitle-gap) * 0.72);
@@ -17111,7 +17112,7 @@ body.account-setup-page .account-setup-wizard__subeyebrow{
   color: rgba(17, 24, 39, 0.64);
   line-height: 1.35;
   letter-spacing: 0.002em;
-  max-width: 30ch;
+  max-width: 38ch;
   margin-left: auto;
   margin-right: auto;
   text-wrap: balance;
