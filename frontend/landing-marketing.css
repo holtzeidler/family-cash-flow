@@ -490,10 +490,10 @@ body.landing-page:not(.learn-page) .landing-bank-compare__note{
     margin-top: -1.5rem;
   }
   body.landing-page:not(.learn-page) .landing-shell > .landing-bank-compare + .landing-features{
-    margin-top: -3.25rem;
+    margin-top: -5.5rem;
   }
   body.landing-page:not(.learn-page) .landing-shell > .landing-features + .landing-how{
-    margin-top: -1.5rem;
+    margin-top: -2.75rem;
   }
   body.landing-page:not(.learn-page) .landing-shell > .landing-how + .landing-offer{
     margin-top: -1.5rem;
