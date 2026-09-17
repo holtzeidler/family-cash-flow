@@ -12,6 +12,12 @@
       "index": true,
       "ogType": "website"
     },
+    "learn/index.html": {
+      "title": "Learn More — BalanceWhiz Cash Flow Forecast",
+      "description": "See how BalanceWhiz projects your checking balance from today’s cash, paychecks, and bills—so you can plan before you spend or move money.",
+      "canonicalPath": "/learn/",
+      "index": true
+    },
     "about.html": {
       "title": "About BalanceWhiz — Cash Flow Forecasting for Families",
       "description": "Learn why BalanceWhiz focuses on projected checking balances and timing—not traditional budgeting—so you can avoid cash surprises.",

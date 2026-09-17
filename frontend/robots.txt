@@ -6,6 +6,7 @@ Allow: /help.html
 Allow: /privacy.html
 Allow: /terms.html
 Allow: /plans/
+Allow: /learn/
 Allow: /contactus/
 
 # Authenticated app, admin, and funnel pages (not useful in search)
