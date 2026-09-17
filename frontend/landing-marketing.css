@@ -398,6 +398,10 @@ body.landing-page:not(.learn-page) .landing-bank-compare__note{
     align-items: center;
     column-gap: clamp(1.4rem, 2.8vw, 2.15rem);
   }
+  body.landing-page:not(.learn-page) .landing-bank-compare__intro,
+  body.landing-page:not(.learn-page) .landing-bank-compare__grid{
+    align-self: center;
+  }
   body.landing-page:not(.learn-page) .landing-bank-compare__intro{
     max-width: none;
     margin: 0;
@@ -411,6 +415,19 @@ body.landing-page:not(.learn-page) .landing-bank-compare__note{
   }
   body.landing-page:not(.learn-page) .landing-bank-compare__lede{
     max-width: 22rem;
+  }
+
+  body.landing-page:not(.learn-page) .landing-shell > .landing-hero + .landing-bank-compare{
+    margin-top: -1.5rem;
+  }
+  body.landing-page:not(.learn-page) .landing-shell > .landing-bank-compare + .landing-features{
+    margin-top: -3.25rem;
+  }
+  body.landing-page:not(.learn-page) .landing-shell > .landing-features + .landing-how{
+    margin-top: -1.5rem;
+  }
+  body.landing-page:not(.learn-page) .landing-shell > .landing-how + .landing-offer{
+    margin-top: -1.5rem;
   }
 }
 
