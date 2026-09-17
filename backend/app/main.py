@@ -65,6 +65,10 @@ class Settings(BaseSettings):
     # Public URL of the web app (no trailing slash), e.g. https://app.example.com or https://user.github.io/repo
     # Used in family invite emails. If unset, the API uses the Origin header from the browser when the owner sends an invite.
     APP_PUBLIC_BASE_URL: str = ""
+    # Neon (or other) host labels used to keep staging from writing to production.
+    # Staging writes are blocked when DATABASE_URL's host matches PRODUCTION_DATABASE_HOST.
+    PRODUCTION_DATABASE_HOST: str = "ep-polished-boat-ando6x8y-pooler"
+    STAGING_DATABASE_HOST: str = "ep-ancient-union-and21kx9-pooler"
     # Stripe Billing (Checkout + Customer Portal + webhooks). Leave empty to disable billing routes.
     # Use a restricted key (rk_…) when possible; never commit secrets. Staging and production need separate keys.
     STRIPE_SECRET_KEY: str = ""
@@ -954,9 +958,23 @@ def _database_identity() -> dict[str, str]:
     }
 
 
+def _host_label_matches(expected: str, ident: dict[str, str]) -> bool:
+    exp = (expected or "").strip().lower()
+    if not exp:
+        return False
+    hint = (ident.get("host_hint") or "").lower()
+    raw = (settings.DATABASE_URL or "").lower()
+    return exp in hint or exp in raw
+
+
 def _database_looks_like_staging() -> bool:
+    """True when DATABASE_URL is the staging Neon branch (or another staging-named DB)."""
     ident = _database_identity()
-    blob = f"{ident.get('database', '')} {ident.get('host_hint', '')} {settings.DATABASE_URL or ''}".lower()
+    if _host_label_matches(settings.STAGING_DATABASE_HOST, ident):
+        return True
+    if _host_label_matches(settings.PRODUCTION_DATABASE_HOST, ident):
+        return False
+    blob = f"{ident.get('database', '')} {ident.get('host_hint', '')}".lower()
     return "staging" in blob
 
 
@@ -978,10 +996,9 @@ def _staging_db_writes_allowed() -> bool:
 
 
 _STAGING_SHARED_DB_DETAIL = (
-    "This staging API is not connected to a staging database. Writes are blocked so "
-    "production data cannot be changed. On Render → family-cash-flow-api-staging → Environment, "
-    "set DATABASE_URL to the family-cash-flow-db-staging connection string (the database name "
-    "must include 'staging'), not production Neon."
+    "This staging API is connected to the production Neon database. Writes are blocked. "
+    "On Render → family-cash-flow-api-staging → Environment, set DATABASE_URL to the "
+    "staging Neon host (ep-ancient-union-…), not the production host (ep-polished-boat-…)."
 )
 _STAGING_LIVE_STRIPE_DETAIL = (
     "Staging is using a live Stripe key. Billing changes are blocked so live subscriptions "
@@ -4723,9 +4740,9 @@ def platform_overview(
     isolated = (not staging) or _database_looks_like_staging()
     if staging and not isolated:
         message = (
-            "This staging site is connected to a database that does not look like staging. "
-            "Writes are blocked. In Render, point family-cash-flow-api-staging DATABASE_URL at "
-            "family-cash-flow-db-staging — never production Neon."
+            "This staging site is connected to the production Neon database. "
+            "Writes are blocked. In Render, set family-cash-flow-api-staging DATABASE_URL to the "
+            "ep-ancient-union-… host, not ep-polished-boat-…."
         )
     elif staging:
         message = (
