@@ -322,3 +322,152 @@ body.landing-page .learn-close{
 body.landing-page .learn-close .landing-offer__panel{
   margin-inline: auto;
 }
+
+/* Homepage-only scale, spacing, and desktop rhythm.
+   Learn More keeps the rules above. */
+body.landing-page:not(.learn-page){
+  --landing-content-max: min(74.5rem, calc(100vw - 2rem));
+}
+
+@media (min-width: 900px){
+  body.landing-page:not(.learn-page){
+    --landing-section-gap: clamp(5rem, 5.8vw, 6.75rem);
+  }
+}
+
+body.landing-page:not(.learn-page) .landing-main{
+  flex: 0 0 auto;
+  padding: clamp(0.7rem, 1.35vw, 1.05rem) 0 clamp(0.4rem, 0.9vw, 0.65rem);
+}
+
+body.landing-page:not(.learn-page) .landing-shell{
+  gap: var(--landing-section-gap);
+}
+
+body.landing-page:not(.learn-page) .landing-shell > .landing-features{
+  gap: 0;
+  margin-top: 0;
+}
+
+body.landing-page:not(.learn-page) .landing-hero{
+  padding-top: clamp(0.85rem, 1.8vw, 1.35rem);
+  padding-bottom: 0;
+  min-height: 0;
+}
+
+body.landing-page:not(.learn-page) .landing-hero__stack,
+body.landing-page:not(.learn-page) .landing-hero__inner{
+  gap: clamp(0.8rem, 1.35vw, 1.1rem);
+}
+
+body.landing-page:not(.learn-page) .landing-hero-forecast{
+  max-width: min(68.75rem, 100%);
+}
+
+body.landing-page:not(.learn-page) .landing-bank-compare{
+  width: 100%;
+  max-width: min(74.5rem, 100%);
+  margin-inline: auto;
+  gap: clamp(0.85rem, 1.6vw, 1.25rem);
+  padding: 0;
+  min-height: 0;
+}
+
+body.landing-page:not(.learn-page) .landing-bank-compare__grid{
+  max-width: none;
+  align-items: start;
+  gap: 0.65rem;
+}
+
+body.landing-page:not(.learn-page) .landing-bank-compare__card{
+  padding: 0.62rem 0.72rem 0.58rem;
+  gap: 0.32rem;
+}
+
+body.landing-page:not(.learn-page) .landing-bank-compare__forecast{
+  padding: 0.38rem 0.46rem 0.4rem;
+}
+
+body.landing-page:not(.learn-page) .landing-bank-compare__note{
+  margin-top: 0.28rem;
+}
+
+@media (min-width: 900px){
+  body.landing-page:not(.learn-page) .landing-bank-compare{
+    grid-template-columns: minmax(15rem, 0.38fr) minmax(0, 0.62fr);
+    align-items: center;
+    column-gap: clamp(1.4rem, 2.8vw, 2.15rem);
+  }
+  body.landing-page:not(.learn-page) .landing-bank-compare__intro{
+    max-width: none;
+    margin: 0;
+    text-align: left;
+  }
+  body.landing-page:not(.learn-page) .landing-bank-compare__title,
+  body.landing-page:not(.learn-page) .landing-bank-compare__lede{
+    text-align: left;
+    margin-left: 0;
+    margin-right: 0;
+  }
+  body.landing-page:not(.learn-page) .landing-bank-compare__lede{
+    max-width: 22rem;
+  }
+}
+
+body.landing-page:not(.learn-page) .landing-future{
+  width: 100%;
+  max-width: min(74.5rem, 100%);
+  margin-inline: auto;
+  min-height: 0;
+  gap: clamp(1rem, 2vw, 1.55rem);
+}
+
+body.landing-page:not(.learn-page) .landing-future.landing-section--tint-safe{
+  margin-top: 0;
+  padding: clamp(0.4rem, 1vw, 0.7rem) 0;
+  min-height: 0;
+}
+
+body.landing-page:not(.learn-page) .landing-how{
+  min-height: 0;
+  padding: 0;
+}
+
+body.landing-page:not(.learn-page) .landing-how__copy{
+  max-width: min(68rem, 100%);
+}
+
+body.landing-page:not(.learn-page) .landing-how__title{
+  margin-bottom: 0.7rem;
+}
+
+body.landing-page:not(.learn-page) .landing-how__grid{
+  gap: 0.65rem 0.75rem;
+}
+
+body.landing-page:not(.learn-page) .landing-how__card{
+  padding: 0.68rem 0.8rem 0.62rem;
+  gap: 0.3rem;
+}
+
+body.landing-page:not(.learn-page) .landing-shell > .landing-offer{
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+body.landing-page:not(.learn-page) .landing-shell > .landing-offer .landing-offer__panel{
+  max-width: min(56.25rem, 100%);
+  padding: 1rem 1.3rem 0.9rem;
+}
+
+body.landing-page:not(.learn-page) .landing-shell > .landing-offer.landing-offer--simple .landing-offer__main{
+  row-gap: 0.5rem;
+}
+
+body.landing-page:not(.learn-page) .landing-shell > .landing-offer.landing-offer--simple .landing-offer__heading{
+  margin-bottom: 0.28rem;
+}
+
+body.landing-page:not(.learn-page) .landing-shell > .landing-offer.landing-offer--simple .landing-offer__subhead{
+  margin-bottom: 0;
+}
