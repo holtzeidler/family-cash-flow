@@ -280,6 +280,34 @@ body.landing-page.learn-page .landing-setup-callout{
   margin: 0 auto;
 }
 
+body.landing-page.learn-page{
+  --landing-section-gap: clamp(1.75rem, 3.9vw, 3.1rem);
+}
+
+body.landing-page.learn-page .landing-future.landing-section--tint-safe{
+  padding: clamp(0.8rem, 1.95vw, 1.35rem) 0;
+}
+
+body.landing-page.learn-page .landing-future + .learn-value{
+  margin-top: -0.35rem;
+}
+
+body.landing-page.learn-page .learn-value + .learn-value{
+  margin-top: -0.45rem;
+}
+
+body.landing-page.learn-page .learn-value + .learn-aside{
+  margin-top: -0.4rem;
+}
+
+body.landing-page.learn-page .learn-aside + .learn-close{
+  margin-top: -0.45rem;
+}
+
+body.landing-page.learn-page .top-nav__links{
+  gap: 0.35rem;
+}
+
 body.landing-page .learn-split{
   display: grid;
   gap: clamp(1.15rem, 2.6vw, 2rem);
@@ -346,7 +374,7 @@ body.landing-page.learn-page .learn-value{
   max-width: min(40rem, 100%);
   margin-inline: auto;
   text-align: center;
-  padding: clamp(1.15rem, 2.6vw, 1.75rem) 0.35rem;
+  padding: clamp(0.85rem, 1.95vw, 1.3rem) 0.35rem;
 }
 
 body.landing-page.learn-page .learn-value__title{
