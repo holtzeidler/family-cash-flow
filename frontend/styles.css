@@ -17117,6 +17117,15 @@ body.account-setup-page .account-setup-wizard__subeyebrow{
   margin-right: auto;
   text-wrap: balance;
 }
+body.account-setup-page #accountSetupWizard[data-step="0"]{
+  --as-wizard-title-subtitle-gap: clamp(0.48rem, 0.9vw, 0.68rem);
+}
+body.account-setup-page #accountSetupWizard[data-step="0"] .account-setup-wizard__stepHead{
+  margin-bottom: clamp(0.55rem, 1.05vw, 0.75rem);
+}
+body.account-setup-page #accountSetupWizard[data-step="0"] .account-setup-wizard__subeyebrow{
+  margin-bottom: clamp(0.7rem, 1.35vw, 0.95rem);
+}
 body.account-setup-page .account-setup-wizard__roadmap{
   margin: 0 0 14px;
   padding: 0 12px;
@@ -17536,6 +17545,25 @@ body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPane
   margin-top: 0;
   --as-shell-actions-minh: 0;
   min-height: 0;
+  justify-content: stretch;
+  column-gap: 0;
+  padding: 12px var(--as-card-pad-x) 16px;
+}
+body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPanel0.account-setup-wizard__panel--active) .account-setup-actions__cluster{
+  display: none;
+}
+body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPanel0.account-setup-wizard__panel--active) .account-setup-actions__forward{
+  width: 100%;
+  margin-left: 0;
+  align-items: stretch;
+}
+body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPanel0.account-setup-wizard__panel--active) .account-setup-actions__forward #signupBtn{
+  width: 100%;
+  align-self: stretch;
+  min-height: 48px;
+  padding: 12px 16px;
+  font-size: 1rem;
+  font-weight: 700;
 }
 body.account-setup-page #accountSetupWizardPanel0.account-setup-wizard__panel--active{
   min-height: 0;

@@ -1284,8 +1284,7 @@ function syncAccountSetupWizardShellButtons() {
     if (signupBtn) {
       signupBtn.style.display = "";
       signupBtn.disabled = false;
-      signupBtn.textContent = "Next";
-      // Ensure Next is always the primary (green) style.
+      signupBtn.textContent = s === 0 ? "Continue" : "Next";
       signupBtn.classList.remove("secondary");
       signupBtn.classList.add("top-nav__logout");
     }
