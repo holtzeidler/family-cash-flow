@@ -397,6 +397,7 @@
     const famF = (document.getElementById("adminUsersFilterFamily") || {}).value || "";
     const statusF = (document.getElementById("adminUsersFilterStatus") || {}).value || "";
     const platF = (document.getElementById("adminUsersFilterPlatformRole") || {}).value || "";
+    const compF = (document.getElementById("adminUsersFilterComplimentary") || {}).value || "";
 
     return users.filter((u) => {
       if (!platformUserMatchesQuery(u, q)) return false;
@@ -409,6 +410,13 @@
       if (roleF) {
         const mems = u.memberships || [];
         if (!mems.some((m) => membershipFamilyRoleLabel(m) === roleF)) return false;
+      }
+      if (compF) {
+        const active = u.complimentary_access_active === true;
+        const flagged = u.complimentary_access === true;
+        if (compF === "active" && !active) return false;
+        if (compF === "expired" && !(flagged && !active)) return false;
+        if (compF === "none" && (active || flagged)) return false;
       }
       return true;
     });
@@ -515,6 +523,7 @@
       "adminUsersFilterFamily",
       "adminUsersFilterStatus",
       "adminUsersFilterPlatformRole",
+      "adminUsersFilterComplimentary",
     ];
     for (const id of ids) {
       const el = document.getElementById(id);

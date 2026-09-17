@@ -114,6 +114,15 @@
                     <option value="admin">Admin</option>
                   </select>
                 </label>
+                <label class="admin-feedback-filter">
+                  <span class="admin-feedback-filter__label">Complimentary</span>
+                  <select id="adminUsersFilterComplimentary">
+                    <option value="">All</option>
+                    <option value="active">Complimentary access</option>
+                    <option value="expired">Complimentary expired</option>
+                    <option value="none">No complimentary access</option>
+                  </select>
+                </label>
                 <button type="button" id="adminUsersInviteBtn" class="platform-admin-users-invite">Add / invite user</button>
               </div>
             </div>
@@ -808,6 +817,6 @@
         padding: 24px;
       }
     </style>
-    <script src="/platform-admin/admin.js?v=15"></script>
+    <script src="/platform-admin/admin.js?v=16"></script>
   </body>
 </html>
