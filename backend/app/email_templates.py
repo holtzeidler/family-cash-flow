@@ -10,11 +10,13 @@ from __future__ import annotations
 import html
 from dataclasses import dataclass
 
-SITE_URL = "https://balancewhiz.com"
 SITE_NAME = "BalanceWhiz"
 TAGLINE = "See your cash flow before it happens."
 FOOTER_SUPPORT = "Questions? Reply to this email or contact support."
 SUPPORT_MAILTO = "mailto:support@balancewhiz.com"
+
+STAGING_APP_URL = "https://staging.balancewhiz.com"
+PRODUCTION_APP_URL = "https://balancewhiz.com"
 
 # App tokens: --bg, --text, --muted / slate helpers, --accent (CTA), logo wordmark.
 PAGE_BG = "#E6E7EA"
@@ -43,8 +45,14 @@ class TransactionalEmailContent:
     cta_url: str = ""
     support_line: str = ""
     additional_text: str = ""
-    # When False, wordmark/footer/support stay plain text (CTA still uses cta_url if set).
-    include_links: bool = True
+
+
+def resolve_app_url(*, is_staging_deployment: bool, app_public_base_url: str = "") -> str:
+    """Public site URL for this environment. Prefer APP_PUBLIC_BASE_URL when set."""
+    raw = (app_public_base_url or "").strip().rstrip("/")
+    if raw:
+        return raw
+    return STAGING_APP_URL if is_staging_deployment else PRODUCTION_APP_URL
 
 
 def _esc(value: str) -> str:
@@ -102,27 +110,37 @@ def render_cta_html(*, label: str, url: str) -> str:
 """.strip()
 
 
-def _wordmark_html(*, include_links: bool = True) -> str:
+def _wordmark_html(*, app_url: str) -> str:
     inner = (
         f'<span style="font-family:{_FONT};font-size:22px;line-height:1.2;font-weight:600;'
         f'color:{WORDMARK_BALANCE};letter-spacing:-0.03em;">Balance</span>'
         f'<span style="font-family:{_FONT};font-size:22px;line-height:1.2;font-weight:700;'
         f'color:{WORDMARK_WHIZ};letter-spacing:-0.03em;">Whiz</span>'
     )
-    if not include_links:
+    href = _safe_http_url(app_url)
+    if not href:
         return inner
-    site = _esc(SITE_URL)
-    return f'<a href="{site}" style="text-decoration:none;">{inner}</a>'
+    return f'<a href="{_esc(href)}" style="text-decoration:none;">{inner}</a>'
 
 
-def render_transactional_html(content: TransactionalEmailContent) -> str:
+def _preheader_html(preheader: str) -> str:
+    """Hidden inbox preview text. No filler entities or extra stuffing."""
+    text = (preheader or "").strip()
+    if not text:
+        return ""
+    return (
+        f'<div style="display:none;max-height:0;overflow:hidden;">{_esc(text)}</div>'
+    )
+
+
+def render_transactional_html(content: TransactionalEmailContent, *, app_url: str) -> str:
     heading = (content.heading or "").strip()
     body_parts = _paragraphs(content.body)
     extra_parts = _paragraphs(content.additional_text)
     support = (content.support_line or "").strip()
     preheader = (content.preheader or "").strip()
     subject = (content.subject or "").strip() or SITE_NAME
-    include_links = bool(content.include_links)
+    site = _safe_http_url(app_url)
     cta = render_cta_html(label=content.cta_label, url=content.cta_url)
 
     body_html = "".join(_p_html(part, color=TEXT) for part in body_parts)
@@ -138,25 +156,16 @@ def render_transactional_html(content: TransactionalEmailContent) -> str:
         if support
         else ""
     )
-    # Visible preview line — first text in the message, no hidden/1px/filler cloaking.
-    preheader_html = (
-        _p_html(preheader, color=MUTED, size="14px", extra="margin:0 0 16px;max-width:600px;text-align:left;")
-        if preheader
-        else ""
-    )
-
     inner = f"{heading_html}{body_html}{extra_html}{cta}{support_html}"
-    if include_links:
-        footer_brand = (
-            f'<a href="{_esc(SITE_URL)}" style="color:{TEXT};text-decoration:none;">{_esc(SITE_NAME)}</a>'
-        )
-        footer_support = (
-            f'Questions? Reply to this email or '
-            f'<a href="{_esc(SUPPORT_MAILTO)}" style="color:{MUTED};text-decoration:underline;">contact support</a>.'
-        )
-    else:
-        footer_brand = _esc(SITE_NAME)
-        footer_support = _esc(FOOTER_SUPPORT)
+    footer_brand = (
+        f'<a href="{_esc(site)}" style="color:{TEXT};text-decoration:none;">{_esc(SITE_NAME)}</a>'
+        if site
+        else _esc(SITE_NAME)
+    )
+    footer_support = (
+        f'Questions? Reply to this email or '
+        f'<a href="{_esc(SUPPORT_MAILTO)}" style="color:{MUTED};text-decoration:underline;">contact support</a>.'
+    )
 
     return f"""<!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
@@ -185,14 +194,14 @@ def render_transactional_html(content: TransactionalEmailContent) -> str:
   </style>
 </head>
 <body style="margin:0;padding:0;background-color:{PAGE_BG};">
+  {_preheader_html(preheader)}
   <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:{PAGE_BG};">
     <tr>
       <td align="center" style="padding:28px 16px;">
-        {preheader_html}
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" class="email-card" style="width:600px;max-width:600px;background-color:{CARD_BG};border:1px solid {BORDER};border-radius:12px;">
           <tr>
             <td class="email-pad" style="padding:28px 36px 12px;border-bottom:1px solid {BORDER};">
-              {_wordmark_html(include_links=include_links)}
+              {_wordmark_html(app_url=site)}
             </td>
           </tr>
           <tr>
@@ -220,7 +229,7 @@ def render_transactional_html(content: TransactionalEmailContent) -> str:
 """
 
 
-def render_transactional_text(content: TransactionalEmailContent) -> str:
+def render_transactional_text(content: TransactionalEmailContent, *, app_url: str) -> str:
     lines: list[str] = []
     preheader = (content.preheader or "").strip()
     if preheader:
@@ -249,14 +258,17 @@ def render_transactional_text(content: TransactionalEmailContent) -> str:
     lines.append("—")
     lines.append(SITE_NAME)
     lines.append(TAGLINE)
-    if content.include_links:
-        lines.append(SITE_URL)
+    site = _safe_http_url(app_url)
+    if site:
+        lines.append(site)
     lines.append("")
     lines.append(FOOTER_SUPPORT)
-    text = "\n".join(lines).strip() + "\n"
-    return text
+    return "\n".join(lines).strip() + "\n"
 
 
-def render_transactional_email(content: TransactionalEmailContent) -> tuple[str, str]:
+def render_transactional_email(content: TransactionalEmailContent, *, app_url: str) -> tuple[str, str]:
     """Return (html_body, text_body) for a transactional message."""
-    return render_transactional_html(content), render_transactional_text(content)
+    return (
+        render_transactional_html(content, app_url=app_url),
+        render_transactional_text(content, app_url=app_url),
+    )

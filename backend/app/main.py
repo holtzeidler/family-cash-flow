@@ -4803,6 +4803,7 @@ def platform_send_email_test(
         send_staging_test_email,
         transactional_email_allowed,
     )
+    from .email_templates import resolve_app_url
 
     user_id = get_current_user_id(access_token)
     require_platform_admin(db=db, user_id=user_id)
@@ -4814,6 +4815,10 @@ def platform_send_email_test(
     try:
         email_id = send_staging_test_email(
             api_key=settings.RESEND_API_KEY,
+            app_url=resolve_app_url(
+                is_staging_deployment=_is_staging_deployment(),
+                app_public_base_url=settings.APP_PUBLIC_BASE_URL,
+            ),
             reply_to=(settings.TRANSACTIONAL_REPLY_TO or "").strip() or None,
         )
     except EmailNotConfigured:

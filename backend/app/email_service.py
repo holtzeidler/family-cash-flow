@@ -110,11 +110,12 @@ def send_templated_email(
     api_key: str,
     to_addr: str,
     content: TransactionalEmailContent,
+    app_url: str,
     from_addr: str = DEFAULT_FROM,
     reply_to: Optional[str] = DEFAULT_REPLY_TO,
 ) -> str:
     """Render the shared transactional template and send HTML + plain text."""
-    html_body, text_body = render_transactional_email(content)
+    html_body, text_body = render_transactional_email(content, app_url=app_url)
     return send_transactional_email(
         api_key=api_key,
         to_addr=to_addr,
@@ -129,25 +130,27 @@ def send_templated_email(
 def send_staging_test_email(
     *,
     api_key: str,
+    app_url: str,
     to_addr: str = TEST_TO,
     from_addr: str = DEFAULT_FROM,
     reply_to: Optional[str] = DEFAULT_REPLY_TO,
 ) -> str:
-    """Temporary staging design preview. Recipient is fixed; no product triggers."""
+    """Staging-only template preview. Recipient is fixed; no product triggers."""
+    site = (app_url or "").strip().rstrip("/")
     content = TransactionalEmailContent(
         subject="BalanceWhiz email design test",
         preheader="Your BalanceWhiz email setup is ready.",
         heading="Your forecast is ready.",
         body="BalanceWhiz helps you see what's coming before it hits your checking account.",
         cta_label="View my forecast",
-        cta_url="https://balancewhiz.com",
+        cta_url=site,
         support_line="Questions? Just reply to this email.",
-        include_links=False,
     )
     return send_templated_email(
         api_key=api_key,
         to_addr=to_addr or TEST_TO,
         content=content,
+        app_url=site,
         from_addr=from_addr or DEFAULT_FROM,
         reply_to=reply_to,
     )
