@@ -43,7 +43,7 @@ class TransactionalEmailContent:
     cta_url: str = ""
     support_line: str = ""
     additional_text: str = ""
-    # When False, brand/CTA/support hrefs are omitted (diagnostic / no-link sends).
+    # When False, wordmark/footer/support stay plain text (CTA still uses cta_url if set).
     include_links: bool = True
 
 
@@ -123,11 +123,7 @@ def render_transactional_html(content: TransactionalEmailContent) -> str:
     preheader = (content.preheader or "").strip()
     subject = (content.subject or "").strip() or SITE_NAME
     include_links = bool(content.include_links)
-    cta = (
-        render_cta_html(label=content.cta_label, url=content.cta_url)
-        if include_links
-        else ""
-    )
+    cta = render_cta_html(label=content.cta_label, url=content.cta_url)
 
     body_html = "".join(_p_html(part, color=TEXT) for part in body_parts)
     extra_html = "".join(_p_html(part, color=TEXT) for part in extra_parts)
@@ -242,7 +238,7 @@ def render_transactional_text(content: TransactionalEmailContent) -> str:
         lines.append("")
     cta_label = (content.cta_label or "").strip()
     cta_url = _safe_http_url(content.cta_url)
-    if content.include_links and cta_label and cta_url:
+    if cta_label and cta_url:
         lines.append(f"{cta_label}:")
         lines.append(cta_url)
         lines.append("")
