@@ -29,7 +29,6 @@ WORDMARK_BALANCE = "#5E6876"
 WORDMARK_WHIZ = "#0F5B43"
 
 _FONT = "Arial, Helvetica, sans-serif"
-_PREHEADER_PAD = ("&#847;&zwnj;&nbsp;" * 30) + "&#847;"
 
 
 @dataclass(frozen=True)
@@ -135,12 +134,12 @@ def render_transactional_html(content: TransactionalEmailContent) -> str:
         if support
         else ""
     )
-    preheader_html = ""
-    if preheader:
-        preheader_html = (
-            f'<div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;'
-            f'opacity:0;overflow:hidden;mso-hide:all;color:{PAGE_BG};">{_esc(preheader)} {_PREHEADER_PAD}</div>'
-        )
+    # Visible preview line — first text in the message, no hidden/1px/filler cloaking.
+    preheader_html = (
+        _p_html(preheader, color=MUTED, size="14px", extra="margin:0 0 16px;max-width:600px;text-align:left;")
+        if preheader
+        else ""
+    )
 
     inner = f"{heading_html}{body_html}{extra_html}{cta}{support_html}"
     site = _esc(SITE_URL)
@@ -173,10 +172,10 @@ def render_transactional_html(content: TransactionalEmailContent) -> str:
   </style>
 </head>
 <body style="margin:0;padding:0;background-color:{PAGE_BG};">
-  {preheader_html}
   <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:{PAGE_BG};">
     <tr>
       <td align="center" style="padding:28px 16px;">
+        {preheader_html}
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" class="email-card" style="width:600px;max-width:600px;background-color:{CARD_BG};border:1px solid {BORDER};border-radius:12px;">
           <tr>
             <td class="email-pad" style="padding:28px 36px 12px;border-bottom:1px solid {BORDER};">
@@ -210,6 +209,10 @@ def render_transactional_html(content: TransactionalEmailContent) -> str:
 
 def render_transactional_text(content: TransactionalEmailContent) -> str:
     lines: list[str] = []
+    preheader = (content.preheader or "").strip()
+    if preheader:
+        lines.append(preheader)
+        lines.append("")
     heading = (content.heading or "").strip()
     if heading:
         lines.append(heading)
