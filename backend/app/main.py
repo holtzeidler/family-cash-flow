@@ -1007,7 +1007,14 @@ _STAGING_LIVE_STRIPE_DETAIL = (
     "Staging is using a live Stripe key. Billing changes are blocked so live subscriptions "
     "cannot be changed. Set STRIPE_SECRET_KEY on family-cash-flow-api-staging to a test-mode key (sk_test_…)."
 )
-_STAGING_UNSAFE_DB_ALLOWED_WRITE_PATHS = frozenset({"/api/auth/login", "/api/auth/logout"})
+_STAGING_UNSAFE_DB_ALLOWED_WRITE_PATHS = frozenset(
+    {
+        "/api/auth/login",
+        "/api/auth/logout",
+        # Does not write the database; still gated to staging + platform admin.
+        "/api/platform/email-test",
+    }
+)
 _STAGING_STRIPE_MUTATION_PATHS = frozenset(
     {
         "/create-checkout-session",
@@ -1780,6 +1787,12 @@ class PlatformOverviewOut(BaseModel):
     stripe_mode: str = "none"
     writes_enabled: bool = True
     staging_auth_restricted: bool = False
+
+
+class PlatformEmailTestOut(BaseModel):
+    ok: bool = True
+    id: str = ""
+    to: str = ""
 
 
 class CategoryIn(BaseModel):
@@ -4769,6 +4782,45 @@ def platform_overview(
         writes_enabled=_staging_db_writes_allowed(),
         staging_auth_restricted=_staging_auth_allowlist_enforced(),
     )
+
+
+@app.post("/api/platform/email-test", response_model=PlatformEmailTestOut, include_in_schema=False)
+def platform_send_email_test(
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
+    db=Depends(get_db),
+):
+    """Temporary: send one Resend test email. Staging/dev + platform admin only.
+
+    Recipient is fixed server-side (tracy@balancewhiz.com) — never taken from the request.
+    """
+    from .email_service import (
+        TEST_TO,
+        EmailNotConfigured,
+        EmailSendError,
+        send_staging_test_email,
+        transactional_email_allowed,
+    )
+
+    user_id = get_current_user_id(access_token)
+    require_platform_admin(db=db, user_id=user_id)
+    if not transactional_email_allowed(
+        env=settings.ENV,
+        is_staging_deployment=_is_staging_deployment(),
+    ):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    try:
+        email_id = send_staging_test_email(api_key=settings.RESEND_API_KEY)
+    except EmailNotConfigured:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="RESEND_API_KEY is not set on this server.",
+        )
+    except EmailSendError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(exc)[:400] or "Resend send failed",
+        )
+    return PlatformEmailTestOut(ok=True, id=email_id, to=TEST_TO)
 
 
 @app.get("/api/platform/families", response_model=list[PlatformFamilySummaryOut])
