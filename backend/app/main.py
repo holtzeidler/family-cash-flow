@@ -98,6 +98,9 @@ class Settings(BaseSettings):
     # Set RESEND_API_KEY + RESEND_FROM + CONTACT_EMAIL_TO. RESEND_FROM must be allowed in Resend (domain or onboarding@resend.dev for tests).
     RESEND_API_KEY: str = ""
     RESEND_FROM: str = ""
+    # Reply-To for transactional mail (not the sending domain). Defaults to the
+    # public support mailbox already published on contact / privacy / terms.
+    TRANSACTIONAL_REPLY_TO: str = "support@balancewhiz.com"
 
     @field_validator("DATABASE_URL", mode="after")
     @classmethod
@@ -4809,7 +4812,10 @@ def platform_send_email_test(
     ):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
     try:
-        email_id = send_staging_test_email(api_key=settings.RESEND_API_KEY)
+        email_id = send_staging_test_email(
+            api_key=settings.RESEND_API_KEY,
+            reply_to=(settings.TRANSACTIONAL_REPLY_TO or "").strip() or None,
+        )
     except EmailNotConfigured:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
