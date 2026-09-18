@@ -13,7 +13,12 @@ import logging
 import re
 from typing import Optional
 
-from .email_templates import TransactionalEmailContent, build_welcome_email_content, render_transactional_email
+from .email_templates import (
+    PRODUCTION_APP_URL,
+    TransactionalEmailContent,
+    build_welcome_email_content,
+    render_transactional_email,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +26,10 @@ DEFAULT_FROM = "BalanceWhiz <notifications@updates.balancewhiz.com>"
 # Published support mailbox on the public site (contact / privacy / terms).
 DEFAULT_REPLY_TO = "support@balancewhiz.com"
 TEST_TO = "tracy@balancewhiz.com"
+# Preview/test sends only (POST /api/platform/email-test). Microsoft treats
+# staging.balancewhiz.com CTAs as high-confidence phish. Real transactional
+# mail must keep using resolve_app_url() / the caller-supplied app_url.
+STAGING_EMAIL_PREVIEW_APP_URL = PRODUCTION_APP_URL
 
 _SECRETISH = re.compile(
     r"(?i)(re_[A-Za-z0-9]+|(?:api[_-]?key|authorization|bearer)\s*[:=]\s*\S+)"
@@ -159,20 +168,23 @@ def send_welcome_email(
 def send_staging_test_email(
     *,
     api_key: str,
-    app_url: str,
-    template: str = "design",
+    template: str = "welcome",
     to_addr: str = TEST_TO,
     from_addr: str = DEFAULT_FROM,
     reply_to: Optional[str] = DEFAULT_REPLY_TO,
 ) -> str:
-    """Staging-only template preview. Recipient is fixed; no product triggers."""
-    site = (app_url or "").strip().rstrip("/")
-    kind = (template or "design").strip().lower()
+    """Staging-only template preview. Recipient is fixed; no product triggers.
+
+    Link destinations always use STAGING_EMAIL_PREVIEW_APP_URL, never the
+    staging app host. send_welcome_email() itself is unchanged.
+    """
+    preview_url = STAGING_EMAIL_PREVIEW_APP_URL
+    kind = (template or "welcome").strip().lower()
     if kind == "welcome":
         return send_welcome_email(
             api_key=api_key,
             to_addr=to_addr or TEST_TO,
-            app_url=site,
+            app_url=preview_url,
             first_name="Tracy",
             from_addr=from_addr or DEFAULT_FROM,
             reply_to=reply_to,
@@ -183,14 +195,14 @@ def send_staging_test_email(
         heading="Your forecast is ready.",
         body="BalanceWhiz helps you see what's coming before it hits your checking account.",
         cta_label="View my forecast",
-        cta_url=site,
+        cta_url=preview_url,
         support_line="Questions? Just reply to this email.",
     )
     return send_templated_email(
         api_key=api_key,
         to_addr=to_addr or TEST_TO,
         content=content,
-        app_url=site,
+        app_url=preview_url,
         from_addr=from_addr or DEFAULT_FROM,
         reply_to=reply_to,
     )

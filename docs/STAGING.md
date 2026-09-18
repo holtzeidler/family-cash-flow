@@ -51,7 +51,7 @@ On **`family-cash-flow-api-staging`**, set (in addition to blueprint defaults):
 | `PRODUCTION_DATABASE_HOST` | `ep-ancient-union-and21kx9-pooler` — staging refuses writes if `DATABASE_URL` matches this host. |
 | `STAGING_DATABASE_HOST` | `ep-polished-boat-ando6x8y-pooler` — staging allows writes only when `DATABASE_URL` matches this host (or another host whose name includes `staging`). |
 | `STAGING_AUTH_EMAIL_ALLOWLIST` | Comma-separated **test-only** emails allowed to register/login on staging (e.g. `you+staging@gmail.com`). Production accounts are rejected even if the staging DB was copied from prod. |
-| `RESEND_API_KEY` | Already set on staging. Used by the Resend SDK. Never commit or log the value. Temporary `POST /api/platform/email-test?template=welcome` (platform admin) previews a transactional template only to `tracy@balancewhiz.com`. Use `template=design` for the generic design preview. Site links use `APP_PUBLIC_BASE_URL`. |
+| `RESEND_API_KEY` | Already set on staging. Used by the Resend SDK. Never commit or log the value. Temporary `POST /api/platform/email-test?template=welcome` (platform admin) previews a transactional template only to `tracy@balancewhiz.com`. Preview/test CTAs use `https://balancewhiz.com` (not staging) so Microsoft does not treat the send as phishing. Real transactional mail still uses `APP_PUBLIC_BASE_URL`. Use `template=design` for the generic design preview. |
 | `TRANSACTIONAL_REPLY_TO` | Optional. Defaults to `support@balancewhiz.com` (the public contact mailbox). Replies to transactional mail go here, not to `notifications@updates.balancewhiz.com`. |
 
 Copy optional mail/contact vars from production only if you want staging to send real email (usually skip for staging).
