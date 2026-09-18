@@ -43,6 +43,8 @@ class TransactionalEmailContent:
     cta_url: str = ""
     support_line: str = ""
     additional_text: str = ""
+    # When False, brand/CTA/support hrefs are omitted (diagnostic / no-link sends).
+    include_links: bool = True
 
 
 def _esc(value: str) -> str:
@@ -100,16 +102,17 @@ def render_cta_html(*, label: str, url: str) -> str:
 """.strip()
 
 
-def _wordmark_html() -> str:
-    site = _esc(SITE_URL)
-    return (
-        f'<a href="{site}" style="text-decoration:none;">'
+def _wordmark_html(*, include_links: bool = True) -> str:
+    inner = (
         f'<span style="font-family:{_FONT};font-size:22px;line-height:1.2;font-weight:600;'
         f'color:{WORDMARK_BALANCE};letter-spacing:-0.03em;">Balance</span>'
         f'<span style="font-family:{_FONT};font-size:22px;line-height:1.2;font-weight:700;'
         f'color:{WORDMARK_WHIZ};letter-spacing:-0.03em;">Whiz</span>'
-        f"</a>"
     )
+    if not include_links:
+        return inner
+    site = _esc(SITE_URL)
+    return f'<a href="{site}" style="text-decoration:none;">{inner}</a>'
 
 
 def render_transactional_html(content: TransactionalEmailContent) -> str:
@@ -119,7 +122,12 @@ def render_transactional_html(content: TransactionalEmailContent) -> str:
     support = (content.support_line or "").strip()
     preheader = (content.preheader or "").strip()
     subject = (content.subject or "").strip() or SITE_NAME
-    cta = render_cta_html(label=content.cta_label, url=content.cta_url)
+    include_links = bool(content.include_links)
+    cta = (
+        render_cta_html(label=content.cta_label, url=content.cta_url)
+        if include_links
+        else ""
+    )
 
     body_html = "".join(_p_html(part, color=TEXT) for part in body_parts)
     extra_html = "".join(_p_html(part, color=TEXT) for part in extra_parts)
@@ -142,8 +150,17 @@ def render_transactional_html(content: TransactionalEmailContent) -> str:
     )
 
     inner = f"{heading_html}{body_html}{extra_html}{cta}{support_html}"
-    site = _esc(SITE_URL)
-    support_mailto = _esc(SUPPORT_MAILTO)
+    if include_links:
+        footer_brand = (
+            f'<a href="{_esc(SITE_URL)}" style="color:{TEXT};text-decoration:none;">{_esc(SITE_NAME)}</a>'
+        )
+        footer_support = (
+            f'Questions? Reply to this email or '
+            f'<a href="{_esc(SUPPORT_MAILTO)}" style="color:{MUTED};text-decoration:underline;">contact support</a>.'
+        )
+    else:
+        footer_brand = _esc(SITE_NAME)
+        footer_support = _esc(FOOTER_SUPPORT)
 
     return f"""<!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
@@ -179,7 +196,7 @@ def render_transactional_html(content: TransactionalEmailContent) -> str:
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" class="email-card" style="width:600px;max-width:600px;background-color:{CARD_BG};border:1px solid {BORDER};border-radius:12px;">
           <tr>
             <td class="email-pad" style="padding:28px 36px 12px;border-bottom:1px solid {BORDER};">
-              {_wordmark_html()}
+              {_wordmark_html(include_links=include_links)}
             </td>
           </tr>
           <tr>
@@ -190,11 +207,11 @@ def render_transactional_html(content: TransactionalEmailContent) -> str:
           <tr>
             <td class="email-pad" style="padding:20px 36px 28px;border-top:1px solid {BORDER};">
               <p style="margin:0 0 4px;font-family:{_FONT};font-size:14px;line-height:1.4;font-weight:700;color:{TEXT};">
-                <a href="{site}" style="color:{TEXT};text-decoration:none;">{_esc(SITE_NAME)}</a>
+                {footer_brand}
               </p>
               <p style="margin:0 0 12px;font-family:{_FONT};font-size:13px;line-height:1.45;color:{TEXT_SECONDARY};">{_esc(TAGLINE)}</p>
               <p style="margin:0;font-family:{_FONT};font-size:13px;line-height:1.45;color:{MUTED};">
-                Questions? Reply to this email or <a href="{support_mailto}" style="color:{MUTED};text-decoration:underline;">contact support</a>.
+                {footer_support}
               </p>
             </td>
           </tr>
@@ -225,7 +242,7 @@ def render_transactional_text(content: TransactionalEmailContent) -> str:
         lines.append("")
     cta_label = (content.cta_label or "").strip()
     cta_url = _safe_http_url(content.cta_url)
-    if cta_label and cta_url:
+    if content.include_links and cta_label and cta_url:
         lines.append(f"{cta_label}:")
         lines.append(cta_url)
         lines.append("")
@@ -236,7 +253,8 @@ def render_transactional_text(content: TransactionalEmailContent) -> str:
     lines.append("—")
     lines.append(SITE_NAME)
     lines.append(TAGLINE)
-    lines.append(SITE_URL)
+    if content.include_links:
+        lines.append(SITE_URL)
     lines.append("")
     lines.append(FOOTER_SUPPORT)
     text = "\n".join(lines).strip() + "\n"

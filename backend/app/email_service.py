@@ -139,9 +139,8 @@ def send_staging_test_email(
         preheader="Your BalanceWhiz email setup is ready.",
         heading="Your forecast is ready.",
         body="BalanceWhiz helps you see what's coming before it hits your checking account.",
-        cta_label="View my forecast",
-        cta_url="https://staging.balancewhiz.com",
         support_line="Questions? Just reply to this email.",
+        include_links=False,
     )
     return send_templated_email(
         api_key=api_key,
