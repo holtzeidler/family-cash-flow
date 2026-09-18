@@ -4,7 +4,13 @@
 # Production API (branch main): set DATABASE_URL, JWT_SECRET, CORS_ORIGINS, ENV=production
 # in the dashboard — do not reuse production DATABASE_URL for staging.
 #
-# Staging (branch staging): separate Postgres + API + static frontend. See docs/STAGING.md.
+# Staging (branch staging): Neon staging branch + API + static frontend. See docs/STAGING.md.
+# DATABASE_URL on family-cash-flow-api-staging must be the Neon staging endpoint
+# (ep-polished-boat-…), never production (ep-ancient-union-…).
+#
+# Host labels below must match the real Neon endpoints wired in Render:
+#   production API → ep-ancient-union-…
+#   staging API    → ep-polished-boat-…
 
 services:
   - type: web
@@ -28,9 +34,11 @@ services:
       - key: ENV
         value: production
       - key: DATABASE_URL
-        fromDatabase:
-          name: family-cash-flow-db-staging
-          property: connectionString
+        sync: false
+      - key: PRODUCTION_DATABASE_HOST
+        value: ep-ancient-union-and21kx9-pooler
+      - key: STAGING_DATABASE_HOST
+        value: ep-polished-boat-ando6x8y-pooler
       - key: JWT_SECRET
         generateValue: true
       - key: CORS_ORIGINS
@@ -38,6 +46,10 @@ services:
       - key: APP_PUBLIC_BASE_URL
         sync: false
       - key: STAGING_AUTH_EMAIL_ALLOWLIST
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
         sync: false
 
   - type: web

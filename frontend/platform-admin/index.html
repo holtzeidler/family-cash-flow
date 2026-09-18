@@ -29,6 +29,14 @@
     <link rel="manifest" href="../site.webmanifest" />
     <!-- /bw:seo-head -->
 <script>window.API_BASE = "__API_BASE__";</script>
+    <script>
+      (function () {
+        var p = location.pathname;
+        if (p === "/platform-admin") {
+          location.replace("/platform-admin/" + location.search + location.hash);
+        }
+      })();
+    </script>
     <link rel="stylesheet" href="../styles.css?v=734" />
   </head>
   <body class="admin-page">
@@ -58,7 +66,7 @@
           <div id="adminCallout" class="callout" style="display: none" role="status"></div>
           <section id="adminSectionOverview" class="admin-section is-active">
             <h2>Overview</h2>
-            <p id="adminOverviewText" class="meta">Loading…</p>
+            <div id="adminOverviewText" class="meta">Loading…</div>
           </section>
           <section id="adminSectionUsers" class="admin-section" hidden>
             <h2>Users</h2>
@@ -104,6 +112,15 @@
                     <option value="">All</option>
                     <option value="subscriber">Subscriber</option>
                     <option value="admin">Admin</option>
+                  </select>
+                </label>
+                <label class="admin-feedback-filter">
+                  <span class="admin-feedback-filter__label">Complimentary</span>
+                  <select id="adminUsersFilterComplimentary">
+                    <option value="">All</option>
+                    <option value="active">Complimentary access</option>
+                    <option value="expired">Complimentary expired</option>
+                    <option value="none">No complimentary access</option>
                   </select>
                 </label>
                 <button type="button" id="adminUsersInviteBtn" class="platform-admin-users-invite">Add / invite user</button>
@@ -496,6 +513,55 @@
         cursor: pointer;
         font: inherit;
       }
+      .platform-admin-drawer__check {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0 0 12px;
+        font-size: 14px;
+      }
+      .platform-admin-warning {
+        margin: 0 0 12px;
+        padding: 10px 12px;
+        border-radius: 8px;
+        border: 1px solid #f59e0b;
+        background: #fffbeb;
+        color: #92400e;
+        font-size: 13px;
+        line-height: 1.45;
+      }
+      .platform-admin-isolation {
+        margin: 0 0 16px;
+        padding: 12px 14px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: #fff;
+        color: inherit;
+        font-size: 13px;
+        line-height: 1.5;
+      }
+      .platform-admin-isolation--ok {
+        border-color: #86efac;
+        background: #f0fdf4;
+      }
+      .platform-admin-isolation--danger {
+        border-color: #dc2626;
+        background: #fef2f2;
+        color: #991b1b;
+      }
+      .platform-admin-isolation dt {
+        font-size: 11px;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin: 10px 0 2px;
+      }
+      .platform-admin-isolation dt:first-child {
+        margin-top: 0;
+      }
+      .platform-admin-isolation dd {
+        margin: 0;
+      }
       .platform-admin-drawer__danger {
         margin-top: 24px;
         padding-top: 16px;
@@ -751,6 +817,6 @@
         padding: 24px;
       }
     </style>
-    <script src="./admin.js?v=10"></script>
+    <script src="/platform-admin/admin.js?v=16"></script>
   </body>
 </html>

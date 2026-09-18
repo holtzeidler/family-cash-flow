@@ -59,15 +59,29 @@
         "This page needs API_BASE (same as the main app). Configure it in your static deploy, then reload."
       );
     }
-    const res = await fetch(fullPath, {
-      method,
-      headers: {
-        ...apiBearerAuthHeaders(),
-        ...(body ? { "Content-Type": "application/json" } : {}),
-      },
-      credentials: "include",
-      body: body ? JSON.stringify(body) : undefined,
-    });
+    const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+    const timeoutMs = 90000;
+    const timer = ctrl ? setTimeout(() => ctrl.abort(), timeoutMs) : null;
+    let res;
+    try {
+      res = await fetch(fullPath, {
+        method,
+        headers: {
+          ...apiBearerAuthHeaders(),
+          ...(body ? { "Content-Type": "application/json" } : {}),
+        },
+        credentials: "include",
+        body: body ? JSON.stringify(body) : undefined,
+        signal: ctrl ? ctrl.signal : undefined,
+      });
+    } catch (err) {
+      if (err && err.name === "AbortError") {
+        throw new Error("The request timed out. Staging may be waking up — wait a few seconds and try again.");
+      }
+      throw err;
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
     if (res.status === 401) {
       try {
         sessionStorage.removeItem(BW_API_ACCESS_TOKEN_KEY);
@@ -124,14 +138,52 @@
   }
 
   async function loadOverview() {
-    const data = await api("/api/platform/overview", "GET");
     const el = document.getElementById("adminOverviewText");
-    if (el && data && data.message) el.textContent = data.message;
+    const data = await api("/api/platform/overview", "GET");
+    if (!el) return;
+    if (!data) {
+      el.textContent = "Operator console.";
+      return;
+    }
+    const isolated = !!data.isolated_from_production;
+    const staging = data.deployment === "staging";
+    const stripe = String(data.stripe_mode || "none");
+    const host = [data.database_host_kind, data.database_host_hint].filter(Boolean).join(" / ");
+    const boxClass = staging
+      ? isolated
+        ? "platform-admin-isolation platform-admin-isolation--ok"
+        : "platform-admin-isolation platform-admin-isolation--danger"
+      : "platform-admin-isolation";
+    el.innerHTML = `<div class="${boxClass}">
+      <p style="margin:0 0 8px"><strong>${escapeHtml(data.message || "Operator console.")}</strong></p>
+      <dl>
+        <dt>Environment</dt><dd>${escapeHtml(staging ? "Staging (staging.balancewhiz.com)" : String(data.deployment || "unknown"))}</dd>
+        <dt>Database</dt><dd>${escapeHtml(data.database_name || "unknown")}${host ? ` <span class="meta">(${escapeHtml(host)})</span>` : ""}</dd>
+        <dt>Isolated from live site</dt><dd>${isolated ? "Yes — this is not the production database." : "No — writes are blocked until DATABASE_URL points at the staging database."}</dd>
+        <dt>Stripe</dt><dd>${escapeHtml(stripe === "live" ? "Live keys (billing changes blocked on staging)" : stripe === "test" ? "Test mode" : stripe === "none" ? "Not configured" : stripe)}</dd>
+        <dt>Staging login allowlist</dt><dd>${data.staging_auth_restricted ? "On — only listed test emails can sign in." : "Off — any account in this database can sign in."}</dd>
+      </dl>
+    </div>`;
+    const callout = document.getElementById("adminCallout");
+    if (staging && !isolated) {
+      setCallout(
+        callout,
+        "Writes are blocked. On Render, set family-cash-flow-api-staging DATABASE_URL to the Neon staging host (ep-polished-boat-…), not production (ep-ancient-union-…).",
+        "error"
+      );
+    } else if (staging && stripe === "live") {
+      setCallout(
+        callout,
+        "Staging is using live Stripe keys. Billing changes are blocked. Use a sk_test_ key on family-cash-flow-api-staging.",
+        "error"
+      );
+    }
   }
 
   async function loadFamiliesList() {
     const mount = document.getElementById("adminFamiliesMount");
     if (!mount) return;
+    mount.innerHTML = '<p class="meta">Loading families…</p>';
     const rows = await api("/api/platform/families", "GET");
     if (!rows || !rows.length) {
       mount.innerHTML = '<p class="meta">No families yet.</p>';
@@ -157,6 +209,25 @@
     } catch (_) {
       return String(iso);
     }
+  }
+
+  function complimentaryExpiresInputValue(iso) {
+    const s = String(iso || "").trim();
+    const m = s.match(/^(\d{4}-\d{2}-\d{2})/);
+    return m ? m[1] : "";
+  }
+
+  function complimentaryPaidWarningHtml(u) {
+    const families = Array.isArray(u && u.paid_families) ? u.paid_families : [];
+    if (!(u && u.paid_subscription_warning) && !families.length) return "";
+    const list = families
+      .map((f) => `${escapeHtml(f.family_name || "Family")} — Stripe ${escapeHtml(f.stripe_status || "active")}`)
+      .join("<br />");
+    return `<div class="platform-admin-warning" role="status">
+      <strong>Paid Stripe subscription is still active.</strong>
+      Complimentary access does not cancel or refund it. Cancel or refund that subscription separately if they should not keep paying.
+      ${list ? `<p class="meta" style="margin:8px 0 0">${list}</p>` : ""}
+    </div>`;
   }
 
   function fmtAdminRelativeDays(iso) {
@@ -326,6 +397,7 @@
     const famF = (document.getElementById("adminUsersFilterFamily") || {}).value || "";
     const statusF = (document.getElementById("adminUsersFilterStatus") || {}).value || "";
     const platF = (document.getElementById("adminUsersFilterPlatformRole") || {}).value || "";
+    const compF = (document.getElementById("adminUsersFilterComplimentary") || {}).value || "";
 
     return users.filter((u) => {
       if (!platformUserMatchesQuery(u, q)) return false;
@@ -338,6 +410,13 @@
       if (roleF) {
         const mems = u.memberships || [];
         if (!mems.some((m) => membershipFamilyRoleLabel(m) === roleF)) return false;
+      }
+      if (compF) {
+        const active = u.complimentary_access_active === true;
+        const flagged = u.complimentary_access === true;
+        if (compF === "active" && !active) return false;
+        if (compF === "expired" && !(flagged && !active)) return false;
+        if (compF === "none" && (active || flagged)) return false;
       }
       return true;
     });
@@ -393,10 +472,16 @@
         const nameLine = u.name ? escapeHtml(u.name) : escapeHtml(u.email);
         const emailSub =
           u.name && u.email ? `<span class="platform-admin-users-table__sub">${escapeHtml(u.email)}</span>` : "";
+        const compSub = u.complimentary_access_active
+          ? `<span class="platform-admin-users-table__sub">Complimentary access</span>`
+          : u.complimentary_access
+            ? `<span class="platform-admin-users-table__sub">Complimentary expired</span>`
+            : "";
         return `<tr data-user-id="${u.id}">
           <td class="platform-admin-users-table__user">
             <span class="platform-admin-users-table__email">${nameLine}</span>
             ${emailSub}
+            ${compSub}
             <span class="platform-admin-users-table__sub">#${u.id}</span>
           </td>
           <td>${escapeHtml(familyCellText(u))}</td>
@@ -438,6 +523,7 @@
       "adminUsersFilterFamily",
       "adminUsersFilterStatus",
       "adminUsersFilterPlatformRole",
+      "adminUsersFilterComplimentary",
     ];
     for (const id of ids) {
       const el = document.getElementById(id);
@@ -543,6 +629,21 @@
           <button type="button" class="platform-admin-drawer__save" id="adminDrawerSavePlatformRole">Save platform role</button>
         </section>
         <section class="platform-admin-drawer__section">
+          <h4>Complimentary access</h4>
+          <p class="meta" style="margin:0 0 10px">Internal full Cash Forecast access. This is not a Stripe plan and does not create or cancel a subscription.</p>
+          ${complimentaryPaidWarningHtml(u)}
+          <label class="platform-admin-drawer__check">
+            <input type="checkbox" id="adminDrawerCompAccess" ${u.complimentary_access ? "checked" : ""} />
+            <span>Grant complimentary access</span>
+          </label>
+          <label class="platform-admin-drawer__field">
+            <span>Expiration date (optional)</span>
+            <input type="date" id="adminDrawerCompExpires" value="${escapeHtml(complimentaryExpiresInputValue(u.complimentary_access_expires_at))}" />
+          </label>
+          <p class="meta" style="margin:0 0 10px">Leave the date blank for access that does not expire.</p>
+          <button type="button" class="platform-admin-drawer__save" id="adminDrawerSaveCompAccess">Save complimentary access</button>
+        </section>
+        <section class="platform-admin-drawer__section">
           <h4>Password reset</h4>
           <label class="platform-admin-drawer__field">
             <span>New password</span>
@@ -595,6 +696,35 @@
           setCallout(callout, "Saving…", "pending");
           await api(`/api/platform/users/${u.id}`, "PATCH", { platform_role: next });
           setCallout(callout, "Platform role updated.", "ok");
+          await loadUsers();
+          await openUserDrawer(u.id);
+        } catch (e) {
+          setCallout(callout, (e && e.message) || String(e), "error");
+        }
+      });
+    }
+
+    const saveComp = document.getElementById("adminDrawerSaveCompAccess");
+    if (saveComp) {
+      saveComp.addEventListener("click", async () => {
+        const enabled = !!document.getElementById("adminDrawerCompAccess")?.checked;
+        const expEl = document.getElementById("adminDrawerCompExpires");
+        const expires = expEl ? String(expEl.value || "").trim() : "";
+        const callout = document.getElementById("adminCallout");
+        const verb = enabled ? "Grant complimentary access" : "Revoke complimentary access";
+        if (!window.confirm(`${verb} for ${u.email}? This does not change any Stripe subscription.`)) return;
+        try {
+          setCallout(callout, "Saving…", "pending");
+          const result = await api(`/api/platform/users/${u.id}/complimentary-access`, "PATCH", {
+            complimentary_access: enabled,
+            complimentary_access_expires_at: enabled && expires ? expires : null,
+          });
+          let msg = enabled ? "Complimentary access saved." : "Complimentary access revoked.";
+          if (result && result.paid_subscription_warning) {
+            msg +=
+              " Warning: this account still has an active paid Stripe subscription. Cancel or refund it separately if they should not keep paying.";
+          }
+          setCallout(callout, msg, result && result.paid_subscription_warning ? "error" : "ok");
           await loadUsers();
           await openUserDrawer(u.id);
         } catch (e) {
@@ -764,15 +894,43 @@
     }
   }
 
+  function showUsersLoading() {
+    const meta = document.getElementById("adminUsersMeta");
+    const tbody = document.getElementById("adminUsersTableBody");
+    const wrap = document.getElementById("adminUsersTableWrap");
+    if (meta) meta.textContent = cachedPlatformUsers ? "Refreshing users…" : "Loading users…";
+    if (wrap) wrap.hidden = false;
+    if (tbody && !cachedPlatformUsers) {
+      tbody.innerHTML =
+        '<tr><td colspan="11" class="meta" style="text-align:center;padding:20px">Loading users…</td></tr>';
+    }
+  }
+
+  let usersLoadPromise = null;
+
   async function loadUsers() {
     wirePlatformUsersFilters();
     wireUserDrawerChrome();
     wireInviteModal();
-    const users = await api("/api/platform/users", "GET");
-    cachedPlatformUsers = Array.isArray(users) ? users : [];
-    await ensurePlatformFamiliesCache();
-    populateUsersFamilyFilter();
-    renderPlatformUsersTable();
+    if (cachedPlatformUsers) {
+      populateUsersFamilyFilter();
+      renderPlatformUsersTable();
+    }
+    showUsersLoading();
+    if (!usersLoadPromise) {
+      usersLoadPromise = (async () => {
+        try {
+          const users = await api("/api/platform/users", "GET");
+          cachedPlatformUsers = Array.isArray(users) ? users : [];
+          await ensurePlatformFamiliesCache();
+          populateUsersFamilyFilter();
+          renderPlatformUsersTable();
+        } finally {
+          usersLoadPromise = null;
+        }
+      })();
+    }
+    await usersLoadPromise;
   }
   const platformAdminBackBtn = document.getElementById("platformAdminBackBtn");
   if (platformAdminBackBtn) {
@@ -1084,6 +1242,8 @@
       }
       await loadOverview();
       setCallout(callout, "", "");
+      loadUsers().catch(() => {});
+      loadFamiliesList().catch(() => {});
     } catch (e) {
       setCallout(callout, (e && e.message) || String(e), "error");
     }

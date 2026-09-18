@@ -7,4 +7,6 @@ python-jose==3.3.0
 bcrypt==5.0.0
 email-validator==2.2.0
 psycopg[binary]
+python-multipart==0.0.20
+stripe==15.4.0
 

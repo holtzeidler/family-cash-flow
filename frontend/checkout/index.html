@@ -1,0 +1,599 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Checkout — BalanceWhiz</title>
+    <!-- bw:seo-head -->
+    <meta name="description" content="Subscribe to BalanceWhiz Cash Forecast." />
+    <link rel="canonical" href="https://balancewhiz.com/checkout/" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="theme-color" content="#0B3D2E" />
+    <meta property="og:site_name" content="BalanceWhiz" />
+    <meta property="og:title" content="Checkout — BalanceWhiz" />
+    <meta property="og:description" content="Subscribe to BalanceWhiz Cash Forecast." />
+    <meta property="og:url" content="https://balancewhiz.com/checkout/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://balancewhiz.com/assets/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:locale" content="en_US" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Checkout — BalanceWhiz" />
+    <meta name="twitter:description" content="Subscribe to BalanceWhiz Cash Forecast." />
+    <meta name="twitter:image" content="https://balancewhiz.com/assets/og-image.png" />
+    <link rel="icon" href="../favicon.ico" sizes="any" />
+    <link rel="icon" href="../favicon-32.png" type="image/png" sizes="32x32" />
+    <link rel="icon" href="../favicon-16.png" type="image/png" sizes="16x16" />
+    <link rel="apple-touch-icon" href="../apple-touch-icon.png" />
+    <link rel="manifest" href="../site.webmanifest" />
+    <!-- /bw:seo-head -->
+    <script>window.API_BASE = "__API_BASE__";</script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="../styles.css?v=783" />
+  </head>
+  <body class="checkout-page plans-page plans-page--polished">
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+    <div class="container">
+      <div class="top-nav" role="navigation" aria-label="Primary">
+        <div class="top-nav__inner top-nav__inner--simple">
+          <div class="top-nav__title" aria-label="App title">
+            <div class="app-title app-title--logo">
+              <a href="/" aria-label="BalanceWhiz home">
+                <img
+                  class="app-logo"
+                  src="../assets/balance-whiz-logo-on-accent.svg?v=20260518"
+                  width="293"
+                  height="44"
+                  alt="BalanceWhiz"
+                  decoding="async"
+                  fetchpriority="high"
+                />
+              </a>
+            </div>
+          </div>
+          <nav class="plans-public-nav" aria-label="Site">
+            <a href="/settings/billing" class="plans-public-nav__link plans-public-nav__link--cta" id="checkoutNavCta">Back to Billing</a>
+          </nav>
+        </div>
+      </div>
+
+      <main id="main-content" class="grid">
+        <section class="checkout-wrap" aria-labelledby="checkoutTitle">
+          <header class="checkout-hero">
+            <h1 id="checkoutTitle" class="checkout-hero__title">Choose your billing option</h1>
+            <p class="checkout-hero__subtitle">
+              Select monthly or annual billing to continue.
+            </p>
+          </header>
+
+          <section class="checkout-card" aria-label="Cash Forecast checkout">
+            <header class="checkout-value">
+              <h2 class="checkout-value__title">
+                Keep your forecast current.
+              </h2>
+              <p class="checkout-value__copy">
+                See upcoming bills and paychecks, spot tight periods early, and know what cash is safe to use.
+              </p>
+            </header>
+
+            <form id="checkoutForm" class="checkout-form" action="/create-checkout-session" method="POST">
+              <fieldset class="checkout-billing">
+                <legend class="checkout-billing__legend sr-only">Billing cycle</legend>
+                <div class="checkout-billing__options" role="radiogroup" aria-label="Billing cycle">
+                  <label class="checkout-billing__option">
+                    <input
+                      type="radio"
+                      name="billing_cycle"
+                      value="annual"
+                      data-lookup-key="cash_forecast_annual"
+                      checked
+                    />
+                    <span class="checkout-billing__option-body">
+                      <span class="checkout-billing__option-line">
+                        <span class="checkout-billing__option-title">
+                          Annual
+                          <span class="checkout-billing__badge">Save 17%</span>
+                        </span>
+                        <span class="checkout-billing__option-sep" aria-hidden="true">·</span>
+                        <span class="checkout-billing__option-price">$59.99/year</span>
+                      </span>
+                    </span>
+                  </label>
+                  <label class="checkout-billing__option">
+                    <input
+                      type="radio"
+                      name="billing_cycle"
+                      value="monthly"
+                      data-lookup-key="cash_forecast_monthly"
+                    />
+                    <span class="checkout-billing__option-body">
+                      <span class="checkout-billing__option-line">
+                        <span class="checkout-billing__option-title">Monthly</span>
+                        <span class="checkout-billing__option-sep" aria-hidden="true">·</span>
+                        <span class="checkout-billing__option-price">$5.99/month</span>
+                      </span>
+                    </span>
+                  </label>
+                </div>
+              </fieldset>
+
+              <!-- Stripe Price lookup_key — must match Prices in your Stripe Dashboard -->
+              <input type="hidden" id="lookupKey" name="lookup_key" value="cash_forecast_annual" />
+              <input type="hidden" id="familyId" name="family_id" value="" />
+              <p id="checkoutStatus" class="checkout-form__status" hidden role="status" aria-live="polite"></p>
+              <p id="checkoutErr" class="error checkout-form__error" hidden role="alert"></p>
+              <button id="checkout-and-portal-button" class="checkout-form__submit checkout-form__submit--busy" type="button" disabled aria-disabled="true" aria-busy="true">
+                <span class="checkout-form__spinner" aria-hidden="true"></span>
+                <span class="checkout-form__submit-label">Preparing secure checkout…</span>
+              </button>
+              <p class="checkout-form__reassurance" id="checkoutReassure">
+                Payment is completed securely through Stripe.
+              </p>
+            </form>
+          </section>
+        </section>
+      </main>
+
+      <footer class="app-footer" role="contentinfo">
+        <div class="app-footer__inner">
+          <div class="app-footer__grid">
+            <div class="app-footer__col app-footer__col--brand">
+              <a class="app-footer__logo" href="/" aria-label="BalanceWhiz home">
+                <img
+                  class="app-footer__logo-img"
+                  src="/assets/balance-whiz-logo.svg?v=20260518"
+                  width="160"
+                  height="41"
+                  alt="BalanceWhiz"
+                  decoding="async"
+                />
+              </a>
+              <p class="app-footer__tagline">See your cash flow before it happens.</p>
+              <p class="app-footer__copyright">© 2026 BalanceWhiz</p>
+            </div>
+            <div class="app-footer__nav">
+              <nav class="app-footer__col" aria-label="Company">
+                <h2 class="app-footer__heading">Company</h2>
+                <ul class="app-footer__list">
+                  <li><a class="app-footer__link" href="/plans/">Pricing</a></li>
+                  <li><a class="app-footer__link" href="/privacy.html">Privacy Policy</a></li>
+                  <li><a class="app-footer__link" href="/terms.html">Terms of Service</a></li>
+                </ul>
+              </nav>
+            </div>
+          </div>
+        </div>
+      </footer>
+    </div>
+    <script>
+      (function () {
+        var TOKEN_KEY = "bw_api_access_token";
+        var FREQ_KEY = "bw_billing_frequency";
+        var FETCH_MS = 14000;
+        var form = document.getElementById("checkoutForm");
+        var errEl = document.getElementById("checkoutErr");
+        var statusEl = document.getElementById("checkoutStatus");
+        var familyInput = document.getElementById("familyId");
+        var btn = document.getElementById("checkout-and-portal-button");
+        var reassureEl = document.getElementById("checkoutReassure");
+        var cta = document.getElementById("checkoutNavCta");
+        var checkoutReady = false;
+        var blockReason = "Preparing secure checkout…";
+        var submitting = false;
+        var defaultReassure = "Payment is completed securely through Stripe.";
+
+        function accessToken() {
+          try {
+            return (sessionStorage.getItem(TOKEN_KEY) || "").trim();
+          } catch (_) {
+            return "";
+          }
+        }
+
+        function authHeaders() {
+          var h = { Accept: "application/json" };
+          var t = accessToken();
+          if (t) h.Authorization = "Bearer " + t;
+          return h;
+        }
+
+        function loginUrl() {
+          var next = "/checkout/" + (window.location.search || "");
+          return "/login.html?next=" + encodeURIComponent(next);
+        }
+
+        function billingReturnUrl() {
+          var params = new URLSearchParams(window.location.search || "");
+          var fid = "";
+          if (familyInput && String(familyInput.value || "").trim()) {
+            fid = String(familyInput.value).trim();
+          } else {
+            fid = String(params.get("family_id") || "").trim();
+          }
+          return fid ? "/settings/billing?family_id=" + encodeURIComponent(fid) : "/settings/billing";
+        }
+
+        function formatDetail(detail) {
+          if (detail == null || detail === "") return "";
+          if (typeof detail === "string") return detail;
+          if (Array.isArray(detail)) {
+            return detail
+              .map(function (item) {
+                if (!item) return "";
+                if (typeof item === "string") return item;
+                return item.msg || item.message || JSON.stringify(item);
+              })
+              .filter(Boolean)
+              .join(" ");
+          }
+          if (typeof detail === "object" && detail.message) return String(detail.message);
+          try {
+            return JSON.stringify(detail);
+          } catch (_) {
+            return String(detail);
+          }
+        }
+
+        function setStatus(msg, isError) {
+          if (statusEl) {
+            if (isError || !msg) {
+              statusEl.hidden = true;
+              statusEl.textContent = "";
+            } else {
+              statusEl.hidden = false;
+              statusEl.textContent = msg;
+            }
+          }
+          if (errEl) {
+            if (isError && msg) {
+              errEl.hidden = false;
+              errEl.textContent = msg;
+            } else {
+              errEl.hidden = true;
+              errEl.textContent = "";
+            }
+          }
+        }
+
+        function checkoutCtaLabel() {
+          return "Continue to checkout";
+        }
+
+        function setButtonContent(label, opts) {
+          opts = opts || {};
+          if (!btn) return;
+          btn.classList.toggle("checkout-form__submit--busy", !!opts.busy);
+          if (opts.busy) {
+            btn.disabled = true;
+            btn.setAttribute("aria-busy", "true");
+            btn.setAttribute("aria-disabled", "true");
+            btn.innerHTML =
+              '<span class="checkout-form__spinner" aria-hidden="true"></span>' +
+              '<span class="checkout-form__submit-label"></span>';
+            var lab = btn.querySelector(".checkout-form__submit-label");
+            if (lab) lab.textContent = label || "Preparing secure checkout…";
+            return;
+          }
+          btn.removeAttribute("aria-busy");
+          btn.textContent = label || checkoutCtaLabel();
+        }
+
+        function setPreparing() {
+          checkoutReady = false;
+          blockReason = "Preparing secure checkout…";
+          if (btn) {
+            btn.classList.remove("checkout-form__submit--blocked");
+            setButtonContent("Preparing secure checkout…", { busy: true });
+          }
+          setStatus("", false);
+        }
+
+        function setBlocked(reason, opts) {
+          opts = opts || {};
+          checkoutReady = false;
+          blockReason = reason || "Checkout isn’t ready yet.";
+          if (btn) {
+            btn.disabled = false;
+            btn.setAttribute("aria-disabled", "true");
+            btn.classList.add("checkout-form__submit--blocked");
+            setButtonContent(opts.buttonLabel || checkoutCtaLabel());
+          }
+          setStatus(blockReason, !!opts.asError);
+        }
+
+        function setReady() {
+          checkoutReady = true;
+          blockReason = "";
+          if (btn) {
+            btn.disabled = false;
+            btn.removeAttribute("aria-disabled");
+            btn.classList.remove("checkout-form__submit--blocked");
+            setButtonContent(checkoutCtaLabel());
+          }
+          setStatus("", false);
+          if (reassureEl) reassureEl.textContent = defaultReassure;
+        }
+
+        function fetchJson(url, options) {
+          options = options || {};
+          var ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+          var timer = 0;
+          if (ctrl) {
+            timer = window.setTimeout(function () {
+              try {
+                ctrl.abort();
+              } catch (_) {}
+            }, FETCH_MS);
+          }
+          return fetch(url, ctrl ? Object.assign({}, options, { signal: ctrl.signal }) : options)
+            .then(function (res) {
+              return res
+                .json()
+                .then(function (data) {
+                  return { ok: res.ok, status: res.status, data: data };
+                })
+                .catch(function () {
+                  return { ok: res.ok, status: res.status, data: {} };
+                });
+            })
+            .finally(function () {
+              if (timer) window.clearTimeout(timer);
+            })
+            .catch(function (err) {
+              var aborted = err && (err.name === "AbortError" || /abort/i.test(String(err)));
+              throw new Error(
+                aborted
+                  ? "Checkout timed out talking to the API. Wait a few seconds and refresh — the staging API may be waking up."
+                  : err && err.message
+                    ? err.message
+                    : "Network error talking to the API."
+              );
+            });
+        }
+
+        if (cta) {
+          if (accessToken()) {
+            cta.textContent = "Back to Billing";
+            cta.href = billingReturnUrl();
+          } else {
+            cta.textContent = "Login";
+            cta.href = loginUrl();
+          }
+        }
+
+        if (!form || !btn) return;
+
+        // Do not check for the literal "__API_BASE__" here — the static build
+        // replaces that token everywhere in HTML, including this script.
+        var api = String(window.API_BASE || "").replace(/\/$/, "");
+        if (!api || api.indexOf("://") === -1) {
+          setBlocked("Checkout is not configured (missing API_BASE on this site build).", {
+            asError: true,
+            buttonLabel: "Checkout unavailable",
+          });
+          btn.addEventListener("click", function (e) {
+            e.preventDefault();
+            setBlocked(blockReason, { asError: true, buttonLabel: "Checkout unavailable" });
+          });
+          return;
+        }
+        form.action = api + "/create-checkout-session";
+
+        var lookupInput = document.getElementById("lookupKey");
+        var radios = form.querySelectorAll('input[name="billing_cycle"]');
+
+        function syncBilling() {
+          var selected = form.querySelector('input[name="billing_cycle"]:checked');
+          if (!selected) return;
+          if (lookupInput) lookupInput.value = selected.getAttribute("data-lookup-key") || "";
+          try {
+            localStorage.setItem(
+              FREQ_KEY,
+              selected.value === "annual" ? "yearly" : "monthly"
+            );
+          } catch (_) {}
+          if (checkoutReady && !submitting) setButtonContent(checkoutCtaLabel());
+        }
+
+        radios.forEach(function (radio) {
+          radio.addEventListener("change", syncBilling);
+        });
+        try {
+          var params = new URLSearchParams(window.location.search || "");
+          var wantLookup = String(params.get("lookup_key") || "").trim();
+          var wantCycle = String(params.get("billing_cycle") || params.get("cycle") || "")
+            .trim()
+            .toLowerCase();
+          var matched = false;
+          if (wantLookup) {
+            radios.forEach(function (radio) {
+              var on = radio.getAttribute("data-lookup-key") === wantLookup;
+              radio.checked = on;
+              if (on) matched = true;
+            });
+            if (!matched) {
+              var lower = wantLookup.toLowerCase();
+              radios.forEach(function (radio) {
+                var on =
+                  radio.value === "monthly"
+                    ? lower.indexOf("month") !== -1
+                    : lower.indexOf("annual") !== -1 || lower.indexOf("year") !== -1;
+                radio.checked = on;
+                if (on) matched = true;
+              });
+            }
+          } else if (wantCycle === "monthly" || wantCycle === "month") {
+            radios.forEach(function (radio) {
+              radio.checked = radio.value === "monthly";
+            });
+            matched = true;
+          } else if (wantCycle === "annual" || wantCycle === "yearly" || wantCycle === "year") {
+            radios.forEach(function (radio) {
+              radio.checked = radio.value === "annual";
+            });
+            matched = true;
+          }
+          if (wantLookup && !matched) {
+            radios.forEach(function (radio) {
+              radio.checked = radio.value === "annual";
+            });
+          }
+        } catch (_) {}
+        syncBilling();
+
+        function pickOwnedFamily(families) {
+          var params = new URLSearchParams(window.location.search || "");
+          var want = Number(params.get("family_id") || 0);
+          var list = Array.isArray(families) ? families : [];
+          if (want) {
+            for (var i = 0; i < list.length; i++) {
+              if (Number(list[i].id) === want) return list[i];
+            }
+          }
+          var owned = list.filter(function (f) {
+            return !!f.is_family_owner;
+          });
+          if (owned.length) return owned[0];
+          return list[0] || null;
+        }
+
+        function setCheckoutContext(fam) {
+          if (!fam || !familyInput) return false;
+          familyInput.value = String(fam.id);
+          if (cta && accessToken()) cta.href = billingReturnUrl();
+          return true;
+        }
+
+        function startCheckout() {
+          if (submitting) return;
+          syncBilling();
+          if (!familyInput || !String(familyInput.value || "").trim()) {
+            setBlocked("Checkout isn’t ready. Refresh the page or return from Settings → Billing.", {
+              asError: true,
+            });
+            return;
+          }
+          submitting = true;
+          btn.classList.remove("checkout-form__submit--blocked");
+          setButtonContent("Redirecting to Stripe…", { busy: true });
+
+          var body = new FormData(form);
+          fetchJson(form.action, {
+            method: "POST",
+            body: body,
+            credentials: "include",
+            headers: authHeaders(),
+          })
+            .then(function (result) {
+              var url = result.data && result.data.url;
+              if (result.ok && url) {
+                window.location.assign(url);
+                return;
+              }
+              if (result.status === 401) {
+                setBlocked("Your session expired. Sign in again, then try checkout.", {
+                  asError: true,
+                  buttonLabel: "Sign in to checkout",
+                });
+                submitting = false;
+                return;
+              }
+              if (result.status === 503) {
+                var detail503 = formatDetail(result.data && result.data.detail);
+                throw new Error(
+                  detail503 ||
+                    "Billing isn’t fully configured on the server yet (Stripe keys or public URL)."
+                );
+              }
+              var msg =
+                (result.data && result.data.error && result.data.error.message) ||
+                formatDetail(result.data && result.data.detail) ||
+                "Checkout failed (" + result.status + ").";
+              throw new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
+            })
+            .catch(function (err) {
+              submitting = false;
+              checkoutReady = true;
+              if (btn) {
+                btn.disabled = false;
+                btn.removeAttribute("aria-disabled");
+                btn.classList.remove("checkout-form__submit--blocked");
+                setButtonContent(checkoutCtaLabel());
+              }
+              setStatus(err && err.message ? err.message : String(err), true);
+            });
+        }
+
+        function onCheckoutClick(e) {
+          e.preventDefault();
+          if (submitting) return;
+          if (btn.getAttribute("data-checkout-action") === "login") {
+            window.location.assign(loginUrl());
+            return;
+          }
+          if (!checkoutReady) {
+            setBlocked(blockReason || "Checkout isn’t ready yet.", { asError: true });
+            return;
+          }
+          startCheckout();
+        }
+
+        btn.addEventListener("click", onCheckoutClick);
+        form.addEventListener("submit", onCheckoutClick);
+
+        setPreparing();
+
+        fetchJson(api + "/api/families", {
+          method: "GET",
+          credentials: "include",
+          headers: authHeaders(),
+        })
+          .then(function (result) {
+            if (result.status === 401) {
+              btn.setAttribute("data-checkout-action", "login");
+              setBlocked("Sign in to continue to checkout.", {
+                asError: true,
+                buttonLabel: "Sign in to checkout",
+              });
+              return;
+            }
+            if (!result.ok) {
+              throw new Error(
+                formatDetail(result.data && result.data.detail) ||
+                  "Could not prepare checkout (" + result.status + ")."
+              );
+            }
+            var fam = pickOwnedFamily(result.data);
+            if (!fam) {
+              btn.removeAttribute("data-checkout-action");
+              setBlocked("Finish setting up your account before checking out, then return here.", {
+                asError: true,
+              });
+              return;
+            }
+            if (!fam.is_family_owner) {
+              btn.removeAttribute("data-checkout-action");
+              setBlocked(
+                "Only the account owner can start a Cash Forecast subscription.",
+                { asError: true }
+              );
+              return;
+            }
+            btn.removeAttribute("data-checkout-action");
+            setCheckoutContext(fam);
+            setReady();
+          })
+          .catch(function (err) {
+            btn.removeAttribute("data-checkout-action");
+            setBlocked(err && err.message ? err.message : String(err), {
+              asError: true,
+              buttonLabel: checkoutCtaLabel(),
+            });
+          });
+      })();
+    </script>
+  </body>
+</html>

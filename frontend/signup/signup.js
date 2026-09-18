@@ -1160,29 +1160,29 @@ function getAccountSetupStepCopy(step, ctx) {
     case 0:
       return {
         title: "Create your login",
-        subtitle: "Start with an email and password.",
+        subtitle: "Then we’ll build your first cash flow forecast.",
       };
     case 1:
       return {
         title: "Start with your current checking balance",
-        subtitle: "Use today’s balance so your forecast starts from reality.",
+        subtitle: "This gives us the starting point for your forecast.",
       };
     case 2: {
       if (phase3 === "form") {
         return {
           title: "Add an upcoming paycheck or bill",
-          subtitle: "A few recurring items are usually enough to see what stays covered.",
+          subtitle: "Your paychecks help us show when your balance rises.",
         };
       }
       return {
         title: "Add your first income & expenses",
-        subtitle: "You’re almost done — a paycheck and a bill are enough to see your forecast take shape.",
+        subtitle: "Your paychecks help us show when your balance rises.",
       };
     }
     case 3:
       return {
         title: "Add another recurring item",
-        subtitle: "Utilities, card payments, and transfers all help make your projected balance more accurate.",
+        subtitle: "Start with the recurring expenses that have the biggest impact on checking.",
       };
     case 4:
       return {
@@ -1284,8 +1284,7 @@ function syncAccountSetupWizardShellButtons() {
     if (signupBtn) {
       signupBtn.style.display = "";
       signupBtn.disabled = false;
-      signupBtn.textContent = "Next";
-      // Ensure Next is always the primary (green) style.
+      signupBtn.textContent = s === 0 ? "Continue" : "Next";
       signupBtn.classList.remove("secondary");
       signupBtn.classList.add("top-nav__logout");
     }
@@ -3566,10 +3565,10 @@ async function finishForecastBuildOverlay(overlayEl, { message = "Opening your f
   hideForecastBuildOverlay(overlayEl);
 }
 
-// Plan note (for future billing wiring).
+// Plan note is only used on account-setup; the create-account card has a static header.
 try {
   const plan = parsePlanFromQuery();
-  if (signupPlanNoteEl && plan) {
+  if (isAccountSetupPath() && signupPlanNoteEl && plan) {
     signupPlanNoteEl.style.display = "block";
     signupPlanNoteEl.classList.toggle("signup-plan-note--pro", plan === "pro");
     signupPlanNoteEl.textContent = plan === "pro" ? "Selected Plan: Add Budgeting" : "Selected Plan: Cash Forecast";

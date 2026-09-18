@@ -7,6 +7,7 @@ import secrets
 import io
 import json
 import logging
+import re
 import smtplib
 import ssl
 import threading
@@ -64,6 +65,18 @@ class Settings(BaseSettings):
     # Public URL of the web app (no trailing slash), e.g. https://app.example.com or https://user.github.io/repo
     # Used in family invite emails. If unset, the API uses the Origin header from the browser when the owner sends an invite.
     APP_PUBLIC_BASE_URL: str = ""
+    # Neon (or other) host labels used to keep staging from writing to production.
+    # Staging writes are blocked when DATABASE_URL's host matches PRODUCTION_DATABASE_HOST.
+    # These must match the real Neon endpoints wired in Render (do not swap them):
+    #   production API → ep-ancient-union-…
+    #   staging API    → ep-polished-boat-…
+    PRODUCTION_DATABASE_HOST: str = "ep-ancient-union-and21kx9-pooler"
+    STAGING_DATABASE_HOST: str = "ep-polished-boat-ando6x8y-pooler"
+    # Stripe Billing (Checkout + Customer Portal + webhooks). Leave empty to disable billing routes.
+    # Use a restricted key (rk_…) when possible; never commit secrets. Staging and production need separate keys.
+    STRIPE_SECRET_KEY: str = ""
+    # Webhook signing secret from Dashboard Workbench or `stripe listen` (whsec_…).
+    STRIPE_WEBHOOK_SECRET: str = ""
     # Password reset links expire this many minutes after issue (single-use tokens).
     PASSWORD_RESET_TOKEN_MINUTES: int = 45
 
@@ -310,6 +323,7 @@ class TransactionKind(str, Enum):
     expense = "expense"
 
 
+
 class AccountType(str, Enum):
     checking = "checking"
     savings = "savings"
@@ -342,6 +356,8 @@ class User(Base):
     platform_role: Mapped[str] = mapped_column(String(20), nullable=False, default="subscriber")
     last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     last_seen_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    complimentary_access: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    complimentary_access_expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     memberships: Mapped[list[FamilyMember]] = relationship(back_populates="user")
 
@@ -380,6 +396,52 @@ class FamilyMember(Base):
 
     family: Mapped[Family] = relationship(back_populates="memberships")
     user: Mapped[User] = relationship(back_populates="memberships")
+
+
+class BillingCustomer(Base):
+    """Stripe Customer linked to a BalanceWhiz user (usually the family owner)."""
+
+    __tablename__ = "billing_customers"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
+    stripe_customer_id: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
+
+
+class BillingSubscription(Base):
+    """Cash Forecast subscription entitlement for a family (server source of truth)."""
+
+    __tablename__ = "billing_subscriptions"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    family_id: Mapped[int] = mapped_column(ForeignKey("families.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
+    billing_customer_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("billing_customers.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    stripe_subscription_id: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
+    status: Mapped[str] = mapped_column(String(40), nullable=False, default="incomplete", index=True)
+    lookup_key: Mapped[Optional[str]] = mapped_column(String(80), nullable=True, index=True)
+    stripe_price_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    current_period_end: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    cancel_at_period_end: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    pending_lookup_key: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
+    pending_change_on: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    trial_end: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
+
+
+class StripeWebhookEvent(Base):
+    """Idempotency log for processed Stripe webhook events."""
+
+    __tablename__ = "stripe_webhook_events"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    event_id: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
+    event_type: Mapped[str] = mapped_column(String(120), nullable=False, index=True)
+    processed_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
 
 
 class PlatformAdminAuditLog(Base):
@@ -810,6 +872,107 @@ def _require_staging_auth_email_allowed(email: str) -> None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=_STAGING_AUTH_DENIED_DETAIL)
 
 
+def _is_staging_deployment() -> bool:
+    """True when this API is wired to the staging site (not production)."""
+    blob = f"{settings.APP_PUBLIC_BASE_URL or ''} {settings.CORS_ORIGINS or ''}".lower()
+    return any(
+        token in blob
+        for token in (
+            "staging.balancewhiz.com",
+            "family-cash-flow-web-staging",
+            "family-cash-flow-api-staging",
+        )
+    )
+
+
+def _database_identity() -> dict[str, str]:
+    """Host/name only — never userinfo or the full URL."""
+    raw = (settings.DATABASE_URL or "").strip()
+    if raw.startswith("sqlite"):
+        name = raw.rsplit("/", 1)[-1] or "app.db"
+        return {"engine": "sqlite", "database": name, "host_kind": "sqlite", "host_hint": "local"}
+    normalized = raw.replace("postgresql+psycopg://", "postgresql://", 1)
+    normalized = normalized.replace("postgresql+psycopg2://", "postgresql://", 1)
+    if normalized.startswith("postgres://"):
+        normalized = "postgresql://" + normalized[len("postgres://") :]
+    parsed = urlparse(normalized)
+    dbname = (parsed.path or "").lstrip("/").split("?")[0]
+    host = (parsed.hostname or "").lower()
+    if "neon.tech" in host:
+        host_kind = "neon"
+    elif "render.com" in host:
+        host_kind = "render-postgres"
+    else:
+        host_kind = "postgres"
+    first = host.split(".")[0] if host else ""
+    return {
+        "engine": "postgres",
+        "database": dbname,
+        "host_kind": host_kind,
+        "host_hint": first[:48],
+    }
+
+
+def _host_label_matches(expected: str, ident: dict[str, str]) -> bool:
+    exp = (expected or "").strip().lower()
+    if not exp:
+        return False
+    hint = (ident.get("host_hint") or "").lower()
+    raw = (settings.DATABASE_URL or "").lower()
+    return exp in hint or exp in raw
+
+
+def _database_looks_like_staging() -> bool:
+    """True when DATABASE_URL is the staging Neon branch (or another staging-named DB)."""
+    ident = _database_identity()
+    if _host_label_matches(settings.STAGING_DATABASE_HOST, ident):
+        return True
+    if _host_label_matches(settings.PRODUCTION_DATABASE_HOST, ident):
+        return False
+    blob = f"{ident.get('database', '')} {ident.get('host_hint', '')}".lower()
+    return "staging" in blob
+
+
+def _stripe_secret_mode() -> str:
+    k = (settings.STRIPE_SECRET_KEY or "").strip()
+    if not k:
+        return "none"
+    if k.startswith(("sk_live", "rk_live")):
+        return "live"
+    if k.startswith(("sk_test", "rk_test")):
+        return "test"
+    return "unknown"
+
+
+def _staging_db_writes_allowed() -> bool:
+    if not _is_staging_deployment():
+        return True
+    return _database_looks_like_staging()
+
+
+_STAGING_SHARED_DB_DETAIL = (
+    "This staging API is connected to the production Neon database. Writes are blocked. "
+    "On Render → family-cash-flow-api-staging → Environment, set DATABASE_URL to the "
+    "staging Neon host (ep-polished-boat-…), not the production host (ep-ancient-union-…)."
+)
+_STAGING_LIVE_STRIPE_DETAIL = (
+    "Staging is using a live Stripe key. Billing changes are blocked so live subscriptions "
+    "cannot be changed. Set STRIPE_SECRET_KEY on family-cash-flow-api-staging to a test-mode key (sk_test_…)."
+)
+_STAGING_UNSAFE_DB_ALLOWED_WRITE_PATHS = frozenset({"/api/auth/login", "/api/auth/logout"})
+_STAGING_STRIPE_MUTATION_PATHS = frozenset(
+    {
+        "/create-checkout-session",
+        "/preview-billing-interval",
+        "/switch-billing-interval",
+        "/schedule-subscription-cancel",
+        "/resume-subscription",
+        "/create-portal-session",
+        "/webhook",
+    }
+)
+
+
 def _normalize_platform_role_value(raw: str) -> str:
     """Map stored/legacy values to subscriber | admin."""
     r = (raw or "subscriber").strip().lower()
@@ -1010,6 +1173,9 @@ def _platform_user_row_out(
     last_login_at = _as_utc_naive(getattr(u, "last_login_at", None))
     last_seen_at = _as_utc_naive(getattr(u, "last_seen_at", None))
     last_data_at = _as_utc_naive(eng.last_data_at)
+    from .billing_entitlement import complimentary_access_is_active
+
+    exp = _as_utc_naive(getattr(u, "complimentary_access_expires_at", None))
     return PlatformAdminUserOut(
         id=int(u.id),
         email=u.email,
@@ -1026,7 +1192,56 @@ def _platform_user_row_out(
         primary_family_name=primary_name,
         primary_family_role=primary_role,
         memberships=memberships,
+        complimentary_access=bool(getattr(u, "complimentary_access", False)),
+        complimentary_access_active=complimentary_access_is_active(u),
+        complimentary_access_expires_at=exp,
     )
+
+
+def _parse_complimentary_expiration(raw: Optional[str]) -> Optional[datetime]:
+    s = str(raw or "").strip()
+    if not s:
+        return None
+    if re.match(r"^\d{4}-\d{2}-\d{2}$", s):
+        y, m, d = (int(p) for p in s.split("-"))
+        return datetime(y, m, d, 23, 59, 59)
+    from .billing_entitlement import _as_naive_utc
+
+    parsed = _as_naive_utc(s)
+    if parsed is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid complimentary expiration date.")
+    return parsed
+
+
+def _paid_stripe_families_for_user(db, user_id: int) -> list[PlatformPaidFamilyWarningOut]:
+    owner_ids = db.execute(
+        select(FamilyMember.family_id).where(
+            FamilyMember.user_id == int(user_id),
+            FamilyMember.is_family_owner.is_(True),
+        )
+    ).scalars().all()
+    out: list[PlatformPaidFamilyWarningOut] = []
+    for fid in owner_ids:
+        fam = db.get(Family, int(fid))
+        if fam is None:
+            continue
+        sub = db.execute(
+            select(BillingSubscription).where(BillingSubscription.family_id == int(fid))
+        ).scalar_one_or_none()
+        if sub is None:
+            continue
+        st = str(getattr(sub, "status", None) or "").strip().lower()
+        if st not in ("active", "trialing", "past_due"):
+            continue
+        out.append(
+            PlatformPaidFamilyWarningOut(
+                family_id=int(fid),
+                family_name=str(fam.name),
+                stripe_status=st,
+                lookup_key=(getattr(sub, "lookup_key", None) or None),
+            )
+        )
+    return out
 
 
 def require_family_member(*, db, family_id: int, user_id: int, write: bool = False) -> None:
@@ -1049,6 +1264,9 @@ def require_family_member(*, db, family_id: int, user_id: int, write: bool = Fal
 
 def require_family_write(*, db, family_id: int, user_id: int) -> None:
     require_family_member(db=db, family_id=family_id, user_id=user_id, write=True)
+    from .billing_entitlement import assert_family_entitled
+
+    assert_family_entitled(db, int(family_id))
 
 
 def require_family_owner(*, db, family_id: int, user_id: int) -> None:
@@ -1319,6 +1537,33 @@ class FamilyForecastThresholdsPatch(BaseModel):
     balance_threshold_max: Optional[float] = None
 
 
+class BillingStatusOut(BaseModel):
+    product_code: str
+    product_name: str
+    entitled: bool
+    phase: str
+    trial_days: int
+    trial_days_remaining: Optional[int] = None
+    trial_ends_on: Optional[str] = None
+    trial_ends_at: Optional[str] = None
+    first_charge_on: Optional[str] = None
+    first_charge_at: Optional[str] = None
+    in_app_trial: bool = False
+    status: str
+    lookup_key: Optional[str] = None
+    current_period_end: Optional[str] = None
+    cancel_at_period_end: bool = False
+    last_payment_failed_on: Optional[str] = None
+    next_payment_attempt_on: Optional[str] = None
+    pending_lookup_key: Optional[str] = None
+    pending_change_on: Optional[str] = None
+    portal_available: bool = False
+    stripe_subscription_id: Optional[str] = None
+    complimentary_access: bool = False
+    complimentary_access_active: bool = False
+    complimentary_access_expires_at: Optional[str] = None
+
+
 class FamilyMemberOut(BaseModel):
     user_id: int
     email: EmailStr
@@ -1403,6 +1648,9 @@ class PlatformAdminUserOut(BaseModel):
     primary_family_name: Optional[str] = None
     primary_family_role: Optional[str] = None
     memberships: list[PlatformAdminFamilyMembershipOut]
+    complimentary_access: bool = False
+    complimentary_access_active: bool = False
+    complimentary_access_expires_at: Optional[datetime] = None
 
 
 class PlatformAdminAuditEntryOut(BaseModel):
@@ -1417,6 +1665,28 @@ class PlatformAdminAuditEntryOut(BaseModel):
 
 class PlatformAdminUserDetailOut(PlatformAdminUserOut):
     recent_audit: list[PlatformAdminAuditEntryOut] = Field(default_factory=list)
+    paid_subscription_warning: bool = False
+    paid_families: list["PlatformPaidFamilyWarningOut"] = Field(default_factory=list)
+
+
+class PlatformPaidFamilyWarningOut(BaseModel):
+    family_id: int
+    family_name: str
+    stripe_status: str
+    lookup_key: Optional[str] = None
+
+
+class PlatformComplimentaryAccessIn(BaseModel):
+    complimentary_access: bool
+    complimentary_access_expires_at: Optional[str] = None
+
+
+class PlatformComplimentaryAccessOut(BaseModel):
+    complimentary_access: bool
+    complimentary_access_active: bool
+    complimentary_access_expires_at: Optional[datetime] = None
+    paid_subscription_warning: bool = False
+    paid_families: list[PlatformPaidFamilyWarningOut] = Field(default_factory=list)
 
 
 class PlatformUserPlatformRoleIn(BaseModel):
@@ -1454,6 +1724,14 @@ class PlatformUserPurgeOut(BaseModel):
 
 class PlatformOverviewOut(BaseModel):
     message: str
+    deployment: str = "unknown"
+    database_name: str = ""
+    database_host_kind: str = ""
+    database_host_hint: str = ""
+    isolated_from_production: bool = True
+    stripe_mode: str = "none"
+    writes_enabled: bool = True
+    staging_auth_restricted: bool = False
 
 
 class CategoryIn(BaseModel):
@@ -1928,6 +2206,12 @@ def _parse_cors_origins(raw: str) -> list[str]:
 
 
 app = FastAPI(title="BalanceWhiz")
+
+from .stripe_billing import register_stripe_routes  # noqa: E402
+from .billing_catalog import PRODUCT_CODE, TRIAL_DAYS  # noqa: E402
+
+register_stripe_routes(app, settings, logger, session_factory=SessionLocal)
+
 if settings.CORS_ORIGINS:
     origins = _parse_cors_origins(settings.CORS_ORIGINS)
     if origins:
@@ -1949,6 +2233,21 @@ async def touch_user_last_seen(request: Request, call_next):
             user_id = _decode_user_id_from_token_optional(token)
             if user_id is not None:
                 _touch_last_seen_async(user_id)
+    return await call_next(request)
+
+
+@app.middleware("http")
+async def protect_staging_from_production_data(request: Request, call_next):
+    """Refuse writes when the staging site is pointed at a non-staging database or live Stripe."""
+    if request.method in ("GET", "HEAD", "OPTIONS"):
+        return await call_next(request)
+    if not _is_staging_deployment():
+        return await call_next(request)
+    path = request.url.path
+    if not _database_looks_like_staging() and path not in _STAGING_UNSAFE_DB_ALLOWED_WRITE_PATHS:
+        return JSONResponse(status_code=409, content={"detail": _STAGING_SHARED_DB_DETAIL})
+    if _stripe_secret_mode() == "live" and path in _STAGING_STRIPE_MUTATION_PATHS:
+        return JSONResponse(status_code=409, content={"detail": _STAGING_LIVE_STRIPE_DETAIL})
     return await call_next(request)
 
 
@@ -2003,7 +2302,17 @@ def public_debug_config():
         "family_invite_email_configured": _invite_email_delivery_configured(),
         "password_reset_email_configured": _invite_email_delivery_configured(),
         "app_public_base_url_configured": bool((settings.APP_PUBLIC_BASE_URL or "").strip()),
+        "stripe_billing_configured": bool((settings.STRIPE_SECRET_KEY or "").strip()),
+        "stripe_webhook_configured": bool((settings.STRIPE_WEBHOOK_SECRET or "").strip()),
+        "billing_product_code": PRODUCT_CODE,
+        "billing_trial_days": TRIAL_DAYS,
         "staging_auth_restricted": _staging_auth_allowlist_enforced(),
+        "deployment": "staging" if _is_staging_deployment() else settings.ENV,
+        "database_name": _database_identity().get("database") or "",
+        "database_host_kind": _database_identity().get("host_kind") or "",
+        "isolated_from_production": (not _is_staging_deployment()) or _database_looks_like_staging(),
+        "stripe_mode": _stripe_secret_mode(),
+        "writes_enabled": _staging_db_writes_allowed(),
         "note": "GitHub Pages -> Render: ENV=production for SameSite=None; Secure cookies. Register/login also return access_token for Authorization: Bearer when cookies are blocked.",
     }
 
@@ -2486,8 +2795,172 @@ def startup_populate_schema():
     _ensure_family_invites_table()
     _ensure_user_platform_columns()
     _migrate_platform_roles_subscriber_admin()
+    _ensure_user_complimentary_columns()
     _ensure_platform_admin_audit_table()
+    _ensure_billing_tables()
     _sync_legacy_platform_admin_roles()
+
+
+def _ensure_billing_tables() -> None:
+    """Create billing_customers, billing_subscriptions, stripe_webhook_events if missing."""
+    with engine.begin() as conn:
+        if settings.DATABASE_URL.startswith("sqlite"):
+            conn.execute(
+                text(
+                    "CREATE TABLE IF NOT EXISTS billing_customers ("
+                    "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                    "user_id INTEGER NOT NULL UNIQUE, "
+                    "stripe_customer_id VARCHAR(255) NOT NULL UNIQUE, "
+                    "created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "
+                    "updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "
+                    "FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE"
+                    ")"
+                )
+            )
+            conn.execute(
+                text("CREATE INDEX IF NOT EXISTS ix_billing_customers_user_id ON billing_customers (user_id)")
+            )
+            conn.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS ix_billing_customers_stripe_customer_id "
+                    "ON billing_customers (stripe_customer_id)"
+                )
+            )
+            conn.execute(
+                text(
+                    "CREATE TABLE IF NOT EXISTS billing_subscriptions ("
+                    "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                    "family_id INTEGER NOT NULL UNIQUE, "
+                    "billing_customer_id INTEGER, "
+                    "stripe_subscription_id VARCHAR(255) NOT NULL UNIQUE, "
+                    "status VARCHAR(40) NOT NULL DEFAULT 'incomplete', "
+                    "lookup_key VARCHAR(80), "
+                    "stripe_price_id VARCHAR(255), "
+                    "current_period_end DATETIME, "
+                    "cancel_at_period_end BOOLEAN NOT NULL DEFAULT 0, "
+                    "trial_end DATETIME, "
+                    "created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "
+                    "updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "
+                    "FOREIGN KEY(family_id) REFERENCES families(id) ON DELETE CASCADE, "
+                    "FOREIGN KEY(billing_customer_id) REFERENCES billing_customers(id) ON DELETE SET NULL"
+                    ")"
+                )
+            )
+            conn.execute(
+                text("CREATE INDEX IF NOT EXISTS ix_billing_subscriptions_family_id ON billing_subscriptions (family_id)")
+            )
+            conn.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS ix_billing_subscriptions_stripe_subscription_id "
+                    "ON billing_subscriptions (stripe_subscription_id)"
+                )
+            )
+            conn.execute(
+                text("CREATE INDEX IF NOT EXISTS ix_billing_subscriptions_status ON billing_subscriptions (status)")
+            )
+            conn.execute(
+                text(
+                    "CREATE TABLE IF NOT EXISTS stripe_webhook_events ("
+                    "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                    "event_id VARCHAR(255) NOT NULL UNIQUE, "
+                    "event_type VARCHAR(120) NOT NULL, "
+                    "processed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP"
+                    ")"
+                )
+            )
+            conn.execute(
+                text("CREATE INDEX IF NOT EXISTS ix_stripe_webhook_events_event_id ON stripe_webhook_events (event_id)")
+            )
+            conn.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS ix_stripe_webhook_events_event_type ON stripe_webhook_events (event_type)"
+                )
+            )
+        else:
+            conn.execute(
+                text(
+                    "CREATE TABLE IF NOT EXISTS billing_customers ("
+                    "id SERIAL PRIMARY KEY, "
+                    "user_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE, "
+                    "stripe_customer_id VARCHAR(255) NOT NULL UNIQUE, "
+                    "created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW(), "
+                    "updated_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW()"
+                    ")"
+                )
+            )
+            conn.execute(
+                text("CREATE INDEX IF NOT EXISTS ix_billing_customers_user_id ON billing_customers (user_id)")
+            )
+            conn.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS ix_billing_customers_stripe_customer_id "
+                    "ON billing_customers (stripe_customer_id)"
+                )
+            )
+            conn.execute(
+                text(
+                    "CREATE TABLE IF NOT EXISTS billing_subscriptions ("
+                    "id SERIAL PRIMARY KEY, "
+                    "family_id INTEGER NOT NULL UNIQUE REFERENCES families(id) ON DELETE CASCADE, "
+                    "billing_customer_id INTEGER REFERENCES billing_customers(id) ON DELETE SET NULL, "
+                    "stripe_subscription_id VARCHAR(255) NOT NULL UNIQUE, "
+                    "status VARCHAR(40) NOT NULL DEFAULT 'incomplete', "
+                    "lookup_key VARCHAR(80), "
+                    "stripe_price_id VARCHAR(255), "
+                    "current_period_end TIMESTAMP WITHOUT TIME ZONE, "
+                    "cancel_at_period_end BOOLEAN NOT NULL DEFAULT FALSE, "
+                    "trial_end TIMESTAMP WITHOUT TIME ZONE, "
+                    "created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW(), "
+                    "updated_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW()"
+                    ")"
+                )
+            )
+            conn.execute(
+                text("CREATE INDEX IF NOT EXISTS ix_billing_subscriptions_family_id ON billing_subscriptions (family_id)")
+            )
+            conn.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS ix_billing_subscriptions_stripe_subscription_id "
+                    "ON billing_subscriptions (stripe_subscription_id)"
+                )
+            )
+            conn.execute(
+                text("CREATE INDEX IF NOT EXISTS ix_billing_subscriptions_status ON billing_subscriptions (status)")
+            )
+            conn.execute(
+                text(
+                    "CREATE TABLE IF NOT EXISTS stripe_webhook_events ("
+                    "id SERIAL PRIMARY KEY, "
+                    "event_id VARCHAR(255) NOT NULL UNIQUE, "
+                    "event_type VARCHAR(120) NOT NULL, "
+                    "processed_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW()"
+                    ")"
+                )
+            )
+            conn.execute(
+                text("CREATE INDEX IF NOT EXISTS ix_stripe_webhook_events_event_id ON stripe_webhook_events (event_id)")
+            )
+            conn.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS ix_stripe_webhook_events_event_type ON stripe_webhook_events (event_type)"
+                )
+            )
+        _ensure_billing_pending_interval_columns(conn)
+
+
+def _ensure_billing_pending_interval_columns(conn) -> None:
+    """Persist a scheduled monthly/annual switch so Billing can paint it without Stripe sync."""
+    if settings.DATABASE_URL.startswith("sqlite"):
+        cols = {str(row[1]) for row in conn.execute(text("PRAGMA table_info(billing_subscriptions)")).fetchall()}
+        if "pending_lookup_key" not in cols:
+            conn.execute(text("ALTER TABLE billing_subscriptions ADD COLUMN pending_lookup_key VARCHAR(80)"))
+        if "pending_change_on" not in cols:
+            conn.execute(text("ALTER TABLE billing_subscriptions ADD COLUMN pending_change_on DATETIME"))
+        return
+    conn.execute(text("ALTER TABLE billing_subscriptions ADD COLUMN IF NOT EXISTS pending_lookup_key VARCHAR(80)"))
+    conn.execute(
+        text("ALTER TABLE billing_subscriptions ADD COLUMN IF NOT EXISTS pending_change_on TIMESTAMP WITHOUT TIME ZONE")
+    )
 
 
 def _ensure_transaction_color_columns() -> None:
@@ -2916,6 +3389,23 @@ def _ensure_user_platform_columns() -> None:
             conn.execute(text("UPDATE users SET platform_role = COALESCE(NULLIF(TRIM(platform_role), ''), 'subscriber')"))
 
 
+def _ensure_user_complimentary_columns() -> None:
+    """Internal complimentary Cash Forecast access on users (not a Stripe plan)."""
+    with engine.begin() as conn:
+        if settings.DATABASE_URL.startswith("sqlite"):
+            cols = conn.execute(text("PRAGMA table_info(users)")).fetchall()
+            names = {str(row[1]) for row in cols}
+            if "complimentary_access" not in names:
+                conn.execute(text("ALTER TABLE users ADD COLUMN complimentary_access BOOLEAN NOT NULL DEFAULT 0"))
+            if "complimentary_access_expires_at" not in names:
+                conn.execute(text("ALTER TABLE users ADD COLUMN complimentary_access_expires_at DATETIME"))
+        else:
+            conn.execute(
+                text("ALTER TABLE users ADD COLUMN IF NOT EXISTS complimentary_access BOOLEAN NOT NULL DEFAULT FALSE")
+            )
+            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS complimentary_access_expires_at TIMESTAMPTZ"))
+
+
 def _migrate_platform_roles_subscriber_admin() -> None:
     """none → subscriber; support → admin; keep admin."""
     with engine.begin() as conn:
@@ -2990,23 +3480,34 @@ def _sync_legacy_platform_admin_roles() -> None:
             db.commit()
 
 
-def _platform_memberships_for_user(*, db, user_id: int) -> list[PlatformAdminFamilyMembershipOut]:
-    mships = db.execute(
+def _membership_out(m: FamilyMember, fam: Family) -> PlatformAdminFamilyMembershipOut:
+    return PlatformAdminFamilyMembershipOut(
+        family_id=int(fam.id),
+        family_name=str(fam.name),
+        role=str(m.role or "member"),
+        is_family_owner=bool(getattr(m, "is_family_owner", False)),
+        access_mode=str(getattr(m, "access_mode", None) or "edit"),
+    )
+
+
+def _platform_memberships_by_user_ids(*, db, user_ids: Sequence[int]) -> dict[int, list[PlatformAdminFamilyMembershipOut]]:
+    out: dict[int, list[PlatformAdminFamilyMembershipOut]] = defaultdict(list)
+    ids = [int(x) for x in user_ids]
+    if not ids:
+        return out
+    rows = db.execute(
         select(FamilyMember, Family)
         .join(Family, Family.id == FamilyMember.family_id)
-        .where(FamilyMember.user_id == user_id)
+        .where(FamilyMember.user_id.in_(ids))
         .order_by(Family.id.asc())
     ).all()
-    return [
-        PlatformAdminFamilyMembershipOut(
-            family_id=int(fam.id),
-            family_name=str(fam.name),
-            role=str(m.role or "member"),
-            is_family_owner=bool(getattr(m, "is_family_owner", False)),
-            access_mode=str(getattr(m, "access_mode", None) or "edit"),
-        )
-        for m, fam in mships
-    ]
+    for m, fam in rows:
+        out[int(m.user_id)].append(_membership_out(m, fam))
+    return out
+
+
+def _platform_memberships_for_user(*, db, user_id: int) -> list[PlatformAdminFamilyMembershipOut]:
+    return _platform_memberships_by_user_ids(db=db, user_ids=[user_id]).get(int(user_id), [])
 
 
 def _family_role_to_member_update(role: str) -> FamilyMemberUpdateIn:
@@ -3488,6 +3989,129 @@ def list_families(access_token: Optional[str] = Depends(_read_access_token_from_
     ]
 
 
+@app.get("/api/families/{family_id}/billing-status", response_model=BillingStatusOut)
+def family_billing_status(
+    family_id: int,
+    sync: int = 0,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
+    db=Depends(get_db),
+):
+    """Server entitlement for Cash Forecast (app trial + Stripe subscription).
+
+    By default returns DB state only (fast). Pass sync=1 after portal/checkout return
+    to refresh from Stripe with a hard timeout.
+    """
+    from .billing_entitlement import apply_complimentary_entitlement, build_billing_status, family_owner_user
+
+    try:
+        user_id = get_current_user_id(access_token)
+        require_family_member(db=db, family_id=family_id, user_id=user_id)
+        fam = db.get(Family, family_id)
+        if fam is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Family not found")
+        sub = db.execute(
+            select(BillingSubscription).where(BillingSubscription.family_id == family_id)
+        ).scalar_one_or_none()
+
+        has_customer = db.execute(
+            select(BillingCustomer.id).where(BillingCustomer.user_id == user_id)
+        ).scalar_one_or_none() is not None
+
+        payload = build_billing_status(
+            family=fam,
+            subscription=sub,
+            has_stripe_customer=bool(has_customer),
+        )
+        healed_lookup = (payload.get("lookup_key") or "").strip()
+        stored_lookup = ((getattr(sub, "lookup_key", None) or "").strip() if sub is not None else "")
+        if sub is not None and healed_lookup and healed_lookup != stored_lookup:
+            sub.lookup_key = healed_lookup
+            db.add(sub)
+            db.commit()
+
+        # Optional Stripe refresh — never required to paint Billing.
+        want_sync = bool(int(sync or 0))
+        stripe_key = (settings.STRIPE_SECRET_KEY or "").strip()
+        if want_sync and stripe_key:
+            from .billing_entitlement import (
+                apply_live_stripe_subscription_fields,
+                refresh_subscription_row_from_stripe,
+                stripe_customer_id_for_family,
+                _run_with_timeout,
+            )
+
+            live_stripe_sub = None
+            sub_id = (getattr(sub, "stripe_subscription_id", None) or "").strip() if sub is not None else ""
+            try:
+                if not sub_id:
+                    import stripe as stripe_mod
+
+                    cust = stripe_customer_id_for_family(db, family_id=int(family_id))
+                    if not cust:
+                        owner_cust = db.execute(
+                            select(BillingCustomer).where(BillingCustomer.user_id == int(user_id))
+                        ).scalar_one_or_none()
+                        cust = (owner_cust.stripe_customer_id or "").strip() if owner_cust else None
+                    if cust:
+                        stripe_mod.api_key = stripe_key
+
+                        def _list_subs():
+                            return stripe_mod.Subscription.list(customer=cust, status="all", limit=5)
+
+                        listed = _run_with_timeout(
+                            _list_subs,
+                            timeout_seconds=2.5,
+                            label=f"Stripe subscription list family_id={family_id}",
+                        )
+                        data = (getattr(listed, "data", None) or []) if listed is not None else []
+                        for candidate in data:
+                            st = (getattr(candidate, "status", None) or "").strip().lower()
+                            if st in ("active", "past_due", "trialing", "unpaid"):
+                                sub_id = (getattr(candidate, "id", None) or "").strip()
+                                live_stripe_sub = candidate
+                                break
+                        if not sub_id and data:
+                            live_stripe_sub = data[0]
+                            sub_id = (getattr(live_stripe_sub, "id", None) or "").strip()
+
+                if sub_id:
+                    refreshed, live_from_refresh = refresh_subscription_row_from_stripe(
+                        db,
+                        stripe_subscription_id=str(sub_id),
+                        api_key=stripe_key,
+                        timeout_seconds=2.5,
+                    )
+                    if live_from_refresh is not None:
+                        live_stripe_sub = live_from_refresh
+                    if refreshed is not None:
+                        db.commit()
+                        db.refresh(refreshed)
+                        payload = build_billing_status(
+                            family=fam,
+                            subscription=refreshed,
+                            has_stripe_customer=bool(has_customer),
+                        )
+                if live_stripe_sub is not None:
+                    payload = apply_live_stripe_subscription_fields(payload, live_stripe_sub)
+            except Exception:
+                logger.exception("billing-status optional Stripe sync failed for family_id=%s", family_id)
+                try:
+                    db.rollback()
+                except Exception:
+                    pass
+
+        payload = apply_complimentary_entitlement(payload, family_owner_user(db, int(family_id)))
+        return BillingStatusOut(**payload)
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("billing-status failed for family_id=%s", family_id)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Could not load billing status.",
+        )
+
+
 @app.patch("/api/families/{family_id}/forecast-thresholds", response_model=FamilyOut)
 def patch_family_forecast_thresholds(
     family_id: int,
@@ -3826,9 +4450,36 @@ def platform_overview(
 ):
     user_id = get_current_user_id(access_token)
     require_platform_admin(db=db, user_id=user_id)
+    ident = _database_identity()
+    staging = _is_staging_deployment()
+    isolated = (not staging) or _database_looks_like_staging()
+    if staging and not isolated:
+        message = (
+            "This staging site is connected to the production Neon database. "
+            "Writes are blocked. In Render, set family-cash-flow-api-staging DATABASE_URL to the "
+            "ep-polished-boat-… host, not ep-ancient-union-…."
+        )
+    elif staging:
+        message = (
+            "This is staging. Changes here do not update balancewhiz.com. "
+            "If you recognize production emails, this database was copied from production — "
+            "those rows are copies, not the live accounts. Use test emails only."
+        )
+    else:
+        message = (
+            "Operator console. User and family management is available from the sidebar. "
+            "Billing, add-on features, and per-tenant feature flags will plug in here as the product grows."
+        )
     return PlatformOverviewOut(
-        message="Operator console. User and family management is available from the sidebar. "
-        "Billing, add-on features, and per-tenant feature flags will plug in here as the product grows."
+        message=message,
+        deployment="staging" if staging else "production",
+        database_name=ident.get("database") or "",
+        database_host_kind=ident.get("host_kind") or "",
+        database_host_hint=ident.get("host_hint") or "",
+        isolated_from_production=isolated,
+        stripe_mode=_stripe_secret_mode(),
+        writes_enabled=_staging_db_writes_allowed(),
+        staging_auth_restricted=_staging_auth_allowlist_enforced(),
     )
 
 
@@ -3852,12 +4503,14 @@ def platform_list_users(
     require_platform_admin(db=db, user_id=user_id)
     users = db.execute(select(User).order_by(User.id.asc())).scalars().all()
     user_ids = [int(u.id) for u in users]
-    engagement_by_id = _platform_engagement_by_user_id(db=db, user_ids=user_ids)
+    memberships_by_id = _platform_memberships_by_user_ids(db=db, user_ids=user_ids)
+    # Skip transaction/account aggregates on the list — they scan every family's
+    # transactions and make this endpoint feel hung on staging. User detail still
+    # includes them.
     return [
         _platform_user_row_out(
             u=u,
-            memberships=_platform_memberships_for_user(db=db, user_id=int(u.id)),
-            engagement=engagement_by_id.get(int(u.id)),
+            memberships=memberships_by_id.get(int(u.id), []),
         )
         for u in users
     ]
@@ -3877,9 +4530,59 @@ def platform_get_user(
     mems = _platform_memberships_for_user(db=db, user_id=int(u.id))
     engagement = _platform_engagement_by_user_id(db=db, user_ids=[int(u.id)]).get(int(u.id))
     base = _platform_user_row_out(u=u, memberships=mems, engagement=engagement)
+    paid_families = _paid_stripe_families_for_user(db, int(u.id))
     return PlatformAdminUserDetailOut(
         **base.model_dump(),
         recent_audit=_audit_entries_for_user(db=db, user_id=int(u.id)),
+        paid_subscription_warning=bool(paid_families),
+        paid_families=paid_families,
+    )
+
+
+@app.patch("/api/platform/users/{target_user_id}/complimentary-access", response_model=PlatformComplimentaryAccessOut)
+def platform_set_complimentary_access(
+    target_user_id: int,
+    payload: PlatformComplimentaryAccessIn,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
+    db=Depends(get_db),
+):
+    """Grant or revoke internal complimentary access. Never creates or cancels Stripe subscriptions."""
+    from .billing_entitlement import complimentary_access_is_active
+
+    actor_id = get_current_user_id(access_token)
+    require_platform_admin(db=db, user_id=actor_id)
+    u = db.execute(select(User).where(User.id == target_user_id)).scalar_one_or_none()
+    if u is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    enabled = bool(payload.complimentary_access)
+    expires_at = _parse_complimentary_expiration(payload.complimentary_access_expires_at) if enabled else None
+    prev_on = bool(getattr(u, "complimentary_access", False))
+    u.complimentary_access = enabled
+    u.complimentary_access_expires_at = expires_at
+    db.add(u)
+    paid_families = _paid_stripe_families_for_user(db, int(u.id))
+    detail = "revoked"
+    if enabled:
+        detail = "indefinite" if expires_at is None else f"expires {expires_at.date().isoformat()}"
+        if paid_families:
+            names = ", ".join(f"{p.family_name} ({p.stripe_status})" for p in paid_families)
+            detail += f"; paid Stripe still active: {names}"
+    _platform_audit_log(
+        db=db,
+        actor_user_id=actor_id,
+        target_user_id=int(u.id),
+        action="complimentary_access_changed",
+        detail=f"{'on' if prev_on else 'off'} → {'on' if enabled else 'off'} ({detail})",
+    )
+    db.commit()
+    db.refresh(u)
+    return PlatformComplimentaryAccessOut(
+        complimentary_access=bool(u.complimentary_access),
+        complimentary_access_active=complimentary_access_is_active(u),
+        complimentary_access_expires_at=u.complimentary_access_expires_at,
+        paid_subscription_warning=bool(paid_families),
+        paid_families=paid_families,
     )
 
 
@@ -7318,6 +8021,9 @@ def purge_transactions_after(
     """
     user_id = get_current_user_id(access_token)
     require_family_owner(db=db, family_id=family_id, user_id=user_id)
+    from .billing_entitlement import assert_family_entitled
+
+    assert_family_entitled(db, int(family_id))
     cutoff_exclusive = after_date + timedelta(days=1)
     res = db.execute(
         delete(Transaction).where(
@@ -7350,6 +8056,20 @@ def _table_columns(db, table: str) -> set[str]:
         return set()
 
 
+def _clean_optional_text(value: Optional[str]) -> Optional[str]:
+    if value is None:
+        return None
+    s = str(value).strip()
+    return s or None
+
+
+def _clean_required_text(value: str, field_name: str) -> str:
+    s = str(value or "").strip()
+    if not s:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"{field_name} is required")
+    return s
+
+
 @app.post("/api/families/{family_id}/transactions/purge-imported", response_model=TransactionsPurgeImportedOut)
 def purge_imported_transactions(
     family_id: int,
@@ -7365,6 +8085,9 @@ def purge_imported_transactions(
     """
     user_id = get_current_user_id(access_token)
     require_family_owner(db=db, family_id=family_id, user_id=user_id)
+    from .billing_entitlement import assert_family_entitled
+
+    assert_family_entitled(db, int(family_id))
 
     cols = _table_columns(db, "transactions")
     where_parts: list[str] = []

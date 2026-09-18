@@ -105,6 +105,7 @@ function formatApiDetail(detail) {
     return parts.filter(Boolean).join("\n");
   }
   if (typeof detail === "object") {
+    if (detail.message != null && String(detail.message).trim()) return String(detail.message);
     try {
       return JSON.stringify(detail);
     } catch (_) {
@@ -114,7 +115,60 @@ function formatApiDetail(detail) {
   return String(detail);
 }
 
+function apiDetailCode(detail) {
+  if (!detail || typeof detail !== "object" || Array.isArray(detail)) return "";
+  return String(detail.code || "").trim();
+}
+
+function isBillingWriteRequest(path, method) {
+  const m = String(method || "GET").toUpperCase();
+  if (m === "GET" || m === "HEAD" || m === "OPTIONS") return false;
+  const p = String(path || "");
+  if (p.includes("/billing-status")) return false;
+  if (p.includes("create-checkout-session")) return false;
+  if (p.includes("switch-billing-interval")) return false;
+  if (p.includes("preview-billing-interval")) return false;
+  if (p.includes("schedule-subscription-cancel")) return false;
+  if (p.includes("resume-subscription")) return false;
+  if (p.includes("create-portal-session")) return false;
+  if (p.includes("/api/invites")) return false;
+  if (p.includes("/members")) return false;
+  if (p.includes("/webhook")) return false;
+  if (/^\/api\/families\/?(\?|$)/.test(p) && m === "POST") return false;
+  if (p.includes("/api/families/")) return true;
+  return false;
+}
+
+function throwIfBillingWriteLocked(path, method) {
+  if (!isBillingWriteRequest(path, method) || !isBillingWriteLocked()) return;
+  openBillingUpgradeModal();
+  const err = new Error(
+    isBillingPaymentRecoveryState()
+      ? "Update your payment method to keep your forecast current."
+      : "Subscribe to update your Cash Forecast."
+  );
+  err.billingNotEntitled = true;
+  throw err;
+}
+
+async function handleBillingNotEntitledResponse(data) {
+  invalidateBillingStatusCache();
+  try {
+    await fetchBillingStatus({ force: true });
+  } catch (_) {}
+  applyBillingReadOnlyUi();
+  openBillingUpgradeModal();
+  const msg =
+    (data && data.detail && data.detail.message) ||
+    formatApiDetail(data && data.detail) ||
+    "Subscribe to update your Cash Forecast.";
+  const err = new Error(msg);
+  err.billingNotEntitled = true;
+  throw err;
+}
+
 async function api(path, method = "GET", body) {
+  throwIfBillingWriteLocked(path, method);
   const apiBase = apiBaseUrl();
   const fullPath = `${apiBase}${path}`;
   const hostname = typeof location !== "undefined" ? location.hostname : "";
@@ -211,14 +265,20 @@ async function api(path, method = "GET", body) {
   }
 
   if (!res.ok) {
-    let msg = `Request failed (${res.status})`;
+    let data = {};
     try {
-      const data = await res.json();
-      if (data && data.detail != null) {
-        const d = formatApiDetail(data.detail);
-        if (d) msg = d;
-      }
-    } catch (_) {}
+      data = await res.json();
+    } catch (_) {
+      data = {};
+    }
+    if (res.status === 403 && apiDetailCode(data.detail) === "billing_not_entitled") {
+      await handleBillingNotEntitledResponse(data);
+    }
+    let msg = `Request failed (${res.status})`;
+    if (data && data.detail != null) {
+      const d = formatApiDetail(data.detail);
+      if (d) msg = d;
+    }
     if (!showDevErrors && res.status >= 500) {
       console.warn("[BalanceWhiz API] Server error:", res.status, path, msg);
       throw new Error(friendlyNetworkErrorMessage());
@@ -228,6 +288,49 @@ async function api(path, method = "GET", body) {
 
   // Some endpoints may return empty bodies; handle gracefully.
   if (res.status === 204) return null;
+  try {
+    return await res.json();
+  } catch (_) {
+    return null;
+  }
+}
+
+async function apiForm(path, formData, method = "POST") {
+  throwIfBillingWriteLocked(path, method);
+  const apiBase = apiBaseUrl();
+  const fullPath = `${apiBase}${path}`;
+  const res = await fetch(fullPath, {
+    method,
+    headers: {
+      ...apiBearerAuthHeaders(),
+    },
+    credentials: "include",
+    body: formData,
+  });
+  if (res.status === 401) {
+    try {
+      sessionStorage.removeItem(BW_API_ACCESS_TOKEN_KEY);
+    } catch (_) {}
+    window.location.href = "/login.html";
+    return null;
+  }
+  if (!res.ok) {
+    let data = {};
+    try {
+      data = await res.json();
+    } catch (_) {
+      data = {};
+    }
+    if (res.status === 403 && apiDetailCode(data.detail) === "billing_not_entitled") {
+      await handleBillingNotEntitledResponse(data);
+    }
+    let msg = `Request failed (${res.status})`;
+    if (data && data.detail != null) {
+      const d = formatApiDetail(data.detail);
+      if (d) msg = d;
+    }
+    throw new Error(msg);
+  }
   try {
     return await res.json();
   } catch (_) {
@@ -1366,6 +1469,11 @@ const accountEditInfo = document.getElementById("accountEditInfo");
 const accountEditFootnote = document.getElementById("accountEditFootnote");
 
 function openAccountModal(mode = "add") {
+  void openAccountModalAsync(mode);
+}
+
+async function openAccountModalAsync(mode = "add") {
+  if (await guardBillingWriteAsync()) return;
   const modalEl = accountModal || document.getElementById("accountModal");
   if (!modalEl) return;
   const titleEl = accountModalTitle || document.getElementById("accountModalTitle");
@@ -1586,17 +1694,34 @@ const billingPlanHeadlineEl = document.getElementById("billingPlanHeadline");
 const billingPlanEl = document.getElementById("billingPlan");
 const billingPlanContextEl = document.getElementById("billingPlanContext");
 const billingFrequencyEl = document.getElementById("billingFrequency");
+const billingPriceLabelEl = document.getElementById("billingPriceLabel");
 const billingNextDateLabelEl = document.getElementById("billingNextDateLabel");
 const billingNextDateEl = document.getElementById("billingNextDate");
 const billingRenewalMessageEl = document.getElementById("billingRenewalMessage");
+const billingCalloutTitleEl = document.getElementById("billingCalloutTitle");
+const billingCalloutTextEl = document.getElementById("billingCalloutText");
 const billingAccountStatusEl = document.getElementById("billingAccountStatus");
+const billingMetaEl = document.getElementById("billingMeta");
+const billingManageSectionEl = document.getElementById("billingManageSection");
+const billingManageHintEl = document.getElementById("billingManageHint");
+const billingCancelSectionEl = document.getElementById("billingCancelSection");
+const billingCancelTitleEl = document.getElementById("billingCancelTitle");
+const billingCancelLedeEl = document.getElementById("billingCancelLede");
+const billingCancelBtnEl =
+  document.querySelector("#billingCancelSection [data-billing-action]") ||
+  document.getElementById("billingCancelBtn");
+const billingPrimaryCtaEl = document.getElementById("billingPrimaryCta");
 let billingActionsWired = false;
 
-const BILLING_PLAN_KEY = "bw_billing_plan";
-const BILLING_START_KEY = "bw_billing_start";
-const BILLING_FREQUENCY_KEY = "bw_billing_frequency";
-/** Free period length; keep marketing copy in sync (e.g. "Free for your first month"). */
-const BILLING_TRIAL_DAYS = 30;
+/** Free period length — matches backend billing_catalog.TRIAL_DAYS (app-side trial). */
+const BILLING_TRIAL_DAYS = 14;
+/** Cash Forecast display amounts — matches backend billing_catalog. */
+const BILLING_MONTHLY_AMOUNT_USD = "5.99";
+const BILLING_ANNUAL_AMOUNT_USD = "59.99";
+const BILLING_LOOKUP_MONTHLY = "cash_forecast_monthly";
+const BILLING_LOOKUP_ANNUAL = "cash_forecast_annual";
+/** In-memory cache for GET /api/families/{id}/billing-status (server is source of truth). */
+let billingStatusCache = { familyId: null, data: null, fetchedAt: 0, inFlight: null };
 
 // Expected instance editing (fields live inside unified #txEditModal)
 const instanceExpectedTxId = document.getElementById("instanceExpectedTxId");
@@ -2635,6 +2760,7 @@ function finishBalanceThresholdSave({
     maxEl.value = maxParsed.empty ? "" : formatBalanceThresholdInputValue(maxParsed.num, maxEl.value);
   }
   state.activeFamilyId = fidNum;
+  invalidateBillingStatusCache();
   if (familySelect && Number(fidNum) > 0) {
     try {
       familySelect.value = String(fidNum);
@@ -3670,7 +3796,6 @@ if (navReportsView) {
     setActiveTopView("reports");
   });
 }
-
 document.querySelectorAll("#settingsViewPanel .settings-nav-item, #settingsSidebarNav .settings-nav-item").forEach((btn) => {
   btn.addEventListener("click", () => {
     const k = btn.dataset.settingsKey;
@@ -3942,9 +4067,11 @@ if (calendarMode) {
 
 familySelect.addEventListener("change", async () => {
   state.activeFamilyId = Number(familySelect.value);
+  invalidateBillingStatusCache();
   riskCalendarViewYm = "";
   lastRiskCalendarDaily = [];
   syncActiveFamilyFlags();
+  void refreshBillingWriteLock();
   balanceThresholdFieldsDirty = false;
   await migrateLegacyDeviceBalanceThresholdsToAccount();
   hydrateBalanceThresholdInputsFromStorage(true);
@@ -3961,6 +4088,9 @@ familySelect.addEventListener("change", async () => {
   }
   void refreshLowBalanceAlert();
   void refreshForecastConfidence();
+  if (settingsViewPanel && !settingsViewPanel.hidden && getActiveSettingsSectionKey() === "billing") {
+    void renderBillingPanel({ force: false });
+  }
 });
 
 const familyInviteBtn = document.getElementById("familyInviteBtn");
@@ -4886,6 +5016,11 @@ async function convertActualTransactionToRecurring(actualId) {
 }
 
 function openTxEditModal(tx) {
+  void openTxEditModalAsync(tx);
+}
+
+async function openTxEditModalAsync(tx) {
+  if (await guardBillingWriteAsync()) return;
   if (!txEditModal || !txEditId || !txEditDate) return;
   selectedExpectedInstance = null;
   selectedExpectedMovedToDate = null;
@@ -5120,6 +5255,11 @@ function activateSettingsSection(key) {
 }
 
 function openTxAddModal(opts = {}) {
+  void openTxAddModalAsync(opts);
+}
+
+async function openTxAddModalAsync(opts = {}) {
+  if (await guardBillingWriteAsync()) return;
   if (txAddSaveInFlight) return;
   const modalEl = txAddModal || document.getElementById("txAddModal");
   const dateEl = txAddDate || document.getElementById("txAddDate");
@@ -5216,9 +5356,14 @@ function isReconciledOnDate(iso) {
   return !!(d && state.reconciledDates && state.reconciledDates.has(d));
 }
 
+function isBalanceCheckInAmountValid(raw) {
+  const p = parseBalanceThresholdFieldRaw(raw);
+  return p.ok && !p.empty;
+}
+
 function syncBalanceCheckInSaveBtn() {
   if (!reconcileSaveBtn || !reconcileActualAmount) return;
-  const canWrite = !state.viewOnly && state.activeFamilyAccessMode !== "view";
+  const canWrite = canWriteFamilyData();
   const parsed = parseBalanceThresholdFieldRaw(reconcileActualAmount.value || "");
   const valid = parsed.ok && !parsed.empty;
   const forecast = forecastBalanceForReconcileModal(reconcileActiveDate);
@@ -5228,7 +5373,7 @@ function syncBalanceCheckInSaveBtn() {
 }
 
 function syncBalanceCheckInConfirmBtns(forecast) {
-  const canWrite = !state.viewOnly && state.activeFamilyAccessMode !== "view";
+  const canWrite = canWriteFamilyData();
   const hasForecast = Number.isFinite(Number(forecast));
   if (reconcileMatchYesBtn) {
     reconcileMatchYesBtn.disabled = reconcileCheckInBusy || !canWrite || !hasForecast;
@@ -5272,6 +5417,11 @@ function paintBalanceCheckInForecast(iso) {
 }
 
 function openReconcileModal(iso) {
+  void openReconcileModalAsync(iso);
+}
+
+async function openReconcileModalAsync(iso) {
+  if (await guardBillingWriteAsync()) return;
   if (!reconcileModal) return;
   const d = normalizeIsoDate(iso) || iso;
   if (alertIfDateBeforeStartingBalance(d)) return;
@@ -5431,7 +5581,7 @@ function originalForecastForAdjustment(iso) {
 
 function syncEditAdjustmentSaveBtn() {
   if (!editAdjustmentSaveBtn || !editAdjustmentAmount) return;
-  const canWrite = !state.viewOnly && state.activeFamilyAccessMode !== "view";
+  const canWrite = canWriteFamilyData();
   const parsed = parseBalanceThresholdFieldRaw(editAdjustmentAmount.value || "");
   const valid = parsed.ok && !parsed.empty;
   const unchanged =
@@ -5663,10 +5813,10 @@ function buildReconciledBalanceTipHtml(dayBal, iso) {
   if (d && !state.viewOnly && state.activeFamilyAccessMode !== "view") {
     parts.push('<div class="cal-confirmed-tip__actions">');
     parts.push(
-      `<button type="button" class="cal-confirmed-tip__action" data-bw-bal-action="enter-different-balance" data-iso="${escapeHtml(d)}">Enter different balance</button>`,
+      `<button type="button" class="cal-confirmed-tip__action" data-bw-write data-bw-bal-action="enter-different-balance" data-iso="${escapeHtml(d)}">Enter different balance</button>`,
     );
     parts.push(
-      `<button type="button" class="cal-confirmed-tip__action cal-confirmed-tip__action--danger" data-bw-bal-action="remove-reconciliation" data-iso="${escapeHtml(d)}">Remove reconciliation</button>`,
+      `<button type="button" class="cal-confirmed-tip__action cal-confirmed-tip__action--danger" data-bw-write data-bw-bal-action="remove-reconciliation" data-iso="${escapeHtml(d)}">Remove reconciliation</button>`,
     );
     parts.push("</div>");
   }
@@ -5716,7 +5866,7 @@ function buildAdjustedBalanceTipHtml(dayBal, iso) {
   if (d && !state.viewOnly && state.activeFamilyAccessMode !== "view") {
     parts.push('<div class="cal-confirmed-tip__actions cal-confirmed-tip__actions--edit">');
     parts.push(
-      `<button type="button" class="cal-confirmed-tip__edit-btn" data-bw-bal-action="edit-adjustment" data-iso="${escapeHtml(d)}"><span class="cal-confirmed-tip__edit-btn-icon" aria-hidden="true">${TM_ROW_EDIT_SVG}</span><span>Edit adjustment</span></button>`,
+      `<button type="button" class="cal-confirmed-tip__edit-btn" data-bw-write data-bw-bal-action="edit-adjustment" data-iso="${escapeHtml(d)}"><span class="cal-confirmed-tip__edit-btn-icon" aria-hidden="true">${TM_ROW_EDIT_SVG}</span><span>Edit adjustment</span></button>`,
     );
     parts.push("</div>");
   }
@@ -5790,11 +5940,10 @@ function lastBalanceCheckPrimaryLine(days, confirmedDateIso) {
   if (days == null) return "";
   const n = Number(days);
   if (!Number.isFinite(n) || n < 0) return "";
-  if (n === 0) return "✓ Confirmed today";
-  const ago = n === 1 ? "1 day ago" : `${n} days ago`;
+  const ago = n === 0 ? "today" : n === 1 ? "1 day ago" : `${n} days ago`;
   const dateLabel = fmtMonthDayLong(confirmedDateIso);
-  if (dateLabel) return `✓ Confirmed ${dateLabel} • ${ago}`;
-  return `✓ Confirmed • ${ago}`;
+  if (dateLabel) return `Last updated ${dateLabel} · ${ago}`;
+  return n === 0 ? "Last updated today" : `Last updated · ${ago}`;
 }
 
 function applyForecastConfidenceUi(data) {
@@ -6010,6 +6159,10 @@ if (txEditModal) {
 
 document.addEventListener("keydown", (e) => {
   if (e.key !== "Escape") return;
+  if (_billingIntervalConfirmEl?.classList.contains("modal-overlay--open")) {
+    closeBillingIntervalConfirm(false);
+    return;
+  }
   if (_bwConfirmModalEl?.classList.contains("modal-overlay--open")) {
     closeBwConfirm(false);
     return;
@@ -6239,6 +6392,7 @@ async function resolveExpectedSeriesMeta(expectedId, calendarItem) {
 }
 
 async function openCalendarActualTransactionById(id) {
+  if (await guardBillingWriteAsync()) return false;
   const txId = Number(id);
   if (!Number.isFinite(txId) || txId <= 0) return false;
   let tx = findActualTransactionById(txId);
@@ -6258,6 +6412,7 @@ async function openCalendarActualTransactionById(id) {
 }
 
 async function openCalendarExpectedFromLine(expectedLine) {
+  if (await guardBillingWriteAsync()) return false;
   const cell = expectedLine.closest(".cal-cell");
   const iso = cell?.dataset?.iso || "";
   if (iso && alertIfDateBeforeStartingBalance(iso)) return false;
@@ -6373,7 +6528,12 @@ function shouldOpenAddTxFromCalendarClick(target, cell) {
 }
 
 function openCalendarDayAddTransaction(iso, e) {
+  void openCalendarDayAddTransactionAsync(iso, e);
+}
+
+async function openCalendarDayAddTransactionAsync(iso, e) {
   if (!iso) return;
+  if (await guardBillingWriteAsync(e)) return;
   if (state.activeFamilyAccessMode === "view") {
     window.alert(
       "You have view-only access to this family. Ask the owner to grant edit access if you need to add transactions."
@@ -6388,9 +6548,11 @@ function openCalendarDayAddTransaction(iso, e) {
   openTxAddModal({ date: iso });
 }
 
-function bindCalendarDayBalanceHit(metricsEl, iso, { isReconciled, dayBalVerified, isOutOfMonth, dayBal, hasStartingPoint, startingAccountName }) {
+function bindCalendarDayBalanceHit(metricsEl, iso, { isReconciled, dayBalVerified, isOutOfMonth, isPast, dayBal, hasStartingPoint, startingAccountName }) {
   if (!metricsEl || !iso) return;
-  if (isOutOfMonth || state.viewOnly || state.activeFamilyAccessMode === "view") {
+  const todayIso = toISODate(new Date());
+  const isFuture = iso > todayIso;
+  if (isOutOfMonth || isFuture || state.viewOnly || state.activeFamilyAccessMode === "view") {
     metricsEl.classList.remove("cal-day-balance-hit");
     metricsEl.removeAttribute("aria-label");
     metricsEl.removeAttribute("title");
@@ -6399,7 +6561,7 @@ function bindCalendarDayBalanceHit(metricsEl, iso, { isReconciled, dayBalVerifie
   metricsEl.classList.add("cal-day-balance-hit");
   metricsEl.removeAttribute("title");
   const label = fmtDateMDY(iso);
-  metricsEl.setAttribute("aria-label", label ? `Confirm balance for ${label}` : "Confirm balance");
+  metricsEl.setAttribute("aria-label", label ? `Update balance for ${label}` : "Update balance");
 
   if (dayBalVerified && dayBal) {
     const cell = metricsEl.closest(".cal-cell");
@@ -6424,7 +6586,7 @@ function bindCalendarDayBalanceHit(metricsEl, iso, { isReconciled, dayBalVerifie
     return;
   }
 
-  metricsEl.title = "Confirm Balance";
+  metricsEl.title = "Update Balance";
 }
 
 function bindCalendarCellAddTxClick(cell, iso) {
@@ -7625,6 +7787,42 @@ function formatShortDateLong(iso) {
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
+/** Full access-through date: "October 10, 2026" */
+function formatBillingLongDate(iso) {
+  if (!iso) return "—";
+  const d = new Date(`${iso}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return String(iso);
+  return d.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
+}
+
+/** Abbreviated month and day: "Sep 13" */
+function formatBillingShortMonthDay(iso) {
+  if (!iso) return "";
+  const d = new Date(`${iso}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function parseBillingDateTime(value) {
+  const s = String(value || "").trim();
+  if (!s) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    const day = new Date(`${s}T12:00:00`);
+    return Number.isNaN(day.getTime()) ? null : day;
+  }
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+/** Last free-access instant: "September 27, 2026 at 4:34 PM" */
+function formatBillingLongDateTime(value) {
+  const d = parseBillingDateTime(value);
+  if (!d) return "";
+  const date = d.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
+  const time = d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  return `${date} at ${time}`;
+}
+
 function addMonthsIso(startIso, deltaMonths) {
   const d = new Date(`${startIso}T12:00:00`);
   if (Number.isNaN(d.getTime())) return "";
@@ -7655,7 +7853,7 @@ function computeNextBillingDate(startIso, frequency) {
 function getBillingPlanLabel(plan) {
   const p = String(plan || "").toLowerCase();
   if (p === "pro") return "Add Budgeting";
-  if (p === "base") return "Cash Forecast";
+  if (p === "base" || p === "cash_forecast") return "Cash Forecast";
   return "—";
 }
 
@@ -7667,11 +7865,2600 @@ function getBillingPlanContext(plan) {
   return "Forecast, reports, and recurring cash planning.";
 }
 
-function billingStatusPillHtml(status) {
-  const s = String(status || "Active").trim() || "Active";
-  return `<span class="billing-status-pill billing-status-pill--active"><span class="billing-status-pill__icon" aria-hidden="true">✓</span>${escapeHtml(
-    s
-  )}</span>`;
+function billingStatusPillHtml(status, tone = "", { showIcon = true } = {}) {
+  const s = String(status || "").trim();
+  if (!s || s === "—") return "";
+  const t = String(tone || "").toLowerCase();
+  let mod = "billing-status-pill--active";
+  if (t === "warning") mod = "billing-status-pill--warning";
+  else if (t === "paid") mod = "billing-status-pill--paid";
+  else if (t === "trial") mod = "billing-status-pill--trial";
+  else if (t === "muted" || t === "neutral") mod = "billing-status-pill--muted";
+  const icon = t === "warning" ? "!" : "✓";
+  const iconHtml = showIcon
+    ? `<span class="billing-status-pill__icon" aria-hidden="true">${icon}</span>`
+    : "";
+  return `<span class="billing-status-pill ${mod}">${iconHtml}${escapeHtml(s)}</span>`;
+}
+
+function invalidateBillingStatusCache() {
+  billingStatusCache = { familyId: null, data: null, fetchedAt: 0, inFlight: null };
+}
+
+function isoDateFromApiTimestamp(value) {
+  if (!value) return "";
+  const s = String(value).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return s.slice(0, 10);
+  return toISODate(d);
+}
+
+function priceLabelFromLookupKey(lookupKey) {
+  const key = String(lookupKey || "").trim();
+  if (key === BILLING_LOOKUP_ANNUAL) return `$${BILLING_ANNUAL_AMOUNT_USD}/year`;
+  if (key === BILLING_LOOKUP_MONTHLY) return `$${BILLING_MONTHLY_AMOUNT_USD}/month`;
+  return "";
+}
+
+function defaultCashForecastPriceLabel() {
+  return `$${BILLING_MONTHLY_AMOUNT_USD}/month`;
+}
+
+function defaultCashForecastAnnualPriceLabel() {
+  return `$${BILLING_ANNUAL_AMOUNT_USD}/year`;
+}
+
+function billingLookupIsAnnual(lookupKey) {
+  return String(lookupKey || "").trim() === BILLING_LOOKUP_ANNUAL;
+}
+
+function alternateBillingLookup(lookupKey) {
+  return billingLookupIsAnnual(lookupKey) ? BILLING_LOOKUP_MONTHLY : BILLING_LOOKUP_ANNUAL;
+}
+
+function cycleSwitchLabel(lookupKey) {
+  return billingLookupIsAnnual(lookupKey) ? "Switch to monthly billing" : "Switch to Annual";
+}
+
+function annualSavingsPercent() {
+  const monthly = Number(BILLING_MONTHLY_AMOUNT_USD);
+  const annual = Number(BILLING_ANNUAL_AMOUNT_USD);
+  if (!Number.isFinite(monthly) || !Number.isFinite(annual) || monthly <= 0) return null;
+  const save = monthly * 12 - annual;
+  if (save <= 0.005) return null;
+  return Math.round((save / (monthly * 12)) * 100);
+}
+
+function annualEquivalentMonthlyLabel() {
+  const annual = Number(BILLING_ANNUAL_AMOUNT_USD);
+  if (!Number.isFinite(annual) || annual <= 0) return "";
+  return `$${(annual / 12).toFixed(2)}/month`;
+}
+
+function billingPriceSupportCopy(lookupKey) {
+  const key = String(lookupKey || "").trim();
+  if (key === BILLING_LOOKUP_ANNUAL) {
+    const equiv = annualEquivalentMonthlyLabel();
+    return equiv ? `${equiv}, billed annually.` : "";
+  }
+  if (key === BILLING_LOOKUP_MONTHLY) {
+    const pct = annualSavingsPercent();
+    const annual = defaultCashForecastAnnualPriceLabel();
+    if (!annual) return "";
+    return pct != null ? `${annual} available · Save ${pct}%` : `${annual} available`;
+  }
+  return "";
+}
+
+function annualSavingsCopy() {
+  const pct = annualSavingsPercent();
+  if (pct == null) return "";
+  return `Save ~${pct}% with annual billing`;
+}
+
+function monthlyPaidAsAnnualLabel() {
+  const monthly = Number(BILLING_MONTHLY_AMOUNT_USD);
+  if (!Number.isFinite(monthly) || monthly <= 0) return "";
+  return `$${(monthly * 12).toFixed(2)}/year if paid monthly`;
+}
+
+const BILLING_MANAGE_HINT =
+  "Manage your billing, payment details, or subscription anytime.";
+const BILLING_MANAGE_TITLE = "Your subscription";
+
+function daysRemainingUntilIso(iso) {
+  const day = String(iso || "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return null;
+  const end = new Date(`${day}T12:00:00`);
+  if (Number.isNaN(end.getTime())) return null;
+  const now = new Date();
+  const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0, 0);
+  const ms = end.getTime() - startToday.getTime();
+  return Math.max(0, Math.ceil(ms / 86400000));
+}
+
+function checkoutUrlForActiveFamily(lookupKey = "") {
+  const params = new URLSearchParams();
+  if (state.activeFamilyId) params.set("family_id", String(state.activeFamilyId));
+  const key = String(lookupKey || "").trim();
+  if (key === BILLING_LOOKUP_MONTHLY || key === BILLING_LOOKUP_ANNUAL) {
+    params.set("lookup_key", key);
+  }
+  const q = params.toString();
+  return q ? `/checkout/?${q}` : "/checkout/";
+}
+
+function cachedBillingStatusForActiveFamily() {
+  const fid = Number(state.activeFamilyId || 0);
+  if (!fid || Number(billingStatusCache.familyId) !== fid) return null;
+  return billingStatusCache.data || null;
+}
+
+/** Resolve the family Billing should use — never prompt if we can pick a valid household. */
+function ensureActiveFamilyIdForBilling() {
+  let fid = Number(state.activeFamilyId || 0);
+  if (Number.isFinite(fid) && fid > 0) {
+    if (
+      !Array.isArray(state.families) ||
+      state.families.length === 0 ||
+      state.families.some((f) => Number(f.id) === fid)
+    ) {
+      return fid;
+    }
+  }
+  if (familySelect && familySelect.value) {
+    const fromSelect = Number(familySelect.value);
+    if (Number.isFinite(fromSelect) && fromSelect > 0) {
+      state.activeFamilyId = fromSelect;
+      try {
+        syncActiveFamilyFlags();
+      } catch (_) {}
+      return fromSelect;
+    }
+  }
+  if (Array.isArray(state.families) && state.families.length > 0) {
+    const first = Number(state.families[0].id);
+    if (Number.isFinite(first) && first > 0) {
+      state.activeFamilyId = first;
+      if (familySelect) {
+        try {
+          familySelect.value = String(first);
+        } catch (_) {}
+      }
+      try {
+        syncActiveFamilyFlags();
+      } catch (_) {}
+      return first;
+    }
+  }
+  return 0;
+}
+
+function isBillingPaymentRecoveryState(status = cachedBillingStatusForActiveFamily()) {
+  if (!status || typeof status !== "object") return false;
+  if (status.entitled === true) return false;
+  const st = String(status.status || "").toLowerCase();
+  const phase = String(status.phase || "").toLowerCase();
+  if (st === "incomplete" || st === "incomplete_expired") return false;
+  if (!status.stripe_subscription_id) return false;
+  return phase === "past_due" || st === "past_due" || st === "unpaid";
+}
+
+function pendingIntervalChangeFromStatus(status) {
+  if (!status || typeof status !== "object") return null;
+  const pending = String(status.pending_lookup_key || "").trim();
+  if (pending !== BILLING_LOOKUP_MONTHLY && pending !== BILLING_LOOKUP_ANNUAL) return null;
+  const current = String(status.lookup_key || "").trim();
+  if (current && pending === current) return null;
+  const on = isoDateFromApiTimestamp(status.pending_change_on);
+  if (!on) return null;
+  return { lookupKey: pending, changeOn: on };
+}
+
+function isFormerPaidSubscriptionEnded(status = cachedBillingStatusForActiveFamily()) {
+  if (!status || typeof status !== "object") return false;
+  if (status.entitled === true) return false;
+  if (isBillingPaymentRecoveryState(status)) return false;
+  if (isBillingTrialPlanScheduled(status)) return false;
+  const raw = String(status.status || "").toLowerCase();
+  const canceled = raw === "canceled" || raw === "cancelled";
+  return canceled && !!status.stripe_subscription_id;
+}
+
+function isBillingSubscribed(status = cachedBillingStatusForActiveFamily()) {
+  if (!status) return false;
+  const phase = String(status.phase || "").toLowerCase();
+  if (phase === "active" || phase === "past_due") return true;
+  const st = String(status.status || "").toLowerCase();
+  // Stripe `trialing` is card-on-file during the free trial — not a paid subscriber.
+  return !!status.stripe_subscription_id && (st === "active" || st === "past_due");
+}
+
+function isComplimentaryAccessActive(status = cachedBillingStatusForActiveFamily()) {
+  if (!status || typeof status !== "object") return false;
+  if (status.complimentary_access_active === true) return true;
+  return String(status.phase || "").toLowerCase() === "complimentary";
+}
+
+function isBillingWriteLocked(status = cachedBillingStatusForActiveFamily()) {
+  if (!status || typeof status !== "object") return false;
+  if (isComplimentaryAccessActive(status)) return false;
+  if (status.entitled === false) return true;
+  const phase = String(status.phase || "").toLowerCase();
+  return phase === "expired";
+}
+
+function canWriteFamilyData() {
+  if (state.viewOnly) return false;
+  if (state.activeFamilyAccessMode === "view") return false;
+  if (isBillingWriteLocked()) return false;
+  return true;
+}
+
+function applyBillingReadOnlyUi() {
+  const locked = isBillingWriteLocked();
+  try {
+    document.documentElement.classList.toggle("bw-billing-readonly", locked);
+    document.body.classList.toggle("bw-billing-readonly", locked);
+  } catch (_) {}
+}
+
+async function ensureBillingWriteLockReady() {
+  if (cachedBillingStatusForActiveFamily()) {
+    applyBillingReadOnlyUi();
+    return cachedBillingStatusForActiveFamily();
+  }
+  try {
+    if (ensureActiveFamilyIdForBilling() > 0) await fetchBillingStatus({ force: false });
+  } catch (_) {}
+  applyBillingReadOnlyUi();
+  return cachedBillingStatusForActiveFamily();
+}
+
+async function refreshBillingWriteLock() {
+  try {
+    if (ensureActiveFamilyIdForBilling() > 0) await fetchBillingStatus({ force: false });
+  } catch (_) {}
+  applyBillingReadOnlyUi();
+}
+
+function guardBillingWrite(evt) {
+  if (!isBillingWriteLocked()) return false;
+  if (evt) {
+    try {
+      evt.preventDefault();
+      evt.stopPropagation();
+    } catch (_) {}
+  }
+  openBillingUpgradeModal();
+  return true;
+}
+
+async function guardBillingWriteAsync(evt) {
+  await ensureBillingWriteLockReady();
+  return guardBillingWrite(evt);
+}
+
+let _billingUpgradeModalEl = null;
+let _billingUpgradeReturnFocus = null;
+
+function billingUpgradeFocusables(wrap) {
+  return [
+    wrap?.querySelector("#billingUpgradePayment"),
+    wrap?.querySelector("#billingUpgradeAnnual"),
+    wrap?.querySelector("#billingUpgradeMonthly"),
+    wrap?.querySelector("#billingUpgradeDismiss"),
+  ].filter((el) => el && !el.disabled && !el.hidden && el.getAttribute("aria-hidden") !== "true");
+}
+
+function closeBillingUpgradeModal() {
+  const wrap = _billingUpgradeModalEl || document.getElementById("billingUpgradeModal");
+  if (!wrap) return;
+  wrap.classList.remove("modal-overlay--open");
+  wrap.setAttribute("aria-hidden", "true");
+  const returnTo = _billingUpgradeReturnFocus;
+  _billingUpgradeReturnFocus = null;
+  if (returnTo && typeof returnTo.focus === "function") {
+    try {
+      returnTo.focus();
+    } catch (_) {}
+  }
+}
+
+function ensureBillingUpgradeModal() {
+  if (_billingUpgradeModalEl) return _billingUpgradeModalEl;
+  const existing = document.getElementById("billingUpgradeModal");
+  if (existing) {
+    _billingUpgradeModalEl = existing;
+    return existing;
+  }
+  const wrap = document.createElement("div");
+  wrap.id = "billingUpgradeModal";
+  wrap.className = "modal-overlay";
+  wrap.setAttribute("aria-hidden", "true");
+  const annual = defaultCashForecastAnnualPriceLabel();
+  const monthly = defaultCashForecastPriceLabel();
+  const pct = annualSavingsPercent();
+  const save = pct != null ? ` · Save ${pct}%` : "";
+  wrap.innerHTML =
+    '<div class="modal modal--billing-upgrade" role="dialog" aria-modal="true" aria-labelledby="billingUpgradeTitle" aria-describedby="billingUpgradeBody" tabindex="-1">' +
+    '<h3 id="billingUpgradeTitle" class="billing-upgrade__title">Your free trial has ended</h3>' +
+    '<p id="billingUpgradeBody" class="billing-upgrade__body">Your Cash Forecast is still here. Subscribe to update your balance, add transactions, and keep your forecast current.</p>' +
+    '<div class="billing-upgrade__actions">' +
+    '<button type="button" class="billing-upgrade__annual" id="billingUpgradePayment" hidden>Update payment method</button>' +
+    `<a class="billing-upgrade__annual" id="billingUpgradeAnnual" href="/checkout/">Continue for ${annual}${save}</a>` +
+    `<a class="billing-upgrade__monthly" id="billingUpgradeMonthly" href="/checkout/">Continue for ${monthly}</a>` +
+    '<button type="button" class="billing-upgrade__dismiss" id="billingUpgradeDismiss">Not now</button>' +
+    "</div></div>";
+  document.body.appendChild(wrap);
+  wrap.querySelector("#billingUpgradeDismiss")?.addEventListener("click", () => closeBillingUpgradeModal());
+  wrap.querySelector("#billingUpgradePayment")?.addEventListener("click", () => {
+    closeBillingUpgradeModal();
+    openBillingPortalForActiveFamily("payment");
+  });
+  wrap.addEventListener("click", (e) => {
+    if (e.target === wrap) closeBillingUpgradeModal();
+  });
+  wrap.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      closeBillingUpgradeModal();
+      return;
+    }
+    if (e.key !== "Tab") return;
+    const focusables = billingUpgradeFocusables(wrap);
+    if (!focusables.length) return;
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    const active = document.activeElement;
+    if (e.shiftKey && (active === first || !wrap.contains(active))) {
+      e.preventDefault();
+      last.focus();
+      return;
+    }
+    if (!e.shiftKey && (active === last || !wrap.contains(active))) {
+      e.preventDefault();
+      first.focus();
+    }
+  });
+  _billingUpgradeModalEl = wrap;
+  return wrap;
+}
+
+function openBillingUpgradeModal() {
+  const wrap = ensureBillingUpgradeModal();
+  const recovery = isBillingPaymentRecoveryState();
+  const ended = !recovery && isFormerPaidSubscriptionEnded();
+  const dialog = wrap.querySelector(".modal");
+  const titleEl = wrap.querySelector("#billingUpgradeTitle");
+  const bodyEl = wrap.querySelector("#billingUpgradeBody");
+  const annualBtn = wrap.querySelector("#billingUpgradeAnnual");
+  const monthlyBtn = wrap.querySelector("#billingUpgradeMonthly");
+  const paymentBtn = wrap.querySelector("#billingUpgradePayment");
+  if (dialog) dialog.classList.toggle("modal--billing-upgrade-payment", recovery);
+  if (titleEl) {
+    titleEl.textContent = recovery
+      ? "Payment needed"
+      : ended
+        ? "Your subscription has ended"
+        : "Your free trial has ended";
+  }
+  if (bodyEl) {
+    bodyEl.textContent = recovery
+      ? "We couldn't process your latest payment. Update your payment method to keep your forecast current."
+      : ended
+        ? "Your forecast is still here. Subscribe to update your balance, add transactions, and keep your forecast current."
+        : "Your Cash Forecast is still here. Subscribe to update your balance, add transactions, and keep your forecast current.";
+  }
+  if (paymentBtn) {
+    paymentBtn.hidden = !recovery;
+    paymentBtn.setAttribute("aria-hidden", recovery ? "false" : "true");
+  }
+  if (annualBtn) {
+    annualBtn.hidden = !!recovery;
+    annualBtn.setAttribute("aria-hidden", recovery ? "true" : "false");
+    if (!recovery) annualBtn.href = checkoutUrlForActiveFamily(BILLING_LOOKUP_ANNUAL);
+  }
+  if (monthlyBtn) {
+    monthlyBtn.hidden = !!recovery;
+    monthlyBtn.setAttribute("aria-hidden", recovery ? "true" : "false");
+    if (!recovery) monthlyBtn.href = checkoutUrlForActiveFamily(BILLING_LOOKUP_MONTHLY);
+  }
+  _billingUpgradeReturnFocus = document.activeElement;
+  wrap.classList.add("modal-overlay--open");
+  wrap.setAttribute("aria-hidden", "false");
+  window.requestAnimationFrame(() => {
+    try {
+      (recovery ? paymentBtn : annualBtn || wrap.querySelector("#billingUpgradeDismiss"))?.focus();
+    } catch (_) {}
+  });
+}
+
+const BILLING_WRITE_LOCK_SELECTOR = [
+  "#tmPrimaryAction",
+  "#forecastConfidenceVerifyBtn",
+  "#openAccountModalBtn",
+  "#addAccountBtn",
+  "#saveAccountEditBtn",
+  "#balanceThresholdSaveBtn",
+  "#addCategoryGroupBtn",
+  "#addFirstGroupBtn",
+  "#txAddSave",
+  "#txEditSave",
+  "#txEditDelete",
+  "#txEditRecurringUpdateBtn",
+  ".cats-pane__action",
+  "[data-bw-write]",
+].join(",");
+
+function billingWriteLockHit(target) {
+  if (!target || !target.closest) return null;
+  if (target.closest("#billingUpgradeModal")) return null;
+  if (target.closest("#billingSubscribeChoices")) return null;
+  if (target.closest('[data-settings-pane="billing"]')) return null;
+  return target.closest(BILLING_WRITE_LOCK_SELECTOR);
+}
+
+function wireBillingWriteLockOnce() {
+  if (document.documentElement.dataset.bwBillingWriteLock === "1") return;
+  document.documentElement.dataset.bwBillingWriteLock = "1";
+  document.addEventListener(
+    "click",
+    (e) => {
+      if (!billingWriteLockHit(e.target)) return;
+      if (!isBillingWriteLocked()) {
+        if (!cachedBillingStatusForActiveFamily()) void refreshBillingWriteLock();
+        return;
+      }
+      e.preventDefault();
+      e.stopPropagation();
+      openBillingUpgradeModal();
+    },
+    true
+  );
+}
+
+function isBillingTrialPlanScheduled(status = cachedBillingStatusForActiveFamily()) {
+  if (!status) return false;
+  const st = String(status.status || "").toLowerCase();
+  return !!status.stripe_subscription_id && st === "trialing";
+}
+
+function trialDaysRemainingFromStatus(status) {
+  if (status && Number.isFinite(Number(status.trial_days_remaining))) {
+    return Math.max(0, Math.floor(Number(status.trial_days_remaining)));
+  }
+  const trialEnd = status && status.trial_ends_on ? String(status.trial_ends_on) : "";
+  return daysRemainingUntilIso(trialEnd);
+}
+
+function trialCalloutTitle(daysLeft) {
+  if (daysLeft == null) return "Free trial";
+  if (daysLeft <= 0) return "Free trial · Ends today";
+  if (daysLeft === 1) return "Free trial · 1 day left";
+  return `Free trial · ${daysLeft} days left`;
+}
+
+function stripeFirstChargeIsoFromStatus(status) {
+  if (!status || !status.stripe_subscription_id) return "";
+  if (status.first_charge_at) return String(status.first_charge_at);
+  if (status.first_charge_on) return String(status.first_charge_on);
+  return "";
+}
+
+function trialAccessThroughLabel(status) {
+  if (status && status.trial_ends_at) {
+    return formatBillingLongDateTime(status.trial_ends_at);
+  }
+  const day = status && status.trial_ends_on ? String(status.trial_ends_on) : "";
+  return day ? formatBillingLongDate(day) : "";
+}
+
+function isBillingPaid() {
+  return isBillingSubscribed();
+}
+
+function isBillingPortalAvailable(status = cachedBillingStatusForActiveFamily()) {
+  if (!status) return false;
+  return !!status.portal_available || isBillingSubscribed(status) || isBillingTrialPlanScheduled(status);
+}
+
+/**
+ * Centralized Billing UI model — map API entitlement + Stripe fields to one lifecycle state.
+ * Modes: no_family | complimentary | trial | trial_scheduled | trial_ended | active | canceling |
+ * interval_change | payment_issue | payment_required | canceled | error
+ */
+function resolveBillingLifecycleModel(status, { hasFamily = true } = {}) {
+  const monthlyPrice = defaultCashForecastPriceLabel();
+  const productName = String((status && status.product_name) || "Cash Forecast");
+  const productCopy = getBillingPlanContext("base");
+
+  if (!hasFamily) {
+    return {
+      mode: "no_family",
+      productName,
+      productCopy,
+      showMeta: false,
+      showManage: false,
+      showCancel: false,
+      callout: {
+        kind: "info",
+        title: "Choose a family",
+        text: "Select a family account to see trial status, billing details, and subscription actions.",
+      },
+      primaryCta: null,
+      meta: null,
+      manageHint: "",
+      cancelLede: "",
+    };
+  }
+
+  if (isComplimentaryAccessActive(status)) {
+    const expIso = isoDateFromApiTimestamp(status && status.complimentary_access_expires_at);
+    const expLong = expIso ? formatBillingLongDate(expIso) : "";
+    const hasExp = !!(expLong && expLong !== "—");
+    return {
+      mode: "complimentary",
+      productName,
+      productCopy,
+      showMeta: true,
+      showManage: true,
+      showCancel: false,
+      callout: null,
+      primaryCta: null,
+      meta: {
+        plan: productName,
+        priceLabel: "Billing",
+        price: "Complimentary access",
+        dateLabel: hasExp ? "Access through" : "Access",
+        date: hasExp ? expLong : "No expiration",
+        statusLabel: "Active",
+        statusTone: "paid",
+      },
+      manageTitle: "Complimentary access",
+      manageHint: "You have full access to Cash Forecast. No subscription or payment method is required.",
+      cycleAction: null,
+      notesKind: "active",
+    };
+  }
+
+  const phase = String((status && status.phase) || "").toLowerCase();
+  const raw = String((status && status.status) || "").toLowerCase();
+  const lookupKey = status && status.lookup_key;
+  const priceFromLookup = priceLabelFromLookupKey(lookupKey);
+  const priceLabel = priceFromLookup || monthlyPrice;
+  const cycleAction = {
+    label: cycleSwitchLabel(lookupKey),
+    targetLookup: alternateBillingLookup(lookupKey),
+  };
+  const subscribeChoices = {
+    title: "Continue with Cash Forecast",
+    support: "",
+    monthlyLabel: `Monthly — ${monthlyPrice}`,
+    annualLabel: `Annual — ${defaultCashForecastAnnualPriceLabel()}`,
+    annualNote: "",
+    savings: annualSavingsCopy(),
+    reassure: "",
+    trialLayout: false,
+  };
+  const trialSubscribeChoices = (firstChargeIso) => {
+    const pct = annualSavingsPercent();
+    const chargeAt = parseBillingDateTime(firstChargeIso);
+    const chargeDate = chargeAt
+      ? firstChargeIso && String(firstChargeIso).includes("T")
+        ? formatBillingLongDateTime(firstChargeIso)
+        : formatBillingLongDate(firstChargeIso)
+      : "";
+    return {
+      title: "Continue after your free trial",
+      support: "Choose a billing option now or anytime before your trial ends. You won't be charged today.",
+      monthlyLabel: `Monthly — ${monthlyPrice}`,
+      annualLabel: `Annual — ${defaultCashForecastAnnualPriceLabel()}`,
+      annualNote: pct != null ? `Save ${pct}%` : "",
+      savings: "",
+      reassure: chargeDate
+        ? `No charge today. Your first payment will be ${chargeDate}.`
+        : "No charge today. Your first payment will be after your trial ends.",
+      trialLayout: true,
+    };
+  };
+  const endedSubscribeChoices = () => {
+    const pct = annualSavingsPercent();
+    return {
+      title: "",
+      hideTitle: true,
+      support: "",
+      monthlyLabel: "Choose monthly",
+      annualLabel: "Choose annual",
+      annualNote: "",
+      savings: "",
+      reassure: "Cancel anytime · No hidden fees",
+      trialLayout: false,
+      pricingCards: true,
+      annualPlan: "Annual",
+      annualPrice: defaultCashForecastAnnualPriceLabel(),
+      annualBadge: pct != null ? `Save ${pct}%` : "",
+      monthlyPlan: "Monthly",
+      monthlyPrice,
+      monthlyBadge: monthlyPaidAsAnnualLabel(),
+    };
+  };
+  const trialEnd = status && status.trial_ends_on ? String(status.trial_ends_on) : "";
+  const periodEnd = isoDateFromApiTimestamp(status && status.current_period_end);
+  const cancelAtEnd = !!(status && status.cancel_at_period_end);
+  const hasStripeSub = !!(status && status.stripe_subscription_id);
+  const entitled = !!(status && status.entitled === true);
+  const pastDue =
+    phase === "past_due" ||
+    raw === "past_due" ||
+    raw === "unpaid" ||
+    raw === "incomplete" ||
+    raw === "incomplete_expired";
+  const paymentProblem =
+    (phase === "past_due" || raw === "past_due" || raw === "unpaid") &&
+    hasStripeSub &&
+    raw !== "incomplete" &&
+    raw !== "incomplete_expired";
+  const subscribed = isBillingSubscribed(status);
+  const inAppTrial =
+    phase === "trial" || (!!status?.in_app_trial && phase !== "active" && phase !== "past_due");
+  const fullyCanceled = raw === "canceled" || raw === "cancelled";
+  const pendingInterval = pendingIntervalChangeFromStatus(status);
+
+  if (paymentProblem && !entitled) {
+    const failedIso = isoDateFromApiTimestamp(status && status.last_payment_failed_on);
+    const failedLong = failedIso ? formatBillingLongDate(failedIso) : "";
+    return {
+      mode: "payment_required",
+      productName,
+      productCopy,
+      showMeta: true,
+      showManage: true,
+      showCancel: false,
+      callout: null,
+      primaryCta: null,
+      meta: {
+        plan: productName,
+        priceLabel: "Billing",
+        price: priceLabel,
+        dateLabel: "Access",
+        date: "Paused",
+        statusLabel: "Payment required",
+        statusTone: "warning",
+        statusIcon: false,
+      },
+      manageTitle: "Payment needed",
+      manageHint:
+        "We couldn't process your latest payment. Update your payment method to restore full access to Cash Forecast.",
+      manageDue: failedLong ? `Payment due ${failedLong}.` : "",
+      cycleAction: null,
+      paymentAction: { label: "Update payment method", action: "payment" },
+      notesKind: "payment_required",
+    };
+  }
+
+  if (paymentProblem && entitled) {
+    const retryIso = isoDateFromApiTimestamp(status && status.next_payment_attempt_on);
+    const retryLong = retryIso ? formatBillingLongDate(retryIso) : "";
+    return {
+      mode: "payment_issue",
+      productName,
+      productCopy,
+      showMeta: true,
+      showManage: true,
+      showCancel: false,
+      callout: null,
+      primaryCta: null,
+      meta: {
+        plan: productName,
+        priceLabel: "Billing",
+        price: priceLabel,
+        dateLabel: "Access",
+        date: "Active",
+        statusLabel: "Payment issue",
+        statusTone: "warning",
+        statusIcon: false,
+      },
+      manageTitle: "There's a problem with your payment",
+      manageHint:
+        "We couldn't process your latest payment. Update your payment method to avoid an interruption in your Cash Forecast access.",
+      manageDue: retryLong ? `We'll retry your payment on ${retryLong}.` : "",
+      cycleAction: null,
+      paymentAction: { label: "Update payment method", action: "payment" },
+      notesKind: "payment_issue",
+    };
+  }
+
+  if (subscribed && cancelAtEnd) {
+    const accessLong = periodEnd ? formatBillingLongDate(periodEnd) : "";
+    const accessShort = periodEnd ? formatBillingShortMonthDay(periodEnd) : "";
+    const accessLede = accessLong
+      ? `You'll keep full access through ${accessLong}. You can keep your subscription anytime before then.`
+      : "You'll keep full access through the end of your current billing period. You can keep your subscription anytime before then.";
+    return {
+      mode: "canceling",
+      productName,
+      productCopy,
+      showMeta: true,
+      showManage: true,
+      showCancel: false,
+      callout: null,
+      primaryCta: null,
+      meta: {
+        plan: productName,
+        priceLabel: "Billing",
+        price: priceLabel,
+        dateLabel: "Access Ends",
+        date: accessLong || "—",
+        statusLabel: accessShort ? `Cancels ${accessShort}` : "Cancels",
+        statusTone: "muted",
+        statusIcon: false,
+      },
+      manageTitle: "Your subscription is set to end",
+      manageHint: accessLede,
+      cycleAction: null,
+      keepAction: { label: "Keep my subscription", action: "keep" },
+    };
+  }
+
+  if (subscribed && pendingInterval) {
+    const changeLong = formatBillingLongDate(pendingInterval.changeOn);
+    const pendingMonthly = pendingInterval.lookupKey === BILLING_LOOKUP_MONTHLY;
+    const keepLookup = lookupKey || (pendingMonthly ? BILLING_LOOKUP_ANNUAL : BILLING_LOOKUP_MONTHLY);
+    const termEndLong = (periodEnd ? formatBillingLongDate(periodEnd) : "") || changeLong;
+    const body = pendingMonthly
+      ? (termEndLong
+          ? `Your annual subscription will remain active through ${termEndLong}. Starting then, you'll be billed ${monthlyPrice}.`
+          : `Your annual subscription will remain active through the end of your current term. Starting then, you'll be billed ${monthlyPrice}.`)
+      : `Your monthly subscription will remain active through ${changeLong}. You'll switch to ${defaultCashForecastAnnualPriceLabel()} on that date.`;
+    return {
+      mode: "interval_change",
+      productName,
+      productCopy,
+      showMeta: true,
+      showManage: true,
+      showCancel: false,
+      callout: null,
+      primaryCta: null,
+      meta: {
+        plan: productName,
+        priceLabel: "Billing",
+        price: priceLabel,
+        dateLabel: pendingMonthly ? "Current term ends" : "Next renewal",
+        date: termEndLong || "—",
+        statusLabel: "Active",
+        statusTone: "paid",
+      },
+      manageTitle: "Billing change scheduled",
+      manageHint: body,
+      cycleAction: null,
+      keepAction: {
+        label: pendingMonthly ? "Keep annual billing" : "Keep monthly billing",
+        action: "keep-interval",
+        targetLookup: keepLookup,
+      },
+      notesKind: "active",
+    };
+  }
+
+  if (subscribed && !pastDue) {
+    return {
+      mode: "active",
+      productName,
+      productCopy,
+      showMeta: true,
+      showManage: true,
+      showCancel: true,
+      callout: null,
+      primaryCta: null,
+      meta: {
+        plan: productName,
+        priceLabel: "Billing",
+        price: priceLabel,
+        priceSupport: billingPriceSupportCopy(lookupKey),
+        dateLabel: "Next renewal",
+        date: periodEnd ? formatBillingLongDate(periodEnd) : "—",
+        statusLabel: "Active",
+        statusTone: "paid",
+      },
+      manageTitle: BILLING_MANAGE_TITLE,
+      manageHint: BILLING_MANAGE_HINT,
+      cycleAction,
+      cancelSection: {
+        title: "Cancellation",
+        lede: periodEnd
+          ? `If you cancel, you'll keep full access through ${formatBillingLongDate(periodEnd)}.`
+          : "If you cancel, you'll keep full access through the end of your current billing period.",
+        buttonLabel: "Cancel subscription",
+        action: "cancel",
+        tone: "danger",
+      },
+    };
+  }
+
+  if (!subscribed && (inAppTrial || isBillingTrialPlanScheduled(status))) {
+    const daysLeft = trialDaysRemainingFromStatus(status);
+    const planScheduled = isBillingTrialPlanScheduled(status);
+    const stripeFirstCharge = stripeFirstChargeIsoFromStatus(status);
+    const scheduledPrice = priceFromLookup;
+    if (planScheduled) {
+      const firstIso = stripeFirstCharge || trialEnd;
+      const firstDay = isoDateFromApiTimestamp(firstIso) || (firstIso ? String(firstIso).slice(0, 10) : "");
+      const firstLong = firstDay ? formatBillingLongDate(firstDay) : "";
+      const intervalWord = billingLookupIsAnnual(lookupKey) ? "Annual" : "Monthly";
+      return {
+        mode: "trial_scheduled",
+        productName,
+        productCopy,
+        showMeta: true,
+        showManage: true,
+        showCancel: false,
+        callout: null,
+        primaryCta: null,
+        subscribeChoices: null,
+        notesKind: "trial_scheduled",
+        meta: {
+          plan: productName,
+          priceLabel: "Billing",
+          price: scheduledPrice || priceLabel,
+          priceSupport: firstLong ? `Starts ${firstLong}` : "",
+          dateLabel: "First payment",
+          date: firstLong || "—",
+          statusLabel: "Free trial",
+          statusTone: "trial",
+        },
+        manageTitle: "Your subscription is ready",
+        manageHint: `You'll have full access through your free trial. ${intervalWord} billing will begin automatically when your trial ends.`,
+        cycleAction,
+        cancelLede: "",
+      };
+    }
+    const accessThrough = trialAccessThroughLabel(status);
+    const calloutText = accessThrough
+      ? `Full access through ${accessThrough}. No payment method required.`
+      : "No payment method required.";
+    return {
+      mode: "trial",
+      productName,
+      productCopy,
+      showMeta: false,
+      showManage: false,
+      showCancel: false,
+      callout: {
+        kind: "trial",
+        title: trialCalloutTitle(daysLeft),
+        text: calloutText,
+      },
+      primaryCta: null,
+      subscribeChoices: trialSubscribeChoices(stripeFirstCharge),
+      notesKind: "trial",
+      meta: null,
+      manageHint: "",
+      cancelLede: "",
+    };
+  }
+
+  if (fullyCanceled && hasStripeSub && !entitled) {
+    return {
+      mode: "canceled",
+      productName,
+      productCopy,
+      showMeta: false,
+      showManage: false,
+      showCancel: false,
+      callout: {
+        kind: "trial_complete",
+        eyebrow: "Subscription ended",
+        title: "Keep your forecast working for you.",
+        text: "Your forecast is still here. Subscribe to keep it current.",
+      },
+      primaryCta: null,
+      subscribeChoices: endedSubscribeChoices(),
+      notesKind: "canceled",
+      meta: null,
+      manageHint: "",
+      cancelLede: "",
+    };
+  }
+
+  return {
+    mode: "trial_ended",
+    productName,
+    productCopy,
+    showMeta: false,
+    showManage: false,
+    showCancel: false,
+    callout: {
+      kind: "trial_complete",
+      eyebrow: "14-day free trial complete",
+      title: "Keep your forecast working for you.",
+      text: "Your forecast is still here. Subscribe to keep it current.",
+    },
+    primaryCta: null,
+    subscribeChoices: endedSubscribeChoices(),
+    notesKind: "trial_ended",
+    meta: null,
+    manageHint: "",
+    cancelLede: "",
+  };
+}
+
+async function fetchBillingStatus({ force = false } = {}) {
+  const fid = Number(state.activeFamilyId || 0);
+  if (!fid) return null;
+  const now = Date.now();
+  if (
+    !force &&
+    Number(billingStatusCache.familyId) === fid &&
+    billingStatusCache.data &&
+    now - billingStatusCache.fetchedAt < 20000
+  ) {
+    applyBillingReadOnlyUi();
+    return billingStatusCache.data;
+  }
+  if (!force && billingStatusCache.inFlight && Number(billingStatusCache.familyId) === fid) {
+    return billingStatusCache.inFlight;
+  }
+
+  const apiBase = apiBaseUrl();
+  if (!apiBase) {
+    throw new Error("Billing API isn’t configured on this build.");
+  }
+
+  // DB-only loads use the shared api() helper (cold-start retries).
+  // sync=1 is best-effort and uses a single bounded attempt.
+  const promise = (async () => {
+    if (!force) {
+      const data = await api(`/api/families/${fid}/billing-status`, "GET");
+      if (data == null || typeof data !== "object") {
+        throw new Error("Couldn’t load billing status.");
+      }
+      billingStatusCache = { familyId: fid, data, fetchedAt: Date.now(), inFlight: null };
+      applyBillingReadOnlyUi();
+      return data;
+    }
+
+    const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+    const timeoutId = ctrl
+      ? window.setTimeout(() => {
+          try {
+            ctrl.abort();
+          } catch (_) {}
+        }, 12000)
+      : 0;
+    try {
+      const res = await fetch(`${apiBase}/api/families/${fid}/billing-status?sync=1`, {
+        method: "GET",
+        credentials: "include",
+        headers: { ...apiBearerAuthHeaders(), Accept: "application/json" },
+        signal: ctrl ? ctrl.signal : undefined,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const msg =
+          (data && data.detail) ||
+          (data && data.error && data.error.message) ||
+          `Billing sync failed (${res.status}).`;
+        throw new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
+      }
+      billingStatusCache = { familyId: fid, data, fetchedAt: Date.now(), inFlight: null };
+      applyBillingReadOnlyUi();
+      return data;
+    } finally {
+      if (timeoutId) window.clearTimeout(timeoutId);
+    }
+  })().catch((err) => {
+    if (Number(billingStatusCache.familyId) === fid) billingStatusCache.inFlight = null;
+    throw err;
+  });
+
+  billingStatusCache = {
+    familyId: fid,
+    data: billingStatusCache.data && Number(billingStatusCache.familyId) === fid ? billingStatusCache.data : null,
+    fetchedAt: billingStatusCache.fetchedAt || 0,
+    inFlight: force ? null : promise,
+  };
+  return promise;
+}
+
+function billingDom() {
+  return {
+    planHeadline: document.getElementById("billingPlanHeadline"),
+    planContext: document.getElementById("billingPlanContext"),
+    plan: document.getElementById("billingPlan"),
+    frequency: document.getElementById("billingFrequency"),
+    frequencyValue: document.getElementById("billingFrequencyValue"),
+    frequencyNote: document.getElementById("billingFrequencyNote"),
+    priceLabel: document.getElementById("billingPriceLabel"),
+    nextDateLabel: document.getElementById("billingNextDateLabel"),
+    nextDate: document.getElementById("billingNextDate"),
+    renewal: document.getElementById("billingRenewalMessage"),
+    calloutTitle: document.getElementById("billingCalloutTitle"),
+    calloutText: document.getElementById("billingCalloutText"),
+    calloutEyebrow: document.getElementById("billingCalloutEyebrow"),
+    accountStatus: document.getElementById("billingAccountStatus"),
+    meta: document.getElementById("billingMeta"),
+    manage: document.getElementById("billingManageSection"),
+    manageHeading: document.getElementById("billingManageHeading"),
+    manageHint: document.getElementById("billingManageHint"),
+    cancel: document.getElementById("billingCancelSection"),
+    cancelTitle: document.getElementById("billingCancelTitle"),
+    cancelLede: document.getElementById("billingCancelLede"),
+    cancelBtn:
+      document.getElementById("billingCancelBtn") ||
+      document.querySelector("#billingCancelSection [data-billing-action]"),
+    primaryCta: document.getElementById("billingPrimaryCta"),
+    cycleBtn: document.querySelector("#billingManageSection [data-billing-action=\"cycle\"]"),
+    subscribe: document.getElementById("billingSubscribeChoices"),
+    subscribeTitle: document.getElementById("billingSubscribeTitle"),
+    subscribeSupport: document.getElementById("billingSubscribeSupport"),
+    subscribeOptions: document.querySelector("#billingSubscribeChoices .billing-subscribe__options"),
+    subscribeMonthly: document.getElementById("billingSubscribeMonthly"),
+    subscribeAnnual: document.getElementById("billingSubscribeAnnual"),
+    subscribeSave: document.getElementById("billingSubscribeSave"),
+    subscribeReassure: document.getElementById("billingSubscribeReassure"),
+    notesList: document.getElementById("billingNotesList"),
+  };
+}
+
+function setBillingElHidden(el, hide) {
+  if (!el) return;
+  if (hide) el.setAttribute("hidden", "");
+  else el.removeAttribute("hidden");
+}
+
+function setBillingLifecycleCallout(callout) {
+  const dom = billingDom();
+  const el = dom.renewal || billingRenewalMessageEl;
+  if (!el) return;
+  const eyebrowEl = dom.calloutEyebrow || document.getElementById("billingCalloutEyebrow");
+  if (!callout || (!callout.title && !callout.text && !callout.eyebrow)) {
+    setBillingElHidden(el, true);
+    if (eyebrowEl) {
+      eyebrowEl.textContent = "";
+      setBillingElHidden(eyebrowEl, true);
+    }
+    if (dom.calloutTitle) {
+      dom.calloutTitle.textContent = "";
+      setBillingElHidden(dom.calloutTitle, true);
+    }
+    if (dom.calloutText) {
+      dom.calloutText.textContent = "";
+      setBillingElHidden(dom.calloutText, true);
+    }
+    el.classList.remove(
+      "billing-callout--info",
+      "billing-callout--alert",
+      "billing-callout--warning",
+      "billing-callout--trial",
+      "billing-callout--trial-complete"
+    );
+    return;
+  }
+  const kind = callout.kind || "info";
+  setBillingElHidden(el, false);
+  el.classList.add("billing-callout");
+  el.classList.toggle("billing-callout--info", kind === "info");
+  el.classList.toggle("billing-callout--alert", kind === "alert");
+  el.classList.toggle("billing-callout--warning", kind === "warning");
+  el.classList.toggle("billing-callout--trial", kind === "trial");
+  el.classList.toggle("billing-callout--trial-complete", kind === "trial_complete");
+  el.removeAttribute("data-billing-dev-callout");
+  if (eyebrowEl) {
+    const eyebrow = String(callout.eyebrow || "").trim();
+    eyebrowEl.textContent = eyebrow;
+    setBillingElHidden(eyebrowEl, !eyebrow);
+  }
+  if (dom.calloutTitle) {
+    dom.calloutTitle.textContent = callout.title || "";
+    setBillingElHidden(dom.calloutTitle, !callout.title);
+  }
+  if (dom.calloutText) {
+    dom.calloutText.textContent = callout.text || "";
+    setBillingElHidden(dom.calloutText, !callout.text);
+  }
+}
+
+function setBillingPrimaryCta(cta) {
+  const el = billingDom().primaryCta || billingPrimaryCtaEl || document.getElementById("billingPrimaryCta");
+  if (!el) return;
+  if (!cta) {
+    setBillingElHidden(el, true);
+    el.setAttribute("aria-hidden", "true");
+    el.removeAttribute("data-billing-cta");
+    return;
+  }
+  setBillingElHidden(el, false);
+  el.setAttribute("aria-hidden", "false");
+  el.textContent = cta.label;
+  el.dataset.billingCta = cta.action || "checkout";
+  if (cta.action === "portal") {
+    el.href = "#";
+    el.setAttribute("role", "button");
+    el.dataset.billingFlow = cta.flow || "payment";
+  } else {
+    el.href = checkoutUrlForActiveFamily(cta.lookupKey);
+    el.removeAttribute("role");
+    el.removeAttribute("data-billing-flow");
+  }
+}
+
+function setSubscribeOptionContent(el, label, note) {
+  if (!el) return;
+  const text = String(label || "");
+  const extra = String(note || "").trim();
+  if (extra) {
+    el.innerHTML = `<span class="billing-subscribe__option-main">${escapeHtml(
+      text
+    )}</span><span class="billing-subscribe__option-note">${escapeHtml(extra)}</span>`;
+    return;
+  }
+  el.textContent = text;
+}
+
+function restoreSubscribePlainOptions(options, monthly, annual) {
+  if (!options || !monthly || !annual) return;
+  monthly.remove();
+  annual.remove();
+  options.querySelectorAll(".billing-price-card").forEach((card) => card.remove());
+  options.classList.remove("billing-subscribe__options--cards");
+  options.appendChild(monthly);
+  options.appendChild(annual);
+}
+
+function fillSubscribePriceCard(card, { plan, price, badge }) {
+  if (!card) return;
+  const planEl = card.querySelector(".billing-price-card__plan");
+  const priceEl = card.querySelector(".billing-price-card__price");
+  const badgeEl = card.querySelector(".billing-price-card__badge");
+  if (planEl) planEl.textContent = plan || "";
+  if (priceEl) priceEl.textContent = price || "";
+  if (badgeEl) {
+    const text = String(badge || "").trim();
+    badgeEl.textContent = text || "\u00a0";
+    badgeEl.classList.toggle("billing-price-card__badge--empty", !text);
+    if (!text) badgeEl.setAttribute("aria-hidden", "true");
+    else badgeEl.removeAttribute("aria-hidden");
+  }
+}
+
+function applySubscribePricingCardsLayout(options, monthly, annual, choices) {
+  if (!options || !monthly || !annual) return;
+  options.classList.add("billing-subscribe__options--cards");
+
+  let annualCard = options.querySelector(".billing-price-card--annual");
+  let monthlyCard = options.querySelector(".billing-price-card--monthly");
+  if (!annualCard || !monthlyCard) {
+    options.querySelectorAll(".billing-price-card").forEach((card) => card.remove());
+    annual.remove();
+    monthly.remove();
+
+    annualCard = document.createElement("div");
+    annualCard.className = "billing-price-card billing-price-card--annual billing-price-card--recommended";
+    annualCard.innerHTML =
+      '<div class="billing-price-card__body">' +
+      '<p class="billing-price-card__plan"></p>' +
+      '<p class="billing-price-card__price"></p>' +
+      '<p class="billing-price-card__badge"></p>' +
+      "</div>";
+
+    monthlyCard = document.createElement("div");
+    monthlyCard.className = "billing-price-card billing-price-card--monthly";
+    monthlyCard.innerHTML =
+      '<div class="billing-price-card__body">' +
+      '<p class="billing-price-card__plan"></p>' +
+      '<p class="billing-price-card__price"></p>' +
+      '<p class="billing-price-card__badge"></p>' +
+      "</div>";
+
+    options.appendChild(annualCard);
+    options.appendChild(monthlyCard);
+  }
+
+  annual.className = "billing-hero__activate billing-price-card__cta";
+  monthly.className =
+    "billing-action-btn billing-action-btn--secondary billing-price-card__cta";
+  if (!annualCard.contains(annual)) annualCard.appendChild(annual);
+  if (!monthlyCard.contains(monthly)) monthlyCard.appendChild(monthly);
+
+  fillSubscribePriceCard(annualCard, {
+    plan: choices?.annualPlan || "Annual",
+    price: choices?.annualPrice || defaultCashForecastAnnualPriceLabel(),
+    badge: choices?.annualBadge || "",
+  });
+  fillSubscribePriceCard(monthlyCard, {
+    plan: choices?.monthlyPlan || "Monthly",
+    price: choices?.monthlyPrice || defaultCashForecastPriceLabel(),
+    badge: choices?.monthlyBadge || "",
+  });
+}
+
+function applySubscribeChoiceLayout(choices) {
+  const wrap = document.getElementById("billingSubscribeChoices");
+  const options = wrap?.querySelector(".billing-subscribe__options");
+  const monthly = document.getElementById("billingSubscribeMonthly");
+  const annual = document.getElementById("billingSubscribeAnnual");
+  if (!wrap) return;
+  const trialLayout = !!(choices && choices.trialLayout);
+  const pricingCards = !!(choices && choices.pricingCards);
+  wrap.classList.toggle("billing-subscribe--trial", trialLayout);
+  wrap.classList.toggle("billing-subscribe--pricing-cards", pricingCards);
+  if (!options || !monthly || !annual) return;
+  monthly.removeAttribute("aria-pressed");
+  annual.removeAttribute("aria-pressed");
+  monthly.classList.remove("is-selected", "is-active");
+  annual.classList.remove("is-selected", "is-active");
+  if (pricingCards) {
+    applySubscribePricingCardsLayout(options, monthly, annual, choices);
+    return;
+  }
+  restoreSubscribePlainOptions(options, monthly, annual);
+  if (trialLayout) {
+    monthly.className = "billing-action-btn billing-action-btn--secondary billing-subscribe__option";
+    annual.className =
+      "billing-hero__activate billing-subscribe__option billing-subscribe__option--recommended";
+    if (annual.nextElementSibling !== monthly) options.insertBefore(annual, monthly);
+    return;
+  }
+  monthly.className = "billing-hero__activate billing-subscribe__option";
+  annual.className = "billing-action-btn billing-action-btn--secondary billing-subscribe__option";
+  if (monthly.nextElementSibling !== annual) options.insertBefore(monthly, annual);
+}
+
+const BILLING_NOTES_DEFAULT = [
+  "No bank connection required",
+  "Cancel anytime",
+  "No hidden fees",
+  "Your BalanceWhiz data stays editable",
+];
+const BILLING_NOTES_TRIAL = [
+  "No payment method required during trial",
+  "No bank connection required",
+  "Cancel anytime",
+  "No hidden fees",
+];
+const BILLING_NOTES_TRIAL_SCHEDULED = [
+  "No charge until your trial ends",
+  "No bank connection required",
+  "Cancel anytime",
+  "No hidden fees",
+];
+const BILLING_NOTES_TRIAL_ENDED = [
+  "No bank connection required",
+  "Cancel anytime",
+  "No hidden fees",
+  "Your BalanceWhiz data stays saved",
+];
+
+const BILLING_NOTES_ERROR = [
+  "No bank connection required",
+  "Cancel anytime",
+  "No hidden fees",
+];
+
+function applyBillingNotes(kind) {
+  const list = document.getElementById("billingNotesList");
+  if (!list) return;
+  let items = BILLING_NOTES_DEFAULT;
+  if (kind === "trial") items = BILLING_NOTES_TRIAL;
+  else if (kind === "trial_scheduled") items = BILLING_NOTES_TRIAL_SCHEDULED;
+  else if (kind === "trial_ended" || kind === "canceled" || kind === "payment_required") {
+    items = BILLING_NOTES_TRIAL_ENDED;
+  } else if (kind === "error") items = BILLING_NOTES_ERROR;
+  list.innerHTML = items.map((item) => `<li>${escapeHtml(item)}</li>`).join("");
+}
+
+function setBillingSubscribeChoices(choices) {
+  const dom = billingDom();
+  const wrap = dom.subscribe;
+  if (!wrap) return;
+  if (!choices) {
+    setBillingElHidden(wrap, true);
+    applySubscribeChoiceLayout(null);
+    return;
+  }
+  setBillingElHidden(wrap, false);
+  applySubscribeChoiceLayout(choices);
+  if (dom.subscribeTitle) {
+    const title = String(choices.title || "").trim();
+    const hideTitle = !!choices.hideTitle || !title;
+    dom.subscribeTitle.textContent = title || "Continue with Cash Forecast";
+    setBillingElHidden(dom.subscribeTitle, hideTitle);
+  }
+  if (dom.subscribeSupport) {
+    const support = String(choices.support || "").trim();
+    dom.subscribeSupport.textContent = support;
+    setBillingElHidden(dom.subscribeSupport, !support);
+  }
+  if (dom.subscribeMonthly) {
+    if (choices.pricingCards) {
+      dom.subscribeMonthly.textContent = choices.monthlyLabel || "Choose monthly";
+    } else {
+      setSubscribeOptionContent(
+        dom.subscribeMonthly,
+        choices.monthlyLabel || `Monthly — ${defaultCashForecastPriceLabel()}`,
+        ""
+      );
+    }
+    dom.subscribeMonthly.href = checkoutUrlForActiveFamily(BILLING_LOOKUP_MONTHLY);
+  }
+  if (dom.subscribeAnnual) {
+    if (choices.pricingCards) {
+      dom.subscribeAnnual.textContent = choices.annualLabel || "Choose annual";
+    } else {
+      setSubscribeOptionContent(
+        dom.subscribeAnnual,
+        choices.annualLabel || `Annual — ${defaultCashForecastAnnualPriceLabel()}`,
+        choices.annualNote || ""
+      );
+    }
+    dom.subscribeAnnual.href = checkoutUrlForActiveFamily(BILLING_LOOKUP_ANNUAL);
+  }
+  if (dom.subscribeSave) {
+    const save = choices.savings || "";
+    dom.subscribeSave.textContent = save;
+    setBillingElHidden(dom.subscribeSave, !save);
+  }
+  if (dom.subscribeReassure) {
+    const reassure = String(choices.reassure || "").trim();
+    dom.subscribeReassure.textContent = reassure;
+    setBillingElHidden(dom.subscribeReassure, !reassure);
+  }
+}
+
+function setBillingActionTone(btn, tone) {
+  if (!btn) return;
+  const t = String(tone || "secondary");
+  btn.classList.toggle("billing-action-btn--primary", t === "primary");
+  btn.classList.toggle("billing-action-btn--quiet", t === "quiet");
+  btn.classList.toggle("billing-action-btn--secondary", t !== "primary" && t !== "quiet");
+}
+
+function billingCancelButtonEl() {
+  return (
+    document.getElementById("billingCancelBtn") ||
+    document.querySelector("#billingCancelSection [data-billing-action]") ||
+    document.querySelector('[data-billing-action="keep"]')
+  );
+}
+
+function restoreBillingCancelButtonHome() {
+  const section = document.getElementById("billingCancelSection");
+  const btn = billingCancelButtonEl();
+  if (!btn) return;
+  btn.classList.remove(
+    "billing-action-btn",
+    "billing-action-btn--primary",
+    "billing-action-btn--quiet",
+    "billing-action-btn--secondary"
+  );
+  if (!btn.classList.contains("billing-cancel__request")) {
+    btn.classList.add("billing-cancel__request");
+  }
+  if (section && btn.parentElement !== section) section.appendChild(btn);
+}
+
+function applyBillingCycleAction(model) {
+  const manage = billingDom().manage || document.getElementById("billingManageSection");
+  const cycleBtn =
+    billingDom().cycleBtn ||
+    manage?.querySelector('[data-billing-action="cycle"]') ||
+    manage?.querySelector('[data-billing-action="payment"]') ||
+    manage?.querySelector('[data-billing-action="retry"]') ||
+    manage?.querySelector(".billing-actions__primary [data-billing-action]");
+  const portalBtn =
+    manage?.querySelector('[data-billing-action="portal"]') ||
+    manage?.querySelector('[data-billing-action="support"]');
+  const primarySlot = manage?.querySelector(".billing-actions__primary");
+  const secondarySlot = manage?.querySelector(".billing-actions__secondary");
+  const scheduledLayout = model.mode === "canceling" || model.mode === "interval_change";
+  const paymentPrimary = model.mode === "payment_issue" || model.mode === "payment_required";
+  const trialReady = model.mode === "trial_scheduled";
+  const errorState = model.mode === "error";
+  const complimentary = model.mode === "complimentary";
+  if (manage) {
+    manage.classList.toggle("billing-actions--scheduled-cancel", scheduledLayout);
+    manage.classList.toggle("billing-actions--payment-issue", paymentPrimary);
+    if (scheduledLayout || paymentPrimary || errorState || trialReady || complimentary) {
+      manage.classList.remove("billing-actions--promote-annual", "billing-actions--interval-annual");
+    }
+  }
+
+  if (complimentary) {
+    if (cycleBtn) setBillingElHidden(cycleBtn, true);
+    if (portalBtn) setBillingElHidden(portalBtn, true);
+    if (primarySlot) setBillingElHidden(primarySlot, true);
+    if (secondarySlot) setBillingElHidden(secondarySlot, true);
+    return;
+  }
+  if (cycleBtn) setBillingElHidden(cycleBtn, false);
+  if (portalBtn) setBillingElHidden(portalBtn, false);
+  if (primarySlot) setBillingElHidden(primarySlot, false);
+  if (secondarySlot) setBillingElHidden(secondarySlot, false);
+
+  if (cycleBtn && !paymentPrimary && !errorState && (cycleBtn.getAttribute("data-billing-action") === "payment" || cycleBtn.getAttribute("data-billing-action") === "retry")) {
+    cycleBtn.setAttribute("data-billing-action", "cycle");
+  }
+  if (portalBtn && !errorState) {
+    portalBtn.setAttribute("data-billing-action", "portal");
+    if (!paymentPrimary && !trialReady) portalBtn.textContent = "Manage Billing";
+  }
+
+  if (scheduledLayout) {
+    if (cycleBtn) {
+      setBillingElHidden(cycleBtn, true);
+      if (secondarySlot) secondarySlot.appendChild(cycleBtn);
+    }
+    const keepBtn = billingCancelButtonEl();
+    const keep = model.keepAction || { label: "Keep my subscription", action: "keep" };
+    if (keepBtn) {
+      keepBtn.textContent = keep.label || "Keep my subscription";
+      keepBtn.setAttribute("data-billing-action", keep.action || "keep");
+      if (keep.targetLookup) keepBtn.setAttribute("data-billing-target-lookup", keep.targetLookup);
+      else keepBtn.removeAttribute("data-billing-target-lookup");
+      keepBtn.classList.remove(
+        "billing-cancel__request",
+        "billing-cancel__request--keep",
+        "billing-cancel__request--danger"
+      );
+      keepBtn.classList.add("billing-action-btn");
+      keepBtn.removeAttribute("disabled");
+      keepBtn.removeAttribute("aria-disabled");
+      setBillingActionTone(keepBtn, "primary");
+    }
+    setBillingActionTone(portalBtn, "secondary");
+    if (portalBtn) portalBtn.textContent = "Manage billing";
+    if (primarySlot) {
+      if (keepBtn) primarySlot.appendChild(keepBtn);
+      if (portalBtn) primarySlot.appendChild(portalBtn);
+      setBillingElHidden(primarySlot, false);
+    }
+    if (secondarySlot) setBillingElHidden(secondarySlot, true);
+    return;
+  }
+
+  if (paymentPrimary) {
+    const pay = model.paymentAction || { label: "Update payment method", action: "payment" };
+    if (cycleBtn) {
+      cycleBtn.textContent = pay.label || "Update payment method";
+      cycleBtn.setAttribute("data-billing-action", pay.action || "payment");
+      cycleBtn.removeAttribute("data-billing-target-lookup");
+      setBillingElHidden(cycleBtn, false);
+      setBillingActionTone(cycleBtn, "primary");
+    }
+    setBillingActionTone(portalBtn, "secondary");
+    if (portalBtn) portalBtn.textContent = "Manage billing";
+    if (manage) manage.classList.add("billing-actions--promote-annual");
+    if (primarySlot) {
+      if (cycleBtn) primarySlot.appendChild(cycleBtn);
+      if (portalBtn) primarySlot.appendChild(portalBtn);
+      setBillingElHidden(primarySlot, false);
+    }
+    if (secondarySlot) setBillingElHidden(secondarySlot, true);
+    return;
+  }
+
+  if (errorState) {
+    const retry = model.cycleAction || { label: "Try again", action: "retry" };
+    if (cycleBtn) {
+      cycleBtn.textContent = retry.label || "Try again";
+      cycleBtn.setAttribute("data-billing-action", retry.action || "retry");
+      cycleBtn.removeAttribute("data-billing-target-lookup");
+      setBillingElHidden(cycleBtn, false);
+      setBillingActionTone(cycleBtn, "primary");
+    }
+    if (portalBtn) {
+      portalBtn.textContent = (model.supportAction && model.supportAction.label) || "Contact support";
+      portalBtn.setAttribute("data-billing-action", "support");
+      setBillingActionTone(portalBtn, "secondary");
+    }
+    if (manage) manage.classList.add("billing-actions--promote-annual");
+    if (primarySlot) {
+      if (cycleBtn) primarySlot.appendChild(cycleBtn);
+      if (portalBtn) primarySlot.appendChild(portalBtn);
+      setBillingElHidden(primarySlot, false);
+    }
+    if (secondarySlot) setBillingElHidden(secondarySlot, true);
+    return;
+  }
+
+  if (trialReady) {
+    const action = model.cycleAction;
+    if (cycleBtn) {
+      if (action) {
+        cycleBtn.textContent = action.label || "Switch to monthly";
+        cycleBtn.setAttribute("data-billing-action", "cycle");
+        if (action.targetLookup) cycleBtn.setAttribute("data-billing-target-lookup", action.targetLookup);
+        else cycleBtn.removeAttribute("data-billing-target-lookup");
+        setBillingElHidden(cycleBtn, false);
+        setBillingActionTone(cycleBtn, "secondary");
+      } else {
+        setBillingElHidden(cycleBtn, true);
+      }
+    }
+    if (portalBtn) {
+      portalBtn.textContent = "Manage billing";
+      setBillingActionTone(portalBtn, "primary");
+    }
+    if (manage) manage.classList.add("billing-actions--promote-annual");
+    if (primarySlot) {
+      if (portalBtn) primarySlot.appendChild(portalBtn);
+      if (cycleBtn && action) primarySlot.appendChild(cycleBtn);
+      setBillingElHidden(primarySlot, false);
+    }
+    if (secondarySlot) setBillingElHidden(secondarySlot, true);
+    return;
+  }
+
+  if (cycleBtn) setBillingElHidden(cycleBtn, false);
+  if (secondarySlot) setBillingElHidden(secondarySlot, false);
+  if (!cycleBtn) return;
+  const action = model.cycleAction;
+  if (action) {
+    cycleBtn.textContent = action.label || "Switch to Annual";
+    cycleBtn.setAttribute("data-billing-action", "cycle");
+    if (action.targetLookup) cycleBtn.setAttribute("data-billing-target-lookup", action.targetLookup);
+    else cycleBtn.removeAttribute("data-billing-target-lookup");
+  }
+  const promoteAnnual = !!(action && action.targetLookup === BILLING_LOOKUP_ANNUAL);
+  if (manage) {
+    manage.classList.toggle("billing-actions--promote-annual", promoteAnnual);
+    manage.classList.toggle("billing-actions--interval-annual", !promoteAnnual && !!action);
+  }
+  if (!primarySlot || !secondarySlot) return;
+  if (promoteAnnual) {
+    setBillingActionTone(cycleBtn, "primary");
+    setBillingActionTone(portalBtn, "secondary");
+    primarySlot.appendChild(cycleBtn);
+    if (portalBtn) primarySlot.appendChild(portalBtn);
+    setBillingElHidden(primarySlot, false);
+    if (secondarySlot) setBillingElHidden(secondarySlot, true);
+    return;
+  }
+  setBillingActionTone(cycleBtn, "secondary");
+  setBillingActionTone(portalBtn, "quiet");
+  if (portalBtn) secondarySlot.appendChild(portalBtn);
+  secondarySlot.appendChild(cycleBtn);
+  setBillingElHidden(primarySlot, true);
+}
+
+function applyBillingCancelSection(model) {
+  restoreBillingCancelButtonHome();
+  const dom = billingDom();
+  const sectionEl = dom.cancel || billingCancelSectionEl;
+  if (!sectionEl) return;
+  const show = !!model.showCancel;
+  setBillingElHidden(sectionEl, !show);
+  if (!show) return;
+
+  const section = model.cancelSection || {
+    title: "Cancellation",
+    lede: model.cancelLede || "You can cancel your subscription at any time.",
+    buttonLabel: "Cancel subscription",
+    action: "cancel",
+    tone: "danger",
+  };
+  if (dom.cancelTitle) dom.cancelTitle.textContent = section.title || "Cancellation";
+  if (dom.cancelLede) dom.cancelLede.textContent = section.lede || "";
+  sectionEl.classList.toggle("billing-cancel--keep", section.tone === "keep");
+  const btn = dom.cancelBtn;
+  if (btn) {
+    btn.textContent = section.buttonLabel || "Cancel subscription";
+    btn.setAttribute("data-billing-action", section.action || "cancel");
+    btn.classList.toggle("billing-cancel__request--keep", section.tone === "keep");
+    btn.classList.toggle("billing-cancel__request--danger", section.tone !== "keep");
+  }
+}
+
+/** Expired-trial only: merge overview + side into one two-column Billing panel. */
+function applyBillingEndedPanelLayout(enabled) {
+  const shell = document.querySelector(".billing-page__shell");
+  const overview = document.querySelector(".billing-overview");
+  const primary = document.querySelector(".billing-primary");
+  const hero = overview?.querySelector(".billing-hero");
+  const summary =
+    document.getElementById("billingLifecycleBlock") || overview?.querySelector(".billing-summary");
+  const side = document.querySelector(".billing-side");
+  if (!shell || !overview || !primary || !hero || !summary || !side) return;
+
+  shell.classList.toggle("billing-page__shell--ended", !!enabled);
+  shell.classList.toggle("billing-page__shell--natural", !!enabled);
+  overview.classList.toggle("billing-overview--ended", !!enabled);
+  overview.classList.toggle("billing-overview--natural-height", !!enabled);
+
+  let body = overview.querySelector(".billing-ended-body");
+  let main = overview.querySelector(".billing-ended-main");
+
+  if (enabled) {
+    if (!body) {
+      body = document.createElement("div");
+      body.className = "billing-ended-body";
+      const title = hero.querySelector(".billing-hero__title");
+      if (title && title.nextSibling) hero.insertBefore(body, title.nextSibling);
+      else hero.appendChild(body);
+    }
+    if (!main) {
+      main = document.createElement("div");
+      main.className = "billing-ended-main";
+      body.insertBefore(main, body.firstChild);
+    }
+    if (summary.parentElement !== main) main.appendChild(summary);
+    if (side.parentElement !== body) body.appendChild(side);
+    return;
+  }
+
+  if (summary.parentElement && summary.parentElement.classList.contains("billing-ended-main")) {
+    hero.appendChild(summary);
+  }
+  if (side.parentElement !== shell) {
+    shell.appendChild(side);
+  }
+  if (body) body.remove();
+}
+
+function ensureBillingManageDueEl(hintEl) {
+  let el = document.getElementById("billingManageDue");
+  if (el) return el;
+  if (!hintEl || !hintEl.parentElement) return null;
+  el = document.createElement("p");
+  el.id = "billingManageDue";
+  el.className = "billing-actions__due";
+  el.hidden = true;
+  hintEl.insertAdjacentElement("afterend", el);
+  return el;
+}
+
+function applyBillingLifecycleModel(model) {
+  const dom = billingDom();
+  const planEl = dom.plan || billingPlanEl;
+  const frequencyEl = dom.frequency || billingFrequencyEl;
+  const nextDateEl = dom.nextDate || billingNextDateEl;
+  if (!frequencyEl || !nextDateEl) {
+    setBillingLifecycleCallout({
+      kind: "alert",
+      title: "Couldn’t render billing status",
+      text: "Try refreshing the page. If this keeps happening, contact support.",
+    });
+    return;
+  }
+
+  try {
+    if (dom.planHeadline) dom.planHeadline.textContent = model.productName;
+    if (dom.planContext) dom.planContext.textContent = model.productCopy;
+
+    // Paint structure before clearing the loading callout so the pane never goes blank.
+    setBillingElHidden(dom.meta || billingMetaEl, !model.showMeta);
+    setBillingElHidden(dom.manage || billingManageSectionEl, !model.showManage);
+    const overview = document.querySelector(".billing-overview");
+    const shell = document.querySelector(".billing-page__shell");
+    if (overview) {
+      overview.classList.toggle(
+        "billing-overview--trial-prepay",
+        model.mode === "trial" || model.mode === "trial_ended" || model.mode === "canceled"
+      );
+    }
+    applyBillingEndedPanelLayout(model.mode === "trial_ended" || model.mode === "canceled");
+    applyBillingCancelSection(model);
+
+    if (model.showMeta && model.meta) {
+      if (planEl) planEl.textContent = model.meta.plan;
+      if (dom.priceLabel) dom.priceLabel.textContent = model.meta.priceLabel;
+      const priceEl = dom.frequencyValue || frequencyEl;
+      if (priceEl) priceEl.textContent = model.meta.price;
+      if (dom.frequencyNote) {
+        const note = String(model.meta.priceSupport || "").trim();
+        dom.frequencyNote.textContent = note;
+        setBillingElHidden(dom.frequencyNote, !note);
+      }
+      if (dom.nextDateLabel) dom.nextDateLabel.textContent = model.meta.dateLabel;
+      nextDateEl.textContent = model.meta.date;
+      if (dom.accountStatus) {
+        dom.accountStatus.innerHTML = billingStatusPillHtml(model.meta.statusLabel, model.meta.statusTone, {
+          showIcon: model.meta.statusIcon !== false,
+        });
+      }
+    } else {
+      if (planEl) planEl.textContent = "";
+      const priceEl = dom.frequencyValue || frequencyEl;
+      if (priceEl) priceEl.textContent = "";
+      if (dom.frequencyNote) {
+        dom.frequencyNote.textContent = "";
+        setBillingElHidden(dom.frequencyNote, true);
+      }
+      nextDateEl.textContent = "";
+      if (dom.accountStatus) dom.accountStatus.innerHTML = "";
+    }
+
+    if (dom.manageHeading && model.manageTitle) {
+      dom.manageHeading.textContent = model.manageTitle;
+    }
+    if (dom.manageHint && model.manageHint) dom.manageHint.textContent = model.manageHint;
+    const dueEl = ensureBillingManageDueEl(dom.manageHint);
+    if (dueEl) {
+      const due = String(model.manageDue || "").trim();
+      dueEl.textContent = due;
+      setBillingElHidden(dueEl, !due);
+    }
+    applyBillingCycleAction(model);
+    const reassure = document.getElementById("billingManageReassure");
+    if (reassure) setBillingElHidden(reassure, model.mode === "error" || model.mode === "complimentary" || !model.showManage);
+
+    setBillingPrimaryCta(model.primaryCta);
+    setBillingSubscribeChoices(model.subscribeChoices || null);
+    applyBillingNotes(model.notesKind || model.mode);
+    setBillingLifecycleCallout(model.callout);
+  } catch (err) {
+    try {
+      console.warn("[billing-ui]", err && err.message ? err.message : err);
+    } catch (_) {}
+    setBillingLifecycleCallout({
+      kind: "alert",
+      title: "Couldn’t render billing status",
+      text: "Try refreshing the page. If this keeps happening, contact support.",
+    });
+  }
+}
+
+function billingErrorLifecycleModel() {
+  return {
+    mode: "error",
+    productName: "Cash Forecast",
+    productCopy: getBillingPlanContext("base"),
+    showMeta: false,
+    showManage: true,
+    showCancel: false,
+    callout: null,
+    primaryCta: null,
+    meta: null,
+    manageTitle: "We couldn't load your billing information",
+    manageHint: "Your BalanceWhiz data is safe. Please try again in a moment.",
+    cycleAction: { label: "Try again", action: "retry" },
+    supportAction: { label: "Contact support", href: "/contactus/" },
+    notesKind: "error",
+    cancelLede: "",
+  };
+}
+
+function ensureBillingSyncEl() {
+  let el = document.getElementById("billingSyncStatus");
+  if (el) return el;
+  el = document.createElement("p");
+  el.id = "billingSyncStatus";
+  el.className = "billing-sync-status";
+  el.hidden = true;
+  const overview = document.querySelector(".billing-overview");
+  const summary =
+    document.getElementById("billingLifecycleBlock") || overview?.querySelector(".billing-summary");
+  if (summary && summary.parentElement) {
+    summary.insertAdjacentElement("afterend", el);
+    return el;
+  }
+  if (overview) overview.appendChild(el);
+  return el;
+}
+
+function setBillingSyncHint(text) {
+  const el = ensureBillingSyncEl();
+  if (!el) return;
+  const msg = String(text || "").trim();
+  el.textContent = msg;
+  setBillingElHidden(el, !msg);
+}
+
+function applyBillingStatusToPanel(status) {
+  const hasFamily = ensureActiveFamilyIdForBilling() > 0;
+  // Null/empty payloads are load failures — not "trial ended".
+  if (hasFamily && (status == null || typeof status !== "object")) {
+    applyBillingLifecycleModel(billingErrorLifecycleModel());
+    return;
+  }
+  const model = resolveBillingLifecycleModel(status, { hasFamily });
+  applyBillingLifecycleModel(model);
+}
+
+let billingPanelRenderToken = 0;
+
+function billingPanelLooksBlank() {
+  const dom = billingDom();
+  const metaEl = dom.meta || billingMetaEl;
+  const manageEl = dom.manage || billingManageSectionEl;
+  const calloutEl = dom.renewal || billingRenewalMessageEl;
+  const ctaEl = dom.primaryCta || billingPrimaryCtaEl;
+  const subscribeEl = dom.subscribe;
+  const metaOn = metaEl && !metaEl.hasAttribute("hidden");
+  const manageOn = manageEl && !manageEl.hasAttribute("hidden");
+  const calloutOn = calloutEl && !calloutEl.hasAttribute("hidden");
+  const ctaOn = ctaEl && !ctaEl.hasAttribute("hidden");
+  const subscribeOn = subscribeEl && !subscribeEl.hasAttribute("hidden");
+  return !(metaOn || manageOn || calloutOn || ctaOn || subscribeOn);
+}
+
+async function renderBillingPanel({ force = false } = {}) {
+  const dom = billingDom();
+  if (!(dom.frequency || billingFrequencyEl) || !(dom.nextDate || billingNextDateEl)) {
+    return;
+  }
+  wireBillingActionsOnce();
+
+  const token = ++billingPanelRenderToken;
+
+  let fid = ensureActiveFamilyIdForBilling();
+  if (!fid) {
+    try {
+      if (!Array.isArray(state.families) || state.families.length === 0) {
+        await loadFamilies();
+      }
+    } catch (_) {}
+    fid = ensureActiveFamilyIdForBilling();
+  }
+
+  // Stale runs may continue only to fill a still-blank pane (never discard a good paint).
+  const isStale = () => token !== billingPanelRenderToken;
+
+  if (!fid) {
+    if (!isStale() || billingPanelLooksBlank()) applyBillingStatusToPanel(null);
+    return;
+  }
+
+  const cached = cachedBillingStatusForActiveFamily();
+  if (cached) {
+    if (!isStale() || billingPanelLooksBlank()) applyBillingStatusToPanel(cached);
+    if (force) setBillingSyncHint("Updating…");
+  } else if (!isStale() || billingPanelLooksBlank()) {
+    setBillingLifecycleCallout({
+      kind: "info",
+      title: "Loading billing status…",
+      text: "Fetching your subscription details.",
+    });
+  }
+
+  try {
+    // First paint from DB (fast). Then optional Stripe sync when force/portal return.
+    const status = await fetchBillingStatus({ force: false });
+    if (!isStale() || billingPanelLooksBlank()) {
+      applyBillingStatusToPanel(status);
+      if (!force) setBillingSyncHint("");
+    }
+
+    if (force) {
+      setBillingSyncHint("Updating…");
+      try {
+        const synced = await fetchBillingStatus({ force: true });
+        if (!isStale() || billingPanelLooksBlank()) {
+          applyBillingStatusToPanel(synced);
+        }
+        if (!isStale()) setBillingSyncHint("");
+      } catch (syncErr) {
+        // Keep the last valid paint; sync is best-effort.
+        if (!isStale()) setBillingSyncHint("Updating…");
+        try {
+          console.warn("[billing-sync]", syncErr && syncErr.message ? syncErr.message : syncErr);
+        } catch (_) {}
+        window.setTimeout(() => {
+          if (token === billingPanelRenderToken) setBillingSyncHint("");
+        }, 2500);
+      }
+    }
+  } catch (err) {
+    if (cached) {
+      if (!isStale()) setBillingSyncHint("Couldn't refresh. Showing your last known billing details.");
+    } else if ((!isStale() || billingPanelLooksBlank())) {
+      applyBillingLifecycleModel(billingErrorLifecycleModel());
+    }
+    try {
+      console.warn("[billing-status]", err && err.message ? err.message : err);
+    } catch (_) {}
+  }
+}
+
+let _billingIntervalConfirmEl = null;
+let _billingIntervalConfirmResolve = null;
+let _billingIntervalConfirmReturnFocus = null;
+let _billingIntervalConfirmPayHandler = null;
+let _billingIntervalConfirmBusy = false;
+let _billingIntervalSwitchInFlight = false;
+
+function billingIntervalSwitchRenewalCopy(status) {
+  const raw = status && (status.interval_switch_renewal_on || status.switch_renewal_on);
+  const iso = isoDateFromApiTimestamp(raw);
+  const longDate = iso ? formatBillingLongDate(iso) : "";
+  if (!longDate || longDate === "—") {
+    return ["Your next renewal will be one year from today."];
+  }
+  return ["Your next renewal will be ", { em: longDate }, "."];
+}
+
+function billingIntervalSwitchCopy(targetLookup, status) {
+  const trialScheduled = isBillingTrialPlanScheduled(status);
+  if (String(targetLookup || "").trim() === BILLING_LOOKUP_ANNUAL) {
+    if (trialScheduled) {
+      return {
+        title: "Switch to annual billing?",
+        paragraphs: [
+          [
+            "You'll switch to annual billing at ",
+            { em: `$${BILLING_ANNUAL_AMOUNT_USD}/year` },
+            ". You won't be charged until your trial ends.",
+          ],
+        ],
+        confirmLabel: "Switch to annual",
+      };
+    }
+    return {
+      title: "Switch to annual billing?",
+      paragraphs: [
+        [
+          "You'll switch to annual billing today at ",
+          { em: `$${BILLING_ANNUAL_AMOUNT_USD}/year` },
+          ". Any unused time from your current monthly period will be credited toward today's charge.",
+        ],
+        billingIntervalSwitchRenewalCopy(status),
+      ],
+      confirmLabel: "Switch to annual",
+    };
+  }
+  if (trialScheduled) {
+    return {
+      title: "Switch to monthly billing?",
+      paragraphs: [
+        [
+          "You'll switch to monthly billing at ",
+          { em: `$${BILLING_MONTHLY_AMOUNT_USD}/month` },
+          ". You won't be charged until your trial ends.",
+        ],
+      ],
+      confirmLabel: "Switch to monthly",
+    };
+  }
+  const changeIso = isoDateFromApiTimestamp(status && status.current_period_end);
+  const changeLong = changeIso ? formatBillingLongDate(changeIso) : "";
+  return {
+    title: "Switch to monthly billing?",
+    paragraphs: [
+      changeLong
+        ? [
+            "Your annual subscription will stay active through ",
+            { em: changeLong },
+            ". Starting then, you'll be billed ",
+            { em: `$${BILLING_MONTHLY_AMOUNT_USD}/month` },
+            ".",
+          ]
+        : [
+            "You'll switch to monthly billing at the end of your current annual period. Unused annual time won't be credited.",
+          ],
+    ],
+    confirmLabel: "Switch to monthly",
+  };
+}
+
+function renderBillingIntervalConfirmParagraph(parts) {
+  const p = document.createElement("p");
+  (parts || []).forEach((part) => {
+    if (typeof part === "string") {
+      p.appendChild(document.createTextNode(part));
+      return;
+    }
+    const em = document.createElement("strong");
+    em.className = "billing-interval-confirm__em";
+    em.textContent = part && part.em ? String(part.em) : "";
+    p.appendChild(em);
+  });
+  return p;
+}
+
+function closeBillingIntervalConfirm(confirmed) {
+  if (_billingIntervalConfirmBusy && !confirmed) return;
+  const wrap = _billingIntervalConfirmEl;
+  const resolve = _billingIntervalConfirmResolve;
+  const returnFocus = _billingIntervalConfirmReturnFocus;
+  _billingIntervalConfirmResolve = null;
+  _billingIntervalConfirmReturnFocus = null;
+  _billingIntervalConfirmPayHandler = null;
+  _billingIntervalConfirmBusy = false;
+  if (wrap) {
+    wrap.classList.remove("modal-overlay--open");
+    wrap.setAttribute("aria-hidden", "true");
+    const okBtn = wrap.querySelector("#billingIntervalConfirmOk");
+    const cancelBtn = wrap.querySelector("#billingIntervalConfirmCancel");
+    const errEl = wrap.querySelector("#billingIntervalConfirmError");
+    if (okBtn) {
+      okBtn.disabled = false;
+      okBtn.removeAttribute("aria-busy");
+    }
+    if (cancelBtn) cancelBtn.disabled = false;
+    if (errEl) {
+      errEl.textContent = "";
+      errEl.hidden = true;
+    }
+  }
+  if (resolve) resolve(!!confirmed);
+  if (returnFocus && typeof returnFocus.focus === "function") {
+    try {
+      returnFocus.focus();
+    } catch (_) {}
+  }
+}
+
+function billingIntervalConfirmFocusables(wrap) {
+  return [wrap?.querySelector("#billingIntervalConfirmCancel"), wrap?.querySelector("#billingIntervalConfirmOk")].filter(
+    (el) => el && !el.disabled
+  );
+}
+
+function ensureBillingIntervalConfirmModal() {
+  if (_billingIntervalConfirmEl) return _billingIntervalConfirmEl;
+  const wrap = document.createElement("div");
+  wrap.id = "billingIntervalConfirmModal";
+  wrap.className = "modal-overlay";
+  wrap.setAttribute("aria-hidden", "true");
+  wrap.innerHTML =
+    '<div class="modal modal--billing-interval-confirm" role="dialog" aria-modal="true" aria-labelledby="billingIntervalConfirmTitle" aria-describedby="billingIntervalConfirmBody" tabindex="-1">' +
+    '<h3 id="billingIntervalConfirmTitle" class="billing-interval-confirm__title"></h3>' +
+    '<div id="billingIntervalConfirmBody" class="billing-interval-confirm__body"></div>' +
+    '<p id="billingIntervalConfirmError" class="billing-interval-confirm__error" hidden></p>' +
+    '<div class="modal-actions billing-interval-confirm__actions">' +
+    '<button type="button" class="billing-action-btn billing-action-btn--secondary billing-interval-confirm__cancel" id="billingIntervalConfirmCancel">Cancel</button>' +
+    '<button type="button" class="billing-action-btn billing-action-btn--primary billing-interval-confirm__primary" id="billingIntervalConfirmOk">Switch to annual</button>' +
+    "</div></div>";
+  document.body.appendChild(wrap);
+  wrap.querySelector("#billingIntervalConfirmCancel")?.addEventListener("click", () => closeBillingIntervalConfirm(false));
+  wrap.querySelector("#billingIntervalConfirmOk")?.addEventListener("click", () => {
+    if (_billingIntervalConfirmBusy) return;
+    if (typeof _billingIntervalConfirmPayHandler === "function") {
+      void _billingIntervalConfirmPayHandler();
+      return;
+    }
+    closeBillingIntervalConfirm(true);
+  });
+  wrap.addEventListener("click", (e) => {
+    if (e.target === wrap) closeBillingIntervalConfirm(false);
+  });
+  wrap.addEventListener("keydown", (e) => {
+    if (e.key !== "Tab") return;
+    const focusables = billingIntervalConfirmFocusables(wrap);
+    if (!focusables.length) return;
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    const active = document.activeElement;
+    if (e.shiftKey && (active === first || !wrap.contains(active))) {
+      e.preventDefault();
+      last.focus();
+      return;
+    }
+    if (!e.shiftKey && (active === last || !wrap.contains(active))) {
+      e.preventDefault();
+      first.focus();
+    }
+  });
+  _billingIntervalConfirmEl = wrap;
+  return wrap;
+}
+
+function confirmBillingIntervalSwitch(targetLookup) {
+  return new Promise((resolve) => {
+    if (_billingIntervalConfirmResolve) closeBillingIntervalConfirm(false);
+    const copy = billingIntervalSwitchCopy(targetLookup, cachedBillingStatusForActiveFamily());
+    const wrap = ensureBillingIntervalConfirmModal();
+    _billingIntervalConfirmPayHandler = null;
+    _billingIntervalConfirmBusy = false;
+    _billingIntervalConfirmResolve = resolve;
+    _billingIntervalConfirmReturnFocus = document.activeElement;
+    const titleEl = wrap.querySelector("#billingIntervalConfirmTitle");
+    const bodyEl = wrap.querySelector("#billingIntervalConfirmBody");
+    const okBtn = wrap.querySelector("#billingIntervalConfirmOk");
+    const errEl = wrap.querySelector("#billingIntervalConfirmError");
+    if (titleEl) titleEl.textContent = copy.title;
+    if (bodyEl) {
+      bodyEl.replaceChildren();
+      copy.paragraphs.forEach((parts) => {
+        bodyEl.appendChild(renderBillingIntervalConfirmParagraph(parts));
+      });
+    }
+    if (errEl) {
+      errEl.textContent = "";
+      errEl.hidden = true;
+    }
+    if (okBtn) {
+      okBtn.disabled = false;
+      okBtn.removeAttribute("aria-busy");
+      okBtn.textContent = copy.confirmLabel;
+    }
+    wrap.classList.add("modal-overlay--open");
+    wrap.setAttribute("aria-hidden", "false");
+    window.requestAnimationFrame(() => {
+      try {
+        (okBtn || wrap.querySelector("#billingIntervalConfirmCancel"))?.focus();
+      } catch (_) {}
+    });
+  });
+}
+
+function renderAnnualSwitchPreviewBody(preview) {
+  const wrap = document.createElement("div");
+  wrap.className = "billing-interval-confirm__preview";
+
+  const breakdown = document.createElement("div");
+  breakdown.className = "billing-interval-confirm__breakdown";
+  const rows = [
+    ["Annual subscription", String(preview.annual_amount_label || `$${BILLING_ANNUAL_AMOUNT_USD}/year`)],
+    ["Credit for unused monthly time", String(preview.credit_label || "−$0.00")],
+    ["Due today", String(preview.amount_due_label || "$0.00"), "due"],
+  ];
+  rows.forEach(([label, value, kind]) => {
+    const row = document.createElement("div");
+    row.className = kind === "due" ? "billing-interval-confirm__row billing-interval-confirm__row--due" : "billing-interval-confirm__row";
+    const k = document.createElement("span");
+    k.textContent = label;
+    const v = document.createElement("span");
+    v.textContent = value;
+    row.appendChild(k);
+    row.appendChild(v);
+    breakdown.appendChild(row);
+  });
+  wrap.appendChild(breakdown);
+
+  const renewalIso = isoDateFromApiTimestamp(preview.next_renewal_on);
+  const renewalLong = renewalIso ? formatBillingLongDate(renewalIso) : "";
+  const annualLabel = String(preview.annual_amount_label || `$${BILLING_ANNUAL_AMOUNT_USD}/year`);
+  const p = document.createElement("p");
+  p.appendChild(document.createTextNode("Your annual plan will start today. Your next renewal will be "));
+  if (renewalLong && renewalLong !== "—") {
+    const em = document.createElement("strong");
+    em.className = "billing-interval-confirm__em";
+    em.textContent = renewalLong;
+    p.appendChild(em);
+  } else {
+    p.appendChild(document.createTextNode("one year from today"));
+  }
+  p.appendChild(document.createTextNode(` at ${annualLabel}.`));
+  wrap.appendChild(p);
+  return wrap;
+}
+
+function setBillingIntervalConfirmBusy(busy, processingLabel) {
+  _billingIntervalConfirmBusy = !!busy;
+  const wrap = _billingIntervalConfirmEl;
+  const okBtn = wrap?.querySelector("#billingIntervalConfirmOk");
+  const cancelBtn = wrap?.querySelector("#billingIntervalConfirmCancel");
+  if (okBtn) {
+    okBtn.disabled = !!busy;
+    if (busy) {
+      okBtn.setAttribute("aria-busy", "true");
+      if (processingLabel) okBtn.textContent = processingLabel;
+    } else {
+      okBtn.removeAttribute("aria-busy");
+    }
+  }
+  if (cancelBtn) cancelBtn.disabled = !!busy;
+}
+
+function showBillingIntervalConfirmError(message) {
+  const errEl = _billingIntervalConfirmEl?.querySelector("#billingIntervalConfirmError");
+  if (!errEl) {
+    showBwToast(message);
+    return;
+  }
+  errEl.textContent = message || "Could not update billing. Try again.";
+  errEl.hidden = false;
+}
+
+function confirmAnnualSwitchWithPreview(preview) {
+  return new Promise((resolve) => {
+    if (_billingIntervalConfirmResolve) closeBillingIntervalConfirm(false);
+    const wrap = ensureBillingIntervalConfirmModal();
+    _billingIntervalConfirmPayHandler = async () => {
+      if (_billingIntervalConfirmBusy || _billingIntervalSwitchInFlight) return;
+      const okBtn = wrap.querySelector("#billingIntervalConfirmOk");
+      const payLabel = `Confirm & pay ${preview.amount_due_label || ""}`.trim();
+      const errEl = wrap.querySelector("#billingIntervalConfirmError");
+      if (errEl) {
+        errEl.textContent = "";
+        errEl.hidden = true;
+      }
+      setBillingIntervalConfirmBusy(true, "Processing…");
+      try {
+        await postBillingIntervalSwitch({
+          targetLookup: BILLING_LOOKUP_ANNUAL,
+          prorationDate: preview.proration_date,
+          successToast: `Switched to ${preview.annual_amount_label || defaultCashForecastAnnualPriceLabel()}.`,
+        });
+        closeBillingIntervalConfirm(true);
+      } catch (err) {
+        setBillingIntervalConfirmBusy(false);
+        if (okBtn) okBtn.textContent = payLabel;
+        showBillingIntervalConfirmError(
+          err && err.message ? err.message : "Could not switch to annual billing. Try again."
+        );
+      }
+    };
+    _billingIntervalConfirmResolve = resolve;
+    _billingIntervalConfirmReturnFocus = document.activeElement;
+    const titleEl = wrap.querySelector("#billingIntervalConfirmTitle");
+    const bodyEl = wrap.querySelector("#billingIntervalConfirmBody");
+    const okBtn = wrap.querySelector("#billingIntervalConfirmOk");
+    const errEl = wrap.querySelector("#billingIntervalConfirmError");
+    if (titleEl) titleEl.textContent = "Switch to annual billing?";
+    if (bodyEl) {
+      bodyEl.replaceChildren();
+      bodyEl.appendChild(renderAnnualSwitchPreviewBody(preview));
+    }
+    if (errEl) {
+      errEl.textContent = "";
+      errEl.hidden = true;
+    }
+    if (okBtn) {
+      okBtn.disabled = false;
+      okBtn.removeAttribute("aria-busy");
+      okBtn.textContent = `Confirm & pay ${preview.amount_due_label || ""}`.trim();
+    }
+    wrap.classList.add("modal-overlay--open");
+    wrap.setAttribute("aria-hidden", "false");
+    window.requestAnimationFrame(() => {
+      try {
+        (okBtn || wrap.querySelector("#billingIntervalConfirmCancel"))?.focus();
+      } catch (_) {}
+    });
+  });
+}
+
+async function fetchAnnualSwitchPreview() {
+  const body = new FormData();
+  body.set("family_id", String(state.activeFamilyId));
+  body.set("target_lookup", BILLING_LOOKUP_ANNUAL);
+  return apiForm("/preview-billing-interval", body);
+}
+
+async function postBillingIntervalSwitch({ targetLookup, prorationDate, successToast } = {}) {
+  if (_billingIntervalSwitchInFlight) {
+    const err = new Error("Billing is already updating.");
+    throw err;
+  }
+  _billingIntervalSwitchInFlight = true;
+  try {
+    const body = new FormData();
+    body.set("family_id", String(state.activeFamilyId));
+    body.set("target_lookup", targetLookup);
+    if (prorationDate != null && String(prorationDate).trim()) {
+      body.set("proration_date", String(prorationDate));
+    }
+    const data = await apiForm("/switch-billing-interval", body);
+    const cached = cachedBillingStatusForActiveFamily() || {};
+    if (data && data.scheduled) {
+      const when = isoDateFromApiTimestamp(data.pending_change_on);
+      const whenLong = when ? formatBillingLongDate(when) : "";
+      applyBillingStatusToPanel({
+        ...cached,
+        lookup_key: data.lookup_key || cached.lookup_key,
+        pending_lookup_key: data.pending_lookup_key || targetLookup,
+        pending_change_on: data.pending_change_on || cached.pending_change_on,
+      });
+      showBwToast(
+        whenLong ? `Monthly billing scheduled for ${whenLong}.` : "Monthly billing scheduled for your next renewal."
+      );
+    } else {
+      const lookup = (data && data.lookup_key) || targetLookup;
+      const label =
+        (data && data.price_label) ||
+        (lookup === BILLING_LOOKUP_ANNUAL
+          ? defaultCashForecastAnnualPriceLabel()
+          : defaultCashForecastPriceLabel());
+      applyBillingStatusToPanel({
+        ...cached,
+        lookup_key: lookup,
+        pending_lookup_key: null,
+        pending_change_on: null,
+      });
+      showBwToast(successToast || (data && data.already ? `You're on ${label}.` : `Switched to ${label}.`));
+    }
+    invalidateBillingStatusCache();
+    await renderBillingPanel({ force: true });
+    return data;
+  } finally {
+    _billingIntervalSwitchInFlight = false;
+  }
+}
+
+async function switchBillingIntervalForActiveFamily() {
+  const apiBase = apiBaseUrl();
+  if (!apiBase) {
+    showBwToast("Billing isn’t configured on this build.");
+    return;
+  }
+  if (!state.activeFamilyId) {
+    showBwToast("Choose a family first.");
+    return;
+  }
+  const cycleBtn =
+    billingDom().cycleBtn ||
+    document.querySelector('#billingManageSection [data-billing-action="cycle"]');
+  if (cycleBtn && (cycleBtn.disabled || cycleBtn.getAttribute("aria-busy") === "true")) return;
+  if (_billingIntervalSwitchInFlight || _billingIntervalConfirmBusy) return;
+  if (_billingIntervalConfirmEl?.classList.contains("modal-overlay--open")) return;
+  const targetLookup = cycleBtn
+    ? String(cycleBtn.getAttribute("data-billing-target-lookup") || "").trim()
+    : "";
+  if (targetLookup !== BILLING_LOOKUP_MONTHLY && targetLookup !== BILLING_LOOKUP_ANNUAL) {
+    showBwToast("Could not determine the billing interval to switch to.");
+    return;
+  }
+
+  const previousLabel = cycleBtn ? cycleBtn.textContent : "";
+  const paidAnnualSwitch = targetLookup === BILLING_LOOKUP_ANNUAL && !isBillingTrialPlanScheduled();
+  if (paidAnnualSwitch) {
+    if (cycleBtn) {
+      cycleBtn.disabled = true;
+      cycleBtn.setAttribute("aria-busy", "true");
+      cycleBtn.textContent = "Checking price…";
+    }
+    let preview = null;
+    try {
+      preview = await fetchAnnualSwitchPreview();
+    } catch (err) {
+      showBwToast(err && err.message ? err.message : "Could not calculate today’s charge. Try again.");
+      if (cycleBtn) {
+        cycleBtn.disabled = false;
+        cycleBtn.removeAttribute("aria-busy");
+        if (previousLabel) cycleBtn.textContent = previousLabel;
+      }
+      return;
+    }
+    if (cycleBtn) {
+      cycleBtn.disabled = false;
+      cycleBtn.removeAttribute("aria-busy");
+      if (previousLabel) cycleBtn.textContent = previousLabel;
+    }
+    if (!preview || preview.amount_due_label == null) {
+      showBwToast("Could not calculate today’s charge. Try again.");
+      return;
+    }
+    await confirmAnnualSwitchWithPreview(preview);
+    return;
+  }
+
+  const confirmed = await confirmBillingIntervalSwitch(targetLookup);
+  if (!confirmed) return;
+
+  if (cycleBtn) {
+    cycleBtn.disabled = true;
+    cycleBtn.setAttribute("aria-busy", "true");
+    cycleBtn.textContent = "Updating…";
+  }
+  try {
+    showBwToast("Updating billing…");
+    await postBillingIntervalSwitch({ targetLookup });
+  } catch (err) {
+    showBwToast(err && err.message ? err.message : "Could not switch billing interval.");
+  } finally {
+    if (cycleBtn) {
+      cycleBtn.disabled = false;
+      cycleBtn.removeAttribute("aria-busy");
+      if (previousLabel) cycleBtn.textContent = previousLabel;
+    }
+  }
+}
+
+async function releaseScheduledIntervalForActiveFamily() {
+  const apiBase = apiBaseUrl();
+  if (!apiBase) {
+    showBwToast("Billing isn’t configured on this build.");
+    return;
+  }
+  if (!state.activeFamilyId) {
+    showBwToast("Choose a family first.");
+    return;
+  }
+  const keepBtn = billingCancelButtonEl();
+  if (keepBtn && (keepBtn.disabled || keepBtn.getAttribute("aria-busy") === "true")) return;
+  const cached = cachedBillingStatusForActiveFamily() || {};
+  const pending = pendingIntervalChangeFromStatus(cached);
+  const targetLookup =
+    (keepBtn && String(keepBtn.getAttribute("data-billing-target-lookup") || "").trim()) ||
+    String(cached.lookup_key || "").trim() ||
+    (pending && pending.lookupKey === BILLING_LOOKUP_MONTHLY ? BILLING_LOOKUP_ANNUAL : BILLING_LOOKUP_MONTHLY);
+  if (targetLookup !== BILLING_LOOKUP_MONTHLY && targetLookup !== BILLING_LOOKUP_ANNUAL) {
+    showBwToast("Could not determine the current billing interval.");
+    return;
+  }
+  const previousLabel = keepBtn ? keepBtn.textContent : "";
+  if (keepBtn) {
+    keepBtn.disabled = true;
+    keepBtn.setAttribute("aria-busy", "true");
+    keepBtn.textContent = "Updating…";
+  }
+  try {
+    const body = new FormData();
+    body.set("family_id", String(state.activeFamilyId));
+    body.set("target_lookup", targetLookup);
+    const data = await apiForm("/switch-billing-interval", body);
+    applyBillingStatusToPanel({
+      ...cached,
+      lookup_key: data && data.lookup_key ? data.lookup_key : targetLookup,
+      pending_lookup_key: null,
+      pending_change_on: null,
+    });
+    showBwToast(
+      targetLookup === BILLING_LOOKUP_ANNUAL ? "Annual billing will continue." : "Monthly billing will continue."
+    );
+    invalidateBillingStatusCache();
+    await renderBillingPanel({ force: true });
+  } catch (err) {
+    showBwToast(err && err.message ? err.message : "Could not keep the current billing interval.");
+    if (keepBtn) {
+      keepBtn.disabled = false;
+      keepBtn.removeAttribute("aria-busy");
+      if (previousLabel) keepBtn.textContent = previousLabel;
+    }
+  }
+}
+
+async function scheduleBillingCancellationForActiveFamily() {
+  const apiBase = apiBaseUrl();
+  if (!apiBase) {
+    showBwToast("Billing isn’t configured on this build.");
+    return;
+  }
+  if (!state.activeFamilyId) {
+    showBwToast("Choose a family first.");
+    return;
+  }
+  const cached = cachedBillingStatusForActiveFamily() || {};
+  const accessIso = isoDateFromApiTimestamp(cached.current_period_end);
+  const accessLong = accessIso ? formatBillingLongDate(accessIso) : "";
+  const ok = await bwConfirm({
+    title: "Cancel subscription?",
+    body: accessLong && accessLong !== "—"
+      ? `You'll keep access through ${accessLong}. Your subscription will not renew after that date.`
+      : "You'll keep access through the end of your current paid period. Your subscription will not renew after that date.",
+    confirmLabel: "Cancel subscription",
+    cancelLabel: "Keep my subscription",
+    danger: true,
+    nested: false,
+  });
+  if (!ok) return;
+  const cancelBtn = billingCancelButtonEl();
+  if (cancelBtn && cancelBtn.getAttribute("data-billing-action") === "cancel") {
+    if (cancelBtn.disabled || cancelBtn.getAttribute("aria-busy") === "true") return;
+    cancelBtn.disabled = true;
+    cancelBtn.setAttribute("aria-busy", "true");
+    cancelBtn.textContent = "Updating…";
+  }
+  try {
+    showBwToast("Scheduling cancellation at the end of your paid period…");
+    const body = new FormData();
+    body.set("family_id", String(state.activeFamilyId));
+    const data = await apiForm("/schedule-subscription-cancel", body);
+    const next = {
+      ...cached,
+      cancel_at_period_end: true,
+      current_period_end: (data && data.current_period_end) || cached.current_period_end,
+      status: (data && data.status) || cached.status || "active",
+      lookup_key: (data && data.lookup_key) || cached.lookup_key,
+      phase: "active",
+      entitled: true,
+    };
+    applyBillingStatusToPanel(next);
+    showBwToast("Cancellation scheduled. You'll keep access through the end of your paid period.");
+    invalidateBillingStatusCache();
+    await renderBillingPanel({ force: true });
+  } catch (err) {
+    showBwToast(err && err.message ? err.message : "Could not schedule cancellation.");
+    if (cancelBtn) {
+      cancelBtn.disabled = false;
+      cancelBtn.removeAttribute("aria-busy");
+      cancelBtn.textContent = "Cancel subscription";
+    }
+  }
+}
+
+async function resumeBillingSubscriptionForActiveFamily() {
+  const apiBase = apiBaseUrl();
+  if (!apiBase) {
+    showBwToast("Billing isn’t configured on this build.");
+    return;
+  }
+  if (!state.activeFamilyId) {
+    showBwToast("Choose a family first.");
+    return;
+  }
+  const keepBtn = billingCancelButtonEl();
+  if (keepBtn && keepBtn.getAttribute("data-billing-action") === "keep") {
+    if (keepBtn.disabled || keepBtn.getAttribute("aria-busy") === "true") return;
+    keepBtn.disabled = true;
+    keepBtn.setAttribute("aria-busy", "true");
+    keepBtn.textContent = "Updating…";
+  }
+  try {
+    showBwToast("Keeping your subscription…");
+    const body = new FormData();
+    body.set("family_id", String(state.activeFamilyId));
+    const data = await apiForm("/resume-subscription", body);
+    const cached = cachedBillingStatusForActiveFamily() || {};
+    applyBillingStatusToPanel({
+      ...cached,
+      cancel_at_period_end: false,
+      current_period_end: (data && data.current_period_end) || cached.current_period_end,
+      status: (data && data.status) || cached.status || "active",
+      lookup_key: (data && data.lookup_key) || cached.lookup_key,
+      phase: "active",
+      entitled: true,
+    });
+    showBwToast("Your subscription will renew as usual.");
+    invalidateBillingStatusCache();
+    await renderBillingPanel({ force: true });
+  } catch (err) {
+    showBwToast(err && err.message ? err.message : "Could not keep this subscription.");
+    if (keepBtn) {
+      keepBtn.disabled = false;
+      keepBtn.removeAttribute("aria-busy");
+      keepBtn.textContent = "Keep my subscription";
+    }
+  }
+}
+
+function openBillingPortalForActiveFamily(flow = "", onFail = null) {
+  const fail = () => {
+    if (typeof onFail === "function") {
+      try {
+        onFail();
+      } catch (_) {}
+    }
+  };
+  const apiBase = apiBaseUrl();
+  if (!apiBase) {
+    showBwToast("Billing portal isn’t configured on this build.");
+    fail();
+    return;
+  }
+  if (!state.activeFamilyId) {
+    showBwToast("Choose a family first.");
+    fail();
+    return;
+  }
+  const flowKey = String(flow || "").trim().toLowerCase();
+  if (flowKey === "cycle") {
+    void switchBillingIntervalForActiveFamily();
+    return;
+  }
+  if (flowKey === "cancel") {
+    void scheduleBillingCancellationForActiveFamily();
+    return;
+  }
+  if (flowKey === "keep") {
+    void resumeBillingSubscriptionForActiveFamily();
+    return;
+  }
+  const toastByFlow = {
+    payment: "Opening Stripe billing…",
+    invoices: "Opening Stripe billing…",
+    portal: "Opening Stripe billing…",
+  };
+  try {
+    showBwToast(toastByFlow[flowKey] || "Opening Stripe billing…");
+  } catch (_) {}
+  const body = new FormData();
+  body.set("family_id", String(state.activeFamilyId));
+  if (flowKey && flowKey !== "portal") body.set("flow", flowKey);
+  fetch(`${apiBase}/create-portal-session`, {
+    method: "POST",
+    body,
+    credentials: "include",
+    headers: { ...apiBearerAuthHeaders(), Accept: "application/json" },
+  })
+    .then(async (res) => {
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data && data.url) {
+        window.location.assign(data.url);
+        return;
+      }
+      const msg =
+        (data && data.error && data.error.message) || data.detail || `Portal failed (${res.status}).`;
+      throw new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
+    })
+    .catch((err) => {
+      showBwToast(err && err.message ? err.message : "Could not open billing portal.");
+      fail();
+    });
 }
 
 function wireBillingActionsOnce() {
@@ -7679,57 +10466,161 @@ function wireBillingActionsOnce() {
   document.querySelectorAll("[data-billing-action]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const action = String(btn.getAttribute("data-billing-action") || "");
-      const messages = {
-        payment:
-          "Updating your card isn’t available here yet—for payment changes, use Contact support.",
-        cycle: "Billing cycle changes go through support for now.",
-        cancel: "Send this request via support—we’ll help with cancellation.",
-        invoices: "Invoices aren’t linked here yet; support can help with receipts or history.",
-      };
-      showBwToast(messages[action] || "Billing tools are still being connected.");
+      if (btn.disabled || btn.getAttribute("aria-busy") === "true") return;
+      if (action === "cycle") {
+        void switchBillingIntervalForActiveFamily();
+        return;
+      }
+      if (action === "retry") {
+        const previousLabel = btn.textContent;
+        btn.disabled = true;
+        btn.setAttribute("aria-busy", "true");
+        btn.textContent = "Updating…";
+        invalidateBillingStatusCache();
+        void renderBillingPanel({ force: true }).finally(() => {
+          btn.disabled = false;
+          btn.removeAttribute("aria-busy");
+          if (btn.getAttribute("data-billing-action") === "retry") {
+            btn.textContent = previousLabel || "Try again";
+          }
+        });
+        return;
+      }
+      if (action === "support") {
+        window.location.href = "/contactus/";
+        return;
+      }
+      if (action === "cancel") {
+        void scheduleBillingCancellationForActiveFamily();
+        return;
+      }
+      if (action === "keep") {
+        void resumeBillingSubscriptionForActiveFamily();
+        return;
+      }
+      if (action === "keep-interval") {
+        void releaseScheduledIntervalForActiveFamily();
+        return;
+      }
+      const portalActions = new Set(["portal", "payment", "invoices"]);
+      if (portalActions.has(action)) {
+        if (isBillingPortalAvailable()) {
+          const previousLabel = btn.textContent;
+          btn.disabled = true;
+          btn.setAttribute("aria-busy", "true");
+          btn.textContent = "Updating…";
+          openBillingPortalForActiveFamily(action, () => {
+            btn.disabled = false;
+            btn.removeAttribute("aria-busy");
+            btn.textContent = previousLabel;
+          });
+          return;
+        }
+        showBwToast("Stripe customer portal isn’t available yet for this family.");
+      }
+    });
+  });
+  const cta = billingPrimaryCtaEl || document.getElementById("billingPrimaryCta");
+  if (cta && !cta.dataset.billingCtaWired) {
+    cta.dataset.billingCtaWired = "1";
+    cta.addEventListener("click", (e) => {
+      if (String(cta.dataset.billingCta || "") === "portal") {
+        e.preventDefault();
+        openBillingPortalForActiveFamily(String(cta.dataset.billingFlow || "payment"));
+      }
+    });
+  }
+  ["billingSubscribeMonthly", "billingSubscribeAnnual", "billingUpgradeAnnual", "billingUpgradeMonthly"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (!el || el.dataset.billingCheckoutWired) return;
+    el.dataset.billingCheckoutWired = "1";
+    el.addEventListener("click", (e) => {
+      if (el.getAttribute("aria-busy") === "true") {
+        e.preventDefault();
+        return;
+      }
+      el.setAttribute("aria-busy", "true");
+      el.dataset.billingIdleLabel = el.textContent || "";
+      el.textContent = "Preparing checkout…";
     });
   });
   billingActionsWired = true;
 }
 
-function renderBillingPanel() {
-  if (!billingPlanEl || !billingFrequencyEl || !billingNextDateEl) return;
-  let plan = "";
-  let freq = "monthly";
-  let start = "";
+function applyCheckoutReturnFromUrl() {
   try {
-    plan = localStorage.getItem(BILLING_PLAN_KEY) || "";
-    freq = localStorage.getItem(BILLING_FREQUENCY_KEY) || "monthly";
-    start = localStorage.getItem(BILLING_START_KEY) || "";
+    const u = new URL(window.location.href);
+    const checkout = String(u.searchParams.get("checkout") || "").trim().toLowerCase();
+    const section = String(u.searchParams.get("section") || "").trim().toLowerCase();
+    const portal = String(u.searchParams.get("portal") || "").trim().toLowerCase();
+    const familyIdRaw = String(u.searchParams.get("family_id") || "").trim();
+    const fromPortal = portal === "return" || portal === "1";
+    const pathIsBilling = /\/settings\/billing\/?$/i.test(u.pathname);
+    if (!checkout && !section && !fromPortal && !pathIsBilling) return;
+
+    if (familyIdRaw && familySelect) {
+      const fid = Number(familyIdRaw);
+      if (
+        Number.isFinite(fid) &&
+        fid > 0 &&
+        Array.isArray(state.families) &&
+        state.families.some((f) => Number(f.id) === fid)
+      ) {
+        familySelect.value = String(fid);
+        state.activeFamilyId = fid;
+        try {
+          syncActiveFamilyFlags();
+        } catch (_) {}
+        invalidateBillingStatusCache();
+      }
+    }
+
+    const refreshBillingAfterPortalOrCheckout = () => {
+      invalidateBillingStatusCache();
+      void renderBillingPanel({ force: true }).then(() => {
+        // Webhooks can lag a few seconds; one follow-up refresh.
+        window.setTimeout(() => {
+          invalidateBillingStatusCache();
+          void renderBillingPanel({ force: true });
+        }, 2500);
+      });
+    };
+
+    if (section === "billing" || checkout || fromPortal || pathIsBilling) {
+      try {
+        setActiveTopView("settings");
+      } catch (_) {}
+      try {
+        activateSettingsSection("billing");
+      } catch (_) {}
+    }
+
+    if (checkout === "success") {
+      try {
+        showBwToast("Payment received — refreshing your billing status.");
+      } catch (_) {}
+      refreshBillingAfterPortalOrCheckout();
+    } else if (checkout === "canceled") {
+      try {
+        showBwToast("Checkout canceled — you can subscribe anytime.");
+      } catch (_) {}
+    } else if (fromPortal || pathIsBilling) {
+      try {
+        showBwToast("Refreshing your billing status…");
+      } catch (_) {}
+      refreshBillingAfterPortalOrCheckout();
+    }
+
+    u.searchParams.delete("checkout");
+    u.searchParams.delete("session_id");
+    u.searchParams.delete("section");
+    u.searchParams.delete("frequency");
+    u.searchParams.delete("family_id");
+    u.searchParams.delete("portal");
+    const qs = u.searchParams.toString();
+    const cleanPath = pathIsBilling || fromPortal || section === "billing" ? "/settings/billing" : u.pathname;
+    window.history.replaceState({}, "", `${cleanPath}${qs ? `?${qs}` : ""}${u.hash}`);
   } catch (_) {}
-  wireBillingActionsOnce();
-  const planLabel = getBillingPlanLabel(plan);
-  const frequencyLabel = String(freq || "monthly").toLowerCase() === "monthly" ? "Monthly" : String(freq || "—");
-  const todayIso = toISODate(new Date());
-  const trialEnd = start ? addDaysIso(start, BILLING_TRIAL_DAYS) : "";
-  const next = computeNextBillingDate(start, freq);
-  const inTrial = !!(trialEnd && trialEnd >= todayIso);
-  if (billingPlanHeadlineEl) billingPlanHeadlineEl.textContent = planLabel === "—" ? "Cash Forecast" : planLabel;
-  billingPlanEl.textContent = planLabel;
-  billingFrequencyEl.textContent = frequencyLabel;
-  if (billingPlanContextEl) billingPlanContextEl.textContent = getBillingPlanContext(plan);
-  if (billingNextDateLabelEl) billingNextDateLabelEl.textContent = inTrial ? "Free month ends" : "Next renewal";
-  billingNextDateEl.textContent = inTrial
-    ? formatShortDateLong(trialEnd)
-    : next
-      ? formatShortDateLong(next)
-      : "—";
-  if (billingRenewalMessageEl) {
-    billingRenewalMessageEl.textContent = inTrial
-      ? `Your free month ends ${formatShortDateLong(trialEnd)}.`
-      : next
-        ? `Your next renewal is ${formatShortDateLong(next)}.`
-        : "Renewal dates appear here once billing is active.";
-    billingRenewalMessageEl.classList.toggle("billing-hero__renewal--trial", inTrial);
-  }
-  if (billingAccountStatusEl) {
-    billingAccountStatusEl.innerHTML = billingStatusPillHtml(planLabel === "—" ? "Active" : "Active");
-  }
 }
 
 function ensureProjectionChartDefaults() {
@@ -8890,6 +11781,8 @@ function syncActiveFamilyFlags() {
   const f = (state.families || []).find((x) => Number(x.id) === Number(state.activeFamilyId));
   state.activeFamilyAccessMode = f && String(f.access_mode || "").toLowerCase() === "view" ? "view" : "edit";
   state.activeFamilyIsOwner = !!(f && f.is_family_owner);
+  wireBillingWriteLockOnce();
+  applyBillingReadOnlyUi();
   const banner = document.getElementById("viewOnlyBanner");
   if (banner) {
     const ro = state.activeFamilyAccessMode === "view";
@@ -9115,6 +12008,7 @@ async function loadFamilyMembersPanel() {
 }
 
 async function loadFamilies() {
+  const prevActiveId = Number(state.activeFamilyId || 0);
   const families = await api("/api/families", "GET");
   state.families = families || [];
 
@@ -9143,9 +12037,20 @@ async function loadFamilies() {
   } else {
     state.activeFamilyId = null;
   }
+  const nextActiveId = Number(state.activeFamilyId || 0);
+  const familyChanged = prevActiveId !== nextActiveId;
+  if (familyChanged) invalidateBillingStatusCache();
   syncActiveFamilyFlags();
-  if (settingsViewPanel && !settingsViewPanel.hidden && getActiveSettingsSectionKey() === "accounts") {
-    void loadFamilyMembersPanel();
+  void refreshBillingWriteLock();
+  if (settingsViewPanel && !settingsViewPanel.hidden) {
+    const settingsSection = getActiveSettingsSectionKey();
+    if (settingsSection === "accounts") {
+      void loadFamilyMembersPanel();
+    }
+    // Only re-fetch Billing when the active family changed or the pane is still blank.
+    if (settingsSection === "billing" && (familyChanged || billingPanelLooksBlank())) {
+      void renderBillingPanel({ force: false });
+    }
   }
   await migrateLegacyDeviceBalanceThresholdsToAccount();
   hydrateBalanceThresholdInputsFromStorage();
@@ -11445,6 +14350,11 @@ async function refreshExpectedCalendarAndMonth() {
 }
 
 function openExpectedEditModal(tx, opts = {}) {
+  void openExpectedEditModalAsync(tx, opts);
+}
+
+async function openExpectedEditModalAsync(tx, opts = {}) {
+  if (await guardBillingWriteAsync()) return;
   if (!txEditModal || !expectedEditId) return;
   const calendarItem = opts.calendarItem ?? null;
 
@@ -14627,6 +17537,7 @@ function renderCalendar() {
         isReconciled,
         dayBalVerified,
         isOutOfMonth,
+        isPast,
         dayBal: dayBalVerified || isReconciled ? dayBal : null,
         hasStartingPoint: hasStartingPoint && !dayBalVerified && !isReconciled,
         startingAccountName,
@@ -18822,7 +21733,7 @@ function drawProjectionChart(daily) {
 }
 /** Shown in forecast-ready modal; keep in sync with marketing/plans pages. */
 function getTrialContinueMonthlyPriceDisplay() {
-  return "5.99";
+  return BILLING_MONTHLY_AMOUNT_USD;
 }
 
 function setForecastReadyTrialPricing() {
@@ -18854,7 +21765,7 @@ function ensureForecastReadyModal() {
         <p class="bw-forecast-ready__reassure">Takes about 60 seconds. Reopen the tour anytime from Help.</p>
       </div>
       <p class="bw-forecast-ready__finePrint" aria-label="Trial and pricing">
-        Free for your first month <span aria-hidden="true">•</span> <span id="bwForecastReadyPricingLine">Cancel anytime.</span>
+        Free for 14 days <span aria-hidden="true">•</span> <span id="bwForecastReadyPricingLine">Cancel anytime.</span>
       </p>
     </div>
   `;
@@ -19279,9 +22190,18 @@ async function main() {
   syncHouseholdSettingsUi();
   if (window.__BW_FORCE_VIEW === "settings") {
     try {
-      activateSettingsSection("accounts");
+      let section = "accounts";
+      try {
+        const q = new URLSearchParams(window.location.search);
+        const requested = String(q.get("section") || "").trim().toLowerCase();
+        if (requested) section = requested;
+      } catch (_) {}
+      activateSettingsSection(section);
     } catch (_) {}
   }
+  try {
+    applyCheckoutReturnFromUrl();
+  } catch (_) {}
   setDefaultMonth();
   // Load accounts first, then paint the forecast. Do not await categories / expected
   // series / onboarding recovery before the calendar — those can hang and leave an

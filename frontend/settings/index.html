@@ -35,7 +35,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=734" />
+    <link rel="stylesheet" href="../styles.css?v=797" />
   </head>
   <body>
     <h1 class="sr-only">Settings</h1>
@@ -63,10 +63,10 @@
             <a class="top-nav__tab" id="navCalendarView" role="tab" aria-selected="true" href="/calendar">Forecast</a>
             <a class="top-nav__tab" id="navTransactionView" role="tab" aria-selected="false" href="/transactions">Transactions</a>
             <a class="top-nav__tab" id="navReportsView" role="tab" aria-selected="false" href="/reports">Reports</a>
-            <a class="top-nav__tab is-active" id="navSettingsView" role="tab" aria-selected="false" href="/settings">Settings</a>
+<a class="top-nav__tab is-active" id="navSettingsView" role="tab" aria-selected="false" href="/settings">Settings</a>
           </div>
           <div class="top-nav__actions" aria-label="Account actions">
-            <a id="platformAdminLink" class="top-nav__admin" href="/platform-admin" hidden>Admin</a>
+            <a id="platformAdminLink" class="top-nav__admin" href="/platform-admin/" hidden>Admin</a>
             <button type="button" id="logoutBtn" class="top-nav__logout">Logout</button>
           </div>
         </div>
@@ -469,6 +469,7 @@
 
           </div>
 
+
           <div id="settingsViewPanel" class="app-view" hidden>
             <div class="settings-layout settings-layout--sidebar-nav">
               <div class="settings-content settings-content--hub card">
@@ -742,7 +743,7 @@
                 <div class="settings-pane" data-settings-pane="billing" hidden>
                   <div class="billing-page">
                     <header class="settings-section-head billing-page__head">
-                      <h2 class="settings-section-title billing-page__title">Plan &amp; billing</h2>
+                      <h2 class="settings-section-title billing-page__title" data-billing-page-title="billing">Billing</h2>
                       <p class="settings-section-lede billing-page__lede">Subscription status and payment actions.</p>
                     </header>
 
@@ -750,85 +751,116 @@
                       <div class="billing-primary">
                         <section class="billing-overview" aria-label="Billing overview">
                           <div class="billing-hero">
-                            <div class="billing-hero__eyebrow">Current access</div>
-                            <div class="billing-hero__title" id="billingPlanHeadline">Cash Forecast</div>
-                            <p class="billing-hero__copy" id="billingPlanContext">Forecast cash flow before balances tighten.</p>
-                            <p class="billing-hero__renewal" id="billingRenewalMessage" role="status">Your next renewal is —.</p>
+                            <div class="billing-hero__title" id="billingPlanHeadline" hidden>Cash Forecast</div>
+                            <div class="billing-summary" id="billingLifecycleBlock">
+                              <div
+                                class="billing-callout"
+                                id="billingRenewalMessage"
+                                hidden
+                                role="status"
+                              >
+                                <div class="billing-callout__content">
+                                  <p class="billing-callout__eyebrow" id="billingCalloutEyebrow" hidden></p>
+                                  <p class="billing-callout__title" id="billingCalloutTitle"></p>
+                                  <p class="billing-callout__text" id="billingCalloutText"></p>
+                                </div>
+                              </div>
+                              <a
+                                id="billingPrimaryCta"
+                                class="billing-hero__activate"
+                                href="/checkout/"
+                                hidden
+                                aria-hidden="true"
+                              >Continue with Cash Forecast</a>
+                              <div id="billingSubscribeChoices" class="billing-subscribe" hidden>
+                                <p class="billing-subscribe__lede" id="billingSubscribeTitle">Continue with Cash Forecast</p>
+                                <p class="billing-subscribe__support" id="billingSubscribeSupport" hidden></p>
+                                <div class="billing-subscribe__options">
+                                  <a
+                                    class="billing-hero__activate billing-subscribe__option"
+                                    id="billingSubscribeMonthly"
+                                    data-billing-lookup="cash_forecast_monthly"
+                                    href="/checkout/"
+                                  >Monthly — $5.99/month</a>
+                                  <a
+                                    class="billing-action-btn billing-action-btn--secondary billing-subscribe__option"
+                                    id="billingSubscribeAnnual"
+                                    data-billing-lookup="cash_forecast_annual"
+                                    href="/checkout/"
+                                  >Annual — $59.99/year</a>
+                                </div>
+                                <p class="billing-subscribe__reassure" id="billingSubscribeReassure" hidden></p>
+                                <p class="billing-subscribe__save" id="billingSubscribeSave" hidden></p>
+                              </div>
+                            </div>
                           </div>
 
-                          <dl class="billing-meta">
+                          <dl class="billing-meta" id="billingMeta" aria-label="Subscription details" hidden>
                             <div class="billing-meta__pair">
-                              <dt class="billing-meta__term">Plan</dt>
-                              <dd class="billing-meta__def" id="billingPlan">—</dd>
-                            </div>
-                            <div class="billing-meta__pair">
-                              <dt class="billing-meta__term">Billing cycle</dt>
-                              <dd class="billing-meta__def" id="billingFrequency">—</dd>
-                            </div>
-                            <div class="billing-meta__pair">
-                              <dt class="billing-meta__term" id="billingNextDateLabel">Next renewal</dt>
-                              <dd class="billing-meta__def" id="billingNextDate">—</dd>
+                              <dt class="billing-meta__term" id="billingPriceLabel">Billing</dt>
+                              <dd class="billing-meta__def billing-meta__def--stack" id="billingFrequency">
+                                <span id="billingFrequencyValue">—</span>
+                                <span class="billing-meta__price-note" id="billingFrequencyNote" hidden></span>
+                              </dd>
                             </div>
                             <div class="billing-meta__pair">
                               <dt class="billing-meta__term">Status</dt>
                               <dd class="billing-meta__def" id="billingAccountStatus">—</dd>
                             </div>
+                            <div class="billing-meta__pair">
+                              <dt class="billing-meta__term" id="billingNextDateLabel">Next renewal</dt>
+                              <dd class="billing-meta__def" id="billingNextDate">—</dd>
+                            </div>
                           </dl>
 
-                          <div class="billing-actions" aria-labelledby="billingManageHeading">
-                            <h3 class="billing-actions__title" id="billingManageHeading">Manage subscription</h3>
-                            <p class="billing-actions__hint">
-                              Updating your card will be available here soon—for now, support handles payment changes.
+                          <div class="billing-actions" id="billingManageSection" aria-labelledby="billingManageHeading" hidden>
+                            <h3 class="billing-actions__title" id="billingManageHeading">Your subscription</h3>
+                            <p class="billing-actions__hint" id="billingManageHint">
+                              Manage your billing, payment details, or subscription anytime.
                             </p>
                             <div class="billing-actions__primary">
-                              <button type="button" class="billing-action-btn billing-action-btn--primary" data-billing-action="payment">
-                                Update payment method
+                              <button type="button" class="billing-action-btn billing-action-btn--primary" data-billing-action="cycle" data-billing-target-lookup="cash_forecast_annual">Switch to Annual</button>
+                            </div>
+                            <div class="billing-actions__secondary" aria-label="Additional billing tasks">
+                              <button type="button" class="billing-action-btn billing-action-btn--secondary" data-billing-action="portal">Manage Billing</button>
+                            </div>
+                            <p class="billing-actions__reassure" id="billingManageReassure">Secure billing powered by Stripe.</p>
+                          </div>
+                          <div class="billing-cancel" id="billingCancelSection" aria-labelledby="billingCancelTitle" hidden>
+                              <h3 class="billing-actions__title billing-cancel__title" id="billingCancelTitle">Cancellation</h3>
+                              <p class="billing-actions__hint billing-cancel__lede" id="billingCancelLede">You can cancel your subscription at any time.</p>
+                              <button type="button" id="billingCancelBtn" class="billing-cancel__request billing-cancel__request--danger" data-billing-action="cancel">
+                                Cancel subscription
                               </button>
-                            </div>
-                            <div class="billing-actions__secondary billing-actions__secondary--inline" aria-label="Additional billing tasks">
-                              <button type="button" class="billing-action-link" data-billing-action="cycle">Change billing cycle</button>
-                              <span class="billing-actions__sep" aria-hidden="true">·</span>
-                              <button type="button" class="billing-action-link" data-billing-action="invoices">View invoices</button>
-                            </div>
-                            <ul class="billing-reassurance-list" aria-label="Subscription policies">
-                              <li>Cancel anytime</li>
-                              <li>No hidden fees</li>
-                              <li>Data stays editable</li>
-                            </ul>
-                            <div class="billing-cancel" aria-labelledby="billingCancelTitle">
-                              <h4 class="billing-cancel__title" id="billingCancelTitle">Cancel subscription</h4>
-                              <p class="billing-cancel__lede">Need to cancel? Send a request and we’ll help.</p>
-                              <button type="button" class="billing-cancel__request" data-billing-action="cancel">
-                                Request cancellation
-                              </button>
-                            </div>
                           </div>
                         </section>
                       </div>
 
-                      <aside class="billing-side" aria-label="Plan and billing information">
+                      <aside class="billing-side" aria-label="Cash Forecast billing information">
                         <section class="billing-side__block" aria-labelledby="billingIncludesTitle">
-                          <h3 class="billing-side__title" id="billingIncludesTitle">Plan includes</h3>
+                          <h3 class="billing-side__title" id="billingIncludesTitle">Cash Forecast includes</h3>
                           <ul class="billing-feature-list">
                             <li>Forecast calendar</li>
                             <li>Cash pressure reports</li>
-                            <li>Safe to move guidance</li>
+                            <li>Safe-to-move guidance</li>
                             <li>Unlimited recurring transactions</li>
                           </ul>
                         </section>
 
                         <section class="billing-side__block" aria-labelledby="billingNotesTitle">
                           <h3 class="billing-side__title" id="billingNotesTitle">Good to know</h3>
-                          <ul class="billing-note-list">
-                            <li>No bank connection required.</li>
-                            <li>Forecast access needs an active plan.</li>
+                          <ul class="billing-note-list" id="billingNotesList">
+                            <li>No bank connection required</li>
+                            <li>Cancel anytime</li>
+                            <li>No hidden fees</li>
+                            <li>Your BalanceWhiz data stays editable</li>
                           </ul>
                         </section>
 
-                        <section class="billing-side__block billing-side__support" aria-label="Billing help">
-                          <h3 class="billing-side__subtitle">Billing help</h3>
+                        <section class="billing-side__block billing-side__support" aria-labelledby="billingHelpTitle">
+                          <h3 class="billing-side__subtitle" id="billingHelpTitle">Billing help</h3>
                           <p class="billing-side__support-copy">
-                            Self-service billing is coming soon. For now, contact support for billing changes.
+                            Questions about your subscription or billing?
                           </p>
                           <p class="billing-side__support-cta"><a class="billing-side__support-link" href="/contactus/">Contact support</a></p>
                         </section>
@@ -1481,6 +1513,11 @@
       </div>
     </div>
 
+
+
+
+
+
     <div id="txAddModal" class="modal-overlay" aria-hidden="true">
       <div class="modal modal--tx-add" role="dialog" aria-labelledby="txAddTitle">
         <h3 id="txAddTitle">Add transaction</h3>
@@ -1678,7 +1715,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="../app.js?v=420"></script>
+    <script src="../app.js?v=487"></script>
     <script src="../feedback.js?v=5" defer></script>
     <script src="../tour.js?v=10" defer></script>
   </body>

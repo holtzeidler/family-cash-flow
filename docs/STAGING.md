@@ -9,7 +9,7 @@ Use staging to try changes with real deploy mechanics (static build, API, cookie
 | **Branch** | `main` | `staging` |
 | **Frontend** | GitHub Pages (`balancewhiz.com`) | Render static site `family-cash-flow-web-staging` |
 | **API** | Render `family-cash-flow-api` | Render `family-cash-flow-api-staging` |
-| **Database** | Neon (production branch) | Neon **staging branch** (separate from production) |
+| **Database** | Neon production (`ep-ancient-union-…`) | Neon **staging branch** (`ep-polished-boat-…`) |
 | **Frontend build secret** | `API_BASE` | `API_BASE_STAGING` |
 
 GitHub Pages supports **one** live site per repo, so staging frontend lives on Render. Production stays on GitHub Pages + Render API (unchanged).
@@ -47,7 +47,9 @@ On **`family-cash-flow-api-staging`**, set (in addition to blueprint defaults):
 | `CORS_ORIGINS` | Staging frontend origin only, e.g. `https://staging.balancewhiz.com` (no path). Must be **`CORS_ORIGINS`** (plural) — `CORS_ORIGIN` is ignored. |
 | `APP_PUBLIC_BASE_URL` | Same as staging frontend URL (invite/reset links) |
 | `JWT_SECRET` | Generate a new secret (do not reuse production) |
-| `DATABASE_URL` | Neon **staging branch** pooled connection string (not production) |
+| `DATABASE_URL` | Neon **staging branch** pooled URL. Host must be `ep-polished-boat-ando6x8y-pooler…`, **not** production `ep-ancient-union-and21kx9-pooler…`. Both branches use database name `neondb` — the **host** is what separates them. |
+| `PRODUCTION_DATABASE_HOST` | `ep-ancient-union-and21kx9-pooler` — staging refuses writes if `DATABASE_URL` matches this host. |
+| `STAGING_DATABASE_HOST` | `ep-polished-boat-ando6x8y-pooler` — staging allows writes only when `DATABASE_URL` matches this host (or another host whose name includes `staging`). |
 | `STAGING_AUTH_EMAIL_ALLOWLIST` | Comma-separated **test-only** emails allowed to register/login on staging (e.g. `you+staging@gmail.com`). Production accounts are rejected even if the staging DB was copied from prod. |
 
 Copy optional mail/contact vars from production only if you want staging to send real email (usually skip for staging).
@@ -101,7 +103,7 @@ Regenerate staging favicons after editing `frontend/assets/staging-favicon.svg`:
 | **TTL** | 1 Hour (default is fine) |
 
 5. **Save**
-
+image.pngimage.pngimage.png
 GoDaddy’s **Name** field is only the subdomain (`staging`), not the full `staging.balancewhiz.com`.
 
 **Do not** use GoDaddy **Forwarding** for this — use a **DNS CNAME record** only.
@@ -209,7 +211,7 @@ Sign in on staging with a **dedicated test account**, not your main production e
 | “We're having trouble connecting” on account setup | Staging API `/api/debug/public-config`: `cors_middleware_enabled` must be `true`. Fix `CORS_ORIGINS` (plural), not `CORS_ORIGIN`; redeploy and recheck. |
 | Login works on prod, not staging | `CORS_ORIGINS` on staging API matches staging frontend origin exactly; `ENV=production` on staging API |
 | `API_BASE` / `__API_BASE__` in browser | Re-deploy staging static site after setting `API_BASE` on Render |
-| Staging shows production data | Staging API `DATABASE_URL` must use **staging** DB only |
+| Staging shows production data | Staging API `DATABASE_URL` host must be **ep-polished-boat-…**, not **ep-ancient-union-…**. Both Neon branches are named `neondb`; the host is the separator. Platform Admin → Overview shows the connected host. Writes are blocked if the host is production. |
 | Production login works on staging | Set `STAGING_AUTH_EMAIL_ALLOWLIST` to test emails only; fix `DATABASE_URL` if prod data still appears |
 | CI fails on `staging` push | GitHub secret `API_BASE_STAGING` set in `staging` environment |
 | Login/signup sends you to production | Signup links must be relative (`/account-setup/`), not `https://balancewhiz.com/...` |
@@ -221,3 +223,20 @@ Sign in on staging with a **dedicated test account**, not your main production e
 - `.github/workflows/pages.yml` — production frontend (`main`)
 - `.github/workflows/pages-staging.yml` — staging build verification + optional deploy hook
 - `scripts/build-frontend-static.sh` — shared static frontend build (bakes `API_BASE`)
+
+## Stripe Customer Portal (staging)
+
+Portal sessions always return to `APP_PUBLIC_BASE_URL/settings/billing?portal=return` (server-built; not client-supplied). Do not inject CSS or JS into Stripe’s hosted portal.
+
+Deep links from BalanceWhiz (when Customer Portal features are enabled in the Stripe Dashboard):
+
+| BalanceWhiz action | Stripe `flow_data` |
+|---|---|
+| Update payment method | `payment_method_update` |
+| Switch to annual / monthly | **Not the portal.** `POST /switch-billing-interval` updates the Stripe subscription immediately (`proration_behavior=none`, `billing_cycle_anchor=now`) so the customer is charged the full new price today and the billing cycle resets. |
+| Cancel subscription | **Not the portal.** `POST /schedule-subscription-cancel` sets `cancel_at_period_end=true` and re-fetches Stripe. Access continues through the paid period end. |
+| Keep my subscription | **Not the portal.** `POST /resume-subscription` clears the scheduled cancel so renewal resumes. |
+| View invoices | standard portal homepage (Stripe has no invoice-history deep link) |
+
+**Branding** (Dashboard → Settings → Billing → Customer portal): set BalanceWhiz name, logo, brand color, and support email. The “sandbox” badge is Stripe test-mode only and disappears in live mode. Hosted copy such as “Don’t cancel subscription” and the sidebar “Return to …” link prominence are **not** customizable via API — improve clarity in BalanceWhiz before/after the redirect instead. Do **not** enable customers to switch products/prices in the portal — monthly↔annual is handled in BalanceWhiz so Stripe cannot invoice both a prorated year and a full year.
+
