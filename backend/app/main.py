@@ -1796,6 +1796,7 @@ class PlatformEmailTestOut(BaseModel):
     ok: bool = True
     id: str = ""
     to: str = ""
+    template: str = ""
 
 
 class CategoryIn(BaseModel):
@@ -4789,12 +4790,14 @@ def platform_overview(
 
 @app.post("/api/platform/email-test", response_model=PlatformEmailTestOut, include_in_schema=False)
 def platform_send_email_test(
+    template: Literal["welcome", "design"] = Query("welcome"),
     access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
-    """Temporary: send one Resend test email. Staging/dev + platform admin only.
+    """Staging/dev + platform admin only. Preview a transactional template.
 
     Recipient is fixed server-side (tracy@balancewhiz.com) — never taken from the request.
+    Pass template=welcome (default) or template=design.
     """
     from .email_service import (
         TEST_TO,
@@ -4819,6 +4822,7 @@ def platform_send_email_test(
                 is_staging_deployment=_is_staging_deployment(),
                 app_public_base_url=settings.APP_PUBLIC_BASE_URL,
             ),
+            template=template,
             reply_to=(settings.TRANSACTIONAL_REPLY_TO or "").strip() or None,
         )
     except EmailNotConfigured:
@@ -4831,7 +4835,7 @@ def platform_send_email_test(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=str(exc)[:400] or "Resend send failed",
         )
-    return PlatformEmailTestOut(ok=True, id=email_id, to=TEST_TO)
+    return PlatformEmailTestOut(ok=True, id=email_id, to=TEST_TO, template=template)
 
 
 @app.get("/api/platform/families", response_model=list[PlatformFamilySummaryOut])

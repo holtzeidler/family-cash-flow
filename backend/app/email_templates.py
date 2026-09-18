@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import html
 from dataclasses import dataclass
+from typing import Optional
 
 SITE_NAME = "BalanceWhiz"
 TAGLINE = "See your cash flow before it happens."
@@ -45,6 +46,52 @@ class TransactionalEmailContent:
     cta_url: str = ""
     support_line: str = ""
     additional_text: str = ""
+
+
+def normalize_first_name(value: Optional[str]) -> str:
+    """Return a short first name for greetings, or empty if missing/unusable."""
+    raw = (value or "").strip()
+    if not raw:
+        return ""
+    token = raw.split()[0].strip()
+    if not token or len(token) > 40:
+        return ""
+    if any(ch in token for ch in "<>@\n\r\t"):
+        return ""
+    return token
+
+
+def welcome_heading(*, first_name: str = "") -> str:
+    name = normalize_first_name(first_name)
+    if name:
+        return f"Welcome to BalanceWhiz, {name}."
+    return "Welcome to BalanceWhiz."
+
+
+def build_welcome_email_content(
+    *,
+    app_url: str,
+    first_name: str = "",
+    trial_days: int = 14,
+) -> TransactionalEmailContent:
+    """Welcome email content for the shared transactional shell. Not sent on signup yet."""
+    site = _safe_http_url(app_url)
+    days = int(trial_days) if int(trial_days) > 0 else 14
+    body = (
+        "You’re all set.\n\n"
+        "BalanceWhiz helps you see what’s coming before it hits your checking account — "
+        "so you can plan ahead without building a budget or connecting your bank.\n\n"
+        "Start by adding your current balance, then add the income and expenses you already know are coming."
+    )
+    return TransactionalEmailContent(
+        subject="Welcome to BalanceWhiz",
+        preheader="Your cash forecast starts here.",
+        heading=welcome_heading(first_name=first_name),
+        body=body,
+        cta_label="Set up my forecast",
+        cta_url=site,
+        support_line=f"You have {days} days to try everything. No payment method required.",
+    )
 
 
 def resolve_app_url(*, is_staging_deployment: bool, app_public_base_url: str = "") -> str:

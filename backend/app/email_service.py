@@ -13,7 +13,7 @@ import logging
 import re
 from typing import Optional
 
-from .email_templates import TransactionalEmailContent, render_transactional_email
+from .email_templates import TransactionalEmailContent, build_welcome_email_content, render_transactional_email
 
 logger = logging.getLogger(__name__)
 
@@ -127,16 +127,56 @@ def send_templated_email(
     )
 
 
+def send_welcome_email(
+    *,
+    api_key: str,
+    to_addr: str,
+    app_url: str,
+    first_name: str = "",
+    from_addr: str = DEFAULT_FROM,
+    reply_to: Optional[str] = DEFAULT_REPLY_TO,
+    trial_days: Optional[int] = None,
+) -> str:
+    """Send the Welcome transactional email. Callers wire this to signup later."""
+    from .billing_catalog import TRIAL_DAYS
+
+    days = int(trial_days) if trial_days is not None else int(TRIAL_DAYS)
+    content = build_welcome_email_content(
+        app_url=app_url,
+        first_name=first_name,
+        trial_days=days,
+    )
+    return send_templated_email(
+        api_key=api_key,
+        to_addr=to_addr,
+        content=content,
+        app_url=app_url,
+        from_addr=from_addr,
+        reply_to=reply_to,
+    )
+
+
 def send_staging_test_email(
     *,
     api_key: str,
     app_url: str,
+    template: str = "design",
     to_addr: str = TEST_TO,
     from_addr: str = DEFAULT_FROM,
     reply_to: Optional[str] = DEFAULT_REPLY_TO,
 ) -> str:
     """Staging-only template preview. Recipient is fixed; no product triggers."""
     site = (app_url or "").strip().rstrip("/")
+    kind = (template or "design").strip().lower()
+    if kind == "welcome":
+        return send_welcome_email(
+            api_key=api_key,
+            to_addr=to_addr or TEST_TO,
+            app_url=site,
+            first_name="Tracy",
+            from_addr=from_addr or DEFAULT_FROM,
+            reply_to=reply_to,
+        )
     content = TransactionalEmailContent(
         subject="BalanceWhiz email design test",
         preheader="Your BalanceWhiz email setup is ready.",
