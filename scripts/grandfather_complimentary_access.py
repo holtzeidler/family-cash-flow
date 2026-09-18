@@ -67,10 +67,7 @@ SELECT
   (SELECT COUNT(*) FROM users WHERE complimentary_access IS TRUE) AS complimentary_true,
   (SELECT COUNT(*) FROM users
     WHERE complimentary_access IS TRUE
-      AND complimentary_access_expires_at IS NULL) AS complimentary_indefinite,
-  (SELECT COUNT(*) FROM billing_customers) AS billing_customers,
-  (SELECT COUNT(*) FROM billing_subscriptions) AS billing_subscriptions,
-  (SELECT COUNT(*) FROM transactions) AS transactions;
+      AND complimentary_access_expires_at IS NULL) AS complimentary_indefinite;
 """
 
 
@@ -354,9 +351,9 @@ def apply(conn, cur) -> int:
     snap = cur.rowcount if cur.rowcount is not None and cur.rowcount >= 0 else 0
     cur.execute(APPLY_SQL)
     updated = cur.rowcount if cur.rowcount is not None and cur.rowcount >= 0 else 0
+    conn.commit()
     cur.execute(VERIFY_SQL)
     verify = cur.fetchone()
-    conn.commit()
     print(f"Ledger insert rowcount (0 on re-run): {snap}")
     print(f"Users updated this run: {updated}")
     print("Post-apply verification:")
