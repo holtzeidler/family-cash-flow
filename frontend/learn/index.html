@@ -32,7 +32,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="../styles.css?v=734" />
-    <link rel="stylesheet" href="../landing-marketing.css?v=18" />
+    <link rel="stylesheet" href="../landing-marketing.css?v=19" />
   </head>
   <body class="landing-page learn-page">
     <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -87,48 +87,41 @@
                   </p>
                 </div>
               </header>
-            </div>
-          </div>
-
-          <div class="learn-sequence" aria-label="What BalanceWhiz helps you see">
-          <section class="learn-split landing-reveal" aria-labelledby="learnBalancesTitle">
-            <div class="learn-split__copy">
-              <h2 id="learnBalancesTitle" class="learn-split__title">See future checking balances</h2>
-              <p class="learn-split__lede">See your projected balance day by day, so you know what&rsquo;s coming before money leaves your account.</p>
-            </div>
-            <div class="learn-split__visual">
-              <div id="landingHeroForecast" class="landing-hero-forecast" aria-label="Example forecast preview">
-                <div class="landing-hero-forecast__demo">
-                  <div class="landing-hero-viz landing-hero-cal">
-                    <div class="landing-hero-viz__hdr">
-                      <span class="landing-hero-viz__title">Balance outlook</span>
-                      <span class="landing-hero-viz__sub">Projected checking balance by day</span>
+              <div class="landing-hero__viz">
+                <div id="landingHeroForecast" class="landing-hero-forecast" aria-label="Example forecast preview">
+                  <div class="landing-hero-forecast__demo">
+                    <div class="landing-hero-viz landing-hero-cal">
+                      <div class="landing-hero-viz__hdr">
+                        <span class="landing-hero-viz__title">Balance outlook</span>
+                        <span class="landing-hero-viz__sub">Projected checking balance by day</span>
+                      </div>
+                      <div
+                        id="landingHeroCalWeek"
+                        class="landing-hero-viz__week"
+                        role="list"
+                        aria-label="Projected balances for key forecast days"
+                      ></div>
+                      <ul class="landing-hero-cal__markers" aria-label="Upcoming transactions">
+                        <li class="landing-hero-cal__marker landing-hero-cal__marker--bill">
+                          <span class="landing-hero-cal__marker-dot" aria-hidden="true"></span>
+                          <span id="landingHeroBillLabel">Credit card &middot; Jun 4</span>
+                        </li>
+                        <li class="landing-hero-cal__marker landing-hero-cal__marker--pay">
+                          <span class="landing-hero-cal__marker-dot" aria-hidden="true"></span>
+                          <span id="landingHeroPayLabel">Paycheck &middot; Jun 5</span>
+                        </li>
+                      </ul>
+                      <p class="landing-hero-cal__insight" role="note">
+                        <span id="landingHeroAlertCopy">Safe to spend or move after your next paycheck</span>
+                      </p>
                     </div>
-                    <div
-                      id="landingHeroCalWeek"
-                      class="landing-hero-viz__week"
-                      role="list"
-                      aria-label="Projected balances for key forecast days"
-                    ></div>
-                    <ul class="landing-hero-cal__markers" aria-label="Upcoming transactions">
-                      <li class="landing-hero-cal__marker landing-hero-cal__marker--bill">
-                        <span class="landing-hero-cal__marker-dot" aria-hidden="true"></span>
-                        <span id="landingHeroBillLabel">Credit card &middot; Jun 4</span>
-                      </li>
-                      <li class="landing-hero-cal__marker landing-hero-cal__marker--pay">
-                        <span class="landing-hero-cal__marker-dot" aria-hidden="true"></span>
-                        <span id="landingHeroPayLabel">Paycheck &middot; Jun 5</span>
-                      </li>
-                    </ul>
-                    <p class="landing-hero-cal__insight" role="note">
-                      <span id="landingHeroAlertCopy">Safe to spend or move after your next paycheck</span>
-                    </p>
                   </div>
                 </div>
               </div>
             </div>
-          </section>
+          </div>
 
+          <div class="learn-sequence" aria-label="What BalanceWhiz helps you see">
           <section class="learn-split learn-split--flip landing-reveal" aria-labelledby="learnDipTitle">
             <div class="learn-split__copy">
               <h2 id="learnDipTitle" class="learn-split__title">Know what&rsquo;s already spoken for</h2>
@@ -278,11 +271,7 @@
                 <p class="learn-rhythm__cardBody">Drop in a vacation, tuition payment, home project, or other one-time expense when you know about it.</p>
               </article>
             </div>
-          </section>
-
-          <section class="learn-aside landing-reveal" aria-labelledby="learnAsideTitle">
-            <h2 id="learnAsideTitle" class="learn-aside__title">More detail when you want it.</h2>
-            <p class="learn-aside__lede">Want to dig deeper? See balance trends, income vs. expenses, category totals, and transaction reports — without making them the center of how you manage your money.</p>
+            <p class="learn-rhythm__footnote">More detail when you want it. BalanceWhiz also includes balance trends, income vs. expenses, category totals, and transaction reports.</p>
           </section>
 
           <section class="landing-offer landing-offer--calm landing-offer--simple learn-close landing-reveal" aria-label="Get started">
