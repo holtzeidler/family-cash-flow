@@ -32,7 +32,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="../styles.css?v=734" />
-    <link rel="stylesheet" href="../landing-marketing.css?v=10" />
+    <link rel="stylesheet" href="../landing-marketing.css?v=14" />
   </head>
   <body class="landing-page learn-page">
     <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -71,7 +71,7 @@
             <div class="landing-hero__stack">
               <header class="landing-hero__copy">
                 <h1 class="landing-hero__text">See your cash flow before it happens.</h1>
-                <p class="landing-hero__sub">BalanceWhiz starts with today’s checking balance and the money coming in and going out, then projects the balance forward so you can plan before you spend or move money.</p>
+                <p class="landing-hero__sub">BalanceWhiz gives you a higher-level view of your checking account — what you have, what&rsquo;s already spoken for, and where your balance is headed. No need to track every purchase or build a detailed budget.</p>
                 <div class="landing-hero__ctaGroup">
                   <a href="/account-setup/?fresh=1" class="landing-hero__cta">See my future balance</a>
                   <p class="landing-hero__microtrust" aria-label="What to expect">
@@ -90,31 +90,11 @@
             </div>
           </div>
 
-          <section class="landing-setup-callout landing-reveal" aria-labelledby="landingSetupCalloutTitle">
-            <h2 id="landingSetupCalloutTitle" class="landing-setup-callout__title">Get started in three quick steps</h2>
-            <div class="landing-setup-callout__items" role="list">
-              <div class="landing-setup-callout__item" role="listitem">
-                <span class="landing-setup-callout__num">1</span>
-                <span>Enter today&rsquo;s balance</span>
-              </div>
-              <span class="landing-setup-callout__arrow" aria-hidden="true">→</span>
-              <div class="landing-setup-callout__item" role="listitem">
-                <span class="landing-setup-callout__num">2</span>
-                <span>Add your paychecks</span>
-              </div>
-              <span class="landing-setup-callout__arrow" aria-hidden="true">→</span>
-              <div class="landing-setup-callout__item" role="listitem">
-                <span class="landing-setup-callout__num">3</span>
-                <span>Add recurring bills</span>
-              </div>
-            </div>
-            <p class="landing-setup-callout__note">That&rsquo;s enough to start seeing what&rsquo;s ahead.</p>
-          </section>
-
+          <div class="learn-sequence" aria-label="What BalanceWhiz helps you see">
           <section class="learn-split landing-reveal" aria-labelledby="learnBalancesTitle">
             <div class="learn-split__copy">
               <h2 id="learnBalancesTitle" class="learn-split__title">See future checking balances</h2>
-              <p class="learn-split__lede">The outlook shows your projected checking balance by day, including days that need attention before a paycheck lands.</p>
+              <p class="learn-split__lede">See your projected balance day by day, so you know what&rsquo;s coming before money leaves your account.</p>
             </div>
             <div class="learn-split__visual">
               <div id="landingHeroForecast" class="landing-hero-forecast" aria-label="Example forecast preview">
@@ -151,17 +131,16 @@
 
           <section class="learn-split learn-split--flip landing-reveal" aria-labelledby="learnDipTitle">
             <div class="learn-split__copy">
-              <h2 id="learnDipTitle" class="learn-split__title">Know what’s already spoken for</h2>
-              <p class="learn-split__lede">Today’s balance can look like plenty. But upcoming bills, transfers, and other expenses can tell a very different story.</p>
+              <h2 id="learnDipTitle" class="learn-split__title">Know what&rsquo;s already spoken for</h2>
+              <p class="learn-split__lede">A healthy balance today doesn&rsquo;t necessarily mean it&rsquo;s all available. See upcoming bills, transfers, and planned expenses in context before you spend, save, or move money.</p>
             </div>
             <div class="learn-split__visual">
               <div class="landing-bank-compare__grid" role="group" aria-label="Bank app vs BalanceWhiz comparison">
                 <article class="landing-bank-compare__card landing-bank-compare__card--bank">
-                  <h3 class="landing-bank-compare__cardTitle">Your bank app</h3>
+                  <h3 class="landing-bank-compare__cardTitle">Your bank</h3>
                   <div class="landing-bank-compare__bankOnly">
-                    <span class="landing-bank-compare__flowLabel">Today&rsquo;s Balance</span>
+                    <span class="landing-bank-compare__flowLabel">Today</span>
                     <span class="cal-stat cal-balance landing-bank-compare__balance">$4,862</span>
-                    <span class="landing-bank-compare__bankHint">That&rsquo;s all your bank can tell you.</span>
                   </div>
                 </article>
                 <article class="landing-bank-compare__card landing-bank-compare__card--bw">
@@ -196,7 +175,6 @@
                       <span class="cal-stat cal-balance cal-balance--watch-zone landing-bank-compare__balance landing-bank-compare__balance--future">$731</span>
                     </div>
                   </div>
-                  <p class="landing-bank-compare__note landing-bank-compare__note--highlight">Plan ahead instead of reacting.</p>
                 </article>
               </div>
             </div>
@@ -204,12 +182,12 @@
 
           <section
             id="landingFutureSection"
-            class="learn-split landing-future landing-section landing-section--tint-safe landing-reveal"
+            class="learn-split landing-future landing-reveal"
             aria-labelledby="learnPressureTitle"
           >
             <div class="learn-split__copy landing-future__intro">
-              <h2 id="learnPressureTitle" class="learn-split__title landing-future__title">Plan for expensive months before they arrive</h2>
-              <p class="learn-split__lede landing-future__lede">See how upcoming expenses affect your checking balance weeks or months ahead — and how close you’ll come to the safety balance you set.</p>
+              <h2 id="learnPressureTitle" class="learn-split__title landing-future__title">Look further ahead</h2>
+              <p class="learn-split__lede landing-future__lede">See how larger expenses affect your checking balance weeks or months from now — and whether you&rsquo;re getting close to the cushion you want to keep.</p>
             </div>
             <div class="learn-split__visual landing-future__demo">
               <div class="landing-future-viz landing-hero-viz" aria-label="Example 90-day balance outlook">
@@ -279,28 +257,40 @@
               </div>
             </div>
           </section>
+          </div>
 
-          <section class="learn-value landing-section landing-section--tint-neutral landing-reveal" aria-labelledby="learnValueTitle">
-            <h2 id="learnValueTitle" class="learn-value__title">No budget required. No bank connection required.</h2>
-            <p class="learn-value__lede">BalanceWhiz isn’t about tracking every coffee or categorizing every purchase. Start with what matters to your cash flow — paychecks, recurring bills, transfers, and larger expenses — and add detail only when it’s useful.</p>
-          </section>
-
-          <section class="learn-value landing-reveal" aria-labelledby="learnCurrentTitle">
-            <h2 id="learnCurrentTitle" class="learn-value__title">Easy to keep current.</h2>
-            <p class="learn-value__lede">Recurring transactions roll forward automatically. Update your balance when needed and add one-time expenses as they come up — without rebuilding your forecast.</p>
+          <section class="learn-rhythm landing-reveal" aria-labelledby="learnRhythmTitle">
+            <div class="learn-rhythm__intro">
+              <h2 id="learnRhythmTitle" class="learn-rhythm__title">Enough detail to plan. Not another system to manage.</h2>
+              <p class="learn-rhythm__lede">BalanceWhiz isn&rsquo;t built around tracking every coffee or categorizing every purchase. Start with the things that meaningfully affect your cash flow — income, recurring bills, transfers, and larger expenses — and add more detail when it&rsquo;s useful to you.</p>
+            </div>
+            <div class="learn-rhythm__grid" role="list">
+              <article class="learn-rhythm__card" role="listitem">
+                <h3 class="learn-rhythm__cardTitle">Set it up once</h3>
+                <p class="learn-rhythm__cardBody">Recurring transactions roll forward automatically.</p>
+              </article>
+              <article class="learn-rhythm__card" role="listitem">
+                <h3 class="learn-rhythm__cardTitle">Keep it current</h3>
+                <p class="learn-rhythm__cardBody">Update your actual balance whenever you want to reset your forecast.</p>
+              </article>
+              <article class="learn-rhythm__card" role="listitem">
+                <h3 class="learn-rhythm__cardTitle">Add things as they come up</h3>
+                <p class="learn-rhythm__cardBody">Drop in a vacation, tuition payment, home project, or other one-time expense when you know about it.</p>
+              </article>
+            </div>
           </section>
 
           <section class="learn-aside landing-reveal" aria-labelledby="learnAsideTitle">
             <h2 id="learnAsideTitle" class="learn-aside__title">More detail when you want it.</h2>
-            <p class="learn-aside__lede">Want to dig deeper? BalanceWhiz also includes balance trends, income vs. expenses, category totals, and transaction reports.</p>
+            <p class="learn-aside__lede">Want to dig deeper? See balance trends, income vs. expenses, category totals, and transaction reports — without making them the center of how you manage your money.</p>
           </section>
 
           <section class="landing-offer landing-offer--calm landing-offer--simple learn-close landing-reveal" aria-label="Get started">
             <div class="landing-offer__panel">
               <div class="landing-offer__main">
                 <div class="landing-offer__content">
-                  <h2 class="landing-offer__heading">Ready to see what’s ahead?</h2>
-                  <p class="landing-offer__subhead">Start with today’s balance, your paychecks, and your recurring bills.</p>
+                  <h2 class="landing-offer__heading">Ready to see what&rsquo;s ahead?</h2>
+                  <p class="landing-offer__subhead">Start with today&rsquo;s balance and what&rsquo;s coming up. See where your money is headed.</p>
                 </div>
                 <div class="landing-offer__action">
                   <a class="landing-offer__cta" href="/account-setup/?fresh=1">See my future balance</a>
