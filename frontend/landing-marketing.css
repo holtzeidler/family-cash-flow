@@ -611,8 +611,8 @@ body.landing-page:not(.learn-page) .landing-hero__microtrust{
 }
 
 body.landing-page:not(.learn-page) .landing-hero-forecast{
-  width: 100%;
-  max-width: min(64.5rem, 1032px, 100%);
+  width: calc(100% - clamp(1.25rem, 3.5vw, 2.5rem));
+  max-width: 1050px;
   margin: 0 auto;
 }
 
@@ -631,11 +631,11 @@ body.landing-page:not(.learn-page) .landing-hero-cal .landing-hero-viz__sub{
 
 body.landing-page:not(.learn-page) .landing-hero-cal .landing-hero-viz__week{
   width: 100%;
-  max-width: 47.5rem;
+  max-width: none;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 0.4rem;
   margin-bottom: 4px;
   padding: 0;
-  justify-content: start;
 }
 
 body.landing-page:not(.learn-page) .landing-hero-cal .landing-hero-viz__cell{
@@ -667,6 +667,7 @@ body.landing-page:not(.learn-page) .landing-hero-cal .landing-hero-viz__tag{
 }
 
 body.landing-page:not(.learn-page) .landing-hero-cal__markers{
+  width: 100%;
   gap: 0.04rem;
 }
 
@@ -677,8 +678,9 @@ body.landing-page:not(.learn-page) .landing-hero-cal__marker{
 body.landing-page:not(.learn-page) .landing-hero-cal__insight,
 body.landing-page:not(.learn-page) #landingHeroForecast .landing-hero-cal__insight{
   display: block;
-  width: fit-content;
-  max-width: 72%;
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
   margin: 0.2rem 0 0;
   padding: 0.22rem 0.48rem;
 }
