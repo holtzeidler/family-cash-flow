@@ -487,14 +487,21 @@ body.landing-page:not(.learn-page) .landing-bank-compare{
   width: 100%;
   max-width: min(74.5rem, 100%);
   margin-inline: auto;
-  gap: clamp(0.85rem, 1.6vw, 1.25rem);
+  gap: clamp(0.7rem, 1.3vw, 1rem);
   padding: 0;
   min-height: 0;
 }
 
+body.landing-page:not(.learn-page) .landing-bank-compare__visual{
+  min-width: 0;
+  display: grid;
+  gap: 0.42rem;
+  align-content: center;
+}
+
 body.landing-page:not(.learn-page) .landing-bank-compare__grid{
   max-width: none;
-  align-items: start;
+  align-items: stretch;
   gap: 0.65rem;
 }
 
@@ -507,8 +514,14 @@ body.landing-page:not(.learn-page) .landing-bank-compare__forecast{
   padding: 0.38rem 0.46rem 0.4rem;
 }
 
-body.landing-page:not(.learn-page) .landing-bank-compare__note{
-  margin-top: 0.28rem;
+body.landing-page:not(.learn-page) .landing-bank-compare__support{
+  margin: 0;
+  font-size: clamp(0.8rem, 1.15vw, 0.9rem);
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.012em;
+  color: rgba(51, 65, 85, 0.78);
+  text-align: center;
 }
 
 @media (min-width: 900px){
@@ -518,7 +531,7 @@ body.landing-page:not(.learn-page) .landing-bank-compare__note{
     column-gap: clamp(1.4rem, 2.8vw, 2.15rem);
   }
   body.landing-page:not(.learn-page) .landing-bank-compare__intro,
-  body.landing-page:not(.learn-page) .landing-bank-compare__grid{
+  body.landing-page:not(.learn-page) .landing-bank-compare__visual{
     align-self: center;
   }
   body.landing-page:not(.learn-page) .landing-bank-compare__intro{
@@ -533,35 +546,18 @@ body.landing-page:not(.learn-page) .landing-bank-compare__note{
     margin-right: 0;
   }
   body.landing-page:not(.learn-page) .landing-bank-compare__lede{
-    max-width: 22rem;
+    max-width: 26rem;
   }
 
   body.landing-page:not(.learn-page) .landing-shell > .landing-hero + .landing-bank-compare{
     margin-top: -1.5rem;
   }
-  body.landing-page:not(.learn-page) .landing-shell > .landing-bank-compare + .landing-features{
-    margin-top: -6.5rem;
-  }
-  body.landing-page:not(.learn-page) .landing-shell > .landing-features + .landing-how{
-    margin-top: -3.3rem;
+  body.landing-page:not(.learn-page) .landing-shell > .landing-bank-compare + .landing-how{
+    margin-top: 0.15rem;
   }
   body.landing-page:not(.learn-page) .landing-shell > .landing-how + .landing-offer{
     margin-top: -1.5rem;
   }
-}
-
-body.landing-page:not(.learn-page) .landing-future{
-  width: 100%;
-  max-width: min(74.5rem, 100%);
-  margin-inline: auto;
-  min-height: 0;
-  gap: clamp(1rem, 2vw, 1.55rem);
-}
-
-body.landing-page:not(.learn-page) .landing-future.landing-section--tint-safe{
-  margin-top: 0;
-  padding: clamp(0.4rem, 1vw, 0.7rem) 0;
-  min-height: 0;
 }
 
 body.landing-page:not(.learn-page) .landing-how{
@@ -608,73 +604,3 @@ body.landing-page:not(.learn-page) .landing-shell > .landing-offer.landing-offer
   margin-bottom: 0;
 }
 
-body.landing-page:not(.learn-page) .landing-approach{
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: clamp(0.5rem, 1.1vw, 0.72rem);
-  width: 100%;
-  align-items: stretch;
-}
-
-body.landing-page:not(.learn-page) .landing-approach .landing-bank-compare__card{
-  min-height: 0;
-}
-
-body.landing-page:not(.learn-page) .landing-approach__cats{
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.22rem 0.7rem;
-  margin: 0.15rem 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-body.landing-page:not(.learn-page) .landing-approach__cats li{
-  margin: 0;
-  font-size: 0.78rem;
-  font-weight: 500;
-  line-height: 1.35;
-  color: rgba(100, 116, 139, 0.82);
-}
-
-body.landing-page:not(.learn-page) .landing-approach__cats li:last-child{
-  color: rgba(100, 116, 139, 0.58);
-  font-style: italic;
-}
-
-body.landing-page:not(.learn-page) .landing-approach__flow{
-  display: grid;
-  justify-items: start;
-  gap: 0.12rem;
-  padding: 0.5rem 0.56rem 0.52rem;
-  border-radius: 11px;
-  border: 1px solid rgba(11, 61, 46, 0.1);
-  background: rgba(255, 255, 255, 0.88);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
-}
-
-body.landing-page:not(.learn-page) .landing-approach__step{
-  display: grid;
-  gap: 0.1rem;
-}
-
-body.landing-page:not(.learn-page) .landing-approach__arrow{
-  margin: 0.02rem 0 0.02rem 0.12rem;
-  font-size: 0.85rem;
-  line-height: 1;
-  color: rgba(11, 61, 46, 0.42);
-}
-
-body.landing-page:not(.learn-page) .landing-approach__mid{
-  margin: 0.08rem 0;
-  font-size: 0.8rem;
-  font-weight: 600;
-  line-height: 1.3;
-  color: rgba(51, 65, 85, 0.82);
-}
-
-@media (max-width: 640px){
-  body.landing-page:not(.learn-page) .landing-approach{
-    grid-template-columns: 1fr;
-  }
-}
