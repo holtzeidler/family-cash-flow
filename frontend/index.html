@@ -52,7 +52,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="./styles.css?v=734" />
-    <link rel="stylesheet" href="./landing-marketing.css?v=11" />
+    <link rel="stylesheet" href="./landing-marketing.css?v=12" />
   </head>
   <body class="landing-page">
     <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -140,103 +140,61 @@
           </div>
         </div>
 
-        <section class="landing-bank-compare landing-section landing-section--tint-neutral landing-reveal" aria-labelledby="landingBankCompareTitle">
+        <section
+          id="features"
+          class="landing-bank-compare landing-section landing-section--tint-neutral landing-reveal"
+          aria-labelledby="landingApproachTitle"
+        >
           <div class="landing-bank-compare__intro">
-            <h2 id="landingBankCompareTitle" class="landing-bank-compare__title">Your bank shows today. BalanceWhiz shows what&rsquo;s coming.</h2>
-            <p class="landing-bank-compare__lede">Today&rsquo;s balance doesn&rsquo;t tell the whole story.</p>
+            <h2 id="landingApproachTitle" class="landing-bank-compare__title">The big picture, without a detailed budget.</h2>
+            <p class="landing-bank-compare__lede">Skip the day-to-day categorizing and focus on what matters: what you have now, what&rsquo;s coming up, and what you&rsquo;ll have left.</p>
           </div>
-          <div class="landing-bank-compare__grid" role="group" aria-label="Bank app vs BalanceWhiz comparison">
-            <article class="landing-bank-compare__card landing-bank-compare__card--bank">
-              <h3 class="landing-bank-compare__cardTitle">Your bank app</h3>
-              <div class="landing-bank-compare__bankOnly">
-                <span class="landing-bank-compare__flowLabel">Today&rsquo;s Balance</span>
-                <span class="cal-stat cal-balance landing-bank-compare__balance">$4,862</span>
-                <span class="landing-bank-compare__bankHint">That&rsquo;s all your bank can tell you.</span>
-              </div>
-            </article>
-            <article class="landing-bank-compare__card landing-bank-compare__card--bw">
-              <h3 class="landing-bank-compare__cardTitle">BalanceWhiz</h3>
-              <div class="landing-bank-compare__forecast">
-                <div class="landing-bank-compare__flowStep">
+          <div class="landing-bank-compare__visual">
+            <div class="landing-bank-compare__grid" role="group" aria-label="Bank app vs BalanceWhiz comparison">
+              <article class="landing-bank-compare__card landing-bank-compare__card--bank">
+                <h3 class="landing-bank-compare__cardTitle">Your bank</h3>
+                <div class="landing-bank-compare__bankOnly">
                   <span class="landing-bank-compare__flowLabel">Today</span>
                   <span class="cal-stat cal-balance landing-bank-compare__balance">$4,862</span>
                 </div>
-                <div class="cal-day-txns landing-bank-compare__txns" aria-label="Upcoming expenses">
-                  <div class="cal-day-tx-line cal-day-tx-line--expected cal-day-tx-line--primary cal-day-tx-line--flow-out">
-                    <span
-                      class="cal-tx-label-wrap cal-tx-label-wrap--category-fill"
-                      style="--cal-tx-fill-bg: #fde8e8; --cal-tx-fill-fg: #7f1d1d"
-                    >
-                      <span class="cal-tx-label">Property Tax </span>
-                    </span>
-                    <span class="cal-amt expense">-$2,100</span>
+              </article>
+              <article class="landing-bank-compare__card landing-bank-compare__card--bw">
+                <h3 class="landing-bank-compare__cardTitle">BalanceWhiz</h3>
+                <div class="landing-bank-compare__forecast">
+                  <div class="landing-bank-compare__flowStep">
+                    <span class="landing-bank-compare__flowLabel">Today</span>
+                    <span class="cal-stat cal-balance landing-bank-compare__balance">$4,862</span>
                   </div>
-                  <div class="cal-day-tx-line cal-day-tx-line--expected cal-day-tx-line--secondary cal-day-tx-line--flow-out">
-                    <span
-                      class="cal-tx-label-wrap cal-tx-label-wrap--category-fill"
-                      style="--cal-tx-fill-bg: #ffedd5; --cal-tx-fill-fg: #9a3412"
-                    >
-                      <span class="cal-tx-label">Vacation Deposit </span>
-                    </span>
-                    <span class="cal-amt expense">-$2,000</span>
+                  <div class="cal-day-txns landing-bank-compare__txns" aria-label="Upcoming expenses">
+                    <div class="cal-day-tx-line cal-day-tx-line--expected cal-day-tx-line--primary cal-day-tx-line--flow-out">
+                      <span
+                        class="cal-tx-label-wrap cal-tx-label-wrap--category-fill"
+                        style="--cal-tx-fill-bg: #fde8e8; --cal-tx-fill-fg: #7f1d1d"
+                      >
+                        <span class="cal-tx-label">Property Tax </span>
+                      </span>
+                      <span class="cal-amt expense">-$2,100</span>
+                    </div>
+                    <div class="cal-day-tx-line cal-day-tx-line--expected cal-day-tx-line--secondary cal-day-tx-line--flow-out">
+                      <span
+                        class="cal-tx-label-wrap cal-tx-label-wrap--category-fill"
+                        style="--cal-tx-fill-bg: #ffedd5; --cal-tx-fill-fg: #9a3412"
+                      >
+                        <span class="cal-tx-label">Vacation Deposit </span>
+                      </span>
+                      <span class="cal-amt expense">-$2,000</span>
+                    </div>
+                  </div>
+                  <div class="landing-bank-compare__flowStep landing-bank-compare__flowStep--future">
+                    <span class="landing-bank-compare__flowLabel">Next Friday</span>
+                    <span class="cal-stat cal-balance cal-balance--watch-zone landing-bank-compare__balance landing-bank-compare__balance--future">$731</span>
                   </div>
                 </div>
-                <div class="landing-bank-compare__flowStep landing-bank-compare__flowStep--future">
-                  <span class="landing-bank-compare__flowLabel">Next Friday</span>
-                  <span class="cal-stat cal-balance cal-balance--watch-zone landing-bank-compare__balance landing-bank-compare__balance--future">$731</span>
-                </div>
-              </div>
-              <p class="landing-bank-compare__note landing-bank-compare__note--highlight">Plan ahead instead of reacting.</p>
-            </article>
+              </article>
+            </div>
+            <p class="landing-bank-compare__support">Your bank shows today. BalanceWhiz shows what&rsquo;s coming.</p>
           </div>
         </section>
-
-        <div id="features" class="landing-features landing-reveal" aria-label="A higher-level view of cash flow">
-
-          <section
-            id="landingApproachSection"
-            class="landing-future landing-section landing-section--tint-safe"
-            aria-labelledby="landingApproachTitle"
-          >
-            <div class="landing-future__intro">
-              <h2 id="landingApproachTitle" class="landing-future__title">The big picture, without a detailed budget.</h2>
-              <p class="landing-future__lede">Skip the day-to-day categorizing and focus on what matters: what you have now, what&rsquo;s coming up, and what you&rsquo;ll have left.</p>
-            </div>
-            <div class="landing-future__demo">
-              <div class="landing-approach" role="group" aria-label="Detailed budgeting compared with BalanceWhiz">
-                <article class="landing-bank-compare__card landing-bank-compare__card--bank">
-                  <h3 class="landing-bank-compare__cardTitle">Detailed budgeting</h3>
-                  <ul class="landing-approach__cats">
-                    <li>Groceries</li>
-                    <li>Dining</li>
-                    <li>Clothing</li>
-                    <li>Entertainment</li>
-                    <li>Coffee</li>
-                    <li>Shopping</li>
-                    <li>Gas</li>
-                    <li>etc.</li>
-                  </ul>
-                </article>
-                <article class="landing-bank-compare__card landing-bank-compare__card--bw">
-                  <h3 class="landing-bank-compare__cardTitle">BalanceWhiz</h3>
-                  <div class="landing-approach__flow">
-                    <div class="landing-approach__step">
-                      <span class="landing-bank-compare__flowLabel">Today</span>
-                      <span class="cal-stat cal-balance landing-bank-compare__balance">$12,400</span>
-                    </div>
-                    <div class="landing-approach__arrow" aria-hidden="true">↓</div>
-                    <p class="landing-approach__mid">What&rsquo;s coming up</p>
-                    <div class="landing-approach__arrow" aria-hidden="true">↓</div>
-                    <div class="landing-approach__step">
-                      <span class="landing-bank-compare__flowLabel">Left after what&rsquo;s coming</span>
-                      <span class="cal-stat cal-balance landing-bank-compare__balance">$5,800</span>
-                    </div>
-                  </div>
-                </article>
-              </div>
-            </div>
-          </section>
-        </div>
 
         <section id="how" class="landing-how landing-section landing-section--tint-neutral landing-reveal" aria-label="How it works">
           <div class="landing-how__copy">
