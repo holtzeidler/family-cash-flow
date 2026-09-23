@@ -6173,6 +6173,7 @@ async function openTxEditModalAsync(tx) {
     instanceAccountId.value = String(state.accounts[0].id);
   }
   show(txEditErr, "");
+  resetTxEditModalPosition();
   try { txEditModal.style.display = ""; } catch (_) {}
   txEditModal.classList.add("modal-overlay--open");
   txEditModal.setAttribute("aria-hidden", "false");
@@ -6293,10 +6294,19 @@ function openTxEditDeleteScopeModal() {
   requestAnimationFrame(() => firstOpt?.focus?.());
 }
 
+function resetTxEditModalPosition() {
+  if (!txEditInner) return;
+  txEditInner.style.transform = "";
+  txEditInner.classList.remove("is-dragging");
+  txEditInner.dataset.txEditDragX = "0";
+  txEditInner.dataset.txEditDragY = "0";
+}
+
 function closeTxEditModal() {
   if (!txEditModal) return;
   try { closeTxEditApplyScopeModal(); } catch (_) {}
   try { closeTxEditDeleteScopeModal(); } catch (_) {}
+  resetTxEditModalPosition();
   txEditModal.classList.remove("modal-overlay--open");
   txEditModal.setAttribute("aria-hidden", "true");
   // Defensive: force display:none in case a stray class or inline style is keeping the overlay visible.
@@ -7276,9 +7286,100 @@ if (txEditCancel) {
 
 if (txEditModal) {
   txEditModal.addEventListener("click", (e) => {
+    if (txEditInner?.classList.contains("is-dragging")) return;
+    if (txEditInner?.dataset.txEditDidDrag === "1") return;
     if (e.target === txEditModal) closeTxEditModal();
   });
 }
+
+(function initTxEditModalDrag() {
+  if (!txEditModal || !txEditInner) return;
+  const handle = txEditModal.querySelector(".tx-edit-top");
+  if (!handle) return;
+  handle.title = "Drag to move";
+
+  let pointerId = null;
+  let startX = 0;
+  let startY = 0;
+  let originX = 0;
+  let originY = 0;
+  let moved = false;
+
+  function currentOffset() {
+    return {
+      x: Number(txEditInner.dataset.txEditDragX || 0) || 0,
+      y: Number(txEditInner.dataset.txEditDragY || 0) || 0,
+    };
+  }
+
+  function applyOffset(x, y) {
+    const rect = txEditInner.getBoundingClientRect();
+    const cur = currentOffset();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const pad = 12;
+    const headerH = Math.min(52, rect.height);
+    let left = rect.left - cur.x + x;
+    let top = rect.top - cur.y + y;
+    const width = rect.width;
+    const height = rect.height;
+    if (left > vw - pad) x -= left - (vw - pad);
+    if (left + width < pad) x += pad - (left + width);
+    if (top > vh - headerH) y -= top - (vh - headerH);
+    if (top + headerH < pad) y += pad - (top + headerH);
+    if (top + height < pad) y += pad - (top + height);
+    txEditInner.dataset.txEditDragX = String(x);
+    txEditInner.dataset.txEditDragY = String(y);
+    txEditInner.style.transform = x || y ? `translate(${x}px, ${y}px)` : "";
+  }
+
+  function endDrag(e) {
+    if (pointerId == null) return;
+    if (e && e.pointerId !== pointerId) return;
+    try {
+      if (e) handle.releasePointerCapture(pointerId);
+    } catch (_) {}
+    pointerId = null;
+    txEditInner.classList.remove("is-dragging");
+    if (moved) {
+      txEditInner.dataset.txEditDidDrag = "1";
+      window.setTimeout(() => {
+        if (txEditInner) txEditInner.dataset.txEditDidDrag = "0";
+      }, 80);
+    }
+    moved = false;
+  }
+
+  handle.addEventListener("pointerdown", (e) => {
+    if (e.button != null && e.button !== 0) return;
+    const t = e.target;
+    if (t && t.closest && t.closest("input, select, textarea, button, a, label")) return;
+    const cur = currentOffset();
+    pointerId = e.pointerId;
+    startX = e.clientX;
+    startY = e.clientY;
+    originX = cur.x;
+    originY = cur.y;
+    moved = false;
+    try {
+      handle.setPointerCapture(pointerId);
+    } catch (_) {}
+    e.preventDefault();
+  });
+
+  handle.addEventListener("pointermove", (e) => {
+    if (pointerId == null || e.pointerId !== pointerId) return;
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    if (!moved && Math.abs(dx) < 3 && Math.abs(dy) < 3) return;
+    moved = true;
+    txEditInner.classList.add("is-dragging");
+    applyOffset(originX + dx, originY + dy);
+  });
+
+  handle.addEventListener("pointerup", endDrag);
+  handle.addEventListener("pointercancel", endDrag);
+})();
 
 document.addEventListener("keydown", (e) => {
   if (e.key !== "Escape") return;
@@ -15598,6 +15699,7 @@ async function openExpectedEditModalAsync(tx, opts = {}) {
   setExpectedModalMode();
   show(txEditErr, "");
   closeTxAddModal();
+  resetTxEditModalPosition();
   try { txEditModal.style.display = ""; } catch (_) {}
   txEditModal.classList.add("modal-overlay--open");
   txEditModal.setAttribute("aria-hidden", "false");
