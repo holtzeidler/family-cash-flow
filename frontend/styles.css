@@ -25983,6 +25983,17 @@ body.account-setup-page
   background: var(--accent);
   border-radius: 14px 14px 0 0;
   border-bottom: 1px solid rgba(0,0,0,0.18);
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+#txEditInner.modal.is-dragging .tx-edit-top,
+.tx-edit-top:active{
+  cursor: grabbing;
+}
+#txEditInner.modal.is-dragging{
+  transition: none;
 }
 
 .tx-edit-mode-banner{
