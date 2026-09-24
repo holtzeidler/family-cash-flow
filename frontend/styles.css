@@ -21884,18 +21884,6 @@ body[data-bw-view="reimbursements"] .cash-health-status--balance .cash-health-st
   border-color: rgba(17, 24, 39, 0.068);
   box-shadow: 0 1px 3px rgba(17, 24, 39, 0.038);
 }
-.cal-cell.cal-cell--no-tx .cal-ledger-metrics{
-  padding-top: 5px;
-  margin-top: auto;
-  border-top: 1px solid rgba(11, 61, 46, 0.08);
-  min-height: 18px;
-  padding-bottom: 4px;
-}
-.cal-cell.cal-cell--no-tx .cal-ledger-metrics:not(.cal-day-balance-hit){
-  border-top: none;
-  padding-top: 0;
-}
-
 .cal-cell.cal-cell--no-tx .cal-cell-stack{
   gap: 2px;
 }
