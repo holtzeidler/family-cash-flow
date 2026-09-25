@@ -1584,6 +1584,22 @@ class UserOut(BaseModel):
     last_name: Optional[str] = None
 
 
+class ProfileUpdateIn(BaseModel):
+    """Name-only profile update. Email stays the login identity and is not accepted here."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    first_name: Optional[str] = Field(default=None, validation_alias=AliasChoices("first_name", "firstName"))
+    last_name: Optional[str] = Field(default=None, validation_alias=AliasChoices("last_name", "lastName"))
+
+    @field_validator("first_name", "last_name", mode="before")
+    @classmethod
+    def _clean_name(cls, v: object) -> object:
+        if v is None:
+            return None
+        return _clean_profile_name(v) or ""
+
+
 class AuthMeOut(BaseModel):
     user: UserOut
     is_platform_admin: bool = False
@@ -3622,9 +3638,28 @@ def _ensure_user_name_part_columns() -> None:
             conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_name VARCHAR(80)"))
 
 
-def _account_display_name(first_name: str, last_name: str) -> str:
+def _account_display_name(first_name: str, last_name: str) -> Optional[str]:
     """Combined label for existing name consumers (admin, Stripe). Not the stored identity."""
-    return f"{first_name} {last_name}".strip()[:255]
+    parts = [p for p in ((first_name or "").strip(), (last_name or "").strip()) if p]
+    if not parts:
+        return None
+    return " ".join(parts)[:255]
+
+
+def _clean_profile_name(value: object) -> Optional[str]:
+    """Blank is allowed so existing users can leave a name empty. Signup still requires both."""
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise ValueError("Name contains invalid characters")
+    text = " ".join(value.split())
+    if not text:
+        return None
+    if len(text) > 80:
+        raise ValueError("Name is too long")
+    if any(ch in text for ch in "<>") or any(ord(ch) < 32 for ch in text):
+        raise ValueError("Name contains invalid characters")
+    return text
 
 
 def _user_out(user: User) -> UserOut:
@@ -4314,6 +4349,28 @@ def password_reset_complete(payload: PasswordResetCompleteIn, db=Depends(get_db)
     db.add(user)
     db.commit()
     return {"ok": True}
+
+
+@app.patch("/api/auth/me", response_model=UserOut)
+def update_me(
+    payload: ProfileUpdateIn,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
+    db=Depends(get_db),
+):
+    """Update the signed-in user's first and last name. Does not change the login email."""
+    user_id = get_current_user_id(access_token)
+    user = db.execute(select(User).where(User.id == user_id)).scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+    first_name = _clean_profile_name(payload.first_name)
+    last_name = _clean_profile_name(payload.last_name)
+    user.first_name = first_name
+    user.last_name = last_name
+    user.name = _account_display_name(first_name or "", last_name or "")
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return _user_out(user)
 
 
 @app.get("/api/auth/me", response_model=AuthMeOut)
