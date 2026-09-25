@@ -32,7 +32,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=781" />
+    <link rel="stylesheet" href="../styles.css?v=782" />
   </head>
   <body class="login-page signup-page account-setup-page">
     <div class="container">
@@ -94,9 +94,28 @@
                   class="account-setup-wizard__panel account-setup-wizard__panel--active auth-section__body"
                   id="accountSetupWizardPanel0"
                   role="tabpanel"
-                  aria-label="Step 1 of 4: Email and password"
+                  aria-label="Step 1 of 4: Name, email, and password"
                   aria-hidden="false"
                 >
+                  <div class="account-setup-name-row">
+                    <div class="row">
+                      <div class="form-row-h">
+                        <div class="form-row-h__label"><label for="firstName">First name</label></div>
+                        <div class="form-row-h__field">
+                          <input id="firstName" name="firstName" type="text" autocomplete="given-name" maxlength="80" />
+                        </div>
+                      </div>
+                    </div>
+                    <div class="row">
+                      <div class="form-row-h">
+                        <div class="form-row-h__label"><label for="lastName">Last name</label></div>
+                        <div class="form-row-h__field">
+                          <input id="lastName" name="lastName" type="text" autocomplete="family-name" maxlength="80" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="account-setup-field-spacer" aria-hidden="true"></div>
                   <div class="row">
                     <div class="form-row-h">
                       <div class="form-row-h__label"><label for="email">Email</label></div>
@@ -769,6 +788,6 @@
       </div>
     </div>
 
-    <script src="../signup/signup.js?v=120"></script>
+    <script src="../signup/signup.js?v=121"></script>
   </body>
 </html>

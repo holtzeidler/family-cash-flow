@@ -29,7 +29,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 import bcrypt
 from jose import jwt
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, EmailStr, Field, field_validator
 from pydantic_settings import BaseSettings
 from sqlalchemy import Date as SA_Date
 from sqlalchemy import DateTime
@@ -364,6 +364,9 @@ class User(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    # Separate profile names. Nullable so accounts created before these columns still load.
+    first_name: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
+    last_name: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
     password_hash: Mapped[str] = mapped_column(String(255))
     created_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
     # Platform user type: subscriber (app) | admin (operator console). Family roles are on FamilyMember.
@@ -1508,9 +1511,33 @@ def _send_password_reset_email_sync(*, to_addr: str, subject: str, text_body: st
 
 
 class RegisterIn(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     email: EmailStr
     password: str = Field(min_length=8, max_length=200)
+    # Kept optional so older clients are not required to send it. New signups store
+    # first_name and last_name; name is derived for existing display and Stripe.
     name: Optional[str] = None
+    first_name: str = Field(
+        min_length=1,
+        max_length=80,
+        validation_alias=AliasChoices("first_name", "firstName"),
+    )
+    last_name: str = Field(
+        min_length=1,
+        max_length=80,
+        validation_alias=AliasChoices("last_name", "lastName"),
+    )
+
+    @field_validator("first_name", "last_name", mode="before")
+    @classmethod
+    def _clean_person_name(cls, v: object) -> object:
+        if not isinstance(v, str):
+            return v
+        text = " ".join(v.split())
+        if any(ch in text for ch in "<>") or any(ord(ch) < 32 for ch in text):
+            raise ValueError("Name contains invalid characters")
+        return text
 
 
 class LoginIn(BaseModel):
@@ -1553,6 +1580,8 @@ class UserOut(BaseModel):
     id: int
     email: EmailStr
     name: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
 
 
 class AuthMeOut(BaseModel):
@@ -2965,6 +2994,7 @@ def startup_populate_schema():
     _ensure_user_platform_columns()
     _migrate_platform_roles_subscriber_admin()
     _ensure_user_complimentary_columns()
+    _ensure_user_name_part_columns()
     _ensure_platform_admin_audit_table()
     _ensure_reimbursements_table()
     _ensure_vendor_category_mappings_table()
@@ -3577,6 +3607,36 @@ def _ensure_user_complimentary_columns() -> None:
             conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS complimentary_access_expires_at TIMESTAMPTZ"))
 
 
+def _ensure_user_name_part_columns() -> None:
+    """Add nullable first_name and last_name. Existing rows stay null."""
+    with engine.begin() as conn:
+        if settings.DATABASE_URL.startswith("sqlite"):
+            cols = conn.execute(text("PRAGMA table_info(users)")).fetchall()
+            names = {str(row[1]) for row in cols}
+            if "first_name" not in names:
+                conn.execute(text("ALTER TABLE users ADD COLUMN first_name VARCHAR(80)"))
+            if "last_name" not in names:
+                conn.execute(text("ALTER TABLE users ADD COLUMN last_name VARCHAR(80)"))
+        else:
+            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS first_name VARCHAR(80)"))
+            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_name VARCHAR(80)"))
+
+
+def _account_display_name(first_name: str, last_name: str) -> str:
+    """Combined label for existing name consumers (admin, Stripe). Not the stored identity."""
+    return f"{first_name} {last_name}".strip()[:255]
+
+
+def _user_out(user: User) -> UserOut:
+    return UserOut(
+        id=user.id,
+        email=user.email,
+        name=user.name,
+        first_name=getattr(user, "first_name", None),
+        last_name=getattr(user, "last_name", None),
+    )
+
+
 def _migrate_platform_roles_subscriber_admin() -> None:
     """none → subscriber; support → admin; keep admin."""
     with engine.begin() as conn:
@@ -4093,9 +4153,13 @@ def register(payload: RegisterIn, response: Response, db=Depends(get_db)):
     existing = db.execute(select(User).where(func.lower(User.email) == key)).scalar_one_or_none()
     if existing:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
+    first_name = payload.first_name
+    last_name = payload.last_name
     user = User(
         email=key,
-        name=payload.name,
+        name=_account_display_name(first_name, last_name),
+        first_name=first_name,
+        last_name=last_name,
         password_hash=hash_password(payload.password),
         platform_role="subscriber",
     )
@@ -4142,7 +4206,7 @@ def register(payload: RegisterIn, response: Response, db=Depends(get_db)):
         path="/",
     )
     return {
-        "user": UserOut(id=user.id, email=user.email, name=user.name),
+        "user": _user_out(user),
         "access_token": token,
     }
 
@@ -4260,7 +4324,7 @@ def me(access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_a
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
     role = effective_platform_role(user=user)
     return AuthMeOut(
-        user=UserOut(id=user.id, email=user.email, name=user.name),
+        user=_user_out(user),
         is_platform_admin=role == "admin",
         platform_role=role,
     )

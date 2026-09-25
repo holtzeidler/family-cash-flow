@@ -17937,6 +17937,22 @@ body.account-setup-page #accountSetupWizardPanel0 .form-row-h__label label{
   font-weight: 650;
   color: rgba(17, 24, 39, 0.8);
 }
+body.account-setup-page #accountSetupWizardPanel0 .account-setup-name-row{
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 12px;
+  row-gap: 7px;
+  width: 100%;
+  min-width: 0;
+}
+body.account-setup-page #accountSetupWizardPanel0 .account-setup-name-row > .row{
+  min-width: 0;
+}
+@media (max-width: 640px){
+  body.account-setup-page #accountSetupWizardPanel0 .account-setup-name-row{
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
 /* Step 2: full-width rows + wider label column so uppercase labels stay on one line */
 body.account-setup-page #accountSetupWizardPanel1 .form-row-h{
   align-items: center;
