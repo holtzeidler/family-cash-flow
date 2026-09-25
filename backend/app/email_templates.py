@@ -78,8 +78,8 @@ def build_welcome_email_content(
     site = _safe_http_url(app_url)
     days = int(trial_days) if int(trial_days) > 0 else 14
     body = (
-        "You’re all set.\n\n"
-        "BalanceWhiz helps you see what’s coming before it hits your checking account — "
+        "Let’s get your forecast set up.\n\n"
+        "BalanceWhiz helps you see your cash flow before it happens — "
         "so you can plan ahead without building a budget or connecting your bank.\n\n"
         "Start by adding your current balance, then add the income and expenses you already know are coming."
     )
@@ -139,7 +139,7 @@ def render_cta_html(*, label: str, url: str) -> str:
     esc_href = _esc(href)
     width = _cta_vml_width(text)
     return f"""
-<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 20px;">
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:16px 0 28px;">
   <tr>
     <td align="left">
       <!--[if mso]>
