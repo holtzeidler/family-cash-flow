@@ -35,7 +35,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=800" />
+    <link rel="stylesheet" href="../styles.css?v=801" />
   </head>
   <body>
     <h1 class="sr-only">Reports</h1>
@@ -552,39 +552,39 @@
                     <h2 class="settings-section-title">Profile</h2>
                   </header>
                   <div class="settings-section-body">
-                    <section class="settings-profile__block" aria-labelledby="profilePersonalHeading">
+                    <section class="settings-subsection" aria-labelledby="profilePersonalHeading">
                       <h3 class="settings-subhead" id="profilePersonalHeading">Personal information</h3>
                       <p class="settings-section-lede">Used for your BalanceWhiz account and communications.</p>
-                      <div class="settings-profile__name-row">
-                        <div class="settings-profile__field">
-                          <label class="settings-profile__label" for="profileFirstName">First name</label>
+                      <div class="row two">
+                        <div>
+                          <label for="profileFirstName">First name</label>
                           <input id="profileFirstName" name="firstName" type="text" autocomplete="given-name" maxlength="80" />
                         </div>
-                        <div class="settings-profile__field">
-                          <label class="settings-profile__label" for="profileLastName">Last name</label>
+                        <div>
+                          <label for="profileLastName">Last name</label>
                           <input id="profileLastName" name="lastName" type="text" autocomplete="family-name" maxlength="80" />
                         </div>
                       </div>
-                      <div class="settings-profile__field settings-profile__field--full">
-                        <label class="settings-profile__label" for="profileEmail">Email address</label>
+                      <div class="settings-profile-email">
+                        <label for="profileEmail">Email address</label>
                         <input id="profileEmail" type="email" autocomplete="email" readonly />
                       </div>
-                      <div class="settings-profile__actions">
-                        <button type="button" class="settings-profile__save" id="profileSaveBtn" disabled>Save changes</button>
-                        <p id="profileSavedMsg" class="settings-profile__saved" hidden role="status">Changes saved.</p>
+                      <div class="settings-profile-actions">
+                        <button type="button" class="settings-house-primary-btn" id="profileSaveBtn" disabled>Save changes</button>
+                        <p id="profileSavedMsg" class="prefs-field__saved" hidden role="status">Changes saved.</p>
                       </div>
-                      <div id="profileErr" class="error settings-profile__err" style="display:none" role="alert"></div>
+                      <div id="profileErr" class="error" style="display:none" role="alert"></div>
                     </section>
-                    <section class="settings-profile__block" aria-labelledby="profileSecurityHeading">
+                    <section class="settings-subsection settings-subsection--spaced" aria-labelledby="profileSecurityHeading">
                       <h3 class="settings-subhead" id="profileSecurityHeading">Login &amp; security</h3>
-                      <div class="settings-profile__password-row">
+                      <div class="settings-profile-password">
                         <div>
-                          <div class="settings-profile__label">Password</div>
-                          <div class="settings-profile__mask" aria-hidden="true">••••••••</div>
+                          <label>Password</label>
+                          <div class="settings-profile-mask" aria-hidden="true">••••••••</div>
                         </div>
                         <button type="button" class="secondary" id="profilePasswordBtn">Change password</button>
                       </div>
-                      <p id="profilePasswordMsg" class="settings-profile__saved" hidden role="status"></p>
+                      <p id="profilePasswordMsg" class="prefs-field__saved" hidden role="status"></p>
                     </section>
                   </div>
                 </div>
@@ -2039,7 +2039,7 @@ Date,Vendor,Amount
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="../app.js?v=488"></script>
+    <script src="../app.js?v=489"></script>
     <script src="../feedback.js?v=5" defer></script>
     <script src="../tour.js?v=9" defer></script>
   </body>

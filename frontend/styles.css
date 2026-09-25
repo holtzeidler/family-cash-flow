@@ -13518,83 +13518,43 @@ html.bw-billing-readonly .cal-day-balance-hit{
 .settings-section-body{
   margin-top: 2px;
 }
-.settings-profile__block + .settings-profile__block{
-  margin-top: 22px;
-  padding-top: 18px;
-  border-top: 1px solid rgba(17, 24, 39, 0.08);
+#settingsProfilePane .settings-section-body{
+  max-width: 40rem;
 }
-.settings-profile__name-row{
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  column-gap: 12px;
-  row-gap: 12px;
-  margin-top: 14px;
-}
-.settings-profile__field{
-  min-width: 0;
-}
-.settings-profile__field--full{
+#settingsProfilePane .row.two{
   margin-top: 12px;
 }
-.settings-profile__label{
-  display: block;
-  margin: 0 0 6px;
-  font-size: 0.8125rem;
-  font-weight: 650;
-  color: rgba(17, 24, 39, 0.8);
+#settingsProfilePane .row.two > div{
+  min-width: 0;
 }
-.settings-profile__field input{
-  width: 100%;
-  box-sizing: border-box;
+#settingsProfilePane .settings-profile-email{
+  margin-top: 12px;
 }
-.settings-profile__field input[readonly]{
+#profileEmail[readonly]{
   background: rgba(17, 24, 39, 0.03);
   color: rgba(17, 24, 39, 0.72);
 }
-.settings-profile__actions{
-  margin-top: 14px;
+#settingsProfilePane .settings-profile-actions{
+  margin-top: 12px;
   display: flex;
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
 }
-.settings-profile__save{
-  background: var(--accent);
-  border: none;
-  color: #fff;
-  font-weight: 650;
-  padding: 10px 16px;
-  border-radius: 8px;
-}
-.settings-profile__save:disabled{
-  opacity: 0.45;
-  cursor: default;
-}
-.settings-profile__saved{
+#settingsProfilePane .settings-profile-actions .prefs-field__saved{
   margin: 0;
-  font-size: 0.8125rem;
-  color: color-mix(in srgb, var(--accent) 72%, var(--text));
 }
-.settings-profile__err{
-  margin: 8px 0 0;
-}
-.settings-profile__password-row{
+#settingsProfilePane .settings-profile-password{
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-top: 10px;
   flex-wrap: wrap;
 }
-.settings-profile__mask{
-  font-size: 1rem;
+#settingsProfilePane .settings-profile-mask{
+  margin-top: -2px;
   letter-spacing: 0.12em;
   color: rgba(17, 24, 39, 0.72);
-}
-@media (max-width: 640px){
-  .settings-profile__name-row{
-    grid-template-columns: minmax(0, 1fr);
-  }
 }
 .settings-actions-row{
   margin-top: 12px;

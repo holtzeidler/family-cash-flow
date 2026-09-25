@@ -3683,6 +3683,10 @@ function setActiveTopView(view) {
           : view === "reimbursements"
             ? "reimbursements"
             : "calendar";
+  try {
+    document.body.dataset.bwView = v;
+    if (v !== "reports") document.body.removeAttribute("data-bw-pressure-report");
+  } catch (_) {}
   if (calendarViewPanel) calendarViewPanel.hidden = v !== "calendar";
   if (transactionViewPanel) transactionViewPanel.hidden = v !== "transactions";
   if (settingsViewPanel) settingsViewPanel.hidden = v !== "settings";
@@ -3774,10 +3778,6 @@ function setActiveTopView(view) {
   }
   try {
     localStorage.setItem(ACTIVE_VIEW_KEY, v);
-  } catch (_) {}
-  try {
-    document.body.dataset.bwView = v;
-    if (v !== "reports") document.body.removeAttribute("data-bw-pressure-report");
   } catch (_) {}
 }
 
@@ -5136,6 +5136,8 @@ function getInitialTopViewFromUrlOrStorage() {
   return "calendar";
 }
 
+let profileNameBaseline = { first: "", last: "" };
+
 try {
   setActiveTopView(getInitialTopViewFromUrlOrStorage());
 } catch (_) {}
@@ -6400,8 +6402,6 @@ function readProfileNameFields() {
     last: normalizeProfileName(document.getElementById("profileLastName")?.value),
   };
 }
-
-let profileNameBaseline = { first: "", last: "" };
 
 function syncProfileSaveEnabled() {
   const btn = document.getElementById("profileSaveBtn");
