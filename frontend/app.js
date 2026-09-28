@@ -10145,10 +10145,9 @@ async function fetchBillingStatus({ force = false } = {}) {
     return billingStatusCache.inFlight;
   }
 
+  // Same rule as api(): a configured API_BASE is used as-is, and an empty
+  // base (local placeholder removed) is the same-origin API.
   const apiBase = apiBaseUrl();
-  if (!apiBase) {
-    throw new Error("Billing API isn’t configured on this build.");
-  }
 
   // DB-only loads use the shared api() helper (cold-start retries).
   // sync=1 is best-effort and uses a single bounded attempt.

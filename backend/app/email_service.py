@@ -982,6 +982,7 @@ def maybe_send_payment_method_updated_email(
     from sqlalchemy.exc import IntegrityError
 
     from .billing_entitlement import (
+        complimentary_access_is_active,
         family_owner_user,
         payment_method_update_email_key,
         replaced_default_payment_method,
@@ -1020,6 +1021,9 @@ def maybe_send_payment_method_updated_email(
     user = family_owner_user(db, fam)
     email = (getattr(user, "email", None) or "").strip() if user is not None else ""
     if user is None or "@" not in email:
+        return
+    if complimentary_access_is_active(user):
+        logger.info("Payment method email skipped; complimentary access family_id=%s", fam)
         return
     staging = _is_staging_deployment()
     on_production_db = _host_label_matches(settings.PRODUCTION_DATABASE_HOST, _database_identity())
@@ -1084,6 +1088,7 @@ def maybe_send_plan_selection_email(
     from sqlalchemy.exc import IntegrityError
 
     from .billing_entitlement import (
+        complimentary_access_is_active,
         family_owner_user,
         is_in_app_trial,
         subscription_plan_display,
@@ -1116,6 +1121,9 @@ def maybe_send_plan_selection_email(
         user = family_owner_user(db, int(family_id))
     email = (getattr(user, "email", None) or "").strip() if user is not None else ""
     if "@" not in email:
+        return
+    if complimentary_access_is_active(user):
+        logger.info("Plan selection email skipped; complimentary access family_id=%s", family_id)
         return
 
     staging = _is_staging_deployment()
