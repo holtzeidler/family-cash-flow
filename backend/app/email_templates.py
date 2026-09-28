@@ -94,15 +94,12 @@ def build_welcome_email_content(
         "You’ve added the starting point. Now keep building out your forecast with the income and expenses you know are coming.\n\n"
         "The more you add, the clearer your cash flow picture becomes — so you can see what’s ahead and plan with confidence."
     )
-    started = f"Your {days}-day free trial has started."
     friendly_end = format_trial_end_date(trial_ends_on)
     if friendly_end:
-        ends = (
-            f"Your trial ends {friendly_end}. No payment method is required, "
-            "and you won’t be charged when your trial ends."
-        )
+        started = f"Your {days}-day free trial is underway and ends {friendly_end}."
     else:
-        ends = "No payment method is required, and you won’t be charged when your trial ends."
+        started = f"Your {days}-day free trial is underway."
+    ends = "No payment method is required, and you won’t be charged when your trial ends."
     return TransactionalEmailContent(
         subject="Welcome to BalanceWhiz",
         preheader="Your cash forecast starts here.",
