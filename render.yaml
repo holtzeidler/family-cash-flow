@@ -5,6 +5,9 @@
 # in the dashboard — do not reuse production DATABASE_URL for staging.
 #
 # Staging (branch staging): Neon staging branch + API + static frontend. See docs/STAGING.md.
+# The trial-reminder cron is staging-only. It reuses this Docker image and does not
+# run against production. Set its DATABASE_URL to the staging Neon host, and set
+# RESEND_API_KEY plus the same STAGING_AUTH_EMAIL_ALLOWLIST as the staging API.
 # DATABASE_URL on family-cash-flow-api-staging must be the Neon staging endpoint
 # (ep-polished-boat-…), never production (ep-ancient-union-…).
 #
@@ -50,6 +53,35 @@ services:
       - key: STRIPE_SECRET_KEY
         sync: false
       - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+
+  - type: cron
+    name: family-cash-flow-trial-reminders-staging
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    plan: starter
+    branch: staging
+    schedule: "15 14,20 * * *"
+    dockerCommand: python -m app.trial_ending_reminders
+    envVars:
+      - key: ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: TRIAL_ENDING_REMINDERS_ENABLED
+        value: "1"
+      - key: PRODUCTION_DATABASE_HOST
+        value: ep-ancient-union-and21kx9-pooler
+      - key: STAGING_DATABASE_HOST
+        value: ep-polished-boat-ando6x8y-pooler
+      - key: APP_PUBLIC_BASE_URL
+        value: https://staging.balancewhiz.com
+      - key: CORS_ORIGINS
+        value: https://staging.balancewhiz.com
+      - key: STAGING_AUTH_EMAIL_ALLOWLIST
         sync: false
 
   - type: web

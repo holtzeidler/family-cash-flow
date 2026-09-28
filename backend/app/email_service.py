@@ -4,7 +4,9 @@ Future product emails should call send_templated_email() / send_transactional_em
 rather than talking to Resend directly. This module never logs RESEND_API_KEY.
 
 Signup sends the Welcome email once, including the trial end date. Do not add a
-separate trial-started message. Preview sends stay on POST /api/platform/email-test.
+separate trial-started message. The 3-day trial reminder is a separate send,
+once per trial, from the scheduled job — never from login. Preview sends stay
+on POST /api/platform/email-test.
 """
 
 from __future__ import annotations
@@ -17,6 +19,7 @@ from typing import Optional
 from .email_templates import (
     PRODUCTION_APP_URL,
     TransactionalEmailContent,
+    build_trial_ending_email_content,
     build_welcome_email_content,
     render_transactional_email,
 )
@@ -168,6 +171,32 @@ def send_welcome_email(
     )
 
 
+def send_trial_ending_email(
+    *,
+    api_key: str,
+    to_addr: str,
+    app_url: str,
+    first_name: str = "",
+    trial_ends_on: Optional[datetime] = None,
+    from_addr: str = DEFAULT_FROM,
+    reply_to: Optional[str] = DEFAULT_REPLY_TO,
+) -> str:
+    """Send the 3-day trial reminder. Caller enforces eligibility and one-send-per-trial."""
+    content = build_trial_ending_email_content(
+        app_url=app_url,
+        first_name=first_name,
+        trial_ends_on=trial_ends_on,
+    )
+    return send_templated_email(
+        api_key=api_key,
+        to_addr=to_addr,
+        content=content,
+        app_url=app_url,
+        from_addr=from_addr,
+        reply_to=reply_to,
+    )
+
+
 def send_staging_test_email(
     *,
     api_key: str,
@@ -181,6 +210,8 @@ def send_staging_test_email(
     Link destinations always use STAGING_EMAIL_PREVIEW_APP_URL, never the
     staging app host. send_welcome_email() itself is unchanged.
     """
+    from datetime import timedelta
+
     from .billing_entitlement import trial_ends_at
 
     preview_url = STAGING_EMAIL_PREVIEW_APP_URL
@@ -194,6 +225,17 @@ def send_staging_test_email(
             from_addr=from_addr or DEFAULT_FROM,
             reply_to=reply_to,
             trial_ends_on=trial_ends_at(datetime.utcnow()),
+        )
+    if kind in ("trial-ending", "trial_ending"):
+        # Sample date for the preview only. Real sends use trial_ends_at(family.created_at).
+        return send_trial_ending_email(
+            api_key=api_key,
+            to_addr=to_addr or TEST_TO,
+            app_url=preview_url,
+            first_name="Tracy",
+            trial_ends_on=datetime.utcnow() + timedelta(days=3),
+            from_addr=from_addr or DEFAULT_FROM,
+            reply_to=reply_to,
         )
     content = TransactionalEmailContent(
         subject="BalanceWhiz email design test",

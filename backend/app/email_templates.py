@@ -69,6 +69,17 @@ def welcome_heading(*, first_name: str = "") -> str:
     return "Welcome to BalanceWhiz."
 
 
+BILLING_SETTINGS_PATH = "/settings/?section=billing"
+
+
+def billing_settings_url(app_url: str) -> str:
+    """Logged-in Billing page (monthly or annual plan)."""
+    site = _safe_http_url(app_url).rstrip("/")
+    if not site:
+        return ""
+    return f"{site}{BILLING_SETTINGS_PATH}"
+
+
 def format_trial_end_date(value: Optional[datetime]) -> str:
     """Friendly calendar date, e.g. October 12, 2026. Empty when unknown."""
     if value is None:
@@ -108,6 +119,39 @@ def build_welcome_email_content(
         cta_label="Go to my forecast",
         cta_url=site,
         support_line=f"{started}\n\n{ends}",
+    )
+
+
+def build_trial_ending_email_content(
+    *,
+    app_url: str,
+    first_name: str = "",
+    trial_ends_on: Optional[datetime] = None,
+) -> TransactionalEmailContent:
+    """3-day trial reminder. Uses the shared Welcome shell; copy is fixed for this reminder."""
+    name = normalize_first_name(first_name)
+    greeting = f"Hi {name}," if name else "Hi,"
+    friendly_end = format_trial_end_date(trial_ends_on)
+    if friendly_end:
+        when = f"Your BalanceWhiz trial ends on {friendly_end}."
+    else:
+        when = "Your BalanceWhiz trial ends in 3 days."
+    body = (
+        f"{greeting}\n\n"
+        f"{when}\n\n"
+        "If BalanceWhiz is helping you see what’s ahead, choose a plan to keep building and updating your forecast."
+    )
+    return TransactionalEmailContent(
+        subject="Your BalanceWhiz trial ends in 3 days",
+        preheader="Your BalanceWhiz trial ends in 3 days.",
+        heading="Your free trial ends in 3 days.",
+        body=body,
+        cta_label="Choose a plan",
+        cta_url=billing_settings_url(app_url),
+        support_line=(
+            "If you don’t subscribe, you won’t be charged. Your account will become view-only "
+            "when your trial ends, so you can still see the forecast you’ve already created."
+        ),
     )
 
 

@@ -155,6 +155,40 @@ def trial_days_remaining(family_created_at: Optional[datetime], *, now: Optional
     return max(0, (end.date() - n.date()).days)
 
 
+# Calendar days left (UTC) when the trial-ending reminder is sent. Email copy is written for this value.
+TRIAL_ENDING_REMINDER_DAYS = 3
+
+
+def trial_end_idempotency_key(family_created_at: Optional[datetime]) -> Optional[str]:
+    """Stable key for one trial. Derived from trial_ends_at, not a second clock."""
+    end = trial_ends_at(family_created_at)
+    if end is None:
+        return None
+    return end.strftime("%Y-%m-%dT%H:%M:%S.%f")
+
+
+def trial_ending_reminder_applies(payload: dict[str, Any]) -> bool:
+    """True when the 3-day reminder is still relevant for this billing payload.
+
+    Expects the payload from family_billing_payload (trial clock, Stripe status,
+    and complimentary access already applied). Does not change entitlement.
+    """
+    if not payload or not payload.get("in_app_trial"):
+        return False
+    if payload.get("trial_days_remaining") != TRIAL_ENDING_REMINDER_DAYS:
+        return False
+    if payload.get("complimentary_access_active"):
+        return False
+    if payload.get("phase") != "trial":
+        return False
+    # Free trials with no subscription also report status "trialing", but they have no Stripe id.
+    # A real subscription in an entitled status means they already chose a plan.
+    status = (payload.get("status") or "").strip().lower()
+    if payload.get("stripe_subscription_id") and status in ENTITLED_STATUSES:
+        return False
+    return True
+
+
 def trial_end_unix(family_created_at: Optional[datetime], *, now: Optional[datetime] = None) -> Optional[int]:
     """Unix timestamp for Stripe subscription_data.trial_end, or None if the trial is over."""
     end = trial_ends_at(family_created_at)

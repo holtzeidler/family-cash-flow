@@ -450,6 +450,28 @@ class BillingSubscription(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
 
 
+class LifecycleEmailSend(Base):
+    """One successful lifecycle send for a family's trial.
+
+    trial_end_key is trial_end_idempotency_key(family.created_at). A second run
+    for the same trial hits the unique constraint and does not send again.
+    """
+
+    __tablename__ = "lifecycle_email_sends"
+    __table_args__ = (
+        UniqueConstraint("family_id", "kind", "trial_end_key", name="uq_lifecycle_email_trial"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    family_id: Mapped[int] = mapped_column(ForeignKey("families.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    kind: Mapped[str] = mapped_column(String(40), nullable=False)
+    trial_end_key: Mapped[str] = mapped_column(String(40), nullable=False)
+    sent_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+
+
 class StripeWebhookEvent(Base):
     """Idempotency log for processed Stripe webhook events."""
 
@@ -4949,14 +4971,15 @@ def platform_overview(
 
 @app.post("/api/platform/email-test", response_model=PlatformEmailTestOut, include_in_schema=False)
 def platform_send_email_test(
-    template: Literal["welcome", "design"] = Query("welcome"),
+    template: Literal["welcome", "design", "trial-ending"] = Query("welcome"),
     access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
     """Staging/dev + platform admin only. Preview a transactional template.
 
     Recipient is fixed server-side (tracy@balancewhiz.com) — never taken from the request.
-    Pass template=welcome (default) or template=design.
+    Pass template=welcome (default), template=trial-ending, or template=design.
+    This route never runs the lifecycle job and never emails other users.
     """
     from .email_service import (
         TEST_TO,
