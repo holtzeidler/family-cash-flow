@@ -4971,14 +4971,15 @@ def platform_overview(
 
 @app.post("/api/platform/email-test", response_model=PlatformEmailTestOut, include_in_schema=False)
 def platform_send_email_test(
-    template: Literal["welcome", "design", "trial-ending"] = Query("welcome"),
+    template: Literal["welcome", "design", "trial-ending", "plan-monthly", "plan-annual"] = Query("welcome"),
     access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
     """Staging/dev + platform admin only. Preview a transactional template.
 
     Recipient is fixed server-side (tracy@balancewhiz.com) — never taken from the request.
-    Pass template=welcome (default), template=trial-ending, or template=design.
+    Pass template=welcome (default), template=trial-ending, template=plan-monthly,
+    template=plan-annual, or template=design.
     This route never runs the lifecycle job and never emails other users.
     """
     from .email_service import (

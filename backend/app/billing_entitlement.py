@@ -332,6 +332,37 @@ def lookup_key_from_subscription(sub: Any) -> Optional[str]:
     return None
 
 
+def subscription_plan_display(sub: Any) -> Optional[dict[str, str]]:
+    """Plan label and price from the Stripe Price on the subscription. None if unknown."""
+    items = _subscription_items(sub)
+    if not items:
+        return None
+    price = _stripe_field(items[0], "price") or _obj_get(items[0], "price")
+    if isinstance(price, str) and price.strip():
+        try:
+            import stripe as stripe_mod
+
+            if getattr(stripe_mod, "api_key", None):
+                price = stripe_mod.Price.retrieve(price.strip())
+        except Exception:
+            logger.exception("Could not load Stripe price %s", price)
+            return None
+    if price is None or isinstance(price, str):
+        return None
+    recurring = _stripe_field(price, "recurring") or _obj_get(price, "recurring") or {}
+    interval = str(_stripe_field(recurring, "interval") or _obj_get(recurring, "interval") or "").strip().lower()
+    unit = _stripe_field(price, "unit_amount")
+    if unit is None:
+        unit = _obj_get(price, "unit_amount")
+    if unit is None or interval not in ("month", "year"):
+        return None
+    cents = int(unit)
+    amount = f"${cents / 100:.2f}"
+    if interval == "year":
+        return {"plan_label": "Annual", "price_display": f"{amount}/year", "renews_each": "year"}
+    return {"plan_label": "Monthly", "price_display": f"{amount}/month", "renews_each": "month"}
+
+
 def price_id_from_subscription(sub: Any) -> Optional[str]:
     items = _obj_get(sub, "items")
     data = _obj_get(items, "data") if items is not None else None
@@ -1095,6 +1126,15 @@ def fulfill_deferred_trial_checkout(db, session_obj: Any, logger_: logging.Logge
                 billing_customer_id=int(existing.billing_customer_id) if existing is not None and existing.billing_customer_id else None,
             )
             logger_.info("Deferred trial checkout reused Stripe subscription family_id=%s", family_id)
+            from .email_service import maybe_send_plan_selection_email
+
+            maybe_send_plan_selection_email(
+                db,
+                family_id=int(family_id),
+                user_id=user_id,
+                subscription=rows[0],
+                livemode=_obj_get(full, "livemode"),
+            )
             return True
 
     prices = stripe_mod.Price.list(lookup_keys=[lookup_key], limit=1)
@@ -1147,6 +1187,15 @@ def fulfill_deferred_trial_checkout(db, session_obj: Any, logger_: logging.Logge
         "Deferred trial subscription created family_id=%s trial_end=%s",
         family_id,
         scheduled_end or "immediate",
+    )
+    from .email_service import maybe_send_plan_selection_email
+
+    maybe_send_plan_selection_email(
+        db,
+        family_id=int(family_id),
+        user_id=user_id,
+        subscription=created,
+        livemode=_obj_get(full, "livemode"),
     )
     return True
 
@@ -1211,6 +1260,15 @@ def handle_stripe_event(db, event: Any, logger_: logging.Logger) -> None:
                     sub=live_sub,
                     family_id=family_id,
                     billing_customer_id=int(billing_customer.id) if billing_customer else None,
+                )
+                from .email_service import maybe_send_plan_selection_email
+
+                maybe_send_plan_selection_email(
+                    db,
+                    family_id=family_id,
+                    user_id=user_id,
+                    subscription=live_sub,
+                    livemode=_obj_get(event, "livemode"),
                 )
             else:
                 payment_status = str(_obj_get(obj, "payment_status") or "").strip().lower()

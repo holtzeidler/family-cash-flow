@@ -14,14 +14,16 @@ from __future__ import annotations
 import logging
 import re
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 
 from .email_templates import (
     PRODUCTION_APP_URL,
     TransactionalEmailContent,
+    build_plan_selection_email_content,
     build_trial_ending_email_content,
     build_welcome_email_content,
     render_transactional_email,
+    resolve_app_url,
 )
 
 logger = logging.getLogger(__name__)
@@ -197,6 +199,152 @@ def send_trial_ending_email(
     )
 
 
+PLAN_SELECTED_KIND = "plan_selected"
+
+
+def send_plan_selection_email(
+    *,
+    api_key: str,
+    to_addr: str,
+    app_url: str,
+    first_name: str = "",
+    plan_label: str,
+    price_display: str,
+    trial_ends_on: Optional[datetime] = None,
+    renews_each: str = "month",
+    from_addr: str = DEFAULT_FROM,
+    reply_to: Optional[str] = DEFAULT_REPLY_TO,
+) -> str:
+    """Confirm a plan chosen during the free trial. Caller checks eligibility and idempotency."""
+    content = build_plan_selection_email_content(
+        app_url=app_url,
+        first_name=first_name,
+        plan_label=plan_label,
+        price_display=price_display,
+        trial_ends_on=trial_ends_on,
+        renews_each=renews_each,
+    )
+    return send_templated_email(
+        api_key=api_key,
+        to_addr=to_addr,
+        content=content,
+        app_url=app_url,
+        from_addr=from_addr,
+        reply_to=reply_to,
+    )
+
+
+def maybe_send_plan_selection_email(
+    db,
+    *,
+    family_id: Optional[int],
+    user_id: Optional[int],
+    subscription: Any,
+    livemode: Any = None,
+) -> None:
+    """Send once after a trialing subscription is confirmed. Never raises into the webhook."""
+    from sqlalchemy import select
+    from sqlalchemy.exc import IntegrityError
+
+    from .billing_entitlement import (
+        family_owner_user,
+        is_in_app_trial,
+        subscription_plan_display,
+        trial_end_idempotency_key,
+        trial_ends_at,
+    )
+    from .main import Family, LifecycleEmailSend, User, _database_identity, _host_label_matches, _is_staging_deployment, _staging_auth_email_allowlist, settings
+
+    if family_id is None or subscription is None:
+        return
+    status = ""
+    status_raw = getattr(subscription, "status", None)
+    if status_raw is None and isinstance(subscription, dict):
+        status_raw = subscription.get("status")
+    status = str(status_raw or "").strip().lower()
+    if status != "trialing":
+        return
+    family = db.get(Family, int(family_id))
+    if family is None or not is_in_app_trial(getattr(family, "created_at", None)):
+        return
+    trial_end = trial_ends_at(getattr(family, "created_at", None))
+    trial_key = trial_end_idempotency_key(getattr(family, "created_at", None))
+    plan = subscription_plan_display(subscription)
+    if trial_end is None or not trial_key or not plan:
+        logger.info("Plan selection email skipped; missing trial date or Stripe price family_id=%s", family_id)
+        return
+
+    user = db.get(User, int(user_id)) if user_id else None
+    if user is None:
+        user = family_owner_user(db, int(family_id))
+    email = (getattr(user, "email", None) or "").strip() if user is not None else ""
+    if "@" not in email:
+        return
+
+    staging = _is_staging_deployment()
+    on_production_db = _host_label_matches(settings.PRODUCTION_DATABASE_HOST, _database_identity())
+    if on_production_db and staging:
+        logger.info("Plan selection email skipped; staging is pointed at the production database")
+        return
+    if staging:
+        allow = _staging_auth_email_allowlist()
+        if not allow or email.lower() not in allow:
+            logger.info("Plan selection email skipped; staging allowlist family_id=%s", family_id)
+            return
+    elif livemode is False:
+        logger.info("Plan selection email skipped; test-mode event family_id=%s", family_id)
+        return
+
+    already = db.execute(
+        select(LifecycleEmailSend.id).where(
+            LifecycleEmailSend.family_id == int(family_id),
+            LifecycleEmailSend.kind == PLAN_SELECTED_KIND,
+            LifecycleEmailSend.trial_end_key == trial_key,
+        )
+    ).first()
+    if already:
+        return
+    if not (settings.RESEND_API_KEY or "").strip():
+        logger.warning("Plan selection email skipped; RESEND_API_KEY is not set")
+        return
+
+    app_url = resolve_app_url(
+        is_staging_deployment=staging,
+        app_public_base_url=settings.APP_PUBLIC_BASE_URL,
+    )
+    try:
+        send_plan_selection_email(
+            api_key=settings.RESEND_API_KEY,
+            to_addr=email,
+            app_url=app_url,
+            first_name=getattr(user, "first_name", "") or "",
+            plan_label=plan["plan_label"],
+            price_display=plan["price_display"],
+            trial_ends_on=trial_end,
+            renews_each=plan["renews_each"],
+            reply_to=(settings.TRANSACTIONAL_REPLY_TO or "").strip() or None,
+        )
+    except (EmailNotConfigured, EmailSendError):
+        logger.exception("Plan selection email failed family_id=%s", family_id)
+        return
+
+    nested = db.begin_nested()
+    try:
+        db.add(
+            LifecycleEmailSend(
+                family_id=int(family_id),
+                user_id=int(user.id),
+                kind=PLAN_SELECTED_KIND,
+                trial_end_key=trial_key,
+            )
+        )
+        db.flush()
+        nested.commit()
+    except IntegrityError:
+        nested.rollback()
+        logger.info("Plan selection email already recorded family_id=%s", family_id)
+
+
 def send_staging_test_email(
     *,
     api_key: str,
@@ -234,6 +382,27 @@ def send_staging_test_email(
             app_url=preview_url,
             first_name="Tracy",
             trial_ends_on=datetime.utcnow() + timedelta(days=3),
+            from_addr=from_addr or DEFAULT_FROM,
+            reply_to=reply_to,
+        )
+    if kind in ("plan-monthly", "plan-annual"):
+        from .billing_catalog import LOOKUP_ANNUAL, LOOKUP_MONTHLY, price_for_lookup
+
+        lookup = LOOKUP_ANNUAL if kind == "plan-annual" else LOOKUP_MONTHLY
+        info = price_for_lookup(lookup) or {}
+        interval = str(info.get("interval") or "month")
+        amount = str(info.get("amount_usd") or "").strip()
+        price_display = f"${amount}/year" if interval == "year" else f"${amount}/month"
+        # Sample date only. Real sends use trial_ends_at(family.created_at) and the Stripe Price.
+        return send_plan_selection_email(
+            api_key=api_key,
+            to_addr=to_addr or TEST_TO,
+            app_url=preview_url,
+            first_name="Tracy",
+            plan_label="Annual" if interval == "year" else "Monthly",
+            price_display=price_display,
+            trial_ends_on=trial_ends_at(datetime.utcnow()),
+            renews_each=interval,
             from_addr=from_addr or DEFAULT_FROM,
             reply_to=reply_to,
         )

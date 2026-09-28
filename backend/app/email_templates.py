@@ -46,6 +46,8 @@ class TransactionalEmailContent:
     cta_label: str = ""
     cta_url: str = ""
     support_line: str = ""
+    support_link_label: str = ""
+    support_link_url: str = ""
     additional_text: str = ""
 
 
@@ -152,6 +154,46 @@ def build_trial_ending_email_content(
     )
 
 
+def build_plan_selection_email_content(
+    *,
+    app_url: str,
+    first_name: str = "",
+    plan_label: str,
+    price_display: str,
+    trial_ends_on: Optional[datetime] = None,
+    renews_each: str = "month",
+) -> TransactionalEmailContent:
+    """Confirms a plan chosen during the free trial, before the first charge."""
+    name = normalize_first_name(first_name)
+    greeting = f"Hi {name}," if name else "Hi,"
+    friendly_end = format_trial_end_date(trial_ends_on)
+    through = friendly_end or "the end of your free trial"
+    cadence = "year" if (renews_each or "").strip().lower() == "year" else "month"
+    body = (
+        f"{greeting}\n\n"
+        f"You’ve chosen your BalanceWhiz plan. Your free trial will continue through {through}, "
+        f"and you won’t be charged until it ends.\n\n"
+        f"Plan: {plan_label}\n\n"
+        f"Price: {price_display}\n\n"
+        "Due today: $0\n\n"
+        f"First payment: {through}"
+    )
+    return TransactionalEmailContent(
+        subject="Your BalanceWhiz plan is set",
+        preheader="Your plan is set. You won’t be charged until your trial ends.",
+        heading="You’re all set.",
+        body=body,
+        cta_label="Go to my forecast",
+        cta_url=_safe_http_url(app_url),
+        support_line=(
+            f"After your first payment, your plan will renew automatically each {cadence} unless you cancel. "
+            "You can manage your subscription or payment method anytime from Billing."
+        ),
+        support_link_label="Billing",
+        support_link_url=billing_settings_url(app_url),
+    )
+
+
 def resolve_app_url(*, is_staging_deployment: bool, app_public_base_url: str = "") -> str:
     """Public site URL for this environment. Prefer APP_PUBLIC_BASE_URL when set."""
     raw = (app_public_base_url or "").strip().rstrip("/")
@@ -180,6 +222,32 @@ def _p_html(text: str, *, color: str, size: str = "16px", weight: str = "400", e
     return (
         f'<p style="margin:0 0 16px;font-family:{_FONT};font-size:{size};'
         f'line-height:1.55;font-weight:{weight};color:{color};{extra}">{_esc(text)}</p>'
+    )
+
+
+def _p_html_with_link(
+    text: str,
+    *,
+    link_label: str,
+    link_url: str,
+    color: str,
+    size: str = "16px",
+    extra: str = "",
+) -> str:
+    """Escape a paragraph and link one exact word, such as Billing."""
+    label = (link_label or "").strip()
+    href = _safe_http_url(link_url)
+    if not label or not href or label not in (text or ""):
+        return _p_html(text, color=color, size=size, extra=extra)
+    before, after = (text or "").split(label, 1)
+    inner = (
+        f"{html.escape(before, quote=True)}"
+        f'<a href="{_esc(href)}" style="color:{color};text-decoration:underline;">{html.escape(label, quote=True)}</a>'
+        f"{html.escape(after, quote=True)}"
+    )
+    return (
+        f'<p style="margin:0 0 16px;font-family:{_FONT};font-size:{size};'
+        f'line-height:1.55;font-weight:400;color:{color};{extra}">{inner}</p>'
     )
 
 
@@ -261,8 +329,10 @@ def render_transactional_html(content: TransactionalEmailContent, *, app_url: st
     if support_parts:
         last = len(support_parts) - 1
         support_html = "".join(
-            _p_html(
+            _p_html_with_link(
                 part,
+                link_label=content.support_link_label,
+                link_url=content.support_link_url,
                 color=MUTED,
                 size="14px",
                 extra="margin:0;" if i == last else "margin:0 0 8px;",
@@ -367,6 +437,9 @@ def render_transactional_text(content: TransactionalEmailContent, *, app_url: st
     support = (content.support_line or "").strip()
     if support:
         lines.append(support)
+        link = _safe_http_url(content.support_link_url)
+        if link and (content.support_link_label or "").strip() and (content.support_link_label or "").strip() in support:
+            lines.append(link)
         lines.append("")
     lines.append("—")
     lines.append(SITE_NAME)
