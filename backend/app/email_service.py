@@ -8,7 +8,13 @@ separate trial-started message. The 3-day trial reminder and the 7-day annual
 renewal reminder are separate sends from the same scheduled job — never from
 login. A failed subscription payment sends once per invoice from the Stripe
 webhook. A user-scheduled cancellation sends once per cancellation from the Stripe
-subscription update. Preview sends stay on POST /api/platform/email-test.
+subscription update. The trial-expired note sends once from the same scheduled job
+as the 3-day reminder, after the trial timestamp has passed. A subscription ended
+by unpaid retries sends once when Stripe deletes it for payment_failed and the
+account is already view-only. A reversed cancellation and a paid return from
+view-only each send once from the Stripe event that confirmed them. A saved
+payment method replacement sends once from the Stripe event that changed the
+default payment method id. Preview sends stay on POST /api/platform/email-test.
 """
 
 from __future__ import annotations
@@ -23,9 +29,13 @@ from .email_templates import (
     TransactionalEmailContent,
     build_annual_renewal_email_content,
     build_payment_failed_email_content,
+    build_payment_method_updated_email_content,
     build_plan_selection_email_content,
     build_subscription_canceled_email_content,
+    build_subscription_ended_nonpayment_email_content,
+    build_subscription_reactivated_email_content,
     build_trial_ending_email_content,
+    build_trial_expired_email_content,
     build_welcome_email_content,
     render_transactional_email,
     resolve_app_url,
@@ -194,6 +204,26 @@ def send_trial_ending_email(
         first_name=first_name,
         trial_ends_on=trial_ends_on,
     )
+    return send_templated_email(
+        api_key=api_key,
+        to_addr=to_addr,
+        content=content,
+        app_url=app_url,
+        from_addr=from_addr,
+        reply_to=reply_to,
+    )
+
+
+def send_trial_expired_email(
+    *,
+    api_key: str,
+    to_addr: str,
+    app_url: str,
+    from_addr: str = DEFAULT_FROM,
+    reply_to: Optional[str] = DEFAULT_REPLY_TO,
+) -> str:
+    """Tell a view-only account the trial ended. Caller checks eligibility and idempotency."""
+    content = build_trial_expired_email_content(app_url=app_url)
     return send_templated_email(
         api_key=api_key,
         to_addr=to_addr,
@@ -534,6 +564,513 @@ def maybe_send_subscription_canceled_email(
         logger.info("Cancellation email already recorded family_id=%s", family_id)
 
 
+SUBSCRIPTION_ENDED_NONPAYMENT_KIND = "sub_ended_nonpayment"
+
+
+def send_subscription_ended_nonpayment_email(
+    *,
+    api_key: str,
+    to_addr: str,
+    app_url: str,
+    from_addr: str = DEFAULT_FROM,
+    reply_to: Optional[str] = DEFAULT_REPLY_TO,
+) -> str:
+    """Tell the subscriber unpaid retries ended the subscription. Caller checks eligibility."""
+    content = build_subscription_ended_nonpayment_email_content(app_url=app_url)
+    return send_templated_email(
+        api_key=api_key,
+        to_addr=to_addr,
+        content=content,
+        app_url=app_url,
+        from_addr=from_addr,
+        reply_to=reply_to,
+    )
+
+
+def maybe_send_subscription_ended_nonpayment_email(
+    db,
+    *,
+    family_id: Optional[int],
+    subscription: Any,
+    livemode: Any = None,
+) -> None:
+    """Send once after Stripe ends a subscription for nonpayment. Never raises into the webhook."""
+    from sqlalchemy import select
+    from sqlalchemy.exc import IntegrityError
+
+    from .billing_entitlement import (
+        complimentary_access_is_active,
+        family_billing_payload,
+        family_owner_user,
+        subscription_ended_nonpayment_email_facts,
+        view_only_after_subscription_ended,
+    )
+    from .main import (
+        LifecycleEmailSend,
+        _database_identity,
+        _host_label_matches,
+        _is_staging_deployment,
+        _staging_auth_email_allowlist,
+        settings,
+    )
+
+    if family_id is None or subscription is None:
+        return
+    facts = subscription_ended_nonpayment_email_facts(subscription)
+    if not facts:
+        return
+    try:
+        payload = family_billing_payload(db, family_id=int(family_id))
+    except Exception:
+        logger.exception("Subscription ended email skipped; billing status unread family_id=%s", family_id)
+        return
+    if not view_only_after_subscription_ended(payload):
+        logger.info("Subscription ended email skipped; account is not view-only family_id=%s", family_id)
+        return
+    user = family_owner_user(db, int(family_id))
+    email = (getattr(user, "email", None) or "").strip() if user is not None else ""
+    if user is None or "@" not in email:
+        return
+    if complimentary_access_is_active(user):
+        logger.info("Subscription ended email skipped; complimentary access family_id=%s", family_id)
+        return
+
+    staging = _is_staging_deployment()
+    on_production_db = _host_label_matches(settings.PRODUCTION_DATABASE_HOST, _database_identity())
+    if on_production_db and staging:
+        logger.info("Subscription ended email skipped; staging is pointed at the production database")
+        return
+    if staging:
+        allow = _staging_auth_email_allowlist()
+        if not allow or email.lower() not in allow:
+            logger.info("Subscription ended email skipped; staging allowlist family_id=%s", family_id)
+            return
+    elif livemode is False:
+        logger.info("Subscription ended email skipped; test-mode event family_id=%s", family_id)
+        return
+
+    sub_id = str(facts["subscription_id"])
+    already = db.execute(
+        select(LifecycleEmailSend.id).where(
+            LifecycleEmailSend.family_id == int(family_id),
+            LifecycleEmailSend.kind == SUBSCRIPTION_ENDED_NONPAYMENT_KIND,
+            LifecycleEmailSend.trial_end_key == sub_id,
+        )
+    ).first()
+    if already:
+        return
+    if not (settings.RESEND_API_KEY or "").strip():
+        logger.warning("Subscription ended email skipped; RESEND_API_KEY is not set")
+        return
+
+    app_url = resolve_app_url(
+        is_staging_deployment=staging,
+        app_public_base_url=settings.APP_PUBLIC_BASE_URL,
+    )
+    try:
+        send_subscription_ended_nonpayment_email(
+            api_key=settings.RESEND_API_KEY,
+            to_addr=email,
+            app_url=app_url,
+            reply_to=(settings.TRANSACTIONAL_REPLY_TO or "").strip() or None,
+        )
+    except (EmailNotConfigured, EmailSendError):
+        logger.exception("Subscription ended email failed family_id=%s", family_id)
+        return
+
+    nested = db.begin_nested()
+    try:
+        db.add(
+            LifecycleEmailSend(
+                family_id=int(family_id),
+                user_id=int(user.id),
+                kind=SUBSCRIPTION_ENDED_NONPAYMENT_KIND,
+                trial_end_key=sub_id,
+            )
+        )
+        db.flush()
+        nested.commit()
+    except IntegrityError:
+        nested.rollback()
+        logger.info("Subscription ended email already recorded family_id=%s", family_id)
+
+
+SUBSCRIPTION_RESUMED_KIND = "subscription_resumed"
+SUBSCRIPTION_RESTORED_KIND = "subscription_restored"
+
+
+def send_subscription_reactivated_email(
+    *,
+    api_key: str,
+    to_addr: str,
+    app_url: str,
+    resumed: bool,
+    plan_label: str,
+    amount_display: str,
+    renews_on: Optional[datetime] = None,
+    from_addr: str = DEFAULT_FROM,
+    reply_to: Optional[str] = DEFAULT_REPLY_TO,
+) -> str:
+    """Confirm a resume or a paid restore. Caller checks eligibility and idempotency."""
+    content = build_subscription_reactivated_email_content(
+        app_url=app_url,
+        resumed=resumed,
+        plan_label=plan_label,
+        amount_display=amount_display,
+        renews_on=renews_on,
+    )
+    return send_templated_email(
+        api_key=api_key,
+        to_addr=to_addr,
+        content=content,
+        app_url=app_url,
+        from_addr=from_addr,
+        reply_to=reply_to,
+    )
+
+
+def _reactivation_recipient(db, *, family_id: int, user_id: Optional[int], livemode: Any) -> Optional[tuple]:
+    """Return (user, email, app_url) when this reactivation may be emailed."""
+    from .billing_entitlement import complimentary_access_is_active, family_owner_user
+    from .main import (
+        User,
+        _database_identity,
+        _host_label_matches,
+        _is_staging_deployment,
+        _staging_auth_email_allowlist,
+        settings,
+    )
+
+    user = db.get(User, int(user_id)) if user_id else None
+    if user is None:
+        user = family_owner_user(db, int(family_id))
+    email = (getattr(user, "email", None) or "").strip() if user is not None else ""
+    if user is None or "@" not in email:
+        return None
+    if complimentary_access_is_active(user):
+        logger.info("Reactivation email skipped; complimentary access family_id=%s", family_id)
+        return None
+    staging = _is_staging_deployment()
+    on_production_db = _host_label_matches(settings.PRODUCTION_DATABASE_HOST, _database_identity())
+    if on_production_db and staging:
+        logger.info("Reactivation email skipped; staging is pointed at the production database")
+        return None
+    if staging:
+        allow = _staging_auth_email_allowlist()
+        if not allow or email.lower() not in allow:
+            logger.info("Reactivation email skipped; staging allowlist family_id=%s", family_id)
+            return None
+    elif livemode is False:
+        logger.info("Reactivation email skipped; test-mode event family_id=%s", family_id)
+        return None
+    if not (settings.RESEND_API_KEY or "").strip():
+        logger.warning("Reactivation email skipped; RESEND_API_KEY is not set")
+        return None
+    app_url = resolve_app_url(
+        is_staging_deployment=staging,
+        app_public_base_url=settings.APP_PUBLIC_BASE_URL,
+    )
+    return user, email, app_url
+
+
+def _record_reactivation_email(db, *, family_id: int, user_id: int, kind: str, key: str) -> None:
+    from sqlalchemy.exc import IntegrityError
+
+    from .main import LifecycleEmailSend
+
+    nested = db.begin_nested()
+    try:
+        db.add(
+            LifecycleEmailSend(
+                family_id=int(family_id),
+                user_id=int(user_id),
+                kind=kind,
+                trial_end_key=key,
+            )
+        )
+        db.flush()
+        nested.commit()
+    except IntegrityError:
+        nested.rollback()
+        logger.info("Reactivation email already recorded family_id=%s kind=%s", family_id, kind)
+
+
+def maybe_send_subscription_resumed_email(
+    db,
+    *,
+    family_id: Optional[int],
+    subscription: Any,
+    previous: Any,
+    livemode: Any = None,
+) -> None:
+    """Send once after Stripe clears a scheduled cancellation. Never raises into the webhook."""
+    from sqlalchemy import select
+
+    from .billing_entitlement import subscription_resume_email_facts
+    from .main import LifecycleEmailSend, settings
+
+    if family_id is None or subscription is None:
+        return
+    facts = subscription_resume_email_facts(subscription, previous)
+    if not facts:
+        return
+    key = str(facts["idempotency_key"])
+    already = db.execute(
+        select(LifecycleEmailSend.id).where(
+            LifecycleEmailSend.family_id == int(family_id),
+            LifecycleEmailSend.kind == SUBSCRIPTION_RESUMED_KIND,
+            LifecycleEmailSend.trial_end_key == key,
+        )
+    ).first()
+    if already:
+        return
+    recipient = _reactivation_recipient(db, family_id=int(family_id), user_id=None, livemode=livemode)
+    if recipient is None:
+        return
+    user, email, app_url = recipient
+    try:
+        send_subscription_reactivated_email(
+            api_key=settings.RESEND_API_KEY,
+            to_addr=email,
+            app_url=app_url,
+            resumed=True,
+            plan_label=str(facts["plan_label"]),
+            amount_display=str(facts["amount_display"]),
+            renews_on=facts.get("renews_on"),
+            reply_to=(settings.TRANSACTIONAL_REPLY_TO or "").strip() or None,
+        )
+    except (EmailNotConfigured, EmailSendError):
+        logger.exception("Subscription resumed email failed family_id=%s", family_id)
+        return
+    _record_reactivation_email(
+        db,
+        family_id=int(family_id),
+        user_id=int(user.id),
+        kind=SUBSCRIPTION_RESUMED_KIND,
+        key=key,
+    )
+
+
+def maybe_send_subscription_restored_email(
+    db,
+    *,
+    family_id: Optional[int],
+    user_id: Optional[int],
+    subscription: Any,
+    prior_status: str,
+    amount_cents: Any,
+    payment_status: str,
+    livemode: Any = None,
+) -> None:
+    """Send once after a paid Checkout replaces a canceled subscription. Never raises."""
+    from sqlalchemy import select
+
+    from .billing_entitlement import subscription_restore_email_facts
+    from .main import LifecycleEmailSend, settings
+
+    if family_id is None or subscription is None:
+        return
+    facts = subscription_restore_email_facts(
+        subscription,
+        prior_status=prior_status,
+        amount_cents=amount_cents,
+        payment_status=payment_status,
+    )
+    if not facts:
+        return
+    key = str(facts["idempotency_key"])
+    already = db.execute(
+        select(LifecycleEmailSend.id).where(
+            LifecycleEmailSend.family_id == int(family_id),
+            LifecycleEmailSend.kind == SUBSCRIPTION_RESTORED_KIND,
+            LifecycleEmailSend.trial_end_key == key,
+        )
+    ).first()
+    if already:
+        return
+    recipient = _reactivation_recipient(
+        db, family_id=int(family_id), user_id=user_id, livemode=livemode
+    )
+    if recipient is None:
+        return
+    user, email, app_url = recipient
+    try:
+        send_subscription_reactivated_email(
+            api_key=settings.RESEND_API_KEY,
+            to_addr=email,
+            app_url=app_url,
+            resumed=False,
+            plan_label=str(facts["plan_label"]),
+            amount_display=str(facts["amount_display"]),
+            renews_on=facts.get("renews_on"),
+            reply_to=(settings.TRANSACTIONAL_REPLY_TO or "").strip() or None,
+        )
+    except (EmailNotConfigured, EmailSendError):
+        logger.exception("Subscription restored email failed family_id=%s", family_id)
+        return
+    _record_reactivation_email(
+        db,
+        family_id=int(family_id),
+        user_id=int(user.id),
+        kind=SUBSCRIPTION_RESTORED_KIND,
+        key=key,
+    )
+
+
+PAYMENT_METHOD_UPDATED_KIND = "payment_method_updated"
+
+
+def send_payment_method_updated_email(
+    *,
+    api_key: str,
+    to_addr: str,
+    app_url: str,
+    card_label: str = "",
+    support_email: str = "",
+    from_addr: str = DEFAULT_FROM,
+    reply_to: Optional[str] = DEFAULT_REPLY_TO,
+) -> str:
+    """Confirm a replaced saved payment method. Caller checks eligibility and idempotency."""
+    content = build_payment_method_updated_email_content(
+        app_url=app_url,
+        card_label=card_label,
+        support_email=support_email or reply_to or DEFAULT_REPLY_TO,
+    )
+    return send_templated_email(
+        api_key=api_key,
+        to_addr=to_addr,
+        content=content,
+        app_url=app_url,
+        from_addr=from_addr,
+        reply_to=reply_to,
+    )
+
+
+def _payment_method_card_label(payment_method_id: str) -> str:
+    """Read brand and last 4 from Stripe. Empty when the card fields are unavailable."""
+    from .billing_entitlement import safe_payment_method_label
+    from .main import settings
+
+    pm_id = (payment_method_id or "").strip()
+    if not pm_id.startswith("pm_"):
+        return ""
+    if not (settings.STRIPE_SECRET_KEY or "").strip():
+        return ""
+    try:
+        import stripe
+
+        stripe.api_key = settings.STRIPE_SECRET_KEY
+        pm = stripe.PaymentMethod.retrieve(pm_id)
+    except Exception:
+        logger.info("Payment method label unavailable")
+        return ""
+    return safe_payment_method_label(pm) or ""
+
+
+def maybe_send_payment_method_updated_email(
+    db,
+    *,
+    family_id: Optional[int],
+    customer_id: str,
+    source: Any,
+    previous: Any,
+    livemode: Any = None,
+    changed_on: Optional[datetime] = None,
+) -> None:
+    """Send once after a saved default payment method id is replaced. Never raises."""
+    from sqlalchemy import select
+    from sqlalchemy.exc import IntegrityError
+
+    from .billing_entitlement import (
+        family_owner_user,
+        payment_method_update_email_key,
+        replaced_default_payment_method,
+        resolve_family_id_for_customer,
+    )
+    from .main import (
+        LifecycleEmailSend,
+        _database_identity,
+        _host_label_matches,
+        _is_staging_deployment,
+        _staging_auth_email_allowlist,
+        settings,
+    )
+
+    pair = replaced_default_payment_method(source, previous)
+    if not pair:
+        return
+    old_id, new_id = pair
+    when = changed_on if isinstance(changed_on, datetime) else None
+    key = payment_method_update_email_key(old_id, new_id, when)
+    fam = int(family_id) if family_id else None
+    if fam is None and (customer_id or "").strip():
+        fam = resolve_family_id_for_customer(db, stripe_customer_id=str(customer_id).strip())
+    if fam is None:
+        logger.info("Payment method email skipped; no family for this customer")
+        return
+    already = db.execute(
+        select(LifecycleEmailSend.id).where(
+            LifecycleEmailSend.family_id == fam,
+            LifecycleEmailSend.kind == PAYMENT_METHOD_UPDATED_KIND,
+            LifecycleEmailSend.trial_end_key == key,
+        )
+    ).first()
+    if already:
+        return
+    user = family_owner_user(db, fam)
+    email = (getattr(user, "email", None) or "").strip() if user is not None else ""
+    if user is None or "@" not in email:
+        return
+    staging = _is_staging_deployment()
+    on_production_db = _host_label_matches(settings.PRODUCTION_DATABASE_HOST, _database_identity())
+    if on_production_db and staging:
+        logger.info("Payment method email skipped; staging is pointed at the production database")
+        return
+    if staging:
+        allow = _staging_auth_email_allowlist()
+        if not allow or email.lower() not in allow:
+            logger.info("Payment method email skipped; staging allowlist family_id=%s", fam)
+            return
+    elif livemode is False:
+        logger.info("Payment method email skipped; test-mode event family_id=%s", fam)
+        return
+    if not (settings.RESEND_API_KEY or "").strip():
+        logger.warning("Payment method email skipped; RESEND_API_KEY is not set")
+        return
+    app_url = resolve_app_url(
+        is_staging_deployment=staging,
+        app_public_base_url=settings.APP_PUBLIC_BASE_URL,
+    )
+    support = (settings.TRANSACTIONAL_REPLY_TO or "").strip() or DEFAULT_REPLY_TO
+    try:
+        send_payment_method_updated_email(
+            api_key=settings.RESEND_API_KEY,
+            to_addr=email,
+            app_url=app_url,
+            card_label=_payment_method_card_label(new_id),
+            support_email=support,
+            reply_to=support,
+        )
+    except (EmailNotConfigured, EmailSendError):
+        logger.exception("Payment method email failed family_id=%s", fam)
+        return
+    nested = db.begin_nested()
+    try:
+        db.add(
+            LifecycleEmailSend(
+                family_id=fam,
+                user_id=int(user.id),
+                kind=PAYMENT_METHOD_UPDATED_KIND,
+                trial_end_key=key,
+            )
+        )
+        db.flush()
+        nested.commit()
+    except IntegrityError:
+        nested.rollback()
+        logger.info("Payment method email already recorded family_id=%s", fam)
+
+
 def maybe_send_plan_selection_email(
     db,
     *,
@@ -685,6 +1222,14 @@ def send_staging_test_email(
             from_addr=from_addr or DEFAULT_FROM,
             reply_to=reply_to,
         )
+    if kind in ("trial-expired", "trial_expired"):
+        return send_trial_expired_email(
+            api_key=api_key,
+            to_addr=to_addr or TEST_TO,
+            app_url=preview_url,
+            from_addr=from_addr or DEFAULT_FROM,
+            reply_to=reply_to,
+        )
     if kind in ("plan-monthly", "plan-annual"):
         from .billing_catalog import LOOKUP_ANNUAL, LOOKUP_MONTHLY, price_for_lookup
 
@@ -750,6 +1295,46 @@ def send_staging_test_email(
             app_url=preview_url,
             plan_label="Annual" if annual else "Monthly",
             access_through=access_through,
+            from_addr=from_addr or DEFAULT_FROM,
+            reply_to=reply_to,
+        )
+    if kind in ("subscription-ended", "subscription_ended"):
+        return send_subscription_ended_nonpayment_email(
+            api_key=api_key,
+            to_addr=to_addr or TEST_TO,
+            app_url=preview_url,
+            from_addr=from_addr or DEFAULT_FROM,
+            reply_to=reply_to,
+        )
+    if kind in ("payment-method-updated", "payment_method_updated"):
+        # Sample card only. Real sends use Stripe brand and last 4 when present.
+        support = (reply_to or DEFAULT_REPLY_TO or "").strip()
+        return send_payment_method_updated_email(
+            api_key=api_key,
+            to_addr=to_addr or TEST_TO,
+            app_url=preview_url,
+            card_label="Visa ending in 4242",
+            support_email=support,
+            from_addr=from_addr or DEFAULT_FROM,
+            reply_to=reply_to,
+        )
+    if kind in ("reactivate-resumed", "reactivate-restored"):
+        from datetime import timedelta
+
+        from .billing_catalog import LOOKUP_ANNUAL, LOOKUP_MONTHLY, price_for_lookup
+
+        resumed = kind == "reactivate-resumed"
+        info = price_for_lookup(LOOKUP_MONTHLY if resumed else LOOKUP_ANNUAL) or {}
+        amount = str(info.get("amount_usd") or "").strip()
+        # Sample amount and date only. Real sends use the Stripe price or Checkout amount.
+        return send_subscription_reactivated_email(
+            api_key=api_key,
+            to_addr=to_addr or TEST_TO,
+            app_url=preview_url,
+            resumed=resumed,
+            plan_label="Monthly" if resumed else "Annual",
+            amount_display=f"${amount}" if amount else "",
+            renews_on=datetime.utcnow() + timedelta(days=30 if resumed else 365),
             from_addr=from_addr or DEFAULT_FROM,
             reply_to=reply_to,
         )

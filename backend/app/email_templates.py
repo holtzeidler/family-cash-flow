@@ -8,6 +8,7 @@ no web fonts, no attached images.
 from __future__ import annotations
 
 import html
+import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Optional
@@ -15,7 +16,10 @@ from typing import Optional
 SITE_NAME = "BalanceWhiz"
 TAGLINE = "See your cash flow before it happens."
 FOOTER_SUPPORT = "Questions? Reply to this email or contact support."
-SUPPORT_MAILTO = "mailto:support@balancewhiz.com"
+SUPPORT_EMAIL = "support@balancewhiz.com"
+SUPPORT_MAILTO = f"mailto:{SUPPORT_EMAIL}"
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+_CARD_LABEL_RE = re.compile(r"^([A-Za-z][A-Za-z ]{0,40}) ending in (\d{4})$")
 
 STAGING_APP_URL = "https://staging.balancewhiz.com"
 PRODUCTION_APP_URL = "https://balancewhiz.com"
@@ -150,6 +154,28 @@ def build_trial_ending_email_content(
         support_line=(
             "If you don’t subscribe, you won’t be charged. Your account will become view-only "
             "when your trial ends, so you can still see the forecast you’ve already created."
+        ),
+    )
+
+
+def build_trial_expired_email_content(*, app_url: str) -> TransactionalEmailContent:
+    """Tells someone who never chose a plan that the trial ended and data remains."""
+    from .billing_catalog import TRIAL_DAYS
+
+    days = int(TRIAL_DAYS) if int(TRIAL_DAYS) > 0 else 14
+    body = (
+        f"Your {days}-day free trial has ended, and your BalanceWhiz account is now view-only.\n\n"
+        "Everything you've added is still here. Choose a plan whenever you're ready to start updating your forecast again."
+    )
+    return TransactionalEmailContent(
+        subject="Your BalanceWhiz trial has ended",
+        preheader="Your free trial has ended. Your forecast is still here.",
+        heading="Your forecast is still here.",
+        body=body,
+        cta_label="Choose a plan",
+        cta_url=billing_settings_url(app_url),
+        support_line=(
+            "You weren't charged when your trial ended. Your forecast will remain available to view even if you don't subscribe."
         ),
     )
 
@@ -289,6 +315,110 @@ def build_subscription_canceled_email_content(
     )
 
 
+def build_subscription_ended_nonpayment_email_content(*, app_url: str) -> TransactionalEmailContent:
+    """Tells the subscriber unpaid retries ended the subscription and data remains."""
+    return TransactionalEmailContent(
+        subject="Your BalanceWhiz subscription has ended",
+        preheader="Your subscription has ended. Your forecast is still here.",
+        heading="Your account is now view-only.",
+        body=(
+            "We weren't able to complete your BalanceWhiz payment, so your subscription has ended.\n\n"
+            "Your forecast is still here. To start updating it again, choose a plan and update your payment information."
+        ),
+        cta_label="Restore my subscription",
+        cta_url=billing_settings_url(app_url),
+        support_line="Your existing forecast will remain available to view even if you don't resubscribe.",
+    )
+
+
+def build_subscription_reactivated_email_content(
+    *,
+    app_url: str,
+    resumed: bool,
+    plan_label: str,
+    amount_display: str,
+    renews_on: Optional[datetime] = None,
+) -> TransactionalEmailContent:
+    """Confirms a reversed cancellation, or a new paid subscription after view-only access."""
+    when = format_trial_end_date(renews_on) or "your next billing date"
+    plan = (plan_label or "").strip() or "your plan"
+    amount = (amount_display or "").strip() or "your plan amount"
+    if resumed:
+        body = (
+            "Your BalanceWhiz subscription will continue without interruption.\n\n"
+            f"Plan: {plan}\n\n"
+            f"Next payment: {amount}\n\n"
+            f"Next billing date: {when}"
+        )
+        return TransactionalEmailContent(
+            subject="Your BalanceWhiz subscription is active",
+            preheader="Your subscription will continue without interruption.",
+            heading="You're all set.",
+            body=body,
+            cta_label="Go to my forecast",
+            cta_url=_safe_http_url(app_url),
+            support_line="You can manage your subscription or payment method anytime from Billing.",
+            support_link_label="Billing",
+            support_link_url=billing_settings_url(app_url),
+        )
+    body = (
+        "Your BalanceWhiz subscription is active again, and you can continue building and updating your forecast.\n\n"
+        f"Plan: {plan}\n\n"
+        f"Amount paid: {amount}\n\n"
+        f"Next billing date: {when}"
+    )
+    return TransactionalEmailContent(
+        subject="Welcome back to BalanceWhiz",
+        preheader="Your full access is restored.",
+        heading="Your full access is restored.",
+        body=body,
+        cta_label="Go to my forecast",
+        cta_url=_safe_http_url(app_url),
+        support_line=(
+            "Your existing forecast is right where you left it. "
+            "You can manage your subscription or payment method anytime from Billing."
+        ),
+        support_link_label="Billing",
+        support_link_url=billing_settings_url(app_url),
+    )
+
+
+def _support_contact(support_email: str) -> tuple[str, str]:
+    """Configured support mailbox. Falls back to the app's existing support address."""
+    raw = (support_email or "").strip()
+    if not _EMAIL_RE.match(raw):
+        raw = SUPPORT_EMAIL
+    return raw, f"mailto:{raw}"
+
+
+def build_payment_method_updated_email_content(
+    *,
+    app_url: str,
+    card_label: str = "",
+    support_email: str = "",
+) -> TransactionalEmailContent:
+    """Confirms a saved payment method was replaced. Card line is brand and last 4 only."""
+    address, mailto = _support_contact(support_email)
+    body = (
+        "The payment method for your BalanceWhiz subscription was successfully updated.\n\n"
+        "If you made this change, there's nothing else you need to do."
+    )
+    match = _CARD_LABEL_RE.match((card_label or "").strip())
+    if match:
+        body += f"\n\nPayment method: {match.group(1)} ending in {match.group(2)}"
+    return TransactionalEmailContent(
+        subject="Your BalanceWhiz payment method was updated",
+        preheader="The payment method for your BalanceWhiz subscription was updated.",
+        heading="Your payment method has been updated.",
+        body=body,
+        cta_label="Go to Billing",
+        cta_url=billing_settings_url(app_url),
+        support_line=f"Didn't make this change? Contact us at {address}.",
+        support_link_label=address,
+        support_link_url=mailto,
+    )
+
+
 def resolve_app_url(*, is_staging_deployment: bool, app_public_base_url: str = "") -> str:
     """Public site URL for this environment. Prefer APP_PUBLIC_BASE_URL when set."""
     raw = (app_public_base_url or "").strip().rstrip("/")
@@ -305,6 +435,19 @@ def _safe_http_url(url: str) -> str:
     raw = (url or "").strip()
     if raw.startswith("https://") or raw.startswith("http://"):
         return raw
+    return ""
+
+
+def _safe_href(url: str) -> str:
+    """HTTP(S) link, or mailto to a single email address."""
+    http = _safe_http_url(url)
+    if http:
+        return http
+    raw = (url or "").strip()
+    if raw.lower().startswith("mailto:"):
+        addr = raw.split(":", 1)[1].strip()
+        if _EMAIL_RE.match(addr):
+            return f"mailto:{addr}"
     return ""
 
 
@@ -331,7 +474,7 @@ def _p_html_with_link(
 ) -> str:
     """Escape a paragraph and link one exact word, such as Billing."""
     label = (link_label or "").strip()
-    href = _safe_http_url(link_url)
+    href = _safe_href(link_url)
     if not label or not href or label not in (text or ""):
         return _p_html(text, color=color, size=size, extra=extra)
     before, after = (text or "").split(label, 1)
@@ -532,7 +675,7 @@ def render_transactional_text(content: TransactionalEmailContent, *, app_url: st
     support = (content.support_line or "").strip()
     if support:
         lines.append(support)
-        link = _safe_http_url(content.support_link_url)
+        link = _safe_href(content.support_link_url)
         if link and (content.support_link_label or "").strip() and (content.support_link_label or "").strip() in support:
             lines.append(link)
         lines.append("")

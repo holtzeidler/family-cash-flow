@@ -455,7 +455,10 @@ class LifecycleEmailSend(Base):
 
     trial_end_key is the trial end for the 3-day reminder, the Stripe renewal
     timestamp for the annual reminder, the invoice id for a failed payment, or the
-    Stripe cancellation time for a scheduled cancel. A second run for the same key does not send again.
+    Stripe cancellation time for a scheduled cancel, or the trial end for the
+    trial-expired note, the ended Stripe subscription id after unpaid retries, or the
+    resume/restore event, or the day and payment method ids for a saved card
+    replacement. A second run for the same key does not send again.
     """
 
     __tablename__ = "lifecycle_email_sends"
@@ -4983,6 +4986,11 @@ def platform_send_email_test(
         "payment-failed-annual",
         "cancel-monthly",
         "cancel-annual",
+        "trial-expired",
+        "subscription-ended",
+        "reactivate-resumed",
+        "reactivate-restored",
+        "payment-method-updated",
     ] = Query("welcome"),
     access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
@@ -4991,8 +4999,10 @@ def platform_send_email_test(
 
     Recipient is fixed server-side (tracy@balancewhiz.com) — never taken from the request.
     Pass template=welcome (default), template=trial-ending, template=plan-monthly,
-    template=plan-annual, template=annual-renewal,     template=payment-failed-monthly, template=payment-failed-annual,
-    template=cancel-monthly, template=cancel-annual, or template=design.
+    template=plan-annual, template=annual-renewal, template=payment-failed-monthly,
+    template=payment-failed-annual, template=cancel-monthly, template=cancel-annual,
+    template=trial-expired, template=subscription-ended,     template=reactivate-resumed,
+    template=reactivate-restored, template=payment-method-updated, or template=design.
     This route never runs the lifecycle job and never emails other users.
     """
     from .email_service import (

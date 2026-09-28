@@ -2,7 +2,8 @@
 
 This is a one-shot command for the staging Render cron job. It does not run
 on login, and it does not start from the web process. One run sends the 3-day
-trial reminder and the 7-day annual renewal reminder. There is no second scheduler.
+trial reminder, the trial-expired note, and the 7-day annual renewal reminder.
+There is no second scheduler.
 
 Safety:
 - Refuses to run unless TRIAL_ENDING_REMINDERS_ENABLED=1.
@@ -13,8 +14,8 @@ Safety:
 - Records a row in lifecycle_email_sends after a successful send. The unique
   key is the family's trial end, or that annual renewal's Stripe period end.
 
-Preview with POST /api/platform/email-test?template=trial-ending or
-template=annual-renewal. That route does not call this job.
+Preview with POST /api/platform/email-test?template=trial-ending,
+template=trial-expired, or template=annual-renewal. That route does not call this job.
 """
 
 from __future__ import annotations
@@ -26,6 +27,7 @@ import sys
 logger = logging.getLogger("balancewhiz.trial_reminder")
 
 REMINDER_KIND = "trial_ending_3d"
+TRIAL_EXPIRED_KIND = "trial_expired"
 ANNUAL_RENEWAL_KIND = "annual_renewal_7d"
 
 
@@ -171,6 +173,90 @@ def _send_annual_renewal_reminders(db, *, app_url: str, dry_run: bool) -> tuple[
     return sent, skipped, failed
 
 
+def _send_trial_expired_emails(db, *, app_url: str, dry_run: bool) -> tuple[int, int, int]:
+    """Send once, on the first run after the trial timestamp, when no plan was chosen."""
+    from sqlalchemy.exc import IntegrityError
+
+    from .billing_entitlement import (
+        family_billing_payload,
+        family_owner_user,
+        trial_end_idempotency_key,
+        trial_expired_email_applies,
+    )
+    from .email_service import EmailNotConfigured, EmailSendError, send_trial_expired_email
+    from .main import Family, LifecycleEmailSend, select, settings
+
+    sent = 0
+    skipped = 0
+    failed = 0
+    families = db.execute(select(Family).order_by(Family.id.asc())).scalars().all()
+    for family in families:
+        try:
+            payload = family_billing_payload(db, family_id=int(family.id))
+        except Exception:
+            db.rollback()
+            logger.exception("Trial expired email skipped family_id=%s", family.id)
+            skipped += 1
+            continue
+        if not trial_expired_email_applies(payload):
+            continue
+        owner = family_owner_user(db, int(family.id))
+        email = (getattr(owner, "email", None) or "").strip() if owner is not None else ""
+        if owner is None or "@" not in email:
+            skipped += 1
+            continue
+        if _allowlist_blocks(email):
+            skipped += 1
+            continue
+        key = trial_end_idempotency_key(family.created_at)
+        if not key:
+            skipped += 1
+            continue
+        already = db.execute(
+            select(LifecycleEmailSend.id).where(
+                LifecycleEmailSend.family_id == int(family.id),
+                LifecycleEmailSend.kind == TRIAL_EXPIRED_KIND,
+                LifecycleEmailSend.trial_end_key == key,
+            )
+        ).first()
+        if already:
+            skipped += 1
+            continue
+        if dry_run:
+            print(f"would send trial-expired family_id={family.id} user_id={owner.id}")
+            sent += 1
+            continue
+        try:
+            send_trial_expired_email(
+                api_key=settings.RESEND_API_KEY,
+                to_addr=email,
+                app_url=app_url,
+                reply_to=(settings.TRANSACTIONAL_REPLY_TO or "").strip() or None,
+            )
+        except (EmailNotConfigured, EmailSendError):
+            logger.exception("Trial expired email send failed family_id=%s", family.id)
+            failed += 1
+            continue
+        db.add(
+            LifecycleEmailSend(
+                family_id=int(family.id),
+                user_id=int(owner.id),
+                kind=TRIAL_EXPIRED_KIND,
+                trial_end_key=key,
+            )
+        )
+        try:
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+            logger.info("Trial expired email already recorded family_id=%s", family.id)
+            skipped += 1
+            continue
+        sent += 1
+        logger.info("Trial expired email sent family_id=%s user_id=%s", family.id, owner.id)
+    return sent, skipped, failed
+
+
 def run(*, dry_run: bool = False) -> int:
     """Send or list due reminders. Returns a process exit code."""
     from sqlalchemy.exc import IntegrityError
@@ -287,13 +373,17 @@ def run(*, dry_run: bool = False) -> int:
         annual_sent, annual_skipped, annual_failed = _send_annual_renewal_reminders(
             db, app_url=app_url, dry_run=dry_run
         )
+        expired_sent, expired_skipped, expired_failed = _send_trial_expired_emails(
+            db, app_url=app_url, dry_run=dry_run
+        )
 
     mode = "dry-run" if dry_run else "sent"
     print(
         f"trial {mode}={sent} skipped={skipped} failed={failed} "
+        f"expired {mode}={expired_sent} skipped={expired_skipped} failed={expired_failed} "
         f"annual {mode}={annual_sent} skipped={annual_skipped} failed={annual_failed}"
     )
-    return 2 if (failed or annual_failed) else 0
+    return 2 if (failed or annual_failed or expired_failed) else 0
 
 
 def main(argv: list[str] | None = None) -> int:
