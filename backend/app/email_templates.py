@@ -194,6 +194,101 @@ def build_plan_selection_email_content(
     )
 
 
+def build_annual_renewal_email_content(
+    *,
+    app_url: str,
+    renews_on: Optional[datetime] = None,
+    renewal_amount: str,
+) -> TransactionalEmailContent:
+    """Reminds an annual subscriber 7 days before the saved card is charged."""
+    friendly = format_trial_end_date(renews_on)
+    when = friendly or "your renewal date"
+    amount = (renewal_amount or "").strip() or "your renewal amount"
+    body = (
+        f"Your BalanceWhiz annual subscription will renew on {when}.\n\n"
+        "Plan: Annual\n\n"
+        f"Renewal amount: {amount}\n\n"
+        f"Renewal date: {when}"
+    )
+    return TransactionalEmailContent(
+        subject="Your BalanceWhiz plan renews soon",
+        preheader="Your annual plan renews in 7 days.",
+        heading="Your annual plan renews in 7 days.",
+        body=body,
+        cta_label="Go to BalanceWhiz",
+        cta_url=_safe_http_url(app_url),
+        support_line=(
+            "Your saved payment method will be charged automatically on your renewal date. "
+            "You can manage your subscription, update your payment method, or cancel anytime from Billing."
+        ),
+        support_link_label="Billing",
+        support_link_url=billing_settings_url(app_url),
+    )
+
+
+def build_payment_failed_email_content(
+    *,
+    app_url: str,
+    plan_label: str,
+    amount_display: str,
+    payment_on: Optional[datetime] = None,
+) -> TransactionalEmailContent:
+    """Tells the subscriber the latest charge failed and their forecast is still available."""
+    when = format_trial_end_date(payment_on) or "the payment date"
+    amount = (amount_display or "").strip() or "your subscription amount"
+    plan = (plan_label or "").strip() or "your plan"
+    body = (
+        f"We couldn't process your BalanceWhiz payment of {amount}.\n\n"
+        "Your forecast is still available, but please update your payment method so your subscription can stay active.\n\n"
+        f"Plan: {plan}\n\n"
+        f"Amount: {amount}\n\n"
+        f"Payment date: {when}"
+    )
+    return TransactionalEmailContent(
+        subject="We couldn't process your BalanceWhiz payment",
+        preheader="Your forecast is still available. Please update your payment method.",
+        heading="There was a problem with your payment.",
+        body=body,
+        cta_label="Update payment method",
+        cta_url=billing_settings_url(app_url),
+        support_line=(
+            "We'll automatically retry your payment. If we're unable to complete it after the retry period, "
+            "your BalanceWhiz account will become view-only. Your existing forecast will still be there for you to see."
+        ),
+    )
+
+
+def build_subscription_canceled_email_content(
+    *,
+    app_url: str,
+    plan_label: str,
+    access_through: Optional[datetime] = None,
+) -> TransactionalEmailContent:
+    """Confirms a user scheduled their subscription to end at the paid period."""
+    when = format_trial_end_date(access_through) or "the end of your current period"
+    plan = (plan_label or "").strip() or "your plan"
+    body = (
+        f"Your BalanceWhiz subscription has been canceled. You'll continue to have full access through {when}.\n\n"
+        f"Plan: {plan}\n\n"
+        f"Full access through: {when}\n\n"
+        "Future charges: None"
+    )
+    return TransactionalEmailContent(
+        subject="Your BalanceWhiz subscription has been canceled",
+        preheader="Your subscription is canceled. You'll keep full access through the end of this period.",
+        heading="Your subscription is canceled.",
+        body=body,
+        cta_label="Go to BalanceWhiz",
+        cta_url=_safe_http_url(app_url),
+        support_line=(
+            f"After {when}, your account will become view-only. Your existing forecast will still be there whenever you want to see it.\n\n"
+            "You can resubscribe anytime from Billing if you'd like to start updating your forecast again."
+        ),
+        support_link_label="Billing",
+        support_link_url=billing_settings_url(app_url),
+    )
+
+
 def resolve_app_url(*, is_staging_deployment: bool, app_public_base_url: str = "") -> str:
     """Public site URL for this environment. Prefer APP_PUBLIC_BASE_URL when set."""
     raw = (app_public_base_url or "").strip().rstrip("/")

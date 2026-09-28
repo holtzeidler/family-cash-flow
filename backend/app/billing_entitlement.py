@@ -332,7 +332,7 @@ def lookup_key_from_subscription(sub: Any) -> Optional[str]:
     return None
 
 
-def subscription_plan_display(sub: Any) -> Optional[dict[str, str]]:
+def subscription_plan_display(sub: Any) -> Optional[dict[str, Any]]:
     """Plan label and price from the Stripe Price on the subscription. None if unknown."""
     items = _subscription_items(sub)
     if not items:
@@ -359,8 +359,55 @@ def subscription_plan_display(sub: Any) -> Optional[dict[str, str]]:
     cents = int(unit)
     amount = f"${cents / 100:.2f}"
     if interval == "year":
-        return {"plan_label": "Annual", "price_display": f"{amount}/year", "renews_each": "year"}
-    return {"plan_label": "Monthly", "price_display": f"{amount}/month", "renews_each": "month"}
+        return {
+            "plan_label": "Annual",
+            "price_display": f"{amount}/year",
+            "renews_each": "year",
+            "amount_cents": cents,
+        }
+    return {
+        "plan_label": "Monthly",
+        "price_display": f"{amount}/month",
+        "renews_each": "month",
+        "amount_cents": cents,
+    }
+
+
+ANNUAL_RENEWAL_REMINDER_DAYS = 7
+
+
+def annual_renewal_reminder_facts(sub: Any, *, now: Optional[datetime] = None) -> Optional[dict[str, Any]]:
+    """Read-only facts for the 7-day annual renewal reminder. None when it must not send.
+
+    Does not write Stripe or change entitlement. The first charge at the end of a
+    free trial is not a renewal: status must already be active, and trial_end
+    must not still be in the future.
+    """
+    status = str(_stripe_field(sub, "status") or _obj_get(sub, "status") or "").strip().lower()
+    if status != "active":
+        return None
+    if _scheduled_cancel_from_stripe_sub(sub, now=now):
+        return None
+    if lookup_key_from_subscription(sub) != LOOKUP_ANNUAL:
+        return None
+    n = now or _utc_now()
+    trial_end = _as_naive_utc(_stripe_field(sub, "trial_end") or _obj_get(sub, "trial_end"))
+    if trial_end is not None and trial_end > n:
+        return None
+    period_end = _period_end_from_stripe_sub(sub)
+    if period_end is None:
+        return None
+    if (period_end.date() - n.date()).days != ANNUAL_RENEWAL_REMINDER_DAYS:
+        return None
+    plan = subscription_plan_display(sub)
+    if not plan or plan.get("renews_each") != "year" or not isinstance(plan.get("amount_cents"), int):
+        return None
+    cents = int(plan["amount_cents"])
+    return {
+        "renews_on": period_end,
+        "amount_display": f"${cents / 100:.2f}",
+        "idempotency_key": period_end.strftime("%Y-%m-%dT%H:%M:%S.%f"),
+    }
 
 
 def price_id_from_subscription(sub: Any) -> Optional[str]:
@@ -947,6 +994,124 @@ def _failed_payment_on_from_stripe_sub(stripe_sub: Any) -> Optional[datetime]:
     return due or created
 
 
+def _invoice_line_price(line: Any) -> Any:
+    price = _obj_get(line, "price")
+    if price is not None:
+        return price
+    pricing = _obj_get(line, "pricing")
+    details = _obj_get(pricing, "price_details") if pricing is not None else None
+    if details is None:
+        return None
+    return _obj_get(details, "price")
+
+
+def payment_failed_email_facts(
+    invoice: Any,
+    *,
+    lookup_key: Optional[str] = None,
+    prior_status: str = "",
+    failed_on: Optional[datetime] = None,
+) -> Optional[dict[str, Any]]:
+    """Read-only facts for the first failed charge on a subscription invoice.
+
+    None when this invoice must not be emailed. Does not change Stripe retries
+    or subscription status. Stripe sends invoice.payment_failed again for each
+    automatic retry; attempt_count 1 is the first attempt.
+    """
+    if str(prior_status or "").strip().lower() in ("canceled", "cancelled"):
+        return None
+    try:
+        attempt = int(_obj_get(invoice, "attempt_count"))
+    except (TypeError, ValueError):
+        return None
+    if attempt != 1:
+        return None
+    invoice_id = str(_obj_get(invoice, "id") or "").strip()
+    if not invoice_id or len(invoice_id) > 40:
+        return None
+    sub_ref = _obj_get(invoice, "subscription")
+    sub_id = sub_ref if isinstance(sub_ref, str) else _obj_get(sub_ref, "id")
+    if not str(sub_id or "").strip():
+        return None
+    raw_amount = _obj_get(invoice, "amount_due")
+    if raw_amount is None:
+        raw_amount = _obj_get(invoice, "total")
+    try:
+        cents = int(raw_amount)
+    except (TypeError, ValueError):
+        return None
+    if cents <= 0:
+        return None
+    plan = None
+    lines = _obj_get(invoice, "lines")
+    line_data = _obj_get(lines, "data") if lines is not None else None
+    for line in list(line_data or []):
+        looked = _lookup_from_price(_invoice_line_price(line))
+        if looked == LOOKUP_ANNUAL:
+            plan = "Annual"
+            break
+        if looked == LOOKUP_MONTHLY:
+            plan = "Monthly"
+            break
+    if plan is None:
+        stored = (lookup_key or "").strip()
+        if stored == LOOKUP_ANNUAL:
+            plan = "Annual"
+        elif stored == LOOKUP_MONTHLY:
+            plan = "Monthly"
+    if plan not in ("Monthly", "Annual"):
+        return None
+    when = failed_on or _as_naive_utc(_obj_get(invoice, "created"))
+    return {
+        "invoice_id": invoice_id,
+        "plan_label": plan,
+        "amount_display": f"${cents / 100:.2f}",
+        "failed_on": when,
+    }
+
+
+def subscription_cancel_email_facts(sub: Any) -> Optional[dict[str, Any]]:
+    """Read-only facts for a user-scheduled period-end cancellation. None otherwise.
+
+    Requires Stripe cancel_at_period_end on a subscription that is still running.
+    The access-through date is Stripe's current period end. Payment-failure
+    cancellations and already-ended subscriptions are not included.
+    """
+    status = str(_stripe_field(sub, "status") or _obj_get(sub, "status") or "").strip().lower()
+    if status not in ("active", "trialing", "past_due"):
+        return None
+    if not bool(_stripe_field(sub, "cancel_at_period_end") or _obj_get(sub, "cancel_at_period_end") or False):
+        return None
+    details = _stripe_field(sub, "cancellation_details") or _obj_get(sub, "cancellation_details")
+    reason = str(_stripe_field(details, "reason") or _obj_get(details, "reason") or "").strip().lower()
+    if reason in ("payment_failed", "payment_disputed"):
+        return None
+    if reason and reason != "cancellation_requested":
+        return None
+    period_end = _period_end_from_stripe_sub(sub)
+    if period_end is None:
+        return None
+    lookup = lookup_key_from_subscription(sub)
+    if lookup == LOOKUP_ANNUAL:
+        plan = "Annual"
+    elif lookup == LOOKUP_MONTHLY:
+        plan = "Monthly"
+    else:
+        return None
+    canceled_at = _as_naive_utc(_stripe_field(sub, "canceled_at") or _obj_get(sub, "canceled_at"))
+    if canceled_at is not None:
+        key = canceled_at.strftime("%Y-%m-%dT%H:%M:%S")
+    else:
+        key = "period-" + period_end.strftime("%Y-%m-%dT%H:%M:%S")
+    if len(key) > 40:
+        return None
+    return {
+        "plan_label": plan,
+        "access_through": period_end,
+        "idempotency_key": key,
+    }
+
+
 def _next_payment_attempt_from_stripe_sub(stripe_sub: Any) -> Optional[datetime]:
     """Stripe's next retry timestamp from the expanded latest invoice, if present."""
     inv = _obj_get(stripe_sub, "latest_invoice")
@@ -1328,6 +1493,24 @@ def handle_stripe_event(db, event: Any, logger_: logging.Logger) -> None:
             sub=obj,
             billing_customer_id=int(billing_customer.id) if billing_customer else None,
         )
+        if event_type == "customer.subscription.updated":
+            try:
+                from .email_service import maybe_send_subscription_canceled_email
+
+                saved = db.execute(
+                    select(BillingSubscription).where(
+                        BillingSubscription.stripe_subscription_id == str(_obj_get(obj, "id") or "")
+                    )
+                ).scalar_one_or_none()
+                if saved is not None:
+                    maybe_send_subscription_canceled_email(
+                        db,
+                        family_id=int(saved.family_id),
+                        subscription=obj,
+                        livemode=_obj_get(event, "livemode"),
+                    )
+            except Exception:
+                logger_.exception("Cancellation confirmation email skipped for %s", event_id)
         mark_webhook_event_processed(db, event_id=str(event_id), event_type=str(event_type))
         return
 
@@ -1359,8 +1542,23 @@ def handle_stripe_event(db, event: Any, logger_: logging.Logger) -> None:
                     row.current_period_end = pe
             db.add(row)
         else:
+            prior_status = str(row.status or "").strip().lower()
             row.status = "past_due"
             db.add(row)
+            try:
+                from .email_service import maybe_send_payment_failed_email
+
+                maybe_send_payment_failed_email(
+                    db,
+                    family_id=int(row.family_id),
+                    lookup_key=row.lookup_key,
+                    prior_status=prior_status,
+                    invoice=obj,
+                    livemode=_obj_get(event, "livemode"),
+                    failed_on=_as_naive_utc(_obj_get(event, "created")),
+                )
+            except Exception:
+                logger_.exception("Payment failed email skipped for invoice event %s", event_id)
         mark_webhook_event_processed(db, event_id=str(event_id), event_type=str(event_type))
         return
 

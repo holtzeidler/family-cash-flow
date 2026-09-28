@@ -1024,6 +1024,19 @@ def register_stripe_routes(
                     )
                 stripe.Subscription.modify(sid, cancel_at_period_end=True)
                 sub_obj, _refreshed, period_end = _persist_live_subscription(db, sid)
+                try:
+                    from .billing_entitlement import _obj_get
+                    from .email_service import maybe_send_subscription_canceled_email
+
+                    maybe_send_subscription_canceled_email(
+                        db,
+                        family_id=int(family_id),
+                        subscription=sub_obj,
+                        livemode=_obj_get(sub_obj, "livemode"),
+                    )
+                    db.commit()
+                except Exception:
+                    logger.exception("Cancellation confirmation email skipped family_id=%s", family_id)
                 logger.info(
                     "Scheduled period-end cancel family_id=%s subscription %s period_end=%s",
                     family_id,

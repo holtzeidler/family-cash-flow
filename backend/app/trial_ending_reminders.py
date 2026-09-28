@@ -1,7 +1,8 @@
-"""Send the 3-day trial reminder once per trial.
+"""Send scheduled lifecycle reminders.
 
 This is a one-shot command for the staging Render cron job. It does not run
-on login, and it does not start from the web process.
+on login, and it does not start from the web process. One run sends the 3-day
+trial reminder and the 7-day annual renewal reminder. There is no second scheduler.
 
 Safety:
 - Refuses to run unless TRIAL_ENDING_REMINDERS_ENABLED=1.
@@ -10,10 +11,10 @@ Safety:
 - On staging, sends only to STAGING_AUTH_EMAIL_ALLOWLIST. An empty allowlist
   sends nobody.
 - Records a row in lifecycle_email_sends after a successful send. The unique
-  key is the family's existing trial end, so the reminder goes out once.
+  key is the family's trial end, or that annual renewal's Stripe period end.
 
-Preview the template with POST /api/platform/email-test?template=trial-ending.
-That route does not call this job.
+Preview with POST /api/platform/email-test?template=trial-ending or
+template=annual-renewal. That route does not call this job.
 """
 
 from __future__ import annotations
@@ -25,6 +26,7 @@ import sys
 logger = logging.getLogger("balancewhiz.trial_reminder")
 
 REMINDER_KIND = "trial_ending_3d"
+ANNUAL_RENEWAL_KIND = "annual_renewal_7d"
 
 
 def _enabled(name: str) -> bool:
@@ -60,6 +62,113 @@ def _allowlist_blocks(email: str) -> bool:
     if not allow:
         return True
     return (email or "").strip().lower() not in allow
+
+
+def _send_annual_renewal_reminders(db, *, app_url: str, dry_run: bool) -> tuple[int, int, int]:
+    """Send the annual reminder for subscriptions whose Stripe renewal is 7 days away.
+
+    Reads Stripe for status, amount, and renewal date. Does not update billing.
+    """
+    import stripe
+    from sqlalchemy.exc import IntegrityError
+
+    from .billing_catalog import LOOKUP_ANNUAL
+    from .billing_entitlement import (
+        annual_renewal_reminder_facts,
+        complimentary_access_is_active,
+        family_owner_user,
+    )
+    from .email_service import EmailNotConfigured, EmailSendError, send_annual_renewal_email
+    from .main import BillingSubscription, LifecycleEmailSend, select, settings
+
+    sent = 0
+    skipped = 0
+    failed = 0
+    api_key = (settings.STRIPE_SECRET_KEY or "").strip()
+    if not api_key:
+        logger.warning("Annual renewal reminder skipped: STRIPE_SECRET_KEY is not set")
+        print("annual skipped: STRIPE_SECRET_KEY is not set")
+        return sent, skipped, failed
+
+    rows = db.execute(
+        select(BillingSubscription).where(
+            BillingSubscription.status == "active",
+            BillingSubscription.lookup_key == LOOKUP_ANNUAL,
+            BillingSubscription.cancel_at_period_end.is_(False),
+        )
+    ).scalars().all()
+    stripe.api_key = api_key
+    for row in rows:
+        owner = family_owner_user(db, int(row.family_id))
+        email = (getattr(owner, "email", None) or "").strip() if owner is not None else ""
+        if owner is None or "@" not in email:
+            skipped += 1
+            continue
+        if complimentary_access_is_active(owner):
+            skipped += 1
+            continue
+        if _allowlist_blocks(email):
+            skipped += 1
+            continue
+        sub_id = (row.stripe_subscription_id or "").strip()
+        if not sub_id:
+            skipped += 1
+            continue
+        try:
+            stripe_sub = stripe.Subscription.retrieve(sub_id, expand=["items.data.price"])
+        except Exception:
+            logger.exception("Annual renewal reminder could not read Stripe subscription %s", sub_id)
+            failed += 1
+            continue
+        facts = annual_renewal_reminder_facts(stripe_sub)
+        if not facts:
+            continue
+        key = str(facts["idempotency_key"])
+        already = db.execute(
+            select(LifecycleEmailSend.id).where(
+                LifecycleEmailSend.family_id == int(row.family_id),
+                LifecycleEmailSend.kind == ANNUAL_RENEWAL_KIND,
+                LifecycleEmailSend.trial_end_key == key,
+            )
+        ).first()
+        if already:
+            skipped += 1
+            continue
+        if dry_run:
+            print(f"would send annual family_id={row.family_id} user_id={owner.id}")
+            sent += 1
+            continue
+        try:
+            send_annual_renewal_email(
+                api_key=settings.RESEND_API_KEY,
+                to_addr=email,
+                app_url=app_url,
+                renews_on=facts["renews_on"],
+                renewal_amount=str(facts["amount_display"]),
+                reply_to=(settings.TRANSACTIONAL_REPLY_TO or "").strip() or None,
+            )
+        except (EmailNotConfigured, EmailSendError):
+            logger.exception("Annual renewal reminder send failed family_id=%s", row.family_id)
+            failed += 1
+            continue
+        db.add(
+            LifecycleEmailSend(
+                family_id=int(row.family_id),
+                user_id=int(owner.id),
+                kind=ANNUAL_RENEWAL_KIND,
+                trial_end_key=key,
+            )
+        )
+        try:
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+            logger.info("Annual renewal reminder already recorded family_id=%s", row.family_id)
+            skipped += 1
+            continue
+        sent += 1
+        logger.info("Annual renewal reminder sent family_id=%s user_id=%s", row.family_id, owner.id)
+    return sent, skipped, failed
 
 
 def run(*, dry_run: bool = False) -> int:
@@ -175,9 +284,16 @@ def run(*, dry_run: bool = False) -> int:
             sent += 1
             logger.info("Trial reminder sent family_id=%s user_id=%s", family.id, owner.id)
 
+        annual_sent, annual_skipped, annual_failed = _send_annual_renewal_reminders(
+            db, app_url=app_url, dry_run=dry_run
+        )
+
     mode = "dry-run" if dry_run else "sent"
-    print(f"{mode}={sent} skipped={skipped} failed={failed}")
-    return 2 if failed else 0
+    print(
+        f"trial {mode}={sent} skipped={skipped} failed={failed} "
+        f"annual {mode}={annual_sent} skipped={annual_skipped} failed={annual_failed}"
+    )
+    return 2 if (failed or annual_failed) else 0
 
 
 def main(argv: list[str] | None = None) -> int:

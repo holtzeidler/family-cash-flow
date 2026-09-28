@@ -451,10 +451,11 @@ class BillingSubscription(Base):
 
 
 class LifecycleEmailSend(Base):
-    """One successful lifecycle send for a family's trial.
+    """One successful lifecycle send.
 
-    trial_end_key is trial_end_idempotency_key(family.created_at). A second run
-    for the same trial hits the unique constraint and does not send again.
+    trial_end_key is the trial end for the 3-day reminder, the Stripe renewal
+    timestamp for the annual reminder, the invoice id for a failed payment, or the
+    Stripe cancellation time for a scheduled cancel. A second run for the same key does not send again.
     """
 
     __tablename__ = "lifecycle_email_sends"
@@ -4971,7 +4972,18 @@ def platform_overview(
 
 @app.post("/api/platform/email-test", response_model=PlatformEmailTestOut, include_in_schema=False)
 def platform_send_email_test(
-    template: Literal["welcome", "design", "trial-ending", "plan-monthly", "plan-annual"] = Query("welcome"),
+    template: Literal[
+        "welcome",
+        "design",
+        "trial-ending",
+        "plan-monthly",
+        "plan-annual",
+        "annual-renewal",
+        "payment-failed-monthly",
+        "payment-failed-annual",
+        "cancel-monthly",
+        "cancel-annual",
+    ] = Query("welcome"),
     access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
@@ -4979,7 +4991,8 @@ def platform_send_email_test(
 
     Recipient is fixed server-side (tracy@balancewhiz.com) — never taken from the request.
     Pass template=welcome (default), template=trial-ending, template=plan-monthly,
-    template=plan-annual, or template=design.
+    template=plan-annual, template=annual-renewal,     template=payment-failed-monthly, template=payment-failed-annual,
+    template=cancel-monthly, template=cancel-annual, or template=design.
     This route never runs the lifecycle job and never emails other users.
     """
     from .email_service import (
