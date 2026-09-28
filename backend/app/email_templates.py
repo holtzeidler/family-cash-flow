@@ -129,17 +129,14 @@ def build_trial_ending_email_content(
     trial_ends_on: Optional[datetime] = None,
 ) -> TransactionalEmailContent:
     """3-day trial reminder. Uses the shared Welcome shell; copy is fixed for this reminder."""
-    name = normalize_first_name(first_name)
-    greeting = f"Hi {name}," if name else "Hi,"
     friendly_end = format_trial_end_date(trial_ends_on)
     if friendly_end:
         when = f"Your BalanceWhiz trial ends on {friendly_end}."
     else:
         when = "Your BalanceWhiz trial ends in 3 days."
     body = (
-        f"{greeting}\n\n"
         f"{when}\n\n"
-        "If BalanceWhiz is helping you see what’s ahead, choose a plan to keep building and updating your forecast."
+        "Keep your forecast up to date and see what’s ahead by choosing a plan before your trial ends."
     )
     return TransactionalEmailContent(
         subject="Your BalanceWhiz trial ends in 3 days",
