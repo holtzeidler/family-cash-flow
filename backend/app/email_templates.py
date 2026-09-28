@@ -53,6 +53,7 @@ class TransactionalEmailContent:
     support_link_label: str = ""
     support_link_url: str = ""
     additional_text: str = ""
+    summary_rows: tuple[tuple[str, str], ...] = ()
 
 
 def normalize_first_name(value: Optional[str]) -> str:
@@ -198,11 +199,7 @@ def build_plan_selection_email_content(
     body = (
         f"{greeting}\n\n"
         f"You’ve chosen your BalanceWhiz plan. Your free trial will continue through {through}, "
-        f"and you won’t be charged until it ends.\n\n"
-        f"Plan: {plan_label}\n\n"
-        f"Price: {price_display}\n\n"
-        "Due today: $0\n\n"
-        f"First payment: {through}"
+        "and you won’t be charged until it ends."
     )
     return TransactionalEmailContent(
         subject="Your BalanceWhiz plan is set",
@@ -211,6 +208,12 @@ def build_plan_selection_email_content(
         body=body,
         cta_label="Go to my forecast",
         cta_url=_safe_http_url(app_url),
+        summary_rows=(
+            ("Plan:", plan_label),
+            ("Price:", price_display),
+            ("Due today:", "$0.00"),
+            ("First payment:", through),
+        ),
         support_line=(
             f"After your first payment, your plan will renew automatically each {cadence} unless you cancel. "
             "You can manage your subscription or payment method anytime from Billing."
@@ -230,19 +233,19 @@ def build_annual_renewal_email_content(
     friendly = format_trial_end_date(renews_on)
     when = friendly or "your renewal date"
     amount = (renewal_amount or "").strip() or "your renewal amount"
-    body = (
-        f"Your BalanceWhiz annual subscription will renew on {when}.\n\n"
-        "Plan: Annual\n\n"
-        f"Renewal amount: {amount}\n\n"
-        f"Renewal date: {when}"
-    )
+    body = f"Your BalanceWhiz annual subscription will renew on {when}."
     return TransactionalEmailContent(
         subject="Your BalanceWhiz plan renews soon",
         preheader="Your annual plan renews in 7 days.",
         heading="Your annual plan renews in 7 days.",
         body=body,
-        cta_label="Go to BalanceWhiz",
-        cta_url=_safe_http_url(app_url),
+        cta_label="Manage my subscription",
+        cta_url=billing_settings_url(app_url),
+        summary_rows=(
+            ("Plan:", "Annual"),
+            ("Renewal amount:", amount),
+            ("Renewal date:", when),
+        ),
         support_line=(
             "Your saved payment method will be charged automatically on your renewal date. "
             "You can manage your subscription, update your payment method, or cancel anytime from Billing."
@@ -265,10 +268,8 @@ def build_payment_failed_email_content(
     plan = (plan_label or "").strip() or "your plan"
     body = (
         f"We couldn't process your BalanceWhiz payment of {amount}.\n\n"
-        "Your forecast is still available, but please update your payment method so your subscription can stay active.\n\n"
-        f"Plan: {plan}\n\n"
-        f"Amount: {amount}\n\n"
-        f"Payment date: {when}"
+        "You still have full access to your forecast while we retry the payment. "
+        "Please update your payment method to keep your subscription active."
     )
     return TransactionalEmailContent(
         subject="We couldn't process your BalanceWhiz payment",
@@ -277,6 +278,11 @@ def build_payment_failed_email_content(
         body=body,
         cta_label="Update payment method",
         cta_url=billing_settings_url(app_url),
+        summary_rows=(
+            ("Plan:", plan),
+            ("Amount:", amount),
+            ("Payment attempted:", when),
+        ),
         support_line=(
             "We'll automatically retry your payment. If we're unable to complete it after the retry period, "
             "your BalanceWhiz account will become view-only. Your existing forecast will still be there for you to see."
@@ -293,22 +299,22 @@ def build_subscription_canceled_email_content(
     """Confirms a user scheduled their subscription to end at the paid period."""
     when = format_trial_end_date(access_through) or "the end of your current period"
     plan = (plan_label or "").strip() or "your plan"
-    body = (
-        f"Your BalanceWhiz subscription has been canceled. You'll continue to have full access through {when}.\n\n"
-        f"Plan: {plan}\n\n"
-        f"Full access through: {when}\n\n"
-        "Future charges: None"
-    )
+    body = f"You'll continue to have full access to BalanceWhiz through {when}."
     return TransactionalEmailContent(
-        subject="Your BalanceWhiz subscription has been canceled",
-        preheader="Your subscription is canceled. You'll keep full access through the end of this period.",
-        heading="Your subscription is canceled.",
+        subject="Your BalanceWhiz cancellation is confirmed",
+        preheader="You'll keep full access through the end of this period.",
+        heading="Your cancellation is confirmed.",
         body=body,
-        cta_label="Go to BalanceWhiz",
+        cta_label="Go to my forecast",
         cta_url=_safe_http_url(app_url),
+        summary_rows=(
+            ("Plan:", plan),
+            ("Full access through:", when),
+            ("Future charges:", "None"),
+        ),
         support_line=(
             f"After {when}, your account will become view-only. Your existing forecast will still be there whenever you want to see it.\n\n"
-            "You can resubscribe anytime from Billing if you'd like to start updating your forecast again."
+            f"You can resume your subscription anytime from Billing if you decide to keep full access beyond {when}."
         ),
         support_link_label="Billing",
         support_link_url=billing_settings_url(app_url),
@@ -456,6 +462,23 @@ def _paragraphs(text: str) -> list[str]:
     return [part for part in chunks if part]
 
 
+def _summary_html(rows: tuple[tuple[str, str], ...]) -> str:
+    """One compact billing summary. Labels are bold; values stay regular weight."""
+    parts: list[str] = []
+    for label, value in rows:
+        lab = (label or "").strip()
+        if not lab:
+            continue
+        parts.append(f'<strong style="font-weight:700;">{_esc(lab)}</strong> {_esc(value or "")}')
+    if not parts:
+        return ""
+    inner = "<br>".join(parts)
+    return (
+        f'<p style="margin:0 0 16px;font-family:{_FONT};font-size:16px;'
+        f'line-height:1.4;font-weight:400;color:{TEXT};">{inner}</p>'
+    )
+
+
 def _p_html(text: str, *, color: str, size: str = "16px", weight: str = "400", extra: str = "") -> str:
     return (
         f'<p style="margin:0 0 16px;font-family:{_FONT};font-size:{size};'
@@ -555,6 +578,7 @@ def render_transactional_html(content: TransactionalEmailContent, *, app_url: st
     cta = render_cta_html(label=content.cta_label, url=content.cta_url)
 
     body_html = "".join(_p_html(part, color=TEXT) for part in body_parts)
+    summary_html = _summary_html(tuple(content.summary_rows or ()))
     extra_html = "".join(_p_html(part, color=TEXT) for part in extra_parts)
     heading_html = (
         f'<h1 style="margin:0 0 16px;font-family:{_FONT};font-size:24px;line-height:1.3;'
@@ -577,7 +601,7 @@ def render_transactional_html(content: TransactionalEmailContent, *, app_url: st
             )
             for i, part in enumerate(support_parts)
         )
-    inner = f"{heading_html}{body_html}{extra_html}{cta}{support_html}"
+    inner = f"{heading_html}{body_html}{summary_html}{extra_html}{cta}{support_html}"
     footer_brand = (
         f'<a href="{_esc(site)}" style="color:{TEXT};text-decoration:none;">{_esc(SITE_NAME)}</a>'
         if site
@@ -662,6 +686,13 @@ def render_transactional_text(content: TransactionalEmailContent, *, app_url: st
         lines.append("")
     for part in _paragraphs(content.body):
         lines.append(part)
+        lines.append("")
+    summary_rows = tuple(content.summary_rows or ())
+    if summary_rows:
+        for label, value in summary_rows:
+            lab = (label or "").strip()
+            if lab:
+                lines.append(f"{lab} {value or ''}".rstrip())
         lines.append("")
     for part in _paragraphs(content.additional_text):
         lines.append(part)
