@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import html
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Optional
 
 SITE_NAME = "BalanceWhiz"
@@ -68,13 +69,24 @@ def welcome_heading(*, first_name: str = "") -> str:
     return "Welcome to BalanceWhiz."
 
 
+def format_trial_end_date(value: Optional[datetime]) -> str:
+    """Friendly calendar date, e.g. October 12, 2026. Empty when unknown."""
+    if value is None:
+        return ""
+    end = value
+    if end.tzinfo is not None:
+        end = end.astimezone(timezone.utc).replace(tzinfo=None)
+    return f"{end.strftime('%B')} {end.day}, {end.year}"
+
+
 def build_welcome_email_content(
     *,
     app_url: str,
     first_name: str = "",
     trial_days: int = 14,
+    trial_ends_on: Optional[datetime] = None,
 ) -> TransactionalEmailContent:
-    """Welcome email content for the shared transactional shell. Not sent on signup yet."""
+    """Welcome email, also the trial-start confirmation. One send per new account."""
     site = _safe_http_url(app_url)
     days = int(trial_days) if int(trial_days) > 0 else 14
     body = (
@@ -82,6 +94,15 @@ def build_welcome_email_content(
         "You’ve added the starting point. Now keep building out your forecast with the income and expenses you know are coming.\n\n"
         "The more you add, the clearer your cash flow picture becomes — so you can see what’s ahead and plan with confidence."
     )
+    started = f"Your {days}-day free trial has started."
+    friendly_end = format_trial_end_date(trial_ends_on)
+    if friendly_end:
+        ends = (
+            f"Your trial ends {friendly_end}. No payment method is required, "
+            "and you won’t be charged when your trial ends."
+        )
+    else:
+        ends = "No payment method is required, and you won’t be charged when your trial ends."
     return TransactionalEmailContent(
         subject="Welcome to BalanceWhiz",
         preheader="Your cash forecast starts here.",
@@ -89,7 +110,7 @@ def build_welcome_email_content(
         body=body,
         cta_label="Go to my forecast",
         cta_url=site,
-        support_line=f"You have {days} days to try everything. No payment method required.",
+        support_line=f"{started}\n\n{ends}",
     )
 
 
@@ -197,11 +218,19 @@ def render_transactional_html(content: TransactionalEmailContent, *, app_url: st
         if heading
         else ""
     )
-    support_html = (
-        _p_html(support, color=MUTED, size="14px", extra="margin:0;")
-        if support
-        else ""
-    )
+    support_parts = _paragraphs(support)
+    support_html = ""
+    if support_parts:
+        last = len(support_parts) - 1
+        support_html = "".join(
+            _p_html(
+                part,
+                color=MUTED,
+                size="14px",
+                extra="margin:0;" if i == last else "margin:0 0 8px;",
+            )
+            for i, part in enumerate(support_parts)
+        )
     inner = f"{heading_html}{body_html}{extra_html}{cta}{support_html}"
     footer_brand = (
         f'<a href="{_esc(site)}" style="color:{TEXT};text-decoration:none;">{_esc(SITE_NAME)}</a>'

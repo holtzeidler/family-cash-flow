@@ -1499,6 +1499,32 @@ def _login_password_reset_url(*, token: str, request: Optional[Request]) -> str:
     return f"./{tail}"
 
 
+def _send_signup_welcome_email(*, user: User, family: Family) -> None:
+    """One Welcome email when an account and its trial start. Never a second trial email."""
+    from .billing_entitlement import trial_ends_at
+    from .email_service import send_welcome_email
+    from .email_templates import resolve_app_url
+
+    if not (settings.RESEND_API_KEY or "").strip():
+        logger.warning("Welcome email skipped: RESEND_API_KEY is not set")
+        return
+    trial_end = trial_ends_at(getattr(family, "created_at", None))
+    if trial_end is None:
+        logger.warning("Welcome email skipped: trial end date is unknown for user id=%s", getattr(user, "id", None))
+        return
+    send_welcome_email(
+        api_key=settings.RESEND_API_KEY,
+        to_addr=str(user.email),
+        app_url=resolve_app_url(
+            is_staging_deployment=_is_staging_deployment(),
+            app_public_base_url=settings.APP_PUBLIC_BASE_URL,
+        ),
+        first_name=str(getattr(user, "first_name", "") or ""),
+        reply_to=(settings.TRANSACTIONAL_REPLY_TO or "").strip() or None,
+        trial_ends_on=trial_end,
+    )
+
+
 def _send_password_reset_email_sync(*, to_addr: str, subject: str, text_body: str) -> None:
     """Transactional email to the account owner (same delivery stack as invites)."""
     if _contact_resend_configured():
@@ -4206,6 +4232,8 @@ def register(payload: RegisterIn, response: Response, db=Depends(get_db)):
     db.refresh(user)
 
     # Create a starter family for new users so the app can be used immediately.
+    # The app trial starts from this family's created_at.
+    fam = None
     try:
         fam = Family(name="My Family", balance_threshold_min=DEFAULT_FAMILY_BALANCE_THRESHOLD_MIN)
         db.add(fam)
@@ -4220,12 +4248,17 @@ def register(payload: RegisterIn, response: Response, db=Depends(get_db)):
             )
         )
         db.commit()
+        try:
+            db.refresh(fam)
+        except Exception:
+            pass
         # Seed default category groups/categories for the starter family.
         try:
             apply_default_category_seed(db=db, family_id=int(fam.id), force=False)
         except Exception:
             pass
     except Exception:
+        fam = None
         try:
             db.rollback()
         except Exception:
@@ -4240,6 +4273,11 @@ def register(payload: RegisterIn, response: Response, db=Depends(get_db)):
         secure=settings.ENV == "production",
         path="/",
     )
+    if fam is not None:
+        try:
+            _send_signup_welcome_email(user=user, family=fam)
+        except Exception:
+            logger.exception("Welcome email failed for user id=%s", getattr(user, "id", None))
     return {
         "user": _user_out(user),
         "access_token": token,

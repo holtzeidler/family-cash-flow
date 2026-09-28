@@ -3,14 +3,15 @@
 Future product emails should call send_templated_email() / send_transactional_email()
 rather than talking to Resend directly. This module never logs RESEND_API_KEY.
 
-The first consumer is a temporary staging-only design test. Do not wire this to
-signup, Stripe, or scheduled mail from here.
+Signup sends the Welcome email once, including the trial end date. Do not add a
+separate trial-started message. Preview sends stay on POST /api/platform/email-test.
 """
 
 from __future__ import annotations
 
 import logging
 import re
+from datetime import datetime
 from typing import Optional
 
 from .email_templates import (
@@ -145,8 +146,9 @@ def send_welcome_email(
     from_addr: str = DEFAULT_FROM,
     reply_to: Optional[str] = DEFAULT_REPLY_TO,
     trial_days: Optional[int] = None,
+    trial_ends_on: Optional[datetime] = None,
 ) -> str:
-    """Send the Welcome transactional email. Callers wire this to signup later."""
+    """Send the Welcome email. This is also the trial-start confirmation."""
     from .billing_catalog import TRIAL_DAYS
 
     days = int(trial_days) if trial_days is not None else int(TRIAL_DAYS)
@@ -154,6 +156,7 @@ def send_welcome_email(
         app_url=app_url,
         first_name=first_name,
         trial_days=days,
+        trial_ends_on=trial_ends_on,
     )
     return send_templated_email(
         api_key=api_key,
@@ -178,6 +181,8 @@ def send_staging_test_email(
     Link destinations always use STAGING_EMAIL_PREVIEW_APP_URL, never the
     staging app host. send_welcome_email() itself is unchanged.
     """
+    from .billing_entitlement import trial_ends_at
+
     preview_url = STAGING_EMAIL_PREVIEW_APP_URL
     kind = (template or "welcome").strip().lower()
     if kind == "welcome":
@@ -188,6 +193,7 @@ def send_staging_test_email(
             first_name="Tracy",
             from_addr=from_addr or DEFAULT_FROM,
             reply_to=reply_to,
+            trial_ends_on=trial_ends_at(datetime.utcnow()),
         )
     content = TransactionalEmailContent(
         subject="BalanceWhiz email design test",
