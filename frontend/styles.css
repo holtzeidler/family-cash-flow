@@ -3211,6 +3211,45 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
   font-size: 13px;
   line-height: 1.35;
 }
+.trial-status-notice{
+  margin: 8px 16px 2px;
+  text-align: center;
+}
+.trial-status-notice[hidden]{
+  display: none !important;
+}
+.trial-status-notice__line{
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 2px 12px;
+  margin: 0;
+  color: var(--text);
+  font-size: 13.5px;
+  font-weight: 500;
+  line-height: 1.45;
+}
+.trial-status-notice__action{
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  white-space: nowrap;
+}
+.trial-status-notice__action:hover{
+  filter: brightness(0.92);
+}
+.trial-status-notice__action:focus-visible{
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+@media (max-width: 860px){
+  .trial-status-notice{
+    margin: 8px 10px 4px;
+  }
+}
 .settings-subhead{
   font-size: 15px;
   font-weight: 600;
