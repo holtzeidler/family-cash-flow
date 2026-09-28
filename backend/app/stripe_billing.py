@@ -273,7 +273,12 @@ def register_stripe_routes(
 
         from sqlalchemy import select
 
-        from .billing_entitlement import get_or_create_stripe_customer_for_user, trial_end_unix
+        from .billing_entitlement import (
+            DEFER_TRIAL_CHECKOUT_PURPOSE,
+            checkout_trial_end_needs_deferral,
+            get_or_create_stripe_customer_for_user,
+            trial_end_unix,
+        )
         from .main import BillingSubscription, Family, User, require_family_owner
 
         try:
@@ -338,35 +343,50 @@ def register_stripe_routes(
                     "bw_family_id": str(int(family_id)),
                 }
             }
-            checkout_kwargs: dict[str, Any] = {
-                "mode": "subscription",
-                "customer": stripe_customer_id,
-                "client_reference_id": str(int(family_id)),
-                "line_items": [
-                    {
-                        "quantity": 1,
-                        "price": prices.data[0].id,
-                    }
-                ],
-                "metadata": bw_meta,
-                "subscription_data": subscription_data,
-                "success_url": _billing_page_url(
-                    domain,
-                    family_id=int(family_id),
-                    checkout="success",
-                    session_id_placeholder=True,
-                    frequency=frequency_storage_value(key),
-                ),
-                "cancel_url": _billing_page_url(
-                    domain,
-                    family_id=int(family_id),
-                    checkout="canceled",
-                ),
-            }
-            # Remaining app trial: collect a card now, first charge at trial_end.
-            if stripe_trial_end:
-                subscription_data["trial_end"] = int(stripe_trial_end)
-                checkout_kwargs["payment_method_collection"] = "always"
+            success_url = _billing_page_url(
+                domain,
+                family_id=int(family_id),
+                checkout="success",
+                session_id_placeholder=True,
+                frequency=frequency_storage_value(key),
+            )
+            cancel_url = _billing_page_url(
+                domain,
+                family_id=int(family_id),
+                checkout="canceled",
+            )
+            # Checkout rejects trial_end inside 48 hours. Collect the card in setup
+            # mode and let the webhook schedule the same original trial end.
+            if checkout_trial_end_needs_deferral(stripe_trial_end):
+                checkout_kwargs = {
+                    "mode": "setup",
+                    "customer": stripe_customer_id,
+                    "client_reference_id": str(int(family_id)),
+                    "currency": "usd",
+                    "metadata": {**bw_meta, "bw_checkout_purpose": DEFER_TRIAL_CHECKOUT_PURPOSE},
+                    "success_url": success_url,
+                    "cancel_url": cancel_url,
+                }
+            else:
+                checkout_kwargs = {
+                    "mode": "subscription",
+                    "customer": stripe_customer_id,
+                    "client_reference_id": str(int(family_id)),
+                    "line_items": [
+                        {
+                            "quantity": 1,
+                            "price": prices.data[0].id,
+                        }
+                    ],
+                    "metadata": bw_meta,
+                    "subscription_data": subscription_data,
+                    "success_url": success_url,
+                    "cancel_url": cancel_url,
+                }
+                # Remaining app trial outside the 48-hour Checkout limit: card now, charge at trial_end.
+                if stripe_trial_end:
+                    subscription_data["trial_end"] = int(stripe_trial_end)
+                    checkout_kwargs["payment_method_collection"] = "always"
 
             session = stripe.checkout.Session.create(**checkout_kwargs)
         except HTTPException:

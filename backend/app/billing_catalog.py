@@ -7,9 +7,12 @@ Product model is COMPLETE for Cash Forecast rebuild:
   - cash_forecast_monthly  → $5.99 / month
   - cash_forecast_annual   → $59.99 / year
 - Trial: 14-day free trial from account start. Access does not require a card.
-  Choosing monthly/annual during the trial creates a Stripe subscription with
-  trial_end aligned to the remaining app trial (collects a payment method, $0
-  due today). Checkout after the trial charges immediately.
+  Choosing monthly/annual during the trial collects a payment method and sets
+  the first charge to the original trial end (created_at + 14 days). That
+  timestamp is also the billing-cycle anchor. Checkout can pass trial_end only
+  when it is at least 48 hours away; inside that window the card is saved in
+  setup mode and the Subscriptions API schedules the same trial_end. Checkout
+  after the trial charges immediately.
 
 Dashboard setup (test and live, separately):
 1. Create Product name "Cash Forecast".

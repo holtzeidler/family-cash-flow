@@ -182,7 +182,8 @@ def trial_ending_reminder_applies(payload: dict[str, Any]) -> bool:
     if payload.get("phase") != "trial":
         return False
     # Free trials with no subscription also report status "trialing", but they have no Stripe id.
-    # A real subscription in an entitled status means they already chose a plan.
+    # A Stripe subscription that is trialing, active, or past_due means they already chose a plan,
+    # including a plan whose first charge is still scheduled for the original trial end.
     status = (payload.get("status") or "").strip().lower()
     if payload.get("stripe_subscription_id") and status in ENTITLED_STATUSES:
         return False
@@ -190,7 +191,7 @@ def trial_ending_reminder_applies(payload: dict[str, Any]) -> bool:
 
 
 def trial_end_unix(family_created_at: Optional[datetime], *, now: Optional[datetime] = None) -> Optional[int]:
-    """Unix timestamp for Stripe subscription_data.trial_end, or None if the trial is over."""
+    """Unix timestamp for the original trial end, or None if the trial is over."""
     end = trial_ends_at(family_created_at)
     if end is None:
         return None
@@ -199,6 +200,24 @@ def trial_end_unix(family_created_at: Optional[datetime], *, now: Optional[datet
         return None
     aware = end if end.tzinfo is not None else end.replace(tzinfo=timezone.utc)
     return int(aware.timestamp())
+
+
+# Checkout rejects subscription_data.trial_end inside this window. The Subscriptions API does not.
+CHECKOUT_TRIAL_END_MIN_LEAD_SECONDS = 48 * 60 * 60
+DEFER_TRIAL_CHECKOUT_PURPOSE = "defer_trial_charge"
+
+
+def checkout_trial_end_needs_deferral(trial_end_at: Optional[int], *, now: Optional[datetime] = None) -> bool:
+    """True when the trial is still active but Checkout would reject this trial_end.
+
+    The first-charge timestamp stays trial_end_unix(family.created_at). This only
+    chooses a different Stripe API for scheduling it.
+    """
+    if not trial_end_at:
+        return False
+    n = now or _utc_now()
+    now_unix = int(n.timestamp()) if n.tzinfo is not None else int(n.replace(tzinfo=timezone.utc).timestamp())
+    return int(trial_end_at) <= now_unix + CHECKOUT_TRIAL_END_MIN_LEAD_SECONDS
 
 
 def _stripe_field(obj: Any, key: str, default: Any = None) -> Any:
@@ -1000,6 +1019,138 @@ def apply_live_stripe_subscription_fields(payload: dict[str, Any], stripe_sub: A
     return out
 
 
+def _stripe_id(value: Any) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value.strip()
+    return str(_obj_get(value, "id") or "").strip()
+
+
+def fulfill_deferred_trial_checkout(db, session_obj: Any, logger_: logging.Logger) -> bool:
+    """Save the card from a setup-mode Checkout and schedule the original trial end.
+
+    Returns True when this session is a deferred-trial checkout (handled here).
+    Raises if Stripe should retry. Does not change family.created_at or trial length.
+    """
+    from sqlalchemy import select
+
+    from .billing_catalog import ALLOWED_PRICE_LOOKUP_KEYS
+    from .main import BillingSubscription, Family
+
+    meta = _obj_get(session_obj, "metadata") or {}
+    purpose = ""
+    if hasattr(meta, "get"):
+        purpose = str(meta.get("bw_checkout_purpose") or "").strip()
+    if purpose != DEFER_TRIAL_CHECKOUT_PURPOSE:
+        return False
+
+    import stripe as stripe_mod
+
+    if not getattr(stripe_mod, "api_key", None):
+        raise RuntimeError("Stripe API key is not configured")
+
+    session_id = _stripe_id(session_obj) or _stripe_id(_obj_get(session_obj, "id"))
+    family_id = _resolve_family_id_from_metadata(meta)
+    user_id = _resolve_user_id_from_metadata(meta)
+    lookup_key = ""
+    if hasattr(meta, "get"):
+        lookup_key = str(meta.get("bw_lookup_key") or "").strip()
+    if family_id is None or lookup_key not in ALLOWED_PRICE_LOOKUP_KEYS:
+        logger_.error(
+            "Deferred trial checkout missing family or price session=%s",
+            session_id or "(unknown)",
+        )
+        return True
+
+    customer_id = _stripe_id(_obj_get(session_obj, "customer"))
+    full = stripe_mod.checkout.Session.retrieve(session_id, expand=["setup_intent"]) if session_id else session_obj
+    if not customer_id:
+        customer_id = _stripe_id(_obj_get(full, "customer"))
+    setup_intent = _obj_get(full, "setup_intent")
+    payment_method_id = _stripe_id(_obj_get(setup_intent, "payment_method") if setup_intent is not None else None)
+    if not customer_id or not payment_method_id:
+        raise RuntimeError("Deferred trial checkout is missing a customer or payment method")
+
+    family = db.get(Family, int(family_id))
+    if family is None:
+        logger_.error("Deferred trial checkout family missing family_id=%s", family_id)
+        return True
+
+    existing = db.execute(
+        select(BillingSubscription).where(BillingSubscription.family_id == int(family_id))
+    ).scalar_one_or_none()
+    if existing is not None and (existing.status or "").strip().lower() in ENTITLED_STATUSES:
+        logger_.info("Deferred trial checkout skipped; family_id=%s already subscribed", family_id)
+        return True
+
+    for stripe_status in ("trialing", "active", "past_due"):
+        listed = stripe_mod.Subscription.list(customer=customer_id, status=stripe_status, limit=1)
+        rows = list(getattr(listed, "data", None) or [])
+        if rows:
+            upsert_subscription_from_stripe(
+                db,
+                sub=rows[0],
+                family_id=int(family_id),
+                billing_customer_id=int(existing.billing_customer_id) if existing is not None and existing.billing_customer_id else None,
+            )
+            logger_.info("Deferred trial checkout reused Stripe subscription family_id=%s", family_id)
+            return True
+
+    prices = stripe_mod.Price.list(lookup_keys=[lookup_key], limit=1)
+    price_rows = list(getattr(prices, "data", None) or [])
+    if not price_rows:
+        raise RuntimeError(f"No Stripe Price for lookup_key={lookup_key}")
+    price_id = _stripe_id(price_rows[0])
+
+    try:
+        stripe_mod.PaymentMethod.attach(payment_method_id, customer=customer_id)
+    except stripe_mod.error.InvalidRequestError as exc:
+        message = str(exc).lower()
+        if "already" not in message:
+            raise
+    stripe_mod.Customer.modify(
+        customer_id,
+        invoice_settings={"default_payment_method": payment_method_id},
+    )
+
+    # Original trial end, recomputed from family.created_at. None means it already expired.
+    scheduled_end = trial_end_unix(getattr(family, "created_at", None))
+    sub_metadata = {
+        "bw_product_code": str(meta.get("bw_product_code") or "") if hasattr(meta, "get") else "",
+        "bw_lookup_key": lookup_key,
+        "bw_billing_frequency": str(meta.get("bw_billing_frequency") or "") if hasattr(meta, "get") else "",
+        "bw_user_id": str(int(user_id)) if user_id else "",
+        "bw_family_id": str(int(family_id)),
+    }
+    create_kwargs: dict[str, Any] = {
+        "customer": customer_id,
+        "items": [{"price": price_id}],
+        "default_payment_method": payment_method_id,
+        "metadata": sub_metadata,
+        "idempotency_key": f"bw-defer-trial-{session_id or family_id}",
+    }
+    if scheduled_end:
+        create_kwargs["trial_end"] = int(scheduled_end)
+    created = stripe_mod.Subscription.create(**create_kwargs)
+    billing_customer_id = int(existing.billing_customer_id) if existing is not None and existing.billing_customer_id else None
+    if billing_customer_id is None and user_id and customer_id:
+        billing_customer = upsert_billing_customer(db, user_id=int(user_id), stripe_customer_id=customer_id)
+        billing_customer_id = int(billing_customer.id)
+    upsert_subscription_from_stripe(
+        db,
+        sub=created,
+        family_id=int(family_id),
+        billing_customer_id=billing_customer_id,
+    )
+    logger_.info(
+        "Deferred trial subscription created family_id=%s trial_end=%s",
+        family_id,
+        scheduled_end or "immediate",
+    )
+    return True
+
+
 def handle_stripe_event(db, event: Any, logger_: logging.Logger) -> None:
     """Apply a verified Stripe event to billing tables. Caller commits."""
     from sqlalchemy import select
@@ -1021,6 +1172,10 @@ def handle_stripe_event(db, event: Any, logger_: logging.Logger) -> None:
 
     if event_type == "checkout.session.completed":
         mode = (_obj_get(obj, "mode") or "").strip()
+        if mode == "setup":
+            fulfill_deferred_trial_checkout(db, obj, logger_)
+            mark_webhook_event_processed(db, event_id=str(event_id), event_type=str(event_type))
+            return
         if mode and mode != "subscription":
             mark_webhook_event_processed(db, event_id=str(event_id), event_type=str(event_type))
             return
