@@ -13512,6 +13512,44 @@ html.bw-billing-readonly .cal-day-balance-hit{
 .settings-section-body{
   margin-top: 2px;
 }
+#settingsProfilePane .settings-section-body{
+  max-width: 40rem;
+}
+#settingsProfilePane .row.two{
+  margin-top: 12px;
+}
+#settingsProfilePane .row.two > div{
+  min-width: 0;
+}
+#settingsProfilePane .settings-profile-email{
+  margin-top: 12px;
+}
+#profileEmail[readonly]{
+  background: rgba(17, 24, 39, 0.03);
+  color: rgba(17, 24, 39, 0.72);
+}
+#settingsProfilePane .settings-profile-actions{
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+#settingsProfilePane .settings-profile-actions .prefs-field__saved{
+  margin: 0;
+}
+#settingsProfilePane .settings-profile-password{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+#settingsProfilePane .settings-profile-mask{
+  margin-top: -2px;
+  letter-spacing: 0.12em;
+  color: rgba(17, 24, 39, 0.72);
+}
 .settings-actions-row{
   margin-top: 12px;
   display: flex;
@@ -17931,6 +17969,22 @@ body.account-setup-page #accountSetupWizardPanel0 .form-row-h__label label{
   font-weight: 650;
   color: rgba(17, 24, 39, 0.8);
 }
+body.account-setup-page #accountSetupWizardPanel0 .account-setup-name-row{
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 12px;
+  row-gap: 7px;
+  width: 100%;
+  min-width: 0;
+}
+body.account-setup-page #accountSetupWizardPanel0 .account-setup-name-row > .row{
+  min-width: 0;
+}
+@media (max-width: 640px){
+  body.account-setup-page #accountSetupWizardPanel0 .account-setup-name-row{
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
 /* Step 2: full-width rows + wider label column so uppercase labels stay on one line */
 body.account-setup-page #accountSetupWizardPanel1 .form-row-h{
   align-items: center;
@@ -20913,6 +20967,7 @@ body.plans-page--polished .plans-reassure__copy{
 }
 
 body.plans-page--polished .app-footer{ margin-top: 56px; }
+
 body.plans-page--polished .plans-headline,
 body.plans-page--polished .plans-wrap > .meta,
 body.plans-page--polished .plans-micro-faq,
@@ -21435,6 +21490,7 @@ body[data-bw-view="reports"] .cash-health-status--balance .cash-health-status__l
   text-transform: uppercase;
   color: rgba(71, 85, 105, 0.88);
 }
+
 .reconcile-modal__mark-btn{
   width: 100%;
   padding: 11px 14px;
@@ -31541,6 +31597,13 @@ body[data-bw-view="reports"] #sidebarBodyMonth .total--net .v.danger{
   color: color-mix(in srgb, var(--danger) 68%, #78716c);
 }
 
+/* ——— Checkout (Stripe-hosted redirect) ——— */
+body.checkout-page .container > .grid{
+  margin: 24px auto 56px;
+  width: min(94%, 520px);
+  padding: 0;
+  display: block;
+}
 .checkout-wrap{
   display: flex;
   flex-direction: column;

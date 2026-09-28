@@ -3678,6 +3678,10 @@ function setActiveTopView(view) {
         : view === "reports"
           ? "reports"
           : "calendar";
+  try {
+    document.body.dataset.bwView = v;
+    if (v !== "reports") document.body.removeAttribute("data-bw-pressure-report");
+  } catch (_) {}
   if (calendarViewPanel) calendarViewPanel.hidden = v !== "calendar";
   if (transactionViewPanel) transactionViewPanel.hidden = v !== "transactions";
   if (settingsViewPanel) settingsViewPanel.hidden = v !== "settings";
@@ -3757,14 +3761,10 @@ function setActiveTopView(view) {
   }
   if (v === "settings") {
     renderAccountDetailsPanel();
-    activateSettingsSection("accounts");
+    activateSettingsSection("profile");
   }
   try {
     localStorage.setItem(ACTIVE_VIEW_KEY, v);
-  } catch (_) {}
-  try {
-    document.body.dataset.bwView = v;
-    if (v !== "reports") document.body.removeAttribute("data-bw-pressure-report");
   } catch (_) {}
 }
 
@@ -4012,6 +4012,8 @@ function getInitialTopViewFromUrlOrStorage() {
   if (prefLanding) return prefLanding;
   return "calendar";
 }
+
+let profileNameBaseline = { first: "", last: "" };
 
 try {
   setActiveTopView(getInitialTopViewFromUrlOrStorage());
@@ -5216,8 +5218,8 @@ function mountTxAddFormInSidebar() {
 }
 
 function activateSettingsSection(key) {
-  // Settings IA: Accounts, Categories, Preferences, Billing.
-  let k = String(key || "accounts");
+  // Settings IA: Profile, Accounts, Categories, Preferences, Billing.
+  let k = String(key || "profile");
   const LEGACY_KEY_MAP = {
     accountDetails: "accounts",
     familySharing: "collaborators",
@@ -5230,7 +5232,7 @@ function activateSettingsSection(key) {
   if (LEGACY_KEY_MAP[k]) k = LEGACY_KEY_MAP[k];
 
   const canCollaborators = canViewHouseholdSettings();
-  if (k === "collaborators" && !canCollaborators) k = "accounts";
+  if (k === "collaborators" && !canCollaborators) k = "profile";
 
   document.querySelectorAll("#settingsViewPanel .settings-nav-item, #settingsSidebarNav .settings-nav-item").forEach((btn) => {
     const on = btn.dataset.settingsKey === k;
@@ -5256,6 +5258,9 @@ function activateSettingsSection(key) {
       show(el, e.message || String(e));
     });
   }
+  if (k === "profile") {
+    loadProfileSettingsForm();
+  }
   if (k === "billing") {
     renderBillingPanel();
   }
@@ -5263,6 +5268,114 @@ function activateSettingsSection(key) {
     void loadCategoryUsageSummary().then(() => refreshCategoriesManagerChrome());
   }
 }
+
+function normalizeProfileName(value) {
+  return String(value || "").replace(/\s+/g, " ").trim();
+}
+
+function readProfileNameFields() {
+  return {
+    first: normalizeProfileName(document.getElementById("profileFirstName")?.value),
+    last: normalizeProfileName(document.getElementById("profileLastName")?.value),
+  };
+}
+
+function syncProfileSaveEnabled() {
+  const btn = document.getElementById("profileSaveBtn");
+  if (!btn || btn.dataset.saving === "1") return;
+  const cur = readProfileNameFields();
+  btn.disabled = cur.first === profileNameBaseline.first && cur.last === profileNameBaseline.last;
+}
+
+function loadProfileSettingsForm() {
+  const firstEl = document.getElementById("profileFirstName");
+  const lastEl = document.getElementById("profileLastName");
+  const emailEl = document.getElementById("profileEmail");
+  if (!firstEl || !lastEl) return;
+  const user = state.user || {};
+  firstEl.value = normalizeProfileName(user.first_name);
+  lastEl.value = normalizeProfileName(user.last_name);
+  if (emailEl) emailEl.value = user.email ? String(user.email) : "";
+  profileNameBaseline = readProfileNameFields();
+  const saved = document.getElementById("profileSavedMsg");
+  if (saved) saved.hidden = true;
+  show(document.getElementById("profileErr"), "");
+  syncProfileSaveEnabled();
+}
+
+async function saveProfileSettings() {
+  const btn = document.getElementById("profileSaveBtn");
+  if (!btn || btn.disabled) return;
+  const names = readProfileNameFields();
+  btn.dataset.saving = "1";
+  btn.disabled = true;
+  show(document.getElementById("profileErr"), "");
+  const saved = document.getElementById("profileSavedMsg");
+  if (saved) saved.hidden = true;
+  try {
+    const data = await api("/api/auth/me", "PATCH", {
+      first_name: names.first,
+      last_name: names.last,
+    });
+    if (data && state.user) state.user = { ...state.user, ...data };
+    profileNameBaseline = { first: names.first, last: names.last };
+    if (saved) {
+      saved.textContent = "Changes saved.";
+      saved.hidden = false;
+    }
+  } catch (e) {
+    show(document.getElementById("profileErr"), (e && e.message) || "Could not save your profile.");
+  } finally {
+    delete btn.dataset.saving;
+    syncProfileSaveEnabled();
+  }
+}
+
+async function requestProfilePasswordChange() {
+  const btn = document.getElementById("profilePasswordBtn");
+  const msg = document.getElementById("profilePasswordMsg");
+  const email = state.user && state.user.email ? String(state.user.email).trim() : "";
+  if (!btn || !email) return;
+  btn.disabled = true;
+  if (msg) {
+    msg.hidden = true;
+    msg.textContent = "";
+  }
+  try {
+    await api("/api/public/password-reset/request", "POST", { email });
+    if (msg) {
+      msg.textContent = `We sent a password reset link to ${email}.`;
+      msg.hidden = false;
+    }
+  } catch (e) {
+    if (msg) {
+      msg.textContent = (e && e.message) || "Could not send a password reset link.";
+      msg.hidden = false;
+    }
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function initProfileSettings() {
+  const firstEl = document.getElementById("profileFirstName");
+  const lastEl = document.getElementById("profileLastName");
+  const saveBtn = document.getElementById("profileSaveBtn");
+  const passwordBtn = document.getElementById("profilePasswordBtn");
+  if (!firstEl || firstEl.dataset.profileBound === "1") return;
+  firstEl.dataset.profileBound = "1";
+  const onInput = () => {
+    const saved = document.getElementById("profileSavedMsg");
+    if (saved) saved.hidden = true;
+    syncProfileSaveEnabled();
+  };
+  firstEl.addEventListener("input", onInput);
+  if (lastEl) lastEl.addEventListener("input", onInput);
+  if (saveBtn) saveBtn.addEventListener("click", () => void saveProfileSettings());
+  if (passwordBtn) passwordBtn.addEventListener("click", () => void requestProfilePasswordChange());
+}
+
+initProfileSettings();
 
 function openTxAddModal(opts = {}) {
   void openTxAddModalAsync(opts);
@@ -8902,10 +9015,9 @@ async function fetchBillingStatus({ force = false } = {}) {
     return billingStatusCache.inFlight;
   }
 
+  // Same rule as api(): a configured API_BASE is used as-is, and an empty
+  // base (local placeholder removed) is the same-origin API.
   const apiBase = apiBaseUrl();
-  if (!apiBase) {
-    throw new Error("Billing API isn’t configured on this build.");
-  }
 
   // DB-only loads use the shared api() helper (cold-start retries).
   // sync=1 is best-effort and uses a single bounded attempt.
@@ -11937,7 +12049,7 @@ function canManageHouseholdInvites() {
 
 function getActiveSettingsSectionKey() {
   const pane = document.querySelector("#settingsViewPanel .settings-pane.is-active");
-  return pane ? String(pane.dataset.settingsPane || "accounts") : "accounts";
+  return pane ? String(pane.dataset.settingsPane || "profile") : "profile";
 }
 
 /** Collaborators nav + pane: family role `admin` only. */
@@ -11956,7 +12068,7 @@ function syncHouseholdSettingsUi() {
   });
   if (!canHousehold && getActiveSettingsSectionKey() === "collaborators") {
     try {
-      activateSettingsSection("accounts");
+      activateSettingsSection("profile");
     } catch (_) {}
   }
   document.querySelectorAll(".family-invite-wrap, [data-household-invites-only]").forEach((el) => {
@@ -22292,7 +22404,7 @@ async function main() {
   syncHouseholdSettingsUi();
   if (window.__BW_FORCE_VIEW === "settings") {
     try {
-      let section = "accounts";
+      let section = "profile";
       try {
         const q = new URLSearchParams(window.location.search);
         const requested = String(q.get("section") || "").trim().toLowerCase();

@@ -155,8 +155,70 @@ def trial_days_remaining(family_created_at: Optional[datetime], *, now: Optional
     return max(0, (end.date() - n.date()).days)
 
 
+# Calendar days left (UTC) when the trial-ending reminder is sent. Email copy is written for this value.
+TRIAL_ENDING_REMINDER_DAYS = 3
+
+
+def trial_end_idempotency_key(family_created_at: Optional[datetime]) -> Optional[str]:
+    """Stable key for one trial. Derived from trial_ends_at, not a second clock."""
+    end = trial_ends_at(family_created_at)
+    if end is None:
+        return None
+    return end.strftime("%Y-%m-%dT%H:%M:%S.%f")
+
+
+def trial_ending_reminder_applies(payload: dict[str, Any]) -> bool:
+    """True when the 3-day reminder is still relevant for this billing payload.
+
+    Expects the payload from family_billing_payload (trial clock, Stripe status,
+    and complimentary access already applied). Does not change entitlement.
+    """
+    if not payload or not payload.get("in_app_trial"):
+        return False
+    if payload.get("trial_days_remaining") != TRIAL_ENDING_REMINDER_DAYS:
+        return False
+    if payload.get("complimentary_access_active"):
+        return False
+    if payload.get("phase") != "trial":
+        return False
+    # Free trials with no subscription also report status "trialing", but they have no Stripe id.
+    # A Stripe subscription that is trialing, active, or past_due means they already chose a plan,
+    # including a plan whose first charge is still scheduled for the original trial end.
+    status = (payload.get("status") or "").strip().lower()
+    if payload.get("stripe_subscription_id") and status in ENTITLED_STATUSES:
+        return False
+    return True
+
+
+def trial_expired_email_applies(payload: dict[str, Any]) -> bool:
+    """True when the trial has ended and the account is view-only with no plan.
+
+    Uses the existing billing payload. A Stripe subscription that is still
+    trialing, active, or past_due — including a plan chosen during the trial
+    whose first charge is scheduled — does not qualify. Does not change access.
+    """
+    if not payload or payload.get("in_app_trial"):
+        return False
+    if payload.get("trial_days_remaining") != 0:
+        return False
+    if not payload.get("trial_ends_at"):
+        return False
+    if payload.get("complimentary_access_active") or payload.get("entitled"):
+        return False
+    if payload.get("phase") != "expired":
+        return False
+    if payload.get("stripe_subscription_id"):
+        status = (payload.get("status") or "").strip().lower()
+        if status in ENTITLED_STATUSES:
+            return False
+        lookup = (payload.get("lookup_key") or "").strip()
+        if lookup in (LOOKUP_MONTHLY, LOOKUP_ANNUAL):
+            return False
+    return True
+
+
 def trial_end_unix(family_created_at: Optional[datetime], *, now: Optional[datetime] = None) -> Optional[int]:
-    """Unix timestamp for Stripe subscription_data.trial_end, or None if the trial is over."""
+    """Unix timestamp for the original trial end, or None if the trial is over."""
     end = trial_ends_at(family_created_at)
     if end is None:
         return None
@@ -165,6 +227,24 @@ def trial_end_unix(family_created_at: Optional[datetime], *, now: Optional[datet
         return None
     aware = end if end.tzinfo is not None else end.replace(tzinfo=timezone.utc)
     return int(aware.timestamp())
+
+
+# Checkout rejects subscription_data.trial_end inside this window. The Subscriptions API does not.
+CHECKOUT_TRIAL_END_MIN_LEAD_SECONDS = 48 * 60 * 60
+DEFER_TRIAL_CHECKOUT_PURPOSE = "defer_trial_charge"
+
+
+def checkout_trial_end_needs_deferral(trial_end_at: Optional[int], *, now: Optional[datetime] = None) -> bool:
+    """True when the trial is still active but Checkout would reject this trial_end.
+
+    The first-charge timestamp stays trial_end_unix(family.created_at). This only
+    chooses a different Stripe API for scheduling it.
+    """
+    if not trial_end_at:
+        return False
+    n = now or _utc_now()
+    now_unix = int(n.timestamp()) if n.tzinfo is not None else int(n.replace(tzinfo=timezone.utc).timestamp())
+    return int(trial_end_at) <= now_unix + CHECKOUT_TRIAL_END_MIN_LEAD_SECONDS
 
 
 def _stripe_field(obj: Any, key: str, default: Any = None) -> Any:
@@ -277,6 +357,84 @@ def lookup_key_from_subscription(sub: Any) -> Optional[str]:
         if key in ALLOWED_PRICE_LOOKUP_KEYS:
             return key
     return None
+
+
+def subscription_plan_display(sub: Any) -> Optional[dict[str, Any]]:
+    """Plan label and price from the Stripe Price on the subscription. None if unknown."""
+    items = _subscription_items(sub)
+    if not items:
+        return None
+    price = _stripe_field(items[0], "price") or _obj_get(items[0], "price")
+    if isinstance(price, str) and price.strip():
+        try:
+            import stripe as stripe_mod
+
+            if getattr(stripe_mod, "api_key", None):
+                price = stripe_mod.Price.retrieve(price.strip())
+        except Exception:
+            logger.exception("Could not load Stripe price %s", price)
+            return None
+    if price is None or isinstance(price, str):
+        return None
+    recurring = _stripe_field(price, "recurring") or _obj_get(price, "recurring") or {}
+    interval = str(_stripe_field(recurring, "interval") or _obj_get(recurring, "interval") or "").strip().lower()
+    unit = _stripe_field(price, "unit_amount")
+    if unit is None:
+        unit = _obj_get(price, "unit_amount")
+    if unit is None or interval not in ("month", "year"):
+        return None
+    cents = int(unit)
+    amount = f"${cents / 100:.2f}"
+    if interval == "year":
+        return {
+            "plan_label": "Annual",
+            "price_display": f"{amount}/year",
+            "renews_each": "year",
+            "amount_cents": cents,
+        }
+    return {
+        "plan_label": "Monthly",
+        "price_display": f"{amount}/month",
+        "renews_each": "month",
+        "amount_cents": cents,
+    }
+
+
+ANNUAL_RENEWAL_REMINDER_DAYS = 7
+
+
+def annual_renewal_reminder_facts(sub: Any, *, now: Optional[datetime] = None) -> Optional[dict[str, Any]]:
+    """Read-only facts for the 7-day annual renewal reminder. None when it must not send.
+
+    Does not write Stripe or change entitlement. The first charge at the end of a
+    free trial is not a renewal: status must already be active, and trial_end
+    must not still be in the future.
+    """
+    status = str(_stripe_field(sub, "status") or _obj_get(sub, "status") or "").strip().lower()
+    if status != "active":
+        return None
+    if _scheduled_cancel_from_stripe_sub(sub, now=now):
+        return None
+    if lookup_key_from_subscription(sub) != LOOKUP_ANNUAL:
+        return None
+    n = now or _utc_now()
+    trial_end = _as_naive_utc(_stripe_field(sub, "trial_end") or _obj_get(sub, "trial_end"))
+    if trial_end is not None and trial_end > n:
+        return None
+    period_end = _period_end_from_stripe_sub(sub)
+    if period_end is None:
+        return None
+    if (period_end.date() - n.date()).days != ANNUAL_RENEWAL_REMINDER_DAYS:
+        return None
+    plan = subscription_plan_display(sub)
+    if not plan or plan.get("renews_each") != "year" or not isinstance(plan.get("amount_cents"), int):
+        return None
+    cents = int(plan["amount_cents"])
+    return {
+        "renews_on": period_end,
+        "amount_display": f"${cents / 100:.2f}",
+        "idempotency_key": period_end.strftime("%Y-%m-%dT%H:%M:%S.%f"),
+    }
 
 
 def price_id_from_subscription(sub: Any) -> Optional[str]:
@@ -863,6 +1021,233 @@ def _failed_payment_on_from_stripe_sub(stripe_sub: Any) -> Optional[datetime]:
     return due or created
 
 
+def _invoice_line_price(line: Any) -> Any:
+    price = _obj_get(line, "price")
+    if price is not None:
+        return price
+    pricing = _obj_get(line, "pricing")
+    details = _obj_get(pricing, "price_details") if pricing is not None else None
+    if details is None:
+        return None
+    return _obj_get(details, "price")
+
+
+def payment_failed_email_facts(
+    invoice: Any,
+    *,
+    lookup_key: Optional[str] = None,
+    prior_status: str = "",
+    failed_on: Optional[datetime] = None,
+) -> Optional[dict[str, Any]]:
+    """Read-only facts for the first failed charge on a subscription invoice.
+
+    None when this invoice must not be emailed. Does not change Stripe retries
+    or subscription status. Stripe sends invoice.payment_failed again for each
+    automatic retry; attempt_count 1 is the first attempt.
+    """
+    if str(prior_status or "").strip().lower() in ("canceled", "cancelled"):
+        return None
+    try:
+        attempt = int(_obj_get(invoice, "attempt_count"))
+    except (TypeError, ValueError):
+        return None
+    if attempt != 1:
+        return None
+    invoice_id = str(_obj_get(invoice, "id") or "").strip()
+    if not invoice_id or len(invoice_id) > 40:
+        return None
+    sub_ref = _obj_get(invoice, "subscription")
+    sub_id = sub_ref if isinstance(sub_ref, str) else _obj_get(sub_ref, "id")
+    if not str(sub_id or "").strip():
+        return None
+    raw_amount = _obj_get(invoice, "amount_due")
+    if raw_amount is None:
+        raw_amount = _obj_get(invoice, "total")
+    try:
+        cents = int(raw_amount)
+    except (TypeError, ValueError):
+        return None
+    if cents <= 0:
+        return None
+    plan = None
+    lines = _obj_get(invoice, "lines")
+    line_data = _obj_get(lines, "data") if lines is not None else None
+    for line in list(line_data or []):
+        looked = _lookup_from_price(_invoice_line_price(line))
+        if looked == LOOKUP_ANNUAL:
+            plan = "Annual"
+            break
+        if looked == LOOKUP_MONTHLY:
+            plan = "Monthly"
+            break
+    if plan is None:
+        stored = (lookup_key or "").strip()
+        if stored == LOOKUP_ANNUAL:
+            plan = "Annual"
+        elif stored == LOOKUP_MONTHLY:
+            plan = "Monthly"
+    if plan not in ("Monthly", "Annual"):
+        return None
+    when = failed_on or _as_naive_utc(_obj_get(invoice, "created"))
+    return {
+        "invoice_id": invoice_id,
+        "plan_label": plan,
+        "amount_display": f"${cents / 100:.2f}",
+        "failed_on": when,
+    }
+
+
+def subscription_cancel_email_facts(sub: Any) -> Optional[dict[str, Any]]:
+    """Read-only facts for a user-scheduled period-end cancellation. None otherwise.
+
+    Requires Stripe cancel_at_period_end on a subscription that is still running.
+    The access-through date is Stripe's current period end. Payment-failure
+    cancellations and already-ended subscriptions are not included.
+    """
+    status = str(_stripe_field(sub, "status") or _obj_get(sub, "status") or "").strip().lower()
+    if status not in ("active", "trialing", "past_due"):
+        return None
+    if not bool(_stripe_field(sub, "cancel_at_period_end") or _obj_get(sub, "cancel_at_period_end") or False):
+        return None
+    details = _stripe_field(sub, "cancellation_details") or _obj_get(sub, "cancellation_details")
+    reason = str(_stripe_field(details, "reason") or _obj_get(details, "reason") or "").strip().lower()
+    if reason in ("payment_failed", "payment_disputed"):
+        return None
+    if reason and reason != "cancellation_requested":
+        return None
+    period_end = _period_end_from_stripe_sub(sub)
+    if period_end is None:
+        return None
+    lookup = lookup_key_from_subscription(sub)
+    if lookup == LOOKUP_ANNUAL:
+        plan = "Annual"
+    elif lookup == LOOKUP_MONTHLY:
+        plan = "Monthly"
+    else:
+        return None
+    canceled_at = _as_naive_utc(_stripe_field(sub, "canceled_at") or _obj_get(sub, "canceled_at"))
+    if canceled_at is not None:
+        key = canceled_at.strftime("%Y-%m-%dT%H:%M:%S")
+    else:
+        key = "period-" + period_end.strftime("%Y-%m-%dT%H:%M:%S")
+    if len(key) > 40:
+        return None
+    return {
+        "plan_label": plan,
+        "access_through": period_end,
+        "idempotency_key": key,
+    }
+
+
+def subscription_ended_nonpayment_email_facts(sub: Any) -> Optional[dict[str, str]]:
+    """Facts when Stripe ended the subscription after unpaid retries. None otherwise.
+
+    customer.subscription.deleted is not enough: a user cancellation ends with
+    reason cancellation_requested. Only reason payment_failed is a failed recovery.
+    A missing reason is not treated as nonpayment.
+    """
+    status = str(_stripe_field(sub, "status") or _obj_get(sub, "status") or "").strip().lower()
+    if status not in ("canceled", "cancelled"):
+        return None
+    details = _stripe_field(sub, "cancellation_details") or _obj_get(sub, "cancellation_details")
+    reason = str(_stripe_field(details, "reason") or _obj_get(details, "reason") or "").strip().lower()
+    if reason != "payment_failed":
+        return None
+    sub_id = str(_stripe_field(sub, "id") or _obj_get(sub, "id") or "").strip()
+    if not sub_id or len(sub_id) > 40:
+        return None
+    return {"subscription_id": sub_id}
+
+
+def subscription_resume_email_facts(sub: Any, previous: Any) -> Optional[dict[str, Any]]:
+    """Facts when a scheduled period-end cancel was just reversed. None otherwise.
+
+    Requires Stripe previous_attributes to show the cancellation was scheduled.
+    Does not treat a normal renewal or a brand-new subscription as a resume.
+    """
+    if previous is None or _scheduled_cancel_from_stripe_sub(sub):
+        return None
+    status = str(_stripe_field(sub, "status") or _obj_get(sub, "status") or "").strip().lower()
+    if status not in ("active", "trialing", "past_due"):
+        return None
+    if bool(_stripe_field(sub, "cancel_at_period_end") or _obj_get(sub, "cancel_at_period_end") or False):
+        return None
+    was_scheduled = _obj_get(previous, "cancel_at_period_end") is True or _as_naive_utc(
+        _obj_get(previous, "cancel_at")
+    ) is not None
+    if not was_scheduled:
+        return None
+    plan = subscription_plan_display(sub)
+    period_end = _period_end_from_stripe_sub(sub)
+    if not plan or not isinstance(plan.get("amount_cents"), int) or period_end is None:
+        return None
+    anchor = _as_naive_utc(_obj_get(previous, "canceled_at")) or _as_naive_utc(_obj_get(previous, "cancel_at"))
+    if anchor is None:
+        anchor = period_end
+    key = "r" + anchor.strftime("%Y-%m-%dT%H:%M:%S")
+    if len(key) > 40:
+        return None
+    cents = int(plan["amount_cents"])
+    return {
+        "plan_label": plan["plan_label"],
+        "amount_display": f"${cents / 100:.2f}",
+        "renews_on": period_end,
+        "idempotency_key": key,
+    }
+
+
+def subscription_restore_email_facts(
+    sub: Any,
+    *,
+    prior_status: str,
+    amount_cents: Any,
+    payment_status: str,
+) -> Optional[dict[str, Any]]:
+    """Facts when a new paid subscription replaces one that had already ended.
+
+    The prior row must be canceled, Checkout must be paid, and the new
+    subscription must already be active. A trialing or unpaid attempt does not qualify.
+    """
+    if str(prior_status or "").strip().lower() not in ("canceled", "cancelled"):
+        return None
+    if str(payment_status or "").strip().lower() != "paid":
+        return None
+    status = str(_stripe_field(sub, "status") or _obj_get(sub, "status") or "").strip().lower()
+    if status != "active":
+        return None
+    try:
+        cents = int(amount_cents)
+    except (TypeError, ValueError):
+        return None
+    if cents <= 0:
+        return None
+    plan = subscription_plan_display(sub)
+    period_end = _period_end_from_stripe_sub(sub)
+    sub_id = str(_stripe_field(sub, "id") or _obj_get(sub, "id") or "").strip()
+    if not plan or period_end is None or not sub_id or len(sub_id) > 40:
+        return None
+    return {
+        "plan_label": plan["plan_label"],
+        "amount_display": f"${cents / 100:.2f}",
+        "renews_on": period_end,
+        "idempotency_key": sub_id,
+    }
+
+
+def view_only_after_subscription_ended(payload: dict[str, Any]) -> bool:
+    """True when existing entitlement rules already show a view-only account."""
+    if not payload:
+        return False
+    if payload.get("entitled") or payload.get("in_app_trial") or payload.get("complimentary_access_active"):
+        return False
+    if payload.get("phase") != "expired":
+        return False
+    status = (payload.get("status") or "").strip().lower()
+    if status in ENTITLED_STATUSES:
+        return False
+    return True
+
+
 def _next_payment_attempt_from_stripe_sub(stripe_sub: Any) -> Optional[datetime]:
     """Stripe's next retry timestamp from the expanded latest invoice, if present."""
     inv = _obj_get(stripe_sub, "latest_invoice")
@@ -966,6 +1351,251 @@ def apply_live_stripe_subscription_fields(payload: dict[str, Any], stripe_sub: A
     return out
 
 
+def _stripe_id(value: Any) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value.strip()
+    return str(_obj_get(value, "id") or "").strip()
+
+
+_MISSING = object()
+
+_CARD_BRANDS = {
+    "visa": "Visa",
+    "mastercard": "Mastercard",
+    "amex": "American Express",
+    "discover": "Discover",
+    "diners": "Diners Club",
+    "jcb": "JCB",
+    "unionpay": "UnionPay",
+}
+
+
+def _mapping_get(obj: Any, key: str) -> Any:
+    """Value when key is present. Missing keys are _MISSING; None is a real value."""
+    if obj is None:
+        return _MISSING
+    if isinstance(obj, dict):
+        return obj[key] if key in obj else _MISSING
+    try:
+        to_dict = getattr(obj, "to_dict", None)
+        if callable(to_dict):
+            as_dict = to_dict()
+            if isinstance(as_dict, dict):
+                return as_dict[key] if key in as_dict else _MISSING
+    except Exception:
+        pass
+    try:
+        if hasattr(obj, "__contains__") and key in obj:  # type: ignore[operator]
+            return obj[key]  # type: ignore[index]
+    except Exception:
+        pass
+    return _MISSING
+
+
+def replaced_default_payment_method(source: Any, previous: Any) -> Optional[tuple[str, str]]:
+    """Return (old_id, new_id) when a saved default payment method was replaced.
+
+    The Billing page opens the Customer Portal payment_method_update flow, which
+    sets customer.invoice_settings.default_payment_method only after the customer
+    finishes. A subscription can also replace subscription.default_payment_method.
+    Automatic network card updates keep the same payment method id and use
+    payment_method.automatically_updated, which this does not read. Setting a
+    default for the first time (previous empty) is not an update.
+    """
+    if previous is None or source is None:
+        return None
+    prev_settings = _mapping_get(previous, "invoice_settings")
+    if prev_settings is not _MISSING:
+        old_raw = _mapping_get(prev_settings, "default_payment_method")
+        if old_raw is _MISSING:
+            return None
+        old_id = _stripe_id(old_raw)
+        new_settings = _obj_get(source, "invoice_settings")
+        new_id = _stripe_id(
+            _obj_get(new_settings, "default_payment_method") if new_settings is not None else None
+        )
+        if old_id and new_id and old_id != new_id:
+            return old_id, new_id
+        return None
+    old_raw = _mapping_get(previous, "default_payment_method")
+    if old_raw is _MISSING:
+        return None
+    old_id = _stripe_id(old_raw)
+    new_id = _stripe_id(_obj_get(source, "default_payment_method"))
+    if old_id and new_id and old_id != new_id:
+        return old_id, new_id
+    return None
+
+
+def safe_payment_method_label(pm: Any) -> Optional[str]:
+    """Brand and last 4 only. Returns None when those fields are missing or unsafe."""
+    card = _obj_get(pm, "card")
+    if card is None:
+        return None
+    last4 = str(_obj_get(card, "last4") or "").strip()
+    if len(last4) != 4 or not last4.isdigit():
+        return None
+    brand_raw = str(_obj_get(card, "brand") or "").strip().lower()
+    if brand_raw in _CARD_BRANDS:
+        brand = _CARD_BRANDS[brand_raw]
+    elif brand_raw.isalpha() and 2 <= len(brand_raw) <= 20:
+        brand = brand_raw.title()
+    else:
+        return None
+    return f"{brand} ending in {last4}"
+
+
+def payment_method_update_email_key(old_id: str, new_id: str, when: Optional[datetime]) -> str:
+    """One send per old-to-new replacement on a calendar day. Fits the 40-char key."""
+    day = (when or _utc_now()).strftime("%Y%m%d")
+    key = f"pm{day}{(old_id or '')[-8:]}{(new_id or '')[-8:]}"
+    return key[:40]
+
+
+def fulfill_deferred_trial_checkout(db, session_obj: Any, logger_: logging.Logger) -> bool:
+    """Save the card from a setup-mode Checkout and schedule the original trial end.
+
+    Returns True when this session is a deferred-trial checkout (handled here).
+    Raises if Stripe should retry. Does not change family.created_at or trial length.
+    """
+    from sqlalchemy import select
+
+    from .billing_catalog import ALLOWED_PRICE_LOOKUP_KEYS
+    from .main import BillingSubscription, Family
+
+    meta = _obj_get(session_obj, "metadata") or {}
+    purpose = ""
+    if hasattr(meta, "get"):
+        purpose = str(meta.get("bw_checkout_purpose") or "").strip()
+    if purpose != DEFER_TRIAL_CHECKOUT_PURPOSE:
+        return False
+
+    import stripe as stripe_mod
+
+    if not getattr(stripe_mod, "api_key", None):
+        raise RuntimeError("Stripe API key is not configured")
+
+    session_id = _stripe_id(session_obj) or _stripe_id(_obj_get(session_obj, "id"))
+    family_id = _resolve_family_id_from_metadata(meta)
+    user_id = _resolve_user_id_from_metadata(meta)
+    lookup_key = ""
+    if hasattr(meta, "get"):
+        lookup_key = str(meta.get("bw_lookup_key") or "").strip()
+    if family_id is None or lookup_key not in ALLOWED_PRICE_LOOKUP_KEYS:
+        logger_.error(
+            "Deferred trial checkout missing family or price session=%s",
+            session_id or "(unknown)",
+        )
+        return True
+
+    customer_id = _stripe_id(_obj_get(session_obj, "customer"))
+    full = stripe_mod.checkout.Session.retrieve(session_id, expand=["setup_intent"]) if session_id else session_obj
+    if not customer_id:
+        customer_id = _stripe_id(_obj_get(full, "customer"))
+    setup_intent = _obj_get(full, "setup_intent")
+    payment_method_id = _stripe_id(_obj_get(setup_intent, "payment_method") if setup_intent is not None else None)
+    if not customer_id or not payment_method_id:
+        raise RuntimeError("Deferred trial checkout is missing a customer or payment method")
+
+    family = db.get(Family, int(family_id))
+    if family is None:
+        logger_.error("Deferred trial checkout family missing family_id=%s", family_id)
+        return True
+
+    existing = db.execute(
+        select(BillingSubscription).where(BillingSubscription.family_id == int(family_id))
+    ).scalar_one_or_none()
+    if existing is not None and (existing.status or "").strip().lower() in ENTITLED_STATUSES:
+        logger_.info("Deferred trial checkout skipped; family_id=%s already subscribed", family_id)
+        return True
+
+    for stripe_status in ("trialing", "active", "past_due"):
+        listed = stripe_mod.Subscription.list(customer=customer_id, status=stripe_status, limit=1)
+        rows = list(getattr(listed, "data", None) or [])
+        if rows:
+            upsert_subscription_from_stripe(
+                db,
+                sub=rows[0],
+                family_id=int(family_id),
+                billing_customer_id=int(existing.billing_customer_id) if existing is not None and existing.billing_customer_id else None,
+            )
+            logger_.info("Deferred trial checkout reused Stripe subscription family_id=%s", family_id)
+            from .email_service import maybe_send_plan_selection_email
+
+            maybe_send_plan_selection_email(
+                db,
+                family_id=int(family_id),
+                user_id=user_id,
+                subscription=rows[0],
+                livemode=_obj_get(full, "livemode"),
+            )
+            return True
+
+    prices = stripe_mod.Price.list(lookup_keys=[lookup_key], limit=1)
+    price_rows = list(getattr(prices, "data", None) or [])
+    if not price_rows:
+        raise RuntimeError(f"No Stripe Price for lookup_key={lookup_key}")
+    price_id = _stripe_id(price_rows[0])
+
+    try:
+        stripe_mod.PaymentMethod.attach(payment_method_id, customer=customer_id)
+    except stripe_mod.error.InvalidRequestError as exc:
+        message = str(exc).lower()
+        if "already" not in message:
+            raise
+    stripe_mod.Customer.modify(
+        customer_id,
+        invoice_settings={"default_payment_method": payment_method_id},
+    )
+
+    # Original trial end, recomputed from family.created_at. None means it already expired.
+    scheduled_end = trial_end_unix(getattr(family, "created_at", None))
+    sub_metadata = {
+        "bw_product_code": str(meta.get("bw_product_code") or "") if hasattr(meta, "get") else "",
+        "bw_lookup_key": lookup_key,
+        "bw_billing_frequency": str(meta.get("bw_billing_frequency") or "") if hasattr(meta, "get") else "",
+        "bw_user_id": str(int(user_id)) if user_id else "",
+        "bw_family_id": str(int(family_id)),
+    }
+    create_kwargs: dict[str, Any] = {
+        "customer": customer_id,
+        "items": [{"price": price_id}],
+        "default_payment_method": payment_method_id,
+        "metadata": sub_metadata,
+        "idempotency_key": f"bw-defer-trial-{session_id or family_id}",
+    }
+    if scheduled_end:
+        create_kwargs["trial_end"] = int(scheduled_end)
+    created = stripe_mod.Subscription.create(**create_kwargs)
+    billing_customer_id = int(existing.billing_customer_id) if existing is not None and existing.billing_customer_id else None
+    if billing_customer_id is None and user_id and customer_id:
+        billing_customer = upsert_billing_customer(db, user_id=int(user_id), stripe_customer_id=customer_id)
+        billing_customer_id = int(billing_customer.id)
+    upsert_subscription_from_stripe(
+        db,
+        sub=created,
+        family_id=int(family_id),
+        billing_customer_id=billing_customer_id,
+    )
+    logger_.info(
+        "Deferred trial subscription created family_id=%s trial_end=%s",
+        family_id,
+        scheduled_end or "immediate",
+    )
+    from .email_service import maybe_send_plan_selection_email
+
+    maybe_send_plan_selection_email(
+        db,
+        family_id=int(family_id),
+        user_id=user_id,
+        subscription=created,
+        livemode=_obj_get(full, "livemode"),
+    )
+    return True
+
+
 def handle_stripe_event(db, event: Any, logger_: logging.Logger) -> None:
     """Apply a verified Stripe event to billing tables. Caller commits."""
     from sqlalchemy import select
@@ -987,6 +1617,10 @@ def handle_stripe_event(db, event: Any, logger_: logging.Logger) -> None:
 
     if event_type == "checkout.session.completed":
         mode = (_obj_get(obj, "mode") or "").strip()
+        if mode == "setup":
+            fulfill_deferred_trial_checkout(db, obj, logger_)
+            mark_webhook_event_processed(db, event_id=str(event_id), event_type=str(event_type))
+            return
         if mode and mode != "subscription":
             mark_webhook_event_processed(db, event_id=str(event_id), event_type=str(event_type))
             return
@@ -1017,12 +1651,44 @@ def handle_stripe_event(db, event: Any, logger_: logging.Logger) -> None:
             except Exception:
                 logger.exception("Could not retrieve subscription %s after checkout", sub_id)
             if live_sub is not None:
+                prior_status = ""
+                if family_id is not None:
+                    prior_row = db.execute(
+                        select(BillingSubscription).where(BillingSubscription.family_id == int(family_id))
+                    ).scalar_one_or_none()
+                    if prior_row is not None:
+                        prior_status = (prior_row.status or "").strip().lower()
                 upsert_subscription_from_stripe(
                     db,
                     sub=live_sub,
                     family_id=family_id,
                     billing_customer_id=int(billing_customer.id) if billing_customer else None,
                 )
+                from .email_service import (
+                    maybe_send_plan_selection_email,
+                    maybe_send_subscription_restored_email,
+                )
+
+                maybe_send_plan_selection_email(
+                    db,
+                    family_id=family_id,
+                    user_id=user_id,
+                    subscription=live_sub,
+                    livemode=_obj_get(event, "livemode"),
+                )
+                try:
+                    maybe_send_subscription_restored_email(
+                        db,
+                        family_id=family_id,
+                        user_id=user_id,
+                        subscription=live_sub,
+                        prior_status=prior_status,
+                        amount_cents=_obj_get(obj, "amount_total"),
+                        payment_status=str(_obj_get(obj, "payment_status") or ""),
+                        livemode=_obj_get(event, "livemode"),
+                    )
+                except Exception:
+                    logger_.exception("Subscription restored email skipped for %s", event_id)
             else:
                 payment_status = str(_obj_get(obj, "payment_status") or "").strip().lower()
                 amount_total = _obj_get(obj, "amount_total")
@@ -1081,6 +1747,72 @@ def handle_stripe_event(db, event: Any, logger_: logging.Logger) -> None:
             sub=obj,
             billing_customer_id=int(billing_customer.id) if billing_customer else None,
         )
+        if event_type == "customer.subscription.updated":
+            try:
+                from .email_service import (
+                    maybe_send_subscription_canceled_email,
+                    maybe_send_subscription_resumed_email,
+                )
+
+                saved = db.execute(
+                    select(BillingSubscription).where(
+                        BillingSubscription.stripe_subscription_id == str(_obj_get(obj, "id") or "")
+                    )
+                ).scalar_one_or_none()
+                if saved is not None:
+                    maybe_send_subscription_canceled_email(
+                        db,
+                        family_id=int(saved.family_id),
+                        subscription=obj,
+                        livemode=_obj_get(event, "livemode"),
+                    )
+                    maybe_send_subscription_resumed_email(
+                        db,
+                        family_id=int(saved.family_id),
+                        subscription=obj,
+                        previous=_obj_get(data_obj, "previous_attributes"),
+                        livemode=_obj_get(event, "livemode"),
+                    )
+            except Exception:
+                logger_.exception("Cancellation confirmation email skipped for %s", event_id)
+            try:
+                from .email_service import maybe_send_payment_method_updated_email
+
+                saved_pm = db.execute(
+                    select(BillingSubscription).where(
+                        BillingSubscription.stripe_subscription_id == str(_obj_get(obj, "id") or "")
+                    )
+                ).scalar_one_or_none()
+                if saved_pm is not None:
+                    maybe_send_payment_method_updated_email(
+                        db,
+                        family_id=int(saved_pm.family_id),
+                        customer_id=_stripe_id(_obj_get(obj, "customer")),
+                        source=obj,
+                        previous=_obj_get(data_obj, "previous_attributes"),
+                        livemode=_obj_get(event, "livemode"),
+                        changed_on=_as_naive_utc(_obj_get(event, "created")),
+                    )
+            except Exception:
+                logger_.exception("Payment method email skipped for %s", event_id)
+        if event_type == "customer.subscription.deleted":
+            try:
+                from .email_service import maybe_send_subscription_ended_nonpayment_email
+
+                saved = db.execute(
+                    select(BillingSubscription).where(
+                        BillingSubscription.stripe_subscription_id == str(_obj_get(obj, "id") or "")
+                    )
+                ).scalar_one_or_none()
+                if saved is not None:
+                    maybe_send_subscription_ended_nonpayment_email(
+                        db,
+                        family_id=int(saved.family_id),
+                        subscription=obj,
+                        livemode=_obj_get(event, "livemode"),
+                    )
+            except Exception:
+                logger_.exception("Subscription ended email skipped for %s", event_id)
         mark_webhook_event_processed(db, event_id=str(event_id), event_type=str(event_type))
         return
 
@@ -1112,8 +1844,41 @@ def handle_stripe_event(db, event: Any, logger_: logging.Logger) -> None:
                     row.current_period_end = pe
             db.add(row)
         else:
+            prior_status = str(row.status or "").strip().lower()
             row.status = "past_due"
             db.add(row)
+            try:
+                from .email_service import maybe_send_payment_failed_email
+
+                maybe_send_payment_failed_email(
+                    db,
+                    family_id=int(row.family_id),
+                    lookup_key=row.lookup_key,
+                    prior_status=prior_status,
+                    invoice=obj,
+                    livemode=_obj_get(event, "livemode"),
+                    failed_on=_as_naive_utc(_obj_get(event, "created")),
+                )
+            except Exception:
+                logger_.exception("Payment failed email skipped for invoice event %s", event_id)
+        mark_webhook_event_processed(db, event_id=str(event_id), event_type=str(event_type))
+        return
+
+    if event_type == "customer.updated":
+        try:
+            from .email_service import maybe_send_payment_method_updated_email
+
+            maybe_send_payment_method_updated_email(
+                db,
+                family_id=None,
+                customer_id=_stripe_id(_obj_get(obj, "id")),
+                source=obj,
+                previous=_obj_get(data_obj, "previous_attributes"),
+                livemode=_obj_get(event, "livemode"),
+                changed_on=_as_naive_utc(_obj_get(event, "created")),
+            )
+        except Exception:
+            logger_.exception("Payment method email skipped for %s", event_id)
         mark_webhook_event_processed(db, event_id=str(event_id), event_type=str(event_type))
         return
 

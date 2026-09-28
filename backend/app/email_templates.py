@@ -1,0 +1,729 @@
+"""Shared BalanceWhiz transactional email HTML + plain-text templates.
+
+Individual emails supply content; this module owns the shell (header, card,
+typography, CTA, footer, preheader). Table-based markup for Outlook. No JS,
+no web fonts, no attached images.
+"""
+
+from __future__ import annotations
+
+import html
+import re
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from typing import Optional
+
+SITE_NAME = "BalanceWhiz"
+TAGLINE = "See your cash flow before it happens."
+FOOTER_SUPPORT = "Questions? Reply to this email or contact support."
+SUPPORT_EMAIL = "support@balancewhiz.com"
+SUPPORT_MAILTO = f"mailto:{SUPPORT_EMAIL}"
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+_CARD_LABEL_RE = re.compile(r"^([A-Za-z][A-Za-z ]{0,40}) ending in (\d{4})$")
+
+STAGING_APP_URL = "https://staging.balancewhiz.com"
+PRODUCTION_APP_URL = "https://balancewhiz.com"
+
+# App tokens: --bg, --text, --muted / slate helpers, --accent (CTA), logo wordmark.
+PAGE_BG = "#E6E7EA"
+CARD_BG = "#FFFFFF"
+TEXT = "#111827"
+TEXT_SECONDARY = "#5E6876"
+MUTED = "#64748B"
+CTA_BG = "#0B3D2E"
+CTA_FG = "#FFFFFF"
+BORDER = "#E2E5EA"
+WORDMARK_BALANCE = "#5E6876"
+WORDMARK_WHIZ = "#0F5B43"
+
+_FONT = "Arial, Helvetica, sans-serif"
+
+
+@dataclass(frozen=True)
+class TransactionalEmailContent:
+    """Fields one transactional email fills in. The shell is not duplicated."""
+
+    subject: str
+    heading: str
+    body: str
+    preheader: str = ""
+    cta_label: str = ""
+    cta_url: str = ""
+    support_line: str = ""
+    support_link_label: str = ""
+    support_link_url: str = ""
+    additional_text: str = ""
+    summary_rows: tuple[tuple[str, str], ...] = ()
+
+
+def normalize_first_name(value: Optional[str]) -> str:
+    """Return a short first name for greetings, or empty if missing/unusable."""
+    raw = (value or "").strip()
+    if not raw:
+        return ""
+    token = raw.split()[0].strip()
+    if not token or len(token) > 40:
+        return ""
+    if any(ch in token for ch in "<>@\n\r\t"):
+        return ""
+    return token
+
+
+def welcome_heading(*, first_name: str = "") -> str:
+    name = normalize_first_name(first_name)
+    if name:
+        return f"Welcome to BalanceWhiz, {name}."
+    return "Welcome to BalanceWhiz."
+
+
+BILLING_SETTINGS_PATH = "/settings/?section=billing"
+
+
+def billing_settings_url(app_url: str) -> str:
+    """Logged-in Billing page (monthly or annual plan)."""
+    site = _safe_http_url(app_url).rstrip("/")
+    if not site:
+        return ""
+    return f"{site}{BILLING_SETTINGS_PATH}"
+
+
+def format_trial_end_date(value: Optional[datetime]) -> str:
+    """Friendly calendar date, e.g. October 12, 2026. Empty when unknown."""
+    if value is None:
+        return ""
+    end = value
+    if end.tzinfo is not None:
+        end = end.astimezone(timezone.utc).replace(tzinfo=None)
+    return f"{end.strftime('%B')} {end.day}, {end.year}"
+
+
+def build_welcome_email_content(
+    *,
+    app_url: str,
+    first_name: str = "",
+    trial_days: int = 14,
+    trial_ends_on: Optional[datetime] = None,
+) -> TransactionalEmailContent:
+    """Welcome email, also the trial-start confirmation. One send per new account."""
+    site = _safe_http_url(app_url)
+    days = int(trial_days) if int(trial_days) > 0 else 14
+    body = (
+        "Your first forecast is underway.\n\n"
+        "You’ve added the starting point. Now keep building out your forecast with the income and expenses you know are coming.\n\n"
+        "The more you add, the clearer your cash flow picture becomes — so you can see what’s ahead and plan with confidence."
+    )
+    friendly_end = format_trial_end_date(trial_ends_on)
+    if friendly_end:
+        started = f"Your {days}-day free trial is underway and ends {friendly_end}."
+    else:
+        started = f"Your {days}-day free trial is underway."
+    ends = "No payment method is required, and you won’t be charged when your trial ends."
+    return TransactionalEmailContent(
+        subject="Welcome to BalanceWhiz",
+        preheader="Your cash forecast starts here.",
+        heading=welcome_heading(first_name=first_name),
+        body=body,
+        cta_label="Go to my forecast",
+        cta_url=site,
+        support_line=f"{started}\n\n{ends}",
+    )
+
+
+def build_trial_ending_email_content(
+    *,
+    app_url: str,
+    first_name: str = "",
+    trial_ends_on: Optional[datetime] = None,
+) -> TransactionalEmailContent:
+    """3-day trial reminder. Uses the shared Welcome shell; copy is fixed for this reminder."""
+    friendly_end = format_trial_end_date(trial_ends_on)
+    if friendly_end:
+        when = f"Your BalanceWhiz trial ends on {friendly_end}."
+    else:
+        when = "Your BalanceWhiz trial ends in 3 days."
+    body = (
+        f"{when}\n\n"
+        "Keep your forecast up to date and see what’s ahead by choosing a plan before your trial ends."
+    )
+    return TransactionalEmailContent(
+        subject="Your BalanceWhiz trial ends in 3 days",
+        preheader="Your BalanceWhiz trial ends in 3 days.",
+        heading="Your free trial ends in 3 days.",
+        body=body,
+        cta_label="Choose a plan",
+        cta_url=billing_settings_url(app_url),
+        support_line=(
+            "If you don’t subscribe, you won’t be charged. Your account will become view-only "
+            "when your trial ends, so you can still see the forecast you’ve already created."
+        ),
+    )
+
+
+def build_trial_expired_email_content(*, app_url: str) -> TransactionalEmailContent:
+    """Tells someone who never chose a plan that the trial ended and data remains."""
+    from .billing_catalog import TRIAL_DAYS
+
+    days = int(TRIAL_DAYS) if int(TRIAL_DAYS) > 0 else 14
+    body = (
+        f"Your {days}-day free trial has ended, and your BalanceWhiz account is now view-only.\n\n"
+        "Everything you've added is still here. Choose a plan whenever you're ready to start updating your forecast again."
+    )
+    return TransactionalEmailContent(
+        subject="Your BalanceWhiz trial has ended",
+        preheader="Your free trial has ended. Your forecast is still here.",
+        heading="Your forecast is still here.",
+        body=body,
+        cta_label="Choose a plan",
+        cta_url=billing_settings_url(app_url),
+        support_line=(
+            "You weren't charged when your trial ended. Your forecast will remain available to view even if you don't subscribe."
+        ),
+    )
+
+
+def build_plan_selection_email_content(
+    *,
+    app_url: str,
+    first_name: str = "",
+    plan_label: str,
+    price_display: str,
+    trial_ends_on: Optional[datetime] = None,
+    renews_each: str = "month",
+) -> TransactionalEmailContent:
+    """Confirms a plan chosen during the free trial, before the first charge."""
+    name = normalize_first_name(first_name)
+    greeting = f"Hi {name}," if name else "Hi,"
+    friendly_end = format_trial_end_date(trial_ends_on)
+    through = friendly_end or "the end of your free trial"
+    cadence = "year" if (renews_each or "").strip().lower() == "year" else "month"
+    body = (
+        f"{greeting}\n\n"
+        f"You’ve chosen your BalanceWhiz plan. Your free trial will continue through {through}, "
+        "and you won’t be charged until it ends."
+    )
+    return TransactionalEmailContent(
+        subject="Your BalanceWhiz plan is set",
+        preheader="Your plan is set. You won’t be charged until your trial ends.",
+        heading="You’re all set.",
+        body=body,
+        cta_label="Go to my forecast",
+        cta_url=_safe_http_url(app_url),
+        summary_rows=(
+            ("Plan:", plan_label),
+            ("Price:", price_display),
+            ("Due today:", "$0.00"),
+            ("First charge:", through),
+        ),
+        support_line=(
+            f"After your first payment, your plan will renew automatically each {cadence} unless you cancel. "
+            "You can manage your subscription or payment method anytime from Billing."
+        ),
+        support_link_label="Billing",
+        support_link_url=billing_settings_url(app_url),
+    )
+
+
+def build_annual_renewal_email_content(
+    *,
+    app_url: str,
+    renews_on: Optional[datetime] = None,
+    renewal_amount: str,
+) -> TransactionalEmailContent:
+    """Reminds an annual subscriber 7 days before the saved card is charged."""
+    friendly = format_trial_end_date(renews_on)
+    when = friendly or "your renewal date"
+    amount = (renewal_amount or "").strip() or "your renewal amount"
+    body = f"Your BalanceWhiz annual subscription will renew on {when}."
+    return TransactionalEmailContent(
+        subject="Your BalanceWhiz plan renews soon",
+        preheader="Your annual plan renews in 7 days.",
+        heading="Your annual plan renews in 7 days.",
+        body=body,
+        cta_label="Manage my subscription",
+        cta_url=billing_settings_url(app_url),
+        summary_rows=(
+            ("Plan:", "Annual"),
+            ("Renewal amount:", amount),
+            ("Renewal date:", when),
+        ),
+        support_line=(
+            "Your saved payment method will be charged automatically on your renewal date. "
+            "You can manage your subscription, update your payment method, or cancel anytime from Billing."
+        ),
+        support_link_label="Billing",
+        support_link_url=billing_settings_url(app_url),
+    )
+
+
+def build_payment_failed_email_content(
+    *,
+    app_url: str,
+    plan_label: str,
+    amount_display: str,
+    payment_on: Optional[datetime] = None,
+) -> TransactionalEmailContent:
+    """Tells the subscriber the latest charge failed and their forecast is still available."""
+    when = format_trial_end_date(payment_on) or "the payment date"
+    amount = (amount_display or "").strip() or "your subscription amount"
+    plan = (plan_label or "").strip() or "your plan"
+    body = (
+        f"We couldn't process your BalanceWhiz payment of {amount}.\n\n"
+        "You still have full access to your forecast while we retry the payment. "
+        "Please update your payment method to keep your subscription active."
+    )
+    return TransactionalEmailContent(
+        subject="We couldn't process your BalanceWhiz payment",
+        preheader="Your forecast is still available. Please update your payment method.",
+        heading="There was a problem with your payment.",
+        body=body,
+        cta_label="Update payment method",
+        cta_url=billing_settings_url(app_url),
+        summary_rows=(
+            ("Plan:", plan),
+            ("Amount:", amount),
+            ("Payment attempted:", when),
+        ),
+        support_line=(
+            "We'll automatically retry your payment. If we're unable to complete it after the retry period, "
+            "your BalanceWhiz account will become view-only. Your existing forecast will still be there for you to see."
+        ),
+    )
+
+
+def build_subscription_canceled_email_content(
+    *,
+    app_url: str,
+    plan_label: str,
+    access_through: Optional[datetime] = None,
+) -> TransactionalEmailContent:
+    """Confirms a user scheduled their subscription to end at the paid period."""
+    when = format_trial_end_date(access_through) or "the end of your current period"
+    plan = (plan_label or "").strip() or "your plan"
+    body = f"You'll continue to have full access to BalanceWhiz through {when}."
+    return TransactionalEmailContent(
+        subject="Your BalanceWhiz cancellation is confirmed",
+        preheader="You'll keep full access through the end of this period.",
+        heading="Your cancellation is confirmed.",
+        body=body,
+        cta_label="Go to my forecast",
+        cta_url=_safe_http_url(app_url),
+        summary_rows=(
+            ("Plan:", plan),
+            ("Full access through:", when),
+            ("Future charges:", "None"),
+        ),
+        support_line=(
+            f"After {when}, your account will become view-only. Your existing forecast will still be there whenever you want to see it.\n\n"
+            f"You can resume your subscription anytime from Billing if you decide to keep full access beyond {when}."
+        ),
+        support_link_label="Billing",
+        support_link_url=billing_settings_url(app_url),
+    )
+
+
+def build_subscription_ended_nonpayment_email_content(*, app_url: str) -> TransactionalEmailContent:
+    """Tells the subscriber unpaid retries ended the subscription and data remains."""
+    return TransactionalEmailContent(
+        subject="Your BalanceWhiz subscription has ended",
+        preheader="Your subscription has ended. Your forecast is still here.",
+        heading="Your account is now view-only.",
+        body=(
+            "We weren't able to complete your BalanceWhiz payment, so your subscription has ended.\n\n"
+            "Your forecast is still here. Restore your subscription whenever you're ready to start updating it again."
+        ),
+        cta_label="Restore my subscription",
+        cta_url=billing_settings_url(app_url),
+        support_line="Your existing forecast will remain available to view even if you don't resubscribe.",
+    )
+
+
+def build_subscription_reactivated_email_content(
+    *,
+    app_url: str,
+    resumed: bool,
+    plan_label: str,
+    amount_display: str,
+    renews_on: Optional[datetime] = None,
+) -> TransactionalEmailContent:
+    """Confirms a reversed cancellation, or a new paid subscription after view-only access."""
+    when = format_trial_end_date(renews_on) or "your next billing date"
+    plan = (plan_label or "").strip() or "your plan"
+    amount = (amount_display or "").strip() or "your plan amount"
+    if resumed:
+        body = "Your BalanceWhiz subscription will continue without interruption."
+        return TransactionalEmailContent(
+            subject="Your BalanceWhiz subscription will continue",
+            preheader="Your subscription will continue without interruption.",
+            heading="Your subscription will continue.",
+            body=body,
+            cta_label="Go to my forecast",
+            cta_url=_safe_http_url(app_url),
+            summary_rows=(
+                ("Plan:", plan),
+                ("Next payment:", amount),
+                ("Next billing date:", when),
+            ),
+            support_line="You can manage your subscription or payment method anytime from Billing.",
+            support_link_label="Billing",
+            support_link_url=billing_settings_url(app_url),
+        )
+    body = (
+        "Your BalanceWhiz subscription is active again, and you can continue building and updating your forecast.\n\n"
+        f"Plan: {plan}\n\n"
+        f"Amount paid: {amount}\n\n"
+        f"Next billing date: {when}"
+    )
+    return TransactionalEmailContent(
+        subject="Welcome back to BalanceWhiz",
+        preheader="Your full access is restored.",
+        heading="Your full access is restored.",
+        body=body,
+        cta_label="Go to my forecast",
+        cta_url=_safe_http_url(app_url),
+        support_line=(
+            "Your existing forecast is right where you left it. "
+            "You can manage your subscription or payment method anytime from Billing."
+        ),
+        support_link_label="Billing",
+        support_link_url=billing_settings_url(app_url),
+    )
+
+
+def _support_contact(support_email: str) -> tuple[str, str]:
+    """Configured support mailbox. Falls back to the app's existing support address."""
+    raw = (support_email or "").strip()
+    if not _EMAIL_RE.match(raw):
+        raw = SUPPORT_EMAIL
+    return raw, f"mailto:{raw}"
+
+
+def build_payment_method_updated_email_content(
+    *,
+    app_url: str,
+    card_label: str = "",
+    support_email: str = "",
+) -> TransactionalEmailContent:
+    """Confirms a saved payment method was replaced. Card line is brand and last 4 only."""
+    address, mailto = _support_contact(support_email)
+    body = (
+        "The payment method for your BalanceWhiz subscription was successfully updated.\n\n"
+        "If you made this change, there's nothing else you need to do."
+    )
+    match = _CARD_LABEL_RE.match((card_label or "").strip())
+    if match:
+        body += f"\n\nPayment method: {match.group(1)} ending in {match.group(2)}"
+    return TransactionalEmailContent(
+        subject="Your BalanceWhiz payment method was updated",
+        preheader="The payment method for your BalanceWhiz subscription was updated.",
+        heading="Your payment method has been updated.",
+        body=body,
+        cta_label="Go to Billing",
+        cta_url=billing_settings_url(app_url),
+        support_line=f"Didn't make this change? Contact us at {address}.",
+        support_link_label=address,
+        support_link_url=mailto,
+    )
+
+
+def resolve_app_url(*, is_staging_deployment: bool, app_public_base_url: str = "") -> str:
+    """Public site URL for this environment. Prefer APP_PUBLIC_BASE_URL when set."""
+    raw = (app_public_base_url or "").strip().rstrip("/")
+    if raw:
+        return raw
+    return STAGING_APP_URL if is_staging_deployment else PRODUCTION_APP_URL
+
+
+def _esc(value: str) -> str:
+    return html.escape((value or "").strip(), quote=True)
+
+
+def _safe_http_url(url: str) -> str:
+    raw = (url or "").strip()
+    if raw.startswith("https://") or raw.startswith("http://"):
+        return raw
+    return ""
+
+
+def _safe_href(url: str) -> str:
+    """HTTP(S) link, or mailto to a single email address."""
+    http = _safe_http_url(url)
+    if http:
+        return http
+    raw = (url or "").strip()
+    if raw.lower().startswith("mailto:"):
+        addr = raw.split(":", 1)[1].strip()
+        if _EMAIL_RE.match(addr):
+            return f"mailto:{addr}"
+    return ""
+
+
+def _paragraphs(text: str) -> list[str]:
+    chunks = [part.strip() for part in (text or "").replace("\r\n", "\n").split("\n\n")]
+    return [part for part in chunks if part]
+
+
+def _summary_html(rows: tuple[tuple[str, str], ...]) -> str:
+    """One compact billing summary. Labels are bold; values stay regular weight."""
+    parts: list[str] = []
+    for label, value in rows:
+        lab = (label or "").strip()
+        if not lab:
+            continue
+        parts.append(f'<strong style="font-weight:700;">{_esc(lab)}</strong> {_esc(value or "")}')
+    if not parts:
+        return ""
+    inner = "<br>".join(parts)
+    return (
+        f'<p style="margin:0 0 16px;font-family:{_FONT};font-size:16px;'
+        f'line-height:1.4;font-weight:400;color:{TEXT};">{inner}</p>'
+    )
+
+
+def _p_html(text: str, *, color: str, size: str = "16px", weight: str = "400", extra: str = "") -> str:
+    return (
+        f'<p style="margin:0 0 16px;font-family:{_FONT};font-size:{size};'
+        f'line-height:1.55;font-weight:{weight};color:{color};{extra}">{_esc(text)}</p>'
+    )
+
+
+def _p_html_with_link(
+    text: str,
+    *,
+    link_label: str,
+    link_url: str,
+    color: str,
+    size: str = "16px",
+    extra: str = "",
+) -> str:
+    """Escape a paragraph and link one exact word, such as Billing."""
+    label = (link_label or "").strip()
+    href = _safe_href(link_url)
+    if not label or not href or label not in (text or ""):
+        return _p_html(text, color=color, size=size, extra=extra)
+    before, after = (text or "").split(label, 1)
+    inner = (
+        f"{html.escape(before, quote=True)}"
+        f'<a href="{_esc(href)}" style="color:{color};text-decoration:underline;">{html.escape(label, quote=True)}</a>'
+        f"{html.escape(after, quote=True)}"
+    )
+    return (
+        f'<p style="margin:0 0 16px;font-family:{_FONT};font-size:{size};'
+        f'line-height:1.55;font-weight:400;color:{color};{extra}">{inner}</p>'
+    )
+
+
+def _cta_vml_width(label: str) -> int:
+    return min(360, max(180, 8 * len(label) + 56))
+
+
+def render_cta_html(*, label: str, url: str) -> str:
+    """Outlook-safe primary button (VML + padded table cell)."""
+    href = _safe_http_url(url)
+    text = (label or "").strip()
+    if not href or not text:
+        return ""
+    esc_label = _esc(text)
+    esc_href = _esc(href)
+    width = _cta_vml_width(text)
+    return f"""
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:16px 0 28px;">
+  <tr>
+    <td align="left">
+      <!--[if mso]>
+      <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="{esc_href}" style="height:44px;v-text-anchor:middle;width:{width}px;" arcsize="12%" stroke="f" fillcolor="{CTA_BG}">
+        <w:anchorlock/>
+        <center style="color:{CTA_FG};font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:bold;">{esc_label}</center>
+      </v:roundrect>
+      <![endif]-->
+      <!--[if !mso]><!-->
+      <a href="{esc_href}" style="display:inline-block;background-color:{CTA_BG};color:{CTA_FG};font-family:{_FONT};font-size:16px;font-weight:700;line-height:1.25;text-decoration:none;padding:12px 22px;border-radius:8px;mso-hide:all;">{esc_label}</a>
+      <!--<![endif]-->
+    </td>
+  </tr>
+</table>
+""".strip()
+
+
+def _wordmark_html(*, app_url: str) -> str:
+    inner = (
+        f'<span style="font-family:{_FONT};font-size:22px;line-height:1.2;font-weight:600;'
+        f'color:{WORDMARK_BALANCE};letter-spacing:-0.03em;">Balance</span>'
+        f'<span style="font-family:{_FONT};font-size:22px;line-height:1.2;font-weight:700;'
+        f'color:{WORDMARK_WHIZ};letter-spacing:-0.03em;">Whiz</span>'
+    )
+    href = _safe_http_url(app_url)
+    if not href:
+        return inner
+    return f'<a href="{_esc(href)}" style="text-decoration:none;">{inner}</a>'
+
+
+def _preheader_html(preheader: str) -> str:
+    """Hidden inbox preview text. No filler entities or extra stuffing."""
+    text = (preheader or "").strip()
+    if not text:
+        return ""
+    return (
+        f'<div style="display:none;max-height:0;overflow:hidden;">{_esc(text)}</div>'
+    )
+
+
+def render_transactional_html(content: TransactionalEmailContent, *, app_url: str) -> str:
+    heading = (content.heading or "").strip()
+    body_parts = _paragraphs(content.body)
+    extra_parts = _paragraphs(content.additional_text)
+    support = (content.support_line or "").strip()
+    preheader = (content.preheader or "").strip()
+    subject = (content.subject or "").strip() or SITE_NAME
+    site = _safe_http_url(app_url)
+    cta = render_cta_html(label=content.cta_label, url=content.cta_url)
+
+    body_html = "".join(_p_html(part, color=TEXT) for part in body_parts)
+    summary_html = _summary_html(tuple(content.summary_rows or ()))
+    extra_html = "".join(_p_html(part, color=TEXT) for part in extra_parts)
+    heading_html = (
+        f'<h1 style="margin:0 0 16px;font-family:{_FONT};font-size:24px;line-height:1.3;'
+        f'font-weight:700;color:{TEXT};">{_esc(heading)}</h1>'
+        if heading
+        else ""
+    )
+    support_parts = _paragraphs(support)
+    support_html = ""
+    if support_parts:
+        last = len(support_parts) - 1
+        support_html = "".join(
+            _p_html_with_link(
+                part,
+                link_label=content.support_link_label,
+                link_url=content.support_link_url,
+                color=MUTED,
+                size="14px",
+                extra="margin:0;" if i == last else "margin:0 0 8px;",
+            )
+            for i, part in enumerate(support_parts)
+        )
+    inner = f"{heading_html}{body_html}{summary_html}{extra_html}{cta}{support_html}"
+    footer_brand = (
+        f'<a href="{_esc(site)}" style="color:{TEXT};text-decoration:none;">{_esc(SITE_NAME)}</a>'
+        if site
+        else _esc(SITE_NAME)
+    )
+    footer_support = (
+        f'Questions? Reply to this email or '
+        f'<a href="{_esc(SUPPORT_MAILTO)}" style="color:{MUTED};text-decoration:underline;">contact support</a>.'
+    )
+
+    return f"""<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+  <title>{_esc(subject)}</title>
+  <!--[if mso]>
+  <noscript>
+    <xml>
+      <o:OfficeDocumentSettings>
+        <o:PixelsPerInch>96</o:PixelsPerInch>
+      </o:OfficeDocumentSettings>
+    </xml>
+  </noscript>
+  <![endif]-->
+  <style type="text/css">
+    body, table, td, a {{ -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }}
+    table, td {{ mso-table-lspace: 0pt; mso-table-rspace: 0pt; }}
+    img {{ -ms-interpolation-mode: bicubic; border: 0; }}
+    @media only screen and (max-width: 620px) {{
+      .email-card {{ width: 100% !important; }}
+      .email-pad {{ padding-left: 20px !important; padding-right: 20px !important; }}
+    }}
+  </style>
+</head>
+<body style="margin:0;padding:0;background-color:{PAGE_BG};">
+  {_preheader_html(preheader)}
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:{PAGE_BG};">
+    <tr>
+      <td align="center" style="padding:28px 16px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" class="email-card" style="width:600px;max-width:600px;background-color:{CARD_BG};border:1px solid {BORDER};border-radius:12px;">
+          <tr>
+            <td class="email-pad" style="padding:28px 36px 12px;border-bottom:1px solid {BORDER};">
+              {_wordmark_html(app_url=site)}
+            </td>
+          </tr>
+          <tr>
+            <td class="email-pad" style="padding:28px 36px 8px;">
+              {inner}
+            </td>
+          </tr>
+          <tr>
+            <td class="email-pad" style="padding:20px 36px 28px;border-top:1px solid {BORDER};">
+              <p style="margin:0 0 4px;font-family:{_FONT};font-size:14px;line-height:1.4;font-weight:700;color:{TEXT};">
+                {footer_brand}
+              </p>
+              <p style="margin:0 0 12px;font-family:{_FONT};font-size:13px;line-height:1.45;color:{TEXT_SECONDARY};">{_esc(TAGLINE)}</p>
+              <p style="margin:0;font-family:{_FONT};font-size:13px;line-height:1.45;color:{MUTED};">
+                {footer_support}
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+"""
+
+
+def render_transactional_text(content: TransactionalEmailContent, *, app_url: str) -> str:
+    lines: list[str] = []
+    preheader = (content.preheader or "").strip()
+    if preheader:
+        lines.append(preheader)
+        lines.append("")
+    heading = (content.heading or "").strip()
+    if heading:
+        lines.append(heading)
+        lines.append("")
+    for part in _paragraphs(content.body):
+        lines.append(part)
+        lines.append("")
+    summary_rows = tuple(content.summary_rows or ())
+    if summary_rows:
+        for label, value in summary_rows:
+            lab = (label or "").strip()
+            if lab:
+                lines.append(f"{lab} {value or ''}".rstrip())
+        lines.append("")
+    for part in _paragraphs(content.additional_text):
+        lines.append(part)
+        lines.append("")
+    cta_label = (content.cta_label or "").strip()
+    cta_url = _safe_http_url(content.cta_url)
+    if cta_label and cta_url:
+        lines.append(f"{cta_label}:")
+        lines.append(cta_url)
+        lines.append("")
+    support = (content.support_line or "").strip()
+    if support:
+        lines.append(support)
+        link = _safe_href(content.support_link_url)
+        if link and (content.support_link_label or "").strip() and (content.support_link_label or "").strip() in support:
+            lines.append(link)
+        lines.append("")
+    lines.append("—")
+    lines.append(SITE_NAME)
+    lines.append(TAGLINE)
+    site = _safe_http_url(app_url)
+    if site:
+        lines.append(site)
+    lines.append("")
+    lines.append(FOOTER_SUPPORT)
+    return "\n".join(lines).strip() + "\n"
+
+
+def render_transactional_email(content: TransactionalEmailContent, *, app_url: str) -> tuple[str, str]:
+    """Return (html_body, text_body) for a transactional message."""
+    return (
+        render_transactional_html(content, app_url=app_url),
+        render_transactional_text(content, app_url=app_url),
+    )

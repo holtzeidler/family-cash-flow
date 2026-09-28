@@ -347,6 +347,22 @@ function accountSetupSignupEmailFromDom() {
     .toLowerCase();
 }
 
+function readAccountSetupPersonName(id) {
+  return String(document.getElementById(id)?.value || "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function accountSetupStep0NameError() {
+  const firstName = readAccountSetupPersonName("firstName");
+  const lastName = readAccountSetupPersonName("lastName");
+  if (!firstName) return { message: "First name is required.", focusId: "firstName" };
+  if (firstName.length > 80) return { message: "First name is too long.", focusId: "firstName" };
+  if (!lastName) return { message: "Last name is required.", focusId: "lastName" };
+  if (lastName.length > 80) return { message: "Last name is too long.", focusId: "lastName" };
+  return null;
+}
+
 function persistAccountSetupDraftObject(obj) {
   const next = obj && typeof obj === "object" && !Array.isArray(obj) ? { ...obj } : {};
   const signupEmail = accountSetupSignupEmailFromDom();
@@ -3240,16 +3256,14 @@ async function doSignup() {
     const email = (document.getElementById("email")?.value || "").trim().toLowerCase();
     const password = document.getElementById("password")?.value || "";
     const password2 = document.getElementById("password2")?.value || "";
+    const firstName = readAccountSetupPersonName("firstName");
+    const lastName = readAccountSetupPersonName("lastName");
 
+    const nameError = accountSetupStep0NameError();
+    if (nameError) throw new Error(nameError.message);
     if (!email) throw new Error("Email is required.");
     if (!password || password.length < 8) throw new Error("Password must be at least 8 characters.");
     if (password !== password2) throw new Error("Passwords do not match.");
-
-    const name = (() => {
-      const local = String(email).split("@")[0] || "";
-      const cleaned = local.replace(/[._-]+/g, " ").replace(/\s+/g, " ").trim();
-      return cleaned || "User";
-    })();
 
     if (isAccountSetup && overlay) {
       setForecastBuildOverlayMessage(overlay, "Creating your account…");
@@ -3264,7 +3278,12 @@ async function doSignup() {
       return;
     }
 
-    const reg = await requestWithRetry("/api/auth/register", "POST", { name, email, password }, { maxMs: 14000 });
+    const reg = await requestWithRetry(
+      "/api/auth/register",
+      "POST",
+      { first_name: firstName, last_name: lastName, email, password },
+      { maxMs: 14000 }
+    );
     if (!reg.ok) {
       if (isAccountSetup && overlay) hideForecastBuildOverlay(overlay);
       if (reg.status === 409 && isAccountSetup) {
@@ -3686,6 +3705,11 @@ function onSignupPrimaryClickInner() {
         const email = (document.getElementById("email")?.value || "").trim();
         const password = document.getElementById("password")?.value || "";
         const password2 = document.getElementById("password2")?.value || "";
+        const nameError = accountSetupStep0NameError();
+        if (nameError) {
+          showAccountSetupStep0Error(nameError.message, nameError.focusId);
+          return;
+        }
         if (!email) {
           showAccountSetupStep0Error("Email is required.", "email");
           return;
@@ -4056,7 +4080,7 @@ function handleAccountSetupBack(e) {
   }
   setAccountSetupWizardStep(s - 1);
   const ns = s - 1;
-  if (ns === 0) document.getElementById("email")?.focus();
+  if (ns === 0) document.getElementById("firstName")?.focus();
   else if (ns === 1) document.getElementById("accountName")?.focus();
   else if (ns === 2) {
     const raw = readAccountSetupDraftRaw() || {};

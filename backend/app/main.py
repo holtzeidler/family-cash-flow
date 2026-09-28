@@ -23,13 +23,13 @@ from urllib.parse import quote, urlparse
 import urllib.error
 import urllib.request
 
-from fastapi import Cookie, Depends, FastAPI, Header, HTTPException, Query, Request, Response, status
+from fastapi import Cookie, Depends, FastAPI, File, Header, HTTPException, Query, Request, Response, UploadFile, status
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 import bcrypt
 from jose import jwt
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, EmailStr, Field, field_validator
 from pydantic_settings import BaseSettings
 from sqlalchemy import Date as SA_Date
 from sqlalchemy import DateTime
@@ -98,6 +98,9 @@ class Settings(BaseSettings):
     # Set RESEND_API_KEY + RESEND_FROM + CONTACT_EMAIL_TO. RESEND_FROM must be allowed in Resend (domain or onboarding@resend.dev for tests).
     RESEND_API_KEY: str = ""
     RESEND_FROM: str = ""
+    # Reply-To for transactional mail (not the sending domain). Defaults to the
+    # public support mailbox already published on contact / privacy / terms.
+    TRANSACTIONAL_REPLY_TO: str = "support@balancewhiz.com"
 
     @field_validator("DATABASE_URL", mode="after")
     @classmethod
@@ -323,7 +326,6 @@ class TransactionKind(str, Enum):
     expense = "expense"
 
 
-
 class AccountType(str, Enum):
     checking = "checking"
     savings = "savings"
@@ -350,6 +352,9 @@ class User(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    # Separate profile names. Nullable so accounts created before these columns still load.
+    first_name: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
+    last_name: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
     password_hash: Mapped[str] = mapped_column(String(255))
     created_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
     # Platform user type: subscriber (app) | admin (operator console). Family roles are on FamilyMember.
@@ -431,6 +436,32 @@ class BillingSubscription(Base):
     trial_end: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
+
+
+class LifecycleEmailSend(Base):
+    """One successful lifecycle send.
+
+    trial_end_key is the trial end for the 3-day reminder, the Stripe renewal
+    timestamp for the annual reminder, the invoice id for a failed payment, or the
+    Stripe cancellation time for a scheduled cancel, or the trial end for the
+    trial-expired note, the ended Stripe subscription id after unpaid retries, or the
+    resume/restore event, or the day and payment method ids for a saved card
+    replacement. A second run for the same key does not send again.
+    """
+
+    __tablename__ = "lifecycle_email_sends"
+    __table_args__ = (
+        UniqueConstraint("family_id", "kind", "trial_end_key", name="uq_lifecycle_email_trial"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    family_id: Mapped[int] = mapped_column(ForeignKey("families.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    kind: Mapped[str] = mapped_column(String(40), nullable=False)
+    trial_end_key: Mapped[str] = mapped_column(String(40), nullable=False)
+    sent_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
 
 
 class StripeWebhookEvent(Base):
@@ -959,7 +990,14 @@ _STAGING_LIVE_STRIPE_DETAIL = (
     "Staging is using a live Stripe key. Billing changes are blocked so live subscriptions "
     "cannot be changed. Set STRIPE_SECRET_KEY on family-cash-flow-api-staging to a test-mode key (sk_test_…)."
 )
-_STAGING_UNSAFE_DB_ALLOWED_WRITE_PATHS = frozenset({"/api/auth/login", "/api/auth/logout"})
+_STAGING_UNSAFE_DB_ALLOWED_WRITE_PATHS = frozenset(
+    {
+        "/api/auth/login",
+        "/api/auth/logout",
+        # Does not write the database; still gated to staging + platform admin.
+        "/api/platform/email-test",
+    }
+)
 _STAGING_STRIPE_MUTATION_PATHS = frozenset(
     {
         "/create-checkout-session",
@@ -1438,6 +1476,32 @@ def _login_password_reset_url(*, token: str, request: Optional[Request]) -> str:
     return f"./{tail}"
 
 
+def _send_signup_welcome_email(*, user: User, family: Family) -> None:
+    """One Welcome email when an account and its trial start. Never a second trial email."""
+    from .billing_entitlement import trial_ends_at
+    from .email_service import send_welcome_email
+    from .email_templates import resolve_app_url
+
+    if not (settings.RESEND_API_KEY or "").strip():
+        logger.warning("Welcome email skipped: RESEND_API_KEY is not set")
+        return
+    trial_end = trial_ends_at(getattr(family, "created_at", None))
+    if trial_end is None:
+        logger.warning("Welcome email skipped: trial end date is unknown for user id=%s", getattr(user, "id", None))
+        return
+    send_welcome_email(
+        api_key=settings.RESEND_API_KEY,
+        to_addr=str(user.email),
+        app_url=resolve_app_url(
+            is_staging_deployment=_is_staging_deployment(),
+            app_public_base_url=settings.APP_PUBLIC_BASE_URL,
+        ),
+        first_name=str(getattr(user, "first_name", "") or ""),
+        reply_to=(settings.TRANSACTIONAL_REPLY_TO or "").strip() or None,
+        trial_ends_on=trial_end,
+    )
+
+
 def _send_password_reset_email_sync(*, to_addr: str, subject: str, text_body: str) -> None:
     """Transactional email to the account owner (same delivery stack as invites)."""
     if _contact_resend_configured():
@@ -1450,9 +1514,33 @@ def _send_password_reset_email_sync(*, to_addr: str, subject: str, text_body: st
 
 
 class RegisterIn(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     email: EmailStr
     password: str = Field(min_length=8, max_length=200)
+    # Kept optional so older clients are not required to send it. New signups store
+    # first_name and last_name; name is derived for existing display and Stripe.
     name: Optional[str] = None
+    first_name: str = Field(
+        min_length=1,
+        max_length=80,
+        validation_alias=AliasChoices("first_name", "firstName"),
+    )
+    last_name: str = Field(
+        min_length=1,
+        max_length=80,
+        validation_alias=AliasChoices("last_name", "lastName"),
+    )
+
+    @field_validator("first_name", "last_name", mode="before")
+    @classmethod
+    def _clean_person_name(cls, v: object) -> object:
+        if not isinstance(v, str):
+            return v
+        text = " ".join(v.split())
+        if any(ch in text for ch in "<>") or any(ord(ch) < 32 for ch in text):
+            raise ValueError("Name contains invalid characters")
+        return text
 
 
 class LoginIn(BaseModel):
@@ -1495,6 +1583,24 @@ class UserOut(BaseModel):
     id: int
     email: EmailStr
     name: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+
+
+class ProfileUpdateIn(BaseModel):
+    """Name-only profile update. Email stays the login identity and is not accepted here."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    first_name: Optional[str] = Field(default=None, validation_alias=AliasChoices("first_name", "firstName"))
+    last_name: Optional[str] = Field(default=None, validation_alias=AliasChoices("last_name", "lastName"))
+
+    @field_validator("first_name", "last_name", mode="before")
+    @classmethod
+    def _clean_name(cls, v: object) -> object:
+        if v is None:
+            return None
+        return _clean_profile_name(v) or ""
 
 
 class AuthMeOut(BaseModel):
@@ -1732,6 +1838,13 @@ class PlatformOverviewOut(BaseModel):
     stripe_mode: str = "none"
     writes_enabled: bool = True
     staging_auth_restricted: bool = False
+
+
+class PlatformEmailTestOut(BaseModel):
+    ok: bool = True
+    id: str = ""
+    to: str = ""
+    template: str = ""
 
 
 class CategoryIn(BaseModel):
@@ -2796,6 +2909,7 @@ def startup_populate_schema():
     _ensure_user_platform_columns()
     _migrate_platform_roles_subscriber_admin()
     _ensure_user_complimentary_columns()
+    _ensure_user_name_part_columns()
     _ensure_platform_admin_audit_table()
     _ensure_billing_tables()
     _sync_legacy_platform_admin_roles()
@@ -3406,6 +3520,55 @@ def _ensure_user_complimentary_columns() -> None:
             conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS complimentary_access_expires_at TIMESTAMPTZ"))
 
 
+def _ensure_user_name_part_columns() -> None:
+    """Add nullable first_name and last_name. Existing rows stay null."""
+    with engine.begin() as conn:
+        if settings.DATABASE_URL.startswith("sqlite"):
+            cols = conn.execute(text("PRAGMA table_info(users)")).fetchall()
+            names = {str(row[1]) for row in cols}
+            if "first_name" not in names:
+                conn.execute(text("ALTER TABLE users ADD COLUMN first_name VARCHAR(80)"))
+            if "last_name" not in names:
+                conn.execute(text("ALTER TABLE users ADD COLUMN last_name VARCHAR(80)"))
+        else:
+            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS first_name VARCHAR(80)"))
+            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_name VARCHAR(80)"))
+
+
+def _account_display_name(first_name: str, last_name: str) -> Optional[str]:
+    """Combined label for existing name consumers (admin, Stripe). Not the stored identity."""
+    parts = [p for p in ((first_name or "").strip(), (last_name or "").strip()) if p]
+    if not parts:
+        return None
+    return " ".join(parts)[:255]
+
+
+def _clean_profile_name(value: object) -> Optional[str]:
+    """Blank is allowed so existing users can leave a name empty. Signup still requires both."""
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise ValueError("Name contains invalid characters")
+    text = " ".join(value.split())
+    if not text:
+        return None
+    if len(text) > 80:
+        raise ValueError("Name is too long")
+    if any(ch in text for ch in "<>") or any(ord(ch) < 32 for ch in text):
+        raise ValueError("Name contains invalid characters")
+    return text
+
+
+def _user_out(user: User) -> UserOut:
+    return UserOut(
+        id=user.id,
+        email=user.email,
+        name=user.name,
+        first_name=getattr(user, "first_name", None),
+        last_name=getattr(user, "last_name", None),
+    )
+
+
 def _migrate_platform_roles_subscriber_admin() -> None:
     """none → subscriber; support → admin; keep admin."""
     with engine.begin() as conn:
@@ -3788,9 +3951,13 @@ def register(payload: RegisterIn, response: Response, db=Depends(get_db)):
     existing = db.execute(select(User).where(func.lower(User.email) == key)).scalar_one_or_none()
     if existing:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
+    first_name = payload.first_name
+    last_name = payload.last_name
     user = User(
         email=key,
-        name=payload.name,
+        name=_account_display_name(first_name, last_name),
+        first_name=first_name,
+        last_name=last_name,
         password_hash=hash_password(payload.password),
         platform_role="subscriber",
     )
@@ -3802,6 +3969,8 @@ def register(payload: RegisterIn, response: Response, db=Depends(get_db)):
     db.refresh(user)
 
     # Create a starter family for new users so the app can be used immediately.
+    # The app trial starts from this family's created_at.
+    fam = None
     try:
         fam = Family(name="My Family", balance_threshold_min=DEFAULT_FAMILY_BALANCE_THRESHOLD_MIN)
         db.add(fam)
@@ -3816,12 +3985,17 @@ def register(payload: RegisterIn, response: Response, db=Depends(get_db)):
             )
         )
         db.commit()
+        try:
+            db.refresh(fam)
+        except Exception:
+            pass
         # Seed default category groups/categories for the starter family.
         try:
             apply_default_category_seed(db=db, family_id=int(fam.id), force=False)
         except Exception:
             pass
     except Exception:
+        fam = None
         try:
             db.rollback()
         except Exception:
@@ -3836,8 +4010,13 @@ def register(payload: RegisterIn, response: Response, db=Depends(get_db)):
         secure=settings.ENV == "production",
         path="/",
     )
+    if fam is not None:
+        try:
+            _send_signup_welcome_email(user=user, family=fam)
+        except Exception:
+            logger.exception("Welcome email failed for user id=%s", getattr(user, "id", None))
     return {
-        "user": UserOut(id=user.id, email=user.email, name=user.name),
+        "user": _user_out(user),
         "access_token": token,
     }
 
@@ -3947,6 +4126,28 @@ def password_reset_complete(payload: PasswordResetCompleteIn, db=Depends(get_db)
     return {"ok": True}
 
 
+@app.patch("/api/auth/me", response_model=UserOut)
+def update_me(
+    payload: ProfileUpdateIn,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
+    db=Depends(get_db),
+):
+    """Update the signed-in user's first and last name. Does not change the login email."""
+    user_id = get_current_user_id(access_token)
+    user = db.execute(select(User).where(User.id == user_id)).scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+    first_name = _clean_profile_name(payload.first_name)
+    last_name = _clean_profile_name(payload.last_name)
+    user.first_name = first_name
+    user.last_name = last_name
+    user.name = _account_display_name(first_name or "", last_name or "")
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return _user_out(user)
+
+
 @app.get("/api/auth/me", response_model=AuthMeOut)
 def me(access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization), db=Depends(get_db)):
     user_id = get_current_user_id(access_token)
@@ -3955,7 +4156,7 @@ def me(access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_a
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
     role = effective_platform_role(user=user)
     return AuthMeOut(
-        user=UserOut(id=user.id, email=user.email, name=user.name),
+        user=_user_out(user),
         is_platform_admin=role == "admin",
         platform_role=role,
     )
@@ -4481,6 +4682,72 @@ def platform_overview(
         writes_enabled=_staging_db_writes_allowed(),
         staging_auth_restricted=_staging_auth_allowlist_enforced(),
     )
+
+
+@app.post("/api/platform/email-test", response_model=PlatformEmailTestOut, include_in_schema=False)
+def platform_send_email_test(
+    template: Literal[
+        "welcome",
+        "design",
+        "trial-ending",
+        "plan-monthly",
+        "plan-annual",
+        "annual-renewal",
+        "payment-failed-monthly",
+        "payment-failed-annual",
+        "cancel-monthly",
+        "cancel-annual",
+        "trial-expired",
+        "subscription-ended",
+        "reactivate-resumed",
+        "reactivate-restored",
+        "payment-method-updated",
+    ] = Query("welcome"),
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
+    db=Depends(get_db),
+):
+    """Staging/dev + platform admin only. Preview a transactional template.
+
+    Recipient is fixed server-side (tracy@balancewhiz.com) — never taken from the request.
+    Pass template=welcome (default), template=trial-ending, template=plan-monthly,
+    template=plan-annual, template=annual-renewal, template=payment-failed-monthly,
+    template=payment-failed-annual, template=cancel-monthly, template=cancel-annual,
+    template=trial-expired, template=subscription-ended,     template=reactivate-resumed,
+    template=reactivate-restored, template=payment-method-updated, or template=design.
+    This route never runs the lifecycle job and never emails other users.
+    """
+    from .email_service import (
+        TEST_TO,
+        EmailNotConfigured,
+        EmailSendError,
+        send_staging_test_email,
+        transactional_email_allowed,
+    )
+
+    user_id = get_current_user_id(access_token)
+    require_platform_admin(db=db, user_id=user_id)
+    if not transactional_email_allowed(
+        env=settings.ENV,
+        is_staging_deployment=_is_staging_deployment(),
+    ):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    try:
+        email_id = send_staging_test_email(
+            api_key=settings.RESEND_API_KEY,
+            template=template,
+            reply_to=(settings.TRANSACTIONAL_REPLY_TO or "").strip() or None,
+        )
+    except EmailNotConfigured:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="RESEND_API_KEY is not set on this server.",
+        )
+    except EmailSendError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(exc)[:400] or "Resend send failed",
+        )
+    return PlatformEmailTestOut(ok=True, id=email_id, to=TEST_TO, template=template)
 
 
 @app.get("/api/platform/families", response_model=list[PlatformFamilySummaryOut])
