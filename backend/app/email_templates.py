@@ -212,7 +212,7 @@ def build_plan_selection_email_content(
             ("Plan:", plan_label),
             ("Price:", price_display),
             ("Due today:", "$0.00"),
-            ("First payment:", through),
+            ("First charge:", through),
         ),
         support_line=(
             f"After your first payment, your plan will renew automatically each {cadence} unless you cancel. "
@@ -329,7 +329,7 @@ def build_subscription_ended_nonpayment_email_content(*, app_url: str) -> Transa
         heading="Your account is now view-only.",
         body=(
             "We weren't able to complete your BalanceWhiz payment, so your subscription has ended.\n\n"
-            "Your forecast is still here. To start updating it again, choose a plan and update your payment information."
+            "Your forecast is still here. Restore your subscription whenever you're ready to start updating it again."
         ),
         cta_label="Restore my subscription",
         cta_url=billing_settings_url(app_url),
@@ -350,19 +350,19 @@ def build_subscription_reactivated_email_content(
     plan = (plan_label or "").strip() or "your plan"
     amount = (amount_display or "").strip() or "your plan amount"
     if resumed:
-        body = (
-            "Your BalanceWhiz subscription will continue without interruption.\n\n"
-            f"Plan: {plan}\n\n"
-            f"Next payment: {amount}\n\n"
-            f"Next billing date: {when}"
-        )
+        body = "Your BalanceWhiz subscription will continue without interruption."
         return TransactionalEmailContent(
-            subject="Your BalanceWhiz subscription is active",
+            subject="Your BalanceWhiz subscription will continue",
             preheader="Your subscription will continue without interruption.",
-            heading="You're all set.",
+            heading="Your subscription will continue.",
             body=body,
             cta_label="Go to my forecast",
             cta_url=_safe_http_url(app_url),
+            summary_rows=(
+                ("Plan:", plan),
+                ("Next payment:", amount),
+                ("Next billing date:", when),
+            ),
             support_line="You can manage your subscription or payment method anytime from Billing.",
             support_link_label="Billing",
             support_link_url=billing_settings_url(app_url),
