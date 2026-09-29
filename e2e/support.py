@@ -108,5 +108,10 @@ def show_month(page, month: str, iso: str) -> None:
 
 
 def open_add_on_day(page, iso: str) -> None:
-    page.locator(f'.cal-cell[data-iso="{iso}"]').evaluate("el => el.click()")
+    # Wait until a calendar refresh is done so the click is not dropped while
+    # the day grid is being replaced.
+    expect(page.locator("#calendarPanel")).not_to_have_class(re.compile(r"calendar-panel--loading"))
+    cell = page.locator(f'.cal-cell[data-iso="{iso}"]')
+    expect(cell).to_be_visible()
+    cell.evaluate("el => el.click()")
     expect(page.locator("#txAddModal.modal-overlay--open")).to_be_visible()
