@@ -5,9 +5,13 @@
 # in the dashboard — do not reuse production DATABASE_URL for staging.
 #
 # Staging (branch staging): Neon staging branch + API + static frontend. See docs/STAGING.md.
-# The trial-reminder cron is staging-only. It reuses this Docker image and does not
-# run against production. Set its DATABASE_URL to the staging Neon host, and set
-# RESEND_API_KEY plus the same STAGING_AUTH_EMAIL_ALLOWLIST as the staging API.
+# Trial reminders run twice a day. The staging cron never sets
+# TRIAL_ENDING_REMINDERS_ALLOW_PRODUCTION and only emails the staging allowlist.
+# The production cron is a separate service on branch main. Set its DATABASE_URL
+# to the production Neon host (ep-ancient-union-…), plus RESEND_API_KEY and
+# STRIPE_SECRET_KEY, in the Render dashboard. Do not copy the staging allowlist
+# onto it. A second run the same day does not send the 3-day or trial-expired
+# note again: lifecycle_email_sends is unique per family, kind, and trial end.
 # DATABASE_URL on family-cash-flow-api-staging must be the Neon staging endpoint
 # (ep-polished-boat-…), never production (ep-ancient-union-…).
 #
@@ -85,6 +89,35 @@ services:
         value: https://staging.balancewhiz.com
       - key: STAGING_AUTH_EMAIL_ALLOWLIST
         sync: false
+
+  - type: cron
+    name: family-cash-flow-trial-reminders-production
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    plan: starter
+    branch: main
+    schedule: "15 14,20 * * *"
+    dockerCommand: python -m app.trial_ending_reminders
+    envVars:
+      - key: ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: TRIAL_ENDING_REMINDERS_ENABLED
+        value: "1"
+      - key: TRIAL_ENDING_REMINDERS_ALLOW_PRODUCTION
+        value: "1"
+      - key: PRODUCTION_DATABASE_HOST
+        value: ep-ancient-union-and21kx9-pooler
+      - key: APP_PUBLIC_BASE_URL
+        value: https://balancewhiz.com
+      - key: CORS_ORIGINS
+        value: https://balancewhiz.com
 
   - type: web
     name: family-cash-flow-web-staging

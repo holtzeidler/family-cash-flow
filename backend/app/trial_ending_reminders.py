@@ -1,18 +1,21 @@
 """Send scheduled lifecycle reminders.
 
-This is a one-shot command for the staging Render cron job. It does not run
-on login, and it does not start from the web process. One run sends the 3-day
-trial reminder, the trial-expired note, and the 7-day annual renewal reminder.
+This is a one-shot command for the Render cron jobs. It does not run on login,
+and it does not start from the web process. One run sends the 3-day trial
+reminder, the trial-expired note, and the 7-day annual renewal reminder.
 There is no second scheduler.
 
 Safety:
 - Refuses to run unless TRIAL_ENDING_REMINDERS_ENABLED=1.
-- Refuses the production database unless TRIAL_ENDING_REMINDERS_ALLOW_PRODUCTION=1
-  (that flag is not set on the staging cron).
+- Refuses the production database unless TRIAL_ENDING_REMINDERS_ALLOW_PRODUCTION=1.
+  That flag is set only on the production cron, never on the staging cron.
 - On staging, sends only to STAGING_AUTH_EMAIL_ALLOWLIST. An empty allowlist
-  sends nobody.
+  sends nobody. Production does not use that allowlist.
 - Records a row in lifecycle_email_sends after a successful send. The unique
-  key is the family's trial end, or that annual renewal's Stripe period end.
+  key is (family, kind, trial end) or (family, kind, Stripe period end).
+  A second run the same day finds that row and does not send again. The same
+  owner is not sent a second 3-day or trial-expired note for another family
+  that shares that trial end.
 
 Preview with POST /api/platform/email-test?template=trial-ending,
 template=trial-expired, or template=annual-renewal. That route does not call this job.
@@ -52,6 +55,29 @@ def refusal_reason() -> str:
     if not _is_staging_deployment() and not _enabled("TRIAL_ENDING_REMINDERS_ALLOW_PRODUCTION"):
         return "lifecycle reminders are only scheduled for staging"
     return ""
+
+
+def _trial_notice_already_sent(db, *, family_id: int, user_id: int, kind: str, key: str) -> bool:
+    """True when this family, or this owner for the same trial end, was already sent.
+
+    lifecycle_email_sends has a unique (family_id, kind, trial_end_key) constraint.
+    The owner check covers a second family that shares the original trial clock.
+    """
+    from sqlalchemy import or_
+
+    from .main import LifecycleEmailSend, select
+
+    existing = db.execute(
+        select(LifecycleEmailSend.id).where(
+            LifecycleEmailSend.kind == kind,
+            LifecycleEmailSend.trial_end_key == key,
+            or_(
+                LifecycleEmailSend.family_id == int(family_id),
+                LifecycleEmailSend.user_id == int(user_id),
+            ),
+        )
+    ).first()
+    return existing is not None
 
 
 def _allowlist_blocks(email: str) -> bool:
@@ -212,14 +238,13 @@ def _send_trial_expired_emails(db, *, app_url: str, dry_run: bool) -> tuple[int,
         if not key:
             skipped += 1
             continue
-        already = db.execute(
-            select(LifecycleEmailSend.id).where(
-                LifecycleEmailSend.family_id == int(family.id),
-                LifecycleEmailSend.kind == TRIAL_EXPIRED_KIND,
-                LifecycleEmailSend.trial_end_key == key,
-            )
-        ).first()
-        if already:
+        if _trial_notice_already_sent(
+            db,
+            family_id=int(family.id),
+            user_id=int(owner.id),
+            kind=TRIAL_EXPIRED_KIND,
+            key=key,
+        ):
             skipped += 1
             continue
         if dry_run:
@@ -325,14 +350,13 @@ def run(*, dry_run: bool = False) -> int:
             if end is None or not key:
                 skipped += 1
                 continue
-            already = db.execute(
-                select(LifecycleEmailSend.id).where(
-                    LifecycleEmailSend.family_id == int(family.id),
-                    LifecycleEmailSend.kind == REMINDER_KIND,
-                    LifecycleEmailSend.trial_end_key == key,
-                )
-            ).first()
-            if already:
+            if _trial_notice_already_sent(
+                db,
+                family_id=int(family.id),
+                user_id=int(owner.id),
+                kind=REMINDER_KIND,
+                key=key,
+            ):
                 skipped += 1
                 continue
             if dry_run:

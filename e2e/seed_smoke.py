@@ -152,14 +152,17 @@ def _set_created(family_id: int, created: datetime) -> None:
 
 
 def _end_later_today_utc() -> datetime:
-    """A trial end still on today's local calendar date, after the current minute."""
-    local = datetime.now().astimezone()
-    end_local = local + timedelta(minutes=90)
-    if end_local.date() != local.date():
-        end_local = local.replace(hour=23, minute=59, second=0, microsecond=0)
-    if end_local <= local:
-        end_local = local + timedelta(minutes=5)
-    return end_local.astimezone(timezone.utc).replace(tzinfo=None)
+    """A trial end still on today's UTC date, after the current minute.
+
+    Day counts in the banner, Billing, and trial emails use this UTC date.
+    """
+    now = _utc_now()
+    end = now + timedelta(minutes=90)
+    if end.date() != now.date():
+        end = now.replace(hour=23, minute=59, second=0, microsecond=0)
+    if end <= now:
+        end = now + timedelta(minutes=5)
+    return end
 
 
 def _ensure_checking(token: str, family_id: int) -> None:

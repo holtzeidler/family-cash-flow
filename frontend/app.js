@@ -1742,6 +1742,7 @@ const BILLING_LOOKUP_MONTHLY = "cash_forecast_monthly";
 const BILLING_LOOKUP_ANNUAL = "cash_forecast_annual";
 /** In-memory cache for GET /api/families/{id}/billing-status (server is source of truth). */
 let billingStatusCache = { familyId: null, data: null, fetchedAt: 0, inFlight: null };
+let billingPanelRenderToken = 0;
 
 // Expected instance editing (fields live inside unified #txEditModal)
 const instanceExpectedTxId = document.getElementById("instanceExpectedTxId");
@@ -3790,7 +3791,9 @@ function setActiveTopView(view) {
   }
   if (v === "settings") {
     renderAccountDetailsPanel();
-    activateSettingsSection("profile");
+    // Honor ?section= and /settings/billing on the first paint. Forcing Profile
+    // here flashed the profile page before Billing finished loading.
+    activateSettingsSection(settingsSectionFromLocation() || "profile");
   }
   if (v === "reimbursements") {
     void refreshReimbursements().catch(() => {});
@@ -5125,6 +5128,17 @@ function initReimbursementsUi() {
 }
 
 initReimbursementsUi();
+
+function settingsSectionFromLocation() {
+  try {
+    const requested = String(new URLSearchParams(window.location.search).get("section") || "")
+      .trim()
+      .toLowerCase();
+    if (requested) return requested;
+    if (/\/settings\/billing\/?$/i.test(window.location.pathname || "")) return "billing";
+  } catch (_) {}
+  return "";
+}
 
 function getInitialTopViewFromUrlOrStorage() {
   try {
@@ -9502,21 +9516,36 @@ function trialNoticeEndDate(status) {
 }
 
 function trialNoticeMonthDay(date, now) {
-  const opts = { month: "long", day: "numeric" };
-  if (date.getFullYear() !== now.getFullYear()) opts.year = "numeric";
+  const opts = { month: "long", day: "numeric", timeZone: "UTC" };
+  if (date.getUTCFullYear() !== now.getUTCFullYear()) opts.year = "numeric";
   return date.toLocaleDateString(undefined, opts);
 }
 
-function trialNoticeCalendarDays(end, now) {
-  const startOf = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-  return Math.round((startOf(end) - startOf(now)) / 86400000);
+function trialNoticeUtcCalendarDays(end, now) {
+  const utcDay = (d) => Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  return Math.round((utcDay(end) - utcDay(now)) / 86400000);
+}
+
+/**
+ * Whole UTC calendar days until trial_ends_at.
+ * Uses the server's trial_days_remaining when the billing payload has it, so
+ * the banner, Billing page, and trial emails count the same day. The 14-day
+ * access cutoff is still the exact trial_ends_at timestamp.
+ */
+function trialNoticeDaysRemaining(status, end, now) {
+  const raw = status && status.trial_days_remaining;
+  if (raw != null && raw !== "" && Number.isFinite(Number(raw))) {
+    return Math.max(0, Math.floor(Number(raw)));
+  }
+  if (!end) return null;
+  return trialNoticeUtcCalendarDays(end, now);
 }
 
 /**
  * One trial-status line for the signed-in app.
- * Day wording comes from trial_ends_at in the browser's local calendar, the
- * same clock the rest of Billing uses. A selected plan hides it: Billing
- * already shows the scheduled first payment, and a second line would nag.
+ * Day wording comes from the server trial end (UTC), the same clock Billing
+ * and the trial emails use. A selected plan hides it: Billing already shows
+ * the scheduled first payment, and a second line would nag.
  */
 function resolveTrialStatusNotice(status, now = new Date()) {
   if (!status || typeof status !== "object") return null;
@@ -9529,7 +9558,7 @@ function resolveTrialStatusNotice(status, now = new Date()) {
   const end = trialNoticeEndDate(status);
   const inTrial = status.in_app_trial === true || phase === "trial";
   if (inTrial && end && now.getTime() < end.getTime()) {
-    const days = trialNoticeCalendarDays(end, now);
+    const days = trialNoticeDaysRemaining(status, end, now);
     if (days > 7 || days < 0) return null;
     if (days >= 4) {
       return {
@@ -9591,7 +9620,7 @@ function syncTrialStatusNotice(status) {
   if (model.action) {
     const link = document.createElement("a");
     link.className = "trial-status-notice__action";
-    link.href = "/settings/billing/";
+    link.href = "/settings/?section=billing";
     link.textContent = model.action;
     line.appendChild(link);
   }
@@ -11167,8 +11196,6 @@ function applyBillingStatusToPanel(status) {
   const model = resolveBillingLifecycleModel(status, { hasFamily });
   applyBillingLifecycleModel(model);
 }
-
-let billingPanelRenderToken = 0;
 
 function billingPanelLooksBlank() {
   const dom = billingDom();

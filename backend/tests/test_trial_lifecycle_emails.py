@@ -273,6 +273,66 @@ def test_scheduler_sends_each_lifecycle_email_once_and_skips_the_rest(monkeypatc
     assert len({key for _kind, key in rows}) == 3
 
 
+def test_production_run_sends_each_trial_notice_once_including_a_second_family(monkeypatch):
+    """Production is allowed only with the explicit flag, and a second pass does not resend.
+
+    A second family that shares the owner's trial end does not get its own copy.
+    """
+    monkeypatch.setenv("TRIAL_ENDING_REMINDERS_ENABLED", "1")
+    monkeypatch.setenv("TRIAL_ENDING_REMINDERS_ALLOW_PRODUCTION", "1")
+    monkeypatch.setattr(settings, "RESEND_API_KEY", "re_local_not_sent")
+    monkeypatch.setattr(settings, "STRIPE_SECRET_KEY", "local-not-a-stripe-key")
+    monkeypatch.setattr("app.main._is_staging_deployment", lambda: False)
+
+    import stripe
+
+    monkeypatch.setattr(
+        stripe.Subscription,
+        "retrieve",
+        lambda *_args, **_kwargs: _annual_stripe(_now(), status="canceled", cancel=True),
+    )
+    sent: list[tuple[str, str]] = []
+
+    def _record(kind):
+        def _send(**kwargs):
+            sent.append((kind, kwargs["to_addr"]))
+            return "local-not-sent"
+
+        return _send
+
+    monkeypatch.setattr("app.email_service.send_trial_ending_email", _record(REMINDER_KIND))
+    monkeypatch.setattr("app.email_service.send_trial_expired_email", _record(TRIAL_EXPIRED_KIND))
+    monkeypatch.setattr("app.email_service.send_annual_renewal_email", _record(ANNUAL_RENEWAL_KIND))
+
+    now = _now()
+    email = "bw-smoke-lifeprod@example.com"
+    with SessionLocal() as db:
+        family = _account(db, email, _created_for_days_left(3, now))
+        owner_id = db.execute(
+            select(FamilyMember.user_id).where(FamilyMember.family_id == family.id)
+        ).scalar_one()
+        second = Family(name="Second", created_at=family.created_at)
+        db.add(second)
+        db.flush()
+        db.add(
+            FamilyMember(
+                family_id=second.id,
+                user_id=int(owner_id),
+                role="owner",
+                is_family_owner=True,
+                access_mode="edit",
+            )
+        )
+        db.commit()
+
+    from app.trial_ending_reminders import run
+
+    assert run(dry_run=False) == 0
+    assert sent.count((REMINDER_KIND, email)) == 1
+    assert run(dry_run=False) == 0
+    assert sent.count((REMINDER_KIND, email)) == 1
+
+
 def test_scheduler_refuses_to_run_outside_staging(monkeypatch):
     monkeypatch.setenv("TRIAL_ENDING_REMINDERS_ENABLED", "1")
     monkeypatch.delenv("TRIAL_ENDING_REMINDERS_ALLOW_PRODUCTION", raising=False)

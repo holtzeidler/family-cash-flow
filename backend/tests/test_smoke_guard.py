@@ -40,12 +40,12 @@ def test_personal_mailbox_is_refused():
         assert_bot_email("tracy@balancewhiz.com")
 
 
-def test_lifecycle_scheduler_is_not_enabled_for_production():
+def test_lifecycle_scheduler_production_is_separate_from_staging():
     text = (Path(__file__).resolve().parents[2] / "render.yaml").read_text(encoding="utf-8")
-    assert "TRIAL_ENDING_REMINDERS_ALLOW_PRODUCTION" not in text
-    if "family-cash-flow-trial-reminders-staging" not in text:
-        assert "python -m app.trial_ending_reminders" not in text
-        return
-    assert text.count("python -m app.trial_ending_reminders") == 1
-    cron = text.split("family-cash-flow-trial-reminders-staging", 1)[1].split("type: web", 1)[0]
-    assert "branch: staging" in cron
+    assert text.count("python -m app.trial_ending_reminders") == 2
+    staging = text.split("family-cash-flow-trial-reminders-staging", 1)[1].split("- type:", 1)[0]
+    assert "branch: staging" in staging
+    assert "TRIAL_ENDING_REMINDERS_ALLOW_PRODUCTION" not in staging
+    production = text.split("family-cash-flow-trial-reminders-production", 1)[1].split("- type:", 1)[0]
+    assert "branch: main" in production
+    assert production.count("TRIAL_ENDING_REMINDERS_ALLOW_PRODUCTION") == 1

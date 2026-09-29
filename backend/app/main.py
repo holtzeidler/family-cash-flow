@@ -4776,7 +4776,21 @@ def patch_family_forecast_thresholds(
 @app.post("/api/families", response_model=FamilyOut)
 def create_family(payload: FamilyCreateIn, access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization), db=Depends(get_db)):
     user_id = get_current_user_id(access_token)
+    # One 14-day trial per owner. A later family keeps the earliest owned
+    # family's created_at, which is the existing trial clock. No new column.
+    # Families that already exist are left alone.
+    trial_anchor = db.execute(
+        select(Family.created_at)
+        .join(FamilyMember, FamilyMember.family_id == Family.id)
+        .where(
+            FamilyMember.user_id == user_id,
+            FamilyMember.is_family_owner.is_(True),
+        )
+        .order_by(Family.created_at.asc(), Family.id.asc())
+    ).scalars().first()
     family = Family(name=payload.name, balance_threshold_min=DEFAULT_FAMILY_BALANCE_THRESHOLD_MIN)
+    if trial_anchor is not None:
+        family.created_at = trial_anchor
     db.add(family)
     db.flush()
     member = FamilyMember(
