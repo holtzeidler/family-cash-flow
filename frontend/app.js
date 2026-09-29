@@ -3320,7 +3320,7 @@ const catReportEnd = document.getElementById("catReportEnd");
 
 // After account creation, we show a one-time "forecast is ready" modal on first calendar load.
 const BW_FORECAST_READY_POPUP_KEY = "bw_forecast_ready_popup";
-const BW_FORECAST_READY_MODAL_VERSION = "9";
+const BW_FORECAST_READY_MODAL_VERSION = "10";
 const catReportYearSelect = document.getElementById("catReportYearSelect");
 const catReportRunBtn = document.getElementById("catReportRunBtn");
 const catReportErr = document.getElementById("catReportErr");
@@ -21965,7 +21965,7 @@ function ensureForecastReadyModal() {
       <div class="modal-actions bw-forecast-ready__actions">
         <button type="button" class="bw-forecast-ready__cta" id="bwForecastReadyStartTourBtn">Take the Tour</button>
         <button type="button" class="bw-forecast-ready__skip" id="bwForecastReadySkipBtn">Explore on My Own</button>
-        <p class="bw-forecast-ready__reassure">You can reopen the tour anytime from Help.</p>
+        <p class="bw-forecast-ready__reassure">You can reopen the tour anytime in Settings, under Preferences.</p>
       </div>
     </div>
   `;
