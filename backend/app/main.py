@@ -56,6 +56,8 @@ class Settings(BaseSettings):
     JWT_SECRET: str = "change-me-in-production"
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_MINUTES: int = 1440
+    # Opt-in "Keep me logged in" lifetime. Not extended on later requests.
+    KEEP_ME_LOGGED_IN_DAYS: int = 30
     CORS_ORIGINS: str = ""
     # Comma-separated emails with platform-wide admin access (user admin console, cross-family).
     PLATFORM_ADMIN_EMAILS: str = "tracy.zeidler@gmail.com,holt.zeidler@gmail.com"
@@ -769,11 +771,33 @@ def _allow_password_reset_request(*, ip: str, email_key: str) -> bool:
         return True
 
 
-def create_access_token(*, user_id: int) -> str:
+def create_access_token(*, user_id: int, minutes: Optional[int] = None) -> str:
     now = datetime.utcnow()
-    exp = now + timedelta(minutes=settings.ACCESS_TOKEN_MINUTES)
+    lifetime = settings.ACCESS_TOKEN_MINUTES if minutes is None else int(minutes)
+    exp = now + timedelta(minutes=lifetime)
     payload = {"sub": str(user_id), "iat": int(now.timestamp()), "exp": int(exp.timestamp())}
     return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
+
+
+def _auth_cookie_flags() -> dict:
+    return {
+        "httponly": True,
+        "samesite": "none" if settings.ENV == "production" else "lax",
+        "secure": settings.ENV == "production",
+        "path": "/",
+    }
+
+
+def _set_access_cookie(response: Response, token: str, *, persistent: bool) -> None:
+    flags = _auth_cookie_flags()
+    if persistent:
+        flags["max_age"] = int(settings.KEEP_ME_LOGGED_IN_DAYS) * 24 * 60 * 60
+    response.set_cookie(key="access_token", value=token, **flags)
+
+
+def _clear_access_cookie(response: Response) -> None:
+    flags = _auth_cookie_flags()
+    response.delete_cookie(key="access_token", **flags)
 
 
 def _read_access_token_from_cookie_or_authorization(
@@ -1546,6 +1570,7 @@ class RegisterIn(BaseModel):
 class LoginIn(BaseModel):
     email: EmailStr
     password: str
+    keep_me_logged_in: bool = False
 
 
 class PasswordResetRequestIn(BaseModel):
@@ -4002,14 +4027,7 @@ def register(payload: RegisterIn, response: Response, db=Depends(get_db)):
             pass
 
     token = create_access_token(user_id=user.id)
-    response.set_cookie(
-        key="access_token",
-        value=token,
-        httponly=True,
-        samesite="none" if settings.ENV == "production" else "lax",
-        secure=settings.ENV == "production",
-        path="/",
-    )
+    _set_access_cookie(response, token, persistent=False)
     if fam is not None:
         try:
             _send_signup_welcome_email(user=user, family=fam)
@@ -4032,22 +4050,19 @@ def login(payload: LoginIn, db=Depends(get_db)):
     user.last_login_at = now
     user.last_seen_at = now
     db.commit()
-    token = create_access_token(user_id=user.id)
-    resp = JSONResponse(content={"ok": True, "access_token": token}, status_code=status.HTTP_200_OK)
-    resp.set_cookie(
-        key="access_token",
-        value=token,
-        httponly=True,
-        samesite="none" if settings.ENV == "production" else "lax",
-        secure=settings.ENV == "production",
-        path="/",
+    persistent = bool(payload.keep_me_logged_in)
+    token = create_access_token(
+        user_id=user.id,
+        minutes=int(settings.KEEP_ME_LOGGED_IN_DAYS) * 24 * 60 if persistent else None,
     )
+    resp = JSONResponse(content={"ok": True, "access_token": token}, status_code=status.HTTP_200_OK)
+    _set_access_cookie(resp, token, persistent=persistent)
     return resp
 
 
 @app.post("/api/auth/logout")
 def logout(response: Response):
-    response.delete_cookie(key="access_token", path="/")
+    _clear_access_cookie(response)
     return {"ok": True}
 
 

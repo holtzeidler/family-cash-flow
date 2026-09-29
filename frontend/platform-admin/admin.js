@@ -8,7 +8,7 @@
 
   function apiBearerAuthHeaders() {
     try {
-      const t = sessionStorage.getItem(BW_API_ACCESS_TOKEN_KEY);
+      const t = sessionStorage.getItem(BW_API_ACCESS_TOKEN_KEY) || localStorage.getItem(BW_API_ACCESS_TOKEN_KEY);
       if (t && String(t).trim()) return { Authorization: `Bearer ${String(t).trim()}` };
     } catch (_) {}
     return {};
@@ -85,6 +85,7 @@
     if (res.status === 401) {
       try {
         sessionStorage.removeItem(BW_API_ACCESS_TOKEN_KEY);
+        localStorage.removeItem(BW_API_ACCESS_TOKEN_KEY);
       } catch (_) {}
       window.location.href = "../login.html";
       return null;

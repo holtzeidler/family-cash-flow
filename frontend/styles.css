@@ -16711,6 +16711,30 @@ body.login-page:not(.signup-page) .login-flow[hidden]{
 body.login-page:not(.signup-page) .login-flow.login-flow--polished{
   gap: 7px;
 }
+body.login-page:not(.signup-page) .login-keep{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 2px 0 2px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: rgba(15, 23, 32, 0.82);
+  cursor: pointer;
+}
+body.login-page:not(.signup-page) .login-keep input{
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  flex: 0 0 auto;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+body.login-page:not(.signup-page) .login-keep:focus-within{
+  outline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
 body.login-page:not(.signup-page) .login-flow__helper{
   margin: 0 0 2px;
   font-size: 0.84rem;
