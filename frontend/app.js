@@ -3323,7 +3323,7 @@ const catReportEnd = document.getElementById("catReportEnd");
 
 // After account creation, we show a one-time "forecast is ready" modal on first calendar load.
 const BW_FORECAST_READY_POPUP_KEY = "bw_forecast_ready_popup";
-const BW_FORECAST_READY_MODAL_VERSION = "8";
+const BW_FORECAST_READY_MODAL_VERSION = "9";
 const catReportYearSelect = document.getElementById("catReportYearSelect");
 const catReportRunBtn = document.getElementById("catReportRunBtn");
 const catReportErr = document.getElementById("catReportErr");
@@ -23181,17 +23181,6 @@ function drawProjectionChart(daily) {
     },
   });
 }
-/** Shown in forecast-ready modal; keep in sync with marketing/plans pages. */
-function getTrialContinueMonthlyPriceDisplay() {
-  return BILLING_MONTHLY_AMOUNT_USD;
-}
-
-function setForecastReadyTrialPricing() {
-  const el = document.getElementById("bwForecastReadyPricingLine");
-  if (!el) return;
-  el.textContent = "Cancel anytime.";
-}
-
 function ensureForecastReadyModal() {
   const existing = document.getElementById("bwForecastReadyModal");
   if (existing) {
@@ -23207,20 +23196,16 @@ function ensureForecastReadyModal() {
     <div class="modal modal--choice modal--forecast-ready" role="dialog" aria-modal="true" aria-labelledby="bwForecastReadyTitle" aria-describedby="bwForecastReadyDesc">
       <h3 id="bwForecastReadyTitle">Your forecast is ready</h3>
       <div id="bwForecastReadyDesc" class="bw-forecast-ready__body">
-        <p class="bw-forecast-ready__tagline">Take a quick walkthrough to learn the basics.</p>
+        <p class="bw-forecast-ready__tagline">Take a 60-second tour to see how to keep it useful.</p>
       </div>
       <div class="modal-actions bw-forecast-ready__actions">
         <button type="button" class="bw-forecast-ready__cta" id="bwForecastReadyStartTourBtn">Take the Tour</button>
-        <button type="button" class="bw-forecast-ready__skip" id="bwForecastReadySkipBtn">Go to Forecast</button>
-        <p class="bw-forecast-ready__reassure">Takes about 60 seconds. Reopen the tour anytime from Help.</p>
+        <button type="button" class="bw-forecast-ready__skip" id="bwForecastReadySkipBtn">Explore on My Own</button>
+        <p class="bw-forecast-ready__reassure">You can reopen the tour anytime from Help.</p>
       </div>
-      <p class="bw-forecast-ready__finePrint" aria-label="Trial and pricing">
-        Free for 14 days <span aria-hidden="true">•</span> <span id="bwForecastReadyPricingLine">Cancel anytime.</span>
-      </p>
     </div>
   `;
   document.body.appendChild(wrap);
-  setForecastReadyTrialPricing();
 
   const close = () => {
     try {
@@ -23272,7 +23257,6 @@ function maybeShowForecastReadyPopup() {
   }
 
   const modal = ensureForecastReadyModal();
-  setForecastReadyTrialPricing();
   try {
     modal.classList.add("modal-overlay--open");
     modal.setAttribute("aria-hidden", "false");
