@@ -73,7 +73,7 @@
       findTarget: findNeedsReviewTarget,
       title: "Plan for bills that change",
       body:
-        "Not every bill is the same each month — that’s okay.\n\nMark an item Amount varies and use your best estimate. BalanceWhiz will remind you to update it when the actual amount is known.",
+        "Not every bill is the same each month — that’s okay.\n\nMark an item as 'Amount varies' and use your best estimate. BalanceWhiz will remind you to update it when the actual amount is known.",
       helperList: {
         lead: "Great for:",
         items: ["Credit card payments", "Utilities", "Other changing bills"],
@@ -108,9 +108,9 @@
       findTarget: findExpectedCalendarConfirmAnchor,
       title: "Keep your forecast accurate",
       body:
-        "Periodically compare your forecast with your actual checking balance and update anything that’s changed.\n\nIf things get out of sync, that’s okay. Enter your current balance and BalanceWhiz will use it as the new starting point for everything ahead.",
+        "Keep your transactions up to date, then periodically reconcile BalanceWhiz with your actual checking balance.\n\nFall behind? No problem. Enter your current balance and use it as a fresh starting point for everything ahead.",
       reconcilePreview: readTourReconcilePreview,
-      note: "Stay detailed when you can. Reset and move forward when you need to.",
+      note: "Stay detailed when you can. Reset and move forward when you need\u00A0to.",
       ctaLabel: "See My Forecast",
       placement: ["below", "above", "right", "left"],
       retryable: true,
