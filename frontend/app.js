@@ -22194,17 +22194,11 @@ function onboardingRecoveryIsAllowedForDraft(draft) {
   }
   const meEmail = state.user?.email ? String(state.user.email).trim().toLowerCase() : "";
   const draftEmail = draft?.signupEmail ? String(draft.signupEmail).trim().toLowerCase() : "";
-  // Never apply another user's leftover draft.
   if (draftEmail && meEmail && draftEmail !== meEmail) return false;
-  if (recoveryPending) return true;
-  // Same-user unfinished setup: allow finishing even if the pending flag was lost
-  // (tab crash after register, before markOnboardingRecoveryPending in older builds).
-  if (draftEmail && meEmail && draftEmail === meEmail) {
-    const hasAccount = !!(draft.account && draft.account.name);
-    const hasTxs = Array.isArray(draft.transactions) && draft.transactions.length > 0;
-    return hasAccount || hasTxs;
-  }
-  return false;
+  const hasAccount = !!(draft.account && draft.account.name);
+  const hasTxs = Array.isArray(draft.transactions) && draft.transactions.length > 0;
+  if (!(hasAccount || hasTxs || recoveryPending)) return false;
+  return !draftEmail || !meEmail || draftEmail === meEmail;
 }
 
 function resolveRecoveryAccountIdFromDraft(draft) {
@@ -22434,11 +22428,9 @@ async function main() {
   // Load accounts first, then paint the forecast. Do not await categories / expected
   // series / onboarding recovery before the calendar — those can hang and leave an
   // empty day grid on screen (loadAccounts used to paint early).
-  let accountsLoadOk = false;
   if (state.activeFamilyId) {
     try {
       await loadAccounts();
-      accountsLoadOk = true;
       if (Array.isArray(state.accounts) && state.accounts.length > 0) {
         try {
           computeMonthDailyBalancesLegacy();
@@ -22448,16 +22440,6 @@ async function main() {
       }
     } catch (e) {
       show(familiesErr, (e && e.message) || "Failed to load accounts");
-    }
-    if (
-      window.__BW_FORCE_VIEW === "calendar" &&
-      accountsLoadOk &&
-      Array.isArray(state.accounts) &&
-      state.accounts.length === 0 &&
-      !readAccountSetupDraftJsonRaw()
-    ) {
-      window.location.replace("/account-setup/?resume=1");
-      return;
     }
   }
   await loadMonthAndCalendar();
@@ -22476,8 +22458,13 @@ async function main() {
       const recovered = await tryRecoverAccountSetupDraft();
       if (recovered) {
         await loadAccounts();
-        accountsLoadOk = true;
         await loadMonthAndCalendar();
+        try {
+          sessionStorage.setItem(BW_FORECAST_READY_POPUP_KEY, "1");
+        } catch (_) {}
+        try {
+          maybeShowForecastReadyPopup();
+        } catch (_) {}
         try {
           updateCalendarEmptyStateBanner();
         } catch (_) {}
@@ -22488,15 +22475,6 @@ async function main() {
           console.warn("[onboarding] recovery wrapper threw", e && e.message);
         }
       } catch (_) {}
-    }
-    if (
-      window.__BW_FORCE_VIEW === "calendar" &&
-      accountsLoadOk &&
-      Array.isArray(state.accounts) &&
-      state.accounts.length === 0
-    ) {
-      window.location.replace("/account-setup/?resume=1");
-      return;
     }
     await loadExpectedTransactions();
   }

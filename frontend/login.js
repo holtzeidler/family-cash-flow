@@ -86,7 +86,7 @@ function readOnboardingDraftEmail() {
 function keepOnboardingDraftForLogin(email) {
   const loginEmail = String(email || "").trim().toLowerCase();
   const draftEmail = readOnboardingDraftEmail();
-  if (!draftEmail || !loginEmail || draftEmail !== loginEmail) {
+  if (draftEmail && loginEmail && draftEmail !== loginEmail) {
     clearOnboardingDraftStorage();
     return;
   }
@@ -94,6 +94,7 @@ function keepOnboardingDraftForLogin(email) {
     const sessionDraft = sessionStorage.getItem(BW_ACCOUNT_SETUP_DRAFT_KEY) || "";
     const localDraft = localStorage.getItem(BW_ACCOUNT_SETUP_DRAFT_KEY) || "";
     if (!sessionDraft && localDraft) sessionStorage.setItem(BW_ACCOUNT_SETUP_DRAFT_KEY, localDraft);
+    if (sessionDraft && !localDraft) localStorage.setItem(BW_ACCOUNT_SETUP_DRAFT_KEY, sessionDraft);
   } catch (_) {}
   try {
     sessionStorage.setItem(BW_ONBOARDING_RECOVERY_PENDING_KEY, "1");
