@@ -23387,14 +23387,20 @@ function mergeAccountSetupDraftObjects(sessionObj, localObj) {
 const BW_ONBOARDING_RECOVERY_PENDING_KEY = "bw_onboarding_recovery_pending";
 
 function readAccountSetupDraftJsonRaw() {
+  let sessionJson = "";
+  let localJson = "";
   try {
-    localStorage.removeItem("bw_account_setup_draft");
+    sessionJson = sessionStorage.getItem("bw_account_setup_draft") || "";
   } catch (_) {}
   try {
-    return sessionStorage.getItem("bw_account_setup_draft") || "";
-  } catch (_) {
-    return "";
+    localJson = localStorage.getItem("bw_account_setup_draft") || "";
+  } catch (_) {}
+  if (!sessionJson && localJson) {
+    try {
+      sessionStorage.setItem("bw_account_setup_draft", localJson);
+    } catch (_) {}
   }
+  return sessionJson || localJson || "";
 }
 
 function clearAccountSetupDraftJsonStorage() {
@@ -23407,6 +23413,9 @@ function clearAccountSetupDraftJsonStorage() {
   try {
     sessionStorage.removeItem(BW_ONBOARDING_RECOVERY_PENDING_KEY);
   } catch (_) {}
+  try {
+    localStorage.removeItem(BW_ONBOARDING_RECOVERY_PENDING_KEY);
+  } catch (_) {}
 }
 
 function onboardingRecoveryIsAllowedForDraft(draft) {
@@ -23414,6 +23423,11 @@ function onboardingRecoveryIsAllowedForDraft(draft) {
   try {
     recoveryPending = sessionStorage.getItem(BW_ONBOARDING_RECOVERY_PENDING_KEY) === "1";
   } catch (_) {}
+  if (!recoveryPending) {
+    try {
+      recoveryPending = localStorage.getItem(BW_ONBOARDING_RECOVERY_PENDING_KEY) === "1";
+    } catch (_) {}
+  }
   const meEmail = state.user?.email ? String(state.user.email).trim().toLowerCase() : "";
   const draftEmail = draft?.signupEmail ? String(draft.signupEmail).trim().toLowerCase() : "";
   // Never apply another user's leftover draft.
@@ -23656,9 +23670,11 @@ async function main() {
   // Load accounts first, then paint the forecast. Do not await categories / expected
   // series / onboarding recovery before the calendar — those can hang and leave an
   // empty day grid on screen (loadAccounts used to paint early).
+  let accountsLoadOk = false;
   if (state.activeFamilyId) {
     try {
       await loadAccounts();
+      accountsLoadOk = true;
       if (Array.isArray(state.accounts) && state.accounts.length > 0) {
         try {
           computeMonthDailyBalancesLegacy();
@@ -23668,6 +23684,16 @@ async function main() {
       }
     } catch (e) {
       show(familiesErr, (e && e.message) || "Failed to load accounts");
+    }
+    if (
+      window.__BW_FORCE_VIEW === "calendar" &&
+      accountsLoadOk &&
+      Array.isArray(state.accounts) &&
+      state.accounts.length === 0 &&
+      !readAccountSetupDraftJsonRaw()
+    ) {
+      window.location.replace("/account-setup/?resume=1");
+      return;
     }
   }
   await loadMonthAndCalendar();
@@ -23686,6 +23712,7 @@ async function main() {
       const recovered = await tryRecoverAccountSetupDraft();
       if (recovered) {
         await loadAccounts();
+        accountsLoadOk = true;
         await loadMonthAndCalendar();
         try {
           updateCalendarEmptyStateBanner();
@@ -23697,6 +23724,15 @@ async function main() {
           console.warn("[onboarding] recovery wrapper threw", e && e.message);
         }
       } catch (_) {}
+    }
+    if (
+      window.__BW_FORCE_VIEW === "calendar" &&
+      accountsLoadOk &&
+      Array.isArray(state.accounts) &&
+      state.accounts.length === 0
+    ) {
+      window.location.replace("/account-setup/?resume=1");
+      return;
     }
     await loadExpectedTransactions();
   }
