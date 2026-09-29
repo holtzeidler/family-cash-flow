@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Sample forecast — BalanceWhiz</title>
+    <meta name="description" content="A short public walkthrough of BalanceWhiz using a fictional checking forecast. No account required." />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="theme-color" content="#0B3D2E" />
+    <link rel="icon" href="../favicon.ico" sizes="any" />
+    <link rel="icon" href="../favicon-32.png" type="image/png" sizes="32x32" />
+    <link rel="icon" href="../favicon-16.png" type="image/png" sizes="16x16" />
+    <link rel="apple-touch-icon" href="../apple-touch-icon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="../styles.css?v=802" />
+    <style>
+      body.preview-page {
+        background: #f4f7f6;
+      }
+      .preview-page .preview-banner {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px 16px;
+        margin: 0 0 12px;
+        padding: 10px 12px;
+        border: 1px solid rgba(11, 61, 46, 0.12);
+        border-radius: 12px;
+        background: #fff;
+      }
+      .preview-page .preview-banner__kicker {
+        margin: 0;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: rgba(11, 61, 46, 0.72);
+      }
+      .preview-page .preview-banner__title {
+        margin: 2px 0 0;
+        font-size: 0.95rem;
+        font-weight: 650;
+        color: rgba(17, 24, 39, 0.92);
+      }
+      .preview-page .preview-banner__meta {
+        margin: 0;
+        font-size: 0.84rem;
+        color: rgba(71, 85, 105, 0.88);
+      }
+      .preview-page .preview-replay {
+        appearance: none;
+        border: 1px solid rgba(11, 61, 46, 0.18);
+        background: #fff;
+        color: rgba(11, 61, 46, 0.92);
+        border-radius: 999px;
+        padding: 8px 14px;
+        font: inherit;
+        font-size: 0.84rem;
+        font-weight: 650;
+        cursor: pointer;
+      }
+      .preview-page .preview-replay:focus-visible {
+        outline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
+        outline-offset: 2px;
+      }
+      .preview-page .preview-stage {
+        background: #fff;
+        border: 1px solid rgba(15, 23, 42, 0.06);
+        border-radius: 16px;
+        padding: 12px 10px 14px;
+        box-shadow: 0 1px 2px rgba(17, 24, 39, 0.04);
+      }
+      .preview-page .preview-finale-note {
+        margin: 8px 0 0;
+        font-size: 0.8rem;
+        color: rgba(71, 85, 105, 0.8);
+      }
+      .preview-page .bw-tour-tooltip__cta.preview-tour-link {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none;
+      }
+      .preview-page .preview-back {
+        margin-right: auto;
+      }
+      @media (max-width: 768px) {
+        .preview-page .calendar-dow-row {
+          display: none;
+        }
+        .preview-page .preview-stage {
+          padding: 8px;
+        }
+      }
+    </style>
+  </head>
+  <body class="preview-page">
+    <a class="skip-link" href="#preview-calendar">Skip to sample forecast</a>
+    <div class="container">
+      <div class="top-nav" role="navigation" aria-label="Primary">
+        <div class="top-nav__inner top-nav__inner--simple">
+          <div class="top-nav__title" aria-label="App title">
+            <div class="app-title app-title--logo">
+              <a href="/" aria-label="BalanceWhiz home">
+                <img
+                  class="app-logo"
+                  src="../assets/balance-whiz-logo-on-accent.svg?v=20260518"
+                  width="293"
+                  height="44"
+                  alt="BalanceWhiz"
+                  decoding="async"
+                />
+              </a>
+            </div>
+          </div>
+          <div class="top-nav__actions" aria-label="Account actions">
+            <a href="/help.html" class="top-nav__logout">FAQ</a>
+          </div>
+        </div>
+      </div>
+
+      <main id="main-content">
+        <div class="preview-banner">
+          <div>
+            <p class="preview-banner__kicker">Sample forecast</p>
+            <h1 class="preview-banner__title">A fictional checking account</h1>
+          </div>
+          <p class="preview-banner__meta">Minimum balance $1,500 · Not your data</p>
+          <button type="button" class="preview-replay" id="previewReplay" hidden>Replay walkthrough</button>
+        </div>
+        <div class="preview-stage">
+          <div class="calendar-dow-row" aria-hidden="true">
+            <div class="cal-dow">Mon</div>
+            <div class="cal-dow">Tue</div>
+            <div class="cal-dow">Wed</div>
+            <div class="cal-dow">Thu</div>
+            <div class="cal-dow">Fri</div>
+            <div class="cal-dow">Sat</div>
+            <div class="cal-dow">Sun</div>
+          </div>
+          <div id="preview-calendar" class="calendar" aria-label="Sample checking forecast for October 5 to 11"></div>
+        </div>
+      </main>
+    </div>
+    <script src="./preview.js?v=1"></script>
+  </body>
+</html>
