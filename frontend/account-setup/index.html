@@ -32,7 +32,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=783" />
+    <link rel="stylesheet" href="../styles.css?v=784" />
   </head>
   <body class="login-page signup-page account-setup-page">
     <div class="container">
@@ -190,7 +190,7 @@
                 >
                   <div class="account-setup-step2-groups">
                     <section class="account-setup-field-group" aria-labelledby="accountSetupGroupAccount">
-                      <h3 class="account-setup-field-group__title" id="accountSetupGroupAccount">Step 1 of 3 · Account setup</h3>
+                      <h3 class="account-setup-field-group__title" id="accountSetupGroupAccount">Step 2 of 4 · Account setup</h3>
                       <div class="account-setup-field-group__fields">
                   <div class="row">
                     <div class="form-row-h">
@@ -274,7 +274,7 @@
                   class="account-setup-wizard__panel auth-section__body"
                   id="accountSetupWizardPanel2"
                   role="tabpanel"
-                  aria-label="Step 3 of 4: First income and expenses"
+                  aria-label="Step 3 of 4: First income and bills"
                   aria-hidden="true"
                   inert
                   data-step3-phase="intro"
@@ -282,12 +282,8 @@
                   <div id="accountSetupWizardStep3Intro" class="account-setup-step3-intro">
                     <section class="account-setup-step3-section account-setup-step3-section--guidance" aria-label="What to add first">
                       <div class="account-setup-step3-recommend">
-                        <p class="account-setup-step3-recommend__eyebrow">Good starting points:</p>
-                        <ul class="account-setup-step3-checklist" aria-label="Common first items">
-                          <li>Paycheck or income</li>
-                          <li>Rent, mortgage, or another major bill</li>
-                          <li>Credit card or utility</li>
-                        </ul>
+                        <p class="account-setup-step3-recommend__lead">Start with the big, predictable items.</p>
+                        <p class="account-setup-step3-recommend__note">Paychecks, mortgage or rent, credit cards, utilities — you can add everything else later.</p>
                       </div>
                     </section>
                     <p id="accountSetupStep3Summary" class="account-setup-step3-summary" aria-live="polite" hidden></p>
@@ -315,7 +311,7 @@
                     <div class="form-row-h__field">
                       <div id="accountSetupKindToggle" class="kind-toggle" role="radiogroup" aria-label="Transaction type">
                         <label class="kind-opt"><input type="radio" name="asTxKind" value="income" /> Add Income</label>
-                        <label class="kind-opt"><input type="radio" name="asTxKind" value="expense" checked /> Add Expense</label>
+                        <label class="kind-opt"><input type="radio" name="asTxKind" value="expense" checked /> Add Bill</label>
                       </div>
                     </div>
                   </div>
@@ -478,7 +474,7 @@
                           aria-label="Transaction type"
                         >
                           <label class="kind-opt"><input type="radio" name="asExpTxKind" value="income" /> Add Income</label>
-                          <label class="kind-opt"><input type="radio" name="asExpTxKind" value="expense" checked /> Add Expense</label>
+                          <label class="kind-opt"><input type="radio" name="asExpTxKind" value="expense" checked /> Add Bill</label>
                         </div>
                       </div>
                     </div>
@@ -794,6 +790,6 @@
       </div>
     </div>
 
-    <script src="../signup/signup.js?v=123"></script>
+    <script src="../signup/signup.js?v=124"></script>
   </body>
 </html>

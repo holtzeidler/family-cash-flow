@@ -1021,7 +1021,7 @@ function formatAccountSetupStep3Summary(incomeCount, expenseCount) {
   const e = Number(expenseCount) || 0;
   if (!i && !e) return "";
   const iPart = i === 1 ? "1 income" : `${i} income`;
-  const ePart = e === 1 ? "1 expense" : `${e} expenses`;
+  const ePart = e === 1 ? "1 bill" : `${e} bills`;
   if (i && e) return `✓ ${iPart} added · ✓ ${ePart} added`;
   if (i) return `✓ ${iPart} added`;
   return `✓ ${ePart} added`;
@@ -1150,14 +1150,14 @@ function getAccountSetupStepCopy(step, ctx) {
         };
       }
       return {
-        title: "Add your first income & expenses",
-        subtitle: "Your paychecks help us show when your balance rises.",
+        title: "Add your first income & bills",
+        subtitle: "Add a few recurring items so we can start showing where your balance is headed.",
       };
     }
     case 3:
       return {
         title: "Add another recurring item",
-        subtitle: "Start with the recurring expenses that have the biggest impact on checking.",
+        subtitle: "Start with the recurring bills that have the biggest impact on checking.",
       };
     case 4:
       return {
@@ -4232,8 +4232,8 @@ function renderAccountSetupSuccessSummary(listId) {
   const items = [];
   if (incomeCount === 1) items.push("Income added");
   else if (incomeCount > 1) items.push(`${incomeCount} income sources`);
-  if (expenseCount === 1) items.push("Recurring expense added");
-  else if (expenseCount > 1) items.push(`${expenseCount} recurring expenses`);
+  if (expenseCount === 1) items.push("Recurring bill added");
+  else if (expenseCount > 1) items.push(`${expenseCount} recurring bills`);
   if (items.length === 0) {
     const li = document.createElement("li");
     li.className = "account-setup-success-summary__empty";
