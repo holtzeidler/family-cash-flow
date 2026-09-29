@@ -375,6 +375,11 @@ class User(Base):
     last_seen_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     complimentary_access: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     complimentary_access_expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    # Why the person started using BalanceWhiz. Null means the question was never
+    # answered (including every account created before this column). A JSON array
+    # of stable ids, possibly empty, means they finished the optional step.
+    onboarding_goals: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    onboarding_goal_other: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
 
     memberships: Mapped[list[FamilyMember]] = relationship(back_populates="user")
 
@@ -1580,6 +1585,35 @@ class RegisterIn(BaseModel):
         max_length=80,
         validation_alias=AliasChoices("last_name", "lastName"),
     )
+    # Omitted by older clients. Present (including []) only when this signup
+    # showed the optional "what matters most" step.
+    onboarding_goals: Optional[list[str]] = None
+    onboarding_goal_other: Optional[str] = Field(default=None, max_length=80)
+
+    @field_validator("onboarding_goals")
+    @classmethod
+    def _normalize_goals(cls, v: object) -> object:
+        if v is None:
+            return None
+        if not isinstance(v, list):
+            raise ValueError("Goals must be a list")
+        return _normalize_onboarding_goals(v)
+
+    @field_validator("onboarding_goal_other", mode="before")
+    @classmethod
+    def _clean_goal_other(cls, v: object) -> object:
+        if v is None:
+            return None
+        if not isinstance(v, str):
+            raise ValueError("Other goal contains invalid characters")
+        text = " ".join(v.split())
+        if not text:
+            return None
+        if len(text) > 80:
+            raise ValueError("Other goal is too long")
+        if any(ch in text for ch in "<>") or any(ord(ch) < 32 for ch in text):
+            raise ValueError("Other goal contains invalid characters")
+        return text
 
     @field_validator("first_name", "last_name", mode="before")
     @classmethod
@@ -1634,6 +1668,10 @@ class UserOut(BaseModel):
     name: Optional[str] = None
     first_name: Optional[str] = None
     last_name: Optional[str] = None
+    # Null when the optional onboarding question was never saved. Empty list when
+    # they continued without choosing. Not included on public or operator lists.
+    onboarding_goals: Optional[list[str]] = None
+    onboarding_goal_other: Optional[str] = None
 
 
 class ProfileUpdateIn(BaseModel):
@@ -3063,6 +3101,7 @@ def startup_populate_schema():
     _migrate_platform_roles_subscriber_admin()
     _ensure_user_complimentary_columns()
     _ensure_user_name_part_columns()
+    _ensure_user_onboarding_goal_columns()
     _ensure_platform_admin_audit_table()
     _ensure_reimbursements_table()
     _ensure_vendor_category_mappings_table()
@@ -3690,6 +3729,80 @@ def _ensure_user_name_part_columns() -> None:
             conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_name VARCHAR(80)"))
 
 
+def _ensure_user_onboarding_goal_columns() -> None:
+    """Add nullable goal columns. Existing rows stay null; nothing is backfilled."""
+    with engine.begin() as conn:
+        if settings.DATABASE_URL.startswith("sqlite"):
+            cols = conn.execute(text("PRAGMA table_info(users)")).fetchall()
+            names = {str(row[1]) for row in cols}
+            if "onboarding_goals" not in names:
+                conn.execute(text("ALTER TABLE users ADD COLUMN onboarding_goals TEXT"))
+            if "onboarding_goal_other" not in names:
+                conn.execute(text("ALTER TABLE users ADD COLUMN onboarding_goal_other VARCHAR(80)"))
+        else:
+            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_goals TEXT"))
+            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_goal_other VARCHAR(80)"))
+
+
+ONBOARDING_GOAL_IDS = (
+    "avoid_overdrafts",
+    "safe_to_move",
+    "upcoming_bills",
+    "money_anxiety",
+    "keep_in_savings",
+    "other",
+)
+_ONBOARDING_GOAL_ALIASES = {
+    "safe_to_spend": "safe_to_move",
+    "prepare_bills": "upcoming_bills",
+    "reduce_anxiety": "money_anxiety",
+    "maximize_interest": "keep_in_savings",
+}
+
+
+def _normalize_onboarding_goals(values: list) -> list[str]:
+    """Stable ids only. Older draft ids map forward. Unknown values are rejected."""
+    out: list[str] = []
+    seen: set[str] = set()
+    for raw in values:
+        if not isinstance(raw, str):
+            raise ValueError("Goal must be a known identifier")
+        key = _ONBOARDING_GOAL_ALIASES.get(raw.strip(), raw.strip())
+        if key not in ONBOARDING_GOAL_IDS:
+            raise ValueError("Goal must be a known identifier")
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(key)
+    return out
+
+
+def _onboarding_goals_from_stored(raw: object) -> Optional[list[str]]:
+    """Null stays null. A stored list is returned even when empty. Bad data does not raise."""
+    if raw is None:
+        return None
+    raw_text = str(raw).strip()
+    if not raw_text:
+        return None
+    try:
+        parsed = json.loads(raw_text)
+    except (TypeError, ValueError):
+        return None
+    if not isinstance(parsed, list):
+        return None
+    out: list[str] = []
+    seen: set[str] = set()
+    for item in parsed:
+        if not isinstance(item, str):
+            continue
+        key = _ONBOARDING_GOAL_ALIASES.get(item.strip(), item.strip())
+        if key not in ONBOARDING_GOAL_IDS or key in seen:
+            continue
+        seen.add(key)
+        out.append(key)
+    return out
+
+
 def _account_display_name(first_name: str, last_name: str) -> Optional[str]:
     """Combined label for existing name consumers (admin, Stripe). Not the stored identity."""
     parts = [p for p in ((first_name or "").strip(), (last_name or "").strip()) if p]
@@ -3721,6 +3834,8 @@ def _user_out(user: User) -> UserOut:
         name=user.name,
         first_name=getattr(user, "first_name", None),
         last_name=getattr(user, "last_name", None),
+        onboarding_goals=_onboarding_goals_from_stored(getattr(user, "onboarding_goals", None)),
+        onboarding_goal_other=getattr(user, "onboarding_goal_other", None) or None,
     )
 
 
@@ -4250,6 +4365,10 @@ def register(payload: RegisterIn, response: Response, db=Depends(get_db)):
         password_hash=hash_password(payload.password),
         platform_role="subscriber",
     )
+    if payload.onboarding_goals is not None:
+        user.onboarding_goals = json.dumps(payload.onboarding_goals)
+        note = payload.onboarding_goal_other if "other" in payload.onboarding_goals else None
+        user.onboarding_goal_other = note
     now = datetime.utcnow()
     user.last_login_at = now
     user.last_seen_at = now

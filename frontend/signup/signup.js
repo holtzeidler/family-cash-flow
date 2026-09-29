@@ -1162,7 +1162,7 @@ function getAccountSetupStepCopy(step, ctx) {
     case 4:
       return {
         title: "What matters most to you?",
-        subtitle: "Your forecast is ready—pick what you want help with first.",
+        subtitle: "What would you most like BalanceWhiz to help with?",
       };
     default:
       return { title: "Let’s build your forecast", subtitle: "Start simple. You can refine everything later." };
@@ -1337,6 +1337,7 @@ function syncAccountSetupWizardShellButtons() {
     if (signupBtn) {
       signupBtn.style.display = "";
       signupBtn.textContent = "See My Forecast";
+      signupBtn.disabled = false;
       // Ensure primary styling in the final step as well.
       signupBtn.classList.remove("secondary");
       signupBtn.classList.add("top-nav__logout");
@@ -2742,6 +2743,61 @@ async function accountSetupSaveExpenseClick() {
   getAccountSetupStep3HubFocusTarget()?.focus();
 }
 
+const ACCOUNT_SETUP_SURVEY_IDS = [
+  "avoid_overdrafts",
+  "safe_to_move",
+  "upcoming_bills",
+  "money_anxiety",
+  "keep_in_savings",
+  "other",
+];
+const ACCOUNT_SETUP_SURVEY_ID_ALIASES = {
+  safe_to_spend: "safe_to_move",
+  prepare_bills: "upcoming_bills",
+  reduce_anxiety: "money_anxiety",
+  maximize_interest: "keep_in_savings",
+};
+
+function normalizeAccountSetupSurveyIds(values) {
+  const out = [];
+  const seen = new Set();
+  const list = Array.isArray(values) ? values : [];
+  for (const raw of list) {
+    const key = String(raw || "").trim();
+    const id = ACCOUNT_SETUP_SURVEY_ID_ALIASES[key] || key;
+    if (!ACCOUNT_SETUP_SURVEY_IDS.includes(id) || seen.has(id)) continue;
+    seen.add(id);
+    out.push(id);
+  }
+  return out;
+}
+
+function readAccountSetupSurveySelectionFromDom() {
+  const wrap = document.getElementById("accountSetupWizardPanel4");
+  const buttons = wrap ? [...wrap.querySelectorAll("[data-as-survey-opt]")] : [];
+  const selected = normalizeAccountSetupSurveyIds(
+    buttons
+      .filter((b) => b.classList.contains("is-active"))
+      .map((b) => b.getAttribute("data-as-survey-opt"))
+  );
+  const otherVal = String(document.getElementById("accountSetupSurveyOther")?.value || "").trim();
+  return {
+    surveyHelpWith: selected,
+    surveyOther: selected.includes("other") ? otherVal : "",
+  };
+}
+
+function persistAccountSetupSurveySelection() {
+  try {
+    const rawDraft = readAccountSetupDraftRaw() || {};
+    persistAccountSetupDraftObject({
+      ...rawDraft,
+      wizardFlowVersion: ACCOUNT_SETUP_WIZARD_FLOW_VERSION,
+      ...readAccountSetupSurveySelectionFromDom(),
+    });
+  } catch (_) {}
+}
+
 function hydrateAccountSetupSurveyFromDraft(o) {
   if (!o || typeof o !== "object") return;
   const wrap = document.getElementById("accountSetupWizardPanel4");
@@ -2749,15 +2805,16 @@ function hydrateAccountSetupSurveyFromDraft(o) {
   let opts = o.surveyHelpWith;
   if (opts == null) return;
   if (typeof opts === "string") opts = [opts];
-  if (!Array.isArray(opts) || !opts.length) return;
+  if (!Array.isArray(opts)) return;
+  const selected = normalizeAccountSetupSurveyIds(opts);
   const buttons = [...wrap.querySelectorAll("[data-as-survey-opt]")];
   for (const b of buttons) {
     const k = String(b.getAttribute("data-as-survey-opt") || "");
-    const on = !!k && opts.includes(k);
+    const on = !!k && selected.includes(k);
     b.classList.toggle("is-active", on);
     b.setAttribute("aria-pressed", on ? "true" : "false");
   }
-  const hasOther = opts.includes("other");
+  const hasOther = selected.includes("other");
   const otherWrap = document.getElementById("accountSetupSurveyOtherWrap");
   const otherInput = document.getElementById("accountSetupSurveyOther");
   if (otherWrap) otherWrap.hidden = !hasOther;
@@ -3237,10 +3294,23 @@ async function doSignup() {
       return;
     }
 
+    const regBody = { first_name: firstName, last_name: lastName, email, password };
+    try {
+      const rawGoals = readAccountSetupDraftRaw();
+      if (rawGoals && Array.isArray(rawGoals.surveyHelpWith)) {
+        const goals = normalizeAccountSetupSurveyIds(rawGoals.surveyHelpWith);
+        regBody.onboarding_goals = goals;
+        if (goals.includes("other")) {
+          const note = String(rawGoals.surveyOther || "").trim();
+          if (note) regBody.onboarding_goal_other = note;
+        }
+      }
+    } catch (_) {}
+
     const reg = await requestWithRetry(
       "/api/auth/register",
       "POST",
-      { first_name: firstName, last_name: lastName, email, password },
+      regBody,
       { maxMs: 14000 }
     );
     if (!reg.ok) {
@@ -3775,24 +3845,13 @@ function onSignupPrimaryClickInner() {
       if (st === 4) {
         setCallout(signupCalloutEl, "", "");
         try {
-          const wrap = document.getElementById("accountSetupWizardPanel4");
-          const buttons = wrap ? [...wrap.querySelectorAll("[data-as-survey-opt]")] : [];
-          const selected = buttons
-            .filter((b) => b.classList.contains("is-active"))
-            .map((b) => String(b.getAttribute("data-as-survey-opt") || "").trim())
-            .filter(Boolean);
-          const otherVal = String(document.getElementById("accountSetupSurveyOther")?.value || "").trim();
-          if (!selected.length) {
-            setCallout(signupCalloutEl, "Please choose at least one option.", "error");
-            return;
-          }
+          const selection = readAccountSetupSurveySelectionFromDom();
           const rawDraft = readAccountSetupDraftRaw() || {};
           persistAccountSetupDraftObject({
               ...rawDraft,
               wizardFlowVersion: ACCOUNT_SETUP_WIZARD_FLOW_VERSION,
               wizardStep: 4,
-              surveyHelpWith: selected,
-              surveyOther: selected.includes("other") ? otherVal : "",
+              ...selection,
             });
 
         } catch (_) {}
@@ -3948,11 +4007,13 @@ try {
         b.classList.toggle("is-active");
         b.setAttribute("aria-pressed", b.classList.contains("is-active") ? "true" : "false");
         syncOtherWrap();
+        persistAccountSetupSurveySelection();
         if (String(b.getAttribute("data-as-survey-opt")) === "other" && b.classList.contains("is-active") && otherInput) {
           otherInput.focus();
         }
       });
     }
+    otherInput?.addEventListener("input", () => persistAccountSetupSurveySelection());
   }
 } catch (_) {}
 function handleAccountSetupBack(e) {
@@ -4021,6 +4082,7 @@ function handleAccountSetupBack(e) {
     return;
   }
   if (s === 4) {
+    persistAccountSetupSurveySelection();
     const raw = readAccountSetupDraftRaw() || {};
     const wantExpenseForm = String(raw.expensePhase || "") === "form";
     // If the user never opened the expense form, going "back" from the survey should
