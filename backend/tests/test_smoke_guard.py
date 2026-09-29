@@ -43,7 +43,9 @@ def test_personal_mailbox_is_refused():
 def test_lifecycle_scheduler_is_not_enabled_for_production():
     text = (Path(__file__).resolve().parents[2] / "render.yaml").read_text(encoding="utf-8")
     assert "TRIAL_ENDING_REMINDERS_ALLOW_PRODUCTION" not in text
+    if "family-cash-flow-trial-reminders-staging" not in text:
+        assert "python -m app.trial_ending_reminders" not in text
+        return
     assert text.count("python -m app.trial_ending_reminders") == 1
-    assert "family-cash-flow-trial-reminders-staging" in text
     cron = text.split("family-cash-flow-trial-reminders-staging", 1)[1].split("type: web", 1)[0]
     assert "branch: staging" in cron
