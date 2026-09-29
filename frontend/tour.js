@@ -14,7 +14,7 @@
  *   - window.BW.tour.hasSeen()      Returns true if the user has already
  *                                   completed or explicitly skipped the tour.
  *   - window.BW.tour.markSkipped()  Mark the tour as skipped (used by the
- *                                   intro modal's "Go to Forecast" CTA).
+ *                                   intro modal's "Explore on My Own" CTA).
  *
  * Visual approach (per design direction):
  *   - A very light backdrop (~18% opacity) instead of heavy darkening.
@@ -50,18 +50,18 @@
   /**
    * Tour progression: Input → Variable attention → Awareness → Accuracy.
    *
-   * Step 1 (Input)     — calendar grid: add bills, paychecks, and transfers.
+   * Step 1 (Input)     — calendar grid: add upcoming paychecks, bills, and transfers.
    * Step 2 (Attention) — Needs review: variable amounts and low maintenance.
-   * Step 3 (Awareness) — Cash Outlook: why the forecast matters (alerts).
-   * Step 4 (Accuracy)  — reconcile: lightweight maintenance to close the tour.
+   * Step 3 (Awareness) — Cash Health: the forecast against the chosen minimum balance.
+   * Step 4 (Accuracy)  — balance check-in: lightweight maintenance to close the tour.
    */
   const STEPS = [
     {
       id: "calendar-add",
       findTarget: findFutureCalendarCellTarget,
-      title: "Add bills, paychecks, and transfers",
+      title: "Add what’s coming up",
       body:
-        "Click any day to add bills, paychecks, transfers, or spending.\nStart simple — you can refine everything later.",
+        "Click any day to add a paycheck, bill, transfer, or other planned expense.\n\nStart with the things that meaningfully affect your balance. You don’t need to track every purchase.",
       ctaLabel: "Next",
       placement: ["below", "above", "right", "left"],
       retryable: true,
@@ -70,13 +70,12 @@
     {
       id: "needs-review",
       findTarget: findNeedsReviewTarget,
-      title: "Some bills change month to month — and that's okay",
+      title: "Plan for bills that change",
       body:
-        'When you mark an item as "amount varies month to month," BalanceWhiz reminds you to update it later.',
-      instruction: "Variable items appear in Needs Review when it's time to update them.",
+        "Not every bill is the same each month — that’s okay.\n\nMark an item Amount varies and use your best estimate. BalanceWhiz will remind you to update it when the actual amount is known.",
       helperList: {
-        lead: "Good for",
-        items: ["Credit card payments", "Utilities", "Groceries or irregular spending"],
+        lead: "Great for:",
+        items: ["Credit card payments", "Utilities", "Other changing bills"],
       },
       note: "Everything else can stay on autopilot.",
       ctaLabel: "Next",
@@ -92,38 +91,26 @@
     },
     {
       id: "cash-outlook",
-      findTarget: findCashOutlookTarget,
+      findTarget: findCashHealthTarget,
       title: "Know when cash gets tight",
-      context: "BalanceWhiz watches for low-balance days.",
-      body: "You'll get alerts before your balance drops too low.",
-      helperExample: { label: "Example minimum balance", amount: "$1,000" },
+      body:
+        "BalanceWhiz watches your forecast against the minimum balance you chose.\n\nIf a future day falls below your target, we’ll flag it so you can see the problem ahead of time.",
+      helperExample: readTourMinimumBalanceExample,
       note: "You can change this anytime.",
       ctaLabel: "Next",
       placement: ["right", "left", "below", "above"],
       targetExtraClass: "bw-tour-target--cash-outlook",
       dimSelector: ".sidebar",
-      supportHighlights: [
-        {
-          findEl: findNeedsReviewTarget,
-          className: "bw-tour-support-highlight--sidebar-soft",
-        },
-      ],
     },
     {
       id: "reconcile",
       findTarget: findExpectedCalendarConfirmAnchor,
       title: "Keep your forecast accurate",
-      body: "Update your forecast occasionally so it stays aligned with your real checking balance.",
-      instruction: "Click the balance at the bottom of a day to update it.",
-      reconcilePreview: {
-        dayNum: "17",
-        dayLabel: "Thu",
-        status: "Reconciled through May 17",
-        balanceLabel: "Actual checking balance",
-        balance: "$3,240",
-      },
-      note: "You're set — update your balance occasionally and update variable bills when they change.",
-      ctaLabel: "See My Future Balance",
+      body:
+        "Every so often, update BalanceWhiz with your actual checking balance.\n\nWe’ll use that as the new starting point for everything ahead.",
+      reconcilePreview: readTourReconcilePreview,
+      note: "You don’t need to match every transaction. Just update your balance and keep going.",
+      ctaLabel: "Start Exploring",
       placement: ["below", "above", "right", "left"],
       retryable: true,
       targetExtraClass: "bw-tour-target--reconcile-head",
@@ -135,25 +122,9 @@
   // ---------------------------------------------------------------------
 
   /**
-   * Pick a future calendar cell to anchor Step 1 on. Preference order:
-   *   1. The cell flagged `.is-today`'s parent cell (i.e. today's cell).
-   *   2. The first `.cal-cell[data-iso]` whose ISO date is strictly in the future.
-   *   3. The first `.cal-cell[data-iso]` that's in the current month at all
-   *      (regardless of past/future), so we always have *something* to point at.
-   * Returns null if the grid hasn't rendered any cells yet (caller will retry).
-   */
-  /**
-   * Pick the best Cash Outlook anchor for Step 3. Preference order:
-   *   1. The active cash pressure alert
-   *      (`#sidebarLowBalanceBanner`) if it has rendered content.
-   *   2. The high-balance equivalent (`#sidebarHighBalanceBanner`).
-   *   3. The Cash Outlook section wrapper
-   *      (`#sidebarBalanceThresholdAlerts`) — even when there's no
-   *      active warning, this still anchors the user to the area of
-   *      the sidebar that *will* show alerts so the educational copy
-   *      lands on the right region.
-   * Returns null only if the sidebar isn't rendered yet (caller will
-   * gracefully advance past the step).
+   * Step 1 prefers a visible day that already has a planned item (today or
+   * later first), then today, then the next future day.
+   * Step 3 prefers the Cash Health card, then the low-balance flag inside it.
    */
   function isVisible(el) {
     if (!el) return false;
@@ -161,6 +132,12 @@
     if (cs.display === "none" || cs.visibility === "hidden") return false;
     const r = el.getBoundingClientRect();
     return r.width > 0 && r.height > 0;
+  }
+
+  function findCashHealthTarget() {
+    const card = document.getElementById("sidebarCashHealthCard");
+    if (isVisible(card)) return card;
+    return findCashOutlookTarget();
   }
 
   function findCashOutlookTarget() {
@@ -177,31 +154,26 @@
     return null;
   }
 
+  function calendarCellHasPlannedItem(cell) {
+    return !!cell.querySelector(".cal-day-tx-line:not(.cal-day-tx-line--start-balance)");
+  }
+
   function findFutureCalendarCellTarget() {
     const today = new Date();
     const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
     const cells = Array.from(
       document.querySelectorAll(".cal-cell[data-iso]:not(.cal-cell--out):not(.cal-cell--before-start)")
-    );
+    ).filter((cell) => isVisible(cell));
     if (!cells.length) return null;
 
-    const todayCell = document.querySelector(".cal-cell:not(.cal-cell--out):not(.cal-cell--before-start) .cal-daynum-num.is-today");
-    if (todayCell) {
-      const cell = todayCell.closest(".cal-cell");
-      if (cell && isVisible(cell)) return cell;
-    }
+    const withItems = cells.filter(calendarCellHasPlannedItem);
+    const itemTodayOrLater = withItems.find((cell) => (cell.getAttribute("data-iso") || "") >= todayIso);
+    if (itemTodayOrLater) return itemTodayOrLater;
+    if (withItems.length) return withItems[0];
 
-    let firstFuture = null;
-    let firstAny = null;
-    for (const cell of cells) {
-      const iso = cell.getAttribute("data-iso") || "";
-      if (!firstAny && isVisible(cell)) firstAny = cell;
-      if (iso > todayIso) {
-        firstFuture = cell;
-        break;
-      }
-    }
-    return firstFuture || firstAny;
+    const todayCell = cells.find((cell) => cell.querySelector(".cal-daynum-num.is-today"));
+    if (todayCell) return todayCell;
+    return cells.find((cell) => (cell.getAttribute("data-iso") || "") > todayIso) || cells[0];
   }
 
   function findExpectedCalendarRowTarget() {
@@ -238,8 +210,15 @@
       );
     if (balanceHit && isVisible(balanceHit)) return balanceHit;
     const row = findExpectedCalendarRowTarget();
-    if (!row) return null;
-    return row.closest(".cal-cell")?.querySelector(".cal-ledger-metrics.cal-day-balance-hit") || null;
+    const fromRow = row
+      ? row.closest(".cal-cell")?.querySelector(".cal-ledger-metrics.cal-day-balance-hit")
+      : null;
+    if (fromRow && isVisible(fromRow)) return fromRow;
+    const updateBtn = document.getElementById("forecastConfidenceVerifyBtn");
+    if (isVisible(updateBtn)) return updateBtn;
+    const checkIn = document.getElementById("forecastConfidenceCard");
+    if (isVisible(checkIn)) return checkIn;
+    return null;
   }
 
   function findNeedsReviewTarget() {
@@ -250,6 +229,61 @@
   function findFirstPendingReviewItem() {
     const item = document.querySelector("#sidebarPendingTxList .pending-attn-item");
     return isVisible(item) ? item : null;
+  }
+
+  function formatTourMoney(value) {
+    const num = Number(value);
+    if (!Number.isFinite(num)) return "";
+    const hasCents = Math.abs(num - Math.round(num)) > 0.001;
+    return num.toLocaleString("en-US", {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: hasCents ? 2 : 0,
+      maximumFractionDigits: hasCents ? 2 : 0,
+    });
+  }
+
+  function readTourMinimumBalanceExample() {
+    const st = window.state;
+    const fid = Number(st && st.activeFamilyId);
+    const fam = (st && st.families ? st.families : []).find((row) => Number(row && row.id) === fid);
+    if (!fam || fam.balance_threshold_min == null || fam.balance_threshold_min === "") return null;
+    const amount = formatTourMoney(fam.balance_threshold_min);
+    if (!amount) return null;
+    return { label: "Your minimum balance", amount };
+  }
+
+  function readTourReconcilePreview() {
+    const map = window.state && window.state.verifiedBalances;
+    if (!map || typeof map.forEach !== "function") return null;
+    let latest = "";
+    let amount = null;
+    map.forEach((val, iso) => {
+      const key = String(iso || "");
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return;
+      const n = Number(val && val.amount);
+      if (!Number.isFinite(n)) return;
+      if (!latest || key > latest) {
+        latest = key;
+        amount = n;
+      }
+    });
+    if (!latest || amount == null) return null;
+    const dt = new Date(Number(latest.slice(0, 4)), Number(latest.slice(5, 7)) - 1, Number(latest.slice(8, 10)), 12);
+    if (Number.isNaN(dt.getTime())) return null;
+    const balance = formatTourMoney(amount);
+    if (!balance) return null;
+    return {
+      dayNum: String(dt.getDate()),
+      dayLabel: dt.toLocaleDateString("en-US", { weekday: "short" }),
+      status: `Updated ${dt.toLocaleDateString("en-US", { month: "long", day: "numeric" })}`,
+      balanceLabel: "Checking balance",
+      balance,
+    };
+  }
+
+  function resolveTourStepValue(value) {
+    return typeof value === "function" ? value() : value;
   }
 
   function renderTourReconcilePreview(container, preview) {
@@ -266,7 +300,7 @@
     dayGroup.className = "bw-tour-tooltip__reconcile-preview-day";
     const dayNum = document.createElement("span");
     dayNum.className = "bw-tour-tooltip__reconcile-preview-daynum";
-    dayNum.textContent = String(preview.dayNum || "17");
+    dayNum.textContent = String(preview.dayNum || "");
     const dayMeta = document.createElement("span");
     dayMeta.className = "bw-tour-tooltip__reconcile-preview-daymeta";
     dayMeta.textContent = String(preview.dayLabel || "");
@@ -544,6 +578,9 @@
     }
     currentStepIdx = stepIdx;
     const step = STEPS[stepIdx];
+    const helperExample = resolveTourStepValue(step.helperExample);
+    const helperList = resolveTourStepValue(step.helperList);
+    const reconcilePreview = resolveTourStepValue(step.reconcilePreview);
     const target = step.findTarget();
     if (!target) {
       if (step.retryable && (step._retries || 0) < 12) {
@@ -600,26 +637,26 @@
         "bw-tour-tooltip__helper--reconcile-preview",
         "bw-tour-tooltip__helper--list"
       );
-      if (step.reconcilePreview) {
-        renderTourReconcilePreview(helperEl, step.reconcilePreview);
+      if (reconcilePreview && reconcilePreview.balance && reconcilePreview.dayNum) {
+        renderTourReconcilePreview(helperEl, reconcilePreview);
         helperEl.hidden = false;
         helperEl.classList.add("bw-tour-tooltip__helper--reconcile-preview");
-      } else if (step.helperExample && step.helperExample.amount) {
+      } else if (helperExample && helperExample.amount) {
         helperEl.replaceChildren();
         const wrap = document.createElement("span");
         wrap.className = "bw-tour-tooltip__helper-example";
         const lab = document.createElement("span");
         lab.className = "bw-tour-tooltip__helper-example-label";
-        lab.textContent = String(step.helperExample.label || "Example");
+        lab.textContent = String(helperExample.label || "Your minimum balance");
         const amt = document.createElement("span");
         amt.className = "bw-tour-tooltip__helper-example-amount";
-        amt.textContent = String(step.helperExample.amount);
+        amt.textContent = String(helperExample.amount);
         wrap.append(lab, amt);
         helperEl.appendChild(wrap);
         helperEl.hidden = false;
         helperEl.classList.add("bw-tour-tooltip__helper--example");
-      } else if (step.helperList && Array.isArray(step.helperList.items) && step.helperList.items.length) {
-        renderTourHelperList(helperEl, step.helperList);
+      } else if (helperList && Array.isArray(helperList.items) && helperList.items.length) {
+        renderTourHelperList(helperEl, helperList);
         helperEl.hidden = false;
         helperEl.classList.add("bw-tour-tooltip__helper--list");
       } else if (step.helper) {
