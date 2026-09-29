@@ -32,7 +32,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=782" />
+    <link rel="stylesheet" href="../styles.css?v=785" />
   </head>
   <body class="login-page signup-page account-setup-page">
     <div class="container">
@@ -83,10 +83,10 @@
             </div>
           </div>
           <p class="account-setup-wizard__eyebrow" id="accountSetupWizardEyebrow">Create your login</p>
-          <p class="account-setup-wizard__reassurance" id="accountSetupWizardReassurance">Takes less than 2 minutes. No credit card required.</p>
           <p class="account-setup-wizard__subeyebrow" id="accountSetupWizardSubeyebrow">
-            Then we&rsquo;ll build your first cash flow forecast.
+            Next, we&rsquo;ll build your first cash flow forecast.
           </p>
+          <p class="account-setup-wizard__reassurance" id="accountSetupWizardReassurance">Takes less than 2 minutes. No credit card required.</p>
           <div class="card auth-section auth-section--open account-setup-wizard__shell">
             <div class="account-setup-wizard__viewport">
               <div class="account-setup-wizard__track" id="accountSetupWizardTrack">
@@ -133,6 +133,7 @@
                             type="button"
                             class="password-field__toggle"
                             data-password-toggle
+                            tabindex="-1"
                             aria-controls="password"
                             aria-label="Show password"
                             title="Show password"
@@ -161,6 +162,7 @@
                             type="button"
                             class="password-field__toggle"
                             data-password-toggle
+                            tabindex="-1"
                             aria-controls="password2"
                             aria-label="Show password"
                             title="Show password"
@@ -187,8 +189,7 @@
                   inert
                 >
                   <div class="account-setup-step2-groups">
-                    <section class="account-setup-field-group" aria-labelledby="accountSetupGroupAccount">
-                      <h3 class="account-setup-field-group__title" id="accountSetupGroupAccount">Account setup</h3>
+                    <section class="account-setup-field-group" aria-label="Checking account">
                       <div class="account-setup-field-group__fields">
                   <div class="row">
                     <div class="form-row-h">
@@ -219,8 +220,12 @@
                             inputmode="decimal"
                             autocomplete="off"
                             placeholder="3,250"
+                            aria-describedby="accountStartingBalanceHint"
                           />
                         </div>
+                        <p id="accountStartingBalanceHint" class="account-setup-field-hint account-setup-field-hint--micro">
+                          Enter your current checking account balance.
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -240,7 +245,7 @@
                       <div class="row">
                         <div class="form-row-h">
                           <div class="form-row-h__label">
-                            <label for="accountSetupKeepInChecking">Comfortable minimum balance</label>
+                            <label for="accountSetupKeepInChecking">Minimum balance you want to keep</label>
                           </div>
                           <div class="form-row-h__field">
                         <div class="money-input money-input--currency">
@@ -256,7 +261,7 @@
                           />
                         </div>
                         <p id="accountSetupKeepInCheckingHint" class="account-setup-field-hint account-setup-field-hint--micro">
-                          Typical range: $500–$3,000. Leave blank to keep the $1,000 default.
+                          We&rsquo;ll flag days when your checking balance is projected to fall below this amount.
                         </p>
                       </div>
                         </div>
@@ -276,7 +281,7 @@
                   <div id="accountSetupWizardStep3Intro" class="account-setup-step3-intro">
                     <section class="account-setup-step3-section account-setup-step3-section--guidance" aria-label="What to add first">
                       <div class="account-setup-step3-recommend">
-                        <p class="account-setup-step3-recommend__eyebrow">Good starting points:</p>
+                        <p class="account-setup-step3-recommend__eyebrow">A few good places to start:</p>
                         <ul class="account-setup-step3-checklist" aria-label="Common first items">
                           <li>Paycheck or income</li>
                           <li>Rent, mortgage, or another major bill</li>
@@ -309,7 +314,7 @@
                     <div class="form-row-h__field">
                       <div id="accountSetupKindToggle" class="kind-toggle" role="radiogroup" aria-label="Transaction type">
                         <label class="kind-opt"><input type="radio" name="asTxKind" value="income" /> Add Income</label>
-                        <label class="kind-opt"><input type="radio" name="asTxKind" value="expense" checked /> Add Expense</label>
+                        <label class="kind-opt"><input type="radio" name="asTxKind" value="expense" checked /> Add Bill</label>
                       </div>
                     </div>
                   </div>
@@ -410,12 +415,12 @@
                     </div>
                   </div>
                   </div>
-                  <label class="reimbursable-field account-setup-tx-variable-inline" for="asTxVariable" title="Great for utilities, groceries or credit card bills.">
+                  <label class="reimbursable-field account-setup-tx-variable-inline" for="asTxVariable" title="Useful for credit cards, utilities, and other changing bills.">
                     <span class="reimbursable-field__lead">
-                      <span class="reimbursable-field__label">Amount varies month to month</span>
-                      <input id="asTxVariable" type="checkbox" title="Amount is an estimate that may change month to month" />
+                      <span class="reimbursable-field__label">Amount varies</span>
+                      <input id="asTxVariable" type="checkbox" title="Amount is an estimate that may change" />
                     </span>
-                    <span class="reimbursable-field__hint">Helpful for utilities, credit cards, and fluctuating bills.</span>
+                    <span class="reimbursable-field__hint" id="asTxVariableHint">Useful for credit cards, utilities, and other changing bills.</span>
                   </label>
                   </div>
                   <div class="cat-color-row" aria-label="Select color (optional)">
@@ -472,7 +477,7 @@
                           aria-label="Transaction type"
                         >
                           <label class="kind-opt"><input type="radio" name="asExpTxKind" value="income" /> Add Income</label>
-                          <label class="kind-opt"><input type="radio" name="asExpTxKind" value="expense" checked /> Add Expense</label>
+                          <label class="kind-opt"><input type="radio" name="asExpTxKind" value="expense" checked /> Add Bill</label>
                         </div>
                       </div>
                     </div>
@@ -573,12 +578,12 @@
                       </div>
                     </div>
                     </div>
-                    <label class="reimbursable-field account-setup-tx-variable-inline" for="asExpVariable" title="Great for utilities, groceries or credit card bills.">
+                    <label class="reimbursable-field account-setup-tx-variable-inline" for="asExpVariable" title="Useful for credit cards, utilities, and other changing bills.">
                       <span class="reimbursable-field__lead">
-                        <span class="reimbursable-field__label">Amount varies month to month</span>
-                        <input id="asExpVariable" type="checkbox" title="Amount is an estimate that may change month to month" />
+                        <span class="reimbursable-field__label">Amount varies</span>
+                        <input id="asExpVariable" type="checkbox" title="Amount is an estimate that may change" />
                       </span>
-                      <span class="reimbursable-field__hint">Helpful for utilities, credit cards, and fluctuating bills.</span>
+                      <span class="reimbursable-field__hint" id="asExpVariableHint">Useful for credit cards, utilities, and other changing bills.</span>
                     </label>
                     </div>
                     <div class="cat-color-row" aria-label="Select color (optional)">
@@ -619,7 +624,7 @@
                 >
                   <div class="account-setup-survey">
                     <div class="account-setup-survey__options">
-                      <p class="account-setup-survey__hint" id="accountSetupSurveyHint">Select any that apply.</p>
+                      <p class="account-setup-survey__hint" id="accountSetupSurveyHint">Select any that apply (optional).</p>
                       <div class="account-setup-survey__grid" role="group" aria-label="Choose forecast priorities">
                       <button type="button" class="account-setup-survey__opt" data-as-survey-opt="avoid_overdrafts" aria-pressed="false">
                         <span class="account-setup-survey__icon" aria-hidden="true">
@@ -630,7 +635,7 @@
                         </span>
                         <span class="account-setup-survey__label">Avoid overdrafts</span>
                       </button>
-                      <button type="button" class="account-setup-survey__opt" data-as-survey-opt="safe_to_spend" aria-pressed="false">
+                      <button type="button" class="account-setup-survey__opt" data-as-survey-opt="safe_to_move" aria-pressed="false">
                         <span class="account-setup-survey__icon" aria-hidden="true">
                           <svg viewBox="0 0 24 24" focusable="false">
                             <path d="M7 7h12a2 2 0 0 1 2 2v8a3 3 0 0 1-3 3H7a4 4 0 0 1-4-4V8a3 3 0 0 1 3-3z"></path>
@@ -640,7 +645,7 @@
                         </span>
                         <span class="account-setup-survey__label">Know what is safe to move</span>
                       </button>
-                      <button type="button" class="account-setup-survey__opt" data-as-survey-opt="prepare_bills" aria-pressed="false">
+                      <button type="button" class="account-setup-survey__opt" data-as-survey-opt="upcoming_bills" aria-pressed="false">
                         <span class="account-setup-survey__icon" aria-hidden="true">
                           <svg viewBox="0 0 24 24" focusable="false">
                             <path d="M7 3h10v3H7z"></path>
@@ -652,7 +657,7 @@
                         </span>
                         <span class="account-setup-survey__label">Prepare for upcoming bills</span>
                       </button>
-                      <button type="button" class="account-setup-survey__opt" data-as-survey-opt="reduce_anxiety" aria-pressed="false">
+                      <button type="button" class="account-setup-survey__opt" data-as-survey-opt="money_anxiety" aria-pressed="false">
                         <span class="account-setup-survey__icon" aria-hidden="true">
                           <svg viewBox="0 0 24 24" focusable="false">
                             <path d="M3 13c2.2-2.6 4.6-2.6 6.8 0s4.6 2.6 6.8 0S21.8 10.4 23 9"></path>
@@ -660,14 +665,14 @@
                         </span>
                         <span class="account-setup-survey__label">Reduce money anxiety</span>
                       </button>
-                      <button type="button" class="account-setup-survey__opt" data-as-survey-opt="maximize_interest" aria-pressed="false">
+                      <button type="button" class="account-setup-survey__opt" data-as-survey-opt="keep_in_savings" aria-pressed="false">
                         <span class="account-setup-survey__icon" aria-hidden="true">
                           <svg viewBox="0 0 24 24" focusable="false">
                             <path d="M4 16l6-6 4 4 6-6"></path>
                             <path d="M20 8v6h-6"></path>
                           </svg>
                         </span>
-                        <span class="account-setup-survey__label">Maximize savings interest</span>
+                        <span class="account-setup-survey__label">Keep more money in savings</span>
                       </button>
                       <button type="button" class="account-setup-survey__opt" data-as-survey-opt="other" aria-pressed="false">
                         <span class="account-setup-survey__icon" aria-hidden="true">
@@ -721,7 +726,7 @@
                   </button>
                 </div>
                 <button type="button" id="signupBtn" class="top-nav__logout">
-                  Continue
+                  Create my account
                 </button>
               </div>
             </div>
@@ -788,6 +793,6 @@
       </div>
     </div>
 
-    <script src="../signup/signup.js?v=125"></script>
+    <script src="../signup/signup.js?v=132"></script>
   </body>
 </html>

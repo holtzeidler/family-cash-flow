@@ -3211,6 +3211,45 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
   font-size: 13px;
   line-height: 1.35;
 }
+.trial-status-notice{
+  margin: 8px 16px 2px;
+  text-align: center;
+}
+.trial-status-notice[hidden]{
+  display: none !important;
+}
+.trial-status-notice__line{
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 2px 12px;
+  margin: 0;
+  color: var(--text);
+  font-size: 13.5px;
+  font-weight: 500;
+  line-height: 1.45;
+}
+.trial-status-notice__action{
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  white-space: nowrap;
+}
+.trial-status-notice__action:hover{
+  filter: brightness(0.92);
+}
+.trial-status-notice__action:focus-visible{
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+@media (max-width: 860px){
+  .trial-status-notice{
+    margin: 8px 10px 4px;
+  }
+}
 .settings-subhead{
   font-size: 15px;
   font-weight: 600;
@@ -17180,6 +17219,10 @@ body.account-setup-page #accountSetupWizard[data-step="0"] .account-setup-wizard
   margin-bottom: clamp(0.55rem, 1.05vw, 0.75rem);
 }
 body.account-setup-page #accountSetupWizard[data-step="0"] .account-setup-wizard__subeyebrow{
+  margin-bottom: 0.28rem;
+}
+body.account-setup-page #accountSetupWizard[data-step="0"] .account-setup-wizard__reassurance:not([hidden]){
+  margin-top: 0;
   margin-bottom: clamp(0.7rem, 1.35vw, 0.95rem);
 }
 body.account-setup-page .account-setup-wizard__roadmap{
@@ -18035,6 +18078,7 @@ body.account-setup-page #accountSetupWizardPanel1 .form-row-h__label label{
   font-size: 0.875rem;
   font-weight: 600;
   color: rgba(17, 24, 39, 0.78);
+  white-space: normal;
 }
 body.account-setup-page #accountSetupWizardPanel1 .account-setup-field-spacer{
   height: 6px;
@@ -19143,6 +19187,19 @@ body.account-setup-page #asTxHubAddExpenseBtn.account-setup-step3-actionBtn.is-c
 body.account-setup-page .account-setup-step3-actionBtn.is-complete .account-setup-step3-actionBtn__plus,
 body.account-setup-page .account-setup-step3-actionBtn.is-complete .account-setup-step3-actionBtn__label{
   color: inherit;
+}
+body.account-setup-page #asTxHubAddIncomeBtn.account-setup-step3-actionBtn.is-complete:hover:not(:disabled),
+body.account-setup-page #asTxHubAddExpenseBtn.account-setup-step3-actionBtn.is-complete:hover:not(:disabled){
+  cursor: pointer;
+  transform: translateY(-1px);
+}
+body.account-setup-page #asTxHubAddIncomeBtn.account-setup-step3-actionBtn.is-complete:hover:not(:disabled){
+  background: color-mix(in srgb, var(--accent) 18%, #fff);
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+body.account-setup-page #asTxHubAddExpenseBtn.account-setup-step3-actionBtn.is-complete:hover:not(:disabled){
+  background: color-mix(in srgb, var(--accent) 6%, #fff);
+  border-color: rgba(11, 61, 46, 0.4);
 }
 body.account-setup-page #asTxHubAddIncomeBtn.account-setup-step3-actionBtn.is-complete:focus-visible:not(:disabled),
 body.account-setup-page #asTxHubAddExpenseBtn.account-setup-step3-actionBtn.is-complete:focus-visible:not(:disabled){

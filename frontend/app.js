@@ -8329,11 +8329,115 @@ function canWriteFamilyData() {
   return true;
 }
 
+function trialNoticeEndDate(status) {
+  return parseBillingDateTime((status && (status.trial_ends_at || status.trial_ends_on)) || "");
+}
+
+function trialNoticeMonthDay(date, now) {
+  const opts = { month: "long", day: "numeric" };
+  if (date.getFullYear() !== now.getFullYear()) opts.year = "numeric";
+  return date.toLocaleDateString(undefined, opts);
+}
+
+function trialNoticeCalendarDays(end, now) {
+  const startOf = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  return Math.round((startOf(end) - startOf(now)) / 86400000);
+}
+
+/**
+ * One trial-status line for the signed-in app.
+ * Day wording comes from trial_ends_at in the browser's local calendar, the
+ * same clock the rest of Billing uses. A selected plan hides it: Billing
+ * already shows the scheduled first payment, and a second line would nag.
+ */
+function resolveTrialStatusNotice(status, now = new Date()) {
+  if (!status || typeof status !== "object") return null;
+  if (isComplimentaryAccessActive(status)) return null;
+  if (isBillingTrialPlanScheduled(status) || isBillingSubscribed(status)) return null;
+  const phase = String(status.phase || "").toLowerCase();
+  if (phase === "complimentary" || phase === "active" || phase === "past_due") return null;
+  if (isFormerPaidSubscriptionEnded(status) || isBillingPaymentRecoveryState(status)) return null;
+
+  const end = trialNoticeEndDate(status);
+  const inTrial = status.in_app_trial === true || phase === "trial";
+  if (inTrial && end && now.getTime() < end.getTime()) {
+    const days = trialNoticeCalendarDays(end, now);
+    if (days > 7 || days < 0) return null;
+    if (days >= 4) {
+      return {
+        state: "countdown",
+        message: `${days} days left in your free trial`,
+        action: "View plans",
+      };
+    }
+    if (days === 1) {
+      return { state: "tomorrow", message: "Your free trial ends tomorrow", action: "Choose a plan" };
+    }
+    if (days === 0) {
+      return { state: "today", message: "Your free trial ends today", action: "Choose a plan" };
+    }
+    return {
+      state: "ending",
+      message: `Your free trial ends ${trialNoticeMonthDay(end, now)}`,
+      action: "Choose a plan",
+    };
+  }
+
+  if (phase === "expired" && status.entitled === false && end && now.getTime() >= end.getTime()) {
+    return {
+      state: "ended",
+      message: "Your free trial has ended",
+      action: "Choose a plan",
+    };
+  }
+  return null;
+}
+
+function syncTrialStatusNotice(status) {
+  const nav = document.querySelector("body[data-bw-view] .container > .top-nav");
+  if (!nav) return;
+  let el = document.getElementById("trialStatusNotice");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "trialStatusNotice";
+    el.className = "trial-status-notice";
+    el.setAttribute("role", "status");
+    el.hidden = true;
+    nav.insertAdjacentElement("afterend", el);
+  }
+  const model = resolveTrialStatusNotice(status);
+  if (!model) {
+    el.hidden = true;
+    el.removeAttribute("data-trial-state");
+    el.replaceChildren();
+    return;
+  }
+  el.hidden = false;
+  el.dataset.trialState = model.state;
+  const line = document.createElement("p");
+  line.className = "trial-status-notice__line";
+  const message = document.createElement("span");
+  message.className = "trial-status-notice__message";
+  message.textContent = model.message;
+  line.appendChild(message);
+  if (model.action) {
+    const link = document.createElement("a");
+    link.className = "trial-status-notice__action";
+    link.href = "/settings/billing/";
+    link.textContent = model.action;
+    line.appendChild(link);
+  }
+  el.replaceChildren(line);
+}
+
 function applyBillingReadOnlyUi() {
   const locked = isBillingWriteLocked();
   try {
     document.documentElement.classList.toggle("bw-billing-readonly", locked);
     document.body.classList.toggle("bw-billing-readonly", locked);
+  } catch (_) {}
+  try {
+    syncTrialStatusNotice(cachedBillingStatusForActiveFamily());
   } catch (_) {}
 }
 
