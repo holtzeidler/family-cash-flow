@@ -32,7 +32,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=782" />
+    <link rel="stylesheet" href="../styles.css?v=783" />
   </head>
   <body class="login-page signup-page account-setup-page">
     <div class="container">
@@ -83,10 +83,10 @@
             </div>
           </div>
           <p class="account-setup-wizard__eyebrow" id="accountSetupWizardEyebrow">Create your login</p>
-          <p class="account-setup-wizard__reassurance" id="accountSetupWizardReassurance">Takes less than 2 minutes. No credit card required.</p>
           <p class="account-setup-wizard__subeyebrow" id="accountSetupWizardSubeyebrow">
-            Then we&rsquo;ll build your first cash flow forecast.
+            Next, we&rsquo;ll build your first cash flow forecast.
           </p>
+          <p class="account-setup-wizard__reassurance" id="accountSetupWizardReassurance">Takes less than 2 minutes. No credit card required.</p>
           <div class="card auth-section auth-section--open account-setup-wizard__shell">
             <div class="account-setup-wizard__viewport">
               <div class="account-setup-wizard__track" id="accountSetupWizardTrack">
@@ -133,6 +133,7 @@
                             type="button"
                             class="password-field__toggle"
                             data-password-toggle
+                            tabindex="-1"
                             aria-controls="password"
                             aria-label="Show password"
                             title="Show password"
@@ -161,6 +162,7 @@
                             type="button"
                             class="password-field__toggle"
                             data-password-toggle
+                            tabindex="-1"
                             aria-controls="password2"
                             aria-label="Show password"
                             title="Show password"
@@ -188,7 +190,7 @@
                 >
                   <div class="account-setup-step2-groups">
                     <section class="account-setup-field-group" aria-labelledby="accountSetupGroupAccount">
-                      <h3 class="account-setup-field-group__title" id="accountSetupGroupAccount">Account setup</h3>
+                      <h3 class="account-setup-field-group__title" id="accountSetupGroupAccount">Step 1 of 3 · Account setup</h3>
                       <div class="account-setup-field-group__fields">
                   <div class="row">
                     <div class="form-row-h">
@@ -219,8 +221,12 @@
                             inputmode="decimal"
                             autocomplete="off"
                             placeholder="3,250"
+                            aria-describedby="accountStartingBalanceHint"
                           />
                         </div>
+                        <p id="accountStartingBalanceHint" class="account-setup-field-hint account-setup-field-hint--micro">
+                          Enter your current checking account balance.
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -240,7 +246,7 @@
                       <div class="row">
                         <div class="form-row-h">
                           <div class="form-row-h__label">
-                            <label for="accountSetupKeepInChecking">Comfortable minimum balance</label>
+                            <label for="accountSetupKeepInChecking">Minimum balance you want to keep</label>
                           </div>
                           <div class="form-row-h__field">
                         <div class="money-input money-input--currency">
@@ -256,7 +262,7 @@
                           />
                         </div>
                         <p id="accountSetupKeepInCheckingHint" class="account-setup-field-hint account-setup-field-hint--micro">
-                          Typical range: $500–$3,000. Leave blank to keep the $1,000 default.
+                          We&rsquo;ll flag days when your checking balance is projected to fall below this amount.
                         </p>
                       </div>
                         </div>
@@ -721,7 +727,7 @@
                   </button>
                 </div>
                 <button type="button" id="signupBtn" class="top-nav__logout">
-                  Continue
+                  Create my account
                 </button>
               </div>
             </div>
@@ -788,6 +794,6 @@
       </div>
     </div>
 
-    <script src="../signup/signup.js?v=121"></script>
+    <script src="../signup/signup.js?v=123"></script>
   </body>
 </html>

@@ -17201,6 +17201,10 @@ body.account-setup-page #accountSetupWizard[data-step="0"] .account-setup-wizard
   margin-bottom: clamp(0.55rem, 1.05vw, 0.75rem);
 }
 body.account-setup-page #accountSetupWizard[data-step="0"] .account-setup-wizard__subeyebrow{
+  margin-bottom: 0.28rem;
+}
+body.account-setup-page #accountSetupWizard[data-step="0"] .account-setup-wizard__reassurance:not([hidden]){
+  margin-top: 0;
   margin-bottom: clamp(0.7rem, 1.35vw, 0.95rem);
 }
 body.account-setup-page .account-setup-wizard__roadmap{
@@ -18056,6 +18060,7 @@ body.account-setup-page #accountSetupWizardPanel1 .form-row-h__label label{
   font-size: 0.875rem;
   font-weight: 600;
   color: rgba(17, 24, 39, 0.78);
+  white-space: normal;
 }
 body.account-setup-page #accountSetupWizardPanel1 .account-setup-field-spacer{
   height: 6px;
