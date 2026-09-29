@@ -5,11 +5,30 @@ function apiBaseUrl() {
 
 const BW_API_ACCESS_TOKEN_KEY = "bw_api_access_token";
 
-function apiBearerAuthHeaders() {
+function readStoredApiAccessToken() {
   try {
-    const t = sessionStorage.getItem(BW_API_ACCESS_TOKEN_KEY);
-    if (t && String(t).trim()) return { Authorization: `Bearer ${String(t).trim()}` };
+    const sessionToken = sessionStorage.getItem(BW_API_ACCESS_TOKEN_KEY);
+    if (sessionToken && String(sessionToken).trim()) return String(sessionToken).trim();
   } catch (_) {}
+  try {
+    const persistentToken = localStorage.getItem(BW_API_ACCESS_TOKEN_KEY);
+    if (persistentToken && String(persistentToken).trim()) return String(persistentToken).trim();
+  } catch (_) {}
+  return "";
+}
+
+function clearStoredApiAccessToken() {
+  try {
+    sessionStorage.removeItem(BW_API_ACCESS_TOKEN_KEY);
+  } catch (_) {}
+  try {
+    localStorage.removeItem(BW_API_ACCESS_TOKEN_KEY);
+  } catch (_) {}
+}
+
+function apiBearerAuthHeaders() {
+  const t = readStoredApiAccessToken();
+  if (t) return { Authorization: `Bearer ${t}` };
   return {};
 }
 
@@ -259,7 +278,7 @@ async function api(path, method = "GET", body) {
 
   if (res.status === 401) {
     try {
-      sessionStorage.removeItem(BW_API_ACCESS_TOKEN_KEY);
+      clearStoredApiAccessToken();
     } catch (_) {}
     window.location.href = "/login.html";
     return null;
@@ -310,7 +329,7 @@ async function apiForm(path, formData, method = "POST") {
   });
   if (res.status === 401) {
     try {
-      sessionStorage.removeItem(BW_API_ACCESS_TOKEN_KEY);
+      clearStoredApiAccessToken();
     } catch (_) {}
     window.location.href = "/login.html";
     return null;
@@ -2243,7 +2262,7 @@ updateTxAddRepeatingUi();
     logoutBtn.addEventListener("click", async () => {
       await api("/api/auth/logout", "POST");
       try {
-        sessionStorage.removeItem(BW_API_ACCESS_TOKEN_KEY);
+        clearStoredApiAccessToken();
       } catch (_) {}
       clearAccountSetupDraftJsonStorage();
       window.location.href = "/";

@@ -104,11 +104,43 @@ function keepOnboardingDraftForLogin(email) {
   } catch (_) {}
 }
 
-function apiBearerAuthHeaders() {
+function readStoredApiAccessToken() {
   try {
-    const t = sessionStorage.getItem(BW_API_ACCESS_TOKEN_KEY);
-    if (t && String(t).trim()) return { Authorization: `Bearer ${String(t).trim()}` };
+    const sessionToken = sessionStorage.getItem(BW_API_ACCESS_TOKEN_KEY);
+    if (sessionToken && String(sessionToken).trim()) return String(sessionToken).trim();
   } catch (_) {}
+  try {
+    const persistentToken = localStorage.getItem(BW_API_ACCESS_TOKEN_KEY);
+    if (persistentToken && String(persistentToken).trim()) return String(persistentToken).trim();
+  } catch (_) {}
+  return "";
+}
+
+function clearStoredApiAccessToken() {
+  try {
+    sessionStorage.removeItem(BW_API_ACCESS_TOKEN_KEY);
+  } catch (_) {}
+  try {
+    localStorage.removeItem(BW_API_ACCESS_TOKEN_KEY);
+  } catch (_) {}
+}
+
+function storeApiAccessToken(token, persistent) {
+  clearStoredApiAccessToken();
+  const value = String(token || "").trim();
+  if (!value) return;
+  try {
+    sessionStorage.setItem(BW_API_ACCESS_TOKEN_KEY, value);
+  } catch (_) {}
+  if (!persistent) return;
+  try {
+    localStorage.setItem(BW_API_ACCESS_TOKEN_KEY, value);
+  } catch (_) {}
+}
+
+function apiBearerAuthHeaders() {
+  const t = readStoredApiAccessToken();
+  if (t) return { Authorization: `Bearer ${t}` };
   return {};
 }
 
@@ -376,13 +408,12 @@ async function doLogin() {
   setCallout(loginCalloutEl, "", "");
   const slowHintTimer = window.setTimeout(showSlowConnectHint, 2200);
   try {
-    try {
-      sessionStorage.removeItem(BW_API_ACCESS_TOKEN_KEY);
-    } catch (_) {}
+    clearStoredApiAccessToken();
     const email = document.getElementById("email").value.trim();
     const password = document.getElementById("password").value;
+    const keepMeLoggedIn = document.getElementById("keepMeLoggedIn")?.checked === true;
     keepOnboardingDraftForLogin(email);
-    const loginResp = await requestWithRetry("/api/auth/login", "POST", { email, password }, {
+    const loginResp = await requestWithRetry("/api/auth/login", "POST", { email, password, keep_me_logged_in: keepMeLoggedIn }, {
       maxMs: 28000,
       onRetry() {
         showSlowConnectHint();
@@ -396,7 +427,7 @@ async function doLogin() {
     try {
       tok =
         loginResp.data && loginResp.data.access_token != null ? String(loginResp.data.access_token).trim() : "";
-      if (tok) sessionStorage.setItem(BW_API_ACCESS_TOKEN_KEY, tok);
+      if (tok) storeApiAccessToken(tok, keepMeLoggedIn);
     } catch (_) {}
 
     // Login already proved credentials; bearer token is enough to open the app without
@@ -470,11 +501,7 @@ function logNetworkHintForDevs(networkError) {
 }
 
 function hasStoredBearerToken() {
-  try {
-    return !!(sessionStorage.getItem(BW_API_ACCESS_TOKEN_KEY) || "").trim();
-  } catch (_) {
-    return false;
-  }
+  return !!readStoredApiAccessToken();
 }
 
 /** Cookie propagation on cross-site hosts can lag; retry only when we lack a bearer token. */

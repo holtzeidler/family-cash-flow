@@ -65,7 +65,7 @@
     // expose its helper (defensive — should not happen in normal pages).
     const headers = { "Content-Type": "application/json" };
     try {
-      const t = sessionStorage.getItem("bw_api_access_token");
+      const t = sessionStorage.getItem("bw_api_access_token") || localStorage.getItem("bw_api_access_token");
       if (t) headers.Authorization = `Bearer ${t}`;
     } catch (_) {}
     const apiBase = (window.API_BASE && window.API_BASE !== "__API_BASE__" ? window.API_BASE : "").replace(/\/$/, "");

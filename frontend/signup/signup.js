@@ -29,11 +29,30 @@ initPasswordVisibilityToggles();
 const BW_API_ACCESS_TOKEN_KEY = "bw_api_access_token";
 const BW_FORECAST_READY_POPUP_KEY = "bw_forecast_ready_popup";
 
-function apiBearerAuthHeaders() {
+function readStoredApiAccessToken() {
   try {
-    const t = sessionStorage.getItem(BW_API_ACCESS_TOKEN_KEY);
-    if (t && String(t).trim()) return { Authorization: `Bearer ${String(t).trim()}` };
+    const sessionToken = sessionStorage.getItem(BW_API_ACCESS_TOKEN_KEY);
+    if (sessionToken && String(sessionToken).trim()) return String(sessionToken).trim();
   } catch (_) {}
+  try {
+    const persistentToken = localStorage.getItem(BW_API_ACCESS_TOKEN_KEY);
+    if (persistentToken && String(persistentToken).trim()) return String(persistentToken).trim();
+  } catch (_) {}
+  return "";
+}
+
+function clearStoredApiAccessToken() {
+  try {
+    sessionStorage.removeItem(BW_API_ACCESS_TOKEN_KEY);
+  } catch (_) {}
+  try {
+    localStorage.removeItem(BW_API_ACCESS_TOKEN_KEY);
+  } catch (_) {}
+}
+
+function apiBearerAuthHeaders() {
+  const t = readStoredApiAccessToken();
+  if (t) return { Authorization: `Bearer ${t}` };
   return {};
 }
 
@@ -825,12 +844,7 @@ let bwEmailPrecheckStep0Generation = 0;
 let bwSignupInFlight = false;
 
 function hasSignupAccessToken() {
-  try {
-    const t = sessionStorage.getItem(BW_API_ACCESS_TOKEN_KEY);
-    return !!(t && String(t).trim());
-  } catch (_) {
-    return false;
-  }
+  return !!readStoredApiAccessToken();
 }
 
 function shouldShowDuplicateEmailModalFromPrecheck() {
@@ -3293,9 +3307,7 @@ function captureVisibleCheckingAccountIntoDraft() {
 }
 
 async function endSessionForFreshAccountSetup() {
-  try {
-    sessionStorage.removeItem(BW_API_ACCESS_TOKEN_KEY);
-  } catch (_) {}
+  clearStoredApiAccessToken();
   try {
     await request("/api/auth/logout", "POST");
   } catch (_) {}
@@ -3428,9 +3440,7 @@ async function doSignup() {
     setCallout(signupCalloutEl, "Creating your account...", "pending");
   }
   try {
-    try {
-      sessionStorage.removeItem(BW_API_ACCESS_TOKEN_KEY);
-    } catch (_) {}
+    clearStoredApiAccessToken();
     const draft = readAccountSetupDraft();
     if (!draft) {
       if (isAccountSetup && overlay) hideForecastBuildOverlay(overlay);
