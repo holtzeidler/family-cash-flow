@@ -124,7 +124,7 @@ def build_welcome_email_content(
         heading=welcome_heading(first_name=first_name),
         body=body,
         cta_label="Go to my forecast",
-        cta_url=site,
+        cta_url=welcome_forecast_cta_url(app_url),
         support_line=f"{started}\n\n{ends}",
     )
 
@@ -442,6 +442,14 @@ def _safe_http_url(url: str) -> str:
     if raw.startswith("https://") or raw.startswith("http://"):
         return raw
     return ""
+
+
+def welcome_forecast_cta_url(app_url: str) -> str:
+    """Welcome-email button. Login continues to the calendar. No tokens or user data."""
+    site = _safe_http_url(app_url).rstrip("/")
+    if not site:
+        return ""
+    return f"{site}/login.html?next=/calendar"
 
 
 def _safe_href(url: str) -> str:
