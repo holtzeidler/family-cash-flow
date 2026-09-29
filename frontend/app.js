@@ -16624,7 +16624,12 @@ async function loadMonthAndCalendar() {
       }
     } catch (_) {}
     if (!stillCurrent()) return;
-    show(calendarErr, "Loading forecast…");
+    // The green forecast ribbon is the loading message. #calendarErr is the
+    // red error slot, so a loading state must not appear there as well.
+    if (calendarErr && String(calendarErr.textContent || "").trim() === "Loading forecast…") {
+      show(calendarErr, "");
+    }
+    ensureForecastStatusRibbon("Loading forecast…");
     renderCalendar();
 
     if (!state.activeFamilyId) {
