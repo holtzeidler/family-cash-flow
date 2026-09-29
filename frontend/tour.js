@@ -41,6 +41,7 @@
   let resizeHandler = null;
   let scrollHandler = null;
   let onAfterStepEnd = null;
+  let repaintObserver = null;
 
   /**
    * Steps are intentionally short. Each `findTarget()` returns either an
@@ -524,22 +525,55 @@
     };
   }
 
+  function targetIsUsable(el) {
+    if (!el || !el.isConnected) return false;
+    const r = el.getBoundingClientRect();
+    return r.width > 2 && r.height > 2;
+  }
+
+  function repositionToLiveTarget() {
+    if (currentStepIdx < 0 || !tooltipEl) return;
+    const step = STEPS[currentStepIdx];
+    if (!step) return;
+    const live = step.findTarget();
+    if (!targetIsUsable(live)) return;
+    if (live !== currentTargetEl) {
+      applyTargetHighlight(live, {
+        targetExtraClass: step.targetExtraClass,
+        dimSelector: step.dimSelector,
+      });
+      applySupportHighlights(step);
+    }
+    positionTooltip(live, step.placement || "auto");
+  }
+
+  function ensureRepaintWatcher() {
+    if (repaintObserver) return;
+    const grid = document.getElementById("calendarGrid");
+    if (!grid) return;
+    repaintObserver = new MutationObserver(() => {
+      if (currentStepIdx < 0) return;
+      repositionToLiveTarget();
+    });
+    repaintObserver.observe(grid, { childList: true, subtree: true });
+  }
+
+  function stopRepaintWatcher() {
+    if (!repaintObserver) return;
+    repaintObserver.disconnect();
+    repaintObserver = null;
+  }
+
   function positionTooltip(targetEl, placement) {
-    if (!tooltipEl) return;
+    if (!tooltipEl || !targetIsUsable(targetEl)) return;
     const gap = 12;
     const pad = 10;
     const vw = window.innerWidth;
     const vh = window.innerHeight;
     const tr = targetEl.getBoundingClientRect();
-
-    // Measure tooltip (must be visible to measure correctly).
-    tooltipEl.style.visibility = "hidden";
-    tooltipEl.style.display = "block";
-    tooltipEl.style.left = "0px";
-    tooltipEl.style.top = "0px";
-    const tt = tooltipEl.getBoundingClientRect();
-    const tw = tt.width;
-    const th = tt.height;
+    const tw = tooltipEl.offsetWidth;
+    const th = tooltipEl.offsetHeight;
+    if (tw < 2 || th < 2) return;
 
     const arrow = tooltipEl.querySelector("[data-bw-tour-arrow]");
     const placements = normalizePlacements(placement);
@@ -551,7 +585,6 @@
 
     tooltipEl.style.left = `${Math.round(chosen.left)}px`;
     tooltipEl.style.top = `${Math.round(chosen.top)}px`;
-    tooltipEl.style.visibility = "";
 
     if (arrow) {
       arrow.dataset.side = chosen.side;
@@ -691,17 +724,14 @@
       });
     });
 
+    ensureRepaintWatcher();
     // Reposition on resize/scroll so the spotlight stays accurate.
     if (!resizeHandler) {
-      resizeHandler = () => {
-        if (currentTargetEl) positionTooltip(currentTargetEl, STEPS[currentStepIdx]?.placement || "auto");
-      };
+      resizeHandler = () => repositionToLiveTarget();
       window.addEventListener("resize", resizeHandler);
     }
     if (!scrollHandler) {
-      scrollHandler = () => {
-        if (currentTargetEl) positionTooltip(currentTargetEl, STEPS[currentStepIdx]?.placement || "auto");
-      };
+      scrollHandler = () => repositionToLiveTarget();
       window.addEventListener("scroll", scrollHandler, true);
     }
   }
@@ -729,6 +759,7 @@
       window.removeEventListener("scroll", scrollHandler, true);
       scrollHandler = null;
     }
+    stopRepaintWatcher();
     currentStepIdx = -1;
     // Mark as seen for both skip and completion — we don't want to nag users
     // who decided either way. Settings → "Show me around" lets them replay it.
