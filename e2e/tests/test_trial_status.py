@@ -88,7 +88,7 @@ def test_trial_status_at_3_days(page, guard, seed):
     account = seed["trials"]["days3"]
     _login(page, account["email"], account["password"])
     label = page.evaluate(
-        """(iso) => new Date(iso).toLocaleDateString(undefined, { month: 'long', day: 'numeric' })""",
+        """(iso) => new Date(iso).toLocaleDateString(undefined, { month: 'long', day: 'numeric', timeZone: 'UTC' })""",
         account["trial_ends_at"],
     )
     notice = page.locator(NOTICE)
@@ -121,7 +121,8 @@ def test_trial_status_later_today_is_not_expired(page, guard, seed):
         """(iso) => {
           const end = new Date(iso);
           const now = new Date();
-          return end > now && end.toDateString() === now.toDateString();
+          const utcDay = (d) => Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+          return end > now && utcDay(end) === utcDay(now);
         }""",
         account["trial_ends_at"],
     )
