@@ -38,7 +38,7 @@
             "name": "What is BalanceWhiz?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "A cash flow forecast for your checking balance: upcoming bills and income on a calendar, plus a projected balance so you can see cash pressure, not just month-end totals."
+              "text": "BalanceWhiz is a cash flow forecast for your checking account. Add your current balance and what's coming in and going out, and BalanceWhiz projects your balance forward by day so you can see where your money is headed before you spend, save, or move it."
             }
           },
           {
@@ -46,7 +46,39 @@
             "name": "Do I connect my bank?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "No. You enter amounts and dates you already know (or export). The forecast stays yours to reconcile."
+              "text": "No. BalanceWhiz does not connect to your bank. You enter your current checking balance and the income, bills, transfers, and other expenses you want included in your forecast. Periodically compare BalanceWhiz with your actual checking balance to keep your forecast accurate."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Do I need to enter every transaction?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "For the most accurate forecast, keep BalanceWhiz updated with the transactions that affect your checking balance and periodically reconcile it with your actual balance. If you fall behind, you don't have to go back and recreate every missed transaction. Enter your current checking balance and use it as a new starting point, then keep forecasting forward."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What if a bill changes from month to month?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Mark it as Amount varies and enter your best estimate. BalanceWhiz will remind you to update the amount when it's time. This works well for things like credit card payments, utilities, and other bills that change from month to month."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Can I use BalanceWhiz with multiple checking accounts?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "BalanceWhiz currently forecasts one primary checking account at a time. It's designed around the account you use for everyday cash flow—where income comes in and bills and spending go out. If you move money to savings or other accounts, add those transfers to your forecast so you can see how they'll affect your checking balance."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What happens if my balance is getting too low?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "You can set a minimum balance you want to maintain. BalanceWhiz watches your forecast against that amount and flags future days that fall below it, so you can see a potential cash crunch before it happens."
             }
           },
           {
@@ -54,15 +86,15 @@
             "name": "How do I reset my password?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "On the login page, choose “Forgot password?” and follow the email link."
+              "text": "On the login page, choose Forgot password? and follow the link sent to your email."
             }
           },
           {
             "@type": "Question",
-            "name": "How does billing work?",
+            "name": "How does the free trial and billing work?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Plans and trial details are on Pricing. You can cancel from your account flow when logged in; if you are stuck, contact support."
+              "text": "BalanceWhiz includes a 14-day free trial. You can choose a monthly or annual plan during your trial, and you won't be charged until the trial ends. If you don't subscribe, your forecast remains available to view after your trial ends, but you'll need a plan to make updates. You can manage or cancel your subscription from Settings → Billing when logged in."
             }
           }
         ]
@@ -71,7 +103,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=734" />
+    <link rel="stylesheet" href="./styles.css?v=735" />
   </head>
   <body class="plans-page help-page">
     
@@ -147,8 +179,9 @@
               </summary>
               <div class="help-faq__panel">
                 <p>
-                  A cash flow forecast for your checking balance: upcoming bills and income on a calendar, plus a
-                  projected balance so you can see cash pressure, not just month-end totals.
+                  BalanceWhiz is a cash flow forecast for your checking account. Add your current balance and what’s
+                  coming in and going out, and BalanceWhiz projects your balance forward by day so you can see where
+                  your money is headed before you spend, save, or move it.
                 </p>
               </div>
             </details>
@@ -169,7 +202,113 @@
                 </span>
               </summary>
               <div class="help-faq__panel">
-                <p>No. You enter amounts and dates you already know (or export). The forecast stays yours to reconcile.</p>
+                <p>
+                  No. BalanceWhiz does not connect to your bank. You enter your current checking balance and the
+                  income, bills, transfers, and other expenses you want included in your forecast. Periodically compare
+                  BalanceWhiz with your actual checking balance to keep your forecast accurate.
+                </p>
+              </div>
+            </details>
+
+            <details class="help-faq__item">
+              <summary class="help-faq__summary">
+                <span class="help-faq__question">Do I need to enter every transaction?</span>
+                <span class="help-faq__chev" aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path
+                      d="M6 9l6 6 6-6"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </span>
+              </summary>
+              <div class="help-faq__panel">
+                <p>
+                  For the most accurate forecast, keep BalanceWhiz updated with the transactions that affect your
+                  checking balance and periodically reconcile it with your actual balance.
+                </p>
+                <p>
+                  If you fall behind, you don’t have to go back and recreate every missed transaction. Enter your
+                  current checking balance and use it as a new starting point, then keep forecasting forward.
+                </p>
+              </div>
+            </details>
+
+            <details class="help-faq__item">
+              <summary class="help-faq__summary">
+                <span class="help-faq__question">What if a bill changes from month to month?</span>
+                <span class="help-faq__chev" aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path
+                      d="M6 9l6 6 6-6"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </span>
+              </summary>
+              <div class="help-faq__panel">
+                <p>
+                  Mark it as <strong>Amount varies</strong> and enter your best estimate. BalanceWhiz will remind you to
+                  update the amount when it’s time. This works well for things like credit card payments, utilities, and
+                  other bills that change from month to month.
+                </p>
+              </div>
+            </details>
+
+            <details class="help-faq__item">
+              <summary class="help-faq__summary">
+                <span class="help-faq__question">Can I use BalanceWhiz with multiple checking accounts?</span>
+                <span class="help-faq__chev" aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path
+                      d="M6 9l6 6 6-6"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </span>
+              </summary>
+              <div class="help-faq__panel">
+                <p>
+                  BalanceWhiz currently forecasts one primary checking account at a time. It’s designed around the
+                  account you use for everyday cash flow—where income comes in and bills and spending go out.
+                </p>
+                <p>
+                  If you move money to savings or other accounts, add those transfers to your forecast so you can see
+                  how they’ll affect your checking balance.
+                </p>
+              </div>
+            </details>
+
+            <details class="help-faq__item">
+              <summary class="help-faq__summary">
+                <span class="help-faq__question">What happens if my balance is getting too low?</span>
+                <span class="help-faq__chev" aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path
+                      d="M6 9l6 6 6-6"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </span>
+              </summary>
+              <div class="help-faq__panel">
+                <p>
+                  You can set a minimum balance you want to maintain. BalanceWhiz watches your forecast against that
+                  amount and flags future days that fall below it, so you can see a potential cash crunch before it
+                  happens.
+                </p>
               </div>
             </details>
 
@@ -190,15 +329,15 @@
               </summary>
               <div class="help-faq__panel">
                 <p>
-                  On the <a href="./login.html#forgot">login page</a>, choose “Forgot password?” and follow the email
-                  link.
+                  On the <a href="./login.html#forgot">login page</a>, choose <strong>Forgot password?</strong> and
+                  follow the link sent to your email.
                 </p>
               </div>
             </details>
 
             <details class="help-faq__item">
               <summary class="help-faq__summary">
-                <span class="help-faq__question">How does billing work?</span>
+                <span class="help-faq__question">How does the free trial and billing work?</span>
                 <span class="help-faq__chev" aria-hidden="true">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path
@@ -213,14 +352,17 @@
               </summary>
               <div class="help-faq__panel">
                 <p>
-                  Plans and trial details are on <a href="./plans/">Pricing</a>. You can cancel from your account flow
-                  when logged in; if you are stuck, contact support.
+                  BalanceWhiz includes a 14-day free trial. You can choose a
+                  <a href="./plans/">monthly or annual plan</a> during your trial, and you won’t be charged until the
+                  trial ends. If you don’t subscribe, your forecast remains available to view after your trial ends, but
+                  you’ll need a plan to make updates.
                 </p>
+                <p>You can manage or cancel your subscription from Settings → Billing when logged in.</p>
               </div>
             </details>
           </div>
 
-          <p class="help-center__meta">Last updated May 2026.</p>
+          <p class="help-center__meta">Last updated September 2026.</p>
         </article>
       </div>
 
