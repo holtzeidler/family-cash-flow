@@ -3292,8 +3292,22 @@ function captureVisibleCheckingAccountIntoDraft() {
   });
 }
 
+async function endSessionForFreshAccountSetup() {
+  try {
+    sessionStorage.removeItem(BW_API_ACCESS_TOKEN_KEY);
+  } catch (_) {}
+  try {
+    await request("/api/auth/logout", "POST");
+  } catch (_) {}
+}
+
 async function maybeEnterAccountSetupResume() {
   if (!isAccountSetupPath() || !document.getElementById("accountSetupWizard")) return "";
+  let resumeSetup = false;
+  try {
+    resumeSetup = new URLSearchParams(String(window.location.search || "")).get("resume") === "1";
+  } catch (_) {}
+  if (!resumeSetup) return "";
   const me = await request("/api/auth/me", "GET");
   const user = me.ok && me.data && me.data.user ? me.data.user : null;
   if (!user) return "";
@@ -3815,10 +3829,13 @@ async function applyInvitePrefill() {
 void (async () => {
   await applyInvitePrefill();
   if (isAccountSetupPath()) {
+    let freshStart = false;
     try {
       const params = new URLSearchParams(String(window.location.search || ""));
-      if (params.get("fresh") === "1") removeAccountSetupDraftStorage();
+      freshStart = params.get("fresh") === "1";
+      if (freshStart) removeAccountSetupDraftStorage();
     } catch (_) {}
+    if (freshStart) await endSessionForFreshAccountSetup();
     const accountSetupLoginBtn = document.querySelector(
       "body.account-setup-page .top-nav__actions .top-nav__logout"
     );
