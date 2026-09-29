@@ -3264,6 +3264,34 @@ async function maybePatchForecastThresholdsFromDraft(draft) {
   }
 }
 
+function captureVisibleCheckingAccountIntoDraft() {
+  const accountName = String(document.getElementById("accountName")?.value || "").trim();
+  const accountStartingBalanceRaw = document.getElementById("accountStartingBalance")?.value || "";
+  const accountStartingBalance = toMoneyNumber(accountStartingBalanceRaw);
+  const accountStartingBalanceDate = String(document.getElementById("accountStartingBalanceDate")?.value || "").trim();
+  const gate = canAdvanceAccountSetupAccountStep({
+    accountName,
+    accountStartingBalanceRaw,
+    accountStartingBalance,
+    accountStartingBalanceDate,
+    checkingCushionRaw: accountSetupCheckingCushionRawFromDom(),
+  });
+  if (!gate || !gate.anyAccount) return;
+  const raw = readAccountSetupDraftRaw() || {};
+  persistAccountSetupDraftObject({
+    ...raw,
+    wizardFlowVersion: ACCOUNT_SETUP_WIZARD_FLOW_VERSION,
+    account: {
+      ...(raw.account && typeof raw.account === "object" ? raw.account : {}),
+      name: accountName,
+      type: "checking",
+      starting_balance: accountStartingBalance,
+      starting_balance_date: accountStartingBalanceDate,
+      balance_threshold_min: gate.cushionThresholdMin,
+    },
+  });
+}
+
 async function maybeEnterAccountSetupResume() {
   if (!isAccountSetupPath() || !document.getElementById("accountSetupWizard")) return "";
   const me = await request("/api/auth/me", "GET");
@@ -3274,6 +3302,8 @@ async function maybeEnterAccountSetupResume() {
   const draftEmail = draft && draft.signupEmail ? String(draft.signupEmail).trim().toLowerCase() : "";
   if (draftEmail && email && draftEmail !== email) {
     removeAccountSetupDraftStorage();
+    window.location.replace("/calendar");
+    return "redirect";
   }
   let familyId = null;
   try {
@@ -3289,16 +3319,22 @@ async function maybeEnterAccountSetupResume() {
       return "redirect";
     }
   }
-  accountSetupResumeMode = true;
-  const raw = readAccountSetupDraftRaw();
-  let step = raw ? normalizePersistedAccountSetupWizardStep(raw) : 1;
-  if (!Number.isFinite(step) || step < 1) step = 1;
-  setAccountSetupWizardStep(step, { skipPersist: true });
-  if (step === 4) {
-    try { hydrateAccountSetupSurveyFromDraft(raw || {}); } catch (_) {}
+  try {
+    ensureAccountStartingBalanceDateDefault();
+  } catch (_) {}
+  try {
+    captureVisibleCheckingAccountIntoDraft();
+  } catch (_) {}
+  const ready = readAccountSetupDraft();
+  if (ready && ready.account && ready.account.name) {
+    try {
+      sessionStorage.setItem(BW_FORECAST_READY_POPUP_KEY, "1");
+    } catch (_) {}
+    await finishResumeAccountSetup();
+    return "redirect";
   }
-  syncAccountSetupBackButtonVisibility();
-  return "resume";
+  window.location.replace("/calendar");
+  return "redirect";
 }
 
 async function finishResumeAccountSetup() {
