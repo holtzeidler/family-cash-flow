@@ -19022,20 +19022,6 @@ body.account-setup-page .account-setup-step3-recommend__eyebrow{
   text-transform: none;
   color: rgba(100, 116, 139, 0.58);
 }
-body.account-setup-page .account-setup-step3-recommend__lead{
-  margin: 0;
-  font-size: 0.84rem;
-  font-weight: 600;
-  line-height: 1.35;
-  color: rgba(71, 85, 105, 0.78);
-}
-body.account-setup-page .account-setup-step3-recommend__note{
-  margin: 0.28rem 0 0;
-  font-size: 0.78rem;
-  font-weight: 450;
-  line-height: 1.4;
-  color: rgba(100, 116, 139, 0.72);
-}
 body.account-setup-page .account-setup-step3-checklist{
   list-style: none;
   margin: 0;
@@ -19183,6 +19169,19 @@ body.account-setup-page #asTxHubAddExpenseBtn.account-setup-step3-actionBtn.is-c
 body.account-setup-page .account-setup-step3-actionBtn.is-complete .account-setup-step3-actionBtn__plus,
 body.account-setup-page .account-setup-step3-actionBtn.is-complete .account-setup-step3-actionBtn__label{
   color: inherit;
+}
+body.account-setup-page #asTxHubAddIncomeBtn.account-setup-step3-actionBtn.is-complete:hover:not(:disabled),
+body.account-setup-page #asTxHubAddExpenseBtn.account-setup-step3-actionBtn.is-complete:hover:not(:disabled){
+  cursor: pointer;
+  transform: translateY(-1px);
+}
+body.account-setup-page #asTxHubAddIncomeBtn.account-setup-step3-actionBtn.is-complete:hover:not(:disabled){
+  background: color-mix(in srgb, var(--accent) 18%, #fff);
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+body.account-setup-page #asTxHubAddExpenseBtn.account-setup-step3-actionBtn.is-complete:hover:not(:disabled){
+  background: color-mix(in srgb, var(--accent) 6%, #fff);
+  border-color: rgba(11, 61, 46, 0.4);
 }
 body.account-setup-page #asTxHubAddIncomeBtn.account-setup-step3-actionBtn.is-complete:focus-visible:not(:disabled),
 body.account-setup-page #asTxHubAddExpenseBtn.account-setup-step3-actionBtn.is-complete:focus-visible:not(:disabled){

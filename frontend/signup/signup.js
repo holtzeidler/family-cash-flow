@@ -1146,12 +1146,12 @@ function getAccountSetupStepCopy(step, ctx) {
       if (phase3 === "form") {
         return {
           title: "Add an upcoming paycheck or bill",
-          subtitle: "Your paychecks help us show when your balance rises.",
+          subtitle: "Add what’s coming in and going out so we can start forecasting your balance.",
         };
       }
       return {
-        title: "Add your first income & bills",
-        subtitle: "Add a few recurring items so we can start showing where your balance is headed.",
+        title: "Add your first income & expenses",
+        subtitle: "Start with a few upcoming transactions. You can add the rest later.",
       };
     }
     case 3:
