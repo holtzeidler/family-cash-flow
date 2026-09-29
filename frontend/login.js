@@ -219,17 +219,18 @@ function formatServerDiag(resp) {
   }
 }
 
+function postLoginDestination() {
+  try {
+    const next = new URLSearchParams(window.location.search || "").get("next") || "";
+    const raw = String(next).trim();
+    if (raw.startsWith("/") && !raw.startsWith("//") && !raw.includes("://")) {
+      return raw;
+    }
+  } catch (_) {}
+  return "/calendar";
+}
+
 async function goApp() {
-  function postLoginDestination() {
-    try {
-      const next = new URLSearchParams(window.location.search || "").get("next") || "";
-      const raw = String(next).trim();
-      if (raw.startsWith("/") && !raw.startsWith("//") && !raw.includes("://")) {
-        return raw;
-      }
-    } catch (_) {}
-    return "/calendar";
-  }
   try {
     const t = sessionStorage.getItem("bw_invite_token");
     if (!t || !String(t).trim()) {
@@ -766,6 +767,26 @@ try {
 if (getApiBase()) {
   request("/api/health", "GET", null, { timeoutMs: 15000 }).catch(() => {});
 }
+
+async function redirectIfAlreadySignedIn() {
+  try {
+    const params = new URLSearchParams(location.search);
+    const resetTok = params.get("reset");
+    if (resetTok && String(resetTok).trim().length >= 24) return;
+    if (location.hash === "#forgot") return;
+  } catch (_) {}
+  const me = await request("/api/auth/me", "GET", null, { timeoutMs: 8000 });
+  if (!me.ok || !me.data || !me.data.user) return;
+  try {
+    const invite = sessionStorage.getItem("bw_invite_token");
+    if (invite && String(invite).trim()) {
+      await goApp();
+      return;
+    }
+  } catch (_) {}
+  window.location.replace(postLoginDestination());
+}
+void redirectIfAlreadySignedIn();
 
 try {
   const resetTok = new URLSearchParams(location.search).get("reset");
