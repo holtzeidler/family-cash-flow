@@ -331,13 +331,19 @@ function purgeLegacyAccountSetupDraftLocalStorage() {
   try {
     localStorage.removeItem(BW_ACCOUNT_SETUP_DRAFT_KEY);
   } catch (_) {}
+  try {
+    localStorage.removeItem(BW_ONBOARDING_RECOVERY_PENDING_KEY);
+  } catch (_) {}
 }
 
 function writeAccountSetupDraftStorage(json) {
   try {
     sessionStorage.setItem(BW_ACCOUNT_SETUP_DRAFT_KEY, json);
   } catch (_) {}
-  purgeLegacyAccountSetupDraftLocalStorage();
+  // Also keep a copy that survives closing the window, so login can finish setup.
+  try {
+    localStorage.setItem(BW_ACCOUNT_SETUP_DRAFT_KEY, json);
+  } catch (_) {}
 }
 
 function accountSetupSignupEmailFromDom() {
@@ -367,6 +373,10 @@ function persistAccountSetupDraftObject(obj) {
   const next = obj && typeof obj === "object" && !Array.isArray(obj) ? { ...obj } : {};
   const signupEmail = accountSetupSignupEmailFromDom();
   if (signupEmail) next.signupEmail = signupEmail;
+  const firstName = readAccountSetupPersonName("firstName");
+  const lastName = readAccountSetupPersonName("lastName");
+  if (firstName) next.firstName = firstName;
+  if (lastName) next.lastName = lastName;
   writeAccountSetupDraftStorage(JSON.stringify(next));
 }
 
@@ -383,6 +393,9 @@ function removeAccountSetupDraftStorage() {
 function markOnboardingRecoveryPending() {
   try {
     sessionStorage.setItem(BW_ONBOARDING_RECOVERY_PENDING_KEY, "1");
+  } catch (_) {}
+  try {
+    localStorage.setItem(BW_ONBOARDING_RECOVERY_PENDING_KEY, "1");
   } catch (_) {}
 }
 
@@ -462,12 +475,21 @@ function accountSetupEffectiveTxDate(txDate, draft) {
 }
 
 function readAccountSetupDraftJsonFromStorage() {
-  purgeLegacyAccountSetupDraftLocalStorage();
+  let sessionJson = "";
+  let localJson = "";
   try {
-    return sessionStorage.getItem(BW_ACCOUNT_SETUP_DRAFT_KEY) || "";
-  } catch (_) {
-    return "";
+    sessionJson = sessionStorage.getItem(BW_ACCOUNT_SETUP_DRAFT_KEY) || "";
+  } catch (_) {}
+  try {
+    localJson = localStorage.getItem(BW_ACCOUNT_SETUP_DRAFT_KEY) || "";
+  } catch (_) {}
+  if (sessionJson && localJson && sessionJson !== localJson) {
+    try {
+      const merged = mergeAccountSetupDraftObjects(JSON.parse(sessionJson), JSON.parse(localJson));
+      return JSON.stringify(merged);
+    } catch (_) {}
   }
+  return sessionJson || localJson || "";
 }
 
 /** Bumped when step order changes; used to migrate persisted `wizardStep`. */
@@ -1146,11 +1168,13 @@ function setAccountSetupExpenseAfterSave(on) {
   syncAccountSetupWizardShellButtons();
 }
 
+let accountSetupResumeMode = false;
+
 function syncAccountSetupBackButtonVisibility() {
   if (!accountSetupBackBtn) return;
   if (!document.getElementById("accountSetupWizard")) return;
   const s = getAccountSetupWizardStep();
-  if (s <= 0) {
+  if (s <= 0 || (accountSetupResumeMode && s <= 1)) {
     accountSetupBackBtn.style.display = "none";
     return;
   }
@@ -2817,6 +2841,12 @@ function hydrateAccountSetupDraft() {
   try {
     const o = JSON.parse(raw);
     const tzEl = document.getElementById("timeZone");
+    const emailEl = document.getElementById("email");
+    const firstNameEl = document.getElementById("firstName");
+    const lastNameEl = document.getElementById("lastName");
+    if (emailEl && !String(emailEl.value || "").trim() && o.signupEmail) emailEl.value = String(o.signupEmail);
+    if (firstNameEl && !String(firstNameEl.value || "").trim() && o.firstName) firstNameEl.value = String(o.firstName);
+    if (lastNameEl && !String(lastNameEl.value || "").trim() && o.lastName) lastNameEl.value = String(o.lastName);
     const accNameEl = document.getElementById("accountName");
     const accBalEl = document.getElementById("accountStartingBalance");
     const accDateEl = document.getElementById("accountStartingBalanceDate");
@@ -3215,6 +3245,96 @@ async function maybePatchForecastThresholdsFromDraft(draft) {
     return { ok: false, error: `threshold_patch_${r?.status || "network"}` };
   } catch (e) {
     return { ok: false, error: (e && e.message) || "threshold_patch_threw" };
+  }
+}
+
+async function maybeEnterAccountSetupResume() {
+  if (!isAccountSetupPath() || !document.getElementById("accountSetupWizard")) return "";
+  const me = await request("/api/auth/me", "GET");
+  const user = me.ok && me.data && me.data.user ? me.data.user : null;
+  if (!user) return "";
+  const email = String(user.email || "").trim().toLowerCase();
+  const draft = readAccountSetupDraftRaw();
+  const draftEmail = draft && draft.signupEmail ? String(draft.signupEmail).trim().toLowerCase() : "";
+  if (draftEmail && email && draftEmail !== email) {
+    removeAccountSetupDraftStorage();
+  }
+  let familyId = null;
+  try {
+    const fams = await request("/api/families", "GET");
+    if (fams.ok && Array.isArray(fams.data) && fams.data.length && fams.data[0] && fams.data[0].id) {
+      familyId = fams.data[0].id;
+    }
+  } catch (_) {}
+  if (familyId) {
+    const accounts = await request(`/api/families/${encodeURIComponent(String(familyId))}/accounts`, "GET");
+    if (accounts.ok && Array.isArray(accounts.data) && accounts.data.length > 0) {
+      window.location.replace("/calendar");
+      return "redirect";
+    }
+  }
+  accountSetupResumeMode = true;
+  const raw = readAccountSetupDraftRaw();
+  let step = raw ? normalizePersistedAccountSetupWizardStep(raw) : 1;
+  if (!Number.isFinite(step) || step < 1) step = 1;
+  setAccountSetupWizardStep(step, { skipPersist: true });
+  if (step === 4) {
+    try { hydrateAccountSetupSurveyFromDraft(raw || {}); } catch (_) {}
+  }
+  syncAccountSetupBackButtonVisibility();
+  return "resume";
+}
+
+async function finishResumeAccountSetup() {
+  if (bwSignupInFlight) return;
+  bwSignupInFlight = true;
+  setBusy(true);
+  const startedAt = Date.now();
+  let overlay = null;
+  try {
+    overlay = ensureForecastBuildOverlay();
+    setCallout(signupCalloutEl, "", "");
+    showForecastBuildOverlay(overlay, { steadyProgress: true, rotateMessages: false });
+    setForecastBuildOverlayMessage(overlay, "Putting everything together…");
+    bumpForecastBuildOverlayProgress(overlay, 28);
+    prefetchCalendarPage();
+    const draft = readAccountSetupDraft();
+    if (!draft || !draft.account || !draft.account.name) {
+      hideForecastBuildOverlay(overlay);
+      setAccountSetupWizardStep(1);
+      setCallout(signupCalloutEl, "Enter your checking account balance to continue.", "error");
+      return;
+    }
+    const accountResult = await maybeCreateFirstAccountFromDraft(draft);
+    const createdAccountId = accountResult && accountResult.accountId ? accountResult.accountId : null;
+    if (!accountResult || !accountResult.ok || !createdAccountId) {
+      hideForecastBuildOverlay(overlay);
+      setCallout(signupCalloutEl, "We couldn't save your checking account. Please try again.", "error");
+      return;
+    }
+    setForecastBuildOverlayMessage(overlay, "Saving your income and bills…");
+    bumpForecastBuildOverlayProgress(overlay, 52);
+    const txResult = await maybeCreateFirstTransactionFromDraft(draft, createdAccountId);
+    try {
+      await maybePatchForecastThresholdsFromDraft(draft);
+    } catch (_) {}
+    if (txResult && txResult.ok) {
+      try { removeAccountSetupDraftStorage(); } catch (_) {}
+    } else {
+      try { markOnboardingRecoveryPending(); } catch (_) {}
+    }
+    await ensureMinOverlayDuration(startedAt, 1200);
+    bumpForecastBuildOverlayProgress(overlay, 78);
+    setForecastBuildOverlayMessage(overlay, "Opening your forecast…");
+    finishForecastBuildOverlayProgress(overlay);
+    try { sessionStorage.setItem(BW_FORECAST_READY_POPUP_KEY, "1"); } catch (_) {}
+    await goApp();
+  } catch (e) {
+    if (overlay) hideForecastBuildOverlay(overlay);
+    setCallout(signupCalloutEl, calloutText(e && e.message ? e.message : e, "Could not finish setup."), "error");
+  } finally {
+    bwSignupInFlight = false;
+    setBusy(false);
   }
 }
 
@@ -3646,6 +3766,10 @@ void (async () => {
   }
   hydrateAccountSetupDraft();
   try {
+    const resumed = await maybeEnterAccountSetupResume();
+    if (resumed === "redirect") return;
+  } catch (_) {}
+  try {
     initAccountSetupMoneyFields();
   } catch (_) {}
   try {
@@ -3838,6 +3962,16 @@ function onSignupPrimaryClickInner() {
 
         } catch (_) {}
         if (bwSignupInFlight) return;
+        if (accountSetupResumeMode) {
+          void finishResumeAccountSetup();
+          return;
+        }
+        const resumePassword = document.getElementById("password")?.value || "";
+        if (!resumePassword || resumePassword.length < 8) {
+          setAccountSetupWizardStep(0);
+          showAccountSetupStep0Error("Enter your password to finish creating your account.", "password");
+          return;
+        }
         void doSignup();
         return;
       }
@@ -4002,6 +4136,7 @@ function handleAccountSetupBack(e) {
   if (!isAccountSetupPath() || !document.getElementById("accountSetupWizard")) return;
   const s = getAccountSetupWizardStep();
   if (s <= 0) return;
+  if (accountSetupResumeMode && s <= 1) return;
   setCallout(signupCalloutEl, "", "");
   if (s === 2 && getAccountSetupStep3Phase() === "form") {
     // From the transaction form (pre-save), Back should return to the Step 3 intro hub.

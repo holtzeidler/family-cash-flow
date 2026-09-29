@@ -59,6 +59,48 @@ function clearOnboardingDraftStorage() {
   try {
     sessionStorage.removeItem(BW_ONBOARDING_RECOVERY_PENDING_KEY);
   } catch (_) {}
+  try {
+    localStorage.removeItem(BW_ONBOARDING_RECOVERY_PENDING_KEY);
+  } catch (_) {}
+}
+
+function readOnboardingDraftEmail() {
+  let raw = "";
+  try {
+    raw = sessionStorage.getItem(BW_ACCOUNT_SETUP_DRAFT_KEY) || "";
+  } catch (_) {}
+  if (!raw) {
+    try {
+      raw = localStorage.getItem(BW_ACCOUNT_SETUP_DRAFT_KEY) || "";
+    } catch (_) {}
+  }
+  if (!raw) return "";
+  try {
+    const parsed = JSON.parse(raw);
+    return String(parsed && parsed.signupEmail ? parsed.signupEmail : "").trim().toLowerCase();
+  } catch (_) {
+    return "";
+  }
+}
+
+function keepOnboardingDraftForLogin(email) {
+  const loginEmail = String(email || "").trim().toLowerCase();
+  const draftEmail = readOnboardingDraftEmail();
+  if (!draftEmail || !loginEmail || draftEmail !== loginEmail) {
+    clearOnboardingDraftStorage();
+    return;
+  }
+  try {
+    const sessionDraft = sessionStorage.getItem(BW_ACCOUNT_SETUP_DRAFT_KEY) || "";
+    const localDraft = localStorage.getItem(BW_ACCOUNT_SETUP_DRAFT_KEY) || "";
+    if (!sessionDraft && localDraft) sessionStorage.setItem(BW_ACCOUNT_SETUP_DRAFT_KEY, localDraft);
+  } catch (_) {}
+  try {
+    sessionStorage.setItem(BW_ONBOARDING_RECOVERY_PENDING_KEY, "1");
+  } catch (_) {}
+  try {
+    localStorage.setItem(BW_ONBOARDING_RECOVERY_PENDING_KEY, "1");
+  } catch (_) {}
 }
 
 function apiBearerAuthHeaders() {
@@ -335,9 +377,9 @@ async function doLogin() {
     try {
       sessionStorage.removeItem(BW_API_ACCESS_TOKEN_KEY);
     } catch (_) {}
-    clearOnboardingDraftStorage();
     const email = document.getElementById("email").value.trim();
     const password = document.getElementById("password").value;
+    keepOnboardingDraftForLogin(email);
     const loginResp = await requestWithRetry("/api/auth/login", "POST", { email, password }, {
       maxMs: 28000,
       onRetry() {
