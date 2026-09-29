@@ -6840,15 +6840,67 @@ function bindCalendarCellAddTxClick(cell, iso) {
   cell.addEventListener("keydown", onKeyActivate);
 }
 
-function handleCalendarPanelClick(e) {
-  const grid = document.getElementById("calendarGrid");
-  if (!grid || !grid.contains(e.target)) return;
+let calendarPressedTxn = null;
 
-  const expectedLine = e.target.closest(".cal-day-tx-line--expected");
+function calendarTxnActionFromTarget(target) {
+  if (!target || typeof target.closest !== "function") return null;
+  const grid = document.getElementById("calendarGrid");
+  if (!grid || !grid.contains(target)) return null;
+  const expectedLine = target.closest(".cal-day-tx-line--expected");
   if (expectedLine && grid.contains(expectedLine)) {
+    return {
+      type: "expected",
+      expectedId: String(expectedLine.dataset.expectedId || ""),
+      occurrenceDate: String(expectedLine.dataset.occurrenceDate || ""),
+    };
+  }
+  const part = target.closest(".cal-tx-part");
+  if (part && grid.contains(part)) {
+    return { type: "actual", txId: Number(part.dataset.txId) };
+  }
+  return null;
+}
+
+function openCalendarTxnAction(action, e) {
+  if (!action) return false;
+  if (e) {
     e.preventDefault();
     e.stopPropagation();
-    void openCalendarExpectedFromLine(expectedLine);
+  }
+  if (action.type === "expected") {
+    const expectedId = Number(action.expectedId);
+    if (!Number.isFinite(expectedId) || expectedId <= 0) return true;
+    const occ = action.occurrenceDate || "";
+    const line =
+      (occ &&
+        document.querySelector(
+          `#calendarGrid .cal-day-tx-line--expected[data-expected-id="${expectedId}"][data-occurrence-date="${occ}"]`
+        )) ||
+      document.querySelector(`#calendarGrid .cal-day-tx-line--expected[data-expected-id="${expectedId}"]`);
+    if (line) void openCalendarExpectedFromLine(line);
+    return true;
+  }
+  const id = Number(action.txId);
+  if (!Number.isFinite(id) || id <= 0) return true;
+  const tx = findActualTransactionById(id);
+  if (tx) openTxEditModal(tx);
+  else void openCalendarActualTransactionById(id);
+  return true;
+}
+
+function handleCalendarPanelClick(e) {
+  const grid = document.getElementById("calendarGrid");
+  // A press that starts on a transaction wins even if a calendar reflow moves
+  // the balance row under the cursor before mouseup.
+  const pressed = calendarPressedTxn;
+  calendarPressedTxn = null;
+  if (!grid || !grid.contains(e.target)) {
+    if (pressed) openCalendarTxnAction(pressed, e);
+    return;
+  }
+  const action = calendarTxnActionFromTarget(e.target) || pressed;
+  if (action) {
+    openCalendarTxnAction(action, e);
     return;
   }
 
@@ -6870,20 +6922,6 @@ function handleCalendarPanelClick(e) {
     const aid = startBalLine.dataset.accountId;
     if (!openAccountEditModalForAccountId(aid)) {
       window.alert("Could not open this account. Try refreshing the page.");
-    }
-    return;
-  }
-
-  // Click on an actual transaction line opens the edit modal.
-  const part = e.target.closest(".cal-tx-part");
-  if (part && grid.contains(part)) {
-    const id = Number(part.dataset.txId);
-    if (Number.isFinite(id) && id > 0) {
-      e.preventDefault();
-      e.stopPropagation();
-      const tx = findActualTransactionById(id);
-      if (tx) openTxEditModal(tx);
-      else void openCalendarActualTransactionById(id);
     }
     return;
   }
@@ -6923,6 +6961,13 @@ function bindCalendarPanelClickRouting() {
   if (!panel || panel.dataset.bwCalClickBound === "1") return;
   panel.dataset.bwCalClickBound = "1";
   // Capture phase so day clicks still work when a child stops bubble propagation.
+  panel.addEventListener(
+    "pointerdown",
+    (e) => {
+      calendarPressedTxn = calendarTxnActionFromTarget(e.target);
+    },
+    true
+  );
   panel.addEventListener("click", handler, true);
 }
 bindCalendarPanelClickRouting();
@@ -15669,6 +15714,8 @@ async function loadExpectedTransactions() {
   }
 }
 
+let calendarLoadGen = 0;
+
 function updateCalendarEmptyStateBanner() {
   if (!calendarErr) return;
   const hasAccounts = Array.isArray(state.accounts) && state.accounts.length > 0;
@@ -16449,22 +16496,26 @@ function renderSidebarPendingTransactionsForMonth() {
   }
 }
 
-async function loadCalendarMonthDaily() {
-  state.monthDailyBalances = new Map();
+async function loadCalendarMonthDaily(gen) {
+  const stillCurrent = () => gen == null || gen === calendarLoadGen;
   if (!state.activeFamilyId) return;
   const month = calendarMonth?.value || monthInput?.value;
   if (!month) return;
   const mode = calendarMode?.value || "both";
+  // Build the next map locally. Clearing state.monthDailyBalances before the
+  // response comes back lets a second overlapping load paint "Balances did not
+  // load" and shift the grid under an in-progress click.
+  const nextBalances = new Map();
   const applyDayRows = (days, { onlyMissing = false } = {}) => {
     if (!Array.isArray(days) || days.length === 0) return;
     for (const row of days) {
       const iso = normalizeIsoDate(row.date);
       if (!iso || row.end == null) continue;
-      if (onlyMissing && state.monthDailyBalances.has(iso)) continue;
+      if (onlyMissing && nextBalances.has(iso)) continue;
       const start = Number(row.start);
       const txNet = Number(row.tx_net);
       const end = Number(row.end);
-      state.monthDailyBalances.set(iso, {
+      nextBalances.set(iso, {
         start: Number.isFinite(start) ? start : 0,
         txNet: Number.isFinite(txNet) ? txNet : 0,
         end: Number.isFinite(end) ? end : 0,
@@ -16482,7 +16533,7 @@ async function loadCalendarMonthDaily() {
       const prefix = `${month}-`;
       for (const [iso, row] of wrap.entries()) {
         if (!iso.startsWith(prefix)) continue;
-        if (!state.monthDailyBalances.has(iso)) state.monthDailyBalances.set(iso, row);
+        if (!nextBalances.has(iso)) nextBalances.set(iso, row);
       }
     } catch (_) {}
   };
@@ -16505,6 +16556,7 @@ async function loadCalendarMonthDaily() {
         "GET",
       ),
     ]);
+    if (!stillCurrent()) return;
     const primary = results[0].status === "fulfilled" ? results[0].value : null;
     const primaryDays = primary?.days;
     if (Array.isArray(primaryDays) && primaryDays.length > 0) {
@@ -16515,12 +16567,15 @@ async function loadCalendarMonthDaily() {
         applyDayRows(res.value?.days, { onlyMissing: false });
       }
       fillInMonthGapsFromClient();
+      if (!stillCurrent()) return;
+      state.monthDailyBalances = nextBalances;
       repairOutOfMonthBalanceContinuity();
       return;
     }
   } catch (_) {
     /* offline or old API — fall back */
   }
+  if (!stillCurrent()) return;
   computeMonthDailyBalancesLegacy();
   repairOutOfMonthBalanceContinuity();
 }
@@ -16549,6 +16604,8 @@ function setCalendarLoadingUi(on) {
 }
 
 async function loadMonthAndCalendar() {
+  const gen = ++calendarLoadGen;
+  const stillCurrent = () => gen === calendarLoadGen;
   try {
     state.monthActualItems = [];
     state.monthExpectedItems = [];
@@ -16557,20 +16614,23 @@ async function loadMonthAndCalendar() {
     state.reconciledDates = new Set();
     state.verifiedBalances = new Map();
     // Do not blank the grid while waiting on the network: seed from accounts so
-    // balances stay visible if a later request hangs.
+    // balances stay visible if a later request hangs. Only this newest load may
+    // publish that seed — an older load must not wipe a newer result.
+    if (!stillCurrent()) return;
     state.monthDailyBalances = new Map();
     try {
       if (Array.isArray(state.accounts) && state.accounts.length > 0) {
         computeMonthDailyBalancesLegacy();
       }
     } catch (_) {}
+    if (!stillCurrent()) return;
     show(calendarErr, "Loading forecast…");
     renderCalendar();
 
     if (!state.activeFamilyId) {
       renderSidebarPendingTransactionsForMonth();
       renderMonthSummaryTotalsFromState();
-      updateCalendarEmptyStateBanner();
+      if (stillCurrent()) updateCalendarEmptyStateBanner();
       return;
     }
 
@@ -16590,7 +16650,8 @@ async function loadMonthAndCalendar() {
     };
 
     // Forecast numbers first — everything else is secondary chrome.
-    await runStep("daily-balances", () => loadCalendarMonthDaily());
+    await runStep("daily-balances", () => loadCalendarMonthDaily(gen));
+    if (!stillCurrent()) return;
     if (!state.monthDailyBalances || state.monthDailyBalances.size === 0) {
       try {
         computeMonthDailyBalancesLegacy();
@@ -16609,17 +16670,20 @@ async function loadMonthAndCalendar() {
     try {
       repairOutOfMonthBalanceContinuity();
     } catch (_) {}
+    if (!stillCurrent()) return;
     renderSidebarPendingTransactionsForMonth();
     renderMonthSummaryTotalsFromState();
     renderCalendar();
     updateCalendarEmptyStateBanner();
     await runStep("low-balance", () => refreshLowBalanceAlert());
     await runStep("forecast-confidence", () => refreshForecastConfidence());
+    if (!stillCurrent()) return;
     if (loadErrors.length && (!state.monthDailyBalances || state.monthDailyBalances.size === 0)) {
       const last = loadErrors[loadErrors.length - 1];
       show(calendarErr, (last && last.message) || "Failed to load calendar");
     }
   } catch (e) {
+    if (!stillCurrent()) return;
     show(calendarErr, e.message || "Failed to load calendar");
     try {
       if (!state.monthDailyBalances || state.monthDailyBalances.size === 0) {
@@ -16629,7 +16693,7 @@ async function loadMonthAndCalendar() {
       updateCalendarEmptyStateBanner();
     } catch (_) {}
   } finally {
-    setCalendarLoadingUi(false);
+    if (stillCurrent()) setCalendarLoadingUi(false);
   }
 }
 
