@@ -3282,7 +3282,7 @@ async function doSignup() {
     if (password !== password2) throw new Error("Passwords do not match.");
 
     if (isAccountSetup && overlay) {
-      setForecastBuildOverlayMessage(overlay, "Creating your account…");
+      setForecastBuildOverlayMessage(overlay, "Putting everything together…");
       bumpForecastBuildOverlayProgress(overlay, 28);
     }
 
