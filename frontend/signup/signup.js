@@ -4395,6 +4395,20 @@ function syncAccountSetupCategorySelectionForKind(hiddenId) {
   clearAccountSetupCategoryCombobox(hiddenId);
 }
 
+function accountSetupVariableHintForKind(kind) {
+  return String(kind || "").trim().toLowerCase() === "income"
+    ? "Useful if your paycheck or income isn’t always the same."
+    : "Useful for credit cards, utilities, and other changing bills.";
+}
+
+function syncAccountSetupVariableHint(prefix, kind) {
+  const text = accountSetupVariableHintForKind(kind);
+  const hint = document.getElementById(`${prefix}VariableHint`);
+  if (hint) hint.textContent = text;
+  const label = document.querySelector(`label[for="${prefix}Variable"]`);
+  if (label) label.title = text;
+}
+
 function initAccountSetupQuickChips() {
   if (!isAccountSetupPath() || !document.getElementById("accountSetupWizard")) return;
   // Panel 2 chips follow the visible Type radio.
@@ -4427,6 +4441,7 @@ function initAccountSetupQuickChips() {
       syncAccountSetupScheduleUi("asTx");
     }
     asTxKindSticky = kind;
+    syncAccountSetupVariableHint("asTx", kind);
     syncAccountSetupCategorySelectionForKind("asTxCategory");
     renderAccountSetupCategoryChips("asTx", kind);
     const list = document.getElementById("asTxCategoryList");
@@ -4445,6 +4460,7 @@ function initAccountSetupQuickChips() {
   const update3 = () => {
     const checked = document.querySelector('input[name="asExpTxKind"]:checked');
     const kind = checked ? checked.value : "expense";
+    syncAccountSetupVariableHint("asExp", kind);
     syncAccountSetupCategorySelectionForKind("asExpTxCategory");
     renderAccountSetupCategoryChips("asExpTx", kind);
     const list = document.getElementById("asExpTxCategoryList");
