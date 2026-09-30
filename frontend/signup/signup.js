@@ -247,7 +247,7 @@ async function verifySessionWithProgress(targetInfoEl, opts = {}) {
   const attempts = silent ? [0, 350, 900] : [0, 800, 1800, 3200];
   for (let i = 0; i < attempts.length; i++) {
     if (attempts[i] > 0) await new Promise((resolve) => setTimeout(resolve, attempts[i]));
-    const status = "Confirming your session…";
+    const status = "Almost ready…";
     if (onStatus) onStatus(status);
     else if (!silent) setCallout(targetInfoEl, "Logging in....", "pending");
     const me = await request("/api/auth/me", "GET");
@@ -3530,7 +3530,10 @@ async function doSignup() {
     const check = await verifySessionWithProgress(signupCalloutEl, {
       silent: isAccountSetup,
       onStatus: isAccountSetup && overlay
-        ? (msg) => setForecastBuildOverlayMessage(overlay, msg)
+        ? (msg) => {
+            setForecastBuildOverlayTitle(overlay, "Mapping out your cash flow…");
+            setForecastBuildOverlayMessage(overlay, msg);
+          }
         : null,
     });
     if (!check.ok) {
@@ -3598,6 +3601,7 @@ async function doSignup() {
     if (isAccountSetup && overlay) {
       await ensureMinOverlayDuration(startedAt, minOverlayMs);
       bumpForecastBuildOverlayProgress(overlay, 78);
+      setForecastBuildOverlayTitle(overlay, "Preparing your forecast…");
       setForecastBuildOverlayMessage(overlay, "Opening your forecast…");
       finishForecastBuildOverlayProgress(overlay);
     }
@@ -3694,6 +3698,16 @@ function finishForecastBuildOverlayProgress(overlayEl) {
   fill.style.animation = "";
   fill.style.transition = "width 420ms ease-out";
   fill.style.width = "100%";
+}
+
+function setForecastBuildOverlayTitle(overlayEl, text) {
+  if (!overlayEl) return;
+  const titleEl = overlayEl.querySelector(".bw-build-overlay__title");
+  if (!titleEl) return;
+  const next = String(text || "");
+  titleEl.textContent = next;
+  const card = overlayEl.querySelector(".bw-build-overlay__card");
+  if (card) card.setAttribute("aria-label", next.replace(/…$/, "") || "Preparing your forecast");
 }
 
 function setForecastBuildOverlayMessage(overlayEl, text) {

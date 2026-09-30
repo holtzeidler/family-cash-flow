@@ -27399,7 +27399,7 @@ body.account-setup-page
   line-height: 1.45;
 }
 #bwForecastReadyModal .bw-forecast-ready__tagline{
-  margin: 0 0 6px;
+  margin: 0 0 20px;
   font-size: 0.86rem;
   font-weight: 500;
   line-height: 1.32;
@@ -27509,7 +27509,7 @@ body.account-setup-page
   color: rgba(11, 61, 46, 0.92);
   box-shadow: none;
   cursor: pointer;
-  margin-top: 5px;
+  margin-top: 12px;
 }
 #bwForecastReadyModal .bw-forecast-ready__skip:hover{
   background: color-mix(in srgb, var(--accent) 5%, #fff);
@@ -27521,7 +27521,7 @@ body.account-setup-page
   outline-offset: 2px;
 }
 #bwForecastReadyModal .bw-forecast-ready__reassure{
-  margin: 6px 0 0;
+  margin: 20px 0 0;
   text-align: center;
   font-size: 0.72rem;
   line-height: 1.32;
