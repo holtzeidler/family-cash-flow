@@ -3,24 +3,24 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>Create Account — BalanceWhiz</title>
+    <title>Create your login — BalanceWhiz</title>
     <!-- bw:seo-head -->
-    <meta name="description" content="Create your BalanceWhiz account and start forecasting your checking balance in minutes—no bank connection required." />
-    <link rel="canonical" href="https://balancewhiz.com/signup/" />
+    <meta name="description" content="Create your BalanceWhiz login and start forecasting your checking balance." />
+    <link rel="canonical" href="https://balancewhiz.com/account-setup/" />
     <meta name="robots" content="noindex, nofollow" />
     <meta name="theme-color" content="#0B3D2E" />
     <meta property="og:site_name" content="BalanceWhiz" />
-    <meta property="og:title" content="Create Account — BalanceWhiz" />
-    <meta property="og:description" content="Create your BalanceWhiz account and start forecasting your checking balance in minutes—no bank connection required." />
-    <meta property="og:url" content="https://balancewhiz.com/signup/" />
+    <meta property="og:title" content="Create your login — BalanceWhiz" />
+    <meta property="og:description" content="Create your BalanceWhiz login and start forecasting your checking balance." />
+    <meta property="og:url" content="https://balancewhiz.com/account-setup/" />
     <meta property="og:type" content="website" />
     <meta property="og:image" content="https://balancewhiz.com/assets/og-image.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:locale" content="en_US" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Create Account — BalanceWhiz" />
-    <meta name="twitter:description" content="Create your BalanceWhiz account and start forecasting your checking balance in minutes—no bank connection required." />
+    <meta name="twitter:title" content="Create your login — BalanceWhiz" />
+    <meta name="twitter:description" content="Create your BalanceWhiz login and start forecasting your checking balance." />
     <meta name="twitter:image" content="https://balancewhiz.com/assets/og-image.png" />
     <link rel="icon" href="../favicon.ico" sizes="any" />
     <link rel="icon" href="../favicon-32.png" type="image/png" sizes="32x32" />
@@ -28,144 +28,17 @@
     <link rel="apple-touch-icon" href="../apple-touch-icon.png" />
     <link rel="manifest" href="../site.webmanifest" />
     <!-- /bw:seo-head -->
-<script>window.API_BASE = "__API_BASE__";</script>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=777" />
+    <meta http-equiv="refresh" content="0; url=/account-setup/?fresh=1" />
+    <script>
+      (function () {
+        var params = new URLSearchParams(window.location.search || "");
+        if (!params.has("fresh")) params.set("fresh", "1");
+        var query = params.toString();
+        window.location.replace("/account-setup/" + (query ? "?" + query : ""));
+      })();
+    </script>
   </head>
-  <body class="login-page signup-page">
-    <div class="container">
-      <div class="top-nav" role="banner" aria-label="App header">
-        <div class="top-nav__inner top-nav__inner--simple">
-          <div class="top-nav__title" aria-label="App title">
-            <div class="app-title app-title--logo">
-              <a href="/" aria-label="BalanceWhiz home">
-                <img
-                  class="app-logo"
-                  src="../assets/balance-whiz-logo-on-accent.svg?v=20260518"
-                  width="293"
-                  height="44"
-                  alt="BalanceWhiz"
-                  decoding="async"
-                  fetchpriority="high"
-                />
-              </a>
-            </div>
-          </div>
-          <div class="top-nav__actions" aria-label="Account actions">
-            <button type="button" class="top-nav__logout" onclick="window.location.href='../login.html'">Login</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="grid">
-        <section class="card auth-section auth-section--open signup-card" aria-labelledby="signupCardTitle">
-          <header class="signup-card__header">
-            <h1 id="signupCardTitle" class="signup-card__title">Create your account</h1>
-            <p class="signup-card__subtitle">Start your free 14-day trial.</p>
-          </header>
-          <div class="auth-section__head auth-section__head--signup-plan" id="signupBannerHead" hidden>
-            <div id="signupPlanNote" class="callout callout--muted" style="display:none" role="status"></div>
-          </div>
-          <div class="auth-section__body">
-            <div id="signupCallout" class="callout" style="display:none" role="status"></div>
-
-            <div class="row">
-              <div>
-                <label for="email">Email</label>
-                <input id="email" type="email" autocomplete="email" />
-              </div>
-            </div>
-
-            <div class="row">
-              <div>
-                <label for="password">Password</label>
-                <div class="password-field">
-                  <input id="password" type="password" autocomplete="new-password" />
-                  <button
-                    type="button"
-                    class="password-field__toggle"
-                    data-password-toggle
-                    tabindex="-1"
-                    aria-controls="password"
-                    aria-label="Show password"
-                    title="Show password"
-                    aria-pressed="false"
-                  >
-                    <span class="password-field__icon password-field__icon--show" aria-hidden="true">
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.75"/></svg>
-                    </span>
-                    <span class="password-field__icon password-field__icon--hide" aria-hidden="true">
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-10-8-10-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19M1 1l22 22" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    </span>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div class="row">
-              <div>
-                <label for="password2">Confirm Password</label>
-                <div class="password-field">
-                  <input id="password2" type="password" autocomplete="new-password" />
-                  <button
-                    type="button"
-                    class="password-field__toggle"
-                    data-password-toggle
-                    tabindex="-1"
-                    aria-controls="password2"
-                    aria-label="Show password"
-                    title="Show password"
-                    aria-pressed="false"
-                  >
-                    <span class="password-field__icon password-field__icon--show" aria-hidden="true">
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.75"/></svg>
-                    </span>
-                    <span class="password-field__icon password-field__icon--hide" aria-hidden="true">
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-10-8-10-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19M1 1l22 22" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    </span>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              id="signupBtn"
-              class="top-nav__logout"
-              onclick="window.location.assign('/account-setup' + (window.location.search || ''))"
-            >
-              Create Account
-            </button>
-            <p class="signup-card__trust">No credit card required.</p>
-          </div>
-        </section>
-      </div>
-
-      <footer class="onboarding-footer" role="contentinfo" aria-label="Setup footer">
-        <a class="onboarding-footer__brand" href="/" aria-label="BalanceWhiz home">
-          <img
-            class="onboarding-footer__logo"
-            src="../assets/balance-whiz-logo.svg?v=20260518"
-            width="120"
-            height="31"
-            alt="BalanceWhiz"
-            decoding="async"
-          />
-        </a>
-        <p class="onboarding-footer__line">No bank connection required · Cancel anytime</p>
-        <p class="onboarding-footer__legal">
-          <a href="../privacy.html">Privacy</a>
-          <span aria-hidden="true">·</span>
-          <a href="../terms.html">Terms</a>
-          <span aria-hidden="true">·</span>
-          <a href="../contactus/">Contact</a>
-        </p>
-      </footer>
-    </div>
-
-    <script src="./signup.js?v=132"></script>
+  <body>
+    <a href="/account-setup/?fresh=1">Continue to create your login</a>
   </body>
 </html>
-

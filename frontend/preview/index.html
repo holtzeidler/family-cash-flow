@@ -87,6 +87,43 @@
       .preview-page .preview-back {
         margin-right: auto;
       }
+      /* One row: centered wordmark, FAQ on the right, closer to the public header. */
+      body.preview-page .top-nav {
+        padding: 8px 0 6px;
+      }
+      body.preview-page .top-nav .top-nav__inner.top-nav__inner--simple {
+        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+        align-items: center;
+        justify-items: stretch;
+        row-gap: 0;
+        column-gap: 8px;
+      }
+      body.preview-page .top-nav__inner--simple .top-nav__title {
+        grid-column: 1 / -1;
+        grid-row: 1;
+        justify-content: center;
+        width: 100%;
+        padding-left: 0;
+      }
+      body.preview-page .top-nav__inner--simple .app-title {
+        text-align: center;
+      }
+      body.preview-page .top-nav__actions {
+        grid-column: 3;
+        grid-row: 1;
+        justify-self: end;
+        z-index: 1;
+        padding-right: 4px;
+      }
+      @media (max-width: 768px) {
+        body.preview-page .top-nav {
+          padding-top: max(6px, env(safe-area-inset-top, 0px));
+          padding-bottom: 6px;
+        }
+        body.preview-page .container {
+          padding-top: calc(3.25rem + env(safe-area-inset-top, 0px));
+        }
+      }
       @media (max-width: 768px) {
         .preview-page .calendar-dow-row {
           display: none;
@@ -145,6 +182,6 @@
         </div>
       </main>
     </div>
-    <script src="./preview.js?v=1"></script>
+    <script src="./preview.js?v=2"></script>
   </body>
 </html>

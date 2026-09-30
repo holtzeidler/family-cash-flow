@@ -85,9 +85,9 @@
       "index": false
     },
     "signup/index.html": {
-      "title": "Create Account — BalanceWhiz",
-      "description": "Create your BalanceWhiz account and start forecasting your checking balance in minutes—no bank connection required.",
-      "canonicalPath": "/signup/",
+      "title": "Create your login — BalanceWhiz",
+      "description": "Create your BalanceWhiz login and start forecasting your checking balance.",
+      "canonicalPath": "/account-setup/",
       "index": false
     },
     "account-setup/index.html": {

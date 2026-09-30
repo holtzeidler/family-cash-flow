@@ -220,7 +220,7 @@
       '<div class="bw-tour-tooltip__actions">' +
       '<button type="button" class="bw-tour-tooltip__skip preview-back" id="previewTourBack">Back</button>' +
       '<button type="button" class="bw-tour-tooltip__cta" id="previewTourNext">Next</button>' +
-      '<a class="bw-tour-tooltip__cta preview-tour-link" id="previewTourStart" href="/signup/" hidden>Start my free trial</a>' +
+      '<a class="bw-tour-tooltip__cta preview-tour-link" id="previewTourStart" href="/account-setup/?fresh=1" hidden>Start my free trial</a>' +
       "</div>" +
       '<a class="bw-tour-tooltip__skip" id="previewTourFaq" href="/help.html" hidden>Back to FAQ</a>';
     document.body.appendChild(dialog);
