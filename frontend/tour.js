@@ -60,7 +60,7 @@
     {
       id: "calendar-add",
       findTarget: findFutureCalendarCellTarget,
-      title: "Add what’s coming up",
+      title: "Add income and expenses",
       body:
         "Click any day to add a paycheck, bill, transfer, or other planned expense.\n\nThe more complete your forecast, the more useful it becomes. Start with what you know and keep adding as you go.",
       ctaLabel: "Next",
@@ -106,11 +106,11 @@
     {
       id: "reconcile",
       findTarget: findExpectedCalendarConfirmAnchor,
-      title: "Keep your forecast accurate",
+      title: "Keep your forecast on track",
       body:
-        "Keep your transactions up to date, then periodically reconcile BalanceWhiz with your actual checking balance.\n\nFall behind? No problem. Enter your current balance and use it as a fresh starting point for everything ahead.",
+        "Reconcile when everything matches.\n\nWhen your BalanceWhiz balance matches your checking account, reconcile it. This creates a checkpoint so you know exactly where things last matched.\n\nGet behind? Just update your balance.\n\nEnter your current checking balance and use it as a fresh starting point. No need to go back and fix every transaction you missed.",
       reconcilePreview: readTourReconcilePreview,
-      note: "Stay detailed when you can. Reset and move forward when you need\u00A0to.",
+      note: "Stay current when you can. Catch up quickly when you can\u2019t.",
       ctaLabel: "See My Forecast",
       placement: ["below", "above", "right", "left"],
       retryable: true,
@@ -384,7 +384,10 @@
       <p class="bw-tour-tooltip__note" data-bw-tour-note hidden></p>
       <div class="bw-tour-tooltip__actions">
         <button type="button" class="bw-tour-tooltip__skip" data-bw-tour-skip-link>Skip tour</button>
-        <button type="button" class="bw-tour-tooltip__cta" data-bw-tour-next>Next</button>
+        <span class="bw-tour-tooltip__nav">
+          <button type="button" class="bw-tour-tooltip__back" data-bw-tour-back hidden>Back</button>
+          <button type="button" class="bw-tour-tooltip__cta" data-bw-tour-next>Next</button>
+        </span>
       </div>
     `;
     document.body.appendChild(tooltipEl);
@@ -393,6 +396,7 @@
       el.addEventListener("click", () => endTour({ skipped: true }));
     });
     tooltipEl.querySelector("[data-bw-tour-next]").addEventListener("click", advanceStep);
+    tooltipEl.querySelector("[data-bw-tour-back]").addEventListener("click", retreatStep);
     return tooltipEl;
   }
 
@@ -604,8 +608,11 @@
   // Step rendering
   // ---------------------------------------------------------------------
 
-  function renderStep(stepIdx) {
+  function renderStep(stepIdx, direction) {
+    const backward = direction === "back";
     if (stepIdx < 0 || stepIdx >= STEPS.length) {
+      // Backing up must not finish or dismiss the tour.
+      if (backward) return;
       endTour({ completed: true });
       return;
     }
@@ -618,11 +625,11 @@
     if (!target) {
       if (step.retryable && (step._retries || 0) < 12) {
         step._retries = (step._retries || 0) + 1;
-        window.setTimeout(() => renderStep(stepIdx), 250);
+        window.setTimeout(() => renderStep(stepIdx, direction), 250);
         return;
       }
-      // No target found — skip to the next step.
-      renderStep(stepIdx + 1);
+      // No target found — skip in the direction the user is moving.
+      renderStep(stepIdx + (backward ? -1 : 1), direction);
       return;
     }
 
@@ -711,6 +718,8 @@
       }
     }
     tooltipEl.querySelector("[data-bw-tour-next]").textContent = step.ctaLabel || "Next";
+    const backEl = tooltipEl.querySelector("[data-bw-tour-back]");
+    if (backEl) backEl.hidden = stepIdx <= 0;
 
     applyTargetHighlight(target, {
       targetExtraClass: step.targetExtraClass,
@@ -738,6 +747,13 @@
 
   function advanceStep() {
     renderStep(currentStepIdx + 1);
+  }
+
+  function retreatStep() {
+    if (currentStepIdx <= 0) return;
+    const prevIdx = currentStepIdx - 1;
+    delete STEPS[prevIdx]._retries;
+    renderStep(prevIdx, "back");
   }
 
   function startTour() {

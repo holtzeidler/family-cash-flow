@@ -27944,6 +27944,12 @@ body.account-setup-page
   line-height: 1;
   color: rgba(100, 116, 139, 0.52);
 }
+.bw-tour-tooltip:has(.bw-tour-tooltip__helper--reconcile-preview) .bw-tour-tooltip__back{
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  font-size: 0.78rem;
+}
 .bw-tour-tooltip:has(.bw-tour-tooltip__helper--reconcile-preview) .bw-tour-tooltip__cta{
   display: inline-flex;
   align-items: center;
@@ -28022,6 +28028,35 @@ body.account-setup-page
   justify-content: space-between;
   align-items: center;
   gap: 8px;
+}
+.bw-tour-tooltip__nav{
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+}
+.bw-tour-tooltip__back{
+  appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: rgba(11, 61, 46, 0.72);
+  cursor: pointer;
+}
+.bw-tour-tooltip__back:hover{
+  color: rgba(11, 61, 46, 0.95);
+}
+.bw-tour-tooltip__back:focus-visible{
+  outline: 2px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.bw-tour-tooltip__back[hidden]{
+  display: none !important;
 }
 .bw-tour-tooltip__skip{
   appearance: none;
