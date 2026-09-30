@@ -91,7 +91,7 @@ def test_trial_banner_preview_switches_states_without_api(page, guard):
     expect(notice.locator("a")).to_have_count(0)
     expect(notice).to_have_attribute("data-trial-state", "scheduled")
     scheduled = _line_background(notice)
-    assert scheduled not in (soon, urgent, today)
+    assert scheduled == neutral
 
     _show(page, "annual")
     expect(notice.locator(".trial-status-notice__message")).to_contain_text("3 days left in your free trial · Annual plan starts ")

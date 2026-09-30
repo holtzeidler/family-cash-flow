@@ -3261,10 +3261,6 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
   font-weight: 700;
   color: #7A2430;
 }
-.trial-status-notice[data-trial-state="scheduled"] .trial-status-notice__line{
-  padding: 6px 12px;
-  background: rgba(11, 61, 46, 0.06);
-}
 .trial-status-notice[data-trial-cta="button"] .trial-status-notice__line,
 .trial-status-notice[data-trial-cta="prominent"] .trial-status-notice__line{
   align-items: center;
