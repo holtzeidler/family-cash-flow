@@ -4047,6 +4047,8 @@ function getInitialTopViewFromUrlOrStorage() {
 }
 
 let profileNameBaseline = { first: "", last: "" };
+let expectedTxLoadGen = 0;
+let upcomingLoadGen = 0;
 
 try {
   setActiveTopView(getInitialTopViewFromUrlOrStorage());
@@ -15708,8 +15710,6 @@ function renderRecurringFilteredList() {
   }
 }
 
-let expectedTxLoadGen = 0;
-
 async function loadExpectedTransactions() {
   if (!state.activeFamilyId) return;
   const gen = ++expectedTxLoadGen;
@@ -16079,8 +16079,6 @@ async function loadTransactions() {
 }
 
 /** Actual transactions on or after today (for Transaction View list), chronological. */
-let upcomingLoadGen = 0;
-
 async function loadUpcomingTransactionsPanel() {
   const gen = ++upcomingLoadGen;
   try {
