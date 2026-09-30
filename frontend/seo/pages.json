@@ -2,12 +2,13 @@
   "siteUrl": "https://balancewhiz.com",
   "siteName": "BalanceWhiz",
   "ogImage": "/assets/og-image.png",
+  "ogImageAlt": "BalanceWhiz — know your future checking balance. Cash flow forecasting with no bank connection required.",
   "themeColor": "#0B3D2E",
   "twitterSite": "",
   "pages": {
     "index.html": {
       "title": "BalanceWhiz — Checking Balance Forecast & Cash Flow Calendar",
-      "description": "See your projected checking balance before bills and paychecks land. No bank connection required—cash flow clarity without complicated budgeting.",
+      "description": "See where your checking balance is headed before you spend, save, or move money. No bank connection or detailed budget. Free for 14 days.",
       "canonicalPath": "/",
       "index": true,
       "ogType": "website"
@@ -25,8 +26,8 @@
       "index": true
     },
     "help.html": {
-      "title": "Help & FAQ — BalanceWhiz",
-      "description": "Answers about BalanceWhiz forecasting, accounts, recurring transactions, reconciliation, and getting started without connecting your bank.",
+      "title": "BalanceWhiz FAQ — Checking Forecast Questions",
+      "description": "How BalanceWhiz forecasts your checking balance without a bank connection, what to enter, how often to update, and how the 14-day free trial works.",
       "canonicalPath": "/help.html",
       "index": true
     },
@@ -43,8 +44,8 @@
       "index": true
     },
     "plans/index.html": {
-      "title": "Pricing — BalanceWhiz",
-      "description": "Simple pricing for BalanceWhiz: forecast your checking balance free for 14 days. No bank connection required. Cancel anytime.",
+      "title": "BalanceWhiz Pricing — $5.99/month after a Free Trial",
+      "description": "Forecast your checking balance for $5.99 a month or $59.99 a year after a 14-day free trial. No bank connection required. Cancel anytime.",
       "canonicalPath": "/plans/",
       "index": true
     },

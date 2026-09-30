@@ -3,6 +3,11 @@ __pycache__/
 .venv/
 .venv-favicon/
 .venv-seo/
+e2e/.venv/
+e2e/.playwright-browsers/
+e2e/.smoke-run/
+e2e/test-results/
+e2e/playwright-report/
 venv/
 .env
 data/

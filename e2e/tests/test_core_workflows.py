@@ -324,6 +324,64 @@ def _close_tx_editor(page) -> None:
     expect(page.locator("#reconcileModal.modal-overlay--open")).to_have_count(0)
 
 
+def _balance(page, iso: str):
+    return page.locator(f'.cal-cell[data-iso="{iso}"] .cal-balance')
+
+
+def _day_line(page, iso: str, text: str):
+    return page.locator(f'.cal-cell[data-iso="{iso}"] .cal-day-tx-line', has_text=text).first
+
+
+def _expect_visible_month(page, ym: str) -> None:
+    year, month = ym.split("-")
+    expect(page.locator("#calendarYear")).to_have_value(year)
+    expect(page.locator("#calendarMonthNum")).to_have_value(str(int(month)))
+
+
+def _wait_calendar_idle(page) -> None:
+    expect(page.locator("#calendarPanel")).not_to_have_class(re.compile(r"calendar-panel--loading"))
+
+
+def _shift_visible_month(page, button: str, ym: str, sample_iso: str) -> None:
+    _wait_calendar_idle(page)
+    page.locator(button).click()
+    _expect_visible_month(page, ym)
+    expect(_balance(page, sample_iso)).to_be_visible()
+    _wait_calendar_idle(page)
+
+
+def _med_date(iso: str) -> str:
+    year, month, day = (int(part) for part in iso.split("-"))
+    when = date(year, month, day)
+    return f"{when.strftime('%b')} {when.day}, {when.year}"
+
+
+def _balance_tip(page):
+    return page.locator(".reports-risk-tip.reports-risk-tip--visible")
+
+
+def _hover_transaction_without_balance_tip(page, iso: str, label: str, forbidden: str) -> None:
+    line = _day_line(page, iso, label)
+    expect(line).to_be_visible()
+    line.scroll_into_view_if_needed()
+    line.hover()
+    page.wait_for_timeout(400)
+    tip = _balance_tip(page)
+    if tip.count():
+        expect(tip).not_to_contain_text(forbidden)
+    line.click()
+    expect(page.locator("#txEditModal.modal-overlay--open")).to_be_visible()
+    expect(page.locator("#reconcileModal.modal-overlay--open")).to_have_count(0)
+    _close_tx_editor(page)
+
+
+def _hover_balance_shows(page, iso: str, text: str) -> None:
+    metrics = page.locator(f'.cal-cell[data-iso="{iso}"] .cal-ledger-metrics')
+    metrics.scroll_into_view_if_needed()
+    metrics.hover()
+    expect(_balance_tip(page)).to_contain_text(text)
+
+
 @pytest.mark.smoke_title("Past transaction click")
 def test_past_transaction_click_opens_editor_not_balance_check(page, guard):
     """A direct click on a calendar transaction opens the editor, including on past days."""
@@ -413,4 +471,150 @@ def test_past_transaction_click_opens_editor_not_balance_check(page, guard):
     expect(page.locator("#txEditModal.modal-overlay--open")).to_be_visible()
     expect(page.locator("#reconcileModal.modal-overlay--open")).to_have_count(0)
     _close_tx_editor(page)
+    guard.assert_clean()
+
+
+@pytest.mark.smoke_title("Balance record does not block transactions")
+def test_balance_record_does_not_block_transactions(page, guard):
+    """A starting point or reconciliation stays on the balance, so the day's transactions can still be opened."""
+    start = "2026-09-01"
+    reconciled_day = "2026-09-08"
+    email = _register_checking("2000.00", start)
+    login(page, email, PASSWORD)
+    show_month(page, "2026-09", start)
+
+    start_label = _add_planned_item(page, start, "100", kind="income", name="Bonus")
+    start_cell = page.locator(f'.cal-cell[data-iso="{start}"]')
+    expect(start_cell).to_contain_text("Starting Point")
+    expect(_balance(page, start)).to_have_text(money("2100.00"))
+    _hover_transaction_without_balance_tip(page, start, start_label, "Starting Point")
+    _hover_balance_shows(page, start, "Starting Point")
+
+    reconciled_label = _add_planned_item(page, reconciled_day, "50", kind="expense", name="Mortgage / Rent")
+    expect(_balance(page, reconciled_day)).to_have_text(money("2050.00"))
+    page.locator(f'.cal-cell[data-iso="{reconciled_day}"] .cal-ledger-metrics').click()
+    expect(page.locator("#reconcileModal.modal-overlay--open")).to_be_visible()
+    page.locator("#reconcileMatchYesBtn").click()
+    expect(page.locator("#reconcileModal.modal-overlay--open")).to_have_count(0)
+    expect(page.locator(f'.cal-cell[data-iso="{reconciled_day}"]')).to_contain_text("Reconciled")
+    _hover_transaction_without_balance_tip(page, reconciled_day, reconciled_label, "Reconciled")
+    _hover_balance_shows(page, reconciled_day, "Reconciled")
+    guard.assert_clean()
+
+
+@pytest.mark.smoke_title("Transactions tab edit persists")
+def test_transactions_tab_edit_persists_and_updates_forecast(page, guard):
+    """Saving from the Transactions tab updates that list, keeps the edit after reload, and changes the forecast."""
+    today = date.today()
+    tomorrow = today + timedelta(days=1)
+    today_iso = today.isoformat()
+    tomorrow_iso = tomorrow.isoformat()
+    email = _register_checking("1000.00", today_iso)
+    login(page, email, PASSWORD)
+    show_month(page, today_iso[:7], today_iso)
+    label = _add_planned_item(page, today_iso, "100", kind="income", name="Bonus")
+    expect(_balance(page, today_iso)).to_have_text(money("1100.00"))
+
+    page.locator("#navTransactionView").click()
+    page.wait_for_url(re.compile(r"/transactions"))
+    row = page.locator("#txListMain .tm-row", has_text=label).first
+    expect(row).to_contain_text(_med_date(today_iso))
+    expect(row).to_contain_text("+$100.00")
+    row.locator(".tm-row__edit").click()
+    expect(page.locator("#txEditModal.modal-overlay--open")).to_be_visible()
+    page.locator("#txEditDate").fill(tomorrow_iso)
+    page.locator("#txEditAmount").fill("250")
+    page.locator("#txEditSave").click()
+    expect(page.locator("#txEditModal.modal-overlay--open")).to_have_count(0)
+
+    updated = page.locator("#txListMain .tm-row", has_text=label).first
+    expect(updated).to_contain_text(_med_date(tomorrow_iso))
+    expect(updated).to_contain_text("+$250.00")
+    expect(page.locator("#txListMain .tm-row", has_text=_med_date(today_iso))).to_have_count(0)
+
+    page.reload()
+    updated = page.locator("#txListMain .tm-row", has_text=label).first
+    expect(updated).to_contain_text(_med_date(tomorrow_iso))
+    expect(updated).to_contain_text("+$250.00")
+
+    page.locator("#navCalendarView").click()
+    page.wait_for_url(re.compile(r"/calendar"))
+    show_month(page, today_iso[:7], today_iso)
+    expect(_day_line(page, today_iso, label)).to_have_count(0)
+    expect(_balance(page, today_iso)).to_have_text(money("1000.00"))
+    if tomorrow_iso[:7] != today_iso[:7]:
+        show_month(page, tomorrow_iso[:7], tomorrow_iso)
+    expect(_day_line(page, tomorrow_iso, label)).to_be_visible()
+    expect(_balance(page, tomorrow_iso)).to_have_text(money("1250.00"))
+    guard.assert_clean()
+
+
+@pytest.mark.smoke_title("Moved transaction recalculates forecast")
+def test_moving_occurrence_recalculates_forecast_without_jumping_months(page, guard):
+    """Moving one occurrence into an earlier month changes both dates' projected balances and leaves the open month in place."""
+    email = _register_checking("10000.00", "2026-09-01")
+    login(page, email, PASSWORD)
+    show_month(page, "2026-10", "2026-10-03")
+    _expect_visible_month(page, "2026-10")
+    label = _add_planned_item(page, "2026-10-03", "500", kind="income", repeat="monthly", name="Bonus")
+    expect(_day_line(page, "2026-10-03", label)).to_be_visible()
+    expect(_balance(page, "2026-10-03")).to_have_text(money("10500.00"))
+
+    _day_line(page, "2026-10-03", label).click()
+    expect(page.locator("#txEditModal.modal-overlay--open")).to_be_visible()
+    page.locator("#txEditDate").fill("2026-09-30")
+    page.locator("#txEditSave").click()
+    scope = page.locator("#txEditApplyScopeModal.modal-overlay--open")
+    expect(scope).to_be_visible()
+    scope.get_by_text("Only update this occurrence", exact=True).click()
+    scope.get_by_role("button", name="Save Changes").click()
+    expect(page.locator("#txEditApplyScopeModal.modal-overlay--open")).to_have_count(0)
+    expect(page.locator("#txEditModal.modal-overlay--open")).to_have_count(0)
+    _wait_calendar_idle(page)
+
+    _expect_visible_month(page, "2026-10")
+    expect(page.locator('.cal-cell[data-iso="2026-10-03"]')).not_to_have_class(re.compile(r"cal-cell--out"))
+    expect(_day_line(page, "2026-10-03", label)).to_have_count(0)
+    expect(_balance(page, "2026-10-03")).to_have_text(money("10500.00"))
+    expect(_balance(page, "2026-10-04")).to_have_text(money("10500.00"))
+
+    _shift_visible_month(page, "#calendarPrevMonth", "2026-09", "2026-09-30")
+    expect(_day_line(page, "2026-09-30", label)).to_be_visible()
+    expect(_balance(page, "2026-09-29")).to_have_text(money("10000.00"))
+    expect(_balance(page, "2026-09-30")).to_have_text(money("10500.00"))
+
+    _shift_visible_month(page, "#calendarNextMonth", "2026-10", "2026-10-03")
+    _shift_visible_month(page, "#calendarNextMonth", "2026-11", "2026-11-03")
+    expect(_day_line(page, "2026-11-03", label)).to_be_visible()
+    expect(_balance(page, "2026-11-03")).to_have_text(money("11000.00"))
+    guard.assert_clean()
+
+
+@pytest.mark.smoke_title("Calendar stays on the selected month")
+def test_calendar_stays_on_the_selected_month_until_the_user_navigates(page, guard):
+    """Changing a transaction's date does not switch months. The next and previous buttons still do."""
+    email = _register_checking("2000.00", "2026-08-01")
+    login(page, email, PASSWORD)
+    show_month(page, "2026-08", "2026-08-10")
+    _expect_visible_month(page, "2026-08")
+    label = _add_planned_item(page, "2026-08-10", "100", kind="expense", name="Mortgage / Rent")
+    expect(_balance(page, "2026-08-10")).to_have_text(money("1900.00"))
+
+    _day_line(page, "2026-08-10", label).click()
+    expect(page.locator("#txEditModal.modal-overlay--open")).to_be_visible()
+    page.locator("#txEditDate").fill("2026-09-10")
+    page.locator("#txEditSave").click()
+    expect(page.locator("#txEditModal.modal-overlay--open")).to_have_count(0)
+    _wait_calendar_idle(page)
+
+    _expect_visible_month(page, "2026-08")
+    expect(page.locator('.cal-cell[data-iso="2026-08-10"]')).not_to_have_class(re.compile(r"cal-cell--out"))
+    expect(_day_line(page, "2026-08-10", label)).to_have_count(0)
+    expect(_balance(page, "2026-08-09")).to_have_text(money("2000.00"))
+    expect(_balance(page, "2026-08-10")).to_have_text(money("2000.00"))
+
+    _shift_visible_month(page, "#calendarNextMonth", "2026-09", "2026-09-10")
+    expect(_day_line(page, "2026-09-10", label)).to_be_visible()
+    expect(_balance(page, "2026-09-09")).to_have_text(money("2000.00"))
+    expect(_balance(page, "2026-09-10")).to_have_text(money("1900.00"))
     guard.assert_clean()

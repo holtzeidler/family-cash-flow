@@ -10,7 +10,8 @@ After editing `pages.json`, re-run the script and commit the updated HTML.
 
 - **Public indexable pages:** landing, about, help, pricing, contact, privacy, terms (`robots: index, follow`)
 - **App / auth pages:** `noindex, nofollow` (see `robots.txt`)
-- **OG image:** `python3 scripts/generate_og_image.py` (requires Pillow in `.venv-seo`)
-- **Sitemap / robots:** `frontend/sitemap.xml`, `frontend/robots.txt`
+- **OG image:** `python3 scripts/generate_og_image.py` (requires Pillow in `.venv-seo`). Alt text is `ogImageAlt` in `pages.json`.
+- **Structured data:** homepage Organization, WebSite, and WebApplication; pricing offers on `/plans/`; FAQ on Help; breadcrumbs on public pages.
+- **Sitemap / robots:** `frontend/sitemap.xml`, `frontend/robots.txt`. The sample walkthrough (`/preview/`) is noindex and is not in the sitemap.
 
 Canonical base URL: `https://balancewhiz.com`
