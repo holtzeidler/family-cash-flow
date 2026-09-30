@@ -366,6 +366,17 @@ def test_billing_layout_matches_settings_measure(page, guard, seed):
     assert 0 <= panel["x"] - (sidebar["x"] + sidebar["width"]) <= 48
     assert abs(title["x"] - billing["x"]) <= 2
     assert abs(primary["width"] - billing["width"]) <= 2
+    hub_paint = page.locator(".settings-content--hub").evaluate(
+        """el => {
+          const s = getComputedStyle(el);
+          return { background: s.backgroundColor, shadow: s.boxShadow, radius: s.borderRadius };
+        }"""
+    )
+    overview_bg = page.locator(".billing-overview").evaluate("el => getComputedStyle(el).backgroundColor")
+    assert hub_paint["background"] in ("rgba(0, 0, 0, 0)", "transparent")
+    assert hub_paint["shadow"] in ("none", "")
+    assert hub_paint["radius"] in ("0px", "0")
+    assert overview_bg not in ("rgba(0, 0, 0, 0)", "transparent")
     assert abs(annual_box["y"] - monthly_box["y"]) < 6
     assert annual_box["width"] + monthly_box["width"] >= options["width"] * 0.75
 
