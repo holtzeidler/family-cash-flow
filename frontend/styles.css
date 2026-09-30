@@ -23178,6 +23178,47 @@ body[data-bw-view="transactions"] .tm__field label{
 .tm-row:last-child::after{
   content: none;
 }
+.tm-list-loading{
+  display: flex;
+  flex-direction: column;
+}
+.tm-skel-row{
+  display: grid;
+  grid-template-columns: 80px minmax(0, 1.88fr) 124px 74px 82px 34px;
+  column-gap: 8px;
+  align-items: center;
+  padding: 14px 11px;
+}
+.tm-skel-row span{
+  display: block;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.32);
+  animation: tm-skel-pulse 1.4s ease-in-out infinite;
+}
+.tm-skel-row span:nth-child(2){ width: 58%; }
+.tm-skel-row span:nth-child(5){ width: 72%; }
+.tm-list-loading__label{
+  margin: 0;
+  padding: 2px 12px 14px;
+  text-align: center;
+  font-size: 0.8rem;
+  font-weight: 560;
+  color: rgba(75, 85, 99, 0.62);
+}
+@keyframes tm-skel-pulse{
+  0%, 100%{ opacity: 0.45; }
+  50%{ opacity: 1; }
+}
+@media (max-width: 980px){
+  .tm-skel-row{
+    grid-template-columns: 78px minmax(0, 1.45fr) 112px 70px 78px 32px;
+  }
+}
+@media (prefers-reduced-motion: reduce){
+  .tm-skel-row span{ animation: none; }
+}
+
 .tm-row:nth-child(even){
   background: rgba(249, 250, 251, 0.5);
 }

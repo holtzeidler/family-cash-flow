@@ -4051,6 +4051,15 @@ let profileNameBaseline = { first: "", last: "" };
 // later `let` would still be uninitialized.
 let expectedTxLoadGen = 0;
 let upcomingLoadGen = 0;
+// Empty arrays are the initial value AND a real zero-result response.
+// These flags are the only way to tell "still loading" from "loaded, nothing matched."
+let tmFamiliesLoaded = false;
+let tmActualListSettled = false;
+let tmExpectedListSettled = false;
+
+function tmTransactionsListLoading() {
+  return !tmActualListSettled || !tmExpectedListSettled;
+}
 
 try {
   setActiveTopView(getInitialTopViewFromUrlOrStorage());
@@ -7676,6 +7685,14 @@ function refreshTmPrimaryAction() {
 
 function refreshTmSummaryStrip() {
   if (!tmSummaryLine) return;
+  if (tmTransactionsListLoading()) {
+    tmSummaryLine.textContent = "";
+    if (tmInsightsEl) {
+      tmInsightsEl.innerHTML = "";
+      tmInsightsEl.hidden = true;
+    }
+    return;
+  }
   refreshTmChipCounts();
   refreshTmInsights();
   refreshTmPrimaryAction();
@@ -12267,6 +12284,14 @@ async function loadFamilies() {
   }
   const nextActiveId = Number(state.activeFamilyId || 0);
   const familyChanged = prevActiveId !== nextActiveId;
+  tmFamiliesLoaded = true;
+  if (!state.activeFamilyId) {
+    tmActualListSettled = true;
+    tmExpectedListSettled = true;
+    try {
+      renderUpcomingTransactionsFiltered();
+    } catch (_) {}
+  }
   if (familyChanged) invalidateBillingStatusCache();
   syncActiveFamilyFlags();
   void refreshBillingWriteLock();
@@ -15024,8 +15049,44 @@ function nextOccurrenceIsoForRecurringList(tx, todayIso) {
   return nextExpectedOccurrenceIso(tx, todayIso);
 }
 
+function renderTmTransactionsLoadingState() {
+  if (!txListMain) return;
+  if (tmSummaryLine) tmSummaryLine.textContent = "";
+  if (tmInsightsEl) {
+    tmInsightsEl.innerHTML = "";
+    tmInsightsEl.hidden = true;
+  }
+  if (tmForecastNote) {
+    tmForecastNote.textContent = "";
+    tmForecastNote.hidden = true;
+  }
+  if (txListMain.querySelector(".tm-list-loading")) return;
+  const wrap = document.createElement("div");
+  wrap.className = "tm-list-loading";
+  wrap.setAttribute("role", "status");
+  wrap.setAttribute("aria-label", "Loading transactions");
+  for (let i = 0; i < 3; i += 1) {
+    const row = document.createElement("div");
+    row.className = "tm-skel-row";
+    row.setAttribute("aria-hidden", "true");
+    for (let col = 0; col < 5; col += 1) {
+      row.appendChild(document.createElement("span"));
+    }
+    wrap.appendChild(row);
+  }
+  const label = document.createElement("p");
+  label.className = "tm-list-loading__label";
+  label.textContent = "Loading transactions…";
+  wrap.appendChild(label);
+  txListMain.replaceChildren(wrap);
+}
+
 function renderUpcomingTransactionsFiltered() {
   if (!txListMain) return;
+  if (tmTransactionsListLoading()) {
+    renderTmTransactionsLoadingState();
+    return;
+  }
   const kindSel = upcomingKindFilter ? String(upcomingKindFilter.value || "all") : "all";
   const srcSel = upcomingSourceFilter ? String(upcomingSourceFilter.value || "all") : "all";
   const freqSel = upcomingRecurrenceFilter ? String(upcomingRecurrenceFilter.value || "all") : "all";
@@ -15130,7 +15191,7 @@ function renderUpcomingTransactionsFiltered() {
   if (!rows.length) {
     const empty = document.createElement("div");
     empty.className = "tm-empty-state";
-    empty.innerHTML = `<div class="tm-empty-state__title">No transactions match these filters</div><p class="tm-empty-state__lede">Try a wider date range, clearing quick filters, or loosening amount bounds—then tighten again once you see the rows you care about.</p>`;
+    empty.innerHTML = `<div class="tm-empty-state__title">No transactions match these filters</div><p class="tm-empty-state__lede">Try clearing a filter or adjusting your search.</p>`;
     txListMain.appendChild(empty);
     renderUncategorizedTransactions();
     refreshTmSummaryStrip();
@@ -15546,18 +15607,152 @@ function renderRecurringFilteredList() {
   }
 }
 
+function onboardingCategoryLookupKey(name) {
+  return String(name || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
+}
+
+const ONBOARDING_CATEGORY_ALIAS_KEYS = {
+  reimbursement: "otherincome",
+  investment: "investmenttransfer",
+  miscellaneous: "other",
+};
+
+function categoryIdMatchingOnboardingLabel(label) {
+  const key = onboardingCategoryLookupKey(label);
+  if (!key || key === "uncategorized" || key === "transaction") return null;
+  const want = ONBOARDING_CATEGORY_ALIAS_KEYS[key] || key;
+  for (const c of state.categories || []) {
+    const ck = onboardingCategoryLookupKey(c && c.name);
+    if (!ck || c.id == null) continue;
+    if (ck === want || ck === key) return Number(c.id);
+  }
+  return null;
+}
+
+async function categoryIdForOnboardingDraftLabel(label) {
+  if (!state.categories || !state.categories.length) {
+    try {
+      await loadCategories();
+    } catch (_) {}
+  }
+  const existing = categoryIdMatchingOnboardingLabel(label);
+  if (existing) return existing;
+  const raw = String(label || "").trim();
+  const key = onboardingCategoryLookupKey(raw);
+  if (!key || key === "uncategorized" || key === "transaction" || !state.activeFamilyId) return null;
+  try {
+    const created = await api(`/api/families/${state.activeFamilyId}/categories`, "POST", { name: raw });
+    const id = created && created.id != null ? Number(created.id) : NaN;
+    if (Number.isFinite(id) && id > 0) {
+      if (!Array.isArray(state.categories)) state.categories = [];
+      state.categories.push({ id, name: raw });
+      return id;
+    }
+  } catch (_) {}
+  return null;
+}
+
+const onboardingCategoryRepairAttempted = new Set();
+
+function expectedCategoryRepairBody(tx, categoryId) {
+  return {
+    account_id: Number(tx.account_id),
+    start_date: String(tx.start_date || "").slice(0, 10),
+    end_date: tx.end_date ? String(tx.end_date).slice(0, 10) : null,
+    end_count: tx.end_count ?? null,
+    recurrence: tx.recurrence || "monthly",
+    second_day_of_month: tx.second_day_of_month ?? null,
+    second_occurrence_month: tx.second_occurrence_month ?? null,
+    description: tx.description || "",
+    notes: tx.notes ?? null,
+    kind: tx.kind || "expense",
+    amount: tx.amount,
+    reimbursable: !!tx.reimbursable,
+    variable: !!tx.variable,
+    category_id: categoryId,
+    fg_color: tx.fg_color ?? null,
+    bg_color: tx.bg_color ?? null,
+  };
+}
+
+function actualCategoryRepairBody(tx, categoryId) {
+  return {
+    date: String(tx.date || "").slice(0, 10),
+    description: tx.description || "",
+    notes: tx.notes ?? null,
+    kind: tx.kind || "expense",
+    amount: tx.amount,
+    category_id: categoryId,
+    fg_color: tx.fg_color ?? null,
+    bg_color: tx.bg_color ?? null,
+    reimbursable: !!tx.reimbursable,
+  };
+}
+
+/** Onboarding stored the chosen category as the description and left category_id empty. */
+async function repairOnboardingCategoryIds(items, kind) {
+  if (!state.activeFamilyId || !Array.isArray(items) || !items.length) return;
+  if (!state.categories || !state.categories.length) {
+    try {
+      await loadCategories();
+    } catch (_) {}
+  }
+  for (const tx of items) {
+    const id = Number(tx && tx.id);
+    if (!id) continue;
+    const token = kind + ":" + id;
+    if (onboardingCategoryRepairAttempted.has(token)) continue;
+    const cid = tx.category_id;
+    if (cid != null && cid !== "" && Number(cid) !== 0) {
+      onboardingCategoryRepairAttempted.add(token);
+      continue;
+    }
+    const match = categoryIdMatchingOnboardingLabel(tx.description);
+    if (!match) continue;
+    onboardingCategoryRepairAttempted.add(token);
+    try {
+      const path =
+        kind === "expected"
+          ? `/api/families/${state.activeFamilyId}/expected-transactions/${id}`
+          : `/api/families/${state.activeFamilyId}/transactions/${id}`;
+      const body = kind === "expected" ? expectedCategoryRepairBody(tx, match) : actualCategoryRepairBody(tx, match);
+      await api(path, "PUT", body);
+      tx.category_id = match;
+      const cat = (state.categories || []).find((c) => Number(c.id) === match);
+      if (cat && cat.name) tx.category = cat.name;
+    } catch (e) {
+      try {
+        if (window.console && console.warn) console.warn("[onboarding] category repair failed", e && e.message ? e.message : e);
+      } catch (_) {}
+    }
+  }
+}
+
 async function loadExpectedTransactions() {
-  if (!state.activeFamilyId) return;
+  if (!state.activeFamilyId) {
+    if (tmFamiliesLoaded) tmExpectedListSettled = true;
+    renderUpcomingTransactionsFiltered();
+    return;
+  }
   const gen = ++expectedTxLoadGen;
+  if (tmTransactionsListLoading()) renderUpcomingTransactionsFiltered();
   try {
     const items = await api(`/api/families/${state.activeFamilyId}/expected-transactions`, "GET");
     if (gen !== expectedTxLoadGen) return;
     state.expectedTransactions = items || [];
+    await repairOnboardingCategoryIds(state.expectedTransactions, "expected");
+    if (gen !== expectedTxLoadGen) return;
+    tmExpectedListSettled = true;
     renderUpcomingTransactionsFiltered();
     invalidateLowBalanceAlertCache();
     void refreshLowBalanceAlert();
   } catch (e) {
     if (gen !== expectedTxLoadGen) return;
+    tmExpectedListSettled = true;
+    renderUpcomingTransactionsFiltered();
     try {
       if (window.console && console.warn) {
         console.warn("[expected-transactions]", e && e.message ? e.message : e);
@@ -15917,10 +16112,12 @@ async function loadTransactions() {
 /** Actual transactions on or after today (for Transaction View list), chronological. */
 async function loadUpcomingTransactionsPanel() {
   const gen = ++upcomingLoadGen;
+  if (tmTransactionsListLoading()) renderUpcomingTransactionsFiltered();
   try {
     if (!state.activeFamilyId) {
       if (gen !== upcomingLoadGen) return;
       state.upcomingActualItems = [];
+      if (tmFamiliesLoaded) tmActualListSettled = true;
       renderUpcomingTransactionsFiltered();
       return;
     }
@@ -15935,9 +16132,14 @@ async function loadUpcomingTransactionsPanel() {
     if (gen !== upcomingLoadGen) return;
     const items = data?.items || [];
     state.upcomingActualItems = items;
+    await repairOnboardingCategoryIds(state.upcomingActualItems, "actual");
+    if (gen !== upcomingLoadGen) return;
+    tmActualListSettled = true;
     renderUpcomingTransactionsFiltered();
   } catch (e) {
     if (gen !== upcomingLoadGen) return;
+    tmActualListSettled = true;
+    renderUpcomingTransactionsFiltered();
     show(txErr, e.message || "Failed to load upcoming transactions");
   }
 }
@@ -22446,7 +22648,7 @@ async function tryRecoverAccountSetupDraft() {
           kind: t.kind,
           amount: amt,
           variable: !!t.variable,
-          category_id: null,
+          category_id: await categoryIdForOnboardingDraftLabel(t.category),
           bg_color: t.bg_color ? t.bg_color : null,
           fg_color: null,
         });
@@ -22458,7 +22660,7 @@ async function tryRecoverAccountSetupDraft() {
           notes: t.notes ? t.notes : null,
           kind: t.kind,
           amount: amt,
-          category_id: null,
+          category_id: await categoryIdForOnboardingDraftLabel(t.category),
           fg_color: null,
           bg_color: t.bg_color ? t.bg_color : null,
           reimbursable: false,
