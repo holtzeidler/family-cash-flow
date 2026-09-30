@@ -2183,6 +2183,9 @@ class ExpectedTransactionOut(BaseModel):
     created_by: int
     # First display/cash-flow date on or after "today", same rules as expected-calendar (cancels + moved_to_date).
     next_occurrence_date: Optional[date] = None
+    # Scheduled series date for that row, before a one-date move. Editors must
+    # target this occurrence, not the display date.
+    next_occurrence_scheduled_date: Optional[date] = None
     # Effective values for that next calendar occurrence (override-aware; matches expected-calendar).
     next_occurrence_amount: Optional[Decimal] = None
     next_occurrence_variable: Optional[bool] = None
@@ -6369,7 +6372,7 @@ def list_expected_transactions(
 
     result: list[ExpectedTransactionOut] = []
     for tx, account_name, category_name in rows:
-        next_eff, n_amt, n_var, n_kind, n_desc = _next_occurrence_api_extensions(tx, override_by_key, today)
+        next_eff, n_amt, n_var, n_kind, n_desc, next_sched = _next_occurrence_api_extensions(tx, override_by_key, today)
         result.append(
             ExpectedTransactionOut(
                 id=tx.id,
@@ -6391,6 +6394,7 @@ def list_expected_transactions(
                 category_id=tx.category_id,
                 created_by=tx.created_by_user_id,
                 next_occurrence_date=next_eff,
+                next_occurrence_scheduled_date=next_sched,
                 next_occurrence_amount=n_amt,
                 next_occurrence_variable=n_var,
                 next_occurrence_kind=n_kind,
@@ -6458,7 +6462,7 @@ def create_expected_transaction(
     db.refresh(tx)
 
     ovr_map = _override_map_for_expected_ids(db, [tx.id])
-    next_eff, n_amt, n_var, n_kind, n_desc = _next_occurrence_api_extensions(tx, ovr_map, date.today())
+    next_eff, n_amt, n_var, n_kind, n_desc, next_sched = _next_occurrence_api_extensions(tx, ovr_map, date.today())
 
     return ExpectedTransactionOut(
         id=tx.id,
@@ -6482,6 +6486,7 @@ def create_expected_transaction(
         bg_color=getattr(tx, "bg_color", None),
         created_by=tx.created_by_user_id,
         next_occurrence_date=next_eff,
+        next_occurrence_scheduled_date=next_sched,
         next_occurrence_amount=n_amt,
         next_occurrence_variable=n_var,
         next_occurrence_kind=n_kind,
@@ -6553,7 +6558,7 @@ def update_expected_transaction(
     db.refresh(tx)
 
     ovr_map = _override_map_for_expected_ids(db, [tx.id])
-    next_eff, n_amt, n_var, n_kind, n_desc = _next_occurrence_api_extensions(tx, ovr_map, date.today())
+    next_eff, n_amt, n_var, n_kind, n_desc, next_sched = _next_occurrence_api_extensions(tx, ovr_map, date.today())
 
     return ExpectedTransactionOut(
         id=tx.id,
@@ -6577,6 +6582,7 @@ def update_expected_transaction(
         bg_color=getattr(tx, "bg_color", None),
         created_by=tx.created_by_user_id,
         next_occurrence_date=next_eff,
+        next_occurrence_scheduled_date=next_sched,
         next_occurrence_amount=n_amt,
         next_occurrence_variable=n_var,
         next_occurrence_kind=n_kind,
@@ -7608,12 +7614,12 @@ def _next_occurrence_api_extensions(
     tx: ExpectedTransaction,
     override_by_key: dict[tuple[int, date], ExpectedTransactionOverride],
     on_or_after: date,
-) -> tuple[Optional[date], Optional[Decimal], Optional[bool], Optional[TransactionKind], Optional[str]]:
+) -> tuple[Optional[date], Optional[Decimal], Optional[bool], Optional[TransactionKind], Optional[str], Optional[date]]:
     snap = _next_occurrence_snapshot_on_or_after(tx=tx, on_or_after=on_or_after, override_by_key=override_by_key)
     if snap is None:
-        return (None, None, None, None, None)
-    eff_date, _occ, eff_amount, eff_variable, eff_kind, eff_description = snap
-    return (eff_date, eff_amount, eff_variable, eff_kind, eff_description)
+        return (None, None, None, None, None, None)
+    eff_date, occ, eff_amount, eff_variable, eff_kind, eff_description = snap
+    return (eff_date, eff_amount, eff_variable, eff_kind, eff_description, occ)
 
 
 def _occurrence_immediately_before(
@@ -7776,6 +7782,34 @@ def _build_pooled_forecast_flow_maps(
         override_map: dict[tuple[int, date], ExpectedTransactionOverride] = {
             (o.expected_transaction_id, o.occurrence_date): o for o in overrides
         }
+        expected_by_id: dict[int, ExpectedTransaction] = {t.id: t for t in expected_rows}
+        handled_occurrences: set[tuple[int, date]] = set()
+
+        def _add_expected_on_effective_date(
+            tx: ExpectedTransaction,
+            occ: date,
+            ovr: Optional[ExpectedTransactionOverride],
+        ) -> None:
+            if ovr is not None and ovr.cancelled:
+                return
+            eff_account_id = ovr.account_id if ovr is not None and ovr.account_id is not None else tx.account_id
+            eff_kind = ovr.kind if ovr is not None and ovr.kind is not None else tx.kind
+            eff_amount = ovr.amount if ovr is not None and ovr.amount is not None else tx.amount
+            eff_category_id = (
+                ovr.category_id if ovr is not None and ovr.category_id is not None else tx.category_id
+            )
+            if accounts_by_id.get(eff_account_id) is None:
+                return
+            signed = eff_amount if eff_kind == TransactionKind.income else -eff_amount
+            eff_date = ovr.moved_to_date if (ovr is not None and getattr(ovr, "moved_to_date", None) is not None) else occ
+            if eff_date < balance_start or eff_date > last_day:
+                return
+            if mode == "both":
+                dedupe_key = _pooled_forecast_dedupe_key(eff_date, eff_category_id, eff_kind, eff_amount)
+                if dedupe_key in actual_dedupe_keys.get(eff_date, set()):
+                    return
+            expected_by_date[eff_date] += signed
+
         for tx in expected_rows:
             occ_dates = _expected_occurrences_in_range(
                 start_date=tx.start_date,
@@ -7788,28 +7822,26 @@ def _build_pooled_forecast_flow_maps(
                 second_occurrence_month=getattr(tx, "second_occurrence_month", None),
             )
             for occ in occ_dates:
+                handled_occurrences.add((tx.id, occ))
                 if occ > last_day:
                     continue
-                ovr = override_map.get((tx.id, occ))
-                if ovr is not None and ovr.cancelled:
-                    continue
-                eff_account_id = ovr.account_id if ovr is not None and ovr.account_id is not None else tx.account_id
-                eff_kind = ovr.kind if ovr is not None and ovr.kind is not None else tx.kind
-                eff_amount = ovr.amount if ovr is not None and ovr.amount is not None else tx.amount
-                eff_category_id = (
-                    ovr.category_id if ovr is not None and ovr.category_id is not None else tx.category_id
-                )
-                if accounts_by_id.get(eff_account_id) is None:
-                    continue
-                signed = eff_amount if eff_kind == TransactionKind.income else -eff_amount
-                eff_date = ovr.moved_to_date if (ovr is not None and getattr(ovr, "moved_to_date", None) is not None) else occ
-                if eff_date < balance_start or eff_date > last_day:
-                    continue
-                if mode == "both":
-                    dedupe_key = _pooled_forecast_dedupe_key(eff_date, eff_category_id, eff_kind, eff_amount)
-                    if dedupe_key in actual_dedupe_keys.get(eff_date, set()):
-                        continue
-                expected_by_date[eff_date] += signed
+                _add_expected_on_effective_date(tx, occ, override_map.get((tx.id, occ)))
+
+        # An occurrence moved in from a later month is not generated above: the series
+        # walk stops at this window. The calendar already shows those rows; the balance
+        # has to count them too, or the day total stays at the pre-move number.
+        for ovr in overrides:
+            if ovr.cancelled or ovr.moved_to_date is None:
+                continue
+            key = (ovr.expected_transaction_id, ovr.occurrence_date)
+            if key in handled_occurrences:
+                continue
+            if balance_start <= ovr.occurrence_date < range_end_exclusive:
+                continue
+            tx = expected_by_id.get(ovr.expected_transaction_id)
+            if tx is None:
+                continue
+            _add_expected_on_effective_date(tx, ovr.occurrence_date, ovr)
 
     start_adds: dict[date, Decimal] = defaultdict(lambda: Decimal("0"))
     for a in account_rows:

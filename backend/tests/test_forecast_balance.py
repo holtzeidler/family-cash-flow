@@ -97,3 +97,94 @@ def test_projected_balance_includes_starting_balance_income_and_expense():
     # 1000 starting balance + 300 income - 125 expense = 1175, then carried forward.
     assert _money(by_date["2026-09-01"]["end"]) == Decimal("1175.00")
     assert _money(by_date["2026-09-02"]["end"]) == Decimal("1175.00")
+
+
+def test_moved_expected_occurrence_updates_earlier_month_balance():
+    """Moving 10/3 onto 9/30 must change September's ending balance.
+
+    The calendar already shows that moved row. The balance used to ignore it
+    because the original occurrence sits in the next month.
+    """
+    with TestClient(app) as client:
+        created = client.post(
+            "/api/auth/register",
+            json={
+                "email": "bw-smoke-move@example.com",
+                "password": "SmokeOnly1!",
+                "first_name": "Smoke",
+                "last_name": "Move",
+            },
+        )
+        assert created.status_code == 201, created.text
+
+        families = client.get("/api/families")
+        assert families.status_code == 200, families.text
+        family_id = families.json()[0]["id"]
+
+        account = client.post(
+            f"/api/families/{family_id}/accounts",
+            json={
+                "name": "Checking",
+                "type": "checking",
+                "starting_balance": "10000.00",
+                "starting_balance_date": "2026-09-01",
+            },
+        )
+        assert account.status_code == 200, account.text
+        account_id = account.json()["id"]
+
+        expected = client.post(
+            f"/api/families/{family_id}/expected-transactions",
+            json={
+                "account_id": account_id,
+                "start_date": "2026-10-03",
+                "end_date": "2026-10-03",
+                "recurrence": "once",
+                "kind": "income",
+                "amount": "500.00",
+                "description": "Holt Paycheck",
+            },
+        )
+        assert expected.status_code == 200, expected.text
+        expected_id = expected.json()["id"]
+
+        before = client.get(
+            f"/api/families/{family_id}/calendar-month-daily",
+            params={"month": "2026-09"},
+        )
+        assert before.status_code == 200, before.text
+        before_days = {row["date"]: row for row in before.json()["days"]}
+        assert _money(before_days["2026-09-30"]["end"]) == Decimal("10000.00")
+
+        moved = client.post(
+            f"/api/families/{family_id}/expected-transactions/{expected_id}/instances/2026-10-03",
+            json={
+                "action": "update",
+                "account_id": account_id,
+                "kind": "income",
+                "amount": "500.00",
+                "description": "Holt Paycheck",
+                "moved_to_date": "2026-09-30",
+            },
+        )
+        assert moved.status_code == 200, moved.text
+
+        september = client.get(
+            f"/api/families/{family_id}/calendar-month-daily",
+            params={"month": "2026-09"},
+        )
+        assert september.status_code == 200, september.text
+        sept_days = {row["date"]: row for row in september.json()["days"]}
+        assert _money(sept_days["2026-09-29"]["end"]) == Decimal("10000.00")
+        assert _money(sept_days["2026-09-30"]["end"]) == Decimal("10500.00")
+        assert _money(sept_days["2026-09-30"]["tx_net"]) == Decimal("500.00")
+
+        october = client.get(
+            f"/api/families/{family_id}/calendar-month-daily",
+            params={"month": "2026-10"},
+        )
+        assert october.status_code == 200, october.text
+        oct_days = {row["date"]: row for row in october.json()["days"]}
+        assert _money(oct_days["2026-10-01"]["end"]) == Decimal("10500.00")
+        assert _money(oct_days["2026-10-03"]["tx_net"]) == Decimal("0.00")
+        assert _money(oct_days["2026-10-03"]["end"]) == Decimal("10500.00")
