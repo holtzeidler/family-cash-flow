@@ -17465,6 +17465,42 @@ function selectExpectedInstance(item) {
   show(txEditErr, "");
 }
 
+/**
+ * One line per posted transaction, and one scheduled line per date/category/kind/amount.
+ * The balance already ignores a second identical Taxes row. The day cell has to as well.
+ */
+function dedupeCalendarDayTransactions(expectedItems, actualTxs) {
+  const seenIds = new Set();
+  const actuals = [];
+  for (const tx of actualTxs || []) {
+    const id = Number(tx && tx.id);
+    if (Number.isFinite(id) && id > 0) {
+      if (seenIds.has(id)) continue;
+      seenIds.add(id);
+    }
+    actuals.push(tx);
+  }
+  const flowKeys = new Set(actuals.map((tx) => txnBreakdownDedupeKey(tx)));
+  const seenOcc = new Set();
+  const expected = [];
+  for (const item of expectedItems || []) {
+    const occ = normalizeIsoDate(item.occurrence_date || item.date) || String(item.date || "");
+    const occKey = `${item.expected_transaction_id}|${occ}`;
+    if (seenOcc.has(occKey)) continue;
+    const flow = txnBreakdownDedupeKey({
+      date: normalizeIsoDate(item.date) || item.date,
+      category_id: item.category_id,
+      kind: item.kind,
+      amount: item.amount,
+    });
+    if (flowKeys.has(flow)) continue;
+    seenOcc.add(occKey);
+    flowKeys.add(flow);
+    expected.push(item);
+  }
+  return { actuals, expected };
+}
+
 function renderCalendar() {
   if (!calendarGrid) return;
   calendarGrid.innerHTML = "";
@@ -17730,8 +17766,12 @@ function renderCalendar() {
       });
     }
 
-    const actualTxs = !isBeforeStart && showActual ? actualTxsByDate.get(iso) || [] : [];
-    const expectedItems = !isBeforeStart && showExpected ? expectedByDate.get(iso) || [] : [];
+    const dayRows = dedupeCalendarDayTransactions(
+      !isBeforeStart && showExpected ? expectedByDate.get(iso) || [] : [],
+      !isBeforeStart && showActual ? actualTxsByDate.get(iso) || [] : []
+    );
+    const actualTxs = dayRows.actuals;
+    const expectedItems = dayRows.expected;
     const stabilizingDay =
       isReconciled &&
       dayHasPaycheckLikeIncome([

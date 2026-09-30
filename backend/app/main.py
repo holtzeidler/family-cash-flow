@@ -6863,7 +6863,12 @@ def apply_expected_from_occurrence(
         )
     )
 
-    if occurrence_date == tx.start_date:
+    new_start = eff_start if eff_start is not None else occurrence_date
+    # End the old series before both this occurrence and the new start date.
+    # Moving Oct 3 back onto Sept 3 must not leave September on both series.
+    cutoff = new_start if new_start < occurrence_date else occurrence_date
+
+    def _update_series_in_place() -> ApplyFromOccurrenceOut:
         tx.account_id = validate_payload.account_id
         tx.kind = validate_payload.kind
         tx.amount = validate_payload.amount
@@ -6885,21 +6890,22 @@ def apply_expected_from_occurrence(
         db.refresh(tx)
         return ApplyFromOccurrenceOut(mode="updated_in_place", future_series_id=tx.id, ended_series_id=None)
 
+    if occurrence_date == tx.start_date or cutoff <= tx.start_date:
+        return _update_series_in_place()
+
     prev_occ = _occurrence_immediately_before(
         start_date=tx.start_date,
         series_end_date=tx.end_date,
         recurrence=tx.recurrence,
-        occurrence_date=occurrence_date,
+        occurrence_date=cutoff,
         second_day_of_month=tx.second_day_of_month,
         second_occurrence_month=getattr(tx, "second_occurrence_month", None),
     )
     if prev_occ is None:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Could not resolve previous occurrence for split")
+        return _update_series_in_place()
 
     old_end = tx.end_date
     tx.end_date = prev_occ
-
-    new_start = eff_start if eff_start is not None else occurrence_date
     future_end = old_end
     if future_end is not None and future_end < new_start:
         future_end = None
@@ -7091,6 +7097,28 @@ def _build_expected_calendar_items(
     return items
 
 
+def _dedupe_expected_calendar_items(items: list[ExpectedCalendarItemOut]) -> list[ExpectedCalendarItemOut]:
+    """Drop a second copy of the same occurrence, or a second identical bill that day.
+
+    Moving September's Taxes onto October 3 must not draw Taxes twice when
+    October 3 already has that same amount, category, and kind.
+    """
+    seen_occ: set[tuple[int, date]] = set()
+    seen_flow: set[tuple[date, Optional[int], TransactionKind, int]] = set()
+    unique: list[ExpectedCalendarItemOut] = []
+    for it in items:
+        occ_key = (int(it.expected_transaction_id), it.occurrence_date)
+        if occ_key in seen_occ:
+            continue
+        flow_key = _pooled_forecast_dedupe_key(it.date, it.category_id, it.kind, it.amount)
+        if flow_key in seen_flow:
+            continue
+        seen_occ.add(occ_key)
+        seen_flow.add(flow_key)
+        unique.append(it)
+    return unique
+
+
 @app.get("/api/families/{family_id}/expected-calendar", response_model=ExpectedCalendarOut)
 def expected_calendar(
     family_id: int,
@@ -7201,6 +7229,7 @@ def expected_calendar(
             )
         )
 
+    items = _dedupe_expected_calendar_items(items)
     items.sort(key=lambda it: (it.date, int(it.expected_transaction_id), it.occurrence_date))
     return ExpectedCalendarOut(month=month, items=items)
 
@@ -7804,12 +7833,18 @@ def _build_pooled_forecast_flow_maps(
             eff_date = ovr.moved_to_date if (ovr is not None and getattr(ovr, "moved_to_date", None) is not None) else occ
             if eff_date < balance_start or eff_date > last_day:
                 return
-            if mode == "both":
-                dedupe_key = _pooled_forecast_dedupe_key(eff_date, eff_category_id, eff_kind, eff_amount)
-                if dedupe_key in actual_dedupe_keys.get(eff_date, set()):
-                    return
+            # One cashflow per day, category, kind, and amount. A second identical
+            # Taxes row — or the scheduled copy of a bill already posted — is not
+            # another payment.
+            dedupe_key = _pooled_forecast_dedupe_key(eff_date, eff_category_id, eff_kind, eff_amount)
+            if dedupe_key in seen_expected_keys:
+                return
+            if mode == "both" and dedupe_key in actual_dedupe_keys.get(eff_date, set()):
+                return
+            seen_expected_keys.add(dedupe_key)
             expected_by_date[eff_date] += signed
 
+        seen_expected_keys: set[tuple[date, Optional[int], TransactionKind, int]] = set()
         for tx in expected_rows:
             occ_dates = _expected_occurrences_in_range(
                 start_date=tx.start_date,

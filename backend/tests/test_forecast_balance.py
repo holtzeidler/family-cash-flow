@@ -188,3 +188,82 @@ def test_moved_expected_occurrence_updates_earlier_month_balance():
         assert _money(oct_days["2026-10-01"]["end"]) == Decimal("10500.00")
         assert _money(oct_days["2026-10-03"]["tx_net"]) == Decimal("0.00")
         assert _money(oct_days["2026-10-03"]["end"]) == Decimal("10500.00")
+
+
+def test_identical_taxes_on_the_same_day_are_not_counted_twice():
+    """Moving September's Taxes onto October 3 must not stack a second Taxes line.
+
+    October 3 already has that bill. The day should keep one payment, and the
+    balance should subtract it once.
+    """
+    with TestClient(app) as client:
+        created = client.post(
+            "/api/auth/register",
+            json={
+                "email": "bw-smoke-taxes@example.com",
+                "password": "SmokeOnly1!",
+                "first_name": "Smoke",
+                "last_name": "Taxes",
+            },
+        )
+        assert created.status_code == 201, created.text
+
+        families = client.get("/api/families")
+        assert families.status_code == 200, families.text
+        family_id = families.json()[0]["id"]
+
+        account = client.post(
+            f"/api/families/{family_id}/accounts",
+            json={
+                "name": "Checking",
+                "type": "checking",
+                "starting_balance": "20000.00",
+                "starting_balance_date": "2026-09-01",
+            },
+        )
+        assert account.status_code == 200, account.text
+        account_id = account.json()["id"]
+
+        expected = client.post(
+            f"/api/families/{family_id}/expected-transactions",
+            json={
+                "account_id": account_id,
+                "start_date": "2026-09-03",
+                "end_date": "2026-10-03",
+                "recurrence": "monthly",
+                "kind": "expense",
+                "amount": "10662.97",
+                "description": "Taxes",
+            },
+        )
+        assert expected.status_code == 200, expected.text
+        expected_id = expected.json()["id"]
+
+        moved = client.post(
+            f"/api/families/{family_id}/expected-transactions/{expected_id}/instances/2026-09-03",
+            json={
+                "action": "update",
+                "account_id": account_id,
+                "kind": "expense",
+                "amount": "10662.97",
+                "description": "Taxes",
+                "moved_to_date": "2026-10-03",
+            },
+        )
+        assert moved.status_code == 200, moved.text
+
+        october = client.get(
+            f"/api/families/{family_id}/expected-calendar",
+            params={"month": "2026-10"},
+        )
+        assert october.status_code == 200, october.text
+        taxes = [it for it in october.json()["items"] if it["date"] == "2026-10-03" and it["description"] == "Taxes"]
+        assert len(taxes) == 1, taxes
+
+        daily = client.get(
+            f"/api/families/{family_id}/calendar-month-daily",
+            params={"month": "2026-10"},
+        )
+        assert daily.status_code == 200, daily.text
+        days = {row["date"]: row for row in daily.json()["days"]}
+        assert _money(days["2026-10-03"]["tx_net"]) == Decimal("-10662.97")
