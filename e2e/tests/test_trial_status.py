@@ -321,6 +321,57 @@ def test_paid_subscriber_has_no_trial_status(page, guard, seed):
     _finish(page, guard)
 
 
+def _box(locator):
+    box = locator.bounding_box()
+    assert box, f"missing layout box for {locator}"
+    return box
+
+
+@pytest.mark.smoke_title("Billing layout stays on the settings content measure")
+def test_billing_layout_matches_settings_measure(page, guard, seed):
+    """Billing should use the Preferences content measure, not a viewport-wide shell."""
+    _login(page, seed["active"]["email"], seed["active"]["password"])
+    page.set_viewport_size({"width": 1440, "height": 900})
+    page.goto("/settings/billing/")
+    annual = page.locator("#billingSubscribeAnnual")
+    monthly = page.locator("#billingSubscribeMonthly")
+    expect(annual).to_be_visible()
+    expect(monthly).to_be_visible()
+
+    panel = _box(page.locator("#settingsViewPanel"))
+    billing = _box(page.locator(".billing-page"))
+    sidebar = _box(page.locator(".sidebar"))
+    primary = _box(page.locator(".billing-primary"))
+    side = _box(page.locator(".billing-side"))
+    annual_box = _box(annual)
+    monthly_box = _box(monthly)
+    options = _box(page.locator(".billing-subscribe__options"))
+
+    assert panel["width"] <= 1080 + 1
+    assert billing["width"] <= 1080 + 1
+    assert panel["x"] + panel["width"] < 1440 - 40
+    assert 0 <= panel["x"] - (sidebar["x"] + sidebar["width"]) <= 48
+    assert 0 <= billing["x"] - panel["x"] <= 48
+    assert primary["width"] > side["width"]
+    assert abs(annual_box["y"] - monthly_box["y"]) < 6
+    assert annual_box["width"] + monthly_box["width"] >= options["width"] * 0.75
+
+    title_size = page.locator(".billing-page__title").evaluate("el => parseFloat(getComputedStyle(el).fontSize)")
+    button_size = annual.evaluate("el => parseFloat(getComputedStyle(el).fontSize)")
+    assert title_size >= 21
+    assert button_size >= 16
+
+    page.set_viewport_size({"width": 700, "height": 900})
+    expect(annual).to_be_visible()
+    primary = _box(page.locator(".billing-primary"))
+    side = _box(page.locator(".billing-side"))
+    annual_box = _box(annual)
+    monthly_box = _box(monthly)
+    assert side["y"] >= primary["y"] + primary["height"] - 8
+    assert monthly_box["y"] >= annual_box["y"] + annual_box["height"] - 8
+    _finish(page, guard)
+
+
 @pytest.mark.smoke_title("Canceling subscription is not a trial")
 def test_canceling_subscription_is_not_a_trial(page, guard, seed):
     account = seed["trials"]["canceling"]
