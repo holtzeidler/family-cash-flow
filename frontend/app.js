@@ -7308,7 +7308,6 @@ if (txEditSave) {
       return;
     }
     let savedOk = false;
-    let savedDateIso = "";
     let convertedToRecurring = false;
     try {
       show(txEditErr, "");
@@ -7326,7 +7325,6 @@ if (txEditSave) {
         await convertActualTransactionToRecurring(id);
         convertedToRecurring = true;
         savedOk = true;
-        savedDateIso = editDateIso || "";
       } else {
         await api(`/api/families/${state.activeFamilyId}/transactions/${id}`, "PUT", {
           date: rawDate,
@@ -7339,7 +7337,6 @@ if (txEditSave) {
           reimbursable: txEditReimbursableValue,
         });
         savedOk = true;
-        savedDateIso = editDateIso || "";
       }
     } catch (e) {
       show(txEditErr, e.message || "Failed to save");
@@ -7354,12 +7351,6 @@ if (txEditSave) {
     if (!savedOk) return;
     try {
       invalidateLowBalanceAlertCache();
-      const movedYm = savedDateIso ? String(savedDateIso).slice(0, 7) : "";
-      const curYm = (calendarMonth?.value || monthInput?.value || "").slice(0, 7);
-      if (movedYm && curYm && movedYm !== curYm) {
-        if (monthInput) monthInput.value = movedYm;
-        applyCalendarMonthToPickers(movedYm);
-      }
       if (convertedToRecurring) {
         await refreshExpectedCalendarAndMonth();
         bwDispatchMilestone("first-recurring");
@@ -7934,25 +7925,22 @@ function bindCalendarDayBalanceHit(metricsEl, iso, { isReconciled, dayBalVerifie
   metricsEl.setAttribute("aria-label", label ? `Update balance for ${label}` : "Update balance");
 
   if (dayBalVerified && dayBal) {
-    const cell = metricsEl.closest(".cal-cell");
     const html = buildAdjustedBalanceTipHtml(dayBal, iso);
-    if (cell && html) bindRiskPressureCellHover(cell, metricsEl, html, { interactive: true });
+    if (html) bindRiskPressureCellHover(metricsEl, metricsEl, html, { interactive: true });
     metricsEl.setAttribute("aria-label", label ? `Adjusted balance details for ${label}` : "Adjusted balance details");
     return;
   }
 
   if (isReconciled && dayBal) {
-    const cell = metricsEl.closest(".cal-cell");
     const html = buildReconciledBalanceTipHtml(dayBal, iso);
-    if (cell && html) bindRiskPressureCellHover(cell, metricsEl, html, { interactive: true });
+    if (html) bindRiskPressureCellHover(metricsEl, metricsEl, html, { interactive: true });
     metricsEl.setAttribute("aria-label", label ? `Reconciled balance details for ${label}` : "Reconciled balance details");
     return;
   }
 
   if (hasStartingPoint) {
-    const cell = metricsEl.closest(".cal-cell");
     const html = buildStartingPointTipHtml(startingAccountName);
-    if (cell && html) bindRiskPressureCellHover(cell, metricsEl, html);
+    if (html) bindRiskPressureCellHover(metricsEl, metricsEl, html);
     return;
   }
 
@@ -13029,14 +13017,8 @@ function buildExpectedSeriesPutPayload({
   };
 }
 
-/** Reload forecast calendar data after any transaction edit (amount, date, recurrence, etc.). */
-async function refreshForecastAfterTransactionEdit(iso) {
-  const ym = iso ? String(iso).slice(0, 7) : "";
-  const curYm = (calendarMonth?.value || monthInput?.value || "").slice(0, 7);
-  if (ym && curYm && ym !== curYm) {
-    if (monthInput) monthInput.value = ym;
-    applyCalendarMonthToPickers(ym);
-  }
+/** Reload the calendar month already on screen. A new transaction date does not change that view. */
+async function refreshForecastAfterTransactionEdit(_iso) {
   invalidateLowBalanceAlertCache();
   await loadMonthAndCalendar();
 }
@@ -16875,6 +16857,12 @@ async function loadExpectedTransactions() {
 
 let calendarLoadGen = 0;
 
+function showForecastStatus(msg, isError) {
+  // One status line only. #calendarErr used to repeat the same text under the month controls.
+  show(calendarErr, "");
+  ensureForecastStatusRibbon(msg, { isError: !!isError });
+}
+
 function updateCalendarEmptyStateBanner() {
   if (!calendarErr) return;
   const hasAccounts = Array.isArray(state.accounts) && state.accounts.length > 0;
@@ -16885,30 +16873,32 @@ function updateCalendarEmptyStateBanner() {
     const [y, m] = month.split("-").map(Number);
     const monthEnd = `${y}-${String(m).padStart(2, "0")}-${String(new Date(y, m, 0).getDate()).padStart(2, "0")}`;
     if (earliest > monthEnd) {
-      const msg = `Your starting balance date is ${earliest}. Open that month (or later) to see your forecast.`;
-      show(calendarErr, msg);
-      ensureForecastStatusRibbon(msg, { isError: true });
+      showForecastStatus(
+        `Your starting balance date is ${earliest}. Open that month (or later) to see your forecast.`,
+        true
+      );
       return;
     }
   }
   if (!state.activeFamilyId) {
-    const msg =
-      "Your forecast isn't ready yet — no household is linked to this login. Refresh, or open Settings → Accounts.";
-    show(calendarErr, msg);
-    ensureForecastStatusRibbon(msg, { isError: true });
+    showForecastStatus(
+      "Your forecast isn't ready yet — no household is linked to this login. Refresh, or open Settings → Accounts.",
+      true
+    );
     return;
   }
   if (!hasAccounts) {
-    const msg = "No checking account yet, so there is nothing to forecast. Add one in Settings → Accounts.";
-    show(calendarErr, msg);
-    ensureForecastStatusRibbon(msg, { isError: true });
+    showForecastStatus(
+      "No checking account yet, so there is nothing to forecast. Add one in Settings → Accounts.",
+      true
+    );
     return;
   }
   if (!hasBalances) {
-    const msg =
-      "Balances did not load. Check your connection and refresh — if this keeps happening, try logging out and back in.";
-    show(calendarErr, msg);
-    ensureForecastStatusRibbon(msg, { isError: true });
+    showForecastStatus(
+      "Balances did not load. Check your connection and refresh — if this keeps happening, try logging out and back in.",
+      true
+    );
     return;
   }
   ensureForecastStatusRibbon("");
