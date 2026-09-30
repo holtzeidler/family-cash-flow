@@ -7355,7 +7355,7 @@ if (txEditSave) {
         await refreshExpectedCalendarAndMonth();
         bwDispatchMilestone("first-recurring");
       } else {
-        await loadMonthAndCalendar();
+        await Promise.all([loadMonthAndCalendar(), loadExpectedTransactions()]);
       }
     } catch (e) {
       if (typeof console !== "undefined" && console && console.warn) {
@@ -13020,7 +13020,7 @@ function buildExpectedSeriesPutPayload({
 /** Reload the calendar month already on screen. A new transaction date does not change that view. */
 async function refreshForecastAfterTransactionEdit(_iso) {
   invalidateLowBalanceAlertCache();
-  await loadMonthAndCalendar();
+  await Promise.all([loadMonthAndCalendar(), loadExpectedTransactions()]);
 }
 
 async function navigateCalendarToIsoMonthIfNeeded(iso) {
@@ -15917,10 +15917,12 @@ async function openExpectedEditModalAsync(tx, opts = {}) {
       const acct = Number.isFinite(accountId) ? state.accounts.find((a) => Number(a.id) === accountId) : null;
       const catId = tx.category_id != null ? Number(tx.category_id) : null;
       const cat = catId != null ? (state.categories || []).find((c) => Number(c.id) === catId) : null;
+      const scheduledIso =
+        normalizeIsoDate(tx.next_occurrence_scheduled_date) || nextIso;
       const synthetic = {
         expected_transaction_id: Number(tx.id),
         date: nextIso,
-        occurrence_date: nextIso,
+        occurrence_date: scheduledIso,
         account_id: Number.isFinite(accountId) ? accountId : tx.account_id,
         account: acct?.name || "",
         kind: tx.kind,
@@ -16838,15 +16840,20 @@ function renderRecurringFilteredList() {
   }
 }
 
+let expectedTxLoadGen = 0;
+
 async function loadExpectedTransactions() {
   if (!state.activeFamilyId) return;
+  const gen = ++expectedTxLoadGen;
   try {
     const items = await api(`/api/families/${state.activeFamilyId}/expected-transactions`, "GET");
+    if (gen !== expectedTxLoadGen) return;
     state.expectedTransactions = items || [];
     renderUpcomingTransactionsFiltered();
     invalidateLowBalanceAlertCache();
     void refreshLowBalanceAlert();
   } catch (e) {
+    if (gen !== expectedTxLoadGen) return;
     try {
       if (window.console && console.warn) {
         console.warn("[expected-transactions]", e && e.message ? e.message : e);
@@ -17204,9 +17211,13 @@ async function loadTransactions() {
 }
 
 /** Actual transactions on or after today (for Transaction View list), chronological. */
+let upcomingLoadGen = 0;
+
 async function loadUpcomingTransactionsPanel() {
+  const gen = ++upcomingLoadGen;
   try {
     if (!state.activeFamilyId) {
+      if (gen !== upcomingLoadGen) return;
       state.upcomingActualItems = [];
       renderUpcomingTransactionsFiltered();
       return;
@@ -17219,10 +17230,12 @@ async function loadUpcomingTransactionsPanel() {
     })();
     const qs = `?start_date=${encodeURIComponent(todayIso)}&end_date=${encodeURIComponent(endIso)}`;
     const data = await api(`/api/families/${state.activeFamilyId}/transactions${qs}`, "GET");
+    if (gen !== upcomingLoadGen) return;
     const items = data?.items || [];
     state.upcomingActualItems = items;
     renderUpcomingTransactionsFiltered();
   } catch (e) {
+    if (gen !== upcomingLoadGen) return;
     show(txErr, e.message || "Failed to load upcoming transactions");
   }
 }
@@ -17718,7 +17731,6 @@ async function loadCalendarMonthDaily(gen) {
       fillInMonthGapsFromClient();
       if (!stillCurrent()) return;
       state.monthDailyBalances = nextBalances;
-      repairOutOfMonthBalanceContinuity();
       return;
     }
   } catch (_) {
@@ -17726,7 +17738,6 @@ async function loadCalendarMonthDaily(gen) {
   }
   if (!stillCurrent()) return;
   computeMonthDailyBalancesLegacy();
-  repairOutOfMonthBalanceContinuity();
 }
 
 let calendarLoadingGuardTimer = null;
@@ -17945,12 +17956,23 @@ function repairOutOfMonthBalanceContinuity() {
   const { monthStartIso, monthEndIso, rangeStart, rangeEnd } = range;
   let changed = false;
 
-  const patchRun = (fromIso, toIso, direction) => {
-    let carryIso = direction > 0 ? isoAddDays(fromIso, -1) : isoAddDays(fromIso, 1);
+  const writeRepairedDay = (iso, dayStart, txNet, dayEnd, verified, calculatedEnd) => {
+    state.monthDailyBalances.set(iso, {
+      start: dayStart,
+      txNet,
+      end: dayEnd,
+      verified,
+      verifiedAmount: verified ? dayEnd : null,
+      projectedEnd: verified ? calculatedEnd : null,
+    });
+    changed = true;
+  };
+
+  const patchForward = (fromIso, toIso) => {
+    let carryIso = isoAddDays(fromIso, -1);
     let guard = 0;
     let iso = fromIso;
-    while (guard++ < 42) {
-      if (direction > 0 ? iso > toIso : iso < toIso) break;
+    while (guard++ < 42 && iso <= toIso) {
       const prev = state.monthDailyBalances.get(carryIso);
       const prevEnd = Number(prev?.end);
       if (!Number.isFinite(prevEnd)) break;
@@ -17969,19 +17991,36 @@ function repairOutOfMonthBalanceContinuity() {
         !Number.isFinite(existingStart) ||
         !Number.isFinite(existingEnd) ||
         Math.abs(existingStart - dayStart) > 0.045;
-      if (discontinuous) {
-        state.monthDailyBalances.set(iso, {
-          start: dayStart,
-          txNet,
-          end: dayEnd,
-          verified,
-          verifiedAmount: verified ? dayEnd : null,
-          projectedEnd: verified ? calculatedEnd : null,
-        });
-        changed = true;
-      }
+      if (discontinuous) writeRepairedDay(iso, dayStart, txNet, dayEnd, verified, calculatedEnd);
       carryIso = iso;
-      iso = isoAddDays(iso, direction);
+      iso = isoAddDays(iso, 1);
+    }
+  };
+
+  const patchBackward = (fromIso, toIso) => {
+    // Leading wrap days flow into the 1st: this day's end is the next day's start,
+    // minus a starting balance added on that next day.
+    let nextIso = isoAddDays(fromIso, 1);
+    let guard = 0;
+    let iso = fromIso;
+    while (guard++ < 42 && iso >= toIso) {
+      const next = state.monthDailyBalances.get(nextIso);
+      const nextStart = Number(next?.start);
+      if (!Number.isFinite(nextStart)) break;
+      const anchorEnd = nextStart - clientStartAddForIso(nextIso);
+      if (!Number.isFinite(anchorEnd)) break;
+      const txNet = clientDayTxNetForIso(iso, mode);
+      const vb = state.verifiedBalances?.get(iso);
+      const verified = !!(vb && Number.isFinite(Number(vb.amount)));
+      const dayEnd = verified ? Number(vb.amount) : anchorEnd;
+      const dayStart = dayEnd - txNet;
+      const existing = state.monthDailyBalances.get(iso);
+      const existingEnd = Number(existing?.end);
+      const discontinuous =
+        !existing || !Number.isFinite(existingEnd) || Math.abs(existingEnd - dayEnd) > 0.045;
+      if (discontinuous) writeRepairedDay(iso, dayStart, txNet, dayEnd, verified, dayStart + txNet);
+      nextIso = iso;
+      iso = isoAddDays(iso, -1);
     }
   };
 
@@ -17989,11 +18028,11 @@ function repairOutOfMonthBalanceContinuity() {
   const rangeEndIso = toISODate(rangeEnd);
   if (rangeStartIso < monthStartIso) {
     // Leading wrap days: walk backward from the 1st.
-    patchRun(isoAddDays(monthStartIso, -1), rangeStartIso, -1);
+    patchBackward(isoAddDays(monthStartIso, -1), rangeStartIso);
   }
   if (rangeEndIso > monthEndIso) {
     // Trailing wrap days: walk forward from month end.
-    patchRun(isoAddDays(monthEndIso, 1), rangeEndIso, 1);
+    patchForward(isoAddDays(monthEndIso, 1), rangeEndIso);
   }
   return changed;
 }
