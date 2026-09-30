@@ -644,3 +644,124 @@ def test_calendar_stays_on_the_selected_month_until_the_user_navigates(page, gua
     expect(_balance(page, "2026-09-09")).to_have_text(money("2000.00"))
     expect(_balance(page, "2026-09-10")).to_have_text(money("1900.00"))
     guard.assert_clean()
+
+
+_TX_LIST_URL = re.compile(r"/api/families/\d+/(?:transactions|expected-transactions)(?:\?|$)")
+
+_TX_EMPTY_WATCH = """
+(() => {
+  window.__bwTxEmptyFlashed = false;
+  const note = (node) => {
+    if (!node || node.nodeType !== 1) return;
+    if (node.classList && node.classList.contains("tm-empty-state")) window.__bwTxEmptyFlashed = true;
+    else if (node.querySelector && node.querySelector(".tm-empty-state")) window.__bwTxEmptyFlashed = true;
+  };
+  const wrap = (proto, name) => {
+    const orig = proto[name];
+    if (typeof orig !== "function") return;
+    proto[name] = function (...args) {
+      const result = orig.apply(this, args);
+      try { args.forEach(note); } catch (_) {}
+      return result;
+    };
+  };
+  wrap(Element.prototype, "appendChild");
+  wrap(Element.prototype, "insertBefore");
+  wrap(Element.prototype, "replaceChildren");
+})();
+"""
+
+
+def _hold_transaction_lists(page):
+    """Pause transaction-list GETs so the loading state can be observed, then let later GETs through."""
+    release = {"go": False}
+    held = []
+
+    def handler(route):
+        if route.request.method != "GET" or release["go"]:
+            route.continue_()
+            return
+        held.append(route)
+
+    page.add_init_script(_TX_EMPTY_WATCH)
+    page.route(_TX_LIST_URL, handler)
+    page.goto("/transactions/")
+    return release, held
+
+
+def _release_transaction_lists(release, held):
+    release["go"] = True
+    pending = list(held)
+    held.clear()
+    for route in pending:
+        route.continue_()
+
+
+def _assert_transactions_still_loading(page):
+    expect(page.locator(".tm-table__head")).to_be_visible()
+    expect(page.locator(".tm-list-loading")).to_be_visible()
+    expect(page.get_by_text("Loading transactions…")).to_be_visible()
+    expect(page.locator(".tm-empty-state")).to_have_count(0)
+    expect(page.get_by_text("No transactions match these filters")).to_have_count(0)
+    expect(page.get_by_text("Nothing flagged for cleanup in this view.")).to_have_count(0)
+    expect(page.get_by_text("0 in this list")).to_have_count(0)
+    assert page.evaluate("() => window.__bwTxEmptyFlashed") is False
+
+
+@pytest.mark.smoke_title("Transactions list loading then rows")
+def test_transactions_list_shows_loading_then_rows(page, guard):
+    """The empty state must not flash while transaction lists are still loading."""
+    today = date.today().isoformat()
+    email = _register_checking("1000.00", today)
+    login(page, email, PASSWORD)
+    token = page.evaluate(
+        "() => sessionStorage.getItem('bw_api_access_token') || localStorage.getItem('bw_api_access_token')"
+    )
+    families = _request("GET", "/api/families", token=token)
+    family_id = int(families[0]["id"])
+    _request(
+        "POST",
+        f"/api/families/{family_id}/transactions",
+        token=token,
+        body={
+            "date": today,
+            "kind": "income",
+            "amount": "42.00",
+            "description": "Loading row paycheck",
+        },
+    )
+
+    release, held = _hold_transaction_lists(page)
+    try:
+        _assert_transactions_still_loading(page)
+        _release_transaction_lists(release, held)
+        row = page.locator("#txListMain .tm-row", has_text="Loading row paycheck")
+        expect(row).to_be_visible()
+        expect(page.locator(".tm-list-loading")).to_have_count(0)
+        expect(page.locator(".tm-empty-state")).to_have_count(0)
+        expect(page.get_by_text("No transactions match these filters")).to_have_count(0)
+        assert page.evaluate("() => window.__bwTxEmptyFlashed") is False
+    finally:
+        _release_transaction_lists(release, held)
+    guard.assert_clean()
+
+
+@pytest.mark.smoke_title("Transactions list loading then empty")
+def test_transactions_list_shows_loading_then_empty_state(page, guard):
+    """A real zero-result response shows the empty state only after loading finishes."""
+    today = date.today().isoformat()
+    email = _register_checking("1000.00", today)
+    login(page, email, PASSWORD)
+
+    release, held = _hold_transaction_lists(page)
+    try:
+        _assert_transactions_still_loading(page)
+        _release_transaction_lists(release, held)
+        expect(page.locator(".tm-list-loading")).to_have_count(0)
+        expect(page.locator(".tm-empty-state__title")).to_have_text("No transactions match these filters")
+        expect(page.locator(".tm-empty-state__lede")).to_have_text("Try clearing a filter or adjusting your search.")
+        expect(page.get_by_text("Try a wider date range", exact=False)).to_have_count(0)
+        assert page.evaluate("() => window.__bwTxEmptyFlashed") is True
+    finally:
+        _release_transaction_lists(release, held)
+    guard.assert_clean()

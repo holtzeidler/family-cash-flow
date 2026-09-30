@@ -3156,6 +3156,57 @@ async function maybeCreateFirstAccountFromDraft(draft) {
   }
 }
 
+function onboardingCategoryLookupKey(name) {
+  return String(name || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
+}
+
+/** Onboarding labels that don't match the seeded category name exactly. */
+const ONBOARDING_CATEGORY_ALIAS_KEYS = {
+  reimbursement: "otherincome",
+  investment: "investmenttransfer",
+  miscellaneous: "other",
+};
+
+async function signupCategoryIdByKey(familyId) {
+  const byKey = new Map();
+  try {
+    const resp = await request(`/api/families/${encodeURIComponent(String(familyId))}/categories`, "GET");
+    const rows = resp && resp.ok && Array.isArray(resp.data) ? resp.data : [];
+    for (const c of rows) {
+      const key = onboardingCategoryLookupKey(c && c.name);
+      const id = c && c.id != null ? Number(c.id) : NaN;
+      if (key && Number.isFinite(id) && id > 0 && !byKey.has(key)) byKey.set(key, id);
+    }
+  } catch (_) {}
+  return byKey;
+}
+
+async function ensureOnboardingCategoryId(familyId, byKey, label) {
+  const raw = String(label || "").trim();
+  const key = onboardingCategoryLookupKey(raw);
+  if (!key || key === "uncategorized" || key === "transaction") return null;
+  const want = ONBOARDING_CATEGORY_ALIAS_KEYS[key] || key;
+  if (byKey.has(want)) return byKey.get(want);
+  if (byKey.has(key)) return byKey.get(key);
+  try {
+    const created = await requestWithRetry(
+      `/api/families/${encodeURIComponent(String(familyId))}/categories`,
+      "POST",
+      { name: raw },
+      { maxMs: 12000 }
+    );
+    const id = created && created.ok && created.data && created.data.id != null ? Number(created.data.id) : NaN;
+    if (Number.isFinite(id) && id > 0) {
+      byKey.set(key, id);
+      return id;
+    }
+  } catch (_) {}
+  return null;
+}
+
 /**
  * Create the user's first transactions from the wizard draft. Returns:
  *   { ok: true,  createdCount, totalCount }   — every applicable item created
@@ -3178,6 +3229,7 @@ async function maybeCreateFirstTransactionFromDraft(draft, createdAccountId) {
   let createdCount = 0;
   let totalApplicable = 0;
   let lastError = null;
+  const categoryIds = await signupCategoryIdByKey(familyId);
 
   for (const t of list) {
     const description = (t.category || "").trim() || "Transaction";
@@ -3185,6 +3237,7 @@ async function maybeCreateFirstTransactionFromDraft(draft, createdAccountId) {
     if (!Number.isFinite(amount) || amount <= 0) continue;
     totalApplicable += 1;
     const txDate = accountSetupEffectiveTxDate(t.date, draft);
+    const categoryId = await ensureOnboardingCategoryId(familyId, categoryIds, t.category);
     try {
       if (t.recurring) {
         const accountId = Number(createdAccountId);
@@ -3209,7 +3262,7 @@ async function maybeCreateFirstTransactionFromDraft(draft, createdAccountId) {
             kind: t.kind,
             amount,
             variable: !!t.variable,
-            category_id: null,
+            category_id: categoryId,
             bg_color: t.bg_color ? t.bg_color : null,
             fg_color: null,
           },
@@ -3227,7 +3280,7 @@ async function maybeCreateFirstTransactionFromDraft(draft, createdAccountId) {
             notes: t.notes ? t.notes : null,
             kind: t.kind,
             amount,
-            category_id: null,
+            category_id: categoryId,
             fg_color: null,
             bg_color: t.bg_color ? t.bg_color : null,
             reimbursable: false,
