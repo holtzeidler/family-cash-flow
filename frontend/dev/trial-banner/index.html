@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Trial banner preview — BalanceWhiz</title>
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="theme-color" content="#0B3D2E" />
+    <link rel="icon" href="../../favicon.ico" sizes="any" />
+    <link rel="stylesheet" href="../../styles.css?v=805" />
+    <style>
+      .trial-preview-panel{
+        margin: 28px 16px 40px;
+        max-width: 920px;
+      }
+      .trial-preview-note,
+      .trial-preview-empty,
+      #trialPreviewBlocked{
+        margin: 0 0 14px;
+        color: #4b5563;
+        font-size: 14px;
+        line-height: 1.45;
+      }
+      #trialPreviewBlocked{
+        color: #1f2937;
+        font-weight: 600;
+      }
+      .trial-preview-states{
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .trial-preview-state{
+        border: 1px solid rgba(17, 24, 39, 0.14);
+        background: #fff;
+        color: #111827;
+        border-radius: 999px;
+        padding: 6px 12px;
+        font: inherit;
+        font-size: 13.5px;
+        cursor: pointer;
+      }
+      .trial-preview-state.is-active{
+        background: #0B3D2E;
+        border-color: #0B3D2E;
+        color: #fff;
+      }
+      .trial-preview-state:focus-visible{
+        outline: 2px solid #0B3D2E;
+        outline-offset: 2px;
+      }
+    </style>
+  </head>
+  <body data-bw-view="calendar" data-bw-trial-preview="1">
+    <div class="container">
+      <div class="top-nav" role="navigation" aria-label="Primary">
+        <div class="top-nav__inner">
+          <div class="top-nav__title" aria-label="App title">
+            <div class="app-title app-title--logo">
+              <img
+                class="app-logo"
+                src="../../assets/balance-whiz-logo-on-accent.svg?v=20260518"
+                width="293"
+                height="44"
+                alt="BalanceWhiz"
+                decoding="async"
+              />
+            </div>
+          </div>
+          <div class="top-nav__tabs" role="tablist" aria-label="Views">
+            <span class="top-nav__tab is-active" role="tab" aria-selected="true">Forecast</span>
+            <span class="top-nav__tab" role="tab" aria-selected="false">Transactions</span>
+            <span class="top-nav__tab" role="tab" aria-selected="false">Reports</span>
+            <span class="top-nav__tab" role="tab" aria-selected="false">Settings</span>
+          </div>
+        </div>
+      </div>
+      <div class="trial-preview-panel">
+        <p id="trialPreviewBlocked" hidden></p>
+        <div id="trialPreviewControls">
+          <p class="trial-preview-note">Development preview of the trial banner. It does not read or change an account, Stripe, or email.</p>
+          <div id="trialPreviewButtons" class="trial-preview-states" role="group" aria-label="Trial banner states"></div>
+          <p id="trialPreviewEmpty" class="trial-preview-empty" hidden></p>
+        </div>
+      </div>
+    </div>
+    <script src="../../trial-status-notice.js?v=1"></script>
+    <script>
+      (function () {
+        function hostAllowed() {
+          var host = String(location.hostname || "").toLowerCase();
+          return host === "localhost" || host === "127.0.0.1" || host === "::1" || host === "[::1]" || host === "staging.balancewhiz.com";
+        }
+
+        var blocked = document.getElementById("trialPreviewBlocked");
+        var controls = document.getElementById("trialPreviewControls");
+        var empty = document.getElementById("trialPreviewEmpty");
+        var buttonRow = document.getElementById("trialPreviewButtons");
+        if (!hostAllowed()) {
+          if (controls) controls.hidden = true;
+          if (blocked) {
+            blocked.hidden = false;
+            blocked.textContent = "This preview is not available on the production site.";
+          }
+          return;
+        }
+        if (!buttonRow || typeof syncTrialStatusNotice !== "function") return;
+
+        var day = 24 * 60 * 60 * 1000;
+        var now = new Date();
+        function isoIn(ms) { return new Date(now.getTime() + ms).toISOString(); }
+        function trial(days) {
+          return {
+            phase: "trial",
+            entitled: true,
+            in_app_trial: true,
+            status: "none",
+            trial_days_remaining: days,
+            trial_ends_at: isoIn(Math.max(days, 0.05) * day),
+            complimentary_access_active: false,
+            stripe_subscription_id: null,
+            lookup_key: null
+          };
+        }
+        var fixtures = [
+          { id: "d14", label: "14 days left", status: trial(14) },
+          { id: "d8", label: "8 days left", status: trial(8) },
+          { id: "d3", label: "3 days left", status: trial(3) },
+          { id: "d1", label: "1 day left", status: trial(1) },
+          { id: "today", label: "Ends today", status: trial(0) },
+          {
+            id: "expired",
+            label: "Trial ended",
+            status: {
+              phase: "expired",
+              entitled: false,
+              in_app_trial: false,
+              status: "none",
+              trial_days_remaining: 0,
+              trial_ends_at: isoIn(-day),
+              complimentary_access_active: false,
+              stripe_subscription_id: null
+            }
+          },
+          {
+            id: "monthly",
+            label: "Monthly plan selected",
+            status: Object.assign(trial(8), {
+              status: "trialing",
+              stripe_subscription_id: "sub_preview_monthly",
+              lookup_key: "cash_forecast_monthly",
+              first_charge_at: isoIn(8 * day)
+            })
+          },
+          {
+            id: "annual",
+            label: "Annual plan selected",
+            status: Object.assign(trial(3), {
+              status: "trialing",
+              stripe_subscription_id: "sub_preview_annual",
+              lookup_key: "cash_forecast_annual",
+              first_charge_at: isoIn(3 * day)
+            })
+          },
+          {
+            id: "paid",
+            label: "Paid subscriber",
+            empty: "No trial banner. A paid subscriber does not see a countdown or Choose a plan.",
+            status: {
+              phase: "active",
+              entitled: true,
+              in_app_trial: true,
+              status: "active",
+              trial_days_remaining: 8,
+              trial_ends_at: isoIn(8 * day),
+              complimentary_access_active: false,
+              stripe_subscription_id: "sub_preview_paid",
+              lookup_key: "cash_forecast_monthly"
+            }
+          },
+          {
+            id: "comp",
+            label: "Complimentary",
+            empty: "No trial banner. Complimentary access does not see a countdown or Choose a plan.",
+            status: {
+              phase: "complimentary",
+              entitled: true,
+              in_app_trial: true,
+              complimentary_access_active: true,
+              status: "none",
+              trial_days_remaining: 8,
+              trial_ends_at: isoIn(8 * day),
+              stripe_subscription_id: null
+            }
+          }
+        ];
+
+        var params = new URLSearchParams(location.search);
+        var active = params.get("state") || "d14";
+        if (!fixtures.some(function (item) { return item.id === active; })) active = "d14";
+
+        function show(id) {
+          var item = fixtures.filter(function (row) { return row.id === id; })[0] || fixtures[0];
+          syncTrialStatusNotice(item.status);
+          var notice = document.getElementById("trialStatusNotice");
+          var hidden = !notice || notice.hidden;
+          if (empty) {
+            empty.hidden = !hidden;
+            empty.textContent = hidden ? (item.empty || "No trial banner for this state.") : "";
+          }
+          buttonRow.querySelectorAll("[data-preview-state]").forEach(function (btn) {
+            var on = btn.getAttribute("data-preview-state") === item.id;
+            btn.classList.toggle("is-active", on);
+            btn.setAttribute("aria-pressed", on ? "true" : "false");
+          });
+          var url = new URL(location.href);
+          url.searchParams.set("state", item.id);
+          history.replaceState({}, "", url);
+        }
+
+        fixtures.forEach(function (item) {
+          var btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "trial-preview-state";
+          btn.dataset.previewState = item.id;
+          btn.textContent = item.label;
+          btn.addEventListener("click", function () { show(item.id); });
+          buttonRow.appendChild(btn);
+        });
+        show(active);
+      })();
+    </script>
+  </body>
+</html>
