@@ -28,6 +28,10 @@ def render_seo_block(cfg: dict, page: dict, prefix: str) -> str:
     robots = "index, follow" if indexable else "noindex, nofollow"
     og_type = page.get("ogType", "website")
     og_image = site + cfg["ogImage"]
+    og_image_alt = cfg.get(
+        "ogImageAlt",
+        "BalanceWhiz — know your future checking balance. No bank connection required.",
+    )
     theme = cfg.get("themeColor", "#0B3D2E")
     site_name = cfg.get("siteName", "BalanceWhiz")
     twitter_site = cfg.get("twitterSite", "")
@@ -46,11 +50,13 @@ def render_seo_block(cfg: dict, page: dict, prefix: str) -> str:
         f'    <meta property="og:image" content="{og_image}" />',
         '    <meta property="og:image:width" content="1200" />',
         '    <meta property="og:image:height" content="630" />',
+        f'    <meta property="og:image:alt" content="{_esc(og_image_alt)}" />',
         '    <meta property="og:locale" content="en_US" />',
         '    <meta name="twitter:card" content="summary_large_image" />',
         f'    <meta name="twitter:title" content="{_esc(title)}" />',
         f'    <meta name="twitter:description" content="{_esc(desc)}" />',
         f'    <meta name="twitter:image" content="{og_image}" />',
+        f'    <meta name="twitter:image:alt" content="{_esc(og_image_alt)}" />',
     ]
     if twitter_site:
         lines.append(f'    <meta name="twitter:site" content="{_esc(twitter_site)}" />')
@@ -98,6 +104,12 @@ def upsert_file(path: Path, cfg: dict, page: dict) -> bool:
 
     block = render_seo_block(cfg, page, prefix)
 
+    viewport_match = re.search(r'<meta name="viewport"[^>]*/>', text)
+    viewport = (
+        viewport_match.group(0).strip()
+        if viewport_match
+        else '<meta name="viewport" content="width=device-width, initial-scale=1" />'
+    )
     text = strip_legacy_icon_links(text)
     text = re.sub(r"\s*<title>[^<]*</title>\s*", "\n", text)
     text = re.sub(
@@ -114,7 +126,7 @@ def upsert_file(path: Path, cfg: dict, page: dict) -> bool:
     )
     head_prefix = (
         "    <meta charset=\"utf-8\" />\n"
-        "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n"
+        f"    {viewport}\n"
         f"{title_tag}\n"
         f"{block}\n"
     )

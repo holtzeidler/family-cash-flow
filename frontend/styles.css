@@ -3230,6 +3230,10 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
   font-weight: 500;
   line-height: 1.45;
 }
+.trial-status-notice[data-trial-state="ending"] .trial-status-notice__message{
+  font-weight: 600;
+  color: color-mix(in srgb, var(--accent) 70%, var(--text));
+}
 .trial-status-notice__action{
   color: var(--accent);
   font-weight: 600;
@@ -29450,6 +29454,13 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   .container:has(> .top-nav .top-nav__inner--simple){
     padding-top: var(--simple-top-nav-space);
   }
+  /* Desktop pulls the wizard up under a short header. On a phone the header is fixed, so that overlap hides the step label. */
+  body.account-setup-page .container > .grid{
+    margin-top: 0;
+  }
+  body.account-setup-page:has(#accountSetupWizard[data-step="4"]) .container{
+    padding-top: var(--simple-top-nav-space);
+  }
   body.landing-page .container{
     padding-top: var(--landing-top-nav-space);
   }
@@ -29492,6 +29503,8 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
       "tabs tabs";
     gap: 8px 10px;
     align-items: center;
+    min-width: 0;
+    max-width: 100%;
     padding-left: 10px;
     padding-right: 10px;
   }
@@ -29542,6 +29555,7 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
     display: flex;
     gap: 8px;
     width: 100%;
+    min-width: 0;
     max-width: 100%;
     margin: 2px 0 0;
     padding: 0 0 6px;
@@ -29964,8 +29978,17 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
     margin-left: 0;
   }
 
+  body[data-bw-view="transactions"] .tm__controlDeck,
+  body[data-bw-view="transactions"] .tm__controlDeck__row--chips{
+    min-width: 0;
+    max-width: 100%;
+  }
+
   body[data-bw-view="transactions"] .tm__chips{
     flex-wrap: nowrap;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
     overflow-x: auto;
     overflow-y: hidden;
     padding-bottom: 2px;

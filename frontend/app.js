@@ -4047,6 +4047,8 @@ function getInitialTopViewFromUrlOrStorage() {
 }
 
 let profileNameBaseline = { first: "", last: "" };
+// Declared before the first view switch. That switch loads these lists, and a
+// later `let` would still be uninitialized.
 let expectedTxLoadGen = 0;
 let upcomingLoadGen = 0;
 
@@ -8409,15 +8411,31 @@ function trialNoticeDaysRemaining(status, end, now) {
 }
 
 /**
- * One trial-status line for the signed-in app.
- * Day wording comes from the server trial end (UTC), the same clock Billing
- * and the trial emails use. A selected plan hides it: Billing already shows
- * the scheduled first payment, and a second line would nag.
+ * " · Monthly plan starts October 8" when a plan is already chosen.
+ * The date is the billing payload's first charge, which is the trial end.
+ */
+function trialScheduledPlanSuffix(status, now) {
+  if (!isBillingTrialPlanScheduled(status)) return "";
+  const name = billingLookupIsAnnual(status.lookup_key) ? "Annual" : "Monthly";
+  const start = parseBillingDateTime(
+    (status && (status.first_charge_at || status.trial_ends_at || status.first_charge_on || status.trial_ends_on)) || ""
+  );
+  const label = start ? trialNoticeMonthDay(start, now) : "";
+  return label ? ` · ${name} plan starts ${label}` : "";
+}
+
+/**
+ * One trial-status line under the main navigation.
+ * Day wording uses the server's trial_days_remaining (UTC calendar days until
+ * trial_ends_at). Access still ends at that exact timestamp, not at midnight.
+ * A selected plan keeps the countdown and names the start date, without a
+ * subscribe link. Paid, complimentary, and cancel-at-period-end accounts
+ * are not trials.
  */
 function resolveTrialStatusNotice(status, now = new Date()) {
   if (!status || typeof status !== "object") return null;
   if (isComplimentaryAccessActive(status)) return null;
-  if (isBillingTrialPlanScheduled(status) || isBillingSubscribed(status)) return null;
+  if (isBillingSubscribed(status)) return null;
   const phase = String(status.phase || "").toLowerCase();
   if (phase === "complimentary" || phase === "active" || phase === "past_due") return null;
   if (isFormerPaidSubscriptionEnded(status) || isBillingPaymentRecoveryState(status)) return null;
@@ -8426,25 +8444,15 @@ function resolveTrialStatusNotice(status, now = new Date()) {
   const inTrial = status.in_app_trial === true || phase === "trial";
   if (inTrial && end && now.getTime() < end.getTime()) {
     const days = trialNoticeDaysRemaining(status, end, now);
-    if (days > 7 || days < 0) return null;
-    if (days >= 4) {
-      return {
-        state: "countdown",
-        message: `${days} days left in your free trial`,
-        action: "View plans",
-      };
-    }
-    if (days === 1) {
-      return { state: "tomorrow", message: "Your free trial ends tomorrow", action: "Choose a plan" };
-    }
-    if (days === 0) {
-      return { state: "today", message: "Your free trial ends today", action: "Choose a plan" };
-    }
-    return {
-      state: "ending",
-      message: `Your free trial ends ${trialNoticeMonthDay(end, now)}`,
-      action: "Choose a plan",
-    };
+    if (days == null || days < 0) return null;
+    const planSelected = isBillingTrialPlanScheduled(status);
+    const suffix = planSelected ? trialScheduledPlanSuffix(status, now) : "";
+    const action = planSelected ? null : "Choose a plan";
+    const state = days <= 3 ? "ending" : "countdown";
+    let message = `${days} days left in your free trial`;
+    if (days === 1) message = "1 day left in your free trial";
+    if (days === 0) message = "Your free trial ends today";
+    return { state, message: message + suffix, action };
   }
 
   if (phase === "expired" && status.entitled === false && end && now.getTime() >= end.getTime()) {
@@ -22822,6 +22830,14 @@ function wireForecastPreferencesUi() {
     });
   }
 }
+
+(function scrollActiveNavTabIntoView() {
+  var tab = document.querySelector(".top-nav__tab.is-active");
+  if (!tab || window.innerWidth > 768) return;
+  try {
+    tab.scrollIntoView({ inline: "nearest", block: "nearest" });
+  } catch (_) {}
+})();
 
 main().catch((e) => {
   if (userPill) userPill.textContent = "Not connected";

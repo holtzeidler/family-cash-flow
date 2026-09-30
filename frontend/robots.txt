@@ -10,6 +10,7 @@ Allow: /learn/
 Allow: /contactus/
 
 # Authenticated app, admin, and funnel pages (not useful in search)
+# /preview/ stays crawlable so its noindex tag is seen. It is omitted from the sitemap.
 Disallow: /calendar/
 Disallow: /transactions/
 Disallow: /reports/

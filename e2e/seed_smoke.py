@@ -215,6 +215,20 @@ def _insert_trial_plan(family_id: int, *, sub_id: str, lookup: str, trial_end: d
     )
 
 
+def _insert_paid_plan(
+    family_id: int, *, sub_id: str, lookup: str, period_end: datetime, cancel: bool = False
+) -> None:
+    stamp = _utc_now().strftime("%Y-%m-%d %H:%M:%S")
+    end = period_end.strftime("%Y-%m-%d %H:%M:%S")
+    _exec_sql(
+        "INSERT INTO billing_subscriptions ("
+        "family_id, stripe_subscription_id, status, lookup_key, cancel_at_period_end, "
+        "trial_end, current_period_end, created_at, updated_at"
+        ") VALUES (?, ?, 'active', ?, ?, NULL, ?, ?, ?)",
+        (family_id, sub_id, lookup, 1 if cancel else 0, end, stamp, stamp),
+    )
+
+
 def _expire_trial(family_id: int) -> None:
     db_path = smoke_db_path()
     last_error = "unknown"
@@ -277,6 +291,9 @@ def main() -> None:
             "password": PASSWORD,
             "family_id": family_id,
             "trial_ends_at": billing.get("trial_ends_at"),
+            "trial_days_remaining": billing.get("trial_days_remaining"),
+            "first_charge_at": billing.get("first_charge_at"),
+            "cancel_at_period_end": billing.get("cancel_at_period_end"),
             "phase": billing.get("phase"),
             "entitled": billing.get("entitled"),
             "in_app_trial": billing.get("in_app_trial"),
@@ -293,7 +310,7 @@ def main() -> None:
     today = trial_row("bw-smoke-trialtoday@example.com", end=today_end)
     monthly = trial_row(
         "bw-smoke-trialmo@example.com",
-        end=now + timedelta(days=3),
+        end=now + timedelta(days=8),
         plan="cash_forecast_monthly",
         forecast=True,
     )
@@ -310,6 +327,35 @@ def main() -> None:
         forecast=True,
     )
 
+    def paid_row(email: str, *, cancel: bool = False) -> dict:
+        token, family_id = _open_account(email)
+        _insert_paid_plan(
+            family_id,
+            sub_id=f"sub_smoke_{family_id}",
+            lookup="cash_forecast_monthly",
+            period_end=now + timedelta(days=20),
+            cancel=cancel,
+        )
+        _ensure_checking(token, family_id)
+        billing = _billing(token, family_id)
+        return {
+            "email": email,
+            "password": PASSWORD,
+            "family_id": family_id,
+            "trial_ends_at": billing.get("trial_ends_at"),
+            "trial_days_remaining": billing.get("trial_days_remaining"),
+            "phase": billing.get("phase"),
+            "entitled": billing.get("entitled"),
+            "in_app_trial": billing.get("in_app_trial"),
+            "status": billing.get("status"),
+            "lookup_key": billing.get("lookup_key"),
+            "cancel_at_period_end": billing.get("cancel_at_period_end"),
+            "complimentary_access_active": billing.get("complimentary_access_active"),
+        }
+
+    paid = paid_row("bw-smoke-paid@example.com")
+    canceling = paid_row("bw-smoke-canceling@example.com", cancel=True)
+
     def _require(row: dict, **checks: object) -> None:
         email = row["email"]
         for key, expected in checks.items():
@@ -323,6 +369,12 @@ def main() -> None:
     _require(monthly, phase="trial", entitled=True, in_app_trial=True, status="trialing", lookup_key="cash_forecast_monthly")
     _require(annual, phase="trial", entitled=True, in_app_trial=True, status="trialing", lookup_key="cash_forecast_annual")
     _require(complimentary, phase="complimentary", entitled=True, complimentary_access_active=True, in_app_trial=False)
+    _require(paid, phase="active", entitled=True, status="active", in_app_trial=True, cancel_at_period_end=False)
+    _require(canceling, phase="active", entitled=True, status="active", cancel_at_period_end=True)
+    if not monthly.get("first_charge_at") or not annual.get("first_charge_at"):
+        raise SystemExit("Smoke seed failed: a selected plan is missing its start date.")
+    if not (monthly.get("trial_days_remaining") or 0) > 3:
+        raise SystemExit("Smoke seed failed: the monthly plan trial is not more than 3 days out.")
 
     payload = {
         "origin": SMOKE_ORIGIN,
@@ -349,6 +401,8 @@ def main() -> None:
             "monthly": monthly,
             "annual": annual,
             "complimentary": complimentary,
+            "paid": paid,
+            "canceling": canceling,
         },
     }
     dest = smoke_run_dir() / "seed.json"

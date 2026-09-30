@@ -258,10 +258,28 @@
       el.style.zIndex = "9991";
       el.classList.add("bw-tour-target");
     });
-    if (nodes[0] && typeof nodes[0].scrollIntoView === "function") {
-      nodes[0].scrollIntoView({ block: "nearest", inline: "nearest" });
-    }
     return nodes;
+  }
+
+  function keepSpotVisible(nodes) {
+    if (!nodes || !nodes.length || window.innerWidth > 768) return;
+    var el = nodes[0];
+    var card = ensureDialog();
+    var nav = document.querySelector(".top-nav");
+    var gap = 12;
+    var cardTop = card.getBoundingClientRect().top;
+    var navBottom = nav ? nav.getBoundingClientRect().bottom : 0;
+    var rect = el.getBoundingClientRect();
+    var room = cardTop - navBottom - gap * 2;
+    var delta = 0;
+    if (room > 0 && rect.height > room) {
+      delta = rect.top - (navBottom + gap);
+    } else if (rect.bottom > cardTop - gap) {
+      delta = rect.bottom - (cardTop - gap);
+    } else if (rect.top < navBottom + gap) {
+      delta = rect.top - (navBottom + gap);
+    }
+    if (Math.abs(delta) > 1) window.scrollBy(0, delta);
   }
 
   function placeDialog(nodes) {
@@ -274,7 +292,7 @@
     if (!nodes || !nodes.length || window.innerWidth <= 768) {
       card.style.left = Math.max(margin, (window.innerWidth - width) / 2) + "px";
       card.style.top = "auto";
-      card.style.bottom = margin + "px";
+      card.style.bottom = "max(" + margin + "px, env(safe-area-inset-bottom, 0px))";
       return;
     }
     card.style.bottom = "auto";
@@ -327,8 +345,10 @@
       back.textContent = "Back";
     }
     placeDialog(nodes);
+    keepSpotVisible(nodes);
     window.setTimeout(function () {
       placeDialog(nodes);
+      keepSpotVisible(nodes);
       var focusTarget = finale ? start : next;
       if (focusTarget && !focusTarget.hidden) focusTarget.focus();
     }, 0);
@@ -405,6 +425,7 @@
     if (!open) return;
     var nodes = stepIndex >= STEPS.length ? [] : Array.prototype.slice.call(document.querySelectorAll(STEPS[stepIndex].spot));
     placeDialog(nodes);
+    keepSpotVisible(nodes);
   });
   document.addEventListener("keydown", onKey);
   openTour();

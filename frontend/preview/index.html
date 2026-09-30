@@ -6,6 +6,7 @@
     <title>Sample forecast — BalanceWhiz</title>
     <meta name="description" content="A short public walkthrough of BalanceWhiz using a fictional checking forecast. No account required." />
     <meta name="robots" content="noindex, nofollow" />
+    <link rel="canonical" href="https://balancewhiz.com/preview/" />
     <meta name="theme-color" content="#0B3D2E" />
     <link rel="icon" href="../favicon.ico" sizes="any" />
     <link rel="icon" href="../favicon-32.png" type="image/png" sizes="32x32" />
@@ -124,12 +125,37 @@
           padding-top: calc(3.25rem + env(safe-area-inset-top, 0px));
         }
       }
+      body.preview-page .bw-tour-tooltip__close {
+        margin-left: auto;
+      }
+      body.preview-page .bw-tour-tooltip:has(#previewTourStart:not([hidden])) .bw-tour-tooltip__actions {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+      }
+      body.preview-page .bw-tour-tooltip:has(#previewTourStart:not([hidden])) #previewTourBack {
+        align-self: flex-start;
+        order: 2;
+      }
+      body.preview-page #previewTourStart:not([hidden]) {
+        order: 1;
+        width: 100%;
+      }
+      body.preview-page #previewTourFaq:not([hidden]) {
+        display: block;
+        margin: 10px 0 2px;
+      }
       @media (max-width: 768px) {
         .preview-page .calendar-dow-row {
           display: none;
         }
         .preview-page .preview-stage {
           padding: 8px;
+        }
+        body.preview-page .bw-tour-tooltip {
+          max-height: calc(100dvh - 24px - env(safe-area-inset-bottom, 0px));
+          overflow: auto;
         }
       }
     </style>
@@ -182,6 +208,6 @@
         </div>
       </main>
     </div>
-    <script src="./preview.js?v=2"></script>
+    <script src="./preview.js?v=3"></script>
   </body>
 </html>
