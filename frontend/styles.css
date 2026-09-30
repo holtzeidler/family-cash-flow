@@ -11774,10 +11774,8 @@ label{
 .settings-pane[data-settings-pane="preferences"] .form-row-h + .form-row-h{
   margin-top: 6px;
 }
-/* Same content measure as Preferences (.prefs-pane). A 1280px shell grew with
-   the viewport while the plan controls stayed at their text width. */
 .settings-pane[data-settings-pane="billing"]{
-  max-width: 1080px;
+  max-width: 800px;
   width: 100%;
 }
 .billing-page{
@@ -11793,7 +11791,7 @@ label{
   gap: var(--billing-space-2);
   padding-bottom: clamp(16px, 3vw, 28px);
   width: 100%;
-  max-width: 1080px;
+  max-width: 800px;
 }
 .billing-page__head{
   margin-bottom: 0;
@@ -11813,18 +11811,9 @@ label{
   line-height: 1.45;
 }
 .billing-page__shell{
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--billing-space-3);
-  align-items: start;
+  display: block;
   width: 100%;
   max-width: none;
-}
-@media (min-width: 900px){
-  .billing-page__shell{
-    grid-template-columns: minmax(0, 1fr) minmax(200px, 17rem);
-    gap: var(--billing-space-3);
-  }
 }
 .billing-primary{
   min-width: 0;
@@ -11981,25 +11970,6 @@ label{
   background: transparent;
   box-shadow: none;
   gap: var(--billing-space-2);
-}
-@media (min-width: 900px){
-  .billing-overview--ended .billing-ended-body{
-    grid-template-columns: minmax(0, 78fr) minmax(196px, 22fr);
-    gap: 0;
-  }
-  .billing-overview--ended .billing-ended-main{
-    padding-right: 24px;
-  }
-  .billing-overview--ended .billing-side{
-    padding-left: 24px;
-    border-left: 1px solid rgba(17, 24, 39, 0.08);
-  }
-}
-@media (max-width: 899px){
-  .billing-overview--ended .billing-side{
-    border-top: 1px solid rgba(17, 24, 39, 0.08);
-    padding-top: 24px;
-  }
 }
 .billing-side{
   display: flex;
@@ -13840,7 +13810,7 @@ body[data-bw-view="settings"] #settingsViewPanel{
   width: 100%;
 }
 body[data-bw-view="settings"] #settingsViewPanel:has(.settings-pane[data-settings-pane="billing"]:not([hidden])){
-  max-width: min(1080px, 100%);
+  max-width: min(800px, 100%);
 }
 body[data-bw-view="settings"] .settings-content--hub.card{
   padding: 16px clamp(14px, 2.2vw, 28px) 24px;
