@@ -11789,7 +11789,7 @@ label{
   display: flex;
   flex-direction: column;
   gap: var(--billing-space-2);
-  padding-bottom: clamp(16px, 3vw, 28px);
+  padding-bottom: 0;
   width: 100%;
   max-width: 800px;
 }
@@ -13818,6 +13818,15 @@ body[data-bw-view="settings"] .settings-content--hub.card{
   border: 1px solid rgba(148, 163, 184, 0.16);
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.035), 0 8px 24px rgba(15, 23, 42, 0.04);
   border-radius: 14px;
+}
+/* Billing does not use the shared Settings hub card. The heading sits on the
+   page background; .billing-overview is the only white card. */
+body[data-bw-view="settings"] #settingsViewPanel .settings-content--hub.card:has(.settings-pane[data-settings-pane="billing"]:not([hidden])){
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+  padding: 0;
 }
 body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .cats-group{
   border-color: rgba(11, 61, 46, 0.11);
