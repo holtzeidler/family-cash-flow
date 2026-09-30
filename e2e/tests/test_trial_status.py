@@ -379,6 +379,36 @@ def test_billing_layout_matches_settings_measure(page, guard, seed):
     assert overview_bg not in ("rgba(0, 0, 0, 0)", "transparent")
     assert abs(annual_box["y"] - monthly_box["y"]) < 6
     assert annual_box["width"] + monthly_box["width"] >= options["width"] * 0.75
+    spacing = page.locator(".billing-overview").evaluate(
+        """el => {
+          const summary = el.querySelector(".billing-summary");
+          const support = el.querySelector(".billing-subscribe__support");
+          const choices = el.querySelector(".billing-subscribe__options");
+          const note = el.querySelector(".billing-subscribe__reassure");
+          const annual = document.getElementById("billingSubscribeAnnual");
+          const pad = getComputedStyle(el);
+          return {
+            padTop: parseFloat(pad.paddingTop),
+            padBottom: parseFloat(pad.paddingBottom),
+            padLeft: parseFloat(pad.paddingLeft),
+            summaryGap: summary ? parseFloat(getComputedStyle(summary).rowGap || getComputedStyle(summary).gap) : 0,
+            supportGap: support ? parseFloat(getComputedStyle(support).marginTop) : 0,
+            choicesGap: choices ? parseFloat(getComputedStyle(choices).marginTop) : 0,
+            noteGap: note ? parseFloat(getComputedStyle(note).marginTop) : 0,
+            noteBottom: note ? parseFloat(getComputedStyle(note).marginBottom) : 0,
+            annualH: annual ? annual.getBoundingClientRect().height : 0,
+          };
+        }"""
+    )
+    assert 32 <= spacing["padTop"] <= 36
+    assert 32 <= spacing["padBottom"] <= 36
+    assert 28 <= spacing["padLeft"] <= 32
+    assert 24 <= spacing["summaryGap"] <= 28
+    assert 10 <= spacing["supportGap"] <= 12
+    assert 22 <= spacing["choicesGap"] <= 24
+    assert 20 <= spacing["noteGap"] <= 24
+    assert 6 <= spacing["noteBottom"] <= 10
+    assert 76 <= spacing["annualH"] <= 84
 
     page.set_viewport_size({"width": 700, "height": 900})
     expect(annual).to_be_visible()
