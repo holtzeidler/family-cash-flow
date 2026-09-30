@@ -1789,7 +1789,7 @@ function goToSignupFromAccountSetup() {
     return;
   }
   const q = window.location.search || "";
-  window.location.assign("/signup/" + q);
+  window.location.assign("/account-setup/" + (q || ""));
 }
 
 function readAccountSetupDraftRaw() {
