@@ -128,18 +128,33 @@ function resolveTrialStatusNotice(status, now = new Date()) {
     if (days == null || days < 0) return null;
     const planSelected = isBillingTrialPlanScheduled(status);
     const suffix = planSelected ? trialScheduledPlanSuffix(status, now) : "";
-    const action = planSelected ? null : "Choose a plan";
-    const state = days <= 3 ? "ending" : "countdown";
     let message = `${days} days left in your free trial`;
     if (days === 1) message = "1 day left in your free trial";
     if (days === 0) message = "Your free trial ends today";
-    return { state, message: message + suffix, action };
+    if (planSelected) {
+      return { state: "scheduled", cta: null, message: message + suffix, action: null };
+    }
+    // 2 days uses the same pale-amber step as 3. Red is reserved for today and expired.
+    let state = "countdown";
+    let cta = "link";
+    if (days === 0) {
+      state = "today";
+      cta = "prominent";
+    } else if (days === 1) {
+      state = "urgent";
+      cta = "button";
+    } else if (days <= 3) {
+      state = "soon";
+      cta = "button";
+    }
+    return { state, cta, message, action: "Choose a plan" };
   }
 
   if (phase === "expired" && status.entitled === false && end && now.getTime() >= end.getTime()) {
     return {
       state: "ended",
-      message: "Your free trial has ended",
+      cta: "prominent",
+      message: "Your free trial has ended. Your forecast is now view-only.",
       action: "Choose a plan",
     };
   }
@@ -162,11 +177,14 @@ function syncTrialStatusNotice(status) {
   if (!model) {
     el.hidden = true;
     el.removeAttribute("data-trial-state");
+    el.removeAttribute("data-trial-cta");
     el.replaceChildren();
     return;
   }
   el.hidden = false;
   el.dataset.trialState = model.state;
+  if (model.cta) el.dataset.trialCta = model.cta;
+  else el.removeAttribute("data-trial-cta");
   const line = document.createElement("p");
   line.className = "trial-status-notice__line";
   const message = document.createElement("span");
@@ -176,6 +194,10 @@ function syncTrialStatusNotice(status) {
   if (model.action) {
     const link = document.createElement("a");
     link.className = "trial-status-notice__action";
+    if (model.cta === "button" || model.cta === "prominent") {
+      link.classList.add("trial-status-notice__action--button");
+    }
+    if (model.cta === "prominent") link.classList.add("trial-status-notice__action--prominent");
     link.href = "/settings/?section=billing";
     link.textContent = model.action;
     line.appendChild(link);

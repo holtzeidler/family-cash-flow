@@ -212,6 +212,17 @@
     }
   }
 
+  function complimentaryStatusText(u) {
+    if (!u) return "";
+    if (u.complimentary_access_active === true) {
+      const exp = complimentaryExpiresInputValue(u.complimentary_access_expires_at);
+      if (!exp) return "Complimentary — no expiration.";
+      return `Complimentary — through ${exp}.`;
+    }
+    if (u.complimentary_access) return "Complimentary expired.";
+    return "";
+  }
+
   function complimentaryExpiresInputValue(iso) {
     const s = String(iso || "").trim();
     const m = s.match(/^(\d{4}-\d{2}-\d{2})/);
@@ -473,11 +484,10 @@
         const nameLine = u.name ? escapeHtml(u.name) : escapeHtml(u.email);
         const emailSub =
           u.name && u.email ? `<span class="platform-admin-users-table__sub">${escapeHtml(u.email)}</span>` : "";
-        const compSub = u.complimentary_access_active
-          ? `<span class="platform-admin-users-table__sub">Complimentary access</span>`
-          : u.complimentary_access
-            ? `<span class="platform-admin-users-table__sub">Complimentary expired</span>`
-            : "";
+        const compLabel = complimentaryStatusText(u);
+        const compSub = compLabel
+          ? `<span class="platform-admin-users-table__sub">${escapeHtml(compLabel)}</span>`
+          : "";
         return `<tr data-user-id="${u.id}">
           <td class="platform-admin-users-table__user">
             <span class="platform-admin-users-table__email">${nameLine}</span>
@@ -631,6 +641,7 @@
         </section>
         <section class="platform-admin-drawer__section">
           <h4>Complimentary access</h4>
+          <p class="platform-admin-comp-status">${escapeHtml(complimentaryStatusText(u) || "No complimentary access.")}</p>
           <p class="meta" style="margin:0 0 10px">Internal full Cash Forecast access. This is not a Stripe plan and does not create or cancel a subscription.</p>
           ${complimentaryPaidWarningHtml(u)}
           <label class="platform-admin-drawer__check">

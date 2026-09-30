@@ -80,6 +80,25 @@ def _finish(page, guard):
     guard.assert_clean()
 
 
+def _assert_text_link(notice):
+    link = notice.locator("a.trial-status-notice__action")
+    expect(link).to_have_text("Choose a plan")
+    expect(link).to_have_attribute("href", "/settings/?section=billing")
+    expect(notice).to_have_attribute("data-trial-cta", "link")
+    expect(link).not_to_have_class(re.compile(r"trial-status-notice__action--button"))
+
+
+def _assert_filled_cta(notice, prominent=False):
+    link = notice.locator("a.trial-status-notice__action--button")
+    expect(link).to_have_text("Choose a plan")
+    expect(link).to_have_attribute("href", "/settings/?section=billing")
+    expect(notice).to_have_attribute("data-trial-cta", "prominent" if prominent else "button")
+    if prominent:
+        expect(link).to_have_class(re.compile(r"trial-status-notice__action--prominent"))
+    else:
+        expect(link).not_to_have_class(re.compile(r"trial-status-notice__action--prominent"))
+
+
 def _open_billing(page):
     page.locator(f"{NOTICE} a.trial-status-notice__action").click()
     page.wait_for_url(re.compile(r"/settings"))
@@ -98,9 +117,7 @@ def test_trial_status_shows_days_remaining_beyond_3(page, guard, seed):
     expect(notice).to_be_visible()
     expect(notice).to_have_attribute("data-trial-state", "countdown")
     expect(notice.locator(".trial-status-notice__message")).to_have_text(_trial_lead(days))
-    link = notice.locator("a.trial-status-notice__action")
-    expect(link).to_have_text("Choose a plan")
-    expect(link).to_have_attribute("href", "/settings/?section=billing")
+    _assert_text_link(notice)
     weight = notice.locator(".trial-status-notice__message").evaluate("el => getComputedStyle(el).fontWeight")
     assert int(weight) < 600
     _shots(page, "over-3")
@@ -116,8 +133,7 @@ def test_trial_status_at_7_days(page, guard, seed):
     expect(notice).to_be_visible()
     expect(notice).to_have_attribute("data-trial-state", "countdown")
     expect(notice.locator(".trial-status-notice__message")).to_have_text("7 days left in your free trial")
-    expect(notice.locator("a")).to_have_text("Choose a plan")
-    expect(notice.locator("a")).to_have_attribute("href", "/settings/?section=billing")
+    _assert_text_link(notice)
     page.goto("/transactions/")
     expect(page.locator(NOTICE)).to_contain_text("7 days left in your free trial")
     page.goto("/calendar")
@@ -134,9 +150,9 @@ def test_trial_status_at_3_days(page, guard, seed):
     days = int(account["trial_days_remaining"])
     assert days == 3, days
     notice = page.locator(NOTICE)
-    expect(notice).to_have_attribute("data-trial-state", "ending")
+    expect(notice).to_have_attribute("data-trial-state", "soon")
     expect(notice.locator(".trial-status-notice__message")).to_have_text(_trial_lead(days))
-    expect(notice.locator("a")).to_have_text("Choose a plan")
+    _assert_filled_cta(notice)
     weight = notice.locator(".trial-status-notice__message").evaluate("el => getComputedStyle(el).fontWeight")
     assert int(weight) >= 600
     _shots(page, "3-days")
@@ -150,9 +166,9 @@ def test_trial_status_one_day_left(page, guard, seed):
     _login(page, account["email"], account["password"])
     assert int(account["trial_days_remaining"]) == 1
     notice = page.locator(NOTICE)
-    expect(notice).to_have_attribute("data-trial-state", "ending")
+    expect(notice).to_have_attribute("data-trial-state", "urgent")
     expect(notice.locator(".trial-status-notice__message")).to_have_text("1 day left in your free trial")
-    expect(notice.locator("a")).to_have_text("Choose a plan")
+    _assert_filled_cta(notice)
     expect(notice).not_to_contain_text("has ended")
     expect(notice).not_to_contain_text("tomorrow")
     _shots(page, "1-day")
@@ -175,11 +191,11 @@ def test_trial_status_later_today_is_not_expired(page, guard, seed):
     assert still_today, account["trial_ends_at"]
     assert int(account["trial_days_remaining"]) == 0
     notice = page.locator(NOTICE)
-    expect(notice).to_have_attribute("data-trial-state", "ending")
+    expect(notice).to_have_attribute("data-trial-state", "today")
     expect(notice.locator(".trial-status-notice__message")).to_have_text("Your free trial ends today")
     expect(notice).not_to_contain_text("0 days")
     expect(notice).not_to_contain_text("has ended")
-    expect(notice.locator("a")).to_have_text("Choose a plan")
+    _assert_filled_cta(notice, prominent=True)
     _shots(page, "today")
     _finish(page, guard)
 
@@ -194,8 +210,10 @@ def test_trial_expired_keeps_forecast_and_blocks_writes(page, guard, seed):
     )
     notice = page.locator(NOTICE)
     expect(notice).to_have_attribute("data-trial-state", "ended")
-    expect(notice.locator(".trial-status-notice__message")).to_have_text("Your free trial has ended")
-    expect(notice.locator("a")).to_have_text("Choose a plan")
+    expect(notice.locator(".trial-status-notice__message")).to_have_text(
+        "Your free trial has ended. Your forecast is now view-only."
+    )
+    _assert_filled_cta(notice, prominent=True)
     _shots(page, "expired")
     page.locator(f'.cal-cell[data-iso="{seed["income_date"]}"]').evaluate("el => el.click()")
     expect(page.locator("#billingUpgradeModal.modal-overlay--open")).to_be_visible()
@@ -212,7 +230,8 @@ def _assert_plan_selected(page, guard, account, shot_name, plan_name):
     message = f"{_trial_lead(days)} · {plan_name} plan starts {label}"
     notice = page.locator(NOTICE)
     expect(notice).to_be_visible()
-    expect(notice).to_have_attribute("data-trial-state", "ending" if days <= 3 else "countdown")
+    expect(notice).to_have_attribute("data-trial-state", "scheduled")
+    expect(notice).not_to_have_attribute("data-trial-cta", re.compile(r".+"))
     expect(notice.locator(".trial-status-notice__message")).to_have_text(message)
     expect(notice.locator("a")).to_have_count(0)
     expect(notice).not_to_contain_text("Choose a plan")
@@ -262,6 +281,28 @@ def test_complimentary_account_has_no_trial_status(page, guard, seed):
     expect(page.locator("#txAddModal.modal-overlay--open")).to_be_visible()
     expect(page.locator("#billingUpgradeModal.modal-overlay--open")).to_have_count(0)
     page.keyboard.press("Escape")
+    page.goto("/settings/billing/")
+    billing = page.locator('[data-settings-pane="billing"]')
+    expect(page.locator("#billingManageHeading")).to_be_visible()
+    expect(page.locator("#billingManageHeading")).to_have_text("Complimentary access")
+    expect(page.locator("#billingManageHint")).to_have_text(
+        "You have complimentary access to BalanceWhiz. No subscription or payment is required."
+    )
+    expect(page.locator(".billing-page__lede")).to_have_text("Your access to BalanceWhiz.")
+    expect(page.locator(NOTICE)).to_be_hidden()
+    expect(billing.locator("#billingMeta")).to_be_hidden()
+    expect(billing.locator("#billingSubscribeChoices")).to_be_hidden()
+    expect(billing.locator("#billingPrimaryCta")).to_be_hidden()
+    expect(billing.locator("#billingCancelSection")).to_be_hidden()
+    expect(billing.locator('[data-billing-action="portal"]')).to_be_hidden()
+    expect(billing.locator('[data-billing-action="cycle"]')).to_be_hidden()
+    expect(billing.locator("#billingManageReassure")).to_be_hidden()
+    expect(billing.get_by_text("Cancel anytime")).to_have_count(0)
+    expect(billing.get_by_text("free trial", exact=False)).to_have_count(0)
+    expect(billing.get_by_text("Choose a plan")).to_have_count(0)
+    expect(billing.get_by_text("Next renewal")).to_be_hidden()
+    expect(page.locator(".billing-side__support-copy")).to_have_text("Questions about your account?")
+    _shots(page, "complimentary-billing")
     _finish(page, guard)
 
 

@@ -9754,31 +9754,20 @@ function resolveBillingLifecycleModel(status, { hasFamily = true } = {}) {
   }
 
   if (isComplimentaryAccessActive(status)) {
-    const expIso = isoDateFromApiTimestamp(status && status.complimentary_access_expires_at);
-    const expLong = expIso ? formatBillingLongDate(expIso) : "";
-    const hasExp = !!(expLong && expLong !== "—");
     return {
       mode: "complimentary",
       productName,
       productCopy,
-      showMeta: true,
+      showMeta: false,
       showManage: true,
       showCancel: false,
       callout: null,
       primaryCta: null,
-      meta: {
-        plan: productName,
-        priceLabel: "Billing",
-        price: "Complimentary access",
-        dateLabel: hasExp ? "Access through" : "Access",
-        date: hasExp ? expLong : "No expiration",
-        statusLabel: "Active",
-        statusTone: "paid",
-      },
+      meta: null,
       manageTitle: "Complimentary access",
-      manageHint: "You have full access to Cash Forecast. No subscription or payment method is required.",
+      manageHint: "You have complimentary access to BalanceWhiz. No subscription or payment is required.",
       cycleAction: null,
-      notesKind: "active",
+      notesKind: "complimentary",
     };
   }
 
@@ -10494,12 +10483,19 @@ const BILLING_NOTES_ERROR = [
   "Cancel anytime",
   "No hidden fees",
 ];
+const BILLING_NOTES_COMPLIMENTARY = [
+  "No bank connection required",
+  "Your BalanceWhiz data stays editable",
+];
+const BILLING_PAGE_LEDE_DEFAULT = "Subscription status and payment actions.";
+const BILLING_SUPPORT_COPY_DEFAULT = "Questions about your subscription or billing?";
 
 function applyBillingNotes(kind) {
   const list = document.getElementById("billingNotesList");
   if (!list) return;
   let items = BILLING_NOTES_DEFAULT;
-  if (kind === "trial") items = BILLING_NOTES_TRIAL;
+  if (kind === "complimentary") items = BILLING_NOTES_COMPLIMENTARY;
+  else if (kind === "trial") items = BILLING_NOTES_TRIAL;
   else if (kind === "trial_scheduled") items = BILLING_NOTES_TRIAL_SCHEDULED;
   else if (kind === "trial_ended" || kind === "canceled" || kind === "payment_required") {
     items = BILLING_NOTES_TRIAL_ENDED;
@@ -10618,6 +10614,7 @@ function applyBillingCycleAction(model) {
   if (manage) {
     manage.classList.toggle("billing-actions--scheduled-cancel", scheduledLayout);
     manage.classList.toggle("billing-actions--payment-issue", paymentPrimary);
+    manage.classList.toggle("billing-actions--complimentary", complimentary);
     if (scheduledLayout || paymentPrimary || errorState || trialReady || complimentary) {
       manage.classList.remove("billing-actions--promote-annual", "billing-actions--interval-annual");
     }
@@ -10945,6 +10942,7 @@ function applyBillingLifecycleModel(model) {
     setBillingPrimaryCta(model.primaryCta);
     setBillingSubscribeChoices(model.subscribeChoices || null);
     applyBillingNotes(model.notesKind || model.mode);
+    applyBillingPageChrome(model);
     setBillingLifecycleCallout(model.callout);
   } catch (err) {
     try {
@@ -10955,6 +10953,18 @@ function applyBillingLifecycleModel(model) {
       title: "Couldn’t render billing status",
       text: "Try refreshing the page. If this keeps happening, contact support.",
     });
+  }
+}
+
+function applyBillingPageChrome(model) {
+  const complimentary = model.mode === "complimentary";
+  const lede = document.querySelector(".billing-page__lede");
+  if (lede) {
+    lede.textContent = complimentary ? "Your access to BalanceWhiz." : BILLING_PAGE_LEDE_DEFAULT;
+  }
+  const support = document.querySelector(".billing-side__support-copy");
+  if (support) {
+    support.textContent = complimentary ? "Questions about your account?" : BILLING_SUPPORT_COPY_DEFAULT;
   }
 }
 
