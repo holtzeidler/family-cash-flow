@@ -3219,20 +3219,55 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
   display: none !important;
 }
 .trial-status-notice__line{
-  display: flex;
+  display: inline-flex;
   flex-wrap: wrap;
   align-items: baseline;
   justify-content: center;
-  gap: 2px 12px;
+  gap: 6px 12px;
+  max-width: 100%;
   margin: 0;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 10px;
   color: var(--text);
   font-size: 13.5px;
   font-weight: 500;
   line-height: 1.45;
 }
-.trial-status-notice[data-trial-state="ending"] .trial-status-notice__message{
+.trial-status-notice[data-trial-state="soon"] .trial-status-notice__line{
+  padding: 6px 12px;
+  background: #F8F1E4;
+}
+.trial-status-notice[data-trial-state="soon"] .trial-status-notice__message{
   font-weight: 600;
-  color: color-mix(in srgb, var(--accent) 70%, var(--text));
+}
+.trial-status-notice[data-trial-state="urgent"] .trial-status-notice__line{
+  padding: 6px 12px;
+  background: #F3E4CC;
+  border-color: rgba(146, 100, 36, 0.28);
+}
+.trial-status-notice[data-trial-state="urgent"] .trial-status-notice__message{
+  font-weight: 700;
+  color: #6A4516;
+}
+.trial-status-notice[data-trial-state="today"] .trial-status-notice__line,
+.trial-status-notice[data-trial-state="ended"] .trial-status-notice__line{
+  padding: 6px 12px;
+  background: #F8EEEE;
+  border-color: rgba(167, 55, 68, 0.22);
+}
+.trial-status-notice[data-trial-state="today"] .trial-status-notice__message,
+.trial-status-notice[data-trial-state="ended"] .trial-status-notice__message{
+  font-weight: 700;
+  color: #7A2430;
+}
+.trial-status-notice[data-trial-state="scheduled"] .trial-status-notice__line{
+  padding: 6px 12px;
+  background: rgba(11, 61, 46, 0.06);
+}
+.trial-status-notice[data-trial-cta="button"] .trial-status-notice__line,
+.trial-status-notice[data-trial-cta="prominent"] .trial-status-notice__line{
+  align-items: center;
 }
 .trial-status-notice__action{
   color: var(--accent);
@@ -3248,6 +3283,29 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
   outline: 2px solid var(--accent);
   outline-offset: 3px;
   border-radius: 4px;
+}
+.trial-status-notice__action--button{
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 12.5px;
+  line-height: 1.2;
+  text-decoration: none;
+}
+.trial-status-notice__action--button:hover{
+  filter: brightness(1.12);
+  color: #fff;
+}
+.trial-status-notice__action--button:focus-visible{
+  outline-color: #111827;
+  border-radius: 999px;
+}
+.trial-status-notice__action--prominent{
+  padding: 6px 14px;
+  font-size: 13.5px;
 }
 @media (max-width: 860px){
   .trial-status-notice{
@@ -12619,6 +12677,14 @@ label{
   font-weight: 780;
   letter-spacing: -0.02em;
   color: rgba(15, 23, 42, 0.96);
+}
+.billing-actions--complimentary{
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+.billing-actions--complimentary .billing-actions__hint{
+  margin-bottom: 0;
 }
 .billing-actions__hint,
 .billing-cancel__lede{
