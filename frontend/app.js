@@ -8578,7 +8578,10 @@ function stripeFirstChargeIsoFromStatus(status) {
 
 function trialAccessThroughLabel(status) {
   if (status && status.trial_ends_at) {
-    return formatBillingLongDateTime(status.trial_ends_at);
+    const d = parseBillingDateTime(status.trial_ends_at);
+    if (d) {
+      return d.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
+    }
   }
   const day = status && status.trial_ends_on ? String(status.trial_ends_on) : "";
   return day ? formatBillingLongDate(day) : "";
@@ -9676,7 +9679,7 @@ function applyBillingCancelSection(model) {
   }
 }
 
-/** Expired-trial only: merge overview + side into one two-column Billing panel. */
+/** Expired-trial only: keep the overview as one column. */
 function applyBillingEndedPanelLayout(enabled) {
   const shell = document.querySelector(".billing-page__shell");
   const overview = document.querySelector(".billing-overview");
@@ -9684,8 +9687,7 @@ function applyBillingEndedPanelLayout(enabled) {
   const hero = overview?.querySelector(".billing-hero");
   const summary =
     document.getElementById("billingLifecycleBlock") || overview?.querySelector(".billing-summary");
-  const side = document.querySelector(".billing-side");
-  if (!shell || !overview || !primary || !hero || !summary || !side) return;
+  if (!shell || !overview || !primary || !hero || !summary) return;
 
   shell.classList.toggle("billing-page__shell--ended", !!enabled);
   shell.classList.toggle("billing-page__shell--natural", !!enabled);
@@ -9709,15 +9711,11 @@ function applyBillingEndedPanelLayout(enabled) {
       body.insertBefore(main, body.firstChild);
     }
     if (summary.parentElement !== main) main.appendChild(summary);
-    if (side.parentElement !== body) body.appendChild(side);
     return;
   }
 
   if (summary.parentElement && summary.parentElement.classList.contains("billing-ended-main")) {
     hero.appendChild(summary);
-  }
-  if (side.parentElement !== shell) {
-    shell.appendChild(side);
   }
   if (body) body.remove();
 }
