@@ -24,5 +24,6 @@ Disallow: /signup/
 Disallow: /login/
 Disallow: /login.html
 Disallow: /checkout/
+Disallow: /dev/
 
 Sitemap: https://balancewhiz.com/sitemap.xml

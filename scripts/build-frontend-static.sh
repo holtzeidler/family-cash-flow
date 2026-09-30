@@ -20,6 +20,13 @@ rm -rf "${OUT_DIR}"
 mkdir -p "${OUT_DIR}"
 cp -R "${REPO_ROOT}/frontend/." "${OUT_DIR}/"
 
+# The trial-banner preview is for local dev and staging only.
+# Production Pages uses OUT_DIR=public. Staging CI and Render use public-staging.
+if [ "$(basename "${OUT_DIR}")" != "public-staging" ]; then
+  rm -rf "${OUT_DIR}/dev"
+  echo "Omitted dev-only trial banner preview from ${OUT_DIR}"
+fi
+
 # Staging: chart-line favicon (production keeps typography Bw in frontend/).
 if [ "${OUT_DIR}" = "public-staging" ]; then
   STAGING_FAV="${REPO_ROOT}/frontend/staging-favicons"
