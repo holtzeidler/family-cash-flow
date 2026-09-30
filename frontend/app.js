@@ -23214,7 +23214,7 @@ function ensureForecastReadyModal() {
     <div class="modal modal--choice modal--forecast-ready" role="dialog" aria-modal="true" aria-labelledby="bwForecastReadyTitle" aria-describedby="bwForecastReadyDesc">
       <h3 id="bwForecastReadyTitle">Your forecast is ready</h3>
       <div id="bwForecastReadyDesc" class="bw-forecast-ready__body">
-        <p class="bw-forecast-ready__tagline">Take a 60-second tour to see how to keep it useful.</p>
+        <p class="bw-forecast-ready__tagline">Take a 60-second tour to get the most from your forecast.</p>
       </div>
       <div class="modal-actions bw-forecast-ready__actions">
         <button type="button" class="bw-forecast-ready__cta" id="bwForecastReadyStartTourBtn">Take the Tour</button>
