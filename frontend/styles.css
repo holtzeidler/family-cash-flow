@@ -5308,6 +5308,9 @@ body.plans-page.help-page .container > .grid{
   line-height: 1.65;
   color: rgba(75, 85, 99, 0.88);
 }
+.help-faq__panel p + p{
+  margin-top: 0.75rem;
+}
 .help-faq__panel a{
   color: var(--accent);
   font-weight: 500;
