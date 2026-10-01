@@ -22178,8 +22178,7 @@ body[data-bw-view="reimbursements"] .cash-health-status--balance .cash-health-st
   overflow: visible;
 }
 
-/* === Transaction row: flat, ledger-like typography ===
-   Medium weight by default; bold reserved for high-impact amounts. */
+/* === Transaction row: flat, ledger-like typography === */
 .cal-day-txns--uniform-label-col .cal-day-tx-line{
   grid-template-columns: minmax(0, var(--cal-day-label-col-w)) auto;
 }
@@ -22200,10 +22199,6 @@ body[data-bw-view="reimbursements"] .cash-health-status--balance .cash-health-st
   font-weight: 500;
   --cal-tx-label-color: rgb(17, 24, 39);
   color: var(--cal-tx-label-color);
-}
-.cal-day-tx-line--impact-lg,
-.cal-day-tx-line--impact-xxl{
-  font-weight: 600;
 }
 .cal-day-tx-line--start-balance{
   padding-left: 0;
@@ -22393,7 +22388,6 @@ body[data-bw-view="reimbursements"] .cash-health-status--balance .cash-health-st
 .cal-tx-label-wrap--category-fill .cal-tx-label{
   color: inherit;
 }
-/* Impact rows: weight only (no stripe). */
 
 .cal-day-tx-line--expected{
   cursor: pointer;

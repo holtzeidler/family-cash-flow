@@ -15538,23 +15538,13 @@ function calendarDayTxLineToneParts(row) {
   return parts;
 }
 
-const CAL_TX_IMPACT_LG = 4500;
-const CAL_TX_IMPACT_XL = 12000;
-
 /**
- * Calendar row semantics: income vs expense direction (muted), high-impact amounts,
- * and neutral treatment for uncategorized actuals. Keeps cells untinted — row text only.
+ * Calendar row semantics: income vs expense direction. Keeps cells untinted — row text only.
  */
 function calendarDayTxSemanticParts(row) {
   const parts = [];
   if (!row || row._type === "start_balance") return parts;
 
-  const absAmt = Math.abs(Number(row.amount ?? 0));
-  if (absAmt >= CAL_TX_IMPACT_XL) parts.push("cal-day-tx-line--impact-xxl");
-  else if (absAmt >= CAL_TX_IMPACT_LG) parts.push("cal-day-tx-line--impact-lg");
-
-  const cat = String(effectiveTransactionCategoryName(row) || "").toLowerCase();
-  const desc = String(row.description || "").trim().toLowerCase();
   const kind = String(row.kind || "").toLowerCase();
   if (kind === "income") parts.push("cal-day-tx-line--flow-in");
   else if (kind === "expense") parts.push("cal-day-tx-line--flow-out");
