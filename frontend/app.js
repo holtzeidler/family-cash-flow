@@ -2039,9 +2039,9 @@ function syncInstanceSecondMonthlyDateDefault() {
   if (!instanceSecondDayOfMonth || !txEditDate || instanceRecurrence?.value !== "twice_monthly") return;
   const start = normalizeIsoDate(txEditDate.value);
   if (!start) return;
-  const startDom = Number(start.slice(8, 10));
+  // A saved day stays put. Suggest a second day only when the field is empty.
   const currentDom = readSecondDayOfMonthFromInput(instanceSecondDayOfMonth);
-  if (Number.isFinite(currentDom) && currentDom !== startDom) return;
+  if (Number.isFinite(currentDom)) return;
   const inferred = inferSecondMonthlyIsoFromStart(start);
   if (inferred) instanceSecondDayOfMonth.value = inferred;
 }
@@ -2172,9 +2172,9 @@ function syncTxAddSecondMonthlyDateDefault() {
   if (!txAddSecondDayOfMonth || !txAddDate || txAddRecurrence?.value !== "twice_monthly") return;
   const start = normalizeIsoDate(txAddDate.value);
   if (!start) return;
-  const startDom = Number(start.slice(8, 10));
+  // A chosen day stays put when the start date moves. Suggest one only if empty.
   const currentDom = readSecondDayOfMonthFromInput(txAddSecondDayOfMonth);
-  if (Number.isFinite(currentDom) && currentDom !== startDom) return;
+  if (Number.isFinite(currentDom)) return;
   const inferred = inferSecondMonthlyIsoFromStart(start);
   if (inferred) txAddSecondDayOfMonth.value = inferred;
 }
@@ -7810,6 +7810,15 @@ async function openCalendarExpectedFromLine(expectedLine) {
     window.alert("Could not open this recurring item. Try refreshing the page.");
     return false;
   }
+  // A missed in-memory calendar row still has to show the series. The clicked
+  // occurrence date stays as-is; amount, account, and category come from the rule.
+  if (calendarItem.amount == null && meta.amount != null) calendarItem.amount = meta.amount;
+  if (!calendarItem.kind && meta.kind) calendarItem.kind = meta.kind;
+  if (calendarItem.account_id == null && meta.account_id != null) calendarItem.account_id = meta.account_id;
+  if (calendarItem.category_id == null && meta.category_id != null) calendarItem.category_id = meta.category_id;
+  if (calendarItem.notes == null && meta.notes != null) calendarItem.notes = meta.notes;
+  if (!calendarItem.description && meta.description) calendarItem.description = meta.description;
+  if (!calendarItem.bg_color && meta.bg_color) calendarItem.bg_color = meta.bg_color;
   openExpectedEditModal(meta, { calendarItem });
   return true;
 }
@@ -12972,25 +12981,9 @@ async function saveExpectedSeriesFromInstance() {
   if (recurrenceVal === "twice_monthly") {
     const n = readSecondDayOfMonthFromInput(instanceSecondDayOfMonth);
     if (!Number.isFinite(n) || n < 1 || n > 31) throw new Error("Second monthly date is required");
-    const startIso = normalizeIsoDate(meta.start_date || "") || meta.start_date || "";
-    const startDom = startIso && String(startIso).length >= 10 ? Number(String(startIso).slice(8, 10)) : NaN;
-    // When applying from a specific occurrence, the backend treats that occurrence date as the
-    // new series start. For twice-monthly series, the "second day" must differ from the *apply*
-    // occurrence day. If we're applying from the existing second day, automatically swap days
-    // so the schedule stays the same (just flips which day is considered "start" vs "second").
-    const anchorDom = dateMoved && editedIso ? Number(String(editedIso).slice(8, 10)) : Number(String(occRaw).slice(8, 10));
-    const occDom = Number.isFinite(anchorDom) ? anchorDom : NaN;
-    if (Number.isFinite(occDom) && n === occDom) {
-      if (Number.isFinite(startDom) && startDom !== occDom) {
-        secondDayVal = startDom;
-      } else {
-        throw new Error("Second day of month must be different than the selected occurrence day");
-      }
-    } else {
-      // Apply-from-occurrence validates second day against the occurrence date (e.g. 29),
-      // not the original series start_date day (e.g. 31) — both days can appear in one series.
-      secondDayVal = n;
-    }
+    // The date field shows this month's occurrence, which may be clamped.
+    // Leaving it unchanged must not rewrite either recurrence day.
+    secondDayVal = n;
     secondMonthVal = null;
   } else if (recurrenceVal === "semiannual") {
     const secondErr = validateSecondOccurrenceForSave(recurrenceVal, editedIso || meta.start_date || occRaw, instanceSecondDayOfMonth);
@@ -16678,9 +16671,11 @@ function renderRecurringFilteredList() {
     const amtClass = eff.kind === "income" ? "income" : "expense";
     const kindSign = eff.kind === "income" ? "+" : "-";
     const startDom =
-      tx.start_date != null && String(tx.start_date).length >= 10
-        ? Number(String(tx.start_date).slice(8, 10))
-        : null;
+      tx.day_of_month != null
+        ? Number(tx.day_of_month)
+        : tx.start_date != null && String(tx.start_date).length >= 10
+          ? Number(String(tx.start_date).slice(8, 10))
+          : null;
     let twiceMeta = "";
     if (tx.recurrence === "twice_monthly" && tx.second_day_of_month != null && startDom != null && !Number.isNaN(startDom)) {
       twiceMeta = `days ${startDom} & ${tx.second_day_of_month}`;
@@ -16691,8 +16686,8 @@ function renderRecurringFilteredList() {
       tx.start_date
     ) {
       const s = normalizeIsoDate(tx.start_date) || "";
-      if (s.length >= 10) {
-        twiceMeta = `${s.slice(5, 7)}/${s.slice(8, 10)} & ${String(tx.second_occurrence_month).padStart(2, "0")}/${tx.second_day_of_month}`;
+      if (s.length >= 10 && startDom != null && !Number.isNaN(startDom)) {
+        twiceMeta = `${s.slice(5, 7)}/${String(startDom).padStart(2, "0")} & ${String(tx.second_occurrence_month).padStart(2, "0")}/${tx.second_day_of_month}`;
       }
     }
 
@@ -16786,6 +16781,7 @@ function expectedCategoryRepairBody(tx, categoryId) {
     end_date: tx.end_date ? String(tx.end_date).slice(0, 10) : null,
     end_count: tx.end_count ?? null,
     recurrence: tx.recurrence || "monthly",
+    day_of_month: tx.day_of_month ?? null,
     second_day_of_month: tx.second_day_of_month ?? null,
     second_occurrence_month: tx.second_occurrence_month ?? null,
     description: tx.description || "",
@@ -17333,7 +17329,11 @@ function normalizeIsoDate(raw) {
   return `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}`;
 }
 
-/** Map day-of-month (1–31) to a calendar date using the anchor month/year. */
+/**
+ * Map a day-of-month (1–31) to a real calendar date.
+ * The day number is never clamped. If the anchor month is too short, use the
+ * next month that can hold that day so a saved 31 stays 31.
+ */
 function dayOfMonthToIsoDate(day, anchorIso) {
   const dom = Number(day);
   if (!Number.isFinite(dom) || dom < 1 || dom > 31) return "";
@@ -17341,9 +17341,15 @@ function dayOfMonthToIsoDate(day, anchorIso) {
   if (!anchor) return "";
   const y = Number(anchor.slice(0, 4));
   const m0 = Number(anchor.slice(5, 7)) - 1;
-  const last = new Date(y, m0 + 1, 0).getDate();
-  const clamped = Math.min(dom, last);
-  return `${anchor.slice(0, 7)}-${String(clamped).padStart(2, "0")}`;
+  for (let i = 0; i < 48; i += 1) {
+    const monthIndex = (m0 + i) % 12;
+    const year = y + Math.floor((m0 + i) / 12);
+    const last = new Date(year, monthIndex + 1, 0).getDate();
+    if (dom <= last) {
+      return `${year}-${String(monthIndex + 1).padStart(2, "0")}-${String(dom).padStart(2, "0")}`;
+    }
+  }
+  return "";
 }
 
 function isoDateToDayOfMonth(iso) {
