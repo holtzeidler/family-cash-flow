@@ -3219,6 +3219,10 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
 .trial-status-notice[hidden]{
   display: none !important;
 }
+/* The expired-trial banner repeats the Billing page. Hide it only there. */
+body[data-bw-view="settings"]:has(#settingsViewPanel:not([hidden]) .settings-pane[data-settings-pane="billing"].is-active:not([hidden])) #trialStatusNotice[data-trial-state="ended"]{
+  display: none !important;
+}
 .trial-status-notice__line{
   display: inline-flex;
   flex-wrap: wrap;
@@ -11902,7 +11906,7 @@ label{
 }
 .billing-overview--ended,
 .billing-overview--natural-height.billing-overview--ended{
-  padding: 18px 22px 18px;
+  padding: 22px 22px 28px;
   height: fit-content;
   min-height: 0;
   max-height: none;
@@ -11941,7 +11945,7 @@ label{
 .billing-overview--natural-height.billing-overview--ended .billing-summary{
   margin-top: 0;
   margin-inline: auto;
-  gap: 14px;
+  gap: 22px;
   width: 100%;
   max-width: 40rem;
   text-align: left;
@@ -11965,7 +11969,7 @@ label{
 }
 .billing-overview--ended .billing-subscribe__reassure,
 .billing-overview--natural-height.billing-overview--ended .billing-subscribe__reassure{
-  margin: 0;
+  margin: 11px 0 0;
   width: 100%;
   text-align: center;
   font-size: 0.6875rem;
@@ -12453,14 +12457,14 @@ label{
 /* Expired-trial pricing choice cards */
 .billing-subscribe--pricing-cards{
   align-items: stretch;
-  gap: 10px;
+  gap: 0;
   width: 100%;
 }
 .billing-subscribe--pricing-cards .billing-subscribe__checkout{
   width: 100%;
   max-width: none;
   align-self: stretch;
-  margin-top: 2px;
+  margin-top: 18px;
 }
 .billing-subscribe--pricing-cards .billing-subscribe__options--cards{
   display: grid;

@@ -37,7 +37,7 @@ def _expect_logged_out(page) -> None:
 
 def _expect_logged_in(page) -> None:
     expect(page.locator("#homeLogoutBtn")).to_be_visible()
-    expect(page.locator("#homeLogoutBtn")).to_have_text("Log out")
+    expect(page.locator("#homeLogoutBtn")).to_have_text("Log Out")
     expect(page.locator("#homeLoginLink")).to_be_hidden()
     expect(page.locator("a.landing-hero__cta.home-cta--member")).to_be_visible()
     expect(page.locator("a.landing-offer__cta.home-cta--member")).to_be_visible()
