@@ -211,6 +211,12 @@ def test_view_only_access(page, guard, seed):
     expect(page.locator("#txAddModal.modal-overlay--open")).to_have_count(0)
     expect(page.locator("#billingUpgradeMonthly")).to_contain_text("$5.99/month")
     expect(page.locator("#billingUpgradeAnnual")).to_contain_text("$59.99/year")
+    expect(page.locator("#billingUpgradeAnnual")).to_have_attribute(
+        "href", re.compile(r"/checkout/\?.*lookup_key=cash_forecast_annual")
+    )
+    expect(page.locator("#billingUpgradeMonthly")).to_have_attribute(
+        "href", re.compile(r"/checkout/\?.*lookup_key=cash_forecast_monthly")
+    )
     assert "/checkout" not in page.url
 
     response = page.goto("/settings/?section=billing")
@@ -221,6 +227,7 @@ def test_view_only_access(page, guard, seed):
     expect(annual).to_be_visible()
     expect(page.get_by_text("$5.99/month").first).to_be_visible()
     expect(page.get_by_text("$59.99/year").first).to_be_visible()
-    assert "checkout" in (monthly.get_attribute("href") or "")
+    assert "checkout" not in (monthly.get_attribute("href") or "")
+    expect(page.locator("#billingContinueCheckout")).to_be_disabled()
     assert "/checkout" not in page.url
     _finish(page, guard, monthly)

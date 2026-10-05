@@ -37,7 +37,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=815" />
+    <link rel="stylesheet" href="../styles.css?v=816" />
   </head>
   <body>
     <h1 class="sr-only">Forecast calendar</h1>
@@ -899,20 +899,26 @@
                               <div id="billingSubscribeChoices" class="billing-subscribe" hidden>
                                 <p class="billing-subscribe__lede" id="billingSubscribeTitle">Continue with Cash Forecast</p>
                                 <p class="billing-subscribe__support" id="billingSubscribeSupport" hidden></p>
-                                <div class="billing-subscribe__options">
-                                  <a
+                                <div class="billing-subscribe__options" role="radiogroup" aria-labelledby="billingSubscribeTitle">
+                                  <button
+                                    type="button"
                                     class="billing-hero__activate billing-subscribe__option"
                                     id="billingSubscribeMonthly"
+                                    role="radio"
+                                    aria-checked="false"
                                     data-billing-lookup="cash_forecast_monthly"
-                                    href="/checkout/"
-                                  >Monthly — $5.99/month</a>
-                                  <a
+                                  >Monthly — $5.99/month</button>
+                                  <button
+                                    type="button"
                                     class="billing-action-btn billing-action-btn--secondary billing-subscribe__option"
                                     id="billingSubscribeAnnual"
+                                    role="radio"
+                                    aria-checked="false"
                                     data-billing-lookup="cash_forecast_annual"
-                                    href="/checkout/"
-                                  >Annual — $59.99/year</a>
+                                  >Annual — $59.99/year</button>
                                 </div>
+                                <button type="button" id="billingContinueCheckout" class="billing-action-btn billing-action-btn--primary billing-subscribe__checkout" disabled>Continue to secure checkout</button>
+                                <p id="billingCheckoutError" class="error billing-subscribe__error" hidden role="alert"></p>
                                 <p class="billing-subscribe__reassure" id="billingSubscribeReassure" hidden></p>
                                 <p class="billing-subscribe__save" id="billingSubscribeSave" hidden></p>
                               </div>
@@ -1990,7 +1996,7 @@ Date,Vendor,Amount
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
     <script src="../trial-status-notice.js?v=2"></script>
-    <script src="../app.js?v=512"></script>
+    <script src="../app.js?v=513"></script>
     <script src="../feedback.js?v=6" defer></script>
     <script src="../tour.js?v=17" defer></script>
   </body>

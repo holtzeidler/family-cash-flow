@@ -171,13 +171,23 @@ function throwIfBillingWriteLocked(path, method) {
   throw err;
 }
 
+function billingPageIsShowingPlanChoices() {
+  const pane = document.querySelector('[data-settings-pane="billing"]');
+  const choices = document.getElementById("billingSubscribeChoices");
+  if (!pane || pane.hasAttribute("hidden")) return false;
+  if (!choices || choices.hasAttribute("hidden")) return false;
+  const view = document.getElementById("settingsViewPanel");
+  if (view && view.hasAttribute("hidden")) return false;
+  return true;
+}
+
 async function handleBillingNotEntitledResponse(data) {
   invalidateBillingStatusCache();
   try {
     await fetchBillingStatus({ force: true });
   } catch (_) {}
   applyBillingReadOnlyUi();
-  openBillingUpgradeModal();
+  if (!billingPageIsShowingPlanChoices()) openBillingUpgradeModal();
   const msg =
     (data && data.detail && data.detail.message) ||
     formatApiDetail(data && data.detail) ||
@@ -1732,6 +1742,10 @@ const billingCancelBtnEl =
   document.getElementById("billingCancelBtn");
 const billingPrimaryCtaEl = document.getElementById("billingPrimaryCta");
 let billingActionsWired = false;
+let billingCheckoutLookup = "";
+let billingCheckoutInFlight = false;
+let billingCheckoutRequestSeq = 0;
+const BILLING_CHECKOUT_IDLE_LABEL = "Continue to secure checkout";
 
 /** Free period length — matches backend billing_catalog.TRIAL_DAYS (app-side trial). */
 const BILLING_TRIAL_DAYS = 14;
@@ -9610,6 +9624,7 @@ function ensureBillingUpgradeModal() {
 }
 
 function openBillingUpgradeModal() {
+  if (billingPageIsShowingPlanChoices()) return;
   const wrap = ensureBillingUpgradeModal();
   const recovery = isBillingPaymentRecoveryState();
   const ended = !recovery && isFormerPaidSubscriptionEnded();
@@ -10537,12 +10552,19 @@ function setBillingSubscribeChoices(choices) {
   const wrap = dom.subscribe;
   if (!wrap) return;
   if (!choices) {
+    billingCheckoutLookup = "";
     setBillingElHidden(wrap, true);
     applySubscribeChoiceLayout(null);
+    syncBillingPlanSelectionUi();
     return;
   }
   setBillingElHidden(wrap, false);
   applySubscribeChoiceLayout(choices);
+  if (billingPageIsShowingPlanChoices()) {
+    try {
+      closeBillingUpgradeModal();
+    } catch (_) {}
+  }
   if (dom.subscribeTitle) {
     const title = String(choices.title || "").trim();
     const hideTitle = !!choices.hideTitle || !title;
@@ -10564,7 +10586,6 @@ function setBillingSubscribeChoices(choices) {
         ""
       );
     }
-    dom.subscribeMonthly.href = checkoutUrlForActiveFamily(BILLING_LOOKUP_MONTHLY);
   }
   if (dom.subscribeAnnual) {
     if (choices.pricingCards) {
@@ -10576,8 +10597,8 @@ function setBillingSubscribeChoices(choices) {
         choices.annualNote || ""
       );
     }
-    dom.subscribeAnnual.href = checkoutUrlForActiveFamily(BILLING_LOOKUP_ANNUAL);
   }
+  syncBillingPlanSelectionUi();
   if (dom.subscribeSave) {
     const save = choices.savings || "";
     dom.subscribeSave.textContent = save;
@@ -11851,6 +11872,175 @@ function openBillingPortalForActiveFamily(flow = "", onFail = null) {
     });
 }
 
+function billingPlanChoiceButtons() {
+  const root = document.getElementById("billingSubscribeChoices");
+  if (!root) return [];
+  return Array.from(root.querySelectorAll("[data-billing-lookup]")).filter((el) => {
+    const key = String(el.getAttribute("data-billing-lookup") || "");
+    return key === BILLING_LOOKUP_MONTHLY || key === BILLING_LOOKUP_ANNUAL;
+  });
+}
+
+function isBillingCheckoutLookup(lookupKey) {
+  const key = String(lookupKey || "").trim();
+  return key === BILLING_LOOKUP_MONTHLY || key === BILLING_LOOKUP_ANNUAL;
+}
+
+function clearBillingCheckoutError() {
+  const el = document.getElementById("billingCheckoutError");
+  if (!el) return;
+  el.textContent = "";
+  el.hidden = true;
+}
+
+function showBillingCheckoutError(message) {
+  const text = String(message || "Could not start checkout.").trim() || "Could not start checkout.";
+  const el = document.getElementById("billingCheckoutError");
+  if (!el) {
+    try {
+      showBwToast(text);
+    } catch (_) {}
+    return;
+  }
+  el.textContent = text;
+  el.hidden = false;
+}
+
+function syncBillingPlanSelectionUi() {
+  const selected = isBillingCheckoutLookup(billingCheckoutLookup) ? billingCheckoutLookup : "";
+  const choices = billingPlanChoiceButtons();
+  choices.forEach((el, index) => {
+    const on = String(el.getAttribute("data-billing-lookup") || "") === selected;
+    el.setAttribute("role", "radio");
+    el.setAttribute("aria-checked", on ? "true" : "false");
+    el.classList.toggle("is-selected", on);
+    el.disabled = billingCheckoutInFlight;
+    const tab = selected ? (on ? "0" : "-1") : index === 0 ? "0" : "-1";
+    el.tabIndex = Number(tab);
+  });
+  const cta = document.getElementById("billingContinueCheckout");
+  if (cta && !billingCheckoutInFlight) {
+    cta.disabled = !selected;
+    cta.removeAttribute("aria-busy");
+    if ((cta.textContent || "").trim() === "Preparing checkout…") {
+      cta.textContent = BILLING_CHECKOUT_IDLE_LABEL;
+    }
+  }
+}
+
+function setBillingPlanSelection(lookupKey) {
+  if (billingCheckoutInFlight) return;
+  const key = String(lookupKey || "").trim();
+  if (!isBillingCheckoutLookup(key)) return;
+  billingCheckoutLookup = key;
+  clearBillingCheckoutError();
+  syncBillingPlanSelectionUi();
+}
+
+function restoreBillingCheckoutLinkLabel(el) {
+  if (!el) return;
+  const busy = el.getAttribute("aria-busy") === "true";
+  const idle = el.dataset.billingIdleLabel || "";
+  if (!busy && !idle) return;
+  if (idle) el.textContent = idle;
+  el.removeAttribute("aria-busy");
+  delete el.dataset.billingIdleLabel;
+}
+
+function resetBillingCheckoutBusyState() {
+  billingCheckoutRequestSeq += 1;
+  billingCheckoutInFlight = false;
+  const cta = document.getElementById("billingContinueCheckout");
+  if (cta) {
+    cta.removeAttribute("aria-busy");
+    cta.textContent = BILLING_CHECKOUT_IDLE_LABEL;
+    cta.disabled = !isBillingCheckoutLookup(billingCheckoutLookup);
+  }
+  ["billingUpgradeAnnual", "billingUpgradeMonthly"].forEach((id) => {
+    restoreBillingCheckoutLinkLabel(document.getElementById(id));
+  });
+  syncBillingPlanSelectionUi();
+}
+
+function checkoutSessionErrorMessage(data, status) {
+  const stripeMessage = data && data.error && data.error.message;
+  if (stripeMessage && String(stripeMessage).trim()) return String(stripeMessage).trim();
+  const detail = formatApiDetail(data && data.detail);
+  if (detail) return detail;
+  if (status) return `Checkout failed (${status}).`;
+  return "Could not start checkout.";
+}
+
+async function startBillingSecureCheckout() {
+  if (billingCheckoutInFlight) return;
+  const key = String(billingCheckoutLookup || "").trim();
+  if (!isBillingCheckoutLookup(key)) return;
+  const cta = document.getElementById("billingContinueCheckout");
+  if (!cta) return;
+  ensureActiveFamilyIdForBilling();
+  if (!state.activeFamilyId) {
+    showBillingCheckoutError("Choose a family first.");
+    return;
+  }
+  const apiBase = apiBaseUrl();
+  const seq = billingCheckoutRequestSeq + 1;
+  billingCheckoutRequestSeq = seq;
+  billingCheckoutInFlight = true;
+  clearBillingCheckoutError();
+  cta.disabled = true;
+  cta.setAttribute("aria-busy", "true");
+  cta.textContent = "Preparing checkout…";
+  syncBillingPlanSelectionUi();
+  try {
+    const body = new FormData();
+    body.set("family_id", String(state.activeFamilyId));
+    body.set("lookup_key", key);
+    const res = await fetch(`${apiBase}/create-checkout-session`, {
+      method: "POST",
+      body,
+      credentials: "include",
+      headers: { ...apiBearerAuthHeaders(), Accept: "application/json" },
+    });
+    if (seq !== billingCheckoutRequestSeq) return;
+    const data = await res.json().catch(() => ({}));
+    if (seq !== billingCheckoutRequestSeq) return;
+    if (res.status === 401) {
+      try {
+        clearStoredApiAccessToken();
+      } catch (_) {}
+      window.location.href = "/login.html";
+      return;
+    }
+    if (res.ok && data && data.url) {
+      window.location.assign(data.url);
+      return;
+    }
+    throw new Error(checkoutSessionErrorMessage(data, res.status));
+  } catch (err) {
+    if (seq !== billingCheckoutRequestSeq) return;
+    billingCheckoutInFlight = false;
+    syncBillingPlanSelectionUi();
+    showBillingCheckoutError(err && err.message ? err.message : "Could not start checkout.");
+  }
+}
+
+function onBillingPlanChoiceKeydown(event) {
+  const key = event.key;
+  if (key !== "ArrowRight" && key !== "ArrowDown" && key !== "ArrowLeft" && key !== "ArrowUp") return;
+  const choices = billingPlanChoiceButtons();
+  if (choices.length < 2) return;
+  event.preventDefault();
+  const current = choices.findIndex((el) => el === document.activeElement || el.getAttribute("aria-checked") === "true");
+  const start = current >= 0 ? current : 0;
+  const forward = key === "ArrowRight" || key === "ArrowDown";
+  const next = choices[(start + (forward ? 1 : -1) + choices.length) % choices.length];
+  if (!next) return;
+  setBillingPlanSelection(next.getAttribute("data-billing-lookup"));
+  try {
+    next.focus();
+  } catch (_) {}
+}
+
 function wireBillingActionsOnce() {
   if (billingActionsWired) return;
   document.querySelectorAll("[data-billing-action]").forEach((btn) => {
@@ -11920,7 +12110,7 @@ function wireBillingActionsOnce() {
       }
     });
   }
-  ["billingSubscribeMonthly", "billingSubscribeAnnual", "billingUpgradeAnnual", "billingUpgradeMonthly"].forEach((id) => {
+  ["billingUpgradeAnnual", "billingUpgradeMonthly"].forEach((id) => {
     const el = document.getElementById(id);
     if (!el || el.dataset.billingCheckoutWired) return;
     el.dataset.billingCheckoutWired = "1";
@@ -11934,8 +12124,34 @@ function wireBillingActionsOnce() {
       el.textContent = "Preparing checkout…";
     });
   });
+  billingPlanChoiceButtons().forEach((el) => {
+    if (el.dataset.billingPlanWired) return;
+    el.dataset.billingPlanWired = "1";
+    el.addEventListener("click", (e) => {
+      e.preventDefault();
+      setBillingPlanSelection(el.getAttribute("data-billing-lookup"));
+    });
+  });
+  const planGroup = document.querySelector("#billingSubscribeChoices .billing-subscribe__options");
+  if (planGroup && !planGroup.dataset.billingPlanKeysWired) {
+    planGroup.dataset.billingPlanKeysWired = "1";
+    planGroup.addEventListener("keydown", onBillingPlanChoiceKeydown);
+  }
+  const continueCheckout = document.getElementById("billingContinueCheckout");
+  if (continueCheckout && !continueCheckout.dataset.billingCheckoutWired) {
+    continueCheckout.dataset.billingCheckoutWired = "1";
+    continueCheckout.addEventListener("click", (e) => {
+      e.preventDefault();
+      void startBillingSecureCheckout();
+    });
+  }
+  resetBillingCheckoutBusyState();
   billingActionsWired = true;
 }
+
+window.addEventListener("pageshow", () => {
+  resetBillingCheckoutBusyState();
+});
 
 function applyCheckoutReturnFromUrl() {
   try {
@@ -11991,6 +12207,7 @@ function applyCheckoutReturnFromUrl() {
       } catch (_) {}
       refreshBillingAfterPortalOrCheckout();
     } else if (checkout === "canceled") {
+      resetBillingCheckoutBusyState();
       try {
         showBwToast("Checkout canceled — you can subscribe anytime.");
       } catch (_) {}
