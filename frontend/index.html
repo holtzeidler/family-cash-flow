@@ -77,8 +77,36 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=734" />
+    <link rel="stylesheet" href="./styles.css?v=735" />
     <link rel="stylesheet" href="./landing-marketing.css?v=17" />
+    <script>window.API_BASE = "__API_BASE__";</script>
+    <style>
+      html:not([data-bw-home-auth="in"]) #homeLogoutBtn,
+      html:not([data-bw-home-auth="in"]) a.home-cta--member {
+        display: none !important;
+      }
+      html[data-bw-home-auth="in"] #homeLoginLink,
+      html[data-bw-home-auth="in"] a.home-cta--guest {
+        display: none !important;
+      }
+      html[data-bw-home-auth="in"] #homeLogoutBtn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0;
+      }
+    </style>
+    <script>
+      (function () {
+        var key = "bw_api_access_token";
+        var token = "";
+        try { token = sessionStorage.getItem(key) || ""; } catch (e) {}
+        if (!String(token).trim()) {
+          try { token = localStorage.getItem(key) || ""; } catch (e2) {}
+        }
+        if (String(token).trim()) document.documentElement.setAttribute("data-bw-home-auth", "in");
+      })();
+    </script>
   </head>
   <body class="landing-page">
     <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -105,7 +133,8 @@
               <a href="/learn/" class="top-nav__learn">Learn more</a>
               <a href="/plans/" class="top-nav__learn">Pricing</a>
             </nav>
-            <a href="./login.html" class="top-nav__logout">Log in</a>
+            <a href="./login.html" class="top-nav__logout" id="homeLoginLink">Log in</a>
+            <button type="button" class="top-nav__logout" id="homeLogoutBtn">Log out</button>
           </div>
         </div>
       </div>
@@ -119,7 +148,8 @@
               <h1 class="landing-hero__text">Never get surprised by your checking account again.</h1>
               <p class="landing-hero__sub">See where your checking balance is headed before you spend, save, or move money.</p>
               <div class="landing-hero__ctaGroup">
-                <a href="/account-setup/?fresh=1" class="landing-hero__cta">See my future balance</a>
+                <a href="/account-setup/?fresh=1" class="landing-hero__cta home-cta--guest">See my future balance</a>
+                <a href="/calendar" class="landing-hero__cta home-cta--member">See my future balance</a>
                 <p class="landing-hero__microtrust" aria-label="What to expect">
                   <span class="landing-hero__microtrust-item">
                     <span class="landing-hero__microtrust-check" aria-hidden="true">✓</span>
@@ -276,7 +306,8 @@
                 <p class="landing-offer__subhead">Add today’s balance and what’s coming up. See where your money is headed.</p>
               </div>
               <div class="landing-offer__action">
-                <a class="landing-offer__cta" href="/account-setup/?fresh=1">See my future balance</a>
+                <a class="landing-offer__cta home-cta--guest" href="/account-setup/?fresh=1">See my future balance</a>
+                <a class="landing-offer__cta home-cta--member" href="/calendar">See my future balance</a>
                 <p class="landing-offer__footnote">Free for 14 days · No bank connection required</p>
               </div>
             </div>
@@ -327,6 +358,7 @@
         </div>
       </footer>
     </div>
+    <script src="./homepage-auth.js?v=1"></script>
     <script src="./landing-hero-dates.js?v=17" defer></script>
     <script src="./landing-hero-demo.js?v=4" defer></script>
     <script>

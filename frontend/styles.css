@@ -480,7 +480,8 @@ body.landing-page .top-nav .top-nav__inner.top-nav__inner--simple .app-title{
   text-align: left;
 }
 
-body.landing-page .top-nav__actions a.top-nav__logout{
+body.landing-page .top-nav__actions a.top-nav__logout,
+body.landing-page .top-nav__actions button.top-nav__logout{
   text-decoration: none;
   display: inline-flex;
   align-items: center;
