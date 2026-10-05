@@ -487,6 +487,14 @@ body.landing-page .top-nav__actions button.top-nav__logout{
   align-items: center;
   justify-content: center;
 }
+body.landing-page .top-nav__actions button.top-nav__logout{
+  margin: 0;
+  padding: 4px 10px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: 0.01em;
+}
 
 body.landing-page{
   overflow-x: clip;
