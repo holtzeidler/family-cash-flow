@@ -11902,7 +11902,7 @@ label{
 }
 .billing-overview--ended,
 .billing-overview--natural-height.billing-overview--ended{
-  padding: 20px 24px 40px;
+  padding: 18px 22px 18px;
   height: fit-content;
   min-height: 0;
   max-height: none;
@@ -11941,21 +11941,27 @@ label{
 .billing-overview--natural-height.billing-overview--ended .billing-summary{
   margin-top: 0;
   margin-inline: auto;
-  gap: 30px;
+  gap: 14px;
   width: 100%;
-  max-width: 46rem;
+  max-width: 40rem;
   text-align: left;
 }
 .billing-overview--ended .billing-subscribe--pricing-cards .billing-subscribe__options--cards{
   max-width: none;
   width: 100%;
-  gap: 22px;
+  gap: 12px;
 }
 .billing-overview--ended .billing-subscribe__options,
 .billing-overview--ended .billing-subscribe__options--cards,
 .billing-overview--natural-height.billing-overview--ended .billing-subscribe__options,
 .billing-overview--natural-height.billing-overview--ended .billing-subscribe__options--cards{
-  margin: 0 0 22px;
+  margin: 0;
+}
+.billing-overview--ended .billing-callout--trial-complete .billing-callout__eyebrow{
+  margin-bottom: 6px;
+}
+.billing-overview--ended .billing-callout--trial-complete .billing-callout__title{
+  margin-bottom: 4px;
 }
 .billing-overview--ended .billing-subscribe__reassure,
 .billing-overview--natural-height.billing-overview--ended .billing-subscribe__reassure{
@@ -12439,33 +12445,42 @@ label{
 }
 .billing-price-card:has(.billing-subscribe__option[aria-checked="true"]),
 .billing-price-card:has(.billing-price-card__cta[aria-checked="true"]){
-  border-color: rgba(11, 61, 46, 0.72);
-  box-shadow: 0 0 0 2px rgba(11, 61, 46, 0.28);
+  border-color: rgba(11, 61, 46, 0.88);
+  background: rgba(11, 61, 46, 0.045);
+  box-shadow: 0 0 0 1px rgba(11, 61, 46, 0.28);
 }
 
 /* Expired-trial pricing choice cards */
 .billing-subscribe--pricing-cards{
+  align-items: stretch;
+  gap: 10px;
   width: 100%;
+}
+.billing-subscribe--pricing-cards .billing-subscribe__checkout{
+  width: 100%;
+  max-width: none;
+  align-self: stretch;
+  margin-top: 2px;
 }
 .billing-subscribe--pricing-cards .billing-subscribe__options--cards{
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 22px;
+  gap: 12px;
   width: 100%;
-  max-width: 46rem;
+  max-width: none;
   align-items: stretch;
 }
 .billing-price-card{
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
   min-width: 0;
   height: 100%;
   box-sizing: border-box;
-  padding: 20px 22px;
+  padding: 12px 14px 12px;
   border-radius: 12px;
-  border: 1px solid rgba(17, 24, 39, 0.1);
+  border: 1px solid rgba(17, 24, 39, 0.12);
   background: #fff;
   text-align: center;
 }
@@ -12477,7 +12492,7 @@ label{
   display: flex;
   flex-direction: column;
   align-items: center;
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   min-width: 0;
   width: 100%;
 }
@@ -12984,27 +12999,58 @@ label{
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 8px;
   flex: 0 0 auto;
   align-self: stretch;
   width: 100%;
   max-width: none;
   min-width: 0;
-  min-height: 38px;
+  min-height: 36px;
   height: auto;
   margin-top: auto;
-  padding: 9px 16px;
+  padding: 7px 12px;
   border-radius: 10px;
+  border: 1px solid rgba(17, 24, 39, 0.16);
+  background: #fff;
   box-sizing: border-box;
-  font-size: 0.875rem;
-  font-weight: 700;
+  box-shadow: none;
+  font-size: 0.8125rem;
+  font-weight: 650;
   line-height: 1.2;
+  color: rgba(15, 23, 42, 0.88);
   text-align: center;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.billing-price-card__cta[aria-checked="true"]{
-  box-shadow: inset 0 0 0 2px #fff, 0 0 0 2px rgba(11, 61, 46, 0.92);
+.billing-price-card .billing-hero__activate.billing-price-card__cta:hover,
+.billing-price-card .billing-action-btn.billing-price-card__cta:hover{
+  background: rgba(248, 250, 252, 0.96);
+  border-color: rgba(17, 24, 39, 0.22);
+  color: rgba(15, 23, 42, 0.92);
+}
+.billing-price-card .billing-price-card__cta::before{
+  content: "";
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(71, 85, 105, 0.5);
+  background: #fff;
+  box-sizing: border-box;
+}
+.billing-price-card__cta[aria-checked="true"],
+.billing-price-card .billing-hero__activate.billing-price-card__cta[aria-checked="true"],
+.billing-price-card .billing-hero__activate.billing-price-card__cta[aria-checked="true"]:hover{
+  border-color: rgba(11, 61, 46, 0.45);
+  background: #fff;
+  color: rgba(11, 61, 46, 0.98);
+  box-shadow: none;
+}
+.billing-price-card .billing-price-card__cta[aria-checked="true"]::before{
+  border-color: rgba(11, 61, 46, 0.95);
+  background:
+    radial-gradient(circle, rgba(11, 61, 46, 0.95) 0 3.5px, #fff 4px);
 }
 
 /* Legacy class kept for any stray markup */
