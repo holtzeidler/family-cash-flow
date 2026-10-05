@@ -9,7 +9,7 @@ from smoke_guard import SMOKE_ORIGIN
 from support import assert_route_ok, login
 
 GUEST_CTA = "/account-setup/?fresh=1"
-MEMBER_CTA = "/calendar"
+MEMBER_CTA = "/calendar/"
 
 
 def _tokens(page) -> dict:
@@ -28,7 +28,12 @@ def _expect_logged_out(page) -> None:
     expect(page.locator("a.landing-hero__cta.home-cta--guest")).to_have_attribute("href", GUEST_CTA)
     expect(page.locator("a.landing-offer__cta.home-cta--guest")).to_have_attribute("href", GUEST_CTA)
     expect(page.locator("a.landing-hero__cta.home-cta--guest")).to_be_visible()
+    expect(page.locator("a.landing-hero__cta.home-cta--guest")).to_have_text("See my future balance")
     expect(page.locator("a.landing-offer__cta.home-cta--guest")).to_be_visible()
+    expect(page.locator("a.landing-offer__cta.home-cta--guest")).to_have_text("See my future balance")
+    expect(page.locator("#homeForecastLink")).to_be_hidden()
+    expect(page.locator("a.top-nav__learn", has_text="Learn more")).to_be_visible()
+    expect(page.locator("a.top-nav__learn", has_text="Pricing")).to_be_visible()
     expect(page.locator("a.home-cta--member")).to_have_count(2)
     for cta in page.locator("a.home-cta--member").all():
         expect(cta).to_be_hidden()
@@ -40,9 +45,16 @@ def _expect_logged_in(page) -> None:
     expect(page.locator("#homeLogoutBtn")).to_have_text("Log Out")
     expect(page.locator("#homeLoginLink")).to_be_hidden()
     expect(page.locator("a.landing-hero__cta.home-cta--member")).to_be_visible()
+    expect(page.locator("a.landing-hero__cta.home-cta--member")).to_have_text("Go to my forecast")
     expect(page.locator("a.landing-offer__cta.home-cta--member")).to_be_visible()
+    expect(page.locator("a.landing-offer__cta.home-cta--member")).to_have_text("Go to my forecast")
     expect(page.locator("a.landing-hero__cta.home-cta--member")).to_have_attribute("href", MEMBER_CTA)
     expect(page.locator("a.landing-offer__cta.home-cta--member")).to_have_attribute("href", MEMBER_CTA)
+    expect(page.locator("#homeForecastLink")).to_be_visible()
+    expect(page.locator("#homeForecastLink")).to_have_text("Forecast")
+    expect(page.locator("#homeForecastLink")).to_have_attribute("href", MEMBER_CTA)
+    expect(page.locator("a.top-nav__learn", has_text="Learn more")).to_be_visible()
+    expect(page.locator("a.top-nav__learn", has_text="Pricing")).to_be_visible()
     expect(page.locator("a.home-cta--guest")).to_have_count(2)
     for cta in page.locator("a.home-cta--guest").all():
         expect(cta).to_be_hidden()
