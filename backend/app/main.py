@@ -6935,6 +6935,147 @@ def delete_expected_transaction(
     return {"ok": True}
 
 
+def _payment_identity(
+    category_id: Optional[int],
+    kind: TransactionKind,
+    amount: Decimal,
+) -> tuple[Optional[int], TransactionKind, int]:
+    """Same identity the calendar uses to draw one row: category, kind, amount in cents."""
+    cents = int(round(abs(Decimal(amount)) * 100))
+    return (category_id, kind, cents)
+
+
+def _occurrence_payment_identity(
+    tx: ExpectedTransaction,
+    ovr: Optional[ExpectedTransactionOverride],
+) -> tuple[Optional[int], TransactionKind, int]:
+    kind = tx.kind
+    amount = tx.amount
+    category_id = tx.category_id
+    if ovr is not None and not ovr.cancelled:
+        if ovr.kind is not None:
+            kind = ovr.kind
+        if ovr.amount is not None:
+            amount = ovr.amount
+        if ovr.category_id is not None:
+            category_id = ovr.category_id
+    return _payment_identity(category_id, kind, amount)
+
+
+def _effective_occurrence_date(
+    occurrence_date: date,
+    ovr: Optional[ExpectedTransactionOverride],
+) -> date:
+    if ovr is not None and not ovr.cancelled and ovr.moved_to_date is not None:
+        return ovr.moved_to_date
+    return occurrence_date
+
+
+def _cancel_expected_occurrence(
+    db,
+    expected_id: int,
+    occurrence_date: date,
+    ovr: Optional[ExpectedTransactionOverride],
+) -> None:
+    if ovr is None:
+        ovr = ExpectedTransactionOverride(
+            expected_transaction_id=expected_id,
+            occurrence_date=occurrence_date,
+            cancelled=True,
+        )
+        db.add(ovr)
+    ovr.cancelled = True
+    ovr.moved_to_date = None
+
+
+def _absorb_identical_occurrences_on_date(
+    db,
+    tx: ExpectedTransaction,
+    *,
+    display_date: date,
+    keep_occurrence: date,
+    identity: tuple[Optional[int], TransactionKind, int],
+) -> None:
+    """Cancel other occurrences of this series that show as the same payment on one day.
+
+    September's Taxes moved onto October 3 is drawn once, on top of October's
+    own Taxes. Moving that row must not leave the hidden copy behind.
+    """
+    overrides = list(
+        db.execute(
+            select(ExpectedTransactionOverride).where(
+                ExpectedTransactionOverride.expected_transaction_id == tx.id,
+            )
+        )
+        .scalars()
+        .all()
+    )
+    by_occ = {o.occurrence_date: o for o in overrides}
+    cancel_on: list[date] = []
+
+    for ovr in overrides:
+        if ovr.occurrence_date == keep_occurrence or ovr.cancelled:
+            continue
+        if ovr.moved_to_date != display_date:
+            continue
+        if _occurrence_payment_identity(tx, ovr) != identity:
+            continue
+        cancel_on.append(ovr.occurrence_date)
+
+    hits = _expected_occurrences_in_range(
+        start_date=tx.start_date,
+        end_date=tx.end_date,
+        end_count=getattr(tx, "end_count", None),
+        recurrence=tx.recurrence,
+        range_start=display_date,
+        range_end_exclusive=display_date + timedelta(days=1),
+        second_day_of_month=tx.second_day_of_month,
+        second_occurrence_month=getattr(tx, "second_occurrence_month", None),
+        day_of_month=tx.day_of_month,
+    )
+    if display_date in hits and display_date != keep_occurrence:
+        ovr = by_occ.get(display_date)
+        if ovr is None or not ovr.cancelled:
+            effective = display_date if ovr is None or ovr.moved_to_date is None else ovr.moved_to_date
+            if effective == display_date and _occurrence_payment_identity(tx, ovr) == identity:
+                cancel_on.append(display_date)
+
+    seen: set[date] = set()
+    for occ in cancel_on:
+        if occ in seen or occ == keep_occurrence:
+            continue
+        seen.add(occ)
+        _cancel_expected_occurrence(db, tx.id, occ, by_occ.get(occ))
+
+
+def _absorb_collapsed_copies_when_date_changes(
+    db,
+    tx: ExpectedTransaction,
+    *,
+    occurrence_date: date,
+    previous_display_date: date,
+    new_display_date: Optional[date],
+    previous_identity: tuple[Optional[int], TransactionKind, int],
+    new_identity: tuple[Optional[int], TransactionKind, int],
+) -> None:
+    if new_display_date is None or new_display_date == previous_display_date:
+        return
+    _absorb_identical_occurrences_on_date(
+        db,
+        tx,
+        display_date=previous_display_date,
+        keep_occurrence=occurrence_date,
+        identity=previous_identity,
+    )
+    _absorb_identical_occurrences_on_date(
+        db,
+        tx,
+        display_date=new_display_date,
+        keep_occurrence=occurrence_date,
+        identity=new_identity,
+    )
+
+
 @app.post("/api/families/{family_id}/expected-transactions/{expected_id}/instances/{occurrence_date}")
 def upsert_expected_instance_override(
     family_id: int,
@@ -6995,6 +7136,8 @@ def upsert_expected_instance_override(
             ExpectedTransactionOverride.occurrence_date == occurrence_date,
         )
     ).scalar_one_or_none()
+    previous_display = _effective_occurrence_date(occurrence_date, existing)
+    previous_identity = _occurrence_payment_identity(tx, existing)
 
     if existing is None:
         existing = ExpectedTransactionOverride(
@@ -7017,6 +7160,18 @@ def upsert_expected_instance_override(
         existing.variable = None
     elif "variable" in payload.model_fields_set:
         existing.variable = payload.variable
+
+    if payload.action != "cancel":
+        new_display = moved_to_date if moved_to_date is not None else occurrence_date
+        _absorb_collapsed_copies_when_date_changes(
+            db,
+            tx,
+            occurrence_date=occurrence_date,
+            previous_display_date=previous_display,
+            new_display_date=new_display,
+            previous_identity=previous_identity,
+            new_identity=_occurrence_payment_identity(tx, existing),
+        )
 
     db.commit()
     db.refresh(existing)
@@ -7126,34 +7281,40 @@ def apply_expected_from_occurrence(
             detail="Cannot apply-from-occurrence when resulting recurrence is once; use per-instance override",
         )
 
-    uses_second = eff_rec in (Recurrence.twice_monthly, Recurrence.semiannual)
-    proposed_second = payload.second_day_of_month if uses_second else None
-    new_start, rule_day, new_second = _future_recurrence_after_apply(
-        start_date=tx.start_date,
-        day_of_month=tx.day_of_month,
-        second_day_of_month=tx.second_day_of_month,
-        occurrence_date=occurrence_date,
-        effective_start_date=eff_start,
-        proposed_second_day=proposed_second,
-        occurrence_uses_second_slot=(
-            tx.recurrence == Recurrence.twice_monthly and eff_rec == Recurrence.twice_monthly
-        ),
-    )
-    stored_day = _day_of_month_column(new_start, rule_day)
-
-    if eff_rec == Recurrence.twice_monthly:
-        eff_second = new_second
-        eff_second_month = None
-    elif eff_rec == Recurrence.semiannual:
-        eff_second = new_second
-        eff_second_month = (
-            payload.second_occurrence_month
-            if payload.second_occurrence_month is not None
-            else getattr(tx, "second_occurrence_month", None)
+    if eff_rec == Recurrence.semiannual:
+        # Moving October 3 to October 7 used to keep October 3 as the other
+        # yearly date and add October 7 beside it.
+        new_start, rule_day, eff_second, eff_second_month = _semiannual_future_anchors(
+            start_date=tx.start_date,
+            day_of_month=tx.day_of_month,
+            second_day_of_month=tx.second_day_of_month,
+            second_occurrence_month=getattr(tx, "second_occurrence_month", None),
+            occurrence_date=occurrence_date,
+            effective_start_date=eff_start,
+            proposed_second_day=payload.second_day_of_month,
+            proposed_second_month=payload.second_occurrence_month,
         )
     else:
-        eff_second = None
-        eff_second_month = None
+        uses_second = eff_rec == Recurrence.twice_monthly
+        proposed_second = payload.second_day_of_month if uses_second else None
+        new_start, rule_day, new_second = _future_recurrence_after_apply(
+            start_date=tx.start_date,
+            day_of_month=tx.day_of_month,
+            second_day_of_month=tx.second_day_of_month,
+            occurrence_date=occurrence_date,
+            effective_start_date=eff_start,
+            proposed_second_day=proposed_second,
+            occurrence_uses_second_slot=(
+                tx.recurrence == Recurrence.twice_monthly and eff_rec == Recurrence.twice_monthly
+            ),
+        )
+        if eff_rec == Recurrence.twice_monthly:
+            eff_second = new_second
+            eff_second_month = None
+        else:
+            eff_second = None
+            eff_second_month = None
+    stored_day = _day_of_month_column(new_start, rule_day)
 
     if "fg_color" in payload.model_fields_set:
         eff_fg = payload.fg_color.strip() if payload.fg_color and payload.fg_color.strip() else None
@@ -7192,6 +7353,26 @@ def apply_expected_from_occurrence(
         bg_color=eff_bg,
     )
     _validate_expected_transaction_recurrence(validate_payload)
+
+    current_ovr = db.execute(
+        select(ExpectedTransactionOverride).where(
+            ExpectedTransactionOverride.expected_transaction_id == tx.id,
+            ExpectedTransactionOverride.occurrence_date == occurrence_date,
+        )
+    ).scalar_one_or_none()
+    if eff_start is not None:
+        # "This and future" splits off a new series. A payment already parked on
+        # this day (September's Taxes moved onto October 3) is not part of that
+        # split, so it would stay behind and look like a second Taxes row.
+        _absorb_collapsed_copies_when_date_changes(
+            db,
+            tx,
+            occurrence_date=occurrence_date,
+            previous_display_date=_effective_occurrence_date(occurrence_date, current_ovr),
+            new_display_date=eff_start,
+            previous_identity=_occurrence_payment_identity(tx, current_ovr),
+            new_identity=_payment_identity(category_id, payload.kind, payload.amount),
+        )
 
     db.execute(
         delete(ExpectedTransactionOverride).where(
@@ -7783,6 +7964,56 @@ def _recurrence_slot_for_occurrence(
     if occurrence_date == landed_second and landed_second != landed_first:
         return "second"
     return "first"
+
+
+def _date_matches_yearly_anchor(occurrence: date, month: Optional[int], day: Optional[int]) -> bool:
+    if month is None or day is None:
+        return False
+    return occurrence == _date_on_day_in_month(occurrence.year, int(month), int(day))
+
+
+def _semiannual_future_anchors(
+    *,
+    start_date: date,
+    day_of_month: Optional[int],
+    second_day_of_month: Optional[int],
+    second_occurrence_month: Optional[int],
+    occurrence_date: date,
+    effective_start_date: Optional[date],
+    proposed_second_day: Optional[int],
+    proposed_second_month: Optional[int],
+) -> tuple[date, int, Optional[int], Optional[int]]:
+    """Return (series start, first day, second day, second month) after this-and-future.
+
+    The first anchor's month is the series start month. Beginning the future
+    series on the other yearly date must keep that other date, not copy the
+    old October day forward next to the new one.
+    """
+    first_day = _resolved_recurrence_day(start_date, day_of_month)
+    first_month = start_date.month
+    on_first = _date_matches_yearly_anchor(occurrence_date, first_month, first_day)
+    on_second = _date_matches_yearly_anchor(occurrence_date, second_occurrence_month, second_day_of_month)
+    moved_to = effective_start_date
+
+    if on_second and not on_first and second_occurrence_month is not None and second_day_of_month is not None:
+        landing = moved_to if moved_to is not None else occurrence_date
+        proposed_is_this_anchor = proposed_second_month is None or proposed_second_day is None or (
+            int(proposed_second_month) == int(second_occurrence_month)
+            and int(proposed_second_day) == int(second_day_of_month)
+        ) or (
+            int(proposed_second_month) == landing.month and int(proposed_second_day) == landing.day
+        )
+        if proposed_is_this_anchor:
+            other_month, other_day = first_month, first_day
+        else:
+            other_month, other_day = int(proposed_second_month), int(proposed_second_day)
+        return landing, landing.day, other_day, other_month
+
+    new_start = moved_to if moved_to is not None else occurrence_date
+    rule_day = moved_to.day if moved_to is not None else first_day
+    second_day = proposed_second_day if proposed_second_day is not None else second_day_of_month
+    second_month = proposed_second_month if proposed_second_month is not None else second_occurrence_month
+    return new_start, rule_day, second_day, second_month
 
 
 def _future_recurrence_after_apply(

@@ -7,6 +7,7 @@ call Stripe or send email.
 from __future__ import annotations
 
 import sys
+from datetime import date
 from decimal import Decimal
 from pathlib import Path
 
@@ -30,7 +31,7 @@ apply_safe_environment(_DB)
 assert_process_is_safe(_DB)
 
 sys.path.insert(0, str(ROOT / "backend"))
-from app.main import app, settings  # noqa: E402
+from app.main import ExpectedTransactionOverride, SessionLocal, app, settings  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
 assert_loaded_settings(
@@ -267,3 +268,428 @@ def test_identical_taxes_on_the_same_day_are_not_counted_twice():
         assert daily.status_code == 200, daily.text
         days = {row["date"]: row for row in daily.json()["days"]}
         assert _money(days["2026-10-03"]["tx_net"]) == Decimal("-10662.97")
+
+
+def _taxes_series(client, email: str):
+    created = client.post(
+        "/api/auth/register",
+        json={
+            "email": email,
+            "password": "SmokeOnly1!",
+            "first_name": "Smoke",
+            "last_name": "Taxes",
+        },
+    )
+    assert created.status_code == 201, created.text
+    families = client.get("/api/families")
+    assert families.status_code == 200, families.text
+    family_id = families.json()[0]["id"]
+    account = client.post(
+        f"/api/families/{family_id}/accounts",
+        json={
+            "name": "Checking",
+            "type": "checking",
+            "starting_balance": "20000.00",
+            "starting_balance_date": "2026-09-01",
+        },
+    )
+    assert account.status_code == 200, account.text
+    account_id = account.json()["id"]
+    expected = client.post(
+        f"/api/families/{family_id}/expected-transactions",
+        json={
+            "account_id": account_id,
+            "start_date": "2026-09-03",
+            "end_date": "2026-10-03",
+            "recurrence": "monthly",
+            "kind": "expense",
+            "amount": "10662.97",
+            "description": "Taxes",
+        },
+    )
+    assert expected.status_code == 200, expected.text
+    return family_id, account_id, expected.json()["id"]
+
+
+def _move_taxes(client, family_id, account_id, expected_id, occurrence, moved_to):
+    moved = client.post(
+        f"/api/families/{family_id}/expected-transactions/{expected_id}/instances/{occurrence}",
+        json={
+            "action": "update",
+            "account_id": account_id,
+            "kind": "expense",
+            "amount": "10662.97",
+            "description": "Taxes",
+            "moved_to_date": moved_to,
+        },
+    )
+    assert moved.status_code == 200, moved.text
+
+
+def _october_taxes(client, family_id):
+    october = client.get(
+        f"/api/families/{family_id}/expected-calendar",
+        params={"month": "2026-10"},
+    )
+    assert october.status_code == 200, october.text
+    return [it for it in october.json()["items"] if it["description"] == "Taxes"]
+
+
+def test_moving_the_visible_stacked_taxes_row_does_not_leave_the_hidden_copy():
+    """A Taxes row already stacked on October 3 must move as the one payment the calendar shows.
+
+    Older saves left both occurrences in place and only hid the second line.
+    Moving the line the calendar returns — October's own Taxes — to October 7
+    must cancel the September payment that was parked on October 3.
+    """
+    with TestClient(app) as client:
+        family_id, account_id, expected_id = _taxes_series(client, "bw-smoke-taxes-hidden@example.com")
+        with SessionLocal() as db:
+            db.add(
+                ExpectedTransactionOverride(
+                    expected_transaction_id=expected_id,
+                    occurrence_date=date(2026, 9, 3),
+                    cancelled=False,
+                    moved_to_date=date(2026, 10, 3),
+                )
+            )
+            db.commit()
+
+        stacked = _october_taxes(client, family_id)
+        assert [it["date"] for it in stacked] == ["2026-10-03"], stacked
+        assert stacked[0]["occurrence_date"] == "2026-10-03"
+
+        _move_taxes(client, family_id, account_id, expected_id, "2026-10-03", "2026-10-07")
+
+        moved = _october_taxes(client, family_id)
+        assert [it["date"] for it in moved] == ["2026-10-07"], moved
+
+        daily = client.get(
+            f"/api/families/{family_id}/calendar-month-daily",
+            params={"month": "2026-10"},
+        )
+        assert daily.status_code == 200, daily.text
+        days = {row["date"]: row for row in daily.json()["days"]}
+        assert _money(days["2026-10-03"]["tx_net"]) == Decimal("0.00")
+        assert _money(days["2026-10-07"]["tx_net"]) == Decimal("-10662.97")
+
+
+def test_moving_stacked_taxes_to_a_new_day_does_not_leave_a_copy():
+    """The one Taxes row on October 3 must move as one payment.
+
+    September's Taxes was parked on October 3, which already had Taxes, so the
+    calendar draws a single row. Moving that row to October 7 must not leave
+    the hidden copy on October 3.
+    """
+    with TestClient(app) as client:
+        family_id, account_id, expected_id = _taxes_series(client, "bw-smoke-taxes-move@example.com")
+        _move_taxes(client, family_id, account_id, expected_id, "2026-09-03", "2026-10-03")
+
+        stacked = _october_taxes(client, family_id)
+        assert [it["date"] for it in stacked] == ["2026-10-03"], stacked
+        visible = stacked[0]
+
+        _move_taxes(
+            client,
+            family_id,
+            account_id,
+            expected_id,
+            visible["occurrence_date"],
+            "2026-10-07",
+        )
+
+        moved = _october_taxes(client, family_id)
+        assert [it["date"] for it in moved] == ["2026-10-07"], moved
+
+        daily = client.get(
+            f"/api/families/{family_id}/calendar-month-daily",
+            params={"month": "2026-10"},
+        )
+        assert daily.status_code == 200, daily.text
+        days = {row["date"]: row for row in daily.json()["days"]}
+        assert _money(days["2026-10-03"]["tx_net"]) == Decimal("0.00")
+        assert _money(days["2026-10-07"]["tx_net"]) == Decimal("-10662.97")
+
+
+def test_rescheduling_hidden_stacked_taxes_this_and_future_does_not_leave_a_copy():
+    """This and future from the visible October 3 row must not keep September's parked Taxes there."""
+    with TestClient(app) as client:
+        family_id, account_id, expected_id = _taxes_series(client, "bw-smoke-taxes-hidden-future@example.com")
+        with SessionLocal() as db:
+            db.add(
+                ExpectedTransactionOverride(
+                    expected_transaction_id=expected_id,
+                    occurrence_date=date(2026, 9, 3),
+                    cancelled=False,
+                    moved_to_date=date(2026, 10, 3),
+                )
+            )
+            db.commit()
+
+        applied = client.post(
+            f"/api/families/{family_id}/expected-transactions/{expected_id}/apply-from-occurrence/2026-10-03",
+            json={
+                "account_id": account_id,
+                "kind": "expense",
+                "amount": "10662.97",
+                "description": "Taxes",
+                "recurrence": "monthly",
+                "effective_start_date": "2026-10-07",
+            },
+        )
+        assert applied.status_code == 200, applied.text
+
+        moved = _october_taxes(client, family_id)
+        assert [it["date"] for it in moved] == ["2026-10-07"], moved
+
+
+def test_rescheduling_stacked_taxes_this_and_future_does_not_leave_a_copy():
+    """Changing October 3 to October 7 for this and future dates must not create a second Taxes."""
+    with TestClient(app) as client:
+        family_id, account_id, expected_id = _taxes_series(client, "bw-smoke-taxes-future@example.com")
+        _move_taxes(client, family_id, account_id, expected_id, "2026-09-03", "2026-10-03")
+        visible = _october_taxes(client, family_id)[0]
+
+        applied = client.post(
+            f"/api/families/{family_id}/expected-transactions/{expected_id}/apply-from-occurrence/{visible['occurrence_date']}",
+            json={
+                "account_id": account_id,
+                "kind": "expense",
+                "amount": "10662.97",
+                "description": "Taxes",
+                "recurrence": "monthly",
+                "effective_start_date": "2026-10-07",
+            },
+        )
+        assert applied.status_code == 200, applied.text
+
+        moved = _october_taxes(client, family_id)
+        assert [it["date"] for it in moved] == ["2026-10-07"], moved
+
+
+def _calendar_descriptions_by_date(client, family_id, month):
+    res = client.get(
+        f"/api/families/{family_id}/expected-calendar",
+        params={"month": month},
+    )
+    assert res.status_code == 200, res.text
+    by_date: dict[str, list[str]] = {}
+    for it in res.json()["items"]:
+        by_date.setdefault(it["date"], []).append(it["description"])
+    return by_date
+
+
+def test_moving_twice_yearly_taxes_replaces_that_date():
+    """October 3 is the other twice-yearly date. Moving it to October 7 must not keep October 3.
+
+    The date field is this occurrence. The second-yearly field still holds the
+    old October 3, so a naive save used to schedule both days.
+    """
+    with TestClient(app) as client:
+        created = client.post(
+            "/api/auth/register",
+            json={
+                "email": "bw-smoke-taxes-semiannual@example.com",
+                "password": "SmokeOnly1!",
+                "first_name": "Smoke",
+                "last_name": "Taxes",
+            },
+        )
+        assert created.status_code == 201, created.text
+        family_id = client.get("/api/families").json()[0]["id"]
+        account_id = client.post(
+            f"/api/families/{family_id}/accounts",
+            json={
+                "name": "Checking",
+                "type": "checking",
+                "starting_balance": "20000.00",
+                "starting_balance_date": "2026-01-01",
+            },
+        ).json()["id"]
+        expected = client.post(
+            f"/api/families/{family_id}/expected-transactions",
+            json={
+                "account_id": account_id,
+                "start_date": "2026-04-03",
+                "recurrence": "semiannual",
+                "second_day_of_month": 3,
+                "second_occurrence_month": 10,
+                "kind": "expense",
+                "amount": "10662.97",
+                "description": "Taxes",
+            },
+        )
+        assert expected.status_code == 200, expected.text
+        expected_id = expected.json()["id"]
+
+        applied = client.post(
+            f"/api/families/{family_id}/expected-transactions/{expected_id}/apply-from-occurrence/2026-10-03",
+            json={
+                "account_id": account_id,
+                "kind": "expense",
+                "amount": "10662.97",
+                "description": "Taxes",
+                "recurrence": "semiannual",
+                "second_day_of_month": 3,
+                "second_occurrence_month": 10,
+                "effective_start_date": "2026-10-07",
+            },
+        )
+        assert applied.status_code == 200, applied.text
+
+        october = _calendar_descriptions_by_date(client, family_id, "2026-10")
+        assert october.get("2026-10-03", []) == []
+        assert october["2026-10-07"] == ["Taxes"]
+        april = _calendar_descriptions_by_date(client, family_id, "2027-04")
+        assert april["2027-04-03"] == ["Taxes"]
+        next_october = _calendar_descriptions_by_date(client, family_id, "2027-10")
+        assert next_october.get("2027-10-03", []) == []
+        assert next_october["2027-10-07"] == ["Taxes"]
+
+
+def _april_october_taxes(client, email: str, start_date: str):
+    created = client.post(
+        "/api/auth/register",
+        json={
+            "email": email,
+            "password": "SmokeOnly1!",
+            "first_name": "Smoke",
+            "last_name": "Taxes",
+        },
+    )
+    assert created.status_code == 201, created.text
+    family_id = client.get("/api/families").json()[0]["id"]
+    account_id = client.post(
+        f"/api/families/{family_id}/accounts",
+        json={
+            "name": "Checking",
+            "type": "checking",
+            "starting_balance": "20000.00",
+            "starting_balance_date": "2024-01-01",
+        },
+    ).json()["id"]
+    expected = client.post(
+        f"/api/families/{family_id}/expected-transactions",
+        json={
+            "account_id": account_id,
+            "start_date": start_date,
+            "recurrence": "semiannual",
+            "second_day_of_month": 1,
+            "second_occurrence_month": 4,
+            "kind": "expense",
+            "amount": "10662.97",
+            "description": "Taxes",
+        },
+    )
+    assert expected.status_code == 200, expected.text
+    return family_id, account_id, expected.json()["id"]
+
+
+def _assert_october_moved_and_april_kept(client, family_id):
+    october = _calendar_descriptions_by_date(client, family_id, "2026-10")
+    assert october.get("2026-10-03", []) == [], october
+    assert october["2026-10-07"] == ["Taxes"]
+    april = _calendar_descriptions_by_date(client, family_id, "2027-04")
+    assert april["2027-04-01"] == ["Taxes"]
+    daily = client.get(
+        f"/api/families/{family_id}/calendar-month-daily",
+        params={"month": "2026-10"},
+    )
+    assert daily.status_code == 200, daily.text
+    days = {row["date"]: row for row in daily.json()["days"]}
+    assert _money(days["2026-10-03"]["tx_net"]) == Decimal("0.00")
+    assert _money(days["2026-10-07"]["tx_net"]) == Decimal("-10662.97")
+
+
+def test_moving_october_taxes_to_the_7th_keeps_april_1_and_drops_october_3():
+    """Date 10/07/2026, second yearly date 04/01. October must not keep the 3rd."""
+    with TestClient(app) as client:
+        family_id, account_id, expected_id = _april_october_taxes(
+            client, "bw-smoke-taxes-apr1@example.com", "2026-10-03"
+        )
+        applied = client.post(
+            f"/api/families/{family_id}/expected-transactions/{expected_id}/apply-from-occurrence/2026-10-03",
+            json={
+                "account_id": account_id,
+                "kind": "expense",
+                "amount": "10662.97",
+                "description": "Taxes",
+                "recurrence": "semiannual",
+                "second_day_of_month": 1,
+                "second_occurrence_month": 4,
+                "effective_start_date": "2026-10-07",
+            },
+        )
+        assert applied.status_code == 200, applied.text
+        _assert_october_moved_and_april_kept(client, family_id)
+
+        family_id, account_id, expected_id = _april_october_taxes(
+            client, "bw-smoke-taxes-apr1-later@example.com", "2024-10-03"
+        )
+        applied = client.post(
+            f"/api/families/{family_id}/expected-transactions/{expected_id}/apply-from-occurrence/2026-10-03",
+            json={
+                "account_id": account_id,
+                "kind": "expense",
+                "amount": "10662.97",
+                "description": "Taxes",
+                "recurrence": "semiannual",
+                "second_day_of_month": 1,
+                "second_occurrence_month": 4,
+                "effective_start_date": "2026-10-07",
+            },
+        )
+        assert applied.status_code == 200, applied.text
+        _assert_october_moved_and_april_kept(client, family_id)
+        this_april = _calendar_descriptions_by_date(client, family_id, "2026-04")
+        assert this_april["2026-04-01"] == ["Taxes"]
+
+        family_id, account_id, expected_id = _april_october_taxes(
+            client, "bw-smoke-taxes-apr1-once@example.com", "2024-10-03"
+        )
+        moved = client.post(
+            f"/api/families/{family_id}/expected-transactions/{expected_id}/instances/2026-10-03",
+            json={
+                "action": "update",
+                "account_id": account_id,
+                "kind": "expense",
+                "amount": "10662.97",
+                "description": "Taxes",
+                "moved_to_date": "2026-10-07",
+            },
+        )
+        assert moved.status_code == 200, moved.text
+        _assert_october_moved_and_april_kept(client, family_id)
+        next_october = _calendar_descriptions_by_date(client, family_id, "2027-10")
+        assert next_october["2027-10-03"] == ["Taxes"]
+
+
+def test_moving_taxes_onto_a_different_bill_keeps_both():
+    with TestClient(app) as client:
+        family_id, account_id, expected_id = _taxes_series(client, "bw-smoke-taxes-other@example.com")
+        other = client.post(
+            f"/api/families/{family_id}/expected-transactions",
+            json={
+                "account_id": account_id,
+                "start_date": "2026-10-07",
+                "end_date": "2026-10-07",
+                "recurrence": "once",
+                "kind": "expense",
+                "amount": "333.00",
+                "description": "Travel",
+            },
+        )
+        assert other.status_code == 200, other.text
+
+        _move_taxes(client, family_id, account_id, expected_id, "2026-10-03", "2026-10-07")
+
+        october = client.get(
+            f"/api/families/{family_id}/expected-calendar",
+            params={"month": "2026-10"},
+        )
+        assert october.status_code == 200, october.text
+        by_date: dict[str, list[str]] = {}
+        for it in october.json()["items"]:
+            by_date.setdefault(it["date"], []).append(it["description"])
+        assert by_date.get("2026-10-03", []) == []
+        assert sorted(by_date["2026-10-07"]) == ["Taxes", "Travel"]
