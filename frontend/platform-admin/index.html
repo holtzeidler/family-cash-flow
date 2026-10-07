@@ -133,17 +133,13 @@
               <table class="platform-admin-users-table" id="adminUsersTable">
                 <thead>
                   <tr>
-                    <th scope="col" data-user-sort="user">User</th>
-                    <th scope="col" data-user-sort="family">Family</th>
-                    <th scope="col" data-user-sort="family_role">Family role</th>
-                    <th scope="col" data-user-sort="platform_role">Platform role</th>
-                    <th scope="col" data-user-sort="status">Status</th>
-                    <th scope="col" data-user-sort="last_login">Last login</th>
-                    <th scope="col" data-user-sort="last_seen">Last seen</th>
-                    <th scope="col" data-user-sort="last_active">Last active</th>
-                    <th scope="col" data-user-sort="data">Data</th>
-                    <th scope="col" data-user-sort="created">Created</th>
-                    <th scope="col"><span class="sr-only">Actions</span></th>
+                    <th scope="col" data-user-sort="user" class="platform-admin-users-table__user">User</th>
+                    <th scope="col" data-user-sort="family" class="platform-admin-users-table__family">Family</th>
+                    <th scope="col" data-user-sort="platform_role" class="platform-admin-users-table__access">Access</th>
+                    <th scope="col" data-user-sort="status" class="platform-admin-users-table__status">Status</th>
+                    <th scope="col" data-user-sort="last_active" class="platform-admin-users-table__when">Last active</th>
+                    <th scope="col" data-user-sort="created" class="platform-admin-users-table__when">Created</th>
+                    <th scope="col" class="platform-admin-users-table__actions">Actions</th>
                   </tr>
                 </thead>
                 <tbody id="adminUsersTableBody"></tbody>
@@ -292,15 +288,40 @@
       }
       .platform-admin-users-toolbar {
         margin: 12px 0 10px;
+        padding: 10px 12px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: rgba(17, 24, 39, 0.025);
       }
       .platform-admin-users-toolbar__filters {
         display: flex;
         flex-wrap: wrap;
-        gap: 10px;
+        gap: 8px 10px;
         align-items: flex-end;
       }
+      .platform-admin-users-toolbar .admin-feedback-filter {
+        min-width: 0;
+        gap: 3px;
+        flex: 1 1 118px;
+      }
+      .platform-admin-users-toolbar .admin-feedback-filter--grow {
+        flex: 1.4 1 200px;
+      }
+      .platform-admin-users-toolbar .admin-feedback-filter__label {
+        font-size: 10px;
+        letter-spacing: 0.05em;
+      }
+      .platform-admin-users-toolbar .admin-feedback-filter select,
+      .platform-admin-users-toolbar .admin-feedback-filter input {
+        width: 100%;
+        box-sizing: border-box;
+        height: 32px;
+        padding: 4px 8px;
+        font-size: 0.8125rem;
+      }
       .platform-admin-users-invite {
-        padding: 8px 14px;
+        height: 32px;
+        padding: 0 12px;
         border-radius: 8px;
         border: 1px solid var(--accent);
         background: var(--accent);
@@ -308,8 +329,9 @@
         font-weight: 600;
         cursor: pointer;
         font: inherit;
-        font-size: 0.9rem;
+        font-size: 0.8125rem;
         white-space: nowrap;
+        align-self: flex-end;
       }
       .platform-admin-users-meta {
         margin: 0 0 10px;
@@ -327,10 +349,29 @@
       }
       .platform-admin-users-table th,
       .platform-admin-users-table td {
-        padding: 10px 12px;
+        padding: 12px 14px;
         text-align: left;
-        border-bottom: 1px solid rgba(17, 24, 39, 0.06);
+        border-bottom: 1px solid rgba(17, 24, 39, 0.07);
         vertical-align: middle;
+      }
+      .platform-admin-users-table__user {
+        width: 28%;
+      }
+      .platform-admin-users-table__family {
+        width: 16%;
+      }
+      .platform-admin-users-table__access {
+        width: 20%;
+      }
+      .platform-admin-users-table__status,
+      .platform-admin-users-table__when,
+      .platform-admin-users-table__actions {
+        width: 1%;
+        white-space: nowrap;
+      }
+      .platform-admin-users-table th.platform-admin-users-table__actions,
+      .platform-admin-users-table td.platform-admin-users-table__actions {
+        text-align: right;
       }
       .platform-admin-users-table th {
         font-size: 11px;
@@ -374,35 +415,79 @@
       .platform-admin-users-table tr:last-child td {
         border-bottom: none;
       }
-      .platform-admin-users-table__user {
-        font-weight: 600;
-      }
-      .platform-admin-users-table__email {
+      .platform-admin-users-table__name {
         display: block;
-        font-weight: 500;
+        font-weight: 600;
+        line-height: 1.25;
       }
       .platform-admin-users-table__sub {
+        display: block;
+        margin-top: 2px;
         font-size: 12px;
+        line-height: 1.3;
         color: var(--muted);
         font-weight: 400;
       }
-      .platform-admin-users-actions {
-        display: flex;
+      .platform-admin-access {
+        display: inline-flex;
+        align-items: center;
         flex-wrap: wrap;
         gap: 6px;
       }
+      .platform-admin-access__role {
+        font-weight: 500;
+        color: rgba(31, 41, 55, 0.88);
+      }
+      .platform-admin-pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+        line-height: 1.35;
+        white-space: nowrap;
+      }
+      .platform-admin-pill--admin {
+        background: rgba(11, 61, 46, 0.1);
+        color: #0b3d2e;
+      }
+      .platform-admin-pill--comp {
+        background: rgba(180, 83, 9, 0.1);
+        color: #9a3412;
+      }
+      .platform-admin-pill--muted {
+        background: rgba(17, 24, 39, 0.06);
+        color: rgba(71, 85, 105, 0.92);
+        font-weight: 550;
+      }
+      .platform-admin-pill--active {
+        background: rgba(22, 163, 74, 0.12);
+        color: #166534;
+      }
+      .platform-admin-pill--quiet {
+        background: rgba(17, 24, 39, 0.06);
+        color: rgba(71, 85, 105, 0.92);
+      }
+      .platform-admin-users-actions {
+        display: flex;
+        justify-content: flex-end;
+      }
       .platform-admin-users-actions button {
-        padding: 5px 8px;
-        border-radius: 6px;
+        padding: 5px 10px;
+        border-radius: 8px;
         border: 1px solid var(--border);
         background: #fff;
         font: inherit;
         font-size: 12px;
+        font-weight: 600;
+        line-height: 1.3;
         cursor: pointer;
+        white-space: nowrap;
       }
-      .platform-admin-users-actions button.danger {
-        border-color: #fecaca;
-        color: #b91c1c;
+      .platform-admin-users-actions button:hover {
+        border-color: rgba(11, 61, 46, 0.35);
+        color: #0b3d2e;
       }
       .platform-admin-drawer {
         position: fixed;
@@ -825,6 +910,6 @@
         padding: 24px;
       }
     </style>
-    <script src="/platform-admin/admin.js?v=18"></script>
+    <script src="/platform-admin/admin.js?v=19"></script>
   </body>
 </html>

@@ -212,6 +212,19 @@
     }
   }
 
+  function fmtAdminDateOnly(iso) {
+    if (!iso) return "—";
+    try {
+      return new Date(iso).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
+    } catch (_) {
+      return String(iso);
+    }
+  }
+
   function complimentaryStatusText(u) {
     if (!u) return "";
     if (u.complimentary_access_active === true) {
@@ -287,6 +300,28 @@
 
   function statusLabel(status) {
     return String(status || "active") === "no_family" ? "No family" : "Active";
+  }
+
+  function statusBadgeHtml(status) {
+    const label = statusLabel(status);
+    const kind = String(status || "active") === "no_family" ? "quiet" : "active";
+    return `<span class="platform-admin-pill platform-admin-pill--${kind}">${escapeHtml(label)}</span>`;
+  }
+
+  function accessCellHtml(u) {
+    const role = platformRoleLabel(u.platform_role);
+    const parts = [];
+    if (role === "Admin") {
+      parts.push('<span class="platform-admin-pill platform-admin-pill--admin">Admin</span>');
+    } else {
+      parts.push(`<span class="platform-admin-access__role">${escapeHtml(role)}</span>`);
+    }
+    if (u.complimentary_access_active === true) {
+      parts.push('<span class="platform-admin-pill platform-admin-pill--comp">Complimentary</span>');
+    } else if (u.complimentary_access) {
+      parts.push('<span class="platform-admin-pill platform-admin-pill--muted">Expired</span>');
+    }
+    return `<span class="platform-admin-access">${parts.join("")}</span>`;
   }
 
   function familyCellText(u) {
@@ -475,7 +510,7 @@
 
     if (!filtered.length) {
       tbody.innerHTML =
-        '<tr><td colspan="8" class="meta" style="text-align:center;padding:20px">No users match the current filters.</td></tr>';
+        '<tr><td colspan="7" class="meta" style="text-align:center;padding:20px">No users match the current filters.</td></tr>';
       return;
     }
 
@@ -484,31 +519,21 @@
         const nameLine = u.name ? escapeHtml(u.name) : escapeHtml(u.email);
         const emailSub =
           u.name && u.email ? `<span class="platform-admin-users-table__sub">${escapeHtml(u.email)}</span>` : "";
-        const compLabel = complimentaryStatusText(u);
-        const compSub = compLabel
-          ? `<span class="platform-admin-users-table__sub">${escapeHtml(compLabel)}</span>`
-          : "";
+        const lastActiveLabel = u.last_active_at ? fmtAdminRelativeDays(u.last_active_at) : "Never";
+        const lastActiveExact = u.last_active_at ? fmtAdminDateTime(u.last_active_at) : "Never";
         return `<tr data-user-id="${u.id}">
           <td class="platform-admin-users-table__user">
-            <span class="platform-admin-users-table__email">${nameLine}</span>
+            <span class="platform-admin-users-table__name">${nameLine}</span>
             ${emailSub}
-            ${compSub}
-            <span class="platform-admin-users-table__sub">#${u.id}</span>
           </td>
-          <td>${escapeHtml(familyCellText(u))}</td>
-          <td>${escapeHtml(familyRoleCellText(u))}</td>
-          <td>${escapeHtml(platformRoleLabel(u.platform_role))}</td>
-          <td>${escapeHtml(statusLabel(u.status))}</td>
-          <td>${escapeHtml(fmtAdminDateTime(u.last_login_at))}</td>
-          <td>${escapeHtml(fmtAdminDateTime(u.last_seen_at))}</td>
-          <td title="${escapeHtml(fmtAdminDateTime(u.last_active_at))}">${escapeHtml(fmtAdminRelativeDays(u.last_active_at))}</td>
-          <td>${escapeHtml(engagementDataCellText(u))}</td>
-          <td>${escapeHtml(fmtAdminDateTime(u.created_at))}</td>
-          <td>
+          <td class="platform-admin-users-table__family">${escapeHtml(familyCellText(u))}</td>
+          <td class="platform-admin-users-table__access">${accessCellHtml(u)}</td>
+          <td class="platform-admin-users-table__status">${statusBadgeHtml(u.status)}</td>
+          <td class="platform-admin-users-table__when" title="${escapeHtml(lastActiveExact)}">${escapeHtml(lastActiveLabel)}</td>
+          <td class="platform-admin-users-table__when">${escapeHtml(fmtAdminDateOnly(u.created_at))}</td>
+          <td class="platform-admin-users-table__actions">
             <div class="platform-admin-users-actions">
               <button type="button" data-action="edit" data-user-id="${u.id}">View / edit</button>
-              <button type="button" data-action="password" data-user-id="${u.id}">Reset password</button>
-              <button type="button" class="danger" data-action="delete" data-user-id="${u.id}">Delete</button>
             </div>
           </td>
         </tr>`;
@@ -614,6 +639,7 @@
         <section class="platform-admin-drawer__section">
           <h4>Account</h4>
           <dl class="platform-admin-drawer__dl">
+            <dt>User ID</dt><dd>#${escapeHtml(u.id)}</dd>
             <dt>Status</dt><dd>${escapeHtml(statusLabel(u.status))}</dd>
             <dt>Created</dt><dd>${escapeHtml(fmtAdminDateTime(u.created_at))}</dd>
             <dt>Last login</dt><dd>${escapeHtml(fmtAdminDateTime(u.last_login_at))}</dd>
@@ -914,7 +940,7 @@
     if (wrap) wrap.hidden = false;
     if (tbody && !cachedPlatformUsers) {
       tbody.innerHTML =
-        '<tr><td colspan="11" class="meta" style="text-align:center;padding:20px">Loading users…</td></tr>';
+        '<tr><td colspan="7" class="meta" style="text-align:center;padding:20px">Loading users…</td></tr>';
     }
   }
 
