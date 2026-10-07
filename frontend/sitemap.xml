@@ -21,6 +21,21 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://balancewhiz.com/forecasting-vs-budgeting/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://balancewhiz.com/safe-to-spend/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://balancewhiz.com/recurring-and-irregular-expenses/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
     <loc>https://balancewhiz.com/plans/</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
