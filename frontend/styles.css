@@ -5743,6 +5743,54 @@ body.support-doc-page .support-doc a:hover{
   text-decoration: none;
   border-bottom-color: color-mix(in srgb, var(--accent, #16a34a) 55%, transparent);
 }
+body.support-doc-page .support-doc a.help-callout__cta{
+  color: #fff;
+  border-bottom: 0;
+}
+body.support-doc-page .support-doc a.help-callout__cta:hover{
+  color: #fff;
+  border-bottom-color: transparent;
+}
+body.support-doc-page .support-doc__cta-block{
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+body.support-doc-page .support-doc__cta-note{
+  margin: 0;
+  color: rgba(71, 85, 105, 0.78);
+  font-size: 0.875rem;
+}
+body.landing-page .landing-hero__guides{
+  margin: 0.85rem 0 0;
+  max-width: min(36rem, 100%);
+  font-size: 0.95rem;
+  line-height: 1.45;
+  color: rgba(71, 85, 105, 0.88);
+}
+body.landing-page .landing-hero__guides a{
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+body.landing-page .landing-hero__guides a:hover{
+  text-decoration: underline;
+}
+.learn-rhythm__cardBody a{
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+.learn-rhythm__cardBody a:hover{
+  text-decoration: underline;
+}
+.plan-features a{
+  color: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
 
 body.support-doc-page .support-doc__footer{
   margin-top: 40px;

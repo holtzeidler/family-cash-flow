@@ -8,6 +8,9 @@ Allow: /terms.html
 Allow: /plans/
 Allow: /learn/
 Allow: /contactus/
+Allow: /forecasting-vs-budgeting/
+Allow: /safe-to-spend/
+Allow: /recurring-and-irregular-expenses/
 
 # Authenticated app, admin, and funnel pages (not useful in search)
 # /preview/ stays crawlable so its noindex tag is seen. It is omitted from the sitemap.

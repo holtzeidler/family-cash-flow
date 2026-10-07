@@ -19,6 +19,24 @@
       "canonicalPath": "/learn/",
       "index": true
     },
+    "forecasting-vs-budgeting/index.html": {
+      "title": "Cash Flow Forecasting vs Budgeting — BalanceWhiz",
+      "description": "Cash-flow forecasting vs budgeting: BalanceWhiz shows your future checking balance by date, including what’s spoken for and what will actually be available.",
+      "canonicalPath": "/forecasting-vs-budgeting/",
+      "index": true
+    },
+    "safe-to-spend/index.html": {
+      "title": "What Cash Is Safe to Spend or Move — BalanceWhiz",
+      "description": "Today’s balance is not what you can spend or move. Separate money already spoken for, the cushion you want to keep, and what is actually available.",
+      "canonicalPath": "/safe-to-spend/",
+      "index": true
+    },
+    "recurring-and-irregular-expenses/index.html": {
+      "title": "Recurring and Irregular Expenses — BalanceWhiz",
+      "description": "Forecast the income and bills that move checking: fixed amounts, bills that change, annual costs, and one-time expenses. Skip the everyday purchases.",
+      "canonicalPath": "/recurring-and-irregular-expenses/",
+      "index": true
+    },
     "about.html": {
       "title": "About BalanceWhiz — Cash Flow Forecasting for Families",
       "description": "Learn why BalanceWhiz focuses on projected checking balances and timing—not traditional budgeting—so you can avoid cash surprises.",
