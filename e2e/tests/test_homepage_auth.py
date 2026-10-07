@@ -37,7 +37,7 @@ def _expect_logged_out(page) -> None:
     expect(page.locator("a.home-cta--member")).to_have_count(2)
     for cta in page.locator("a.home-cta--member").all():
         expect(cta).to_be_hidden()
-        expect(cta).to_have_attribute("href", MEMBER_CTA)
+        expect(cta).not_to_have_attribute("href", MEMBER_CTA)
 
 
 def _expect_logged_in(page) -> None:

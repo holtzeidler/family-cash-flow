@@ -18,11 +18,9 @@ Disallow: /reimbursements/
 Disallow: /settings/
 Disallow: /admin/
 Disallow: /platform-admin/
-Disallow: /account-setup/
+# /login.html, /login/, and /account-setup/ stay crawlable so their noindex tags are seen.
 Disallow: /invite/
 Disallow: /signup/
-Disallow: /login/
-Disallow: /login.html
 Disallow: /checkout/
 Disallow: /dev/
 

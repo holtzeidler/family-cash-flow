@@ -36,12 +36,23 @@
     return headers;
   }
 
+  function paintMemberLinks() {
+    var signedIn = document.documentElement.getAttribute("data-bw-home-auth") === "in";
+    var links = document.querySelectorAll("#homeForecastLink, a.home-cta--member");
+    for (var i = 0; i < links.length; i++) {
+      if (signedIn) links[i].setAttribute("href", "/calendar/");
+      else links[i].removeAttribute("href");
+    }
+  }
+
   function paintLoggedIn() {
     document.documentElement.setAttribute("data-bw-home-auth", "in");
+    paintMemberLinks();
   }
 
   function paintLoggedOut() {
     document.documentElement.removeAttribute("data-bw-home-auth");
+    paintMemberLinks();
   }
 
   function refreshHomeAuth() {
@@ -91,5 +102,6 @@
   var logoutBtn = document.getElementById("homeLogoutBtn");
   if (logoutBtn) logoutBtn.addEventListener("click", logout);
 
+  paintMemberLinks();
   window.addEventListener("pageshow", refreshHomeAuth);
 })();
