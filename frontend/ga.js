@@ -1,10 +1,14 @@
 /* BalanceWhiz GA4 page tracking.
    Standard gtag.js only. No custom events, no user id, no form fields.
    Page hits use the path only, so query strings and hashes (invite tokens,
-   password-reset tokens, checkout session ids) are not sent. */
+   password-reset tokens, checkout session ids) are not sent.
+   The Google tag loads only on the production site. */
 (function () {
   if (window.__bwGa4Loaded) return;
   window.__bwGa4Loaded = true;
+
+  var host = String(window.location.hostname || "").toLowerCase();
+  if (host !== "balancewhiz.com" && host !== "www.balancewhiz.com") return;
 
   var measurementId = "G-G8J8QHVMHW";
   var script = document.createElement("script");
