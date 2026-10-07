@@ -203,9 +203,10 @@
         <button type="button" class="platform-admin-drawer__backdrop" id="adminUserDrawerBackdrop" aria-label="Close user panel"></button>
         <aside class="platform-admin-drawer__panel" role="dialog" aria-modal="true" aria-labelledby="adminUserDrawerTitle">
           <header class="platform-admin-drawer__head">
-            <div>
+            <div class="platform-admin-drawer__identity">
               <h3 id="adminUserDrawerTitle" class="platform-admin-drawer__title">User</h3>
-              <p id="adminUserDrawerSub" class="meta"></p>
+              <p id="adminUserDrawerEmail" class="platform-admin-drawer__email" hidden></p>
+              <p id="adminUserDrawerSub" class="platform-admin-drawer__id meta"></p>
             </div>
             <button type="button" class="platform-admin-drawer__close" id="adminUserDrawerClose" aria-label="Close">×</button>
           </header>
@@ -519,102 +520,190 @@
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
-        gap: 12px;
-        padding: 16px 18px;
+        gap: 10px;
+        padding: 12px 16px;
         border-bottom: 1px solid var(--border);
         position: sticky;
         top: 0;
         background: var(--panel, #fff);
         z-index: 1;
       }
+      .platform-admin-drawer__identity {
+        min-width: 0;
+      }
       .platform-admin-drawer__title {
         margin: 0;
         font-size: 1.05rem;
+        font-weight: 650;
+        line-height: 1.25;
+      }
+      .platform-admin-drawer__email {
+        margin: 2px 0 0;
+        font-size: 13px;
+        line-height: 1.35;
+        color: rgba(31, 41, 55, 0.9);
+        word-break: break-word;
+      }
+      .platform-admin-drawer__id {
+        margin: 2px 0 0;
+        font-size: 12px;
+        line-height: 1.3;
+        color: var(--muted);
       }
       .platform-admin-drawer__close {
         border: none;
         background: transparent;
-        font-size: 1.5rem;
+        font-size: 1.35rem;
         line-height: 1;
         cursor: pointer;
         color: var(--muted);
-        padding: 4px 8px;
+        padding: 0 2px;
       }
       .platform-admin-drawer__body {
-        padding: 16px 18px;
+        padding: 14px 16px 8px;
       }
       .platform-admin-drawer__section {
-        margin-bottom: 20px;
+        margin-bottom: 16px;
       }
       .platform-admin-drawer__section h4 {
         margin: 0 0 8px;
-        font-size: 0.8rem;
+        font-size: 0.75rem;
         text-transform: uppercase;
         letter-spacing: 0.06em;
         color: var(--muted);
       }
-      .platform-admin-drawer__dl {
+      .platform-admin-summary {
+        display: grid;
+        grid-template-columns: max-content minmax(0, 1fr);
+        gap: 6px 14px;
+        align-items: center;
         margin: 0;
-        font-size: 0.9rem;
-      }
-      .platform-admin-drawer__dl dt {
-        font-weight: 600;
-        margin-top: 8px;
-        color: var(--muted);
-        font-size: 12px;
-      }
-      .platform-admin-drawer__dl dd {
-        margin: 2px 0 0;
-      }
-      .platform-admin-membership-row {
-        padding: 10px;
+        padding: 10px 12px;
         border: 1px solid var(--border);
-        border-radius: 8px;
-        margin-bottom: 8px;
-        background: rgba(0, 0, 0, 0.02);
+        border-radius: 10px;
+        background: rgba(17, 24, 39, 0.025);
+      }
+      .platform-admin-summary dt {
+        margin: 0;
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--muted);
+      }
+      .platform-admin-summary dd {
+        margin: 0;
+        font-size: 13.5px;
+        font-weight: 600;
+        line-height: 1.35;
+      }
+      .platform-admin-summary__note {
+        display: block;
+        margin-top: 2px;
+        font-size: 12px;
+        font-weight: 400;
+        color: var(--muted);
+      }
+      .platform-admin-drawer__card {
+        padding: 8px 12px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: rgba(17, 24, 39, 0.02);
+      }
+      .platform-admin-drawer__card + .platform-admin-drawer__card {
+        margin-top: 8px;
+      }
+      .platform-admin-drawer__kicker {
+        margin: 0 0 4px;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: var(--muted);
       }
       .platform-admin-membership-row__head {
         font-weight: 600;
+        font-size: 14px;
+        line-height: 1.3;
         margin-bottom: 8px;
       }
       .platform-admin-drawer__field {
         display: flex;
         flex-direction: column;
-        gap: 6px;
-        margin-bottom: 10px;
+        gap: 4px;
+        margin-bottom: 6px;
+      }
+      .platform-admin-drawer__field > span {
+        font-size: 13px;
+        font-weight: 600;
+      }
+      .platform-admin-drawer__hint {
+        display: block;
+        margin-top: 1px;
+        font-size: 12px;
+        font-weight: 400;
+        line-height: 1.35;
+        color: var(--muted);
       }
       .platform-admin-drawer__field select,
       .platform-admin-drawer__field input {
-        padding: 8px 10px;
+        width: 100%;
+        box-sizing: border-box;
+        padding: 6px 8px;
         border-radius: 8px;
         border: 1px solid var(--border);
+        background: #fff;
         font: inherit;
+        font-size: 13.5px;
       }
       .platform-admin-drawer__save {
-        padding: 8px 12px;
+        width: auto;
+        padding: 5px 10px;
         border-radius: 8px;
         border: 1px solid var(--accent);
         background: var(--accent);
         color: #fff;
-        font-weight: 600;
-        cursor: pointer;
         font: inherit;
+        font-size: 12.5px;
+        font-weight: 600;
+        line-height: 1.3;
+        cursor: pointer;
       }
       .platform-admin-drawer__check {
         display: flex;
         align-items: center;
         gap: 8px;
-        margin: 0 0 12px;
-        font-size: 14px;
+        margin: 0 0 8px;
+        font-size: 13.5px;
+        color: inherit;
+      }
+      .platform-admin-drawer__check input {
+        width: auto;
+        flex: 0 0 auto;
+        margin: 0;
+        padding: 0;
+      }
+      .platform-admin-drawer__check span {
+        flex: 1 1 auto;
+        line-height: 1.3;
       }
       .platform-admin-comp-status {
-        margin: 0 0 10px;
-        font-size: 14px;
+        margin: 0 0 6px;
+        font-size: 13.5px;
         font-weight: 650;
-        color: #0B3D2E;
+        color: #0b3d2e;
+      }
+      .platform-admin-drawer__note {
+        margin: 0 0 8px;
+        font-size: 12px;
+        line-height: 1.4;
+        color: var(--muted);
+      }
+      .platform-admin-drawer__empty {
+        margin: 0;
+        font-size: 13px;
+        color: var(--muted);
       }
       .platform-admin-warning {
-        margin: 0 0 12px;
+        margin: 0 0 8px;
         padding: 10px 12px;
         border-radius: 8px;
         border: 1px solid #f59e0b;
@@ -656,21 +745,30 @@
         margin: 0;
       }
       .platform-admin-drawer__danger {
-        margin-top: 24px;
-        padding-top: 16px;
+        margin-top: 4px;
+        padding-top: 14px;
         border-top: 1px solid #fecaca;
       }
       .platform-admin-drawer__danger h4 {
         color: #b91c1c;
       }
+      .platform-admin-drawer__danger p {
+        margin: 0 0 8px;
+        font-size: 13px;
+        line-height: 1.4;
+      }
       .platform-admin-drawer__danger button {
-        padding: 8px 12px;
+        width: auto;
+        padding: 5px 10px;
         border-radius: 8px;
         border: 1px solid #fecaca;
         background: #fff;
         color: #b91c1c;
         cursor: pointer;
         font: inherit;
+        font-size: 12.5px;
+        font-weight: 600;
+        line-height: 1.3;
       }
       .platform-admin-audit {
         font-size: 12px;
@@ -910,6 +1008,6 @@
         padding: 24px;
       }
     </style>
-    <script src="/platform-admin/admin.js?v=19"></script>
+    <script src="/platform-admin/admin.js?v=20"></script>
   </body>
 </html>

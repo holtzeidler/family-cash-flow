@@ -225,6 +225,42 @@
     }
   }
 
+  function fmtAdminDateScan(iso) {
+    if (!iso) return "—";
+    try {
+      const d = new Date(iso);
+      if (!Number.isFinite(d.getTime())) return "—";
+      const date = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+      const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+      return `${date} · ${time}`;
+    } catch (_) {
+      return String(iso);
+    }
+  }
+
+  function drawerDataLabel(u) {
+    return engagementDataCellText(u).replace(/\baccts\b/g, "accounts").replace(/\bacct\b/g, "account");
+  }
+
+  function complimentarySummaryLabel(u) {
+    if (!u || u.complimentary_access_active !== true) {
+      if (u && u.complimentary_access) return "Complimentary expired";
+      return "No complimentary access";
+    }
+    const exp = complimentaryExpiresInputValue(u.complimentary_access_expires_at);
+    if (!exp) return "Complimentary · No expiration";
+    return `Complimentary · Through ${fmtAdminDateOnly(u.complimentary_access_expires_at)}`;
+  }
+
+  function lastSeenIsDistinct(u) {
+    if (!u || !u.last_seen_at) return false;
+    if (!u.last_active_at) return true;
+    const seen = Date.parse(u.last_seen_at);
+    const active = Date.parse(u.last_active_at);
+    if (!Number.isFinite(seen) || !Number.isFinite(active)) return true;
+    return Math.abs(seen - active) >= 60000;
+  }
+
   function complimentaryStatusText(u) {
     if (!u) return "";
     if (u.complimentary_access_active === true) {
@@ -596,21 +632,30 @@
 
   function renderUserDrawer(u) {
     const title = document.getElementById("adminUserDrawerTitle");
+    const emailLine = document.getElementById("adminUserDrawerEmail");
     const sub = document.getElementById("adminUserDrawerSub");
     const body = document.getElementById("adminUserDrawerBody");
-    if (title) title.textContent = u.email;
-    if (sub) sub.textContent = `User #${u.id}${u.name ? ` · ${u.name}` : ""}`;
+    const displayName = String(u.name || "").trim();
+    const email = String(u.email || "").trim();
+    if (title) title.textContent = displayName || email || "User";
+    if (emailLine) {
+      const showEmail = !!(displayName && email);
+      emailLine.hidden = !showEmail;
+      emailLine.textContent = showEmail ? email : "";
+    }
+    if (sub) sub.textContent = `User #${u.id}`;
 
     const mems = u.memberships || [];
-    let membershipsHtml = '<p class="meta">No family memberships.</p>';
+    let membershipsHtml = '<p class="platform-admin-drawer__empty">No family memberships.</p>';
     if (mems.length) {
       membershipsHtml = mems
         .map((m) => {
           const roleVal = membershipToFamilyRoleValue(m);
-          return `<div class="platform-admin-membership-row" data-family-id="${m.family_id}">
+          return `<div class="platform-admin-drawer__card" data-family-id="${m.family_id}">
+            <p class="platform-admin-drawer__kicker">Family</p>
             <div class="platform-admin-membership-row__head">${escapeHtml(m.family_name)} <span class="meta">#${m.family_id}</span></div>
             <label class="platform-admin-drawer__field">
-              <span>Family role <span class="meta">(in this family)</span></span>
+              <span>Role <span class="platform-admin-drawer__hint">Controls access inside this household.</span></span>
               <select data-membership-role data-family-id="${m.family_id}" aria-label="Family role for ${escapeHtml(m.family_name)}">
                 <option value="owner"${roleVal === "owner" ? " selected" : ""}>Owner</option>
                 <option value="edit"${roleVal === "edit" ? " selected" : ""}>Can edit</option>
@@ -634,68 +679,84 @@
       )
       .join("");
 
+    const lastActiveLabel = u.last_active_at ? fmtAdminRelativeDays(u.last_active_at) : "Never";
+    const lastSeenNote = lastSeenIsDistinct(u)
+      ? `<span class="platform-admin-summary__note">Last seen ${escapeHtml(fmtAdminDateScan(u.last_seen_at))}</span>`
+      : "";
+    const lastChangeRow = u.last_data_at
+      ? `<dt>Last change</dt><dd title="${escapeHtml(fmtAdminDateTime(u.last_data_at))}">${escapeHtml(fmtAdminDateScan(u.last_data_at))}</dd>`
+      : "";
+    const compExpiresValue = complimentaryExpiresInputValue(u.complimentary_access_expires_at);
+    const showCompExpires = !!u.complimentary_access || !!compExpiresValue;
+    const auditHtml = audit
+      ? `<ul class="platform-admin-audit">${audit}</ul>`
+      : `<p class="platform-admin-drawer__empty">No recent admin activity.</p>`;
+
     if (body) {
       body.innerHTML = `
         <section class="platform-admin-drawer__section">
           <h4>Account</h4>
-          <dl class="platform-admin-drawer__dl">
-            <dt>User ID</dt><dd>#${escapeHtml(u.id)}</dd>
-            <dt>Status</dt><dd>${escapeHtml(statusLabel(u.status))}</dd>
-            <dt>Created</dt><dd>${escapeHtml(fmtAdminDateTime(u.created_at))}</dd>
-            <dt>Last login</dt><dd>${escapeHtml(fmtAdminDateTime(u.last_login_at))}</dd>
-            <dt>Last seen</dt><dd>${escapeHtml(fmtAdminDateTime(u.last_seen_at))}</dd>
-            <dt>Last active</dt><dd>${escapeHtml(fmtAdminDateTime(u.last_active_at))} <span class="meta">(${escapeHtml(fmtAdminRelativeDays(u.last_active_at))})</span></dd>
-            <dt>Data in app</dt><dd>${escapeHtml(engagementDataCellText(u))}${u.last_data_at ? ` <span class="meta">· last change ${escapeHtml(fmtAdminDateTime(u.last_data_at))}</span>` : ""}</dd>
+          <dl class="platform-admin-summary">
+            <dt>Status</dt><dd>${statusBadgeHtml(u.status)}</dd>
+            <dt>Created</dt><dd title="${escapeHtml(fmtAdminDateTime(u.created_at))}">${escapeHtml(fmtAdminDateOnly(u.created_at))}</dd>
+            <dt>Last login</dt><dd title="${escapeHtml(fmtAdminDateTime(u.last_login_at))}">${escapeHtml(u.last_login_at ? fmtAdminDateScan(u.last_login_at) : "—")}</dd>
+            <dt>Last active</dt><dd title="${escapeHtml(u.last_active_at ? fmtAdminDateTime(u.last_active_at) : "Never")}">${escapeHtml(lastActiveLabel)}${lastSeenNote}</dd>
+            <dt>Data</dt><dd>${escapeHtml(drawerDataLabel(u))}</dd>
+            ${lastChangeRow}
           </dl>
         </section>
         <section class="platform-admin-drawer__section">
-          <h4>Family memberships</h4>
-          <p class="meta" style="margin:0 0 10px">Family roles control access inside a household account.</p>
+          <h4>Access</h4>
           ${membershipsHtml}
-        </section>
-        <section class="platform-admin-drawer__section">
-          <h4>Platform role</h4>
-          <p class="meta" style="margin:0 0 10px">Subscriber = standard app access. Admin = operator console (separate from family roles).</p>
-          <label class="platform-admin-drawer__field">
-            <span>Platform role</span>
-            <select id="adminDrawerPlatformRole">
-              <option value="subscriber"${platRoleNorm === "subscriber" ? " selected" : ""}>Subscriber</option>
-              <option value="admin"${platRoleNorm === "admin" ? " selected" : ""}>Admin</option>
-            </select>
-          </label>
-          <button type="button" class="platform-admin-drawer__save" id="adminDrawerSavePlatformRole">Save platform role</button>
+          <div class="platform-admin-drawer__card">
+            <p class="platform-admin-drawer__kicker">Platform</p>
+            <label class="platform-admin-drawer__field">
+              <span>Role <span class="platform-admin-drawer__hint">Standard app access. Admin opens the operator console.</span></span>
+              <select id="adminDrawerPlatformRole">
+                <option value="subscriber"${platRoleNorm === "subscriber" ? " selected" : ""}>Subscriber</option>
+                <option value="admin"${platRoleNorm === "admin" ? " selected" : ""}>Admin</option>
+              </select>
+            </label>
+            <button type="button" class="platform-admin-drawer__save" id="adminDrawerSavePlatformRole">Save platform role</button>
+          </div>
         </section>
         <section class="platform-admin-drawer__section">
           <h4>Complimentary access</h4>
-          <p class="platform-admin-comp-status">${escapeHtml(complimentaryStatusText(u) || "No complimentary access.")}</p>
-          <p class="meta" style="margin:0 0 10px">Internal full Cash Forecast access. This is not a Stripe plan and does not create or cancel a subscription.</p>
-          ${complimentaryPaidWarningHtml(u)}
-          <label class="platform-admin-drawer__check">
-            <input type="checkbox" id="adminDrawerCompAccess" ${u.complimentary_access ? "checked" : ""} />
-            <span>Grant complimentary access</span>
-          </label>
-          <label class="platform-admin-drawer__field">
-            <span>Expiration date (optional)</span>
-            <input type="date" id="adminDrawerCompExpires" value="${escapeHtml(complimentaryExpiresInputValue(u.complimentary_access_expires_at))}" />
-          </label>
-          <p class="meta" style="margin:0 0 10px">Leave the date blank for access that does not expire.</p>
-          <button type="button" class="platform-admin-drawer__save" id="adminDrawerSaveCompAccess">Save complimentary access</button>
+          <div class="platform-admin-drawer__card">
+            <p class="platform-admin-comp-status">${escapeHtml(complimentarySummaryLabel(u))}</p>
+            <p class="platform-admin-drawer__note">Internal full Cash Forecast access. This is not a Stripe plan and does not create or cancel a subscription.</p>
+            ${complimentaryPaidWarningHtml(u)}
+            <label class="platform-admin-drawer__check">
+              <input type="checkbox" id="adminDrawerCompAccess" ${u.complimentary_access ? "checked" : ""} />
+              <span>Grant complimentary access</span>
+            </label>
+            <div id="adminDrawerCompExpiresWrap"${showCompExpires ? "" : " hidden"}>
+              <label class="platform-admin-drawer__field">
+                <span>Expiration date (optional)</span>
+                <input type="date" id="adminDrawerCompExpires" value="${escapeHtml(compExpiresValue)}" />
+              </label>
+              <p class="platform-admin-drawer__note">Leave blank for access that does not expire.</p>
+            </div>
+            <button type="button" class="platform-admin-drawer__save" id="adminDrawerSaveCompAccess">Save complimentary access</button>
+          </div>
         </section>
         <section class="platform-admin-drawer__section">
-          <h4>Password reset</h4>
-          <label class="platform-admin-drawer__field">
-            <span>New password</span>
-            <input type="password" id="adminDrawerPassword" autocomplete="new-password" minlength="8" />
-          </label>
-          <button type="button" class="platform-admin-drawer__save" id="adminDrawerSetPassword">Set password</button>
+          <h4>Reset password</h4>
+          <div class="platform-admin-drawer__card">
+            <label class="platform-admin-drawer__field">
+              <span>New password</span>
+              <input type="password" id="adminDrawerPassword" autocomplete="new-password" minlength="8" />
+            </label>
+            <button type="button" class="platform-admin-drawer__save" id="adminDrawerSetPassword">Set password</button>
+          </div>
         </section>
         <section class="platform-admin-drawer__section">
           <h4>Recent activity</h4>
-          <ul class="platform-admin-audit">${audit || "<li class='meta'>No audit entries yet.</li>"}</ul>
+          ${auditHtml}
         </section>
         <section class="platform-admin-drawer__danger">
           <h4>Danger zone</h4>
-          <p class="meta">Permanently delete this user and related records they created.</p>
+          <p>Delete this user and related records permanently.</p>
           <button type="button" id="adminDrawerDeleteUser">Delete user</button>
         </section>`;
     }
@@ -768,6 +829,16 @@
         } catch (e) {
           setCallout(callout, (e && e.message) || String(e), "error");
         }
+      });
+    }
+
+    const compToggle = document.getElementById("adminDrawerCompAccess");
+    const compExpiresWrap = document.getElementById("adminDrawerCompExpiresWrap");
+    if (compToggle && compExpiresWrap) {
+      compToggle.addEventListener("change", () => {
+        const expEl = document.getElementById("adminDrawerCompExpires");
+        const hasValue = !!(expEl && String(expEl.value || "").trim());
+        compExpiresWrap.hidden = !compToggle.checked && !hasValue;
       });
     }
 
