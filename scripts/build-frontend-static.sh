@@ -42,6 +42,12 @@ if [ "${OUT_DIR}" = "public-staging" ]; then
   fi
 fi
 
+if [ "${OUT_DIR}" = "public-staging" ]; then
+  export BW_STAGING_BUILD=1
+else
+  unset BW_STAGING_BUILD
+fi
+
 export API_BASE OUT_DIR
 python3 - <<'PY'
 import os
@@ -63,6 +69,36 @@ for path in root.rglob("*.html"):
     new_txt, n = assign_re.subn(rf'\1\2{api_base}\2', txt)
     if n:
         path.write_text(new_txt, encoding="utf-8")
+
+# Staging must not enter the production search index. Allow the crawl so
+# Google can see noindex. Do not point staging at the production sitemap.
+if os.environ.get("BW_STAGING_BUILD") == "1":
+    (root / "robots.txt").write_text(
+        "# Staging is not a public search site.\n"
+        "User-agent: *\n"
+        "Allow: /\n",
+        encoding="utf-8",
+    )
+    robots_re = re.compile(
+        r'(<meta\s+name="robots"\s+content=")[^"]*(")',
+        re.IGNORECASE,
+    )
+    for path in root.rglob("*.html"):
+        try:
+            txt = path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        new_txt, n = robots_re.subn(r"\1noindex, nofollow\2", txt)
+        if n == 0 and "<head>" in txt.lower():
+            new_txt = re.sub(
+                r"(<head[^>]*>)",
+                r'\1\n    <meta name="robots" content="noindex, nofollow" />',
+                txt,
+                count=1,
+                flags=re.IGNORECASE,
+            )
+        if new_txt != txt:
+            path.write_text(new_txt, encoding="utf-8")
 PY
 
 test -f "${OUT_DIR}/index.html" || (echo "::error::${OUT_DIR}/index.html missing — check frontend/ is committed" >&2 && exit 1)
