@@ -15785,7 +15785,16 @@ function dayHasPaycheckLikeIncome(rows) {
   return false;
 }
 
+function syncOpenAccountButton(accounts) {
+  if (!openAccountModalBtn) return;
+  const hasAccount = Array.isArray(accounts) && accounts.length > 0;
+  openAccountModalBtn.hidden = hasAccount;
+  const row = openAccountModalBtn.closest(".settings-actions-row");
+  if (row) row.hidden = hasAccount;
+}
+
 function renderAccountsList(accounts) {
+  syncOpenAccountButton(accounts);
   if (!accountsList) return;
   accountsList.innerHTML = "";
   if (!accounts || accounts.length === 0) {
