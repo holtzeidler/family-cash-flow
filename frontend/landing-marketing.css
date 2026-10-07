@@ -841,8 +841,26 @@ body.landing-page:not(.learn-page) .landing-bank-compare__support{
   }
 
   body.landing-page:not(.learn-page) .landing-hero{
-    padding-top: 40px;
+    padding-top: 52px;
+    padding-bottom: 16px;
     margin-bottom: calc(42px - var(--landing-section-gap));
+  }
+
+  body.landing-page:not(.learn-page) .landing-hero__stack,
+  body.landing-page:not(.learn-page) .landing-hero__inner{
+    gap: 52px;
+  }
+
+  body.landing-page:not(.learn-page) .landing-hero__text{
+    margin-bottom: 22px;
+  }
+
+  body.landing-page:not(.learn-page) .landing-hero__ctaGroup{
+    margin-top: 36px;
+  }
+
+  body.landing-page:not(.learn-page) .landing-hero__microtrust{
+    margin-top: 18px;
   }
 
   body.landing-page:not(.learn-page) .landing-shell > .landing-hero + .landing-bank-compare{
