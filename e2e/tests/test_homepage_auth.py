@@ -51,7 +51,7 @@ def _expect_logged_in(page) -> None:
     expect(page.locator("a.landing-hero__cta.home-cta--member")).to_have_attribute("href", MEMBER_CTA)
     expect(page.locator("a.landing-offer__cta.home-cta--member")).to_have_attribute("href", MEMBER_CTA)
     expect(page.locator("#homeForecastLink")).to_be_visible()
-    expect(page.locator("#homeForecastLink")).to_have_text("Forecast")
+    expect(page.locator("#homeForecastLink")).to_have_text("My Forecast")
     expect(page.locator("#homeForecastLink")).to_have_attribute("href", MEMBER_CTA)
     expect(page.locator("a.top-nav__learn", has_text="Learn more")).to_be_visible()
     expect(page.locator("a.top-nav__learn", has_text="Pricing")).to_be_visible()
