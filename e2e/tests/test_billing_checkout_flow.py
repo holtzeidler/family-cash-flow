@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+from datetime import datetime
 
 import pytest
 from playwright.sync_api import expect
@@ -75,12 +76,20 @@ def test_billing_checkout_select_then_continue(page, guard, seed):
     monthly = page.locator('input[data-lookup-key="cash_forecast_monthly"]')
     annual = page.locator('input[data-lookup-key="cash_forecast_annual"]')
     cta = page.locator("#checkout-and-portal-button")
-    expect(annual).to_be_checked()
-    expect(cta).to_have_text("Continue to checkout")
+    expect(annual).not_to_be_checked()
+    expect(monthly).not_to_be_checked()
+    expect(cta).to_have_attribute("aria-disabled", "true")
+    expect(page.locator("#checkoutReassure")).to_contain_text(
+        "You won't be charged for your subscription today."
+    )
+    expect(page.locator("#checkoutReassure")).to_contain_text("Your first charge is")
+    expect(page.locator("#checkoutReassure")).to_contain_text("when your free trial ends.")
     assert posts == []
 
     monthly.check()
     expect(monthly).to_be_checked()
+    expect(cta).not_to_have_attribute("aria-disabled", "true")
+    expect(cta).to_have_text("Continue to checkout")
     assert posts == []
 
     held = _hold_checkout(page)
@@ -136,10 +145,16 @@ def test_trial_ended_cards_use_secure_checkout_button(page, guard, seed):
     monthly = page.locator('input[data-lookup-key="cash_forecast_monthly"]')
     annual = page.locator('input[data-lookup-key="cash_forecast_annual"]')
     cta = page.locator("#checkout-and-portal-button")
-    expect(annual).to_be_checked()
-    expect(cta).to_have_text("Continue to checkout")
+    expect(annual).not_to_be_checked()
+    expect(monthly).not_to_be_checked()
+    expect(cta).to_have_attribute("aria-disabled", "true")
+    expect(page.locator("#checkoutReassure")).to_have_text(
+        "Payment is completed securely through Stripe."
+    )
     assert posts == []
 
+    annual.check()
+    expect(cta).to_have_text("Continue to checkout")
     held = _hold_checkout(page)
     cta.click()
     assert len(held) == 1
@@ -155,6 +170,36 @@ def test_trial_ended_cards_use_secure_checkout_button(page, guard, seed):
     assert _lookup_key(held[0].request) == MONTHLY
     _fail(held[0])
     expect(cta).to_have_text("Continue to checkout")
+    guard.assert_clean()
+
+
+@pytest.mark.smoke_title("Trial ending today is not billed at checkout")
+def test_checkout_names_same_day_trial_charge(page, guard, seed):
+    account = seed["trials"]["today"]
+    login(page, account["email"], account["password"])
+    response = page.goto(f"/checkout/?family_id={account['family_id']}")
+    assert_route_ok(response, "/checkout/")
+    reassure = page.locator("#checkoutReassure")
+    when = datetime.fromisoformat(account["trial_ends_at"].replace("Z", "+00:00")).astimezone()
+    charge_is_today = when.date() == datetime.now().astimezone().date()
+    expect(reassure).to_contain_text("when your free trial ends.")
+    if charge_is_today:
+        expect(reassure).to_contain_text("You won't be charged when you check out.")
+        expect(reassure).to_contain_text("Your first subscription charge is today at")
+        expect(reassure).not_to_contain_text("You won't be charged for your subscription today.")
+    else:
+        expect(reassure).to_contain_text("You won't be charged for your subscription today.")
+        expect(reassure).to_contain_text("Your first charge is")
+    expect(page.locator('input[name="billing_cycle"]:checked')).to_have_count(0)
+    expect(page.locator("#checkout-and-portal-button")).to_have_attribute("aria-disabled", "true")
+
+    annual = page.goto(
+        f"/checkout/?family_id={account['family_id']}&lookup_key={ANNUAL}"
+    )
+    assert_route_ok(annual, "/checkout/")
+    expect(page.locator('input[data-lookup-key="cash_forecast_annual"]')).to_be_checked()
+    expect(page.locator('input[data-lookup-key="cash_forecast_monthly"]')).not_to_be_checked()
+    expect(page.locator("#checkout-and-portal-button")).to_have_text("Continue to checkout")
     guard.assert_clean()
 
 
@@ -174,7 +219,11 @@ def test_standalone_checkout_page_still_starts_checkout(page, guard, seed):
     assert_route_ok(response, "/checkout/")
     expect(page.locator("#checkoutTitle")).to_have_text("Choose your billing option")
     expect(page.locator('input[data-lookup-key="cash_forecast_monthly"]')).to_be_checked()
+    expect(page.locator('input[data-lookup-key="cash_forecast_annual"]')).not_to_be_checked()
     expect(page.locator("#checkout-and-portal-button")).to_have_text("Continue to checkout")
+    expect(page.locator("#checkoutReassure")).to_contain_text(
+        "You won't be charged for your subscription today."
+    )
     assert held == []
 
     page.locator("#checkout-and-portal-button").click()

@@ -92,7 +92,6 @@
                       name="billing_cycle"
                       value="annual"
                       data-lookup-key="cash_forecast_annual"
-                      checked
                     />
                     <span class="checkout-billing__option-body">
                       <span class="checkout-billing__option-line">
@@ -124,7 +123,7 @@
               </fieldset>
 
               <!-- Stripe Price lookup_key — must match Prices in your Stripe Dashboard -->
-              <input type="hidden" id="lookupKey" name="lookup_key" value="cash_forecast_annual" />
+              <input type="hidden" id="lookupKey" name="lookup_key" value="" />
               <input type="hidden" id="familyId" name="family_id" value="" />
               <p id="checkoutStatus" class="checkout-form__status" hidden role="status" aria-live="polite"></p>
               <p id="checkoutErr" class="error checkout-form__error" hidden role="alert"></p>
@@ -469,6 +468,11 @@
               radio.checked = radio.value === "annual";
             });
             matched = true;
+          } else {
+            radios.forEach(function (radio) {
+              radio.checked = false;
+            });
+            if (lookupInput) lookupInput.value = "";
           }
         } catch (_) {}
         syncBilling();
@@ -530,9 +534,51 @@
             phase !== "expired" &&
             phase !== "active";
           defaultReassure = trialOpen
-            ? "No charge today. Your first payment is after your free trial ends. Payment is completed securely through Stripe."
+            ? trialCheckoutReassure(status)
             : "Payment is completed securely through Stripe.";
+          if (reassureEl) reassureEl.textContent = defaultReassure;
           refreshCheckoutReady();
+        }
+
+        function trialChargeInstant(status) {
+          var raw = String((status && (status.trial_ends_at || status.trial_ends_on)) || "").trim();
+          if (!raw) return null;
+          var when = /^\d{4}-\d{2}-\d{2}$/.test(raw) ? new Date(raw + "T12:00:00") : new Date(raw);
+          if (Number.isNaN(when.getTime()) || when.getTime() <= Date.now()) return null;
+          return when;
+        }
+
+        function trialCheckoutReassure(status) {
+          // Subscription Checkout and the 48-hour setup Checkout both schedule the
+          // first subscription charge at this trial end. Checkout itself does not charge it.
+          var when = trialChargeInstant(status);
+          var secure = " Payment is completed securely through Stripe.";
+          if (!when) {
+            return "You won't be charged for your subscription today. Your first charge is when your free trial ends." + secure;
+          }
+          var now = new Date();
+          var sameDay =
+            when.getFullYear() === now.getFullYear() &&
+            when.getMonth() === now.getMonth() &&
+            when.getDate() === now.getDate();
+          var time = when.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+          if (sameDay) {
+            return (
+              "You won't be charged when you check out. Your first subscription charge is today at " +
+              time +
+              ", when your free trial ends." +
+              secure
+            );
+          }
+          var date = when.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
+          return (
+            "You won't be charged for your subscription today. Your first charge is " +
+            date +
+            " at " +
+            time +
+            ", when your free trial ends." +
+            secure
+          );
         }
 
         function startCheckout() {
