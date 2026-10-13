@@ -8501,6 +8501,7 @@ function ensureBillingUpgradeModal() {
 }
 
 function openBillingUpgradeModal() {
+  if (billingPageIsShowingPlanChoices()) return;
   const wrap = ensureBillingUpgradeModal();
   const recovery = isBillingPaymentRecoveryState();
   const ended = !recovery && isFormerPaidSubscriptionEnded();
