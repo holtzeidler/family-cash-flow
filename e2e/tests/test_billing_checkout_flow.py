@@ -72,6 +72,8 @@ def test_billing_checkout_select_then_continue(page, guard, seed):
     link.click()
     page.wait_for_url(re.compile(r"/checkout/"))
     expect(page.locator("#checkoutTitle")).to_have_text("Choose your billing option")
+    expect(page.locator("#checkoutNavCta")).to_have_text("Back to Forecast")
+    expect(page.locator("#checkoutNavCta")).to_have_attribute("href", "/calendar/")
     expect(page.locator("#billingCardVerifyNotice")).to_contain_text("temporary $1 authorization")
     monthly = page.locator('input[data-lookup-key="cash_forecast_monthly"]')
     annual = page.locator('input[data-lookup-key="cash_forecast_annual"]')
@@ -170,6 +172,27 @@ def test_trial_ended_cards_use_secure_checkout_button(page, guard, seed):
     assert _lookup_key(held[0].request) == MONTHLY
     _fail(held[0])
     expect(cta).to_have_text("Continue to checkout")
+    guard.assert_clean()
+
+
+@pytest.mark.smoke_title("Expired trial can return to the forecast")
+def test_expired_trial_can_return_to_forecast(page, guard, seed):
+    guard.allow_blocked_writes = True
+    account = seed["viewonly"]
+    login(page, account["email"], account["password"])
+    response = page.goto(f"/checkout/?family_id={account['family_id']}")
+    assert_route_ok(response, "/checkout/")
+    back = page.locator("#checkoutNavCta")
+    expect(back).to_have_text("Back to Forecast")
+    expect(back).to_have_attribute("href", "/calendar/")
+    back.click()
+    page.wait_for_url(re.compile(r"/calendar"))
+    modal = page.locator("#billingUpgradeModal.modal-overlay--open")
+    if modal.count():
+        page.locator("#billingUpgradeDismiss").click()
+        expect(modal).to_be_hidden()
+    expect(page.locator(".cal-cell").first).to_be_visible()
+    assert "/checkout/" not in page.url
     guard.assert_clean()
 
 
