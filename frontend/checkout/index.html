@@ -58,7 +58,7 @@
             </div>
           </div>
           <nav class="plans-public-nav" aria-label="Site">
-            <a href="/settings/billing" class="plans-public-nav__link plans-public-nav__link--cta" id="checkoutNavCta">Back to Billing</a>
+            <a href="/calendar/" class="plans-public-nav__link plans-public-nav__link--cta" id="checkoutNavCta">Back to Forecast</a>
           </nav>
         </div>
       </div>
@@ -211,6 +211,10 @@
         function loginUrl() {
           var next = "/checkout/" + (window.location.search || "");
           return "/login.html?next=" + encodeURIComponent(next);
+        }
+
+        function forecastUrl() {
+          return "/calendar/";
         }
 
         function billingReturnUrl() {
@@ -390,8 +394,8 @@
 
         if (cta) {
           if (accessToken()) {
-            cta.textContent = "Back to Billing";
-            cta.href = billingReturnUrl();
+            cta.textContent = "Back to Forecast";
+            cta.href = forecastUrl();
           } else {
             cta.textContent = "Login";
             cta.href = loginUrl();
@@ -496,7 +500,7 @@
         function setCheckoutContext(fam) {
           if (!fam || !familyInput) return false;
           familyInput.value = String(fam.id);
-          if (cta && accessToken()) cta.href = billingReturnUrl();
+          if (cta && accessToken()) cta.href = forecastUrl();
           return true;
         }
 
