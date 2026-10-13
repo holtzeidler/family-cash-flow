@@ -38,7 +38,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=819" />
+    <link rel="stylesheet" href="../styles.css?v=822" />
   </head>
   <body>
     <h1 class="sr-only">Reports</h1>
@@ -912,6 +912,10 @@
                                     data-billing-lookup="cash_forecast_annual"
                                   >Annual — $59.99/year</button>
                                 </div>
+                                <p class="billing-card-verify" id="billingCardVerifyNotice">
+                                  <span class="billing-card-verify__icon" aria-hidden="true">i</span>
+                                  <span><strong>Card verification:</strong> You may see a temporary $1 authorization when Stripe verifies your card. This is not an additional charge and will disappear automatically.</span>
+                                </p>
                                 <button type="button" id="billingContinueCheckout" class="billing-action-btn billing-action-btn--primary billing-subscribe__checkout" disabled>Continue to secure checkout</button>
                                 <p id="billingCheckoutError" class="error billing-subscribe__error" hidden role="alert"></p>
                                 <p class="billing-subscribe__reassure" id="billingSubscribeReassure" hidden></p>

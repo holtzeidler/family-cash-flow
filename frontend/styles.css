@@ -12485,6 +12485,52 @@ label{
 .billing-subscribe--trial .billing-subscribe__checkout{
   margin-top: 16px;
 }
+.billing-card-verify{
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  max-width: 40rem;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(17, 24, 39, 0.06);
+  background: rgba(248, 250, 252, 0.92);
+  font-size: 0.8125rem;
+  font-weight: 450;
+  line-height: 1.45;
+  text-align: left;
+  color: var(--billing-muted);
+}
+.billing-card-verify__icon{
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.05rem;
+  height: 1.05rem;
+  margin-top: 1px;
+  border-radius: 999px;
+  border: 1px solid rgba(100, 116, 139, 0.35);
+  font-size: 0.68rem;
+  font-weight: 700;
+  font-style: italic;
+  font-family: Georgia, "Times New Roman", serif;
+  line-height: 1;
+  color: rgba(71, 85, 105, 0.8);
+}
+.billing-card-verify strong{
+  font-weight: 650;
+  color: rgba(51, 65, 85, 0.9);
+}
+.billing-subscribe--trial .billing-card-verify,
+.billing-subscribe--pricing-cards .billing-card-verify{
+  margin-top: 14px;
+}
+.billing-subscribe--pricing-cards .billing-card-verify{
+  max-width: none;
+}
 .billing-subscribe__error{
   margin: 8px 0 0;
   max-width: 42ch;
