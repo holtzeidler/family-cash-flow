@@ -9584,8 +9584,8 @@ function ensureBillingUpgradeModal() {
     '<p id="billingUpgradeBody" class="billing-upgrade__body">Your Cash Forecast is still here. Subscribe to update your balance, add transactions, and keep your forecast current.</p>' +
     '<div class="billing-upgrade__actions">' +
     '<button type="button" class="billing-upgrade__annual" id="billingUpgradePayment" hidden>Update payment method</button>' +
-    `<a class="billing-upgrade__annual" id="billingUpgradeAnnual" href="/checkout/">Continue for ${annual}${save}</a>` +
-    `<a class="billing-upgrade__monthly" id="billingUpgradeMonthly" href="/checkout/">Continue for ${monthly}</a>` +
+    `<a class="billing-upgrade__annual" id="billingUpgradeAnnual" href="/checkout/">Choose Annual — ${annual}${save}</a>` +
+    `<a class="billing-upgrade__monthly" id="billingUpgradeMonthly" href="/checkout/">Choose Monthly — ${monthly}</a>` +
     '<button type="button" class="billing-upgrade__dismiss" id="billingUpgradeDismiss">Not now</button>' +
     "</div></div>";
   document.body.appendChild(wrap);
