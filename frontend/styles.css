@@ -33952,3 +33952,57 @@ body.checkout-page .container > .grid{
   box-sizing: border-box;
 }
 
+/* Phone tap targets (~44px). The visible control stays the same size;
+   the extra area is a transparent hit slop, except where a larger box
+   would overlap a neighboring control. Desktop is unchanged. */
+@media (max-width: 720px){
+  body:not(.invite-page) .top-nav__actions > a.top-nav__logout,
+  body:not(.invite-page) .top-nav__actions > button.top-nav__logout,
+  body:not(.invite-page) .plans-public-nav__link--cta,
+  body:not(.invite-page) .contact-public-nav__link--cta,
+  body.login-page:not(.signup-page):not(.invite-page) .login-page__forgot-btn,
+  .help-center__lede a,
+  body.preview-page .bw-tour-tooltip__close{
+    position: relative;
+  }
+  body:not(.invite-page) .top-nav__actions > a.top-nav__logout::before,
+  body:not(.invite-page) .top-nav__actions > button.top-nav__logout::before,
+  body:not(.invite-page) .plans-public-nav__link--cta::before,
+  body:not(.invite-page) .contact-public-nav__link--cta::before,
+  body.login-page:not(.signup-page):not(.invite-page) .login-page__forgot-btn::before,
+  .password-field__toggle::before,
+  .help-center__lede a::before,
+  body.preview-page .bw-tour-tooltip__close::before{
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    transform: translate(-50%, -50%);
+  }
+
+  /* These sit too close to the control above for an overlapping hit slop. */
+  body.checkout-cancel-page .checkout-cancel__actions .checkout-success__calendar-link{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    min-height: 44px;
+    padding: 10px 12px;
+  }
+  .plan-card.plan-card--polished .plan-features--outcomes li:has(a){
+    align-items: center;
+  }
+  .plan-card.plan-card--polished .plan-features--outcomes li:has(a) .plan-features__icon{
+    margin-top: 0;
+  }
+  .plan-card.plan-card--polished .plan-features--outcomes a{
+    display: inline-flex;
+    align-items: center;
+    box-sizing: border-box;
+    min-height: 44px;
+    padding: 10px 0;
+  }
+}
+
