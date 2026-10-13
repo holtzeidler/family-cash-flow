@@ -774,6 +774,30 @@ if (flows.login) {
 }
 if (loginBtn) loginBtn.addEventListener("click", () => void doLogin());
 
+function initPasswordVisibilityToggles() {
+  document.querySelectorAll("[data-password-toggle]").forEach((btn) => {
+    if (btn.dataset.bwPwToggleInit === "1") return;
+    btn.dataset.bwPwToggleInit = "1";
+    const inputId = btn.getAttribute("aria-controls");
+    const input = inputId ? document.getElementById(inputId) : null;
+    if (!input) return;
+    btn.tabIndex = -1;
+    const showLabel = "Show password";
+    const hideLabel = "Hide password";
+    btn.addEventListener("mousedown", (event) => {
+      event.preventDefault();
+    });
+    btn.addEventListener("click", () => {
+      const visible = input.type === "text";
+      input.type = visible ? "password" : "text";
+      btn.setAttribute("aria-pressed", visible ? "false" : "true");
+      btn.setAttribute("aria-label", visible ? showLabel : hideLabel);
+      btn.title = visible ? showLabel : hideLabel;
+    });
+  });
+}
+initPasswordVisibilityToggles();
+
 wirePasswordResetUi();
 
 try {
