@@ -1,4 +1,4 @@
-"""Billing plan choice stays on the page until Continue to secure checkout."""
+"""New subscriptions choose a plan on the standalone checkout page."""
 
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ def _open_billing(page, email, password):
     login(page, email, password)
     response = page.goto("/settings/?section=billing")
     assert_route_ok(response, "/settings/?section=billing")
-    expect(page.locator("#billingContinueCheckout")).to_be_visible()
+    expect(page.locator("#billingChoosePlanLink")).to_be_visible()
 
 
 def _lookup_key(request):
@@ -60,92 +60,48 @@ def test_billing_checkout_select_then_continue(page, guard, seed):
         else None,
     )
     _open_billing(page, seed["active"]["email"], seed["active"]["password"])
-    annual = page.locator("#billingSubscribeAnnual")
-    monthly = page.locator("#billingSubscribeMonthly")
-    cta = page.locator("#billingContinueCheckout")
-
-    expect(page.locator("#billingSubscribeTitle")).to_have_text("Continue after your free trial")
+    link = page.locator("#billingChoosePlanLink")
+    expect(link).to_have_text("Choose a plan")
+    expect(link).to_have_attribute("href", re.compile(r"/checkout/\?family_id=\d+$"))
+    expect(page.locator("#billingSubscribeAnnual")).to_be_hidden()
+    expect(page.locator("#billingContinueCheckout")).to_be_hidden()
     expect(page.locator("#billingSubscribeReassure")).to_contain_text("No charge today")
-    expect(annual).to_have_attribute("aria-checked", "false")
-    expect(monthly).to_have_attribute("aria-checked", "false")
-    expect(cta).to_be_disabled()
-    expect(cta).to_have_text("Continue to secure checkout")
-
-    annual.click()
-    expect(annual).to_have_attribute("aria-checked", "true")
-    expect(monthly).to_have_attribute("aria-checked", "false")
-    expect(cta).to_be_enabled()
-    assert "/checkout" not in page.url
     assert posts == []
-    selected_shadow = annual.evaluate("el => getComputedStyle(el).boxShadow")
-    assert "11, 61, 46" in selected_shadow
 
-    monthly.click()
-    expect(monthly).to_have_attribute("aria-checked", "true")
-    expect(annual).to_have_attribute("aria-checked", "false")
+    link.click()
+    page.wait_for_url(re.compile(r"/checkout/"))
+    expect(page.locator("#checkoutTitle")).to_have_text("Choose your billing option")
+    expect(page.locator("#billingCardVerifyNotice")).to_contain_text("temporary $1 authorization")
+    monthly = page.locator('input[data-lookup-key="cash_forecast_monthly"]')
+    annual = page.locator('input[data-lookup-key="cash_forecast_annual"]')
+    cta = page.locator("#checkout-and-portal-button")
+    expect(annual).to_be_checked()
+    expect(cta).to_have_text("Continue to checkout")
+    assert posts == []
+
+    monthly.check()
+    expect(monthly).to_be_checked()
     assert posts == []
 
     held = _hold_checkout(page)
-    page.evaluate(
-        """() => {
-          const btn = document.getElementById("billingContinueCheckout");
-          btn.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-          btn.disabled = false;
-          btn.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-        }"""
-    )
-    expect(cta).to_have_text("Preparing checkout…")
+    cta.click()
+    expect(cta).to_contain_text("Redirecting to Stripe")
     assert len(held) == 1
     assert _lookup_key(held[0].request) == MONTHLY
 
     _fail(held[0])
-    expect(cta).to_have_text("Continue to secure checkout")
-    expect(cta).to_be_enabled()
-    expect(page.locator("#billingCheckoutError")).to_be_visible()
-    expect(page.locator("#billingCheckoutError")).to_have_text("Stripe could not start checkout.")
-    assert "/checkout" not in page.url
+    expect(cta).to_have_text("Continue to checkout")
+    expect(page.locator("#checkoutErr")).to_be_visible()
+    expect(page.locator("#checkoutErr")).to_have_text("Stripe could not start checkout.")
+    assert "/checkout/" in page.url
 
-    annual.click()
-    expect(annual).to_have_attribute("aria-checked", "true")
+    annual.check()
     held.clear()
     cta.click()
-    expect(cta).to_have_text("Preparing checkout…")
     assert len(held) == 1
     assert _lookup_key(held[0].request) == ANNUAL
     _fail(held[0], "Annual checkout failed.")
-    expect(cta).to_be_enabled()
-    expect(page.locator("#billingCheckoutError")).to_be_visible()
-    expect(page.locator("#billingCheckoutError")).to_have_text("Annual checkout failed.")
-
-    held.clear()
-    cta.click()
-    expect(cta).to_have_text("Preparing checkout…")
-    assert len(held) == 1
-    page.evaluate(
-        """() => window.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true }))"""
-    )
-    expect(cta).to_have_text("Continue to secure checkout")
-    expect(cta).to_be_enabled()
-    expect(annual).to_have_attribute("aria-checked", "true")
-    held[0].fulfill(
-        status=200,
-        content_type="application/json",
-        body=json.dumps({"url": "https://checkout.stripe.com/c/pay/cs_test_abandoned"}),
-    )
-    page.wait_for_timeout(400)
-    assert "stripe.com" not in page.url
-    assert "/checkout" not in page.url
-    expect(cta).to_have_text("Continue to secure checkout")
-
-    response = page.goto("/settings/?section=billing&checkout=canceled")
-    assert_route_ok(response, "/settings/?section=billing&checkout=canceled")
-    expect(page.locator("#bwToast")).to_have_text("Checkout canceled — you can subscribe anytime.")
-    expect(cta).to_have_text("Continue to secure checkout")
-    expect(cta).to_be_disabled()
-    expect(annual).to_have_attribute("aria-checked", "false")
-    annual.click()
-    expect(cta).to_be_enabled()
-    expect(cta).not_to_have_text("Preparing checkout…")
+    expect(page.locator("#checkoutErr")).to_have_text("Annual checkout failed.")
     guard.assert_clean()
 
 
@@ -168,38 +124,37 @@ def test_trial_ended_cards_use_secure_checkout_button(page, guard, seed):
         else None,
     )
     _open_billing(page, seed["viewonly"]["email"], seed["viewonly"]["password"])
-    annual = page.locator("#billingSubscribeAnnual")
-    monthly = page.locator("#billingSubscribeMonthly")
-    cta = page.locator("#billingContinueCheckout")
-    expect(annual).to_have_text("Choose annual")
-    expect(monthly).to_have_text("Choose monthly")
-    expect(cta).to_be_disabled()
+    link = page.locator("#billingChoosePlanLink")
+    expect(link).to_have_text("Choose a plan")
+    expect(page.locator("#billingSubscribeMonthly")).to_be_hidden()
+    expect(page.locator("#billingContinueCheckout")).to_be_hidden()
     _dismiss_upgrade_modal(page)
-
-    annual.click()
-    expect(annual).to_have_attribute("aria-checked", "true")
-    expect(page.locator(".billing-price-card--annual")).to_be_visible()
-    assert "/checkout" not in page.url
     assert posts == []
 
-    _dismiss_upgrade_modal(page)
+    link.click()
+    page.wait_for_url(re.compile(r"/checkout/"))
+    monthly = page.locator('input[data-lookup-key="cash_forecast_monthly"]')
+    annual = page.locator('input[data-lookup-key="cash_forecast_annual"]')
+    cta = page.locator("#checkout-and-portal-button")
+    expect(annual).to_be_checked()
+    expect(cta).to_have_text("Continue to checkout")
+    assert posts == []
+
     held = _hold_checkout(page)
     cta.click()
     assert len(held) == 1
     assert _lookup_key(held[0].request) == ANNUAL
     _fail(held[0])
-    expect(cta).to_be_enabled()
-    expect(page.locator("#billingCheckoutError")).to_be_visible()
+    expect(cta).to_have_text("Continue to checkout")
+    expect(page.locator("#checkoutErr")).to_be_visible()
 
-    _dismiss_upgrade_modal(page)
-    monthly.click()
+    monthly.check()
     held.clear()
-    _dismiss_upgrade_modal(page)
     cta.click()
     assert len(held) == 1
     assert _lookup_key(held[0].request) == MONTHLY
     _fail(held[0])
-    expect(cta).to_have_text("Continue to secure checkout")
+    expect(cta).to_have_text("Continue to checkout")
     guard.assert_clean()
 
 
@@ -233,5 +188,6 @@ def test_standalone_checkout_page_still_starts_checkout(page, guard, seed):
     )
     page.wait_for_url(re.compile(r"/settings/"))
     expect(page.locator("#bwToast")).to_have_text("Payment received — refreshing your billing status.")
-    expect(page.locator("#billingContinueCheckout")).to_have_text("Continue to secure checkout")
+    expect(page.locator("#billingChoosePlanLink")).to_have_text("Choose a plan")
+    expect(page.locator("#billingContinueCheckout")).to_be_hidden()
     guard.assert_clean()

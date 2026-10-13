@@ -35,7 +35,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=783" />
+    <link rel="stylesheet" href="../styles.css?v=823" />
   </head>
   <body class="checkout-page plans-page plans-page--polished">
     <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -128,6 +128,10 @@
               <input type="hidden" id="familyId" name="family_id" value="" />
               <p id="checkoutStatus" class="checkout-form__status" hidden role="status" aria-live="polite"></p>
               <p id="checkoutErr" class="error checkout-form__error" hidden role="alert"></p>
+              <p class="billing-card-verify" id="billingCardVerifyNotice">
+                <span class="billing-card-verify__icon" aria-hidden="true">i</span>
+                <span><strong>Card verification:</strong> You may see a temporary $1 authorization when Stripe verifies your card. This is not an additional charge and will disappear automatically.</span>
+              </p>
               <button id="checkout-and-portal-button" class="checkout-form__submit checkout-form__submit--busy" type="button" disabled aria-disabled="true" aria-busy="true">
                 <span class="checkout-form__spinner" aria-hidden="true"></span>
                 <span class="checkout-form__submit-label">Preparing secure checkout…</span>
@@ -184,6 +188,8 @@
         var reassureEl = document.getElementById("checkoutReassure");
         var cta = document.getElementById("checkoutNavCta");
         var checkoutReady = false;
+        var familyReady = false;
+        var accessDenied = false;
         var blockReason = "Preparing secure checkout…";
         var submitting = false;
         var defaultReassure = "Payment is completed securely through Stripe.";
@@ -320,6 +326,32 @@
           if (reassureEl) reassureEl.textContent = defaultReassure;
         }
 
+        function setCheckoutOfferVisible(show) {
+          var field = form ? form.querySelector(".checkout-billing") : null;
+          var notice = document.getElementById("billingCardVerifyNotice");
+          if (field) field.hidden = !show;
+          if (notice) notice.hidden = !show;
+        }
+
+        function selectedLookupKey() {
+          var selected = form ? form.querySelector('input[name="billing_cycle"]:checked') : null;
+          var key = selected ? selected.getAttribute("data-lookup-key") || "" : "";
+          if (key === "cash_forecast_monthly" || key === "cash_forecast_annual") return key;
+          return "";
+        }
+
+        function refreshCheckoutReady() {
+          if (accessDenied || !familyReady || submitting) return;
+          var key = selectedLookupKey();
+          if (!key) {
+            if (lookupInput) lookupInput.value = "";
+            setBlocked("Choose monthly or annual to continue.");
+            return;
+          }
+          if (lookupInput) lookupInput.value = key;
+          setReady();
+        }
+
         function fetchJson(url, options) {
           options = options || {};
           var ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
@@ -369,9 +401,12 @@
 
         if (!form || !btn) return;
 
-        // Do not check for the literal "__API_BASE__" here — the static build
-        // replaces that token everywhere in HTML, including this script.
+        // The static build replaces only the window.API_BASE assignment.
+        // A local or smoke page keeps the placeholder and uses this origin.
         var api = String(window.API_BASE || "").replace(/\/$/, "");
+        if (!api || api === "__API_BASE__" || api.indexOf("://") === -1) {
+          api = String(window.location.origin || "").replace(/\/$/, "");
+        }
         if (!api || api.indexOf("://") === -1) {
           setBlocked("Checkout is not configured (missing API_BASE on this site build).", {
             asError: true,
@@ -390,15 +425,16 @@
 
         function syncBilling() {
           var selected = form.querySelector('input[name="billing_cycle"]:checked');
-          if (!selected) return;
-          if (lookupInput) lookupInput.value = selected.getAttribute("data-lookup-key") || "";
+          if (selected && lookupInput) lookupInput.value = selected.getAttribute("data-lookup-key") || "";
           try {
-            localStorage.setItem(
-              FREQ_KEY,
-              selected.value === "annual" ? "yearly" : "monthly"
-            );
+            if (selected) {
+              localStorage.setItem(
+                FREQ_KEY,
+                selected.value === "annual" ? "yearly" : "monthly"
+              );
+            }
           } catch (_) {}
-          if (checkoutReady && !submitting) setButtonContent(checkoutCtaLabel());
+          if (familyReady && !submitting) refreshCheckoutReady();
         }
 
         radios.forEach(function (radio) {
@@ -418,15 +454,10 @@
               if (on) matched = true;
             });
             if (!matched) {
-              var lower = wantLookup.toLowerCase();
               radios.forEach(function (radio) {
-                var on =
-                  radio.value === "monthly"
-                    ? lower.indexOf("month") !== -1
-                    : lower.indexOf("annual") !== -1 || lower.indexOf("year") !== -1;
-                radio.checked = on;
-                if (on) matched = true;
+                radio.checked = false;
               });
+              if (lookupInput) lookupInput.value = "";
             }
           } else if (wantCycle === "monthly" || wantCycle === "month") {
             radios.forEach(function (radio) {
@@ -438,11 +469,6 @@
               radio.checked = radio.value === "annual";
             });
             matched = true;
-          }
-          if (wantLookup && !matched) {
-            radios.forEach(function (radio) {
-              radio.checked = radio.value === "annual";
-            });
           }
         } catch (_) {}
         syncBilling();
@@ -470,9 +496,53 @@
           return true;
         }
 
+        function applyBillingAccess(status) {
+          status = status || {};
+          var phase = String(status.phase || "").toLowerCase();
+          var subStatus = String(status.status || "").toLowerCase();
+          var stripeId = String(status.stripe_subscription_id || "").trim();
+          var complimentary = status.complimentary_access_active === true || phase === "complimentary";
+          var paymentIssue = !!(stripeId && (phase === "past_due" || subStatus === "past_due" || subStatus === "unpaid"));
+          var alreadySubscribed = phase === "active" || (!!stripeId && (subStatus === "active" || subStatus === "trialing"));
+          if (complimentary || paymentIssue || alreadySubscribed) {
+            accessDenied = true;
+            familyReady = false;
+            setCheckoutOfferVisible(false);
+            if (btn) btn.setAttribute("data-checkout-action", "billing");
+            setBlocked(
+              complimentary
+                ? "Complimentary access doesn’t need a subscription."
+                : paymentIssue
+                  ? "Update your payment method from Billing."
+                  : "This account already has a Cash Forecast subscription.",
+              { buttonLabel: "Back to Billing" }
+            );
+            return;
+          }
+          accessDenied = false;
+          familyReady = true;
+          setCheckoutOfferVisible(true);
+          if (btn) btn.removeAttribute("data-checkout-action");
+          var trialOpen =
+            status.in_app_trial === true &&
+            status.entitled === true &&
+            !stripeId &&
+            phase !== "expired" &&
+            phase !== "active";
+          defaultReassure = trialOpen
+            ? "No charge today. Your first payment is after your free trial ends. Payment is completed securely through Stripe."
+            : "Payment is completed securely through Stripe.";
+          refreshCheckoutReady();
+        }
+
         function startCheckout() {
-          if (submitting) return;
-          syncBilling();
+          if (submitting || accessDenied) return;
+          var key = selectedLookupKey();
+          if (!key) {
+            setBlocked("Choose monthly or annual to continue.");
+            return;
+          }
+          if (lookupInput) lookupInput.value = key;
           if (!familyInput || !String(familyInput.value || "").trim()) {
             setBlocked("Checkout isn’t ready. Refresh the page or return from Settings → Billing.", {
               asError: true,
@@ -537,6 +607,10 @@
             window.location.assign(loginUrl());
             return;
           }
+          if (btn.getAttribute("data-checkout-action") === "billing") {
+            window.location.assign(billingReturnUrl());
+            return;
+          }
           if (!checkoutReady) {
             setBlocked(blockReason || "Checkout isn’t ready yet.", { asError: true });
             return;
@@ -587,7 +661,19 @@
             }
             btn.removeAttribute("data-checkout-action");
             setCheckoutContext(fam);
-            setReady();
+            return fetchJson(api + "/api/families/" + encodeURIComponent(fam.id) + "/billing-status", {
+              method: "GET",
+              credentials: "include",
+              headers: authHeaders(),
+            }).then(function (statusResult) {
+              if (!statusResult.ok) {
+                throw new Error(
+                  formatDetail(statusResult.data && statusResult.data.detail) ||
+                    "Could not confirm billing status (" + statusResult.status + ")."
+                );
+              }
+              applyBillingAccess(statusResult.data || {});
+            });
           })
           .catch(function (err) {
             btn.removeAttribute("data-checkout-action");

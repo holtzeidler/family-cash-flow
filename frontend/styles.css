@@ -32231,6 +32231,9 @@ body.checkout-page .container > .grid{
   color: color-mix(in srgb, var(--accent) 72%, #334155 28%);
   background: color-mix(in srgb, var(--accent) 7%, #fff);
 }
+.checkout-form .billing-card-verify{
+  margin: 4px 0 14px;
+}
 .checkout-form__submit{
   width: 100%;
   display: inline-flex;
@@ -32283,6 +32286,7 @@ body.checkout-page .container > .grid{
   display: none !important;
 }
 .checkout-form__error{
+  display: block;
   margin: 10px 0 0;
   text-align: center;
 }

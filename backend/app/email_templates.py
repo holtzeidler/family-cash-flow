@@ -87,6 +87,17 @@ def billing_settings_url(app_url: str) -> str:
     return f"{site}{BILLING_SETTINGS_PATH}"
 
 
+CHECKOUT_PATH = "/checkout/"
+
+
+def checkout_plan_url(app_url: str) -> str:
+    """Standalone plan page for someone starting a subscription."""
+    site = _safe_http_url(app_url).rstrip("/")
+    if not site:
+        return ""
+    return f"{site}{CHECKOUT_PATH}"
+
+
 def format_trial_end_date(value: Optional[datetime]) -> str:
     """Friendly calendar date, e.g. October 12, 2026. Empty when unknown."""
     if value is None:
@@ -151,7 +162,7 @@ def build_trial_ending_email_content(
         heading="Your free trial ends in 3 days.",
         body=body,
         cta_label="Choose a plan",
-        cta_url=billing_settings_url(app_url),
+        cta_url=checkout_plan_url(app_url),
         support_line=(
             "If you don’t subscribe, you won’t be charged. Your account will become view-only "
             "when your trial ends, so you can still see the forecast you’ve already created."
@@ -174,7 +185,7 @@ def build_trial_expired_email_content(*, app_url: str) -> TransactionalEmailCont
         heading="Your forecast is still here.",
         body=body,
         cta_label="Choose a plan",
-        cta_url=billing_settings_url(app_url),
+        cta_url=checkout_plan_url(app_url),
         support_line=(
             "You weren't charged when your trial ended. Your forecast will remain available to view even if you don't subscribe."
         ),

@@ -24,7 +24,7 @@ def test_welcome_cta_rejects_non_http_base():
     assert welcome_forecast_cta_url("") == ""
 
 
-def test_trial_ending_email_is_unchanged():
+def test_trial_ending_email_opens_checkout():
     content = build_trial_ending_email_content(app_url="https://balancewhiz.com")
     assert content.cta_label == "Choose a plan"
-    assert "login.html" not in content.cta_url
+    assert content.cta_url == "https://balancewhiz.com/checkout/"

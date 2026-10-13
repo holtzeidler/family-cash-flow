@@ -276,6 +276,7 @@ def register_stripe_routes(
         from .billing_entitlement import (
             DEFER_TRIAL_CHECKOUT_PURPOSE,
             checkout_trial_end_needs_deferral,
+            complimentary_access_is_active,
             get_or_create_stripe_customer_for_user,
             trial_end_unix,
         )
@@ -288,6 +289,11 @@ def register_stripe_routes(
                 user = db.get(User, int(user_id))
                 if user is None:
                     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+                if complimentary_access_is_active(user):
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail="Complimentary access does not require a subscription.",
+                    )
 
                 existing = db.execute(
                     select(BillingSubscription).where(BillingSubscription.family_id == int(family_id))
