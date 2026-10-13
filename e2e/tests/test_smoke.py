@@ -210,8 +210,8 @@ def test_view_only_access(page, guard, seed):
         page.locator(f'.cal-cell[data-iso="{seed["income_date"]}"]').evaluate("el => el.click()")
     expect(upgrade).to_be_visible()
     expect(page.locator("#txAddModal.modal-overlay--open")).to_have_count(0)
-    expect(page.locator("#billingUpgradeMonthly")).to_contain_text("$5.99/month")
-    expect(page.locator("#billingUpgradeAnnual")).to_contain_text("$59.99/year")
+    expect(page.locator("#billingUpgradeMonthly")).to_have_text("Choose Monthly — $5.99/month")
+    expect(page.locator("#billingUpgradeAnnual")).to_have_text("Choose Annual — $59.99/year · Save 17%")
     expect(page.locator("#billingUpgradeAnnual")).to_have_attribute(
         "href", re.compile(r"/checkout/\?.*lookup_key=cash_forecast_annual")
     )
