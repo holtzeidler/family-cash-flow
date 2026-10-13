@@ -706,12 +706,12 @@ body.landing-page:not(.learn-page) .landing-hero-forecast{
 }
 
 body.landing-page:not(.learn-page) .landing-hero-cal.landing-hero-viz{
-  padding: 22px 22px 20px;
+  padding: 14px 22px 12px;
 }
 
 body.landing-page:not(.learn-page) .landing-hero-cal .landing-hero-viz__hdr{
-  margin-bottom: 0.7rem;
-  gap: 0.12rem;
+  margin-bottom: 0.45rem;
+  gap: 0.08rem;
 }
 
 body.landing-page:not(.learn-page) .landing-hero-cal .landing-hero-viz__sub{
@@ -722,19 +722,19 @@ body.landing-page:not(.learn-page) .landing-hero-cal .landing-hero-viz__week{
   width: 100%;
   max-width: none;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 0.4rem;
-  margin-bottom: 1.15rem;
+  gap: 0.32rem;
+  margin-bottom: 0.85rem;
   padding: 0;
 }
 
 body.landing-page:not(.learn-page) .landing-hero-cal .landing-hero-viz__cell{
-  padding: 14px 8px;
+  padding: 9px 8px;
   min-height: 0;
 }
 
 body.landing-page:not(.learn-page) .landing-hero-cal .landing-hero-viz__cell--pay,
 body.landing-page:not(.learn-page) .landing-hero-cal .landing-hero-viz__cell--watch{
-  padding: 14px 8px;
+  padding: 9px 8px;
 }
 
 body.landing-page:not(.learn-page) .landing-hero-cal .landing-hero-viz__d{
@@ -757,7 +757,7 @@ body.landing-page:not(.learn-page) .landing-hero-cal .landing-hero-viz__tag{
 
 body.landing-page:not(.learn-page) .landing-hero-cal__markers{
   width: 100%;
-  gap: 0.5rem;
+  gap: 0.38rem;
 }
 
 body.landing-page:not(.learn-page) .landing-hero-cal__marker{
@@ -770,18 +770,18 @@ body.landing-page:not(.learn-page) #landingHeroForecast .landing-hero-cal__insig
   width: 100%;
   max-width: none;
   box-sizing: border-box;
-  margin: 1.1rem 0 0;
-  padding: 0.6rem 0.75rem;
+  margin: 0.8rem 0 0;
+  padding: 0.42rem 0.75rem;
 }
 
 @media (max-width: 720px){
   body.landing-page:not(.learn-page) .landing-hero-cal.landing-hero-viz{
-    padding: 16px 12px 14px;
+    padding: 12px 12px 10px;
   }
   body.landing-page:not(.learn-page) .landing-hero-cal .landing-hero-viz__cell,
   body.landing-page:not(.learn-page) .landing-hero-cal .landing-hero-viz__cell--pay,
   body.landing-page:not(.learn-page) .landing-hero-cal .landing-hero-viz__cell--watch{
-    padding: 10px 3px;
+    padding: 7px 3px;
   }
 }
 
