@@ -10547,12 +10547,46 @@ function applyBillingNotes(kind) {
   list.innerHTML = items.map((item) => `<li>${escapeHtml(item)}</li>`).join("");
 }
 
+function billingChoosePlanHref() {
+  if (typeof checkoutUrlForActiveFamily === "function") {
+    const href = checkoutUrlForActiveFamily();
+    if (href) return href;
+  }
+  return "/checkout/";
+}
+
+function hideBillingChoosePlanLink() {
+  const link = document.getElementById("billingChoosePlanLink");
+  if (link) link.remove();
+}
+
+function showBillingChoosePlanLink() {
+  const wrap = document.getElementById("billingSubscribeChoices");
+  if (!wrap) return;
+  let link = document.getElementById("billingChoosePlanLink");
+  if (!link) {
+    link = document.createElement("a");
+    link.id = "billingChoosePlanLink";
+    link.className = "billing-action-btn billing-action-btn--primary billing-subscribe__checkout";
+    const checkout = document.getElementById("billingContinueCheckout");
+    if (checkout) checkout.insertAdjacentElement("beforebegin", link);
+    else wrap.appendChild(link);
+  }
+  link.href = billingChoosePlanHref();
+  link.textContent = "Choose a plan";
+  setBillingElHidden(link, false);
+  setBillingElHidden(wrap.querySelector(".billing-subscribe__options"), true);
+  setBillingElHidden(document.getElementById("billingContinueCheckout"), true);
+  setBillingElHidden(document.getElementById("billingCardVerifyNotice"), true);
+}
+
 function setBillingSubscribeChoices(choices) {
   const dom = billingDom();
   const wrap = dom.subscribe;
   if (!wrap) return;
   if (!choices) {
     billingCheckoutLookup = "";
+    hideBillingChoosePlanLink();
     setBillingElHidden(wrap, true);
     applySubscribeChoiceLayout(null);
     syncBillingPlanSelectionUi();
@@ -10609,6 +10643,7 @@ function setBillingSubscribeChoices(choices) {
     dom.subscribeReassure.textContent = reassure;
     setBillingElHidden(dom.subscribeReassure, !reassure);
   }
+  showBillingChoosePlanLink();
 }
 
 function setBillingActionTone(btn, tone) {

@@ -161,6 +161,17 @@ function resolveTrialStatusNotice(status, now = new Date()) {
   return null;
 }
 
+function trialChoosePlanHref() {
+  let familyId = "";
+  try {
+    if (typeof state !== "undefined" && state && state.activeFamilyId) {
+      familyId = String(state.activeFamilyId).trim();
+    }
+  } catch (_) {}
+  if (!familyId) return "/checkout/";
+  return "/checkout/?family_id=" + encodeURIComponent(familyId);
+}
+
 function syncTrialStatusNotice(status) {
   const nav = document.querySelector("body[data-bw-view] .container > .top-nav");
   if (!nav) return;
@@ -198,7 +209,7 @@ function syncTrialStatusNotice(status) {
       link.classList.add("trial-status-notice__action--button");
     }
     if (model.cta === "prominent") link.classList.add("trial-status-notice__action--prominent");
-    link.href = "/settings/?section=billing";
+    link.href = trialChoosePlanHref();
     link.textContent = model.action;
     line.appendChild(link);
   }

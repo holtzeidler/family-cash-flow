@@ -57,7 +57,7 @@ def test_trial_banner_preview_switches_states_without_api(page, guard):
     expect(notice).to_have_attribute("data-trial-cta", "button")
     expect(notice.locator("a")).to_have_class(re.compile(r"trial-status-notice__action--button"))
     expect(notice.locator("a")).not_to_have_class(re.compile(r"action--prominent"))
-    expect(notice.locator("a")).to_have_attribute("href", "/settings/?section=billing")
+    expect(notice.locator("a")).to_have_attribute("href", "/checkout/")
     soon = _line_background(notice)
     assert soon != neutral
 

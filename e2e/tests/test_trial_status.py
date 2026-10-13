@@ -75,7 +75,7 @@ def _shots(page, name):
 
 
 def _finish(page, guard):
-    assert "/checkout" not in page.url
+    assert "checkout.stripe.com" not in page.url
     assert_no_horizontal_overflow(page)
     guard.assert_clean()
 
@@ -83,7 +83,7 @@ def _finish(page, guard):
 def _assert_text_link(notice):
     link = notice.locator("a.trial-status-notice__action")
     expect(link).to_have_text("Choose a plan")
-    expect(link).to_have_attribute("href", "/settings/?section=billing")
+    expect(link).to_have_attribute("href", re.compile(r"^/checkout/(\?family_id=\d+)?$"))
     expect(notice).to_have_attribute("data-trial-cta", "link")
     expect(link).not_to_have_class(re.compile(r"trial-status-notice__action--button"))
 
@@ -91,7 +91,7 @@ def _assert_text_link(notice):
 def _assert_filled_cta(notice, prominent=False):
     link = notice.locator("a.trial-status-notice__action--button")
     expect(link).to_have_text("Choose a plan")
-    expect(link).to_have_attribute("href", "/settings/?section=billing")
+    expect(link).to_have_attribute("href", re.compile(r"^/checkout/(\?family_id=\d+)?$"))
     expect(notice).to_have_attribute("data-trial-cta", "prominent" if prominent else "button")
     if prominent:
         expect(link).to_have_class(re.compile(r"trial-status-notice__action--prominent"))
@@ -101,10 +101,11 @@ def _assert_filled_cta(notice, prominent=False):
 
 def _open_billing(page):
     page.locator(f"{NOTICE} a.trial-status-notice__action").click()
-    page.wait_for_url(re.compile(r"/settings"))
-    expect(page.locator("#billingSubscribeMonthly")).to_be_visible()
-    expect(page.locator("#billingSubscribeAnnual")).to_be_visible()
-    assert "/checkout" not in page.url
+    page.wait_for_url(re.compile(r"/checkout/"))
+    expect(page.locator("#checkoutTitle")).to_have_text("Choose your billing option")
+    expect(page.locator('input[data-lookup-key="cash_forecast_monthly"]')).to_be_visible()
+    expect(page.locator('input[data-lookup-key="cash_forecast_annual"]')).to_be_visible()
+    expect(page.locator("#billingCardVerifyNotice")).to_be_visible()
 
 
 @pytest.mark.smoke_title("Trial status with more than 3 days left")
@@ -336,11 +337,12 @@ def test_billing_layout_matches_settings_measure(page, guard, seed):
     _login(page, seed["active"]["email"], seed["active"]["password"])
     page.set_viewport_size({"width": 1440, "height": 900})
     page.goto("/settings/billing/")
-    annual = page.locator("#billingSubscribeAnnual")
-    monthly = page.locator("#billingSubscribeMonthly")
-    expect(annual).to_be_visible()
-    expect(monthly).to_be_visible()
-    expect(annual).to_contain_text("Save 17%")
+    link = page.locator("#billingChoosePlanLink")
+    expect(link).to_be_visible()
+    expect(link).to_have_text("Choose a plan")
+    expect(page.locator("#billingSubscribeAnnual")).to_be_hidden()
+    expect(page.locator("#billingSubscribeMonthly")).to_be_hidden()
+    expect(page.locator("#billingContinueCheckout")).to_be_hidden()
     expect(page.locator(".billing-page__title")).to_have_text("Billing")
     expect(page.locator(".billing-page__lede")).to_have_text("Subscription status and payment actions.")
     callout = page.locator("#billingCalloutText")
@@ -356,9 +358,7 @@ def test_billing_layout_matches_settings_measure(page, guard, seed):
     sidebar = _box(page.locator(".sidebar"))
     title = _box(page.locator(".billing-page__title"))
     primary = _box(page.locator(".billing-primary"))
-    annual_box = _box(annual)
-    monthly_box = _box(monthly)
-    options = _box(page.locator(".billing-subscribe__options"))
+    link_box = _box(link)
 
     assert panel["width"] <= 800 + 1
     assert billing["width"] <= 800 + 1
@@ -377,26 +377,17 @@ def test_billing_layout_matches_settings_measure(page, guard, seed):
     assert hub_paint["shadow"] in ("none", "")
     assert hub_paint["radius"] in ("0px", "0")
     assert overview_bg not in ("rgba(0, 0, 0, 0)", "transparent")
-    assert abs(annual_box["y"] - monthly_box["y"]) < 6
-    assert annual_box["width"] + monthly_box["width"] >= options["width"] * 0.75
+    assert primary["x"] - 2 <= link_box["x"]
+    assert link_box["x"] + link_box["width"] <= primary["x"] + primary["width"] + 2
     spacing = page.locator(".billing-overview").evaluate(
         """el => {
           const summary = el.querySelector(".billing-summary");
-          const support = el.querySelector(".billing-subscribe__support");
-          const choices = el.querySelector(".billing-subscribe__options");
-          const note = el.querySelector(".billing-subscribe__reassure");
-          const annual = document.getElementById("billingSubscribeAnnual");
           const pad = getComputedStyle(el);
           return {
             padTop: parseFloat(pad.paddingTop),
             padBottom: parseFloat(pad.paddingBottom),
             padLeft: parseFloat(pad.paddingLeft),
             summaryGap: summary ? parseFloat(getComputedStyle(summary).rowGap || getComputedStyle(summary).gap) : 0,
-            supportGap: support ? parseFloat(getComputedStyle(support).marginTop) : 0,
-            choicesGap: choices ? parseFloat(getComputedStyle(choices).marginTop) : 0,
-            noteGap: note ? parseFloat(getComputedStyle(note).marginTop) : 0,
-            noteBottom: note ? parseFloat(getComputedStyle(note).marginBottom) : 0,
-            annualH: annual ? annual.getBoundingClientRect().height : 0,
           };
         }"""
     )
@@ -404,17 +395,9 @@ def test_billing_layout_matches_settings_measure(page, guard, seed):
     assert 32 <= spacing["padBottom"] <= 36
     assert 28 <= spacing["padLeft"] <= 32
     assert 24 <= spacing["summaryGap"] <= 28
-    assert 10 <= spacing["supportGap"] <= 12
-    assert 22 <= spacing["choicesGap"] <= 24
-    assert 20 <= spacing["noteGap"] <= 24
-    assert 6 <= spacing["noteBottom"] <= 10
-    assert 76 <= spacing["annualH"] <= 84
 
     page.set_viewport_size({"width": 700, "height": 900})
-    expect(annual).to_be_visible()
-    annual_box = _box(annual)
-    monthly_box = _box(monthly)
-    assert monthly_box["y"] >= annual_box["y"] + annual_box["height"] - 8
+    expect(link).to_be_visible()
     _finish(page, guard)
 
 
