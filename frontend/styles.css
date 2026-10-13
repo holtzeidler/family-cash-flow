@@ -16879,6 +16879,16 @@ body.login-page:not(.signup-page) #loginSectionBody #pwResetNew:focus-visible,
 body.login-page:not(.signup-page) #loginSectionBody #pwResetConfirm:focus-visible{
   outline: none;
 }
+body.login-page:not(.signup-page) #loginSectionBody .password-field > #password,
+body.login-page:not(.signup-page) #loginSectionBody .password-field > #pwResetNew,
+body.login-page:not(.signup-page) #loginSectionBody .password-field > #pwResetConfirm{
+  padding-right: 2.75rem;
+}
+body.login-page:not(.signup-page) #loginSectionBody .password-field__toggle{
+  width: 30px;
+  height: 30px;
+  right: 4px;
+}
 body.login-page:not(.signup-page) #loginSectionBody{
   text-align: left;
 }
