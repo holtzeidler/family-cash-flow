@@ -91,6 +91,7 @@ def main() -> None:
                     transaction_id: "in_1AaBbCcDdEeFfGgHh",
                     plan: "annual",
                   });
+                  const storedBeforeDedup = localStorage.getItem("bw_ga_purchase_in_1AaBbCcDdEeFfGgHh");
                   const clickCalls = [];
                   const realClick = ga.noteSignUpClick;
                   ga.noteSignUpClick = function () { clickCalls.push("click"); return false; };
@@ -121,6 +122,29 @@ def main() -> None:
                       email: "person@example.com",
                     })
                   );
+                  const paidEvents = [];
+                  ga.track = function (name, params) {
+                    paidEvents.push({ name: name, params: params });
+                    return true;
+                  };
+                  const paid = {
+                    transaction_id: "in_1AaBbCcDdEeFfGgHh",
+                    plan: "monthly",
+                    value: 99999,
+                    email: "person@example.com",
+                    user_id: 42,
+                  };
+                  localStorage.removeItem("bw_ga_purchase_" + paid.transaction_id);
+                  localStorage.removeItem("bw_ga_subscription_" + paid.transaction_id);
+                  const purchaseOnce = ga.notePurchase(paid);
+                  const purchaseTwice = ga.notePurchase(paid);
+                  const subscriptionOnce = ga.noteSubscriptionStarted(paid);
+                  const subscriptionTwice = ga.noteSubscriptionStarted(paid);
+                  const otherInvoice = ga.notePurchase({
+                    transaction_id: "in_2RenewalInvoiceAbcdef",
+                    plan: "monthly",
+                    email: "person@example.com",
+                  });
                   return {
                     host: location.hostname,
                     production: ga.isProductionHost(location.hostname),
@@ -135,7 +159,7 @@ def main() -> None:
                     sent,
                     calls,
                     again,
-                    stored: localStorage.getItem("bw_ga_purchase_in_1AaBbCcDdEeFfGgHh"),
+                    stored: storedBeforeDedup,
                     signUp: ga.signUpParams(),
                     trial: ga.trialStartedParams(),
                     onboarding: ga.onboardingParams(),
@@ -147,6 +171,14 @@ def main() -> None:
                     tracked,
                     sub,
                     subCalls,
+                    purchaseOnce,
+                    purchaseTwice,
+                    subscriptionOnce,
+                    subscriptionTwice,
+                    otherInvoice,
+                    paidEvents,
+                    purchaseStored: localStorage.getItem("bw_ga_purchase_in_1AaBbCcDdEeFfGgHh"),
+                    subscriptionStored: localStorage.getItem("bw_ga_subscription_in_1AaBbCcDdEeFfGgHh"),
                   };
                 }"""
             )
@@ -168,11 +200,11 @@ def main() -> None:
         raise SystemExit("host gate failed")
     if result["gtag"] != "undefined" or result["googleScript"]:
         raise SystemExit("gtag loaded off production")
-    if result["monthly"]["value"] != 5.99 or "email" in result["monthly"]:
+    if result["monthly"]["value"] != 5.99 or "email" in result["monthly"] or "transaction_id" in result["monthly"]:
         raise SystemExit("purchase payload leaked a non-public value")
     if result["session"] is not None or result["staging"] is not None or result["calls"][0][0] != "event":
         raise SystemExit("event gate failed")
-    if result["sent"]["transaction_id"] != "in_1AaBbCcDdEeFfGgHh" or result["sent"]["value"] != 5.99:
+    if "transaction_id" in result["sent"] or result["sent"]["value"] != 5.99:
         raise SystemExit("purchase dispatch changed the public price")
     if "email" in result["sent"] or result["again"] or result["stored"]:
         raise SystemExit("staging host recorded a purchase")
@@ -186,8 +218,26 @@ def main() -> None:
         raise SystemExit("signup click was not limited to one event")
     if result["tracked"][0][0] != "sign_up_click" or result["tracked"][0][1] != {"method": "cta"}:
         raise SystemExit("signup click sent more than the click method")
-    if result["sub"]["value"] != 5.99 or result["subCalls"][0][1] != "subscription_started" or "email" in result["sub"]:
+    if result["sub"]["value"] != 5.99 or "transaction_id" in result["sub"] or result["subCalls"][0][1] != "subscription_started" or "email" in result["sub"]:
         raise SystemExit("subscription event was not limited to the public plan")
+    leaked = json.dumps(result["paidEvents"])
+    if (
+        result["purchaseOnce"] is not True
+        or result["purchaseTwice"] is not False
+        or result["subscriptionOnce"] is not True
+        or result["subscriptionTwice"] is not False
+        or result["otherInvoice"] is not True
+        or result["purchaseStored"] != "1"
+        or result["subscriptionStored"] != "1"
+        or "in_" in leaked
+        or "@" in leaked
+        or "user_id" in leaked
+        or "99999" in leaked
+    ):
+        raise SystemExit("paid events were repeated or included private data")
+    names = [event["name"] for event in result["paidEvents"]]
+    if names != ["purchase", "subscription_started", "purchase"]:
+        raise SystemExit("paid events were not one purchase and one subscription per invoice")
     print("ga client checks passed")
 
 
