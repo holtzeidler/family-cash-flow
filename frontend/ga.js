@@ -5,9 +5,11 @@
    the page address and the referrer.
    Events: sign_up_click, sign_up, trial_started, onboarding_completed,
    purchase, subscription_started.
-   purchase and subscription_started use the public plan price and a Stripe
-   invoice id. Names, email addresses, balances, and amounts the user entered
-   are not sent. Signup clicks record only that a signup link was used.
+   purchase and subscription_started use the public plan price only.
+   Stripe invoice ids stay in this browser so the same payment is sent once.
+   They are not included in the event. Names, email addresses, account ids,
+   balances, and amounts the user entered are not sent. Signup clicks record
+   only that a signup link was used.
    Public prices must stay in sync with backend/app/billing_catalog.py. */
 (function (root) {
   var MEASUREMENT_ID = "G-G8J8QHVMHW";
@@ -86,15 +88,19 @@
     return { method: "account_setup" };
   }
 
-  function purchaseParams(record) {
-    if (!record || typeof record !== "object") return null;
+  function paidInvoiceId(record) {
+    if (!record || typeof record !== "object") return "";
     var id = String(record.transaction_id || "");
-    if (!/^in_[A-Za-z0-9]{8,32}$/.test(id)) return null;
+    if (!/^in_[A-Za-z0-9]{8,32}$/.test(id)) return "";
+    return id;
+  }
+
+  function purchaseParams(record) {
+    if (!paidInvoiceId(record)) return null;
     var plan = record.plan === "annual" ? "annual" : record.plan === "monthly" ? "monthly" : "";
     if (!plan) return null;
     var price = PUBLIC_PRICE[plan];
     return {
-      transaction_id: id,
       value: price,
       currency: "USD",
       items: [
@@ -109,12 +115,39 @@
     };
   }
 
+  var ITEM_KEYS = { item_id: true, item_name: true, item_category: true, price: true, quantity: true };
+
+  function privateText(value) {
+    return typeof value === "string" && (value.indexOf("@") !== -1 || /^in_/.test(value));
+  }
+
+  function cleanItems(items) {
+    if (!Array.isArray(items)) return null;
+    var cleaned = [];
+    items.forEach(function (item) {
+      if (!item || typeof item !== "object") return;
+      var row = {};
+      Object.keys(ITEM_KEYS).forEach(function (key) {
+        if (item[key] == null || privateText(item[key])) return;
+        row[key] = item[key];
+      });
+      if (Object.keys(row).length) cleaned.push(row);
+    });
+    return cleaned;
+  }
+
   function safeParams(params) {
-    var allowed = { method: true, transaction_id: true, value: true, currency: true, items: true };
+    var allowed = { method: true, value: true, currency: true, items: true };
     var safe = {};
     if (!params || typeof params !== "object") return safe;
     Object.keys(allowed).forEach(function (key) {
-      if (params[key] != null) safe[key] = params[key];
+      if (params[key] == null || privateText(params[key])) return;
+      if (key === "items") {
+        var items = cleanItems(params[key]);
+        if (items && items.length) safe.items = items;
+        return;
+      }
+      safe[key] = params[key];
     });
     return safe;
   }
@@ -135,7 +168,7 @@
     try {
       if (storage && storage.getItem(key) === "1") return false;
     } catch (err) {}
-    if (!track(name, params)) return false;
+    if (!root.bwGa.track(name, params)) return false;
     try {
       if (storage) storage.setItem(key, "1");
     } catch (err) {}
@@ -177,14 +210,16 @@
       return trackOnce(browserStorage(false), "bw_ga_onboarding_completed", "onboarding_completed", onboardingParams());
     },
     notePurchase: function (record) {
+      var id = paidInvoiceId(record);
       var params = purchaseParams(record);
-      if (!params) return false;
-      return trackOnce(browserStorage(true), "bw_ga_purchase_" + params.transaction_id, "purchase", params);
+      if (!id || !params) return false;
+      return root.bwGa.trackOnce(browserStorage(true), "bw_ga_purchase_" + id, "purchase", params);
     },
     noteSubscriptionStarted: function (record) {
+      var id = paidInvoiceId(record);
       var params = purchaseParams(record);
-      if (!params) return false;
-      return trackOnce(browserStorage(true), "bw_ga_subscription_" + params.transaction_id, "subscription_started", params);
+      if (!id || !params) return false;
+      return root.bwGa.trackOnce(browserStorage(true), "bw_ga_subscription_" + id, "subscription_started", params);
     },
   };
 
