@@ -3560,9 +3560,10 @@ async function doSignup() {
       return;
     }
     try {
-      if (window.bwGa && typeof window.bwGa.noteSignUp === "function") window.bwGa.noteSignUp();
+      const createdUserId = reg.data && reg.data.user ? reg.data.user.id : null;
+      if (window.bwGa && typeof window.bwGa.noteSignUp === "function") window.bwGa.noteSignUp(createdUserId);
       if (reg.data && reg.data.trial_started === true && typeof window.bwGa.noteTrialStarted === "function") {
-        window.bwGa.noteTrialStarted();
+        window.bwGa.noteTrialStarted(createdUserId);
       }
     } catch (_) {}
     try {

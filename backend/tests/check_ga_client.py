@@ -91,6 +91,36 @@ def main() -> None:
                     transaction_id: "in_1AaBbCcDdEeFfGgHh",
                     plan: "annual",
                   });
+                  const clickCalls = [];
+                  const realClick = ga.noteSignUpClick;
+                  ga.noteSignUpClick = function () { clickCalls.push("click"); return false; };
+                  document.addEventListener("click", function (event) { event.preventDefault(); }, true);
+                  const signupLink = document.createElement("a");
+                  signupLink.href = "/account-setup/?fresh=1&email=person@example.com&token=secret";
+                  signupLink.textContent = "See my future balance";
+                  document.body.appendChild(signupLink);
+                  signupLink.click();
+                  const otherLink = document.createElement("a");
+                  otherLink.href = "/plans/?email=person@example.com";
+                  document.body.appendChild(otherLink);
+                  otherLink.click();
+                  ga.noteSignUpClick = realClick;
+                  const tracked = [];
+                  ga.track = function (name, params) { tracked.push([name, params]); return true; };
+                  const firstClick = ga.noteSignUpClick();
+                  const secondClick = ga.noteSignUpClick();
+                  const subCalls = [];
+                  const sub = ga.dispatch(
+                    "balancewhiz.com",
+                    function () { subCalls.push(Array.from(arguments)); },
+                    "subscription_started",
+                    ga.purchaseParams({
+                      transaction_id: "in_1AaBbCcDdEeFfGgHh",
+                      plan: "monthly",
+                      value: 99999,
+                      email: "person@example.com",
+                    })
+                  );
                   return {
                     host: location.hostname,
                     production: ga.isProductionHost(location.hostname),
@@ -109,6 +139,14 @@ def main() -> None:
                     signUp: ga.signUpParams(),
                     trial: ga.trialStartedParams(),
                     onboarding: ga.onboardingParams(),
+                    signupHref: ga.isSignupHref("/account-setup/?fresh=1&email=person@example.com&token=secret"),
+                    queryHref: ga.isSignupHref("https://balancewhiz.com/plans/?email=person@example.com"),
+                    clickCalls,
+                    firstClick,
+                    secondClick,
+                    tracked,
+                    sub,
+                    subCalls,
                   };
                 }"""
             )
@@ -142,6 +180,14 @@ def main() -> None:
         raise SystemExit("page hit kept a query or hash")
     if result["hit"]["page_referrer"] != "https://example.com/reset":
         raise SystemExit("referrer kept a query or hash")
+    if not result["signupHref"] or result["queryHref"] or result["clickCalls"] != ["click"]:
+        raise SystemExit("signup click tracking did not stay on the signup link")
+    if result["firstClick"] is not True or result["secondClick"] is not False or len(result["tracked"]) != 1:
+        raise SystemExit("signup click was not limited to one event")
+    if result["tracked"][0][0] != "sign_up_click" or result["tracked"][0][1] != {"method": "cta"}:
+        raise SystemExit("signup click sent more than the click method")
+    if result["sub"]["value"] != 5.99 or result["subCalls"][0][1] != "subscription_started" or "email" in result["sub"]:
+        raise SystemExit("subscription event was not limited to the public plan")
     print("ga client checks passed")
 
 

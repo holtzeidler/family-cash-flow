@@ -10298,9 +10298,11 @@ async function fetchBillingStatus({ force = false } = {}) {
 
 function maybeNoteAnalyticsPurchase(data) {
   try {
-    const purchase = data && data.analytics_purchase;
-    if (!purchase || !window.bwGa || typeof window.bwGa.notePurchase !== "function") return;
-    window.bwGa.notePurchase(purchase);
+    if (!data || data.complimentary_access_active) return;
+    const purchase = data.analytics_purchase;
+    if (!purchase || !window.bwGa) return;
+    if (typeof window.bwGa.notePurchase === "function") window.bwGa.notePurchase(purchase);
+    if (typeof window.bwGa.noteSubscriptionStarted === "function") window.bwGa.noteSubscriptionStarted(purchase);
   } catch (_) {}
 }
 

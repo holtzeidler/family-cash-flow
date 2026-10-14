@@ -212,6 +212,30 @@ def test_annual_invoice_stores_the_annual_public_price():
         db.close()
 
 
+def test_complimentary_access_is_not_reported_as_a_paid_subscription():
+    db = SessionLocal()
+    try:
+        family = _family(db)
+        member = db.execute(
+            select(FamilyMember).where(FamilyMember.family_id == family.id)
+        ).scalar_one()
+        owner = db.get(User, int(member.user_id))
+        owner.complimentary_access = True
+        db.commit()
+        saved = record_first_paid_subscription_invoice(
+            db,
+            family_id=family.id,
+            lookup_key=LOOKUP_MONTHLY,
+            invoice=_invoice(amount_paid=599),
+        )
+        assert saved is True
+        payload = family_billing_payload(db, family_id=family.id)
+        assert payload["complimentary_access_active"] is True
+        assert "analytics_purchase" not in payload
+    finally:
+        db.close()
+
+
 def test_register_reports_trial_started_without_adding_it_to_analytics():
     with TestClient(app) as client:
         res = client.post(
