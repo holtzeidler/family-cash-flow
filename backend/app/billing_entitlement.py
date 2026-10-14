@@ -17,12 +17,19 @@ from .billing_catalog import (
     PRODUCT_CODE,
     PRODUCT_NAME,
     TRIAL_DAYS,
+    price_for_lookup,
 )
 
 logger = logging.getLogger("balancewhiz.billing")
 
 # Families with these Stripe statuses still get product access.
 ENTITLED_STATUSES = frozenset({"active", "trialing", "past_due"})
+
+# First paid Stripe invoice for a family. Stored on lifecycle_email_sends so
+# existing databases do not need a new column. Email jobs filter by their own
+# kind values and never send this row.
+ANALYTICS_PURCHASE_KIND = "analytics_purchase"
+_PAID_INVOICE_REASONS = frozenset({"subscription_create", "subscription_cycle"})
 
 
 def _utc_now() -> datetime:
@@ -620,6 +627,132 @@ def _billing_not_entitled_http(phase: str = "expired"):
     )
 
 
+def _paid_invoice_id(value: Any) -> str:
+    invoice_id = str(value or "").strip()
+    if not invoice_id.startswith("in_"):
+        return ""
+    rest = invoice_id[3:]
+    if len(rest) < 8 or len(rest) > 32 or not rest.isalnum():
+        return ""
+    return invoice_id
+
+
+def _lookup_from_invoice(invoice: Any, fallback: Optional[str]) -> Optional[str]:
+    lines = _obj_get(invoice, "lines")
+    data = _obj_get(lines, "data") if lines is not None else None
+    if isinstance(data, list):
+        for line in data:
+            price = _stripe_field(line, "price") or _obj_get(line, "price")
+            key = _lookup_from_price(price)
+            if key:
+                return key
+    stored = (fallback or "").strip()
+    if stored in ALLOWED_PRICE_LOOKUP_KEYS:
+        return stored
+    return None
+
+
+def _analytics_purchase_storage_key(invoice_id: str, lookup_key: str) -> str:
+    suffix = "y" if lookup_key == LOOKUP_ANNUAL else "m" if lookup_key == LOOKUP_MONTHLY else ""
+    if not suffix:
+        return ""
+    key = f"{invoice_id}|{suffix}"
+    if len(key) > 40:
+        return ""
+    return key
+
+
+def record_first_paid_subscription_invoice(
+    db,
+    *,
+    family_id: int,
+    lookup_key: Optional[str],
+    invoice: Any,
+) -> bool:
+    """Remember the first Stripe invoice that actually collected money.
+
+    A $0 trial invoice and a later renewal are ignored. The stored price is
+    the public catalog price, not the invoice total.
+    """
+    from sqlalchemy import select
+    from sqlalchemy.exc import IntegrityError
+
+    from .main import LifecycleEmailSend
+
+    reason = str(_obj_get(invoice, "billing_reason") or "").strip()
+    if reason not in _PAID_INVOICE_REASONS:
+        return False
+    currency = str(_obj_get(invoice, "currency") or "usd").strip().lower()
+    if currency != "usd":
+        return False
+    try:
+        cents = int(_obj_get(invoice, "amount_paid"))
+    except (TypeError, ValueError):
+        return False
+    if cents <= 0:
+        return False
+    invoice_id = _paid_invoice_id(_obj_get(invoice, "id"))
+    resolved = _lookup_from_invoice(invoice, lookup_key)
+    storage_key = _analytics_purchase_storage_key(invoice_id, resolved or "")
+    if not storage_key:
+        return False
+
+    existing = db.execute(
+        select(LifecycleEmailSend.id).where(
+            LifecycleEmailSend.family_id == int(family_id),
+            LifecycleEmailSend.kind == ANALYTICS_PURCHASE_KIND,
+        )
+    ).first()
+    if existing is not None:
+        return False
+
+    owner = family_owner_user(db, int(family_id))
+    row = LifecycleEmailSend(
+        family_id=int(family_id),
+        user_id=int(owner.id) if owner is not None else None,
+        kind=ANALYTICS_PURCHASE_KIND,
+        trial_end_key=storage_key,
+    )
+    try:
+        with db.begin_nested():
+            db.add(row)
+            db.flush()
+    except IntegrityError:
+        return False
+    return True
+
+
+def analytics_purchase_for_family(db, family_id: int) -> Optional[dict[str, Any]]:
+    """Public purchase facts for GA4. No customer, balance, or invoice total."""
+    from sqlalchemy import select
+
+    from .main import LifecycleEmailSend
+
+    row = db.execute(
+        select(LifecycleEmailSend)
+        .where(
+            LifecycleEmailSend.family_id == int(family_id),
+            LifecycleEmailSend.kind == ANALYTICS_PURCHASE_KIND,
+        )
+        .order_by(LifecycleEmailSend.id.asc())
+    ).scalars().first()
+    if row is None:
+        return None
+    invoice_id, _, suffix = str(row.trial_end_key or "").partition("|")
+    if _paid_invoice_id(invoice_id) != invoice_id:
+        return None
+    lookup = LOOKUP_ANNUAL if suffix == "y" else LOOKUP_MONTHLY if suffix == "m" else ""
+    price = price_for_lookup(lookup) if lookup else None
+    if not price:
+        return None
+    return {
+        "transaction_id": invoice_id,
+        "plan": "annual" if suffix == "y" else "monthly",
+        "value": float(price["amount_usd"]),
+        "currency": "USD",
+    }
+
+
 def family_billing_payload(db, *, family_id: int, now: Optional[datetime] = None) -> dict[str, Any]:
     from sqlalchemy import select
 
@@ -634,7 +767,11 @@ def family_billing_payload(db, *, family_id: int, now: Optional[datetime] = None
         select(BillingSubscription).where(BillingSubscription.family_id == int(family_id))
     ).scalar_one_or_none()
     payload = build_billing_status(family=fam, subscription=sub, now=now)
-    return apply_complimentary_entitlement(payload, family_owner_user(db, int(family_id)), now=now)
+    payload = apply_complimentary_entitlement(payload, family_owner_user(db, int(family_id)), now=now)
+    purchase = analytics_purchase_for_family(db, int(family_id))
+    if purchase:
+        payload["analytics_purchase"] = purchase
+    return payload
 
 
 def assert_family_entitled(db, family_id: int) -> dict[str, Any]:
@@ -1843,6 +1980,15 @@ def handle_stripe_event(db, event: Any, logger_: logging.Logger) -> None:
                 if pe:
                     row.current_period_end = pe
             db.add(row)
+            try:
+                record_first_paid_subscription_invoice(
+                    db,
+                    family_id=int(row.family_id),
+                    lookup_key=row.lookup_key,
+                    invoice=obj,
+                )
+            except Exception:
+                logger_.exception("Analytics purchase record skipped for invoice event %s", event_id)
         else:
             prior_status = str(row.status or "").strip().lower()
             row.status = "past_due"

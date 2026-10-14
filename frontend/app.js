@@ -10187,6 +10187,7 @@ async function fetchBillingStatus({ force = false } = {}) {
     now - billingStatusCache.fetchedAt < 20000
   ) {
     applyBillingReadOnlyUi();
+    maybeNoteAnalyticsPurchase(billingStatusCache.data);
     return billingStatusCache.data;
   }
   if (!force && billingStatusCache.inFlight && Number(billingStatusCache.familyId) === fid) {
@@ -10207,6 +10208,7 @@ async function fetchBillingStatus({ force = false } = {}) {
       }
       billingStatusCache = { familyId: fid, data, fetchedAt: Date.now(), inFlight: null };
       applyBillingReadOnlyUi();
+      maybeNoteAnalyticsPurchase(data);
       return data;
     }
 
@@ -10235,6 +10237,7 @@ async function fetchBillingStatus({ force = false } = {}) {
       }
       billingStatusCache = { familyId: fid, data, fetchedAt: Date.now(), inFlight: null };
       applyBillingReadOnlyUi();
+      maybeNoteAnalyticsPurchase(data);
       return data;
     } finally {
       if (timeoutId) window.clearTimeout(timeoutId);
@@ -10251,6 +10254,14 @@ async function fetchBillingStatus({ force = false } = {}) {
     inFlight: force ? null : promise,
   };
   return promise;
+}
+
+function maybeNoteAnalyticsPurchase(data) {
+  try {
+    const purchase = data && data.analytics_purchase;
+    if (!purchase || !window.bwGa || typeof window.bwGa.notePurchase !== "function") return;
+    window.bwGa.notePurchase(purchase);
+  } catch (_) {}
 }
 
 function billingDom() {
@@ -24070,6 +24081,11 @@ async function tryRecoverAccountSetupDraft() {
   const txsReady = pendingTxCount === 0 || txCreated >= pendingTxCount;
   if (accountReady && txsReady && (anyAccountWork || txCreated > 0 || (hasAccounts && pendingTxCount > 0))) {
     clearAccountSetupDraftJsonStorage();
+    try {
+      if (window.bwGa && typeof window.bwGa.noteOnboardingCompleted === "function") {
+        window.bwGa.noteOnboardingCompleted();
+      }
+    } catch (_) {}
     return anyAccountWork || txCreated > 0;
   }
   if (accountReady && pendingTxCount === 0 && !anyAccountWork) {
