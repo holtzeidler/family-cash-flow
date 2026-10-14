@@ -3,9 +3,11 @@
    never call gtag, so they cannot send hits to the production property.
    Page hits use the path only. Query strings and hashes are removed from
    the page address and the referrer.
-   Events: sign_up, trial_started, onboarding_completed, purchase.
-   purchase uses the public plan price and a Stripe invoice id. Names,
-   email addresses, balances, and amounts the user entered are not sent.
+   Events: sign_up_click, sign_up, trial_started, onboarding_completed,
+   purchase, subscription_started.
+   purchase and subscription_started use the public plan price and a Stripe
+   invoice id. Names, email addresses, balances, and amounts the user entered
+   are not sent. Signup clicks record only that a signup link was used.
    Public prices must stay in sync with backend/app/billing_catalog.py. */
 (function (root) {
   var MEASUREMENT_ID = "G-G8J8QHVMHW";
@@ -45,6 +47,35 @@
 
   function signUpParams() {
     return { method: "email" };
+  }
+
+  function signUpClickParams() {
+    return { method: "cta" };
+  }
+
+  function isSignupHref(href, base) {
+    try {
+      var parsed = new URL(String(href || ""), base || "https://balancewhiz.com");
+      var path = parsed.pathname || "/";
+      if (path.charAt(0) !== "/") path = "/" + path;
+      if (path.length > 1 && path.charAt(path.length - 1) !== "/") path += "/";
+      return path === "/account-setup/" || path === "/signup/";
+    } catch (err) {
+      return false;
+    }
+  }
+
+  function accountKey(prefix, userId) {
+    var digits = String(userId == null ? "" : userId).replace(/\D/g, "");
+    return digits ? prefix + digits : "";
+  }
+
+  function browserStorage(persistent) {
+    try {
+      return persistent ? root.localStorage : root.sessionStorage;
+    } catch (err) {
+      return null;
+    }
   }
 
   function trialStartedParams() {
@@ -111,40 +142,69 @@
     return true;
   }
 
+  var lastSignupClickAt = 0;
+
   root.bwGa = {
     measurementId: MEASUREMENT_ID,
     isProductionHost: isProductionHost,
     pageHit: pageHit,
+    isSignupHref: isSignupHref,
     signUpParams: signUpParams,
+    signUpClickParams: signUpClickParams,
     trialStartedParams: trialStartedParams,
     onboardingParams: onboardingParams,
     purchaseParams: purchaseParams,
     dispatch: dispatch,
     track: track,
     trackOnce: trackOnce,
-    noteSignUp: function () {
-      return track("sign_up", signUpParams());
+    noteSignUpClick: function () {
+      var now = Date.now();
+      if (now - lastSignupClickAt < 800) return false;
+      lastSignupClickAt = now;
+      return root.bwGa.track("sign_up_click", signUpClickParams());
     },
-    noteTrialStarted: function () {
-      return track("trial_started", trialStartedParams());
+    noteSignUp: function (userId) {
+      var key = accountKey("bw_ga_sign_up_", userId);
+      if (!key) return root.bwGa.track("sign_up", signUpParams());
+      return trackOnce(browserStorage(true), key, "sign_up", signUpParams());
+    },
+    noteTrialStarted: function (userId) {
+      var key = accountKey("bw_ga_trial_", userId);
+      if (!key) return root.bwGa.track("trial_started", trialStartedParams());
+      return trackOnce(browserStorage(true), key, "trial_started", trialStartedParams());
     },
     noteOnboardingCompleted: function () {
-      var storage = null;
-      try {
-        storage = root.sessionStorage;
-      } catch (err) {}
-      return trackOnce(storage, "bw_ga_onboarding_completed", "onboarding_completed", onboardingParams());
+      return trackOnce(browserStorage(false), "bw_ga_onboarding_completed", "onboarding_completed", onboardingParams());
     },
     notePurchase: function (record) {
       var params = purchaseParams(record);
       if (!params) return false;
-      var storage = null;
-      try {
-        storage = root.localStorage;
-      } catch (err) {}
-      return trackOnce(storage, "bw_ga_purchase_" + params.transaction_id, "purchase", params);
+      return trackOnce(browserStorage(true), "bw_ga_purchase_" + params.transaction_id, "purchase", params);
+    },
+    noteSubscriptionStarted: function (record) {
+      var params = purchaseParams(record);
+      if (!params) return false;
+      return trackOnce(browserStorage(true), "bw_ga_subscription_" + params.transaction_id, "subscription_started", params);
     },
   };
+
+  if (root.document && !root.document.__bwGaSignupClicks) {
+    root.document.__bwGaSignupClicks = true;
+    root.document.addEventListener(
+      "click",
+      function (event) {
+        var node = event.target;
+        while (node && node !== root.document) {
+          if (node.tagName === "A" && isSignupHref(node.getAttribute("href"), root.location && root.location.href)) {
+            if (root.bwGa && typeof root.bwGa.noteSignUpClick === "function") root.bwGa.noteSignUpClick();
+            return;
+          }
+          node = node.parentNode;
+        }
+      },
+      true
+    );
+  }
 
   if (root.__bwGa4Loaded) return;
   root.__bwGa4Loaded = true;

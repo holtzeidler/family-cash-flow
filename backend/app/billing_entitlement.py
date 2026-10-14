@@ -784,9 +784,11 @@ def family_billing_payload(db, *, family_id: int, now: Optional[datetime] = None
     ).scalar_one_or_none()
     payload = build_billing_status(family=fam, subscription=sub, now=now)
     payload = apply_complimentary_entitlement(payload, family_owner_user(db, int(family_id)), now=now)
-    purchase = analytics_purchase_for_family(db, int(family_id))
-    if purchase:
-        payload["analytics_purchase"] = purchase
+    # Complimentary access is not a paid subscription, even if an older invoice row exists.
+    if not payload.get("complimentary_access_active"):
+        purchase = analytics_purchase_for_family(db, int(family_id))
+        if purchase:
+            payload["analytics_purchase"] = purchase
     return payload
 
 
