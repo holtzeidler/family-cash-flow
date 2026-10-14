@@ -1215,6 +1215,20 @@ function invalidateLowBalanceAlertCache() {
   invalidateCashOutlookProjectionCache();
 }
 
+function cashOutlookShortfallHtml(text) {
+  const raw = String(text || "").trim();
+  const parts = raw.match(/^(.*\bshort)\s+(of your\s+.+)$/i);
+  if (!parts) return escapeHtml(raw);
+  return `<span class="cash-outlook-card__short">${escapeHtml(parts[1])}</span><span class="cash-outlook-card__of">${escapeHtml(parts[2])}</span>`;
+}
+
+function cashOutlookStatusHeadlineHtml(headline) {
+  const raw = String(headline || "").trim();
+  const dated = raw.match(/^(Below target|Transfer cash before)\s+(.+)$/);
+  if (!dated) return `<p class="cash-outlook-card__headline">${escapeHtml(raw)}</p>`;
+  return `<p class="cash-outlook-card__kicker">${escapeHtml(dated[1])}</p><p class="cash-outlook-card__date">${escapeHtml(dated[2])}</p>`;
+}
+
 function cashOutlookWarnIconHtml() {
   return `<span class="cash-outlook-icon cash-outlook-icon--warn" aria-hidden="true">
         <svg viewBox="0 0 24 24" focusable="false">
@@ -1241,7 +1255,7 @@ function renderCashOutlookInsightLines(insightLines) {
   const rows = [];
   if (secondary) {
     rows.push(
-      `<p class="cash-outlook-card__line cash-outlook-card__line--secondary">${escapeHtml(secondary)}</p>`
+      `<p class="cash-outlook-card__line cash-outlook-card__line--secondary">${cashOutlookShortfallHtml(secondary)}</p>`
     );
   }
   if (tertiary) {
@@ -1336,10 +1350,10 @@ function buildCashOutlookBannerHtml(raw) {
       <div class="cash-outlook-card__row">
         ${cashOutlookWarnIconHtml()}
         <div class="cash-outlook-card__body">
-          <p class="cash-outlook-card__headline">${escapeHtml(headline)}</p>
-          ${bodyHtml}
+          ${cashOutlookStatusHeadlineHtml(headline)}
         </div>
       </div>
+      ${bodyHtml}
     </div>`;
   }
 
@@ -7252,6 +7266,35 @@ function lastBalanceCheckPrimaryLine(days, confirmedDateIso) {
   return n === 0 ? "Last updated today" : `Last updated · ${ago}`;
 }
 
+function renderLastBalanceCheckDetail(days, confirmedDateIso) {
+  const text = lastBalanceCheckPrimaryLine(days, confirmedDateIso);
+  if (!text || !forecastConfidenceDetail) {
+    if (forecastConfidenceDetail) forecastConfidenceDetail.textContent = "";
+    return;
+  }
+  const sepAt = text.indexOf(" · ");
+  forecastConfidenceDetail.replaceChildren();
+  const wrap = document.createElement("span");
+  wrap.className = "cash-health-updated";
+  if (sepAt === -1) {
+    wrap.textContent = text;
+  } else {
+    const when = document.createElement("span");
+    when.className = "cash-health-updated__when";
+    when.textContent = text.slice(0, sepAt);
+    const ago = document.createElement("span");
+    ago.className = "cash-health-updated__ago";
+    ago.textContent = text.slice(sepAt + 3);
+    const sep = document.createElement("span");
+    sep.className = "cash-health-updated__sep";
+    sep.setAttribute("aria-hidden", "true");
+    sep.textContent = "·";
+    when.append(document.createTextNode(" "), sep);
+    wrap.append(when, ago);
+  }
+  forecastConfidenceDetail.append(wrap);
+}
+
 function applyForecastConfidenceUi(data) {
   const canWrite = !state.viewOnly;
   if (!forecastConfidenceCard || !state.activeFamilyId) {
@@ -7272,7 +7315,6 @@ function applyForecastConfidenceUi(data) {
   forecastConfidenceCard.className = `cash-health-status cash-health-status--balance cash-health-status--${tier}`;
   if (sidebarCashHealthCard && state.activeFamilyId) sidebarCashHealthCard.hidden = false;
 
-  let detail = "";
   let helper = "";
   let showLabel = false;
   let showCta = false;
@@ -7282,11 +7324,8 @@ function applyForecastConfidenceUi(data) {
     showLabel = true;
     helper = balanceCheckHelper;
     showCta = canWrite;
-  } else if (tier === "fresh") {
-    detail = lastBalanceCheckPrimaryLine(days, confirmedDate);
   } else if (tier === "stale") {
     showLabel = true;
-    detail = lastBalanceCheckPrimaryLine(days, confirmedDate);
     helper = balanceCheckHelper;
     showCta = !!data?.show_verify_cta && canWrite;
   }
@@ -7295,7 +7334,8 @@ function applyForecastConfidenceUi(data) {
     forecastConfidenceLabel.hidden = !showLabel;
     if (showLabel) forecastConfidenceLabel.textContent = "Balance check recommended";
   }
-  if (forecastConfidenceDetail) forecastConfidenceDetail.textContent = detail;
+  if (tier === "fresh" || tier === "stale") renderLastBalanceCheckDetail(days, confirmedDate);
+  else if (forecastConfidenceDetail) forecastConfidenceDetail.textContent = "";
   if (forecastConfidenceHelper) {
     forecastConfidenceHelper.textContent = helper;
     forecastConfidenceHelper.hidden = !helper;

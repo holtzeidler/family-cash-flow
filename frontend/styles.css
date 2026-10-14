@@ -34006,3 +34006,205 @@ body.checkout-page .container > .grid{
   }
 }
 
+/* Sidebar Cash Health and Forecast Snapshot: quieter type, even rows, no orphan wraps. */
+body[data-bw-view] #sidebarCashHealthCard,
+body[data-bw-view] .sidebar .card[data-sidebar-key="month"]{
+  padding: 13px 12px 12px;
+  border-radius: 12px;
+}
+body[data-bw-view] #sidebarCashHealthCard .sidebar-cash-health__head{
+  margin-bottom: 10px;
+}
+body[data-bw-view] #cashOutlookTitle,
+body[data-bw-view] .sidebar-forecast-head h2{
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(71, 85, 105, 0.72);
+  line-height: 1.2;
+}
+body[data-bw-view] .sidebar-cash-health__alerts,
+body[data-bw-view] .sidebar-balance-threshold-alerts{
+  margin-bottom: 12px;
+  gap: 0;
+}
+body[data-bw-view] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger,
+body[data-bw-view] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger:has(.cash-outlook-card){
+  padding: 10px 11px 9px;
+  border-radius: 10px;
+}
+body[data-bw-view] #sidebarLowBalanceBanner .cash-outlook-card__row{
+  align-items: flex-start;
+  gap: 10px;
+}
+body[data-bw-view] #sidebarLowBalanceBanner .cash-outlook-card__row:has(.cash-outlook-card__kicker) .cash-outlook-icon--warn{
+  margin-top: 16px;
+}
+body[data-bw-view] #sidebarLowBalanceBanner .cash-outlook-icon,
+body[data-bw-view] #sidebarLowBalanceBanner .cash-outlook-icon svg{
+  width: 16px;
+  height: 16px;
+}
+body[data-bw-view] #sidebarLowBalanceBanner .cash-outlook-card__body{
+  gap: 2px;
+  max-width: none;
+}
+body[data-bw-view] #sidebarLowBalanceBanner .cash-outlook-card__kicker{
+  margin: 0;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 1.25;
+  color: rgba(87, 83, 78, 0.72);
+}
+body[data-bw-view] #sidebarLowBalanceBanner .cash-outlook-card__date{
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  color: rgba(41, 37, 36, 0.94);
+  white-space: nowrap;
+}
+body[data-bw-view] #sidebarLowBalanceBanner .cash-outlook-card__line--secondary{
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 0.22em;
+  row-gap: 1px;
+  margin: 6px 0 0;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: -0.015em;
+  line-height: 1.35;
+  color: rgba(120, 113, 108, 0.88);
+}
+body[data-bw-view] #sidebarLowBalanceBanner .cash-outlook-card__short,
+body[data-bw-view] #sidebarLowBalanceBanner .cash-outlook-card__of{
+  white-space: nowrap;
+}
+body[data-bw-view] .cash-health-status.cash-health-status--balance{
+  margin-bottom: 10px;
+  padding: 0;
+}
+body[data-bw-view] .cash-health-status--balance .cash-health-status__value{
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-align: left;
+  white-space: normal;
+}
+body[data-bw-view] .cash-health-updated{
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 0.35em;
+  row-gap: 1px;
+  max-width: 100%;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: -0.011em;
+  line-height: 1.35;
+  color: rgba(100, 116, 139, 0.78);
+}
+body[data-bw-view] .cash-health-updated__when,
+body[data-bw-view] .cash-health-updated__ago{
+  white-space: nowrap;
+}
+body[data-bw-view] .cash-health-updated__sep{
+  margin-left: 0.15em;
+  color: rgba(148, 163, 184, 0.9);
+}
+body[data-bw-view] .cash-health-status--review{
+  margin-top: 0;
+  padding-top: 11px;
+  padding-bottom: 1px;
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+}
+body[data-bw-view] #sidebarPendingTxCard.sidebar-pending--success #sidebarPendingTitle{
+  text-transform: none;
+  letter-spacing: -0.011em;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.3;
+  color: rgba(71, 85, 105, 0.82);
+  white-space: nowrap;
+}
+body[data-bw-view] .sidebar-forecast-head{
+  margin-bottom: 0;
+  min-height: 28px;
+}
+body[data-bw-view] .sidebar-month-row{
+  margin: 10px 0 8px;
+}
+body[data-bw-view] .sidebar-month-input,
+body[data-bw-view] #sidebarBodyMonth input[type="month"]{
+  box-sizing: border-box;
+  width: 100%;
+  height: 34px;
+  min-height: 34px;
+  margin: 0;
+  padding: 0 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  background: #fff;
+  color: rgba(15, 23, 42, 0.9);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: -0.011em;
+  line-height: 34px;
+}
+body[data-bw-view] #sidebarBodyMonth input[type="month"]::-webkit-calendar-picker-indicator{
+  margin: 0;
+  opacity: 0.55;
+}
+body[data-bw-view] #sidebarBodyMonth .totals{
+  gap: 0;
+}
+body[data-bw-view] #sidebarBodyMonth .total{
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  padding: 8px 2px;
+  border: none;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.07);
+  border-radius: 0;
+  background: transparent;
+}
+body[data-bw-view] #sidebarBodyMonth .total--net{
+  margin-top: 4px;
+  padding: 8px 2px;
+  border-bottom: none;
+  border-radius: 8px;
+  background: rgba(254, 242, 242, 0.42);
+}
+body[data-bw-view] #sidebarBodyMonth .total--net:not(:has(.v.danger)){
+  background: rgba(236, 253, 245, 0.45);
+}
+body[data-bw-view] #sidebarBodyMonth .total .k{
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  color: rgba(100, 116, 139, 0.78);
+}
+body[data-bw-view] #sidebarBodyMonth .total .v{
+  flex: 0 0 auto;
+  min-width: 6.5ch;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+body[data-bw-view] .sidebar .card[data-sidebar-key="month"]{
+  padding-bottom: 12px;
+}
+
