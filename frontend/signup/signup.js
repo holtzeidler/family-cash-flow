@@ -3560,6 +3560,12 @@ async function doSignup() {
       return;
     }
     try {
+      if (window.bwGa && typeof window.bwGa.noteSignUp === "function") window.bwGa.noteSignUp();
+      if (reg.data && reg.data.trial_started === true && typeof window.bwGa.noteTrialStarted === "function") {
+        window.bwGa.noteTrialStarted();
+      }
+    } catch (_) {}
+    try {
       const tok = reg.data && reg.data.access_token != null ? String(reg.data.access_token).trim() : "";
       if (tok) sessionStorage.setItem(BW_API_ACCESS_TOKEN_KEY, tok);
     } catch (_) {}
@@ -3631,6 +3637,21 @@ async function doSignup() {
     const accountStepOk =
       !draft.account || (accountResult && accountResult.ok && (accountResult.accountId || accountResult.skipped));
     const txStepOk = txResult && txResult.ok;
+    const onboardingFinished =
+      accountResult &&
+      accountResult.ok &&
+      accountResult.accountId &&
+      txResult &&
+      txResult.ok &&
+      Number(txResult.createdCount) > 0 &&
+      Number(txResult.createdCount) === Number(txResult.totalCount);
+    if (onboardingFinished) {
+      try {
+        if (window.bwGa && typeof window.bwGa.noteOnboardingCompleted === "function") {
+          window.bwGa.noteOnboardingCompleted();
+        }
+      } catch (_) {}
+    }
     if (accountStepOk && txStepOk) {
       try {
         removeAccountSetupDraftStorage();

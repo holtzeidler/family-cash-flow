@@ -453,7 +453,9 @@ class LifecycleEmailSend(Base):
     Stripe cancellation time for a scheduled cancel, or the trial end for the
     trial-expired note, the ended Stripe subscription id after unpaid retries, or the
     resume/restore event, or the day and payment method ids for a saved card
-    replacement. A second run for the same key does not send again.
+    replacement. Kind analytics_purchase stores the first paid invoice id and
+    plan letter (in_…|m or in_…|y) and is not an email. A second run for the
+    same key does not send again.
     """
 
     __tablename__ = "lifecycle_email_sends"
@@ -1688,6 +1690,8 @@ class RegisterOut(BaseModel):
     user: UserOut
     # Same JWT as Set-Cookie; used when the browser does not persist cross-site cookies (e.g. some GitHub Pages + API setups).
     access_token: str
+    # True only when the starter family was created. That family's created_at is the trial start.
+    trial_started: bool = False
 
 
 class FamilyCreateIn(BaseModel):
@@ -4178,6 +4182,7 @@ def register(payload: RegisterIn, response: Response, db=Depends(get_db)):
     return {
         "user": _user_out(user),
         "access_token": token,
+        "trial_started": fam is not None,
     }
 
 
