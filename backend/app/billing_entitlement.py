@@ -162,8 +162,9 @@ def trial_days_remaining(family_created_at: Optional[datetime], *, now: Optional
     return max(0, (end.date() - n.date()).days)
 
 
-# Calendar days left (UTC) when the trial-ending reminder is sent. Email copy is written for this value.
+# Calendar days left (UTC) when each trial-ending reminder is sent. Email copy is written for these values.
 TRIAL_ENDING_REMINDER_DAYS = 3
+TRIAL_ENDING_1D_REMINDER_DAYS = 1
 
 
 def trial_end_idempotency_key(family_created_at: Optional[datetime]) -> Optional[str]:
@@ -174,15 +175,11 @@ def trial_end_idempotency_key(family_created_at: Optional[datetime]) -> Optional
     return end.strftime("%Y-%m-%dT%H:%M:%S.%f")
 
 
-def trial_ending_reminder_applies(payload: dict[str, Any]) -> bool:
-    """True when the 3-day reminder is still relevant for this billing payload.
-
-    Expects the payload from family_billing_payload (trial clock, Stripe status,
-    and complimentary access already applied). Does not change entitlement.
-    """
+def _trial_ending_notice_applies(payload: dict[str, Any], *, days_remaining: int) -> bool:
+    """Shared rules for the 3-day and 1-day reminders. Does not change entitlement."""
     if not payload or not payload.get("in_app_trial"):
         return False
-    if payload.get("trial_days_remaining") != TRIAL_ENDING_REMINDER_DAYS:
+    if payload.get("trial_days_remaining") != days_remaining:
         return False
     if payload.get("complimentary_access_active"):
         return False
@@ -195,6 +192,25 @@ def trial_ending_reminder_applies(payload: dict[str, Any]) -> bool:
     if payload.get("stripe_subscription_id") and status in ENTITLED_STATUSES:
         return False
     return True
+
+
+def trial_ending_reminder_applies(payload: dict[str, Any]) -> bool:
+    """True when the 3-day reminder is still relevant for this billing payload.
+
+    Expects the payload from family_billing_payload (trial clock, Stripe status,
+    and complimentary access already applied). Does not change entitlement.
+    """
+    return _trial_ending_notice_applies(payload, days_remaining=TRIAL_ENDING_REMINDER_DAYS)
+
+
+def trial_ending_1d_reminder_applies(payload: dict[str, Any]) -> bool:
+    """True when the 1-day reminder is still relevant for this billing payload.
+
+    Same exclusions as the 3-day reminder: complimentary access, and a Stripe
+    subscription that is already trialing, active, or past_due. A different
+    day count, so the 3-day send does not qualify and this one does not replace it.
+    """
+    return _trial_ending_notice_applies(payload, days_remaining=TRIAL_ENDING_1D_REMINDER_DAYS)
 
 
 def trial_expired_email_applies(payload: dict[str, Any]) -> bool:

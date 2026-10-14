@@ -34,6 +34,8 @@ from app.billing_catalog import LOOKUP_ANNUAL, LOOKUP_MONTHLY  # noqa: E402
 from app.billing_entitlement import (  # noqa: E402
     annual_renewal_reminder_facts,
     family_billing_payload,
+    trial_end_idempotency_key,
+    trial_ending_1d_reminder_applies,
     trial_ending_reminder_applies,
     trial_expired_email_applies,
 )
@@ -49,7 +51,12 @@ from app.main import (  # noqa: E402
     select,
     settings,
 )
-from app.trial_ending_reminders import ANNUAL_RENEWAL_KIND, REMINDER_KIND, TRIAL_EXPIRED_KIND  # noqa: E402
+from app.trial_ending_reminders import (  # noqa: E402
+    ANNUAL_RENEWAL_KIND,
+    REMINDER_1D_KIND,
+    REMINDER_KIND,
+    TRIAL_EXPIRED_KIND,
+)
 
 assert_loaded_settings(
     database_url=settings.DATABASE_URL,
@@ -181,6 +188,8 @@ def test_scheduler_sends_each_lifecycle_email_once_and_skips_the_rest(monkeypatc
         "expired": "bw-smoke-lifeexp@example.com",
         "days7": "bw-smoke-life7@example.com",
         "days1": "bw-smoke-life1@example.com",
+        "comp_1d": "bw-smoke-lifecomp1@example.com",
+        "plan_1d": "bw-smoke-lifeplan1@example.com",
         "monthly_paid": "bw-smoke-lifemonth@example.com",
         "annual_paid": "bw-smoke-lifeann@example.com",
         "annual_cancel": "bw-smoke-lifeannx@example.com",
@@ -196,13 +205,17 @@ def test_scheduler_sends_each_lifecycle_email_once_and_skips_the_rest(monkeypatc
         comp_expired = _account(db, emails["comp_expired"], datetime(2020, 1, 1, 12, 0, 0), complimentary=True)
         expired = _account(db, emails["expired"], datetime(2020, 1, 1, 12, 0, 0))
         _account(db, emails["days7"], _created_for_days_left(7, now))
-        _account(db, emails["days1"], _created_for_days_left(1, now))
+        days1 = _account(db, emails["days1"], _created_for_days_left(1, now))
+        comp_1d = _account(db, emails["comp_1d"], _created_for_days_left(1, now), complimentary=True)
+        plan_1d = _account(db, emails["plan_1d"], _created_for_days_left(1, now))
         monthly_paid = _account(db, emails["monthly_paid"], datetime(2024, 1, 1, 12, 0, 0))
         annual_paid = _account(db, emails["annual_paid"], datetime(2024, 1, 1, 12, 0, 0))
         annual_cancel = _account(db, emails["annual_cancel"], datetime(2024, 1, 1, 12, 0, 0))
         annual_comp = _account(db, emails["annual_comp"], datetime(2024, 1, 1, 12, 0, 0), complimentary=True)
 
         trial_end = now + timedelta(days=3)
+        one_day_end = now + timedelta(days=1)
+        _plan(db, plan_1d, sub_id="sub_life_1d", status="trialing", lookup=LOOKUP_MONTHLY, period_end=one_day_end, trial_end=one_day_end)
         _plan(db, monthly, sub_id="sub_life_mo", status="trialing", lookup=LOOKUP_MONTHLY, period_end=trial_end, trial_end=trial_end)
         _plan(db, annual_trial, sub_id="sub_life_yr", status="trialing", lookup=LOOKUP_ANNUAL, period_end=trial_end, trial_end=trial_end)
         _plan(db, monthly_paid, sub_id="sub_life_month", status="active", lookup=LOOKUP_MONTHLY, period_end=renewal)
@@ -211,12 +224,18 @@ def test_scheduler_sends_each_lifecycle_email_once_and_skips_the_rest(monkeypatc
         _plan(db, annual_comp, sub_id="sub_life_annc", status="active", lookup=LOOKUP_ANNUAL, period_end=renewal)
 
         assert trial_ending_reminder_applies(family_billing_payload(db, family_id=ending.id))
+        assert trial_ending_1d_reminder_applies(family_billing_payload(db, family_id=ending.id)) is False
+        assert trial_ending_reminder_applies(family_billing_payload(db, family_id=days1.id)) is False
+        assert trial_ending_1d_reminder_applies(family_billing_payload(db, family_id=days1.id))
+        assert trial_ending_1d_reminder_applies(family_billing_payload(db, family_id=comp_1d.id)) is False
+        assert trial_ending_1d_reminder_applies(family_billing_payload(db, family_id=plan_1d.id)) is False
         assert trial_ending_reminder_applies(family_billing_payload(db, family_id=monthly.id)) is False
         assert trial_ending_reminder_applies(family_billing_payload(db, family_id=annual_trial.id)) is False
         assert trial_ending_reminder_applies(family_billing_payload(db, family_id=comp_trial.id)) is False
         assert trial_expired_email_applies(family_billing_payload(db, family_id=comp_expired.id)) is False
         assert trial_expired_email_applies(family_billing_payload(db, family_id=expired.id))
         assert trial_expired_email_applies(family_billing_payload(db, family_id=monthly.id)) is False
+        watched_ids = [int(ending.id), int(days1.id), int(expired.id), int(annual_paid.id)]
 
     import stripe
 
@@ -241,6 +260,7 @@ def test_scheduler_sends_each_lifecycle_email_once_and_skips_the_rest(monkeypatc
         return _send
 
     monkeypatch.setattr("app.email_service.send_trial_ending_email", _record(REMINDER_KIND))
+    monkeypatch.setattr("app.email_service.send_trial_ending_1d_email", _record(REMINDER_1D_KIND))
     monkeypatch.setattr("app.email_service.send_trial_expired_email", _record(TRIAL_EXPIRED_KIND))
     monkeypatch.setattr("app.email_service.send_annual_renewal_email", _record(ANNUAL_RENEWAL_KIND))
 
@@ -250,10 +270,14 @@ def test_scheduler_sends_each_lifecycle_email_once_and_skips_the_rest(monkeypatc
     assert sorted(sent) == sorted(
         [
             (REMINDER_KIND, emails["ending"]),
+            (REMINDER_1D_KIND, emails["days1"]),
             (TRIAL_EXPIRED_KIND, emails["expired"]),
             (ANNUAL_RENEWAL_KIND, emails["annual_paid"]),
         ]
     )
+    assert emails["comp_1d"] not in {addr for _kind, addr in sent}
+    assert emails["plan_1d"] not in {addr for _kind, addr in sent}
+    assert emails["days7"] not in {addr for _kind, addr in sent}
     assert emails["monthly"] not in {addr for _kind, addr in sent}
     assert emails["annual_trial"] not in {addr for _kind, addr in sent}
     assert emails["comp_trial"] not in {addr for _kind, addr in sent}
@@ -268,9 +292,15 @@ def test_scheduler_sends_each_lifecycle_email_once_and_skips_the_rest(monkeypatc
     assert sent == first
 
     with SessionLocal() as db:
-        rows = db.execute(select(LifecycleEmailSend.kind, LifecycleEmailSend.trial_end_key)).all()
-    assert sorted(kind for kind, _key in rows) == sorted([REMINDER_KIND, TRIAL_EXPIRED_KIND, ANNUAL_RENEWAL_KIND])
-    assert len({key for _kind, key in rows}) == 3
+        rows = db.execute(
+            select(LifecycleEmailSend.kind, LifecycleEmailSend.trial_end_key).where(
+                LifecycleEmailSend.family_id.in_(watched_ids)
+            )
+        ).all()
+    assert sorted(kind for kind, _key in rows) == sorted(
+        [REMINDER_KIND, REMINDER_1D_KIND, TRIAL_EXPIRED_KIND, ANNUAL_RENEWAL_KIND]
+    )
+    assert len({(kind, key) for kind, key in rows}) == 4
 
 
 def test_production_run_sends_each_trial_notice_once_including_a_second_family(monkeypatch):
@@ -301,6 +331,7 @@ def test_production_run_sends_each_trial_notice_once_including_a_second_family(m
         return _send
 
     monkeypatch.setattr("app.email_service.send_trial_ending_email", _record(REMINDER_KIND))
+    monkeypatch.setattr("app.email_service.send_trial_ending_1d_email", _record(REMINDER_1D_KIND))
     monkeypatch.setattr("app.email_service.send_trial_expired_email", _record(TRIAL_EXPIRED_KIND))
     monkeypatch.setattr("app.email_service.send_annual_renewal_email", _record(ANNUAL_RENEWAL_KIND))
 
@@ -342,6 +373,7 @@ def test_scheduler_refuses_to_run_outside_staging(monkeypatch):
         raise AssertionError("lifecycle email was sent outside staging")
 
     monkeypatch.setattr("app.email_service.send_trial_ending_email", _boom)
+    monkeypatch.setattr("app.email_service.send_trial_ending_1d_email", _boom)
     monkeypatch.setattr("app.email_service.send_trial_expired_email", _boom)
     monkeypatch.setattr("app.email_service.send_annual_renewal_email", _boom)
     from app.trial_ending_reminders import run
@@ -362,9 +394,70 @@ def test_empty_staging_allowlist_sends_nobody(monkeypatch):
         "app.email_service.send_trial_ending_email",
         lambda **kwargs: sent.append(kwargs["to_addr"]) or "local-not-sent",
     )
+    monkeypatch.setattr(
+        "app.email_service.send_trial_ending_1d_email",
+        lambda **kwargs: sent.append(kwargs["to_addr"]) or "local-not-sent",
+    )
     monkeypatch.setattr("app.email_service.send_trial_expired_email", lambda **kwargs: sent.append(kwargs["to_addr"]))
     monkeypatch.setattr("app.email_service.send_annual_renewal_email", lambda **kwargs: sent.append(kwargs["to_addr"]))
     from app.trial_ending_reminders import run
 
     assert run(dry_run=False) == 0
     assert sent == []
+
+
+def test_one_day_reminder_is_not_blocked_by_the_three_day_record(monkeypatch):
+    """A 3-day send for the same trial still leaves the 1-day note to send once."""
+    monkeypatch.setenv("TRIAL_ENDING_REMINDERS_ENABLED", "1")
+    monkeypatch.setattr(settings, "RESEND_API_KEY", "re_local_not_sent")
+    monkeypatch.setattr(settings, "STRIPE_SECRET_KEY", "local-not-a-stripe-key")
+    monkeypatch.setattr(settings, "APP_PUBLIC_BASE_URL", "https://staging.balancewhiz.com")
+    monkeypatch.setattr("app.main._is_staging_deployment", lambda: True)
+    email = "bw-smoke-life1d-only@example.com"
+    monkeypatch.setattr("app.main._staging_auth_email_allowlist", lambda: {email})
+
+    now = _now()
+    with SessionLocal() as db:
+        family = _account(db, email, _created_for_days_left(1, now))
+        family_id = int(family.id)
+        owner_id = db.execute(
+            select(FamilyMember.user_id).where(FamilyMember.family_id == family.id)
+        ).scalar_one()
+        db.add(
+            LifecycleEmailSend(
+                family_id=family_id,
+                user_id=int(owner_id),
+                kind=REMINDER_KIND,
+                trial_end_key=trial_end_idempotency_key(family.created_at),
+            )
+        )
+        db.commit()
+
+    sent = []
+
+    def _send(**kwargs):
+        sent.append(kwargs)
+        return "local-not-sent"
+
+    def _unexpected_three_day(**_kwargs):
+        raise AssertionError("3-day reminder was sent for a 1-day trial")
+
+    monkeypatch.setattr("app.email_service.send_trial_ending_1d_email", _send)
+    monkeypatch.setattr("app.email_service.send_trial_ending_email", _unexpected_three_day)
+    monkeypatch.setattr("app.email_service.send_trial_expired_email", lambda **_kwargs: "local-not-sent")
+    monkeypatch.setattr("app.email_service.send_annual_renewal_email", lambda **_kwargs: "local-not-sent")
+
+    from app.trial_ending_reminders import run
+
+    assert run(dry_run=False) == 0
+    assert len(sent) == 1
+    assert sent[0]["to_addr"] == email
+    assert sent[0]["app_url"] == "https://staging.balancewhiz.com"
+    assert run(dry_run=False) == 0
+    assert len(sent) == 1
+
+    with SessionLocal() as db:
+        kinds = db.execute(
+            select(LifecycleEmailSend.kind).where(LifecycleEmailSend.family_id == family_id)
+        ).scalars().all()
+    assert sorted(kinds) == sorted([REMINDER_KIND, REMINDER_1D_KIND])

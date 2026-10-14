@@ -460,7 +460,7 @@ class BillingSubscription(Base):
 class LifecycleEmailSend(Base):
     """One successful lifecycle send.
 
-    trial_end_key is the trial end for the 3-day reminder, the Stripe renewal
+    trial_end_key is the trial end for the 3-day and 1-day reminders, the Stripe renewal
     timestamp for the annual reminder, the invoice id for a failed payment, or the
     Stripe cancellation time for a scheduled cancel, or the trial end for the
     trial-expired note, the ended Stripe subscription id after unpaid retries, or the
