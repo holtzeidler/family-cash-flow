@@ -170,6 +170,36 @@ def build_trial_ending_email_content(
     )
 
 
+def build_trial_ending_1d_email_content(
+    *,
+    app_url: str,
+    first_name: str = "",
+    trial_ends_on: Optional[datetime] = None,
+) -> TransactionalEmailContent:
+    """1-day trial reminder. Same shell as the 3-day note; copy is for one day left."""
+    friendly_end = format_trial_end_date(trial_ends_on)
+    if friendly_end:
+        when = f"Your BalanceWhiz trial ends tomorrow, {friendly_end}."
+    else:
+        when = "Your BalanceWhiz trial ends tomorrow."
+    body = (
+        f"{when}\n\n"
+        "Keep your forecast up to date and see what’s ahead by choosing a plan before your trial ends."
+    )
+    return TransactionalEmailContent(
+        subject="Your BalanceWhiz trial ends tomorrow.",
+        preheader="Your BalanceWhiz trial ends tomorrow.",
+        heading="Your free trial ends tomorrow.",
+        body=body,
+        cta_label="Choose a plan",
+        cta_url=checkout_plan_url(app_url),
+        support_line=(
+            "If you don’t subscribe, you won’t be charged. Your forecast will become view-only "
+            "when your trial ends, and the data you’ve already added will remain available to view."
+        ),
+    )
+
+
 def build_trial_expired_email_content(*, app_url: str) -> TransactionalEmailContent:
     """Tells someone who never chose a plan that the trial ended and data remains."""
     from .billing_catalog import TRIAL_DAYS

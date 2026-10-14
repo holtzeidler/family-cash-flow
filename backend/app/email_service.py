@@ -4,10 +4,10 @@ Future product emails should call send_templated_email() / send_transactional_em
 rather than talking to Resend directly. This module never logs RESEND_API_KEY.
 
 Signup sends the Welcome email once, including the trial end date. Do not add a
-separate trial-started message. The 3-day trial reminder and the 7-day annual
-renewal reminder are separate sends from the same scheduled job — never from
-login. A failed subscription payment sends once per invoice from the Stripe
-webhook. A user-scheduled cancellation sends once per cancellation from the Stripe
+separate trial-started message. The 3-day trial reminder, the 1-day trial
+reminder, and the 7-day annual renewal reminder are separate sends from the
+same scheduled job — never from login. A failed subscription payment sends once
+per invoice from the Stripe webhook. A user-scheduled cancellation sends once per cancellation from the Stripe
 subscription update. The trial-expired note sends once from the same scheduled job
 as the 3-day reminder, after the trial timestamp has passed. A subscription ended
 by unpaid retries sends once when Stripe deletes it for payment_failed and the
@@ -34,6 +34,7 @@ from .email_templates import (
     build_subscription_canceled_email_content,
     build_subscription_ended_nonpayment_email_content,
     build_subscription_reactivated_email_content,
+    build_trial_ending_1d_email_content,
     build_trial_ending_email_content,
     build_trial_expired_email_content,
     build_welcome_email_content,
@@ -200,6 +201,32 @@ def send_trial_ending_email(
 ) -> str:
     """Send the 3-day trial reminder. Caller enforces eligibility and one-send-per-trial."""
     content = build_trial_ending_email_content(
+        app_url=app_url,
+        first_name=first_name,
+        trial_ends_on=trial_ends_on,
+    )
+    return send_templated_email(
+        api_key=api_key,
+        to_addr=to_addr,
+        content=content,
+        app_url=app_url,
+        from_addr=from_addr,
+        reply_to=reply_to,
+    )
+
+
+def send_trial_ending_1d_email(
+    *,
+    api_key: str,
+    to_addr: str,
+    app_url: str,
+    first_name: str = "",
+    trial_ends_on: Optional[datetime] = None,
+    from_addr: str = DEFAULT_FROM,
+    reply_to: Optional[str] = DEFAULT_REPLY_TO,
+) -> str:
+    """Send the 1-day trial reminder. Caller enforces eligibility and one-send-per-trial."""
+    content = build_trial_ending_1d_email_content(
         app_url=app_url,
         first_name=first_name,
         trial_ends_on=trial_ends_on,
