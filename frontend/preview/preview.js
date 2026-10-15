@@ -1,79 +1,22 @@
 /**
- * Public sample forecast. Static fictional data only.
- * Does not load app.js, does not call the API, and does not start the signed-in tour.
+ * Public sample forecast. Fictional data only, calculated in the browser.
+ * Does not load app.js, does not call forecast or transaction APIs, and does not save.
  */
 (function () {
   "use strict";
 
-  var FLOOR = 1500;
-  var DAYS = [
-    {
-      iso: "2026-10-05",
-      dow: "Mon",
-      day: 5,
-      mobile: "Mon, Oct 5",
-      today: true,
-      start: true,
-      group: "start",
-      txns: [],
-      end: 4850,
-    },
-    {
-      iso: "2026-10-06",
-      dow: "Tue",
-      day: 6,
-      mobile: "Tue, Oct 6",
-      group: "upcoming",
-      txns: [{ name: "Mortgage", amount: -2400 }],
-      end: 2450,
-    },
-    {
-      iso: "2026-10-07",
-      dow: "Wed",
-      day: 7,
-      mobile: "Wed, Oct 7",
-      group: "upcoming balances",
-      txns: [{ name: "Credit card", amount: -1100 }],
-      end: 1350,
-      below: true,
-    },
-    {
-      iso: "2026-10-08",
-      dow: "Thu",
-      day: 8,
-      mobile: "Thu, Oct 8",
-      group: "upcoming balances pressure",
-      txns: [{ name: "Vacation deposit", amount: -1500 }],
-      end: -150,
-      risk: true,
-    },
-    {
-      iso: "2026-10-09",
-      dow: "Fri",
-      day: 9,
-      mobile: "Fri, Oct 9",
-      group: "upcoming balances move",
-      txns: [{ name: "Paycheck", amount: 3200 }],
-      end: 3050,
-    },
-    {
-      iso: "2026-10-10",
-      dow: "Sat",
-      day: 10,
-      mobile: "Sat, Oct 10",
-      group: "balances",
-      txns: [],
-      end: 3050,
-    },
-    {
-      iso: "2026-10-11",
-      dow: "Sun",
-      day: 11,
-      mobile: "Sun, Oct 11",
-      group: "balances",
-      txns: [],
-      end: 3050,
-    },
+  var BUFFER = 1500;
+  var OPENING = 4850;
+  var SERIES = [
+    { day: 4, name: "Groceries", amount: -180, note: "Weekly groceries" },
+    { day: 6, name: "Mortgage", amount: -2400, note: "Monthly mortgage" },
+    { day: 9, name: "Utilities", amount: -210, note: "Electric and water" },
+    { day: 11, name: "Credit card", amount: -1750, note: "Card payment" },
+    { day: 14, name: "Insurance", amount: -160, note: "Auto insurance" },
+    { day: 15, name: "Paycheck", amount: 3400, note: "Payday" },
+    { day: 20, name: "Groceries", amount: -190, note: "Weekly groceries" },
+    { day: 24, name: "Car repair", amount: -420, note: "Occasional repair" },
+    { day: 28, name: "Credit card", amount: -650, note: "Second card payment" },
   ];
 
   var STEPS = [
@@ -104,6 +47,12 @@
     },
   ];
 
+  var now = new Date();
+  var year = now.getFullYear();
+  var monthIndex = now.getMonth();
+  var extra = null;
+  var selectedIso = "";
+  var selectedTxn = null;
   var stepIndex = 0;
   var open = false;
   var dialog = null;
@@ -111,12 +60,18 @@
   var lastFocus = null;
 
   function money(amount) {
-    var abs = Math.abs(amount).toLocaleString("en-US", { maximumFractionDigits: 0 });
+    var abs = Math.abs(amount).toLocaleString("en-US", {
+      minimumFractionDigits: amount % 1 ? 2 : 0,
+      maximumFractionDigits: 2,
+    });
     return amount < 0 ? "($" + abs + ")" : "$" + abs;
   }
 
   function txnMoney(amount) {
-    var abs = Math.abs(amount).toLocaleString("en-US", { maximumFractionDigits: 0 });
+    var abs = Math.abs(amount).toLocaleString("en-US", {
+      minimumFractionDigits: amount % 1 ? 2 : 0,
+      maximumFractionDigits: 2,
+    });
     return (amount < 0 ? "-" : "+") + "$" + abs;
   }
 
@@ -128,53 +83,147 @@
       .replace(/"/g, "&quot;");
   }
 
+  function daysInMonth(y, m) {
+    return new Date(y, m + 1, 0).getDate();
+  }
+
+  function isoFor(y, m, day) {
+    return y + "-" + String(m + 1).padStart(2, "0") + "-" + String(day).padStart(2, "0");
+  }
+
+  function parseAmount(raw) {
+    var n = Number(String(raw || "").replace(/[$,]/g, "").trim());
+    if (!isFinite(n) || n <= 0) return 0;
+    return Math.round(n * 100) / 100;
+  }
+
+  function project() {
+    var count = daysInMonth(year, monthIndex);
+    var byDay = {};
+    SERIES.forEach(function (item) {
+      if (item.day > count) return;
+      if (!byDay[item.day]) byDay[item.day] = [];
+      byDay[item.day].push({
+        name: item.name,
+        amount: item.amount,
+        note: item.note,
+        hypothetical: false,
+      });
+    });
+    if (extra && extra.day >= 1 && extra.day <= count && extra.amount > 0) {
+      if (!byDay[extra.day]) byDay[extra.day] = [];
+      byDay[extra.day].push({
+        name: "Hypothetical expense",
+        amount: -extra.amount,
+        note: "Demo only. Not saved.",
+        hypothetical: true,
+      });
+    }
+    var carry = OPENING;
+    var days = [];
+    var low = { end: Infinity, day: 1 };
+    for (var day = 1; day <= count; day += 1) {
+      var txns = byDay[day] || [];
+      var net = txns.reduce(function (sum, txn) {
+        return sum + txn.amount;
+      }, 0);
+      var start = carry;
+      var end = Math.round((start + net) * 100) / 100;
+      if (end < low.end) low = { end: end, day: day };
+      days.push({
+        day: day,
+        iso: isoFor(year, monthIndex, day),
+        start: start,
+        end: end,
+        txns: txns,
+      });
+      carry = end;
+    }
+    return { days: days, low: low };
+  }
+
+  function gapLabel(lowEnd) {
+    var delta = Math.round((lowEnd - BUFFER) * 100) / 100;
+    if (delta < 0) return money(Math.abs(delta)) + " below buffer";
+    if (delta > 0) return money(delta) + " above buffer";
+    return "Even with the buffer";
+  }
+
+  function groupsFor(day, txns) {
+    var groups = ["balances"];
+    if (day === 1) groups.push("start");
+    if (day < 15 && txns.some(function (txn) { return txn.amount < 0 && !txn.hypothetical; })) {
+      groups.push("upcoming");
+    }
+    if (day === 14) groups.push("pressure");
+    if (day === 15) groups.push("move");
+    return groups.join(" ");
+  }
+
   function cellHtml(day) {
+    var today = new Date();
+    var isToday =
+      today.getFullYear() === year && today.getMonth() === monthIndex && today.getDate() === day.day;
+    var below = day.end < BUFFER;
+    var risk = day.end < 0;
     var classes = ["cal-cell", "cal-cell--density-sparse"];
-    if (day.today) classes.push("cal-cell--today");
+    if (isToday) classes.push("cal-cell--today");
     if (day.txns.length) classes.push("cal-cell--has-activity");
     else classes.push("cal-cell--no-tx");
-    if (day.risk) classes.push("cal-cell--bal-risk");
-    else if (day.below) classes.push("cal-cell--bal-warn");
-    var groups = day.group || "";
-    if (day.group && day.group.indexOf("balances") === -1 && day.end != null) groups += " balances";
+    if (risk) classes.push("cal-cell--bal-risk");
+    else if (below) classes.push("cal-cell--bal-warn");
+    if (day.iso === selectedIso) classes.push("preview-cell--selected");
+    var date = new Date(year, monthIndex, day.day);
+    var mobile = date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
     var txns = day.txns
-      .map(function (txn) {
+      .map(function (txn, index) {
         var income = txn.amount > 0;
+        var hypo = txn.hypothetical ? " cal-day-tx-line--hypothetical" : "";
         return (
-          '<div class="cal-day-tx-line cal-day-tx-line--expected cal-day-tx-line--primary ' +
+          '<button type="button" class="cal-day-tx-line cal-day-tx-line--expected cal-day-tx-line--primary ' +
           (income ? "cal-day-tx-line--flow-in" : "cal-day-tx-line--flow-out") +
+          hypo +
+          '" data-txn="' +
+          index +
           '"><span class="cal-tx-label-wrap"><span class="cal-tx-label">' +
           escapeHtml(txn.name) +
           '</span></span><span class="cal-amt ' +
           (income ? "income" : "expense") +
           '">' +
           txnMoney(txn.amount) +
-          "</span></div>"
+          "</span></button>"
         );
       })
       .join("");
     var balClass = "cal-stat cal-balance";
-    if (day.risk) balClass += " is-negative cal-balance--risk";
-    else if (day.below) balClass += " cal-balance--below-floor";
+    if (risk) balClass += " is-negative cal-balance--risk";
+    else if (below) balClass += " cal-balance--below-floor";
     else balClass += " cal-balance--quiet";
-    var pill = day.start
-      ? '<span class="cal-balance-status-pill cal-balance-status-pill--starting"><span class="cal-balance-status-pill__icon" aria-hidden="true">●</span> Starting Point</span>'
-      : "";
-    var stripCue = day.risk ? " cal-balance-strip--cue-risk" : day.below ? " cal-balance-strip--cue-warn" : "";
+    var pill =
+      day.day === 1
+        ? '<span class="cal-balance-status-pill cal-balance-status-pill--starting"><span class="cal-balance-status-pill__icon" aria-hidden="true">●</span> Starting Point</span>'
+        : "";
+    var stripCue = risk ? " cal-balance-strip--cue-risk" : below ? " cal-balance-strip--cue-warn" : "";
     return (
       '<div class="' +
       classes.join(" ") +
+      '" data-day="' +
+      day.day +
       '" data-iso="' +
       day.iso +
+      '" data-end="' +
+      day.end +
       '" data-preview="' +
-      escapeHtml(groups.trim()) +
+      groupsFor(day.day, day.txns) +
+      '" aria-label="' +
+      escapeHtml(mobile + ", balance " + money(day.end)) +
       '"><div class="cal-daynum" data-mobile-label="' +
-      escapeHtml(day.mobile) +
-      '"><span class="cal-daynum-num' +
-      (day.today ? " is-today" : "") +
+      escapeHtml(mobile) +
+      '"><button type="button" class="cal-daynum-num preview-day-open' +
+      (isToday ? " is-today" : "") +
       '">' +
       day.day +
-      '</span></div><div class="cal-cell-fill"></div><div class="cal-cell-stack"><div class="cal-day-txns">' +
+      '</button></div><div class="cal-cell-fill"></div><div class="cal-cell-stack"><div class="cal-day-txns">' +
       txns +
       '</div><div class="cal-ledger-metrics"><div class="cal-balance-strip' +
       (pill ? " cal-balance-strip--has-status" : "") +
@@ -189,15 +238,148 @@
     );
   }
 
-  function renderCalendar() {
-    var root = document.getElementById("preview-calendar");
-    root.innerHTML = DAYS.map(cellHtml).join("");
-    syncMobileLayout();
+  function outCell() {
+    return '<div class="cal-cell cal-cell--out" aria-hidden="true"></div>';
   }
 
-  function syncMobileLayout() {
-    var narrow = window.matchMedia("(max-width: 768px)").matches;
-    document.getElementById("preview-calendar").classList.toggle("calendar--mobile", narrow);
+  function renderCalendar(model) {
+    var root = document.getElementById("preview-calendar");
+    var blanks = new Date(year, monthIndex, 1).getDay();
+    var cells = [];
+    var i;
+    for (i = 0; i < blanks; i += 1) cells.push(outCell());
+    model.days.forEach(function (day) {
+      cells.push(cellHtml(day));
+    });
+    while (cells.length % 7 !== 0) cells.push(outCell());
+    root.innerHTML = cells.join("");
+    root.setAttribute(
+      "aria-label",
+      "Fictional checking forecast for " +
+        new Date(year, monthIndex, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" })
+    );
+    document.getElementById("preview-calendar").classList.toggle(
+      "calendar--mobile",
+      window.matchMedia("(max-width: 768px)").matches
+    );
+  }
+
+  function renderSummary(model) {
+    var gap = document.getElementById("previewBufferGap");
+    document.getElementById("previewStartBalance").textContent = money(OPENING);
+    document.getElementById("previewLowBalance").textContent = money(model.low.end);
+    document.getElementById("previewBuffer").textContent = money(BUFFER);
+    gap.textContent = gapLabel(model.low.end);
+    gap.classList.toggle("is-below", model.low.end < BUFFER);
+    document.getElementById("previewLowBalance").classList.toggle("is-below", model.low.end < BUFFER);
+    var lowDate = new Date(year, monthIndex, model.low.day);
+    var lowText = lowDate.toLocaleDateString("en-US", { month: "long", day: "numeric" });
+    var story =
+      "This fictional household starts the month at " +
+      money(OPENING) +
+      ". Bills land before the paycheck, so the lowest balance is " +
+      money(model.low.end) +
+      " on " +
+      lowText +
+      ".";
+    if (extra) {
+      story += " The extra expense is only in this demo.";
+    }
+    document.getElementById("previewStory").textContent = story;
+    document.getElementById("previewMonthLabel").textContent = new Date(year, monthIndex, 1).toLocaleDateString(
+      "en-US",
+      { month: "long", year: "numeric" }
+    );
+  }
+
+  function renderDetail(model) {
+    var panel = document.getElementById("previewDetail");
+    var day = null;
+    model.days.forEach(function (item) {
+      if (item.iso === selectedIso) day = item;
+    });
+    if (!day) {
+      panel.hidden = true;
+      return;
+    }
+    var date = new Date(year, monthIndex, day.day);
+    document.getElementById("previewDetailTitle").textContent = date.toLocaleDateString("en-US", {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
+    var list = document.getElementById("previewDetailList");
+    if (!day.txns.length) {
+      list.innerHTML = "<li>No transactions this day.</li>";
+    } else {
+      list.innerHTML = day.txns
+        .map(function (txn, index) {
+          var mark = selectedTxn === index ? "<strong>" + escapeHtml(txn.name) + "</strong>" : escapeHtml(txn.name);
+          var note = txn.note ? " — " + escapeHtml(txn.note) : "";
+          return "<li>" + mark + " " + txnMoney(txn.amount) + note + "</li>";
+        })
+        .join("");
+    }
+    document.getElementById("previewDetailBalance").textContent =
+      "Starting balance " + money(day.start) + ". Ending balance " + money(day.end) + ".";
+    panel.hidden = false;
+  }
+
+  function renderAll() {
+    var model = project();
+    renderSummary(model);
+    renderCalendar(model);
+    renderDetail(model);
+    if (open && dialog) {
+      var nodes = stepIndex >= STEPS.length ? [] : spot(STEPS[stepIndex].spot);
+      placeDialog(nodes);
+      keepSpotVisible(nodes);
+    }
+  }
+
+  function fillDaySelect() {
+    var select = document.getElementById("previewExpenseDay");
+    var count = daysInMonth(year, monthIndex);
+    var current = Number(select.value || 14);
+    var label = new Date(year, monthIndex, 1).toLocaleDateString("en-US", { month: "long" });
+    var html = "";
+    var day;
+    for (day = 1; day <= count; day += 1) {
+      html += '<option value="' + day + '">' + label + " " + day + "</option>";
+    }
+    select.innerHTML = html;
+    if (current < 1 || current > count) current = Math.min(14, count);
+    select.value = String(current);
+  }
+
+  function readExtra() {
+    var amount = parseAmount(document.getElementById("previewExpenseAmount").value);
+    var day = Number(document.getElementById("previewExpenseDay").value);
+    if (amount <= 0) return null;
+    return { day: day, amount: amount };
+  }
+
+  function selectDay(iso, txnIndex) {
+    selectedIso = iso;
+    selectedTxn = txnIndex;
+    renderAll();
+    var panel = document.getElementById("previewDetail");
+    if (!panel.hidden && window.matchMedia("(max-width: 768px)").matches) {
+      panel.scrollIntoView({ block: "nearest" });
+    }
+  }
+
+  function shiftMonth(delta) {
+    var next = new Date(year, monthIndex + delta, 1);
+    year = next.getFullYear();
+    monthIndex = next.getMonth();
+    extra = null;
+    selectedIso = "";
+    selectedTxn = null;
+    document.getElementById("previewExpenseAmount").value = "";
+    fillDaySelect();
+    renderAll();
   }
 
   function ensureDialog() {
@@ -308,7 +490,6 @@
   function showStep(index) {
     stepIndex = index;
     open = true;
-    document.getElementById("previewReplay").hidden = true;
     var finale = index >= STEPS.length;
     var step = finale ? null : STEPS[index];
     var nodes = finale ? [] : spot(step.spot);
@@ -362,7 +543,6 @@
       dialog.style.display = "none";
     }
     if (backdrop) backdrop.classList.remove("bw-tour-backdrop--open");
-    document.getElementById("previewReplay").hidden = false;
     if (lastFocus && typeof lastFocus.focus === "function") lastFocus.focus();
   }
 
@@ -392,11 +572,9 @@
       return;
     }
     if (event.key !== "Tab" || !dialog) return;
-    var items = Array.prototype.slice
-      .call(dialog.querySelectorAll("button, a"))
-      .filter(function (el) {
-        return !el.hidden && el.offsetParent !== null;
-      });
+    var items = Array.prototype.slice.call(dialog.querySelectorAll("button, a")).filter(function (el) {
+      return !el.hidden && el.offsetParent !== null;
+    });
     if (!items.length) return;
     var first = items[0];
     var last = items[items.length - 1];
@@ -409,24 +587,61 @@
     }
   }
 
-  function trapBackdrop() {
-    backdrop = document.createElement("div");
-    backdrop.className = "bw-tour-backdrop";
-    backdrop.style.zIndex = "9990";
-    backdrop.setAttribute("aria-hidden", "true");
-    document.body.appendChild(backdrop);
-  }
+  var calendar = document.getElementById("preview-calendar");
+  calendar.addEventListener("click", function (event) {
+    var line = event.target.closest(".cal-day-tx-line");
+    var cell = event.target.closest(".cal-cell[data-iso]");
+    if (!cell || cell.classList.contains("cal-cell--out")) return;
+    selectDay(cell.getAttribute("data-iso"), line ? Number(line.getAttribute("data-txn")) : null);
+  });
+  calendar.addEventListener("keydown", function (event) {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    var cell = event.target.closest(".cal-cell[data-iso]");
+    if (!cell || event.target !== cell) return;
+    event.preventDefault();
+    selectDay(cell.getAttribute("data-iso"), null);
+  });
 
-  renderCalendar();
-  trapBackdrop();
+  document.getElementById("previewPrevMonth").addEventListener("click", function () {
+    shiftMonth(-1);
+  });
+  document.getElementById("previewNextMonth").addEventListener("click", function () {
+    shiftMonth(1);
+  });
+  document.getElementById("previewWhatIf").addEventListener("submit", function (event) {
+    event.preventDefault();
+  });
+  document.getElementById("previewExpenseAmount").addEventListener("input", function () {
+    extra = readExtra();
+    renderAll();
+  });
+  document.getElementById("previewExpenseDay").addEventListener("change", function () {
+    extra = readExtra();
+    renderAll();
+  });
+  document.getElementById("previewReset").addEventListener("click", function () {
+    extra = null;
+    document.getElementById("previewExpenseAmount").value = "";
+    renderAll();
+  });
+
+  backdrop = document.createElement("div");
+  backdrop.className = "bw-tour-backdrop";
+  backdrop.style.zIndex = "9990";
+  backdrop.setAttribute("aria-hidden", "true");
+  document.body.appendChild(backdrop);
   document.getElementById("previewReplay").addEventListener("click", openTour);
   window.addEventListener("resize", function () {
-    syncMobileLayout();
+    document.getElementById("preview-calendar").classList.toggle(
+      "calendar--mobile",
+      window.matchMedia("(max-width: 768px)").matches
+    );
     if (!open) return;
     var nodes = stepIndex >= STEPS.length ? [] : Array.prototype.slice.call(document.querySelectorAll(STEPS[stepIndex].spot));
     placeDialog(nodes);
     keepSpotVisible(nodes);
   });
   document.addEventListener("keydown", onKey);
-  openTour();
+  fillDaySelect();
+  renderAll();
 })();
