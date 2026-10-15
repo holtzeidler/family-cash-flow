@@ -27973,9 +27973,16 @@ body.account-setup-page
   font-size: 0.92rem;
   line-height: 1.46;
   color: #374151;
-  /* Preserve `\n\n` paragraph breaks in step copy without rendering
-     stray whitespace. */
-  white-space: pre-line;
+}
+.bw-tour-tooltip__para{
+  display: block;
+}
+.bw-tour-tooltip__para + .bw-tour-tooltip__para{
+  margin-top: 0.55rem;
+}
+.bw-tour-tooltip__para strong{
+  font-weight: 700;
+  color: #1f2937;
 }
 .bw-tour-tooltip__helper{
   margin: 3px 0 0;
@@ -28007,7 +28014,7 @@ body.account-setup-page
   font-size: 0.72rem;
   font-weight: 500;
   line-height: 1.3;
-  color: rgba(100, 116, 139, 0.78);
+  color: #4a5968;
   text-align: left;
 }
 .bw-tour-tooltip__helper-example-amount{
@@ -28044,7 +28051,7 @@ body.account-setup-page
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.07em;
-  color: rgba(100, 116, 139, 0.62);
+  color: #4a5968;
 }
 .bw-tour-tooltip:has(.bw-tour-tooltip__helper--reconcile-preview) .bw-tour-tooltip__close{
   width: 24px;
@@ -28153,9 +28160,9 @@ body.account-setup-page
 }
 .bw-tour-tooltip__reconcile-preview-balance-k{
   font-size: 0.68rem;
-  font-weight: 400;
+  font-weight: 500;
   line-height: 1.25;
-  color: rgba(100, 116, 139, 0.62);
+  color: #4a5968;
 }
 .bw-tour-tooltip__reconcile-preview-balance-v{
   font-size: 0.8rem;
@@ -28171,7 +28178,7 @@ body.account-setup-page
   font-size: 0.7rem;
   font-weight: 400;
   line-height: 1.38;
-  color: rgba(100, 116, 139, 0.48);
+  color: #4a5968;
 }
 .bw-tour-tooltip:has(.bw-tour-tooltip__helper--reconcile-preview) .bw-tour-tooltip__actions{
   margin-top: var(--bw-tour-rx-gap-4);
@@ -28187,7 +28194,7 @@ body.account-setup-page
   font-size: 0.76rem;
   font-weight: 450;
   line-height: 1;
-  color: rgba(100, 116, 139, 0.52);
+  color: #4a5968;
 }
 .bw-tour-tooltip:has(.bw-tour-tooltip__helper--reconcile-preview) .bw-tour-tooltip__back{
   display: inline-flex;
@@ -28256,7 +28263,7 @@ body.account-setup-page
   font-size: 0.72rem;
   font-weight: 500;
   line-height: 1.32;
-  color: rgba(100, 116, 139, 0.78);
+  color: #4a5968;
 }
 .bw-tour-tooltip__helper-list-items li + li{
   margin-top: 1px;
@@ -28265,7 +28272,7 @@ body.account-setup-page
   margin: 3px 0 0;
   font-size: 0.7rem;
   line-height: 1.32;
-  color: rgba(100, 116, 139, 0.52);
+  color: #4a5968;
 }
 .bw-tour-tooltip__actions{
   margin-top: 7px;
@@ -28311,16 +28318,16 @@ body.account-setup-page
   font: inherit;
   font-size: 0.8rem;
   font-weight: 500;
-  color: rgba(100, 116, 139, 0.5);
+  color: #4a5968;
   text-decoration: underline;
   text-decoration-thickness: 0.5px;
   text-underline-offset: 2px;
-  text-decoration-color: rgba(100, 116, 139, 0.35);
+  text-decoration-color: #4a5968;
   cursor: pointer;
 }
 .bw-tour-tooltip__skip:hover{
-  color: rgba(71, 85, 105, 0.72);
-  text-decoration-color: rgba(71, 85, 105, 0.45);
+  color: #243044;
+  text-decoration-color: #243044;
 }
 .bw-tour-tooltip__skip:focus-visible{
   outline: 2px solid color-mix(in srgb, var(--accent) 40%, transparent);

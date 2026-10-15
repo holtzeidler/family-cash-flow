@@ -7241,7 +7241,8 @@ function lastBalanceCheckTier(days) {
   if (days == null) return "none";
   const n = Number(days);
   if (!Number.isFinite(n) || n < 0) return "none";
-  if (n >= 30) return "stale";
+  // Fresh for 6 calendar days. Day 7 and after asks for a balance check.
+  if (n >= 7) return "stale";
   return "fresh";
 }
 
@@ -7311,9 +7312,21 @@ function applyForecastConfidenceUi(data) {
   const confirmedDate = data?.last_confirmed_balance_date;
   const tier = lastBalanceCheckTier(days);
 
+  if (sidebarCashHealthCard && state.activeFamilyId) sidebarCashHealthCard.hidden = false;
+  if (tier === "fresh") {
+    forecastConfidenceCard.hidden = true;
+    if (forecastConfidenceLabel) forecastConfidenceLabel.hidden = true;
+    if (forecastConfidenceHelper) {
+      forecastConfidenceHelper.textContent = "";
+      forecastConfidenceHelper.hidden = true;
+    }
+    if (forecastConfidenceVerifyBtn) forecastConfidenceVerifyBtn.hidden = true;
+    if (forecastConfidenceDetail) forecastConfidenceDetail.textContent = "";
+    return;
+  }
+
   forecastConfidenceCard.hidden = false;
   forecastConfidenceCard.className = `cash-health-status cash-health-status--balance cash-health-status--${tier}`;
-  if (sidebarCashHealthCard && state.activeFamilyId) sidebarCashHealthCard.hidden = false;
 
   let helper = "";
   let showLabel = false;

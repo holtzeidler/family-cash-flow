@@ -6484,6 +6484,14 @@ def _forecast_confidence_for_family(db, family_id: int) -> ForecastConfidenceOut
         select(func.max(VerifiedBalance.date)).where(VerifiedBalance.family_id == family_id)
     ).scalar_one_or_none()
     anchors: list[date] = [d for d in (last_reconciled, last_verified) if d is not None]
+    # The checking balance entered at setup is a real checkpoint. It is not a
+    # reconciled day or an adjusted balance, so it must not change the forecast.
+    starting_dates = (
+        db.execute(select(Account.starting_balance_date).where(Account.family_id == family_id)).scalars().all()
+    )
+    for starting_date in starting_dates:
+        if starting_date is not None and starting_date <= today:
+            anchors.append(starting_date)
     if not anchors:
         return ForecastConfidenceOut(
             last_confirmed_balance_date=None,
@@ -6492,6 +6500,7 @@ def _forecast_confidence_for_family(db, family_id: int) -> ForecastConfidenceOut
             show_verify_cta=True,
         )
     last_confirmed = max(anchors)
+    # Calendar days, not elapsed hours, so the recommendation stays put all day.
     days_since = max(0, (today - last_confirmed).days)
     if days_since <= 7:
         level = "high"
@@ -6505,7 +6514,7 @@ def _forecast_confidence_for_family(db, family_id: int) -> ForecastConfidenceOut
         last_confirmed_balance_date=last_confirmed,
         days_since_confirmed=days_since,
         confidence_level=level,
-        show_verify_cta=days_since >= 30,
+        show_verify_cta=days_since >= 7,
     )
 
 
