@@ -18,7 +18,6 @@
     { day: 24, name: "Car repair", amount: -420, note: "Occasional repair" },
     { day: 28, name: "Credit card", amount: -650, note: "Second card payment" },
   ];
-
   var STEPS = [
     {
       title: "Start with today’s checking balance",
@@ -59,20 +58,27 @@
   var backdrop = null;
   var lastFocus = null;
 
-  function money(amount) {
-    var abs = Math.abs(amount).toLocaleString("en-US", {
-      minimumFractionDigits: amount % 1 ? 2 : 0,
-      maximumFractionDigits: 2,
-    });
-    return amount < 0 ? "($" + abs + ")" : "$" + abs;
+  function cents(amount) {
+    return Math.abs(amount).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function balanceMoney(amount) {
+    return amount < 0 ? "$(" + cents(amount) + ")" : "$" + cents(amount);
   }
 
   function txnMoney(amount) {
-    var abs = Math.abs(amount).toLocaleString("en-US", {
-      minimumFractionDigits: amount % 1 ? 2 : 0,
-      maximumFractionDigits: 2,
-    });
-    return (amount < 0 ? "-" : "+") + "$" + abs;
+    return "$" + cents(amount);
+  }
+
+  function wholeMoney(amount) {
+    var rounded = Math.round(amount);
+    var abs = Math.abs(rounded).toLocaleString("en-US", { maximumFractionDigits: 0 });
+    return rounded < 0 ? "($" + abs + ")" : "$" + abs;
+  }
+
+  function sidebarMoney(amount) {
+    var rounded = Math.ceil(amount);
+    return "$" + rounded.toLocaleString("en-US", { maximumFractionDigits: 0 });
   }
 
   function escapeHtml(value) {
@@ -89,6 +95,11 @@
 
   function isoFor(y, m, day) {
     return y + "-" + String(m + 1).padStart(2, "0") + "-" + String(day).padStart(2, "0");
+  }
+
+  function todayIso() {
+    var today = new Date();
+    return isoFor(today.getFullYear(), today.getMonth(), today.getDate());
   }
 
   function parseAmount(raw) {
@@ -122,69 +133,78 @@
     var carry = OPENING;
     var days = [];
     var low = { end: Infinity, day: 1 };
+    var income = 0;
+    var expense = 0;
     for (var day = 1; day <= count; day += 1) {
       var txns = byDay[day] || [];
-      var net = txns.reduce(function (sum, txn) {
-        return sum + txn.amount;
-      }, 0);
+      var net = 0;
+      txns.forEach(function (txn) {
+        net += txn.amount;
+        if (txn.amount >= 0) income += txn.amount;
+        else expense += Math.abs(txn.amount);
+      });
       var start = carry;
       var end = Math.round((start + net) * 100) / 100;
       if (end < low.end) low = { end: end, day: day };
-      days.push({
-        day: day,
-        iso: isoFor(year, monthIndex, day),
-        start: start,
-        end: end,
-        txns: txns,
-      });
+      days.push({ day: day, iso: isoFor(year, monthIndex, day), start: start, end: end, net: net, txns: txns });
       carry = end;
     }
-    return { days: days, low: low };
-  }
-
-  function gapLabel(lowEnd) {
-    var delta = Math.round((lowEnd - BUFFER) * 100) / 100;
-    if (delta < 0) return money(Math.abs(delta)) + " below buffer";
-    if (delta > 0) return money(delta) + " above buffer";
-    return "Even with the buffer";
+    return { days: days, low: low, income: income, expense: expense, net: income - expense };
   }
 
   function groupsFor(day, txns) {
     var groups = ["balances"];
     if (day === 1) groups.push("start");
-    if (day < 15 && txns.some(function (txn) { return txn.amount < 0 && !txn.hypothetical; })) {
-      groups.push("upcoming");
-    }
+    if (day < 15 && txns.some(function (txn) { return txn.amount < 0 && !txn.hypothetical; })) groups.push("upcoming");
     if (day === 14) groups.push("pressure");
     if (day === 15) groups.push("move");
     return groups.join(" ");
   }
 
-  function cellHtml(day) {
-    var today = new Date();
-    var isToday =
-      today.getFullYear() === year && today.getMonth() === monthIndex && today.getDate() === day.day;
+  function warnIcon(small) {
+    var size = small ? 9 : 12;
+    return (
+      '<span class="' +
+      (small ? "cal-balance-warn-icon" : "cal-balance-risk-icon") +
+      '" aria-hidden="true"><svg viewBox="0 0 16 16" width="' +
+      size +
+      '" height="' +
+      size +
+      '" fill="none"><path d="M8 2.25L14 13.75H2L8 2.25z" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round"/><path d="M8 6.25v3M8 11.1v.01" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/></svg></span>'
+    );
+  }
+
+  function cellHtml(day, narrow) {
+    var isoToday = todayIso();
+    var isToday = day.iso === isoToday;
+    var isPast = day.iso < isoToday;
     var below = day.end < BUFFER;
     var risk = day.end < 0;
-    var classes = ["cal-cell", "cal-cell--density-sparse"];
+    var classes = ["cal-cell"];
+    var count = day.txns.length;
+    classes.push(count >= 4 ? "cal-cell--density-dense" : count === 3 ? "cal-cell--density-normal" : "cal-cell--density-sparse");
     if (isToday) classes.push("cal-cell--today");
-    if (day.txns.length) classes.push("cal-cell--has-activity");
+    if (isPast) classes.push("cal-cell--past");
+    if (count) classes.push("cal-cell--has-activity");
     else classes.push("cal-cell--no-tx");
-    if (risk) classes.push("cal-cell--bal-risk");
-    else if (below) classes.push("cal-cell--bal-warn");
+    if (day.txns.some(function (txn) { return txn.amount >= 3200; })) classes.push("cal-cell--payday");
+    if (!isPast && risk) classes.push("cal-cell--bal-risk");
+    else if (!isPast && below) classes.push("cal-cell--bal-warn");
+    else if (!isPast && day.end < BUFFER * 1.25) classes.push("cal-cell--bal-watch");
     if (day.iso === selectedIso) classes.push("preview-cell--selected");
     var date = new Date(year, monthIndex, day.day);
     var mobile = date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
     var txns = day.txns
       .map(function (txn, index) {
         var income = txn.amount > 0;
-        var hypo = txn.hypothetical ? " cal-day-tx-line--hypothetical" : "";
         return (
           '<button type="button" class="cal-day-tx-line cal-day-tx-line--expected cal-day-tx-line--primary ' +
           (income ? "cal-day-tx-line--flow-in" : "cal-day-tx-line--flow-out") +
-          hypo +
+          (txn.hypothetical ? " cal-day-tx-line--hypothetical" : "") +
           '" data-txn="' +
           index +
+          '" title="' +
+          escapeHtml(txn.name) +
           '"><span class="cal-tx-label-wrap"><span class="cal-tx-label">' +
           escapeHtml(txn.name) +
           '</span></span><span class="cal-amt ' +
@@ -196,14 +216,21 @@
       })
       .join("");
     var balClass = "cal-stat cal-balance";
-    if (risk) balClass += " is-negative cal-balance--risk";
-    else if (below) balClass += " cal-balance--below-floor";
+    var icon = "";
+    if (isPast) balClass += " cal-balance--quiet cal-balance--past-day";
+    else if (risk) {
+      balClass += " is-negative cal-balance--risk";
+      icon = warnIcon(false);
+    } else if (below) {
+      balClass += " cal-balance--below-floor";
+      icon = warnIcon(true);
+    } else if (day.net >= 3200) balClass += " cal-balance--strong-inflow";
     else balClass += " cal-balance--quiet";
     var pill =
       day.day === 1
         ? '<span class="cal-balance-status-pill cal-balance-status-pill--starting"><span class="cal-balance-status-pill__icon" aria-hidden="true">●</span> Starting Point</span>'
         : "";
-    var stripCue = risk ? " cal-balance-strip--cue-risk" : below ? " cal-balance-strip--cue-warn" : "";
+    var stripCue = !isPast && risk ? " cal-balance-strip--cue-risk" : !isPast && below ? " cal-balance-strip--cue-warn" : "";
     return (
       '<div class="' +
       classes.join(" ") +
@@ -215,81 +242,134 @@
       day.end +
       '" data-preview="' +
       groupsFor(day.day, day.txns) +
-      '" aria-label="' +
-      escapeHtml(mobile + ", balance " + money(day.end)) +
-      '"><div class="cal-daynum" data-mobile-label="' +
+      '"' +
+      (narrow ? "" : ' style="height:162px"') +
+      '><div class="cal-daynum" data-mobile-label="' +
       escapeHtml(mobile) +
-      '"><button type="button" class="cal-daynum-num preview-day-open' +
+      '"><span class="cal-daynum-num' +
       (isToday ? " is-today" : "") +
       '">' +
       day.day +
-      '</button></div><div class="cal-cell-fill"></div><div class="cal-cell-stack"><div class="cal-day-txns">' +
+      '</span></div><div class="cal-cell-fill"></div><div class="cal-cell-stack"><div class="cal-day-txns">' +
       txns +
-      '</div><div class="cal-ledger-metrics"><div class="cal-balance-strip' +
+      '</div><div class="cal-ledger-metrics"><button type="button" class="cal-balance-strip' +
       (pill ? " cal-balance-strip--has-status" : "") +
       stripCue +
-      '"><div class="cal-balance-strip__row"><span class="cal-balance-strip__amt"><span class="' +
+      '"><span class="cal-balance-strip__row"><span class="cal-balance-strip__amt">' +
+      icon +
+      '<span class="' +
       balClass +
-      '">' +
-      money(day.end) +
+      '" title="Projected end-of-day balance">' +
+      balanceMoney(day.end) +
       "</span></span>" +
       pill +
-      "</div></div></div></div></div>"
+      "</span></button></div></div></div>"
     );
   }
 
-  function outCell() {
-    return '<div class="cal-cell cal-cell--out" aria-hidden="true"></div>';
+  function outCell(date, narrow) {
+    return (
+      '<div class="cal-cell cal-cell--out" aria-hidden="true"' +
+      (narrow ? "" : ' style="height:162px"') +
+      '><div class="cal-daynum"><span class="cal-daynum-num">' +
+      date.getDate() +
+      "</span></div></div>"
+    );
   }
 
   function renderCalendar(model) {
+    var narrow = window.matchMedia("(max-width: 768px)").matches;
     var root = document.getElementById("preview-calendar");
+    var dow = document.getElementById("calendarDow");
+    var labels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    dow.innerHTML = narrow
+      ? ""
+      : labels
+          .map(function (label) {
+            return '<div class="cal-dow">' + label + "</div>";
+          })
+          .join("");
     var blanks = new Date(year, monthIndex, 1).getDay();
     var cells = [];
     var i;
-    for (i = 0; i < blanks; i += 1) cells.push(outCell());
+    for (i = 0; i < blanks; i += 1) cells.push(outCell(new Date(year, monthIndex, i - blanks + 1), narrow));
     model.days.forEach(function (day) {
-      cells.push(cellHtml(day));
+      cells.push(cellHtml(day, narrow));
     });
-    while (cells.length % 7 !== 0) cells.push(outCell());
+    while (cells.length % 7 !== 0) {
+      var nextDay = cells.length - blanks + 1;
+      cells.push(outCell(new Date(year, monthIndex, nextDay), narrow));
+    }
     root.innerHTML = cells.join("");
+    root.className = narrow ? "calendar calendar--mobile" : "calendar";
     root.setAttribute(
       "aria-label",
       "Fictional checking forecast for " +
         new Date(year, monthIndex, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" })
     );
-    document.getElementById("preview-calendar").classList.toggle(
-      "calendar--mobile",
-      window.matchMedia("(max-width: 768px)").matches
-    );
   }
 
-  function renderSummary(model) {
-    var gap = document.getElementById("previewBufferGap");
-    document.getElementById("previewStartBalance").textContent = money(OPENING);
-    document.getElementById("previewLowBalance").textContent = money(model.low.end);
-    document.getElementById("previewBuffer").textContent = money(BUFFER);
-    gap.textContent = gapLabel(model.low.end);
-    gap.classList.toggle("is-below", model.low.end < BUFFER);
-    document.getElementById("previewLowBalance").classList.toggle("is-below", model.low.end < BUFFER);
-    var lowDate = new Date(year, monthIndex, model.low.day);
-    var lowText = lowDate.toLocaleDateString("en-US", { month: "long", day: "numeric" });
-    var story =
-      "This fictional household starts the month at " +
-      money(OPENING) +
-      ". Bills land before the paycheck, so the lowest balance is " +
-      money(model.low.end) +
-      " on " +
-      lowText +
-      ".";
-    if (extra) {
-      story += " The extra expense is only in this demo.";
+  function renderCashHealth(model) {
+    var banner = document.getElementById("sidebarLowBalanceBanner");
+    var when = new Date(year, monthIndex, model.low.day).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    });
+    var gap = Math.abs(Math.round((model.low.end - BUFFER) * 100) / 100);
+    if (model.low.end < BUFFER) {
+      banner.className = "calendar-low-balance calendar-low-balance--sidebar calendar-low-balance--inset is-danger";
+      banner.innerHTML =
+        '<div class="cash-outlook-card"><div class="cash-outlook-card__row">' +
+        '<span class="cash-outlook-icon cash-outlook-icon--warn" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3L2 21h20L12 3z"></path><path d="M12 9v5"></path><path d="M12 17h.01"></path></svg></span>' +
+        '<div class="cash-outlook-card__body">' +
+        '<p class="cash-outlook-card__kicker">Low balance</p>' +
+        '<p class="cash-outlook-card__date" id="previewCashDate">' +
+        escapeHtml(when) +
+        "</p>" +
+        '<p class="cash-outlook-card__line cash-outlook-card__line--secondary">Projected balance: <span id="previewLowBalance">' +
+        wholeMoney(model.low.end) +
+        "</span></p>" +
+        '<p class="cash-outlook-card__line cash-outlook-card__line--tertiary" id="previewBufferGap">That\'s ' +
+        wholeMoney(gap) +
+        " below your " +
+        wholeMoney(BUFFER) +
+        " minimum.</p>" +
+        "</div></div></div>";
+    } else {
+      banner.className = "calendar-low-balance calendar-low-balance--sidebar calendar-low-balance--inset is-muted is-suggestion";
+      banner.innerHTML =
+        "<strong>Within your minimum</strong>" +
+        '<div class="cash-outlook-secondary">Lowest balance this month is <span id="previewLowBalance">' +
+        wholeMoney(model.low.end) +
+        '</span>. <span id="previewBufferGap">That is ' +
+        wholeMoney(gap) +
+        " above your " +
+        wholeMoney(BUFFER) +
+        " minimum.</span></div>";
     }
-    document.getElementById("previewStory").textContent = story;
+    banner.style.display = "flex";
+  }
+
+  function renderSnapshot(model) {
     document.getElementById("previewMonthLabel").textContent = new Date(year, monthIndex, 1).toLocaleDateString(
       "en-US",
       { month: "long", year: "numeric" }
     );
+    document.getElementById("totals").innerHTML =
+      '<div class="total total--income"><div class="k">Income</div><div class="v ok" id="previewIncome">' +
+      sidebarMoney(model.income) +
+      '</div></div><div class="total total--expense"><div class="k">Expenses</div><div class="v danger" id="previewExpenses">' +
+      sidebarMoney(model.expense) +
+      '</div></div><div class="total total--net"><div class="k">Net</div><div class="v ' +
+      (model.net >= 0 ? "ok" : "danger") +
+      '" id="previewNet">' +
+      sidebarMoney(model.net) +
+      "</div></div>";
+    var button = document.getElementById("previewTryExpense");
+    button.classList.toggle("is-active", !!extra);
+    button.textContent = extra ? "Expense added" : "Try an expense";
+    document.getElementById("calendarMonthNum").value = String(monthIndex + 1);
+    ensureYearOption(year);
   }
 
   function renderDetail(model) {
@@ -300,35 +380,32 @@
     });
     if (!day) {
       panel.hidden = true;
+      panel.classList.remove("modal-overlay--open");
       return;
     }
-    var date = new Date(year, monthIndex, day.day);
-    document.getElementById("previewDetailTitle").textContent = date.toLocaleDateString("en-US", {
-      weekday: "long",
-      month: "long",
-      day: "numeric",
-      year: "numeric",
-    });
+    document.getElementById("previewDetailTitle").textContent = new Date(year, monthIndex, day.day).toLocaleDateString(
+      "en-US",
+      { weekday: "long", month: "long", day: "numeric", year: "numeric" }
+    );
     var list = document.getElementById("previewDetailList");
-    if (!day.txns.length) {
-      list.innerHTML = "<li>No transactions this day.</li>";
-    } else {
-      list.innerHTML = day.txns
-        .map(function (txn, index) {
-          var mark = selectedTxn === index ? "<strong>" + escapeHtml(txn.name) + "</strong>" : escapeHtml(txn.name);
-          var note = txn.note ? " — " + escapeHtml(txn.note) : "";
-          return "<li>" + mark + " " + txnMoney(txn.amount) + note + "</li>";
-        })
-        .join("");
-    }
+    list.innerHTML = day.txns.length
+      ? day.txns
+          .map(function (txn, index) {
+            var name = selectedTxn === index ? "<strong>" + escapeHtml(txn.name) + "</strong>" : escapeHtml(txn.name);
+            return "<li>" + name + " " + txnMoney(txn.amount) + (txn.note ? " — " + escapeHtml(txn.note) : "") + "</li>";
+          })
+          .join("")
+      : "<li>No transactions this day.</li>";
     document.getElementById("previewDetailBalance").textContent =
-      "Starting balance " + money(day.start) + ". Ending balance " + money(day.end) + ".";
+      "Starting balance " + balanceMoney(day.start) + ". Ending balance " + balanceMoney(day.end) + ".";
     panel.hidden = false;
+    panel.classList.add("modal-overlay--open");
   }
 
   function renderAll() {
     var model = project();
-    renderSummary(model);
+    renderCashHealth(model);
+    renderSnapshot(model);
     renderCalendar(model);
     renderDetail(model);
     if (open && dialog) {
@@ -338,6 +415,17 @@
     }
   }
 
+  function ensureYearOption(value) {
+    var select = document.getElementById("calendarYear");
+    if (!select.querySelector('option[value="' + value + '"]')) {
+      var opt = document.createElement("option");
+      opt.value = String(value);
+      opt.textContent = String(value);
+      select.appendChild(opt);
+    }
+    select.value = String(value);
+  }
+
   function fillDaySelect() {
     var select = document.getElementById("previewExpenseDay");
     var count = daysInMonth(year, monthIndex);
@@ -345,9 +433,7 @@
     var label = new Date(year, monthIndex, 1).toLocaleDateString("en-US", { month: "long" });
     var html = "";
     var day;
-    for (day = 1; day <= count; day += 1) {
-      html += '<option value="' + day + '">' + label + " " + day + "</option>";
-    }
+    for (day = 1; day <= count; day += 1) html += '<option value="' + day + '">' + label + " " + day + "</option>";
     select.innerHTML = html;
     if (current < 1 || current > count) current = Math.min(14, count);
     select.value = String(current);
@@ -360,26 +446,47 @@
     return { day: day, amount: amount };
   }
 
-  function selectDay(iso, txnIndex) {
-    selectedIso = iso;
-    selectedTxn = txnIndex;
-    renderAll();
-    var panel = document.getElementById("previewDetail");
-    if (!panel.hidden && window.matchMedia("(max-width: 768px)").matches) {
-      panel.scrollIntoView({ block: "nearest" });
+  function setMonth(nextYear, nextMonth, clearExtra) {
+    year = nextYear;
+    monthIndex = nextMonth;
+    if (clearExtra) {
+      extra = null;
+      document.getElementById("previewExpenseAmount").value = "";
     }
+    selectedIso = "";
+    selectedTxn = null;
+    fillDaySelect();
+    renderAll();
   }
 
   function shiftMonth(delta) {
     var next = new Date(year, monthIndex + delta, 1);
-    year = next.getFullYear();
-    monthIndex = next.getMonth();
-    extra = null;
+    setMonth(next.getFullYear(), next.getMonth(), true);
+  }
+
+  function selectDay(iso, txnIndex) {
+    selectedIso = iso;
+    selectedTxn = txnIndex;
+    renderAll();
+  }
+
+  function closeDetail() {
     selectedIso = "";
     selectedTxn = null;
-    document.getElementById("previewExpenseAmount").value = "";
-    fillDaySelect();
     renderAll();
+  }
+
+  function openWhatIf() {
+    var panel = document.getElementById("previewWhatIf");
+    panel.hidden = false;
+    panel.classList.add("modal-overlay--open");
+    document.getElementById("previewExpenseAmount").focus();
+  }
+
+  function closeWhatIf() {
+    var panel = document.getElementById("previewWhatIf");
+    panel.hidden = true;
+    panel.classList.remove("modal-overlay--open");
   }
 
   function ensureDialog() {
@@ -392,27 +499,17 @@
     dialog.setAttribute("aria-labelledby", "previewTourTitle");
     dialog.style.zIndex = "9993";
     dialog.innerHTML =
-      '<div class="bw-tour-tooltip__head">' +
-      '<span class="bw-tour-tooltip__counter" id="previewTourCounter">1 of 5</span>' +
-      '<button type="button" class="bw-tour-tooltip__close" id="previewTourClose" aria-label="Close walkthrough">×</button>' +
-      "</div>" +
-      '<h2 class="bw-tour-tooltip__title" id="previewTourTitle"></h2>' +
-      '<p class="bw-tour-tooltip__body" id="previewTourBody"></p>' +
+      '<div class="bw-tour-tooltip__head"><span class="bw-tour-tooltip__counter" id="previewTourCounter">1 of 5</span><button type="button" class="bw-tour-tooltip__close" id="previewTourClose" aria-label="Close walkthrough">×</button></div>' +
+      '<h2 class="bw-tour-tooltip__title" id="previewTourTitle"></h2><p class="bw-tour-tooltip__body" id="previewTourBody"></p>' +
       '<p class="preview-finale-note" id="previewTourNote" hidden>Free for 14 days · No bank connection required</p>' +
-      '<div class="bw-tour-tooltip__actions">' +
-      '<button type="button" class="bw-tour-tooltip__skip preview-back" id="previewTourBack">Back</button>' +
+      '<div class="bw-tour-tooltip__actions"><button type="button" class="bw-tour-tooltip__skip preview-back" id="previewTourBack">Back</button>' +
       '<button type="button" class="bw-tour-tooltip__cta" id="previewTourNext">Next</button>' +
-      '<a class="bw-tour-tooltip__cta preview-tour-link" id="previewTourStart" href="/account-setup/?fresh=1" hidden>Start my free trial</a>' +
-      "</div>" +
+      '<a class="bw-tour-tooltip__cta preview-tour-link" id="previewTourStart" href="/account-setup/?fresh=1" hidden>Start my free trial</a></div>' +
       '<a class="bw-tour-tooltip__skip" id="previewTourFaq" href="/help.html" hidden>Back to FAQ</a>';
     document.body.appendChild(dialog);
     document.getElementById("previewTourClose").addEventListener("click", closeTour);
-    document.getElementById("previewTourBack").addEventListener("click", function () {
-      showStep(stepIndex - 1);
-    });
-    document.getElementById("previewTourNext").addEventListener("click", function () {
-      showStep(stepIndex + 1);
-    });
+    document.getElementById("previewTourBack").addEventListener("click", function () { showStep(stepIndex - 1); });
+    document.getElementById("previewTourNext").addEventListener("click", function () { showStep(stepIndex + 1); });
     return dialog;
   }
 
@@ -432,10 +529,8 @@
     clearSpot();
     var nodes = Array.prototype.slice.call(document.querySelectorAll(selector));
     nodes.forEach(function (el) {
-      var z = el.style.zIndex;
-      var pos = el.style.position;
-      el.dataset.previewZ = z === "" ? "__unset" : z;
-      el.dataset.previewPos = pos === "" ? "__unset" : pos;
+      el.dataset.previewZ = el.style.zIndex === "" ? "__unset" : el.style.zIndex;
+      el.dataset.previewPos = el.style.position === "" ? "__unset" : el.style.position;
       if (window.getComputedStyle(el).position === "static") el.style.position = "relative";
       el.style.zIndex = "9991";
       el.classList.add("bw-tour-target");
@@ -452,15 +547,9 @@
     var cardTop = card.getBoundingClientRect().top;
     var navBottom = nav ? nav.getBoundingClientRect().bottom : 0;
     var rect = el.getBoundingClientRect();
-    var room = cardTop - navBottom - gap * 2;
     var delta = 0;
-    if (room > 0 && rect.height > room) {
-      delta = rect.top - (navBottom + gap);
-    } else if (rect.bottom > cardTop - gap) {
-      delta = rect.bottom - (cardTop - gap);
-    } else if (rect.top < navBottom + gap) {
-      delta = rect.top - (navBottom + gap);
-    }
+    if (rect.bottom > cardTop - gap) delta = rect.bottom - (cardTop - gap);
+    else if (rect.top < navBottom + gap) delta = rect.top - (navBottom + gap);
     if (Math.abs(delta) > 1) window.scrollBy(0, delta);
   }
 
@@ -511,7 +600,6 @@
       start.hidden = false;
       faq.hidden = false;
       back.hidden = false;
-      back.textContent = "Back";
     } else {
       counter.hidden = false;
       counter.textContent = index + 1 + " of " + STEPS.length;
@@ -523,13 +611,11 @@
       start.hidden = true;
       faq.hidden = true;
       back.hidden = index === 0;
-      back.textContent = "Back";
     }
     placeDialog(nodes);
     keepSpotVisible(nodes);
     window.setTimeout(function () {
       placeDialog(nodes);
-      keepSpotVisible(nodes);
       var focusTarget = finale ? start : next;
       if (focusTarget && !focusTarget.hidden) focusTarget.focus();
     }, 0);
@@ -555,6 +641,20 @@
   }
 
   function onKey(event) {
+    var whatIf = document.getElementById("previewWhatIf");
+    var detail = document.getElementById("previewDetail");
+    if (event.key === "Escape") {
+      if (!whatIf.hidden) {
+        event.preventDefault();
+        closeWhatIf();
+        return;
+      }
+      if (!detail.hidden) {
+        event.preventDefault();
+        closeDetail();
+        return;
+      }
+    }
     if (!open) return;
     if (event.key === "Escape") {
       event.preventDefault();
@@ -594,23 +694,25 @@
     if (!cell || cell.classList.contains("cal-cell--out")) return;
     selectDay(cell.getAttribute("data-iso"), line ? Number(line.getAttribute("data-txn")) : null);
   });
-  calendar.addEventListener("keydown", function (event) {
-    if (event.key !== "Enter" && event.key !== " ") return;
-    var cell = event.target.closest(".cal-cell[data-iso]");
-    if (!cell || event.target !== cell) return;
-    event.preventDefault();
-    selectDay(cell.getAttribute("data-iso"), null);
-  });
 
-  document.getElementById("previewPrevMonth").addEventListener("click", function () {
-    shiftMonth(-1);
+  document.getElementById("calendarPrevMonth").addEventListener("click", function () { shiftMonth(-1); });
+  document.getElementById("calendarNextMonth").addEventListener("click", function () { shiftMonth(1); });
+  document.getElementById("calendarGoToday").addEventListener("click", function () {
+    var today = new Date();
+    setMonth(today.getFullYear(), today.getMonth(), true);
   });
-  document.getElementById("previewNextMonth").addEventListener("click", function () {
-    shiftMonth(1);
+  document.getElementById("calendarMonthNum").addEventListener("change", function (event) {
+    setMonth(year, Number(event.target.value) - 1, true);
   });
-  document.getElementById("previewWhatIf").addEventListener("submit", function (event) {
-    event.preventDefault();
+  document.getElementById("calendarYear").addEventListener("change", function (event) {
+    setMonth(Number(event.target.value), monthIndex, true);
   });
+  document.getElementById("previewTryExpense").addEventListener("click", openWhatIf);
+  document.getElementById("previewWhatIfClose").addEventListener("click", closeWhatIf);
+  document.getElementById("previewWhatIf").addEventListener("click", function (event) {
+    if (event.target.id === "previewWhatIf") closeWhatIf();
+  });
+  document.getElementById("previewWhatIfForm").addEventListener("submit", function (event) { event.preventDefault(); });
   document.getElementById("previewExpenseAmount").addEventListener("input", function () {
     extra = readExtra();
     renderAll();
@@ -624,6 +726,10 @@
     document.getElementById("previewExpenseAmount").value = "";
     renderAll();
   });
+  document.getElementById("previewDetailClose").addEventListener("click", closeDetail);
+  document.getElementById("previewDetail").addEventListener("click", function (event) {
+    if (event.target.id === "previewDetail") closeDetail();
+  });
 
   backdrop = document.createElement("div");
   backdrop.className = "bw-tour-backdrop";
@@ -632,16 +738,20 @@
   document.body.appendChild(backdrop);
   document.getElementById("previewReplay").addEventListener("click", openTour);
   window.addEventListener("resize", function () {
-    document.getElementById("preview-calendar").classList.toggle(
-      "calendar--mobile",
-      window.matchMedia("(max-width: 768px)").matches
-    );
+    renderCalendar(project());
     if (!open) return;
     var nodes = stepIndex >= STEPS.length ? [] : Array.prototype.slice.call(document.querySelectorAll(STEPS[stepIndex].spot));
     placeDialog(nodes);
     keepSpotVisible(nodes);
   });
   document.addEventListener("keydown", onKey);
+  var yearSelect = document.getElementById("calendarYear");
+  [now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1].forEach(function (value) {
+    var opt = document.createElement("option");
+    opt.value = String(value);
+    opt.textContent = String(value);
+    yearSelect.appendChild(opt);
+  });
   fillDaySelect();
   renderAll();
 })();
