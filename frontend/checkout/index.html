@@ -196,6 +196,7 @@
         var accessDenied = false;
         var blockReason = "Preparing secure checkout…";
         var submitting = false;
+        var checkoutAttempt = 0;
         var defaultReassure = "Payment is completed securely through Stripe.";
 
         function accessToken() {
@@ -590,6 +591,16 @@
           );
         }
 
+        function releaseCheckoutRedirect() {
+          // Back from Stripe restores this page from the back-forward cache.
+          // The script does not run again, so the redirect spinner would stay.
+          if (!submitting) return;
+          checkoutAttempt += 1;
+          submitting = false;
+          if (accessDenied || !familyReady) return;
+          refreshCheckoutReady();
+        }
+
         function startCheckout() {
           if (submitting || accessDenied) return;
           var key = selectedLookupKey();
@@ -605,6 +616,7 @@
             return;
           }
           submitting = true;
+          var attempt = ++checkoutAttempt;
           btn.classList.remove("checkout-form__submit--blocked");
           setButtonContent("Redirecting to Stripe…", { busy: true });
 
@@ -616,6 +628,7 @@
             headers: authHeaders(),
           })
             .then(function (result) {
+              if (attempt !== checkoutAttempt) return;
               var url = result.data && result.data.url;
               if (result.ok && url) {
                 window.location.assign(url);
@@ -643,6 +656,7 @@
               throw new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
             })
             .catch(function (err) {
+              if (attempt !== checkoutAttempt) return;
               submitting = false;
               checkoutReady = true;
               if (btn) {
@@ -675,6 +689,10 @@
 
         btn.addEventListener("click", onCheckoutClick);
         form.addEventListener("submit", onCheckoutClick);
+        window.addEventListener("pagehide", releaseCheckoutRedirect);
+        window.addEventListener("pageshow", function (event) {
+          if (event.persisted) releaseCheckoutRedirect();
+        });
 
         setPreparing();
 
