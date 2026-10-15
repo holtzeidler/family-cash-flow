@@ -125,8 +125,12 @@
       }
       .preview-page .preview-cal-head {
         display: flex;
-        align-items: center;
+        flex-direction: column;
+        align-items: stretch;
         margin: 2px 0 6px;
+      }
+      .preview-page .preview-range {
+        display: none;
       }
       .preview-page .preview-cal-head .calendar-nav-block {
         flex: 1 1 auto;
@@ -391,6 +395,13 @@
         border-color: rgba(154, 108, 48, 0.28);
         box-shadow: inset 3px 0 0 rgba(154, 108, 48, 0.55);
       }
+      body.preview-page .cal-balance-status-pills {
+        display: inline-flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 4px;
+        min-width: 0;
+      }
       body.preview-page .cal-stat.cal-balance.cal-balance--quiet:not(.cal-balance--below-floor):not(.is-negative):not(.cal-balance--risk) {
         color: rgba(30, 41, 59, 0.88);
       }
@@ -556,6 +567,31 @@
           grid-column: 1 / -1;
         }
       }
+      @media (max-width: 700px) {
+        .preview-page .preview-range {
+          display: flex;
+          gap: 6px;
+          margin: 0 0 8px;
+        }
+        .preview-page .preview-range__btn {
+          flex: 1 1 0;
+          min-height: 40px;
+          padding: 8px 10px;
+          border-radius: 999px;
+          border: 1px solid rgba(11, 61, 46, 0.16);
+          background: #fff;
+          color: #0b3d2e;
+          font: inherit;
+          font-size: 0.86rem;
+          font-weight: 700;
+          line-height: 1.2;
+        }
+        .preview-page .preview-range__btn[aria-pressed="true"] {
+          background: #0b3d2e;
+          color: #fff;
+          border-color: #0b3d2e;
+        }
+      }
       @media (max-width: 800px) {
         .preview-page .preview-mode {
           align-items: stretch;
@@ -702,6 +738,10 @@
               <div class="calendar-panel-sticky-zone">
                 <div class="calendar-sticky-header" id="calendarStickyHeader">
                   <div class="preview-cal-head">
+                    <div class="preview-range" id="previewRange" role="group" aria-label="Forecast range">
+                      <button type="button" class="preview-range__btn" id="previewShowAgenda" aria-pressed="true">Next 14 days</button>
+                      <button type="button" class="preview-range__btn" id="previewShowMonth" aria-pressed="false">Full month</button>
+                    </div>
                     <div class="calendar-nav-block">
                       <div class="calendar-nav-bar" role="group" aria-label="Calendar navigation">
                         <button type="button" class="cal-today-btn" id="calendarGoToday" title="Go to current month">
@@ -778,6 +818,6 @@
       </div>
     </div>
 
-    <script src="./preview.js?v=13"></script>
+    <script src="./preview.js?v=14"></script>
   </body>
 </html>

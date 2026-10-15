@@ -7,25 +7,25 @@
 
   var BUFFER = 1500;
   var OPENING = 4850;
-  var RECONCILE_DAY = 9;
-  var RECONCILE_BANK = 1925;
-  // Pre-existing fictional reconciliation. In October this is October 10.
-  // The bank matched that day's forecast, so the balance is unchanged.
-  var SAMPLE_RECONCILED_DAY = 10;
-  // Separate fictional adjustment. In October this is October 20.
-  // The bank balance is $120 below that day's forecast, so later days start here.
-  var SAMPLE_ADJUSTED_DAY = 20;
-  var SAMPLE_ADJUSTED_BANK = 3240;
+  var PHONE_QUERY = "(max-width: 700px)";
+  // Offsets are days from the visitor's current date. The low point stays 4 days ahead.
+  var LOW_OFFSET = 4;
+  var PAY_OFFSET = 6;
+  var DEMO_OFFSET = -4;
+  var RECONCILED_OFFSET = -3;
+  var ADJUSTED_OFFSET = 10;
+  var DEMO_BANK = 1925;
+  var ADJUSTED_BANK = 3240;
   var SERIES = [
-    { day: 4, name: "Groceries", amount: -180, note: "Weekly groceries" },
-    { day: 6, name: "Mortgage", amount: -2400, note: "Monthly mortgage" },
-    { day: 9, name: "Utilities", amount: -210, note: "Electric and water" },
-    { day: 11, name: "Credit card", amount: -1750, note: "Card payment" },
-    { day: 14, name: "Insurance", amount: -160, note: "Auto insurance" },
-    { day: 15, name: "Paycheck", amount: 3400, note: "Payday" },
-    { day: 20, name: "Groceries", amount: -190, note: "Weekly groceries" },
-    { day: 24, name: "Car repair", amount: -420, note: "Occasional repair" },
-    { day: 28, name: "Credit card", amount: -650, note: "Second card payment" },
+    { offset: -8, name: "Groceries", amount: -180, note: "Weekly groceries" },
+    { offset: -6, name: "Mortgage", amount: -2400, note: "Monthly mortgage" },
+    { offset: -4, name: "Utilities", amount: -210, note: "Electric and water" },
+    { offset: 3, name: "Credit card", amount: -660, note: "Card payment" },
+    { offset: 4, name: "Insurance", amount: -1250, note: "Auto insurance" },
+    { offset: 6, name: "Paycheck", amount: 3400, note: "Payday" },
+    { offset: 10, name: "Groceries", amount: -190, note: "Weekly groceries" },
+    { offset: 14, name: "Car repair", amount: -420, note: "Occasional repair" },
+    { offset: 18, name: "Credit card", amount: -650, note: "Second card payment" },
   ];
   var STEPS = [
     {
@@ -57,11 +57,13 @@
     },
   ];
 
-  var now = new Date();
-  var year = now.getFullYear();
-  var monthIndex = now.getMonth();
+  var todayDate = dateOnly(new Date());
+  var lowDate = addDays(todayDate, LOW_OFFSET);
+  var year = lowDate.getFullYear();
+  var monthIndex = lowDate.getMonth();
   var extra = null;
   var reconciled = false;
+  var rangeMode = "agenda";
   var selectedIso = "";
   var selectedTxn = null;
   var stepIndex = 0;
@@ -121,9 +123,33 @@
     return y + "-" + String(m + 1).padStart(2, "0") + "-" + String(day).padStart(2, "0");
   }
 
+  function dateOnly(value) {
+    return new Date(value.getFullYear(), value.getMonth(), value.getDate());
+  }
+
+  function addDays(value, count) {
+    return new Date(value.getFullYear(), value.getMonth(), value.getDate() + count);
+  }
+
+  function isoOf(value) {
+    return isoFor(value.getFullYear(), value.getMonth(), value.getDate());
+  }
+
   function todayIso() {
-    var today = new Date();
-    return isoFor(today.getFullYear(), today.getMonth(), today.getDate());
+    return isoOf(todayDate);
+  }
+
+  function phoneLayout() {
+    return window.matchMedia(PHONE_QUERY).matches;
+  }
+
+  function showAgenda() {
+    return phoneLayout() && rangeMode !== "month";
+  }
+
+  function originDate() {
+    var back = addDays(todayDate, -40);
+    return new Date(back.getFullYear(), back.getMonth(), 1);
   }
 
   function parseAmount(raw) {
@@ -132,73 +158,125 @@
     return Math.round(n * 100) / 100;
   }
 
-  function project() {
-    var count = daysInMonth(year, monthIndex);
-    var byDay = {};
+  function eventsByIso() {
+    var map = {};
     SERIES.forEach(function (item) {
-      if (item.day > count) return;
-      if (!byDay[item.day]) byDay[item.day] = [];
-      byDay[item.day].push({
-        name: item.name,
-        amount: item.amount,
-        note: item.note,
-        hypothetical: false,
-      });
+      map[isoOf(addDays(todayDate, item.offset))] = item;
     });
-    if (extra && extra.day >= 1 && extra.day <= count && extra.amount > 0) {
-      if (!byDay[extra.day]) byDay[extra.day] = [];
-      byDay[extra.day].push({
-        name: "Hypothetical expense",
-        amount: -extra.amount,
-        note: "Demo only. Not saved.",
-        hypothetical: true,
-      });
-    }
+    return map;
+  }
+
+  function walkThrough(endDate) {
+    var events = eventsByIso();
+    var demoIso = isoOf(addDays(todayDate, DEMO_OFFSET));
+    var reconciledIso = isoOf(addDays(todayDate, RECONCILED_OFFSET));
+    var adjustedIso = isoOf(addDays(todayDate, ADJUSTED_OFFSET));
+    var openingIso = isoOf(originDate());
     var carry = OPENING;
     var days = [];
-    var low = { end: Infinity, day: 1 };
-    var income = 0;
-    var expense = 0;
-    for (var day = 1; day <= count; day += 1) {
-      var txns = byDay[day] || [];
+    var cursor = originDate();
+    var endIso = isoOf(endDate);
+    var guard = 0;
+    while (isoOf(cursor) <= endIso && guard < 500) {
+      var iso = isoOf(cursor);
+      var txns = [];
+      var planned = events[iso];
+      if (planned) {
+        txns.push({
+          name: planned.name,
+          amount: planned.amount,
+          note: planned.note,
+          hypothetical: false,
+        });
+      }
+      if (extra && extra.iso === iso && extra.amount > 0) {
+        txns.push({
+          name: "Hypothetical expense",
+          amount: -extra.amount,
+          note: "Demo only. Not saved.",
+          hypothetical: true,
+        });
+      }
       var net = 0;
       txns.forEach(function (txn) {
         net += txn.amount;
-        if (txn.amount >= 0) income += txn.amount;
-        else expense += Math.abs(txn.amount);
       });
       var start = carry;
       var projected = Math.round((start + net) * 100) / 100;
-      var sampleVerified = day === SAMPLE_ADJUSTED_DAY;
-      var demoVerified = reconciled && day === RECONCILE_DAY;
+      var sampleVerified = iso === adjustedIso;
+      var demoVerified = reconciled && iso === demoIso;
       var verified = sampleVerified || demoVerified;
-      var end = sampleVerified ? SAMPLE_ADJUSTED_BANK : demoVerified ? RECONCILE_BANK : projected;
-      if (end < low.end) low = { end: end, day: day };
+      var end = sampleVerified ? ADJUSTED_BANK : demoVerified ? DEMO_BANK : projected;
       days.push({
-        day: day,
-        iso: isoFor(year, monthIndex, day),
+        day: cursor.getDate(),
+        date: cursor,
+        iso: iso,
         start: start,
         end: end,
         projected: projected,
         verified: verified,
-        reconciled: day === SAMPLE_RECONCILED_DAY && !verified,
+        reconciled: iso === reconciledIso && !verified,
+        opening: iso === openingIso,
         net: net,
         txns: txns,
       });
       carry = end;
+      cursor = addDays(cursor, 1);
+      guard += 1;
     }
-    days.forEach(function (item) {
-      item.monthLow = item.day === low.day;
+    return days;
+  }
+
+  function sliceDays(startDate, endDate) {
+    var startIso = isoOf(startDate);
+    var endIso = isoOf(endDate);
+    return walkThrough(endDate).filter(function (day) {
+      return day.iso >= startIso && day.iso <= endIso;
+    });
+  }
+
+  function summarize(days) {
+    var low = { end: Infinity, day: 1, date: days.length ? days[0].date : todayDate, iso: "" };
+    var income = 0;
+    var expense = 0;
+    days.forEach(function (day) {
+      day.txns.forEach(function (txn) {
+        if (txn.amount >= 0) income += txn.amount;
+        else expense += Math.abs(txn.amount);
+      });
+      if (day.end < low.end) low = { end: day.end, day: day.day, date: day.date, iso: day.iso };
+    });
+    days.forEach(function (day) {
+      day.monthLow = day.iso === low.iso;
     });
     return { days: days, low: low, income: income, expense: expense, net: income - expense };
   }
 
-  function groupsFor(day, txns) {
+  function project() {
+    if (showAgenda()) {
+      return summarize(sliceDays(todayDate, addDays(todayDate, 13)));
+    }
+    var count = daysInMonth(year, monthIndex);
+    return summarize(sliceDays(new Date(year, monthIndex, 1), new Date(year, monthIndex, count)));
+  }
+
+  function demoDay() {
+    var iso = isoOf(addDays(todayDate, DEMO_OFFSET));
+    var found = null;
+    walkThrough(addDays(todayDate, 21)).forEach(function (day) {
+      if (day.iso === iso) found = day;
+    });
+    return found;
+  }
+
+  function groupsFor(day) {
     var groups = ["balances"];
-    if (day === 1) groups.push("start");
-    if (day < 15 && txns.some(function (txn) { return txn.amount < 0 && !txn.hypothetical; })) groups.push("upcoming");
-    if (day === 14) groups.push("pressure");
-    if (day === 15) groups.push("move");
+    var lowIso = isoOf(addDays(todayDate, LOW_OFFSET));
+    var payIso = isoOf(addDays(todayDate, PAY_OFFSET));
+    if (day.opening) groups.push("start");
+    if (day.iso < payIso && day.txns.some(function (txn) { return txn.amount < 0 && !txn.hypothetical; })) groups.push("upcoming");
+    if (day.iso === lowIso) groups.push("pressure");
+    if (day.iso === payIso) groups.push("move");
     return groups.join(" ");
   }
 
@@ -238,8 +316,7 @@
     }
     else if (!isPast && day.end < BUFFER * 1.25) classes.push("cal-cell--bal-watch");
     if (day.iso === selectedIso) classes.push("preview-cell--selected");
-    var date = new Date(year, monthIndex, day.day);
-    var mobile = date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+    var mobile = day.date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
     var txns = day.txns
       .map(function (txn, index) {
         var income = txn.amount > 0;
@@ -277,13 +354,22 @@
     } else if (isPast) balClass += " cal-balance--quiet cal-balance--past-day";
     else if (day.net >= 3200) balClass += " cal-balance--strong-inflow";
     else balClass += " cal-balance--quiet";
-    var pill = day.verified
-      ? '<span class="cal-balance-status-pill cal-balance-status-pill--adjusted"><span class="cal-balance-status-pill__icon" aria-hidden="true">↺</span> Adjusted</span>'
-      : day.reconciled
-        ? '<span class="cal-balance-status-pill cal-balance-status-pill--reconciled"><span class="cal-balance-status-pill__icon" aria-hidden="true">✓</span> Reconciled</span>'
-        : day.day === 1
-          ? '<span class="cal-balance-status-pill cal-balance-status-pill--starting"><span class="cal-balance-status-pill__icon" aria-hidden="true">●</span> Starting Point</span>'
-          : "";
+    var pills = "";
+    if (day.verified) {
+      pills +=
+        '<span class="cal-balance-status-pill cal-balance-status-pill--adjusted"><span class="cal-balance-status-pill__icon" aria-hidden="true">↺</span> Adjusted</span>';
+    }
+    if (day.reconciled) {
+      pills +=
+        '<span class="cal-balance-status-pill cal-balance-status-pill--reconciled"><span class="cal-balance-status-pill__icon" aria-hidden="true">✓</span> Reconciled</span>';
+    }
+    if (!pills && day.opening) {
+      pills =
+        '<span class="cal-balance-status-pill cal-balance-status-pill--starting"><span class="cal-balance-status-pill__icon" aria-hidden="true">●</span> Starting Point</span>';
+    }
+    var pill = pills
+      ? '<span class="cal-balance-status-pills">' + pills + "</span>"
+      : "";
     var stripCue = risk ? " cal-balance-strip--cue-risk" : below ? " cal-balance-strip--cue-warn" : "";
     return (
       '<div class="' +
@@ -297,7 +383,7 @@
       '" data-projected="' +
       day.projected +
       '" data-preview="' +
-      groupsFor(day.day, day.txns) +
+      groupsFor(day) +
       '"><div class="cal-daynum" data-mobile-label="' +
       escapeHtml(mobile) +
       '"><span class="cal-daynum-num' +
@@ -332,7 +418,8 @@
   }
 
   function renderCalendar(model) {
-    var narrow = window.matchMedia("(max-width: 768px)").matches;
+    var agenda = showAgenda();
+    var narrow = agenda || phoneLayout();
     var root = document.getElementById("preview-calendar");
     var dow = document.getElementById("calendarDow");
     var labels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -343,24 +430,37 @@
             return '<div class="cal-dow">' + label + "</div>";
           })
           .join("");
-    var blanks = new Date(year, monthIndex, 1).getDay();
     var cells = [];
-    var i;
-    for (i = 0; i < blanks; i += 1) cells.push(outCell(new Date(year, monthIndex, i - blanks + 1), narrow));
+    if (!agenda) {
+      var blanks = new Date(year, monthIndex, 1).getDay();
+      var i;
+      for (i = 0; i < blanks; i += 1) cells.push(outCell(new Date(year, monthIndex, i - blanks + 1), narrow));
+    }
     model.days.forEach(function (day) {
       cells.push(cellHtml(day, narrow));
     });
-    while (cells.length % 7 !== 0) {
-      var nextDay = cells.length - blanks + 1;
-      cells.push(outCell(new Date(year, monthIndex, nextDay), narrow));
+    if (!agenda) {
+      while (cells.length % 7 !== 0) {
+        var nextDay = cells.length - blanks + 1;
+        cells.push(outCell(new Date(year, monthIndex, nextDay), narrow));
+      }
     }
     root.innerHTML = cells.join("");
     root.className = narrow ? "calendar calendar--mobile" : "calendar";
+    if (agenda) root.className += " preview-calendar--agenda";
     root.setAttribute(
       "aria-label",
-      "Fictional checking forecast for " +
-        new Date(year, monthIndex, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" })
+      agenda
+        ? "Fictional checking forecast for the next 14 days"
+        : "Fictional checking forecast for " +
+          new Date(year, monthIndex, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" })
     );
+    var agendaBtn = document.getElementById("previewShowAgenda");
+    var monthBtn = document.getElementById("previewShowMonth");
+    if (agendaBtn && monthBtn) {
+      agendaBtn.setAttribute("aria-pressed", agenda ? "true" : "false");
+      monthBtn.setAttribute("aria-pressed", agenda ? "false" : "true");
+    }
   }
 
   function warnMark() {
@@ -371,7 +471,7 @@
 
   function renderCashHealth(model) {
     var banner = document.getElementById("sidebarLowBalanceBanner");
-    var when = new Date(year, monthIndex, model.low.day).toLocaleDateString("en-US", {
+    var when = model.low.date.toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
     });
@@ -411,10 +511,9 @@
   }
 
   function renderSnapshot(model) {
-    document.getElementById("previewMonthLabel").textContent = new Date(year, monthIndex, 1).toLocaleDateString(
-      "en-US",
-      { month: "long", year: "numeric" }
-    );
+    document.getElementById("previewMonthLabel").textContent = showAgenda()
+      ? "Next 14 days"
+      : new Date(year, monthIndex, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
     document.getElementById("totals").innerHTML =
       '<div class="total total--income"><div class="k">Income</div><div class="v ok" id="previewIncome">' +
       sidebarMoney(model.income) +
@@ -440,10 +539,12 @@
       panel.classList.remove("modal-overlay--open");
       return;
     }
-    document.getElementById("previewDetailTitle").textContent = new Date(year, monthIndex, day.day).toLocaleDateString(
-      "en-US",
-      { weekday: "long", month: "long", day: "numeric", year: "numeric" }
-    );
+    document.getElementById("previewDetailTitle").textContent = day.date.toLocaleDateString("en-US", {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
     var list = document.getElementById("previewDetailList");
     list.innerHTML = day.txns.length
       ? day.txns
@@ -482,21 +583,18 @@
     document.documentElement.style.setProperty("--preview-stick-top", Math.ceil(navH + bannerSpace) + "px");
   }
 
-  function renderReconcile(model) {
-    var anchor = null;
-    model.days.forEach(function (day) {
-      if (day.day === RECONCILE_DAY) anchor = day;
-    });
-    var projected = anchor ? anchor.projected : RECONCILE_BANK;
-    var when = new Date(year, monthIndex, RECONCILE_DAY).toLocaleDateString("en-US", {
+  function renderReconcile() {
+    var anchor = demoDay();
+    var projected = anchor ? anchor.projected : DEMO_BANK;
+    var when = addDays(todayDate, DEMO_OFFSET).toLocaleDateString("en-US", {
       month: "long",
       day: "numeric",
     });
     document.getElementById("previewReconcileLead").textContent =
       "Fictional example for " + when + ". This is not your bank balance.";
     document.getElementById("previewReconcileForecast").textContent = wholeMoney(projected);
-    document.getElementById("previewReconcileBank").textContent = wholeMoney(RECONCILE_BANK);
-    document.getElementById("previewReconcileDiff").textContent = signedMoney(RECONCILE_BANK - projected);
+    document.getElementById("previewReconcileBank").textContent = wholeMoney(DEMO_BANK);
+    document.getElementById("previewReconcileDiff").textContent = signedMoney(DEMO_BANK - projected);
     var apply = document.getElementById("previewApplyReconcile");
     apply.disabled = reconciled;
     apply.textContent = reconciled ? "Balance applied" : "Apply this balance";
@@ -508,7 +606,7 @@
     var model = project();
     renderCashHealth(model);
     renderSnapshot(model);
-    renderReconcile(model);
+    renderReconcile();
     renderCalendar(model);
     renderDetail(model);
     syncChrome();
@@ -533,13 +631,14 @@
   function fillDaySelect() {
     var select = document.getElementById("previewExpenseDay");
     var count = daysInMonth(year, monthIndex);
-    var current = Number(select.value || 14);
+    var current = Number(select.value || lowDate.getDate());
     var label = new Date(year, monthIndex, 1).toLocaleDateString("en-US", { month: "long" });
     var html = "";
     var day;
     for (day = 1; day <= count; day += 1) html += '<option value="' + day + '">' + label + " " + day + "</option>";
     select.innerHTML = html;
-    if (current < 1 || current > count) current = Math.min(14, count);
+    if (lowDate.getFullYear() === year && lowDate.getMonth() === monthIndex) current = lowDate.getDate();
+    else if (current < 1 || current > count) current = 1;
     select.value = String(current);
   }
 
@@ -547,7 +646,7 @@
     var amount = parseAmount(document.getElementById("previewExpenseAmount").value);
     var day = Number(document.getElementById("previewExpenseDay").value);
     if (amount <= 0) return null;
-    return { day: day, amount: amount };
+    return { iso: isoFor(year, monthIndex, day), amount: amount };
   }
 
   function setMonth(nextYear, nextMonth, clearExtra) {
@@ -827,9 +926,16 @@
   backdrop.setAttribute("aria-hidden", "true");
   document.body.appendChild(backdrop);
   document.getElementById("previewReplay").addEventListener("click", openTour);
+  document.getElementById("previewShowAgenda").addEventListener("click", function () {
+    rangeMode = "agenda";
+    renderAll();
+  });
+  document.getElementById("previewShowMonth").addEventListener("click", function () {
+    rangeMode = "month";
+    renderAll();
+  });
   window.addEventListener("resize", function () {
-    renderCalendar(project());
-    syncChrome();
+    renderAll();
     if (!open) return;
     var nodes = stepIndex >= STEPS.length ? [] : Array.prototype.slice.call(document.querySelectorAll(STEPS[stepIndex].spot));
     placeDialog(nodes);
@@ -837,7 +943,8 @@
   });
   document.addEventListener("keydown", onKey);
   var yearSelect = document.getElementById("calendarYear");
-  [now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1].forEach(function (value) {
+  [todayDate.getFullYear() - 1, todayDate.getFullYear(), todayDate.getFullYear() + 1, lowDate.getFullYear()].forEach(function (value) {
+    if (yearSelect.querySelector('option[value="' + value + '"]')) return;
     var opt = document.createElement("option");
     opt.value = String(value);
     opt.textContent = String(value);
