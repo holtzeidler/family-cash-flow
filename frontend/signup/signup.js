@@ -1173,7 +1173,7 @@ function getAccountSetupStepCopy(step, ctx) {
     case 0:
       return {
         title: "Create your login",
-        subtitle: "Next, we’ll build your first cash flow forecast.",
+        subtitle: "You're just a few minutes away from seeing your future checking balance.",
       };
     case 1:
       return {
@@ -1282,11 +1282,15 @@ function syncAccountSetupWizardShellButtons() {
       subEyebrow.textContent = copy.subtitle;
       subEyebrow.hidden = false;
     }
+    const sampleBack = document.getElementById("accountSetupBackToSample");
+    if (sampleBack) sampleBack.hidden = s !== 0;
   } catch (_) {
     if (stepLabel) stepLabel.textContent = `Step ${getAccountSetupDisplayStepNumber(s)} of 4`;
     if (eyebrow) eyebrow.textContent = "Let’s build your forecast";
     if (reassurance) reassurance.hidden = s !== 0;
     if (subEyebrow) subEyebrow.hidden = false;
+    const sampleBack = document.getElementById("accountSetupBackToSample");
+    if (sampleBack) sampleBack.hidden = s !== 0;
   }
 
   try {
@@ -3360,10 +3364,42 @@ function captureVisibleCheckingAccountIntoDraft() {
 }
 
 async function endSessionForFreshAccountSetup() {
-  clearStoredApiAccessToken();
+  const params = new URLSearchParams(String(window.location.search || ""));
+  const invited = String(params.get("invite") || "").trim();
+  if (invited) {
+    clearStoredApiAccessToken();
+    try {
+      await request("/api/auth/logout", "POST");
+    } catch (_) {}
+    document.documentElement.removeAttribute("data-bw-home-auth");
+    return "";
+  }
+  let user = null;
   try {
-    await request("/api/auth/logout", "POST");
+    const me = await request("/api/auth/me", "GET");
+    user = me.ok && me.data && me.data.user ? me.data.user : null;
   } catch (_) {}
+  if (!user) {
+    clearStoredApiAccessToken();
+    document.documentElement.removeAttribute("data-bw-home-auth");
+    return "";
+  }
+  let hasAccount = false;
+  try {
+    const fams = await request("/api/families", "GET");
+    const familyId =
+      fams.ok && Array.isArray(fams.data) && fams.data[0] && fams.data[0].id ? fams.data[0].id : null;
+    if (familyId) {
+      const accounts = await request(`/api/families/${encodeURIComponent(String(familyId))}/accounts`, "GET");
+      hasAccount = !!(accounts.ok && Array.isArray(accounts.data) && accounts.data.length > 0);
+    }
+  } catch (_) {}
+  if (hasAccount) {
+    window.location.replace("/calendar/");
+    return "redirect";
+  }
+  document.documentElement.setAttribute("data-bw-home-auth", "in");
+  return "";
 }
 
 async function maybeEnterAccountSetupResume() {
@@ -3934,7 +3970,10 @@ void (async () => {
       freshStart = params.get("fresh") === "1";
       if (freshStart) removeAccountSetupDraftStorage();
     } catch (_) {}
-    if (freshStart) await endSessionForFreshAccountSetup();
+    if (freshStart) {
+      const freshRoute = await endSessionForFreshAccountSetup();
+      if (freshRoute === "redirect") return;
+    }
     const accountSetupLoginBtn = document.getElementById("homeLoginLink");
     if (accountSetupLoginBtn && accountSetupLoginBtn.id !== "signupBtn") {
       accountSetupLoginBtn.addEventListener("click", () => {

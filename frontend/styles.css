@@ -17494,10 +17494,10 @@ body.account-setup-page .account-setup-wizard__eyebrow{
 body.account-setup-page .account-setup-wizard__reassurance{
   margin: 0 auto;
   text-align: center;
-  font-size: 0.72rem;
+  font-size: 0.92rem;
   font-weight: 500;
-  letter-spacing: 0.03em;
-  line-height: 1.35;
+  letter-spacing: 0;
+  line-height: 1.45;
   color: #3d5348;
   max-width: 36rem;
 }
@@ -17529,6 +17529,27 @@ body.account-setup-page #accountSetupWizard[data-step="0"] .account-setup-wizard
 body.account-setup-page #accountSetupWizard[data-step="0"] .account-setup-wizard__reassurance:not([hidden]){
   margin-top: 0;
   margin-bottom: clamp(0.7rem, 1.35vw, 0.95rem);
+}
+body.account-setup-page #accountSetupWizard[data-step="0"] .account-setup-wizard__subeyebrow{
+  max-width: 36rem;
+}
+body.account-setup-page .account-setup-sample-back{
+  display: block;
+  margin: 12px auto 0;
+  text-align: center;
+  font-size: 0.92rem;
+  font-weight: 500;
+  line-height: 1.4;
+  color: #3d5348;
+  text-decoration: underline;
+  text-decoration-thickness: 0.5px;
+  text-underline-offset: 3px;
+}
+body.account-setup-page .account-setup-sample-back:hover{
+  color: #14532d;
+}
+body.account-setup-page .account-setup-sample-back[hidden]{
+  display: none;
 }
 body.account-setup-page .account-setup-wizard__roadmap{
   margin: 0 0 14px;

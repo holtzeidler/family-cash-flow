@@ -308,6 +308,16 @@ def test_public_headers_follow_session(page, guard, seed):
         response = page.goto(signed_in_path)
         assert_route_ok(response, signed_in_path.split("?")[0])
         _expect_public_logged_in(page)
+        if path == "/preview/":
+            expect(page.locator("#previewSignup")).to_have_attribute("href", MEMBER_CTA)
+            expect(page.locator("#previewSignup")).to_have_text("Go to my forecast")
+
+    fresh = page.goto("/account-setup/?fresh=1")
+    assert_route_ok(fresh, "/account-setup/")
+    page.wait_for_url(lambda url: "/calendar" in url)
+    expect(page.locator("#logoutBtn")).to_be_visible()
+    stored = _tokens(page)
+    assert stored["session"] or stored["local"]
 
     for path in ("/invite/",):
         response = page.goto(path)

@@ -111,7 +111,7 @@
         "Your forecast works best when your checking balance stays up to date.\n\nEverything matches? Reconcile your balance to mark a checkpoint.\n\nFallen behind? Update your balance to start fresh. No need to go back and fix every missed transaction.",
       reconcilePreview: readTourReconcilePreview,
       note: "Stay current when you can. Catch up easily when you can\u2019t.",
-      ctaLabel: "See My Forecast",
+      ctaLabel: "Finish Tour",
       placement: ["right", "left", "above", "below"],
       retryable: true,
       targetExtraClass: "bw-tour-target--reconcile-head",

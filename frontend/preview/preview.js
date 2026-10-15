@@ -39,21 +39,21 @@
       spot: "#sidebarLowBalanceBanner",
     },
     {
-      title: "Reconcile",
-      body: "If the bank balance is different, future days start from that balance. Earlier days stay as they were.",
+      title: "Keep your forecast accurate",
+      body: "When your actual bank balance differs from your forecast, update it here. BalanceWhiz adjusts future projections without changing your history.",
       spot: "#previewReconcile",
       openPanel: "reconcile",
     },
     {
       title: "Explore",
-      body: "You can also try a hypothetical expense. That part is only in this demo.",
+      body: "Try adding an unexpected expense and see how it changes your future balance. It's a safe way to explore — nothing is saved.",
       spot: "#previewExplore",
       openPanel: "explore",
     },
     {
-      title: "Get started",
-      body: "Start a 14-day free trial when you want this for your own checking account.",
-      spot: "#previewSignup",
+      title: "Now see your own future balance.",
+      body: "This was a sample forecast. Your own forecast stays private to your account.",
+      signup: true,
     },
   ];
 
@@ -610,10 +610,13 @@
     renderCalendar(model);
     renderDetail(model);
     syncChrome();
-    if (open && dialog) {
-      var nodes = stepIndex >= STEPS.length ? [] : spot(STEPS[stepIndex].spot);
+    if (open && dialog && stepIndex >= 0 && stepIndex < STEPS.length && STEPS[stepIndex].spot) {
+      var nodes = spot(STEPS[stepIndex].spot);
       placeDialog(nodes);
       keepSpotVisible(nodes);
+    } else if (open && dialog) {
+      clearSpot();
+      placeDialog([]);
     }
   }
 
@@ -695,11 +698,17 @@
       '<div class="bw-tour-tooltip__actions"><button type="button" class="bw-tour-tooltip__skip preview-back" id="previewTourBack">Back</button>' +
       '<button type="button" class="bw-tour-tooltip__cta" id="previewTourNext">Next</button>' +
       '<a class="bw-tour-tooltip__cta preview-tour-link" id="previewTourStart" href="/account-setup/?fresh=1" hidden>Start my free forecast</a></div>' +
-      '<a class="bw-tour-tooltip__skip" id="previewTourFaq" href="/help.html" hidden>Back to FAQ</a>';
+      '<button type="button" class="bw-tour-tooltip__skip" id="previewTourContinue" hidden>Continue exploring</button>';
     document.body.appendChild(dialog);
     document.getElementById("previewTourClose").addEventListener("click", closeTour);
-    document.getElementById("previewTourBack").addEventListener("click", function () { showStep(stepIndex - 1); });
-    document.getElementById("previewTourNext").addEventListener("click", function () { showStep(stepIndex + 1); });
+    document.getElementById("previewTourBack").addEventListener("click", function () {
+      if (stepIndex > 0) showStep(stepIndex - 1);
+    });
+    document.getElementById("previewTourNext").addEventListener("click", function () {
+      if (stepIndex < STEPS.length - 1) showStep(stepIndex + 1);
+    });
+    document.getElementById("previewTourContinue").addEventListener("click", closeTour);
+    applySampleSignupLinks();
     return dialog;
   }
 
@@ -728,59 +737,139 @@
     return nodes;
   }
 
+  function stickyFloor() {
+    var floor = 12;
+    [".top-nav", ".preview-mode"].forEach(function (selector) {
+      var el = document.querySelector(selector);
+      if (!el) return;
+      var pos = window.getComputedStyle(el).position;
+      if (pos !== "fixed" && pos !== "sticky") return;
+      floor = Math.max(floor, el.getBoundingClientRect().bottom + 8);
+    });
+    return floor;
+  }
+
   function keepSpotVisible(nodes) {
-    if (!nodes || !nodes.length || window.innerWidth > 768) return;
-    var el = nodes[0];
-    var card = ensureDialog();
-    var nav = document.querySelector(".top-nav");
-    var banner = document.querySelector(".preview-mode");
-    var gap = 16;
-    var cardTop = card.getBoundingClientRect().top;
-    var obstacle = nav ? nav.getBoundingClientRect().bottom : 0;
-    if (banner) obstacle = Math.max(obstacle, banner.getBoundingClientRect().bottom);
-    var rect = el.getBoundingClientRect();
+    if (!nodes || !nodes.length) return;
+    var rect = nodes[0].getBoundingClientRect();
+    var floor = stickyFloor();
     var delta = 0;
-    if (rect.top < obstacle + gap) delta = rect.top - (obstacle + gap);
-    else if (rect.bottom > cardTop - gap) {
-      delta = rect.bottom - (cardTop - gap);
-      if (rect.top - delta < obstacle + gap) delta = rect.top - (obstacle + gap);
-    }
-    if (Math.abs(delta) > 1) window.scrollBy(0, delta);
+    if (rect.top < floor) delta = rect.top - floor;
+    else if (rect.bottom > window.innerHeight - 12) delta = Math.min(rect.bottom - (window.innerHeight - 12), rect.top - floor);
+    if (Math.abs(delta) > 2) window.scrollBy(0, delta);
   }
 
   function placeDialog(nodes) {
     var card = ensureDialog();
     card.classList.add("bw-tour-tooltip--open");
     card.style.position = "fixed";
+    card.style.bottom = "auto";
     var margin = 12;
+    var gap = 12;
     var width = Math.min(360, window.innerWidth - margin * 2);
     card.style.width = width + "px";
-    if (!nodes || !nodes.length || window.innerWidth <= 768) {
-      card.style.left = Math.max(margin, (window.innerWidth - width) / 2) + "px";
-      card.style.top = "auto";
-      card.style.bottom = "max(" + margin + "px, env(safe-area-inset-bottom, 0px))";
-      return;
+    var cardHeight = card.offsetHeight || 220;
+    var minTop = stickyFloor();
+    var maxTop = Math.max(minTop, window.innerHeight - cardHeight - margin);
+    var maxLeft = Math.max(margin, window.innerWidth - width - margin);
+    var target = nodes && nodes.length ? nodes[0].getBoundingClientRect() : null;
+
+    function clampTop(value) {
+      return Math.max(minTop, Math.min(value, maxTop));
     }
-    card.style.bottom = "auto";
-    var rect = nodes[0].getBoundingClientRect();
-    var maxTop = window.innerHeight - card.offsetHeight - margin;
-    var top = rect.bottom + 10;
-    if (top > maxTop) top = Math.max(margin, rect.top - card.offsetHeight - 10);
-    if (top > maxTop) top = Math.max(margin, maxTop);
-    var left = rect.left;
-    if (left + width > window.innerWidth - margin) left = window.innerWidth - width - margin;
-    card.style.left = Math.max(margin, left) + "px";
-    card.style.top = Math.max(margin, top) + "px";
+    function clampLeft(value) {
+      return Math.max(margin, Math.min(value, maxLeft));
+    }
+    function overlapArea(top, left) {
+      if (!target || target.width === 0 || target.height === 0) return 0;
+      var x = Math.max(0, Math.min(left + width, target.right) - Math.max(left, target.left));
+      var y = Math.max(0, Math.min(top + cardHeight, target.bottom) - Math.max(top, target.top));
+      return x * y;
+    }
+    var candidates = [];
+    function consider(top, left) {
+      top = clampTop(top);
+      left = clampLeft(left);
+      var area = overlapArea(top, left);
+      var dx = target ? left + width / 2 - (target.left + target.width / 2) : 0;
+      var dy = target ? top + cardHeight / 2 - (target.top + target.height / 2) : 0;
+      candidates.push({ top: top, left: left, area: area, distance: dx * dx + dy * dy });
+    }
+    if (!target || target.width === 0 || target.height === 0) {
+      consider((window.innerHeight - cardHeight) / 2, (window.innerWidth - width) / 2);
+    } else {
+      consider(target.bottom + gap, target.left);
+      consider(target.top - cardHeight - gap, target.left);
+      consider(target.top, target.right + gap);
+      consider(target.top, target.left - width - gap);
+      consider(target.bottom + gap, target.right - width);
+      consider(target.top - cardHeight - gap, target.right - width);
+    }
+    candidates.sort(function (a, b) {
+      if (a.area !== b.area) return a.area - b.area;
+      return a.distance - b.distance;
+    });
+    var best = candidates[0];
+    card.style.left = Math.round(best.left) + "px";
+    card.style.top = Math.round(best.top) + "px";
+  }
+
+  var panelsBeforeTour = null;
+
+  function rememberPanels() {
+    if (panelsBeforeTour) return;
+    panelsBeforeTour = {
+      reconcile: document.getElementById("previewReconcile").open,
+      explore: document.getElementById("previewExplore").open,
+    };
+  }
+
+  function syncTourPanels(step) {
+    var which = step && step.openPanel;
+    document.getElementById("previewReconcile").open = which === "reconcile";
+    document.getElementById("previewExplore").open = which === "explore";
+  }
+
+  function restorePanels() {
+    var reconcile = document.getElementById("previewReconcile");
+    var explore = document.getElementById("previewExplore");
+    if (panelsBeforeTour) {
+      reconcile.open = panelsBeforeTour.reconcile;
+      explore.open = panelsBeforeTour.explore;
+    } else {
+      reconcile.open = false;
+      explore.open = false;
+    }
+    panelsBeforeTour = null;
+  }
+
+  function sampleSignupTarget() {
+    if (document.documentElement.getAttribute("data-bw-home-auth") === "in") {
+      return { href: "/calendar/", label: "Go to my forecast" };
+    }
+    return { href: "/account-setup/?fresh=1", label: "Start my free forecast" };
+  }
+
+  function applySampleSignupLinks() {
+    var target = sampleSignupTarget();
+    ["previewSignup", "previewTourStart"].forEach(function (id) {
+      var link = document.getElementById(id);
+      if (!link) return;
+      link.setAttribute("href", target.href);
+      link.textContent = target.label;
+    });
   }
 
   function showStep(index) {
+    if (index < 0 || index >= STEPS.length) return;
     stepIndex = index;
     open = true;
-    var finale = index >= STEPS.length;
-    var step = finale ? null : STEPS[index];
-    if (step && step.openPanel === "reconcile") document.getElementById("previewReconcile").open = true;
-    if (step && step.openPanel === "explore") document.getElementById("previewExplore").open = true;
-    var nodes = finale ? [] : spot(step.spot);
+    rememberPanels();
+    var step = STEPS[index];
+    var signup = !!step.signup;
+    syncTourPanels(step);
+    var nodes = step.spot ? spot(step.spot) : [];
+    if (!step.spot) clearSpot();
     var counter = document.getElementById("previewTourCounter");
     var title = document.getElementById("previewTourTitle");
     var body = document.getElementById("previewTourBody");
@@ -788,34 +877,25 @@
     var back = document.getElementById("previewTourBack");
     var next = document.getElementById("previewTourNext");
     var start = document.getElementById("previewTourStart");
-    var faq = document.getElementById("previewTourFaq");
-    if (finale) {
-      clearSpot();
-      counter.hidden = true;
-      title.textContent = "Now see your own future balance.";
-      body.textContent = "This was a sample forecast. Your own stays private to your account.";
-      note.hidden = false;
-      next.hidden = true;
-      start.hidden = false;
-      faq.hidden = false;
-      back.hidden = false;
-    } else {
-      counter.hidden = false;
-      counter.textContent = index + 1 + " of " + STEPS.length;
-      title.textContent = step.title;
-      body.textContent = step.body;
-      note.hidden = true;
-      next.hidden = false;
-      next.textContent = index === STEPS.length - 1 ? "Finish" : "Next";
-      start.hidden = true;
-      faq.hidden = true;
-      back.hidden = index === 0;
-    }
+    var continueBtn = document.getElementById("previewTourContinue");
+    counter.hidden = false;
+    counter.textContent = index + 1 + " of " + STEPS.length;
+    title.textContent = step.title;
+    body.textContent = step.body;
+    note.hidden = !signup;
+    next.hidden = signup;
+    next.textContent = "Next";
+    start.hidden = !signup;
+    continueBtn.hidden = !signup;
+    back.hidden = index === 0;
+    if (signup) applySampleSignupLinks();
     placeDialog(nodes);
     keepSpotVisible(nodes);
     window.setTimeout(function () {
-      placeDialog(nodes);
-      var focusTarget = finale ? start : next;
+      if (!open || stepIndex !== index) return;
+      var placed = step.spot ? Array.prototype.slice.call(document.querySelectorAll(step.spot)) : [];
+      placeDialog(placed);
+      var focusTarget = signup ? start : next;
       if (focusTarget && !focusTarget.hidden) focusTarget.focus();
     }, 0);
   }
@@ -823,6 +903,7 @@
   function closeTour() {
     open = false;
     clearSpot();
+    restorePanels();
     if (dialog) {
       dialog.classList.remove("bw-tour-tooltip--open");
       dialog.style.display = "none";
@@ -852,7 +933,7 @@
       closeTour();
       return;
     }
-    if (event.key === "ArrowRight" && stepIndex < STEPS.length) {
+    if (event.key === "ArrowRight" && stepIndex < STEPS.length - 1) {
       event.preventDefault();
       showStep(stepIndex + 1);
       return;
@@ -941,8 +1022,9 @@
   });
   window.addEventListener("resize", function () {
     renderAll();
-    if (!open) return;
-    var nodes = stepIndex >= STEPS.length ? [] : Array.prototype.slice.call(document.querySelectorAll(STEPS[stepIndex].spot));
+    if (!open || stepIndex < 0 || stepIndex >= STEPS.length) return;
+    var selector = STEPS[stepIndex].spot;
+    var nodes = selector ? Array.prototype.slice.call(document.querySelectorAll(selector)) : [];
     placeDialog(nodes);
     keepSpotVisible(nodes);
   });
@@ -957,4 +1039,9 @@
   });
   fillDaySelect();
   renderAll();
+  applySampleSignupLinks();
+  new MutationObserver(applySampleSignupLinks).observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["data-bw-home-auth"],
+  });
 })();

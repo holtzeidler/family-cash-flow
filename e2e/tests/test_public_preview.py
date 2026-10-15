@@ -37,6 +37,17 @@ def _freeze(page, year: int, month: int, day: int) -> None:
     )
 
 
+def _assert_tour_card_in_view(page) -> None:
+    box = page.locator("#previewTourDialog").bounding_box()
+    viewport = page.viewport_size
+    assert box is not None and viewport is not None
+    assert box["width"] > 40 and box["height"] > 40
+    assert box["x"] >= -1
+    assert box["y"] >= -1
+    assert box["x"] + box["width"] <= viewport["width"] + 1
+    assert box["y"] + box["height"] <= viewport["height"] + 1
+
+
 def _iso(year: int, month: int, day: int, offset: int) -> str:
     return (date(year, month, day) + timedelta(days=offset)).isoformat()
 
@@ -352,6 +363,24 @@ def test_sample_forecast_signup_and_homepage(page, guard):
     page.wait_for_url(re.compile(r"/preview/?$"))
     expect(page.locator("#previewSignup")).to_have_attribute("href", "/account-setup/?fresh=1")
     expect(page.locator("#previewSignup")).to_be_visible()
+    setup = page.goto("/account-setup/?fresh=1")
+    assert_route_ok(setup, "/account-setup/")
+    expect(page.locator("#accountSetupWizardEyebrow")).to_have_text("Create your login")
+    expect(page.locator("#accountSetupWizardSubeyebrow")).to_have_text(
+        "You're just a few minutes away from seeing your future checking balance."
+    )
+    expect(page.locator("#accountSetupWizardReassurance")).to_have_text(
+        "Start with a 14-day free trial. No credit card required."
+    )
+    expect(page.get_by_text("$5.99")).to_have_count(0)
+    expect(page.locator("#accountSetupBackToSample")).to_have_text("Back to sample forecast")
+    expect(page.locator("#accountSetupBackToSample")).to_have_attribute("href", "/preview/")
+    expect(page.locator("#homeLogoutBtn")).to_be_hidden()
+    expect(page.locator("#homeForecastLink")).to_be_hidden()
+    expect(page.locator("#homeLoginLink")).to_be_visible()
+    page.locator("#accountSetupBackToSample").click()
+    page.wait_for_url(re.compile(r"/preview/?$"))
+    expect(page.locator("#previewSignup")).to_be_visible()
     guard.assert_clean()
 
 
@@ -386,12 +415,39 @@ def test_public_preview_walkthrough(page, guard):
     expect(page.locator("#previewTourCounter")).to_have_text("1 of 5")
     page.keyboard.press("ArrowRight")
     expect(page.locator("#previewTourCounter")).to_have_text("2 of 5")
-    for _ in range(4):
-        page.locator("#previewTourNext").click()
+    page.locator("#previewTourNext").click()
+    expect(page.locator("#previewTourCounter")).to_have_text("3 of 5")
+    expect(page.get_by_role("heading", name="Keep your forecast accurate")).to_be_visible()
+    expect(page.locator("#previewReconcile")).to_have_js_property("open", True)
+    expect(page.locator("#previewExplore")).to_have_js_property("open", False)
+    page.locator("#previewTourNext").click()
+    expect(page.locator("#previewTourCounter")).to_have_text("4 of 5")
+    expect(page.locator("#previewTourTitle")).to_have_text("Explore")
+    expect(page.locator("#previewReconcile")).to_have_js_property("open", False)
+    expect(page.locator("#previewExplore")).to_have_js_property("open", True)
+    page.locator("#previewTourNext").click()
+    expect(page.locator("#previewTourCounter")).to_have_text("5 of 5")
     expect(page.get_by_role("heading", name="Now see your own future balance.")).to_be_visible()
+    expect(page.get_by_text("Your own forecast stays private to your account.")).to_be_visible()
     expect(page.get_by_text("Free for 14 days · No bank connection required")).to_be_visible()
     expect(page.locator("#previewTourStart")).to_have_attribute("href", "/account-setup/?fresh=1")
-    expect(page.locator("#previewTourFaq")).to_have_attribute("href", "/help.html")
+    expect(page.locator("#previewTourStart")).to_have_text("Start my free forecast")
+    expect(page.locator("#previewTourNext")).to_be_hidden()
+    expect(page.locator("#previewTourFaq")).to_have_count(0)
+    expect(page.locator("#previewReconcile")).to_have_js_property("open", False)
+    expect(page.locator("#previewExplore")).to_have_js_property("open", False)
+    _assert_tour_card_in_view(page)
+    page.locator("#previewTourBack").click()
+    expect(page.locator("#previewTourCounter")).to_have_text("4 of 5")
+    expect(page.locator("#previewExplore")).to_have_js_property("open", True)
+    expect(page.locator("#previewReconcile")).to_have_js_property("open", False)
+    page.locator("#previewTourNext").click()
+    page.locator("#previewTourContinue").click()
+    expect(page.get_by_role("dialog")).to_be_hidden()
+    expect(page.locator("#previewExplore")).to_have_js_property("open", False)
+    expect(page.locator(".bw-tour-target")).to_have_count(0)
+    page.locator("#previewReplay").click()
+    expect(page.locator("#previewTourCounter")).to_have_text("1 of 5")
     page.keyboard.press("Escape")
     expect(page.get_by_role("dialog")).to_be_hidden()
     _assert_forecast_untouched(api_calls, writes)
@@ -430,6 +486,26 @@ def test_public_preview_mobile(page, guard):
     expect(page.get_by_text("Credit card").first).to_be_visible()
     expect(page.locator("#previewSignup")).to_be_visible()
     expect(page.locator("#sidebarCashHealthCard")).to_be_visible()
+    page.locator("#previewReplay").click()
+    expect(page.locator("#previewTourCounter")).to_have_text("1 of 5")
+    _assert_tour_card_in_view(page)
+    page.locator("#previewTourNext").click()
+    page.locator("#previewTourNext").click()
+    expect(page.locator("#previewReconcile")).to_have_js_property("open", True)
+    _assert_tour_card_in_view(page)
+    page.keyboard.press("Escape")
+    expect(page.locator("#previewReconcile")).to_have_js_property("open", False)
+    page.set_viewport_size({"width": 320, "height": 700})
+    page.locator("#previewReplay").click()
+    page.locator("#previewTourNext").click()
+    page.locator("#previewTourNext").click()
+    page.locator("#previewTourNext").click()
+    page.locator("#previewTourNext").click()
+    expect(page.locator("#previewTourCounter")).to_have_text("5 of 5")
+    expect(page.locator("#previewExplore")).to_have_js_property("open", False)
+    _assert_tour_card_in_view(page)
+    page.locator("#previewTourContinue").click()
+    page.set_viewport_size({"width": 390, "height": 800})
     page.locator("#previewExplore summary").click()
     page.locator("#previewExpenseAmount").fill("80")
     expect(page.locator("#previewLowBalance")).not_to_have_text("$150")
