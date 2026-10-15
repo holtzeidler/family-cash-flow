@@ -36,11 +36,8 @@
         min-height: 112px;
         height: auto !important;
       }
-      .preview-page .preview-header-label {
-        color: #fff;
-        font-size: 0.95rem;
-        font-weight: 700;
-        letter-spacing: 0.01em;
+      .preview-page .top-nav__inner {
+        grid-template-columns: 1fr auto;
       }
       .preview-page .preview-home {
         color: rgba(255, 255, 255, 0.92);
@@ -97,22 +94,7 @@
         height: auto;
         max-height: calc(100vh - var(--preview-stick-top, 140px) - 12px);
       }
-      .preview-page .preview-mode__badge {
-        display: inline-flex;
-        margin: 0;
-        padding: 2px 7px;
-        border-radius: 999px;
-        background: rgba(11, 61, 46, 0.12);
-        color: #0b3d2e;
-        font-size: 11px;
-        font-weight: 800;
-        letter-spacing: 0.04em;
-      }
       .preview-page .preview-mode__title {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 6px;
         margin: 0;
         font-size: 0.95rem;
         font-weight: 750;
@@ -173,9 +155,104 @@
         background: var(--accent, #0b3d2e);
         color: #fff;
       }
-      .preview-page .preview-tool:hover,
-      .preview-page .preview-try.is-active {
+      .preview-page .preview-tool:hover {
         background: rgba(11, 61, 46, 0.08);
+      }
+      .preview-page .preview-demos {
+        margin-top: 0;
+      }
+      .preview-page .preview-demo {
+        border-top: 1px solid rgba(11, 61, 46, 0.1);
+      }
+      .preview-page .preview-demo:first-child {
+        border-top: 0;
+      }
+      .preview-page .preview-demo summary {
+        cursor: pointer;
+        padding: 8px 0;
+        color: #0b3d2e;
+        font-size: 0.92rem;
+        font-weight: 750;
+      }
+      .preview-page .preview-demo__state {
+        margin-left: 6px;
+        color: rgba(130, 112, 94, 0.95);
+        font-size: 0.75rem;
+        font-weight: 700;
+      }
+      .preview-page .preview-demo__body {
+        padding: 0 0 10px;
+        color: rgba(31, 41, 55, 0.88);
+        font-size: 0.84rem;
+        line-height: 1.4;
+      }
+      .preview-page .preview-demo__body p {
+        margin: 0 0 8px;
+      }
+      .preview-page .preview-demo__rows {
+        display: grid;
+        gap: 4px;
+        margin: 0 0 8px;
+      }
+      .preview-page .preview-demo__rows div {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .preview-page .preview-demo__rows dt {
+        color: rgba(55, 48, 42, 0.72);
+        font-weight: 500;
+      }
+      .preview-page .preview-demo__rows dd {
+        margin: 0;
+        font-weight: 750;
+        font-variant-numeric: tabular-nums;
+      }
+      .preview-page .preview-demo__note {
+        color: rgba(55, 48, 42, 0.72);
+        font-size: 0.8rem;
+      }
+      .preview-page .preview-demo__actions,
+      .preview-page .preview-modal__row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: end;
+      }
+      .preview-page .preview-demo__apply,
+      .preview-page .preview-demo__reset {
+        min-height: 32px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        font: inherit;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .preview-page .preview-demo__apply {
+        border: 0;
+        background: var(--accent, #0b3d2e);
+        color: #fff;
+      }
+      .preview-page .preview-demo__apply:disabled {
+        opacity: 0.72;
+        cursor: default;
+      }
+      .preview-page .preview-demo__reset {
+        border: 1px solid rgba(11, 61, 46, 0.22);
+        background: #fff;
+        color: #0b3d2e;
+      }
+      .preview-page .preview-demo label {
+        display: grid;
+        gap: 4px;
+        font-size: 0.8rem;
+        font-weight: 650;
+      }
+      .preview-page .preview-demo input,
+      .preview-page .preview-demo select {
+        min-height: 32px;
+        font: inherit;
       }
       .preview-page .preview-tool--tour:hover {
         background: #0a3428;
@@ -380,6 +457,9 @@
           gap: 14px;
           align-items: start;
         }
+        body.preview-page .preview-demos {
+          grid-column: 1 / -1;
+        }
       }
       @media (max-width: 800px) {
         .preview-page .preview-mode {
@@ -408,7 +488,6 @@
   </head>
   <body class="preview-page" data-bw-view="calendar">
     <a class="skip-link" href="#preview-calendar">Skip to sample forecast</a>
-    <h1 class="sr-only">Sample forecast</h1>
     <div class="container">
       <div class="top-nav" role="navigation" aria-label="Primary">
         <div class="top-nav__inner">
@@ -426,9 +505,6 @@
               </a>
             </div>
           </div>
-          <div class="top-nav__tabs" aria-label="Sample">
-            <span class="preview-header-label">Sample Forecast</span>
-          </div>
           <div class="top-nav__actions" aria-label="Account actions">
             <a class="preview-home" href="/">Home</a>
             <a class="plans-public-nav__link" id="homeForecastLink" href="/calendar/">My Forecast</a>
@@ -438,9 +514,9 @@
         </div>
       </div>
 
-      <section class="preview-mode" aria-label="Sample mode">
+      <section class="preview-mode" aria-label="Sample forecast">
         <div>
-          <h2 class="preview-mode__title"><span class="preview-mode__badge">Sample mode</span> Explore a sample forecast</h2>
+          <h1 class="preview-mode__title">Explore a sample forecast</h1>
           <p class="preview-mode__text">Fictional finances. Nothing is saved.</p>
         </div>
         <a class="preview-signup" id="previewSignup" href="/account-setup/?fresh=1">Start my free trial</a>
@@ -470,6 +546,48 @@
                 <p id="previewMonthLabel" class="preview-snapshot-month"></p>
               </div>
               <div class="totals" id="totals"></div>
+            </div>
+          </div>
+
+          <div class="card sidebar-section preview-demos" id="previewDemos">
+            <div class="sidebar-section-body">
+              <details class="preview-demo" id="previewReconcile">
+                <summary>Reconcile with a bank balance <span class="preview-demo__state" id="previewReconcileState" hidden>Adjusted</span></summary>
+                <div class="preview-demo__body">
+                  <p id="previewReconcileLead">Fictional example. This is not your bank balance.</p>
+                  <dl class="preview-demo__rows">
+                    <div><dt>Forecast</dt><dd id="previewReconcileForecast">$2,060</dd></div>
+                    <div><dt>Fictional bank balance</dt><dd id="previewReconcileBank">$1,925</dd></div>
+                    <div><dt>Difference</dt><dd id="previewReconcileDiff">−$135</dd></div>
+                  </dl>
+                  <p class="preview-demo__note">Future days continue from the bank balance. Earlier days stay the same. Nothing is saved.</p>
+                  <div class="preview-demo__actions">
+                    <button type="button" class="preview-demo__apply" id="previewApplyReconcile">Apply this balance</button>
+                    <button type="button" class="preview-demo__reset" id="previewResetReconcile">Reset</button>
+                  </div>
+                </div>
+              </details>
+              <details class="preview-demo" id="previewExplore">
+                <summary>Try a hypothetical expense <span class="preview-demo__state" id="previewExploreState" hidden>Added</span></summary>
+                <div class="preview-demo__body">
+                  <p>Demo only. This is not part of the signed-in forecast, and it is not saved.</p>
+                  <form id="previewWhatIfForm">
+                    <div class="preview-modal__row">
+                      <label>
+                        Expense amount
+                        <input id="previewExpenseAmount" name="amount" type="number" min="1" step="1" inputmode="decimal" placeholder="500" />
+                      </label>
+                      <label>
+                        Date in this month
+                        <select id="previewExpenseDay" name="day"></select>
+                      </label>
+                    </div>
+                    <div class="preview-demo__actions">
+                      <button type="button" class="preview-demo__reset" id="previewReset">Reset</button>
+                    </div>
+                  </form>
+                </div>
+              </details>
             </div>
           </div>
         </aside>
@@ -530,7 +648,6 @@
                     </div>
                     <div class="preview-tools">
                       <button type="button" class="preview-tool preview-tool--tour" id="previewReplay">Show me around</button>
-                      <button type="button" class="preview-tool preview-try" id="previewTryExpense">Try an expense</button>
                     </div>
                   </div>
                   <div style="height:6px;"></div>
@@ -560,31 +677,6 @@
       </div>
     </div>
 
-    <div id="previewWhatIf" class="modal-overlay" hidden>
-      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="previewWhatIfTitle">
-        <h2 id="previewWhatIfTitle">Try an expense</h2>
-        <p class="preview-modal__note">
-          Demo only. See what one extra expense would do to this fictional forecast.
-          It is not saved, and it is not a feature in the signed-in forecast.
-        </p>
-        <form id="previewWhatIfForm">
-          <div class="preview-modal__row">
-            <label>
-              Expense amount
-              <input id="previewExpenseAmount" name="amount" type="number" min="1" step="1" inputmode="decimal" placeholder="500" />
-            </label>
-            <label>
-              Date in this month
-              <select id="previewExpenseDay" name="day"></select>
-            </label>
-          </div>
-          <div class="modal-actions">
-            <button type="button" class="secondary" id="previewReset">Reset</button>
-            <button type="button" class="secondary" id="previewWhatIfClose">Close</button>
-          </div>
-        </form>
-      </div>
-    </div>
-    <script src="./preview.js?v=8"></script>
+    <script src="./preview.js?v=9"></script>
   </body>
 </html>

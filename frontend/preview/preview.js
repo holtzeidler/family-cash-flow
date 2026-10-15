@@ -7,6 +7,8 @@
 
   var BUFFER = 1500;
   var OPENING = 4850;
+  var RECONCILE_DAY = 9;
+  var RECONCILE_BANK = 1925;
   var SERIES = [
     { day: 4, name: "Groceries", amount: -180, note: "Weekly groceries" },
     { day: 6, name: "Mortgage", amount: -2400, note: "Monthly mortgage" },
@@ -20,29 +22,31 @@
   ];
   var STEPS = [
     {
-      title: "Start with today’s checking balance",
-      body: "Start with what’s actually in checking today.",
-      spot: '[data-preview~="start"]',
+      title: "Look ahead",
+      body: "See upcoming income, expenses, and the checking balance each day.",
+      spot: "#preview-calendar",
     },
     {
-      title: "Add what you know is coming",
-      body: "BalanceWhiz uses the bills, income, and other transactions you already know are coming.",
-      spot: '[data-preview~="upcoming"]',
+      title: "Spot a problem",
+      body: "The low point shows up before payday, while there is still time to plan.",
+      spot: "#sidebarLowBalanceBanner",
     },
     {
-      title: "See the future balance",
-      body: "BalanceWhiz projects your checking balance forward day by day.",
-      spot: '[data-preview~="balances"]',
+      title: "Reconcile",
+      body: "If the bank balance is different, future days start from that balance. Earlier days stay as they were.",
+      spot: "#previewReconcile",
+      openPanel: "reconcile",
     },
     {
-      title: "Spot the problem before it happens",
-      body: "See cash pressure before it becomes a surprise.",
-      spot: '[data-preview~="pressure"]',
+      title: "Explore",
+      body: "You can also try a hypothetical expense. That part is only in this demo.",
+      spot: "#previewExplore",
+      openPanel: "explore",
     },
     {
-      title: "Know when you can make your move",
-      body: "See when you have room to spend, save, or move money.",
-      spot: '[data-preview~="move"]',
+      title: "Get started",
+      body: "Start a 14-day free trial when you want this for your own checking account.",
+      spot: "#previewSignup",
     },
   ];
 
@@ -50,6 +54,7 @@
   var year = now.getFullYear();
   var monthIndex = now.getMonth();
   var extra = null;
+  var reconciled = false;
   var selectedIso = "";
   var selectedTxn = null;
   var stepIndex = 0;
@@ -78,6 +83,14 @@
     var rounded = Math.round(amount);
     var abs = Math.abs(rounded).toLocaleString("en-US", { maximumFractionDigits: 0 });
     return rounded < 0 ? "($" + abs + ")" : "$" + abs;
+  }
+
+  function signedMoney(amount) {
+    var rounded = Math.round(amount);
+    var abs = Math.abs(rounded).toLocaleString("en-US", { maximumFractionDigits: 0 });
+    if (rounded < 0) return "−$" + abs;
+    if (rounded > 0) return "+$" + abs;
+    return "$0";
   }
 
   function sidebarMoney(amount) {
@@ -148,9 +161,20 @@
         else expense += Math.abs(txn.amount);
       });
       var start = carry;
-      var end = Math.round((start + net) * 100) / 100;
+      var projected = Math.round((start + net) * 100) / 100;
+      var verified = reconciled && day === RECONCILE_DAY;
+      var end = verified ? RECONCILE_BANK : projected;
       if (end < low.end) low = { end: end, day: day };
-      days.push({ day: day, iso: isoFor(year, monthIndex, day), start: start, end: end, net: net, txns: txns });
+      days.push({
+        day: day,
+        iso: isoFor(year, monthIndex, day),
+        start: start,
+        end: end,
+        projected: projected,
+        verified: verified,
+        net: net,
+        txns: txns,
+      });
       carry = end;
     }
     return { days: days, low: low, income: income, expense: expense, net: income - expense };
@@ -192,6 +216,7 @@
     if (count) classes.push("cal-cell--has-activity");
     else classes.push("cal-cell--no-tx");
     if (day.txns.some(function (txn) { return txn.amount >= 3200; })) classes.push("cal-cell--payday");
+    if (day.verified) classes.push("cal-cell--adjusted-balance");
     if (risk) classes.push("cal-cell--bal-risk");
     else if (below) classes.push("cal-cell--bal-warn");
     else if (!isPast && day.end < BUFFER * 1.25) classes.push("cal-cell--bal-watch");
@@ -221,7 +246,9 @@
       .join("");
     var balClass = "cal-stat cal-balance";
     var icon = "";
-    if (risk) {
+    if (day.verified) {
+      balClass += isPast ? " cal-balance--quiet cal-balance--past-day" : " cal-balance--quiet";
+    } else if (risk) {
       balClass += " is-negative cal-balance--risk";
       if (isPast) balClass += " cal-balance--past-day";
       icon = warnIcon(false);
@@ -232,8 +259,9 @@
     } else if (isPast) balClass += " cal-balance--quiet cal-balance--past-day";
     else if (day.net >= 3200) balClass += " cal-balance--strong-inflow";
     else balClass += " cal-balance--quiet";
-    var pill =
-      day.day === 1
+    var pill = day.verified
+      ? '<span class="cal-balance-status-pill cal-balance-status-pill--adjusted"><span class="cal-balance-status-pill__icon" aria-hidden="true">↺</span> Adjusted</span>'
+      : day.day === 1
         ? '<span class="cal-balance-status-pill cal-balance-status-pill--starting"><span class="cal-balance-status-pill__icon" aria-hidden="true">●</span> Starting Point</span>'
         : "";
     var stripCue = risk ? " cal-balance-strip--cue-risk" : below ? " cal-balance-strip--cue-warn" : "";
@@ -246,6 +274,8 @@
       day.iso +
       '" data-end="' +
       day.end +
+      '" data-projected="' +
+      day.projected +
       '" data-preview="' +
       groupsFor(day.day, day.txns) +
       '"><div class="cal-daynum" data-mobile-label="' +
@@ -263,7 +293,9 @@
       icon +
       '<span class="' +
       balClass +
-      '" title="Projected end-of-day balance">' +
+      '" title="' +
+      (day.verified ? "Fictional bank balance" : "Projected end-of-day balance") +
+      '">' +
       balanceMoney(day.end) +
       "</span></span>" +
       pill +
@@ -378,9 +410,6 @@
       '" id="previewNet">' +
       sidebarMoney(model.net) +
       "</div></div>";
-    var button = document.getElementById("previewTryExpense");
-    button.classList.toggle("is-active", !!extra);
-    button.textContent = extra ? "Expense added" : "Try an expense";
     document.getElementById("calendarMonthNum").value = String(monthIndex + 1);
     ensureYearOption(year);
   }
@@ -409,8 +438,17 @@
           })
           .join("")
       : "<li>No transactions this day.</li>";
-    document.getElementById("previewDetailBalance").textContent =
-      "Starting balance " + balanceMoney(day.start) + ". Ending balance " + balanceMoney(day.end) + ".";
+    document.getElementById("previewDetailBalance").textContent = day.verified
+      ? "Starting balance " +
+        balanceMoney(day.start) +
+        ". Forecast was " +
+        balanceMoney(day.projected) +
+        ". Fictional bank balance " +
+        balanceMoney(day.end) +
+        ". Ending balance " +
+        balanceMoney(day.end) +
+        "."
+      : "Starting balance " + balanceMoney(day.start) + ". Ending balance " + balanceMoney(day.end) + ".";
     panel.hidden = false;
     panel.classList.add("modal-overlay--open");
   }
@@ -429,10 +467,33 @@
     document.documentElement.style.setProperty("--preview-stick-top", Math.ceil(navH + bannerSpace) + "px");
   }
 
+  function renderReconcile(model) {
+    var anchor = null;
+    model.days.forEach(function (day) {
+      if (day.day === RECONCILE_DAY) anchor = day;
+    });
+    var projected = anchor ? anchor.projected : RECONCILE_BANK;
+    var when = new Date(year, monthIndex, RECONCILE_DAY).toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+    });
+    document.getElementById("previewReconcileLead").textContent =
+      "Fictional example for " + when + ". This is not your bank balance.";
+    document.getElementById("previewReconcileForecast").textContent = wholeMoney(projected);
+    document.getElementById("previewReconcileBank").textContent = wholeMoney(RECONCILE_BANK);
+    document.getElementById("previewReconcileDiff").textContent = signedMoney(RECONCILE_BANK - projected);
+    var apply = document.getElementById("previewApplyReconcile");
+    apply.disabled = reconciled;
+    apply.textContent = reconciled ? "Balance applied" : "Apply this balance";
+    document.getElementById("previewReconcileState").hidden = !reconciled;
+    document.getElementById("previewExploreState").hidden = !extra;
+  }
+
   function renderAll() {
     var model = project();
     renderCashHealth(model);
     renderSnapshot(model);
+    renderReconcile(model);
     renderCalendar(model);
     renderDetail(model);
     syncChrome();
@@ -502,19 +563,6 @@
     selectedIso = "";
     selectedTxn = null;
     renderAll();
-  }
-
-  function openWhatIf() {
-    var panel = document.getElementById("previewWhatIf");
-    panel.hidden = false;
-    panel.classList.add("modal-overlay--open");
-    document.getElementById("previewExpenseAmount").focus();
-  }
-
-  function closeWhatIf() {
-    var panel = document.getElementById("previewWhatIf");
-    panel.hidden = true;
-    panel.classList.remove("modal-overlay--open");
   }
 
   function ensureDialog() {
@@ -596,8 +644,10 @@
     }
     card.style.bottom = "auto";
     var rect = nodes[0].getBoundingClientRect();
+    var maxTop = window.innerHeight - card.offsetHeight - margin;
     var top = rect.bottom + 10;
-    if (top + card.offsetHeight > window.innerHeight - margin) top = Math.max(margin, rect.top - card.offsetHeight - 10);
+    if (top > maxTop) top = Math.max(margin, rect.top - card.offsetHeight - 10);
+    if (top > maxTop) top = Math.max(margin, maxTop);
     var left = rect.left;
     if (left + width > window.innerWidth - margin) left = window.innerWidth - width - margin;
     card.style.left = Math.max(margin, left) + "px";
@@ -609,6 +659,8 @@
     open = true;
     var finale = index >= STEPS.length;
     var step = finale ? null : STEPS[index];
+    if (step && step.openPanel === "reconcile") document.getElementById("previewReconcile").open = true;
+    if (step && step.openPanel === "explore") document.getElementById("previewExplore").open = true;
     var nodes = finale ? [] : spot(step.spot);
     var counter = document.getElementById("previewTourCounter");
     var title = document.getElementById("previewTourTitle");
@@ -669,19 +721,11 @@
   }
 
   function onKey(event) {
-    var whatIf = document.getElementById("previewWhatIf");
     var detail = document.getElementById("previewDetail");
-    if (event.key === "Escape") {
-      if (!whatIf.hidden) {
-        event.preventDefault();
-        closeWhatIf();
-        return;
-      }
-      if (!detail.hidden) {
-        event.preventDefault();
-        closeDetail();
-        return;
-      }
+    if (event.key === "Escape" && !detail.hidden) {
+      event.preventDefault();
+      closeDetail();
+      return;
     }
     if (!open) return;
     if (event.key === "Escape") {
@@ -735,12 +779,15 @@
   document.getElementById("calendarYear").addEventListener("change", function (event) {
     setMonth(Number(event.target.value), monthIndex, true);
   });
-  document.getElementById("previewTryExpense").addEventListener("click", openWhatIf);
-  document.getElementById("previewWhatIfClose").addEventListener("click", closeWhatIf);
-  document.getElementById("previewWhatIf").addEventListener("click", function (event) {
-    if (event.target.id === "previewWhatIf") closeWhatIf();
-  });
   document.getElementById("previewWhatIfForm").addEventListener("submit", function (event) { event.preventDefault(); });
+  document.getElementById("previewApplyReconcile").addEventListener("click", function () {
+    reconciled = true;
+    renderAll();
+  });
+  document.getElementById("previewResetReconcile").addEventListener("click", function () {
+    reconciled = false;
+    renderAll();
+  });
   document.getElementById("previewExpenseAmount").addEventListener("input", function () {
     extra = readExtra();
     renderAll();
