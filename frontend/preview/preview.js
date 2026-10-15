@@ -12,6 +12,10 @@
   // Pre-existing fictional reconciliation. In October this is October 10.
   // The bank matched that day's forecast, so the balance is unchanged.
   var SAMPLE_RECONCILED_DAY = 10;
+  // Separate fictional adjustment. In October this is October 20.
+  // The bank balance is $120 below that day's forecast, so later days start here.
+  var SAMPLE_ADJUSTED_DAY = 20;
+  var SAMPLE_ADJUSTED_BANK = 3240;
   var SERIES = [
     { day: 4, name: "Groceries", amount: -180, note: "Weekly groceries" },
     { day: 6, name: "Mortgage", amount: -2400, note: "Monthly mortgage" },
@@ -165,8 +169,10 @@
       });
       var start = carry;
       var projected = Math.round((start + net) * 100) / 100;
+      var sampleVerified = day === SAMPLE_ADJUSTED_DAY;
       var demoVerified = reconciled && day === RECONCILE_DAY;
-      var end = demoVerified ? RECONCILE_BANK : projected;
+      var verified = sampleVerified || demoVerified;
+      var end = sampleVerified ? SAMPLE_ADJUSTED_BANK : demoVerified ? RECONCILE_BANK : projected;
       if (end < low.end) low = { end: end, day: day };
       days.push({
         day: day,
@@ -174,13 +180,16 @@
         start: start,
         end: end,
         projected: projected,
-        verified: demoVerified,
-        reconciled: day === SAMPLE_RECONCILED_DAY && !demoVerified,
+        verified: verified,
+        reconciled: day === SAMPLE_RECONCILED_DAY && !verified,
         net: net,
         txns: txns,
       });
       carry = end;
     }
+    days.forEach(function (item) {
+      item.monthLow = item.day === low.day;
+    });
     return { days: days, low: low, income: income, expense: expense, net: income - expense };
   }
 
@@ -223,7 +232,10 @@
     if (day.verified) classes.push("cal-cell--adjusted-balance");
     else if (day.reconciled) classes.push("cal-cell--reconciled");
     if (risk) classes.push("cal-cell--bal-risk");
-    else if (below) classes.push("cal-cell--bal-warn");
+    else if (below) {
+      classes.push("cal-cell--bal-warn");
+      if (day.monthLow) classes.push("cal-cell--bal-low");
+    }
     else if (!isPast && day.end < BUFFER * 1.25) classes.push("cal-cell--bal-watch");
     if (day.iso === selectedIso) classes.push("preview-cell--selected");
     var date = new Date(year, monthIndex, day.day);
@@ -259,6 +271,7 @@
       icon = warnIcon(false);
     } else if (below) {
       balClass += " cal-balance--below-floor";
+      if (day.monthLow) balClass += " cal-balance--month-low";
       if (isPast) balClass += " cal-balance--past-day";
       icon = warnIcon(true);
     } else if (isPast) balClass += " cal-balance--quiet cal-balance--past-day";
@@ -363,26 +376,21 @@
       day: "numeric",
     });
     var gap = Math.abs(Math.round((model.low.end - BUFFER) * 100) / 100);
-    var beforePayday = model.low.day < 15 ? " before payday" : "";
     if (model.low.end < BUFFER) {
       banner.className = "calendar-low-balance calendar-low-balance--sidebar calendar-low-balance--inset is-danger";
       banner.innerHTML =
         '<div class="preview-cash">' +
         warnMark() +
         '<div class="preview-cash__body">' +
-        '<p class="preview-cash__kicker">Low balance ahead</p>' +
-        '<p class="preview-cash__date"><strong id="previewLowBalance">' +
+        '<p class="preview-cash__gap" id="previewCashWarning">Your forecast drops to <strong id="previewLowBalance">' +
         wholeMoney(model.low.end) +
         '</strong> on <span id="previewCashDate">' +
         escapeHtml(when) +
-        "</span></p>" +
-        '<p class="preview-cash__gap" id="previewBufferGap">' +
+        '</span> — <span id="previewBufferGap">' +
         wholeMoney(gap) +
         " below your " +
         wholeMoney(BUFFER) +
-        " minimum" +
-        beforePayday +
-        ".</p>" +
+        " safety cushion.</span></p>" +
         "</div></div>";
     } else {
       banner.className = "calendar-low-balance calendar-low-balance--sidebar calendar-low-balance--inset is-muted is-suggestion";
