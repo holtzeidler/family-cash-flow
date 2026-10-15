@@ -10,9 +10,8 @@
   var RECONCILE_DAY = 9;
   var RECONCILE_BANK = 1925;
   // Pre-existing fictional reconciliation. In October this is October 10.
-  // The bank balance is $80 below that day's forecast, so later days start here.
-  var SAMPLE_ADJUSTED_DAY = 10;
-  var SAMPLE_ADJUSTED_BANK = 1980;
+  // The bank matched that day's forecast, so the balance is unchanged.
+  var SAMPLE_RECONCILED_DAY = 10;
   var SERIES = [
     { day: 4, name: "Groceries", amount: -180, note: "Weekly groceries" },
     { day: 6, name: "Mortgage", amount: -2400, note: "Monthly mortgage" },
@@ -166,10 +165,8 @@
       });
       var start = carry;
       var projected = Math.round((start + net) * 100) / 100;
-      var sampleVerified = day === SAMPLE_ADJUSTED_DAY;
       var demoVerified = reconciled && day === RECONCILE_DAY;
-      var verified = sampleVerified || demoVerified;
-      var end = sampleVerified ? SAMPLE_ADJUSTED_BANK : demoVerified ? RECONCILE_BANK : projected;
+      var end = demoVerified ? RECONCILE_BANK : projected;
       if (end < low.end) low = { end: end, day: day };
       days.push({
         day: day,
@@ -177,7 +174,8 @@
         start: start,
         end: end,
         projected: projected,
-        verified: verified,
+        verified: demoVerified,
+        reconciled: day === SAMPLE_RECONCILED_DAY && !demoVerified,
         net: net,
         txns: txns,
       });
@@ -223,6 +221,7 @@
     else classes.push("cal-cell--no-tx");
     if (day.txns.some(function (txn) { return txn.amount >= 3200; })) classes.push("cal-cell--payday");
     if (day.verified) classes.push("cal-cell--adjusted-balance");
+    else if (day.reconciled) classes.push("cal-cell--reconciled");
     if (risk) classes.push("cal-cell--bal-risk");
     else if (below) classes.push("cal-cell--bal-warn");
     else if (!isPast && day.end < BUFFER * 1.25) classes.push("cal-cell--bal-watch");
@@ -267,9 +266,11 @@
     else balClass += " cal-balance--quiet";
     var pill = day.verified
       ? '<span class="cal-balance-status-pill cal-balance-status-pill--adjusted"><span class="cal-balance-status-pill__icon" aria-hidden="true">↺</span> Adjusted</span>'
-      : day.day === 1
-        ? '<span class="cal-balance-status-pill cal-balance-status-pill--starting"><span class="cal-balance-status-pill__icon" aria-hidden="true">●</span> Starting Point</span>'
-        : "";
+      : day.reconciled
+        ? '<span class="cal-balance-status-pill cal-balance-status-pill--reconciled"><span class="cal-balance-status-pill__icon" aria-hidden="true">✓</span> Reconciled</span>'
+        : day.day === 1
+          ? '<span class="cal-balance-status-pill cal-balance-status-pill--starting"><span class="cal-balance-status-pill__icon" aria-hidden="true">●</span> Starting Point</span>'
+          : "";
     var stripCue = risk ? " cal-balance-strip--cue-risk" : below ? " cal-balance-strip--cue-warn" : "";
     return (
       '<div class="' +
