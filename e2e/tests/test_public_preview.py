@@ -51,6 +51,36 @@ def test_sample_forecast_month_and_balances(page, guard):
     expect(page.get_by_role("dialog")).to_have_count(0)
     expect(page.get_by_role("heading", name="You're exploring a sample forecast")).to_be_visible()
     expect(page.locator(".preview-mode__badge")).to_have_text("Sample mode")
+    banner_box = page.evaluate(
+        """() => {
+          const nav = document.querySelector('.top-nav').getBoundingClientRect();
+          const banner = document.querySelector('.preview-mode').getBoundingClientRect();
+          return { navBottom: nav.bottom, top: banner.top, bottom: banner.bottom, height: banner.height };
+        }"""
+    )
+    assert banner_box["height"] > 48
+    assert banner_box["top"] >= banner_box["navBottom"] - 1
+    page.evaluate("window.scrollTo(0, 120)")
+    scrolled = page.evaluate(
+        """() => {
+          const nav = document.querySelector('.top-nav').getBoundingClientRect();
+          const banner = document.querySelector('.preview-mode');
+          const box = banner.getBoundingClientRect();
+          const hit = document.elementFromPoint(box.left + box.width / 2, box.top + 12);
+          return {
+            navBottom: nav.bottom,
+            top: box.top,
+            bottom: box.bottom,
+            height: box.height,
+            uncovered: !!(hit && banner.contains(hit))
+          };
+        }"""
+    )
+    assert scrolled["height"] > 48
+    assert scrolled["top"] >= scrolled["navBottom"] - 1
+    assert scrolled["bottom"] > scrolled["navBottom"] + 40
+    assert scrolled["uncovered"]
+    page.evaluate("window.scrollTo(0, 0)")
     expect(page.locator(".top-nav__tab")).to_have_count(0)
     expect(page.locator("#previewIncome")).to_have_text("$3,400")
     expect(page.locator("#previewExpenses")).to_have_text("$5,960")
@@ -61,8 +91,12 @@ def test_sample_forecast_month_and_balances(page, guard):
     expect(page.locator('.cal-cell[data-day="4"]')).to_have_attribute("data-end", "4670")
     expect(page.locator('.cal-cell[data-day="6"]')).to_have_attribute("data-end", "2270")
     expect(page.locator('.cal-cell[data-day="11"]')).to_have_attribute("data-end", "310")
+    expect(page.locator('.cal-cell[data-day="11"]')).to_have_class(re.compile(r"cal-cell--bal-warn"))
     expect(page.locator('.cal-cell[data-day="14"]')).to_have_attribute("data-end", "150")
+    expect(page.locator('.cal-cell[data-day="14"]')).to_have_class(re.compile(r"cal-cell--bal-warn"))
+    expect(page.locator('.cal-cell[data-day="14"]')).not_to_have_class(re.compile(r"cal-cell--bal-risk"))
     expect(page.locator('.cal-cell[data-day="15"]')).to_have_attribute("data-end", "3550")
+    expect(page.locator('.cal-cell[data-day="15"]')).not_to_have_class(re.compile(r"cal-cell--bal-warn|cal-cell--bal-risk"))
     expect(page.locator('.cal-cell[data-day="28"]')).to_have_attribute("data-end", "2290")
     expect(page.locator('.cal-dow').first).to_have_text("Sun")
 
@@ -110,6 +144,7 @@ def test_sample_forecast_hypothetical_and_reset(page, guard):
     page.locator("#previewExpenseDay").select_option("14")
     page.locator("#previewExpenseAmount").fill("500")
     expect(page.locator('.cal-cell[data-day="14"]')).to_have_attribute("data-end", "-350")
+    expect(page.locator('.cal-cell[data-day="14"]')).to_have_class(re.compile(r"cal-cell--bal-risk"))
     expect(page.locator('.cal-cell[data-day="15"]')).to_have_attribute("data-end", "3050")
     expect(page.locator("#previewLowBalance")).to_have_text("($350)")
     expect(page.locator("#previewBufferGap")).to_have_text("$1,850 below your $1,500 minimum")
@@ -123,6 +158,7 @@ def test_sample_forecast_hypothetical_and_reset(page, guard):
     page.locator("#previewReset").click()
     expect(page.locator("#previewExpenseAmount")).to_have_value("")
     expect(page.locator('.cal-cell[data-day="14"]')).to_have_attribute("data-end", "150")
+    expect(page.locator('.cal-cell[data-day="14"]')).to_have_class(re.compile(r"cal-cell--bal-warn"))
     expect(page.locator('.cal-cell[data-day="15"]')).to_have_attribute("data-end", "3550")
     expect(page.locator("#previewLowBalance")).to_have_text("$150")
     expect(page.locator("#previewBufferGap")).to_have_text("$1,350 below your $1,500 minimum")

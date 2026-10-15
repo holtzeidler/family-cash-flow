@@ -192,8 +192,8 @@
     if (count) classes.push("cal-cell--has-activity");
     else classes.push("cal-cell--no-tx");
     if (day.txns.some(function (txn) { return txn.amount >= 3200; })) classes.push("cal-cell--payday");
-    if (!isPast && risk) classes.push("cal-cell--bal-risk");
-    else if (!isPast && below) classes.push("cal-cell--bal-warn");
+    if (risk) classes.push("cal-cell--bal-risk");
+    else if (below) classes.push("cal-cell--bal-warn");
     else if (!isPast && day.end < BUFFER * 1.25) classes.push("cal-cell--bal-watch");
     if (day.iso === selectedIso) classes.push("preview-cell--selected");
     var date = new Date(year, monthIndex, day.day);
@@ -221,20 +221,22 @@
       .join("");
     var balClass = "cal-stat cal-balance";
     var icon = "";
-    if (isPast) balClass += " cal-balance--quiet cal-balance--past-day";
-    else if (risk) {
+    if (risk) {
       balClass += " is-negative cal-balance--risk";
+      if (isPast) balClass += " cal-balance--past-day";
       icon = warnIcon(false);
     } else if (below) {
       balClass += " cal-balance--below-floor";
+      if (isPast) balClass += " cal-balance--past-day";
       icon = warnIcon(true);
-    } else if (day.net >= 3200) balClass += " cal-balance--strong-inflow";
+    } else if (isPast) balClass += " cal-balance--quiet cal-balance--past-day";
+    else if (day.net >= 3200) balClass += " cal-balance--strong-inflow";
     else balClass += " cal-balance--quiet";
     var pill =
       day.day === 1
         ? '<span class="cal-balance-status-pill cal-balance-status-pill--starting"><span class="cal-balance-status-pill__icon" aria-hidden="true">●</span> Starting Point</span>'
         : "";
-    var stripCue = !isPast && risk ? " cal-balance-strip--cue-risk" : !isPast && below ? " cal-balance-strip--cue-warn" : "";
+    var stripCue = risk ? " cal-balance-strip--cue-risk" : below ? " cal-balance-strip--cue-warn" : "";
     return (
       '<div class="' +
       classes.join(" ") +
@@ -332,6 +334,9 @@
         " below your " +
         wholeMoney(BUFFER) +
         " minimum</p>" +
+        (model.low.day < 15
+          ? '<p class="preview-cash__note">Upcoming bills pull the balance under your minimum before the next paycheck.</p>'
+          : "") +
         "</div>";
     } else {
       banner.className = "calendar-low-balance calendar-low-balance--sidebar calendar-low-balance--inset is-muted is-suggestion";
@@ -401,12 +406,27 @@
     panel.classList.add("modal-overlay--open");
   }
 
+  function syncChrome() {
+    var nav = document.querySelector(".top-nav");
+    var banner = document.querySelector(".preview-mode");
+    if (!nav || !banner) return;
+    var navH = Math.ceil(nav.getBoundingClientRect().height);
+    var bannerStyle = window.getComputedStyle(banner);
+    var bannerSpace =
+      banner.getBoundingClientRect().height +
+      (parseFloat(bannerStyle.marginTop) || 0) +
+      (parseFloat(bannerStyle.marginBottom) || 0);
+    document.documentElement.style.setProperty("--preview-nav-h", navH + "px");
+    document.documentElement.style.setProperty("--preview-stick-top", Math.ceil(navH + bannerSpace) + "px");
+  }
+
   function renderAll() {
     var model = project();
     renderCashHealth(model);
     renderSnapshot(model);
     renderCalendar(model);
     renderDetail(model);
+    syncChrome();
     if (open && dialog) {
       var nodes = stepIndex >= STEPS.length ? [] : spot(STEPS[stepIndex].spot);
       placeDialog(nodes);
@@ -738,6 +758,7 @@
   document.getElementById("previewReplay").addEventListener("click", openTour);
   window.addEventListener("resize", function () {
     renderCalendar(project());
+    syncChrome();
     if (!open) return;
     var nodes = stepIndex >= STEPS.length ? [] : Array.prototype.slice.call(document.querySelectorAll(STEPS[stepIndex].spot));
     placeDialog(nodes);

@@ -64,11 +64,38 @@
         align-items: center;
         justify-content: space-between;
         gap: 16px 20px;
-        margin: 12px 0 14px;
+        position: sticky;
+        top: var(--preview-nav-h, 76px);
+        z-index: 28;
+        margin: 8px 0 10px;
         padding: 14px 16px;
         border: 1px solid rgba(11, 61, 46, 0.16);
         border-radius: 14px;
         background: #e7f3ea;
+      }
+      .preview-page .preview-mode::before,
+      .preview-page .preview-mode::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        background: #e5f0e8;
+      }
+      .preview-page .preview-mode::before {
+        top: -8px;
+        height: 8px;
+      }
+      .preview-page .preview-mode::after {
+        bottom: -10px;
+        height: 10px;
+      }
+      body.preview-page .calendar-panel-sticky-zone,
+      body.preview-page[data-bw-view="calendar"] .sidebar {
+        top: var(--preview-stick-top, 168px);
+      }
+      body.preview-page[data-bw-view="calendar"] .sidebar {
+        height: auto;
+        max-height: calc(100vh - var(--preview-stick-top, 168px) - 12px);
       }
       .preview-page .preview-mode__badge {
         display: inline-flex;
@@ -201,6 +228,44 @@
         font-weight: 750;
         color: #7a4e24;
       }
+      .preview-page .preview-cash__note {
+        margin: 4px 0 0;
+        color: rgba(68, 64, 60, 0.82);
+        font-size: 12px;
+        font-weight: 550;
+        line-height: 1.35;
+      }
+      body.preview-page .cal-cell.cal-cell--past.cal-cell--bal-warn {
+        background: #fffaf3;
+        box-shadow:
+          inset 3px 0 0 rgba(180, 130, 70, 0.55),
+          0 1px 2px rgba(17, 24, 39, 0.02);
+      }
+      body.preview-page .cal-cell.cal-cell--past.cal-cell--bal-risk {
+        background: #fff6f6;
+        box-shadow:
+          inset 3px 0 0 rgba(185, 28, 28, 0.62),
+          0 1px 2px rgba(17, 24, 39, 0.025);
+      }
+      body.preview-page .cal-stat.cal-balance.cal-balance--past-day.cal-balance--below-floor {
+        color: rgba(130, 92, 52, 0.92);
+        font-weight: 650;
+        background: rgba(255, 248, 237, 0.95);
+      }
+      body.preview-page .cal-stat.cal-balance.cal-balance--past-day.is-negative,
+      body.preview-page .cal-stat.cal-balance.cal-balance--past-day.cal-balance--risk {
+        color: rgba(127, 45, 45, 0.94);
+        font-weight: 700;
+        background: rgba(254, 242, 242, 0.95);
+      }
+      body.preview-page .cal-cell.cal-cell--out {
+        background: rgba(11, 61, 46, 0.028);
+        border-color: rgba(17, 24, 39, 0.045);
+        box-shadow: none;
+      }
+      body.preview-page .cal-cell.cal-cell--out .cal-daynum-num {
+        color: rgba(107, 114, 128, 0.48);
+      }
       .preview-page #sidebarLowBalanceBanner strong {
         display: inline;
         white-space: normal;
@@ -322,8 +387,13 @@
       }
       @media (max-width: 800px) {
         .preview-page .preview-mode {
+          position: static;
           align-items: stretch;
           flex-direction: column;
+        }
+        body.preview-page .calendar-panel-sticky-zone {
+          position: static;
+          top: auto;
         }
         body.preview-page .cal-cell {
           min-height: 0;
@@ -521,6 +591,6 @@
         </form>
       </div>
     </div>
-    <script src="./preview.js?v=6"></script>
+    <script src="./preview.js?v=7"></script>
   </body>
 </html>
