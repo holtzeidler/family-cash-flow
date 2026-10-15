@@ -10,7 +10,7 @@ import pytest
 from playwright.sync_api import expect
 
 from smoke_guard import SMOKE_ORIGIN
-from support import assert_no_horizontal_overflow, assert_route_ok
+from support import assert_action_accessible, assert_no_horizontal_overflow, assert_route_ok
 
 
 def _month_label(year: int, month: int) -> str:
@@ -183,6 +183,9 @@ def test_sample_forecast_reconciliation(page, guard):
     expect(page.locator('.cal-cell[data-day="9"]')).to_have_attribute("data-end", "2060")
     expect(page.locator('.cal-cell[data-day="9"]')).not_to_have_class(re.compile(r"cal-cell--adjusted-balance"))
     page.locator("#previewReconcile summary").click()
+    expect(page.locator("#previewReconcile")).to_contain_text(
+        "See how entering an actual checking balance updates future projections."
+    )
     expect(page.locator("#previewReconcileLead")).to_contain_text("Fictional example")
     expect(page.locator("#previewReconcileLead")).to_contain_text("not your bank balance")
     expect(page.locator("#previewReconcileForecast")).to_have_text("$2,060")
@@ -313,6 +316,28 @@ def test_public_preview_walkthrough(page, guard):
     expect(page.get_by_role("dialog")).to_be_hidden()
     _assert_forecast_untouched(api_calls, writes)
     assert_no_horizontal_overflow(page)
+    guard.assert_clean()
+
+
+@pytest.mark.smoke_title("Sample forecast fits common screen widths")
+def test_sample_forecast_fits_common_widths(page, guard):
+    response = page.goto("/preview/")
+    assert_route_ok(response, "/preview/")
+    expect(page.locator("#previewReconcile summary")).to_contain_text("Update your bank balance")
+    expect(page.locator("#previewExplore summary")).to_contain_text("Try a hypothetical expense")
+    expect(page.locator("#previewReconcile")).to_have_js_property("open", False)
+    expect(page.locator("#previewExplore")).to_have_js_property("open", False)
+    page.locator("#previewReconcile summary").focus()
+    page.keyboard.press("Enter")
+    expect(page.locator("#previewReconcile")).to_have_js_property("open", True)
+    expect(page.locator("#previewReconcile .preview-demo__chevron")).to_be_visible()
+    page.keyboard.press("Enter")
+    expect(page.locator("#previewReconcile")).to_have_js_property("open", False)
+    for width, height in ((1280, 800), (1440, 900), (1920, 1080), (768, 1024), (390, 844)):
+        page.set_viewport_size({"width": width, "height": height})
+        assert_no_horizontal_overflow(page)
+        for selector in ("#previewSignup", "#homeLoginLink", "#previewReplay", "#calendarGoToday"):
+            assert_action_accessible(page, page.locator(selector))
     guard.assert_clean()
 
 

@@ -168,11 +168,41 @@
         border-top: 0;
       }
       .preview-page .preview-demo summary {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin: 0 -4px;
+        padding: 8px 4px;
+        border-radius: 8px;
+        list-style: none;
         cursor: pointer;
-        padding: 8px 0;
-        color: #0b3d2e;
+        color: rgba(15, 23, 42, 0.92);
         font-size: 0.92rem;
-        font-weight: 750;
+        font-weight: 650;
+        letter-spacing: -0.01em;
+        line-height: 1.3;
+      }
+      .preview-page .preview-demo summary::-webkit-details-marker {
+        display: none;
+      }
+      .preview-page .preview-demo summary:hover {
+        background: rgba(11, 61, 46, 0.04);
+      }
+      .preview-page .preview-demo summary:focus-visible {
+        outline: 2px solid rgba(4, 120, 87, 0.35);
+        outline-offset: 2px;
+      }
+      .preview-page .preview-demo__label {
+        min-width: 0;
+      }
+      .preview-page .preview-demo__chevron {
+        flex: 0 0 auto;
+        color: rgba(100, 116, 139, 0.72);
+        transition: transform 0.15s ease;
+      }
+      .preview-page .preview-demo[open] .preview-demo__chevron {
+        transform: rotate(180deg);
       }
       .preview-page .preview-demo__state {
         margin-left: 6px;
@@ -552,8 +582,14 @@
           <div class="card sidebar-section preview-demos" id="previewDemos">
             <div class="sidebar-section-body">
               <details class="preview-demo" id="previewReconcile">
-                <summary>Reconcile with a bank balance <span class="preview-demo__state" id="previewReconcileState" hidden>Adjusted</span></summary>
+                <summary>
+                  <span class="preview-demo__label">Update your bank balance <span class="preview-demo__state" id="previewReconcileState" hidden>Adjusted</span></span>
+                  <svg class="preview-demo__chevron" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M6 9l6 6 6-6" />
+                  </svg>
+                </summary>
                 <div class="preview-demo__body">
+                  <p>See how entering an actual checking balance updates future projections.</p>
                   <p id="previewReconcileLead">Fictional example. This is not your bank balance.</p>
                   <dl class="preview-demo__rows">
                     <div><dt>Forecast</dt><dd id="previewReconcileForecast">$2,060</dd></div>
@@ -568,9 +604,15 @@
                 </div>
               </details>
               <details class="preview-demo" id="previewExplore">
-                <summary>Try a hypothetical expense <span class="preview-demo__state" id="previewExploreState" hidden>Added</span></summary>
+                <summary>
+                  <span class="preview-demo__label">Try a hypothetical expense <span class="preview-demo__state" id="previewExploreState" hidden>Added</span></span>
+                  <svg class="preview-demo__chevron" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M6 9l6 6 6-6" />
+                  </svg>
+                </summary>
                 <div class="preview-demo__body">
-                  <p>Demo only. This is not part of the signed-in forecast, and it is not saved.</p>
+                  <p>See how an additional expense would affect your forecast.</p>
+                  <p>Demo only. This is not available in the signed-in forecast, and nothing is saved.</p>
                   <form id="previewWhatIfForm">
                     <div class="preview-modal__row">
                       <label>
