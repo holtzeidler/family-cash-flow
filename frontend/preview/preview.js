@@ -9,6 +9,10 @@
   var OPENING = 4850;
   var RECONCILE_DAY = 9;
   var RECONCILE_BANK = 1925;
+  // Pre-existing fictional reconciliation. In October this is October 10.
+  // The bank balance is $80 below that day's forecast, so later days start here.
+  var SAMPLE_ADJUSTED_DAY = 10;
+  var SAMPLE_ADJUSTED_BANK = 1980;
   var SERIES = [
     { day: 4, name: "Groceries", amount: -180, note: "Weekly groceries" },
     { day: 6, name: "Mortgage", amount: -2400, note: "Monthly mortgage" },
@@ -162,8 +166,10 @@
       });
       var start = carry;
       var projected = Math.round((start + net) * 100) / 100;
-      var verified = reconciled && day === RECONCILE_DAY;
-      var end = verified ? RECONCILE_BANK : projected;
+      var sampleVerified = day === SAMPLE_ADJUSTED_DAY;
+      var demoVerified = reconciled && day === RECONCILE_DAY;
+      var verified = sampleVerified || demoVerified;
+      var end = sampleVerified ? SAMPLE_ADJUSTED_BANK : demoVerified ? RECONCILE_BANK : projected;
       if (end < low.end) low = { end: end, day: day };
       days.push({
         day: day,
