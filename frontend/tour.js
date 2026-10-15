@@ -108,11 +108,11 @@
       findTarget: findExpectedCalendarConfirmAnchor,
       title: "Keep your forecast accurate",
       body:
-        "Your forecast works best when your starting balance stays current.\n\nEverything matches? Reconcile your balance to mark a checkpoint.\n\nFallen behind? Update your balance to start fresh. No need to go back and fix every missed transaction.",
+        "Your forecast works best when your checking balance stays up to date.\n\nEverything matches? Reconcile your balance to mark a checkpoint.\n\nFallen behind? Update your balance to start fresh. No need to go back and fix every missed transaction.",
       reconcilePreview: readTourReconcilePreview,
       note: "Stay current when you can. Catch up easily when you can\u2019t.",
       ctaLabel: "See My Forecast",
-      placement: ["below", "above", "right", "left"],
+      placement: ["right", "left", "above", "below"],
       retryable: true,
       targetExtraClass: "bw-tour-target--reconcile-head",
     },
@@ -201,7 +201,8 @@
   }
 
   function findExpectedCalendarConfirmAnchor() {
-    const todayIso = new Date().toISOString().slice(0, 10);
+    const today = new Date();
+    const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
     const balanceHit =
       document.querySelector(
         `.cal-cell[data-iso="${todayIso}"]:not(.cal-cell--out):not(.cal-cell--before-start) .cal-ledger-metrics.cal-day-balance-hit`
@@ -209,11 +210,10 @@
       document.querySelector(
         ".cal-cell[data-iso]:not(.cal-cell--out):not(.cal-cell--before-start) .cal-ledger-metrics.cal-day-balance-hit"
       );
-    if (balanceHit && isVisible(balanceHit)) return balanceHit;
+    const cell = balanceHit && balanceHit.closest(".cal-cell");
+    if (cell && isVisible(cell)) return cell;
     const row = findExpectedCalendarRowTarget();
-    const fromRow = row
-      ? row.closest(".cal-cell")?.querySelector(".cal-ledger-metrics.cal-day-balance-hit")
-      : null;
+    const fromRow = row ? row.closest(".cal-cell") : null;
     if (fromRow && isVisible(fromRow)) return fromRow;
     const updateBtn = document.getElementById("forecastConfidenceVerifyBtn");
     if (isVisible(updateBtn)) return updateBtn;
@@ -669,8 +669,10 @@
       }
     }
 
-    tooltipEl.style.left = `${Math.round(chosen.left)}px`;
-    tooltipEl.style.top = `${Math.round(chosen.top)}px`;
+    const maxLeft = Math.max(pad, vw - tw - pad);
+    const maxTop = Math.max(minTop, vh - th - pad);
+    tooltipEl.style.left = `${Math.round(clamp(chosen.left, pad, maxLeft))}px`;
+    tooltipEl.style.top = `${Math.round(clamp(chosen.top, minTop, maxTop))}px`;
 
     if (arrow) {
       arrow.dataset.side = chosen.side;

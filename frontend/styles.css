@@ -28409,29 +28409,13 @@ body[data-bw-view="calendar"] .cal-cell.bw-tour-target--calendar-add .cal-daynum
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.72) inset;
 }
 
-body[data-bw-view="calendar"] .cal-ledger-metrics.cal-day-balance-hit.bw-tour-target--reconcile-head{
-  position: relative;
-  background: color-mix(in srgb, var(--accent) 8%, #ffffff);
-  border-top-color: color-mix(in srgb, var(--accent) 24%, transparent);
-  box-shadow:
-    0 0 0 2px color-mix(in srgb, var(--accent) 32%, transparent),
-    0 0 0 6px color-mix(in srgb, var(--accent) 10%, transparent) !important;
+body[data-bw-view="calendar"] .cal-cell.bw-tour-target--reconcile-head{
+  background: color-mix(in srgb, var(--accent) 6%, #ffffff) !important;
 }
-body[data-bw-view="calendar"] .cal-ledger-metrics.cal-day-balance-hit.bw-tour-target--reconcile-head::after{
-  content: "Update balance";
-  position: absolute;
-  right: 8px;
-  top: -12px;
-  padding: 2px 7px;
-  border-radius: 999px;
-  font-size: 8.5px;
-  line-height: 1.2;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  color: rgba(11, 61, 46, 0.96);
-  background: #ffffff;
-  border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent);
-  box-shadow: 0 4px 14px -10px rgba(11, 61, 46, 0.32);
+body[data-bw-view="calendar"] .cal-cell.bw-tour-target--reconcile-head .cal-ledger-metrics.cal-day-balance-hit{
+  background: color-mix(in srgb, var(--accent) 10%, #ffffff);
+  border-radius: 8px;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 32%, transparent);
 }
 
 body[data-bw-view="calendar"] #sidebarCashHealthCard.bw-tour-support-highlight--sidebar-soft,
@@ -32078,6 +32062,65 @@ body[data-bw-view="transactions"] #sidebarBodyMonth .total--net .v.danger,
 body[data-bw-view="settings"] #sidebarBodyMonth .total--net .v.danger,
 body[data-bw-view="reports"] #sidebarBodyMonth .total--net .v.danger{
   color: color-mix(in srgb, var(--danger) 68%, #78716c);
+}
+
+/* Forecast sidebar polish: a little more air, a clearer healthy status, a quieter empty review line. */
+body[data-bw-view="calendar"] #sidebarCashHealthCard{
+  padding: 14px 14px 12px;
+}
+body[data-bw-view="calendar"] #sidebarCashHealthCard .sidebar-section-head{
+  margin-bottom: 10px;
+}
+body[data-bw-view="calendar"] #sidebarCashHealthCard .sidebar-cash-health__body{
+  gap: 8px;
+}
+body[data-bw-view="calendar"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-suggestion{
+  margin-top: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(11, 61, 46, 0.14);
+  background: #e7f6ee;
+}
+body[data-bw-view="calendar"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-suggestion strong{
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: #14532d;
+}
+body[data-bw-view="calendar"] #sidebarPendingTxCard.sidebar-pending--empty{
+  margin-top: 8px;
+  padding-top: 0;
+  border-top: none;
+}
+body[data-bw-view="calendar"] #sidebarPendingTxCard.sidebar-pending--empty #sidebarPendingTitle{
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #5b6b7c;
+}
+body[data-bw-view="calendar"] .sidebar .card[data-sidebar-key="month"]{
+  padding: 14px 14px 16px;
+}
+body[data-bw-view="calendar"] .sidebar-forecast-head{
+  margin-bottom: 10px;
+}
+body[data-bw-view="calendar"] .sidebar-month-row{
+  margin: 0 0 12px;
+}
+body[data-bw-view="calendar"] #sidebarBodyMonth .total--income,
+body[data-bw-view="calendar"] #sidebarBodyMonth .total--expense{
+  padding: 8px 2px;
+}
+body[data-bw-view="calendar"] #sidebarBodyMonth .total--net:not(:has(.v.danger)){
+  margin-top: 8px;
+  padding: 8px 8px;
+  border-radius: 8px;
+  background: #e7f6ee;
+}
+body[data-bw-view="calendar"] #sidebarBodyMonth .total--net:has(.v.danger){
+  margin-top: 8px;
+  padding: 8px 8px;
 }
 
 /* Reimbursements left rail: mirror Forecast sidebar rules exactly. */
