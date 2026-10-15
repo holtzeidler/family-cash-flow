@@ -60,15 +60,15 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 16px 20px;
+        gap: 12px 16px;
         position: sticky;
         top: var(--preview-nav-h, 76px);
         z-index: 28;
         margin: 8px 0 8px;
-        padding: 8px 12px;
-        border: 1px solid rgba(11, 61, 46, 0.16);
-        border-radius: 14px;
-        background: #e7f3ea;
+        padding: 7px 12px;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        border-radius: 12px;
+        background: #fff;
       }
       .preview-page .preview-mode::before,
       .preview-page .preview-mode::after {
@@ -125,38 +125,67 @@
       }
       .preview-page .preview-cal-head {
         display: flex;
-        flex-wrap: wrap;
         align-items: center;
-        gap: 8px;
-        margin: 4px 0 8px;
+        margin: 2px 0 6px;
       }
       .preview-page .preview-cal-head .calendar-nav-block {
-        flex: 1 1 280px;
+        flex: 1 1 auto;
+        width: 100%;
       }
-      .preview-page .preview-tools {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
+      body.preview-page[data-bw-view="calendar"] .sidebar {
+        gap: 10px;
       }
-      .preview-page .preview-tool {
-        min-height: 36px;
-        padding: 6px 12px;
-        border: 1px solid rgba(11, 61, 46, 0.28);
-        border-radius: 999px;
-        background: #fff;
-        color: var(--accent, #0b3d2e);
-        font: inherit;
-        font-size: 13px;
-        font-weight: 700;
-        cursor: pointer;
+      body.preview-page #sidebarCashHealthCard,
+      body.preview-page #previewDemos {
+        padding: 8px 10px 4px;
       }
-      .preview-page .preview-tool--tour {
-        border-color: transparent;
-        background: var(--accent, #0b3d2e);
-        color: #fff;
+      body.preview-page .sidebar-section-head {
+        margin-bottom: 2px;
       }
-      .preview-page .preview-tool:hover {
-        background: rgba(11, 61, 46, 0.08);
+      body.preview-page .sidebar-section-head h2 {
+        font-size: 11px;
+        font-weight: 650;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: rgba(71, 85, 105, 0.72);
+        line-height: 1.2;
+      }
+      body.preview-page #sidebarLowBalanceBanner.calendar-low-balance--inset,
+      body.preview-page #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger {
+        margin: 0;
+        padding: 4px 0 6px;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+        font-size: 0.92rem;
+      }
+      body.preview-page .sidebar-balance-threshold-alerts,
+      body.preview-page .sidebar-cash-health__alerts {
+        margin-bottom: 2px;
+        gap: 0;
+      }
+      body.preview-page #totals .total {
+        padding: 3px 0;
+        background: transparent;
+        border: 0;
+      }
+      body.preview-page #sidebarBodyMonth .total,
+      body.preview-page #sidebarBodyMonth .total--net,
+      body.preview-page #sidebarBodyMonth .total--net:not(:has(.v.danger)) {
+        margin-top: 0;
+        border-radius: 0;
+        background: transparent;
+      }
+      body.preview-page #totals .total--income .v.ok {
+        color: #047857;
+      }
+      body.preview-page #totals .total--expense .v.danger,
+      body.preview-page #totals .total--net .v.danger {
+        color: #b91c1c;
+      }
+      body.preview-page #totals .total--net .v.ok {
+        color: #047857;
       }
       .preview-page .preview-demos {
         margin-top: 0;
@@ -167,21 +196,34 @@
       .preview-page .preview-demo:first-child {
         border-top: 0;
       }
-      .preview-page .preview-demo summary {
+      .preview-page .preview-demo summary,
+      .preview-page .preview-demo-row {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 10px;
-        margin: 0 -4px;
-        padding: 8px 4px;
+        gap: 8px;
+        width: 100%;
+        margin: 0;
+        padding: 7px 2px;
+        border: 0;
         border-radius: 8px;
+        background: transparent;
         list-style: none;
         cursor: pointer;
-        color: rgba(15, 23, 42, 0.92);
-        font-size: 0.92rem;
-        font-weight: 650;
+        color: rgba(15, 23, 42, 0.88);
+        font: inherit;
+        font-size: 0.86rem;
+        font-weight: 600;
         letter-spacing: -0.01em;
         line-height: 1.3;
+        text-align: left;
+      }
+      .preview-page .preview-demo-row:hover {
+        background: rgba(11, 61, 46, 0.04);
+      }
+      .preview-page .preview-demo-row:focus-visible {
+        outline: 2px solid rgba(4, 120, 87, 0.35);
+        outline-offset: 2px;
       }
       .preview-page .preview-demo summary::-webkit-details-marker {
         display: none;
@@ -200,6 +242,9 @@
         flex: 0 0 auto;
         color: rgba(100, 116, 139, 0.72);
         transition: transform 0.15s ease;
+      }
+      .preview-page .preview-demo-row .preview-demo__chevron {
+        transform: rotate(-90deg);
       }
       .preview-page .preview-demo[open] .preview-demo__chevron {
         transform: rotate(180deg);
@@ -284,15 +329,11 @@
         min-height: 32px;
         font: inherit;
       }
-      .preview-page .preview-tool--tour:hover {
-        background: #0a3428;
-        color: #fff;
-      }
       .preview-page .preview-snapshot-month {
-        margin: 0 0 6px;
-        font-size: 13px;
-        font-weight: 650;
-        color: rgba(15, 23, 42, 0.9);
+        margin: 2px 0 2px;
+        font-size: 12px;
+        font-weight: 600;
+        color: rgba(71, 85, 105, 0.72);
       }
       .preview-page #sidebarLowBalanceBanner {
         display: block;
@@ -316,15 +357,15 @@
       }
       .preview-page .preview-cash__kicker {
         margin: 0;
-        color: rgba(87, 83, 78, 0.78);
+        color: #92400e;
         font-size: 12px;
-        font-weight: 650;
+        font-weight: 700;
         line-height: 1.3;
       }
       .preview-page .preview-cash__date {
         margin: 0;
-        color: rgba(41, 37, 36, 0.94);
-        font-size: 1.05rem;
+        color: #8a5a12;
+        font-size: 0.98rem;
         font-weight: 750;
         letter-spacing: -0.02em;
         line-height: 1.25;
@@ -338,11 +379,11 @@
         line-height: 1.35;
         overflow-wrap: break-word;
       }
+      body.preview-page .cal-cell.cal-cell--bal-warn,
       body.preview-page .cal-cell.cal-cell--past.cal-cell--bal-warn {
-        background: #fffaf3;
-        box-shadow:
-          inset 3px 0 0 rgba(180, 130, 70, 0.55),
-          0 1px 2px rgba(17, 24, 39, 0.02);
+        background: #fffdf8;
+        border-color: rgba(176, 132, 72, 0.14);
+        box-shadow: inset 2px 0 0 rgba(176, 132, 72, 0.2);
       }
       body.preview-page .cal-cell.cal-cell--past.cal-cell--bal-risk {
         background: #fff6f6;
@@ -350,10 +391,16 @@
           inset 3px 0 0 rgba(185, 28, 28, 0.62),
           0 1px 2px rgba(17, 24, 39, 0.025);
       }
+      body.preview-page .cal-stat.cal-balance.cal-balance--below-floor,
       body.preview-page .cal-stat.cal-balance.cal-balance--past-day.cal-balance--below-floor {
-        color: rgba(130, 92, 52, 0.92);
+        color: #8a5a12;
         font-weight: 650;
-        background: rgba(255, 248, 237, 0.95);
+        background: transparent;
+        border: 0;
+        box-shadow: none;
+      }
+      body.preview-page .cal-balance-warn-icon {
+        color: #a16207;
       }
       body.preview-page .cal-stat.cal-balance.cal-balance--past-day.is-negative,
       body.preview-page .cal-stat.cal-balance.cal-balance--past-day.cal-balance--risk {
@@ -487,13 +534,13 @@
           gap: 14px;
           align-items: start;
         }
+        body.preview-page #sidebarCashHealthCard,
         body.preview-page .preview-demos {
           grid-column: 1 / -1;
         }
       }
       @media (max-width: 800px) {
         .preview-page .preview-mode {
-          position: static;
           align-items: stretch;
           flex-direction: column;
         }
@@ -554,36 +601,31 @@
 
       <div class="app-layout">
         <aside class="sidebar">
-          <div class="sidebar-sticky-head">
-            <section id="sidebarCashHealthCard" class="card sidebar-section sidebar-cash-health" aria-label="Cash Health">
-              <div class="sidebar-section-head sidebar-cash-health__head">
-                <h2 id="cashOutlookTitle">Cash Health</h2>
-              </div>
-              <div class="sidebar-section-body sidebar-cash-health__body">
-                <div class="sidebar-balance-threshold-alerts sidebar-cash-health__alerts" aria-label="Balance threshold alerts">
-                  <div id="sidebarLowBalanceBanner" class="calendar-low-balance calendar-low-balance--sidebar calendar-low-balance--inset" role="status"></div>
-                </div>
-              </div>
-            </section>
-          </div>
-
-          <div class="card sidebar-section" data-sidebar-key="month">
-            <div class="sidebar-section-head sidebar-forecast-head">
-              <h2>Forecast snapshot</h2>
+          <section id="sidebarCashHealthCard" class="card sidebar-section preview-overview" aria-label="Forecast Overview">
+            <div class="sidebar-section-head">
+              <h2 id="cashOutlookTitle">Forecast Overview</h2>
             </div>
             <div id="sidebarBodyMonth" class="sidebar-section-body">
-              <div class="sidebar-month-row">
-                <p id="previewMonthLabel" class="preview-snapshot-month"></p>
-              </div>
+              <div id="sidebarLowBalanceBanner" class="calendar-low-balance calendar-low-balance--sidebar calendar-low-balance--inset" role="status"></div>
+              <p id="previewMonthLabel" class="preview-snapshot-month"></p>
               <div class="totals" id="totals"></div>
             </div>
-          </div>
+          </section>
 
-          <div class="card sidebar-section preview-demos" id="previewDemos">
+          <section class="card sidebar-section preview-demos" id="previewDemos" aria-label="Explore BalanceWhiz">
+            <div class="sidebar-section-head">
+              <h2>Explore BalanceWhiz</h2>
+            </div>
             <div class="sidebar-section-body">
+              <button type="button" class="preview-demo-row" id="previewReplay">
+                <span class="preview-demo__label">Take a quick tour</span>
+                <svg class="preview-demo__chevron" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M6 9l6 6 6-6" />
+                </svg>
+              </button>
               <details class="preview-demo" id="previewReconcile">
                 <summary>
-                  <span class="preview-demo__label">Update your bank balance <span class="preview-demo__state" id="previewReconcileState" hidden>Adjusted</span></span>
+                  <span class="preview-demo__label">Update bank balance <span class="preview-demo__state" id="previewReconcileState" hidden>Adjusted</span></span>
                   <svg class="preview-demo__chevron" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <path d="M6 9l6 6 6-6" />
                   </svg>
@@ -631,7 +673,7 @@
                 </div>
               </details>
             </div>
-          </div>
+          </section>
         </aside>
 
         <div class="main-column">
@@ -688,9 +730,6 @@
                         </div>
                       </div>
                     </div>
-                    <div class="preview-tools">
-                      <button type="button" class="preview-tool preview-tool--tour" id="previewReplay">Show me around</button>
-                    </div>
                   </div>
                   <div style="height:6px;"></div>
                   <div id="calendarDow" class="calendar-dow-row" aria-hidden="true"></div>
@@ -719,6 +758,6 @@
       </div>
     </div>
 
-    <script src="./preview.js?v=9"></script>
+    <script src="./preview.js?v=10"></script>
   </body>
 </html>

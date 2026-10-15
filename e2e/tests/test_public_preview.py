@@ -323,7 +323,7 @@ def test_public_preview_walkthrough(page, guard):
 def test_sample_forecast_fits_common_widths(page, guard):
     response = page.goto("/preview/")
     assert_route_ok(response, "/preview/")
-    expect(page.locator("#previewReconcile summary")).to_contain_text("Update your bank balance")
+    expect(page.locator("#previewReconcile summary")).to_contain_text("Update bank balance")
     expect(page.locator("#previewExplore summary")).to_contain_text("Try a hypothetical expense")
     expect(page.locator("#previewReconcile")).to_have_js_property("open", False)
     expect(page.locator("#previewExplore")).to_have_js_property("open", False)
@@ -387,5 +387,6 @@ def test_faq_links_to_public_preview(page, guard):
     page.wait_for_url(re.compile(r"/preview/?$"))
     expect(page.locator("#preview-calendar")).to_be_visible()
     expect(page.get_by_role("dialog")).to_have_count(0)
-    expect(page.locator("#previewReplay")).to_have_text("Show me around")
+    expect(page.locator("#previewReplay")).to_have_text("Take a quick tour")
+    expect(page.locator(".preview-tool--tour")).to_have_count(0)
     guard.assert_clean()
