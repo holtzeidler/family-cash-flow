@@ -1,0 +1,46 @@
+/* Signed-in visitors see My Forecast and Log Out. Guests see Login. */
+html:not([data-bw-home-auth="in"]) #homeLogoutBtn,
+html:not([data-bw-home-auth="in"]) #homeForecastLink,
+html:not([data-bw-home-auth="in"]) a.home-cta--member {
+  display: none !important;
+}
+
+html[data-bw-home-auth="in"] #homeLoginLink,
+html[data-bw-home-auth="in"] a.home-cta--guest {
+  display: none !important;
+}
+
+html[data-bw-home-auth="in"] #homeLogoutBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+button.plans-public-nav__link,
+button.contact-public-nav__link {
+  font-family: inherit;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.top-nav__actions {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.top-nav__actions #homeForecastLink {
+  margin-right: 4px;
+  white-space: nowrap;
+}
+
+/* The login page header is a single column. Keep signed-in actions on the right. */
+body.login-page:not(.signup-page):not(.invite-page) .top-nav__actions {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+}
