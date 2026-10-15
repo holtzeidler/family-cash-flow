@@ -70,6 +70,10 @@
     return "$" + cents(amount);
   }
 
+  function calendarTxnMoney(amount) {
+    return "$" + Math.abs(amount).toLocaleString("en-US", { maximumFractionDigits: 0 });
+  }
+
   function wholeMoney(amount) {
     var rounded = Math.round(amount);
     var abs = Math.abs(rounded).toLocaleString("en-US", { maximumFractionDigits: 0 });
@@ -210,7 +214,7 @@
           '</span></span><span class="cal-amt ' +
           (income ? "income" : "expense") +
           '">' +
-          txnMoney(txn.amount) +
+          calendarTxnMoney(txn.amount) +
           "</span></button>"
         );
       })
@@ -242,9 +246,7 @@
       day.end +
       '" data-preview="' +
       groupsFor(day.day, day.txns) +
-      '"' +
-      (narrow ? "" : ' style="height:162px"') +
-      '><div class="cal-daynum" data-mobile-label="' +
+      '"><div class="cal-daynum" data-mobile-label="' +
       escapeHtml(mobile) +
       '"><span class="cal-daynum-num' +
       (isToday ? " is-today" : "") +
@@ -269,9 +271,7 @@
 
   function outCell(date, narrow) {
     return (
-      '<div class="cal-cell cal-cell--out" aria-hidden="true"' +
-      (narrow ? "" : ' style="height:162px"') +
-      '><div class="cal-daynum"><span class="cal-daynum-num">' +
+      '<div class="cal-cell cal-cell--out" aria-hidden="true"><div class="cal-daynum"><span class="cal-daynum-num">' +
       date.getDate() +
       "</span></div></div>"
     );
@@ -319,33 +319,32 @@
     if (model.low.end < BUFFER) {
       banner.className = "calendar-low-balance calendar-low-balance--sidebar calendar-low-balance--inset is-danger";
       banner.innerHTML =
-        '<div class="cash-outlook-card"><div class="cash-outlook-card__row">' +
-        '<span class="cash-outlook-icon cash-outlook-icon--warn" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3L2 21h20L12 3z"></path><path d="M12 9v5"></path><path d="M12 17h.01"></path></svg></span>' +
-        '<div class="cash-outlook-card__body">' +
-        '<p class="cash-outlook-card__kicker">Low balance</p>' +
-        '<p class="cash-outlook-card__date" id="previewCashDate">' +
+        '<div class="preview-cash">' +
+        '<p class="preview-cash__kicker">Low balance ahead</p>' +
+        '<p class="preview-cash__date" id="previewCashDate">' +
         escapeHtml(when) +
         "</p>" +
-        '<p class="cash-outlook-card__line cash-outlook-card__line--secondary">Projected balance: <span id="previewLowBalance">' +
+        '<p class="preview-cash__line">Projected balance: <strong id="previewLowBalance">' +
         wholeMoney(model.low.end) +
-        "</span></p>" +
-        '<p class="cash-outlook-card__line cash-outlook-card__line--tertiary" id="previewBufferGap">That\'s ' +
+        "</strong></p>" +
+        '<p class="preview-cash__gap" id="previewBufferGap">' +
         wholeMoney(gap) +
         " below your " +
         wholeMoney(BUFFER) +
-        " minimum.</p>" +
-        "</div></div></div>";
+        " minimum</p>" +
+        "</div>";
     } else {
       banner.className = "calendar-low-balance calendar-low-balance--sidebar calendar-low-balance--inset is-muted is-suggestion";
       banner.innerHTML =
-        "<strong>Within your minimum</strong>" +
-        '<div class="cash-outlook-secondary">Lowest balance this month is <span id="previewLowBalance">' +
+        '<div class="preview-cash">' +
+        '<p class="preview-cash__kicker">Within your minimum</p>' +
+        '<p class="preview-cash__line">Lowest balance this month is <strong id="previewLowBalance">' +
         wholeMoney(model.low.end) +
-        '</span>. <span id="previewBufferGap">That is ' +
+        '</strong>.</p><p class="preview-cash__gap" id="previewBufferGap">' +
         wholeMoney(gap) +
         " above your " +
         wholeMoney(BUFFER) +
-        " minimum.</span></div>";
+        " minimum</p></div>";
     }
     banner.style.display = "flex";
   }
