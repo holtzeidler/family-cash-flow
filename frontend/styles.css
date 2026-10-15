@@ -5569,7 +5569,7 @@ body.support-doc-page .support-doc{
     0 12px 36px -16px rgba(15, 23, 42, 0.12);
 }
 html:has(body.support-doc-page){
-  scroll-padding-top: 32px;
+  scroll-padding-top: 96px;
   scroll-behavior: smooth;
 }
 
@@ -5796,6 +5796,12 @@ body.support-doc-page .support-doc__footer{
   margin-top: 40px;
   padding-top: 22px;
   border-top: 1px solid rgba(15, 23, 42, 0.06);
+}
+body.support-doc-page .support-doc__close{
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.72;
+  color: rgba(71, 85, 105, 0.88);
 }
 body.support-doc-page .support-doc__quicklinks{
   display: flex;
