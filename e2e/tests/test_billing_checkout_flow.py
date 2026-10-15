@@ -226,6 +226,94 @@ def test_checkout_names_same_day_trial_charge(page, guard, seed):
     guard.assert_clean()
 
 
+@pytest.mark.smoke_title("Back from Stripe resets checkout")
+def test_back_from_stripe_resets_checkout_button(page, guard, seed):
+    """The redirect spinner is page state. Back-forward cache restores it unless pageshow clears it."""
+    login(page, seed["active"]["email"], seed["active"]["password"])
+    family_id = seed["active"]["family_id"]
+    response = page.goto(f"/checkout/?family_id={family_id}")
+    assert_route_ok(response, "/checkout/")
+    annual = page.locator('input[data-lookup-key="cash_forecast_annual"]')
+    monthly = page.locator('input[data-lookup-key="cash_forecast_monthly"]')
+    cta = page.locator("#checkout-and-portal-button")
+    annual.check()
+    expect(cta).to_have_text("Continue to checkout")
+    expect(cta).to_be_enabled()
+
+    posts = []
+
+    def remember(route):
+        posts.append(route.request)
+        route.fulfill(
+            status=200,
+            content_type="application/json",
+            body=json.dumps({"url": "/checkout/cancel/"}),
+        )
+
+    page.route(SESSION, remember)
+    cta.click()
+    page.wait_for_url(re.compile(r"/checkout/cancel/"))
+    assert len(posts) == 1
+    assert _lookup_key(posts[0]) == ANNUAL
+    page.go_back()
+    page.wait_for_url(re.compile(r"/checkout/(\?|$)"))
+    expect(cta).to_have_text("Continue to checkout")
+    expect(cta).to_be_enabled()
+    expect(cta).not_to_have_attribute("aria-busy", "true")
+
+    page.unroute(SESSION)
+    held = _hold_checkout(page)
+    annual.check()
+    expect(cta).to_have_text("Continue to checkout")
+    page.evaluate(
+        """() => {
+          const btn = document.getElementById("checkout-and-portal-button");
+          const click = new MouseEvent("click", { bubbles: true, cancelable: true });
+          btn.dispatchEvent(click);
+          btn.dispatchEvent(click);
+        }"""
+    )
+    expect(cta).to_contain_text("Redirecting to Stripe")
+    assert len(held) == 1
+    assert _lookup_key(held[0].request) == ANNUAL
+
+    page.evaluate(
+        """() => {
+          window.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true }));
+        }"""
+    )
+    expect(cta).to_have_text("Continue to checkout")
+    expect(cta).to_be_enabled()
+    expect(annual).to_be_enabled()
+    expect(monthly).to_be_enabled()
+    held[0].fulfill(
+        status=200,
+        content_type="application/json",
+        body=json.dumps({"url": "/checkout/cancel/"}),
+    )
+    expect(page).to_have_url(re.compile(r"/checkout/(\?|$)"))
+    expect(cta).to_have_text("Continue to checkout")
+
+    monthly.check()
+    expect(monthly).to_be_checked()
+    expect(cta).to_have_text("Continue to checkout")
+    before = len(held)
+    page.evaluate(
+        """() => {
+          const btn = document.getElementById("checkout-and-portal-button");
+          const click = new MouseEvent("click", { bubbles: true, cancelable: true });
+          btn.dispatchEvent(click);
+          btn.dispatchEvent(click);
+        }"""
+    )
+    assert len(held) == before + 1
+    assert _lookup_key(held[-1].request) == MONTHLY
+    _fail(held[-1])
+    expect(cta).to_have_text("Continue to checkout")
+    expect(page.locator("#checkoutErr")).to_be_visible()
+    guard.assert_clean()
+
+
 @pytest.mark.smoke_title("Standalone checkout page still starts Stripe")
 def test_standalone_checkout_page_still_starts_checkout(page, guard, seed):
     login(page, seed["active"]["email"], seed["active"]["password"])
