@@ -123,4 +123,37 @@
     bindPublicAuth();
     refreshHomeAuth();
   });
+
+  function closePublicNavs() {
+    var openNavs = document.querySelectorAll(".public-nav.is-open");
+    Array.prototype.forEach.call(openNavs, function (nav) {
+      nav.classList.remove("is-open");
+      var toggle = nav.querySelector(".public-nav__toggle");
+      if (toggle) toggle.setAttribute("aria-expanded", "false");
+    });
+  }
+
+  document.addEventListener("click", function (event) {
+    var toggle = event.target.closest && event.target.closest(".public-nav__toggle");
+    if (toggle) {
+      var nav = toggle.closest(".public-nav");
+      var willOpen = nav && !nav.classList.contains("is-open");
+      closePublicNavs();
+      if (willOpen) {
+        nav.classList.add("is-open");
+        toggle.setAttribute("aria-expanded", "true");
+      }
+      return;
+    }
+    if (!event.target.closest || !event.target.closest(".public-nav")) closePublicNavs();
+  });
+
+  document.addEventListener("keydown", function (event) {
+    if (event.key !== "Escape") return;
+    var open = document.querySelector(".public-nav.is-open");
+    if (!open) return;
+    closePublicNavs();
+    var toggle = open.querySelector(".public-nav__toggle");
+    if (toggle) toggle.focus();
+  });
 })();

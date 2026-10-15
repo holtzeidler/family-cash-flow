@@ -81,7 +81,7 @@ def test_sample_forecast_month_and_balances(page, guard):
     expect(page.locator(".preview-mode__badge")).to_have_count(0)
     expect(page.locator(".preview-header-label")).to_have_count(0)
     expect(page.locator("#previewTryExpense")).to_have_count(0)
-    expect(page.locator("#homeLoginLink")).to_have_text("Login")
+    expect(page.locator("#homeLoginLink")).to_have_text("Log in")
     expect(page.locator("#previewReconcile")).to_have_js_property("open", False)
     expect(page.locator("#previewExplore")).to_have_js_property("open", False)
     expect(page.locator(".preview-mode__text")).to_have_text("Fictional finances. Nothing is saved.")
@@ -341,7 +341,7 @@ def test_sample_forecast_reconciliation(page, guard):
 def test_sample_forecast_signup_and_homepage(page, guard):
     response = page.goto("/")
     assert_route_ok(response, "/")
-    expect(page.locator("a.landing-hero__cta").first).to_have_text("Start by free forecast")
+    expect(page.locator("a.landing-hero__cta").first).to_have_text("Start my free forecast")
     expect(page.locator("a.landing-hero__cta.home-cta--guest")).to_have_attribute(
         "href", "/account-setup/?fresh=1"
     )
@@ -480,6 +480,11 @@ def test_sample_forecast_phone_agenda(page, guard):
     expect(page.locator("#preview-calendar")).to_have_class(re.compile(r"calendar--mobile"))
     assert_no_horizontal_overflow(page)
     page.set_viewport_size({"width": 768, "height": 1024})
+    expect(page.locator(".cal-dow")).to_have_count(0)
+    expect(page.locator("#preview-calendar")).to_have_class(re.compile(r"calendar--mobile"))
+    expect(page.locator(".cal-cell[data-iso]")).to_have_count(31)
+    assert_no_horizontal_overflow(page)
+    page.set_viewport_size({"width": 1024, "height": 900})
     expect(page.locator(".cal-dow").first).to_have_text("Sun")
     expect(page.locator("#preview-calendar")).not_to_have_class(re.compile(r"calendar--mobile"))
     expect(page.locator(".cal-cell[data-iso]")).to_have_count(31)

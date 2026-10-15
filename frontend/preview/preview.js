@@ -7,7 +7,7 @@
 
   var BUFFER = 1500;
   var OPENING = 4850;
-  var PHONE_QUERY = "(max-width: 700px)";
+  var PHONE_QUERY = "(max-width: 900px)";
   // Offsets are days from the visitor's current date. The low point stays 4 days ahead.
   var LOW_OFFSET = 4;
   var PAY_OFFSET = 6;
@@ -694,7 +694,7 @@
       '<p class="preview-finale-note" id="previewTourNote" hidden>Free for 14 days · No bank connection required</p>' +
       '<div class="bw-tour-tooltip__actions"><button type="button" class="bw-tour-tooltip__skip preview-back" id="previewTourBack">Back</button>' +
       '<button type="button" class="bw-tour-tooltip__cta" id="previewTourNext">Next</button>' +
-      '<a class="bw-tour-tooltip__cta preview-tour-link" id="previewTourStart" href="/account-setup/?fresh=1" hidden>Start my free trial</a></div>' +
+      '<a class="bw-tour-tooltip__cta preview-tour-link" id="previewTourStart" href="/account-setup/?fresh=1" hidden>Start my free forecast</a></div>' +
       '<a class="bw-tour-tooltip__skip" id="previewTourFaq" href="/help.html" hidden>Back to FAQ</a>';
     document.body.appendChild(dialog);
     document.getElementById("previewTourClose").addEventListener("click", closeTour);
@@ -733,13 +733,18 @@
     var el = nodes[0];
     var card = ensureDialog();
     var nav = document.querySelector(".top-nav");
-    var gap = 12;
+    var banner = document.querySelector(".preview-mode");
+    var gap = 16;
     var cardTop = card.getBoundingClientRect().top;
-    var navBottom = nav ? nav.getBoundingClientRect().bottom : 0;
+    var obstacle = nav ? nav.getBoundingClientRect().bottom : 0;
+    if (banner) obstacle = Math.max(obstacle, banner.getBoundingClientRect().bottom);
     var rect = el.getBoundingClientRect();
     var delta = 0;
-    if (rect.bottom > cardTop - gap) delta = rect.bottom - (cardTop - gap);
-    else if (rect.top < navBottom + gap) delta = rect.top - (navBottom + gap);
+    if (rect.top < obstacle + gap) delta = rect.top - (obstacle + gap);
+    else if (rect.bottom > cardTop - gap) {
+      delta = rect.bottom - (cardTop - gap);
+      if (rect.top - delta < obstacle + gap) delta = rect.top - (obstacle + gap);
+    }
     if (Math.abs(delta) > 1) window.scrollBy(0, delta);
   }
 

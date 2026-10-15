@@ -44,10 +44,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=735" />
+    <link rel="stylesheet" href="./styles.css?v=825" />
     <script>window.API_BASE = "__API_BASE__";</script>
-    <link rel="stylesheet" href="/public-auth.css?v=1" />
-    <script src="/homepage-auth.js?v=3"></script>
+    <link rel="stylesheet" href="/public-auth.css?v=2" />
+    <script src="/homepage-auth.js?v=4"></script>
   </head>
   <body class="plans-page support-doc-page">
     
@@ -71,8 +71,16 @@
             </div>
           </div>
           <div class="top-nav__actions" aria-label="Account actions">
-            <a class="plans-public-nav__link" id="homeForecastLink" href="/calendar/">My Forecast</a>
-            <a href="./login.html" class="top-nav__logout" id="homeLoginLink">Login</a>
+            <nav class="public-nav" aria-label="Site">
+              <button type="button" class="public-nav__toggle" aria-expanded="false" aria-controls="publicNavMenu">Menu</button>
+              <div class="public-nav__panel" id="publicNavMenu">
+                <a class="public-nav__link" href="/">Home</a>
+                <a class="public-nav__link" href="/learn/">Learn more</a>
+                <a class="public-nav__link" href="/plans/">Pricing</a>
+                <a class="public-nav__link" id="homeForecastLink" href="/calendar/">My Forecast</a>
+              </div>
+            </nav>
+            <a href="/login.html" class="top-nav__logout" id="homeLoginLink">Log in</a>
             <button type="button" class="top-nav__logout" id="homeLogoutBtn">Log Out</button>
           </div>
         </div>
@@ -98,7 +106,7 @@
             <header class="support-doc__head">
               <p class="support-doc__eyebrow">Privacy</p>
               <h1>Privacy Policy</h1>
-              <p class="support-doc__meta-lede">Last updated May 2026 · ~3 min read</p>
+              <p class="support-doc__meta-lede">Last updated October 2026 · ~3 min read</p>
             </header>
 
             <p class="support-doc__lead">
@@ -170,9 +178,11 @@
             <section class="support-doc__section" id="security" aria-labelledby="security-h">
               <h2 id="security-h">Security</h2>
               <p>
-                Data is transmitted over TLS and stored on managed infrastructure with industry-standard safeguards.
-                We use scoped credentials, principle-of-least-privilege access, and routine backups. No system is
-                perfect — if we ever experience an incident that affects your data, we'll tell you about it.
+                BalanceWhiz uses HTTPS. Information sent between your browser and BalanceWhiz is encrypted while it is
+                on its way. Your forecast information is stored in a managed database. BalanceWhiz uses infrastructure
+                providers with security protections designed to safeguard stored information. We continue to review our
+                data protection and recovery practices as BalanceWhiz grows. No system is perfect — if we ever
+                experience an incident that affects your data, we'll tell you about it.
               </p>
             </section>
 
@@ -180,7 +190,7 @@
               <h2 id="retention-h">Retention</h2>
               <p>
                 We keep your information as long as your account is active, and for a reasonable period afterward to
-                support backups, dispute resolution, and legal requirements. You can request deletion of your data at
+                support dispute resolution and legal requirements. You can request deletion of your data at
                 any time via <a href="./contactus/">Contact Us</a>.
               </p>
             </section>
@@ -191,7 +201,7 @@
               <ul class="support-doc__checks">
                 <li>Update your account details or change your password from inside the product.</li>
                 <li>Export or delete your data on request — we'll respond within a reasonable timeframe.</li>
-                <li>Cancel your subscription at any time; we'll stop charging immediately.</li>
+                <li>Cancel your subscription at any time. Cancellation stops the next renewal. Paid access continues through the end of the current billing period.</li>
               </ul>
             </section>
 

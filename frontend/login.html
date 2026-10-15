@@ -32,12 +32,12 @@
     <link rel="manifest" href="./site.webmanifest" />
     <!-- /bw:seo-head -->
 <script>window.API_BASE = "__API_BASE__";</script>
-    <link rel="stylesheet" href="/public-auth.css?v=1" />
-    <script src="/homepage-auth.js?v=3"></script>
+    <link rel="stylesheet" href="/public-auth.css?v=2" />
+    <script src="/homepage-auth.js?v=4"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=805" />
+    <link rel="stylesheet" href="./styles.css?v=825" />
   </head>
   <body class="login-page" data-auth-flow="login">
     <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -61,7 +61,15 @@
             </div>
           </div>
           <div class="top-nav__actions" aria-label="Account actions">
-            <a class="plans-public-nav__link" id="homeForecastLink" href="/calendar/">My Forecast</a>
+            <nav class="public-nav" aria-label="Site">
+              <button type="button" class="public-nav__toggle" aria-expanded="false" aria-controls="publicNavMenu">Menu</button>
+              <div class="public-nav__panel" id="publicNavMenu">
+                <a class="public-nav__link" href="/">Home</a>
+                <a class="public-nav__link" href="/learn/">Learn more</a>
+                <a class="public-nav__link" href="/plans/">Pricing</a>
+                <a class="public-nav__link" id="homeForecastLink" href="/calendar/">My Forecast</a>
+              </div>
+            </nav>
             <button type="button" class="top-nav__logout" id="homeLogoutBtn">Log Out</button>
           </div>
         </div>
@@ -269,6 +277,7 @@
               <nav class="app-footer__col" aria-label="Product">
                 <h2 class="app-footer__heading">Product</h2>
                 <ul class="app-footer__list">
+                  <li><a class="app-footer__link" href="/learn/">Learn more</a></li>
                   <li><a class="app-footer__link" href="/plans/">Pricing</a></li>
                   <li><a class="app-footer__link" href="/help.html">FAQ</a></li>
                 </ul>

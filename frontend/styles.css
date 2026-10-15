@@ -3626,7 +3626,7 @@ body[data-bw-view="settings"]:has(#settingsViewPanel:not([hidden]) .settings-pan
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: rgba(31, 41, 55, 0.52);
+  color: rgba(31, 41, 55, 0.78);
 }
 .app-footer__list{
   list-style: none;
@@ -3640,7 +3640,7 @@ body[data-bw-view="settings"]:has(#settingsViewPanel:not([hidden]) .settings-pan
 .app-footer__text{
   display: inline-block;
   padding: 2px 0;
-  color: rgba(55, 65, 81, 0.7);
+  color: rgba(55, 65, 81, 0.88);
   font-weight: 450;
   font-size: 12px;
   line-height: 1.32;
@@ -3847,7 +3847,7 @@ body.landing-page .landing-hero__microtrust{
   line-height: 1.42;
   font-weight: 400;
   letter-spacing: 0.01em;
-  color: rgba(71, 85, 105, 0.7);
+  color: #5b6b7c;
   text-align: center;
 }
 body.landing-page .landing-hero__microtrust-item{
@@ -3861,11 +3861,11 @@ body.landing-page .landing-hero__microtrust-check{
   font-size: 0.72em;
   font-weight: 500;
   line-height: 1;
-  color: rgba(71, 85, 105, 0.54);
+  color: #5b6b7c;
 }
 body.landing-page .landing-hero__microtrust__sep{
   display: inline;
-  opacity: 0.34;
+  opacity: 0.72;
   user-select: none;
 }
 body.landing-page .landing-hero__bridge{
@@ -4688,7 +4688,7 @@ body.landing-page .landing-shell > .landing-offer .landing-offer__footnote{
   line-height: 1.28;
   font-weight: 500;
   letter-spacing: 0.006em;
-  color: rgba(100, 116, 139, 0.62);
+  color: #5b6b7c;
   text-align: center;
 }
 body.landing-page .landing-shell > .landing-offer .landing-offer__cta:focus-visible{
@@ -17498,8 +17498,8 @@ body.account-setup-page .account-setup-wizard__reassurance{
   font-weight: 500;
   letter-spacing: 0.03em;
   line-height: 1.35;
-  color: rgba(11, 61, 46, 0.46);
-  max-width: 42ch;
+  color: #3d5348;
+  max-width: 36rem;
 }
 body.account-setup-page .account-setup-wizard__reassurance:not([hidden]){
   margin-top: calc(var(--as-wizard-title-subtitle-gap) * 0.72);
@@ -34212,5 +34212,162 @@ body[data-bw-view] #sidebarBodyMonth .total .v{
 }
 body[data-bw-view] .sidebar .card[data-sidebar-key="month"]{
   padding-bottom: 12px;
+}
+
+/* Public header: Home, Learn, Pricing stay available. Phones use a Menu disclosure. */
+.public-nav{
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.public-nav__toggle{
+  display: none;
+}
+.public-nav__panel{
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.public-nav__link{
+  display: inline-flex;
+  align-items: center;
+  margin: 0;
+  padding: 6px 10px;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 0.875rem;
+  font-weight: 550;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+  text-decoration: none;
+  white-space: nowrap;
+  background: none;
+  border: none;
+  border-radius: 8px;
+}
+.public-nav__link:hover,
+.public-nav__link:focus-visible{
+  color: #fff;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.public-nav__link[aria-current="page"]{
+  color: #fff;
+  font-weight: 650;
+}
+.landing-hero__trial{
+  margin: 0.7rem 0 0;
+  color: #243044;
+  font-size: 0.84rem;
+  font-weight: 650;
+  line-height: 1.35;
+  text-align: center;
+}
+.landing-hero__sample,
+.plan-sample,
+.support-doc__sample{
+  display: inline-block;
+  margin-top: 0.65rem;
+  color: var(--accent, #0b3d2e);
+  font-size: 0.95rem;
+  font-weight: 650;
+  text-align: center;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+.plan-cta-block .plan-sample{
+  display: block;
+}
+.plan-card.plan-card--polished .plan-features--outcomes a{
+  color: inherit;
+  font-weight: inherit;
+  text-decoration: none;
+}
+.plan-card.plan-card--polished .plan-features--outcomes a:hover,
+.plan-card.plan-card--polished .plan-features--outcomes a:focus-visible{
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+@media (max-width: 860px){
+  .public-nav__toggle{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    min-width: 44px;
+    min-height: 44px;
+    margin: 0;
+    padding: 0 12px;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    font-family: inherit;
+    font-size: 0.875rem;
+    font-weight: 650;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .public-nav__toggle:focus-visible{
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+  }
+  .public-nav__panel{
+    display: none;
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    z-index: 40;
+    flex-direction: column;
+    align-items: stretch;
+    min-width: 196px;
+    padding: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 12px;
+    background: var(--accent, #0b3d2e);
+  }
+  .public-nav.is-open .public-nav__panel{
+    display: flex;
+  }
+  .public-nav__link{
+    min-height: 44px;
+    padding: 10px 12px;
+  }
+  .top-nav__actions{
+    flex-wrap: nowrap;
+  }
+  .top-nav__logout{
+    box-sizing: border-box;
+    min-height: 44px;
+  }
+}
+@media (max-width: 420px){
+  body.landing-page .top-nav .app-title--logo .app-logo,
+  body.plans-page .top-nav .app-title--logo .app-logo,
+  body.contact-page .top-nav .app-title--logo .app-logo,
+  body.login-page .top-nav .app-title--logo .app-logo,
+  body.preview-page .top-nav .app-title--logo .app-logo,
+  body.account-setup-page .top-nav .app-title--logo .app-logo,
+  body.checkout-page .top-nav .app-title--logo .app-logo{
+    max-width: 132px;
+    height: 32px;
+  }
+}
+@media (max-width: 800px){
+  body.preview-page .cal-today-btn,
+  body.preview-page .cal-arrow-btn,
+  body.preview-page #previewDetailClose,
+  body.preview-page .preview-range__btn,
+  body.preview-page .preview-demo__apply,
+  body.preview-page .preview-demo__reset,
+  body.preview-page .bw-tour-tooltip__close{
+    box-sizing: border-box;
+    min-width: 44px;
+    min-height: 44px;
+  }
+  body.preview-page .preview-demo summary,
+  body.preview-page .preview-demo-row{
+    box-sizing: border-box;
+    min-height: 44px;
+  }
 }
 

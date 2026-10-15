@@ -44,11 +44,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=822" />
+    <link rel="stylesheet" href="../styles.css?v=825" />
     <link rel="stylesheet" href="../landing-marketing.css?v=21" />
     <script>window.API_BASE = "__API_BASE__";</script>
-    <link rel="stylesheet" href="/public-auth.css?v=1" />
-    <script src="/homepage-auth.js?v=3"></script>
+    <link rel="stylesheet" href="/public-auth.css?v=2" />
+    <script src="/homepage-auth.js?v=4"></script>
   </head>
   <body class="landing-page learn-page">
     <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -71,12 +71,16 @@
             </div>
           </div>
           <div class="top-nav__actions" aria-label="Account actions">
-            <nav class="top-nav__links" aria-label="Site">
-              <a href="/" class="top-nav__learn">Home</a>
-              <a href="/plans/" class="top-nav__learn">Pricing</a>
+            <nav class="public-nav" aria-label="Site">
+              <button type="button" class="public-nav__toggle" aria-expanded="false" aria-controls="publicNavMenu">Menu</button>
+              <div class="public-nav__panel" id="publicNavMenu">
+                <a class="public-nav__link" href="/">Home</a>
+                <a class="public-nav__link" href="/learn/" aria-current="page">Learn more</a>
+                <a class="public-nav__link" href="/plans/">Pricing</a>
+                <a class="public-nav__link" id="homeForecastLink" href="/calendar/">My Forecast</a>
+              </div>
             </nav>
-            <a class="top-nav__learn" id="homeForecastLink" href="/calendar/">My Forecast</a>
-            <a href="../login.html" class="top-nav__logout" id="homeLoginLink">Log in</a>
+            <a href="/login.html" class="top-nav__logout" id="homeLoginLink">Log in</a>
             <button type="button" class="top-nav__logout" id="homeLogoutBtn">Log Out</button>
           </div>
         </div>
@@ -91,7 +95,9 @@
                 <h1 class="landing-hero__text">See your cash flow before it happens.</h1>
                 <p class="landing-hero__sub">BalanceWhiz gives you a higher-level view of your checking account — what you have, what&rsquo;s already spoken for, and where your balance is headed. Without tracking every purchase or building a detailed budget.</p>
                 <div class="landing-hero__ctaGroup">
-                  <a href="/account-setup/?fresh=1" class="landing-hero__cta">Start by free forecast</a>
+                  <a href="/account-setup/?fresh=1" class="landing-hero__cta">Start my free forecast</a>
+                  <a class="landing-hero__sample" href="/preview/">Try a sample forecast</a>
+                  <p class="landing-hero__trial">Free for 14 days · No credit card required</p>
                   <p class="landing-hero__microtrust" aria-label="What to expect">
                     <span class="landing-hero__microtrust-item">
                       <span class="landing-hero__microtrust-check" aria-hidden="true">✓</span>
@@ -100,7 +106,7 @@
                     <span class="landing-hero__microtrust__sep" aria-hidden="true">·</span>
                     <span class="landing-hero__microtrust-item">
                       <span class="landing-hero__microtrust-check" aria-hidden="true">✓</span>
-                      Set up in about 10 minutes
+                      First forecast takes about 10 minutes
                     </span>
                   </p>
                 </div>
@@ -320,8 +326,9 @@
                   <p class="landing-offer__subhead">Start with today&rsquo;s balance and what&rsquo;s coming up. See where your money is headed.</p>
                 </div>
                 <div class="landing-offer__action">
-                  <a class="landing-offer__cta" href="/account-setup/?fresh=1">Start by free forecast</a>
-                  <p class="landing-offer__footnote">Free for 14 days · No bank connection required</p>
+                  <a class="landing-offer__cta" href="/account-setup/?fresh=1">Start my free forecast</a>
+                  <a class="landing-hero__sample" href="/preview/">Try a sample forecast</a>
+                  <p class="landing-offer__footnote">Free for 14 days · No credit card required</p>
                 </div>
               </div>
             </div>

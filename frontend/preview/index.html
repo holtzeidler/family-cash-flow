@@ -16,7 +16,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=824" />
+    <link rel="stylesheet" href="../styles.css?v=825" />
     <style>
       html:has(body.preview-page),
       body.preview-page {
@@ -567,7 +567,7 @@
           grid-column: 1 / -1;
         }
       }
-      @media (max-width: 700px) {
+      @media (max-width: 900px) {
         .preview-page .preview-range {
           display: flex;
           gap: 6px;
@@ -593,6 +593,9 @@
         }
       }
       @media (max-width: 800px) {
+        .preview-page .preview-signup {
+          min-height: 44px;
+        }
         .preview-page .preview-mode {
           align-items: stretch;
           flex-direction: column;
@@ -609,6 +612,9 @@
         }
       }
       @media (max-width: 768px) {
+        body.preview-page .container {
+          padding-top: var(--preview-nav-h, 4.5rem);
+        }
         body.preview-page .bw-tour-tooltip {
           max-height: calc(100dvh - 24px - env(safe-area-inset-bottom, 0px));
           overflow: auto;
@@ -616,8 +622,8 @@
       }
     </style>
     <script>window.API_BASE = "__API_BASE__";</script>
-    <link rel="stylesheet" href="/public-auth.css?v=1" />
-    <script src="/homepage-auth.js?v=3"></script>
+    <link rel="stylesheet" href="/public-auth.css?v=2" />
+    <script src="/homepage-auth.js?v=4"></script>
   </head>
   <body class="preview-page" data-bw-view="calendar">
     <a class="skip-link" href="#preview-calendar">Skip to sample forecast</a>
@@ -639,9 +645,16 @@
             </div>
           </div>
           <div class="top-nav__actions" aria-label="Account actions">
-            <a class="preview-home" href="/">Home</a>
-            <a class="plans-public-nav__link" id="homeForecastLink" href="/calendar/">My Forecast</a>
-            <a href="/login.html" class="top-nav__logout" id="homeLoginLink">Login</a>
+            <nav class="public-nav" aria-label="Site">
+              <button type="button" class="public-nav__toggle" aria-expanded="false" aria-controls="publicNavMenu">Menu</button>
+              <div class="public-nav__panel" id="publicNavMenu">
+                <a class="public-nav__link" href="/">Home</a>
+                <a class="public-nav__link" href="/learn/">Learn more</a>
+                <a class="public-nav__link" href="/plans/">Pricing</a>
+                <a class="public-nav__link" id="homeForecastLink" href="/calendar/">My Forecast</a>
+              </div>
+            </nav>
+            <a href="/login.html" class="top-nav__logout" id="homeLoginLink">Log in</a>
             <button type="button" class="top-nav__logout" id="homeLogoutBtn">Log Out</button>
           </div>
         </div>
@@ -652,7 +665,7 @@
           <h1 class="preview-mode__title">Explore a sample forecast</h1>
           <p class="preview-mode__text">Fictional finances. Nothing is saved.</p>
         </div>
-        <a class="preview-signup" id="previewSignup" href="/account-setup/?fresh=1">Start my free trial</a>
+        <a class="preview-signup" id="previewSignup" href="/account-setup/?fresh=1">Start my free forecast</a>
       </section>
 
       <div class="app-layout">
@@ -804,6 +817,39 @@
           </div>
         </div>
       </div>
+      <footer class="app-footer" role="contentinfo">
+        <div class="app-footer__inner">
+          <div class="app-footer__grid">
+            <div class="app-footer__col app-footer__col--brand">
+              <a class="app-footer__logo" href="/" aria-label="BalanceWhiz home">
+                <img class="app-footer__logo-img" src="/assets/balance-whiz-logo.svg?v=20260518" width="160" height="41" alt="BalanceWhiz" decoding="async" />
+              </a>
+              <p class="app-footer__tagline">See your cash flow before it happens.</p>
+              <p class="app-footer__copyright">© 2026 BalanceWhiz</p>
+            </div>
+            <div class="app-footer__nav">
+              <nav class="app-footer__col" aria-label="Product">
+                <h2 class="app-footer__heading">Product</h2>
+                <ul class="app-footer__list">
+                  <li><a class="app-footer__link" href="/learn/">Learn more</a></li>
+                  <li><a class="app-footer__link" href="/plans/">Pricing</a></li>
+                  <li><a class="app-footer__link" href="/help.html">FAQ</a></li>
+                </ul>
+              </nav>
+              <nav class="app-footer__col" aria-label="Company">
+                <h2 class="app-footer__heading">Company</h2>
+                <ul class="app-footer__list">
+                  <li><a class="app-footer__link" href="/about.html">About</a></li>
+                  <li><a class="app-footer__link" href="/contactus/">Contact</a></li>
+                  <li><a class="app-footer__link" href="/trust.html">Trust &amp; Security</a></li>
+                  <li><a class="app-footer__link" href="/privacy.html">Privacy Policy</a></li>
+                  <li><a class="app-footer__link" href="/terms.html">Terms of Service</a></li>
+                </ul>
+              </nav>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
 
     <div id="previewDetail" class="modal-overlay" hidden>
@@ -818,6 +864,6 @@
       </div>
     </div>
 
-    <script src="./preview.js?v=14"></script>
+    <script src="./preview.js?v=15"></script>
   </body>
 </html>
