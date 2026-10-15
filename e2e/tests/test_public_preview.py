@@ -41,7 +41,7 @@ def test_public_preview_walkthrough(page, guard):
     expect(page.locator("#previewTourFaq")).to_have_attribute("href", "/help.html")
     page.keyboard.press("Escape")
     expect(page.get_by_role("dialog")).to_be_hidden()
-    assert api_calls == []
+    assert [url for url in api_calls if "/api/auth/me" not in url] == []
     assert_no_horizontal_overflow(page)
     guard.assert_clean()
 

@@ -15,6 +15,12 @@
     return "";
   }
 
+  if (readStoredApiAccessToken()) {
+    document.documentElement.setAttribute("data-bw-home-auth", "in");
+  }
+  if (window.__bwPublicAuthInit) return;
+  window.__bwPublicAuthInit = true;
+
   function clearStoredApiAccessToken() {
     try {
       sessionStorage.removeItem(TOKEN_KEY);
@@ -99,9 +105,22 @@
       });
   }
 
-  var logoutBtn = document.getElementById("homeLogoutBtn");
-  if (logoutBtn) logoutBtn.addEventListener("click", logout);
+  function bindPublicAuth() {
+    var logoutBtn = document.getElementById("homeLogoutBtn");
+    if (logoutBtn && logoutBtn.getAttribute("data-bw-bound") !== "1") {
+      logoutBtn.setAttribute("data-bw-bound", "1");
+      logoutBtn.addEventListener("click", logout);
+    }
+    paintMemberLinks();
+  }
 
-  paintMemberLinks();
-  window.addEventListener("pageshow", refreshHomeAuth);
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", bindPublicAuth);
+  } else {
+    bindPublicAuth();
+  }
+  window.addEventListener("pageshow", function () {
+    bindPublicAuth();
+    refreshHomeAuth();
+  });
 })();

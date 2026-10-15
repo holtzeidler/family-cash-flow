@@ -3935,9 +3935,7 @@ void (async () => {
       if (freshStart) removeAccountSetupDraftStorage();
     } catch (_) {}
     if (freshStart) await endSessionForFreshAccountSetup();
-    const accountSetupLoginBtn = document.querySelector(
-      "body.account-setup-page .top-nav__actions .top-nav__logout"
-    );
+    const accountSetupLoginBtn = document.getElementById("homeLoginLink");
     if (accountSetupLoginBtn && accountSetupLoginBtn.id !== "signupBtn") {
       accountSetupLoginBtn.addEventListener("click", () => {
         removeAccountSetupDraftStorage();

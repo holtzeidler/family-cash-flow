@@ -258,3 +258,75 @@ def test_me_failure_does_not_clear_stored_session(page, guard):
     assert stored["local"] == "kept-local-token"
     _ignore_me_failure(guard)
     guard.assert_clean()
+
+
+PUBLIC_LOGIN_PAGES = (
+    ("/plans/", "Login"),
+    ("/learn/", "Log in"),
+    ("/about.html", "Login"),
+    ("/help.html", "Login"),
+    ("/privacy.html", "Login"),
+    ("/terms.html", "Login"),
+    ("/contactus/", "Login"),
+    ("/forecasting-vs-budgeting/", "Login"),
+    ("/safe-to-spend/", "Login"),
+    ("/recurring-and-irregular-expenses/", "Login"),
+    ("/preview/", "Login"),
+    ("/checkout/cancel/", "Login"),
+    ("/account-setup/?fresh=1", "Login"),
+)
+
+
+def _expect_public_logged_out(page, login_label):
+    expect(page.locator("#homeLoginLink")).to_be_visible()
+    expect(page.locator("#homeLoginLink")).to_have_text(login_label)
+    expect(page.locator("#homeLogoutBtn")).to_be_hidden()
+    expect(page.locator("#homeForecastLink")).to_be_hidden()
+
+
+def _expect_public_logged_in(page):
+    expect(page.locator("#homeLogoutBtn")).to_be_visible()
+    expect(page.locator("#homeLogoutBtn")).to_have_text("Log Out")
+    expect(page.locator("#homeForecastLink")).to_be_visible()
+    expect(page.locator("#homeForecastLink")).to_have_text("My Forecast")
+    expect(page.locator("#homeForecastLink")).to_have_attribute("href", MEMBER_CTA)
+    if page.locator("#homeLoginLink").count():
+        expect(page.locator("#homeLoginLink")).to_be_hidden()
+
+
+@pytest.mark.smoke_title("Public headers follow the session")
+def test_public_headers_follow_session(page, guard, seed):
+    for path, label in PUBLIC_LOGIN_PAGES:
+        response = page.goto(path)
+        assert_route_ok(response, path.split("?")[0])
+        _expect_public_logged_out(page, label)
+
+    login(page, seed["active"]["email"], seed["active"]["password"])
+    for path, _label in PUBLIC_LOGIN_PAGES:
+        signed_in_path = "/account-setup/" if path.startswith("/account-setup/") else path
+        response = page.goto(signed_in_path)
+        assert_route_ok(response, signed_in_path.split("?")[0])
+        _expect_public_logged_in(page)
+
+    for path in ("/invite/",):
+        response = page.goto(path)
+        assert_route_ok(response, path)
+        _expect_public_logged_in(page)
+
+    signed_in_login = page.goto("/login.html")
+    assert_route_ok(signed_in_login, "/login.html")
+    page.wait_for_url(lambda url: "/calendar" in url)
+    expect(page.locator("#logoutBtn")).to_be_visible()
+    expect(page.locator("#logoutBtn")).to_have_text("Log Out")
+
+    checkout = page.goto(f"/checkout/?family_id={seed['active']['family_id']}")
+    assert_route_ok(checkout, "/checkout/")
+    _expect_public_logged_in(page)
+    expect(page.locator("#checkoutNavCta")).to_have_text("Back to Forecast")
+
+    with page.expect_response(lambda res: "/api/auth/logout" in res.url and res.request.method == "POST") as logout:
+        page.locator("#homeLogoutBtn").click()
+    assert logout.value.status == 200
+    page.wait_for_url(lambda url: url.rstrip("/").endswith(":8765") or url.rstrip("/").endswith(SMOKE_ORIGIN.rstrip("/")))
+    _expect_logged_out(page)
+    guard.assert_clean()
