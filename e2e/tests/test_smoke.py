@@ -26,6 +26,7 @@ PUBLIC_LINKS = (
     "/help.html",
     "/about.html",
     "/contactus/",
+    "/trust.html",
     "/privacy.html",
     "/terms.html",
 )

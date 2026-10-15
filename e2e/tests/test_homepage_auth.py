@@ -265,6 +265,7 @@ PUBLIC_LOGIN_PAGES = (
     ("/learn/", "Log in"),
     ("/about.html", "Login"),
     ("/help.html", "Login"),
+    ("/trust.html", "Login"),
     ("/privacy.html", "Login"),
     ("/terms.html", "Login"),
     ("/contactus/", "Login"),
