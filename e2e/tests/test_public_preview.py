@@ -300,7 +300,7 @@ def test_sample_forecast_reconciliation(page, guard):
 def test_sample_forecast_signup_and_homepage(page, guard):
     response = page.goto("/")
     assert_route_ok(response, "/")
-    expect(page.locator("a.landing-hero__cta").first).to_have_text("See my future balance")
+    expect(page.locator("a.landing-hero__cta").first).to_have_text("Start by free forecast")
     expect(page.locator("a.landing-hero__cta.home-cta--guest")).to_have_attribute(
         "href", "/account-setup/?fresh=1"
     )
