@@ -32108,6 +32108,25 @@ body[data-bw-view="calendar"] #sidebarLowBalanceBanner.calendar-low-balance--sid
   letter-spacing: -0.01em;
   color: #14532d;
 }
+body[data-bw-view="calendar"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-intro{
+  margin-top: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  background: #f4f7f5;
+}
+body[data-bw-view="calendar"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-intro strong{
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: #1f3d32;
+}
+body[data-bw-view="calendar"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-intro .cash-outlook-secondary{
+  margin-top: 4px;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: #3d5348;
+}
 body[data-bw-view="calendar"] #sidebarPendingTxCard.sidebar-pending--empty{
   margin-top: 8px;
   padding-top: 0;

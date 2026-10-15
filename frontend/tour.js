@@ -108,7 +108,7 @@
       findTarget: findExpectedCalendarConfirmAnchor,
       title: "Keep your forecast accurate",
       body:
-        "Your forecast works best when your checking balance stays up to date.\n\nEverything matches? Reconcile your balance to mark a checkpoint.\n\nFallen behind? Update your balance to start fresh. No need to go back and fix every missed transaction.",
+        "Keep your forecast accurate by checking it against your actual bank balance.\n\nEverything matches? Reconcile to mark a checkpoint.\n\nBalance is different? Update your balance to start fresh. You don't need to fix every missed transaction.",
       reconcilePreview: readTourReconcilePreview,
       note: "Stay current when you can. Catch up easily when you can\u2019t.",
       ctaLabel: "Finish Tour",
@@ -701,7 +701,7 @@
       .forEach((part) => {
         const para = document.createElement("span");
         para.className = "bw-tour-tooltip__para";
-        const lead = part.match(/^(Everything matches\?|Fallen behind\?)\s+([\s\S]*)$/);
+        const lead = part.match(/^(Everything matches\?|Balance is different\?|Fallen behind\?)\s+([\s\S]*)$/);
         if (lead) {
           const strong = document.createElement("strong");
           strong.textContent = lead[1];

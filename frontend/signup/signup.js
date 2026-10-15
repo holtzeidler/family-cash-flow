@@ -3152,7 +3152,7 @@ async function maybeCreateFirstAccountFromDraft(draft) {
       { maxMs: 12000 }
     );
     if (created && created.ok && created.data && created.data.id) {
-      return { ok: true, accountId: Number(created.data.id) };
+      return { ok: true, accountId: Number(created.data.id), familyId };
     }
     return { ok: false, accountId: null, error: `account_create_failed_${created?.status || "network"}` };
   } catch (e) {
@@ -3299,13 +3299,36 @@ async function maybeCreateFirstTransactionFromDraft(draft, createdAccountId) {
     }
   }
 
-  if (totalApplicable === 0) return { ok: true, createdCount: 0, totalCount: 0 };
+  if (totalApplicable === 0) return { ok: true, createdCount: 0, totalCount: 0, familyId };
   return {
     ok: createdCount === totalApplicable,
     createdCount,
     totalCount: totalApplicable,
     error: createdCount === totalApplicable ? null : lastError,
   };
+}
+
+const BW_FORECAST_INTRO_KEY = "bw_forecast_intro_family";
+
+/** The setup wizard already treats one income and one expense as enough to forecast. */
+function draftIncludesIncomeAndExpense(draft) {
+  const txs = draft && Array.isArray(draft.transactions) ? draft.transactions : [];
+  let income = false;
+  let expense = false;
+  for (const t of txs) {
+    const kind = String((t && t.kind) || "").toLowerCase();
+    if (kind === "income") income = true;
+    if (kind === "expense") expense = true;
+  }
+  return income && expense;
+}
+
+function noteForecastGettingStarted(draft, familyId) {
+  try {
+    if (!familyId) return;
+    if (draftIncludesIncomeAndExpense(draft)) localStorage.removeItem(BW_FORECAST_INTRO_KEY);
+    else localStorage.setItem(BW_FORECAST_INTRO_KEY, String(familyId));
+  } catch (_) {}
 }
 
 async function maybePatchForecastThresholdsFromDraft(draft) {
@@ -3482,6 +3505,7 @@ async function finishResumeAccountSetup() {
     setForecastBuildOverlayMessage(overlay, "Saving your income and bills…");
     bumpForecastBuildOverlayProgress(overlay, 52);
     const txResult = await maybeCreateFirstTransactionFromDraft(draft, createdAccountId);
+    noteForecastGettingStarted(draft, accountResult && accountResult.familyId);
     try {
       await maybePatchForecastThresholdsFromDraft(draft);
     } catch (_) {}
@@ -3663,6 +3687,7 @@ async function doSignup() {
       maybeCreateFirstTransactionFromDraft(draft, createdAccountId),
       maybePatchForecastThresholdsFromDraft(draft),
     ]);
+    noteForecastGettingStarted(draft, accountResult && accountResult.familyId);
     if (thresholdResult && !thresholdResult.ok && !thresholdResult.skipped) {
       try {
         if (window.console && console.warn) console.warn("[signup] forecast threshold update failed", thresholdResult);
