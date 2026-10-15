@@ -3103,6 +3103,16 @@ def get_feedback_screenshot_admin(
 
 @app.on_event("startup")
 def startup_populate_schema():
+    # Fail before opening the database or accepting traffic. The message names
+    # the setting and does not include the configured value. The reminder cron
+    # imports this module but does not run this startup hook.
+    from .production_security import assert_production_secrets
+
+    assert_production_secrets(
+        env=settings.ENV,
+        jwt_secret=settings.JWT_SECRET,
+        webhook_secret=settings.STRIPE_WEBHOOK_SECRET,
+    )
     # For a starter app we create tables on startup.
     # In a production app you'd typically use migrations (Alembic).
     if settings.DATABASE_URL.startswith("sqlite"):

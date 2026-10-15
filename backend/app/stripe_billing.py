@@ -1304,37 +1304,30 @@ def register_stripe_routes(
     @app.post("/webhook", include_in_schema=False)
     async def stripe_webhook(request: Request):
         """
-        Stripe webhook endpoint. Set STRIPE_WEBHOOK_SECRET from the Dashboard or
-        `stripe listen --forward-to .../webhook`.
+        Stripe webhook endpoint. Production requires STRIPE_WEBHOOK_SECRET and a
+        valid Stripe-Signature header. Local development may omit the secret.
         Persists entitlement into billing_* tables (idempotent by event id).
         """
         _require_stripe()
         payload = await request.body()
-        webhook_secret = _webhook_secret()
-        event: Optional[Any] = None
+        from .production_security import WebhookRejected, parse_stripe_webhook
 
-        if webhook_secret:
-            sig_header = request.headers.get("stripe-signature") or request.headers.get("Stripe-Signature")
-            if not sig_header:
-                return JSONResponse(status_code=400, content={"error": "Missing Stripe-Signature header"})
-            try:
-                event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
-            except ValueError:
-                logger.warning("Stripe webhook: invalid payload")
-                return JSONResponse(status_code=400, content={"error": "Invalid payload"})
-            except stripe.error.SignatureVerificationError:
+        sig_header = request.headers.get("stripe-signature") or request.headers.get("Stripe-Signature")
+        try:
+            event = parse_stripe_webhook(
+                env=getattr(settings, "ENV", ""),
+                payload=payload,
+                signature=sig_header,
+                webhook_secret=_webhook_secret(),
+            )
+        except WebhookRejected as exc:
+            if exc.error == "Invalid signature":
                 logger.warning("Stripe webhook: signature verification failed")
-                return JSONResponse(status_code=400, content={"error": "Invalid signature"})
-        else:
-            # Local/dev only — do not skip verification in production.
-            import json
-
-            try:
-                data = json.loads(payload.decode("utf-8"))
-                event = stripe.Event.construct_from(data, stripe.api_key)
-            except Exception:
-                logger.exception("Stripe webhook: failed to parse event without signature")
-                return JSONResponse(status_code=400, content={"error": "Invalid payload"})
+            elif exc.error == "Invalid payload":
+                logger.warning("Stripe webhook: invalid payload")
+            else:
+                logger.warning("Stripe webhook rejected: %s", exc.error)
+            return JSONResponse(status_code=exc.status_code, content={"error": exc.error})
 
         event_type = event["type"] if isinstance(event, dict) else getattr(event, "type", None)
         event_id = event.get("id") if isinstance(event, dict) else getattr(event, "id", None)
