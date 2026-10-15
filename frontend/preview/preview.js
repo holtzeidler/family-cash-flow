@@ -311,6 +311,12 @@
     );
   }
 
+  function warnMark() {
+    return (
+      '<span class="cash-outlook-icon cash-outlook-icon--warn" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3 2 21h20L12 3z"></path><path d="M12 9v5"></path><path d="M12 17h.01"></path></svg></span>'
+    );
+  }
+
   function renderCashHealth(model) {
     var banner = document.getElementById("sidebarLowBalanceBanner");
     var when = new Date(year, monthIndex, model.low.day).toLocaleDateString("en-US", {
@@ -318,38 +324,41 @@
       day: "numeric",
     });
     var gap = Math.abs(Math.round((model.low.end - BUFFER) * 100) / 100);
+    var beforePayday = model.low.day < 15 ? " before payday" : "";
     if (model.low.end < BUFFER) {
       banner.className = "calendar-low-balance calendar-low-balance--sidebar calendar-low-balance--inset is-danger";
       banner.innerHTML =
         '<div class="preview-cash">' +
+        warnMark() +
+        '<div class="preview-cash__body">' +
         '<p class="preview-cash__kicker">Low balance ahead</p>' +
-        '<p class="preview-cash__date" id="previewCashDate">' +
-        escapeHtml(when) +
-        "</p>" +
-        '<p class="preview-cash__line">Projected balance: <strong id="previewLowBalance">' +
+        '<p class="preview-cash__date"><strong id="previewLowBalance">' +
         wholeMoney(model.low.end) +
-        "</strong></p>" +
+        '</strong> on <span id="previewCashDate">' +
+        escapeHtml(when) +
+        "</span></p>" +
         '<p class="preview-cash__gap" id="previewBufferGap">' +
         wholeMoney(gap) +
         " below your " +
         wholeMoney(BUFFER) +
-        " minimum</p>" +
-        (model.low.day < 15
-          ? '<p class="preview-cash__note">Upcoming bills pull the balance under your minimum before the next paycheck.</p>'
-          : "") +
-        "</div>";
+        " minimum" +
+        beforePayday +
+        ".</p>" +
+        "</div></div>";
     } else {
       banner.className = "calendar-low-balance calendar-low-balance--sidebar calendar-low-balance--inset is-muted is-suggestion";
       banner.innerHTML =
-        '<div class="preview-cash">' +
+        '<div class="preview-cash"><div class="preview-cash__body">' +
         '<p class="preview-cash__kicker">Within your minimum</p>' +
-        '<p class="preview-cash__line">Lowest balance this month is <strong id="previewLowBalance">' +
+        '<p class="preview-cash__date"><strong id="previewLowBalance">' +
         wholeMoney(model.low.end) +
-        '</strong>.</p><p class="preview-cash__gap" id="previewBufferGap">' +
+        "</strong> on " +
+        escapeHtml(when) +
+        '</p><p class="preview-cash__gap" id="previewBufferGap">' +
         wholeMoney(gap) +
         " above your " +
         wholeMoney(BUFFER) +
-        " minimum</p></div>";
+        " minimum.</p></div></div>";
     }
     banner.style.display = "flex";
   }
