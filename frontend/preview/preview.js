@@ -692,6 +692,7 @@
     dialog.setAttribute("aria-labelledby", "previewTourTitle");
     dialog.style.zIndex = "9993";
     dialog.innerHTML =
+      '<div class="bw-tour-tooltip__arrow" data-side="left" hidden aria-hidden="true"></div>' +
       '<div class="bw-tour-tooltip__head"><span class="bw-tour-tooltip__counter" id="previewTourCounter">1 of 5</span><button type="button" class="bw-tour-tooltip__close" id="previewTourClose" aria-label="Close walkthrough">×</button></div>' +
       '<h2 class="bw-tour-tooltip__title" id="previewTourTitle"></h2><p class="bw-tour-tooltip__body" id="previewTourBody"></p>' +
       '<p class="preview-finale-note" id="previewTourNote" hidden>Free for 14 days · No bank connection required</p>' +
@@ -764,54 +765,102 @@
     card.classList.add("bw-tour-tooltip--open");
     card.style.position = "fixed";
     card.style.bottom = "auto";
+    card.style.boxSizing = "border-box";
     var margin = 12;
-    var gap = 12;
-    var width = Math.min(360, window.innerWidth - margin * 2);
+    var gap = 16;
+    var available = Math.max(160, window.innerWidth - margin * 2);
+    var cap = Math.min(460, available);
+    var floor = Math.min(420, cap);
+    card.style.width = cap + "px";
+    var copy = document.getElementById("previewTourBody");
+    var natural = cap;
+    if (copy) {
+      var previousSpace = copy.style.whiteSpace;
+      copy.style.whiteSpace = "nowrap";
+      natural = Math.ceil(copy.scrollWidth + 40);
+      copy.style.whiteSpace = previousSpace;
+    }
+    var width = Math.max(floor, Math.min(cap, natural));
     card.style.width = width + "px";
     var cardHeight = card.offsetHeight || 220;
     var minTop = stickyFloor();
     var maxTop = Math.max(minTop, window.innerHeight - cardHeight - margin);
     var maxLeft = Math.max(margin, window.innerWidth - width - margin);
     var target = nodes && nodes.length ? nodes[0].getBoundingClientRect() : null;
+    var arrow = card.querySelector(".bw-tour-tooltip__arrow");
 
-    function clampTop(value) {
-      return Math.max(minTop, Math.min(value, maxTop));
+    function clamp(value, min, max) {
+      if (max < min) return min;
+      return Math.max(min, Math.min(value, max));
     }
-    function clampLeft(value) {
-      return Math.max(margin, Math.min(value, maxLeft));
+    function pointArrow(side, top, left) {
+      if (!arrow) return;
+      arrow.hidden = !side;
+      arrow.style.top = "";
+      arrow.style.left = "";
+      if (!side || !target) return;
+      arrow.dataset.side = side;
+      if (side === "left" || side === "right") {
+        var anchorY = target.top + Math.min(Math.max(28, target.height / 2), 72);
+        arrow.style.top = Math.round(clamp(anchorY - top, 22, cardHeight - 22)) + "px";
+      } else {
+        var anchorX = target.left + Math.min(target.width / 2, 72);
+        arrow.style.left = Math.round(clamp(anchorX - left, 22, width - 22)) + "px";
+      }
     }
-    function overlapArea(top, left) {
-      if (!target || target.width === 0 || target.height === 0) return 0;
-      var x = Math.max(0, Math.min(left + width, target.right) - Math.max(left, target.left));
-      var y = Math.max(0, Math.min(top + cardHeight, target.bottom) - Math.max(top, target.top));
-      return x * y;
-    }
-    var candidates = [];
-    function consider(top, left) {
-      top = clampTop(top);
-      left = clampLeft(left);
-      var area = overlapArea(top, left);
-      var dx = target ? left + width / 2 - (target.left + target.width / 2) : 0;
-      var dy = target ? top + cardHeight / 2 - (target.top + target.height / 2) : 0;
-      candidates.push({ top: top, left: left, area: area, distance: dx * dx + dy * dy });
-    }
-    if (!target || target.width === 0 || target.height === 0) {
-      consider((window.innerHeight - cardHeight) / 2, (window.innerWidth - width) / 2);
+
+    var top;
+    var left;
+    var side = "";
+    if (!target || target.width < 2 || target.height < 2) {
+      top = clamp((window.innerHeight - cardHeight) / 2, minTop, maxTop);
+      left = clamp((window.innerWidth - width) / 2, margin, maxLeft);
+    } else if (stepIndex === 0) {
+      var inset = 16;
+      var fitWidth = Math.min(width, Math.max(200, target.right - margin) - (target.left + inset));
+      if (fitWidth >= 200 && fitWidth < width - 1) {
+        width = fitWidth;
+        card.style.width = width + "px";
+        cardHeight = card.offsetHeight || cardHeight;
+        maxTop = Math.max(minTop, window.innerHeight - cardHeight - margin);
+        maxLeft = Math.max(margin, window.innerWidth - width - margin);
+      }
+      top = clamp(target.top + inset, minTop, maxTop);
+      left = clamp(target.left + inset, margin, maxLeft);
+      side = "bottom";
     } else {
-      consider(target.bottom + gap, target.left);
-      consider(target.top - cardHeight - gap, target.left);
-      consider(target.top, target.right + gap);
-      consider(target.top, target.left - width - gap);
-      consider(target.bottom + gap, target.right - width);
-      consider(target.top - cardHeight - gap, target.right - width);
+      var rightLeft = target.right + gap;
+      if (rightLeft + width <= window.innerWidth - margin) {
+        var aligned = target.height > cardHeight ? target.top : target.top + (target.height - cardHeight) / 2;
+        top = clamp(aligned, minTop, maxTop);
+        left = rightLeft;
+        side = "left";
+      } else {
+        var spaceBelow = window.innerHeight - margin - target.bottom - gap;
+        var spaceAbove = target.top - gap - minTop;
+        if (spaceBelow < cardHeight && spaceAbove < cardHeight) {
+          var room = Math.max(0, target.top - minTop);
+          var shift = Math.min(room, cardHeight - spaceBelow);
+          if (shift > 2) {
+            window.scrollBy(0, shift);
+            target = nodes[0].getBoundingClientRect();
+            spaceBelow = window.innerHeight - margin - target.bottom - gap;
+            spaceAbove = target.top - gap - minTop;
+          }
+        }
+        left = clamp(Math.min(target.left, target.right - width), margin, maxLeft);
+        if (spaceBelow >= cardHeight || spaceBelow >= spaceAbove) {
+          top = clamp(target.bottom + gap, minTop, maxTop);
+          side = "top";
+        } else {
+          top = clamp(target.top - cardHeight - gap, minTop, maxTop);
+          side = "bottom";
+        }
+      }
     }
-    candidates.sort(function (a, b) {
-      if (a.area !== b.area) return a.area - b.area;
-      return a.distance - b.distance;
-    });
-    var best = candidates[0];
-    card.style.left = Math.round(best.left) + "px";
-    card.style.top = Math.round(best.top) + "px";
+    card.style.left = Math.round(left) + "px";
+    card.style.top = Math.round(top) + "px";
+    pointArrow(side, top, left);
   }
 
   var panelsBeforeTour = null;
@@ -889,11 +938,12 @@
     continueBtn.hidden = !signup;
     back.hidden = index === 0;
     if (signup) applySampleSignupLinks();
-    placeDialog(nodes);
     keepSpotVisible(nodes);
+    placeDialog(nodes);
     window.setTimeout(function () {
       if (!open || stepIndex !== index) return;
       var placed = step.spot ? Array.prototype.slice.call(document.querySelectorAll(step.spot)) : [];
+      keepSpotVisible(placed);
       placeDialog(placed);
       var focusTarget = signup ? start : next;
       if (focusTarget && !focusTarget.hidden) focusTarget.focus();
