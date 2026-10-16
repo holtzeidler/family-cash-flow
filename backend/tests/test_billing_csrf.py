@@ -34,6 +34,7 @@ assert_process_is_safe(_DB)
 
 sys.path.insert(0, str(ROOT / "backend"))
 from app.main import app, settings  # noqa: E402
+from app.stripe_billing import allowed_billing_origins  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
 assert_loaded_settings(
@@ -96,6 +97,8 @@ def test_cross_site_form_cannot_start_checkout_or_change_a_subscription():
             ("/switch-billing-interval", {"family_id": str(family_id), "target_lookup": "cash_forecast_annual"}),
             ("/schedule-subscription-cancel", {"family_id": str(family_id)}),
             ("/resume-subscription", {"family_id": str(family_id)}),
+            ("/preview-billing-interval", {"family_id": str(family_id), "target_lookup": "cash_forecast_annual"}),
+            ("/create-portal-session", {"family_id": str(family_id)}),
         ]
         for path, form in form_attacks:
             missing = client.post(path, data=form, headers={"Origin": _EVIL_ORIGIN, "Accept": "application/json"})
@@ -185,6 +188,16 @@ def test_keep_me_logged_in_cookie_can_start_monthly_and_annual_checkout(monkeypa
             {},
             "No Stripe subscription is on file to resume.",
         ),
+        (
+            "/preview-billing-interval",
+            {"target_lookup": "cash_forecast_annual"},
+            "No Stripe subscription is on file to preview.",
+        ),
+        (
+            "/create-portal-session",
+            {},
+            "No Stripe customer on file for this family yet.",
+        ),
     ],
 )
 def test_signed_in_billing_changes_still_reach_the_existing_checks(path, form, detail, monkeypatch):
@@ -201,3 +214,21 @@ def test_signed_in_billing_changes_still_reach_the_existing_checks(path, form, d
         assert detail in res.text
         assert "BalanceWhiz" not in res.text
     monkeypatch.undo()
+
+
+def test_billing_origins_are_only_the_configured_frontend_sites():
+    class _configured:
+        APP_PUBLIC_BASE_URL = "https://staging.balancewhiz.com/settings"
+        CORS_ORIGINS = "*, https://balancewhiz.com, not-a-url"
+
+    assert allowed_billing_origins(_configured()) == {
+        "https://staging.balancewhiz.com",
+        "https://balancewhiz.com",
+    }
+    with TestClient(app) as client:
+        rejected = client.post(
+            "/preview-billing-interval",
+            data={"family_id": "1", "target_lookup": "cash_forecast_annual"},
+            headers=_site_headers(origin="https://not-listed.example"),
+        )
+        assert rejected.status_code == 403

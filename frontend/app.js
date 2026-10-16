@@ -332,6 +332,8 @@ function billingSameSiteHeaders(path) {
     "/switch-billing-interval",
     "/schedule-subscription-cancel",
     "/resume-subscription",
+    "/preview-billing-interval",
+    "/create-portal-session",
   ];
   if (!guarded.some((item) => target.includes(item))) return {};
   return { "X-BalanceWhiz-Request": "1" };
@@ -12018,7 +12020,11 @@ function openBillingPortalForActiveFamily(flow = "", onFail = null) {
     method: "POST",
     body,
     credentials: "include",
-    headers: { ...apiBearerAuthHeaders(), Accept: "application/json" },
+    headers: {
+      ...apiBearerAuthHeaders(),
+      ...billingSameSiteHeaders("/create-portal-session"),
+      Accept: "application/json",
+    },
   })
     .then(async (res) => {
       const data = await res.json().catch(() => ({}));
