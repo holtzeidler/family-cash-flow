@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <script src="/ga.js?v=6"></script>
     <title>Sample forecast — BalanceWhiz</title>
-    <meta name="description" content="A short public walkthrough of BalanceWhiz using a fictional checking forecast. No account required." />
+    <meta name="description" content="A short fictional checking forecast. No account required, and nothing is saved." />
     <meta name="robots" content="noindex, nofollow" />
     <link rel="canonical" href="https://balancewhiz.com/preview/" />
     <meta name="theme-color" content="#0B3D2E" />
@@ -16,159 +16,224 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=803" />
+    <link rel="stylesheet" href="../styles.css?v=832" />
     <style>
-      body.preview-page {
-        background: #f4f7f6;
+      html:has(body.preview-intro) {
+        background: #e5f0e8;
       }
-      .preview-page .preview-banner {
+      body.preview-intro {
+        background: #e5f0e8;
+      }
+      body.preview-intro .container {
+        min-height: 100dvh;
+      }
+      body.preview-intro main {
+        padding-bottom: 28px;
+      }
+      body.preview-intro .app-footer {
+        position: relative;
+        z-index: 0;
+        margin-top: auto;
+      }
+      .preview-intro .top-nav__inner {
+        grid-template-columns: 1fr auto;
+      }
+      .preview-intro #homeForecastLink {
+        display: inline-flex;
+        align-items: center;
+        color: #fff;
+        text-decoration: none;
+        font-weight: 700;
+        padding: 8px 12px;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.28);
+        background: rgba(255, 255, 255, 0.1);
+      }
+      .preview-intro .preview-mode {
         display: flex;
-        flex-wrap: wrap;
         align-items: center;
         justify-content: space-between;
-        gap: 8px 16px;
-        margin: 0 0 12px;
+        gap: 12px 16px;
+        margin: 16px 0 12px;
         padding: 10px 12px;
-        border: 1px solid rgba(11, 61, 46, 0.12);
+        border: 1px solid rgba(15, 23, 42, 0.08);
         border-radius: 12px;
         background: #fff;
       }
-      .preview-page .preview-banner__kicker {
+      .preview-intro .preview-mode__title {
         margin: 0;
-        font-size: 0.72rem;
-        font-weight: 700;
-        letter-spacing: 0.06em;
-        text-transform: uppercase;
-        color: rgba(11, 61, 46, 0.72);
+        font-size: 1.15rem;
+        letter-spacing: -0.02em;
       }
-      .preview-page .preview-banner__title {
+      .preview-intro .preview-mode__text {
         margin: 2px 0 0;
-        font-size: 0.95rem;
+        color: #3d5348;
+        font-size: 0.92rem;
+      }
+      .preview-intro .preview-month-link {
+        display: inline-block;
+        margin-top: 4px;
+        color: #0b3d2e;
+        font-size: 0.88rem;
         font-weight: 650;
-        color: rgba(17, 24, 39, 0.92);
+        text-decoration: underline;
+        text-underline-offset: 2px;
       }
-      .preview-page .preview-banner__meta {
-        margin: 0;
-        font-size: 0.84rem;
-        color: rgba(71, 85, 105, 0.88);
+      .preview-intro .preview-mode__actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 8px;
       }
-      .preview-page .preview-replay {
-        appearance: none;
-        border: 1px solid rgba(11, 61, 46, 0.18);
-        background: #fff;
-        color: rgba(11, 61, 46, 0.92);
-        border-radius: 999px;
-        padding: 8px 14px;
-        font: inherit;
-        font-size: 0.84rem;
-        font-weight: 650;
-        cursor: pointer;
-      }
-      .preview-page .preview-replay:focus-visible {
-        outline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
-        outline-offset: 2px;
-      }
-      .preview-page .preview-stage {
-        background: #fff;
-        border: 1px solid rgba(15, 23, 42, 0.06);
-        border-radius: 16px;
-        padding: 12px 10px 14px;
-        box-shadow: 0 1px 2px rgba(17, 24, 39, 0.04);
-      }
-      .preview-page .preview-finale-note {
-        margin: 8px 0 0;
-        font-size: 0.8rem;
-        color: rgba(71, 85, 105, 0.8);
-      }
-      .preview-page .bw-tour-tooltip__cta.preview-tour-link {
+      .preview-intro .preview-signup,
+      .preview-intro .preview-replay {
         display: inline-flex;
         align-items: center;
         justify-content: center;
+        min-height: 40px;
+        padding: 8px 14px;
+        border-radius: 999px;
+        font: inherit;
+        font-size: 0.92rem;
+        font-weight: 700;
         text-decoration: none;
+        cursor: pointer;
       }
-      .preview-page .preview-back {
-        margin-right: auto;
+      .preview-intro .preview-signup {
+        background: #0b3d2e;
+        color: #fff;
+        border: 1px solid #0b3d2e;
       }
-      /* One row: centered wordmark, FAQ on the right, closer to the public header. */
-      body.preview-page .top-nav {
-        padding: 8px 0 6px;
+      .preview-intro .preview-replay {
+        background: #fff;
+        color: #0b3d2e;
+        border: 1px solid rgba(11, 61, 46, 0.22);
       }
-      body.preview-page .top-nav .top-nav__inner.top-nav__inner--simple {
-        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+      .preview-intro .preview-stage {
+        background: #fff;
+        border: 1px solid rgba(15, 23, 42, 0.06);
+        border-radius: 16px;
+        padding: 12px;
+      }
+      .preview-intro .cal-cell {
+        min-height: 128px;
+      }
+      .preview-intro .cal-balance-strip--has-status .cal-balance-strip__row {
+        flex-wrap: wrap;
         align-items: center;
-        justify-items: stretch;
-        row-gap: 0;
-        column-gap: 8px;
+        row-gap: 3px;
       }
-      body.preview-page .top-nav__inner--simple .top-nav__title {
-        grid-column: 1 / -1;
-        grid-row: 1;
-        justify-content: center;
-        width: 100%;
-        padding-left: 0;
+      .preview-intro .cal-balance-strip--has-status .cal-balance-strip__amt,
+      .preview-intro .cal-balance-strip--has-status .cal-stat.cal-balance {
+        flex: 0 0 auto;
+        min-width: max-content;
       }
-      body.preview-page .top-nav__inner--simple .app-title {
-        text-align: center;
+      .preview-intro .cal-balance-status-pill--starting {
+        cursor: default;
       }
-      body.preview-page .top-nav__actions {
-        grid-column: 3;
-        grid-row: 1;
-        justify-self: end;
-        z-index: 1;
-        padding-right: 4px;
+      .preview-intro .cal-cell.bw-tour-target.bw-tour-target--strong {
+        box-shadow:
+          0 0 0 3px rgba(185, 28, 28, 0.82),
+          0 0 0 8px rgba(185, 28, 28, 0.22),
+          0 8px 28px -10px rgba(127, 29, 29, 0.42) !important;
       }
-      @media (max-width: 768px) {
-        body.preview-page .top-nav {
-          padding-top: max(6px, env(safe-area-inset-top, 0px));
-          padding-bottom: 6px;
-        }
-        body.preview-page .container {
-          padding-top: calc(3.25rem + env(safe-area-inset-top, 0px));
-        }
-      }
-      body.preview-page .bw-tour-tooltip__close {
+      .preview-intro .bw-tour-tooltip__close {
         margin-left: auto;
       }
-      body.preview-page .bw-tour-tooltip:has(#previewTourStart:not([hidden])) .bw-tour-tooltip__actions {
+      .preview-intro .bw-tour-tooltip__actions {
+        justify-content: flex-end;
+      }
+      .preview-intro #previewTourBack {
+        margin-right: auto;
+      }
+      .preview-intro .cal-day-tx-line {
+        grid-template-columns: minmax(0, 1fr);
+        align-items: start;
+        gap: 1px;
+        padding-left: 2px;
+        padding-right: 2px;
+      }
+      .preview-intro .cal-day-tx-line .cal-tx-label-wrap,
+      .preview-intro .cal-day-tx-line .cal-tx-label {
+        overflow: visible;
+        text-overflow: clip;
+        white-space: normal;
+      }
+      .preview-intro .cal-day-tx-line .cal-amt {
+        justify-self: start;
+        text-align: left;
+        padding-left: 0;
+      }
+      .preview-intro .preview-intro-choices {
         display: flex;
         flex-direction: column;
         align-items: stretch;
-        gap: 10px;
+        gap: 8px;
+        margin-top: 12px;
       }
-      body.preview-page .bw-tour-tooltip:has(#previewTourStart:not([hidden])) #previewTourBack {
-        align-self: flex-start;
-        order: 2;
+      .preview-intro .bw-tour-tooltip__cta,
+      .preview-intro .bw-tour-tooltip__cta:hover,
+      .preview-intro .bw-tour-tooltip__cta:focus-visible {
+        text-decoration: none;
       }
-      body.preview-page #previewTourStart:not([hidden]) {
-        order: 1;
-        width: 100%;
+      .preview-intro .preview-tour-link--quiet {
+        background: #fff;
+        color: #0b3d2e;
+        border: 1px solid rgba(11, 61, 46, 0.28);
       }
-      body.preview-page #previewTourFaq:not([hidden]) {
-        display: block;
-        margin: 10px 0 2px;
+      .preview-intro .preview-tour-link--quiet:hover {
+        background: rgba(11, 61, 46, 0.05);
+        color: #0b3d2e;
+        text-decoration: none;
       }
-      @media (max-width: 768px) {
-        .preview-page .calendar-dow-row {
+      .preview-intro .preview-tour-link--quiet:focus-visible {
+        outline: 2px solid #0b3d2e;
+        outline-offset: 2px;
+        text-decoration: none;
+      }
+      .preview-intro #previewTourDismiss {
+        align-self: center;
+        text-decoration: underline;
+        text-underline-offset: 2px;
+      }
+      .preview-intro #previewTourDismiss:hover {
+        color: #243044;
+        text-decoration: underline;
+      }
+      .preview-intro #previewTourDismiss:focus-visible {
+        outline: 2px solid rgba(11, 61, 46, 0.45);
+        outline-offset: 2px;
+        border-radius: 4px;
+        text-decoration: underline;
+      }
+      @media (max-width: 800px) {
+        .preview-intro .preview-mode {
+          align-items: stretch;
+          flex-direction: column;
+        }
+        .preview-intro .preview-mode__actions,
+        .preview-intro .preview-signup,
+        .preview-intro .preview-replay {
+          width: 100%;
+        }
+        .preview-intro .calendar-dow-row {
           display: none;
         }
-        .preview-page .preview-stage {
-          padding: 8px;
-        }
-        body.preview-page .bw-tour-tooltip {
-          max-height: calc(100dvh - 24px - env(safe-area-inset-bottom, 0px));
-          overflow: auto;
+        .preview-intro .cal-cell {
+          min-height: 0;
         }
       }
     </style>
     <script>window.API_BASE = "__API_BASE__";</script>
-    <link rel="stylesheet" href="/public-auth.css?v=1" />
-    <script src="/homepage-auth.js?v=3"></script>
+    <link rel="stylesheet" href="/public-auth.css?v=3" />
+    <script src="/homepage-auth.js?v=4"></script>
   </head>
-  <body class="preview-page">
+  <body class="preview-page preview-intro">
     <a class="skip-link" href="#preview-calendar">Skip to sample forecast</a>
     <div class="container">
       <div class="top-nav" role="navigation" aria-label="Primary">
-        <div class="top-nav__inner top-nav__inner--simple">
+        <div class="top-nav__inner">
           <div class="top-nav__title" aria-label="App title">
             <div class="app-title app-title--logo">
               <a href="/" aria-label="BalanceWhiz home">
@@ -184,37 +249,73 @@
             </div>
           </div>
           <div class="top-nav__actions" aria-label="Account actions">
-            <a class="plans-public-nav__link" id="homeForecastLink" href="/calendar/">My Forecast</a>
-            <a href="/login.html" class="top-nav__logout" id="homeLoginLink">Login</a>
+            <nav class="public-nav" aria-label="Site">
+              <button type="button" class="public-nav__toggle" aria-expanded="false" aria-controls="publicNavMenu">Menu</button>
+              <div class="public-nav__panel" id="publicNavMenu">
+                <a class="public-nav__link" href="/">Home</a>
+                <a class="public-nav__link" href="/learn/">Learn more</a>
+                <a class="public-nav__link" href="/plans/">Pricing</a>
+                <a class="public-nav__link" id="homeForecastLink" href="/calendar/">My Forecast</a>
+              </div>
+            </nav>
+            <a href="/login.html" class="top-nav__logout" id="homeLoginLink">Log in</a>
             <button type="button" class="top-nav__logout" id="homeLogoutBtn">Log Out</button>
-            <a href="/help.html" class="top-nav__logout">FAQ</a>
           </div>
         </div>
       </div>
 
       <main id="main-content">
-        <div class="preview-banner">
+        <section class="preview-mode" aria-label="Sample forecast">
           <div>
-            <p class="preview-banner__kicker">Sample forecast</p>
-            <h1 class="preview-banner__title">A fictional checking account</h1>
+            <h1 class="preview-mode__title">Sample forecast</h1>
+            <p class="preview-mode__text">Fictional finances. Nothing is saved.</p>
+            <a class="preview-month-link" id="previewMonthLink" href="/preview/month/">Explore a full month</a>
           </div>
-          <p class="preview-banner__meta">Minimum balance $1,500 · Not your data</p>
-          <button type="button" class="preview-replay" id="previewReplay" hidden>Replay walkthrough</button>
-        </div>
+          <div class="preview-mode__actions">
+            <button type="button" class="preview-replay" id="previewReplay">Take a quick tour</button>
+            <a class="preview-signup" id="previewSignup" href="/account-setup/?fresh=1">Start my free forecast</a>
+          </div>
+        </section>
         <div class="preview-stage">
-          <div class="calendar-dow-row" aria-hidden="true">
-            <div class="cal-dow">Mon</div>
-            <div class="cal-dow">Tue</div>
-            <div class="cal-dow">Wed</div>
-            <div class="cal-dow">Thu</div>
-            <div class="cal-dow">Fri</div>
-            <div class="cal-dow">Sat</div>
-            <div class="cal-dow">Sun</div>
-          </div>
-          <div id="preview-calendar" class="calendar" aria-label="Sample checking forecast for October 5 to 11"></div>
+          <div id="previewDow" class="calendar-dow-row" aria-hidden="true"></div>
+          <div id="preview-calendar" class="calendar" aria-label="Fictional checking forecast"></div>
         </div>
       </main>
+
+      <footer class="app-footer" role="contentinfo">
+        <div class="app-footer__inner">
+          <div class="app-footer__grid">
+            <div class="app-footer__col app-footer__col--brand">
+              <a class="app-footer__logo" href="/" aria-label="BalanceWhiz home">
+                <img class="app-footer__logo-img" src="/assets/balance-whiz-logo.svg?v=20260518" width="160" height="41" alt="BalanceWhiz" decoding="async" />
+              </a>
+              <p class="app-footer__tagline">See your cash flow before it happens.</p>
+              <p class="app-footer__copyright">© 2026 BalanceWhiz</p>
+            </div>
+            <div class="app-footer__nav">
+              <nav class="app-footer__col" aria-label="Product">
+                <h2 class="app-footer__heading">Product</h2>
+                <ul class="app-footer__list">
+                  <li><a class="app-footer__link" href="/learn/">Learn more</a></li>
+                  <li><a class="app-footer__link" href="/plans/">Pricing</a></li>
+                  <li><a class="app-footer__link" href="/help.html">FAQ</a></li>
+                </ul>
+              </nav>
+              <nav class="app-footer__col" aria-label="Company">
+                <h2 class="app-footer__heading">Company</h2>
+                <ul class="app-footer__list">
+                  <li><a class="app-footer__link" href="/about.html">About</a></li>
+                  <li><a class="app-footer__link" href="/contactus/">Contact</a></li>
+                  <li><a class="app-footer__link" href="/trust.html">Trust &amp; Security</a></li>
+                  <li><a class="app-footer__link" href="/privacy.html">Privacy Policy</a></li>
+                  <li><a class="app-footer__link" href="/terms.html">Terms of Service</a></li>
+                </ul>
+              </nav>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
-    <script src="./preview.js?v=3"></script>
+    <script src="./intro.js?v=4"></script>
   </body>
 </html>
