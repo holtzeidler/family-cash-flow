@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <script src="/ga.js?v=6"></script>
     <title>Sample forecast — BalanceWhiz</title>
-    <meta name="description" content="Explore a fictional BalanceWhiz forecast for a full month. No account required, and nothing is saved." />
+    <meta name="description" content="A short fictional checking forecast. No account required, and nothing is saved." />
     <meta name="robots" content="noindex, nofollow" />
     <link rel="canonical" href="https://balancewhiz.com/preview/" />
     <meta name="theme-color" content="#0B3D2E" />
@@ -16,36 +16,24 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=825" />
+    <link rel="stylesheet" href="../styles.css?v=831" />
     <style>
-      html:has(body.preview-page),
-      body.preview-page {
+      html:has(body.preview-intro) {
         background: #e5f0e8;
       }
-      body.preview-page .sidebar,
-      body.preview-page[data-bw-view="calendar"] .sidebar {
-        background: transparent;
+      body.preview-intro {
+        background: #e5f0e8;
       }
-      body.preview-page .card.calendar-panel {
-        background: #f4f8f5;
+      body.preview-intro .container {
+        min-height: 0;
       }
-      body.preview-page .cal-cell:not(.cal-cell--out):not(.cal-cell--bal-warn):not(.cal-cell--bal-risk):not(.cal-cell--bal-watch) {
-        background: #fff;
+      body.preview-intro .app-footer {
+        margin-top: 28px;
       }
-      body.preview-page .cal-cell {
-        min-height: 112px;
-        height: auto !important;
-      }
-      .preview-page .top-nav__inner {
+      .preview-intro .top-nav__inner {
         grid-template-columns: 1fr auto;
       }
-      .preview-page .preview-home {
-        color: rgba(255, 255, 255, 0.92);
-        font-weight: 650;
-        text-decoration: none;
-        margin-right: 4px;
-      }
-      .preview-page #homeForecastLink {
+      .preview-intro #homeForecastLink {
         display: inline-flex;
         align-items: center;
         color: #fff;
@@ -56,570 +44,115 @@
         border: 1px solid rgba(255, 255, 255, 0.28);
         background: rgba(255, 255, 255, 0.1);
       }
-      .preview-page .preview-mode {
+      .preview-intro .preview-mode {
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 12px 16px;
-        position: sticky;
-        top: var(--preview-nav-h, 76px);
-        z-index: 28;
-        margin: 8px 0 8px;
-        padding: 7px 12px;
+        margin: 16px 0 12px;
+        padding: 10px 12px;
         border: 1px solid rgba(15, 23, 42, 0.08);
         border-radius: 12px;
         background: #fff;
       }
-      .preview-page .preview-mode::before,
-      .preview-page .preview-mode::after {
-        content: "";
-        position: absolute;
-        left: 0;
-        right: 0;
-        background: #e5f0e8;
-      }
-      .preview-page .preview-mode::before {
-        top: -8px;
-        height: 8px;
-      }
-      .preview-page .preview-mode::after {
-        bottom: -8px;
-        height: 8px;
-      }
-      body.preview-page .calendar-panel-sticky-zone,
-      body.preview-page[data-bw-view="calendar"] .sidebar {
-        top: var(--preview-stick-top, 140px);
-      }
-      body.preview-page[data-bw-view="calendar"] .sidebar {
-        height: auto;
-        max-height: calc(100vh - var(--preview-stick-top, 140px) - 12px);
-      }
-      .preview-page .preview-mode__title {
+      .preview-intro .preview-mode__title {
         margin: 0;
-        font-size: 0.95rem;
-        font-weight: 750;
+        font-size: 1.15rem;
         letter-spacing: -0.02em;
-        line-height: 1.3;
       }
-      .preview-page .preview-mode__text {
-        margin: 1px 0 0;
-        color: rgba(31, 41, 55, 0.78);
-        font-size: 0.82rem;
-        line-height: 1.3;
+      .preview-intro .preview-mode__text {
+        margin: 2px 0 0;
+        color: #3d5348;
+        font-size: 0.92rem;
       }
-      .preview-page .preview-signup {
+      .preview-intro .preview-mode__actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 8px;
+      }
+      .preview-intro .preview-signup,
+      .preview-intro .preview-replay {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        flex: 0 0 auto;
-        min-height: 36px;
-        padding: 6px 12px;
+        min-height: 40px;
+        padding: 8px 14px;
         border-radius: 999px;
-        background: var(--accent, #0b3d2e);
-        color: #fff;
+        font: inherit;
         font-size: 0.92rem;
         font-weight: 700;
-        line-height: 1.25;
         text-decoration: none;
-        white-space: nowrap;
+        cursor: pointer;
       }
-      .preview-page .preview-cal-head {
+      .preview-intro .preview-signup {
+        background: #0b3d2e;
+        color: #fff;
+        border: 1px solid #0b3d2e;
+      }
+      .preview-intro .preview-replay {
+        background: #fff;
+        color: #0b3d2e;
+        border: 1px solid rgba(11, 61, 46, 0.22);
+      }
+      .preview-intro .preview-stage {
+        background: #fff;
+        border: 1px solid rgba(15, 23, 42, 0.06);
+        border-radius: 16px;
+        padding: 12px;
+      }
+      .preview-intro .cal-cell {
+        min-height: 118px;
+      }
+      .preview-intro .cal-day-tx-line {
+        grid-template-columns: minmax(0, 1fr);
+        align-items: start;
+        gap: 1px;
+        padding-left: 2px;
+        padding-right: 2px;
+      }
+      .preview-intro .cal-day-tx-line .cal-tx-label-wrap,
+      .preview-intro .cal-day-tx-line .cal-tx-label {
+        overflow: visible;
+        text-overflow: clip;
+        white-space: normal;
+      }
+      .preview-intro .cal-day-tx-line .cal-amt {
+        justify-self: start;
+        text-align: left;
+        padding-left: 0;
+      }
+      .preview-intro .preview-intro-choices {
         display: flex;
         flex-direction: column;
         align-items: stretch;
-        margin: 2px 0 6px;
-      }
-      .preview-page .preview-range {
-        display: none;
-      }
-      .preview-page .preview-cal-head .calendar-nav-block {
-        flex: 1 1 auto;
-        width: 100%;
-      }
-      body.preview-page[data-bw-view="calendar"] .sidebar {
-        gap: 10px;
-      }
-      body.preview-page #sidebarCashHealthCard,
-      body.preview-page #previewDemos {
-        padding: 8px 10px 4px;
-      }
-      body.preview-page .sidebar-section-head {
-        margin-bottom: 2px;
-      }
-      body.preview-page .sidebar-section-head h2 {
-        font-size: 11px;
-        font-weight: 650;
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
-        color: rgba(71, 85, 105, 0.72);
-        line-height: 1.2;
-      }
-      body.preview-page #sidebarLowBalanceBanner.calendar-low-balance--inset,
-      body.preview-page #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger {
-        margin: 0;
-        padding: 4px 0 6px;
-        border: 0;
-        border-radius: 0;
-        background: transparent;
-        box-shadow: none;
-        font-size: 0.92rem;
-      }
-      body.preview-page .sidebar-balance-threshold-alerts,
-      body.preview-page .sidebar-cash-health__alerts {
-        margin-bottom: 2px;
-        gap: 0;
-      }
-      body.preview-page #totals .total {
-        padding: 3px 0;
-        background: transparent;
-        border: 0;
-      }
-      body.preview-page #sidebarBodyMonth .total,
-      body.preview-page #sidebarBodyMonth .total--net,
-      body.preview-page #sidebarBodyMonth .total--net:not(:has(.v.danger)) {
-        margin-top: 0;
-        border-radius: 0;
-        background: transparent;
-      }
-      body.preview-page #totals .total--income .v.ok {
-        color: #047857;
-      }
-      body.preview-page #totals .total--expense .v.danger,
-      body.preview-page #totals .total--net .v.danger {
-        color: #b91c1c;
-      }
-      body.preview-page #totals .total--net .v.ok {
-        color: #047857;
-      }
-      .preview-page .preview-demos {
-        margin-top: 0;
-      }
-      .preview-page .preview-demo {
-        border-top: 1px solid rgba(11, 61, 46, 0.1);
-      }
-      .preview-page .preview-demo:first-child {
-        border-top: 0;
-      }
-      .preview-page .preview-demo summary,
-      .preview-page .preview-demo-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 8px;
-        width: 100%;
-        margin: 0;
-        padding: 7px 2px;
-        border: 0;
-        border-radius: 8px;
-        background: transparent;
-        list-style: none;
-        cursor: pointer;
-        color: rgba(15, 23, 42, 0.88);
-        font: inherit;
-        font-size: 0.86rem;
-        font-weight: 600;
-        letter-spacing: -0.01em;
-        line-height: 1.3;
-        text-align: left;
-      }
-      .preview-page .preview-demo-row:hover {
-        background: rgba(11, 61, 46, 0.04);
-      }
-      .preview-page .preview-demo-row:focus-visible {
-        outline: 2px solid rgba(4, 120, 87, 0.35);
-        outline-offset: 2px;
-      }
-      .preview-page .preview-demo summary::-webkit-details-marker {
-        display: none;
-      }
-      .preview-page .preview-demo summary:hover {
-        background: rgba(11, 61, 46, 0.04);
-      }
-      .preview-page .preview-demo summary:focus-visible {
-        outline: 2px solid rgba(4, 120, 87, 0.35);
-        outline-offset: 2px;
-      }
-      .preview-page .preview-demo__label {
-        min-width: 0;
-      }
-      .preview-page .preview-demo__chevron {
-        flex: 0 0 auto;
-        color: rgba(100, 116, 139, 0.72);
-        transition: transform 0.15s ease;
-      }
-      .preview-page .preview-demo-row .preview-demo__chevron {
-        transform: rotate(-90deg);
-      }
-      .preview-page .preview-demo[open] .preview-demo__chevron {
-        transform: rotate(180deg);
-      }
-      .preview-page .preview-demo__state {
-        margin-left: 6px;
-        color: rgba(130, 112, 94, 0.95);
-        font-size: 0.75rem;
-        font-weight: 700;
-      }
-      .preview-page .preview-demo__body {
-        padding: 0 0 10px;
-        color: rgba(31, 41, 55, 0.88);
-        font-size: 0.84rem;
-        line-height: 1.4;
-      }
-      .preview-page .preview-demo__body p {
-        margin: 0 0 8px;
-      }
-      .preview-page .preview-demo__rows {
-        display: grid;
-        gap: 4px;
-        margin: 0 0 8px;
-      }
-      .preview-page .preview-demo__rows div {
-        display: flex;
-        justify-content: space-between;
-        gap: 12px;
-      }
-      .preview-page .preview-demo__rows dt {
-        color: rgba(55, 48, 42, 0.72);
-        font-weight: 500;
-      }
-      .preview-page .preview-demo__rows dd {
-        margin: 0;
-        font-weight: 750;
-        font-variant-numeric: tabular-nums;
-      }
-      .preview-page .preview-demo__note {
-        color: rgba(55, 48, 42, 0.72);
-        font-size: 0.8rem;
-      }
-      .preview-page .preview-demo__actions,
-      .preview-page .preview-modal__row {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        align-items: end;
-      }
-      .preview-page .preview-demo__apply,
-      .preview-page .preview-demo__reset {
-        min-height: 32px;
-        padding: 4px 10px;
-        border-radius: 999px;
-        font: inherit;
-        font-size: 13px;
-        font-weight: 700;
-        cursor: pointer;
-      }
-      .preview-page .preview-demo__apply {
-        border: 0;
-        background: var(--accent, #0b3d2e);
-        color: #fff;
-      }
-      .preview-page .preview-demo__apply:disabled {
-        opacity: 0.72;
-        cursor: default;
-      }
-      .preview-page .preview-demo__reset {
-        border: 1px solid rgba(11, 61, 46, 0.22);
-        background: #fff;
-        color: #0b3d2e;
-      }
-      .preview-page .preview-demo label {
-        display: grid;
-        gap: 4px;
-        font-size: 0.8rem;
-        font-weight: 650;
-      }
-      .preview-page .preview-demo input,
-      .preview-page .preview-demo select {
-        min-height: 32px;
-        font: inherit;
-      }
-      .preview-page .preview-snapshot-month {
-        margin: 2px 0 2px;
-        font-size: 12px;
-        font-weight: 600;
-        color: rgba(71, 85, 105, 0.72);
-      }
-      .preview-page #sidebarLowBalanceBanner {
-        display: block;
-        width: 100%;
-        max-width: 100%;
-        overflow: visible;
-        white-space: normal;
-        text-align: left;
-        box-sizing: border-box;
-      }
-      .preview-page .preview-cash {
-        display: flex;
-        align-items: flex-start;
-        gap: 8px;
-        min-width: 0;
-      }
-      .preview-page .preview-cash__body {
-        display: grid;
-        gap: 2px;
-        min-width: 0;
-      }
-      .preview-page .preview-cash__kicker {
-        margin: 0;
-        color: #92400e;
-        font-size: 12px;
-        font-weight: 700;
-        line-height: 1.3;
-      }
-      .preview-page .preview-cash__date {
-        margin: 0;
-        color: #8a5a12;
-        font-size: 0.98rem;
-        font-weight: 750;
-        letter-spacing: -0.02em;
-        line-height: 1.25;
-      }
-      .preview-page .preview-cash__line,
-      .preview-page .preview-cash__gap {
-        margin: 0;
-        color: rgba(55, 48, 42, 0.82);
-        font-size: 12.5px;
-        font-weight: 500;
-        line-height: 1.35;
-        overflow-wrap: break-word;
-      }
-      body.preview-page .cal-cell.cal-cell--bal-warn,
-      body.preview-page .cal-cell.cal-cell--past.cal-cell--bal-warn {
-        background: #fffdf8;
-        border-color: rgba(176, 132, 72, 0.14);
-        box-shadow: inset 2px 0 0 rgba(176, 132, 72, 0.2);
-      }
-      body.preview-page .cal-cell.cal-cell--bal-warn.cal-cell--bal-low,
-      body.preview-page .cal-cell.cal-cell--past.cal-cell--bal-warn.cal-cell--bal-low {
-        background: #fff6ea;
-        border-color: rgba(154, 108, 48, 0.28);
-        box-shadow: inset 3px 0 0 rgba(154, 108, 48, 0.55);
-      }
-      body.preview-page .cal-balance-status-pills {
-        display: inline-flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 4px;
-        min-width: 0;
-      }
-      body.preview-page .cal-stat.cal-balance.cal-balance--quiet:not(.cal-balance--below-floor):not(.is-negative):not(.cal-balance--risk) {
-        color: rgba(30, 41, 59, 0.88);
-      }
-      body.preview-page .cal-stat.cal-balance.cal-balance--past-day:not(.cal-balance--below-floor):not(.is-negative):not(.cal-balance--risk) {
-        color: rgba(71, 85, 105, 0.82);
-      }
-      body.preview-page .cal-stat.cal-balance.cal-balance--below-floor.cal-balance--month-low,
-      body.preview-page .cal-stat.cal-balance.cal-balance--past-day.cal-balance--below-floor.cal-balance--month-low {
-        color: #7a4e10;
-        font-weight: 750;
-      }
-      body.preview-page .cal-cell.cal-cell--past.cal-cell--bal-risk {
-        background: #fff6f6;
-        box-shadow:
-          inset 3px 0 0 rgba(185, 28, 28, 0.62),
-          0 1px 2px rgba(17, 24, 39, 0.025);
-      }
-      body.preview-page .cal-stat.cal-balance.cal-balance--below-floor,
-      body.preview-page .cal-stat.cal-balance.cal-balance--past-day.cal-balance--below-floor {
-        color: #8a5a12;
-        font-weight: 650;
-        background: transparent;
-        border: 0;
-        box-shadow: none;
-      }
-      body.preview-page .cal-balance-warn-icon {
-        color: #a16207;
-      }
-      body.preview-page .cal-stat.cal-balance.cal-balance--past-day.is-negative,
-      body.preview-page .cal-stat.cal-balance.cal-balance--past-day.cal-balance--risk {
-        color: rgba(127, 45, 45, 0.94);
-        font-weight: 700;
-        background: rgba(254, 242, 242, 0.95);
-      }
-      body.preview-page .cal-cell.cal-cell--out {
-        background: rgba(11, 61, 46, 0.028);
-        border-color: rgba(17, 24, 39, 0.045);
-        box-shadow: none;
-      }
-      body.preview-page .cal-cell.cal-cell--out .cal-daynum-num {
-        color: rgba(107, 114, 128, 0.48);
-      }
-      .preview-page #sidebarLowBalanceBanner strong {
-        display: inline;
-        white-space: normal;
-        font-size: inherit;
-      }
-      .preview-page button.cal-day-tx-line {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
-        align-items: center;
-        gap: 4px;
-        width: 100%;
-        min-width: 0;
-        font-size: 12px;
-      }
-      .preview-page .cal-tx-label-wrap,
-      .preview-page .cal-tx-label {
-        min-width: 0;
-      }
-      .preview-page .preview-cell--selected {
-        outline: 2px solid var(--accent, #0b3d2e);
-        outline-offset: -2px;
-      }
-      .preview-page button.cal-day-tx-line,
-      .preview-page button.cal-balance-strip {
-        width: 100%;
-        border: 0;
-        background: transparent;
-        color: inherit;
-        font: inherit;
-        font-size: 12px;
-        text-align: inherit;
-        cursor: pointer;
-      }
-      .preview-page .preview-modal__note {
-        margin: 8px 0 0;
-        color: var(--muted, #4b5563);
-        font-size: 0.88rem;
-      }
-      .preview-page .preview-modal__row {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: end;
         gap: 8px;
         margin-top: 12px;
       }
-      .preview-page .preview-modal__row label {
-        display: grid;
-        gap: 4px;
-        font-size: 0.78rem;
-        font-weight: 700;
+      .preview-intro .preview-tour-link--quiet {
+        background: #fff;
+        color: #0b3d2e;
+        border: 1px solid rgba(11, 61, 46, 0.28);
       }
-      .preview-page .preview-modal__row input,
-      .preview-page .preview-modal__row select {
-        min-height: 40px;
-        min-width: 9rem;
-        border: 1px solid rgba(15, 23, 42, 0.16);
-        border-radius: 10px;
-        padding: 6px 8px;
-        font: inherit;
-      }
-      .preview-page .preview-detail-list {
-        margin: 10px 0 0;
-        padding-left: 1.1rem;
-      }
-      .preview-page .preview-finale-note {
-        margin: 8px 0 0;
-        font-size: 0.8rem;
-        color: rgba(71, 85, 105, 0.8);
-      }
-      .preview-page .bw-tour-tooltip__cta.preview-tour-link {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        text-decoration: none;
-      }
-      .preview-page .preview-back {
-        margin-right: auto;
-      }
-      body.preview-page .bw-tour-tooltip__close {
-        margin-left: auto;
-      }
-      body.preview-page .bw-tour-tooltip:has(#previewTourStart:not([hidden])) .bw-tour-tooltip__actions {
-        display: flex;
-        flex-direction: column;
-        align-items: stretch;
-        gap: 10px;
-      }
-      body.preview-page .bw-tour-tooltip:has(#previewTourStart:not([hidden])) #previewTourBack {
-        align-self: flex-start;
-        order: 2;
-      }
-      body.preview-page #previewTourStart:not([hidden]) {
-        order: 1;
-        width: 100%;
-      }
-      body.preview-page #previewTourContinue:not([hidden]) {
-        display: block;
-        width: 100%;
-        margin: 2px 0 0;
-        text-align: center;
-      }
-      @media (max-width: 1240px) {
-        body.preview-page[data-bw-view="calendar"] .app-layout {
-          grid-template-columns: 1fr;
-        }
-        body.preview-page[data-bw-view="calendar"] .sidebar {
-          position: static;
-          height: auto;
-          max-height: none;
-          overflow: visible;
-          background: transparent;
-        }
-      }
-      @media (max-width: 1240px) and (min-width: 721px) {
-        body.preview-page[data-bw-view="calendar"] .sidebar {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 14px;
-          align-items: start;
-        }
-        body.preview-page #sidebarCashHealthCard,
-        body.preview-page .preview-demos {
-          grid-column: 1 / -1;
-        }
-      }
-      @media (max-width: 900px) {
-        .preview-page .preview-range {
-          display: flex;
-          gap: 6px;
-          margin: 0 0 8px;
-        }
-        .preview-page .preview-range__btn {
-          flex: 1 1 0;
-          min-height: 40px;
-          padding: 8px 10px;
-          border-radius: 999px;
-          border: 1px solid rgba(11, 61, 46, 0.16);
-          background: #fff;
-          color: #0b3d2e;
-          font: inherit;
-          font-size: 0.86rem;
-          font-weight: 700;
-          line-height: 1.2;
-        }
-        .preview-page .preview-range__btn[aria-pressed="true"] {
-          background: #0b3d2e;
-          color: #fff;
-          border-color: #0b3d2e;
-        }
+      .preview-intro #previewTourDismiss {
+        align-self: center;
       }
       @media (max-width: 800px) {
-        .preview-page .preview-signup {
-          min-height: 44px;
-        }
-        .preview-page .preview-mode {
+        .preview-intro .preview-mode {
           align-items: stretch;
           flex-direction: column;
         }
-        body.preview-page #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger {
-          margin-top: 8px;
+        .preview-intro .preview-mode__actions,
+        .preview-intro .preview-signup,
+        .preview-intro .preview-replay {
+          width: 100%;
         }
-        body.preview-page .calendar-panel-sticky-zone {
-          position: static;
-          top: auto;
+        .preview-intro .calendar-dow-row {
+          display: none;
         }
-        body.preview-page .cal-cell {
+        .preview-intro .cal-cell {
           min-height: 0;
-        }
-      }
-      @media (max-width: 768px) {
-        body.preview-page .container {
-          padding-top: var(--preview-nav-h, 4.5rem);
-        }
-        body.preview-page .bw-tour-tooltip {
-          max-height: calc(100dvh - 24px - env(safe-area-inset-bottom, 0px));
-          overflow: auto;
         }
       }
     </style>
@@ -627,7 +160,7 @@
     <link rel="stylesheet" href="/public-auth.css?v=2" />
     <script src="/homepage-auth.js?v=4"></script>
   </head>
-  <body class="preview-page" data-bw-view="calendar">
+  <body class="preview-page preview-intro">
     <a class="skip-link" href="#preview-calendar">Skip to sample forecast</a>
     <div class="container">
       <div class="top-nav" role="navigation" aria-label="Primary">
@@ -662,163 +195,23 @@
         </div>
       </div>
 
-      <section class="preview-mode" aria-label="Sample forecast">
-        <div>
-          <h1 class="preview-mode__title">Explore a sample forecast</h1>
-          <p class="preview-mode__text">Fictional finances. Nothing is saved.</p>
-        </div>
-        <a class="preview-signup" id="previewSignup" href="/account-setup/?fresh=1">Start my free forecast</a>
-      </section>
-
-      <div class="app-layout">
-        <aside class="sidebar">
-          <section id="sidebarCashHealthCard" class="card sidebar-section preview-overview" aria-label="Forecast Overview">
-            <div class="sidebar-section-head">
-              <h2 id="cashOutlookTitle">Forecast Overview</h2>
-            </div>
-            <div id="sidebarBodyMonth" class="sidebar-section-body">
-              <div id="sidebarLowBalanceBanner" class="calendar-low-balance calendar-low-balance--sidebar calendar-low-balance--inset" role="status"></div>
-              <p id="previewMonthLabel" class="preview-snapshot-month"></p>
-              <div class="totals" id="totals"></div>
-            </div>
-          </section>
-
-          <section class="card sidebar-section preview-demos" id="previewDemos" aria-label="Explore BalanceWhiz">
-            <div class="sidebar-section-head">
-              <h2>Explore BalanceWhiz</h2>
-            </div>
-            <div class="sidebar-section-body">
-              <button type="button" class="preview-demo-row" id="previewReplay">
-                <span class="preview-demo__label">Take a quick tour</span>
-                <svg class="preview-demo__chevron" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M6 9l6 6 6-6" />
-                </svg>
-              </button>
-              <details class="preview-demo" id="previewReconcile">
-                <summary>
-                  <span class="preview-demo__label">Update bank balance <span class="preview-demo__state" id="previewReconcileState" hidden>Adjusted</span></span>
-                  <svg class="preview-demo__chevron" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M6 9l6 6 6-6" />
-                  </svg>
-                </summary>
-                <div class="preview-demo__body">
-                  <p>See how entering an actual checking balance updates future projections.</p>
-                  <p id="previewReconcileLead">Fictional example. This is not your bank balance.</p>
-                  <dl class="preview-demo__rows">
-                    <div><dt>Forecast</dt><dd id="previewReconcileForecast">$2,060</dd></div>
-                    <div><dt>Fictional bank balance</dt><dd id="previewReconcileBank">$1,925</dd></div>
-                    <div><dt>Difference</dt><dd id="previewReconcileDiff">−$135</dd></div>
-                  </dl>
-                  <p class="preview-demo__note">Future days continue from the bank balance. Earlier days stay the same. Nothing is saved.</p>
-                  <div class="preview-demo__actions">
-                    <button type="button" class="preview-demo__apply" id="previewApplyReconcile">Apply this balance</button>
-                    <button type="button" class="preview-demo__reset" id="previewResetReconcile">Reset</button>
-                  </div>
-                </div>
-              </details>
-              <details class="preview-demo" id="previewExplore">
-                <summary>
-                  <span class="preview-demo__label">Try a hypothetical expense <span class="preview-demo__state" id="previewExploreState" hidden>Added</span></span>
-                  <svg class="preview-demo__chevron" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M6 9l6 6 6-6" />
-                  </svg>
-                </summary>
-                <div class="preview-demo__body">
-                  <p>See how an additional expense would affect your forecast.</p>
-                  <p>Demo only. This is not available in the signed-in forecast, and nothing is saved.</p>
-                  <form id="previewWhatIfForm">
-                    <div class="preview-modal__row">
-                      <label>
-                        Expense amount
-                        <input id="previewExpenseAmount" name="amount" type="number" min="1" step="1" inputmode="decimal" placeholder="500" />
-                      </label>
-                      <label>
-                        Date in this month
-                        <select id="previewExpenseDay" name="day"></select>
-                      </label>
-                    </div>
-                    <div class="preview-demo__actions">
-                      <button type="button" class="preview-demo__reset" id="previewReset">Reset</button>
-                    </div>
-                  </form>
-                </div>
-              </details>
-            </div>
-          </section>
-        </aside>
-
-        <div class="main-column">
-          <div class="app-view">
-            <div class="card calendar-panel" id="calendarPanel">
-              <div class="calendar-panel-sticky-zone">
-                <div class="calendar-sticky-header" id="calendarStickyHeader">
-                  <div class="preview-cal-head">
-                    <div class="preview-range" id="previewRange" role="group" aria-label="Forecast range">
-                      <button type="button" class="preview-range__btn" id="previewShowAgenda" aria-pressed="true">Next 14 days</button>
-                      <button type="button" class="preview-range__btn" id="previewShowMonth" aria-pressed="false">Full month</button>
-                    </div>
-                    <div class="calendar-nav-block">
-                      <div class="calendar-nav-bar" role="group" aria-label="Calendar navigation">
-                        <button type="button" class="cal-today-btn" id="calendarGoToday" title="Go to current month">
-                          <svg class="cal-today-ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                            <line x1="16" y1="2" x2="16" y2="6"></line>
-                            <line x1="8" y1="2" x2="8" y2="6"></line>
-                            <line x1="3" y1="10" x2="21" y2="10"></line>
-                          </svg>
-                          Today
-                        </button>
-                        <div class="cal-month-year">
-                          <div class="cal-select-wrap">
-                            <select id="calendarMonthNum" aria-label="Month">
-                              <option value="1">January</option>
-                              <option value="2">February</option>
-                              <option value="3">March</option>
-                              <option value="4">April</option>
-                              <option value="5">May</option>
-                              <option value="6">June</option>
-                              <option value="7">July</option>
-                              <option value="8">August</option>
-                              <option value="9">September</option>
-                              <option value="10">October</option>
-                              <option value="11">November</option>
-                              <option value="12">December</option>
-                            </select>
-                            <span class="cal-select-caret" aria-hidden="true">▾</span>
-                          </div>
-                          <div class="cal-select-wrap">
-                            <select id="calendarYear" aria-label="Year"></select>
-                            <span class="cal-select-caret" aria-hidden="true">▾</span>
-                          </div>
-                          <div class="cal-nav-arrows">
-                            <button type="button" class="cal-arrow-btn" id="calendarPrevMonth" aria-label="Previous month" title="Previous month">
-                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                <path d="M15 18l-6-6 6-6" />
-                              </svg>
-                            </button>
-                            <button type="button" class="cal-arrow-btn" id="calendarNextMonth" aria-label="Next month" title="Next month">
-                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                <path d="M9 18l6-6-6-6" />
-                              </svg>
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div style="height:6px;"></div>
-                  <div id="calendarDow" class="calendar-dow-row" aria-hidden="true"></div>
-                </div>
-              </div>
-              <div class="calendar-panel-body">
-                <div class="calendar-scroll">
-                  <div id="preview-calendar" class="calendar" role="grid" aria-label="Fictional checking forecast"></div>
-                </div>
-              </div>
-            </div>
+      <main id="main-content">
+        <section class="preview-mode" aria-label="Sample forecast">
+          <div>
+            <h1 class="preview-mode__title">Sample forecast</h1>
+            <p class="preview-mode__text">Fictional finances. Nothing is saved.</p>
           </div>
+          <div class="preview-mode__actions">
+            <button type="button" class="preview-replay" id="previewReplay">Take a quick tour</button>
+            <a class="preview-signup" id="previewSignup" href="/account-setup/?fresh=1">Start my free forecast</a>
+          </div>
+        </section>
+        <div class="preview-stage">
+          <div id="previewDow" class="calendar-dow-row" aria-hidden="true"></div>
+          <div id="preview-calendar" class="calendar" aria-label="Fictional checking forecast"></div>
         </div>
-      </div>
+      </main>
+
       <footer class="app-footer" role="contentinfo">
         <div class="app-footer__inner">
           <div class="app-footer__grid">
@@ -853,19 +246,6 @@
         </div>
       </footer>
     </div>
-
-    <div id="previewDetail" class="modal-overlay" hidden>
-      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="previewDetailTitle">
-        <h2 id="previewDetailTitle"></h2>
-        <p class="preview-modal__note">Read only. This sample does not edit or save transactions.</p>
-        <ul class="preview-detail-list" id="previewDetailList"></ul>
-        <p id="previewDetailBalance"></p>
-        <div class="modal-actions">
-          <button type="button" class="secondary" id="previewDetailClose">Close</button>
-        </div>
-      </div>
-    </div>
-
-    <script src="./preview.js?v=17"></script>
+    <script src="./intro.js?v=2"></script>
   </body>
 </html>

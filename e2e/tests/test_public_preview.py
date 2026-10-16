@@ -142,7 +142,7 @@ def _assert_forecast_untouched(api_calls, writes):
 def test_sample_forecast_month_and_balances(page, guard):
     api_calls, writes = _track_api(page)
     _freeze(page, 2026, 10, 15)
-    response = page.goto("/preview/")
+    response = page.goto("/preview/month/")
     assert_route_ok(response, "/preview/")
     expect(page.locator("#previewMonthLabel")).to_have_text("October 2026")
     expect(page.get_by_role("dialog")).to_have_count(0)
@@ -245,7 +245,7 @@ def test_sample_forecast_month_and_balances(page, guard):
 @pytest.mark.smoke_title("Sample details stay read only")
 def test_sample_forecast_readonly_details(page, guard):
     _freeze(page, 2026, 10, 15)
-    response = page.goto("/preview/")
+    response = page.goto("/preview/month/")
     assert_route_ok(response, "/preview/")
     _cell(page, _iso(2026, 10, 15, 3)).locator("button", has_text="Credit card").click()
     expect(page.locator("#previewDetail")).to_be_visible()
@@ -265,7 +265,7 @@ def test_sample_forecast_readonly_details(page, guard):
 def test_sample_forecast_hypothetical_and_reset(page, guard):
     api_calls, writes = _track_api(page)
     _freeze(page, 2026, 10, 15)
-    response = page.goto("/preview/")
+    response = page.goto("/preview/month/")
     assert_route_ok(response, "/preview/")
     stored = page.evaluate(
         "() => Object.keys(localStorage).sort().concat(Object.keys(sessionStorage).sort())"
@@ -307,7 +307,7 @@ def test_sample_forecast_hypothetical_and_reset(page, guard):
 def test_sample_forecast_reconciliation(page, guard):
     api_calls, writes = _track_api(page)
     _freeze(page, 2026, 10, 15)
-    response = page.goto("/preview/")
+    response = page.goto("/preview/month/")
     assert_route_ok(response, "/preview/")
 
     def cell(offset):
@@ -457,7 +457,7 @@ def test_signed_in_forecast_shell_unchanged(page, guard):
 @pytest.mark.smoke_title("Public walkthrough is optional")
 def test_public_preview_walkthrough(page, guard):
     api_calls, writes = _track_api(page)
-    response = page.goto("/preview/")
+    response = page.goto("/preview/month/")
     assert_route_ok(response, "/preview/")
     expect(page.get_by_role("dialog")).to_have_count(0)
     expect(page.get_by_role("button", name=re.compile(r"Mortgage"))).to_be_visible()
@@ -520,7 +520,7 @@ def test_public_preview_walkthrough(page, guard):
 
 @pytest.mark.smoke_title("Sample forecast fits common screen widths")
 def test_sample_forecast_fits_common_widths(page, guard):
-    response = page.goto("/preview/")
+    response = page.goto("/preview/month/")
     assert_route_ok(response, "/preview/")
     expect(page.locator("#previewReconcile summary")).to_contain_text("Update bank balance")
     expect(page.locator("#previewExplore summary")).to_contain_text("Try a hypothetical expense")
@@ -543,7 +543,7 @@ def test_sample_forecast_fits_common_widths(page, guard):
 @pytest.mark.smoke_title("Public sample forecast fits a phone")
 def test_public_preview_mobile(page, guard):
     page.set_viewport_size({"width": 390, "height": 800})
-    response = page.goto("/preview/")
+    response = page.goto("/preview/month/")
     assert_route_ok(response, "/preview/")
     expect(page.locator("#preview-calendar")).to_be_visible()
     expect(page.get_by_text("Credit card").first).to_be_visible()
@@ -584,7 +584,7 @@ def test_public_preview_mobile(page, guard):
 @pytest.mark.smoke_title("Sample forecast stays ahead of today across a year boundary")
 def test_sample_forecast_rolls_across_new_year(page, guard):
     _freeze(page, 2026, 12, 30)
-    response = page.goto("/preview/")
+    response = page.goto("/preview/month/")
     assert_route_ok(response, "/preview/")
     expect(page.locator("#previewMonthLabel")).to_have_text("January 2027")
     expect(page.locator("#previewCashWarning")).to_have_text(
@@ -605,7 +605,7 @@ def test_sample_forecast_rolls_across_new_year(page, guard):
 def test_sample_forecast_phone_agenda(page, guard):
     _freeze(page, 2026, 10, 15)
     page.set_viewport_size({"width": 390, "height": 844})
-    response = page.goto("/preview/")
+    response = page.goto("/preview/month/")
     assert_route_ok(response, "/preview/")
     expect(page.locator("#previewMonthLabel")).to_have_text("Next 14 days")
     expect(page.locator("#previewShowAgenda")).to_have_attribute("aria-pressed", "true")
@@ -628,6 +628,103 @@ def test_sample_forecast_phone_agenda(page, guard):
     expect(page.locator(".cal-dow").first).to_have_text("Sun")
     expect(page.locator("#preview-calendar")).not_to_have_class(re.compile(r"calendar--mobile"))
     expect(page.locator(".cal-cell[data-iso]")).to_have_count(31)
+    assert_no_horizontal_overflow(page)
+    guard.assert_clean()
+
+
+def _assert_intro_popup_clear(page) -> None:
+    _assert_tour_card_in_view(page)
+    placed = page.evaluate(
+        """() => {
+          const card = document.getElementById('previewTourDialog').getBoundingClientRect();
+          const spots = [...document.querySelectorAll('.bw-tour-target')];
+          const overlap = spots.some((el) => {
+            const target = el.getBoundingClientRect();
+            const x = Math.min(card.right, target.right) - Math.max(card.left, target.left);
+            const y = Math.min(card.bottom, target.bottom) - Math.max(card.top, target.top);
+            return x > 2 && y > 2;
+          });
+          return { overlap, width: card.width, vw: window.innerWidth };
+        }"""
+    )
+    assert placed["overlap"] is False
+    if placed["vw"] >= 1100:
+        assert 420 <= placed["width"] <= 460
+
+
+@pytest.mark.smoke_title("Seven day sample introduces the monthly forecast")
+def test_seven_day_sample_leads_to_the_month(page, guard):
+    api_calls, writes = _track_api(page)
+    response = page.goto("/preview/")
+    assert_route_ok(response, "/preview/")
+    expect(page.locator(".preview-mode__text")).to_have_text("Fictional finances. Nothing is saved.")
+    expect(page.locator("#preview-calendar .cal-cell")).to_have_count(7)
+    expect(page.locator("#preview-calendar")).to_contain_text("$4,850")
+    expect(page.locator("#preview-calendar")).to_contain_text("Mortgage")
+    expect(page.locator("#preview-calendar")).to_contain_text("-$2,400")
+    expect(page.locator("#preview-calendar")).to_contain_text("Credit card")
+    expect(page.locator("#preview-calendar")).to_contain_text("-$1,100")
+    expect(page.locator("#preview-calendar")).to_contain_text("Vacation deposit")
+    expect(page.locator("#preview-calendar")).to_contain_text("-$1,500")
+    expect(page.locator(".cal-cell--bal-risk")).to_contain_text("($150)")
+    expect(page.locator("#preview-calendar")).to_contain_text("Paycheck")
+    expect(page.locator("#preview-calendar")).to_contain_text("+$3,200")
+    expect(page.locator("#preview-calendar")).to_contain_text("$3,050")
+    expect(page.get_by_role("dialog")).to_have_count(0)
+
+    page.locator("#previewReplay").click()
+    titles = [
+        "Start with your checking balance",
+        "See upcoming bills",
+        "Spot problems early",
+        "Look ahead to payday",
+        "Take control",
+    ]
+    for index, title in enumerate(titles, start=1):
+        expect(page.locator("#previewTourTitle")).to_have_text(title)
+        expect(page.locator("#previewTourCounter")).to_have_text(f"{index} of 5")
+        _assert_intro_popup_clear(page)
+        if index < 5:
+            page.locator("#previewTourNext").click()
+    expect(page.locator("#previewTourNext")).to_have_text("Finish")
+    page.locator("#previewTourNext").click()
+    expect(page.locator("#previewTourTitle")).to_have_text("See what your money looks like a month from now.")
+    expect(page.locator("#previewTourBody")).to_contain_text("Want to explore more?")
+    expect(page.locator("#previewTourExplore")).to_have_attribute("href", "/preview/month/")
+    expect(page.locator("#previewTourSignup")).to_have_text("Start my free forecast")
+    expect(page.locator("#previewTourSignup")).to_have_attribute("href", "/account-setup/?fresh=1")
+    expect(page).to_have_url(re.compile(r"/preview/?$"))
+    page.locator("#previewTourDismiss").click()
+    expect(page.locator(".bw-tour-tooltip--open")).to_have_count(0)
+
+    page.locator("#previewReplay").click()
+    page.locator("#previewTourSkip").click()
+    expect(page.locator(".bw-tour-tooltip--open")).to_have_count(0)
+    expect(page).to_have_url(re.compile(r"/preview/?$"))
+
+    page.locator("#previewReplay").click()
+    for _ in range(5):
+        page.locator("#previewTourNext").click()
+    page.locator("#previewTourExplore").click()
+    page.wait_for_url(re.compile(r"/preview/month/?$"))
+    expect(page.locator("#previewReconcile")).to_be_visible()
+    expect(page.locator(".bw-tour-tooltip--open")).to_have_count(0)
+    page.locator("#previewReplay").click()
+    expect(page.locator("#previewTourTitle")).to_have_text("Look ahead")
+    page.keyboard.press("Escape")
+    expect(page.locator(".bw-tour-tooltip--open")).to_have_count(0)
+    _assert_forecast_untouched(api_calls, writes)
+
+    page.set_viewport_size({"width": 390, "height": 844})
+    page.goto("/preview/")
+    expect(page.locator("#preview-calendar .cal-cell")).to_have_count(7)
+    expect(page.locator("#preview-calendar")).to_have_class(re.compile(r"calendar--mobile"))
+    page.locator("#previewReplay").click()
+    _assert_intro_popup_clear(page)
+    page.locator("#previewTourNext").click()
+    _assert_intro_popup_clear(page)
+    assert_no_horizontal_overflow(page)
+    page.set_viewport_size({"width": 768, "height": 1024})
     assert_no_horizontal_overflow(page)
     guard.assert_clean()
 
