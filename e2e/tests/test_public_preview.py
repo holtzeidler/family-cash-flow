@@ -655,50 +655,97 @@ def _assert_intro_popup_clear(page) -> None:
 @pytest.mark.smoke_title("Seven day sample introduces the monthly forecast")
 def test_seven_day_sample_leads_to_the_month(page, guard):
     api_calls, writes = _track_api(page)
+    anchor = date(2026, 10, 15)
+    _freeze(page, anchor.year, anchor.month, anchor.day)
     response = page.goto("/preview/")
     assert_route_ok(response, "/preview/")
     expect(page.locator(".preview-mode__text")).to_have_text("Fictional finances. Nothing is saved.")
     expect(page.locator("#preview-calendar .cal-cell")).to_have_count(7)
     expect(page.locator("#preview-calendar .cal-balance-status-pill--starting")).to_have_text("Starting Point")
-    expect(page.locator("#preview-calendar")).to_contain_text("$4,850")
-    expect(page.locator("#preview-calendar")).to_contain_text("Mortgage")
-    expect(page.locator("#preview-calendar")).to_contain_text("-$2,400")
-    expect(page.locator("#preview-calendar")).to_contain_text("Credit card")
-    expect(page.locator("#preview-calendar")).to_contain_text("-$1,100")
-    expect(page.locator("#preview-calendar")).to_contain_text("Vacation deposit")
-    expect(page.locator("#preview-calendar")).to_contain_text("-$1,500")
-    expect(page.locator(".cal-cell--bal-warn")).to_contain_text("$1,350")
-    expect(page.locator(".cal-cell--bal-risk")).to_contain_text("($150)")
+    expect(_cell(page, _iso(2026, 10, 15, 0))).to_have_attribute("data-end", "2060")
+    expect(_cell(page, _iso(2026, 10, 15, 0))).to_contain_text("$2,060")
+    expect(_cell(page, _iso(2026, 10, 15, 3))).to_contain_text("Credit card")
+    expect(_cell(page, _iso(2026, 10, 15, 3))).to_contain_text("-$660")
+    expect(_cell(page, _iso(2026, 10, 15, 3))).to_have_attribute("data-end", "1400")
+    expect(_cell(page, _iso(2026, 10, 15, 3))).to_have_class(re.compile(r"cal-cell--bal-warn"))
+    expect(_cell(page, _iso(2026, 10, 15, 4))).to_contain_text("Insurance")
+    expect(_cell(page, _iso(2026, 10, 15, 4))).to_contain_text("-$1,250")
+    expect(_cell(page, _iso(2026, 10, 15, 4))).to_have_attribute("data-end", "150")
+    expect(_cell(page, _iso(2026, 10, 15, 4))).to_have_class(re.compile(r"cal-cell--bal-warn"))
+    expect(page.locator(".cal-cell--bal-risk")).to_have_count(0)
     expect(page.locator("#previewMonthLink")).to_have_attribute("href", "/preview/month/")
-    expect(page.locator("#preview-calendar")).to_contain_text("Paycheck")
-    expect(page.locator("#preview-calendar")).to_contain_text("+$3,200")
-    expect(page.locator("#preview-calendar")).to_contain_text("$3,050")
+    expect(_cell(page, _iso(2026, 10, 15, 6))).to_contain_text("Paycheck")
+    expect(_cell(page, _iso(2026, 10, 15, 6))).to_contain_text("+$3,400")
+    expect(_cell(page, _iso(2026, 10, 15, 6))).to_have_attribute("data-end", "3550")
+    dates_match = page.evaluate(
+        """() => {
+          const headers = [...document.querySelectorAll('#previewDow .cal-dow')].map((el) => el.textContent);
+          return [...document.querySelectorAll('#preview-calendar .cal-cell')].map((cell, index) => {
+            const iso = cell.getAttribute('data-iso');
+            const parts = iso.split('-').map(Number);
+            const when = new Date(parts[0], parts[1] - 1, parts[2]);
+            const weekday = when.toLocaleDateString('en-US', { weekday: 'short' });
+            const label = cell.querySelector('.cal-daynum').getAttribute('data-mobile-label');
+            const dayNum = Number(cell.querySelector('.cal-daynum-num').textContent);
+            return weekday === headers[index] && label.indexOf(weekday) === 0 && dayNum === parts[2];
+          });
+        }"""
+    )
+    assert dates_match == [True, True, True, True, True, True, True]
+    footer = page.evaluate(
+        """() => {
+          const rect = document.querySelector('.app-footer').getBoundingClientRect();
+          const scrollHeight = document.documentElement.scrollHeight;
+          return {
+            gapBelow: scrollHeight - (rect.bottom + window.scrollY),
+            scrollHeight,
+            innerHeight: window.innerHeight,
+          };
+        }"""
+    )
+    assert footer["gapBelow"] < 8
+    page.set_viewport_size({"width": 1280, "height": 1100})
+    tall_footer = page.evaluate(
+        """() => {
+          const rect = document.querySelector('.app-footer').getBoundingClientRect();
+          return {
+            gapBelow: document.documentElement.scrollHeight - (rect.bottom + window.scrollY),
+            footerBottom: rect.bottom,
+            innerHeight: window.innerHeight,
+            scrollHeight: document.documentElement.scrollHeight,
+          };
+        }"""
+    )
+    assert tall_footer["gapBelow"] < 8
+    assert tall_footer["scrollHeight"] <= tall_footer["innerHeight"] + 2
+    assert abs(tall_footer["footerBottom"] - tall_footer["innerHeight"]) < 8
+    page.set_viewport_size({"width": 1280, "height": 800})
     expect(page.get_by_role("dialog")).to_have_count(0)
 
-    shortage = date.today() + timedelta(days=3)
-    payday = date.today() + timedelta(days=4)
+    shortage = anchor + timedelta(days=4)
+    payday = anchor + timedelta(days=6)
     page.locator("#previewReplay").click()
     expect(page.locator("#previewTourSkip")).to_have_count(0)
     titles = [
         (
             "Start with your checking balance",
-            "Here, we're starting with $4,850.",
+            "Here, we're starting with $2,060.",
         ),
         (
             "See upcoming bills",
-            "Your $2,400 mortgage and $1,100 credit card payment bring your balance from $4,850 down to $1,350.",
+            "Your $660 credit card payment and $1,250 insurance bill bring your balance from $2,060 down to $150.",
         ),
         (
             "Spot problems before they happen",
-            f"goes negative $150 on {shortage.strftime('%B')} {shortage.day}",
+            f"falls to $150 on {shortage.strftime('%B')} {shortage.day}",
         ),
         (
             "Look ahead to payday",
-            f"Your $3,200 paycheck arrives {payday.strftime('%B')} {payday.day}",
+            f"Your $3,400 paycheck arrives {payday.strftime('%B')} {payday.day}",
         ),
         (
-            "Know what's coming. Plan with confidence.",
-            "how much you'll have left",
+            "Know what's coming. Make decisions with confidence.",
+            "need to wait until payday",
         ),
     ]
     for index, (title, body) in enumerate(titles, start=1):
@@ -716,7 +763,8 @@ def test_seven_day_sample_leads_to_the_month(page, guard):
             page.locator("#previewTourNext").click()
         if index == 3:
             expect(page.locator(".bw-tour-target--strong")).to_have_count(1)
-            expect(page.locator(".bw-tour-target--strong")).to_contain_text("($150)")
+            expect(page.locator(".bw-tour-target--strong")).to_contain_text("Insurance")
+            expect(page.locator(".bw-tour-target--strong")).to_contain_text("$150")
             page.locator("#previewTourClose").click()
             expect(page.locator(".bw-tour-tooltip--open")).to_have_count(0)
             expect(page).to_have_url(re.compile(r"/preview/?$"))
@@ -729,7 +777,7 @@ def test_seven_day_sample_leads_to_the_month(page, guard):
         if index < 5:
             page.locator("#previewTourNext").click()
     page.locator("#previewTourNext").click()
-    expect(page.locator("#previewTourTitle")).to_have_text("Ready to see the bigger picture?")
+    expect(page.locator("#previewTourTitle")).to_have_text("Ready to see what's ahead for your own money?")
     expect(page.locator("#previewTourBody")).to_contain_text("Explore a full month of fictional finances")
     expect(page.locator("#previewTourExplore")).to_have_text("Explore a full month")
     expect(page.locator("#previewTourExplore")).to_have_attribute("href", "/preview/month/")
@@ -763,6 +811,11 @@ def test_seven_day_sample_leads_to_the_month(page, guard):
     page.locator("#previewTourExplore").click()
     page.wait_for_url(re.compile(r"/preview/month/?$"))
     expect(page.locator("#previewReconcile")).to_be_visible()
+    for offset, end in ((0, "2060"), (3, "1400"), (4, "150"), (6, "3550")):
+        expect(_cell(page, _iso(2026, 10, 15, offset))).to_have_attribute("data-end", end)
+    expect(_cell(page, _iso(2026, 10, 15, 3)).locator("button", has_text="Credit card")).to_be_visible()
+    expect(_cell(page, _iso(2026, 10, 15, 4)).locator("button", has_text="Insurance")).to_be_visible()
+    expect(_cell(page, _iso(2026, 10, 15, 6)).locator("button", has_text="Paycheck")).to_be_visible()
     expect(page.locator(".bw-tour-tooltip--open")).to_have_count(0)
     page.locator("#previewReplay").click()
     expect(page.locator("#previewTourTitle")).to_have_text("Look ahead")

@@ -5,16 +5,56 @@
 (function () {
   "use strict";
 
-  var FLOOR = 1500;
-  var STORY = [
-    { group: "start", txns: [], end: 4850 },
-    { group: "upcoming", txns: [{ name: "Mortgage", amount: -2400 }], end: 2450 },
-    { group: "upcoming problem", txns: [{ name: "Credit card", amount: -1100 }], end: 1350, below: true },
-    { group: "problem", txns: [{ name: "Vacation deposit", amount: -1500 }], end: -150, risk: true },
-    { group: "payday", txns: [{ name: "Paycheck", amount: 3200 }], end: 3050 },
-    { group: "rest", txns: [], end: 3050 },
-    { group: "rest", txns: [], end: 3050 },
+  // Keep these in step with frontend/preview/preview.js so this week matches the month sample.
+  var BUFFER = 1500;
+  var OPENING = 4850;
+  var LOW_OFFSET = 4;
+  var PAY_OFFSET = 6;
+  var WEEK_LENGTH = 7;
+  var SERIES = [
+    { offset: -8, name: "Groceries", amount: -180 },
+    { offset: -6, name: "Mortgage", amount: -2400 },
+    { offset: -4, name: "Utilities", amount: -210 },
+    { offset: 3, name: "Credit card", amount: -660 },
+    { offset: 4, name: "Insurance", amount: -1250 },
+    { offset: 6, name: "Paycheck", amount: 3400 },
+    { offset: 10, name: "Groceries", amount: -190 },
+    { offset: 14, name: "Car repair", amount: -420 },
+    { offset: 18, name: "Credit card", amount: -650 },
   ];
+
+  function buildWeek() {
+    var balance = OPENING;
+    SERIES.forEach(function (item) {
+      if (item.offset < 0) balance += item.amount;
+    });
+    var events = {};
+    SERIES.forEach(function (item) {
+      if (item.offset >= 0 && item.offset < WEEK_LENGTH) events[item.offset] = item;
+    });
+    var rows = [];
+    var offset;
+    for (offset = 0; offset < WEEK_LENGTH; offset += 1) {
+      var event = events[offset];
+      var txns = event ? [{ name: event.name, amount: event.amount }] : [];
+      if (event) balance += event.amount;
+      var group = "rest";
+      if (offset === 0) group = "start";
+      else if (offset === PAY_OFFSET) group = "payday";
+      else if (offset === LOW_OFFSET) group = "upcoming problem shortage";
+      else if (event && event.amount < 0) group = balance < BUFFER ? "upcoming problem" : "upcoming";
+      rows.push({
+        group: group,
+        txns: txns,
+        end: balance,
+        below: balance < BUFFER && balance >= 0,
+        risk: balance < 0,
+      });
+    }
+    return rows;
+  }
+
+  var STORY = buildWeek();
 
   var STARTING_POINT =
     '<span class="cal-balance-status-pills"><span class="cal-balance-status-pill cal-balance-status-pill--starting"><span class="cal-balance-status-pill__icon" aria-hidden="true"><svg class="cal-starting-point-flag" viewBox="0 0 12 14" width="10" height="12" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M2 1.25v11.5" stroke="currentColor" stroke-width="1.35" stroke-linecap="round"/><path d="M2 2.75 9.5 6.25 2 9.75V2.75Z" fill="currentColor"/></svg></span> Starting Point</span></span>';
@@ -30,40 +70,69 @@
   var STEPS = [
     {
       title: "Start with your checking balance",
-      body: "Your forecast starts with what's actually in your checking account. Here, we're starting with $4,850.",
+      body: function () {
+        return (
+          "Your forecast starts with what's actually in your checking account. Here, we're starting with " +
+          dollars(STORY[0].end) +
+          "."
+        );
+      },
       spot: '[data-preview~="start"]',
     },
     {
       title: "See upcoming bills",
-      body: "Your $2,400 mortgage and $1,100 credit card payment bring your balance from $4,850 down to $1,350.",
+      body: function () {
+        var card = STORY[3].txns[0];
+        var insurance = STORY[LOW_OFFSET].txns[0];
+        return (
+          "Your " +
+          dollars(card.amount) +
+          " credit card payment and " +
+          dollars(insurance.amount) +
+          " insurance bill bring your balance from " +
+          dollars(STORY[0].end) +
+          " down to " +
+          dollars(STORY[LOW_OFFSET].end) +
+          "."
+        );
+      },
       spot: '[data-preview~="upcoming"]',
     },
     {
       title: "Spot problems before they happen",
       body: function () {
         return (
-          "Your balance drops below your $1,500 safety cushion, then goes negative $150 on " +
-          longDate(3) +
+          "Your balance drops below your " +
+          dollars(BUFFER) +
+          " safety cushion, then falls to " +
+          dollars(STORY[LOW_OFFSET].end) +
+          " on " +
+          longDate(LOW_OFFSET) +
           " — before your next paycheck."
         );
       },
       spot: '[data-preview~="problem"]',
-      emphasize: '[data-preview="problem"]',
+      emphasize: '[data-preview~="shortage"]',
     },
     {
       title: "Look ahead to payday",
       body: function () {
+        var paycheck = STORY[PAY_OFFSET].txns[0];
         return (
-          "Your $3,200 paycheck arrives " +
-          longDate(4) +
-          ", bringing your balance back to $3,050. But now you know about the shortage before it happens."
+          "Your " +
+          dollars(paycheck.amount) +
+          " paycheck arrives " +
+          longDate(PAY_OFFSET) +
+          ", bringing your balance back to " +
+          dollars(STORY[PAY_OFFSET].end) +
+          ". But now you know about the shortage before it happens."
         );
       },
       spot: '[data-preview~="payday"]',
     },
     {
-      title: "Know what's coming. Plan with confidence.",
-      body: "BalanceWhiz shows you when money comes in, when bills are due, and how much you'll have left — before it happens.",
+      title: "Know what's coming. Make decisions with confidence.",
+      body: "See whether you can afford a purchase, move money into savings, or need to wait until payday — before making a decision.",
       spot: "",
     },
   ];
@@ -89,9 +158,12 @@
     return date.getFullYear() + "-" + month + "-" + day;
   }
 
+  function dollars(amount) {
+    return "$" + Math.abs(amount).toLocaleString("en-US", { maximumFractionDigits: 0 });
+  }
+
   function money(amount) {
-    var abs = Math.abs(amount).toLocaleString("en-US", { maximumFractionDigits: 0 });
-    return amount < 0 ? "($" + abs + ")" : "$" + abs;
+    return amount < 0 ? "(" + dollars(amount) + ")" : dollars(amount);
   }
 
   function txnMoney(amount) {
@@ -424,7 +496,7 @@
     if (finale) {
       clearSpot();
       counter.hidden = true;
-      title.textContent = "Ready to see the bigger picture?";
+      title.textContent = "Ready to see what's ahead for your own money?";
       body.textContent =
         "You've seen how BalanceWhiz helps you spot a cash shortage before it happens. Explore a full month of fictional finances, or start forecasting your own money.";
       actions.hidden = true;
