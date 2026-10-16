@@ -44,3 +44,101 @@ body.login-page:not(.signup-page):not(.invite-page) .top-nav__actions {
   top: 50%;
   transform: translateY(-50%);
 }
+
+.public-nav{
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.public-nav__toggle{
+  display: none;
+}
+.public-nav__panel{
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.public-nav__link{
+  display: inline-flex;
+  align-items: center;
+  margin: 0;
+  padding: 6px 10px;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 0.875rem;
+  font-weight: 550;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+  text-decoration: none;
+  white-space: nowrap;
+  background: none;
+  border: none;
+  border-radius: 8px;
+}
+.public-nav__link:hover,
+.public-nav__link:focus-visible{
+  color: #fff;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.public-nav__link[aria-current="page"]{
+  color: #fff;
+  font-weight: 650;
+}
+@media (max-width: 860px){
+  .public-nav__toggle{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    min-width: 44px;
+    min-height: 44px;
+    margin: 0;
+    padding: 0 12px;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    font-family: inherit;
+    font-size: 0.875rem;
+    font-weight: 650;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .public-nav__toggle:focus-visible{
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+  }
+  .public-nav__panel{
+    display: none;
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    z-index: 40;
+    flex-direction: column;
+    align-items: stretch;
+    min-width: 196px;
+    padding: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 12px;
+    background: var(--accent, #0b3d2e);
+  }
+  .public-nav.is-open .public-nav__panel{
+    display: flex;
+  }
+  .public-nav__link{
+    min-height: 44px;
+    padding: 10px 12px;
+  }
+  .top-nav__actions{
+    flex-wrap: nowrap;
+  }
+  .top-nav__logout{
+    box-sizing: border-box;
+    min-height: 44px;
+  }
+}
+a.top-nav__logout,
+a.top-nav__logout:hover,
+a.top-nav__logout:focus-visible{
+  text-decoration: none;
+}
